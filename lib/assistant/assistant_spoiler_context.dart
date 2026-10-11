@@ -41,7 +41,13 @@ bool assistantIsDeicticStoryFollowUp(String prompt) {
   return (aboutPerson && words.any(people.contains)) || aboutEvent;
 }
 
+/// Characters that take no room on screen: a soft hyphen, zero-width spaces
+/// and joiners, the byte order mark.
+final RegExp _invisible = RegExp('[\u00AD\u200B-\u200D\u2060\uFEFF]');
+
 bool assistantNeedsSpoilerScope(String prompt) {
+  // "sp<zero width space>oilers" is the same word to the reader.
+  prompt = prompt.replaceAll(_invisible, '');
   // A question about the user's own memory ("wat herinner je je over mij?")
   // is no story question: only its free part can still call for the fence.
   final memoryTail = assistantMemoryQuestionTail(prompt);

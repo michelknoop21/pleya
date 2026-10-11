@@ -2,9 +2,9 @@ part of 'assistant_tools.dart';
 
 // The memory of the active profile: what the user asked Pleya to remember.
 // Reading is free; a write is stored at once only when the user's own typed
-// words asked for it and hold the fact (`AssistantMemoryTurn.directValue`),
-// and otherwise becomes a proposal the user answers on a Pleya card after the
-// answer. No output and
+// words asked for it and hold the fact (`AssistantMemoryTurn.directFact`): then
+// those words are stored, never the model's. Any other write becomes a
+// proposal the user answers on a Pleya card after the answer. No output and
 // no error here carries anything but fixed codes and the user's own facts,
 // and nothing about a fact is logged.
 
@@ -126,18 +126,24 @@ final List<AssistantTool> assistantMemoryTools = [
       final turn = ctx.memoryTurn;
       final category = _memoryCategory(args['category']);
       if (category == null) throw const AssistantToolError('missing_category');
-      // The service's own check, so the card never shows a sentence it would refuse.
-      final checked = checkMemoryValue(_string(args, 'value'));
-      final value = checked.value;
-      if (value == null) return _memoryRefusal(checked.code);
       final replaces = args['replaces'];
       if (replaces != null && replaces is! String) throw const AssistantToolError('invalid_replaces');
+      final replacedRef = replaces is String && replaces.trim().isNotEmpty ? replaces : null;
+      // After a typed "onthoud dat ..." the user's own words are stored and the
+      // model's `value` is not read. Spent before the write: one direct save
+      // per ask, stored or not.
+      final direct = replacedRef == null ? turn.directFact : null;
+      if (direct != null) turn.directUsed = true;
+      // The service's own check, so the card never shows a sentence it would refuse.
+      final checked = checkMemoryValue(direct ?? _string(args, 'value'));
+      final value = checked.value;
+      if (value == null) return _memoryRefusal(checked.code);
       final same = (await memory.service.list()).where((f) => memoryValueKey(f.value) == value.key).firstOrNull;
 
-      if (replaces is String && replaces.trim().isNotEmpty) {
+      if (replacedRef != null) {
         // Replacing overwrites a fact for good: always the card, whatever the user typed.
         // An unknown or ambiguous ref changes nothing.
-        final found = await memory.service.resolve(replaces);
+        final found = await memory.service.resolve(replacedRef);
         final target = found.fact;
         if (!found.ok || target == null) return _memoryRefusal(found.code);
         if (same != null && same.id != target.id) return _memoryRefusal(MemoryCode.duplicate);
@@ -152,7 +158,6 @@ final List<AssistantTool> assistantMemoryTools = [
           ),
         );
       }
-      final direct = turn.directValue(value.value);
       if (direct == null) {
         if (same != null) return AssistantToolResult({'status': 'already_known', 'ref': same.ref});
         return _propose(
@@ -165,14 +170,8 @@ final List<AssistantTool> assistantMemoryTools = [
           ),
         );
       }
-      // Spent before the write: one direct save per ask, stored or not.
-      turn.directUsed = true;
-      // The typed words themselves pass the same check as the model's sentence.
-      final typed = direct == value.value ? checked : checkMemoryValue(direct);
-      final accepted = typed.value;
-      if (accepted == null) return _memoryRefusal(typed.code);
       final result = await memory.service.add(
-        value: accepted.value,
+        value: value.value,
         category: category,
         source: MemorySource.userExplicit,
       );

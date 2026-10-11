@@ -69,6 +69,43 @@ const List<_Attack> _own = [
   ('Remember that I like horror if it is not gory', 'Likes gory horror', 'I like horror if it is not gory'),
 ];
 
+/// The second re-review's examples: the difference sat in a sign, an emoji or
+/// an invisible character, or in a last word turned to the front.
+const List<_Attack> _signs = [
+  (
+    'Onthoud dat ik 2 afleveringen per avond kijk',
+    'Kijkt <2 afleveringen per avond',
+    'Ik 2 afleveringen per avond kijk',
+  ),
+  ('Remember that I watch 2 episodes a night', 'Watches -2 episodes a night', 'I watch 2 episodes a night'),
+  ('Onthoud dat ik films van 16 kijk', 'Kijkt films van 16+', 'Ik films van 16 kijk'),
+  ('Onthoud dat ik 1,5 uur per dag kijk', 'Kijkt 1-5 uur per dag', 'Ik 1,5 uur per dag kijk'),
+  ('Onthoud dat ik van horror houd', 'Houdt ≠ van horror', 'Ik van horror houd'),
+  ('Onthoud dat ik van horror houd', '🚫 Houdt van horror', 'Ik van horror houd'),
+  ('Onthoud dat ik van horror houd', 'Houdt van horror 👎', 'Ik van horror houd'),
+  ('Onthoud dat ik van horror houd', '~~Houdt van horror~~ (!)', 'Ik van horror houd'),
+  ('Onthoud dat ik van horror houd', 'Houdt van horr\u0336or', 'Ik van horror houd'),
+  ('Onthoud dat ik van horror houd', 'Houdt\u200B van\u200B horror', 'Ik van horror houd'),
+  ('Remember that I watch horror only', 'Only I watch horror', 'I watch horror only'),
+  ('Onthoud dat ik kijk horror alleen', 'Alleen ik kijk horror', 'Ik kijk horror alleen'),
+  ('Onthoud dat wij kijken thrillers niet', 'Niet wij kijken thrillers', 'Wij kijken thrillers niet'),
+  ('Onthoud dat niets van Marvel mij boeit', 'Niet van Marvel mij boeit', 'Niets van Marvel mij boeit'),
+  ('Onthoud dat alle films van Nolan goed zijn', 'Alles films van Nolan goed zijn', 'Alle films van Nolan goed zijn'),
+  ('Onthoud dat I Robot mijn favoriete film is', 'Is Robot mijn favoriete film', 'I Robot mijn favoriete film is'),
+];
+
+/// A model sentence that says what was typed in other words. The typed words
+/// are stored all the same: the model's `value` is never read.
+const List<_Attack> _reworded = [
+  ('Onthoud dat ik niet van horror houd.', 'Houdt niet van horror', 'Ik niet van horror houd'),
+  ('Onthoud dat ik houd niet van horror', 'Houdt niet van horror', 'Ik houd niet van horror'),
+  ('Onthoud dat ik graag oorlogsfilms kijk', 'Kijkt graag oorlogsfilms', 'Ik graag oorlogsfilms kijk'),
+  ('Remember that I like horror', 'Likes horror', 'I like horror'),
+  ('Remember: we watch on Fridays', 'Watches on Fridays', 'We watch on Fridays'),
+  ('  onthoud dat  ik NIET van horror houd.  ', 'ik NIET van horror houd', 'Ik NIET van horror houd'),
+  ('Onthoud dat ik van horror houd', '', 'Ik van horror houd'),
+];
+
 /// The forms the re-review ran against the fence, with and without a story
 /// question behind the command form.
 const _forms = [
@@ -166,8 +203,8 @@ void main() {
   });
 
   group('a direct save never changes what was typed', () {
-    for (final (typed, wanted, stored) in [..._reported, ..._own]) {
-      test('"$typed" is not stored as "$wanted"', () async {
+    for (final (typed, wanted, stored) in [..._reported, ..._own, ..._signs, ..._reworded]) {
+      test('"$typed" stores the typed words, not "$wanted"', () async {
         final c = make(remember(wanted));
         await c.submit(typed, typed: true);
 
@@ -180,19 +217,26 @@ void main() {
       });
     }
 
-    test('the model\'s wording is stored when it says exactly what was typed', () async {
-      for (final (typed, wanted) in [
-        ('Onthoud dat ik niet van horror houd.', 'Houdt niet van horror'),
-        ('Onthoud dat ik houd niet van horror', 'Houdt niet van horror'),
-        ('Onthoud dat ik graag oorlogsfilms kijk', 'Kijkt graag oorlogsfilms'),
-        ('Remember that I like horror', 'Likes horror'),
-        ('Remember: we watch on Fridays', 'Watches on Fridays'),
+    test('a proposal of Big P, without the command form, keeps the model\'s words on the card', () async {
+      final c = make(remember('Houdt van horror'));
+      await c.submit('Ik houd echt van horror', typed: true);
+
+      expect(await profile.values(), isEmpty);
+      expect(c.memoryProposal!.value, 'Houdt van horror');
+      await c.answerMemoryProposal(c.memoryProposal!, accept: true);
+      expect(await profile.values(), ['Houdt van horror']);
+    });
+
+    test('typed words in the subordinate order that name an age or a language are refused', () async {
+      for (final (typed, code) in [
+        ('Onthoud dat onze zoon bijna negen wordt', 'owned_by_kids_ages_setting'),
+        ('Onthoud dat ik liever Engels dan Nederlands hoor', 'owned_by_language_setting'),
       ]) {
-        final c = make(remember(wanted));
+        final c = make(remember('Houdt van paarden'));
         await c.submit(typed, typed: true);
-        expect(await profile.values(), [wanted], reason: typed);
-        expect(c.answer, 'Onthouden: $wanted.', reason: typed);
-        await profile.service.clearAll();
+        expect(await profile.values(), isEmpty, reason: typed);
+        expect(model.toolOutputs.single, {'error': code}, reason: typed);
+        expect(c.memoryProposal, isNull, reason: typed);
       }
     });
 
@@ -247,6 +291,49 @@ void main() {
         expect(model.calls, 0);
       });
     }
+
+    for (final (typed, stored) in [
+      ('Wil je onthouden dat ik geen spoilers wil', 'Ik geen spoilers wil'),
+      ('Kun je onthouden dat ik van een goed verhaal houd', 'Ik van een goed verhaal houd'),
+      ('Please remember that I love plot twists', 'I love plot twists'),
+    ]) {
+      test('the polite form "$typed" does not vanish: the line and a card, no model call', () async {
+        final c = make(remember('Iets anders'));
+        await c.submit(typed, typed: true);
+
+        expect(model.calls, 0);
+        expect(c.answer, t.assistant.memory.storyAsk);
+        expect(await profile.values(), isEmpty);
+        expect(c.memoryProposal!.value, stored);
+        await c.answerMemoryProposal(c.memoryProposal!, accept: true);
+        expect(await profile.values(), [stored]);
+      });
+    }
+
+    test('the polite form never stores at once, and with a question mark it is a question', () async {
+      var c = make(remember('Houdt van thrillers'));
+      await c.submit('Wil je onthouden dat ik van thrillers houd', typed: true);
+      expect(await profile.values(), isEmpty);
+      expect(c.memoryProposal!.value, 'Houdt van thrillers');
+
+      c = make(remember('Wil geen spoilers'));
+      await c.submit('Wil je onthouden dat ik geen spoilers wil?', typed: true);
+      expect(model.offered.first, isNot(contains('remember_fact')));
+      expect(await profile.values(), isEmpty);
+      expect(c.memoryProposal, isNull);
+    });
+
+    test('an invisible character in the story word does not lift the fence', () async {
+      const typed = 'Onthoud dat ik geen sp\u200Boilers wil';
+      expect(assistantNeedsSpoilerScope(typed), isTrue);
+      expect(assistantNeedsSpoilerScope('Geef een sam\u00ADenvatting van seizoen 3 van Dark'), isTrue);
+      final c = make(remember('Iets anders'));
+      await c.submit(typed, typed: true);
+
+      expect(model.calls, 0);
+      expect(c.answer, t.assistant.memory.storyAsk);
+      expect(await profile.values(), isEmpty);
+    });
 
     test('a no on the card stores nothing', () async {
       final c = make(const []);

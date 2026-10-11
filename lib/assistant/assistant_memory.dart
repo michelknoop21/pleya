@@ -83,9 +83,10 @@ class AssistantMemoryTurn {
   /// The one direct save of this ask was spent, stored or not.
   bool directUsed = false;
 
-  /// The sentence to store at once in answer to the model's [value], or null
-  /// when the write waits for a yes on a card. A sentence is stored at once
-  /// when all of these hold:
+  /// The sentence to store at once, or null when the write waits for a yes on
+  /// a card. It is always [typedFact], the user's own typed words, and never
+  /// the model's wording: the `value` the model passes is not read for a
+  /// direct save. A sentence is stored at once when all of these hold:
   ///
   /// * the typed question was an explicit request that names a fact
   ///   ([typedFact]);
@@ -93,14 +94,8 @@ class AssistantMemoryTurn {
   ///   page, a title description) was in the model's context;
   /// * no direct save was spent yet.
   ///
-  /// What is stored is the user's claim, never another one: [value] when it
-  /// says exactly what was typed ([assistantMemoryValueIsTyped]), and
-  /// otherwise the typed words themselves.
-  String? directValue(String value) {
-    final typed = typedFact;
-    if (typed == null || calls != 1 || directUsed) return null;
-    return assistantMemoryValueIsTyped(value, typed) ? value : typed;
-  }
+  /// Known limit: the category of a fact stored at once is the model's choice.
+  String? get directFact => calls == 1 && !directUsed ? typedFact : null;
 
   /// Writes waiting for a yes, in the order the model asked for them.
   final List<AssistantMemoryProposal> proposals = [];

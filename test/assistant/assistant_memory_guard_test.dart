@@ -79,9 +79,9 @@ void main() {
       final c = make([callTool('remember_fact', horror), say('Ok.')]);
       await c.submit('Onthoud dat ik niet van horror houd', typed: true);
 
-      expect(await profile.values(), ['Houdt niet van horror']);
+      expect(await profile.values(), ['Ik niet van horror houd']);
       expect(c.memoryProposal, isNull);
-      expect(c.answer, 'Onthouden: Houdt niet van horror.');
+      expect(c.answer, 'Onthouden: Ik niet van horror houd.');
     });
 
     test('after another tool result a foreign sentence becomes a card and nothing is stored', () async {
@@ -142,25 +142,7 @@ void main() {
       expect(c.memoryProposal, isNull);
     });
 
-    test('the rule itself: the same words in the same order, both ways', () {
-      const tail = 'ik niet van horror houd';
-      expect(assistantMemoryValueIsTyped('Houdt niet van horror', tail), isTrue, reason: 'subject, verb place, ending');
-      expect(assistantMemoryValueIsTyped('Ik niet van horror houd.', tail), isTrue, reason: 'the typed words');
-      expect(assistantMemoryValueIsTyped('Houdt beslist niet van horror', tail), isFalse, reason: 'a word more');
-      expect(assistantMemoryValueIsTyped('Houdt van horror', tail), isFalse, reason: 'a word less');
-      expect(assistantMemoryValueIsTyped('Houdt niet van horrorfilms', tail), isFalse, reason: 'only the verb bends');
-      expect(assistantMemoryValueIsTyped('Gore', tail), isFalse);
-      expect(assistantMemoryValueIsTyped('Horror', 'geen horror'), isFalse, reason: 'two typed words name no fact');
-      expect(assistantMemoryValueIsTyped('Likes horror', 'I like horror'), isTrue);
-      expect(
-        assistantMemoryValueIsTyped('Kijkt op vrijdag met het gezin', 'we op vrijdag met het gezin kijken'),
-        isTrue,
-      );
-      expect(
-        assistantMemoryValueIsTyped('Kijkt op vrijdagavond met het gezin', 'we op vrijdag met het gezin kijken'),
-        isFalse,
-        reason: 'another day part',
-      );
+    test('the rule itself: the typed words, trimmed, with a capital and without the full stop', () {
       expect(assistantMemoryTypedFact('  onthoud dat  ik NIET van horror houd.  '), 'Ik NIET van horror houd');
       expect(assistantMemoryTypedFact('Onthoud dat ook'), isNull);
       expect(assistantMemoryTypedFact('Remember that film with the heist?'), isNull);
@@ -344,7 +326,7 @@ void main() {
       final c = make([], use: held);
       final first = c.submit('Onthoud dat ik niet van horror houd', typed: true);
       await held.reached.future;
-      expect(await profile.values(), ['Houdt niet van horror']);
+      expect(await profile.values(), ['Ik niet van horror houd']);
 
       // The cancelled first run ends without a second reply; the next question gets the script's.
       final second = c.submit('Zoek een komedie');
@@ -352,7 +334,7 @@ void main() {
       await Future.wait([first, second]);
 
       expect(c.prompt, 'Zoek een komedie');
-      expect(c.answer, contains('Onthouden: Houdt niet van horror.'));
+      expect(c.answer, contains('Onthouden: Ik niet van horror houd.'));
       expect(c.memoryStored, isTrue);
     });
 
@@ -365,7 +347,7 @@ void main() {
       held.release.complete();
       await first;
 
-      expect(c.answer, 'Onthouden: Houdt niet van horror.');
+      expect(c.answer, 'Onthouden: Ik niet van horror houd.');
       expect(c.state, AssistantSurfaceState.result);
       expect(c.prompt, 'Onthoud dat ik niet van horror houd');
     });

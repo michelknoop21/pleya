@@ -82,16 +82,18 @@ extension _AssistantRunMemory on AssistantRun {
     );
   }
 
-  /// Pleya's own answer to a typed "onthoud dat ..." whose words also read as
-  /// a story or spoiler question, or null for any other ask. No model is
+  /// Pleya's own answer to a typed "onthoud dat ..." (or its polite form,
+  /// "wil je onthouden dat ...") whose words also read as a story or spoiler
+  /// question, or null for any other ask. No model is
   /// called for it: nothing of a story can leak, and the request does not
   /// vanish either. The typed words wait on a card when they are a fact the
   /// memory takes; a yes stores them, a no stores nothing.
   AssistantRunResult? _memoryStoryClash(String prompt) {
     final memory = _ctx.memory;
     if (memory == null || !_ctx.memoryTurn.enabled || !userTyped) return null;
-    if (assistantMemoryCommandTail(prompt) == null || !assistantNeedsSpoilerScope(prompt)) return null;
-    final fact = checkMemoryValue(assistantMemoryTypedFact(prompt) ?? '').value;
+    final asked = assistantMemoryCommandTail(prompt) != null || assistantMemoryPoliteRequest(prompt);
+    if (!asked || !assistantNeedsSpoilerScope(prompt)) return null;
+    final fact = checkMemoryValue(assistantMemoryTypedFact(prompt, polite: true) ?? '').value;
     return AssistantRunResult(
       end: AssistantRunEnd.answered,
       text: fact == null ? t.assistant.memory.storyOnly : t.assistant.memory.storyAsk,

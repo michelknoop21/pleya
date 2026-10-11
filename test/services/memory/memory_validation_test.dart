@@ -222,6 +222,102 @@ void main() {
       });
     });
 
+    // One table for both word orders: the words after "onthoud dat" are stored
+    // as typed, so the verb stands last there. Each pair is the subordinate
+    // clause and its main clause.
+    test('the verb last and the verb second: refused', () {
+      check({
+        // Let through in the subordinate order, from the second re-review.
+        'Onze zoon bijna negen wordt': age,
+        'Onze zoon wordt bijna negen': age,
+        'Mijn dochter acht is': age,
+        'Mijn dochter is acht': age,
+        'Mijn dochter 8 geworden is': age,
+        'Mijn dochter is 8 geworden': age,
+        'Mijn dochter net acht geworden is': age,
+        'Mijn dochter is net acht geworden': age,
+        'Mijn kinderen acht en tien zijn': age,
+        'Mijn kinderen zijn acht en tien': age,
+        'Onze jongste 4 is': age,
+        'Onze jongste is 4': age,
+        'Ik liever Engels dan Nederlands hoor': language,
+        'Hoort liever Engels dan Nederlands': language,
+        // Refused before and still.
+        'Mijn dochter 8 is': age,
+        'Mijn dochter acht jaar is': age,
+        'De kinderen 6, 9 en 11 zijn': age,
+        'The kids are 8 and 11': age,
+        'Ik altijd Nederlandse ondertitels wil': language,
+        'Ik films in het Engels kijk': language,
+        'Ik altijd Engels geluid wil': language,
+        // Nearby, ages.
+        'Onze dochter inmiddels 11 is': age,
+        'Mijn zoon pas zes geworden is': age,
+        'Onze oudste nu veertien is': age,
+        'Mijn kleinkind bijna drie wordt': age,
+        'Mijn dochter 8 jaar oud is': age,
+        'De kinderen 8 en 11 zijn': age,
+        'Mijn zoon al 12 is en mee mag kijken': age,
+        'Onze zoon net een geworden is': age,
+        'Mijn dochter 8': age,
+        'Our youngest just turned four': age,
+        "My daughter's 8": age,
+        'Mijn kinderen nu acht en tien jaar oud zijn': age,
+        // Nearby, language.
+        'Ik liever Engels dan Nederlands luister': language,
+        'Ik liever Engels dan Nederlands kijk': language,
+        'Wij liever Japans dan Engels horen': language,
+        'Ik films in Engels kijk': language,
+        'Ik alles in English wil': language,
+      });
+    });
+
+    test('the verb last and the verb second: let through', () {
+      check({
+        // Refused as an age in the subordinate order, from the second re-review.
+        'De kinderen thuis met 4 zijn': ok,
+        'De kinderen zijn thuis met 4': ok,
+        'Mijn dochter nummer 1 is': ok,
+        'Mijn dochter is nummer 1': ok,
+        'Mijn dochter in seizoen 2 is': ok,
+        'Mijn dochter is in seizoen 2': ok,
+        'Mijn dochter bij aflevering 5 is': ok,
+        'Mijn dochter is bij aflevering 5': ok,
+        'Dochter is bij aflevering 5': ok,
+        // Let through before and still, with their main clauses.
+        'Mijn dochter 2 keer per week bij oma is': ok,
+        'Mijn dochter is 2 keer per week bij oma': ok,
+        'Ik met de kinderen 2 afleveringen per avond kijk': ok,
+        'Ik kijk met de kinderen 2 afleveringen per avond': ok,
+        'Mijn zoon 3 dagen per week bij ons is': ok,
+        'Mijn zoon is 3 dagen per week bij ons': ok,
+        // Nearby.
+        'De kinderen 2 dagen per week hier zijn': ok,
+        'Mijn zoon 1 van de grootste fans is': ok,
+        'De kinderen 3 afleveringen per avond kijken': ok,
+        'Mijn dochter een verlegen persoon is': ok,
+        'De kinderen op zaterdag 2 films kijken': ok,
+        'Mijn zoon groep 8 doet': ok,
+        'Mijn dochter om 8 uur naar bed gaat': ok,
+        'De kinderen met 3 vriendjes kijken': ok,
+        'Mijn zoon deel 2 beter vindt': ok,
+        'Mijn dochter 2 jaar op ballet zit': ok,
+        'Onze oudste 3 films per week kijkt': ok,
+        'Mijn zoon al 2 jaar anime kijkt': ok,
+        'Mijn kinderen twee keer per week komen': ok,
+        'De kinderen thuis 4 keer per week kijken': ok,
+        'My kids watch 2 episodes a night': ok,
+        'Mijn zoon per week 2 films kijkt': ok,
+        'Ik liever Franse dan Duitse films kijk': ok,
+        'Ik liever Chinees dan Italiaans eet': ok,
+        'Ik graag Engelse series kijk': ok,
+      });
+    });
+
+    test('known limit: a month or a day between the child and the age is let through, in both orders', () {
+      check({'Mijn zoon volgende maand 9 wordt': ok, 'Mijn zoon wordt volgende maand 9': ok});
+    });
+
     test('known limit: an age without a child word next to the verb is let through', () {
       check({
         'Mijn 8-jarige houdt van Bluey': ok,

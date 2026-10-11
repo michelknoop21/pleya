@@ -43,13 +43,29 @@ const String _closesAnAge =
 
 final String _age = '(?:(?<!\\d)\\d{1,2}$_end$_countsSomethingElse|$_start(?:$_numberWords)$_end$_closesAnAge)';
 const String _is = '(?:is|zijn|wordt|worden|was|are|turns|turned|turning)';
-const String _filler = '(?: (?:al|nu|bijna|net|pas|inmiddels|just|now|almost|nearly|already|aged))?';
+const String _adverb = ' (?:al|nu|bijna|net|pas|inmiddels|just|now|almost|nearly|already|aged)';
+const String _filler = '(?:$_adverb)?';
+
+// An age with the verb behind it, as a Dutch subordinate clause puts it. The
+// verb closes it, so a spelled-out number needs no [_closesAnAge], and zero
+// and one count here too ("een" is also the article, which no verb follows).
+final String _clauseAge =
+    '(?:(?<!\\d)\\d{1,2}$_end$_countsSomethingElse|$_start(?:nul|een|zero|one|$_numberWords)$_end)'
+    '(?: (?:jaar|jr|years?)$_end)?';
+
+// What says the number before it was an age: "oud", a verb of being or
+// becoming, or the end of the sentence. A unit alone does not: "2 jaar op
+// ballet zit".
+const String _closesAClauseAge =
+    '(?: (?:oud|old|is|zijn|wordt|worden|werd|werden|was|waren|geworden|are|turned|turns)'
+    '$_end'
+    r'|(?= ?(?:$|[.;!?)])))';
 
 final List<RegExp> _ageStatements = [
   // "onze dochter is 8", "de kinderen zijn 6 en 9 jaar", "our son just turned eight"
   _phrase('$_child(?: [^ ]+){0,2} $_is$_filler $_age'),
   // "jongste is 4 jaar oud"
-  _phrase('$_eldest $_is$_filler $_age'),
+  _phrase('$_eldest$_filler $_is$_filler $_age'),
   // "mijn zoon van 12", "a daughter aged nine"
   _phrase('$_child (?:van|of|aged?) $_age'),
   // "een 8-jarige zoon", "een achtjarige dochter", "an 8 year old son"
@@ -57,10 +73,13 @@ final List<RegExp> _ageStatements = [
     '(?:(?<!\\d)\\d{1,2}[ -]?|$_start(?:$_numberWords)-?)(?:jarige?|jaar oude?|years?[ -]old|yo)$_end'
     '(?: [^ ]+)? $_child',
   ),
-  // The verb last, as typed after "onthoud dat": "mijn dochter 8 jaar is", "de kinderen 6 en 9 zijn"
+  // The verb last, as typed after "onthoud dat": "mijn dochter 8 jaar is",
+  // "onze zoon bijna negen wordt", "de kinderen 6, 9 en 11 zijn", "onze
+  // jongste 4 is". Only adverbs may stand between the child and the age:
+  // "mijn dochter in seizoen 2 is" and "de kinderen thuis met 4 zijn" pass.
   _phrase(
-    '$_child(?: [^ ]+){0,2}?$_filler $_age(?: (?:jaar|jr))?(?: oud)?'
-    '(?: (?:en|and) $_age(?: (?:jaar|jr))?(?: oud)?)? (?:is|zijn|wordt|worden|was)$_end',
+    "(?:$_child|$_eldest)(?:['’]s)?(?:$_adverb){0,3} $_clauseAge"
+    '(?:(?:,| en| and| &) $_clauseAge){0,3}$_closesAClauseAge',
   ),
   // "zoon (8) en dochter (5)"
   _phrase('$_child ?\\( ?\\d{1,2} ?\\)'),
@@ -81,9 +100,12 @@ const String _languageNoun = '(?:$_dutchLanguages|$_englishLanguages)';
 const String _languageAnyForm = '(?:(?:$_dutchLanguages)e?|chinese|$_englishLanguages)';
 
 // English has one form for "in English" and "the English countryside", so a
-// bare language name only counts when no noun follows it.
+// bare language name only counts when no noun follows it. A verb of watching,
+// hearing or wanting may follow, as a subordinate clause puts it.
 const String _closesALanguage =
-    r'(?= ?(?:$|[.,;!?)]|(?:en|of|and|or|only|with|met|als|when|if|but|maar|too|ook)'
+    r'(?= ?(?:$|[.,;!?)]|(?:en|of|and|or|only|with|met|als|when|if|but|maar|too|ook|'
+    // The verb last: "ik liever Engels dan Nederlands hoor", "ik films in Engels kijk".
+    r'hoor|hoort|horen|luister|luistert|luisteren|kijk|kijkt|kijken|wil|wilt|willen)'
     '$_end))';
 
 final List<RegExp> _languagePreferences = [
@@ -128,15 +150,17 @@ final RegExp _spaces = RegExp(r'\s+');
 ///
 // Known limits, let through: an age without a child word or without the verb
 // ("Tim is 8", "Mijn 8-jarige houdt van Bluey", "Dochter, 8 jaar, kijkt mee",
-// "Mijn zoon wordt volgende maand 9"), an age in months, a spelled-out age in
+// "Mijn zoon wordt volgende maand 9", "Mijn zoon volgende maand 9 wordt"), an
+// age in months, a spelled-out age in
 // a choice ("zes of zeven"), a bare language ("Prefers English", "Altijd
 // Engels"), "subs" and "captions", "de originele versie", and a language that
 // is not in the lists above.
 //
 // Known limits, refused although it is no such fact: a number with a unit
 // that is not in the list above ("Mijn zoon is 2 meter lang"), "oudste" or
-// "jongste" right before the verb when it is no child ("De oudste is 10 jaar
-// oud" about a film), and any mention of subtitles or dubbing ("Werkt als
+// "jongste" right before the verb or the number when it is no child ("De
+// oudste is 10 jaar oud" about a film, "De jongste drie zijn te eng"), a
+// meal ("Liever Chinees dan Italiaans"), and any mention of subtitles or dubbing ("Werkt als
 // ondertitelaar").
 MemoryCode? ownedFactCode(String value) {
   final typed = value.replaceAll(_spaces, ' ').trim();

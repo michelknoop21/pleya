@@ -141,8 +141,8 @@ void main() {
     ]);
     await h.ask('Onthoud dat we op vrijdagavond met het gezin kijken');
 
-    expect(await profile.values(), ['Kijkt op vrijdagavond met het gezin']);
-    expect(h.answer, 'Onthouden: Kijkt op vrijdagavond met het gezin.');
+    expect(await profile.values(), ['We op vrijdagavond met het gezin kijken']);
+    expect(h.answer, 'Onthouden: We op vrijdagavond met het gezin kijken.');
     expect(h.proposal, isNull);
     expect(h.overviewStale, isTrue);
   });

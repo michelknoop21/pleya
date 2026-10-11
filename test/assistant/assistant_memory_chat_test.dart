@@ -129,9 +129,10 @@ void main() {
       await c.submit('Onthoud dat we op vrijdagavond met het gezin kijken', typed: true);
 
       final facts = await profile.service.list();
-      expect([for (final f in facts) f.value], ['Kijkt op vrijdagavond met het gezin']);
+      // The typed words, not the model's sentence.
+      expect([for (final f in facts) f.value], ['We op vrijdagavond met het gezin kijken']);
       expect(facts.single.source, MemorySource.userExplicit);
-      expect(c.answer, 'Onthouden: Kijkt op vrijdagavond met het gezin.');
+      expect(c.answer, 'Onthouden: We op vrijdagavond met het gezin kijken.');
       expect(c.memoryProposal, isNull);
       expect(c.memoryStored, isTrue);
       expect(c.resultIsError, isFalse);
@@ -156,10 +157,9 @@ void main() {
 
     test('"onthoud:" and "remember that" count too', () async {
       for (final (prompt, value, stored) in [
-        ('Onthoud: ik houd niet van horror.', 'Houdt niet van horror', 'Houdt niet van horror'),
-        // "do" and "does" are no one verb to the code: the typed words are stored.
+        ('Onthoud: ik houd niet van horror.', 'Houdt niet van horror', 'Ik houd niet van horror'),
         ('Remember that I do not like horror.', 'Does not like horror', 'I do not like horror'),
-        ('Remember: we watch on Fridays', 'Watches on Fridays', 'Watches on Fridays'),
+        ('Remember: we watch on Fridays', 'Watches on Fridays', 'We watch on Fridays'),
       ]) {
         final c = make([
           callTool('remember_fact', {'value': value, 'category': 'dislike'}),
