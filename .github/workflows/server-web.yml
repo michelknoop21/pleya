@@ -83,7 +83,13 @@ jobs:
           # met de here-string het juiste server=true.
           match() { grep -qE "$1" <<< "$files"; }
 
-          if match '^(pleya_server/|docs/pleya-protocol/|scripts/check_protocol|scripts/ci_changed_files\.sh$|\.github/workflows/server-web\.yml$)'; then
+          # De Go-tests lezen naast de module twee bestanden die
+          # scripts/go-tool.sh alleen-lezen in de container zet:
+          # pleya_verify/redact/cases.json (internal/logging) en
+          # docs/pleya-protocol-v1.md (internal/api). De validator van de
+          # vastgelegde antwoorden telt ook mee, zodat een wijziging eraan
+          # niet langs de server-gate glipt.
+          if match '^(pleya_server/|docs/pleya-protocol/|docs/pleya-protocol-v1\.md$|pleya_verify/redact/|scripts/check_server_responses\.py$|scripts/check_protocol|scripts/ci_changed_files\.sh$|\.github/workflows/server-web\.yml$)'; then
             echo "server=true" >> "$GITHUB_OUTPUT"
           else
             echo "server=false" >> "$GITHUB_OUTPUT"
