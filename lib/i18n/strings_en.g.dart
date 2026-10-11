@@ -7699,6 +7699,9 @@ class TranslationsAssistantMemoryEn {
 	/// en: 'The memory is full. Remove a memory first, then I can remember this.'
 	String get refusedFull => 'The memory is full. Remove a memory first, then I can remember this.';
 
+	/// en: 'I did not remember that. Nothing was stored.'
+	String get notStored => 'I did not remember that. Nothing was stored.';
+
 	/// en: 'View memory'
 	String get view => 'View memory';
 
@@ -11163,6 +11166,7 @@ extension on Translations {
 			'assistant.memory.refusedLanguage' => 'I do not keep a language preference here. Set it in the language settings, under Language & subtitles.',
 			'assistant.memory.refusedTooLong' => ({required Object max}) => 'That is too long to remember. A memory is one sentence of at most ${max} characters.',
 			'assistant.memory.refusedFull' => 'The memory is full. Remove a memory first, then I can remember this.',
+			'assistant.memory.notStored' => 'I did not remember that. Nothing was stored.',
 			'assistant.memory.view' => 'View memory',
 			'assistant.memory.card.rememberTitle' => 'Shall I remember this?',
 			'assistant.memory.card.replaceTitle' => 'Shall I replace this?',

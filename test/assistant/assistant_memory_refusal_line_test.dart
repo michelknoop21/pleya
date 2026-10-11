@@ -5,6 +5,9 @@ import 'package:pleya/assistant/assistant_memory_host.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 
 import '../services/memory/memory_test_support.dart';
@@ -12,6 +15,25 @@ import 'assistant_memory_support.dart';
 
 /// What the model says after a refusal. Pleya's own line replaces it.
 const _modelWords = 'Ok, onthouden.';
+
+/// A tool that hands the UI a grid of titles, as a search would.
+final _showTool = AssistantTool(
+  name: 'show',
+  description: 'show',
+  risk: AssistantToolRisk.read,
+  properties: const {},
+  needsServer: false,
+  serves: (_, _) => true,
+  run: (_, _, _) async => AssistantToolResult(
+    const {'ok': true},
+    display: AssistantMediaGrid([
+      (
+        item: MediaItem(id: '42', backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Cars', serverId: 's1'),
+        group: null,
+      ),
+    ]),
+  ),
+);
 
 final _tooLong = 'ik op zondag graag ${'heel ' * 45}lange natuurfilms kijk';
 
@@ -37,7 +59,7 @@ void main() {
       loadConfig: () async => memoryConfig,
       modelFor: (_) => model,
       languageName: () => 'Dutch',
-      tools: [pingTool, ...assistantMemoryTools],
+      tools: [pingTool, _showTool, ...assistantMemoryTools],
     );
     addTearDown(c.dispose);
     return c;
@@ -150,6 +172,106 @@ void main() {
       expect(await profile.values(), isEmpty);
     });
 
+    test('a refused sentence in a run that showed titles: only the fixed line, the cards stay', () async {
+      const claim = 'Ik heb onthouden dat je zoon 9 is. Hier zijn films.';
+      final c = make([
+        callTool('remember_fact', {'value': 'Zoon is 9', 'category': 'household'}),
+        callTool('show'),
+        say(claim),
+      ]);
+      await c.submit('Onthoud dat mijn zoon van 9 van Cars houdt', typed: true);
+
+      expect(model.toolOutputs.first, {'error': 'owned_by_kids_ages_setting'});
+      expect(c.answer, 'Leeftijden van kinderen onthoud ik hier niet. Die stel je in bij Kinderprofiel.');
+      expect(c.displays.whereType<AssistantMediaGrid>(), hasLength(1));
+      expect(await profile.values(), isEmpty);
+      expect(c.memoryStored, isFalse);
+    });
+
+    test('a second remember after a refusal gets no card', () async {
+      final c = make([
+        callTool('remember_fact', {'value': 'Zoon is 9', 'category': 'household'}),
+        callTool('remember_fact', {'value': 'Tim is 9 en houdt van Cars', 'category': 'household'}),
+        say(_modelWords),
+      ]);
+      await c.submit('Onthoud dat mijn zoon van 9 van Cars houdt', typed: true);
+
+      expect(model.toolOutputs, [
+        {'error': 'owned_by_kids_ages_setting'},
+        {'error': 'not_after_refusal'},
+      ]);
+      expect(c.memoryProposal, isNull);
+      expect(c.answer, 'Leeftijden van kinderen onthoud ik hier niet. Die stel je in bij Kinderprofiel.');
+      expect(await profile.values(), isEmpty);
+      expect(c.resultIsError, isFalse);
+    });
+
+    test('forgetting after a refusal keeps its card', () async {
+      final fact = await profile.store('Houdt van westerns');
+      final c = make([
+        callTool('remember_fact', {'value': 'Zoon is 9', 'category': 'household'}),
+        callTool('forget_fact', {'ref': fact.ref}),
+        say(_modelWords),
+      ]);
+      await c.submit('Onthoud dat mijn zoon van 9 van Cars houdt', typed: true);
+
+      expect(c.memoryProposal?.kind, AssistantMemoryProposalKind.forget);
+      expect(c.answer, isNot(contains(_modelWords)));
+      expect(await profile.values(), ['Houdt van westerns']);
+    });
+
+    test('the model claims it remembered without asking for the save: Pleya says nothing was stored', () async {
+      final c = make([say(_modelWords)]);
+      await c.submit('Onthoud dat ik op zondag graag natuurfilms kijk', typed: true);
+
+      expect(c.answer, 'Dat heb ik niet onthouden. Er is niets opgeslagen.');
+      expect(await profile.values(), isEmpty);
+      expect(c.memoryProposal, isNull);
+      expect(c.memoryStored, isFalse);
+      expect(c.resultIsError, isFalse);
+
+      await LocaleSettings.setLocale(AppLocale.en);
+      final en = make([say('Ok, remembered.')]);
+      await en.submit('Remember that I like nature films on Sundays', typed: true);
+      expect(en.answer, 'I did not remember that. Nothing was stored.');
+      expect(await profile.values(), isEmpty);
+    });
+
+    test('nothing stored and titles shown: the fixed line without the model text, the cards stay', () async {
+      final c = make([callTool('show'), say('Onthouden. Hier zijn films.')]);
+      await c.submit('Onthoud dat ik op zondag graag natuurfilms kijk', typed: true);
+
+      expect(c.answer, 'Dat heb ik niet onthouden. Er is niets opgeslagen.');
+      expect(c.displays.whereType<AssistantMediaGrid>(), hasLength(1));
+      expect(await profile.values(), isEmpty);
+    });
+
+    test('typed words the memory would refuse, and no save asked: the line of the refusal', () async {
+      final c = make([say(_modelWords)]);
+      await c.submit('Onthoud dat mijn zoon van 9 van Cars houdt', typed: true);
+
+      expect(c.answer, 'Leeftijden van kinderen onthoud ik hier niet. Die stel je in bij Kinderprofiel.');
+      expect(await profile.values(), isEmpty);
+    });
+
+    test('the model text stays when the request was not typed, was stored before or waits on a card', () async {
+      final chip = make([say(_modelWords)]);
+      await chip.submit('Onthoud dat ik op zondag graag natuurfilms kijk');
+      expect(chip.answer, _modelWords);
+
+      // A card: the first call was another tool, so the save waits for a yes.
+      final card = make([callTool('ping'), ...remember('Kijkt op zondag graag natuurfilms')]);
+      await card.submit('Onthoud dat ik op zondag graag natuurfilms kijk', typed: true);
+      expect(card.memoryProposal, isNotNull);
+      expect(card.answer, _modelWords);
+
+      await profile.store('Ik op zondag graag natuurfilms kijk');
+      final known = make(remember('Kijkt op zondag graag natuurfilms'));
+      await known.submit('Onthoud dat ik op zondag graag natuurfilms kijk', typed: true);
+      expect(model.toolOutputs.single['status'], 'already_known');
+      expect(known.answer, _modelWords);
+    });
+
     test('typed words that are stored say so as before', () async {
       final c = make(remember('Houdt van paarden'));
       await c.submit('Onthoud dat ik op zondag graag natuurfilms kijk', typed: true);
@@ -170,6 +292,16 @@ void main() {
         expect(h.proposal, isNull, reason: typed);
         expect(await profile.values(), isEmpty, reason: typed);
       }
+    });
+
+    test('no save asked: the field says nothing was stored', () async {
+      final h = host([say(_modelWords)]);
+      await h.ask('Onthoud dat ik op zondag graag natuurfilms kijk');
+
+      expect(h.answer, 'Dat heb ik niet onthouden. Er is niets opgeslagen.');
+      expect(h.failure, isNull);
+      expect(h.proposal, isNull);
+      expect(await profile.values(), isEmpty);
     });
   });
 }

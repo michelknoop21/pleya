@@ -21,6 +21,7 @@ const _memoryRefusals = {
   'ambiguous_ref',
   'too_many_proposals',
   'already_proposed',
+  'not_after_refusal',
   'invalid_category',
 };
 
@@ -30,20 +31,27 @@ const _memoryScreenNote =
     'about them, through the memory tools. For anything else, say briefly that it belongs in the conversation '
     'with Big P.';
 
-/// The answer of a run that stored a fact at once, or refused the typed
-/// words: Pleya's own line with the exact sentence or the reason, and the
-/// model's words after it only when the run showed or did more than that.
+/// The answer of a run that stored a fact at once, refused the typed words
+/// or left them unstored: Pleya's own line with the exact sentence or the
+/// reason. After a stored fact the model's words follow only when the run
+/// showed or did more than that. After a refusal, or when nothing was stored,
+/// the model's words are never shown: they could say it was remembered. The
+/// cards and actions of the run stay.
 ///
 /// [own] marks [text] as Pleya's own line (the children's ages, the age
-/// filter): it always stays, after the line about the stored fact.
+/// filter): it always stays, after the line about the memory.
 String assistantMemoryAnswer(AssistantRunResult result, String text, {bool own = false}) {
   final stored = result.memoryStored.firstOrNull;
   final refused = result.memoryRefused;
-  if (stored == null && refused == null) return text;
-  final line = stored != null
-      ? t.assistant.memory.stored(value: assistantMemorySentence(stored.value))
-      : assistantMemoryRefusalLine(refused!);
-  final more = own || result.displays.isNotEmpty || result.actions.isNotEmpty;
+  if (stored == null && refused == null && !result.memoryNotStored) return text;
+  final String line;
+  var more = own;
+  if (stored != null) {
+    line = t.assistant.memory.stored(value: assistantMemorySentence(stored.value));
+    more = own || result.displays.isNotEmpty || result.actions.isNotEmpty;
+  } else {
+    line = refused != null ? assistantMemoryRefusalLine(refused) : t.assistant.memory.notStored;
+  }
   return more && text.isNotEmpty ? '$line\n$text' : line;
 }
 

@@ -2408,6 +2408,7 @@
       "refusedLanguage": "Een taalvoorkeur onthoud ik hier niet. Die stel je in bij de taalinstellingen, onder Taal en ondertitels.",
       "refusedTooLong": "Dat is te lang om te onthouden. Een herinnering is één zin van hoogstens ${max} tekens.",
       "refusedFull": "Het geheugen is vol. Verwijder eerst een herinnering, dan kan ik dit onthouden.",
+      "notStored": "Dat heb ik niet onthouden. Er is niets opgeslagen.",
       "view": "Bekijk geheugen",
       "card": {
         "rememberTitle": "Zal ik dit onthouden?",

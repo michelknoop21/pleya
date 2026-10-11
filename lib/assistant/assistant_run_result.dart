@@ -13,7 +13,26 @@ extension _AssistantResult on AssistantRun {
     bool displaysCurrent() => evidenceContext.recommendationError == null && (namedTitlesCurrent?.call() ?? true);
     // Stored is stored, however the run ends: every result reports it.
     final stored = List<MemoryFact>.unmodifiable(_ctx.memoryTurn.stored);
-    final refused = _ctx.memoryTurn.refused;
+    final turn = _ctx.memoryTurn;
+    var refused = turn.refused;
+    var notStored = false;
+    // A typed "onthoud dat ..." the model answered without asking for the
+    // save: its words may say it was remembered. Pleya's own line replaces
+    // them, the reason when the memory would not take the typed words.
+    final typed = turn.typedFact;
+    if (end == AssistantRunEnd.answered &&
+        typed != null &&
+        !turn.asked &&
+        stored.isEmpty &&
+        refused == null &&
+        turn.proposals.isEmpty) {
+      final checked = checkMemoryValue(typed);
+      if (checked.value == null) {
+        refused = checked.code;
+      } else {
+        notStored = true;
+      }
+    }
     if (_ctx.libraryDoctorError case final doctorError?) {
       return AssistantRunResult(
         end: end,
@@ -81,6 +100,7 @@ extension _AssistantResult on AssistantRun {
       memoryProposals: List.unmodifiable(_ctx.memoryTurn.proposals),
       memoryStored: stored,
       memoryRefused: refused,
+      memoryNotStored: notStored,
       error:
           failure ??
           _errors.values.where((code) => code != 'cancelled_by_user').firstOrNull ??

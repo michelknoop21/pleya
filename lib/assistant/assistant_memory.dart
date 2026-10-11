@@ -80,6 +80,9 @@ class AssistantMemoryTurn {
   /// counts them.
   int calls = 0;
 
+  /// The model asked to remember a fact in this ask, whatever came of it.
+  bool asked = false;
+
   /// The one direct save of this ask was spent, stored or not.
   bool directUsed = false;
 

@@ -2408,6 +2408,7 @@
       "refusedLanguage": "I do not keep a language preference here. Set it in the language settings, under Language & subtitles.",
       "refusedTooLong": "That is too long to remember. A memory is one sentence of at most ${max} characters.",
       "refusedFull": "The memory is full. Remove a memory first, then I can remember this.",
+      "notStored": "I did not remember that. Nothing was stored.",
       "view": "View memory",
       "card": {
         "rememberTitle": "Shall I remember this?",

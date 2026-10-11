@@ -87,6 +87,7 @@ class AssistantRunResult {
     this.memoryProposals = const [],
     this.memoryStored = const [],
     this.memoryRefused,
+    this.memoryNotStored = false,
   });
   final AssistantRunEnd end;
 
@@ -128,6 +129,11 @@ class AssistantRunResult {
   /// Why the user's typed words after "onthoud dat" were not stored, or null.
   /// Pleya reports it in its own words, never the model.
   final MemoryCode? memoryRefused;
+
+  /// The typed words asked to remember a fact the memory takes, and the ask
+  /// ended without a save, a refusal or a card: the model never asked for
+  /// it. Pleya says that nothing was stored instead of the model's words.
+  final bool memoryNotStored;
 }
 
 /// Model-proposed independent command, validated before any execution.

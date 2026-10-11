@@ -3279,6 +3279,7 @@ class _TranslationsAssistantMemoryNl extends TranslationsAssistantMemoryEn {
 	@override String get refusedLanguage => 'Een taalvoorkeur onthoud ik hier niet. Die stel je in bij de taalinstellingen, onder Taal en ondertitels.';
 	@override String refusedTooLong({required Object max}) => 'Dat is te lang om te onthouden. Een herinnering is één zin van hoogstens ${max} tekens.';
 	@override String get refusedFull => 'Het geheugen is vol. Verwijder eerst een herinnering, dan kan ik dit onthouden.';
+	@override String get notStored => 'Dat heb ik niet onthouden. Er is niets opgeslagen.';
 	@override String get view => 'Bekijk geheugen';
 	@override late final _TranslationsAssistantMemoryCardNl card = _TranslationsAssistantMemoryCardNl._(_root);
 	@override late final _TranslationsAssistantMemoryCategoriesNl categories = _TranslationsAssistantMemoryCategoriesNl._(_root);
@@ -6119,6 +6120,7 @@ extension on TranslationsNl {
 			'assistant.memory.refusedLanguage' => 'Een taalvoorkeur onthoud ik hier niet. Die stel je in bij de taalinstellingen, onder Taal en ondertitels.',
 			'assistant.memory.refusedTooLong' => ({required Object max}) => 'Dat is te lang om te onthouden. Een herinnering is één zin van hoogstens ${max} tekens.',
 			'assistant.memory.refusedFull' => 'Het geheugen is vol. Verwijder eerst een herinnering, dan kan ik dit onthouden.',
+			'assistant.memory.notStored' => 'Dat heb ik niet onthouden. Er is niets opgeslagen.',
 			'assistant.memory.view' => 'Bekijk geheugen',
 			'assistant.memory.card.rememberTitle' => 'Zal ik dit onthouden?',
 			'assistant.memory.card.replaceTitle' => 'Zal ik dit vervangen?',

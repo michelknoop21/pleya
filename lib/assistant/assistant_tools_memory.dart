@@ -44,6 +44,12 @@ MemoryCategory? _memoryCategory(Object? raw) {
 AssistantToolResult _memoryRefusal(MemoryCode code) => AssistantToolResult({'error': assistantMemoryCode(code)});
 
 AssistantToolResult _propose(AssistantToolContext ctx, AssistantMemoryProposal proposal) {
+  // After the typed words were refused Pleya's own line is the whole answer:
+  // no card with the model's sentence under it. Forgetting shows a stored
+  // fact, not the model's words, and keeps its card.
+  if (ctx.memoryTurn.refused != null && proposal.kind != AssistantMemoryProposalKind.forget) {
+    throw const AssistantToolError('not_after_refusal');
+  }
   final waiting = ctx.memoryTurn.proposals;
   // One card per fact per ask: a second proposal on the same fact would show
   // a sentence the first yes already changed or removed.
@@ -122,8 +128,8 @@ final List<AssistantTool> assistantMemoryTools = [
     required: const ['value', 'category'],
     serves: _memoryServes,
     run: (ctx, _, args) async {
+      final turn = ctx.memoryTurn..asked = true;
       final memory = await _memory(ctx);
-      final turn = ctx.memoryTurn;
       final category = _memoryCategory(args['category']);
       if (category == null) throw const AssistantToolError('missing_category');
       final replaces = args['replaces'];
