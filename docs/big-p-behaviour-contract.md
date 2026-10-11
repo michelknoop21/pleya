@@ -101,5 +101,5 @@ Unit/widget, simulator, echte providers/bevoegdheden en fysieke Apple TV zijn af
 ## Besluiten van Michel (5 oktober 2026)
 
 1. Akkoord op nultolerantielijst en voorrang.
-2. DEC-005 is als architectuurbeslissing teruggedraaid. BP-07 blijft achter de echte Trakt-poort: geslaagde device activation, tokenuitgifte, verversen zonder secret en correcte tokenrotatie. Werkt dat niet betrouwbaar, dan PKCE.
+2. DEC-005 is als architectuurbeslissing teruggedraaid. BP-07 blijft achter de echte Trakt-poort: geslaagde device activation, tokenuitgifte, verversen zonder secret en correcte tokenrotatie. Werkt dat niet betrouwbaar, dan PKCE. Stand 11 oktober 2026: de poort is geslaagd zonder secret (device code, token, refresh en rotatie, revoke; bewijs in `docs/ROADMAP.md`, "BP-07 Trakt-poort"), dus de PKCE-terugval is niet ingegaan. Het bewijs is één activatie van één account; blijft Trakt dit gedrag niet toestaan, dan geldt de terugval alsnog.
 3. Pleya Server zonder externe id's en beoordelingen is voorlopig een capaciteitsgat (zie boven).
