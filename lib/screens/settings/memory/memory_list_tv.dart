@@ -206,7 +206,8 @@ class _MemoryListTvState extends State<MemoryListTv> {
               if (facts.isEmpty)
                 Padding(
                   padding: EdgeInsets.only(bottom: 14 * pt, left: 4 * pt),
-                  child: Text(l.none, style: memoryTvBody(context)),
+                  // Nothing stored is not the same as nothing found.
+                  child: Text(model.count == 0 ? s.empty.title : l.none, style: memoryTvBody(context)),
                 ),
               for (final (i, fact) in facts.indexed) ...[
                 if (i > 0) SizedBox(height: 4 * pt),

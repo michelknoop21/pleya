@@ -65,29 +65,22 @@ class _MemoryConfirmDialog extends StatelessWidget {
                 SizedBox(height: 8 * k),
                 Text(body, style: memoryText(context, 15, color: tk.textMuted, height: 1.45)),
                 SizedBox(height: 18 * k),
-                Row(
-                  children: [
-                    Expanded(
-                      child: MemoryPillButton(
-                        label: t.common.cancel,
-                        kind: MemoryPillKind.primary,
-                        autofocus: true,
-                        automationId: AutomationIds.settingsMemoryDialogButton,
-                        automationInstance: 'cancel',
-                        onPressed: () => Navigator.of(context).pop(false),
-                      ),
-                    ),
-                    SizedBox(width: 10 * k),
-                    Expanded(
-                      child: MemoryPillButton(
-                        label: confirm,
-                        kind: MemoryPillKind.danger,
-                        automationId: AutomationIds.settingsMemoryDialogButton,
-                        automationInstance: 'confirm',
-                        onPressed: () => Navigator.of(context).pop(true),
-                      ),
-                    ),
-                  ],
+                MemoryButtonPair(
+                  first: MemoryPillButton(
+                    label: t.common.cancel,
+                    kind: MemoryPillKind.primary,
+                    autofocus: true,
+                    automationId: AutomationIds.settingsMemoryDialogButton,
+                    automationInstance: 'cancel',
+                    onPressed: () => Navigator.of(context).pop(false),
+                  ),
+                  second: MemoryPillButton(
+                    label: confirm,
+                    kind: MemoryPillKind.danger,
+                    automationId: AutomationIds.settingsMemoryDialogButton,
+                    automationInstance: 'confirm',
+                    onPressed: () => Navigator.of(context).pop(true),
+                  ),
                 ),
               ],
             ),

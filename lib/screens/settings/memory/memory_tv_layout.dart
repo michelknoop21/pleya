@@ -15,6 +15,7 @@ import 'memory_actions.dart';
 import 'memory_composer.dart';
 import 'memory_labels.dart';
 import 'memory_screen_model.dart';
+import 'memory_tv_answer.dart';
 import 'memory_tv_read.dart';
 import 'memory_tv_text.dart';
 import 'memory_tv_widgets.dart';
@@ -45,6 +46,8 @@ class MemoryTvLayout extends StatefulWidget {
 class _MemoryTvLayoutState extends State<MemoryTvLayout> {
   final _nodes = FocusMemoryTracker();
   final _readNode = FocusNode(debugLabel: 'memory.tv.read');
+  final _answerNode = FocusNode(debugLabel: 'memory.tv.answer');
+  bool _answerStop = false;
   bool _landed = false;
   bool _cardShown = false;
 
@@ -54,6 +57,7 @@ class _MemoryTvLayoutState extends State<MemoryTvLayout> {
   void dispose() {
     _nodes.dispose();
     _readNode.dispose();
+    _answerNode.dispose();
     super.dispose();
   }
 
@@ -99,18 +103,35 @@ class _MemoryTvLayoutState extends State<MemoryTvLayout> {
     final tiles = proposal == null ? _tiles() : const <_Tile>[];
     final keys = [for (final tile in tiles) tile.key];
     final held = _nodes.lastFocusedKey;
+    // Where the remote lands: the switch while the memory is off, otherwise
+    // the first tile that does something.
+    final landing = _model.view == MemoryScreenView.off && keys.contains('use')
+        ? 'use'
+        : (tiles.where((tile) => tile.onSelect != null).firstOrNull ?? tiles.firstOrNull)?.key;
+    void land() {
+      final key = landing;
+      if (key != null) _focusLater(key);
+    }
+
     if (proposal != null) {
       _cardShown = true;
-    } else if (keys.isNotEmpty) {
+    } else if (landing != null) {
       if (_cardShown || !_landed) {
-        // First paint and after a card: the remote on the first tile.
-        _focusLater(keys.first);
+        // First paint and after a card.
+        land();
         _landed = true;
       } else if (held != null && _nodes.isFocused(held) && !keys.contains(held)) {
         // The tile under the remote goes away (the overview is rewritten).
-        _focusLater(keys.first);
+        land();
+      } else if (held == 'clear' && _nodes.isFocused('clear') && tiles.last.onSelect == null) {
+        // Everything is wiped: the tile that did it has nothing left to do.
+        land();
       }
       _cardShown = false;
+    }
+    final answer = proposal == null && _model.answerShown;
+    void toRead() {
+      if (_readNode.canRequestFocus) _readNode.requestFocus();
     }
 
     return Focus(
@@ -147,19 +168,30 @@ class _MemoryTvLayoutState extends State<MemoryTvLayout> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (proposal != null || _model.answerShown) ...[
+                      if (proposal != null) ...[
                         MemoryAnswerPanel(model: _model, remote: true),
+                        SizedBox(height: 14 * pt),
+                      ] else if (answer) ...[
+                        MemoryTvAnswer(
+                          model: _model,
+                          node: _answerNode,
+                          onStopChanged: (stop) => setState(() => _answerStop = stop),
+                          onLeave: () {
+                            if (keys.isNotEmpty) _focus(keys.first);
+                          },
+                          onLeft: toRead,
+                        ),
                         SizedBox(height: 14 * pt),
                       ],
                       for (final (i, tile) in tiles.indexed) ...[
-                        if (tile.label case final label?) MemoryTvLabel(label, first: i == 0),
+                        if (tile.label case final label?) MemoryTvLabel(label, first: i == 0, top: 6),
                         if (tile.label == null && i > 0) SizedBox(height: 2 * pt),
                         MemoryTvTile(
                           title: tile.title,
                           subtitle: tile.subtitle,
                           value: tile.value,
                           icon: tile.icon,
-                          compact: tile.followUp != null,
+                          compact: tile.subtitle == null,
                           titleLines: tile.followUp != null ? 2 : 1,
                           node: _nodes.get(tile.key, debugLabel: 'memory.tv.${tile.key}'),
                           instance: tile.followUp == null ? tile.key : '${tile.followUp}',
@@ -168,11 +200,13 @@ class _MemoryTvLayoutState extends State<MemoryTvLayout> {
                               : AutomationIds.settingsMemoryFollowUp,
                           state: tile.state,
                           onSelect: tile.onSelect,
-                          onNavigateUp: i == 0 ? null : () => _focus(keys[i - 1]),
+                          // Up from the first tile: into a long answer, or
+                          // on to the top navigation.
+                          onNavigateUp: i == 0
+                              ? (answer && _answerStop ? _answerNode.requestFocus : null)
+                              : () => _focus(keys[i - 1]),
                           onNavigateDown: i == keys.length - 1 ? () {} : () => _focus(keys[i + 1]),
-                          onNavigateLeft: () {
-                            if (_readNode.canRequestFocus) _readNode.requestFocus();
-                          },
+                          onNavigateLeft: toRead,
                           onNavigateRight: () {},
                         ),
                       ],
@@ -182,13 +216,9 @@ class _MemoryTvLayoutState extends State<MemoryTvLayout> {
               ),
             ],
           ),
-          children: [
-            if (status.isNotEmpty)
-              Padding(
-                padding: EdgeInsets.only(bottom: 18 * pt),
-                child: Text(status, style: memoryTvSmall(context)),
-              ),
-          ],
+          // The state on the row of the title, as 43 M draws it.
+          trailing: status.isEmpty ? null : Text(status, style: memoryTvSmall(context)),
+          children: const [],
         ),
       ),
     );
@@ -234,13 +264,16 @@ class _MemoryTvLayoutState extends State<MemoryTvLayout> {
         value: facts == null ? null : '${facts.length}',
         onSelect: widget.actions.openList,
       ),
-      _Tile(
-        'use',
-        model.enabled ? s.menu.useOn : s.menu.useOff,
-        icon: model.enabled ? Symbols.toggle_on_rounded : Symbols.toggle_off_rounded,
-        state: () => {'selected': model.enabled},
-        onSelect: widget.actions.toggle,
-      ),
+      // Not on a children's profile: Big P uses no memory there, whatever
+      // the switch says.
+      if (view != MemoryScreenView.kids)
+        _Tile(
+          'use',
+          model.enabled ? s.menu.useOn : s.menu.useOff,
+          icon: model.enabled ? Symbols.toggle_on_rounded : Symbols.toggle_off_rounded,
+          state: () => {'selected': model.enabled},
+          onSelect: widget.actions.toggle,
+        ),
       if (model.canAsk && model.count > 0)
         _Tile('rewrite', s.menu.rewrite, icon: Symbols.edit_note_rounded, onSelect: widget.actions.rewrite),
       // Resting colour, as 43 M draws it; the colour of a destructive tile on

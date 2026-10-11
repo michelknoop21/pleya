@@ -69,30 +69,34 @@ class MemoryActions extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        Material(
-          color: card,
-          borderRadius: BorderRadius.circular(14),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              MemoryRow(
-                title: s.use,
-                trailing: MemorySwitchMark(on: model.enabled),
-                automationId: AutomationIds.settingsMemoryAction,
-                automationInstance: 'use',
-                automationState: () => {'selected': model.enabled},
-                onPressed: actions.toggle,
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-                child: Text(s.useNote, style: memoryText(context, 13.5, color: tk.textMuted, height: 1.4)),
-              ),
-            ],
+        // Not on a children's profile: Big P uses no memory there, whatever
+        // the switch says.
+        if (!model.kids) ...[
+          const SizedBox(height: 12),
+          Material(
+            color: card,
+            borderRadius: BorderRadius.circular(14),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                MemoryRow(
+                  title: s.use,
+                  trailing: MemorySwitchMark(on: model.enabled),
+                  automationId: AutomationIds.settingsMemoryAction,
+                  automationInstance: 'use',
+                  automationState: () => {'selected': model.enabled},
+                  onPressed: actions.toggle,
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                  child: Text(s.useNote, style: memoryText(context, 13.5, color: tk.textMuted, height: 1.4)),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
         if (canRewrite) ...[
           const SizedBox(height: 12),
           MemoryCard(

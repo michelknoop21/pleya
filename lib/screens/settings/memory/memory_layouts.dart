@@ -185,40 +185,49 @@ class MemoryPhoneLayout extends StatelessWidget {
     final tk = tokens(context);
     return MemoryPage(
       onBack: onBack,
-      child: LayoutBuilder(
-        builder: (context, box) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            MemoryHeader(
-              title: t.assistant.memory.screen.title,
-              subtitle: memoryStatusLabel(model),
-              onBack: onBack,
-              trailing: MemoryPressable(
-                shape: const CircleBorder(),
-                semanticLabel: t.assistant.memory.screen.menu.open,
-                automationId: AutomationIds.settingsMemoryAction,
-                automationInstance: 'menu',
-                onPressed: onMenu,
-                child: SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Center(
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: tk.surface),
-                      child: Center(child: AppIcon(Symbols.more_horiz_rounded, size: 22, color: tk.text)),
-                    ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          MemoryHeader(
+            title: t.assistant.memory.screen.title,
+            subtitle: memoryStatusLabel(model),
+            onBack: onBack,
+            trailing: MemoryPressable(
+              shape: const CircleBorder(),
+              semanticLabel: t.assistant.memory.screen.menu.open,
+              automationId: AutomationIds.settingsMemoryAction,
+              automationInstance: 'menu',
+              onPressed: onMenu,
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Center(
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: tk.surface),
+                    child: Center(child: AppIcon(Symbols.more_horiz_rounded, size: 22, color: tk.text)),
                   ),
                 ),
               ),
             ),
-            Expanded(
-              child: _FadeOut(child: MemoryBody(model: model, viaMenu: true)),
+          ),
+          Expanded(
+            // The field takes its share of what the bar leaves, so the two
+            // never add up to more than the page (a keyboard, a large text).
+            child: LayoutBuilder(
+              builder: (context, box) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _FadeOut(child: MemoryBody(model: model, viaMenu: true)),
+                  ),
+                  if (_ComposerDock.shownFor(model)) _ComposerDock(model: model, maxHeight: box.maxHeight * 0.72),
+                ],
+              ),
             ),
-            if (_ComposerDock.shownFor(model)) _ComposerDock(model: model, maxHeight: box.maxHeight * 0.72),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -237,6 +246,7 @@ class MemoryTabletLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = t.assistant.memory.screen;
     final deeper = model.view == MemoryScreenView.overview && model.overview!.followUps.isNotEmpty;
+    final narrow = MediaQuery.sizeOf(context).width < 900;
     return MemoryPage(
       onBack: onBack,
       child: LayoutBuilder(
@@ -249,7 +259,7 @@ class MemoryTabletLayout extends StatelessWidget {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(28, 8, 28, 0),
+                padding: EdgeInsets.fromLTRB(narrow ? 20 : 28, 8, narrow ? 20 : 28, 0),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -282,9 +292,11 @@ class MemoryTabletLayout extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 56),
+                    SizedBox(width: narrow ? 32 : 56),
                     SizedBox(
-                      width: 348,
+                      // Narrower just above the tablet width (an iPad mini
+                      // upright), where the text column needs the room.
+                      width: narrow ? 280 : 348,
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.only(bottom: 24),
                         child: Column(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -23,7 +24,11 @@ import 'package:pleya/services/memory/memory_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/speech_search_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/utils/layout_constants.dart';
+import 'package:pleya/utils/media_server_http_client.dart' show AbortController;
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/overlay_sheet.dart';
+import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:provider/provider.dart';
 
 import '../../../assistant/assistant_memory_support.dart';
@@ -54,6 +59,28 @@ class UnreadableMemoryService extends MemoryService {
   @override
   Future<List<MemoryFact>?> tryList({MemoryCategory? category, String? query}) async =>
       broken ? null : super.tryList(category: category, query: query);
+}
+
+/// A model that holds its calls back until [release] completes, as a slow
+/// local model does. The first [free] calls answer at once; [started] counts
+/// the calls that came in.
+class HeldModel extends ScriptedModel {
+  HeldModel(super.script, {this.free = 0});
+
+  final int free;
+  final release = Completer<void>();
+  int started = 0;
+
+  @override
+  Future<AssistantReply> chat(
+    List<Map<String, Object?>> messages,
+    List<Map<String, Object?>> tools, {
+    AbortController? abort,
+  }) async {
+    started++;
+    if (started > free) await release.future;
+    return super.chat(messages, tools, abort: abort);
+  }
 }
 
 /// Records how the screen asked: as the user's typed words or as a follow-up.
@@ -247,7 +274,50 @@ const tabletSize = Size(1180, 820);
 const tvSize = Size(1038, 584);
 const tvRatio = 1.85;
 
-/// Pumps [child] as a page of the app, in Dutch, at [size].
+/// The band the top navigation of the TV shell takes from a nested page: its
+/// two insets and its row, as `TvTopNavigation` lays them out.
+double tvNavBand(Size display) =>
+    (TvTopNavLayout.topInset + TvTopNavLayout.barHeight + TvTopNavLayout.contentGap) *
+    TvLayoutConstants.scaleForSize(display);
+
+/// [child] as the TV shell mounts a nested page: under the navigation band,
+/// in the box that is left, with the whole display published for the scale.
+/// Panels and dialogs lie over the whole display, as in the app.
+class TvShellBox extends StatelessWidget {
+  const TvShellBox({super.key, required this.display, required this.child});
+
+  final Size display;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final band = tvNavBand(display);
+    final media = MediaQuery.of(context);
+    return TvDisplayMetrics(
+      size: display,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Where the bar stands; drawn as a line so a shot shows the band.
+          Container(
+            height: band,
+            alignment: Alignment.bottomCenter,
+            child: Container(height: 1, color: const Color(0x33FFFFFF)),
+          ),
+          Expanded(
+            child: MediaQuery(
+              data: media.copyWith(size: Size(display.width, display.height - band)),
+              child: child,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Pumps [child] as a page of the app, in Dutch, at [size]. On TV the page
+/// stands in [TvShellBox], so it has the height the real shell leaves it.
 Future<GlobalKey> pumpMemoryApp(
   WidgetTester tester,
   Widget child, {
@@ -292,7 +362,14 @@ Future<GlobalKey> pumpMemoryApp(
                 child: app!,
               ),
               // The TV shell gives its pages the page surface; here a Scaffold does.
-              home: tv ? Scaffold(body: child) : child,
+              // The shell hosts the panels of its pages over the whole display.
+              home: tv
+                  ? Scaffold(
+                      body: OverlaySheetHost(
+                        child: TvShellBox(display: size, child: child),
+                      ),
+                    )
+                  : child,
             ),
           ),
         ),

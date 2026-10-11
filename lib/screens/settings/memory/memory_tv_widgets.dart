@@ -53,7 +53,7 @@ class MemoryTvTile extends StatelessWidget {
   final VoidCallback? onNavigateLeft;
   final VoidCallback? onNavigateRight;
 
-  /// The lower row of a follow-up question (62 pt against 72).
+  /// The lower row of a tile with one line of text (60 pt against 72).
   final bool compact;
   final int titleLines;
   final String automationId;
@@ -95,7 +95,7 @@ class MemoryTvTile extends StatelessWidget {
               return AnimatedContainer(
                 duration: TvTopNavLayout.focusDuration,
                 curve: Curves.easeOut,
-                constraints: BoxConstraints(minHeight: (compact ? 62 : 72) * pt),
+                constraints: BoxConstraints(minHeight: (compact ? 60 : 72) * pt),
                 padding: EdgeInsets.symmetric(horizontal: 28 * pt, vertical: 8 * pt),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(radius),
@@ -172,18 +172,21 @@ class MemoryTvTile extends StatelessWidget {
 
 /// A group label over tiles of 43 M (`.tv .group-label`): 26 pt.
 class MemoryTvLabel extends StatelessWidget {
-  const MemoryTvLabel(this.label, {super.key, this.trailing, this.first = false});
+  const MemoryTvLabel(this.label, {super.key, this.trailing, this.first = false, this.top = 14});
 
   final String label;
   final String? trailing;
   final bool first;
+
+  /// The room above a label that is not the first, in points.
+  final double top;
 
   @override
   Widget build(BuildContext context) {
     final pt = TvHig.of(context);
     final tk = tokens(context);
     return Padding(
-      padding: EdgeInsets.only(top: (first ? 0 : 14) * pt, bottom: 8 * pt, left: 4 * pt),
+      padding: EdgeInsets.only(top: (first ? 0 : top) * pt, bottom: 8 * pt, left: 4 * pt),
       child: Text.rich(
         TextSpan(
           text: label,

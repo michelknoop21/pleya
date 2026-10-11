@@ -1,7 +1,8 @@
 // Geheugen on TV (43 M) and its list: the two columns, the focus order of
 // the tiles, text through the system keyboard, the card and the dialogs with
 // the remote on the safe button, and Menu. Pumped under the real page
-// surface at the logical canvas of an Apple TV.
+// surface at the logical canvas of an Apple TV, under a band the height of
+// the shell's top navigation.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,6 +15,7 @@ import 'package:pleya/screens/settings/memory/memory_tv_layout.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_memory_card.dart';
 import 'package:pleya/widgets/tv/tv_page_surface.dart';
 
+import '../../../test_helpers/golden.dart';
 import 'memory_finders.dart';
 import 'memory_screen_support.dart';
 
@@ -59,6 +61,10 @@ void main() {
   const select = LogicalKeyboardKey.select;
   const menu = LogicalKeyboardKey.escape;
 
+  // The app's own fonts: what fits the screen is measured, and the test font
+  // is about twice as wide.
+  setUpAll(loadAppFontsForGoldens);
+
   setUp(() {
     h = MemoryScreenHarness();
     speech = FakeSpeech();
@@ -76,7 +82,9 @@ void main() {
       for (final tile in ['ask', 'manage', 'use', 'rewrite', 'clear']) {
         final rect = tester.getRect(memoryAction(tile));
         expect(rect.left, greaterThan(text.right), reason: tile);
-        expect(rect.bottom, lessThanOrEqualTo(tvSize.height), reason: tile);
+        // Inside the 60 pt safe area at the bottom, under the navigation band.
+        expect(rect.bottom, lessThanOrEqualTo(tvSize.height * (1 - 60 / 1080)), reason: tile);
+        expect(rect.top, greaterThan(tvNavBand(tvSize)), reason: tile);
       }
       // "Overzicht opnieuw schrijven" is the fourth management tile.
       expect(tester.getRect(memoryAction('rewrite')).top, greaterThan(tester.getRect(memoryAction('use')).bottom - 1));
@@ -165,12 +173,11 @@ void main() {
     });
 
     testWidgets('a text that fits is no stop: Left stays on the tile', (tester) async {
-      await open(
-        tester,
-        overview: [
-          say('{"overview":"Kort.","preference":"Kort.","dislike":"Kort.","household":"Kort.","habit":"Kort."}'),
-        ],
-      );
+      // Two memories of one category: two short sections, under the band of
+      // the navigation as well.
+      await tester.runAsync(() => h.seed(mockupFacts.sublist(0, 2)));
+      await open(tester, seed: false, overview: [say('{"overview":"Kort.","preference":"Kort."}')]);
+      expect(h.model.view, MemoryScreenView.overview);
       await press(tester, left);
       expect(focusedLabel(), 'memory.tv.ask');
       await close(tester);
@@ -363,6 +370,10 @@ void main() {
 
       expect(find.text(s.off.title), findsOneWidget);
       expect(find.text(s.menu.useOff), findsOneWidget);
+      // The remote opens on the switch, the one thing to do here.
+      expect(focusedLabel(), 'memory.tv.use');
+      await press(tester, up, 2);
+      expect(focusedLabel(), 'memory.tv.ask');
       await press(tester, select);
       await settle(tester);
       expect(speech.captures, isEmpty);

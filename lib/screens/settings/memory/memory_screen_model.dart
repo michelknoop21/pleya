@@ -171,10 +171,18 @@ class MemoryScreenModel extends ChangeNotifier {
 
   /// Wipes every fact of the profile. Allowed with the memory off and on a
   /// children's profile; the children's ages are not part of it.
-  Future<MemoryResult> clearAll() {
+  Future<MemoryResult> clearAll() async {
+    if (!memory.profileCurrent) return const MemoryResult(MemoryCode.profileGone);
     host.cancel();
-    _answerShown = false;
-    return _write(_service.clearAll);
+    final result = await _write(_service.clearAll);
+    if (result.ok) {
+      // A card that waited pointed at a fact that is gone now: it goes too,
+      // or the field under it would stay shut with nothing left to answer.
+      host.dropProposals();
+      _answerShown = false;
+      _notify();
+    }
+    return result;
   }
 
   void dismissAnswer() {
@@ -187,7 +195,15 @@ class MemoryScreenModel extends ChangeNotifier {
     // The service of a profile that is no longer the active one writes nothing.
     if (!memory.profileCurrent) return const MemoryResult(MemoryCode.profileGone);
     final result = await action();
-    if (result.ok) await load();
+    if (result.ok) {
+      // The caller waits for the new facts only. Writing the overview again
+      // is a model call that can take long; it runs behind the screen.
+      await _read();
+      unawaited(_ensure());
+    } else if (result.code == MemoryCode.notFound || result.code == MemoryCode.duplicate) {
+      // The facts on screen are not the stored ones: read them again.
+      await _read();
+    }
     return result;
   }
 
@@ -198,7 +214,9 @@ class MemoryScreenModel extends ChangeNotifier {
     final facts = current ? await _service.tryList() : null;
     var ages = const <int>[];
     try {
-      ages = [...await _kidsAges()]..sort();
+      // The ages come from the active profile: under another profile's
+      // memory they are not shown.
+      if (current) ages = [...await _kidsAges()]..sort();
     } catch (e) {
       appLogger.w('Memory screen: children ages unreadable: ${e.runtimeType}');
     }

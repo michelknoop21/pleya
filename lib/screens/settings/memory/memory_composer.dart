@@ -39,9 +39,12 @@ class MemoryComposer extends StatelessWidget {
 /// Big P's answer to the last question of the field, and the card that waits
 /// for a yes or a no (43 H). The card opens with the focus on the safe button.
 class MemoryAnswerPanel extends StatefulWidget {
-  const MemoryAnswerPanel({super.key, required this.model, this.remote = false});
+  const MemoryAnswerPanel({super.key, required this.model, this.remote = false, this.scroll});
 
   final MemoryScreenModel model;
+
+  /// Scrolls an answer that is longer than its box; TV drives it by remote.
+  final ScrollController? scroll;
 
   /// Driven by a remote (TV): the focus is the white button.
   final bool remote;
@@ -148,7 +151,7 @@ class _MemoryAnswerPanelState extends State<MemoryAnswerPanel> {
       ),
     );
 
-    if (proposal == null) return SingleChildScrollView(child: answer);
+    if (proposal == null) return SingleChildScrollView(controller: widget.scroll, child: answer);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -167,6 +170,7 @@ class _MemoryAnswerPanelState extends State<MemoryAnswerPanel> {
                 key: ObjectKey(proposal),
                 proposal: proposal,
                 embedded: true,
+                themed: true,
                 remote: widget.remote,
                 declineNode: _declineNode,
                 onAccept: () => unawaited(host.answerProposal(proposal, accept: true)),

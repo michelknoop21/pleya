@@ -1,12 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../assistant/assistant_memory.dart';
 import '../../../automation/automation_ids.dart';
 import '../../../automation/automation_node.dart';
-import '../../../focus/focusable_text_field.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../services/speech_search_service.dart';
 import '../../../theme/mono_tokens.dart';
@@ -15,6 +13,7 @@ import '../../../widgets/big_p/assistant/big_p_memory_card.dart' show assistantM
 import '../../../widgets/overlay_sheet.dart';
 import '../../../widgets/overlay_sheet_geometry.dart';
 import 'memory_dialogs.dart';
+import 'memory_fact_sheet_parts.dart';
 import 'memory_labels.dart';
 import 'memory_screen_model.dart';
 import 'memory_tv_text.dart';
@@ -30,10 +29,16 @@ Future<void> showMemoryFactSheet(
   SpeechSearchService? speech,
 }) {
   final tv = PlatformDetector.isTV();
+  final media = MediaQuery.of(context);
   return OverlaySheetController.showAdaptive<void>(
     context,
     backgroundColor: tokens(context).surface,
     isScrollControlled: true,
+    // A phone: up to the status bar instead of three quarters of the screen,
+    // so the text stays in view above the keyboard of a small phone.
+    constraints: !tv && media.size.width < 600
+        ? BoxConstraints(maxHeight: media.size.height - media.padding.top - 8)
+        : null,
     restoreLauncherFocus: true,
     presentation: tv ? OverlaySheetPresentation.panel : OverlaySheetPresentation.sheet,
     builder: (sheetContext) => MemoryScale.forPlatform(
@@ -63,6 +68,11 @@ class MemoryFactSheet extends StatefulWidget {
 class _MemoryFactSheetState extends State<MemoryFactSheet> {
   late final _text = TextEditingController(text: widget.fact?.value ?? '');
   final _fieldFocus = FocusNode(debugLabel: 'memory.sheet.field');
+  final _cancelFocus = FocusNode(debugLabel: 'memory.sheet.cancel');
+  final _saveFocus = FocusNode(debugLabel: 'memory.sheet.save');
+  final _chipFocus = {
+    for (final category in MemoryCategory.values) category: FocusNode(debugLabel: 'memory.sheet.chip.${category.id}'),
+  };
   late MemoryCategory _category = widget.fact?.category ?? MemoryCategory.preference;
   MemoryCode? _refused;
   bool _busy = false;
@@ -89,6 +99,11 @@ class _MemoryFactSheetState extends State<MemoryFactSheet> {
   void dispose() {
     _text.dispose();
     _fieldFocus.dispose();
+    _cancelFocus.dispose();
+    _saveFocus.dispose();
+    for (final node in _chipFocus.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
@@ -126,7 +141,7 @@ class _MemoryFactSheetState extends State<MemoryFactSheet> {
     setState(() => _busy = true);
     final result = await widget.model.delete(fact);
     if (!mounted) return;
-    // Gone already is gone: the list no longer shows it either.
+    // Gone already is gone: the list read the facts again and shows none.
     if (result.ok || result.code == MemoryCode.notFound) return widget.onClose();
     setState(() {
       _busy = false;
@@ -146,6 +161,45 @@ class _MemoryFactSheetState extends State<MemoryFactSheet> {
     if (text != null && mounted) _text.text = text.replaceAll(RegExp(r'[\n\r]+'), ' ').trim();
   }
 
+  /// TV: the chip in the row under or above [from] that stands closest to it,
+  /// or null where [from] is in the last or the first row.
+  FocusNode? _chipBeside(MemoryCategory from, {required bool down}) {
+    final here = _chipFocus[from]!.rect;
+    FocusNode? best;
+    var bestRow = double.infinity;
+    var bestAcross = double.infinity;
+    for (final node in _chipFocus.values) {
+      final rect = node.rect;
+      final row = down ? rect.top - here.top : here.top - rect.top;
+      if (!node.canRequestFocus || row < here.height / 2) continue;
+      final across = (rect.center.dx - here.center.dx).abs();
+      if (row < bestRow - 1 || ((row - bestRow).abs() <= 1 && across < bestAcross)) {
+        best = node;
+        bestRow = row;
+        bestAcross = across;
+      }
+    }
+    return best;
+  }
+
+  /// TV: the arrows of a category chip. Left and Right walk all five in
+  /// order, across the rows; Up and Down go a row at a time, so no chip is
+  /// passed over on the way to the buttons.
+  ({VoidCallback up, VoidCallback down, VoidCallback left, VoidCallback right}) _chipArrows(MemoryCategory category) {
+    const all = MemoryCategory.values;
+    final at = all.indexOf(category);
+    return (
+      up: () => (_chipBeside(category, down: false) ?? _fieldFocus).requestFocus(),
+      down: () => (_chipBeside(category, down: true) ?? (_canSave ? _saveFocus : _cancelFocus)).requestFocus(),
+      left: () {
+        if (at > 0) _chipFocus[all[at - 1]]!.requestFocus();
+      },
+      right: () {
+        if (at < all.length - 1) _chipFocus[all[at + 1]]!.requestFocus();
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = t.assistant.memory.screen.sheet;
@@ -156,6 +210,127 @@ class _MemoryFactSheetState extends State<MemoryFactSheet> {
     final length = _text.text.runes.length;
     final label = memoryText(context, 13, color: tk.textMuted);
     final refused = _refused;
+    // The remote walks the chips by hand; a keyboard on a tablet keeps the
+    // focus traversal.
+    final arrows = tv && !_readOnly;
+    final toChosenChip = arrows ? () => _chipFocus[_category]!.requestFocus() : null;
+    final media = MediaQuery.of(context);
+    final keyboard = tv ? 0.0 : media.viewInsets.bottom;
+    // The buttons stay under the scrolling content, so they are in view with
+    // the keyboard open (iPhone SE) and in the TV panel. Where next to nothing
+    // is left above the keyboard they scroll with the rest.
+    final pinned = tv || media.size.height - keyboard - media.padding.top >= 360 * media.textScaler.scale(1);
+
+    final buttons = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        MemoryButtonPair(
+          first: MemoryPillButton(
+            label: _readOnly ? t.common.close : t.common.cancel,
+            autofocus: tv && _readOnly,
+            focusNode: _cancelFocus,
+            automationId: AutomationIds.settingsMemorySheetButton,
+            automationInstance: 'cancel',
+            onPressed: widget.onClose,
+            onNavigateUp: toChosenChip,
+          ),
+          second: _readOnly
+              ? null
+              : MemoryPillButton(
+                  label: t.common.save,
+                  kind: MemoryPillKind.primary,
+                  focusNode: _saveFocus,
+                  automationId: AutomationIds.settingsMemorySheetButton,
+                  automationInstance: 'save',
+                  // Still a focus stop while it saves: the remote keeps a
+                  // place to stand until the sheet closes.
+                  onPressed: _canSave || _busy ? () => unawaited(_save()) : null,
+                  onNavigateUp: toChosenChip,
+                ),
+        ),
+        if (fact != null) ...[
+          SizedBox(height: 4 * k),
+          MemoryPillButton(
+            label: t.common.delete,
+            kind: MemoryPillKind.danger,
+            automationId: AutomationIds.settingsMemorySheetButton,
+            automationInstance: 'delete',
+            onPressed: () => unawaited(_delete()),
+          ),
+        ],
+      ],
+    );
+
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!tv) const MemorySheetGrab(),
+        Text(fact == null ? s.addTitle : s.title, style: memoryText(context, 20, weight: FontWeight.w700)),
+        SizedBox(height: (tv ? 12 : 16) * k),
+        Row(
+          children: [
+            Expanded(child: Text(s.text, style: label)),
+            Text(
+              '$length/$kMemoryValueMaxLength',
+              style: label.copyWith(color: length > kMemoryValueMaxLength ? tk.accent : null),
+            ),
+          ],
+        ),
+        SizedBox(height: 8 * k),
+        MemoryFactField(
+          text: _text,
+          focusNode: _fieldFocus,
+          tv: tv,
+          readOnly: _readOnly,
+          busy: _busy,
+          autofocus: fact == null,
+          onEdit: () => unawaited(_editOnTv()),
+          onNavigateDown: toChosenChip,
+        ),
+        SizedBox(height: (tv ? 12 : 16) * k),
+        Text(s.category, style: label),
+        SizedBox(height: 4 * k),
+        Wrap(
+          spacing: 8 * k,
+          children: [
+            for (final category in MemoryCategory.values)
+              MemoryChoiceChip(
+                label: assistantMemoryCategoryLabel(category),
+                selected: category == _category,
+                onSurface: true,
+                automationId: AutomationIds.settingsMemorySheetChip,
+                automationInstance: category.id,
+                focusNode: _chipFocus[category],
+                onNavigateUp: arrows ? _chipArrows(category).up : null,
+                onNavigateDown: arrows ? _chipArrows(category).down : null,
+                onNavigateLeft: arrows ? _chipArrows(category).left : null,
+                onNavigateRight: arrows ? _chipArrows(category).right : null,
+                onPressed: _readOnly || _busy
+                    ? null
+                    : () => setState(() {
+                        _category = category;
+                        _refused = null;
+                      }),
+              ),
+          ],
+        ),
+        if (fact != null) MemoryFactMeta(fact: fact, compact: tv),
+        if (fact == null || _readOnly) ...[
+          SizedBox(height: 12 * k),
+          Text(_readOnly ? s.readOnly : s.privacy, style: label.copyWith(height: 1.4)),
+        ],
+        if (refused != null) ...[
+          SizedBox(height: 12 * k),
+          Text(
+            memoryCodeMessage(refused),
+            style: memoryText(context, 14, color: tk.accent, weight: FontWeight.w500, height: 1.4),
+          ),
+        ],
+        if (!pinned) ...[SizedBox(height: 18 * k), buttons],
+      ],
+    );
 
     return AutomationNode(
       id: AutomationIds.settingsMemorySheet,
@@ -165,206 +340,22 @@ class _MemoryFactSheetState extends State<MemoryFactSheet> {
         top: false,
         child: Padding(
           // Above the keyboard, where no page above has made room for it yet.
-          padding: EdgeInsets.only(bottom: tv ? 0 : MediaQuery.viewInsetsOf(context).bottom),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(16 * k, 10 * k, 16 * k, 14 * k),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (!tv) const MemorySheetGrab(),
-                Text(fact == null ? s.addTitle : s.title, style: memoryText(context, 20, weight: FontWeight.w700)),
-                SizedBox(height: 16 * k),
-                Row(
-                  children: [
-                    Expanded(child: Text(s.text, style: label)),
-                    Text(
-                      '$length/$kMemoryValueMaxLength',
-                      style: label.copyWith(color: length > kMemoryValueMaxLength ? tk.accent : null),
-                    ),
-                  ],
+          padding: EdgeInsets.only(bottom: keyboard),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(16 * k, 10 * k, 16 * k, (pinned ? 0 : 14) * k),
+                  child: content,
                 ),
-                SizedBox(height: 8 * k),
-                _field(context, tv: tv),
-                SizedBox(height: 16 * k),
-                Text(s.category, style: label),
-                SizedBox(height: 4 * k),
-                Wrap(
-                  spacing: 8 * k,
-                  children: [
-                    for (final category in MemoryCategory.values)
-                      MemoryChoiceChip(
-                        label: assistantMemoryCategoryLabel(category),
-                        selected: category == _category,
-                        onSurface: true,
-                        automationId: AutomationIds.settingsMemorySheetChip,
-                        automationInstance: category.id,
-                        onPressed: _readOnly || _busy
-                            ? null
-                            : () => setState(() {
-                                _category = category;
-                                _refused = null;
-                              }),
-                      ),
-                  ],
-                ),
-                if (fact != null) _meta(context, fact),
-                if (fact == null || _readOnly) ...[
-                  SizedBox(height: 12 * k),
-                  Text(_readOnly ? s.readOnly : s.privacy, style: label.copyWith(height: 1.4)),
-                ],
-                if (refused != null) ...[
-                  SizedBox(height: 12 * k),
-                  Text(
-                    memoryCodeMessage(refused),
-                    style: memoryText(context, 14, color: tk.accent, weight: FontWeight.w500, height: 1.4),
-                  ),
-                ],
-                SizedBox(height: 18 * k),
-                Row(
-                  children: [
-                    Expanded(
-                      child: MemoryPillButton(
-                        label: _readOnly ? t.common.close : t.common.cancel,
-                        autofocus: tv && _readOnly,
-                        automationId: AutomationIds.settingsMemorySheetButton,
-                        automationInstance: 'cancel',
-                        onPressed: widget.onClose,
-                      ),
-                    ),
-                    if (!_readOnly) ...[
-                      SizedBox(width: 10 * k),
-                      Expanded(
-                        child: MemoryPillButton(
-                          label: t.common.save,
-                          kind: MemoryPillKind.primary,
-                          automationId: AutomationIds.settingsMemorySheetButton,
-                          automationInstance: 'save',
-                          onPressed: _canSave ? () => unawaited(_save()) : null,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                if (fact != null) ...[
-                  SizedBox(height: 4 * k),
-                  MemoryPillButton(
-                    label: t.common.delete,
-                    kind: MemoryPillKind.danger,
-                    automationId: AutomationIds.settingsMemorySheetButton,
-                    automationInstance: 'delete',
-                    onPressed: _busy ? null : () => unawaited(_delete()),
-                  ),
-                ],
-              ],
-            ),
+              ),
+              if (pinned)
+                Padding(padding: EdgeInsets.fromLTRB(16 * k, (tv ? 14 : 18) * k, 16 * k, 14 * k), child: buttons),
+            ],
           ),
         ),
-      ),
-    );
-  }
-
-  /// The text of the memory: a field on a phone and a tablet, on TV a row
-  /// that opens the system keyboard.
-  Widget _field(BuildContext context, {required bool tv}) {
-    final s = t.assistant.memory.screen.sheet;
-    final tk = tokens(context);
-    final k = MemoryScale.of(context);
-    final style = memoryText(context, 16, height: 1.4);
-    final box = BoxDecoration(
-      color: tk.bg,
-      borderRadius: BorderRadius.circular(12 * k),
-      border: Border.all(color: _fieldFocus.hasFocus ? tk.text.withValues(alpha: 0.55) : tk.outline),
-    );
-    if (tv || _readOnly) {
-      final empty = _text.text.isEmpty;
-      return MemoryPressable(
-        radius: 12,
-        focusNode: _fieldFocus,
-        // The remote starts on the text, the first thing to change.
-        autofocus: tv && !_readOnly,
-        semanticLabel: empty ? s.hint : _text.text,
-        automationId: AutomationIds.settingsMemorySheetField,
-        automationRole: 'field',
-        onPressed: tv && !_readOnly && !_busy ? () => unawaited(_editOnTv()) : null,
-        child: Container(
-          constraints: BoxConstraints(minHeight: 88 * k),
-          padding: EdgeInsets.all(12 * k),
-          alignment: Alignment.topLeft,
-          decoration: box,
-          child: Text(empty ? s.hint : _text.text, style: empty ? style.copyWith(color: memoryFaint(context)) : style),
-        ),
-      );
-    }
-    return Container(
-      constraints: const BoxConstraints(minHeight: 88),
-      padding: const EdgeInsets.all(12),
-      decoration: box,
-      child: AutomationNode(
-        id: AutomationIds.settingsMemorySheetField,
-        role: 'field',
-        focusNode: _fieldFocus,
-        child: FocusableTextField(
-          controller: _text,
-          focusNode: _fieldFocus,
-          autofocus: _fact == null,
-          enabled: !_busy,
-          minLines: 3,
-          maxLines: 3,
-          keyboardType: TextInputType.text,
-          textInputAction: TextInputAction.done,
-          textCapitalization: TextCapitalization.sentences,
-          // A memory is one line: Return closes the keyboard, it adds none.
-          inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'[\n\r]'))],
-          style: style,
-          decoration: InputDecoration(
-            isCollapsed: true,
-            filled: false,
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            disabledBorder: InputBorder.none,
-            contentPadding: EdgeInsets.zero,
-            hintText: s.hint,
-            hintStyle: style.copyWith(color: memoryFaint(context)),
-          ),
-          onSubmitted: (_) => _fieldFocus.unfocus(),
-        ),
-      ),
-    );
-  }
-
-  /// Where the memory came from and when it was added and last changed.
-  Widget _meta(BuildContext context, MemoryFact fact) {
-    final s = t.assistant.memory.screen.sheet;
-    final tk = tokens(context);
-    final k = MemoryScale.of(context);
-    final style = memoryText(context, 13.5, color: tk.textMuted, height: 1.35);
-    Widget row(String name, String value) => Padding(
-      padding: EdgeInsets.symmetric(vertical: 7 * k),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(name, style: style),
-          SizedBox(width: 16 * k),
-          Expanded(
-            child: Text(value, textAlign: TextAlign.end, style: style),
-          ),
-        ],
-      ),
-    );
-    return Container(
-      margin: EdgeInsets.only(top: 16 * k),
-      padding: EdgeInsets.only(top: 4 * k),
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: tk.outline)),
-      ),
-      child: Column(
-        children: [
-          row(s.source, memorySourceLabel(fact.source)),
-          row(s.created, memoryDate(fact.createdAt)),
-          row(s.updated, memoryDate(fact.updatedAt)),
-        ],
       ),
     );
   }

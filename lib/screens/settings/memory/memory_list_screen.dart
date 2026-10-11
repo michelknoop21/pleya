@@ -23,6 +23,7 @@ import 'memory_fact_sheet.dart';
 import 'memory_labels.dart';
 import 'memory_layouts.dart';
 import 'memory_list_tv.dart';
+import 'memory_screen.dart';
 import 'memory_screen_model.dart';
 import 'memory_state_card.dart';
 import 'memory_widgets.dart';
@@ -116,19 +117,26 @@ class MemoryListScreenState extends State<MemoryListScreen> {
     final tk = tokens(context);
     final facts = shown;
     final name = context.watch<ActiveProfileProvider?>()?.active?.displayName;
+    final tablet = MediaQuery.sizeOf(context).width >= AssistantMemoryScreen.tabletWidth;
     return MemoryPage(
       onBack: back,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          MemoryHeader(
-            title: l.title,
-            // Whose memories these are: under the title, so a long profile
-            // name never squeezes it.
-            subtitle: name == null || name.isEmpty ? '' : l.profile(name: name),
-            onBack: back,
-            backInstance: 'listBack',
-            trailing: name == null || name.isEmpty ? null : _ProfileMark(name: name),
+          Padding(
+            // The bar of the memory screen behind it, so the title does not
+            // jump between the two on a tablet.
+            padding: EdgeInsets.symmetric(horizontal: tablet ? 12 : 0),
+            child: MemoryHeader(
+              title: l.title,
+              // Whose memories these are: under the title, so a long profile
+              // name never squeezes it.
+              subtitle: name == null || name.isEmpty ? '' : l.profile(name: name),
+              onBack: back,
+              backInstance: 'listBack',
+              titleSize: tablet ? 26 : 22,
+              trailing: name == null || name.isEmpty ? null : _ProfileMark(name: name),
+            ),
           ),
           Expanded(
             child: Center(
@@ -175,7 +183,11 @@ class MemoryListScreenState extends State<MemoryListScreen> {
                       if (facts.isEmpty)
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          child: Text(l.none, style: memoryText(context, 15, color: tk.textMuted)),
+                          // Nothing stored is not the same as nothing found.
+                          child: Text(
+                            model.count == 0 ? s.empty.title : l.none,
+                            style: memoryText(context, 15, color: tk.textMuted),
+                          ),
                         )
                       else
                         MemoryCard(

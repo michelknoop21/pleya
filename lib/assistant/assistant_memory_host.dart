@@ -194,6 +194,14 @@ class AssistantMemoryHost extends ChangeNotifier {
     _notify();
   }
 
+  /// Takes the waiting cards away without an answer: the facts they point
+  /// at were wiped, so there is nothing left to replace or forget.
+  void dropProposals() {
+    if (_proposals.isEmpty) return;
+    _proposals.clear();
+    _notify();
+  }
+
   final List<VoidCallback> _onDispose = [];
 
   /// Runs [cleanup] when this host is disposed.

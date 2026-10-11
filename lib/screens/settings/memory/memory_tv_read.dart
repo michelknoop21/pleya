@@ -120,11 +120,19 @@ class _MemoryTvReadColumnState extends State<MemoryTvReadColumn> {
       ],
     );
 
+    // The text keeps 6 pt clear of its focus ring. The column stands that far
+    // out to the left, so the text starts under the title.
+    return Transform.translate(offset: Offset(-6 * pt, 0), child: _column(context, view, sections.length, text));
+  }
+
+  Widget _column(BuildContext context, MemoryScreenView view, int sections, Widget text) {
+    final pt = TvHig.of(context);
+    final s = t.assistant.memory.screen;
     return AutomationNode(
       id: AutomationIds.settingsMemoryOverview,
       role: 'region',
       focusNode: widget.node,
-      state: () => {'written': view == MemoryScreenView.overview, 'sections': sections.length},
+      state: () => {'written': view == MemoryScreenView.overview, 'sections': sections},
       child: FocusableWrapper(
         focusNode: widget.node,
         canRequestFocus: _overflows,

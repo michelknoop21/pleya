@@ -58,6 +58,10 @@ class MemoryPressable extends StatelessWidget {
     this.automationInstance,
     this.automationRole = 'button',
     this.automationState,
+    this.onNavigateUp,
+    this.onNavigateDown,
+    this.onNavigateLeft,
+    this.onNavigateRight,
   });
 
   final Widget child;
@@ -73,6 +77,12 @@ class MemoryPressable extends StatelessWidget {
   final String? automationInstance;
   final String automationRole;
   final Object? Function()? automationState;
+
+  /// Where an arrow goes from here; null leaves it to the focus traversal.
+  final VoidCallback? onNavigateUp;
+  final VoidCallback? onNavigateDown;
+  final VoidCallback? onNavigateLeft;
+  final VoidCallback? onNavigateRight;
 
   @override
   Widget build(BuildContext context) {
@@ -93,6 +103,10 @@ class MemoryPressable extends StatelessWidget {
         automationInstance: automationInstance,
         automationRole: automationRole,
         automationState: automationState,
+        onNavigateUp: onNavigateUp,
+        onNavigateDown: onNavigateDown,
+        onNavigateLeft: onNavigateLeft,
+        onNavigateRight: onNavigateRight,
         onSelect: press == null
             ? null
             : () {

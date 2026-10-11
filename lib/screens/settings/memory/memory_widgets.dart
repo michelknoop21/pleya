@@ -27,6 +27,9 @@ class MemoryPillButton extends StatelessWidget {
     this.autofocus = false,
     this.automationId,
     this.automationInstance,
+    this.onNavigateUp,
+    this.onNavigateLeft,
+    this.onNavigateRight,
   });
 
   final String label;
@@ -37,6 +40,9 @@ class MemoryPillButton extends StatelessWidget {
   final bool autofocus;
   final String? automationId;
   final String? automationInstance;
+  final VoidCallback? onNavigateUp;
+  final VoidCallback? onNavigateLeft;
+  final VoidCallback? onNavigateRight;
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +60,9 @@ class MemoryPillButton extends StatelessWidget {
       automationId: automationId,
       automationInstance: automationInstance,
       automationState: () => {'enabled': enabled},
+      onNavigateUp: onNavigateUp,
+      onNavigateLeft: onNavigateLeft,
+      onNavigateRight: onNavigateRight,
       child: Builder(
         builder: (context) {
           final tk = tokens(context);
@@ -101,6 +110,44 @@ class MemoryPillButton extends StatelessWidget {
   }
 }
 
+/// Two pill buttons side by side (`.btnrow`). At a large text size they
+/// stand under each other, the first on top, so no label breaks inside a
+/// word.
+class MemoryButtonPair extends StatelessWidget {
+  const MemoryButtonPair({super.key, required this.first, this.second});
+
+  final Widget first;
+  final Widget? second;
+
+  /// From this text size a label no longer fits half the width of a phone.
+  static const double stackAbove = 1.3;
+
+  @override
+  Widget build(BuildContext context) {
+    final other = second;
+    if (other == null) return first;
+    final k = MemoryScale.of(context);
+    if (!PlatformDetector.isTV() && MediaQuery.textScalerOf(context).scale(1) > stackAbove) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          first,
+          SizedBox(height: 4 * k),
+          other,
+        ],
+      );
+    }
+    return Row(
+      children: [
+        Expanded(child: first),
+        SizedBox(width: 10 * k),
+        Expanded(child: other),
+      ],
+    );
+  }
+}
+
 /// A category chip (`.chip`): the chosen one is filled with the ink colour.
 class MemoryChoiceChip extends StatelessWidget {
   const MemoryChoiceChip({
@@ -111,11 +158,21 @@ class MemoryChoiceChip extends StatelessWidget {
     this.onSurface = false,
     this.automationId,
     this.automationInstance,
+    this.focusNode,
+    this.onNavigateUp,
+    this.onNavigateDown,
+    this.onNavigateLeft,
+    this.onNavigateRight,
   });
 
   final String label;
   final bool selected;
   final VoidCallback? onPressed;
+  final FocusNode? focusNode;
+  final VoidCallback? onNavigateUp;
+  final VoidCallback? onNavigateDown;
+  final VoidCallback? onNavigateLeft;
+  final VoidCallback? onNavigateRight;
 
   /// Inside a sheet, where the resting fill is the page colour.
   final bool onSurface;
@@ -133,6 +190,11 @@ class MemoryChoiceChip extends StatelessWidget {
       automationId: automationId,
       automationInstance: automationInstance,
       automationState: () => {'selected': selected},
+      focusNode: focusNode,
+      onNavigateUp: onNavigateUp,
+      onNavigateDown: onNavigateDown,
+      onNavigateLeft: onNavigateLeft,
+      onNavigateRight: onNavigateRight,
       // A 44 pt touch area around the 34 pt chip.
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: 5 * k),

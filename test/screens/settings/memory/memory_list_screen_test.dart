@@ -330,7 +330,9 @@ void main() {
   testWidgets('an empty memory says so and offers to add', (tester) async {
     await open(tester, seed: false);
 
-    expect(find.text(s.list.none), findsOneWidget);
+    // Nothing stored: not the line of a search without a hit.
+    expect(find.text(s.empty.title), findsOneWidget);
+    expect(find.text(s.list.none), findsNothing);
     expect(memoryAction('add'), findsOneWidget);
     await close(tester);
   });
