@@ -14,9 +14,15 @@ De masterlijst is gereconcilieerd: loudness (`0011`), `GET /watch-history` (DEC-
 migratiereparatie `0012` staan in hoofdstuk 3a. De CSP-fix voor Kits route-announcer lag sinds 7
 september alleen op `feat/pleyaserver` en is als PR #219 naar `main` gegaan.
 
-Volgende stap: S7 (webshell en designsysteem) of S4 (sidecars en artworkladder), de twee slices die
-geen vrijgave vragen. S3 (boeken) wacht op PS-11A geïntegreerd (S7, S10, S11) en een vrijgavebesluit
-(DEC-129); S5 hangt aan S3 en wacht dus mee.
+Volgende stap: S7 (webshell en designsysteem), dat los van de rest kan beginnen. PS-14 is op 10 oktober
+vrijgegeven ([DEC-149](docs/DECISIONS.md)), dus S3 (boeken) wacht niet meer op S7, S10 en S11. Wat S3
+wel tegenhoudt: de laag C-meting op hardware (DEC-128 punt 7, bevestigd in DEC-149 punt 4), het besluit
+dat het contractvenster voor S3 tot en met S6 opent (voorstel in
+`docs/pleya-server-contract-window-3.md`, nog niet geaccepteerd) en het validator-besluit onder de
+sterke validator van de cover- en bestandsroute. S4 (sidecars en artworkladder) heeft geen vrijgave
+nodig maar wacht op hetzelfde venster-besluit en, voor de `.nfo`-velden, op de coverage-gate van 80
+procent per bibliotheek (PS-7N, S4.2). S5 hangt aan S3 en S4. S6 (leesvoortgang) wacht op het
+locatorbesluit P5 én op de vrijgave van PS-15 (DEC-149 punt 3).
 
 ## Stand 24 september 2026
 
