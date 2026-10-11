@@ -245,8 +245,9 @@
    * vast, dus elke extra titelregel duwt de kop naar boven. Een Nederlandse
    * titel met lange samenstellingen liep op 1280 over de bovenrand en werd
    * afgeknipt zonder dat te zien was dat er iets ontbrak. Vier regels en dan
-   * een beletselteken (bij drie viel "The Return of the King" op 1600 al af); de volledige titel staat op de itempagina en blijft voor
-   * een schermlezer in de kop. Onder 900 is de hero 520 hoog en past hij wel.
+   * een beletselteken (bij drie viel "The Return of the King" op 1600 al
+   * af); de volledige titel staat op de itempagina en blijft voor een
+   * schermlezer in de kop. Onder 900 is de hero 520 hoog en past hij wel.
    */
   @media (min-width: 900px) {
     .hero__title {

@@ -221,7 +221,9 @@ describe('per taal: datum, getal, grootte, taalnaam', () => {
     expect(inLocale('en', () => formatBytes(999_950))).not.toContain('kB');
     expect(inLocale('en', () => formatBytes(999_949))).toBe('999.9 kB');
     expect(inLocale('en', () => formatBytes(999.6))).toBe('1.0 kB');
-    expect(inLocale('en', () => formatBytes(2000))).toBe('2.0 kB');
+    // Een rond totaal krijgt geen ",0": de northstar toont "van 6 TB".
+    expect(inLocale('en', () => formatBytes(2000))).toBe('2 kB');
+    expect(inLocale('nl', () => formatBytes(6e12))).toBe('6 TB');
     expect(inLocale('en', () => formatBytes(120e9))).toBe('120 GB');
   });
 

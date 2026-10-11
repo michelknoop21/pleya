@@ -3,8 +3,9 @@
   synopsis (zoals hij na PS-4W en PS-7N wordt), zonder afspeelknop (zoals elke
   route hem in deze grens aanroept), een lange titel die over meer regels
   breekt, en zonder artwork. Hero B draagt drie Nederlandse samenstellingen
-  in plaats van een filmtitel: daarop wordt het afbreken op taal gemeten. Galerijlabels zijn gewone Nederlandse tekst: de
-  route bestaat alleen in ontwikkeling.
+  in plaats van een filmtitel: daarop wordt het afbreken op taal gemeten.
+  Galerijlabels zijn gewone Nederlandse tekst: de route bestaat alleen in
+  ontwikkeling.
 
   Hero springt zelf in op --inset, omdat Home hem zonder paginapadding
   plaatst. De galerij heeft die inzet al, dus de negatieve marge hier heft
