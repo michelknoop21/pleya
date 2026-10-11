@@ -144,6 +144,8 @@ Uitwerking in stap 3 die het ontwerp hierboven aanvult:
 - 43 M toont de toestand naast de titel en een kruimelpad eronder. De tv-pagina gebruikt de gedeelde paginakop (`TvPageSurface`), die geen van beide kent: de toestand staat op een eigen regel onder de titel en het kruimelpad vervalt, zoals op de andere instellingenpagina's.
 - De voetregel zegt op iPhone "beheer je via het menu" en op iPad en tv "beheer je bij Herinneringen beheren", omdat daar geen menuknop is. 43 L toont nog de telefoontekst.
 - 43 A noemt bij Huishouden "Hun leeftijden staan bij Kinderprofiel." De app voegt de vaste zin "Leeftijden van kinderen staan bij Kinderprofiel." toe, die ook klopt als het overzicht geen kinderen noemt.
+- 43 D toont "Profiel Michel" rechts in de balk. De app zet de profielnaam als regel onder de titel en houdt rechts alleen de initiaal, omdat een lange profielnaam de titel anders afkapt (gezien in Pleya Verify met het profiel `verify-owner`).
+- De kaart boven het invoerveld volgt de tekstgrootte van het systeem tot 135 procent. Daarboven breken de labels van de twee knoppen midden in een woord; de rest van het scherm schaalt wel volledig mee.
 - De tegels op tv zijn 72 pt hoog (vervolgvragen 62) in plaats van 84 en 68, zodat de vierde beheeractie zonder scrollen in beeld staat.
 
 ## Buiten scope en bekende grenzen

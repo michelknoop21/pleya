@@ -1,0 +1,150 @@
+name: tvos.settings.assistant-memory
+target: tvos-sim
+# Requires PLEYA_ASSISTANT_ENABLED=true with the pinned SDK.
+# BP-08a stap 3: Instellingen > Big P > Geheugen on TV (mockup 43 M) and the
+# list "Herinneringen" behind it. Real settings UI and native idb input; no
+# model is set up, so nothing is sent anywhere and the left column shows the
+# facts as a list.
+#
+# What this proves that a widget test cannot:
+#   1. the row "Geheugen" in Big P's settings opens the screen as a nested
+#      route of the TV shell, and the remote lands on "Vraag of werk bij";
+#   2. "Herinneringen beheren" opens the list and Menu comes back to the
+#      memory screen, not out of the shell;
+#   3. a memory is typed through the system keyboard and stored;
+#   4. "Alle herinneringen wissen" opens its dialog with the remote on
+#      Annuleren: Select there wipes nothing, Right and Select wipes.
+#
+# The Siri Remote's touch surface, dictation and the Select key-up after the
+# keyboard closes are for the hardware round.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - settle: 600
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
+  - press: select
+  - wait_until: {focused: "assistant.button[setup]", timeout: 10000}
+  - press: select
+  - wait_until: {focused: "settings.form.button[assistant.provider.ollamaServer]", timeout: 10000}
+
+  # The row "Geheugen" stands under the three providers.
+  - walk: {direction: down, steps: 5, stopAt: "settings.form.button[assistant.memory]", timeout: 40000, settle: 400}
+  - assert: {id: "settings.form.button[assistant.memory]", insideViewport: true}
+  - settle: 600
+  - snapshot: 00-row-in-big-p-settings
+  - press: select
+
+  # The screen (43 M): empty for now, the remote on "Vraag of werk bij".
+  - wait_until: {id: screen.memory, state: {view: empty, count: 0, enabled: true}, timeout: 15000}
+  - wait_until: {focused: "settings.memory.action[ask]", timeout: 8000}
+  - assert: {id: "my_pleya.section.content[assistant_memory]", insideViewport: true}
+  - assert: {id: "settings.memory.action[ask]", insideViewport: true}
+  - assert: {id: "settings.memory.action[manage]", insideViewport: true, below: "settings.memory.action[ask]"}
+  - assert: {id: "settings.memory.action[use]", insideViewport: true, state: {selected: true}, below: "settings.memory.action[manage]"}
+  - assert: {id: "settings.memory.action[clear]", insideViewport: true, below: "settings.memory.action[use]"}
+  - assert: {id: settings.memory.overview, leftOf: "settings.memory.action[ask]"}
+  - settle: 800
+  - snapshot: 01-memory-empty
+
+  # To the list and back with Menu.
+  - press: down
+  - wait_until: {focused: "settings.memory.action[manage]", timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.memory_list, state: {total: 0, readable: true}, timeout: 15000}
+  - wait_until: {focused: "settings.memory.action[search]", timeout: 8000}
+  - settle: 800
+  - snapshot: 02-list-empty
+  - press: menu
+  - wait_until: {id: screen.memory, state: {view: empty}, timeout: 10000}
+  - assert: {id: screen.memory_list, present: false}
+  - assert: {id: "settings.memory.action[ask]", insideViewport: true}
+  # The remote is back on the tile it left.
+  - wait_until: {focused: "settings.memory.action[manage]", timeout: 8000}
+  - settle: 800
+  - snapshot: 03-back-with-menu
+
+  # Add a memory: the list, "Herinnering toevoegen", the system keyboard.
+  - press: select
+  - wait_until: {id: screen.memory_list, state: {total: 0}, timeout: 15000}
+  - wait_until: {focused: "settings.memory.action[search]", timeout: 8000}
+  - walk: {direction: down, steps: 4, stopAt: "settings.memory.action[add]", timeout: 30000, settle: 400}
+  - press: select
+  - wait_until: {id: settings.memory.sheet, state: {mode: add}, timeout: 10000}
+  - wait_until: {focused: settings.memory.sheet.field, timeout: 8000}
+  - settle: 800
+  - snapshot: 04-add-sheet
+  - press: select
+  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 10000}
+  - settle: 1000
+  - type: "Houdt niet van horror"
+  - press: select
+  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: false}, timeout: 10000}
+  - wait_until: {focused: settings.memory.sheet.field, timeout: 8000}
+  # Down past the category chips to Opslaan, the last stop of the sheet.
+  # Plain presses: a walk judges skipped focusables by geometry and counts
+  # the tiles of the page under the sheet.
+  - press: down
+  - press: down
+  - press: down
+  - press: down
+  - wait_until: {focused: "settings.memory.sheet.button[save]", timeout: 8000}
+  - assert: {id: "settings.memory.sheet.button[save]", state: {enabled: true}}
+  - press: select
+  - wait_until: {id: screen.memory_list, state: {total: 1, count: 1}, timeout: 10000}
+  - wait_until: {id: "settings.memory.fact[0]", timeout: 5000}
+  # The panel needs its closing animation before it is out of the tree.
+  - settle: 1500
+  - assert: {id: settings.memory.sheet, present: false}
+  - wait_until: {focused: "settings.memory.action[add]", timeout: 8000}
+  - snapshot: 05-list-one
+
+  # Back on the memory screen the fact stands as a list (no model).
+  - press: menu
+  - wait_until: {id: screen.memory, state: {view: list, count: 1}, timeout: 10000}
+  - assert: {id: screen.memory_list, present: false}
+  - wait_until: {focused: "settings.memory.action[manage]", timeout: 8000}
+  - settle: 800
+  - snapshot: 06-fallback-list
+
+  # "Alle herinneringen wissen": the dialog opens on the safe button.
+  - walk: {direction: down, steps: 6, stopAt: "settings.memory.action[clear]", timeout: 40000, settle: 400}
+  - press: select
+  - wait_until: {id: "settings.memory.dialog.button[cancel]", timeout: 8000}
+  - wait_until: {focused: "settings.memory.dialog.button[cancel]", timeout: 5000}
+  - assert: {id: "settings.memory.dialog.button[confirm]", insideViewport: true, sameRow: "settings.memory.dialog.button[cancel]", rightOf: "settings.memory.dialog.button[cancel]"}
+  - assert: {id: screen.memory, state: {count: 1}}
+  - settle: 800
+  - snapshot: 07-clear-dialog-safe-focus
+
+  # Select where the remote stands wipes nothing.
+  - press: select
+  - wait_until: {focused: "settings.memory.action[clear]", timeout: 8000}
+  - settle: 1200
+  - assert: {id: "settings.memory.dialog.button[cancel]", present: false}
+  - assert: {id: screen.memory, state: {view: list, count: 1}}
+  - snapshot: 08-cancelled
+
+  # Right and Select is the yes: everything is gone.
+  - press: select
+  - wait_until: {focused: "settings.memory.dialog.button[cancel]", timeout: 8000}
+  - press: right
+  - wait_until: {focused: "settings.memory.dialog.button[confirm]", timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.memory, state: {view: empty, count: 0}, timeout: 10000}
+  - settle: 1200
+  - assert: {id: "settings.memory.dialog.button[cancel]", present: false}
+  - snapshot: 09-wiped
