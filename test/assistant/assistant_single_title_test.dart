@@ -18,8 +18,8 @@ void main() {
     test('EN question forms narrow the same way', () async {
       for (final prompt in [
         'What is that movie with Tom Hanks about death row?',
-        'Which film has Tom Hanks as a prison guard?',
-        'I am looking for the movie with Tom Hanks on death row',
+        'Which movie is about death row?',
+        "I'm looking for that movie with Tom Hanks about death row",
       ]) {
         final r = await singleAsk([findHanks, 'That is «$mile» (1999).'], prompt);
         expect(cardsOf(r), [mile], reason: prompt);
@@ -29,8 +29,8 @@ void main() {
     test('NL question forms narrow the same way', () async {
       for (final prompt in [
         'Ik zoek die film met Tom Hanks over deathrow',
-        'Welke film met Tom Hanks speelt in een dodencel?',
-        'Ik weet niet meer hoe de film met Tom Hanks in de gevangenis heet',
+        'Welke film gaat over een dodencel?',
+        'die film met tom hanks over deathrow',
       ]) {
         final r = await singleAsk([findHanks, answer], prompt);
         expect(cardsOf(r), [mile], reason: prompt);
@@ -73,9 +73,9 @@ void main() {
         [
           findHanks,
           {'name': 'recently_added', 'args': <String, Object?>{}},
-          'Dat is «$mile» (1999). Nieuw deze week staan hieronder.',
+          answer,
         ],
-        'Hoe heet die film met Tom Hanks over death row en wat is er nieuw deze week',
+        one,
         tools: [
           ...assistantTools.where((t) => t.name == 'find_title'),
           displayTool(

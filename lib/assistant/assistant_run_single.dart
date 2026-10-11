@@ -4,18 +4,19 @@ part of 'assistant_run.dart';
 // search that found it.
 
 extension _AssistantSingleTitle on AssistantRun {
-  /// When the question is after one title and [answer] names exactly one,
-  /// each list of titles, grid or set of request options that shows it keeps
-  /// only that title. A result without it stays whole: it answers another
-  /// part of the question. An answer that names none or two picks nothing for
-  /// the user. Only removes cards, so the age gate and the rights checks that
-  /// admitted them still hold.
+  /// When the question is after one title and [answer] names exactly one and
+  /// points at nothing more, each list of titles, grid or set of request
+  /// options that shows it keeps only that title. A result without it stays
+  /// whole: it answers another part of the question. An answer that names
+  /// none or two, or speaks of more ("ook", "hieronder", a list), picks
+  /// nothing for the user. Only removes cards, so the age gate and the rights
+  /// checks that admitted them still hold.
   void _keepTheOneNamed(String answer) {
     // After an action the action is the answer; a diagnosis or a fenced story
     // question is worded by Pleya, not by this text.
     if (!_oneTitleAsked || _actions.isNotEmpty || _spoilerQuestion != null || _ctx.libraryDoctorMode) return;
     final named = _theOneNamed(answer);
-    if (named == null) return;
+    if (named == null || assistantAnswerPointsAtMore(answer)) return;
     bool isIt(String? title, int? year) =>
         assistantSameTitle((key: assistantTitleKey(title ?? ''), year: year), named.key, named.year);
     for (var i = 0; i < _displays.length; i++) {
