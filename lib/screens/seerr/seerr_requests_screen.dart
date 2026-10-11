@@ -720,11 +720,21 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     // it; the TV branch no longer goes through that scaffold (DEC-108), which
     // left a page the remote could not leave. The rail answers its own Menu
     // first, so this only sees a press nothing below it took.
-    return Focus(
-      canRequestFocus: false,
-      skipTraversal: true,
-      onKeyEvent: (_, event) => handleBackKeyNavigation(context, event),
-      child: _tvView(title, ownOnly),
+    //
+    // Not while a sheet is open. The host closes its sheet from a keyboard
+    // handler when the focus is outside it, and the same press then still
+    // walks the focus tree: without this it would close the sheet and the
+    // page in one go. The shell has the same guard (`_handleTvShellKey`).
+    return Builder(
+      builder: (hostContext) => Focus(
+        canRequestFocus: false,
+        skipTraversal: true,
+        onKeyEvent: (_, event) {
+          if (OverlaySheetController.maybeOf(hostContext)?.isOpen ?? false) return KeyEventResult.ignored;
+          return handleBackKeyNavigation(context, event);
+        },
+        child: _tvView(title, ownOnly),
+      ),
     );
   }
 
