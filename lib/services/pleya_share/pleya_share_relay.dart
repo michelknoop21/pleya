@@ -20,6 +20,14 @@ import 'pleya_share_pairing.dart';
 class PleyaShareRelay {
   PleyaShareRelay._();
 
+  /// Off: Pleya Share is local only (LAN, hotspot, cable, Wi-Fi Aware). The
+  /// production relay caps messages at 64 KiB and drops bursts, so streams
+  /// through it stall, and a guest that fell back to it after a LAN blip
+  /// stayed there. With this off the host never dials the relay and the
+  /// guest never falls back to it. Mutable so the relay tests can still run
+  /// the tunnel against a stub.
+  static bool enabled = false;
+
   /// Same relay/signalling server Watch Together uses.
   static const String defaultBaseUrl = String.fromEnvironment('PLEYA_ICE_BASE', defaultValue: 'https://ice.pleya.app');
 
