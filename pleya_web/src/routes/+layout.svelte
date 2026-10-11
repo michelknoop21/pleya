@@ -16,7 +16,12 @@
   import { session } from '$lib/stores/session.svelte';
   import { theme } from '$lib/stores/theme.svelte';
   import { viewport } from '$lib/stores/viewport.svelte';
-  import { pickLocale, setLocale, t } from '$lib/i18n';
+  import { initLocale, t } from '$lib/i18n';
+
+  // Vóór de eerste markup: `t()` is niet reactief, dus de taal moet vaststaan
+  // voordat een kind rendert. In `onMount` kwam dit te laat en bleef de pagina
+  // Engels staan.
+  initLocale();
 
   let { children }: { children: Snippet } = $props();
 
@@ -32,7 +37,6 @@
   );
 
   onMount(() => {
-    setLocale(pickLocale(navigator.languages ?? [navigator.language]));
     const stopTheme = theme.start();
     const stopViewport = viewport.start();
     void session.start();
