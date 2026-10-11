@@ -77,8 +77,7 @@ These are baseline tech debt, not regressions from this phase. They should be ad
 | `TVOS_BUILD` | Marks a tvOS build | `false` | Platform detection, download, shelf, exit |
 | `PLEX_TOKEN` | Dev/screenshot token | empty | Screenshot automation only |
 | `BLUR_ARTWORK` | Blur artwork, scramble titles | `false` | Screenshot automation only |
-| `TRAKT_CLIENT_ID` | Trakt tracker | empty | Trakt scrobble/sync |
-| `TRAKT_CLIENT_SECRET` | Trakt tracker login (device code token exchange) | empty | Trakt scrobble/sync; not passed by the release lanes |
+| `TRAKT_CLIENT_ID` | Trakt tracker login, scrobble and sync | empty | Trakt login (Settings > Trackers), scrobble/sync |
 | `SIMKL_CLIENT_ID` | Simkl tracker | empty | Simkl tracking |
 | `MAL_CLIENT_ID` | MAL tracker | empty | MAL tracking |
 | `PLEYA_ICE_BASE` | ICE relay/relay base URL | `https://ice.pleya.app` | Watch Together, Discord RPC, log uploads. De Pleya Share-relayfallback leest dezelfde waarde maar staat uit, zie [PLEYA_SHARE](PLEYA_SHARE.md#internetrelay-staat-uit). Host draait sinds 2026-08-10, zie [DEC-014](DECISIONS.md#dec-014) |
@@ -94,7 +93,7 @@ These are baseline tech debt, not regressions from this phase. They should be ad
 
 The client ID ends up readable in places other than `.env`. xcodebuild echoes the full environment of every Run Script phase into the build log, fastlane logs the `flutter build` command line, and on iOS and macOS the defines sit base64-encoded in the generated xcconfig. Anyone with the binary can extract it too. That is acceptable because a Trakt client ID is a public app identifier: it reads no user data on its own and can be revoked and reissued at Trakt, which switches the public Trakt calls off in builds that carry the old ID until the next build ships.
 
-Never put a secret in a dart-define. The release lanes therefore pass neither `TRAKT_CLIENT_SECRET` nor a TMDB key. Public Trakt calls only need the client ID (`TraktConstants.hasClientId`); the Trakt login keeps requiring both values and stays hidden in release builds. Pleya ships no TMDB key at all: `TmdbClient` takes the user's own TMDB token, entered in the app.
+Never put a secret in a dart-define. The release lanes therefore pass no Trakt secret and no TMDB key. The Trakt login (device code, token refresh, revoke) works with the client ID alone, measured on 11 October 2026, so `TraktConstants.isConfigured` is true for a build that carries `TRAKT_CLIENT_ID` and the login is visible in release builds. Children's profiles get no Trakt login, scrobble or sync. Pleya ships no TMDB key at all: `TmdbClient` takes the user's own TMDB token, entered in the app.
 
 ### Signing and distribution
 
