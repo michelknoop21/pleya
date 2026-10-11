@@ -1,0 +1,56 @@
+name: tvos.requests.form-no-4k-default
+target: tvos-sim
+# REQ-FORM-4K-DEFAULT (docs/tvos-fysieke-correctieronde.md): a requester sends
+# no server with a request, so the form may only offer 4K, and may only let
+# HD go, when the instance list says where the request ends up.
+#
+# `seerr.requester.no-4k-default.v1` seeds one film nobody has asked for,
+# Frost Line, and a user who
+# holds REQUEST and REQUEST_4K and no manage right. The list is readable and
+# holds one HD instance only, so there is no 4K switch although the right is
+# there. HD still goes out.
+#
+# The walk is the one of tvos.requests.detail-4k: Mijn Pleya, Aanvragen, the
+# only card, its title page, then "Aanvragen" opens the form. Nothing is sent.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - seed: seerr.requester.no-4k-default.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - seed_seerr: {base_url: "{{fixture_seerr}}", api_key: "verify-seerr-key"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[requests]", timeout: 5000}
+  - press: select
+  - wait_until: {id: seerr.search.field, timeout: 15000}
+  - settle: 2500
+
+  - press: down
+  - settle: 800
+  - assert: {id: seerr.search.field, focused: false}
+  - press: select
+
+  # The page waits for the instance list as well as the detail, so the action
+  # and, below, the form are waited for and not assumed.
+  - wait_until: {id: "requests.detail.action[request]", timeout: 15000}
+  - settle: 800
+  - assert: {id: "requests.detail.action[request4k]", present: false}
+  - snapshot: 00-title-page
+  - press: select
+
+  - wait_until: {id: "requests.form[create]", state: {phase: form, is4k: false}, timeout: 15000}
+  - settle: 1200
+  - assert: {id: "requests.form[create]", insideViewport: true, state: {is4k: false, canSubmit: true}}
+  - assert: {id: "requests.form.option[fourK]", present: false}
+  - assert: {id: "requests.form.button[submit]", insideViewport: true, state: {enabled: true, busy: false}}
+  - snapshot: 01-form

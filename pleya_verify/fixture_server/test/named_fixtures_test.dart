@@ -197,6 +197,31 @@ void main() {
     });
   });
 
+  group('seerr.requester.*', () {
+    test('a requester with the 4K right, in the three states of the instance list', () {
+      final server = PleyaFakeServer();
+      final seerr = SeerrFakeServer();
+      expect(applyNamedFixture(server, 'seerr.requester.4k-default.v1'), isFalse);
+
+      expect(applyNamedFixture(server, 'seerr.requester.4k-default.v1', seerr: seerr), isTrue);
+      expect(seerr.userPermissions, 32 | 1024);
+      expect(seerr.fourKServers, isTrue);
+      expect(seerr.serviceListForbidden, isFalse);
+      expect(seerr.discover['trending']!.single['title'], 'Frost Line');
+
+      expect(applyNamedFixture(server, 'seerr.requester.no-4k-default.v1', seerr: seerr), isTrue);
+      expect(seerr.fourKServers, isFalse);
+      expect(seerr.serviceListForbidden, isFalse);
+
+      expect(applyNamedFixture(server, 'seerr.requester.list-unknown.v1', seerr: seerr), isTrue);
+      expect(seerr.serviceListForbidden, isTrue);
+
+      seerr.reset();
+      expect(seerr.userPermissions, 2, reason: 'reset returns the fixture user to admin');
+      expect(seerr.serviceListForbidden, isFalse);
+    });
+  });
+
   group('seerr.search.v1', () {
     test('seeds titles the library fixture does not hold', () {
       final server = PleyaFakeServer();
