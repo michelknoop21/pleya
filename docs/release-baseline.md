@@ -157,15 +157,15 @@ Auto-update requires `UPDATE_GITHUB_REPO` and `UPDATE_FEED_URL` defines.
 
 ## Trakt login release conditions
 
-A build that carries `TRAKT_CLIENT_ID` shows the Trakt login and reads the user's Trakt history and watchlist (BP-07). No release or TestFlight bundle with that define ships until every item is met. Status of 11 October 2026:
+A build that carries `TRAKT_CLIENT_ID` shows the Trakt login and reads the user's Trakt history and watchlist (BP-07). The lanes add that define by themselves as soon as the value is set in `.env`, so the gate is procedural: `TRAKT_CLIENT_ID` stays out of the release `.env` until every item below is met. On 11 October 2026 it is not set in the `.env` of the main checkout, so builds made from it do not show the login. Status of 11 October 2026:
 
 | Condition | Status | Owner |
 |---|---|---|
-| Linking sends nothing back by itself: scrobble and watched-sync default to off and are asked once after linking | Built (BP-07 afronding) | done |
+| Linking sends nothing back by itself: scrobble and watched-sync default to off, are asked once after linking, and the offline queue obeys the same consent (a rating the user gives is separate) | Built (BP-07 afronding) | done |
 | Second refresh with the rotated token pair measured live, and the real shape of `/sync/watched` and `/sync/watchlist` | Open, needs `/grant TRAKT_CLIENT_ID` and one activation | Michel |
 | `trakt_watchlist` and the "seen" filter checked on a device with a real Trakt account | Open, manual | Michel |
 | The consent question is usable with the remote on Apple TV and on iPhone | Open, manual | Michel |
-| App Store Connect privacy label and the privacy statement name Trakt viewing data (what is sent: play events and watched marks, only after consent; what is read: history and watchlist, used locally and the watchlist as a tool result) | Open, manual; `PRIVACY_POLICY_URL` is empty and no privacy text lives in this repo | Michel |
+| App Store Connect privacy label and the privacy page name Trakt viewing data (what is sent: play events and watched marks, only after consent, and a rating the user gives; what is read: history and watchlist, used locally and the watchlist as a tool result). The consent answer syncs through iCloud between devices | Open, manual: `website/src/routes/privacy/+page.svelte` does not mention Trakt and must be extended and deployed; `PRIVACY_POLICY_URL` is empty | Michel |
 
 ## Launch Scope Decision
 
@@ -193,7 +193,7 @@ A build that carries `TRAKT_CLIENT_ID` shows the Trakt login and reads the user'
 | Live TV / DVR | Public if verified | Plex-only, needs device test |
 | Watch Together | Beta label recommended | Relay-dependent, high support cost |
 | Seerr / Jellyseerr | Hidden unless configured | Optional integration |
-| Trackers (Trakt/Simkl/MAL) | Hidden unless configured; Trakt shows when `TRAKT_CLIENT_ID` is set | Blocked for Trakt until the conditions below are met |
+| Trackers (Trakt/Simkl/MAL) | Hidden unless configured; Trakt shows when `TRAKT_CLIENT_ID` is set | Blocked for Trakt until the conditions in "Trakt login release conditions" are met |
 | Discord Rich Presence | Desktop only, keep | Low risk |
 | Recommendations | Keep, but not hero-marketed | On-device, still tuning |
 | iCloud settings sync | Keep on Apple platforms | Low risk, already wired |
