@@ -217,6 +217,25 @@ void main() {
       expect(rows.map((r) => r.sourceEventId), everyElement(isNot(contains('null'))));
     });
 
+    test('BP-03c: the stored row carries the title and the guid of what the server answered', () async {
+      final access = _FakeAccess(rows: [_entry(rowId: 1, daysAgo: 1)]);
+      final client = _FakeClient({
+        '1': MediaItem.plex(
+          id: '1',
+          kind: MediaKind.movie,
+          serverId: _machine,
+          title: 'Dune',
+          guid: 'plex://movie/abc',
+          genres: const ['Sci-Fi'],
+          year: 2021,
+        ),
+      });
+      await importer(access, client).sync();
+      final row = (await db.getMediaInteractions(_profile, enabledImportServerIds: const {_machine})).single;
+      expect(row.title, 'Dune');
+      expect(row.identityJson, '["movie:guid:plex://movie/abc"]');
+    });
+
     test('costs no metadata lookup', () async {
       final access = _FakeAccess(rows: [_entry(rowId: null, daysAgo: 1, ratingKey: 99)]);
       final client = _FakeClient({'99': _item('99')});

@@ -11,6 +11,7 @@ import '../../media/media_server_client.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/global_key_utils.dart';
 import '../../utils/watch_state_notifier.dart';
+import 'interaction_identity.dart';
 import 'tautulli_history_importer.dart' show kCrossSourceWindow, kPartialPercent, kPartialWeight;
 
 /// Records watch interactions into the local [MediaInteractions] store so the
@@ -71,6 +72,8 @@ class InteractionRecorder {
   }
 
   Future<void> _onEvent(WatchStateEvent event) async {
+    // A profile deleted while the metadata is fetched must not get its row back.
+    final epoch = AppDatabase.recommendationEpoch(_profileId);
     try {
       final (String type, double weight)? mapped = switch (event.changeType) {
         WatchStateChangeType.watched => ('completed', 1.0),
@@ -82,6 +85,7 @@ class InteractionRecorder {
 
       final features = await _resolveFeatures(event);
       if (features == null) return; // couldn't enrich — skip rather than store a blank row
+      if (AppDatabase.recommendationEpoch(_profileId) != epoch) return;
 
       await _db.insertMediaInteraction(
         MediaInteractionsCompanion.insert(
@@ -99,6 +103,8 @@ class InteractionRecorder {
           year: Value(features.year),
           communityRating: Value(features.rating),
           seriesKey: Value(features.seriesKey),
+          title: Value(features.identity.title),
+          identityJson: Value(features.identity.tokensJson),
         ),
         profileId: _profileId,
       );
@@ -168,6 +174,9 @@ class InteractionRecorder {
       year: item.year,
       rating: item.rating,
       seriesKey: seriesKey,
+      // Title level, from the item in hand: no request. Ids a server only gives
+      // on a second call (Plex) are filled in later by the identity backfill.
+      identity: interactionIdentityOf(item),
     );
     _featureCache[event.globalKey] = features;
     return features;
@@ -183,6 +192,7 @@ class _Features {
   final int? year;
   final double? rating;
   final String? seriesKey;
+  final InteractionIdentity identity;
 
   const _Features({
     required this.genres,
@@ -193,5 +203,6 @@ class _Features {
     required this.year,
     required this.rating,
     required this.seriesKey,
+    required this.identity,
   });
 }

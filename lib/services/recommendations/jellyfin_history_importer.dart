@@ -12,6 +12,7 @@ import '../../profiles/profile_connection.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/global_key_utils.dart';
 import 'history_importer.dart';
+import 'interaction_identity.dart';
 import 'tautulli_history_importer.dart';
 
 /// What the importer needs from a Jellyfin connection. The client implements
@@ -275,6 +276,7 @@ class JellyfinHistoryImporter implements HistoryImporter {
         }
         final globalKey = buildGlobalKey(serverId, c.featureItemId);
         final isEpisode = c.item.kind == MediaKind.episode;
+        final identity = interactionIdentityOf(f);
         rows.add(
           MediaInteractionsCompanion.insert(
             profileId: _profileId,
@@ -295,6 +297,8 @@ class JellyfinHistoryImporter implements HistoryImporter {
             sourceEventId: Value(c.eventId),
             sourceServerId: Value(_serverId),
             completionPercent: Value(c.completionPercent),
+            title: Value(identity.title),
+            identityJson: Value(identity.tokensJson),
           ),
         );
       }

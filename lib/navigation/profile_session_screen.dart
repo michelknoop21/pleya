@@ -416,6 +416,13 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                       jellyfinServerId: (connectionId) =>
                           multiServer.serverManager.getJellyfinClientByCompoundId(connectionId)?.serverId,
                     ),
+                    // The identity backfill looks titles up on this profile's own
+                    // online clients only.
+                    identityClientOf: (serverId) {
+                      final client = multiServer.getClientForServer(serverId);
+                      return client != null && multiServer.serverManager.isClientOnline(serverId) ? client : null;
+                    },
+                    isCurrentProfile: () => activeProfile.activeId == profileId && !activeProfile.isBinding,
                   );
                 },
               ),

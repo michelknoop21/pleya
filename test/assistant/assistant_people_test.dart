@@ -47,6 +47,44 @@ void main() {
       expect(m.selected.keys, ['3']);
       expect(m.aliases, {'Mama': '3'});
     });
+
+    test(
+      'BP-03c: case and surrounding spaces do not matter, "ME" is the requester, a repeated name is one account',
+      () {
+        final m = resolve(['  PIM ', 'ME', 'pim']);
+        expect(m.selected.keys, unorderedEquals(['4', '1']));
+        expect(m.missing, isEmpty);
+      },
+    );
+
+    test('BP-03c: a label bound to two accounts is a choice, and a label bound to none is missing', () {
+      final both = resolve(
+        ['Mama'],
+        profiles: const [
+          ProfileServerIdentity(profileId: 'p1', displayName: 'Mama', userIds: {'2', '3'}),
+        ],
+      );
+      expect(both.selected, isEmpty);
+      expect(both.ambiguous.single.choices.map((u) => u.id), ['2', '3']);
+      final none = resolve(
+        ['Mama'],
+        profiles: const [ProfileServerIdentity(profileId: 'p1', displayName: 'Mama', userIds: {})],
+      );
+      expect(none.missing, ['Mama']);
+      expect(none.selected, isEmpty, reason: 'an unbound label does not fall back to a same-named account');
+    });
+
+    test('BP-03c: "me" is not an account name, so an account called Me is not picked for it', () {
+      final withMe = [...users, _user('9', 'Me')];
+      final m = resolvePeople(
+        names: ['me'],
+        users: withMe,
+        profiles: const [],
+        sameUserId: _same,
+        requesterUserId: '1',
+      );
+      expect(m.selected.keys, ['1']);
+    });
   });
 
   group('othersOf', () {

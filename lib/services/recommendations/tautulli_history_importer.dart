@@ -14,6 +14,7 @@ import '../../utils/global_key_utils.dart';
 import '../tautulli/tautulli_exception.dart';
 import '../tautulli/tautulli_import_access.dart';
 import 'history_importer.dart';
+import 'interaction_identity.dart';
 import 'tautulli_import_binding.dart';
 
 /// Rows per API page. Tautulli serves these comfortably and it keeps the
@@ -720,6 +721,7 @@ class TautulliHistoryImporter implements HistoryImporter {
   ) {
     final isEpisode = e.mediaType == 'episode';
     final seriesKey = isEpisode ? globalKey : null;
+    final identity = interactionIdentityOf(item);
     return MediaInteractionsCompanion.insert(
       profileId: _target.activeProfileId,
       globalKey: globalKey,
@@ -740,6 +742,8 @@ class TautulliHistoryImporter implements HistoryImporter {
       sourceServerId: Value(_target.machineIdentifier),
       completionPercent: Value(e.percentComplete),
       playSeconds: Value(e.playSeconds),
+      title: Value(identity.title),
+      identityJson: Value(identity.tokensJson),
     );
   }
 

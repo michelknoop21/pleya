@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import '../media/ids.dart';
 import 'package:drift/drift.dart';
@@ -62,6 +63,12 @@ const int kInteractionRetentionDays = 365;
 /// to one per title.
 const int kRecentPositiveRowCap = 500;
 
+/// A title whose identity is still to be looked up ([AppDatabase.identityGaps]).
+typedef IdentityGap = ({String key, int? year, bool hasTitle});
+
+/// A watched title as [AppDatabase.everWatchedIdentities] returns it.
+typedef WatchedIdentity = ({String key, String? title, int? year, bool show, Set<String> tokens});
+
 /// Most rows [AppDatabase.everWatchedKeys] reads. A profile with more positive
 /// rows than this loses its oldest titles from "seen before".
 const int kEverSeenRowCap = 20000;
@@ -102,7 +109,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 21;
 
   @override
   MigrationStrategy get migration {
@@ -310,6 +317,19 @@ class AppDatabase extends _$AppDatabase {
             () => m.addColumn(profileConnections, profileConnections.borrowed),
           );
         }
+        if (from < 21) {
+          appLogger.i('Adding title identity columns to MediaInteractions (v21 migration)');
+          for (final column in [
+            mediaInteractions.title,
+            mediaInteractions.identityJson,
+            mediaInteractions.identityTriedAt,
+          ]) {
+            await _ignoreAlreadyExists(
+              'MediaInteractions.${column.$name} column',
+              () => m.addColumn(mediaInteractions, column),
+            );
+          }
+        }
       },
     );
   }
@@ -475,6 +495,195 @@ class AppDatabase extends _$AppDatabase {
             .get();
     return {for (final row in rows) row.seriesKey ?? row.globalKey};
   }
+
+  /// One watched title per evidence key (the series for an episode, the item
+  /// otherwise), newest first, with the identity written next to it. Same
+  /// scope and row cap as [everWatchedKeys]. Only the identity columns are
+  /// read, not the feature arrays.
+  ///
+  /// [year] is the title's own year or null: an episode row written by the
+  /// recorder carries the episode's air year, which says nothing about the
+  /// series, so it is dropped (a row whose `seriesKey` is its own key is an
+  /// import and holds the series' year).
+  Future<List<WatchedIdentity>> everWatchedIdentities(
+    String profileId, {
+    required double minWeight,
+    Set<String> enabledImportServerIds = const {},
+  }) async {
+    final t = mediaInteractions;
+    final rows =
+        await (selectOnly(t)
+              ..addColumns([t.globalKey, t.seriesKey, t.mediaKind, t.title, t.identityJson, t.year])
+              ..where(
+                t.profileId.equals(profileId) &
+                    t.eventWeight.isBiggerOrEqualValue(minWeight) &
+                    _scoringScope(enabledImportServerIds),
+              )
+              ..orderBy([OrderingTerm.desc(t.occurredAt)])
+              ..limit(kEverSeenRowCap))
+            .get();
+    // Newest row first; later rows of one key only add what it lacks, so an
+    // import's ids survive a newer row that holds the title alone.
+    final byKey = <String, ({String? title, int? year, bool show, Set<String> tokens})>{};
+    for (final row in rows) {
+      final globalKey = row.read(t.globalKey)!;
+      final seriesKey = row.read(t.seriesKey);
+      final key = seriesKey ?? globalKey;
+      final title = row.read(t.title);
+      final tokens = _identityTokens(row.read(t.identityJson));
+      if (title == null && tokens.isEmpty) continue;
+      final kind = row.read(t.mediaKind);
+      final ownYear = kind != 'episode' || seriesKey == null || seriesKey == globalKey;
+      final year = ownYear ? row.read(t.year) : null;
+      final previous = byKey[key];
+      byKey[key] = (
+        title: previous?.title ?? title,
+        year: previous?.year ?? year,
+        show: previous?.show ?? (kind == 'episode' || kind == 'show'),
+        tokens: {...?previous?.tokens, ...tokens},
+      );
+    }
+    return [
+      for (final e in byKey.entries)
+        (key: e.key, title: e.value.title, year: e.value.year, show: e.value.show, tokens: e.value.tokens),
+    ];
+  }
+
+  static Set<String> _identityTokens(String? json) {
+    if (json == null || json.isEmpty) return const {};
+    try {
+      final decoded = jsonDecode(json);
+      return decoded is List
+          ? {
+              for (final t in decoded)
+                if (t is String && t.isNotEmpty) t,
+            }
+          : const {};
+    } on FormatException {
+      return const {};
+    }
+  }
+
+  /// Titles of this profile whose title or external ids are still unknown,
+  /// unattempted first and then newest first, one per evidence key. Decided per
+  /// key over all its rows, as the log reads them: a title is complete once some
+  /// row holds a title and some row an external id (`tmdb`, `imdb`, `tvdb`). A
+  /// key is offered again only once its newest attempt, on any row, is older
+  /// than [retryBeforeMs], so a new play does not reopen a title just asked.
+  /// [year] is the title's own year when a row holds one (see
+  /// [everWatchedIdentities]), so a re-used server key that now names another
+  /// title can be told apart.
+  Future<List<IdentityGap>> identityGaps(
+    String profileId, {
+    required double minWeight,
+    required int retryBeforeMs,
+    required int limit,
+    Set<String> enabledImportServerIds = const {},
+  }) async {
+    final t = mediaInteractions;
+    final rows =
+        await (selectOnly(t)
+              ..addColumns([
+                t.globalKey,
+                t.seriesKey,
+                t.mediaKind,
+                t.year,
+                t.title,
+                t.identityJson,
+                t.identityTriedAt,
+                t.occurredAt,
+              ])
+              ..where(
+                t.profileId.equals(profileId) &
+                    t.eventWeight.isBiggerOrEqualValue(minWeight) &
+                    _scoringScope(enabledImportServerIds),
+              )
+              ..orderBy([OrderingTerm.asc(t.occurredAt)])
+              ..limit(kEverSeenRowCap))
+            .get();
+    final byKey = <String, ({int? year, int tried, int at, bool hasTitle, bool hasIds})>{};
+    for (final row in rows) {
+      final globalKey = row.read(t.globalKey)!;
+      final seriesKey = row.read(t.seriesKey);
+      final kind = row.read(t.mediaKind);
+      final ownYear = kind != 'episode' || seriesKey == null || seriesKey == globalKey;
+      final key = seriesKey ?? globalKey;
+      final previous = byKey[key];
+      final tried = row.read(t.identityTriedAt) ?? 0;
+      byKey[key] = (
+        year: previous?.year ?? (ownYear ? row.read(t.year) : null),
+        tried: previous == null || tried > previous.tried ? tried : previous.tried,
+        at: row.read(t.occurredAt)!,
+        hasTitle: (previous?.hasTitle ?? false) || row.read(t.title) != null,
+        hasIds: (previous?.hasIds ?? false) || _identityTokens(row.read(t.identityJson)).any(_isExternalIdToken),
+      );
+    }
+    final due =
+        [
+          for (final e in byKey.entries)
+            if ((!e.value.hasTitle || !e.value.hasIds) && (e.value.tried == 0 || e.value.tried < retryBeforeMs)) e.key,
+        ]..sort((a, b) {
+          final x = byKey[a]!, y = byKey[b]!;
+          final tried = x.tried.compareTo(y.tried);
+          // Newest first: the oldest titles are the first to leave the log.
+          return tried != 0 ? tried : y.at.compareTo(x.at);
+        });
+    return [for (final key in due.take(limit)) (key: key, year: byKey[key]!.year, hasTitle: byKey[key]!.hasTitle)];
+  }
+
+  /// A `scope:scheme:value` token whose scheme is an external id.
+  static bool _isExternalIdToken(String token) {
+    final parts = token.split(':');
+    return parts.length >= 3 && (parts[1] == 'tmdb' || parts[1] == 'imdb' || parts[1] == 'tvdb');
+  }
+
+  /// Records an attempt on every row of the given titles of this profile,
+  /// without learning anything: [triedAt] only. One statement per chunk.
+  Future<void> markIdentityTried(String profileId, Iterable<String> keys, {required int triedAt}) async {
+    final all = keys.toList();
+    for (var i = 0; i < all.length; i += 200) {
+      final chunk = all.sublist(i, i + 200 > all.length ? all.length : i + 200);
+      await customUpdate(
+        'UPDATE media_interactions SET identity_tried_at = ? WHERE profile_id = ? '
+        'AND COALESCE(series_key, global_key) IN (${List.filled(chunk.length, '?').join(',')})',
+        variables: [
+          Variable.withInt(triedAt),
+          Variable.withString(profileId),
+          for (final k in chunk) Variable.withString(k),
+        ],
+        updates: {mediaInteractions},
+      );
+    }
+  }
+
+  /// Writes what was learned about the title behind [key] on every row of this
+  /// profile that holds it: a missing title is filled in, never replaced, and
+  /// [tokens] are added to the ones a row already has. Never adds a row.
+  /// [triedAt] is always recorded.
+  Future<void> writeIdentity(
+    String profileId,
+    String key, {
+    String? title,
+    Set<String> tokens = const {},
+    required int triedAt,
+  }) => transaction(() async {
+    final t = mediaInteractions;
+    final rows =
+        await (selectOnly(t)
+              ..addColumns([t.id, t.title, t.identityJson])
+              ..where(t.profileId.equals(profileId) & coalesce([t.seriesKey, t.globalKey]).equals(key)))
+            .get();
+    for (final row in rows) {
+      final merged = {..._identityTokens(row.read(t.identityJson)), ...tokens};
+      await (update(t)..where((r) => r.id.equals(row.read(t.id)!))).write(
+        MediaInteractionsCompanion(
+          title: Value(row.read(t.title) ?? title),
+          identityJson: Value(merged.isEmpty ? null : jsonEncode((merged.toList()..sort()))),
+          identityTriedAt: Value(triedAt),
+        ),
+      );
+    }
+  });
 
   /// Newest first, the id breaking ties, as in [recentPositiveInteractions].
   static bool _isNewer(MediaInteractionRow a, MediaInteractionRow b) =>
