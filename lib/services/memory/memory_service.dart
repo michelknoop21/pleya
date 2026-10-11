@@ -59,6 +59,10 @@ class MemoryService {
   static final RegExp _refShape = RegExp(r'^[0-9a-f-]{8,36}$');
   static const MemoryResult _failed = MemoryResult(MemoryCode.storageFailed);
 
+  /// The profile this instance reads and writes; empty without one. A caller
+  /// that outlives a profile switch compares it with the active profile.
+  String get profileId => _profileId;
+
   bool get _hasProfile => _profileId.isNotEmpty;
   bool get _profileGone =>
       AssistantMemoryEpochs.removing(_profileId) || AssistantMemoryEpochs.removals(_profileId) != _removals;

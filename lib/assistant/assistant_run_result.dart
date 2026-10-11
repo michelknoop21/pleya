@@ -11,12 +11,15 @@ extension _AssistantResult on AssistantRun {
     final evidenceContext = _ctx;
     final namedTitlesCurrent = _namedTitlesCurrent;
     bool displaysCurrent() => evidenceContext.recommendationError == null && (namedTitlesCurrent?.call() ?? true);
+    // Stored is stored, however the run ends: every result reports it.
+    final stored = List<MemoryFact>.unmodifiable(_ctx.memoryTurn.stored);
     if (_ctx.libraryDoctorError case final doctorError?) {
       return AssistantRunResult(
         end: end,
         actions: List.unmodifiable(_actions),
         error: doctorError,
         libraryDoctorError: () => evidenceContext.libraryDoctorError,
+        memoryStored: stored,
       );
     }
     if (!_ctx.playbackEvidenceCurrent) {
@@ -27,6 +30,7 @@ extension _AssistantResult on AssistantRun {
         playbackEvidenceCurrent: () => false,
         displayEvidenceCurrent: displaysCurrent,
         spoilerPrompt: _spoilerQuestion,
+        memoryStored: stored,
       );
     }
     if (evidenceContext.recommendationError case final recommendationError?) {
@@ -35,6 +39,7 @@ extension _AssistantResult on AssistantRun {
         actions: List.unmodifiable(_actions),
         error: recommendationError,
         displayEvidenceCurrent: displaysCurrent,
+        memoryStored: stored,
       );
     }
     final agesFirst = _displays.whereType<AssistantKidsAgesPrompt>().firstOrNull;
@@ -49,6 +54,7 @@ extension _AssistantResult on AssistantRun {
         libraryDoctorError: () => evidenceContext.libraryDoctorError,
         providerError: error,
         error: failure,
+        memoryStored: stored,
       );
     }
     return AssistantRunResult(
@@ -67,6 +73,8 @@ extension _AssistantResult on AssistantRun {
       displayEvidenceCurrent: displaysCurrent,
       providerError: error,
       ageFilterNotice: _ageNotice,
+      memoryProposals: List.unmodifiable(_ctx.memoryTurn.proposals),
+      memoryStored: stored,
       error:
           failure ??
           _errors.values.where((code) => code != 'cancelled_by_user').firstOrNull ??

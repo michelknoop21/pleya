@@ -11,6 +11,7 @@ import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_entitlement.dart';
 import 'assistant_intent.dart';
 import 'assistant_kids_ages_store.dart';
+import 'assistant_memory.dart';
 import 'assistant_execution.dart';
 import 'assistant_task.dart';
 
@@ -24,6 +25,7 @@ import 'assistant_web_lookup.dart';
 part 'assistant_controller_jobs.dart';
 part 'assistant_controller_options.dart';
 part 'assistant_controller_language.dart';
+part 'assistant_controller_memory.dart';
 part 'assistant_controller_reads.dart';
 part 'assistant_controller_task.dart';
 
@@ -444,6 +446,22 @@ class AssistantController extends ChangeNotifier {
     }
     _update();
   }
+
+  /// The memory card that waits under the last answer ("Zal ik dit
+  /// onthouden?"), or null. Nothing of it is stored before a yes.
+  AssistantMemoryProposal? get memoryProposal => _memoryProposal;
+
+  /// What became of the last answered memory card, for Pleya's own line.
+  AssistantMemoryOutcome? get memoryOutcome => _memoryOutcome;
+
+  /// The last answer stored or replaced a fact: the link to the memory shows.
+  bool get memoryStored => _memoryStored;
+
+  /// The answer on a memory card. Yes writes through the memory of the
+  /// profile the proposal was made for, when it is still the active one; no
+  /// stores nothing. See [applyMemoryProposal].
+  Future<void> answerMemoryProposal(AssistantMemoryProposal proposal, {required bool accept}) =>
+      _answerMemoryProposal(proposal, accept: accept);
 
   // Declining a confirmation declines that action; the model still receives
   // its tool response and can continue. Only the final task label changes.

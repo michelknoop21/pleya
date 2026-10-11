@@ -54,6 +54,7 @@ extension _AssistantLoop on AssistantRun {
     _ageNotice = false;
     // The profile decides, never the prompt or the model.
     _ctx.kidsMode = await _ctx.kidsProfile?.call() ?? false;
+    await _beginMemory(prompt);
     _ctx.recommend = AssistantRecommendConstraints.fromPrompt(prompt);
     _intent = AssistantIntent.fromPrompt(prompt);
     if (inheritedIntent case final parent?) _intent = _intent.inheriting(parent);
@@ -77,11 +78,14 @@ extension _AssistantLoop on AssistantRun {
       // Offline servers simply drop out of the tool list.
     }
 
+    final memoryNote = await _memoryNote(prompt);
     final messages = <Map<String, Object?>>[
       {'role': 'system', 'content': _system},
       if (_screenNote() case final note?) {'role': 'system', 'content': note},
       if (_ctx.recommend.describe() case final note?) {'role': 'system', 'content': note},
       if (_intent.describe() case final note?) {'role': 'system', 'content': note},
+      if (memoryNote != null) {'role': 'system', 'content': memoryNote},
+      if (memoryOnly) const {'role': 'system', 'content': _memoryScreenNote},
       ..._memoryMessages(),
       {'role': 'user', 'content': prompt},
     ];
@@ -125,10 +129,10 @@ extension _AssistantLoop on AssistantRun {
       }
       // Any request for the safe route tightens this run before executing
       // siblings in the same reply. Model candidates/prose never become facts.
-      if (reply.toolCalls.any((call) => call.name == 'diagnose_library')) {
+      if (!memoryOnly && reply.toolCalls.any((call) => call.name == 'diagnose_library')) {
         _ctx.libraryDoctorMode = true;
       }
-      if (reply.toolCalls.any((call) => call.name == 'spoiler_context')) {
+      if (!memoryOnly && reply.toolCalls.any((call) => call.name == 'spoiler_context')) {
         _spoilerQuestion ??= prompt;
         _ctx.spoilerQuestion = _spoilerQuestion;
       }
@@ -255,7 +259,7 @@ extension _AssistantLoop on AssistantRun {
         // Missing children's ages is a question for the user (the ages card),
         // and a tool refused for children a hint to the model: neither is a
         // failed task.
-        if (output['error'] case final String code when !_kidsCodes.contains(code)) {
+        if (output['error'] case final String code when !_kidsCodes.contains(code) && !_memoryRefusals.contains(code)) {
           _errors[operationKey] = code;
         } else if (output['library_access'] == 'failed') {
           _errors[operationKey] = 'library_access_failed';

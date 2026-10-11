@@ -72,6 +72,8 @@ extension _AssistantTaskRunning on AssistantController {
         originalSpoilerPrompt: task.originalSpoilerPrompt,
         originalLibraryDoctorScope: libraryDoctorScope,
         inheritedIntent: task.parentIntent,
+        // The question as the user typed it; a task cut off it is not.
+        userTyped: allowSplit,
         // Sampled at both ends of a read as well as on every server change:
         // a change nobody announced still moves it, and so does the way back.
         rightsEpoch: () {
@@ -155,8 +157,9 @@ extension _AssistantTaskRunning on AssistantController {
           ? t.assistant.kids.agesFirst
           : result.ageFilterNotice
           ? t.assistant.kids.noFit
-          : result.text;
+          : assistantMemoryAnswer(result, result.text);
       task.answer = playbackCurrent && doctorError == null && displayCurrent ? text : '';
+      _settleMemory(task, result);
       task.ageFilterNotice = result.ageFilterNotice && !result.kidsAgesNeeded;
       task.actions.addAll(result.actions);
       if (playbackCurrent && doctorError == null && displayCurrent) {
@@ -236,6 +239,12 @@ class _AssistantTaskState {
   final List<AssistantStep> steps = [];
   final List<AssistantActionRecord> actions = [];
   final List<AssistantDisplay> displays = [];
+
+  /// Memory cards that wait for this task's answer, and what the last
+  /// answered one came to.
+  final List<AssistantMemoryProposal> memoryProposals = [];
+  AssistantMemoryOutcome? memoryOutcome;
+  bool memoryStored = false;
   AssistantTask get view => AssistantTask(
     id: id,
     title: title,

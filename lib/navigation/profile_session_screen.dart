@@ -563,6 +563,10 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               // Big P: per profile, so a conversation or an open confirmation
               // never carries into another profile. Lazy: no work until opened.
               ChangeNotifierProvider(create: assistantControllerForSession),
+              // The memory screen's own field and overview writer (BP-08a):
+              // per profile and lazy, so nothing runs until that screen opens.
+              ChangeNotifierProvider(create: assistantMemoryHostForSession),
+              Provider(create: assistantMemoryOverviewWriterForSession),
               // Big P's place on iPhone and iPad only (V4): no Android,
               // desktop, TV or the iOS app on a Mac.
               if (defaultTargetPlatform == TargetPlatform.iOS &&

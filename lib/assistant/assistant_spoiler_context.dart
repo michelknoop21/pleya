@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../media/media_server_client.dart';
+import 'assistant_memory_intent.dart';
 import 'assistant_plot_index.dart';
 
 /// A conservative content fence, established from the original question.
@@ -41,6 +42,10 @@ bool assistantIsDeicticStoryFollowUp(String prompt) {
 }
 
 bool assistantNeedsSpoilerScope(String prompt) {
+  // A question about the user's own memory ("wat herinner je je over mij?")
+  // is no story question: only its free part can still call for the fence.
+  final memoryTail = assistantMemoryQuestionTail(prompt);
+  if (memoryTail != null) prompt = memoryTail;
   final text = foldText(prompt);
   if (assistantIsViewerQuestion(prompt)) return false;
   // Only this bounded factual question overlaps the broad episode/story

@@ -2583,6 +2583,7 @@ class _TranslationsAssistantNl extends TranslationsAssistantEn {
 
 	// Translations
 	@override late final _TranslationsAssistantKidsNl kids = _TranslationsAssistantKidsNl._(_root);
+	@override late final _TranslationsAssistantMemoryNl memory = _TranslationsAssistantMemoryNl._(_root);
 	@override String get tileTitle => 'Big P';
 	@override String get tileSubtitle => 'Pleya Assistant';
 	@override String get providerLabel => 'AI-provider';
@@ -3257,6 +3258,24 @@ class _TranslationsAssistantKidsNl extends TranslationsAssistantKidsEn {
 	@override String get save => 'Bewaar en zoek verder';
 }
 
+// Path: assistant.memory
+class _TranslationsAssistantMemoryNl extends TranslationsAssistantMemoryEn {
+	_TranslationsAssistantMemoryNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String stored({required Object value}) => 'Onthouden: ${value}.';
+	@override String replaced({required Object value}) => 'Vervangen door: ${value}.';
+	@override String forgotten({required Object value}) => 'Vergeten: ${value}.';
+	@override String get failed => 'Dat is niet gelukt. Er is niets gewijzigd.';
+	@override String get profileChanged => 'Dit voorstel hoorde bij een ander profiel. Er is niets gewijzigd.';
+	@override String get off => 'Het geheugen staat uit. Er is niets gewijzigd.';
+	@override String get view => 'Bekijk geheugen';
+	@override late final _TranslationsAssistantMemoryCardNl card = _TranslationsAssistantMemoryCardNl._(_root);
+	@override late final _TranslationsAssistantMemoryCategoriesNl categories = _TranslationsAssistantMemoryCategoriesNl._(_root);
+}
+
 // Path: assistant.mobile
 class _TranslationsAssistantMobileNl extends TranslationsAssistantMobileEn {
 	_TranslationsAssistantMobileNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -3429,6 +3448,9 @@ class _TranslationsAssistantStepsNl extends TranslationsAssistantStepsEn {
 	@override String get discoverRequestTitles => 'Passende titels zoeken';
 	@override String get requestTitle => 'Titel aanvragen';
 	@override String get findTitle => 'Titel op beschrijving zoeken';
+	@override String get recallMemory => 'Geheugen raadplegen';
+	@override String get rememberFact => 'Herinnering klaarzetten';
+	@override String get forgetFact => 'Vergeten klaarzetten';
 	@override String get fallback => 'Bezig';
 }
 
@@ -3786,6 +3808,42 @@ class _TranslationsUnifiedCatalogDiscoverySemanticsNl extends TranslationsUnifie
 	@override String position({required Object position, required Object count}) => '${position} van ${count}';
 	@override String get viewAllMovies => 'Alle films bekijken, opent de volledige catalogus';
 	@override String get viewAllSeries => 'Alle series bekijken, opent de volledige catalogus';
+}
+
+// Path: assistant.memory.card
+class _TranslationsAssistantMemoryCardNl extends TranslationsAssistantMemoryCardEn {
+	_TranslationsAssistantMemoryCardNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get rememberTitle => 'Zal ik dit onthouden?';
+	@override String get replaceTitle => 'Zal ik dit vervangen?';
+	@override String get forgetTitle => 'Zal ik dit vergeten?';
+	@override String get memory => 'Herinnering';
+	@override String get category => 'Categorie';
+	@override String get disappears => 'Verdwijnt';
+	@override String get fresh => 'Nieuw';
+	@override String get remember => 'Onthouden';
+	@override String get notRemember => 'Niet onthouden';
+	@override String get replace => 'Vervangen';
+	@override String get notReplace => 'Niet vervangen';
+	@override String get forget => 'Vergeten';
+	@override String get notForget => 'Niet vergeten';
+}
+
+// Path: assistant.memory.categories
+class _TranslationsAssistantMemoryCategoriesNl extends TranslationsAssistantMemoryCategoriesEn {
+	_TranslationsAssistantMemoryCategoriesNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get preference => 'Voorkeuren';
+	@override String get dislike => 'Niet voor mij';
+	@override String get household => 'Huishouden';
+	@override String get habit => 'Kijkgewoonten';
+	@override String get other => 'Overig';
 }
 
 // Path: assistant.jobs.scanLibrary
@@ -6038,6 +6096,31 @@ extension on TranslationsNl {
 			'assistant.kids.body' => 'Zo houd ik de titels passend. Dit blijft op dit toestel en alleen bij dit profiel.',
 			'assistant.kids.age' => ({required Object age}) => '${age} jaar',
 			'assistant.kids.save' => 'Bewaar en zoek verder',
+			'assistant.memory.stored' => ({required Object value}) => 'Onthouden: ${value}.',
+			'assistant.memory.replaced' => ({required Object value}) => 'Vervangen door: ${value}.',
+			'assistant.memory.forgotten' => ({required Object value}) => 'Vergeten: ${value}.',
+			'assistant.memory.failed' => 'Dat is niet gelukt. Er is niets gewijzigd.',
+			'assistant.memory.profileChanged' => 'Dit voorstel hoorde bij een ander profiel. Er is niets gewijzigd.',
+			'assistant.memory.off' => 'Het geheugen staat uit. Er is niets gewijzigd.',
+			'assistant.memory.view' => 'Bekijk geheugen',
+			'assistant.memory.card.rememberTitle' => 'Zal ik dit onthouden?',
+			'assistant.memory.card.replaceTitle' => 'Zal ik dit vervangen?',
+			'assistant.memory.card.forgetTitle' => 'Zal ik dit vergeten?',
+			'assistant.memory.card.memory' => 'Herinnering',
+			'assistant.memory.card.category' => 'Categorie',
+			'assistant.memory.card.disappears' => 'Verdwijnt',
+			'assistant.memory.card.fresh' => 'Nieuw',
+			'assistant.memory.card.remember' => 'Onthouden',
+			'assistant.memory.card.notRemember' => 'Niet onthouden',
+			'assistant.memory.card.replace' => 'Vervangen',
+			'assistant.memory.card.notReplace' => 'Niet vervangen',
+			'assistant.memory.card.forget' => 'Vergeten',
+			'assistant.memory.card.notForget' => 'Niet vergeten',
+			'assistant.memory.categories.preference' => 'Voorkeuren',
+			'assistant.memory.categories.dislike' => 'Niet voor mij',
+			'assistant.memory.categories.household' => 'Huishouden',
+			'assistant.memory.categories.habit' => 'Kijkgewoonten',
+			'assistant.memory.categories.other' => 'Overig',
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI-provider',
@@ -6124,6 +6207,9 @@ extension on TranslationsNl {
 			'assistant.steps.discoverRequestTitles' => 'Passende titels zoeken',
 			'assistant.steps.requestTitle' => 'Titel aanvragen',
 			'assistant.steps.findTitle' => 'Titel op beschrijving zoeken',
+			'assistant.steps.recallMemory' => 'Geheugen raadplegen',
+			'assistant.steps.rememberFact' => 'Herinnering klaarzetten',
+			'assistant.steps.forgetFact' => 'Vergeten klaarzetten',
 			'assistant.steps.fallback' => 'Bezig',
 			'assistant.jobs.scanLibrary.running' => 'Scan loopt',
 			'assistant.jobs.scanLibrary.done' => 'Scan klaar',

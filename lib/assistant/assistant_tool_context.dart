@@ -7,6 +7,7 @@ import '../media/server_administration.dart';
 import '../services/multi_server_manager.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_age_gate.dart';
+import 'assistant_memory.dart';
 import 'assistant_title_facts.dart';
 import 'assistant_recommend_constraints.dart';
 import 'assistant_tools.dart';
@@ -64,6 +65,7 @@ class AssistantToolContext {
     this.region = assistantRegion,
     this.cancel,
     this.kidsProfile,
+    this.memory,
     this.currentUser = CurrentUserContext.empty,
   });
 
@@ -118,6 +120,7 @@ class AssistantToolContext {
     region: region,
     cancel: cancel ?? this.cancel,
     kidsProfile: kidsProfile,
+    memory: memory,
     currentUser: currentUser,
   );
 
@@ -171,6 +174,14 @@ class AssistantToolContext {
 
   /// Who "I" am on every source, by account key. Unknown stays unknown.
   final CurrentUserContext currentUser;
+
+  /// What the active profile asked Pleya to remember; null keeps the memory
+  /// tools and the context line out.
+  final AssistantMemoryServices? memory;
+
+  /// The memory state of the ask in progress; set by the run, never copied
+  /// by [fresh].
+  AssistantMemoryTurn memoryTurn = AssistantMemoryTurn();
 
   /// The region whose age ratings count (`NL`); the device's by default.
   final String Function() region;

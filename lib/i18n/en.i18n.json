@@ -2393,6 +2393,37 @@
       "age": "${age} years",
       "save": "Save and keep looking"
     },
+    "memory": {
+      "stored": "Remembered: ${value}.",
+      "replaced": "Replaced with: ${value}.",
+      "forgotten": "Forgotten: ${value}.",
+      "failed": "That did not work. Nothing was changed.",
+      "profileChanged": "This proposal belonged to another profile. Nothing was changed.",
+      "off": "The memory is off. Nothing was changed.",
+      "view": "View memory",
+      "card": {
+        "rememberTitle": "Shall I remember this?",
+        "replaceTitle": "Shall I replace this?",
+        "forgetTitle": "Shall I forget this?",
+        "memory": "Memory",
+        "category": "Category",
+        "disappears": "Goes away",
+        "fresh": "New",
+        "remember": "Remember",
+        "notRemember": "Don't remember",
+        "replace": "Replace",
+        "notReplace": "Don't replace",
+        "forget": "Forget",
+        "notForget": "Don't forget"
+      },
+      "categories": {
+        "preference": "Preferences",
+        "dislike": "Not for me",
+        "household": "Household",
+        "habit": "Viewing habits",
+        "other": "Other"
+      }
+    },
     "tileTitle": "Big P",
     "tileSubtitle": "Pleya Assistant",
     "providerLabel": "AI provider",
@@ -2520,6 +2551,9 @@
       "discoverRequestTitles": "Finding matching titles",
       "requestTitle": "Requesting title",
       "findTitle": "Finding the title",
+      "recallMemory": "Checking your memory",
+      "rememberFact": "Preparing a memory",
+      "forgetFact": "Preparing to forget",
       "fallback": "Working"
     },
     "jobs": {

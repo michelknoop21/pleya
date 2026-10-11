@@ -2393,6 +2393,37 @@
       "age": "${age} jaar",
       "save": "Bewaar en zoek verder"
     },
+    "memory": {
+      "stored": "Onthouden: ${value}.",
+      "replaced": "Vervangen door: ${value}.",
+      "forgotten": "Vergeten: ${value}.",
+      "failed": "Dat is niet gelukt. Er is niets gewijzigd.",
+      "profileChanged": "Dit voorstel hoorde bij een ander profiel. Er is niets gewijzigd.",
+      "off": "Het geheugen staat uit. Er is niets gewijzigd.",
+      "view": "Bekijk geheugen",
+      "card": {
+        "rememberTitle": "Zal ik dit onthouden?",
+        "replaceTitle": "Zal ik dit vervangen?",
+        "forgetTitle": "Zal ik dit vergeten?",
+        "memory": "Herinnering",
+        "category": "Categorie",
+        "disappears": "Verdwijnt",
+        "fresh": "Nieuw",
+        "remember": "Onthouden",
+        "notRemember": "Niet onthouden",
+        "replace": "Vervangen",
+        "notReplace": "Niet vervangen",
+        "forget": "Vergeten",
+        "notForget": "Niet vergeten"
+      },
+      "categories": {
+        "preference": "Voorkeuren",
+        "dislike": "Niet voor mij",
+        "household": "Huishouden",
+        "habit": "Kijkgewoonten",
+        "other": "Overig"
+      }
+    },
     "tileTitle": "Big P",
     "tileSubtitle": "Pleya Assistant",
     "providerLabel": "AI-provider",
@@ -2520,6 +2551,9 @@
       "discoverRequestTitles": "Passende titels zoeken",
       "requestTitle": "Titel aanvragen",
       "findTitle": "Titel op beschrijving zoeken",
+      "recallMemory": "Geheugen raadplegen",
+      "rememberFact": "Herinnering klaarzetten",
+      "forgetFact": "Vergeten klaarzetten",
       "fallback": "Bezig"
     },
     "jobs": {

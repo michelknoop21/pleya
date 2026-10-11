@@ -15,6 +15,7 @@ import '../providers/seerr_provider.dart';
 import '../providers/tautulli_provider.dart';
 import '../screens/video_player_screen.dart' show VideoPlayerScreenState;
 import '../services/download_manager_service.dart';
+import '../services/memory/memory_service.dart';
 import '../services/recommendations/recommendation_service.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
 import '../models/plex/plex_home_user.dart' show PlexHomeUser;
@@ -26,6 +27,9 @@ import 'assistant_spoiler_progress.dart';
 import 'assistant_controller.dart';
 import 'assistant_kids_ages_store.dart';
 import 'assistant_kids_profile_store.dart';
+import 'assistant_memory.dart';
+import 'assistant_memory_host.dart';
+import 'assistant_memory_overview.dart';
 import 'assistant_tool_context.dart';
 import 'assistant_playback.dart';
 import 'assistant_provider.dart';
@@ -59,6 +63,31 @@ AssistantController assistantControllerForSession(BuildContext context) {
   return controller;
 }
 
+/// The "Vraag of werk bij" field of the memory screen, for one profile
+/// session: its own run with the memory tools only, apart from the
+/// conversation. Register it lazily next to the controller.
+AssistantMemoryHost assistantMemoryHostForSession(BuildContext context) {
+  final factsCache = TitleFactsCache(db: context.read<AppDatabase?>());
+  return AssistantMemoryHost(
+    buildContext: () => _sessionToolContext(context, null, factsCache),
+    languageName: assistantLanguageName,
+  );
+}
+
+/// The writer of the memory overview for one profile session; it calls the
+/// model only while the memory screen asks it to.
+AssistantMemoryOverviewWriter assistantMemoryOverviewWriterForSession(BuildContext context) {
+  final activeProfile = context.read<ActiveProfileProvider>();
+  return AssistantMemoryOverviewWriter(
+    memory: AssistantMemoryServices(
+      service: context.read<MemoryService>(),
+      activeProfileId: () => activeProfile.activeId,
+    ),
+    kidsProfile: () => assistantIsKidsProfile(activeProfile.active),
+    languageName: assistantLanguageName,
+  );
+}
+
 /// Web search for find_title, from the provider settings. Wikipedia needs
 /// no key; the one web search per question uses the Ollama key (the Cloud
 /// key, or the optional ollama.com key next to an Ollama server) or the
@@ -87,6 +116,7 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
   final plexHome = context.read<PlexHomeService?>();
   final trakt = context.read<TraktAccountProvider?>();
   final playback = context.read<PlaybackStateProvider?>()?.assistantPlayback;
+  final memory = context.read<MemoryService?>();
   return AssistantToolContext(
     servers: manager,
     screen: screen,
@@ -169,6 +199,11 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
     // Read per ask, so a switch flipped in Instellingen counts from the next
     // question.
     kidsProfile: () => assistantIsKidsProfile(activeProfile.active),
+    // The service of this profile session; the tools and a card check per
+    // call that its profile is still the active one.
+    memory: memory == null
+        ? null
+        : AssistantMemoryServices(service: memory, activeProfileId: () => activeProfile.activeId),
     personal: recommendations == null
         ? null
         : AssistantPersonalServices(
