@@ -428,6 +428,29 @@ void main() {
     }
   }
 
+  // BP-08a: the memory card under the answer (43 K, 43 H) and the answer
+  // that stored a fact at once.
+  for (final phone in [_iPhone17Pro, _phones[1], _iPad]) {
+    for (final (tag, answer) in <(String, void Function(FakeAssistantController))>[
+      ('onthouden', (c) => answerMemoryCard(c, rememberProposal())),
+      ('vervangen', (c) => answerMemoryCard(c, replaceProposal())),
+      ('vergeten', (c) => answerMemoryCard(c, forgetProposal())),
+      ('opgeslagen', answerMemoryStored),
+    ]) {
+      testWidgets('43-k $tag ${phone.name}', skip: _dir == null, (tester) async {
+        final c = shotController();
+        await shoot(
+          tester,
+          '43-k-$tag-${phone.name}',
+          c,
+          phone: phone,
+          before: (s) async => s.summon(),
+          answer: answer,
+        );
+      });
+    }
+  }
+
   testWidgets('t8 leeftijden gekozen 402', skip: _dir == null, (tester) async {
     final c = shotController();
     await shoot(

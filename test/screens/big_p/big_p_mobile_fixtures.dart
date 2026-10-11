@@ -2,11 +2,14 @@
 // and the shots.
 import 'dart:math';
 
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
+import 'package:pleya/assistant/assistant_memory.dart';
 import 'package:pleya/assistant/assistant_title_facts.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
+import 'package:pleya/database/app_database.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
@@ -14,6 +17,7 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/utils/external_ids.dart';
+import 'package:pleya/services/memory/memory_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_suggestions.dart';
 
@@ -150,6 +154,57 @@ void answerFactsTitles(FakeAssistantController c) => c
       ),
     ]),
   ];
+
+/// 43 K and 43 H: a memory card under the answer. The proposals carry a
+/// memory that is never read: the fake controller answers the card.
+final _noMemory = AssistantMemoryServices(
+  service: MemoryService(database: AppDatabase.forTesting(NativeDatabase.memory()), profileId: 'fixture'),
+  activeProfileId: () => 'fixture',
+);
+
+MemoryFact memoryFact(String value, MemoryCategory category) => MemoryFact(
+  id: '0a1b2c3d-fixture',
+  category: category,
+  value: value,
+  source: MemorySource.userExplicit,
+  createdAt: DateTime.utc(2026, 10, 11),
+  updatedAt: DateTime.utc(2026, 10, 11),
+);
+
+AssistantMemoryProposal rememberProposal() => AssistantMemoryProposal(
+  kind: AssistantMemoryProposalKind.remember,
+  memory: _noMemory,
+  value: 'Houdt niet van horror',
+  category: MemoryCategory.dislike,
+);
+
+AssistantMemoryProposal replaceProposal() => AssistantMemoryProposal(
+  kind: AssistantMemoryProposalKind.replace,
+  memory: _noMemory,
+  value: 'Kijkt op zaterdagavond met het gezin',
+  category: MemoryCategory.household,
+  target: memoryFact('Kijkt op vrijdagavond met het gezin', MemoryCategory.household),
+);
+
+AssistantMemoryProposal forgetProposal() => AssistantMemoryProposal(
+  kind: AssistantMemoryProposalKind.forget,
+  memory: _noMemory,
+  target: memoryFact('Houdt niet van horror', MemoryCategory.dislike),
+);
+
+const memoryPrompt = 'Iets spannends voor vanavond, maar geen horror, daar houd ik niet van.';
+void answerMemoryCard(FakeAssistantController c, AssistantMemoryProposal proposal) => c
+  ..prompt = memoryPrompt
+  ..answer = 'Drie spannende titels zonder horror: Tears of Steel, Sintel en Cosmos Laundromat.'
+  ..state = AssistantSurfaceState.result
+  ..memoryProposal = proposal;
+
+/// 43 K, second balloon: stored at once on the user's own request.
+void answerMemoryStored(FakeAssistantController c) => c
+  ..prompt = 'Onthoud dat we op vrijdag met het gezin kijken'
+  ..answer = 'Onthouden: Kijkt op vrijdagavond met het gezin.'
+  ..state = AssistantSurfaceState.result
+  ..memoryStored = true;
 
 /// T8: a pick for children before any ages are saved.
 const kidsPrompt = 'Is er een film voor de kinderen?';

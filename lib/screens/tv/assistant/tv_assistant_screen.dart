@@ -40,7 +40,7 @@ import '../../settings/assistant_settings_screen.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
 import 'tv_assistant_gate.dart';
-import 'tv_assistant_kids_sheet.dart';
+import 'tv_assistant_memory_sheet.dart';
 import 'tv_assistant_tasks.dart';
 import '../../../widgets/big_p/assistant/big_p_results.dart';
 import '../../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
@@ -107,7 +107,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
   final _tasksNode = FocusNode(debugLabel: 'assistant.tasks');
   final _taskOptionNodes = TvAssistantTaskOptionNodes();
   late final _confirm = TvAssistantConfirmPresenter(cancelNode: _confirmCancelNode);
-  final _kids = TvKidsAgesSheet();
+  final _kids = TvAssistantCardSheets();
 
   int _nod = 0;
   DateTime _lastPhraseNod = DateTime.fromMillisecondsSinceEpoch(0);

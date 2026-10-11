@@ -235,10 +235,13 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware, Widget
     );
   }
 
-  /// No question field while a confirmation or the ages card waits (39 G):
-  /// only the card answers it.
+  /// No question field while a confirmation, the ages card or a memory card
+  /// waits (39 G, 43 K): only the card answers it.
   bool _asks(AssistantController c) =>
-      c.availability == AssistantAvailability.ready && c.pending == null && c.kidsAgesPrompt == null;
+      c.availability == AssistantAvailability.ready &&
+      c.pending == null &&
+      c.kidsAgesPrompt == null &&
+      c.memoryProposal == null;
 
   Widget _avatar(AssistantController c, double size) => RepaintBoundary(
     child: BigPVoiceMouth(

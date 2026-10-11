@@ -86,6 +86,39 @@ void main() {
     expect(withoutTool.statusCode, 400);
   });
 
+  test('the memory question calls remember_fact once and answers from its result', () async {
+    Future<Map<String, dynamic>> ask(List<Map<String, Object?>> more, {bool offered = true}) async {
+      final response = await post('/v1/chat/completions', {
+        'model': 'pleya-verify',
+        'messages': [
+          {'role': 'user', 'content': 'Iets spannends, maar geen horror.'},
+          ...more,
+        ],
+        'tools': [
+          if (offered)
+            {
+              'type': 'function',
+              'function': {'name': 'remember_fact'},
+            },
+        ],
+      });
+      return {'status': response.statusCode, ...?(jsonDecode(response.body)['choices'] as List?)?.first['message']};
+    }
+
+    final first = await ask(const []);
+    final call = first['tool_calls'][0]['function'] as Map;
+    expect(call['name'], 'remember_fact');
+    expect(jsonDecode(call['arguments'] as String), {'value': 'Houdt niet van horror', 'category': 'dislike'});
+
+    Map<String, Object?> reply(String status) => {
+      'role': 'tool',
+      'content': jsonEncode({'status': status}),
+    };
+    expect((await ask([reply('proposed')]))['content'], 'Drie spannende titels zonder horror.');
+    expect((await ask([reply('already_known')]))['content'], 'Dat wist ik al.');
+    expect((await ask(const [], offered: false))['status'], 400);
+  });
+
   test('existing local settings and preload endpoints serve the fake model', () async {
     final tags = await client.get(Uri.parse('http://127.0.0.1:${adapter.port}/api/tags'));
     expect(tags.statusCode, 200);

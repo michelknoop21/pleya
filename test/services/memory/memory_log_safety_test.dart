@@ -22,7 +22,19 @@ import 'memory_test_support.dart';
 ///
 /// Known limit of a source scan: a helper outside the scanned files that takes
 /// the value, a tear-off of the logger, and a method that skips `_guarded`.
-const _scannedFiles = ['lib/database/assistant_memory_wipe.dart'];
+const _scannedFiles = [
+  'lib/database/assistant_memory_wipe.dart',
+  // The assistant's side of the memory (BP-08a step 2).
+  'lib/assistant/assistant_memory.dart',
+  'lib/assistant/assistant_memory_intent.dart',
+  'lib/assistant/assistant_memory_overview.dart',
+  'lib/assistant/assistant_memory_host.dart',
+  'lib/assistant/assistant_tools_memory.dart',
+  'lib/assistant/assistant_run_memory.dart',
+  'lib/assistant/assistant_controller_memory.dart',
+  'lib/widgets/big_p/assistant/big_p_memory_card.dart',
+  'lib/screens/tv/assistant/tv_assistant_memory_sheet.dart',
+];
 const _scannedDirectory = 'lib/services/memory';
 
 final _logCall = RegExp(r'\.(t|d|i|w|e|f|v|wtf|log|trace|debug|info|warning|error|fatal)\(');

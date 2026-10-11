@@ -1,0 +1,111 @@
+name: ios.assistant.memory-proposal
+target: ios-sim
+# BP-08a: the memory card in Big P's balloon (43 K) on the smallest phone, an
+# iPhone SE at 375 x 667. The question holds no "onthoud dat", so Pleya stores
+# nothing and shows "Zal ik dit onthouden?" under the answer. "Niet onthouden"
+# takes the card away and stores nothing: the same question then gets the
+# card again, where a stored fact would have answered "Dat wist ik al."
+#
+# Needs PLEYA_ASSISTANT_ENABLED=true in the environment of `verify.dart run`
+# and PLEYA_VERIFY_IOS_UDID pointing at an iPhone SE (3rd generation)
+# simulator. The set-up of the fixture's local model is the one of
+# ios.assistant.confirm-password.yaml, with the same reliance on the SE's
+# screen for the back arrow at (28, 48) and the four drags of the form.
+#
+# No live model: the fixture's local model answers "Iets spannends, maar geen
+# horror." with one remember_fact call and then one sentence.
+#
+# The saved provider lives in the simulator's keychain and survives
+# `reset_app`. Empty the keychain first: `xcrun simctl keychain <udid> reset`.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - wait_until: {id: "home.rail.item[0.0]", timeout: 15000}
+  - settle: 3500
+  - wait_until: {id: bigp.faceButton, timeout: 10000}
+  - tap: {id: nav.myPleya}
+  - wait_until: {id: screen.my_pleya, timeout: 10000}
+  - wait_until: {id: "my_pleya.tile[assistant]", timeout: 10000}
+  - settle: 800
+
+  # Set the fixture's local model up through the real settings form.
+  - tap: {id: "my_pleya.tile[assistant]"}
+  - wait_until: {id: "assistant.button[setup]", timeout: 5000}
+  - settle: 1000
+  - tap: {id: "assistant.button[setup]"}
+  - wait_until: {id: "settings.form.button[assistant.provider.ollamaServer]", timeout: 10000}
+  - settle: 800
+  - tap: {id: "settings.form.button[assistant.provider.ollamaServer]"}
+  - wait_until: {id: "settings.form.field[assistant.url]", timeout: 10000}
+  - settle: 1000
+  - tap: {id: "settings.form.field[assistant.url]"}
+  - settle: 500
+  - type: "{{fixture}}"
+  - settle: 500
+  - drag: {startX: 187, startY: 340, endX: 187, endY: 60, durationMs: 400}
+  - settle: 800
+  - tap: {id: "settings.form.button[assistant.fetchModels]"}
+  - wait_until: {id: "settings.form.button[assistant.model.pleya-verify]", timeout: 15000}
+  - drag: {startX: 187, startY: 340, endX: 187, endY: 60, durationMs: 400}
+  - settle: 800
+  - tap: {id: "settings.form.button[assistant.model.pleya-verify]"}
+  - wait_until: {id: "settings.form.button[assistant.model.pleya-verify]", state: {selected: true}, timeout: 5000}
+  - wait_until: {id: "settings.form.button[assistant.test]", timeout: 5000}
+  - drag: {startX: 187, startY: 340, endX: 187, endY: 60, durationMs: 400}
+  - settle: 800
+  - tap: {id: "settings.form.button[assistant.test]"}
+  - wait_until: {id: "settings.form.button[assistant.save]", timeout: 15000}
+  - drag: {startX: 187, startY: 340, endX: 187, endY: 60, durationMs: 400}
+  - settle: 800
+  - tap: {id: "settings.form.button[assistant.save]"}
+  - wait_until: {id: "settings.form.button[assistant.change]", timeout: 10000}
+  - settle: 800
+
+  # The app bar's back arrow has no id; on the SE it is at (28, 48).
+  - tap: {x: 28, y: 48}
+  - wait_until: {id: "my_pleya.tile[assistant]", timeout: 10000}
+  - settle: 1000
+
+  # Ask. Nothing in the question asks to remember.
+  - tap: {id: "my_pleya.tile[assistant]"}
+  - wait_until: {id: bigp.balloon, state: {availability: ready}, timeout: 10000}
+  - wait_until: {id: bigp.input, timeout: 5000}
+  - settle: 800
+  - tap: {id: bigp.input}
+  - settle: 800
+  - type: "Iets spannends, maar geen horror."
+  - settle: 800
+  - assert: {id: bigp.send, insideViewport: true}
+  - tap: {id: bigp.send}
+  - wait_until: {id: assistant.memory, state: {kind: remember}, timeout: 30000}
+  - settle: 1500
+
+  # 43 K: the card under the answer, both buttons on one row inside the
+  # balloon and big enough for a thumb; no question field while it waits.
+  - assert: {id: assistant.memory, insideViewport: true}
+  - assert: {id: "assistant.memory.button[accept]", insideViewport: true, minimumTapTarget: 44, notClipped: bigp.balloon}
+  - assert: {id: "assistant.memory.button[decline]", insideViewport: true, minimumTapTarget: 44, notClipped: bigp.balloon, sameRow: "assistant.memory.button[accept]"}
+  - assert: {id: bigp.input, present: false}
+  - snapshot: 01-memory-card
+
+  # "Niet onthouden": the card goes and the field is back.
+  - tap: {id: "assistant.memory.button[decline]"}
+  - wait_until: {id: bigp.input, timeout: 8000}
+  - settle: 1000
+  - assert: {id: assistant.memory, present: false}
+  - snapshot: 02-declined
+
+  # Nothing was stored: the same question gets the card again. A stored fact
+  # would have come back as already_known, without a card.
+  - tap: {id: bigp.input}
+  - settle: 800
+  - type: "Iets spannends, maar geen horror."
+  - settle: 800
+  - tap: {id: bigp.send}
+  - wait_until: {id: assistant.memory, state: {kind: remember}, timeout: 30000}
+  - settle: 1000
+  - snapshot: 03-card-again

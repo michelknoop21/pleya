@@ -13,6 +13,7 @@ import '../../theme/mono_tokens.dart';
 import '../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import '../../widgets/big_p/assistant/big_p_kids_ages_card.dart';
 import '../../widgets/big_p/assistant/big_p_labels.dart';
+import '../../widgets/big_p/assistant/big_p_memory_card.dart';
 import '../../widgets/big_p/assistant/big_p_results.dart';
 import '../../widgets/big_p/assistant/big_p_suggestions.dart';
 import '../../widgets/big_p/big_p_scale.dart';
@@ -38,6 +39,7 @@ class BigPMobileConversation extends StatelessWidget {
     required this.onOpenTitle,
     this.resultTime = '',
     this.regular = false,
+    this.onOpenMemory,
   });
 
   final AssistantController controller;
@@ -51,6 +53,10 @@ class BigPMobileConversation extends StatelessWidget {
 
   /// The iPad balloon (39 I): cards in two columns, follow-ups inside.
   final bool regular;
+
+  /// Opens the memory of this profile, for "Bekijk geheugen" under an answer
+  /// that stored something (43 K). Without it the link is not shown.
+  final VoidCallback? onOpenMemory;
 
   /// Mockup 39's pills and buttons are 15 pt: caption 1 at this scale.
   static const _pillScale = 0.6;
@@ -69,6 +75,20 @@ class BigPMobileConversation extends StatelessWidget {
           key: ObjectKey(prompt),
           embedded: true,
           onSave: (ages) => unawaited(c.saveKidsAgesAndRetry(ages)),
+        ),
+      );
+    }
+    // The memory card waits under the answer it belongs to (43 K), never in
+    // its place. The buttons stay in view, as the ages card's.
+    if (c.memoryProposal case final proposal? when c.availability == AssistantAvailability.ready) {
+      return _pinned(
+        [..._resultAbove(context), const SizedBox(height: 12)],
+        BigPMemoryCard(
+          key: ObjectKey(proposal),
+          proposal: proposal,
+          embedded: true,
+          onAccept: () => unawaited(c.answerMemoryProposal(proposal, accept: true)),
+          onDecline: () => unawaited(c.answerMemoryProposal(proposal, accept: false)),
         ),
       );
     }
@@ -232,6 +252,13 @@ class BigPMobileConversation extends StatelessWidget {
       if (c.resultIsError || c.actions.isNotEmpty) ...[
         const SizedBox(height: 12),
         BigPResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
+      ],
+      if (onOpenMemory case final open? when c.memoryStored) ...[
+        const SizedBox(height: 8),
+        BigPScale(
+          pt: _pillScale,
+          child: BigPMemoryLink(onOpen: open),
+        ),
       ],
     ];
   }
