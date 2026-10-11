@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -581,7 +582,9 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
         ),
     ];
     // What the server said about a request that was sent. Pinned above the
-    // buttons, and scrolling on its own when it outgrows its share.
+    // buttons at the height it needs, so the choices keep the rest. Its
+    // ceiling is half of what the buttons leave: the buttons wrap and grow
+    // with the text size, and the choices never get less than the message.
     final outcome = [
       if (_uncertain)
         SeerrFormNotice(
@@ -599,64 +602,81 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
         ),
       if (_error case final error?) SeerrFormNotice(kind: 'error', title: error, tone: SeerrFormNoticeTone.error),
     ];
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: maxHeight),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Flexible(
-            child: ListView(
-              shrinkWrap: true,
-              padding: EdgeInsets.zero,
-              children: [
-                _quotaLine(theme),
-                // One slot whether it holds a message or not: a row that comes
-                // and goes would renumber the rows below it, and the row that
-                // holds the focus would be rebuilt without it.
-                Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: standing),
-                if (_isTv) ..._buildSeasonList(theme, enabled: !locked),
-                _fourKRow(provider, enabled: !locked),
-                if (provider.isAdmin && (_target.hasAnyServer || _target.serversFailed))
-                  SeerrTargetSection(controller: _target, enabled: !locked),
-              ],
-            ),
-          ),
-          if (outcome.isNotEmpty)
-            Flexible(
-              child: SingleChildScrollView(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: outcome),
-              ),
-            ),
-          _uncertain
-              ? SeerrFormButtons(
-                  closeLabel: t.common.close,
-                  onClose: _close,
-                  primaryLabel: t.seerr.checkStatus,
-                  primaryIcon: Symbols.refresh_rounded,
-                  primaryInstance: 'status',
-                  onPrimary: _checkStatus,
-                  busy: _checking,
-                )
-              : _offersMineInsteadOfSubmit
-              ? SeerrFormButtons(
-                  closeLabel: t.common.close,
-                  onClose: _close,
-                  primaryLabel: t.seerr.myRequests,
-                  primaryIcon: Symbols.inbox_rounded,
-                  primaryInstance: 'mine',
-                  onPrimary: _openMyRequests,
-                )
-              : SeerrFormButtons(
-                  closeLabel: t.common.cancel,
-                  onClose: _close,
-                  primaryLabel: _submitLabel,
-                  primaryIcon: Symbols.download_rounded,
-                  onPrimary: _canSubmit || _submitting ? _submit : null,
-                  busy: _submitting,
+    return LayoutBuilder(
+      builder: (context, sheet) {
+        // The hint measures what the sheet really gives the form, not the screen.
+        final room = math.min(maxHeight, sheet.maxHeight);
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Flexible(
+                child: LayoutBuilder(
+                  builder: (context, room) => Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Flexible(
+                        child: ListView(
+                          shrinkWrap: true,
+                          padding: EdgeInsets.zero,
+                          children: [
+                            _quotaLine(theme),
+                            // One slot whether it holds a message or not: a row that
+                            // comes and goes would renumber the rows below it, and
+                            // the row that holds the focus would be rebuilt without it.
+                            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: standing),
+                            if (_isTv) ..._buildSeasonList(theme, enabled: !locked),
+                            _fourKRow(provider, enabled: !locked),
+                            if (provider.isAdmin && (_target.hasAnyServer || _target.serversFailed))
+                              SeerrTargetSection(controller: _target, enabled: !locked),
+                          ],
+                        ),
+                      ),
+                      if (outcome.isNotEmpty) SeerrFormNoticeScroller(maxHeight: room.maxHeight / 2, children: outcome),
+                    ],
+                  ),
                 ),
-        ],
-      ),
+              ),
+              _uncertain
+                  ? SeerrFormButtons(
+                      closeLabel: t.common.close,
+                      onClose: _close,
+                      primaryLabel: t.seerr.checkStatus,
+                      primaryIcon: Symbols.refresh_rounded,
+                      primaryInstance: 'status',
+                      onPrimary: _checkStatus,
+                      busy: _checking,
+                    )
+                  : _offersMineInsteadOfSubmit
+                  ? SeerrFormButtons(
+                      closeLabel: t.common.close,
+                      onClose: _close,
+                      primaryLabel: t.seerr.myRequests,
+                      primaryIcon: Symbols.inbox_rounded,
+                      primaryInstance: 'mine',
+                      onPrimary: _openMyRequests,
+                    )
+                  : SeerrFormButtons(
+                      closeLabel: t.common.cancel,
+                      onClose: _close,
+                      primaryLabel: _submitLabel,
+                      primaryIcon: Symbols.download_rounded,
+                      onPrimary: _canSubmit || _submitting ? _submit : null,
+                      busy: _submitting,
+                      // The messages open the scroll area, which a long season
+                      // list has scrolled away by the time the 4K switch at its
+                      // end turns the button off. Beside the button every reason
+                      // is named, so more than one is seen without scrolling.
+                      hint: standing.isEmpty ? null : standing.map((notice) => notice.title).join(' · '),
+                      hintRoom: room,
+                    ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
