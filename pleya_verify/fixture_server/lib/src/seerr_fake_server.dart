@@ -51,6 +51,19 @@ class SeerrFakeServer {
   /// fixture says otherwise.
   bool fourKServers = false;
 
+  /// The `permissions` bitmask `/auth/me` reports. 2 is ADMIN, the default;
+  /// a requester is REQUEST (32) with or without REQUEST_4K (1024).
+  /// A harness shortcut: a real Seerr answers an API key as the owner, so a
+  /// requester is only ever a signed-in session there. The app reads the
+  /// bitmask the same way in both.
+  int userPermissions = 2;
+
+  /// Whether `/service/radarr` and `/service/sonarr` answer 403. Not what a
+  /// stock Seerr does for a signed-in requester; it stands for any server
+  /// or proxy that keeps the instance list from this user, the "list not
+  /// known" case of the form (REQ-FORM-4K-DEFAULT).
+  bool serviceListForbidden = false;
+
   /// What `/movie/{id}` and `/tv/{id}` answer, keyed by `'$mediaType:$tmdbId'`.
   final Map<String, Map<String, dynamic>> _details = {};
 
@@ -63,6 +76,8 @@ class SeerrFakeServer {
     tvGenres.clear();
     searchItems.clear();
     fourKServers = false;
+    userPermissions = 2;
+    serviceListForbidden = false;
     _details.clear();
   }
 
@@ -88,13 +103,14 @@ class SeerrFakeServer {
       });
     }
     final service = RegExp(r'/service/(radarr|sonarr)(?:/(\d+))?$').firstMatch(path);
+    if (service != null && serviceListForbidden) return _json({'message': 'forbidden'}, status: 403);
     if (service != null) return _serviceRoute(service.group(1)!, service.group(2));
 
     if (path.endsWith('/status')) {
       return _json({'version': '1.33.2'});
     }
     if (path.endsWith('/auth/me')) {
-      return _json({'id': 1, 'displayName': 'verify-admin', 'permissions': 2});
+      return _json({'id': 1, 'displayName': 'verify-admin', 'permissions': userPermissions});
     }
     if (path.endsWith('/request/count')) {
       return _json(_requestCounts());
