@@ -97,6 +97,9 @@ final _refersBack = RegExp(
 );
 // The word between two clauses of one sentence.
 final _clauseJoin = RegExp(r'\s*(?:[,;]\s*\b(?:en|and|maar|but|plus)\b|[,;]|\b(?:en|and|maar|but|plus)\b)\s*');
+// Asked about the present: "nu", "op dit moment", "right now". "tot nu toe" and
+// "so far" look back and are not it.
+final _live = RegExp(r'(?<!tot )\b(nu|op dit moment|momenteel|right now|at the moment|currently)\b(?! toe)');
 final _previousWeek = RegExp(r'\b(vorige week|(?<!\b(?:in|within|over|during|for|of)\s+the\s+)last week)\b');
 final _month = RegExp(r'\b(deze maand|afgelopen maand|laatste maand|this month|past month)\b');
 
@@ -112,6 +115,7 @@ class AssistantIntent {
     this.mixedAudience = false,
     this.addedToLibraries = false,
     this.longPeriodAsked = false,
+    this.live = false,
   });
 
   final IntentField<AssistantAudience> audience;
@@ -135,6 +139,9 @@ class AssistantIntent {
 
   /// A period in weeks or months that days cannot express.
   final bool longPeriodAsked;
+
+  /// The question is about what is playing right now, not a period.
+  final bool live;
 
   static const unknown = AssistantIntent();
 
@@ -184,6 +191,12 @@ class AssistantIntent {
       mixedAudience: readings.length > 1,
       addedToLibraries: _added.hasMatch(p) && !_addedElsewhere.hasMatch(p),
       longPeriodAsked: _longPeriod.hasMatch(p),
+      live:
+          _live.hasMatch(p) &&
+          !_today.hasMatch(p) &&
+          !_week.hasMatch(p) &&
+          !_month.hasMatch(p) &&
+          !_daysWord.hasMatch(p),
       audience: audience == null ? const IntentField.unknown() : IntentField(audience, AssistantFieldSource.explicit),
       kind: kind == null ? const IntentField.unknown() : IntentField(kind, AssistantFieldSource.explicit),
       days: days == null || days < 1 || days > 31
@@ -260,6 +273,7 @@ class AssistantIntent {
     mixedAudience: mixedAudience,
     addedToLibraries: addedToLibraries,
     longPeriodAsked: longPeriodAsked,
+    live: live,
   );
 
   bool get any => audience.known || kind.known || days.known;
@@ -295,9 +309,12 @@ class AssistantIntent {
           out['audience'] = audience.value == AssistantAudience.others ? 'others' : 'all';
         }
         if (kind.explicit) {
-          // Current streams cannot be filtered by kind: no list that mixes films and series.
-          if (out['scope'] == 'now') return (args: out, error: 'media_needs_period');
           out['media'] = kind.value == MediaKind.movie ? 'movie' : 'show';
+        }
+        // A live question is answered with live streams: a period list is not.
+        if (live && !previousWeek) {
+          out['scope'] = 'now';
+          out.remove('days');
         }
         if (previousWeek) return (args: out, error: 'previous_week_not_supported');
         if (days.explicit && out['scope'] == 'period') out['days'] = days.value;

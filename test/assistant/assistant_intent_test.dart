@@ -71,10 +71,7 @@ void main() {
         'movie',
       );
       expect(_i('Welke series heb ik gekeken?').constrain('my_watching', {'kind': 'movie'}).args['kind'], 'show');
-      expect(
-        _i('Welke films keken de anderen?').constrain('watch_stats', {'scope': 'now'}).args,
-        isNot(contains('media')),
-      );
+      expect(_i('Welke films keken de anderen?').constrain('watch_stats', {'scope': 'now'}).args['media'], 'movie');
     });
 
     test('the right tool for the right person', () {
@@ -94,9 +91,11 @@ void main() {
       expect(_i('Which shows did the others watch?').kind.value, MediaKind.show);
     });
 
-    test('a kind cannot be enforced on current streams: refused, not a mixed list', () {
+    test('a kind on current streams is passed on: the tool keeps live streams of that kind only', () {
       final fixed = _i('Welke films kijkt iedereen nu?').constrain('watch_stats', {'scope': 'now'});
-      expect(fixed.error, 'media_needs_period');
+      expect(fixed.error, isNull);
+      expect(fixed.args['media'], 'movie');
+      expect(fixed.args['scope'], 'now');
     });
 
     test('"everyone except <name>" is no audience; except me still is "others"', () {
@@ -358,6 +357,18 @@ void main() {
     test('review: refersBack sees anaphors', () {
       expect(AssistantIntent.refersBack('Wat heb ik daarvan gekeken?'), isTrue);
       expect(AssistantIntent.refersBack('Wat heb ik gekeken en wat keken de anderen?'), isFalse);
+    });
+
+    test('a question about right now is answered with live streams, never a period', () {
+      final q = _i('Welke films kijkt iedereen nu?');
+      final fixed = q.constrain('watch_stats', {'scope': 'period', 'days': 7, 'media': 'movie'});
+      expect(fixed.args['scope'], 'now');
+      expect(fixed.args, isNot(contains('days')));
+      expect(
+        _i('Wat is er tot nu toe gekeken door iedereen?').constrain('watch_stats', {'scope': 'period'}).args['scope'],
+        'period',
+      );
+      expect(_i('Wie kijkt er nu deze week?').constrain('watch_stats', {'scope': 'period'}).args['scope'], 'period');
     });
   });
 }

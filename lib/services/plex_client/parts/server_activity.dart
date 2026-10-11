@@ -23,6 +23,10 @@ typedef PlexActiveStream = ({
   bool? paused,
   bool? transcoding,
   String? device,
+
+  /// 'movie', 'episode' or 'other' (a track, a clip, a recording); null when the
+  /// source does not say. A kind question needs this, not the absence of an episode.
+  String? kind,
 });
 
 /// What a Plex server itself says is being watched, for admins without a
@@ -135,6 +139,12 @@ extension PlexServerActivity on PlexClient {
       // No TranscodeSession is a direct play or direct stream.
       transcoding: transcode['videoDecision'] == 'transcode' || transcode['audioDecision'] == 'transcode',
       device: device.isEmpty ? null : device,
+      kind: switch (raw['type']) {
+        'movie' => 'movie',
+        'episode' => 'episode',
+        String _ => 'other',
+        _ => null,
+      },
     );
   }
 }

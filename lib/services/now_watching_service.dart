@@ -90,6 +90,7 @@ class NowWatchingService {
       bandwidthKbps: s.bandwidthKbps,
       isLan: s.location == null ? null : s.location == 'lan',
       playerLabel: playerLabel(s),
+      mediaType: s.mediaType,
     );
   }
 
