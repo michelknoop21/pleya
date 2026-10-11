@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../media/media_item.dart';
 import '../services/opened_file.dart';
+import '../services/opened_file_service.dart';
 import 'app_logger.dart';
 import 'video_player_navigation.dart';
 
@@ -23,17 +24,25 @@ Future<void> playOpenedFile(
   BuildContext context,
   String path, {
   @visibleForTesting OpenedFileNavigation navigate = navigateToVideoPlayer,
+  @visibleForTesting OpenedFileService? service,
 }) async {
   appLogger.i('Opened file: starting playback');
-  await navigate(
-    context,
-    metadata: openedFileItem(path),
-    resolveWatchState: false,
-    // The player's offline start is the one that needs no server client; the
-    // online start throws when no client is registered for the item.
-    isOffline: true,
-    usePushReplacement: isVideoPlayerOnTop(Navigator.of(context)),
-  );
+  final files = service ?? OpenedFileService.instance;
+  files.markPlaying(path);
+  try {
+    // Returns when the player is closed or replaced by the next file.
+    await navigate(
+      context,
+      metadata: openedFileItem(path),
+      resolveWatchState: false,
+      // The player's offline start is the one that needs no server client; the
+      // online start throws when no client is registered for the item.
+      isOffline: true,
+      usePushReplacement: isVideoPlayerOnTop(Navigator.of(context)),
+    );
+  } finally {
+    files.markFinished(path);
+  }
 }
 
 /// Whether the top route of [navigator] is the video player.

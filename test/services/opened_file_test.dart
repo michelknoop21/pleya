@@ -100,11 +100,14 @@ void main() {
     final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     late List<String> pending;
     late int takeCalls;
+    late List<String> released;
 
     setUp(() {
       pending = [];
       takeCalls = 0;
+      released = [];
       messenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'releaseFiles') released.addAll((call.arguments as List).cast<String>());
         if (call.method != 'takePendingFiles') return null;
         takeCalls++;
         final taken = List<String>.of(pending);
@@ -158,6 +161,53 @@ void main() {
       await pumpEventQueue();
 
       expect(played, ['/a/two.mp4']);
+    });
+
+    test('the files that lose to the last one are released: nothing will ever play them', () async {
+      pending.addAll(['/a/one.mp4', '/a/two.mp4']);
+      final service = OpenedFileService.forTesting(supported: true, channel: channel);
+
+      service.attach((_) {});
+      await pumpEventQueue();
+
+      expect(released, ['/a/one.mp4']);
+    });
+
+    test('a file is released when its player is gone', () async {
+      final service = OpenedFileService.forTesting(supported: true, channel: channel);
+
+      service.markPlaying(_path);
+      await pumpEventQueue();
+      expect(released, isEmpty, reason: 'the player still reads the file');
+
+      service.markFinished(_path);
+      await pumpEventQueue();
+      expect(released, [_path]);
+    });
+
+    test('a file opened again keeps its access until the second player is gone too', () async {
+      final service = OpenedFileService.forTesting(supported: true, channel: channel);
+
+      service.markPlaying(_path);
+      service.markPlaying(_path);
+      service.markFinished(_path);
+      await pumpEventQueue();
+      expect(released, isEmpty, reason: 'the replacing player plays the same file');
+
+      service.markFinished(_path);
+      await pumpEventQueue();
+      expect(released, [_path]);
+    });
+
+    test('a file that waits behind a route is not released by a player closing', () async {
+      final service = OpenedFileService.forTesting(supported: true, channel: channel);
+
+      service.markPlaying(_path);
+      service.defer(_path);
+      service.markFinished(_path);
+      await pumpEventQueue();
+
+      expect(released, isEmpty);
     });
 
     test('without a listener the signal leaves the path on the native side', () async {
@@ -293,6 +343,53 @@ void main() {
       expect(fresh, isFalse);
       expect(replaced, isFalse);
     });
+
+    testWidgets('holds the file while the player is open and lets go of it after, also when the start throws', (
+      tester,
+    ) async {
+      final key = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(MaterialApp(navigatorKey: key, home: const SizedBox()));
+      const channel = MethodChannel('com.pleya/open_file.launcher_test');
+      final released = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'releaseFiles') released.addAll((call.arguments as List).cast<String>());
+        return null;
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null));
+      final service = OpenedFileService.forTesting(supported: true, channel: channel);
+      final closed = Completer<bool?>();
+
+      final playing = playOpenedFile(
+        key.currentContext!,
+        _path,
+        service: service,
+        navigate:
+            (context, {required metadata, usePushReplacement = false, isOffline = false, resolveWatchState = true}) =>
+                closed.future,
+      );
+      await tester.pump();
+      expect(released, isEmpty, reason: 'the player is still open');
+
+      closed.complete(null);
+      await playing;
+      await tester.pump();
+      expect(released, [_path]);
+
+      released.clear();
+      await expectLater(
+        playOpenedFile(
+          key.currentContext!,
+          _path,
+          service: service,
+          navigate:
+              (context, {required metadata, usePushReplacement = false, isOffline = false, resolveWatchState = true}) =>
+                  throw StateError('no player'),
+        ),
+        throwsStateError,
+      );
+      await tester.pump();
+      expect(released, [_path]);
+    });
   });
 
   group('a route on the root navigator', () {
@@ -387,6 +484,19 @@ void main() {
 
       expect(plist, contains(r'<string>$(PRODUCT_MODULE_NAME).PleyaSceneDelegate</string>'));
       expect(delegate, contains('class PleyaSceneDelegate: FlutterSceneDelegate'));
+    });
+
+    test('ios lets go of a released file: its security scope and its Inbox copy', () {
+      final plugin = File('ios/Runner/OpenFilePlugin.swift').readAsStringSync();
+      final release = plugin.substring(plugin.indexOf('private static func release('));
+
+      expect(plugin, contains('case "releaseFiles":'));
+      expect(release, contains('scopedURLs.removeValue(forKey: path)?.stopAccessingSecurityScopedResource()'));
+      expect(release, contains('if isOwnInbox('), reason: 'only a copy in our own container is ever deleted');
+    });
+
+    test('macos answers a release instead of failing the call', () {
+      expect(File('macos/Runner/OpenFilePlugin.swift').readAsStringSync(), contains('case "releaseFiles":'));
     });
 
     test('ios opens files in place instead of copying every film', () {
