@@ -23,9 +23,8 @@ Nothing user-facing since the last published build.
 
 ### New
 
-- **Liquid Glass surfaces behind a switch in Appearance.** The tab bar, player controls and
-  movie page on iPhone and the top bar, player panel and search field on Apple TV can now be
-  glass. The switch is off by default and does not apply on iPad.
+- **Liquid Glass on Apple TV, behind a switch in Appearance.** The top bar, player panel and
+  search field can now be glass. The switch is off by default.
 - **The Apple TV context menu now shows a line under the title with genre, runtime, sources,
   and remaining time**, the same summary you already see on other screens.
 - **The context menu's Resume row now shows how much time is left** on the episode or movie
@@ -61,25 +60,59 @@ Nothing user-facing since the last published build.
 
 ### Fixed
 
-- **Pleya Share stays on your local network.** After a short Wi-Fi or hotspot hiccup a guest
-  could end up on the internet relay, where the share looked online but nothing played. Pleya
-  Share no longer uses that relay, so it reconnects over the local network or Wi-Fi Aware.
-  Sharing between two different networks is gone with it.
 - **Season selector labels on Apple TV series pages no longer render with a shifted or doubled
   line of text** on the unselected seasons.
 - **The row of extras below an Apple TV series or movie page now sizes its text and spacing
   consistently with the rest of the screen**, instead of running slightly smaller when the page
   is nested under the top bar.
-- **Home now shows movies and shows added while the app stays open**, on every device and for
-  every source including local folders. It refreshes quietly when you return to Home after two
-  minutes and every five minutes while Home is on screen, and keeps your place in a row.
 
 ### Notes
 
-- **Hidden libraries and library order now sync over iCloud for Plex Home profiles.** The first
+
+## 2.8.1 · build 352 · 11 October 2026 · iPhone and iPad
+
+<!-- commit: 19ad7e38779a8d5027e48997d295b0c9bf644335 -->
+
+### New
+- Ask Big P which films have been sitting unwatched in your library. It answers from the whole
+  library, longest-waiting first, and shows the date each film was added. When it has not read
+  the whole list it says "at least 100" instead of giving a total, and the cards under the
+  answer are the films named in the text.
+- The tab bar, player controls and movie page on iPhone can now be glass. The switch is in
+  Appearance, is off by default and does not apply on iPad.
+
+### Improved
+- Big P and your recommendations recognise a title you watched on one server when the same
+  title sits on another server.
+
+### Fixed
+- Pleya Share stays on your local network. After a short Wi-Fi or hotspot hiccup a guest could
+  end up on the internet relay, where the share looked online but nothing played. Pleya Share
+  no longer uses that relay, so it reconnects over the local network or Wi-Fi Aware. Sharing
+  between two different networks is gone with it.
+- "Which films have I not watched?" no longer gets twelve personal tips as its answer. A tip
+  you ask for still comes from your own history.
+- Home shows movies and shows added while the app stays open, for every source including local
+  folders. It refreshes quietly when you return to Home after two minutes and every five minutes
+  while Home is on screen, and keeps your place in a row.
+
+### Notes
+- Hidden libraries and library order now sync over iCloud for Plex Home profiles. The first
   device to sync after updating sets them for that profile on every device. If you arranged a
-  profile differently on purpose on one device, such as a kids profile on the Apple TV, check it
-  after updating.
+  profile differently on purpose on one device, check it after updating.
+
+### Worth checking
+- Nothing in this build has been checked on an iPhone or iPad yet; the changes are covered by
+  automated tests and, for Big P, by one run of two language models against a test library.
+- Pleya Share on a trip: put the host iPhone on its own hotspot, join with an iPad, pair with
+  the QR code, play a film and seek. Lock the iPhone and check that the iPad keeps playing.
+  Then look under Settings, Mobile Data on the iPhone and check that Pleya used no more than
+  the app itself needs.
+- Pleya Share after a break: turn the iPad's Wi-Fi off and on during playback and check that
+  it reconnects to the iPhone without a message about an internet connection.
+- Big P: ask "Which films have been sitting unwatched in my library for a long time?" and check
+  that the oldest additions come first, that the dates match the cards and that no film you
+  watched elsewhere is listed.
 
 ## 2.8.1 · build 351 · 11 October 2026 · Apple TV
 
