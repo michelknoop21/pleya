@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 
 import '../../media/media_item.dart';
@@ -92,6 +93,9 @@ class TraktScrobbleService implements TrackerRatingSource {
   void updateSession(TrackerSession session) {
     _client?.updateSession(session);
   }
+
+  @visibleForTesting
+  bool get hasClient => _client != null;
 
   @override
   Future<int?> getRating(TrackerRatingContext ctx) async {
