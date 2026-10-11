@@ -58,17 +58,47 @@ final _severalAsked = RegExp(
   r'\b(?:\w*films|movies|shows|titels|titles|tips?|suggesties?|aanraders?|opties|options|voorstellen'
   r'|recommendations?|suggestions?|(?<!niet )meer|(?<!any )more|alles|alle|allemaal|andere?|overige|meerdere|paar'
   r'|afleveringen|seizoenen|resultaten|lijst|overzicht|everything|all|else|others?|several|episodes|seasons'
-  r'|results|list)\b',
+  r'|results|list'
+  // The title and what follows or surrounds it: its parts, the rest, something besides.
+  r'|vervolg\w*|delen|deel\s+(?:\d+|een|twee|drie|vier|i+)|parts?\s+(?:\d+|one|two|three|four|i+)|sequels?|prequels?'
+  r'|trilog\w+|spin-?offs?|franchise|reeks|rest|verder|ook|also|plus|as well|too)\b',
+);
+// A second title pointed at after "en" or "and": "en die met", "and the one
+// with", "en die serie over". A plain "en" inside one description ("met tom
+// hanks en die grote gevangene") has no such word after it and stays one
+// title. A second question ("en wat is er nieuw") is left to the run, which
+// narrows only the result that holds the named title.
+final _secondAsked = RegExp(
+  '\\b(?:en|and|of|or)\\s+(?:die|dat|deze|de|het|iets|een|that|this|the|something|an?)\\s+(?:ene\\s+|one\\s+)?'
+  '(?:$_kind\\s+)?(?:met|van|over|uit|waar\\w*|with|about|by|from|where)\\b',
+);
+// "Welke film", "which movie": one title only when the question goes on to
+// describe it. With an actor alone ("welke film met Tom Hanks") it asks which
+// of his films, and with owning or watching ("heb ik", "can I watch") it asks
+// what is there: both are lists.
+final _whichKind = RegExp('\\b(?:welke|which|what)\\s+$_word{0,3}?$_kind\\b');
+const _whichBy =
+    '\\b(?:welke|which|what)\\s+$_word{0,3}?$_kind[\\s,]+(?:met|van|uit|with|by|from|starring|featuring)\\b';
+final _whichByAsked = RegExp(_whichBy);
+final _whichByTold = RegExp(
+  '$_whichBy.*\\b(?:gaat|ging|speelt|speelde|over|waarin|waar|als|about|where|as|takes place'
+  '|(?:is|was)\\s+(?:dat|het|that|it|set))\\b',
+);
+final _available = RegExp(
+  r"\b(?:heb ik|ik heb|hebben we|heb je|hebben jullie|kan ik|kunnen we|staa[nt] er\s?op|is er|zijn er|do i have"
+  r"|do we have|have i|have we|can i|can we|should i|is there|are there|niet gezien|haven't seen|have not seen"
+  r"|not seen|not watched|vanavond|vandaag|tonight|today|kijken|to watch|beschikbaar|available)\b",
 );
 // "Iets zoals die film": that film is the example, not the answer.
 final _likeIt = RegExp(
   r'\b(?:zoals|net als|lijk\w* op|vergelijkbaar\w*|soortgelijk\w*|similar|'
-  r'(?:something|anything|one|more) like)\b',
+  r'(?:something|anything|one|more) like|zoiets|in die stijl|in that style)\b',
 );
 
 /// True when [prompt] describes one film or series to find, or asks what it is
-/// called, and asks for no list, no tip, nothing more, no number above one and
-/// nothing "like" it. A title that is only referred to ("de regisseur van de
+/// called, and asks for no list, no tip, nothing more, no sequel or second
+/// thing, no number above one and nothing "like" it. "Welke film met X" counts
+/// only with a description after it, never as a question what there is. A title that is only referred to ("de regisseur van de
 /// film Heat") is no search. Anything unclear is false: the cards then stay as
 /// the search left them.
 bool assistantAsksOneTitle(String prompt) {
@@ -76,5 +106,10 @@ bool assistantAsksOneTitle(String prompt) {
   final one = _oneKind.hasMatch(text) || _oneMeant.hasMatch(text) || _oneSought.hasMatch(text);
   if (!one && !_nameAsked.hasMatch(text)) return false;
   if (_severalAsked.hasMatch(text) || _likeIt.hasMatch(text) || _whoAsked.hasMatch(text)) return false;
+  if (_secondAsked.hasMatch(text)) return false;
+  if (_whichKind.hasMatch(text)) {
+    if (_available.hasMatch(text)) return false;
+    if (_whichByAsked.hasMatch(text) && !_whichByTold.hasMatch(text)) return false;
+  }
   return (assistantAskedCount(prompt) ?? 1) <= 1;
 }

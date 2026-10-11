@@ -1,207 +1,18 @@
-import 'dart:convert';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/testing.dart';
-import 'package:pleya/assistant/assistant_entitlement.dart';
-import 'package:pleya/assistant/assistant_provider.dart';
-import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_title_facts.dart';
-import 'package:pleya/assistant/assistant_title_facts_cache.dart';
-import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
-import 'package:pleya/media/ids.dart';
-import 'package:pleya/media/media_backend.dart';
-import 'package:pleya/media/media_item.dart';
-import 'package:pleya/media/media_kind.dart';
-import 'package:pleya/media/media_role.dart';
-import 'package:pleya/media/media_server_client.dart';
-import 'package:pleya/services/multi_server_manager.dart';
-import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
 
-import 'assistant_find_fakes.dart';
-
-// A question after one specific title ("die film met Tom Hanks over death
-// row") whose answer names that one title: only its card stays, whatever else
-// the search brought up on the way.
-
-const _mile = 'The Green Mile';
-const _gump = 'Forrest Gump';
-const _toy = 'Toy Story';
-
-class _Entitled extends AssistantEntitlement {
-  const _Entitled();
-  @override
-  Future<AssistantEntitlementState> check() async => AssistantEntitlementState.entitled;
-}
-
-class _Facts extends TitleFactsService {
-  _Facts() : super(cache: TitleFactsCache());
-  static const byTitle = {
-    _mile: TitleFacts(certifications: {'NL': '16', 'US': 'R'}, genres: ['Drama']),
-    _gump: TitleFacts(certifications: {'NL': '12', 'US': 'PG-13'}, genres: ['Drama']),
-    'Cast Away': TitleFacts(certifications: {'NL': '12', 'US': 'PG-13'}, genres: ['Drama']),
-    _toy: TitleFacts(certifications: {'NL': 'AL', 'US': 'G'}, genres: ['Animation']),
-    'Toy Story 2': TitleFacts(certifications: {'NL': 'AL', 'US': 'G'}, genres: ['Animation']),
-  };
-  @override
-  Future<List<TitleFacts>> factsFor(List<TitleRef> refs) async => [
-    for (final r in refs) byTitle[r.title] ?? const TitleFacts(),
-  ];
-}
-
-class _Server extends FakeServer {
-  _Server(super.id, {super.libraries});
-  @override
-  Future<HealthStatus> checkHealth() async => HealthStatus.online;
-}
-
-MediaItem _hanks(String id, String title, int year, String summary) =>
-    fakeItem(id, title, year: year, summary: summary).copyWith(roles: const [MediaRole(tag: 'Tom Hanks')]);
-
-/// A library with five Tom Hanks films and one without him.
-AssistantToolContext _ctx({bool kids = false}) {
-  final m = MultiServerManager();
-  addTearDown(m.dispose);
-  m.debugRegisterClientForTesting(
-    _Server(
-      'w',
-      libraries: {
-        'films': [
-          _hanks('gm', _mile, 1999, 'Guards on death row meet an inmate with a gift.'),
-          _hanks('fg', _gump, 1994, 'A man from Alabama witnesses history.'),
-          _hanks('ca', 'Cast Away', 2000, 'A courier strands on an island.'),
-          _hanks('ts', _toy, 1995, 'A cowboy doll and a space ranger.'),
-          _hanks('t2', 'Toy Story 2', 1999, 'A cowboy doll is stolen by a collector.'),
-          fakeItem('he', 'Heat', year: 1995, summary: 'A detective hunts a crew of robbers.'),
-        ],
-      },
-    ),
-  );
-  m.setVisibleServerIds(null);
-  return AssistantToolContext(
-    servers: m,
-    catalog: AssistantCatalogServices(
-      rowLoader: CatalogHomeCustomRowLoader(
-        libraries: () => [fakeLib('w', 'films')],
-        isServerVisible: m.isServerVisible,
-        hiddenLibraryKeys: () => const {},
-        clientFor: m.getClient,
-      ),
-      profileId: 'p',
-      activeProfileId: () => 'p',
-    ),
-    titleFacts: _Facts(),
-    kidsAges: () async => const [8],
-    kidsProfile: () async => kids,
-    region: () => 'NL',
-  );
-}
-
-Map<String, Object?> _reply(Object step, int n) => step is String
-    ? {'role': 'assistant', 'content': step}
-    : {
-        'role': 'assistant',
-        'content': '',
-        'tool_calls': [
-          {
-            'id': 'c$n',
-            'type': 'function',
-            'function': {'name': (step as Map)['name'], 'arguments': jsonEncode(step['args'])},
-          },
-        ],
-      };
-
-({AssistantModelClient model, List<List<Map<String, Object?>>> sent}) _script(List<Object> script) {
-  final sent = <List<Map<String, Object?>>>[];
-  final model = AssistantModelClient(
-    const AssistantProviderConfig(kind: AssistantProviderKind.ollamaServer, baseUrl: 'http://o.lan', model: 'm'),
-    httpClient: MockClient((request) async {
-      sent.add(((jsonDecode(request.body) as Map<String, Object?>)['messages'] as List).cast());
-      return jsonResponse({
-        'choices': [
-          {'message': _reply(script[sent.length - 1], sent.length)},
-        ],
-      });
-    }),
-  );
-  return (model: model, sent: sent);
-}
-
-Future<AssistantRunResult> _ask(
-  List<Object> script,
-  String prompt, {
-  AssistantToolContext? ctx,
-  List<AssistantTool>? tools,
-}) => AssistantRun(
-  model: _script(script).model,
-  context: ctx ?? _ctx(),
-  confirm: (_) async => null,
-  entitlement: const _Entitled(),
-  tools: tools,
-).ask(prompt);
-
-/// The model's search for an actor: no candidate title, the actor as phrase.
-const _findHanks = {
-  'name': 'find_title',
-  'args': {
-    'kind': 'movie',
-    'variants': ['Tom Hanks', 'Tom Hanks film'],
-  },
-};
-
-List<String> _cards(AssistantRunResult r) => [
-  for (final d in r.displays)
-    ...switch (d) {
-      AssistantTitleMatches(:final matches) => [for (final m in matches) m.title],
-      AssistantMediaGrid(:final entries) => [for (final e in entries) e.item.title ?? ''],
-      _ => const <String>[],
-    },
-];
-
-AssistantTitleMatch _match(String title, int year, {bool drawn = true}) => AssistantTitleMatch(
-  matchId: title,
-  title: title,
-  year: year,
-  kind: 'movie',
-  confidence: 'high',
-  targets: [
-    if (drawn)
-      (
-        serverId: ServerId('w'),
-        serverName: 'W',
-        item: MediaItem(id: title, backend: MediaBackend.jellyfin, kind: MediaKind.movie, title: title, year: year),
-      ),
-  ],
-);
-
-AssistantTool _tool(String name, AssistantDisplay? Function(AssistantToolContext) display) => AssistantTool(
-  name: name,
-  description: name,
-  risk: AssistantToolRisk.read,
-  properties: const {},
-  needsServer: false,
-  serves: (_, _) => true,
-  run: (ctx, _, _) async => AssistantToolResult(const {'ok': true}, display: display(ctx)),
-);
-
-MediaItem _item(String title, int year) => MediaItem(
-  id: title,
-  backend: MediaBackend.jellyfin,
-  kind: MediaKind.movie,
-  title: title,
-  year: year,
-  serverId: 'w',
-);
+import 'assistant_single_title_support.dart';
 
 void main() {
   const one = 'Hoe heet die film met Tom Hanks over death row?';
-  const answer = 'Dat is «$_mile» (1999).';
+  const answer = 'Dat is «$mile» (1999).';
 
   group('one title asked, one title named', () {
     test('NL: the search brings up his other films, only the named one keeps its card', () async {
-      final r = await _ask([_findHanks, answer], one);
+      final r = await singleAsk([findHanks, answer], one);
       expect(r.text, answer);
-      expect(_cards(r), [_mile]);
+      expect(cardsOf(r), [mile]);
     });
 
     test('EN question forms narrow the same way', () async {
@@ -210,8 +21,8 @@ void main() {
         'Which film has Tom Hanks as a prison guard?',
         'I am looking for the movie with Tom Hanks on death row',
       ]) {
-        final r = await _ask([_findHanks, 'That is «$_mile» (1999).'], prompt);
-        expect(_cards(r), [_mile], reason: prompt);
+        final r = await singleAsk([findHanks, 'That is «$mile» (1999).'], prompt);
+        expect(cardsOf(r), [mile], reason: prompt);
       }
     });
 
@@ -221,63 +32,63 @@ void main() {
         'Welke film met Tom Hanks speelt in een dodencel?',
         'Ik weet niet meer hoe de film met Tom Hanks in de gevangenis heet',
       ]) {
-        final r = await _ask([_findHanks, answer], prompt);
-        expect(_cards(r), [_mile], reason: prompt);
+        final r = await singleAsk([findHanks, answer], prompt);
+        expect(cardsOf(r), [mile], reason: prompt);
       }
     });
 
     test('a grid of search results is narrowed too and keeps the facts of its title', () async {
       const facts = TitleFacts(genres: ['Drama']);
-      final r = await _ask(
+      final r = await singleAsk(
         [
           {'name': 'search_catalog', 'args': <String, Object?>{}},
           answer,
         ],
         one,
         tools: [
-          _tool(
+          displayTool(
             'search_catalog',
             (_) => AssistantMediaGrid(
               [
-                (item: _item(_gump, 1994), group: null),
-                (item: _item(_mile, 1999), group: null),
-                (item: _item('Cast Away', 2000), group: null),
+                (item: movieItem(gump, 1994), group: null),
+                (item: movieItem(mile, 1999), group: null),
+                (item: movieItem('Cast Away', 2000), group: null),
               ],
-              facts: {AssistantMediaGrid.keyOf((item: _item(_mile, 1999), group: null)): facts},
+              facts: {AssistantMediaGrid.keyOf((item: movieItem(mile, 1999), group: null)): facts},
             ),
           ),
         ],
       );
       final grid = r.displays.single as AssistantMediaGrid;
-      expect(_cards(r), [_mile]);
+      expect(cardsOf(r), [mile]);
       expect(grid.facts.values.single, same(facts));
     });
     test('the same title named twice, once with its year, is one title', () async {
-      final r = await _ask([_findHanks, 'Dat is «$_mile» (1999). «$_mile» speelt in een dodencel.'], one);
-      expect(_cards(r), [_mile]);
+      final r = await singleAsk([findHanks, 'Dat is «$mile» (1999). «$mile» speelt in een dodencel.'], one);
+      expect(cardsOf(r), [mile]);
     });
 
     test('a second result in the same run stays whole: only the search with the named title narrows', () async {
-      final r = await _ask(
+      final r = await singleAsk(
         [
-          _findHanks,
+          findHanks,
           {'name': 'recently_added', 'args': <String, Object?>{}},
-          'Dat is «$_mile» (1999). Nieuw deze week staan hieronder.',
+          'Dat is «$mile» (1999). Nieuw deze week staan hieronder.',
         ],
         'Hoe heet die film met Tom Hanks over death row en wat is er nieuw deze week',
         tools: [
           ...assistantTools.where((t) => t.name == 'find_title'),
-          _tool(
+          displayTool(
             'recently_added',
             (_) => AssistantMediaGrid([
-              (item: _item('Heat', 1995), group: null),
-              (item: _item('Cast Away', 2000), group: null),
+              (item: movieItem('Heat', 1995), group: null),
+              (item: movieItem('Cast Away', 2000), group: null),
             ]),
           ),
         ],
       );
       expect(r.displays, hasLength(2));
-      expect(_cards(r), [_mile, 'Heat', 'Cast Away']);
+      expect(cardsOf(r), [mile, 'Heat', 'Cast Away']);
     });
 
     test('request options for a title outside the library narrow to the named one too', () async {
@@ -290,30 +101,29 @@ void main() {
         status: 'not_requested',
         year: year,
       );
-      final r = await _ask(
+      final r = await singleAsk(
         [
           {'name': 'find_request_title', 'args': <String, Object?>{}},
           answer,
         ],
         one,
         tools: [
-          _tool(
+          displayTool(
             'find_request_title',
-            (ctx) =>
-                AssistantRequestOptions(ctx, [option(_mile, 1999), option(_gump, 1994), option('Cast Away', 2000)]),
+            (ctx) => AssistantRequestOptions(ctx, [option(mile, 1999), option(gump, 1994), option('Cast Away', 2000)]),
           ),
         ],
       );
       final options = (r.displays.single as AssistantRequestOptions).options;
-      expect([for (final o in options) o.title], [_mile]);
+      expect([for (final o in options) o.title], [mile]);
     });
   });
 
   group('a named title the search did not find', () {
     test('gets its own card next to the search result, which stays whole', () async {
-      final before = _cards(await _ask([_findHanks, 'Hier zijn ze.'], 'Films met Tom Hanks'));
-      final r = await _ask([_findHanks, 'Dat is «Heat» (1995).'], 'Hoe heet die film over een bankoverval?');
-      expect(_cards(r), [...before, 'Heat']);
+      final before = cardsOf(await singleAsk([findHanks, 'Hier zijn ze.'], 'Films met Tom Hanks'));
+      final r = await singleAsk([findHanks, 'Dat is «Heat» (1995).'], 'Hoe heet die film over een bankoverval?');
+      expect(cardsOf(r), [...before, 'Heat']);
     });
 
     test('a list about a title that is only referred to keeps every card', () async {
@@ -321,7 +131,7 @@ void main() {
         'De regisseur van «Heat» (1995) maakte ook deze drie.',
         'Hij maakte onder meer «Ali» (2001).',
       ]) {
-        final r = await _ask(
+        final r = await singleAsk(
           [
             {'name': 'search_catalog', 'args': <String, Object?>{}},
             text,
@@ -329,17 +139,17 @@ void main() {
           'Wat heeft de regisseur van de film Heat nog meer gemaakt?',
           tools: [
             ...assistantTools.where((t) => t.name == 'find_title'),
-            _tool(
+            displayTool(
               'search_catalog',
               (_) => AssistantMediaGrid([
-                (item: _item('Collateral', 2004), group: null),
-                (item: _item('Ali', 2001), group: null),
-                (item: _item('Thief', 1981), group: null),
+                (item: movieItem('Collateral', 2004), group: null),
+                (item: movieItem('Ali', 2001), group: null),
+                (item: movieItem('Thief', 1981), group: null),
               ]),
             ),
           ],
         );
-        expect(_cards(r), containsAll(['Collateral', 'Ali', 'Thief']), reason: text);
+        expect(cardsOf(r), containsAll(['Collateral', 'Ali', 'Thief']), reason: text);
       }
     });
   });
@@ -354,45 +164,70 @@ void main() {
         'Geef me drie opties, bijvoorbeeld die film met Tom Hanks',
         'Iets zoals die film met Tom Hanks over death row',
       ]) {
-        final r = await _ask([_findHanks, answer], prompt);
-        expect(_cards(r).length, greaterThan(1), reason: prompt);
-        expect(_cards(r), contains(_gump), reason: prompt);
+        final r = await singleAsk([findHanks, answer], prompt);
+        expect(cardsOf(r).length, greaterThan(1), reason: prompt);
+        expect(cardsOf(r), contains(gump), reason: prompt);
+      }
+    });
+
+    test('the title and its sequels: the sequel keeps its card next to the named one', () async {
+      for (final prompt in [
+        'Laat die film met Tom Hanks over speelgoed zien en de vervolgen',
+        'Die film met Tom Hanks over speelgoed en deel 2',
+      ]) {
+        final r = await singleAsk([findHanks, 'Dat is «$toy» (1995). De vervolgen staan hieronder.'], prompt);
+        expect(cardsOf(r), containsAll([toy, 'Toy Story 2']), reason: prompt);
+      }
+    });
+
+    test('"welke film met X" for what there is keeps every card, also when one is singled out', () async {
+      final before = cardsOf(await singleAsk([findHanks, 'Hier zijn ze.'], 'Films met Tom Hanks'));
+      for (final prompt in [
+        'Welke film met Tom Hanks heb ik nog niet gezien',
+        'Welke film van Tom Hanks kan ik vanavond kijken',
+        'Which movie with Tom Hanks should I watch tonight',
+      ]) {
+        final r = await singleAsk([
+          findHanks,
+          'Je hebt er meerdere niet gezien; «Cast Away» (2000) springt eruit.',
+        ], prompt);
+        expect(cardsOf(r), before, reason: prompt);
       }
     });
 
     test('an answer that names no title leaves the found titles as they are', () async {
-      final before = _cards(await _ask([_findHanks, 'Hier zijn ze.'], 'Films met Tom Hanks'));
-      final r = await _ask([_findHanks, 'Ik weet niet zeker welke je bedoelt.'], one);
-      expect(_cards(r), before, reason: 'no card is picked for the user');
+      final before = cardsOf(await singleAsk([findHanks, 'Hier zijn ze.'], 'Films met Tom Hanks'));
+      final r = await singleAsk([findHanks, 'Ik weet niet zeker welke je bedoelt.'], one);
+      expect(cardsOf(r), before, reason: 'no card is picked for the user');
     });
 
     test('an answer that names a title outside the result keeps the result and picks none', () async {
-      final before = _cards(await _ask([_findHanks, 'Hier zijn ze.'], 'Films met Tom Hanks'));
-      final r = await _ask([_findHanks, 'Dat is «Philadelphia» (1993).'], one);
-      expect(_cards(r), before);
+      final before = cardsOf(await singleAsk([findHanks, 'Hier zijn ze.'], 'Films met Tom Hanks'));
+      final r = await singleAsk([findHanks, 'Dat is «Philadelphia» (1993).'], one);
+      expect(cardsOf(r), before);
     });
 
     test('a named title whose only card cannot be opened or requested narrows nothing', () async {
-      final r = await _ask(
+      final r = await singleAsk(
         [
           {'name': 'trending_titles', 'args': <String, Object?>{}},
           answer,
         ],
         one,
         tools: [
-          _tool(
+          displayTool(
             'trending_titles',
-            (ctx) => AssistantTitleMatches(ctx, [_match(_gump, 1994), _match(_mile, 1999, drawn: false)]),
+            (ctx) => AssistantTitleMatches(ctx, [titleMatch(gump, 1994), titleMatch(mile, 1999, drawn: false)]),
           ),
         ],
       );
-      expect(_cards(r), [_gump, _mile]);
+      expect(cardsOf(r), [gump, mile]);
     });
 
     test('an answer that names two titles keeps every card', () async {
-      final before = _cards(await _ask([_findHanks, 'Hier zijn ze.'], 'Films met Tom Hanks'));
-      final r = await _ask([_findHanks, 'Dat is «$_mile» (1999) of anders «$_gump» (1994).'], one);
-      expect(_cards(r), before);
+      final before = cardsOf(await singleAsk([findHanks, 'Hier zijn ze.'], 'Films met Tom Hanks'));
+      final r = await singleAsk([findHanks, 'Dat is «$mile» (1999) of anders «$gump» (1994).'], one);
+      expect(cardsOf(r), before);
     });
   });
 
@@ -400,18 +235,18 @@ void main() {
     const kidsOne = 'Hoe heet die film met Tom Hanks over speelgoed?';
 
     test('the age gate decides first, then the one named title keeps its card', () async {
-      final r = await _ask([_findHanks, 'Dat is «$_toy» (1995).'], kidsOne, ctx: _ctx(kids: true));
-      expect(_cards(r), [_toy]);
+      final r = await singleAsk([findHanks, 'Dat is «$toy» (1995).'], kidsOne, ctx: singleCtx(kids: true));
+      expect(cardsOf(r), [toy]);
       expect(r.ageFilterNotice, isFalse);
     });
 
     test('a turned-down title gets no card, also as the one named title', () async {
-      final m = [_findHanks, 'Dat is «$_mile» (1999).', 'Toch «$_mile» (1999).'];
-      final r = await _ask(m, one, ctx: _ctx(kids: true));
+      final m = [findHanks, 'Dat is «$mile» (1999).', 'Toch «$mile» (1999).'];
+      final r = await singleAsk(m, one, ctx: singleCtx(kids: true));
       expect(r.ageFilterNotice, isTrue);
       expect(r.text, isEmpty);
-      expect(_cards(r), isNot(contains(_mile)));
-      expect(_cards(r), isNot(contains(_gump)), reason: 'the gate still holds for the rest');
+      expect(cardsOf(r), isNot(contains(mile)));
+      expect(cardsOf(r), isNot(contains(gump)), reason: 'the gate still holds for the rest');
     });
   });
 }

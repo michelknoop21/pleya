@@ -108,4 +108,75 @@ void main() {
       expect(assistantAsksOneTitle(prompt), isFalse, reason: prompt);
     }
   });
+
+  // Never one title. Whoever widens the gate turns this block red first: each
+  // of these asks for more than one thing, or for what there is.
+  test('never one title: a question for several things, or a mixed one', () {
+    const never = [
+      // The title and its sequels, parts or the rest.
+      'laat die film met tom hanks zien en de vervolgen',
+      'laat die film met tom hanks over speelgoed zien en de vervolgen',
+      'that movie with tom hanks, and the sequels',
+      'die film met tom hanks over speelgoed en deel 2',
+      'die film met tom hanks over speelgoed, deel twee',
+      'that show about dragons and its spin-offs',
+      'that show about dragons and the prequel',
+      'that movie with tom hanks plus the whole trilogy',
+      'die serie over draken met de hele trilogie erbij',
+      'that movie about toys, part 2',
+      'die film met tom hanks over death row, en de rest van zijn werk',
+      'die film met tom hanks, en wat heb je verder van hem',
+      'what is the movie with tom hanks and what do you also have of him',
+      'die film met tom hanks en ook iets met brad pitt',
+      // A second pointer after "en" or "and".
+      'die film met tom hanks en die met leonardo dicaprio',
+      'that movie with tom hanks and the one with brad pitt',
+      'die film met tom hanks over death row en die serie over draken',
+      'that movie about death row and that show about dragons',
+      'die film met tom hanks of die met brad pitt',
+      // Something like it.
+      'die film met tom hanks over death row of zoiets',
+      'that movie with tom hanks and anything similar',
+      'die film met Tom Hanks, heb je er nog meer zoals die?',
+      'die film over death row en vergelijkbaar werk',
+      // "Welke film met X": which of his films, or what there is.
+      'welke film met tom hanks heb ik nog niet gezien',
+      'welke serie met bryan cranston heb ik',
+      'welke film van tom hanks kan ik vanavond kijken',
+      'welke film met tom hanks raad je aan',
+      'welke film met tom hanks hebben we',
+      'welke film met tom hanks staat erop',
+      'which movie with tom hanks should i watch tonight',
+      'which film with tom hanks is the best',
+      'which movie with tom hanks do i have',
+      "which tom hanks movie haven't i seen",
+      "which movie by spielberg haven't seen yet",
+      'which movie with tom hanks can i watch',
+      'what movie with tom hanks is there',
+      // Lists and collections from the first review.
+      'welke films met Tom Hanks heb ik',
+      'die serie waar iedereen over praat en wat nog meer',
+      'heb ik die film met tom hanks en de andere delen',
+      'die reeks films met tom hanks',
+      'de films van die serie over draken',
+    ];
+    expect(never.length, greaterThanOrEqualTo(20));
+    for (final prompt in never) {
+      expect(assistantAsksOneTitle(prompt), isFalse, reason: prompt);
+    }
+  });
+
+  test('one description with "en" in it, or "welke" with a description, stays one title', () {
+    for (final prompt in [
+      'die film met tom hanks en die grote zwarte gevangene in de dodencel',
+      'that movie with tom hanks and the big inmate on death row',
+      'die serie over een leraar en zijn oud-leerling die drugs maken',
+      'welke film met tom hanks gaat over een dodencel',
+      'which tom hanks movie is about death row',
+      'which movie with tom hanks is about death row',
+      'welke film met tom hanks is dat over de dodencel',
+    ]) {
+      expect(assistantAsksOneTitle(prompt), isTrue, reason: prompt);
+    }
+  });
 }
