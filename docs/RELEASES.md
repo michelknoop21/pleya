@@ -18,27 +18,17 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-### New
-- Trakt-historie telt mee als gezien, tool trakt_watchlist met bibliotheekdekking
-- opslag voor het lokale geheugen per profiel (BP-08a stap 1) (#282)
-- videobestanden uit Bestanden en Finder openen in Pleya
-
-### Fixed
-- dekking sluit strikter, download blijft bewaard, soortfilter voor de cap
-- wachttijd raakt na profielwissel de nieuwe slot niet, backoff ververst, vlaggen volgen de laatste lezing
-- één gevraagde titel geeft één kaart (#283)
-- reviewpunten geopend bestand: Inbox per levering, geen taalkeuze op pad, tests voor wachtrij en start
-- luisteraar voor geopende bestanden overleeft een profielwissel, bestand wacht achter de profielkiezer
+Nothing user-facing since the last published build.
 <!-- END GENERATED -->
 
 ### New
 
-- **Pleya plays video files from Files and Finder.** On iPhone, iPad and Mac, Pleya now shows up
-  under Open in, in the share sheet and under Open With for video files such as mkv, mp4, mov
-  and avi. Picking it starts the file in the Pleya player. Pleya does not make itself the
-  default app for these files. A file opened this way is not added to a library and Pleya does
-  not remember where you stopped in it. You need to be signed in with a profile: on the sign-in
-  screen the file waits and starts once you are in. Not checked on a real device yet.
+- **Pleya plays video files from Finder on the Mac.** Pleya shows up under Open With for video
+  files such as mkv, mp4, mov and avi and starts the file in the player. On iPhone and iPad
+  this is in build 355; it is not in a Mac build yet and has not been checked on a Mac.
+- **Big P can use your Trakt history and watchlist.** With Trakt connected, Big P counts what
+  you marked as watched there as seen and can tell you which watchlist titles are in your
+  libraries. The code is in build 355, but Trakt sign-in is not switched on in any build yet.
 - **A Pleya Server can now be shared by a household.** The owner adds an account per person and
   decides which libraries each of them sees. A library somebody has no access to does not show
   up in their list, in their search results, or when they open a link straight to it. Watch
@@ -59,6 +49,45 @@ under `Notes`.
 - **Ending a session takes effect while a film is playing.** A revoked session stops the stream
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
+
+## 2.8.1 · build 355 · 11 October 2026 · iPhone and iPad
+
+<!-- commit: 9e7648a46a705bfcf4b8119346ec5bdd53178a3e -->
+
+### New
+- Pleya plays video files from the Files app. Pleya now shows up under Open in and in the share
+  sheet for video files such as mkv, mp4, mov and avi, and picking it starts the file in the
+  Pleya player. Pleya does not make itself the default app for these files. A file opened this
+  way is not added to a library, and Pleya does not remember where you stopped or which audio
+  and subtitle track you picked. You need to be signed in with a profile: on the sign-in screen
+  the file waits and starts once you are in.
+
+### Fixed
+- When you ask Big P for one film or show, such as "that film with Tom Hanks about death row",
+  it shows the card of that title only, not every film with the same actor.
+
+### Notes
+- Subtitle files that sit next to the video are not picked up when you open a single file,
+  because iOS hands Pleya that one file only. Subtitles inside the file should work.
+- Audio files are not part of this.
+- Trakt for Big P is not switched on in this build, so there is no Trakt sign-in to test yet.
+
+### Worth checking
+- Nothing in this build has been checked on an iPhone or iPad yet. Opening a file is covered by
+  automated tests and one start of the app in the simulator. That Pleya appears under Open in
+  and that the file plays has not been checked on a device.
+- Open a video from Files with Pleya closed, and again with Pleya already open. Both should
+  start the player.
+- Open a video that sits in iCloud Drive and is not downloaded yet. It should start after the
+  download, without an error.
+- Send an mkv file to the iPhone with AirDrop and open it in Pleya, then do it again with
+  another file. Check under On My iPhone, Pleya, Inbox that only the last one is still there.
+- Open a video while the profile chooser is on screen. Nothing should play until you picked a
+  profile. Then switch profile and open a video again; it should still start.
+- Start a film from your server, then open a video from Files. The file should replace the
+  film, with no sound from the first one.
+- Big P: ask for one film by description, such as "that film with Tom Hanks about death row",
+  and check that only the card of that film shows.
 
 ## 2.8.1 · build 354 · 11 October 2026 · Mac
 
