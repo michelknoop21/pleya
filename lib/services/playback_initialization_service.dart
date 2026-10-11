@@ -15,6 +15,7 @@ import '../utils/app_logger.dart';
 import '../utils/global_key_utils.dart';
 import 'cached_playback_metadata_service.dart';
 import 'download_storage_service.dart';
+import 'opened_file.dart';
 import 'playback_initialization_types.dart';
 
 // Re-export so existing callers (video_player_screen) can keep importing
@@ -138,6 +139,9 @@ class PlaybackInitializationService {
     String? sessionIdentifier,
     String? transcodeSessionId,
   }) async {
+    // A file the system handed over has no server and no download row.
+    if (isOpenedFile(metadata)) return openedFilePlayback(metadata);
+
     final serverId = metadata.serverId ?? client?.serverId;
 
     String? offlineVideoPath;

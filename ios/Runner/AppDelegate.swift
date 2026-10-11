@@ -64,6 +64,10 @@ import MediaPlayer
       SecureFolderPlugin.register(with: registrar)
     }
 
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "OpenFilePlugin") {
+      OpenFilePlugin.register(with: registrar)
+    }
+
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "ShareServiceChannel") {
       registerShareServiceChannel(messenger: registrar.messenger())
     }

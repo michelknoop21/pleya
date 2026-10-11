@@ -258,7 +258,8 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
         authority: _playbackWriteAuthority,
       );
       _progressTracker!.startTracking();
-    } else if (_isOfflinePlayback) {
+    } else if (_isOfflinePlayback && !isOpenedFile(metadata)) {
+      // An opened file has no server: queued progress would never sync.
       _progressTracker = PlaybackProgressTracker(
         client: null,
         metadata: metadata,

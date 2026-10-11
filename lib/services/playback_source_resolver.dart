@@ -5,6 +5,7 @@ import '../media/media_item.dart';
 import '../media/media_server_client.dart';
 import '../models/transcode_quality_preset.dart';
 import 'multi_server_manager.dart';
+import 'opened_file.dart';
 import 'playback_context.dart';
 import 'playback_initialization_service.dart';
 
@@ -46,11 +47,11 @@ class PlaybackSourceResolver {
         : result.isTranscoding
         ? PlaybackSourceKind.remoteTranscode
         : PlaybackSourceKind.remoteDirect;
-    final reportingMode = _reportingMode(
-      sourceKind: sourceKind,
-      client: reportingClient,
-      offlineLibraryMode: offlineLibraryMode,
-    );
+    // An opened file belongs to no server, so there is nowhere to send its
+    // progress to, now or from the offline queue later.
+    final reportingMode = isOpenedFile(metadata)
+        ? PlaybackReportingMode.disabled
+        : _reportingMode(sourceKind: sourceKind, client: reportingClient, offlineLibraryMode: offlineLibraryMode);
     final scopeId = reportingClient?.cacheServerId;
 
     return PlaybackContext(
