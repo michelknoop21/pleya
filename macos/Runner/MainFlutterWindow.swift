@@ -37,6 +37,10 @@ class MainFlutterWindow: NSWindow {
     // Security-scoped folder picker (local folder sources under the sandbox)
     SecureFolderPlugin.register(
       with: flutterViewController.registrar(forPlugin: "SecureFolderPlugin"))
+
+    // Video files opened with Pleya from Finder
+    OpenFilePlugin.register(
+      with: flutterViewController.registrar(forPlugin: "OpenFilePlugin"))
     WindowUtilsPlugin.setWindow(self)
     WindowUtilsPlugin.installWindowDelegate()
     WindowUtilsPlugin.syncWindowChrome()

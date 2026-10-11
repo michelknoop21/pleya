@@ -33,6 +33,7 @@ import 'widgets/intro_splash.dart';
 import 'widgets/pleya_wordmark.dart';
 import 'screens/profile/pin_entry_dialog.dart';
 import 'screens/profile/profile_switch_screen.dart';
+import 'services/opened_file_service.dart';
 import 'services/storage_service.dart';
 import 'services/device_capabilities_service.dart';
 import 'services/device_capability_overrides.dart';
@@ -1016,7 +1017,7 @@ class _AppShell extends StatelessWidget {
                     darkTheme: themeProvider.darkTheme,
                     themeMode: themeProvider.materialThemeMode,
                     navigatorKey: rootNavigatorKey,
-                    navigatorObservers: [BackKeySuppressorObserver()],
+                    navigatorObservers: [BackKeySuppressorObserver(), OpenedFileRouteObserver()],
                     home: const OrientationAwareSetup(),
                     // Siri Remote select + gamepad A report as
                     // LogicalKeyboardKey.{select,gameButtonA} which aren't

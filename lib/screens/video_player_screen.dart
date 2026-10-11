@@ -68,6 +68,7 @@ import '../services/playback_resume_resolver.dart';
 import '../services/playback_write_authority.dart';
 import '../services/playback_source_resolver.dart';
 import '../services/offline_watch_sync_service.dart';
+import '../services/opened_file.dart';
 import '../services/display_mode_service.dart';
 import '../services/audio_output_coordinator.dart';
 import '../services/loudness/loudness_planner.dart';

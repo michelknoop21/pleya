@@ -5,6 +5,7 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/track_language_choice.dart';
+import 'package:pleya/services/opened_file.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/services/track_preference_store.dart';
@@ -37,6 +38,16 @@ void main() {
   });
 
   group('keying', () {
+    test('an opened file stores nothing: its key would be a local path', () async {
+      final opened = openedFileItem('/var/mobile/Documents/Vakantie.mkv');
+
+      await TrackPreferenceStore.saveAudio(opened, language: 'nld');
+      await TrackPreferenceStore.saveSubtitle(opened, language: 'eng');
+
+      expect(await TrackPreferenceStore.read(opened), isNull);
+      expect((await SettingsService.getInstance()).read(SettingsService.trackLanguagePreferences), isEmpty);
+    });
+
     test('every episode of a show resolves to the same entry', () async {
       await TrackPreferenceStore.saveAudio(_episode('ep1', show: 'show7'), language: 'nld');
 

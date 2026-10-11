@@ -23,6 +23,7 @@
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		A1B2C3D4E5F60718293A4B5C /* SecureFolderPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F60718293A4B5C6D /* SecureFolderPlugin.swift */; };
+		0F1E2D3C4B5A69788796A5B4 /* OpenFilePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E2D3C4B5A69788796A5B4C3 /* OpenFilePlugin.swift */; };
 		B1D51A6A2F00110000000001 /* MpvPlayerCoreBase.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1D51A6A2F00110000000002 /* MpvPlayerCoreBase.swift */; };
 		B1D51A6A2F00110000000005 /* MpvPlayerPluginShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1D51A6A2F00110000000006 /* MpvPlayerPluginShared.swift */; };
 		B1D51A6A2F00110000000008 /* ExternalDisplayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1D51A6A2F00110000000007 /* ExternalDisplayManager.swift */; };
@@ -84,6 +85,7 @@
 		B1D51A6A2F00110000000101 /* AudioSessionPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AudioSessionPlugin.swift; path = ../shared/apple/AudioSession/AudioSessionPlugin.swift; sourceTree = SOURCE_ROOT; };
 		B1D51A6A2F00110000000301 /* PleyaKeychainPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PleyaKeychainPlugin.swift; path = ../shared/apple/Keychain/PleyaKeychainPlugin.swift; sourceTree = SOURCE_ROOT; };
 		B2C3D4E5F60718293A4B5C6D /* SecureFolderPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SecureFolderPlugin.swift; sourceTree = "<group>"; };
+		1E2D3C4B5A69788796A5B4C3 /* OpenFilePlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OpenFilePlugin.swift; sourceTree = "<group>"; };
 		BB346A1D0705AB171F80B11B /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		C924A20B2FF7B7CF00A24BBC /* Podfile 2 */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Podfile 2"; sourceTree = "<group>"; };
 		D5AEF09791812EA3DEE53491 /* ICloudKvsPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ICloudKvsPlugin.swift; path = ICloudKvsPlugin.swift; sourceTree = "<group>"; };
@@ -206,6 +208,7 @@
 				B1D51A6A2F00110000000101 /* AudioSessionPlugin.swift */,
 				B1D51A6A2F00110000000301 /* PleyaKeychainPlugin.swift */,
 				B2C3D4E5F60718293A4B5C6D /* SecureFolderPlugin.swift */,
+				1E2D3C4B5A69788796A5B4C3 /* OpenFilePlugin.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -441,6 +444,7 @@
 				B1D51A6A2F00110000000102 /* AudioSessionPlugin.swift in Sources */,
 				B1D51A6A2F00110000000302 /* PleyaKeychainPlugin.swift in Sources */,
 				A1B2C3D4E5F60718293A4B5C /* SecureFolderPlugin.swift in Sources */,
+				0F1E2D3C4B5A69788796A5B4 /* OpenFilePlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

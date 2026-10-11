@@ -258,7 +258,7 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
         authority: _playbackWriteAuthority,
       );
       _progressTracker!.startTracking();
-    } else if (_isOfflinePlayback) {
+    } else if (queuesOfflineProgress(metadata, offlinePlayback: _isOfflinePlayback)) {
       _progressTracker = PlaybackProgressTracker(
         client: null,
         metadata: metadata,

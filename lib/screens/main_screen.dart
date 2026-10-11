@@ -48,6 +48,7 @@ import '../utils/provider_extensions.dart';
 import '../utils/platform_detector.dart';
 import '../utils/snackbar_helper.dart';
 import '../utils/update_dialog.dart';
+import '../utils/opened_file_launcher.dart';
 import '../utils/video_player_navigation.dart';
 import '../mixins/mounted_set_state_mixin.dart';
 import '../mixins/refreshable.dart';
@@ -101,6 +102,7 @@ import 'profile/profile_switch_screen.dart';
 import 'tv/tv_movies_landing_screen.dart';
 import 'tv/tv_offline_home_screen.dart';
 import 'tv/tv_series_landing_screen.dart';
+import '../services/opened_file_service.dart';
 import '../services/system_shelf_service.dart';
 import '../watch_together/watch_together.dart';
 
@@ -727,6 +729,8 @@ class _MainScreenState extends State<MainScreen>
       _setupWatchTogetherCallback();
       _setupSystemShelfDeepLink();
     }
+    // Outside the online check: a file on this device plays without a server.
+    _setupOpenedFiles();
 
     // Wire profile binder + tracker bootstrap (skip in offline mode)
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -1063,6 +1067,21 @@ class _MainScreenState extends State<MainScreen>
     }
   }
 
+  /// Play a video file the system hands to Pleya (Files, share sheet, Finder).
+  void _setupOpenedFiles() => OpenedFileService.instance.attach(_onOpenedFile);
+
+  /// Behind a route on the root navigator (profile chooser, dialog) the
+  /// player would start out of sight, so the file waits until that route is
+  /// gone; so does one that arrives while this screen is on its way out.
+  /// [OpenedFileRouteObserver] offers it again.
+  void _onOpenedFile(String path) {
+    if (!mounted || isCoveredByOuterRoute(context)) {
+      OpenedFileService.instance.defer(path);
+      return;
+    }
+    unawaited(playOpenedFile(context, path));
+  }
+
   /// Set up launcher shelf deep link handling for Android TV and tvOS taps.
   void _setupSystemShelfDeepLink() {
     if (!Platform.isAndroid && !PlatformDetector.isAppleTV()) return;
@@ -1321,6 +1340,7 @@ class _MainScreenState extends State<MainScreen>
   @override
   void dispose() {
     tvContentRouteRegistry.detach(_pushTvContentRoute);
+    OpenedFileService.instance.detach(_onOpenedFile);
     if (kPleyaVerify) {
       AutomationNavigationHooks.instance.unregisterSelectTab(_selectTab);
     }
