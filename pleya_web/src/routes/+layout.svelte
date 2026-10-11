@@ -179,10 +179,9 @@
     min-height: 100dvh;
   }
 
+  /* Inloggen (12) loopt tot de rand en setup (40) centreert een eigen kolom;
+     elke route bepaalt zijn opbouw zelf, de schil geeft alleen de hoogte. */
   .auth-shell {
     min-height: 100dvh;
-    display: grid;
-    place-items: center;
-    padding: var(--space-2) var(--space);
   }
 </style>

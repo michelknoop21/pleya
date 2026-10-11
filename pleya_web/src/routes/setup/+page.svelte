@@ -1,5 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import Alert from '$lib/components/Alert.svelte';
+  import Field from '$lib/components/Field.svelte';
   import { session } from '$lib/stores/session.svelte';
   import { ApiError, describeError } from '$lib/api/errors';
   import { t } from '$lib/i18n';
@@ -42,76 +44,127 @@
 
 <svelte:head><title>{t('setup.title')} · {t('app.name')}</title></svelte:head>
 
-<form class="auth" onsubmit={submit}>
-  <img class="auth__mark" src="/brand/pleya-mark-256.png" alt="" width="96" height="96" />
-  <h1 class="t-headline">{t('setup.title')}</h1>
-  <p class="t-body auth__intro">{t('setup.intro')}</p>
+<!--
+  Het formulier van stap 1 uit beeld 40, in een kolom van 620 (DESIGN.md
+  hoofdstuk 3). De stappenbalk, de servernaam en het opslag- en
+  bibliotheekwerk horen bij S11; tot dan is setup één formulier.
+-->
+<div class="setup">
+  <form class="setup__box" onsubmit={submit}>
+    <div class="setup__brand">
+      <img src="/brand/pleya-mark-64.png" alt="" width="36" height="36" />
+      <span>{t('app.name')}</span>
+    </div>
+    <h1 class="setup__title">{t('setup.title')}</h1>
+    <p class="setup__sub">{t('setup.intro')}</p>
 
-  {#if error}
-    <p class="auth__error t-body" role="alert">{error}</p>
-  {/if}
+    <div class="setup__fields">
+      <!-- Eigen invoer in Field: de code wordt letterlijk overgetypt, dus geen
+           spellingcontrole, en de browser mag hem als eenmalige code invullen. -->
+      <Field label={t('setup.code')} mono required>
+        {#snippet children(control)}
+          <input
+            id={control.id}
+            aria-describedby={control.describedby}
+            bind:value={setupCode}
+            autocomplete="one-time-code"
+            spellcheck="false"
+            required
+          />
+        {/snippet}
+      </Field>
+      <Field label={t('setup.username')} bind:value={username} autocomplete="username" required />
+      <Field
+        label={t('setup.password')}
+        type="password"
+        bind:value={password}
+        autocomplete="new-password"
+        hint={t('setup.passwordHint')}
+        required
+      />
+    </div>
 
-  <label class="auth__field">
-    <span class="t-small">{t('setup.code')}</span>
-    <input
-      class="field"
-      bind:value={setupCode}
-      autocomplete="one-time-code"
-      required
-      spellcheck="false"
-    />
-  </label>
+    {#if error}
+      <div class="setup__error">
+        <Alert tone="err">{error}</Alert>
+      </div>
+    {/if}
 
-  <label class="auth__field">
-    <span class="t-small">{t('setup.username')}</span>
-    <input class="field" bind:value={username} autocomplete="username" required />
-  </label>
-
-  <label class="auth__field">
-    <span class="t-small">{t('setup.password')}</span>
-    <input
-      class="field"
-      type="password"
-      bind:value={password}
-      autocomplete="new-password"
-      minlength="8"
-      required
-      aria-describedby="password-hint"
-    />
-    <span class="t-small" id="password-hint">{t('setup.passwordHint')}</span>
-  </label>
-
-  <button class="btn" type="submit" disabled={!valid || busy}>
-    {busy ? t('loading') : t('setup.submit')}
-  </button>
-</form>
+    <div class="setup__foot">
+      <button class="btn setup__submit" type="submit" disabled={!valid || busy}>
+        {busy ? t('loading') : t('setup.submit')}
+      </button>
+    </div>
+  </form>
+</div>
 
 <style>
-  .auth {
+  .setup {
     display: flex;
-    flex-direction: column;
-    gap: var(--space);
-    width: min(100%, 400px);
+    align-items: flex-start;
+    justify-content: center;
+    padding: 60px 24px;
   }
 
-  .auth__mark {
-    align-self: center;
+  .setup__box {
+    width: 100%;
+    max-width: 620px;
   }
 
-  .auth__intro {
-    color: var(--text-muted);
+  /* Merkteken plus naam, om dezelfde reden als op het inlogscherm. */
+  .setup__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 36px;
+    margin-bottom: 26px;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
   }
 
-  .auth__error {
-    padding: var(--space);
+  .setup__brand img {
     border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--error) 18%, transparent);
-    border: 1px solid color-mix(in srgb, var(--error) 45%, transparent);
   }
 
-  .auth__field {
+  .setup__title {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .setup__sub {
+    margin-top: 6px;
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--ink-2);
+  }
+
+  .setup__fields {
     display: flex;
     flex-direction: column;
-    gap: var(--space-quarter);
+    gap: 14px;
+    margin-top: 14px;
+  }
+
+  .setup__error {
+    margin-top: 22px;
+  }
+
+  .setup__foot {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 28px;
+  }
+
+  @media (max-width: 899px) {
+    .setup {
+      padding: 24px 16px 40px;
+    }
+
+    /* Onder 900 vol breed (DESIGN.md hoofdstuk 3, "Setup"). */
+    .setup__submit {
+      width: 100%;
+    }
   }
 </style>

@@ -45,9 +45,37 @@ test('een verkeerd wachtwoord geeft de vertaalde foutcode en geen serverbericht'
   await page.getByLabel('Password').fill('dit-is-niet-het-wachtwoord');
   await page.getByRole('button', { name: 'Sign in' }).click();
 
+  // De regio voor de schermlezer is visueel verborgen; de zichtbare fout staat
+  // onder het veld en wordt in de test hieronder gecontroleerd.
   const alert = page.getByRole('alert');
-  await expect(alert).toBeVisible();
   await expect(alert).toContainText('do not match');
+});
+
+test('de fout hangt aan het wachtwoordveld', async ({ page }) => {
+  await page.goto('/');
+  const info = await page.request.get('/pleya/v1/info');
+  const body = (await info.json()) as { auth: { setup_required: boolean } };
+  test.skip(body.auth.setup_required, 'er is nog geen eigenaar om verkeerd bij in te loggen');
+
+  await page.waitForURL('**/login');
+  const password = page.getByLabel('Password');
+  await page.getByLabel('Username').fill(USERNAME);
+  await password.fill('dit-is-niet-het-wachtwoord');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+
+  // Beeld 12: de fout staat onder het veld en niet in een los vak. Het veld
+  // zegt zelf dat het fout is en verwijst naar die tekst, zodat een
+  // schermlezer bij focus hoort wat er mis is.
+  await expect(password).toHaveAttribute('aria-invalid', 'true');
+  const ids = ((await password.getAttribute('aria-describedby')) ?? '').split(/\s+/);
+  const described = page.locator(
+    ids
+      .filter(Boolean)
+      .map((id) => `[id="${id}"]`)
+      .join(', ') || '#geen-beschrijving'
+  );
+  await expect(described.first()).toBeVisible();
+  await expect(described.first()).toContainText('do not match');
 });
 
 test('de sessie overleeft een herlaadbeurt', async ({ page }) => {

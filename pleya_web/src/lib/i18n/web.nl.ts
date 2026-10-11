@@ -30,6 +30,9 @@ export const webNl = {
   'setup.submit': 'Eigenaar aanmaken',
 
   'login.title': 'Inloggen',
+  'login.subtitle': 'Met het account dat de beheerder van deze server voor je heeft aangemaakt.',
+  'login.forgotHelp':
+    'Wachtwoord vergeten? Een beheerder kan het opnieuw instellen. Deze server verstuurt geen e-mail.',
   'login.username': 'Gebruikersnaam',
   'login.password': 'Wachtwoord',
   'login.submit': 'Inloggen',

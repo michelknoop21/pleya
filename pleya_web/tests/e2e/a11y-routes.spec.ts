@@ -306,5 +306,22 @@ for (const { locale, context } of LOCALES) {
       await page.getByRole('button', { name: label(locale, 'login.submit') }).waitFor();
       await measure(page, '/login', locale, { shell: false });
     });
+
+    test(`/login in de foutstaat (${locale})`, async ({ page }, info) => {
+      await prepare(page, info.project.name);
+      await page.goto('/login');
+      test.skip(
+        await setupRequired(page),
+        'deze stack heeft nog geen eigenaar, dus /login stuurt door naar /setup'
+      );
+      // Een eigen gebruikersnaam: de limiter telt per naam, en zo eet deze
+      // meting de pogingen van auth.spec.ts niet op.
+      const password = page.getByLabel(label(locale, 'login.password'));
+      await page.getByLabel(label(locale, 'login.username')).fill(`a11y-fout-${locale}`);
+      await password.fill('dit-is-niet-het-wachtwoord');
+      await page.getByRole('button', { name: label(locale, 'login.submit') }).click();
+      await expect(password).toHaveAttribute('aria-invalid', 'true');
+      await measure(page, '/login fout', locale, { shell: false });
+    });
   });
 }

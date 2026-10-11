@@ -27,6 +27,9 @@ export const web = {
   'setup.submit': 'Create owner',
 
   'login.title': 'Sign in',
+  'login.subtitle': 'Use the account the administrator of this server created for you.',
+  'login.forgotHelp':
+    'Forgot your password? An administrator can reset it. This server does not send email.',
   'login.username': 'Username',
   'login.password': 'Password',
   'login.submit': 'Sign in',
