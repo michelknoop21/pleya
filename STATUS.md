@@ -18,6 +18,16 @@ Volgende stap: S7 (webshell en designsysteem) of S4 (sidecars en artworkladder),
 geen vrijgave vragen. S3 (boeken) wacht op PS-11A geïntegreerd (S7, S10, S11) en een vrijgavebesluit
 (DEC-129); S5 hangt aan S3 en wacht dus mee.
 
+**PS-5-hardwareronde: achterstallig en een releaseblokkade.** De ronde (acceptatiecriterium 4) is niet
+gedraaid en staat in de masterlijst als P7 en S15.6 op `[!]` OVERDUE. DEC-118 is ongewijzigd: de grens
+"merge van `feat/pleyaserver` naar `main`" is op 25 september 2026 gepasseerd met `638e7524` (PR #94).
+Michel heeft op 10 oktober 2026 vastgelegd wat dat blokkeert, tot een geslaagde hardwareacceptatie: een
+publieke clientrelease, een indiening bij App Review of Beta App Review met PS-5- of PS-9-gedrag, en de
+eerste publieke release van Pleya Server. Een mislukte ronde volstaat daarvoor niet. De macOS-opstartregel
+van build 246 is een historische PASS zonder teruggevonden artefact en telt niet als actueel bewijs.
+Simulator, Pleya Verify en een groene CI tellen hier niet. De open rijen staan in
+`docs/qa/ps5-hardware-round.md`; in de roadmap blijft C-05 op Gepland staan.
+
 ## Stand 24 september 2026
 
 S2.4 is gereed op `integration/pleya-server-completion`: scans en jobs over HTTP (zes endpoints), annuleren
@@ -352,7 +362,8 @@ heeft en inmiddels op PS-9 (gebruikers, sessies, rollen) werkt, met
 [DEC-118](docs/DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
 als geldige, geaccepteerde toestemming daarvoor. Diezelfde DEC-118 vraagt wél de openstaande
 PS-5-hardwareronde vóór een merge naar `main` (dat is een van de drie triggers in de decision-tekst
-zelf), dus die ronde is nu bezig: een release-build draait lokaal op macOS, en dezelfde bron staat
+zelf). Die merge is later zonder de ronde gebeurd (25 september 2026, zie bovenaan); op dit moment was
+de ronde nog bezig: een release-build draait lokaal op macOS, en dezelfde bron staat
 gebouwd en gelanceerd op de echte Apple TV. De vier testtitels en de fysieke playbackbeoordeling
 (inclusief de TrueHD/Dolby-check via een echte AVR) wachten op Michel; zie de "Volgende stap" hieronder
 en het `feat/pleyaserver`-eigen `STATUS.md` voor de volledige stand.
@@ -574,8 +585,10 @@ blokkeerde, is vastgelegd als een
 beperkte governance-afwijking, [DEC-118](docs/DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet).
 Ze geldt uitsluitend voor het starten van een volgende ontwikkelfase en is geen bewijs dat Plex- of
 Jellyfin-afspelen op echte hardware geverifieerd is; die verificatie ontbreekt gewoon nog. De
-hardwareronde blijft als openstaande schuld op de PS-5-fasetabel staan en moet uiterlijk vóór de
-eerstvolgende publieke release die PS-5- of PS-9-gedrag meeneemt alsnog gedraaid worden.
+hardwareronde blijft als openstaande schuld op de PS-5-fasetabel staan. Ze moest uiterlijk vóór de
+eerstvolgende publieke release die PS-5- of PS-9-gedrag meeneemt gedraaid worden; het moment van de
+merge naar `main` is op 25 september 2026 gepasseerd en de ronde is sindsdien achterstallig, zie
+"PS-5-hardwareronde: achterstallig en een releaseblokkade" bovenaan.
 
 De `_postJson`-bevinding hierboven hoort niet in PS-9: die raakt elke aanroep van
 `PleyaServerClient` en vraagt een eigen ronde, met een regressietest voor een snelle 5xx door de
