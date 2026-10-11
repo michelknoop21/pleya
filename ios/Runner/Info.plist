@@ -119,6 +119,11 @@
 			</dict>
 		</dict>
 	</array>
+	<!-- Een geopend bestand is geen route: zonder deze sleutel zet de engine
+	     de bestands-URL van een koude start door als pushNamed. De app heeft
+	     geen URL-schemes die hierop leunen. -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

@@ -8,6 +8,7 @@ import '../media/media_kind.dart';
 import '../media/track_language_choice.dart';
 import '../media/unified/identity_evidence.dart';
 import '../utils/app_logger.dart';
+import 'opened_file.dart';
 import 'pleya_share/pleya_share_device_name.dart';
 import 'preferences/preference_merge_strategies.dart';
 import 'preferences/preference_sync_policy.dart';
@@ -295,6 +296,9 @@ class TrackPreferenceStore {
     TrackLanguageChoice Function(TrackLanguageChoice current, int now, TrackChoiceProvenance provenance) apply, {
     bool Function()? isCurrent,
   }) {
+    // An opened file belongs to no series or library, and its key would be
+    // the file's path in a value that syncs over iCloud.
+    if (isOpenedFile(metadata)) return Future<void>.value();
     return _locked(() async {
       try {
         final settings = await SettingsService.getInstance();

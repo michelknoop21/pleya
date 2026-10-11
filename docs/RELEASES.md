@@ -34,7 +34,8 @@ under `Notes`.
   under Open in, in the share sheet and under Open With for video files such as mkv, mp4, mov
   and avi. Picking it starts the file in the Pleya player. Pleya does not make itself the
   default app for these files. A file opened this way is not added to a library and Pleya does
-  not remember where you stopped in it. Not checked on a real device yet.
+  not remember where you stopped in it. You need to be signed in with a profile: on the sign-in
+  screen the file waits and starts once you are in. Not checked on a real device yet.
 - **A Pleya Server can now be shared by a household.** The owner adds an account per person and
   decides which libraries each of them sees. A library somebody has no access to does not show
   up in their list, in their search results, or when they open a link straight to it. Watch

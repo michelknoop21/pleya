@@ -1,16 +1,31 @@
 import 'package:flutter/widgets.dart';
 
+import '../media/media_item.dart';
 import '../services/opened_file.dart';
 import 'app_logger.dart';
 import 'video_player_navigation.dart';
+
+/// The part of [navigateToVideoPlayer] an opened file uses.
+typedef OpenedFileNavigation =
+    Future<bool?> Function(
+      BuildContext context, {
+      required MediaItem metadata,
+      bool usePushReplacement,
+      bool isOffline,
+      bool resolveWatchState,
+    });
 
 /// Plays the file at [path] that the system handed to Pleya.
 ///
 /// A player that is on top is replaced, the way the next episode replaces
 /// the current one: two players stacked would both keep decoding.
-Future<void> playOpenedFile(BuildContext context, String path) async {
+Future<void> playOpenedFile(
+  BuildContext context,
+  String path, {
+  @visibleForTesting OpenedFileNavigation navigate = navigateToVideoPlayer,
+}) async {
   appLogger.i('Opened file: starting playback');
-  await navigateToVideoPlayer(
+  await navigate(
     context,
     metadata: openedFileItem(path),
     resolveWatchState: false,

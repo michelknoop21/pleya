@@ -34,10 +34,15 @@ final class OpenFilePlugin: NSObject, FlutterPlugin {
   /// Takes the file URLs out of [contexts] and returns the rest (sign-in
   /// callbacks and other links) for whoever handles those.
   static func receive(_ contexts: Set<UIOpenURLContext>) -> Set<UIOpenURLContext> {
-    for context in contexts where context.url.isFileURL {
+    let files = contexts.filter { $0.url.isFileURL }
+    // The system copied these into our Inbox. Earlier copies are ours to
+    // remove, or every opened film stays on the device. Once per delivery:
+    // per file, two films arriving together would remove each other.
+    clearInbox(keeping: files.filter { !$0.options.openInPlace }.map { $0.url })
+    for context in files {
       prepare(context.url, inPlace: context.options.openInPlace)
     }
-    return contexts.filter { !$0.url.isFileURL }
+    return contexts.subtracting(files)
   }
 
   private static func prepare(_ url: URL, inPlace: Bool) {
@@ -51,10 +56,6 @@ final class OpenFilePlugin: NSObject, FlutterPlugin {
         // can open it by path.
         var coordinationError: NSError?
         NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordinationError) { _ in }
-      } else {
-        // The system copied the file into Documents/Inbox. Earlier copies are
-        // ours to remove, or every opened film stays on the device.
-        clearInbox(keeping: url)
       }
       DispatchQueue.main.async {
         if accessing {
@@ -70,12 +71,16 @@ final class OpenFilePlugin: NSObject, FlutterPlugin {
     }
   }
 
-  private static func clearInbox(keeping current: URL) {
-    let inbox = current.deletingLastPathComponent()
-    guard inbox.lastPathComponent == "Inbox",
+  /// Removes what the Inbox of [copies] holds besides them. Only inside the
+  /// app's own container: nothing the user keeps elsewhere is touched.
+  private static func clearInbox(keeping copies: [URL]) {
+    guard let inbox = copies.first?.deletingLastPathComponent().standardizedFileURL,
+      inbox.lastPathComponent.hasSuffix("Inbox"),
+      inbox.path.hasPrefix(URL(fileURLWithPath: NSHomeDirectory()).standardizedFileURL.path + "/"),
       let entries = try? FileManager.default.contentsOfDirectory(at: inbox, includingPropertiesForKeys: nil)
     else { return }
-    for entry in entries where entry.lastPathComponent != current.lastPathComponent {
+    let keep = Set(copies.map { $0.lastPathComponent })
+    for entry in entries where !keep.contains(entry.lastPathComponent) {
       try? FileManager.default.removeItem(at: entry)
     }
   }

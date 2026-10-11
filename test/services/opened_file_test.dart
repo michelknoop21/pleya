@@ -84,6 +84,16 @@ void main() {
     });
   });
 
+  group('progress queue', () {
+    test('an opened file never queues progress, a download played offline does', () {
+      final download = MediaItem(id: 'mv1', backend: MediaBackend.plex, kind: MediaKind.movie, serverId: 'srv');
+
+      expect(queuesOfflineProgress(openedFileItem(_path), offlinePlayback: true), isFalse);
+      expect(queuesOfflineProgress(download, offlinePlayback: true), isTrue);
+      expect(queuesOfflineProgress(download, offlinePlayback: false), isFalse);
+    });
+  });
+
   group('OpenedFileService', () {
     TestWidgetsFlutterBinding.ensureInitialized();
     const channel = MethodChannel('com.pleya/open_file.test');
@@ -168,6 +178,42 @@ void main() {
       await pumpEventQueue();
 
       expect(takeCalls, 0);
+    });
+  });
+
+  group('playOpenedFile', () {
+    testWidgets('starts the player on its offline path, the only one without a server client', (tester) async {
+      final key = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(MaterialApp(navigatorKey: key, home: const SizedBox()));
+      MediaItem? played;
+      bool? offline;
+      bool? fresh;
+      bool? replaced;
+
+      await playOpenedFile(
+        key.currentContext!,
+        _path,
+        navigate:
+            (
+              context, {
+              required metadata,
+              usePushReplacement = false,
+              isOffline = false,
+              resolveWatchState = true,
+            }) async {
+              played = metadata;
+              offline = isOffline;
+              fresh = resolveWatchState;
+              replaced = usePushReplacement;
+              return null;
+            },
+      );
+
+      expect(isOpenedFile(played!), isTrue);
+      expect(played!.id, _path);
+      expect(offline, isTrue);
+      expect(fresh, isFalse);
+      expect(replaced, isFalse);
     });
   });
 

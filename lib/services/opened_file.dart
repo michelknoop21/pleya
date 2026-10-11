@@ -28,8 +28,13 @@ MediaItem openedFileItem(String path) {
   );
 }
 
+/// Whether playback of [item] without a reachable server queues its progress
+/// for a later sync. An opened file has no server, so its queue would never
+/// drain and the file would show up under Continue Watching.
+bool queuesOfflineProgress(MediaItem item, {required bool offlinePlayback}) => offlinePlayback && !isOpenedFile(item);
+
 /// Playback data for an opened file: the file itself, nothing to negotiate.
-/// mpv reads the tracks and chapters from the container.
+/// mpv reads the audio and subtitle tracks from the container.
 PlaybackInitializationResult openedFilePlayback(MediaItem item) {
   final path = item.id;
   final container = p.extension(path).replaceFirst('.', '').toLowerCase();
