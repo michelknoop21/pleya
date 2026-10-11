@@ -437,8 +437,10 @@ class SettingsService extends BaseSharedPreferencesService {
   static const showPerformanceOverlay = BoolPref('show_performance_overlay');
   static const autoHidePerformanceOverlay = BoolPref('auto_hide_performance_overlay', defaultValue: true);
   static const enableDiscordRPC = BoolPref('enable_discord_rpc');
-  static const enableTraktScrobble = BoolPref('enable_trakt_scrobble', defaultValue: true);
-  static const enableTraktWatchedSync = BoolPref('enable_trakt_watched_sync', defaultValue: true);
+  // Off until the user allows it right after linking Trakt (or under Trakt in
+  // Settings): linking alone sends no viewing data back to Trakt.
+  static const enableTraktScrobble = BoolPref('enable_trakt_scrobble', defaultValue: false);
+  static const enableTraktWatchedSync = BoolPref('enable_trakt_watched_sync', defaultValue: false);
   static const enableMalScrobble = BoolPref('enable_mal_scrobble', defaultValue: true);
   static const enableAnilistScrobble = BoolPref('enable_anilist_scrobble', defaultValue: true);
   static const enableSimklScrobble = BoolPref('enable_simkl_scrobble', defaultValue: true);

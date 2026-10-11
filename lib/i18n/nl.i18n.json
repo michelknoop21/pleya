@@ -1735,7 +1735,11 @@
     "scrobble": "Realtime scrobbling",
     "scrobbleDescription": "Verstuur play-, pauze- en stopgebeurtenissen tijdens afspelen naar Trakt.",
     "watchedSync": "Bekeken-status synchroniseren",
-    "watchedSyncDescription": "Wanneer je items als bekeken markeert in Pleya, worden ze ook op Trakt gemarkeerd."
+    "watchedSyncDescription": "Wanneer je items als bekeken markeert in Pleya, worden ze ook op Trakt gemarkeerd.",
+    "sendTitle": "Je kijkgedrag naar Trakt sturen?",
+    "sendBody": "Pleya stuurt afspeelgebeurtenissen en bekeken-markeringen alleen naar Trakt als je dat toestaat. Je kunt dit later wijzigen onder Trakt in Instellingen.",
+    "sendAllow": "Toestaan",
+    "sendDecline": "Nu niet"
   },
   "trackers": {
     "title": "Trackers",

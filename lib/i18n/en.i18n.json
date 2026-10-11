@@ -1971,7 +1971,11 @@
     "scrobble": "Real-time scrobbling",
     "scrobbleDescription": "Send play, pause, and stop events to Trakt during playback.",
     "watchedSync": "Sync watched status",
-    "watchedSyncDescription": "When you mark items watched in Pleya, mark them on Trakt."
+    "watchedSyncDescription": "When you mark items watched in Pleya, mark them on Trakt.",
+    "sendTitle": "Send your watching to Trakt?",
+    "sendBody": "Pleya sends play events and watched marks to Trakt only if you allow it. You can change this later under Trakt in Settings.",
+    "sendAllow": "Allow",
+    "sendDecline": "Not now"
   },
   "trackers": {
     "title": "Trackers",

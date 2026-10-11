@@ -1969,6 +1969,10 @@ class _TranslationsTraktNl extends TranslationsTraktEn {
 	@override String get scrobbleDescription => 'Verstuur play-, pauze- en stopgebeurtenissen tijdens afspelen naar Trakt.';
 	@override String get watchedSync => 'Bekeken-status synchroniseren';
 	@override String get watchedSyncDescription => 'Wanneer je items als bekeken markeert in Pleya, worden ze ook op Trakt gemarkeerd.';
+	@override String get sendTitle => 'Je kijkgedrag naar Trakt sturen?';
+	@override String get sendBody => 'Pleya stuurt afspeelgebeurtenissen en bekeken-markeringen alleen naar Trakt als je dat toestaat. Je kunt dit later wijzigen onder Trakt in Instellingen.';
+	@override String get sendAllow => 'Toestaan';
+	@override String get sendDecline => 'Nu niet';
 }
 
 // Path: trackers
@@ -5735,6 +5739,10 @@ extension on TranslationsNl {
 			'trakt.scrobbleDescription' => 'Verstuur play-, pauze- en stopgebeurtenissen tijdens afspelen naar Trakt.',
 			'trakt.watchedSync' => 'Bekeken-status synchroniseren',
 			'trakt.watchedSyncDescription' => 'Wanneer je items als bekeken markeert in Pleya, worden ze ook op Trakt gemarkeerd.',
+			'trakt.sendTitle' => 'Je kijkgedrag naar Trakt sturen?',
+			'trakt.sendBody' => 'Pleya stuurt afspeelgebeurtenissen en bekeken-markeringen alleen naar Trakt als je dat toestaat. Je kunt dit later wijzigen onder Trakt in Instellingen.',
+			'trakt.sendAllow' => 'Toestaan',
+			'trakt.sendDecline' => 'Nu niet',
 			'trackers.title' => 'Trackers',
 			'trackers.hubSubtitle' => 'Synchroniseer kijkvoortgang met Trakt en andere diensten.',
 			'trackers.notConnected' => 'Niet verbonden',
@@ -6192,12 +6200,12 @@ extension on TranslationsNl {
 			'unifiedCatalog.homeRows.featured' => 'Uitgelicht',
 			'unifiedCatalog.homeRows.alwaysFirst' => 'Altijd bovenaan',
 			'unifiedCatalog.homeRows.alwaysSecond' => 'Altijd tweede',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.homeRows.fixed' => 'vast',
 			'unifiedCatalog.homeRows.done' => 'Klaar',
 			'unifiedCatalog.homeRows.moveUp' => 'Omhoog',
 			'unifiedCatalog.homeRows.moveDown' => 'Omlaag',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.homeRows.hide' => 'Verbergen',
 			'unifiedCatalog.homeRows.show' => 'Tonen',
 			'unifiedCatalog.homeRows.edit' => 'Bewerken',
@@ -6706,12 +6714,12 @@ extension on TranslationsNl {
 			'assistant.settings.kidsAgesNone' => 'Niet ingesteld',
 			'assistant.settings.kidsAgesClear' => 'Leeftijden wissen',
 			'assistant.settings.kidsAgesValue' => ({required Object ages}) => '${ages} jaar',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.settings.kidsProfile' => 'Kinderprofiel',
 			'assistant.settings.kidsProfileNote' => 'Big P toont alleen titels die bij de leeftijd van de kinderen passen. Alleen voor dit profiel, alleen op dit toestel.',
 			'assistant.settings.kidsProfileLocked' => 'Plex markeert dit account als beperkt, dus dit staat altijd aan.',
 			'assistant.tasks.working' => ({required Object count, required Object done}) => 'Bezig met ${count} taken · ${done} klaar',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.tasks.allDone' => ({required Object count}) => '${count} taken zijn klaar.',
 			'assistant.tasks.someDone' => ({required Object done, required Object count}) => '${done} van ${count} taken klaar.',
 			'assistant.tasks.queued' => 'In de wachtrij',

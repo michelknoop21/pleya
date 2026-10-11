@@ -5468,6 +5468,18 @@ class TranslationsTraktEn {
 
 	/// en: 'When you mark items watched in Pleya, mark them on Trakt.'
 	String get watchedSyncDescription => 'When you mark items watched in Pleya, mark them on Trakt.';
+
+	/// en: 'Send your watching to Trakt?'
+	String get sendTitle => 'Send your watching to Trakt?';
+
+	/// en: 'Pleya sends play events and watched marks to Trakt only if you allow it. You can change this later under Trakt in Settings.'
+	String get sendBody => 'Pleya sends play events and watched marks to Trakt only if you allow it. You can change this later under Trakt in Settings.';
+
+	/// en: 'Allow'
+	String get sendAllow => 'Allow';
+
+	/// en: 'Not now'
+	String get sendDecline => 'Not now';
 }
 
 // Path: trackers
@@ -11209,6 +11221,10 @@ extension on Translations {
 			'trakt.scrobbleDescription' => 'Send play, pause, and stop events to Trakt during playback.',
 			'trakt.watchedSync' => 'Sync watched status',
 			'trakt.watchedSyncDescription' => 'When you mark items watched in Pleya, mark them on Trakt.',
+			'trakt.sendTitle' => 'Send your watching to Trakt?',
+			'trakt.sendBody' => 'Pleya sends play events and watched marks to Trakt only if you allow it. You can change this later under Trakt in Settings.',
+			'trakt.sendAllow' => 'Allow',
+			'trakt.sendDecline' => 'Not now',
 			'trackers.title' => 'Trackers',
 			'trackers.hubSubtitle' => 'Sync watch progress with Trakt and other services.',
 			'trackers.notConnected' => 'Not connected',
@@ -11436,12 +11452,12 @@ extension on Translations {
 			'unifiedCatalog.homeRows.featured' => 'Featured',
 			'unifiedCatalog.homeRows.alwaysFirst' => 'Always at the top',
 			'unifiedCatalog.homeRows.alwaysSecond' => 'Always second',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.homeRows.fixed' => 'fixed',
 			'unifiedCatalog.homeRows.done' => 'Done',
 			'unifiedCatalog.homeRows.moveUp' => 'Move up',
 			'unifiedCatalog.homeRows.moveDown' => 'Move down',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.homeRows.hide' => 'Hide',
 			'unifiedCatalog.homeRows.show' => 'Show',
 			'unifiedCatalog.homeRows.edit' => 'Edit',
@@ -11950,12 +11966,12 @@ extension on Translations {
 			'assistant.settings.kidsAgesNone' => 'Not set',
 			'assistant.settings.kidsAgesClear' => 'Clear ages',
 			'assistant.settings.kidsAgesValue' => ({required Object ages}) => '${ages} years',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.settings.kidsProfile' => 'Children\'s profile',
 			'assistant.settings.kidsProfileNote' => 'Big P only shows titles that suit the children\'s ages. Only for this profile, only on this device.',
 			'assistant.settings.kidsProfileLocked' => 'Plex marks this account as restricted, so this is always on.',
 			'assistant.tasks.working' => ({required Object count, required Object done}) => 'Working on ${count} tasks · ${done} done',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.tasks.allDone' => ({required Object count}) => '${count} tasks are done.',
 			'assistant.tasks.someDone' => ({required Object done, required Object count}) => '${done} of ${count} tasks done.',
 			'assistant.tasks.queued' => 'Queued',
