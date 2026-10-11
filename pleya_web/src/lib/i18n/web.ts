@@ -75,6 +75,7 @@ export const web = {
   'search.resultsFor': 'Results for “{query}”',
   'search.noResultsTitle': 'No results',
   'search.seasonsNote': 'Seasons are listed on the show, not in search results.',
+  'search.filters.label': 'Type',
 
   'item.seasons': 'Seasons',
   'item.episodes': 'Episodes',

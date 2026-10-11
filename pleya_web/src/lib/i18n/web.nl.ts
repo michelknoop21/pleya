@@ -78,6 +78,7 @@ export const webNl = {
   'search.resultsFor': 'Resultaten voor “{query}”',
   'search.noResultsTitle': 'Niets gevonden',
   'search.seasonsNote': 'Seizoenen staan bij de serie, niet in de zoekresultaten.',
+  'search.filters.label': 'Soort',
 
   'item.seasons': 'Seizoenen',
   'item.episodes': 'Afleveringen',

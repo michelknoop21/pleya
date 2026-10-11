@@ -5,6 +5,7 @@ import {
   expectNoHorizontalOverflow,
   expectShell,
   grid,
+  label,
   openLibraryOfKind,
   signIn,
   WIDTHS
@@ -119,6 +120,23 @@ test.describe('de verticale slice', () => {
     await expectNoAxeViolations(page, 'zoeken');
   });
 
+  test('de filtergroep op zoeken heeft een eigen naam en zet aria-pressed', async ({ page }) => {
+    await page.goto('/search');
+
+    // Niet "Alles": dat is de naam van de eerste chip, geen groepsnaam.
+    const group = page.getByRole('group', { name: label('en', 'search.filters.label'), exact: true });
+    await expect(group).toBeVisible();
+
+    const all = group.getByRole('button', { name: 'All', exact: true });
+    const movies = group.getByRole('button', { name: 'Movies', exact: true });
+    await expect(all).toHaveAttribute('aria-pressed', 'true');
+    await expect(movies).toHaveAttribute('aria-pressed', 'false');
+
+    await movies.click();
+    await expect(movies).toHaveAttribute('aria-pressed', 'true');
+    await expect(all).toHaveAttribute('aria-pressed', 'false');
+  });
+
   test('het serveroverzicht toont alleen wat /server en /info dragen', async ({ page }) => {
     await page.goto('/server');
     await expect(page.getByRole('heading', { name: 'Server', level: 1 })).toBeVisible();
@@ -197,13 +215,23 @@ test.describe('toetsenbord', () => {
     await expect(page).toHaveURL(/#main$/);
   });
 
-  test('een zichtbare focusring staat op elk bediend element', async ({ page }) => {
+  test('focus is zichtbaar op het zoekveld en op een chip', async ({ page }) => {
     await page.goto('/search');
-    await page.getByRole('searchbox').focus();
-    const outline = await page.getByRole('searchbox').evaluate(
-      (el) => getComputedStyle(el).outlineStyle
-    );
-    expect(outline).not.toBe('none');
+    const box = page.getByRole('searchbox');
+    const border = () => box.evaluate((el) => getComputedStyle(el).borderTopColor);
+
+    const before = await border();
+    await box.focus();
+    // Een tekstvak toont focus als een inkt-rand zonder ring (Field, beeld 23);
+    // zonder ring en zonder randwissel zou focus er niet zijn.
+    // De rand loopt over een korte overgang, dus pollen in plaats van één meting.
+    await expect.poll(border).not.toBe(before);
+
+    // Een chip is een knop en houdt wel de ring.
+    await page.keyboard.press('Tab');
+    const chip = page.locator('.chips__hit:focus-visible .chip');
+    await expect(chip).toBeVisible();
+    expect(await chip.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe('none');
   });
 });
 
