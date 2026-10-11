@@ -35,6 +35,55 @@ void main() {
     expect(jsonDecode(me.body), {'id': 1, 'displayName': 'verify-admin', 'permissions': 2});
   });
 
+  test('search answers the seeded titles that contain the query, and nothing for an empty one', () async {
+    final server = SeerrFakeServer(apiKey: 'verify-key');
+    server.addSearchItem(tmdbId: 401, mediaType: 'movie', title: 'Ashfall', year: 2023);
+    server.addSearchItem(tmdbId: 402, mediaType: 'tv', title: 'Glass Harbor', year: 2022);
+    server.addSearchItem(tmdbId: 403, mediaType: 'movie', title: 'Tundra');
+
+    Future<List<Object?>> titles(String query) async {
+      final response = await _get(server, '/seerr/api/v1/search', apiKey: 'verify-key', query: {'query': query});
+      return [for (final row in jsonDecode(response.body)['results'] as List) row['title'] ?? row['name']];
+    }
+
+    expect(await titles('AS'), ['Ashfall', 'Glass Harbor']);
+    expect(await titles('tundra'), ['Tundra']);
+    expect(await titles(''), isEmpty);
+  });
+
+  test('a 4K instance is listed only when the fixture says the server has one', () async {
+    final server = SeerrFakeServer(apiKey: 'verify-key');
+
+    Future<List<Object?>> qualities(String kind) async {
+      final response = await _get(server, '/seerr/api/v1/service/$kind', apiKey: 'verify-key');
+      return [for (final row in jsonDecode(response.body) as List) row['is4k']];
+    }
+
+    expect(await qualities('radarr'), [false]);
+    expect((await _get(server, '/seerr/api/v1/service/radarr/1', apiKey: 'verify-key')).statusCode, 404);
+
+    server.fourKServers = true;
+    expect(await qualities('radarr'), [false, true]);
+    expect(await qualities('sonarr'), [false, true]);
+    final detail = await _get(server, '/seerr/api/v1/service/radarr/1', apiKey: 'verify-key');
+    expect(jsonDecode(detail.body)['profiles'].single['name'], 'Ultra-HD');
+
+    server.reset();
+    expect(await qualities('radarr'), [false]);
+  });
+
+  test('a seeded title keeps its HD and 4K status apart', () async {
+    final server = SeerrFakeServer(apiKey: 'verify-key');
+    server.addTitle(mediaType: 'movie', tmdbId: 301, title: 'Glacier Run', status: 5, status4k: 1);
+    server.addTitle(mediaType: 'movie', tmdbId: 302, title: 'Never Seen');
+
+    final known = jsonDecode((await _get(server, '/seerr/api/v1/movie/301', apiKey: 'verify-key')).body) as Map;
+    expect(known['mediaInfo'], containsPair('status', 5));
+    expect(known['mediaInfo'], containsPair('status4k', 1));
+    final unseen = jsonDecode((await _get(server, '/seerr/api/v1/movie/302', apiKey: 'verify-key')).body) as Map;
+    expect(unseen.containsKey('mediaInfo'), isFalse);
+  });
+
   test('a seeded request comes back without its title, like real Overseerr', () async {
     // The title/poster a caller passes to addRequest must not leak straight
     // onto the request row — SeerrClient.needsDisplayData only ever fires the

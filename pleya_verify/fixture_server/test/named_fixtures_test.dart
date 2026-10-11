@@ -181,6 +181,47 @@ void main() {
     });
   });
 
+  group('seerr.detail.*', () {
+    test('the same available title, with and without a 4K instance', () {
+      final server = PleyaFakeServer();
+      final seerr = SeerrFakeServer();
+      expect(applyNamedFixture(server, 'seerr.detail.4k.v1'), isFalse);
+
+      expect(applyNamedFixture(server, 'seerr.detail.4k.v1', seerr: seerr), isTrue);
+      expect(seerr.fourKServers, isTrue);
+      expect(seerr.discover['trending']!.single['title'], 'Glacier Run');
+
+      expect(applyNamedFixture(server, 'seerr.detail.hd-only.v1', seerr: seerr), isTrue);
+      expect(seerr.fourKServers, isFalse);
+      expect(seerr.discover['trending']!.single['title'], 'Glacier Run');
+    });
+  });
+
+  group('seerr.search.v1', () {
+    test('seeds titles the library fixture does not hold', () {
+      final server = PleyaFakeServer();
+      applyNamedFixture(server, 'catalog.mixed.v1');
+      final seerr = SeerrFakeServer();
+
+      expect(applyNamedFixture(server, 'seerr.search.v1', seerr: seerr), isTrue);
+      final found = {for (final row in seerr.searchItems) row['title'] ?? row['name']};
+      expect(found, {'Ashfall', 'Glass Harbor'});
+      final library = {for (final item in server.items.values) item['title']};
+      expect(library.intersection(found), isEmpty);
+    });
+  });
+
+  group('server.owner.v1', () {
+    test('turns on the users capability and a reset turns it off again', () {
+      final server = PleyaFakeServer();
+      expect(server.usersCapability, isFalse);
+      expect(applyNamedFixture(server, 'server.owner.v1'), isTrue);
+      expect(server.usersCapability, isTrue);
+      server.reset();
+      expect(server.usersCapability, isFalse);
+    });
+  });
+
   group('activity.active-session.v1', () {
     test('returns false without a tautulli server, seeds one when given', () {
       final server = PleyaFakeServer();

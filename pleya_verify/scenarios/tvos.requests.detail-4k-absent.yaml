@@ -1,0 +1,56 @@
+name: tvos.requests.detail-4k-absent
+target: tvos-sim
+# REQ-DETAIL-4K, the negative half of tvos.requests.detail-4k.yaml: the same
+# film, the same admin and the same statuses on a server whose Radarr list has
+# no 4K instance (`seerr.detail.hd-only.v1`). The admin bit grants the 4K
+# right on any server, so only the instance list can keep the action away.
+#
+# The action appears after a second request (the instance list), so its
+# absence is asserted after the page has settled on its other actions, and
+# again after walking the whole action row to its right end.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - seed: seerr.detail.hd-only.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - seed_seerr: {base_url: "{{fixture_seerr}}", api_key: "verify-seerr-key"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[requests]", timeout: 5000}
+  - press: select
+  - wait_until: {id: seerr.search.field, timeout: 15000}
+  - settle: 2500
+
+  - press: down
+  - settle: 800
+  - assert: {id: seerr.search.field, focused: false}
+  - press: select
+
+  - wait_until: {id: "requests.detail.action[refresh]", state: {busy: false}, timeout: 15000}
+  # Longer than the instance list takes on the fixture: the 4K scenario has
+  # the action within this window.
+  - settle: 5000
+  - assert: {id: "requests.detail.action[refresh]", insideViewport: true, state: {busy: false}}
+  - assert: {id: "requests.detail.action[request4k]", present: false}
+  - snapshot: 00-title-page-no-4k
+
+  # RIGHT to the end of the row: the ring stops on Status verversen.
+  - press: right
+  - settle: 400
+  - press: right
+  - settle: 400
+  - press: right
+  - settle: 600
+  - assert: {id: "requests.detail.action[refresh]", focused: true, insideViewport: true}
+  - assert: {id: "requests.detail.action[request4k]", present: false}
+  - snapshot: 01-row-end-no-4k
