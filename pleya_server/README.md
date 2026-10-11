@@ -472,11 +472,25 @@ docker compose exec postgres psql -U pleya -d pleya -c \
 Verwijderen zonder de mediabibliotheek te raken:
 
 ```sh
-docker compose down            # containers en netwerk weg, data blijft
+docker compose down            # containers weg, data blijft; het netwerk alleen als pleya-tunnel er niet aan hangt
 docker compose down -v         # ook het Postgres-volume weg
 ```
 
 De mediabibliotheek is read-only gemount en wordt door geen van beide geraakt.
+
+Het netwerk heet vast `pleya-server_default` (`networks.default.name` in `compose.yaml`), want de
+tunnel van de relay-stack in `server/` hangt het als extern netwerk aan: de ingress van
+`web.pleya.app` wijst naar `http://pleya-server:8080`, en die naam bestaat alleen in dit netwerk.
+Een `up -d --build` laat het netwerk staan, dus een gewone deploy raakt de tunnel niet, en
+`deploy-nas.sh` meldt aan het eind of `pleya-tunnel` er nog aan hangt. Bij een `down` weigert Docker
+het netwerk te verwijderen zolang `pleya-tunnel` eraan hangt. Is het toch weg geweest en opnieuw
+aangemaakt, dan hangt de tunnel niet aan het nieuwe netwerk en geeft `web.pleya.app` 502 terwijl
+`readyz` groen is. Herstel dat in de relay-stack, zodat de koppeling uit `server/docker-compose.yml`
+komt en niet uit een losse `docker network connect` die de volgende relay-deploy weer wist:
+
+```sh
+ssh synology 'cd /volume1/docker/pleya-relay && /usr/local/bin/docker compose up -d --force-recreate cloudflared'
+```
 
 ## De LAN-grens
 
