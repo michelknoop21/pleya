@@ -62,9 +62,11 @@ bevroren. De volgende backendslice is S3. PS-14 is op 10 oktober 2026 vrijgegeve
 ([DEC-149](DECISIONS.md)), met de voorwaarden dat het de bestaande architectuur en de Unified Library
 gebruikt, later aansluit op de Pleya-clients en de webclient, en geen nieuwe DRM-, winkel- of
 abonnementsfunctionaliteit brengt zonder afzonderlijk besluit. Dat geeft S3 vrij en S6 niet: het
-locatorbesluit P5 is nog niet genomen. Wat S3 nog nodig heeft is het ontwerp van het contractvenster
-voor S3 tot en met S6, dat gebundeld wordt gemaakt en met een eigen besluit opent. S7 (webshell) blijft
-de slice die los daarvan kan beginnen.
+locatorbesluit P5 is nog niet genomen en PS-15 is niet vrijgegeven. Wat S3 nog nodig heeft: het
+ontwerp van het contractvenster voor S3 tot en met S6, dat gebundeld wordt gemaakt en met een eigen
+besluit opent (voorstel: `docs/pleya-server-contract-window-3.md`, status voorstel), de laag C-meting
+op hardware (DEC-128 punt 7, DEC-149 punt 4) en het validator-besluit onder de sterke validator. S7
+(webshell) blijft de slice die los daarvan kan beginnen.
 
 
 ---
@@ -85,7 +87,7 @@ binnen een golf is de volgorde vrij. De kolom "taken" telt wat er open of bezig 
 | Golf | Slices | Taken | Wat het oplevert | Wacht op |
 | --- | --- | --- | --- | --- |
 | 1, gesloten | S1, S2 | 0 | beheer-backend compleet: instellingen, diagnostiek, tokens, audit, bibliotheken, opslag, scans | niets |
-| 2 | S3, S4, S5, S6 | 22 | de catalogus verbreedt: boeken, `.nfo`-sidecars, artworkladder, filters en facetten, leesvoortgang | S1 voor S2; poort P5 vóór S6 |
+| 2 | S3, S4, S5, S6 | 22 | de catalogus verbreedt: boeken, `.nfo`-sidecars, artworkladder, filters en facetten, leesvoortgang | S2 dicht; vóór S3 de laag C-meting en het venster-besluit; P5 én vrijgave PS-15 vóór S6 |
 | 3 | S14, S16 | 12 | de Flutter-clients en de MCP-beheerlaag komen op het verbrede contract | S1, S3, S5, S6 |
 | 4 | S7, S8, S9, S10, S11, S12, S13 | 32 | Pleya Web: shell en designsysteem, consumer, boeken, beheer, setup-wizard, reader, speler | S7 kan meteen; de rest hangt aan golf 2 en 3 |
 | 5 | S17, S18, S23 | 16 | afspelen op eigen kracht: PlaybackPlan, transcode, downloads | S14 |
@@ -101,17 +103,19 @@ wachten; wie ruimte heeft trekt hem naar voren.
 
 ### 2.2 De kritieke lijn
 
-`S7 → S10 → S11 → vrijgave PS-14 → S3 → S5 en S6 → S14 → S17 → S18 → S23 → S15`.
+`S3 → S5 en S6 → S14 → S17 → S18 → S23 → S15`, met voor S3 de laag C-meting en het venster-besluit,
+en voor S6 P5 én de vrijgave van PS-15.
 
-*Noot van 10 oktober 2026: de schakel "vrijgave PS-14" en zijn voorgangers S10 en S11 zijn als poort
-vervallen door [DEC-149](DECISIONS.md). De keten hierboven staat zoals hij was en is niet herschreven.*
+*Bijgesteld op 10 oktober 2026: de schakels `S7 → S10 → S11 → vrijgave PS-14` zijn als poort voor S3
+vervallen door [DEC-149](DECISIONS.md). S7, S10 en S11 blijven de web-tak, hieronder beschreven.*
 
 Dit is bijgesteld op 10 oktober 2026. De eerdere lijn begon bij `S1 → S3`; daarna legde
 [DEC-129](DECISIONS.md) PS-14 achter de integratie van PS-11A (S10 beheer, S11 wizard, beide op S7)
 en achter een vrijgave van Michel. Die vrijgave is er sinds [DEC-149](DECISIONS.md) van 10 oktober
 2026, dus S3 hoeft niet meer te wachten op de webshell en het beheer. De lijn hierboven is de
 afhankelijkheidsvolgorde zoals de graaf in deel I hem tekende; S3 mag er nu vóór en naast lopen. S4 en
-S7 waren al vrij van die poort. S5 hangt aan S3 en S4 (deel I, graaf), en S6 aan S3 en aan P5.
+S7 waren al vrij van die poort. S5 hangt aan S3 en S4 (deel I, graaf), en S6 aan S3, aan P5 én aan
+de vrijgave van PS-15 (DEC-149 punt 3).
 
 Vertraging op deze lijn schuift de release op; vertraging op de rest niet, zolang alles vóór S15 klaar
 is. Deel I noemt een kortere lijn zonder de vrijgavepoort, met S22 als zwaarste slice ernaast; die
@@ -124,8 +128,9 @@ van de 128 resterende in de golven; PS-12.0 is een keuze en telt daar niet mee. 
 
 | Wat | Blokkeert | Stand |
 | --- | --- | --- |
-| **P5, het locatorbesluit** (Readium Locator plus publicatie-digest, S6.1) | S6, en via S6 ook S9, S12, S14, S16, S20 en S21 | open; RB-12 is bijgesteld in deel E, het besluit zelf moet nog als DEC |
-| **Vrijgave van PS-14 (S3)** | S3, en via S3 S6, S9, S12, S14 | genomen op 10 oktober 2026 ([DEC-149](DECISIONS.md)); geeft S3 vrij en S6 niet. Open blijft het contractvenster voor S3 tot en met S6, dat een eigen besluit vraagt |
+| **P5, het locatorbesluit** (Readium Locator plus publicatie-digest, S6.1) | S6, en via S6 ook S9, S12, S14, S16, S20 en S21 | open; RB-12 is bijgesteld in deel E, het besluit zelf moet nog als DEC. S6 wacht daarnaast op de vrijgave van PS-15 |
+| **Vrijgave van PS-15** (leesvoortgangsdeel, S6) | S6 | open; DEC-149 punt 3 en 4 laten PS-15 en PS-16 ongewijzigd, niet vrijgegeven |
+| **Vrijgave van PS-14 (S3)** | S3, en via S3 S6, S9, S12, S14 | genomen op 10 oktober 2026 ([DEC-149](DECISIONS.md)); geeft S3 vrij en S6 niet. Open blijven het contractvenster voor S3 tot en met S6, dat een eigen besluit vraagt, en de laag C-meting op hardware (DEC-128 punt 7, DEC-149 punt 4) |
 | **PS-12 voor of na Plex uit (S15.9)** | S15.5 | open; zonder migratie begint het huishouden met een lege kijkstatus |
 | **Pushen naar `origin`** | niets technisch, wel elk verlies bij een schijfstoring | de branch bestaat op `origin` maar loopt er dertien commits op voor; pushen vraagt Michels go |
 | **PS-12 vrijgeven** | niets; het is een keuzefase | pas ná S15, met een eigen besluit |
@@ -259,7 +264,12 @@ de bewerkte migraties vastliep. De lijst eist wel dat werk er staat. Ze tellen n
 Vrijgegeven op 10 oktober 2026 door [DEC-149](DECISIONS.md). Voorwaarden: bestaande architectuur en
 Unified Library, aansluiting op de Pleya-clients en de webclient, geen nieuwe DRM-, winkel- of
 abonnementsfunctionaliteit zonder afzonderlijk besluit. Protocolvenster 3 is nog niet geopend (S3.6
-sluit het); S6 blijft wachten op P5.
+sluit het); S6 blijft wachten op P5 én de vrijgave van PS-15.
+
+Afhankelijkheden vóór S3.1: de laag C-meting op hardware (DEC-128 punt 7, DEC-149 punt 4), het
+besluit dat het contractvenster opent, en voor S3.5 het validator-besluit. Voor de meting staat nog
+geen taakregel; of die er komt is een besluit van Michel (hoofdstuk 9 van
+`docs/pleya-server-contract-window-3.md`).
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
@@ -271,6 +281,9 @@ sluit het); S6 blijft wachten op P5.
 | S3.6 | Capability `ebooks`, protocolvenster 3 dicht | `[ ]` | | |
 
 ### S4 Sidecars en artworkladder (PS-7N, PS-7A)
+
+Geen vrijgave nodig. Wacht op het venster-besluit (pakket B en C van het contractvoorstel) en, voor
+de velden uit `.nfo`, op de coverage-gate van 80 procent per bibliotheek (S4.2). S4.5 hangt aan S3.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
@@ -292,6 +305,9 @@ sluit het); S6 blijft wachten op P5.
 | S5.5 | Injectietest en meting op de NAS, capability `filters`, venster 4 deel 1 | `[ ]` | | |
 
 ### S6 Leesvoortgang (PS-15 server)
+
+Niet vrijgegeven. Hangt aan S3, aan het locatorbesluit P5 en aan de vrijgave van PS-15 (DEC-149
+punt 3 en 4), en aan het venster-besluit.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
