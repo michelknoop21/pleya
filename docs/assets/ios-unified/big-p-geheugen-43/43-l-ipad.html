@@ -1,0 +1,13 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>43 L iPad liggend</title>
+<link rel="stylesheet" href="bp43.css"><script src="bp43.js"></script></head><body class="pad"><script>
+document.body.innerHTML = `<div class="status"><span>9:41  zo 11 okt</span><span style="font-size:14px">100%</span></div>` + bar('Geheugen', {sub:'Zojuist bijgewerkt'}) + `<div class="cols">
+  <div class="read">${ovSections()}${ovFoot()}${composer()}</div>
+  <div class="col side">
+    <div class="card">${navRow('Herinneringen beheren', MEM.length)}</div>
+    <div class="card">${switchRow(true)}</div>
+    <div class="card">${navRow('Overzicht opnieuw schrijven')}</div>
+    ${wipe()}
+    ${deeper()}
+  </div>
+</div>` + tabbar();
+</script></body></html>
