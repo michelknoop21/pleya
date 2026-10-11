@@ -24,6 +24,10 @@ final class OpenFilePlugin: NSObject, FlutterPlugin, FlutterAppLifecycleDelegate
     case "takePendingFiles":
       result(pending)
       pending = []
+    case "releaseFiles":
+      // Nothing to let go of: no Inbox copy, and the system grants access to
+      // an opened file for as long as the app runs.
+      result(nil)
     default:
       result(FlutterMethodNotImplemented)
     }
