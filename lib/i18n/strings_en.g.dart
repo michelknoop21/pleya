@@ -8555,6 +8555,9 @@ class TranslationsAssistantClarifyEn {
 	/// en: 'Do you mean only what you watched, what the others watched, or everyone?'
 	String get question => 'Do you mean only what you watched, what the others watched, or everyone?';
 
+	/// en: 'Do you mean what the others watched, or everyone?'
+	String get questionHousehold => 'Do you mean what the others watched, or everyone?';
+
 	/// en: 'What did I watch${scope}?'
 	String me({required Object scope}) => 'What did I watch${scope}?';
 
@@ -11277,6 +11280,7 @@ extension on Translations {
 			'assistant.displays.watchTitle' => 'Watch stats',
 			'assistant.displays.playsTotal' => 'plays',
 			'assistant.clarify.question' => 'Do you mean only what you watched, what the others watched, or everyone?',
+			'assistant.clarify.questionHousehold' => 'Do you mean what the others watched, or everyone?',
 			'assistant.clarify.me' => ({required Object scope}) => 'What did I watch${scope}?',
 			'assistant.clarify.meKind' => ({required Object kind, required Object scope}) => 'Which ${kind} did I watch${scope}?',
 			'assistant.clarify.others' => ({required Object scope}) => 'What did the others watch${scope}?',

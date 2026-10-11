@@ -328,6 +328,23 @@ void main() {
     );
     expect(result.text, c.question);
 
+    // Whose it was is settled earlier in the conversation: not asked again.
+    final settled = await AssistantRun(
+      model: model.client(),
+      context: AssistantToolContext(servers: m),
+      confirm: (_) async => null,
+      entitlement: const _Entitled(),
+      tools: [stub('my_watching'), stub('watch_stats')],
+      allowSplit: true,
+      conversation: const [AssistantTurn(question: 'Wat keek iedereen vandaag?', answer: 'Dune.')],
+    ).ask('Wat is er deze week gekeken?');
+    expect(settled.displays, isNot(contains(isA<AssistantClarification>())));
+    // A question that is more than the bare shape runs as before.
+    expect((await ask('Wat is er vorige week gekeken?')).displays, isNot(contains(isA<AssistantClarification>())));
+    expect(
+      (await ask('Welke films zijn er nog niet gezien?')).displays,
+      isNot(contains(isA<AssistantClarification>())),
+    );
     // A child task, a children's profile and a named audience run as before.
     expect((await ask('Wat is er gekeken?', root: false)).displays, isEmpty);
     expect((await ask('Wat is er gekeken?', kids: true)).displays, isNot(contains(isA<AssistantClarification>())));

@@ -2747,6 +2747,7 @@
     },
     "clarify": {
       "question": "Do you mean only what you watched, what the others watched, or everyone?",
+      "questionHousehold": "Do you mean what the others watched, or everyone?",
       "me": "What did I watch${scope}?",
       "meKind": "Which ${kind} did I watch${scope}?",
       "others": "What did the others watch${scope}?",

@@ -2747,6 +2747,7 @@
     },
     "clarify": {
       "question": "Bedoel je alleen wat jij hebt gekeken, wat de anderen keken, of wat iedereen keek?",
+      "questionHousehold": "Bedoel je wat de anderen keken, of wat iedereen keek?",
       "me": "Wat heb ik${scope} gekeken?",
       "meKind": "Welke ${kind} heb ik${scope} gekeken?",
       "others": "Wat keken de anderen${scope}?",

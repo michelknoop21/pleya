@@ -11,6 +11,8 @@ extension _AssistantLoop on AssistantRun {
     if (!allowSplit || inheritedIntent != null || _ctx.kidsMode || !AssistantIntent.audienceChoiceNeeded(_prompt)) {
       return null;
     }
+    // Already answered "whose" earlier in this conversation: that stands.
+    if (conversation.any((turn) => AssistantIntent.fromPrompt(turn.question).audience.explicit)) return null;
     final names = _available().keys.map((t) => t.name).toSet();
     final canMe = names.contains('my_watching');
     final canHousehold = names.contains('watch_stats');
@@ -31,10 +33,12 @@ extension _AssistantLoop on AssistantRun {
       ],
     ];
     if (options.length < 2) return null;
+    // The question names only the audiences that have a button.
+    final question = canMe ? c.question : c.questionHousehold;
     return AssistantRunResult(
       end: AssistantRunEnd.answered,
-      text: c.question,
-      displays: [AssistantClarification(question: c.question, options: options)],
+      text: question,
+      displays: [AssistantClarification(question: question, options: options)],
       intent: _intent,
     );
   }

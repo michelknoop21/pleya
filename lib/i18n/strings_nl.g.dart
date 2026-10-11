@@ -3704,6 +3704,7 @@ class _TranslationsAssistantClarifyNl extends TranslationsAssistantClarifyEn {
 
 	// Translations
 	@override String get question => 'Bedoel je alleen wat jij hebt gekeken, wat de anderen keken, of wat iedereen keek?';
+	@override String get questionHousehold => 'Bedoel je wat de anderen keken, of wat iedereen keek?';
 	@override String me({required Object scope}) => 'Wat heb ik${scope} gekeken?';
 	@override String meKind({required Object kind, required Object scope}) => 'Welke ${kind} heb ik${scope} gekeken?';
 	@override String others({required Object scope}) => 'Wat keken de anderen${scope}?';
@@ -6310,6 +6311,7 @@ extension on TranslationsNl {
 			'assistant.displays.watchTitle' => 'Kijkcijfers',
 			'assistant.displays.playsTotal' => 'keer gekeken',
 			'assistant.clarify.question' => 'Bedoel je alleen wat jij hebt gekeken, wat de anderen keken, of wat iedereen keek?',
+			'assistant.clarify.questionHousehold' => 'Bedoel je wat de anderen keken, of wat iedereen keek?',
 			'assistant.clarify.me' => ({required Object scope}) => 'Wat heb ik${scope} gekeken?',
 			'assistant.clarify.meKind' => ({required Object kind, required Object scope}) => 'Welke ${kind} heb ik${scope} gekeken?',
 			'assistant.clarify.others' => ({required Object scope}) => 'Wat keken de anderen${scope}?',
