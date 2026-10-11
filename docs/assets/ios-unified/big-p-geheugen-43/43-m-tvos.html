@@ -1,0 +1,19 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>43 M tvOS</title>
+<link rel="stylesheet" href="bp43.css"><script src="bp43.js"></script></head><body class="tv"><script>
+const row = (ic, t, {s = '', val = '', cls = 'compact'} = {}) => `<div class="row ${cls}">${ic}<div class="body"><div class="t">${t}</div>${s ? `<div class="s">${s}</div>` : ''}</div>${val ? `<span class="val">${val}</span>` : ''}${I.chev}</div>`;
+document.body.innerHTML = `<nav class="topnav"><div class="pchip">M</div><div class="cluster"><span class="nsearch">${I.search}</span><span class="item">Home</span><span class="item">Series</span><span class="item">Films</span><span class="item">Live TV</span><span class="item on">Mijn Pleya</span></div><div class="wordmark"><img src="../../tvos-unified/src/assets/pleya_wordmark.png" style="height:52px;display:block"></div></nav>
+<div class="page">
+  <div class="page-title">Geheugen<span>Zojuist bijgewerkt</span></div>
+  <div class="crumb">Mijn Pleya ▸ Instellingen ▸ Big P ▸ Geheugen</div>
+  <div class="two ovtv">
+    <div class="read">${ovSections()}${ovFoot()}</div>
+    <div>
+      <div class="rows">${row(I.chat, 'Vraag of werk bij', {s:'Opent het toetsenbord of dicteren', cls:'focus'})}</div>
+      <div class="group-label">Duik dieper</div>
+      <div class="rows">${QS.map((q) => row(I.follow, q)).join('')}</div>
+      <div class="group-label">Beheer</div>
+      <div class="rows">${row(I.note, 'Herinneringen beheren', {val:String(MEM.length)})}${row(I.toggle, 'Geheugen gebruiken: Aan')}${row(I.trash, 'Alle herinneringen wissen')}</div>
+    </div>
+  </div>
+</div>`;
+</script></body></html>
