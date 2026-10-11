@@ -77,7 +77,18 @@ class OpenedFileService {
     _release([path]);
   }
 
+  /// Releases asked for while [_drain] waits for the native list. A path in
+  /// that list is on its way to a player and in no bookkeeping yet, so the
+  /// decision waits until the list has been handed out.
+  final List<String> _releaseAfterDrain = [];
+  // Counted: two reads can overlap (a native signal during a redelivery).
+  int _draining = 0;
+
   void _release(Iterable<String> paths) {
+    if (_draining > 0) {
+      _releaseAfterDrain.addAll(paths);
+      return;
+    }
     // A path that still waits to be played, or plays, keeps its file.
     final free = paths.where((path) => !_playing.containsKey(path) && !_deferred.contains(path)).toSet().toList();
     if (!_supported || free.isEmpty) return;
@@ -95,14 +106,20 @@ class OpenedFileService {
   Future<void> _drain() async {
     if (_listener == null) return;
     try {
-      final taken = _supported ? await _channel.invokeListMethod<String>('takePendingFiles') : null;
+      final List<String>? taken;
+      _draining++;
+      try {
+        taken = _supported ? await _channel.invokeListMethod<String>('takePendingFiles') : null;
+      } finally {
+        _draining--;
+      }
       // Emptied only after the call: a failed read must not cost the deferred paths.
       final paths = [..._deferred, ...?taken];
       _deferred.clear();
-      if (paths.isEmpty) return;
       final listener = _listener;
-      if (listener == null) {
+      if (paths.isEmpty || listener == null) {
         _deferred.addAll(paths);
+        _releaseWaiting();
         return;
       }
       // One player: of several files opened together the last one plays.
@@ -110,9 +127,18 @@ class OpenedFileService {
       listener(paths.last);
       // The others are never played; nothing else would ever let go of them.
       _release(paths.take(paths.length - 1).where((path) => path != paths.last));
+      _releaseWaiting();
     } catch (e) {
       appLogger.w('Opened files: could not read the pending list', error: e);
+      _releaseWaiting();
     }
+  }
+
+  void _releaseWaiting() {
+    if (_draining > 0 || _releaseAfterDrain.isEmpty) return;
+    final waiting = List<String>.of(_releaseAfterDrain);
+    _releaseAfterDrain.clear();
+    _release(waiting);
   }
 }
 

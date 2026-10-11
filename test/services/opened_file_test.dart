@@ -199,6 +199,50 @@ void main() {
       expect(released, [_path]);
     });
 
+    test('a file delivered again while its player closes is not released under the new player', () async {
+      final service = OpenedFileService.forTesting(supported: true, channel: channel);
+      service.markPlaying(_path);
+      final reply = Completer<void>();
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'releaseFiles') released.addAll((call.arguments as List).cast<String>());
+        if (call.method != 'takePendingFiles') return null;
+        await reply.future;
+        return [_path];
+      });
+
+      service.attach(service.markPlaying);
+      await pumpEventQueue();
+      // The first player closes while the native list is still on its way.
+      service.markFinished(_path);
+      reply.complete();
+      await pumpEventQueue();
+      expect(released, isEmpty, reason: 'the second delivery plays the same file');
+
+      service.markFinished(_path);
+      await pumpEventQueue();
+      expect(released, [_path]);
+    });
+
+    test('a release asked for during an empty read still happens', () async {
+      final service = OpenedFileService.forTesting(supported: true, channel: channel);
+      service.markPlaying(_path);
+      final reply = Completer<void>();
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'releaseFiles') released.addAll((call.arguments as List).cast<String>());
+        if (call.method != 'takePendingFiles') return null;
+        await reply.future;
+        return <String>[];
+      });
+
+      service.attach((_) {});
+      await pumpEventQueue();
+      service.markFinished(_path);
+      reply.complete();
+      await pumpEventQueue();
+
+      expect(released, [_path]);
+    });
+
     test('a file that waits behind a route is not released by a player closing', () async {
       final service = OpenedFileService.forTesting(supported: true, channel: channel);
 
