@@ -30,18 +30,34 @@ const _memoryScreenNote =
     'about them, through the memory tools. For anything else, say briefly that it belongs in the conversation '
     'with Big P.';
 
-/// The answer of a run that stored a fact at once: Pleya's own line with the
-/// exact sentence, and the model's words after it only when the run showed or
-/// did more than that.
+/// The answer of a run that stored a fact at once, or refused the typed
+/// words: Pleya's own line with the exact sentence or the reason, and the
+/// model's words after it only when the run showed or did more than that.
 ///
 /// [own] marks [text] as Pleya's own line (the children's ages, the age
 /// filter): it always stays, after the line about the stored fact.
 String assistantMemoryAnswer(AssistantRunResult result, String text, {bool own = false}) {
   final stored = result.memoryStored.firstOrNull;
-  if (stored == null) return text;
-  final line = t.assistant.memory.stored(value: assistantMemorySentence(stored.value));
+  final refused = result.memoryRefused;
+  if (stored == null && refused == null) return text;
+  final line = stored != null
+      ? t.assistant.memory.stored(value: assistantMemorySentence(stored.value))
+      : assistantMemoryRefusalLine(refused!);
   final more = own || result.displays.isNotEmpty || result.actions.isNotEmpty;
   return more && text.isNotEmpty ? '$line\n$text' : line;
+}
+
+/// Pleya's own line for typed words the memory does not take, with where the
+/// fact belongs instead when it has an owner.
+String assistantMemoryRefusalLine(MemoryCode code) {
+  final m = t.assistant.memory;
+  return switch (code) {
+    MemoryCode.ownedKidsAges => m.refusedAges,
+    MemoryCode.ownedLanguage => m.refusedLanguage,
+    MemoryCode.tooLong => m.refusedTooLong(max: kMemoryValueMaxLength),
+    MemoryCode.limitReached => m.refusedFull,
+    _ => m.failed,
+  };
 }
 
 /// Pleya's own line for an answered memory card: what was stored, replaced

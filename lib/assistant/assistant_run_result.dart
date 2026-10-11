@@ -13,6 +13,7 @@ extension _AssistantResult on AssistantRun {
     bool displaysCurrent() => evidenceContext.recommendationError == null && (namedTitlesCurrent?.call() ?? true);
     // Stored is stored, however the run ends: every result reports it.
     final stored = List<MemoryFact>.unmodifiable(_ctx.memoryTurn.stored);
+    final refused = _ctx.memoryTurn.refused;
     if (_ctx.libraryDoctorError case final doctorError?) {
       return AssistantRunResult(
         end: end,
@@ -20,6 +21,7 @@ extension _AssistantResult on AssistantRun {
         error: doctorError,
         libraryDoctorError: () => evidenceContext.libraryDoctorError,
         memoryStored: stored,
+        memoryRefused: refused,
       );
     }
     if (!_ctx.playbackEvidenceCurrent) {
@@ -31,6 +33,7 @@ extension _AssistantResult on AssistantRun {
         displayEvidenceCurrent: displaysCurrent,
         spoilerPrompt: _spoilerQuestion,
         memoryStored: stored,
+        memoryRefused: refused,
       );
     }
     if (evidenceContext.recommendationError case final recommendationError?) {
@@ -40,6 +43,7 @@ extension _AssistantResult on AssistantRun {
         error: recommendationError,
         displayEvidenceCurrent: displaysCurrent,
         memoryStored: stored,
+        memoryRefused: refused,
       );
     }
     final agesFirst = _displays.whereType<AssistantKidsAgesPrompt>().firstOrNull;
@@ -55,6 +59,7 @@ extension _AssistantResult on AssistantRun {
         providerError: error,
         error: failure,
         memoryStored: stored,
+        memoryRefused: refused,
       );
     }
     return AssistantRunResult(
@@ -75,6 +80,7 @@ extension _AssistantResult on AssistantRun {
       ageFilterNotice: _ageNotice,
       memoryProposals: List.unmodifiable(_ctx.memoryTurn.proposals),
       memoryStored: stored,
+      memoryRefused: refused,
       error:
           failure ??
           _errors.values.where((code) => code != 'cancelled_by_user').firstOrNull ??

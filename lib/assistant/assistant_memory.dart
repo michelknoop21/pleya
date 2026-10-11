@@ -103,6 +103,10 @@ class AssistantMemoryTurn {
   /// What this ask stored directly: at most one fact.
   final List<MemoryFact> stored = [];
 
+  /// Why the typed words were not stored at once, or null: an age, a language
+  /// preference, too long, the memory full. Pleya says so in its own line.
+  MemoryCode? refused;
+
   static const int maxProposals = 3;
 }
 

@@ -137,7 +137,10 @@ final List<AssistantTool> assistantMemoryTools = [
       // The service's own check, so the card never shows a sentence it would refuse.
       final checked = checkMemoryValue(direct ?? _string(args, 'value'));
       final value = checked.value;
-      if (value == null) return _memoryRefusal(checked.code);
+      if (value == null) {
+        if (direct != null) turn.refused = checked.code;
+        return _memoryRefusal(checked.code);
+      }
       final same = (await memory.service.list()).where((f) => memoryValueKey(f.value) == value.key).firstOrNull;
 
       if (replacedRef != null) {
@@ -180,7 +183,10 @@ final List<AssistantTool> assistantMemoryTools = [
         return AssistantToolResult({'status': 'already_known', 'ref': result.fact?.ref});
       }
       final fact = result.fact;
-      if (!result.ok || fact == null) return _memoryRefusal(result.code);
+      if (!result.ok || fact == null) {
+        turn.refused = result.code;
+        return _memoryRefusal(result.code);
+      }
       turn.stored.add(fact);
       return AssistantToolResult({
         'status': 'stored',

@@ -14,10 +14,15 @@ List<MemoryFact> pickRelevantFacts(List<AssistantMemoryRow> rows, String questio
     final score = memoryMatchWords(row.value).intersection(asked).length;
     if (score > 0) scored.add((fact: MemoryFact.fromRow(row), score: score));
   }
-  // List.sort is not stable, so the tie on score is spelled out: newest first.
+  // List.sort is not stable, so the tie on score is spelled out: newest first,
+  // and on an equal change time the order of `MemoryStore.all`.
   scored.sort((a, b) {
     final byScore = b.score.compareTo(a.score);
-    return byScore != 0 ? byScore : b.fact.updatedAt.compareTo(a.fact.updatedAt);
+    if (byScore != 0) return byScore;
+    final byChange = b.fact.updatedAt.compareTo(a.fact.updatedAt);
+    if (byChange != 0) return byChange;
+    final byMade = b.fact.createdAt.compareTo(a.fact.createdAt);
+    return byMade != 0 ? byMade : a.fact.id.compareTo(b.fact.id);
   });
 
   final chosen = <MemoryFact>[];

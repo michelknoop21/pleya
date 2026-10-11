@@ -3275,6 +3275,10 @@ class _TranslationsAssistantMemoryNl extends TranslationsAssistantMemoryEn {
 	@override String get kids => 'Dit is nu een kinderprofiel. Big P gebruikt daar geen geheugen; er is niets gewijzigd.';
 	@override String get storyAsk => 'Onthouden en een verhaalvraag gaan niet in één keer. Wil je dit onthouden?';
 	@override String get storyOnly => 'Onthouden en een verhaalvraag gaan niet in één keer. Stel ze los van elkaar.';
+	@override String get refusedAges => 'Leeftijden van kinderen onthoud ik hier niet. Die stel je in bij Kinderprofiel.';
+	@override String get refusedLanguage => 'Een taalvoorkeur onthoud ik hier niet. Die stel je in bij de taalinstellingen, onder Taal en ondertitels.';
+	@override String refusedTooLong({required Object max}) => 'Dat is te lang om te onthouden. Een herinnering is één zin van hoogstens ${max} tekens.';
+	@override String get refusedFull => 'Het geheugen is vol. Verwijder eerst een herinnering, dan kan ik dit onthouden.';
 	@override String get view => 'Bekijk geheugen';
 	@override late final _TranslationsAssistantMemoryCardNl card = _TranslationsAssistantMemoryCardNl._(_root);
 	@override late final _TranslationsAssistantMemoryCategoriesNl categories = _TranslationsAssistantMemoryCategoriesNl._(_root);
@@ -6111,6 +6115,10 @@ extension on TranslationsNl {
 			'assistant.memory.kids' => 'Dit is nu een kinderprofiel. Big P gebruikt daar geen geheugen; er is niets gewijzigd.',
 			'assistant.memory.storyAsk' => 'Onthouden en een verhaalvraag gaan niet in één keer. Wil je dit onthouden?',
 			'assistant.memory.storyOnly' => 'Onthouden en een verhaalvraag gaan niet in één keer. Stel ze los van elkaar.',
+			'assistant.memory.refusedAges' => 'Leeftijden van kinderen onthoud ik hier niet. Die stel je in bij Kinderprofiel.',
+			'assistant.memory.refusedLanguage' => 'Een taalvoorkeur onthoud ik hier niet. Die stel je in bij de taalinstellingen, onder Taal en ondertitels.',
+			'assistant.memory.refusedTooLong' => ({required Object max}) => 'Dat is te lang om te onthouden. Een herinnering is één zin van hoogstens ${max} tekens.',
+			'assistant.memory.refusedFull' => 'Het geheugen is vol. Verwijder eerst een herinnering, dan kan ik dit onthouden.',
 			'assistant.memory.view' => 'Bekijk geheugen',
 			'assistant.memory.card.rememberTitle' => 'Zal ik dit onthouden?',
 			'assistant.memory.card.replaceTitle' => 'Zal ik dit vervangen?',

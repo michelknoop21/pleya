@@ -12,6 +12,8 @@ import 'package:pleya/services/memory/memory_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/utils/media_server_http_client.dart' show AbortController;
 
+import '../services/memory/memory_test_support.dart';
+
 const memoryConfig = AssistantProviderConfig(
   kind: AssistantProviderKind.ollamaServer,
   baseUrl: 'http://o.lan',
@@ -108,9 +110,12 @@ final pingTool = AssistantTool(
 );
 
 /// A profile with its memory and the switch that says which profile is active.
+///
+/// Its clock moves one second per write, so two facts stored right after each
+/// other never share a change time and "newest first" does not hang on an id.
 class MemoryProfile {
-  MemoryProfile(AppDatabase db, this.id, {String Function()? newId})
-    : service = MemoryService(database: db, profileId: id, newId: newId),
+  MemoryProfile(AppDatabase db, this.id, {String Function()? newId, DateTime Function()? now})
+    : service = MemoryService(database: db, profileId: id, newId: newId, now: now ?? TickingClock().call),
       active = id;
 
   final String id;

@@ -2404,6 +2404,10 @@
       "kids": "Dit is nu een kinderprofiel. Big P gebruikt daar geen geheugen; er is niets gewijzigd.",
       "storyAsk": "Onthouden en een verhaalvraag gaan niet in één keer. Wil je dit onthouden?",
       "storyOnly": "Onthouden en een verhaalvraag gaan niet in één keer. Stel ze los van elkaar.",
+      "refusedAges": "Leeftijden van kinderen onthoud ik hier niet. Die stel je in bij Kinderprofiel.",
+      "refusedLanguage": "Een taalvoorkeur onthoud ik hier niet. Die stel je in bij de taalinstellingen, onder Taal en ondertitels.",
+      "refusedTooLong": "Dat is te lang om te onthouden. Een herinnering is één zin van hoogstens ${max} tekens.",
+      "refusedFull": "Het geheugen is vol. Verwijder eerst een herinnering, dan kan ik dit onthouden.",
       "view": "Bekijk geheugen",
       "card": {
         "rememberTitle": "Zal ik dit onthouden?",

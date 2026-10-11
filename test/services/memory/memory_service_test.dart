@@ -262,6 +262,41 @@ void main() {
     });
   });
 
+  group('order', () {
+    test('an equal change time falls back on the newest made, then the id, the same on every read', () async {
+      var next = 0;
+      final ids = [
+        'aaaaaaaa-0000-4000-8000-000000000001',
+        'dddddddd-0000-4000-8000-000000000002',
+        'cccccccc-0000-4000-8000-000000000003',
+        'bbbbbbbb-0000-4000-8000-000000000004',
+      ];
+      final fixed = MemoryService(database: db, profileId: 'profile-a', now: clock.call, newId: () => ids[next++]);
+      final first = await fixed.remember('Kijkt graag westerns');
+      await fixed.remember('Kijkt graag musicals');
+      // From here every write has the change time of the second fact.
+      clock.frozen = true;
+      await fixed.update(first.fact!.id, value: 'Kijkt graag oude westerns');
+      await fixed.remember('Kijkt graag thrillers');
+      await fixed.remember('Kijkt graag komedies');
+
+      final facts = await fixed.list();
+      expect({for (final fact in facts) fact.updatedAt}, hasLength(1));
+      // The three made last by id; the oldest made last, although its id sorts first.
+      const order = [
+        'Kijkt graag komedies',
+        'Kijkt graag thrillers',
+        'Kijkt graag musicals',
+        'Kijkt graag oude westerns',
+      ];
+      expect([for (final fact in facts) fact.value], order);
+      expect([for (final fact in await fixed.relevantFor('Wat kijkt hij graag?')) fact.value], order);
+      for (var i = 0; i < 5; i++) {
+        expect(await fixed.values(), order);
+      }
+    });
+  });
+
   group('short references', () {
     test('unknown, malformed and ambiguous references change nothing', () async {
       var next = 0;

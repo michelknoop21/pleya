@@ -2404,6 +2404,10 @@
       "kids": "This is now a children's profile. Big P uses no memory there; nothing was changed.",
       "storyAsk": "Remembering and a story question do not go in one message. Do you want me to remember this?",
       "storyOnly": "Remembering and a story question do not go in one message. Ask them one at a time.",
+      "refusedAges": "I do not keep children's ages here. Set them under Children's profile.",
+      "refusedLanguage": "I do not keep a language preference here. Set it in the language settings, under Language & subtitles.",
+      "refusedTooLong": "That is too long to remember. A memory is one sentence of at most ${max} characters.",
+      "refusedFull": "The memory is full. Remove a memory first, then I can remember this.",
       "view": "View memory",
       "card": {
         "rememberTitle": "Shall I remember this?",

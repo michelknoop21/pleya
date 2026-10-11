@@ -86,6 +86,7 @@ class AssistantRunResult {
     this.intent = AssistantIntent.unknown,
     this.memoryProposals = const [],
     this.memoryStored = const [],
+    this.memoryRefused,
   });
   final AssistantRunEnd end;
 
@@ -123,6 +124,10 @@ class AssistantRunResult {
   /// What this ask stored in the memory at once, on the user's own typed
   /// request: at most one fact. Pleya reports it in its own words.
   final List<MemoryFact> memoryStored;
+
+  /// Why the user's typed words after "onthoud dat" were not stored, or null.
+  /// Pleya reports it in its own words, never the model.
+  final MemoryCode? memoryRefused;
 }
 
 /// Model-proposed independent command, validated before any execution.

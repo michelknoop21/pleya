@@ -7,14 +7,22 @@ const String _end = r'(?![\p{L}\p{N}])';
 RegExp _phrase(String pattern) => RegExp(pattern, unicode: true);
 String _word(String alternatives) => '$_start(?:$alternatives)$_end';
 
+// "Jongen", "meisje", "boy" and "girl" are left out: they are mostly a
+// character in a film.
 final String _child = _word(
-  'kind|kinderen|kindje|kindjes|kids?|zoon|zoons|zonen|zoontje|dochter|dochters|dochtertje|kleinkind|'
-  'kleinkinderen|peuter|kleuter|baby|child|children|sons?|daughters?|toddler|grandchild|grandchildren',
+  'kind|kinderen|kindje|kindjes|kids?|zoon|zoons|zonen|zoontjes?|dochter|dochters|dochtertjes?|kleinkind|'
+  'kleinkinderen|kleinzoon|kleinzoons|kleinzonen|kleindochters?|stiefzoon|stiefzoons|stiefzonen|stiefdochters?|'
+  'tweeling|tweelingen|peuters?|kleuters?|baby|child|children|sons?|daughters?|toddlers?|grandchild|'
+  'grandchildren|grandsons?|granddaughters?|stepsons?|stepdaughters?|twins',
 );
 // On its own this is a child only right before the verb ("jongste is 4"):
 // "de oudste film is 10 jaar oud" is about a film.
-final String _eldest = _word('jongste|oudste|youngest|oldest');
-final String _children = _word('kinderen|kleinkinderen|kids|children|zoons|zonen|dochters|sons|daughters');
+final String _eldest = _word('jongste|oudste|youngest|oldest|eldest');
+final String _children = _word(
+  'kinderen|kleinkinderen|kids|children|zoons|zonen|zoontjes|dochters|dochtertjes|kleinzoons|kleinzonen|'
+  'kleindochters|stiefzoons|stiefzonen|stiefdochters|tweeling|tweelingen|sons|daughters|grandchildren|'
+  'grandsons|granddaughters|stepsons|stepdaughters|twins',
+);
 
 const String _numberWords =
     'één|twee|drie|vier|vijf|zes|zeven|acht|negen|tien|elf|twaalf|dertien|veertien|vijftien|zestien|zeventien|'
@@ -25,15 +33,22 @@ const String _numberWords =
 // frequency, a clock time, an ordinal, an age rating ("16 en ouder"), one of
 // a group ("1 van de grootste fans") or years spent on something ("2 jaar
 // bezig"). A range counts too: "2 of 3 dagen".
-const String _countsSomethingElse =
-    r'(?![:.,/]\d)(?! ?(?:(?:of|or|tot|to|à) (?:\d{1,2}|(?:'
-    '$_numberWords'
-    r')) )?(?:%|\+|(?:x|keer|maal|dag|dagen|nacht|nachten|uur|uren|min|minuut|minuten|week|weken|'
+const String _units =
+    r'x|keer|maal|dag|dagen|nacht|nachten|uur|uren|min|minuut|minuten|week|weken|'
     r'weekend|weekenden|avond|avonden|maand|maanden|seizoen|seizoenen|aflevering|afleveringen|films?|series?|'
     r'times|days?|nights?|hours?|minutes?|mins?|weeks?|weekends?|evenings?|months?|episodes?|seasons?|movies?|'
-    r'shows?|procent|percent|en ouder|of ouder|and older|or older|and up|van|of (?:the|those|these|a|an|my|our)|'
-    r'(?:jaar|jaren|years?) (?:bezig|lang|geleden|ago))'
-    '$_end))';
+    r'shows?|procent|percent|en ouder|of ouder|and older|or older|and up|'
+    r'(?:jaar|jaren|years?) (?:bezig|lang|geleden|ago)';
+const String _oneOfAGroup = 'van|of (?:the|those|these|a|an|my|our)';
+
+String _notFollowedBy(String words) =>
+    r'(?![:.,/]\d)(?! ?(?:(?:of|or|tot|to|à) (?:\d{1,2}|(?:'
+    '$_numberWords'
+    r')) )?(?:%|\+|(?:'
+    '$words'
+    ')$_end))';
+
+final String _countsSomethingElse = _notFollowedBy('$_units|$_oneOfAGroup');
 
 // What may follow a spelled-out number for it to read as an age. "of" and
 // "or" are left out: "twee of drie avonden", "two of a kind".
@@ -42,6 +57,16 @@ const String _closesAnAge =
     '$_end))';
 
 final String _age = '(?:(?<!\\d)\\d{1,2}$_end$_countsSomethingElse|$_start(?:$_numberWords)$_end$_closesAnAge)';
+
+// Right behind "zoon van" a number is an age whatever follows it: the "van"
+// of "houden van" may come next ("mijn zoon van 9 van Cars houdt") and a
+// spelled-out number needs no [_closesAnAge] ("my daughter of eight loves
+// horses"). Only a unit or the people the child belongs to say otherwise:
+// "kinderen van 16 en ouder", "de kinderen van twee vrienden".
+final String _ageOfChild =
+    '(?:(?<!\\d)\\d{1,2}|$_start(?:$_numberWords))$_end'
+    '${_notFollowedBy('$_units|vrienden|vriendinnen|buren|kennissen|gezinnen|families|ouders|werelden|culturen|'
+    'friends|neighbou?rs|parents|worlds|cultures')}';
 const String _is = '(?:is|zijn|wordt|worden|was|are|turns|turned|turning)';
 const String _adverb = ' (?:al|nu|bijna|net|pas|inmiddels|just|now|almost|nearly|already|aged)';
 const String _filler = '(?:$_adverb)?';
@@ -61,13 +86,18 @@ const String _closesAClauseAge =
     '$_end'
     r'|(?= ?(?:$|[.;!?)])))';
 
+const String _closesOneClauseAge =
+    '(?: (?:oud|old|is|wordt|werd|was|geworden|turned|turns)'
+    '$_end'
+    r'|(?= ?(?:$|[.;!?)])))';
+
 final List<RegExp> _ageStatements = [
   // "onze dochter is 8", "de kinderen zijn 6 en 9 jaar", "our son just turned eight"
   _phrase('$_child(?: [^ ]+){0,2} $_is$_filler $_age'),
   // "jongste is 4 jaar oud"
   _phrase('$_eldest$_filler $_is$_filler $_age'),
-  // "mijn zoon van 12", "a daughter aged nine"
-  _phrase('$_child (?:van|of|aged?) $_age'),
+  // "mijn zoon van 12", "a daughter aged nine", "mijn zoon van 9 van Cars houdt"
+  _phrase('$_child (?:van|of|aged?) $_ageOfChild'),
   // "een 8-jarige zoon", "een achtjarige dochter", "an 8 year old son"
   _phrase(
     '(?:(?<!\\d)\\d{1,2}[ -]?|$_start(?:$_numberWords)-?)(?:jarige?|jaar oude?|years?[ -]old|yo)$_end'
@@ -78,9 +108,12 @@ final List<RegExp> _ageStatements = [
   // jongste 4 is". Only adverbs may stand between the child and the age:
   // "mijn dochter in seizoen 2 is" and "de kinderen thuis met 4 zijn" pass.
   _phrase(
-    "(?:$_child|$_eldest)(?:['’]s)?(?:$_adverb){0,3} $_clauseAge"
+    "$_child(?:['’]s)?(?:$_adverb){0,3} $_clauseAge"
     '(?:(?:,| en| and| &) $_clauseAge){0,3}$_closesAClauseAge',
   ),
+  // The same for "onze jongste 4 is". One child has one age and a singular
+  // verb: "de jongste drie zijn te eng" counts three films.
+  _phrase("$_eldest(?:['’]s)?(?:$_adverb){0,3} $_clauseAge$_closesOneClauseAge"),
   // "zoon (8) en dochter (5)"
   _phrase('$_child ?\\( ?\\d{1,2} ?\\)'),
   // "kinderen: 8 en 5", "twee kinderen, 8 en 5"
@@ -150,18 +183,19 @@ final RegExp _spaces = RegExp(r'\s+');
 ///
 // Known limits, let through: an age without a child word or without the verb
 // ("Tim is 8", "Mijn 8-jarige houdt van Bluey", "Dochter, 8 jaar, kijkt mee",
-// "Mijn zoon wordt volgende maand 9", "Mijn zoon volgende maand 9 wordt"), an
-// age in months, a spelled-out age in
-// a choice ("zes of zeven"), a bare language ("Prefers English", "Altijd
+// "Mijn zoon wordt volgende maand 9", "Mijn zoon volgende maand 9 wordt"), a
+// child named as "jongens", "meiden", "boys" or "little girl", an age in
+// months, a spelled-out age in a choice ("zes of zeven"), a bare language ("Prefers English", "Altijd
 // Engels"), "subs" and "captions", "de originele versie", and a language that
 // is not in the lists above.
 //
 // Known limits, refused although it is no such fact: a number with a unit
 // that is not in the list above ("Mijn zoon is 2 meter lang"), "oudste" or
-// "jongste" right before the verb or the number when it is no child ("De
-// oudste is 10 jaar oud" about a film, "De jongste drie zijn te eng"), a
-// meal ("Liever Chinees dan Italiaans"), and any mention of subtitles or dubbing ("Werkt als
-// ondertitelaar").
+// "jongste" right before a singular verb or the number when it is no child
+// ("De oudste is 10 jaar oud" about a film), a child word, "van" and a number
+// that is no age ("De dochter van 1 van de buren"), a meal ("Liever Chinees
+// dan Italiaans", "Liever Chinees dan Italiaans wil"), and any mention of
+// subtitles or dubbing ("Werkt als ondertitelaar").
 MemoryCode? ownedFactCode(String value) {
   final typed = value.replaceAll(_spaces, ' ').trim();
   final text = typed.toLowerCase();

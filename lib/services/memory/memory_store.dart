@@ -14,10 +14,16 @@ class MemoryStore {
   Future<T> transaction<T>(Future<T> Function() action) => _db.transaction(action);
 
   /// Newest change first.
+  // On an equal change time the newest made goes first, then the id: an
+  // arbitrary order between two facts of one millisecond, but a stable one.
   Future<List<AssistantMemoryRow>> all() =>
       (_db.select(_db.assistantMemories)
             ..where((t) => t.profileId.equals(_profileId))
-            ..orderBy([(t) => OrderingTerm.desc(t.updatedAt), (t) => OrderingTerm.asc(t.id)]))
+            ..orderBy([
+              (t) => OrderingTerm.desc(t.updatedAt),
+              (t) => OrderingTerm.desc(t.createdAt),
+              (t) => OrderingTerm.asc(t.id),
+            ]))
           .get();
 
   Future<int> count() async {
