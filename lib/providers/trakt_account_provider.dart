@@ -22,6 +22,11 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
   final TraktAuthService _auth = TraktAuthService();
   final TrackerAccountStore _store = trackerAccountStore(TrackerService.trakt);
 
+  /// Answers "is the active profile a children's profile". Attached by the
+  /// profile session; without it nothing is shielded.
+  Future<bool> Function()? _kidsCheck;
+  bool _isKidsProfile = false;
+
   TrackerSession? _session;
   String _activeUserUuid = '';
   int _bindingGeneration = 0;
@@ -32,6 +37,28 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
   bool get isConnected => _session != null;
   String? get username => _session?.username;
   bool get isConnecting => _isConnecting;
+
+  /// Whether the active profile is a children's profile: no Trakt login, no
+  /// scrobble and no sync. A stored session is neither loaded nor removed.
+  bool get isKidsProfile => _isKidsProfile;
+
+  void attachKidsProfileCheck(Future<bool> Function() check) => _kidsCheck = check;
+
+  /// Fails closed: a check that throws counts as a children's profile.
+  Future<bool> _readKidsProfile() async {
+    final check = _kidsCheck;
+    if (check == null) return false;
+    try {
+      return await check();
+    } catch (e) {
+      appLogger.w('Trakt: kids profile check failed, treating as kids profile', error: e);
+      return true;
+    }
+  }
+
+  /// Re-reads the children's profile switch for the active profile, from the
+  /// settings screen that changes it.
+  Future<void> reevaluateKidsGate() => onActiveProfileChanged(_activeUserUuid);
 
   /// Cancel an in-flight `connect()` (e.g. user dismissed the device-code
   /// dialog). Completing the completer both wakes the blocking `Future.any`
@@ -47,6 +74,16 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
     final userUuid = newUserUuid ?? '';
     final generation = ++_bindingGeneration;
     _activeUserUuid = userUuid;
+    // Nothing of the previous profile may keep scrobbling while the next one
+    // is being read: unbind before the first await.
+    _unbindServices(userUuid);
+    final kids = await _readKidsProfile();
+    if (!_isCurrentBinding(userUuid, generation)) return;
+    _isKidsProfile = kids;
+    if (kids) {
+      _setSessionAndRebind(userUuid, generation, null);
+      return;
+    }
     final loaded = await _store.load(userUuid);
     _setSessionAndRebind(userUuid, generation, loaded);
   }
@@ -56,7 +93,12 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
   /// [onCodeReady] is invoked once with the user code + verification URL so
   /// the UI can render the dialog.
   Future<bool> connect({required void Function(DeviceCode code) onCodeReady}) async {
-    if (_isConnecting || isConnected) return false;
+    if (_isConnecting || isConnected || _isKidsProfile) return false;
+    if (await _readKidsProfile()) {
+      _isKidsProfile = true;
+      safeNotifyListeners();
+      return false;
+    }
     _isConnecting = true;
     _cancelCompleter = Completer<void>();
     notifyListeners();
@@ -69,7 +111,11 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
           onCancel: _cancelCompleter!.future,
         ),
         enrich: _enrichUsername,
-        save: (s) => _store.save(_activeUserUuid, s),
+        save: (s) async {
+          // The switch can change during the device-code window.
+          if (await _readKidsProfile()) throw StateError('Trakt login refused: kids profile');
+          await _store.save(_activeUserUuid, s);
+        },
         assign: _bindCurrentSession,
       );
     } finally {
@@ -116,12 +162,17 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
     _setSessionAndRebind(_activeUserUuid, ++_bindingGeneration, session);
   }
 
+  void _unbindServices(String userUuid) {
+    TraktScrobbleService.instance.rebindToProfile(null, onSessionInvalidated: () {});
+    TraktSyncService.instance.rebindToProfile(userUuid, null, onSessionInvalidated: () {});
+  }
+
   void _setSessionAndRebind(String userUuid, int generation, TrackerSession? session) {
     if (!_isCurrentBinding(userUuid, generation)) return;
     _session = session;
 
     void handleInvalidated() => _handleSessionInvalidated(userUuid, generation);
-    void handleUpdated(TrackerSession next) => _handleSessionUpdated(userUuid, generation, next);
+    void handleUpdated(TrackerSession next) => unawaited(_handleSessionUpdated(userUuid, generation, next));
 
     TraktScrobbleService.instance.rebindToProfile(
       session,
@@ -141,12 +192,19 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
     return !isDisposed && userUuid == _activeUserUuid && generation == _bindingGeneration;
   }
 
-  void _handleSessionUpdated(String userUuid, int generation, TrackerSession session) {
+  /// Trakt rotates the refresh token, so the old one is dead the moment the
+  /// new pair is issued: the pair is written before anything else uses it.
+  Future<void> _handleSessionUpdated(String userUuid, int generation, TrackerSession session) async {
     if (!_isCurrentBinding(userUuid, generation)) return;
     _session = session;
+    try {
+      await _store.save(userUuid, session);
+    } catch (e) {
+      appLogger.w('Trakt: saving the refreshed session failed', error: e);
+    }
+    if (!_isCurrentBinding(userUuid, generation)) return;
     TraktScrobbleService.instance.updateSession(session);
     TraktSyncService.instance.updateSession(session);
-    unawaited(_store.save(userUuid, session));
     safeNotifyListeners();
   }
 
@@ -163,8 +221,8 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
   int get debugBindingGenerationForTesting => _bindingGeneration;
 
   @visibleForTesting
-  void debugHandleSessionUpdatedForTesting(String userUuid, int generation, TrackerSession session) {
-    _handleSessionUpdated(userUuid, generation, session);
+  Future<void> debugHandleSessionUpdatedForTesting(String userUuid, int generation, TrackerSession session) {
+    return _handleSessionUpdated(userUuid, generation, session);
   }
 
   @visibleForTesting

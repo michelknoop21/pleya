@@ -17,8 +17,15 @@ import 'trakt_constants.dart';
 /// Holds a [TrackerSession] (refreshed in place on 401). Concurrent 401s are
 /// coalesced so we only hit `/oauth/token` once per refresh.
 class TraktClient {
+  /// The out-of-band redirect the device flow was measured with on refresh.
+  static const String _redirectUri = 'urn:ietf:wg:oauth:2.0:oob';
+
   static const Set<int> _scrobbleAllowedStatuses = {200, 201, 409};
-  static const Set<int> _permanentRefreshFailureStatuses = {400, 401, 403};
+
+  /// A refresh only ends the session when Trakt says the refresh token itself
+  /// is dead. Any other refusal (a client or request shape Trakt does not
+  /// accept, a block in front of the API) keeps the session and is retried.
+  static const Set<int> _permanentRefreshFailureStatuses = {400, 401};
   static final Map<String, Future<TrackerSession>> _refreshesByToken = {};
 
   TrackerSession _session;
@@ -145,8 +152,8 @@ class TraktClient {
       body: {
         'refresh_token': refreshToken,
         'client_id': TraktConstants.clientId,
-        'client_secret': TraktConstants.clientSecret,
         'grant_type': 'refresh_token',
+        'redirect_uri': _redirectUri,
       },
       timeout: TrackerConstants.refreshTimeout,
       operation: 'Trakt token refresh',
@@ -165,7 +172,7 @@ class TraktClient {
       return _session;
     }
 
-    final isPermanent = _permanentRefreshFailureStatuses.contains(res.statusCode);
+    final isPermanent = _permanentRefreshFailureStatuses.contains(res.statusCode) && _isInvalidGrant(res.body);
     if (isPermanent) {
       appLogger.w('Trakt: refresh failed permanently (${res.statusCode}), session invalidated');
       onSessionInvalidated();
@@ -180,6 +187,15 @@ class TraktClient {
     );
   }
 
+  static bool _isInvalidGrant(String body) {
+    try {
+      final decoded = json.decode(body);
+      return decoded is Map && decoded['error'] == 'invalid_grant';
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Revoke the access token at Trakt. Best-effort; swallows network errors.
   Future<void> revoke() async {
     try {
@@ -187,11 +203,7 @@ class TraktClient {
         'POST',
         Uri.parse(TraktConstants.revokeUrl),
         headers: TraktConstants.headers(),
-        body: {
-          'token': _session.accessToken,
-          'client_id': TraktConstants.clientId,
-          'client_secret': TraktConstants.clientSecret,
-        },
+        body: {'token': _session.accessToken, 'client_id': TraktConstants.clientId},
         timeout: TrackerConstants.revokeTimeout,
         operation: 'Trakt token revoke',
         allowedMethods: const {'POST'},

@@ -17,8 +17,11 @@ import 'trakt_constants.dart';
 class TraktAuthService extends DeviceCodeAuthServiceBase {
   TraktAuthService({super.httpClient});
 
+  int _pendingPolls = 0;
+
   @override
   Future<DeviceCode> createDeviceCode() async {
+    _pendingPolls = 0;
     final uri = Uri.parse(TraktConstants.deviceCodeUrl);
     final sw = Stopwatch()..start();
     final res = await sendAbortableHttpRequest(
@@ -60,11 +63,7 @@ class TraktAuthService extends DeviceCodeAuthServiceBase {
         'POST',
         tokenUri,
         headers: TraktConstants.headers(),
-        body: json.encode({
-          'code': code.deviceCode,
-          'client_id': TraktConstants.clientId,
-          'client_secret': TraktConstants.clientSecret,
-        }),
+        body: json.encode({'code': code.deviceCode, 'client_id': TraktConstants.clientId}),
         timeout: TrackerConstants.authRequestTimeout,
         operation: 'Trakt device token poll',
       );
@@ -78,7 +77,14 @@ class TraktAuthService extends DeviceCodeAuthServiceBase {
       case 200:
         return DevicePollSuccess(json.decode(res.body) as Map<String, dynamic>);
       case 400:
+        // Trakt's "pending". Also what a client refused for another reason may
+        // look like, so the first answer and every tenth after it is logged.
+        if (_pendingPolls++ % 10 == 0) appLogger.w('Trakt device-code poll pending (400): ${res.body}');
         return const DevicePollPending();
+      case 401 || 422:
+        // The client id is not accepted for the device flow: waiting out the
+        // code would only leave a dead dialog.
+        throw DeviceCodeAuthFlowException('Trakt device token rejected: HTTP ${res.statusCode}: ${res.body}');
       case 404 || 410:
         return const DevicePollExpired();
       case 409 || 418:

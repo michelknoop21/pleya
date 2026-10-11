@@ -117,6 +117,8 @@ extension _AssistantSettingsFacts on _AssistantSettingsScreenState {
   Future<void> _setKidsProfile(bool value) async {
     await _kidsProfile.save(value);
     if (!mounted) return;
+    // Trakt scrobble and sync stop at once when the switch goes on.
+    unawaited(context.read<TraktAccountProvider?>()?.reevaluateKidsGate() ?? Future<void>.value());
     setState(() {
       _kidsProfileFuture = SynchronousFuture(value);
     });

@@ -2,6 +2,7 @@ import 'dart:async';
 import '../../media/ids.dart';
 import 'dart:collection';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
@@ -98,6 +99,9 @@ class TraktSyncService {
   void updateSession(TrackerSession session) {
     _client?.updateSession(session);
   }
+
+  @visibleForTesting
+  bool get hasClient => _client != null;
 
   Future<void> dispose() async {
     await _subscription?.cancel();

@@ -17,6 +17,7 @@ import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
 import '../../mixins/controller_disposer_mixin.dart';
 import '../../profiles/active_profile_provider.dart';
+import '../../providers/trakt_account_provider.dart';
 import '../../theme/mono_tokens.dart';
 import '../../navigation/tv/tv_nested_surface.dart';
 import '../../services/settings_service.dart';

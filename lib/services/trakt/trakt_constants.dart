@@ -1,20 +1,26 @@
-/// Bundled Trakt API credentials and base URLs.
+import 'package:flutter/foundation.dart';
+
+/// Trakt API client id and base URLs.
 ///
-/// The client_id/client_secret are extractable from the binary; this is
-/// the standard pattern for native Trakt apps and is acceptable given the
-/// same threat model as the Plex token already in `SharedPreferences`.
+/// Only the public client id is bundled. The device-code flow, token refresh
+/// and revoke work without a client secret (measured 11 October 2026, see
+/// docs/ROADMAP.md "BP-07 Trakt-poort"), and a secret never goes into a
+/// dart-define because it is readable from the binary.
 class TraktConstants {
   TraktConstants._();
 
-  // Registered Trakt app credentials, injected at build time. Register your
-  // own app at https://trakt.tv/oauth/applications and pass the values via
-  // --dart-define=TRAKT_CLIENT_ID=... --dart-define=TRAKT_CLIENT_SECRET=...
+  // Registered Trakt app client id, injected at build time. Register your own
+  // app at https://trakt.tv/oauth/applications and pass it via
+  // --dart-define=TRAKT_CLIENT_ID=...
   // Empty by default so no third-party app identity is shipped.
   static const String clientId = String.fromEnvironment('TRAKT_CLIENT_ID');
-  static const String clientSecret = String.fromEnvironment('TRAKT_CLIENT_SECRET');
 
-  /// Whether Trakt integration has been configured for this build.
-  static bool get isConfigured => clientId.isNotEmpty && clientSecret.isNotEmpty;
+  /// Whether Trakt integration has been configured for this build: a client
+  /// id is all it needs.
+  static bool get isConfigured => configuredFor(clientId);
+
+  @visibleForTesting
+  static bool configuredFor(String id) => id.isNotEmpty;
 
   static const String apiBase = 'https://api.trakt.tv';
   static const String apiVersion = '2';

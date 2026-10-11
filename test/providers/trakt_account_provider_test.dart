@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/providers/trakt_account_provider.dart';
 import 'package:pleya/services/base_shared_preferences_service.dart';
 import 'package:pleya/services/trackers/tracker_account_store.dart';
 import 'package:pleya/services/trackers/tracker_constants.dart';
 import 'package:pleya/services/trackers/tracker_session.dart';
+import 'package:pleya/services/trakt/trakt_scrobble_service.dart';
+import 'package:pleya/services/trakt/trakt_sync_service.dart';
 
 import '../test_helpers/prefs.dart';
 
@@ -134,6 +138,106 @@ void main() {
       // path; safeNotifyListeners must swallow the post-dispose notification
       // without throwing.
       await p.onActiveProfileChanged('any-uuid');
+    });
+  });
+
+  group('TraktAccountProvider kids gate', () {
+    Future<void> seed(String uuid) async {
+      await _store.save(uuid, _session(username: 'alice'));
+      BaseSharedPreferencesService.resetForTesting();
+    }
+
+    test('an adult profile binds its stored session to the services', () async {
+      await seed('adult');
+      final p = TraktAccountProvider()..attachKidsProfileCheck(() async => false);
+      await p.onActiveProfileChanged('adult');
+      expect(p.isConnected, isTrue);
+      expect(p.isKidsProfile, isFalse);
+      expect(TraktScrobbleService.instance.hasClient, isTrue);
+      expect(TraktSyncService.instance.hasClient, isTrue);
+      p.dispose();
+    });
+
+    test('a kids profile gets no session and no service client, and the stored session stays', () async {
+      await seed('kid');
+      final p = TraktAccountProvider()..attachKidsProfileCheck(() async => true);
+      await p.onActiveProfileChanged('kid');
+      expect(p.isConnected, isFalse);
+      expect(p.isKidsProfile, isTrue);
+      expect(TraktScrobbleService.instance.hasClient, isFalse);
+      expect(TraktSyncService.instance.hasClient, isFalse);
+      expect(await _store.load('kid'), isNotNull);
+      p.dispose();
+    });
+
+    test('a failing check fails closed', () async {
+      await seed('kid');
+      final p = TraktAccountProvider()..attachKidsProfileCheck(() async => throw StateError('prefs unavailable'));
+      await p.onActiveProfileChanged('kid');
+      expect(p.isConnected, isFalse);
+      expect(p.isKidsProfile, isTrue);
+      expect(TraktScrobbleService.instance.hasClient, isFalse);
+      p.dispose();
+    });
+
+    test('the adult client is unbound before the kids check answers', () async {
+      await seed('adult');
+      final gate = Completer<bool>();
+      final p = TraktAccountProvider();
+      await p.onActiveProfileChanged('adult');
+      expect(TraktScrobbleService.instance.hasClient, isTrue);
+
+      p.attachKidsProfileCheck(() => gate.future);
+      final switching = p.onActiveProfileChanged('adult');
+      expect(TraktScrobbleService.instance.hasClient, isFalse);
+      expect(TraktSyncService.instance.hasClient, isFalse);
+      gate.complete(false);
+      await switching;
+      p.dispose();
+    });
+
+    test('switching the kids switch on stops scrobble and sync without removing the session', () async {
+      await seed('adult');
+      var kids = false;
+      final p = TraktAccountProvider()..attachKidsProfileCheck(() async => kids);
+      await p.onActiveProfileChanged('adult');
+      expect(TraktScrobbleService.instance.hasClient, isTrue);
+
+      kids = true;
+      await p.reevaluateKidsGate();
+      expect(p.isKidsProfile, isTrue);
+      expect(TraktScrobbleService.instance.hasClient, isFalse);
+      expect(await _store.load('adult'), isNotNull);
+
+      kids = false;
+      await p.reevaluateKidsGate();
+      expect(p.isConnected, isTrue);
+      expect(TraktScrobbleService.instance.hasClient, isTrue);
+      p.dispose();
+    });
+
+    test('connect refuses on a kids profile', () async {
+      final p = TraktAccountProvider()..attachKidsProfileCheck(() async => true);
+      await p.onActiveProfileChanged('kid');
+      var codeShown = false;
+      expect(await p.connect(onCodeReady: (_) => codeShown = true), isFalse);
+      expect(codeShown, isFalse);
+      expect(p.isConnecting, isFalse);
+      p.dispose();
+    });
+
+    test('the refreshed pair is written before the services use it', () async {
+      await seed('adult');
+      final p = TraktAccountProvider();
+      await p.onActiveProfileChanged('adult');
+      final generation = p.debugBindingGenerationForTesting;
+      await p.debugHandleSessionUpdatedForTesting(
+        'adult',
+        generation,
+        _session(accessToken: 'at2', refreshToken: 'rt2', username: 'alice'),
+      );
+      expect((await _store.load('adult'))?.refreshToken, 'rt2');
+      p.dispose();
     });
   });
 }
