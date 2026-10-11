@@ -118,7 +118,11 @@ extension _AssistantSettingsFacts on _AssistantSettingsScreenState {
     await _kidsProfile.save(value);
     if (!mounted) return;
     // Trakt scrobble and sync stop at once when the switch goes on.
-    unawaited(context.read<TraktAccountProvider?>()?.reevaluateKidsGate() ?? Future<void>.value());
+    unawaited(
+      (context.read<TraktAccountProvider?>()?.reevaluateKidsGate() ?? Future<void>.value()).catchError(
+        (Object e) => appLogger.w('Trakt kids gate re-evaluation failed', error: e),
+      ),
+    );
     setState(() {
       _kidsProfileFuture = SynchronousFuture(value);
     });

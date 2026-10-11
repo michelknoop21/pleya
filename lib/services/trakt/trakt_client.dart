@@ -173,6 +173,9 @@ class TraktClient {
     }
 
     final isPermanent = _permanentRefreshFailureStatuses.contains(res.statusCode) && _isInvalidGrant(res.body);
+    if (!isPermanent && _permanentRefreshFailureStatuses.contains(res.statusCode)) {
+      appLogger.w('Trakt: refresh refused (${res.statusCode}) without invalid_grant, session kept: ${res.body}');
+    }
     if (isPermanent) {
       appLogger.w('Trakt: refresh failed permanently (${res.statusCode}), session invalidated');
       onSessionInvalidated();

@@ -29,7 +29,7 @@ void main() {
 
   group('TraktAccountProvider', () {
     test('starts disconnected with null session', () {
-      final p = TraktAccountProvider();
+      final p = TraktAccountProvider(kidsProfileCheck: () async => false);
       expect(p.session, isNull);
       expect(p.isConnected, isFalse);
       expect(p.username, isNull);
@@ -45,7 +45,7 @@ void main() {
       // Reset cached singletons so the provider reads fresh prefs state.
       BaseSharedPreferencesService.resetForTesting();
 
-      final p = TraktAccountProvider();
+      final p = TraktAccountProvider(kidsProfileCheck: () async => false);
       var notified = 0;
       p.addListener(() => notified++);
 
@@ -64,7 +64,7 @@ void main() {
       await _store.save(uuid, _session(username: 'alice'));
       BaseSharedPreferencesService.resetForTesting();
 
-      final p = TraktAccountProvider();
+      final p = TraktAccountProvider(kidsProfileCheck: () async => false);
       await p.onActiveProfileChanged(uuid);
       expect(p.isConnected, isTrue);
 
@@ -77,14 +77,14 @@ void main() {
     });
 
     test('onActiveProfileChanged with null uuid loads from empty/global slot', () async {
-      final p = TraktAccountProvider();
+      final p = TraktAccountProvider(kidsProfileCheck: () async => false);
       await p.onActiveProfileChanged(null);
       expect(p.isConnected, isFalse);
       p.dispose();
     });
 
     test('disconnect with no session clears state and notifies', () async {
-      final p = TraktAccountProvider();
+      final p = TraktAccountProvider(kidsProfileCheck: () async => false);
       var notified = 0;
       p.addListener(() => notified++);
 
@@ -102,7 +102,7 @@ void main() {
       await _store.save(uuid, _session(username: 'alice'));
       BaseSharedPreferencesService.resetForTesting();
 
-      final p = TraktAccountProvider();
+      final p = TraktAccountProvider(kidsProfileCheck: () async => false);
       await p.onActiveProfileChanged(uuid);
       final staleGeneration = p.debugBindingGenerationForTesting;
 
@@ -124,7 +124,7 @@ void main() {
     });
 
     test('cancelConnect is a no-op when not connecting', () {
-      final p = TraktAccountProvider();
+      final p = TraktAccountProvider(kidsProfileCheck: () async => false);
       // Should not throw when no completer exists.
       expect(() => p.cancelConnect(), returnsNormally);
       expect(p.isConnecting, isFalse);
@@ -132,7 +132,7 @@ void main() {
     });
 
     test('safeNotifyListeners after dispose is a no-op', () async {
-      final p = TraktAccountProvider();
+      final p = TraktAccountProvider(kidsProfileCheck: () async => false);
       p.dispose();
       // After dispose, calling onActiveProfileChanged still runs the rebind
       // path; safeNotifyListeners must swallow the post-dispose notification
@@ -149,7 +149,7 @@ void main() {
 
     test('an adult profile binds its stored session to the services', () async {
       await seed('adult');
-      final p = TraktAccountProvider()..attachKidsProfileCheck(() async => false);
+      final p = TraktAccountProvider(kidsProfileCheck: () async => false);
       await p.onActiveProfileChanged('adult');
       expect(p.isConnected, isTrue);
       expect(p.isKidsProfile, isFalse);
@@ -160,7 +160,7 @@ void main() {
 
     test('a kids profile gets no session and no service client, and the stored session stays', () async {
       await seed('kid');
-      final p = TraktAccountProvider()..attachKidsProfileCheck(() async => true);
+      final p = TraktAccountProvider(kidsProfileCheck: () async => true);
       await p.onActiveProfileChanged('kid');
       expect(p.isConnected, isFalse);
       expect(p.isKidsProfile, isTrue);
@@ -172,7 +172,7 @@ void main() {
 
     test('a failing check fails closed', () async {
       await seed('kid');
-      final p = TraktAccountProvider()..attachKidsProfileCheck(() async => throw StateError('prefs unavailable'));
+      final p = TraktAccountProvider(kidsProfileCheck: () async => throw StateError('prefs unavailable'));
       await p.onActiveProfileChanged('kid');
       expect(p.isConnected, isFalse);
       expect(p.isKidsProfile, isTrue);
@@ -183,11 +183,11 @@ void main() {
     test('the adult client is unbound before the kids check answers', () async {
       await seed('adult');
       final gate = Completer<bool>();
-      final p = TraktAccountProvider();
+      final p = TraktAccountProvider(kidsProfileCheck: () async => false);
       await p.onActiveProfileChanged('adult');
       expect(TraktScrobbleService.instance.hasClient, isTrue);
 
-      p.attachKidsProfileCheck(() => gate.future);
+      p.debugSetKidsProfileCheckForTesting(() => gate.future);
       final switching = p.onActiveProfileChanged('adult');
       expect(TraktScrobbleService.instance.hasClient, isFalse);
       expect(TraktSyncService.instance.hasClient, isFalse);
@@ -199,7 +199,7 @@ void main() {
     test('switching the kids switch on stops scrobble and sync without removing the session', () async {
       await seed('adult');
       var kids = false;
-      final p = TraktAccountProvider()..attachKidsProfileCheck(() async => kids);
+      final p = TraktAccountProvider(kidsProfileCheck: () async => kids);
       await p.onActiveProfileChanged('adult');
       expect(TraktScrobbleService.instance.hasClient, isTrue);
 
@@ -217,7 +217,7 @@ void main() {
     });
 
     test('connect refuses on a kids profile', () async {
-      final p = TraktAccountProvider()..attachKidsProfileCheck(() async => true);
+      final p = TraktAccountProvider(kidsProfileCheck: () async => true);
       await p.onActiveProfileChanged('kid');
       var codeShown = false;
       expect(await p.connect(onCodeReady: (_) => codeShown = true), isFalse);
@@ -228,7 +228,7 @@ void main() {
 
     test('the refreshed pair is written before the services use it', () async {
       await seed('adult');
-      final p = TraktAccountProvider();
+      final p = TraktAccountProvider(kidsProfileCheck: () async => false);
       await p.onActiveProfileChanged('adult');
       final generation = p.debugBindingGenerationForTesting;
       await p.debugHandleSessionUpdatedForTesting(
@@ -238,6 +238,61 @@ void main() {
       );
       expect((await _store.load('adult'))?.refreshToken, 'rt2');
       p.dispose();
+    });
+
+    test('a refreshed pair on its way when the kids switch goes on is still written', () async {
+      await seed('adult');
+      var kids = false;
+      final p = TraktAccountProvider(kidsProfileCheck: () async => kids);
+      await p.onActiveProfileChanged('adult');
+      final generation = p.debugBindingGenerationForTesting;
+
+      kids = true;
+      await p.reevaluateKidsGate();
+      expect(p.debugBindingGenerationForTesting, generation);
+
+      await p.debugHandleSessionUpdatedForTesting(
+        'adult',
+        generation,
+        _session(accessToken: 'at3', refreshToken: 'rt3', username: 'alice'),
+      );
+      expect((await _store.load('adult'))?.refreshToken, 'rt3');
+      expect(p.isConnected, isFalse);
+      expect(TraktScrobbleService.instance.hasClient, isFalse);
+      p.dispose();
+    });
+
+    test('disposing an old provider unbinds only what is still its own', () async {
+      await seed('adult');
+      final first = TraktAccountProvider(kidsProfileCheck: () async => false);
+      await first.onActiveProfileChanged('adult');
+      final second = TraktAccountProvider(kidsProfileCheck: () async => false);
+      await second.onActiveProfileChanged('adult');
+
+      first.dispose();
+      expect(TraktScrobbleService.instance.hasClient, isTrue);
+
+      second.dispose();
+      expect(TraktScrobbleService.instance.hasClient, isFalse);
+      expect(TraktSyncService.instance.hasClient, isFalse);
+    });
+
+    test('a kids profile that never reads its provider still ends the adult binding when it is created', () async {
+      await seed('adult');
+      final adult = TraktAccountProvider(kidsProfileCheck: () async => false);
+      await adult.onActiveProfileChanged('adult');
+      expect(TraktScrobbleService.instance.hasClient, isTrue);
+
+      // The profile session creates the kids provider (lazy: false) and then
+      // disposes the adult one.
+      final kid = TraktAccountProvider(kidsProfileCheck: () async => true);
+      final hydrating = kid.onActiveProfileChanged('kid');
+      adult.dispose();
+      await hydrating;
+
+      expect(TraktScrobbleService.instance.hasClient, isFalse);
+      expect(TraktSyncService.instance.hasClient, isFalse);
+      kid.dispose();
     });
   });
 }

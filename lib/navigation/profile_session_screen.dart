@@ -157,12 +157,14 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   return provider;
                 },
               ),
+              // Not lazy: the shield and the unbinding of the previous profile
+              // must run when the session starts, not when a screen reads it.
               ChangeNotifierProvider(
+                lazy: false,
                 create: (context) {
-                  final provider = TraktAccountProvider()
-                    ..attachKidsProfileCheck(
-                      () => assistantIsKidsProfile(context.read<ActiveProfileProvider>().active),
-                    );
+                  final provider = TraktAccountProvider(
+                    kidsProfileCheck: () => assistantIsKidsProfile(context.read<ActiveProfileProvider>().active),
+                  );
                   unawaited(
                     provider.onActiveProfileChanged(activeId).catchError((Object e, StackTrace s) {
                       appLogger.w('Trakt profile hydrate failed', error: e, stackTrace: s);

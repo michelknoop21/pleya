@@ -21,6 +21,7 @@ import '../../providers/trakt_account_provider.dart';
 import '../../theme/mono_tokens.dart';
 import '../../navigation/tv/tv_nested_surface.dart';
 import '../../services/settings_service.dart';
+import '../../utils/app_logger.dart';
 import '../../utils/formatters.dart';
 import '../../utils/platform_detector.dart';
 import '../../utils/tv_hig.dart';

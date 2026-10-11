@@ -19,12 +19,19 @@ import '../utils/app_logger.dart';
 /// Single rebind seam: `onActiveProfileChanged` loads the new profile's
 /// session and pushes it to both `TraktScrobbleService` and `TraktSyncService`.
 class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierMixin {
+  /// [kidsProfileCheck] answers "is the active profile a children's profile".
+  /// It is required so a provider can never be built without the shield.
+  TraktAccountProvider({required Future<bool> Function() kidsProfileCheck}) : _kidsCheck = kidsProfileCheck;
+
+  /// The provider whose binding the Trakt services currently carry, so a
+  /// disposed provider only unbinds what is still its own.
+  static TraktAccountProvider? _boundOwner;
+
   final TraktAuthService _auth = TraktAuthService();
   final TrackerAccountStore _store = trackerAccountStore(TrackerService.trakt);
 
-  /// Answers "is the active profile a children's profile". Attached by the
-  /// profile session; without it nothing is shielded.
-  Future<bool> Function()? _kidsCheck;
+  Future<bool> Function() _kidsCheck;
+  int _rebindRun = 0;
   bool _isKidsProfile = false;
 
   TrackerSession? _session;
@@ -42,14 +49,13 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
   /// scrobble and no sync. A stored session is neither loaded nor removed.
   bool get isKidsProfile => _isKidsProfile;
 
-  void attachKidsProfileCheck(Future<bool> Function() check) => _kidsCheck = check;
+  @visibleForTesting
+  void debugSetKidsProfileCheckForTesting(Future<bool> Function() check) => _kidsCheck = check;
 
   /// Fails closed: a check that throws counts as a children's profile.
   Future<bool> _readKidsProfile() async {
-    final check = _kidsCheck;
-    if (check == null) return false;
     try {
-      return await check();
+      return await _kidsCheck();
     } catch (e) {
       appLogger.w('Trakt: kids profile check failed, treating as kids profile', error: e);
       return true;
@@ -58,7 +64,9 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
 
   /// Re-reads the children's profile switch for the active profile, from the
   /// settings screen that changes it.
-  Future<void> reevaluateKidsGate() => onActiveProfileChanged(_activeUserUuid);
+  /// Does not invalidate the binding generation: a refreshed token pair that
+  /// is still on its way for this user must be written, never dropped.
+  Future<void> reevaluateKidsGate() => _rebind(_activeUserUuid, bumpGeneration: false);
 
   /// Cancel an in-flight `connect()` (e.g. user dismissed the device-code
   /// dialog). Completing the completer both wakes the blocking `Future.any`
@@ -69,23 +77,26 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
   }
 
   /// Called whenever the active Plex profile changes (or on initial load).
-  Future<void> onActiveProfileChanged(String? newUserUuid) async {
+  Future<void> onActiveProfileChanged(String? newUserUuid) => _rebind(newUserUuid ?? '', bumpGeneration: true);
+
+  Future<void> _rebind(String userUuid, {required bool bumpGeneration}) async {
     if (isDisposed) return;
-    final userUuid = newUserUuid ?? '';
-    final generation = ++_bindingGeneration;
+    if (bumpGeneration) _bindingGeneration++;
+    final run = ++_rebindRun;
     _activeUserUuid = userUuid;
     // Nothing of the previous profile may keep scrobbling while the next one
     // is being read: unbind before the first await.
     _unbindServices(userUuid);
     final kids = await _readKidsProfile();
-    if (!_isCurrentBinding(userUuid, generation)) return;
+    if (isDisposed || run != _rebindRun) return;
     _isKidsProfile = kids;
     if (kids) {
-      _setSessionAndRebind(userUuid, generation, null);
+      _setSessionAndRebind(userUuid, _bindingGeneration, null);
       return;
     }
     final loaded = await _store.load(userUuid);
-    _setSessionAndRebind(userUuid, generation, loaded);
+    if (isDisposed || run != _rebindRun || _isKidsProfile) return;
+    _setSessionAndRebind(userUuid, _bindingGeneration, loaded);
   }
 
   /// Run the device-code OAuth flow.
@@ -159,16 +170,20 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
   }
 
   void _bindCurrentSession(TrackerSession? session) {
+    // The switch may have gone on while the device-code flow was saving.
+    if (session != null && _isKidsProfile) return;
     _setSessionAndRebind(_activeUserUuid, ++_bindingGeneration, session);
   }
 
   void _unbindServices(String userUuid) {
+    _boundOwner = this;
     TraktScrobbleService.instance.rebindToProfile(null, onSessionInvalidated: () {});
     TraktSyncService.instance.rebindToProfile(userUuid, null, onSessionInvalidated: () {});
   }
 
   void _setSessionAndRebind(String userUuid, int generation, TrackerSession? session) {
     if (!_isCurrentBinding(userUuid, generation)) return;
+    _boundOwner = this;
     _session = session;
 
     void handleInvalidated() => _handleSessionInvalidated(userUuid, generation);
@@ -196,7 +211,7 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
   /// new pair is issued: the pair is written before anything else uses it.
   Future<void> _handleSessionUpdated(String userUuid, int generation, TrackerSession session) async {
     if (!_isCurrentBinding(userUuid, generation)) return;
-    _session = session;
+    if (!_isKidsProfile) _session = session;
     try {
       await _store.save(userUuid, session);
     } catch (e) {
@@ -232,6 +247,11 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
 
   @override
   void dispose() {
+    if (identical(_boundOwner, this)) {
+      _boundOwner = null;
+      TraktScrobbleService.instance.rebindToProfile(null, onSessionInvalidated: () {});
+      TraktSyncService.instance.rebindToProfile('', null, onSessionInvalidated: () {});
+    }
     _auth.dispose();
     super.dispose();
   }

@@ -73,7 +73,9 @@ void main() {
           child: MultiProvider(
             providers: [
               ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
-              ChangeNotifierProvider<TraktAccountProvider>(create: (_) => TraktAccountProvider()),
+              ChangeNotifierProvider<TraktAccountProvider>(
+                create: (_) => TraktAccountProvider(kidsProfileCheck: () async => false),
+              ),
               ChangeNotifierProvider<TrackersProvider>(create: (_) => TrackersProvider()),
               ChangeNotifierProvider<SeerrProvider>(create: (_) => SeerrProvider()),
               ChangeNotifierProvider<TautulliProvider>(create: (_) => TautulliProvider()),
@@ -204,7 +206,9 @@ void main() {
             child: MultiProvider(
               providers: [
                 ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
-                ChangeNotifierProvider<TraktAccountProvider>(create: (_) => TraktAccountProvider()),
+                ChangeNotifierProvider<TraktAccountProvider>(
+                  create: (_) => TraktAccountProvider(kidsProfileCheck: () async => false),
+                ),
                 ChangeNotifierProvider<TrackersProvider>(create: (_) => TrackersProvider()),
                 ChangeNotifierProvider<SeerrProvider>(create: (_) => SeerrProvider()),
                 ChangeNotifierProvider<MultiServerProvider>.value(value: servers),
