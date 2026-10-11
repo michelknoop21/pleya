@@ -143,4 +143,10 @@
     font-size: 13px;
     color: var(--ink-3);
   }
+
+  /* De live region blijft in de DOM (een schermlezer meldt anders de eerste
+     tekst niet), maar een lege regel mag de kolomafstand niet verdubbelen. */
+  .search__status:empty {
+    margin-top: calc(-1 * var(--space));
+  }
 </style>

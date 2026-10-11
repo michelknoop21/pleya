@@ -220,12 +220,18 @@ test.describe('toetsenbord', () => {
     const box = page.getByRole('searchbox');
     const border = () => box.evaluate((el) => getComputedStyle(el).borderTopColor);
 
-    const before = await border();
     await box.focus();
-    // Een tekstvak toont focus als een inkt-rand zonder ring (Field, beeld 23);
-    // zonder ring en zonder randwissel zou focus er niet zijn.
+    // Een tekstvak toont focus als een inkt-rand zonder ring (Field, beeld 23).
     // De rand loopt over een korte overgang, dus pollen in plaats van één meting.
-    await expect.poll(border).not.toBe(before);
+    const ink = await page.evaluate(() => {
+      const probe = document.createElement('span');
+      probe.style.color = 'var(--ink)';
+      document.body.append(probe);
+      const resolved = getComputedStyle(probe).color;
+      probe.remove();
+      return resolved;
+    });
+    await expect.poll(border).toBe(ink);
 
     // Een chip is een knop en houdt wel de ring.
     await page.keyboard.press('Tab');
@@ -329,6 +335,51 @@ test.describe('responsive', () => {
       expect(skeleton.rail, 'het skelet heeft geen rij getekend').toBeGreaterThan(0);
       expect(Math.abs(loaded.rail - skeleton.rail), `kop van de rij ${seen}`).toBeLessThanOrEqual(2);
       expect(Math.abs(loaded.art - skeleton.art), `eerste poster ${seen}`).toBeLessThanOrEqual(2);
+    });
+  }
+
+  // Onder 900 staat het aantal op een eigen regel onder de titel. Komt het pas
+  // met de eerste pagina, dan zakt het raster een regel; de route reserveert
+  // die regel, en deze meting bewaakt dat.
+  for (const width of [393, 1280]) {
+    test(`het raster van een bibliotheek verspringt niet als het aantal binnenkomt (${width}px)`, async ({
+      page
+    }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/libraries');
+      const href = await page
+        .getByRole('link')
+        .filter({ hasText: /\bitems?\b/ })
+        .first()
+        .getAttribute('href');
+
+      let release: () => void = () => undefined;
+      const held = new Promise<void>((resolve) => (release = resolve));
+      await page.route('**/pleya/v1/libraries/*/items*', async (route) => {
+        await held;
+        await route.continue().catch(() => undefined);
+      });
+
+      // Client-side navigeren: een harde load zou de sessie opnieuw opbouwen.
+      await page.locator(`a[href="${href}"]`).first().click();
+      await page.locator('.skp__grid').waitFor();
+      const top = (selector: string) =>
+        page.evaluate(
+          (sel) => document.querySelector(sel)?.getBoundingClientRect().top ?? -1,
+          selector
+        );
+      const skeleton = await top('.skp__grid > *');
+
+      release();
+      await page.locator('ul.grid li').first().waitFor();
+      const loaded = await top('ul.grid li');
+      await page.unroute('**/pleya/v1/libraries/*/items*');
+
+      expect(skeleton, 'het skelet heeft geen raster getekend').toBeGreaterThan(0);
+      expect(
+        Math.abs(loaded - skeleton),
+        `eerste kaart skelet ${skeleton} geladen ${loaded}`
+      ).toBeLessThanOrEqual(2);
     });
   }
 

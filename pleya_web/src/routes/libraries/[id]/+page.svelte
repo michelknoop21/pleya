@@ -65,6 +65,11 @@
     '-year': t('libraries.sort.-year')
   };
 
+  // Onder 900 staat `sub` op een eigen regel. Verschijnt het aantal pas als de
+  // eerste pagina binnen is, dan springt het raster een regel omlaag; een
+  // niet-afbrekende spatie houdt die regel vast zolang het aantal onbekend is.
+  const RESERVED_LINE = '\u00A0';
+
   const sortOptions = SORT_OPTIONS.map((value) => ({ value, label: sortLabels[value] }));
 
   // Een schatting die groter is dan wat er staat is "ongeveer"; is de lijst
@@ -159,7 +164,7 @@
 
 <div class="page">
   <LibraryAtmosphere artworkId={highlighted?.artwork?.backdrop_id ?? highlighted?.artwork?.poster_id} />
-  <PageHeader title={library?.title ?? t('libraries.title')} sub={countLabel}>
+  <PageHeader title={library?.title ?? t('libraries.title')} sub={countLabel ?? RESERVED_LINE}>
     {#snippet actions()}
       <div class="page__sort">
         <Select
