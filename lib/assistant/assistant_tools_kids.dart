@@ -53,6 +53,7 @@ const kidsToolPolicy = <String, KidsTool>{
   'recommend_together': KidsTool.blocked,
   'spoiler_context': KidsTool.blocked,
   'my_watching': KidsTool.blocked,
+  'trakt_watchlist': KidsTool.blocked,
   'watch_stats': KidsTool.blocked,
   'compare_servers': KidsTool.blocked,
   'request_status': KidsTool.blocked,

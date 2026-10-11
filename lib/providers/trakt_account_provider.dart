@@ -45,6 +45,10 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
   String? get username => _session?.username;
   bool get isConnecting => _isConnecting;
 
+  /// The profile the current binding belongs to; a read that outlives a
+  /// profile switch compares it with the one it started for.
+  String get activeUserUuid => _activeUserUuid;
+
   /// Whether the active profile is a children's profile: no Trakt login, no
   /// scrobble and no sync. A stored session is neither loaded nor removed.
   bool get isKidsProfile => _isKidsProfile;

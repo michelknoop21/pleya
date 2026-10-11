@@ -62,6 +62,7 @@ import 'assistant_find_route.dart';
 import 'assistant_plot_index.dart' show titleKey;
 import 'assistant_title_facts.dart';
 import 'assistant_tool_context.dart';
+import '../models/trakt/trakt_title.dart';
 import 'assistant_playback.dart';
 import 'assistant_spoiler_context.dart' show assistantIsMissingEpisodeDiagnosis;
 
@@ -85,6 +86,7 @@ part 'assistant_tools_recommendations.dart';
 part 'assistant_tools_playback.dart';
 part 'assistant_tools_library_doctor.dart';
 part 'assistant_tools_personal.dart';
+part 'assistant_tools_trakt.dart';
 
 enum AssistantToolRisk { read, mutation, sensitive }
 
@@ -362,4 +364,5 @@ final List<AssistantTool> assistantTools = [
   ..._playbackTools,
   ..._libraryDoctorTools,
   ..._personalTools,
+  ..._traktTools,
 ];
