@@ -57,6 +57,11 @@ final List<RegExp> _ageStatements = [
     '(?:(?<!\\d)\\d{1,2}[ -]?|$_start(?:$_numberWords)-?)(?:jarige?|jaar oude?|years?[ -]old|yo)$_end'
     '(?: [^ ]+)? $_child',
   ),
+  // The verb last, as typed after "onthoud dat": "mijn dochter 8 jaar is", "de kinderen 6 en 9 zijn"
+  _phrase(
+    '$_child(?: [^ ]+){0,2}?$_filler $_age(?: (?:jaar|jr))?(?: oud)?'
+    '(?: (?:en|and) $_age(?: (?:jaar|jr))?(?: oud)?)? (?:is|zijn|wordt|worden|was)$_end',
+  ),
   // "zoon (8) en dochter (5)"
   _phrase('$_child ?\\( ?\\d{1,2} ?\\)'),
   // "kinderen: 8 en 5", "twee kinderen, 8 en 5"

@@ -2402,6 +2402,8 @@
       "off": "The memory is off. Nothing was changed.",
       "changed": "This memory was edited in the meantime. Nothing was changed.",
       "kids": "This is now a children's profile. Big P uses no memory there; nothing was changed.",
+      "storyAsk": "Remembering and a story question do not go in one message. Do you want me to remember this?",
+      "storyOnly": "Remembering and a story question do not go in one message. Ask them one at a time.",
       "view": "View memory",
       "card": {
         "rememberTitle": "Shall I remember this?",

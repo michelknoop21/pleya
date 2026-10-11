@@ -139,7 +139,7 @@ void main() {
       callTool('remember_fact', {'value': 'Kijkt op vrijdagavond met het gezin', 'category': 'household'}),
       say('Genoteerd.'),
     ]);
-    await h.ask('Onthoud dat we op vrijdag met het gezin kijken');
+    await h.ask('Onthoud dat we op vrijdagavond met het gezin kijken');
 
     expect(await profile.values(), ['Kijkt op vrijdagavond met het gezin']);
     expect(h.answer, 'Onthouden: Kijkt op vrijdagavond met het gezin.');

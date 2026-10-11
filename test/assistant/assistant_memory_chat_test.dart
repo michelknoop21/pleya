@@ -126,7 +126,7 @@ void main() {
   group('"onthoud dat"', () {
     test('stores a new fact at once and exactly once, and Pleya says literally what', () async {
       final c = make([callTool('remember_fact', friday), say('Ik heb het genoteerd.')]);
-      await c.submit('Onthoud dat we op vrijdag met het gezin kijken', typed: true);
+      await c.submit('Onthoud dat we op vrijdagavond met het gezin kijken', typed: true);
 
       final facts = await profile.service.list();
       expect([for (final f in facts) f.value], ['Kijkt op vrijdagavond met het gezin']);
@@ -145,25 +145,28 @@ void main() {
       ]);
       await c.submit('Onthoud dat we op vrijdag met het gezin kijken en dat ik geen horror wil.', typed: true);
 
-      expect(await profile.values(), ['Kijkt op vrijdagavond met het gezin']);
+      // Two claims in one sentence: the first call stores the typed words, not one half of them.
+      const typed = 'We op vrijdag met het gezin kijken en dat ik geen horror wil';
+      expect(await profile.values(), [typed]);
       expect(c.memoryProposal!.value, 'Houdt niet van horror');
       await c.answerMemoryProposal(c.memoryProposal!, accept: false);
       expect(c.memoryProposal!.value, 'Houdt van komedies');
-      expect(await profile.values(), ['Kijkt op vrijdagavond met het gezin']);
+      expect(await profile.values(), [typed]);
     });
 
     test('"onthoud:" and "remember that" count too', () async {
-      for (final (prompt, value) in [
-        ('Onthoud: ik houd niet van horror.', 'Houdt niet van horror'),
-        ('Remember that I do not like horror.', 'Does not like horror'),
-        ('Remember: we watch on Fridays', 'Watches on Fridays'),
+      for (final (prompt, value, stored) in [
+        ('Onthoud: ik houd niet van horror.', 'Houdt niet van horror', 'Houdt niet van horror'),
+        // "do" and "does" are no one verb to the code: the typed words are stored.
+        ('Remember that I do not like horror.', 'Does not like horror', 'I do not like horror'),
+        ('Remember: we watch on Fridays', 'Watches on Fridays', 'Watches on Fridays'),
       ]) {
         final c = make([
           callTool('remember_fact', {'value': value, 'category': 'dislike'}),
           say('Ok.'),
         ]);
         await c.submit(prompt, typed: true);
-        expect(await profile.values(), [value], reason: prompt);
+        expect(await profile.values(), [stored], reason: prompt);
         await profile.service.clearAll();
       }
     });

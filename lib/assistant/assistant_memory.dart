@@ -64,16 +64,17 @@ class AssistantMemoryOutcome {
 /// The memory state of one ask. Made by the run before the first model call,
 /// never copied to another ask.
 class AssistantMemoryTurn {
-  AssistantMemoryTurn({this.enabled = false, this.command});
+  AssistantMemoryTurn({this.enabled = false, this.typedFact});
 
   /// The memory is on for this profile and it is no children's profile: the
   /// tools are offered.
   final bool enabled;
 
-  /// The user's own typed words after "onthoud dat", or null when the
-  /// question was no such request, was not typed, or runs fenced. Decided by
-  /// code from the user's words.
-  final String? command;
+  /// The user's own typed words after "onthoud dat", as a sentence
+  /// ([assistantMemoryTypedFact]), or null when the question was no such
+  /// request, was not typed, named no fact or runs fenced. Decided by code
+  /// from the user's words.
+  final String? typedFact;
 
   /// Tool calls of this ask so far, the one in progress included. The run
   /// counts them.
@@ -82,19 +83,23 @@ class AssistantMemoryTurn {
   /// The one direct save of this ask was spent, stored or not.
   bool directUsed = false;
 
-  /// Whether [value] may be stored at once, without a card. All of:
+  /// The sentence to store at once in answer to the model's [value], or null
+  /// when the write waits for a yes on a card. A sentence is stored at once
+  /// when all of these hold:
   ///
-  /// * the typed question was an explicit request ([command]);
+  /// * the typed question was an explicit request that names a fact
+  ///   ([typedFact]);
   /// * this is the first tool call of the ask, so no tool result (a web
-  ///   page, a title description) was in the model's context when it wrote
-  ///   [value];
-  /// * no direct save was spent yet;
-  /// * [value] comes from the typed words ([assistantMemoryValueIsTyped]).
+  ///   page, a title description) was in the model's context;
+  /// * no direct save was spent yet.
   ///
-  /// Anything else becomes a proposal on a card.
-  bool mayStoreNow(String value) {
-    final typed = command;
-    return typed != null && calls == 1 && !directUsed && assistantMemoryValueIsTyped(value, typed);
+  /// What is stored is the user's claim, never another one: [value] when it
+  /// says exactly what was typed ([assistantMemoryValueIsTyped]), and
+  /// otherwise the typed words themselves.
+  String? directValue(String value) {
+    final typed = typedFact;
+    if (typed == null || calls != 1 || directUsed) return null;
+    return assistantMemoryValueIsTyped(value, typed) ? value : typed;
   }
 
   /// Writes waiting for a yes, in the order the model asked for them.

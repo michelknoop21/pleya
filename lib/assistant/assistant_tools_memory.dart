@@ -2,8 +2,9 @@ part of 'assistant_tools.dart';
 
 // The memory of the active profile: what the user asked Pleya to remember.
 // Reading is free; a write is stored at once only when the user's own typed
-// words asked for it and hold the fact (`AssistantMemoryTurn.mayStoreNow`), and otherwise becomes a
-// proposal the user answers on a Pleya card after the answer. No output and
+// words asked for it and hold the fact (`AssistantMemoryTurn.directValue`),
+// and otherwise becomes a proposal the user answers on a Pleya card after the
+// answer. No output and
 // no error here carries anything but fixed codes and the user's own facts,
 // and nothing about a fact is logged.
 
@@ -151,8 +152,9 @@ final List<AssistantTool> assistantMemoryTools = [
           ),
         );
       }
-      if (same != null) return AssistantToolResult({'status': 'already_known', 'ref': same.ref});
-      if (!turn.mayStoreNow(value.value)) {
+      final direct = turn.directValue(value.value);
+      if (direct == null) {
+        if (same != null) return AssistantToolResult({'status': 'already_known', 'ref': same.ref});
         return _propose(
           ctx,
           AssistantMemoryProposal(
@@ -165,11 +167,19 @@ final List<AssistantTool> assistantMemoryTools = [
       }
       // Spent before the write: one direct save per ask, stored or not.
       turn.directUsed = true;
+      // The typed words themselves pass the same check as the model's sentence.
+      final typed = direct == value.value ? checked : checkMemoryValue(direct);
+      final accepted = typed.value;
+      if (accepted == null) return _memoryRefusal(typed.code);
       final result = await memory.service.add(
-        value: value.value,
+        value: accepted.value,
         category: category,
         source: MemorySource.userExplicit,
       );
+      // The typed words were stored before: nothing new, and no failure either.
+      if (result.code == MemoryCode.exists) {
+        return AssistantToolResult({'status': 'already_known', 'ref': result.fact?.ref});
+      }
       final fact = result.fact;
       if (!result.ok || fact == null) return _memoryRefusal(result.code);
       turn.stored.add(fact);

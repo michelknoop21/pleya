@@ -178,6 +178,11 @@ void main() {
         'Kinderen: 8 en 5': age,
         'Twee kinderen, 8 en 5': age,
         'Our son just turned eight': age,
+        // The verb last, as the words after "onthoud dat" are typed.
+        'Mijn dochter 8 jaar is': age,
+        'Mijn dochter 8 jaar is. Recap Dark': age,
+        'De kinderen 6 en 9 zijn': age,
+        'Onze zoon al twaalf jaar oud is': age,
       });
     });
 
@@ -211,6 +216,9 @@ void main() {
         'Mijn dochter is 3 maanden in Spanje': ok,
         'The kids are two of a kind': ok,
         'Mijn dochter is 2 jaar bezig met ballet': ok,
+        'Mijn dochter 2 keer per week bij oma is': ok,
+        'Ik met de kinderen 2 afleveringen per avond kijk': ok,
+        'Mijn zoon 3 dagen per week bij ons is': ok,
       });
     });
 

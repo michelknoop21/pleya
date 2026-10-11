@@ -2402,6 +2402,8 @@
       "off": "Het geheugen staat uit. Er is niets gewijzigd.",
       "changed": "Deze herinnering is intussen gewijzigd. Er is niets aangepast.",
       "kids": "Dit is nu een kinderprofiel. Big P gebruikt daar geen geheugen; er is niets gewijzigd.",
+      "storyAsk": "Onthouden en een verhaalvraag gaan niet in één keer. Wil je dit onthouden?",
+      "storyOnly": "Onthouden en een verhaalvraag gaan niet in één keer. Stel ze los van elkaar.",
       "view": "Bekijk geheugen",
       "card": {
         "rememberTitle": "Zal ik dit onthouden?",

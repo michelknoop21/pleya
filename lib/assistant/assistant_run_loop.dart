@@ -68,6 +68,8 @@ extension _AssistantLoop on AssistantRun {
     if (await entitlement.check() != AssistantEntitlementState.entitled) {
       return const AssistantRunResult(end: AssistantRunEnd.notEntitled);
     }
+    // "Onthoud dat ..." with a story word in it: Pleya's own line, no model call.
+    if (_memoryStoryClash(prompt) case final clash?) return clash;
     // A watch question that names nobody is not guessed: Pleya asks whose, with
     // the period and kind the question named kept in the options.
     if (_audienceQuestion() case final question?) return question;

@@ -26,30 +26,79 @@ String? assistantMemoryCommandTail(String prompt) {
   return text.substring(match.end).trim();
 }
 
-/// Whether [value], the sentence the model wants stored, demonstrably comes
-/// from [tail], the user's typed words after the command form. Only then may
-/// a fact be stored without a card.
-///
-/// The rule, decided by code:
-///
-/// * [tail] is a fact of its own: at least three words. "Onthoud dat ook" and
-///   "onthoud dat maar" name no fact; the model would fill it in from the
-///   conversation or a tool result.
-/// * Every content word of [value] (folded, at least four letters) occurs in
-///   [tail], exactly or as the same stem: the first four letters are equal,
-///   which covers conjugation ("houd" and "houdt", "kijken" and "kijkt").
-/// * At most one content word may be missing, and only when at least two
-///   others were found. A sentence with an added claim falls through.
-bool assistantMemoryValueIsTyped(String value, String tail) {
-  final typed = _words(tail);
-  if (typed.length < 3) return false;
-  bool said(String word) => typed.any((t) => t == word || (t.length >= 4 && t.substring(0, 4) == word.substring(0, 4)));
-  var found = 0;
-  var missing = 0;
-  for (final word in _words(value).where((w) => w.length >= 4)) {
-    said(word) ? found++ : missing++;
+final RegExp _rawCommandStart = RegExp(_commandStart.pattern, caseSensitive: false);
+
+/// The user's own words after the command form as they were typed: trimmed,
+/// with a capital first letter and without the closing full stop. Null when
+/// [prompt] is no explicit request ([assistantMemoryCommandTail]) or names no
+/// fact of its own: fewer than three words. "Onthoud dat ook" and "onthoud
+/// dat maar" name no fact; the model would fill it in from the conversation.
+String? assistantMemoryTypedFact(String prompt) {
+  if (assistantMemoryCommandTail(prompt) == null) return null;
+  final raw = prompt.trim();
+  final match = _rawCommandStart.firstMatch(raw);
+  if (match == null) return null;
+  final tail = raw.substring(match.end).trim().replaceAll(RegExp(r'[.\s]+$'), '');
+  if (_words(tail).length < 3) return null;
+  return tail[0].toUpperCase() + tail.substring(1);
+}
+
+/// The subject a stored sentence leaves out.
+const _subjects = {'ik', 'wij', 'we', 'i'};
+
+/// What a finite verb may gain or lose between the first and the third person.
+const _verbEndings = {'', 't', 's', 'es', 'en'};
+
+final RegExp _lettersOnly = RegExp(r'^\p{L}+$', unicode: true);
+
+/// Whether [a] and [b] are one finite verb in two persons: the same word, or
+/// the same first four letters followed by nothing but a verb ending ("houd"
+/// and "houdt", "kijken" and "kijkt", "like" and "likes"). A number never is.
+bool _sameVerb(String a, String b) {
+  if (a == b) return true;
+  if (!_lettersOnly.hasMatch(a) || !_lettersOnly.hasMatch(b)) return false;
+  var same = 0;
+  while (same < a.length && same < b.length && a[same] == b[same]) {
+    same++;
   }
-  return found > 0 && (missing == 0 || (missing == 1 && found >= 2));
+  return same >= 4 && _verbEndings.contains(a.substring(same)) && _verbEndings.contains(b.substring(same));
+}
+
+/// Whether [value], the sentence the model wants stored, says exactly what
+/// [tail] says, the user's typed words after the command form. Only then is
+/// the model's wording stored at once; otherwise the typed words themselves
+/// are ([assistantMemoryTypedFact]).
+///
+/// The comparison is strict and runs both ways: after folding, both hold the
+/// same words in the same order. Three differences are allowed and no other:
+///
+/// * the subject at the start of [tail] is left out (ik, wij, we, I);
+/// * the finite verb, the first word of [value], gains or loses a verb ending
+///   ([_sameVerb]);
+/// * that verb stands at the end of [tail], as a Dutch subordinate clause puts
+///   it: "ik niet van horror houd" and "Houdt niet van horror".
+///
+/// Any other difference fails: a word more or less (also niet, geen, nooit,
+/// alleen, als, dan, met, zonder, not, never, only, if, than, without),
+/// another number, another order of the remaining words.
+///
+/// Known limit: the category of a fact stored at once is the model's choice.
+bool assistantMemoryValueIsTyped(String value, String tail) {
+  final said = _words(value);
+  final typed = _words(tail);
+  if (said.isEmpty || typed.length < 3) return false;
+  bool same(List<String> words) {
+    if (words.length != said.length || !_sameVerb(said.first, words.first)) return false;
+    for (var i = 1; i < words.length; i++) {
+      if (words[i] != said[i]) return false;
+    }
+    return true;
+  }
+
+  for (final words in [typed, if (_subjects.contains(typed.first)) typed.sublist(1)]) {
+    if (same(words) || same([words.last, ...words.sublist(0, words.length - 1)])) return true;
+  }
+  return false;
 }
 
 /// How a follow-up question can open as an instruction to store, change or
@@ -96,9 +145,9 @@ final RegExp _changeForm = RegExp(
 /// story question. A question in one of these bounded forms is about the
 /// memory instead, and only its free part can still call for the fence. For
 /// "onthoud dat ..." that free part is the rest of the sentence: a story or
-/// spoiler question behind the command form keeps the fence, and the request
-/// to remember is then left alone (the fenced run offers no memory tool). A
-/// spoiler leak weighs more than a missed request to remember.
+/// spoiler word behind the command form keeps the fence. A typed request of
+/// that kind gets no model call at all: Pleya answers with its own line and
+/// offers the typed words on a card ([assistantMemoryTypedFact]).
 String? assistantMemoryQuestionTail(String prompt) {
   final command = assistantMemoryCommandTail(prompt);
   if (command != null) return command;
