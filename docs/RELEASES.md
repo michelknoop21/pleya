@@ -66,20 +66,15 @@ Nothing user-facing since the last published build.
   consistently with the rest of the screen**, instead of running slightly smaller when the page
   is nested under the top bar.
 
-### Notes
-
-
 ## 2.8.1 · build 352 · 11 October 2026 · iPhone and iPad
 
 <!-- commit: 19ad7e38779a8d5027e48997d295b0c9bf644335 -->
 
 ### New
-- Ask Big P which films have been sitting unwatched in your library. It answers from the whole
-  library, longest-waiting first, and shows the date each film was added. When it has not read
-  the whole list it says "at least 100" instead of giving a total, and the cards under the
-  answer are the films named in the text.
-- The tab bar, player controls and movie page on iPhone can now be glass. The switch is in
-  Appearance, is off by default and does not apply on iPad.
+- Ask Big P which films have been sitting unwatched in your library. It reads up to 100 films
+  per kind, longest-waiting first, and shows the date each film was added. When there are more
+  than it read it says "at least 100" instead of giving a total, and the cards under the answer
+  are the films named in the text.
 
 ### Improved
 - Big P and your recommendations recognise a title you watched on one server when the same
@@ -92,22 +87,24 @@ Nothing user-facing since the last published build.
   between two different networks is gone with it.
 - "Which films have I not watched?" no longer gets twelve personal tips as its answer. A tip
   you ask for still comes from your own history.
-- Home shows movies and shows added while the app stays open, for every source including local
-  folders. It refreshes quietly when you return to Home after two minutes and every five minutes
-  while Home is on screen, and keeps your place in a row.
 
 ### Notes
-- Hidden libraries and library order now sync over iCloud for Plex Home profiles. The first
-  device to sync after updating sets them for that profile on every device. If you arranged a
-  profile differently on purpose on one device, check it after updating.
+- Three things from late September were already in builds 348 and 350 without a note. Home
+  shows movies and shows added while the app stays open, and refreshes quietly when you return
+  to Home after two minutes and every five minutes while it is on screen. The tab bar, player
+  controls and movie page on iPhone can be glass, with a switch in Appearance that is off by
+  default and does not apply on iPad. Hidden libraries and library order sync over iCloud for
+  Plex Home profiles: the first device to sync sets them for that profile on every device, so
+  if you arranged a profile differently on purpose on one device, check it.
 
 ### Worth checking
 - Nothing in this build has been checked on an iPhone or iPad yet; the changes are covered by
   automated tests and, for Big P, by one run of two language models against a test library.
 - Pleya Share on a trip: put the host iPhone on its own hotspot, join with an iPad, pair with
   the QR code, play a film and seek. Lock the iPhone and check that the iPad keeps playing.
-  Then look under Settings, Mobile Data on the iPhone and check that Pleya used no more than
-  the app itself needs.
+  Note Pleya's figure under Settings, Mobile Data on the iPhone before the trip and again
+  after a whole film. It should have grown by a few megabytes at most, not by the size of the
+  film.
 - Pleya Share after a break: turn the iPad's Wi-Fi off and on during playback and check that
   it reconnects to the iPhone without a message about an internet connection.
 - Big P: ask "Which films have been sitting unwatched in my library for a long time?" and check
