@@ -4,48 +4,65 @@ part of 'assistant_run.dart';
 // search that found it.
 
 extension _AssistantSingleTitle on AssistantRun {
-  /// When the question is after one title and [answer] names exactly one that
-  /// a title card or grid draws, keeps only the cards of that title. In every
-  /// other case the cards stay as they are: an answer that names none, two or
-  /// a title without a card picks nothing for the user. Only removes cards, so
-  /// the age gate and the rights checks that admitted them still hold.
+  /// When the question is after one title and [answer] names exactly one,
+  /// each list of titles, grid or set of request options that shows it keeps
+  /// only that title. A result without it stays whole: it answers another
+  /// part of the question. An answer that names none or two picks nothing for
+  /// the user. Only removes cards, so the age gate and the rights checks that
+  /// admitted them still hold.
   void _keepTheOneNamed(String answer) {
     // After an action the action is the answer; a diagnosis or a fenced story
     // question is worded by Pleya, not by this text.
     if (!_oneTitleAsked || _actions.isNotEmpty || _spoilerQuestion != null || _ctx.libraryDoctorMode) return;
-    final named = assistantNamedTitles(answer);
-    if (named.length != 1) return;
-    final key = assistantTitleKey(named.single.title);
+    final named = _theOneNamed(answer);
+    if (named == null) return;
     bool isIt(String? title, int? year) =>
-        assistantSameTitle((key: assistantTitleKey(title ?? ''), year: year), key, named.single.year);
-    final next = <AssistantDisplay>[];
-    var found = false;
-    for (final display in _displays) {
-      switch (display) {
-        case AssistantTitleMatches(:final context, :final matches):
+        assistantSameTitle((key: assistantTitleKey(title ?? ''), year: year), named.key, named.year);
+    for (var i = 0; i < _displays.length; i++) {
+      final only = switch (_displays[i]) {
+        AssistantTitleMatches(:final context, :final matches) => _only(
+          matches,
+          matches.length,
           // A match that cannot be opened or requested is not drawn: no card.
-          final kept = [
-            for (final m in matches)
-              if ((m.targets.isNotEmpty || m.request != null) && isIt(m.title, m.year)) m,
-          ];
-          found = found || kept.isNotEmpty;
-          if (kept.isNotEmpty) next.add(kept.length == matches.length ? display : AssistantTitleMatches(context, kept));
-        case AssistantMediaGrid(:final entries, :final facts):
-          final kept = [
-            for (final e in entries.take(kAssistantListedTitles))
-              if (isIt(e.item.title, e.item.year)) e,
-          ];
-          found = found || kept.isNotEmpty;
-          if (kept.isNotEmpty)
-            next.add(kept.length == entries.length ? display : AssistantMediaGrid(kept, facts: facts));
-        default:
-          next.add(display);
-      }
+          (m) => (m.targets.isNotEmpty || m.request != null) && isIt(m.title, m.year),
+          (kept) => AssistantTitleMatches(context, kept),
+        ),
+        AssistantMediaGrid(:final entries, :final facts) => _only(
+          entries.take(kAssistantListedTitles),
+          entries.length,
+          (e) => isIt(e.item.title, e.item.year),
+          (kept) => AssistantMediaGrid(kept, facts: facts),
+        ),
+        AssistantRequestOptions(:final context, :final options) => _only(
+          options,
+          options.length,
+          (o) => isIt(o.title, o.year),
+          (kept) => AssistantRequestOptions(context, kept),
+        ),
+        _ => null,
+      };
+      if (only != null) _displays[i] = only;
     }
-    // The named title has no card: the search result stays whole.
-    if (!found) return;
-    _displays
-      ..clear()
-      ..addAll(next);
   }
+
+  /// The title [answer] names when it names one: the same title twice, once
+  /// with its year and once without, is still one. Two years are two titles.
+  ({String key, int? year})? _theOneNamed(String answer) {
+    final named = assistantNamedTitles(answer);
+    final keys = {for (final n in named) assistantTitleKey(n.title)};
+    final years = {for (final n in named) ?n.year};
+    return keys.length == 1 && years.length <= 1 ? (key: keys.single, year: years.firstOrNull) : null;
+  }
+}
+
+/// The display of the [all] that are the named title, or null when none is
+/// or nothing would go: the display then stays as it is.
+AssistantDisplay? _only<T>(
+  Iterable<T> all,
+  int total,
+  bool Function(T) isIt,
+  AssistantDisplay Function(List<T>) build,
+) {
+  final kept = all.where(isIt).toList();
+  return kept.isEmpty || kept.length == total ? null : build(kept);
 }

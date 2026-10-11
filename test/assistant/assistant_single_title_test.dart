@@ -5,7 +5,6 @@ import 'package:http/testing.dart';
 import 'package:pleya/assistant/assistant_entitlement.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/assistant/assistant_run.dart';
-import 'package:pleya/assistant/assistant_single_title.dart';
 import 'package:pleya/assistant/assistant_title_facts.dart';
 import 'package:pleya/assistant/assistant_title_facts_cache.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
@@ -253,9 +252,95 @@ void main() {
       expect(_cards(r), [_mile]);
       expect(grid.facts.values.single, same(facts));
     });
-    test('a named title the search missed gets its own card, and that is the one card', () async {
+    test('the same title named twice, once with its year, is one title', () async {
+      final r = await _ask([_findHanks, 'Dat is «$_mile» (1999). «$_mile» speelt in een dodencel.'], one);
+      expect(_cards(r), [_mile]);
+    });
+
+    test('a second result in the same run stays whole: only the search with the named title narrows', () async {
+      final r = await _ask(
+        [
+          _findHanks,
+          {'name': 'recently_added', 'args': <String, Object?>{}},
+          'Dat is «$_mile» (1999). Nieuw deze week staan hieronder.',
+        ],
+        'Hoe heet die film met Tom Hanks over death row en wat is er nieuw deze week',
+        tools: [
+          ...assistantTools.where((t) => t.name == 'find_title'),
+          _tool(
+            'recently_added',
+            (_) => AssistantMediaGrid([
+              (item: _item('Heat', 1995), group: null),
+              (item: _item('Cast Away', 2000), group: null),
+            ]),
+          ),
+        ],
+      );
+      expect(r.displays, hasLength(2));
+      expect(_cards(r), [_mile, 'Heat', 'Cast Away']);
+    });
+
+    test('request options for a title outside the library narrow to the named one too', () async {
+      AssistantRequestOption option(String title, int year) => AssistantRequestOption(
+        seerrId: title,
+        title: title,
+        kind: 'movie',
+        posterUrl: '',
+        overview: '',
+        status: 'not_requested',
+        year: year,
+      );
+      final r = await _ask(
+        [
+          {'name': 'find_request_title', 'args': <String, Object?>{}},
+          answer,
+        ],
+        one,
+        tools: [
+          _tool(
+            'find_request_title',
+            (ctx) =>
+                AssistantRequestOptions(ctx, [option(_mile, 1999), option(_gump, 1994), option('Cast Away', 2000)]),
+          ),
+        ],
+      );
+      final options = (r.displays.single as AssistantRequestOptions).options;
+      expect([for (final o in options) o.title], [_mile]);
+    });
+  });
+
+  group('a named title the search did not find', () {
+    test('gets its own card next to the search result, which stays whole', () async {
+      final before = _cards(await _ask([_findHanks, 'Hier zijn ze.'], 'Films met Tom Hanks'));
       final r = await _ask([_findHanks, 'Dat is «Heat» (1995).'], 'Hoe heet die film over een bankoverval?');
-      expect(_cards(r), ['Heat']);
+      expect(_cards(r), [...before, 'Heat']);
+    });
+
+    test('a list about a title that is only referred to keeps every card', () async {
+      for (final text in [
+        'De regisseur van «Heat» (1995) maakte ook deze drie.',
+        'Hij maakte onder meer «Ali» (2001).',
+      ]) {
+        final r = await _ask(
+          [
+            {'name': 'search_catalog', 'args': <String, Object?>{}},
+            text,
+          ],
+          'Wat heeft de regisseur van de film Heat nog meer gemaakt?',
+          tools: [
+            ...assistantTools.where((t) => t.name == 'find_title'),
+            _tool(
+              'search_catalog',
+              (_) => AssistantMediaGrid([
+                (item: _item('Collateral', 2004), group: null),
+                (item: _item('Ali', 2001), group: null),
+                (item: _item('Thief', 1981), group: null),
+              ]),
+            ),
+          ],
+        );
+        expect(_cards(r), containsAll(['Collateral', 'Ali', 'Thief']), reason: text);
+      }
     });
   });
 
@@ -328,36 +413,5 @@ void main() {
       expect(_cards(r), isNot(contains(_mile)));
       expect(_cards(r), isNot(contains(_gump)), reason: 'the gate still holds for the rest');
     });
-  });
-
-  test('which questions are after one title', () {
-    for (final prompt in [
-      one,
-      'Ik zoek die film met Tom Hanks over deathrow',
-      'de film van Tom Hanks over de dodencel',
-      'Welke serie gaat over een scheikundeleraar?',
-      'Die ene docu over octopussen',
-      'What is that movie with Tom Hanks about death row?',
-      'the show about a chemistry teacher',
-      'Een film met Tom Hanks in een dodencel, hoe heet die?',
-      'What was the name of that Tom Hanks prison thing?',
-    ]) {
-      expect(assistantAsksOneTitle(prompt), isTrue, reason: prompt);
-    }
-    for (final prompt in [
-      'Films met Tom Hanks',
-      'Welke films met Tom Hanks heb ik?',
-      'Iets spannends voor vanavond',
-      'Een film met Tom Hanks',
-      'Welke series zijn nieuw?',
-      'What series do I have?',
-      'Movies like that film with Tom Hanks',
-      'Iets zoals die film met Tom Hanks',
-      'Geef me twee opties voor de film van vanavond',
-      'Tips voor de serie van dit weekend',
-      'Wat is er deze week toegevoegd?',
-    ]) {
-      expect(assistantAsksOneTitle(prompt), isFalse, reason: prompt);
-    }
   });
 }
