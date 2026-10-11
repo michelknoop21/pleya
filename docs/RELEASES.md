@@ -83,10 +83,11 @@ Nothing user-facing since the last published build.
 
 ### New
 - Ask Big P what was added to your libraries. It answers for the period you name, such as this
-  week, and shows the date each title was added. The cards under the answer are the same titles
-  as the list in the text.
-- When you ask Big P what to watch without saying who is watching, it asks who it is for. The
-  choices appear as buttons under the question.
+  week, up to a month back, and shows the date each title was added. A local folder has no such
+  date. The cards under the answer are the same titles as the list in the text.
+- When you ask Big P what was watched without saying by whom, such as "What was watched this
+  week?", it asks whether you mean yourself, the others or everyone. The choices appear as
+  buttons under the question.
 - A question about you and the others in one sentence, such as what you watched and what the
   rest watched, is answered as two separate questions.
 
@@ -100,8 +101,7 @@ Nothing user-facing since the last published build.
   default instance for that quality. Without one the button is off and the form says "No default
   server for this quality". When the list of servers cannot be read, HD stays open and 4K is
   closed. This is stricter than the requests server itself.
-- Messages in the request form stay in view and take only the room they need, also on a small
-  screen with large text.
+- Messages in the request form stay in view and take only the room they need.
 - "My requests" in the request form shows only when the earlier request is your own.
 - Picking "All seasons" in the request form no longer renumbers the list of seasons.
 - Search in Discover no longer shows a page of an earlier search twice when you search for the
@@ -111,10 +111,10 @@ Nothing user-facing since the last published build.
 - Big P keeps to the kind you ask for. Ask for films and you get films, ask for series and you
   get series. Asked which films are playing right now, it lists active streams of that kind only
   and says how many it left out because their kind is unknown.
-- "Family" or "household" in a question to Big P no longer quietly means only you. When it is
-  unclear who belongs to it, Big P asks.
-- When your access to a library changes while Big P is working on an answer, the answer leaves
-  out what you may no longer see.
+- "Family" or "household" in a request for something to watch together no longer quietly
+  means only you.
+- When your access to a library changes while Big P is looking something up, it does not show
+  that result.
 - The focus ring stays visible on a light background, and buttons that are not focused stay
   readable while another one has the focus.
 - The dialog for picking an option, such as a version or a sort order, has the same proportions
@@ -126,8 +126,9 @@ Nothing user-facing since the last published build.
   in this build has been checked on an Apple TV yet.
 - Requests: open All requests or My requests and press Menu on a card. You should be back on
   Requests with the inbox button focused.
-- Request form: check that the 4K switch is there only when the requests server has a default
-  4K instance, and that you can reach the button with the remote.
+- Request form: open a title with an account that may request but not manage. Check that the
+  4K switch is there only when the requests server has a default 4K instance, and that you can
+  reach the button with the remote.
 - This build was made with Big P switched on. That has not been confirmed on a device, so
   please check that you can open it on your Apple TV.
 
@@ -137,10 +138,11 @@ Nothing user-facing since the last published build.
 
 ### New
 - Ask Big P what was added to your libraries. It answers for the period you name, such as this
-  week, and shows the date each title was added. The cards under the answer are the same titles
-  as the list in the text.
-- When you ask Big P what to watch without saying who is watching, it asks who it is for. The
-  choices appear as buttons under the question.
+  week, up to a month back, and shows the date each title was added. A local folder has no such
+  date. The cards under the answer are the same titles as the list in the text.
+- When you ask Big P what was watched without saying by whom, such as "What was watched this
+  week?", it asks whether you mean yourself, the others or everyone. The choices appear as
+  buttons under the question.
 - A question about you and the others in one sentence, such as what you watched and what the
   rest watched, is answered as two separate questions.
 
@@ -162,10 +164,10 @@ Nothing user-facing since the last published build.
 - Big P keeps to the kind you ask for. Ask for films and you get films, ask for series and you
   get series. Asked which films are playing right now, it lists active streams of that kind only
   and says how many it left out because their kind is unknown.
-- "Family" or "household" in a question to Big P no longer quietly means only you. When it is
-  unclear who belongs to it, Big P asks.
-- When your access to a library changes while Big P is working on an answer, the answer leaves
-  out what you may no longer see.
+- "Family" or "household" in a request for something to watch together no longer quietly
+  means only you.
+- When your access to a library changes while Big P is looking something up, it does not show
+  that result.
 - Big P's confirmation card stays inside the conversation with the keyboard up on a small
   iPhone.
 - On iPad the header of a film or series page no longer grows past a fixed height, and the
@@ -179,8 +181,8 @@ Nothing user-facing since the last published build.
   be sent.
 - Big P on a small iPhone: ask for something Big P has to confirm and keep the keyboard up.
   Cancel and Create should both be fully visible.
-- Big P: ask "what should we watch tonight" without naming anyone and check that it asks who is
-  watching.
+- Big P: ask "What was watched this week?" and check that it asks whether you mean yourself,
+  the others or everyone.
 
 ## 2.8.1 · build 349 · 10 October 2026 · Apple TV
 
