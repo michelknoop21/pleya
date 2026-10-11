@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 
 import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
@@ -48,7 +49,7 @@ class OpenedFileService {
   }
 
   /// Keeps [path] for later: the listener got it at a moment it cannot play
-  /// (profile chooser on top, screen going away). [redeliver] or the next
+  /// (a route covers it, the screen is going away). [redeliver] or the next
   /// [attach] offers it again.
   void defer(String path) => _deferred.add(path);
 
@@ -62,9 +63,10 @@ class OpenedFileService {
   Future<void> _drain() async {
     if (_listener == null) return;
     try {
-      final paths = List<String>.of(_deferred);
+      final taken = _supported ? await _channel.invokeListMethod<String>('takePendingFiles') : null;
+      // Emptied only after the call: a failed read must not cost the deferred paths.
+      final paths = [..._deferred, ...?taken];
       _deferred.clear();
-      if (_supported) paths.addAll(await _channel.invokeListMethod<String>('takePendingFiles') ?? const <String>[]);
       if (paths.isEmpty) return;
       final listener = _listener;
       if (listener == null) {
@@ -78,4 +80,23 @@ class OpenedFileService {
       appLogger.w('Opened files: could not read the pending list', error: e);
     }
   }
+}
+
+/// On the root navigator: when a route there goes away (profile chooser,
+/// dialog, a settings page), a file that waited behind it is offered again.
+class OpenedFileRouteObserver extends NavigatorObserver {
+  OpenedFileRouteObserver([OpenedFileService? service]) : _service = service;
+
+  final OpenedFileService? _service;
+
+  void _uncovered() => (_service ?? OpenedFileService.instance).redeliver();
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => _uncovered();
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) => _uncovered();
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) => _uncovered();
 }

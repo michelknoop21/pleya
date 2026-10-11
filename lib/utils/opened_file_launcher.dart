@@ -46,3 +46,24 @@ bool isVideoPlayerOnTop(NavigatorState navigator) {
   });
   return top == kVideoPlayerRouteName;
 }
+
+/// Whether a route on an outer navigator lies over the one [context] lives in:
+/// the profile chooser, a dialog or a page pushed on the root navigator. A
+/// player started now would play out of sight, with sound.
+bool isCoveredByOuterRoute(BuildContext context) {
+  var current = context;
+  var covered = false;
+  var innermost = true;
+  while (true) {
+    final route = ModalRoute.of(current);
+    // Not Navigator.maybeOf: for a navigator's own context that answers the
+    // navigator itself, and the walk would never leave it.
+    final navigator = current.findAncestorStateOfType<NavigatorState>();
+    if (route == null || navigator == null) return covered;
+    // The navigator the player is pushed on may hold anything on top; only
+    // the navigators around it hide the player.
+    if (!innermost && !route.isCurrent) covered = true;
+    innermost = false;
+    current = navigator.context;
+  }
+}

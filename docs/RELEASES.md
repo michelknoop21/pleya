@@ -28,6 +28,7 @@ under `Notes`.
 - wachttijd raakt na profielwissel de nieuwe slot niet, backoff ververst, vlaggen volgen de laatste lezing
 - één gevraagde titel geeft één kaart (#283)
 - reviewpunten geopend bestand: Inbox per levering, geen taalkeuze op pad, tests voor wachtrij en start
+- luisteraar voor geopende bestanden overleeft een profielwissel, bestand wacht achter de profielkiezer
 <!-- END GENERATED -->
 
 ### New

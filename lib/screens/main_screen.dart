@@ -1003,7 +1003,6 @@ class _MainScreenState extends State<MainScreen>
     ).push(MaterialPageRoute(builder: (context) => const ProfileSwitchScreen(requireSelection: true)));
     if (!mounted) return;
     _isShowingProfileSelection = false;
-    OpenedFileService.instance.redeliver();
     _updateTvosMenuPassthrough();
   }
 
@@ -1071,11 +1070,12 @@ class _MainScreenState extends State<MainScreen>
   /// Play a video file the system hands to Pleya (Files, share sheet, Finder).
   void _setupOpenedFiles() => OpenedFileService.instance.attach(_onOpenedFile);
 
-  /// Behind the profile chooser the player would start out of sight, so the
-  /// file waits until the chooser is gone; so does one that arrives while
-  /// this screen is on its way out.
+  /// Behind a route on the root navigator (profile chooser, dialog) the
+  /// player would start out of sight, so the file waits until that route is
+  /// gone; so does one that arrives while this screen is on its way out.
+  /// [OpenedFileRouteObserver] offers it again.
   void _onOpenedFile(String path) {
-    if (!mounted || _isShowingProfileSelection) {
+    if (!mounted || isCoveredByOuterRoute(context)) {
       OpenedFileService.instance.defer(path);
       return;
     }
@@ -1417,7 +1417,6 @@ class _MainScreenState extends State<MainScreen>
     ).push(MaterialPageRoute(builder: (context) => const ProfileSwitchScreen(requireSelection: true)));
     if (!mounted) return;
     _isShowingProfileSelection = false;
-    OpenedFileService.instance.redeliver();
     _updateTvosMenuPassthrough();
   }
 
@@ -1904,7 +1903,6 @@ class _MainScreenState extends State<MainScreen>
     await AccountUiActions.openProfiles(context, asGate: true);
     if (!mounted) return;
     _isShowingProfileSelection = false;
-    OpenedFileService.instance.redeliver();
     _updateTvosMenuPassthrough();
   }
 

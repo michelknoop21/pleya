@@ -174,18 +174,55 @@ void main() {
       final service = OpenedFileService.forTesting(supported: true, channel: channel);
       final outgoing = <String>[];
       final incoming = <String>[];
-      void outgoingListener(String path) => outgoing.add(path);
-      void incomingListener(String path) => incoming.add(path);
+      // Method tear-offs of two instances, as two MainScreen states are: equal
+      // per instance, never identical.
+      final outgoingScreen = _Screen(outgoing);
+      final incomingScreen = _Screen(incoming);
 
-      service.attach(outgoingListener);
-      service.attach(incomingListener);
-      service.detach(outgoingListener);
+      service.attach(outgoingScreen.onFile);
+      service.attach(incomingScreen.onFile);
+      service.detach(outgoingScreen.onFile);
       pending.add(_path);
       await nativeSignal();
       await pumpEventQueue();
 
       expect(incoming, [_path]);
       expect(outgoing, isEmpty);
+    });
+
+    test('a screen lets go of its own listener', () async {
+      final service = OpenedFileService.forTesting(supported: true, channel: channel);
+      final screen = _Screen([]);
+      service.attach(screen.onFile);
+      service.detach(screen.onFile);
+      pending.add(_path);
+
+      await nativeSignal();
+      await pumpEventQueue();
+
+      expect(screen.played, isEmpty);
+      expect(pending, [_path]);
+    });
+
+    test('a failed native read keeps the deferred paths', () async {
+      final service = OpenedFileService.forTesting(supported: true, channel: channel);
+      var covered = true;
+      final played = <String>[];
+      service.attach((path) => covered ? service.defer(path) : played.add(path));
+      pending.add(_path);
+      await nativeSignal();
+      await pumpEventQueue();
+
+      messenger.setMockMethodCallHandler(channel, (call) async => throw PlatformException(code: 'gone'));
+      covered = false;
+      service.redeliver();
+      await pumpEventQueue();
+      expect(played, isEmpty);
+
+      messenger.setMockMethodCallHandler(channel, (call) async => const <String>[]);
+      service.redeliver();
+      await pumpEventQueue();
+      expect(played, [_path]);
     });
 
     test('a deferred file is offered again, to the same listener or the next one', () async {
@@ -258,6 +295,53 @@ void main() {
     });
   });
 
+  group('a route on the root navigator', () {
+    testWidgets('covers the session below it, and its removal offers the waiting file again', (tester) async {
+      const channel = MethodChannel('com.pleya/open_file.cover');
+      final service = OpenedFileService.forTesting(supported: false, channel: channel);
+      final rootKey = GlobalKey<NavigatorState>();
+      final sessionKey = GlobalKey<NavigatorState>();
+      final insideKey = GlobalKey();
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorKey: rootKey,
+          navigatorObservers: [OpenedFileRouteObserver(service)],
+          home: Navigator(
+            key: sessionKey,
+            onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => SizedBox(key: insideKey)),
+          ),
+        ),
+      );
+      final played = <String>[];
+      void listener(String path) {
+        if (isCoveredByOuterRoute(insideKey.currentContext!)) {
+          service.defer(path);
+        } else {
+          played.add(path);
+        }
+      }
+
+      service.attach(listener);
+      expect(isCoveredByOuterRoute(insideKey.currentContext!), isFalse);
+
+      // A page on the session navigator itself does not hide a player pushed there.
+      unawaited(sessionKey.currentState!.push(MaterialPageRoute<void>(builder: (_) => const SizedBox())));
+      await tester.pumpAndSettle();
+      expect(isCoveredByOuterRoute(insideKey.currentContext!), isFalse);
+
+      // The profile chooser on the root navigator does.
+      unawaited(rootKey.currentState!.push(MaterialPageRoute<void>(builder: (_) => const SizedBox())));
+      await tester.pumpAndSettle();
+      expect(isCoveredByOuterRoute(insideKey.currentContext!), isTrue);
+      listener(_path);
+      expect(played, isEmpty);
+
+      rootKey.currentState!.pop();
+      await tester.pumpAndSettle();
+      expect(played, [_path]);
+    });
+  });
+
   group('isVideoPlayerOnTop', () {
     Route<void> route(String? name) => PageRouteBuilder<void>(
       settings: RouteSettings(name: name),
@@ -311,4 +395,12 @@ void main() {
       expect(plist, contains('<key>LSSupportsOpeningDocumentsInPlace</key>\n\t<true/>'));
     });
   });
+}
+
+class _Screen {
+  _Screen(this.played);
+
+  final List<String> played;
+
+  void onFile(String path) => played.add(path);
 }
