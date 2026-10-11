@@ -74,9 +74,11 @@ final class OpenFilePlugin: NSObject, FlutterPlugin {
   /// Removes what the Inbox of [copies] holds besides them. Only inside the
   /// app's own container: nothing the user keeps elsewhere is touched.
   private static func clearInbox(keeping copies: [URL]) {
-    guard let inbox = copies.first?.deletingLastPathComponent().standardizedFileURL,
+    // Symlinks resolved on both sides: the system hands out /private/var
+    // paths where NSHomeDirectory answers /var.
+    guard let inbox = copies.first?.deletingLastPathComponent().resolvingSymlinksInPath(),
       inbox.lastPathComponent.hasSuffix("Inbox"),
-      inbox.path.hasPrefix(URL(fileURLWithPath: NSHomeDirectory()).standardizedFileURL.path + "/"),
+      inbox.path.hasPrefix(URL(fileURLWithPath: NSHomeDirectory()).resolvingSymlinksInPath().path + "/"),
       let entries = try? FileManager.default.contentsOfDirectory(at: inbox, includingPropertiesForKeys: nil)
     else { return }
     let keep = Set(copies.map { $0.lastPathComponent })

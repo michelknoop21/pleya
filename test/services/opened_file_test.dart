@@ -128,7 +128,7 @@ void main() {
       await pumpEventQueue();
       expect(takeCalls, 0, reason: 'nothing may take the path before somebody can play it');
 
-      service.listener = played.add;
+      service.attach(played.add);
       await pumpEventQueue();
 
       expect(played, [_path]);
@@ -138,7 +138,7 @@ void main() {
     test('a file opened while the app runs plays on the native signal', () async {
       final service = OpenedFileService.forTesting(supported: true, channel: channel);
       final played = <String>[];
-      service.listener = played.add;
+      service.attach(played.add);
       await pumpEventQueue();
       expect(played, isEmpty);
 
@@ -154,7 +154,7 @@ void main() {
       final service = OpenedFileService.forTesting(supported: true, channel: channel);
       final played = <String>[];
 
-      service.listener = played.add;
+      service.attach(played.add);
       await pumpEventQueue();
 
       expect(played, ['/a/two.mp4']);
@@ -170,11 +170,52 @@ void main() {
       expect(pending, [_path]);
     });
 
+    test('a screen disposed after its successor attached leaves that listener in place', () async {
+      final service = OpenedFileService.forTesting(supported: true, channel: channel);
+      final outgoing = <String>[];
+      final incoming = <String>[];
+      void outgoingListener(String path) => outgoing.add(path);
+      void incomingListener(String path) => incoming.add(path);
+
+      service.attach(outgoingListener);
+      service.attach(incomingListener);
+      service.detach(outgoingListener);
+      pending.add(_path);
+      await nativeSignal();
+      await pumpEventQueue();
+
+      expect(incoming, [_path]);
+      expect(outgoing, isEmpty);
+    });
+
+    test('a deferred file is offered again, to the same listener or the next one', () async {
+      final service = OpenedFileService.forTesting(supported: true, channel: channel);
+      var chooserOpen = true;
+      final played = <String>[];
+      void listener(String path) => chooserOpen ? service.defer(path) : played.add(path);
+      service.attach(listener);
+      pending.add(_path);
+      await nativeSignal();
+      await pumpEventQueue();
+      expect(played, isEmpty);
+
+      chooserOpen = false;
+      service.redeliver();
+      await pumpEventQueue();
+      expect(played, [_path]);
+
+      service.defer('/a/later.mp4');
+      final next = <String>[];
+      service.attach(next.add);
+      await pumpEventQueue();
+      expect(next, ['/a/later.mp4']);
+    });
+
     test('an unsupported platform never touches the channel', () async {
       pending.add(_path);
       final service = OpenedFileService.forTesting(supported: false, channel: channel);
 
-      service.listener = (_) => fail('no file can arrive here');
+      service.attach((_) => fail('no file can arrive here'));
       await pumpEventQueue();
 
       expect(takeCalls, 0);

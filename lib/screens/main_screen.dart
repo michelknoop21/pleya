@@ -1003,6 +1003,7 @@ class _MainScreenState extends State<MainScreen>
     ).push(MaterialPageRoute(builder: (context) => const ProfileSwitchScreen(requireSelection: true)));
     if (!mounted) return;
     _isShowingProfileSelection = false;
+    OpenedFileService.instance.redeliver();
     _updateTvosMenuPassthrough();
   }
 
@@ -1068,10 +1069,17 @@ class _MainScreenState extends State<MainScreen>
   }
 
   /// Play a video file the system hands to Pleya (Files, share sheet, Finder).
-  void _setupOpenedFiles() {
-    OpenedFileService.instance.listener = (path) {
-      if (mounted) unawaited(playOpenedFile(context, path));
-    };
+  void _setupOpenedFiles() => OpenedFileService.instance.attach(_onOpenedFile);
+
+  /// Behind the profile chooser the player would start out of sight, so the
+  /// file waits until the chooser is gone; so does one that arrives while
+  /// this screen is on its way out.
+  void _onOpenedFile(String path) {
+    if (!mounted || _isShowingProfileSelection) {
+      OpenedFileService.instance.defer(path);
+      return;
+    }
+    unawaited(playOpenedFile(context, path));
   }
 
   /// Set up launcher shelf deep link handling for Android TV and tvOS taps.
@@ -1332,7 +1340,7 @@ class _MainScreenState extends State<MainScreen>
   @override
   void dispose() {
     tvContentRouteRegistry.detach(_pushTvContentRoute);
-    OpenedFileService.instance.listener = null;
+    OpenedFileService.instance.detach(_onOpenedFile);
     if (kPleyaVerify) {
       AutomationNavigationHooks.instance.unregisterSelectTab(_selectTab);
     }
@@ -1409,6 +1417,7 @@ class _MainScreenState extends State<MainScreen>
     ).push(MaterialPageRoute(builder: (context) => const ProfileSwitchScreen(requireSelection: true)));
     if (!mounted) return;
     _isShowingProfileSelection = false;
+    OpenedFileService.instance.redeliver();
     _updateTvosMenuPassthrough();
   }
 
@@ -1895,6 +1904,7 @@ class _MainScreenState extends State<MainScreen>
     await AccountUiActions.openProfiles(context, asGate: true);
     if (!mounted) return;
     _isShowingProfileSelection = false;
+    OpenedFileService.instance.redeliver();
     _updateTvosMenuPassthrough();
   }
 
