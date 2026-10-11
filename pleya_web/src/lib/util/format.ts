@@ -49,8 +49,10 @@ const BYTE_UNITS = ['B', 'kB', 'MB', 'GB', 'TB', 'PB'] as const;
 /**
  * Decimaal (1000), zoals de northstar "42,1 GB" voor een bestand toont en
  * zoals schijfleveranciers en de server rekenen. Hele bytes zonder decimaal,
- * vanaf kB hooguit één: "8,3 GB", "120 GB". Onder de 10 staat die ene decimaal
- * er altijd, zodat een afgeronde "1,0 MB" niet als een kale "1 MB" leest.
+ * vanaf kB hooguit één: "8,3 GB", "120 GB". Een rond totaal blijft rond, zoals
+ * de northstar "van 6 TB" toont. Alleen als het afronden onder de 10 een rest
+ * verbergt staat de ",0" er wel: 999 950 B is "1,0 MB" en geen kale "1 MB",
+ * die als precies één megabyte zou lezen.
  *
  * Eerst afronden, dan promoveren: 999 950 B is 999,95 kB en rondt af op 1000.
  * Werd de eenheid vóór het afronden gekozen, dan stond er "1.000 kB".
@@ -68,7 +70,7 @@ export function formatBytes(bytes: number, locale = intlLocale()): string {
     unit += 1;
   }
   const shown = rounded(scaled, unit);
-  const fraction = unit > 0 && shown < 10 ? 1 : 0;
+  const fraction = unit > 0 && shown < 10 && shown !== scaled ? 1 : 0;
   const number = new Intl.NumberFormat(locale, {
     minimumFractionDigits: fraction,
     maximumFractionDigits: unit === 0 ? 0 : 1
