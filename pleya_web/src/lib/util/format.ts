@@ -40,6 +40,37 @@ export function formatDate(iso: string | null | undefined, locale = intlLocale()
   return new Intl.DateTimeFormat(locale, { dateStyle }).format(date);
 }
 
+const RELATIVE_STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ['second', 60],
+  ['minute', 60],
+  ['hour', 24],
+  ['day', Number.POSITIVE_INFINITY]
+];
+
+/**
+ * "3 minuten geleden", in de actieve taal (`Intl.RelativeTimeFormat`). De
+ * grootste eenheid die nog een heel getal oplevert wint; dagen is de grens,
+ * want wie een server weken niet zag heeft aan "5 weken" niet meer dan aan
+ * "35 dagen". `numeric: 'auto'` maakt van nul seconden "nu" en van één dag
+ * "gisteren". Een tijd in de toekomst (een klok die verzet is) telt als nu.
+ */
+export function formatRelative(
+  iso: string | null | undefined,
+  now: number = Date.now(),
+  locale = intlLocale()
+): string | null {
+  if (!iso) return null;
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) return null;
+  let amount = Math.max(0, Math.round((now - then) / 1000));
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  for (const [unit, size] of RELATIVE_STEPS) {
+    if (amount < size) return rtf.format(-amount, unit);
+    amount = Math.floor(amount / size);
+  }
+  return null;
+}
+
 export function formatCount(count: number, locale = intlLocale()): string {
   return new Intl.NumberFormat(locale).format(count);
 }

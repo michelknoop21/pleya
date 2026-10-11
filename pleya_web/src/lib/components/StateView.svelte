@@ -12,6 +12,11 @@
   server); zonder snippet blijven de twee standaardpaden. `onRetry` is een
   snelkoppeling voor de meest voorkomende uitweg en wordt een primaire kleine
   capsule; wie meer uitwegen heeft geeft `actions`.
+
+  `level` 1 is voor een staat die de hele pagina is, zoals onbereikbaar (14):
+  daar is geen route met een eigen kop, en de titel van de staat is de naam van
+  de pagina. `alert` onwaar is voor een staat met iets dat blijft veranderen,
+  zoals een aftelling: binnen een alert zou een schermlezer elke tik voorlezen.
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
@@ -24,7 +29,13 @@
     onRetry?: (() => void) | undefined;
     retryLabel?: string;
     compact?: boolean;
+    /** Kopniveau van de titel; 1 alleen als de staat de hele pagina is. */
+    level?: 1 | 2;
+    /** Een fout is standaard een alert; uit voor een staat met een aftelling. */
+    alert?: boolean;
     icon?: Snippet;
+    /** Uitleg met opmaak, op de plek van `message` (14 zet de host in mono). */
+    body?: Snippet;
     actions?: Snippet;
     children?: Snippet;
   }
@@ -36,7 +47,10 @@
     onRetry,
     retryLabel = t('common.retry'),
     compact = false,
+    level = 2,
+    alert,
     icon,
+    body,
     actions,
     children
   }: Props = $props();
@@ -46,7 +60,11 @@
   );
 </script>
 
-<div class="state" class:state--compact={compact} role={kind === 'error' ? 'alert' : undefined}>
+<div
+  class="state"
+  class:state--compact={compact}
+  role={(alert ?? kind === 'error') ? 'alert' : undefined}
+>
   <span class="state__icon" aria-hidden="true">
     {#if icon}
       {@render icon()}
@@ -66,11 +84,16 @@
 
   {#if compact}
     <p class="state__title">{resolvedTitle}</p>
+  {:else if level === 1}
+    <h1 class="state__title">{resolvedTitle}</h1>
   {:else}
     <h2 class="state__title">{resolvedTitle}</h2>
   {/if}
   {#if message}
     <p class="state__message">{message}</p>
+  {/if}
+  {#if body}
+    <div class="state__body">{@render body()}</div>
   {/if}
   {#if onRetry || actions}
     <div class="state__actions">

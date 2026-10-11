@@ -34,7 +34,12 @@ function slotHref(libraries: LibraryRef[], kind: string): string {
   return matching.length === 1 ? `/libraries/${matching[0]!.id}` : '/libraries';
 }
 
-export function navItems(capabilities: Capabilities | null, libraries: LibraryRef[]): NavItem[] {
+// Alleen `browse` telt, zodat de onbereikbare staat dezelfde slots kan tekenen
+// uit het bewaarde record (lastContact) zonder een hele Capabilities na te maken.
+export function navItems(
+  capabilities: Pick<Capabilities, 'browse'> | null,
+  libraries: LibraryRef[]
+): NavItem[] {
   const items: NavItem[] = [];
   const browse = capabilities?.browse === true;
   const has = (kind: string) => libraries.some((l) => l.kind === kind);

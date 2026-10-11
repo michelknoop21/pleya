@@ -10,6 +10,7 @@
 import { PleyaClient } from '../api/client';
 import type { Capabilities, Info, Library, ServerDetail } from '../api/types';
 import { describeError } from '../api/errors';
+import { readLastContact, writeLastContact, type LastContact } from './lastContact';
 
 export type SessionPhase = 'starting' | 'setup' | 'signed-out' | 'ready' | 'unreachable';
 
@@ -19,6 +20,8 @@ class SessionState {
   server = $state<ServerDetail | null>(null);
   libraries = $state<Library[]>([]);
   error = $state<string | null>(null);
+  /** Wat er de laatste keer van de server bekend was; alleen gelezen bij onbereikbaar. */
+  lastContact = $state<LastContact | null>(null);
 
   readonly client: PleyaClient;
 
@@ -49,12 +52,17 @@ class SessionState {
    * inloggen geen betekenis.
    */
   async start(): Promise<void> {
-    this.phase = 'starting';
+    // Een nieuwe poging vanuit onbereikbaar blijft in die fase tot er een
+    // antwoord is. Via `starting` zou de schil met de staat erin even
+    // verdwijnen voor het compacte skelet en dan terugkomen: een sprong per
+    // poging, elke 30 s opnieuw.
+    if (this.phase !== 'unreachable') this.phase = 'starting';
     this.error = null;
     try {
       this.info = await this.client.info();
     } catch (err) {
       this.error = describeError(err);
+      this.lastContact = readLastContact();
       this.phase = 'unreachable';
       return;
     }
@@ -83,6 +91,12 @@ class SessionState {
       this.libraries = libraries;
       this.phase = 'ready';
       this.error = null;
+      writeLastContact({
+        name: server.name,
+        at: new Date().toISOString(),
+        browse: this.info?.capabilities.browse === true,
+        libraries: libraries.map((l) => ({ id: l.id, kind: l.kind }))
+      });
     } catch (err) {
       this.error = describeError(err);
       this.phase = 'signed-out';

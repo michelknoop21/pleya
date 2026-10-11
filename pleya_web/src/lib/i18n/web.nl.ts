@@ -137,7 +137,13 @@ export const webNl = {
   'dev.myList': 'Mijn lijst',
   'dev.more': 'Meer',
 
-  'unreachable.title': 'De server is niet bereikbaar',
+  'unreachable.title': '{name} is niet bereikbaar',
+  'unreachable.address': 'Het adres {host} antwoordt niet.',
+  'unreachable.signedIn': 'Je bent nog ingelogd; zodra de server terug is gaat het verder waar je was.',
+  'unreachable.lastContact': 'Laatste contact {when}',
+  'unreachable.countdown': 'opnieuw proberen over {seconds} s',
+  'unreachable.connecting': 'Verbinding maken…',
+  'unreachable.retryNow': 'Nu opnieuw proberen',
   'signedOut.title': 'Uitgelogd',
   'loading': 'Laden…',
 

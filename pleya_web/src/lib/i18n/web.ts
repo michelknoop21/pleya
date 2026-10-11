@@ -136,7 +136,15 @@ export const web = {
   'dev.myList': 'My list',
   'dev.more': 'More',
 
-  'unreachable.title': 'Cannot reach the server',
+  // Beeld 14. `{host}` in `address` wordt in de staat zelf vervangen door een
+  // element in monospace; de zin eromheen blijft één vertaalbare eenheid.
+  'unreachable.title': '{name} is not reachable',
+  'unreachable.address': 'The address {host} is not responding.',
+  'unreachable.signedIn': 'You are still signed in; once the server is back you pick up where you left off.',
+  'unreachable.lastContact': 'Last contact {when}',
+  'unreachable.countdown': 'retrying in {seconds} s',
+  'unreachable.connecting': 'Connecting…',
+  'unreachable.retryNow': 'Retry now',
   'signedOut.title': 'Signed out',
   'loading': 'Loading…',
 

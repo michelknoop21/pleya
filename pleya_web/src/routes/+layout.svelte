@@ -10,8 +10,8 @@
   import TopNav from '$lib/components/TopNav.svelte';
   import MobileHeader from '$lib/components/MobileHeader.svelte';
   import TabBar from '$lib/components/TabBar.svelte';
-  import StateView from '$lib/components/StateView.svelte';
   import SkeletonPage from '$lib/components/SkeletonPage.svelte';
+  import UnreachableState from '$lib/components/UnreachableState.svelte';
   import { activeItemId, navItems } from '$lib/components/navItems';
   import { session } from '$lib/stores/session.svelte';
   import { theme } from '$lib/stores/theme.svelte';
@@ -25,9 +25,24 @@
 
   let { children }: { children: Snippet } = $props();
 
-  const items = $derived(navItems(session.capabilities, session.libraries));
-  const activeId = $derived(activeItemId(items, page.url.pathname, session.libraries));
-  const showSearch = $derived(session.capabilities?.search === true);
+  // Onbereikbaar: de schil tekent wat de kijker de laatste keer zag
+  // (lastContact). Zonder record blijft alleen Mijn Pleya over, want er is dan
+  // niets bekend over bladeren of bibliotheken.
+  const unreachable = $derived(session.phase === 'unreachable');
+  const navLibraries = $derived(
+    unreachable ? (session.lastContact?.libraries ?? []) : session.libraries
+  );
+  const navCapabilities = $derived(
+    unreachable
+      ? session.lastContact
+        ? { browse: session.lastContact.browse }
+        : null
+      : session.capabilities
+  );
+  const items = $derived(navItems(navCapabilities, navLibraries));
+  const activeId = $derived(activeItemId(items, page.url.pathname, navLibraries));
+  // Zoeken vraagt de server; zolang die niet antwoordt, staat de actie er niet.
+  const showSearch = $derived(!unreachable && session.capabilities?.search === true);
   const searchActive = $derived(page.url.pathname.startsWith('/search'));
   // De primitievengalerij heeft geen server nodig en hoort niet achter de
   // sessiepoort; buiten `vite dev` is `dev` onwaar en valt deze tak weg.
@@ -99,13 +114,6 @@
   </main>
 {:else if session.phase === 'starting'}
   <SkeletonPage variant="compact" />
-{:else if session.phase === 'unreachable'}
-  <StateView
-    kind="error"
-    title={t('unreachable.title')}
-    message={session.error ?? undefined}
-    onRetry={() => session.start()}
-  />
 {:else if session.phase === 'setup' || session.phase === 'signed-out'}
   <main id="main" class="auth-shell">
     {#if page.url.pathname === expectedPath}
@@ -125,7 +133,20 @@
     {/if}
 
     <main id="main" class="shell__main">
-      {@render children()}
+      {#if unreachable}
+        <!-- Een navigatieklik verandert de URL maar rendert de route niet:
+             die zou meteen zelf aanvragen doen. Komt de server terug, dan
+             landt de gebruiker op de route waar hij intussen heen klikte. -->
+        <UnreachableState
+          name={session.lastContact?.name ?? page.url.host}
+          host={page.url.host}
+          lastContactAt={session.lastContact?.at ?? null}
+          signedIn={session.client.tokens.refreshToken !== null}
+          onRetry={() => session.start()}
+        />
+      {:else}
+        {@render children()}
+      {/if}
     </main>
 
     {#if !viewport.wide}

@@ -9,6 +9,7 @@ import {
   formatDate,
   formatDuration,
   formatLanguage,
+  formatRelative,
   isWatched,
   itemProgress,
   itemSubtitle
@@ -240,5 +241,28 @@ describe('per taal: datum, getal, grootte, taalnaam', () => {
     expect(formatLanguage('e n!')).toBe('e n!');
     expect(formatLanguage(null)).toBeNull();
     expect(formatLanguage('')).toBeNull();
+  });
+});
+
+describe('formatRelative', () => {
+  const now = Date.parse('2026-10-11T12:00:00Z');
+
+  it('kiest de grootste hele eenheid, in de gevraagde taal', () => {
+    expect(formatRelative('2026-10-11T11:57:00Z', now, 'nl-NL')).toBe('3 minuten geleden');
+    expect(formatRelative('2026-10-11T11:57:00Z', now, 'en')).toBe('3 minutes ago');
+    expect(formatRelative('2026-10-11T11:59:15Z', now, 'en')).toBe('45 seconds ago');
+    expect(formatRelative('2026-10-11T09:00:00Z', now, 'en')).toBe('3 hours ago');
+    expect(formatRelative('2026-10-06T12:00:00Z', now, 'nl-NL')).toBe('5 dagen geleden');
+  });
+
+  it('noemt nul "nu" en een dag "gisteren", ook bij een klok die voorloopt', () => {
+    expect(formatRelative('2026-10-11T12:00:00Z', now, 'nl-NL')).toBe('nu');
+    expect(formatRelative('2026-10-11T12:05:00Z', now, 'en')).toBe('now');
+    expect(formatRelative('2026-10-10T12:00:00Z', now, 'nl-NL')).toBe('gisteren');
+  });
+
+  it('geeft niets terug zonder geldige tijd', () => {
+    expect(formatRelative(null, now)).toBeNull();
+    expect(formatRelative('geen datum', now)).toBeNull();
   });
 });

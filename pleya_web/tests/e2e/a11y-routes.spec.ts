@@ -266,10 +266,26 @@ for (const { locale, context } of LOCALES) {
       release();
     });
 
-    test.fixme(`onbereikbare server (${locale})`, async () => {
-      // S7.6 taak 4 bouwt de staat voor een server die niet antwoordt. Dan komt
-      // hier een `page.route` die `/pleya/v1/info` laat mislukken, en dezelfde
-      // `measure` als hierboven.
+    test(`onbereikbare server (${locale})`, async ({ page }, info) => {
+      await prepare(page, info.project.name);
+      // Ingelogd, zodat er een refreshtoken en een laatste-contactrecord zijn:
+      // de staat zoals een gebruiker hem ziet, met de schil en de uitleg erbij.
+      await signIn(page, locale);
+
+      let hits = 0;
+      await page.route('**/pleya/v1/info', async (route) => {
+        hits += 1;
+        await route.abort('connectionrefused');
+      });
+      await page.goto('/');
+      await page.getByRole('button', { name: label(locale, 'unreachable.retryNow') }).waitFor();
+      // De aftelling loopt tijdens de meting door; elke poging mislukt weer, dus
+      // axe ziet steeds dezelfde staat.
+      await measure(page, 'onbereikbaar (/)', locale);
+
+      // Zonder deze controle kan een matcher die niets raakt de geladen app
+      // meten en dat voor de onbereikbare staat laten doorgaan.
+      expect(hits, 'GET /info is niet onderschept; raakt de matcher nog?').toBeGreaterThan(0);
     });
   });
 }
