@@ -23,6 +23,7 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/plex_auth_service.dart';
 import 'package:pleya/services/plex_client.dart';
+import 'package:pleya/services/recommendations/taste_profile.dart';
 import 'package:pleya/services/unified_catalog/home_custom_row.dart';
 import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
@@ -74,10 +75,20 @@ class _Loader implements HomeCustomRowLoader {
   bool isExact = true;
   bool isPartial = false;
 
+  /// As the real loader: a list longer than the page is not exact, and a row
+  /// only holds titles of its own kind.
+  bool real = false;
+  final limits = <int>[];
+
   @override
   Future<HomeCustomRowContent> load(HomeCustomRow row, {required int limit}) async {
     calls.add(row);
-    return HomeCustomRowContent(groups: groups.take(limit).toList(), isExact: isExact, isPartial: isPartial);
+    limits.add(limit);
+    if (!real) {
+      return HomeCustomRowContent(groups: groups.take(limit).toList(), isExact: isExact, isPartial: isPartial);
+    }
+    final own = groups.where((g) => g.representativeSource.item.kind == row.kind).toList();
+    return HomeCustomRowContent(groups: own.take(limit).toList(), isExact: own.length <= limit, isPartial: isPartial);
   }
 }
 
@@ -226,12 +237,14 @@ void main() {
     bool services = true,
     List<MediaServerClient> others = const [],
     MultiServerManager? servers,
+    AssistantPersonalServices? personal,
   }) async {
     final server = _Jellyfin(admin: admin);
     final loader = _Loader(groups ?? [_group('m1', 'Alien'), _group('m2', 'Aliens'), _group('m3', 'Heat')]);
     final saved = <HomeCustomRow>[];
     final ctx = AssistantToolContext(
       servers: servers ?? await server.manager(others: others),
+      personal: personal,
       catalog: services
           ? AssistantCatalogServices(
               rowLoader: loader,
@@ -274,6 +287,197 @@ void main() {
     expect((outcome.display! as AssistantMediaGrid).entries, hasLength(2));
     ctx.requireShownItem(id, 'm1');
     expect(() => ctx.requireShownItem(id, 'm3'), throwsA(isA<AssistantToolError>()));
+  });
+
+  // "Welke films staan al lang ongezien in mijn bibliotheek?" (11 Oct 2026):
+  // the answer said 12 unseen films where there were more.
+  group('unwatched, waiting the longest', () {
+    int day(int n) => DateTime.utc(2024).millisecondsSinceEpoch ~/ 1000 + n * 86400;
+    AssistantPersonalServices history({Set<String> keys = const {}, List<WatchedIdentity> identities = const []}) =>
+        AssistantPersonalServices(
+          userName: 'Michel',
+          recent: () async => const [],
+          everSeen: () async => keys,
+          everSeenIdentities: () async => identities,
+          taste: () async => AffinityVector.empty,
+          picks: (_) async => const [],
+        );
+
+    test('more unwatched films than the read window: no total, a floor, and cards equal to the list', () async {
+      final (ctx, loader, _, _) = await setUpCtx(
+        groups: [for (var i = 0; i < 130; i++) _group('m$i', 'Film $i', added: day(i))],
+      );
+      loader.real = true;
+      final outcome =
+          await _tool('search_catalog').run(ctx, null, {'kind': 'movie', 'unwatched': true, 'sort': 'added_oldest'})
+              as AssistantToolResult;
+      final data = outcome.data;
+      final row = loader.calls.single;
+      expect(row.sort, UnifiedCatalogSort.oldestAdded);
+      expect(row.filters.watchState, UnifiedWatchFilter.unwatched);
+      // Read past the listing, so the listing's length is never the total.
+      expect(loader.limits.single, 100);
+      expect(data['count'], kAssistantListedTitles);
+      expect(data.containsKey('total_matches'), isFalse);
+      expect(data['more_matches'], isTrue);
+      expect(data['matches_at_least'], 100);
+      final listed = [for (final r in data['results']! as List) (r as Map)['title']];
+      expect(listed, [for (var i = 0; i < kAssistantListedTitles; i++) 'Film $i']);
+      expect([for (final e in (outcome.display! as AssistantMediaGrid).entries) e.item.title], listed);
+    });
+
+    test('a list read to its end gives the real total, not the page or the 12 cards', () async {
+      final (ctx, loader, _, _) = await setUpCtx(
+        groups: [for (var i = 0; i < 30; i++) _group('m$i', 'Film $i', added: day(i))],
+      );
+      loader.real = true;
+      final data = await search(ctx, {'kind': 'movie', 'unwatched': true});
+      expect(data['count'], kAssistantListedTitles);
+      expect(data['total_matches'], 30);
+      expect(data.containsKey('more_matches'), isFalse);
+    });
+
+    test('text search: a server at its search limit gives a floor, not a total', () async {
+      final hits = [for (var i = 0; i < 50; i++) _movie('h$i', 'Alien $i')];
+      final (ctx, _, _, _) = await setUpCtx(others: [_SearchServer('s2', MediaBackend.plex, hits: hits)]);
+      final data = await search(ctx, {'text': 'alien', 'kind': 'movie', 'limit': 5});
+      expect(data.containsKey('total_matches'), isFalse);
+      expect(data['more_matches'], isTrue);
+    });
+
+    test('a library that did not answer leaves the total out', () async {
+      final (ctx, loader, _, _) = await setUpCtx(groups: [for (var i = 0; i < 5; i++) _group('m$i', 'Film $i')]);
+      loader.isPartial = true;
+      final data = await search(ctx, {'kind': 'movie', 'unwatched': true});
+      expect(data.containsKey('total_matches'), isFalse);
+      expect(data['partial'], isTrue);
+    });
+
+    test('oldest added first, on the date it was added and not its release year', () async {
+      UnifiedMediaGroup film(String id, String title, int year, int added) {
+        final source = UnifiedMediaSource.fromItem(
+          MediaItem(
+            id: id,
+            backend: MediaBackend.jellyfin,
+            kind: MediaKind.movie,
+            title: title,
+            year: year,
+            serverId: _server,
+            libraryId: 'lib-films',
+            addedAt: added,
+          ),
+        );
+        return UnifiedMediaGroup(
+          groupId: id,
+          identity: CanonicalMediaIdentity.movie(title: title, year: year),
+          sources: [source],
+          representativeSourceKey: source.sourceKey,
+          watchState: UnifiedWatchState(representativeSourceKey: source.sourceKey),
+        );
+      }
+
+      final (ctx, loader, _, _) = await setUpCtx(
+        groups: [
+          film('new-old', 'Casablanca', 1942, day(300)),
+          film('old-new', 'Dune: Part Two', 2024, day(1)),
+          _group('undated', 'No Date'),
+          film('mid', 'Heat', 1995, day(50)),
+        ],
+      );
+      loader.real = true;
+      // No kind: Pleya orders the two lists itself.
+      final data = await search(ctx, {'unwatched': true, 'sort': 'added_oldest'});
+      expect(
+        [for (final r in data['results']! as List) ((r as Map)['title'], r['added_at'])],
+        [('Dune: Part Two', '2024-01-02'), ('Heat', '2024-02-20'), ('Casablanca', '2024-10-27'), ('No Date', null)],
+      );
+    });
+
+    test('one title on two sources is one card, dated from the copy that came in first', () async {
+      MediaItem copy(String id, String server, MediaBackend backend, int added) => MediaItem(
+        id: id,
+        backend: backend,
+        kind: MediaKind.movie,
+        title: 'Heat',
+        year: 1995,
+        serverId: server,
+        libraryId: 'lib-films',
+        addedAt: added,
+      );
+      final plex = UnifiedMediaSource.fromItem(copy('p1', 'plex-1', MediaBackend.plex, day(10)));
+      final jelly = UnifiedMediaSource.fromItem(copy('j1', _server, MediaBackend.jellyfin, day(200)));
+      final (ctx, loader, _, _) = await setUpCtx(
+        groups: [
+          UnifiedMediaGroup(
+            groupId: 'heat',
+            identity: CanonicalMediaIdentity.movie(title: 'Heat', year: 1995),
+            sources: [jelly, plex],
+            representativeSourceKey: jelly.sourceKey,
+            watchState: UnifiedWatchState(representativeSourceKey: jelly.sourceKey),
+          ),
+          _group('m2', 'Alien', added: day(20)),
+        ],
+      );
+      loader.real = true;
+      final outcome =
+          await _tool('search_catalog').run(ctx, null, {'kind': 'movie', 'unwatched': true, 'sort': 'added_oldest'})
+              as AssistantToolResult;
+      expect(outcome.data['total_matches'], 2);
+      expect(
+        [for (final r in outcome.data['results']! as List) ((r as Map)['title'], r['added_at'])],
+        [('Heat', '2024-01-11'), ('Alien', '2024-01-21')],
+      );
+      expect((outcome.display! as AssistantMediaGrid).entries, hasLength(2));
+    });
+
+    test('a film this profile watched as a copy elsewhere is not unseen; another profile still gets it', () async {
+      List<UnifiedMediaGroup> library() => [
+        _group('m1', 'Alien', added: day(1)),
+        _group('m2', 'Aliens', added: day(2)),
+        _group('m3', 'Heat', added: day(3)),
+      ];
+      // Michel's log: Alien by its key on this server, Heat by identity (the
+      // copy he watched lives on another server).
+      final (michel, _, _, _) = await setUpCtx(
+        groups: library(),
+        personal: history(
+          keys: {'$_server:m1'},
+          identities: [(key: 'plex-1:99', title: 'Heat', year: 2001, show: false, tokens: const <String>{})],
+        ),
+      );
+      final mine = await search(michel, {'kind': 'movie', 'unwatched': true});
+      expect([for (final r in mine['results']! as List) (r as Map)['title']], ['Aliens']);
+      expect(mine['total_matches'], 1);
+      expect(mine['seen_before'], 2);
+      // The saved row could not repeat that filter: it is not offered.
+      expect(mine['can_become_home_row'], isFalse);
+
+      final (guest, _, _, _) = await setUpCtx(groups: library(), personal: history());
+      final theirs = await search(guest, {'kind': 'movie', 'unwatched': true});
+      expect(theirs['total_matches'], 3);
+      expect(theirs.containsKey('seen_before'), isFalse);
+      expect(theirs['can_become_home_row'], isTrue);
+
+      // A play stopped half-way is a taste signal, not "watched", and a series
+      // keyed by one episode is not seen: only finished films drop.
+      final (partial, _, _, _) = await setUpCtx(
+        groups: library(),
+        personal: AssistantPersonalServices(
+          userName: 'Michel',
+          recent: () async => const [],
+          everSeen: () async => {'$_server:m1', '$_server:m2'},
+          everCompleted: () async => {'$_server:m2'},
+          taste: () async => AffinityVector.empty,
+          picks: (_) async => const [],
+        ),
+      );
+      final stopped = await search(partial, {'kind': 'movie', 'unwatched': true});
+      expect([for (final r in stopped['results']! as List) (r as Map)['title']], ['Alien', 'Heat']);
+
+      // The history only narrows an unwatched question.
+      final all = await search(michel, {'kind': 'movie'});
+      expect(all['total_matches'], 3);
+    });
   });
 
   test('unknown or bad arguments are refused', () async {

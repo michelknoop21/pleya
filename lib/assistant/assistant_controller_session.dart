@@ -176,6 +176,9 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
             recent: () => recommendations.recentSeeds(limit: 12),
             everSeen: recommendations.everSeenKeys,
             everSeenIdentities: recommendations.everSeenIdentities,
+            // A completed view weighs 1.0; a stopped one only 0.4.
+            everCompleted: () => recommendations.everSeenKeys(minWeight: 1.0),
+            everCompletedIdentities: () => recommendations.everSeenIdentities(minWeight: 1.0),
             taste: recommendations.taste,
             picks: recommendations.buildRows,
           ),
