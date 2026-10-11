@@ -53,11 +53,15 @@ class SeerrFakeServer {
 
   /// The `permissions` bitmask `/auth/me` reports. 2 is ADMIN, the default;
   /// a requester is REQUEST (32) with or without REQUEST_4K (1024).
+  /// A harness shortcut: a real Seerr answers an API key as the owner, so a
+  /// requester is only ever a signed-in session there. The app reads the
+  /// bitmask the same way in both.
   int userPermissions = 2;
 
-  /// Whether `/service/radarr` and `/service/sonarr` answer 403, as Seerr
-  /// does for a user without manage rights. The form then cannot read the
-  /// instance list (REQ-FORM-4K-DEFAULT).
+  /// Whether `/service/radarr` and `/service/sonarr` answer 403. Not what a
+  /// stock Seerr does for a signed-in requester; it stands for any server
+  /// or proxy that keeps the instance list from this user, the "list not
+  /// known" case of the form (REQ-FORM-4K-DEFAULT).
   bool serviceListForbidden = false;
 
   /// What `/movie/{id}` and `/tv/{id}` answer, keyed by `'$mediaType:$tmdbId'`.

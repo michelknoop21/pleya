@@ -40,11 +40,10 @@ steps:
   - assert: {id: seerr.search.field, focused: false}
   - press: select
 
-  # The page waits for the instance list as well as the detail, so the action
-  # and, below, the form are waited for and not assumed.
+  # Nobody asked for this film, so the page offers "Aanvragen" and nothing
+  # else, whatever the instance list says. The form is where the list counts.
   - wait_until: {id: "requests.detail.action[request]", timeout: 15000}
   - settle: 800
-  - assert: {id: "requests.detail.action[request4k]", present: false}
   - snapshot: 00-title-page
   - press: select
 

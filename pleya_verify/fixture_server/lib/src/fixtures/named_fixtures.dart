@@ -483,8 +483,9 @@ void _applySeerrDetailV1(SeerrFakeServer seerr, {required bool fourK}) {
 /// REQUEST_4K and no manage right (REQ-FORM-4K-DEFAULT). A requester sends no
 /// server with the request, so whether the form may offer 4K, and whether HD
 /// may go out, hangs on what the instance list says: [fourK] decides if a
-/// default 4K instance exists, [listReadable] false makes the list answer 403
-/// as Seerr does for a user without manage rights, so the form cannot know.
+/// default 4K instance exists, [listReadable] false makes the list answer
+/// 403, so the form cannot know. That 403 is a stand-in for an unreadable
+/// list, not something a stock Seerr sends a requester.
 void _applySeerrRequesterV1(SeerrFakeServer seerr, {required bool fourK, required bool listReadable}) {
   seerr.reset();
   seerr.userPermissions = 32 | 1024;

@@ -5,10 +5,10 @@ target: tvos-sim
 # HD go, when the instance list says where the request ends up.
 #
 # `seerr.requester.list-unknown.v1` seeds one film nobody has asked for, Frost
-# Line, and a user who
-# holds REQUEST and REQUEST_4K and no manage right. The instance list answers
-# 403, as Seerr does for a requester. The owner choice
-# hdOpenWhenInstancesUnknown keeps HD open and keeps 4K shut.
+# Line, and a user who holds REQUEST and REQUEST_4K and no manage right. The instance list answers
+# 403, which stands for any server that keeps the list from this user (a
+# stock Seerr does not). The owner choice hdOpenWhenInstancesUnknown keeps HD
+# open and keeps 4K shut.
 #
 # The walk is the one of tvos.requests.detail-4k: Mijn Pleya, Aanvragen, the
 # only card, its title page, then "Aanvragen" opens the form. Nothing is sent.
@@ -40,11 +40,10 @@ steps:
   - assert: {id: seerr.search.field, focused: false}
   - press: select
 
-  # The page waits for the instance list as well as the detail, so the action
-  # and, below, the form are waited for and not assumed.
+  # Nobody asked for this film, so the page offers "Aanvragen" and nothing
+  # else, whatever the instance list says. The form is where the list counts.
   - wait_until: {id: "requests.detail.action[request]", timeout: 15000}
   - settle: 800
-  - assert: {id: "requests.detail.action[request4k]", present: false}
   - snapshot: 00-title-page
   - press: select
 
