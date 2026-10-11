@@ -62,6 +62,7 @@ extension _AssistantLoop on AssistantRun {
     _history.clear();
     _personal = false;
     _wanted = assistantAskedCount(prompt);
+    _oneTitleAsked = assistantAsksOneTitle(prompt);
     var corrected = false;
     var callsThisRun = 0;
     if (await entitlement.check() != AssistantEntitlementState.entitled) {

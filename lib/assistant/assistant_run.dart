@@ -17,6 +17,7 @@ import 'assistant_memory_intent.dart';
 import 'assistant_named_titles.dart';
 import 'assistant_provider.dart';
 import 'assistant_recommend_constraints.dart';
+import 'assistant_single_title.dart';
 import 'assistant_tool_context.dart';
 import 'assistant_tools.dart';
 
@@ -26,6 +27,7 @@ part 'assistant_run_loop.dart';
 part 'assistant_run_memory.dart';
 part 'assistant_run_prompt.dart';
 part 'assistant_run_result.dart';
+part 'assistant_run_single.dart';
 
 /// The user's answer on a confirmation card.
 class AssistantConfirmation {
@@ -319,6 +321,10 @@ class AssistantRun {
   final Set<({String key, int? year, bool series})> _history = {};
   int? _wanted;
   bool _personal = false;
+
+  /// The question is after one specific title: an answer that names it leaves
+  /// only its card.
+  bool _oneTitleAsked = false;
 
   /// find_media grids whose titles a later call acted on: a lookup on the way
   /// to an action, so the action is the result, not the grid.
