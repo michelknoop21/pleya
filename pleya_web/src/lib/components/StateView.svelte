@@ -150,6 +150,22 @@
     margin-top: 18px;
   }
 
+  /* Een kleine capsule is 36 hoog, het raakvlak moet 44 zijn. Een onzichtbare
+     laag eromheen vergroot het raakvlak zonder de rij te laten verspringen;
+     min(0px, ...) laat een knop die al groter is ongemoeid. Ook voor knoppen
+     uit `actions`, want die zijn in 13 net zo klein. 4 boven en onder blijft
+     binnen de halve rijafstand van 10, dus twee knoppen overlappen niet. */
+  .state__actions :global(.btn--sm) {
+    position: relative;
+  }
+
+  .state__actions :global(.btn--sm)::before {
+    content: '';
+    position: absolute;
+    inset-block: min(0px, calc((100% - var(--touch-target)) / 2));
+    inset-inline: min(0px, calc((100% - var(--touch-target)) / 2));
+  }
+
   /* Een toelichting onder de uitwegen, zoals de hulpregel in 13: daar wint
      `.state p` (14) van `.help` (12), dus de maat van de uitleg in --ink-3. */
   .state__extra {

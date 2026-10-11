@@ -158,8 +158,11 @@
     gap: var(--space);
   }
 
-  /* Zelfde hoogte als de StateView die hier eerder stond, zodat de schil niet
-     verspringt; een smalle kolom omdat nog onbekend is wat er komt. */
+  /* Een smalle kolom, verticaal in de bovenste 40vh, omdat nog onbekend is
+     wat er komt. Dat was ooit de hoogte van StateView; die volgt nu .state uit
+     13 (alleen padding, geen minimumhoogte), dus de stap naar onbereikbaar
+     verspringt wel. Taak 4 zet onbereikbaar in de schil met een eigen opbouw,
+     en dan valt er voor de twee geen gedeelde hoogte meer te bewaken. */
   .skp__compact {
     width: min(100%, 360px);
     min-height: 40vh;

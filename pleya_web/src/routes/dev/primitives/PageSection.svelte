@@ -74,10 +74,9 @@
 </GallerySection>
 
 <style>
-  /* Een eigen vlak per voorbeeld, met de paginainzet erin zoals .page hem geeft. */
+  /* Alleen een haarlijn tussen de voorbeelden: de galerijbody heeft de
+     paginainzet al, dus een voorbeeld is net zo breed als op een echte route. */
   .pb__frame {
-    padding: 0 var(--inset);
-    border: 1px solid var(--hairline);
-    border-radius: var(--radius-card);
+    border-top: 1px solid var(--hairline);
   }
 </style>
