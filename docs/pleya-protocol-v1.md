@@ -1835,7 +1835,20 @@ eigenaar leest: alleen een root van een `config`-bibliotheek wisselt van eigenaa
 `db`-bibliotheek houdt eigenaar en laatste meting. Bij het opstarten meldt de server per overgeslagen
 root de slug van de regel en het pad. Een root zonder eigenaar wordt gewoon toegevoegd. Tot S2.7 keek
 de upsert niet naar `managed` en verhuisde zo'n root bij de volgende herstart naar de
-config-bibliotheek van de regel; dat gat bestond sinds S2.2. Wordt een overgenomen
+config-bibliotheek van de regel; dat gat bestond sinds S2.2.
+
+Dezelfde grens geldt sinds S2.8 voor een geneste root. Ligt een root uit de regel binnen of boven een
+root van een `db`-bibliotheek, bijvoorbeeld `/media/films/kids` terwijl een `db`-bibliotheek
+`/media/films` bezit, of andersom, dan voegt de sync hem niet toe en verhuist hem ook niet; de
+startlog noemt hem op dezelfde manier als een exact gelijke root, en het opstarten gaat door. De
+vergelijking is dezelfde tekstuele padvergelijking als die van `POST /libraries` en
+`PATCH /libraries/{id}`, zonder het bestandssysteem te raadplegen. Een root die al van de
+bibliotheek van de regel is, blijft van haar en wordt opnieuw gemeten. Tussen twee
+`config`-bibliotheken controleert de sync geen overlap: binnen één `PLEYA_SERVER_LIBRARIES` weigert de
+server geneste roots al, en wat over herstarts heen ontstaat, blijft zoals het was. Tot S2.8 voegde de
+sync een geneste root wel toe, terwijl `POST` en `PATCH` dezelfde overlap weigerden.
+
+Wordt een overgenomen
 bibliotheek verwijderd terwijl haar regel er nog staat, dan maakt de volgende herstart haar opnieuw
 aan, leeg en met een nieuwe id. Een weg terug van `db` naar `config` bestaat niet als endpoint; de
 enige route is `DELETE` gevolgd door een herstart met de regel, en dan zijn items, kijkstatus en

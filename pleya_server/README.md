@@ -237,9 +237,12 @@ met nieuwe ids voor alles eronder.
 deze lijst in de database, met dezelfde id en slug. Daarna slaat de server de regel met die slug bij
 elke herstart over, maar de rest van de lijst niet. Geeft u de regel een andere slug, of noemt een
 andere regel een root van de overgenomen bibliotheek, dan blijft die root waar hij is: de sync laat
-een root alleen van eigenaar wisselen als die eigenaar zelf uit `.env` komt (S2.7). In de startlog
-staat dan per root een regel met de slug en het pad, zodat u ziet welke `.env`-regel u nog kunt
-opruimen. Verwijdert u de
+een root alleen van eigenaar wisselen als die eigenaar zelf uit `.env` komt (S2.7). Dat geldt ook
+voor een root die binnen of boven een root van een database-bibliotheek ligt (S2.8): staat
+`/media/films` in de database, dan claimt een regel met `/media/films/kids` dat pad niet, en
+andersom ook niet. In de startlog staat dan per root een regel met de slug en het pad, zodat u ziet
+welke `.env`-regel u nog kunt opruimen; de server start gewoon door. Tussen twee regels uit `.env`
+zelf verandert er niets. Verwijdert u de
 overgenomen bibliotheek terwijl de regel er nog staat, dan komt ze bij de volgende herstart leeg
 terug, met een nieuwe id. Terug van database naar `.env` gaat alleen via `DELETE` plus een herstart
 met de regel, en dan bent u items, kijkstatus en scanrondes van die bibliotheek kwijt.
