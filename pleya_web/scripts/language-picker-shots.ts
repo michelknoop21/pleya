@@ -24,48 +24,60 @@ const context = await browser.newContext({ locale: 'en-GB' });
 const page = await context.newPage();
 await page.route('**/pleya/v1/**', (route) => {
   const path = new URL(route.request().url()).pathname.replace('/pleya/v1', '');
-  if (path === '/info')
-    return route.fulfill(json({
-      protocol: { major: 1, feature_level: 5, profile: 'full' },
-      server: { id: 'srv', setup_accepts_name: true },
-      capabilities: caps,
-      auth: { methods: ['password'], setup_required: false }
-    }));
-  if (path === '/auth/refresh')
-    return route.fulfill(json({ access_token: 'a', refresh_token: 'r', token_type: 'bearer', expires_in: 900 }));
-  if (path === '/server')
-    return route.fulfill(json({ id: 'srv', name: 'Thuis', version: '1.0.0', started_at: '2026-10-11T08:00:00Z' }));
+  if (path === '/info') {
+    return route.fulfill(
+      json({
+        protocol: { major: 1, feature_level: 5, profile: 'full' },
+        server: { id: 'srv', setup_accepts_name: true },
+        capabilities: caps,
+        auth: { methods: ['password'], setup_required: false }
+      })
+    );
+  }
+  if (path === '/auth/refresh') {
+    return route.fulfill(
+      json({ access_token: 'a', refresh_token: 'r', token_type: 'bearer', expires_in: 900 })
+    );
+  }
+  if (path === '/server') {
+    return route.fulfill(
+      json({ id: 'srv', name: 'Thuis', version: '1.0.0', started_at: '2026-10-11T08:00:00Z' })
+    );
+  }
   if (path === '/libraries') return route.fulfill(json({ items: [] }));
   return route.fulfill({ status: 404, ...json({ error: { code: 'not_found', message: 'x' } }) });
 });
-if (process.env['DBG']) { page.on('request', (r) => console.log('REQ', r.url())); page.on('pageerror', (e) => console.log('ERR', e.message)); page.on('console', (m) => console.log('LOG', m.text())); }
 await page.addInitScript(() => {
-  if (!localStorage.getItem('pleya.refresh_token')) localStorage.setItem('pleya.refresh_token', 'r');
+  if (!localStorage.getItem('pleya.refresh_token')) {
+    localStorage.setItem('pleya.refresh_token', 'r');
+  }
   localStorage.setItem('pleya.theme', 'dark');
 });
+
+const htmlLang = () => page.evaluate(() => document.documentElement.lang);
 
 for (const width of [393, 1280]) {
   await page.setViewportSize({ width, height: width < 600 ? 852 : 800 });
   await page.goto(`${BASE}/server`);
-  await page.locator('h1').waitFor({ timeout: 8000 }).catch(async () => {
-    throw new Error(`geen h1 op ${page.url()}: ${(await page.locator('body').innerText()).slice(0, 200)}`);
-  });
+  await page.locator('h1').waitFor({ timeout: 8000 });
   const select = page.getByLabel('Language');
-  console.log(`${width} en lang=${await page.evaluate(() => document.documentElement.lang)} value=${await select.inputValue()}`);
+  console.log(`${width} en lang=${await htmlLang()} value=${await select.inputValue()}`);
   await page.screenshot({ path: `${OUT}/taalkeuze-en@${width}.png` });
 
   await Promise.all([page.waitForNavigation(), select.selectOption('nl')]);
   await page.locator('h1').waitFor();
   const nl = page.getByLabel('Taal');
-  console.log(`${width} nl lang=${await page.evaluate(() => document.documentElement.lang)} value=${await nl.inputValue()} h2=${await page.locator('h2').first().innerText()}`);
+  const heading = await page.locator('h2').first().innerText();
+  console.log(`${width} nl lang=${await htmlLang()} value=${await nl.inputValue()} h2=${heading}`);
   await page.screenshot({ path: `${OUT}/taalkeuze-nl@${width}.png` });
 
   await page.reload();
   await page.locator('h1').waitFor();
-  console.log(`${width} na herlaad lang=${await page.evaluate(() => document.documentElement.lang)} value=${await page.getByLabel('Taal').inputValue()}`);
+  const kept = await page.getByLabel('Taal').inputValue();
+  console.log(`${width} na herlaad lang=${await htmlLang()} value=${kept}`);
 
   await Promise.all([page.waitForNavigation(), page.getByLabel('Taal').selectOption('en')]);
   await page.locator('h1').waitFor();
-  console.log(`${width} terug lang=${await page.evaluate(() => document.documentElement.lang)}`);
+  console.log(`${width} terug lang=${await htmlLang()}`);
 }
 await browser.close();

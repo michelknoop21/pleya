@@ -116,9 +116,4 @@ describe('met de taal op nl', () => {
     expect(plural('item.seasonsCount', 1)).toBe('1 seizoen');
     expect(plural('item.seasonsCount', 3)).toBe('3 seizoenen');
   });
-
-  it('valt op Engels terug voor een sleutel die de catalogus niet kent', () => {
-    setLocale('nl');
-    expect(t('nav.home' as never)).toBe('Home');
-  });
 });

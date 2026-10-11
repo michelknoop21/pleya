@@ -214,6 +214,17 @@ describe('per taal: datum, getal, grootte, taalnaam', () => {
     expect(formatBytes(-5)).toBe('0 B');
   });
 
+  it('rondt eerst af en promoveert daarna, zodat er nooit 1000 van een eenheid staat', () => {
+    // Negatieve controle: met de eenheid vóór het afronden gekozen gaf dit "1,000 kB".
+    expect(inLocale('en', () => formatBytes(999_950))).toBe('1.0 MB');
+    expect(inLocale('nl', () => formatBytes(999_950))).toBe('1,0 MB');
+    expect(inLocale('en', () => formatBytes(999_950))).not.toContain('kB');
+    expect(inLocale('en', () => formatBytes(999_949))).toBe('999.9 kB');
+    expect(inLocale('en', () => formatBytes(999.6))).toBe('1.0 kB');
+    expect(inLocale('en', () => formatBytes(2000))).toBe('2.0 kB');
+    expect(inLocale('en', () => formatBytes(120e9))).toBe('120 GB');
+  });
+
   it('vertaalt een taalcode, ook de driecijferige van de server', () => {
     expect(inLocale('en', () => formatLanguage('eng'))).toBe('English');
     expect(inLocale('nl', () => formatLanguage('eng'))).toBe('Engels');
