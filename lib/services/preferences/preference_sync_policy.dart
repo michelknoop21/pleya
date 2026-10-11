@@ -508,6 +508,9 @@ class PreferenceSyncPolicyRegistry {
     // Whether this profile is a children's profile for Big P: the same family
     // data, so the same answer. Syncing it would let another device decide.
     'assistant_kids_profile': _profileRuntimeCache,
+    // Whether Big P's memory is on for this profile. The facts themselves stay
+    // on this device, so the switch that governs them does too.
+    'assistant_memory_enabled': _profileRuntimeCache,
     'watch_together_recent_rooms': _runtimeCache,
     'cleaned_old_image_cache': _runtimeCache,
     'buffer_size_migrated_to_auto': _runtimeCache,

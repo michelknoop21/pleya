@@ -12,6 +12,8 @@ import '../models/download_models.dart';
 import '../utils/app_logger.dart';
 import '../utils/global_key_utils.dart';
 
+export 'assistant_memory_wipe.dart';
+
 part 'app_database.g.dart';
 
 /// Action queued in the offline watch-progress sync table. The serialized
@@ -98,6 +100,8 @@ const String _sqlImportedInteractionUniqueIndex =
     MediaInteractions,
     AffinitySnapshots,
     HistorySyncCursors,
+    AssistantMemories,
+    AssistantMemoryOverviews,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -109,7 +113,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 22;
 
   @override
   MigrationStrategy get migration {
@@ -329,6 +333,15 @@ class AppDatabase extends _$AppDatabase {
               () => m.addColumn(mediaInteractions, column),
             );
           }
+        }
+        if (from < 22) {
+          appLogger.i('Creating assistant memory tables (v22 migration)');
+          await _ignoreAlreadyExists('AssistantMemories table', () => m.createTable(assistantMemories));
+          await _ignoreAlreadyExists(
+            'AssistantMemories unique index',
+            () => m.createIndex(idxAssistantMemoriesProfileValueKey),
+          );
+          await _ignoreAlreadyExists('AssistantMemoryOverviews table', () => m.createTable(assistantMemoryOverviews));
         }
       },
     );

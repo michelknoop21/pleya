@@ -13,6 +13,7 @@ import '../../profiles/profile_connection_registry.dart';
 import '../../profiles/profile_registry.dart';
 import '../../providers/download_provider.dart';
 import '../../providers/multi_server_provider.dart';
+import '../../services/memory/memory_enabled_store.dart';
 import '../../services/search_recency_store.dart';
 import '../../services/storage_service.dart';
 import '../../navigation/tv/tv_live_tv_capability.dart';
@@ -58,6 +59,7 @@ Future<void> deleteProfile(BuildContext context, Profile profile) async {
 
   await downloadProvider.deleteDownloadsForProfile(profile.id);
   await database.deleteRecommendationDataForProfile(profile.id);
+  await database.deleteAssistantMemoryForProfile(profile.id);
   await clearProfileScopedStores(storage, profile.id);
   await removeAllProfileConnectionsAndCleanup(
     profileId: profile.id,
@@ -105,4 +107,7 @@ Future<void> clearProfileScopedStores(StorageService storage, String profileId) 
   // And the children's ages Big P picks for: local to this profile.
   await KidsAgesStore.clearForProfileScope(scope);
   await KidsProfileStore.clearForProfileScope(scope);
+  // And whether Big P's memory was on for this profile. The remembered facts
+  // live in the database and go in [deleteProfile].
+  await MemoryEnabledStore.clearForProfileScope(scope);
 }
