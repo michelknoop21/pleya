@@ -144,7 +144,7 @@ export async function openLibraryOfKind(
   kind: 'movies' | 'shows'
 ): Promise<string | null> {
   await page.goto('/server');
-  await page.getByRole('heading', { level: 1 }).waitFor();
+  await page.getByRole('heading', { level: 1 }).first().waitFor();
   const ids = await page
     .locator(`[data-library-kind="${kind}"]`)
     .evaluateAll((els) => els.map((el) => el.getAttribute('data-library-id') ?? ''));

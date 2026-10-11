@@ -59,9 +59,14 @@ async function prepare(page: Page, projectName: string): Promise<void> {
   });
 }
 
-/** Wacht tot er niets meer laadt. Bij een bewust vastgehouden laadstaat niet. */
+/**
+ * Wacht tot er niets meer laadt. Bij een bewust vastgehouden laadstaat niet.
+ *
+ * Geen `networkidle`: een open verbinding of een late afbeelding houdt die
+ * staat tegen, terwijl de pagina klaar is. Elke laadstaat in de app meldt zich
+ * met `aria-busy`, en daar wacht deze functie op.
+ */
 async function settle(page: Page): Promise<void> {
-  await page.waitForLoadState('networkidle');
   await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 15_000 });
 }
 
@@ -79,12 +84,18 @@ async function settle(page: Page): Promise<void> {
  * `incomplete` van `color-contrast` faalt niet: dat is tekst over artwork, die
  * axe niet kan beoordelen. Die plekken gaan naar de annotaties en de gate meet
  * ze met pixels.
+ *
+ * `knownRed` is de smalle uitzondering voor een nulmeting die nog rood is: die
+ * regel-ids mogen falen, en ze móéten falen. Elke andere axe-regel, de overloop,
+ * de taal en de navigatienaam blijven hard. Verdwijnt een bekende regel, dan
+ * faalt de meting met de opdracht de uitzondering weg te halen, zodat hij niet
+ * blijft staan als een gat in de meetlat.
  */
 async function measure(
   page: Page,
   target: string,
   locale: Locale,
-  options: { settle?: boolean; shell?: boolean } = {}
+  options: { settle?: boolean; shell?: boolean; knownRed?: readonly string[] } = {}
 ): Promise<void> {
   for (const width of WIDTHS) {
     await page.setViewportSize({ width, height: 900 });
@@ -98,8 +109,14 @@ async function measure(
         description: `${target}|${width}|${locale}|${v.id}|${v.nodes.length}`
       });
     }
+    const known = options.knownRed ?? [];
     const ids = results.violations.map((v) => v.id);
-    expect.soft(ids, axeMessage(page, results.violations, where)).toEqual([]);
+    const unexpected = results.violations.filter((v) => !known.includes(v.id));
+    expect.soft(unexpected.map((v) => v.id), axeMessage(page, unexpected, where)).toEqual([]);
+    const gone = known.filter((id) => !ids.includes(id));
+    expect
+      .soft(gone, `regel is weg op ${where} bij ${width}px, haal de uitzondering weg uit knownRed`)
+      .toEqual([]);
 
     if (options.shell !== false) {
       const nav = page.getByRole('navigation', { name: label(locale, 'nav.primary'), exact: true });
@@ -126,7 +143,7 @@ async function measure(
 
 /** Het pad van de eerste kaart in het raster, of `null` als het raster leeg is. */
 async function firstCardHref(page: Page): Promise<string | null> {
-  const link = grid(page).getByRole('listitem').first().getByRole('link');
+  const link = grid(page).getByRole('listitem').first().getByRole('link').first();
   await link.waitFor({ timeout: 15_000 }).catch(() => undefined);
   return (await link.count()) ? link.getAttribute('href') : null;
 }
@@ -152,7 +169,7 @@ async function discoverTargets(page: Page, locale: Locale): Promise<Target[]> {
   if (film) {
     targets.push({ name: 'film', path: film });
     await page.goto(film);
-    const title = await page.getByRole('heading', { level: 1 }).innerText();
+    const title = await page.getByRole('heading', { level: 1 }).first().innerText();
     query = title.split(/\s+/)[0] ?? null;
   }
 
@@ -163,7 +180,7 @@ async function discoverTargets(page: Page, locale: Locale): Promise<Target[]> {
     targets.push({ name: 'serie', path: show });
     await page.goto(show);
     const seasons = page.getByRole('list', { name: label(locale, 'item.seasons') });
-    const season = seasons.getByRole('listitem').first().getByRole('link');
+    const season = seasons.getByRole('listitem').first().getByRole('link').first();
     await season.waitFor({ timeout: 15_000 }).catch(() => undefined);
     const href = (await season.count()) ? await season.getAttribute('href') : null;
     if (href) targets.push({ name: 'seizoen', path: href });
@@ -223,25 +240,34 @@ for (const { locale, context } of LOCALES) {
 
     test(`home terwijl hij laadt (${locale})`, async ({ page }, info) => {
       await prepare(page, info.project.name);
-      // Nulmeting S7.6: het Home-skelet heeft geen h1, en axe meldt
-      // `page-has-heading-one` op alle vijf breedtes in beide talen. Taak 3 legt
-      // het skelet naast beeld 15 en haalt deze regel weg. Staat hij er dan nog,
-      // dan meldt Playwright "expected to fail" en valt het meteen op.
-      test.fail(true, 'bekend rood tot S7.6 taak 3: het Home-skelet heeft geen h1');
       await signIn(page, locale);
 
       // De hub-aanvraag blijft hangen tot de meting klaar is, zodat axe het
       // skelet ziet en niet de geladen pagina.
       let release: () => void = () => undefined;
       const held = new Promise<void>((resolve) => (release = resolve));
+      let hits = 0;
       await page.route('**/pleya/v1/hubs/**', async (route) => {
+        hits += 1;
         await held;
         await route.continue().catch(() => undefined);
       });
 
       await page.goto('/');
       await page.locator('[aria-busy="true"]').first().waitFor();
-      await measure(page, 'home laden (/)', locale, { settle: false });
+      // Nulmeting S7.6: het Home-skelet heeft geen h1, en axe meldt
+      // `page-has-heading-one` op alle vijf breedtes in beide talen. Taak 3 legt
+      // het skelet naast beeld 15; dan faalt deze meting op "regel is weg" en
+      // gaat de uitzondering eruit.
+      await measure(page, 'home laden (/)', locale, {
+        settle: false,
+        knownRed: ['page-has-heading-one']
+      });
+
+      // Zonder deze twee kan een route-matcher die niets raakt de geladen Home
+      // meten en dat voor de laadstaat laten doorgaan.
+      expect(hits, 'de hub-aanvraag is niet vastgehouden; raakt de matcher nog?').toBeGreaterThan(0);
+      await expect(page.locator('[aria-busy="true"]').first()).toBeAttached({ timeout: 1_000 });
       release();
     });
 
