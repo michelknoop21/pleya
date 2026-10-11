@@ -13,6 +13,8 @@ class AssistantPersonalServices {
     required this.recent,
     required this.everSeen,
     this.everSeenIdentities = _noIdentities,
+    this.everCompleted,
+    this.everCompletedIdentities,
     required this.taste,
     required this.picks,
   });
@@ -30,6 +32,11 @@ class AssistantPersonalServices {
   /// The same titles with the identity written next to them, so a copy on
   /// another server, or of a server that is gone, still counts as seen.
   final Future<List<WatchedIdentity>> Function() everSeenIdentities;
+
+  /// The same, finished plays only: a film stopped half-way is in [everSeen]
+  /// (it is a taste signal) but is not "watched". Null falls back to [everSeen].
+  final Future<Set<String>> Function()? everCompleted;
+  final Future<List<WatchedIdentity>> Function()? everCompletedIdentities;
   final Future<AffinityVector> Function() taste;
 
   /// Home's personal rows, built from [clients].
@@ -138,7 +145,12 @@ final List<AssistantTool> _personalTools = [
           if (serverId == null || picks.length >= limit || !c.admitsSuggestion(item) || seenBefore(item)) continue;
           if (!seen.add(item.globalKey)) continue;
           final titleKey = assistantTitleKey(item.title ?? '');
-          if (titleKey.isNotEmpty && !seenTitle.add((titleKey, item.year, item.kind.isShowRelated))) continue;
+          // Two year-less titles of one name need not be one film.
+          if (titleKey.isNotEmpty &&
+              item.year != null &&
+              !seenTitle.add((titleKey, item.year, item.kind.isShowRelated))) {
+            continue;
+          }
           ctx.showItem(ServerId(serverId), item.id);
           picks.add(item);
           titles.add({

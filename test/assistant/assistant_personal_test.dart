@@ -373,6 +373,9 @@ void main() {
             // A film and a series of one name are two titles.
             _item('p2', 'Fargo', MediaKind.movie, year: 1996),
             _item('p3', 'Fargo', MediaKind.show, year: 1996),
+            // Two year-less films of one name are not proven to be one.
+            _item('p4', 'Solaris', MediaKind.movie),
+            _item('p5', 'Solaris', MediaKind.movie),
           ],
         ),
       ],
@@ -382,7 +385,13 @@ void main() {
       for (final row in result.data['picks']! as List)
         for (final t in (row as Map)['titles'] as List) ((t as Map)['title'], t['kind']),
     ];
-    expect(titles, [('Heat', 'movie'), ('Fargo', 'movie'), ('Fargo', 'show')]);
-    expect((result.display! as AssistantMediaGrid).entries, hasLength(3));
+    expect(titles, [
+      ('Heat', 'movie'),
+      ('Fargo', 'movie'),
+      ('Fargo', 'show'),
+      ('Solaris', 'movie'),
+      ('Solaris', 'movie'),
+    ]);
+    expect((result.display! as AssistantMediaGrid).entries, hasLength(5));
   });
 }

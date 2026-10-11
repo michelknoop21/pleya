@@ -78,7 +78,7 @@ final List<AssistantTool> _catalogTools = [
         'time since the title was added, never its release year; results carry added_at. '
         'count is what is listed and drawn as cards: name only those titles. total_matches is the whole query and is '
         'absent when unknown; with more_matches say "at least matches_at_least", never a total. '
-        'seen_elsewhere are titles left out because the user watched a copy on another server. '
+        'seen_before counts films left out because this profile\'s own watch history has them as finished. '
         'Joint unseen uses recommend_together. Returns a task-local query_id; save only if can_become_home_row. '
         'Explain home_row_unavailable_reason, partial, sampled, servers_left_out and coverage as returned.',
     risk: AssistantToolRisk.read,
@@ -150,7 +150,7 @@ final List<AssistantTool> _catalogTools = [
         // and no count of titles that were never checked.
         if (age == null && query.totalMatches != null) 'total_matches': query.totalMatches,
         if (age == null && query.moreMatches) ...{'more_matches': true, 'matches_at_least': query.matchesRead},
-        if (age == null && query.seenElsewhere > 0) 'seen_elsewhere': query.seenElsewhere,
+        if (age == null && query.seenElsewhere > 0) 'seen_before': query.seenElsewhere,
         if (query.addedWithinDays != null) ...{
           'window_days': query.addedWithinDays,
           if (age == null && query.addedUnknown > 0) 'added_unknown': query.addedUnknown,

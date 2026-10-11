@@ -337,6 +337,14 @@ void main() {
       expect(data.containsKey('more_matches'), isFalse);
     });
 
+    test('text search: a server at its search limit gives a floor, not a total', () async {
+      final hits = [for (var i = 0; i < 50; i++) _movie('h$i', 'Alien $i')];
+      final (ctx, _, _, _) = await setUpCtx(others: [_SearchServer('s2', MediaBackend.plex, hits: hits)]);
+      final data = await search(ctx, {'text': 'alien', 'kind': 'movie', 'limit': 5});
+      expect(data.containsKey('total_matches'), isFalse);
+      expect(data['more_matches'], isTrue);
+    });
+
     test('a library that did not answer leaves the total out', () async {
       final (ctx, loader, _, _) = await setUpCtx(groups: [for (var i = 0; i < 5; i++) _group('m$i', 'Film $i')]);
       loader.isPartial = true;
@@ -440,12 +448,31 @@ void main() {
       final mine = await search(michel, {'kind': 'movie', 'unwatched': true});
       expect([for (final r in mine['results']! as List) (r as Map)['title']], ['Aliens']);
       expect(mine['total_matches'], 1);
-      expect(mine['seen_elsewhere'], 2);
+      expect(mine['seen_before'], 2);
+      // The saved row could not repeat that filter: it is not offered.
+      expect(mine['can_become_home_row'], isFalse);
 
       final (guest, _, _, _) = await setUpCtx(groups: library(), personal: history());
       final theirs = await search(guest, {'kind': 'movie', 'unwatched': true});
       expect(theirs['total_matches'], 3);
-      expect(theirs.containsKey('seen_elsewhere'), isFalse);
+      expect(theirs.containsKey('seen_before'), isFalse);
+      expect(theirs['can_become_home_row'], isTrue);
+
+      // A play stopped half-way is a taste signal, not "watched", and a series
+      // keyed by one episode is not seen: only finished films drop.
+      final (partial, _, _, _) = await setUpCtx(
+        groups: library(),
+        personal: AssistantPersonalServices(
+          userName: 'Michel',
+          recent: () async => const [],
+          everSeen: () async => {'$_server:m1', '$_server:m2'},
+          everCompleted: () async => {'$_server:m2'},
+          taste: () async => AffinityVector.empty,
+          picks: (_) async => const [],
+        ),
+      );
+      final stopped = await search(partial, {'kind': 'movie', 'unwatched': true});
+      expect([for (final r in stopped['results']! as List) (r as Map)['title']], ['Alien', 'Heat']);
 
       // The history only narrows an unwatched question.
       final all = await search(michel, {'kind': 'movie'});

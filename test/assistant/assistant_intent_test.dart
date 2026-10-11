@@ -39,7 +39,37 @@ void main() {
         'unwatched': true,
         'kind': 'show',
       });
-      expect(_i('Wat is de oudste ongeziene film?').longestWaiting, isTrue);
+    });
+
+    test('review: runtime, release year, rewatch, other people and joint questions are not forced', () {
+      // Unseen films of the library, but sorted by runtime or release year:
+      // the sort is the model's, never "waiting the longest".
+      for (final q in [
+        'Wat is de langste film die ik nog niet gezien heb in mijn bibliotheek?',
+        'Wat is de oudste film in mijn bibliotheek die ik nog niet heb gezien?',
+      ]) {
+        final i = _i(q);
+        expect(i.unseenInLibrary, isTrue, reason: q);
+        expect(i.longestWaiting, isFalse, reason: q);
+        expect(i.constrain('search_catalog', const {'sort': 'released'}).args['sort'], 'released', reason: q);
+      }
+      for (final q in [
+        'Wat heb ik al lang niet gekeken?',
+        'Ik heb al tijden niet gekeken, waar was ik gebleven?',
+        'Welke films hebben de anderen nog niet gezien op de server?',
+        'Welke films heeft Sam nog niet gezien in de bibliotheek?',
+        'Welke films hebben Sam en ik nog niet gezien in de bibliotheek?',
+        'Welke films uit de Marvel-collectie heb ik nog niet gezien?',
+      ]) {
+        final i = _i(q);
+        expect(i.unseenInLibrary, isFalse, reason: q);
+        // Whatever else refuses them (others go to watch_stats), never the
+        // asker's own unwatched list.
+        expect(i.constrain('my_watching', const {}).error, isNot('use_search_catalog'), reason: q);
+        expect(i.constrain('watch_stats', const {'scope': 'period'}).error, isNot('use_search_catalog'), reason: q);
+      }
+      expect(_i('Welke films heb ik nooit gezien in mijn bibliotheek?').unseenInLibrary, isTrue);
+      expect(_i('Which movies have I not watched yet in my library?').unseenInLibrary, isTrue);
     });
 
     test('a tip the user has not seen stays a tip, and a plain watch question is untouched', () {

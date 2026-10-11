@@ -206,12 +206,12 @@ class RecommendationService {
   /// Every title in this profile's log: the series key for an episode, the
   /// item's own key otherwise. Unlike [recentSeeds] no seed window applies;
   /// the log's own retention does. Empty when personalization is off or nothing qualifies.
-  Future<Set<String>> everSeenKeys() async {
+  Future<Set<String>> everSeenKeys({double minWeight = kSeedMinWeight}) async {
     if (!_enabled) return const {};
     try {
       return await _db.everWatchedKeys(
         profileId,
-        minWeight: kSeedMinWeight,
+        minWeight: minWeight,
         enabledImportServerIds: _enabledImportServerIds(),
       );
     } catch (e, s) {
@@ -223,12 +223,12 @@ class RecommendationService {
   /// Every title in this profile's log with the identity written next to it
   /// (title, year, tokens), for recognising a copy on another server. Empty
   /// when personalization is off or nothing qualifies.
-  Future<List<WatchedIdentity>> everSeenIdentities() async {
+  Future<List<WatchedIdentity>> everSeenIdentities({double minWeight = kSeedMinWeight}) async {
     if (!_enabled) return const [];
     try {
       return await _db.everWatchedIdentities(
         profileId,
-        minWeight: kSeedMinWeight,
+        minWeight: minWeight,
         enabledImportServerIds: _enabledImportServerIds(),
       );
     } catch (e, s) {

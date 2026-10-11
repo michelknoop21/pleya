@@ -340,19 +340,24 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     if (minRating != null) groups.removeWhere((g) => (g.representativeSource.item.rating ?? -1) < minRating);
     // Each server answers "unwatched" for its own copy only. A title this
     // profile watched as a copy elsewhere is not unseen.
+    applyWindow(groups);
     final seenElsewhere = unwatched ? await _dropSeenByProfile(ctx, groups) : 0;
     checkCurrent();
-    applyWindow(groups);
+    // The window's total was counted before the history dropped titles.
+    if (cutoff != null) total = groups.length;
     // A single kind keeps the catalog's order; two kinds need one order.
     if (!rowShaped || kind == null) _order(groups, sort);
     final countable = complete && !partial && !sampled && !windowCapped;
     return _CatalogQuery(
       groups.take(limit).toList(),
-      rowShaped && kind != null ? row : null,
+      // A Home row cannot repeat the profile's own history filter.
+      rowShaped && kind != null && seenElsewhere == 0 ? row : null,
       partial: partial,
       sampled: sampled || windowCapped,
       serversLeftOut: leftOut,
-      rowUnavailableReason: unavailableReason,
+      rowUnavailableReason: seenElsewhere > 0
+          ? 'Titles already in this profile\'s watch history are left out, which a Home row cannot repeat.'
+          : unavailableReason,
       coverage: coverage,
       checkCurrent: checkCurrent,
       addedWithinDays: addedWithin,
@@ -371,6 +376,8 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   final found = <MediaItem>[];
   final genreChecked = <String>{};
   var partial = false;
+  // A server's search stops at its own limit: its hits are then a sample.
+  var searchCapped = false;
   for (final id in ctx.userServers) {
     final client = ctx.userClient(id);
     if (client == null || (person != null && client is! PersonSearchClient)) {
@@ -386,6 +393,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       } else {
         hits = await client.searchItems(text!, limit: 50);
       }
+      searchCapped |= hits.length >= 50;
       checkCurrent();
       for (final hit in hits) {
         if (hit.kind != MediaKind.movie && hit.kind != MediaKind.show) continue;
@@ -434,6 +442,9 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     partial |= filtered.failed;
   }
   applyWindow(groups);
+  final seenBefore = unwatched ? await _dropSeenByProfile(ctx, groups) : 0;
+  checkCurrent();
+  if (cutoff != null) total = groups.length;
   // No sort asked: the servers' relevance order stands.
   if (askedSort != null || addedWithin != null) _order(groups, sort);
   final kept = groups.take(limit).toList();
@@ -446,9 +457,12 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     coverage: coverage,
     checkCurrent: checkCurrent,
     addedWithinDays: addedWithin,
-    // Everything the servers' search returned, not the listing's length.
-    totalMatches: total ?? groups.length,
+    // Everything the servers' search returned, not the listing's length; no
+    // total when a server did not answer or its search hit its limit.
+    totalMatches: total ?? (partial || searchCapped ? null : groups.length),
+    moreMatches: cutoff == null && searchCapped,
     matchesRead: groups.length,
+    seenElsewhere: seenBefore,
     addedOrder: sort == 'added' || sort == 'added_oldest' ? sort : null,
     addedUnknown: addedUnknown,
     genreUnverified: genres.isEmpty || coverage != null
@@ -460,16 +474,24 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   );
 }
 
-/// Removes from [groups] the titles the active profile's own log holds, by
-/// key or by identity, and returns how many went. Nothing without a log.
+/// Removes from [groups] the films the active profile's own log holds as
+/// finished, by key or by identity, and returns how many went. Films only: a
+/// series is keyed by one watched episode, which does not make it unseen, and
+/// a play stopped half-way is not a finished one. Nothing without a log.
 Future<int> _dropSeenByProfile(AssistantToolContext ctx, List<UnifiedMediaGroup> groups) async {
   final personal = ctx.personal;
   if (personal == null || groups.isEmpty) return 0;
-  final (keys, identities) = await (personal.everSeen(), personal.everSeenIdentities()).wait;
+  final completed = personal.everCompleted ?? personal.everSeen;
+  final completedIdentities = personal.everCompletedIdentities ?? personal.everSeenIdentities;
+  final (keys, identities) = await (completed(), completedIdentities()).wait;
   if (keys.isEmpty && identities.isEmpty) return 0;
   final seen = _SeenIdentities(identities);
   final before = groups.length;
-  groups.removeWhere((g) => g.sources.any((s) => keys.contains(s.sourceKey) || seen.contains(s.item)));
+  groups.removeWhere(
+    (g) =>
+        g.representativeSource.item.kind == MediaKind.movie &&
+        g.sources.any((s) => keys.contains(s.sourceKey) || seen.contains(s.item)),
+  );
   return before - groups.length;
 }
 

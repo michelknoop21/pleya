@@ -98,13 +98,22 @@ final _addedElsewhere = RegExp(
 // stays with my_watching, so the question must also name the library or how
 // long the titles have been waiting, and must not ask for a tip.
 final _unseen = RegExp(
-  r"\b(ongezien(?:e)?|ongekeken|onbekeken|(?:nog )?niet (?:heb )?(?:gezien|gekeken|bekeken)|nog moet (?:zien|kijken)|unwatched|unseen|not (?:yet )?(?:watched|seen)|(?:haven't|havent|have not|didn't|never) (?:yet )?(?:watched|seen))\b",
+  r"\b(ongezien(?:e)?|ongekeken|onbekeken|(?:nog )?niet (?:heb )?(?:gezien|gekeken|bekeken)|nooit (?:eerder )?(?:gezien|gekeken|bekeken)|nog moet (?:zien|kijken)|unwatched|unseen|not (?:yet )?(?:watched|seen)|(?:haven't|havent|have not|didn't|never) (?:yet )?(?:watched|seen))",
 );
-final _libraryWord = RegExp(r'\b(bibliothe(?:ek|ken)|librar(?:y|ies)|collectie|collection|servers?)\b');
+final _libraryWord = RegExp(r'\b(bibliothe(?:ek|ken)|librar(?:y|ies)|servers?)\b');
+// How long a title has waited, not how long it runs or when it came out:
+// "oudste" and "longest" alone are runtime or release year.
 final _longWaiting = RegExp(
-  r'\b(al (?:zo |heel |erg )?lang|het langst|langste?|oudste|tijden|eeuwen|longest|oldest|(?:for )?(?:a|so) long|for ages|gathering dust|stof)\b',
+  r'\b(al (?:zo |heel |erg )?(?:lang|tijden|eeuwen|jaren)|het langst|already (?:for )?(?:a )?(?:long|ages)|for (?:a long time|ages|years)|gathering dust)\b',
 );
 final _tipAsked = RegExp(r'\b(tips?|aanraders?|aanraden|raad|suggesties?|recommend(?:ation)?s?|suggest(?:ion)?s?)\b');
+// The list needs a title word: "wat heb ik al lang niet gekeken" is a question
+// about the asker's own history, not about the library.
+final _titleWord = RegExp(r'\b(films?|movies?|series?|serie|shows?|titels?|titles?)\b');
+// A subject other than the asker ("de anderen", "Sam", "Sam en ik", "samen"):
+// the filter is the asker's own, so those stay with watch_stats and
+// recommend_together.
+final _otherSubject = RegExp(r'\b(?:heeft|hebben|has|have\s+(?!i\b|you\b)|en ik|and i|and me|en mij|samen|together)');
 // A period the parser cannot turn into days ("3 maanden", "2 weken"): the window is not guessed.
 final _longPeriod = RegExp(r'\b\d{1,3}\s*(maanden|maand|weken|week|months?|weeks?)\b');
 // "everyone else watched": a named group with its own verb, a clause of its own.
@@ -242,7 +251,14 @@ class AssistantIntent {
     };
     final days = periods.length == 1 ? periods.single : null;
     final unseenInLibrary =
-        _unseen.hasMatch(p) && (_libraryWord.hasMatch(p) || _longWaiting.hasMatch(p)) && !_tipAsked.hasMatch(p);
+        _unseen.hasMatch(p) &&
+        _titleWord.hasMatch(p) &&
+        (_libraryWord.hasMatch(p) || _longWaiting.hasMatch(p)) &&
+        !_tipAsked.hasMatch(p) &&
+        !_otherSubject.hasMatch(p) &&
+        !others &&
+        !everyone &&
+        _group.firstMatch(p) == null;
     return AssistantIntent(
       group: _group.firstMatch(p)?.group(1),
       words: p,
