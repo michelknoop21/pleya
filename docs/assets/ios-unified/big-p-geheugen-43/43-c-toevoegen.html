@@ -1,0 +1,12 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>43 C Herinnering toevoegen</title>
+<link rel="stylesheet" href="bp43.css"><script src="bp43.js"></script></head><body class=""><script>
+document.body.innerHTML = mainScreen() + `<div class="dim"></div>
+<div class="sheet" style="bottom:292px;border-radius:20px 20px 0 0;padding-bottom:16px"><div class="grab"></div><h2>Herinnering toevoegen</h2>
+  <div class="flabel"><span>Tekst</span><span>0/200</span></div>
+  <div class="field active"><span class="caret"></span><span class="ph">Bijvoorbeeld: ik houd niet van horror</span></div>
+  <div class="flabel"><span>Categorie</span></div>
+  <div class="wrap">${chips('Voorkeuren', false)}</div>
+  <div class="hint">Sla geen wachtwoorden of medische gegevens op.</div>
+  <div class="acts"><div class="btn">Annuleren</div><div class="btn off">Opslaan</div></div>
+</div>` + keyboard() + '<div class="homeind"></div>';
+</script></body></html>

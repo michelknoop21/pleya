@@ -1,0 +1,26 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>43 I tvOS</title>
+<link rel="stylesheet" href="bp43.css"><script src="bp43.js"></script></head><body class="tv"><script>
+const cat = (n, c, on) => `<div class="row compact ${on ? 'sel' : ''}"><div class="body"><div class="t">${n}</div></div><span class="val">${c}</span></div>`;
+const act = (ic, t) => `<div class="row compact">${ic}<div class="body"><div class="t">${t}</div></div>${I.chev}</div>`;
+document.body.innerHTML = `<nav class="topnav"><div class="pchip">M</div><div class="cluster"><span class="nsearch">${I.search}</span><span class="item">Home</span><span class="item">Series</span><span class="item">Films</span><span class="item">Live TV</span><span class="item on">Mijn Pleya</span></div><div class="wordmark"><img src="../../tvos-unified/src/assets/pleya_wordmark.png" style="height:52px;display:block"></div></nav>
+<div class="page">
+  <div class="page-title">Geheugen</div>
+  <div class="crumb">Mijn Pleya ▸ Instellingen ▸ Big P ▸ Geheugen</div>
+  <div class="two">
+    <div>
+      <div class="rows"><div class="row"><div class="body"><div class="t">Geheugen gebruiken</div><div class="s">Alleen voor dit profiel, alleen op dit apparaat</div></div><span class="val">Aan</span>${I.chev}</div></div>
+      <div class="foot">Big P onthoudt wat je vertelt en gebruikt het bij je vragen. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag.</div>
+      <div class="group-label">Categorieën</div>
+      <div class="grid2">${cat('Alles', MEM.length, true)}${CATS.map((c) => cat(c, countOf(c))).join('')}</div>
+      <div class="group-label">Acties</div>
+      <div class="rows">${act(I.plus, 'Herinnering toevoegen')}${act(I.chat, 'Vraag Big P')}${act(I.trash, 'Alle herinneringen wissen')}</div>
+    </div>
+    <div>
+      <div class="group-label">Herinneringen <span>6 herinneringen · Alles</span></div>
+      <div class="rows">${MEM.map((m, i) => `<div class="row ${i === 0 ? 'focus' : ''}"><div class="body"><div class="t">${m[0]}</div><div class="s">${m[1]} · ${m[2]}</div></div>${I.chev}</div>`).join('')}</div>
+      <div class="group-label">Uit je kinderprofiel</div>
+      <div class="rows"><div class="row"><div class="body"><div class="t">Leeftijden kinderen</div><div class="s">Beheerd bij Kinderprofiel</div></div><span class="val">8 en 11</span>${I.chev}</div></div>
+    </div>
+  </div>
+</div>`;
+</script></body></html>

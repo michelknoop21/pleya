@@ -1,0 +1,9 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>43 E Geheugen uit</title>
+<link rel="stylesheet" href="bp43.css"><script src="bp43.js"></script></head><body class=""><script>
+document.body.innerHTML = status() + bar() + `<div class="scroll">
+  ${toggleCard(false, {callout:false})}
+  <div class="card notice" style="margin-top:12px;border:1px solid var(--line)"><b>Geheugen staat uit.</b>Big P onthoudt niets en gebruikt niets. Bestaande herinneringen blijven bewaard tot je ze wist.</div>
+  <div class="dimmed">${searchField()}<div class="fchips">${chips()}</div>
+  <div class="glabel">Herinneringen<i>6 herinneringen</i></div>${memList()}</div>
+</div>` + tabbar();
+</script></body></html>

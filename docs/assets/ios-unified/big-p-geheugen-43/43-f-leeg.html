@@ -1,0 +1,11 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>43 F Nog geen herinneringen</title>
+<link rel="stylesheet" href="bp43.css"><script src="bp43.js"></script></head><body class=""><script>
+document.body.innerHTML = status() + bar() + `<div class="scroll">
+  ${toggleCard(true)}
+  <div class="glabel">Herinneringen<i>0 herinneringen</i></div>
+  <div class="card empty"><div class="ring">${I.note}</div><b>Nog geen herinneringen.</b><p>Zeg tegen Big P 'onthoud dat ...' of voeg er zelf een toe.</p>
+    <div style="margin-top:18px">${addBtn()}</div></div>
+  <div style="margin-top:12px">${askRow()}</div>
+  <div class="glabel">Uit je kinderprofiel</div>${agesRow()}
+</div>` + tabbar();
+</script></body></html>
