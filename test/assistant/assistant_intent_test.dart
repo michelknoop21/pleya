@@ -70,6 +70,15 @@ void main() {
       }
       expect(_i('Welke films heb ik nooit gezien in mijn bibliotheek?').unseenInLibrary, isTrue);
       expect(_i('Which movies have I not watched yet in my library?').unseenInLibrary, isTrue);
+      // "have" / "heeft" with the library or a plain "not" as subject is no other person.
+      for (final q in [
+        'Which movies in my library have I not watched yet?',
+        'What movies does the library have that I haven\'t seen?',
+        'Welke films heeft de bibliotheek die ik nog niet heb gezien?',
+        'Which movies in my library have not been watched by me?',
+      ]) {
+        expect(_i(q).unseenInLibrary, isTrue, reason: q);
+      }
     });
 
     test('a tip the user has not seen stays a tip, and a plain watch question is untouched', () {

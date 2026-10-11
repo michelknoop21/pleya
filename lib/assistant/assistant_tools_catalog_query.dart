@@ -459,8 +459,8 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     addedWithinDays: addedWithin,
     // Everything the servers' search returned, not the listing's length; no
     // total when a server did not answer or its search hit its limit.
-    totalMatches: total ?? (partial || searchCapped ? null : groups.length),
-    moreMatches: cutoff == null && searchCapped,
+    totalMatches: partial || searchCapped ? null : (total ?? groups.length),
+    moreMatches: searchCapped,
     matchesRead: groups.length,
     seenElsewhere: seenBefore,
     addedOrder: sort == 'added' || sort == 'added_oldest' ? sort : null,
