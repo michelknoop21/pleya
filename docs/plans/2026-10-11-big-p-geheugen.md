@@ -123,12 +123,28 @@ Uitwerking in stap 2 die het ontwerp hierboven aanvult:
 - Wat naar het model gaat (contextregel, `recall_memory`, invoer van het overzicht) is ontdaan van stuurtekens, formaattekens (zero-width, tag-tekens vanaf U+E0000) en variatieselectoren. De opgeslagen zin blijft zoals getypt.
 - Het overzicht eist een sectie voor elke categorie die feiten heeft en weigert tekst met opmaaktekens of een link. Een lege geheugenlijst wordt niet samengevat. Deze lijst is gemeten op `main` van 11 oktober; het rapport van stap 2 noemt de werkelijk geraakte plekken en de review toetst op gedrag. Wie tegelijk een van de genoemde bestanden wijzigt, stemt dat vooraf af.
 
+Uitwerking in stap 3 die het ontwerp hierboven aanvult:
+
+- De code staat in `lib/screens/settings/memory/`. Eén model (`MemoryScreenModel`) per scherm houdt de feiten, de schakelaar, het overzicht en de host van het invoerveld bij; het hoofdscherm en het lijstscherm delen het, zodat een wijziging in de lijst het overzicht opnieuw laat schrijven terwijl het scherm openstaat.
+- `MemoryService.list` geeft bij een leesfout een lege lijst. Het scherm leest daarom met de nieuwe `tryList`, die bij een fout `null` geeft; het scherm toont dan een foutstaat met "Opnieuw proberen" en nooit "Nog geen herinneringen". `list` zelf is ongewijzigd in gedrag.
+- De ingang is een rij "Geheugen" in Instellingen, Big P, boven de samenvatting als er een model is ingesteld en onder de providerkeuze als dat niet zo is. Het geheugen is dus ook zonder model te bekijken en te beheren. De link "Bekijk geheugen" in het gesprek op iPhone en iPad opent hetzelfde scherm; het tv-gesprek heeft die link sinds stap 2 niet.
+- De regel onder de titel zegt "Zojuist bijgewerkt" tot tien minuten na het schrijven en daarna "Bijgewerkt op" met de datum, omdat een bewaard overzicht bij een later bezoek niet zojuist is geschreven. Zonder overzicht staat er "Lijst met herinneringen", op een kinderprofiel "Kinderprofiel", bij een leesfout "Niet beschikbaar" en tijdens een vraag "Big P denkt na".
+- Antwoord en kaart staan boven het invoerveld in een eigen blok. Zolang de kaart wacht is het veld gesloten en toont het de gestelde vraag; het antwoord boven de kaart kort in tot drie regels zodat de twee knoppen van de kaart op een iPhone SE in beeld blijven.
+- De kindstand toont boven de lijst een kaart "Dit is een kinderprofiel." In het lijstscherm ontbreekt daar "Herinnering toevoegen" en opent een herinnering alleen-lezen, met Verwijderen.
+- Handmatig bewerken en toevoegen blijft mogelijk als het geheugen uit staat; er gaat dan geen modelaanroep uit.
+- Bevestigingen (alles wissen, een herinnering verwijderen) openen met de focus op Annuleren. Op tv is de gefocuste knop de witte knop en hebben beide knoppen in rust dezelfde vulling.
+- Op tv is tekst invoeren overal een rij of tegel die het systeemtoetsenbord opent: "Vraag of werk bij", "Zoeken" in het lijstscherm en het tekstvak van een herinnering. Is het overzicht langer dan het scherm, dan is de tekstkolom een focusstop die met Omhoog en Omlaag scrolt; past de tekst, dan is hij dat niet.
+
 ## Mockup: wat bij de bouw afwijkt van het beeld
 
 - De tekst bij de schakelaar in 43 C noemt alleen relevante herinneringen bij een vraag. Erbij komt dat voor het overzicht de herinneringen van het profiel meegaan, tot het invoerplafond.
 - 43 M toont drie beheeracties; "Overzicht opnieuw schrijven" komt er op tv als vierde bij.
 - Het lijstscherm op tv is niet getekend. Het volgt 43 D in de tv-stijl van 43 M; zoeken gaat via een rij die het systeemtoetsenbord opent (besluit 4).
 - De cursieve toelichtingsregels in 43 K horen bij de mockup en komen niet in de app.
+- 43 M toont de toestand naast de titel en een kruimelpad eronder. De tv-pagina gebruikt de gedeelde paginakop (`TvPageSurface`), die geen van beide kent: de toestand staat op een eigen regel onder de titel en het kruimelpad vervalt, zoals op de andere instellingenpagina's.
+- De voetregel zegt op iPhone "beheer je via het menu" en op iPad en tv "beheer je bij Herinneringen beheren", omdat daar geen menuknop is. 43 L toont nog de telefoontekst.
+- 43 A noemt bij Huishouden "Hun leeftijden staan bij Kinderprofiel." De app voegt de vaste zin "Leeftijden van kinderen staan bij Kinderprofiel." toe, die ook klopt als het overzicht geen kinderen noemt.
+- De tegels op tv zijn 72 pt hoog (vervolgvragen 62) in plaats van 84 en 68, zodat de vierde beheeractie zonder scrollen in beeld staat.
 
 ## Buiten scope en bekende grenzen
 
