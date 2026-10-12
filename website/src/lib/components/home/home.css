@@ -61,6 +61,7 @@
   /* Apple TV reel */
   .video { padding-top: 4rem; }
   .video .lede { margin-top: 1.4rem; }
+  .video-meet { display: inline-block; color: var(--ink); text-decoration: underline; text-decoration-color: var(--amber); text-underline-offset: 0.3em; }
   .video-title { line-height: 1.04; letter-spacing: -0.035em; }
   .video-title-p { font-family: var(--font-sans); letter-spacing: -0.025em; }
   .video-frame { margin-top: 2rem; }

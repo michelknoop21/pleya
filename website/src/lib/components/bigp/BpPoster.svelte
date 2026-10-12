@@ -1,0 +1,70 @@
+<script lang="ts">
+  // Posters drawn for this page. Film titles are facts and may be named; the films' own
+  // artwork belongs to their studios, so none of it is used or imitated here: each poster is
+  // one idea from the story in flat shapes, with the title set in the site's display face.
+  export type Art = 'martian' | 'mission' | 'redplanet' | 'dune' | 'paddington' | 'knives';
+  let { art, title }: { art: Art; title: string } = $props();
+  // Gradient ids are per instance, so the same poster can appear twice on a page.
+  const uid = $props.id();
+  // "Dune: Part Two" breaks after the colon, any other title before its last word.
+  const lines = $derived.by(() => {
+    const [head, ...rest] = title.split(': ');
+    const tail = rest.join(': ');
+    const parts = tail ? [head + ':', ...tail.split(' ')] : [title.slice(0, title.lastIndexOf(' ')), title.slice(title.lastIndexOf(' ') + 1)];
+    return parts.filter(Boolean).slice(0, 3);
+  });
+</script>
+
+<svg class="poster" viewBox="0 0 136 200" aria-hidden="true">
+  {#if art === 'martian'}
+    <defs><linearGradient id="{uid}-martian" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0a35c" /><stop offset=".55" stop-color="#c2481d" /><stop offset="1" stop-color="#4a1408" /></linearGradient></defs>
+    <rect width="136" height="200" fill="url(#{uid}-martian)" />
+    <circle cx="98" cy="46" r="15" fill="#ffe2b0" opacity=".9" />
+    <path d="M0 128 Q40 108 78 124 T136 114 V200 H0Z" fill="#7a2410" />
+    <path d="M0 146 Q52 130 136 142 V200 H0Z" fill="#3a0f06" />
+    <path d="M68 142 V124 M68 132 Q56 130 55 118 Q67 119 68 132 M68 127 Q80 124 82 113 Q69 114 68 127" stroke="#8fd46a" stroke-width="2.4" fill="#8fd46a" stroke-linecap="round" />
+  {:else if art === 'mission'}
+    <defs><radialGradient id="{uid}-mission" cx=".3" cy=".25" r="1"><stop offset="0" stop-color="#6f93bd" /><stop offset=".6" stop-color="#22354d" /><stop offset="1" stop-color="#0b121c" /></radialGradient></defs>
+    <rect width="136" height="200" fill="url(#{uid}-mission)" />
+    <circle cx="40" cy="150" r="72" fill="#c45a32" />
+    <circle cx="40" cy="150" r="72" fill="#000" opacity=".28" transform="translate(14 10)" />
+    <ellipse cx="78" cy="70" rx="56" ry="15" fill="none" stroke="#dfe9f5" stroke-width="1.2" transform="rotate(-24 78 70)" opacity=".8" />
+    <circle cx="112" cy="46" r="3.6" fill="#fff" />
+  {:else if art === 'redplanet'}
+    <rect width="136" height="200" fill="#16060a" />
+    <circle cx="68" cy="84" r="50" fill="#b3321f" />
+    <circle cx="50" cy="70" r="9" fill="#8a2416" /><circle cx="84" cy="100" r="13" fill="#8a2416" /><circle cx="88" cy="62" r="5" fill="#8a2416" />
+    <path d="M18 84 A50 50 0 0 0 118 84 A62 40 0 0 1 18 84Z" fill="#000" opacity=".35" />
+    <path d="M10 22 L24 22 M17 15 L17 29 M112 150 L122 150 M117 145 L117 155" stroke="#f3d9c9" stroke-width="1" opacity=".7" />
+  {:else if art === 'dune'}
+    <defs><linearGradient id="{uid}-dune" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6d9a0" /><stop offset=".5" stop-color="#e09a4a" /><stop offset="1" stop-color="#8a4a1c" /></linearGradient></defs>
+    <rect width="136" height="200" fill="url(#{uid}-dune)" />
+    <circle cx="44" cy="44" r="12" fill="#fff4dc" /><circle cx="70" cy="30" r="6" fill="#fff4dc" opacity=".85" />
+    <path d="M0 118 Q46 84 92 112 T136 96 V200 H0Z" fill="#b8692a" />
+    <path d="M0 150 Q60 112 136 146 V200 H0Z" fill="#6e3814" />
+    <path d="M30 138 Q62 120 96 138" fill="none" stroke="#3d1d09" stroke-width="5" stroke-linecap="round" />
+  {:else if art === 'paddington'}
+    <rect width="136" height="200" fill="#1f3f8f" />
+    <circle cx="68" cy="52" r="70" fill="#2a52b5" />
+    <rect x="42" y="62" width="52" height="64" rx="9" fill="#f2a024" />
+    <rect x="48" y="68" width="8" height="52" rx="4" fill="#fff" opacity=".22" />
+    <rect x="38" y="50" width="60" height="14" rx="4" fill="#fff6e6" />
+    <rect x="50" y="84" width="36" height="20" rx="3" fill="#fff6e6" /><path d="M55 91 H81 M55 97 H74" stroke="#c96a12" stroke-width="2" />
+  {:else}
+    <!-- A whodunit in one shape: light through a keyhole. -->
+    <rect width="136" height="200" fill="#12201a" />
+    <circle cx="68" cy="84" r="52" fill="#1c3229" />
+    <circle cx="68" cy="84" r="52" fill="none" stroke="#c9a24a" stroke-width="1.2" opacity=".7" />
+    <path d="M68 52 a17 17 0 0 1 9 31.4 L84 118 H52 L59 83.4 A17 17 0 0 1 68 52Z" fill="#f0c15a" />
+    <path d="M52 118 H84 L96 150 H40Z" fill="#f0c15a" opacity=".22" />
+  {/if}
+  <rect y="150" width="136" height="50" fill="#000" opacity=".28" />
+  <text x="10" y={194 - (lines.length - 1) * 13} class="name">
+    {#each lines as line, i (i)}<tspan x="10" dy={i ? 13 : 0}>{line}</tspan>{/each}
+  </text>
+</svg>
+
+<style>
+  .poster { display: block; width: 100%; height: 100%; }
+  .name { font-family: var(--display); font-size: 12.5px; font-weight: 800; letter-spacing: -0.01em; fill: #fff; }
+</style>
