@@ -647,7 +647,12 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   Future<void> _probeAndReconnectAfterResume() async {
     for (var attempt = 0; attempt < 2; attempt++) {
       await _serverManager.checkServerHealth();
-      await _serverManager.reconnectOfflineServers();
+      // The second attempt is for a network stack that was not awake yet for
+      // the first: a server that failed that first race a moment ago is
+      // retried whatever wait the failure set.
+      await _serverManager.reconnectOfflineServers(
+        retryJustFailed: attempt == 0 ? Duration.zero : const Duration(seconds: 10),
+      );
       if (_serverManager.offlineServerIds.isEmpty || attempt == 1) return;
 
       await Future<void>.delayed(const Duration(seconds: 3));
