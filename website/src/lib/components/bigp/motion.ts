@@ -15,7 +15,7 @@ export const startBigPMotion = (root: HTMLElement) =>
       .from(root.querySelectorAll('.bp-hero .orb'), { opacity: 0, duration: 1.6, ease: 'power2.out' }, 0);
 
     // Cards and panels come up as they enter; in the bento each one also asks for Big P's arm.
-    root.querySelectorAll<HTMLElement>('.bento .grid, .ask .demo, .confirm .stage, .providers').forEach((group) => {
+    root.querySelectorAll<HTMLElement>('.bento .grid, .confirm .stage, .providers').forEach((group) => {
       gsap.from(group.children, { y: 48, opacity: 0, duration: 1, ease: 'expo.out', stagger: 0.09, scrollTrigger: { trigger: group, start: 'top 92%', once: true } });
     });
 

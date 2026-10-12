@@ -3,7 +3,7 @@
   // artwork belongs to their studios, so none of it is used or imitated here: each poster is
   // one idea from the story in flat shapes. No lettering: at card size it would be unreadable,
   // and the title stands next to the poster.
-  export type Art = 'martian' | 'mission' | 'redplanet' | 'dune' | 'paddington' | 'knives' | 'robot' | 'conclave' | 'sinners';
+  export type Art = 'martian' | 'mission' | 'dune' | 'paddington' | 'knives' | 'robot' | 'conclave' | 'sinners' | 'greenmile';
   let { art }: { art: Art } = $props();
   // Gradient ids are per instance, so the same poster can appear twice on a page.
   const uid = $props.id();
@@ -27,12 +27,15 @@
     <circle cx="68" cy="94" r="8" fill="#2c4f86" />
     <path d="M60 140 Q68 176 76 140Z" fill="#ffb020" />
     <circle cx="22" cy="60" r="1.6" fill="#fff" /><circle cx="118" cy="104" r="1.4" fill="#fff" /><circle cx="30" cy="150" r="1.2" fill="#fff" />
-  {:else if art === 'redplanet'}
-    <!-- Black with one crimson disc cut by its own shadow. -->
-    <rect width="136" height="200" fill="#0d0508" />
-    <circle cx="68" cy="100" r="54" fill="#c2261c" />
-    <path d="M68 46 A54 54 0 0 1 68 154 A30 54 0 0 0 68 46Z" fill="#0d0508" opacity=".72" />
-    <circle cx="46" cy="84" r="8" fill="#96190f" /><circle cx="52" cy="122" r="5" fill="#96190f" />
+  {:else if art === 'greenmile'}
+    <!-- A long corridor with a green floor, under one lamp. -->
+    <rect width="136" height="200" fill="#0c1a14" />
+    <path d="M68 78 L128 200 H8Z" fill="#2f8a57" />
+    <path d="M68 78 L96 200 H40Z" fill="#3fa86c" />
+    <path d="M0 0 H136 V40 L68 78 L0 40Z" fill="#12261d" />
+    <path d="M68 0 V30" stroke="#d9c58a" stroke-width="2" />
+    <path d="M54 30 H82 L90 46 H46Z" fill="#d9c58a" />
+    <path d="M46 46 H90 L112 104 H24Z" fill="#fff3c4" opacity=".14" />
   {:else if art === 'dune'}
     <defs><linearGradient id="{uid}-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6d9a0" /><stop offset=".5" stop-color="#e09a4a" /><stop offset="1" stop-color="#8a4a1c" /></linearGradient></defs>
     <rect width="136" height="200" fill="url(#{uid}-g)" />
