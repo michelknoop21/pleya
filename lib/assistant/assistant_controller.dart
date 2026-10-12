@@ -8,6 +8,7 @@ import '../media/ids.dart';
 import '../media/server_administration.dart';
 import '../utils/app_logger.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
+import 'assistant_capabilities.dart';
 import 'assistant_entitlement.dart';
 import 'assistant_intent.dart';
 import 'assistant_kids_ages_store.dart';
@@ -22,6 +23,7 @@ import 'assistant_tool_context.dart';
 import 'assistant_tools.dart';
 import 'assistant_web_lookup.dart';
 
+part 'assistant_controller_idle.dart';
 part 'assistant_controller_jobs.dart';
 part 'assistant_controller_options.dart';
 part 'assistant_controller_language.dart';
@@ -284,7 +286,26 @@ class AssistantController extends ChangeNotifier {
     if (seq != _availabilitySeq) return;
     _availability = availability;
     _notify();
+    if (availability != AssistantAvailability.hidden) unawaited(refreshIdleProfile());
   }
+
+  /// What the profile's own switches say, for the start questions: a
+  /// children's profile and whether the memory is on. Both are stored reads,
+  /// so the greeting works from the last answer; null until the first one.
+  ({bool kids, bool memory})? _idleProfile;
+  int _idleProfileSeq = 0;
+
+  /// The profile's switches were read at least once: until then the start
+  /// questions are those of a children's profile.
+  bool get idleProfileKnown => _idleProfile != null;
+
+  /// Reads the switches again: when an entry point shows, and when the
+  /// children's switch is flipped in Instellingen.
+  Future<void> refreshIdleProfile() => _refreshIdleProfile();
+
+  /// What Big P can answer right now for this profile and its servers, for the
+  /// start questions. Reads live state only, no network.
+  Set<AssistantCapability> idleCapabilities() => _idleCapabilities();
 
   int _availabilitySeq = 0;
 

@@ -9,6 +9,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/media/ids.dart';
 import 'package:pleya/screens/big_p/big_p_input_bar.dart';
 import 'package:pleya/screens/big_p/big_p_mobile_conversation.dart';
 import 'package:pleya/screens/big_p/big_p_mobile_host.dart';
@@ -378,5 +379,58 @@ void main() {
     expect(find.byType(AlertDialog), findsNothing);
     expect(find.byType(BigPConfirmCard), findsNothing);
     expect(c.confirmedPasswords, isEmpty);
+  });
+
+  // What one tap on an action chip leaves on the phone (BP-10): the result
+  // card of the surface TV shares, with the status Pleya can prove.
+  group('after an action chip', () {
+    AssistantActionRecord record(AssistantActionKind kind, {String? jobId, AssistantJobProgress? progress}) =>
+        AssistantActionRecord(
+          kind: kind,
+          serverName: 'Zolder',
+          subject: 'Films',
+          job: AssistantJobWatch(
+            serverId: ServerId('srv-1'),
+            startedAt: DateTime(2026, 10, 4, 21, 14),
+            jobId: jobId,
+            libraryId: jobId == null ? 'lib-films' : null,
+          ),
+          progress: progress,
+        );
+
+    testWidgets('a restarted task is confirmed at once and followed to its end', (tester) async {
+      c
+        ..prompt = t.assistant.examples.retryJobs.first
+        ..state = AssistantSurfaceState.result
+        ..actions = [record(AssistantActionKind.retryJob, jobId: 'j1')];
+      await pumpHost(tester);
+      expect(find.text('Taak opnieuw gestart · Films · Zolder'), findsOneWidget);
+
+      for (final (progress, line) in [
+        (const AssistantJobProgress(AssistantJobPhase.running, percent: 40), 'Taak loopt · 40% · Films · Zolder'),
+        (const AssistantJobProgress(AssistantJobPhase.done), 'Taak klaar · Films · Zolder'),
+        (const AssistantJobProgress(AssistantJobPhase.failed), 'Taak mislukt · Films · Zolder'),
+      ]) {
+        c
+          ..actions = [record(AssistantActionKind.retryJob, jobId: 'j1', progress: progress)]
+          ..emit();
+        await settle(tester);
+        expect(find.text(line), findsOneWidget);
+      }
+    });
+
+    testWidgets('a scan is confirmed, and the running tasks are one tap away', (tester) async {
+      c
+        ..prompt = t.assistant.examples.scan.first
+        ..state = AssistantSurfaceState.result
+        // No server hands back an id for a scan: "gestart" is all Pleya can prove.
+        ..actions = [
+          record(AssistantActionKind.scanLibrary, progress: const AssistantJobProgress(AssistantJobPhase.started)),
+        ];
+      await pumpHost(tester);
+      expect(find.text('Scan gestart · Films · Zolder'), findsOneWidget);
+      expect(find.textContaining('klaar'), findsNothing);
+      expect(find.widgetWithText(BigPChip, t.assistant.followUp.jobs), findsOneWidget);
+    });
   });
 }

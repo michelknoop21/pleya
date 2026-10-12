@@ -195,7 +195,7 @@ class TvAssistantConversation extends StatelessWidget {
           style: TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption1 * pt),
         ),
         SizedBox(height: 12 * pt),
-        for (final (i, example) in BigPSuggestions.of(c).examples(t.assistant.idle.examples).indexed) ...[
+        for (final (i, example) in BigPSuggestions.of(c).examples(c).indexed) ...[
           BigPChip(
             label: example,
             automationId: AutomationIds.assistantExample,

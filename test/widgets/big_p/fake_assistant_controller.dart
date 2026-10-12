@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:pleya/assistant/assistant_capabilities.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_memory.dart';
 import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_example_history.dart';
 
 /// A controller the test drives by hand. Every action the surface can take
 /// is recorded; state only changes where the real controller's would on
@@ -54,6 +56,23 @@ class FakeAssistantController extends AssistantController {
     ),
     _ => null,
   };
+
+  /// What the start questions may show: everything, as for an administrator
+  /// with every service connected, until the test narrows it.
+  Set<AssistantCapability> capabilities = AssistantCapability.values.toSet();
+  @override
+  Set<AssistantCapability> idleCapabilities() => capabilities;
+
+  /// False while the profile's switches are unread: the greeting then picks
+  /// provisionally and once more when they are known.
+  @override
+  bool idleProfileKnown = true;
+
+  @override
+  Future<void> refreshIdleProfile() async {}
+
+  /// A history a test shares between pickers.
+  BigPExampleHistory? history;
 
   final submitted = <String>[];
 

@@ -46,6 +46,8 @@ import '../assistant/assistant_controller_session.dart';
 import '../assistant/assistant_kids_profile_store.dart';
 import '../i18n/strings.g.dart';
 import '../screens/big_p/big_p_mobile_session.dart';
+import '../widgets/big_p/assistant/big_p_example_history.dart';
+import '../widgets/big_p/assistant/big_p_suggestions.dart';
 import '../screens/main_screen.dart';
 import '../services/livetv/plex_favorite_channels_service.dart';
 import '../services/memory/memory_service.dart';
@@ -562,7 +564,14 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               ChangeNotifierProvider(create: (context) => CompanionRemoteProvider()),
               // Big P: per profile, so a conversation or an open confirmation
               // never carries into another profile. Lazy: no work until opened.
-              ChangeNotifierProvider(create: assistantControllerForSession),
+              ChangeNotifierProvider(
+                create: (context) {
+                  final controller = assistantControllerForSession(context);
+                  // The start questions this profile saw last, so the next differ.
+                  BigPSuggestions.of(controller).remember(BigPExampleHistory.stored());
+                  return controller;
+                },
+              ),
               // The memory screen's own field and overview writer (BP-08a):
               // per profile and lazy, so nothing runs until that screen opens.
               ChangeNotifierProvider(create: assistantMemoryHostForSession),

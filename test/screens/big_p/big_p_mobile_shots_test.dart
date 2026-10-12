@@ -281,6 +281,10 @@ void main() {
     });
   }
 
+  testWidgets('39-b summoned, iPad', skip: _dir == null, (tester) async {
+    await shoot(tester, '39-b-opgeroepen-ipad', shotController(seed: 1), phone: _iPad, before: (s) async => s.summon());
+  });
+
   testWidgets('39-c no model', skip: _dir == null, (tester) async {
     final c = shotController()..availability = AssistantAvailability.needsSetup;
     PleyaKeychain.debugForceSupported = true;

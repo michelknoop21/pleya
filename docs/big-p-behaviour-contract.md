@@ -84,6 +84,18 @@ Wat vastligt in code, wat het model mag kiezen, en de terugval. Tools naar huidi
 | Beheer (taken, scans, gebruikers) | beheerder | n.v.t. | server | `scan_library`, `list_jobs`, enz. | parameters binnen schema | rechten opnieuw toetsen na wachten (BP-01) |
 | Diagnose | ik/beheerder | n.v.t. | server | `diagnose_library`, `diagnose_playback` | geen | status onbekend is geen "klaar" |
 
+## Startvragen
+
+De drie vragen onder de begroeting laten zien wat Big P kan. Ze komen uit code, niet uit het model: ze staan er direct, kosten niets en elke vraag is getest.
+
+- Eén bron. `AssistantCapability` (`lib/assistant/assistant_capabilities.dart`) noemt per mogelijkheid de groep, de tools die de vraag hoort te bereiken en een eventuele extra voorwaarde. De teksten staan in `assistant.examples.<naam>` (en en nl). Elke tool zit in een mogelijkheid of in de uitzonderingslijst van `test/assistant/assistant_capabilities_test.dart`, met de reden erbij.
+- Alleen wat werkt. Een mogelijkheid wordt aangeboden als minstens één van haar tools wordt bediend door `assistantServedTools`, de poort die ook een run gebruikt, en de extra voorwaarde klopt. Zonder Seerr dus geen aanvraagvraag, en zonder beheerrecht geen vraag die een beheertool nodig heeft (taken, gebruikers, scan, vergelijken, kijkcijfers). De vragen naar de serverlijst, de bibliotheekdokter en een Home-rij blijven voor elk profiel, want een profiel mag die zelf.
+- Kinderprofiel. Alleen de groep kijken, en alleen via een tool die in `kidsToolPolicy` op `gated` staat. Zolang de profielstatus niet is gelezen geldt het profiel als kinderprofiel.
+- Geen titel, geen naam. Een startvraag noemt geen titel, server of persoon. Een chip telt niet als getypt en schrijft dus nooit geheugen.
+- Kiezen. Drie mogelijkheden uit drie groepen waar het profiel er zoveel heeft. Wat langer niet is getoond weegt zwaarder, wat nooit is getoond het zwaarst. De laatste 24 getoonde vragen worden per profiel onthouden, alleen op dit toestel. Binnen één keer openen blijft de set staan, behalve dat hij één keer opnieuw wordt gekozen zodra de profielstatus is gelezen of de taal wijzigt. Twee keer achter elkaar dezelfde set komt niet voor.
+- Niets bereikbaar. Dan staan er de drie basis-kijkvragen, en het antwoord zegt wat onbereikbaar is.
+- Nieuwe of gewijzigde formulering. De routetest moet groen zijn, en de handmatige ronde in `docs/qa/big-p-startvragen.md` wordt opnieuw gedraaid tegen het ingestelde model.
+
 ## Vragenset en nulmeting
 
 Ongeveer 40 echte vragen, handmatige poort vóór elke build tegen twee modellen; vaste gevallen lopen als gewone tests in CI. Eerste volledige route: "Wat is deze week aan mijn bibliotheken toegevoegd?" (BP-05). De set groeit per fase met de nultolerantiegevallen hierboven.

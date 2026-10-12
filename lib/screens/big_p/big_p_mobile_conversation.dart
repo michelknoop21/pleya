@@ -151,7 +151,7 @@ class BigPMobileConversation extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final (i, example) in BigPSuggestions.of(controller).examples(t.assistant.mobile.examples).indexed) ...[
+          for (final (i, example) in BigPSuggestions.of(controller).examples(controller).indexed) ...[
             // Each chip is a 44 pt touch target: no gap on top of it.
             BigPChip(
               label: example,

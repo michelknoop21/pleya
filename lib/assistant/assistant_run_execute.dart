@@ -3,34 +3,40 @@ part of 'assistant_run.dart';
 // One tool call from the model's request to its output: validation,
 // authority, confirmation where needed, and execution.
 
+/// Each of [tools] that [ctx] serves right now, with the servers it may act
+/// on (none for a serverless tool). The one answer to "can this be used": a
+/// run offers and executes by it, and the start questions are picked by it.
+Map<AssistantTool, List<String>> assistantServedTools(AssistantToolContext ctx, Iterable<AssistantTool> tools) {
+  // Each tool decides through `serves` whether it needs administration.
+  final servers = ctx.userServers;
+  return {
+    for (final tool in tools)
+      if ((!ctx.libraryDoctorMode || tool.name != 'my_watching') &&
+          (!ctx.libraryDoctorMode ||
+              tool.risk == AssistantToolRisk.read ||
+              // A memory write changes nothing on a server and never without the user.
+              _isMemoryTool(tool.name) ||
+              (const {'scan_library', 'refresh_metadata'}.contains(tool.name) &&
+                  ctx.libraryDoctorActions.contains(tool.name))))
+        // A serverless tool still asks `serves`: a missing service (no Seerr)
+        // keeps it out.
+        if (!tool.needsServer && [...servers, AssistantRun._noServer].any((id) => tool.serves(ctx, id)))
+          tool: const <String>[]
+        else if (!tool.needsServer)
+          ...const <AssistantTool, List<String>>{}
+        else if ([
+              for (final id in servers)
+                if (tool.serves(ctx, id)) id.value,
+            ]
+            case final ids when ids.isNotEmpty)
+          tool: ids,
+  };
+}
+
 extension _AssistantExecute on AssistantRun {
   /// Each tool with the servers it may act on right now.
-  Map<AssistantTool, List<String>> _available() {
-    // Each tool decides through `serves` whether it needs administration.
-    final servers = _ctx.userServers;
-    return {
-      for (final tool in _spoilerQuestion != null ? [assistantSpoilerTool] : tools ?? assistantTools)
-        if ((!_ctx.libraryDoctorMode || tool.name != 'my_watching') &&
-            (!_ctx.libraryDoctorMode ||
-                tool.risk == AssistantToolRisk.read ||
-                // A memory write changes nothing on a server and never without the user.
-                _isMemoryTool(tool.name) ||
-                (const {'scan_library', 'refresh_metadata'}.contains(tool.name) &&
-                    _ctx.libraryDoctorActions.contains(tool.name))))
-          // A serverless tool still asks `serves`: a missing service (no Seerr)
-          // keeps it out.
-          if (!tool.needsServer && [...servers, AssistantRun._noServer].any((id) => tool.serves(_ctx, id)))
-            tool: const <String>[]
-          else if (!tool.needsServer)
-            ...const <AssistantTool, List<String>>{}
-          else if ([
-                for (final id in servers)
-                  if (tool.serves(_ctx, id)) id.value,
-              ]
-              case final ids when ids.isNotEmpty)
-            tool: ids,
-    };
-  }
+  Map<AssistantTool, List<String>> _available() =>
+      assistantServedTools(_ctx, _spoilerQuestion != null ? [assistantSpoilerTool] : tools ?? assistantTools);
 
   void _consumeLookups(Map<String, Object?> args, ServerId? server) {
     final item = args['item_id'];

@@ -2568,29 +2568,6 @@
     "providerLabel": "AI provider",
     "mobile": {
       "greeting": "Hi ${name}, what are we looking for?",
-      "examples": [
-        [
-          "What can I watch tonight?",
-          "Give me a comedy for tonight.",
-          "Find an exciting movie for tonight."
-        ],
-        [
-          "Which series can I start now?"
-        ],
-        [
-          "Do I have something for the kids?"
-        ],
-        [
-          "Which movies haven't I seen yet?",
-          "Which movies have sat unwatched in my library for a long time?"
-        ],
-        [
-          "What was added this week?"
-        ],
-        [
-          "Who watched the most this week?"
-        ]
-      ],
       "noModelTitle": "I don't have a brain yet.",
       "noModelBody": "Pick a language model and I'll find movies, request titles and run your servers.",
       "setup": "Set up model",
@@ -2623,27 +2600,84 @@
       "greeting": "Hi ${name}, what needs doing?",
       "status": "Ready for your question · ${servers}",
       "ask": "Ask Big P",
-      "examplesHeader": "For example",
-      "examples": [
-        [
-          "Which tasks failed on my servers today? Restart them."
-        ],
-        [
-          "Scan all movie libraries on all my servers."
-        ],
-        [
-          "Who watched the most this week?",
-          "Who is watching right now?"
-        ],
-        [
-          "What can I watch tonight?"
-        ],
-        [
-          "What was added this week?"
-        ],
-        [
-          "Which popular new movies don't I have yet?"
-        ]
+      "examplesHeader": "For example"
+    },
+    "examples": {
+      "tonight": [
+        "What can I watch tonight?",
+        "Give me a comedy for tonight.",
+        "Find an exciting movie for tonight."
+      ],
+      "startSeries": [
+        "Which series can I start now?"
+      ],
+      "forKids": [
+        "Do I have something for the kids?"
+      ],
+      "unwatched": [
+        "Which films in my library have I not seen yet?",
+        "Which movies have sat unwatched in my library for a long time?"
+      ],
+      "recentlyAdded": [
+        "What was added this week?",
+        "Which series were added recently?"
+      ],
+      "describe": [
+        "Find me a film about space.",
+        "I want a slow detective series for a rainy Sunday."
+      ],
+      "trending": [
+        "What is popular right now?",
+        "Which popular new movies don't I have yet?"
+      ],
+      "request": [
+        "Which thrillers from this year could I add to my library?",
+        "Find a science fiction series worth requesting."
+      ],
+      "trakt": [
+        "Which titles on my Trakt watchlist can I watch here tonight?"
+      ],
+      "history": [
+        "What did I watch lately?",
+        "Give me a tip based on what I watched."
+      ],
+      "memory": [
+        "What do you remember about me?"
+      ],
+      "watchStats": [
+        "Who watched the most this week?",
+        "Who is watching right now?"
+      ],
+      "together": [
+        "What can I watch with my family tonight?"
+      ],
+      "servers": [
+        "Which of my servers are online?"
+      ],
+      "jobs": [
+        "Which tasks are running on my servers now?"
+      ],
+      "retryJobs": [
+        "Which tasks failed on my servers today? Restart them."
+      ],
+      "users": [
+        "Who has access to my servers?"
+      ],
+      "compare": [
+        "Which films are missing between my servers?"
+      ],
+      "doctor": [
+        "Check my library for missing episodes.",
+        "Check my library for duplicate films."
+      ],
+      "homeRow": [
+        "Make a Home row of action films from the nineties."
+      ],
+      "scan": [
+        "Scan all movie libraries on all my servers."
+      ],
+      "playback": [
+        "Why is this stream stuttering?"
       ]
     },
     "listening": {

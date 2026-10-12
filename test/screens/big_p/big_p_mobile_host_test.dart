@@ -109,7 +109,7 @@ void main() {
   }
 
   /// The examples the balloon shows: picked once per summon, then kept.
-  List<String> shownExamples() => BigPSuggestions.of(c).examples(t.assistant.mobile.examples);
+  List<String> shownExamples() => BigPSuggestions.of(c).examples(c);
 
   Future<void> summon(WidgetTester tester) async {
     await tester.tap(find.byType(BigPFaceButton));
