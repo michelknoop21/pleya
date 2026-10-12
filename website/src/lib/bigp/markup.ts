@@ -33,7 +33,7 @@ export function buildSvg(n: number): string {
     .join('');
   return `<svg viewBox="0 0 ${L.w} ${L.h}" focusable="false" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;display:block">
     <defs><radialGradient id="bigp${n}-floor"><stop offset="0" stop-color="#e5140f" stop-opacity=".42"/><stop offset=".55" stop-color="#e5140f" stop-opacity=".14"/><stop offset="1" stop-color="#e5140f" stop-opacity="0"/></radialGradient></defs>
-    <g class="stage">
+    <g class="bigp-stage">
       <ellipse cx="${fx}" cy="${fy + 6}" rx="470" ry="80" fill="url(#bigp${n}-floor)"/>
       <ellipse class="shadow" cx="${fx}" cy="${fy + 4}" rx="300" ry="20" fill="#000" opacity=".55"/>
       <g class="rig">

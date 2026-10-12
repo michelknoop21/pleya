@@ -82,7 +82,7 @@ export class BigP implements Ticker {
     const q = <T extends SVGElement>(sel: string) => host.querySelector<T>(sel)!;
     const qa = (sel: string) => [...host.querySelectorAll<SVGElement>(sel)];
     this.svg = q<SVGSVGElement>('svg');
-    this.stage = q<SVGGElement>('.stage');
+    this.stage = q<SVGGElement>('.bigp-stage');
     this.rig = q<SVGGElement>('.rig');
     this.shadow = q('.shadow');
     this.face = q('.face');
