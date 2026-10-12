@@ -20,6 +20,7 @@ under `Notes`.
 <!-- BEGIN GENERATED -->
 ### Fixed
 - vervolgpunten uit de externe review van PR #286 en #293
+- speler-route gedeeld met Live TV, bedrading getest, claims in de notities teruggebracht
 <!-- END GENERATED -->
 
 ### New
