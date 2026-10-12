@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import SearchIcon from '~icons/material-symbols-light/search-rounded';
   import BigPFigure from '$lib/bigp/BigP.svelte';
   import { prefersReducedMotion } from '$lib/bigp/loop';
@@ -9,6 +9,7 @@
   import spring from '$lib/assets/bigp/posters/spring.webp';
   import charge from '$lib/assets/bigp/posters/charge.webp';
   import Bubble from './Bubble.svelte';
+  import BpMatch from './BpMatch.svelte';
 
   // The first question is one of the app's own examples; the other two and all answers are written for this page.
   const asks = [
@@ -31,6 +32,7 @@
   let said = $state(idleLine);
   let timers: ReturnType<typeof setTimeout>[] = [];
   let stopTalking = () => {};
+  let matches = $state<HTMLElement>();
 
   const line = $derived(phase === 'listening' ? "I'm listening…" : phase === 'working' ? 'Let me check…' : phase === 'answer' && active ? active.line : idleLine);
 
@@ -38,6 +40,7 @@
     timers.forEach(clearTimeout);
     timers = [];
     stopTalking();
+    bigp?.aimAt(null);
   }
   onDestroy(clear);
 
@@ -66,6 +69,8 @@
         bigp.set('success');
         bigp.hop(70, 0.55);
         stopTalking = say(bigp, a.line, (t) => (said = t), () => bigp?.settle(1400));
+        // His suggestions are on screen: he points at the first one, as he does in the app.
+        if (a.id === 'plot') tick().then(() => timers.push(setTimeout(() => matches?.firstElementChild && bigp?.aimAt(matches.firstElementChild), 1300)));
       }, heard + (quick ? 350 : 1500)),
     );
   }
@@ -115,10 +120,15 @@
                       {/each}
                     </ul>
                   {:else if active.id === 'plot'}
-                    <p class="where">In your library · Home server</p>
-                    <p class="title">The Martian</p>
-                    <p class="meta"><span class="tag">Movie</span><span class="tag">2015</span><span class="tag on">Found from the plot</span></p>
+                    <p class="asked"><span>You asked:</span> {active.q}</p>
+                    <p class="title">That sounds like The Martian.</p>
                     <p class="body">You never said the title. Big P matched what happens in the film.</p>
+                    <ul class="matches" bind:this={matches}>
+                      <BpMatch focused title="The Martian" year={2015} status="In your library · Home server" tone="ok" facts="2h 24m · Sci-fi · Adventure" plot="Astronaut Mark Watney is left behind on Mars and has to survive until help arrives." />
+                      <BpMatch title="Mission to Mars" year={2000} kind="Movie · possibly" status="Already requested" tone="requested" tint="#1d2a3a, #5a7fa8" plot="A rescue mission looks for the first crew that vanished on Mars." />
+                      <BpMatch title="Red Planet" year={2000} kind="Movie · possibly" status="Requestable" tint="#3a1612, #a8402e" plot="A crew is stranded on Mars and has to find its own way back." />
+                    </ul>
+                    <p class="shown">Drawn after the Apple TV app: the card with the light edge is where the remote is.</p>
                   {:else}
                     <p class="where">TIDE · S1 E3</p>
                     <p class="body">Anna is the harbour pilot who found the logbook in episode 1. She does not trust the captain yet.</p>
@@ -166,6 +176,10 @@
   .title { margin-top: 0.6rem; font-family: var(--display); font-size: clamp(1.8rem, 3vw, 2.4rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
   .meta { margin-top: 0.8rem; display: flex; flex-wrap: wrap; gap: 0.4rem; }
   .body { margin-top: 0.8rem; max-width: 30rem; color: var(--muted); font-size: 1.02rem; line-height: 1.55; }
+  .asked { color: var(--muted); font-size: 0.95rem; }
+  .asked span { color: var(--faint); }
+  .matches { margin-top: 1.2rem; display: grid; gap: 0.6rem; }
+  .shown { margin-top: 0.9rem; color: var(--muted); font-size: 0.82rem; }
   .posters { margin-top: 0.9rem; display: grid; grid-template-columns: repeat(3, minmax(0, 7.5rem)); gap: 0.8rem; }
   .posters li { display: grid; gap: 0.1rem; font-size: 0.86rem; }
   .posters img { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; margin-bottom: 0.45rem; border-radius: 0.6rem; box-shadow: 0 0 0 1px var(--hair); }
