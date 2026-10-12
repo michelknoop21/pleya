@@ -33,13 +33,15 @@ final class OpenFilePlugin: NSObject, FlutterPlugin, FlutterAppLifecycleDelegate
     }
   }
 
-  /// Takes the file URLs. Other URLs (sign-in callbacks) are left for
-  /// whoever handles them.
+  /// Takes the file URLs. The answer is for the whole event and the first
+  /// delegate that says yes keeps the rest from seeing it, so an event that
+  /// also carries another URL (a sign-in callback) is answered no: the files
+  /// are queued either way, and the other URLs reach whoever handles them.
   func handleOpen(_ urls: [URL]) -> Bool {
     let files = urls.filter { $0.isFileURL }
     guard !files.isEmpty else { return false }
     pending.append(contentsOf: files.map { $0.path })
     channel?.invokeMethod("onFilesAvailable", arguments: nil)
-    return true
+    return files.count == urls.count
   }
 }

@@ -135,7 +135,7 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
     bool backendProgressIsFresh = false,
   }) async {
     LocalResumeProgress? local;
-    if (isOffline) {
+    if (readsOfflineResume(metadata, offlinePlayback: isOffline)) {
       try {
         local = await offlineWatchService.getLocalResumeProgress(metadata.globalKey);
       } catch (e) {

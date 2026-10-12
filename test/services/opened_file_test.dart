@@ -176,32 +176,44 @@ void main() {
     test('a file is released when its player is gone', () async {
       final service = OpenedFileService.forTesting(supported: true, channel: channel);
 
-      service.markPlaying(_path);
+      final gone = service.markPlaying(_path);
       await pumpEventQueue();
       expect(released, isEmpty, reason: 'the player still reads the file');
 
-      service.markFinished(_path);
+      gone();
       await pumpEventQueue();
       expect(released, [_path]);
+    });
+
+    test('a player reported gone twice counts once', () async {
+      final service = OpenedFileService.forTesting(supported: true, channel: channel);
+
+      final first = service.markPlaying(_path);
+      service.markPlaying(_path);
+      first();
+      first();
+      await pumpEventQueue();
+
+      expect(released, isEmpty, reason: 'the second player still has the file');
     });
 
     test('a file opened again keeps its access until the second player is gone too', () async {
       final service = OpenedFileService.forTesting(supported: true, channel: channel);
 
-      service.markPlaying(_path);
-      service.markPlaying(_path);
-      service.markFinished(_path);
+      final first = service.markPlaying(_path);
+      final second = service.markPlaying(_path);
+      first();
       await pumpEventQueue();
       expect(released, isEmpty, reason: 'the replacing player plays the same file');
 
-      service.markFinished(_path);
+      second();
       await pumpEventQueue();
       expect(released, [_path]);
     });
 
     test('a file delivered again while its player closes is not released under the new player', () async {
       final service = OpenedFileService.forTesting(supported: true, channel: channel);
-      service.markPlaying(_path);
+      final first = service.markPlaying(_path);
       final reply = Completer<void>();
       messenger.setMockMethodCallHandler(channel, (call) async {
         if (call.method == 'releaseFiles') released.addAll((call.arguments as List).cast<String>());
@@ -209,23 +221,24 @@ void main() {
         await reply.future;
         return [_path];
       });
+      late VoidCallback second;
 
-      service.attach(service.markPlaying);
+      service.attach((path) => second = service.markPlaying(path));
       await pumpEventQueue();
       // The first player closes while the native list is still on its way.
-      service.markFinished(_path);
+      first();
       reply.complete();
       await pumpEventQueue();
       expect(released, isEmpty, reason: 'the second delivery plays the same file');
 
-      service.markFinished(_path);
+      second();
       await pumpEventQueue();
       expect(released, [_path]);
     });
 
     test('a release asked for during an empty read still happens', () async {
       final service = OpenedFileService.forTesting(supported: true, channel: channel);
-      service.markPlaying(_path);
+      final gone = service.markPlaying(_path);
       final reply = Completer<void>();
       messenger.setMockMethodCallHandler(channel, (call) async {
         if (call.method == 'releaseFiles') released.addAll((call.arguments as List).cast<String>());
@@ -236,7 +249,7 @@ void main() {
 
       service.attach((_) {});
       await pumpEventQueue();
-      service.markFinished(_path);
+      gone();
       reply.complete();
       await pumpEventQueue();
 
@@ -246,9 +259,9 @@ void main() {
     test('a file that waits behind a route is not released by a player closing', () async {
       final service = OpenedFileService.forTesting(supported: true, channel: channel);
 
-      service.markPlaying(_path);
+      final gone = service.markPlaying(_path);
       service.defer(_path);
-      service.markFinished(_path);
+      gone();
       await pumpEventQueue();
 
       expect(released, isEmpty);
@@ -372,6 +385,7 @@ void main() {
               usePushReplacement = false,
               isOffline = false,
               resolveWatchState = true,
+              onPlayerRoute,
             }) async {
               played = metadata;
               offline = isOffline;
@@ -408,8 +422,14 @@ void main() {
         _path,
         service: service,
         navigate:
-            (context, {required metadata, usePushReplacement = false, isOffline = false, resolveWatchState = true}) =>
-                closed.future,
+            (
+              context, {
+              required metadata,
+              usePushReplacement = false,
+              isOffline = false,
+              resolveWatchState = true,
+              onPlayerRoute,
+            }) => closed.future,
       );
       await tester.pump();
       expect(released, isEmpty, reason: 'the player is still open');
@@ -426,13 +446,247 @@ void main() {
           _path,
           service: service,
           navigate:
-              (context, {required metadata, usePushReplacement = false, isOffline = false, resolveWatchState = true}) =>
-                  throw StateError('no player'),
+              (
+                context, {
+                required metadata,
+                usePushReplacement = false,
+                isOffline = false,
+                resolveWatchState = true,
+                onPlayerRoute,
+              }) => throw StateError('no player'),
         ),
         throwsStateError,
       );
       await tester.pump();
       expect(released, [_path]);
+    });
+  });
+
+  group('a dialog or sheet over the player', () {
+    Route<void> playerRoute() => MaterialPageRoute<void>(
+      settings: const RouteSettings(name: kVideoPlayerRouteName),
+      builder: (_) => const Text('player'),
+    );
+
+    testWidgets('is closed, so the next file replaces the player instead of stacking a second one', (tester) async {
+      final key = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(MaterialApp(navigatorKey: key, home: const SizedBox()));
+      final player = playerRoute();
+      unawaited(key.currentState!.push(player));
+      await tester.pumpAndSettle();
+      unawaited(
+        key.currentState!.push(
+          MaterialPageRoute<void>(
+            settings: const RouteSettings(name: 'sheet'),
+            builder: (_) => const Text('sheet'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(isVideoPlayerOnTop(key.currentState!), isFalse);
+
+      expect(uncoverPlayer(key.currentState!, player: player), isTrue);
+      await tester.pumpAndSettle();
+
+      expect(isVideoPlayerOnTop(key.currentState!), isTrue);
+      expect(find.text('sheet'), findsNothing);
+    });
+
+    testWidgets('a route made by createVideoPlayerRoute is the active player until it goes, and reports its disposal', (
+      tester,
+    ) async {
+      final key = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(MaterialApp(navigatorKey: key, home: const SizedBox()));
+      Future<void>? gone;
+      final route = createVideoPlayerRoute(builder: (_) => const Text('player'), onPlayerRoute: (f) => gone = f);
+      var disposed = false;
+      unawaited(gone!.then((_) => disposed = true));
+      expect(activePlayerRoute, isNull, reason: 'not on a navigator yet');
+
+      unawaited(key.currentState!.push(route));
+      await tester.pumpAndSettle();
+      expect(activePlayerRoute, same(route));
+      expect(route.settings.name, kVideoPlayerRouteName);
+      unawaited(key.currentState!.push(MaterialPageRoute<void>(builder: (_) => const Text('sheet'))));
+      await tester.pumpAndSettle();
+      expect(uncoverPlayer(key.currentState!), isTrue, reason: 'found through the registered route, no injection');
+      await tester.pumpAndSettle();
+      expect(find.text('sheet'), findsNothing);
+      expect(disposed, isFalse);
+
+      // The navigator goes away with the player on it: no pop, no completed push.
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      expect(disposed, isTrue);
+      expect(activePlayerRoute, isNull);
+    });
+
+    testWidgets('a player on another navigator is left alone, and so is the stack above it', (tester) async {
+      final outer = GlobalKey<NavigatorState>();
+      final inner = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorKey: outer,
+          home: Navigator(
+            key: inner,
+            onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const SizedBox()),
+          ),
+        ),
+      );
+      final player = playerRoute();
+      unawaited(inner.currentState!.push(player));
+      await tester.pumpAndSettle();
+      unawaited(
+        outer.currentState!.push(
+          MaterialPageRoute<void>(
+            settings: const RouteSettings(name: 'page'),
+            builder: (_) => const Text('page'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(uncoverPlayer(outer.currentState!, player: player), isFalse);
+      await tester.pumpAndSettle();
+
+      expect(find.text('page'), findsOneWidget, reason: 'nothing was closed on a navigator without the player');
+    });
+
+    testWidgets('playOpenedFile replaces the player that lies under a sheet', (tester) async {
+      final key = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(MaterialApp(navigatorKey: key, home: const SizedBox()));
+      final player = playerRoute();
+      unawaited(key.currentState!.push(player));
+      await tester.pumpAndSettle();
+      unawaited(key.currentState!.push(MaterialPageRoute<void>(builder: (_) => const Text('sheet'))));
+      await tester.pumpAndSettle();
+      bool? replaced;
+
+      await playOpenedFile(
+        key.currentContext!,
+        _path,
+        player: player,
+        service: OpenedFileService.forTesting(supported: false),
+        navigate:
+            (
+              context, {
+              required metadata,
+              usePushReplacement = false,
+              isOffline = false,
+              resolveWatchState = true,
+              onPlayerRoute,
+            }) async {
+              replaced = usePushReplacement;
+              return null;
+            },
+      );
+
+      expect(replaced, isTrue);
+    });
+  });
+
+  group('release of the file when the start does not end in a closed player', () {
+    testWidgets('a player route that is disposed releases the file although its push never completes', (tester) async {
+      final key = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(MaterialApp(navigatorKey: key, home: const SizedBox()));
+      const channel = MethodChannel('com.pleya/open_file.dispose_test');
+      final released = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'releaseFiles') released.addAll((call.arguments as List).cast<String>());
+        return null;
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null));
+      final service = OpenedFileService.forTesting(supported: true, channel: channel);
+      final gone = Completer<void>();
+      final never = Completer<bool?>();
+
+      unawaited(
+        playOpenedFile(
+          key.currentContext!,
+          _path,
+          service: service,
+          navigate:
+              (
+                context, {
+                required metadata,
+                usePushReplacement = false,
+                isOffline = false,
+                resolveWatchState = true,
+                onPlayerRoute,
+              }) {
+                onPlayerRoute?.call(gone.future);
+                return never.future;
+              },
+        ),
+      );
+      await tester.pump();
+      expect(released, isEmpty);
+
+      gone.complete();
+      await tester.pump();
+      expect(released, [_path]);
+    });
+
+    testWidgets('a start that ends with its screen gone keeps the file for the next screen', (tester) async {
+      final key = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorKey: key,
+          home: const Scaffold(body: SizedBox(key: ValueKey('s'))),
+        ),
+      );
+      const channel = MethodChannel('com.pleya/open_file.abandon_test');
+      final released = <String>[];
+      final taken = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'releaseFiles') released.addAll((call.arguments as List).cast<String>());
+        return <String>[];
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null));
+      final service = OpenedFileService.forTesting(supported: true, channel: channel);
+      final context = key.currentContext!;
+
+      await playOpenedFile(
+        context,
+        _path,
+        service: service,
+        navigate:
+            (
+              context, {
+              required metadata,
+              usePushReplacement = false,
+              isOffline = false,
+              resolveWatchState = true,
+              onPlayerRoute,
+            }) async {
+              // The screen goes away while the start waits, and returns null.
+              await tester.pumpWidget(const SizedBox());
+              return null;
+            },
+      );
+      await tester.pump();
+      expect(released, isEmpty, reason: 'an AirDrop copy that never played is not deleted');
+
+      service.attach(taken.add);
+      await tester.pump();
+      expect(taken, [_path], reason: 'the next screen is offered the file');
+    });
+  });
+
+  group('the resume position of an opened file', () {
+    test('is not looked up among the offline progress rows', () {
+      final file = openedFileItem(_path);
+      final download = MediaItem(id: _path, backend: MediaBackend.local, kind: MediaKind.movie, serverId: 'local-1');
+
+      expect(readsOfflineResume(file, offlinePlayback: true), isFalse);
+      expect(readsOfflineResume(download, offlinePlayback: true), isTrue);
+      expect(readsOfflineResume(download, offlinePlayback: false), isFalse);
+    });
+
+    test('the player start asks that question before it reads the rows', () {
+      final source = File('lib/screens/video_player/parts/playback_open.dart').readAsStringSync();
+
+      expect(source, contains('readsOfflineResume(metadata, offlinePlayback: isOffline)'));
     });
   });
 
@@ -548,6 +802,15 @@ void main() {
       // in Files arrives in place: only what the system copied may go.
       expect(plugin, contains('if !inPlace { copies.insert(url.path) }'));
       expect(delete, contains('guard copies.remove(path) != nil else { return }'));
+    });
+
+    test('macos leaves an event that also carries other URLs to the other delegates', () {
+      final plugin = File('macos/Runner/OpenFilePlugin.swift').readAsStringSync();
+      final start = plugin.indexOf('func handleOpen(');
+      final handler = plugin.substring(start, plugin.indexOf('\n  }\n', start));
+
+      expect(handler, contains('return files.count == urls.count'));
+      expect(handler, isNot(contains('return true')), reason: 'a yes would hide a sign-in callback from the others');
     });
 
     test('macos answers a release instead of failing the call', () {

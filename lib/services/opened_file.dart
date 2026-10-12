@@ -33,6 +33,11 @@ MediaItem openedFileItem(String path) {
 /// drain and the file would show up under Continue Watching.
 bool queuesOfflineProgress(MediaItem item, {required bool offlinePlayback}) => offlinePlayback && !isOpenedFile(item);
 
+/// Whether the resume position of [item] is looked up among the offline
+/// progress rows. An opened file has none: the key it would be looked up
+/// under, the sentinel and a path, is nobody's.
+bool readsOfflineResume(MediaItem item, {required bool offlinePlayback}) => offlinePlayback && !isOpenedFile(item);
+
 /// Playback data for an opened file: the file itself, nothing to negotiate.
 /// mpv reads the audio and subtitle tracks from the container.
 PlaybackInitializationResult openedFilePlayback(MediaItem item) {

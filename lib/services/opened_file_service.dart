@@ -60,21 +60,25 @@ class OpenedFileService {
   /// while its first player is still being replaced.
   final Map<String, int> _playing = {};
 
-  /// A player is about to start on [path].
-  void markPlaying(String path) => _playing.update(path, (count) => count + 1, ifAbsent: () => 1);
-
-  /// The player started for [path] is gone. Once no player has the file, the
+  /// A player is about to start on [path]. The returned function says it is
+  /// gone, and may be called more than once. Once no player has the file, the
   /// native side lets go of it: the security scope of a file opened in place,
   /// and the copy the system put in the Inbox, which would otherwise stay on
   /// the device until the next file arrives.
-  void markFinished(String path) {
-    final left = (_playing[path] ?? 1) - 1;
-    if (left > 0) {
-      _playing[path] = left;
-      return;
-    }
-    _playing.remove(path);
-    _release([path]);
+  VoidCallback markPlaying(String path) {
+    _playing.update(path, (count) => count + 1, ifAbsent: () => 1);
+    var done = false;
+    return () {
+      if (done) return;
+      done = true;
+      final left = (_playing[path] ?? 1) - 1;
+      if (left > 0) {
+        _playing[path] = left;
+        return;
+      }
+      _playing.remove(path);
+      _release([path]);
+    };
   }
 
   /// Releases asked for while [_drain] waits for the native list. A path in

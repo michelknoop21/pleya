@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 
 import '../media/media_item.dart';
@@ -14,21 +16,25 @@ typedef OpenedFileNavigation =
       bool usePushReplacement,
       bool isOffline,
       bool resolveWatchState,
+      void Function(Future<void> gone)? onPlayerRoute,
     });
 
 /// Plays the file at [path] that the system handed to Pleya.
 ///
-/// A player that is on top is replaced, the way the next episode replaces
-/// the current one: two players stacked would both keep decoding.
+/// A player is replaced, the way the next episode replaces the current one:
+/// two players stacked would both keep decoding. Under a dialog or a sheet
+/// the player is uncovered first.
 Future<void> playOpenedFile(
   BuildContext context,
   String path, {
   @visibleForTesting OpenedFileNavigation navigate = navigateToVideoPlayer,
   @visibleForTesting OpenedFileService? service,
+  @visibleForTesting Route<dynamic>? player,
 }) async {
   appLogger.i('Opened file: starting playback');
   final files = service ?? OpenedFileService.instance;
-  files.markPlaying(path);
+  final release = files.markPlaying(path);
+  var started = false;
   try {
     // Returns when the player is closed or replaced by the next file.
     await navigate(
@@ -38,11 +44,33 @@ Future<void> playOpenedFile(
       // The player's offline start is the one that needs no server client; the
       // online start throws when no client is registered for the item.
       isOffline: true,
-      usePushReplacement: isVideoPlayerOnTop(Navigator.of(context)),
+      usePushReplacement: uncoverPlayer(Navigator.of(context), player: player),
+      // The push of a navigator that is torn down never completes; the
+      // route's disposal still arrives.
+      onPlayerRoute: (gone) {
+        started = true;
+        unawaited(gone.whenComplete(release));
+      },
     );
   } finally {
-    files.markFinished(path);
+    // A start that ended because its screen went away has not played the
+    // file: it waits for the next screen instead of being deleted unseen.
+    if (!started && !context.mounted) files.defer(path);
+    release();
   }
+}
+
+/// Whether the player is, or has been made, the top route of [navigator]. A
+/// dialog or sheet lying over it is closed: it would otherwise be replaced
+/// in the player's place and leave a second player under it.
+@visibleForTesting
+bool uncoverPlayer(NavigatorState navigator, {Route<dynamic>? player}) {
+  if (isVideoPlayerOnTop(navigator)) return true;
+  final route = player ?? activePlayerRoute;
+  // A player on another navigator is none of this one's business.
+  if (route == null || !route.isActive || route.navigator != navigator) return false;
+  navigator.popUntil((candidate) => identical(candidate, route));
+  return true;
 }
 
 /// Whether the top route of [navigator] is the video player.
