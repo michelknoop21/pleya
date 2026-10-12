@@ -181,7 +181,8 @@
 
 <style>
   .privacy-article {
-    max-width: 64rem;
+    /* 44rem of text plus the side padding: about 70 characters a line. */
+    max-width: 47rem;
     margin-inline: auto;
     padding: 4rem 1.5rem;
   }
@@ -226,12 +227,21 @@
     line-height: 1.75;
     max-width: none;
   }
+  /* A hairline and more air above every section; the first one sits under the title. */
   .prose h2 {
     color: var(--color-text);
-    font-size: 1.25rem;
+    font-size: 1.375rem;
     font-weight: 600;
-    margin-top: 2.5rem;
-    margin-bottom: 0.75rem;
+    line-height: 1.75rem;
+    margin-top: 3rem;
+    margin-bottom: 0.875rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--color-border);
+  }
+  .prose > h2:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
   }
   .prose h3 {
     color: var(--color-text);
@@ -249,7 +259,10 @@
     margin-bottom: 1rem;
   }
   .prose li {
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.375rem;
+  }
+  .prose li::marker {
+    color: var(--color-text-faint);
   }
   .prose a {
     color: var(--color-accent);
@@ -258,6 +271,12 @@
   }
   .prose a:hover {
     opacity: 0.8;
+  }
+  .prose a:focus-visible,
+  .back-link:focus-visible {
+    outline: 2px solid var(--color-accent-2);
+    outline-offset: 3px;
+    border-radius: 2px;
   }
 
   @media (min-width: 640px) {
