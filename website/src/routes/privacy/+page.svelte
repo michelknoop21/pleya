@@ -6,6 +6,7 @@
   const sections = [
     { id: 'introduction', title: "Introduction" },
     { id: 'your-recommendations-stay-on-your-device', title: "Your Recommendations Stay on Your Device" },
+    { id: 'big-p-the-assistant', title: "Big P, the Assistant" },
     { id: 'information-we-collect', title: "Information We Collect" },
     { id: 'how-we-use-your-information', title: "How We Use Your Information" },
     { id: 'data-storage-and-security', title: "Data Storage and Security" },
@@ -253,6 +254,47 @@
           <p>Pleya builds personalized recommendations by analyzing your library and viewing activity <strong>entirely on your device</strong>. Your taste profile is computed and stored locally &mdash; it is never uploaded to us, and we do not use it to track or profile you across services. If you use Big P, parts of it (what you watched recently and what you like, such as genres, actors and directors) can go to the AI provider you chose, as described under Data Sharing. This processing powers the "for you" suggestions inside the app and nothing more.</p>
         </div>
       </section>
+      <section class="policy-section" id="big-p-the-assistant">
+        <div class="core">
+          <h2>Big P, the Assistant</h2>
+          <p>Big P is the assistant inside Pleya. It is optional: it does nothing until you set it up under Settings &gt; Big P and choose where its language model runs.</p>
+
+          <div class="well">
+            <h3>Your AI provider</h3>
+            <ul>
+              <li>You choose the provider: your own Ollama server, Ollama Cloud (ollama.com) or OpenRouter (openrouter.ai), with your own API key. Pleya has no AI service of its own and does not receive your conversations</li>
+              <li>When you ask something, Pleya sends that provider: your question, earlier messages in the same conversation, your profile name, what Big P remembers about you, and the results it looks up to answer you. Those results can include titles from your libraries, what you watched recently and what you like, viewing figures from Tautulli with the account names on your server, request status from Seerr, and your Trakt watchlist when you ask about it</li>
+              <li>The provider's own privacy policy applies to what it does with that. With your own Ollama server nothing leaves your network</li>
+              <li>Your provider settings and API key are stored in iCloud Keychain on iPhone and Apple TV, so they sync between your Apple devices, and on the device elsewhere</li>
+            </ul>
+          </div>
+
+          <div class="well">
+            <h3>Conversations and memory</h3>
+            <ul>
+              <li>A conversation is kept in memory while you use it. It is not saved to disk</li>
+              <li>Big P remembers something only when you ask it to. What it remembers is stored on your device, per profile, and is not synced. You can ask Big P what it remembers and to forget it</li>
+            </ul>
+          </div>
+
+          <div class="well">
+            <h3>Online title information</h3>
+            <ul>
+              <li>For facts about a title (age rating, genres, runtime, cast, score, where it streams) Big P first uses your own media server and Seerr</li>
+              <li>With "Add online information" on, which is the default, it also asks TMDB (with your own key, if you entered one), Trakt, TVmaze and Wikidata. These receive only the title's public identifier (IMDb, TMDB or TVDB), not your account or what you watched</li>
+              <li>When a title cannot be identified from your description, Big P searches Wikipedia and Wikidata. With "Search the web" on, the description also goes to a web search at your provider (Ollama or OpenRouter). This is on by default with Ollama Cloud and OpenRouter, and off with your own Ollama server</li>
+              <li>You can switch both off under Settings &gt; Big P</li>
+            </ul>
+          </div>
+
+          <div class="well">
+            <h3>Children's profiles</h3>
+            <ul>
+              <li>On a children's profile Big P cannot read watching history, viewing figures, the Trakt watchlist or its memory</li>
+            </ul>
+          </div>
+        </div>
+      </section>
       <section class="policy-section" id="information-we-collect">
         <div class="core">
           <h2>Information We Collect</h2>
@@ -379,7 +421,11 @@
             <li>Plex services for authentication and media server communication, when signing in with Plex (as required for the app to function)</li>
             <li>Your self-hosted Jellyfin server, when signing in with Jellyfin (as required for the app to function)</li>
             <li>Trakt, if you connect your Trakt account and allow Pleya to send your watching</li>
-            <li>The AI provider you set up for Big P, if you use it: your questions, earlier messages in the conversation, your profile name, what Big P remembers about you, and the results it looks up to answer them (for example what you watched recently, what you like, titles from your libraries and, when you ask about it, your Trakt watchlist)</li>
+            <li>The AI provider you set up for Big P, as described under Big P, the Assistant</li>
+            <li>Your Seerr server (Jellyseerr or Overseerr), if you connect it: your searches and the requests you make. Pleya signs in to it with your Plex account token, or with the email and password or the API key you enter. This is a server you or someone you know runs</li>
+            <li>Your Tautulli server, if you connect it: Pleya reads viewing history from it. Nothing about you is sent beyond the request itself</li>
+            <li>TMDB, Trakt, TVmaze, Wikidata and Wikipedia, when Big P looks up title information online: a title's public identifier or a search phrase, never your account</li>
+            <li>The web search of your AI provider, when "Search the web" is on: the description of the title you are looking for</li>
           </ul>
         </div>
       </section>
@@ -888,7 +934,7 @@
 
     .index a {
       min-height: 0;
-      padding: 0.3rem 0 0.3rem 0.875rem;
+      padding: 0.24rem 0 0.24rem 0.875rem;
       border: 0;
       border-radius: 0.5rem;
       background: none;
