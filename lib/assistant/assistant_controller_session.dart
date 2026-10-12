@@ -65,7 +65,11 @@ AssistantController assistantControllerForSession(BuildContext context) {
   );
   BigPVoice(controller, playbackActive: () => VideoPlayerScreenState.activeId != null);
   // The children's switch flipped while a memory card waits: the card goes.
-  void kidsChanged() => unawaited(controller.recheckMemoryCards());
+  void kidsChanged() {
+    unawaited(controller.recheckMemoryCards());
+    unawaited(controller.refreshIdleProfile());
+  }
+
   KidsProfileStore.changes.addListener(kidsChanged);
   controller.onDispose(() => KidsProfileStore.changes.removeListener(kidsChanged));
   return controller;

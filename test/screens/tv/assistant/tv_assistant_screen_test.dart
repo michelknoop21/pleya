@@ -6,10 +6,13 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/assistant/assistant_capabilities.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_examples.dart';
 import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
+import 'package:pleya/automation/automation_ids.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -150,9 +153,9 @@ void main() {
       await pumpSurface(tester);
 
       expect(focusedLabel(), 'assistant.ask');
-      final shown = BigPSuggestions.of(c).examples(t.assistant.idle.examples);
+      final shown = BigPSuggestions.of(c).examples(c);
       expect(shown, hasLength(3));
-      expect(t.assistant.idle.examples.expand((kind) => kind), containsAll(shown));
+      expect(AssistantCapability.values.expand(assistantExamples), containsAll(shown));
       for (final example in shown) {
         expect(find.text(example), findsOneWidget);
       }
@@ -203,13 +206,42 @@ void main() {
       expect(c.cancelledListening, 1);
     });
 
+    testWidgets('the three chips follow the profile, and a new visit shows another set', (tester) async {
+      // A member: one server, no administration, no Seerr.
+      c.capabilities = {
+        AssistantCapability.tonight,
+        AssistantCapability.startSeries,
+        AssistantCapability.unwatched,
+        AssistantCapability.recentlyAdded,
+        AssistantCapability.history,
+        AssistantCapability.servers,
+      };
+      final allowed = c.capabilities.expand(assistantExamples).toSet();
+      List<String> chips() => [
+        for (final chip in tester.widgetList<BigPChip>(find.byType(BigPChip)))
+          if (chip.automationId == AutomationIds.assistantExample) chip.label,
+      ];
+
+      await pumpSurface(tester);
+      final first = chips();
+      expect(first, hasLength(3));
+      expect(allowed, containsAll(first));
+      expect(first, isNot(contains(t.assistant.examples.scan.single)), reason: 'not an administrator');
+
+      await tester.pumpWidget(const SizedBox());
+      await pumpSurface(tester);
+      expect(chips(), hasLength(3));
+      expect(chips().toSet(), isNot(first.toSet()), reason: 'a new visit, another set');
+      expect(allowed, containsAll(chips()));
+    });
+
     testWidgets('choosing an example submits it at once', (tester) async {
       await pumpSurface(tester);
 
       await press(tester, LogicalKeyboardKey.arrowDown);
       await press(tester, LogicalKeyboardKey.select);
 
-      expect(c.submitted, [BigPSuggestions.of(c).examples(t.assistant.idle.examples).first]);
+      expect(c.submitted, [BigPSuggestions.of(c).examples(c).first]);
       expect(c.submittedTyped, [false]);
       expect(edits, isEmpty, reason: 'an example needs no keyboard');
     });

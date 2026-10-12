@@ -1,11 +1,15 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../assistant/assistant_capabilities.dart';
 import '../../../assistant/assistant_controller.dart';
 import '../../../assistant/assistant_tools.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../media/media_kind.dart';
+import 'big_p_example_history.dart';
+import 'big_p_examples.dart';
 
 /// Three questions that follow from what the run showed, in the UI's
 /// language, after every answer. Pleya builds them from the displays and the
@@ -80,9 +84,12 @@ List<String> assistantFollowUps(List<AssistantDisplay> displays, {bool jobs = fa
 /// what the balloon shows. A new pick is never the set shown just before,
 /// when the pool has another. One per controller, on TV and on iPhone.
 class BigPSuggestions {
-  BigPSuggestions({Random? random}) : _random = random ?? Random();
+  BigPSuggestions({Random? random, BigPExampleHistory? history})
+    : _random = random ?? Random(),
+      _history = history ?? BigPExampleHistory();
 
   final Random _random;
+  BigPExampleHistory _history;
   static final _byController = Expando<BigPSuggestions>();
 
   static BigPSuggestions of(AssistantController controller) => _byController[controller] ??= BigPSuggestions();
@@ -92,8 +99,15 @@ class BigPSuggestions {
   static void install(AssistantController controller, BigPSuggestions suggestions) =>
       _byController[controller] = suggestions;
 
+  /// The profile's own history of shown examples, read in the background.
+  void remember(BigPExampleHistory history) {
+    _history = history;
+    unawaited(history.load());
+  }
+
   List<String>? _examples;
   AppLocale? _examplesLocale;
+  bool _examplesProvisional = false;
   List<String> _lastExamples = const [];
   Object? _answer;
   List<String> _followUps = const [];
@@ -102,16 +116,72 @@ class BigPSuggestions {
   /// Big P came out: the next greeting picks new examples.
   void summoned() => _examples = null;
 
-  /// Three of [pool], the same until [summoned] or a new language. The pool
-  /// is grouped by kind: three kinds, one phrasing of each.
-  List<String> examples(List<List<String>> pool) {
+  /// Three questions that show what Big P can do for [c]'s profile on its
+  /// servers, the same until [summoned] or a new language. Three capabilities,
+  /// from three groups where the profile has that many, one phrasing of each.
+  /// A capability weighs more the longer ago the greeting showed it.
+  List<String> examples(AssistantController c) {
     final locale = LocaleSettings.currentLocale;
-    if (_examples case final shown? when _examplesLocale == locale) return shown;
+    // Picked before the profile's switches were read, as for a children's
+    // profile: picked once more when they are known.
+    final settled = !_examplesProvisional || !c.idleProfileKnown;
+    if (_examples case final shown? when _examplesLocale == locale && settled) return shown;
     _examplesLocale = locale;
-    return _examples = _lastExamples = _fresh(
-      () => [for (final kind in (List.of(pool)..shuffle(_random)).take(3)) kind[_random.nextInt(kind.length)]],
-      _lastExamples,
-    );
+    _examplesProvisional = !c.idleProfileKnown;
+    final available = c.idleCapabilities();
+    var picked = const <BigPShownExample>[];
+    final texts = _fresh(() {
+      picked = _pickExamples(available);
+      return [for (final e in picked) assistantExamples(e.capability)[e.phrasing]];
+    }, _lastExamples);
+    // A provisional pick is not what the user asked to see: not remembered.
+    if (!_examplesProvisional) _history.note(picked);
+    return _examples = _lastExamples = texts;
+  }
+
+  List<BigPShownExample> _pickExamples(Set<AssistantCapability> available) {
+    final open = available.toList();
+    final picked = <AssistantCapability>[];
+    while (picked.length < 3 && open.isNotEmpty) {
+      final groups = {for (final c in picked) c.group};
+      final other = [
+        for (final c in open)
+          if (!groups.contains(c.group)) c,
+      ];
+      final next = _weighted(other.isEmpty ? open : other);
+      picked.add(next);
+      open.remove(next);
+    }
+    // Nothing reachable (every server offline): the plain watch questions.
+    for (final c in AssistantCapability.fallback) {
+      if (picked.length < 3 && !picked.contains(c)) picked.add(c);
+    }
+    return [for (final c in picked) (capability: c, phrasing: _phrasing(c))];
+  }
+
+  AssistantCapability _weighted(List<AssistantCapability> from) {
+    // Shown at the last summon weighs 1, a summon earlier 2, and so on; never
+    // shown (or longer ago than the history holds) weighs the most.
+    int weight(AssistantCapability c) => switch (_history.summonsSince(c)) {
+      null => BigPExampleHistory.limit ~/ 3 + 4,
+      final ago => ago + 1,
+    };
+    var roll = _random.nextInt(from.fold(0, (sum, c) => sum + weight(c)));
+    for (final c in from) {
+      roll -= weight(c);
+      if (roll < 0) return c;
+    }
+    return from.last;
+  }
+
+  /// A phrasing the history does not hold, when [c] has one.
+  int _phrasing(AssistantCapability c) {
+    final count = assistantExamples(c).length;
+    final unseen = [
+      for (var i = 0; i < count; i++)
+        if (!_history.showed(c, i)) i,
+    ];
+    return unseen.isEmpty ? _random.nextInt(count) : unseen[_random.nextInt(unseen.length)];
   }
 
   /// The follow-ups for [c]'s answer, the same while that answer shows.

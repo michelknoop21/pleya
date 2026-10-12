@@ -167,8 +167,9 @@ Bijgesteld door Michel op 2 oktober 2026, na de eerste ronde beelden.
 
 ## Nog open
 
-1. **Voorbeeldvragen.** Voorstel: een vast drietal in deze ronde. Kiezen op basis van wat er op de
-   servers speelt kan later zonder ander ontwerp.
+1. **Voorbeeldvragen.** Besloten op 12 oktober 2026 (BP-10): geen vast drietal meer. De drie vragen
+   komen uit wat Big P voor dit profiel op deze servers kan, zie `docs/big-p-behaviour-contract.md`,
+   sectie "Startvragen". Het beeld (drie chips onder "Bijvoorbeeld") is ongewijzigd.
 2. **Annuleren tijdens werken (38 F).** In de core stopt Annuleren het wachten op het model; een
    actie die Pleya al heeft uitgevoerd wordt niet teruggedraaid, en een gevoelige actie loopt nooit
    zonder kaart. De knop blijft daarom staan, en de resultaatkaart toont wat er al gebeurd was.

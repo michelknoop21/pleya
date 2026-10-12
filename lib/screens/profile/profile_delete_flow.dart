@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../assistant/assistant_kids_ages_store.dart';
 import '../../assistant/assistant_kids_profile_store.dart';
+import '../../widgets/big_p/assistant/big_p_example_history.dart';
 import '../../connection/connection_registry.dart';
 import '../../database/app_database.dart';
 import '../../i18n/strings.g.dart';
@@ -107,6 +108,7 @@ Future<void> clearProfileScopedStores(StorageService storage, String profileId) 
   // And the children's ages Big P picks for: local to this profile.
   await KidsAgesStore.clearForProfileScope(scope);
   await KidsProfileStore.clearForProfileScope(scope);
+  await BigPExampleHistory.clearForProfileScope(scope);
   // And whether Big P's memory was on for this profile. The remembered facts
   // live in the database and go in [deleteProfile].
   await MemoryEnabledStore.clearForProfileScope(scope);
