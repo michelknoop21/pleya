@@ -48,14 +48,13 @@
   <div class="orb red" aria-hidden="true"></div>
   <div class="wrap grid">
     <div class="copy" data-reveal>
-      <p class="eyebrow">Who is in charge</p>
       <h2 id="confirm-title">Big P talks.<br /><span class="grad">Pleya decides.</span></h2>
       <p class="lede">
         Big P sends your question to a language model to understand what you mean. Pleya checks your rights, asks for
         confirmation on sensitive actions and carries them out itself.
       </p>
       <p class="aside">
-        The model cannot press Confirm. Creating or removing a user, changing who may see a library, sending a request:
+        The model cannot press that button. Creating or removing a user, changing who may see a library, sending a request:
         each of them waits at a card like this one. A scan or a retry starts right away and shows its status.
       </p>
       <p class="aside">The password you type on that card in the app goes to your server. It does not go to Big P or to the AI provider.</p>
@@ -84,7 +83,7 @@
               </div>
             {:else}
               <div class="result">
-                <p class="header">{outcome === 'done' ? 'Carried out by Pleya' : 'Not carried out by Pleya'}</p>
+                <p class="header" class:ok={outcome === 'done'}>{outcome === 'done' ? 'Carried out by Pleya' : 'Not carried out by Pleya'}</p>
                 <h3>{outcome === 'done' ? 'User created' : 'Nothing was changed.'}</h3>
                 <button type="button" class="no again" onclick={again}>Show the card again</button>
               </div>
@@ -100,16 +99,16 @@
 <style>
   .orb.red { width: min(56rem, 120vw); aspect-ratio: 1; left: -20%; top: 0; }
   .grid { position: relative; display: grid; gap: 3rem; }
-  h2 { margin-top: 1.4rem; }
   .lede { margin-top: 1.6rem; }
   .aside { margin-top: 1rem; max-width: 34rem; color: var(--muted); }
   .stage { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); align-items: end; gap: 0.5rem; }
   .fig { margin-left: -6%; }
   /* Fixed height: answering the card must not move the column next to it. */
   .card { position: relative; align-self: center; }
-  .card .bz-core { min-height: 33rem; }
+  @media (min-width: 560px) { .card .bz-core { min-height: 33rem; } }
+  .header.ok { color: #3dd68c; }
   .asked { color: var(--ink); font-size: 0.95rem; }
-  .asked span { color: var(--faint); }
+  .asked span { color: var(--muted); }
   .header { margin-top: 1.3rem; color: var(--amber); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
   h3 { margin-top: 0.4rem; font-family: var(--display); font-size: clamp(1.5rem, 2.4vw, 2rem); letter-spacing: -0.02em; }
   dl { margin-top: 1rem; display: grid; }
