@@ -34,7 +34,7 @@
     <p>Pleya ("we", "our", or "the app") is a third-party client for Plex and Jellyfin that allows you to access and stream content from your media server. This privacy policy explains how we handle your information when you use our app.</p>
 
     <h2>Your Recommendations Stay on Your Device</h2>
-    <p>Pleya builds personalized recommendations by analyzing your library and viewing activity <strong>entirely on your device</strong>. Your taste profile is computed and stored locally &mdash; it is never uploaded to us or any third party, and we do not use it to track or profile you across services. This processing powers the "for you" suggestions inside the app and nothing more.</p>
+    <p>Pleya builds personalized recommendations by analyzing your library and viewing activity <strong>entirely on your device</strong>. Your taste profile is computed and stored locally &mdash; it is never uploaded to us, and we do not use it to track or profile you across services. If you use Big P, parts of it (what you watched recently and what you like, such as genres, actors and directors) can go to the AI provider you chose, as described under Data Sharing. This processing powers the "for you" suggestions inside the app and nothing more.</p>
 
     <h2>Information We Collect</h2>
 
@@ -111,7 +111,7 @@
     <p>Pleya can connect to your Trakt account. This is off until you sign in with a code at trakt.tv/activate. When you connect:</p>
     <ul>
       <li>Your Trakt access token is stored on your device and is used only to talk to Trakt</li>
-      <li>After you connect, Pleya asks once whether it may send your watching to Trakt. Only if you allow it, Pleya sends play, pause and stop events and "watched" marks (identifiers such as IMDb or TMDB IDs, the season and episode number, how far you are, and when). If Trakt cannot be reached, Pleya keeps the pending watched marks on your device and sends them later. You can switch each off under Settings &gt; Trakt. If you sync your settings through iCloud, your answer syncs to your other devices too. A rating you give in Pleya is sent to Trakt as well</li>
+      <li>After you connect, Pleya asks once whether it may send your watching to Trakt. Only if you allow it, Pleya sends play, pause and stop events and "watched" marks (identifiers such as IMDb or TMDB IDs, the season and episode number, how far you are, and when). If Trakt cannot be reached, Pleya keeps the pending watched marks on your device and tries again later. You can switch each off under Settings &gt; Trakt. If you sync your settings through iCloud, your answer syncs to your other devices too. A rating you give in Pleya is sent to Trakt as well</li>
       <li>Pleya reads your Trakt watched history and watchlist so it can leave out titles you have already seen and show your watchlist next to your libraries. The history is used on your device and is not saved to disk. If you ask Big P about your watchlist, up to 30 titles from it are included in the request to the AI provider you chose</li>
       <li>Trakt is not available on children's profiles</li>
       <li>You can disconnect under Settings &gt; Trakt, which revokes the token at Trakt when Trakt can be reached</li>
@@ -133,12 +133,12 @@
       <li>Transmit your data to our own servers (except crash/diagnostic reports as described above)</li>
       <li>Track your viewing habits outside of local app functionality, except what you choose to send to Trakt as described above</li>
     </ul>
-    <p>Your data is only shared with:</p>
+    <p>Depending on what you use, your data is shared with:</p>
     <ul>
       <li>Plex services for authentication and media server communication, when signing in with Plex (as required for the app to function)</li>
       <li>Your self-hosted Jellyfin server, when signing in with Jellyfin (as required for the app to function)</li>
       <li>Trakt, if you connect your Trakt account and allow Pleya to send your watching</li>
-      <li>The AI provider you set up for Big P, if you use it: your questions and the results Big P looks up to answer them (for example titles from your libraries and, when you ask about it, your Trakt watchlist)</li>
+      <li>The AI provider you set up for Big P, if you use it: your questions, earlier messages in the conversation, your profile name, what Big P remembers about you, and the results it looks up to answer them (for example what you watched recently, what you like, titles from your libraries and, when you ask about it, your Trakt watchlist)</li>
     </ul>
 
     <h2>Your Rights and Choices</h2>
