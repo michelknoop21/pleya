@@ -492,6 +492,35 @@ void main() {
       expect(find.text('sheet'), findsNothing);
     });
 
+    testWidgets('a route made by createVideoPlayerRoute is the active player until it goes, and reports its disposal', (
+      tester,
+    ) async {
+      final key = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(MaterialApp(navigatorKey: key, home: const SizedBox()));
+      Future<void>? gone;
+      final route = createVideoPlayerRoute(builder: (_) => const Text('player'), onPlayerRoute: (f) => gone = f);
+      var disposed = false;
+      unawaited(gone!.then((_) => disposed = true));
+      expect(activePlayerRoute, isNull, reason: 'not on a navigator yet');
+
+      unawaited(key.currentState!.push(route));
+      await tester.pumpAndSettle();
+      expect(activePlayerRoute, same(route));
+      expect(route.settings.name, kVideoPlayerRouteName);
+      unawaited(key.currentState!.push(MaterialPageRoute<void>(builder: (_) => const Text('sheet'))));
+      await tester.pumpAndSettle();
+      expect(uncoverPlayer(key.currentState!), isTrue, reason: 'found through the registered route, no injection');
+      await tester.pumpAndSettle();
+      expect(find.text('sheet'), findsNothing);
+      expect(disposed, isFalse);
+
+      // The navigator goes away with the player on it: no pop, no completed push.
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      expect(disposed, isTrue);
+      expect(activePlayerRoute, isNull);
+    });
+
     testWidgets('a player on another navigator is left alone, and so is the stack above it', (tester) async {
       final outer = GlobalKey<NavigatorState>();
       final inner = GlobalKey<NavigatorState>();
@@ -777,7 +806,8 @@ void main() {
 
     test('macos leaves an event that also carries other URLs to the other delegates', () {
       final plugin = File('macos/Runner/OpenFilePlugin.swift').readAsStringSync();
-      final handler = plugin.substring(plugin.indexOf('func handleOpen('));
+      final start = plugin.indexOf('func handleOpen(');
+      final handler = plugin.substring(start, plugin.indexOf('\n  }\n', start));
 
       expect(handler, contains('return files.count == urls.count'));
       expect(handler, isNot(contains('return true')), reason: 'a yes would hide a sign-in callback from the others');

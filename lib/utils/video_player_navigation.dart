@@ -48,6 +48,16 @@ class _VideoPlayerRoute extends PageRouteBuilder<bool> {
 
 Route<dynamic>? _playerRoute;
 
+/// The route every built-in player is pushed as. It is registered here, so
+/// [activePlayerRoute] knows it, and [onPlayerRoute] gets the future that
+/// completes when the route is disposed.
+Route<bool> createVideoPlayerRoute({required WidgetBuilder builder, void Function(Future<void> gone)? onPlayerRoute}) {
+  final route = _VideoPlayerRoute(pageBuilder: (context, animation, secondaryAnimation) => builder(context));
+  _playerRoute = route;
+  onPlayerRoute?.call(route.disposed);
+  return route;
+}
+
 /// The route of the player that is on a navigator right now, if any: not
 /// necessarily on top, a dialog or a sheet can lie over it.
 Route<dynamic>? get activePlayerRoute {
@@ -344,8 +354,9 @@ Future<bool?> navigateToVideoPlayer(
       return null;
     }
 
-    final route = _VideoPlayerRoute(
-      pageBuilder: (context, animation, secondaryAnimation) => VideoPlayerScreen(
+    final route = createVideoPlayerRoute(
+      onPlayerRoute: onPlayerRoute,
+      builder: (context) => VideoPlayerScreen(
         metadata: metadata,
         preferredAudioTrack: preferredAudioTrack,
         preferredSubtitleTrack: preferredSubtitleTrack,
@@ -358,8 +369,6 @@ Future<bool?> navigateToVideoPlayer(
         onPlaybackInitFailed: onPlaybackInitFailed,
       ),
     );
-    _playerRoute = route;
-    onPlayerRoute?.call(route.disposed);
 
     final result = usePushReplacement ? navigator.pushReplacement<bool, bool>(route) : navigator.push<bool>(route);
     if (markedInFlight) {
