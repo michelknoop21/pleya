@@ -53,7 +53,7 @@ Nothing user-facing since the last published build.
 
 ## 2.8.1 · build 357 · 12 October 2026 · Apple TV
 
-<!-- commit: 59c432be5f072f4cf1f66eea6ca5f2a9f40dbc15 -->
+<!-- commit: 5b7a5efcb26e97a543337d15c73a85bbc5933bb9 -->
 
 ### New
 - Big P has a memory. Tell Big P what it should know about you, for example "remember that I
@@ -117,7 +117,7 @@ Nothing user-facing since the last published build.
 
 ## 2.8.1 · build 356 · 12 October 2026 · iPhone and iPad
 
-<!-- commit: 59c432be5f072f4cf1f66eea6ca5f2a9f40dbc15 -->
+<!-- commit: 5b7a5efcb26e97a543337d15c73a85bbc5933bb9 -->
 
 ### New
 - Big P has a memory. Tell Big P what it should know about you, for example "remember that I
