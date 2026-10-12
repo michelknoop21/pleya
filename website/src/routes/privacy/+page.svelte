@@ -408,9 +408,10 @@
             <p>Pleya can connect to these trackers. Each is off until you sign in, and not every build offers all three. When you connect one:</p>
             <ul>
               <li>Your access token is stored on your device and is used only to talk to that tracker. Signing in to MyAnimeList or AniList passes through our relay, as described under Data Storage and Security</li>
-              <li>From then on Pleya tells that tracker what you finish watching: the title's identifier, the episode you reached and whether you completed it. This starts when you connect; you can switch it off per tracker under Settings &gt; Trackers. A rating you give in Pleya is sent as well</li>
-              <li>To match anime to these trackers, Pleya downloads a public mapping list through jsDelivr. That request does not say what you watch</li>
-              <li>You can disconnect under Settings &gt; Trackers</li>
+              <li>From then on Pleya keeps that tracker's list in step with what you watch or mark in Pleya: the title's identifier, the season and episode you reached and whether you completed it. That covers titles you play to the end, titles you mark as watched by hand (a whole season or series sends every episode), and watching done offline or in an external player once it syncs. Marking something unwatched removes it from the tracker's list again. This starts when you connect; you can switch it off per tracker under Settings &gt; Trackers</li>
+              <li>A rating you give or clear in Pleya is sent as well. To show them, Pleya reads your username and your existing ratings from the tracker</li>
+              <li>To match anime to MyAnimeList and AniList, Pleya downloads two public mapping lists through jsDelivr and checks them for updates weekly. jsDelivr sees your IP address; the request does not say what you watch</li>
+              <li>You can disconnect under Settings &gt; Trackers, which removes the token from your device</li>
             </ul>
             <p>Their own privacy policies apply: <a href="https://myanimelist.net/about/privacy_policy" target="_blank" rel="noopener noreferrer">myanimelist.net/about/privacy_policy</a>, <a href="https://anilist.co/terms" target="_blank" rel="noopener noreferrer">anilist.co/terms</a> and <a href="https://simkl.com" target="_blank" rel="noopener noreferrer">simkl.com</a>. We do not control their data practices.</p>
           </div>
@@ -420,7 +421,7 @@
             <ul>
               <li>Our relay server (ice.pleya.app)</li>
             </ul>
-            <p>These uploads are necessary because Discord requires publicly accessible image URLs for Rich Presence artwork. Uploaded images are removed after 3 hours. Pleya also passes what you are playing (the title, and for an episode the season, episode number and episode title) to the Discord app on your computer, which shows it in your Discord status. This feature exists on desktop only, is opt-in and is disabled by default.</p>
+            <p>These uploads are necessary because Discord requires publicly accessible image URLs for Rich Presence artwork. Uploaded images are removed after 3 hours. Pleya also passes what you are playing (the title, for an episode the season, episode number and episode title, for a film the year and studio, and how far along you are) to the Discord app on your computer, which shows it in your Discord status. This feature exists on desktop only, is opt-in and is disabled by default.</p>
           </div>
         </div>
       </section>
@@ -439,8 +440,8 @@
             <li>Plex services for authentication and media server communication, when signing in with Plex (as required for the app to function)</li>
             <li>Your self-hosted Jellyfin server, when signing in with Jellyfin (as required for the app to function)</li>
             <li>Trakt, if you connect your Trakt account and allow Pleya to send your watching</li>
-            <li>MyAnimeList, AniList or Simkl, if you connect one: what you finish watching and the ratings you give</li>
-            <li>Discord, when Discord Rich Presence is on: the title you are playing</li>
+            <li>MyAnimeList, AniList or Simkl, if you connect one: what you watch or mark as watched and the ratings you give</li>
+            <li>Discord, when Discord Rich Presence is on: the title you are playing and how far along you are</li>
             <li>The AI provider you set up for Big P, as described under Big P, the Assistant</li>
             <li>Your Seerr server (Jellyseerr or Overseerr), if you connect it: your searches and the requests you make. Pleya signs in to it with your Plex account token, or with the email and password or the API key you enter; those are kept encrypted on your device to sign in again. This is a server you or someone you know runs</li>
             <li>Your Tautulli server, if you connect it: Pleya reads viewing history from it, with the API key you entered</li>
@@ -459,6 +460,7 @@
             <li>Manage your Plex account directly through Plex's services, or your Jellyfin account through your Jellyfin server</li>
             <li>See and remove what Big P remembers under Settings &gt; Big P, and switch off online information and web search there</li>
             <li>Disconnect Trakt under Settings &gt; Trakt, which revokes its token at Trakt when Trakt can be reached</li>
+            <li>Disconnect MyAnimeList, AniList or Simkl under Settings &gt; Trackers, which removes the token from your device</li>
             <li>Disconnect Seerr or Tautulli in Settings, which removes the stored sign-in from your device. Viewing history already imported from Tautulli stays on your device but is no longer used</li>
             <li>Ask us to delete a log you sent before it expires, or ask what we hold about you, at <a href="mailto:beta@pleya.app">beta@pleya.app</a></li>
           </ul>
@@ -492,7 +494,7 @@
         <div class="core">
           <h2>International Data Transfers</h2>
           <p>We run two servers of our own: an error tracking server (bugs.pleya.app) and a relay (ice.pleya.app), both described under Data Storage and Security. They are hosted in the Netherlands and are reached through Cloudflare, which passes the traffic on to them.</p>
-          <p>Everything else goes directly from your device to the service you use, and where that data is processed depends on that service: Plex (subject to Plex's privacy policy), your own Jellyfin, Seerr or Tautulli server (governed by whoever operates it), Trakt, and for Big P the provider you chose and the online sources it uses. Some of these, such as Ollama Cloud, OpenRouter, Trakt and TMDB, are based in the United States. If you use them, your data is processed outside the European Union under their privacy policies.</p>
+          <p>Everything else goes directly from your device to the service you use, and where that data is processed depends on that service: Plex (subject to Plex's privacy policy), your own Jellyfin, Seerr or Tautulli server (governed by whoever operates it), Trakt and the other trackers, Discord, and for Big P the provider you chose and the online sources it uses. Some of these, such as Ollama Cloud, OpenRouter, Trakt, Discord and TMDB, are based in the United States. If you use them, your data is processed outside the European Union under their privacy policies.</p>
         </div>
       </section>
       <section class="policy-section" id="legal-compliance">
