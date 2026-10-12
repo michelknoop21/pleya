@@ -343,12 +343,15 @@
       <section class="policy-section" id="how-we-use-your-information">
         <div class="core">
           <h2>How We Use Your Information</h2>
-          <p>We use the collected information solely to:</p>
+          <p>We use the collected information only to:</p>
           <ul>
             <li>Authenticate you with your Plex or Jellyfin account</li>
             <li>Connect to and communicate with your media server</li>
             <li>Display your media library and stream content</li>
             <li>Maintain your session and app preferences</li>
+            <li>Answer your questions in Big P, if you set it up, as described under Big P, the Assistant</li>
+            <li>Keep the optional services you connect working, such as Trakt, Seerr, Tautulli, Watch Together and Discord Rich Presence</li>
+            <li>Find and fix bugs, from crash reports and from the logs you choose to send us</li>
           </ul>
         </div>
       </section>
@@ -358,8 +361,9 @@
           <ul>
             <li>Authentication tokens are stored securely on your device using platform-specific secure storage mechanisms</li>
             <li>App preferences are stored locally on your device</li>
-            <li>Crash and diagnostic data is sent to our self-hosted error tracking server (bugs.pleya.app) &mdash; no third-party services receive this data</li>
-            <li>All other communication is directly between your device and your media server, with Plex's authentication services when signing in with Plex, or with Trakt if you connect your Trakt account</li>
+            <li>Crash and diagnostic data is sent to our self-hosted error tracking server (bugs.pleya.app) &mdash; no third-party service stores this data. It reaches our server through Cloudflare</li>
+            <li>Our relay server (ice.pleya.app) is used only when you use one of these features: logs you send us from Settings (kept for 3 days; a sent log gets a short ID, and whoever has that ID can read it until it expires), Watch Together (what is playing, with its title and position, and the display names of the participants; a room expires after 24 hours at most), artwork for Discord Rich Presence (removed after 3 hours), and signing in to MyAnimeList or AniList (the sign-in passes through the relay; your tokens are not logged or stored there). Signing in to Simkl ends on a page the relay serves. The relay's own server log records your IP address with each upload; that log is rotated by size, not by date</li>
+            <li>All other communication goes directly from your device to the service involved: your media server, Plex's authentication services when signing in with Plex, and the optional services you connect or switch on, such as Trakt and other trackers, Seerr, Tautulli, your Big P provider and the online sources it uses. None of that passes through our servers</li>
           </ul>
         </div>
       </section>
@@ -400,12 +404,12 @@
             <p>Trakt's own privacy policy applies: <a href="https://trakt.tv/privacy" target="_blank" rel="noopener noreferrer">trakt.tv/privacy</a>. We do not control Trakt's data practices.</p>
           </div>
           <div class="well">
-            <h3>Litterbox (Discord Rich Presence)</h3>
+            <h3>Discord Rich Presence</h3>
             <p>When Discord Rich Presence is enabled, media artwork may be temporarily uploaded to:</p>
             <ul>
-              <li>Litterbox (litterbox.catbox.moe) &mdash; a temporary file hosting service</li>
+              <li>Our relay server (ice.pleya.app)</li>
             </ul>
-            <p>These uploads are necessary because Discord requires publicly accessible image URLs for Rich Presence artwork. Uploaded images automatically expire after 1 hour. This feature is opt-in and disabled by default.</p>
+            <p>These uploads are necessary because Discord requires publicly accessible image URLs for Rich Presence artwork. Uploaded images are removed after 3 hours. This feature is opt-in and disabled by default.</p>
           </div>
         </div>
       </section>
@@ -416,7 +420,7 @@
           <ul>
             <li>Sell your personal information</li>
             <li>Share your information with third parties for marketing purposes</li>
-            <li>Transmit your data to our own servers (except crash/diagnostic reports as described above)</li>
+            <li>Transmit your data to our own servers (except crash/diagnostic reports and the relay uses described under Data Storage and Security)</li>
             <li>Track your viewing habits outside of local app functionality, except what you choose to send to Trakt as described above</li>
           </ul>
           <p>Depending on what you use, your data is shared with:</p>
@@ -440,6 +444,10 @@
             <li>Sign out at any time to remove your authentication session from the device</li>
             <li>Uninstall the app to remove all locally stored data</li>
             <li>Manage your Plex account directly through Plex's services, or your Jellyfin account through your Jellyfin server</li>
+            <li>See and remove what Big P remembers under Settings &gt; Big P, and switch off online information and web search there</li>
+            <li>Disconnect Trakt under Settings &gt; Trakt, which revokes its token at Trakt when Trakt can be reached</li>
+            <li>Disconnect Seerr or Tautulli in Settings, which removes the stored sign-in from your device. Viewing history already imported from Tautulli stays on your device but is no longer used</li>
+            <li>Ask us to delete a log you sent before it expires, or ask what we hold about you, at <a href="mailto:beta@pleya.app">beta@pleya.app</a></li>
           </ul>
         </div>
       </section>
@@ -468,7 +476,8 @@
       <section class="policy-section" id="international-data-transfers">
         <div class="core">
           <h2>International Data Transfers</h2>
-          <p>As we do not operate backend servers, there are no international data transfers from our side. Any data transfers occur directly between your device and either Plex's services (subject to Plex's privacy policy) or your Jellyfin server (governed by whoever operates it).</p>
+          <p>We run two servers of our own: an error tracking server (bugs.pleya.app) and a relay (ice.pleya.app), both described under Data Storage and Security. They are hosted in the Netherlands and are reached through Cloudflare, which passes the traffic on to them.</p>
+          <p>Everything else goes directly from your device to the service you use, and where that data is processed depends on that service: Plex (subject to Plex's privacy policy), your own Jellyfin, Seerr or Tautulli server (governed by whoever operates it), Trakt, and for Big P the provider you chose and the online sources it uses. Some of these, such as Ollama Cloud, OpenRouter, Trakt and TMDB, are based in the United States. If you use them, your data is processed outside the European Union under their privacy policies.</p>
         </div>
       </section>
       <section class="policy-section" id="legal-compliance">
