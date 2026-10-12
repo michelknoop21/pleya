@@ -73,13 +73,13 @@
       <figure>
         <figcaption>The switch "Add online information"</figcaption>
         <blockquote>
-          Big P then adds the age rating, genres, runtime, cast, score and streaming services of a title from TMDB,
-          Trakt, TVmaze and Wikidata. Only the title or the title's ids go to those services, never your account or
-          profile. With the switch off, Big P uses only your server and Seerr.
+          Big P then adds the age rating, genres, runtime, cast, score and streaming services of a title from online
+          film databases. Only the title or the title's ids go to those services, never your account or profile. With
+          the switch off, Big P uses only your server and Seerr.
         </blockquote>
       </figure>
     </div>
-    <p class="example">Both notes are quoted from the Big P settings in the app.</p>
+    <p class="example">The first note is quoted from the Big P settings in the app. The second is shortened: the app names each database.</p>
     <div class="bp-next"><Cta note /></div>
   </div>
 </section>
