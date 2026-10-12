@@ -18,13 +18,7 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-### New
-- geheugen in het gesprek, voorstelkaart en overzichtsschrijver (BP-08a stap 2) (#285)
-- terugschrijven alleen na toestemming, dubbelen en not_checked bewaakt, releasevoorwaarden
-
-### Fixed
-- wachtrij volgt de toestemming, privacypagina en releasegate benoemd
-- geopend videobestand loslaten zodra de speler sluit
+Nothing user-facing since the last published build.
 <!-- END GENERATED -->
 
 ### New
@@ -34,7 +28,8 @@ under `Notes`.
   this is in build 355; it is not in a Mac build yet and has not been checked on a Mac.
 - **Big P can use your Trakt history and watchlist.** With Trakt connected, Big P counts what
   you marked as watched there as seen and can tell you which watchlist titles are in your
-  libraries. The code is in build 355, but Trakt sign-in is not switched on in any build yet.
+  libraries. The code is in the builds from 355 on, but Trakt sign-in is not switched on in any
+  build yet.
 - **A Pleya Server can now be shared by a household.** The owner adds an account per person and
   decides which libraries each of them sees. A library somebody has no access to does not show
   up in their list, in their search results, or when they open a link straight to it. Watch
@@ -52,14 +47,116 @@ under `Notes`.
 
 ### Improved
 
-- **A video file you opened no longer stays behind on your iPhone or iPad.** Some
-  ways of opening a film, AirDrop among them, copy it into Pleya; that copy is now removed
-  when the player closes, where it used to stay until the next file arrived. For a file
-  opened in place (Files, iCloud Drive) Pleya gives its access back at the same moment. Not
-  checked on a device yet.
 - **Ending a session takes effect while a film is playing.** A revoked session stops the stream
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
+
+## 2.8.1 · build 357 · 12 October 2026 · Apple TV
+
+<!-- commit: 59c432be5f072f4cf1f66eea6ca5f2a9f40dbc15 -->
+
+### New
+- Big P has a memory. Tell Big P what it should know about you, for example "remember that I
+  do not like horror", and it keeps that sentence and uses it in later answers. When Big P
+  thinks something is worth keeping without you asking, it shows a card first: Shall I remember
+  this? Nothing is stored, replaced or forgotten without your yes.
+- Memories belong to one profile and stay on this Apple TV. They do not sync to your other
+  devices. With a cloud model, the memories that match your question go along with it.
+- Settings, Big P, Memory shows what Big P knows about this profile as a short overview that
+  Big P writes from your memories. From there you can ask or change something with the keyboard
+  or dictation, open the list of memories to search, add, edit and delete them, switch the
+  memory off, or clear everything.
+
+### Fixed
+- When you ask Big P for one film or show, such as "that film with Tom Hanks about death row",
+  it shows the card of that title only, not every film with the same actor.
+- When Plex refuses to delete a film or show, the message no longer tells you to switch on
+  Allow media deletion when that setting is already on. It names the setting only when it is
+  off, and otherwise points at what usually blocks it: folder permissions or a drive that is
+  not available on the server.
+
+### Notes
+- On a children's profile Big P uses no memory. You can still open the screen there to view
+  and clear what was stored.
+- Big P does not keep children's ages or a language preference in its memory; those stay under
+  Children's profile and Language & subtitles. A memory is one sentence of at most 200
+  characters, and a profile holds at most 200 of them.
+- With the memory switched off Big P remembers nothing and uses nothing. What was stored stays
+  until you clear it.
+- Trakt for Big P is not switched on in this build, so there is no Trakt sign-in to test yet.
+
+### Worth checking
+- Nothing in this build has been checked on an Apple TV yet. The memory is covered by automated
+  tests and runs in the simulator; the overview Big P writes has not been run against a real
+  language model.
+- Big P: say or type "remember that I do not like horror". Big P should answer that it
+  remembered it. Then ask for a film for tonight and check that horror stays out.
+- Settings, Big P, Memory: check that the overview reads well, that every button can be reached
+  with the Siri Remote, including Clear all memories at the bottom, and that Back closes one
+  layer at a time.
+- Open a memory, change its text and its category and save. Then delete one.
+- Dictate a question in Ask or update and check that the answer stays readable while you move
+  around.
+- Switch the memory off, ask Big P something it stored, and check that it no longer knows.
+- Switch to another profile and check that its memory is empty.
+
+## 2.8.1 · build 356 · 12 October 2026 · iPhone and iPad
+
+<!-- commit: 59c432be5f072f4cf1f66eea6ca5f2a9f40dbc15 -->
+
+### New
+- Big P has a memory. Tell Big P what it should know about you, for example "remember that I
+  do not like horror", and it keeps that sentence and uses it in later answers. When Big P
+  thinks something is worth keeping without you asking, it shows a card first: Shall I remember
+  this? Nothing is stored, replaced or forgotten without your yes.
+- Memories belong to one profile and stay on this device. They do not sync to your other
+  devices. With a cloud model, the memories that match your question go along with it.
+- Settings, Big P, Memory shows what Big P knows about this profile as a short overview that
+  Big P writes from your memories. You can ask or change something right there. The menu opens
+  the list of memories, where you search, add, edit and delete them, and it is also where you
+  switch the memory off or clear everything.
+
+### Improved
+- A video file you opened no longer stays behind on your iPhone or iPad. Some ways of opening a
+  film, AirDrop among them, copy it into Pleya; that copy is now removed when the player
+  closes, where it used to stay until the next file arrived. For a file opened in place (Files,
+  iCloud Drive) Pleya gives its access back at the same moment.
+
+### Fixed
+- When Plex refuses to delete a film or show, the message no longer tells you to switch on
+  Allow media deletion when that setting is already on. It names the setting only when it is
+  off, and otherwise points at what usually blocks it: folder permissions or a drive that is
+  not available on the server.
+
+### Notes
+- On a children's profile Big P uses no memory. You can still open the screen there to view
+  and clear what was stored.
+- Big P does not keep children's ages or a language preference in its memory; those stay under
+  Children's profile and Language & subtitles. A memory is one sentence of at most 200
+  characters, and a profile holds at most 200 of them.
+- With the memory switched off Big P remembers nothing and uses nothing. What was stored stays
+  until you clear it.
+- The new delete message does not make Plex delete anything it refused before. If your server
+  still refuses with the setting on, the cause is on the server.
+- Trakt for Big P is not switched on in this build, so there is no Trakt sign-in to test yet.
+
+### Worth checking
+- Nothing in this build has been checked on an iPhone or iPad yet. The memory is covered by
+  automated tests and runs in the simulator; the overview Big P writes has not been run against
+  a real language model.
+- Big P: type "remember that I do not like horror". Big P should answer that it remembered it.
+  Then ask for a film for tonight and check that horror stays out.
+- Mention something in passing, such as "we usually watch on Friday evening", and check whether
+  Big P offers the card. Try both answers on it.
+- Settings, Big P, Memory: check that the overview reads well. Ask something in the field at
+  the bottom with the keyboard open, on a small iPhone if you have one, and check that nothing
+  is cut off and every button can be reached.
+- Open the list, add a memory by hand, edit one and delete one. Search for a word.
+- Switch the memory off, ask Big P something it stored, and check that it no longer knows.
+- Switch to another profile and check that its memory is empty.
+- Send a video to Pleya by AirDrop, close the player, and check in the Files app, in Pleya's
+  own folder, that no copy of it stays behind.
+- Delete a film on Plex that the server refuses and read the message.
 
 ## 2.8.1 · build 355 · 11 October 2026 · iPhone and iPad
 
