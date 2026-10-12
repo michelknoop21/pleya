@@ -457,7 +457,7 @@
           <p>You can:</p>
           <ul>
             <li>Sign out at any time to remove your authentication session from the device</li>
-            <li>Uninstall the app to remove all locally stored data</li>
+            <li>Uninstall the app to remove the data it stores on your iPhone, iPad or Apple TV. Items in the keychain are not removed by uninstalling: disconnect your trackers on each profile and turn off Big P under Settings &gt; Big P first if you want those gone. On Windows, Linux and Mac, uninstalling can leave the app's settings files behind, including the encrypted tokens; disconnect or sign out first there as well. Turning off Big P removes its settings and keys from iCloud Keychain, so from your other Apple devices as well</li>
             <li>Manage your Plex account directly through Plex's services, or your Jellyfin account through your Jellyfin server</li>
             <li>See and remove what Big P remembers under Settings &gt; Big P, and switch off online information and web search there</li>
             <li>Disconnect Trakt under Settings &gt; Trakt, which revokes its token at Trakt when Trakt can be reached</li>
@@ -487,7 +487,8 @@
             <li>Local preferences and settings are retained until you uninstall the app</li>
             <li>Crash and diagnostic reports are retained on our self-hosted server and automatically pruned based on relevance</li>
             <li>On our relay: logs you send us are kept for 3 days, a Watch Together room for 24 hours at most and Discord artwork for 3 hours. The relay's server log, which includes IP addresses, is rotated by size</li>
-            <li>Tokens for Trakt and other trackers are retained on your device until you disconnect the tracker or uninstall the app</li>
+            <li>Tokens for Trakt and other trackers are retained on your device until you disconnect the tracker. On iPhone, iPad and Apple TV they are in the keychain of the device, which uninstalling does not empty; a token left there is not read by a later install</li>
+            <li>Your Big P provider settings and keys are retained until you turn off Big P. On iPhone, iPad and Apple TV they are in iCloud Keychain and stay there after uninstalling, so a later install finds them again</li>
           </ul>
         </div>
       </section>
