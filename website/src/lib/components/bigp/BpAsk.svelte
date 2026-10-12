@@ -40,7 +40,10 @@
   const wide = () => matchMedia('(min-width: 900px)').matches;
   // The balloon may sit above the window after a tap on a follow-up: bring it back in.
   function reveal() {
-    if (!sheet) return;
+    if (!sheet || !stage) return;
+    // Only while the demo is still on screen: a visitor who scrolled on is not pulled back.
+    const seen = stage.getBoundingClientRect();
+    if (seen.bottom < 0 || seen.top > window.innerHeight) return;
     // A balloon taller than the window has no nearest edge: when its top is cut off, go to the top.
     const cut = sheet.getBoundingClientRect().top < 80;
     sheet.scrollIntoView({ block: cut ? 'start' : 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
