@@ -26,14 +26,3 @@ for name in "${SMALL[@]}"; do
 done
 
 du -ch "$OUT"/*.webp | tail -1
-
-du -ch "$OUT"/*.webp | tail -1
-
-# Posters in the example answer: Blender open movies only (CC BY), 300 px wide.
-POSTERS="${BIGP_POSTERS:-}"
-if [ -n "$POSTERS" ] && [ -d "$POSTERS" ]; then
-  mkdir -p "$OUT/posters"
-  for name in sintel spring charge; do
-    cwebp -quiet -q 80 -resize 300 0 "$POSTERS/$name.jpg" -o "$OUT/posters/$name.webp"
-  done
-fi

@@ -27,7 +27,7 @@
     <ul class="ways" data-reveal>
       <li><SearchIcon aria-hidden="true" /><h3>Call him where you are</h3><p>From Home, from Search, or from the menu of a title with Ask Big P. He opens next to what you were doing.</p></li>
       <li><MicIcon aria-hidden="true" /><h3>Speak or type</h3><p>Dictate the question or type it. Big P can answer with a short spoken reaction, never while you dictate or watch.</p></li>
-      <li><ForumIcon aria-hidden="true" /><h3>Ask more</h3><p>A follow-up continues the same conversation, and Big P suggests the next question under each answer.</p></li>
+      <li><ForumIcon aria-hidden="true" /><h3>Ask more</h3><p>A follow-up continues the same conversation, and Big P suggests questions to ask next.</p></li>
     </ul>
 
     <h3 class="sub" data-reveal><span>More from the app's own examples</span></h3>
@@ -38,7 +38,7 @@
     </ul>
     <p class="aside">
       He can also turn a search into a row on your home screen or into a collection, add the age rating and where a
-      title streams when you switch on online information, and tell you why something will not play.
+      title streams when you switch on online information, and say whether what you are playing is transcoding and why.
     </p>
   </div>
 </section>

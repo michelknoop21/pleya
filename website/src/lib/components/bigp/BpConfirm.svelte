@@ -76,7 +76,7 @@
                 <div><dt>Access</dt><dd>Kids</dd></div>
                 <div><dt>Admin</dt><dd>No</dd></div>
               </dl>
-              <p class="field"><LockIcon aria-hidden="true" /><span>Password</span><span class="dots" aria-label="filled in, hidden">••••••••</span></p>
+              <p class="field"><LockIcon aria-hidden="true" /><span>Password</span><span class="dots"><span aria-hidden="true">••••••••</span><span class="sr">filled in, hidden</span></span></p>
               <p class="note">This password does not go to Big P or to the AI provider.</p>
               <div class="buttons">
                 <button type="button" class="no" onclick={() => decide(false)}>Cancel</button>
@@ -117,6 +117,7 @@
   dt { color: var(--muted); }
   .field { margin-top: 1rem; display: flex; align-items: center; gap: 0.6rem; padding: 0.75rem 0.9rem; border-radius: 0.8rem; background: rgba(255, 255, 255, 0.08); color: var(--muted); font-size: 0.95rem; }
   .field :global(svg) { font-size: 1.25rem; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .field .dots { margin-left: auto; color: var(--ink); letter-spacing: 0.15em; }
   .note { margin-top: 0.5rem; color: var(--muted); font-size: 0.8rem; }
   .buttons { margin-top: 1.2rem; display: flex; gap: 0.6rem; }

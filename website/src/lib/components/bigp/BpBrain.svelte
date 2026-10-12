@@ -47,7 +47,7 @@
         <p class="eyebrow">Bring your own brain</p>
         <h2 id="brain-title" data-split>He needs a language model. You choose which.</h2>
         <p class="lede">
-          Pleya does not ship a language model and does not run one itself. Open Big P in the app, choose Set up model
+          Pleya does not ship a language model and does not run one itself. Open Big P in the app, start the setup
           and pick one of these three. Pleya fetches the models, lists only the ones that can use tools and lets you
           test the connection.
         </p>
