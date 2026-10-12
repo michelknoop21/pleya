@@ -151,6 +151,7 @@ void main() {
       await store.save('alice', _session('tok-1'));
       // A launch before the first unlock: the prefs come back empty.
       resetSharedPreferencesForTest();
+      keychain.calls.clear();
 
       expect(await store.load('alice'), isNull);
       expect(keychain.items[_key], contains('tok-1'));
@@ -234,6 +235,56 @@ void main() {
       expect(await store.load('alice'), isNull);
       expect(keychain.items, isEmpty);
       expect(await _markerSet(), isNull);
+    });
+
+    test('an earlier install is removed before the marker is set', () async {
+      keychain.items[_key] = _session('previous-install').encode();
+      String? itemAtWrite;
+      keychain.onWrite = () async => itemAtWrite = keychain.items[_key];
+
+      await store.save('alice', _session('tok-1'));
+
+      expect(itemAtWrite, isNull, reason: 'a stop before the write must not leave marker and old item together');
+      expect((await store.load('alice'))?.accessToken, 'tok-1');
+    });
+
+    test('an earlier install that cannot be removed keeps the keychain unused', () async {
+      keychain.items[_key] = _session('previous-install').encode();
+      keychain.deleteError = PlatformException(code: 'KEYCHAIN', message: 'OSStatus -25308');
+
+      await store.save('alice', _session('tok-1'));
+
+      expect(await _markerSet(), isNull);
+      expect(CredentialVault.isProtected(await _blob()), isTrue);
+      expect(keychain.items[_key], contains('previous-install'));
+      expect(keychain.calls, isNot(contains('write')));
+    });
+
+    test('a refused save after a failed clear keeps the cleared item unread', () async {
+      await store.save('alice', _session('cleared'));
+      keychain.deleteError = PlatformException(code: 'KEYCHAIN', message: 'OSStatus -25308');
+      await store.clear('alice');
+      keychain.deleteError = null;
+      keychain.writeError = PlatformException(code: 'KEYCHAIN', message: 'OSStatus -25308');
+
+      await store.save('alice', _session('new'));
+
+      expect(await _markerSet(), isNot(isTrue));
+      expect(keychain.items[_key], isNull);
+      expect((await store.load('alice'))?.accessToken, 'new');
+    });
+
+    test('a save after a failed clear replaces the cleared item', () async {
+      await store.save('alice', _session('cleared'));
+      keychain.deleteError = PlatformException(code: 'KEYCHAIN', message: 'OSStatus -25308');
+      await store.clear('alice');
+      keychain.deleteError = null;
+
+      await store.save('alice', _session('new'));
+
+      expect(await _markerSet(), isTrue);
+      expect(keychain.items[_key], contains('new'));
+      expect((await store.load('alice'))?.accessToken, 'new');
     });
 
     test('overlapping save and load never put an older session back', () async {

@@ -145,7 +145,13 @@ class TrackerAccountStore {
     // find its own item again. A refused write puts the old marker back, so
     // an item of an earlier install never becomes readable.
     final before = prefs.getBool(_markerKey(key));
-    if (before != true) await prefs.setBool(_markerKey(key), true);
+    if (before != true) {
+      // Whatever sits under this key is not a live session of this install.
+      // It goes before the marker does, so the marker never stands next to
+      // an item of an earlier install.
+      if (!await _deleteItem(keychain, key)) return false;
+      await prefs.setBool(_markerKey(key), true);
+    }
     var stored = false;
     try {
       stored = await keychain.write(key, json) && await keychain.read(key) == json;
