@@ -2,7 +2,6 @@
   import '../docs/docs.css';
   import TopNav from '$lib/components/TopNav.svelte';
   import Footer from '$lib/components/Footer.svelte';
-  import { pageMotion } from '$lib/motion';
 
   const sections = [
     { id: 'introduction', title: "Introduction" },
@@ -22,18 +21,87 @@
   ];
 
   let active = $state(sections[0].id);
+  let root: HTMLElement | undefined = $state();
+  let list: HTMLElement | undefined = $state();
+  let end: HTMLElement | undefined = $state();
 
-  // Which section is being read, for the index. An observer, not a scroll
-  // listener: it costs nothing while nothing crosses the band.
+  // The section a reader chose from the index. At the very end of the page a
+  // short section cannot reach the reading band, so the choice is kept there.
+  let chosen: string | undefined;
+
+  // Which section is being read. Observers, not a scroll listener. A section
+  // counts while it crosses a band just under the navigation; of several, the
+  // first in the document wins, so a short section is not skipped for the next.
+  // A click marks its entry at once: at the end of the page nothing scrolls.
   $effect(() => {
-    const observer = new IntersectionObserver(
+    const page = root;
+    const tail = end;
+    if (!page || !tail) return;
+    const plates = [...page.querySelectorAll<HTMLElement>('.policy-section')];
+    const inBand = new Set<string>();
+    let atEnd = false;
+    const settle = () => {
+      if (atEnd) active = chosen ?? sections[sections.length - 1].id;
+      else active = plates.find((plate) => inBand.has(plate.id))?.id ?? active;
+    };
+    const band = new IntersectionObserver(
       (entries) => {
-        for (const entry of entries) if (entry.isIntersecting) active = entry.target.id;
+        for (const entry of entries) {
+          if (entry.isIntersecting) inBand.add(entry.target.id);
+          else inBand.delete(entry.target.id);
+        }
+        settle();
       },
-      { rootMargin: '-20% 0px -65% 0px' }
+      { rootMargin: '-120px 0px -60% 0px' }
     );
-    document.querySelectorAll('.policy-section').forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
+    const bottom = new IntersectionObserver((entries) => {
+      atEnd = entries[0].isIntersecting;
+      if (!atEnd) chosen = undefined;
+      settle();
+    });
+    plates.forEach((plate) => band.observe(plate));
+    bottom.observe(tail);
+    return () => {
+      band.disconnect();
+      bottom.disconnect();
+    };
+  });
+
+  // Keep the current entry in view when the index scrolls inside its plate.
+  $effect(() => {
+    const box = list;
+    const link = box?.querySelector<HTMLElement>(`a[href="#${active}"]`);
+    if (!box || !link) return;
+    const top = link.offsetTop - box.offsetTop;
+    if (top < box.scrollTop) box.scrollTop = top;
+    else if (top + link.offsetHeight > box.scrollTop + box.clientHeight)
+      box.scrollTop = top + link.offsetHeight - box.clientHeight;
+  });
+
+  // Plates settle into place as they arrive. Transform only: the text is never
+  // hidden, so it prints, is found by search and is read out in full. What is
+  // already on screen is marked first, so nothing visible jumps.
+  $effect(() => {
+    const page = root;
+    if (!page || !window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
+    const plates = [...page.querySelectorAll<HTMLElement>('.policy-section')];
+    for (const plate of plates) if (plate.getBoundingClientRect().top < window.innerHeight) plate.classList.add('in');
+    page.classList.add('motion');
+    const arrive = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          entry.target.classList.add('in');
+          arrive.unobserve(entry.target);
+        }
+      },
+      { rootMargin: '0px 0px -8% 0px' }
+    );
+    plates.forEach((plate) => arrive.observe(plate));
+    return () => {
+      arrive.disconnect();
+      page.classList.remove('motion');
+    };
   });
 </script>
 
@@ -55,23 +123,27 @@
   <meta name="twitter:image" content="https://pleya.app/og/pleya-social.png" />
 </svelte:head>
 
-<div class="docs privacy" use:pageMotion>
+<div class="docs privacy" bind:this={root}>
   <TopNav sticky />
   <div class="aura" aria-hidden="true"></div>
 
   <main class="policy-shell">
     <header class="policy-lede">
       <span class="tag">Legal</span>
-      <h1 data-split>Privacy Policy</h1>
+      <h1>Privacy Policy</h1>
       <p class="last-updated">Last Updated: October 12, 2026</p>
 
       <nav class="index" aria-label="On this page">
         <div class="index-core">
           <p class="index-label">On this page</p>
-          <ol>
+          <ol bind:this={list}>
             {#each sections as section (section.id)}
               <li>
-                <a href="#{section.id}" aria-current={active === section.id ? 'true' : undefined}>{section.title}</a>
+                <a
+                  href="#{section.id}"
+                  aria-current={active === section.id ? 'true' : undefined}
+                  onclick={() => (active = chosen = section.id)}>{section.title}</a
+                >
               </li>
             {/each}
           </ol>
@@ -81,19 +153,19 @@
 
     <div class="policy-body">
       <section class="policy-section" id="introduction">
-        <div class="core" data-reveal>
+        <div class="core">
           <h2>Introduction</h2>
           <p>Pleya ("we", "our", or "the app") is a third-party client for Plex and Jellyfin that allows you to access and stream content from your media server. This privacy policy explains how we handle your information when you use our app.</p>
         </div>
       </section>
       <section class="policy-section" id="your-recommendations-stay-on-your-device">
-        <div class="core" data-reveal>
+        <div class="core">
           <h2>Your Recommendations Stay on Your Device</h2>
           <p>Pleya builds personalized recommendations by analyzing your library and viewing activity <strong>entirely on your device</strong>. Your taste profile is computed and stored locally &mdash; it is never uploaded to us, and we do not use it to track or profile you across services. If you use Big P, parts of it (what you watched recently and what you like, such as genres, actors and directors) can go to the AI provider you chose, as described under Data Sharing. This processing powers the "for you" suggestions inside the app and nothing more.</p>
         </div>
       </section>
       <section class="policy-section" id="information-we-collect">
-        <div class="core" data-reveal>
+        <div class="core">
           <h2>Information We Collect</h2>
 
           <h3>Authentication Information</h3>
@@ -130,7 +202,7 @@
         </div>
       </section>
       <section class="policy-section" id="how-we-use-your-information">
-        <div class="core" data-reveal>
+        <div class="core">
           <h2>How We Use Your Information</h2>
           <p>We use the collected information solely to:</p>
           <ul>
@@ -142,7 +214,7 @@
         </div>
       </section>
       <section class="policy-section" id="data-storage-and-security">
-        <div class="core" data-reveal>
+        <div class="core">
           <h2>Data Storage and Security</h2>
           <ul>
             <li>Authentication tokens are stored securely on your device using platform-specific secure storage mechanisms</li>
@@ -153,7 +225,7 @@
         </div>
       </section>
       <section class="policy-section" id="third-party-services">
-        <div class="core" data-reveal>
+        <div class="core">
           <h2>Third-Party Services</h2>
 
           <h3>Plex</h3>
@@ -194,7 +266,7 @@
         </div>
       </section>
       <section class="policy-section" id="data-sharing">
-        <div class="core" data-reveal>
+        <div class="core">
           <h2>Data Sharing</h2>
           <p>We do not:</p>
           <ul>
@@ -213,7 +285,7 @@
         </div>
       </section>
       <section class="policy-section" id="your-rights-and-choices">
-        <div class="core" data-reveal>
+        <div class="core">
           <h2>Your Rights and Choices</h2>
           <p>You can:</p>
           <ul>
@@ -224,19 +296,19 @@
         </div>
       </section>
       <section class="policy-section" id="children-s-privacy">
-        <div class="core" data-reveal>
+        <div class="core">
           <h2>Children's Privacy</h2>
           <p>Pleya does not knowingly collect personal information from children under 13. The app relies on authentication with Plex or Jellyfin servers, and users must comply with the terms of service and age requirements of whichever service they connect to.</p>
         </div>
       </section>
       <section class="policy-section" id="changes-to-this-privacy-policy">
-        <div class="core" data-reveal>
+        <div class="core">
           <h2>Changes to This Privacy Policy</h2>
           <p>We may update this privacy policy from time to time. We will notify users of any material changes by updating the "Last Updated" date at the top of this policy.</p>
         </div>
       </section>
       <section class="policy-section" id="data-retention">
-        <div class="core" data-reveal>
+        <div class="core">
           <h2>Data Retention</h2>
           <ul>
             <li>Authentication tokens are retained on your device until you sign out or uninstall the app</li>
@@ -246,13 +318,13 @@
         </div>
       </section>
       <section class="policy-section" id="international-data-transfers">
-        <div class="core" data-reveal>
+        <div class="core">
           <h2>International Data Transfers</h2>
           <p>As we do not operate backend servers, there are no international data transfers from our side. Any data transfers occur directly between your device and either Plex's services (subject to Plex's privacy policy) or your Jellyfin server (governed by whoever operates it).</p>
         </div>
       </section>
       <section class="policy-section" id="legal-compliance">
-        <div class="core" data-reveal>
+        <div class="core">
           <h2>Legal Compliance</h2>
           <p>This app complies with:</p>
           <ul>
@@ -264,12 +336,13 @@
         </div>
       </section>
       <section class="policy-section" id="your-consent">
-        <div class="core" data-reveal>
+        <div class="core">
           <h2>Your Consent</h2>
           <p>By using Pleya, you consent to this privacy policy and the processing of your information as described herein.</p>
         </div>
       </section>
     </div>
+    <div bind:this={end} aria-hidden="true"></div>
   </main>
 
   <Footer />
@@ -328,7 +401,7 @@
 
   .last-updated {
     margin-top: 1.25rem;
-    color: var(--color-text-faint);
+    color: var(--color-text-muted);
     font-size: 0.875rem;
     font-variant-numeric: tabular-nums;
   }
@@ -368,7 +441,7 @@
     list-style: none;
     counter-reset: entry;
     max-height: max(9rem, calc(100dvh - 30rem));
-    overflow-y: auto;
+    overflow: hidden auto;
     overscroll-behavior: contain;
   }
 
@@ -380,14 +453,20 @@
     color: var(--color-text-muted);
     font-size: 0.875rem;
     line-height: 1.35;
-    transition:
-      color 500ms var(--ease),
-      transform 500ms var(--ease);
+    transition: color 500ms var(--ease);
+  }
+
+  /* The ring sits inside the row: the list clips what reaches past its edge. */
+  .index a:focus-visible {
+    outline-offset: -2px;
+    box-shadow: none;
   }
 
   .index a::before {
     counter-increment: entry;
     content: counter(entry, decimal-leading-zero);
+    /* Decoration: the second value is its empty spoken alternative. */
+    content: counter(entry, decimal-leading-zero) / '';
     flex: none;
     color: var(--color-text-faint);
     font-size: 0.6875rem;
@@ -398,7 +477,6 @@
   .index a:hover,
   .index a[aria-current] {
     color: var(--color-text);
-    transform: translateX(0.25rem);
   }
 
   .index a[aria-current]::before {
@@ -436,6 +514,7 @@
 
   .core::before {
     content: counter(section, decimal-leading-zero);
+    content: counter(section, decimal-leading-zero) / '';
     display: block;
     margin-bottom: 0.75rem;
     color: var(--color-accent-2);
@@ -502,6 +581,86 @@
     text-decoration-color: currentColor;
   }
 
+  /* Arrival: the title block rises once on load (pure CSS, no flash), and a
+     plate slides the last stretch into place. Neither ever hides the text. */
+  @media (prefers-reduced-motion: no-preference) {
+    .policy-lede > * {
+      animation: rise 900ms var(--ease) both;
+    }
+    .policy-lede > :nth-child(2) {
+      animation-delay: 70ms;
+    }
+    .policy-lede > :nth-child(3) {
+      animation-delay: 140ms;
+    }
+    .policy-lede > :nth-child(4) {
+      animation-delay: 210ms;
+    }
+
+    .privacy:global(.motion) .policy-section {
+      transform: translateY(1.5rem);
+      transition: transform 900ms var(--ease);
+    }
+    .privacy:global(.motion) .policy-section:global(.in) {
+      transform: none;
+    }
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(1rem);
+    }
+  }
+
+  /* On paper the dark theme has no background, so the text takes ink colours
+     and the plates become plain outlined blocks. */
+  @media print {
+    .aura,
+    .index {
+      display: none;
+    }
+    .policy-shell {
+      display: block;
+      padding: 0;
+    }
+    .policy-lede {
+      position: static;
+      margin-bottom: 2rem;
+    }
+    .policy-lede h1,
+    .core h2,
+    .core h3,
+    .core strong,
+    .core a {
+      color: #000;
+    }
+    .core,
+    .last-updated {
+      color: #222;
+    }
+    .tag,
+    .core::before {
+      color: #555;
+      border-color: #bbb;
+      background: none;
+    }
+    .policy-section {
+      border-color: #ccc;
+      background: none;
+      transform: none !important;
+      transition: none !important;
+    }
+    .core {
+      background: none;
+      box-shadow: none;
+      padding: 1rem 1.25rem;
+    }
+    .core li::marker {
+      color: #555;
+    }
+  }
+
   @media (min-width: 48rem) {
     .policy-shell {
       padding: 5rem 2rem 8rem;
@@ -525,14 +684,17 @@
       padding-block: 7rem 10rem;
     }
 
+    .index {
+      display: block;
+    }
+  }
+
+  /* Pinned only where the column fits under the navigation. */
+  @media (min-width: 64rem) and (min-height: 40rem) {
     .policy-lede {
       position: sticky;
       top: 7rem;
       align-self: start;
-    }
-
-    .index {
-      display: block;
     }
   }
 </style>
