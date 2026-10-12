@@ -16,6 +16,11 @@ final class OpenFilePlugin: NSObject, FlutterPlugin {
   /// distinct file.
   private static var scopedURLs: [String: URL] = [:]
 
+  /// Paths the system copied into our Inbox. Only these are ever deleted on
+  /// release: a file opened in place is the user's own, wherever it lies,
+  /// also in a folder of theirs that happens to be called Inbox.
+  private static var copies: Set<String> = []
+
   static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "com.pleya/open_file", binaryMessenger: registrar.messenger())
     self.channel = channel
@@ -71,6 +76,7 @@ final class OpenFilePlugin: NSObject, FlutterPlugin {
             url.stopAccessingSecurityScopedResource()
           }
         }
+        if !inPlace { copies.insert(url.path) }
         pending.append(url.path)
         channel?.invokeMethod("onFilesAvailable", arguments: nil)
       }
@@ -84,6 +90,7 @@ final class OpenFilePlugin: NSObject, FlutterPlugin {
     // Delivered again in the meantime: that delivery still has to play.
     guard !pending.contains(path) else { return }
     scopedURLs.removeValue(forKey: path)?.stopAccessingSecurityScopedResource()
+    guard copies.remove(path) != nil else { return }
     let url = URL(fileURLWithPath: path)
     if isOwnInbox(url.deletingLastPathComponent().resolvingSymlinksInPath()) {
       try? FileManager.default.removeItem(at: url)

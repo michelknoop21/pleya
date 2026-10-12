@@ -539,6 +539,17 @@ void main() {
       expect(release, contains('if isOwnInbox('), reason: 'only a copy in our own container is ever deleted');
     });
 
+    test('ios never deletes a file that was opened in place', () {
+      final plugin = File('ios/Runner/OpenFilePlugin.swift').readAsStringSync();
+      final release = plugin.substring(plugin.indexOf('private static func release('));
+      final delete = release.substring(0, release.indexOf('removeItem'));
+
+      // A film of the user's own in a folder named Inbox inside Pleya's folder
+      // in Files arrives in place: only what the system copied may go.
+      expect(plugin, contains('if !inPlace { copies.insert(url.path) }'));
+      expect(delete, contains('guard copies.remove(path) != nil else { return }'));
+    });
+
     test('macos answers a release instead of failing the call', () {
       expect(File('macos/Runner/OpenFilePlugin.swift').readAsStringSync(), contains('case "releaseFiles":'));
     });
