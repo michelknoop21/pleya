@@ -618,7 +618,7 @@ void main() {
       addTearDown(manager.dispose);
     });
 
-    test('nor does a stale task whose update is ignored', () async {
+    test('a task whose update is ignored as stale leaves no record', () async {
       await manager.debugHandleTaskStatus(
         TaskStatusUpdate(_downloadTask('stale-task', 'srv:item-1'), TaskStatus.canceled),
       );
@@ -632,6 +632,16 @@ void main() {
       );
 
       expect(deleted, ['orphan-task']);
+    });
+
+    test('nor does a task that ends after the service was disposed', () async {
+      manager.dispose();
+
+      await manager.debugHandleTaskStatus(
+        TaskStatusUpdate(_downloadTask('late-task', 'srv:item-1'), TaskStatus.complete),
+      );
+
+      expect(deleted, ['late-task']);
     });
 
     test('a running task keeps its record', () async {

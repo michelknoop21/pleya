@@ -1560,7 +1560,6 @@ class DownloadManagerService {
   Future<void> debugHandleTaskStatus(TaskStatusUpdate update) => _handleTaskStatusChanged(update);
 
   Future<void> _handleTaskStatusChanged(TaskStatusUpdate update) async {
-    if (_disposed) return;
     try {
       await _processTaskStatus(update);
     } finally {
@@ -1571,6 +1570,7 @@ class DownloadManagerService {
   }
 
   Future<void> _processTaskStatus(TaskStatusUpdate update) async {
+    if (_disposed) return;
     final globalKey = update.task.metaData;
     if (globalKey.isEmpty) return;
 

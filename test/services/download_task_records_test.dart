@@ -13,14 +13,22 @@ TaskRecord _record(String id, TaskStatus status) => TaskRecord(_task(id), status
 
 void main() {
   late List<TaskRecord> stored;
+  late List<ResumeData> resume;
   late List<String> deleted;
+  late List<String> askedGroups;
   late DownloadTaskRecords records;
 
   setUp(() {
     stored = [];
+    resume = [];
     deleted = [];
+    askedGroups = [];
     records = DownloadTaskRecords(
-      allRecords: (group) async => stored,
+      allRecords: (group) async {
+        askedGroups.add(group);
+        return stored;
+      },
+      allResumeData: () async => resume,
       deleteRecords: (ids) async => deleted.addAll(ids),
     );
   });
@@ -39,6 +47,38 @@ void main() {
       expect(deleted, isNot(contains('running')));
       expect(deleted, isNot(contains('waitingToRetry')));
       expect(deleted, isNot(contains('paused')));
+    });
+
+    test('asks for the download group only', () async {
+      await records.purgeFinished('downloads');
+
+      expect(askedGroups, ['downloads']);
+    });
+
+    test('removes resume data that no live record claims, and keeps the rest', () async {
+      stored = [
+        _record('done', TaskStatus.complete),
+        _record('paused', TaskStatus.paused),
+        _record('retry', TaskStatus.waitingToRetry),
+      ];
+      resume = [
+        ResumeData(_task('done'), 'x', 0),
+        ResumeData(_task('paused'), 'x', 0),
+        ResumeData(_task('retry'), 'x', 0),
+        // Arrived after its record was deleted: nothing claims it.
+        ResumeData(_task('late'), 'x', 0),
+        // Another group's task is not ours to touch.
+        ResumeData(
+          DownloadTask(taskId: 'other', url: 'https://x.example/a', filename: 'o.mp4', group: 'elsewhere'),
+          'x',
+          0,
+        ),
+      ];
+
+      final count = await records.purgeFinished('downloads');
+
+      expect(deleted..sort(), ['done', 'late']);
+      expect(count, 2);
     });
 
     test('does nothing when there is nothing final', () async {
