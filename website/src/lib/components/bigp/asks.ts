@@ -1,11 +1,11 @@
 import type { Art } from './BpPoster.svelte';
 
 // The scripted demo: questions people actually ask about a film library, each with the answer
-// drawn as the app draws it. Three questions are the app's own examples (assistant.mobile.examples
-// and followUp in lib/i18n/en.i18n.json: tonight, most watched, watching now); the rest and every
+// drawn as the app draws it. Three questions are example questions from the app's strings in
+// lib/i18n/en.i18n.json (tonight, most watched, watching now); the rest and every
 // answer are written for this page. Labels inside the answers ("In your library", "Requestable",
 // "Watch stats", "Scan started", ...) are the app's strings.
-export type Match = { art: Art; title: string; year: number; kind?: string; status: string; tone?: 'ok' | 'requested' | 'plain'; facts?: string; plot: string };
+export type Match = { art: Art; title: string; year: number; kind?: string; status: string; tone?: 'ok' | 'plain'; facts?: string; plot: string };
 export type Row = { title: string; sub?: string; pill?: string; tone?: 'ok' | 'requested' | 'plain' };
 export type Ask = {
   id: string;

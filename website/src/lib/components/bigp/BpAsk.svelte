@@ -25,6 +25,7 @@
   let timers: ReturnType<typeof setTimeout>[] = [];
   let stopTalking = () => {};
   let sheet = $state<HTMLElement>();
+  let stage = $state<HTMLElement>();
 
   const next = $derived(phase === 'answer' && active ? followUps(active) : []);
 
@@ -38,7 +39,15 @@
 
   const wide = () => matchMedia('(min-width: 900px)').matches;
   // The balloon may sit above the window after a tap on a follow-up: bring it back in.
-  const reveal = () => sheet?.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  function reveal() {
+    if (!sheet) return;
+    // A balloon taller than the window has no nearest edge: when its top is cut off, go to the top.
+    const cut = sheet.getBoundingClientRect().top < 80;
+    sheet.scrollIntoView({ block: cut ? 'start' : 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  }
+
+  // A pressed chip leaves the page with the state it belonged to: hand keyboard focus on.
+  const focus = (sel: string) => tick().then(() => stage?.querySelector<HTMLElement>(sel)?.focus({ preventScroll: true }));
 
   function reset() {
     clear();
@@ -46,6 +55,7 @@
     active = null;
     typed = '';
     bigp?.set('idle');
+    focus('.starters .chip');
   }
 
   // Listening, working, answering: the three beats of the app.
@@ -57,6 +67,7 @@
     said = '';
     bigp?.set('listening');
     tick().then(reveal);
+    if (stage?.contains(document.activeElement) && !document.activeElement?.classList.contains('bar')) focus('.bar');
     const per = quick ? 0 : Math.min(26, 1100 / a.q.length);
     typed = quick ? a.q : '';
     for (let i = 1; i <= a.q.length && !quick; i++) timers.push(setTimeout(() => (typed = a.q.slice(0, i)), i * per));
@@ -70,6 +81,8 @@
       }, heard),
       setTimeout(() => {
         phase = 'answer';
+        // The balloon is at its tallest now: make sure the question and the answer line are in view.
+        tick().then(reveal);
         if (!bigp) return void (said = a.line);
         const b = bigp;
         b.set('success');
@@ -98,7 +111,7 @@
       <p class="lede">Pick a question and watch him answer. This is a scripted example: there is no language model behind this page.</p>
     </div>
 
-    <div class="stage">
+    <div class="stage" bind:this={stage}>
       <div class="sheet" bind:this={sheet}>
         {#if phase === 'idle'}
           <p class="hello">{greeting}</p>
@@ -107,51 +120,54 @@
               <li><button type="button" class="chip" onclick={() => ask(a)}>{a.q}</button></li>
             {/each}
           </ul>
-        {:else if active}
-          <div aria-live="polite">
-            {#if phase === 'listening'}
-              <p class="status"><i aria-hidden="true"></i>Listening…</p>
-              <p class="hello">Say your question, or type it.</p>
-            {:else}
+        {/if}
+        <div aria-live="polite">
+          {#if active && phase === 'listening'}
+            <p class="status"><i aria-hidden="true"></i>Listening…</p>
+            <p class="hello">Say your question, or type it.</p>
+          {:else if active}
+            <div class="top">
               <p class="asked"><span>You asked:</span> {active.q}</p>
-              {#if phase === 'working'}
-                <p class="hello">Let me check…</p>
-                <p class="step"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>{active.step}</p>
-              {:else}
-                {#key active.id}
-                  <div class="answer">
-                    <p class="hello"><span class="sr">{active.line}</span><span aria-hidden="true">{said}</span></p>
-                    {#if active.body}<p class="body">{active.body}</p>{/if}
-                    {#if active.tag}<p class="meta"><span class="tag on">{active.tag}</span></p>{/if}
-                    {#if active.matches}
-                      <ul class="matches">
-                        {#each active.matches as m, i (m.title)}
-                          <BpMatch focused={i === 0} {...m} />
-                        {/each}
-                      </ul>
-                    {/if}
-                    {#if active.rows}<div class="card"><BpRows {...active.rows} /></div>{/if}
-                  </div>
-                {/key}
-              {/if}
+              {#if phase === 'answer'}<button type="button" class="new" onclick={reset}>New</button>{/if}
+            </div>
+            {#if phase === 'working'}
+              <p class="hello">Let me check…</p>
+              <p class="step"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>{active.step}</p>
+            {:else}
+              {#key active.id}
+                <div class="answer">
+                  <p class="hello"><span class="sr">{active.line}</span><span aria-hidden="true">{said}</span></p>
+                  {#if active.body}<p class="body">{active.body}</p>{/if}
+                  {#if active.tag}<p class="meta"><span class="tag on">{active.tag}</span></p>{/if}
+                  {#if active.matches}
+                    <ul class="matches">
+                      {#each active.matches as m, i (m.title)}
+                        <BpMatch focused={i === 0} {...m} />
+                      {/each}
+                    </ul>
+                  {/if}
+                  {#if active.rows}<div class="card"><BpRows {...active.rows} /></div>{/if}
+                </div>
+              {/key}
             {/if}
-          </div>
+          {/if}
+        </div>
+      </div>
+
+      <div class="fu">
+        {#if next.length}
+          <ul aria-label="Ask next">
+            {#each next as a (a.id)}
+              <li><button type="button" class="chip" onclick={() => ask(a)}><TurnIcon aria-hidden="true" />{a.q}</button></li>
+            {/each}
+          </ul>
         {/if}
       </div>
 
-      <ul class="fu" aria-label="Ask next">
-        {#each next as a (a.id)}
-          <li><button type="button" class="chip" onclick={() => ask(a)}><TurnIcon aria-hidden="true" />{a.q}</button></li>
-        {/each}
-        {#if phase === 'answer'}
-          <li><button type="button" class="chip new" onclick={reset}>New</button></li>
-        {/if}
-      </ul>
-
       <div class="fig"><BigPFigure onready={(b) => (bigp = b)} /></div>
 
-      <button type="button" class="bar" class:busy={phase === 'listening'} onclick={askNext} aria-label="Ask the next example question">
-        <span class:placeholder={!typed}>{typed || (phase === 'idle' ? 'Ask Big P' : 'Ask more')}</span>
+      <button type="button" class="bar" class:busy={phase === 'listening'} onclick={askNext}>
+        <span class:placeholder={!typed}>{typed || (phase === 'idle' ? 'Ask Big P' : 'Ask more')}<span class="sr">, the next example question</span></span>
         <span class="mic" aria-hidden="true"><MicIcon /></span>
       </button>
     </div>
@@ -171,7 +187,8 @@
   /* The balloon hugs what it says and grows upward from its tail, into room the stage keeps free. */
   .sheet { grid-area: sheet; position: relative; padding: 1.1rem; border-radius: 1.75rem; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line), 0 24px 60px -30px #000; scroll-margin-block: 5.5rem 1.5rem; }
   .sheet::after { content: ''; position: absolute; right: 19%; bottom: -0.55rem; width: 1.2rem; height: 1.2rem; background: var(--panel); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); border-radius: 0 0 4px 0; transform: rotate(45deg); }
-  .fu { grid-area: fu; align-self: center; min-height: 13.5rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0.5rem; }
+  .fu { grid-area: fu; align-self: center; min-height: 13.5rem; display: grid; align-content: center; }
+  .fu ul { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   .fig { grid-area: fig; }
 
   .hello { font-family: var(--display); font-size: clamp(1.45rem, 2.6vw, 2rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; text-wrap: balance; }
@@ -183,11 +200,13 @@
   .fu li:nth-child(2) .chip { animation-delay: 0.08s; }
   .fu li:nth-child(3) .chip { animation-delay: 0.16s; }
   .fu .chip :global(svg) { flex: none; font-size: 1.2rem; color: rgba(255, 255, 255, 0.65); }
-  .fu .new { padding-inline: 1rem; color: var(--muted); }
+  .new { flex: none; min-height: 44px; padding: 0.4rem 1rem; border-radius: 999px; background: var(--pill); color: var(--muted); font-size: 0.9rem; transition: background-color 0.4s var(--ease); }
+  .new:hover { background: rgba(255, 255, 255, 0.2); color: var(--ink); }
 
   .status { display: flex; align-items: center; gap: 0.55rem; margin-bottom: 0.5rem; color: var(--muted); }
   .status i { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: #3dd68c; }
-  .asked { margin-bottom: 0.9rem; padding: 0.6rem 0.8rem; border-radius: 0.8rem; background: var(--pill); font-size: 0.95rem; line-height: 1.35; }
+  .top { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.9rem; }
+  .asked { flex: 1; min-width: 0; padding: 0.6rem 0.8rem; border-radius: 0.8rem; background: var(--pill); font-size: 0.95rem; line-height: 1.35; }
   .asked span { color: rgba(255, 255, 255, 0.65); }
   .step { margin-top: 0.8rem; display: flex; align-items: center; gap: 0.7rem; color: var(--muted); }
   .dots { display: inline-flex; gap: 0.25rem; }
@@ -225,7 +244,8 @@
     .stage { grid-template-columns: 17rem minmax(0, 1fr); grid-template-areas: 'fig sheet' 'fig fu' 'bar bar'; grid-template-rows: minmax(31rem, auto) auto auto; gap: 1rem 1.5rem; }
     .sheet { padding: 1.75rem; }
     .sheet::after { right: auto; left: -0.6rem; bottom: 4.5rem; border-right: 0; border-left: 1px solid var(--line); border-radius: 0 0 0 4px; }
-    .fu { min-height: 6.6rem; align-self: start; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; }
+    .fu { min-height: 6.6rem; align-self: start; align-content: start; }
+    .fu ul { flex-direction: row; flex-wrap: wrap; align-items: center; }
     .fig { align-self: end; }
     .bar { margin-left: 18.5rem; }
     .example, .bp-next { margin-left: 18.5rem; }

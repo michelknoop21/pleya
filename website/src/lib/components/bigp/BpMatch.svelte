@@ -4,7 +4,7 @@
   // One title Big P proposes, drawn like the title card of the app
   // (lib/widgets/big_p/assistant/big_p_match_card.dart): poster, title and year, kind and
   // runtime, the status label, and on a wide screen a line of plot.
-  type Tone = 'ok' | 'requested' | 'plain';
+  type Tone = 'ok' | 'plain';
   let {
     title,
     year,
@@ -53,7 +53,6 @@
   .plot { display: none; }
   .pill { display: inline-block; margin-top: 0.15rem; padding: 0.18rem 0.75rem; border-radius: 999px; background: rgba(255, 255, 255, 0.12); color: var(--ink); font-size: 0.84rem; line-height: 1.3; }
   .pill.ok { background: rgba(61, 214, 140, 0.16); color: #3dd68c; }
-  .pill.requested { background: rgba(255, 176, 32, 0.16); color: var(--amber); }
   .match > :global(svg) { flex: none; font-size: 1.6rem; color: rgba(255, 255, 255, 0.65); }
   @media (min-width: 900px) {
     .plot { display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
