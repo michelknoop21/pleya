@@ -11,7 +11,7 @@ export const startBigPMotion = (root: HTMLElement) =>
     gsap
       .timeline({ defaults: { ease: 'expo.out' } })
       .from(root.querySelectorAll('.bp-hero .ln > span'), { yPercent: 110, duration: 1.15, stagger: 0.12 })
-      .from(root.querySelectorAll('.bp-hero .eyebrow, .bp-hero .lede, .bp-hero .actions, .bp-hero .cta-note'), { y: 18, opacity: 0, duration: 0.8, stagger: 0.08 }, '-=0.8')
+      .from(root.querySelectorAll('.bp-hero .lede, .bp-hero .needs, .bp-hero .actions, .bp-hero .cta-note'), { y: 18, opacity: 0, duration: 0.8, stagger: 0.08 }, '-=0.8')
       .from(root.querySelectorAll('.bp-hero .orb'), { opacity: 0, duration: 1.6, ease: 'power2.out' }, 0);
 
     // Cards and panels come up as they enter; in the bento each one also asks for Big P's arm.
@@ -26,7 +26,7 @@ export const startBigPMotion = (root: HTMLElement) =>
       });
       ScrollTrigger.create({ trigger: bento, start: 'top bottom', end: 'bottom top', onLeave: () => sendCue(bento, { name: 'leave' }), onLeaveBack: () => sendCue(bento, { name: 'leave' }) });
     }
-    for (const sel of ['.confirm', '.providers']) {
+    for (const sel of ['.confirm', '.providers', '.bp-close']) {
       const el = q(sel);
       if (el) ScrollTrigger.create({ trigger: el, start: 'top 65%', once: true, onEnter: () => sendCue(el, { name: 'enter' }) });
     }

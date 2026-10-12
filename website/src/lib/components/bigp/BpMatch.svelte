@@ -30,7 +30,7 @@
 </script>
 
 <li class="match" class:focused>
-  <span class="post"><BpPoster {art} {title} /></span>
+  <span class="post"><BpPoster {art} /></span>
   <div class="txt">
     <p class="t">{title} <span class="y">({year})</span></p>
     <p class="line"><span>{kind}</span><span class="pill {tone}">{status}</span></p>
@@ -48,7 +48,7 @@
   .t { font-size: 1.15rem; font-weight: 700; line-height: 1.2; }
   .y { font-weight: 400; color: rgba(244, 241, 236, 0.6); }
   .line { margin-top: 0.3rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.3rem 0.8rem; color: rgba(244, 241, 236, 0.65); font-size: 0.9rem; }
-  .pill { padding: 0.1rem 0.8rem; border-radius: 999px; background: rgba(244, 241, 236, 0.16); color: var(--ink); font-size: 0.86rem; }
+  .pill { white-space: nowrap; padding: 0.1rem 0.8rem; border-radius: 999px; background: rgba(244, 241, 236, 0.16); color: var(--ink); font-size: 0.86rem; }
   .pill.ok { background: rgba(61, 214, 140, 0.16); color: #3dd68c; }
   .pill.requested { background: rgba(255, 176, 32, 0.16); color: var(--amber); }
   .d { margin-top: 0.25rem; color: rgba(244, 241, 236, 0.65); font-size: 0.9rem; line-height: 1.35; }
@@ -56,5 +56,6 @@
   @media (max-width: 559px) {
     .match { gap: 0.8rem; }
     .t { font-size: 1.02rem; }
+    .pill { padding-inline: 0.65rem; font-size: 0.78rem; }
   }
 </style>
