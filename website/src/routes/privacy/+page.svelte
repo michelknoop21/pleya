@@ -361,9 +361,9 @@
           <ul>
             <li>Authentication tokens are stored securely on your device using platform-specific secure storage mechanisms</li>
             <li>App preferences are stored locally on your device</li>
-            <li>Crash and diagnostic data is sent to our self-hosted error tracking server (bugs.pleya.app) &mdash; no third-party services receive this data</li>
-            <li>Our relay server (ice.pleya.app) is used only when you use one of these features: logs you send us from Settings (kept for 3 days), Watch Together (playback sync messages and display names of the participants; a room expires after 24 hours at most), artwork for Discord Rich Presence (removed after 3 hours), and signing in to MyAnimeList or AniList (the sign-in passes through the relay; your tokens are not logged or stored there)</li>
-            <li>All other communication goes directly from your device to the service involved: your media server, Plex's authentication services when signing in with Plex, and the optional services you connect or switch on (Trakt, Seerr, Tautulli, your Big P provider and the online sources it uses). None of that passes through our servers</li>
+            <li>Crash and diagnostic data is sent to our self-hosted error tracking server (bugs.pleya.app) &mdash; no third-party service stores this data. It reaches our server through Cloudflare</li>
+            <li>Our relay server (ice.pleya.app) is used only when you use one of these features: logs you send us from Settings (kept for 3 days; a sent log gets a short ID, and whoever has that ID can read it until it expires), Watch Together (what is playing, with its title and position, and the display names of the participants; a room expires after 24 hours at most), artwork for Discord Rich Presence (removed after 3 hours), and signing in to MyAnimeList or AniList (the sign-in passes through the relay; your tokens are not logged or stored there). Signing in to Simkl ends on a page the relay serves. The relay's own server log records your IP address with each upload; that log is rotated by size, not by date</li>
+            <li>All other communication goes directly from your device to the service involved: your media server, Plex's authentication services when signing in with Plex, and the optional services you connect or switch on, such as Trakt and other trackers, Seerr, Tautulli, your Big P provider and the online sources it uses. None of that passes through our servers</li>
           </ul>
         </div>
       </section>
