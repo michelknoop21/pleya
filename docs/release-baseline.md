@@ -87,7 +87,7 @@ These are baseline tech debt, not regressions from this phase. They should be ad
 | `DONATION_URL` | Donation link | empty | Donate tile in settings |
 | `ENABLE_DONATIONS` | Show donate tile | `false` | Donate tile visibility |
 | `SOURCE_REPO_URL` | GPL source link in About | empty | About screen source link |
-| `PRIVACY_POLICY_URL` | Privacy policy link | empty | About screen privacy link |
+| `PRIVACY_POLICY_URL` | Privacy policy link | `https://pleya.app/privacy` (a set value wins) | About screen privacy link; `api_key_defines` and `xcode_appletv.sh` pass the default |
 
 `TRAKT_CLIENT_ID` comes from `.env` (see `.env.example`). `ios_beta` and `macos_beta` pass it through `api_key_defines` in `fastlane/Fastfile`, only when the value is non-empty. `tvos_beta` and `tvos_archive` need nothing extra: xcodebuild inherits the fastlane environment and `tvos/scripts/xcode_appletv.sh` adds the `-D` flag when it is set. A missing value leaves the feature off in the app.
 
@@ -151,7 +151,7 @@ Auto-update requires `UPDATE_GITHUB_REPO` and `UPDATE_FEED_URL` defines.
 | App Group `group.nl.michelknoop.pleya` provisioning for iOS | Top Shelf / shared storage on iOS | Michel |
 | macOS sandbox playback verification | Unknown if mpv + networking work under sandbox | Michel — manual test needed |
 | Android release build verification | No Fastlane lane; build command not verified in this phase | Phase 4 |
-| `SOURCE_REPO_URL` and `PRIVACY_POLICY_URL` not set | About screen links are empty | Michel |
+| `SOURCE_REPO_URL` not set | About screen link is empty (`PRIVACY_POLICY_URL` now defaults to the published page) | Michel |
 | Tracker API keys not registered | Simkl/MAL features are dormant. Trakt needs only `TRAKT_CLIENT_ID`; a build that carries it shows the Trakt login, see "Trakt login release conditions" | Michel |
 | 27 pre-existing test failures | Not blocking release builds, but blocking confidence | Phase 3-4 |
 
@@ -165,7 +165,7 @@ A build that carries `TRAKT_CLIENT_ID` shows the Trakt login and reads the user'
 | Second refresh with the rotated token pair measured live, and the real shape of `/sync/watched` and `/sync/watchlist` | Mostly done 11 October 2026 (one activation, only the public client id): refresh #1 and #2 both 200 and rotated, expires_in 604800; reuse of the first refresh token 400 `invalid_grant`; `/sync/watched/movies` 80 of 80 entries and `/sync/watched/shows?extended=noseasons` 36 of 36 parse with an external id and a year, no season tree; revoke 200. Still open: the watchlist shape (the account's watchlist was empty, both lists came back `[]`; add one film and one series on Trakt and run the script again), a refresh after the full 7 days, and a 429 | Michel (watchlist entries) |
 | `trakt_watchlist` and the "seen" filter checked on a device with a real Trakt account, including a Pleya profile switch: the Trakt session is stored per Pleya profile (`user_<profile id>_` key) and a profile without its own link has no session, so nothing is read or sent for it, but the consent answer is global and synced through iCloud (a decline at a second link turns write-back off for the first profile too) | Open, manual | Michel |
 | The consent question is usable with the remote on Apple TV and on iPhone | Open, manual | Michel |
-| App Store Connect privacy label and the privacy page name Trakt viewing data (what is sent: play events and watched marks, only after consent, and a rating the user gives; what is read: history and watchlist, used locally and the watchlist as a tool result). The consent answer syncs through iCloud between devices | Open, manual: `website/src/routes/privacy/+page.svelte` does not mention Trakt and must be extended and deployed; `PRIVACY_POLICY_URL` is empty | Michel |
+| App Store Connect privacy label and the privacy page name Trakt viewing data (what is sent: play events and watched marks, only after consent, and a rating the user gives; what is read: history and watchlist, used locally and the watchlist as a tool result). The consent answer syncs through iCloud between devices | Partly done 12 October 2026: the page text names Trakt (section "Trakt (optional)", Data Sharing and Data Storage adjusted) and `PRIVACY_POLICY_URL` defaults to `https://pleya.app/privacy`. Still manual: deploy the website so the live page matches, and fill in the App Store Connect privacy label (proposal: Usage Data, Product Interaction, App Functionality, linked to the user, no tracking; confirm Apple's current wording) | Michel |
 
 ## Launch Scope Decision
 

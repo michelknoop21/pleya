@@ -27,7 +27,7 @@
   </a>
 
   <h1 class="privacy-heading">Privacy Policy</h1>
-  <p class="last-updated">Last Updated: July 3, 2026</p>
+  <p class="last-updated">Last Updated: October 12, 2026</p>
 
   <div class="prose">
     <h2>Introduction</h2>
@@ -84,7 +84,7 @@
       <li>Authentication tokens are stored securely on your device using platform-specific secure storage mechanisms</li>
       <li>App preferences are stored locally on your device</li>
       <li>Crash and diagnostic data is sent to our self-hosted error tracking server (bugs.pleya.app) &mdash; no third-party services receive this data</li>
-      <li>All other communication is directly between your device and your media server, or with Plex's authentication services when signing in with Plex</li>
+      <li>All other communication is directly between your device and your media server, with Plex's authentication services when signing in with Plex, or with Trakt if you connect your Trakt account</li>
     </ul>
 
     <h2>Third-Party Services</h2>
@@ -107,6 +107,17 @@
     </ul>
     <p>Because Jellyfin is self-hosted, your Jellyfin server's privacy practices are determined by whoever operates it. More information about the Jellyfin project is available at <a href="https://jellyfin.org" target="_blank" rel="noopener noreferrer">jellyfin.org</a>.</p>
 
+    <h3>Trakt (optional)</h3>
+    <p>Pleya can connect to your Trakt account. This is off until you sign in with a code at trakt.tv/activate. When you connect:</p>
+    <ul>
+      <li>Your Trakt access token is stored on your device and is used only to talk to Trakt</li>
+      <li>After you connect, Pleya asks once whether it may send your watching to Trakt. Only if you allow it, Pleya sends play, pause and stop events and "watched" marks (title identifiers such as IMDb or TMDB IDs, and the time). You can switch each off under Settings &gt; Trakt. A rating you give in Pleya is sent to Trakt as well</li>
+      <li>Pleya reads your Trakt watched history and watchlist so it can leave out titles you have already seen and show your watchlist next to your libraries. The history is used on your device and is not saved to disk. If you ask Big P about your watchlist, up to 30 titles from it are included in the request to the AI provider you chose</li>
+      <li>Trakt is not available on children's profiles</li>
+      <li>You can disconnect under Settings &gt; Trakt, which revokes the token</li>
+    </ul>
+    <p>Trakt's own privacy policy applies: <a href="https://trakt.tv/privacy" target="_blank" rel="noopener noreferrer">trakt.tv/privacy</a>. We do not control Trakt's data practices.</p>
+
     <h3>Litterbox (Discord Rich Presence)</h3>
     <p>When Discord Rich Presence is enabled, media artwork may be temporarily uploaded to:</p>
     <ul>
@@ -120,12 +131,13 @@
       <li>Sell your personal information</li>
       <li>Share your information with third parties for marketing purposes</li>
       <li>Transmit your data to our own servers (except crash/diagnostic reports as described above)</li>
-      <li>Track your viewing habits outside of local app functionality</li>
+      <li>Track your viewing habits outside of local app functionality, except what you choose to send to Trakt as described above</li>
     </ul>
     <p>Your data is only shared with:</p>
     <ul>
       <li>Plex services for authentication and media server communication, when signing in with Plex (as required for the app to function)</li>
       <li>Your self-hosted Jellyfin server, when signing in with Jellyfin (as required for the app to function)</li>
+      <li>Trakt, if you connect your Trakt account and allow Pleya to send your watching</li>
     </ul>
 
     <h2>Your Rights and Choices</h2>
