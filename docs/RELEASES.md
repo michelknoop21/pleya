@@ -18,17 +18,7 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-### New
-- Trakt in de privacypagina en PRIVACY_POLICY_URL als standaard in de lanes
-
-### Fixed
-- reviewpunten, lane-standaard teruggedraaid want de Dart-standaard bestond al
-- Big P-regel volledig, aanbevelingen niet meer 'nooit naar derden', opnieuw proberen
-- vervolgpunten uit de externe review van PR #286 en #293
-- speler-route gedeeld met Live TV, bedrading getest, claims in de notities teruggebracht
-- onbereikbare Plex-server met backoff, verwijderd seed-item niet bij elke verversing opnieuw
-- reviewpunten op de v313k-fix
-- drie Minors uit de re-review van #303
+Nothing user-facing since the last published build.
 <!-- END GENERATED -->
 
 ### New
@@ -57,26 +47,48 @@ under `Notes`.
 
 ### Improved
 
-- **A server error while a Watch Together host switches title now ends in the usual notice.**
-  A guest whose server answered with an error got nothing at all; they now see that the switch
-  failed, as they do when the title is simply missing.
-- **A Plex server that is out of reach is probed less and less often.** Coming back to the app
-  used to run a full connection probe against it twice, every time, for as long as it stayed
-  away. The second attempt a few seconds after you return still happens, then the wait grows
-  from 10 seconds to two minutes. A change of network, the reconnect button and the server
-  coming back start over.
-- **"Because you watched" no longer asks about titles the server has deleted.** The history
-  keeps a title after it leaves the library, so Home asked the server for it on every refresh,
-  got a 404 and lost one of the six places that feed the rows. It is now asked once, skipped for
-  half an hour, and the next title takes its place. A server that answers with an error instead
-  of a 404 is not taken to have deleted anything.
-- **Opening a video file while a menu or sheet is open over the player replaces the film.** It
-  used to start a second player under the first. A file whose start was cut short because the
-  screen went away is kept for the next screen instead of being deleted unseen. This covers the
-  Live TV player as well. Not checked on a device yet.
 - **Ending a session takes effect while a film is playing.** A revoked session stops the stream
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
+
+## 2.8.1 · build 358 · 12 October 2026 · iPhone and iPad
+
+<!-- commit: 5f6925d8f74f770aa5ecf0176a746d45c20ba002 -->
+
+### Improved
+- A Plex server that is out of reach is probed less and less often. Coming back to the app used
+  to run a full connection probe against it twice, every time, for as long as it stayed away.
+  The second attempt a few seconds after you return still happens, then the wait grows from 10
+  seconds to two minutes. A change of network, the reconnect button and the server coming back
+  start over.
+- "Because you watched" no longer asks about titles the server has deleted. The history keeps a
+  title after it leaves the library, so Home asked the server for it on every refresh, got a 404
+  and lost one of the six places that feed the rows. It is now asked once, skipped for half an
+  hour, and the next title takes its place. A server that answers with an error instead of a
+  404 is not taken to have deleted anything.
+- Opening a video file while a menu or sheet is open over the player replaces the film. It used
+  to start a second player under the first. A file whose start was cut short because the screen
+  went away is kept for the next screen instead of being deleted unseen. This covers the Live TV
+  player as well.
+- A server error while a Watch Together host switches title now ends in the usual notice. A
+  guest whose server answered with an error got nothing at all; they now see that the switch
+  failed, as they do when the title is simply missing.
+
+### Notes
+- The longer wait applies to Plex servers. Jellyfin and Pleya Server are probed as before.
+- Pressing reconnect, or changing network, still tries the server at once.
+- Trakt for Big P is not switched on in this build, so there is no Trakt sign-in to test yet.
+
+### Worth checking
+- Nothing in this build has been checked on an iPhone or iPad yet. The changes are covered by
+  automated tests; the server probing has not been run against a real unreachable server.
+- Take a Plex server off the network, leave Pleya and come back several times within a minute.
+  Home should stay usable. Then bring the server back: it should show as online again within
+  two minutes, or at once when you press reconnect.
+- Delete a film you watched from the Plex server and pull Home down twice. The "Because you
+  watched" rows should still be there, built from the other titles you watched.
+- Start a film, open the audio or subtitle sheet, then open a video from Files. The new file
+  should replace the film, and you should hear only one of them.
 
 ## 2.8.1 · build 357 · 12 October 2026 · Apple TV
 
