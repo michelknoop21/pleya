@@ -43,12 +43,14 @@ import Security
         return
       }
       let deviceOnly: Bool
-      switch args?["scope"] as? String {
-      case nil: deviceOnly = false
-      case "device": deviceOnly = true
-      default:
-        result(FlutterError(code: "BAD_ARGS", message: "unknown scope", details: nil))
-        return
+      if let scope = args?["scope"] {
+        guard scope as? String == "device" else {
+          result(FlutterError(code: "BAD_ARGS", message: "unknown scope", details: nil))
+          return
+        }
+        deviceOnly = true
+      } else {
+        deviceOnly = false
       }
       let work: () -> Any?
       switch call.method {

@@ -24,6 +24,9 @@ class _Keychain {
   PlatformException? deleteError;
   String Function(String value)? writeTamper;
 
+  /// Runs when a write arrives, before it takes effect.
+  Future<void> Function()? onWrite;
+
   void install() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(_channel, (call) async {
       final args = (call.arguments as Map).cast<String, Object?>();
@@ -35,6 +38,7 @@ class _Keychain {
           if (readError != null) throw readError!;
           return items[key];
         case 'write':
+          await onWrite?.call();
           if (writeError != null) throw writeError!;
           final value = args['value'] as String;
           items[key] = writeTamper == null ? value : writeTamper!(value);
@@ -136,11 +140,57 @@ void main() {
       expect(await _blob(), isNull);
     });
 
-    test('a keychain item without marker is from an earlier install: removed, not read', () async {
+    test('a keychain item without marker is from an earlier install: not read', () async {
       keychain.items[_key] = _session('previous-install').encode();
 
       expect(await store.load('alice'), isNull);
-      expect(keychain.items, isEmpty);
+      expect(keychain.calls, isEmpty);
+    });
+
+    test('prefs that read empty do not delete a valid item', () async {
+      await store.save('alice', _session('tok-1'));
+      // A launch before the first unlock: the prefs come back empty.
+      resetSharedPreferencesForTest();
+
+      expect(await store.load('alice'), isNull);
+      expect(keychain.items[_key], contains('tok-1'));
+      expect(keychain.calls, isNot(contains('delete')));
+    });
+
+    test('the marker is in the prefs before the keychain write lands', () async {
+      bool? markerAtWrite;
+      keychain.onWrite = () async => markerAtWrite = await _markerSet();
+
+      await store.save('alice', _session('tok-1'));
+
+      expect(markerAtWrite, isTrue, reason: 'an app that dies after the write must find its item again');
+    });
+
+    test('a refused first write leaves no marker, so an earlier install stays unread', () async {
+      keychain.items[_key] = _session('previous-install').encode();
+      keychain.writeError = PlatformException(code: 'KEYCHAIN', message: 'OSStatus -25308');
+
+      await store.save('alice', _session('tok-1'));
+      expect(await _markerSet(), isNull);
+      (await BaseSharedPreferencesService.sharedCache()).remove(_key);
+
+      expect(await store.load('alice'), isNull);
+    });
+
+    test('a protected blob the vault cannot open reads as not connected', () async {
+      await store.save('alice', _session('tok-1'));
+      resetSharedPreferencesForTest(initialAsync: {_key: 'enc:v1:{"n":"AAAA","c":"AAAA","m":"AAAA"}', _marker: true});
+
+      expect(await store.load('alice'), isNull);
+      expect(keychain.items[_key], contains('tok-1'), reason: 'nothing is deleted');
+    });
+
+    test('the slot without profile works like any other', () async {
+      await store.save('', _session('global'));
+
+      expect(keychain.items['mal_session'], contains('global'));
+      expect((await store.load(''))?.accessToken, 'global');
+      expect(await store.load('alice'), isNull);
     });
 
     test('a failed keychain read is not a disconnect: the item and marker stay', () async {
@@ -174,14 +224,25 @@ void main() {
       keychain.deleteError = PlatformException(code: 'KEYCHAIN', message: 'OSStatus -25308');
       await store.clear('alice');
       expect(keychain.items[_key], isNotNull);
+      expect(await _markerSet(), isFalse);
+
+      // Still refused: the item stays unread.
+      expect(await store.load('alice'), isNull);
+      expect(keychain.calls.last, 'delete');
 
       keychain.deleteError = null;
       expect(await store.load('alice'), isNull);
       expect(keychain.items, isEmpty);
+      expect(await _markerSet(), isNull);
     });
 
     test('overlapping save and load never put an older session back', () async {
-      resetSharedPreferencesForTest(initialAsync: {_key: _session('legacy').encode()});
+      // A protected blob: opening it suspends the load, which is where a save
+      // could slip in ahead of the migration.
+      PleyaKeychain.debugForceSupported = false;
+      await store.save('alice', _session('legacy'));
+      PleyaKeychain.debugForceSupported = true;
+      expect(CredentialVault.isProtected(await _blob()), isTrue);
 
       final load = store.load('alice');
       final save = store.save('alice', _session('newer'));

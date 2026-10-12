@@ -20,8 +20,10 @@ import 'tracker_session.dart';
 /// - iOS and tvOS: one item in the keychain of this device
 ///   ([PleyaKeychain.deviceOnly]), never in iCloud. A prefs marker
 ///   (`<key>_kc`) records that the item belongs to this install; keychain
-///   items outlive an uninstall, and an item without marker is removed rather
-///   than read, so a reinstall starts disconnected.
+///   items outlive an uninstall, and an item without marker is never read,
+///   so a reinstall starts disconnected. A missing marker deletes nothing:
+///   prefs can read empty (a launch before the first unlock) while the item
+///   is valid. The next connect overwrites what an earlier install left.
 /// - Elsewhere, and whenever the keychain refuses: a [CredentialVault]
 ///   protected blob in the prefs, under the key the plaintext session used.
 ///
@@ -91,12 +93,14 @@ class TrackerAccountStore {
     }
 
     if (keychain == null) return null;
-    if (prefs.getBool(_markerKey(key)) != true) {
-      // No marker: whatever the keychain holds under this key is from an
-      // earlier install.
-      await _deleteItem(keychain, key);
+    final marker = prefs.getBool(_markerKey(key));
+    if (marker == false) {
+      // A clear whose delete the keychain refused: try again.
+      if (await _deleteItem(keychain, key)) await prefs.remove(_markerKey(key));
       return null;
     }
+    // No marker: not ours to read, and not ours to delete either.
+    if (marker != true) return null;
     try {
       final json = await keychain.read(key);
       return json == null ? null : _decode(json);
@@ -119,9 +123,14 @@ class TrackerAccountStore {
   Future<void> _clear(String key) async {
     final prefs = await BaseSharedPreferencesService.sharedCache();
     await prefs.remove(key);
-    await prefs.remove(_markerKey(key));
     final keychain = _keychain;
-    if (keychain != null) await _deleteItem(keychain, key);
+    if (keychain == null || await _deleteItem(keychain, key)) {
+      await prefs.remove(_markerKey(key));
+    } else {
+      // The item is still there. `false` keeps it unread and lets the next
+      // load retry the delete.
+      await prefs.setBool(_markerKey(key), false);
+    }
   }
 
   /// Writes [json] to the keychain and drops the prefs blob once the keychain
@@ -132,23 +141,37 @@ class TrackerAccountStore {
     String key,
     String json,
   ) async {
+    // The marker goes first: an app that dies after the keychain write must
+    // find its own item again. A refused write puts the old marker back, so
+    // an item of an earlier install never becomes readable.
+    final before = prefs.getBool(_markerKey(key));
+    if (before != true) await prefs.setBool(_markerKey(key), true);
+    var stored = false;
     try {
-      if (!await keychain.write(key, json)) return false;
-      if (await keychain.read(key) != json) return false;
+      stored = await keychain.write(key, json) && await keychain.read(key) == json;
     } catch (e) {
       appLogger.w('Trackers: the keychain refused the ${service.name} session (${e.runtimeType})');
+    }
+    if (!stored) {
+      if (before == null) {
+        await prefs.remove(_markerKey(key));
+      } else if (before == false) {
+        await prefs.setBool(_markerKey(key), false);
+      }
       return false;
     }
-    await prefs.setBool(_markerKey(key), true);
     await prefs.remove(key);
     return true;
   }
 
-  Future<void> _deleteItem(PleyaKeychain keychain, String key) async {
+  /// True once the item is gone.
+  Future<bool> _deleteItem(PleyaKeychain keychain, String key) async {
     try {
       await keychain.delete(key);
+      return true;
     } catch (e) {
       appLogger.w('Trackers: removing the ${service.name} session from the keychain failed (${e.runtimeType})');
+      return false;
     }
   }
 
