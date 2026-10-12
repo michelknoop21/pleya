@@ -359,7 +359,8 @@
         <div class="core">
           <h2>Data Storage and Security</h2>
           <ul>
-            <li>Authentication tokens are stored securely on your device using platform-specific secure storage mechanisms</li>
+            <li>Sign-in tokens for your media server (Plex, Jellyfin), Seerr and Tautulli are stored on your device in encrypted form (AES-256-GCM). The encryption key is kept in the app's own storage on the same device, so this protects against casual reading of the app's data, not against someone with full access to your device</li>
+            <li>On iPhone, iPad and Apple TV, your Big P provider settings and keys are stored in iCloud Keychain, and the tokens for Trakt and the other trackers in the keychain of that device, which does not sync. On other platforms these are stored in the same encrypted form as above</li>
             <li>App preferences are stored locally on your device</li>
             <li>Crash and diagnostic data is sent to our self-hosted error tracking server (bugs.pleya.app) &mdash; no third-party service stores this data. It reaches our server through Cloudflare</li>
             <li>Our relay server (ice.pleya.app) is used only when you use one of these features: logs you send us from Settings (kept for 3 days; a sent log gets a short ID, and whoever has that ID can read it until it expires), Watch Together (what is playing, with its title and position, and the display names of the participants; a room expires after 24 hours at most), artwork for Discord Rich Presence (removed after 3 hours), and signing in to MyAnimeList or AniList (the sign-in passes through the relay; your tokens are not logged or stored there). Signing in to Simkl ends on a page the relay serves. The relay's own server log records your IP address with each upload; that log is rotated by size, not by date</li>
