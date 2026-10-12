@@ -56,6 +56,9 @@ under `Notes`.
 
 ### Improved
 
+- **A server error while a Watch Together host switches title now ends in the usual notice.**
+  A guest whose server answered with an error got nothing at all; they now see that the switch
+  failed, as they do when the title is simply missing.
 - **A Plex server that is out of reach is probed less and less often.** Coming back to the app
   used to run a full connection probe against it twice, every time, for as long as it stayed
   away. The second attempt a few seconds after you return still happens, then the wait grows

@@ -403,6 +403,17 @@ void main() {
       expect(applied, isFalse);
     });
 
+    test('a fetch that throws leaves the group as it was and reports false', () async {
+      await provider.ensureStarted();
+      var notifications = 0;
+      provider.addListener(() => notifications++);
+
+      final applied = await provider.refreshItem('s1:a1', () async => throw StateError('502'));
+
+      expect(applied, isFalse);
+      expect(notifications, 0);
+    });
+
     test('a null fetch result is a no-op', () async {
       await provider.ensureStarted();
 
