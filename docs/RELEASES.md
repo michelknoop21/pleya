@@ -26,6 +26,7 @@ under `Notes`.
 - Big P-regel volledig, aanbevelingen niet meer 'nooit naar derden', opnieuw proberen
 - vervolgpunten uit de externe review van PR #286 en #293
 - speler-route gedeeld met Live TV, bedrading getest, claims in de notities teruggebracht
+- onbereikbare Plex-server met backoff, verwijderd seed-item niet bij elke verversing opnieuw
 <!-- END GENERATED -->
 
 ### New
