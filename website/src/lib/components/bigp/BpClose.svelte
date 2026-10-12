@@ -11,16 +11,26 @@
   let bigp: BigP | undefined;
   let shown = $state(goodbye);
   let waved = false;
+  let entered = false;
   let stopTalking = () => {};
   onDestroy(() => stopTalking());
 
   // He waves once, when the page ends: the last thing a visitor sees move.
-  function cue({ name }: Cue) {
-    if (name !== 'enter' || waved || !bigp) return;
+  function wave(b: BigP) {
+    if (waved) return;
     waved = true;
-    const b = bigp;
     b.ensure('zwaaien').then(() => b.gesture('zwaaien', 2200), () => {});
     stopTalking = say(b, goodbye, (t) => (shown = t));
+  }
+  // The cue fires once and can arrive before the rig does.
+  function cue({ name }: Cue) {
+    if (name !== 'enter') return;
+    entered = true;
+    if (bigp) wave(bigp);
+  }
+  function ready(b: BigP) {
+    bigp = b;
+    if (entered) wave(b);
   }
 </script>
 
@@ -29,7 +39,7 @@
   <div class="wrap grid">
     <div class="host">
       <div class="say"><Bubble text={goodbye} {shown} tail="down" /></div>
-      <div class="fig"><BigPFigure onready={(b) => (bigp = b)} /></div>
+      <div class="fig"><BigPFigure onready={ready} /></div>
     </div>
     <div class="copy" data-reveal>
       <h2 id="join-title">Now ask him <span class="grad">yourself.</span></h2>

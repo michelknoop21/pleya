@@ -105,11 +105,13 @@
             {/each}
           </div>
 
-          <div class="out" bind:this={out} aria-live="polite">
+          <div class="out" bind:this={out}>
             {#if phase === 'idle'}
               <p class="step">The answer appears here, drawn the way the Apple TV app shows it.</p>
             {:else if active}
-              <p class="asked"><span>You asked:</span> {phase === 'listening' ? typed : active.q}</p>
+              <!-- The question types itself in; a screen reader gets it once, from the button it pressed. -->
+              <p class="asked" aria-hidden="true"><span>You asked:</span> {phase === 'listening' ? typed : active.q}</p>
+              <div aria-live="polite">
               {#if phase === 'working'}
                 <p class="step"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>{active.step}</p>
               {:else if phase === 'answer'}
@@ -129,6 +131,7 @@
                   </div>
                 {/key}
               {/if}
+              </div>
             {/if}
           </div>
         </div>
@@ -154,11 +157,11 @@
   button:active { transform: scale(0.98); }
   button[aria-pressed='true'] { background: rgba(255, 176, 32, 0.14); box-shadow: inset 0 0 0 1px rgba(255, 176, 32, 0.4); color: var(--ink); }
   /* As tall as the tallest answer, so choosing another question never moves the page. */
-  .out { min-height: 35rem; padding-top: 1.4rem; border-top: 1px solid var(--hair); scroll-margin-block: 5.5rem 1.5rem; }
+  .out { min-height: 38rem; padding-top: 1.4rem; border-top: 1px solid var(--hair); scroll-margin-block: 5.5rem 1.5rem; }
   .asked { min-height: 2.9rem; color: var(--ink); font-size: 0.98rem; line-height: 1.45; }
   .asked span { color: var(--muted); }
   .step { display: flex; align-items: center; gap: 0.7rem; color: var(--muted); }
-  .asked + .step { margin-top: 0.8rem; }
+  .asked + div .step { margin-top: 0.8rem; }
   .dots { display: inline-flex; gap: 0.25rem; }
   .dots i { width: 0.36rem; height: 0.36rem; border-radius: 50%; background: var(--amber); animation: dot 1s var(--ease) infinite; }
   .dots i:nth-child(2) { animation-delay: 0.15s; }
@@ -167,7 +170,7 @@
   .title { font-family: var(--display); font-size: clamp(1.6rem, 2.6vw, 2.1rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.12; text-wrap: balance; }
   .meta { margin-top: 0.8rem; }
   .body { margin-top: 0.7rem; max-width: 34rem; color: var(--muted); font-size: 1rem; line-height: 1.55; }
-  .matches, .card { margin-top: 1.1rem; display: grid; gap: 0.55rem; }
+  .matches, .card { margin-top: 1.1rem; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.55rem; }
   .example { margin-top: 1.4rem; }
   @keyframes dot { 0%, 100% { opacity: 0.3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
   @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
@@ -175,13 +178,20 @@
   @media (max-width: 559px) {
     .matches :global(.match:nth-child(n + 3)) { display: none; }
   }
+  @media (max-width: 359px) {
+    .out { min-height: 42rem; }
+  }
   @media (min-width: 900px) {
     .demo { grid-template-columns: minmax(0, 13rem) minmax(0, 1fr); gap: 2rem; }
     .host { width: 100%; }
+    .out { min-height: 36rem; }
+    .example, .bp-next { margin-left: 15rem; }
+  }
+  /* Questions beside the answer only when the answer keeps room for a full title card. */
+  @media (min-width: 1100px) {
     .bz-core { grid-template-columns: minmax(0, 17rem) minmax(0, 1fr); gap: 2rem; }
     .group ul { display: grid; }
     button { width: 100%; }
     .out { min-height: 31rem; padding-top: 0; padding-left: 2rem; border-top: 0; border-left: 1px solid var(--hair); }
-    .example, .bp-next { margin-left: 15rem; }
   }
 </style>

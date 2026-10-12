@@ -1,8 +1,8 @@
 import type { Art } from './BpPoster.svelte';
 
-// The scripted demo. Questions marked `own` are the app's own example questions
-// (assistant.idle.examples, mobile.examples and followUp in lib/i18n/en.i18n.json); the other
-// two and every answer are written for this page. Labels inside the answers ("Watch stats",
+// The scripted demo. Seven questions are the app's own examples (assistant.idle.examples,
+// mobile.examples and followUp in lib/i18n/en.i18n.json); the Mars and Anna questions and
+// every answer are written for this page. Labels inside the answers ("Watch stats",
 // "Scan started", "Requestable", ...) are the app's strings.
 export type Match = { art: Art; title: string; year: number; kind?: string; status: string; tone?: 'ok' | 'requested' | 'plain'; facts?: string; plot: string };
 export type Row = { title: string; sub?: string; pill?: string; tone?: 'ok' | 'requested' | 'plain' };
@@ -94,10 +94,10 @@ export const groups: { name: string; asks: Ask[] }[] = [
         step: 'Fetching watch statistics',
         line: 'Two people are watching.',
         rows: {
-          label: 'Watch stats · Right now',
+          label: 'Watch stats · Home server · Right now',
           items: [
-            { title: 'Noor', sub: 'TIDE · S1 E4 · Home server' },
-            { title: 'Daan', sub: 'Paddington 2 · Cabin server' },
+            { title: 'Noor', sub: 'TIDE · S1 E4' },
+            { title: 'Daan', sub: 'Paddington 2' },
           ],
         },
       },

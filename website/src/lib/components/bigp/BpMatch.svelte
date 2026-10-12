@@ -40,7 +40,7 @@
 </li>
 
 <style>
-  .match { display: flex; align-items: center; gap: 1.1rem; padding: 0.7rem 1rem 0.7rem 0.7rem; border-radius: 1.1rem; background: rgba(22, 22, 22, 0.9); transition: transform 0.5s var(--ease), background-color 0.5s var(--ease), box-shadow 0.5s var(--ease); }
+  .match { min-width: 0; display: flex; align-items: center; gap: 1.1rem; padding: 0.7rem 1rem 0.7rem 0.7rem; border-radius: 1.1rem; background: rgba(22, 22, 22, 0.9); transition: transform 0.5s var(--ease), background-color 0.5s var(--ease), box-shadow 0.5s var(--ease); }
   /* Focus on Apple TV: the card under the remote lifts and gets a light edge. */
   .match.focused { background: rgba(40, 40, 40, 0.92); box-shadow: 0 0 0 2px rgba(244, 241, 236, 0.9), 0 18px 40px -22px #000; transform: scale(1.015); }
   .post { position: relative; flex: none; width: 4.25rem; height: 6.25rem; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08); }
@@ -56,6 +56,6 @@
   @media (max-width: 559px) {
     .match { gap: 0.8rem; }
     .t { font-size: 1.02rem; }
-    .pill { padding-inline: 0.65rem; font-size: 0.78rem; }
+    .pill { white-space: normal; padding-inline: 0.65rem; font-size: 0.78rem; }
   }
 </style>

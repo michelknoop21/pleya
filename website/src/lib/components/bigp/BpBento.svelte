@@ -85,8 +85,6 @@
   .live { margin-top: auto; padding-top: 1.6rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; font-size: 0.86rem; color: var(--muted); }
   .arrow { width: 1.6rem; height: 1px; background: linear-gradient(90deg, transparent, var(--amber)); }
 
-
-
   .ages .tag.on:nth-child(2) { margin-right: 0.7rem; }
   .ages .out { opacity: 0.35; text-decoration: line-through; }
   .flow .on { animation: token 4.5s var(--ease) infinite 0.6s; }

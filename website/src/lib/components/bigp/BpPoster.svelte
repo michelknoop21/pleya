@@ -55,13 +55,12 @@
     <path d="M68 56 a19 19 0 0 1 10 35.2 L86 132 H50 L58 91.2 A19 19 0 0 1 68 56Z" fill="#f0c15a" />
     <path d="M50 132 H86 L100 172 H36Z" fill="#f0c15a" opacity=".22" />
   {:else if art === 'robot'}
-    <!-- A round machine among leaves. -->
+    <!-- One egg in a nest of leaves: what the machine finds. -->
     <rect width="136" height="200" fill="#1d4a32" />
     <path d="M-10 60 Q40 20 60 80 Q20 90 -10 60Z M146 40 Q96 30 92 90 Q130 90 146 40Z M-6 170 Q40 120 70 176 Q30 200 -6 170Z M142 176 Q110 124 76 170 Q110 204 142 176Z" fill="#2f7a4d" />
-    <circle cx="68" cy="104" r="34" fill="#dfe6e2" />
-    <circle cx="68" cy="104" r="34" fill="#000" opacity=".12" transform="translate(5 6)" />
-    <circle cx="57" cy="98" r="7" fill="#12303f" /><circle cx="81" cy="98" r="7" fill="#12303f" />
-    <circle cx="59" cy="96" r="2.2" fill="#7fe3ff" /><circle cx="83" cy="96" r="2.2" fill="#7fe3ff" />
+    <ellipse cx="68" cy="128" rx="44" ry="14" fill="#143524" />
+    <path d="M68 70 C88 70 96 104 96 116 A28 24 0 0 1 40 116 C40 104 48 70 68 70Z" fill="#f1ead8" />
+    <path d="M68 70 C88 70 96 104 96 116 A28 24 0 0 1 68 140 A40 44 0 0 0 68 70Z" fill="#000" opacity=".1" />
   {:else if art === 'conclave'}
     <!-- White smoke over a wall of red. -->
     <rect width="136" height="200" fill="#8f1420" />

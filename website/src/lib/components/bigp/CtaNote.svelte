@@ -1,17 +1,20 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { betaLinkReady, cta, WAITLIST_FALLBACK_EMAIL } from '$lib/config';
 
-  let copied = $state(false);
+  let label = $state('Copy address');
   let timer: ReturnType<typeof setTimeout>;
+  onDestroy(() => clearTimeout(timer));
   async function copy() {
     try {
       await navigator.clipboard.writeText(WAITLIST_FALLBACK_EMAIL);
-      copied = true;
-      clearTimeout(timer);
-      timer = setTimeout(() => (copied = false), 2500);
+      label = 'Copied';
     } catch {
-      // No clipboard access: the address is a link and selectable text right next to the button.
+      // No clipboard access: the address next to the button is a link and can be selected.
+      label = 'Could not copy';
     }
+    clearTimeout(timer);
+    timer = setTimeout(() => (label = 'Copy address'), 2500);
   }
 </script>
 
@@ -20,7 +23,7 @@
   {cta.note}
   {#if !betaLinkReady}
     No mail app here? Write to <a href="mailto:{WAITLIST_FALLBACK_EMAIL}">{WAITLIST_FALLBACK_EMAIL}</a>
-    <button type="button" onclick={copy} aria-live="polite">{copied ? 'Copied' : 'Copy address'}</button>
+    <button type="button" onclick={copy}><span aria-live="polite">{label}</span></button>
   {/if}
 </p>
 
