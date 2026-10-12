@@ -149,7 +149,7 @@ class MultiServerManager {
   Future<void>? _activeHealthCheck;
 
   /// Coalescing guard for reconnectOfflineServers — prevents concurrent reconnect sweeps
-  Future<void>? _activeReconnect;
+  Future<Set<String>>? _activeReconnect;
 
   /// Debounce timer for connectivity events — collapses rapid network flapping
   Timer? _connectivityDebounce;
@@ -1535,10 +1535,13 @@ class MultiServerManager {
   /// reconnecting so the fast-path is skipped and a full candidate race runs.
   /// Used by the manual reconnect button when the cached URL may be stale
   /// (e.g. after a network change while the app was backgrounded).
-  Future<void> reconnectOfflineServers({
-    bool forceRediscovery = false,
-    Duration retryJustFailed = Duration.zero,
-  }) async {
+  ///
+  /// Returns the servers this sweep took on, so a second attempt moments later
+  /// can pass them as [alsoRetry]: a resume probes twice because the first
+  /// attempt may run against a network stack that is not awake yet, and the
+  /// wait a failed first race sets must not block that second one. Servers the
+  /// first attempt skipped for their wait stay skipped.
+  Future<Set<String>> reconnectOfflineServers({bool forceRediscovery = false, Set<String> alsoRetry = const {}}) async {
     resetSharePollBackoff();
     // Asking to reconnect is asking to try again for real — the same reason
     // AudioOutputCoordinator.onModeChanged clears its remembered failure.
@@ -1551,9 +1554,10 @@ class MultiServerManager {
       await _activeReconnect;
     }
 
-    _activeReconnect = _doReconnectOfflineServers(forceRediscovery: forceRediscovery, retryJustFailed: retryJustFailed);
+    final sweep = _doReconnectOfflineServers(forceRediscovery: forceRediscovery, alsoRetry: alsoRetry);
+    _activeReconnect = sweep;
     try {
-      await _activeReconnect;
+      return await sweep;
     } finally {
       _activeReconnect = null;
     }
@@ -1577,13 +1581,15 @@ class MultiServerManager {
   /// minus, for an automatic sweep, the ones that stayed unreachable lately
   /// and are still inside their wait (see [ReconnectBackoff]).
   ///
-  /// [retryJustFailed]: servers whose last race failed less than that long ago
-  /// are included anyway (the second attempt of a resume).
-  List<String> reconnectSweepServerIds({required bool forceRediscovery, Duration retryJustFailed = Duration.zero}) {
+  /// [alsoRetry] are servers that skip the wait: the ones the first attempt of
+  /// this very resume raced and that failed, which the second attempt exists
+  /// to catch (see [reconnectOfflineServers]).
+  List<String> reconnectSweepServerIds({required bool forceRediscovery, Set<String> alsoRetry = const {}}) {
     final candidates = reconnectCandidateServerIds(forceRediscovery: forceRediscovery);
     if (forceRediscovery) return candidates;
     return candidates.where((id) {
-      final wait = _reconnectBackoff.remaining(id, justFailed: retryJustFailed);
+      if (alsoRetry.contains(id)) return true;
+      final wait = _reconnectBackoff.remaining(id);
       if (wait == null) return true;
       appLogger.d('Reconnection for $id skipped, next try in ${wait.inSeconds}s');
       return false;
@@ -1593,11 +1599,15 @@ class MultiServerManager {
   @visibleForTesting
   void debugRecordUnreachableForTesting(ServerId serverId) => _reconnectBackoff.failed(serverId.toString());
 
-  Future<void> _doReconnectOfflineServers({required bool forceRediscovery, required Duration retryJustFailed}) async {
+  Future<Set<String>> _doReconnectOfflineServers({
+    required bool forceRediscovery,
+    required Set<String> alsoRetry,
+  }) async {
     // Asked for by the user: every server is tried again, now.
     if (forceRediscovery) _reconnectBackoff.reset();
-    final offline = reconnectSweepServerIds(forceRediscovery: forceRediscovery, retryJustFailed: retryJustFailed);
-    if (offline.isEmpty) return;
+    final offline = reconnectSweepServerIds(forceRediscovery: forceRediscovery, alsoRetry: alsoRetry);
+    if (offline.isEmpty) return const {};
+    final tookOn = <String>{};
 
     appLogger.d('Attempting reconnection for ${offline.length} offline servers');
     unawaited(
@@ -1614,6 +1624,7 @@ class MultiServerManager {
     final futures = offline.map((serverId) {
       // Skip if already running
       if (_activeOptimizations.containsKey(serverId)) return Future<void>.value();
+      tookOn.add(serverId);
 
       final server = _plexServers[serverId];
       if (server != null) {
@@ -1691,6 +1702,7 @@ class MultiServerManager {
     });
 
     await Future.wait(futures);
+    return tookOn;
   }
 
   /// Called when all failover endpoints are exhausted for a server.

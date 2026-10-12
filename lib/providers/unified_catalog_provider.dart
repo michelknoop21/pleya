@@ -18,6 +18,7 @@ import '../services/unified_catalog/source_cursor.dart';
 import '../services/unified_catalog/source_preference_store.dart';
 import '../services/unified_catalog/unified_catalog_query.dart';
 import '../services/unified_catalog/unified_catalog_snapshot.dart';
+import '../utils/app_logger.dart';
 import '../utils/global_key_utils.dart';
 import 'hidden_libraries_provider.dart';
 import 'libraries_provider.dart';
@@ -166,7 +167,14 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
     final service = _service;
     if (service == null) return false;
     if (!service.snapshot.groups.any((g) => g.sources.any((s) => s.sourceKey == globalKey))) return false;
-    final updated = await fetchItem();
+    final MediaItem? updated;
+    try {
+      updated = await fetchItem();
+    } catch (e) {
+      // A server error is not news about the item: the row stays as it was.
+      appLogger.d('UnifiedCatalogProvider: refresh of $globalKey failed', error: e);
+      return false;
+    }
     if (updated == null || isDisposed) return false;
     final applied = service.applyUpdatedSourceItem(updated);
     if (applied) {

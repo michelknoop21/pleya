@@ -126,7 +126,9 @@ extension _VideoPlayerWatchTogetherMethods on VideoPlayerScreenState {
       return;
     }
 
-    final metadata = await client.fetchItem(ratingKey);
+    // Unawaited by its caller: a server error must still end in the failure
+    // notice, not in an unhandled exception.
+    final metadata = await fetchItemOrNull(client, ratingKey);
     if (!mounted) return;
     if (metadata == null) {
       appLogger.w('WatchTogether: Could not fetch metadata for $ratingKey');

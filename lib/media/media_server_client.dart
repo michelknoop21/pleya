@@ -808,3 +808,15 @@ mixin MediaServerCacheMixin implements MediaServerClient {
     }
   }
 }
+
+/// [MediaServerClient.fetchItem] for a caller that only wants to know whether
+/// there is an item: a server error (a 502, a rejected token) answers "none"
+/// instead of throwing out of a fire-and-forget path.
+Future<MediaItem?> fetchItemOrNull(MediaServerClient client, String id) async {
+  try {
+    return await client.fetchItem(id);
+  } catch (e) {
+    appLogger.w('fetchItem($id) failed on ${client.serverId}', error: e);
+    return null;
+  }
+}

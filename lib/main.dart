@@ -645,14 +645,13 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   // ponytail: one retry on a fixed delay. Back off properly only if a log shows
   // a stack that stays down past it.
   Future<void> _probeAndReconnectAfterResume() async {
+    var raced = const <String>{};
     for (var attempt = 0; attempt < 2; attempt++) {
       await _serverManager.checkServerHealth();
       // The second attempt is for a network stack that was not awake yet for
-      // the first: a server that failed that first race a moment ago is
-      // retried whatever wait the failure set.
-      await _serverManager.reconnectOfflineServers(
-        retryJustFailed: attempt == 0 ? Duration.zero : const Duration(seconds: 10),
-      );
+      // the first: what the first one raced is retried whatever wait its
+      // failure set, and nothing else is.
+      raced = await _serverManager.reconnectOfflineServers(alsoRetry: raced);
       if (_serverManager.offlineServerIds.isEmpty || attempt == 1) return;
 
       await Future<void>.delayed(const Duration(seconds: 3));
