@@ -28,8 +28,15 @@ class _Client implements MediaServerClient {
   @override
   ServerCapabilities get capabilities => ServerCapabilities.plex;
 
+  final Map<String, int> fetchCalls = {};
+  Set<String> failing = {};
+
   @override
-  Future<MediaItem?> fetchItem(String id, {bool useCache = true}) async => itemsById[id];
+  Future<MediaItem?> fetchItem(String id, {bool useCache = true}) async {
+    fetchCalls[id] = (fetchCalls[id] ?? 0) + 1;
+    if (failing.contains(id)) throw StateError('offline');
+    return itemsById[id];
+  }
 
   @override
   Future<List<MediaItem>> fetchRecentlyWatched({int limit = 5}) async {
@@ -154,6 +161,70 @@ void main() {
       [t.discover.becauseYouAreWatching(title: 'film')],
       reason: 'an unknown answer counts as shared',
     );
+  });
+
+  group('a seed whose item the server no longer has', () {
+    var clock = DateTime(2026, 10, 12, 10);
+
+    SeedRowsLoader loaderFor(RecommendationService svc, _Client plex) =>
+        SeedRowsLoader(recommendations: svc, clientFor: (_) => plex, now: () => clock);
+
+    Future<List<String?>> titles(SeedRowsLoader loader, _Client plex) async => [
+      for (final row in (await loader.load(clients: [plex], alreadyShown: const {})).rows) row.title,
+    ];
+
+    setUp(() => clock = DateTime(2026, 10, 12, 10));
+
+    test('is asked for once, and its place goes to the next seed', () async {
+      final live = ['b', 'c', 'd', 'e', 'f', 'g'];
+      final plex = _Client('plex')..itemsById = {for (final id in live) id: _movie(id)};
+      // 'gone' is the newest; six live titles follow it, which is all six seeds.
+      await play('plex:gone', at: now);
+      for (final (i, id) in live.indexed) {
+        await play('plex:$id', at: now - (i + 1) * 1000);
+      }
+      final loader = loaderFor(service(), plex);
+
+      final first = await loader.load(clients: [plex], alreadyShown: const {});
+      final second = await loader.load(clients: [plex], alreadyShown: const {});
+
+      expect(plex.fetchCalls['gone'], 1, reason: 'the second refresh does not ask again');
+      expect(
+        [for (final row in first.rows) row.title],
+        [
+          for (final id in ['b', 'c', 'd']) t.discover.becauseYouWatched(title: id),
+        ],
+      );
+      expect(second.rows.map((r) => r.title), first.rows.map((r) => r.title));
+      // Seeds four to six feed the candidate layer; the dead one took no place.
+      expect({for (final item in second.candidates) item.id}, {'e-related', 'f-related', 'g-related'});
+    });
+
+    test('is asked again when the request itself failed', () async {
+      final plex = _Client('plex')
+        ..itemsById = {'film': _movie('film')}
+        ..failing = {'film'};
+      await play('plex:film', at: now);
+      final loader = loaderFor(service(), plex);
+
+      expect(await titles(loader, plex), isEmpty);
+      plex.failing = {};
+      expect(await titles(loader, plex), [t.discover.becauseYouWatched(title: 'film')]);
+      expect(plex.fetchCalls['film'], 2);
+    });
+
+    test('is asked again once the memory runs out', () async {
+      final plex = _Client('plex');
+      await play('plex:back', at: now);
+      final loader = loaderFor(service(), plex);
+
+      expect(await titles(loader, plex), isEmpty);
+      plex.itemsById = {'back': _movie('back')};
+      expect(await titles(loader, plex), isEmpty, reason: 'still remembered');
+
+      clock = clock.add(const Duration(minutes: 31));
+      expect(await titles(loader, plex), [t.discover.becauseYouWatched(title: 'back')]);
+    });
   });
 
   group('top-up from the servers', () {

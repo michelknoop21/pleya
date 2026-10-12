@@ -28,6 +28,7 @@ import '../utils/media_server_timeouts.dart';
 import '../utils/future_extensions.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'plex_auth_service.dart';
+import 'reconnect_backoff.dart';
 import 'settings_service.dart';
 import 'storage_service.dart';
 
@@ -173,6 +174,11 @@ class MultiServerManager {
   /// Forgets the "nothing answered" verdicts, so the next attempt races for
   /// real. Anything that means "the network may be different now" calls this.
   void _clearUnreachableMemory() => _unreachableSince.clear();
+
+  /// Spaces out the automatic reconnect sweeps for a server that stays down.
+  /// Unlike [_unreachableSince] this one outlives a resume: it is cleared by a
+  /// network change, a manual reconnect or a success only.
+  final ReconnectBackoff _reconnectBackoff = ReconnectBackoff();
 
   /// Get all registered server IDs (Plex + Jellyfin).
   ///
@@ -520,9 +526,11 @@ class MultiServerManager {
 
     if (!await streamIterator.moveNext()) {
       _unreachableSince[serverId] = DateTime.now();
+      _reconnectBackoff.failed(serverId);
       throw Exception('No working connection found');
     }
     _unreachableSince.remove(serverId);
+    _reconnectBackoff.succeeded(serverId);
 
     final workingConnection = streamIterator.current;
     final baseUrl = workingConnection.uri;
@@ -797,6 +805,7 @@ class MultiServerManager {
       _clientIdByServer.remove(id);
       _plexAccountByServer.remove(id);
       _unreachableSince.remove(id);
+      _reconnectBackoff.succeeded(id);
       _releaseGeneration(ServerId(id));
     }
     _statusController.add(Map.from(_serverStatus));
@@ -1327,6 +1336,7 @@ class MultiServerManager {
             // "nothing answered" is worthless: the candidates that timed out
             // on the old one may be the right ones here.
             _clearUnreachableMemory();
+            _reconnectBackoff.reset();
 
             // Re-optimize all servers and re-probe offline ones
             _reoptimizeAllServers(reason: 'connectivity:${status.name}');
@@ -1558,8 +1568,27 @@ class MultiServerManager {
   List<String> reconnectCandidateServerIds({required bool forceRediscovery}) =>
       forceRediscovery ? offlineServerIds : offlineServerIds.where((id) => !_authErrorServers.contains(id)).toList();
 
+  /// The servers a reconnect sweep races this time: [reconnectCandidateServerIds]
+  /// minus, for an automatic sweep, the ones that stayed unreachable lately
+  /// and are still inside their wait (see [ReconnectBackoff]).
+  List<String> reconnectSweepServerIds({required bool forceRediscovery}) {
+    final candidates = reconnectCandidateServerIds(forceRediscovery: forceRediscovery);
+    if (forceRediscovery) return candidates;
+    return candidates.where((id) {
+      final wait = _reconnectBackoff.remaining(id);
+      if (wait == null) return true;
+      appLogger.d('Reconnection for $id skipped, next try in ${wait.inSeconds}s');
+      return false;
+    }).toList();
+  }
+
+  @visibleForTesting
+  void debugRecordUnreachableForTesting(ServerId serverId) => _reconnectBackoff.failed(serverId.toString());
+
   Future<void> _doReconnectOfflineServers({required bool forceRediscovery}) async {
-    final offline = reconnectCandidateServerIds(forceRediscovery: forceRediscovery);
+    // Asked for by the user: every server is tried again, now.
+    if (forceRediscovery) _reconnectBackoff.reset();
+    final offline = reconnectSweepServerIds(forceRediscovery: forceRediscovery);
     if (offline.isEmpty) return;
 
     appLogger.d('Attempting reconnection for ${offline.length} offline servers');

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
 import '../../media/media_hub.dart';
@@ -14,13 +16,36 @@ import '../../utils/global_key_utils.dart';
 typedef _Seed = ({MediaItem item, bool completed});
 
 /// Builds the "Because you watched X" rows for Home: picks the seeds, then
-/// pairs each with its related hub on the owning server. Holds no state; the
-/// caller owns generation checks and what ends up on screen.
+/// pairs each with its related hub on the owning server. The caller owns
+/// generation checks and what ends up on screen; the only state is the short
+/// memory of seeds whose item the server no longer has.
 class SeedRowsLoader {
-  SeedRowsLoader({required this._recommendations, required this._clientFor});
+  SeedRowsLoader({
+    required this._recommendations,
+    required this._clientFor,
+    @visibleForTesting DateTime Function()? now,
+  }) : _now = now ?? DateTime.now;
 
   final RecommendationService? _recommendations;
   final MediaServerClient? Function(ServerId serverId) _clientFor;
+  final DateTime Function() _now;
+
+  /// Seeds whose item the server answered "not there" for, and when. The log
+  /// keeps a title after it is deleted from the library, so the same dead seed
+  /// would otherwise cost one failed request and one of the six places on
+  /// every Home refresh. Only a completed answer is remembered: a request that
+  /// failed (offline, timeout) is tried again next time.
+  final Map<String, DateTime> _goneSince = {};
+
+  /// Long enough to span many refreshes, short enough that a title restored to
+  /// the library is picked up again within the session.
+  static const _goneMemory = Duration(minutes: 30);
+
+  Set<String> _currentlyGone() {
+    final cutoff = _now().subtract(_goneMemory);
+    _goneSince.removeWhere((_, since) => since.isBefore(cutoff));
+    return _goneSince.keys.toSet();
+  }
 
   /// Up to three seed rows from [clients], which the caller has already
   /// narrowed to sources that answer related hubs. Seeds come from this
@@ -71,7 +96,12 @@ class SeedRowsLoader {
     final byServer = {for (final c in clients) c.serverId: c};
     // Narrowed in the query, so a key on a source that cannot seed never
     // takes one of the six places.
-    final seeds = await service.recentSeeds(limit: 6, serverIds: {for (final id in byServer.keys) id.toString()});
+    // The places a remembered dead seed would have taken go to the next ones.
+    final gone = _currentlyGone();
+    final seeds = (await service.recentSeeds(
+      limit: 6 + gone.length,
+      serverIds: {for (final id in byServer.keys) id.toString()},
+    )).where((seed) => !gone.contains(seed.globalKey)).take(6).toList();
     // On a shared Jellyfin connection the server's watched state is the other
     // profile's too, so it may not rename a row; unknown counts as shared.
     Set<String>? shared;
@@ -97,8 +127,20 @@ class SeedRowsLoader {
     final key = parseGlobalKey(seed.globalKey);
     final client = key == null ? null : byServer[key.serverId];
     if (key == null || client == null) return null;
-    final item = await client.fetchItem(key.ratingKey).catchError((Object _) => null);
-    if (item == null || item.title == null) return null;
+    final MediaItem? item;
+    try {
+      item = await client.fetchItem(key.ratingKey);
+    } catch (_) {
+      return null;
+    }
+    if (item == null) {
+      // A completed "no such item": the server dropped it. Not asked again
+      // until the memory runs out.
+      _goneSince[seed.globalKey] = _now();
+      appLogger.d('SeedRowsLoader: seed ${seed.globalKey} is gone from its server, skipped for a while');
+      return null;
+    }
+    if (item.title == null) return null;
     // A series is still being watched until every episode is seen, whatever
     // the newest row says: finishing episode four of ten is not finishing it.
     // A film finished elsewhere after a partial here is finished, unless

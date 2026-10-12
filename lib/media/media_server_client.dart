@@ -750,7 +750,7 @@ mixin MediaServerCacheMixin implements MediaServerClient {
     }
     try {
       final response = await networkCall();
-      if (cacheResponse) {
+      if (cacheResponse && _isCacheable(response, cacheKey)) {
         try {
           await _putCacheResponse(cacheKey, response.data);
         } catch (e, st) {
@@ -781,7 +781,7 @@ mixin MediaServerCacheMixin implements MediaServerClient {
     if (cached != null) return parseCache(cached);
     if (isOfflineMode) return null;
     final response = await networkCall();
-    if (cacheResponse) {
+    if (cacheResponse && _isCacheable(response, cacheKey)) {
       try {
         await _putCacheResponse(cacheKey, response.data);
       } catch (e, st) {
@@ -789,6 +789,15 @@ mixin MediaServerCacheMixin implements MediaServerClient {
       }
     }
     return parseResponse(response);
+  }
+
+  /// An error page is not metadata: writing it would only produce a warning
+  /// that blames the response type, and a 404 is the server saying the item is
+  /// gone, which is not a problem to report at warning level.
+  bool _isCacheable(MediaServerResponse response, String cacheKey) {
+    if (response.statusCode < 400) return true;
+    appLogger.d('HTTP ${response.statusCode} for $cacheKey, not cached');
+    return false;
   }
 
   Future<void> _putCacheResponse(String cacheKey, dynamic data) async {
