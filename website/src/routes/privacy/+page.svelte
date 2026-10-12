@@ -44,12 +44,16 @@
     const onScreen = new Set<string>();
     let atEnd = false;
     let chosen: string | undefined;
+    let chosenAt = 0;
+    // What the index shows, kept beside the state so this effect never reads it.
+    let shown = sections[0].id;
 
     const settle = () => {
       if (chosen && !onScreen.has(chosen)) chosen = undefined;
-      active =
+      shown =
         chosen ??
-        (atEnd ? sections[sections.length - 1].id : (plates.find((plate) => inBand.has(plate.id))?.id ?? active));
+        (atEnd ? sections[sections.length - 1].id : (plates.find((plate) => inBand.has(plate.id))?.id ?? shown));
+      active = shown;
     };
     const choose = (id: string) => {
       if (!known.has(id)) return;
@@ -57,6 +61,7 @@
       document.getElementById(id)?.classList.add('in');
       onScreen.add(id);
       chosen = id;
+      chosenAt = performance.now();
       settle();
     };
     const release = () => {
@@ -65,6 +70,9 @@
       settle();
     };
 
+    // The band starts just under where a jump lands: under the pill bar on a
+    // narrow window, near the top on a wide one.
+    const bandTop = window.matchMedia('(min-width: 64rem)').matches ? 56 : 96;
     const band = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -73,7 +81,7 @@
         }
         settle();
       },
-      { rootMargin: '-56px 0px -60% 0px' }
+      { rootMargin: `-${bandTop}px 0px -60% 0px` }
     );
     const screen = new IntersectionObserver((entries) => {
       for (const entry of entries) {
@@ -85,7 +93,7 @@
     // The marker sits under the footer: it shows only at the real end of the page.
     const bottom = new IntersectionObserver(
       (entries) => {
-        atEnd = entries[0].isIntersecting;
+        atEnd = entries[entries.length - 1].isIntersecting;
         settle();
       },
       { rootMargin: '0px 0px 8px 0px' }
@@ -98,14 +106,30 @@
 
     const fromHash = () => choose(decodeURIComponent(location.hash.slice(1)));
     const onClick = (event: MouseEvent) => {
+      // A click that opens the link elsewhere does not move this page.
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const link = (event.target as Element | null)?.closest?.('a[href^="#"]');
       if (link) choose(decodeURIComponent(link.getAttribute('href')!.slice(1)));
     };
     const onKey = (event: KeyboardEvent) => {
       if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) release();
     };
-    if (location.hash) fromHash();
+    // A scroll that ends some time after the jump is the reader's own, also
+    // when it came from the scrollbar and sent no wheel, touch or key.
+    const onScrollEnd = () => {
+      if (performance.now() - chosenAt > 700) release();
+    };
+    if (location.hash) {
+      fromHash();
+      // The browser jumped before the fonts were in, and the text above has
+      // since changed height: land once more, unless the reader moved on.
+      const target = chosen;
+      document.fonts?.ready.then(() => {
+        if (target && chosen === target) document.getElementById(target)?.scrollIntoView();
+      });
+    }
     window.addEventListener('hashchange', fromHash);
+    window.addEventListener('scrollend', onScrollEnd);
     page.addEventListener('click', onClick);
     window.addEventListener('wheel', release, { passive: true });
     window.addEventListener('touchmove', release, { passive: true });
@@ -116,6 +140,7 @@
       screen.disconnect();
       bottom.disconnect();
       window.removeEventListener('hashchange', fromHash);
+      window.removeEventListener('scrollend', onScrollEnd);
       page.removeEventListener('click', onClick);
       window.removeEventListener('wheel', release);
       window.removeEventListener('touchmove', release);
@@ -159,7 +184,7 @@
           arrive.unobserve(entry.target);
         }
       },
-      { rootMargin: '0px 0px -8% 0px' }
+      { rootMargin: '0px 0px -4% 0px' }
     );
     plates.forEach((plate) => arrive.observe(plate));
     // A link reached with Tab inside a plate that has not arrived yet shows it.
@@ -452,11 +477,12 @@
     padding: 7rem 1rem 5rem;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 2.5rem;
   }
 
+  /* Narrow window: the title block dissolves into the page grid, so the index
+     can stay pinned under the top edge for the whole length of the policy. */
   .policy-lede {
-    min-width: 0;
+    display: contents;
   }
 
   .tag {
@@ -473,9 +499,13 @@
     text-transform: uppercase;
   }
 
+  .tag {
+    justify-self: start;
+  }
+
   .policy-lede h1 {
     margin-top: 1.25rem;
-    font-size: clamp(3rem, 6.2vw, 5.25rem);
+    font-size: clamp(3rem, 9vw, 5.25rem);
     font-weight: 800;
     line-height: 0.92;
     letter-spacing: -0.045em;
@@ -490,9 +520,18 @@
 
   /* ---------- index ---------- */
 
-  /* Narrow window: a row of pills that scrolls sideways under the title. */
+  /* Narrow window: a row of pills that scrolls sideways, pinned under the top
+     edge while the policy is read. Blur is allowed here: the bar itself does
+     not scroll. */
   .index {
-    margin-top: 1.75rem;
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    margin: 1.5rem -1rem 1.25rem;
+    padding: 0.5rem 0;
+    background: rgba(0, 0, 0, 0.72);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    backdrop-filter: blur(14px) saturate(140%);
   }
 
   .index-label {
@@ -502,13 +541,15 @@
   .index ol {
     display: flex;
     gap: 0.5rem;
-    margin: 0 -1rem;
+    margin: 0;
     padding: 0.25rem 1rem;
     list-style: none;
     counter-reset: entry;
     overflow: auto hidden;
-    scroll-snap-type: x proximity;
     scrollbar-width: none;
+    /* The row fades out at its right edge: there is more to the side. */
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
   }
 
   .index ol::-webkit-scrollbar {
@@ -517,8 +558,10 @@
 
   .index li {
     flex: none;
-    scroll-snap-align: start;
-    scroll-margin-left: 1rem;
+  }
+
+  .index li:last-child {
+    padding-right: 2rem;
   }
 
   .index a {
@@ -593,7 +636,8 @@
     border-radius: 1.5rem;
     border: 1px solid var(--hairline);
     background: rgba(255, 255, 255, 0.03);
-    scroll-margin-top: 1.5rem;
+    /* Clear of the pinned pill bar. */
+    scroll-margin-top: 4.75rem;
   }
 
   .policy-section + .policy-section {
@@ -718,7 +762,7 @@
     }
 
     .privacy:global(.motion) .policy-section {
-      opacity: 0.3;
+      opacity: 0.5;
       transition: opacity 900ms var(--ease);
     }
     .privacy:global(.motion) .policy-section .core {
@@ -763,7 +807,7 @@
       right: 2.5rem;
       margin: 0;
       font-size: clamp(3rem, 4.6vw, 3.75rem);
-      -webkit-text-stroke-color: rgba(255, 255, 255, 0.16);
+      -webkit-text-stroke-color: rgba(255, 176, 32, 0.34);
     }
 
     .core h2 {
@@ -781,11 +825,28 @@
     .policy-shell {
       grid-template-columns: minmax(0, 23rem) minmax(0, 1fr);
       gap: 5rem;
-      padding-block: 10rem 10rem;
+      padding-block: 7.5rem 10rem;
+    }
+
+    .policy-lede {
+      display: block;
+      min-width: 0;
+    }
+
+    .policy-lede h1 {
+      font-size: clamp(3rem, 6.2vw, 5.25rem);
+    }
+
+    .policy-section {
+      scroll-margin-top: 1.5rem;
     }
 
     .index {
-      margin-top: 2.5rem;
+      position: static;
+      z-index: auto;
+      margin: 2rem 0 0;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
       padding: var(--bezel);
       border-radius: 1.75rem;
       border: 1px solid var(--hairline);
@@ -817,7 +878,12 @@
       padding: 0;
       max-height: max(9rem, calc(100dvh - 26rem));
       overflow: hidden auto;
-      scroll-snap-type: none;
+      -webkit-mask-image: none;
+      mask-image: none;
+    }
+
+    .index li:last-child {
+      padding-right: 0;
     }
 
     .index a {
@@ -899,6 +965,7 @@
       padding: 0 !important;
     }
     .policy-lede {
+      display: block !important;
       position: static !important;
       margin-bottom: 2rem;
     }
@@ -947,7 +1014,12 @@
     }
     .well {
       border-color: #ddd;
-      break-inside: avoid-page;
+    }
+    .core :is(p, ul) {
+      max-width: none;
+    }
+    .core a {
+      text-decoration-color: #000;
     }
     .core {
       padding: 1rem 1.25rem;
