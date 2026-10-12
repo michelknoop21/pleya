@@ -10,7 +10,7 @@
 export const PUBLIC_TESTFLIGHT_URL = '';
 
 /** Inbox for the "Join the waitlist" mailto: link. */
-export const WAITLIST_FALLBACK_EMAIL = 'info@michelknoop.nl';
+export const WAITLIST_FALLBACK_EMAIL = 'beta@pleya.app';
 
 /** Upstream open-source project Pleya is based on (GPL-3.0 attribution). */
 export const UPSTREAM_REPO_URL = 'https://github.com/edde746/plezy';
