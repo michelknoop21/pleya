@@ -18,7 +18,8 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-Nothing user-facing since the last published build.
+### Fixed
+- vervolgpunten uit de externe review van PR #286 en #293
 <!-- END GENERATED -->
 
 ### New
