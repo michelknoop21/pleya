@@ -61,11 +61,11 @@ Nothing user-facing since the last published build.
   The second attempt a few seconds after you return still happens, then the wait grows from 10
   seconds to two minutes. A change of network, the reconnect button and the server coming back
   start over.
-- "Because you watched" no longer asks about titles the server has deleted. The history keeps a
-  title after it leaves the library, so Home asked the server for it on every refresh, got a 404
-  and lost one of the six places that feed the rows. It is now asked once, skipped for half an
-  hour, and the next title takes its place. A server that answers with an error instead of a
-  404 is not taken to have deleted anything.
+- "Because you watched" no longer asks about titles the server has deleted. Your history keeps a
+  title after it leaves the library, so Home asked the server for it on every refresh and got a
+  404. It is now asked once and skipped for half an hour, so the other titles you watched fill
+  the rows. A server that answers with an error instead of a 404 is not taken to have deleted
+  anything.
 - Opening a video file while a menu or sheet is open over the player replaces the film. It used
   to start a second player under the first. A file whose start was cut short because the screen
   went away is kept for the next screen instead of being deleted unseen. This covers the Live TV
@@ -77,16 +77,18 @@ Nothing user-facing since the last published build.
 ### Notes
 - The longer wait applies to Plex servers. Jellyfin and Pleya Server are probed as before.
 - Pressing reconnect, or changing network, still tries the server at once.
+- Pleya only tries an offline server again when you come back to the app, when the network
+  changes, or when you press reconnect. It does not retry on its own while you stay in the app.
 - Trakt for Big P is not switched on in this build, so there is no Trakt sign-in to test yet.
+- The "Because you watched" change is covered by automated tests only. There is no safe way to
+  check it by hand, since it would mean deleting a film from your server.
 
 ### Worth checking
 - Nothing in this build has been checked on an iPhone or iPad yet. The changes are covered by
   automated tests; the server probing has not been run against a real unreachable server.
-- Take a Plex server off the network, leave Pleya and come back several times within a minute.
-  Home should stay usable. Then bring the server back: it should show as online again within
-  two minutes, or at once when you press reconnect.
-- Delete a film you watched from the Plex server and pull Home down twice. The "Because you
-  watched" rows should still be there, built from the other titles you watched.
+- Take a Plex server off the network, then leave Pleya and come back a few times. Home should
+  stay usable and the server should show as offline. Bring the server back, then leave Pleya and
+  come back after two minutes, or press reconnect: the server should be online again.
 - Start a film, open the audio or subtitle sheet, then open a video from Files. The new file
   should replace the film, and you should hear only one of them.
 
