@@ -38,7 +38,7 @@
     </ul>
     <p class="aside">
       He can also turn a search into a row on your home screen or into a collection, add the age rating and where a
-      title streams when you switch on online information, and say whether what you are playing is transcoding and why.
+      title streams when you switch on online information, and say whether what you are playing is direct play or a transcode.
     </p>
   </div>
 </section>

@@ -51,11 +51,12 @@
     <rect x="38" y="50" width="60" height="14" rx="4" fill="#fff6e6" />
     <rect x="50" y="84" width="36" height="20" rx="3" fill="#fff6e6" /><path d="M55 91 H81 M55 97 H74" stroke="#c96a12" stroke-width="2" />
   {:else}
-    <rect width="136" height="200" fill="#16211c" />
-    {#each Array(16) as _, i (i)}
-      <path d="M68 30 L72 76 L64 76Z" fill="#c9d3cd" opacity={0.55 + (i % 4) * 0.12} transform="rotate({i * 22.5} 68 92)" />
-    {/each}
-    <circle cx="68" cy="92" r="16" fill="#16211c" /><circle cx="68" cy="92" r="6" fill="#b3321f" />
+    <!-- A whodunit in one shape: light through a keyhole. -->
+    <rect width="136" height="200" fill="#12201a" />
+    <circle cx="68" cy="84" r="52" fill="#1c3229" />
+    <circle cx="68" cy="84" r="52" fill="none" stroke="#c9a24a" stroke-width="1.2" opacity=".7" />
+    <path d="M68 52 a17 17 0 0 1 9 31.4 L84 118 H52 L59 83.4 A17 17 0 0 1 68 52Z" fill="#f0c15a" />
+    <path d="M52 118 H84 L96 150 H40Z" fill="#f0c15a" opacity=".22" />
   {/if}
   <rect y="150" width="136" height="50" fill="#000" opacity=".28" />
   <text x="10" y={194 - (lines.length - 1) * 13} class="name">
