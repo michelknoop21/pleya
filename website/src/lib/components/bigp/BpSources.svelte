@@ -17,7 +17,6 @@
 <section class="bp-section works-with" id="sources" aria-labelledby="sources-title">
   <div class="wrap grid">
     <div class="bp-head" data-reveal>
-      <p class="eyebrow">Works with</p>
       <h2 id="sources-title" data-split>The libraries you already have.</h2>
       <p class="lede">Big P reads the sources you added to Pleya. One question covers all of them, and the answer says which server a title is on.</p>
     </div>

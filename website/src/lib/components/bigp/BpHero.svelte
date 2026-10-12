@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import { betaLinkReady, cta, WAITLIST_FALLBACK_EMAIL } from '$lib/config';
   import BigPFigure from '$lib/bigp/BigP.svelte';
   import { L } from '$lib/bigp/layers';
   import type { BigP } from '$lib/bigp/rig';
   import { say } from '$lib/bigp/say';
   import Bubble from './Bubble.svelte';
   import Cta from './Cta.svelte';
+  import CtaNote from './CtaNote.svelte';
 
   // The greeting of the question screen in the app, without the name.
   const greeting = 'Hi, what are we looking for?';
@@ -31,24 +31,21 @@
   <div class="orb amber" aria-hidden="true"></div>
   <div class="wrap grid">
     <div class="copy">
-      <p class="eyebrow">Pleya Assistant</p>
       <h1 class="hero-title">
         <span class="ln"><span>Just ask</span></span>
         <span class="ln"><span class="grad">Big P.</span></span>
       </h1>
       <p class="lede">
-        Big P is the assistant inside Pleya. Describe a film you half remember or ask what to watch tonight, and he
-        searches every server you have connected. He can run those servers too. For a sensitive change, such as creating
-        a user, Pleya asks you first.
+        Big P is the Pleya Assistant. Describe a film you half remember or ask what to watch tonight, and he searches
+        every server you have connected. He can run those servers too; for a sensitive change, such as creating a
+        user, Pleya asks you first.
       </p>
+      <p class="needs">He runs on a language model that you connect: your own Ollama server, or a key from Ollama Cloud or OpenRouter.</p>
       <div class="actions">
         <Cta />
-        <a class="bp-more" href="#can">See what he can do</a>
+        <a class="bp-more" href="#ask">See him answer a question</a>
       </div>
-      <p class="cta-note">
-        {cta.note}
-        {#if !betaLinkReady}No mail app on this device? Write to <span class="mail">{WAITLIST_FALLBACK_EMAIL}</span>.{/if}
-      </p>
+      <CtaNote />
     </div>
     <div class="stage">
       <div class="say" class:arrived><Bubble text={greeting} {shown} /></div>
@@ -64,8 +61,7 @@
   /* The orbs are cut off by the section edge: fade them out so the next section starts on black. */
   .bp-hero::after { content: ''; position: absolute; inset: auto 0 0; height: 9rem; background: linear-gradient(transparent, #000); pointer-events: none; }
   .grid { position: relative; z-index: 1; display: grid; gap: 2rem; width: 100%; }
-  .mail { color: var(--ink); user-select: all; }
-  .eyebrow { margin-bottom: 1.4rem; }
+  .needs { margin-top: 1rem; max-width: 33rem; color: var(--ink); font-size: 0.98rem; }
   .bp-hero .hero-title { font-size: clamp(3.4rem, 10vw, 7.4rem); }
   .bp-hero .lede { margin-top: 1.8rem; max-width: 33rem; }
   .actions { margin-top: 2.2rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.6rem; }

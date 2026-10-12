@@ -1,70 +1,84 @@
 <script lang="ts">
   // Posters drawn for this page. Film titles are facts and may be named; the films' own
   // artwork belongs to their studios, so none of it is used or imitated here: each poster is
-  // one idea from the story in flat shapes, with the title set in the site's display face.
-  export type Art = 'martian' | 'mission' | 'redplanet' | 'dune' | 'paddington' | 'knives';
-  let { art, title }: { art: Art; title: string } = $props();
+  // one idea from the story in flat shapes. No lettering: at card size it would be unreadable,
+  // and the title stands next to the poster.
+  export type Art = 'martian' | 'mission' | 'redplanet' | 'dune' | 'paddington' | 'knives' | 'robot' | 'conclave' | 'sinners';
+  let { art }: { art: Art } = $props();
   // Gradient ids are per instance, so the same poster can appear twice on a page.
   const uid = $props.id();
-  // "Dune: Part Two" breaks after the colon, any other title before its last word.
-  const lines = $derived.by(() => {
-    const [head, ...rest] = title.split(': ');
-    const tail = rest.join(': ');
-    const parts = tail ? [head + ':', ...tail.split(' ')] : [title.slice(0, title.lastIndexOf(' ')), title.slice(title.lastIndexOf(' ') + 1)];
-    return parts.filter(Boolean).slice(0, 3);
-  });
 </script>
 
 <svg class="poster" viewBox="0 0 136 200" aria-hidden="true">
   {#if art === 'martian'}
-    <defs><linearGradient id="{uid}-martian" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0a35c" /><stop offset=".55" stop-color="#c2481d" /><stop offset="1" stop-color="#4a1408" /></linearGradient></defs>
-    <rect width="136" height="200" fill="url(#{uid}-martian)" />
-    <circle cx="98" cy="46" r="15" fill="#ffe2b0" opacity=".9" />
-    <path d="M0 128 Q40 108 78 124 T136 114 V200 H0Z" fill="#7a2410" />
-    <path d="M0 146 Q52 130 136 142 V200 H0Z" fill="#3a0f06" />
-    <path d="M68 142 V124 M68 132 Q56 130 55 118 Q67 119 68 132 M68 127 Q80 124 82 113 Q69 114 68 127" stroke="#8fd46a" stroke-width="2.4" fill="#8fd46a" stroke-linecap="round" />
+    <defs><linearGradient id="{uid}-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0a35c" /><stop offset=".55" stop-color="#c2481d" /><stop offset="1" stop-color="#4a1408" /></linearGradient></defs>
+    <rect width="136" height="200" fill="url(#{uid}-g)" />
+    <circle cx="98" cy="48" r="16" fill="#ffe2b0" opacity=".9" />
+    <path d="M0 132 Q40 112 78 128 T136 118 V200 H0Z" fill="#7a2410" />
+    <path d="M0 154 Q52 138 136 150 V200 H0Z" fill="#3a0f06" />
+    <path d="M68 152 V126 M68 138 Q52 135 51 119 Q67 121 68 138 M68 131 Q84 127 86 112 Q69 114 68 131" stroke="#8fd46a" stroke-width="3" fill="#8fd46a" stroke-linecap="round" />
   {:else if art === 'mission'}
-    <defs><radialGradient id="{uid}-mission" cx=".3" cy=".25" r="1"><stop offset="0" stop-color="#6f93bd" /><stop offset=".6" stop-color="#22354d" /><stop offset="1" stop-color="#0b121c" /></radialGradient></defs>
-    <rect width="136" height="200" fill="url(#{uid}-mission)" />
-    <circle cx="40" cy="150" r="72" fill="#c45a32" />
-    <circle cx="40" cy="150" r="72" fill="#000" opacity=".28" transform="translate(14 10)" />
-    <ellipse cx="78" cy="70" rx="56" ry="15" fill="none" stroke="#dfe9f5" stroke-width="1.2" transform="rotate(-24 78 70)" opacity=".8" />
-    <circle cx="112" cy="46" r="3.6" fill="#fff" />
+    <!-- Deep blue and a white ship: the rescue, not the planet. -->
+    <defs><linearGradient id="{uid}-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0c1830" /><stop offset="1" stop-color="#2c4f86" /></linearGradient></defs>
+    <rect width="136" height="200" fill="url(#{uid}-g)" />
+    <circle cx="106" cy="38" r="9" fill="#d9603a" />
+    <path d="M68 54 C84 76 86 108 82 138 H54 C50 108 52 76 68 54Z" fill="#eef3fa" />
+    <path d="M54 124 L38 152 H54Z M82 124 L98 152 H82Z" fill="#b9c6da" />
+    <circle cx="68" cy="94" r="8" fill="#2c4f86" />
+    <path d="M60 140 Q68 176 76 140Z" fill="#ffb020" />
+    <circle cx="22" cy="60" r="1.6" fill="#fff" /><circle cx="118" cy="104" r="1.4" fill="#fff" /><circle cx="30" cy="150" r="1.2" fill="#fff" />
   {:else if art === 'redplanet'}
-    <rect width="136" height="200" fill="#16060a" />
-    <circle cx="68" cy="84" r="50" fill="#b3321f" />
-    <circle cx="50" cy="70" r="9" fill="#8a2416" /><circle cx="84" cy="100" r="13" fill="#8a2416" /><circle cx="88" cy="62" r="5" fill="#8a2416" />
-    <path d="M18 84 A50 50 0 0 0 118 84 A62 40 0 0 1 18 84Z" fill="#000" opacity=".35" />
-    <path d="M10 22 L24 22 M17 15 L17 29 M112 150 L122 150 M117 145 L117 155" stroke="#f3d9c9" stroke-width="1" opacity=".7" />
+    <!-- Black with one crimson disc cut by its own shadow. -->
+    <rect width="136" height="200" fill="#0d0508" />
+    <circle cx="68" cy="100" r="54" fill="#c2261c" />
+    <path d="M68 46 A54 54 0 0 1 68 154 A30 54 0 0 0 68 46Z" fill="#0d0508" opacity=".72" />
+    <circle cx="46" cy="84" r="8" fill="#96190f" /><circle cx="52" cy="122" r="5" fill="#96190f" />
   {:else if art === 'dune'}
-    <defs><linearGradient id="{uid}-dune" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6d9a0" /><stop offset=".5" stop-color="#e09a4a" /><stop offset="1" stop-color="#8a4a1c" /></linearGradient></defs>
-    <rect width="136" height="200" fill="url(#{uid}-dune)" />
-    <circle cx="44" cy="44" r="12" fill="#fff4dc" /><circle cx="70" cy="30" r="6" fill="#fff4dc" opacity=".85" />
-    <path d="M0 118 Q46 84 92 112 T136 96 V200 H0Z" fill="#b8692a" />
-    <path d="M0 150 Q60 112 136 146 V200 H0Z" fill="#6e3814" />
-    <path d="M30 138 Q62 120 96 138" fill="none" stroke="#3d1d09" stroke-width="5" stroke-linecap="round" />
+    <defs><linearGradient id="{uid}-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6d9a0" /><stop offset=".5" stop-color="#e09a4a" /><stop offset="1" stop-color="#8a4a1c" /></linearGradient></defs>
+    <rect width="136" height="200" fill="url(#{uid}-g)" />
+    <circle cx="44" cy="46" r="13" fill="#fff4dc" /><circle cx="72" cy="30" r="6.5" fill="#fff4dc" opacity=".85" />
+    <path d="M0 122 Q46 88 92 116 T136 100 V200 H0Z" fill="#b8692a" />
+    <path d="M0 158 Q60 118 136 154 V200 H0Z" fill="#6e3814" />
+    <path d="M28 146 Q62 126 98 146" fill="none" stroke="#3d1d09" stroke-width="6" stroke-linecap="round" />
   {:else if art === 'paddington'}
     <rect width="136" height="200" fill="#1f3f8f" />
-    <circle cx="68" cy="52" r="70" fill="#2a52b5" />
-    <rect x="42" y="62" width="52" height="64" rx="9" fill="#f2a024" />
-    <rect x="48" y="68" width="8" height="52" rx="4" fill="#fff" opacity=".22" />
-    <rect x="38" y="50" width="60" height="14" rx="4" fill="#fff6e6" />
-    <rect x="50" y="84" width="36" height="20" rx="3" fill="#fff6e6" /><path d="M55 91 H81 M55 97 H74" stroke="#c96a12" stroke-width="2" />
-  {:else}
+    <circle cx="68" cy="60" r="74" fill="#2a52b5" />
+    <rect x="38" y="74" width="60" height="76" rx="11" fill="#f2a024" />
+    <rect x="45" y="82" width="9" height="60" rx="4.5" fill="#fff" opacity=".22" />
+    <rect x="33" y="60" width="70" height="16" rx="5" fill="#fff6e6" />
+    <rect x="48" y="100" width="40" height="24" rx="3" fill="#fff6e6" /><path d="M54 108 H82 M54 116 H74" stroke="#c96a12" stroke-width="2.4" />
+  {:else if art === 'knives'}
     <!-- A whodunit in one shape: light through a keyhole. -->
     <rect width="136" height="200" fill="#12201a" />
-    <circle cx="68" cy="84" r="52" fill="#1c3229" />
-    <circle cx="68" cy="84" r="52" fill="none" stroke="#c9a24a" stroke-width="1.2" opacity=".7" />
-    <path d="M68 52 a17 17 0 0 1 9 31.4 L84 118 H52 L59 83.4 A17 17 0 0 1 68 52Z" fill="#f0c15a" />
-    <path d="M52 118 H84 L96 150 H40Z" fill="#f0c15a" opacity=".22" />
+    <circle cx="68" cy="92" r="56" fill="#1c3229" />
+    <circle cx="68" cy="92" r="56" fill="none" stroke="#c9a24a" stroke-width="1.4" opacity=".7" />
+    <path d="M68 56 a19 19 0 0 1 10 35.2 L86 132 H50 L58 91.2 A19 19 0 0 1 68 56Z" fill="#f0c15a" />
+    <path d="M50 132 H86 L100 172 H36Z" fill="#f0c15a" opacity=".22" />
+  {:else if art === 'robot'}
+    <!-- One egg in a nest of leaves: what the machine finds. -->
+    <rect width="136" height="200" fill="#1d4a32" />
+    <path d="M-10 60 Q40 20 60 80 Q20 90 -10 60Z M146 40 Q96 30 92 90 Q130 90 146 40Z M-6 170 Q40 120 70 176 Q30 200 -6 170Z M142 176 Q110 124 76 170 Q110 204 142 176Z" fill="#2f7a4d" />
+    <ellipse cx="68" cy="128" rx="44" ry="14" fill="#143524" />
+    <path d="M68 70 C88 70 96 104 96 116 A28 24 0 0 1 40 116 C40 104 48 70 68 70Z" fill="#f1ead8" />
+    <path d="M68 70 C88 70 96 104 96 116 A28 24 0 0 1 68 140 A40 44 0 0 0 68 70Z" fill="#000" opacity=".1" />
+  {:else if art === 'conclave'}
+    <!-- White smoke over a wall of red. -->
+    <rect width="136" height="200" fill="#8f1420" />
+    <rect y="126" width="136" height="74" fill="#5c0b14" />
+    <rect x="58" y="96" width="20" height="40" fill="#2a0508" />
+    <circle cx="68" cy="82" r="13" fill="#f6efe6" /><circle cx="82" cy="62" r="17" fill="#f6efe6" /><circle cx="60" cy="42" r="21" fill="#f6efe6" /><circle cx="86" cy="24" r="16" fill="#f6efe6" opacity=".85" />
+  {:else}
+    <!-- A lit doorway in a field at dusk. -->
+    <defs><linearGradient id="{uid}-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a1440" /><stop offset=".6" stop-color="#7a2a4a" /><stop offset="1" stop-color="#e0703a" /></linearGradient></defs>
+    <rect width="136" height="200" fill="url(#{uid}-g)" />
+    <path d="M0 150 H136 V200 H0Z" fill="#140a14" />
+    <path d="M30 150 V96 L68 70 L106 96 V150Z" fill="#1e1020" />
+    <rect x="58" y="112" width="20" height="38" fill="#ffc45a" />
+    <path d="M58 150 H78 L92 200 H44Z" fill="#ffc45a" opacity=".2" />
+    <circle cx="104" cy="36" r="10" fill="#ffe7c2" />
   {/if}
-  <rect y="150" width="136" height="50" fill="#000" opacity=".28" />
-  <text x="10" y={194 - (lines.length - 1) * 13} class="name">
-    {#each lines as line, i (i)}<tspan x="10" dy={i ? 13 : 0}>{line}</tspan>{/each}
-  </text>
 </svg>
 
 <style>
   .poster { display: block; width: 100%; height: 100%; }
-  .name { font-family: var(--display); font-size: 12.5px; font-weight: 800; letter-spacing: -0.01em; fill: #fff; }
 </style>

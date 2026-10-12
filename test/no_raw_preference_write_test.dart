@@ -124,8 +124,10 @@ void main() {
     ),
     'lib/services/trackers/tracker_account_store.dart': RawWriteRecord(
       WriteCategory.secret,
-      2,
-      'tracker OAuth sessions, scoped per user',
+      10,
+      'tracker OAuth sessions, scoped per user: the vault-protected fallback blob (written, rewritten on '
+      'migration, removed once the keychain holds it) and the `_kc` marker that ties a device-keychain item '
+      'to this install (set, restored after a refused write, tombstoned after a refused delete, removed)',
     ),
     'lib/services/seerr/seerr_account_store.dart': RawWriteRecord(
       WriteCategory.secret,
@@ -278,7 +280,7 @@ void main() {
     // matching *lines*; this counts matching *calls*, which is the number that
     // actually has to be classified.
     final total = inventory.values.fold<int>(0, (sum, r) => sum + r.count);
-    expect(total, 104, reason: 'total raw preference writes still classified as staying outside the coordinator');
+    expect(total, 112, reason: 'total raw preference writes still classified as staying outside the coordinator');
     expect(inventory.length, 31, reason: 'files containing them');
   });
 

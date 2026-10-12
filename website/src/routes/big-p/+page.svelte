@@ -4,7 +4,6 @@
   import TopNav from '$lib/components/TopNav.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import Video from '$lib/components/home/Video.svelte';
-  import Final from '$lib/components/home/Final.svelte';
   import BpHero from '$lib/components/bigp/BpHero.svelte';
   import BpAsk from '$lib/components/bigp/BpAsk.svelte';
   import BpBento from '$lib/components/bigp/BpBento.svelte';
@@ -12,6 +11,7 @@
   import BpConfirm from '$lib/components/bigp/BpConfirm.svelte';
   import BpBrain from '$lib/components/bigp/BpBrain.svelte';
   import BpSources from '$lib/components/bigp/BpSources.svelte';
+  import BpClose from '$lib/components/bigp/BpClose.svelte';
   import { pageMotion } from '$lib/motion';
   import { startBigPMotion } from '$lib/components/bigp/motion';
 
@@ -45,13 +45,13 @@
   <BpHero />
   <main>
     <BpAsk />
-    <BpBento />
     <BpMore />
-    <BpConfirm />
+    <BpBento />
     <BpBrain />
+    <BpConfirm />
     <BpSources />
     <Video meet={false} />
-    <Final />
+    <BpClose />
   </main>
 </div>
 <Footer />
