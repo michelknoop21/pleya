@@ -51,6 +51,79 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 359 · 12 October 2026 · iPhone and iPad
+
+<!-- commit: 2cd3f7630f1f4d811f6eda581fb40dc79232cd1d -->
+
+### New
+- **Big P's example questions show what Big P can do for you.** The three questions under the
+  greeting used to come from a short fixed list. They now follow your profile and your servers:
+  you only see a question Big P can answer, so a profile without administration rights is not
+  offered a library scan, and a profile without Seerr is not offered a request. They come from
+  different areas (watching, discovering, your own history, the household, administration) and
+  change each time you open Big P. A question you saw recently comes back later than one you
+  never saw.
+
+### Improved
+- Your tracker sign-ins (MyAnimeList, AniList, Simkl and Trakt) are kept in the device keychain
+  instead of in the app's readable settings. An existing sign-in moves over the first time the
+  app starts and keeps working. Nothing is synced through iCloud.
+
+### Notes
+- A children's profile is only offered questions about what to watch, and until Pleya has read
+  the profile settings every profile is treated that way. Opening Big P a moment after launch
+  can therefore show the watch questions first and the full set a moment later.
+- Big P's example questions are not written by the model. Which tool the model picks for each
+  question has not been checked against a real model yet.
+- Trakt sign-in for Big P is not switched on in this build.
+
+### Worth checking
+- Nothing in this build has been checked on an iPhone or iPad yet. The questions are covered by
+  automated tests and screenshots; the keychain move has not been run on a device with a tracker
+  connected.
+- Open Big P a few times in a row. Each time the three questions should be from different
+  areas, and not the same set twice in a row.
+- On a profile that is not an administrator, none of the questions should be about scanning,
+  tasks or users. On a children's profile they should all be about what to watch.
+- If you have a tracker connected, open its settings after updating. It should still be signed
+  in. If it asks you to sign in again, tell us which tracker.
+
+## 2.8.1 · build 360 · 12 October 2026 · Apple TV
+
+<!-- commit: 2cd3f7630f1f4d811f6eda581fb40dc79232cd1d -->
+
+### New
+- **Big P's example questions show what Big P can do for you.** The three questions under the
+  greeting used to come from a short fixed list. They now follow your profile and your servers:
+  you only see a question Big P can answer, so a profile without administration rights is not
+  offered a library scan, and a profile without Seerr is not offered a request. They come from
+  different areas (watching, discovering, your own history, the household, administration) and
+  change each time you open Big P. A question you saw recently comes back later than one you
+  never saw.
+
+### Improved
+- Your tracker sign-ins (MyAnimeList, AniList, Simkl and Trakt) are kept in the device keychain
+  instead of in the app's readable settings. An existing sign-in moves over the first time the
+  app starts and keeps working. Nothing is synced through iCloud.
+
+### Notes
+- A children's profile is only offered questions about what to watch, and until Pleya has read
+  the profile settings every profile is treated that way. Opening Big P a moment after launch
+  can therefore show the watch questions first and the full set a moment later.
+- Big P's example questions are not written by the model. Which tool the model picks for each
+  question has not been checked against a real model yet.
+- Trakt sign-in for Big P is not switched on in this build.
+
+### Worth checking
+- Nothing in this build has been checked on an Apple TV yet. The questions are covered by
+  automated tests and a screenshot; they have not been run on the device.
+- Open Big P a few times in a row. Each time the three questions should be from different
+  areas, and not the same set twice in a row.
+- On a profile that is not an administrator, none of the questions should be about scanning,
+  tasks or users. On a children's profile they should all be about what to watch.
+- If you have a tracker connected, open its settings after updating. It should still be signed
+  in. If it asks you to sign in again, tell us which tracker.
+
 ## 2.8.1 · build 358 · 12 October 2026 · iPhone and iPad
 
 <!-- commit: 5f6925d8f74f770aa5ecf0176a746d45c20ba002 -->
