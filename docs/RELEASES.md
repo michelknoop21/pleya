@@ -27,6 +27,7 @@ under `Notes`.
 - vervolgpunten uit de externe review van PR #286 en #293
 - speler-route gedeeld met Live TV, bedrading getest, claims in de notities teruggebracht
 - onbereikbare Plex-server met backoff, verwijderd seed-item niet bij elke verversing opnieuw
+- reviewpunten op de v313k-fix
 <!-- END GENERATED -->
 
 ### New
