@@ -232,7 +232,7 @@
     color: var(--color-text);
     font-size: 1.375rem;
     font-weight: 600;
-    line-height: 1.75rem;
+    line-height: 1.3;
     margin-top: 3rem;
     margin-bottom: 0.875rem;
     padding-top: 2rem;
