@@ -24,6 +24,37 @@ import 'platform_detector.dart';
 
 const String kVideoPlayerRouteName = '/video_player';
 
+/// The player's route. Disposal is the one signal that also arrives when the
+/// navigator itself is torn down (a profile switch, a sign-out), where the
+/// future of the push never completes.
+class _VideoPlayerRoute extends PageRouteBuilder<bool> {
+  _VideoPlayerRoute({required super.pageBuilder})
+    : super(
+        settings: const RouteSettings(name: kVideoPlayerRouteName),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      );
+
+  final Completer<void> _disposed = Completer<void>();
+
+  Future<void> get disposed => _disposed.future;
+
+  @override
+  void dispose() {
+    if (!_disposed.isCompleted) _disposed.complete();
+    super.dispose();
+  }
+}
+
+Route<dynamic>? _playerRoute;
+
+/// The route of the player that is on a navigator right now, if any: not
+/// necessarily on top, a dialog or a sheet can lie over it.
+Route<dynamic>? get activePlayerRoute {
+  final route = _playerRoute;
+  return route != null && route.isActive && route.navigator != null ? route : null;
+}
+
 /// Drops a second start of the same title while the first is still on its
 /// way to the player.
 ///
@@ -155,6 +186,10 @@ Future<bool?> navigateToVideoPlayer(
   bool isOffline = false,
   bool resolveWatchState = true,
   VoidCallback? onPlaybackInitFailed,
+
+  /// Called when the player's route is pushed, with a future that completes
+  /// when that route is gone. Never called when no player starts.
+  void Function(Future<void> gone)? onPlayerRoute,
 }) async {
   // The item as the caller handed it over. The refetch below replaces
   // [metadata], and a server may answer under another id, so the guard is
@@ -309,8 +344,7 @@ Future<bool?> navigateToVideoPlayer(
       return null;
     }
 
-    final route = PageRouteBuilder<bool>(
-      settings: const RouteSettings(name: kVideoPlayerRouteName),
+    final route = _VideoPlayerRoute(
       pageBuilder: (context, animation, secondaryAnimation) => VideoPlayerScreen(
         metadata: metadata,
         preferredAudioTrack: preferredAudioTrack,
@@ -323,9 +357,9 @@ Future<bool?> navigateToVideoPlayer(
         resumeProgressIsFresh: resumeProgressIsFresh,
         onPlaybackInitFailed: onPlaybackInitFailed,
       ),
-      transitionDuration: Duration.zero,
-      reverseTransitionDuration: Duration.zero,
     );
+    _playerRoute = route;
+    onPlayerRoute?.call(route.disposed);
 
     final result = usePushReplacement ? navigator.pushReplacement<bool, bool>(route) : navigator.push<bool>(route);
     if (markedInFlight) {

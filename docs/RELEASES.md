@@ -47,6 +47,11 @@ Nothing user-facing since the last published build.
 
 ### Improved
 
+- **Opening a video file while a menu or sheet is open over the player replaces the film.** It
+  used to start a second player under the first. A file whose start was cut short because the
+  screen went away is kept for the next screen instead of being deleted unseen. On the Mac, a
+  video file that arrives together with a sign-in link no longer hides that link from the app.
+  Not checked on a device yet.
 - **Ending a session takes effect while a film is playing.** A revoked session stops the stream
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
