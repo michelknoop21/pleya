@@ -25,6 +25,8 @@ export async function startPageMotion(root: HTMLElement, extra?: (kit: Kit) => v
     gsap.ticker.add(tick);
     gsap.ticker.lagSmoothing(0);
 
+    // Reveals play once as their block enters, well before it reaches the middle of the
+    // window: a reader who stops scrolling never sits in front of half-shown content.
     // Large headings: words rise out of a mask. SplitText keeps an aria-label
     // with the whole heading and hides the split words from assistive tech.
     root.querySelectorAll<HTMLElement>('[data-split]').forEach((el) => {
@@ -33,16 +35,17 @@ export async function startPageMotion(root: HTMLElement, extra?: (kit: Kit) => v
         mask: 'words',
         autoSplit: true,
         onSplit: (self) =>
-          gsap.from(self.words, { yPercent: 105, duration: 0.95, ease: 'expo.out', stagger: 0.05, scrollTrigger: { trigger: el, start: 'top 85%', end: 'top 60%', scrub: 0.35 } }),
+          gsap.from(self.words, { yPercent: 105, duration: 0.95, ease: 'expo.out', stagger: 0.05, scrollTrigger: { trigger: el, start: 'top 92%', once: true } }),
       });
     });
 
     // Supporting content follows its heading: the direct children of a
-    // [data-reveal] container come up one at a time, decorative ones excluded.
+    // [data-reveal] container come up one at a time, decorative ones excluded. Opacity only:
+    // visibility:hidden would take links and buttons out of the tab order until they are scrolled to.
     root.querySelectorAll<HTMLElement>('[data-reveal]').forEach((el) => {
       const kids = [...el.children].filter((c) => !c.hasAttribute('aria-hidden'));
       if (kids.length)
-        gsap.from(kids, { y: 28, autoAlpha: 0, duration: 0.85, ease: 'power3.out', stagger: 0.08, scrollTrigger: { trigger: el, start: 'top 82%', end: 'top 60%', scrub: 0.35 } });
+        gsap.from(kids, { y: 28, opacity: 0, duration: 0.85, ease: 'power3.out', stagger: 0.08, scrollTrigger: { trigger: el, start: 'top 92%', once: true } });
     });
 
     const undoExtra = extra?.({ gsap, ScrollTrigger, q });

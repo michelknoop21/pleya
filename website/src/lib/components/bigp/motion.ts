@@ -11,12 +11,12 @@ export const startBigPMotion = (root: HTMLElement) =>
     gsap
       .timeline({ defaults: { ease: 'expo.out' } })
       .from(root.querySelectorAll('.bp-hero .ln > span'), { yPercent: 110, duration: 1.15, stagger: 0.12 })
-      .from(root.querySelectorAll('.bp-hero .eyebrow, .bp-hero .lede, .bp-hero .actions, .bp-hero .cta-note'), { y: 18, autoAlpha: 0, duration: 0.8, stagger: 0.08 }, '-=0.8')
-      .from(root.querySelectorAll('.bp-hero .orb'), { autoAlpha: 0, duration: 1.6, ease: 'power2.out' }, 0);
+      .from(root.querySelectorAll('.bp-hero .eyebrow, .bp-hero .lede, .bp-hero .actions, .bp-hero .cta-note'), { y: 18, opacity: 0, duration: 0.8, stagger: 0.08 }, '-=0.8')
+      .from(root.querySelectorAll('.bp-hero .orb'), { opacity: 0, duration: 1.6, ease: 'power2.out' }, 0);
 
     // Cards and panels come up as they enter; in the bento each one also asks for Big P's arm.
     root.querySelectorAll<HTMLElement>('.bento .grid, .ask .demo, .confirm .stage, .providers').forEach((group) => {
-      gsap.from(group.children, { y: 48, autoAlpha: 0, duration: 1, ease: 'expo.out', stagger: 0.09, scrollTrigger: { trigger: group, start: 'top 82%', end: 'top 45%', scrub: 0.4 } });
+      gsap.from(group.children, { y: 48, opacity: 0, duration: 1, ease: 'expo.out', stagger: 0.09, scrollTrigger: { trigger: group, start: 'top 92%', once: true } });
     });
 
     const bento = q('.bento');

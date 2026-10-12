@@ -5,6 +5,7 @@
   import BigPFigure from '$lib/bigp/BigP.svelte';
   import type { BigP } from '$lib/bigp/rig';
   import Bubble from './Bubble.svelte';
+  import Cta from './Cta.svelte';
   import { onCue, type Cue } from './cue';
 
   // What Big P says on the question screen while no model is set up.
@@ -28,9 +29,9 @@
 
   // Names and descriptions as the Big P settings show them.
   const providers = [
-    { icon: RouterIcon, name: 'Ollama server', text: 'Runs on your own network, for example on your NAS.' },
-    { icon: OllamaIcon, name: 'Ollama Cloud', text: 'Models that Ollama runs for you.' },
-    { icon: OpenRouterIcon, name: 'OpenRouter', text: 'One key for models from several vendors.' },
+    { icon: RouterIcon, name: 'Ollama server', text: 'Runs on your own network, for example on your NAS.', needs: 'You enter the server address. The model runs on hardware you already own.' },
+    { icon: OllamaIcon, name: 'Ollama Cloud', text: 'Models that Ollama runs for you.', needs: 'You enter an API key from your Ollama account.' },
+    { icon: OpenRouterIcon, name: 'OpenRouter', text: 'One key for models from several vendors.', needs: 'You enter an OpenRouter key. The model list marks each model as free, low cost, mid-priced or expensive.' },
   ];
 </script>
 
@@ -46,8 +47,9 @@
         <p class="eyebrow">Bring your own brain</p>
         <h2 id="brain-title" data-split>He needs a language model. You choose which.</h2>
         <p class="lede">
-          Pleya does not ship a language model and does not run one itself. Connect one of these in the Big P settings.
-          Only models that can use tools are listed there.
+          Pleya does not ship a language model and does not run one itself. Open Big P in the app, choose Set up model
+          and pick one of these three. Pleya fetches the models, lists only the ones that can use tools and lets you
+          test the connection.
         </p>
       </div>
     </div>
@@ -55,7 +57,7 @@
     <ul class="providers" use:onCue={cue}>
       {#each providers as p (p.name)}
         <li class="bz">
-          <div class="bz-core"><p.icon aria-hidden="true" /><h3>{p.name}</h3><p>{p.text}</p></div>
+          <div class="bz-core"><p.icon aria-hidden="true" /><h3>{p.name}</h3><p>{p.text}</p><p class="needs">{p.needs}</p></div>
         </li>
       {/each}
     </ul>
@@ -78,6 +80,7 @@
       </figure>
     </div>
     <p class="example">Both notes are quoted from the Big P settings in the app.</p>
+    <div class="bp-next"><Cta note /></div>
   </div>
 </section>
 
@@ -91,6 +94,7 @@
   .providers :global(svg) { font-size: 1.9rem; color: var(--amber); }
   h3 { margin-top: 1.1rem; font-family: var(--display); font-size: 1.45rem; letter-spacing: -0.02em; }
   .providers p { margin-top: 0.4rem; color: var(--muted); font-size: 0.98rem; }
+  .providers .needs { margin-top: 0.9rem; padding-top: 0.9rem; border-top: 1px solid var(--hair); color: var(--ink); font-size: 0.92rem; }
   .quotes { margin-top: 3.5rem; display: grid; gap: 2.5rem; }
   figcaption { color: var(--amber); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
   blockquote { margin: 0.8rem 0 0; padding-left: 1.2rem; border-left: 1px solid rgba(255, 176, 32, 0.5); color: var(--ink); font-size: clamp(1.02rem, 1.4vw, 1.18rem); line-height: 1.6; }

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import { cta } from '$lib/config';
+  import { betaLinkReady, cta, WAITLIST_FALLBACK_EMAIL } from '$lib/config';
   import BigPFigure from '$lib/bigp/BigP.svelte';
   import { L } from '$lib/bigp/layers';
   import type { BigP } from '$lib/bigp/rig';
@@ -45,7 +45,10 @@
         <Cta />
         <a class="bp-more" href="#can">See what he can do</a>
       </div>
-      <p class="cta-note">{cta.note}</p>
+      <p class="cta-note">
+        {cta.note}
+        {#if !betaLinkReady}No mail app on this device? Write to <span class="mail">{WAITLIST_FALLBACK_EMAIL}</span>.{/if}
+      </p>
     </div>
     <div class="stage">
       <div class="say" class:arrived><Bubble text={greeting} {shown} /></div>
@@ -60,7 +63,8 @@
   .orb.amber { width: min(40rem, 90vw); aspect-ratio: 1; left: -14%; bottom: -30%; }
   /* The orbs are cut off by the section edge: fade them out so the next section starts on black. */
   .bp-hero::after { content: ''; position: absolute; inset: auto 0 0; height: 9rem; background: linear-gradient(transparent, #000); pointer-events: none; }
-  .grid { position: relative; z-index: 1; display: grid; gap: 2rem; }
+  .grid { position: relative; z-index: 1; display: grid; gap: 2rem; width: 100%; }
+  .mail { color: var(--ink); user-select: all; }
   .eyebrow { margin-bottom: 1.4rem; }
   .bp-hero .hero-title { font-size: clamp(3.4rem, 10vw, 7.4rem); }
   .bp-hero .lede { margin-top: 1.8rem; max-width: 33rem; }

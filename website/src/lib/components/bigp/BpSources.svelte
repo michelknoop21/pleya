@@ -44,7 +44,7 @@
   .extra div { display: grid; gap: 0.2rem; }
   dt { font-weight: 600; }
   dd { color: var(--muted); font-size: 0.98rem; }
-  dd a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--amber); text-underline-offset: 0.3em; white-space: nowrap; }
+  dd a { display: inline-block; padding-block: 0.7rem; margin-block: -0.7rem; color: var(--ink); text-decoration: underline; text-decoration-color: var(--amber); text-underline-offset: 0.3em; white-space: nowrap; }
   @media (min-width: 900px) {
     .grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 5rem; align-items: start; }
     .extra div { grid-template-columns: 6rem 1fr; gap: 1rem; }

@@ -58,7 +58,7 @@
         The model cannot press Confirm. Creating or removing a user, changing who may see a library, sending a request:
         each of them waits at a card like this one. A scan or a retry starts right away and shows its status.
       </p>
-      <p class="aside">A password you type on that card goes to your server. It does not go to Big P or to the AI provider.</p>
+      <p class="aside">The password you type on that card in the app goes to your server. It does not go to Big P or to the AI provider.</p>
     </div>
 
     <div class="stage">
@@ -76,7 +76,7 @@
                 <div><dt>Access</dt><dd>Kids</dd></div>
                 <div><dt>Admin</dt><dd>No</dd></div>
               </dl>
-              <p class="field"><LockIcon aria-hidden="true" />Choose a password</p>
+              <p class="field"><LockIcon aria-hidden="true" /><span>Password</span><span class="dots" aria-label="filled in, hidden">••••••••</span></p>
               <p class="note">This password does not go to Big P or to the AI provider.</p>
               <div class="buttons">
                 <button type="button" class="no" onclick={() => decide(false)}>Cancel</button>
@@ -105,7 +105,9 @@
   .aside { margin-top: 1rem; max-width: 34rem; color: var(--muted); }
   .stage { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); align-items: end; gap: 0.5rem; }
   .fig { margin-left: -6%; }
+  /* Fixed height: answering the card must not move the column next to it. */
   .card { position: relative; align-self: center; }
+  .card .bz-core { min-height: 33rem; }
   .asked { color: var(--ink); font-size: 0.95rem; }
   .asked span { color: var(--faint); }
   .header { margin-top: 1.3rem; color: var(--amber); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
@@ -113,8 +115,9 @@
   dl { margin-top: 1rem; display: grid; }
   dl div { display: flex; justify-content: space-between; gap: 1rem; padding-block: 0.55rem; border-bottom: 1px solid var(--hair); font-size: 0.95rem; }
   dt { color: var(--muted); }
-  .field { margin-top: 1rem; display: flex; align-items: center; gap: 0.6rem; padding: 0.75rem 0.9rem; border-radius: 0.8rem; background: rgba(255, 255, 255, 0.05); box-shadow: inset 0 0 0 1px var(--hair); color: var(--faint); font-size: 0.95rem; }
+  .field { margin-top: 1rem; display: flex; align-items: center; gap: 0.6rem; padding: 0.75rem 0.9rem; border-radius: 0.8rem; background: rgba(255, 255, 255, 0.08); color: var(--muted); font-size: 0.95rem; }
   .field :global(svg) { font-size: 1.25rem; }
+  .field .dots { margin-left: auto; color: var(--ink); letter-spacing: 0.15em; }
   .note { margin-top: 0.5rem; color: var(--muted); font-size: 0.8rem; }
   .buttons { margin-top: 1.2rem; display: flex; gap: 0.6rem; }
   button { flex: 1; min-height: 44px; padding: 0.6rem 1.1rem; border-radius: 999px; font-weight: 600; transition: transform 0.4s var(--ease), filter 0.4s var(--ease), background-color 0.4s var(--ease); }
