@@ -51,6 +51,7 @@ import '../../utils/global_key_utils.dart';
 import '../../utils/home_custom_row_labels.dart' show unifiedWatchFilterLabel;
 import '../../utils/language_codes.dart';
 import '../../widgets/app_icon.dart';
+import '../../widgets/library_atmosphere.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/focusable_filter_chip.dart';
 import '../../widgets/media_card_grid_layout.dart';
@@ -350,17 +351,20 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
         child: Builder(
           // Below the host, so the chips can reach it.
           builder: (sheetContext) => Scaffold(
-            body: SafeArea(
-              bottom: false,
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  _buildChips(sheetContext, filters),
-                  const SizedBox(height: 8),
-                  _buildCountRow(filters),
-                  const SizedBox(height: 8),
-                  Expanded(child: _buildBody(filters)),
-                ],
+            body: LibraryAtmosphere(
+              automationInstance: 'mobile_catalog.${widget.kind.name}',
+              child: SafeArea(
+                bottom: false,
+                child: Column(
+                  children: [
+                    _buildHeader(),
+                    _buildChips(sheetContext, filters),
+                    const SizedBox(height: 8),
+                    _buildCountRow(filters),
+                    const SizedBox(height: 8),
+                    Expanded(child: _buildBody(filters)),
+                  ],
+                ),
               ),
             ),
           ),
@@ -423,7 +427,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
             instance: widget.kind.automationInstance,
             role: 'button',
             child: FocusableFilterChip(
-              variant: FilterChipVariant.filled,
+              variant: FilterChipVariant.toolbar,
               icon: Symbols.dns_rounded,
               label: _sourcesLabel(filters),
               onPressed: () => _openFilters(sheetContext, initialSection: MobileCatalogFilterSection.servers),
@@ -435,7 +439,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
             instance: widget.kind.automationInstance,
             role: 'button',
             child: FocusableFilterChip(
-              variant: FilterChipVariant.filled,
+              variant: FilterChipVariant.toolbar,
               icon: Symbols.filter_list_rounded,
               label: t.unifiedCatalog.filters.title,
               badgeCount: filters.activeCount,
@@ -448,7 +452,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
             instance: widget.kind.automationInstance,
             role: 'button',
             child: FocusableFilterChip(
-              variant: FilterChipVariant.filled,
+              variant: FilterChipVariant.toolbar,
               icon: Symbols.swap_vert_rounded,
               label: mobileCatalogSortLabel(_preferences.sort),
               onPressed: () => _openSort(sheetContext),

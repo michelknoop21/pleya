@@ -19,6 +19,7 @@
 /// activation path instead of a no-op.
 library;
 
+import '../../widgets/library_atmosphere.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -149,135 +150,138 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
       return _buildEmptyOrLoading(discover);
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final scale = TvLayoutConstants.scaleOf(context);
-        // LAND7. The height of this screen's own content box, the one
-        // `TvShellSurface`'s Column already leaves below the top navigation.
-        // Not `MediaQuery.sizeOf(context).height`, which is the full window
-        // and would put the anchor at the wrong fraction of this viewport.
-        // Same source Home's feed reads at `tv_content_feed.dart:508`.
-        final viewportHeight = constraints.maxHeight;
-        // Hoofdstuk 33.3: the peeking poster tops at the bottom edge fade into
-        // the page rather than being cut off flat. `dstIn` over the whole list
-        // rather than a gradient box on top of it, because the thing that has
-        // to disappear is artwork, and a scrim painted over it would have to
-        // match the page colour exactly — which it cannot, since the page has
-        // its own vertical lift.
-        final safeArea = TvDiscoverySafeArea.maybe(context);
-        final page = ShaderMask(
-          shaderCallback: (bounds) => LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: const [Color(0x00000000), Color(0xFF000000)],
-            stops: [0, TvDiscoveryLayout.pageBottomFade * scale / bounds.height],
-          ).createShader(bounds),
-          blendMode: BlendMode.dstIn,
-          child: ListView(
-            controller: _scrollController,
-            padding: EdgeInsets.only(
-              top: TvCatalogLayout.topSafeInset * scale,
-              // The bottom edge is the one that carries the last readable line
-              // and, once the viewer is on the final rail, its focus ring — so
-              // it pays the wider band (P12, see
-              // [TvCatalogLayout.bottomSafeInset]).
-              bottom: TvCatalogLayout.bottomSafeInset * scale,
-            ),
-            children: [
-              // DEC-068: the catalog action lives beside the page title, and is
-              // the landing's only route into the complete catalog. The row is
-              // baseline-aligned rather than centred — the two are type of very
-              // different sizes, and centring them made the smaller one look
-              // like it had floated up off the line.
-              Padding(
-                padding: EdgeInsets.only(
-                  // The action carries its own focus-ring gap, so its side of
-                  // the page inset pays that back to keep both ends of the band
-                  // on the same margin as the rails below.
-                  left: TvDiscoveryLayout.pageInset * scale,
-                  right: (TvDiscoveryLayout.pageInset - TvDiscoveryLayout.viewAllFocusRingGap) * scale,
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        widget.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Theme.of(context).extension<MonoTokens>()!.text,
-                          fontSize: TvDiscoveryLayout.pageTitleFontSize * scale,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.2,
+    return LibraryAtmosphere(
+      automationInstance: 'tv_landing.${widget.automationSurface}',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final scale = TvLayoutConstants.scaleOf(context);
+          // LAND7. The height of this screen's own content box, the one
+          // `TvShellSurface`'s Column already leaves below the top navigation.
+          // Not `MediaQuery.sizeOf(context).height`, which is the full window
+          // and would put the anchor at the wrong fraction of this viewport.
+          // Same source Home's feed reads at `tv_content_feed.dart:508`.
+          final viewportHeight = constraints.maxHeight;
+          // Hoofdstuk 33.3: the peeking poster tops at the bottom edge fade into
+          // the page rather than being cut off flat. `dstIn` over the whole list
+          // rather than a gradient box on top of it, because the thing that has
+          // to disappear is artwork, and a scrim painted over it would have to
+          // match the page colour exactly — which it cannot, since the page has
+          // its own vertical lift.
+          final safeArea = TvDiscoverySafeArea.maybe(context);
+          final page = ShaderMask(
+            shaderCallback: (bounds) => LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: const [Color(0x00000000), Color(0xFF000000)],
+              stops: [0, TvDiscoveryLayout.pageBottomFade * scale / bounds.height],
+            ).createShader(bounds),
+            blendMode: BlendMode.dstIn,
+            child: ListView(
+              controller: _scrollController,
+              padding: EdgeInsets.only(
+                top: TvCatalogLayout.topSafeInset * scale,
+                // The bottom edge is the one that carries the last readable line
+                // and, once the viewer is on the final rail, its focus ring — so
+                // it pays the wider band (P12, see
+                // [TvCatalogLayout.bottomSafeInset]).
+                bottom: TvCatalogLayout.bottomSafeInset * scale,
+              ),
+              children: [
+                // DEC-068: the catalog action lives beside the page title, and is
+                // the landing's only route into the complete catalog. The row is
+                // baseline-aligned rather than centred — the two are type of very
+                // different sizes, and centring them made the smaller one look
+                // like it had floated up off the line.
+                Padding(
+                  padding: EdgeInsets.only(
+                    // The action carries its own focus-ring gap, so its side of
+                    // the page inset pays that back to keep both ends of the band
+                    // on the same margin as the rails below.
+                    left: TvDiscoveryLayout.pageInset * scale,
+                    right: (TvDiscoveryLayout.pageInset - TvDiscoveryLayout.viewAllFocusRingGap) * scale,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          widget.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Theme.of(context).extension<MonoTokens>()!.text,
+                            fontSize: TvDiscoveryLayout.pageTitleFontSize * scale,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.2,
+                          ),
                         ),
                       ),
-                    ),
-                    SizedBox(width: TvDiscoveryLayout.pageTitleActionGap * scale),
-                    Flexible(
-                      child: TvViewAllAction(
-                        label: widget.allTitle,
-                        focusNode: _viewAllFocus,
-                        onSelect: _openAllScreen,
-                        semanticLabel: widget.viewAllSemanticLabel,
-                        // DOWN out of the header lands on the first rail's
-                        // current tile — the short path the whole change exists
-                        // for. UP goes to the top navigation, which fase 7 put
-                        // above this header (hoofdstuk 7.4).
-                        onNavigateDown: _focusFirstRail,
-                        onNavigateUp: _focusTopNavigation,
+                      SizedBox(width: TvDiscoveryLayout.pageTitleActionGap * scale),
+                      Flexible(
+                        child: TvViewAllAction(
+                          label: widget.allTitle,
+                          focusNode: _viewAllFocus,
+                          onSelect: _openAllScreen,
+                          semanticLabel: widget.viewAllSemanticLabel,
+                          // DOWN out of the header lands on the first rail's
+                          // current tile — the short path the whole change exists
+                          // for. UP goes to the top navigation, which fase 7 put
+                          // above this header (hoofdstuk 7.4).
+                          onNavigateDown: _focusFirstRail,
+                          onNavigateUp: _focusTopNavigation,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: TvDiscoveryLayout.titleRailGap * scale),
-              for (var i = 0; i < rails.length; i++) ...[
-                if (i > 0) SizedBox(height: TvDiscoveryLayout.sectionGap * scale),
-                SizedBox(
-                  height: TvDiscoveryLayout.railSectionHeight(scale),
-                  child: TvDiscoveryRail(
-                    // Keyed on the stable hub id (hoofdstuk 17.5), not an index or
-                    // the title: a re-projection reorders rows without losing
-                    // this rail's own `TvDiscoveryRailState` — its `FocusNode`s,
-                    // its scroll position — for a hub that is still there.
-                    key: _rails.keyFor(rails[i].hubId),
-                    title: rails[i].title,
-                    groups: rails[i].groups,
-                    automationRailIndex: i,
-                    isPartial: rails[i].isPartial,
-                    initialFocusedGroupId: _focusedGroupIdByHubId[rails[i].hubId],
-                    onFocusedGroupChanged: (groupId) => _focusedGroupIdByHubId[rails[i].hubId] = groupId,
-                    clientFor: (serverId) =>
-                        context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId)),
-                    onActivate: (group) => _activate(group),
-                    onContextMenu: openDiscoveryContextMenu,
-                    // Rail to rail, at the column the step leaves from
-                    // (LAND4). UP that runs out of rails returns to the header
-                    // action, so the two are a pair rather than a one-way trip;
-                    // DOWN off the last rail has nothing below it and is left
-                    // to Flutter, which correctly does nothing.
-                    onNavigateUp: _rails.up(i, whenExhausted: _focusViewAll),
-                    onNavigateDown: _rails.down(i),
-                    // LAND7. The same anchor Home has used since DEC-095: the
-                    // focused rail's label lands under the top navigation, for
-                    // every rail alike. The old default (0.5) centred every
-                    // tile in the viewport instead, so a rail further down the
-                    // page left a growing empty band above it once focused.
-                    tileScrollAlignment: TvHomeLayout.rowTileScrollAlignment(viewportHeight, scale),
+                    ],
                   ),
                 ),
+                SizedBox(height: TvDiscoveryLayout.titleRailGap * scale),
+                for (var i = 0; i < rails.length; i++) ...[
+                  if (i > 0) SizedBox(height: TvDiscoveryLayout.sectionGap * scale),
+                  SizedBox(
+                    height: TvDiscoveryLayout.railSectionHeight(scale),
+                    child: TvDiscoveryRail(
+                      // Keyed on the stable hub id (hoofdstuk 17.5), not an index or
+                      // the title: a re-projection reorders rows without losing
+                      // this rail's own `TvDiscoveryRailState` — its `FocusNode`s,
+                      // its scroll position — for a hub that is still there.
+                      key: _rails.keyFor(rails[i].hubId),
+                      title: rails[i].title,
+                      groups: rails[i].groups,
+                      automationRailIndex: i,
+                      isPartial: rails[i].isPartial,
+                      initialFocusedGroupId: _focusedGroupIdByHubId[rails[i].hubId],
+                      onFocusedGroupChanged: (groupId) => _focusedGroupIdByHubId[rails[i].hubId] = groupId,
+                      clientFor: (serverId) =>
+                          context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId)),
+                      onActivate: (group) => _activate(group),
+                      onContextMenu: openDiscoveryContextMenu,
+                      // Rail to rail, at the column the step leaves from
+                      // (LAND4). UP that runs out of rails returns to the header
+                      // action, so the two are a pair rather than a one-way trip;
+                      // DOWN off the last rail has nothing below it and is left
+                      // to Flutter, which correctly does nothing.
+                      onNavigateUp: _rails.up(i, whenExhausted: _focusViewAll),
+                      onNavigateDown: _rails.down(i),
+                      // LAND7. The same anchor Home has used since DEC-095: the
+                      // focused rail's label lands under the top navigation, for
+                      // every rail alike. The old default (0.5) centred every
+                      // tile in the viewport instead, so a rail further down the
+                      // page left a growing empty band above it once focused.
+                      tileScrollAlignment: TvHomeLayout.rowTileScrollAlignment(viewportHeight, scale),
+                    ),
+                  ),
+                ],
               ],
-            ],
-          ),
-        );
-        // The safe-area probe is measured, never drawn — see
-        // [TvDiscoverySafeArea]. `maybe` returns null in an ordinary build, so
-        // the Stack is not built either.
-        if (safeArea == null) return page;
-        return Stack(children: [page, safeArea]);
-      },
+            ),
+          );
+          // The safe-area probe is measured, never drawn — see
+          // [TvDiscoverySafeArea]. `maybe` returns null in an ordinary build, so
+          // the Stack is not built either.
+          if (safeArea == null) return page;
+          return Stack(children: [page, safeArea]);
+        },
+      ),
     );
   }
 

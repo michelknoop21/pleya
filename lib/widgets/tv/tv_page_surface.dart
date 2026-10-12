@@ -57,6 +57,7 @@ class TvPageSurface extends StatelessWidget {
     this.controller,
     this.trailing,
     this.expanded,
+    this.expandedOwnsInsets = false,
   });
 
   /// The page heading. The section's own title, so the tile that opened it and
@@ -93,6 +94,9 @@ class TvPageSurface extends StatelessWidget {
   /// scrolling.
   final Widget? expanded;
 
+  /// The catalog grid already reserves its own overscan and focus margins.
+  final bool expandedOwnsInsets;
+
   @override
   Widget build(BuildContext context) {
     final scale = TvLayoutConstants.scaleOf(context);
@@ -119,6 +123,20 @@ class TvPageSurface extends StatelessWidget {
       bottom: 60 * TvHig.of(context),
     );
 
+    final headingChildren = <Widget>[
+      if (trailing == null)
+        heading
+      else
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: heading),
+            trailing!,
+          ],
+        ),
+      SizedBox(height: TvMyPleyaLayout.titleGap * scale),
+      ...children,
+    ];
     final column = AutomationNode(
       id: AutomationIds.myPleyaSectionContent,
       instance: automationInstance,
@@ -126,18 +144,13 @@ class TvPageSurface extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (trailing == null)
-            heading
+          if (expandedOwnsInsets && expanded != null)
+            Padding(
+              padding: padding.copyWith(bottom: 0),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: headingChildren),
+            )
           else
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(child: heading),
-                trailing!,
-              ],
-            ),
-          SizedBox(height: TvMyPleyaLayout.titleGap * scale),
-          ...children,
+            ...headingChildren,
           if (expanded != null) Expanded(child: expanded!),
         ],
       ),
@@ -146,7 +159,7 @@ class TvPageSurface extends StatelessWidget {
     // DENS1: every settings row on a TV page takes the HIG sizes from here.
     if (expanded != null) {
       return TvSettingsDensity(
-        child: Padding(padding: padding, child: column),
+        child: expandedOwnsInsets ? column : Padding(padding: padding, child: column),
       );
     }
 

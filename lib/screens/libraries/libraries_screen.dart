@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -45,6 +46,8 @@ import '../../mixins/item_updatable.dart';
 import '../../i18n/strings.g.dart';
 import '../../theme/mono_tokens.dart';
 import '../../widgets/library_header_bar.dart';
+import '../../widgets/library_atmosphere.dart';
+import '../../widgets/focusable_tab_chip.dart';
 import '../../widgets/tv/tv_page_chip_bar.dart';
 import 'state_messages.dart';
 import 'tv_library_chooser.dart';
@@ -1004,45 +1007,90 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     MediaLibrary? selectedLibrary, {
     required bool groupByServer,
   }) {
-    // No selection at all, or visible list is empty AND we're not browsing a hidden library
-    if (_selectedLibraryGlobalKey == null || (visibleLibraries.isEmpty && selectedLibrary == null)) {
-      return Text(t.libraries.title);
-    }
-
-    // On desktop/TV with side nav, the library name is the page heading and the
-    // tabs move to the header line below it (see [_buildHeaderBar]).
-    if (PlatformDetector.shouldUseSideNavigation(context)) {
-      final serverLabel = _hasMultipleServers(visibleLibraries) ? selectedLibrary?.serverName : null;
-      return Padding(
-        padding: const EdgeInsets.only(left: 4),
-        // Which library is open, as state rather than as a screenshot. A chip
-        // that draws itself as chosen is not evidence that the page behind it
-        // changed; this is the node `Movies → Shows → Movies` is asserted on.
-        child: AutomationNode(
-          id: AutomationIds.libraryHeader,
-          role: 'region',
-          state: () => <String, Object?>{
-            'library': selectedLibrary?.title,
-            'libraryKey': selectedLibrary?.globalKey,
-            'server': selectedLibrary?.serverName,
-          },
-          child: ValueListenableBuilder<LibraryHeaderInfo>(
-            valueListenable: _headerInfo,
-            builder: (context, info, _) => LibraryHeaderTitle(
-              title: selectedLibrary?.title ?? t.libraries.title,
-              subtitle: [
-                if (info.countLabel != null) info.countLabel!,
-                if (serverLabel != null && serverLabel.isNotEmpty) serverLabel,
-              ].join(' · '),
-            ),
+    if (selectedLibrary == null) return Text(t.libraries.title);
+    // Keep the TV chooser above its tabs, preserving the established Up/Down path.
+    if (PlatformDetector.isTV()) {
+      return AutomationNode(
+        id: AutomationIds.libraryHeader,
+        role: 'region',
+        state: () => <String, Object?>{
+          'library': selectedLibrary.title,
+          'libraryKey': selectedLibrary.globalKey,
+          'server': selectedLibrary.serverName,
+        },
+        child: ValueListenableBuilder<LibraryHeaderInfo>(
+          valueListenable: _headerInfo,
+          builder: (context, info, _) => LibraryHeaderTitle(
+            title: selectedLibrary.title,
+            subtitle: [
+              if (info.countLabel != null) info.countLabel!,
+              if (_hasMultipleServers(visibleLibraries) && selectedLibrary.serverName != null)
+                selectedLibrary.serverName!,
+            ].join(' · '),
           ),
         ),
       );
     }
-
-    // On mobile, show the dropdown
-    return _buildLibraryDropdownTitle(visibleLibraries, groupByServer: groupByServer);
+    return AutomationNode(
+      id: AutomationIds.libraryHeader,
+      role: 'region',
+      state: () => <String, Object?>{
+        'library': selectedLibrary.title,
+        'libraryKey': selectedLibrary.globalKey,
+        'server': selectedLibrary.serverName,
+      },
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(32),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            child: ColoredBox(
+              color: tokens(context).bg.withValues(alpha: 0.78),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildLibraryDropdownTitle(visibleLibraries, selectedLibrary, groupByServer: groupByServer),
+                      if (!PlatformDetector.isMobile(context)) ...[
+                        const SizedBox(width: 12),
+                        ..._libraryNavigationTabs(hasChooser: false),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
+
+  List<Widget> _libraryNavigationTabs({required bool hasChooser}) => [
+    for (int i = 0; i < _visibleTabs.length; i++)
+      buildTabChip(
+        _getTabLabel(_visibleTabs[i]),
+        i,
+        style: TabChipStyle.floating,
+        onSelectWhenActive: _focusCurrentTab,
+        onNavigateDown: _focusCurrentTabFromTabBar,
+        onNavigateToActions: () {
+          final actions = _headerInfo.value.actions;
+          if (actions.isEmpty) {
+            _actionBarKey.currentState?.requestFocusOnFirst();
+          } else {
+            actions.first.focusNode.requestFocus();
+          }
+        },
+        onNavigateUpToActions: hasChooser
+            ? _focusLibraryChooser
+            : () => _actionBarKey.currentState?.requestFocusOnFirst(),
+      ),
+  ];
 
   /// Every visible library, on one line, above the tabs.
   ///
@@ -1151,51 +1199,46 @@ class _LibrariesScreenState extends State<LibrariesScreen>
   /// The header line under the library name: text tabs on the left, the active
   /// tab's own actions on the right.
   ///
-  /// [showDivider] is off on the TV backdrop, where the rule would cut across
-  /// the artwork.
-  Widget _buildHeaderBar({bool showDivider = true, bool hasChooser = false}) {
-    void focusAppBarActions() => _actionBarKey.currentState?.requestFocusOnFirst();
-
+  /// TV retains its chooser/tab order; other platforms put navigation in the artwork capsule.
+  Widget _buildHeaderBar({bool hasChooser = false}) {
     return ValueListenableBuilder<LibraryHeaderInfo>(
       valueListenable: _headerInfo,
       builder: (context, info, _) => LibraryHeaderBar(
-        showDivider: showDivider,
+        height: PlatformDetector.isMobile(context) ? 48 : LibraryHeaderMetrics.barHeight,
+        showDivider: false,
         actions: info.actions,
         onActionsExitLeft: () => getTabChipFocusNode(_visibleTabs.length - 1).requestFocus(),
-        onActionsExitRight: focusAppBarActions,
+        onActionsExitRight: () => _actionBarKey.currentState?.requestFocusOnFirst(),
         tabs: [
-          for (int i = 0; i < _visibleTabs.length; i++)
-            buildTabChip(
-              _getTabLabel(_visibleTabs[i]),
-              i,
-              onSelectWhenActive: _focusCurrentTab,
-              onNavigateDown: _focusCurrentTabFromTabBar,
-              // RIGHT keeps travelling along the header line and only reaches
-              // the app bar icons once the tab's own actions are behind it.
-              onNavigateToActions: () {
-                final actions = _headerInfo.value.actions;
-                if (actions.isEmpty) {
-                  focusAppBarActions();
-                  return;
-                }
-                actions.first.focusNode.requestFocus();
-              },
-              // UP off the tabs reaches the chooser where there is one, so the
-              // row of libraries is on the vertical path rather than only
-              // reachable by whatever put the focus there first. Without a
-              // chooser the behaviour is unchanged.
-              onNavigateUpToActions: hasChooser ? _focusLibraryChooser : focusAppBarActions,
+          if (PlatformDetector.isTV() || PlatformDetector.isMobile(context))
+            ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                child: ColoredBox(
+                  color: tokens(context).bg.withValues(alpha: 0.78),
+                  child: Row(children: _libraryNavigationTabs(hasChooser: hasChooser)),
+                ),
+              ),
+            )
+          else if (info.countLabel != null)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                info.countLabel!,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: tokens(context).textMuted),
+              ),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildLibraryDropdownTitle(List<MediaLibrary> visibleLibraries, {required bool groupByServer}) {
-    final selectedLibrary =
-        visibleLibraries.where((lib) => lib.globalKey == _selectedLibraryGlobalKey).firstOrNull ??
-        visibleLibraries.firstOrNull;
-    if (selectedLibrary == null) return Text(t.libraries.title);
+  Widget _buildLibraryDropdownTitle(
+    List<MediaLibrary> visibleLibraries,
+    MediaLibrary selectedLibrary, {
+    required bool groupByServer,
+  }) {
     final showServerHeaders = _hasMultipleServers(visibleLibraries) && groupByServer;
 
     return AppMenuButton<String>(
@@ -1208,6 +1251,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
           _buildGroupedLibraryMenuItems(visibleLibraries, showServerHeaders: showServerHeaders),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        constraints: const BoxConstraints(minHeight: 44),
         child: Row(
           mainAxisSize: .min,
           children: [
@@ -1265,7 +1309,6 @@ class _LibrariesScreenState extends State<LibrariesScreen>
         : null;
 
     final useSideNavigation = PlatformDetector.shouldUseSideNavigation(context);
-    final showMobileTabsRow = selectedLibrary != null && !useSideNavigation;
     final currentTabIndex = _visibleTabs.isEmpty ? 0 : tabController.index.clamp(0, _visibleTabs.length - 1).toInt();
     final currentTabType = _visibleTabs.isEmpty ? null : _visibleTabs[currentTabIndex];
     final useTvRecommendedBackdrop = PlatformDetector.isTV() && currentTabType == LibraryTabType.recommended;
@@ -1290,35 +1333,35 @@ class _LibrariesScreenState extends State<LibrariesScreen>
 
     // The header line only exists next to a page heading, so it rides along
     // with the side-nav layout and stays away from the loading/empty states.
-    final showHeaderBar = useSideNavigation && selectedLibrary != null;
+    final showHeaderBar = selectedLibrary != null && (useSideNavigation || PlatformDetector.isMobile(context));
     final showTvChooser = showHeaderBar && PlatformDetector.isTV() && tvLibraryChooserVisible(visibleLibraries);
 
     // Chooser above tabs, in that order, in both places the header line is
     // mounted — the sliver app bar's `bottom` and the transparent TV bar. A
     // `PreferredSize` cannot measure its child, so the extra row has to be
     // declared here as well as drawn.
-    Widget headerColumn({required bool showDivider}) => Column(
+    Widget headerColumn() => Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (showTvChooser) _buildTvLibraryChooser(visibleLibraries),
-        _buildHeaderBar(showDivider: showDivider, hasChooser: showTvChooser),
+        _buildHeaderBar(hasChooser: showTvChooser),
       ],
     );
-    final headerHeight = LibraryHeaderMetrics.barHeight + (showTvChooser ? TvPageChipBar.heightFor(context) : 0);
+    final headerHeight =
+        (PlatformDetector.isMobile(context) ? 48.0 : LibraryHeaderMetrics.barHeight) +
+        (showTvChooser ? TvPageChipBar.heightFor(context) : 0);
 
     Widget appBar({required bool floating}) => DesktopSliverAppBar(
       title: _buildAppBarTitle(visibleLibraries, selectedLibrary, groupByServer: groupByServerSetting),
-      toolbarHeight: showHeaderBar ? LibraryHeaderMetrics.titleHeight : null,
-      bottom: showHeaderBar
-          ? PreferredSize(preferredSize: Size.fromHeight(headerHeight), child: headerColumn(showDivider: true))
-          : null,
+      toolbarHeight: LibraryHeaderMetrics.titleHeight,
+      bottom: showHeaderBar ? PreferredSize(preferredSize: Size.fromHeight(headerHeight), child: headerColumn()) : null,
       // When showing the tab content, let the app bar float away with the
       // content. Otherwise (loading / empty / error states) keep it pinned so
       // it stays visible over the centered state widget.
       pinned: !floating,
       floating: floating,
       snap: floating,
-      backgroundColor: useTvRecommendedBackdrop ? Colors.transparent : Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       shadowColor: Colors.transparent,
       scrolledUnderElevation: 0,
@@ -1353,7 +1396,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             AppBar(
-              toolbarHeight: showHeaderBar ? LibraryHeaderMetrics.titleHeight : null,
+              toolbarHeight: LibraryHeaderMetrics.titleHeight,
               primary: false,
               backgroundColor: Colors.transparent,
               surfaceTintColor: Colors.transparent,
@@ -1370,7 +1413,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
                 ),
               ],
             ),
-            if (showHeaderBar) headerColumn(showDivider: false),
+            if (showHeaderBar) headerColumn(),
           ],
         ),
       );
@@ -1456,33 +1499,6 @@ class _LibrariesScreenState extends State<LibrariesScreen>
               handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
               sliver: appBar(floating: true),
             ),
-            if (showMobileTabsRow)
-              SliverToBoxAdapter(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    border: Border(bottom: BorderSide(color: tokens(context).outline.withValues(alpha: 0.6))),
-                  ),
-                  padding: const EdgeInsets.only(left: 12, right: 12, top: 2),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        for (int i = 0; i < _visibleTabs.length; i++) ...[
-                          if (i > 0) const SizedBox(width: 18),
-                          buildTabChip(
-                            _getTabLabel(_visibleTabs[i]),
-                            i,
-                            onSelectWhenActive: _focusCurrentTab,
-                            onNavigateDown: _focusCurrentTabFromTabBar,
-                            onNavigateToActions: () => _actionBarKey.currentState?.requestFocusOnFirst(),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
           ],
           body: buildTabs(),
         );
@@ -1507,7 +1523,13 @@ class _LibrariesScreenState extends State<LibrariesScreen>
       id: AutomationIds.screenLibraries,
       readiness: () =>
           isLoadingLibraries ? const AutomationReadiness.loading('libraries') : const AutomationReadiness.ready(),
-      child: Scaffold(body: scrollBody),
+      child: Scaffold(
+        body: LibraryAtmosphere(
+          automationInstance: 'libraries',
+          selectionKey: (_selectedLibraryGlobalKey, currentTabType),
+          child: scrollBody,
+        ),
+      ),
     );
   }
 }

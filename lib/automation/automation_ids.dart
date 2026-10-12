@@ -441,6 +441,7 @@ class AutomationIds {
   /// only thing a scenario could read was a chip's own `selected` flag, and a
   /// chip that marks itself is not evidence that the page behind it changed.
   static const String libraryHeader = 'library.header';
+  static const String libraryAtmosphere = 'library.atmosphere';
 
   /// The video player's rendering surface (`lib/mpv/video.dart`).
   static const String playerSurface = 'player.surface';
@@ -810,6 +811,7 @@ class AutomationIds {
     {'id': libraryGrid, 'role': 'grid', 'instanceable': false},
     {'id': libraryGridItem, 'role': 'grid.item', 'instanceable': true},
     {'id': libraryHeader, 'role': 'region', 'instanceable': false},
+    {'id': libraryAtmosphere, 'role': 'image', 'instanceable': true},
     {'id': libraryFilterGrouping, 'role': 'filter', 'instanceable': false},
     {'id': libraryFilterFilters, 'role': 'filter', 'instanceable': false},
     {'id': libraryFilterSort, 'role': 'filter', 'instanceable': false},

@@ -16,6 +16,9 @@ const double _badgeDiameter = 18;
 
 /// How a [FocusableFilterChip] draws itself.
 enum FilterChipVariant {
+  /// Library tools on artwork: the existing controls without a filled slab.
+  toolbar,
+
   /// Outlined pill with an icon. For chip rows that stand on their own, like
   /// the search filters.
   outlined,
@@ -154,6 +157,8 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
     // Only show focus effects during keyboard/d-pad navigation
     final showFocus = isFocused && InputModeTracker.isKeyboardMode(context);
     switch (widget.variant) {
+      case FilterChipVariant.toolbar:
+        return _buildToolbar(context, showFocus);
       case FilterChipVariant.text:
         return _buildText(context, showFocus);
       case FilterChipVariant.filled:
@@ -261,6 +266,23 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
   /// this variant shares its line with the tab labels and their accent bar, and
   /// a second marker there would compete with the one that says which tab is
   /// open.
+  Widget _buildToolbar(BuildContext context, bool showFocus) {
+    final tk = tokens(context);
+    return FocusBuilders.buildFocusableChip(
+      context: context,
+      focusNode: focusNode,
+      onKeyEvent: _handleKeyEvent,
+      onTap: widget.onPressed,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      backgroundColor: Colors.transparent,
+      borderColor: showFocus ? tk.text : Colors.transparent,
+      borderRadius: 8,
+      minTapHeight: 44,
+      hitTestBehavior: HitTestBehavior.opaque,
+      child: _buildContent(context, tk.text),
+    );
+  }
+
   Widget _buildText(BuildContext context, bool showFocus) {
     final tk = tokens(context);
     final theme = Theme.of(context);

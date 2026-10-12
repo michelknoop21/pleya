@@ -102,14 +102,18 @@ void main() {
   });
 
   group('MediaPlaylist.displayImagePath', () {
-    test('prefers compositeImagePath over thumbPath', () {
+    test('prefers server thumbnail over automatic composite', () {
       final pl = _playlist(compositeImagePath: '/composite/grid', thumbPath: '/thumb/single');
-      expect(pl.displayImagePath, '/composite/grid');
+      expect(pl.displayImagePath, '/thumb/single');
     });
 
     test('falls back to thumbPath when composite is null', () {
       final pl = _playlist(compositeImagePath: null, thumbPath: '/thumb/single');
       expect(pl.displayImagePath, '/thumb/single');
+    });
+
+    test('uses automatic composite when no server thumbnail exists', () {
+      expect(_playlist(compositeImagePath: '/composite/grid').displayImagePath, '/composite/grid');
     });
 
     test('is null when both are null', () {

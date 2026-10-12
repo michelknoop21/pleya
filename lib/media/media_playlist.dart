@@ -56,7 +56,7 @@ class MediaPlaylist {
   });
 
   /// Image used to represent the playlist in browse views.
-  String? get displayImagePath => compositeImagePath ?? thumbPath;
+  String? get displayImagePath => thumbPath ?? compositeImagePath;
 
   /// Display-friendly title (alias of [title] for parity with [MediaItem]).
   String get displayTitle => title;

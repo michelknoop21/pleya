@@ -17,6 +17,7 @@
     item: Item;
     /** Het beeld meteen laden, voor kaarten die altijd in beeld staan. */
     eager?: boolean;
+    onHighlight?: (item: Item) => void;
     /**
      * De vorm van het beeld. Blijft hij leeg, dan volgt hij de soort: een
      * aflevering 16:9, de rest een poster. Een raster geeft hem expliciet mee,
@@ -25,7 +26,7 @@
     shape?: 'poster' | 'wide';
   }
 
-  let { item, eager = false, shape: shapeOverride }: Props = $props();
+  let { item, eager = false, shape: shapeOverride, onHighlight }: Props = $props();
 
   const shape = $derived(shapeOverride ?? artworkAspect(item.kind));
   const artworkId = $derived(
@@ -34,7 +35,8 @@
   const subtitle = $derived(itemSubtitle(item));
 </script>
 
-<a class="card" href="/items/{item.id}" data-kind={item.kind}>
+<a class="card" href="/items/{item.id}" data-kind={item.kind}
+  onpointerenter={() => onHighlight?.(item)} onfocus={() => onHighlight?.(item)}>
   <div class="card__art">
     <Artwork artworkId={artworkId} alt="" {shape} {eager} />
   </div>
