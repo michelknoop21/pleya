@@ -312,7 +312,7 @@
           </div>
           <div class="well">
             <h3>Crash and Diagnostic Data</h3>
-            <p>To help us identify and fix bugs, the app automatically collects:</p>
+            <p>Crash reporting is switched on per build. The current App Store and TestFlight builds have it switched off and send no crash reports. In a build where it is on, the app automatically collects, to help us identify and fix bugs:</p>
             <ul>
               <li>Crash reports and error stack traces</li>
               <li>Application Not Responding (ANR) events</li>
@@ -404,12 +404,23 @@
             <p>Trakt's own privacy policy applies: <a href="https://trakt.tv/privacy" target="_blank" rel="noopener noreferrer">trakt.tv/privacy</a>. We do not control Trakt's data practices.</p>
           </div>
           <div class="well">
+            <h3>MyAnimeList, AniList and Simkl (optional)</h3>
+            <p>Pleya can connect to these trackers. Each is off until you sign in, and not every build offers all three. When you connect one:</p>
+            <ul>
+              <li>Your access token is stored on your device and is used only to talk to that tracker. Signing in to MyAnimeList or AniList passes through our relay, as described under Data Storage and Security</li>
+              <li>From then on Pleya tells that tracker what you finish watching: the title's identifier, the episode you reached and whether you completed it. This starts when you connect; you can switch it off per tracker under Settings &gt; Trackers. A rating you give in Pleya is sent as well</li>
+              <li>To match anime to these trackers, Pleya downloads a public mapping list through jsDelivr. That request does not say what you watch</li>
+              <li>You can disconnect under Settings &gt; Trackers</li>
+            </ul>
+            <p>Their own privacy policies apply: <a href="https://myanimelist.net/about/privacy_policy" target="_blank" rel="noopener noreferrer">myanimelist.net/about/privacy_policy</a>, <a href="https://anilist.co/terms" target="_blank" rel="noopener noreferrer">anilist.co/terms</a> and <a href="https://simkl.com" target="_blank" rel="noopener noreferrer">simkl.com</a>. We do not control their data practices.</p>
+          </div>
+          <div class="well">
             <h3>Discord Rich Presence</h3>
             <p>When Discord Rich Presence is enabled, media artwork may be temporarily uploaded to:</p>
             <ul>
               <li>Our relay server (ice.pleya.app)</li>
             </ul>
-            <p>These uploads are necessary because Discord requires publicly accessible image URLs for Rich Presence artwork. Uploaded images are removed after 3 hours. This feature is opt-in and disabled by default.</p>
+            <p>These uploads are necessary because Discord requires publicly accessible image URLs for Rich Presence artwork. Uploaded images are removed after 3 hours. Pleya also passes what you are playing (the title, and for an episode the season, episode number and episode title) to the Discord app on your computer, which shows it in your Discord status. This feature exists on desktop only, is opt-in and is disabled by default.</p>
           </div>
         </div>
       </section>
@@ -421,13 +432,15 @@
             <li>Sell your personal information</li>
             <li>Share your information with third parties for marketing purposes</li>
             <li>Transmit your data to our own servers (except crash/diagnostic reports and the relay uses described under Data Storage and Security)</li>
-            <li>Track your viewing habits outside of local app functionality, except what you choose to send to Trakt as described above</li>
+            <li>Track your viewing habits outside of local app functionality, except what you choose to send to Trakt or another tracker as described above</li>
           </ul>
           <p>Depending on what you use, your data is shared with:</p>
           <ul>
             <li>Plex services for authentication and media server communication, when signing in with Plex (as required for the app to function)</li>
             <li>Your self-hosted Jellyfin server, when signing in with Jellyfin (as required for the app to function)</li>
             <li>Trakt, if you connect your Trakt account and allow Pleya to send your watching</li>
+            <li>MyAnimeList, AniList or Simkl, if you connect one: what you finish watching and the ratings you give</li>
+            <li>Discord, when Discord Rich Presence is on: the title you are playing</li>
             <li>The AI provider you set up for Big P, as described under Big P, the Assistant</li>
             <li>Your Seerr server (Jellyseerr or Overseerr), if you connect it: your searches and the requests you make. Pleya signs in to it with your Plex account token, or with the email and password or the API key you enter; those are kept encrypted on your device to sign in again. This is a server you or someone you know runs</li>
             <li>Your Tautulli server, if you connect it: Pleya reads viewing history from it, with the API key you entered</li>
@@ -470,6 +483,8 @@
             <li>Authentication tokens are retained on your device until you sign out or uninstall the app</li>
             <li>Local preferences and settings are retained until you uninstall the app</li>
             <li>Crash and diagnostic reports are retained on our self-hosted server and automatically pruned based on relevance</li>
+            <li>On our relay: logs you send us are kept for 3 days, a Watch Together room for 24 hours at most and Discord artwork for 3 hours. The relay's server log, which includes IP addresses, is rotated by size</li>
+            <li>Tokens for Trakt and other trackers are retained on your device until you disconnect the tracker or uninstall the app</li>
           </ul>
         </div>
       </section>
