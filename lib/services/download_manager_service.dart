@@ -20,6 +20,7 @@ import '../media/media_server_client.dart';
 import 'api_cache.dart';
 import 'download_artwork_helpers.dart';
 import 'download_artwork_service.dart';
+import 'download_task_records.dart';
 import 'settings_service.dart';
 import 'saf_storage_service.dart';
 import 'package:saf_util/saf_util_platform_interface.dart' show SafDocumentFile;
@@ -178,11 +179,15 @@ class DownloadManagerService {
     required MediaClientResolver clientResolver,
     MediaServerHttpClient? http,
     @visibleForTesting this._downloadsSupportedOverride,
+    @visibleForTesting DownloadTaskRecords? taskRecords,
   }) : _database = database,
+       _taskRecords = taskRecords ?? DownloadTaskRecords(),
        _storageService = storageService,
        _clientResolver = clientResolver,
        _http = http ?? httpClient,
        _artworkService = DownloadArtworkService(storageService: storageService, http: http ?? httpClient);
+
+  final DownloadTaskRecords _taskRecords;
 
   bool get downloadsSupported => _downloadsSupportedOverride ?? platformDownloadsSupported;
 
@@ -501,6 +506,12 @@ class DownloadManagerService {
       }
 
       await _reconcileNativeDownloadTasks();
+
+      // Records of tasks that ended before this version, or whose removal
+      // failed, still hold their stream URL. Runs after the replay of tasks
+      // that finished while the app was closed.
+      final purged = await _taskRecords.purgeFinished(_downloadGroup);
+      if (purged > 0) appLogger.i('Removed $purged finished downloader record(s)');
 
       // One-time migration: normalize stored file paths that may contain a
       // doubled base-dir prefix from an earlier bug in the recovery callback.
@@ -1550,6 +1561,16 @@ class DownloadManagerService {
 
   Future<void> _handleTaskStatusChanged(TaskStatusUpdate update) async {
     if (_disposed) return;
+    try {
+      await _processTaskStatus(update);
+    } finally {
+      // Every return path, including the ones that ignore a stale task: the
+      // record holds the stream URL, and with it the account token.
+      if (downloadsSupported) await _taskRecords.forgetIfFinal(update.task, update.status);
+    }
+  }
+
+  Future<void> _processTaskStatus(TaskStatusUpdate update) async {
     final globalKey = update.task.metaData;
     if (globalKey.isEmpty) return;
 
