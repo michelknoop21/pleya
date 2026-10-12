@@ -52,8 +52,19 @@ class DownloadTaskRecords {
   /// Removes every record in [group] whose status is final, and the resume
   /// data of tasks in [group] that no live record claims. Returns how many
   /// tasks were cleaned up.
+  ///
+  /// The final records are purged even when the resume data cannot be read:
+  /// they are the ones that still hold the URL from before this version.
   Future<int> purgeFinished(String group) async {
     try {
+      // Resume data first, records second: a record always predates its
+      // resume data, so a task paused in between is never taken for an orphan.
+      var resume = <ResumeData>[];
+      try {
+        resume = await _allResumeData();
+      } catch (e) {
+        appLogger.w('Downloads: could not read resume data to purge', error: e);
+      }
       final records = await _allRecords(group);
       final live = {
         for (final r in records)
@@ -62,7 +73,7 @@ class DownloadTaskRecords {
       final stale = <String>{
         for (final r in records)
           if (r.status.isFinalState) r.taskId,
-        for (final d in await _allResumeData())
+        for (final d in resume)
           if (d.task.group == group && !live.contains(d.taskId)) d.taskId,
       };
       if (stale.isEmpty) return 0;

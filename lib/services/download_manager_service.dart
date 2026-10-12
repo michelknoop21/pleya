@@ -1559,6 +1559,8 @@ class DownloadManagerService {
   @visibleForTesting
   Future<void> debugHandleTaskStatus(TaskStatusUpdate update) => _handleTaskStatusChanged(update);
 
+  /// The downloader callback ([_onTaskStatusChanged]) already ignores updates
+  /// after dispose; this is for callers that reach the handler directly.
   Future<void> _handleTaskStatusChanged(TaskStatusUpdate update) async {
     try {
       await _processTaskStatus(update);

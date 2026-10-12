@@ -81,6 +81,18 @@ void main() {
       expect(count, 2);
     });
 
+    test('unreadable resume data does not stop the final records from going', () async {
+      stored = [_record('done', TaskStatus.failed), _record('going', TaskStatus.running)];
+      final broken = DownloadTaskRecords(
+        allRecords: (group) async => stored,
+        allResumeData: () async => throw const FormatException('malformed resume data'),
+        deleteRecords: (ids) async => deleted.addAll(ids),
+      );
+
+      expect(await broken.purgeFinished('downloads'), 1);
+      expect(deleted, ['done']);
+    });
+
     test('does nothing when there is nothing final', () async {
       stored = [_record('a', TaskStatus.running)];
 
@@ -91,6 +103,7 @@ void main() {
     test('a failing store is not fatal', () async {
       final broken = DownloadTaskRecords(
         allRecords: (group) async => throw StateError('storage isolate gone'),
+        allResumeData: () async => [],
         deleteRecords: (ids) async {},
       );
 
@@ -117,6 +130,7 @@ void main() {
     test('a failing delete is not fatal', () async {
       final broken = DownloadTaskRecords(
         allRecords: (group) async => [],
+        allResumeData: () async => [],
         deleteRecords: (ids) async => throw StateError('storage isolate gone'),
       );
 
