@@ -61,8 +61,8 @@ Nothing user-facing since the last published build.
   you only see a question Big P can answer, so a profile without administration rights is not
   offered a library scan, and a profile without Seerr is not offered a request. They come from
   different areas (watching, discovering, your own history, the household, administration) and
-  change each time you open Big P. A question you saw recently comes back later than one you
-  never saw.
+  change each time you open Big P. A question you saw recently is less likely to come back
+  than one you never saw.
 
 ### Improved
 - Your tracker sign-ins (MyAnimeList, AniList, Simkl and Trakt) are kept in the device keychain
@@ -82,7 +82,8 @@ Nothing user-facing since the last published build.
   automated tests and screenshots; the keychain move has not been run on a device with a tracker
   connected.
 - Open Big P a few times in a row. Each time the three questions should be from different
-  areas, and not the same set twice in a row.
+  areas, and the set should change. A profile with few options can see the same areas come
+  back; the wording of each question still varies.
 - On a profile that is not an administrator, none of the questions should be about scanning,
   tasks or users. On a children's profile they should all be about what to watch.
 - If you have a tracker connected, open its settings after updating. It should still be signed
@@ -98,8 +99,8 @@ Nothing user-facing since the last published build.
   you only see a question Big P can answer, so a profile without administration rights is not
   offered a library scan, and a profile without Seerr is not offered a request. They come from
   different areas (watching, discovering, your own history, the household, administration) and
-  change each time you open Big P. A question you saw recently comes back later than one you
-  never saw.
+  change each time you open Big P. A question you saw recently is less likely to come back
+  than one you never saw.
 
 ### Improved
 - Your tracker sign-ins (MyAnimeList, AniList, Simkl and Trakt) are kept in the device keychain
@@ -118,7 +119,8 @@ Nothing user-facing since the last published build.
 - Nothing in this build has been checked on an Apple TV yet. The questions are covered by
   automated tests and a screenshot; they have not been run on the device.
 - Open Big P a few times in a row. Each time the three questions should be from different
-  areas, and not the same set twice in a row.
+  areas, and the set should change. A profile with few options can see the same areas come
+  back; the wording of each question still varies.
 - On a profile that is not an administrator, none of the questions should be about scanning,
   tasks or users. On a children's profile they should all be about what to watch.
 - If you have a tracker connected, open its settings after updating. It should still be signed
