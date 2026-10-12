@@ -4,9 +4,6 @@
   import { prefersReducedMotion } from '$lib/bigp/loop';
   import type { BigP } from '$lib/bigp/rig';
   import { say } from '$lib/bigp/say';
-  import sintel from '$lib/assets/bigp/posters/sintel.webp';
-  import spring from '$lib/assets/bigp/posters/spring.webp';
-  import charge from '$lib/assets/bigp/posters/charge.webp';
   import Bubble from './Bubble.svelte';
   import BpMatch from './BpMatch.svelte';
   import Cta from './Cta.svelte';
@@ -17,12 +14,12 @@
     { id: 'plot', q: 'That movie where an astronaut is stranded on Mars and grows potatoes', step: 'Finding the title', line: 'That sounds like The Martian.' },
     { id: 'story', q: 'Who is Anna? No spoilers.', step: 'Checking what you watched', line: 'You are at episode 3, so I stop there.' },
   ] as const;
-  // Blender open movies: the only artwork this page may show.
+  // Real films, named in text; the posters are drawn for this page (see BpPoster).
   const tonight = [
-    { poster: sintel, title: 'Sintel', year: 2010, facts: '15m · Animation · Fantasy', plot: 'A young woman searches for the dragon she raised.' },
-    { poster: spring, title: 'Spring', year: 2019, facts: '8m · Animation · Fantasy', plot: 'A shepherd girl and her dog face old spirits to keep the seasons turning.' },
-    { poster: charge, title: 'Charge', year: 2022, facts: '4m · Animation · Sci-fi', plot: 'An old man breaks into a battery factory with a security droid on his heels.' },
-  ];
+    { art: 'dune', title: 'Dune: Part Two', year: 2024, facts: '2h 46m · Sci-fi · Adventure', plot: 'Paul Atreides joins the Fremen and has to choose between the people he loves and the war that is coming.' },
+    { art: 'knives', title: 'Knives Out', year: 2019, facts: '2h 10m · Mystery · Comedy', plot: 'A crime writer dies after his birthday party and a private detective suspects the whole family.' },
+    { art: 'paddington', title: 'Paddington 2', year: 2017, facts: '1h 43m · Comedy · Family', plot: 'A bear in London saves up for a pop-up book, which is stolen before he can buy it.' },
+  ] as const;
   const idleLine = 'Pick a question.';
 
   type Phase = 'idle' | 'listening' | 'working' | 'answer';
@@ -126,9 +123,9 @@
                     <p class="title">That sounds like The Martian.</p>
                     <p class="body">You never said the title. Big P matched what happens in the film.</p>
                     <ul class="matches" bind:this={matches}>
-                      <BpMatch focused title="The Martian" year={2015} status="In your library · Home server" tone="ok" facts="2h 24m · Sci-fi · Adventure" plot="Astronaut Mark Watney is left behind on Mars and has to survive until help arrives." />
-                      <BpMatch title="Mission to Mars" year={2000} kind="Movie · possibly" status="Already requested" tone="requested" tint="#1d2a3a, #5a7fa8" plot="A rescue mission looks for the first crew that vanished on Mars." />
-                      <BpMatch title="Red Planet" year={2000} kind="Movie · possibly" status="Requestable" tint="#3a1612, #a8402e" plot="A crew is stranded on Mars and has to find its own way back." />
+                      <BpMatch focused art="martian" title="The Martian" year={2015} status="In your library · Home server" tone="ok" facts="2h 24m · Sci-fi · Adventure" plot="Astronaut Mark Watney is left behind on Mars and has to survive until help arrives." />
+                      <BpMatch art="mission" title="Mission to Mars" year={2000} kind="Movie · possibly" status="Already requested" tone="requested" plot="A rescue mission looks for the first crew that vanished on Mars." />
+                      <BpMatch art="redplanet" title="Red Planet" year={2000} kind="Movie · possibly" status="Requestable" plot="A crew is stranded on Mars and has to find its own way back." />
                     </ul>
                   {:else}
                     <p class="asked"><span>You asked:</span> {active.q}</p>
@@ -149,7 +146,7 @@
       </div>
     </div>
     <p class="example">
-      Scripted example. TIDE is a demo title; the posters are Blender open movies, see the <a href="/media-credits.html">media credits</a>.
+      Scripted example. The films are real, the posters are drawn for this page and are not the films' artwork. TIDE is a demo title.
     </p>
     <div class="bp-next"><Cta note /></div>
   </div>

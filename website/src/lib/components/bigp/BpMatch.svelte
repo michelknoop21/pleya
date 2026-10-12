@@ -1,4 +1,5 @@
 <script lang="ts">
+  import BpPoster, { type Art } from './BpPoster.svelte';
   // One title Big P proposes, drawn like the match card of the Apple TV app
   // (lib/widgets/big_p/assistant/big_p_match_card.dart): poster, title and year, kind with the
   // status label after it, a facts line and the plot.
@@ -11,8 +12,7 @@
     tone = 'plain',
     facts,
     plot,
-    poster,
-    tint = '#5a2a14, #d0703a',
+    art,
     focused = false,
   }: {
     title: string;
@@ -22,20 +22,15 @@
     tone?: Tone;
     facts?: string;
     plot: string;
-    /** Artwork, only for titles the site may show; otherwise a tinted card with the title. */
-    poster?: string;
-    tint?: string;
+    /** Which of the posters drawn for this page to show. */
+    art: Art;
     /** The card the remote is on. */
     focused?: boolean;
   } = $props();
 </script>
 
 <li class="match" class:focused>
-  {#if poster}
-    <img class="post" src={poster} width="300" height="450" alt="" loading="lazy" />
-  {:else}
-    <span class="post" style:background="linear-gradient(160deg, {tint.split(',')[1]}, {tint.split(',')[0]} 75%)" aria-hidden="true"><b>{title}</b></span>
-  {/if}
+  <span class="post"><BpPoster {art} {title} /></span>
   <div class="txt">
     <p class="t">{title} <span class="y">({year})</span></p>
     <p class="line"><span>{kind}</span><span class="pill {tone}">{status}</span></p>
@@ -48,8 +43,7 @@
   .match { display: flex; align-items: center; gap: 1.1rem; padding: 0.7rem 1rem 0.7rem 0.7rem; border-radius: 1.1rem; background: rgba(22, 22, 22, 0.9); transition: transform 0.5s var(--ease), background-color 0.5s var(--ease), box-shadow 0.5s var(--ease); }
   /* Focus on Apple TV: the card under the remote lifts and gets a light edge. */
   .match.focused { background: rgba(40, 40, 40, 0.92); box-shadow: 0 0 0 2px rgba(244, 241, 236, 0.9), 0 18px 40px -22px #000; transform: scale(1.015); }
-  .post { position: relative; flex: none; width: 4.25rem; height: 6.25rem; border-radius: 0.5rem; object-fit: cover; overflow: hidden; }
-  .post b { position: absolute; inset: auto 0.4rem 0.4rem; font-size: 0.7rem; line-height: 1.1; font-weight: 700; }
+  .post { position: relative; flex: none; width: 4.25rem; height: 6.25rem; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08); }
   .txt { flex: 1; min-width: 0; }
   .t { font-size: 1.15rem; font-weight: 700; line-height: 1.2; }
   .y { font-weight: 400; color: rgba(244, 241, 236, 0.6); }

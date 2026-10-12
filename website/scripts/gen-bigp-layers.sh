@@ -3,7 +3,7 @@
 # WebP files the rig in src/lib/bigp loads. The source layers are not in this
 # repo; point BIGP_SRC at the directory that holds them.
 #
-#   BIGP_SRC=/path/to/bigp [BIGP_POSTERS=/path/to/posters] website/scripts/gen-bigp-layers.sh
+#   BIGP_SRC=/path/to/bigp website/scripts/gen-bigp-layers.sh
 set -euo pipefail
 
 SRC="${BIGP_SRC:?set BIGP_SRC to the directory with the PNG layers}"
@@ -24,6 +24,8 @@ done
 for name in "${SMALL[@]}"; do
   cwebp -quiet -q 92 -alpha_q 100 -m 6 -sharp_yuv "$SRC/$name.png" -o "$OUT/$name.webp"
 done
+
+du -ch "$OUT"/*.webp | tail -1
 
 du -ch "$OUT"/*.webp | tail -1
 

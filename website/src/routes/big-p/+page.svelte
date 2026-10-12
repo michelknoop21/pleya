@@ -8,6 +8,7 @@
   import BpHero from '$lib/components/bigp/BpHero.svelte';
   import BpAsk from '$lib/components/bigp/BpAsk.svelte';
   import BpBento from '$lib/components/bigp/BpBento.svelte';
+  import BpMore from '$lib/components/bigp/BpMore.svelte';
   import BpConfirm from '$lib/components/bigp/BpConfirm.svelte';
   import BpBrain from '$lib/components/bigp/BpBrain.svelte';
   import BpSources from '$lib/components/bigp/BpSources.svelte';
@@ -45,6 +46,7 @@
   <main>
     <BpAsk />
     <BpBento />
+    <BpMore />
     <BpConfirm />
     <BpBrain />
     <BpSources />
