@@ -28,6 +28,7 @@ under `Notes`.
 - speler-route gedeeld met Live TV, bedrading getest, claims in de notities teruggebracht
 - onbereikbare Plex-server met backoff, verwijderd seed-item niet bij elke verversing opnieuw
 - reviewpunten op de v313k-fix
+- drie Minors uit de re-review van #303
 <!-- END GENERATED -->
 
 ### New
