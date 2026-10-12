@@ -383,7 +383,6 @@ BuildAppDebug() {
     -DPLEYA_VERIFY=${PLEYA_VERIFY:-false} \
     -DPLEYA_ASSISTANT_ENABLED=${PLEYA_ASSISTANT_ENABLED:-false} \
     ${TRAKT_CLIENT_ID:+-DTRAKT_CLIENT_ID=${TRAKT_CLIENT_ID}} \
-    -DPRIVACY_POLICY_URL=${PRIVACY_POLICY_URL:-https://pleya.app/privacy} \
     --output-dill "$OUTDIR/App.framework/flutter_assets/kernel_blob.bin" \
     "$FLUTTER_APPLICATION_PATH/lib/main.dart"
 
@@ -557,7 +556,6 @@ BuildAppRelease() {
     -DPLEYA_VERIFY=${PLEYA_VERIFY:-false} \
     -DPLEYA_ASSISTANT_ENABLED=${PLEYA_ASSISTANT_ENABLED:-false} \
     ${TRAKT_CLIENT_ID:+-DTRAKT_CLIENT_ID=${TRAKT_CLIENT_ID}} \
-    -DPRIVACY_POLICY_URL=${PRIVACY_POLICY_URL:-https://pleya.app/privacy} \
     ${PLEYA_GIT_COMMIT:+-DGIT_COMMIT=${PLEYA_GIT_COMMIT}} \
     --output-dill "$OUTDIR/app.dill" \
     "$FLUTTER_APPLICATION_PATH/lib/main.dart"

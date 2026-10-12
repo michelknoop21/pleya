@@ -565,12 +565,8 @@ def assistant_define
   ENV.fetch("PLEYA_ASSISTANT_ENABLED", "true") == "true" ? " --dart-define=PLEYA_ASSISTANT_ENABLED=true" : ""
 end
 
-# Publieke waarden uit .env: de Trakt-client-ID en de privacy-URL. Alleen gezette,
+# Publieke API-sleutels uit .env, nu alleen de Trakt-client-ID. Alleen gezette,
 # niet-lege waarden worden een define; zonder sleutel blijft de functie uit.
-# De privacy-URL heeft een standaardwaarde (de gepubliceerde pagina): zonder die
-# define blijft de Privacy-link in Over leeg. Een gezette waarde wint.
-# De Trakt-client-ID hoort niet in de release-omgeving tot de controles in
-# docs/release-baseline.md ("Trakt login release conditions") zijn afgerond.
 # Een Trakt-secret hoort hier bewust niet bij (de app heeft er geen nodig): een
 # define is uit de binary te lezen, en een secret in de app is geen secret meer. Een TMDB-sleutel ook
 # niet: die vult de gebruiker zelf in.
@@ -578,9 +574,8 @@ end
 # de omgeving die xcodebuild van fastlane erft.
 # De waarde gaat geescaped mee, want flutter_sh draait via een shell.
 def api_key_defines
-  {"TRAKT_CLIENT_ID" => "", "PRIVACY_POLICY_URL" => "https://pleya.app/privacy"}.filter_map do |name, default|
+  %w[TRAKT_CLIENT_ID].filter_map do |name|
     value = ENV[name].to_s.strip
-    value = default if value.empty?
     " --dart-define=#{name}=#{Shellwords.escape(value)}" unless value.empty?
   end.join
 end
