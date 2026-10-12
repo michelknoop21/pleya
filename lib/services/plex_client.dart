@@ -1125,16 +1125,23 @@ class PlexClient
 
     return fetchWithCacheFallback<PlexMetadataDto>(
       cacheKey: cacheKey,
-      networkCall: () => _http.get(
-        '/library/metadata/$ratingKey',
-        queryParameters: {
-          'includeChapters': 1,
-          'includeMarkers': 1,
-          'checkFiles': 1,
-          'includeStreams': 1,
-          'includeReviews': 1,
-        },
-      ),
+      networkCall: () async {
+        final response = await _http.get(
+          '/library/metadata/$ratingKey',
+          queryParameters: {
+            'includeChapters': 1,
+            'includeMarkers': 1,
+            'checkFiles': 1,
+            'includeStreams': 1,
+            'includeReviews': 1,
+          },
+        );
+        // A 404 is the server saying the item is gone: null. Any other error
+        // (a proxy's 502, a rejected token) is no answer about the item, so it
+        // throws and falls back to the cache, as the fetchItem contract says.
+        if (response.statusCode != 404) throwIfHttpError(response);
+        return response;
+      },
       parseCache: (cachedData) => _parseMetadataWithImagesFromCachedResponse(cachedData),
       parseResponse: (response) {
         final container = _getMediaContainer(response);

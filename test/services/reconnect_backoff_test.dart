@@ -52,6 +52,30 @@ void main() {
       expect(backoff.remaining('a'), isNull);
     });
 
+    test('a failure that is only a moment old is retried by the second attempt of a resume', () {
+      backoff
+        ..failed('a')
+        ..failed('a');
+      expect(backoff.remaining('a'), const Duration(seconds: 10));
+
+      clock = clock.add(const Duration(seconds: 3));
+      expect(backoff.remaining('a', justFailed: const Duration(seconds: 10)), isNull);
+      expect(backoff.remaining('a'), const Duration(seconds: 7), reason: 'an ordinary sweep still waits');
+
+      clock = clock.add(const Duration(seconds: 8));
+      expect(backoff.remaining('a', justFailed: const Duration(seconds: 10)), isNull);
+    });
+
+    test('a failure older than the grace keeps its wait', () {
+      backoff
+        ..failed('a')
+        ..failed('a')
+        ..failed('a');
+      clock = clock.add(const Duration(seconds: 11));
+
+      expect(backoff.remaining('a', justFailed: const Duration(seconds: 10)), const Duration(seconds: 9));
+    });
+
     test('a success, a reset and other servers are independent of the failures', () {
       backoff
         ..failed('a')
@@ -86,6 +110,25 @@ void main() {
       manager.debugRecordUnreachableForTesting(ServerId('srv-1'));
       expect(manager.reconnectSweepServerIds(forceRediscovery: false), isEmpty);
       expect(manager.reconnectSweepServerIds(forceRediscovery: true), ['srv-1']);
+      expect(
+        manager.reconnectSweepServerIds(forceRediscovery: false, retryJustFailed: const Duration(seconds: 10)),
+        ['srv-1'],
+        reason: 'the second attempt of a resume retries what failed a moment ago',
+      );
+    });
+
+    test('forgets the wait when the server comes back by another way than a sweep', () {
+      final manager = MultiServerManager();
+      addTearDown(manager.dispose);
+      manager.debugRegisterClientForTesting(_Offline('srv-1'), online: false);
+      manager.debugRecordUnreachableForTesting(ServerId('srv-1'));
+      manager.debugRecordUnreachableForTesting(ServerId('srv-1'));
+      expect(manager.reconnectSweepServerIds(forceRediscovery: false), isEmpty);
+
+      manager.updateServerStatus(ServerId('srv-1'), true);
+      manager.updateServerStatus(ServerId('srv-1'), false);
+
+      expect(manager.reconnectSweepServerIds(forceRediscovery: false), ['srv-1']);
     });
   });
 }

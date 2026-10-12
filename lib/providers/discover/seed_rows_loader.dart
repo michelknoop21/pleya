@@ -135,7 +135,9 @@ class SeedRowsLoader {
     }
     if (item == null) {
       // A completed "no such item": the server dropped it. Not asked again
-      // until the memory runs out.
+      // until the memory runs out. Offline, null only means the cache has no
+      // row, which says nothing about the server.
+      if (client.isOfflineMode) return null;
       _goneSince[seed.globalKey] = _now();
       appLogger.d('SeedRowsLoader: seed ${seed.globalKey} is gone from its server, skipped for a while');
       return null;

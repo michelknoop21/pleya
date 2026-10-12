@@ -18,13 +18,14 @@ class ReconnectBackoff {
   static const firstWait = Duration(seconds: 10);
   static const maxWait = Duration(minutes: 2);
 
-  final Map<String, ({int failures, DateTime retryAt})> _state = {};
+  final Map<String, ({int failures, DateTime retryAt, DateTime failedAt})> _state = {};
 
   /// A full candidate race found no working endpoint for [serverId].
   void failed(String serverId) {
     final failures = (_state[serverId]?.failures ?? 0) + 1;
     final wait = failures < 2 ? Duration.zero : _waitFor(failures);
-    _state[serverId] = (failures: failures, retryAt: _now().add(wait));
+    final now = _now();
+    _state[serverId] = (failures: failures, retryAt: now.add(wait), failedAt: now);
   }
 
   void succeeded(String serverId) => _state.remove(serverId);
@@ -34,9 +35,14 @@ class ReconnectBackoff {
 
   /// How much longer an automatic sweep should leave [serverId] alone, or
   /// null when it may be tried now.
-  Duration? remaining(String serverId) {
+  ///
+  /// A failure younger than [justFailed] does not count: the second attempt
+  /// of a resume exists to catch a network stack that was not awake for the
+  /// first, so it must not be blocked by the wait that first failure set.
+  Duration? remaining(String serverId, {Duration justFailed = Duration.zero}) {
     final state = _state[serverId];
     if (state == null) return null;
+    if (_now().difference(state.failedAt) < justFailed) return null;
     final left = state.retryAt.difference(_now());
     return left > Duration.zero ? left : null;
   }

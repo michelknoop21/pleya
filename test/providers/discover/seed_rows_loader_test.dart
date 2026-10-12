@@ -28,6 +28,10 @@ class _Client implements MediaServerClient {
   @override
   ServerCapabilities get capabilities => ServerCapabilities.plex;
 
+  @override
+  bool get isOfflineMode => offline;
+
+  bool offline = false;
   final Map<String, int> fetchCalls = {};
   Set<String> failing = {};
 
@@ -198,6 +202,18 @@ void main() {
       expect(second.rows.map((r) => r.title), first.rows.map((r) => r.title));
       // Seeds four to six feed the candidate layer; the dead one took no place.
       expect({for (final item in second.candidates) item.id}, {'e-related', 'f-related', 'g-related'});
+    });
+
+    test('is not remembered while the client is offline: a cache miss says nothing about the server', () async {
+      final plex = _Client('plex')..offline = true;
+      await play('plex:film', at: now);
+      final loader = loaderFor(service(), plex);
+
+      expect(await titles(loader, plex), isEmpty);
+      plex
+        ..offline = false
+        ..itemsById = {'film': _movie('film')};
+      expect(await titles(loader, plex), [t.discover.becauseYouWatched(title: 'film')]);
     });
 
     test('is asked again when the request itself failed', () async {
