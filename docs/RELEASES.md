@@ -77,8 +77,9 @@ Nothing user-facing since the last published build.
 ### Notes
 - The longer wait applies to Plex servers. Jellyfin and Pleya Server are probed as before.
 - Pressing reconnect, or changing network, still tries the server at once.
-- Pleya only tries an offline server again when you come back to the app, when the network
-  changes, or when you press reconnect. It does not retry on its own while you stay in the app.
+- Pleya only tries an offline Plex or Jellyfin server again when you come back to the app, when
+  the network changes, or when you press reconnect. A Pleya Share host is still checked on a
+  timer while the app is open.
 - Trakt for Big P is not switched on in this build, so there is no Trakt sign-in to test yet.
 - The "Because you watched" change is covered by automated tests only. There is no safe way to
   check it by hand, since it would mean deleting a film from your server.
