@@ -18,9 +18,16 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
+### New
+- Trakt in de privacypagina en PRIVACY_POLICY_URL als standaard in de lanes
+
 ### Fixed
+- reviewpunten, lane-standaard teruggedraaid want de Dart-standaard bestond al
+- Big P-regel volledig, aanbevelingen niet meer 'nooit naar derden', opnieuw proberen
 - vervolgpunten uit de externe review van PR #286 en #293
 - speler-route gedeeld met Live TV, bedrading getest, claims in de notities teruggebracht
+- onbereikbare Plex-server met backoff, verwijderd seed-item niet bij elke verversing opnieuw
+- reviewpunten op de v313k-fix
 <!-- END GENERATED -->
 
 ### New
@@ -49,6 +56,16 @@ under `Notes`.
 
 ### Improved
 
+- **A Plex server that is out of reach is probed less and less often.** Coming back to the app
+  used to run a full connection probe against it twice, every time, for as long as it stayed
+  away. The second attempt a few seconds after you return still happens, then the wait grows
+  from 10 seconds to two minutes. A change of network, the reconnect button and the server
+  coming back start over.
+- **"Because you watched" no longer asks about titles the server has deleted.** The history
+  keeps a title after it leaves the library, so Home asked the server for it on every refresh,
+  got a 404 and lost one of the six places that feed the rows. It is now asked once, skipped for
+  half an hour, and the next title takes its place. A server that answers with an error instead
+  of a 404 is not taken to have deleted anything.
 - **Opening a video file while a menu or sheet is open over the player replaces the film.** It
   used to start a second player under the first. A file whose start was cut short because the
   screen went away is kept for the next screen instead of being deleted unseen. This covers the
