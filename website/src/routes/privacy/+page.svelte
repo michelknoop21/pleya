@@ -25,25 +25,46 @@
   let list: HTMLElement | undefined = $state();
   let end: HTMLElement | undefined = $state();
 
-  // The section a reader chose from the index. At the very end of the page a
-  // short section cannot reach the reading band, so the choice is kept there.
-  let chosen: string | undefined;
-
-  // Which section is being read. Observers, not a scroll listener. A section
-  // counts while it crosses a band just under the navigation; of several, the
-  // first in the document wins, so a short section is not skipped for the next.
-  // A click marks its entry at once: at the end of the page nothing scrolls.
+  // Which section is being read. Observers, not a scroll listener.
+  //
+  // A section counts while it crosses a band near the top of the window; of
+  // several, the first in the document wins, so a short section is not skipped
+  // for the next. A section the reader asked for (a click in the index, a link
+  // with a hash) is marked at once and stays marked until they scroll on their
+  // own or it leaves the window: near the end of the page a short section can
+  // never reach the band. At the real end of the page it is the last section,
+  // which on a tall window never reaches the band either.
   $effect(() => {
     const page = root;
     const tail = end;
     if (!page || !tail) return;
     const plates = [...page.querySelectorAll<HTMLElement>('.policy-section')];
+    const known = new Set(plates.map((plate) => plate.id));
     const inBand = new Set<string>();
+    const onScreen = new Set<string>();
     let atEnd = false;
+    let chosen: string | undefined;
+
     const settle = () => {
-      if (atEnd) active = chosen ?? sections[sections.length - 1].id;
-      else active = plates.find((plate) => inBand.has(plate.id))?.id ?? active;
+      if (chosen && !onScreen.has(chosen)) chosen = undefined;
+      active =
+        chosen ??
+        (atEnd ? sections[sections.length - 1].id : (plates.find((plate) => inBand.has(plate.id))?.id ?? active));
     };
+    const choose = (id: string) => {
+      if (!known.has(id)) return;
+      // Shown before the jump, so the plate does not move after landing.
+      document.getElementById(id)?.classList.add('in');
+      onScreen.add(id);
+      chosen = id;
+      settle();
+    };
+    const release = () => {
+      if (!chosen) return;
+      chosen = undefined;
+      settle();
+    };
+
     const band = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -52,35 +73,78 @@
         }
         settle();
       },
-      { rootMargin: '-120px 0px -60% 0px' }
+      { rootMargin: '-56px 0px -60% 0px' }
     );
-    const bottom = new IntersectionObserver((entries) => {
-      atEnd = entries[0].isIntersecting;
-      if (!atEnd) chosen = undefined;
+    const screen = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) onScreen.add(entry.target.id);
+        else onScreen.delete(entry.target.id);
+      }
       settle();
     });
-    plates.forEach((plate) => band.observe(plate));
+    // The marker sits under the footer: it shows only at the real end of the page.
+    const bottom = new IntersectionObserver(
+      (entries) => {
+        atEnd = entries[0].isIntersecting;
+        settle();
+      },
+      { rootMargin: '0px 0px 8px 0px' }
+    );
+    plates.forEach((plate) => {
+      band.observe(plate);
+      screen.observe(plate);
+    });
     bottom.observe(tail);
+
+    const fromHash = () => choose(decodeURIComponent(location.hash.slice(1)));
+    const onClick = (event: MouseEvent) => {
+      const link = (event.target as Element | null)?.closest?.('a[href^="#"]');
+      if (link) choose(decodeURIComponent(link.getAttribute('href')!.slice(1)));
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) release();
+    };
+    if (location.hash) fromHash();
+    window.addEventListener('hashchange', fromHash);
+    page.addEventListener('click', onClick);
+    window.addEventListener('wheel', release, { passive: true });
+    window.addEventListener('touchmove', release, { passive: true });
+    window.addEventListener('keydown', onKey);
+
     return () => {
       band.disconnect();
+      screen.disconnect();
       bottom.disconnect();
+      window.removeEventListener('hashchange', fromHash);
+      page.removeEventListener('click', onClick);
+      window.removeEventListener('wheel', release);
+      window.removeEventListener('touchmove', release);
+      window.removeEventListener('keydown', onKey);
     };
   });
 
-  // Keep the current entry in view when the index scrolls inside its plate.
+  // Keep the current entry in view when the index scrolls: a list in its plate
+  // on a wide window, a row of pills on a narrow one.
   $effect(() => {
     const box = list;
-    const link = box?.querySelector<HTMLElement>(`a[href="#${active}"]`);
-    if (!box || !link) return;
-    const top = link.offsetTop - box.offsetTop;
+    const item = box?.querySelector<HTMLElement>(`a[href="#${active}"]`)?.parentElement;
+    if (!box || !item) return;
+    const top = item.offsetTop - box.offsetTop;
     if (top < box.scrollTop) box.scrollTop = top;
-    else if (top + link.offsetHeight > box.scrollTop + box.clientHeight)
-      box.scrollTop = top + link.offsetHeight - box.clientHeight;
+    else if (top + item.offsetHeight > box.scrollTop + box.clientHeight)
+      box.scrollTop = top + item.offsetHeight - box.clientHeight;
+    const left = item.offsetLeft - box.offsetLeft;
+    if (left < box.scrollLeft) box.scrollLeft = left - 16;
+    else if (left + item.offsetWidth > box.scrollLeft + box.clientWidth)
+      box.scrollLeft = left + item.offsetWidth - box.clientWidth + 16;
   });
 
-  // Plates settle into place as they arrive. Transform only: the text is never
-  // hidden, so it prints, is found by search and is read out in full. What is
-  // already on screen is marked first, so nothing visible jumps.
+  // Plates rise into place as they arrive. A plate that has not arrived is
+  // dimmed, never invisible: this is a legal text, and it has to stay readable
+  // even if the reveal never fires. The section itself does not move (only the
+  // plate inside it), so a jump to its anchor lands where it should. What is
+  // already on screen is marked first, so nothing visible flashes. Without
+  // script or with reduced motion nothing is dimmed.
   $effect(() => {
     const page = root;
     if (!page || !window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
@@ -98,8 +162,12 @@
       { rootMargin: '0px 0px -8% 0px' }
     );
     plates.forEach((plate) => arrive.observe(plate));
+    // A link reached with Tab inside a plate that has not arrived yet shows it.
+    const onFocus = (event: FocusEvent) => (event.target as Element | null)?.closest?.('.policy-section')?.classList.add('in');
+    page.addEventListener('focusin', onFocus);
     return () => {
       arrive.disconnect();
+      page.removeEventListener('focusin', onFocus);
       page.classList.remove('motion');
     };
   });
@@ -124,7 +192,7 @@
 </svelte:head>
 
 <div class="docs privacy" bind:this={root}>
-  <TopNav sticky />
+  <TopNav />
   <div class="aura" aria-hidden="true"></div>
 
   <main class="policy-shell">
@@ -139,11 +207,7 @@
           <ol bind:this={list}>
             {#each sections as section (section.id)}
               <li>
-                <a
-                  href="#{section.id}"
-                  aria-current={active === section.id ? 'true' : undefined}
-                  onclick={() => (active = chosen = section.id)}>{section.title}</a
-                >
+                <a href="#{section.id}" aria-current={active === section.id ? 'true' : undefined}>{section.title}</a>
               </li>
             {/each}
           </ol>
@@ -168,37 +232,42 @@
         <div class="core">
           <h2>Information We Collect</h2>
 
-          <h3>Authentication Information</h3>
-          <p>When you sign in to Pleya, we collect and process the following information depending on which service you connect:</p>
-          <ul>
-            <li>Plex: authentication tokens, account username, and server connection information</li>
-            <li>Jellyfin: server URL, access token, username, and user ID</li>
-          </ul>
-
-          <h3>Crash and Diagnostic Data</h3>
-          <p>To help us identify and fix bugs, the app automatically collects:</p>
-          <ul>
-            <li>Crash reports and error stack traces</li>
-            <li>Application Not Responding (ANR) events</li>
-            <li>Device model, OS version, and app version</li>
-            <li>Diagnostic breadcrumbs (e.g. playback events leading up to a crash)</li>
-          </ul>
-          <p>This data is sent to our self-hosted error tracking server (bugs.pleya.app). Sensitive information such as authentication tokens and server URLs is automatically stripped before transmission.</p>
-
-          <h3>Local Network Information</h3>
-          <p>To connect to your media server on your local network, we may access:</p>
-          <ul>
-            <li>Local network device discovery information</li>
-            <li>IP addresses of media servers on your network</li>
-          </ul>
-
-          <h3>Usage Information</h3>
-          <p>The app stores locally on your device:</p>
-          <ul>
-            <li>Your authentication session</li>
-            <li>App preferences and settings</li>
-            <li>Recently accessed content history</li>
-          </ul>
+          <div class="well">
+            <h3>Authentication Information</h3>
+            <p>When you sign in to Pleya, we collect and process the following information depending on which service you connect:</p>
+            <ul>
+              <li>Plex: authentication tokens, account username, and server connection information</li>
+              <li>Jellyfin: server URL, access token, username, and user ID</li>
+            </ul>
+          </div>
+          <div class="well">
+            <h3>Crash and Diagnostic Data</h3>
+            <p>To help us identify and fix bugs, the app automatically collects:</p>
+            <ul>
+              <li>Crash reports and error stack traces</li>
+              <li>Application Not Responding (ANR) events</li>
+              <li>Device model, OS version, and app version</li>
+              <li>Diagnostic breadcrumbs (e.g. playback events leading up to a crash)</li>
+            </ul>
+            <p>This data is sent to our self-hosted error tracking server (bugs.pleya.app). Sensitive information such as authentication tokens and server URLs is automatically stripped before transmission.</p>
+          </div>
+          <div class="well">
+            <h3>Local Network Information</h3>
+            <p>To connect to your media server on your local network, we may access:</p>
+            <ul>
+              <li>Local network device discovery information</li>
+              <li>IP addresses of media servers on your network</li>
+            </ul>
+          </div>
+          <div class="well">
+            <h3>Usage Information</h3>
+            <p>The app stores locally on your device:</p>
+            <ul>
+              <li>Your authentication session</li>
+              <li>App preferences and settings</li>
+              <li>Recently accessed content history</li>
+            </ul>
+          </div>
         </div>
       </section>
       <section class="policy-section" id="how-we-use-your-information">
@@ -228,41 +297,46 @@
         <div class="core">
           <h2>Third-Party Services</h2>
 
-          <h3>Plex</h3>
-          <p>Pleya uses Plex's authentication and media services. When you use this app:</p>
-          <ul>
-            <li>You authenticate directly with Plex's servers</li>
-            <li>Your media streaming occurs between your device and your Plex Media Server</li>
-            <li>Plex's own privacy policy applies to their services: <a href="https://www.plex.tv/about/privacy-legal/" target="_blank" rel="noopener noreferrer">plex.tv/about/privacy-legal</a></li>
-          </ul>
-          <p>We do not control and are not responsible for Plex's data practices.</p>
-
-          <h3>Jellyfin</h3>
-          <p>Pleya can connect to your self-hosted Jellyfin server. When you use this app with Jellyfin:</p>
-          <ul>
-            <li>You authenticate directly with your Jellyfin server using your username and password, or via Quick Connect</li>
-            <li>Your media streaming occurs between your device and your Jellyfin server</li>
-            <li>No third party (including Pleya) is involved in Jellyfin authentication or playback</li>
-          </ul>
-          <p>Because Jellyfin is self-hosted, your Jellyfin server's privacy practices are determined by whoever operates it. More information about the Jellyfin project is available at <a href="https://jellyfin.org" target="_blank" rel="noopener noreferrer">jellyfin.org</a>.</p>
-
-          <h3>Trakt (optional)</h3>
-          <p>Pleya can connect to your Trakt account. This is off until you sign in with a code at trakt.tv/activate. When you connect:</p>
-          <ul>
-            <li>Your Trakt access token is stored on your device and is used only to talk to Trakt</li>
-            <li>After you connect, Pleya asks once whether it may send your watching to Trakt. Only if you allow it, Pleya sends play, pause and stop events and "watched" marks (identifiers such as IMDb or TMDB IDs, the season and episode number, how far you are, and when). If Trakt cannot be reached, Pleya keeps the pending watched marks on your device and tries again later. You can switch each off under Settings &gt; Trakt. If you sync your settings through iCloud, your answer syncs to your other devices too. A rating you give in Pleya is sent to Trakt as well</li>
-            <li>Pleya reads your Trakt watched history and watchlist so it can leave out titles you have already seen and show your watchlist next to your libraries. The history is used on your device and is not saved to disk. If you ask Big P about your watchlist, up to 30 titles from it are included in the request to the AI provider you chose</li>
-            <li>Trakt is not available on children's profiles</li>
-            <li>You can disconnect under Settings &gt; Trakt, which revokes the token at Trakt when Trakt can be reached</li>
-          </ul>
-          <p>Trakt's own privacy policy applies: <a href="https://trakt.tv/privacy" target="_blank" rel="noopener noreferrer">trakt.tv/privacy</a>. We do not control Trakt's data practices.</p>
-
-          <h3>Litterbox (Discord Rich Presence)</h3>
-          <p>When Discord Rich Presence is enabled, media artwork may be temporarily uploaded to:</p>
-          <ul>
-            <li>Litterbox (litterbox.catbox.moe) &mdash; a temporary file hosting service</li>
-          </ul>
-          <p>These uploads are necessary because Discord requires publicly accessible image URLs for Rich Presence artwork. Uploaded images automatically expire after 1 hour. This feature is opt-in and disabled by default.</p>
+          <div class="well">
+            <h3>Plex</h3>
+            <p>Pleya uses Plex's authentication and media services. When you use this app:</p>
+            <ul>
+              <li>You authenticate directly with Plex's servers</li>
+              <li>Your media streaming occurs between your device and your Plex Media Server</li>
+              <li>Plex's own privacy policy applies to their services: <a href="https://www.plex.tv/about/privacy-legal/" target="_blank" rel="noopener noreferrer">plex.tv/about/privacy-legal</a></li>
+            </ul>
+            <p>We do not control and are not responsible for Plex's data practices.</p>
+          </div>
+          <div class="well">
+            <h3>Jellyfin</h3>
+            <p>Pleya can connect to your self-hosted Jellyfin server. When you use this app with Jellyfin:</p>
+            <ul>
+              <li>You authenticate directly with your Jellyfin server using your username and password, or via Quick Connect</li>
+              <li>Your media streaming occurs between your device and your Jellyfin server</li>
+              <li>No third party (including Pleya) is involved in Jellyfin authentication or playback</li>
+            </ul>
+            <p>Because Jellyfin is self-hosted, your Jellyfin server's privacy practices are determined by whoever operates it. More information about the Jellyfin project is available at <a href="https://jellyfin.org" target="_blank" rel="noopener noreferrer">jellyfin.org</a>.</p>
+          </div>
+          <div class="well">
+            <h3>Trakt (optional)</h3>
+            <p>Pleya can connect to your Trakt account. This is off until you sign in with a code at trakt.tv/activate. When you connect:</p>
+            <ul>
+              <li>Your Trakt access token is stored on your device and is used only to talk to Trakt</li>
+              <li>After you connect, Pleya asks once whether it may send your watching to Trakt. Only if you allow it, Pleya sends play, pause and stop events and "watched" marks (identifiers such as IMDb or TMDB IDs, the season and episode number, how far you are, and when). If Trakt cannot be reached, Pleya keeps the pending watched marks on your device and tries again later. You can switch each off under Settings &gt; Trakt. If you sync your settings through iCloud, your answer syncs to your other devices too. A rating you give in Pleya is sent to Trakt as well</li>
+              <li>Pleya reads your Trakt watched history and watchlist so it can leave out titles you have already seen and show your watchlist next to your libraries. The history is used on your device and is not saved to disk. If you ask Big P about your watchlist, up to 30 titles from it are included in the request to the AI provider you chose</li>
+              <li>Trakt is not available on children's profiles</li>
+              <li>You can disconnect under Settings &gt; Trakt, which revokes the token at Trakt when Trakt can be reached</li>
+            </ul>
+            <p>Trakt's own privacy policy applies: <a href="https://trakt.tv/privacy" target="_blank" rel="noopener noreferrer">trakt.tv/privacy</a>. We do not control Trakt's data practices.</p>
+          </div>
+          <div class="well">
+            <h3>Litterbox (Discord Rich Presence)</h3>
+            <p>When Discord Rich Presence is enabled, media artwork may be temporarily uploaded to:</p>
+            <ul>
+              <li>Litterbox (litterbox.catbox.moe) &mdash; a temporary file hosting service</li>
+            </ul>
+            <p>These uploads are necessary because Discord requires publicly accessible image URLs for Rich Presence artwork. Uploaded images automatically expire after 1 hour. This feature is opt-in and disabled by default.</p>
+          </div>
         </div>
       </section>
       <section class="policy-section" id="data-sharing">
@@ -342,10 +416,10 @@
         </div>
       </section>
     </div>
-    <div bind:this={end} aria-hidden="true"></div>
   </main>
 
   <Footer />
+  <div class="page-end" bind:this={end} aria-hidden="true"></div>
 </div>
 
 <style>
@@ -354,6 +428,8 @@
     --ease: cubic-bezier(0.32, 0.72, 0, 1);
     --bezel: 0.375rem;
     --radius: 2rem;
+    --plate: #0b0b0c;
+    --hairline: rgba(255, 255, 255, 0.09);
     position: relative;
     isolation: isolate;
   }
@@ -369,12 +445,18 @@
       radial-gradient(46rem 34rem at 96% 6%, rgba(255, 176, 32, 0.08), transparent 60%);
   }
 
+  /* The navigation floats over the top of the page, so the shell starts below it. */
   .policy-shell {
     max-width: 78rem;
     margin-inline: auto;
-    padding: 3rem 1rem 5rem;
+    padding: 7rem 1rem 5rem;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 2.5rem;
+  }
+
+  .policy-lede {
+    min-width: 0;
   }
 
   .tag {
@@ -406,60 +488,57 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* The index sits in a tray: an outer shell with a hairline, and an inner
-     plate with its own highlight and a concentric, smaller radius. */
-  .index {
-    display: none;
-    margin-top: 2.5rem;
-    padding: var(--bezel);
-    border-radius: 1.75rem;
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    background: rgba(255, 255, 255, 0.03);
-  }
+  /* ---------- index ---------- */
 
-  .index-core {
-    padding: 1.25rem 1.25rem 1rem;
-    border-radius: calc(1.75rem - var(--bezel));
-    background: #0b0b0c;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  /* Narrow window: a row of pills that scrolls sideways under the title. */
+  .index {
+    margin-top: 1.75rem;
   }
 
   .index-label {
-    margin-bottom: 0.75rem;
-    color: var(--color-text-faint);
-    font-size: 0.625rem;
-    font-weight: 600;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
+    display: none;
   }
 
-  /* On a low window the list scrolls inside its plate, so the last entries
-     stay reachable while the column is pinned. */
   .index ol {
-    margin: 0;
-    padding: 0;
+    display: flex;
+    gap: 0.5rem;
+    margin: 0 -1rem;
+    padding: 0.25rem 1rem;
     list-style: none;
     counter-reset: entry;
-    max-height: max(9rem, calc(100dvh - 30rem));
-    overflow: hidden auto;
-    overscroll-behavior: contain;
+    overflow: auto hidden;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .index ol::-webkit-scrollbar {
+    display: none;
+  }
+
+  .index li {
+    flex: none;
+    scroll-snap-align: start;
+    scroll-margin-left: 1rem;
   }
 
   .index a {
+    position: relative;
     display: flex;
-    align-items: baseline;
-    gap: 0.75rem;
-    padding: 0.3rem 0;
+    align-items: center;
+    gap: 0.625rem;
+    min-height: 2.75rem;
+    padding: 0 1rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
     color: var(--color-text-muted);
     font-size: 0.875rem;
     line-height: 1.35;
-    transition: color 500ms var(--ease);
-  }
-
-  /* The ring sits inside the row: the list clips what reaches past its edge. */
-  .index a:focus-visible {
-    outline-offset: -2px;
-    box-shadow: none;
+    white-space: nowrap;
+    transition:
+      color 500ms var(--ease),
+      background-color 500ms var(--ease),
+      border-color 500ms var(--ease);
   }
 
   .index a::before {
@@ -479,23 +558,42 @@
     color: var(--color-text);
   }
 
+  .index a[aria-current] {
+    border-color: rgba(255, 176, 32, 0.45);
+    background: rgba(255, 176, 32, 0.08);
+  }
+
   .index a[aria-current]::before {
     color: var(--color-accent-2);
   }
+
+  .index a:active {
+    transform: scale(0.98);
+  }
+
+  /* The ring sits inside the row: the list clips what reaches past its edge. */
+  .index a:focus-visible {
+    outline-offset: -2px;
+    box-shadow: none;
+    border-radius: 999px;
+  }
+
+  /* ---------- plates ---------- */
 
   .policy-body {
     counter-reset: section;
     min-width: 0;
   }
 
-  /* Each section is a plate in a tray, like the index. No blur here: these
-     scroll, and a blurred surface that scrolls repaints every frame. */
+  /* Each section is a plate in a tray: an outer shell with a hairline, and an
+     inner plate with its own highlight and a concentric, smaller radius. No
+     blur here: these scroll, and a blurred surface that scrolls repaints every frame. */
   .policy-section {
     padding: var(--bezel);
     border-radius: 1.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--hairline);
     background: rgba(255, 255, 255, 0.03);
-    scroll-margin-top: 6rem;
+    scroll-margin-top: 1.5rem;
   }
 
   .policy-section + .policy-section {
@@ -504,37 +602,51 @@
 
   .core {
     counter-increment: section;
+    position: relative;
     padding: 1.5rem 1.25rem 1.25rem;
     border-radius: calc(1.5rem - var(--bezel));
-    background: #0b0b0c;
+    background: var(--plate);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09);
     color: var(--color-text-muted);
     line-height: 1.75;
   }
 
+  /* The section number as an outlined numeral: a drawn figure, not a label. */
   .core::before {
     content: counter(section, decimal-leading-zero);
     content: counter(section, decimal-leading-zero) / '';
     display: block;
-    margin-bottom: 0.75rem;
-    color: var(--color-accent-2);
-    font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: 0.2em;
+    margin-bottom: 0.5rem;
+    font-family: var(--font-display);
+    font-size: 2.75rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
     font-variant-numeric: tabular-nums;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255, 176, 32, 0.55);
   }
 
   .core h2 {
     margin-bottom: 1rem;
     color: var(--color-text);
-    font-size: clamp(1.375rem, 2.4vw, 1.75rem);
+    font-size: clamp(1.5rem, 2.6vw, 2rem);
     font-weight: 700;
-    line-height: 1.15;
-    letter-spacing: -0.02em;
+    line-height: 1.12;
+    letter-spacing: -0.025em;
+  }
+
+  /* A subsection sits one level down, in a well cut into the plate. */
+  .well {
+    margin-top: 0.75rem;
+    padding: 1.25rem 1.125rem 1rem;
+    border-radius: 1.125rem;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.025);
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.04);
   }
 
   .core h3 {
-    margin-top: 2rem;
     margin-bottom: 0.5rem;
     color: var(--color-text);
     font-size: 1.0625rem;
@@ -547,7 +659,8 @@
     margin-bottom: 1rem;
   }
 
-  .core > :last-child {
+  .core > :last-child,
+  .well > :last-child {
     margin-bottom: 0;
   }
 
@@ -581,8 +694,15 @@
     text-decoration-color: currentColor;
   }
 
-  /* Arrival: the title block rises once on load (pure CSS, no flash), and a
-     plate slides the last stretch into place. Neither ever hides the text. */
+  .page-end {
+    height: 1px;
+  }
+
+  /* ---------- arrival ---------- */
+
+  /* The title block rises once on load (pure CSS, no flash). A plate brightens
+     and rises the last stretch as it arrives; until then it is dimmed but
+     readable. Neither runs with reduced motion, and the plates not without script. */
   @media (prefers-reduced-motion: no-preference) {
     .policy-lede > * {
       animation: rise 900ms var(--ease) both;
@@ -598,10 +718,17 @@
     }
 
     .privacy:global(.motion) .policy-section {
-      transform: translateY(1.5rem);
+      opacity: 0.3;
+      transition: opacity 900ms var(--ease);
+    }
+    .privacy:global(.motion) .policy-section .core {
+      transform: translateY(2rem);
       transition: transform 900ms var(--ease);
     }
     .privacy:global(.motion) .policy-section:global(.in) {
+      opacity: 1;
+    }
+    .privacy:global(.motion) .policy-section:global(.in) .core {
       transform: none;
     }
   }
@@ -613,20 +740,170 @@
     }
   }
 
-  /* On paper the dark theme has no background, so the text takes ink colours
-     and the plates become plain outlined blocks. */
-  @media print {
-    .aura,
+  /* ---------- wider windows ---------- */
+
+  @media (min-width: 48rem) {
+    .policy-shell {
+      padding: 9rem 2rem 8rem;
+    }
+
+    .policy-section {
+      border-radius: var(--radius);
+    }
+
+    .core {
+      padding: 2.5rem 2.75rem 2.25rem;
+      border-radius: calc(var(--radius) - var(--bezel));
+    }
+
+    /* The numeral moves to the corner and grows; the heading keeps clear of it. */
+    .core::before {
+      position: absolute;
+      top: 2.125rem;
+      right: 2.5rem;
+      margin: 0;
+      font-size: clamp(3rem, 4.6vw, 3.75rem);
+      -webkit-text-stroke-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .core h2 {
+      max-width: calc(100% - 7rem);
+    }
+
+    .well {
+      padding: 1.5rem 1.5rem 1.25rem;
+    }
+  }
+
+  /* Editorial split: the title and the index stay put while the plates scroll,
+     and the index becomes a list in its own tray. */
+  @media (min-width: 64rem) {
+    .policy-shell {
+      grid-template-columns: minmax(0, 23rem) minmax(0, 1fr);
+      gap: 5rem;
+      padding-block: 10rem 10rem;
+    }
+
     .index {
-      display: none;
+      margin-top: 2.5rem;
+      padding: var(--bezel);
+      border-radius: 1.75rem;
+      border: 1px solid var(--hairline);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .index-core {
+      padding: 1.25rem 1.25rem 1rem;
+      border-radius: calc(1.75rem - var(--bezel));
+      background: var(--plate);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .index-label {
+      display: block;
+      margin-bottom: 0.75rem;
+      color: var(--color-text-faint);
+      font-size: 0.625rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    /* On a low window the list scrolls inside its plate, so the last entries
+       stay reachable while the column is pinned. */
+    .index ol {
+      display: block;
+      margin: 0;
+      padding: 0;
+      max-height: max(9rem, calc(100dvh - 26rem));
+      overflow: hidden auto;
+      scroll-snap-type: none;
+    }
+
+    .index a {
+      min-height: 0;
+      padding: 0.3rem 0 0.3rem 0.875rem;
+      border: 0;
+      border-radius: 0.5rem;
+      background: none;
+      white-space: normal;
+      align-items: baseline;
+      gap: 0.75rem;
+    }
+
+    .index a[aria-current] {
+      background: none;
+    }
+
+    /* The mark of the section being read: a short bar that grows from its middle. */
+    .index a::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0.45rem;
+      bottom: 0.45rem;
+      width: 2px;
+      border-radius: 2px;
+      background: var(--color-accent-2);
+      transform: scaleY(0);
+      transition: transform 500ms var(--ease);
+    }
+
+    .index a[aria-current]::after {
+      transform: scaleY(1);
+    }
+
+    .index a:active {
+      transform: none;
+    }
+
+    .index a:focus-visible {
+      border-radius: 0.5rem;
+    }
+  }
+
+  /* Pinned only where the column fits on the window. */
+  @media (min-width: 64rem) and (min-height: 40rem) {
+    .policy-lede {
+      position: sticky;
+      top: 2.5rem;
+      align-self: start;
+    }
+  }
+
+  /* ---------- paper ---------- */
+
+  /* Last, so it wins from the wide-window rules on landscape paper. The dark
+     theme has no place on paper: white ground, ink colours, plain outlined
+     blocks, and only the policy itself (no navigation, index or footer). */
+  @page {
+    margin: 16mm;
+  }
+
+  @media print {
+    .privacy,
+    :global(html),
+    :global(body) {
+      background: #fff !important;
+      color: #000 !important;
+    }
+    .aura,
+    .index,
+    .page-end,
+    .privacy :global(.topnav),
+    .privacy :global(.site-footer) {
+      display: none !important;
     }
     .policy-shell {
-      display: block;
-      padding: 0;
+      display: block !important;
+      padding: 0 !important;
     }
     .policy-lede {
-      position: static;
+      position: static !important;
       margin-bottom: 2rem;
+    }
+    .policy-lede > * {
+      animation: none !important;
     }
     .policy-lede h1,
     .core h2,
@@ -639,62 +916,47 @@
     .last-updated {
       color: #222;
     }
-    .tag,
-    .core::before {
+    .tag {
       color: #555;
       border-color: #bbb;
       background: none;
     }
+    .core::before {
+      position: static;
+      margin: 0 0 0.25rem;
+      font-size: 1.25rem;
+      -webkit-text-stroke-color: #888;
+    }
+    .core h2 {
+      max-width: none;
+    }
     .policy-section {
       border-color: #ccc;
       background: none;
-      transform: none !important;
+      opacity: 1 !important;
       transition: none !important;
     }
     .core {
+      transform: none !important;
+      transition: none !important;
+    }
+    .core,
+    .well {
       background: none;
       box-shadow: none;
+    }
+    .well {
+      border-color: #ddd;
+      break-inside: avoid-page;
+    }
+    .core {
       padding: 1rem 1.25rem;
+    }
+    .core :is(h2, h3) {
+      break-after: avoid;
     }
     .core li::marker {
       color: #555;
-    }
-  }
-
-  @media (min-width: 48rem) {
-    .policy-shell {
-      padding: 5rem 2rem 8rem;
-    }
-
-    .policy-section {
-      border-radius: var(--radius);
-    }
-
-    .core {
-      padding: 2.5rem 2.75rem 2.25rem;
-      border-radius: calc(var(--radius) - var(--bezel));
-    }
-  }
-
-  /* Editorial split: the title and the index stay put while the plates scroll. */
-  @media (min-width: 64rem) {
-    .policy-shell {
-      grid-template-columns: minmax(0, 23rem) minmax(0, 1fr);
-      gap: 5rem;
-      padding-block: 7rem 10rem;
-    }
-
-    .index {
-      display: block;
-    }
-  }
-
-  /* Pinned only where the column fits under the navigation. */
-  @media (min-width: 64rem) and (min-height: 40rem) {
-    .policy-lede {
-      position: sticky;
-      top: 7rem;
-      align-self: start;
     }
   }
 </style>
