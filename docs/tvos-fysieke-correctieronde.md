@@ -4668,3 +4668,25 @@ Dit voegt begrensd desktopbewijs toe aan de eerdere TV-/telefoon-/iPad-portretru
 Roadmap: A-21. `ipados.requests.manage` PASS op schone `main` `50143c34` (`dirty:false`): 39 stappen, drie native 2752×2064-beelden. Bundle `.build/pleya-verify/ipados-requests-manage-1791541279756`. Dezelfde begrensde managerroute als op desktop: eigen aanvragen, uitsluiting van andermans aanvraag, alle vijf toegestane menuacties binnen het viewport en Sluiten terug naar dezelfde ongewijzigde aanvraag. Geen mutaties. Alle drie native beelden onafhankelijk beoordeeld; geen bevindingen binnen deze staten.
 
 De eerdere draaiblokkade is voor deze run opgeheven door de geselecteerde iPad Pro 13-inch (M5)-simulator vooraf via de eigen Rotate Left-knop in de geïnstalleerde Apple Device Hub te draaien. De bestaande `configure_view: landscapeLeft`-stap is ongewijzigd uitgevoerd en controleert het werkelijke appviewport; screenshots bevestigen landscape. De driver of productcode is niet gewijzigd, automatische rotatie via de hardcoded Simulator-app is hiermee niet gerepareerd. Tijdelijke arm64-only simulator-XCconfig buiten de repo behouden. Alleen geïsoleerde Verify-app en synthetische adminfixture gebruikt; andere rollen, alle 72 ontwerpstaten, echte servers en fysieke Apple TV/native bediening blijven open. Geen nieuwe TestFlight. Rapport/evidence: `/tmp/pleya-a21-desktop-20261009/`.
+
+
+### TS1: Top Shelf schreef op hardware niets, de map voor de beelden werd geweigerd (build 357 en 360, log `i8tj0`, 13 oktober 2026)
+
+Roadmap: A-12. Status: CODE DONE · HARDWARE OPEN.
+
+Het log van de Apple TV bevat 74 keer `Failed to sync system shelf` met `PathAccessException: Creation failed, path = '…/Shared/AppGroup/<id>/TopShelfImages' (Operation not permitted, errno = 1)`, bij elke sync, in meerdere sessies en twee builds.
+
+Gemeten:
+
+- De ondertekening is in orde. In de geëxporteerde IPA van build 360 dragen `Runner.app` en `TopShelfExtension.appex` allebei `com.apple.security.application-groups = group.nl.michelknoop.pleya`, en het provisioningprofiel bevat de groep (`codesign -d --entitlements`, `security cms -D`). Een ontbrekende entitlement is daarmee uitgesloten.
+- De app vroeg de map in de wortel van de groepscontainer (`SystemShelfPlugin.imageDirectoryURL`). Het systeem gaf het containerpad terug en weigerde daarna het aanmaken.
+- De uitzondering viel vóór de aanroep die de rij schrijft (`syncFromContinueWatching`). Daardoor kwam op het toestel ook de gewone rij Verder kijken niet meer in de Top Shelf, niet alleen de carrousel. TS1 was tot nu toe alleen op de simulator gezien, en die handhaaft deze beperking niet.
+- Een mislukte sync kost weinig: wat lijsten opbouwen en één geweigerde map, geen download en geen decodering. Er is geen aanwijzing dat dit bijdraagt aan de geheugendruk of aan PLR12.
+
+Fix:
+
+- De beelden gaan naar `Library/Caches/TopShelfImages` in de groepscontainer. Dat tvOS dat deel wel laat beschrijven en dat de extensie er kan lezen, volgt uit berichten op het Apple-ontwikkelaarsforum en is niet op dit toestel bewezen.
+- Een geweigerde map breekt de sync niet meer af: de rij Verder kijken wordt geschreven zonder carrousel, en de weigering staat één keer per run als waarschuwing in het log.
+
+Open op hardware, na de volgende build: geen `Failed to sync system shelf` meer in het log; de Top Shelf toont de carrousel; staat er `Top Shelf artwork folder unavailable`, dan is ook `Library/Caches` geweigerd en toont de Top Shelf alleen de rij. Bijvangst, niet opgelost: `tvos/scripts/wire_top_shelf.rb` noemt nog het oude team `G88U5B5783`.
+
