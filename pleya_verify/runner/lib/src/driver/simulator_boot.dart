@@ -8,13 +8,15 @@ import 'bounded_process.dart';
 //
 // Why this exists: `simctl bootstatus -b` returns before a cold simulator is
 // done. Measured on the hosted `macos-26` runner on 13 October 2026 (iPhone
-// 16e, iOS 26.2, twelve cold boots): `bootstatus` returned after 85 to 111 s
-// with exit 0, and the first `simctl` call after it then took another 39 to
-// 78 s, whichever call it was (`terminate` of an app that was not installed,
-// `listapps`, `spawn`). The call after that one took seconds. The drivers
-// made that first call a `terminate` under [defaultProcessTimeout], and on a
-// slower runner it ran past three minutes: `discover.layout` failed in 4 of
-// 27 CI runs in its first step, before the app was even installed.
+// 16e, iOS 26.2, eighteen cold boots): `bootstatus` returned after 81 to
+// 111 s with exit 0, and the first `simctl` call after it then took another
+// 26 to 78 s, whichever call it was (`terminate` of an app that was not
+// installed, `listapps`, `spawn`). The drivers made that first call a
+// `terminate` under [defaultProcessTimeout]. In CI that call was killed on its
+// three minutes in 4 of 27 runs of `discover.layout`, in the first step,
+// before the app was even installed. The probe never reproduced a call that
+// long, so "slow, not stuck" is inferred from these numbers and not observed;
+// the timing lines of [timedSimctl] are there to settle it on the next one.
 
 /// Runs one external tool under a ceiling: the drivers' `_run`.
 typedef ProcessRunner = Future<ProcessResult> Function(String executable, List<String> args, {Duration timeout});
@@ -24,9 +26,11 @@ typedef ProcessRunner = Future<ProcessResult> Function(String executable, List<S
 /// the boot's ceiling and not the three minutes of an ordinary call.
 const Duration simulatorSettleTimeout = bootProcessTimeout;
 
-/// Boots [udid] when it is not running yet and returns once it answers.
+/// Boots [udid] when it is not running yet and gives it time to answer.
 ///
-/// A simulator that was already booted is left alone: it settled long ago.
+/// A simulator that `simctl list` already reports as booted is left alone, as
+/// before. That includes one that was booted moments ago by something else
+/// and is still settling: its first call runs under the ordinary ceiling.
 Future<void> bootSimulator({
   required String udid,
   required ProcessRunner run,
@@ -46,24 +50,25 @@ Future<void> bootSimulator({
   // The first call after `bootstatus` pays for whatever the simulator is still
   // starting. Make it a read with the boot's ceiling, so the calls that follow
   // run against a simulator that answers.
-  final settle = await run('xcrun', ['simctl', 'listapps', udid], timeout: simulatorSettleTimeout);
-  if (settle.exitCode != 0) {
-    throw StateError(
-      'simulator $udid reported booted but `simctl listapps` failed (exit ${settle.exitCode}): ${settle.stderr}',
-    );
-  }
+  // No verdict on the outcome: before this call existed, whatever ran first
+  // was not judged either, and the calls after it say what is wrong by name.
+  await run('xcrun', ['simctl', 'listapps', udid], timeout: simulatorSettleTimeout);
 }
 
 /// Whether [bundleId] is installed on the booted simulator [udid].
 ///
-/// Answers `true` when `listapps` itself fails: the caller uses a `false` to
-/// skip an uninstall, and skipping one that was needed would hand the next
-/// launch the data of an earlier run.
+/// Answers `true` when the list cannot be trusted, which is a failed call or
+/// output without a single app in it (a booted simulator always lists its
+/// system apps): the caller uses a `false` to skip an uninstall, and skipping
+/// one that was needed would hand the next launch the data of an earlier run.
 Future<bool> isAppInstalled({required String udid, required String bundleId, required ProcessRunner run}) async {
   final apps = await run('xcrun', ['simctl', 'listapps', udid]);
-  if (apps.exitCode != 0) return true;
-  return listsBundleId(apps.stdout as String, bundleId);
+  final listing = apps.stdout as String;
+  if (apps.exitCode != 0 || !_anyApp.hasMatch(listing)) return true;
+  return listsBundleId(listing, bundleId);
 }
+
+final _anyApp = RegExp(r'^\s*CFBundleIdentifier = ', multiLine: true);
 
 /// Whether the property list `simctl listapps` prints has an app with
 /// [bundleId]. Matches the whole identifier, so `a.b` does not match `a.b.c`.

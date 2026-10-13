@@ -94,13 +94,12 @@ void main() {
       expect(sim.calls, isNot(contains('listapps')));
     });
 
-    test('a simulator that reports booted and then cannot list its apps ends the run by name', () async {
+    test('a settle call that fails does not end the run: the calls after it name what is wrong', () async {
       final sim = FakeSimulator()..listappsExit = 1;
 
-      await expectLater(
-        bootSimulator(udid: udid, run: sim.run, log: (_) {}),
-        throwsA(isA<StateError>().having((e) => e.message, 'message', contains('listapps'))),
-      );
+      await bootSimulator(udid: udid, run: sim.run, log: (_) {});
+
+      expect(sim.calls.last, 'listapps');
     });
   });
 
@@ -152,6 +151,45 @@ void main() {
       await uninstallApp(udid: udid, bundleId: bundleId, run: sim.run, log: (_) {});
 
       expect(sim.calls, ['listapps', 'terminate', 'uninstall']);
+    });
+  });
+
+  group('isAppInstalled on output it cannot trust', () {
+    Future<bool> installedGiven(String stdout, {int exit = 0}) => isAppInstalled(
+      udid: udid,
+      bundleId: bundleId,
+      run: (_, _, {Duration timeout = defaultProcessTimeout}) async => ProcessResult(1, exit, stdout, ''),
+    );
+
+    test('empty output counts as installed, so the uninstall is not skipped', () async {
+      expect(await installedGiven(''), isTrue);
+    });
+
+    test('output in another format counts as installed', () async {
+      expect(await installedGiven('{"com.apple.Bridge": {"CFBundleIdentifier": "com.apple.Bridge"}}'), isTrue);
+    });
+
+    test('a list with apps but without this one counts as not installed', () async {
+      expect(await installedGiven('{\n    Plain =     {\n        CFBundleIdentifier = Plain;\n    };\n}\n'), isFalse);
+    });
+  });
+
+  // What `xcrun simctl listapps` printed on an iOS 27.0 simulator on 13 October
+  // 2026, cut down to three apps. The hand-written listings above only prove
+  // the pattern against an idea of the format; this proves it against the tool.
+  group('listsBundleId on captured simctl output', () {
+    final captured = File('test/fixtures/simctl_listapps_ios27.txt').readAsStringSync();
+
+    test('finds an installed user app and a system app', () {
+      expect(listsBundleId(captured, 'nl.michelknoop.pleya.verify'), isTrue);
+      expect(listsBundleId(captured, 'nl.michelknoop.pleya'), isTrue);
+      expect(listsBundleId(captured, 'com.apple.Bridge'), isTrue);
+    });
+
+    test('does not find an app that is not in the list', () {
+      expect(listsBundleId(captured, 'nl.michelknoop.pleya.verif'), isFalse);
+      expect(listsBundleId(captured, 'michelknoop.pleya.verify'), isFalse);
+      expect(listsBundleId(captured, 'nl.michelknoop.pleya.verify.other'), isFalse);
     });
   });
 
