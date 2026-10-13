@@ -4670,6 +4670,34 @@ Roadmap: A-21. `ipados.requests.manage` PASS op schone `main` `50143c34` (`dirty
 De eerdere draaiblokkade is voor deze run opgeheven door de geselecteerde iPad Pro 13-inch (M5)-simulator vooraf via de eigen Rotate Left-knop in de geïnstalleerde Apple Device Hub te draaien. De bestaande `configure_view: landscapeLeft`-stap is ongewijzigd uitgevoerd en controleert het werkelijke appviewport; screenshots bevestigen landscape. De driver of productcode is niet gewijzigd, automatische rotatie via de hardcoded Simulator-app is hiermee niet gerepareerd. Tijdelijke arm64-only simulator-XCconfig buiten de repo behouden. Alleen geïsoleerde Verify-app en synthetische adminfixture gebruikt; andere rollen, alle 72 ontwerpstaten, echte servers en fysieke Apple TV/native bediening blijven open. Geen nieuwe TestFlight. Rapport/evidence: `/tmp/pleya-a21-desktop-20261009/`.
 
 
+### PLR12: app stopt na het sluiten van het spelerpaneel boven 4K Dolby Vision (build 360, log `i8tj0`, 13 oktober 2026)
+
+Roadmap: A-12. Status: OORZAAK ONBEKEND · DIAGNOSTIEK GEBOUWD · HARDWARE OPEN.
+
+Wat het log laat zien (Apple TV 4K 3e generatie, tvOS 27.0, 2.8.1 build 360):
+
+- 08:12:22 play/pause hervat een 4K Dolby Vision-film (`videotoolbox[p010] dolbyvision`).
+- 08:12:23,373 `System memory pressure, evicting image caches`.
+- 08:12:24,625 swipe omlaag opent het spelerpaneel; 08:12:25,445 swipe omhoog sluit het (`_close()` in `tv_info_panel.dart`).
+- 08:12:25,545 laatste regel. Het log schreef per seconde weg, dus het proces eindigde binnen een seconde daarna.
+- 08:12:36,060 koude start.
+
+Wat is uitgesloten of gemeten:
+
+- Geen Dart-fout in het log, en de app roept op tvOS nergens zelf een afsluiting aan (`AppExitService.requestExit` geeft op tvOS `false`).
+- Geen crashrapport en geen JetsamEvent op het toestel voor 13 oktober, uitgelezen via `devicectl` (`systemCrashLogs`), ook niet na ruim tien minuten. Het nieuwste `Runner`-rapport is van 9 oktober (build 344, SIGSEGV in de mpv-thread `vo`, `objc_retain`).
+- Oudere JetsamEvents van hetzelfde toestel (3 en 5 oktober) noemen `Runner` als grootste proces: 1,5 tot 1,6 GB resident, levensmaximum 1,85 tot 1,94 GB, met `sustained-memory-pressure` als reden waarom systeemprocessen werden beëindigd. `Runner` zelf werd daar niet beëindigd.
+- Op 12 oktober 19:32:49 volgde 150 ms na het openen van hetzelfde paneel een melding van geheugendruk, zonder stop.
+- Het paneel is alleen Flutter (`TvPanelCard`: glas, of een vervaging van 24 sigma); mpv tekent in een native laag eronder. Sluiten is een animatie van 260 ms met `Opacity` en daarna het weghalen van de widget. Er gaat bij sluiten geen opdracht naar mpv.
+- De Top Shelf-fout uit hetzelfde log (TS1) alloceert kilobytes en houdt niets vast; er is geen aanwijzing dat die bijdraagt.
+
+Kandidaten, geen van beide bewezen: het proces is door het systeem beëindigd op geheugen terwijl de sluitanimatie extra beeldbuffers op 4K vroeg, of een native fout in de grafische laag of in mpv waarvan het rapport ontbreekt.
+
+Diagnostiek in de app: `logCheckpoint` schrijft bij openen, sluitverzoek, einde van de sluitanimatie en afbraak van het paneel een regel met het residente geheugen en schrijft die direct weg. De melding van geheugendruk draagt hetzelfde getal. Deze regels staan op schijf voordat de aanroep terugkeert, dus het laatste checkpoint in een volgend log is een stap die het proces zeker heeft gehaald. Niet elk sluiten loopt langs alle vier: ondertitels zoeken en het afbreken van de speler halen het paneel weg zonder sluitverzoek, en een animatie die wordt onderbroken geeft geen regel voor het einde ervan. De swipe omhoog uit het recept loopt wel langs alle vier.
+
+Open op hardware: dezelfde film, paneel openen en sluiten, een paar keer achter elkaar; daarna het log versturen en meteen de crashlogs van het toestel laten uitlezen. Een regressietest op 4K Dolby Vision bestaat niet buiten het toestel: Pleya Verify gebruikt fixture-inhoud en de simulator decodeert geen Dolby Vision via VideoToolbox.
+
+
 ### TS1: Top Shelf schreef op hardware niets, de map voor de beelden werd geweigerd (build 357 en 360, log `i8tj0`, 13 oktober 2026)
 
 Roadmap: A-12. Status: CODE DONE · HARDWARE OPEN.

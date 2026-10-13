@@ -75,6 +75,22 @@ class PersistentLogStore {
     });
   }
 
+  /// Writes what is pending before returning, for a line that has to be on
+  /// disk even if the process ends in the same frame. [flush] goes through
+  /// several turns of the event loop first. The lines may land ahead of a
+  /// batch an earlier [flush] is still writing (each line carries its own
+  /// time), and rotation is left to the next [flush].
+  void flushSync() {
+    if (_pending.isEmpty) return;
+    final batch = _pending.join();
+    _pending.clear();
+    try {
+      _current.writeAsStringSync(batch, mode: FileMode.append, flush: true);
+    } on Object {
+      // Storage failure must not break playback or recursively log itself.
+    }
+  }
+
   Future<void> clear() {
     _timer?.cancel();
     _timer = null;
