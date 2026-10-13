@@ -13,6 +13,7 @@ import 'package:pleya/services/audio_output_coordinator.dart';
 import 'package:pleya/services/audio_output_decision.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/shader_service.dart';
+import 'package:pleya/utils/app_logger.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/video_controls/models/track_controls_state.dart';
 import 'package:pleya/widgets/video_controls/tv_info_panel.dart';
@@ -44,6 +45,30 @@ void main() {
   tearDown(() {
     TvDetectionService.debugSetAppleTVOverride(null);
     AudioOutputCoordinator.bitstreamActive.value = false;
+  });
+
+  // Build 360 on Apple TV ended within a second of closing this panel, with no
+  // Dart error and no crash report. The checkpoints are what the next log has
+  // to show: how far the close got, and the memory in use at each step.
+  testWidgets('open and close leave checkpoints in order, each with the memory in use', (tester) async {
+    MemoryLogOutput.clearLogs();
+    final h = await _pumpPanel(tester);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pumpAndSettle();
+    expect(h.closed, isTrue);
+    await tester.pumpWidget(const SizedBox.shrink());
+
+    final lines = MemoryLogOutput.getLogs().reversed.map((e) => e.message).where((m) => m.startsWith('TvInfoPanel: '));
+    expect(lines.map((m) => m.replaceFirst(RegExp(r' rss=\d+MB$'), '')), [
+      'TvInfoPanel: opened tab=information',
+      'TvInfoPanel: close requested',
+      'TvInfoPanel: close animation done',
+      'TvInfoPanel: disposed',
+    ]);
+    for (final line in lines) {
+      expect(line, matches(RegExp(r' rss=\d+MB$')), reason: line);
+    }
   });
 
   testWidgets('opens on Info with the Info pill focused', (tester) async {

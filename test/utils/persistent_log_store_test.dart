@@ -34,6 +34,27 @@ void main() {
     expect((await PersistentLogStore(directory).read()).last['message'], 'recovered');
   });
 
+  // A checkpoint has to be on disk when the call returns: the run it was
+  // added for ended within the same second, before a queued write could land.
+  test('flushSync has the pending lines on disk before it returns', () {
+    final store = PersistentLogStore(directory);
+    store.add({'message': 'checkpoint'});
+
+    store.flushSync();
+
+    expect(File('${directory.path}/current.jsonl').readAsStringSync(), '{"message":"checkpoint"}\n');
+  });
+
+  test('flushSync and flush do not write a line twice', () async {
+    final store = PersistentLogStore(directory);
+    store.add({'message': 'one'});
+    store.flushSync();
+    store.add({'message': 'two'});
+    await store.flush();
+
+    expect((await PersistentLogStore(directory).read()).map((e) => e['message']), ['one', 'two']);
+  });
+
   test('rotation bounds disk usage and preserves the newest entries', () async {
     final store = PersistentLogStore(directory, maxFileBytes: 80);
     for (var i = 0; i < 20; i++) {
