@@ -15,6 +15,7 @@ import '../../media/media_item.dart';
 import '../../media/media_source_info.dart';
 import '../../mpv/mpv.dart';
 import '../../services/settings_service.dart';
+import '../../utils/app_logger.dart';
 import '../../utils/formatters.dart';
 import '../app_icon.dart';
 import '../overlay_sheet.dart';
@@ -114,6 +115,11 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
     super.initState();
     _pillNodes = List.generate(TvInfoPanelTab.values.length, (i) => FocusNode(debugLabel: 'TvInfoPill$i'));
     _anim = AnimationController(vsync: this, duration: const Duration(milliseconds: 260))..forward();
+    // Checkpoints around open and close: on Apple TV build 360 a run ended
+    // within a second of closing this panel over 4K Dolby Vision, with no Dart
+    // error and no crash report. The last checkpoint in the log tells whether
+    // the process got through the close animation and the teardown.
+    logCheckpoint('TvInfoPanel: opened tab=${_activeTab.name}');
     _afterNextFrame(() {
       if (_subView != TvInfoPanelSubView.none) {
         _focusSubView();
@@ -128,6 +134,7 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
 
   @override
   void dispose() {
+    logCheckpoint('TvInfoPanel: disposed');
     _anim.dispose();
     _valueRows.dispose();
     _scopeNode.dispose();
@@ -142,7 +149,9 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
   void _close() {
     if (_closing) return;
     _closing = true;
+    logCheckpoint('TvInfoPanel: close requested');
     _anim.reverse().then((_) {
+      logCheckpoint('TvInfoPanel: close animation done');
       if (mounted) widget.onClose();
     });
   }

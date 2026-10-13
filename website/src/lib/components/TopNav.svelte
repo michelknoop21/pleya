@@ -7,6 +7,7 @@
     { href: '/iphone', label: 'iPhone' },
     { href: '/apple-tv', label: 'Apple TV' },
     { href: '/mac', label: 'Mac' },
+    { href: '/big-p', label: 'Big P' },
     { href: '/docs', label: 'Guide', match: (p: string) => p.startsWith('/docs') },
   ];
 </script>

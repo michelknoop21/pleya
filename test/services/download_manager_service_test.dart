@@ -21,6 +21,7 @@ import 'package:pleya/services/download_artwork_helpers.dart';
 import 'package:pleya/services/download_artwork_service.dart';
 import 'package:pleya/services/download_manager_service.dart';
 import 'package:pleya/services/download_storage_service.dart';
+import 'package:pleya/services/download_task_records.dart';
 import 'package:pleya/services/jellyfin_api_cache.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/settings_service.dart';
@@ -582,6 +583,73 @@ void main() {
       expect(row?.status, DownloadStatus.queued.index);
       expect(row?.autoPaused, isFalse);
       expect((await db.getNextQueueItem())?.mediaGlobalKey, globalKey);
+    });
+  });
+
+  // The downloader's record of a task holds the stream URL, and with it the
+  // account token. It must not outlive the task.
+  group('finished task records', () {
+    late AppDatabase db;
+    late List<String> deleted;
+    late DownloadManagerService manager;
+
+    setUp(() async {
+      db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      deleted = [];
+      await db.insertDownload(
+        serverId: ServerId('srv'),
+        ratingKey: 'item-1',
+        globalKey: 'srv:item-1',
+        type: 'movie',
+        status: DownloadStatus.downloading.index,
+      );
+      await db.updateBgTaskId('srv:item-1', 'current-task');
+      manager = DownloadManagerService(
+        database: db,
+        storageService: DownloadStorageService.instance,
+        clientResolver: (serverId, {clientScopeId}) => null,
+        downloadsSupportedOverride: true,
+        taskRecords: DownloadTaskRecords(
+          allRecords: (group) async => [],
+          deleteRecords: (ids) async => deleted.addAll(ids),
+        ),
+      );
+      addTearDown(manager.dispose);
+    });
+
+    test('a task whose update is ignored as stale leaves no record', () async {
+      await manager.debugHandleTaskStatus(
+        TaskStatusUpdate(_downloadTask('stale-task', 'srv:item-1'), TaskStatus.canceled),
+      );
+
+      expect(deleted, ['stale-task']);
+    });
+
+    test('nor does a task of a download that is gone', () async {
+      await manager.debugHandleTaskStatus(
+        TaskStatusUpdate(_downloadTask('orphan-task', 'srv:never-queued'), TaskStatus.complete),
+      );
+
+      expect(deleted, ['orphan-task']);
+    });
+
+    test('nor does a task that ends after the service was disposed', () async {
+      manager.dispose();
+
+      await manager.debugHandleTaskStatus(
+        TaskStatusUpdate(_downloadTask('late-task', 'srv:item-1'), TaskStatus.complete),
+      );
+
+      expect(deleted, ['late-task']);
+    });
+
+    test('a running task keeps its record', () async {
+      await manager.debugHandleTaskStatus(
+        TaskStatusUpdate(_downloadTask('current-task', 'srv:item-1'), TaskStatus.running),
+      );
+
+      expect(deleted, isEmpty);
     });
   });
 }

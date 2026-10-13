@@ -51,6 +51,122 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 361 · 13 October 2026 · Apple TV
+
+<!-- commit: 9f373471386b9b21b823f296c193b1112465dc1c -->
+
+### Fixed
+- **Big P is in the Apple TV build again.** Build 360 was built without Big P: the notes for
+  that build described the new example questions, but the Apple TV build script left the
+  assistant out unless a setting was passed, and the release did not pass it. The script now
+  includes Big P by default. Everything the notes for build 360 said about Big P applies from
+  this build on.
+- **Top Shelf gets its Continue Watching row back.** Pleya saved the Top Shelf artwork in a
+  folder tvOS does not let it write to. The logs of builds 357 and 360 showed 74 refused
+  writes, and because the error came before the row was stored, the row itself was missing
+  too. The artwork now goes into the cache folder of the shared container. If that folder is
+  refused as well, the row is still stored, without the large artwork.
+
+### Improved
+- **The player's info panel leaves a trail in the log.** In build 360 Pleya closed during a 4K
+  Dolby Vision film, right after the info panel was swiped away. The log stopped mid-animation
+  and tvOS kept no crash report, so the cause is not known. Opening and closing the panel now
+  writes four lines to disk straight away, each with the memory Pleya uses at that moment, and
+  a memory warning from tvOS is written the same way.
+
+### Notes
+- The crash from build 360 is not fixed in this build. Nothing in the code was found that
+  explains it; this build only collects what is needed to find it.
+- The Top Shelf fix has not been checked on an Apple TV. That tvOS accepts the cache folder
+  comes from Apple's developer forums and has not been measured on the device.
+- Trakt sign-in for Big P is not switched on in this build.
+
+### Worth checking
+- Nothing in this build has been checked on an Apple TV yet.
+- Open My Pleya. Big P should be the first tile under Pleya. It was missing in build 360, so
+  this is the first Apple TV build where the example questions from that build's notes can be
+  seen.
+- Play something for a minute, go to the Home screen of the Apple TV and put Pleya in the top
+  row. Top Shelf should show what you were watching. If it stays empty, send the log.
+- Start a 4K Dolby Vision film, swipe down for the info panel and swipe it away again, several
+  times. If Pleya closes, open it again, send the log and tell us straight away: the report
+  tvOS keeps can only be read from the device shortly after it happens.
+
+## 2.8.1 · build 359 · 12 October 2026 · iPhone and iPad
+
+<!-- commit: 2cd3f7630f1f4d811f6eda581fb40dc79232cd1d -->
+
+### New
+- **Big P's example questions show what Big P can do for you.** The three questions under the
+  greeting used to come from a short fixed list. They now follow your profile and your servers:
+  you only see a question Big P can answer, so a profile without administration rights is not
+  offered a library scan, and a profile without Seerr is not offered a request. They come from
+  different areas (watching, discovering, your own history, the household, administration) and
+  change each time you open Big P. A question you saw recently is less likely to come back
+  than one you never saw.
+
+### Improved
+- Your tracker sign-ins (MyAnimeList, AniList, Simkl and Trakt) are kept in the device keychain
+  instead of in the app's readable settings. An existing sign-in moves over the first time the
+  app starts and keeps working. Nothing is synced through iCloud.
+
+### Notes
+- A children's profile is only offered questions about what to watch, and until Pleya has read
+  the profile settings every profile is treated that way. Opening Big P a moment after launch
+  can therefore show the watch questions first and the full set a moment later.
+- Big P's example questions are not written by the model. Which tool the model picks for each
+  question has not been checked against a real model yet.
+- Trakt sign-in for Big P is not switched on in this build.
+
+### Worth checking
+- Nothing in this build has been checked on an iPhone or iPad yet. The questions are covered by
+  automated tests and screenshots; the keychain move has not been run on a device with a tracker
+  connected.
+- Open Big P a few times in a row. Each time the three questions should be from different
+  areas, and the set should change. A profile with few options can see the same areas come
+  back; the wording of each question still varies.
+- On a profile that is not an administrator, none of the questions should be about scanning,
+  tasks or users. On a children's profile they should all be about what to watch.
+- If you have a tracker connected, open its settings after updating. It should still be signed
+  in. If it asks you to sign in again, tell us which tracker.
+
+## 2.8.1 · build 360 · 12 October 2026 · Apple TV
+
+<!-- commit: 2cd3f7630f1f4d811f6eda581fb40dc79232cd1d -->
+
+### New
+- **Big P's example questions show what Big P can do for you.** The three questions under the
+  greeting used to come from a short fixed list. They now follow your profile and your servers:
+  you only see a question Big P can answer, so a profile without administration rights is not
+  offered a library scan, and a profile without Seerr is not offered a request. They come from
+  different areas (watching, discovering, your own history, the household, administration) and
+  change each time you open Big P. A question you saw recently is less likely to come back
+  than one you never saw.
+
+### Improved
+- Your tracker sign-ins (MyAnimeList, AniList, Simkl and Trakt) are kept in the device keychain
+  instead of in the app's readable settings. An existing sign-in moves over the first time the
+  app starts and keeps working. Nothing is synced through iCloud.
+
+### Notes
+- A children's profile is only offered questions about what to watch, and until Pleya has read
+  the profile settings every profile is treated that way. Opening Big P a moment after launch
+  can therefore show the watch questions first and the full set a moment later.
+- Big P's example questions are not written by the model. Which tool the model picks for each
+  question has not been checked against a real model yet.
+- Trakt sign-in for Big P is not switched on in this build.
+
+### Worth checking
+- Nothing in this build has been checked on an Apple TV yet. The questions are covered by
+  automated tests and a screenshot; they have not been run on the device.
+- Open Big P a few times in a row. Each time the three questions should be from different
+  areas, and the set should change. A profile with few options can see the same areas come
+  back; the wording of each question still varies.
+- On a profile that is not an administrator, none of the questions should be about scanning,
+  tasks or users. On a children's profile they should all be about what to watch.
+- If you have a tracker connected, open its settings after updating. It should still be signed
+  in. If it asks you to sign in again, tell us which tracker.
+
 ## 2.8.1 · build 358 · 12 October 2026 · iPhone and iPad
 
 <!-- commit: 5f6925d8f74f770aa5ecf0176a746d45c20ba002 -->

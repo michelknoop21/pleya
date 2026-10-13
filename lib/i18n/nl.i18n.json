@@ -2568,29 +2568,6 @@
     "providerLabel": "AI-provider",
     "mobile": {
       "greeting": "Hoi ${name}, wat zoeken we?",
-      "examples": [
-        [
-          "Wat kan ik vanavond kijken?",
-          "Geef me een komedie voor vanavond.",
-          "Zoek een spannende film voor vanavond."
-        ],
-        [
-          "Welke serie kan ik nu beginnen?"
-        ],
-        [
-          "Heb ik iets voor de kinderen?"
-        ],
-        [
-          "Welke films heb ik nog niet gezien?",
-          "Welke films staan al lang ongezien in mijn bibliotheek?"
-        ],
-        [
-          "Wat is er deze week toegevoegd?"
-        ],
-        [
-          "Wie heeft deze week het meest gekeken?"
-        ]
-      ],
       "noModelTitle": "Ik heb nog geen brein.",
       "noModelBody": "Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.",
       "setup": "Model instellen",
@@ -2623,27 +2600,84 @@
       "greeting": "Hoi ${name}, wat moet er gebeuren?",
       "status": "Klaar voor je vraag · ${servers}",
       "ask": "Vraag Big P",
-      "examplesHeader": "Bijvoorbeeld",
-      "examples": [
-        [
-          "Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw."
-        ],
-        [
-          "Scan alle filmbibliotheken op al mijn servers."
-        ],
-        [
-          "Wie heeft deze week het meest gekeken?",
-          "Wie kijkt er nu?"
-        ],
-        [
-          "Wat kan ik vanavond kijken?"
-        ],
-        [
-          "Wat is er deze week toegevoegd?"
-        ],
-        [
-          "Welke nieuwe films zijn populair die ik nog niet heb?"
-        ]
+      "examplesHeader": "Bijvoorbeeld"
+    },
+    "examples": {
+      "tonight": [
+        "Wat kan ik vanavond kijken?",
+        "Geef me een komedie voor vanavond.",
+        "Zoek een spannende film voor vanavond."
+      ],
+      "startSeries": [
+        "Welke serie kan ik nu beginnen?"
+      ],
+      "forKids": [
+        "Heb ik iets voor de kinderen?"
+      ],
+      "unwatched": [
+        "Welke films in mijn bibliotheek heb ik nog niet gezien?",
+        "Welke films staan al lang ongezien in mijn bibliotheek?"
+      ],
+      "recentlyAdded": [
+        "Wat is er deze week toegevoegd?",
+        "Welke series zijn onlangs toegevoegd?"
+      ],
+      "describe": [
+        "Zoek een film over de ruimte.",
+        "Ik wil een trage detectiveserie voor een regenachtige zondag."
+      ],
+      "trending": [
+        "Wat is er nu populair?",
+        "Welke nieuwe films zijn populair die ik nog niet heb?"
+      ],
+      "request": [
+        "Welke thrillers van dit jaar kan ik aan mijn bibliotheek toevoegen?",
+        "Zoek een sciencefictionserie die het aanvragen waard is."
+      ],
+      "trakt": [
+        "Welke titels van mijn Trakt-kijklijst kan ik hier vanavond kijken?"
+      ],
+      "history": [
+        "Wat heb ik de laatste tijd gekeken?",
+        "Geef me een tip op basis van wat ik heb gekeken."
+      ],
+      "memory": [
+        "Wat herinner je je over mij?"
+      ],
+      "watchStats": [
+        "Wie heeft deze week het meest gekeken?",
+        "Wie kijkt er nu?"
+      ],
+      "together": [
+        "Wat kan ik vanavond met mijn gezin kijken?"
+      ],
+      "servers": [
+        "Welke van mijn servers zijn online?"
+      ],
+      "jobs": [
+        "Welke taken lopen er nu op mijn servers?"
+      ],
+      "retryJobs": [
+        "Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw."
+      ],
+      "users": [
+        "Wie heeft toegang tot mijn servers?"
+      ],
+      "compare": [
+        "Welke films ontbreken tussen mijn servers?"
+      ],
+      "doctor": [
+        "Controleer mijn bibliotheek op ontbrekende afleveringen.",
+        "Controleer mijn bibliotheek op dubbele films."
+      ],
+      "homeRow": [
+        "Maak een Home-rij met actiefilms uit de jaren negentig."
+      ],
+      "scan": [
+        "Scan alle filmbibliotheken op al mijn servers."
+      ],
+      "playback": [
+        "Waarom hapert deze stream?"
       ]
     },
     "listening": {

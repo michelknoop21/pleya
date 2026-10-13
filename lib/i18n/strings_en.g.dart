@@ -6331,6 +6331,7 @@ class TranslationsAssistantEn {
 	late final TranslationsAssistantLockedEn locked = TranslationsAssistantLockedEn.internal(_root);
 	late final TranslationsAssistantSetupEn setup = TranslationsAssistantSetupEn.internal(_root);
 	late final TranslationsAssistantIdleEn idle = TranslationsAssistantIdleEn.internal(_root);
+	late final TranslationsAssistantExamplesEn examples = TranslationsAssistantExamplesEn.internal(_root);
 	late final TranslationsAssistantListeningEn listening = TranslationsAssistantListeningEn.internal(_root);
 	late final TranslationsAssistantWorkingEn working = TranslationsAssistantWorkingEn.internal(_root);
 	late final TranslationsAssistantStepsEn steps = TranslationsAssistantStepsEn.internal(_root);
@@ -7742,30 +7743,6 @@ class TranslationsAssistantMobileEn {
 	/// en: 'Hi ${name}, what are we looking for?'
 	String greeting({required Object name}) => 'Hi ${name}, what are we looking for?';
 
-	List<List<String>> get examples => [
-		[
-			'What can I watch tonight?',
-			'Give me a comedy for tonight.',
-			'Find an exciting movie for tonight.',
-		],
-		[
-			'Which series can I start now?',
-		],
-		[
-			'Do I have something for the kids?',
-		],
-		[
-			'Which movies haven\'t I seen yet?',
-			'Which movies have sat unwatched in my library for a long time?',
-		],
-		[
-			'What was added this week?',
-		],
-		[
-			'Who watched the most this week?',
-		],
-	];
-
 	/// en: 'I don't have a brain yet.'
 	String get noModelTitle => 'I don\'t have a brain yet.';
 
@@ -7873,27 +7850,90 @@ class TranslationsAssistantIdleEn {
 
 	/// en: 'For example'
 	String get examplesHeader => 'For example';
+}
 
-	List<List<String>> get examples => [
-		[
-			'Which tasks failed on my servers today? Restart them.',
-		],
-		[
-			'Scan all movie libraries on all my servers.',
-		],
-		[
-			'Who watched the most this week?',
-			'Who is watching right now?',
-		],
-		[
-			'What can I watch tonight?',
-		],
-		[
-			'What was added this week?',
-		],
-		[
-			'Which popular new movies don\'t I have yet?',
-		],
+// Path: assistant.examples
+class TranslationsAssistantExamplesEn {
+	TranslationsAssistantExamplesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+	List<String> get tonight => [
+		'What can I watch tonight?',
+		'Give me a comedy for tonight.',
+		'Find an exciting movie for tonight.',
+	];
+	List<String> get startSeries => [
+		'Which series can I start now?',
+	];
+	List<String> get forKids => [
+		'Do I have something for the kids?',
+	];
+	List<String> get unwatched => [
+		'Which films in my library have I not seen yet?',
+		'Which movies have sat unwatched in my library for a long time?',
+	];
+	List<String> get recentlyAdded => [
+		'What was added this week?',
+		'Which series were added recently?',
+	];
+	List<String> get describe => [
+		'Find me a film about space.',
+		'I want a slow detective series for a rainy Sunday.',
+	];
+	List<String> get trending => [
+		'What is popular right now?',
+		'Which popular new movies don\'t I have yet?',
+	];
+	List<String> get request => [
+		'Which thrillers from this year could I add to my library?',
+		'Find a science fiction series worth requesting.',
+	];
+	List<String> get trakt => [
+		'Which titles on my Trakt watchlist can I watch here tonight?',
+	];
+	List<String> get history => [
+		'What did I watch lately?',
+		'Give me a tip based on what I watched.',
+	];
+	List<String> get memory => [
+		'What do you remember about me?',
+	];
+	List<String> get watchStats => [
+		'Who watched the most this week?',
+		'Who is watching right now?',
+	];
+	List<String> get together => [
+		'What can I watch with my family tonight?',
+	];
+	List<String> get servers => [
+		'Which of my servers are online?',
+	];
+	List<String> get jobs => [
+		'Which tasks are running on my servers now?',
+	];
+	List<String> get retryJobs => [
+		'Which tasks failed on my servers today? Restart them.',
+	];
+	List<String> get users => [
+		'Who has access to my servers?',
+	];
+	List<String> get compare => [
+		'Which films are missing between my servers?',
+	];
+	List<String> get doctor => [
+		'Check my library for missing episodes.',
+		'Check my library for duplicate films.',
+	];
+	List<String> get homeRow => [
+		'Make a Home row of action films from the nineties.',
+	];
+	List<String> get scan => [
+		'Scan all movie libraries on all my servers.',
+	];
+	List<String> get playback => [
+		'Why is this stream stuttering?',
 	];
 }
 
@@ -11738,15 +11778,6 @@ extension on Translations {
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI provider',
 			'assistant.mobile.greeting' => ({required Object name}) => 'Hi ${name}, what are we looking for?',
-			'assistant.mobile.examples.0.0' => 'What can I watch tonight?',
-			'assistant.mobile.examples.0.1' => 'Give me a comedy for tonight.',
-			'assistant.mobile.examples.0.2' => 'Find an exciting movie for tonight.',
-			'assistant.mobile.examples.1.0' => 'Which series can I start now?',
-			'assistant.mobile.examples.2.0' => 'Do I have something for the kids?',
-			'assistant.mobile.examples.3.0' => 'Which movies haven\'t I seen yet?',
-			'assistant.mobile.examples.3.1' => 'Which movies have sat unwatched in my library for a long time?',
-			'assistant.mobile.examples.4.0' => 'What was added this week?',
-			'assistant.mobile.examples.5.0' => 'Who watched the most this week?',
 			'assistant.mobile.noModelTitle' => 'I don\'t have a brain yet.',
 			'assistant.mobile.noModelBody' => 'Pick a language model and I\'ll find movies, request titles and run your servers.',
 			'assistant.mobile.setup' => 'Set up model',
@@ -11774,13 +11805,38 @@ extension on Translations {
 			'assistant.idle.status' => ({required Object servers}) => 'Ready for your question · ${servers}',
 			'assistant.idle.ask' => 'Ask Big P',
 			'assistant.idle.examplesHeader' => 'For example',
-			'assistant.idle.examples.0.0' => 'Which tasks failed on my servers today? Restart them.',
-			'assistant.idle.examples.1.0' => 'Scan all movie libraries on all my servers.',
-			'assistant.idle.examples.2.0' => 'Who watched the most this week?',
-			'assistant.idle.examples.2.1' => 'Who is watching right now?',
-			'assistant.idle.examples.3.0' => 'What can I watch tonight?',
-			'assistant.idle.examples.4.0' => 'What was added this week?',
-			'assistant.idle.examples.5.0' => 'Which popular new movies don\'t I have yet?',
+			'assistant.examples.tonight.0' => 'What can I watch tonight?',
+			'assistant.examples.tonight.1' => 'Give me a comedy for tonight.',
+			'assistant.examples.tonight.2' => 'Find an exciting movie for tonight.',
+			'assistant.examples.startSeries.0' => 'Which series can I start now?',
+			'assistant.examples.forKids.0' => 'Do I have something for the kids?',
+			'assistant.examples.unwatched.0' => 'Which films in my library have I not seen yet?',
+			'assistant.examples.unwatched.1' => 'Which movies have sat unwatched in my library for a long time?',
+			'assistant.examples.recentlyAdded.0' => 'What was added this week?',
+			'assistant.examples.recentlyAdded.1' => 'Which series were added recently?',
+			'assistant.examples.describe.0' => 'Find me a film about space.',
+			'assistant.examples.describe.1' => 'I want a slow detective series for a rainy Sunday.',
+			'assistant.examples.trending.0' => 'What is popular right now?',
+			'assistant.examples.trending.1' => 'Which popular new movies don\'t I have yet?',
+			'assistant.examples.request.0' => 'Which thrillers from this year could I add to my library?',
+			'assistant.examples.request.1' => 'Find a science fiction series worth requesting.',
+			'assistant.examples.trakt.0' => 'Which titles on my Trakt watchlist can I watch here tonight?',
+			'assistant.examples.history.0' => 'What did I watch lately?',
+			'assistant.examples.history.1' => 'Give me a tip based on what I watched.',
+			'assistant.examples.memory.0' => 'What do you remember about me?',
+			'assistant.examples.watchStats.0' => 'Who watched the most this week?',
+			'assistant.examples.watchStats.1' => 'Who is watching right now?',
+			'assistant.examples.together.0' => 'What can I watch with my family tonight?',
+			'assistant.examples.servers.0' => 'Which of my servers are online?',
+			'assistant.examples.jobs.0' => 'Which tasks are running on my servers now?',
+			'assistant.examples.retryJobs.0' => 'Which tasks failed on my servers today? Restart them.',
+			'assistant.examples.users.0' => 'Who has access to my servers?',
+			'assistant.examples.compare.0' => 'Which films are missing between my servers?',
+			'assistant.examples.doctor.0' => 'Check my library for missing episodes.',
+			'assistant.examples.doctor.1' => 'Check my library for duplicate films.',
+			'assistant.examples.homeRow.0' => 'Make a Home row of action films from the nineties.',
+			'assistant.examples.scan.0' => 'Scan all movie libraries on all my servers.',
+			'assistant.examples.playback.0' => 'Why is this stream stuttering?',
 			'assistant.listening.title' => 'I\'m listening…',
 			'assistant.listening.body' => 'Speak your question.',
 			'assistant.listening.failed' => 'Text entry failed. Try again.',
@@ -11956,6 +12012,8 @@ extension on Translations {
 			'assistant.settings.pullErrorDisk' => 'Not enough disk space on the server to update the model.',
 			'assistant.settings.pullErrorFailed' => ({required Object reason}) => 'Updating the model failed: ${reason}',
 			'assistant.settings.webSearch' => 'Search the web',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.settings.ollamaWebKey' => 'ollama.com key for web search (optional)',
 			'assistant.settings.ollamaWebKeyHelp' => 'Without this key Big P searches Wikipedia only.',
 			'assistant.settings.webSearchNoteServer' => 'Off by default, so everything stays on your network. When on, the description of a title you look for goes to Wikipedia and, with an ollama.com key, to Ollama\'s web search.',
@@ -11972,8 +12030,6 @@ extension on Translations {
 			'assistant.settings.tmdbKeyClear' => 'Clear key',
 			'assistant.settings.kidsAges' => 'Children\'s ages (this profile)',
 			'assistant.settings.kidsAgesNone' => 'Not set',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.settings.kidsAgesClear' => 'Clear ages',
 			'assistant.settings.kidsAgesValue' => ({required Object ages}) => '${ages} years',
 			'assistant.settings.kidsProfile' => 'Children\'s profile',

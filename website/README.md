@@ -24,6 +24,16 @@ Outbound links and beta state live in `src/lib/config.ts`:
 bun run check
 ```
 
+## Big P layers
+
+The animated Big P on `/big-p` is an SVG rig (`src/lib/bigp`) built from image layers in
+`src/lib/assets/bigp`. The source PNG layers are not in this repository. To regenerate the
+WebP files from them (needs `cwebp`):
+
+```bash
+BIGP_SRC=/path/to/layers scripts/gen-bigp-layers.sh
+```
+
 ## Build
 
 ```bash

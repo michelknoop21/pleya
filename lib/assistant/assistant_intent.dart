@@ -89,7 +89,7 @@ final _today = RegExp(r'\b(vandaag|today|afgelopen dag|laatste 24 uur|last 24 ho
 final _week = RegExp(r'\b(deze week|afgelopen week|laatste week|this week|past week)\b');
 // "What was added to the libraries", not "what I added to my list".
 final _added = RegExp(
-  r'\b(toegevoegde?|(?:er\s?)?bij\s?gekomen|nieuwe toevoegingen|(?:newly|recently|just) added|added (?:this|last|in the)|new additions|recent additions|was added|got added|been added)\b',
+  r'\b(toegevoegde?|(?:er\s?)?bij\s?gekomen|nieuwe toevoegingen|(?:newly|recently|just) added|added (?:this|last|in the)|new additions|recent additions|was added|were added|got added|been added)\b',
 );
 final _addedElsewhere = RegExp(
   r'\b(radarr|sonarr|requests?|aanvragen?|verzoeken|toegevoegde waarde|added value|kijklijst|watchlist|lijstje|mijn lijst|my list|favorieten|favourites?|afspeellijst|playlist|collectie|collection|wachtrij|queue|downloads?)\b',

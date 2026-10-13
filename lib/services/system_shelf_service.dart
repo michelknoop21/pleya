@@ -1,4 +1,4 @@
-import 'dart:io' show Directory, Platform;
+import 'dart:io' show Directory, FileSystemException, Platform;
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart';
@@ -166,10 +166,22 @@ class SystemShelfService {
         ];
         imageDir = await _topShelfImageDirectory();
         if (imageDir != null) {
-          carousel = await topShelfImages.localize(
-            carouselItemsFor(hero, continueWatchingItems, getClientForServerId, hideSpoilers: hideSpoilers),
-            imageDir,
-          );
+          try {
+            carousel = await topShelfImages.localize(
+              carouselItemsFor(hero, continueWatchingItems, getClientForServerId, hideSpoilers: hideSpoilers),
+              imageDir,
+            );
+          } on FileSystemException catch (e) {
+            // The artwork folder is a carousel nicety. Without it the
+            // Continue Watching row still has to reach the Top Shelf; on an
+            // Apple TV a refused folder stopped the whole sync, every time.
+            if (!_imageFolderRefusalLogged) {
+              _imageFolderRefusalLogged = true;
+              appLogger.w('Top Shelf artwork folder unavailable, syncing without the carousel', error: e);
+            }
+            // Nothing was stored, so there is nothing to clean up either.
+            imageDir = null;
+          }
         }
         // No carousel item with an image: the extension keeps the sectioned row.
         if (carousel.isNotEmpty) args['carousel'] = carousel;
@@ -191,6 +203,9 @@ class SystemShelfService {
       return false;
     }
   }
+
+  /// Once per run: the refusal repeats on every sync and says nothing new.
+  bool _imageFolderRefusalLogged = false;
 
   /// The app-group folder the native side names for carousel artwork; null
   /// when it is unavailable, which leaves the sectioned row.

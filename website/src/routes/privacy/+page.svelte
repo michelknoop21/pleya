@@ -359,7 +359,9 @@
         <div class="core">
           <h2>Data Storage and Security</h2>
           <ul>
-            <li>Authentication tokens are stored securely on your device using platform-specific secure storage mechanisms</li>
+            <li>Sign-in tokens for your media server (Plex, Jellyfin), Seerr and Tautulli are stored on your device in encrypted form (AES-256-GCM). The encryption key is kept in the app's own storage on the same device, so this protects against casual reading of the app's data, not against someone with full access to your device</li>
+            <li>On iPhone, iPad and Apple TV, your Big P provider settings and keys are stored in iCloud Keychain, and the tokens for Trakt and the other trackers in the keychain of that device, which does not sync. On other platforms these are stored in the same encrypted form as above</li>
+            <li>When you download a title to watch offline, the download is requested from your Plex or Jellyfin server with a link that contains your sign-in token for that server (for a download from another Pleya device, the sharing token of that device). While the download is queued, running or paused, the app's download component keeps that link in a file in the app's own storage on your device, unencrypted, so it can resume. When the download finishes, fails or is cancelled, Pleya removes that file; if that fails, it tries again at the next start. On Android, the scheduler the app uses for downloads (WorkManager) also keeps a copy of the request, token included, in its own database in the app's storage and removes it itself, normally within about a day after the download ends. Downloaded files themselves are not encrypted</li>
             <li>App preferences are stored locally on your device</li>
             <li>Crash and diagnostic data is sent to our self-hosted error tracking server (bugs.pleya.app) &mdash; no third-party service stores this data. It reaches our server through Cloudflare</li>
             <li>Our relay server (ice.pleya.app) is used only when you use one of these features: logs you send us from Settings (kept for 3 days; a sent log gets a short ID, and whoever has that ID can read it until it expires), Watch Together (what is playing, with its title and position, and the display names of the participants; a room expires after 24 hours at most), artwork for Discord Rich Presence (removed after 3 hours), and signing in to MyAnimeList or AniList (the sign-in passes through the relay; your tokens are not logged or stored there). Signing in to Simkl ends on a page the relay serves. The relay's own server log records your IP address with each upload; that log is rotated by size, not by date</li>
@@ -456,7 +458,7 @@
           <p>You can:</p>
           <ul>
             <li>Sign out at any time to remove your authentication session from the device</li>
-            <li>Uninstall the app to remove all locally stored data</li>
+            <li>Uninstall the app to remove the data it stores on your iPhone, iPad or Apple TV. Items in the keychain are not removed by uninstalling: disconnect your trackers on each profile and turn off Big P under Settings &gt; Big P first if you want those gone. On Windows, Linux and Mac, uninstalling can leave the app's settings files behind, including the encrypted tokens; disconnect or sign out first there as well. Turning off Big P removes its settings and keys from iCloud Keychain, so from your other Apple devices as well</li>
             <li>Manage your Plex account directly through Plex's services, or your Jellyfin account through your Jellyfin server</li>
             <li>See and remove what Big P remembers under Settings &gt; Big P, and switch off online information and web search there</li>
             <li>Disconnect Trakt under Settings &gt; Trakt, which revokes its token at Trakt when Trakt can be reached</li>
@@ -486,7 +488,9 @@
             <li>Local preferences and settings are retained until you uninstall the app</li>
             <li>Crash and diagnostic reports are retained on our self-hosted server and automatically pruned based on relevance</li>
             <li>On our relay: logs you send us are kept for 3 days, a Watch Together room for 24 hours at most and Discord artwork for 3 hours. The relay's server log, which includes IP addresses, is rotated by size</li>
-            <li>Tokens for Trakt and other trackers are retained on your device until you disconnect the tracker or uninstall the app</li>
+            <li>The download link with its token is kept by the app only while a download is queued, running or paused, and is removed when it ends. On startup the app also removes any such file an earlier version left behind</li>
+            <li>Tokens for Trakt and other trackers are retained on your device until you disconnect the tracker. On iPhone, iPad and Apple TV they are in the keychain of the device, which uninstalling does not empty; a token left there is not read by a later install</li>
+            <li>Your Big P provider settings and keys are retained until you turn off Big P. On iPhone, iPad and Apple TV they are in iCloud Keychain and stay there after uninstalling, so a later install finds them again</li>
           </ul>
         </div>
       </section>

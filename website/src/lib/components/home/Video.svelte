@@ -1,5 +1,7 @@
 <script lang="ts">
   import AppleIcon from '~icons/simple-icons/apple';
+  /** Link to the Big P page; off on that page itself. */
+  let { meet = true }: { meet?: boolean } = $props();
 </script>
 
 <section class="video" id="video" aria-labelledby="video-title">
@@ -9,6 +11,7 @@
     <p class="lede">
       The real app on Apple TV and iPhone, with Blender open movies on two demo servers. Requests, Tautulli and Pleya
       Share are drawn, because the demo servers do not run them.
+      {#if meet}<a class="video-meet" href="/big-p">Meet Big P</a>{/if}
     </p>
     <figure class="video-frame" data-reveal>
       <div class="video-stage">
