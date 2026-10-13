@@ -62,8 +62,8 @@ Nothing user-facing since the last published build.
   includes Big P by default. Everything the notes for build 360 said about Big P applies from
   this build on.
 - **Top Shelf gets its Continue Watching row back.** Pleya saved the Top Shelf artwork in a
-  folder tvOS does not let it write to. The log of build 360 showed 74 refused writes in one
-  session, and because the error came before the row was stored, the row itself was missing
+  folder tvOS does not let it write to. The logs of builds 357 and 360 showed 74 refused
+  writes, and because the error came before the row was stored, the row itself was missing
   too. The artwork now goes into the cache folder of the shared container. If that folder is
   refused as well, the row is still stored, without the large artwork.
 
@@ -77,12 +77,15 @@ Nothing user-facing since the last published build.
 ### Notes
 - The crash from build 360 is not fixed in this build. Nothing in the code was found that
   explains it; this build only collects what is needed to find it.
+- The Top Shelf fix has not been checked on an Apple TV. That tvOS accepts the cache folder
+  comes from Apple's developer forums and has not been measured on the device.
 - Trakt sign-in for Big P is not switched on in this build.
 
 ### Worth checking
 - Nothing in this build has been checked on an Apple TV yet.
-- Open My Pleya. Big P should be the first tile there. It was missing in build 360, so this
-  is the first Apple TV build where the example questions from that build's notes can be seen.
+- Open My Pleya. Big P should be the first tile under Pleya. It was missing in build 360, so
+  this is the first Apple TV build where the example questions from that build's notes can be
+  seen.
 - Play something for a minute, go to the Home screen of the Apple TV and put Pleya in the top
   row. Top Shelf should show what you were watching. If it stays empty, send the log.
 - Start a 4K Dolby Vision film, swipe down for the info panel and swipe it away again, several
