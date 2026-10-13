@@ -103,7 +103,9 @@ final _unseen = RegExp(
 // "What in my library can I watch tonight": a pick from the libraries. Without
 // the library word it is a recommendation, which my_watching may answer from
 // the viewing history; so is a tip asked for, a watchlist or a request.
-final _tonight = RegExp(r'\b(vanavond|vanavonds|deze avond|tonight|this evening)\b');
+final _tonight = RegExp(r'\b(vanavond|deze avond|tonight|this evening)\b');
+// Asking for the popular list is asking for trending_titles, tonight or not.
+final _popularWord = RegExp(r'\b(trending|popular|populair|populaire|hot)\b');
 final _libraryWord = RegExp(r'\b(bibliothe(?:ek|ken)|librar(?:y|ies)|servers?)\b');
 // How long a title has waited, not how long it runs or when it came out:
 // "oudste" and "longest" alone are runtime or release year.
@@ -276,6 +278,7 @@ class AssistantIntent {
     final tonightPick =
         _tonight.hasMatch(p) &&
         _libraryWord.hasMatch(p) &&
+        !_popularWord.hasMatch(p) &&
         !_tipAsked.hasMatch(p) &&
         !_addedElsewhere.hasMatch(p) &&
         !_otherSubject.hasMatch(p) &&

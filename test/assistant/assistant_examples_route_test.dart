@@ -163,6 +163,38 @@ void main() {
       }
     });
 
+    test('the follow-up chips for tonight reach the libraries too', () {
+      for (final locale in [AppLocale.en, AppLocale.nl]) {
+        LocaleSettings.setLocaleSync(locale);
+        final routed = t.assistant.followUp.tonight.where((q) => AssistantIntent.fromPrompt(q).tonightPick);
+        // Three of the four; "something for the kids" has no tonight.
+        expect(routed, hasLength(3), reason: locale.name);
+      }
+      LocaleSettings.setLocaleSync(AppLocale.en);
+    });
+
+    test('each exclusion keeps tonight with the tool the user asked for', () {
+      for (final q in [
+        'What is trending in my library tonight?',
+        'Wat is populair in mijn bibliotheek vanavond?',
+        'What in my library can Sam and I watch tonight?',
+        'Wat uit mijn bibliotheek kunnen we samen vanavond kijken?',
+        'What in my library has Sam to watch tonight?',
+        'What in my library is everyone watching tonight?',
+      ]) {
+        expect(AssistantIntent.fromPrompt(q).tonightPick, isFalse, reason: q);
+      }
+    });
+
+    test('a child task keeps the flag, a children\'s profile is refused the same two tools', () {
+      final intent = AssistantIntent.fromPrompt('What in my library can I watch tonight?');
+      expect(intent.inheriting(AssistantIntent.unknown).tonightPick, isTrue);
+      expect(AssistantIntent.unknown.inheriting(intent).tonightPick, isFalse, reason: 'decided by its own words');
+      expect(kidsToolPolicy['my_watching'], KidsTool.blocked);
+      expect(kidsToolPolicy['trending_titles'], KidsTool.gated);
+      expect(intent.constrain('trending_titles', {}).error, 'use_search_catalog');
+    });
+
     test('negative control: without "tonight" and the library the same tools are not refused', () {
       for (final q in [
         'Give me a tip based on what I watched.',

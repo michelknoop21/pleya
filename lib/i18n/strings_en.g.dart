@@ -8754,10 +8754,10 @@ class TranslationsAssistantFollowUpEn {
 	String get watchYesterday => 'Who watched yesterday?';
 
 	List<String> get tonight => [
-		'Give me a comedy for tonight.',
-		'Find an exciting movie for tonight.',
+		'Pick a comedy from my library for tonight.',
+		'Find an exciting movie in my library for tonight.',
 		'Do I have something for the kids?',
-		'Which series can I start now?',
+		'Which series in my library can I start tonight?',
 	];
 	List<String> get recent => [
 		'What was added to my library lately?',
@@ -12087,10 +12087,10 @@ extension on Translations {
 			'assistant.followUp.watchWeek' => 'Who watched the most this week?',
 			'assistant.followUp.watchToday' => 'Who watched today?',
 			'assistant.followUp.watchYesterday' => 'Who watched yesterday?',
-			'assistant.followUp.tonight.0' => 'Give me a comedy for tonight.',
-			'assistant.followUp.tonight.1' => 'Find an exciting movie for tonight.',
+			'assistant.followUp.tonight.0' => 'Pick a comedy from my library for tonight.',
+			'assistant.followUp.tonight.1' => 'Find an exciting movie in my library for tonight.',
 			'assistant.followUp.tonight.2' => 'Do I have something for the kids?',
-			'assistant.followUp.tonight.3' => 'Which series can I start now?',
+			'assistant.followUp.tonight.3' => 'Which series in my library can I start tonight?',
 			'assistant.followUp.recent.0' => 'What was added to my library lately?',
 			'assistant.followUp.recent.1' => 'Which series were added recently?',
 			'assistant.followUp.recent.2' => 'What was added this week?',

@@ -3814,10 +3814,10 @@ class _TranslationsAssistantFollowUpNl extends TranslationsAssistantFollowUpEn {
 	@override String get watchToday => 'Wie keek er vandaag?';
 	@override String get watchYesterday => 'Wie keek er gisteren?';
 	@override List<String> get tonight => [
-		'Geef me een komedie voor vanavond.',
-		'Zoek een spannende film voor vanavond.',
+		'Kies een komedie uit mijn bibliotheek voor vanavond.',
+		'Zoek een spannende film in mijn bibliotheek voor vanavond.',
 		'Heb ik iets voor de kinderen?',
-		'Welke serie kan ik nu beginnen?',
+		'Welke serie in mijn bibliotheek kan ik vanavond beginnen?',
 	];
 	@override List<String> get recent => [
 		'Wat is er onlangs aan mijn bibliotheek toegevoegd?',
@@ -6833,10 +6833,10 @@ extension on TranslationsNl {
 			'assistant.followUp.watchWeek' => 'Wie heeft deze week het meest gekeken?',
 			'assistant.followUp.watchToday' => 'Wie keek er vandaag?',
 			'assistant.followUp.watchYesterday' => 'Wie keek er gisteren?',
-			'assistant.followUp.tonight.0' => 'Geef me een komedie voor vanavond.',
-			'assistant.followUp.tonight.1' => 'Zoek een spannende film voor vanavond.',
+			'assistant.followUp.tonight.0' => 'Kies een komedie uit mijn bibliotheek voor vanavond.',
+			'assistant.followUp.tonight.1' => 'Zoek een spannende film in mijn bibliotheek voor vanavond.',
 			'assistant.followUp.tonight.2' => 'Heb ik iets voor de kinderen?',
-			'assistant.followUp.tonight.3' => 'Welke serie kan ik nu beginnen?',
+			'assistant.followUp.tonight.3' => 'Welke serie in mijn bibliotheek kan ik vanavond beginnen?',
 			'assistant.followUp.recent.0' => 'Wat is er onlangs aan mijn bibliotheek toegevoegd?',
 			'assistant.followUp.recent.1' => 'Welke series zijn onlangs toegevoegd?',
 			'assistant.followUp.recent.2' => 'Wat is er deze week toegevoegd?',

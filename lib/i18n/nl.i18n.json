@@ -2976,10 +2976,10 @@
       "watchToday": "Wie keek er vandaag?",
       "watchYesterday": "Wie keek er gisteren?",
       "tonight": [
-        "Geef me een komedie voor vanavond.",
-        "Zoek een spannende film voor vanavond.",
+        "Kies een komedie uit mijn bibliotheek voor vanavond.",
+        "Zoek een spannende film in mijn bibliotheek voor vanavond.",
         "Heb ik iets voor de kinderen?",
-        "Welke serie kan ik nu beginnen?"
+        "Welke serie in mijn bibliotheek kan ik vanavond beginnen?"
       ],
       "recent": [
         "Wat is er onlangs aan mijn bibliotheek toegevoegd?",
