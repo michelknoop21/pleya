@@ -4,6 +4,19 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 
+/// How long one call of the script may take before the test gives up on it.
+///
+/// This is a guard against a call that never returns, not the measurement.
+/// The script's own floor for `doctor` with a wedged idb is two connects of
+/// one second each, a pause between them and two Python starts: 3.3 s on an
+/// idle machine. With five seconds here the test failed whenever the machine
+/// was busy (13 October 2026, load average above 80: 3.3 to 11.5 s for
+/// `doctor`, 1.1 to 10.4 s for `key`). What proves the bound is the script
+/// saying it cut idb off, asserted below; the wedge lasts four times this
+/// guard, so a script that waits for idb still fails here.
+const scriptGuard = Duration(seconds: 30);
+const wedgeSeconds = 120;
+
 void main() {
   late Directory binDir;
 
@@ -35,7 +48,7 @@ void main() {
     final output = process.stdout.transform(utf8.decoder).join();
     final error = process.stderr.transform(utf8.decoder).join();
     final exitCode = await process.exitCode.timeout(
-      const Duration(seconds: 5),
+      scriptGuard,
       onTimeout: () {
         process.kill(ProcessSignal.sigkill);
         return -999;
@@ -48,15 +61,23 @@ void main() {
     );
   }
 
-  test('a hung idb connect is bounded and cannot fall back to host keyboard input', () async {
-    writeExecutable('idb', '#!/bin/sh\nexec sleep 30\n');
-    writeExecutable('osascript', '#!/bin/sh\necho SHOULD_NOT_RUN >&2\nexit 91\n');
+  test(
+    'a hung idb connect is bounded and cannot fall back to host keyboard input',
+    () async {
+      writeExecutable('idb', '#!/bin/sh\nexec sleep $wedgeSeconds\n');
+      writeExecutable('osascript', '#!/bin/sh\necho SHOULD_NOT_RUN >&2\nexit 91\n');
 
-    final result = await runScript(['doctor', '--json']);
-    expect(result.exitCode, 0, reason: 'doctor must finish despite a wedged idb connect');
-    final body = jsonDecode(result.output) as Map<String, Object?>;
-    expect(body['input'], 'none');
-  });
+      final result = await runScript(['doctor', '--json']);
+      expect(result.exitCode, 0, reason: 'doctor must finish despite a wedged idb connect');
+      // Both connects ended on the script's own one-second ceiling, not on idb.
+      expect(result.error, contains('poging 1: idb connect FAKE-UDID timed out after 1s'));
+      expect(result.error, contains('poging 2: idb connect FAKE-UDID timed out after 1s'));
+      expect(result.error, isNot(contains('SHOULD_NOT_RUN')));
+      final body = jsonDecode(result.output) as Map<String, Object?>;
+      expect(body['input'], 'none');
+    },
+    timeout: const Timeout(Duration(seconds: 60)),
+  );
 
   test('a failed idb key never silently falls back to AppleScript in Verify', () async {
     final idbCalls = File('${binDir.path}/idb-calls');
@@ -72,5 +93,5 @@ void main() {
       reason: idbCalls.existsSync() ? idbCalls.readAsStringSync() : 'idb was never called',
     );
     expect(fallbackMarker.existsSync(), false);
-  });
+  }, timeout: const Timeout(Duration(seconds: 60)));
 }
