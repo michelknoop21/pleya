@@ -29,21 +29,29 @@ Future<Text> _pump(WidgetTester tester, String text) async {
       ),
     ),
   );
-  return tester.widget<Text>(find.byKey(const ValueKey('assistant.answer')));
+  final body = find.byKey(const ValueKey('assistant.answer.body'));
+  return tester.widget<Text>(body.evaluate().isNotEmpty ? body : find.byKey(const ValueKey('assistant.answer')));
 }
 
 void main() {
-  testWidgets('a long lead above cards reads as running text in three lines', (tester) async {
-    final text = await _pump(tester, 'Dune: Part Two, Shogun and Carrie are the most popular now');
+  testWidgets('a long lead above cards moves into the reading box, whole', (tester) async {
+    const sentence =
+        'Right now the most popular are the film Dune: Part Two, the series Shogun and the series Carrie (2024), '
+        'with Interstellar and Gravity close behind';
+    final text = await _pump(tester, sentence);
+    expect(text, isA<Text>());
+    expect(text.data, sentence);
     expect(text.style!.fontSize, TvHig.callout);
     expect(text.style!.fontWeight, FontWeight.w400);
-    expect(text.maxLines, 3);
-    // The whole sentence has room: it is not cut after three lines.
-    final box = tester.renderObject<RenderParagraph>(find.byType(RichText).first);
+    // No cut: nothing is ellipsised and the rest scrolls into view.
+    expect(text.overflow, isNot(TextOverflow.ellipsis));
+    final scroll = tester.widget<SingleChildScrollView>(find.byType(SingleChildScrollView));
+    expect(scroll.controller!.position.maxScrollExtent, greaterThan(0));
+    final box = tester.renderObject<RenderParagraph>(find.byKey(const ValueKey('assistant.answer.body')).last);
     expect(box.didExceedMaxLines, isFalse);
   });
 
-  testWidgets('a short lead above cards keeps the headline style', (tester) async {
+  testWidgets('a lead that fits two headline lines stays a headline', (tester) async {
     final text = await _pump(tester, 'Dit zijn de beste kandidaten.');
     expect(text.style!.fontSize, 38);
     expect(text.style!.fontWeight, FontWeight.w700);

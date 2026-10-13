@@ -197,17 +197,20 @@ class _BigPAnswerState extends State<BigPAnswer> {
 
     if (widget.bodyLines == 0) {
       final lead = split ? widget.text.substring(0, end) : widget.text;
-      // Above cards the lead is a headline only while it fits two lines;
-      // a long sentence would be cut mid-title, so it reads as running text.
+      // Above cards the lead is a headline only while it fits two lines.
+      // A longer sentence moves into the reading box as running text: three
+      // lines high, the whole sentence reachable by scrolling, nothing cut.
       return LayoutBuilder(
         builder: (context, box) {
-          final fits = _fitsLines(context, lead, widget.style, 2, box.maxWidth);
-          return Text(
-            lead,
-            key: const ValueKey('assistant.answer'),
-            maxLines: fits ? 2 : 3,
-            overflow: TextOverflow.ellipsis,
-            style: fits ? widget.style : _runningStyle(tk, pt),
+          if (_fitsLines(context, lead, widget.style, 2, box.maxWidth)) {
+            return Text(lead, key: const ValueKey('assistant.answer'), maxLines: 2, style: widget.style);
+          }
+          return BigPAnswer(
+            text: lead,
+            style: _runningStyle(tk, pt),
+            lead: false,
+            bodyLines: 3,
+            focusNode: widget.focusNode,
           );
         },
       );

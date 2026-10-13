@@ -256,7 +256,7 @@ final Map<String, _Stand> _stands = {
     ..state = AssistantSurfaceState.result
     ..answer =
         'Right now the most popular are the film The Martian, the series Shogun and the series Carrie (2024), '
-        'with Interstellar close behind.'
+        'with Interstellar and Gravity close behind, and a lot more this week.'
     ..displays = [_matches],
   'kids-ages': (c) => c
     ..prompt = 'Is er een film voor de kinderen?'
