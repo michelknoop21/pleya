@@ -37,6 +37,7 @@
     timers = [];
     stopTalking();
     bigp?.aimAt(null);
+    bigp?.relax();
   }
   onDestroy(clear);
 
