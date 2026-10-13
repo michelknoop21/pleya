@@ -55,8 +55,8 @@
 
   // A pressed chip leaves the page with the state it belonged to: hand keyboard focus on. It
   // goes to the reply, so the next Tab reaches New and the follow-ups before the bar. The reply
-  // is a named group and not itself a live region: a screen reader says its name on focus and
-  // hears the words once, from the live parts inside it.
+  // is a named group and not itself a live region, so that focus announces the name and the
+  // live parts inside it announce the words.
   const focus = (sel: string) => tick().then(() => stage?.querySelector<HTMLElement>(sel)?.focus({ preventScroll: true }));
 
   function reset() {
@@ -132,7 +132,7 @@
             {/each}
           </ul>
         {/if}
-        <div class="reply" role="group" aria-label="Big P's answer" tabindex="-1">
+        <div class="reply" role={active ? 'group' : undefined} aria-label={active ? 'Big P' : undefined} tabindex="-1">
           <div class="top" class:on={active !== null}>
             <div class="heard" aria-live="polite">
               {#if active && phase === 'listening'}
