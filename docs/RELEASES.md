@@ -51,6 +51,44 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 361 · 13 October 2026 · Apple TV
+
+<!-- commit: 9f373471386b9b21b823f296c193b1112465dc1c -->
+
+### Fixed
+- **Big P is in the Apple TV build again.** Build 360 was built without Big P: the notes for
+  that build described the new example questions, but the Apple TV build script left the
+  assistant out unless a setting was passed, and the release did not pass it. The script now
+  includes Big P by default. Everything the notes for build 360 said about Big P applies from
+  this build on.
+- **Top Shelf gets its Continue Watching row back.** Pleya saved the Top Shelf artwork in a
+  folder tvOS does not let it write to. The log of build 360 showed 74 refused writes in one
+  session, and because the error came before the row was stored, the row itself was missing
+  too. The artwork now goes into the cache folder of the shared container. If that folder is
+  refused as well, the row is still stored, without the large artwork.
+
+### Improved
+- **The player's info panel leaves a trail in the log.** In build 360 Pleya closed during a 4K
+  Dolby Vision film, right after the info panel was swiped away. The log stopped mid-animation
+  and tvOS kept no crash report, so the cause is not known. Opening and closing the panel now
+  writes four lines to disk straight away, each with the memory Pleya uses at that moment, and
+  a memory warning from tvOS is written the same way.
+
+### Notes
+- The crash from build 360 is not fixed in this build. Nothing in the code was found that
+  explains it; this build only collects what is needed to find it.
+- Trakt sign-in for Big P is not switched on in this build.
+
+### Worth checking
+- Nothing in this build has been checked on an Apple TV yet.
+- Open My Pleya. Big P should be the first tile there. It was missing in build 360, so this
+  is the first Apple TV build where the example questions from that build's notes can be seen.
+- Play something for a minute, go to the Home screen of the Apple TV and put Pleya in the top
+  row. Top Shelf should show what you were watching. If it stays empty, send the log.
+- Start a 4K Dolby Vision film, swipe down for the info panel and swipe it away again, several
+  times. If Pleya closes, open it again, send the log and tell us straight away: the report
+  tvOS keeps can only be read from the device shortly after it happens.
+
 ## 2.8.1 · build 359 · 12 October 2026 · iPhone and iPad
 
 <!-- commit: 2cd3f7630f1f4d811f6eda581fb40dc79232cd1d -->
