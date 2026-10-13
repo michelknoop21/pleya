@@ -8,9 +8,9 @@ import 'bounded_process.dart';
 //
 // Why this exists: `simctl bootstatus -b` returns before a cold simulator is
 // done. Measured on the hosted `macos-26` runner on 13 October 2026 (iPhone
-// 16e, iOS 26.2, eighteen cold boots): `bootstatus` returned after 81 to
-// 111 s with exit 0, and the first `simctl` call after it then took another
-// 26 to 78 s, whichever call it was (`terminate` of an app that was not
+// 16e, iOS 26.2, 24 cold boots): `bootstatus` returned after 80 to 114 s
+// with exit 0, and the first `simctl` call after it then took another 25 to
+// 94 s, whichever call it was (`terminate` of an app that was not
 // installed, `listapps`, `spawn`). The drivers made that first call a
 // `terminate` under [defaultProcessTimeout]. In CI that call was killed on its
 // three minutes in 4 of 27 runs of `discover.layout`, in the first step,
