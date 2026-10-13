@@ -250,6 +250,14 @@ final Map<String, _Stand> _stands = {
     ..state = AssistantSurfaceState.result
     ..answer = 'Dit zijn de beste kandidaten: «The Martian», «Red Planet», «Interstellar» en «Gravity».'
     ..displays = [_matches],
+  // IMG_8925: one long sentence above the cards reads as running text.
+  'result-matches-long-lead': (c) => c
+    ..prompt = 'What is popular right now?'
+    ..state = AssistantSurfaceState.result
+    ..answer =
+        'Right now the most popular are the film The Martian, the series Shogun and the series Carrie (2024), '
+        'with Interstellar close behind.'
+    ..displays = [_matches],
   'kids-ages': (c) => c
     ..prompt = 'Is er een film voor de kinderen?'
     ..state = AssistantSurfaceState.result
