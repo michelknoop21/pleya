@@ -1618,6 +1618,7 @@ void main() {
     late List<Map<Object?, Object?>> syncs;
     late List<bool> watchedExistedAtSync;
     File? watched;
+    String? imageDirectoryOverride;
 
     List<Object?> carouselTitles(Map<Object?, Object?> args) => [
       for (final item in (args['carousel'] as List? ?? const [])) (item as Map)['title'],
@@ -1641,6 +1642,7 @@ void main() {
       syncs = [];
       watchedExistedAtSync = [];
       watched = null;
+      imageDirectoryOverride = null;
       client.thumbnail = (path) => 'https://plex.local$path?X-Plex-Token=s3cr3t';
       SystemShelfService.debugForceTopShelf = true;
       SystemShelfService().topShelfImages = TopShelfImages(
@@ -1651,7 +1653,7 @@ void main() {
           case 'isSupported':
             return true;
           case 'imageDirectory':
-            return '${tmp.path}/TopShelfImages';
+            return imageDirectoryOverride ?? '${tmp.path}/TopShelfImages';
           case 'sync':
             final file = watched;
             if (file != null) watchedExistedAtSync.add(file.existsSync());
@@ -1681,6 +1683,37 @@ void main() {
         expect((item as Map)['imageUri'] as String, startsWith('file://'));
       }
       expect(args['carousel'].toString(), isNot(contains('s3cr3t')));
+    });
+
+    // Build 360 on an Apple TV: the system refused the folder on every sync and
+    // the exception stopped the sync before the row was written at all.
+    test('a folder that cannot be created still syncs the Continue Watching row, without a carousel', () async {
+      File('${tmp.path}/blocker').writeAsBytesSync([0]);
+      imageDirectoryOverride = '${tmp.path}/blocker/TopShelfImages';
+      // This file runs with logging off; the refusal line is part of the fix.
+      final silent = appLogger;
+      appLogger = Logger(printer: MemoryAwareLogPrinter(SimplePrinter()), level: Level.debug);
+      addTearDown(() => appLogger = silent);
+      MemoryLogOutput.clearLogs();
+      final cw1 = _item('cw1').copyWith(artPath: '/art/cw1');
+      aggregation.onDeckResult = () => [cw1];
+
+      await provider.load();
+      for (var i = 0; i < 400 && syncs.isEmpty; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      expect(syncs, isNotEmpty, reason: 'the refused folder must not stop the sync');
+      provider.setTopShelfHero([film('h1')]);
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+
+      for (final args in syncs) {
+        expect(args.containsKey('carousel'), isFalse);
+        final sections = args['sections']! as List;
+        expect(((sections.single as Map)['items'] as List), hasLength(1));
+      }
+      final messages = MemoryLogOutput.getLogs().map((e) => e.message).toList();
+      expect(messages.where((m) => m.startsWith('Top Shelf artwork folder unavailable')), hasLength(1));
+      expect(messages.where((m) => m.startsWith('Failed to sync system shelf')), isEmpty);
     });
 
     test('new instances of the same hero films do not sync again', () async {

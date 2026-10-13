@@ -4697,3 +4697,24 @@ Diagnostiek in de app: `logCheckpoint` schrijft bij openen, sluitverzoek, einde 
 
 Open op hardware: dezelfde film, paneel openen en sluiten, een paar keer achter elkaar; daarna het log versturen en meteen de crashlogs van het toestel laten uitlezen. Een regressietest op 4K Dolby Vision bestaat niet buiten het toestel: Pleya Verify gebruikt fixture-inhoud en de simulator decodeert geen Dolby Vision via VideoToolbox.
 
+
+### TS1: Top Shelf schreef op hardware niets, de map voor de beelden werd geweigerd (build 357 en 360, log `i8tj0`, 13 oktober 2026)
+
+Roadmap: A-12. Status: CODE DONE · HARDWARE OPEN.
+
+Het log van de Apple TV bevat 74 keer `Failed to sync system shelf` met `PathAccessException: Creation failed, path = '…/Shared/AppGroup/<id>/TopShelfImages' (Operation not permitted, errno = 1)`, bij elke sync, in meerdere sessies en twee builds.
+
+Gemeten:
+
+- De ondertekening is in orde. In de geëxporteerde IPA van build 360 dragen `Runner.app` en `TopShelfExtension.appex` allebei `com.apple.security.application-groups = group.nl.michelknoop.pleya`, en het provisioningprofiel bevat de groep (`codesign -d --entitlements`, `security cms -D`). Een ontbrekende entitlement is daarmee uitgesloten.
+- De app vroeg de map in de wortel van de groepscontainer (`SystemShelfPlugin.imageDirectoryURL`). Het systeem gaf het containerpad terug en weigerde daarna het aanmaken.
+- De uitzondering viel vóór de aanroep die de rij schrijft (`syncFromContinueWatching`). Daardoor kwam op het toestel ook de gewone rij Verder kijken niet meer in de Top Shelf, niet alleen de carrousel. TS1 was tot nu toe alleen op de simulator gezien, en die handhaaft deze beperking niet.
+- Een mislukte sync kost weinig: wat lijsten opbouwen en één geweigerde map, geen download en geen decodering. Er is geen aanwijzing dat dit bijdraagt aan de geheugendruk of aan PLR12.
+
+Fix:
+
+- De beelden gaan naar `Library/Caches/TopShelfImages` in de groepscontainer. Dat tvOS dat deel wel laat beschrijven, en dat het systeem de beelden daar kan laden voor de Top Shelf, volgt uit berichten op het Apple-ontwikkelaarsforum en is niet op dit toestel bewezen. tvOS mag die map legen terwijl de app niet draait: de extensie slaat een tegel over waarvan het bestand weg is, en zonder tegels valt de Top Shelf terug op de rij tot de volgende sync.
+- Een geweigerde map breekt de sync niet meer af: de rij Verder kijken wordt geschreven zonder carrousel, en de weigering staat één keer per run als waarschuwing in het log.
+
+Open op hardware, na de volgende build: geen `Failed to sync system shelf` meer in het log; de Top Shelf toont de carrousel; staat er `Top Shelf artwork folder unavailable`, dan is ook `Library/Caches` geweigerd en toont de Top Shelf alleen de rij. Bijvangst, niet opgelost: `tvos/scripts/wire_top_shelf.rb` noemt nog het oude team `G88U5B5783`.
+

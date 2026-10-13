@@ -195,6 +195,11 @@ final class TopShelfProvider: TVTopShelfContentProvider {
     guard !cacheItem.contentId.isEmpty,
       let imageUri = cacheItem.imageUri, let imageURL = URL(string: imageUri)
     else { return nil }
+    // The artwork lives under Library/Caches of the app group, which tvOS may
+    // empty while the app is not running. The payload then still names the
+    // file; a tile without its image is left out, and with none left the
+    // sectioned row takes over until the app syncs again.
+    if imageURL.isFileURL, !FileManager.default.fileExists(atPath: imageURL.path) { return nil }
 
     let item = TVTopShelfCarouselItem(identifier: cacheItem.contentId)
     item.title = cacheItem.title
