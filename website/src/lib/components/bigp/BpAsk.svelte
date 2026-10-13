@@ -54,7 +54,9 @@
   }
 
   // A pressed chip leaves the page with the state it belonged to: hand keyboard focus on. It
-  // goes to the reply, so the next Tab reaches New and the follow-ups before the bar.
+  // goes to the reply, so the next Tab reaches New and the follow-ups before the bar. The reply
+  // is a named group and not itself a live region, so that focus announces the name and the
+  // live parts inside it announce the words.
   const focus = (sel: string) => tick().then(() => stage?.querySelector<HTMLElement>(sel)?.focus({ preventScroll: true }));
 
   function reset() {
@@ -130,19 +132,25 @@
             {/each}
           </ul>
         {/if}
-        <div class="reply" aria-live="polite" tabindex="-1">
-          {#if active && phase === 'listening'}
-            <p class="status"><i aria-hidden="true"></i>Listening…</p>
-            <p class="hello">Say your question, or type it.</p>
-          {:else if active}
-            <div class="top">
-              <p class="asked"><span>You asked:</span> {active.q}</p>
-              {#if phase === 'answer'}<button type="button" class="new" onclick={reset}>New</button>{/if}
+        <div class="reply" role={active ? 'group' : undefined} aria-label={active ? 'Big P' : undefined} tabindex="-1">
+          <div class="top" class:on={active !== null}>
+            <div class="heard" aria-live="polite">
+              {#if active && phase === 'listening'}
+                <p class="status"><i aria-hidden="true"></i>Listening…</p>
+              {:else if active}
+                <p class="asked"><span>You asked:</span> {active.q}</p>
+              {/if}
             </div>
-            {#if phase === 'working'}
+            <!-- There from the first beat of a question, so Tab has a stop before the bar. -->
+            {#if active}<button type="button" class="new" onclick={reset}>New</button>{/if}
+          </div>
+          <div aria-live="polite">
+            {#if active && phase === 'listening'}
+              <p class="hello">Say your question, or type it.</p>
+            {:else if active && phase === 'working'}
               <p class="hello">Let me check…</p>
               <p class="step"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>{active.step}</p>
-            {:else}
+            {:else if active}
               {#key active.id}
                 <div class="answer">
                   <p class="hello"><span class="sr">{active.line}</span><span aria-hidden="true">{said}</span></p>
@@ -159,7 +167,7 @@
                 </div>
               {/key}
             {/if}
-          {/if}
+          </div>
         </div>
       </div>
 
@@ -212,12 +220,16 @@
   .new { flex: none; min-height: 44px; padding: 0.4rem 1rem; border-radius: 999px; background: var(--pill); color: var(--muted); font-size: 0.9rem; transition: background-color 0.4s var(--ease); }
   .new:hover { background: rgba(255, 255, 255, 0.2); color: var(--ink); }
 
-  /* Focus only lands here from script, as the place to tab on from. */
+  /* Focus only lands here from script, as the place to tab on from. After a key press the
+     balloon shows it; after a tap or a click there is nothing to show. */
   .reply:focus { outline: none; }
-  .status { display: flex; align-items: center; gap: 0.55rem; margin-bottom: 0.5rem; color: var(--muted); }
+  .sheet:has(.reply:focus-visible) { outline: 2px solid var(--amber); outline-offset: 3px; }
+  .status { display: flex; align-items: center; gap: 0.55rem; min-height: 44px; color: var(--muted); }
   .status i { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: #3dd68c; }
-  .top { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.9rem; }
-  .asked { flex: 1; min-width: 0; padding: 0.6rem 0.8rem; border-radius: 0.8rem; background: var(--pill); font-size: 0.95rem; line-height: 1.35; }
+  .top { display: flex; align-items: flex-start; gap: 0.5rem; }
+  .top.on { margin-bottom: 0.9rem; }
+  .heard { flex: 1; min-width: 0; }
+  .asked { padding: 0.6rem 0.8rem; border-radius: 0.8rem; background: var(--pill); font-size: 0.95rem; line-height: 1.35; }
   .asked span { color: rgba(255, 255, 255, 0.65); }
   .step { margin-top: 0.8rem; display: flex; align-items: center; gap: 0.7rem; color: var(--muted); }
   .dots { display: inline-flex; gap: 0.25rem; }
