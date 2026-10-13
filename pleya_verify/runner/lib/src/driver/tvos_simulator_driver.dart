@@ -8,6 +8,7 @@ import 'instance_discovery.dart';
 import 'screenshot_probe.dart';
 import 'verification_driver.dart';
 import 'bounded_process.dart';
+import 'simulator_boot.dart';
 
 /// Drives a tvOS-simulator build of Pleya through `scripts/tvos_sim.sh` —
 /// the fundament stays unmodified in shape (this driver is an additive
@@ -263,10 +264,8 @@ class TvosSimulatorDriver implements VerificationDriver {
   Future<void> installFresh() async {
     final udid = await _resolveDevice();
     await _boot(udid);
-    await _run('xcrun', ['simctl', 'terminate', udid, verifyBundleId]);
-    await _run('xcrun', ['simctl', 'uninstall', udid, verifyBundleId]);
+    await uninstallApp(udid: udid, bundleId: verifyBundleId, run: _run, log: _log);
     _installed = false;
-    _log('installFresh: uninstalled $verifyBundleId from $udid');
   }
 
   /// Set once this run has installed the isolated copy. A second `launch` in
@@ -528,14 +527,7 @@ class TvosSimulatorDriver implements VerificationDriver {
     );
   }
 
-  Future<void> _boot(String udid) async {
-    final list = await _run('xcrun', ['simctl', 'list', 'devices']);
-    final alreadyBooted = RegExp('$udid.*Booted').hasMatch(list.stdout as String);
-    if (alreadyBooted) return;
-    _log('booting $udid');
-    await _run('xcrun', ['simctl', 'boot', udid]);
-    await _run('xcrun', ['simctl', 'bootstatus', udid, '-b'], timeout: bootProcessTimeout);
-  }
+  Future<void> _boot(String udid) => bootSimulator(udid: udid, run: _run, log: _log);
 
   /// This driver's own dedicated simulator, created once and reused across
   /// runs — never the developer's ad-hoc/booted device. See the isolation
@@ -626,5 +618,10 @@ class TvosSimulatorDriver implements VerificationDriver {
     String? workingDirectory,
     Map<String, String>? extraEnv,
     Duration timeout = defaultProcessTimeout,
-  }) => runBounded(executable, args, workingDirectory: workingDirectory, environment: extraEnv, timeout: timeout);
+  }) => timedSimctl(
+    executable,
+    args,
+    _log,
+    () => runBounded(executable, args, workingDirectory: workingDirectory, environment: extraEnv, timeout: timeout),
+  );
 }
