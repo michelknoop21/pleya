@@ -86,3 +86,14 @@ Bestaande bronbibliotheek-, iPad- en aanvullende persoonlijke schermbeelden
 worden als begrensd bewijs in het screenshotmanifest opgenomen. Ongeteste
 platformen, echte backendcoververversing/synchronisatie, hardware en release
 blijven open onder VIS-COL-PLAY1 en S19/S22; geen volledige acceptatieclaim.
+
+## CI-correctieronde 13 oktober
+
+PR #329 is gemerged (644cfe69). De volledige testsuite telde 11164 geslaagde
+tests, twaalf golden-afwijkingen en 211 skips. Zonder bruikbare bronartwork
+moet de sfeerlaag transparant blijven en houdt het catalogusvenster zijn
+bestaande lift, met de shell als eigenaar wanneer aanwezig. Een gerichte
+negatieve controle bevestigt de ongewenste opaque laag. De bestaande Linux-workflow 38380971041 slaagde met 27 gerichte goldentests.
+Exact zeven discoveryreferenties zijn gewijzigd en onafhankelijk inhoudelijk
+goedgekeurd; de vijf catalogus-/shellreferenties bleven ongewijzigd. Dit verandert
+geen handlers, density, servercontract, prioriteit of hardwareacceptatie.

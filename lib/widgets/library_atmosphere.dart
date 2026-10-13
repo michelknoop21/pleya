@@ -175,36 +175,38 @@ class _LibraryAtmosphereState extends State<LibraryAtmosphere> {
                         'available': client != null && path != null,
                         'blur_sigma': 14,
                       },
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          ColoredBox(color: background),
-                          if (path != null && client != null)
-                            ClipRect(
-                              child: ImageFiltered(
-                                imageFilter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                                child: OptimizedMediaImage(
-                                  client: client,
-                                  imagePath: path,
-                                  // Atmosphere needs colour, not a full-resolution poster.
-                                  width: 960,
-                                  height: 540,
-                                  placeholder: (_, _) => ColoredBox(color: background),
-                                  errorWidget: (_, _, _) => ColoredBox(color: background),
+                      // Without scoped artwork, retain the owning page's original background.
+                      child: path == null || client == null
+                          ? const SizedBox.shrink()
+                          : Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                ColoredBox(color: background),
+                                ClipRect(
+                                  child: ImageFiltered(
+                                    imageFilter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                                    child: OptimizedMediaImage(
+                                      client: client,
+                                      imagePath: path,
+                                      // Atmosphere needs colour, not a full-resolution poster.
+                                      width: 960,
+                                      height: 540,
+                                      placeholder: (_, _) => ColoredBox(color: background),
+                                      errorWidget: (_, _, _) => ColoredBox(color: background),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [background.withValues(alpha: 0.65), background.withValues(alpha: 0.92)],
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [background.withValues(alpha: 0.65), background.withValues(alpha: 0.92)],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                     );
                   },
                 ),

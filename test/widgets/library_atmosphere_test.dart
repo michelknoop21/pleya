@@ -106,6 +106,17 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('unavailable scoped artwork leaves the original page background visible', (tester) async {
+    await pumpHost(tester);
+    expect(_selection(tester)['available'], false);
+    final layer = find.byWidgetPredicate(
+      (widget) => widget is AutomationNode && widget.id == AutomationIds.libraryAtmosphere,
+    );
+    expect(find.descendant(of: layer, matching: find.byType(ColoredBox)), findsNothing);
+    expect(find.descendant(of: layer, matching: find.byType(DecoratedBox)), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('removing all titles clears the old atmosphere', (tester) async {
     final host = await pumpHost(tester);
     host.nodes[0].requestFocus();
