@@ -9,6 +9,12 @@ set -e
 
 debug_sim=""
 
+# Big P is in the build unless the rollout stop is set explicitly. The iOS
+# lanes behave the same way (`assistant_define` in fastlane/Fastfile); a default
+# of false here left every Apple TV build from `tvos_beta`, which exports
+# nothing, without Big P.
+PLEYA_ASSISTANT_ENABLED="${PLEYA_ASSISTANT_ENABLED:-true}"
+
 
 if [[ $(uname -m) == "arm64" ]]; then
   TARGET_POSTFIX='_arm64'
@@ -381,7 +387,7 @@ BuildAppDebug() {
     --tfa --target=flutter \
     -DTVOS_BUILD=true \
     -DPLEYA_VERIFY=${PLEYA_VERIFY:-false} \
-    -DPLEYA_ASSISTANT_ENABLED=${PLEYA_ASSISTANT_ENABLED:-false} \
+    -DPLEYA_ASSISTANT_ENABLED=${PLEYA_ASSISTANT_ENABLED} \
     ${TRAKT_CLIENT_ID:+-DTRAKT_CLIENT_ID=${TRAKT_CLIENT_ID}} \
     --output-dill "$OUTDIR/App.framework/flutter_assets/kernel_blob.bin" \
     "$FLUTTER_APPLICATION_PATH/lib/main.dart"
@@ -554,7 +560,7 @@ BuildAppRelease() {
     -DTARGET_PLATFORM=TVOS \
     -DTVOS_BUILD=true \
     -DPLEYA_VERIFY=${PLEYA_VERIFY:-false} \
-    -DPLEYA_ASSISTANT_ENABLED=${PLEYA_ASSISTANT_ENABLED:-false} \
+    -DPLEYA_ASSISTANT_ENABLED=${PLEYA_ASSISTANT_ENABLED} \
     ${TRAKT_CLIENT_ID:+-DTRAKT_CLIENT_ID=${TRAKT_CLIENT_ID}} \
     ${PLEYA_GIT_COMMIT:+-DGIT_COMMIT=${PLEYA_GIT_COMMIT}} \
     --output-dill "$OUTDIR/app.dill" \
