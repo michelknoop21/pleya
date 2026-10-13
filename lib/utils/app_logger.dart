@@ -227,6 +227,17 @@ final _productionFilter = ProductionFilter();
 /// appLogger.w('Warning message');
 /// appLogger.e('Error message', error: e, stackTrace: stackTrace);
 /// ```
+/// A log line that has to survive the process ending right after it.
+///
+/// Carries the resident memory at that moment and is written to disk at once
+/// instead of with the next one-second batch, so the last checkpoint in an
+/// uploaded log is the last step the app really reached. For the few places
+/// where a run was seen to stop without a Dart error or a crash report.
+void logCheckpoint(String message) {
+  appLogger.i('$message rss=${ProcessInfo.currentRss ~/ (1024 * 1024)}MB');
+  unawaited(MemoryLogOutput.flush());
+}
+
 Logger appLogger = Logger(
   printer: MemoryAwareLogPrinter(SimplePrinter()),
   filter: _productionFilter,
