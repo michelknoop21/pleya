@@ -127,6 +127,9 @@ class MemoryLogOutput extends LogOutput {
 
   static Future<void> flush() async => _store?.flush();
 
+  /// See [PersistentLogStore.flushSync].
+  static void flushSync() => _store?.flushSync();
+
   static Map<String, dynamic> _serialize(LogEntry entry) => {
     'time': entry.timestamp.toIso8601String(),
     'level': entry.level.name,
@@ -216,6 +219,17 @@ class ProductionFilter extends LogFilter {
 
 final _productionFilter = ProductionFilter();
 
+/// A log line that has to survive the process ending right after it.
+///
+/// Carries the resident memory at that moment and is on disk before this
+/// returns, instead of with the next one-second batch. The last checkpoint in
+/// an uploaded log is therefore a step the app really reached. For the few
+/// places where a run was seen to stop without a Dart error or a crash report.
+void logCheckpoint(String message) {
+  appLogger.i('$message rss=${ProcessInfo.currentRss ~/ (1024 * 1024)}MB');
+  MemoryLogOutput.flushSync();
+}
+
 /// Centralized logger instance for the application.
 ///
 /// Usage:
@@ -227,17 +241,6 @@ final _productionFilter = ProductionFilter();
 /// appLogger.w('Warning message');
 /// appLogger.e('Error message', error: e, stackTrace: stackTrace);
 /// ```
-/// A log line that has to survive the process ending right after it.
-///
-/// Carries the resident memory at that moment and is written to disk at once
-/// instead of with the next one-second batch, so the last checkpoint in an
-/// uploaded log is the last step the app really reached. For the few places
-/// where a run was seen to stop without a Dart error or a crash report.
-void logCheckpoint(String message) {
-  appLogger.i('$message rss=${ProcessInfo.currentRss ~/ (1024 * 1024)}MB');
-  unawaited(MemoryLogOutput.flush());
-}
-
 Logger appLogger = Logger(
   printer: MemoryAwareLogPrinter(SimplePrinter()),
   filter: _productionFilter,

@@ -4693,7 +4693,7 @@ Wat is uitgesloten of gemeten:
 
 Kandidaten, geen van beide bewezen: het proces is door het systeem beëindigd op geheugen terwijl de sluitanimatie extra beeldbuffers op 4K vroeg, of een native fout in de grafische laag of in mpv waarvan het rapport ontbreekt.
 
-Diagnostiek in de app: `logCheckpoint` schrijft bij openen, sluitverzoek, einde van de sluitanimatie en afbraak van het paneel een regel met het residente geheugen en schrijft die direct weg. De melding van geheugendruk draagt hetzelfde getal en wordt ook direct weggeschreven. Het laatste checkpoint in een volgend log zegt hoe ver het sluiten kwam.
+Diagnostiek in de app: `logCheckpoint` schrijft bij openen, sluitverzoek, einde van de sluitanimatie en afbraak van het paneel een regel met het residente geheugen en schrijft die direct weg. De melding van geheugendruk draagt hetzelfde getal. Deze regels staan op schijf voordat de aanroep terugkeert, dus het laatste checkpoint in een volgend log is een stap die het proces zeker heeft gehaald. Niet elk sluiten loopt langs alle vier: ondertitels zoeken en het afbreken van de speler halen het paneel weg zonder sluitverzoek, en een animatie die wordt onderbroken geeft geen regel voor het einde ervan. De swipe omhoog uit het recept loopt wel langs alle vier.
 
 Open op hardware: dezelfde film, paneel openen en sluiten, een paar keer achter elkaar; daarna het log versturen en meteen de crashlogs van het toestel laten uitlezen. Een regressietest op 4K Dolby Vision bestaat niet buiten het toestel: Pleya Verify gebruikt fixture-inhoud en de simulator decodeert geen Dolby Vision via VideoToolbox.
 

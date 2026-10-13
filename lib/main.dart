@@ -627,7 +627,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     // With the memory in use and flushed at once: on Apple TV a run ended
     // seconds after this line without a crash report (build 360).
     appLogger.w('System memory pressure, evicting image caches rss=${ProcessInfo.currentRss ~/ (1024 * 1024)}MB');
-    unawaited(MemoryLogOutput.flush());
+    MemoryLogOutput.flushSync();
     _evictImageCaches();
   }
 
