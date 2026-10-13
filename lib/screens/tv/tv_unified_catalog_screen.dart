@@ -81,6 +81,7 @@ import '../../services/api_cache.dart';
 import '../../services/unified_catalog/source_resolver.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../services/unified_catalog/unified_catalog_query_store.dart';
+import '../../theme/mono_tokens.dart';
 import '../../utils/formatters.dart';
 import '../../utils/global_key_utils.dart';
 import '../../utils/layout_constants.dart';
@@ -729,17 +730,34 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
 
   @override
   Widget build(BuildContext context) {
-    return LibraryAtmosphere(
-      automationInstance: 'tv_catalog.$_surface',
-      selectionKey: widget.catalog.query.kind,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // The tags are capped here and uncapped in the rail: the heading has
-          // one line and no way to scroll, the panel wraps.
-          TvCatalogHeaderBar(title: widget.title, tags: _railExpanded ? const [] : _selectionTags()),
-          Expanded(child: _buildContentArea()),
-        ],
+    final tk = tokens(context);
+    // The shell owns its full-height lift; standalone catalogs retain their original lift without artwork.
+    return DecoratedBox(
+      decoration: TvShellSurface.isPresent(context)
+          ? const BoxDecoration()
+          : BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color.alphaBlend(tk.text.withValues(alpha: TvCatalogLayout.pageLift), tk.bg),
+                  tk.bg,
+                ],
+                stops: const [0, 0.55],
+              ),
+            ),
+      child: LibraryAtmosphere(
+        automationInstance: 'tv_catalog.$_surface',
+        selectionKey: widget.catalog.query.kind,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // The tags are capped here and uncapped in the rail: the heading has
+            // one line and no way to scroll, the panel wraps.
+            TvCatalogHeaderBar(title: widget.title, tags: _railExpanded ? const [] : _selectionTags()),
+            Expanded(child: _buildContentArea()),
+          ],
+        ),
       ),
     );
   }
