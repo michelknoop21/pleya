@@ -53,6 +53,7 @@
 /// filter session wander off to a different catalog on the next LEFT press.
 library;
 
+import '../../widgets/library_atmosphere.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -80,7 +81,6 @@ import '../../services/api_cache.dart';
 import '../../services/unified_catalog/source_resolver.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../services/unified_catalog/unified_catalog_query_store.dart';
-import '../../theme/mono_tokens.dart';
 import '../../utils/formatters.dart';
 import '../../utils/global_key_utils.dart';
 import '../../utils/layout_constants.dart';
@@ -729,33 +729,9 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
 
   @override
   Widget build(BuildContext context) {
-    final tk = tokens(context);
-    // Not a flat fill. A very slight lift towards the top of the frame gives the
-    // page a horizon, so the grid stands in a room rather than floating on a
-    // uniform slab — the same reason a cinema wall is never one value. It is
-    // deliberately almost subliminal: two per cent over the whole height, well
-    // under any banding threshold, and the posters still sit on `MonoTokens.bg`
-    // wherever they actually are.
-    //
-    // Inside the fase-7 shell the shell paints it instead, across the whole
-    // viewport. Painting it again here would start a second gradient at the
-    // bottom edge of the top navigation and leave a hard step there; the lift
-    // belongs to the page, and under a top bar the page starts above this box.
-    final framedByShell = TvShellSurface.isPresent(context);
-    return DecoratedBox(
-      decoration: framedByShell
-          ? const BoxDecoration()
-          : BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color.alphaBlend(tk.text.withValues(alpha: TvCatalogLayout.pageLift), tk.bg),
-                  tk.bg,
-                ],
-                stops: const [0, 0.55],
-              ),
-            ),
+    return LibraryAtmosphere(
+      automationInstance: 'tv_catalog.$_surface',
+      selectionKey: widget.catalog.query.kind,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

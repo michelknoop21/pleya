@@ -138,7 +138,7 @@ class _Harness {
   String? get persistedLibrary => storage.getSelectedLibraryKey();
 }
 
-Future<_Harness> _pumpScreen(WidgetTester tester) async {
+Future<_Harness> _pumpScreen(WidgetTester tester, {bool tvTitle = true}) async {
   late StorageService storage;
   await tester.runAsync(() async {
     await SettingsService.getInstance();
@@ -171,7 +171,7 @@ Future<_Harness> _pumpScreen(WidgetTester tester) async {
   final harness = _Harness(tester, libraries, storage);
   await harness.settle();
   // The screen opened on the library it had saved, and on that library's tab.
-  expect(_openLibrary(tester), 'Start');
+  if (tvTitle) expect(_openLibrary(tester), 'Start');
   harness.install();
   return harness;
 }
@@ -185,6 +185,21 @@ void main() {
   tearDown(() {
     TvDetectionService.debugSetAppleTVOverride(null);
     BaseSharedPreferencesService.onMutation = null;
+  });
+
+  testWidgets('phone library navigation has its own row below the source title', (tester) async {
+    TvDetectionService.debugSetAppleTVOverride(false);
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await _pumpScreen(tester, tvTitle: false);
+    final source = tester.getRect(find.text('Start').first);
+    final chip = find.byType(FocusableTabChip).first;
+    final tab = tester.getRect(chip);
+    expect(tab.top, greaterThan(source.bottom));
+    expect(tab.height, greaterThanOrEqualTo(44));
+    expect(tab.width, greaterThan(80));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('a library abandoned mid-load does not restore its own tab over the one that replaced it', (

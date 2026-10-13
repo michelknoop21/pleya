@@ -11,6 +11,8 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 
 **Volgordewijziging Michel, 9 oktober 2026:** het huidige playback-/hervatpakket A-11/A-12 wordt voorlopig overgeslagen, omdat RESUME-PLAY1 nog niet reproduceerbaar is. Het blijft open; hervat dit pakket bij een concrete reproductie of nieuw bewijs. A-21 (Requests 2.0-acceptatie) is de eerstvolgende primaire stroom. Dit stelt geen review-/releasegate buiten werking en verandert geen bestaande fix- of bewijsstatus. Bewezen urgente regressies blijven onder de algemene uitzonderingsregel vallen.
 
+**Uitvoeringskeuze Michel, 12 oktober 2026:** bouw het goedgekeurde bibliotheekredesign in (A-06/A-08/A-17, VIS-COL-PLAY1) als één samenhangende clientstroom: navigatie op het beeld, dynamische uniform geblurde sfeer en visuele collecties/afspeellijsten met behoud van density. Dit volgt op de reeds gemergede A-21-codeset; verdere Requests-acceptatie en A-22-hardwarebewijs blijven open. Voor Web worden bestaande routes aangepast; ontbrekende collectie-/playlist- en coverbeheersync blijven binnen C-05/S19/S22 en krijgen geen protocolvrijgave door dit ontwerpbesluit. Geen wijziging van pakketprioriteit, WIP-limiet of review-/releasegate.
+
 1. Herijk actuele `main`, audits, bestaande bugs, registers en lopende branches (REG-01/REG-02/REG-03). De 87 vensters van [AUDIT-TV-UX1](qa/2026-10-08-tvos-klantbeleving-audit.md) zijn een dekkingsmatrix, geen 87 implementatietaken.
 2. Het samenhangende P1-pakket voor tvOS playback en betrouwbaarheid (A-11/A-12) is voorlopig uitgesteld (Michel, 9 oktober), met RESUME-PLAY1 en TVUX-10/21/40 plus de relevante delen van TVUX-71/72. Alleen bewezen ernstige uitval escaleert naar P0. Aantoonbare security-, rechten-, dataverlies- en releaseblokkerende problemen gaan voor.
 3. Concrete interactiecorrecties (A-07/A-10/A-11): TVUX-56/76/79; TVUX-77 alleen repareren bij bevestigd runtimeprobleem. Vergelijk bij elke pakketgrens de impact met open Big P-werk en bestaande bugs.
@@ -61,9 +63,9 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 | A-03 | P1 | Bestaande app | Bibliotheek-snelkiezer bewaart selectie | Open issue |
 | A-04 | P1 | Bestaande app | Verborgen Plex-bibliotheek op TV | Open issue |
 | A-05 | P1 | Bestaande app | iPhone-detail DEC-140 | Bewijs afronden |
-| A-06 | P1 | Bestaande app | Home, landingen, catalogus en filters | Volgens register open |
+| A-06 | P1 | Bestaande app | Home, landingen, catalogus en filters | Bibliotheekredesign in uitvoering (Michel, 12 okt), samen met A-08/A-17; VIS-COL-PLAY1 bezit detailstatus; overige acceptatie open |
 | A-07 | P1 | Bestaande app | Bronkeuze bij meerdere servers | Bewijs afronden |
-| A-08 | P1 | Bestaande app | Mijn Pleya, lijst/downloads/meldingen en contextmenu | Volgens register open |
+| A-08 | P1 | Bestaande app | Mijn Pleya, lijst/downloads/meldingen en contextmenu | Visuele collecties/afspeellijsten in uitvoering (12 okt), VIS-COL-PLAY1; bron-/rechtencontract en overige open werk behouden |
 | A-09 | P0 | Bestaande app | Login, profielkeuze en PIN | Volgens register open; algemene Big P-pauze opgeheven (8 okt); herijking nodig |
 | A-10 | P1 | Bestaande app | Live TV, Liquid Glass en mobiele speler | Bewijs afronden |
 | A-11 | P1 | Bestaande app | tvOS focus, Menu en shell-routes; playbackstart en herstel | Huidig playback-/hervatpakket voorlopig uitgesteld (Michel, 9 okt); bestaande fixes/bewijs behouden; status in tvOS-registers |

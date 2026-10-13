@@ -19,6 +19,9 @@ enum TabChipStyle {
   /// Filled pill, meant to sit inside a [SegmentedTabGroup]. For sets that
   /// behave like a filter or a picker: request states, season posters.
   segmented,
+
+  /// Approved library navigation on artwork; no underline.
+  floating,
 }
 
 /// A focusable tab chip that shows a color change when focused or selected.
@@ -157,7 +160,44 @@ class _FocusableTabChipState extends State<FocusableTabChip> with FocusableChipS
     // Only show focus effects during keyboard/d-pad navigation
     final showFocus = isFocused && InputModeTracker.isKeyboardMode(context);
     final useUnderline = widget.style == TabChipStyle.underline && widget.topImage == null;
+    if (widget.style == TabChipStyle.floating) return _buildFloating(context, showFocus);
     return useUnderline ? _buildUnderline(context, showFocus) : _buildSegmented(context, showFocus);
+  }
+
+  Widget _buildFloating(BuildContext context, bool showFocus) {
+    final tk = tokens(context);
+    return FocusBuilders.buildFocusableChip(
+      context: context,
+      focusNode: focusNode,
+      onKeyEvent: _handleKeyEvent,
+      onTap: widget.onSelect,
+      onFocusChange: (focused) {
+        if (!focused) return;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          Scrollable.ensureVisible(
+            context,
+            duration: reduceMotion(context, tk.fast),
+            alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+          );
+        });
+      },
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: PlatformDetector.isTV() ? 8 : 10),
+      backgroundColor: widget.isSelected ? tk.text.withValues(alpha: showFocus ? 0.78 : 1) : Colors.transparent,
+      borderColor: showFocus ? tk.text : Colors.transparent,
+      borderRadius: 32,
+      minTapHeight: PlatformDetector.isTV() ? null : 44,
+      child: Text(
+        widget.label,
+        maxLines: 1,
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+          color: widget.isSelected ? tk.bg : tk.text,
+          fontSize: 16,
+          height: 1.5,
+          fontWeight: widget.isSelected ? FontWeight.w700 : FontWeight.w600,
+        ),
+      ),
+    );
   }
 
   /// Text tab: no fill, no border, no box. Two states, two separate signals.

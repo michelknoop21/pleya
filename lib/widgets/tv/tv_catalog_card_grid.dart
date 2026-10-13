@@ -453,13 +453,12 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      LayoutBuilder(builder: (context, constraints) => _buildForWidth(context, constraints.maxWidth));
+
+  Widget _buildForWidth(BuildContext context, double width) {
     final scale = TvLayoutConstants.scaleOf(context);
-    final grid = TvCatalogGrid.forWidth(
-      MediaQuery.sizeOf(context).width,
-      scale: scale,
-      reservedLeading: widget.reservedLeading,
-    );
+    final grid = TvCatalogGrid.forWidth(width, scale: scale, reservedLeading: widget.reservedLeading);
     _grid = grid;
     final cardHeight = widget.cardHeight(grid.cardWidth);
     _cardHeight = cardHeight;

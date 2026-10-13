@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { fireEvent, render, screen } from '@testing-library/svelte';
 
 import MediaGrid from './MediaGrid.svelte';
 import type { Item } from '../api/types';
@@ -18,6 +18,17 @@ function items(count: number): Item[] {
 }
 
 describe('MediaGrid', () => {
+  it('forwards the real highlighted item without changing order or count', async () => {
+    const onHighlight = vi.fn();
+    const titles = items(3);
+    render(MediaGrid, { props: { items: titles, onHighlight } });
+    const links = screen.getAllByRole('link');
+    await fireEvent.focus(links[1]!);
+    expect(onHighlight).toHaveBeenCalledWith(titles[1]);
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/items/i0', '/items/i1', '/items/i2']);
+  });
+
   it('is een lijst met een naam, zodat een schermlezer weet waar hij is', () => {
     render(MediaGrid, { props: { items: items(3), label: 'Films' } });
     expect(screen.getByRole('list', { name: 'Films' })).toBeInTheDocument();

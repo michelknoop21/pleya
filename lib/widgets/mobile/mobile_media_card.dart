@@ -24,6 +24,7 @@ import '../media_markers.dart';
 import '../new_content_badge.dart';
 import '../optimized_media_image.dart';
 import '../pressable.dart';
+import '../library_atmosphere.dart';
 
 /// Which artwork a [MobileMediaCard] draws: a 2:3 poster for a Home/landing
 /// rail, or a 16:9 still for Verder kijken.
@@ -78,45 +79,48 @@ class MobileMediaCard extends StatelessWidget {
             blurHash: item.posterBlurHash,
           );
 
-    return GestureDetector(
-      onLongPress: onLongPress,
-      child: Pressable(
-        onTap: onTap,
-        child: SizedBox(
-          width: width,
-          child: Column(
-            crossAxisAlignment: .start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(tokens(context).radiusSm),
-                child: SizedBox(
-                  width: width,
-                  height: height,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      poster,
-                      if (group.hasMultipleSources)
-                        Positioned(top: 6, left: 6, child: SourceCountCapsule(count: group.sources.length)),
-                      if (group.watchState.isWatched)
-                        const Positioned(top: 6, right: 6, child: WatchedTick())
-                      else if (newLabel == 'NEW EPISODE')
-                        const Positioned(top: 6, right: 6, child: NewEpisodeDot()),
-                      if (resumeFraction != null)
-                        Positioned(left: 0, right: 0, bottom: 0, child: ResumeLine(fraction: resumeFraction)),
-                    ],
+    return LibraryArtworkSelection(
+      item: item,
+      child: GestureDetector(
+        onLongPress: onLongPress,
+        child: Pressable(
+          onTap: onTap,
+          child: SizedBox(
+            width: width,
+            child: Column(
+              crossAxisAlignment: .start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(tokens(context).radiusSm),
+                  child: SizedBox(
+                    width: width,
+                    height: height,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        poster,
+                        if (group.hasMultipleSources)
+                          Positioned(top: 6, left: 6, child: SourceCountCapsule(count: group.sources.length)),
+                        if (group.watchState.isWatched)
+                          const Positioned(top: 6, right: 6, child: WatchedTick())
+                        else if (newLabel == 'NEW EPISODE')
+                          const Positioned(top: 6, right: 6, child: NewEpisodeDot()),
+                        if (resumeFraction != null)
+                          Positioned(left: 0, right: 0, bottom: 0, child: ResumeLine(fraction: resumeFraction)),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: MediaCardGridLayout.posterCaptionGap),
-              Text(
-                item.displayTitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: MediaCardGridLayout.titleStyle.copyWith(color: DefaultTextStyle.of(context).style.color),
-              ),
-              _CaptionSubtitle(item: item, shape: shape, isInContinueWatching: isInContinueWatching),
-            ],
+                const SizedBox(height: MediaCardGridLayout.posterCaptionGap),
+                Text(
+                  item.displayTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: MediaCardGridLayout.titleStyle.copyWith(color: DefaultTextStyle.of(context).style.color),
+                ),
+                _CaptionSubtitle(item: item, shape: shape, isInContinueWatching: isInContinueWatching),
+              ],
+            ),
           ),
         ),
       ),

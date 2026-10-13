@@ -15,9 +15,10 @@
     /** Aantal kaarten dat het beeld meteen mag laden. */
     eagerCount?: number;
     label?: string;
+    onHighlight?: (item: Item) => void;
   }
 
-  let { items, eagerCount = 12, label }: Props = $props();
+  let { items, eagerCount = 12, label, onHighlight }: Props = $props();
 
   /**
    * Eén vorm voor het hele raster.
@@ -36,8 +37,8 @@
 
 <ul class="grid" aria-label={label}>
   {#each items as item, index (item.id)}
-    <li>
-      <MediaCard {item} {shape} eager={index < eagerCount} />
+    <li data-item-id={item.id}>
+      <MediaCard {item} {shape} {onHighlight} eager={index < eagerCount} />
     </li>
   {/each}
 </ul>

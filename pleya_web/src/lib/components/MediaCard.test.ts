@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { fireEvent, render, screen } from '@testing-library/svelte';
 
 import MediaCard from './MediaCard.svelte';
 import type { Item } from '../api/types';
@@ -20,6 +20,18 @@ function item(patch: Partial<Item> = {}): Item {
 }
 
 describe('MediaCard', () => {
+  it('reports pointer and keyboard selection while preserving the detail link', async () => {
+    const onHighlight = vi.fn();
+    const selected = item();
+    render(MediaCard, { props: { item: selected, onHighlight } });
+    const link = screen.getByRole('link', { name: /Grease/ });
+    await fireEvent.pointerEnter(link);
+    expect(onHighlight).toHaveBeenLastCalledWith(selected);
+    await fireEvent.focus(link);
+    expect(onHighlight).toHaveBeenCalledTimes(2);
+    expect(link).toHaveAttribute('href', '/items/i1');
+  });
+
   it('is een link naar de detailpagina van het item', () => {
     render(MediaCard, { props: { item: item() } });
     const link = screen.getByRole('link', { name: /Grease/ });

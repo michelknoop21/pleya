@@ -29,6 +29,7 @@ class FocusBuilders {
     required FocusNode focusNode,
     required KeyEventResult Function(FocusNode, KeyEvent) onKeyEvent,
     required VoidCallback onTap,
+    ValueChanged<bool>? onFocusChange,
     required EdgeInsetsGeometry padding,
     required Color backgroundColor,
     double borderRadius = 20,
@@ -81,6 +82,7 @@ class FocusBuilders {
     return Focus(
       focusNode: focusNode,
       onKeyEvent: onKeyEvent,
+      onFocusChange: onFocusChange,
       child: ClickableCursor(child: tappable),
     );
   }

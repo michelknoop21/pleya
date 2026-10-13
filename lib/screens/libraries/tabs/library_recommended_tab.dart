@@ -432,6 +432,7 @@ class _LibraryRecommendedTabState extends BaseLibraryTabState<MediaHub, LibraryR
                       );
                       return TvSpotlightBackground(
                         item: spotlight,
+                        ambientArtwork: true,
                         client: client,
                         hideSpoilers: svc.read(SettingsService.hideSpoilers),
                         contentTop: spotlightTop,
