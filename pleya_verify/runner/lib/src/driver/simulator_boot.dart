@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'bounded_process.dart';
 
-// What the simulator drivers share around a boot: waiting until a freshly
-// booted simulator answers, asking whether the app is on it, and timing every
-// `simctl` call into the driver log.
+// What the simulator drivers share around a boot: giving a freshly booted
+// simulator a first call with the boot's ceiling, asking whether the app is on
+// it, and timing every `simctl` call into the driver log.
 //
 // Why this exists: `simctl bootstatus -b` returns before a cold simulator is
 // done. Measured on the hosted `macos-26` runner on 13 October 2026 (iPhone
@@ -48,23 +48,23 @@ Future<void> bootSimulator({
     throw StateError('simctl bootstatus failed for $udid (exit ${status.exitCode}): ${status.stderr}');
   }
   // The first call after `bootstatus` pays for whatever the simulator is still
-  // starting. Make it a read with the boot's ceiling, so the calls that follow
-  // run against a simulator that answers.
-  // No verdict on the outcome: before this call existed, whatever ran first
-  // was not judged either, and the calls after it say what is wrong by name.
+  // starting. Make it a read with the boot's ceiling, so that wait does not
+  // land on a call with three minutes. Its outcome is not judged: whatever ran
+  // first before this call existed was not judged either.
   await run('xcrun', ['simctl', 'listapps', udid], timeout: simulatorSettleTimeout);
 }
 
 /// Whether [bundleId] is installed on the booted simulator [udid].
 ///
-/// Answers `true` when the list cannot be trusted, which is a failed call or
-/// output without a single app in it (a booted simulator always lists its
-/// system apps): the caller uses a `false` to skip an uninstall, and skipping
+/// Answers `true` when the list cannot be trusted: a failed call, output
+/// without a single app in it, or output that does not end where the property
+/// list closes. The caller uses a `false` to skip an uninstall, and skipping
 /// one that was needed would hand the next launch the data of an earlier run.
 Future<bool> isAppInstalled({required String udid, required String bundleId, required ProcessRunner run}) async {
   final apps = await run('xcrun', ['simctl', 'listapps', udid]);
   final listing = apps.stdout as String;
-  if (apps.exitCode != 0 || !_anyApp.hasMatch(listing)) return true;
+  final complete = _anyApp.hasMatch(listing) && listing.trimRight().endsWith('}');
+  if (apps.exitCode != 0 || !complete) return true;
   return listsBundleId(listing, bundleId);
 }
 
@@ -90,8 +90,12 @@ Future<void> uninstallApp({
     return;
   }
   await run('xcrun', ['simctl', 'terminate', udid, bundleId]);
-  await run('xcrun', ['simctl', 'uninstall', udid, bundleId]);
-  log('installFresh: uninstalled $bundleId from $udid');
+  final uninstall = await run('xcrun', ['simctl', 'uninstall', udid, bundleId]);
+  log(
+    uninstall.exitCode == 0
+        ? 'installFresh: uninstalled $bundleId from $udid'
+        : 'installFresh: simctl uninstall of $bundleId on $udid exited ${uninstall.exitCode}',
+  );
 }
 
 /// Runs [body] and, for a `simctl` call, logs how long it took and how it

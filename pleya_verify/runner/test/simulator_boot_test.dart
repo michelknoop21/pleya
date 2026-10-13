@@ -94,7 +94,7 @@ void main() {
       expect(sim.calls, isNot(contains('listapps')));
     });
 
-    test('a settle call that fails does not end the run: the calls after it name what is wrong', () async {
+    test('a settle call that fails does not end the run', () async {
       final sim = FakeSimulator()..listappsExit = 1;
 
       await bootSimulator(udid: udid, run: sim.run, log: (_) {});
@@ -145,6 +145,17 @@ void main() {
       expect(log.single, contains('uninstalled'));
     });
 
+    test('an uninstall that fails is logged as failed, not as done', () async {
+      final log = <String>[];
+      Future<ProcessResult> run(String _, List<String> args, {Duration timeout = defaultProcessTimeout}) async =>
+          ProcessResult(1, args[1] == 'uninstall' ? 1 : 0, '', '');
+
+      await uninstallApp(udid: udid, bundleId: bundleId, run: run, log: log.add);
+
+      expect(log.single, contains('exited 1'));
+      expect(log.single, isNot(contains('uninstalled')));
+    });
+
     test('when the app list cannot be read the uninstall is not skipped', () async {
       final sim = FakeSimulator(booted: true, installed: true)..listappsExit = 1;
 
@@ -167,6 +178,20 @@ void main() {
 
     test('output in another format counts as installed', () async {
       expect(await installedGiven('{"com.apple.Bridge": {"CFBundleIdentifier": "com.apple.Bridge"}}'), isTrue);
+    });
+
+    test('a list that was cut off before it closed counts as installed', () async {
+      final captured = File('test/fixtures/simctl_listapps_ios27.txt').readAsStringSync();
+      final cutOff = captured.substring(0, captured.indexOf('"nl.michelknoop.pleya"'));
+
+      expect(await installedGiven(cutOff), isTrue);
+    });
+
+    test('captured simctl output is trusted: the installed app is found, another is not', () async {
+      final captured = File('test/fixtures/simctl_listapps_ios27.txt').readAsStringSync();
+
+      expect(await installedGiven(captured), isTrue);
+      expect(await installedGiven(captured.replaceAll('pleya.verify', 'pleya.other')), isFalse);
     });
 
     test('a list with apps but without this one counts as not installed', () async {
