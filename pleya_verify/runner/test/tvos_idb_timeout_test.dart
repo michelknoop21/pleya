@@ -20,7 +20,8 @@ const wedgeSeconds = 120;
 
 /// A fake idb that is still alive this long after it started has outlived the
 /// one-second ceiling the test sets. Far enough from one second that a busy
-/// machine does not get there, and below the script's default of ten.
+/// machine does not get there, and below the script's default of ten. A
+/// ceiling between one and five seconds is not told apart from one second.
 const idbOutlivedAfterSeconds = 5;
 
 void main() {
@@ -71,13 +72,15 @@ void main() {
   test(
     'a hung idb connect is bounded and cannot fall back to host keyboard input',
     () async {
-      // A watcher beside the wedge marks an idb that is still there after
-      // [idbOutlivedAfterSeconds]. It holds none of the script's pipes.
+      // A watcher beside the wedge looks once, [idbOutlivedAfterSeconds]
+      // after its idb started: it marks an idb that is still there, and
+      // always records that it looked. It holds none of the script's pipes.
       final outlived = File('${binDir.path}/idb-outlived-ceiling');
       writeExecutable(
         'idb',
         '#!/bin/sh\n'
-            '( sleep $idbOutlivedAfterSeconds; kill -0 \$\$ 2>/dev/null && touch "${outlived.path}" ) >/dev/null 2>&1 &\n'
+            '( sleep $idbOutlivedAfterSeconds; kill -0 \$\$ 2>/dev/null && touch "${outlived.path}"; '
+            'touch "${binDir.path}/idb-watched-\$\$" ) >/dev/null 2>&1 &\n'
             'exec sleep $wedgeSeconds\n',
       );
       // Everything the AppleScript route would start leaves a marker. The
@@ -93,6 +96,12 @@ void main() {
       // Both connects ended on the script's own one-second ceiling, not on idb.
       expect(result.error, contains('poging 1: idb connect FAKE-UDID timed out after 1s'));
       expect(result.error, contains('poging 2: idb connect FAKE-UDID timed out after 1s'));
+      // The script is back before the watchers have looked: wait for both.
+      bool bothLooked() => binDir.listSync().where((f) => f.path.contains('idb-watched-')).length >= 2;
+      for (var waited = 0; !bothLooked() && waited < 200; waited++) {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+      expect(bothLooked(), true, reason: 'the watchers beside the two idb connects never reported');
       expect(outlived.existsSync(), false, reason: 'idb was still running $idbOutlivedAfterSeconds s after it started');
       expect(fallback.existsSync(), false, reason: 'doctor went down the AppleScript route');
       final body = jsonDecode(result.output) as Map<String, Object?>;
@@ -106,6 +115,9 @@ void main() {
     writeExecutable('idb', '#!/bin/sh\necho "\$@" >> "${idbCalls.path}"\n[ "\$1" = connect ] && exit 0\nexit 7\n');
     final fallbackMarker = File('${binDir.path}/fallback-called');
     writeExecutable('osascript', '#!/bin/sh\ntouch "${fallbackMarker.path}"\nexit 0\n');
+    // Unfaked, a regression on this route would open the real Simulator.
+    writeExecutable('open', '#!/bin/sh\ntouch "${fallbackMarker.path}"\n');
+    writeExecutable('caffeinate', '#!/bin/sh\ntouch "${fallbackMarker.path}"\n');
 
     final result = await runScript(['key', 'down']);
     expect(result.exitCode, isNot(0));
