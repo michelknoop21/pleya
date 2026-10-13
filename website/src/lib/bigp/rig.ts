@@ -136,6 +136,11 @@ export class BigP implements Ticker {
     this.gesturePose = pose;
     this.gestureUntil = this.t + ms / 1000;
   }
+  /** End a gesture that is still showing: the stance takes over on the next frame. */
+  relax() {
+    this.gesturePose = null;
+    wake();
+  }
   /** Nod: dips and bends toward the content. */
   nod(amp = 1, dur = 520) {
     this.pulses.push({ t0: this.t, dur: dur / 1000, dy: 16 * amp, rot: 2.2 * amp * this.facing });
