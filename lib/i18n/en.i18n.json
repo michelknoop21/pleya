@@ -2604,12 +2604,12 @@
     },
     "examples": {
       "tonight": [
-        "What can I watch tonight?",
-        "Give me a comedy for tonight.",
-        "Find an exciting movie for tonight."
+        "What in my library can I watch tonight?",
+        "Pick a comedy from my library for tonight.",
+        "Find an exciting movie in my library for tonight."
       ],
       "startSeries": [
-        "Which series can I start now?"
+        "Which series in my library can I start tonight?"
       ],
       "forKids": [
         "Do I have something for the kids?"

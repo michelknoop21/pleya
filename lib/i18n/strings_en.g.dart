@@ -7860,12 +7860,12 @@ class TranslationsAssistantExamplesEn {
 
 	// Translations
 	List<String> get tonight => [
-		'What can I watch tonight?',
-		'Give me a comedy for tonight.',
-		'Find an exciting movie for tonight.',
+		'What in my library can I watch tonight?',
+		'Pick a comedy from my library for tonight.',
+		'Find an exciting movie in my library for tonight.',
 	];
 	List<String> get startSeries => [
-		'Which series can I start now?',
+		'Which series in my library can I start tonight?',
 	];
 	List<String> get forKids => [
 		'Do I have something for the kids?',
@@ -11805,10 +11805,10 @@ extension on Translations {
 			'assistant.idle.status' => ({required Object servers}) => 'Ready for your question · ${servers}',
 			'assistant.idle.ask' => 'Ask Big P',
 			'assistant.idle.examplesHeader' => 'For example',
-			'assistant.examples.tonight.0' => 'What can I watch tonight?',
-			'assistant.examples.tonight.1' => 'Give me a comedy for tonight.',
-			'assistant.examples.tonight.2' => 'Find an exciting movie for tonight.',
-			'assistant.examples.startSeries.0' => 'Which series can I start now?',
+			'assistant.examples.tonight.0' => 'What in my library can I watch tonight?',
+			'assistant.examples.tonight.1' => 'Pick a comedy from my library for tonight.',
+			'assistant.examples.tonight.2' => 'Find an exciting movie in my library for tonight.',
+			'assistant.examples.startSeries.0' => 'Which series in my library can I start tonight?',
 			'assistant.examples.forKids.0' => 'Do I have something for the kids?',
 			'assistant.examples.unwatched.0' => 'Which films in my library have I not seen yet?',
 			'assistant.examples.unwatched.1' => 'Which movies have sat unwatched in my library for a long time?',

@@ -100,6 +100,10 @@ final _addedElsewhere = RegExp(
 final _unseen = RegExp(
   r"\b(ongezien(?:e)?|ongekeken|onbekeken|(?:nog )?niet (?:heb )?(?:gezien|gekeken|bekeken)|nooit (?:eerder )?(?:gezien|gekeken|bekeken)|nog moet (?:zien|kijken)|unwatched|unseen|not (?:yet )?(?:been )?(?:watched|seen)|(?:haven't|havent|have not|didn't|never) (?:yet )?(?:watched|seen))\b",
 );
+// "What in my library can I watch tonight": a pick from the libraries. Without
+// the library word it is a recommendation, which my_watching may answer from
+// the viewing history; so is a tip asked for, a watchlist or a request.
+final _tonight = RegExp(r'\b(vanavond|vanavonds|deze avond|tonight|this evening)\b');
 final _libraryWord = RegExp(r'\b(bibliothe(?:ek|ken)|librar(?:y|ies)|servers?)\b');
 // How long a title has waited, not how long it runs or when it came out:
 // "oudste" and "longest" alone are runtime or release year.
@@ -163,6 +167,7 @@ class AssistantIntent {
     this.mixedAudience = false,
     this.addedToLibraries = false,
     this.unseenInLibrary = false,
+    this.tonightPick = false,
     this.longestWaiting = false,
     this.longPeriodAsked = false,
     this.live = false,
@@ -193,6 +198,11 @@ class AssistantIntent {
   /// the catalog's unwatched filter, not my_watching's handful of tips. Not
   /// inherited, as [addedToLibraries].
   final bool unseenInLibrary;
+
+  /// The question asks what to watch tonight from the libraries: search_catalog
+  /// (or find_media for a described title), not the viewing history's handful of
+  /// tips or what is popular elsewhere. Not inherited, as [addedToLibraries].
+  final bool tonightPick;
 
   /// ... and wants what has waited the longest: oldest added first.
   final bool longestWaiting;
@@ -263,6 +273,16 @@ class AssistantIntent {
         !others &&
         !everyone &&
         _group.firstMatch(p) == null;
+    final tonightPick =
+        _tonight.hasMatch(p) &&
+        _libraryWord.hasMatch(p) &&
+        !_tipAsked.hasMatch(p) &&
+        !_addedElsewhere.hasMatch(p) &&
+        !_otherSubject.hasMatch(p) &&
+        !_namedSubject.hasMatch(prompt) &&
+        !others &&
+        !everyone &&
+        _group.firstMatch(p) == null;
     return AssistantIntent(
       group: _group.firstMatch(p)?.group(1),
       words: p,
@@ -270,6 +290,7 @@ class AssistantIntent {
       mixedAudience: readings.length > 1,
       addedToLibraries: _added.hasMatch(p) && !_addedElsewhere.hasMatch(p),
       unseenInLibrary: unseenInLibrary,
+      tonightPick: tonightPick,
       longestWaiting: unseenInLibrary && _longWaiting.hasMatch(p),
       longPeriodAsked: _longPeriod.hasMatch(p),
       live:
@@ -365,6 +386,7 @@ class AssistantIntent {
     mixedAudience: mixedAudience,
     addedToLibraries: addedToLibraries,
     unseenInLibrary: unseenInLibrary,
+    tonightPick: tonightPick,
     longestWaiting: longestWaiting,
     longPeriodAsked: longPeriodAsked,
     live: live,
@@ -397,6 +419,9 @@ class AssistantIntent {
           if (longestWaiting) out['sort'] = 'added_oldest';
         }
         if (kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
+      case 'trending_titles':
+        // Popular elsewhere is not what the libraries hold for tonight.
+        if (tonightPick) return (args: out, error: 'use_search_catalog');
       case 'recommend_together':
         // The cohort query has its own kind: a question for films gets films,
         // whatever the model passed.
@@ -447,6 +472,7 @@ class AssistantIntent {
         if (audience.explicit && audience.value != AssistantAudience.me) return (args: out, error: 'use_watch_stats');
         // Its picks are a few tips, never the library's unwatched list or its size.
         if (unseenInLibrary) return (args: out, error: 'use_search_catalog');
+        if (tonightPick) return (args: out, error: 'use_search_catalog');
         if (kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
     }
     return (args: out, error: null);
@@ -472,6 +498,9 @@ class AssistantIntent {
         'The question is about titles in the libraries the user has not watched yet: use search_catalog with '
             'unwatched=true${longestWaiting ? ' and sort=added_oldest (longest since added first)' : ''}, never '
             'my_watching. Name only the listed titles and give a total only when total_matches is returned.',
+      if (tonightPick)
+        'The question asks what to watch tonight from the libraries: use search_catalog (find_media for a '
+            'described title), never my_watching or trending_titles.',
       if (group != null)
         'The question names a group ("$group"): never answer for the asker alone. '
             'Use recommend_together and let it ask who is meant; do not guess the people.',

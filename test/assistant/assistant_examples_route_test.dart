@@ -70,6 +70,11 @@ void main() {
             // The two routes Pleya forces, and only where they belong.
             expect(intent.addedToLibraries, c == AssistantCapability.recentlyAdded, reason: q);
             expect(intent.unseenInLibrary, c == AssistantCapability.unwatched, reason: q);
+            expect(
+              intent.tonightPick,
+              c == AssistantCapability.tonight || c == AssistantCapability.startSeries,
+              reason: q,
+            );
             expect(intent.group != null, c == AssistantCapability.together, reason: q);
             expect(assistantNeedsLibraryDoctorScope(q), c == AssistantCapability.doctor, reason: q);
             // No fence that swaps the tool list, no write to the memory.
@@ -140,6 +145,39 @@ void main() {
         AssistantIntent.fromPrompt('Which films in my library have I not seen yet?').constrain('my_watching', {}).error,
         'use_search_catalog',
       );
+    });
+
+    test('"tonight" in my library asks the libraries: history tips and the popular list are refused', () {
+      for (final q in [
+        'What in my library can I watch tonight?',
+        'Wat uit mijn bibliotheek kan ik vanavond kijken?',
+        'Find an exciting movie in my library for tonight.',
+        'Zoek een spannende film in mijn bibliotheek voor vanavond.',
+      ]) {
+        final intent = AssistantIntent.fromPrompt(q);
+        expect(intent.tonightPick, isTrue, reason: q);
+        expect(intent.constrain('my_watching', {}).error, 'use_search_catalog', reason: q);
+        expect(intent.constrain('trending_titles', {}).error, 'use_search_catalog', reason: q);
+        expect(intent.constrain('search_catalog', {}).error, isNull, reason: q);
+        expect(intent.describe(), contains('search_catalog'), reason: q);
+      }
+    });
+
+    test('negative control: without "tonight" and the library the same tools are not refused', () {
+      for (final q in [
+        'Give me a tip based on what I watched.',
+        'Give me a tip from my library for tonight.',
+        'Zoek een film voor vanavond',
+        'What can I watch tonight?',
+        'Which titles on my Trakt watchlist can I watch here tonight?',
+        'What can I watch with my family tonight?',
+        'What did I watch yesterday evening?',
+      ]) {
+        final intent = AssistantIntent.fromPrompt(q);
+        expect(intent.tonightPick, isFalse, reason: q);
+        expect(intent.constrain('my_watching', {}).error, isNull, reason: q);
+        expect(intent.constrain('trending_titles', {}).error, isNull, reason: q);
+      }
     });
 
     test('"what is everyone watching" reads as household viewing, not as what is popular', () {

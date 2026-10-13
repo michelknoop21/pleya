@@ -2604,12 +2604,12 @@
     },
     "examples": {
       "tonight": [
-        "Wat kan ik vanavond kijken?",
-        "Geef me een komedie voor vanavond.",
-        "Zoek een spannende film voor vanavond."
+        "Wat uit mijn bibliotheek kan ik vanavond kijken?",
+        "Kies een komedie uit mijn bibliotheek voor vanavond.",
+        "Zoek een spannende film in mijn bibliotheek voor vanavond."
       ],
       "startSeries": [
-        "Welke serie kan ik nu beginnen?"
+        "Welke serie in mijn bibliotheek kan ik vanavond beginnen?"
       ],
       "forKids": [
         "Heb ik iets voor de kinderen?"
