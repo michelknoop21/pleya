@@ -22,10 +22,12 @@ Automatische TestFlight-uploads voor iOS, tvOS en macOS naar interne testers
   zodat builds nooit de 90-dagen TestFlight-limiet halen.
 - Log: `~/Library/Logs/pleya-testflight.log`
 
-De iOS-beta bevat Big P standaard, ook zonder `PLEYA_ASSISTANT_ENABLED` in de omgeving.
-Een expliciete `PLEYA_ASSISTANT_ENABLED=false` houdt de rollout-stop beschikbaar.
-Dit verandert geen serverrechten of accountcontracten; gewone Flutter-builds en de
-andere platformlanes behouden hun bestaande rolloutgedrag.
+De iOS- en tvOS-beta bevatten Big P standaard, ook zonder `PLEYA_ASSISTANT_ENABLED` in de
+omgeving. Een expliciete `PLEYA_ASSISTANT_ENABLED=false` houdt de rollout-stop beschikbaar.
+Voor tvOS staat die standaard in `tvos/scripts/xcode_appletv.sh`; tot en met build 360 stond
+hij daar op `false`, en de lane `tvos_beta` exporteert niets, dus een Apple TV-build uit de
+lane kreeg geen Big P. Dit verandert geen serverrechten of accountcontracten; gewone
+Flutter-builds en de macOS-lane behouden hun bestaande rolloutgedrag.
 
 ## Wat een tester in TestFlight leest
 
