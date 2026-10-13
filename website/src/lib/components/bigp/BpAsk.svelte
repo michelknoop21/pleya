@@ -24,12 +24,15 @@
   let said = $state('');
   let timers: ReturnType<typeof setTimeout>[] = [];
   let stopTalking = () => {};
+  // Counts the questions asked, so work a pose is still loading for can tell it has been overtaken.
+  let run = 0;
   let sheet = $state<HTMLElement>();
   let stage = $state<HTMLElement>();
 
   const next = $derived(phase === 'answer' && active ? followUps(active) : []);
 
   function clear() {
+    run++;
     timers.forEach(clearTimeout);
     timers = [];
     stopTalking();
@@ -49,7 +52,8 @@
     sheet.scrollIntoView({ block: cut ? 'start' : 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
   }
 
-  // A pressed chip leaves the page with the state it belonged to: hand keyboard focus on.
+  // A pressed chip leaves the page with the state it belonged to: hand keyboard focus on. It
+  // goes to the reply, so the next Tab reaches New and the follow-ups before the bar.
   const focus = (sel: string) => tick().then(() => stage?.querySelector<HTMLElement>(sel)?.focus({ preventScroll: true }));
 
   function reset() {
@@ -70,7 +74,7 @@
     said = '';
     bigp?.set('listening');
     tick().then(reveal);
-    if (stage?.contains(document.activeElement) && !document.activeElement?.classList.contains('bar')) focus('.bar');
+    if (stage?.contains(document.activeElement) && !document.activeElement?.classList.contains('bar')) focus('.reply');
     const per = quick ? 0 : Math.min(26, 1100 / a.q.length);
     typed = quick ? a.q : '';
     for (let i = 1; i <= a.q.length && !quick; i++) timers.push(setTimeout(() => (typed = a.q.slice(0, i)), i * per));
@@ -88,6 +92,7 @@
         tick().then(reveal);
         if (!bigp) return void (said = a.line);
         const b = bigp;
+        const mine = run;
         b.set('success');
         b.hop(70, 0.55);
         stopTalking = say(b, a.line, (t) => (said = t), () => b.settle(1400));
@@ -96,7 +101,7 @@
             // Beside the balloon he points at the first card; under it he presents with an open hand.
             const first = sheet?.querySelector('.match, .rows');
             if (wide() && first) b.aimAt(first);
-            else b.ensure('vinger_presenteren').then(() => b.gesture('vinger_presenteren', 2600), () => {});
+            else b.ensure('vinger_presenteren').then(() => mine === run && b.gesture('vinger_presenteren', 2600), () => {});
           }, 1300),
         );
       }, heard + (quick ? 350 : 1500)),
@@ -124,7 +129,7 @@
             {/each}
           </ul>
         {/if}
-        <div aria-live="polite">
+        <div class="reply" aria-live="polite" tabindex="-1">
           {#if active && phase === 'listening'}
             <p class="status"><i aria-hidden="true"></i>Listening…</p>
             <p class="hello">Say your question, or type it.</p>
@@ -206,6 +211,8 @@
   .new { flex: none; min-height: 44px; padding: 0.4rem 1rem; border-radius: 999px; background: var(--pill); color: var(--muted); font-size: 0.9rem; transition: background-color 0.4s var(--ease); }
   .new:hover { background: rgba(255, 255, 255, 0.2); color: var(--ink); }
 
+  /* Focus only lands here from script, as the place to tab on from. */
+  .reply:focus { outline: none; }
   .status { display: flex; align-items: center; gap: 0.55rem; margin-bottom: 0.5rem; color: var(--muted); }
   .status i { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: #3dd68c; }
   .top { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.9rem; }
