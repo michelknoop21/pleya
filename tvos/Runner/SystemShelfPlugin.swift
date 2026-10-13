@@ -84,8 +84,8 @@ import TVServices
     /// Under `Library/Caches` of the group container, not in its root. On an
     /// Apple TV the root refused the folder with EPERM on every sync (build
     /// 360, log i8tj0) although app and extension carry the app group; the
-    /// simulator does not enforce this. tvOS may empty Caches: the Dart side
-    /// then fetches a missing image again.
+    /// simulator does not enforce this. tvOS may empty Caches: the extension
+    /// skips a tile whose file is gone, and the next sync fetches it again.
     private static var imageDirectoryURL: URL? {
       FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier)?
         .appendingPathComponent("Library/Caches/TopShelfImages", isDirectory: true)

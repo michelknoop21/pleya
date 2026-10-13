@@ -4685,7 +4685,7 @@ Gemeten:
 
 Fix:
 
-- De beelden gaan naar `Library/Caches/TopShelfImages` in de groepscontainer. Dat tvOS dat deel wel laat beschrijven en dat de extensie er kan lezen, volgt uit berichten op het Apple-ontwikkelaarsforum en is niet op dit toestel bewezen.
+- De beelden gaan naar `Library/Caches/TopShelfImages` in de groepscontainer. Dat tvOS dat deel wel laat beschrijven, en dat het systeem de beelden daar kan laden voor de Top Shelf, volgt uit berichten op het Apple-ontwikkelaarsforum en is niet op dit toestel bewezen. tvOS mag die map legen terwijl de app niet draait: de extensie slaat een tegel over waarvan het bestand weg is, en zonder tegels valt de Top Shelf terug op de rij tot de volgende sync.
 - Een geweigerde map breekt de sync niet meer af: de rij Verder kijken wordt geschreven zonder carrousel, en de weigering staat één keer per run als waarschuwing in het log.
 
 Open op hardware, na de volgende build: geen `Failed to sync system shelf` meer in het log; de Top Shelf toont de carrousel; staat er `Top Shelf artwork folder unavailable`, dan is ook `Library/Caches` geweigerd en toont de Top Shelf alleen de rij. Bijvangst, niet opgelost: `tvos/scripts/wire_top_shelf.rb` noemt nog het oude team `G88U5B5783`.
