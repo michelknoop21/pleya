@@ -59,6 +59,9 @@ const kAssistantListedTitles = 12;
 /// grid the UI draws, so a list the model asked for is never cut again.
 const kAssistantMaxListedTitles = 50;
 
+/// A child's list: the facts budget of one ask covers this many titles.
+const _kidsListedTitles = 20;
+
 /// The date a listed title shows: in a window or newest-first its newest
 /// copy's, oldest-first the day it first came in. Null when the listing is
 /// not about added dates, or the title has none.
@@ -81,7 +84,7 @@ final List<AssistantTool> _catalogTools = [
         'for what has been waiting the longest ("al lang ongezien", "oldest unwatched") add sort=added_oldest: '
         'time since the title was added, never its release year; results carry added_at. '
         'count is what is listed and drawn as cards: name only those titles. A list is 12 titles unless limit (up to 50) '
-        'says more; for "more" or "the next ones" repeat the query with offset set to the titles already listed. total_matches is the whole query and is '
+        'says more; for "more" or "the next ones" repeat the same query (not with sort random) with offset set to next_offset. total_matches is the whole query and is '
         'absent when unknown; with more_matches say "at least matches_at_least", never a total. '
         'seen_before counts films left out because this profile\'s own watch history has them as finished. '
         'Joint unseen uses recommend_together. Returns a task-local query_id; save only if can_become_home_row. '
@@ -106,14 +109,25 @@ final List<AssistantTool> _catalogTools = [
     run: (ctx, _, args) async {
       if (ctx.catalog == null) throw const AssistantToolError('catalog_unavailable');
       final age = await _kidsAge(ctx);
-      final query = await _search(ctx, args);
+      // The kids gate looks up facts for every listed title, which is bounded
+      // per ask: a child's list stays within that bound.
+      final asked = age == null
+          ? args
+          : {
+              ...args,
+              'limit': switch (_int(args, 'limit', 1, kAssistantMaxListedTitles)) {
+                final n? when n < _kidsListedTitles => n,
+                _ => _kidsListedTitles,
+              },
+            };
+      final query = await _search(ctx, asked);
       final queries = _catalogQueries[ctx] ??= {};
       final queryId = 'q${queries.length + 1}';
       queries[queryId] = query;
       final results = <Map<String, Object?>>[];
       final gated = await _gateTitles(
         ctx,
-        query.groups.take(_int(args, 'limit', 1, kAssistantMaxListedTitles) ?? kAssistantListedTitles).toList(),
+        query.groups,
         (g) => _itemRef(g.representativeSource.item.copyWith(serverId: g.representativeSource.serverId.value)),
         age,
       );
@@ -165,8 +179,12 @@ final List<AssistantTool> _catalogTools = [
         if (query.addedWithinDays != null) ...{
           'window_days': query.addedWithinDays,
           if (age == null && query.addedUnknown > 0) 'added_unknown': query.addedUnknown,
-          if (age != null && query.totalMatches != null && query.totalMatches! > entries.length) 'sampled': true,
+          if (age != null && query.totalMatches != null && query.totalMatches! > query.offset + entries.length)
+            'sampled': true,
         },
+        // The next page of this query; absent when the read ends here, and then
+        // more_matches says the library has more than was read.
+        if (query.nextOffset case final next?) 'next_offset': next,
         'can_become_home_row': query.row != null,
         if (query.row == null) 'home_row_unavailable_reason': query.rowUnavailableReason,
         if (query.coverage != null) 'coverage': query.coverage,

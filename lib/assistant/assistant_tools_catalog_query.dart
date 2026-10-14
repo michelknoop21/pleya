@@ -22,8 +22,15 @@ class _CatalogQuery {
     this.matchesRead = 0,
     this.addedOrder,
     this.seenElsewhere = 0,
+    this.offset = 0,
+    this.nextOffset,
   });
   final List<UnifiedMediaGroup> groups;
+
+  /// Where this page starts, and where the next one does: null when the read
+  /// ends here. Counted before the kids gate, so "more" never repeats a group.
+  final int offset;
+  final int? nextOffset;
 
   /// The query as a Home row, or null when it uses something a row cannot
   /// hold: free text, a person, a minimum rating, rating or random order, or
@@ -218,9 +225,11 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   if (sort is! String || !{..._rowSorts.keys, 'rating', 'random'}.contains(sort)) {
     throw const AssistantToolError('invalid_sort');
   }
-  final limit = _int(args, 'limit', 1, kAssistantMaxListedTitles) ?? 20;
+  final limit = _int(args, 'limit', 1, kAssistantMaxListedTitles) ?? kAssistantListedTitles;
   // "Show more": the titles after the ones an earlier call listed.
   final offset = _int(args, 'offset', 0, 200) ?? 0;
+  // A random order is a new shuffle on every call: a later page would repeat.
+  if (offset > 0 && args['sort'] == 'random') throw const AssistantToolError('offset_needs_stable_sort');
   final openYears = (yearFrom == null) != (yearTo == null);
   final rowShaped =
       text == null &&
@@ -353,11 +362,15 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     return _CatalogQuery(
       groups.skip(offset).take(limit).toList(),
       // A Home row cannot repeat the profile's own history filter.
-      rowShaped && kind != null && seenElsewhere == 0 ? row : null,
+      rowShaped && kind != null && seenElsewhere == 0 && offset == 0 ? row : null,
       partial: partial,
+      offset: offset,
+      nextOffset: offset + limit < groups.length ? offset + limit : null,
       sampled: sampled || windowCapped,
       serversLeftOut: leftOut,
-      rowUnavailableReason: seenElsewhere > 0
+      rowUnavailableReason: offset > 0
+          ? 'A later page of a list cannot be a Home row; repeat the query without offset.'
+          : seenElsewhere > 0
           ? 'Titles already in this profile\'s watch history are left out, which a Home row cannot repeat.'
           : unavailableReason,
       coverage: coverage,
@@ -454,6 +467,8 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     kept,
     null,
     partial: partial,
+    offset: offset,
+    nextOffset: offset + limit < groups.length ? offset + limit : null,
     sampled: coverage != null,
     rowUnavailableReason: unavailableReason,
     coverage: coverage,

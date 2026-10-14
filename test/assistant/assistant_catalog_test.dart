@@ -348,11 +348,20 @@ void main() {
       expect(first.data['count'], 30);
       expect((first.data['results']! as List), hasLength(30));
       expect((first.display! as AssistantMediaGrid).entries, hasLength(30));
-      final next = await search(ctx, {'kind': 'movie', 'sort': 'title', 'limit': 5, 'offset': 30});
+      final next = await search(ctx, {'kind': 'movie', 'sort': 'title', 'limit': 5, 'offset': 35});
       final titles = [for (final r in next['results']! as List) (r as Map)['title']];
       final firstTitles = [for (final r in first.data['results']! as List) (r as Map)['title']];
       expect(titles, hasLength(5));
       expect(titles.toSet().intersection(firstTitles.toSet()), isEmpty);
+      // The page after the first says where it goes on, the last one says nothing.
+      expect(first.data['next_offset'], 30);
+      expect(next.containsKey('next_offset'), isFalse);
+      // A later page is no Home row, and a random order cannot be paged.
+      expect(next['can_become_home_row'], isFalse);
+      await expectLater(
+        _tool('search_catalog').run(ctx, null, {'kind': 'movie', 'sort': 'random', 'offset': 5}),
+        throwsA(isA<AssistantToolError>()),
+      );
     });
 
     test('text search: a server at its search limit gives a floor, not a total', () async {

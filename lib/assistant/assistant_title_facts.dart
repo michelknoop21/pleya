@@ -227,7 +227,7 @@ class TitleFactsService {
     String? Function()? tmdbBase,
     bool Function()? online,
     String Function()? language,
-    this.budget = 20,
+    this.budget = 60,
     this.traktClientId = TraktConstants.clientId,
     http.Client? httpClient,
   }) : tmdbKey = tmdbKey ?? (() => null),
