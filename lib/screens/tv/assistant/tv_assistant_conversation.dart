@@ -11,6 +11,7 @@ import '../../../utils/tv_hig.dart';
 import '../../../widgets/big_p/assistant/big_p_answer.dart';
 import '../../../widgets/big_p/assistant/big_p_labels.dart';
 import '../../../widgets/big_p/assistant/big_p_results.dart';
+import 'tv_assistant_lead_slack.dart';
 import '../../../widgets/big_p/assistant/big_p_suggestions.dart';
 import '../../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import 'tv_assistant_card_sheets.dart';
@@ -249,7 +250,7 @@ class TvAssistantConversation extends StatelessWidget {
         );
     final answer = c.state == AssistantSurfaceState.result ? assistantHeadline(c) : '';
     final headline = cards && answer.isNotEmpty ? assistantCardsLead(controller) : answer;
-    final head = <Widget>[
+    List<Widget> head(int readLines) => <Widget>[
       if (c.state == AssistantSurfaceState.result) ...[
         if (c.prompt case final prompt?) ...[BigPQuestion(prompt: prompt, maxLines: compact ? 1 : 3), gap],
         if (headline.isNotEmpty) ...[
@@ -261,7 +262,7 @@ class TvAssistantConversation extends StatelessWidget {
               child: BigPAnswer(text: headline, style: headlineStyle),
             )
           else
-            BigPAnswer(text: headline, style: headlineStyle, bodyLines: cards ? 0 : 3),
+            BigPAnswer(text: headline, style: headlineStyle, bodyLines: cards ? 0 : 3, readLines: readLines),
           // Above cards only the lead shows; Pleya's own line, which the
           // controller put in place of the answer, stays in view under it.
           if (cards && c.ageFilterNotice) ...[
@@ -284,30 +285,46 @@ class TvAssistantConversation extends StatelessWidget {
     // While working, anchored at the bottom: the newest stays in view. A
     // result opens at its first card.
     final result = c.state == AssistantSurfaceState.result;
-    return column([
-      ...head,
-      // Nothing under the answer: the answer keeps the whole height.
-      if (children.isNotEmpty || c.state != AssistantSurfaceState.result)
-        Flexible(
-          // Nothing in it to focus: the list scrolls on Up and Down itself.
-          child: result && !hasChoices
-              ? BigPReadableList(child: column(children))
-              : BigPEdgeFade(
-                  // A new list per stand: the working list's offset does not carry.
-                  key: ValueKey(result),
-                  builder: (controller) =>
-                      SingleChildScrollView(controller: controller, reverse: !result, child: column(children)),
-                ),
-        ),
-      // Under the scrolling part: always in view, whatever the results do.
-      if (c.state == AssistantSurfaceState.result) ...[
-        // No cards to walk through: the follow-ups stand above the buttons,
-        // in view, and the list above them needs no focus to be read.
-        if (!_followUpsInList)
-          if (_followUps(pt) case final followUps?) ...[followUps, SizedBox(height: 16 * pt)],
-        _resultButtons(pt, ask),
-      ],
-    ]);
+    Widget panel(int readLines, Key? cardsKey, Key? viewportKey) {
+      Widget list(Widget child) => viewportKey == null ? child : KeyedSubtree(key: viewportKey, child: child);
+      final cardColumn = cardsKey == null ? column(children) : KeyedSubtree(key: cardsKey, child: column(children));
+      return column([
+        ...head(readLines),
+        // Nothing under the answer: the answer keeps the whole height.
+        if (children.isNotEmpty || c.state != AssistantSurfaceState.result)
+          Flexible(
+            // Nothing in it to focus: the list scrolls on Up and Down itself.
+            child: list(
+              result && !hasChoices
+                  ? BigPReadableList(child: cardColumn)
+                  : BigPEdgeFade(
+                      // A new list per stand: the working list's offset does not carry.
+                      key: ValueKey(result),
+                      builder: (controller) =>
+                          SingleChildScrollView(controller: controller, reverse: !result, child: cardColumn),
+                    ),
+            ),
+          ),
+        // Under the scrolling part: always in view, whatever the results do.
+        if (c.state == AssistantSurfaceState.result) ...[
+          // No cards to walk through: the follow-ups stand above the buttons,
+          // in view, and the list above them needs no focus to be read.
+          if (!_followUpsInList)
+            if (_followUps(pt) case final followUps?) ...[followUps, SizedBox(height: 16 * pt)],
+          _resultButtons(pt, ask),
+        ],
+      ]);
+    }
+
+    // Above cards a long lead may take a fourth line when the cards keep
+    // their room (tv_assistant_space_test); everywhere else three lines.
+    if (!(cards && result && headline.isNotEmpty && children.isNotEmpty)) {
+      return panel(TvAssistantLeadSlack.base, null, null);
+    }
+    return TvAssistantLeadSlack(
+      lineHeight: bigPRunningLineHeight(pt),
+      builder: (readLines, cardsKey, viewportKey) => panel(readLines, cardsKey, viewportKey),
+    );
   }
 
   /// Vraag Big P, Nieuw gesprek and Klaar. "Nieuw gesprek" (mockup 40 A) sits
