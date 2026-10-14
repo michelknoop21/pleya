@@ -15,6 +15,7 @@ import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/screens/tv/assistant/tv_assistant_lead_slack.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_screen.dart';
 import 'package:pleya/services/apple_tv_native_text_entry.dart';
 import 'package:pleya/services/multi_server_manager.dart';
@@ -148,6 +149,26 @@ void main() {
       expect(grown.lead, closeTo(shown.lead * 4 / 3, 0.5));
     });
   }
+
+  testWidgets('scrolling the cards does not change the lead: three lines stay three', (tester) async {
+    final before = await pump(tester, const Size(1920, 935), inLibrary: true, answer: longLead);
+    final scroll = tester
+        .widget<SingleChildScrollView>(
+          find.ancestor(of: find.byType(BigPMatchCard).first, matching: find.byType(SingleChildScrollView)).first,
+        )
+        .controller!;
+    scroll.jumpTo(scroll.position.maxScrollExtent);
+    await tester.pump();
+    // Any rebuild of the panel (a controller update) measures again.
+    for (var i = 0; i < 2; i++) {
+      tester.element(find.byType(TvAssistantLeadSlack)).markNeedsBuild();
+      await tester.pump();
+    }
+    await tester.pump(const Duration(milliseconds: 300));
+    final body = find.byKey(const ValueKey('assistant.answer.body'));
+    final lead = tester.getSize(find.ancestor(of: body, matching: find.byType(SingleChildScrollView)).first).height;
+    expect(lead, closeTo(before.lead, 0.5));
+  });
 
   testWidgets('long lead keeps the fifth card of eight at 1920x935', (tester) async {
     final shown = await pump(tester, const Size(1920, 935), inLibrary: true, answer: longLead);

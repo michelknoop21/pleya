@@ -212,8 +212,17 @@ class _BigPAnswerState extends State<BigPAnswer> {
       // lines high, the whole sentence reachable by scrolling, nothing cut.
       return LayoutBuilder(
         builder: (context, box) {
-          if (_fitsLines(context, lead, widget.style, 2, box.maxWidth)) {
-            return Text(lead, key: const ValueKey('assistant.answer'), maxLines: 2, style: widget.style);
+          // Measured as Text will draw it: with the font the theme supplies.
+          final drawn = DefaultTextStyle.of(context).style.merge(widget.style);
+          if (_fitsLines(context, lead, drawn, 2, box.maxWidth)) {
+            return Text(
+              lead,
+              key: const ValueKey('assistant.answer'),
+              maxLines: 2,
+              // Never reached when the measure holds; a mark if it does not.
+              overflow: TextOverflow.ellipsis,
+              style: widget.style,
+            );
           }
           return BigPAnswer(
             text: lead,

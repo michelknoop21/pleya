@@ -36,8 +36,11 @@ class _TvAssistantLeadSlackState extends State<TvAssistantLeadSlack> {
   /// when there are fewer. Null while nothing is laid out or no card is there.
   double? _slack() {
     final cards = _cardsKey.currentContext;
+    final column = cards?.findRenderObject();
     final viewport = _viewportKey.currentContext?.findRenderObject();
-    if (cards == null || viewport is! RenderBox || !viewport.hasSize) return null;
+    if (cards == null || column is! RenderBox || !column.hasSize || viewport is! RenderBox || !viewport.hasSize) {
+      return null;
+    }
     final boxes = <RenderBox>[];
     void visit(Element e) {
       if (boxes.length >= 5) return;
@@ -50,9 +53,12 @@ class _TvAssistantLeadSlackState extends State<TvAssistantLeadSlack> {
 
     (cards as Element).visitChildren(visit);
     if (boxes.isEmpty || boxes.any((b) => !b.hasSize || !b.attached)) return null;
-    final bottom = boxes.map((b) => b.localToGlobal(Offset(0, b.size.height)).dy).reduce((a, b) => a > b ? a : b);
-    final viewportBottom = viewport.localToGlobal(Offset(0, viewport.size.height)).dy;
-    return viewportBottom - bottom;
+    // In the column's own coordinates, so a scrolled list measures the same
+    // as one at rest; the column starts at the viewport's top edge.
+    final bottom = boxes
+        .map((b) => b.localToGlobal(Offset(0, b.size.height), ancestor: column).dy)
+        .reduce((a, b) => a > b ? a : b);
+    return viewport.size.height - bottom;
   }
 
   void _measure() {
