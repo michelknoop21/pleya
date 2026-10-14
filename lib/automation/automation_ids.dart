@@ -318,6 +318,10 @@ class AutomationIds {
   /// A control on that card: `[accept]` and `[decline]`.
   static const String assistantMemoryButton = 'assistant.memory.button';
 
+  /// A long lead above the cards, read as a scrolling box of its own: it is
+  /// a focus stop (Up from the first card), Down returns to the cards.
+  static const String assistantAnswer = 'assistant.answer';
+
   /// Big P's answer above the memory card on TV: the card stands under it.
   static const String assistantMemoryAnswer = 'assistant.memory.answer';
 
@@ -858,6 +862,7 @@ class AutomationIds {
     {'id': assistantKidsAgesButton, 'role': 'button', 'instanceable': true},
     {'id': assistantMemory, 'role': 'sheet', 'instanceable': false},
     {'id': assistantMemoryButton, 'role': 'button', 'instanceable': true},
+    {'id': assistantAnswer, 'role': 'region', 'instanceable': false},
     {'id': assistantMemoryAnswer, 'role': 'region', 'instanceable': false},
     {'id': assistantMemoryLink, 'role': 'button', 'instanceable': false},
     {'id': screenMemory, 'role': 'screen', 'instanceable': false},

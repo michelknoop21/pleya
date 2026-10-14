@@ -262,7 +262,13 @@ class TvAssistantConversation extends StatelessWidget {
               child: BigPAnswer(text: headline, style: headlineStyle),
             )
           else
-            BigPAnswer(text: headline, style: headlineStyle, bodyLines: cards ? 0 : 3, readLines: readLines),
+            BigPAnswer(
+              text: headline,
+              style: headlineStyle,
+              bodyLines: cards ? 0 : 3,
+              readLines: readLines,
+              automationId: cards ? AutomationIds.assistantAnswer : null,
+            ),
           // Above cards only the lead shows; Pleya's own line, which the
           // controller put in place of the answer, stays in view under it.
           if (cards && c.ageFilterNotice) ...[
