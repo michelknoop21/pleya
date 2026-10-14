@@ -89,13 +89,9 @@ steps:
   - settle: 500
   - wait_until: {focused: assistant.answer, timeout: 5000}
   - snapshot: 05-down-reads-on
-  # At the end of the text Down leaves the box for the card. Measured on the
-  # tvOS 27 simulator: the first Down after the last scroll is absorbed (the
-  # box stays focused), the next one reaches the card. If that dead press is
-  # ever removed this walk needs one press fewer; do not paper over it here.
-  - press: down
-  - settle: 600
-  - wait_until: {focused: assistant.answer, timeout: 5000}
+  # The text is read to its end by now. Down leaves the box for the card on
+  # the very next press: the last scroll takes the sliver under the final
+  # whole line along, so no press is spent on scrolling it (BP-09).
   - press: down
   - wait_until: {focused: "assistant.match[0]", timeout: 5000}
   - settle: 400
