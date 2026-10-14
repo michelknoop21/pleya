@@ -97,14 +97,14 @@ Nothing user-facing since the last published build.
 ### New
 - **The library screens have a new look.** On iPhone and iPad, Browse, Recommended, Collections
   and Playlists show the artwork of the title in view as a blurred backdrop, and it follows as
-  you scroll. Tapping a title still opens it. The local menu floats over the page. A collection
-  or playlist without its own cover gets one made from its first four titles; a short list is
-  not padded by repeating titles.
+  you scroll. Tapping a title still opens it. On iPad the local menu floats over the page; on
+  iPhone it is a row of its own at the top. A collection or playlist without its own cover gets
+  one made from its first four titles; a short list is not padded by repeating titles.
 
 ### Notes
 - The library look has been checked on the iPhone simulator with test artwork. It has not been
   run on a device with a real library, collection covers from a real server have not been
-  seen yet, and the iPad layout has not been looked at in a simulator run.
+  seen yet, and the iPad layout has only had a limited check.
 - Big P's answers are unchanged on iPhone and iPad in this build.
 
 ### Worth checking
