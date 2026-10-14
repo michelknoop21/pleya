@@ -22,6 +22,7 @@ class BigPAnswer extends StatefulWidget {
     required this.text,
     required this.style,
     this.bodyLines,
+    this.readLines = 3,
     this.lead = true,
     this.focusNode,
   });
@@ -43,6 +44,10 @@ class BigPAnswer extends StatefulWidget {
   /// above cards, which are the answer and need the height.
   final int? bodyLines;
 
+  /// Above cards (zero [bodyLines]): how many lines a lead that is too long
+  /// for a headline gets as running text before it scrolls.
+  final int readLines;
+
   @override
   State<BigPAnswer> createState() => _BigPAnswerState();
 }
@@ -60,8 +65,13 @@ TextStyle _runningStyle(MonoTokens tk, double pt) => TextStyle(
   color: tk.text.withValues(alpha: 0.86),
   fontSize: TvHig.callout * pt,
   fontWeight: FontWeight.w400,
-  height: 1.36,
+  height: _runningHeight,
 );
+
+const _runningHeight = 1.36;
+
+/// What one more line of running text costs at scale [pt].
+double bigPRunningLineHeight(double pt) => TvHig.callout * pt * _runningHeight;
 
 bool _fitsLines(BuildContext context, String text, TextStyle style, int lines, double width) {
   if (!width.isFinite) return true;
@@ -209,7 +219,7 @@ class _BigPAnswerState extends State<BigPAnswer> {
             text: lead,
             style: _runningStyle(tk, pt),
             lead: false,
-            bodyLines: 3,
+            bodyLines: widget.readLines,
             focusNode: widget.focusNode,
           );
         },
