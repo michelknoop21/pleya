@@ -64,18 +64,18 @@ Nothing user-facing since the last published build.
 
 ### Fixed
 - **A long answer from Big P above the title cards is no longer cut off.** One long sentence
-  used to be shown as a large bold heading and stopped after two lines, in the middle of a
-  title. It now reads as ordinary text in a box of three lines, or four when the cards still
-  fit. The whole sentence is there: the box scrolls, and a bar on its edge shows that there
-  is more.
-- **Reading to the end of that text no longer costs an extra press.** On Apple TV the first
-  Down after the last scroll only moved the text by a hair and kept the focus. The last scroll
-  now takes that remainder along, so the next Down leaves the text for the cards.
+  used to be shown as a large bold heading that stopped after two lines with three dots, often
+  in the middle of a sentence. It now reads as ordinary text in a box of three lines, or four
+  when the cards still fit. The whole sentence is there: the box scrolls, and a bar on its
+  edge shows that there is more.
+- **Reading to the end of that text no longer costs an extra press.** The first Down after the
+  last scroll only moved the text by a hair and kept the focus. The last scroll now takes that
+  remainder along, so the next Down leaves the text for the cards.
 
 ### Notes
-- The library look has been checked on the Apple TV and iPhone simulators with test artwork.
-  It has not been run on a device with a real library, and collection covers from a real
-  server have not been seen yet.
+- The library look has been checked on the Apple TV simulator with test artwork. It has not
+  been run on an Apple TV with a real library, and collection covers from a real server have
+  not been seen yet.
 - Big P's long-answer text has been run on the Apple TV simulator only.
 
 ### Worth checking
@@ -84,44 +84,37 @@ Nothing user-facing since the last published build.
   are on, and the image should always be blurred.
 - Open a collection or a playlist that has no cover of its own. It should show up to four of
   its titles as one cover.
-- Ask Big P something with a list as the answer, such as "What is popular right now?". When the
-  answer is long it should read as plain text above the cards without a cut-off line. Press Up from the first card: the text gets the focus and its scroll bar lights up. Down reads on, and when the end is reached the next Down returns to the cards.
+- Ask Big P something that gives a list and starts with a long first sentence, such as "What is
+  popular right now?". The sentence should read as plain text above the cards without a
+  cut-off line. If the first sentence is short, nothing changes.
+- Press Up from the first card: the text gets the focus and its scroll bar lights up. Down
+  reads on, and when the end is reached the next Down returns to the cards.
 
 ## 2.8.1 · build 362 · 14 October 2026 · iPhone and iPad
 
 <!-- commit: 2923cd5cee8c5257ccdaeeb6f63dd5d1573b1f46 -->
 
 ### New
-- **The library screens have a new look.** On iPhone and iPad, Browse, Recommended, Collections and
-  Playlists show the title you have selected as a blurred backdrop, and the backdrop follows
-  the selection. The local menu floats over the page. A collection or playlist without its own
-  cover gets one made from its first four titles; a short list is not padded by repeating
-  titles.
-
-### Fixed
-- **A long answer from Big P above the title cards is no longer cut off.** One long sentence
-  used to be shown as a large bold heading and stopped after two lines, in the middle of a
-  title. It now reads as ordinary text in a box of three lines, or four when the cards still
-  fit. The whole sentence is there: the box scrolls, and a bar on its edge shows that there
-  is more.
-- **Reading to the end of that text no longer costs an extra press.** On Apple TV the first
-  Down after the last scroll only moved the text by a hair and kept the focus. The last scroll
-  now takes that remainder along, so the next Down leaves the text for the cards.
+- **The library screens have a new look.** On iPhone and iPad, Browse, Recommended, Collections
+  and Playlists show the artwork of the title in view as a blurred backdrop, and it follows as
+  you scroll. Tapping a title still opens it. The local menu floats over the page. A collection
+  or playlist without its own cover gets one made from its first four titles; a short list is
+  not padded by repeating titles.
 
 ### Notes
-- The library look has been checked on the Apple TV and iPhone simulators with test artwork.
-  It has not been run on a device with a real library, and collection covers from a real
-  server have not been seen yet.
-- Big P's long-answer text has been run on the Apple TV simulator only.
+- The library look has been checked on the iPhone simulator with test artwork. It has not been
+  run on a device with a real library, collection covers from a real server have not been
+  seen yet, and the iPad layout has not been looked at in a simulator run.
+- Big P's answers are unchanged on iPhone and iPad in this build.
 
 ### Worth checking
 - Nothing in this build has been checked on an iPhone or iPad yet.
-- Open the libraries and move through the titles. The backdrop should change with the title you
-  are on, and the image should always be blurred.
+- Open the libraries and scroll. The backdrop should follow the title in view, and the image
+  should always be blurred.
 - Open a collection or a playlist that has no cover of its own. It should show up to four of
   its titles as one cover.
-- Ask Big P something with a list as the answer, such as "What is popular right now?". When the
-  answer is long it should read as plain text above the cards without a cut-off line. Scroll the text with your finger; the cards stay where they are under it.
+- On an iPad, open the libraries in both orientations and tell us what looks off; that layout
+  is the least checked.
 
 ## 2.8.1 · build 361 · 13 October 2026 · Apple TV
 
