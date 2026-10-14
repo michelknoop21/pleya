@@ -59,7 +59,8 @@ const kAssistantListedTitles = 12;
 /// grid the UI draws, so a list the model asked for is never cut again.
 const kAssistantMaxListedTitles = 50;
 
-/// A child's list: the facts budget of one ask covers this many titles.
+/// A child's list: the facts budget of one ask (80 lookups, up to four a title)
+/// covers this many titles.
 const _kidsListedTitles = 20;
 
 /// The date a listed title shows: in a window or newest-first its newest
@@ -117,6 +118,7 @@ final List<AssistantTool> _catalogTools = [
               ...args,
               'limit': switch (_int(args, 'limit', 1, kAssistantMaxListedTitles)) {
                 final n? when n < _kidsListedTitles => n,
+                null => kAssistantListedTitles,
                 _ => _kidsListedTitles,
               },
             };
