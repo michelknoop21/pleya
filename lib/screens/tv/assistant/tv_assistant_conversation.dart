@@ -328,7 +328,7 @@ class TvAssistantConversation extends StatelessWidget {
       return panel(TvAssistantLeadSlack.base, null, null);
     }
     return TvAssistantLeadSlack(
-      lineHeight: bigPRunningLineHeight(pt),
+      lineHeight: bigPRunningLineHeight(pt, MediaQuery.textScalerOf(context)),
       builder: (readLines, cardsKey, viewportKey) => panel(readLines, cardsKey, viewportKey),
     );
   }

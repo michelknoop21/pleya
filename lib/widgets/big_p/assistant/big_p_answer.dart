@@ -75,8 +75,9 @@ TextStyle _runningStyle(MonoTokens tk, double pt) => TextStyle(
 
 const _runningHeight = 1.36;
 
-/// What one more line of running text costs at scale [pt].
-double bigPRunningLineHeight(double pt) => TvHig.callout * pt * _runningHeight;
+/// What one more line of running text costs at scale [pt] under the system's
+/// [textScaler]: the same line the reading box scrolls by.
+double bigPRunningLineHeight(double pt, TextScaler textScaler) => textScaler.scale(TvHig.callout * pt) * _runningHeight;
 
 bool _fitsLines(BuildContext context, String text, TextStyle style, int lines, double width) {
   if (!width.isFinite) return true;
@@ -130,10 +131,14 @@ class _BigPAnswerState extends State<BigPAnswer> {
     final lines = (position.viewportDimension / _line).floor() - 1;
     final step = _line * (lines < 1 ? 1 : lines);
     // Snapped to a line, so a press during the previous glide still lands on one.
-    final target = (((position.pixels + (up ? -step : step)) / _line).round() * _line).clamp(
+    var target = (((position.pixels + (up ? -step : step)) / _line).round() * _line).clamp(
       0.0,
       position.maxScrollExtent,
     );
+    // Under the last whole line a sliver can be left (line metrics are not
+    // whole numbers). Taken along: scrolled on its own it would be a press
+    // that moves nothing the eye can see, and the focus would not leave.
+    if (!up && position.maxScrollExtent - target < _line * 0.5) target = position.maxScrollExtent;
     if (target == position.pixels) return KeyEventResult.ignored;
     final duration = reduceMotion(context, const Duration(milliseconds: 240));
     if (duration == Duration.zero) {
@@ -167,7 +172,8 @@ class _BigPAnswerState extends State<BigPAnswer> {
         !widget.lead || rest.isEmpty && widget.text.length <= 140 && !_startsWithItem.hasMatch(widget.text)
         ? widget.style
         : _runningStyle(tk, pt);
-    _line = bodyStyle.fontSize! * bodyStyle.height!;
+    // As Text draws a line: the system's text scale is part of it.
+    _line = MediaQuery.textScalerOf(context).scale(bodyStyle.fontSize!) * bodyStyle.height!;
 
     // The box holds whole lines only, so no line is ever cut in half.
     // A cap, not a size: a short answer keeps the panel short.
