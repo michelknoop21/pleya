@@ -7,6 +7,7 @@ import '../../media/media_display_criteria.dart';
 import '../../services/audio_output_decision.dart';
 import '../../services/secure_folder_service.dart';
 import '../../utils/app_logger.dart';
+import '../../utils/platform_detector.dart';
 import '../disc_source.dart';
 import '../models.dart';
 import 'player_base.dart';
@@ -137,6 +138,12 @@ class PlayerNative extends PlayerBase {
       }
       if (!ok) {
         throw Exception('Failed to initialize player');
+      }
+
+      if (PlatformDetector.isAppleTV()) {
+        // Leave headroom for 4K decoder surfaces; explicit user limits are applied later.
+        await invoke('setProperty', {'name': 'demuxer-max-bytes', 'value': '${64 << 20}'});
+        await invoke('setProperty', {'name': 'demuxer-max-back-bytes', 'value': '${16 << 20}'});
       }
 
       // Subscribe to MPV properties before flipping `initialized` so partial

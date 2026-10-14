@@ -10,6 +10,7 @@ import 'package:pleya/mpv/player/platform/player_android.dart';
 import 'package:pleya/mpv/player/player_native.dart';
 import 'package:pleya/services/audio_output_coordinator.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/utils/platform_detector.dart';
 
 import '../test_helpers/prefs.dart';
 
@@ -20,6 +21,68 @@ void main() {
     resetSharedPreferencesForTest();
     SettingsService.resetForTesting();
     await SettingsService.getInstance();
+  });
+
+  group('Apple TV encoded buffer budget', () {
+    setUp(() => TvDetectionService.debugSetAppleTVOverride(true));
+    tearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+
+    Future<void> capture(Future<void> Function(PlayerNative player, List<MethodCall> calls) body) async {
+      final calls = <MethodCall>[];
+      await _withMockChannels(
+        methodChannelName: 'com.pleya/mpv_player',
+        eventChannelName: 'com.pleya/mpv_player/events',
+        methodHandler: (call) async {
+          calls.add(call);
+          return call.method == 'initialize' ? true : null;
+        },
+        testBody: () async {
+          final player = PlayerNative();
+          try {
+            await body(player, calls);
+          } finally {
+            await player.dispose();
+          }
+        },
+      );
+    }
+
+    test('automatic limits are applied before the first file is loaded', () async {
+      await capture((player, calls) async {
+        await player.open(Media('https://example.test/movie.mkv'));
+        for (final entry in {'demuxer-max-bytes': 64 << 20, 'demuxer-max-back-bytes': 16 << 20}.entries) {
+          final index = _setPropertyValueIndex(calls, entry.key, entry.value.toString());
+          expect(index, greaterThanOrEqualTo(0), reason: '${entry.key} must be bounded');
+          expect(index, lessThan(_loadfileCallIndex(calls)), reason: 'before buffering starts');
+        }
+      });
+    });
+
+    test('manual limits survive opening and replacing a title', () async {
+      await capture((player, calls) async {
+        await player.setProperty('demuxer-max-bytes', '${256 << 20}');
+        await player.setProperty('demuxer-max-back-bytes', '${64 << 20}');
+        await player.open(Media('https://example.test/a.mkv'));
+        await player.open(Media('https://example.test/b.mkv'));
+        for (final entry in {'demuxer-max-bytes': 256 << 20, 'demuxer-max-back-bytes': 64 << 20}.entries) {
+          final writes = calls.where((call) => call.method == 'setProperty' && _setPropertyName(call) == entry.key);
+          expect(_setPropertyValue(writes.last), entry.value.toString());
+        }
+      });
+    });
+
+    test('other platforms keep their existing automatic limits', () async {
+      TvDetectionService.debugSetAppleTVOverride(false);
+      await capture((player, calls) async {
+        await player.open(Media('https://example.test/movie.mkv'));
+        expect(
+          calls.where(
+            (call) => call.method == 'setProperty' && _setPropertyName(call)?.startsWith('demuxer-max-') == true,
+          ),
+          isEmpty,
+        );
+      });
+    });
   });
 
   group('player open', () {

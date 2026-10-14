@@ -309,6 +309,27 @@ void main() {
       expect(recording.requests, ['return 2m']);
     });
 
+    testWidgets('resume while playback covers Home does not refresh its hidden content', (tester) async {
+      DiscoverScreen.debugRefreshOnResume = true;
+      addTearDown(() => DiscoverScreen.debugRefreshOnResume = null);
+      final (recording, key) = await pumpRecording(tester);
+      (key.currentState! as TabVisibilityAware).onTabHidden();
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump(kHomeRefreshInterval);
+
+      expect(recording.requests, isEmpty, reason: 'no catalog/artwork reload alongside the returning decoder');
+
+      (key.currentState! as TabVisibilityAware).onTabShown();
+      (key.currentState! as Refreshable).refresh();
+      expect(recording.requests, ['return 2m'], reason: 'returning from playback still refreshes Home');
+    });
+
     testWidgets('resume on a mobile or TV platform asks for the return refresh', (tester) async {
       // The host running the tests is not iOS; the gate is lifted explicitly.
       DiscoverScreen.debugRefreshOnResume = true;

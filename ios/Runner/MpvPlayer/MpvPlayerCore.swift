@@ -4,6 +4,7 @@ import AVFoundation
 #endif
 import QuartzCore
 import UIKit
+import os
 
 /// Core MPV player using AVFoundation sample-buffer rendering for iOS/tvOS.
 class MpvPlayerCore: MpvPlayerCoreBase {
@@ -18,6 +19,11 @@ class MpvPlayerCore: MpvPlayerCoreBase {
   #if os(tvOS)
     private var displayModeSwitchWaiter: DisplayModeSwitchWaiter?
     private var displayModeSwitchWaiterGeneration = 0
+    private var tvIsInactive = false
+    private var tvVideoReadGeneration = 0
+    private var tvSavedVideoTrack: String?
+    private var tvVideoSuspensionPending = false
+    private var tvVideoRestorePending = false
   #endif
 
   var isPipStarting = false
@@ -842,7 +848,121 @@ class MpvPlayerCore: MpvPlayerCoreBase {
     dispose()
   }
 
+  func logMemorySnapshot(_ reason: String) {
+    var info = task_vm_info_data_t()
+    var count = mach_msg_type_number_t(
+      MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+    let result = withUnsafeMutablePointer(to: &info) { pointer in
+      pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+        task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+      }
+    }
+    let footprint = result == KERN_SUCCESS ? "\(info.phys_footprint / 1_048_576)MB" : "unknown"
+    // RSS misses memory charged to the process by the native graphics/decoder path.
+    delegate?.onEvent(
+      name: "log-message",
+      data: [
+        "prefix": "pleya-memory", "level": "warn",
+        "text": "\(reason) footprint=\(footprint) remaining=\(os_proc_available_memory() / 1_048_576)MB",
+      ]
+    )
+  }
+
+  @objc private func memoryWarning() { logMemorySnapshot("memory-pressure") }
+  @objc private func becameActive() {
+    #if os(tvOS)
+      tvIsInactive = false
+      tvVideoReadGeneration += 1
+      restorePausedTvVideo()
+    #endif
+    logMemorySnapshot("became-active")
+  }
+
+  #if os(tvOS)
+    // Screensavers resign active without entering background; paused decoder surfaces need releasing too.
+    @objc private func resignActive() {
+      tvIsInactive = true
+      tvVideoReadGeneration += 1
+      let generation = tvVideoReadGeneration
+      guard isPaused, !isDisposed, !isBackgrounded, !isPipActive, !isPipStarting,
+        tvSavedVideoTrack == nil, !tvVideoRestorePending
+      else { return }
+      getPropertyAsync("vid") { [weak self] result in
+        guard let self, !self.isDisposed, self.tvIsInactive, self.isPaused,
+          !self.isBackgrounded, !self.isPipActive, !self.isPipStarting,
+          generation == self.tvVideoReadGeneration,
+          case .success(let track?) = result, track != "no", track != "0"
+        else { return }
+        self.tvSavedVideoTrack = track
+        self.disableSavedTvVideo()
+      }
+    }
+
+    private func disableSavedTvVideo() {
+      guard !isDisposed, tvSavedVideoTrack != nil, !tvVideoSuspensionPending,
+        !tvVideoRestorePending
+      else { return }
+      tvVideoSuspensionPending = true
+      setPropertyAsync("vid", value: "no") { [weak self] result in
+        guard let self, !self.isDisposed else { return }
+        self.tvVideoSuspensionPending = false
+        switch result {
+        case .success:
+          if self.tvIsInactive || self.isBackgrounded {
+            self.videoLayer?.flushAndRemoveImage()
+            self.logMemorySnapshot("tv-paused-video-released")
+          }
+        case .failure(let error):
+          self.tvSavedVideoTrack = nil
+          Self.log("Failed to release paused TV video: \(error.localizedDescription)")
+        }
+        self.restorePausedTvVideo()
+      }
+    }
+
+    private func restorePausedTvVideo() {
+      guard !tvIsInactive, !isBackgrounded, !isDisposed, !tvVideoSuspensionPending,
+        !tvVideoRestorePending, let track = tvSavedVideoTrack
+      else { return }
+      tvVideoRestorePending = true
+      setPropertyAsync("vid", value: track) { [weak self] result in
+        guard let self, !self.isDisposed else { return }
+        self.tvVideoRestorePending = false
+        switch result {
+        case .success:
+          self.logMemorySnapshot("tv-paused-video-restored")
+          if self.isBackgrounded {
+            self.disableSavedTvVideo()
+          } else {
+            self.tvSavedVideoTrack = nil
+            if self.tvIsInactive {
+              self.resignActive()
+            } else if self.isPaused {
+              self.forceDraw()
+            }
+          }
+        case .failure(let error):
+          Self.log("Failed to restore paused TV video: \(error.localizedDescription)")
+        }
+      }
+    }
+  #endif
+
   private func setupNotifications() {
+    NotificationCenter.default.addObserver(
+      self, selector: #selector(memoryWarning),
+      name: UIApplication.didReceiveMemoryWarningNotification, object: nil
+    )
+    NotificationCenter.default.addObserver(
+      self, selector: #selector(becameActive),
+      name: UIApplication.didBecomeActiveNotification, object: nil
+    )
+    #if os(tvOS)
+      NotificationCenter.default.addObserver(
+        self, selector: #selector(resignActive),
+        name: UIApplication.willResignActiveNotification, object: nil
+      )
+    #endif
     #if os(iOS)
       let scene = window?.windowScene
       NotificationCenter.default.addObserver(
@@ -886,6 +1006,9 @@ class MpvPlayerCore: MpvPlayerCoreBase {
       return
     }
 
+    #if os(tvOS)
+      if tvSavedVideoTrack != nil { return }
+    #endif
     print("[MpvPlayerCore] Entering background - disabling video")
     setProperty("vid", value: "no")
   }
@@ -897,6 +1020,14 @@ class MpvPlayerCore: MpvPlayerCoreBase {
       return
     }
 
+    #if os(tvOS)
+      if tvSavedVideoTrack != nil {
+        tvIsInactive = false
+        tvVideoReadGeneration += 1
+        restorePausedTvVideo()
+        return
+      }
+    #endif
     print("[MpvPlayerCore] Entering foreground - enabling video")
     setProperty("vid", value: "auto")
   }

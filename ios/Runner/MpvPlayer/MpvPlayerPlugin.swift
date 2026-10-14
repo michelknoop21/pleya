@@ -371,6 +371,7 @@ class MpvPlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandler, MpvPluginS
   }
 
   func didSetPauseProperty(value: String) {
+    playerCore?.logMemorySnapshot(value == "yes" ? "paused" : "unpaused")
     pipController?.invalidatePlaybackState()
     if playerCore?.isPipActive == true { syncPipTimebase() }
   }

@@ -693,7 +693,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       // Mobile and Apple TV only (on desktop, "resumed" fires on every window
       // focus gain; the ticker covers desktop). Continue Watching always, the
       // other rows when they are older than the return threshold.
-      if (DiscoverScreen.debugRefreshOnResume ?? (Platform.isIOS || Platform.isAndroid)) {
+      // The player can cover this retained route while its decoder resumes.
+      if (_isTabVisible && (DiscoverScreen.debugRefreshOnResume ?? (Platform.isIOS || Platform.isAndroid))) {
         unawaited(_discover.refreshIfStale(maxAge: kHomeRefreshOnReturn, rescanLocalFolders: true));
       }
     } else if (state == AppLifecycleState.inactive || state == AppLifecycleState.hidden) {

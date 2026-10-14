@@ -60,6 +60,7 @@ abstract class PlayerBase with PlayerStreamControllersMixin implements Player {
   int _lastEmitMs = 0;
   int _lastCacheStateMs = 0;
   int _positionMs = 0;
+  int? _demuxerCacheBytes;
   Duration _timelineOffset = Duration.zero;
   Duration? _timelineDuration;
   int _nextPropId = 0;
@@ -85,7 +86,10 @@ abstract class PlayerBase with PlayerStreamControllersMixin implements Player {
   }
 
   void _forwardToAppLogger(PlayerLog log) {
-    final message = '[$logPrefix:${log.prefix}] ${log.text}'.trimRight();
+    var message = '[$logPrefix:${log.prefix}] ${log.text}'.trimRight();
+    if (log.prefix == 'pleya-memory' && _demuxerCacheBytes != null) {
+      message += ' demux-cache=${_demuxerCacheBytes! ~/ (1 << 20)}MB';
+    }
     switch (log.level) {
       case PlayerLogLevel.fatal:
       case PlayerLogLevel.error:
@@ -101,6 +105,7 @@ abstract class PlayerBase with PlayerStreamControllersMixin implements Player {
       case PlayerLogLevel.none:
         break;
     }
+    if (log.prefix == 'pleya-memory') MemoryLogOutput.flushSync();
   }
 
   void _setupEventListener() {
@@ -336,6 +341,8 @@ abstract class PlayerBase with PlayerStreamControllersMixin implements Player {
         if (parsed is Map) cacheState = parsed;
       } catch (_) {}
     }
+    final cacheBytes = cacheState?['total-bytes'];
+    _demuxerCacheBytes = cacheBytes is num && cacheBytes >= 0 ? cacheBytes.toInt() : null;
     if (cacheState == null) return;
 
     // Extract cache-end for the single buffer duration (replaces demuxer-cache-time)
