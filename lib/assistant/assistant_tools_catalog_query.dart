@@ -218,7 +218,9 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   if (sort is! String || !{..._rowSorts.keys, 'rating', 'random'}.contains(sort)) {
     throw const AssistantToolError('invalid_sort');
   }
-  final limit = _int(args, 'limit', 1, 50) ?? 20;
+  final limit = _int(args, 'limit', 1, kAssistantMaxListedTitles) ?? 20;
+  // "Show more": the titles after the ones an earlier call listed.
+  final offset = _int(args, 'offset', 0, 200) ?? 0;
   final openYears = (yearFrom == null) != (yearTo == null);
   final rowShaped =
       text == null &&
@@ -349,7 +351,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     if (!rowShaped || kind == null) _order(groups, sort);
     final countable = complete && !partial && !sampled && !windowCapped;
     return _CatalogQuery(
-      groups.take(limit).toList(),
+      groups.skip(offset).take(limit).toList(),
       // A Home row cannot repeat the profile's own history filter.
       rowShaped && kind != null && seenElsewhere == 0 ? row : null,
       partial: partial,
@@ -447,7 +449,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   if (cutoff != null) total = groups.length;
   // No sort asked: the servers' relevance order stands.
   if (askedSort != null || addedWithin != null) _order(groups, sort);
-  final kept = groups.take(limit).toList();
+  final kept = groups.skip(offset).take(limit).toList();
   return _CatalogQuery(
     kept,
     null,

@@ -151,8 +151,8 @@ final UnifiedMediaGroup _merged = () {
   );
 }();
 
-/// What search_catalog hands over: fourteen films, two more than a grid
-/// draws; the first one merged across servers.
+/// What search_catalog hands over: fourteen films, more than the default
+/// twelve a call lists; the first one merged across servers.
 final _grid = AssistantMediaGrid([
   (item: _merged.representativeSource.item, group: _merged),
   for (var i = 1; i <= 13; i++)
@@ -404,7 +404,9 @@ void main() {
       await pumpSurface(tester);
       await showDisplay(tester, _grid);
 
-      expect(find.byType(BigPMatchCard), findsNWidgets(12));
+      // The grid draws what the tool listed: a list asked for with a larger
+      // limit is not cut at twelve again (BP-09).
+      expect(find.byType(BigPMatchCard), findsNWidgets(_grid.entries.length));
       expect(focusedMatch(), _grid.entries.first.item.globalKey);
       await press(tester, LogicalKeyboardKey.arrowDown);
       expect(focusedMatch(), _grid.entries[1].item.globalKey, reason: 'the order of the grid');
