@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../automation/automation_node.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
 import '../big_p_scale.dart';
@@ -25,6 +26,7 @@ class BigPAnswer extends StatefulWidget {
     this.readLines = 3,
     this.lead = true,
     this.focusNode,
+    this.automationId,
   });
 
   final String text;
@@ -38,6 +40,9 @@ class BigPAnswer extends StatefulWidget {
   /// The owner's node for the reading stop, when a panel holds more than
   /// one answer and hands the remote from one to the next itself.
   final FocusNode? focusNode;
+
+  /// Automation id of the reading stop, when it has one to show Pleya Verify.
+  final String? automationId;
 
   /// How many lines of running text show at once; null takes the height
   /// the parent leaves. Zero shows the lead alone, in two lines at most:
@@ -230,12 +235,13 @@ class _BigPAnswerState extends State<BigPAnswer> {
             lead: false,
             bodyLines: widget.readLines,
             focusNode: widget.focusNode,
+            automationId: widget.automationId,
           );
         },
       );
     }
 
-    return Focus(
+    final reading = Focus(
       focusNode: _node,
       canRequestFocus: _overflows,
       onKeyEvent: _onKey,
@@ -255,6 +261,9 @@ class _BigPAnswerState extends State<BigPAnswer> {
         ],
       ),
     );
+    final id = widget.automationId;
+    if (id == null) return reading;
+    return AutomationNode(id: id, role: 'region', focusNode: _node, child: reading);
   }
 }
 

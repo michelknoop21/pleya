@@ -81,6 +81,31 @@ class OllamaFakeServer {
         } else {
           return _json({'error': 'trending tool not offered'}, status: 400);
         }
+      } else if (prompt == 'Wat is nu populair?') {
+        // BP-09: one card the user can open (Aurora is in the library) under
+        // one long sentence, with no sentence end in its first 140 characters,
+        // longer than four lines of running text on the TV surface: above
+        // cards the lead becomes a reading stop.
+        if (replies.isNotEmpty) {
+          message = {
+            'role': 'assistant',
+            'content':
+                'Op dit moment is er veel belangstelling voor een brede mix van titels, van grote bioscoopfilms en '
+                'langlopende series tot nieuwe uitgaven die net zijn verschenen, en in de lijst hieronder staan er '
+                'acht die deze week het vaakst zijn bekeken, bijgehouden en aan lijsten toegevoegd door kijkers '
+                'over de hele wereld, met een paar verrassende nieuwkomers en enkele vertrouwde favorieten',
+          };
+        } else if (names.contains('find_title')) {
+          message = _call('find-long-lead', 'find_title', {
+            'kind': 'movie',
+            'candidates': [
+              {'title': 'Aurora', 'year': 2021, 'kind': 'movie'},
+            ],
+            'variants': ['Aurora', 'Aurora film'],
+          });
+        } else {
+          return _json({'error': 'search tool not offered'}, status: 400);
+        }
       } else if (prompt == 'Maak gebruiker Robin aan.') {
         // The sensitive path: the model only names the user, Pleya builds the
         // confirmation card and reads the password itself. The server id is
