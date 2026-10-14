@@ -86,4 +86,11 @@ void main() {
     expectNoSliverPress(r.moves, 24 * 1.1);
     expect(r.left, isTrue, reason: 'moves: ${r.moves}');
   });
+
+  test('the line the lead slack asks for is the line the box scrolls by, at any text scale', () {
+    // Codex review of the BP-09 fix: the slack used the unscaled line and
+    // granted a fourth line the cards could not spare, then took it back.
+    expect(bigPRunningLineHeight(1, TextScaler.noScaling), closeTo(31 * 1.36, 0.001));
+    expect(bigPRunningLineHeight(1, const TextScaler.linear(1.25)), closeTo(31 * 1.25 * 1.36, 0.001));
+  });
 }

@@ -75,8 +75,9 @@ TextStyle _runningStyle(MonoTokens tk, double pt) => TextStyle(
 
 const _runningHeight = 1.36;
 
-/// What one more line of running text costs at scale [pt].
-double bigPRunningLineHeight(double pt) => TvHig.callout * pt * _runningHeight;
+/// What one more line of running text costs at scale [pt] under the system's
+/// [textScaler]: the same line the reading box scrolls by.
+double bigPRunningLineHeight(double pt, TextScaler textScaler) => textScaler.scale(TvHig.callout * pt) * _runningHeight;
 
 bool _fitsLines(BuildContext context, String text, TextStyle style, int lines, double width) {
   if (!width.isFinite) return true;
