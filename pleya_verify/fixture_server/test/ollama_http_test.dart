@@ -48,6 +48,32 @@ void main() {
     return (jsonDecode(response.body)['choices'][0]['message'] as Map).cast<String, dynamic>();
   }
 
+  for (final prompt in [
+    'Controleer mijn bibliotheek op ontbrekende afleveringen.',
+    'Controleer mijn bibliotheek op dubbele films.',
+  ]) {
+    test('library diagnosis fixture calls the read tool then closes: $prompt', () async {
+      final first = await chat(prompt, ['diagnose_library']);
+      final call = (first['tool_calls'] as List).single['function'] as Map;
+      expect(call['name'], 'diagnose_library');
+      expect(jsonDecode(call['arguments'] as String), isEmpty);
+      final last = await chat(
+        prompt,
+        ['diagnose_library'],
+        replies: [
+          {'role': 'tool', 'tool_call_id': 'diagnose-library', 'content': '{}'},
+        ],
+      );
+      expect(last['content'], 'Klaar.');
+    });
+  }
+  test('unavailable server reference reaches the app failure path without a real server', () async {
+    final first = await chat('Controleer de bibliotheek op een niet-beschikbare server.', ['find_media']);
+    final call = (first['tool_calls'] as List).single['function'] as Map;
+    expect(call['name'], 'find_media');
+    expect(jsonDecode(call['arguments'] as String)['server_id'], 'unavailable');
+  });
+
   test('create_user is called with the server id the offered tool allows, never a password', () async {
     final response = await post('/v1/chat/completions', {
       'model': 'pleya-verify',

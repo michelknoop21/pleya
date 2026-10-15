@@ -151,7 +151,8 @@ extension _AssistantExecute on AssistantRun {
       // fit the question is refused, so the model cannot widen the audience.
       final fixed = _intent.constrain(tool.name, decoded);
       if (fixed.error case final code?) return {'error': code};
-      args = fixed.args;
+      final kind = tool.name == 'diagnose_library' ? assistantLibraryDoctorKind(_prompt) : null;
+      args = kind == null ? fixed.args : {...fixed.args, 'kind': kind.name};
     } on FormatException {
       return {'error': 'invalid_arguments'};
     }

@@ -251,7 +251,12 @@ class BigPMobileConversation extends StatelessWidget {
       ],
       if (c.resultIsError || c.actions.isNotEmpty) ...[
         const SizedBox(height: 12),
-        BigPResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
+        BigPResultCard(
+          error: c.resultIsError,
+          actions: c.actions,
+          time: resultTime,
+          failureText: c.tasks.singleOrNull == null ? null : assistantTaskStatusLabel(c.tasks.single).detail,
+        ),
       ],
       if (onOpenMemory case final open? when c.memoryStored) ...[
         const SizedBox(height: 8),

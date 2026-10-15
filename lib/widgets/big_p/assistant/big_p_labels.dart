@@ -232,9 +232,21 @@ String assistantTasksHeadline(List<AssistantTask> tasks) {
       status: s.failed,
       detail: task.modelMissing
           ? t.assistant.ends.modelMissing
-          : task.lastEnd == null
-          ? null
-          : assistantEndLabel(task.lastEnd, task.providerError),
+          : switch (task.error) {
+              'server_unavailable' || 'server_not_available' => t.errors.connectionFailed,
+              'catalog_changed' || 'profile_changed' || 'rights_changed' => t.assistant.ends.sourceChanged,
+              'not_allowed' => t.assistant.ends.permissionDenied,
+              'unknown_visible_library' => t.libraries.noLibrariesFound,
+              'unknown_tool' ||
+              'catalog_unavailable' ||
+              'invalid_arguments' ||
+              'invalid_kind' ||
+              'library_membership_unknown' => t.assistant.ends.operationUnavailable,
+              'diagnosis_deadline' => t.common.timedOut,
+              _ =>
+                (task.lastEnd == null ? null : assistantEndLabel(task.lastEnd, task.providerError)) ??
+                    t.errors.somethingWentWrongTryAgain,
+            },
     ),
     AssistantTaskStatus.cancelled => (status: s.cancelled, detail: null),
   };

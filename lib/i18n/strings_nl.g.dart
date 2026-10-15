@@ -3614,6 +3614,9 @@ class _TranslationsAssistantEndsNl extends TranslationsAssistantEndsEn {
 	@override String get providerBadResponse => 'De AI-provider gaf een onverwacht antwoord.';
 	@override String get nothingChanged => 'Er is niets veranderd.';
 	@override String get modelMissing => 'Het gekozen model is er niet meer, kies een ander in Big P instellen.';
+	@override String get sourceChanged => 'Je profiel of serververbinding is gewijzigd. Voer de controle opnieuw uit.';
+	@override String get operationUnavailable => 'Deze opdracht kon niet worden uitgevoerd met de beschikbare serverfuncties.';
+	@override String get permissionDenied => 'Je hebt geen toestemming voor deze beheeropdracht op de server.';
 }
 
 // Path: assistant.settings
@@ -6695,6 +6698,9 @@ extension on TranslationsNl {
 			'assistant.ends.providerBadResponse' => 'De AI-provider gaf een onverwacht antwoord.',
 			'assistant.ends.nothingChanged' => 'Er is niets veranderd.',
 			'assistant.ends.modelMissing' => 'Het gekozen model is er niet meer, kies een ander in Big P instellen.',
+			'assistant.ends.sourceChanged' => 'Je profiel of serververbinding is gewijzigd. Voer de controle opnieuw uit.',
+			'assistant.ends.operationUnavailable' => 'Deze opdracht kon niet worden uitgevoerd met de beschikbare serverfuncties.',
+			'assistant.ends.permissionDenied' => 'Je hebt geen toestemming voor deze beheeropdracht op de server.',
 			'assistant.summonHint' => 'Houd Play/Pauze ingedrukt om Big P op te roepen',
 			'assistant.contextAction' => 'Vraag Big P',
 			'assistant.settings.title' => 'Big P instellen',
@@ -6755,11 +6761,11 @@ extension on TranslationsNl {
 			'assistant.settings.updating' => ({required Object status}) => 'Bijwerken: ${status}',
 			'assistant.settings.updateDone' => ({required Object model}) => '${model} is bijgewerkt',
 			'assistant.settings.pullErrorUnknown' => 'Ollama heeft dit model niet meer in de bibliotheek. Kies een ander model.',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.settings.pullErrorDisk' => 'Te weinig schijfruimte op de server om het model bij te werken.',
 			'assistant.settings.pullErrorFailed' => ({required Object reason}) => 'Model bijwerken mislukt: ${reason}',
 			'assistant.settings.webSearch' => 'Zoeken op internet',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.settings.ollamaWebKey' => 'ollama.com-sleutel voor zoeken op internet (optioneel)',
 			'assistant.settings.ollamaWebKeyHelp' => 'Zonder deze sleutel zoekt Big P alleen op Wikipedia.',
 			'assistant.settings.webSearchNoteServer' => 'Staat standaard uit, zodat alles in je eigen netwerk blijft. Zet je hem aan, dan gaat de omschrijving van een titel die je zoekt naar Wikipedia en, met een ollama.com-sleutel, naar de zoekdienst van Ollama.',

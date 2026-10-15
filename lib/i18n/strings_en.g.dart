@@ -8287,6 +8287,15 @@ class TranslationsAssistantEndsEn {
 
 	/// en: 'The chosen model is gone. Pick another one in the Big P settings.'
 	String get modelMissing => 'The chosen model is gone. Pick another one in the Big P settings.';
+
+	/// en: 'Your profile or server connection changed. Run the check again.'
+	String get sourceChanged => 'Your profile or server connection changed. Run the check again.';
+
+	/// en: 'This command could not be carried out with the available server functions.'
+	String get operationUnavailable => 'This command could not be carried out with the available server functions.';
+
+	/// en: 'You do not have permission for this administration command on the server.'
+	String get permissionDenied => 'You do not have permission for this administration command on the server.';
 }
 
 // Path: assistant.settings
@@ -11949,6 +11958,9 @@ extension on Translations {
 			'assistant.ends.providerBadResponse' => 'The AI provider gave an unexpected answer.',
 			'assistant.ends.nothingChanged' => 'Nothing was changed.',
 			'assistant.ends.modelMissing' => 'The chosen model is gone. Pick another one in the Big P settings.',
+			'assistant.ends.sourceChanged' => 'Your profile or server connection changed. Run the check again.',
+			'assistant.ends.operationUnavailable' => 'This command could not be carried out with the available server functions.',
+			'assistant.ends.permissionDenied' => 'You do not have permission for this administration command on the server.',
 			'assistant.summonHint' => 'Hold Play/Pause to call Big P',
 			'assistant.contextAction' => 'Ask Big P',
 			'assistant.settings.title' => 'Set up Big P',
@@ -12009,11 +12021,11 @@ extension on Translations {
 			'assistant.settings.updating' => ({required Object status}) => 'Updating: ${status}',
 			'assistant.settings.updateDone' => ({required Object model}) => '${model} is up to date',
 			'assistant.settings.pullErrorUnknown' => 'Ollama no longer has this model in its library. Pick another model.',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.settings.pullErrorDisk' => 'Not enough disk space on the server to update the model.',
 			'assistant.settings.pullErrorFailed' => ({required Object reason}) => 'Updating the model failed: ${reason}',
 			'assistant.settings.webSearch' => 'Search the web',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.settings.ollamaWebKey' => 'ollama.com key for web search (optional)',
 			'assistant.settings.ollamaWebKeyHelp' => 'Without this key Big P searches Wikipedia only.',
 			'assistant.settings.webSearchNoteServer' => 'Off by default, so everything stays on your network. When on, the description of a title you look for goes to Wikipedia and, with an ollama.com key, to Ollama\'s web search.',

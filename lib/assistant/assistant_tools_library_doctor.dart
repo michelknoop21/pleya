@@ -28,6 +28,18 @@ bool assistantNeedsLibraryDoctorScope(String prompt) {
   ).hasMatch(text);
 }
 
+/// A media kind fixed by the question, never by the model's tool arguments.
+MediaKind? assistantLibraryDoctorKind(String prompt) {
+  final text = prompt.toLowerCase();
+  final shows = RegExp(r'\b(aflevering(?:en)?|episodes?|seizoenen|seizoen|seasons?|series?|shows?)\b').hasMatch(text);
+  final movies = RegExp(r'\b(films?|movies?)\b').hasMatch(text);
+  return shows == movies
+      ? null
+      : shows
+      ? MediaKind.show
+      : MediaKind.movie;
+}
+
 final _doctorProposals = Expando<Map<String, _DoctorProposal>>('libraryDoctorProposals');
 
 final List<AssistantTool> _libraryDoctorTools = [
@@ -37,11 +49,16 @@ final List<AssistantTool> _libraryDoctorTools = [
         'Library Doctor: read this profile\'s visible movie/series libraries. '
         'Report concrete metadata differences, copies/editions, Dutch subtitle evidence and numbered gaps. '
         'Only missing_aired is proved absent; unknown and partial coverage never prove absence. '
+        'Use kind=show for missing episodes and kind=movie for duplicate films; omit kind for mixed checks. '
         'No repairs. Supported actions are proposals requiring a Pleya confirmation. '
         'Use their exact doctor_option_id with the named existing tool; no other administration.',
     risk: AssistantToolRisk.read,
     needsServer: false,
     properties: const {
+      'kind': {
+        'type': 'string',
+        'enum': ['movie', 'show'],
+      },
       'server_id': {'type': 'string'},
       'library_id': {'type': 'string'},
       'item_id': {'type': 'string'},
@@ -77,9 +94,14 @@ class _DoctorScan {
     if (ctx.catalog!.activeProfileId() != ctx.catalog!.profileId) {
       throw const AssistantToolError('profile_changed');
     }
-    if (!_setSame(visible, _doctorVisible(loader)) ||
-        clients.entries.any((e) => !identical(ctx.userClient(e.key), e.value)) ||
-        (expectedRead && !identical(ctx.requests?.client(), seerr))) {
+    if (!_setSame(visible, _doctorVisible(loader))) throw const AssistantToolError('catalog_changed');
+    for (final entry in clients.entries) {
+      final current = ctx.userClient(entry.key);
+      if (!identical(current, entry.value)) {
+        throw AssistantToolError(current == null ? 'server_unavailable' : 'catalog_changed');
+      }
+    }
+    if (expectedRead && !identical(ctx.requests?.client(), seerr)) {
       throw const AssistantToolError('catalog_changed');
     }
   }
@@ -102,7 +124,7 @@ class _DoctorScan {
     try {
       return await read(operation);
     } on AssistantToolError catch (e) {
-      if (const {'cancelled', 'profile_changed', 'catalog_changed'}.contains(e.code)) rethrow;
+      if (const {'cancelled', 'profile_changed', 'catalog_changed', 'server_unavailable'}.contains(e.code)) rethrow;
       reasons.add(e.code);
     } on TimeoutException {
       check();
@@ -187,6 +209,12 @@ Future<AssistantToolOutcome> _diagnoseLibrary(AssistantToolContext ctx, Map<Stri
   final catalog = ctx.catalog ?? (throw const AssistantToolError('catalog_unavailable'));
   final loader = catalog.rowLoader;
   if (loader is! CatalogHomeCustomRowLoader) throw const AssistantToolError('catalog_unavailable');
+  final kind = switch (args['kind']) {
+    null => null,
+    'movie' => MediaKind.movie,
+    'show' => MediaKind.show,
+    _ => throw const AssistantToolError('invalid_kind'),
+  };
   final limit = _int(args, 'limit', 1, 40) ?? 20;
   final server = args.containsKey('server_id') ? _string(args, 'server_id') : null;
   final library = args.containsKey('library_id') ? _string(args, 'library_id') : null;
@@ -194,13 +222,16 @@ Future<AssistantToolOutcome> _diagnoseLibrary(AssistantToolContext ctx, Map<Stri
   if ((library != null || itemId != null) && server == null) throw const AssistantToolError('missing_server_id');
   if (itemId != null) ctx.requireShownItem(ServerId(server!), itemId);
   final roots = [
-    for (final kind in const [MediaKind.movie, MediaKind.show])
-      for (final root in loader.librariesFor(kind))
+    for (final readKind in kind == null ? const [MediaKind.movie, MediaKind.show] : [kind])
+      for (final root in loader.librariesFor(readKind))
         if ((server == null || root.serverId.value == server) && (library == null || root.libraryId == library)) root,
   ];
   if (roots.isEmpty) throw const AssistantToolError('unknown_visible_library');
   final scan = _DoctorScan(ctx, loader, roots);
   scan.check();
+  if (scan.clients.values.every((client) => client == null)) {
+    throw const AssistantToolError('server_unavailable');
+  }
   ctx.libraryDoctorCheck = scan.check;
   if (ctx.cancel != null) unawaited(ctx.cancel!.trigger.then((_) => scan.abort.abort()));
   final facts = <Map<String, Object?>>[];
@@ -793,6 +824,10 @@ String _doctorAnswer(Map<String, Object?> data, String language) {
     dutch
         ? 'Bibliotheekdiagnose: ${(data['items'] as List).length} titels gecontroleerd.'
         : 'Library diagnosis: ${(data['items'] as List).length} titles checked.',
+    if (((data['coverage'] as Map)['limits'] as List).contains('server_unavailable'))
+      dutch
+          ? 'Een server is niet bereikbaar; die bibliotheken zijn niet gecontroleerd.'
+          : 'A server cannot be reached; its libraries were not checked.',
     if (data['partial'] == true)
       dutch
           ? 'Gedeeltelijke dekking; niet gecontroleerde gegevens blijven onbekend.'
@@ -827,14 +862,14 @@ String _doctorAnswer(Map<String, Object?> data, String language) {
       );
     }
   }
-  if ((data['groups'] as List).any((g) => (g as Map)['source_count'] as int > 1)) {
-    lines.add(
-      dutch
-          ? 'Meerdere kopieën/edities gevonden; duplicaten zijn niet bewezen.'
-          : 'Multiple copies/editions found; duplicates are not proved.',
-    );
-  }
   for (final group in (data['groups'] as List).cast<Map>()) {
+    if (group['source_count'] as int > 1) {
+      lines.add(
+        dutch
+            ? '${group['title']}: ${group['source_count']} kopieën/edities; duplicaten zijn niet bewezen.'
+            : '${group['title']}: ${group['source_count']} copies/editions; duplicates are not proved.',
+      );
+    }
     for (final entry in (group['metadata_differences'] as Map).entries) {
       lines.add(
         '${group['title']}: ${dutch ? 'verschillende waarden voor' : 'different values for'} ${_doctorFieldLabel(entry.key as String, dutch)}: ${(entry.value as List).join(' / ')}.',

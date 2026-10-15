@@ -2,6 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/native.dart';
+import 'package:pleya/database/app_database.dart';
+import 'package:pleya/models/plex/plex_config.dart';
+import 'package:pleya/services/plex_client.dart';
+import 'package:pleya/services/plex_api_cache.dart';
+import 'package:pleya/media/media_backend.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
@@ -47,7 +53,7 @@ class _Manager extends MultiServerManager {
 }
 
 class _Server extends find.FakeServer implements LibraryScanClient, ItemMetadataRefreshClient {
-  _Server() : super('s');
+  _Server({String id = 's'}) : super(id);
   final items = <String, MediaItem>{};
   final pages = <String, List<MediaItem>>{};
   final totals = <String, int>{};
@@ -115,6 +121,13 @@ class _Server extends find.FakeServer implements LibraryScanClient, ItemMetadata
 
 // This normalized fixture explicitly stands for the strict adapter contract.
 // Raw count/mapping-loss behavior is tested through the real HTTP client below.
+class _ContractServer extends _Server {
+  _ContractServer(this.type, {String id = 's'}) : super(id: id);
+  final MediaBackend type;
+  @override
+  MediaBackend get backend => type;
+}
+
 class _StrictServer extends _Server implements JellyfinClient {
   @override
   final connection = JellyfinConnection(
@@ -256,6 +269,265 @@ class _Model extends AssistantModelClient {
 }
 
 void main() {
+  for (final backend in MediaBackend.values) {
+    test('reachable ${backend.name} contract reads episode gaps without writes', () async {
+      final fixture = _Fixture();
+      final server = _ContractServer(backend);
+      MediaItem converted(MediaItem item) => MediaItem(
+        id: item.id,
+        backend: backend,
+        kind: item.kind,
+        title: item.title,
+        year: item.year,
+        parentId: item.parentId,
+        parentIndex: item.parentIndex,
+        index: item.index,
+        grandparentId: item.grandparentId,
+        serverId: 's',
+        libraryId: item.kind == MediaKind.movie ? 'films' : 'series',
+        raw: item.raw,
+      );
+      for (final entry in fixture.server.items.entries) {
+        server.items[entry.key] = converted(entry.value);
+      }
+      for (final entry in fixture.server.pages.entries) {
+        server.pages[entry.key] = [for (final item in entry.value) converted(item)];
+      }
+      fixture.manager.debugRegisterClientForTesting(server);
+      final ctx = AssistantToolContext(
+        servers: fixture.manager,
+        catalog: AssistantCatalogServices(
+          rowLoader: CatalogHomeCustomRowLoader(
+            libraries: () => [
+              MediaLibrary(id: 'series', backend: backend, title: 'Series', kind: MediaKind.show, serverId: 's'),
+            ],
+            isServerVisible: fixture.manager.isServerVisible,
+            hiddenLibraryKeys: () => {},
+            clientFor: fixture.manager.getClient,
+          ),
+          profileId: 'p',
+          activeProfileId: () => 'p',
+        ),
+      );
+      final data = (await _tool('diagnose_library').run(ctx, null, {'kind': 'show'}) as AssistantToolResult).data;
+      final season = ((data['items'] as List).single['seasons'] as List).single as Map;
+      expect(season['numbering_gaps'], [2]);
+      expect(season['missing_aired'], isEmpty, reason: 'no external episode proof');
+      expect(server.reads, containsAll(['library:series', 'children:show', 'children:season']));
+      expect(server.writes, isEmpty);
+    });
+  }
+
+  test('real Plex DTO pages produce checked episode gaps through the starter', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    PlexApiCache.initialize(db);
+    final manager = _Manager();
+    addTearDown(() async {
+      manager.dispose();
+      await db.close();
+    });
+    final paths = <String>[];
+    Map<String, Object?> dto(String id, String type, {String? parent, int? index}) => {
+      'ratingKey': id,
+      'type': type,
+      'title': id,
+      'year': 2001,
+      'summary': 'Known',
+      'thumb': '/poster',
+      'librarySectionID': 2,
+      'guid': 'plex://$type/$id',
+      if (parent != null) 'parentRatingKey': parent,
+      if (index != null) 'index': index,
+      if (type == 'episode') ...{'grandparentRatingKey': 'show', 'parentIndex': 1},
+    };
+    final show = dto('show', 'show');
+    final client = PlexClient.forTesting(
+      config: PlexConfig(
+        baseUrl: 'https://plex.test',
+        token: 'test-token',
+        clientIdentifier: 'test',
+        product: 'Pleya',
+        version: 'test',
+      ),
+      serverId: _id,
+      serverName: 'Plex test',
+      httpClient: MockClient((request) async {
+        expect(request.method, 'GET');
+        paths.add(request.url.path);
+        final items = switch (request.url.path) {
+          '/library/sections/2/all' || '/library/metadata/show' => [show],
+          '/library/metadata/show/children' => [dto('season', 'season', parent: 'show', index: 1)],
+          '/library/metadata/season/children' => [
+            dto('e1', 'episode', parent: 'season', index: 1),
+            dto('e3', 'episode', parent: 'season', index: 3),
+          ],
+          _ => throw StateError('Unexpected mocked Plex path: ${request.url.path}'),
+        };
+        return http.Response(
+          jsonEncode({
+            'MediaContainer': {'size': items.length, 'totalSize': items.length, 'offset': 0, 'Metadata': items},
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+    manager.debugRegisterClientForTesting(client);
+    final ctx = AssistantToolContext(
+      servers: manager,
+      catalog: AssistantCatalogServices(
+        rowLoader: CatalogHomeCustomRowLoader(
+          libraries: () => [
+            const MediaLibrary(
+              id: '2',
+              backend: MediaBackend.plex,
+              title: 'Series',
+              kind: MediaKind.show,
+              serverId: 's',
+            ),
+          ],
+          isServerVisible: manager.isServerVisible,
+          hiddenLibraryKeys: () => {},
+          clientFor: manager.getClient,
+        ),
+        profileId: 'p',
+        activeProfileId: () => 'p',
+      ),
+    );
+    final result = await AssistantRun(
+      model: _Model([_reply('diagnose_library'), _reply(null)]),
+      context: ctx,
+      entitlement: _Entitlement(),
+      confirm: (_) async => throw StateError('No writes'),
+      refreshHealth: () async {},
+    ).ask('Controleer mijn bibliotheek op ontbrekende afleveringen.');
+    expect(result.error, isNull);
+    expect(result.text, contains('Nummergaten: 2'));
+    expect(
+      paths,
+      containsAll(['/library/sections/2/all', '/library/metadata/show/children', '/library/metadata/season/children']),
+    );
+    expect(result.actions, isEmpty);
+  });
+
+  test('identical metadata still names each group of copies and its count', () async {
+    final f = _Fixture();
+    final movies = [
+      for (final title in ['Alien', 'Dune'])
+        for (var i = 0; i < 2; i++)
+          _mapped('$title$i', 'Movie').copyWith(title: title, guid: title == 'Alien' ? 'tmdb://348' : 'tmdb://841'),
+    ];
+    f.server.pages['films'] = movies;
+    for (final item in movies) f.server.items[item.id] = item;
+    final result = await AssistantRun(
+      model: _Model([_reply('diagnose_library'), _reply(null)]),
+      context: f.ctx,
+      entitlement: _Entitlement(),
+      confirm: (_) async => null,
+      refreshHealth: () async {},
+    ).ask('Controleer mijn bibliotheek op dubbele films.');
+    expect(result.text, contains('Alien: 2 kopieën/edities'));
+    expect(result.text, contains('Dune: 2 kopieën/edities'));
+    expect(result.text, contains('duplicaten zijn niet bewezen'));
+    expect(f.server.writes, isEmpty);
+  });
+
+  test('one unavailable server preserves checked findings from another server', () async {
+    final f = _Fixture();
+    final offline = _ContractServer(MediaBackend.jellyfin, id: 'offline');
+    f.manager.debugRegisterClientForTesting(offline, online: false);
+    f.libraries.add(find.fakeLib('offline', 'remote-series', kind: MediaKind.show));
+    final result = await AssistantRun(
+      model: _Model([_reply('diagnose_library'), _reply(null)]),
+      context: f.ctx,
+      entitlement: _Entitlement(),
+      confirm: (_) async => null,
+      refreshHealth: () async {},
+    ).ask('Controleer mijn bibliotheek op ontbrekende afleveringen.');
+    expect(result.error, isNull);
+    expect(result.text, contains('Nummergaten: 2'));
+    expect(result.text, contains('Een server is niet bereikbaar'));
+    expect(result.text, contains('Gedeeltelijke dekking'));
+    expect(offline.reads, isEmpty);
+  });
+
+  test('server going offline during hydration invalidates diagnosis evidence', () async {
+    final f = _Fixture();
+    f.server.stall = Completer<void>();
+    final pending = f.diagnose();
+    await pumpEventQueue();
+    f.manager.debugRegisterClientForTesting(f.server, online: false);
+    final rejected = expectLater(
+      pending,
+      throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'server_unavailable')),
+    );
+    f.server.stall!.complete();
+    await rejected;
+    expect(f.server.writes, isEmpty);
+  });
+
+  test('kind binding is conservative for mixed checks and supports singular words', () {
+    expect(assistantLibraryDoctorKind('Controleer deze aflevering'), MediaKind.show);
+    expect(assistantLibraryDoctorKind('Controleer deze serie'), MediaKind.show);
+    expect(assistantLibraryDoctorKind('Check duplicate movies'), MediaKind.movie);
+    expect(assistantLibraryDoctorKind('Controleer films en series'), isNull);
+    expect(assistantLibraryDoctorKind('Controleer de metadata'), isNull);
+  });
+
+  test('missing-episode starter reaches series after a full film library', () async {
+    final f = _Fixture();
+    f.server.pages['films'] = [for (var i = 0; i < 20; i++) f.server.items['movie']!.copyWith(id: 'film$i')];
+    for (final movie in f.server.pages['films']!) f.server.items[movie.id] = movie;
+    final model = _Model([_reply('diagnose_library'), _reply(null)]);
+    final result = await AssistantRun(
+      model: model,
+      context: f.ctx,
+      entitlement: _Entitlement(),
+      confirm: (_) async => throw StateError('Read-only diagnosis'),
+      refreshHealth: () async {},
+    ).ask('Controleer mijn bibliotheek op ontbrekende afleveringen.');
+    expect(result.error, isNull);
+    expect(f.server.reads, contains('library:series'));
+    expect(f.server.reads, isNot(contains('library:films')));
+    expect(result.text, contains('Nummergaten: 2'));
+    expect(f.server.writes, isEmpty);
+  });
+
+  test('duplicate-film starter excludes series even if model asks for shows', () async {
+    final f = _Fixture();
+    final model = _Model([
+      _reply('diagnose_library', {'kind': 'show'}),
+      _reply(null),
+    ]);
+    final result = await AssistantRun(
+      model: model,
+      context: f.ctx,
+      entitlement: _Entitlement(),
+      confirm: (_) async => throw StateError('Read-only diagnosis'),
+      refreshHealth: () async {},
+    ).ask('Controleer mijn bibliotheek op dubbele films.');
+    expect(result.error, isNull);
+    expect(f.server.reads, contains('library:films'));
+    expect(f.server.reads, isNot(contains('library:series')));
+    expect(f.server.writes, isEmpty);
+  });
+
+  test('offline diagnosis returns a concrete reason without asking the model', () async {
+    final f = _Fixture();
+    f.manager.debugRegisterClientForTesting(f.server, online: false);
+    final model = _Model([_reply('diagnose_library'), _reply(null)]);
+    final result = await AssistantRun(
+      model: model,
+      context: f.ctx,
+      entitlement: _Entitlement(),
+      confirm: (_) async => throw StateError('No source is reachable'),
+      refreshHealth: () async {},
+    ).ask('Controleer mijn bibliotheek op ontbrekende afleveringen.');
+    expect(result.error, 'server_unavailable');
+    expect(model.specs, isEmpty);
+    expect(f.server.reads, isEmpty);
+  });
+
   for (final evidence in ['missing_total', 'discarded_row_without_total', 'discarded_row_with_total', 'complete']) {
     test('actual Jellyfin confirmation requires lossless explicit coverage: $evidence', () async {
       final f = _Fixture();
@@ -1017,13 +1289,13 @@ void main() {
     await rejected;
     expect(f.server.writes, isEmpty);
   });
-  test('initial offline source reports partial coverage with unknown facts', () async {
+  test('initial offline source returns an explicit unavailable failure', () async {
     final f = _Fixture();
     f.manager.debugRegisterClientForTesting(f.server, online: false);
-    final data = await f.diagnose();
-    expect(data['partial'], true);
-    expect(data['items'], isEmpty);
-    expect((data['coverage'] as Map)['limits'], contains('server_unavailable'));
+    await expectLater(
+      f.diagnose(),
+      throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'server_unavailable')),
+    );
     expect(f.server.reads, isEmpty);
   });
   test('opaque model IDs are compared exactly without truncation', () async {

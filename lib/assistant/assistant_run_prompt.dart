@@ -64,7 +64,16 @@ extension _AssistantPrompt on AssistantRun {
       'or as one you leave out goes without the marks, and name only as many as were asked.\n'
       '- Only offer what your tools can do. You cannot create accounts, profiles or users.\n'
       '- For "what is popular or trending" use trending_titles; for "something like X" use similar_titles.\n'
-      '$_who$_kids';
+      '$_who$_kids$_doctor';
+
+  String get _doctor =>
+      _ctx.libraryDoctorMode &&
+          !_ctx.kidsMode &&
+          _spoilerQuestion == null &&
+          _available().keys.any((tool) => tool.name == 'diagnose_library')
+      ? '\n- For a library diagnosis use diagnose_library first. It only reads data: '
+            'do not substitute a scan or metadata refresh. Report its checked evidence and coverage.'
+      : '';
 
   /// On a children's profile only. Pleya filters itself; the model is told
   /// so it does not ask for ages or name a title from its own memory.
