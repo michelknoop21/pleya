@@ -51,13 +51,6 @@ class AssistantMediaGrid extends AssistantDisplay {
       e.group == null ? e.item.globalKey : buildGlobalKey(e.group!.representativeSource.serverId, e.item.id);
 }
 
-/// Titles one call lists by default; an explicit limit can request more.
-const kAssistantListedTitles = 12;
-
-/// The most titles one call may list: the `limit` bound, and the cap of every
-/// grid the UI draws, so a list the model asked for is never cut again.
-const kAssistantMaxListedTitles = 50;
-
 /// A child's list: the facts budget of one ask (80 lookups, up to four a title)
 /// covers this many titles.
 const _kidsListedTitles = 20;
@@ -83,8 +76,11 @@ final List<AssistantTool> _catalogTools = [
         'What the user has not watched yet in their library, also "my library", is unwatched=true here, not my_watching; '
         'for what has been waiting the longest ("al lang ongezien", "oldest unwatched") add sort=added_oldest: '
         'time since the title was added, never its release year; results carry added_at. '
-        'count is what is listed and drawn as cards: name only those titles. A list is 12 titles unless limit (up to 50) '
-        'says more; for "more" or "the next ones" repeat the same query (not with sort random) with offset set to next_offset. total_matches is the whole query and is '
+        'Choose a useful shortlist with limit for recommendations or a requested number. For a listing of library titles '
+        '(including an actor filmography), omit limit unless a subset was requested: all matches read are listed. '
+        'count is the selected card count. results_preview means results contains only a byte-budgeted preview; '
+        'all selected cards remain visible. Name only titles present in results; never call a preview the full list. '
+        'For "more" or "the next ones" repeat the same query (not with sort random) with offset set to next_offset. total_matches is the whole query and is '
         'absent when unknown; with more_matches say "at least matches_at_least", never a total. '
         'seen_before counts films left out because this profile\'s own watch history has them as finished. '
         'Joint unseen uses recommend_together. Returns a task-local query_id; save only if can_become_home_row. '
@@ -101,7 +97,11 @@ final List<AssistantTool> _catalogTools = [
         'type': 'string',
         'enum': ['added', 'added_oldest', 'released', 'rating', 'title', 'random'],
       },
-      'limit': {'type': 'integer', 'minimum': 1, 'maximum': kAssistantMaxListedTitles},
+      'limit': {
+        'type': 'integer',
+        'minimum': 1,
+        'description': 'A requested count or curated shortlist size; omit for all matches read.',
+      },
       'offset': {'type': 'integer', 'minimum': 0, 'maximum': 200},
     },
     needsServer: false,
@@ -115,9 +115,8 @@ final List<AssistantTool> _catalogTools = [
           ? args
           : {
               ...args,
-              'limit': switch (_int(args, 'limit', 1, kAssistantMaxListedTitles)) {
+              'limit': switch (_int(args, 'limit', 1)) {
                 final n? when n < _kidsListedTitles => n,
-                null => kAssistantListedTitles,
                 _ => _kidsListedTitles,
               },
             };
@@ -155,8 +154,8 @@ final List<AssistantTool> _catalogTools = [
           ..._factsField(f, gated.region),
         });
       }
-      // The cards are the titles listed in `results`, no more and no fewer: one
-      // result set for the text and the grid. For children that is what passed.
+      final evidence = _modelListEvidence(results);
+      // Only age-checked titles become cards for children.
       final kept = {
         for (final (g, _) in gated.kept)
           buildGlobalKey(g.representativeSource.serverId, g.representativeSource.item.id),
@@ -195,7 +194,8 @@ final List<AssistantTool> _catalogTools = [
         if (query.serversLeftOut.isNotEmpty) 'servers_left_out': query.serversLeftOut,
         if (query.genreUnverified.isNotEmpty) 'genre_unverified': query.genreUnverified.length,
         ...gated.note,
-        'results': results,
+        'results': evidence,
+        if (evidence.length < results.length) 'results_preview': true,
       }, display: AssistantMediaGrid(entries, facts: facts));
     },
   ),

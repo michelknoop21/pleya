@@ -163,7 +163,7 @@ void main() {
       expect(big.data['count'], 20);
       expect(big.data['next_offset'], 20);
       final plain = await _tool('search_catalog').run(ctx(), null, {'kind': 'movie'}) as AssistantToolResult;
-      expect(plain.data['count'], 12);
+      expect(plain.data['count'], 20);
       final more =
           await _tool('search_catalog').run(ctx(), null, {'kind': 'movie', 'limit': 50, 'offset': 20})
               as AssistantToolResult;

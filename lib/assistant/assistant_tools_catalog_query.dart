@@ -86,10 +86,14 @@ final _catalogQueries = Expando<Map<String, _CatalogQuery>>('assistantCatalogQue
 _CatalogQuery _requireQuery(AssistantToolContext ctx, Map<String, Object?> args) =>
     _catalogQueries[ctx]?[_string(args, 'query_id')] ?? (throw const AssistantToolError('unknown_query_id'));
 
-int? _int(Map<String, Object?> args, String key, int min, int max) {
+int? _int(Map<String, Object?> args, String key, int min, [int? max]) {
   final value = args[key];
   if (value == null) return null;
-  if (value is! num || value != value.roundToDouble() || value < min || value > max) {
+  if (value is! num ||
+      !value.isFinite ||
+      (value is! int && value != value.roundToDouble()) ||
+      value < min ||
+      (max != null && value > max)) {
     throw AssistantToolError('invalid_$key');
   }
   return value.toInt();
@@ -225,7 +229,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   if (sort is! String || !{..._rowSorts.keys, 'rating', 'random'}.contains(sort)) {
     throw const AssistantToolError('invalid_sort');
   }
-  final limit = _int(args, 'limit', 1, kAssistantMaxListedTitles) ?? kAssistantListedTitles;
+  final limit = _int(args, 'limit', 1);
   // "Show more": the titles after the ones an earlier call listed.
   final offset = _int(args, 'offset', 0, 200) ?? 0;
   // A random order is a new shuffle on every call: a later page would repeat.
@@ -359,13 +363,17 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     // A single kind keeps the catalog's order; two kinds need one order.
     if (!rowShaped || kind == null) _order(groups, sort);
     final countable = complete && !partial && !sampled && !windowCapped;
+    final kept = groups.skip(offset).take(min(limit ?? groups.length, groups.length)).toList();
     return _CatalogQuery(
-      groups.skip(offset).take(limit).toList(),
+      kept,
       // A Home row cannot repeat the profile's own history filter.
       rowShaped && kind != null && seenElsewhere == 0 && offset == 0 ? row : null,
       partial: partial,
       offset: offset,
-      nextOffset: sort != 'random' && offset + limit <= 200 && offset + limit < groups.length ? offset + limit : null,
+      nextOffset:
+          kept.isNotEmpty && sort != 'random' && offset + kept.length <= 200 && offset + kept.length < groups.length
+          ? offset + kept.length
+          : null,
       sampled: sampled || windowCapped,
       serversLeftOut: leftOut,
       rowUnavailableReason: offset > 0
@@ -462,13 +470,16 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   if (cutoff != null) total = groups.length;
   // No sort asked: the servers' relevance order stands.
   if (askedSort != null || addedWithin != null) _order(groups, sort);
-  final kept = groups.skip(offset).take(limit).toList();
+  final kept = groups.skip(offset).take(min(limit ?? groups.length, groups.length)).toList();
   return _CatalogQuery(
     kept,
     null,
     partial: partial,
     offset: offset,
-    nextOffset: sort != 'random' && offset + limit <= 200 && offset + limit < groups.length ? offset + limit : null,
+    nextOffset:
+        kept.isNotEmpty && sort != 'random' && offset + kept.length <= 200 && offset + kept.length < groups.length
+        ? offset + kept.length
+        : null,
     sampled: coverage != null,
     rowUnavailableReason: unavailableReason,
     coverage: coverage,

@@ -50,7 +50,7 @@ void main() {
             'search_catalog',
             (_) => AssistantMediaGrid(
               [
-                (item: movieItem(gump, 1994), group: null),
+                for (var i = 0; i < 61; i++) (item: movieItem('Other $i', 2000), group: null),
                 (item: movieItem(mile, 1999), group: null),
                 (item: movieItem('Cast Away', 2000), group: null),
               ],

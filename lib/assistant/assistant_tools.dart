@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'assistant_account_key.dart';
 import 'assistant_mainstream.dart';
@@ -124,6 +125,19 @@ class AssistantToolResult extends AssistantToolOutcome {
 
   /// Set for a mutation that ran, so the UI can show what happened.
   final AssistantActionRecord? record;
+}
+
+// Keep model context bounded independently of the number of selected UI cards.
+List<Map<String, Object?>> _modelListEvidence(Iterable<Map<String, Object?>> records) {
+  final preview = <Map<String, Object?>>[];
+  var bytes = 2;
+  for (final record in records) {
+    // Measure the escaped JSON string that the next tool message sends.
+    bytes += utf8.encode(jsonEncode(jsonEncode(record))).length + 1;
+    if (bytes > 12 * 1024) break;
+    preview.add(record);
+  }
+  return preview;
 }
 
 enum AssistantActionKind {
