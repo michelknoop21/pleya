@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/painting.dart';
 import 'package:logger/logger.dart';
 
 import 'log_redaction_manager.dart';
@@ -225,8 +226,17 @@ final _productionFilter = ProductionFilter();
 /// returns, instead of with the next one-second batch. The last checkpoint in
 /// an uploaded log is therefore a step the app really reached. For the few
 /// places where a run was seen to stop without a Dart error or a crash report.
-void logCheckpoint(String message) {
-  appLogger.i('$message rss=${ProcessInfo.currentRss ~/ (1024 * 1024)}MB');
+void logCheckpoint(String message, {bool warning = false}) {
+  final cache = PaintingBinding.instance.imageCache;
+  final snapshot =
+      '$message rss=${ProcessInfo.currentRss ~/ (1024 * 1024)}MB '
+      'imageCacheBytes=${cache.currentSizeBytes} imageCacheEntries=${cache.currentSize} '
+      'liveImages=${cache.liveImageCount} pendingImages=${cache.pendingImageCount}';
+  if (warning) {
+    appLogger.w(snapshot);
+  } else {
+    appLogger.i(snapshot);
+  }
   MemoryLogOutput.flushSync();
 }
 

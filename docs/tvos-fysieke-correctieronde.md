@@ -4702,6 +4702,28 @@ Diagnostiek in de app: `logCheckpoint` schrijft bij openen, sluitverzoek, einde 
 Open op hardware: dezelfde film, paneel openen en sluiten, een paar keer achter elkaar; daarna het log versturen en meteen de crashlogs van het toestel laten uitlezen. Een regressietest op 4K Dolby Vision bestaat niet buiten het toestel: Pleya Verify gebruikt fixture-inhoud en de simulator decodeert geen Dolby Vision via VideoToolbox.
 
 
+**Nieuw hardwarebewijs, 15 oktober 2026, log `l87js`, build 367 (`7cbbc14`):**
+
+- Michel meldt: tijdens een film Letterbox naar volledig scherm, zoom terug naar 75%, daarna ondertitels aan. De app stopt.
+- Het betreft in dit geval HEVC 1920×800, dus niet uitsluitend een 4K Dolby Vision-bron. Hetzelfde MPVKit 1.0.29 zit in deze build en de onderzochte main; alleen releasebestanden verschillen.
+- 16:29:45,979 `panscan=1.0`; 16:30:02,596 spelerpaneel open met RSS 685 MB.
+- 16:30:05,946 Nederlandse externe SRT gekozen (`sid=2`); libass initialiseert en de speler maakt om 16:30:05,982 een 3840×2160 BGRA OSD-overlaypool aan. De server bevestigt de ondertitelkeuze met HTTP 200.
+- 16:30:06,816 `TvInfoPanel: close requested rss=766MB` is de laatste regel van de sessie. Er volgt geen checkpoint voor de voltooide sluitanimatie of dispose. 16:30:14,399 volgt een nieuwe Pleya-start.
+- Dezelfde sessie had al eerder geheugenwaarschuwingen (RSS 719–760 MB), vóór de zoom- en ondertitelhandelingen. De ongeveer 81 MB stijging rond ondertitels/paneelsluiting is relevant, maar bewijst niet welk onderdeel het proces beëindigt. RSS is geen complete GPU-/IOSurface-footprint.
+- De gepinde native renderer gebruikt een 4K BGRA-ondertitelpool (circa 31,6 MiB per buffer); minimumaantal drie is geen bewezen maximum. Dit is een onderzoeksroute, geen bewijs van een poollek of toestemming om de ondertitelresolutie te verlagen.
+- `systemCrashLogs` is op de gekoppelde fysieke Apple TV opnieuw uitgelezen: geen Runner-/Jetsamrapport voor 15 oktober. Een gericht unified systeemlog vereist lokale beheerdersauthenticatie op de Mac; verzamelen is daar gestopt. De wachtwoordprompt is afgebroken zonder invoer; beveiligingsinstellingen zijn ongewijzigd.
+
+**Vervolgonderzoek en begrensde correctie, 15 oktober 2026 (nog niet uitgebracht):**
+
+- Michel heeft dezelfde handelingen opnieuw uitgevoerd; volgens hem crashte de app nu niet. De fysieke Apple TV-Console-opname van 17:44:28–17:45:51 bevat 20 geheugenwaarschuwingen; het paneel sluit volledig bij RSS 784 → 693 MB. Een latere ondertitelinitialisatie maakt opnieuw een 4K-overlaypool en sluit het paneel succesvol. Deze negatieve controle weerlegt een deterministische crash door alleen die handelingen of door het bereiken van 766 MB RSS; zij sluit incidentele geheugendruk of een native fout niet uit.
+- Dezelfde opname bevat 84 waarschuwingen over synchrone audioactivatie op de hoofdthread. De aanvullende foutenexport tot 17:52:51 bevat 306 van die Runner-waarschuwingen. De gepinde `os_media_controls`-plugin roept `AVAudioSession.setActive(true)` aan bij iedere `setPlaybackState`, ook als alleen de positie verandert. `MediaControlsManager` publiceert de positie normaal iedere seconde. Dit is aantoonbare overbodige heractivatie; geen bewijs van de crashoorzaak.
+- De lokale correctie gebruikt de bestaande manager: op iOS/tvOS wordt een gewone positietik niet gepubliceerd zolang de positie minder dan één seconde afwijkt van de doorlopende Now Playing-klok. Start/pauze, snelheid, geforceerde updates en afwijkingen blijven doorgegeven; fouten, clear en suspend maken het anker ongeldig. Andere platforms behouden hun bestaande updates. Geen pluginfork of wijziging van audioroutering. Apple documenteert dat de positie automatisch wordt afgeleid uit de laatste positie en afspeelsnelheid: [ElapsedPlaybackTime](https://developer.apple.com/documentation/mediaplayer/mpnowplayinginfopropertyelapsedplaybacktime).
+- De bestaande geheugencheckpoints krijgen Flutter-cachebytes, aantallen live afbeeldingen en pending afbeeldingen. Bij openen en sluitverzoek van het paneel worden asynchroon vier numerieke mpv-bufferwaarden gelezen (total/forward bytes en forward/back limieten), met timeout en afhandeling van een intussen gesloten speler. Dit zijn afzonderlijke, niet-atomaire metingen; zij meten geen GPU-/IOSurface-footprint. Geen bufferlimiet, ondertitelresolutie of visueel effect gewijzigd.
+- `log collect` is door Michel met lokale sudo-authenticatie geprobeerd; de Apple TV-selectie faalde met `Device not configured (6)`, hoewel `devicectl` het fysieke toestel als gekoppeld/bereikbaar toont en de crashbestanden kan lezen. Console werkt wel. Het zonder apparaatselectie gemaakte Mac-archief is niet als tvOS-crashbewijs gebruikt.
+
+Status oorspronkelijke incident: **CRASHOORZAAK ONBEWEZEN · HARDWARE OPEN**. Lokale audio-updatecorrectie en meetinstrumentatie: **CODE COMPLETE · TESTS COMPLETE**, 39 gerichte tests en `scripts/ci_checks.sh` groen; de audio-negatieve controle faalt zonder fix (twee publicaties in plaats van één). Onafhankelijke adversarial review: geen verplichte bevindingen. **SIMULATOR VERIFIED: nee · HARDWARE VERIFIED: nee**. Nog vereist: fysieke controle van Nu afspelen, zoeken/seek, pauze/hervatten, snelheid, audio-onderbrekingen en de nieuwe geheugenmetingen. Niet uitgebracht; de oorspronkelijke stop is niet gerepareerd verklaard. Geen nieuwe administratie naast PLR12.
+
+
 ### TS1: Top Shelf schreef op hardware niets, de map voor de beelden werd geweigerd (build 357 en 360, log `i8tj0`, 13 oktober 2026)
 
 Roadmap: A-12. Status: CODE DONE · HARDWARE OPEN.
