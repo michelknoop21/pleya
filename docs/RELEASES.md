@@ -51,6 +51,55 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 365 · 15 October 2026 · Apple TV
+
+<!-- commit: 1664722624bd659c376e7f40d2bf146d2f8f3442 -->
+
+### Improved
+- **Ask Big P for longer library lists.** One list can now show up to 50 titles when you
+  ask for more than the usual 12. Asking for more can show a later page of the matches
+  already read from your servers. A children's profile can show up to 20 titles per list;
+  the age checks still apply. Discovery suggestions and single-title searches keep their
+  existing limits.
+
+### Fixed
+- **Submitting a TV search keeps the focus on the results.** When results were already
+  visible, a typing search could still run after Done and pull the focus back to the input.
+  Done now cancels that pending search before moving to the results.
+
+### Notes
+- Automated tests checked larger lists, child-profile limits and follow-up pages. TV widget
+  tests walked all 50 cards and opened the last card on both Big P panels. The native TV
+  scenario could not run because its input tool did not connect. Scrolling performance and
+  the appearance of 50 results have not been checked on an Apple TV.
+
+### Worth checking
+- In an adult profile with enough matching titles, ask Big P for 30 library films, then ask
+  for more. The next list should not repeat the preceding page.
+- Move down to the last result in both the full Big P screen and the summoned panel, and
+  open it. Each focused card should stay visible.
+- Submit a TV search after the results appear. Focus should stay on the results.
+
+## 2.8.1 · build 364 · 15 October 2026 · iPhone and iPad
+
+<!-- commit: 1664722624bd659c376e7f40d2bf146d2f8f3442 -->
+
+### Improved
+- **Ask Big P for longer library lists.** One list can now show up to 50 titles when you
+  ask for more than the usual 12. Asking for more can show a later page of the matches
+  already read from your servers. A children's profile can show up to 20 titles per list;
+  the age checks still apply. Discovery suggestions and single-title searches keep their
+  existing limits.
+
+### Notes
+- Larger lists, child-profile limits and follow-up pages passed automated tests. The longer
+  lists have not been checked in Big P on an iPhone or iPad.
+
+### Worth checking
+- In an adult profile with enough matching titles, ask Big P for 30 library films. Scroll
+  through the results, open one, then return and ask for more. The next list should not
+  repeat the preceding page.
+
 ## 2.8.1 · build 363 · 14 October 2026 · Apple TV
 
 <!-- commit: 2923cd5cee8c5257ccdaeeb6f63dd5d1573b1f46 -->
