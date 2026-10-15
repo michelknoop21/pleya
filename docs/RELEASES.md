@@ -51,6 +51,58 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 369 · 15 October 2026 · Apple TV
+
+<!-- commit: bd298d5b7f5bc1d78257955aeb40bf0295db04af -->
+
+### Fixed
+- **Big P checks the requested kind of library item.** Asking for missing episodes now
+  inspects series within its diagnosis budget. Asking for duplicate films
+  inspects movies, even if the model proposes the wrong kind.
+- **Failed checks explain why.** Connection failures, changed sources and unavailable
+  operations get a clear reason instead of only saying that nothing changed.
+- **Copy and edition groups name the title and count.** Matching catalogue entries are not
+  proof that their underlying files are duplicates; this check does not delete or repair files.
+
+### Notes
+- Checks remain limited to the titles read within the existing diagnosis budget. Partial
+  coverage is reported; this is not an exhaustive whole-library audit.
+- An unavailable server still needs its connection restored before Big P can inspect it.
+- Focused automated tests and a mobile widget screenshot were checked. Native simulator
+  verification stopped before the scenario on an Xcode error also seen on unchanged source.
+  This correction has not been checked on a physical device.
+
+### Worth checking
+- On a reachable server, ask for missing episodes and for duplicate films. Check that the
+  first reads series and the second names any matching copy or edition groups.
+- With an unavailable server, check that the answer explains the connection failure.
+
+## 2.8.1 · build 368 · 15 October 2026 · iPhone and iPad
+
+<!-- commit: bd298d5b7f5bc1d78257955aeb40bf0295db04af -->
+
+### Fixed
+- **Big P checks the requested kind of library item.** Asking for missing episodes now
+  inspects series within its diagnosis budget. Asking for duplicate films
+  inspects movies, even if the model proposes the wrong kind.
+- **Failed checks explain why.** Connection failures, changed sources and unavailable
+  operations get a clear reason instead of only saying that nothing changed.
+- **Copy and edition groups name the title and count.** Matching catalogue entries are not
+  proof that their underlying files are duplicates; this check does not delete or repair files.
+
+### Notes
+- Checks remain limited to the titles read within the existing diagnosis budget. Partial
+  coverage is reported; this is not an exhaustive whole-library audit.
+- An unavailable server still needs its connection restored before Big P can inspect it.
+- Focused automated tests and a mobile widget screenshot were checked. Native simulator
+  verification stopped before the scenario on an Xcode error also seen on unchanged source.
+  This correction has not been checked on a physical device.
+
+### Worth checking
+- On a reachable server, ask for missing episodes and for duplicate films. Check that the
+  first reads series and the second names any matching copy or edition groups.
+- With an unavailable server, check that the answer explains the connection failure.
+
 ## 2.8.1 · build 367 · 15 October 2026 · Apple TV
 
 <!-- commit: 3016aa795cc3bd9f3ba5303998be02719c2cba7b -->
