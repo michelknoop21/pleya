@@ -156,8 +156,8 @@ class BigPResultCard extends StatelessWidget {
   }
 }
 
-/// A media grid draws at most this many titles.
-const _gridCap = kAssistantListedTitles;
+/// A media grid draws what the tool listed, up to the tool's own bound.
+const _gridCap = kAssistantMaxListedTitles;
 
 /// The watched titles shown as cards: the ones watch_stats resolved.
 const _watchTitles = 5;
@@ -404,7 +404,7 @@ class BigPDisplayView extends StatelessWidget {
       ),
       final AssistantServerComparison c => card(
         t.assistant.displays.missing(count: c.missingTotal, server: c.serverName, other: c.otherServerName),
-        [for (final item in c.missing.take(12)) titled(item.displayTitle, item.year)],
+        [for (final item in c.missing.take(_gridCap)) titled(item.displayTitle, item.year)],
       ),
       final AssistantWatchStats s => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

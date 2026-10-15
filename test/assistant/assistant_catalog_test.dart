@@ -337,6 +337,54 @@ void main() {
       expect(data.containsKey('more_matches'), isFalse);
     });
 
+    test('limit lists and draws more than 12 titles, and offset gives the next ones (BP-09)', () async {
+      final (ctx, loader, _, _) = await setUpCtx(
+        groups: [for (var i = 0; i < 40; i++) _group('m$i', 'Film $i', added: day(i))],
+      );
+      loader.real = true;
+      final first =
+          await _tool('search_catalog').run(ctx, null, {'kind': 'movie', 'sort': 'title', 'limit': 30})
+              as AssistantToolResult;
+      expect(first.data['count'], 30);
+      expect((first.data['results']! as List), hasLength(30));
+      expect((first.display! as AssistantMediaGrid).entries, hasLength(30));
+      final next = await search(ctx, {'kind': 'movie', 'sort': 'title', 'limit': 5, 'offset': 35});
+      final titles = [for (final r in next['results']! as List) (r as Map)['title']];
+      final firstTitles = [for (final r in first.data['results']! as List) (r as Map)['title']];
+      expect(titles, hasLength(5));
+      expect(titles.toSet().intersection(firstTitles.toSet()), isEmpty);
+      // The page after the first says where it goes on, the last one says nothing.
+      expect(first.data['next_offset'], 30);
+      expect(next.containsKey('next_offset'), isFalse);
+      // A later page is no Home row, and a random order cannot be paged.
+      expect(next['can_become_home_row'], isFalse);
+      await expectLater(
+        _tool('search_catalog').run(ctx, null, {'kind': 'movie', 'sort': 'random', 'offset': 5}),
+        throwsA(isA<AssistantToolError>()),
+      );
+    });
+
+    test('next_offset never promises an invalid continuation (BP-09)', () async {
+      final (ctx, _, _, _) = await setUpCtx(
+        groups: [for (var i = 0; i < 40; i++) _group('r$i', 'Random $i')],
+        others: [
+          for (var server = 0; server < 6; server++)
+            _SearchServer(
+              's$server',
+              MediaBackend.plex,
+              hits: [for (var i = 0; i < 50; i++) _movie('$server-$i', 'Unique $server $i', server: 's$server')],
+            ),
+        ],
+      );
+      final random = await search(ctx, {'kind': 'movie', 'sort': 'random'});
+      expect(random.containsKey('next_offset'), isFalse, reason: 'random cannot be continued');
+      final edge = await search(ctx, {'text': 'Unique', 'sort': 'title', 'limit': 50, 'offset': 200});
+      expect(edge['count'], 50);
+      expect(edge.containsKey('next_offset'), isFalse, reason: '250 is outside the offset contract');
+      final beforeEdge = await search(ctx, {'text': 'Unique', 'sort': 'title', 'limit': 50, 'offset': 150});
+      expect(beforeEdge['next_offset'], 200, reason: 'the last valid continuation remains available');
+    });
+
     test('text search: a server at its search limit gives a floor, not a total', () async {
       final hits = [for (var i = 0; i < 50; i++) _movie('h$i', 'Alien $i')];
       final (ctx, _, _, _) = await setUpCtx(others: [_SearchServer('s2', MediaBackend.plex, hits: hits)]);
@@ -678,7 +726,7 @@ void main() {
     test('the cards are exactly the listed titles; total_matches keeps the rest', () async {
       final (ctx, _, _, _) = await setUpCtx(groups: [for (var i = 0; i < 30; i++) _group('m$i', 'T$i', added: ago(1))]);
       final outcome =
-          await _tool('search_catalog').run(ctx, null, {'kind': 'movie', 'added_within_days': 7, 'limit': 30})
+          await _tool('search_catalog').run(ctx, null, {'kind': 'movie', 'added_within_days': 7})
               as AssistantToolResult;
       final listed = {for (final r in (outcome.data['results'] as List).cast<Map>()) r['item_id']};
       final drawn = {for (final e in (outcome.display! as AssistantMediaGrid).entries) e.item.id};
@@ -717,7 +765,7 @@ void main() {
 
     test('a plain search says how many it found beyond the 12 listed', () async {
       final (ctx, _, _, _) = await setUpCtx(groups: [for (var i = 0; i < 30; i++) _group('m$i', 'T$i')]);
-      final data = await search(ctx, {'kind': 'movie', 'limit': 30});
+      final data = await search(ctx, {'kind': 'movie'});
       expect(data['count'], kAssistantListedTitles);
       expect(data['total_matches'], 30);
     });

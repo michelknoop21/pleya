@@ -461,7 +461,7 @@ void main() {
               as AssistantToolResult;
       expect(result.data['count_on_server'], 5000);
       expect(result.data['capped_at_items_per_server'], 5000);
-      expect((result.data['examples']! as List), hasLength(20));
+      expect((result.data['examples']! as List), hasLength(kAssistantMaxListedTitles));
       expect((result.display! as AssistantServerComparison).capped, isTrue);
       expect(a.pages.last, lessThan(5000));
     });

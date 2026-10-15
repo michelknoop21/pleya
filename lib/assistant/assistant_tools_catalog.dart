@@ -51,9 +51,16 @@ class AssistantMediaGrid extends AssistantDisplay {
       e.group == null ? e.item.globalKey : buildGlobalKey(e.group!.representativeSource.serverId, e.item.id);
 }
 
-/// Titles one answer lists and draws: the text, the cards and the actions are
-/// the same set, so the UI's grid cap is this number.
+/// Titles one call lists by default; an explicit limit can request more.
 const kAssistantListedTitles = 12;
+
+/// The most titles one call may list: the `limit` bound, and the cap of every
+/// grid the UI draws, so a list the model asked for is never cut again.
+const kAssistantMaxListedTitles = 50;
+
+/// A child's list: the facts budget of one ask (80 lookups, up to four a title)
+/// covers this many titles.
+const _kidsListedTitles = 20;
 
 /// The date a listed title shows: in a window or newest-first its newest
 /// copy's, oldest-first the day it first came in. Null when the listing is
@@ -76,7 +83,8 @@ final List<AssistantTool> _catalogTools = [
         'What the user has not watched yet in their library, also "my library", is unwatched=true here, not my_watching; '
         'for what has been waiting the longest ("al lang ongezien", "oldest unwatched") add sort=added_oldest: '
         'time since the title was added, never its release year; results carry added_at. '
-        'count is what is listed and drawn as cards: name only those titles. total_matches is the whole query and is '
+        'count is what is listed and drawn as cards: name only those titles. A list is 12 titles unless limit (up to 50) '
+        'says more; for "more" or "the next ones" repeat the same query (not with sort random) with offset set to next_offset. total_matches is the whole query and is '
         'absent when unknown; with more_matches say "at least matches_at_least", never a total. '
         'seen_before counts films left out because this profile\'s own watch history has them as finished. '
         'Joint unseen uses recommend_together. Returns a task-local query_id; save only if can_become_home_row. '
@@ -93,21 +101,34 @@ final List<AssistantTool> _catalogTools = [
         'type': 'string',
         'enum': ['added', 'added_oldest', 'released', 'rating', 'title', 'random'],
       },
-      'limit': {'type': 'integer'},
+      'limit': {'type': 'integer', 'minimum': 1, 'maximum': kAssistantMaxListedTitles},
+      'offset': {'type': 'integer', 'minimum': 0, 'maximum': 200},
     },
     needsServer: false,
     serves: (ctx, _) => ctx.catalog != null,
     run: (ctx, _, args) async {
       if (ctx.catalog == null) throw const AssistantToolError('catalog_unavailable');
       final age = await _kidsAge(ctx);
-      final query = await _search(ctx, args);
+      // The kids gate looks up facts for every listed title, which is bounded
+      // per ask: a child's list stays within that bound.
+      final asked = age == null
+          ? args
+          : {
+              ...args,
+              'limit': switch (_int(args, 'limit', 1, kAssistantMaxListedTitles)) {
+                final n? when n < _kidsListedTitles => n,
+                null => kAssistantListedTitles,
+                _ => _kidsListedTitles,
+              },
+            };
+      final query = await _search(ctx, asked);
       final queries = _catalogQueries[ctx] ??= {};
       final queryId = 'q${queries.length + 1}';
       queries[queryId] = query;
       final results = <Map<String, Object?>>[];
       final gated = await _gateTitles(
         ctx,
-        query.groups.take(kAssistantListedTitles).toList(),
+        query.groups,
         (g) => _itemRef(g.representativeSource.item.copyWith(serverId: g.representativeSource.serverId.value)),
         age,
       );
@@ -159,8 +180,12 @@ final List<AssistantTool> _catalogTools = [
         if (query.addedWithinDays != null) ...{
           'window_days': query.addedWithinDays,
           if (age == null && query.addedUnknown > 0) 'added_unknown': query.addedUnknown,
-          if (age != null && query.totalMatches != null && query.totalMatches! > entries.length) 'sampled': true,
+          if (age != null && query.totalMatches != null && query.totalMatches! > query.offset + entries.length)
+            'sampled': true,
         },
+        // The next page of this query; absent when the read ends here, and then
+        // more_matches says the library has more than was read.
+        if (query.nextOffset case final next?) 'next_offset': next,
         'can_become_home_row': query.row != null,
         if (query.row == null) 'home_row_unavailable_reason': query.rowUnavailableReason,
         if (query.coverage != null) 'coverage': query.coverage,

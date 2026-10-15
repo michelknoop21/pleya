@@ -311,7 +311,7 @@ final List<AssistantTool> _insightTools = [
           'count_on_other': theirs.items.length,
           'missing_count': missing.length,
           'examples': [
-            for (final item in missing.take(20))
+            for (final item in missing.take(kAssistantMaxListedTitles))
               {'item_id': item.id, 'title': clipText(item.title), if (item.year != null) 'year': item.year},
           ],
           if (capped) 'capped_at_items_per_server': _compareCap,

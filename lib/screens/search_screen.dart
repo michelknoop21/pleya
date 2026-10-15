@@ -698,6 +698,8 @@ class _SearchScreenState extends State<SearchScreen>
       // The library answer was already streamed in while typing. The requests
       // band was not asked then, so it is asked now.
       _maybeSearchSeerrForSettledQuery(query);
+      // A pending typing search must not replace these results after Done.
+      _searchDebounce.cancel();
       _focusFirstResult();
       return;
     }
