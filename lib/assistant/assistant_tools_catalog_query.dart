@@ -365,7 +365,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       rowShaped && kind != null && seenElsewhere == 0 && offset == 0 ? row : null,
       partial: partial,
       offset: offset,
-      nextOffset: offset + limit < groups.length ? offset + limit : null,
+      nextOffset: sort != 'random' && offset + limit <= 200 && offset + limit < groups.length ? offset + limit : null,
       sampled: sampled || windowCapped,
       serversLeftOut: leftOut,
       rowUnavailableReason: offset > 0
@@ -468,7 +468,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     null,
     partial: partial,
     offset: offset,
-    nextOffset: offset + limit < groups.length ? offset + limit : null,
+    nextOffset: sort != 'random' && offset + limit <= 200 && offset + limit < groups.length ? offset + limit : null,
     sampled: coverage != null,
     rowUnavailableReason: unavailableReason,
     coverage: coverage,

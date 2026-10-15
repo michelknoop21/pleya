@@ -51,8 +51,7 @@ class AssistantMediaGrid extends AssistantDisplay {
       e.group == null ? e.item.globalKey : buildGlobalKey(e.group!.representativeSource.serverId, e.item.id);
 }
 
-/// Titles one answer lists and draws: the text, the cards and the actions are
-/// the same set, so the UI's grid cap is this number.
+/// Titles one call lists by default; an explicit limit can request more.
 const kAssistantListedTitles = 12;
 
 /// The most titles one call may list: the `limit` bound, and the cap of every

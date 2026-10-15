@@ -117,6 +117,9 @@ void main() {
     await tester.tap(_keyboardDoneKey());
     await tester.pumpAndSettle();
 
+    // Done also cancels the typing debounce: a second search would take
+    // focus back to the input after handing it to the first result.
+    expect(client.queries, ['movie']);
     // The inline keyboard stays put; Done only jumps focus to the results.
     expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget);
     // TV draws the results as catalog cards in bands since DEC-108 (mockup

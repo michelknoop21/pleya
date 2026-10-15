@@ -364,6 +364,27 @@ void main() {
       );
     });
 
+    test('next_offset never promises an invalid continuation (BP-09)', () async {
+      final (ctx, _, _, _) = await setUpCtx(
+        groups: [for (var i = 0; i < 40; i++) _group('r$i', 'Random $i')],
+        others: [
+          for (var server = 0; server < 6; server++)
+            _SearchServer(
+              's$server',
+              MediaBackend.plex,
+              hits: [for (var i = 0; i < 50; i++) _movie('$server-$i', 'Unique $server $i', server: 's$server')],
+            ),
+        ],
+      );
+      final random = await search(ctx, {'kind': 'movie', 'sort': 'random'});
+      expect(random.containsKey('next_offset'), isFalse, reason: 'random cannot be continued');
+      final edge = await search(ctx, {'text': 'Unique', 'sort': 'title', 'limit': 50, 'offset': 200});
+      expect(edge['count'], 50);
+      expect(edge.containsKey('next_offset'), isFalse, reason: '250 is outside the offset contract');
+      final beforeEdge = await search(ctx, {'text': 'Unique', 'sort': 'title', 'limit': 50, 'offset': 150});
+      expect(beforeEdge['next_offset'], 200, reason: 'the last valid continuation remains available');
+    });
+
     test('text search: a server at its search limit gives a floor, not a total', () async {
       final hits = [for (var i = 0; i < 50; i++) _movie('h$i', 'Alien $i')];
       final (ctx, _, _, _) = await setUpCtx(others: [_SearchServer('s2', MediaBackend.plex, hits: hits)]);
