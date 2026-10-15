@@ -118,6 +118,18 @@ class _SearchServer implements MediaServerClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _PersonServer extends _SearchServer implements PersonSearchClient {
+  _PersonServer(List<MediaItem> films) : super('actor-server', MediaBackend.plex, hits: films);
+
+  @override
+  Future<List<MediaItem>> searchPeople(String query, {int limit = 100}) async => [
+    _movie('adam', 'Adam Sandler').copyWith(kind: MediaKind.unknown),
+  ];
+
+  @override
+  Future<List<MediaItem>> fetchPersonMedia(String personId) async => hits;
+}
+
 /// A Jellyfin server behind fake HTTP: the real client and its owner guard.
 class _Jellyfin {
   _Jellyfin({this.admin = true});
@@ -260,6 +272,65 @@ void main() {
   Future<Map<String, Object?>> search(AssistantToolContext ctx, Map<String, Object?> args) async =>
       (await _tool('search_catalog').run(ctx, null, args) as AssistantToolResult).data;
 
+  for (final count in [33, 61]) {
+    test('an actor listing keeps all $count read matches when no subset was chosen (BP-09)', () async {
+      final server = _PersonServer([for (var i = 0; i < count; i++) _movie('a$i', 'Film $i', server: 'actor-server')]);
+      final manager = MultiServerManager()
+        ..debugRegisterClientForTesting(server)
+        ..setVisibleServerIds(null);
+      addTearDown(manager.dispose);
+      final (ctx, _, _, _) = await setUpCtx(servers: manager);
+      final result =
+          await _tool('search_catalog').run(ctx, null, {'person': 'Adam Sandler', 'kind': 'movie'})
+              as AssistantToolResult;
+      expect(result.data['count'], count);
+      expect(result.data['results'], hasLength(count));
+      expect((result.display! as AssistantMediaGrid).entries, hasLength(count));
+      expect(result.data.containsKey('next_offset'), isFalse);
+    });
+  }
+
+  test('large actor lists keep every card while bounding UTF-8 tool-message evidence', () async {
+    final server = _PersonServer([
+      for (var i = 0; i < 500; i++) _movie('a$i', '${List.filled(70, '🎬').join()} $i', server: 'actor-server'),
+    ]);
+    final manager = MultiServerManager()
+      ..debugRegisterClientForTesting(server)
+      ..setVisibleServerIds(null);
+    addTearDown(manager.dispose);
+    final (ctx, _, _, _) = await setUpCtx(servers: manager);
+    final result =
+        await _tool('search_catalog').run(ctx, null, {'person': 'Adam Sandler', 'kind': 'movie'})
+            as AssistantToolResult;
+    final requestMessage = {'role': 'tool', 'tool_call_id': 'catalog', 'content': jsonEncode(result.data)};
+    expect(utf8.encode(jsonEncode(requestMessage)).length, lessThan(20000));
+    expect(result.data['results_preview'], isTrue);
+    expect(result.data['count'], 500);
+    final grid = result.display! as AssistantMediaGrid;
+    expect(grid.entries, hasLength(500));
+    for (final entry in grid.entries) ctx.requireShownItem(ServerId('actor-server'), entry.item.id);
+  });
+
+  test('the model can choose a small subset or more than 50 titles (BP-09)', () async {
+    final (ctx, _, _, _) = await setUpCtx(groups: [for (var i = 0; i < 90; i++) _group('m$i', 'Film $i')]);
+    for (final count in [3, 33, 61]) {
+      final data = await search(ctx, {'kind': 'movie', 'limit': count});
+      expect(data['count'], count);
+    }
+    for (final invalid in [0, -1, 1.5, double.infinity, double.nan]) {
+      await expectLater(search(ctx, {'kind': 'movie', 'limit': invalid}), throwsA(isA<AssistantToolError>()));
+    }
+  });
+
+  test('huge positive limits with offset consume the remainder safely', () async {
+    final (ctx, _, _, _) = await setUpCtx(groups: [for (var i = 0; i < 90; i++) _group('m$i', 'Film $i')]);
+    for (final limit in [0x7fffffffffffffff, 1e100]) {
+      final data = await search(ctx, {'kind': 'movie', 'limit': limit, 'offset': 1});
+      expect(data['count'], 89);
+      expect(data.containsKey('next_offset'), isFalse);
+    }
+  });
+
   test('search returns a compact list and a grid, registers ids, and runs the Home-row filter', () async {
     final (ctx, loader, _, _) = await setUpCtx();
     final outcome =
@@ -303,7 +374,7 @@ void main() {
           picks: (_) async => const [],
         );
 
-    test('more unwatched films than the read window: no total, a floor, and cards equal to the list', () async {
+    test('more unwatched films than the read window: honest floor and complete selected cards', () async {
       final (ctx, loader, _, _) = await setUpCtx(
         groups: [for (var i = 0; i < 130; i++) _group('m$i', 'Film $i', added: day(i))],
       );
@@ -317,22 +388,26 @@ void main() {
       expect(row.filters.watchState, UnifiedWatchFilter.unwatched);
       // Read past the listing, so the listing's length is never the total.
       expect(loader.limits.single, 100);
-      expect(data['count'], kAssistantListedTitles);
+      expect(data['count'], 100);
       expect(data.containsKey('total_matches'), isFalse);
       expect(data['more_matches'], isTrue);
       expect(data['matches_at_least'], 100);
       final listed = [for (final r in data['results']! as List) (r as Map)['title']];
-      expect(listed, [for (var i = 0; i < kAssistantListedTitles; i++) 'Film $i']);
-      expect([for (final e in (outcome.display! as AssistantMediaGrid).entries) e.item.title], listed);
+      expect(data['results_preview'], isTrue);
+      expect(listed, [for (var i = 0; i < listed.length; i++) 'Film $i']);
+      expect(
+        [for (final e in (outcome.display! as AssistantMediaGrid).entries) e.item.title],
+        [for (var i = 0; i < 100; i++) 'Film $i'],
+      );
     });
 
-    test('a list read to its end gives the real total, not the page or the 12 cards', () async {
+    test('a list read to its end lists every read title and gives the real total', () async {
       final (ctx, loader, _, _) = await setUpCtx(
         groups: [for (var i = 0; i < 30; i++) _group('m$i', 'Film $i', added: day(i))],
       );
       loader.real = true;
       final data = await search(ctx, {'kind': 'movie', 'unwatched': true});
-      expect(data['count'], kAssistantListedTitles);
+      expect(data['count'], 30);
       expect(data['total_matches'], 30);
       expect(data.containsKey('more_matches'), isFalse);
     });
@@ -731,7 +806,7 @@ void main() {
       final listed = {for (final r in (outcome.data['results'] as List).cast<Map>()) r['item_id']};
       final drawn = {for (final e in (outcome.display! as AssistantMediaGrid).entries) e.item.id};
       expect(drawn, listed);
-      expect(listed, hasLength(kAssistantListedTitles));
+      expect(listed, hasLength(30));
       expect(outcome.data['count'], listed.length);
       expect(outcome.data['total_matches'], 30);
     });
@@ -763,10 +838,10 @@ void main() {
       },
     );
 
-    test('a plain search says how many it found beyond the 12 listed', () async {
+    test('a plain search lists all matches read without an implicit subset', () async {
       final (ctx, _, _, _) = await setUpCtx(groups: [for (var i = 0; i < 30; i++) _group('m$i', 'T$i')]);
       final data = await search(ctx, {'kind': 'movie'});
-      expect(data['count'], kAssistantListedTitles);
+      expect(data['count'], 30);
       expect(data['total_matches'], 30);
     });
 
