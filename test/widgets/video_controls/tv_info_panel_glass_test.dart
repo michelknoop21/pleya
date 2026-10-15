@@ -45,7 +45,7 @@ Future<void> _pumpPanel(
   addTearDown(tester.view.reset);
   await tester.runAsync(() => SettingsService.getInstance());
   await SettingsService.instance.write(SettingsService.liquidGlass, glass);
-  final player = FakeSyncPlayer(duration: const Duration(minutes: 9), position: const Duration(minutes: 2));
+  final player = _PanelPlayer();
   addTearDown(player.dispose);
   await tester.pumpWidget(
     MaterialApp(
@@ -280,4 +280,11 @@ void main() {
     // GlassTokens.tv gave 2.70).
     expect(ratios['rowValue'], greaterThanOrEqualTo(legacyRowValue));
   });
+}
+
+class _PanelPlayer extends FakeSyncPlayer {
+  _PanelPlayer() : super(duration: const Duration(minutes: 9), position: const Duration(minutes: 2));
+
+  @override
+  String get playerType => 'mpv';
 }
