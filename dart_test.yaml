@@ -1,0 +1,7 @@
+# Test runner configuration (package:test, read by `flutter test` too).
+tags:
+  # Tests that call a real language model over the network (Big P eval,
+  # BP-11a). Skipped by default so CI and local runs never need a key; run by
+  # hand with `--run-skipped`, see test/assistant/eval/big_p_eval_live_test.dart.
+  live-model:
+    skip: "Calls a real model: run by hand with --tags live-model --run-skipped"
