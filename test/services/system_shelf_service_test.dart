@@ -240,6 +240,24 @@ void main() {
       );
     });
 
+    test('a new episode or season says so after the place, an ordinary next episode does not', () {
+      int daysAgo(int d) => DateTime.now().subtract(Duration(days: d)).millisecondsSinceEpoch ~/ 1000;
+      MediaItem next(int season, int number, {required int added}) => item(
+        'n$season$number',
+        MediaKind.episode,
+        grandparentArt: '/a/show',
+        grandparentTitle: 'Show',
+        parentIndex: season,
+        index: number,
+      ).copyWith(addedAt: daysAgo(added), lastViewedAt: daysAgo(60), continueWatchingKind: ContinueWatchingKind.nextUp);
+
+      final entries = build(const [], [next(2, 5, added: 3), next(3, 1, added: 3), next(2, 6, added: 40)]);
+
+      expect(entries[0]['contextTitle'], endsWith('S2E5 · ${t.discover.newEpisodeStatus}'));
+      expect(entries[1]['contextTitle'], endsWith('S3E1 · ${t.discover.newSeasonStatus}'));
+      expect(entries[2]['contextTitle'], endsWith('S2E6'));
+    });
+
     test('without a backdrop an episode falls back to its still; a film without one is dropped', () {
       final result = build(
         [item('poster-only', MediaKind.movie, thumb: '/t/poster')],
