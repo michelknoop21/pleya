@@ -7740,6 +7740,9 @@ class TranslationsAssistantHouseholdEn {
 	/// en: 'Add them once. Big P then filters with this on every profile. Names and months stay on this device. The AI model only gets the age of the youngest child.'
 	String get cardBody => 'Add them once. Big P then filters with this on every profile. Names and months stay on this device. The AI model only gets the age of the youngest child.';
 
+	/// en: 'There are already 8 children at home. Change them under Settings > Big P > Children at home.'
+	String get cardFull => 'There are already 8 children at home. Change them under Settings > Big P > Children at home.';
+
 	/// en: 'Add another child'
 	String get addAnother => 'Add another child';
 
@@ -11805,6 +11808,7 @@ extension on Translations {
 			'assistant.household.tvHint' => 'Up and down chooses. Right goes to the year, OK to Save.',
 			'assistant.household.cardTitle' => 'Which children?',
 			'assistant.household.cardBody' => 'Add them once. Big P then filters with this on every profile. Names and months stay on this device. The AI model only gets the age of the youngest child.',
+			'assistant.household.cardFull' => 'There are already 8 children at home. Change them under Settings > Big P > Children at home.',
 			'assistant.household.addAnother' => 'Add another child',
 			'assistant.household.saveAndSearch' => 'Save and keep searching',
 			'assistant.household.months.0' => 'January',
@@ -12150,9 +12154,9 @@ extension on Translations {
 			'assistant.settings.openRouterDescription' => 'One key for models from several vendors.',
 			'assistant.settings.needsAddress' => 'Server address',
 			'assistant.settings.needsKey' => 'API key',
-			'assistant.settings.dataNote' => 'Your question goes to the provider, with the names of libraries, servers and users needed to answer it. Passwords and tokens stay in Pleya.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.settings.dataNote' => 'Your question goes to the provider, with the names of libraries, servers and users needed to answer it. Passwords and tokens stay in Pleya.',
 			'assistant.settings.serverUrl' => 'Server address',
 			'assistant.settings.serverUrlHint' => 'http://192.168.1.10:11434',
 			'assistant.settings.headerName' => 'Extra header name (optional)',

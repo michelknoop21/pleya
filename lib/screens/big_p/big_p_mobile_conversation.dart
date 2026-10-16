@@ -86,6 +86,7 @@ class BigPMobileConversation extends StatelessWidget {
           key: ObjectKey(prompt),
           embedded: true,
           onSave: (kids) => unawaited(c.saveHouseholdKidsAndRetry(kids)),
+          onClose: c.dismissHouseholdKids,
         ),
       );
     }

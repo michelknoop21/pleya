@@ -3288,6 +3288,7 @@ class _TranslationsAssistantHouseholdNl extends TranslationsAssistantHouseholdEn
 	@override String get tvHint => 'Omhoog en omlaag kiest. Rechts gaat naar het jaar, OK naar Bewaar.';
 	@override String get cardTitle => 'Voor welke kinderen?';
 	@override String get cardBody => 'Voeg ze één keer toe. Dan filtert Big P hiermee op elk profiel. Namen en maanden blijven op dit toestel. Het AI-model krijgt alleen de leeftijd van het jongste kind.';
+	@override String get cardFull => 'Er staan al 8 kinderen in huis. Pas ze aan bij Instellingen > Big P > Kinderen in huis.';
 	@override String get addAnother => 'Nog een kind toevoegen';
 	@override String get saveAndSearch => 'Bewaar en zoek verder';
 	@override List<String> get months => [
@@ -6474,6 +6475,7 @@ extension on TranslationsNl {
 			'assistant.household.tvHint' => 'Omhoog en omlaag kiest. Rechts gaat naar het jaar, OK naar Bewaar.',
 			'assistant.household.cardTitle' => 'Voor welke kinderen?',
 			'assistant.household.cardBody' => 'Voeg ze één keer toe. Dan filtert Big P hiermee op elk profiel. Namen en maanden blijven op dit toestel. Het AI-model krijgt alleen de leeftijd van het jongste kind.',
+			'assistant.household.cardFull' => 'Er staan al 8 kinderen in huis. Pas ze aan bij Instellingen > Big P > Kinderen in huis.',
 			'assistant.household.addAnother' => 'Nog een kind toevoegen',
 			'assistant.household.saveAndSearch' => 'Bewaar en zoek verder',
 			'assistant.household.months.0' => 'januari',
@@ -6819,9 +6821,9 @@ extension on TranslationsNl {
 			'assistant.settings.openRouterDescription' => 'Eén sleutel voor modellen van verschillende aanbieders.',
 			'assistant.settings.needsAddress' => 'Adres van de server',
 			'assistant.settings.needsKey' => 'API-sleutel',
-			'assistant.settings.dataNote' => 'Naar de provider gaan je vraag en de namen van bibliotheken, servers en gebruikers die nodig zijn om hem te beantwoorden. Wachtwoorden en tokens blijven in Pleya.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.settings.dataNote' => 'Naar de provider gaan je vraag en de namen van bibliotheken, servers en gebruikers die nodig zijn om hem te beantwoorden. Wachtwoorden en tokens blijven in Pleya.',
 			'assistant.settings.serverUrl' => 'Adres van de server',
 			'assistant.settings.serverUrlHint' => 'http://192.168.1.10:11434',
 			'assistant.settings.headerName' => 'Naam extra header (optioneel)',

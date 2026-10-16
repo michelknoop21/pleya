@@ -118,7 +118,7 @@ class _HouseholdKidSheetState extends State<HouseholdKidSheet> {
     return AutomationNode(
       id: AutomationIds.householdKidSheet,
       role: 'sheet',
-      state: () => {'name': _name.text, 'birthMonth': householdBirthMonth(_year, _month)},
+      state: () => {'birthMonth': householdBirthMonth(_year, _month)},
       child: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(24, 16, 24, 16 + MediaQuery.viewInsetsOf(context).bottom),
@@ -159,6 +159,7 @@ class _HouseholdKidSheetState extends State<HouseholdKidSheet> {
                 monthNode: _monthNode,
                 yearNode: _yearNode,
                 onDone: _saveNode.requestFocus,
+                onLeftFromMonth: _nameNode.requestFocus,
                 onChanged: (y, m) => setState(() {
                   _year = y;
                   _month = m;

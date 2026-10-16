@@ -2422,6 +2422,7 @@
       "tvHint": "Omhoog en omlaag kiest. Rechts gaat naar het jaar, OK naar Bewaar.",
       "cardTitle": "Voor welke kinderen?",
       "cardBody": "Voeg ze één keer toe. Dan filtert Big P hiermee op elk profiel. Namen en maanden blijven op dit toestel. Het AI-model krijgt alleen de leeftijd van het jongste kind.",
+      "cardFull": "Er staan al 8 kinderen in huis. Pas ze aan bij Instellingen > Big P > Kinderen in huis.",
       "addAnother": "Nog een kind toevoegen",
       "saveAndSearch": "Bewaar en zoek verder",
       "months": ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"]

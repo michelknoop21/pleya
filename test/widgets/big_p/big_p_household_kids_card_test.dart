@@ -9,7 +9,7 @@ import 'package:pleya/widgets/big_p/assistant/big_p_household_kids_card.dart';
 void main() {
   final h = t.assistant.household;
 
-  Future<List<List<HouseholdKid>>> pump(WidgetTester tester) async {
+  Future<List<List<HouseholdKid>>> pump(WidgetTester tester, {int existing = 0, VoidCallback? onClose}) async {
     final saved = <List<HouseholdKid>>[];
     tester.view.physicalSize = const Size(402, 1400);
     tester.view.devicePixelRatio = 1;
@@ -24,6 +24,10 @@ void main() {
               now: DateTime(2026, 10, 16),
               style: HouseholdPickerStyle.dropdown,
               onSave: saved.add,
+              onClose: onClose,
+              loadExisting: () async => [
+                for (var i = 0; i < existing; i++) HouseholdKid(id: 'e$i', name: 'E$i', birthMonth: '2005-01'),
+              ],
             ),
           ),
         ),
@@ -66,5 +70,39 @@ void main() {
     await tester.tap(find.text(h.saveAndSearch));
     await tester.pumpAndSettle();
     expect(saved.single.map((k) => k.name), ['Noor', 'Sam']);
+  });
+
+  testWidgets('a double tap on Bewaar hands the children over once', (tester) async {
+    final saved = await pump(tester);
+    await tester.enterText(find.byType(TextField), 'Sam');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(h.saveAndSearch));
+    await tester.tap(find.text(h.saveAndSearch));
+    await tester.pumpAndSettle();
+    expect(saved, hasLength(1));
+  });
+
+  testWidgets('with 8 stored children the card says so and has a way out', (tester) async {
+    var closed = 0;
+    final saved = await pump(tester, existing: 8, onClose: () => closed++);
+    expect(find.text(h.cardFull), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    await tester.tap(find.text(t.common.close));
+    expect(closed, 1);
+    expect(saved, isEmpty);
+  });
+
+  testWidgets('with 7 stored children only one more fits', (tester) async {
+    final saved = await pump(tester, existing: 7);
+    await tester.enterText(find.byType(TextField), 'Sam');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text(h.addAnother));
+    await tester.tap(find.text(h.addAnother));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsNothing, reason: 'the cap is reached');
+    expect(find.text(h.limit), findsOneWidget);
+    await tester.tap(find.text(h.saveAndSearch));
+    await tester.pumpAndSettle();
+    expect(saved.single.map((k) => k.name), ['Sam']);
   });
 }

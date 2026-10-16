@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
@@ -71,7 +73,7 @@ class _HouseholdKidsTileState extends State<HouseholdKidsTile> {
           1 => h.tileOne,
           _ => h.tileCount(n: count),
         },
-        onTap: () => openHouseholdKidsScreen(context),
+        onTap: () => unawaited(openHouseholdKidsScreen(context)),
       ),
     );
   }

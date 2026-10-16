@@ -64,9 +64,11 @@ class AssistantController extends ChangeNotifier {
     this._jobsFor,
     Future<void> Function(List<int> ages)? saveKidsAges,
     Future<bool> Function(List<HouseholdKid> kids)? saveHouseholdKids,
+    Future<List<HouseholdKid>> Function()? loadHouseholdKids,
   }) : _now = now ?? DateTime.now,
        _saveKidsAges = saveKidsAges ?? KidsAgesStore().save,
        _saveHouseholdKids = saveHouseholdKids ?? ((kids) => HouseholdKidsStore().save(kids, kidsProfile: false)),
+       _loadHouseholdKids = loadHouseholdKids ?? HouseholdKidsStore().read,
        _loadConfig = loadConfig ?? AssistantProviderStore.instance.load,
        _modelFor = modelFor ?? AssistantModelClient.new,
        _languageName = languageName ?? assistantLanguageName,
@@ -134,6 +136,7 @@ class AssistantController extends ChangeNotifier {
 
   /// Writes the household's children ([HouseholdKidsStore.save]).
   final Future<bool> Function(List<HouseholdKid> kids) _saveHouseholdKids;
+  final Future<List<HouseholdKid>> Function() _loadHouseholdKids;
 
   /// At most one model preload per window; Ollama keeps it loaded for
   /// [_preloadKeepAlive], which outlasts the window.
@@ -487,12 +490,16 @@ class AssistantController extends ChangeNotifier {
   AssistantHouseholdKidsPrompt? get householdKidsPrompt =>
       state == AssistantSurfaceState.result ? displays.whereType<AssistantHouseholdKidsPrompt>().firstOrNull : null;
 
-  /// The household card was answered: saves [kids] on this device and asks the
-  /// question that needed them again. Nothing is asked again when the store
-  /// refused the write.
+  /// The household card was answered: adds [kids] to the children already
+  /// stored (the card also shows when every stored child is 18 or older, and
+  /// those stay) and asks the question that needed them again. Nothing is
+  /// written on a children's profile, and nothing is asked again when the
+  /// store refused the write.
   Future<void> saveHouseholdKidsAndRetry(List<HouseholdKid> kids) async {
     final prompt = _displays.whereType<AssistantHouseholdKidsPrompt>().firstOrNull?.prompt ?? _prompt;
-    if (!await _saveHouseholdKids(kids)) return;
+    if (await (_buildContext(null).kidsProfile?.call() ?? Future.value(false))) return;
+    final all = [...await _loadHouseholdKids(), ...kids].take(HouseholdKidsStore.maxKids).toList();
+    if (!await _saveHouseholdKids(all)) return;
     if (prompt != null && !_disposed) await submit(prompt);
   }
 

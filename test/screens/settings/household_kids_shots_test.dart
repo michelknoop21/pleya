@@ -99,6 +99,11 @@ void main() {
   });
 
   testWidgets('list on an iPad', skip: _dir == null, (tester) async {
-    await shot(tester, 'list-ipad', const Size(1180, 820), HouseholdKidsScreen(store: _Store(), now: now));
+    await shot(
+      tester,
+      'list-ipad',
+      const Size(1180, 820),
+      HouseholdKidsScreen(store: _Store(), now: now, isKidsProfile: () async => false),
+    );
   });
 }

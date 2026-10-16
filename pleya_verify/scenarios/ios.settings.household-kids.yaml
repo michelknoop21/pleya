@@ -46,7 +46,7 @@ steps:
   - settle: 600
   - snapshot: 02-add-sheet
   - tap: {id: "household.kids.button[save]"}
-  - wait_until: {id: "household.kids.row[0]", state: {name: Sam}, timeout: 8000}
+  - wait_until: {id: "household.kids.row[0]", state: {index: 0}, timeout: 8000}
   - settle: 800
   - assert: {id: "household.kids.row[0]", insideViewport: true, minimumTapTarget: 44}
   - snapshot: 03-list-one

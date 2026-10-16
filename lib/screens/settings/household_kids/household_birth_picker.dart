@@ -25,6 +25,7 @@ class HouseholdBirthPicker extends StatefulWidget {
     this.monthNode,
     this.yearNode,
     this.onDone,
+    this.onLeftFromMonth,
   });
 
   final int year;
@@ -37,6 +38,9 @@ class HouseholdBirthPicker extends StatefulWidget {
   final FocusNode? monthNode;
   final FocusNode? yearNode;
   final VoidCallback? onDone;
+
+  /// TV: left from the month goes back to the name.
+  final VoidCallback? onLeftFromMonth;
 
   @override
   State<HouseholdBirthPicker> createState() => _HouseholdBirthPickerState();
@@ -180,6 +184,7 @@ class _HouseholdBirthPickerState extends State<HouseholdBirthPicker> {
           // Up is the earlier month, down the later one.
           up: () => _set(widget.year, widget.month - 1),
           down: () => _set(widget.year, widget.month + 1),
+          left: widget.onLeftFromMonth,
           right: () => widget.yearNode?.requestFocus(),
         ),
         const SizedBox(width: 16),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../automation/automation_ids.dart';
@@ -24,6 +26,8 @@ class BigPHouseholdKidsCard extends StatefulWidget {
     super.key,
     required this.onSave,
     this.firstNode,
+    this.onClose,
+    this.loadExisting,
     this.embedded = false,
     this.now,
     this.style,
@@ -33,6 +37,13 @@ class BigPHouseholdKidsCard extends StatefulWidget {
 
   /// Gets the name field, for the surface's initial focus.
   final FocusNode? firstNode;
+
+  /// Closes the card unanswered; the way out when the household is full.
+  final VoidCallback? onClose;
+
+  /// The children already stored, which the card adds to and never replaces.
+  /// Tests inject it; the app reads the store.
+  final Future<List<HouseholdKid>> Function()? loadExisting;
 
   /// Inside Big P's balloon (39 G): the balloon is the card.
   final bool embedded;
@@ -46,6 +57,8 @@ class BigPHouseholdKidsCard extends StatefulWidget {
 class _BigPHouseholdKidsCardState extends State<BigPHouseholdKidsCard> {
   final _name = TextEditingController();
   final _kids = <HouseholdKid>[];
+  int _existing = 0;
+  bool _saved = false;
   final _monthNode = FocusNode(debugLabel: 'household.card.month');
   final _yearNode = FocusNode(debugLabel: 'household.card.year');
   final _saveNode = FocusNode(debugLabel: 'household.card.save');
@@ -57,6 +70,11 @@ class _BigPHouseholdKidsCardState extends State<BigPHouseholdKidsCard> {
   void initState() {
     super.initState();
     _name.addListener(() => setState(() {}));
+    unawaited(
+      (widget.loadExisting ?? HouseholdKidsStore().read)().then((kids) {
+        if (mounted) setState(() => _existing = kids.length);
+      }),
+    );
   }
 
   @override
@@ -69,7 +87,7 @@ class _BigPHouseholdKidsCardState extends State<BigPHouseholdKidsCard> {
   }
 
   bool get _typed => _name.text.trim().isNotEmpty;
-  bool get _room => _kids.length < HouseholdKidsStore.maxKids;
+  bool get _room => _existing + _kids.length < HouseholdKidsStore.maxKids;
 
   HouseholdKid get _current =>
       HouseholdKid(id: newHouseholdKidId(), name: _name.text.trim(), birthMonth: householdBirthMonth(_year, _month));
@@ -83,8 +101,12 @@ class _BigPHouseholdKidsCardState extends State<BigPHouseholdKidsCard> {
   }
 
   void _save() {
+    // A double tap must not ask the question twice.
+    if (_saved) return;
     final all = [..._kids, if (_typed && _room) _current];
-    if (all.isNotEmpty) widget.onSave(all);
+    if (all.isEmpty) return;
+    _saved = true;
+    widget.onSave(all);
   }
 
   @override
@@ -94,15 +116,16 @@ class _BigPHouseholdKidsCardState extends State<BigPHouseholdKidsCard> {
     final h = t.assistant.household;
     final style = widget.style ?? (PlatformDetector.isTV() ? HouseholdPickerStyle.tv : HouseholdPickerStyle.dropdown);
     final muted = TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption1 * pt);
+    final full = _existing >= HouseholdKidsStore.maxKids;
     final canSave = _kids.isNotEmpty || (_typed && _room);
     final save = BigPButton(
-      label: h.saveAndSearch,
+      label: full ? t.common.close : h.saveAndSearch,
       primary: true,
-      enabled: canSave,
+      enabled: full ? widget.onClose != null : canSave,
       focusNode: _saveNode,
       automationId: AutomationIds.householdKidsButton,
       automationInstance: 'cardSave',
-      onPressed: _save,
+      onPressed: full ? () => widget.onClose?.call() : _save,
     );
     final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -140,7 +163,9 @@ class _BigPHouseholdKidsCardState extends State<BigPHouseholdKidsCard> {
               ],
             ),
           ),
-        if (_room) ...[
+        if (full)
+          Text(h.cardFull, style: muted.copyWith(height: 1.3))
+        else if (_room) ...[
           Text(h.name, style: muted),
           SizedBox(height: 6 * pt),
           FocusableTextField(
@@ -163,6 +188,7 @@ class _BigPHouseholdKidsCardState extends State<BigPHouseholdKidsCard> {
             monthNode: _monthNode,
             yearNode: _yearNode,
             onDone: _saveNode.requestFocus,
+            onLeftFromMonth: widget.firstNode?.requestFocus,
             onChanged: (y, m) => setState(() {
               _year = y;
               _month = m;

@@ -100,6 +100,7 @@ class TvHouseholdKidsSheet {
         return BigPHouseholdKidsCard(
           firstNode: firstNode,
           onSave: (kids) => OverlaySheetController.closeAdaptive(sheetContext, kids),
+          onClose: () => OverlaySheetController.closeAdaptive(sheetContext),
         );
       },
     );

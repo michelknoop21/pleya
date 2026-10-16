@@ -358,6 +358,7 @@ void main() {
       ]).model,
       languageName: () => 'Dutch',
       tools: [pick],
+      loadHouseholdKids: () async => household,
       saveHouseholdKids: (kids) async {
         household = kids;
         return true;
@@ -376,6 +377,63 @@ void main() {
     expect(c.runs, 2);
     expect(c.prompt, prompt);
     expect(c.householdKidsPrompt, isNull);
+  });
+
+  AssistantController householdController({
+    required List<HouseholdKid> stored,
+    required void Function(List<HouseholdKid>) onSave,
+    bool kidsProfile = false,
+  }) {
+    final pick = AssistantTool(
+      name: 'pick',
+      description: 'pick',
+      risk: AssistantToolRisk.read,
+      properties: const {},
+      needsServer: false,
+      serves: (_, _) => true,
+      run: (ctx, _, _) async {
+        if (ctx.audienceAge == null) throw const AssistantToolError('household_kids_unknown');
+        return const AssistantToolResult({'ok': true});
+      },
+    );
+    final c = AssistantController(
+      buildContext: (_) => _ctx(kidsProfile: kidsProfile, household: stored),
+      entitlement: const _Entitled(),
+      loadConfig: () async =>
+          const AssistantProviderConfig(kind: AssistantProviderKind.ollamaServer, baseUrl: 'http://o.lan', model: 'm'),
+      modelFor: (_) => _model([
+        {'name': 'pick', 'args': <String, Object?>{}},
+        'klaar',
+      ]).model,
+      languageName: () => 'Dutch',
+      tools: [pick],
+      loadHouseholdKids: () async => stored,
+      saveHouseholdKids: (kids) async {
+        onSave(kids);
+        return true;
+      },
+    );
+    addTearDown(c.dispose);
+    return c;
+  }
+
+  test('the household card adds to the stored children: a child of 19 stays', () async {
+    final old = HouseholdKid(id: 'o', name: 'Oud', birthMonth: '${DateTime.now().year - 19}-01');
+    final fresh = HouseholdKid(id: 'n', name: 'Sam', birthMonth: '${DateTime.now().year - 3}-01');
+    List<HouseholdKid>? written;
+    // A 19-year-old sets no gate, so the card shows although a child is stored.
+    final c = householdController(stored: [old], onSave: (k) => written = k);
+    await c.submit(prompt);
+    expect(c.householdKidsPrompt, isNotNull);
+    await c.saveHouseholdKidsAndRetry([fresh]);
+    expect(written, [old, fresh]);
+  });
+
+  test('the household card writes nothing on a children\'s profile', () async {
+    List<HouseholdKid>? written;
+    final c = householdController(stored: const [], kidsProfile: true, onSave: (k) => written = k);
+    await c.saveHouseholdKidsAndRetry([HouseholdKid(id: 'n', name: 'Sam', birthMonth: '2023-01')]);
+    expect(written, isNull);
   });
 
   group('an adult profile: the gate follows the question, not the profile', () {

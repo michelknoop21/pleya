@@ -27,7 +27,7 @@ HouseholdKid _kid(String id, String name, String month) => HouseholdKid(id: id, 
 void main() {
   final h = t.assistant.household;
 
-  Future<void> pump(WidgetTester tester, _Store store) async {
+  Future<void> pump(WidgetTester tester, _Store store, {bool kids = false}) async {
     tester.view.physicalSize = const Size(402, 1400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -35,7 +35,7 @@ void main() {
       TranslationProvider(
         child: MaterialApp(
           theme: monoTheme(dark: true),
-          home: HouseholdKidsScreen(store: store, now: _now),
+          home: HouseholdKidsScreen(store: store, now: _now, isKidsProfile: () async => kids),
         ),
       ),
     );
@@ -143,5 +143,17 @@ void main() {
     expect(find.text('Oud'), findsOneWidget);
     expect(find.text(h.ageIgnored), findsOneWidget);
     expect(store.kids, hasLength(1));
+  });
+
+  testWidgets('a profile switched to a children\'s profile cannot write', (tester) async {
+    final store = _Store([_kid('a', 'Noor', '2020-03')]);
+    await pump(tester, store, kids: true);
+    await tester.tap(find.text('Noor'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Noortje');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(h.save));
+    await tester.pumpAndSettle();
+    expect(store.kids.single.name, 'Noor');
   });
 }

@@ -3,11 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import 'package:provider/provider.dart';
+
+import '../../../assistant/assistant_kids_profile_store.dart';
 import '../../../automation/automation_ids.dart';
 import '../../../automation/automation_node.dart';
 import '../../../focus/key_event_utils.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../navigation/tv/tv_content_route_registry.dart';
+import '../../../profiles/active_profile_provider.dart';
 import '../../../profiles/household_kids_store.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/dialogs.dart';
@@ -22,10 +26,14 @@ import 'household_kid_sheet.dart';
 
 /// Opens Instellingen > Big P > Kinderen in huis: inside the TV shell when
 /// there is one, as an ordinary page otherwise.
-void openHouseholdKidsScreen(BuildContext context) {
+Future<void> openHouseholdKidsScreen(BuildContext context) async {
+  // A children's profile never gets here; checked again in case the profile
+  // switched under the row.
+  final profile = context.read<ActiveProfileProvider?>()?.active;
+  if (await assistantIsKidsProfile(profile) || !context.mounted) return;
   Widget builder(BuildContext _) => const HouseholdKidsScreen();
   if (openTvContentRoute(id: 'tvSettings_householdKids', builder: builder) != null) return;
-  unawaited(Navigator.of(context).push(MaterialPageRoute<void>(builder: builder)));
+  await Navigator.of(context).push(MaterialPageRoute<void>(builder: builder));
 }
 
 /// The household's children (45 B, C, I, J): the list with each child's
@@ -33,9 +41,12 @@ void openHouseholdKidsScreen(BuildContext context) {
 /// profile gets here (the row is hidden on those), and the store refuses a
 /// write from one anyway.
 class HouseholdKidsScreen extends StatefulWidget {
-  const HouseholdKidsScreen({super.key, this.store, this.now, this.pickerStyle});
+  const HouseholdKidsScreen({super.key, this.store, this.now, this.pickerStyle, this.isKidsProfile});
 
   final HouseholdKidsStore? store;
+
+  /// Whether the active profile is a children's profile; tests inject it.
+  final Future<bool> Function()? isKidsProfile;
   final DateTime? now;
 
   /// Tests pick the picker; the app takes the wheel, or the remote on TV.
@@ -58,11 +69,18 @@ class _HouseholdKidsScreenState extends State<HouseholdKidsScreen> {
   }
 
   Future<void> _save(List<HouseholdKid> kids) async {
-    if (!await _store.save(kids, kidsProfile: false) || !mounted) return;
+    final kidsProfile =
+        await (widget.isKidsProfile?.call() ?? assistantIsKidsProfile(context.read<ActiveProfileProvider?>()?.active));
+    if (!mounted || !await _store.save(kids, kidsProfile: kidsProfile) || !mounted) return;
     setState(() => _kids = kids);
   }
 
+  bool _sheetOpen = false;
+
   Future<void> _addOrEdit([HouseholdKid? kid]) async {
+    // A second tap before the sheet is up must not open a second one.
+    if (_sheetOpen) return;
+    _sheetOpen = true;
     final kids = _kids ?? const <HouseholdKid>[];
     final result = await showHouseholdKidSheet(
       context,
@@ -71,11 +89,13 @@ class _HouseholdKidsScreenState extends State<HouseholdKidsScreen> {
       now: _now,
       style: widget.pickerStyle,
     );
+    _sheetOpen = false;
+    final current = _kids ?? kids;
     if (result is HouseholdKid) {
-      await _save(kid == null ? [...kids, result] : [for (final k in kids) k.id == kid.id ? result : k]);
+      await _save(kid == null ? [...current, result] : [for (final k in current) k.id == kid.id ? result : k]);
     } else if (result is HouseholdKidDelete && kid != null) {
       await _save([
-        for (final k in kids)
+        for (final k in current)
           if (k.id != kid.id) k,
       ]);
     }
@@ -107,7 +127,7 @@ class _HouseholdKidsScreenState extends State<HouseholdKidsScreen> {
       id: AutomationIds.householdKidsRow,
       instance: '$index',
       role: 'list.item',
-      state: () => {'name': kid.name, 'age': householdAgeLabel(kid, _now)},
+      state: () => {'index': index, 'age': householdAgeLabel(kid, _now)},
       child: SettingNavigationTile(
         icon: Symbols.child_care_rounded,
         title: kid.name,

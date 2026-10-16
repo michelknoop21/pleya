@@ -2422,6 +2422,7 @@
       "tvHint": "Up and down chooses. Right goes to the year, OK to Save.",
       "cardTitle": "Which children?",
       "cardBody": "Add them once. Big P then filters with this on every profile. Names and months stay on this device. The AI model only gets the age of the youngest child.",
+      "cardFull": "There are already 8 children at home. Change them under Settings > Big P > Children at home.",
       "addAnother": "Add another child",
       "saveAndSearch": "Save and keep searching",
       "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
