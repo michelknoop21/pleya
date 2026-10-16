@@ -74,7 +74,20 @@ Niet in deze ronde: Seerr-, Trakt- en geheugenvragen met een echte bron (het mod
 
 ## Status na een actievraag
 
-Te controleren op een echt toestel, per platform (iPhone, iPad, Apple TV):
+Wat Pleya na een actievraag laat zien, in drie lagen. De eerste twee zijn gedraaid; de derde niet.
+
+**1. Widgettest iPhone en iPad** (`test/screens/big_p/big_p_action_flow_test.dart`, 10 tests, groen op 16 oktober 2026). De echte `AssistantController` en de echte tools `list_libraries`, `scan_library`, `list_jobs` en `retry_job` draaien tegen een nep-beheerdersserver, met een gescript model, in de echte ballon op 402 x 874 (iPhone) en 1024 x 1366 (iPad). Een getikte chip is nagebootst met `controller.submit(<chiptekst>)`.
+
+- Scan: de server krijgt één scanverzoek, het scherm toont "Scan gestart · Films · Zolder" en blijft daar staan (zonder operatie-id volgt Pleya een scan niet), en toont nooit "Scan klaar" of "Scan mislukt".
+- Taak herstarten: de server krijgt één retry; het scherm toont "Taak loopt · 40%" zolang de server de taak als lopend meldt, en pas daarna "Taak klaar" of "Taak mislukt". De oude mislukte uitkomst van een uur eerder wordt niet voor het resultaat van de herstart aangezien (negatieve controle: zo'n taak toont eerst "Taak loopt", nooit direct "Taak mislukt").
+- Home-rij: eerst de bevestigingskaart "Rij op het beginscherm maken" met de titel; er staat niets op "Rij aangemaakt" voor Bevestigen; na Bevestigen verdwijnt de kaart en staat er "Rij aangemaakt". Negatieve controle: Annuleren maakt niets aan.
+- De Home-rij is de ene vervanger: de echte `create_home_row` heeft de hele catalogusservice nodig, dus een tool met dezelfde naam levert dezelfde `AssistantPendingAction`. De bevestigingskaart zelf en de status eronder zijn echt.
+
+**2. Fixtures voor Pleya Verify** (`pleya_verify/fixture_server`, 144 tests groen, 1 overgeslagen die er al was). De nep-Pleya-server kent met de fixture `server.admin-jobs.v1` nu `GET /jobs`, `POST /jobs/{id}/retry` (de taak leest daarna twee keer als lopend en dan als geslaagd) en `POST /libraries/{id}/scan` (202 zonder taak-id, zoals de echte server). De nep-modelserver beantwoordt de drie vragen met de echte tools: lijst de bibliotheken en scan de filmbibliotheek, lijst de taken en herstart de mislukte, zoek en maak de Home-rij alleen uit een resultaat dat een rij kan worden. Het resultaat toont nu ook `jobPhase` in de automatiseringsstatus (`assistant.result`), zodat een scenario de fase kan vergelijken.
+
+**3. tvOS-simulator: niet gedraaid.** Het scenario `pleya_verify/scenarios/tvos.assistant.action-status.yaml` staat klaar en valideert (`dart run bin/verify.dart validate`): het stelt het model in, typt de drie vragen in de native editor en wacht op "scan gestart", op de herstart tot "klaar" en op de bevestigingskaart van de Home-rij, met een schermafbeelding per stap. Het draait nog niet, want er is geen tvOS-simulatorruntime: `xcrun simctl list runtimes` toont alleen iOS 27.0 onder Xcode 27.0 (27A266a), en `scripts/tvos_sim.sh doctor` meldt "geen tvOS-simulator gevonden". Met een tvOS-runtime: `PLEYA_ASSISTANT_ENABLED=true dart run bin/verify.dart run ../scenarios/tvos.assistant.action-status.yaml --json` in `pleya_verify/runner`, na `scripts/tvos_sim.sh doctor`. Het scenario is dus ongetoetst tegen de echte app; een fout in id's of volgorde kan er nog in zitten.
+
+**4. Op een echt toestel** (iPhone, iPad, Apple TV), nog te controleren:
 
 - "Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw." toont per herstarte taak eerst "Taak opnieuw gestart" en daarna "Taak loopt", "Taak klaar" of "Taak mislukt".
 - "Scan alle filmbibliotheken op al mijn servers." toont per bibliotheek "Scan gestart" en blijft daar staan. Dat is geen fout: zonder operatie-id volgt Pleya een scan niet (BP-01a). De vervolgvraag naar de lopende taken staat eronder.

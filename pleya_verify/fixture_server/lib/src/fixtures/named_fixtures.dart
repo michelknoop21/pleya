@@ -74,6 +74,21 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
     case 'server.owner.v1':
       server.usersCapability = true;
       return true;
+    case 'server.admin-jobs.v1':
+      // The owner and one failed job to restart. Fixed timestamps, as everywhere
+      // in a fixture: the restart's end counts once the watch has seen the job run.
+      server.usersCapability = true;
+      server.adminJobs
+        ..clear()
+        ..add({
+          'id': 'job-failed-1',
+          'kind': 'scan_library',
+          'state': 'failed',
+          'created_at': server.clock.now.subtract(const Duration(hours: 1)).toIso8601String(),
+          'finished_at': server.clock.now.subtract(const Duration(minutes: 59)).toIso8601String(),
+          'last_error': 'Disk error',
+        });
+      return true;
     case 'activity.active-session.v1':
       if (tautulli == null) return false;
       _applyActivityActiveSessionV1(tautulli);

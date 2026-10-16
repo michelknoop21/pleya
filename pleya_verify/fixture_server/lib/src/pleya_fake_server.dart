@@ -57,6 +57,24 @@ class PleyaFakeServer {
   /// as the app offering an administrative action, not through sending one.
   bool usersCapability = false;
 
+  /// The background jobs `GET /jobs` lists once [usersCapability] is on, newest
+  /// first, in the server's own JSON. Empty by default; `server.admin-jobs.v1`
+  /// seeds one failed job.
+  final List<Map<String, dynamic>> adminJobs = [];
+
+  /// Library ids a `POST /libraries/{id}/scan` was sent for, in order.
+  final List<String> scanRequests = [];
+
+  /// Job ids a `POST /jobs/{id}/retry` was sent for, in order.
+  final List<String> retryRequests = [];
+
+  /// A retried job reads as running until `GET /jobs` has been asked this many
+  /// times since the retry, then as succeeded. Two lets a watch see "running"
+  /// before the end; a job seen running is the watch's own, whatever the clock
+  /// on the device says about the fixture's fixed timestamps.
+  int retryRunningReads = 2;
+  final Map<String, int> _retryReads = {};
+
   /// Whether `/info` advertises watch state. Controls whether the client asks
   /// for the two playback hubs at all.
   final bool watchState;
@@ -199,6 +217,11 @@ class PleyaFakeServer {
     watchStates.clear();
     ownedByThisSession = true;
     usersCapability = false;
+    adminJobs.clear();
+    scanRequests.clear();
+    retryRequests.clear();
+    retryRunningReads = 2;
+    _retryReads.clear();
     requests.clear();
     refreshCount = 0;
     rejectCurrentAccessTokens = false;
@@ -210,6 +233,44 @@ class PleyaFakeServer {
     _queuedFailure = null;
     _queuedLatency = Duration.zero;
     _queuedLatencyCount = 0;
+  }
+
+  /// The administration routes the assistant's scan and restart tools use:
+  /// the job list, a job's retry and a library's scan. A scan is accepted and
+  /// logged; like the real server it answers 202 with no job id to follow.
+  http.Response? _adminRoute(String path, String method) {
+    if (path == '/jobs' && method == 'GET') {
+      for (final job in adminJobs) {
+        final reads = _retryReads[job['id']];
+        if (reads == null) continue;
+        _retryReads[job['id'] as String] = reads + 1;
+        if (reads + 1 > retryRunningReads && job['state'] == 'running') {
+          job
+            ..['state'] = 'succeeded'
+            ..['finished_at'] = clock.now.toIso8601String();
+        }
+      }
+      return _json({'items': adminJobs});
+    }
+    final retry = RegExp(r'^/jobs/([^/]+)/retry$').firstMatch(path);
+    if (retry != null && method == 'POST') {
+      final job = adminJobs.where((job) => job['id'] == retry.group(1)).firstOrNull;
+      if (job == null) return _json(_error('job.not_found'), status: 404);
+      retryRequests.add(job['id'] as String);
+      job
+        ..['state'] = 'running'
+        ..['created_at'] = clock.now.toIso8601String()
+        ..['finished_at'] = null
+        ..['last_error'] = null;
+      _retryReads[job['id'] as String] = 0;
+      return http.Response('', 202);
+    }
+    final scan = RegExp(r'^/libraries/([^/]+)/scan$').firstMatch(path);
+    if (scan != null && method == 'POST') {
+      scanRequests.add(scan.group(1)!);
+      return http.Response('', 202);
+    }
+    return null;
   }
 
   void addLibrary({required String id, required String title, required String kind, int? itemCount}) {
@@ -436,6 +497,10 @@ class PleyaFakeServer {
       return _json(const {'id': 'srv-1', 'name': 'Zolder', 'version': '0.2.0', 'started_at': '2026-08-18T19:25:33Z'});
     }
     if (path == '/libraries') return _json({'items': libraries});
+    if (usersCapability) {
+      final admin = _adminRoute(path, request.method);
+      if (admin != null) return admin;
+    }
     if (usersCapability && path == '/users/me' && request.method == 'GET') {
       // The one account this fixture knows is the one `/auth/setup` made.
       return _json({'id': 'user-owner', 'username': _credentials.keys.firstOrNull ?? 'owner', 'role': 'owner'});
