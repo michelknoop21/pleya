@@ -77,12 +77,14 @@ Future<EvalOutcome> runEvalCase(
   String region = 'NL',
 }) async {
   final outcome = EvalOutcome();
+  final world = await c.world?.call();
   final ctx = evalContext(
     kids: c.kids,
     kidsAges: c.kidsAges,
     householdKids: evalHouseholdKids(c.householdKids),
     region: region,
     personal: c.personal,
+    world: world,
     onSaveRow: outcome.savedRows.add,
   );
   final history = <AssistantTurn>[];

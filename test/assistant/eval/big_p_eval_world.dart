@@ -8,9 +8,11 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_hub.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/models/trakt/trakt_ids.dart';
 import 'package:pleya/models/trakt/trakt_title.dart';
 import 'package:pleya/services/recommendations/taste_profile.dart';
+import 'package:pleya/services/seerr/seerr_constants.dart';
 
 import '../assistant_find_fakes.dart';
 import '../assistant_memory_support.dart';
@@ -79,7 +81,7 @@ const evalOfflineTitles = <(String, String, int)>[
 
 /// A second library server that is registered but offline: its libraries
 /// cannot be read, and Big P must say so rather than skip it.
-FakeServer evalOfflineServer() => FakeServer(
+FakeServer evalOfflineServer() => _OfflineServer(
   'kelder',
   libraries: {
     'films': [
@@ -122,7 +124,17 @@ FakeSeerr evalSeerr() => FakeSeerr()
       'originalLanguage': 'en',
       'voteCount': 4000,
     },
-  ];
+  ]
+  ..details['/auth/me'] = {'id': 7, 'permissions': SeerrPermission.request}
+  ..details['/movie/14337'] = {'id': 14337, 'title': 'Primer', 'releaseDate': '2004-10-08'}
+  ..details['/tv/95396'] = {
+    'id': 95396,
+    'name': 'Severance',
+    'firstAirDate': '2022-02-18',
+    'seasons': [
+      for (final n in [0, 1, 2]) {'seasonNumber': n, 'episodeCount': 9},
+    ],
+  };
 
 /// The memory of two profiles on one in-memory database, so a case can prove
 /// that a fact of one never reaches the other.
@@ -153,7 +165,14 @@ class EvalMemory {
 /// What a case adds around the fixture server. Every field is optional;
 /// the default is the plain fixture of `evalContext`.
 class EvalWorld {
-  const EvalWorld({this.profile, this.offlineServer = false, this.trakt, this.seerr, this.memory});
+  const EvalWorld({
+    this.profile,
+    this.offlineServer = false,
+    this.trakt,
+    this.seerr,
+    this.memory,
+    this.memoryOfSecond = false,
+  });
 
   /// The asking profile's personal source; overrides `personal: true`.
   final EvalProfile? profile;
@@ -163,4 +182,16 @@ class EvalWorld {
   final AssistantTraktServices? trakt;
   final FakeSeerr? seerr;
   final EvalMemory? memory;
+
+  /// The asking profile is the second one of [memory] (Sanne).
+  final bool memoryOfSecond;
+
+  AssistantMemoryServices? get memoryServices =>
+      memory == null ? null : (memoryOfSecond ? memory!.sanne.services : memory!.services);
+}
+
+class _OfflineServer extends FakeServer {
+  _OfflineServer(super.id, {super.libraries});
+  @override
+  Future<HealthStatus> checkHealth() async => HealthStatus.offline;
 }
