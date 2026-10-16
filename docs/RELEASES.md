@@ -80,7 +80,9 @@ Nothing user-facing since the last published build.
   This correction has not been checked on a physical device.
 
 ### Worth checking
-- Open Big P and tap a tonight question. Check that the answer lists titles from your own libraries, and that a child profile gets only suitable titles. This was tested against two cloud models with stand-in servers, not on a device.
+- Open Big P and tap a tonight question. Check that the answer lists titles from your own
+  libraries, and that on a child profile the titles pass the age check. This was tested
+  against two cloud models with stand-in servers, not on a device.
 - On a reachable server, ask for missing episodes and for duplicate films. Check that the
   first reads series and the second names any matching copy or edition groups.
 - With an unavailable server, check that the answer explains the connection failure.
@@ -114,7 +116,9 @@ Nothing user-facing since the last published build.
   This correction has not been checked on a physical device.
 
 ### Worth checking
-- Open Big P and tap a tonight question. Check that the answer lists titles from your own libraries, and that a child profile gets only suitable titles. This was tested against two cloud models with stand-in servers, not on a device.
+- Open Big P and tap a tonight question. Check that the answer lists titles from your own
+  libraries, and that on a child profile the titles pass the age check. This was tested
+  against two cloud models with stand-in servers, not on a device.
 - On a reachable server, ask for missing episodes and for duplicate films. Check that the
   first reads series and the second names any matching copy or edition groups.
 - With an unavailable server, check that the answer explains the connection failure.
