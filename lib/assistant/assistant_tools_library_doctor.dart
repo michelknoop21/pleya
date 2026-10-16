@@ -31,7 +31,10 @@ bool assistantNeedsLibraryDoctorScope(String prompt) {
 /// A media kind fixed by the question, never by the model's tool arguments.
 MediaKind? assistantLibraryDoctorKind(String prompt) {
   final text = prompt.toLowerCase();
-  final shows = RegExp(r'\b(aflevering(?:en)?|episodes?|seizoenen|seizoen|seasons?|series?|shows?)\b').hasMatch(text);
+  // "show" alone is the verb ("show me duplicates"); only the noun counts.
+  final shows = RegExp(
+    r'\b(aflevering(?:en)?|episodes?|seizoenen|seizoen|seasons?|series?|shows|tv[ -]shows?)\b',
+  ).hasMatch(text);
   final movies = RegExp(r'\b(films?|movies?)\b').hasMatch(text);
   return shows == movies
       ? null

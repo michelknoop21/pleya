@@ -474,6 +474,15 @@ void main() {
     expect(assistantLibraryDoctorKind('Controleer de metadata'), isNull);
   });
 
+  test('the verb "show" is not evidence of series', () {
+    expect(assistantLibraryDoctorKind('Show me duplicates in my library'), isNull);
+    expect(assistantLibraryDoctorKind('Show duplicates'), isNull);
+    expect(assistantLibraryDoctorKind('Show my duplicate films'), MediaKind.movie);
+    expect(assistantLibraryDoctorKind('Check duplicate TV shows'), MediaKind.show);
+    expect(assistantLibraryDoctorKind('Check my shows for missing metadata'), MediaKind.show);
+    expect(assistantLibraryDoctorKind('Check this TV show'), MediaKind.show);
+  });
+
   test('missing-episode starter reaches series after a full film library', () async {
     final f = _Fixture();
     f.server.pages['films'] = [for (var i = 0; i < 20; i++) f.server.items['movie']!.copyWith(id: 'film$i')];
