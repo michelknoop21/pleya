@@ -191,13 +191,12 @@ class TvHomeCustomizeController {
     ].join(' · ');
   }
 
+  /// See [homeLayoutOrderAfterMove] for why this is not simply every row's
+  /// ids in the new order (HOME-R1).
   Future<void> move(int index, int delta) async {
-    final rows = orderedRows();
-    final target = index + delta;
-    if (index < 0 || index >= rows.length || target < 0 || target >= rows.length) return;
-    final reordered = List.of(rows);
-    reordered.insert(target, reordered.removeAt(index));
-    await layout.setOrder([for (final row in reordered) ...homeLayoutIdsOf(row)]);
+    final next = homeLayoutOrderAfterMove(orderedRows(), index, delta, previous: layout.order);
+    if (next == null) return;
+    await layout.setOrder(next);
   }
 
   /// Hides or shows every id the row answers to.

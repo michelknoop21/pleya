@@ -213,6 +213,20 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
 
   String _key(String layoutId, TvHomeRowColumn column) => '$layoutId#${column.name}';
 
+  /// What a row's buttons are keyed by: its first layout id, unless another
+  /// row in the list answers to the same one (HOME-R1).
+  ///
+  /// One server can hand out two hubs with one identifier (Plex gives every
+  /// movie library its own `movie.recentlyadded`). Keyed by the bare id, both
+  /// rows were handed the same focus nodes, the second row's buttons took them
+  /// over, and the ring could no longer reach the first row. Only those rows
+  /// get the row's own hub id added; every other key stays as it was.
+  String _focusIdOf(TvHomeRowEntry entry) {
+    final id = entry.layoutIds.first;
+    final shared = widget.entries.where((other) => other.layoutIds.first == id).length > 1;
+    return shared ? '$id@${entry.row.hubId}' : id;
+  }
+
   /// The control the panel opens on: the first movable row's own up arrow.
   ///
   /// Null when there is no such row, and then Nieuwe rij takes the node
@@ -222,7 +236,7 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
   /// and the ring opened on Klaar. One Select and the panel the viewer had just
   /// opened was gone again.
   String? get _initialRowKey =>
-      widget.entries.isEmpty ? null : _key(widget.entries.first.layoutIds.first, TvHomeRowColumn.up);
+      widget.entries.isEmpty ? null : _key(_focusIdOf(widget.entries.first), TvHomeRowColumn.up);
 
   bool get _initialTaken => _borrowedKey != null || _newRowBorrowedInitial;
 
@@ -268,7 +282,7 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
     }
     final columns = _columnsOf(widget.entries[target]);
     final wanted = columns.contains(column) ? column : columns.last;
-    _nodeFor(widget.entries[target].layoutIds.first, wanted).requestFocus();
+    _nodeFor(_focusIdOf(widget.entries[target]), wanted).requestFocus();
   }
 
   /// Where the ring goes when the row under it is about to disappear (ROW1k).
@@ -285,7 +299,7 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
     } else {
       final columns = _columnsOf(neighbour);
       final wanted = columns.contains(TvHomeRowColumn.remove) ? TvHomeRowColumn.remove : columns.last;
-      _pendingFocusKey = _key(neighbour.layoutIds.first, wanted);
+      _pendingFocusKey = _key(_focusIdOf(neighbour), wanted);
     }
     widget.onRemove(row);
   }
@@ -294,7 +308,7 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
     // The row is about to change places, so remember the control rather than
     // the position: after the rebuild the ring belongs on the same button of
     // the same row, one line further along.
-    _pendingFocusKey = _key(widget.entries[index].layoutIds.first, column);
+    _pendingFocusKey = _key(_focusIdOf(widget.entries[index]), column);
     widget.onMove(index, delta);
   }
 
@@ -407,7 +421,7 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
 
   Widget _entryRow(int index, double scale) {
     final entry = widget.entries[index];
-    final id = entry.layoutIds.first;
+    final id = _focusIdOf(entry);
     final custom = entry.custom;
     return TvHomeEntryRowTile(
       entry: entry,

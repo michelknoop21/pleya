@@ -84,6 +84,70 @@ List<UnifiedMediaHub> applyHomeLayoutToUnifiedRows(
 List<String> homeLayoutIdsOf(UnifiedMediaHub row) =>
     row.contributingRowIds.isEmpty ? [row.hubId] : row.contributingRowIds;
 
+/// Moves the row at [index] in [rows] (already in display order) by [delta]
+/// and returns the order to store (HOME-R1).
+///
+/// Two things the plain "write every row's ids" got wrong:
+///
+/// * **Rows that share a layout id move as one block.** One server can hand
+///   out two hubs with one identifier (Plex gives every movie library its own
+///   `movie.recentlyadded`), so two panel rows answer to the same id and
+///   [applyHomeLayoutToUnifiedRows] can only rank them together. A row placed
+///   between them was written as `[X, own, X]`, the rank map kept the last
+///   `X`, and the own row snapped straight back: "move down" did nothing, on
+///   every press. Treating adjacent rows that share an id as one block, and
+///   writing each id once, makes every press land where the panel shows it.
+/// * **Ids the panel cannot see keep their place.** A row of a server that is
+///   offline, or an own row still loading, is not in [rows]. Writing only what
+///   is on screen dropped it from the order, and it came back at the bottom.
+///   Every id of [previous] that is not on screen is kept, right after the id
+///   that preceded it there.
+///
+/// Returns null when the move falls outside the list.
+List<String>? homeLayoutOrderAfterMove(
+  List<UnifiedMediaHub> rows,
+  int index,
+  int delta, {
+  required List<String> previous,
+}) {
+  if (index < 0 || index >= rows.length) return null;
+  final blocks = <List<UnifiedMediaHub>>[];
+  var blockIds = <String>{};
+  var from = -1;
+  for (var i = 0; i < rows.length; i++) {
+    final ids = homeLayoutIdsOf(rows[i]);
+    if (blocks.isNotEmpty && ids.any(blockIds.contains)) {
+      blocks.last.add(rows[i]);
+      blockIds.addAll(ids);
+    } else {
+      blocks.add([rows[i]]);
+      blockIds = {...ids};
+    }
+    if (i == index) from = blocks.length - 1;
+  }
+  final to = from + delta;
+  if (delta == 0 || to < 0 || to >= blocks.length) return null;
+  blocks.insert(to, blocks.removeAt(from));
+
+  final seen = <String>{};
+  final next = [
+    for (final block in blocks)
+      for (final row in block)
+        for (final id in homeLayoutIdsOf(row))
+          if (seen.add(id)) id,
+  ];
+  String? anchor;
+  for (final id in previous) {
+    if (!seen.add(id)) {
+      if (next.contains(id)) anchor = id;
+      continue;
+    }
+    next.insert(anchor == null ? 0 : next.indexOf(anchor) + 1, id);
+    anchor = id;
+  }
+  return next;
+}
+
 /// A viewer-defined Home row's projected content (ROW1b), in the [MediaHub]
 /// shape the phone/desktop feed and the settings screen already draw.
 ///
