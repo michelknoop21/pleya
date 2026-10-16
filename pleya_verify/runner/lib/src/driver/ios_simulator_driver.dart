@@ -251,7 +251,7 @@ class IosSimulatorDriver implements VerificationDriver {
     clearInstanceFile(await _instanceFiles(udid));
 
     _log('launching $verifyBundleId on $udid');
-    final launch = await _run('xcrun', ['simctl', 'launch', udid, verifyBundleId]);
+    final launch = await launchApp(udid: udid, bundleId: verifyBundleId, run: _run, log: _log);
     if (launch.exitCode != 0) {
       throw StateError('simctl launch failed (exit ${launch.exitCode}): ${launch.stderr}');
     }
