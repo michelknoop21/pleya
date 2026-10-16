@@ -7649,6 +7649,9 @@ class TranslationsAssistantKidsEn {
 	/// en: 'First I need to know how old the children are.'
 	String get agesFirst => 'First I need to know how old the children are.';
 
+	/// en: 'I do not know yet which children you mean or how old they are, so I show no titles.'
+	String get householdFirst => 'I do not know yet which children you mean or how old they are, so I show no titles.';
+
 	/// en: 'I have no title that suits the children's ages. Ask me another way.'
 	String get noFit => 'I have no title that suits the children\'s ages. Ask me another way.';
 
@@ -11648,6 +11651,7 @@ extension on Translations {
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Subtitles',
 			'assistant.kids.agesFirst' => 'First I need to know how old the children are.',
+			'assistant.kids.householdFirst' => 'I do not know yet which children you mean or how old they are, so I show no titles.',
 			'assistant.kids.noFit' => 'I have no title that suits the children\'s ages. Ask me another way.',
 			'assistant.kids.header' => 'Pleya asks',
 			'assistant.kids.title' => 'How old are the children?',
@@ -12023,9 +12027,9 @@ extension on Translations {
 			'assistant.settings.savedModelGone' => ({required Object model}) => '${model} is no longer offered. Pick another model below.',
 			'assistant.settings.updateModel' => 'Update model',
 			'assistant.settings.updating' => ({required Object status}) => 'Updating: ${status}',
-			'assistant.settings.updateDone' => ({required Object model}) => '${model} is up to date',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.settings.updateDone' => ({required Object model}) => '${model} is up to date',
 			'assistant.settings.pullErrorUnknown' => 'Ollama no longer has this model in its library. Pick another model.',
 			'assistant.settings.pullErrorDisk' => 'Not enough disk space on the server to update the model.',
 			'assistant.settings.pullErrorFailed' => ({required Object reason}) => 'Updating the model failed: ${reason}',

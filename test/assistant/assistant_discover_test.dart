@@ -319,7 +319,9 @@ void main() {
         _film(12445, 'Harry Potter', '2011-07-07'),
         _film(862, 'Toy Story', '1995-11-22'),
       ]);
-    final ctx = _ctx(seerr: seerr, age: 8)..kidsMode = true;
+    final ctx = _ctx(seerr: seerr, age: 8)
+      ..kidsMode = true
+      ..ageGate = AssistantAgeGate.kidsProfile;
     final data = await _run(ctx, 'trending_titles', {});
     expect([for (final r in _titles(data)) r['title']], ['Toy Story']);
     expect(data['filtered_for_age'], 1);
@@ -329,7 +331,13 @@ void main() {
 
   test('a children\'s profile without saved ages is kids_ages_unknown', () async {
     await expectLater(
-      _run(_ctx(seerr: FakeSeerr())..kidsMode = true, 'trending_titles', {}),
+      _run(
+        _ctx(seerr: FakeSeerr())
+          ..kidsMode = true
+          ..ageGate = AssistantAgeGate.kidsProfile,
+        'trending_titles',
+        {},
+      ),
       throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'kids_ages_unknown')),
     );
   });

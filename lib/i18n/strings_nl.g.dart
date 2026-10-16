@@ -3257,6 +3257,7 @@ class _TranslationsAssistantKidsNl extends TranslationsAssistantKidsEn {
 
 	// Translations
 	@override String get agesFirst => 'Ik moet eerst weten hoe oud de kinderen zijn.';
+	@override String get householdFirst => 'Ik weet nog niet welke kinderen je bedoelt en hoe oud ze zijn, dus ik laat geen titels zien.';
 	@override String get noFit => 'Ik heb geen titel die bij de leeftijd van de kinderen past. Vraag het me anders.';
 	@override String get header => 'Pleya vraagt';
 	@override String get title => 'Hoe oud zijn de kinderen?';
@@ -6386,6 +6387,7 @@ extension on TranslationsNl {
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Ondertitels',
 			'assistant.kids.agesFirst' => 'Ik moet eerst weten hoe oud de kinderen zijn.',
+			'assistant.kids.householdFirst' => 'Ik weet nog niet welke kinderen je bedoelt en hoe oud ze zijn, dus ik laat geen titels zien.',
 			'assistant.kids.noFit' => 'Ik heb geen titel die bij de leeftijd van de kinderen past. Vraag het me anders.',
 			'assistant.kids.header' => 'Pleya vraagt',
 			'assistant.kids.title' => 'Hoe oud zijn de kinderen?',
@@ -6761,9 +6763,9 @@ extension on TranslationsNl {
 			'assistant.settings.savedModelGone' => ({required Object model}) => '${model} wordt niet meer aangeboden. Kies hieronder een ander model.',
 			'assistant.settings.updateModel' => 'Model bijwerken',
 			'assistant.settings.updating' => ({required Object status}) => 'Bijwerken: ${status}',
-			'assistant.settings.updateDone' => ({required Object model}) => '${model} is bijgewerkt',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.settings.updateDone' => ({required Object model}) => '${model} is bijgewerkt',
 			'assistant.settings.pullErrorUnknown' => 'Ollama heeft dit model niet meer in de bibliotheek. Kies een ander model.',
 			'assistant.settings.pullErrorDisk' => 'Te weinig schijfruimte op de server om het model bij te werken.',
 			'assistant.settings.pullErrorFailed' => ({required Object reason}) => 'Model bijwerken mislukt: ${reason}',

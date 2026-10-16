@@ -91,10 +91,26 @@ De drie vragen onder de begroeting laten zien wat Big P kan. Ze komen uit code, 
 - Eén bron. `AssistantCapability` (`lib/assistant/assistant_capabilities.dart`) noemt per mogelijkheid de groep, de tools die de vraag hoort te bereiken en een eventuele extra voorwaarde. De teksten staan in `assistant.examples.<naam>` (en en nl). Elke tool zit in een mogelijkheid of in de uitzonderingslijst van `test/assistant/assistant_capabilities_test.dart`, met de reden erbij.
 - Alleen wat werkt. Een mogelijkheid wordt aangeboden als minstens één van haar tools wordt bediend door `assistantServedTools`, de poort die ook een run gebruikt, en de extra voorwaarde klopt. Zonder Seerr dus geen aanvraagvraag, en zonder beheerrecht geen vraag die een beheertool nodig heeft (taken, gebruikers, scan, vergelijken, kijkcijfers). De vragen naar de serverlijst, de bibliotheekdokter en een Home-rij blijven voor elk profiel, want een profiel mag die zelf.
 - Kinderprofiel. Alleen de groep kijken, en alleen via een tool die in `kidsToolPolicy` op `gated` staat. Zolang de profielstatus niet is gelezen geldt het profiel als kinderprofiel.
+- Kinderwoorden. De startvragen "Heb ik iets voor de kinderen?" en "Wat kan ik vanavond met mijn gezin kijken?" zijn kindvragen: op een volwassen profiel met ingevoerde kinderen geldt de poort, zonder kinderen komt er geen titel (zie Kinderen in het huishouden).
 - Geen titel, geen naam. Een startvraag noemt geen titel, server of persoon. Een chip telt niet als getypt en schrijft dus nooit geheugen.
 - Kiezen. Drie mogelijkheden uit drie groepen waar het profiel er zoveel heeft. Wat langer niet is getoond weegt zwaarder, wat nooit is getoond het zwaarst. De laatste 24 getoonde vragen worden per profiel onthouden, alleen op dit toestel. Binnen één keer openen blijft de set staan, behalve dat hij één keer opnieuw wordt gekozen zodra de profielstatus is gelezen of de taal wijzigt. Twee keer achter elkaar dezelfde set komt niet voor.
 - Niets bereikbaar. Dan staan er de drie basis-kijkvragen, en het antwoord zegt wat onbereikbaar is.
 - Nieuwe of gewijzigde formulering. De routetest moet groen zijn, en de handmatige ronde in `docs/qa/big-p-startvragen.md` wordt opnieuw gedraaid tegen het ingestelde model.
+
+## Kinderen in het huishouden
+
+De leeftijdspoort hangt aan de vraag, niet alleen aan het profiel. Een ouder voert de kinderen één keer in (naam en geboortemaand, geen leeftijd). Gaat een vraag over de kinderen, dan zet de code op elk profiel een harde poort voor het jongste bedoelde kind, wat het model ook als toolargument stuurt.
+
+- Opslag. `household_kids` in `lib/profiles/household_kids_store.dart`: één sleutel voor alle profielen, alleen dit toestel, niet gesynchroniseerd en niet geëxporteerd (deviceLocal plus runtimeCache). Elk profiel leest hem voor de poort; alleen een profiel dat geen kinderprofiel is bewerkt hem.
+- Leeftijd. Streng in hele maanden: de verjaardag telt vanaf de maand na de geboortemaand. Een toekomstige maand en een leeftijd van 18 of ouder tellen niet mee. Het jongste bedoelde kind bepaalt de poort; een naam uit het huishouden (op woordgrens) beperkt de poort tot dat kind.
+- Herkenning (`lib/assistant/assistant_kid_audience.dart`). "Mijn/de kinderen", "kids", "de kleintjes", "zoon", "dochter", "jongste/oudste" na "mijn/onze", kinderfilm en kinderserie, "kindvriendelijke film", de Engelse varianten en namen uit het huishouden. "Gezin" en "familie" tellen pas zodra er kinderen zijn ingevoerd. Een kinderwoord dat alleen wordt weggelaten ("vergeet de kinderfilms", "geen kids movies") of alleen zegt wie het account deelt telt niet. Een vals positief maakt het antwoord strenger, een vals negatief laat titels ongefilterd door: de woorden zijn ruim gekozen.
+- Gesprek. Een vervolgvraag erft het kinderpubliek uit de eerdere vragen van het gesprek. "Voor mij" of "voor mezelf" en Nieuw gesprek wissen het.
+- Afdwingen. `AssistantToolContext.ageGate` is `none`, `kidsProfile` of `kidAudience`. Titeltools, de controle op genoemde titels en de correctieronde volgen `ageGate`, niet `kidsMode`. `kidsMode` blijft alleen uit het profiel komen (geheugen en het blokkeren van tools). Bij `kidAudience` weigert de code de tools die `kidsToolPolicy` op `blocked` zet, behalve de drie geheugentools (ze geven geen titels). Dat geldt ook voor `create_home_row`: een opgeslagen query bevat elke titel, niet alleen wat de poort passeerde; de kinderrij met een afgeleid leeftijdsfilter komt in BP-12b.
+- Het model. Het krijgt alleen "Youngest intended child: N years", nooit een naam.
+- Titels zonder rating. Ze passen alleen met een familiegenre (zoals bij het kinderprofiel). Dat is voor kinderen onder 6 bewust niet strenger gemaakt: de genrelijst is de bestaande afspraak en een tweede regel zou dunne antwoorden geven.
+- Nog geen kinderen ingevoerd. Een kindvraag toont dan geen titel en Pleya zegt dat het niet weet welke kinderen bedoeld zijn. Het invoeren zelf hoort bij de editor van BP-11c.
+- Kinderprofielen houden hun profielleeftijden tot een ouder de kinderen invoert; de gezinspoort geldt niet op een kinderprofiel, daar geldt de profielpoort.
+- Geheugen. Leeftijden van kinderen worden geweigerd, ook als "zoon van bijna 4", "dochter is 2", "kids zijn 3 en 5" en "wordt in maart 4".
 
 ## Vragenset en nulmeting
 

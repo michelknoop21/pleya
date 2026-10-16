@@ -60,6 +60,7 @@ extension _AssistantLoop on AssistantRun {
     _ageNotice = false;
     // The profile decides, never the prompt or the model.
     _ctx.kidsMode = await _ctx.kidsProfile?.call() ?? false;
+    final householdNote = await _setAgeGate(prompt);
     await _beginMemory(prompt);
     _ctx.recommend = AssistantRecommendConstraints.fromPrompt(prompt);
     _intent = AssistantIntent.fromPrompt(prompt);
@@ -104,6 +105,7 @@ extension _AssistantLoop on AssistantRun {
       if (_screenNote() case final note?) {'role': 'system', 'content': note},
       if (_ctx.recommend.describe() case final note?) {'role': 'system', 'content': note},
       if (_intent.describe() case final note?) {'role': 'system', 'content': note},
+      ?householdNote,
       if (memoryNote != null) {'role': 'system', 'content': memoryNote},
       if (memoryOnly) const {'role': 'system', 'content': _memoryScreenNote},
       ..._memoryMessages(),
@@ -270,6 +272,11 @@ extension _AssistantLoop on AssistantRun {
           _askKidsAges();
           return _end(AssistantRunEnd.answered);
         }
+        // The same for a question about the children when none is entered.
+        if (_namesTitles(reply.content) && _householdMissing) {
+          _askHousehold();
+          return _end(AssistantRunEnd.answered);
+        }
         // One correction round when the answer names a title the age
         // filter turned down; Pleya writes that message, not the model.
         final correction = await _settleAnswer(reply.content, mayCorrect: !corrected && step + 1 < maxSteps);
@@ -307,6 +314,7 @@ extension _AssistantLoop on AssistantRun {
         }
         callsThisRun++;
         if (output['error'] == 'kids_ages_unknown') _askKidsAges();
+        if (output['error'] == 'household_kids_unknown') _askHousehold();
         messages.add({'role': 'tool', 'tool_call_id': call.id, 'content': jsonEncode(output)});
       }
     }

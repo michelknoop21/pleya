@@ -43,6 +43,36 @@ extension _AssistantPrompt on AssistantRun {
     ];
   }
 
+  /// Sets which age gate holds this ask: the profile's, or the household's
+  /// youngest intended child when the question (or the conversation before it)
+  /// is about the children. Returns the note for the model: only the age,
+  /// never a name.
+  Future<Map<String, Object?>?> _setAgeGate(String prompt) async {
+    _ctx
+      ..ageGate = AssistantAgeGate.none
+      ..audienceAge = null
+      ..kidsAge = null;
+    if (_ctx.kidsMode) {
+      _ctx.ageGate = AssistantAgeGate.kidsProfile;
+      return null;
+    }
+    final household = await _ctx.householdKids?.call() ?? const [];
+    final audience = kidAudienceOf(prompt, [for (final t in conversation) t.question], household);
+    if (!audience.on) return null;
+    _ctx.ageGate = AssistantAgeGate.kidAudience;
+    final age = householdGateAge(household, _ctx.clock(), ids: audience.ids);
+    if (age == null) return null;
+    _ctx
+      ..audienceAge = age
+      ..kidsAge = age;
+    return {
+      'role': 'system',
+      'content':
+          'The question is about the user\'s children. Youngest intended child: $age years. Pleya itself keeps only '
+          'titles that suit that age and refuses the rest: name only titles from tool results, and never ask for ages.',
+    };
+  }
+
   String get _system =>
       'You are Big P, the Pleya Assistant. You help an administrator manage their media servers, '
       'only through the provided tools.\n'

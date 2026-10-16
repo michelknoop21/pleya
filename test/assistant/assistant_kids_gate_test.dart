@@ -12,6 +12,7 @@ import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/profiles/household_kids_store.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_results.dart';
@@ -49,7 +50,12 @@ class _Server extends FakeServer {
 /// The run's context on a children's profile, or with [kidsProfile] false on
 /// an adult one. A run reads the profile at the start of its ask; a tool
 /// called directly gets [kidsMode] as the run would have set it.
-AssistantToolContext _ctx({List<int> ages = const [8], FakeSeerr? seerr, bool kidsProfile = true}) {
+AssistantToolContext _ctx({
+  List<int> ages = const [8],
+  FakeSeerr? seerr,
+  bool kidsProfile = true,
+  List<HouseholdKid> household = const [],
+}) {
   final m = MultiServerManager();
   addTearDown(m.dispose);
   m.debugRegisterClientForTesting(
@@ -62,23 +68,26 @@ AssistantToolContext _ctx({List<int> ages = const [8], FakeSeerr? seerr, bool ki
   );
   m.setVisibleServerIds(null);
   return AssistantToolContext(
-    servers: m,
-    catalog: AssistantCatalogServices(
-      rowLoader: CatalogHomeCustomRowLoader(
-        libraries: () => [fakeLib('w', 'films')],
-        isServerVisible: m.isServerVisible,
-        hiddenLibraryKeys: () => const {},
-        clientFor: m.getClient,
+      servers: m,
+      catalog: AssistantCatalogServices(
+        rowLoader: CatalogHomeCustomRowLoader(
+          libraries: () => [fakeLib('w', 'films')],
+          isServerVisible: m.isServerVisible,
+          hiddenLibraryKeys: () => const {},
+          clientFor: m.getClient,
+        ),
+        profileId: 'p',
+        activeProfileId: () => 'p',
       ),
-      profileId: 'p',
-      activeProfileId: () => 'p',
-    ),
-    requests: seerr == null ? null : AssistantRequestServices(client: () => seerr.client),
-    titleFacts: _Facts(),
-    kidsAges: () async => ages,
-    kidsProfile: () async => kidsProfile,
-    region: () => 'NL',
-  )..kidsMode = kidsProfile;
+      requests: seerr == null ? null : AssistantRequestServices(client: () => seerr.client),
+      titleFacts: _Facts(),
+      kidsAges: () async => ages,
+      householdKids: () async => household,
+      kidsProfile: () async => kidsProfile,
+      region: () => 'NL',
+    )
+    ..kidsMode = kidsProfile
+    ..ageGate = kidsProfile ? AssistantAgeGate.kidsProfile : AssistantAgeGate.none;
 }
 
 /// A model that answers from [script]: a string is a closing answer, a map a
@@ -321,16 +330,68 @@ void main() {
     expect(c.displays.whereType<AssistantKidsAgesPrompt>(), isEmpty);
   });
 
-  group('an adult profile: the kids machinery is off', () {
-    test('"film voor de kinderen" answers with normal results: no gate, no ages card, no notice', () async {
+  group('an adult profile: the gate follows the question, not the profile', () {
+    // A child born three and a half years ago: three, for the next five months.
+    final born = DateTime.now().subtract(const Duration(days: 365 * 3 + 180));
+    final kid = HouseholdKid(
+      id: 'k1',
+      name: 'Sam',
+      birthMonth: '${born.year}-${born.month.toString().padLeft(2, '0')}',
+    );
+
+    test('a question about the children filters every title for the youngest, whatever the model sends', () async {
+      final m = _model(['Kijk «$_hp» (2011).', 'Kijk «Toy Story» (1995).']);
+      final result = await _ask(m.model, _ctx(kidsProfile: false, household: [kid]), prompt);
+      expect(m.sent, hasLength(2), reason: 'one correction round');
+      expect(_cards(result), ['Toy Story']);
+      expect(result.text, 'Kijk «Toy Story» (1995).');
+      final note = '${m.sent.first.map((x) => x['content'])}';
+      expect(note, contains('Youngest intended child: 3 years'));
+      expect(note, isNot(contains('Sam')), reason: 'names never go to the model');
+    });
+
+    test('another question on the same profile has no gate and no notice', () async {
       final m = _model(['Kijk «$_hp» (2011).']);
-      final result = await _ask(m.model, _ctx(kidsProfile: false, ages: []), prompt);
-      expect(m.sent, hasLength(1), reason: 'no correction round');
+      final result = await _ask(m.model, _ctx(kidsProfile: false, household: [kid]), 'Is er een film voor vanavond?');
+      expect(m.sent, hasLength(1));
       expect(_cards(result), [_hp]);
-      expect(result.text, 'Kijk «$_hp» (2011).');
-      expect(result.kidsAgesNeeded, isFalse);
-      expect(result.displays.whereType<AssistantKidsAgesPrompt>(), isEmpty);
+      expect(result.householdKidsNeeded, isFalse);
       expect(result.ageFilterNotice, isFalse);
+    });
+
+    test('a question about the children with no child entered shows no title and says why', () async {
+      final m = _model(['Kijk «$_hp» (2011).']);
+      final result = await _ask(m.model, _ctx(kidsProfile: false), prompt);
+      expect(result.householdKidsNeeded, isTrue);
+      expect(_cards(result), isEmpty);
+      expect(result.displays.whereType<AssistantTitleMatches>(), isEmpty);
+    });
+
+    test('a tool called with the gate on filters; a hostile for_kids=false changes nothing', () async {
+      final ctx = _ctx(kidsProfile: false)
+        ..ageGate = AssistantAgeGate.kidAudience
+        ..audienceAge = 3;
+      for (final tool in ['find_title']) {
+        final data = await _tool(ctx, tool, {
+          'candidates': [
+            {'title': _hp},
+            {'title': 'Toy Story'},
+          ],
+          'variants': [_hp, 'Toy Story'],
+          'for_kids': false,
+        });
+        expect(data['filtered_for_age'], isNonZero, reason: tool);
+        expect(data['kids_age'], 3, reason: tool);
+      }
+      final search = await _tool(ctx, 'search_catalog', {'kind': 'movie'});
+      expect(search['kids_age'], 3);
+      expect('$search', isNot(contains(_hp)));
+    });
+
+    test('a kids profile keeps its own ages, whatever the household holds', () async {
+      final m = _model(['Kijk «$_hp» (2011).', 'Kijk «Toy Story» (1995).']);
+      final result = await _ask(m.model, _ctx(ages: [8], household: [kid]), prompt);
+      expect(_cards(result), ['Toy Story']);
     });
 
     test('a for_kids argument from the model filters nothing', () async {
@@ -376,7 +437,7 @@ void main() {
       kidsProfile: () async => kids,
       region: ctx.region,
     );
-    final adult = await _ask(_model(['Kijk «$_hp» (2011).']).model, perAsk, prompt);
+    final adult = await _ask(_model(['Kijk «$_hp» (2011).']).model, perAsk, 'Is er een film voor vanavond?');
     expect(_cards(adult), [_hp]);
     kids = true;
     final m = _model(['Kijk «$_hp» (2011).', 'Kijk «Toy Story» (1995).']);
@@ -461,11 +522,16 @@ void main() {
     );
     setUp(() => ran = 0);
 
-    Future<List<List<Map<String, Object?>>>> run(String prompt, List<Object> script, {bool kids = true}) async {
+    Future<List<List<Map<String, Object?>>>> run(
+      String prompt,
+      List<Object> script, {
+      bool kids = true,
+      List<HouseholdKid> household = const [],
+    }) async {
       final m = _model(script);
       await AssistantRun(
         model: m.model,
-        context: _ctx(kidsProfile: kids),
+        context: _ctx(kidsProfile: kids, household: household),
         confirm: (_) async => null,
         entitlement: const _Entitled(),
         tools: [watching, find],
@@ -482,8 +548,8 @@ void main() {
       expect(ran, 0);
     });
 
-    test('an adult profile runs my_watching, also for a question about the kids', () async {
-      final sent = await run(prompt, [
+    test('an adult profile runs my_watching for another question', () async {
+      final sent = await run('Wat heb ik laatst gekeken?', [
         {'name': 'my_watching', 'args': <String, Object?>{}},
         'Klaar.',
       ], kids: false);
@@ -491,6 +557,21 @@ void main() {
         'titles': [_hp],
       });
       expect(ran, 1);
+    });
+
+    test('an adult profile refuses my_watching under a question about the children', () async {
+      final kid = HouseholdKid(id: 'k', name: 'Sam', birthMonth: '${DateTime.now().year - 3}-01');
+      final sent = await run(
+        prompt,
+        [
+          {'name': 'my_watching', 'args': <String, Object?>{}},
+          'Klaar.',
+        ],
+        kids: false,
+        household: [kid],
+      );
+      expect(jsonDecode(sent[1].last['content'] as String), assistantKidsRefusal);
+      expect(ran, 0);
     });
   });
 

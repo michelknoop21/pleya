@@ -2392,6 +2392,7 @@
   "assistant": {
     "kids": {
       "agesFirst": "First I need to know how old the children are.",
+      "householdFirst": "I do not know yet which children you mean or how old they are, so I show no titles.",
       "noFit": "I have no title that suits the children's ages. Ask me another way.",
       "header": "Pleya asks",
       "title": "How old are the children?",

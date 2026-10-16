@@ -81,8 +81,8 @@ class EvalCase {
   final bool personal;
   final List<int> kidsAges;
 
-  /// The household's children as the user stated them, for BP-11b's
-  /// household store. Not wired into the run yet.
+  /// The household's children as ages in whole years; the runner turns them
+  /// into stored children (name and birth month) for BP-11b's household gate.
   final List<int> householdKids;
   final List<EvalHard> hard;
 
@@ -269,11 +269,9 @@ final bigPEvalCases = <EvalCase>[
         ],
       ),
     ],
-    hard: const [EvalMaxAge(3, fromTurn: 1), _fromFixture, _mutation],
-    scripted: const [EvalMinCards(5, turn: 1)],
+    hard: const [EvalMaxAge(3, fromTurn: 1), EvalHouseholdGate(fromTurn: 1), _fromFixture, _mutation],
+    scripted: const [EvalMinCards(1, turn: 1), EvalToolAnswered('find_title', 'kids_age', turn: 1)],
     soft: const EvalSoft(firstTools: {'search_catalog', 'find_title', 'trending_titles'}),
-    expectFail: 'BP-11b',
-    expectViolations: ['max-age-3: turn 1 card «'],
   ),
   // tvOS, 16 October 2026: the model sent no tool_calls, only tool-call
   // markup as text, and the answer showed it. Fixed in PR #357 (one

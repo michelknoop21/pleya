@@ -7,6 +7,8 @@ import 'package:pleya/assistant/assistant_entitlement.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/assistant/assistant_run.dart';
 
+import 'package:pleya/profiles/household_kids_store.dart';
+
 import 'big_p_eval_cases.dart';
 import 'big_p_eval_checks.dart';
 import 'big_p_eval_fixtures.dart';
@@ -52,6 +54,20 @@ class EvalMeter {
   }
 }
 
+/// The household's children for ages in whole years: each born that many
+/// years and six months ago, so the age holds for the next five months.
+List<HouseholdKid> evalHouseholdKids(List<int> ages) {
+  final now = DateTime.now();
+  return [
+    for (final (i, age) in ages.indexed)
+      () {
+        final months = now.year * 12 + now.month - 1 - (age * 12 + 6);
+        final month = (months % 12 + 1).toString().padLeft(2, '0');
+        return HouseholdKid(id: 'k$i', name: 'Kind${i + 1}', birthMonth: '${months ~/ 12}-$month');
+      }(),
+  ];
+}
+
 /// Runs [c]; [modelFor] gives the model client of a turn and [meter] the
 /// counter its HTTP client feeds.
 Future<EvalOutcome> runEvalCase(
@@ -64,6 +80,7 @@ Future<EvalOutcome> runEvalCase(
   final ctx = evalContext(
     kids: c.kids,
     kidsAges: c.kidsAges,
+    householdKids: evalHouseholdKids(c.householdKids),
     region: region,
     personal: c.personal,
     onSaveRow: outcome.savedRows.add,

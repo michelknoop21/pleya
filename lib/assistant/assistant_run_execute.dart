@@ -140,7 +140,10 @@ extension _AssistantExecute on AssistantRun {
     if (tool == null) return {'error': 'unknown_tool'};
     // A children's profile: a tool whose titles skip the age gate is
     // refused, whatever arguments the model sent.
-    if (_ctx.kidsMode && kidsToolPolicy[tool.name] == KidsTool.blocked) {
+    // Under a question about the household's children the same tools are
+    // refused (their titles skip the gate), except the memory tools.
+    if (kidsToolPolicy[tool.name] == KidsTool.blocked &&
+        (_ctx.kidsMode || (_ctx.gated && !kidAudienceOpenTools.contains(tool.name)))) {
       return assistantKidsRefusal;
     }
     final Map<String, Object?> args;
