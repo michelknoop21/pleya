@@ -266,10 +266,11 @@ void main() {
         http.Request('POST', Uri.parse('http://f/pleya/v1/jobs/job-failed-1/retry'))
           ..headers['Authorization'] = 'Bearer at-0',
       );
-      expect(retry.statusCode, 202);
+      expect(retry.statusCode, 200);
       expect(server.retryRequests, ['job-failed-1']);
-      expect((await jobs())['items'].single['state'], 'running');
-      expect((await jobs())['items'].single['state'], 'running');
+      for (var i = 0; i < 4; i++) {
+        expect((await jobs())['items'].single['state'], 'running', reason: 'read ${i + 1}');
+      }
       expect((await jobs())['items'].single['state'], 'succeeded');
 
       final scan = await server.handle(
@@ -328,10 +329,7 @@ void main() {
       final seasons = server.items.entries.where((e) => e.value['kind'] == 'season').toList()
         ..sort((a, b) => (a.value['index'] as int).compareTo(b.value['index'] as int));
       expect([for (final s in seasons) s.value['index']], [1, 2, 3, 4]);
-      expect(
-        [for (final s in seasons) server.items.values.where((i) => i['parent_id'] == s.key).length],
-        [2, 3, 4, 5],
-      );
+      expect([for (final s in seasons) server.items.values.where((i) => i['parent_id'] == s.key).length], [2, 3, 4, 5]);
     });
   });
 

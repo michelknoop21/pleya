@@ -60,6 +60,7 @@ steps:
   # Scan: started at once, and it stays "started" (the server hands back no
   # operation id to follow).
   - press: select
+  - wait_until: {id: screen.assistant, state: {state: listening}, timeout: 5000}
   - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 10000}
   - settle: 1000
   - type: "Scan alle filmbibliotheken op al mijn servers."
@@ -72,12 +73,16 @@ steps:
 
   # Restart: the failed job is restarted, seen running, and ends done.
   - press: select
+  - wait_until: {id: screen.assistant, state: {state: listening}, timeout: 5000}
   - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 10000}
   - settle: 1000
   - type: "Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw."
   - press: select
-  - wait_until: {id: assistant.result, state: {error: false, actions: 1}, timeout: 30000}
-  - snapshot: 20-retry-started
+  # The previous answer (the scan, phase "started") is gone as soon as this one
+  # runs, and a restarted job reads as running for a few polls: that phase is
+  # this answer's alone.
+  - wait_until: {id: assistant.result, state: {error: false, actions: 1, jobPhase: running}, timeout: 30000}
+  - snapshot: 20-retry-running
   - wait_until: {id: assistant.result, state: {error: false, actions: 1, jobPhase: done}, timeout: 45000}
   - settle: 800
   - snapshot: 21-retry-done
@@ -85,6 +90,7 @@ steps:
   # Home row: the card first, nothing created until Approve.
   - wait_until: {focused: "assistant.button[ask]", timeout: 8000}
   - press: select
+  - wait_until: {id: screen.assistant, state: {state: listening}, timeout: 5000}
   - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 10000}
   - settle: 1000
   - type: "Maak een Home-rij met actiefilms uit de jaren negentig."

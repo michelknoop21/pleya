@@ -87,6 +87,10 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
           'created_at': server.clock.now.subtract(const Duration(hours: 1)).toIso8601String(),
           'finished_at': server.clock.now.subtract(const Duration(minutes: 59)).toIso8601String(),
           'last_error': 'Disk error',
+          'attempts': 1,
+          'max_attempts': 3,
+          'run_at': server.clock.now.subtract(const Duration(hours: 1)).toIso8601String(),
+          'cancel_requested_at': null,
         });
       return true;
     case 'activity.active-session.v1':

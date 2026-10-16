@@ -32,6 +32,7 @@ void main() {
     expect((node.state!() as Map)['jobs'], [
       {'phase': 'running', 'percent': 40},
     ]);
+    expect((node.state!() as Map)['jobPhase'], 'running');
 
     await pump(tester, scan(const AssistantJobProgress(AssistantJobPhase.done)));
     expect(find.text('Scan klaar · Films · Zolder'), findsOneWidget);

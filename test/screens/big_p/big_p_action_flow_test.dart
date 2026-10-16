@@ -67,6 +67,9 @@ class _Admin extends fakes.FakeServer implements LibraryScanClient, RetryableJob
   final retried = <String>[];
   ServerJobState after = ServerJobState.running;
 
+  /// How many times the server still answers with the old failure after the retry.
+  int staleReads = 0;
+
   @override
   bool get supportsServerAdministration => true;
   @override
@@ -82,7 +85,7 @@ class _Admin extends fakes.FakeServer implements LibraryScanClient, RetryableJob
   // outcome is the old one and not the answer.
   @override
   Future<List<ServerJob>> listJobs() async => [
-    if (retried.isEmpty)
+    if (retried.isEmpty || staleReads-- > 0)
       ServerJob(
         id: 'job-1',
         title: 'Scan Films',
@@ -136,6 +139,9 @@ class _Model extends AssistantModelClient {
   }) async => replies[calls++];
 }
 
+/// Titles of the rows the Home-row tool actually created.
+final executed = <String>[];
+
 /// The Home row's tool: the pending action the real one builds, with the
 /// same kind and the same confirmation, minus the catalogue behind it.
 final _homeRowTool = AssistantTool(
@@ -153,7 +159,10 @@ final _homeRowTool = AssistantTool(
     serverName: '',
     subject: args['title']! as String,
     items: const ['Heat', 'Die Hard', 'Se7en'],
-    execute: ({password}) async => const {'status': 'row_created'},
+    execute: ({password}) async {
+      executed.add(args['title']! as String);
+      return const {'status': 'row_created'};
+    },
   ),
 );
 
@@ -169,6 +178,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     manager = _Manager();
     server = _Admin();
+    executed.clear();
     manager.debugRegisterClientForTesting(server);
     addTearDown(manager.dispose);
   });
@@ -215,13 +225,27 @@ void main() {
     await settle(tester);
   }
 
-  /// Asks like a tapped chip does and lets the real run and its watches go.
-  Future<void> ask(WidgetTester tester, String prompt) async {
-    await tester.runAsync(() async {
-      await controller.submit(prompt);
-      await Future<void>.delayed(const Duration(milliseconds: 60));
-    });
+  /// Runs the real clock in short steps until [finder] matches (or stops
+  /// matching, with [gone]); the expect after it names what was missing.
+  Future<void> pumpUntil(WidgetTester tester, Finder finder, {bool gone = false}) async {
+    for (var i = 0; i < 150; i++) {
+      if (finder.evaluate().isEmpty == gone) break;
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+      await tester.pump(const Duration(milliseconds: 50));
+    }
     await settle(tester);
+  }
+
+  /// Asks like a tapped chip does: the run finishes, the job watch goes on.
+  Future<void> ask(WidgetTester tester, String prompt) async {
+    await tester.runAsync(() => controller.submit(prompt));
+    await settle(tester);
+  }
+
+  /// Asks a question whose answer waits for the user, until its card is up.
+  Future<void> askUntilCard(WidgetTester tester, String prompt) async {
+    unawaited(controller.submit(prompt));
+    await pumpUntil(tester, find.byType(BigPConfirmCard));
   }
 
   for (final (name, size) in [('iPhone', const Size(402, 874)), ('iPad', const Size(1024, 1366))]) {
@@ -236,9 +260,11 @@ void main() {
         await ask(tester, t.assistant.examples.scan.first);
 
         expect(server.scanned, ['lib-films'], reason: 'the server was asked once');
+        await pumpUntil(tester, find.textContaining('Scan gestart · Films · Zolder'));
         expect(find.textContaining('Scan gestart · Films · Zolder'), findsWidgets);
-        expect(find.textContaining('Films'), findsWidgets);
-        expect(find.textContaining('Zolder'), findsWidgets);
+        // Give the watch time to settle on something else; it must not.
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+        await settle(tester);
         expect(find.textContaining('Scan klaar'), findsNothing);
         expect(find.textContaining('Scan mislukt'), findsNothing);
         expect(tester.takeException(), isNull);
@@ -255,18 +281,35 @@ void main() {
           await ask(tester, t.assistant.examples.retryJobs.last);
           expect(server.retried, ['job-1'], reason: 'the server was asked once');
           // The job runs at 40%: the watch shows it.
-          expect(find.textContaining('Taak loopt'), findsWidgets);
-          expect(find.textContaining('40%'), findsWidgets);
+          await pumpUntil(tester, find.textContaining('Taak loopt · 40%'));
+          expect(find.textContaining('Taak loopt · 40%'), findsWidgets);
           expect(find.textContaining(line), findsNothing, reason: 'not before the server says so');
 
           server.after = end;
-          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 80)));
-          await settle(tester);
+          await pumpUntil(tester, find.textContaining('$line · Scan Films · Zolder'));
           expect(find.textContaining('$line · Scan Films · Zolder'), findsWidgets);
           expect(find.textContaining('Taak loopt'), findsNothing);
           expect(tester.takeException(), isNull);
         });
       }
+
+      testWidgets('negative control: the old failure the server still shows is not the restart\'s result', (
+        tester,
+      ) async {
+        start([
+          _call('list_jobs', {'server_id': 'zolder'}),
+          _call('retry_job', {'server_id': 'zolder', 'job_id': 'job-1'}),
+          _say('Ik heb de taak opnieuw gestart.'),
+        ]);
+        server.staleReads = 2;
+        await pumpHost(tester, size);
+        await ask(tester, t.assistant.examples.retryJobs.last);
+
+        await pumpUntil(tester, find.textContaining('Taak loopt'));
+        expect(find.textContaining('Taak loopt · 40%'), findsWidgets);
+        expect(find.textContaining('Taak mislukt'), findsNothing, reason: 'the hour-old failure is not this restart');
+        expect(server.staleReads, lessThan(0), reason: 'the server did answer with the old failure first');
+      });
 
       testWidgets('a Home row: the card first, nothing created until Bevestigen, then "Rij aangemaakt"', (
         tester,
@@ -276,23 +319,20 @@ void main() {
           _say('De rij staat op je Home.'),
         ]);
         await pumpHost(tester, size);
-        await tester.runAsync(() async {
-          unawaited(controller.submit('Maak een Home-rij met actiefilms uit de jaren negentig.'));
-          await Future<void>.delayed(const Duration(milliseconds: 60));
-        });
-        await settle(tester);
+        await askUntilCard(tester, 'Maak een Home-rij met actiefilms uit de jaren negentig.');
 
         expect(find.byType(BigPConfirmCard), findsOneWidget);
         expect(find.text(t.assistant.confirm.titles.createHomeRow), findsOneWidget);
         expect(find.text('Actiefilms jaren 90'), findsWidgets);
         expect(find.textContaining('Rij aangemaakt'), findsNothing, reason: 'nothing is created before the tap');
+        expect(executed, isEmpty, reason: 'the row is not made before the tap');
 
         await tester.ensureVisible(find.text(t.assistant.confirm.approve));
         await tester.pump();
         await tester.tap(find.text(t.assistant.confirm.approve));
-        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 80)));
-        await settle(tester);
+        await pumpUntil(tester, find.textContaining('Rij aangemaakt'));
 
+        expect(executed, ['Actiefilms jaren 90'], reason: 'made once, after the tap');
         expect(find.byType(BigPConfirmCard), findsNothing);
         expect(find.textContaining('Rij aangemaakt'), findsWidgets);
         expect(tester.takeException(), isNull);
@@ -304,16 +344,13 @@ void main() {
           _say('Goed, ik heb niets gemaakt.'),
         ]);
         await pumpHost(tester, size);
-        await tester.runAsync(() async {
-          unawaited(controller.submit('Maak een Home-rij met actiefilms uit de jaren negentig.'));
-          await Future<void>.delayed(const Duration(milliseconds: 60));
-        });
-        await settle(tester);
+        await askUntilCard(tester, 'Maak een Home-rij met actiefilms uit de jaren negentig.');
         expect(find.byType(BigPConfirmCard), findsOneWidget);
 
         await tester.tap(find.text(t.assistant.result.cancel));
-        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 80)));
-        await settle(tester);
+        await pumpUntil(tester, find.byType(BigPConfirmCard), gone: true);
+        expect(find.byType(BigPConfirmCard), findsNothing, reason: 'the card is gone');
+        expect(executed, isEmpty, reason: 'declining makes no row');
         expect(find.textContaining('Rij aangemaakt'), findsNothing);
       });
     });
