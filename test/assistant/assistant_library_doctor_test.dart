@@ -531,6 +531,46 @@ void main() {
     expect(f.server.writes, isEmpty);
   });
 
+  test('a follow-up inside a diagnosis keeps the kind the first question named', () async {
+    final f = _Fixture();
+    final model = _Model([
+      _reply('diagnose_library', {'kind': 'show'}),
+      _reply(null),
+    ]);
+    await AssistantRun(
+      model: model,
+      context: f.ctx,
+      entitlement: _Entitlement(),
+      confirm: (_) async => throw StateError('Read-only diagnosis'),
+      refreshHealth: () async {},
+      originalLibraryDoctorScope: true,
+      conversation: const [
+        AssistantTurn(question: 'Controleer mijn bibliotheek op ontbrekende afleveringen.', answer: 'Ik heb gekeken.'),
+      ],
+    ).ask('Ja, ga maar door.');
+    expect(f.server.reads, contains('library:series'));
+    expect(f.server.reads, isNot(contains('library:films')));
+  });
+
+  test('a follow-up after a first question without a kind reads both kinds', () async {
+    final f = _Fixture();
+    final model = _Model([
+      _reply('diagnose_library', {'kind': 'movie'}),
+      _reply(null),
+    ]);
+    await AssistantRun(
+      model: model,
+      context: f.ctx,
+      entitlement: _Entitlement(),
+      confirm: (_) async => throw StateError('Read-only diagnosis'),
+      refreshHealth: () async {},
+      originalLibraryDoctorScope: true,
+      conversation: const [AssistantTurn(question: 'Controleer mijn bibliotheek', answer: 'Ik heb gekeken.')],
+    ).ask('Ja, ga maar door.');
+    expect(f.server.reads, contains('library:films'));
+    expect(f.server.reads, contains('library:series'));
+  });
+
   test('offline diagnosis returns a concrete reason without asking the model', () async {
     final f = _Fixture();
     f.manager.debugRegisterClientForTesting(f.server, online: false);

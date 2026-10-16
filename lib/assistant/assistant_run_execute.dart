@@ -152,9 +152,13 @@ extension _AssistantExecute on AssistantRun {
       final fixed = _intent.constrain(tool.name, decoded);
       if (fixed.error case final code?) return {'error': code};
       if (tool.name == 'diagnose_library') {
-        // The kind comes from the question alone: a question that names none
-        // checks both, so a kind the model picked is dropped.
-        final kind = assistantLibraryDoctorKind(_prompt);
+        // The kind comes from the conversation alone: if no question names one,
+        // both are checked, so a kind the model picked is dropped.
+        // A follow-up such as "Ja, ga maar door" names no kind; the most recent
+        // earlier question that did keeps it.
+        final kind =
+            assistantLibraryDoctorKind(_prompt) ??
+            conversation.reversed.map((turn) => assistantLibraryDoctorKind(turn.question)).nonNulls.firstOrNull;
         args = {...fixed.args}..remove('kind');
         if (kind != null) args['kind'] = kind.name;
       } else {
