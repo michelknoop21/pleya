@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import '../../../utils/playback_memory_diagnostics.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -120,6 +123,7 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
     // error and no crash report. The last checkpoint in the log tells whether
     // the process got through the close animation and the teardown.
     logCheckpoint('TvInfoPanel: opened tab=${_activeTab.name}');
+    unawaited(logPlaybackMemoryCheckpoint(widget.player, 'panel opened'));
     _afterNextFrame(() {
       if (_subView != TvInfoPanelSubView.none) {
         _focusSubView();
@@ -150,6 +154,7 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
     if (_closing) return;
     _closing = true;
     logCheckpoint('TvInfoPanel: close requested');
+    unawaited(logPlaybackMemoryCheckpoint(widget.player, 'panel close requested'));
     _anim.reverse().then((_) {
       logCheckpoint('TvInfoPanel: close animation done');
       if (mounted) widget.onClose();

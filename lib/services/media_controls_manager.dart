@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:os_media_controls/os_media_controls.dart';
 import 'package:rate_limiter/rate_limiter.dart';
 
@@ -25,6 +26,8 @@ class MediaControlsManager {
   bool? _lastCanGoPrevious;
   bool? _lastCanSeek;
   bool _updatesSuspended = false;
+  _PlaybackStateParams? _lastPublishedState;
+  final Stopwatch _publishedClock = Stopwatch();
 
   MediaControlsManager() {
     _throttledUpdate = throttle(
@@ -87,6 +90,7 @@ class MediaControlsManager {
     if (force) {
       // Cancel any pending throttled update to prevent stale state from overwriting
       _throttledUpdate.cancel();
+      _lastPublishedState = null;
       await _doUpdatePlaybackState(params);
     } else {
       _throttledUpdate([params]);
@@ -94,6 +98,21 @@ class MediaControlsManager {
   }
 
   Future<void> _doUpdatePlaybackState(_PlaybackStateParams params) async {
+    if (_updatesSuspended) return;
+    final previous = _lastPublishedState;
+    if (defaultTargetPlatform == TargetPlatform.iOS &&
+        previous != null &&
+        previous.isPlaying == params.isPlaying &&
+        previous.speed == params.speed) {
+      // Apple advances Now Playing itself; our plugin reactivates audio on every update.
+      final elapsedUs = params.isPlaying ? _publishedClock.elapsedMicroseconds * params.speed : 0;
+      final expectedUs = previous.position.inMicroseconds + elapsedUs;
+      if ((params.position.inMicroseconds - expectedUs).abs() < Duration.microsecondsPerSecond) return;
+    }
+    _lastPublishedState = params;
+    _publishedClock
+      ..reset()
+      ..start();
     try {
       await OsMediaControls.setPlaybackState(
         MediaPlaybackState(
@@ -103,6 +122,7 @@ class MediaControlsManager {
         ),
       );
     } catch (e) {
+      if (identical(_lastPublishedState, params)) _lastPublishedState = null;
       appLogger.w('Failed to update media controls playback state', error: e);
     }
   }
@@ -153,6 +173,8 @@ class MediaControlsManager {
   ///
   /// Should be called when playback stops or screen is disposed.
   Future<void> clear() async {
+    _throttledUpdate.cancel();
+    _lastPublishedState = null;
     try {
       await OsMediaControls.clear();
       _throttledUpdate.cancel();
@@ -168,6 +190,7 @@ class MediaControlsManager {
   void suspendUpdates() {
     if (_updatesSuspended) return;
     _updatesSuspended = true;
+    _lastPublishedState = null;
     _throttledUpdate.cancel();
     appLogger.d('Media controls updates suspended');
   }
