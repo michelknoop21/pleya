@@ -333,13 +333,14 @@ class SystemShelfService {
     final offset = item.viewOffsetMs ?? 0;
     final duration = item.durationMs ?? 0;
     final minutesLeft = offset > 0 && duration > offset ? ((duration - offset) / 60000).round() : 0;
+    final now = DateTime.now();
+    final fresh = continueWatchingFreshness(item, now: now);
     return [
       t.discover.continueWatching,
       if (item.kind == MediaKind.episode && season != null && episode != null)
         t.discover.playEpisode(season: season, episode: episode),
       if (minutesLeft > 0) t.discover.minutesLeft(minutes: minutesLeft),
-      if (continueWatchingFreshness(item, now: DateTime.now()) != ContinueWatchingFreshness.none)
-        continueWatchingNextEpisodeWording(item),
+      if (fresh != ContinueWatchingFreshness.none) continueWatchingNextEpisodeWording(item, now: now),
     ].join(' · ');
   }
 

@@ -256,6 +256,18 @@ void main() {
       expect(entries[0]['contextTitle'], endsWith('S2E5 · ${t.discover.newEpisodeStatus}'));
       expect(entries[1]['contextTitle'], endsWith('S3E1 · ${t.discover.newSeasonStatus}'));
       expect(entries[2]['contextTitle'], endsWith('S2E6'));
+
+      final resumed = item(
+        'r',
+        MediaKind.episode,
+        grandparentArt: '/a/show',
+        grandparentTitle: 'Show',
+        parentIndex: 2,
+        index: 5,
+        durationMs: 3000000,
+        viewOffsetMs: 480000,
+      ).copyWith(addedAt: daysAgo(3), lastViewedAt: daysAgo(60), continueWatchingKind: ContinueWatchingKind.resume);
+      expect(build(const [], [resumed]).single['contextTitle'], isNot(contains(t.discover.newEpisodeStatus)));
     });
 
     test('without a backdrop an episode falls back to its still; a film without one is dropped', () {
