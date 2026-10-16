@@ -327,7 +327,7 @@ void main() {
       expect(find.byType(BigPCard), findsNothing);
     });
 
-    testWidgets('error: worried Big P and a Pleya card that says nothing changed', (tester) async {
+    testWidgets('error: worried Big P and a Pleya card that names the failure', (tester) async {
       await pumpSurface(tester);
       c
         ..prompt = 'Scan Films'
@@ -343,7 +343,10 @@ void main() {
         expect(find.text(sentence), findsOneWidget);
       }
       expect(find.textContaining(t.assistant.result.notDoneBy), findsOneWidget);
-      expect(find.text(t.assistant.ends.nothingChanged), findsOneWidget);
+      // No task carries a reason here, so the card names the generic failure
+      // instead of claiming nothing changed.
+      expect(find.text(t.errors.somethingWentWrongTryAgain), findsOneWidget);
+      expect(find.text(t.assistant.ends.nothingChanged), findsNothing);
     });
 
     testWidgets('Klaar ends the conversation and leaves the surface', (tester) async {
