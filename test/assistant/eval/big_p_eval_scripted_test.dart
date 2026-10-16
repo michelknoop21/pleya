@@ -35,7 +35,14 @@ void main() {
     final bad = await runEvalCase(tip, modelFor: (t) => evalScriptedModel(tip.turns[t].script, meter), meter: meter);
     final r = bad.turns.single.result;
     expect(evalAsksQuestion(r.text), isTrue);
-    expect(evalNamed(r.text).length, 3);
+    // Since BP-10 (#361) the shown text follows the cards, so the sentences
+    // that named a title without a card are gone. The check still counts
+    // titles when it is handed text that was not trimmed.
+    expect(evalNamed(r.text).length, 1, reason: 'the shown text names only the card');
+    expect(
+      evalNamed('Hoe klinkt «The Office» (2005)? Of «Sherlock» (2010), of «Brooklyn Nine-Nine» (2013)?').length,
+      3,
+    );
     expect(evalCards(r).length, 1, reason: 'one asked tip caps the cards');
     expect(evalTipOk(r), isFalse);
 
