@@ -14,6 +14,7 @@ import '../../../automation/automation_ids.dart';
 import '../../../automation/automation_node.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../media/media_kind.dart';
+import '../../../focus/focusable_text_field.dart';
 import '../../../services/unified_catalog/home_custom_row.dart';
 import '../../../services/unified_catalog/home_custom_row_loader.dart';
 import '../../../services/unified_catalog/home_row_draft.dart';
@@ -233,7 +234,7 @@ class _HomeRowWizardViewState extends State<HomeRowWizardView> {
         const SizedBox(height: 20),
         Text(home.name, style: Theme.of(context).textTheme.labelLarge),
         const SizedBox(height: 8),
-        TextField(
+        FocusableTextField(
           controller: _d.name,
           decoration: InputDecoration(
             hintText: homeCustomRowLabel(HomeCustomRow(id: _d.id, kind: _d.kind, preferences: _d.preferences)),
