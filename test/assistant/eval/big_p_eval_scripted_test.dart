@@ -41,11 +41,42 @@ void main() {
     expect(evalTitle('Night at the Museum')!.allowedFor(6, 'NL'), isFalse, reason: 'US PG counts as 8');
   });
 
-  test('the fixture server serves search_catalog, so a live model gets real rows', () async {
-    final ctx = evalContext(kids: false);
-    final tool = assistantTools.firstWhere((t) => t.name == 'search_catalog');
-    final out = await tool.run(ctx, ServerId('zolder'), {'text': 'Toy', 'kind': 'movie'});
-    expect('${(out as AssistantToolResult).data}', contains('Toy Story'));
+  // Every card check is vacuous on an empty result, so the fixture has to
+  // hand out real, actionable cards on each read path the cases use.
+  group('the fixture server hands out actionable cards', () {
+    Future<AssistantToolResult> run(String tool, Map<String, Object?> args) async {
+      final t = assistantTools.firstWhere((t) => t.name == tool);
+      return await t.run(evalContext(kids: false), ServerId('zolder'), args) as AssistantToolResult;
+    }
+
+    test('search_catalog by text', () async {
+      final out = await run('search_catalog', {'text': 'Toy', 'kind': 'movie'});
+      expect('${out.data}', contains('Toy Story'));
+    });
+
+    test('search_catalog on the paged library read: movies and series, with watch state', () async {
+      for (final kind in ['movie', 'show']) {
+        final out = await run('search_catalog', {'kind': kind, 'limit': 20});
+        final grid = out.display! as AssistantMediaGrid;
+        expect(grid.entries, hasLength(greaterThan(5)), reason: kind);
+        expect(grid.entries.every((e) => e.item.serverId == 'zolder'), isTrue, reason: kind);
+      }
+      final unwatched = await run('search_catalog', {'kind': 'show', 'unwatched': true, 'limit': 50});
+      final titles = [for (final e in (unwatched.display! as AssistantMediaGrid).entries) e.item.title];
+      expect(titles, isNot(contains('The Bear')), reason: 'a watched series is not unwatched');
+      expect(titles, contains('Bluey'));
+    });
+
+    test('find_title: a library title is a card that can be opened', () async {
+      final out = await run('find_title', {
+        'candidates': [
+          {'title': 'Toy Story'},
+        ],
+        'variants': ['Toy Story', 'toy story'],
+      });
+      final matches = (out.display! as AssistantTitleMatches).matches;
+      expect(matches.where((m) => m.title == 'Toy Story' && m.targets.isNotEmpty), isNotEmpty);
+    });
   });
 
   for (final c in bigPEvalCases) {
@@ -53,6 +84,8 @@ void main() {
       final meter = EvalMeter();
       final o = await runEvalCase(c, modelFor: (turn) => evalScriptedModel(c.turns[turn].script, meter), meter: meter);
       final violations = evalViolations(c, o);
+      // The case did what it claims, marked or not.
+      expect([for (final h in c.scripted) ...h.check(o)], isEmpty, reason: 'scripted checks of ${c.id}');
       // BIG_P_EVAL_OUT=1 keeps the records, also of the expected failures.
       if (Platform.environment['BIG_P_EVAL_OUT'] == '1') {
         evalWriteJsonl('scripted', [evalRecord(c, o, model: 'scripted', attempt: 1)]);
@@ -66,11 +99,11 @@ void main() {
               '${c.id} is marked expectFail: $marker, but every hard check passed. '
               'The bug looks fixed: remove the marker so the case guards the fix.',
         );
-        for (final id in c.expectViolations) {
+        for (final prefix in c.expectViolations) {
           expect(
-            violations.where((v) => v.startsWith('$id:')),
+            violations.where((v) => v.startsWith(prefix)),
             isNotEmpty,
-            reason: '${c.id} ($marker) should still fail on $id; got $violations',
+            reason: '${c.id} ($marker) should still fail on "$prefix"; got $violations',
           );
         }
       } else {

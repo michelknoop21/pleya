@@ -26,6 +26,30 @@ class _Entitled extends AssistantEntitlement {
 class EvalMeter {
   int calls = 0;
   int tokens = 0;
+
+  /// The tool answers in the latest request body: what the model was told.
+  List<({String tool, String content})> tools = const [];
+
+  /// Reads the tool answers out of a chat request body.
+  void observe(String body) {
+    try {
+      final messages = (jsonDecode(body) as Map)['messages'] as List;
+      final names = <String, String>{};
+      final found = <({String tool, String content})>[];
+      for (final m in messages.cast<Map>()) {
+        if (m['role'] == 'assistant') {
+          for (final call in (m['tool_calls'] as List? ?? const []).cast<Map>()) {
+            names['${call['id']}'] = '${(call['function'] as Map)['name']}';
+          }
+        } else if (m['role'] == 'tool') {
+          found.add((tool: names['${m['tool_call_id']}'] ?? '?', content: '${m['content']}'));
+        }
+      }
+      tools = found;
+    } catch (_) {
+      // Not a chat body: keep what was seen.
+    }
+  }
 }
 
 /// Runs [c]; [modelFor] gives the model client of a turn and [meter] the
@@ -37,11 +61,12 @@ Future<EvalOutcome> runEvalCase(
   String region = 'NL',
 }) async {
   final outcome = EvalOutcome();
-  final ctx = evalContext(kids: c.kids, kidsAges: c.kidsAges, region: region);
+  final ctx = evalContext(kids: c.kids, kidsAges: c.kidsAges, region: region, onSaveRow: outcome.savedRows.add);
   final history = <AssistantTurn>[];
   for (final (i, turn) in c.turns.indexed) {
     final tools = <String>[];
     var errors = 0;
+    meter.tools = const [];
     final callsBefore = meter.calls;
     final tokensBefore = meter.tokens;
     final watch = Stopwatch()..start();
@@ -68,6 +93,7 @@ Future<EvalOutcome> runEvalCase(
         ..toolErrors = errors
         ..modelCalls = meter.calls - callsBefore
         ..tokens = meter.tokens - tokensBefore
+        ..toolResults = meter.tools
         ..latencyMs = watch.elapsedMilliseconds,
     );
     history.add(AssistantTurn(question: turn.prompt, answer: result.text, kids: c.kids));
@@ -137,6 +163,7 @@ AssistantModelClient evalScriptedModel(List<Object> script, EvalMeter meter) {
     const AssistantProviderConfig(kind: AssistantProviderKind.ollamaServer, baseUrl: 'http://eval.lan', model: 'm'),
     httpClient: MockClient((request) async {
       meter.calls++;
+      meter.observe(request.body);
       final step = n < script.length ? script[n] : script.whereType<String>().lastOrNull ?? '';
       n++;
       final message = switch (step) {

@@ -218,7 +218,12 @@ class _EvalServer extends FakeServer {
 /// facts from the fixture and the region injected, so the outcome never
 /// depends on the machine's locale. [kids] makes it a children's profile
 /// whose youngest child is the lowest of [kidsAges].
-AssistantToolContext evalContext({required bool kids, List<int> kidsAges = const [], String region = 'NL'}) {
+AssistantToolContext evalContext({
+  required bool kids,
+  List<int> kidsAges = const [],
+  String region = 'NL',
+  void Function(String name)? onSaveRow,
+}) {
   final m = MultiServerManager();
   addTearDown(m.dispose);
   m.debugRegisterClientForTesting(_EvalServer());
@@ -234,6 +239,7 @@ AssistantToolContext evalContext({required bool kids, List<int> kidsAges = const
       ),
       profileId: 'p',
       activeProfileId: () => 'p',
+      saveRow: (row) async => onSaveRow?.call(row.name),
     ),
     titleFacts: _EvalFacts(),
     kidsAges: () async => kidsAges,

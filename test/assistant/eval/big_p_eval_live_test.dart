@@ -27,8 +27,9 @@ const _models = ['glm-5.3-flash', 'gemma4:31b'];
 const _attempts = 3;
 
 String? _key() {
-  final env = Platform.environment;
-  final key = env['OLLAMA_CLOUD_API'] ?? env['VAULT_VALUE'];
+  // Only this name: under `vault-exec <other credential>` another secret
+  // arrives as VAULT_VALUE and must never go to Ollama Cloud as a bearer key.
+  final key = Platform.environment['OLLAMA_CLOUD_API'];
   return key == null || key.trim().isEmpty ? null : key.trim();
 }
 
@@ -42,6 +43,7 @@ class _MeteredClient extends http.BaseClient {
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final response = await _inner.send(request);
     meter.calls++;
+    if (request is http.Request) meter.observe(request.body);
     final bytes = await response.stream.toBytes();
     try {
       final usage = (jsonDecode(utf8.decode(bytes)) as Map)['usage'];
