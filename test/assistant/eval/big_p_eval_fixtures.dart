@@ -19,6 +19,7 @@ import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
 import 'package:pleya/utils/media_server_http_client.dart' show AbortController;
 
 import '../assistant_find_fakes.dart';
+import 'big_p_eval_world.dart';
 
 // The fake catalogue of the Big P evaluation set (BP-11a): about sixty titles
 // on one Jellyfin server, films and series mixed. Ratings are NL (AL/6/9/12/
@@ -250,6 +251,7 @@ AssistantToolContext evalContext({
   List<HouseholdKid> householdKids = const [],
   String region = 'NL',
   bool personal = false,
+  EvalWorld? world,
   void Function(String name)? onSaveRow,
   // The profile's memory, with the saved "nothing I watched or started" (BP-11d).
   AssistantMemoryServices? memory,
@@ -257,6 +259,7 @@ AssistantToolContext evalContext({
   final m = MultiServerManager();
   addTearDown(m.dispose);
   m.debugRegisterClientForTesting(_EvalServer());
+  if (world?.offlineServer ?? false) m.debugRegisterClientForTesting(evalOfflineServer(), online: false);
   m.setVisibleServerIds(null);
   return AssistantToolContext(
     servers: m,
@@ -272,7 +275,10 @@ AssistantToolContext evalContext({
       saveRow: (row) async => onSaveRow?.call(row.name),
     ),
     titleFacts: _EvalFacts(),
-    personal: personal ? _evalPersonal() : null,
+    personal: world?.profile != null ? evalPersonalFor(world!.profile!) : (personal ? _evalPersonal() : null),
+    trakt: world?.trakt,
+    requests: world?.seerr == null ? null : AssistantRequestServices(client: () => world!.seerr!.client),
+    memory: world?.memory?.services,
     kidsAges: () async => kidsAges,
     householdKids: () async => householdKids,
     kidsProfile: () async => kids,
