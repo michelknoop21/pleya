@@ -51,7 +51,7 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
-## 2.8.1 · build 369 · 15 October 2026 · Apple TV
+## 2.8.1 · build 370 · 15 October 2026 · Apple TV
 
 <!-- commit: bd298d5b7f5bc1d78257955aeb40bf0295db04af -->
 
@@ -77,7 +77,7 @@ Nothing user-facing since the last published build.
   first reads series and the second names any matching copy or edition groups.
 - With an unavailable server, check that the answer explains the connection failure.
 
-## 2.8.1 · build 368 · 15 October 2026 · iPhone and iPad
+## 2.8.1 · build 369 · 15 October 2026 · iPhone and iPad
 
 <!-- commit: bd298d5b7f5bc1d78257955aeb40bf0295db04af -->
 
