@@ -293,7 +293,7 @@ void main() {
   });
 
   test(
-    'a tip is told to be a statement with the tool\'s picks as the count, and only where my_watching exists',
+    'a tip is told to be a statement from the tool\'s picks, no more than asked, and only where my_watching exists',
     () async {
       final m = await _Server().manager();
       Future<String> systemFor(AssistantToolContext context) async {
@@ -319,11 +319,11 @@ void main() {
           ),
         ),
       );
-      expect(withTips, contains('A tip is a statement'));
+      expect(withTips, contains('as a statement and never as a question'));
       expect(withTips, contains('never "a few"'));
       // Negative control: no personal source, no my_watching, no tip rule.
       final without = await systemFor(AssistantToolContext(servers: m));
-      expect(without, isNot(contains('A tip is a statement')));
+      expect(without, isNot(contains('as a statement and never as a question')));
     },
   );
 

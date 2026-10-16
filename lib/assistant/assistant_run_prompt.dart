@@ -99,10 +99,10 @@ extension _AssistantPrompt on AssistantRun {
         'use my_watching; watch_stats is everyone on the servers, under server account names that need not '
         'match theirs.\n'
         // A tip answer read as a question ("How does The Bear sound?") and promised "a few" tips beside one
-        // card: the tool's picks are the count and the titles.
-        '- A tip is a statement: say what you recommend and why in one or two sentences, never ask the user '
-        'a question about it. Name only titles my_watching returned as picks, as many as it returned: with one '
-        'pick give one tip, never "a few".';
+        // card: the tool's picks are the titles, and the user's count the limit.
+        '- For a tip for them: say what you recommend and why in one or two sentences, as a statement and never as '
+        'a question. Name only titles my_watching returned as picks, no more than were asked; with one pick give '
+        'one tip, never "a few".';
   }
 
   String? _screenNote() {

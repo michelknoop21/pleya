@@ -94,11 +94,24 @@ Wat Pleya na een actievraag laat zien, in drie lagen. De eerste twee zijn gedraa
 
 ## Tipantwoord na hardwareronde op build 372 (16 oktober 2026)
 
-Op de Apple TV gaf "geef me een tip voor vanavond" het antwoord "Hoe klinkt The Bear (2022)?", een stelling die als vraag las. Daarnaast noemde "Give me a tip based on what I watched" drie titels met jaartal terwijl er één kaart kwam (waarschijnlijk had alleen The Bear een kaart omdat de andere twee niet in de bibliotheek staan; dat is niet uit het logboek gecontroleerd), en "paar tips" ging samen met één kaart.
+Op de Apple TV gaf "geef me een tip voor vanavond" het antwoord "Hoe klinkt The Bear (2022)?", een stelling die als vraag las. Daarnaast noemde "Give me a tip based on what I watched" drie titels met jaartal terwijl er één kaart kwam, en "paar tips" ging samen met één kaart.
 
-Wijziging: twee regels in de systeemprompt, alleen met `my_watching`: een tip is een stelling, en noem alleen titels die `my_watching` als pick teruggaf, evenveel als teruggegeven.
+**Wijziging:** één regel in de systeemprompt, alleen met `my_watching`: voor een tip een stelling geven en nooit een vraag, alleen titels noemen die `my_watching` als pick teruggaf, niet meer dan gevraagd, en bij één pick één tip ("nooit 'een paar'").
 
-Meting (echte modellen via Ollama Cloud, echte `my_watching` met drie picks, drie tipvragen, vier runs per vraag, dus 12 per model; steekproef): antwoorden die als vraag eindigen, glm-5.3-flash 4 van 12 zonder de regel, 0 van 12 met; gemma4:31b 0 van 12 zonder en met. In alle runs gaf het antwoord één tip en kwam er één kaart. Het geval "drie titels in de tekst, één kaart" is hiermee niet gereproduceerd: de modellen noemden hier steeds één titel. Of de regel dat op het toestel voorkomt is niet bewezen; Pleya houdt voor titels in de tekst zonder kaart (niet in de bibliotheek en niet aan te vragen) geen eigen regel in de tekst.
+**Meting** (echte modellen via Ollama Cloud, echte `my_watching`, steekproef; telkens vier runs per vraag):
+
+| Model | Variant | Runs | Antwoord eindigt als vraag |
+| --- | --- | --- | --- |
+| glm-5.3-flash | zonder de regel, drie tipvragen met drie picks | 12 | 4 |
+| glm-5.3-flash | met de regel, vijf vragen (drie picks, "drie tips" bij acht picks, één pick) | 20 | 0 |
+| gemma4:31b | zonder de regel | 12 | 0 |
+| gemma4:31b | met de regel | 20 | 0 |
+
+"Geef me drie tips voor vanavond" bij acht picks: bij beide modellen in alle vier runs drie titels in de tekst en drie kaarten.
+
+**Het geval "meer titels in de tekst dan kaarten" is wel gereproduceerd, en de oorzaak is gevonden.** "Zoek een film voor vanavond" telt als één gevraagde titel (`assistantAskedCount`: "een film"), en Pleya houdt het aantal kaarten bewust op het gevraagde aantal (test "an asked number caps the cards even when the answer names more"). Noemt het model dan twee titels, zoals "«Heat» (1995) ... Wil je iets luchtigers, dan «Puss in Boots» (2022)", dan staat er één kaart bij twee titels. Dit gebeurde in 2 van 40 runs met de nieuwe regel (één per model, bij die vraag). De regel "niet meer dan gevraagd" verlaagt de kans, maar sluit het niet uit. Een harde oplossing in Pleya, de kaarten laten volgen wat de tekst noemt (tot een bovengrens) in plaats van het gevraagde aantal, is niet gebouwd: dat verandert een bewust vastgelegd contract en is Michels keuze.
+
+**Niet gemeten:** de situatie op het toestel zelf, andere modellen, en picks die niet in de bibliotheek staan (de aanname dat Spider-Man: Homecoming en Emily in Paris daarom geen kaart kregen is niet uit het logboek gecontroleerd).
 
 ## Hardwarechecklist iOS 369 en tvOS 370 (vanavond)
 
