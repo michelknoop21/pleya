@@ -81,9 +81,12 @@ extension _AssistantLoop on AssistantRun {
       // Offline servers simply drop out of the tool list.
     }
 
+    // Servers exist but none answers. A profile without servers is not offline:
+    // it takes the no-tools path below.
     if (_ctx.libraryDoctorMode &&
         _spoilerQuestion == null &&
         !_ctx.kidsMode &&
+        _ctx.userServers.isNotEmpty &&
         !_ctx.userServers.any((id) => _ctx.userClient(id) != null)) {
       return _end(AssistantRunEnd.noTools, failure: 'server_unavailable');
     }
