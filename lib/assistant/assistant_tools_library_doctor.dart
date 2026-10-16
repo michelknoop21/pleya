@@ -818,6 +818,9 @@ Future<AssistantPendingAction> _doctorPending(
   );
 }
 
+/// Groups of copies named in the answer text; the rest are counted.
+const _doctorGroupLines = 8;
+
 String _doctorAnswer(Map<String, Object?> data, String language) {
   final dutch = language == 'Dutch';
   final lines = <String>[
@@ -862,19 +865,31 @@ String _doctorAnswer(Map<String, Object?> data, String language) {
       );
     }
   }
+  var shownGroups = 0;
+  var hiddenGroups = 0;
   for (final group in (data['groups'] as List).cast<Map>()) {
-    if (group['source_count'] as int > 1) {
-      lines.add(
+    final groupLines = <String>[
+      if (group['source_count'] as int > 1)
         dutch
             ? '${group['title']}: ${group['source_count']} kopieën/edities; duplicaten zijn niet bewezen.'
             : '${group['title']}: ${group['source_count']} copies/editions; duplicates are not proved.',
-      );
-    }
-    for (final entry in (group['metadata_differences'] as Map).entries) {
-      lines.add(
+      for (final entry in (group['metadata_differences'] as Map).entries)
         '${group['title']}: ${dutch ? 'verschillende waarden voor' : 'different values for'} ${_doctorFieldLabel(entry.key as String, dutch)}: ${(entry.value as List).join(' / ')}.',
-      );
+    ];
+    if (groupLines.isEmpty) continue;
+    if (shownGroups >= _doctorGroupLines) {
+      hiddenGroups++;
+      continue;
     }
+    shownGroups++;
+    lines.addAll(groupLines);
+  }
+  if (hiddenGroups > 0) {
+    lines.add(
+      dutch
+          ? '... en $hiddenGroups andere groepen met meerdere kopieën of verschillen; vraag naar een kleiner deel om ze te zien.'
+          : '... and $hiddenGroups more groups with several copies or differences; ask about a smaller part to see them.',
+    );
   }
   if ((data['actions'] as List).isNotEmpty) {
     for (final action in (data['actions'] as List).cast<Map>()) {

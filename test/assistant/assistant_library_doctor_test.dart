@@ -432,6 +432,35 @@ void main() {
     expect(f.server.writes, isEmpty);
   });
 
+  test('the answer names at most eight groups of copies and counts the rest', () async {
+    final f = _Fixture();
+    final movies = [
+      for (var g = 0; g < 20; g++)
+        for (var i = 0; i < 2; i++)
+          _mapped(
+            'T$g-$i',
+            'Movie',
+          ).copyWith(title: 'Titel${g.toString().padLeft(2, '0')}', guid: 'tmdb://${1000 + g}'),
+    ];
+    f.server.pages['films'] = movies;
+    for (final item in movies) f.server.items[item.id] = item;
+    final result = await AssistantRun(
+      model: _Model([
+        _reply('diagnose_library', {'limit': 40}),
+        _reply(null),
+      ]),
+      context: f.ctx,
+      entitlement: _Entitlement(),
+      confirm: (_) async => null,
+      refreshHealth: () async {},
+    ).ask('Controleer mijn bibliotheek op dubbele films.');
+    expect(result.text, contains('Titel00: 2 kopieën/edities'));
+    expect(result.text, contains('Titel07: 2 kopieën/edities'));
+    expect(result.text, isNot(contains('Titel08: 2 kopieën/edities')));
+    expect(result.text, isNot(contains('Titel19: 2 kopieën/edities')));
+    expect(result.text, contains('12 andere groepen'));
+  });
+
   test('one unavailable server preserves checked findings from another server', () async {
     final f = _Fixture();
     final offline = _ContractServer(MediaBackend.jellyfin, id: 'offline');
