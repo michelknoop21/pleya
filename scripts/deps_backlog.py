@@ -44,7 +44,11 @@ def direct_majors(outdated):
 
 def build(outdated, report, previous, lane, today):
     m = STATE_RE.search(previous or "")
-    first_seen = json.loads(m.group(1)) if m else {}
+    try:
+        first_seen = json.loads(m.group(1)) if m else {}
+    except json.JSONDecodeError:
+        # Handmatig kapotgemaakte staat: opnieuw beginnen in plaats van elke week falen.
+        first_seen = {}
     majors = direct_majors(outdated)
     # Opgeloste majors vallen uit de staat; nieuwe krijgen vandaag.
     first_seen = {k: first_seen.get(k, today) for k in majors}
@@ -109,6 +113,7 @@ def selftest():
     body = build(outdated, {"components": []}, prev, "ok", "2026-10-02")
     assert "`a` 1.0.0 -> 2.0.0 (security-advisory)" in body, body
     assert build(outdated, {"components": []}, body, "ok", "2026-10-09").count("deps-state") == 1
+    assert "deps-state" in build(outdated, {"components": []}, "<!-- deps-state {kapot} -->", "ok", "2026-10-02")
     print("selftest ok")
 
 

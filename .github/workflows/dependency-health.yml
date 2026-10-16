@@ -167,6 +167,9 @@ jobs:
             exit 1
           fi
           git push -f origin "$BRANCH"
+          # Voorlopige uitkomst: breekt de stap hierna af, dan noemt het issue
+          # de branch die nu de volgende runs tegenhoudt.
+          printf '**Afgebroken** op %s na de push van %s; controleer of er een PR open staat (die houdt volgende runs tegen). Run: %s' "$(date +%F)" "$BRANCH" "$RUN_URL" > "$RUNNER_TEMP/lane.txt"
           summary="$(cat "$RUNNER_TEMP/summary.txt" 2>/dev/null)"
 
           pr="$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number')"
@@ -186,7 +189,7 @@ jobs:
             sleep 10
           done
           ci_ok=0
-          [ -n "$ci_id" ] && gh run watch "$ci_id" --exit-status > /dev/null && ci_ok=1
+          [ -n "$ci_id" ] && gh run watch "$ci_id" --exit-status --interval 30 > /dev/null && ci_ok=1
 
           why=""
           [ "$LANE_RC" = 0 ] || why="$why lockfile-diff boven ring 1 of UNKNOWN ($summary);"
@@ -245,6 +248,8 @@ jobs:
           else gh issue create --title "$ISSUE_TITLE" --body-file "$RUNNER_TEMP/body.md"
           fi
 
+      # rc 5 (open PR wacht) is ook rood: anders zou testflight_release.sh
+      # vanaf de tweede week stoppen met waarschuwen terwijl de PR open staat.
       - name: Baan gefaald
-        if: steps.lane.outputs.rc == '1' || steps.lane.outputs.rc == '2'
+        if: steps.lane.outputs.rc == '1' || steps.lane.outputs.rc == '2' || steps.lane.outputs.rc == '5'
         run: exit 1

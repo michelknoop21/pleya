@@ -29,9 +29,11 @@ generator, fork, engine of native dependency.
 neemt alle ring-1-kandidaten uit het rapport in één batch, resolveert de hele graph en classificeert de
 volledige diff. Daarna draaien `check_updates.sh` (geen ring-1-controle mag UNKNOWN zijn) en `ci_checks.sh`, wordt `chore/deps-ring1` gepusht
 met één PR, en draait `ci.yml` (met de volledige `flutter test`) op exact die SHA. Alleen als de hele diff
-ring 1 is, beide gates groen zijn en main niet verder is, merget de job de PR zelf. Anders blijft de PR
+ring 1 is, alle drie de controles groen zijn (`check_updates.sh`, `ci_checks.sh`, `ci.yml`) en main vlak voor de
+merge niet verder is, merget de job de PR zelf; een base die tussen die controle en de merge nog beweegt, is niet
+uit te sluiten. Anders blijft de PR
 open voor handmatige analyse; geen bisect en geen terugdraaien per pakket. Zolang die PR open staat, slaat de job
-de batch over in plaats van hem te overschrijven. Directe majors,
+de batch over in plaats van hem te overschrijven, en kleurt hij rood. Directe majors,
 constraint-holds, advisories en de ring-2/3-pins staan in één doorlopend issue *Dependency-onderhoud*
 (`scripts/deps_backlog.py`), met de oudste major of een advisory als volgende kandidaat.
 `testflight_release.sh` waarschuwt als de job `onderhoud` rood is of ouder dan acht dagen; hij blokkeert niet.

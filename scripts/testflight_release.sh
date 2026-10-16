@@ -63,7 +63,9 @@ scripts/check_updates.sh || true
 # betekent dat er onderhoud ligt (ring-1-PR of het issue Dependency-onderhoud).
 # Alleen de job onderhoud telt: de rapportjob blijft bewust rood zolang er
 # ring-1-achterstand is, ook als onderhoud die net heeft weggewerkt.
-DEPS_ID="$(gh run list --workflow dependency-health.yml --limit 1 --json databaseId -q '.[0].databaseId' 2>/dev/null || true)"
+# Alleen afgeronde runs op main: een lopende run heeft nog geen conclusie en een
+# dispatch vanaf een andere ref slaat onderhoud over.
+DEPS_ID="$(gh run list --workflow dependency-health.yml --branch main --status completed --limit 1 --json databaseId -q '.[0].databaseId' 2>/dev/null || true)"
 DEPS_RUN=""
 [[ -n "$DEPS_ID" ]] && DEPS_RUN="$(gh run view "$DEPS_ID" --json jobs,createdAt \
   -q '"\((.jobs[] | select(.name == "onderhoud") | .conclusion) // "missing") \(.createdAt)"' 2>/dev/null || true)"
