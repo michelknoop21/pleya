@@ -3239,6 +3239,28 @@ class _TranslationsUnifiedCatalogHomeRowsNl extends TranslationsUnifiedCatalogHo
 	@override String get emptyPreviewTitle => 'Niets voldoet aan dit filter';
 	@override String get emptyPreviewBody => 'Maak het filter ruimer, of kies een andere sortering.';
 	@override String morePosters({required Object count}) => '+${count}';
+	@override String get dragIntro => 'Sleep aan het handvat om te verplaatsen. Uitgelicht en Verder kijken blijven staan waar ze staan.';
+	@override String get dragIntroTablet => 'Sleep aan het handvat om te verplaatsen. Tik op een eigen rij om hem te bewerken.';
+	@override String get dragIntroDesktop => 'Sleep een rij met de muis naar zijn nieuwe plek. Uitgelicht en Verder kijken blijven staan waar ze staan.';
+	@override String get sectionFixed => 'Vast';
+	@override String get sectionYours => 'Jouw rijen';
+	@override String onHomeCount({required Object shown, required Object total}) => '${shown} van ${total} op Home';
+	@override String titlesCount({required Object count}) => '${count} titels';
+	@override String sourcesCount({required Object count}) => '${count} bronnen';
+	@override String get optInNote => 'standaard uit';
+	@override String get onlyPlex => 'alleen Plex';
+	@override String get hideOnHome => 'Verbergen op Home';
+	@override String get showOnHome => 'Tonen op Home';
+	@override String allInCatalogMenu({required Object catalog}) => 'Alle in ${catalog}';
+	@override String get moreActions => 'Meer acties';
+	@override String get dragHandle => 'Verplaatsen';
+	@override String rowPosition({required Object position, required Object total}) => 'Rij ${position} van ${total}';
+	@override String get removeTitle => 'Rij verwijderen?';
+	@override String removeBody({required Object name}) => '${name} verdwijnt van Home. De titels zelf blijven staan. Dit kun je niet ongedaan maken.';
+	@override String stepOf({required Object step}) => 'Stap ${step} van 3';
+	@override String get close => 'Sluiten';
+	@override String editRowTitle({required Object name}) => '${name} bewerken';
+	@override String get pickRowToEdit => 'Tik op een eigen rij om hem te bewerken, of maak een nieuwe.';
 }
 
 // Path: tvMyPleya.semantics
@@ -6355,6 +6377,28 @@ extension on TranslationsNl {
 			'unifiedCatalog.homeRows.emptyPreviewTitle' => 'Niets voldoet aan dit filter',
 			'unifiedCatalog.homeRows.emptyPreviewBody' => 'Maak het filter ruimer, of kies een andere sortering.',
 			'unifiedCatalog.homeRows.morePosters' => ({required Object count}) => '+${count}',
+			'unifiedCatalog.homeRows.dragIntro' => 'Sleep aan het handvat om te verplaatsen. Uitgelicht en Verder kijken blijven staan waar ze staan.',
+			'unifiedCatalog.homeRows.dragIntroTablet' => 'Sleep aan het handvat om te verplaatsen. Tik op een eigen rij om hem te bewerken.',
+			'unifiedCatalog.homeRows.dragIntroDesktop' => 'Sleep een rij met de muis naar zijn nieuwe plek. Uitgelicht en Verder kijken blijven staan waar ze staan.',
+			'unifiedCatalog.homeRows.sectionFixed' => 'Vast',
+			'unifiedCatalog.homeRows.sectionYours' => 'Jouw rijen',
+			'unifiedCatalog.homeRows.onHomeCount' => ({required Object shown, required Object total}) => '${shown} van ${total} op Home',
+			'unifiedCatalog.homeRows.titlesCount' => ({required Object count}) => '${count} titels',
+			'unifiedCatalog.homeRows.sourcesCount' => ({required Object count}) => '${count} bronnen',
+			'unifiedCatalog.homeRows.optInNote' => 'standaard uit',
+			'unifiedCatalog.homeRows.onlyPlex' => 'alleen Plex',
+			'unifiedCatalog.homeRows.hideOnHome' => 'Verbergen op Home',
+			'unifiedCatalog.homeRows.showOnHome' => 'Tonen op Home',
+			'unifiedCatalog.homeRows.allInCatalogMenu' => ({required Object catalog}) => 'Alle in ${catalog}',
+			'unifiedCatalog.homeRows.moreActions' => 'Meer acties',
+			'unifiedCatalog.homeRows.dragHandle' => 'Verplaatsen',
+			'unifiedCatalog.homeRows.rowPosition' => ({required Object position, required Object total}) => 'Rij ${position} van ${total}',
+			'unifiedCatalog.homeRows.removeTitle' => 'Rij verwijderen?',
+			'unifiedCatalog.homeRows.removeBody' => ({required Object name}) => '${name} verdwijnt van Home. De titels zelf blijven staan. Dit kun je niet ongedaan maken.',
+			'unifiedCatalog.homeRows.stepOf' => ({required Object step}) => 'Stap ${step} van 3',
+			'unifiedCatalog.homeRows.close' => 'Sluiten',
+			'unifiedCatalog.homeRows.editRowTitle' => ({required Object name}) => '${name} bewerken',
+			'unifiedCatalog.homeRows.pickRowToEdit' => 'Tik op een eigen rij om hem te bewerken, of maak een nieuwe.',
 			'tvNavigation.activeDestination' => 'huidige sectie',
 			'tvNavigation.attentionRequired' => 'vereist aandacht',
 			'tvMyPleya.groupContent' => 'Mijn content',
@@ -6799,6 +6843,8 @@ extension on TranslationsNl {
 			'assistant.ends.toolsUnsupported' => 'Dit model kan geen tools gebruiken. Kies een ander model bij de instellingen van Big P.',
 			'assistant.ends.stepLimit' => 'Dit kostte te veel stappen. Probeer een kortere vraag.',
 			'assistant.ends.notEntitled' => 'Big P is niet beschikbaar op dit account.',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.ends.providerUnauthorized' => 'De AI-provider weigert de sleutel. Controleer hem bij de instellingen van Big P.',
 			'assistant.ends.providerUnreachable' => 'De AI-provider is niet bereikbaar.',
 			'assistant.ends.providerTimeout' => 'De AI-provider antwoordde niet op tijd.',
@@ -6821,8 +6867,6 @@ extension on TranslationsNl {
 			'assistant.settings.openRouterDescription' => 'Eén sleutel voor modellen van verschillende aanbieders.',
 			'assistant.settings.needsAddress' => 'Adres van de server',
 			'assistant.settings.needsKey' => 'API-sleutel',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.settings.dataNote' => 'Naar de provider gaan je vraag en de namen van bibliotheken, servers en gebruikers die nodig zijn om hem te beantwoorden. Wachtwoorden en tokens blijven in Pleya.',
 			'assistant.settings.serverUrl' => 'Adres van de server',
 			'assistant.settings.serverUrlHint' => 'http://192.168.1.10:11434',

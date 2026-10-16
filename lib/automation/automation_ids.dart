@@ -529,6 +529,30 @@ class AutomationIds {
   /// `[<railIndex>.<itemIndex>]`.
   static const String homeRailItem = 'home.rail.item';
 
+  /// "Home aanpassen" on iPhone, iPad and Mac (HOME-R1, mockup 44): the line
+  /// under the last row of Home, the screen itself, one of its rows
+  /// (instanceable `[<index>]`), its "Nieuwe rij" tile, the row wizard and the
+  /// quick menu of a row header.
+  static const String homeCustomizeEntry = 'home.customize.entry';
+  static const String homeCustomizeScreen = 'home.customize';
+  static const String homeCustomizeRow = 'home.customize.row';
+  static const String homeCustomizeNew = 'home.customize.new';
+  static const String homeCustomizeWizard = 'home.customize.wizard';
+
+  /// A control of the wizard, instanceable: `[next]`, `[back]`, `[close]` and
+  /// `[filter.status]` to `[filter.sort]`.
+  static const String homeCustomizeWizardAction = 'home.customize.wizard.action';
+  static const String homeRowQuickMenu = 'sheet.home_row_menu';
+
+  /// The Klaar button of the screen, and one action of [homeRowQuickMenu]
+  /// (instanceable: `[up]`, `[down]`, `[hide]`, `[customize]`).
+  static const String homeCustomizeDone = 'home.customize.done';
+  static const String homeRowQuickMenuItem = 'sheet.home_row_menu.item';
+
+  /// The title row of a Home rail, the thing a long press lands on.
+  /// Instanceable: `[<railIndex>]`.
+  static const String homeRailHeader = 'home.rail.header';
+
   /// The Series and Films landing screens (iOS Unified 2026 fase 2, DEC-104).
   static const String screenSeries = 'screen.series';
   static const String screenMovies = 'screen.movies';
@@ -765,6 +789,10 @@ class AutomationIds {
     requestsDetailAction,
     homeRail,
     homeRailItem,
+    homeRailHeader,
+    homeCustomizeRow,
+    homeCustomizeWizardAction,
+    homeRowQuickMenuItem,
     landingHeader,
     landingHeaderSearch,
     landingHeaderAvatar,
@@ -927,6 +955,16 @@ class AutomationIds {
     {'id': homeChips, 'role': 'filter', 'instanceable': false},
     {'id': homeRail, 'role': 'rail', 'instanceable': true},
     {'id': homeRailItem, 'role': 'grid.item', 'instanceable': true},
+    {'id': homeRailHeader, 'role': 'region', 'instanceable': true},
+    {'id': homeCustomizeEntry, 'role': 'button', 'instanceable': false},
+    {'id': homeCustomizeScreen, 'role': 'screen', 'instanceable': false},
+    {'id': homeCustomizeRow, 'role': 'list.item', 'instanceable': true},
+    {'id': homeCustomizeNew, 'role': 'button', 'instanceable': false},
+    {'id': homeCustomizeWizard, 'role': 'wizard', 'instanceable': false},
+    {'id': homeCustomizeWizardAction, 'role': 'button', 'instanceable': true},
+    {'id': homeRowQuickMenu, 'role': 'sheet', 'instanceable': false},
+    {'id': homeRowQuickMenuItem, 'role': 'list.item', 'instanceable': true},
+    {'id': homeCustomizeDone, 'role': 'button', 'instanceable': false},
     {'id': screenSeries, 'role': 'screen', 'instanceable': false},
     {'id': screenMovies, 'role': 'screen', 'instanceable': false},
     {'id': screenRequests, 'role': 'screen', 'instanceable': false},

@@ -25,15 +25,13 @@ import '../../i18n/strings.g.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_hub.dart';
-import '../../providers/hidden_libraries_provider.dart';
 import '../../providers/home_custom_rows_provider.dart';
 import '../../providers/home_extra_rows_provider.dart';
 import '../../providers/home_layout_provider.dart';
-import '../../providers/libraries_provider.dart';
-import '../../providers/multi_server_provider.dart';
 import '../../providers/tv_home_projection_provider.dart';
 import '../../services/unified_catalog/home_custom_row.dart';
 import '../../services/unified_catalog/home_custom_row_loader.dart';
+import '../../services/unified_catalog/home_row_editing.dart';
 import '../../services/unified_catalog/home_row_layout.dart';
 import '../../services/unified_catalog/source_cursor.dart';
 import '../../utils/home_custom_row_labels.dart';
@@ -94,30 +92,17 @@ class TvHomeCustomizeController {
     final layout = context.read<HomeLayoutProvider?>();
     final customRows = context.read<HomeCustomRowsProvider?>();
     if (layout == null || customRows == null) return null;
-    final multiServer = context.read<MultiServerProvider>();
-    final libraries = context.read<LibrariesProvider>();
-    final hiddenLibraries = context.read<HiddenLibrariesProvider>();
-    final loader = CatalogHomeCustomRowLoader(
-      libraries: () => libraries.libraries,
-      isServerVisible: multiServer.serverManager.isServerVisible,
-      hiddenLibraryKeys: () => hiddenLibraries.hiddenLibraryKeys,
-      clientFor: multiServer.serverManager.getClient,
-    );
+    final editing = HomeRowEditing.of(context, clientFor: clientFor);
     return TvHomeCustomizeController(
       layout: layout,
       customRows: customRows,
       extraRows: context.read<HomeExtraRowsProvider?>(),
       projection: context.read<TvHomeProjectionProvider>(),
       clientFor: clientFor,
-      librariesFor: (kind) => eligibleCatalogLibraries(
-        libraries: libraries.libraries,
-        kind: kind,
-        isServerVisible: multiServer.serverManager.isServerVisible,
-        hiddenLibraryKeys: hiddenLibraries.hiddenLibraryKeys,
-      ),
+      librariesFor: editing.librariesFor,
       // The wizard's preview is the row's own question, asked early. Same
       // loader, same limit, so what C3 draws is what Home will draw.
-      preview: (draft) => loader.load(draft, limit: kHomeCustomRowCardLimit),
+      preview: editing.preview,
     );
   }
 
