@@ -61,6 +61,7 @@ import 'package:pleya/widgets/tv/tv_content_feed.dart';
 import 'package:pleya/widgets/tv/tv_content_row.dart';
 import 'package:pleya/widgets/tv/tv_home_customize_footer.dart';
 import 'package:pleya/widgets/tv/tv_home_customize_panel.dart';
+import 'package:pleya/widgets/tv/tv_home_row_tiles.dart';
 import 'package:pleya/widgets/tv/tv_home_row_wizard.dart';
 import 'package:provider/provider.dart';
 
@@ -222,6 +223,7 @@ void main() {
     List<MediaItem>? catalog,
     bool barren = false,
     bool continueWatchingOnly = false,
+    List<MediaHub>? hubs,
   }) async {
     // StorageService stores a string list as one JSON string, so the fixture
     // writes exactly what an earlier session would have left in that key.
@@ -252,9 +254,11 @@ void main() {
       if (!continueWatchingOnly) {
         aggregation
           ..latestMovies = [_film('m1', title: 'Dune')]
-          ..hubs = [
-            _hub('movie.recentlyadded', 'Recently Added', [_film('m5', title: 'Casablanca', genre: 'Drama')]),
-          ];
+          ..hubs =
+              hubs ??
+              [
+                _hub('movie.recentlyadded', 'Recently Added', [_film('m5', title: 'Casablanca', genre: 'Drama')]),
+              ];
       }
     }
     final multiServer = MultiServerProvider(manager, aggregation);
@@ -459,6 +463,56 @@ void main() {
     expect(find.text(t.unifiedCatalog.homeRows.remove), findsOneWidget);
     expect(find.text(t.unifiedCatalog.homeRows.hide), findsNWidgets(2));
     expect(find.text(t.unifiedCatalog.homeRows.newRow), findsOneWidget);
+  });
+
+  // HOME-R1. One Plex server hands every movie library its own
+  // `movie.recentlyadded`, so two panel rows answer to one layout id. The panel
+  // keyed its focus nodes by that id, so both rows got the same nodes: the
+  // first row's buttons were attached to the second row, and the ring could
+  // not reach the first row at all.
+  testWidgets('two rows that share a layout id each own their buttons', (tester) async {
+    MediaHub sectionHub(String section, String title, MediaItem item) => MediaHub(
+      id: '/hubs/sections/$section/recentlyAdded',
+      identifier: 'movie.recentlyadded',
+      title: title,
+      type: 'movie',
+      items: [item],
+      size: 1,
+      serverId: 'nas',
+      serverName: 'NAS',
+    );
+    await boot(
+      tester,
+      savedRows: [savedRowJson()],
+      hubs: [
+        sectionHub('1', 'Recently Added in Films', _film('m5', title: 'Casablanca', genre: 'Drama')),
+        sectionHub('2', 'Recently Added in Kids', _film('m6', title: 'Moana', genre: 'Animation')),
+      ],
+    );
+    await openPanel(tester);
+
+    String? rowOf(FocusNode? node) =>
+        node?.context?.findAncestorWidgetOfExactType<TvHomeEntryRowTile>()?.entry.row.title;
+
+    final twins = tester
+        .widgetList<TvHomeEntryRowTile>(find.byType(TvHomeEntryRowTile))
+        .where((tile) => tile.entry.row.title.startsWith('Recently Added in'))
+        .toList();
+    expect(twins, hasLength(2));
+    expect(twins[0].entry.layoutIds, twins[1].entry.layoutIds, reason: 'the fixture must reproduce the shared id');
+
+    for (final tile in twins) {
+      for (final node in [tile.upNode, tile.downNode, tile.primaryNode]) {
+        expect(rowOf(node), tile.entry.row.title, reason: '${node.debugLabel} is attached to another row');
+      }
+    }
+
+    // DOWN from the first twin's primary action reaches the second twin.
+    twins[0].primaryNode.requestFocus();
+    await tester.pump();
+    expect(rowOf(FocusManager.instance.primaryFocus), 'Recently Added in Films');
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    expect(rowOf(FocusManager.instance.primaryFocus), 'Recently Added in Kids');
   });
 
   // ROW1e. The panel's grid is the whole navigation: every column steps to the
