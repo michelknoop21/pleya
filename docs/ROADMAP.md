@@ -98,7 +98,7 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 | E-04 | P1 | Commercieel/site | Website, screenshots en release-informatie | Status herijken |
 | F-01 | P3 | Optioneel | Apple Intelligence: kleine zoekfilter-MVP | Gepland |
 | F-02 | P3 | Optioneel | Nieuwe ideeën zonder bestaande release te blokkeren | Gepland |
-| HOME-R1 | P1 | Home | Rijen verplaatsen: stap 1 tvOS-bug in het aanpaspaneel, stap 2 mockup voor iOS, iPadOS en macOS, stap 3 bouwen na akkoord (Roadmap deviation: Michel 16 okt, zie hieronder) | Stap 1 in PR (16 okt): oorzaak gevonden en gefixt, simulator en hardware open; stap 2 en 3 niet gestart |
+| HOME-R1 | P1 | Home | Rijen verplaatsen: stap 1 tvOS-bug in het aanpaspaneel, stap 2 mockup voor iOS, iPadOS en macOS, stap 3 bouwen na akkoord (Roadmap deviation: Michel 16 okt, zie hieronder) | Stap 1 in PR (16 okt): oorzaak gevonden en gefixt, simulator en hardware open; stap 2 (mockupset 44) goedgekeurd en stap 3 gebouwd in PR feat/home-r1-home-aanpassen (iPhone, iPad, Mac; Verify op iPhone en iPad, Mac-run open, hardware open) |
 
 ## Big P
 
