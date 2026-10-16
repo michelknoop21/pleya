@@ -56,6 +56,7 @@ import '../../media/unified/unified_media_group.dart';
 import '../../focus/focus_theme.dart';
 import '../../services/unified_catalog/unified_artwork_prefetcher.dart';
 import '../../theme/mono_tokens.dart';
+import '../../utils/continue_watching_labels.dart' show continueWatchingNextEpisodeWording;
 import '../../utils/formatters.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/media_image_helper.dart' show ImageType;
@@ -104,8 +105,9 @@ typedef DiscoveryContext = ({String title, String context, String? synopsis});
 /// `S3 E4 · Violet · 18 min over`: its place, its own title, and what is left.
 /// Year and genre dropped off it; they say nothing a viewer mid-series weighs.
 /// In Verder kijken an episode with nothing left is the next one of its series
-/// and says so, `S3 E5 · Volgende aflevering`, so the card type is explicit and
-/// not only "no progress bar". A film's line is unchanged.
+/// and says so, `S3 E5 · Volgende aflevering` (`Nieuwe aflevering` or `Nieuw
+/// seizoen` when that is provable), so the card type is explicit and not only
+/// "no progress bar". A film's line is unchanged.
 DiscoveryContext discoveryContextFor(UnifiedMediaGroup group, {bool inContinueWatching = false}) {
   final item = group.representativeSource.item;
   final isEpisode = item.kind == MediaKind.episode;
@@ -115,7 +117,7 @@ DiscoveryContext discoveryContextFor(UnifiedMediaGroup group, {bool inContinueWa
     if (isEpisode) ...[
       ?_episodeLabel(item),
       ?item.displaySubtitle,
-      ?(_remainingLabel(group, item) ?? (inContinueWatching ? t.discover.nextEpisodeStatus : null)),
+      ?(_remainingLabel(group, item) ?? (inContinueWatching ? continueWatchingNextEpisodeWording(item) : null)),
     ] else ...[
       ?_remainingLabel(group, item),
       if (item.year != null) '${item.year}',

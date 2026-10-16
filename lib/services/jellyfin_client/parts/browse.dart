@@ -98,6 +98,10 @@ const _episodeQueuePageSize = 200;
 /// Next Up list ever returns, while keeping the response bounded.
 const _continueWatchingSeriesLookback = 200;
 
+/// Series with a new episode but no play inside that window get one lookup of
+/// their own, at most this many per refresh.
+const _freshSeriesLastPlayedLookups = 6;
+
 const _childrenPageSize = 500;
 const _pagedListPageSize = 200;
 const _playableDescendantTypes = 'Movie,Episode';
@@ -1448,7 +1452,9 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
       _safeFetchItemsArray('/Shows/NextUp', {
         'userId': connection.userId,
         'Limit': ?count?.toString(),
-        'Fields': _browseFields,
+        // DateCreated: when the episode reached the server, the other half of
+        // "new since the series was last watched" (continueWatchingFreshness).
+        'Fields': '$_browseFields,DateCreated',
         'EnableResumable': 'false',
         'EnableTotalRecordCount': 'false',
         ...jellyfinImageQueryParameters,
@@ -2004,6 +2010,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
       if (!pendingSeriesIds.contains(seriesId)) continue;
       lastPlayedBySeries.putIfAbsent(seriesId, () => playedAt);
     }
+    await _fillFreshSeriesLastPlayed(nextUp, pendingSeriesIds, lastPlayedBySeries);
     if (lastPlayedBySeries.isEmpty) return nextUp;
 
     return [
@@ -2013,6 +2020,49 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
         else
           item,
     ];
+  }
+
+  /// A series last watched before the lookback window above keeps no date, and
+  /// that is exactly the series a new episode brings back after months. For the
+  /// next-up rows added in the last two weeks whose series is still undated, ask
+  /// for the one newest played episode of that series. Bounded, parallel, and a
+  /// failed lookup leaves the series undated, so it is never called new.
+  Future<void> _fillFreshSeriesLastPlayed(
+    List<MediaItem> nextUp,
+    Set<String> pendingSeriesIds,
+    Map<String, int> lastPlayedBySeries,
+  ) async {
+    final nowSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final seriesIds = <String>{
+      for (final item in nextUp)
+        if (item.kind == MediaKind.episode &&
+            item.grandparentId != null &&
+            pendingSeriesIds.contains(item.grandparentId) &&
+            !lastPlayedBySeries.containsKey(item.grandparentId) &&
+            item.addedAt != null &&
+            nowSeconds - item.addedAt! <= continueWatchingFreshWindow.inSeconds)
+          item.grandparentId!,
+    }.take(_freshSeriesLastPlayedLookups);
+
+    await Future.wait([
+      for (final seriesId in seriesIds)
+        () async {
+          final raw = await _safeFetchItemsArray('/Items', {
+            'userId': connection.userId,
+            'ParentId': seriesId,
+            'IncludeItemTypes': 'Episode',
+            'Recursive': 'true',
+            'SortBy': 'DatePlayed',
+            'SortOrder': 'Descending',
+            'Fields': _queueFields,
+            'Limit': '1',
+            'EnableImages': 'false',
+            'EnableTotalRecordCount': 'false',
+          });
+          final playedAt = _mapItems(raw).firstOrNull?.lastViewedAt;
+          if (playedAt != null) lastPlayedBySeries[seriesId] = playedAt;
+        }(),
+    ]);
   }
 
   /// GET [path], optionally under a hub-surface transport policy ([retry]):

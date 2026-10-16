@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../connection/connection.dart';
 import '../utils/continue_watching_merge.dart';
+import '../utils/continue_watching_order.dart' show continueWatchingFreshWindow;
 import '../media/episode_collection.dart';
 import '../media/server_administration.dart';
 import '../media/server_authority_guard.dart';

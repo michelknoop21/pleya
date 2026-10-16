@@ -1042,7 +1042,7 @@ bron apart.
 
 Een kaart wordt gesorteerd op de nieuwste geldige bronrecency. Bij openen: één bron met progress →
 direct; meerdere bronnen → picker; de bron met de nieuwste progress krijgt "Laatst bekeken" en
-initiële focus.
+initiële focus. De volgorde van de lijst zelf staat sinds 16 oktober 2026 in DEC-XXX (laatst bekeken, twee nieuwe afleveringen, actief, Eerder begonnen).
 
 ### 13.4 Verwijder uit Verder kijken
 

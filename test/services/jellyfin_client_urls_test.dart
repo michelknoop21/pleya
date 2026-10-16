@@ -15,6 +15,7 @@ import 'package:pleya/services/jellyfin_client.dart';
 import 'package:pleya/services/jellyfin_auth_header.dart';
 import 'package:pleya/services/jellyfin_client/jellyfin_device_profile.dart';
 import 'package:pleya/services/playback_initialization_types.dart';
+import 'package:pleya/utils/continue_watching_order.dart';
 
 JellyfinConnection _conn({String accessToken = 'tok-abc', String baseUrl = 'https://jf.example.com'}) =>
     JellyfinConnection(
@@ -2395,6 +2396,139 @@ void main() {
       expect(resume.queryParameters.containsKey('Limit'), isFalse);
       final nextUp = requests.singleWhere((uri) => uri.path == '/Shows/NextUp');
       expect(nextUp.queryParameters.containsKey('Limit'), isFalse);
+    });
+
+    group('new episodes of a series watched long ago', () {
+      String iso(Duration ago) => DateTime.now().toUtc().subtract(ago).toIso8601String();
+
+      /// A server whose Next Up holds one episode per entry of [addedDaysAgo]
+      /// (series `show-<n>`), whose recent-plays window knows no series, and
+      /// whose per-series lookup answers from [lastPlayedDaysAgo] (a series
+      /// missing from it has never been played).
+      ({JellyfinClient client, List<Uri> requests}) server({
+        required List<int> addedDaysAgo,
+        Map<String, int> lastPlayedDaysAgo = const {},
+        Set<String> failingSeries = const {},
+      }) {
+        final requests = <Uri>[];
+        final client = JellyfinClient.forTesting(
+          connection: _conn(),
+          httpClient: MockClient((req) async {
+            requests.add(req.url);
+            final json = {'content-type': 'application/json'};
+            if (req.url.path == '/UserItems/Resume')
+              return http.Response(jsonEncode({'Items': []}), 200, headers: json);
+            if (req.url.path == '/Shows/NextUp') {
+              return http.Response(
+                jsonEncode({
+                  'Items': [
+                    for (var i = 0; i < addedDaysAgo.length; i++)
+                      {
+                        'Id': 'next-$i',
+                        'Type': 'Episode',
+                        'Name': 'Next $i',
+                        'SeriesId': 'show-$i',
+                        'ParentIndexNumber': 2,
+                        'IndexNumber': 1,
+                        'DateCreated': iso(Duration(days: addedDaysAgo[i])),
+                      },
+                  ],
+                }),
+                200,
+                headers: json,
+              );
+            }
+            if (req.url.path == '/Items') {
+              final parent = req.url.queryParameters['ParentId'];
+              if (parent == null) return http.Response(jsonEncode({'Items': []}), 200, headers: json);
+              if (failingSeries.contains(parent)) return http.Response('server error', 500);
+              final ago = lastPlayedDaysAgo[parent];
+              return http.Response(
+                jsonEncode({
+                  'Items': [
+                    if (ago != null)
+                      {
+                        'Id': 'played-$parent',
+                        'Type': 'Episode',
+                        'SeriesId': parent,
+                        'UserData': {'LastPlayedDate': iso(Duration(days: ago))},
+                      },
+                  ],
+                }),
+                200,
+                headers: json,
+              );
+            }
+            return http.Response('not found', 404);
+          }),
+        );
+        addTearDown(client.close);
+        return (client: client, requests: requests);
+      }
+
+      List<Uri> perSeriesLookups(List<Uri> requests) =>
+          requests.where((uri) => uri.path == '/Items' && uri.queryParameters.containsKey('ParentId')).toList();
+
+      test('Next Up asks for DateCreated, so the episode carries when it reached the server', () async {
+        final s = server(addedDaysAgo: [3], lastPlayedDaysAgo: {'show-0': 100});
+
+        final items = await s.client.fetchContinueWatching(count: 20);
+
+        final nextUp = s.requests.singleWhere((uri) => uri.path == '/Shows/NextUp');
+        expect(nextUp.queryParameters['Fields'], contains('DateCreated'));
+        expect(items.single.addedAt, isNotNull);
+      });
+
+      test('a series played before the recent-plays window is looked up once and becomes a new episode', () async {
+        final s = server(addedDaysAgo: [3], lastPlayedDaysAgo: {'show-0': 100});
+
+        final items = await s.client.fetchContinueWatching(count: 20);
+
+        expect(perSeriesLookups(s.requests), hasLength(1));
+        final lookup = perSeriesLookups(s.requests).single;
+        expect(lookup.queryParameters['ParentId'], 'show-0');
+        expect(lookup.queryParameters['Limit'], '1');
+        expect(lookup.queryParameters['SortBy'], 'DatePlayed');
+        expect(items.single.lastViewedAt, isNotNull);
+        expect(continueWatchingFreshness(items.single, now: DateTime.now()), ContinueWatchingFreshness.newSeason);
+      });
+
+      test('an episode added more than two weeks ago costs no extra lookup', () async {
+        final s = server(addedDaysAgo: [30], lastPlayedDaysAgo: {'show-0': 100});
+
+        final items = await s.client.fetchContinueWatching(count: 20);
+
+        expect(perSeriesLookups(s.requests), isEmpty);
+        expect(items.single.lastViewedAt, isNull);
+      });
+
+      test('at most six series are looked up in one refresh', () async {
+        final s = server(
+          addedDaysAgo: List.filled(9, 2),
+          lastPlayedDaysAgo: {for (var i = 0; i < 9; i++) 'show-$i': 100},
+        );
+
+        await s.client.fetchContinueWatching(count: 20);
+
+        expect(perSeriesLookups(s.requests), hasLength(6));
+      });
+
+      test('a lookup that fails leaves the series undated, so it is not called new', () async {
+        final s = server(addedDaysAgo: [3], failingSeries: {'show-0'});
+
+        final items = await s.client.fetchContinueWatching(count: 20);
+
+        expect(items.single.lastViewedAt, isNull);
+        expect(continueWatchingFreshness(items.single, now: DateTime.now()), ContinueWatchingFreshness.none);
+      });
+
+      test('a series that was never played stays undated', () async {
+        final s = server(addedDaysAgo: [3]);
+
+        final items = await s.client.fetchContinueWatching(count: 20);
+
+        expect(items.single.lastViewedAt, isNull);
+      });
     });
   });
 
