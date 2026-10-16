@@ -151,8 +151,15 @@ extension _AssistantExecute on AssistantRun {
       // fit the question is refused, so the model cannot widen the audience.
       final fixed = _intent.constrain(tool.name, decoded);
       if (fixed.error case final code?) return {'error': code};
-      final kind = tool.name == 'diagnose_library' ? assistantLibraryDoctorKind(_prompt) : null;
-      args = kind == null ? fixed.args : {...fixed.args, 'kind': kind.name};
+      if (tool.name == 'diagnose_library') {
+        // The kind comes from the question alone: a question that names none
+        // checks both, so a kind the model picked is dropped.
+        final kind = assistantLibraryDoctorKind(_prompt);
+        args = {...fixed.args}..remove('kind');
+        if (kind != null) args['kind'] = kind.name;
+      } else {
+        args = fixed.args;
+      }
     } on FormatException {
       return {'error': 'invalid_arguments'};
     }

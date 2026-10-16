@@ -512,6 +512,25 @@ void main() {
     expect(f.server.writes, isEmpty);
   });
 
+  test('a question that names no kind reads both kinds even if the model asks for one', () async {
+    final f = _Fixture();
+    final model = _Model([
+      _reply('diagnose_library', {'kind': 'movie'}),
+      _reply(null),
+    ]);
+    final result = await AssistantRun(
+      model: model,
+      context: f.ctx,
+      entitlement: _Entitlement(),
+      confirm: (_) async => throw StateError('Read-only diagnosis'),
+      refreshHealth: () async {},
+    ).ask('Controleer mijn bibliotheek op dubbele edities.');
+    expect(result.error, isNull);
+    expect(f.server.reads, contains('library:films'));
+    expect(f.server.reads, contains('library:series'));
+    expect(f.server.writes, isEmpty);
+  });
+
   test('offline diagnosis returns a concrete reason without asking the model', () async {
     final f = _Fixture();
     f.manager.debugRegisterClientForTesting(f.server, online: false);
