@@ -30,6 +30,8 @@ import '../../providers/home_layout_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/tv_home_projection_provider.dart';
 import '../../screens/tv/tv_unified_activation.dart';
+import '../../services/unified_catalog/home_row_layout.dart' show homeLayoutIdsOf;
+import 'customize/home_customize_entry.dart';
 import '../../services/unified_catalog/mobile_media_source_picker_route.dart';
 import '../../utils/home_hero_layout.dart';
 import 'mobile_continue_watching_screen.dart';
@@ -255,8 +257,12 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
                 hub: hubs[i],
                 railIndex: continueWatching != null ? i + 1 : i,
                 onCardTap: _openDetails,
+                // HOME-R1: long press on a row header opens the quick menu.
+                onHeaderLongPress: () => showHomeRowQuickMenu(context, ids: homeLayoutIdsOf(hubs[i])),
               ),
             ),
+          // HOME-R1: the way into Home aanpassen, under the last row.
+          if (_chip == MobileHomeChip.home) const SliverToBoxAdapter(child: HomeCustomizeEntryTile()),
         ],
         mobileDiscoveryTailSliver(context),
       ],

@@ -519,6 +519,17 @@ class AutomationIds {
   /// `[<railIndex>.<itemIndex>]`.
   static const String homeRailItem = 'home.rail.item';
 
+  /// "Home aanpassen" on iPhone, iPad and Mac (HOME-R1, mockup 44): the line
+  /// under the last row of Home, the screen itself, one of its rows
+  /// (instanceable `[<index>]`), its "Nieuwe rij" tile, the row wizard and the
+  /// quick menu of a row header.
+  static const String homeCustomizeEntry = 'home.customize.entry';
+  static const String homeCustomizeScreen = 'home.customize';
+  static const String homeCustomizeRow = 'home.customize.row';
+  static const String homeCustomizeNew = 'home.customize.new';
+  static const String homeCustomizeWizard = 'home.customize.wizard';
+  static const String homeRowQuickMenu = 'sheet.home_row_menu';
+
   /// The Series and Films landing screens (iOS Unified 2026 fase 2, DEC-104).
   static const String screenSeries = 'screen.series';
   static const String screenMovies = 'screen.movies';
