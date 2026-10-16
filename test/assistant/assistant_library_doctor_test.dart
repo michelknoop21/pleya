@@ -528,6 +528,22 @@ void main() {
     expect(f.server.reads, isEmpty);
   });
 
+  test('a profile without servers is not told that a server is offline', () async {
+    final manager = _Manager();
+    addTearDown(manager.dispose);
+    final model = _Model([_reply('diagnose_library'), _reply(null)]);
+    final result = await AssistantRun(
+      model: model,
+      context: AssistantToolContext(servers: manager),
+      entitlement: _Entitlement(),
+      confirm: (_) async => throw StateError('No source exists'),
+      refreshHealth: () async {},
+    ).ask('Controleer mijn bibliotheek op ontbrekende afleveringen.');
+    expect(result.end, AssistantRunEnd.noTools);
+    expect(result.error, isNull);
+    expect(model.specs, isEmpty);
+  });
+
   for (final evidence in ['missing_total', 'discarded_row_without_total', 'discarded_row_with_total', 'complete']) {
     test('actual Jellyfin confirmation requires lossless explicit coverage: $evidence', () async {
       final f = _Fixture();
