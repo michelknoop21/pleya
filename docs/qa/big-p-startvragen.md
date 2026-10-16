@@ -92,6 +92,14 @@ Wat Pleya na een actievraag laat zien, in drie lagen. De eerste twee zijn gedraa
 - "Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw." toont per herstarte taak eerst "Taak opnieuw gestart" en daarna "Taak loopt", "Taak klaar" of "Taak mislukt".
 - "Scan alle filmbibliotheken op al mijn servers." toont per bibliotheek "Scan gestart" en blijft daar staan. Dat is geen fout: zonder operatie-id volgt Pleya een scan niet (BP-01a). De vervolgvraag naar de lopende taken staat eronder.
 
+## Tipantwoord na hardwareronde op build 372 (16 oktober 2026)
+
+Op de Apple TV gaf "geef me een tip voor vanavond" het antwoord "Hoe klinkt The Bear (2022)?", een stelling die als vraag las. Daarnaast noemde "Give me a tip based on what I watched" drie titels met jaartal terwijl er één kaart kwam (waarschijnlijk had alleen The Bear een kaart omdat de andere twee niet in de bibliotheek staan; dat is niet uit het logboek gecontroleerd), en "paar tips" ging samen met één kaart.
+
+Wijziging: twee regels in de systeemprompt, alleen met `my_watching`: een tip is een stelling, en noem alleen titels die `my_watching` als pick teruggaf, evenveel als teruggegeven.
+
+Meting (echte modellen via Ollama Cloud, echte `my_watching` met drie picks, drie tipvragen, vier runs per vraag, dus 12 per model; steekproef): antwoorden die als vraag eindigen, glm-5.3-flash 4 van 12 zonder de regel, 0 van 12 met; gemma4:31b 0 van 12 zonder en met. In alle runs gaf het antwoord één tip en kwam er één kaart. Het geval "drie titels in de tekst, één kaart" is hiermee niet gereproduceerd: de modellen noemden hier steeds één titel. Of de regel dat op het toestel voorkomt is niet bewezen; Pleya houdt voor titels in de tekst zonder kaart (niet in de bibliotheek en niet aan te vragen) geen eigen regel in de tekst.
+
 ## Hardwarechecklist iOS 369 en tvOS 370 (vanavond)
 
 De builds 369 (iPhone en iPad) en 370 (Apple TV) bevatten de vanavond-route; de teksten staan in beide binaries (markers geteld op 16 oktober 2026, zie PR #347). Op een toestel is niets bevestigd. Voorwaarde: het buildnummer in Instellingen klopt, een beheerdersprofiel met minstens één server online, Big P aan met een ingesteld model. Noteer per punt geslaagd of gefaald, het model en de taal. De chips zijn drie willekeurige mogelijkheden: staat een genoemde chip er niet, open Big P opnieuw. Een getypte vraag telt niet als chip; typ alleen als een punt dat zegt.

@@ -292,6 +292,41 @@ void main() {
     expect(model.toolNamesOffered(0), contains('my_watching'));
   });
 
+  test(
+    'a tip is told to be a statement with the tool\'s picks as the count, and only where my_watching exists',
+    () async {
+      final m = await _Server().manager();
+      Future<String> systemFor(AssistantToolContext context) async {
+        final model = _Model(AssistantProviderKind.ollamaServer, [_say('Hoi')]);
+        await AssistantRun(
+          model: model.client(),
+          context: context,
+          confirm: (_) async => null,
+          entitlement: const _Entitled(),
+        ).ask('Geef me een kijktip');
+        return ((model.requests.first['messages'] as List).first as Map)['content'] as String;
+      }
+
+      final withTips = await systemFor(
+        AssistantToolContext(
+          servers: m,
+          personal: AssistantPersonalServices(
+            userName: 'Michel',
+            recent: () async => const [],
+            everSeen: () async => const {},
+            taste: () async => AffinityVector.empty,
+            picks: (_) async => const [],
+          ),
+        ),
+      );
+      expect(withTips, contains('A tip is a statement'));
+      expect(withTips, contains('never "a few"'));
+      // Negative control: no personal source, no my_watching, no tip rule.
+      final without = await systemFor(AssistantToolContext(servers: m));
+      expect(without, isNot(contains('A tip is a statement')));
+    },
+  );
+
   test('a watch question that names nobody is asked back in code, with period and kind kept', () async {
     final m = await _Server().manager();
     AssistantTool stub(String name) => AssistantTool(
