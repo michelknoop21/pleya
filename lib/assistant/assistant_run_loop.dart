@@ -258,7 +258,7 @@ extension _AssistantLoop on AssistantRun {
         }
         // Still naming a title the age filter did not pass: Pleya's own line
         // (the controller words it), never the model's text.
-        return _end(AssistantRunEnd.answered, text: _ageNotice ? '' : reply.content);
+        return _end(AssistantRunEnd.answered, text: _ageNotice ? '' : _presentedAnswer(reply.content));
       }
       // Serial on purpose: a write must see the state the previous one left.
       for (final (index, call) in reply.toolCalls.indexed) {

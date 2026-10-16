@@ -254,4 +254,80 @@ void main() {
     final (r, _) = await _recommend('Zoek een film voor vanavond', 'Kijk «The Order».', picks: picks, maxSteps: 1);
     expect(_cards(r), isEmpty);
   });
+
+  // Text and cards are one set (BP-10, decided by Michel on 16 Oct 2026): every
+  // title a personal answer recommends has a card, within the asked number, and
+  // a title without one is not left standing in the text. Only words go; the
+  // cards stay what Pleya validated.
+  group('the answer names exactly the cards', () {
+    final neutral = anyOf(
+      'Dit zijn de titels die ik kon controleren.',
+      'These are the titles I could check.',
+      'Ik kon hier geen titel voor controleren.',
+      'I could not check a title for this.',
+    );
+
+    test('one film asked, two named: one card and one title in the text', () async {
+      final (r, _) = await _recommend(
+        'Zoek een film voor vanavond',
+        'Ik raad «The Order» (2024) aan: spannend. Wil je iets anders, dan «Code 3» (2024).',
+        picks: picks,
+      );
+      expect(_cards(r), ['The Order']);
+      expect(r.text, contains('The Order'));
+      expect(r.text, isNot(contains('Code 3')));
+    });
+
+    test('three asked, three named: all three stay, text untouched', () async {
+      const answer = '«The Invite» (2024), «The Order» (2024) en «Code 3» (2024).';
+      final (r, _) = await _recommend('Geef me drie films voor vanavond', answer, picks: picks);
+      expect(_cards(r), ['The Invite', 'The Order', 'Code 3']);
+      expect(r.text, answer);
+    });
+
+    test('a title past the asked number, with no validated card, is not left in the text', () async {
+      final (r, asked) = await _recommend(
+        'Zoek een film voor vanavond',
+        'Kijk «The Order» (2024). Of «Heat» (1995), een klassieker.',
+        picks: picks,
+      );
+      expect(asked, isEmpty, reason: 'past the asked number: not even looked up');
+      expect(_cards(r), ['The Order']);
+      expect(r.text, isNot(contains('Heat')));
+    });
+
+    test('the same title twice is one title: text untouched, one card', () async {
+      const answer = 'Kijk «The Order» (2024). «The Order» is spannend.';
+      final (r, _) = await _recommend('Zoek een film voor vanavond', answer, picks: picks);
+      expect(_cards(r), ['The Order']);
+      expect(r.text, answer);
+    });
+
+    test('an asked alternative is shown too: two cards, both in the text', () async {
+      const answer = 'Eerst «The Order» (2024), en als alternatief «Code 3» (2024).';
+      final (r, _) = await _recommend('Een film voor vanavond en een alternatief', answer, picks: picks);
+      expect(_cards(r), ['The Order', 'Code 3']);
+      expect(r.text, answer);
+    });
+
+    test('nothing validated is named: Pleya\'s short line, never a title without a card', () async {
+      final (r, _) = await _recommend('Zoek een film voor vanavond', '«Heat» (1995) of «Dune» (2021).', picks: picks);
+      expect(_cards(r), isEmpty);
+      expect(r.text, neutral);
+    });
+
+    test('negative control: a title named as the reason stays in the text', () async {
+      final (r, asked) = await _recommend(
+        'Doe een voorstel voor vanavond',
+        'Omdat je «Reacher» (2022) keek, raad ik «The Order» (2024) aan.',
+        picks: picks,
+        watched: {
+          'w': _item('w', 'Reacher', MediaKind.show, genres: ['Crime'], year: 2022),
+        },
+      );
+      expect(asked, isEmpty);
+      expect(_cards(r), ['The Order']);
+      expect(r.text, contains('Reacher'));
+    });
+  });
 }

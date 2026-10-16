@@ -103,6 +103,11 @@ void main() {
       expect(assistantAskedCount('Ik zoek een film voor vanavond, geef me drie opties'), 3);
       expect(assistantAskedCount('Is there a movie like X? Give me 4 suggestions'), 4);
       expect(assistantAskedCount('een goede serie'), 1);
+      // An asked alternative is one more title; a number above it stays.
+      expect(assistantAskedCount('een film voor vanavond en een alternatief'), 2);
+      expect(assistantAskedCount('a movie for tonight and an alternative'), 2);
+      expect(assistantAskedCount('geef me drie films, ook een alternatief'), 3);
+      expect(assistantAskedCount('een film voor vanavond'), 1);
       expect(assistantAskedCount('één film graag'), 1);
       expect(assistantAskedCount('Wat zal ik kijken?'), isNull);
     });

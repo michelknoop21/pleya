@@ -157,7 +157,13 @@ const _articles = {'een', 'één', 'a', 'an'};
 /// "een film voor vanavond"), or null when it names no number. An explicit
 /// number beats an article ("een film voor vanavond, geef me drie opties").
 int? assistantAskedCount(String prompt) {
-  final found = [for (final m in _count.allMatches(prompt.toLowerCase())) m[1]!];
+  final lower = prompt.toLowerCase();
+  final found = [for (final m in _count.allMatches(lower)) m[1]!];
   final w = found.where((w) => !_articles.contains(w)).firstOrNull ?? found.firstOrNull;
-  return w == null ? null : int.tryParse(w) ?? _countWords[w];
+  final asked = w == null ? null : int.tryParse(w) ?? _countWords[w];
+  // "een film en een alternatief": the alternative is one more, not a second
+  // reading of "one".
+  return _alternative.hasMatch(lower) && (asked ?? 1) < 2 ? 2 : asked;
 }
+
+final _alternative = RegExp(r'\b(alternatie(?:f|ven)|alternatives?|plan b)\b');

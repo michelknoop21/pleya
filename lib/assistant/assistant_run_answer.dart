@@ -139,6 +139,55 @@ extension _AssistantAnswer on AssistantRun {
   /// or followed by a year, also on a list line.
   bool _namesTitles(String answer) => answer.contains('«') || RegExp(r'\((?:18|19|20)\d{2}\)').hasMatch(answer);
 
+  /// The titles [answer] recommends, for a personal answer: those it names
+  /// except a title named as the reason ("omdat je Reacher keek"), which is
+  /// history and not a pick.
+  List<({String title, int? year})> _namedRecommendations(String answer) => [
+    for (final t in assistantNamedTitles(answer))
+      // Dune (2021) is not the Dune (1984) the user watched.
+      // A pick named with its year is a pick, whatever shares its name
+      // in the history (the series Fargo next to the film from 1996).
+      if (_isPick(t) ||
+          !_history.any((h) => assistantSameTitle((key: h.key, year: h.year), assistantTitleKey(t.title), t.year)))
+        t,
+  ];
+
+  /// The answer as shown. In a personal answer every title it recommends has a
+  /// card: a sentence that names one without a card (past the asked number,
+  /// not in the results, not in the library) is left out, and when nothing that
+  /// names a card is left, Pleya's own short line stands in. Text and cards
+  /// are then the same set. Only removes words; the cards are untouched.
+  String _presentedAnswer(String text) {
+    if (!_personal || _ctx.libraryDoctorMode || _spoilerQuestion != null || text.trim().isEmpty) return text;
+    final named = _namedRecommendations(text);
+    if (named.isEmpty) return text;
+    final shown = assistantShownTitles(_displays);
+    bool carded(({String title, int? year}) t) =>
+        shown.any((c) => assistantSameTitle(c, assistantTitleKey(t.title), t.year));
+    final missing = [
+      for (final t in named)
+        if (!carded(t)) t,
+    ];
+    if (missing.isEmpty) return text;
+    bool names(String sentence, ({String title, int? year}) t) {
+      final words = assistantPlainWords(sentence);
+      return assistantTitleWords(t.title).any((w) => ' $words '.contains(' $w '));
+    }
+
+    final sentences = text.split(RegExp(r'(?<=[.!?])\s+|\n+')).where((s) => s.trim().isNotEmpty).toList();
+    final kept = [
+      for (final s in sentences)
+        if (!missing.any((t) => names(s, t))) s,
+    ];
+    final cards = named.where(carded).toList();
+    final stillNamesCard = kept.any((s) => cards.any((t) => names(s, t)));
+    if (kept.isNotEmpty && stillNamesCard) return kept.join(' ');
+    final dutch = languageName == 'Dutch';
+    return cards.isEmpty
+        ? (dutch ? 'Ik kon hier geen titel voor controleren.' : 'I could not check a title for this.')
+        : (dutch ? 'Dit zijn de titels die ik kon controleren.' : 'These are the titles I could check.');
+  }
+
   /// Titles the answer names without a card get one: Pleya looks them up
   /// itself with find_title and keeps the exact titles that can be opened
   /// from a library or requested. Never left to the model alone. After an
@@ -191,16 +240,7 @@ extension _AssistantAnswer on AssistantRun {
     var all = assistantNamedTitles(answer);
     var kept = 0;
     if (_personal) {
-      // A title named as the reason ("omdat je Reacher keek") is history, not a pick.
-      all = [
-        for (final t in all)
-          // Dune (2021) is not the Dune (1984) the user watched.
-          // A pick named with its year is a pick, whatever shares its name
-          // in the history (the series Fargo next to the film from 1996).
-          if (_isPick(t) ||
-              !_history.any((h) => assistantSameTitle((key: h.key, year: h.year), assistantTitleKey(t.title), t.year)))
-            t,
-      ];
+      all = _namedRecommendations(answer);
       kept = _narrowPicks(all);
     }
     final shown = assistantShownTitles(_displays);
