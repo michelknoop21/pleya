@@ -49,7 +49,24 @@ Bij beide modellen, in beide talen, op beide profielen:
 - Andere vragen met dezelfde afwijking: "Find an exciting movie for tonight." (gemma beheerder en, glm kinderprofiel en: `trending_titles`, daarna `find_title`; `find_title` hoort niet bij deze mogelijkheid), "Welke serie kan ik nu beginnen?" (gemma beheerder nl: alleen `my_watching`; gemma kinderprofiel nl) en "Which series can I start now?" (gemma kinderprofiel en).
 - Opgelost: de vragen noemen nu de bibliotheek ("What in my library can I watch tonight?", "Wat uit mijn bibliotheek kan ik vanavond kijken?", ook voor serie starten), en `AssistantIntent.tonightPick` (vanavond of tonight plus een bibliotheekwoord, zonder tip-, kijklijst-, aanvraag-, groeps- of andere-persoonwoorden) weigert `my_watching` en `trending_titles` met `use_search_catalog` en zet een noot voor het model. De vervolgvragen na een antwoord (`assistant.followUp.tonight`) zijn op dezelfde manier herschreven en geroute. Een vraag naar het populaire (trending, populair) houdt `trending_titles`. Zonder bibliotheekwoord ("Zoek een film voor vanavond") blijft `my_watching` het smaaktool, zoals de aanbevelingskaarten het gebruiken. Een eerste versie van de route zonder bibliotheekwoord brak die kaarten en is daarom verlaten. De ronde is herhaald voor vanavond, serie starten en kinderen: bij beide modellen, beide talen en beide profielen was het eerste tool `search_catalog` (40 van 40 runs, 5 per combinatie van model, taal en profiel).
 
-Door de stubs niet te beoordelen (het model stopt bij het hulptool, omdat de stub geen server-, bibliotheek- of taak-id teruggeeft): scan, taken herstarten, servers vergelijken, bibliotheekdokter (gemma). Gemma loopt bij scan 4 tot 7 keer door `list_*`. Home-rij (glm) is een ander geval: glm riep alleen `search_catalog` aan (1 tot 4 keer) en nooit `create_home_row`; of dat aan de lege stubresultaten ligt, is niet vastgesteld. In de volgende ronde moeten `list_servers`, `list_libraries` en `list_jobs` een server, een bibliotheek en een mislukte taak teruggeven, of moet de ronde op een echt toestel.
+### Ronde met realistische stubs (16 okt 2026)
+
+De eerste rondes hadden een fout in de opzet: de testcontext kopieert zichzelf bij elke ask, waardoor de stubs geen zichtbare servers hadden. Alleen tools zonder server (zoals `search_catalog`, `list_servers`, `diagnose_library`) werden aangeboden; `list_libraries`, `find_media`, `scan_library`, `retry_job`, `list_jobs` en `compare_servers` ontbraken. De conclusie "stopt bij het hulptool" en de cijfers voor scan, taken herstarten, vergelijken en de Home-rij uit de eerdere rondes gelden daarom niet. De tabelrijen voor vanavond, serie starten en kinderen zijn niet geraakt, behalve dat `find_media` toen ontbrak; die vragen zijn hieronder opnieuw gedraaid.
+
+Opzet nu: twee servers (Zolder, Kelder; Jellyfin, online, beheerder), per server een bibliotheek Films en Series, een mislukte taak (`job-1`) op Zolder, `search_catalog` met `query_id` en `can_become_home_row`, en het echte server-id-argument. De vraag gaat als prompt de run in; de aanvragen van het model worden gelogd, de tools zelf zijn stubs.
+
+| Datum | Model | Taal | Vragen | Bedoeld tool aangeroepen | Opmerking |
+| --- | --- | --- | --- | --- | --- |
+| 16 okt 2026 | glm-5.3-flash | en | 10 | 10 | vanavond (3), serie starten, scan, taken herstarten, vergelijken, doctor (2), Home-rij |
+| 16 okt 2026 | glm-5.3-flash | nl | 10 | 9 | doctor "dubbele films": alleen `list_servers` |
+| 16 okt 2026 | gemma4:31b | en | 10 | 10 | |
+| 16 okt 2026 | gemma4:31b | nl | 10 | 9 | doctor "ontbrekende afleveringen": `list_libraries`, geen `diagnose_library` |
+
+Vanavond (3 vragen) en serie starten: bij beide modellen en beide talen was het eerste tool `search_catalog` of `find_media` (16 van 16). Scan, taken herstarten, vergelijken en Home-rij: het bedoelde tool werd in alle 16 runs aangeroepen, na de hulptools die het nodig had (`list_servers`, `list_libraries`, `list_jobs`; voor de Home-rij `search_catalog` en dan `create_home_row` met het `query_id`). De scan riep `scan_library` voor beide bibliotheken aan, `retry_job` kreeg `job-1` op Zolder, `compare_servers` werd voor beide richtingen aangeroepen.
+
+Doctor was de enige die wisselde. De twee gemiste runs zijn herhaald: vier extra runs per model en vraag in beide talen gaf 31 van 32 aanroepen van `diagnose_library`. Over beide modellen 37 van 40 runs, dus de misser is een uitzondering (circa 1 op 13), geen vaste route-fout. Bij een misser antwoordt Pleya met "Geen gecontroleerde bibliotheekgegevens; de diagnose blijft onbekend."
+
+De mutaties (`scan_library`, `retry_job`, `create_home_row`) zijn alleen als aanvraag van het model geteld. De bevestigingskaart, het uitvoeren en de status daarna zijn niet getest.
 
 Samen kijken: beide modellen riepen `recommend_together` direct aan met de deelnemers "family" of "gezin" (gemma nl: "me" en "gezin"). Een wedervraag over wie er meekijkt, het bedoelde gedrag, kwam niet voor.
 
