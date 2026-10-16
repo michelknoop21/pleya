@@ -78,7 +78,8 @@ class HomeRowThumbs extends StatelessWidget {
     final mono = tokens(context);
     final width = height * 2 / 3;
     final overlap = width * 0.45;
-    final count = items.isEmpty ? 3 : items.length;
+    // Always room for three, so the text of every row starts at the same place.
+    const count = 3;
     return SizedBox(
       width: width + overlap * (count - 1),
       height: height,

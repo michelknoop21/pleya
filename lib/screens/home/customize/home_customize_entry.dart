@@ -116,6 +116,28 @@ Future<void> showHomeRowQuickMenu(BuildContext context, {required List<String> i
   final canUp = actions.neighbourIndex(entries, index, -1) >= 0;
   final canDown = actions.neighbourIndex(entries, index, 1) >= 0;
 
+  // The label sits in an automation node, the way the card menu does it, so a
+  // Verify scenario can pick an action by name.
+  AppMenuItem<HomeRowQuickAction> item(
+    HomeRowQuickAction action,
+    IconData icon,
+    String label, {
+    bool enabled = true,
+    Widget? trailing,
+  }) => AppMenuItem(
+    value: action,
+    icon: icon,
+    label: label,
+    enabled: enabled,
+    trailing: trailing,
+    child: AutomationNode(
+      id: AutomationIds.homeRowQuickMenuItem,
+      instance: action.name,
+      role: 'list.item',
+      child: Text(label),
+    ),
+  );
+
   final HomeRowQuickAction? chosen;
   if (anchor != null) {
     final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
@@ -142,24 +164,14 @@ Future<void> showHomeRowQuickMenu(BuildContext context, {required List<String> i
         child: AppMenuSheet<HomeRowQuickAction>(
           title: '${entry.title} · ${home.rowPosition(position: index + 1, total: entries.length)}',
           entries: [
-            AppMenuItem(
-              value: HomeRowQuickAction.up,
-              icon: Symbols.arrow_upward_rounded,
-              label: home.moveUp,
-              enabled: canUp,
-            ),
-            AppMenuItem(
-              value: HomeRowQuickAction.down,
-              icon: Symbols.arrow_downward_rounded,
-              label: home.moveDown,
-              enabled: canDown,
-            ),
-            AppMenuItem(value: HomeRowQuickAction.hide, icon: Symbols.visibility_off_rounded, label: home.hideOnHome),
+            item(HomeRowQuickAction.up, Symbols.arrow_upward_rounded, home.moveUp, enabled: canUp),
+            item(HomeRowQuickAction.down, Symbols.arrow_downward_rounded, home.moveDown, enabled: canDown),
+            item(HomeRowQuickAction.hide, Symbols.visibility_off_rounded, home.hideOnHome),
             const AppMenuDivider(),
-            AppMenuItem(
-              value: HomeRowQuickAction.customize,
-              icon: Symbols.tune_rounded,
-              label: home.customize,
+            item(
+              HomeRowQuickAction.customize,
+              Symbols.tune_rounded,
+              home.customize,
               trailing: const Icon(Symbols.chevron_right_rounded),
             ),
           ],

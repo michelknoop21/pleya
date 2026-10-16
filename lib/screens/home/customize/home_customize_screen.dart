@@ -253,10 +253,14 @@ class _HomeCustomizeBodyState extends State<_HomeCustomizeBody> {
         Expanded(
           child: Text(title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
         ),
-        FilledButton.icon(
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Symbols.check_rounded),
-          label: Text(t.unifiedCatalog.homeRows.done),
+        AutomationNode(
+          id: AutomationIds.homeCustomizeDone,
+          role: 'button',
+          child: FilledButton.icon(
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(Symbols.check_rounded),
+            label: Text(t.unifiedCatalog.homeRows.done),
+          ),
         ),
       ],
     ),

@@ -1,0 +1,76 @@
+name: ios.home.customize
+target: ios-sim
+# HOME-R1, mockup set 44: Home aanpassen on the iPhone. Run once per phone
+# simulator (small and large) with PLEYA_VERIFY_IOS_UDID.
+#
+# The way in from Home (the line under the last row, and the quick menu of a
+# row header), the list, and making an own row through the three wizard steps
+# with a preview that is a real query.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - wait_until: {id: discover.continue_watching, timeout: 15000}
+  - settle: 3500
+
+  # 44 B: long press on a row header opens the quick menu. Rail 0 is Verder
+  # kijken, which is fixed and has no menu, so the first row to arrange is 1.
+  - settle: 800
+  - assert: {id: "home.rail.header[1]", insideViewport: true}
+  - tap: {id: "home.rail.header[1]", holdMs: 800}
+  - wait_until: {id: sheet.home_row_menu, timeout: 5000}
+  - settle: 600
+  - assert: {id: "sheet.home_row_menu.item[down]", insideViewport: true}
+  - assert: {id: "sheet.home_row_menu.item[customize]", insideViewport: true}
+  - snapshot: 01-row-menu
+  # Home aanpassen is also in the menu: it opens the same screen as the line
+  # under the last row.
+  - tap: {id: "sheet.home_row_menu.item[customize]"}
+  - wait_until: {id: home.customize, timeout: 8000}
+  - settle: 800
+  - assert: {id: "home.customize.row[0]", insideViewport: true}
+  - snapshot: 02-list
+  - tap: {id: home.customize.done}
+  - settle: 800
+
+  # 44 A: the line under the last row.
+  - drag: {startX: 180, startY: 500, endX: 180, endY: 100, durationMs: 400}
+  - drag: {startX: 180, startY: 500, endX: 180, endY: 100, durationMs: 400}
+  - drag: {startX: 180, startY: 500, endX: 180, endY: 100, durationMs: 400}
+  - drag: {startX: 180, startY: 500, endX: 180, endY: 100, durationMs: 400}
+  - drag: {startX: 180, startY: 500, endX: 180, endY: 100, durationMs: 400}
+  - drag: {startX: 180, startY: 500, endX: 180, endY: 100, durationMs: 400}
+  - drag: {startX: 180, startY: 500, endX: 180, endY: 100, durationMs: 400}
+  - drag: {startX: 180, startY: 500, endX: 180, endY: 100, durationMs: 400}
+  - wait_until: {id: home.customize.entry, timeout: 8000}
+  - assert: {id: home.customize.entry, insideViewport: true, minimumTapTarget: 44}
+  - snapshot: 03-home-entry
+  - tap: {id: home.customize.entry}
+  - wait_until: {id: home.customize, timeout: 8000}
+  - settle: 800
+
+  # 44 G to I: a new own row, the same three steps as tvOS.
+  - tap: {id: home.customize.new}
+  - wait_until: {id: home.customize.wizard, state: {step: nameAndKind}, timeout: 8000}
+  - settle: 600
+  - snapshot: 04-wizard-name
+  - tap: {id: "home.customize.wizard.action[next]"}
+  - wait_until: {id: home.customize.wizard, state: {step: filters}, timeout: 5000}
+  - settle: 600
+  - assert: {id: "home.customize.wizard.action[filter.status]", insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: "home.customize.wizard.action[filter.sort]", insideViewport: true}
+  - snapshot: 05-wizard-filters
+  - tap: {id: "home.customize.wizard.action[next]"}
+  # The preview is a real query: it has an answer, and with the default filter
+  # on this catalog the answer is not nothing.
+  - wait_until: {id: home.customize.wizard, state: {step: preview, can_save: true}, timeout: 20000}
+  - settle: 800
+  - snapshot: 06-wizard-preview
+  - tap: {id: "home.customize.wizard.action[next]"}
+  - wait_until: {id: home.customize, timeout: 8000}
+  - settle: 1500
+  - assert: {id: "home.customize.row[0]", state: {own: true}}
+  - snapshot: 07-row-added

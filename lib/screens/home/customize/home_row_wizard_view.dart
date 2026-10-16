@@ -275,7 +275,7 @@ class _HomeRowWizardViewState extends State<HomeRowWizardView> {
               for (var i = 0; i < lines.length; i++) ...[
                 if (i > 0) Divider(height: 1, color: mono.outline),
                 AutomationNode(
-                  id: AutomationIds.homeCustomizeWizard,
+                  id: AutomationIds.homeCustomizeWizardAction,
                   instance: 'filter.${lines[i].key}',
                   role: 'button',
                   child: ListTile(
@@ -438,16 +438,29 @@ class _HomeRowWizardViewState extends State<HomeRowWizardView> {
     }
     return Row(
       children: [
-        TextButton.icon(
-          onPressed: () => first ? widget.onCancel() : _d.goTo(HomeRowWizardStep.values[_d.step.index - 1]),
-          icon: first ? null : const Icon(Symbols.arrow_back_rounded),
-          label: label(first ? t.common.cancel : home.back),
+        AutomationNode(
+          id: AutomationIds.homeCustomizeWizardAction,
+          instance: 'back',
+          role: 'button',
+          child: TextButton.icon(
+            onPressed: () => first ? widget.onCancel() : _d.goTo(HomeRowWizardStep.values[_d.step.index - 1]),
+            icon: first ? null : const Icon(Symbols.arrow_back_rounded),
+            label: label(first ? t.common.cancel : home.back),
+          ),
         ),
         const SizedBox(width: 12),
         // Flexible, so a longer translation shrinks the button instead of
         // overflowing a small iPhone.
         Expanded(
-          child: Align(alignment: Alignment.centerRight, child: primary),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: AutomationNode(
+              id: AutomationIds.homeCustomizeWizardAction,
+              instance: 'next',
+              role: 'button',
+              child: primary,
+            ),
+          ),
         ),
       ],
     );
