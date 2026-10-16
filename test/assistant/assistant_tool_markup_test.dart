@@ -27,6 +27,20 @@ void main() {
       'fenced JSON': '```json\n{"name": "find_title", "arguments": {"q": "Up"}}\n```',
       'OpenAI-shaped function wrapper': '{"type": "function", "function": {"name": "x", "arguments": "{}"}}',
       'upper case tag': '<TOOL_CALL>{}</TOOL_CALL>',
+      'Gemma/Llama tool_code block': 'Ik zoek het op.\n```tool_code\nfind_title(q="Up")\n```',
+      'bare pythonic bracket call': '[find_title(q="Up")]',
+      'pythonic call with two calls': "[a(x='1', y=2), b()]",
+      // Gemma 4 raw format, ai.google.dev/gemma/docs/capabilities/text/function-calling-gemma4
+      'Gemma 4 tool call': '<|tool_call>call:find_title{q:<|"|>Up<|"|>}<tool_call|>',
+      'Gemma 4 closing token only': 'call:find_title{q:1}<tool_call|>',
+      'GLM arg_key/arg_value': 'find_title\n<arg_key>q</arg_key>\n<arg_value>Up</arg_value>',
+      'prose then a bare call object': 'Ik zoek het op.\n{"name":"x","arguments":{}}',
+      'prose then a fenced call': 'Ik zoek het op.\n```json\n{"name":"x","parameters":{"q":"Up"}}\n```',
+      'tool_calls object': '{"tool_calls":[{"name":"x","arguments":{}}]}',
+      'tool_calls object, OpenAI items':
+          '{"tool_calls":[{"id":"1","type":"function","function":{"name":"x","arguments":"{}"}}]}',
+      'function_call object': '{"function_call":{"name":"x","arguments":"{}"}}',
+      'tool/args object': '{"tool":"find_title","args":{"q":"Up"}}',
     };
     for (final MapEntry(key: name, value: text) in positives.entries) {
       test('flags: $name', () => expect(assistantLooksLikeToolMarkup(text), isTrue, reason: text));
@@ -50,6 +64,15 @@ void main() {
       'a pipe in prose': 'Server a | server b: beide online.',
       'markdown code without a call': '```\nflutter run\n```',
       'number list': '1. Up (2009)\n2. Coco (2017)',
+      'a function name in parentheses': 'Gebruik find_title(q) om te zoeken, of list_servers().',
+      'a bracketed title list with years': '[Up (2009), Coco (2017)]',
+      'a bracket with a call-like word': '[Zie find_title(Up) voor meer]',
+      'JSON in a code block that is no call': 'Zo ziet het eruit:\n```json\n{"title": "Up", "year": 2009}\n```',
+      'prose then a JSON object that is no call': 'Het resultaat is\n{"servers": 2, "online": true}',
+      'a name key without arguments, after prose': 'Je profiel is\n{"name": "Michel", "role": "admin"}',
+      'tool_calls key with other keys': '{"tool_calls": [], "note": "geen"}',
+      'a tool key without args': '{"tool": "hamer"}',
+      'a tool_code mention in prose': 'Een tool_code block bestaat niet in jouw bibliotheek.',
     };
     for (final MapEntry(key: name, value: text) in negatives.entries) {
       test('passes: $name', () => expect(assistantLooksLikeToolMarkup(text), isFalse, reason: text));

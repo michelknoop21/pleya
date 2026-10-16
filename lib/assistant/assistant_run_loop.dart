@@ -253,6 +253,9 @@ extension _AssistantLoop on AssistantRun {
         // Pleya words, then Pleya's own failure line.
         messages.removeLast();
         if (markupCorrected || step + 1 >= maxSteps) {
+          // Pleya already acted and nothing failed: only the closing sentence
+          // is lost, not the action. Retrying would run the action twice.
+          if (_actions.isNotEmpty && _errors.isEmpty) return _end(AssistantRunEnd.answered);
           return _end(AssistantRunEnd.stepLimit, failure: 'malformed_tool_call');
         }
         markupCorrected = true;
