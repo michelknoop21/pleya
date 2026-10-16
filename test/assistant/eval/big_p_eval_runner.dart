@@ -61,7 +61,13 @@ Future<EvalOutcome> runEvalCase(
   String region = 'NL',
 }) async {
   final outcome = EvalOutcome();
-  final ctx = evalContext(kids: c.kids, kidsAges: c.kidsAges, region: region, onSaveRow: outcome.savedRows.add);
+  final ctx = evalContext(
+    kids: c.kids,
+    kidsAges: c.kidsAges,
+    region: region,
+    personal: c.personal,
+    onSaveRow: outcome.savedRows.add,
+  );
   final history = <AssistantTurn>[];
   for (final (i, turn) in c.turns.indexed) {
     final tools = <String>[];
@@ -135,6 +141,10 @@ Map<String, Object?> evalRecord(EvalCase c, EvalOutcome o, {required String mode
           'cards': [for (final card in evalCards(t.result)) card.title],
           'unbacked_cards': evalUnbackedCards(t.result),
           'suggestions_wanted': c.soft.suggestions,
+          'asks_question': evalAsksQuestion(t.result.text),
+          'named_titles': evalNamed(t.result.text).length,
+          'card_count': evalCards(t.result).length,
+          'tip_ok': c.soft.tip ? evalTipOk(t.result) : null,
           'language': evalLanguage(t.result.text),
           'language_ok': evalLanguage(t.result.text) == c.soft.language,
           'tool_errors': t.toolErrors,

@@ -22,11 +22,27 @@ void main() {
     expect(evalTitles.where((t) => t.isShow), hasLength(greaterThan(15)));
     expect(evalTitles.where((t) => t.certs.isEmpty && t.allowedFor(0, 'NL')), isNotEmpty);
     expect(evalTitles.where((t) => t.certs.isEmpty && !t.allowedFor(17, 'NL')), isNotEmpty);
-    expect(evalTitles.where((t) => t.certs.keys.toSet().containsAll({'US'}) && !t.certs.containsKey('NL')), isNotEmpty);
+    expect(evalTitles.where((t) => t.certs.containsKey('US') && !t.certs.containsKey('NL')), isNotEmpty);
     expect(evalTitles.where((t) => t.seen == EvalSeen.watched), isNotEmpty);
     expect(evalTitles.where((t) => t.seen == EvalSeen.inProgress), isNotEmpty);
     expect(evalTitles.firstWhere((t) => t.title == 'The Bear').item.isWatched, isTrue);
     expect(evalTitles.firstWhere((t) => t.title == 'How I Met Your Mother').item.isPartiallyWatched, isTrue);
+  });
+
+  test('the tip score sees a question and more titles than cards, and passes a statement', () async {
+    final tip = bigPEvalCases.firstWhere((c) => c.id == 'adult-tip-statement');
+    final meter = EvalMeter();
+    final bad = await runEvalCase(tip, modelFor: (t) => evalScriptedModel(tip.turns[t].script, meter), meter: meter);
+    final r = bad.turns.single.result;
+    expect(evalAsksQuestion(r.text), isTrue);
+    expect(evalNamed(r.text).length, 3);
+    expect(evalCards(r).length, 1, reason: 'one asked tip caps the cards');
+    expect(evalTipOk(r), isFalse);
+
+    final good = bigPEvalCases.firstWhere((c) => c.id == 'adult-three-tips');
+    final ok = await runEvalCase(good, modelFor: (t) => evalScriptedModel(good.turns[t].script, meter), meter: meter);
+    expect(evalTipOk(ok.turns.single.result), isTrue);
+    expect(evalAsksQuestion('Kijk «Sherlock» (2010). Het is een stelling.'), isFalse);
   });
 
   test('the checks see a bad title in a card and in prose, and leave short words alone', () {

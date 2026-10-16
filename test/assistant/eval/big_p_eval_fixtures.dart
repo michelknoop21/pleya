@@ -8,7 +8,9 @@ import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/library_query.dart';
+import 'package:pleya/media/media_hub.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/services/recommendations/taste_profile.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
@@ -214,6 +216,28 @@ class _EvalServer extends FakeServer {
   }
 }
 
+/// A profile with a personal source: nothing seen, a comedy taste, and three
+/// unwatched picks. The watched and started titles of the fixture count as
+/// seen.
+AssistantPersonalServices _evalPersonal() {
+  final seen = {
+    for (final t in evalTitles)
+      if (t.seen != EvalSeen.no) t.item.globalKey,
+  };
+  final picks = [
+    for (final id in const ['s11', 's21', 's12']) evalTitles.firstWhere((t) => t.id == id).item,
+  ];
+  return AssistantPersonalServices(
+    userName: 'Michel',
+    recent: () async => const [],
+    everSeen: () async => seen,
+    taste: () async => const AffinityVector({
+      'genre': {'comedy': 1.0},
+    }, eventCount: 3),
+    picks: (_) async => [MediaHub(id: 'rows', title: 'Voor jou', type: 'mixed', items: picks)],
+  );
+}
+
 /// The tool context of one eval case: the fixture server, its two libraries,
 /// facts from the fixture and the region injected, so the outcome never
 /// depends on the machine's locale. [kids] makes it a children's profile
@@ -222,6 +246,7 @@ AssistantToolContext evalContext({
   required bool kids,
   List<int> kidsAges = const [],
   String region = 'NL',
+  bool personal = false,
   void Function(String name)? onSaveRow,
 }) {
   final m = MultiServerManager();
@@ -242,6 +267,7 @@ AssistantToolContext evalContext({
       saveRow: (row) async => onSaveRow?.call(row.name),
     ),
     titleFacts: _EvalFacts(),
+    personal: personal ? _evalPersonal() : null,
     kidsAges: () async => kidsAges,
     kidsProfile: () async => kids,
     region: () => region,

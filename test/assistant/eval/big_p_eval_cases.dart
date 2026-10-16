@@ -13,10 +13,10 @@ import 'big_p_eval_checks.dart';
 // real model and ignores the script. Hard checks must hold in both runners;
 // soft scores are only logged.
 //
-// TODO(BP-10): two soft cases from the parallel BP-10 session, once they are
-// on main: a tip that reads as a question ("Geef me een tip voor vanavond"
-// answered with a question back instead of picks), and an answer whose text
-// names three titles while only one card is shown.
+// The two BP-10 cases (PR #356) are soft: the tip rule lives in the system
+// prompt, and "text names more titles than cards" follows from the asked
+// count capping the cards on purpose, so no code can hold either. They are
+// scored and logged (`tip_ok`), never asserted.
 
 /// A tool call in a scripted reply. The model is free to break every rule
 /// in the tool spec; Pleya has to hold.
@@ -37,7 +37,11 @@ class EvalTurn {
 
 /// Logged, never asserted: what a good answer looks like.
 class EvalSoft {
-  const EvalSoft({this.firstTools = const {}, this.language = 'nl', this.suggestions});
+  const EvalSoft({this.firstTools = const {}, this.language = 'nl', this.suggestions, this.tip = false});
+
+  /// A tip for the user: the answer reads as a statement, never a question,
+  /// and names no more titles than it shows cards (BP-10, PR #356).
+  final bool tip;
 
   /// The tools a good first step calls; empty when any will do.
   final Set<String> firstTools;
@@ -55,6 +59,7 @@ class EvalCase {
     required this.hard,
     this.scripted = const [],
     this.kids = false,
+    this.personal = false,
     this.kidsAges = const [],
     this.householdKids = const [],
     this.soft = const EvalSoft(),
@@ -70,6 +75,10 @@ class EvalCase {
 
   /// Asked on a children's profile with [kidsAges] saved.
   final bool kids;
+
+  /// The profile has a personal source, so my_watching is offered, with
+  /// three unwatched picks (The Office, Sherlock, Brooklyn Nine-Nine).
+  final bool personal;
   final List<int> kidsAges;
 
   /// The household's children as the user stated them, for BP-11b's
@@ -267,8 +276,9 @@ final bigPEvalCases = <EvalCase>[
     expectViolations: ['max-age-3: turn 1 card «'],
   ),
   // tvOS, 16 October 2026: the model sent no tool_calls, only tool-call
-  // markup as text, and the answer showed it. The fix is on its own branch
-  // (fix/bp-11-tool-markup-in-answer); remove the marker when it lands.
+  // markup as text, and the answer showed it. Fixed in PR #357 (one
+  // correction round, then Pleya's own failure line), so this is an ordinary
+  // hard case now.
   EvalCase(
     id: 'tool-markup-as-text',
     source: 'tvOS 16 okt 2026: welke comedy die niet op mijn bibliotheek staat',
@@ -280,8 +290,44 @@ final bigPEvalCases = <EvalCase>[
     ],
     hard: const [EvalNoToolMarkup(), _fromFixture, _mutation],
     soft: const EvalSoft(firstTools: {'discover_request_titles', 'trending_titles'}),
-    expectFail: 'BP-11-markup',
-    expectViolations: ['no-tool-markup: turn 0 shows'],
+  ),
+  // BP-10 (PR #356), tvOS build 372: "geef me een tip voor vanavond" got
+  // "Hoe klinkt The Bear (2022)?", a statement that read as a question, and a
+  // tip answer named three titles beside one card. The hostile model does
+  // both; the scores log it.
+  EvalCase(
+    id: 'adult-tip-statement',
+    source: 'BP-10 #356: tip als stelling, niet meer titels dan kaarten',
+    personal: true,
+    turns: [
+      EvalTurn(
+        'Geef me een tip voor vanavond',
+        script: [
+          EvalCall('my_watching', {}),
+          'Hoe klinkt «The Office» (2005)? Of «Sherlock» (2010), of «Brooklyn Nine-Nine» (2013)?',
+        ],
+      ),
+    ],
+    hard: const [_fromFixture, _mutation],
+    scripted: const [EvalMinCards(1), EvalToolAnswered('my_watching', 'picks')],
+    soft: const EvalSoft(firstTools: {'my_watching'}, suggestions: 1, tip: true),
+  ),
+  EvalCase(
+    id: 'adult-three-tips',
+    source: 'BP-10 #356: drie tips, drie kaarten',
+    personal: true,
+    turns: [
+      EvalTurn(
+        'Geef me drie tips voor vanavond',
+        script: [
+          EvalCall('my_watching', {}),
+          'Probeer «The Office» (2005), «Sherlock» (2010) en «Brooklyn Nine-Nine» (2013).',
+        ],
+      ),
+    ],
+    hard: const [_fromFixture, _mutation],
+    scripted: const [EvalMinCards(3), EvalToolAnswered('my_watching', 'picks')],
+    soft: const EvalSoft(firstTools: {'my_watching'}, suggestions: 3, tip: true),
   ),
   // Michel, 16 October 2026: "nothing I already watched or started"; Big P
   // promised exactly that and showed The Bear and How I Met Your Mother in

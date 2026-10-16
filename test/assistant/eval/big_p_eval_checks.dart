@@ -158,6 +158,15 @@ class EvalCardsFromFixture extends EvalHard {
   ];
 }
 
+/// Whether a sentence of [text] ends in a question mark.
+bool evalAsksQuestion(String text) => RegExp(r'\?(\s|$)').hasMatch(text);
+
+/// The soft score of a tip answer (BP-10): a statement, and no more titles
+/// named than cards shown. Logged only: the prompt carries the first rule,
+/// and the asked count caps the cards on purpose, so no code can enforce
+/// either.
+bool evalTipOk(AssistantRunResult r) => !evalAsksQuestion(r.text) && evalNamed(r.text).length <= evalCards(r).length;
+
 /// Cards without anything to open or request: model-named titles that no
 /// source confirmed.
 int evalUnbackedCards(AssistantRunResult r) => evalCards(r).where((c) => !c.actionable).length;
