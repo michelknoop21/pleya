@@ -20,6 +20,7 @@ import 'package:pleya/media/media_hub.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/unified/unified_media_hub.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/providers/discover_provider.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
@@ -33,6 +34,7 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/unified_catalog/home_custom_row.dart';
 import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
+import 'package:pleya/services/unified_catalog/home_row_layout.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 import 'package:pleya/widgets/tv/tv_home_customize_controller.dart';
 import 'package:pleya/widgets/tv/tv_home_row_assembly.dart';
@@ -263,6 +265,47 @@ void main() {
         for (final t in after)
           if (t != 'Mijn rij') t,
       ]);
+    });
+  });
+
+  group('twins that are not next to each other', () {
+    // Twins with another row between them, and a row behind both. Built by
+    // hand: the projection happens to hand twins out side by side, but the
+    // function must not rely on that.
+    UnifiedMediaHub row(String slug, String id) => UnifiedMediaHub.synthesized(
+      slug: slug,
+      title: slug,
+      kind: UnifiedHubKind.movie,
+      groups: const [],
+      contributingRowIds: [id],
+    );
+    final apart = [row('A', 'X0'), row('B', 'X1'), row('C', 'X0'), row('D', 'X2')];
+
+    test('an unrelated move does not make one twin hop up next to the other', () {
+      // D one up, with no stored order. The twins are one block, so the order
+      // written is the order Home draws: nothing but the block and D changes
+      // places, and C does not move on a press that was not about it.
+      final next = homeLayoutOrderAfterMove(apart, 3, -1, previous: const [])!;
+      final drawn = applyHomeLayoutToUnifiedRows(apart, hiddenRowIds: const {}, order: next);
+      expect([for (final r in drawn) r.title], ['A', 'C', 'D', 'B']);
+      // And the next press from the shown order is stable.
+      final again = homeLayoutOrderAfterMove(drawn, 2, -1, previous: next)!;
+      final drawnAgain = applyHomeLayoutToUnifiedRows(drawn, hiddenRowIds: const {}, order: again);
+      expect([for (final r in drawnAgain) r.title], ['D', 'A', 'C', 'B']);
+    });
+
+    test('the arrows stop at the edges of the block, not of the list', () async {
+      await boot([
+        _sectionHub('1', 'Recently Added in Films', [_film('a1', 'Dune')]),
+        _sectionHub('2', 'Recently Added in Kids', [_film('b1', 'Moana')]),
+      ]);
+      await layout.setOrder(['nas:movie.recentlyadded', _ownRow.layoutRowId]);
+      final rows = controller.orderedRows();
+      expect([for (final r in rows) r.title], ['Recently Added in Films', 'Recently Added in Kids', 'Mijn rij']);
+      expect(homeLayoutCanMove(rows, 0), (up: false, down: true));
+      expect(homeLayoutCanMove(rows, 1), (up: false, down: true), reason: 'the second twin cannot go up');
+      expect(homeLayoutCanMove(rows, 2), (up: true, down: false));
+      expect(homeLayoutOrderAfterMove(rows, 1, -1, previous: layout.order), isNull);
     });
   });
 

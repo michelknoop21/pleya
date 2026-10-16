@@ -35,6 +35,7 @@ import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_hub.dart';
 import '../../services/unified_catalog/home_custom_row.dart';
+import '../../services/unified_catalog/home_row_layout.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../overlay_sheet.dart';
@@ -423,6 +424,10 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
     final entry = widget.entries[index];
     final id = _focusIdOf(entry);
     final custom = entry.custom;
+    // The edges of the row's block, not of the list: the second of two twins
+    // at the top has nowhere to go, and a live arrow there would be a press
+    // that does nothing.
+    final canMove = homeLayoutCanMove([for (final e in widget.entries) e.row], index);
     return TvHomeEntryRowTile(
       entry: entry,
       scale: scale,
@@ -431,8 +436,8 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
       downNode: _nodeFor(id, TvHomeRowColumn.down),
       primaryNode: _nodeFor(id, TvHomeRowColumn.primary),
       removeNode: custom == null ? null : _nodeFor(id, TvHomeRowColumn.remove),
-      canMoveUp: index > 0,
-      canMoveDown: index < widget.entries.length - 1,
+      canMoveUp: canMove.up,
+      canMoveDown: canMove.down,
       onMoveUp: () => _move(index, -1, TvHomeRowColumn.up),
       onMoveDown: () => _move(index, 1, TvHomeRowColumn.down),
       onPrimary: custom == null ? () => widget.onToggleHidden(entry) : () => widget.onEdit(custom),
