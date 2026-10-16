@@ -405,8 +405,13 @@ void main() {
   });
 
   test('the library diagnosis keeps the memory tools on offer', () async {
+    // A diagnosis with no reachable server ends before the model is asked.
+    final m = MultiServerManager();
+    addTearDown(m.dispose);
+    m.debugRegisterClientForTesting(_Server('w'));
+    m.setVisibleServerIds(null);
     final model = ScriptedModel([say('Ok.')]);
-    await ask(model, 'Controleer de bibliotheek', doctor: true);
+    await ask(model, 'Controleer de bibliotheek', doctor: true, context: profile.context(m));
     expect(model.offered.first, containsAll(['ping', 'recall_memory', 'remember_fact', 'forget_fact']));
   });
 

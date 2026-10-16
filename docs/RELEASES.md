@@ -51,6 +51,106 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 370 · 15 October 2026 · Apple TV
+
+<!-- commit: bd298d5b7f5bc1d78257955aeb40bf0295db04af -->
+
+### Fixed
+- **Big P checks the requested kind of library item.** Asking for missing episodes now
+  inspects series within its diagnosis budget. Asking for duplicate films
+  inspects movies, even if the model proposes the wrong kind.
+- **Failed checks explain why.** Connection failures, changed sources and unavailable
+  operations get a clear reason instead of only saying that nothing changed.
+- **Copy and edition groups name the title and count.** Matching catalogue entries are not
+  proof that their underlying files are duplicates; this check does not delete or repair files.
+
+### Notes
+- Checks remain limited to the titles read within the existing diagnosis budget. Partial
+  coverage is reported; this is not an exhaustive whole-library audit.
+- An unavailable server still needs its connection restored before Big P can inspect it.
+- Focused automated tests and a mobile widget screenshot were checked. Native simulator
+  verification stopped before the scenario on an Xcode error also seen on unchanged source.
+  This correction has not been checked on a physical device.
+
+### Worth checking
+- On a reachable server, ask for missing episodes and for duplicate films. Check that the
+  first reads series and the second names any matching copy or edition groups.
+- With an unavailable server, check that the answer explains the connection failure.
+
+## 2.8.1 · build 369 · 15 October 2026 · iPhone and iPad
+
+<!-- commit: bd298d5b7f5bc1d78257955aeb40bf0295db04af -->
+
+### Fixed
+- **Big P checks the requested kind of library item.** Asking for missing episodes now
+  inspects series within its diagnosis budget. Asking for duplicate films
+  inspects movies, even if the model proposes the wrong kind.
+- **Failed checks explain why.** Connection failures, changed sources and unavailable
+  operations get a clear reason instead of only saying that nothing changed.
+- **Copy and edition groups name the title and count.** Matching catalogue entries are not
+  proof that their underlying files are duplicates; this check does not delete or repair files.
+
+### Notes
+- Checks remain limited to the titles read within the existing diagnosis budget. Partial
+  coverage is reported; this is not an exhaustive whole-library audit.
+- An unavailable server still needs its connection restored before Big P can inspect it.
+- Focused automated tests and a mobile widget screenshot were checked. Native simulator
+  verification stopped before the scenario on an Xcode error also seen on unchanged source.
+  This correction has not been checked on a physical device.
+
+### Worth checking
+- On a reachable server, ask for missing episodes and for duplicate films. Check that the
+  first reads series and the second names any matching copy or edition groups.
+- With an unavailable server, check that the answer explains the connection failure.
+
+## 2.8.1 · build 367 · 15 October 2026 · Apple TV
+
+<!-- commit: 3016aa795cc3bd9f3ba5303998be02719c2cba7b -->
+
+### Improved
+- **Big P can choose a list length that fits your question.** Library and actor lists no longer
+  default to twelve titles or stop at fifty. Without a requested subset, Big P can show every
+  matching title already read from your servers. You can still ask for a short list.
+- **Server comparisons can show the full selected list.** Missing-title cards are no longer
+  cut at fifty or five hundred. Asking for a smaller number still gives a shorter list.
+
+### Notes
+- Server reads remain bounded: Big P must say when a list is incomplete. Children's profiles
+  retain age checks and a maximum of twenty candidates per list.
+- Automated tests cover list selection, counts, follow-up pages and child restrictions. Large
+  lists send the language model a title preview while retaining the selected cards.
+- This correction has not been checked on a physical Apple TV. Very large lists still need
+  scrolling and performance checks on the device.
+
+### Worth checking
+- In an adult profile, ask for the Adam Sandler films in your libraries. If all 33 matches were
+  read and no shorter list was requested, check that all 33 cards are available.
+- Ask for three titles, then for more than fifty where your library has enough matches.
+- Move to the last result and open it in both the full Big P screen and the summoned panel.
+
+## 2.8.1 · build 366 · 15 October 2026 · iPhone and iPad
+
+<!-- commit: 3016aa795cc3bd9f3ba5303998be02719c2cba7b -->
+
+### Improved
+- **Big P can choose a list length that fits your question.** Library and actor lists no longer
+  default to twelve titles or stop at fifty. Without a requested subset, Big P can show every
+  matching title already read from your servers. You can still ask for a short list.
+- **Server comparisons can show the full selected list.** Missing-title cards are no longer
+  cut at fifty or five hundred. Asking for a smaller number still gives a shorter list.
+
+### Notes
+- Server reads remain bounded: Big P must say when a list is incomplete. Children's profiles
+  retain age checks and a maximum of twenty candidates per list.
+- Automated tests cover list selection and shared result handling. Large lists send the
+  language model a title preview while retaining the selected cards.
+- This correction has not been checked on a physical iPhone or iPad. Very large lists still
+  need scrolling and performance checks on a device.
+
+### Worth checking
+- In an adult profile, ask for all Adam Sandler films in your libraries, then ask for a short
+  list of three titles. Check the card counts and open the last card in each answer.
+
 ## 2.8.1 · build 365 · 15 October 2026 · Apple TV
 
 <!-- commit: 1664722624bd659c376e7f40d2bf146d2f8f3442 -->

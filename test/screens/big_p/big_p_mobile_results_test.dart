@@ -3,11 +3,16 @@
 /// out, and two columns on an iPad.
 library;
 
+import 'dart:io';
+import 'dart:ui' as ui;
+import 'package:flutter/rendering.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
+import 'package:pleya/assistant/assistant_run.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_results.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/screens/big_p/big_p_input_bar.dart';
@@ -25,6 +30,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../tv/assistant/tv_assistant_test_support.dart';
 import 'big_p_mobile_fixtures.dart';
+import '../../test_helpers/golden.dart';
 
 void main() {
   late FakeAssistantController c;
@@ -82,6 +88,47 @@ void main() {
     );
     await settle(tester);
   }
+
+  testWidgets('mobile failure keeps the actual server reason in its result card', (tester) async {
+    final shotDir = Platform.environment['BIGP_SHOT_DIR'];
+    if (shotDir != null) await tester.runAsync(loadAppFontsForGoldens);
+    c
+      ..state = AssistantSurfaceState.result
+      ..resultIsError = true
+      ..prompt = 'Controleer mijn bibliotheek'
+      ..tasks = [
+        const AssistantTask(
+          id: 't',
+          title: 'Controleer mijn bibliotheek',
+          intent: 'command',
+          status: AssistantTaskStatus.failed,
+          answer: '',
+          displays: [],
+          steps: [],
+          actions: [],
+          lastEnd: AssistantRunEnd.answered,
+          error: 'server_unavailable',
+        ),
+      ];
+    await pumpHost(tester);
+    expect(
+      find.descendant(of: find.byType(BigPResultCard), matching: find.text(t.errors.connectionFailed)),
+      findsOneWidget,
+    );
+    expect(find.text(t.assistant.ends.nothingChanged), findsNothing);
+    expect(tester.takeException(), isNull);
+    if (shotDir != null) {
+      await tester.runAsync(() async {
+        final boundary = tester.renderObject<RenderRepaintBoundary>(find.byType(RepaintBoundary).first);
+        final image = await boundary.toImage(pixelRatio: 2);
+        final bytes = (await image.toByteData(format: ui.ImageByteFormat.png))!;
+        final output = File('$shotDir/mobile-failure-402x874.png');
+        output.parent.createSync(recursive: true);
+        output.writeAsBytesSync(bytes.buffer.asUint8List());
+        image.dispose();
+      });
+    }
+  });
 
   testWidgets('a title in the library opens; one only Seerr knows is requested', (tester) async {
     answerTitles(c);

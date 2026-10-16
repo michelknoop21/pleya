@@ -409,7 +409,12 @@ class TvAssistantConversation extends StatelessWidget {
     final results = [
       ..._displays(pt),
       if (c.resultIsError || c.actions.isNotEmpty) ...[
-        BigPResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
+        BigPResultCard(
+          error: c.resultIsError,
+          actions: c.actions,
+          time: resultTime,
+          failureText: c.tasks.singleOrNull == null ? null : assistantTaskStatusLabel(c.tasks.single).detail,
+        ),
         SizedBox(height: 24 * pt),
       ],
     ];

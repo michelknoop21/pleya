@@ -1,0 +1,81 @@
+name: ios.assistant.diagnosis
+target: ios-sim
+# Uses the same 375x667 iPhone SE setup/back coordinates as memory-proposal.
+# PLEYA_ASSISTANT_ENABLED=true and PLEYA_VERIFY_IOS_UDID select an isolated
+# iPhone SE simulator. All servers and the model below are local fixtures.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - wait_until: {id: "home.rail.item[0.0]", timeout: 15000}
+  - settle: 3500
+  - wait_until: {id: bigp.faceButton, timeout: 10000}
+  - tap: {id: nav.myPleya}
+  - wait_until: {id: screen.my_pleya, timeout: 10000}
+  - wait_until: {id: "my_pleya.tile[assistant]", timeout: 10000}
+  - settle: 800
+
+  # Set the fixture's local model up through the real settings form.
+  - tap: {id: "my_pleya.tile[assistant]"}
+  - wait_until: {id: "assistant.button[setup]", timeout: 5000}
+  - settle: 1000
+  - tap: {id: "assistant.button[setup]"}
+  - wait_until: {id: "settings.form.button[assistant.provider.ollamaServer]", timeout: 10000}
+  - settle: 800
+  - tap: {id: "settings.form.button[assistant.provider.ollamaServer]"}
+  - wait_until: {id: "settings.form.field[assistant.url]", timeout: 10000}
+  - settle: 1000
+  - tap: {id: "settings.form.field[assistant.url]"}
+  - settle: 500
+  - type: "{{fixture}}"
+  - settle: 500
+  - drag: {startX: 187, startY: 340, endX: 187, endY: 60, durationMs: 400}
+  - settle: 800
+  - tap: {id: "settings.form.button[assistant.fetchModels]"}
+  - wait_until: {id: "settings.form.button[assistant.model.pleya-verify]", timeout: 15000}
+  - drag: {startX: 187, startY: 340, endX: 187, endY: 60, durationMs: 400}
+  - settle: 800
+  - tap: {id: "settings.form.button[assistant.model.pleya-verify]"}
+  - wait_until: {id: "settings.form.button[assistant.model.pleya-verify]", state: {selected: true}, timeout: 5000}
+  - wait_until: {id: "settings.form.button[assistant.test]", timeout: 5000}
+  - drag: {startX: 187, startY: 340, endX: 187, endY: 60, durationMs: 400}
+  - settle: 800
+  - tap: {id: "settings.form.button[assistant.test]"}
+  - wait_until: {id: "settings.form.button[assistant.save]", timeout: 15000}
+  - drag: {startX: 187, startY: 340, endX: 187, endY: 60, durationMs: 400}
+  - settle: 800
+  - tap: {id: "settings.form.button[assistant.save]"}
+  - wait_until: {id: "settings.form.button[assistant.change]", timeout: 10000}
+  - settle: 800
+
+  # The app bar's back arrow has no id; on the SE it is at (28, 48).
+  - tap: {x: 28, y: 48}
+  - wait_until: {id: "my_pleya.tile[assistant]", timeout: 10000}
+  - settle: 1000
+
+  - tap: {id: "my_pleya.tile[assistant]"}
+  - wait_until: {id: bigp.balloon, state: {availability: ready}, timeout: 10000}
+  - wait_until: {id: bigp.input, timeout: 10000}
+  - tap: {id: bigp.input}
+  - type: "Controleer mijn bibliotheek op ontbrekende afleveringen."
+  - tap: {id: bigp.send}
+  - wait_until: {id: bigp.balloon, state: {state: result, error: false}, timeout: 30000}
+  - assert: {id: assistant.result, present: false}
+  - snapshot: 01-diagnosis
+  - wait_until: {id: bigp.input, timeout: 10000}
+  - tap: {id: bigp.input}
+  - type: "Controleer mijn bibliotheek op dubbele films."
+  - tap: {id: bigp.send}
+  - wait_until: {id: bigp.balloon, state: {state: result, error: false}, timeout: 30000}
+  - assert: {id: assistant.result, present: false}
+  - snapshot: 02-diagnosis
+  - wait_until: {id: bigp.input, timeout: 10000}
+  - tap: {id: bigp.input}
+  - type: "Controleer de bibliotheek op een niet-beschikbare server."
+  - tap: {id: bigp.send}
+  - wait_until: {id: bigp.balloon, state: {state: result, error: true}, timeout: 30000}
+  - assert: {id: assistant.result, insideViewport: true, state: {error: true, actions: 0, reason: "Kan geen verbinding maken met mediaserver"}}
+  - snapshot: 03-diagnosis

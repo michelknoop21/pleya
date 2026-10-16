@@ -7,9 +7,11 @@ import 'package:pleya/assistant/assistant_spoiler_context.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_examples.dart';
 
+import 'assistant_find_fakes.dart';
 import 'assistant_memory_support.dart';
 
 // Every start question, in both languages, against what Pleya itself decides
@@ -35,11 +37,20 @@ List<AssistantTool> _stubs(Map<String, int> ran) => [
     ),
 ];
 
+class _OnlineServer extends FakeServer {
+  _OnlineServer(super.id);
+  @override
+  Future<HealthStatus> checkHealth() async => HealthStatus.online;
+}
+
 void main() {
   late MultiServerManager servers;
   setUp(() {
     servers = MultiServerManager();
     addTearDown(servers.dispose);
+    // A library diagnosis with no reachable server ends before the model is asked.
+    servers.debugRegisterClientForTesting(_OnlineServer('s'));
+    servers.setVisibleServerIds(null);
   });
 
   /// Asks [question] with a model that calls [tool] at once.

@@ -89,11 +89,12 @@ class BigPStepList extends StatelessWidget {
 /// (38 J). A failure after some actions keeps the green lines: what Pleya
 /// already did is never hidden.
 class BigPResultCard extends StatelessWidget {
-  const BigPResultCard({super.key, required this.error, required this.actions, required this.time});
+  const BigPResultCard({super.key, required this.error, required this.actions, required this.time, this.failureText});
 
   final bool error;
   final List<AssistantActionRecord> actions;
   final String time;
+  final String? failureText;
 
   @override
   Widget build(BuildContext context) {
@@ -121,6 +122,7 @@ class BigPResultCard extends StatelessWidget {
       state: () => {
         'error': error,
         'actions': actions.length,
+        'reason': failureText,
         // Per followed job: phase and percent, for Pleya Verify.
         'jobs': [
           for (final a in actions)
@@ -146,7 +148,11 @@ class BigPResultCard extends StatelessWidget {
                 }),
                 assistantActionLabel(action),
               ),
-            if (!done) line(_statusIcon(context, AssistantStepPhase.failed), t.assistant.ends.nothingChanged),
+            if (!done)
+              line(
+                _statusIcon(context, AssistantStepPhase.failed),
+                failureText ?? (error ? t.errors.somethingWentWrongTryAgain : t.assistant.ends.nothingChanged),
+              ),
           ],
         ),
       ),

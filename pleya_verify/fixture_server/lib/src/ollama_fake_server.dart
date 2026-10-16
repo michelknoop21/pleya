@@ -60,6 +60,16 @@ class OllamaFakeServer {
             {'title': 'Basalt zoeken', 'intent': 'search', 'prompt': 'Zoek Basalt.'},
           ],
         });
+      } else if (prompt == 'Controleer mijn bibliotheek op ontbrekende afleveringen.' ||
+          prompt == 'Controleer mijn bibliotheek op dubbele films.') {
+        message = replies.isNotEmpty
+            ? {'role': 'assistant', 'content': 'Klaar.'}
+            : _call('diagnose-library', 'diagnose_library', {});
+      } else if (prompt == 'Controleer de bibliotheek op een niet-beschikbare server.') {
+        // An unoffered server reference must produce Pleya's own failure reason.
+        message = replies.isNotEmpty
+            ? {'role': 'assistant', 'content': 'Klaar.'}
+            : _call('unavailable-server', 'find_media', {'server_id': 'unavailable', 'query': 'Aurora'});
       } else if (prompt == 'Ontdek ruimtefilms.') {
         // One Seerr discovery: six request cards in one display, past the point
         // where the TV result list goes dense (BP-09). find_title is capped at

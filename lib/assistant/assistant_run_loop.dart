@@ -81,6 +81,13 @@ extension _AssistantLoop on AssistantRun {
       // Offline servers simply drop out of the tool list.
     }
 
+    if (_ctx.libraryDoctorMode &&
+        _spoilerQuestion == null &&
+        !_ctx.kidsMode &&
+        !_ctx.userServers.any((id) => _ctx.userClient(id) != null)) {
+      return _end(AssistantRunEnd.noTools, failure: 'server_unavailable');
+    }
+
     final memoryNote = await _memoryNote(prompt);
     final messages = <Map<String, Object?>>[
       {'role': 'system', 'content': _system},
