@@ -51,6 +51,74 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 372 · 16 October 2026 · Apple TV
+
+<!-- commit: 64dd8d8d99172e1063454627d05f9b76f5f8c7f5 -->
+
+### Fixed
+- **Big P keeps the kind of item you asked about.** A question about films or episodes is
+  checked against that kind, also when you answer a follow-up such as "go on". A question that
+  names neither checks both. Before, a kind the model guessed could narrow a check to films or
+  series you did not ask about.
+- **"Show me" no longer means series.** The verb "show" alone no longer counts as a request
+  about series; nouns such as "shows", "series" or "episodes" still do.
+- **A server that drops out during a check no longer ends the whole check.** What Big P read
+  before the server went away stays in the answer, and the answer says that a server could not
+  be reached and its libraries were not checked. An action Big P proposes still needs every
+  server in the check to be reachable.
+- **A profile without servers is no longer told a server is offline.** Big P says it has no
+  checked library data instead of reporting a failed connection.
+- **A long answer lists at most eight groups of titles with several copies.** The rest is
+  counted, not listed.
+
+### Notes
+- Checks remain limited to the titles read within the existing diagnosis budget. Partial
+  coverage is reported; this is not an exhaustive whole-library audit.
+- If every server drops out during a check, Big P reports an error instead of a partial
+  answer.
+- Focused automated tests pass. This correction has not been checked on a physical device.
+
+### Worth checking
+- On a reachable server ask for missing episodes, then answer a follow-up such as "go on".
+  Check that the second answer still reads series and not films.
+- Switch one of two servers off and ask for a check. Check that the answer says a server
+  cannot be reached and still shows what the other one returned. The other server needs
+  libraries of the kind you ask about.
+
+## 2.8.1 · build 371 · 16 October 2026 · iPhone and iPad
+
+<!-- commit: 64dd8d8d99172e1063454627d05f9b76f5f8c7f5 -->
+
+### Fixed
+- **Big P keeps the kind of item you asked about.** A question about films or episodes is
+  checked against that kind, also when you answer a follow-up such as "go on". A question that
+  names neither checks both. Before, a kind the model guessed could narrow a check to films or
+  series you did not ask about.
+- **"Show me" no longer means series.** The verb "show" alone no longer counts as a request
+  about series; nouns such as "shows", "series" or "episodes" still do.
+- **A server that drops out during a check no longer ends the whole check.** What Big P read
+  before the server went away stays in the answer, and the answer says that a server could not
+  be reached and its libraries were not checked. An action Big P proposes still needs every
+  server in the check to be reachable.
+- **A profile without servers is no longer told a server is offline.** Big P says it has no
+  checked library data instead of reporting a failed connection.
+- **A long answer lists at most eight groups of titles with several copies.** The rest is
+  counted, not listed.
+
+### Notes
+- Checks remain limited to the titles read within the existing diagnosis budget. Partial
+  coverage is reported; this is not an exhaustive whole-library audit.
+- If every server drops out during a check, Big P reports an error instead of a partial
+  answer.
+- Focused automated tests pass. This correction has not been checked on a physical device.
+
+### Worth checking
+- On a reachable server ask for missing episodes, then answer a follow-up such as "go on".
+  Check that the second answer still reads series and not films.
+- Switch one of two servers off and ask for a check. Check that the answer says a server
+  cannot be reached and still shows what the other one returned. The other server needs
+  libraries of the kind you ask about.
+
 ## 2.8.1 · build 370 · 15 October 2026 · Apple TV
 
 <!-- commit: 2aaddfd9f982e4849134f9f85f035ed4177a87a7 -->
