@@ -5,18 +5,20 @@ goedgekeurd, geen pixelcontrole van alle 50 beelden. Bouwen mag; bij een verschi
 besluit geldt het besluit.
 
 Aanleiding (Michel, 16 oktober): "het homescherm, de carousels, makkelijker te verplaatsen, ook op
-iOS". tvOS werkt goed en blijft zoals het is. Dit document hoort bij stap 2 van HOME-R1; stap 1
-(de tvOS-bug met eigen rijen die niet goed in de opgeslagen volgorde landen) loopt apart.
+iOS". tvOS werkt goed en blijft zoals het is. Dit document hoort bij stap 2 van HOME-R1.
+Stap 1 is de tvOS-fix voor de volgorde van eigen rijen (PR #358), stap 2 zijn deze mockups en stap 3
+is het bouwen van Home aanpassen op iOS, iPadOS en macOS. Alleen deze drie stappen horen bij
+HOME-R1; ze staan nog niet in ROADMAP.md.
 
 De beelden en hoe je ze opnieuw rendert staan in
 [docs/assets/ios-unified/home-indeling-44/README.md](../assets/ios-unified/home-indeling-44/README.md).
 
 ## Wat er vandaag kan
 
-Gelezen op `origin/main` (`403fcc36`). De kern van het probleem op iPhone, iPad en Mac is niet dat
+Gelezen op `github/main` (`403fcc36`); `github` is de leidende remote, `origin` is de achterlopende Gitea-spiegel. De kern van het probleem op iPhone, iPad en Mac is niet dat
 slepen ontbreekt: het scherm Indeling van Home heeft al een sleepgreep per rij
-(`home_layout_screen.dart:184`, `SliverReorderableList` op regel 232). Het scherm zit alleen drie
-tikken diep in Instellingen, en wie er komt kan geen eigen rij maken of verwijderen.
+(`home_layout_screen.dart:184`, `SliverReorderableList` op regel 235). Het scherm zit alleen in Instellingen, niet op Home, en wie
+er komt kan geen eigen rij maken of verwijderen.
 
 | Wat | iPhone | iPad en Mac | tvOS |
 | --- | --- | --- | --- |
@@ -55,6 +57,12 @@ Ingang vanaf Home, op twee manieren. Onder de laatste rij staat de regel "Home a
 dezelfde plek als op tvOS, en lang drukken op een rijkop geeft een blad met Omhoog, Omlaag,
 Verbergen op Home en Home aanpassen (44 B). De regel onderaan is vindbaar zonder iets te weten;
 lang drukken is de korte weg voor wie één rij een plek wil opschuiven.
+
+Op de iPad krijgt Home dezelfde regel "Home aanpassen" onderaan als op de iPhone (44 L toont het
+venster zelf). Lang drukken op een rijkop bestaat daar niet: in `hub_section.dart` heeft de rijkop
+alleen een tik (regel 708) en zit lang drukken (regel 891) op de kaarten. Voor iPad en Mac geldt
+daarom: standaard genomen, te bevestigen. De regel onderaan is de vaste ingang; het menu op de
+rijkop komt op de iPad als lang drukken op de kop en op de Mac als rechtsklik en drie puntjes.
 
 Op de Mac wordt dat een rechtsklik op de rijkop, en bij hover verschijnt naast "Alles bekijken"
 een knop met drie puntjes die hetzelfde menu opent (44 N). Rechtsklik is de Mac-gewoonte; de knop
@@ -98,10 +106,12 @@ de muis sleept (44 M); de eigen rij heeft daar een knop Bewerken in de regel omd
    vraagt een bevestiging (44 E en 44 F).
 3. Lang drukken op een rijkop houdt het snelle menu: Omhoog, Omlaag, Verbergen, Home aanpassen
    (44 B).
-4. Een rij van een offline server blijft in de lijst, mét zijn opgeslagen plek (44 K). Dit hangt af
-   van PR #358 (`homeLayoutOrderAfterMove`, HOME-R1 stap 1) en vraagt regressietests.
-5. De bestaande tegel Instellingen > Indeling van Home opent hetzelfde scherm als 44 C. Geen tweede
-   implementatie.
+4. Een rij van een offline server blijft in de lijst, mét zijn opgeslagen plek (44 K). Dit vergt PR #358
+   (`homeLayoutOrderAfterMove`, HOME-R1 stap 1) en die moet eerst gemerged zijn; zie de
+   bouwvoorwaarden.
+5. De bestaande tegel Instellingen > Indeling van Home opent op iPhone, iPad en Mac hetzelfde
+   scherm als 44 C. Geen tweede implementatie. De TV-tak van `HomeLayoutScreen` (pijlknoppen en
+   schakelaar, geen wizard; de tegel in `settings_tv_page.dart:153`) blijft ongewijzigd.
 6. "Alle N in Films" komt in het menu van een eigen rij. N is het werkelijke aantal, niet de 42
    uit het beeld, en de volledige lijst gebruikt hetzelfde filter als de eigen rij (zoals ROW1c op
    tvOS).
@@ -121,13 +131,26 @@ Afwijking mockup, bij bouw volgen besluit: in 44 E staat "Alle 42 in Films" met 
 - De drie stappen van een rij maken zijn gelijk aan tvOS: Naam en soort, Filters, Voorbeeld, met
   dezelfde vijf filterregels en teksten.
 - Vaste rijen (Uitgelicht, Verder kijken) zijn niet te verplaatsen.
+- PR #358 moet eerst gemerged zijn. Die fix raakt alleen de tvOS-controller. In
+  `home_layout_screen.dart` schrijft `move` (regel 148 tot 155) de volgorde nog op de oude manier
+  en laat ids van rijen die niet in de lijst staan vallen. Het nieuwe scherm gebruikt
+  `homeLayoutOrderAfterMove` uit #358.
+- Elke tegel krijgt een eigen sleutel per rij. Nu is de sleutel `ValueKey(ids.first)` (regel 175);
+  die is niet uniek voor twee hubs met dezelfde identiteit.
+- Tests op het scherm zelf voor twee hubs met dezelfde identiteit en voor een rij van een offline
+  server, inclusief herstart.
+- Wat het scherm vandaag kan blijft: de tegel Verborgen items, de subregel met type en server, ook
+  lege rijen in de lijst, en de TV-tak.
 - Testen op iPhone, iPad en Mac, inclusief samengevoegde rijen en meerdere Plex-bibliotheken.
 - De tvOS-weergave blijft onaangeraakt.
 
 ## Na akkoord
 
-De bouw volgt stap 3 van het plan: één gedeelde functie voor de lijstregels (BP-12a), dezelfde
-providermethodes als nu, tests voor het verplaatsen van een eigen, een samengevoegde en een
+De bouw is stap 3 van HOME-R1: één gedeelde functie voor de lijstregels (`homeLayoutEntries`),
+dezelfde providermethodes als nu, tests voor het verplaatsen van een eigen, een samengevoegde en een
 offline rij plus herstart, en Pleya Verify met screenshots op de iOS-simulator (iPhone en iPad) en
 macOS. Dit document stuurt toekomstig werk aan en heeft een onafhankelijke review nodig voor de
 merge.
+
+BP-12a is het plan voor Big P-beheer van Home-rijen. Dat plan gebruikt dezelfde rijlijstfunctie
+(`homeLayoutEntries`), staat in een apart plan en is geen onderdeel van deze wijziging.

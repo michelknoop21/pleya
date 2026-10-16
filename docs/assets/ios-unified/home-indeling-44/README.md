@@ -41,6 +41,7 @@ Bij de beelden:
 - 44 L, M en N tonen de lijst zoals de iPad- en Mac-Home hem vandaag tekenen: één regel per
   server-hub (twee keer "Recent toegevoegde series", één per server) en zonder Recent uitgebracht
   of Nu op tv. Dat is besluit 1: voorlopig per server-hub, unified is een latere aparte wijziging.
+- De ingang op de iPad (regel "Home aanpassen" onderaan Home, lang drukken op de rijkop) is niet apart getekend: standaard genomen, te bevestigen. 44 L toont alleen het venster.
 - 44 E toont "Alle 42 in Films". Volgens besluit 6 is het getal in de app het werkelijke aantal.
 - De ronde vlek in 44 D en 44 L is de vinger; het handje in 44 M de muiscursor. Ze horen niet bij
   de app.
