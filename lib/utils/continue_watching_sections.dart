@@ -4,29 +4,24 @@
 /// * Series hervatten: episodes with progress.
 /// * Films hervatten: films with progress.
 /// * Volgende afleveringen: the next episode of a series, nothing started yet.
-/// * Eerder begonnen: begun more than [staleAfter] ago, less prominent, never
-///   removed. Only something *begun* can be old: a next episode that just
-///   became available is not, whatever the series' last-watched date says, and
-///   an item without a date is never old either.
+/// * Eerder begonnen: left alone for more than [continueWatchingStaleAfter],
+///   less prominent, never removed. A new episode or season (see
+///   [continueWatchingFreshness]) is not old, whatever the series' last-watched
+///   date says, and an item without a date is never old either. An ordinary
+///   next episode of a series left alone that long is (DEC-144, amended).
 library;
 
 import '../i18n/strings.g.dart';
 import '../media/media_item.dart';
 import '../media/media_item_types.dart';
 import 'continue_watching_labels.dart';
+import 'continue_watching_order.dart';
 
 enum ContinueWatchingSection { resumeShows, resumeMovies, nextEpisodes, stale }
 
-/// Michel, 4 oktober 2026: a fixed product rule, not a user setting.
-const Duration continueWatchingStaleAfter = Duration(days: 90);
-
 ContinueWatchingSection continueWatchingSectionFor(MediaItem item, {required DateTime now}) {
-  final state = continueWatchingStateFor(item);
-  if (state == ContinueWatchingState.nextEpisode) return ContinueWatchingSection.nextEpisodes;
-  final last = item.lastViewedAt;
-  if (last != null && now.difference(DateTime.fromMillisecondsSinceEpoch(last * 1000)) > continueWatchingStaleAfter) {
-    return ContinueWatchingSection.stale;
-  }
+  if (isContinueWatchingStale(item, now: now)) return ContinueWatchingSection.stale;
+  if (continueWatchingStateFor(item) == ContinueWatchingState.nextEpisode) return ContinueWatchingSection.nextEpisodes;
   return item.isEpisode ? ContinueWatchingSection.resumeShows : ContinueWatchingSection.resumeMovies;
 }
 

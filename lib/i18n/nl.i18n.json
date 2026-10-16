@@ -869,6 +869,8 @@
     "tvShow": "TV Serie",
     "minutesLeft": "${minutes} min over",
     "nextEpisodeStatus": "Volgende aflevering",
+    "newEpisodeStatus": "Nieuwe aflevering",
+    "newSeasonStatus": "Nieuw seizoen",
     "cwSectionResumeShows": "Series hervatten",
     "cwSectionResumeMovies": "Films hervatten",
     "cwSectionNextEpisodes": "Volgende afleveringen",

@@ -21,7 +21,10 @@ of posters underneath.
   a description and buttons to start it. Half-watched titles carry a red progress bar.
   Clicking the billboard itself opens the title; the play button is the only thing that
   starts it, so a click that lands slightly wide no longer begins a film.
-- **Continue watching.** Everything you started and did not finish.
+- **Continue watching.** Everything you started and did not finish. What you watched last
+  comes first, followed by at most two series that got a new episode or a new season, even if
+  you last watched them months ago. Those cards say "New episode" or "New season" for two
+  weeks. Titles you left alone for more than three months move to the end.
 - **Next up.** The next episode of the series you are in the middle of.
 - **Recently added.** New on the server.
 - **Top 10.** The most-played titles with large rank numbers beside the posters, when your

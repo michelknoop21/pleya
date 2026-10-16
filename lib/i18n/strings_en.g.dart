@@ -2523,6 +2523,12 @@ class TranslationsDiscoverEn {
 	/// en: 'Next episode'
 	String get nextEpisodeStatus => 'Next episode';
 
+	/// en: 'New episode'
+	String get newEpisodeStatus => 'New episode';
+
+	/// en: 'New season'
+	String get newSeasonStatus => 'New season';
+
 	/// en: 'Resume series'
 	String get cwSectionResumeShows => 'Resume series';
 
@@ -10335,6 +10341,8 @@ extension on Translations {
 			'discover.tvShow' => 'TV Show',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min left',
 			'discover.nextEpisodeStatus' => 'Next episode',
+			'discover.newEpisodeStatus' => 'New episode',
+			'discover.newSeasonStatus' => 'New season',
 			'discover.cwSectionResumeShows' => 'Resume series',
 			'discover.cwSectionResumeMovies' => 'Resume films',
 			'discover.cwSectionNextEpisodes' => 'Next episodes',
@@ -10546,10 +10554,10 @@ extension on Translations {
 			'logs.noMatchingLogs' => 'No lines at this level',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} of ${total} lines',
 			'licenses.relatedPackages' => 'Related Packages',
-			'licenses.license' => 'License',
-			'licenses.licenseNumber' => ({required Object number}) => 'License ${number}',
 			_ => null,
 		} ?? switch (path) {
+			'licenses.license' => 'License',
+			'licenses.licenseNumber' => ({required Object number}) => 'License ${number}',
 			'licenses.licensesCount' => ({required Object count}) => '${count} licenses',
 			'navigation.libraries' => 'Libraries',
 			'navigation.downloads' => 'Downloads',
@@ -11060,10 +11068,10 @@ extension on Translations {
 			'metadataEdit.latestEpisode' => 'Latest episode',
 			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Episodes added in the past ${count} days',
 			'metadataEdit.deleteAfterPlaying' => 'Delete Episodes After Playing',
-			'metadataEdit.never' => 'Never',
-			'metadataEdit.afterADay' => 'After a day',
 			_ => null,
 		} ?? switch (path) {
+			'metadataEdit.never' => 'Never',
+			'metadataEdit.afterADay' => 'After a day',
 			'metadataEdit.afterAWeek' => 'After a week',
 			'metadataEdit.afterAMonth' => 'After a month',
 			'metadataEdit.onNextRefresh' => 'On next refresh',
@@ -11574,10 +11582,10 @@ extension on Translations {
 			'unifiedCatalog.home.featured' => 'Featured',
 			'unifiedCatalog.homeRows.customize' => 'Customise Home',
 			'unifiedCatalog.homeRows.customizeSubtitle' => 'Move or hide rows, or build one from a filter',
-			'unifiedCatalog.homeRows.customizeIntro' => 'Move, hide or edit your rows. Featured and Continue Watching stay where they are.',
-			'unifiedCatalog.homeRows.featured' => 'Featured',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.homeRows.customizeIntro' => 'Move, hide or edit your rows. Featured and Continue Watching stay where they are.',
+			'unifiedCatalog.homeRows.featured' => 'Featured',
 			'unifiedCatalog.homeRows.alwaysFirst' => 'Always at the top',
 			'unifiedCatalog.homeRows.alwaysSecond' => 'Always second',
 			'unifiedCatalog.homeRows.fixed' => 'fixed',
@@ -12088,10 +12096,10 @@ extension on Translations {
 			'assistant.settings.unreadableBody' => 'Your iCloud keychain holds a Big P setup from a newer Pleya version on another device. This version cannot read it. Replacing it changes the setup on all your devices.',
 			'assistant.settings.replace' => 'Replace',
 			'assistant.settings.currentModel' => 'Model',
-			'assistant.settings.keyStored' => 'Stored, hidden',
-			'assistant.settings.errorUrlInvalid' => 'Enter an address that starts with http:// or https://.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.settings.keyStored' => 'Stored, hidden',
+			'assistant.settings.errorUrlInvalid' => 'Enter an address that starts with http:// or https://.',
 			'assistant.settings.errorHeaderInvalid' => 'This header name or value is not valid.',
 			'assistant.settings.errorKeyRequired' => 'Enter the API key.',
 			'assistant.settings.errorUnauthorized' => 'The key was rejected.',

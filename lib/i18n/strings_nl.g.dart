@@ -1056,6 +1056,8 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get tvShow => 'TV Serie';
 	@override String minutesLeft({required Object minutes}) => '${minutes} min over';
 	@override String get nextEpisodeStatus => 'Volgende aflevering';
+	@override String get newEpisodeStatus => 'Nieuwe aflevering';
+	@override String get newSeasonStatus => 'Nieuw seizoen';
 	@override String get cwSectionResumeShows => 'Series hervatten';
 	@override String get cwSectionResumeMovies => 'Films hervatten';
 	@override String get cwSectionNextEpisodes => 'Volgende afleveringen';
@@ -5029,6 +5031,8 @@ extension on TranslationsNl {
 			'discover.tvShow' => 'TV Serie',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min over',
 			'discover.nextEpisodeStatus' => 'Volgende aflevering',
+			'discover.newEpisodeStatus' => 'Nieuwe aflevering',
+			'discover.newSeasonStatus' => 'Nieuw seizoen',
 			'discover.cwSectionResumeShows' => 'Series hervatten',
 			'discover.cwSectionResumeMovies' => 'Films hervatten',
 			'discover.cwSectionNextEpisodes' => 'Volgende afleveringen',
@@ -5240,10 +5244,10 @@ extension on TranslationsNl {
 			'logs.noMatchingLogs' => 'Geen regels op dit niveau',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} van ${total} regels',
 			'licenses.relatedPackages' => 'Gerelateerde pakketten',
-			'licenses.license' => 'Licentie',
-			'licenses.licenseNumber' => ({required Object number}) => 'Licentie ${number}',
 			_ => null,
 		} ?? switch (path) {
+			'licenses.license' => 'Licentie',
+			'licenses.licenseNumber' => ({required Object number}) => 'Licentie ${number}',
 			'licenses.licensesCount' => ({required Object count}) => '${count} licenties',
 			'navigation.libraries' => 'Media',
 			'navigation.downloads' => 'Downloads',
@@ -5754,10 +5758,10 @@ extension on TranslationsNl {
 			'metadataEdit.latestEpisode' => 'Nieuwste aflevering',
 			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Afleveringen toegevoegd in de afgelopen ${count} dagen',
 			'metadataEdit.deleteAfterPlaying' => 'Afleveringen verwijderen na afspelen',
-			'metadataEdit.never' => 'Nooit',
-			'metadataEdit.afterADay' => 'Na een dag',
 			_ => null,
 		} ?? switch (path) {
+			'metadataEdit.never' => 'Nooit',
+			'metadataEdit.afterADay' => 'Na een dag',
 			'metadataEdit.afterAWeek' => 'Na een week',
 			'metadataEdit.afterAMonth' => 'Na een maand',
 			'metadataEdit.onNextRefresh' => 'Bij volgende verversing',
@@ -6268,10 +6272,10 @@ extension on TranslationsNl {
 			'unifiedCatalog.home.featured' => 'Uitgelicht',
 			'unifiedCatalog.homeRows.customize' => 'Home aanpassen',
 			'unifiedCatalog.homeRows.customizeSubtitle' => 'Verplaats of verberg rijen, of maak er een van een filter',
-			'unifiedCatalog.homeRows.customizeIntro' => 'Verplaats, verberg of bewerk je rijen. Uitgelicht en Verder kijken blijven staan waar ze staan.',
-			'unifiedCatalog.homeRows.featured' => 'Uitgelicht',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.homeRows.customizeIntro' => 'Verplaats, verberg of bewerk je rijen. Uitgelicht en Verder kijken blijven staan waar ze staan.',
+			'unifiedCatalog.homeRows.featured' => 'Uitgelicht',
 			'unifiedCatalog.homeRows.alwaysFirst' => 'Altijd bovenaan',
 			'unifiedCatalog.homeRows.alwaysSecond' => 'Altijd tweede',
 			'unifiedCatalog.homeRows.fixed' => 'vast',
@@ -6782,10 +6786,10 @@ extension on TranslationsNl {
 			'assistant.settings.unreadableBody' => 'Je iCloud-sleutelhanger heeft een Big P-instelling van een nieuwere Pleya op een ander apparaat. Deze versie kan die niet lezen. Vervangen wijzigt de instelling op al je apparaten.',
 			'assistant.settings.replace' => 'Vervangen',
 			'assistant.settings.currentModel' => 'Model',
-			'assistant.settings.keyStored' => 'Opgeslagen, verborgen',
-			'assistant.settings.errorUrlInvalid' => 'Vul een adres in dat begint met http:// of https://.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.settings.keyStored' => 'Opgeslagen, verborgen',
+			'assistant.settings.errorUrlInvalid' => 'Vul een adres in dat begint met http:// of https://.',
 			'assistant.settings.errorHeaderInvalid' => 'Deze headernaam of -waarde is niet geldig.',
 			'assistant.settings.errorKeyRequired' => 'Vul de API-sleutel in.',
 			'assistant.settings.errorUnauthorized' => 'De sleutel is geweigerd.',

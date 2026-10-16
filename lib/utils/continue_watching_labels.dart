@@ -7,6 +7,11 @@
 /// | `S3 E4 · 18 min over` | `S3 E5 · Volgende aflevering` |
 /// | voortgangsbalk        | geen balk                     |
 ///
+/// A next episode that is provably new says `Nieuwe aflevering`, or
+/// `Nieuw seizoen` for the first episode of a later season
+/// ([continueWatchingFreshness]); when that is not certain it stays "Volgende
+/// aflevering".
+///
 /// A film says `42 min over`, or its runtime when nothing of it was watched.
 /// Episode title and "2 dagen geleden" are deliberately not here: they belong
 /// to the TV focus line and the full overview, not to a card at rest. The
@@ -17,6 +22,7 @@ library;
 import '../i18n/strings.g.dart';
 import '../media/media_item.dart';
 import '../media/media_item_types.dart';
+import 'continue_watching_order.dart';
 import 'formatters.dart';
 
 enum ContinueWatchingState { inProgress, nextEpisode, unstarted }
@@ -40,7 +46,12 @@ ContinueWatchingState continueWatchingStateFor(MediaItem item) {
 /// `showEpisodeNumberOnCards` setting: off, an episode keeps only its season.
 /// [includePlace] false drops `S3 E4` altogether, for a row that already
 /// states the place on its own line (the iPhone overview).
-String continueWatchingStatusLine(MediaItem item, {bool showEpisodeNumber = true, bool includePlace = true}) {
+String continueWatchingStatusLine(
+  MediaItem item, {
+  bool showEpisodeNumber = true,
+  bool includePlace = true,
+  DateTime? now,
+}) {
   final parts = <String>[];
   if (includePlace && item.isEpisode && item.parentIndex != null) {
     parts.add(
@@ -54,10 +65,20 @@ String continueWatchingStatusLine(MediaItem item, {bool showEpisodeNumber = true
       final left = formatRemainingTime(item.durationMs, item.viewOffsetMs);
       if (left != null) parts.add(left);
     case ContinueWatchingState.nextEpisode:
-      parts.add(t.discover.nextEpisodeStatus);
+      parts.add(continueWatchingNextEpisodeWording(item, now: now));
     case ContinueWatchingState.unstarted:
       final duration = item.durationMs;
       if (duration != null && duration > 0) parts.add(formatDurationTextual(duration));
   }
   return parts.join(' · ');
 }
+
+/// What a next-episode card says about itself: new episode, new season, or the
+/// plain "next episode". The one wording the status line and the TV focus line
+/// share.
+String continueWatchingNextEpisodeWording(MediaItem item, {DateTime? now}) =>
+    switch (continueWatchingFreshness(item, now: now ?? DateTime.now())) {
+      ContinueWatchingFreshness.newSeason => t.discover.newSeasonStatus,
+      ContinueWatchingFreshness.newEpisode => t.discover.newEpisodeStatus,
+      ContinueWatchingFreshness.none => t.discover.nextEpisodeStatus,
+    };

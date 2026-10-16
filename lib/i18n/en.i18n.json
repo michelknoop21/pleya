@@ -869,6 +869,8 @@
     "tvShow": "TV Show",
     "minutesLeft": "${minutes} min left",
     "nextEpisodeStatus": "Next episode",
+    "newEpisodeStatus": "New episode",
+    "newSeasonStatus": "New season",
     "cwSectionResumeShows": "Resume series",
     "cwSectionResumeMovies": "Resume films",
     "cwSectionNextEpisodes": "Next episodes",

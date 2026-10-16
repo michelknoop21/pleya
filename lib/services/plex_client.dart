@@ -1,6 +1,7 @@
 import '../media/media_identity.dart';
 import 'plex_constants.dart';
 import 'dart:async';
+import '../utils/continue_watching_order.dart' show continueWatchingFreshWindow;
 import '../utils/isolate_helper.dart';
 import '../utils/json_utils.dart';
 import 'package:flutter/foundation.dart';
@@ -3898,12 +3899,70 @@ class PlexClient
     final items = await _getContinueWatching(count: count);
     // Plex's one hub mixes both: an entry with an offset is something begun,
     // one without is the next episode the server picked (DEC-144).
-    return [
+    return _attachSeriesLastViewed([
       for (final item in items.map(PlexMappers.mediaItem))
         item.copyWith(
           continueWatchingKind: item.hasActiveProgress ? ContinueWatchingKind.resume : ContinueWatchingKind.nextUp,
         ),
+    ]);
+  }
+
+  /// Series with a new episode get their last-watched date from the server, at
+  /// most this many per refresh.
+  static const _freshSeriesLastViewedLookups = 6;
+
+  /// A next-up episode carries no `lastViewedAt` of its own, and without the
+  /// date the series was last watched Pleya cannot tell a new episode from an
+  /// ordinary next one. For the next-up episodes added in the last two weeks,
+  /// ask for the series' own `lastViewedAt` (one light call per series, bounded,
+  /// in parallel). A failed call leaves the episode undated, so it is never
+  /// called new.
+  Future<List<MediaItem>> _attachSeriesLastViewed(List<MediaItem> items) async {
+    final nowSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final seriesIds = <String>{
+      for (final item in items)
+        if (item.continueWatchingKind == ContinueWatchingKind.nextUp &&
+            item.kind == MediaKind.episode &&
+            item.lastViewedAt == null &&
+            item.grandparentId != null &&
+            item.addedAt != null &&
+            nowSeconds - item.addedAt! <= continueWatchingFreshWindow.inSeconds)
+          item.grandparentId!,
+    }.take(_freshSeriesLastViewedLookups);
+    if (seriesIds.isEmpty) return items;
+
+    final lastViewedBySeries = <String, int>{};
+    await Future.wait([
+      for (final seriesId in seriesIds)
+        () async {
+          final viewedAt = await _seriesLastViewedAt(seriesId);
+          if (viewedAt != null) lastViewedBySeries[seriesId] = viewedAt;
+        }(),
+    ]);
+    if (lastViewedBySeries.isEmpty) return items;
+
+    return [
+      for (final item in items)
+        if (item.lastViewedAt == null && lastViewedBySeries[item.grandparentId] != null)
+          item.copyWith(lastViewedAt: lastViewedBySeries[item.grandparentId])
+        else
+          item,
     ];
+  }
+
+  Future<int?> _seriesLastViewedAt(String ratingKey) async {
+    try {
+      final response = await _http.get('/library/metadata/$ratingKey');
+      if (response.statusCode != 200) return null;
+      final data = response.data;
+      final container = data is Map ? data['MediaContainer'] : null;
+      final metadata = container is Map ? container['Metadata'] : null;
+      if (metadata is! List || metadata.isEmpty || metadata.first is! Map) return null;
+      return flexibleInt((metadata.first as Map)['lastViewedAt']);
+    } catch (e) {
+      appLogger.d('PlexClient: series last-viewed lookup failed for $ratingKey', error: e);
+      return null;
+    }
   }
 
   /// `/library/all` sorted by `lastViewedAt` is user-scoped per token, so

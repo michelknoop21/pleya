@@ -10,6 +10,7 @@ import '../media/unified/unified_media_source.dart';
 import '../services/unified_catalog/grouping_service.dart';
 import '../services/unified_catalog/identity_resolver.dart';
 import '../utils/app_logger.dart';
+import '../utils/continue_watching_order.dart';
 import '../utils/media_server_timeouts.dart';
 import '../utils/global_key_utils.dart';
 import '../utils/search_relevance.dart';
@@ -160,6 +161,11 @@ class DataAggregationService {
     filteredOnDeck.sort((a, b) => b.recencySortKey.compareTo(a.recencySortKey));
 
     filteredOnDeck = await _deduplicateContinueWatching(filteredOnDeck);
+
+    // The recency sort above only decides which source represents a title.
+    // The order of the list is the Verder kijken order: last watched, new
+    // episodes, active titles, Eerder begonnen.
+    filteredOnDeck = orderContinueWatching(filteredOnDeck, itemOf: (item) => item);
 
     // Apply limit if specified
     final items = limit != null && limit < filteredOnDeck.length ? filteredOnDeck.sublist(0, limit) : filteredOnDeck;
@@ -314,7 +320,7 @@ class DataAggregationService {
   /// dedup as [getOnDeckFromAllServers], applied to the union.
   Future<List<MediaItem>> mergeContinueWatching(List<MediaItem> existing, List<MediaItem> fresh, {int? limit}) async {
     final combined = [...existing, ...fresh]..sort((a, b) => b.recencySortKey.compareTo(a.recencySortKey));
-    final deduped = await _deduplicateContinueWatching(combined);
+    final deduped = orderContinueWatching(await _deduplicateContinueWatching(combined), itemOf: (item) => item);
     return limit != null && limit < deduped.length ? deduped.sublist(0, limit) : deduped;
   }
 
