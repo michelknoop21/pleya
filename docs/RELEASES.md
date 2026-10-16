@@ -53,7 +53,14 @@ Nothing user-facing since the last published build.
 
 ## 2.8.1 · build 370 · 15 October 2026 · Apple TV
 
-<!-- commit: bd298d5b7f5bc1d78257955aeb40bf0295db04af -->
+<!-- commit: 2aaddfd9f982e4849134f9f85f035ed4177a87a7 -->
+
+### Improved
+- **Big P's tonight questions look in your libraries.** The suggested questions about what to
+  watch tonight, and the follow-ups after an answer, now say "in my library". When a question
+  asks for tonight from your library, Big P searches the library instead of reading your
+  viewing history or the list of what is popular elsewhere. A question asking for a tip, for
+  what is trending, or for your watchlist is not redirected.
 
 ### Fixed
 - **Big P checks the requested kind of library item.** Asking for missing episodes now
@@ -73,13 +80,21 @@ Nothing user-facing since the last published build.
   This correction has not been checked on a physical device.
 
 ### Worth checking
+- Open Big P and tap a tonight question. Check that the answer lists titles from your own libraries, and that a child profile gets only suitable titles. This was tested against two cloud models with stand-in servers, not on a device.
 - On a reachable server, ask for missing episodes and for duplicate films. Check that the
   first reads series and the second names any matching copy or edition groups.
 - With an unavailable server, check that the answer explains the connection failure.
 
 ## 2.8.1 · build 369 · 15 October 2026 · iPhone and iPad
 
-<!-- commit: bd298d5b7f5bc1d78257955aeb40bf0295db04af -->
+<!-- commit: 2aaddfd9f982e4849134f9f85f035ed4177a87a7 -->
+
+### Improved
+- **Big P's tonight questions look in your libraries.** The suggested questions about what to
+  watch tonight, and the follow-ups after an answer, now say "in my library". When a question
+  asks for tonight from your library, Big P searches the library instead of reading your
+  viewing history or the list of what is popular elsewhere. A question asking for a tip, for
+  what is trending, or for your watchlist is not redirected.
 
 ### Fixed
 - **Big P checks the requested kind of library item.** Asking for missing episodes now
@@ -99,6 +114,7 @@ Nothing user-facing since the last published build.
   This correction has not been checked on a physical device.
 
 ### Worth checking
+- Open Big P and tap a tonight question. Check that the answer lists titles from your own libraries, and that a child profile gets only suitable titles. This was tested against two cloud models with stand-in servers, not on a device.
 - On a reachable server, ask for missing episodes and for duplicate films. Check that the
   first reads series and the second names any matching copy or edition groups.
 - With an unavailable server, check that the answer explains the connection failure.
