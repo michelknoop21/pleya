@@ -51,6 +51,88 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 374 · 16 October 2026 · Apple TV
+
+<!-- commit: 55d66c0ab1b95c31fc62d4be59aaf1c50576a95c -->
+
+### Improved
+- **A tip from Big P is a statement, not a question.** Big P says what it recommends and why,
+  and names only titles from your tips, no more than you asked for. Before, a tip could read as
+  "How does it sound?".
+- **Big P's text and its cards are the same titles.** A title the answer names always has its
+  card, within the number you asked for. A sentence that names a title without a card is
+  left out; if nothing is left, Big P says it could only show the titles it checked. A film
+  and an alternative count as two.
+- **Continue Watching follows your last watch.** The title you watched last comes first, then
+  at most two series with a new episode or a new season, then the rest. New episodes and new
+  seasons are labelled, and a series you have not touched for 90 days moves to "Started
+  earlier".
+
+### Fixed
+- **Big P no longer shows a garbled tool call as its answer.** When a model writes its request
+  as text with tags instead of calling the tool, Big P hides that text, asks the model again
+  once and, if it stays garbled, says so in its own words. An action that already succeeded is
+  not repeated.
+- **Rearranging Home rows on Apple TV keeps your own rows where you put them.** A server with
+  several film libraries shows one "Recently Added" row per library; those rows now move
+  together as one block, a row of your own above them no longer jumps back, and the arrows
+  only light up where a press does something.
+
+### Notes
+- Big P's tip and card behaviour was measured against two cloud models with stand-in servers,
+  not on a device or with your own library. Titles with a short common name are only
+  recognised in a sentence when they are marked or have their year.
+- Continue Watching reads the last watch date per series from Jellyfin, Emby and Plex.
+- Nothing in this build has been checked on a device yet.
+
+### Worth checking
+- Ask Big P "geef me een tip voor vanavond", "zoek een film voor vanavond" and "geef me drie
+  tips voor vanavond". Check that each answer is a statement and that it names exactly the
+  titles on its cards: one, one and three.
+- Ask for a film and an alternative. Check that you get two cards and both titles in the text.
+- Open Home. Check that Continue Watching starts with what you watched last, and that a new
+  episode of an older series is labelled.
+- On Apple TV, open Home customisation and move one of your own rows past a "Recently Added"
+  row. Check that it stays where you put it.
+
+## 2.8.1 · build 373 · 16 October 2026 · iPhone and iPad
+
+<!-- commit: 55d66c0ab1b95c31fc62d4be59aaf1c50576a95c -->
+
+### Improved
+- **A tip from Big P is a statement, not a question.** Big P says what it recommends and why,
+  and names only titles from your tips, no more than you asked for. Before, a tip could read as
+  "How does it sound?".
+- **Big P's text and its cards are the same titles.** A title the answer names always has its
+  card, within the number you asked for. A sentence that names a title without a card is
+  left out; if nothing is left, Big P says it could only show the titles it checked. A film
+  and an alternative count as two.
+- **Continue Watching follows your last watch.** The title you watched last comes first, then
+  at most two series with a new episode or a new season, then the rest. New episodes and new
+  seasons are labelled, and a series you have not touched for 90 days moves to "Started
+  earlier".
+
+### Fixed
+- **Big P no longer shows a garbled tool call as its answer.** When a model writes its request
+  as text with tags instead of calling the tool, Big P hides that text, asks the model again
+  once and, if it stays garbled, says so in its own words. An action that already succeeded is
+  not repeated.
+
+### Notes
+- Big P's tip and card behaviour was measured against two cloud models with stand-in servers,
+  not on a device or with your own library. Titles with a short common name are only
+  recognised in a sentence when they are marked or have their year.
+- Continue Watching reads the last watch date per series from Jellyfin, Emby and Plex.
+- Nothing in this build has been checked on a device yet.
+
+### Worth checking
+- Ask Big P "geef me een tip voor vanavond", "zoek een film voor vanavond" and "geef me drie
+  tips voor vanavond". Check that each answer is a statement and that it names exactly the
+  titles on its cards: one, one and three.
+- Ask for a film and an alternative. Check that you get two cards and both titles in the text.
+- Open Home. Check that Continue Watching starts with what you watched last, and that a new
+  episode of an older series is labelled.
+
 ## 2.8.1 · build 372 · 16 October 2026 · Apple TV
 
 <!-- commit: 64dd8d8d99172e1063454627d05f9b76f5f8c7f5 -->
