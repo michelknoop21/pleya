@@ -180,12 +180,19 @@ extension _AssistantAnswer on AssistantRun {
     final cards = named.where(carded).toList();
     final lines = <String>[];
     for (final line in text.split('\n')) {
-      if (line.trim().isEmpty) continue;
+      if (line.trim().isEmpty) {
+        // A paragraph break stays; one never leads the answer or doubles.
+        if (lines.isNotEmpty && lines.last.isNotEmpty) lines.add('');
+        continue;
+      }
       final kept = [
         for (final s in _sentencesOf(line))
           if (!missing.any((t) => _namesTitle(s, t))) s,
       ];
       if (kept.isNotEmpty) lines.add(kept.join(' '));
+    }
+    while (lines.isNotEmpty && lines.last.isEmpty) {
+      lines.removeLast();
     }
     final stillNamesCard = lines.any((l) => cards.any((t) => _namesTitle(l, t)));
     if (lines.isNotEmpty && stillNamesCard) return lines.join('\n');
@@ -198,7 +205,7 @@ extension _AssistantAnswer on AssistantRun {
   /// The sentences of one line. A title between « and » is never cut, and a
   /// list marker ("1.") or an abbreviation ("Mr.") before a capital is not an
   /// end: a sentence ends at . ! or ? followed by a space and a capital, « or
-  /// digit, and not after a number, a single letter or one of a few abbreviations.
+  /// digit, and not after a list marker, an initialism ("U.S.") or a few abbreviations.
   List<String> _sentencesOf(String line) {
     final quoted = <String>[];
     final masked = line.replaceAllMapped(RegExp('«[^»]*»'), (m) {
@@ -210,8 +217,13 @@ extension _AssistantAnswer on AssistantRun {
     for (final m in RegExp(r'([.!?])\s+(?=[A-ZÀ-Ý«\u0001\d])').allMatches(masked)) {
       final head = masked.substring(start, m.start);
       final lastWord = head.split(RegExp(r'\s+')).last;
+      // A list marker is the whole head ("1."); a number or a letter at the end
+      // of a sentence ("uit 2000.", "plan A.") is an ordinary end.
       final abbreviation =
-          m[1] == '.' && RegExp(r'^(\d+|[A-Za-z]|mrs?|ms|dr|st|jr|sr|vs|nr)$', caseSensitive: false).hasMatch(lastWord);
+          m[1] == '.' &&
+          (RegExp(r'^\d{1,2}$').hasMatch(head.trim()) ||
+              RegExp(r'^(mrs?|ms|dr|st|jr|sr|vs|nr)$', caseSensitive: false).hasMatch(lastWord) ||
+              RegExp(r'^(?:[A-Za-z]\.)+[A-Za-z]$').hasMatch(lastWord));
       if (abbreviation) continue;
       parts.add(masked.substring(start, m.end).trim());
       start = m.end;

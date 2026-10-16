@@ -404,5 +404,23 @@ void main() {
       );
       expect(r.text, 'Kijk «The Order» (2024).');
     });
+
+    test('a number or a letter at the end of a sentence is an ordinary end', () async {
+      final (r, _) = await _recommend(
+        'Zoek een film voor vanavond',
+        'Ik raad «The Order» (2024) aan, uit plan A. Ook «Heat» (1995) is goed.',
+        picks: picks,
+      );
+      expect(r.text, 'Ik raad «The Order» (2024) aan, uit plan A.');
+    });
+
+    test('paragraph breaks survive a cut', () async {
+      final (r, _) = await _recommend(
+        'Zoek een film voor vanavond',
+        'Kijk «The Order» (2024).\n\nOf «Heat» (1995).\n\nVeel plezier.',
+        picks: picks,
+      );
+      expect(r.text, 'Kijk «The Order» (2024).\n\nVeel plezier.');
+    });
   });
 }
