@@ -2816,6 +2816,7 @@
       "nothingChanged": "Nothing was changed.",
       "modelMissing": "The chosen model is gone. Pick another one in the Big P settings.",
       "sourceChanged": "Your profile or server connection changed. Run the check again.",
+      "checkLimit": "The check reached its limit before it covered everything. Ask about a smaller part of the library.",
       "operationUnavailable": "This command could not be carried out with the available server functions.",
       "permissionDenied": "You do not have permission for this administration command on the server."
     },
