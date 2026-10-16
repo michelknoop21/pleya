@@ -156,9 +156,17 @@ extension _AssistantAnswer on AssistantRun {
   /// card: a sentence that names one without a card (past the asked number,
   /// not in the results, not in the library) is left out, and when nothing that
   /// names a card is left, Pleya's own short line stands in. Text and cards
-  /// are then the same set. Only removes words; the cards are untouched.
+  /// are then the same set. Only removes words, line by line so a list keeps
+  /// its shape; the cards are untouched. After an action the action is the
+  /// answer and its subject is no recommendation.
   String _presentedAnswer(String text) {
-    if (!_personal || _ctx.libraryDoctorMode || _spoilerQuestion != null || text.trim().isEmpty) return text;
+    if (!_personal ||
+        _actions.isNotEmpty ||
+        _ctx.libraryDoctorMode ||
+        _spoilerQuestion != null ||
+        text.trim().isEmpty) {
+      return text;
+    }
     final named = _namedRecommendations(text);
     if (named.isEmpty) return text;
     final shown = assistantShownTitles(_displays);
@@ -169,23 +177,63 @@ extension _AssistantAnswer on AssistantRun {
         if (!carded(t)) t,
     ];
     if (missing.isEmpty) return text;
-    bool names(String sentence, ({String title, int? year}) t) {
-      final words = assistantPlainWords(sentence);
-      return assistantTitleWords(t.title).any((w) => ' $words '.contains(' $w '));
-    }
-
-    final sentences = text.split(RegExp(r'(?<=[.!?])\s+|\n+')).where((s) => s.trim().isNotEmpty).toList();
-    final kept = [
-      for (final s in sentences)
-        if (!missing.any((t) => names(s, t))) s,
-    ];
     final cards = named.where(carded).toList();
-    final stillNamesCard = kept.any((s) => cards.any((t) => names(s, t)));
-    if (kept.isNotEmpty && stillNamesCard) return kept.join(' ');
+    final lines = <String>[];
+    for (final line in text.split('\n')) {
+      if (line.trim().isEmpty) continue;
+      final kept = [
+        for (final s in _sentencesOf(line))
+          if (!missing.any((t) => _namesTitle(s, t))) s,
+      ];
+      if (kept.isNotEmpty) lines.add(kept.join(' '));
+    }
+    final stillNamesCard = lines.any((l) => cards.any((t) => _namesTitle(l, t)));
+    if (lines.isNotEmpty && stillNamesCard) return lines.join('\n');
     final dutch = languageName == 'Dutch';
     return cards.isEmpty
         ? (dutch ? 'Ik kon hier geen titel voor controleren.' : 'I could not check a title for this.')
         : (dutch ? 'Dit zijn de titels die ik kon controleren.' : 'These are the titles I could check.');
+  }
+
+  /// The sentences of one line. A title between « and » is never cut, and a
+  /// list marker ("1.") or an abbreviation ("Mr.") before a capital is not an
+  /// end: a sentence ends at . ! or ? followed by a space and a capital, « or
+  /// digit, and not after a number, a single letter or one of a few abbreviations.
+  List<String> _sentencesOf(String line) {
+    final quoted = <String>[];
+    final masked = line.replaceAllMapped(RegExp('«[^»]*»'), (m) {
+      quoted.add(m[0]!);
+      return '\u0001${quoted.length - 1}\u0001';
+    });
+    final parts = <String>[];
+    var start = 0;
+    for (final m in RegExp(r'([.!?])\s+(?=[A-ZÀ-Ý«\u0001\d])').allMatches(masked)) {
+      final head = masked.substring(start, m.start);
+      final lastWord = head.split(RegExp(r'\s+')).last;
+      final abbreviation =
+          m[1] == '.' && RegExp(r'^(\d+|[A-Za-z]|mrs?|ms|dr|st|jr|sr|vs|nr)$', caseSensitive: false).hasMatch(lastWord);
+      if (abbreviation) continue;
+      parts.add(masked.substring(start, m.end).trim());
+      start = m.end;
+    }
+    parts.add(masked.substring(start).trim());
+    return [
+      for (final p in parts)
+        if (p.isNotEmpty) p.replaceAllMapped(RegExp('\u0001(\\d+)\u0001'), (m) => quoted[int.parse(m[1]!)]),
+    ];
+  }
+
+  /// Whether [sentence] names [t]: its title between « and », or with its year,
+  /// or in plain words when the title is distinctive (two words or eight
+  /// letters). A short single word ("Her", "It", "Heat") is plain prose and
+  /// only counts when marked.
+  bool _namesTitle(String sentence, ({String title, int? year}) t) {
+    final lower = sentence.toLowerCase();
+    final title = t.title.toLowerCase();
+    if (lower.contains('«$title')) return true;
+    if (t.year != null && lower.contains('$title (${t.year})')) return true;
+    final words = ' ${assistantPlainWords(sentence)} ';
+    return assistantTitleWords(t.title).any((w) => (w.contains(' ') || w.length >= 8) && words.contains(' $w '));
   }
 
   /// Titles the answer names without a card get one: Pleya looks them up

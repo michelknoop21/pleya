@@ -62,6 +62,9 @@ Future<(AssistantRunResult, List<String>)> _recommend(
   required List<MediaItem> picks,
   Map<String, MediaItem> watched = const {},
   int? maxSteps,
+  List<String> calls = const ['my_watching'],
+  List<AssistantTool> extraTools = const [],
+  String languageName = 'Dutch',
 }) async {
   final m = MultiServerManager();
   addTearDown(m.dispose);
@@ -70,15 +73,16 @@ Future<(AssistantRunResult, List<String>)> _recommend(
   final model = AssistantModelClient(
     AssistantProviderConfig(kind: AssistantProviderKind.ollamaServer, baseUrl: 'http://o.lan:11434', model: 'm'),
     httpClient: MockClient((request) async {
-      final message = turn++ == 0
+      final at = turn++;
+      final message = at < calls.length
           ? {
               'role': 'assistant',
               'content': '',
               'tool_calls': [
                 {
-                  'id': 'c0',
+                  'id': 'c$at',
                   'type': 'function',
-                  'function': {'name': 'my_watching', 'arguments': '{}'},
+                  'function': {'name': calls[at], 'arguments': '{}'},
                 },
               ],
             }
@@ -124,7 +128,8 @@ Future<(AssistantRunResult, List<String>)> _recommend(
     confirm: (_) async => null,
     entitlement: const _Entitled(),
     maxSteps: maxSteps ?? 8,
-    tools: [...assistantTools.where((t) => t.name == 'my_watching'), findTitle],
+    tools: [...assistantTools.where((t) => t.name == 'my_watching'), findTitle, ...extraTools],
+    languageName: languageName,
   ).ask(prompt);
   return (result, asked);
 }
@@ -328,6 +333,76 @@ void main() {
       expect(asked, isEmpty);
       expect(_cards(r), ['The Order']);
       expect(r.text, contains('Reacher'));
+    });
+
+    test('after an action the confirmation is the answer: nothing is cut', () async {
+      final request = AssistantTool(
+        name: 'request_title',
+        description: 'fake',
+        risk: AssistantToolRisk.read,
+        properties: const {},
+        needsServer: false,
+        serves: (_, _) => true,
+        run: (_, _, _) async => const AssistantToolResult({
+          'status': 'requested',
+        }, record: AssistantActionRecord(kind: AssistantActionKind.requestTitle, serverName: '', subject: 'Heat')),
+      );
+      const answer = 'Ik heb «Heat» (1995) aangevraagd.';
+      final (r, _) = await _recommend(
+        'Vraag Heat aan',
+        answer,
+        picks: picks,
+        calls: const ['my_watching', 'request_title'],
+        extraTools: [request],
+      );
+      expect(r.text, answer);
+    });
+
+    test('a list keeps its lines: the item without a card goes, the others and their intro stay', () async {
+      final (r, _) = await _recommend(
+        'Geef me twee films voor vanavond',
+        'Mijn tips:\n1. «The Order» (2024)\n2. «Heat» (1995)\n3. «Code 3» (2024)',
+        picks: picks,
+      );
+      expect(_cards(r), ['The Order', 'Code 3']);
+      expect(r.text, 'Mijn tips:\n1. «The Order» (2024)\n3. «Code 3» (2024)');
+    });
+
+    test('a marked title with a dot is not cut in two', () async {
+      final (r, _) = await _recommend(
+        'Zoek een film voor vanavond',
+        'Kijk «The Order» (2024). Of «Mr. Robot» (2015) als je iets anders wilt.',
+        picks: picks,
+      );
+      expect(r.text, 'Kijk «The Order» (2024).');
+    });
+
+    test('a short common word is only a title when it is marked: "her" in prose stays', () async {
+      final (r, _) = await _recommend(
+        'Zoek een film voor vanavond',
+        'Kijk «The Order» (2024), perfect voor her en der. Of «Her» (2013).',
+        picks: picks,
+      );
+      expect(r.text, 'Kijk «The Order» (2024), perfect voor her en der.');
+    });
+
+    test('the short line speaks the run\'s language', () async {
+      final (r, _) = await _recommend(
+        'Find a movie for tonight',
+        '«Heat» (1995) or «Dune» (2021).',
+        picks: picks,
+        languageName: 'English',
+      );
+      expect(r.text, 'I could not check a title for this.');
+    });
+
+    test('a subtitle title is matched whole', () async {
+      final (r, _) = await _recommend(
+        'Zoek een film voor vanavond',
+        'Kijk «The Order» (2024). Of «Puss in Boots: The Last Wish» (2022), een leuke.',
+        picks: picks,
+      );
+      expect(r.text, 'Kijk «The Order» (2024).');
     });
   });
 }

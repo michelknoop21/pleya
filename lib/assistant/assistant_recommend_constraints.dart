@@ -166,4 +166,5 @@ int? assistantAskedCount(String prompt) {
   return _alternative.hasMatch(lower) && (asked ?? 1) < 2 ? 2 : asked;
 }
 
-final _alternative = RegExp(r'\b(alternatie(?:f|ven)|alternatives?|plan b)\b');
+// Singular with an article: "een alternatief", "an alternative". "Alternatieven voor Dune" asks for a list.
+final _alternative = RegExp(r'\b(?:een|één|an?|one)\s+(?:alternatie(?:f|ve)|alternative)\b|\bplan b\b');
