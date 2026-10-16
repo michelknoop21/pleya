@@ -92,6 +92,27 @@ Wat Pleya na een actievraag laat zien, in drie lagen. De eerste twee zijn gedraa
 - "Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw." toont per herstarte taak eerst "Taak opnieuw gestart" en daarna "Taak loopt", "Taak klaar" of "Taak mislukt".
 - "Scan alle filmbibliotheken op al mijn servers." toont per bibliotheek "Scan gestart" en blijft daar staan. Dat is geen fout: zonder operatie-id volgt Pleya een scan niet (BP-01a). De vervolgvraag naar de lopende taken staat eronder.
 
+## Tipantwoord na hardwareronde op build 372 (16 oktober 2026)
+
+Op de Apple TV gaf "geef me een tip voor vanavond" het antwoord "Hoe klinkt The Bear (2022)?", een stelling die als vraag las. Daarnaast noemde "Give me a tip based on what I watched" drie titels met jaartal terwijl er één kaart kwam, en "paar tips" ging samen met één kaart.
+
+**Wijziging:** één regel in de systeemprompt, alleen met `my_watching`: voor een tip een stelling geven en nooit een vraag, alleen titels noemen die `my_watching` als pick teruggaf, niet meer dan gevraagd, en bij één pick één tip ("nooit 'een paar'").
+
+**Meting** (echte modellen via Ollama Cloud, echte `my_watching`, steekproef; telkens vier runs per vraag):
+
+| Model | Variant | Runs | Antwoord eindigt als vraag |
+| --- | --- | --- | --- |
+| glm-5.3-flash | zonder de regel, drie tipvragen met drie picks | 12 | 4 |
+| glm-5.3-flash | met de regel, vijf vragen (drie picks, "drie tips" bij acht picks, één pick) | 20 | 0 |
+| gemma4:31b | zonder de regel | 12 | 0 |
+| gemma4:31b | met de regel | 20 | 0 |
+
+"Geef me drie tips voor vanavond" bij acht picks: bij beide modellen in alle vier runs drie titels in de tekst en drie kaarten.
+
+**Het geval "meer titels in de tekst dan kaarten" is wel gereproduceerd, en de oorzaak is gevonden.** "Zoek een film voor vanavond" telt als één gevraagde titel (`assistantAskedCount`: "een film"), en Pleya houdt het aantal kaarten bewust op het gevraagde aantal (test "an asked number caps the cards even when the answer names more"). Noemt het model dan twee titels, zoals "«Heat» (1995) ... Wil je iets luchtigers, dan «Puss in Boots» (2022)", dan staat er één kaart bij twee titels. Dit gebeurde in 2 van 40 runs met de nieuwe regel (één per model, bij die vraag). De regel "niet meer dan gevraagd" verlaagt de kans, maar sluit het niet uit. Een harde oplossing in Pleya, de kaarten laten volgen wat de tekst noemt (tot een bovengrens) in plaats van het gevraagde aantal, is niet gebouwd: dat verandert een bewust vastgelegd contract en is Michels keuze.
+
+**Niet gemeten:** de situatie op het toestel zelf, andere modellen, en picks die niet in de bibliotheek staan (de aanname dat Spider-Man: Homecoming en Emily in Paris daarom geen kaart kregen is niet uit het logboek gecontroleerd).
+
 ## Hardwarechecklist iOS 369 en tvOS 370 (vanavond)
 
 De builds 369 (iPhone en iPad) en 370 (Apple TV) bevatten de vanavond-route; de teksten staan in beide binaries (markers geteld op 16 oktober 2026, zie PR #347). Op een toestel is niets bevestigd. Voorwaarde: het buildnummer in Instellingen klopt, een beheerdersprofiel met minstens één server online, Big P aan met een ingesteld model. Noteer per punt geslaagd of gefaald, het model en de taal. De chips zijn drie willekeurige mogelijkheden: staat een genoemde chip er niet, open Big P opnieuw. Een getypte vraag telt niet als chip; typ alleen als een punt dat zegt.
