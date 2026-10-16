@@ -8,7 +8,7 @@ Aanleiding (Michel, 16 oktober): "het homescherm, de carousels, makkelijker te v
 iOS". tvOS werkt goed en blijft zoals het is. Dit document hoort bij stap 2 van HOME-R1.
 Stap 1 is de tvOS-fix voor de volgorde van eigen rijen (PR #358), stap 2 zijn deze mockups en stap 3
 is het bouwen van Home aanpassen op iOS, iPadOS en macOS. Alleen deze drie stappen horen bij
-HOME-R1; ze staan nog niet in ROADMAP.md.
+HOME-R1; ze stonden bij het schrijven van dit plan nog niet in ROADMAP.md.
 
 De beelden en hoe je ze opnieuw rendert staan in
 [docs/assets/ios-unified/home-indeling-44/README.md](../assets/ios-unified/home-indeling-44/README.md).
@@ -64,7 +64,7 @@ alleen een tik (regel 708) en zit lang drukken (regel 891) op de kaarten. Voor i
 daarom: standaard genomen, te bevestigen. De regel onderaan is de vaste ingang; het menu op de
 rijkop komt op de iPad als lang drukken op de kop en op de Mac als rechtsklik en drie puntjes.
 
-Op de Mac wordt dat een rechtsklik op de rijkop, en bij hover verschijnt naast "Alles bekijken"
+Op de Mac wordt dat (te bevestigen, zie hierboven) een rechtsklik op de rijkop, en bij hover verschijnt naast "Alles bekijken"
 een knop met drie puntjes die hetzelfde menu opent (44 N). Rechtsklik is de Mac-gewoonte; de knop
 maakt het menu vindbaar voor wie niet rechtsklikt.
 
@@ -104,14 +104,14 @@ de muis sleept (44 M); de eigen rij heeft daar een knop Bewerken in de regel omd
    van de iPad-presentatie, en DEC-145 laat de iPhone-Home dezelfde rijlijst lezen als tvOS.
 2. Een eigen rij kan verborgen en verwijderd worden. Verbergen is terug te draaien; verwijderen
    vraagt een bevestiging (44 E en 44 F).
-3. Lang drukken op een rijkop houdt het snelle menu: Omhoog, Omlaag, Verbergen, Home aanpassen
+3. Op de iPhone houdt lang drukken op een rijkop het snelle menu: Omhoog, Omlaag, Verbergen, Home aanpassen
    (44 B).
 4. Een rij van een offline server blijft in de lijst, mét zijn opgeslagen plek (44 K). Dit vergt PR #358
    (`homeLayoutOrderAfterMove`, HOME-R1 stap 1) en die moet eerst gemerged zijn; zie de
    bouwvoorwaarden.
 5. De bestaande tegel Instellingen > Indeling van Home opent op iPhone, iPad en Mac hetzelfde
    scherm als 44 C. Geen tweede implementatie. De TV-tak van `HomeLayoutScreen` (pijlknoppen en
-   schakelaar, geen wizard; de tegel in `settings_tv_page.dart:153`) blijft ongewijzigd.
+   schakelaar, geen wizard; de tegel in `lib/screens/settings/parts/settings_tv_page.dart:153`) blijft ongewijzigd.
 6. "Alle N in Films" komt in het menu van een eigen rij. N is het werkelijke aantal, niet de 42
    uit het beeld, en de volledige lijst gebruikt hetzelfde filter als de eigen rij (zoals ROW1c op
    tvOS).
@@ -131,7 +131,7 @@ Afwijking mockup, bij bouw volgen besluit: in 44 E staat "Alle 42 in Films" met 
 - De drie stappen van een rij maken zijn gelijk aan tvOS: Naam en soort, Filters, Voorbeeld, met
   dezelfde vijf filterregels en teksten.
 - Vaste rijen (Uitgelicht, Verder kijken) zijn niet te verplaatsen.
-- PR #358 moet eerst gemerged zijn. Die fix raakt alleen de tvOS-controller. In
+- PR #358 moet eerst gemerged zijn. Die fix raakt alleen tvOS-code en `home_row_layout.dart`. In
   `home_layout_screen.dart` schrijft `move` (regel 148 tot 155) de volgorde nog op de oude manier
   en laat ids van rijen die niet in de lijst staan vallen. Het nieuwe scherm gebruikt
   `homeLayoutOrderAfterMove` uit #358.
@@ -152,5 +152,7 @@ offline rij plus herstart, en Pleya Verify met screenshots op de iOS-simulator (
 macOS. Dit document stuurt toekomstig werk aan en heeft een onafhankelijke review nodig voor de
 merge.
 
-BP-12a is het plan voor Big P-beheer van Home-rijen. Dat plan gebruikt dezelfde rijlijstfunctie
-(`homeLayoutEntries`), staat in een apart plan en is geen onderdeel van deze wijziging.
+BP-12a is Big P-beheer van Home-rijen. Dat plan is nog niet geschreven; het zou dezelfde
+rijlijstfunctie (`homeLayoutEntries`) gebruiken en is geen onderdeel van deze wijziging.
+`homeLayoutEntries` bestaat nog niet op main: de rijlijst wordt nu in `home_layout_screen.dart` zelf
+opgebouwd.
