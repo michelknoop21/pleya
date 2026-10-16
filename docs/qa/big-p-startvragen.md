@@ -37,7 +37,7 @@ Bij elke wijziging van `assistant.examples` in `en.i18n.json` of `nl.i18n.json`,
 
 ### Hoe deze ronde is gedraaid
 
-Een tijdelijke test (niet gecommit) stuurt elke formulering, per taal, via `AssistantRun` naar Ollama Cloud met de echte toolnamen, beschrijvingen en eigenschappen. De tools zelf zijn stubs die `{ok: true}` teruggeven. De ronde is dus geen toestelrun: er zijn geen servers, bibliotheken of taken, en geen Seerr, Trakt of geheugen. Er is niet getikt op een chip; de vraag gaat als gewone prompt de run in.
+Een tijdelijke test (niet gecommit) stuurt elke formulering, per taal, via `AssistantRun` naar Ollama Cloud met de echte toolnamen, beschrijvingen en eigenschappen. De tools zelf zijn stubs die `{ok: true}` teruggeven. De ronde is dus geen toestelrun: er zijn in deze eerste rondes geen (zichtbare) servers, bibliotheken of taken (zie de ronde met realistische stubs hieronder), en geen Seerr, Trakt of geheugen. Er is niet getikt op een chip; de vraag gaat als gewone prompt de run in.
 
 De kolom "eerste tool" is de maat uit stap 4 hierboven. "Ergens in de run" telt ook runs die eerst een hulptool aanriepen (`list_servers`, `list_libraries`, `list_jobs`) en daarna het tool van de mogelijkheid.
 
@@ -51,7 +51,7 @@ Bij beide modellen, in beide talen, op beide profielen:
 
 ### Ronde met realistische stubs (16 okt 2026)
 
-De eerste rondes hadden een fout in de opzet: de testcontext kopieert zichzelf bij elke ask, waardoor de stubs geen zichtbare servers hadden. Alleen tools zonder server (zoals `search_catalog`, `list_servers`, `diagnose_library`) werden aangeboden; `list_libraries`, `find_media`, `scan_library`, `retry_job`, `list_jobs` en `compare_servers` ontbraken. De conclusie "stopt bij het hulptool" en de cijfers voor scan, taken herstarten, vergelijken en de Home-rij uit de eerdere rondes gelden daarom niet. De tabelrijen voor vanavond, serie starten en kinderen zijn niet geraakt, behalve dat `find_media` toen ontbrak; die vragen zijn hieronder opnieuw gedraaid.
+De eerste rondes hadden een fout in de opzet, niet in de app: de testcontext was een subklasse die de zichtbare servers zelf opgaf, en `AssistantRun` maakt bij elke ask een kopie met `context.fresh()`, die alleen de basisklasse teruggeeft. De kopie had daardoor geen zichtbare servers. Alleen tools zonder server (zoals `search_catalog`, `list_servers`, `diagnose_library`) werden aangeboden; `list_libraries`, `find_media`, `scan_library`, `retry_job`, `list_jobs` en `compare_servers` ontbraken. De conclusie "stopt bij het hulptool" en de cijfers voor scan, taken herstarten, vergelijken en de Home-rij uit de eerdere rondes gelden daarom niet. De tabelrijen voor vanavond, serie starten en kinderen zijn niet geraakt, behalve dat `find_media` toen ontbrak; die vragen zijn hieronder opnieuw gedraaid.
 
 Opzet nu: twee servers (Zolder, Kelder; Jellyfin, online, beheerder), per server een bibliotheek Films en Series, een mislukte taak (`job-1`) op Zolder, `search_catalog` met `query_id` en `can_become_home_row`, en het echte server-id-argument. De vraag gaat als prompt de run in; de aanvragen van het model worden gelogd, de tools zelf zijn stubs.
 
@@ -62,11 +62,11 @@ Opzet nu: twee servers (Zolder, Kelder; Jellyfin, online, beheerder), per server
 | 16 okt 2026 | gemma4:31b | en | 10 | 10 | |
 | 16 okt 2026 | gemma4:31b | nl | 10 | 9 | doctor "ontbrekende afleveringen": `list_libraries`, geen `diagnose_library` |
 
-Vanavond (3 vragen) en serie starten: bij beide modellen en beide talen was het eerste tool `search_catalog` of `find_media` (16 van 16). Scan, taken herstarten, vergelijken en Home-rij: het bedoelde tool werd in alle 16 runs aangeroepen, na de hulptools die het nodig had (`list_servers`, `list_libraries`, `list_jobs`; voor de Home-rij `search_catalog` en dan `create_home_row` met het `query_id`). De scan riep `scan_library` voor beide bibliotheken aan, `retry_job` kreeg `job-1` op Zolder, `compare_servers` werd voor beide richtingen aangeroepen.
+Vanavond (3 vragen) en serie starten: bij beide modellen en beide talen was het eerste tool `search_catalog` of `find_media` (16 van 16). Scan, taken herstarten, vergelijken en Home-rij: het bedoelde tool werd in alle 16 runs aangeroepen, na de hulptools die het meestal nodig had (`list_servers`, `list_libraries`, `list_jobs`; voor de Home-rij `search_catalog` en dan `create_home_row` met het `query_id`). De scan riep `scan_library` voor beide filmbibliotheken aan, `retry_job` kreeg `job-1` op Zolder, `compare_servers` werd voor beide richtingen aangeroepen.
 
-Doctor was de enige die wisselde. De twee gemiste runs zijn herhaald: vier extra runs per model en vraag in beide talen gaf 31 van 32 aanroepen van `diagnose_library`. Over beide modellen 37 van 40 runs, dus de misser is een uitzondering (circa 1 op 13), geen vaste route-fout. Bij een misser antwoordt Pleya met "Geen gecontroleerde bibliotheekgegevens; de diagnose blijft onbekend."
+Doctor was de enige die wisselde. De twee gemiste runs (glm nl "dubbele films": alleen `list_servers`; gemma nl "ontbrekende afleveringen": `list_libraries` zonder `diagnose_library`) zijn herhaald: vier extra runs per model en vraag in beide talen gaf 31 van 32 aanroepen van `diagnose_library`. De ene misser daarbij was weer gemma nl "ontbrekende afleveringen". Over beide modellen 37 van 40 runs, dus de misser is een uitzondering (circa 1 op 13), geen vaste route-fout. Bij een misser antwoordt Pleya met "Geen gecontroleerde bibliotheekgegevens; de diagnose blijft onbekend."
 
-De mutaties (`scan_library`, `retry_job`, `create_home_row`) zijn alleen als aanvraag van het model geteld. De bevestigingskaart, het uitvoeren en de status daarna zijn niet getest.
+Elke vraag is per model en taal één keer gedraaid (doctor vijf keer): dit zijn steekproeven, geen percentages. De mutaties (`scan_library`, `retry_job`, `create_home_row`) zijn alleen als aanvraag van het model geteld. De bevestigingskaart, het uitvoeren en de status daarna zijn niet getest.
 
 Samen kijken: beide modellen riepen `recommend_together` direct aan met de deelnemers "family" of "gezin" (gemma nl: "me" en "gezin"). Een wedervraag over wie er meekijkt, het bedoelde gedrag, kwam niet voor.
 
