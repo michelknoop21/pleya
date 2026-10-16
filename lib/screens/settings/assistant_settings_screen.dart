@@ -35,6 +35,7 @@ import '../../widgets/tv/tv_page_surface.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import '../big_p/big_p_mobile_session.dart';
 import 'async_form_state_mixin.dart';
+import 'household_kids/household_kids_tile.dart';
 import 'memory/memory_screen.dart';
 
 part 'assistant_settings_screen_support.dart';

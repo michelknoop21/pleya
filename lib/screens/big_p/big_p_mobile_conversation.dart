@@ -11,6 +11,7 @@ import '../../services/pleya_keychain.dart';
 import '../../theme/mono_theme.dart';
 import '../../theme/mono_tokens.dart';
 import '../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
+import '../../widgets/big_p/assistant/big_p_household_kids_card.dart';
 import '../../widgets/big_p/assistant/big_p_kids_ages_card.dart';
 import '../../widgets/big_p/assistant/big_p_labels.dart';
 import '../../widgets/big_p/assistant/big_p_memory_card.dart';
@@ -75,6 +76,16 @@ class BigPMobileConversation extends StatelessWidget {
           key: ObjectKey(prompt),
           embedded: true,
           onSave: (ages) => unawaited(c.saveKidsAgesAndRetry(ages)),
+        ),
+      );
+    }
+    if (c.householdKidsPrompt case final prompt? when c.availability == AssistantAvailability.ready) {
+      return _pinned(
+        _resultAbove(context),
+        BigPHouseholdKidsCard(
+          key: ObjectKey(prompt),
+          embedded: true,
+          onSave: (kids) => unawaited(c.saveHouseholdKidsAndRetry(kids)),
         ),
       );
     }
@@ -211,7 +222,7 @@ class BigPMobileConversation extends StatelessWidget {
   /// cards only the lead: the cards are the list, as on TV.
   List<Widget> _result(BuildContext context) => [
     ..._resultAbove(context),
-    if (regular && controller.kidsAgesPrompt == null) ...[
+    if (regular && !controller.kidsCardWaits) ...[
       const SizedBox(height: 12),
       BigPMobileFollowUps(controller: controller, onAsk: onExample),
     ],

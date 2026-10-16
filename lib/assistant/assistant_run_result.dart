@@ -71,6 +71,7 @@ extension _AssistantResult on AssistantRun {
       return AssistantRunResult(
         end: end,
         actions: List.unmodifiable(_actions),
+        displays: [_displays.whereType<AssistantHouseholdKidsPrompt>().first],
         householdKidsNeeded: true,
         providerError: error,
         error: failure,

@@ -124,3 +124,11 @@ List<Widget> _memoryEntry(BuildContext context, FocusNode focusNode, {bool below
     if (!below) const SizedBox(height: 16),
   ];
 }
+
+/// The row "Kinderen in huis" (mockup 45 A): the household's children need no
+/// model, so it stands on both screens, under the memory.
+List<Widget> _householdEntry({bool below = false}) => [
+  if (below) const SizedBox(height: 16),
+  const HouseholdKidsTile(),
+  if (!below) const SizedBox(height: 16),
+];

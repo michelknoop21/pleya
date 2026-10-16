@@ -331,6 +331,53 @@ void main() {
     expect(c.displays.whereType<AssistantKidsAgesPrompt>(), isEmpty);
   });
 
+  test('saveHouseholdKidsAndRetry saves the children and asks the same question again', () async {
+    var household = <HouseholdKid>[];
+    final pick = AssistantTool(
+      name: 'pick',
+      description: 'pick',
+      risk: AssistantToolRisk.read,
+      properties: const {},
+      needsServer: false,
+      serves: (_, _) => true,
+      run: (ctx, _, _) async {
+        if (ctx.audienceAge == null) throw const AssistantToolError('household_kids_unknown');
+        return const AssistantToolResult({'ok': true});
+      },
+    );
+    final c = AssistantController(
+      buildContext: (_) => _ctx(kidsProfile: false, household: household),
+      entitlement: const _Entitled(),
+      loadConfig: () async =>
+          const AssistantProviderConfig(kind: AssistantProviderKind.ollamaServer, baseUrl: 'http://o.lan', model: 'm'),
+      modelFor: (_) => _model([
+        {'name': 'pick', 'args': <String, Object?>{}},
+        'klaar',
+        {'name': 'pick', 'args': <String, Object?>{}},
+        'klaar',
+      ]).model,
+      languageName: () => 'Dutch',
+      tools: [pick],
+      saveHouseholdKids: (kids) async {
+        household = kids;
+        return true;
+      },
+    );
+    addTearDown(c.dispose);
+
+    await c.submit(prompt);
+    expect(c.householdKidsPrompt?.prompt, prompt);
+    expect(c.kidsCardWaits, isTrue);
+    expect(c.answer, t.assistant.kids.householdFirst);
+
+    final sam = HouseholdKid(id: 'a', name: 'Sam', birthMonth: '${DateTime.now().year - 3}-01');
+    await c.saveHouseholdKidsAndRetry([sam]);
+    expect(household, [sam]);
+    expect(c.runs, 2);
+    expect(c.prompt, prompt);
+    expect(c.householdKidsPrompt, isNull);
+  });
+
   group('an adult profile: the gate follows the question, not the profile', () {
     // A child born three and a half years ago: three, for the next five months.
     final born = DateTime.now().subtract(const Duration(days: 365 * 3 + 180));

@@ -240,6 +240,21 @@ ids:
   - id: assistant.kidsAges.button
     role: button
     instanceable: true
+  - id: household.kids.row
+    role: list.item
+    instanceable: true
+  - id: household.kids.button
+    role: button
+    instanceable: true
+  - id: household.kids.sheet
+    role: sheet
+    instanceable: false
+  - id: household.kids.field
+    role: field
+    instanceable: false
+  - id: assistant.householdKids
+    role: sheet
+    instanceable: false
   - id: assistant.memory
     role: sheet
     instanceable: false

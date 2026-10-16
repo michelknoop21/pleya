@@ -12,10 +12,11 @@ class AssistantKidsAgesPrompt extends AssistantDisplay {
 }
 
 /// A question about the household's children came before any child was
-/// entered: the run ends with Pleya's own line and no title. Entering the
-/// children belongs to the household editor (BP-11c), so no card renders it.
+/// entered: the run ends with Pleya's own line and no title, and a card asks
+/// for the children (45 G). Pleya then submits [prompt] again.
 class AssistantHouseholdKidsPrompt extends AssistantDisplay {
-  const AssistantHouseholdKidsPrompt();
+  const AssistantHouseholdKidsPrompt(this.prompt);
+  final String prompt;
 }
 
 /// How a tool behaves on a children's profile.

@@ -12,6 +12,7 @@ import 'assistant_capabilities.dart';
 import 'assistant_entitlement.dart';
 import 'assistant_intent.dart';
 import 'assistant_kid_audience.dart';
+import '../profiles/household_kids_store.dart';
 import 'assistant_kids_ages_store.dart';
 import 'assistant_memory.dart';
 import 'assistant_execution.dart';
@@ -62,8 +63,10 @@ class AssistantController extends ChangeNotifier {
     this.jobWatchLimit = const Duration(minutes: 2),
     this._jobsFor,
     Future<void> Function(List<int> ages)? saveKidsAges,
+    Future<bool> Function(List<HouseholdKid> kids)? saveHouseholdKids,
   }) : _now = now ?? DateTime.now,
        _saveKidsAges = saveKidsAges ?? KidsAgesStore().save,
+       _saveHouseholdKids = saveHouseholdKids ?? ((kids) => HouseholdKidsStore().save(kids, kidsProfile: false)),
        _loadConfig = loadConfig ?? AssistantProviderStore.instance.load,
        _modelFor = modelFor ?? AssistantModelClient.new,
        _languageName = languageName ?? assistantLanguageName,
@@ -128,6 +131,9 @@ class AssistantController extends ChangeNotifier {
 
   /// Writes the children's ages of this profile ([KidsAgesStore.save]).
   final Future<void> Function(List<int> ages) _saveKidsAges;
+
+  /// Writes the household's children ([HouseholdKidsStore.save]).
+  final Future<bool> Function(List<HouseholdKid> kids) _saveHouseholdKids;
 
   /// At most one model preload per window; Ollama keeps it loaded for
   /// [_preloadKeepAlive], which outlasts the window.
@@ -470,6 +476,32 @@ class AssistantController extends ChangeNotifier {
     final prompt = _displays.whereType<AssistantKidsAgesPrompt>().firstOrNull?.prompt ?? _prompt;
     await _saveKidsAges(ages);
     if (prompt != null && !_disposed) await submit(prompt);
+  }
+
+  /// Either kids card (ages or household) waits under the answer.
+  bool get kidsCardWaits => kidsAgesPrompt != null || householdKidsPrompt != null;
+
+  /// The household card waits: a question about the children came before any
+  /// child was entered (45 G). Every surface hides its question field until it
+  /// is answered or closed.
+  AssistantHouseholdKidsPrompt? get householdKidsPrompt =>
+      state == AssistantSurfaceState.result ? displays.whereType<AssistantHouseholdKidsPrompt>().firstOrNull : null;
+
+  /// The household card was answered: saves [kids] on this device and asks the
+  /// question that needed them again. Nothing is asked again when the store
+  /// refused the write.
+  Future<void> saveHouseholdKidsAndRetry(List<HouseholdKid> kids) async {
+    final prompt = _displays.whereType<AssistantHouseholdKidsPrompt>().firstOrNull?.prompt ?? _prompt;
+    if (!await _saveHouseholdKids(kids)) return;
+    if (prompt != null && !_disposed) await submit(prompt);
+  }
+
+  /// The household card closed unanswered (Menu): the answer stays, the card goes.
+  void dismissHouseholdKids() {
+    for (final task in _tasks) {
+      task.displays.removeWhere((d) => d is AssistantHouseholdKidsPrompt);
+    }
+    _update();
   }
 
   /// The ages card closed unanswered (Menu): the answer stays, the card goes.
