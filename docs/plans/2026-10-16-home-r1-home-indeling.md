@@ -1,7 +1,8 @@
 # HOME-R1: Home-rijen verplaatsen op iPhone, iPad en Mac
 
-Voorstel bij mockupset 44, 16 oktober 2026. Status: wacht op akkoord van Michel. Er wordt niets
-gebouwd voordat de beelden zijn goedgekeurd.
+Voorstel bij mockupset 44, 16 oktober 2026. Status: Akkoord Michel 16 okt 2026 (inhoudelijk). Michel heeft de inhoud en de richting
+goedgekeurd, geen pixelcontrole van alle 50 beelden. Bouwen mag; bij een verschil tussen beeld en
+besluit geldt het besluit.
 
 Aanleiding (Michel, 16 oktober): "het homescherm, de carousels, makkelijker te verplaatsen, ook op
 iOS". tvOS werkt goed en blijft zoals het is. Dit document hoort bij stap 2 van HOME-R1; stap 1
@@ -87,30 +88,46 @@ wizard van de eigen rij die je aantikt, met de stappen als drie tabs. Zo bewerk 
 de lijst uit het oog te verliezen. Op de Mac is het een paneel over de gedimde Home waarin je met
 de muis sleept (44 M); de eigen rij heeft daar een knop Bewerken in de regel omdat er ruimte is.
 
-## Open vragen voor Michel
+## Besluiten (Michel, 16 okt 2026)
 
-1. Welke lijst op iPad en Mac? De iPad- en Mac-Home tekenen vandaag één rij per server-hub,
-   dus 44 L en M tonen twee keer "Recent toegevoegde series". Wil je daar de unified lijst van
-   iPhone en tvOS (één regel, ook Recent uitgebracht en Nu op tv), dan moet de desktop-Home zelf
-   eerst unified rijen tekenen. Dat raakt DEC-121 (unified desktop en iPad).
-2. Eigen rij verbergen, of alleen verwijderen? Het tv-paneel biedt bij een eigen rij geen
-   Verbergen, het instellingenscherm wel. De mockup biedt beide. Gelijktrekken met tvOS betekent
-   Verbergen uit 44 E halen.
-3. Lang drukken op een rijkop. Snelle acties zoals in 44 B, of meteen naar Home aanpassen?
-4. Offline server. 44 K houdt zo'n rij in de lijst. Dat werkt pas als de fix uit stap 1 er is:
-   vandaag valt een rij van een offline server bij de volgende `setOrder` uit de volgorde.
-5. Instellingen > Indeling van Home. Voorstel: die tegel opent voortaan hetzelfde scherm als
-   44 C, zodat er één plek is. Akkoord?
-6. "Alle 42 in Films" in het menu van een eigen rij. Op tvOS bestaat die ingang als tegel aan
-   het eind van de rij. Op iPhone is hij nieuw. Erin laten?
-7. Wizard op de iPhone. Getekend als sheet op volle hoogte. Op de grote iPhone blijft onder
-   stap 1 en 3 veel ruimte over; een halve hoogte die meegroeit kan ook.
-8. Mac-toetsenbord. Niet getekend: een rij verplaatsen met een sneltoets. Nodig, of is slepen
-   en het rechtsklikmenu genoeg?
+1. iPad en Mac tekenen voorlopig één rij per server-hub, en de bewerklijst komt overeen met de
+   echte Home. Beelden 44 L, M en N laten dat al zo zien. Unified maken van de iPad- en Mac-Home is
+   een latere, aparte wijziging en valt buiten HOME-R1. Achtergrond: DEC-103 scheidt de iPhone-Home
+   van de iPad-presentatie, en DEC-145 laat de iPhone-Home dezelfde rijlijst lezen als tvOS.
+2. Een eigen rij kan verborgen en verwijderd worden. Verbergen is terug te draaien; verwijderen
+   vraagt een bevestiging (44 E en 44 F).
+3. Lang drukken op een rijkop houdt het snelle menu: Omhoog, Omlaag, Verbergen, Home aanpassen
+   (44 B).
+4. Een rij van een offline server blijft in de lijst, mét zijn opgeslagen plek (44 K). Dit hangt af
+   van PR #358 (`homeLayoutOrderAfterMove`, HOME-R1 stap 1) en vraagt regressietests.
+5. De bestaande tegel Instellingen > Indeling van Home opent hetzelfde scherm als 44 C. Geen tweede
+   implementatie.
+6. "Alle N in Films" komt in het menu van een eigen rij. N is het werkelijke aantal, niet de 42
+   uit het beeld, en de volledige lijst gebruikt hetzelfde filter als de eigen rij (zoals ROW1c op
+   tvOS).
+7. De wizard op de iPhone is een sheet op volle hoogte, zoals getekend.
+8. Geen sneltoets op de Mac. Slepen en rechtsklik volstaan; gewone toetsenbordbediening blijft
+   werken.
+
+Afwijking mockup, bij bouw volgen besluit: in 44 E staat "Alle 42 in Films" met een vast getal
+(besluit 6: dynamisch). Meer verschillen zijn er niet.
+
+## Bouwvoorwaarden
+
+- Bestaande reordercode en providers gebruiken (`setOrder` met alle ids, `setRowHidden` voor alle
+  ids van een rij, `saveCustomRow`, `removeCustomRow`). Geen tweede systeem.
+- Verborgen rijen en rijen van een offline server houden hun opgeslagen volgorde, ook na een
+  herstart.
+- De drie stappen van een rij maken zijn gelijk aan tvOS: Naam en soort, Filters, Voorbeeld, met
+  dezelfde vijf filterregels en teksten.
+- Vaste rijen (Uitgelicht, Verder kijken) zijn niet te verplaatsen.
+- Testen op iPhone, iPad en Mac, inclusief samengevoegde rijen en meerdere Plex-bibliotheken.
+- De tvOS-weergave blijft onaangeraakt.
 
 ## Na akkoord
 
 De bouw volgt stap 3 van het plan: één gedeelde functie voor de lijstregels (BP-12a), dezelfde
 providermethodes als nu, tests voor het verplaatsen van een eigen, een samengevoegde en een
 offline rij plus herstart, en Pleya Verify met screenshots op de iOS-simulator (iPhone en iPad) en
-macOS. tvOS blijft ongewijzigd.
+macOS. Dit document stuurt toekomstig werk aan en heeft een onafhankelijke review nodig voor de
+merge.

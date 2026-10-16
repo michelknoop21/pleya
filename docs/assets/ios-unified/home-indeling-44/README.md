@@ -1,7 +1,7 @@
 # Mockupset 44: Home aanpassen op iPhone, iPad en Mac
 
-Status: PROPOSED (16 oktober 2026). Nog niet bouwen: eerst een akkoord van Michel per beeld.
-Roadmap: HOME-R1 stap 2. Het voorstel met de inventaris, de keuzes en de open vragen staat in
+Status: akkoord Michel 16 okt 2026 (inhoudelijk: richting en inhoud, geen pixelcontrole van alle beelden). Bij een verschil tussen beeld en besluit geldt het besluit.
+Roadmap: HOME-R1 stap 2. Het voorstel met de inventaris, de keuzes en de besluiten staat in
 [docs/plans/2026-10-16-home-r1-home-indeling.md](../../../plans/2026-10-16-home-r1-home-indeling.md).
 
 De tvOS-weergave verandert niet. De lijstregel en de wizard nemen de vorm over van mockup 32 B
@@ -40,7 +40,8 @@ Bij de beelden:
   samengevoegde rij is één regel en Recent uitgebracht en Nu op tv staan erin.
 - 44 L, M en N tonen de lijst zoals de iPad- en Mac-Home hem vandaag tekenen: één regel per
   server-hub (twee keer "Recent toegevoegde series", één per server) en zonder Recent uitgebracht
-  of Nu op tv. Zie open vraag 1 in het voorstel.
+  of Nu op tv. Dat is besluit 1: voorlopig per server-hub, unified is een latere aparte wijziging.
+- 44 E toont "Alle 42 in Films". Volgens besluit 6 is het getal in de app het werkelijke aantal.
 - De ronde vlek in 44 D en 44 L is de vinger; het handje in 44 M de muiscursor. Ze horen niet bij
   de app.
 - In 44 J is de metaregel amber, de enige kleurwissel uit C4.
