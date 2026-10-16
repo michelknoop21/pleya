@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_entitlement.dart';
+import 'package:pleya/assistant/assistant_kid_audience.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_title_facts.dart';
@@ -458,6 +459,33 @@ void main() {
       ];
       expect(users, ['Iets voor mijn kinderen', 'nog een?']);
       expect('${m.sent.first}', isNot(contains('Saw')));
+    });
+
+    test('kids follow-ups are replayed with their answers, adult turns are not', () async {
+      final m = _model(['Kijk «Toy Story» (1995).']);
+      await AssistantRun(
+        model: m.model,
+        context: _ctx(kidsProfile: false, household: [kid]),
+        confirm: (_) async => null,
+        entitlement: const _Entitled(),
+        conversation: const [
+          AssistantTurn(question: 'Een enge film graag', answer: 'Kijk «Saw» (2004).'),
+          AssistantTurn(question: 'Iets voor mijn kinderen', answer: 'Kijk «Toy Story» (1995).'),
+          AssistantTurn(question: 'nog een?', answer: 'Kijk «Bluey» (2018).'),
+        ],
+      ).ask('nog een?');
+      final users = [
+        for (final x in m.sent.first)
+          if (x['role'] == 'user') '${x['content']}',
+      ];
+      expect(users, ['Iets voor mijn kinderen', 'nog een?', 'nog een?']);
+      expect('${m.sent.first}', contains('Bluey'));
+    });
+
+    test('a mixed-audience split keeps the kids part gated; the other part is not about the children', () {
+      const parts = ['Suggesties voor mijn kinderen', 'een film voor vanavond'];
+      expect(kidAudienceOf(parts[0], const [], [kid]).on, isTrue);
+      expect(kidAudienceOf(parts[1], const [], [kid]).on, isFalse);
     });
 
     test('a kids profile keeps its own ages, whatever the household holds', () async {

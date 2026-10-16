@@ -11,15 +11,15 @@ RegExp _re(String body) => RegExp('$_start(?:$body)$_end', unicode: true);
 
 final _direct = _re(
   r'(?:mijn|onze|ons|de|my|our|the|voor|for|met|with)\s+(?:(?:kleine|jonge|little)\s+)?'
-  r'(?:kinderen|kids|children(?! of men)|kleintjes|peuters?|kleuters?|toddlers?)'
+  r'(?:kinderen(?! van de zon)|kids|children(?! of men)|kleintjes|peuters?|kleuters?|toddlers?)'
   r'|(?:mijn|onze|ons|my|our)\s+(?:kleine|jongste|oudste|youngest|oldest|eldest|zoon|zoontje|dochter|dochtertje|'
-  r'baby|peuter|kleuter|son|daughter|toddler|kids?|children|kind(?!-)|kleinkinderen|kleinkind(?!-)|jongens?|meisjes?|'
+  r'baby|peuter|kleuter|son|daughter|toddler|kids|kid(?![- ]?(?:sister|brother|account|profile))|children|kind(?![- ]?(?:account|profiel))|kleinkinderen|kleinkind(?!-)|jongens?|meisjes?|'
   r'little ones?)'
-  r'|(?:de|the)\s+(?:jongste|youngest|little ones)'
-  r'|(?:\d{1,2}|een|a)[ -]?(?:year[ -]?old|jarige?|jaar oud)'
+  r'|the\s+little ones'
+  r'|(?:mijn|onze|ons|my|our|voor|for)\s+(?:[1-9]|1[0-2])[ -]?(?:year[ -]?old|jarige?|jaar oud)'
   r'|de kleine(?:n)?|kinder(?:film|films|serie|series|programma\w*|voorstelling)|'
   r'(?:kids?|children\W?s?)\s+(?:movies?|films?|shows?|series|programs?|programmes?)'
-  r'|kinderen|kids|peuters|kleuters|zoontje|dochtertje',
+  r'|kinderen(?! van de zon)|kids|peuters|kleuters|zoontje|dochtertje',
 );
 
 // "Kindvriendelijk" names a title only next to a title word ("een

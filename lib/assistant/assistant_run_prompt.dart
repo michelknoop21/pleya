@@ -24,14 +24,18 @@ extension _AssistantPrompt on AssistantRun {
   List<Map<String, Object?>> _memoryMessages() {
     final turns = _spoilerQuestion != null || assistantIsDeicticStoryFollowUp(_prompt)
         ? const <AssistantTurn>[]
-        // Under a kids question only earlier kids questions are replayed: an
-        // adult turn may name titles the age gate never saw.
-        : conversation.where(
-            (t) =>
-                t.kids == _ctx.kidsMode &&
-                (_ctx.ageGate != AssistantAgeGate.kidAudience ||
-                    kidAudienceOf(t.question, const [], _ctx.householdSnapshot).on),
-          );
+        // Under a kids question only the turns that were already about the
+        // children are replayed (a follow-up inherits, so the turns are read in
+        // order): an adult turn may name titles the age gate never saw.
+        : [
+            for (final (i, t) in conversation.indexed)
+              if (t.kids == _ctx.kidsMode &&
+                  (_ctx.ageGate != AssistantAgeGate.kidAudience ||
+                      kidAudienceOf(t.question, [
+                        for (final e in conversation.take(i)) e.question,
+                      ], _ctx.householdSnapshot).on))
+                t,
+          ];
     if (turns.isEmpty) return const [];
     return [
       {

@@ -28,9 +28,11 @@ void main() {
     'iets voor mijn jongens',
     'a movie for my 3 year old',
     'something for the little ones',
-    'iets voor de jongste',
     'mijn kleinkinderen komen logeren, wat kijken we',
     'een film voor mijn 4-jarige',
+    'my youngest wants a film',
+    'voor mijn 5-jarige',
+    'onze jongste kijkt mee',
   ];
   for (final q in positives) {
     test('about the children: $q', () => expect(kidAudienceOf(q, const [], const []).on, isTrue));
@@ -45,6 +47,16 @@ void main() {
     'de oudste film in mijn bibliotheek',
     'vergeet de kinderfilms, ik deel mijn account met mijn kinderen',
     'geen kids movies alsjeblieft',
+    'wat is de jongste film in mijn bibliotheek',
+    'de jongste aflevering van Severance',
+    'the youngest actor in this movie',
+    'een film voor mijn 40-jarige vader',
+    'iets voor een jarige',
+    'films die 10 jaar oud zijn',
+    'a 20 year old movie',
+    'mijn kind account beheren',
+    'my kid sister recommended a film',
+    'kinderen van de zon',
     'mijn kind-account op Plex beheren',
   ];
   for (final q in negatives) {
