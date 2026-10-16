@@ -3,6 +3,12 @@ part of 'assistant_run.dart';
 // The model loop of one ask: model call, split routing, spoiler fence, answer
 // settling and the serial tool calls, at most [maxSteps] times.
 
+/// The correction after a tool call written as text. Pleya's words, so
+/// nothing of the model's markup is echoed back.
+const _toolMarkupCorrection =
+    'Your last reply wrote a tool call as text. Call tools only through the tools interface, '
+    'never as text or markup. Your answer to the user is plain text without tags.';
+
 extension _AssistantLoop on AssistantRun {
   /// The clarifying answer for a past-watch question with no audience, or null
   /// to run normally. Only for a root question on an adult profile, and only
@@ -64,6 +70,7 @@ extension _AssistantLoop on AssistantRun {
     _wanted = assistantAskedCount(prompt);
     _oneTitleAsked = assistantAsksOneTitle(prompt);
     var corrected = false;
+    var markupCorrected = false;
     var callsThisRun = 0;
     if (await entitlement.check() != AssistantEntitlementState.entitled) {
       return const AssistantRunResult(end: AssistantRunEnd.notEntitled);
@@ -239,6 +246,18 @@ extension _AssistantLoop on AssistantRun {
         final evidence = _ctx.spoilerEvidence;
         if (evidence == null) return _end(AssistantRunEnd.answered, failure: 'kids_mode_unsupported');
         return _end(AssistantRunEnd.answered, text: evidence.answer(languageName));
+      }
+      if (reply.toolCalls.isEmpty && assistantLooksLikeToolMarkup(reply.content)) {
+        // A tool call written as text: never shown, never executed, and not
+        // kept in the history as if it were an answer. One correction round
+        // Pleya words, then Pleya's own failure line.
+        messages.removeLast();
+        if (markupCorrected || step + 1 >= maxSteps) {
+          return _end(AssistantRunEnd.stepLimit, failure: 'malformed_tool_call');
+        }
+        markupCorrected = true;
+        messages.add(const {'role': 'system', 'content': _toolMarkupCorrection});
+        continue;
       }
       if (reply.toolCalls.isEmpty) {
         // An answer for children that names titles without any known age:

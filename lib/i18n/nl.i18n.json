@@ -2817,7 +2817,8 @@
       "modelMissing": "Het gekozen model is er niet meer, kies een ander in Big P instellen.",
       "sourceChanged": "Je profiel of serververbinding is gewijzigd. Voer de controle opnieuw uit.",
       "operationUnavailable": "Deze opdracht kon niet worden uitgevoerd met de beschikbare serverfuncties.",
-      "permissionDenied": "Je hebt geen toestemming voor deze beheeropdracht op de server."
+      "permissionDenied": "Je hebt geen toestemming voor deze beheeropdracht op de server.",
+      "malformedToolCall": "Dat ging mis bij het opzoeken. Probeer het nog eens."
     },
     "summonHint": "Houd Play/Pauze ingedrukt om Big P op te roepen",
     "contextAction": "Vraag Big P",

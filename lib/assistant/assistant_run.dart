@@ -20,6 +20,7 @@ import 'assistant_provider.dart';
 import 'assistant_recommend_constraints.dart';
 import 'assistant_single_title.dart';
 import 'assistant_tool_context.dart';
+import 'assistant_tool_markup.dart';
 import 'assistant_tools.dart';
 
 part 'assistant_run_answer.dart';

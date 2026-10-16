@@ -8296,6 +8296,9 @@ class TranslationsAssistantEndsEn {
 
 	/// en: 'You do not have permission for this administration command on the server.'
 	String get permissionDenied => 'You do not have permission for this administration command on the server.';
+
+	/// en: 'Something went wrong while looking that up. Please try again.'
+	String get malformedToolCall => 'Something went wrong while looking that up. Please try again.';
 }
 
 // Path: assistant.settings
@@ -11961,6 +11964,7 @@ extension on Translations {
 			'assistant.ends.sourceChanged' => 'Your profile or server connection changed. Run the check again.',
 			'assistant.ends.operationUnavailable' => 'This command could not be carried out with the available server functions.',
 			'assistant.ends.permissionDenied' => 'You do not have permission for this administration command on the server.',
+			'assistant.ends.malformedToolCall' => 'Something went wrong while looking that up. Please try again.',
 			'assistant.summonHint' => 'Hold Play/Pause to call Big P',
 			'assistant.contextAction' => 'Ask Big P',
 			'assistant.settings.title' => 'Set up Big P',
@@ -12020,9 +12024,9 @@ extension on Translations {
 			'assistant.settings.updateModel' => 'Update model',
 			'assistant.settings.updating' => ({required Object status}) => 'Updating: ${status}',
 			'assistant.settings.updateDone' => ({required Object model}) => '${model} is up to date',
-			'assistant.settings.pullErrorUnknown' => 'Ollama no longer has this model in its library. Pick another model.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.settings.pullErrorUnknown' => 'Ollama no longer has this model in its library. Pick another model.',
 			'assistant.settings.pullErrorDisk' => 'Not enough disk space on the server to update the model.',
 			'assistant.settings.pullErrorFailed' => ({required Object reason}) => 'Updating the model failed: ${reason}',
 			'assistant.settings.webSearch' => 'Search the web',
