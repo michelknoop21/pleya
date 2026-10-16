@@ -78,3 +78,14 @@ Te controleren op een echt toestel, per platform (iPhone, iPad, Apple TV):
 
 - "Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw." toont per herstarte taak eerst "Taak opnieuw gestart" en daarna "Taak loopt", "Taak klaar" of "Taak mislukt".
 - "Scan alle filmbibliotheken op al mijn servers." toont per bibliotheek "Scan gestart" en blijft daar staan. Dat is geen fout: zonder operatie-id volgt Pleya een scan niet (BP-01a). De vervolgvraag naar de lopende taken staat eronder.
+
+## Hardwarechecklist iOS 369 en tvOS 370 (vanavond)
+
+Bouwen 369 (iPhone en iPad) en 370 (Apple TV) bevatten de vanavond-route; de teksten staan in beide binaries (markers geteld op 16 oktober 2026). Op een toestel is niets bevestigd. Voorwaarde: het buildnummer in Instellingen klopt, een beheerdersprofiel met minstens één server online, Big P aan met een ingesteld model. Noteer per punt geslaagd of gefaald, het model en de taal.
+
+1. **Vanavond.** Open Big P. Tik de chip "Wat uit mijn bibliotheek kan ik vanavond kijken?" (Engels: "What in my library can I watch tonight?"). Geslaagd: het antwoord toont titels uit je eigen bibliotheek als kaarten, niet je kijkgeschiedenis en niet wat elders populair is. Herhaal met de chip voor een komedie en voor een serie starten, en tik na het antwoord een vervolgvraag.
+2. **Kinderprofiel.** Wissel naar een kinderprofiel. Geslaagd: de chips zijn alleen kijkvragen (geen scan, taken of servers), de vanavond-vraag toont alleen titels die de leeftijdscontrole passeren, en het antwoord noemt geen kijkgeschiedenis. De leeftijdscontrole is bewust ruim; beoordeel zelf of een getoonde titel past.
+3. **Tip.** Typ "Geef me een tip voor vanavond" en "Zoek een film voor vanavond" (zonder het woord bibliotheek). Geslaagd: je krijgt smaakpicks of aanbevelingskaarten zoals voorheen, niet een doorverwijzing naar de bibliotheeklijst.
+4. **Kijklijst.** Typ "Wat staat er vanavond op mijn kijklijst in mijn bibliotheek?". Geslaagd: de vraag wordt niet naar de gewone bibliotheeklijst gestuurd en het antwoord gaat over de kijklijst. De Trakt-chip hoort niet te verschijnen, want Trakt-aanmelden staat in geen enkele build aan.
+5. **Apple TV (alleen 370).** Stuur met de afstandsbediening: de chips zijn bereikbaar met de D-pad, de focus staat zichtbaar op de gekozen chip, en een tweede keer openen toont een andere set van drie.
+6. **Vastleggen.** Bij een gefaalde vraag: het model, de taal, het eerste tool in de stappenlijst en een schermafbeelding. Zet het resultaat in een nieuwe regel in de tabel "Rondes" met de bron "toestel".
