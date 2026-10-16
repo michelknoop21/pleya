@@ -451,6 +451,26 @@ void main() {
     expect(offline.reads, isEmpty);
   });
 
+  test('a server lost mid-scan keeps the evidence of the servers that stay', () async {
+    final f = _Fixture();
+    final other = _ContractServer(MediaBackend.jellyfin, id: 'b');
+    final movie = _mapped('bmovie', 'Movie');
+    other.items[movie.id] = movie;
+    other.pages['films'] = [movie];
+    f.manager.debugRegisterClientForTesting(other);
+    f.libraries.add(find.fakeLib('b', 'films'));
+    f.server.stall = Completer<void>();
+    final pending = f.diagnose(args: const {});
+    await pumpEventQueue();
+    f.manager.debugRegisterClientForTesting(f.server, online: false);
+    f.server.stall!.complete();
+    final data = await pending;
+    expect(other.reads, contains('library:films'));
+    expect(data['partial'], isTrue);
+    expect(((data['coverage'] as Map)['limits'] as List), contains('server_unavailable'));
+    expect(f.server.writes, isEmpty);
+  });
+
   test('server going offline during hydration invalidates diagnosis evidence', () async {
     final f = _Fixture();
     f.server.stall = Completer<void>();
