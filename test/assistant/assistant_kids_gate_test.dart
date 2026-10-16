@@ -388,6 +388,78 @@ void main() {
       expect('$search', isNot(contains(_hp)));
     });
 
+    test('a split keeps the gate: the model-written child prompts are children questions too', () async {
+      Map<String, Object?> find() => {
+        'name': 'find_title',
+        'args': {
+          'candidates': [
+            {'title': _hp},
+            {'title': 'Toy Story'},
+          ],
+          'variants': [_hp, 'Toy Story'],
+        },
+      };
+      final root = _model([
+        {
+          'name': 'split_tasks',
+          'args': {
+            'tasks': [
+              {'title': 'Een', 'intent': 'search', 'prompt': 'Geef me een film voor vanavond'},
+              {'title': 'Twee', 'intent': 'search', 'prompt': 'Zoek een serie voor vanavond'},
+            ],
+          },
+        },
+      ]);
+      final children = [
+        _model([find(), 'Klaar.']),
+        _model([find(), 'Klaar.']),
+      ];
+      final models = [root.model, children[0].model, children[1].model];
+      var next = 0;
+      final c = AssistantController(
+        buildContext: (_) => _ctx(kidsProfile: false, household: [kid]),
+        entitlement: const _Entitled(),
+        loadConfig: () async => const AssistantProviderConfig(
+          kind: AssistantProviderKind.ollamaServer,
+          baseUrl: 'http://o.lan',
+          model: 'm',
+        ),
+        modelFor: (_) => models[next++],
+        languageName: () => 'Dutch',
+      );
+      addTearDown(c.dispose);
+      await c.submit('Suggesties voor mijn kinderen en geef daarnaast een film voor vanavond');
+      for (final child in children) {
+        final tool = [
+          for (final x in child.sent.last)
+            if (x['role'] == 'tool') '${x['content']}',
+        ];
+        expect(tool, hasLength(1));
+        expect(tool.single, contains('"kids_age":3'));
+        expect(tool.single, isNot(contains(_hp)));
+      }
+    });
+
+    test('under a kids question earlier adult turns are not replayed to the model', () async {
+      final m = _model(['Kijk «Toy Story» (1995).']);
+      await AssistantRun(
+        model: m.model,
+        context: _ctx(kidsProfile: false, household: [kid]),
+        confirm: (_) async => null,
+        entitlement: const _Entitled(),
+        conversation: const [
+          AssistantTurn(question: 'Een enge film graag', answer: 'Kijk «Saw» (2004).'),
+          AssistantTurn(question: 'Iets voor mijn kinderen', answer: 'Kijk «Toy Story» (1995).'),
+        ],
+      ).ask('nog een?');
+      final users = [
+        for (final x in m.sent.first)
+          if (x['role'] == 'user') '${x['content']}',
+      ];
+      expect(users, ['Iets voor mijn kinderen', 'nog een?']);
+      expect('${m.sent.first}', isNot(contains('Saw')));
+    });
+
     test('a kids profile keeps its own ages, whatever the household holds', () async {
       final m = _model(['Kijk «$_hp» (2011).', 'Kijk «Toy Story» (1995).']);
       final result = await _ask(m.model, _ctx(ages: [8], household: [kid]), prompt);

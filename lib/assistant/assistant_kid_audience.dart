@@ -13,7 +13,10 @@ final _direct = _re(
   r'(?:mijn|onze|ons|de|my|our|the|voor|for|met|with)\s+(?:(?:kleine|jonge|little)\s+)?'
   r'(?:kinderen|kids|children(?! of men)|kleintjes|peuters?|kleuters?|toddlers?)'
   r'|(?:mijn|onze|ons|my|our)\s+(?:kleine|jongste|oudste|youngest|oldest|eldest|zoon|zoontje|dochter|dochtertje|'
-  r'baby|peuter|kleuter|son|daughter|toddler|kids?|children)'
+  r'baby|peuter|kleuter|son|daughter|toddler|kids?|children|kind(?!-)|kleinkinderen|kleinkind(?!-)|jongens?|meisjes?|'
+  r'little ones?)'
+  r'|(?:de|the)\s+(?:jongste|youngest|little ones)'
+  r'|(?:\d{1,2}|een|a)[ -]?(?:year[ -]?old|jarige?|jaar oud)'
   r'|de kleine(?:n)?|kinder(?:film|films|serie|series|programma\w*|voorstelling)|'
   r'(?:kids?|children\W?s?)\s+(?:movies?|films?|shows?|series|programs?|programmes?)'
   r'|kinderen|kids|peuters|kleuters|zoontje|dochtertje',
@@ -50,7 +53,7 @@ final _sharedAccount = _re(
 
 /// The audience of [prompt] alone. "Gezin" and "familie" only count once
 /// [household] holds children.
-({bool direct, bool cleared, Set<String> ids}) _read(String prompt, List<HouseholdKid> household) {
+({bool direct, bool general, bool cleared, Set<String> ids}) _read(String prompt, List<HouseholdKid> household) {
   final lower = prompt.toLowerCase();
   final p = lower.replaceAll(_leftOut, ' ').replaceAll(_sharedAccount, ' ');
   final named = {
@@ -59,27 +62,45 @@ final _sharedAccount = _re(
           RegExp('$_start${RegExp.escape(k.name.trim().toLowerCase())}$_end', unicode: true).hasMatch(p))
         k.id,
   };
-  final direct =
+  final general =
       _direct.hasMatch(p) ||
-      named.isNotEmpty ||
       (_friendly.hasMatch(p) && _titleWord.hasMatch(p)) ||
       (household.isNotEmpty && _group.hasMatch(p));
-  return (direct: direct, cleared: _self.hasMatch(p), ids: named);
+  return (direct: general || named.isNotEmpty, general: general, cleared: _self.hasMatch(p), ids: named);
 }
 
 /// The audience of the ask [prompt] after the earlier [turns] of the
-/// conversation (oldest first, questions only): once a question is about the
-/// children, the follow-ups stay so until "voor mij" or a new conversation.
-KidAudience kidAudienceOf(String prompt, List<String> turns, List<HouseholdKid> household) {
-  var state = noKidAudience;
+/// conversation (oldest first, questions only) and, for a task split off a
+/// question, the [initial] audience of that question. Once a question is
+/// about the children, the follow-ups stay so until "voor mij" or a new
+/// conversation. A name alone narrows to that child only when nothing wider
+/// came before and no general word stands beside it: the youngest wins.
+KidAudience kidAudienceOf(
+  String prompt,
+  List<String> turns,
+  List<HouseholdKid> household, {
+  KidAudience initial = noKidAudience,
+}) {
+  var on = initial.on;
+  var all = initial.on && initial.ids.isEmpty;
+  var ids = {...initial.ids};
   for (final q in [...turns, prompt]) {
     final r = _read(q, household);
     if (r.direct) {
-      // A name narrows to that child; a general word means all of them.
-      state = (on: true, ids: r.ids);
+      if (r.general || (on && all)) {
+        all = true;
+        ids = {};
+      } else {
+        ids = {...ids, ...r.ids};
+      }
+      on = true;
     } else if (r.cleared) {
-      state = noKidAudience;
+      on = false;
+      all = false;
+      ids = {};
     }
   }
-  return state;
+  // Fail closed: what a split task inherited cannot be cleared by its own words.
+  if (!on) return initial;
+  return (on: true, ids: all ? <String>{} : ids);
 }

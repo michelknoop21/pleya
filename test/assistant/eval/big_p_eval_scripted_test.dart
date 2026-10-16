@@ -20,7 +20,7 @@ void main() {
     expect(evalTitles.length, inInclusiveRange(55, 65));
     expect({for (final t in evalTitles) t.id}, hasLength(evalTitles.length));
     expect(evalTitles.where((t) => t.isShow), hasLength(greaterThan(15)));
-    expect(evalTitles.where((t) => t.certs.isEmpty && t.allowedFor(0, 'NL')), isNotEmpty);
+    expect(evalTitles.where((t) => t.certs.isEmpty && t.allowedFor(6, 'NL')), isNotEmpty);
     expect(evalTitles.where((t) => t.certs.isEmpty && !t.allowedFor(17, 'NL')), isNotEmpty);
     expect(evalTitles.where((t) => t.certs.containsKey('US') && !t.certs.containsKey('NL')), isNotEmpty);
     expect(evalTitles.where((t) => t.seen == EvalSeen.watched), isNotEmpty);
@@ -52,7 +52,8 @@ void main() {
     ]);
     expect(evalNamed('Kijk «Nachtwacht Express» (2019).').single.fixture, isNull);
     expect(evalTitle('Gremlins')!.allowedFor(3, 'NL'), isFalse);
-    expect(evalTitle('Dribbel')!.allowedFor(3, 'NL'), isTrue, reason: 'unrated with a family genre');
+    expect(evalTitle('Dribbel')!.allowedFor(6, 'NL'), isTrue, reason: 'unrated with a family genre, from 6');
+    expect(evalTitle('Dribbel')!.allowedFor(3, 'NL'), isFalse, reason: 'unrated never passes under 6');
     expect(evalTitle('Zomer aan Zee')!.allowedFor(17, 'NL'), isFalse, reason: 'unrated, no family genre');
     expect(evalTitle('Night at the Museum')!.allowedFor(6, 'NL'), isFalse, reason: 'US PG counts as 8');
   });

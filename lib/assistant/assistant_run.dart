@@ -87,6 +87,7 @@ class AssistantRunResult {
     this.ageFilterNotice = false,
     this.kidsAgesNeeded = false,
     this.householdKidsNeeded = false,
+    this.kidAudience = noKidAudience,
     this.intent = AssistantIntent.unknown,
     this.memoryProposals = const [],
     this.memoryStored = const [],
@@ -123,6 +124,9 @@ class AssistantRunResult {
   /// The question is about the household's children, but none is entered:
   /// no model text and no title, only Pleya's own line.
   final bool householdKidsNeeded;
+
+  /// The children's audience of this ask, for the tasks split off it.
+  final KidAudience kidAudience;
 
   /// What this ask fixed from the user's words, for tasks split off it.
   final AssistantIntent intent;
@@ -220,6 +224,7 @@ class AssistantRun {
     this.originalSpoilerPrompt,
     this.originalLibraryDoctorScope = false,
     this.inheritedIntent,
+    this.inheritedKidAudience = noKidAudience,
     this.conversation = const [],
     this.rightsEpoch,
     this.userTyped = false,
@@ -282,6 +287,13 @@ class AssistantRun {
 
   /// What the question this task was split from fixed; the task's own words win.
   final AssistantIntent? inheritedIntent;
+
+  /// The children's audience of the question this task was split from. A task
+  /// the model wrote cannot lose it: every child of a kids question is one too.
+  final KidAudience inheritedKidAudience;
+
+  /// The audience this ask settled on, handed to the tasks it splits.
+  KidAudience _audience = noKidAudience;
   String? _spoilerQuestion;
   final AssistantQuestionBudget? budget;
   final AssistantOperationPool? operations;

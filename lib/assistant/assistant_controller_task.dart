@@ -72,6 +72,7 @@ extension _AssistantTaskRunning on AssistantController {
         originalSpoilerPrompt: task.originalSpoilerPrompt,
         originalLibraryDoctorScope: libraryDoctorScope,
         inheritedIntent: task.parentIntent,
+        inheritedKidAudience: task.kidAudience,
         // The question as the user typed it; a task cut off it is not, and
         // neither is a chip, a hand-over or a retry.
         userTyped: allowSplit && task.typed,
@@ -119,6 +120,7 @@ extension _AssistantTaskRunning on AssistantController {
               prompt: inheritedSpoilerPrompt ?? plan.prompt,
               originalSpoilerPrompt: inheritedSpoilerPrompt,
               parentIntent: result.intent,
+              kidAudience: result.kidAudience,
               generation: task.generation,
               budget: task.budget,
             ),
@@ -222,6 +224,7 @@ class _AssistantTaskState {
     required this.budget,
     this.originalSpoilerPrompt,
     this.parentIntent,
+    this.kidAudience = noKidAudience,
     required this.memoryEpoch,
     this.typed = false,
   });
@@ -238,6 +241,7 @@ class _AssistantTaskState {
 
   /// What the question this task was split from fixed (audience, kind, period).
   final AssistantIntent? parentIntent;
+  final KidAudience kidAudience;
   final AssistantQuestionBudget budget;
   final AbortController cancel = AbortController();
   AssistantTaskStatus status = AssistantTaskStatus.pending;

@@ -1,6 +1,7 @@
 /// Age gate for Big P's picks for children. Deliberately lenient: one rating
 /// decides, the device region's first, then the US one, then whatever the own
-/// server gave. A title without any rating passes only on a family genre.
+/// server gave. A title without any rating passes only on a family genre, and
+/// never for a child under [AgeGate.unratedFromAge].
 library;
 
 import 'package:flutter/widgets.dart';
@@ -99,10 +100,16 @@ class AgeGate {
 
   static bool _familyGenre(TitleFacts facts) => facts.genres.any((g) => _familyGenres.contains(g.trim().toLowerCase()));
 
+  /// Under this age an unrated title never passes, family genre or not: local
+  /// and Pleya Server items often carry no rating, and an unrated adult
+  /// cartoon must not reach a three-year-old.
+  static const unratedFromAge = 6;
+
   /// Whether a child of [youngestAge] may see it.
   static bool allows(TitleFacts facts, int youngestAge, String region) {
     final age = minimumAge(facts, region);
-    return age == null ? _familyGenre(facts) : youngestAge >= age;
+    if (age != null) return youngestAge >= age;
+    return youngestAge >= unratedFromAge && _familyGenre(facts);
   }
 
   /// Why [allows] decided as it did, for the model.

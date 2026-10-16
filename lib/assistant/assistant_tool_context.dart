@@ -219,6 +219,9 @@ class AssistantToolContext {
   /// null while no valid child is entered.
   int? audienceAge;
 
+  /// The household as read at the start of this ask, for the history filter.
+  List<HouseholdKid> householdSnapshot = const [];
+
   bool get gated => ageGate != AssistantAgeGate.none;
 
   /// The youngest child's age once a title tool read it.

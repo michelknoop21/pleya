@@ -23,6 +23,14 @@ void main() {
     'what can my daughter watch',
     'tips voor peuters',
     'iets voor mijn kleuter',
+    'iets voor mijn kind',
+    'een film voor mijn kind',
+    'iets voor mijn jongens',
+    'a movie for my 3 year old',
+    'something for the little ones',
+    'iets voor de jongste',
+    'mijn kleinkinderen komen logeren, wat kijken we',
+    'een film voor mijn 4-jarige',
   ];
   for (final q in positives) {
     test('about the children: $q', () => expect(kidAudienceOf(q, const [], const []).on, isTrue));
@@ -37,10 +45,25 @@ void main() {
     'de oudste film in mijn bibliotheek',
     'vergeet de kinderfilms, ik deel mijn account met mijn kinderen',
     'geen kids movies alsjeblieft',
+    'mijn kind-account op Plex beheren',
   ];
   for (final q in negatives) {
     test('not about the children: $q', () => expect(kidAudienceOf(q, const [], const [_sam]).on, isFalse));
   }
+
+  test('a name never narrows past a general word or an earlier all-kids state', () {
+    const kids = [_sam, _noor];
+    expect(kidAudienceOf('voor mijn kinderen, vooral Sam', const [], kids).ids, isEmpty);
+    expect(kidAudienceOf('wat dacht je van Sam', ['iets voor mijn kinderen'], kids).ids, isEmpty);
+    expect(kidAudienceOf('en iets voor Noor', ['iets voor Sam'], kids).ids, {'s', 'n'}, reason: 'a union, not a swap');
+  });
+
+  test('an inherited audience cannot be lost by the words of a split task', () {
+    const kids = [_sam, _noor];
+    const inherited = (on: true, ids: <String>{});
+    expect(kidAudienceOf('iets voor mij', const [], kids, initial: inherited).on, isTrue);
+    expect(kidAudienceOf('de serverstatus', const [], kids, initial: inherited).on, isTrue);
+  });
 
   test('left out is not asked for, but "voor mij en mijn kinderen" counts', () {
     expect(kidAudienceOf('iets voor mij en mijn kinderen', const [], const []).on, isTrue);

@@ -305,7 +305,7 @@ void main() {
     await c.submit('Wat keek ik het meest?');
     await c.submit('what about him?');
     expect(roles(1, 'assistant'), isEmpty, reason: 'no title in the prompt, so the fence cannot see it');
-    await c.submit('en voor de kinderen?');
+    await c.submit('en voor vanavond?');
     expect(roles(2, 'assistant'), isNotEmpty);
   });
 

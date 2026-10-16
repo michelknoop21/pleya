@@ -220,6 +220,7 @@ extension _AssistantLoop on AssistantRun {
           ]),
           spoilerPrompt: _spoilerQuestion,
           intent: _intent,
+          kidAudience: _audience,
         );
       }
       if (_spoilerQuestion != null) {

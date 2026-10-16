@@ -24,7 +24,14 @@ extension _AssistantPrompt on AssistantRun {
   List<Map<String, Object?>> _memoryMessages() {
     final turns = _spoilerQuestion != null || assistantIsDeicticStoryFollowUp(_prompt)
         ? const <AssistantTurn>[]
-        : conversation.where((t) => t.kids == _ctx.kidsMode);
+        // Under a kids question only earlier kids questions are replayed: an
+        // adult turn may name titles the age gate never saw.
+        : conversation.where(
+            (t) =>
+                t.kids == _ctx.kidsMode &&
+                (_ctx.ageGate != AssistantAgeGate.kidAudience ||
+                    kidAudienceOf(t.question, const [], _ctx.householdSnapshot).on),
+          );
     if (turns.isEmpty) return const [];
     return [
       {
@@ -52,12 +59,22 @@ extension _AssistantPrompt on AssistantRun {
       ..ageGate = AssistantAgeGate.none
       ..audienceAge = null
       ..kidsAge = null;
+    _audience = noKidAudience;
     if (_ctx.kidsMode) {
       _ctx.ageGate = AssistantAgeGate.kidsProfile;
       return null;
     }
     final household = await _ctx.householdKids?.call() ?? const [];
-    final audience = kidAudienceOf(prompt, [for (final t in conversation) t.question], household);
+    var audience = kidAudienceOf(
+      prompt,
+      [for (final t in conversation) t.question],
+      household,
+      initial: inheritedKidAudience,
+    );
+    // Fail closed: a child task of a kids question stays one, whatever words the model gave it.
+    if (inheritedKidAudience.on && !audience.on) audience = inheritedKidAudience;
+    _audience = audience;
+    _ctx.householdSnapshot = household;
     if (!audience.on) return null;
     _ctx.ageGate = AssistantAgeGate.kidAudience;
     final age = householdGateAge(household, _ctx.clock(), ids: audience.ids);
