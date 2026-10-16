@@ -19,6 +19,25 @@ testsuite er alsnog uithaalden.
 draaien, de kopie weggooien en dan gericht `flutter pub upgrade <ring-1-pakketten>`. Generatoren gaan
 apart, anders is een veranderde `.g.dart` niet meer toe te wijzen.
 
+**Vaste regel: de hoogste ring in de volledige lockfile-diff beslist.** Een update is pas veilig als de
+hele graph na de wijziging nog resolveert (`flutter pub get --enforce-lockfile`) en `classify_lock_diff.sh`
+over de complete `pubspec.lock` (ook transitieve meeverhuizers) niets boven de verwachte ring of UNKNOWN
+vindt, en de gates van die ring groen zijn. Dat geldt ook voor een handmatig opgepakte major, plugin,
+generator, fork, engine of native dependency.
+
+**Wekelijks onderhoud** (`dependency-health.yml`, maandag, job `onderhoud`, alleen vanaf main): `scripts/deps_update.sh`
+neemt alle ring-1-kandidaten uit het rapport in één batch, resolveert de hele graph en classificeert de
+volledige diff. Daarna draaien `check_updates.sh` (geen ring-1-controle mag UNKNOWN zijn) en `ci_checks.sh`, wordt `chore/deps-ring1` gepusht
+met één PR, en draait `ci.yml` (met de volledige `flutter test`) op exact die SHA. Alleen als de hele diff
+ring 1 is, alle drie de controles groen zijn (`check_updates.sh`, `ci_checks.sh`, `ci.yml`) en main vlak voor de
+merge niet verder is, merget de job de PR zelf; een base die tussen die controle en de merge nog beweegt, is niet
+uit te sluiten. Anders blijft de PR
+open voor handmatige analyse; geen bisect en geen terugdraaien per pakket. Zolang die PR open staat, slaat de job
+de batch over in plaats van hem te overschrijven, en kleurt hij rood. Directe majors,
+constraint-holds, advisories en de ring-2/3-pins staan in één doorlopend issue *Dependency-onderhoud*
+(`scripts/deps_backlog.py`), met de oudste major of een advisory als volgende kandidaat.
+`testflight_release.sh` waarschuwt als de job `onderhoud` rood is of ouder dan acht dagen; hij blokkeert niet.
+
 **De analyzer-stack staat bewust stil** (`analyzer`, `_fe_analyzer_shared`, `analyzer_plugin`,
 `dart_code_linter`). Een nieuwere analyzer laat `drift_dev` zonder compilefout de foreign key, de
 `ON DELETE CASCADE`, de writepropagatie en de reference managers uit `app_database.g.dart` weg.
