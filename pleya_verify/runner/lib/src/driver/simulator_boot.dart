@@ -123,18 +123,27 @@ Future<ProcessResult> timedSimctl(
 /// Ceiling for `simctl launch`. A launch on a healthy runner takes about 18 s;
 /// on the hosted `macos-26` runner it was killed on the three minutes of
 /// [defaultProcessTimeout] in `discover.layout` on 16 October 2026, in three
-/// PR checks (#340, #346, #348), with an empty `app.log`: the app never started.
-/// The calls around it were slow too in those runs (`terminate` 23 and 49 s
-/// against 1.7 s, `bootstatus` 82 and 97 s against 65 s), and the simulator
-/// answered a `terminate` right after. So the launch is slow or wedged, not the
-/// app. The ceiling is longer than an ordinary call, and one retry follows a
-/// timeout; neither is proven to be enough, which is what the diagnosis lines
-/// of [launchApp] are for.
+/// PR checks (#340, #346, #348), and `app.log` was empty: no app output was
+/// seen. The calls around it were slow too in those runs (`terminate` 23 and
+/// 49 s against 1.7 s, `bootstatus` 82 and 97 s against 65 s), and the
+/// simulator answered a `terminate` right after. What it was, a slow launch or
+/// a stuck one, was not observed. The ceiling is longer than an ordinary call
+/// and one retry follows a timeout; neither is proven to be enough, which is
+/// what the diagnosis lines of [launchApp] are for.
+///
+/// The worst case of one [launchApp] is this ceiling, three diagnosis commands
+/// of [_launchDiagnosisTimeout], a terminate of [_launchTerminateTimeout] and
+/// this ceiling again: about ten minutes, against three before. The macOS job
+/// has thirty for its build and both scenarios.
 const Duration simulatorLaunchTimeout = Duration(minutes: 4);
 
 /// Ceiling for each of the diagnosis commands [launchApp] runs after a launch
 /// that timed out. They must not turn a slow simulator into a longer wait.
 const Duration _launchDiagnosisTimeout = Duration(seconds: 20);
+
+/// Ceiling for the terminate that precedes the retry. In the runs that failed it
+/// took 23 and 49 s, so a minute is room; it is not allowed three.
+const Duration _launchTerminateTimeout = Duration(minutes: 1);
 
 /// How many lines of a diagnosis command go into the driver log.
 const int _launchDiagnosisLines = 40;
@@ -162,16 +171,21 @@ Future<ProcessResult> launchApp({
   }
   await _logLaunchDiagnosis(udid: udid, run: run, log: log);
   try {
-    await run('xcrun', ['simctl', 'terminate', udid, bundleId]);
+    await run('xcrun', ['simctl', 'terminate', udid, bundleId], timeout: _launchTerminateTimeout);
   } on ProcessTimeoutException catch (e) {
     log('launch: terminate before the retry timed out ($e)');
+  } on Exception catch (e) {
+    log('launch: terminate before the retry failed ($e)');
   }
   return launch();
 }
 
 /// Writes what is known about the machine and the simulator to the driver log,
 /// so a launch that timed out can be told apart as "slow host" or "stuck
-/// simulator" on the next run. Every command is bounded and none is judged.
+/// simulator" on the next run. It runs after the stranded launch was killed, so
+/// it shows the state then and can miss a load that was already gone. Every
+/// command is bounded, none is judged, and none can fail the launch: a command
+/// that is missing, fails to start or answers with something else is logged.
 Future<void> _logLaunchDiagnosis({
   required String udid,
   required ProcessRunner run,
@@ -187,11 +201,13 @@ Future<void> _logLaunchDiagnosis({
   for (final command in commands) {
     try {
       final result = await run(command.first, command.sublist(1), timeout: _launchDiagnosisTimeout);
-      final lines = (result.stdout as String).trimRight().split('\n');
+      final lines = result.stdout.toString().trimRight().split('\n');
       log('launch diagnosis: ${command.join(' ')} (exit ${result.exitCode}, ${lines.length} lines)');
       lines.take(_launchDiagnosisLines).forEach((line) => log('  $line'));
     } on ProcessTimeoutException {
       log('launch diagnosis: ${command.join(' ')} did not answer within $_launchDiagnosisTimeout');
+    } on Exception catch (e) {
+      log('launch diagnosis: ${command.join(' ')} could not be run ($e)');
     }
   }
 }

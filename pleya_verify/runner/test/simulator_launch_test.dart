@@ -9,15 +9,20 @@ const bundleId = 'nl.michelknoop.pleya.verify';
 
 enum Outcome { launches, exits, timesOut }
 
+/// How the commands that describe the host and the simulator behave after a
+/// launch that timed out.
+enum Diagnosis { answers, timesOut, missing }
+
 /// `simctl launch` as the hosted CI runner showed it on 16 October 2026: where
 /// a healthy launch returns in about 18 s, some ran into their ceiling with an
 /// empty app log, while `terminate` still answered right after.
 class FakeLaunchSimulator {
-  FakeLaunchSimulator(this.launches, {this.terminateTimesOut = false});
+  FakeLaunchSimulator(this.launches, {this.terminateTimesOut = false, this.diagnosis = Diagnosis.answers});
 
   /// What each successive `simctl launch` does.
   final List<Outcome> launches;
   final bool terminateTimesOut;
+  final Diagnosis diagnosis;
   final calls = <String>[];
   final ceilings = <String, Duration>{};
 
@@ -41,6 +46,10 @@ class FakeLaunchSimulator {
       case 'terminate':
         if (terminateTimesOut) throw ProcessTimeoutException(executable: executable, arguments: args, timeout: timeout);
         return ProcessResult(1, 0, '', '');
+      case 'uptime' || 'ps' || 'list' when diagnosis == Diagnosis.timesOut:
+        throw ProcessTimeoutException(executable: executable, arguments: args, timeout: timeout);
+      case 'uptime' || 'ps' || 'list' when diagnosis == Diagnosis.missing:
+        throw ProcessException(executable, args, 'No such file or directory', 2);
       case 'uptime':
         return ProcessResult(1, 0, ' 12:31  up 2:11, 2 users, load averages: 31.2 28.9 20.4\n', '');
       case 'ps':
@@ -78,6 +87,8 @@ void main() {
       expect(sim.calls.indexOf('terminate'), greaterThan(sim.calls.indexOf('launch')));
       expect(sim.calls.lastIndexOf('launch'), greaterThan(sim.calls.indexOf('terminate')));
       expect(sim.ceilings['launch'], simulatorLaunchTimeout);
+      // A terminate took 23 and 49 s in the runs that failed: a minute is room, three is not needed.
+      expect(sim.ceilings['terminate'], lessThanOrEqualTo(const Duration(minutes: 1)));
     });
 
     test('the retry leaves the host and simulator state in the log', () async {
@@ -114,6 +125,29 @@ void main() {
 
       expect(result.exitCode, 1);
       expect(sim.calls, ['launch']);
+    });
+
+    test('a diagnosis command that cannot be started does not stop the retry', () async {
+      final sim = FakeLaunchSimulator([Outcome.timesOut, Outcome.launches], diagnosis: Diagnosis.missing);
+      final log = <String>[];
+
+      final result = await launchApp(udid: udid, bundleId: bundleId, run: sim.run, log: log.add);
+
+      expect(result.exitCode, 0);
+      expect(sim.launchCount, 2);
+      expect(sim.calls, contains('terminate'));
+      expect(log.any((l) => l.contains('could not be run')), isTrue);
+    });
+
+    test('a diagnosis command that does not answer does not stop the retry', () async {
+      final sim = FakeLaunchSimulator([Outcome.timesOut, Outcome.launches], diagnosis: Diagnosis.timesOut);
+      final log = <String>[];
+
+      final result = await launchApp(udid: udid, bundleId: bundleId, run: sim.run, log: log.add);
+
+      expect(result.exitCode, 0);
+      expect(sim.launchCount, 2);
+      expect(log.any((l) => l.contains('did not answer within')), isTrue);
     });
 
     test('a terminate that times out does not stop the retry', () async {
