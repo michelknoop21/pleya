@@ -3617,6 +3617,7 @@ class _TranslationsAssistantEndsNl extends TranslationsAssistantEndsEn {
 	@override String get sourceChanged => 'Je profiel of serververbinding is gewijzigd. Voer de controle opnieuw uit.';
 	@override String get operationUnavailable => 'Deze opdracht kon niet worden uitgevoerd met de beschikbare serverfuncties.';
 	@override String get permissionDenied => 'Je hebt geen toestemming voor deze beheeropdracht op de server.';
+	@override String get malformedToolCall => 'Dat ging mis bij het opzoeken. Probeer het nog eens.';
 }
 
 // Path: assistant.settings
@@ -6701,6 +6702,7 @@ extension on TranslationsNl {
 			'assistant.ends.sourceChanged' => 'Je profiel of serververbinding is gewijzigd. Voer de controle opnieuw uit.',
 			'assistant.ends.operationUnavailable' => 'Deze opdracht kon niet worden uitgevoerd met de beschikbare serverfuncties.',
 			'assistant.ends.permissionDenied' => 'Je hebt geen toestemming voor deze beheeropdracht op de server.',
+			'assistant.ends.malformedToolCall' => 'Dat ging mis bij het opzoeken. Probeer het nog eens.',
 			'assistant.summonHint' => 'Houd Play/Pauze ingedrukt om Big P op te roepen',
 			'assistant.contextAction' => 'Vraag Big P',
 			'assistant.settings.title' => 'Big P instellen',
@@ -6760,9 +6762,9 @@ extension on TranslationsNl {
 			'assistant.settings.updateModel' => 'Model bijwerken',
 			'assistant.settings.updating' => ({required Object status}) => 'Bijwerken: ${status}',
 			'assistant.settings.updateDone' => ({required Object model}) => '${model} is bijgewerkt',
-			'assistant.settings.pullErrorUnknown' => 'Ollama heeft dit model niet meer in de bibliotheek. Kies een ander model.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.settings.pullErrorUnknown' => 'Ollama heeft dit model niet meer in de bibliotheek. Kies een ander model.',
 			'assistant.settings.pullErrorDisk' => 'Te weinig schijfruimte op de server om het model bij te werken.',
 			'assistant.settings.pullErrorFailed' => ({required Object reason}) => 'Model bijwerken mislukt: ${reason}',
 			'assistant.settings.webSearch' => 'Zoeken op internet',

@@ -243,6 +243,7 @@ String assistantTasksHeadline(List<AssistantTask> tasks) {
               'invalid_kind' ||
               'library_membership_unknown' => t.assistant.ends.operationUnavailable,
               'diagnosis_deadline' => t.common.timedOut,
+              'malformed_tool_call' => t.assistant.ends.malformedToolCall,
               _ =>
                 (task.lastEnd == null ? null : assistantEndLabel(task.lastEnd, task.providerError)) ??
                     t.errors.somethingWentWrongTryAgain,

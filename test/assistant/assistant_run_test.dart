@@ -239,6 +239,23 @@ void main() {
     return (result, model, s);
   }
 
+  test('BP-11: markup twice after a write succeeded: answered, action kept, no markup, no failure', () async {
+    const markup = '<atem:function_calls>\n<atem:invoke name="x"></atem:invoke>\n</atem:function_calls>';
+    final (result, model, server) = await run([
+      _call('list_libraries', {'server_id': 'srv-1'}),
+      _call('scan_library', {'server_id': 'srv-1', 'library_id': 'lib-films'}, id: 'call_2'),
+      _say(markup),
+      _say(markup),
+      _say('nooit gevraagd'),
+    ]);
+    expect(model.requests, hasLength(4), reason: 'one correction round, then the end');
+    expect(server.writes, ['POST /libraries/lib-films/scan'], reason: 'the write ran once');
+    expect(result.end, AssistantRunEnd.answered);
+    expect(result.error, isNull);
+    expect(result.actions.single.kind, AssistantActionKind.scanLibrary);
+    expect(result.text, isEmpty);
+  });
+
   group('one loop for every provider', () {
     for (final kind in AssistantProviderKind.values) {
       test('${kind.name}: scan through tools, same outcome', () async {
