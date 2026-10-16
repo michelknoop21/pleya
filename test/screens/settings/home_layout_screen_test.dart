@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/providers/tv_home_projection_provider.dart';
+import 'package:pleya/media/unified/unified_media_group.dart';
 import 'package:pleya/media/unified/unified_media_hub.dart';
 import 'package:pleya/automation/automation_registry.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -12,6 +13,7 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/providers/continue_watching_hidden_provider.dart';
 import 'package:pleya/providers/discover_provider.dart';
 import 'package:pleya/providers/home_layout_provider.dart';
+import 'package:pleya/screens/home/customize/home_customize_row_tile.dart';
 import 'package:pleya/screens/settings/home_layout_screen.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
@@ -23,6 +25,12 @@ import '../../test_helpers/prefs.dart';
 const _verifyOn = bool.fromEnvironment('PLEYA_VERIFY');
 
 class _DiscoverRows extends ChangeNotifier implements DiscoverProvider {
+  @override
+  List<MediaItem> get latestMovies => const [];
+
+  @override
+  List<MediaItem> get onDeck => const [];
+
   @override
   List<MediaHub> get hubs => const [
     MediaHub(
@@ -110,7 +118,7 @@ void main() {
             ChangeNotifierProvider<HomeLayoutProvider>.value(value: layout),
             ChangeNotifierProvider<DiscoverProvider>.value(value: discover),
           ],
-          child: const MaterialApp(home: HomeLayoutScreen()),
+          child: MaterialApp(theme: monoTheme(dark: true), home: const HomeLayoutScreen()),
         ),
       ),
     );
@@ -150,7 +158,7 @@ void main() {
           ChangeNotifierProvider<DiscoverProvider>.value(value: discover),
           if (withHidden) ChangeNotifierProvider<ContinueWatchingHiddenProvider>.value(value: hidden),
         ],
-        child: const MaterialApp(home: HomeLayoutScreen()),
+        child: MaterialApp(theme: monoTheme(dark: true), home: const HomeLayoutScreen()),
       ),
     );
 
@@ -233,18 +241,16 @@ void main() {
       expect(find.text('Samengevoegd'), findsOneWidget);
       expect(find.text('Recent toegevoegde series'), findsNothing);
 
-      final mergedSwitch = find.descendant(
-        of: find.widgetWithText(ListTile, 'Samengevoegd'),
-        matching: find.byType(Switch),
-      );
-      await tester.tap(mergedSwitch);
+      final mergedRow = find.ancestor(of: find.text('Samengevoegd'), matching: find.byType(HomeCustomizeRowTile)).first;
+      final eye = find.descendant(of: mergedRow, matching: find.byIcon(Symbols.visibility_rounded));
+      await tester.tap(eye);
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
       await tester.pump();
 
       expect(providers.layout.isRowHidden('zolder:recent'), isTrue);
       expect(providers.layout.isRowHidden('nas:recent'), isTrue);
       expect(providers.layout.isRowHidden('zolder:top'), isFalse);
-      expect(tester.widget<Switch>(mergedSwitch).value, isFalse);
+      expect(find.descendant(of: mergedRow, matching: find.byIcon(Symbols.visibility_off_rounded)), findsOneWidget);
     });
 
     testWidgets('TV verplaatst een samengevoegde rij met al zijn ids, en Verborgen items is een tegel', (tester) async {
@@ -279,6 +285,12 @@ void main() {
 /// Three unified rows as the Home projection hands them out: Recent
 /// uitgebracht, a row merged from two servers, and a single-server row.
 class _UnifiedRows extends ChangeNotifier implements TvHomeProjectionProvider {
+  @override
+  List<UnifiedMediaGroup> get heroGroups => const [];
+
+  @override
+  UnifiedMediaHub? get continueWatching => null;
+
   @override
   UnifiedMediaHub? get latestMovies => UnifiedMediaHub(
     hubId: 'pleya:home:latest-movies',

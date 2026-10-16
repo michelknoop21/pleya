@@ -21,6 +21,7 @@ import '../../widgets/settings_page.dart';
 import '../../widgets/tv/tv_home_row_assembly.dart';
 import '../../widgets/tv/tv_page_surface.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
+import '../home/customize/home_customize_screen.dart';
 
 /// One line of the list: a row and every id it answers to in the layout.
 class _LayoutRow {
@@ -39,6 +40,9 @@ class HomeLayoutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // iPhone, iPad and Mac: the same screen as "Home aanpassen" on Home (HOME-R1).
+    // tvOS keeps the list below exactly as it was.
+    if (!PlatformDetector.isTV()) return const HomeCustomizeScreen();
     final layout = context.watch<HomeLayoutProvider>();
     final customRowsProvider = context.watch<HomeCustomRowsProvider?>();
     final extraRows = context.watch<HomeExtraRowsProvider?>();
