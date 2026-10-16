@@ -169,6 +169,7 @@ class LibraryHeaderBar extends StatelessWidget {
 
   /// Off for the TV backdrop, where a rule would cut across the artwork.
   final bool showDivider;
+  final double height;
 
   final EdgeInsetsGeometry padding;
 
@@ -185,6 +186,7 @@ class LibraryHeaderBar extends StatelessWidget {
     this.actions = const [],
     this.tabSpacing = 22,
     this.showDivider = true,
+    this.height = LibraryHeaderMetrics.barHeight,
     this.padding = const EdgeInsets.only(left: 4, right: 16),
     this.onActionsExitLeft,
     this.onActionsExitRight,
@@ -199,7 +201,7 @@ class LibraryHeaderBar extends StatelessWidget {
     // baseline, so it brightens a segment of this line instead of hanging a
     // second line above it.
     return SizedBox(
-      height: LibraryHeaderMetrics.barHeight,
+      height: height,
       child: Stack(
         children: [
           if (showDivider)

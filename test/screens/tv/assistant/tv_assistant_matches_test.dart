@@ -151,8 +151,8 @@ final UnifiedMediaGroup _merged = () {
   );
 }();
 
-/// What search_catalog hands over: fourteen films, two more than a grid
-/// draws; the first one merged across servers.
+/// What search_catalog hands over: fourteen films, more than the default
+/// twelve a call lists; the first one merged across servers.
 final _grid = AssistantMediaGrid([
   (item: _merged.representativeSource.item, group: _merged),
   for (var i = 1; i <= 13; i++)
@@ -284,6 +284,25 @@ void main() {
   Future<void> showMatches(WidgetTester tester, List<AssistantTitleMatch> matches) =>
       showDisplay(tester, AssistantTitleMatches(AssistantToolContext(servers: MultiServerManager()), matches));
 
+  final largeGrid = AssistantMediaGrid([
+    for (var i = 0; i < 50; i++) (item: _grid.entries[1].item.copyWith(id: 'many$i', title: 'Film $i'), group: null),
+  ]);
+
+  Future<void> reachLastOfFifty(WidgetTester tester) async {
+    expect(find.byType(BigPMatchCard), findsNWidgets(50));
+    final window = tester.getRect(
+      find.ancestor(of: find.byType(BigPMatchCard).first, matching: find.byType(SingleChildScrollView)).first,
+    );
+    for (var i = 0; i < 50; i++) {
+      expect(focusedMatch(), largeGrid.entries[i].item.globalKey);
+      expectInside(focusedRect(), window, 'focused card $i');
+      if (i < 49) await press(tester, LogicalKeyboardKey.arrowDown);
+    }
+    await press(tester, LogicalKeyboardKey.select);
+    expect(routes.single.id, 'tvDetail_${largeGrid.entries.last.item.globalKey}');
+    expect(tester.takeException(), isNull);
+  }
+
   group('on the surface', () {
     Future<void> pumpSurface(WidgetTester tester) async {
       final entry = AppleTvNativeTextEntry(channel: channel);
@@ -400,11 +419,19 @@ void main() {
 
     // Build 318: a search_catalog result was a card of text lines, nothing
     // to focus or open.
+    testWidgets('all 50 catalog cards stay reachable and visible on focus (BP-09)', (tester) async {
+      await pumpSurface(tester);
+      await showDisplay(tester, largeGrid);
+      await reachLastOfFifty(tester);
+    });
+
     testWidgets('a media grid draws its titles as cards: the first takes the focus and opens', (tester) async {
       await pumpSurface(tester);
       await showDisplay(tester, _grid);
 
-      expect(find.byType(BigPMatchCard), findsNWidgets(12));
+      // The grid draws what the tool listed: a list asked for with a larger
+      // limit is not cut at twelve again (BP-09).
+      expect(find.byType(BigPMatchCard), findsNWidgets(_grid.entries.length));
       expect(focusedMatch(), _grid.entries.first.item.globalKey);
       await press(tester, LogicalKeyboardKey.arrowDown);
       expect(focusedMatch(), _grid.entries[1].item.globalKey, reason: 'the order of the grid');
@@ -502,6 +529,11 @@ void main() {
       await settle(tester);
       await (display == null ? showMatches(tester, matches) : showDisplay(tester, display));
     }
+
+    testWidgets('all 50 catalog cards stay reachable and visible on focus (BP-09)', (tester) async {
+      await summon(tester, const [], display: largeGrid);
+      await reachLastOfFifty(tester);
+    });
 
     testWidgets('shows the matches in a window of three, stays, and Menu gives the remote back', (tester) async {
       await summon(tester, [_martian, _redPlanet, _episode, _extra]);

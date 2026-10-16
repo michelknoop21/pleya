@@ -52,6 +52,59 @@ void main() {
     return tk;
   }
 
+  testWidgets('approved floating library tab has a filled choice, no red rule and a 44pt target', (tester) async {
+    final tk = await pumpChip(tester, isSelected: true, style: TabChipStyle.floating);
+    expect(ruleColours(tester), isNot(contains(tk.accent)));
+    expect(labelStyle(tester, 'Browse').color, tk.bg);
+    expect(tester.getSize(find.byType(FocusableTabChip)).height, greaterThanOrEqualTo(44));
+  });
+
+  testWidgets('keyboard focus reveals a floating tab clipped by a narrow navigation capsule', (tester) async {
+    final nodes = List.generate(4, (_) => FocusNode());
+    addTearDown(() {
+      for (final node in nodes) {
+        node.dispose();
+      }
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: monoTheme(dark: true),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 240,
+              child: SingleChildScrollView(
+                key: const ValueKey('nav-window'),
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (var i = 0; i < nodes.length; i++)
+                      FocusableTabChip(
+                        label: 'Navigation $i',
+                        isSelected: i == 0,
+                        style: TabChipStyle.floating,
+                        focusNode: nodes[i],
+                        onSelect: () {},
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    nodes.last.requestFocus();
+    await tester.pump();
+    await tester.pumpAndSettle();
+    final window = tester.getRect(find.byKey(const ValueKey('nav-window')));
+    final focused = tester.getRect(find.byType(FocusableTabChip).last);
+    expect(focused.left, greaterThanOrEqualTo(window.left));
+    expect(focused.right, lessThanOrEqualTo(window.right + 0.01));
+    expect(nodes.last.hasFocus, isTrue);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   group('text tabs', () {
     tearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
 

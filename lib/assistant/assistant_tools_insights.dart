@@ -33,7 +33,7 @@ class AssistantServerComparison extends AssistantDisplay {
   final String otherServerName;
   final MediaKind kind;
 
-  /// Items on [serverId], sorted by title; the first [_missingShown] only.
+  /// The selected items on [serverId], sorted by title.
   final List<MediaItem> missing;
 
   /// How many titles are missing in all, [missing] may hold fewer.
@@ -93,7 +93,6 @@ const _compareCap = 5000;
 const _comparePage = 200;
 const _compareDeadline = Duration(seconds: 60);
 const _lookupCap = 300;
-const _missingShown = 500;
 const _historyPage = 500;
 const _historyCap = 5000;
 const _playsUserCap = 50;
@@ -259,10 +258,14 @@ final List<AssistantTool> _insightTools = [
     description:
         'Films or series on server_id that other_server_id does not have, matched by identity across servers. '
         'One call compares exactly one pair of servers; for more servers, call once per pair. '
+        'Use limit for a requested count or curated subset; omit it to list all missing titles read. '
+        'listed_count is the selected card count. examples_preview means examples is only a byte-budgeted preview; '
+        'all selected cards remain visible. Name only titles present in examples; never call a preview the full list. '
         'partial: true means the time budget ran out and the list is incomplete. '
         '$_serverIdNote',
     risk: AssistantToolRisk.read,
     properties: const {
+      'limit': {'type': 'integer', 'minimum': 1},
       'other_server_id': {'type': 'string', 'description': 'Another server_id from the same list.'},
       'kind': {
         'type': 'string',
@@ -282,6 +285,7 @@ final List<AssistantTool> _insightTools = [
         'show' => MediaKind.show,
         _ => throw const AssistantToolError('invalid_kind'),
       };
+      final limit = _int(args, 'limit', 1);
       final client = ctx.adminClient(id);
       final otherClient = ctx.adminClient(other);
       final budget = _Budget(_compareDeadline);
@@ -296,10 +300,15 @@ final List<AssistantTool> _insightTools = [
           !identical(ctx.adminClient(other), otherClient)) {
         throw const AssistantToolError('not_allowed');
       }
-      final shown = missing.take(_missingShown).toList();
+      final shown = missing.take(limit ?? missing.length).toList();
       for (final item in shown) {
         ctx.showItem(id, item.id);
       }
+      final evidence = _modelListEvidence(
+        shown.map(
+          (item) => {'item_id': item.id, 'title': clipText(item.title), if (item.year != null) 'year': item.year},
+        ),
+      );
       final capped = mine.capped || theirs.capped;
       final partial = mine.partial || theirs.partial || budget.spent;
       return AssistantToolResult(
@@ -310,10 +319,9 @@ final List<AssistantTool> _insightTools = [
           'count_on_server': mine.items.length,
           'count_on_other': theirs.items.length,
           'missing_count': missing.length,
-          'examples': [
-            for (final item in missing.take(20))
-              {'item_id': item.id, 'title': clipText(item.title), if (item.year != null) 'year': item.year},
-          ],
+          'listed_count': shown.length,
+          'examples': evidence,
+          if (evidence.length < shown.length) 'examples_preview': true,
           if (capped) 'capped_at_items_per_server': _compareCap,
           if (lookupsCapped) 'identity_lookups_capped_at': _lookupCap,
           if (partial) 'partial': true,

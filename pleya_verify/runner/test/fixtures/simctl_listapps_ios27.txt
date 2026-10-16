@@ -1,0 +1,74 @@
+{
+    "com.apple.Bridge" =     {
+        ApplicationType = System;
+        Bundle = "file:///Library/Developer/CoreSimulator/Volumes/iOS_24A434/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS%2027.0.simruntime/Contents/Resources/RuntimeRoot/Applications/Bridge.app/";
+        CFBundleDisplayName = Watch;
+        CFBundleExecutable = Bridge;
+        CFBundleIdentifier = "com.apple.Bridge";
+        CFBundleName = Watch;
+        CFBundleShortVersionString = "1.0";
+        CFBundleVersion = "1.0";
+        DataContainer = "file:///Volumes/SSD/CoreSimulator/Devices/416FE248-B339-4A85-B41E-C15C5B2782A5/data/Containers/Data/Application/9AFE8243-DC44-4FB7-8BFD-E4F1F56854B4/";
+        GroupContainers =         {
+            "243LU875E5.groups.com.apple.podcasts" = "file:///Volumes/SSD/CoreSimulator/Devices/416FE248-B339-4A85-B41E-C15C5B2782A5/data/Containers/Shared/AppGroup/FB88BE91-2ACF-48B3-86F4-71B11ADB6752/";
+            "group.com.apple.bridge" = "file:///Volumes/SSD/CoreSimulator/Devices/416FE248-B339-4A85-B41E-C15C5B2782A5/data/Containers/Shared/AppGroup/8EA0D4AF-10F4-4C64-84AF-1CF362C2F3EB/";
+            "group.com.apple.iBooks" = "file:///Volumes/SSD/CoreSimulator/Devices/416FE248-B339-4A85-B41E-C15C5B2782A5/data/Containers/Shared/AppGroup/DB3D9905-1A02-476A-8547-4CBF622D79DE/";
+            "group.com.apple.mail" = "file:///Volumes/SSD/CoreSimulator/Devices/416FE248-B339-4A85-B41E-C15C5B2782A5/data/Containers/Shared/AppGroup/CDB62218-8DE4-4299-8DDA-64E27E6D51BB/";
+            "group.com.apple.stocks" = "file:///Volumes/SSD/CoreSimulator/Devices/416FE248-B339-4A85-B41E-C15C5B2782A5/data/Containers/Shared/AppGroup/1F8E9A0E-AA69-4D99-A079-DCBC71F6627A/";
+            "group.com.apple.weather" = "file:///Volumes/SSD/CoreSimulator/Devices/416FE248-B339-4A85-B41E-C15C5B2782A5/data/Containers/Shared/AppGroup/1BFDB5EC-ABDC-44B7-9DF7-87A89D0B4A56/";
+        };
+        IsAppClip = 0;
+        IsDeveloperApp = 0;
+        IsFirstParty = 1;
+        IsHidden = 0;
+        IsRemovable = 0;
+        Path = "/Library/Developer/CoreSimulator/Volumes/iOS_24A434/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/Applications/Bridge.app";
+        SBAppTags =         (
+            "watch-companion"
+        );
+    };
+    "nl.michelknoop.pleya" =     {
+        ApplicationType = User;
+        Bundle = "file:///Volumes/SSD/CoreSimulator/Devices/416FE248-B339-4A85-B41E-C15C5B2782A5/data/Containers/Bundle/Application/E1E8D27B-BA79-4BB4-B3AD-ADB3362BF4C2/Runner.app/";
+        BundleContainer = "file:///Volumes/SSD/CoreSimulator/Devices/416FE248-B339-4A85-B41E-C15C5B2782A5/data/Containers/Bundle/Application/E1E8D27B-BA79-4BB4-B3AD-ADB3362BF4C2/";
+        CFBundleDisplayName = Pleya;
+        CFBundleExecutable = Runner;
+        CFBundleIdentifier = "nl.michelknoop.pleya";
+        CFBundleName = Pleya;
+        CFBundleShortVersionString = "2.8.0";
+        CFBundleVersion = 241;
+        DataContainer = "file:///Volumes/SSD/CoreSimulator/Devices/416FE248-B339-4A85-B41E-C15C5B2782A5/data/Containers/Data/Application/E9277A9A-2C7C-4B04-8DFC-DC641F1F32ED/";
+        GroupContainers =         {
+        };
+        IsAppClip = 0;
+        IsDeveloperApp = 1;
+        IsFirstParty = 0;
+        IsHidden = 0;
+        IsRemovable = 1;
+        Path = "/Volumes/SSD/CoreSimulator/Devices/416FE248-B339-4A85-B41E-C15C5B2782A5/data/Containers/Bundle/Application/E1E8D27B-BA79-4BB4-B3AD-ADB3362BF4C2/Runner.app";
+        SBAppTags =         (
+        );
+    };
+    "nl.michelknoop.pleya.verify" =     {
+        ApplicationType = User;
+        Bundle = "file:///Volumes/SSD/CoreSimulator/Devices/416FE248-B339-4A85-B41E-C15C5B2782A5/data/Containers/Bundle/Application/B5B4A0F1-0F43-4A57-9D61-D7592815A096/Runner.app/";
+        BundleContainer = "file:///Volumes/SSD/CoreSimulator/Devices/416FE248-B339-4A85-B41E-C15C5B2782A5/data/Containers/Bundle/Application/B5B4A0F1-0F43-4A57-9D61-D7592815A096/";
+        CFBundleDisplayName = Pleya;
+        CFBundleExecutable = Runner;
+        CFBundleIdentifier = "nl.michelknoop.pleya.verify";
+        CFBundleName = Pleya;
+        CFBundleShortVersionString = "2.8.1";
+        CFBundleVersion = 358;
+        DataContainer = "file:///Volumes/SSD/CoreSimulator/Devices/416FE248-B339-4A85-B41E-C15C5B2782A5/data/Containers/Data/Application/7B4474C7-E8E6-46C1-8E89-C83220AC62C6/";
+        GroupContainers =         {
+        };
+        IsAppClip = 0;
+        IsDeveloperApp = 1;
+        IsFirstParty = 0;
+        IsHidden = 0;
+        IsRemovable = 1;
+        Path = "/Volumes/SSD/CoreSimulator/Devices/416FE248-B339-4A85-B41E-C15C5B2782A5/data/Containers/Bundle/Application/B5B4A0F1-0F43-4A57-9D61-D7592815A096/Runner.app";
+        SBAppTags =         (
+        );
+    };
+}

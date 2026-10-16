@@ -8,6 +8,7 @@ import 'instance_discovery.dart';
 import 'screenshot_probe.dart';
 import 'verification_driver.dart';
 import 'bounded_process.dart';
+import 'simulator_boot.dart';
 
 /// Drives a local iOS-simulator build of Pleya via `xcrun simctl`.
 ///
@@ -222,9 +223,7 @@ class IosSimulatorDriver implements VerificationDriver {
   Future<void> installFresh() async {
     final udid = await _resolveDevice();
     await _boot(udid);
-    await _run('xcrun', ['simctl', 'terminate', udid, verifyBundleId]);
-    await _run('xcrun', ['simctl', 'uninstall', udid, verifyBundleId]);
-    _log('installFresh: uninstalled $verifyBundleId from $udid');
+    await uninstallApp(udid: udid, bundleId: verifyBundleId, run: _run, log: _log);
   }
 
   @override
@@ -532,21 +531,19 @@ class IosSimulatorDriver implements VerificationDriver {
     }
   }
 
-  Future<void> _boot(String udid) async {
-    final list = await _run('xcrun', ['simctl', 'list', 'devices']);
-    final alreadyBooted = RegExp('$udid.*Booted').hasMatch(list.stdout as String);
-    if (alreadyBooted) return;
-    _log('booting $udid');
-    await _run('xcrun', ['simctl', 'boot', udid]);
-    await _run('xcrun', ['simctl', 'bootstatus', udid, '-b'], timeout: bootProcessTimeout);
-  }
+  Future<void> _boot(String udid) => bootSimulator(udid: udid, run: _run, log: _log);
 
   Future<ProcessResult> _run(
     String executable,
     List<String> args, {
     String? workingDirectory,
     Duration timeout = defaultProcessTimeout,
-  }) => runBounded(executable, args, workingDirectory: workingDirectory, timeout: timeout);
+  }) => timedSimctl(
+    executable,
+    args,
+    _log,
+    () => runBounded(executable, args, workingDirectory: workingDirectory, timeout: timeout),
+  );
 
   Future<String?> _gitCommit() async {
     final result = await _run('git', ['rev-parse', 'HEAD'], workingDirectory: repoRoot.path);

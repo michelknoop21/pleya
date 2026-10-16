@@ -60,14 +60,18 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
 
     final lines = MemoryLogOutput.getLogs().reversed.map((e) => e.message).where((m) => m.startsWith('TvInfoPanel: '));
-    expect(lines.map((m) => m.replaceFirst(RegExp(r' rss=\d+MB$'), '')), [
+    expect(lines.map((m) => m.split(' rss=').first), [
       'TvInfoPanel: opened tab=information',
       'TvInfoPanel: close requested',
       'TvInfoPanel: close animation done',
       'TvInfoPanel: disposed',
     ]);
     for (final line in lines) {
-      expect(line, matches(RegExp(r' rss=\d+MB$')), reason: line);
+      expect(
+        line,
+        matches(RegExp(r' rss=\d+MB imageCacheBytes=\d+ imageCacheEntries=\d+ liveImages=\d+ pendingImages=\d+$')),
+        reason: line,
+      );
     }
   });
 

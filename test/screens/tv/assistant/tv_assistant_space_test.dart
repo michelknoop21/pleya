@@ -15,6 +15,7 @@ import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/screens/tv/assistant/tv_assistant_lead_slack.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_screen.dart';
 import 'package:pleya/services/apple_tv_native_text_entry.dart';
 import 'package:pleya/services/multi_server_manager.dart';
@@ -58,17 +59,23 @@ void main() {
   tearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
 
   // Fully inside the list's own viewport, edges included.
-  Future<({int visible, int chips})> pump(WidgetTester tester, Size size, {required bool inLibrary}) async {
+  Future<({int visible, int chips, double lead})> pump(
+    WidgetTester tester,
+    Size size, {
+    required bool inLibrary,
+    String answer = 'Dit zijn de beste kandidaten.',
+    int matches = 8,
+  }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final c = FakeAssistantController()
       ..prompt = 'Een film over spionnen'
       ..state = AssistantSurfaceState.result
-      ..answer = 'Dit zijn de beste kandidaten.'
+      ..answer = answer
       ..displays = [
         AssistantTitleMatches(AssistantToolContext(servers: MultiServerManager()), [
-          for (var i = 1; i <= 8; i++) _match(i, inLibrary: inLibrary),
+          for (var i = 1; i <= matches; i++) _match(i, inLibrary: inLibrary),
         ]),
       ];
     addTearDown(c.dispose);
@@ -104,7 +111,11 @@ void main() {
       final rect = tester.getRect(cards.at(i));
       if (rect.top >= viewport.top - 0.5 && rect.bottom <= viewport.bottom + 0.5) visible++;
     }
-    return (visible: visible, chips: find.byType(BigPChip).evaluate().length);
+    final body = find.byKey(const ValueKey('assistant.answer.body'));
+    final lead = body.evaluate().isEmpty
+        ? tester.getSize(find.byKey(const ValueKey('assistant.answer'))).height
+        : tester.getSize(find.ancestor(of: body, matching: find.byType(SingleChildScrollView)).first).height;
+    return (visible: visible, chips: find.byType(BigPChip).evaluate().length, lead: lead);
   }
 
   testWidgets('eight matches: five cards fit the panel without scrolling (four before the panel was widened)', (
@@ -118,6 +129,49 @@ void main() {
   testWidgets('eight matches that cannot be opened: five still show with the follow-ups, not three', (tester) async {
     final shown = await pump(tester, const Size(1920, 935), inLibrary: false);
     expect(shown.chips, 3, reason: 'the follow-ups are in the tree, under the cards');
+    expect(shown.visible, greaterThanOrEqualTo(5));
+  });
+
+  const longLead =
+      'Right now the most popular are the film Dune: Part Two, the series Shogun and the series Carrie (2024), '
+      'with Interstellar and Gravity close behind, and a lot more this week on every server you have connected';
+
+  // A lead too long for a headline reads in a box of three lines. When the
+  // cards leave a whole line over, the box grows to four; when they do not,
+  // it stays at three and no card is lost to it.
+  for (final size in const [Size(1038, 584), Size(1920, 935)]) {
+    testWidgets('long lead, ${size.width.toInt()} wide: three lines when the cards need the room', (tester) async {
+      final shown = await pump(tester, size, inLibrary: true, answer: longLead);
+      await tester.pumpWidget(const SizedBox());
+      final grown = await pump(tester, size, inLibrary: true, answer: longLead, matches: 3);
+      expect(grown.visible, 3, reason: 'few cards: every one is in view');
+      // Four lines against three: the room the cards left over went to the text.
+      expect(grown.lead, closeTo(shown.lead * 4 / 3, 0.5));
+    });
+  }
+
+  testWidgets('scrolling the cards does not change the lead: three lines stay three', (tester) async {
+    final before = await pump(tester, const Size(1920, 935), inLibrary: true, answer: longLead);
+    final scroll = tester
+        .widget<SingleChildScrollView>(
+          find.ancestor(of: find.byType(BigPMatchCard).first, matching: find.byType(SingleChildScrollView)).first,
+        )
+        .controller!;
+    scroll.jumpTo(scroll.position.maxScrollExtent);
+    await tester.pump();
+    // Any rebuild of the panel (a controller update) measures again.
+    for (var i = 0; i < 2; i++) {
+      tester.element(find.byType(TvAssistantLeadSlack)).markNeedsBuild();
+      await tester.pump();
+    }
+    await tester.pump(const Duration(milliseconds: 300));
+    final body = find.byKey(const ValueKey('assistant.answer.body'));
+    final lead = tester.getSize(find.ancestor(of: body, matching: find.byType(SingleChildScrollView)).first).height;
+    expect(lead, closeTo(before.lead, 0.5));
+  });
+
+  testWidgets('long lead keeps the fifth card of eight at 1920x935', (tester) async {
+    final shown = await pump(tester, const Size(1920, 935), inLibrary: true, answer: longLead);
     expect(shown.visible, greaterThanOrEqualTo(5));
   });
 

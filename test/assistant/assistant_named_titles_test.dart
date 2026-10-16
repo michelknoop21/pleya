@@ -14,6 +14,7 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_results.dart';
 
 class _Entitled extends AssistantEntitlement {
   const _Entitled();
@@ -38,6 +39,25 @@ AssistantTitleMatch _match(String title, {bool inLibrary = false}) => AssistantT
 
 /// Films and series Big P names get a card from Pleya, not from the model.
 void main() {
+  test('every selected catalog title past 50 still has a card and counts as shown (BP-MODEL)', () {
+    final grid = AssistantMediaGrid([
+      for (var i = 0; i < 61; i++)
+        (
+          item: MediaItem(
+            id: '$i',
+            backend: MediaBackend.plex,
+            kind: MediaKind.movie,
+            title: 'Film $i',
+            serverId: 'server',
+          ),
+          group: null,
+        ),
+    ]);
+    expect(bigPTitleMatches(grid), hasLength(61));
+    expect(bigPChoiceCount(grid), 61);
+    expect(assistantShownTitles([grid]), hasLength(61));
+  });
+
   test('Big P\'s words carry no em or en dashes', () {
     expect(assistantPlainDashes('Bluey \u2014 20 plays'), 'Bluey, 20 plays');
     expect(assistantPlainDashes('Bluey \u2014 the show'), 'Bluey, the show');

@@ -39,6 +39,7 @@
 /// neither is a fact the card body could work out for itself.
 library;
 
+import '../library_atmosphere.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -119,53 +120,56 @@ class TvUnifiedMediaCard extends StatelessWidget {
     final item = group.representativeSource.item;
     final serverId = group.representativeSource.serverId.value;
 
-    return TvCatalogCard(
-      width: width,
-      artwork: TvCatalogArtworkFill(
-        child: OptimizedMediaImage(
-          client: clientFor?.call(serverId),
-          imagePath: item.thumbPath,
-          fit: BoxFit.cover,
-          fallbackIcon: Symbols.movie_rounded,
+    return LibraryArtworkSelection(
+      item: item,
+      child: TvCatalogCard(
+        width: width,
+        artwork: TvCatalogArtworkFill(
+          child: OptimizedMediaImage(
+            client: clientFor?.call(serverId),
+            imagePath: item.thumbPath,
+            fit: BoxFit.cover,
+            fallbackIcon: Symbols.movie_rounded,
+          ),
         ),
+        // Hoofdstuk 10.3: only above one known source, and never a server
+        // name or logo.
+        topLeftMarker: group.hasMultipleSources
+            ? TvCatalogArtworkBadge(
+                key: tvUnifiedMediaCardSourceBadgeKey,
+                label: t.unifiedCatalog.sources(count: group.sources.length),
+              )
+            : null,
+        // Opposite corner from the source badge, so a title that is both
+        // duplicated and watched carries two markers that never collide.
+        //
+        // NEW shares that corner with the watched tick, and the two cannot
+        // both appear: `newBadgeLabel` returns null for a film with a view
+        // count and for a show with every episode seen, so "new" and "watched"
+        // are mutually exclusive by construction rather than by a rule this
+        // widget has to keep. Hoofdstuk 10.2 ("Nieuw-badge blijft bestaan")
+        // and 33.3, which binds the marking for Series; the same
+        // `NewContentBadge` every other card in the app already uses, so the
+        // one place the brand gradient reaches the grid looks the same here as
+        // it does everywhere else.
+        topRightMarker: group.watchState.isWatched
+            ? TvCatalogWatchedBadge(scale: scale)
+            : NewContentDot(item: item, scale: scale),
+        progressFraction: resumeFractionFor(group),
+        title: item.displayTitle,
+        meta: tvCatalogMetaLine(item),
+        onSelect: onSelect,
+        onContextMenu: onContextMenu,
+        focusNode: focusNode,
+        autofocus: autofocus,
+        onNavigateUp: onNavigateUp,
+        onNavigateDown: onNavigateDown,
+        onNavigateLeft: onNavigateLeft,
+        onNavigateRight: onNavigateRight,
+        onBack: onBack,
+        onFocusChange: onFocusChange,
+        semanticLabel: semanticLabelFor(group),
       ),
-      // Hoofdstuk 10.3: only above one known source, and never a server
-      // name or logo.
-      topLeftMarker: group.hasMultipleSources
-          ? TvCatalogArtworkBadge(
-              key: tvUnifiedMediaCardSourceBadgeKey,
-              label: t.unifiedCatalog.sources(count: group.sources.length),
-            )
-          : null,
-      // Opposite corner from the source badge, so a title that is both
-      // duplicated and watched carries two markers that never collide.
-      //
-      // NEW shares that corner with the watched tick, and the two cannot
-      // both appear: `newBadgeLabel` returns null for a film with a view
-      // count and for a show with every episode seen, so "new" and "watched"
-      // are mutually exclusive by construction rather than by a rule this
-      // widget has to keep. Hoofdstuk 10.2 ("Nieuw-badge blijft bestaan")
-      // and 33.3, which binds the marking for Series; the same
-      // `NewContentBadge` every other card in the app already uses, so the
-      // one place the brand gradient reaches the grid looks the same here as
-      // it does everywhere else.
-      topRightMarker: group.watchState.isWatched
-          ? TvCatalogWatchedBadge(scale: scale)
-          : NewContentDot(item: item, scale: scale),
-      progressFraction: resumeFractionFor(group),
-      title: item.displayTitle,
-      meta: tvCatalogMetaLine(item),
-      onSelect: onSelect,
-      onContextMenu: onContextMenu,
-      focusNode: focusNode,
-      autofocus: autofocus,
-      onNavigateUp: onNavigateUp,
-      onNavigateDown: onNavigateDown,
-      onNavigateLeft: onNavigateLeft,
-      onNavigateRight: onNavigateRight,
-      onBack: onBack,
-      onFocusChange: onFocusChange,
-      semanticLabel: semanticLabelFor(group),
     );
   }
 }

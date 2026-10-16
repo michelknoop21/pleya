@@ -105,6 +105,9 @@ ids:
   - id: library.header
     role: region
     instanceable: false
+  - id: library.atmosphere
+    role: image
+    instanceable: true
   - id: library.filter.grouping
     role: filter
     instanceable: false
@@ -243,6 +246,9 @@ ids:
   - id: assistant.memory.button
     role: button
     instanceable: true
+  - id: assistant.answer
+    role: region
+    instanceable: false
   - id: assistant.memory.answer
     role: region
     instanceable: false

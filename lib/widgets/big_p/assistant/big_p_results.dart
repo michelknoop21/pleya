@@ -2,8 +2,6 @@
 /// result card (38 G, 38 J) and the displays a tool handed over.
 library;
 
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -156,9 +154,6 @@ class BigPResultCard extends StatelessWidget {
   }
 }
 
-/// A media grid draws at most this many titles.
-const _gridCap = kAssistantListedTitles;
-
 /// The watched titles shown as cards: the ones watch_stats resolved.
 const _watchTitles = 5;
 
@@ -168,8 +163,8 @@ const _watchTitles = 5;
 int bigPChoiceCount(AssistantDisplay display) => switch (display) {
   AssistantRequestOptions(:final options) => options.length,
   AssistantTitleMatches(:final matches) => matches.where((m) => m.targets.isNotEmpty || m.request != null).length,
-  AssistantMediaGrid(:final entries) => min(entries.length, _gridCap),
-  AssistantServerComparison(:final missing) => min(missing.length, _gridCap),
+  AssistantMediaGrid(:final entries) => entries.length,
+  AssistantServerComparison(:final missing) => missing.length,
   AssistantWatchStats(:final titles) => titles.take(_watchTitles).where((t) => t.target != null).length,
   _ => 0,
 };
@@ -200,7 +195,7 @@ bool bigPHasDenseMatches(List<AssistantDisplay> displays, {required bool compact
 List<AssistantTitleMatch> bigPTitleMatches(AssistantDisplay display) => switch (display) {
   AssistantTitleMatches(:final matches) => matches,
   AssistantMediaGrid(:final entries, :final facts) => [
-    for (final e in entries.take(_gridCap))
+    for (final e in entries)
       AssistantTitleMatch(
         matchId: e.item.globalKey,
         title: e.item.displayTitle,
@@ -224,7 +219,7 @@ List<AssistantTitleMatch> bigPTitleMatches(AssistantDisplay display) => switch (
   ],
   // The missing titles are on [serverName]: cards that open that copy.
   final AssistantServerComparison c => [
-    for (final item in c.missing.take(_gridCap))
+    for (final item in c.missing)
       AssistantTitleMatch(
         matchId: item.globalKey,
         title: item.displayTitle,
@@ -391,7 +386,7 @@ class BigPDisplayView extends StatelessWidget {
       AssistantTitleMatches(:final matches) => _matches(pt, matches),
       // A preview on the confirm card has nothing to open: text, as before.
       AssistantMediaGrid(:final entries) when onOpenTitle == null => card(null, [
-        for (final e in entries.take(_gridCap)) titled(e.item.displayTitle, e.item.year),
+        for (final e in entries) titled(e.item.displayTitle, e.item.year),
       ]),
       AssistantMediaGrid() => _matches(pt, bigPTitleMatches(display)),
       final AssistantServerComparison c when onOpenTitle != null && c.missing.isNotEmpty => Column(
@@ -404,7 +399,7 @@ class BigPDisplayView extends StatelessWidget {
       ),
       final AssistantServerComparison c => card(
         t.assistant.displays.missing(count: c.missingTotal, server: c.serverName, other: c.otherServerName),
-        [for (final item in c.missing.take(12)) titled(item.displayTitle, item.year)],
+        [for (final item in c.missing) titled(item.displayTitle, item.year)],
       ),
       final AssistantWatchStats s => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

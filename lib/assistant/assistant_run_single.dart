@@ -29,7 +29,7 @@ extension _AssistantSingleTitle on AssistantRun {
           (kept) => AssistantTitleMatches(context, kept),
         ),
         AssistantMediaGrid(:final entries, :final facts) => _only(
-          entries.take(kAssistantListedTitles),
+          entries,
           entries.length,
           (e) => isIt(e.item.title, e.item.year),
           (kept) => AssistantMediaGrid(kept, facts: facts),

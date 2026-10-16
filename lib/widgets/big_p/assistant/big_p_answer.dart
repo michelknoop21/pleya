@@ -3,86 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../automation/automation_node.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
 import '../big_p_scale.dart';
+import 'big_p_edge_fade.dart';
 
-/// Content that runs past an edge fades out there instead of being cut:
-/// the fade is the sign that there is more, and it goes when the end is
-/// reached.
-class BigPEdgeFade extends StatefulWidget {
-  const BigPEdgeFade({super.key, required this.builder, this.controller, this.extent});
-
-  /// Builds the scroll view around the controller it is given.
-  final Widget Function(ScrollController controller) builder;
-
-  /// The owner's controller, when it scrolls the content itself.
-  final ScrollController? controller;
-
-  /// How far the fade reaches in from an edge; 44 pt when null.
-  final double? extent;
-
-  @override
-  State<BigPEdgeFade> createState() => _BigPEdgeFadeState();
-}
-
-class _BigPEdgeFadeState extends State<BigPEdgeFade> {
-  ScrollController? _own;
-  ScrollController get _scroll => widget.controller ?? (_own ??= ScrollController());
-  bool _above = false;
-  bool _below = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _scroll.addListener(_measure);
-  }
-
-  @override
-  void dispose() {
-    _scroll.removeListener(_measure);
-    _own?.dispose();
-    super.dispose();
-  }
-
-  void _measure() {
-    if (!mounted || !_scroll.hasClients) return;
-    final position = _scroll.position;
-    final up = position.axisDirection == AxisDirection.up;
-    final above = (up ? position.extentAfter : position.extentBefore) > 0.5;
-    final below = (up ? position.extentBefore : position.extentAfter) > 0.5;
-    if (above != _above || below != _below) {
-      setState(() {
-        _above = above;
-        _below = below;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final pt = BigPScale.of(context);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
-    return ShaderMask(
-      blendMode: BlendMode.dstIn,
-      shaderCallback: (rect) {
-        final fade = ((widget.extent ?? 44 * pt) / rect.height).clamp(0.0, 0.5);
-        return LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            _above ? const Color(0x00000000) : const Color(0xFF000000),
-            const Color(0xFF000000),
-            const Color(0xFF000000),
-            _below ? const Color(0x00000000) : const Color(0xFF000000),
-          ],
-          stops: [0, fade, 1 - fade, 1],
-        ).createShader(rect);
-      },
-      child: widget.builder(_scroll),
-    );
-  }
-}
+export 'big_p_edge_fade.dart';
 
 /// The model's answer, set as mockup 38 G sets it: the first sentence as
 /// the headline, what follows as running text under it. The headline stays
@@ -96,8 +23,10 @@ class BigPAnswer extends StatefulWidget {
     required this.text,
     required this.style,
     this.bodyLines,
+    this.readLines = 3,
     this.lead = true,
     this.focusNode,
+    this.automationId,
   });
 
   final String text;
@@ -112,10 +41,17 @@ class BigPAnswer extends StatefulWidget {
   /// one answer and hands the remote from one to the next itself.
   final FocusNode? focusNode;
 
+  /// Automation id of the reading stop, when it has one to show Pleya Verify.
+  final String? automationId;
+
   /// How many lines of running text show at once; null takes the height
   /// the parent leaves. Zero shows the lead alone, in two lines at most:
   /// above cards, which are the answer and need the height.
   final int? bodyLines;
+
+  /// Above cards (zero [bodyLines]): how many lines a lead that is too long
+  /// for a headline gets as running text before it scrolls.
+  final int readLines;
 
   @override
   State<BigPAnswer> createState() => _BigPAnswerState();
@@ -127,6 +63,34 @@ final _startsWithItem = RegExp(r'^\s*(?:\d{1,2}[.)]|•)\s');
 // A sentence end, or the end of the first line. Not the dot of a list
 // number ("1.") or of a one-letter abbreviation ("o.a.").
 final _leadEnd = RegExp(r'(?<!(?:^|\n)\s*\d{1,2})(?<!\b[A-Za-z])[.!?…](?=\s)|(?=\n)');
+
+/// The running-text style: callout size, regular weight, the line height
+/// the scroll step and the box measure are built on.
+TextStyle _runningStyle(MonoTokens tk, double pt) => TextStyle(
+  color: tk.text.withValues(alpha: 0.86),
+  fontSize: TvHig.callout * pt,
+  fontWeight: FontWeight.w400,
+  height: _runningHeight,
+);
+
+const _runningHeight = 1.36;
+
+/// What one more line of running text costs at scale [pt] under the system's
+/// [textScaler]: the same line the reading box scrolls by.
+double bigPRunningLineHeight(double pt, TextScaler textScaler) => textScaler.scale(TvHig.callout * pt) * _runningHeight;
+
+bool _fitsLines(BuildContext context, String text, TextStyle style, int lines, double width) {
+  if (!width.isFinite) return true;
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: lines,
+  )..layout(maxWidth: width);
+  final fits = !painter.didExceedMaxLines;
+  painter.dispose();
+  return fits;
+}
 
 class _BigPAnswerState extends State<BigPAnswer> {
   final _scroll = ScrollController();
@@ -167,10 +131,14 @@ class _BigPAnswerState extends State<BigPAnswer> {
     final lines = (position.viewportDimension / _line).floor() - 1;
     final step = _line * (lines < 1 ? 1 : lines);
     // Snapped to a line, so a press during the previous glide still lands on one.
-    final target = (((position.pixels + (up ? -step : step)) / _line).round() * _line).clamp(
+    var target = (((position.pixels + (up ? -step : step)) / _line).round() * _line).clamp(
       0.0,
       position.maxScrollExtent,
     );
+    // Under the last whole line a sliver can be left (line metrics are not
+    // whole numbers). Taken along: scrolled on its own it would be a press
+    // that moves nothing the eye can see, and the focus would not leave.
+    if (!up && position.maxScrollExtent - target < _line * 0.5) target = position.maxScrollExtent;
     if (target == position.pixels) return KeyEventResult.ignored;
     final duration = reduceMotion(context, const Duration(milliseconds: 240));
     if (duration == Duration.zero) {
@@ -203,13 +171,9 @@ class _BigPAnswerState extends State<BigPAnswer> {
     final bodyStyle =
         !widget.lead || rest.isEmpty && widget.text.length <= 140 && !_startsWithItem.hasMatch(widget.text)
         ? widget.style
-        : TextStyle(
-            color: tk.text.withValues(alpha: 0.86),
-            fontSize: TvHig.callout * pt,
-            fontWeight: FontWeight.w400,
-            height: 1.36,
-          );
-    _line = bodyStyle.fontSize! * bodyStyle.height!;
+        : _runningStyle(tk, pt);
+    // As Text draws a line: the system's text scale is part of it.
+    _line = MediaQuery.textScalerOf(context).scale(bodyStyle.fontSize!) * bodyStyle.height!;
 
     // The box holds whole lines only, so no line is ever cut in half.
     // A cap, not a size: a short answer keeps the panel short.
@@ -253,16 +217,37 @@ class _BigPAnswerState extends State<BigPAnswer> {
     );
 
     if (widget.bodyLines == 0) {
-      return Text(
-        split ? widget.text.substring(0, end) : widget.text,
-        key: const ValueKey('assistant.answer'),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: widget.style,
+      final lead = split ? widget.text.substring(0, end) : widget.text;
+      // Above cards the lead is a headline only while it fits two lines.
+      // A longer sentence moves into the reading box as running text: three
+      // lines high, the whole sentence reachable by scrolling, nothing cut.
+      return LayoutBuilder(
+        builder: (context, box) {
+          // Measured as Text will draw it: with the font the theme supplies.
+          final drawn = DefaultTextStyle.of(context).style.merge(widget.style);
+          if (_fitsLines(context, lead, drawn, 2, box.maxWidth)) {
+            return Text(
+              lead,
+              key: const ValueKey('assistant.answer'),
+              maxLines: 2,
+              // Never reached when the measure holds; a mark if it does not.
+              overflow: TextOverflow.ellipsis,
+              style: widget.style,
+            );
+          }
+          return BigPAnswer(
+            text: lead,
+            style: _runningStyle(tk, pt),
+            lead: false,
+            bodyLines: widget.readLines,
+            focusNode: widget.focusNode,
+            automationId: widget.automationId,
+          );
+        },
       );
     }
 
-    return Focus(
+    final reading = Focus(
       focusNode: _node,
       canRequestFocus: _overflows,
       onKeyEvent: _onKey,
@@ -282,6 +267,9 @@ class _BigPAnswerState extends State<BigPAnswer> {
         ],
       ),
     );
+    final id = widget.automationId;
+    if (id == null) return reading;
+    return AutomationNode(id: id, role: 'region', focusNode: _node, child: reading);
   }
 }
 

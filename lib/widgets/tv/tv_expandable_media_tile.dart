@@ -33,6 +33,7 @@
 /// database-listing impression the phase is against.
 library;
 
+import '../library_atmosphere.dart';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -148,77 +149,85 @@ class _TvExpandableMediaTileState extends State<TvExpandableMediaTile> {
     final radius = TvDiscoveryLayout.cardRadius * scale;
     final artworkWidth = _isFocused ? TvDiscoveryLayout.wideWidth(scale) : TvDiscoveryLayout.posterWidth(scale);
 
-    return FocusableWrapper(
-      focusNode: widget.focusNode,
-      autofocus: widget.autofocus,
-      automationId: widget.automationId,
-      automationInstance: widget.automationInstance,
-      automationRole: 'grid.item',
-      // Which title the card shows, so a Verify scenario can prove a new title
-      // reached a rail and that the focus stayed on the same title.
-      automationState: () => {'title': widget.group.representativeSource.item.displayTitle},
-      scrollAlignment: widget.scrollAlignment,
-      onSelect: widget.onSelect,
-      onLongPress: widget.onContextMenu,
-      enableLongPress: widget.onContextMenu != null,
-      onNavigateUp: widget.onNavigateUp,
-      onNavigateDown: widget.onNavigateDown,
-      onNavigateLeft: widget.onNavigateLeft,
-      onNavigateRight: widget.onNavigateRight,
-      onFocusChange: (focused) {
-        if (mounted && focused != _isFocused) setState(() => _isFocused = focused);
-        widget.onFocusChange?.call(focused);
-      },
-      // Reduce Motion, hoofdstuk 44: `reduceMotion` reads the platform
-      // accessibility setting and `getAnimationDuration` the performance tier —
-      // two different reasons to stop moving, and the expansion has to answer to
-      // both. Zero duration snaps the width instead of tweening it; the
-      // geometry, and therefore the no-jank contract, is unchanged.
-      //
-      // The geometry already expands by a factor of 2.7 in width; hoofdstuk 25
-      // is explicit that a further scale on top of that would only push the
-      // focused tile over its neighbours, which must stay visible.
-      disableScale: true,
-      // The ring belongs on the artwork rect, and the artwork is what animates.
-      mode: FocusIndicatorMode.delegated,
-      semanticLabel: widget.semanticLabel,
-      // Hoofdstuk 25: "Decoratieve backdrops en clearlogo's worden uitgesloten
-      // van dubbele semantiek." `FocusableWrapper` wraps the child in a
-      // `Semantics(label: …)` without excluding what is underneath, so the
-      // source-count badge and the NEW badge would each announce themselves
-      // again after the composed label already named them — VoiceOver reading
-      // "Dune, 2021, 2 sources" and then "2". `TvUnifiedMediaCard` solves it
-      // the same way.
-      child: ExcludeSemantics(
-        child: Padding(
-          padding: EdgeInsets.all(TvDiscoveryLayout.cardFocusRingGap * scale),
-          child: AnimatedContainer(
-            duration: reduceMotion(context, FocusTheme.getAnimationDuration(context)),
-            curve: Curves.easeOutCubic,
-            width: artworkWidth,
-            height: TvDiscoveryLayout.cardHeight * scale,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(radius),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(
-                    alpha: _isFocused ? TvDiscoveryLayout.cardFocusShadowAlpha : TvDiscoveryLayout.cardShadowAlpha,
+    return LibraryArtworkSelection(
+      item: widget.group.representativeSource.item,
+      child: FocusableWrapper(
+        focusNode: widget.focusNode,
+        autofocus: widget.autofocus,
+        automationId: widget.automationId,
+        automationInstance: widget.automationInstance,
+        automationRole: 'grid.item',
+        // Which title the card shows, so a Verify scenario can prove a new title
+        // reached a rail and that the focus stayed on the same title.
+        automationState: () => {'title': widget.group.representativeSource.item.displayTitle},
+        scrollAlignment: widget.scrollAlignment,
+        onSelect: widget.onSelect,
+        onLongPress: widget.onContextMenu,
+        enableLongPress: widget.onContextMenu != null,
+        onNavigateUp: widget.onNavigateUp,
+        onNavigateDown: widget.onNavigateDown,
+        onNavigateLeft: widget.onNavigateLeft,
+        onNavigateRight: widget.onNavigateRight,
+        onFocusChange: (focused) {
+          if (mounted && focused != _isFocused) setState(() => _isFocused = focused);
+          widget.onFocusChange?.call(focused);
+        },
+        // Reduce Motion, hoofdstuk 44: `reduceMotion` reads the platform
+        // accessibility setting and `getAnimationDuration` the performance tier —
+        // two different reasons to stop moving, and the expansion has to answer to
+        // both. Zero duration snaps the width instead of tweening it; the
+        // geometry, and therefore the no-jank contract, is unchanged.
+        //
+        // The geometry already expands by a factor of 2.7 in width; hoofdstuk 25
+        // is explicit that a further scale on top of that would only push the
+        // focused tile over its neighbours, which must stay visible.
+        disableScale: true,
+        // The ring belongs on the artwork rect, and the artwork is what animates.
+        mode: FocusIndicatorMode.delegated,
+        semanticLabel: widget.semanticLabel,
+        // Hoofdstuk 25: "Decoratieve backdrops en clearlogo's worden uitgesloten
+        // van dubbele semantiek." `FocusableWrapper` wraps the child in a
+        // `Semantics(label: …)` without excluding what is underneath, so the
+        // source-count badge and the NEW badge would each announce themselves
+        // again after the composed label already named them — VoiceOver reading
+        // "Dune, 2021, 2 sources" and then "2". `TvUnifiedMediaCard` solves it
+        // the same way.
+        child: ExcludeSemantics(
+          child: Padding(
+            padding: EdgeInsets.all(TvDiscoveryLayout.cardFocusRingGap * scale),
+            child: AnimatedContainer(
+              duration: reduceMotion(context, FocusTheme.getAnimationDuration(context)),
+              curve: Curves.easeOutCubic,
+              width: artworkWidth,
+              height: TvDiscoveryLayout.cardHeight * scale,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(radius),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(
+                      alpha: _isFocused ? TvDiscoveryLayout.cardFocusShadowAlpha : TvDiscoveryLayout.cardShadowAlpha,
+                    ),
+                    blurRadius:
+                        (_isFocused ? TvDiscoveryLayout.cardFocusShadowBlur : TvDiscoveryLayout.cardShadowBlur) * scale,
+                    offset: Offset(
+                      0,
+                      (_isFocused ? TvDiscoveryLayout.cardFocusShadowOffsetY : TvDiscoveryLayout.cardShadowOffsetY) *
+                          scale,
+                    ),
                   ),
-                  blurRadius:
-                      (_isFocused ? TvDiscoveryLayout.cardFocusShadowBlur : TvDiscoveryLayout.cardShadowBlur) * scale,
-                  offset: Offset(
-                    0,
-                    (_isFocused ? TvDiscoveryLayout.cardFocusShadowOffsetY : TvDiscoveryLayout.cardShadowOffsetY) *
-                        scale,
+                ],
+              ),
+              child: CardFocusBorder(
+                borderRadius: radius,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(radius),
+                  child: _TileArtwork(
+                    group: widget.group,
+                    scale: scale,
+                    clientFor: widget.clientFor,
+                    isWide: _isFocused,
                   ),
                 ),
-              ],
-            ),
-            child: CardFocusBorder(
-              borderRadius: radius,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(radius),
-                child: _TileArtwork(group: widget.group, scale: scale, clientFor: widget.clientFor, isWide: _isFocused),
               ),
             ),
           ),

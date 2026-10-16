@@ -5,6 +5,7 @@ import '../focus/focusable_wrapper.dart';
 import '../media/media_item.dart';
 import '../utils/platform_detector.dart';
 import 'media_card.dart';
+import 'library_atmosphere.dart';
 
 /// A focusable wrapper for MediaCard that handles D-pad navigation.
 ///
@@ -121,52 +122,55 @@ class _FocusableMediaCardState extends State<FocusableMediaCard> {
 
   @override
   Widget build(BuildContext context) {
-    return FocusableWrapper(
-      focusNode: widget.focusNode,
-      automationId: widget.automationId,
-      automationInstance: widget.automationInstance,
-      // The automation id's own instance suffix is the grid *position*
-      // (`library.grid.item[3]`), never the item's identity — a re-sort
-      // reorders which item sits at a given position without changing that
-      // string. `item_id` is what lets a scenario prove the set actually
-      // changed rather than merely that the panel opened and closed. Only
-      // `MediaItem` carries a stable id; `MediaPlaylist` cards report none.
-      automationState: widget.item is MediaItem ? () => {'item_id': (widget.item as MediaItem).id} : null,
-      onSelect: () => _mediaCardKey.currentState?.handleTap(),
-      onLongPress: () => _mediaCardKey.currentState?.showContextMenu(),
-      onNavigateUp: widget.onNavigateUp,
-      onNavigateDown: widget.onNavigateDown,
-      onNavigateLeft: widget.onNavigateLeft,
-      onNavigateRight: widget.onNavigateRight,
-      onBack: widget.onBack,
-      onFocusChange: widget.onFocusChange,
-      enableLongPress: true,
-      disableScale: widget.disableScale,
-      focusScale: widget.fullBleedImage ? FocusTheme.fullCardFocusScale : FocusTheme.focusScale,
-      useFocusGlow: widget.fullBleedImage,
-      // MediaCard draws the focus border itself, on the rect its layout
-      // highlights (poster for standard grid cards, whole card otherwise).
-      mode: FocusIndicatorMode.delegated,
-      useComfortableZone: !PlatformDetector.isTV(), // Always center on TV
-      scrollAlignment: 0.5,
-      child: MediaCard(
-        key: _mediaCardKey,
-        item: widget.item,
-        width: widget.width,
-        height: widget.height,
-        onRefresh: widget.onRefresh,
-        onRemoveFromContinueWatching: widget.onRemoveFromContinueWatching,
-        onListRefresh: widget.onListRefresh,
-        forceGridMode: widget.forceGridMode,
-        forceListMode: widget.forceListMode,
-        isInContinueWatching: widget.isInContinueWatching,
-        usesContinueWatchingAction: widget.usesContinueWatchingAction,
-        collectionId: widget.collectionId,
-        isOffline: widget.isOffline,
-        mixedHubContext: widget.mixedHubContext,
-        fullBleedImage: widget.fullBleedImage,
-        gridTitleLines: widget.gridTitleLines,
-        showServerName: widget.showServerName,
+    return LibraryArtworkSelection(
+      item: widget.item,
+      child: FocusableWrapper(
+        focusNode: widget.focusNode,
+        automationId: widget.automationId,
+        automationInstance: widget.automationInstance,
+        // The automation id's own instance suffix is the grid *position*
+        // (`library.grid.item[3]`), never the item's identity — a re-sort
+        // reorders which item sits at a given position without changing that
+        // string. `item_id` is what lets a scenario prove the set actually
+        // changed rather than merely that the panel opened and closed. Only
+        // `MediaItem` carries a stable id; `MediaPlaylist` cards report none.
+        automationState: widget.item is MediaItem ? () => {'item_id': (widget.item as MediaItem).id} : null,
+        onSelect: () => _mediaCardKey.currentState?.handleTap(),
+        onLongPress: () => _mediaCardKey.currentState?.showContextMenu(),
+        onNavigateUp: widget.onNavigateUp,
+        onNavigateDown: widget.onNavigateDown,
+        onNavigateLeft: widget.onNavigateLeft,
+        onNavigateRight: widget.onNavigateRight,
+        onBack: widget.onBack,
+        onFocusChange: widget.onFocusChange,
+        enableLongPress: true,
+        disableScale: widget.disableScale,
+        focusScale: widget.fullBleedImage ? FocusTheme.fullCardFocusScale : FocusTheme.focusScale,
+        useFocusGlow: widget.fullBleedImage,
+        // MediaCard draws the focus border itself, on the rect its layout
+        // highlights (poster for standard grid cards, whole card otherwise).
+        mode: FocusIndicatorMode.delegated,
+        useComfortableZone: !PlatformDetector.isTV(), // Always center on TV
+        scrollAlignment: 0.5,
+        child: MediaCard(
+          key: _mediaCardKey,
+          item: widget.item,
+          width: widget.width,
+          height: widget.height,
+          onRefresh: widget.onRefresh,
+          onRemoveFromContinueWatching: widget.onRemoveFromContinueWatching,
+          onListRefresh: widget.onListRefresh,
+          forceGridMode: widget.forceGridMode,
+          forceListMode: widget.forceListMode,
+          isInContinueWatching: widget.isInContinueWatching,
+          usesContinueWatchingAction: widget.usesContinueWatchingAction,
+          collectionId: widget.collectionId,
+          isOffline: widget.isOffline,
+          mixedHubContext: widget.mixedHubContext,
+          fullBleedImage: widget.fullBleedImage,
+          gridTitleLines: widget.gridTitleLines,
+          showServerName: widget.showServerName,
+        ),
       ),
     );
   }

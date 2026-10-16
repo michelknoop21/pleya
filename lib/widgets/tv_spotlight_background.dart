@@ -32,6 +32,7 @@ class TvSpotlightBackground extends StatelessWidget {
   final VoidCallback? onPrimaryAction;
   final Widget? actions;
   final bool compact;
+  final bool ambientArtwork;
   final bool showPrimaryAction;
   final bool showInfo;
 
@@ -77,6 +78,7 @@ class TvSpotlightBackground extends StatelessWidget {
     this.onPrimaryAction,
     this.actions,
     this.compact = false,
+    this.ambientArtwork = false,
     this.showPrimaryAction = true,
     this.showInfo = true,
     this.infoOpacity = 1.0,
@@ -129,7 +131,20 @@ class TvSpotlightBackground extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (media != null) _animatedArtwork(media, _buildArtwork(context, media)) else ColoredBox(color: bgColor),
+            if (media != null)
+              _animatedArtwork(
+                media,
+                ambientArtwork
+                    ? ClipRect(
+                        child: ImageFiltered(
+                          imageFilter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                          child: _buildArtwork(context, media),
+                        ),
+                      )
+                    : _buildArtwork(context, media),
+              )
+            else
+              ColoredBox(color: bgColor),
             _buildHorizontalScrim(bgColor, isLight: Theme.of(context).brightness == Brightness.light),
             // Rail-reveal dim: matches the rail's own slide duration so the
             // artwork recedes exactly as the rows arrive.

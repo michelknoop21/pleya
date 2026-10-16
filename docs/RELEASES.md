@@ -51,6 +51,161 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 365 · 15 October 2026 · Apple TV
+
+<!-- commit: 1664722624bd659c376e7f40d2bf146d2f8f3442 -->
+
+### Improved
+- **Ask Big P for longer library lists.** One list can now show up to 50 titles when you
+  ask for more than the usual 12. Asking for more can show a later page of the matches
+  already read from your servers. A children's profile can show up to 20 titles per list;
+  the age checks still apply. Discovery suggestions and single-title searches keep their
+  existing limits.
+
+### Fixed
+- **Submitting a TV search keeps the focus on the results.** When results were already
+  visible, a typing search could still run after Done and pull the focus back to the input.
+  Done now cancels that pending search before moving to the results.
+
+### Notes
+- Automated tests checked larger lists, child-profile limits and follow-up pages. TV widget
+  tests walked all 50 cards and opened the last card on both Big P panels. The native TV
+  scenario could not run because its input tool did not connect. Scrolling performance and
+  the appearance of 50 results have not been checked on an Apple TV.
+
+### Worth checking
+- In an adult profile with enough matching titles, ask Big P for 30 library films, then ask
+  for more. The next list should not repeat the preceding page.
+- Move down to the last result in both the full Big P screen and the summoned panel, and
+  open it. Each focused card should stay visible.
+- Submit a TV search after the results appear. Focus should stay on the results.
+
+## 2.8.1 · build 364 · 15 October 2026 · iPhone and iPad
+
+<!-- commit: 1664722624bd659c376e7f40d2bf146d2f8f3442 -->
+
+### Improved
+- **Ask Big P for longer library lists.** One list can now show up to 50 titles when you
+  ask for more than the usual 12. Asking for more can show a later page of the matches
+  already read from your servers. A children's profile can show up to 20 titles per list;
+  the age checks still apply. Discovery suggestions and single-title searches keep their
+  existing limits.
+
+### Notes
+- Larger lists, child-profile limits and follow-up pages passed automated tests. The longer
+  lists have not been checked in Big P on an iPhone or iPad.
+
+### Worth checking
+- In an adult profile with enough matching titles, ask Big P for 30 library films. Scroll
+  through the results, open one, then return and ask for more. The next list should not
+  repeat the preceding page.
+
+## 2.8.1 · build 363 · 14 October 2026 · Apple TV
+
+<!-- commit: 2923cd5cee8c5257ccdaeeb6f63dd5d1573b1f46 -->
+
+### New
+- **The library screens have a new look.** On Apple TV, Browse, Recommended, Collections and
+  Playlists show the title you have selected as a blurred backdrop, and the backdrop follows
+  the selection. The local menu floats over the page. A collection or playlist without its own
+  cover gets one made from its first four titles; a short list is not padded by repeating
+  titles.
+
+### Fixed
+- **A long answer from Big P above the title cards is no longer cut off.** One long sentence
+  used to be shown as a large bold heading that stopped after two lines with three dots, often
+  in the middle of a sentence. It now reads as ordinary text in a box of three lines, or four
+  when the cards still fit. The whole sentence is there: the box scrolls, and a bar on its
+  edge shows that there is more.
+- **Reading to the end of that text no longer costs an extra press.** The first Down after the
+  last scroll only moved the text by a hair and kept the focus. The last scroll now takes that
+  remainder along, so the next Down leaves the text for the cards.
+
+### Notes
+- The library look has been checked on the Apple TV simulator with test artwork. It has not
+  been run on an Apple TV with a real library, and collection covers from a real server have
+  not been seen yet.
+- Big P's long-answer text has been run on the Apple TV simulator only.
+
+### Worth checking
+- Nothing in this build has been checked on an Apple TV yet.
+- Open the libraries and move through the titles. The backdrop should change with the title you
+  are on, and the image should always be blurred.
+- Open a collection or a playlist that has no cover of its own. It should show up to four of
+  its titles as one cover.
+- Ask Big P something that gives a list and starts with a long first sentence, such as "What is
+  popular right now?". The sentence should read as plain text above the cards without a
+  cut-off line. If the first sentence is short, nothing changes.
+- Press Up from the first card: the text gets the focus and its scroll bar lights up. Down
+  reads on, and when the end is reached the next Down returns to the cards.
+
+## 2.8.1 · build 362 · 14 October 2026 · iPhone and iPad
+
+<!-- commit: 2923cd5cee8c5257ccdaeeb6f63dd5d1573b1f46 -->
+
+### New
+- **The library screens have a new look.** On iPhone and iPad, Browse, Recommended, Collections
+  and Playlists show the artwork of the title in view as a blurred backdrop, and it follows as
+  you scroll. Tapping a title still opens it. On iPad the local menu floats over the page; on
+  iPhone it is a row of its own at the top. A collection or playlist without its own cover gets
+  one made from its first four titles; a short list is not padded by repeating titles.
+
+### Notes
+- The library look has been checked on the iPhone simulator with test artwork. It has not been
+  run on a device with a real library, collection covers from a real server have not been
+  seen yet, and the iPad layout has only had a limited check.
+- Big P's answers are unchanged on iPhone and iPad in this build.
+
+### Worth checking
+- Nothing in this build has been checked on an iPhone or iPad yet.
+- Open the libraries and scroll. The backdrop should follow the title in view, and the image
+  should always be blurred.
+- Open a collection or a playlist that has no cover of its own. It should show up to four of
+  its titles as one cover.
+- On an iPad, open the libraries in both orientations and tell us what looks off; that layout
+  is the least checked.
+
+## 2.8.1 · build 361 · 13 October 2026 · Apple TV
+
+<!-- commit: 9f373471386b9b21b823f296c193b1112465dc1c -->
+
+### Fixed
+- **Big P is in the Apple TV build again.** Build 360 was built without Big P: the notes for
+  that build described the new example questions, but the Apple TV build script left the
+  assistant out unless a setting was passed, and the release did not pass it. The script now
+  includes Big P by default. Everything the notes for build 360 said about Big P applies from
+  this build on.
+- **Top Shelf gets its Continue Watching row back.** Pleya saved the Top Shelf artwork in a
+  folder tvOS does not let it write to. The logs of builds 357 and 360 showed 74 refused
+  writes, and because the error came before the row was stored, the row itself was missing
+  too. The artwork now goes into the cache folder of the shared container. If that folder is
+  refused as well, the row is still stored, without the large artwork.
+
+### Improved
+- **The player's info panel leaves a trail in the log.** In build 360 Pleya closed during a 4K
+  Dolby Vision film, right after the info panel was swiped away. The log stopped mid-animation
+  and tvOS kept no crash report, so the cause is not known. Opening and closing the panel now
+  writes four lines to disk straight away, each with the memory Pleya uses at that moment, and
+  a memory warning from tvOS is written the same way.
+
+### Notes
+- The crash from build 360 is not fixed in this build. Nothing in the code was found that
+  explains it; this build only collects what is needed to find it.
+- The Top Shelf fix has not been checked on an Apple TV. That tvOS accepts the cache folder
+  comes from Apple's developer forums and has not been measured on the device.
+- Trakt sign-in for Big P is not switched on in this build.
+
+### Worth checking
+- Nothing in this build has been checked on an Apple TV yet.
+- Open My Pleya. Big P should be the first tile under Pleya. It was missing in build 360, so
+  this is the first Apple TV build where the example questions from that build's notes can be
+  seen.
+- Play something for a minute, go to the Home screen of the Apple TV and put Pleya in the top
+  row. Top Shelf should show what you were watching. If it stays empty, send the log.
+- Start a 4K Dolby Vision film, swipe down for the info panel and swipe it away again, several
+  times. If Pleya closes, open it again, send the log and tell us straight away: the report
+  tvOS keeps can only be read from the device shortly after it happens.
+
 ## 2.8.1 · build 359 · 12 October 2026 · iPhone and iPad
 
 <!-- commit: 2cd3f7630f1f4d811f6eda581fb40dc79232cd1d -->

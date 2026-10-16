@@ -28,7 +28,9 @@ class _Facts extends TitleFactsService {
   };
   @override
   Future<List<TitleFacts>> factsFor(List<TitleRef> refs) async => [
-    for (final r in refs) byTitle[r.title] ?? const TitleFacts(),
+    for (final r in refs)
+      byTitle[r.title] ??
+          (r.title.startsWith('Kid ') ? const TitleFacts(certifications: {'NL': 'AL'}) : const TitleFacts()),
   ];
 }
 
@@ -42,10 +44,10 @@ class _Loader implements HomeCustomRowLoader {
 }
 
 /// Item 1 on [server]: the same item id on every server.
-UnifiedMediaGroup _on(String server, String title, {int? added}) {
+UnifiedMediaGroup _on(String server, String title, {int? added, String id = '1'}) {
   final source = UnifiedMediaSource.fromItem(
     MediaItem(
-      id: '1',
+      id: id,
       backend: MediaBackend.jellyfin,
       kind: MediaKind.movie,
       title: title,
@@ -136,4 +138,39 @@ void main() {
     expect(adult.data['total_matches'], 2);
     expect(adult.data['added_unknown'], 1);
   });
+
+  test(
+    'a children profile lists at most 20 titles whatever limit says, and next_offset counts before the gate (BP-09)',
+    () async {
+      final servers = MultiServerManager();
+      addTearDown(servers.dispose);
+      servers
+        ..debugRegisterClientForTesting(FakeServer('a'))
+        ..setVisibleServerIds(null);
+      final catalog = AssistantCatalogServices(
+        rowLoader: _Loader([for (var i = 0; i < 40; i++) _on('a', 'Kid $i', id: 'k$i')]),
+        profileId: 'p1',
+        activeProfileId: () => 'p1',
+      );
+      AssistantToolContext ctx() => AssistantToolContext(
+        servers: servers,
+        catalog: catalog,
+        titleFacts: _Facts(),
+        kidsAges: () async => [8],
+        region: () => 'NL',
+      )..kidsMode = true;
+      final big = await _tool('search_catalog').run(ctx(), null, {'kind': 'movie', 'limit': 50}) as AssistantToolResult;
+      expect(big.data['count'], 20);
+      expect(big.data['next_offset'], 20);
+      final plain = await _tool('search_catalog').run(ctx(), null, {'kind': 'movie'}) as AssistantToolResult;
+      expect(plain.data['count'], 20);
+      final more =
+          await _tool('search_catalog').run(ctx(), null, {'kind': 'movie', 'limit': 50, 'offset': 20})
+              as AssistantToolResult;
+      final first = {for (final r in big.data['results']! as List) (r as Map)['item_id']};
+      final second = {for (final r in more.data['results']! as List) (r as Map)['item_id']};
+      expect(second, hasLength(20));
+      expect(first.intersection(second), isEmpty);
+    },
+  );
 }

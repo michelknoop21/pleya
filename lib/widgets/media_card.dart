@@ -1,3 +1,5 @@
+import 'library_cover_artwork.dart';
+import 'library_atmosphere.dart';
 import 'dart:ui';
 import '../media/ids.dart';
 
@@ -242,7 +244,7 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
 
   @override
   Widget build(BuildContext context) {
-    return SettingsBuilder(
+    final card = SettingsBuilder(
       prefs: const [
         SettingsService.viewMode,
         SettingsService.libraryDensity,
@@ -253,6 +255,8 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
       ],
       builder: _buildContent,
     );
+    // TV's FocusableMediaCard already observes remote focus around this card.
+    return PlatformDetector.isTV() ? card : LibraryArtworkSelection(item: widget.item, child: card);
   }
 
   Widget _buildContent(BuildContext context) {
@@ -975,6 +979,23 @@ Widget _buildPosterImage(
   double? knownHeight,
 }) {
   String? posterUrl;
+
+  if (!isOffline &&
+      (item is MediaPlaylist ||
+          (item is MediaItem && (item.kind == MediaKind.collection || item.kind == MediaKind.playlist)))) {
+    final serverId = item is MediaPlaylist ? item.serverId : (item as MediaItem).serverId;
+    return SizedBox(
+      width: knownWidth,
+      height: knownHeight,
+      child: LibraryCoverArtwork(
+        item: item,
+        client: context.tryGetMediaClientForServer(serverIdOrNull(serverId)),
+        fallbackIcon: item is MediaPlaylist || (item as MediaItem).kind == MediaKind.playlist
+            ? Symbols.playlist_play_rounded
+            : Symbols.collections_bookmark_rounded,
+      ),
+    );
+  }
 
   if (item is MediaPlaylist) {
     posterUrl = item.displayImagePath;

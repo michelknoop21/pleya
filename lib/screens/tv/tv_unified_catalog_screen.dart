@@ -53,6 +53,7 @@
 /// filter session wander off to a different catalog on the next LEFT press.
 library;
 
+import '../../widgets/library_atmosphere.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -730,20 +731,9 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   @override
   Widget build(BuildContext context) {
     final tk = tokens(context);
-    // Not a flat fill. A very slight lift towards the top of the frame gives the
-    // page a horizon, so the grid stands in a room rather than floating on a
-    // uniform slab — the same reason a cinema wall is never one value. It is
-    // deliberately almost subliminal: two per cent over the whole height, well
-    // under any banding threshold, and the posters still sit on `MonoTokens.bg`
-    // wherever they actually are.
-    //
-    // Inside the fase-7 shell the shell paints it instead, across the whole
-    // viewport. Painting it again here would start a second gradient at the
-    // bottom edge of the top navigation and leave a hard step there; the lift
-    // belongs to the page, and under a top bar the page starts above this box.
-    final framedByShell = TvShellSurface.isPresent(context);
+    // The shell owns its full-height lift; standalone catalogs retain their original lift without artwork.
     return DecoratedBox(
-      decoration: framedByShell
+      decoration: TvShellSurface.isPresent(context)
           ? const BoxDecoration()
           : BoxDecoration(
               gradient: LinearGradient(
@@ -756,14 +746,18 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
                 stops: const [0, 0.55],
               ),
             ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // The tags are capped here and uncapped in the rail: the heading has
-          // one line and no way to scroll, the panel wraps.
-          TvCatalogHeaderBar(title: widget.title, tags: _railExpanded ? const [] : _selectionTags()),
-          Expanded(child: _buildContentArea()),
-        ],
+      child: LibraryAtmosphere(
+        automationInstance: 'tv_catalog.$_surface',
+        selectionKey: widget.catalog.query.kind,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // The tags are capped here and uncapped in the rail: the heading has
+            // one line and no way to scroll, the panel wraps.
+            TvCatalogHeaderBar(title: widget.title, tags: _railExpanded ? const [] : _selectionTags()),
+            Expanded(child: _buildContentArea()),
+          ],
+        ),
       ),
     );
   }
