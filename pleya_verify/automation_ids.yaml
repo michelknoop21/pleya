@@ -390,6 +390,36 @@ ids:
   - id: home.rail.item
     role: grid.item
     instanceable: true
+  - id: home.rail.header
+    role: region
+    instanceable: true
+  - id: home.customize.entry
+    role: button
+    instanceable: false
+  - id: home.customize
+    role: screen
+    instanceable: false
+  - id: home.customize.row
+    role: list.item
+    instanceable: true
+  - id: home.customize.new
+    role: button
+    instanceable: false
+  - id: home.customize.wizard
+    role: wizard
+    instanceable: false
+  - id: home.customize.wizard.action
+    role: button
+    instanceable: true
+  - id: sheet.home_row_menu
+    role: sheet
+    instanceable: false
+  - id: sheet.home_row_menu.item
+    role: list.item
+    instanceable: true
+  - id: home.customize.done
+    role: button
+    instanceable: false
   - id: screen.series
     role: screen
     instanceable: false
