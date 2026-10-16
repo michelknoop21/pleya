@@ -50,4 +50,21 @@ void main() {
     expect(assistantTaskStatusLabel(task).detail, t.errors.connectionFailed);
     expect(assistantTaskAnswer(task), contains(t.errors.connectionFailed));
   });
+
+  test('a diagnosis that hit its call limit does not tell the user to retry', () {
+    const task = AssistantTask(
+      id: 't',
+      title: 'Controleer bibliotheek',
+      intent: 'command',
+      status: AssistantTaskStatus.failed,
+      answer: '',
+      displays: [],
+      steps: [],
+      actions: [],
+      error: 'diagnosis_call_limit',
+      lastEnd: AssistantRunEnd.answered,
+    );
+    expect(assistantTaskStatusLabel(task).detail, t.assistant.ends.checkLimit);
+    expect(assistantTaskStatusLabel(task).detail, isNot(t.errors.somethingWentWrongTryAgain));
+  });
 }

@@ -2816,6 +2816,7 @@
       "nothingChanged": "Er is niets veranderd.",
       "modelMissing": "Het gekozen model is er niet meer, kies een ander in Big P instellen.",
       "sourceChanged": "Je profiel of serververbinding is gewijzigd. Voer de controle opnieuw uit.",
+      "checkLimit": "De controle haalde zijn limiet voordat alles was bekeken. Vraag naar een kleiner deel van de bibliotheek.",
       "operationUnavailable": "Deze opdracht kon niet worden uitgevoerd met de beschikbare serverfuncties.",
       "permissionDenied": "Je hebt geen toestemming voor deze beheeropdracht op de server."
     },
