@@ -7860,12 +7860,12 @@ class TranslationsAssistantExamplesEn {
 
 	// Translations
 	List<String> get tonight => [
-		'What can I watch tonight?',
-		'Give me a comedy for tonight.',
-		'Find an exciting movie for tonight.',
+		'What in my library can I watch tonight?',
+		'Pick a comedy from my library for tonight.',
+		'Find an exciting movie in my library for tonight.',
 	];
 	List<String> get startSeries => [
-		'Which series can I start now?',
+		'Which series in my library can I start tonight?',
 	];
 	List<String> get forKids => [
 		'Do I have something for the kids?',
@@ -8754,10 +8754,10 @@ class TranslationsAssistantFollowUpEn {
 	String get watchYesterday => 'Who watched yesterday?';
 
 	List<String> get tonight => [
-		'Give me a comedy for tonight.',
-		'Find an exciting movie for tonight.',
+		'Pick a comedy from my library for tonight.',
+		'Find an exciting movie in my library for tonight.',
 		'Do I have something for the kids?',
-		'Which series can I start now?',
+		'Which series in my library can I start tonight?',
 	];
 	List<String> get recent => [
 		'What was added to my library lately?',
@@ -11805,10 +11805,10 @@ extension on Translations {
 			'assistant.idle.status' => ({required Object servers}) => 'Ready for your question · ${servers}',
 			'assistant.idle.ask' => 'Ask Big P',
 			'assistant.idle.examplesHeader' => 'For example',
-			'assistant.examples.tonight.0' => 'What can I watch tonight?',
-			'assistant.examples.tonight.1' => 'Give me a comedy for tonight.',
-			'assistant.examples.tonight.2' => 'Find an exciting movie for tonight.',
-			'assistant.examples.startSeries.0' => 'Which series can I start now?',
+			'assistant.examples.tonight.0' => 'What in my library can I watch tonight?',
+			'assistant.examples.tonight.1' => 'Pick a comedy from my library for tonight.',
+			'assistant.examples.tonight.2' => 'Find an exciting movie in my library for tonight.',
+			'assistant.examples.startSeries.0' => 'Which series in my library can I start tonight?',
 			'assistant.examples.forKids.0' => 'Do I have something for the kids?',
 			'assistant.examples.unwatched.0' => 'Which films in my library have I not seen yet?',
 			'assistant.examples.unwatched.1' => 'Which movies have sat unwatched in my library for a long time?',
@@ -12087,10 +12087,10 @@ extension on Translations {
 			'assistant.followUp.watchWeek' => 'Who watched the most this week?',
 			'assistant.followUp.watchToday' => 'Who watched today?',
 			'assistant.followUp.watchYesterday' => 'Who watched yesterday?',
-			'assistant.followUp.tonight.0' => 'Give me a comedy for tonight.',
-			'assistant.followUp.tonight.1' => 'Find an exciting movie for tonight.',
+			'assistant.followUp.tonight.0' => 'Pick a comedy from my library for tonight.',
+			'assistant.followUp.tonight.1' => 'Find an exciting movie in my library for tonight.',
 			'assistant.followUp.tonight.2' => 'Do I have something for the kids?',
-			'assistant.followUp.tonight.3' => 'Which series can I start now?',
+			'assistant.followUp.tonight.3' => 'Which series in my library can I start tonight?',
 			'assistant.followUp.recent.0' => 'What was added to my library lately?',
 			'assistant.followUp.recent.1' => 'Which series were added recently?',
 			'assistant.followUp.recent.2' => 'What was added this week?',

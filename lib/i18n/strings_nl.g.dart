@@ -3366,12 +3366,12 @@ class _TranslationsAssistantExamplesNl extends TranslationsAssistantExamplesEn {
 
 	// Translations
 	@override List<String> get tonight => [
-		'Wat kan ik vanavond kijken?',
-		'Geef me een komedie voor vanavond.',
-		'Zoek een spannende film voor vanavond.',
+		'Wat uit mijn bibliotheek kan ik vanavond kijken?',
+		'Kies een komedie uit mijn bibliotheek voor vanavond.',
+		'Zoek een spannende film in mijn bibliotheek voor vanavond.',
 	];
 	@override List<String> get startSeries => [
-		'Welke serie kan ik nu beginnen?',
+		'Welke serie in mijn bibliotheek kan ik vanavond beginnen?',
 	];
 	@override List<String> get forKids => [
 		'Heb ik iets voor de kinderen?',
@@ -3814,10 +3814,10 @@ class _TranslationsAssistantFollowUpNl extends TranslationsAssistantFollowUpEn {
 	@override String get watchToday => 'Wie keek er vandaag?';
 	@override String get watchYesterday => 'Wie keek er gisteren?';
 	@override List<String> get tonight => [
-		'Geef me een komedie voor vanavond.',
-		'Zoek een spannende film voor vanavond.',
+		'Kies een komedie uit mijn bibliotheek voor vanavond.',
+		'Zoek een spannende film in mijn bibliotheek voor vanavond.',
 		'Heb ik iets voor de kinderen?',
-		'Welke serie kan ik nu beginnen?',
+		'Welke serie in mijn bibliotheek kan ik vanavond beginnen?',
 	];
 	@override List<String> get recent => [
 		'Wat is er onlangs aan mijn bibliotheek toegevoegd?',
@@ -6551,10 +6551,10 @@ extension on TranslationsNl {
 			'assistant.idle.status' => ({required Object servers}) => 'Klaar voor je vraag · ${servers}',
 			'assistant.idle.ask' => 'Vraag Big P',
 			'assistant.idle.examplesHeader' => 'Bijvoorbeeld',
-			'assistant.examples.tonight.0' => 'Wat kan ik vanavond kijken?',
-			'assistant.examples.tonight.1' => 'Geef me een komedie voor vanavond.',
-			'assistant.examples.tonight.2' => 'Zoek een spannende film voor vanavond.',
-			'assistant.examples.startSeries.0' => 'Welke serie kan ik nu beginnen?',
+			'assistant.examples.tonight.0' => 'Wat uit mijn bibliotheek kan ik vanavond kijken?',
+			'assistant.examples.tonight.1' => 'Kies een komedie uit mijn bibliotheek voor vanavond.',
+			'assistant.examples.tonight.2' => 'Zoek een spannende film in mijn bibliotheek voor vanavond.',
+			'assistant.examples.startSeries.0' => 'Welke serie in mijn bibliotheek kan ik vanavond beginnen?',
 			'assistant.examples.forKids.0' => 'Heb ik iets voor de kinderen?',
 			'assistant.examples.unwatched.0' => 'Welke films in mijn bibliotheek heb ik nog niet gezien?',
 			'assistant.examples.unwatched.1' => 'Welke films staan al lang ongezien in mijn bibliotheek?',
@@ -6833,10 +6833,10 @@ extension on TranslationsNl {
 			'assistant.followUp.watchWeek' => 'Wie heeft deze week het meest gekeken?',
 			'assistant.followUp.watchToday' => 'Wie keek er vandaag?',
 			'assistant.followUp.watchYesterday' => 'Wie keek er gisteren?',
-			'assistant.followUp.tonight.0' => 'Geef me een komedie voor vanavond.',
-			'assistant.followUp.tonight.1' => 'Zoek een spannende film voor vanavond.',
+			'assistant.followUp.tonight.0' => 'Kies een komedie uit mijn bibliotheek voor vanavond.',
+			'assistant.followUp.tonight.1' => 'Zoek een spannende film in mijn bibliotheek voor vanavond.',
 			'assistant.followUp.tonight.2' => 'Heb ik iets voor de kinderen?',
-			'assistant.followUp.tonight.3' => 'Welke serie kan ik nu beginnen?',
+			'assistant.followUp.tonight.3' => 'Welke serie in mijn bibliotheek kan ik vanavond beginnen?',
 			'assistant.followUp.recent.0' => 'Wat is er onlangs aan mijn bibliotheek toegevoegd?',
 			'assistant.followUp.recent.1' => 'Welke series zijn onlangs toegevoegd?',
 			'assistant.followUp.recent.2' => 'Wat is er deze week toegevoegd?',
