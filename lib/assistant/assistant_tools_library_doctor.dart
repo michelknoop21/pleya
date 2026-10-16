@@ -84,12 +84,18 @@ class _DoctorScan {
   final abort = AbortController();
   final elapsed = Stopwatch()..start();
   final reasons = <String>{};
+
+  /// Servers that went offline after the scan began. Their later reads are
+  /// skipped and the answer says so; evidence already read stays.
+  final lost = <ServerId>{};
   final coverage = <Map<String, Object?>>[];
   int calls = 0;
   int checked = 0;
   bool expectedRead = false;
 
-  void check() {
+  /// [tolerateLoss] is for reading: a server that dropped is recorded in
+  /// [lost] and the scan goes on. Confirming an action never tolerates it.
+  void check({bool tolerateLoss = false}) {
     if (ctx.cancelled) throw const AssistantToolError('cancelled');
     if (ctx.catalog!.activeProfileId() != ctx.catalog!.profileId) {
       throw const AssistantToolError('profile_changed');
@@ -97,9 +103,12 @@ class _DoctorScan {
     if (!_setSame(visible, _doctorVisible(loader))) throw const AssistantToolError('catalog_changed');
     for (final entry in clients.entries) {
       final current = ctx.userClient(entry.key);
-      if (!identical(current, entry.value)) {
+      if (identical(current, entry.value)) continue;
+      if (current != null || entry.value == null || !tolerateLoss) {
         throw AssistantToolError(current == null ? 'server_unavailable' : 'catalog_changed');
       }
+      lost.add(entry.key);
+      reasons.add('server_unavailable');
     }
     if (expectedRead && !identical(ctx.requests?.client(), seerr)) {
       throw const AssistantToolError('catalog_changed');
@@ -107,7 +116,7 @@ class _DoctorScan {
   }
 
   Future<T> read<T>(Future<T> Function() operation) async {
-    check();
+    check(tolerateLoss: true);
     if (calls >= 100) throw const AssistantToolError('diagnosis_call_limit');
     final remaining = const Duration(seconds: 15) - elapsed.elapsed;
     if (remaining <= Duration.zero) throw const AssistantToolError('diagnosis_deadline');
@@ -116,7 +125,7 @@ class _DoctorScan {
       operation(),
       if (ctx.cancel != null) ctx.cancel!.trigger.then<T>((_) => throw const AssistantToolError('cancelled')),
     ]).timeout(remaining);
-    check();
+    check(tolerateLoss: true);
     return value;
   }
 
@@ -127,11 +136,11 @@ class _DoctorScan {
       if (const {'cancelled', 'profile_changed', 'catalog_changed', 'server_unavailable'}.contains(e.code)) rethrow;
       reasons.add(e.code);
     } on TimeoutException {
-      check();
+      check(tolerateLoss: true);
       reasons.add('diagnosis_deadline');
       abort.abort();
     } catch (_) {
-      check();
+      check(tolerateLoss: true);
       reasons.add('read_failed');
     }
     return null;
@@ -241,7 +250,7 @@ Future<AssistantToolOutcome> _diagnoseLibrary(AssistantToolContext ctx, Map<Stri
     if (roots.length > 8) scan.reasons.add('library_limit');
     for (final root in roots.take(8)) {
       final client = scan.clients[root.serverId];
-      if (client == null) {
+      if (client == null || scan.lost.contains(root.serverId)) {
         scan.reasons.add('server_unavailable');
         continue;
       }
@@ -263,6 +272,7 @@ Future<AssistantToolOutcome> _diagnoseLibrary(AssistantToolContext ctx, Map<Stri
         (item) => _doctorItemScope(item, root) && item.kind == kind,
       );
       for (final row in rows.items.where((item) => itemId == null || item.id == itemId)) {
+        if (scan.lost.contains(root.serverId)) break;
         final item = await scan.attempt(() => client.fetchItem(row.id));
         scan.checked++;
         // The row's current root query proves membership. If Jellyfin's
@@ -296,7 +306,7 @@ Future<AssistantToolOutcome> _diagnoseLibrary(AssistantToolContext ctx, Map<Stri
           fact['seasons'] = await _doctorSeasons(scan, root, scoped, rows.complete);
         }
         facts.add(fact);
-        scan.check();
+        scan.check(tolerateLoss: true);
         ctx.showItem(root.serverId, item.id);
         // Concrete facts may offer existing jobs; no diagnosis ever invokes one.
         final supportsMembershipProof = client is JellyfinClient || client is PlexClient;
@@ -324,7 +334,12 @@ Future<AssistantToolOutcome> _diagnoseLibrary(AssistantToolContext ctx, Map<Stri
       throw const AssistantToolError('item_not_in_checked_scope');
     }
     final groups = await scan.attempt(() => _doctorGroups(scan, hydrated));
-    scan.check();
+    scan.check(tolerateLoss: true);
+    // Every server that was reachable at the start is gone: nothing is left to report.
+    if (scan.clients.values.nonNulls.isNotEmpty &&
+        scan.clients.entries.every((e) => e.value == null || scan.lost.contains(e.key))) {
+      throw const AssistantToolError('server_unavailable');
+    }
     final data = <String, Object?>{
       'items': facts,
       'groups': [
@@ -507,7 +522,7 @@ Future<List<UnifiedMediaGroup>> _doctorGroups(_DoctorScan scan, List<MediaItem> 
         externalIdTarget: normalizeStableGuid(item.guid) == null ? (serverId: item.serverId!, targetId: item.id) : null,
       ),
   ]);
-  scan.check();
+  scan.check(tolerateLoss: true);
   return groupUnifiedMediaSources([
     for (var i = 0; i < items.length; i++)
       GroupingCandidate(source: UnifiedMediaSource.fromItem(items[i]), evidence: evidence[i]),
