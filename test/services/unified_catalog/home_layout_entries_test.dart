@@ -109,7 +109,7 @@ void main() {
       await h.layout.setOrder(['nas:movie.toprated', '#custom:r1', 'nas:movie.recentlyadded', 'nas:offline-row']);
       final entries = unified();
       expect([for (final e in entries) e.title], ['Top Rated', 'Mijn rij', 'Recent in Films', 'Recent in Kids']);
-      final next = homeLayoutEntriesAfterMove(entries, 0, 1, previous: h.layout.order);
+      final next = homeLayoutEntriesAfterReorder(entries, 0, 1, previous: h.layout.order);
       expect(next, ['#custom:r1', 'nas:movie.toprated', 'nas:movie.recentlyadded', 'nas:offline-row']);
     });
 
@@ -120,7 +120,7 @@ void main() {
         for (final e in [entries[1], entries[0], entries[2], entries[3]]) ...e.ids,
       ];
       expect(naive, isNot(contains('nas:offline-row')));
-      final real = homeLayoutEntriesAfterMove(entries, 0, 1, previous: h.layout.order)!;
+      final real = homeLayoutEntriesAfterReorder(entries, 0, 1, previous: h.layout.order)!;
       expect(real, contains('nas:offline-row'));
     });
   });

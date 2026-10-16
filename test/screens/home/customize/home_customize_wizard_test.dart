@@ -217,14 +217,14 @@ void main() {
       expect(find.textContaining(home.titlesCount(count: 2)), findsOneWidget, reason: 'the row says how many it holds');
       await tester.tap(find.descendant(of: tileOf('Mijn rij'), matching: find.byIcon(Symbols.more_horiz_rounded)));
       await settle(tester);
-      expect(find.text(home.allInCatalogMenu(count: 2, catalog: t.unifiedCatalog.moviesTitle)), findsOneWidget);
+      expect(find.text(home.allInCatalogMenu(catalog: t.unifiedCatalog.moviesTitle)), findsOneWidget);
     });
 
     testWidgets('an empty own row offers no "Alle N" (there is nothing to open)', (tester) async {
       await pumpScreen(tester);
       await tester.tap(find.descendant(of: tileOf('Mijn rij'), matching: find.byIcon(Symbols.more_horiz_rounded)));
       await settle(tester);
-      expect(find.textContaining(RegExp(r'^All \d+ in ')), findsNothing);
+      expect(find.textContaining(RegExp(r"^All in ")), findsNothing);
     });
   });
 

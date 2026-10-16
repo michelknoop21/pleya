@@ -168,7 +168,7 @@ void main() {
   testWidgets('moving a merged row writes both ids next to each other', (tester) async {
     await pump(tester);
     final entries = homeLayoutEntries(layout: layout, projection: projection);
-    final next = homeLayoutEntriesAfterMove(entries, 0, 1, previous: layout.order)!;
+    final next = homeLayoutEntriesAfterReorder(entries, 0, 1, previous: layout.order)!;
     expect(next, ['plex:top', 'plex:recent', 'jf:recent']);
   });
 

@@ -7658,8 +7658,8 @@ class TranslationsUnifiedCatalogHomeRowsEn {
 	/// en: 'Show on Home'
 	String get showOnHome => 'Show on Home';
 
-	/// en: 'All ${count} in ${catalog}'
-	String allInCatalogMenu({required Object count, required Object catalog}) => 'All ${count} in ${catalog}';
+	/// en: 'All in ${catalog}'
+	String allInCatalogMenu({required Object catalog}) => 'All in ${catalog}';
 
 	/// en: 'More actions'
 	String get moreActions => 'More actions';
@@ -11634,7 +11634,7 @@ extension on Translations {
 			'unifiedCatalog.homeRows.onlyPlex' => 'Plex only',
 			'unifiedCatalog.homeRows.hideOnHome' => 'Hide on Home',
 			'unifiedCatalog.homeRows.showOnHome' => 'Show on Home',
-			'unifiedCatalog.homeRows.allInCatalogMenu' => ({required Object count, required Object catalog}) => 'All ${count} in ${catalog}',
+			'unifiedCatalog.homeRows.allInCatalogMenu' => ({required Object catalog}) => 'All in ${catalog}',
 			'unifiedCatalog.homeRows.moreActions' => 'More actions',
 			'unifiedCatalog.homeRows.dragHandle' => 'Move',
 			'unifiedCatalog.homeRows.rowPosition' => ({required Object position, required Object total}) => 'Row ${position} of ${total}',

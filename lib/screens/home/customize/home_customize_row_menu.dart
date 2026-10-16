@@ -14,8 +14,9 @@ import '../../../widgets/overlay_sheet.dart';
 import '../mobile_catalog_screen.dart';
 import 'home_customize_row_tile.dart';
 
-/// Bewerken, Verbergen op Home, Alle N in Films, Verwijderen. "Alle N" is the
-/// row's own count, so it is only offered where there is a catalog to open and
+/// Bewerken, Verbergen op Home, Alle in Films, Verwijderen. The count is left
+/// out: the row only knows how many cards it loaded (capped at 20), not the
+/// catalog's total. Offered where there is a catalog to open and
 /// the row has loaded ([viewAllCount] non-null).
 Future<HomeRowMenuAction?> showHomeCustomRowMenu(
   BuildContext context, {
@@ -42,7 +43,7 @@ Future<HomeRowMenuAction?> showHomeCustomRowMenu(
           AppMenuItem(
             value: HomeRowMenuAction.viewAll,
             icon: Symbols.movie_rounded,
-            label: home.allInCatalogMenu(count: viewAllCount, catalog: catalog),
+            label: home.allInCatalogMenu(catalog: catalog),
             trailing: const Icon(Symbols.chevron_right_rounded),
           ),
         const AppMenuDivider(),

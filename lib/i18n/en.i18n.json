@@ -2296,7 +2296,7 @@
       "onlyPlex": "Plex only",
       "hideOnHome": "Hide on Home",
       "showOnHome": "Show on Home",
-      "allInCatalogMenu": "All ${count} in ${catalog}",
+      "allInCatalogMenu": "All in ${catalog}",
       "moreActions": "More actions",
       "dragHandle": "Move",
       "rowPosition": "Row ${position} of ${total}",

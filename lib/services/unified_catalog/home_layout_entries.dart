@@ -303,16 +303,6 @@ List<UnifiedMediaHub> _stubRows(List<HomeLayoutEntry> entries) => [
     ),
 ];
 
-/// The order to store after moving [entries]`[index]` one place up or down
-/// ([delta] -1 or 1), or null when it cannot move. Keeps the ids of rows that
-/// are not on screen (an offline server) where they were.
-List<String>? homeLayoutEntriesAfterMove(
-  List<HomeLayoutEntry> entries,
-  int index,
-  int delta, {
-  required List<String> previous,
-}) => homeLayoutOrderAfterMove(_stubRows(entries), index, delta, previous: previous);
-
 /// The order to store after dragging [entries]`[from]` to row index [to] (the
 /// index `onReorderItem` reports, i.e. after the dragged row was taken out).
 /// Built from single moves of [homeLayoutOrderAfterMove], so twin rows that

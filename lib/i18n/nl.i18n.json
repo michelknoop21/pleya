@@ -2296,7 +2296,7 @@
       "onlyPlex": "alleen Plex",
       "hideOnHome": "Verbergen op Home",
       "showOnHome": "Tonen op Home",
-      "allInCatalogMenu": "Alle ${count} in ${catalog}",
+      "allInCatalogMenu": "Alle in ${catalog}",
       "moreActions": "Meer acties",
       "dragHandle": "Verplaatsen",
       "rowPosition": "Rij ${position} van ${total}",

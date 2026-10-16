@@ -3248,7 +3248,7 @@ class _TranslationsUnifiedCatalogHomeRowsNl extends TranslationsUnifiedCatalogHo
 	@override String get onlyPlex => 'alleen Plex';
 	@override String get hideOnHome => 'Verbergen op Home';
 	@override String get showOnHome => 'Tonen op Home';
-	@override String allInCatalogMenu({required Object count, required Object catalog}) => 'Alle ${count} in ${catalog}';
+	@override String allInCatalogMenu({required Object catalog}) => 'Alle in ${catalog}';
 	@override String get moreActions => 'Meer acties';
 	@override String get dragHandle => 'Verplaatsen';
 	@override String rowPosition({required Object position, required Object total}) => 'Rij ${position} van ${total}';
@@ -6328,7 +6328,7 @@ extension on TranslationsNl {
 			'unifiedCatalog.homeRows.onlyPlex' => 'alleen Plex',
 			'unifiedCatalog.homeRows.hideOnHome' => 'Verbergen op Home',
 			'unifiedCatalog.homeRows.showOnHome' => 'Tonen op Home',
-			'unifiedCatalog.homeRows.allInCatalogMenu' => ({required Object count, required Object catalog}) => 'Alle ${count} in ${catalog}',
+			'unifiedCatalog.homeRows.allInCatalogMenu' => ({required Object catalog}) => 'Alle in ${catalog}',
 			'unifiedCatalog.homeRows.moreActions' => 'Meer acties',
 			'unifiedCatalog.homeRows.dragHandle' => 'Verplaatsen',
 			'unifiedCatalog.homeRows.rowPosition' => ({required Object position, required Object total}) => 'Rij ${position} van ${total}',
