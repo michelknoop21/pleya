@@ -4333,6 +4333,8 @@ Big P antwoordde op "wie heeft de afgelopen dagen het meest gekeken?" bij Pleya 
 
 Genummerd als DEC-144 bij het samenvoegen met main, waar DEC-119 al twee keer vergeven was. De commits 16428415, 80bb0706 en 199f88ab noemen dit besluit nog DEC-119.
 
+Aangevuld op 16 oktober 2026 door DEC-XXX (Verder kijken-volgorde): een volgende aflevering is alleen nog "nooit oud" als het een nieuwe aflevering of een nieuw seizoen is, en de statusregel kent `Nieuwe aflevering` en `Nieuw seizoen`.
+
 4 oktober 2026. Mockups 38 A, 38 C en 22 (`docs/assets/tvos-unified/mockups-2026-10-04-home/`),
 beoordeeld en vrijgegeven door Michel dezelfde dag. Dit is fase 1 van de overzichtsronde; het
 volledige overzicht (38 D, 23), het opruimen (38 E) en de extra rijen (39, 24) volgen in eigen
@@ -4664,3 +4666,22 @@ voor S3 tot en met S6, met een eigen DEC (voorwaarde), en pas daarna S3.1.
 **Context:** Pleya Share is bedoeld voor lokaal delen: een iPhone met films als hotspot, iPads van de kinderen die ervan streamen zonder mobiele data. [DEC-006](#dec-006) voegde een terugval via `ice.pleya.app` toe voor apparaten op verschillende netwerken. Een meting op 11 oktober 2026 liet zien dat die terugval geen video kan dragen (de relay sluit de socket met code 1009 boven 64 KiB per bericht, een dataframe is ongeveer 116.000 tekens) en dat een guest er na een korte LAN-onderbreking ongevraagd op terechtkwam en bleef hangen. De host belde de relay bovendien zodra delen aanging, ook zonder guest.
 **Decision:** `PleyaShareRelay.enabled` staat op `false`. De host start geen relay-listener en de guest slaat de relaystap over bij verbinden en bij QR-pairing. De relaycode blijft staan, net als de `relay`-id in de QR, die Wi-Fi Aware gebruikt om de host te herkennen. Watch Together is niet gewijzigd.
 **Consequences:** Delen tussen verschillende netwerken vervalt; handleiding, site en de uitleg in de app noemen het niet meer. Een guest die de host niet lokaal bereikt, toont de opgeslagen catalogus en probeert het lokaal opnieuw. DEC-006 blijft `accepted` en wordt niet op `superseded` gezet: dit is een partiële supersede van alleen het relaydeel, de byte-pipe-keuze geldt onverkort voor Wi-Fi Aware. De eis aan `ice.pleya.app` uit DEC-006 (frames van ongeveer 90 KB) is hiermee van tafel. De hardwareronde met iPhone-hotspot, vergrendelde host en datateller staat open, zie [PLEYA_SHARE](PLEYA_SHARE.md#open-hardware).
+
+## DEC-XXX: Verder kijken heeft één volgorde, en alleen een nieuwe aflevering of een nieuw seizoen gaat voor ouderdom
+
+16 oktober 2026, besluit van Michel. Vult DEC-144 aan; hoofdstuk 11.8 van `docs/tvos-unified-experience.md` (groeperen op exacte aflevering) blijft ongewijzigd.
+
+De lijst sorteerde op twee plekken op verschillende manieren (`DataAggregationService` op `lastViewedAt ?? addedAt`, `HomeProjectionService` op `lastViewedAt`), en kende geen signaal voor een nieuwe aflevering. Nu bepaalt `lib/utils/continue_watching_order.dart` de volgorde voor Home op alle platforms, de overzichten, Top Shelf en Watch Next:
+
+1. De titel met de hoogste `lastViewedAt` staat vooraan.
+2. Daarna hoogstens twee series met een nieuwe aflevering of een nieuw seizoen, de nieuwste eerst, ook als de serie maanden geleden is gekeken.
+3. Dan de actieve titels op laatste activiteit.
+4. Dan Eerder begonnen: meer dan 90 dagen niet aangeraakt.
+
+Een half bekeken aflevering gaat alleen voor de volgende aflevering van dezelfde serie, niet voor andere titels. Een gewone volgende aflevering van een serie die meer dan 90 dagen stil ligt is niet meer "nooit oud" (DEC-144) en gaat naar Eerder begonnen; een nieuwe aflevering is dat wel.
+
+Nieuw geldt alleen als de data het bewijst: een volgende-aflevering-item waarvan `addedAt` meer dan een dag na de laatste kijkbeurt van de serie ligt en niet ouder is dan 14 dagen (dezelfde 14 dagen als de hoekbadge). Het eerste item van seizoen 2 of later is een nieuw seizoen. Ontbreekt een van de twee datums, dan is er geen label en geen voorrang. Het label is `S2 E5 · Nieuwe aflevering` of `S3 E1 · Nieuw seizoen`; de rest blijft `Volgende aflevering`.
+
+De laatste kijkdatum van de serie komt uit Jellyfin en Emby (`DateCreated` in NextUp, plus een opzoeking per serie, hoogstens zes per verversing) en uit Plex (één lichte `GET /library/metadata/<serie>`, hoogstens zes, alleen voor volgende afleveringen van de laatste 14 dagen). Mislukt zo'n aanroep, dan geen label. Pleya Server levert het veld pas na een eigen protocolvenster; lokale map en Pleya Share hebben geen volgende afleveringen. Plex laat een uitgekeken serie alleen terugkomen binnen zijn eigen OnDeckWindow.
+
+Bewust niet gebouwd: series samenvoegen over servers heen. Een voortgang per aflevering blijft de eenheid (11.8).

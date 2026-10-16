@@ -767,15 +767,29 @@ void main() {
     });
 
     test('cards sort on the newest recency among their own sources', () async {
+      int daysAgo(int d) => DateTime.now().subtract(Duration(days: d)).millisecondsSinceEpoch ~/ 1000;
       final onDeck = [
-        _episode('old', serverId: 'a', show: 'Andor', showId: 'show-9', lastViewedAt: 50),
-        _episode('new', serverId: 'a', show: 'Severance', showId: 'show-1', lastViewedAt: 900),
+        _episode('old', serverId: 'a', show: 'Andor', showId: 'show-9', lastViewedAt: daysAgo(30)),
+        _episode('new', serverId: 'a', show: 'Severance', showId: 'show-1', lastViewedAt: daysAgo(1)),
         _episode('none', serverId: 'a', show: 'Fallout', showId: 'show-7', lastViewedAt: null),
       ];
 
       final row = await _service().projectContinueWatching(onDeck, title: 'Continue Watching');
 
       expect([for (final group in row.groups) group.representativeSource.item.id], ['new', 'old', 'none']);
+    });
+
+    test('a card begun over three months ago sorts behind one with no date at all', () async {
+      int daysAgo(int d) => DateTime.now().subtract(Duration(days: d)).millisecondsSinceEpoch ~/ 1000;
+      final onDeck = [
+        _episode('new', serverId: 'a', show: 'Severance', showId: 'show-1', lastViewedAt: daysAgo(1)),
+        _episode('stale', serverId: 'a', show: 'Andor', showId: 'show-9', lastViewedAt: daysAgo(200)),
+        _episode('none', serverId: 'a', show: 'Fallout', showId: 'show-7', lastViewedAt: null),
+      ];
+
+      final row = await _service().projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect([for (final group in row.groups) group.representativeSource.item.id], ['new', 'none', 'stale']);
     });
 
     test('undated cards keep their incoming order among themselves', () async {

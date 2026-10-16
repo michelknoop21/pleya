@@ -11,19 +11,21 @@ void main() {
   final now = DateTime(2026, 10, 4, 12);
   int secondsAgo(Duration d) => now.subtract(d).millisecondsSinceEpoch ~/ 1000;
 
-  MediaItem episode(String id, {int? viewOffsetMs, int? lastViewedAt, ContinueWatchingKind? kind}) => MediaItem(
-    id: id,
-    backend: MediaBackend.jellyfin,
-    kind: MediaKind.episode,
-    title: 'ep',
-    grandparentTitle: 'show',
-    parentIndex: 1,
-    index: 2,
-    durationMs: 48 * minute,
-    viewOffsetMs: viewOffsetMs,
-    lastViewedAt: lastViewedAt,
-    continueWatchingKind: kind,
-  );
+  MediaItem episode(String id, {int? viewOffsetMs, int? lastViewedAt, int? addedAt, ContinueWatchingKind? kind}) =>
+      MediaItem(
+        id: id,
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.episode,
+        title: 'ep',
+        grandparentTitle: 'show',
+        parentIndex: 1,
+        index: 2,
+        durationMs: 48 * minute,
+        viewOffsetMs: viewOffsetMs,
+        lastViewedAt: lastViewedAt,
+        addedAt: addedAt,
+        continueWatchingKind: kind,
+      );
   MediaItem film(String id, {int? viewOffsetMs, int? lastViewedAt}) => MediaItem(
     id: id,
     backend: MediaBackend.plex,
@@ -65,15 +67,41 @@ void main() {
     expect(sections.last.$2.single.id, 'old');
   });
 
-  test('a next episode is never old, whatever the series last-watched date says', () {
+  test('an ordinary next episode of a series left alone for months is Eerder begonnen', () {
     final sections = continueWatchingSections(
       [
         episode(
           'next-old-series',
           kind: ContinueWatchingKind.nextUp,
           lastViewedAt: secondsAgo(const Duration(days: 400)),
+          addedAt: secondsAgo(const Duration(days: 500)),
         ),
       ],
+      itemOf: (i) => i,
+      now: now,
+    );
+    expect(sections.single.$1, ContinueWatchingSection.stale);
+  });
+
+  test('a new episode of a series left alone for months is not old', () {
+    final sections = continueWatchingSections(
+      [
+        episode(
+          'next-new',
+          kind: ContinueWatchingKind.nextUp,
+          lastViewedAt: secondsAgo(const Duration(days: 400)),
+          addedAt: secondsAgo(const Duration(days: 3)),
+        ),
+      ],
+      itemOf: (i) => i,
+      now: now,
+    );
+    expect(sections.single.$1, ContinueWatchingSection.nextEpisodes);
+  });
+
+  test('a next episode without a date is not old', () {
+    final sections = continueWatchingSections(
+      [episode('next-undated', kind: ContinueWatchingKind.nextUp)],
       itemOf: (i) => i,
       now: now,
     );

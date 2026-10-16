@@ -44,6 +44,7 @@ MediaItem _episode(
   required String show,
   int? viewOffsetMs,
   int? lastViewedAt,
+  int? addedAt,
   ContinueWatchingKind? kind,
 }) => MediaItem(
   id: id,
@@ -58,6 +59,7 @@ MediaItem _episode(
   durationMs: 48 * _minute,
   viewOffsetMs: viewOffsetMs,
   lastViewedAt: lastViewedAt,
+  addedAt: addedAt,
   continueWatchingKind: kind,
   serverId: 'server_1',
   serverName: 'server_1',
@@ -76,8 +78,10 @@ MediaItem _movie(String id, {required String title, int? viewOffsetMs, int? last
   serverName: 'server_1',
 );
 
-/// Four items, one per section, plus a next episode of a long-silent series
-/// that must not be filed under Eerder begonnen.
+/// Four items, one per section. The next episode is a *new* episode of a
+/// long-silent series (added three days ago, long after the last watch), so it
+/// is not filed under Eerder begonnen; an ordinary next episode of such a
+/// series is, and the sections test covers that.
 final List<MediaItem> _onDeck = [
   _episode(
     'e-resume',
@@ -96,6 +100,7 @@ final List<MediaItem> _onDeck = [
     'e-next',
     show: 'Andor',
     lastViewedAt: _secondsAgo(const Duration(days: 400)),
+    addedAt: _secondsAgo(const Duration(days: 3)),
     kind: ContinueWatchingKind.nextUp,
   ),
   _movie(
@@ -251,7 +256,7 @@ void main() {
     expect(find.text('Andor'), findsOneWidget, reason: 'a next episode of a silent series is not old');
     expect(find.text('Interstellar'), findsOneWidget);
     expect(find.textContaining('18 min left · 2 days ago'), findsOneWidget);
-    expect(find.textContaining('Next episode'), findsOneWidget);
+    expect(find.textContaining('New episode'), findsOneWidget);
     expect(find.text('4'), findsOneWidget, reason: 'the count beside the title');
   });
 
@@ -288,7 +293,7 @@ void main() {
       expect(find.text(label), findsOneWidget, reason: label);
     }
     expect(find.text('S1 E2 · 18 min left'), findsOneWidget);
-    expect(find.text('S1 E2 · Next episode'), findsOneWidget);
+    expect(find.text('S1 E2 · New episode'), findsOneWidget);
   });
 
   testWidgets('TV: stacked bands with their counts, and DOWN steps to the next band', (tester) async {
