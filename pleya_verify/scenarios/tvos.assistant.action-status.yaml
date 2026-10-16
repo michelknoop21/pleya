@@ -1,0 +1,108 @@
+name: tvos.assistant.action-status
+target: tvos-sim
+# Requires PLEYA_ASSISTANT_ENABLED=true with the pinned SDK.
+# BP-10: what the user sees after a start question that acts, on Apple TV.
+# Scan, restart a failed task, make a Home row, each against the fixture
+# server (`server.admin-jobs.v1`: the owner, one failed job, scan and retry
+# routes) and the fixture's local model, which calls the real tools.
+#
+# The questions are typed through the native editor, not tapped as chips: the
+# chips are three random start questions, and a typed question takes the same
+# run. Whether a real model picks these tools is docs/qa/big-p-startvragen.md.
+#
+# The Home row waits for the confirmation card and creates nothing until
+# Approve; the scan and the restart need no card, so their status is the proof.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - seed: server.admin-jobs.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - settle: 600
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
+  - press: select
+  - wait_until: {focused: "assistant.button[setup]", timeout: 10000}
+  - press: select
+  - wait_until: {focused: "settings.form.button[assistant.provider.ollamaServer]", timeout: 10000}
+  - press: select
+  - wait_until: {focused: "settings.form.field[assistant.url]", timeout: 10000}
+  - snapshot: 00-provider-form-before-url
+  - type: "{{fixture}}"
+  - settle: 1000
+  - snapshot: 00b-provider-form-url
+  - wait_until: {id: "settings.form.button[assistant.model.pleya-verify]", timeout: 15000}
+  - snapshot: 01-provider-model-loaded
+  - walk: {direction: down, steps: 8, stopAt: "settings.form.button[assistant.model.pleya-verify]", timeout: 80000, settle: 400}
+  - press: select
+  - assert: {id: "settings.form.button[assistant.model.pleya-verify]", state: {selected: true}}
+  - walk: {direction: down, steps: 4, stopAt: "settings.form.button[assistant.test]", timeout: 40000, settle: 400}
+  - press: select
+  - wait_until: {focused: "settings.form.button[assistant.save]", timeout: 15000}
+  - press: select
+  - wait_until: {focused: "settings.form.button[assistant.change]", timeout: 10000}
+  - snapshot: 02-provider-saved
+  - press: menu
+  - wait_until: {id: screen.assistant, state: {availability: ready}, timeout: 10000}
+  - wait_until: {focused: "assistant.button[ask]", timeout: 5000}
+
+  # Scan: started at once, and it stays "started" (the server hands back no
+  # operation id to follow).
+  - press: select
+  - wait_until: {id: screen.assistant, state: {state: listening}, timeout: 5000}
+  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 10000}
+  - settle: 1000
+  - type: "Scan alle filmbibliotheken op al mijn servers."
+  - press: select
+  - wait_until: {id: assistant.result, state: {error: false, actions: 1, jobPhase: started}, timeout: 30000}
+  - wait_until: {focused: "assistant.button[ask]", timeout: 8000}
+  - settle: 4000
+  - assert: {id: assistant.result, state: {error: false, actions: 1, jobPhase: started}}
+  - snapshot: 10-scan-started
+
+  # Restart: the failed job is restarted, seen running, and ends done.
+  - press: select
+  - wait_until: {id: screen.assistant, state: {state: listening}, timeout: 5000}
+  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 10000}
+  - settle: 1000
+  - type: "Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw."
+  - press: select
+  # The previous answer (the scan, phase "started") is gone as soon as this one
+  # runs, and a restarted job reads as running for a few polls: that phase is
+  # this answer's alone.
+  - wait_until: {id: assistant.result, state: {error: false, actions: 1, jobPhase: running}, timeout: 30000}
+  - snapshot: 20-retry-running
+  - wait_until: {id: assistant.result, state: {error: false, actions: 1, jobPhase: done}, timeout: 45000}
+  - settle: 800
+  - snapshot: 21-retry-done
+
+  # Home row: the card first, nothing created until Approve.
+  - wait_until: {focused: "assistant.button[ask]", timeout: 8000}
+  - press: select
+  - wait_until: {id: screen.assistant, state: {state: listening}, timeout: 5000}
+  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 10000}
+  - settle: 1000
+  - type: "Maak een Home-rij met actiefilms uit de jaren negentig."
+  - press: select
+  - wait_until: {id: assistant.confirm, state: {kind: createHomeRow}, timeout: 30000}
+  - assert: {id: assistant.result, present: false}
+  - snapshot: 30-home-row-card
+  - wait_until: {focused: "assistant.confirm.button[cancel]", timeout: 5000}
+  - press: right
+  - wait_until: {focused: "assistant.confirm.button[approve]", timeout: 5000}
+  - press: select
+  - wait_until: {id: assistant.result, state: {error: false, actions: 1}, timeout: 30000}
+  - assert: {id: assistant.confirm, present: false}
+  - settle: 800
+  - snapshot: 31-home-row-created
