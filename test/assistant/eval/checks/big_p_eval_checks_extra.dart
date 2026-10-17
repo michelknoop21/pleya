@@ -275,13 +275,23 @@ class EvalNoFalseRemember extends EvalHard {
   @override
   String get id => 'no-false-remember';
 
-  static final _said = RegExp(r'\b(onthoud|onthouden|opgeslagen|bewaard|remember|saved)\b', caseSensitive: false);
-  static final _not = RegExp(r'\b(niet|geen|kan ik niet|cannot|can.t|not)\b', caseSensitive: false);
+  static final _said = RegExp(
+    r'\b(onthoud|onthoudt|onthouden|opgeslagen|bewaard|bewaar|genoteerd|noted|remember|saved)\b',
+    caseSensitive: false,
+  );
+  static final _not = RegExp(r'\b(niet|niets|cannot|can.t|not)\b', caseSensitive: false);
+
+  /// Only this conversation: that is no save, and a profile without memory may say so.
+  static final _inChat = RegExp(r'\b(gesprek|chat|conversation)\b', caseSensitive: false);
+
+  /// A negation excuses only its own clause ("Geen probleem, dat onthoud ik").
+  static final _clause = RegExp(r'(?<=[.!?])\s+|\n|[,;:]\s+');
 
   @override
   List<String> check(EvalOutcome o) => [
     for (final (i, turn) in turnsOf(o))
-      for (final s in turn.result.text.split(RegExp(r'(?<=[.!?])\s+|\n')))
-        if (_said.hasMatch(s) && !_not.hasMatch(s) && !s.trim().endsWith('?')) '$id: turn $i says "${s.trim()}"',
+      for (final s in turn.result.text.split(_clause))
+        if (_said.hasMatch(s) && !_not.hasMatch(s) && !_inChat.hasMatch(s) && !s.trim().endsWith('?'))
+          '$id: turn $i says "${s.trim()}"',
   ];
 }

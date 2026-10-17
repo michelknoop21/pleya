@@ -47,7 +47,7 @@ Wat de nulmeting opleverde en waar het nu staat:
 | Offline server niet genoemd in zoekresultaat | Productfout | BP-11e, gemerged |
 | "Aangevraagd" na een geweigerde kaart (gemma4:31b) | Productfout | BP-11f, gemerged; gemma 3 van 3 goed op die case |
 | Dezelfde titel twee keer als kaart | Productfout | BP-11g, in review |
-| Kinderprofiel zegt "dat onthoud ik" | Productfout | BP-11h, gepland; case staat als bekende fout |
+| Kinderprofiel zegt "dat onthoud ik" | Productfout, zichtbaar na een scherpere check (de nulmeting telde alleen kaarten) | BP-11h, gepland; case staat als bekende fout; gemeten in een aparte run op die case: gemma4:31b 3 van 3, glm-5.3-flash 1 van 3 fout |
 | `rec-recently-added` zonder kaarten | Fixture: de titels hadden geen toevoegdatum | Fixture krijgt een datum; beide modellen 3 van 3 goed |
 | `no-false-success` op "er is nog niets aangevraagd" | Meetfout in de check | Gerepareerd |
 
