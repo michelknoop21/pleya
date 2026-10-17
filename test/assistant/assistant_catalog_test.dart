@@ -741,6 +741,28 @@ void main() {
     expect(title.length, lessThanOrEqualTo(81));
   });
 
+  test('a server that does not answer is named, in both search paths (DEC-142)', () async {
+    final (ctx, _, _, _) = await setUpCtx();
+    ctx.servers.debugRegisterClientForTesting(_SearchServer('kelder', MediaBackend.jellyfin), online: false);
+
+    final row = await search(ctx, {'kind': 'movie'});
+    expect(row['servers_offline'], ['kelder']);
+    expect(row['partial'], isTrue, reason: 'the result misses that server');
+    expect(row['total_matches'], isNull, reason: 'no total while a server is missing');
+
+    final text = await search(ctx, {'kind': 'movie', 'text': 'alien'});
+    expect(text['servers_offline'], ['kelder']);
+    expect(text['partial'], isTrue);
+    expect(text['total_matches'], isNull);
+  });
+
+  test('no offline server: no servers_offline marker', () async {
+    final (ctx, _, _, _) = await setUpCtx();
+    final data = await search(ctx, {'kind': 'movie'});
+    expect(data.containsKey('servers_offline'), isFalse);
+    expect(data['total_matches'], isNotNull, reason: 'control: a complete read has a total');
+  });
+
   test('servers that cannot run a filter are left out of the query, and named', () async {
     final pleya = _SearchServer('ps-1', MediaBackend.pleyaServer);
     final (ctx, loader, _, _) = await setUpCtx(others: [pleya]);

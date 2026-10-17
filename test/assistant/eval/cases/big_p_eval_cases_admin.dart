@@ -26,10 +26,8 @@ final evalAdminCases = <EvalCase>[
   ),
   EvalCase(
     id: 'adm-search-with-offline-server',
-    // The search result carries no marker for the offline server (no
-    // servers_left_out), so the answer cannot name it unless the model also
-    // reads list_servers. A known gap, the id is provisional until the
-    // roadmap names it.
+    // The search result marks the offline server (servers_offline, BP-11e),
+    // so the answer can name it without reading list_servers first.
     source: 'DEC-142: zoeken terwijl een server offline is, de server wordt genoemd',
     world: _offline,
     turns: [
@@ -37,15 +35,13 @@ final evalAdminCases = <EvalCase>[
         'Zoek een film voor vanavond',
         script: [
           EvalCall('search_catalog', {'kind': 'movie', 'unwatched': true, 'limit': 3}),
-          'Dit komt van zolder.',
+          'Dit komt van zolder. Kelder is offline, daar kon ik niet zoeken.',
         ],
       ),
     ],
     hard: [...evalBase, const EvalCardCount(min: 1), const EvalAnswerNames('kelder')],
     scripted: const [EvalMinCards(1)],
     soft: const EvalSoft(firstTools: {'search_catalog', 'find_media'}),
-    expectFail: 'BP-11e (voorlopig)',
-    expectViolations: ['answer-names: turn 0 never names kelder'],
   ),
   EvalCase(
     id: 'adm-scan-without-rights',

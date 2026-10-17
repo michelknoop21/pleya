@@ -84,7 +84,7 @@ final List<AssistantTool> _catalogTools = [
         'absent when unknown; with more_matches say "at least matches_at_least", never a total. '
         'seen_before counts films left out because this profile\'s own watch history has them as finished. '
         'Joint unseen uses recommend_together. Returns a task-local query_id; save only if can_become_home_row. '
-        'Explain home_row_unavailable_reason, partial, sampled, servers_left_out and coverage as returned.',
+        'Explain home_row_unavailable_reason, partial, sampled, servers_left_out, servers_offline and coverage as returned.',
     risk: AssistantToolRisk.read,
     properties: const {
       ...AssistantStrictFilters.properties,
@@ -206,9 +206,10 @@ final List<AssistantTool> _catalogTools = [
           'home_row_unavailable_reason': query.rowUnavailableReason,
         if (query.coverage != null) 'coverage': query.coverage,
         // A bare flag for a child: titles without a date are left out, nothing more.
-        if (query.partial || query.addedUnknown > 0) 'partial': true,
+        if (query.partial || query.addedUnknown > 0 || query.serversOffline.isNotEmpty) 'partial': true,
         if (query.sampled) 'sampled': true,
         if (query.serversLeftOut.isNotEmpty) 'servers_left_out': query.serversLeftOut,
+        if (query.serversOffline.isNotEmpty) 'servers_offline': query.serversOffline,
         if (query.genreUnverified.isNotEmpty) 'genre_unverified': query.genreUnverified.length,
         ...gated.note,
         'results': evidence,
