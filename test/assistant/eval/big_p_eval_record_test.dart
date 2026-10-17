@@ -16,11 +16,11 @@ void main() {
     expect(record.containsKey('label'), isTrue);
     expect(record['case'], 'disc-natural-tonight');
     // The report reads these keys; a rename here must break this test first.
-    for (final key in ['model', 'attempt', 'expect_fail', 'hard_ok', 'violations', 'turns']) {
+    for (final key in ['model', 'attempt', 'expect_fail', 'hard_ok', 'violations', 'turns', 'infra_error']) {
       expect(record.containsKey(key), isTrue, reason: key);
     }
     final turn = (record['turns']! as List).single as Map;
-    for (final key in ['first_tool', 'first_tool_ok', 'latency_ms', 'tokens']) {
+    for (final key in ['first_tool', 'first_tool_ok', 'latency_ms', 'tokens', 'end', 'provider_error']) {
       expect(turn.containsKey(key), isTrue, reason: key);
     }
   });

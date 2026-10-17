@@ -82,11 +82,28 @@ class EvalGroup {
 
 typedef EvalGroupKey = ({String caseId, String model});
 
+/// Runs that ended in a provider error (rate limit, network, an unknown
+/// model), as `case [model]` with their count. They say nothing about the
+/// answers, so [evalGroups] leaves them out and they never count as passed or failed.
+bool _isInfra(Map<String, Object?> r) =>
+    r['infra_error'] == true || ((r['turns'] as List?) ?? const []).any((t) => t is Map && t['end'] == 'providerError');
+
+Map<String, int> evalInfraRuns(List<Map<String, Object?>> records, {String? model}) {
+  final out = <String, int>{};
+  for (final r in records) {
+    if (!_isInfra(r) || (model != null && '${r['model']}' != model)) continue;
+    final key = '${r['case']} [${r['model']}]';
+    out[key] = (out[key] ?? 0) + 1;
+  }
+  return out;
+}
+
 Map<EvalGroupKey, EvalGroup> evalGroups(List<Map<String, Object?>> records, {String? model}) {
   final by = <EvalGroupKey, List<Map<String, Object?>>>{};
   for (final r in records) {
     final m = '${r['model']}';
     if (model != null && m != model) continue;
+    if (_isInfra(r)) continue;
     by.putIfAbsent((caseId: '${r['case']}', model: m), () => []).add(r);
   }
   return {for (final e in by.entries) e.key: EvalGroup(e.key.caseId, e.key.model, e.value)};
@@ -117,7 +134,7 @@ class EvalChange {
 }
 
 class EvalDiff {
-  EvalDiff(this.base, this.candidate) {
+  EvalDiff(this.base, this.candidate, {this.infraBase = const {}, this.infraCandidate = const {}}) {
     for (final key in candidate.keys) {
       final b = base[key];
       if (b == null) {
@@ -137,6 +154,10 @@ class EvalDiff {
 
   final Map<EvalGroupKey, EvalGroup> base;
   final Map<EvalGroupKey, EvalGroup> candidate;
+
+  /// Runs left out for a provider error, per side (see [evalInfraRuns]).
+  final Map<String, int> infraBase;
+  final Map<String, int> infraCandidate;
   final both = <EvalChange>[];
   final onlyBase = <EvalGroup>[];
   final onlyCandidate = <EvalGroup>[];
@@ -152,7 +173,8 @@ class EvalDiff {
 
   /// The candidate lacks cases the base has, or one side is empty: the run
   /// crashed, was filtered, or is not comparable. `--strict` treats it as a failure.
-  bool get incomplete => onlyBase.isNotEmpty || candidate.isEmpty || base.isEmpty;
+  bool get incomplete =>
+      onlyBase.isNotEmpty || candidate.isEmpty || base.isEmpty || infraBase.isNotEmpty || infraCandidate.isNotEmpty;
 
   /// Groups of [side] that count towards "passed x/N": cases not marked known.
   static (int, int) score(Iterable<EvalGroup> groups) {
@@ -211,6 +233,14 @@ class EvalDiff {
     }
     if (onlyBase.isNotEmpty) {
       out.writeln('Alleen in base: ${onlyBase.map(_id).join(', ')}');
+    }
+    for (final (side, infra) in [('base', infraBase), ('candidate', infraCandidate)]) {
+      if (infra.isNotEmpty) {
+        out.writeln(
+          '\nProviderfout, niet meegeteld ($side): ${infra.values.fold(0, (a, b) => a + b)} runs in ${infra.length} cases'
+          ' (${infra.keys.take(5).join(', ')}${infra.length > 5 ? ', ...' : ''})',
+        );
+      }
     }
     if (incomplete) out.writeln('\nLET OP: candidate is niet compleet of niet vergelijkbaar met base.');
     return out.toString();
@@ -305,7 +335,14 @@ int evalReportMain(List<String> args) {
   }
   final EvalDiff diff;
   try {
-    diff = EvalDiff(evalGroups(evalReadJsonl(base), model: model), evalGroups(evalReadJsonl(candidate), model: model));
+    final a = evalReadJsonl(base);
+    final b = evalReadJsonl(candidate);
+    diff = EvalDiff(
+      evalGroups(a, model: model),
+      evalGroups(b, model: model),
+      infraBase: evalInfraRuns(a, model: model),
+      infraCandidate: evalInfraRuns(b, model: model),
+    );
   } on FormatException catch (e) {
     stderr.writeln(e.message);
     return 65;

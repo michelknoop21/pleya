@@ -130,4 +130,26 @@ void main() {
     ]);
     expect(g.medianLatencyMs, 3000);
   });
+
+  test('runs that ended in a provider error are left out and flagged, never scored', () {
+    Map<String, Object?> rec(String c, bool ok, {bool infra = false}) => {
+      'case': c,
+      'model': 'm',
+      'hard_ok': ok,
+      'infra_error': infra,
+    };
+    final base = [rec('a', true), rec('a', true), rec('b', true)];
+    final candidate = [rec('a', true), rec('a', false, infra: true), rec('b', false, infra: true)];
+    final diff = EvalDiff(
+      evalGroups(base),
+      evalGroups(candidate),
+      infraBase: evalInfraRuns(base),
+      infraCandidate: evalInfraRuns(candidate),
+    );
+    expect(diff.candidate.keys.map((k) => k.caseId), ['a'], reason: 'b has no usable run');
+    expect(diff.candidate.values.single.attempts, 1, reason: 'the provider error is not an attempt');
+    expect(diff.regressed, isEmpty, reason: 'a provider error is no regression');
+    expect(diff.incomplete, isTrue);
+    expect(diff.render(), contains('Providerfout, niet meegeteld (candidate): 2 runs in 2 cases'));
+  });
 }

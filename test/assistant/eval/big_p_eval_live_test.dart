@@ -28,15 +28,21 @@ const _defaultAttempts = 3;
 
 /// `BIG_P_EVAL_MODELS=glm-5.3-flash,gemma4:31b` narrows or replaces the
 /// models; `BIG_P_EVAL_ATTEMPTS=1` sets the runs per case (1 to 10).
+///
+/// vault-exec cleans the child's environment, so pass them as
+/// `--dart-define=BIG_P_EVAL_ATTEMPTS=1` there; the environment wins.
+const _defineModels = String.fromEnvironment('BIG_P_EVAL_MODELS');
+const _defineAttempts = String.fromEnvironment('BIG_P_EVAL_ATTEMPTS');
 final _models = () {
-  final named = (Platform.environment['BIG_P_EVAL_MODELS'] ?? '')
+  final named = (Platform.environment['BIG_P_EVAL_MODELS'] ?? _defineModels)
       .split(',')
       .map((m) => m.trim())
       .where((m) => m.isNotEmpty)
       .toList();
   return named.isEmpty ? _defaultModels : named;
 }();
-final _attempts = (int.tryParse(Platform.environment['BIG_P_EVAL_ATTEMPTS'] ?? '') ?? _defaultAttempts).clamp(1, 10);
+final _attempts = (int.tryParse(Platform.environment['BIG_P_EVAL_ATTEMPTS'] ?? _defineAttempts) ?? _defaultAttempts)
+    .clamp(1, 10);
 
 String? _key() {
   // Only this name: under `vault-exec <other credential>` another secret
