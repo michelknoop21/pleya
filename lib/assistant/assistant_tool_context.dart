@@ -234,6 +234,10 @@ class AssistantToolContext {
   /// name only these.
   final List<({String title, int? year})> ageAllowed = [];
 
+  /// The standing "nothing I watched or started" of the ask in progress
+  /// (BP-11d); set by the run, never copied by [fresh].
+  AssistantSeenFilter seenFilter = AssistantSeenFilter();
+
   /// Shown job ids per server, with the title list_jobs gave them.
   final Map<String, Map<String, String>> _jobs = {};
   final Map<String, Set<String>> _items = {};

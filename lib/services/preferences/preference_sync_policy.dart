@@ -514,6 +514,9 @@ class PreferenceSyncPolicyRegistry {
     // Whether Big P's memory is on for this profile. The facts themselves stay
     // on this device, so the switch that governs them does too.
     'assistant_memory_enabled': _profileRuntimeCache,
+    // Big P's standing "nothing I watched or started" for this profile (BP-11d).
+    // A choice about this device's memory, so it stays here with it.
+    'assistant_exclude_seen': _profileRuntimeCache,
     // Which start questions Big P's greeting showed last, so the next ones
     // differ. View state of this device, rebuilt by using it.
     'assistant_example_history': _profileRuntimeCache,

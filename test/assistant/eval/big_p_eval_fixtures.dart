@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_age_gate.dart';
+import 'package:pleya/assistant/assistant_memory.dart';
 import 'package:pleya/assistant/assistant_named_titles.dart';
 import 'package:pleya/assistant/assistant_title_facts.dart';
 import 'package:pleya/assistant/assistant_title_facts_cache.dart';
@@ -250,6 +251,8 @@ AssistantToolContext evalContext({
   String region = 'NL',
   bool personal = false,
   void Function(String name)? onSaveRow,
+  // The profile's memory, with the saved "nothing I watched or started" (BP-11d).
+  AssistantMemoryServices? memory,
 }) {
   final m = MultiServerManager();
   addTearDown(m.dispose);
@@ -274,5 +277,6 @@ AssistantToolContext evalContext({
     householdKids: () async => householdKids,
     kidsProfile: () async => kids,
     region: () => region,
+    memory: memory,
   );
 }

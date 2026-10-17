@@ -33,7 +33,14 @@ enum AssistantMemoryProposalKind { remember, replace, forget }
 /// [value] is the sentence as it would be stored, already checked by the
 /// service's own validation; [target] is the fact that disappears.
 class AssistantMemoryProposal {
-  const AssistantMemoryProposal({required this.kind, required this.memory, this.value, this.category, this.target});
+  const AssistantMemoryProposal({
+    required this.kind,
+    required this.memory,
+    this.value,
+    this.category,
+    this.target,
+    this.excludeSeen = false,
+  });
 
   final AssistantMemoryProposalKind kind;
 
@@ -43,8 +50,16 @@ class AssistantMemoryProposal {
   final MemoryCategory? category;
   final MemoryFact? target;
 
+  /// Pleya's own card for the standing "nothing I watched or started"
+  /// (BP-11d): a yes also turns the preference on.
+  final bool excludeSeen;
+
   bool sameAs(AssistantMemoryProposal other) =>
-      kind == other.kind && value == other.value && category == other.category && target?.id == other.target?.id;
+      kind == other.kind &&
+      value == other.value &&
+      category == other.category &&
+      target?.id == other.target?.id &&
+      excludeSeen == other.excludeSeen;
 }
 
 /// What became of a proposal or a direct save. [code] is `ok` or the fixed
@@ -114,6 +129,11 @@ class AssistantMemoryTurn {
   /// preference, too long, the memory full. Pleya says so in its own line.
   MemoryCode? refused;
 
+  /// Pleya itself stored or proposed the standing "nothing I watched or
+  /// started" this ask (BP-11d): a remember_fact of the model is not a second
+  /// card for the same wish.
+  bool standingHandled = false;
+
   static const int maxProposals = 3;
 }
 
@@ -182,6 +202,7 @@ Future<AssistantMemoryOutcome> applyMemoryProposal(AssistantMemoryProposal propo
   }
   // The same sentence was stored in the meantime: it is remembered.
   final done = result.ok || (kind == AssistantMemoryProposalKind.remember && result.code == MemoryCode.exists);
+  if (done && proposal.excludeSeen) await memory.service.setExcludeSeen(true);
   return AssistantMemoryOutcome(kind, done ? 'ok' : assistantMemoryCode(result.code), result.fact);
 }
 
