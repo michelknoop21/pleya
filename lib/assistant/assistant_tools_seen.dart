@@ -10,10 +10,14 @@ part of 'assistant_tools.dart';
 /// the run from the question, the conversation and the saved preference;
 /// never by the model.
 class AssistantSeenFilter {
-  AssistantSeenFilter({this.on = false, this.prompt = ''});
+  AssistantSeenFilter({this.on = false, this.prompt = '', this.continueAsk = false});
+
+  /// The question asks for what the user started or wants to continue
+  /// ([assistantSeenContinueQuestion]): an in_progress search stays whole.
 
   /// Title tools leave out what the profile watched or started.
   final bool on;
+  final bool continueAsk;
 
   /// The question as typed: a title the user names there is a lookup, not a
   /// suggestion, and is never dropped.

@@ -29,7 +29,7 @@ extension _AssistantRunSeen on AssistantRun {
     final earlier =
         !history && conversation.any((turn) => assistantSeenWish(turn.question) == AssistantSeenWish.standing);
     final on = wish != AssistantSeenWish.include && (wish == AssistantSeenWish.standing || earlier || saved);
-    _ctx.seenFilter = AssistantSeenFilter(on: on, prompt: prompt);
+    _ctx.seenFilter = AssistantSeenFilter(on: on, prompt: prompt, continueAsk: assistantSeenContinueQuestion(prompt));
     if (wish == AssistantSeenWish.standing && !saved) await _offerSeenPreference(prompt);
     if (on) return const {'role': 'system', 'content': _seenOnNote};
     return wish == AssistantSeenWish.include ? const {'role': 'system', 'content': _seenIncludeNote} : null;

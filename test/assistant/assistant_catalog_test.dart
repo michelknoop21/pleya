@@ -682,6 +682,29 @@ void main() {
     expect(server.parents, [null]);
   });
 
+  test('create_collection takes only the titles the standing watch filter kept (BP-11d)', () async {
+    final personal = AssistantPersonalServices(
+      userName: 'M',
+      recent: () async => const [],
+      everSeen: () async => const {},
+      everSeenIdentities: () async => [(key: 'x', title: 'Aliens', year: 2001, show: false, tokens: <String>{})],
+      taste: () async => const AffinityVector({}, eventCount: 0),
+      picks: (_) async => const [],
+    );
+    Future<AssistantPendingAction> collection(bool on) async {
+      final (ctx, _, _, _) = await setUpCtx(personal: personal);
+      ctx.seenFilter = AssistantSeenFilter(on: on);
+      final data = await search(ctx, {'kind': 'movie'});
+      return await _tool('create_collection').run(ctx, id, {'query_id': data['query_id'], 'name': 'Mix'})
+          as AssistantPendingAction;
+    }
+
+    expect((await collection(false)).items, ['Alien', 'Aliens', 'Heat'], reason: 'negative control');
+    final kept = await collection(true);
+    expect(kept.items, ['Alien', 'Heat']);
+    expect(kept.subject, 'Mix');
+  });
+
   test('create_collection reports a created collection whose items did not all land', () async {
     final (ctx, _, _, server) = await setUpCtx();
     server.failAdd = true;

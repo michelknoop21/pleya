@@ -91,6 +91,8 @@ void main() {
       'Never suggest anything I\'ve already watched or started',
       'don\'t recommend stuff I already saw',
       'stop suggesting things I have seen',
+      'Raad geen films aan, ik heb ze al gezien',
+      'Toon geen films, ik heb ze al gezien',
     ];
     const include = [
       'laat ook dingen zien die ik al gezien heb',
@@ -109,6 +111,10 @@ void main() {
       "I don't want to watch that show I started last night",
       'Ik heb geen tip nodig, ik heb deze serie al gezien',
       'Toon geen films die ik niet gezien heb',
+      'welke films raad je aan die ik nog niet gezien heb',
+      'welke film kan ik kijken die ik nog niet gezien heb',
+      "what should I watch that I haven't seen",
+      'wat heb ik al gezien en raad me iets aan',
     ];
     for (final p in standing) {
       expect(assistantSeenWish(p), AssistantSeenWish.standing, reason: p);
@@ -219,10 +225,19 @@ void main() {
       },
     );
 
-    test('a search for what is in progress is not filtered', () async {
-      final data = await _tool(_filtered(), 'search_catalog', {'in_progress': true, 'kind': 'movie', 'limit': 50});
-      expect(_titles(data['results']), contains('Interstellar'));
-      expect(data.containsKey('filtered_seen'), isFalse);
+    test('an in_progress search is whole only when the user asked to continue, never on the model\'s say', () async {
+      const args = {'in_progress': true, 'kind': 'movie', 'limit': 50};
+      final cont = await _tool(
+        evalContext(kids: false)..seenFilter = AssistantSeenFilter(on: true, continueAsk: true),
+        'search_catalog',
+        args,
+      );
+      expect(_titles(cont['results']), contains('Interstellar'));
+      final model = await _tool(_filtered(), 'search_catalog', args);
+      expect(_titles(model['results']), isNot(contains('Interstellar')), reason: 'a tip question: filtered');
+      expect(assistantSeenContinueQuestion('ga verder met kijken'), isTrue);
+      expect(assistantSeenContinueQuestion('wat ben ik begonnen?'), isTrue);
+      expect(assistantSeenContinueQuestion('iets voor vanavond'), isFalse);
     });
 
     test('a dropped title makes the query no Home row and hides the unfiltered totals', () async {
@@ -307,6 +322,29 @@ void main() {
         _bearScript,
       );
       expect(evalCards(other).map((c) => c.title), ['The Office'], reason: 'negative control: the preference holds');
+    });
+
+    test('tip questions that hold a watched word keep the saved filter on', () async {
+      await profile.service.setExcludeSeen(true);
+      for (final p in [
+        'welke films raad je aan die ik nog niet gezien heb',
+        "what should I watch that I haven't seen",
+        'wat heb ik al gezien en raad me iets aan',
+      ]) {
+        final r = await _ask(evalContext(kids: false, memory: profile.services), p, _bearScript);
+        expect(evalCards(r).map((c) => c.title), ['The Office'], reason: p);
+      }
+    });
+
+    test('a children\'s profile never turns the filter on, whatever was saved', () async {
+      await profile.service.setExcludeSeen(true);
+      profile.kids = true;
+      final r = await _ask(
+        evalContext(kids: true, kidsAges: const [17], memory: profile.services),
+        'geef me een serie',
+        _bearScript,
+      );
+      expect(evalCards(r).map((c) => c.title), contains('The Bear'));
     });
 
     test('a follow-up in the same conversation keeps the wish without a saved preference', () async {

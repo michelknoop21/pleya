@@ -130,9 +130,11 @@ final List<AssistantTool> _catalogTools = [
         query.groups,
         (g) => _itemRef(g.representativeSource.item.copyWith(serverId: g.representativeSource.serverId.value)),
         age,
-        seen: args['in_progress'] != true,
+        seen: !(args['in_progress'] == true && ctx.seenFilter.continueAsk),
       );
-      final seenDropped = (gated.note['filtered_seen'] as int?) ?? 0;
+      // A saved Home row replays the query without the filter, and the totals
+      // count what it dropped: with the filter applied neither is offered.
+      final seenOn = age == null && ctx.seenFilter.on && !(args['in_progress'] == true && ctx.seenFilter.continueAsk);
       final facts = <String, TitleFacts>{};
       for (final (g, f) in gated.kept) {
         // The source's own server id: always set, unlike the item's.
@@ -163,7 +165,7 @@ final List<AssistantTool> _catalogTools = [
           buildGlobalKey(g.representativeSource.serverId, g.representativeSource.item.id),
       };
       final entries = query.entries.where((e) => kept.contains(AssistantMediaGrid.keyOf(e))).toList();
-      if (seenDropped > 0) {
+      if (seenOn) {
         query.seenKept = {
           for (final (g, _) in gated.kept)
             for (final s in g.sources) buildGlobalKey(s.serverId, s.item.id),
@@ -176,8 +178,8 @@ final List<AssistantTool> _catalogTools = [
         'count': entries.length,
         // The kids gate only sees the listed titles: no whole-set figure then,
         // and no count of titles that were never checked.
-        if (age == null && seenDropped == 0 && query.totalMatches != null) 'total_matches': query.totalMatches,
-        if (age == null && seenDropped == 0 && query.moreMatches) ...{
+        if (age == null && !seenOn && query.totalMatches != null) 'total_matches': query.totalMatches,
+        if (age == null && !seenOn && query.moreMatches) ...{
           'more_matches': true,
           'matches_at_least': query.matchesRead,
         },
@@ -196,8 +198,8 @@ final List<AssistantTool> _catalogTools = [
         // The next page of this query; absent when the read ends here, and then
         // more_matches says the library has more than was read.
         if (query.nextOffset case final next?) 'next_offset': next,
-        'can_become_home_row': query.row != null && seenDropped == 0,
-        if (seenDropped > 0)
+        'can_become_home_row': query.row != null && !seenOn,
+        if (seenOn)
           'home_row_unavailable_reason':
               'A saved Home row cannot repeat the standing filter for titles the user watched or started.'
         else if (query.row == null)
