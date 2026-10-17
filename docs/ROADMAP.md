@@ -35,6 +35,18 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 - Code on `main`, simulator evidence, hardware evidence and publication are separate states.
 - Geïmplementeerd en gemerged, CI en automatische tests geslaagd, en hardwareacceptatie geslaagd zijn drie verschillende statussen (Michel, 10 oktober 2026). Een hardwareafhankelijk werkpakket, en zeker een P0 of releaseblokker, heet pas afgerond als het vereiste hardwarebewijs er is. Welke regels op hardware openstaan blijft in de registers staan.
 - UI changes are executed by the UI design round (de UI-ontwerpronde, see [UI and TV rules](agents/ui-and-tv.md)) and get a separate visual review against the current northstar/DEC.
+- Alle ontwikkeling is unified-first; zie [Unified-first](#unified-first).
+
+## Unified-first
+
+Productbesluit Michel, 10 oktober 2026, bindend gemaakt op 17 oktober 2026: unified is de basis voor alle ontwikkeling. Dat gaat over de gezamenlijke, backend-onafhankelijke bibliotheek en het gedeelde gedrag; vormgeving en de iPad- en Mac-weergave zijn daar een deel van. Deze regel verandert de volgorde, prioriteiten en WIP-limiet van deze roadmap niet.
+
+- Begin bij de bestaande gedeelde modellen, identiteit, state, routes en gedragseigenaren. Providerverschillen blijven in de bestaande clients en adapters. Bouw geen tweede featurepad per leverancier en geen nieuw framework om deze regel af te vinken.
+- Beoordeel elke koppeling waar de functie aan raakt: Plex, Jellyfin, Emby, de lokale map en Pleya Share, en Pleya Server, ook in een gemengde bibliotheek. In de code is Emby een Jellyfin-variant (DEC-141) en valt Pleya Share onder de lokale backend (`MediaBackend.local`); beoordeel ze toch elk apart. Een koppeling valt niet weg omdat de eerste versie op één server is gebouwd.
+- Pleya Server is in ontwikkeling: voorbereid, niet alles nu (Michel, 10 oktober 2026). Houd modellen, capabilitycontroles en adaptergrenzen geschikt om serverfuncties later aan te sluiten zonder apart UI-pad. Behoud en test wat de server al kan. Een ontbrekende mogelijkheid krijgt een notitie bij de bestaande servertaak en een eerlijke niet-ondersteunde toestand; verzin geen endpoints en bouw geen werkende placeholder. Een serverfunctie die nog niet bestaat blokkeert geen oplevering die haar niet nodig heeft. Protocol- en releasepoorten blijven gelden.
+- Unified is geen gefingeerde gelijkheid. Wat zichtbaar en mogelijk is volgt de werkelijke capabilities, de brondata en de rechten van gebruiker en profiel. Deduplicatie voegt geen rechten samen. Leg per actie vast of het doel Pleya zelf, de persoon of één bronkopie is; schrijf nooit blind naar alle servers. Een onvolledig resultaat of een onbereikbare server wordt niet getoond als een leeg of geslaagd resultaat.
+- Elke relevante spec, mockup, implementatie-PR en acceptatie noemt kort de **Unified impact**: gedeelde eigenaar of route, welke koppelingen en met welke beperking, bron- en rechtenscope, en bewijs voor één bron en een gemengde bibliotheek waar dat past. Werk zonder bibliotheekimpact zegt in één zin waarom het niet van toepassing is. Dit vraagt geen testmatrix over alle combinaties en geen volledige backend-audit voor een mechanische wijziging.
+- Platformcontracten en aparte platformacceptatie blijven. Eén gedragsbasis betekent niet overal dezelfde mobiele sheet.
 
 ## Work packages
 
