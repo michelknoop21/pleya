@@ -81,7 +81,7 @@ List<({EvalNamed named, EvalTitle? fixture})> evalNamed(String text) {
   return found;
 }
 
-sealed class EvalHard {
+abstract class EvalHard {
   const EvalHard({this.fromTurn = 0});
 
   /// The first turn the check applies to: a statement turn before it may
