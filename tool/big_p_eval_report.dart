@@ -174,7 +174,19 @@ class EvalDiff {
   /// The candidate lacks cases the base has, or one side is empty: the run
   /// crashed, was filtered, or is not comparable. `--strict` treats it as a failure.
   bool get incomplete =>
-      onlyBase.isNotEmpty || candidate.isEmpty || base.isEmpty || infraBase.isNotEmpty || infraCandidate.isNotEmpty;
+      onlyBase.isNotEmpty ||
+      candidate.isEmpty ||
+      base.isEmpty ||
+      infraBase.isNotEmpty ||
+      infraCandidate.isNotEmpty ||
+      newlyKnown.isNotEmpty;
+
+  /// Cases that were no known bug in base but are one in candidate: marking a
+  /// case `expect_fail` in the same branch must not hide a regression.
+  List<EvalGroup> get newlyKnown => [
+    for (final e in candidate.entries)
+      if (e.value.known && base[e.key] != null && !base[e.key]!.known) e.value,
+  ];
 
   /// Groups of [side] that count towards "passed x/N": cases not marked known.
   static (int, int) score(Iterable<EvalGroup> groups) {
@@ -242,7 +254,13 @@ class EvalDiff {
         );
       }
     }
-    if (incomplete) out.writeln('\nLET OP: candidate is niet compleet of niet vergelijkbaar met base.');
+    if (newlyKnown.isNotEmpty) {
+      out.writeln('\nNieuw als bekende fout gemarkeerd in candidate: ${newlyKnown.map(_id).join(', ')}');
+    }
+    if (incomplete)
+      out.writeln(
+        '\nLET OP: base of candidate is niet compleet of niet vergelijkbaar (ontbrekende cases, providerfouten of nieuw bekende fouten).',
+      );
     return out.toString();
   }
 

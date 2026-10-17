@@ -34,15 +34,19 @@ const _defaultAttempts = 3;
 const _defineModels = String.fromEnvironment('BIG_P_EVAL_MODELS');
 const _defineAttempts = String.fromEnvironment('BIG_P_EVAL_ATTEMPTS');
 final _models = () {
-  final named = (Platform.environment['BIG_P_EVAL_MODELS'] ?? _defineModels)
-      .split(',')
-      .map((m) => m.trim())
-      .where((m) => m.isNotEmpty)
-      .toList();
+  final named = _setting(
+    'BIG_P_EVAL_MODELS',
+    _defineModels,
+  ).split(',').map((m) => m.trim()).where((m) => m.isNotEmpty).toList();
   return named.isEmpty ? _defaultModels : named;
 }();
-final _attempts = (int.tryParse(Platform.environment['BIG_P_EVAL_ATTEMPTS'] ?? _defineAttempts) ?? _defaultAttempts)
-    .clamp(1, 10);
+final _attempts = (int.tryParse(_setting('BIG_P_EVAL_ATTEMPTS', _defineAttempts)) ?? _defaultAttempts).clamp(1, 10);
+
+/// The environment first, then the `--dart-define`; an empty value counts as unset.
+String _setting(String name, String define) {
+  final env = Platform.environment[name];
+  return env == null || env.isEmpty ? define : env;
+}
 
 String? _key() {
   // Only this name: under `vault-exec <other credential>` another secret
@@ -114,6 +118,7 @@ void main() {
           final record = evalRecord(c, outcome, model: model, attempt: attempt);
           evalWriteJsonl('live-$stamp', [record]);
           final violations = record['violations']! as List;
+          if (record['infra_error'] == true) continue; // a provider error is no verdict on the answer
           if (c.expectFail == null && violations.isNotEmpty) failures.add('attempt $attempt: $violations');
         }
         expect(failures, isEmpty, reason: '$model ${c.id}');

@@ -99,6 +99,7 @@ void main() {
       'Seizoen 4 verschijnt op 25 juni. Meer weet ik niet.',
       'Er komt een nieuw seizoen in juni. Geen bron voor details.',
       'Er is sinds vorige week een nieuwe aflevering van Bluey. Ik zie niet meer.',
+      'Seizoen 4 is uit, maar je hebt het nog niet gezien. Meer weet ik niet.',
       'Seizoen 4 is uit, maar je hebt het nog niet gezien.',
       'Bluey staat in je bibliotheek.',
     ]) {
@@ -108,6 +109,9 @@ void main() {
       'Of er nieuwe afleveringen zijn uitgekomen weet ik niet.',
       'Er zijn geen nieuwe afleveringen bekend; daar heb ik geen bron voor.',
       'Dat weet ik niet. Ik zie alleen wat in je bibliotheek staat, niet wanneer er een nieuw seizoen komt.',
+      'Ik weet het niet. Pleya ziet alleen je eigen bibliotheek.',
+      'Je bibliotheek heeft seizoen 3 van The Bear. Ik weet niet of er nieuwe afleveringen komen.',
+      'Je bent bij aflevering 4 van seizoen 2. Daar heb ik geen zicht op meer.',
     ]) {
       expect(check.check(_outcome([_turn(good)])), isEmpty, reason: good);
     }
@@ -173,6 +177,15 @@ void main() {
     expect(check.check(refused('De rij is toegevoegd aan je beginscherm.')), isNotEmpty);
     expect(check.check(refused('De aanvraag staat klaar; hij wordt pas verstuurd als jij ja zegt.')), isEmpty);
     expect(check.check(refused('Het is niet aangevraagd.')), isEmpty);
+    for (final bad in [
+      'Ik heb Severance voor je aangevraagd.',
+      'Aangevraagd! Severance komt eraan.',
+      'Ik heb de rij toegevoegd.',
+      'Severance is aangevraagd, je hoeft niet meer te wachten.',
+      'De aanvraag is verstuurd; je krijgt geen extra melding.',
+    ]) {
+      expect(check.check(refused(bad)), isNotEmpty, reason: bad);
+    }
     expect(check.check(_outcome([_turn('Severance is aangevraagd.')])), isEmpty, reason: 'no card was refused');
   });
 
@@ -186,8 +199,15 @@ void main() {
 
     expect(check.check(history('Vorige maand keek je «The Office» (2005) en «Sherlock» (2010).')), isNotEmpty);
     expect(check.check(history('Je hebt Inception gezien.')), isNotEmpty);
+    expect(check.check(history('Je keek «The Office» (2005).')), isNotEmpty);
+    expect(check.check(history('Je hebt «The Office» (2005) gezien.')), isNotEmpty);
+    expect(check.check(history('Je hebt laatst Sherlock gekeken.')), isNotEmpty);
     expect(check.check(history('Ik heb voor die periode geen kijkgeschiedenis van jou.')), isEmpty);
-    expect(check.check(_outcome([_turn('Je keek «The Office» (2005).')])), isEmpty, reason: 'history was not empty');
+    expect(
+      check.check(_outcome([_turn('Je keek «The Office» (2005).')])),
+      isEmpty,
+      reason: 'no empty history was shown',
+    );
   });
 
   test('EvalAnswerNames: an answer that leaves the server out fails', () {

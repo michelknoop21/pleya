@@ -104,6 +104,17 @@ void main() {
     expect(fixed.delta, greaterThan(0));
   });
 
+  test('a case that is newly marked expect_fail in the candidate makes the comparison incomplete', () {
+    EvalGroup group(bool known) => EvalGroup('x', 'm', [
+      {'case': 'x', 'model': 'm', if (known) 'expect_fail': 'BP-11z', 'hard_ok': !known},
+    ]);
+    const key = (caseId: 'x', model: 'm');
+    final diff = EvalDiff({key: group(false)}, {key: group(true)});
+    expect(diff.newlyKnown, hasLength(1));
+    expect(diff.incomplete, isTrue);
+    expect(diff.render(), contains('Nieuw als bekende fout'));
+  });
+
   test('bad input gives a usage or input exit code, not a stack trace', () {
     final dir = Directory.systemTemp.createTempSync('bp_report');
     addTearDown(() => dir.deleteSync(recursive: true));
