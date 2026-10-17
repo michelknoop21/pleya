@@ -29,6 +29,9 @@ class EvalMeter {
   int calls = 0;
   int tokens = 0;
 
+  /// Status and start of the body of the latest non-200 answer, for the record.
+  String? lastError;
+
   /// The tool answers in the latest request body: what the model was told.
   List<({String tool, String content})> tools = const [];
 

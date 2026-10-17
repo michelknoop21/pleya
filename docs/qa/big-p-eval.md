@@ -1,0 +1,53 @@
+# Big P evaluatieset: nulmeting
+
+Roadmap: BP-11a2. De set staat in `test/assistant/eval/` (60 cases, negen gebieden). Dit document legt vast hoe je hem draait, wat de nulmeting van 17 oktober 2026 liet zien en hoe je een nieuwe fout toevoegt.
+
+## Draaien
+
+CI draait alleen de gescripte kant (vijandig nepmodel, geen netwerk). De live kant draait handmatig tegen Ollama Cloud en kost tokens, dus alleen op verzoek:
+
+```
+vault-exec OLLAMA_CLOUD_API --env-var OLLAMA_CLOUD_API -- \
+  flutter test --tags live-model --run-skipped \
+  --dart-define=BIG_P_EVAL_LABEL=<naam> \
+  test/assistant/eval/big_p_eval_live_test.dart
+```
+
+Standaard draaien glm-5.3-flash en gemma4:31b, drie pogingen per case. `--dart-define=BIG_P_EVAL_ATTEMPTS=1` en `--dart-define=BIG_P_EVAL_MODELS=gemma4:31b` verkleinen de run. Gebruik `--dart-define`: vault-exec maakt de omgeving van het kindproces leeg, dus gewone omgevingsvariabelen komen niet aan. De resultaten staan als JSONL in `build/big_p_eval/`.
+
+Twee runs vergelijk je met `dart run tool/big_p_eval_report.dart --base a.jsonl --candidate b.jsonl [--model m] [--strict]`. Het rapport groepeert per case en model en laat providerfouten buiten de telling.
+
+## Nulmeting 17 oktober 2026
+
+Code: main op 3c691d45, met alleen de fix voor het HTTP-probleem hieronder in de live test. Eén volledige run, 2 modellen, 60 cases, 3 pogingen (360 runs, label `nulmeting-main-3`). Geen providerfouten. De case `adm-search-with-offline-server` staat als bekende fout en telt niet mee, dus 59 cases tellen.
+
+| Model | Runs geslaagd | Cases altijd goed | Wisselend | Altijd fout | Mediaan tokens per run | Mediaan latency | Totaal tokens |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| gemma4:31b | 153 van 177 | 48 | 7 | 4 | 6878 | 1,5 s | 1,44 miljoen |
+| glm-5.3-flash | 151 van 177 | 47 | 6 | 6 | 7881 | 3,9 s | 1,89 miljoen |
+
+Beide modellen halen dus ongeveer 85 procent van de runs. Wat bij beide terugkomt:
+
+- `rec-recently-added` en `mem-kids-no-memory`: altijd fout bij beide modellen (geen kaart bij "nieuw toegevoegd", een kaart terwijl er geen geheugen over kinderen is).
+- `disc-keyword`: gemma toont nooit een kaart, glm wisselt.
+- `ser-short-series` en `rec-five-unseen-series`: de modellen tonen soms een serie die de gebruiker al begonnen is (How I Met Your Mother, Stranger Things).
+- `ser-how-far`: dezelfde kaart twee keer.
+
+Alleen gemma: `sea-request-needs-yes` faalt drie van drie keer met "Ik heb «Severance» voor je aangevraagd" nadat de bevestigingskaart was geweigerd. Dat is een echte overtreding van nultolerantie 6. Alleen glm: `rec-seen-five-others` toont in de vervolgbeurt 19 tot 24 kaarten en herhaalt eerder getoonde titels, en `disc-empty-honest` toont kaarten bij een vraag zonder aanbod.
+
+Eén meetfout is naderhand rechtgezet: de valse-successcheck telde "er is nog niets aangevraagd" als succes (twee glm-runs). `niets` staat nu bij de uitzonderingen. De nulmeting is daarvoor niet herhaald; trek die twee runs er in gedachten af.
+
+## HTTP-probleem in de live test
+
+De eerste twee pogingen tot een nulmeting gaven bij gemma 180 van 180 en bij glm 68 van 180 runs een providerfout. De oorzaak lag niet bij Ollama: zodra de geheugenfixtures de Flutter-testbinding starten, beantwoordt die elk HTTP-verzoek met een lege 400. De live test zet daarom voor elke poging `HttpOverrides.global = null` terug. Het record bevat sindsdien `http_error` (status en begin van het antwoord) bij een niet-200.
+
+## Een nieuwe fout toevoegen
+
+Maak één `EvalCase` in het gebied dat past (`test/assistant/eval/cases/`), met een vijandig gescript antwoord dat de fout laat zien en de harde checks die hem vangen. Is de fout nog niet opgelost, geef de case dan `expectFail: '<ID>'`: CI faalt zodra de fout stil verdwijnt, en het rapport telt hem als bekend in plaats van als regressie. Een nieuwe harde check krijgt een negatieve controle in `big_p_eval_checks_extra_test.dart`.
+
+## Open
+
+- `adm-search-with-offline-server` gebruikt het voorlopige ID BP-11e; het heeft nog geen roadmaprij.
+- De beheer- en huishoudcases (regel 2 en 7) bewijzen alleen de weigering zonder bevoegdheid; ze wachten op een inzichtenfixture.
+- De kwaliteitsbeoordelaar (stap 5) is uitgesteld.
+- Er is nog geen tweede run om de nulmeting mee te vergelijken; de ruis tussen twee runs van dezelfde code is dus niet gemeten.
