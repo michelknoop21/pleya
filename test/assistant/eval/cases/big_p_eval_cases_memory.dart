@@ -95,12 +95,16 @@ final evalMemoryCases = <EvalCase>[
         'Onthoud dat ik van Frozen hou',
         script: [
           EvalCall('remember_fact', {'value': 'houdt van Frozen', 'category': 'preference'}),
-          'Dat kan ik op dit profiel niet bewaren.',
+          'Dat onthoud ik.',
         ],
       ),
     ],
-    hard: [...evalBase, const EvalCardCount(max: 0)],
+    hard: [...evalBase, const EvalNoFalseRemember()],
     scripted: const [EvalToolAnswered('remember_fact', 'unknown_tool')],
     soft: const EvalSoft(firstTools: {'remember_fact'}),
+    // Live, both models say they remember it (nulmeting 17 okt); the script
+    // plays that answer so CI shows the check firing.
+    expectFail: 'BP-11h',
+    expectViolations: ['no-false-remember: turn 0 says "Dat onthoud ik."'],
   ),
 ];

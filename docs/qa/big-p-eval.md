@@ -38,6 +38,21 @@ Alleen gemma: `con-everyone-no-capability` toont drie van drie keer kaarten bij 
 
 Eén meetfout is naderhand rechtgezet: de valse-successcheck telde "er is nog niets aangevraagd" als succes (twee glm-runs). `niets` staat nu bij de uitzonderingen. De nulmeting is daarvoor niet herhaald: zonder die twee runs zijn het voor glm 153 van 177 runs en 5 wisselende cases. Het record draagt `3c691d45+dirty`: main plus de live-testfix van deze PR.
 
+## Na de nulmeting
+
+Wat de nulmeting opleverde en waar het nu staat:
+
+| Bevinding | Aard | Stand |
+| --- | --- | --- |
+| Offline server niet genoemd in zoekresultaat | Productfout | BP-11e, gemerged |
+| "Aangevraagd" na een geweigerde kaart (gemma4:31b) | Productfout | BP-11f, gemerged; gemma 3 van 3 goed op die case |
+| Dezelfde titel twee keer als kaart | Productfout | BP-11g, in review |
+| Kinderprofiel zegt "dat onthoud ik" | Productfout | BP-11h, gepland; case staat als bekende fout |
+| `rec-recently-added` zonder kaarten | Fixture: de titels hadden geen toevoegdatum | Fixture krijgt een datum; beide modellen 3 van 3 goed |
+| `no-false-success` op "er is nog niets aangevraagd" | Meetfout in de check | Gerepareerd |
+
+Nog niet opgepakt: `con-everyone-no-capability` (gemma beantwoordt "wat kijken de anderen" met de eigen lopende titels), `ser-short-series` en `rec-five-unseen-series` (een begonnen serie als "nog niet gezien") en `rec-seen-five-others` (glm toont in de vervolgbeurt 19 tot 24 kaarten). Dat zijn gedragsfouten van de modellen die een promptwijziging en een nieuwe live meting vragen.
+
 ## HTTP-probleem in de live test
 
 De eerste twee pogingen tot een nulmeting gaven bij gemma 180 van 180 en bij glm 68 van 180 runs een providerfout. De oorzaak lag niet bij Ollama: zodra de geheugenfixtures de Flutter-testbinding starten, beantwoordt die elk HTTP-verzoek met een lege 400. De live test zet daarom voor elke poging `HttpOverrides.global = null` terug. Het record bevat sindsdien `http_error` (status en begin van het antwoord) bij een niet-200.

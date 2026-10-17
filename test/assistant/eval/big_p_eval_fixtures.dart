@@ -66,6 +66,8 @@ class EvalTitle {
     durationMs: isShow ? null : 6000000,
     viewOffsetMs: !isShow && seen == EvalSeen.inProgress ? 1800000 : null,
     viewCount: !isShow && seen == EvalSeen.watched ? 1 : null,
+    // A day count between 1 and 25 by position, so "recently added" has an answer.
+    addedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000 - (1 + evalTitles.indexOf(this) % 25) * 86400,
     leafCount: isShow ? 20 : null,
     viewedLeafCount: isShow ? const {EvalSeen.no: 0, EvalSeen.watched: 20, EvalSeen.inProgress: 6}[seen] : null,
   );
