@@ -227,7 +227,7 @@ class IosSimulatorDriver implements VerificationDriver {
   }
 
   @override
-  Future<void> launch({Duration timeout = const Duration(seconds: 20)}) async {
+  Future<void> launch({Duration timeout = simulatorHealthTimeout}) async {
     if (!isolatedAppDir.existsSync()) {
       throw StateError('${isolatedAppDir.path} does not exist — call build() first');
     }
@@ -267,7 +267,10 @@ class IosSimulatorDriver implements VerificationDriver {
       try {
         final health = await _client!.health();
         assertHealthIdentity(health, instance: instance, notBefore: launchedAt);
-        _log('health check succeeded on port ${instance.port}');
+        _log(
+          'health check succeeded on port ${instance.port} '
+          '${DateTime.now().difference(launchedAt).inMilliseconds} ms after launch',
+        );
         return;
       } on InstanceDiscoveryException {
         rethrow;

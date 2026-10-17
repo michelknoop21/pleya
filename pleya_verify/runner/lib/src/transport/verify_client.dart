@@ -63,6 +63,12 @@ class VerifyClient {
   /// PNG, so it is legitimately slower than a registry read.
   final Duration screenshotTimeout;
 
+  /// Separate, longer deadline for [signin]: the app adds a server, binds
+  /// the profile and starts its first fetches before it answers, which on a
+  /// loaded simulator took longer than 10 s (CI, 16 Oct). Sign-in mutates,
+  /// so it gets more time instead of a retry.
+  final Duration signinTimeout;
+
   final http.Client _http;
 
   VerifyClient({
@@ -71,6 +77,7 @@ class VerifyClient {
     http.Client? httpClient,
     this.timeout = const Duration(seconds: 10),
     this.screenshotTimeout = const Duration(seconds: 30),
+    this.signinTimeout = const Duration(seconds: 30),
   }) : _http = httpClient ?? http.Client();
 
   Map<String, String> get _headers => {
@@ -85,11 +92,12 @@ class VerifyClient {
     return _decodeJsonOrThrow('GET', path, response);
   }
 
-  Future<Map<String, Object?>> _postJson(String path, Map<String, Object?> body) async {
+  Future<Map<String, Object?>> _postJson(String path, Map<String, Object?> body, {Duration? limit}) async {
     final response = await _withTimeout(
       'POST',
       path,
       _http.post(_uri(path), headers: {..._headers, 'Content-Type': 'application/json'}, body: jsonEncode(body)),
+      limit: limit,
     );
     return _decodeJsonOrThrow('POST', path, response);
   }
@@ -231,7 +239,7 @@ class VerifyClient {
     'username': username,
     'password': password,
     if (setupCode != null) 'setup_code': setupCode,
-  });
+  }, limit: signinTimeout);
 
   Future<Map<String, Object?>> connectionsSeed({
     required String baseUrl,
