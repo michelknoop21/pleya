@@ -6321,6 +6321,7 @@ class TranslationsAssistantEn {
 	final Translations _root; // ignore: unused_field
 
 	// Translations
+	late final TranslationsAssistantHouseholdEn household = TranslationsAssistantHouseholdEn.internal(_root);
 	late final TranslationsAssistantKidsEn kids = TranslationsAssistantKidsEn.internal(_root);
 	late final TranslationsAssistantMemoryEn memory = TranslationsAssistantMemoryEn.internal(_root);
 
@@ -7708,6 +7709,126 @@ class TranslationsTvMyPleyaSemanticsEn {
 
 	/// en: '${title}. ${subtitle}. ${count}'
 	String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
+}
+
+// Path: assistant.household
+class TranslationsAssistantHouseholdEn {
+	TranslationsAssistantHouseholdEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Children at home'
+	String get title => 'Children at home';
+
+	/// en: 'No children entered yet'
+	String get tileNone => 'No children entered yet';
+
+	/// en: '${n} children'
+	String tileCount({required Object n}) => '${n} children';
+
+	/// en: '1 child'
+	String get tileOne => '1 child';
+
+	/// en: 'Children'
+	String get section => 'Children';
+
+	/// en: '${n} children'
+	String count({required Object n}) => '${n} children';
+
+	/// en: '1 child'
+	String get countOne => '1 child';
+
+	/// en: 'Add child'
+	String get add => 'Add child';
+
+	/// en: 'Edit child'
+	String get edit => 'Edit child';
+
+	/// en: 'On this device only. Big P uses this to filter suggestions for your children, on every profile. Names never go to the AI model, only the age of the youngest child.'
+	String get note => 'On this device only. Big P uses this to filter suggestions for your children, on every profile. Names never go to the AI model, only the age of the youngest child.';
+
+	/// en: 'No children yet'
+	String get emptyTitle => 'No children yet';
+
+	/// en: 'Name'
+	String get name => 'Name';
+
+	/// en: 'Birth month'
+	String get birth => 'Birth month';
+
+	/// en: 'Month'
+	String get month => 'Month';
+
+	/// en: 'Year'
+	String get year => 'Year';
+
+	/// en: '${n} years'
+	String ageYears({required Object n}) => '${n} years';
+
+	/// en: '${n} months'
+	String ageMonths({required Object n}) => '${n} months';
+
+	/// en: 'Newborn'
+	String get ageNewborn => 'Newborn';
+
+	/// en: 'No longer counted'
+	String get ageIgnored => 'No longer counted';
+
+	/// en: 'Now ${age}'
+	String preview({required Object age}) => 'Now ${age}';
+
+	/// en: 'Save'
+	String get save => 'Save';
+
+	/// en: 'Delete'
+	String get delete => 'Delete';
+
+	/// en: 'Delete ${name}?'
+	String deleteTitle({required Object name}) => 'Delete ${name}?';
+
+	/// en: 'Big P will no longer filter for this child.'
+	String get deleteBody => 'Big P will no longer filter for this child.';
+
+	/// en: 'Big P will ask for the children again when you ask about your children.'
+	String get deleteLast => 'Big P will ask for the children again when you ask about your children.';
+
+	/// en: 'At most 8 children.'
+	String get limit => 'At most 8 children.';
+
+	/// en: 'Up and down chooses. Right goes to the year, OK to Save.'
+	String get tvHint => 'Up and down chooses. Right goes to the year, OK to Save.';
+
+	/// en: 'Which children?'
+	String get cardTitle => 'Which children?';
+
+	/// en: 'Add them once. Big P then filters with this on every profile. Names and months stay on this device. The AI model only gets the age of the youngest child.'
+	String get cardBody => 'Add them once. Big P then filters with this on every profile. Names and months stay on this device. The AI model only gets the age of the youngest child.';
+
+	/// en: 'There are already 8 children at home. Change them under Settings > Big P > Children at home.'
+	String get cardFull => 'There are already 8 children at home. Change them under Settings > Big P > Children at home.';
+
+	/// en: 'Add another child'
+	String get addAnother => 'Add another child';
+
+	/// en: 'Save and keep searching'
+	String get saveAndSearch => 'Save and keep searching';
+
+	List<String> get months => [
+		'January',
+		'February',
+		'March',
+		'April',
+		'May',
+		'June',
+		'July',
+		'August',
+		'September',
+		'October',
+		'November',
+		'December',
+	];
 }
 
 // Path: assistant.kids
@@ -11746,6 +11867,50 @@ extension on Translations {
 			'languageSettings.toastFallbackDetailGlobal' => ({required Object wanted}) => 'Your global preference stays ${wanted} and applies again as soon as an episode has it.',
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Subtitles',
+			'assistant.household.title' => 'Children at home',
+			'assistant.household.tileNone' => 'No children entered yet',
+			'assistant.household.tileCount' => ({required Object n}) => '${n} children',
+			'assistant.household.tileOne' => '1 child',
+			'assistant.household.section' => 'Children',
+			'assistant.household.count' => ({required Object n}) => '${n} children',
+			'assistant.household.countOne' => '1 child',
+			'assistant.household.add' => 'Add child',
+			'assistant.household.edit' => 'Edit child',
+			'assistant.household.note' => 'On this device only. Big P uses this to filter suggestions for your children, on every profile. Names never go to the AI model, only the age of the youngest child.',
+			'assistant.household.emptyTitle' => 'No children yet',
+			'assistant.household.name' => 'Name',
+			'assistant.household.birth' => 'Birth month',
+			'assistant.household.month' => 'Month',
+			'assistant.household.year' => 'Year',
+			'assistant.household.ageYears' => ({required Object n}) => '${n} years',
+			'assistant.household.ageMonths' => ({required Object n}) => '${n} months',
+			'assistant.household.ageNewborn' => 'Newborn',
+			'assistant.household.ageIgnored' => 'No longer counted',
+			'assistant.household.preview' => ({required Object age}) => 'Now ${age}',
+			'assistant.household.save' => 'Save',
+			'assistant.household.delete' => 'Delete',
+			'assistant.household.deleteTitle' => ({required Object name}) => 'Delete ${name}?',
+			'assistant.household.deleteBody' => 'Big P will no longer filter for this child.',
+			'assistant.household.deleteLast' => 'Big P will ask for the children again when you ask about your children.',
+			'assistant.household.limit' => 'At most 8 children.',
+			'assistant.household.tvHint' => 'Up and down chooses. Right goes to the year, OK to Save.',
+			'assistant.household.cardTitle' => 'Which children?',
+			'assistant.household.cardBody' => 'Add them once. Big P then filters with this on every profile. Names and months stay on this device. The AI model only gets the age of the youngest child.',
+			'assistant.household.cardFull' => 'There are already 8 children at home. Change them under Settings > Big P > Children at home.',
+			'assistant.household.addAnother' => 'Add another child',
+			'assistant.household.saveAndSearch' => 'Save and keep searching',
+			'assistant.household.months.0' => 'January',
+			'assistant.household.months.1' => 'February',
+			'assistant.household.months.2' => 'March',
+			'assistant.household.months.3' => 'April',
+			'assistant.household.months.4' => 'May',
+			'assistant.household.months.5' => 'June',
+			'assistant.household.months.6' => 'July',
+			'assistant.household.months.7' => 'August',
+			'assistant.household.months.8' => 'September',
+			'assistant.household.months.9' => 'October',
+			'assistant.household.months.10' => 'November',
+			'assistant.household.months.11' => 'December',
 			'assistant.kids.agesFirst' => 'First I need to know how old the children are.',
 			'assistant.kids.householdFirst' => 'I do not know yet which children you mean or how old they are, so I show no titles.',
 			'assistant.kids.noFit' => 'I have no title that suits the children\'s ages. Ask me another way.',
@@ -12055,6 +12220,8 @@ extension on Translations {
 			'assistant.ends.toolsUnsupported' => 'This model cannot use tools. Pick another model in the Big P settings.',
 			'assistant.ends.stepLimit' => 'That took too many steps. Try a shorter question.',
 			'assistant.ends.notEntitled' => 'Big P is not available on this account.',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.ends.providerUnauthorized' => 'The AI provider rejected the key. Check it in the Big P settings.',
 			'assistant.ends.providerUnreachable' => 'The AI provider cannot be reached.',
 			'assistant.ends.providerTimeout' => 'The AI provider did not answer in time.',
@@ -12099,8 +12266,6 @@ extension on Translations {
 			'assistant.settings.unreadableTitle' => 'Replace the Big P setup?',
 			'assistant.settings.unreadableBody' => 'Your iCloud keychain holds a Big P setup from a newer Pleya version on another device. This version cannot read it. Replacing it changes the setup on all your devices.',
 			'assistant.settings.replace' => 'Replace',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.settings.currentModel' => 'Model',
 			'assistant.settings.keyStored' => 'Stored, hidden',
 			'assistant.settings.errorUrlInvalid' => 'Enter an address that starts with http:// or https://.',

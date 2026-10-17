@@ -127,15 +127,29 @@ void main() {
     expect(find.text(s.tmdbKeyClear), findsNothing);
   });
 
-  testWidgets('kids ages: shown for this profile and cleared', (tester) async {
+  testWidgets('an adult profile gets Kinderen in huis, not the ages of this profile', (tester) async {
     await tester.runAsync(() async {
       await (await StorageService.getInstance()).setActiveProfileId('parent');
+      await KidsAgesStore().save([9, 4]);
+    });
+    await pump(tester, _FakeStore(_base));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pumpAndSettle();
+    expect(find.text(t.assistant.household.title), findsOneWidget);
+    expect(find.text(s.kidsAges), findsNothing);
+  });
+
+  testWidgets('a kids profile has no editor, and keeps its own ages, shown and cleared', (tester) async {
+    await tester.runAsync(() async {
+      await (await StorageService.getInstance()).setActiveProfileId('parent');
+      await KidsProfileStore().save(true);
       await KidsAgesStore().save([9, 4]);
     });
     final store = _FakeStore(_base);
     await pump(tester, store);
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
     await tester.pumpAndSettle();
+    expect(find.text(t.assistant.household.title), findsNothing);
     expect(find.text(s.kidsAges), findsOneWidget);
     expect(find.text(s.kidsAgesValue(ages: '4, 9')), findsOneWidget);
 

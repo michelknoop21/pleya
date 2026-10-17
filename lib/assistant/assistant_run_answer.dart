@@ -18,7 +18,7 @@ extension _AssistantAnswer on AssistantRun {
 
   /// Marks that the ask needs the household's children, once per ask.
   void _askHousehold() {
-    if (!_displays.any((d) => d is AssistantHouseholdKidsPrompt)) _displays.add(const AssistantHouseholdKidsPrompt());
+    if (!_displays.any((d) => d is AssistantHouseholdKidsPrompt)) _displays.add(AssistantHouseholdKidsPrompt(_prompt));
   }
 
   /// The ages card, once per ask.

@@ -52,6 +52,13 @@ void main() {
       expect((await HouseholdKidsStore().read()).single.birthMonth, '2022-10');
     });
 
+    test('at most eight children are saved', () async {
+      final eight = [for (var i = 0; i < 8; i++) _kid('2022-10')];
+      expect(await HouseholdKidsStore().save(eight, kidsProfile: false), isTrue);
+      expect(await HouseholdKidsStore().save([...eight, _kid('2022-10')], kidsProfile: false), isFalse);
+      expect(await HouseholdKidsStore().read(), hasLength(8));
+    });
+
     test('a children\'s profile cannot edit', () async {
       expect(await HouseholdKidsStore().save([_kid('2022-10')], kidsProfile: true), isFalse);
       expect(await HouseholdKidsStore().read(), isEmpty);

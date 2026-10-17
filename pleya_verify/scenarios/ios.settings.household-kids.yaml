@@ -1,0 +1,61 @@
+name: ios.settings.household-kids
+target: ios-sim
+# BP-11c: Instellingen > Big P > Kinderen in huis on an iPhone (mockup 45 A-F).
+# The route a user takes: Mijn Pleya, Big P, "Big P instellen", the row
+# "Kinderen in huis". A child is added with a name and the default month (this
+# month, so the age reads "Pas geboren"), edited, and deleted after the
+# confirmation. Nothing leaves the device.
+#
+# Needs PLEYA_ASSISTANT_ENABLED=true in the environment of `verify.dart run`.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - wait_until: {id: "home.rail.item[0.0]", timeout: 15000}
+  - settle: 3500
+  - tap: {id: nav.myPleya}
+  - wait_until: {id: screen.my_pleya, timeout: 10000}
+  - wait_until: {id: "my_pleya.tile[assistant]", timeout: 10000}
+  - settle: 800
+  - tap: {id: "my_pleya.tile[assistant]"}
+  - wait_until: {id: "assistant.button[setup]", timeout: 5000}
+  - settle: 1000
+  - tap: {id: "assistant.button[setup]"}
+  - wait_until: {id: "settings.form.button[assistant.provider.ollamaServer]", timeout: 10000}
+  - wait_until: {id: "settings.form.button[assistant.householdKids]", timeout: 5000}
+  - settle: 800
+  - assert: {id: "settings.form.button[assistant.householdKids]", insideViewport: true, minimumTapTarget: 44}
+  - snapshot: 00-row-in-big-p-settings
+
+  # The empty list (45 C), then the add sheet (45 D).
+  - tap: {id: "settings.form.button[assistant.householdKids]"}
+  - wait_until: {id: "household.kids.button[add]", timeout: 8000}
+  - settle: 800
+  - assert: {id: "household.kids.row[0]", present: false}
+  - snapshot: 01-empty
+  - tap: {id: "household.kids.button[add]"}
+  - wait_until: {id: household.kids.sheet, timeout: 5000}
+  - settle: 1000
+  - assert: {id: "household.kids.button[save]", insideViewport: true, minimumTapTarget: 44}
+  - tap: {id: household.kids.field}
+  - settle: 600
+  - type: "Sam"
+  - settle: 600
+  - snapshot: 02-add-sheet
+  - tap: {id: "household.kids.button[save]"}
+  - wait_until: {id: "household.kids.row[0]", state: {index: 0}, timeout: 8000}
+  - settle: 800
+  - assert: {id: "household.kids.row[0]", insideViewport: true, minimumTapTarget: 44}
+  - snapshot: 03-list-one
+
+  # Edit (45 E) and delete with its confirmation (45 F): Annuleren keeps it.
+  - tap: {id: "household.kids.row[0]"}
+  - wait_until: {id: household.kids.sheet, timeout: 5000}
+  - settle: 1000
+  - snapshot: 04-edit-sheet
+  - tap: {id: "household.kids.button[delete]"}
+  - settle: 1000
+  - snapshot: 05-delete-confirm
