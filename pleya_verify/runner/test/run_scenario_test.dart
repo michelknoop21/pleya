@@ -34,6 +34,10 @@ class FakeDriver implements VerificationDriver {
   final Map<String, Object?>? stateForSidebar;
   final bool focusedForSidebar;
 
+  /// How many `screensSnapshot` polls stall like a hung app does: the
+  /// client's own deadline passes and it throws a timeout.
+  int stalledScreenPolls;
+
   FakeDriver({
     this.readyScreens = const {'screen.main'},
     this.failWaitUntil = false,
@@ -41,6 +45,7 @@ class FakeDriver implements VerificationDriver {
     this.boundsForSidebar = false,
     this.stateForSidebar,
     this.focusedForSidebar = false,
+    this.stalledScreenPolls = 0,
   });
 
   @override
@@ -113,10 +118,16 @@ class FakeDriver implements VerificationDriver {
   Future<Map<String, Object?>> viewport() async => {'available': true, 'width': 1280.0, 'height': 800.0};
 
   @override
-  Future<List<Map<String, Object?>>> screensSnapshot() async => [
-    for (final id in readyScreens)
-      if (!failWaitUntil) {'id': id, 'state': 'ready', 'ready': true},
-  ];
+  Future<List<Map<String, Object?>>> screensSnapshot() async {
+    if (stalledScreenPolls > 0) {
+      stalledScreenPolls--;
+      throw const VerifyClientTimeoutException(method: 'GET', path: '/v1/screens', timeout: Duration(seconds: 10));
+    }
+    return [
+      for (final id in readyScreens)
+        if (!failWaitUntil) {'id': id, 'state': 'ready', 'ready': true},
+    ];
+  }
 
   @override
   Future<List<Map<String, Object?>>> eventsSince(int since) async => const [];
@@ -548,6 +559,33 @@ void main() {
 
     expect(result.passed, isFalse);
     expect(result.failureMessage, contains('timed out'));
+  });
+
+  test('wait_until keeps waiting through a poll that stalled past the client deadline (A-01)', () async {
+    const source = 'name: fixture.stall\ntarget: macos\nsteps:\n  - wait_until: {id: screen.main, timeout: 2000}\n';
+    final result = await runScenario(
+      scenario: parseScenarioString(source, sourcePath: 'inline.yaml'),
+      scenarioSource: source,
+      driver: FakeDriver(stalledScreenPolls: 2),
+      repoRoot: repoRoot,
+    );
+
+    expect(result.passed, isTrue, reason: result.failureMessage);
+  });
+
+  test('wait_until that only ever stalls still fails at its own deadline and names the stall (A-01)', () async {
+    const source =
+        'name: fixture.stall_forever\ntarget: macos\nsteps:\n  - wait_until: {id: screen.main, timeout: 300}\n';
+    final result = await runScenario(
+      scenario: parseScenarioString(source, sourcePath: 'inline.yaml'),
+      scenarioSource: source,
+      driver: FakeDriver(stalledScreenPolls: 1 << 20),
+      repoRoot: repoRoot,
+    );
+
+    expect(result.passed, isFalse);
+    expect(result.failureMessage, contains('wait_until timed out after 300ms'));
+    expect(result.failureMessage, contains('GET /v1/screens did not answer'));
   });
 
   test('wait_until with state waits for that state, not only for the node (VERIFY-WAIT1)', () async {
