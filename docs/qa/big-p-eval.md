@@ -1,6 +1,6 @@
 # Big P evaluatieset: nulmeting
 
-Roadmap: BP-11a2. De set staat in `test/assistant/eval/` (60 cases, negen gebieden). Dit document legt vast hoe je hem draait, wat de nulmeting van 17 oktober 2026 liet zien en hoe je een nieuwe fout toevoegt.
+Roadmap: BP-11a2. De set staat in `test/assistant/eval/` (60 cases, negen gebieden in acht bestanden). Dit document legt vast hoe je hem draait, wat de nulmeting van 17 oktober 2026 liet zien en hoe je een nieuwe fout toevoegt.
 
 ## Draaien
 
@@ -23,19 +23,20 @@ Code: main op 3c691d45, met alleen de fix voor het HTTP-probleem hieronder in de
 
 | Model | Runs geslaagd | Cases altijd goed | Wisselend | Altijd fout | Mediaan tokens per run | Mediaan latency | Totaal tokens |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| gemma4:31b | 153 van 177 | 48 | 7 | 4 | 6878 | 1,5 s | 1,44 miljoen |
-| glm-5.3-flash | 151 van 177 | 47 | 6 | 6 | 7881 | 3,9 s | 1,89 miljoen |
+| gemma4:31b | 153 van 177 | 48 | 7 | 4 | 6878 | 1,5 s | 1,42 miljoen |
+| glm-5.3-flash | 151 van 177 | 47 | 6 | 6 | 7877 | 3,9 s | 1,86 miljoen |
 
-Beide modellen halen dus ongeveer 85 procent van de runs. Wat bij beide terugkomt:
+Beide modellen halen dus ongeveer 85 procent van de runs. Medianen en totalen gelden over dezelfde 177 runs. Wat bij beide terugkomt:
 
-- `rec-recently-added` en `mem-kids-no-memory`: altijd fout bij beide modellen (geen kaart bij "nieuw toegevoegd", een kaart terwijl er geen geheugen over kinderen is).
+- `rec-recently-added`: altijd fout bij beide modellen (geen kaart bij "nieuw toegevoegd").
+- `mem-kids-no-memory` (een kaart terwijl er geen geheugen over kinderen is): glm faalt drie van drie keer, gemma twee van drie.
 - `disc-keyword`: gemma toont nooit een kaart, glm wisselt.
-- `ser-short-series` en `rec-five-unseen-series`: de modellen tonen soms een serie die de gebruiker al begonnen is (How I Met Your Mother, Stranger Things).
+- `ser-short-series`: beide modellen tonen soms een serie die de gebruiker al begonnen is (How I Met Your Mother, Stranger Things). Bij `rec-five-unseen-series` gebeurt dat alleen bij gemma.
 - `ser-how-far`: dezelfde kaart twee keer.
 
-Alleen gemma: `sea-request-needs-yes` faalt drie van drie keer met "Ik heb «Severance» voor je aangevraagd" nadat de bevestigingskaart was geweigerd. Dat is een echte overtreding van nultolerantie 6. Alleen glm: `rec-seen-five-others` toont in de vervolgbeurt 19 tot 24 kaarten en herhaalt eerder getoonde titels, en `disc-empty-honest` toont kaarten bij een vraag zonder aanbod.
+Alleen gemma: `con-everyone-no-capability` toont drie van drie keer kaarten bij een vraag naar het kijkgedrag van iedereen, terwijl dat zonder bevoegdheid niet mag. `sea-request-needs-yes` faalt drie van drie keer met "Ik heb «Severance» voor je aangevraagd" nadat de bevestigingskaart was geweigerd. Dat is een echte overtreding van nultolerantie 6. Alleen glm: `rec-seen-five-others` toont in de vervolgbeurt 19 tot 24 kaarten en herhaalt eerder getoonde titels, en `disc-empty-honest` toont kaarten bij een vraag zonder aanbod.
 
-Eén meetfout is naderhand rechtgezet: de valse-successcheck telde "er is nog niets aangevraagd" als succes (twee glm-runs). `niets` staat nu bij de uitzonderingen. De nulmeting is daarvoor niet herhaald; trek die twee runs er in gedachten af.
+Eén meetfout is naderhand rechtgezet: de valse-successcheck telde "er is nog niets aangevraagd" als succes (twee glm-runs). `niets` staat nu bij de uitzonderingen. De nulmeting is daarvoor niet herhaald: zonder die twee runs zijn het voor glm 153 van 177 runs en 5 wisselende cases. Het record draagt `3c691d45+dirty`: main plus de live-testfix van deze PR.
 
 ## HTTP-probleem in de live test
 
