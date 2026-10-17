@@ -455,16 +455,48 @@ void main() {
     }
 
     test('the same title found by a second search is one card, not two (BP-11g)', () async {
+      var call = 0;
+      final tool = AssistantTool(
+        name: 'search_catalog',
+        description: 'fake',
+        risk: AssistantToolRisk.read,
+        properties: const {},
+        needsServer: false,
+        serves: (_, _) => true,
+        // A fresh list per call; the second search overlaps the first in two
+        // titles, adds one, and finds a remake (other year) and a series of
+        // the same name and year.
+        run: (_, _, _) async => AssistantToolResult(
+          const {'ok': true},
+          display: AssistantMediaGrid(
+            call++ == 0
+                ? week()
+                : [
+                    (item: _item('a2', 'The Diplomat', MediaKind.show, year: 2023), group: null),
+                    (item: _item('b2', 'The Florist', MediaKind.movie, year: 2026), group: null),
+                    (item: _item('e', 'Moana', MediaKind.movie, year: 2016), group: null),
+                    (item: _item('f', 'Buddy', MediaKind.movie, year: 2012), group: null),
+                    (item: _item('g', 'Buddy', MediaKind.show, year: 2026), group: null),
+                  ],
+          ),
+        ),
+      );
       final (r, _) = await _recommend(
         'Wat is er deze week toegevoegd en echt een aanrader voor mij?',
         'Kijk «Buddy» (2026).',
         picks: picks,
         calls: const ['search_catalog', 'search_catalog'],
-        extraTools: [search(week())],
+        extraTools: [tool],
       );
-      final cards = _cards(r);
-      expect(cards.toSet(), hasLength(cards.length), reason: '$cards');
-      expect(cards, hasLength(4));
+      expect(_cards(r).toList()..sort(), [
+        'Buddy',
+        'Buddy',
+        'Buddy',
+        'Moana',
+        'Spider-Man: Homecoming',
+        'The Diplomat',
+        'The Florist',
+      ], reason: 'two overlaps gone; the remake and the series of the same name stay');
     });
 
     test('a title named in plain prose with its year goes first', () async {

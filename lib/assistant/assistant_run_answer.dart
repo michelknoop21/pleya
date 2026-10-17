@@ -470,18 +470,22 @@ extension _AssistantAnswer on AssistantRun {
     return (index: index, display: display, current: current);
   }
 
-  /// One card per title across the grids of a run: a second search that finds
-  /// the same title again does not show it twice. The first grid keeps it, a
-  /// grid left empty goes. Runs once, when the run ends.
+  /// One card per title across the grids of a run: a later search that finds
+  /// a title an earlier grid already shows does not show it again. Inside one
+  /// grid nothing is removed (the same title on two servers is that grid's
+  /// own choice). A grid left empty goes; its facts stay with it.
   void _dedupeGrids() {
-    final seen = <String>{};
+    final shown = <String>{};
+    String keyOf(AssistantMediaGridEntry e) =>
+        '${e.item.kind.name}|${assistantTitleKey(e.item.title ?? '')}|${e.item.year ?? ''}';
     for (var i = 0; i < _displays.length; i++) {
       final grid = _displays[i];
       if (grid is! AssistantMediaGrid) continue;
       final kept = [
         for (final e in grid.entries)
-          if (seen.add('${assistantTitleKey(e.item.title ?? '')}|${e.item.year ?? ''}')) e,
+          if (!shown.contains(keyOf(e))) e,
       ];
+      shown.addAll(grid.entries.map(keyOf));
       if (kept.length == grid.entries.length) continue;
       if (kept.isEmpty) {
         _displays.removeAt(i--);
