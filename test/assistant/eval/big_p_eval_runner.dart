@@ -77,12 +77,14 @@ Future<EvalOutcome> runEvalCase(
   String region = 'NL',
 }) async {
   final outcome = EvalOutcome();
+  final world = await c.world?.call();
   final ctx = evalContext(
     kids: c.kids,
     kidsAges: c.kidsAges,
     householdKids: evalHouseholdKids(c.householdKids),
     region: region,
     personal: c.personal,
+    world: world,
     onSaveRow: outcome.savedRows.add,
   );
   final history = <AssistantTurn>[];
@@ -137,11 +139,48 @@ String evalLanguage(String text) {
   return n == 0 && e == 0 ? 'unknown' : (n >= e ? 'nl' : 'en');
 }
 
+// vault-exec hands its child a cleaned environment, so BIG_P_EVAL_* may not
+// arrive as environment variables; `flutter test --dart-define=BIG_P_EVAL_LABEL=x`
+// does. The environment wins when both are set.
+const _defineSha = String.fromEnvironment('BIG_P_EVAL_SHA');
+const _defineLabel = String.fromEnvironment('BIG_P_EVAL_LABEL');
+
+/// The run label for the A/B report, or null.
+String? evalLabel() {
+  final env = Platform.environment['BIG_P_EVAL_LABEL'];
+  final value = env != null && env.isNotEmpty ? env : _defineLabel;
+  return value.isEmpty ? null : value;
+}
+
+String? _evalSha;
+
+/// The checkout the run came from, so two runs can be told apart in the A/B
+/// report: `BIG_P_EVAL_SHA`, else the short HEAD sha, `+dirty` with local
+/// changes, `unknown` outside git.
+String evalGitSha() => _evalSha ??= () {
+  final env = Platform.environment['BIG_P_EVAL_SHA'];
+  if (env != null && env.isNotEmpty) return env;
+  if (_defineSha.isNotEmpty) return _defineSha;
+  try {
+    final head = Process.runSync('git', ['rev-parse', '--short', 'HEAD']);
+    if (head.exitCode != 0) return 'unknown';
+    final dirty = Process.runSync('git', ['status', '--porcelain', '--untracked-files=no']);
+    return '${(head.stdout as String).trim()}${(dirty.stdout as String).trim().isEmpty ? '' : '+dirty'}';
+  } catch (_) {
+    return 'unknown';
+  }
+}();
+
 /// One JSON object per run of [c]: hard violations and the soft scores.
 Map<String, Object?> evalRecord(EvalCase c, EvalOutcome o, {required String model, required int attempt}) {
   final violations = evalViolations(c, o);
   return {
     'case': c.id,
+    'git_sha': evalGitSha(),
+    'label': evalLabel(),
+    // A run that ended in a provider error says nothing about Pleya or the
+    // model's answers; the A/B report leaves it out.
+    'infra_error': o.turns.any((t) => t.result.providerError != null),
     'model': model,
     'attempt': attempt,
     'expect_fail': c.expectFail,
@@ -152,6 +191,7 @@ Map<String, Object?> evalRecord(EvalCase c, EvalOutcome o, {required String mode
         {
           'prompt': t.prompt,
           'end': t.result.end.name,
+          'provider_error': t.result.providerError?.name,
           'first_tool': t.tools.firstOrNull,
           'first_tool_ok': c.soft.firstTools.isEmpty || c.soft.firstTools.contains(t.tools.firstOrNull),
           'tools': t.tools,

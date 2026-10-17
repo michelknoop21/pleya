@@ -1,6 +1,15 @@
 import 'package:pleya/media/media_kind.dart';
 
 import 'big_p_eval_checks.dart';
+import 'big_p_eval_world.dart';
+import 'cases/big_p_eval_cases_contract.dart';
+import 'cases/big_p_eval_cases_discovery.dart';
+import 'cases/big_p_eval_cases_family.dart';
+import 'cases/big_p_eval_cases_memory.dart';
+import 'cases/big_p_eval_cases_recommend.dart';
+import 'cases/big_p_eval_cases_series.dart';
+import 'cases/big_p_eval_cases_admin.dart';
+import 'cases/big_p_eval_cases_trakt_seerr.dart';
 
 // The cases of the Big P evaluation set (BP-11a). Sources: the start
 // questions (docs/qa/big-p-startvragen.md), the zero-tolerance list of the
@@ -62,6 +71,7 @@ class EvalCase {
     this.personal = false,
     this.kidsAges = const [],
     this.householdKids = const [],
+    this.world,
     this.soft = const EvalSoft(),
     this.expectFail,
     this.expectViolations = const [],
@@ -84,6 +94,11 @@ class EvalCase {
   /// The household's children as ages in whole years; the runner turns them
   /// into stored children (name and birth month) for BP-11b's household gate.
   final List<int> householdKids;
+
+  /// The extra surroundings of the case (BP-11a2): a second profile, an
+  /// offline server, Trakt, Seerr, memory. Built per run, so each run gets
+  /// its own database.
+  final Future<EvalWorld> Function()? world;
   final List<EvalHard> hard;
 
   /// Checks of the scripted runner only: the case produced real cards, the
@@ -116,7 +131,20 @@ Map<String, Object?> _find(List<String> titles, {String? kind}) => {
 
 const _invented = 'Nachtwacht Express';
 
+/// The core cases of BP-11a; the per-area files below hold the rest.
 final bigPEvalCases = <EvalCase>[
+  ..._coreCases,
+  ...evalDiscoveryCases,
+  ...evalRecommendCases,
+  ...evalSeriesCases,
+  ...evalFamilyCases,
+  ...evalMemoryCases,
+  ...evalTraktSeerrCases,
+  ...evalAdminCases,
+  ...evalContractCases,
+];
+
+final _coreCases = <EvalCase>[
   EvalCase(
     id: 'kids-six-titles-unchecked-names',
     source: 'startvraag kinderen; contract kindpoort',
