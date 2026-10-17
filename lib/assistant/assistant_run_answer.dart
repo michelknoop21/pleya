@@ -35,7 +35,9 @@ extension _AssistantAnswer on AssistantRun {
     final step = await _lookupNamedTitles(answer);
     final rejected = _rejectedNamed(answer);
     final unvetted = _unvettedNamed(answer, rejected);
-    final clean = rejected.isEmpty && unvetted.isEmpty;
+    final seen = _seenNamed(answer);
+    final aged = rejected.isNotEmpty || unvetted.isNotEmpty;
+    final clean = !aged && seen.isEmpty;
     if (clean && step?.display != null) _displays.add(step!.display!);
     if (clean) _keepTheOneNamed(answer);
     if (clean) _namedFirst(answer);
@@ -52,7 +54,8 @@ extension _AssistantAnswer on AssistantRun {
     }
     if (clean) return null;
     if (!mayCorrect) {
-      _ageNotice = true;
+      if (aged) _ageNotice = true;
+      if (seen.isNotEmpty) _ctx.seenFilter.notice = true;
       return null;
     }
     return [
@@ -60,7 +63,11 @@ extension _AssistantAnswer on AssistantRun {
         'Not suitable for the youngest child (${_ctx.kidsAge} years): '
             '${[for (final r in rejected) '«${r.title}» (${r.reason})'].join(', ')}.',
       if (unvetted.isNotEmpty) 'Not checked by the age filter: ${unvetted.join(', ')}.',
-      'Name only titles from tool results that passed the age filter, or say that none fits.',
+      if (seen.isNotEmpty)
+        'Left out because the user watched or started them: ${[for (final s in seen) '«${s.title}»'].join(', ')}.',
+      aged
+          ? 'Name only titles from tool results that passed the age filter, or say that none fits.'
+          : 'Name only titles from tool results, or say that none fits.',
     ].join(' ');
   }
 

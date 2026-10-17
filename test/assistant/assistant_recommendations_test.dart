@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
+import 'package:pleya/services/recommendations/taste_profile.dart' show AffinityVector;
 import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_playback.dart';
 import 'package:pleya/profiles/profile_server_identity.dart';
@@ -124,7 +125,12 @@ class _Fixture {
   List<ProfileServerIdentity> aliases = [];
   final cancel = AbortController();
 
-  AssistantToolContext context(List<String> ids, {bool localAdmin = true, bool emby = false}) {
+  AssistantToolContext context(
+    List<String> ids, {
+    bool localAdmin = true,
+    bool emby = false,
+    AssistantPersonalServices? personal,
+  }) {
     loader = _Loader(ids);
     client = JellyfinClient.forTesting(
       connection: JellyfinConnection(
@@ -172,6 +178,7 @@ class _Fixture {
     return AssistantToolContext(
       servers: manager,
       cancel: cancel,
+      personal: personal,
       catalog: AssistantCatalogServices(
         rowLoader: loader,
         profileId: 'p',
@@ -256,6 +263,24 @@ void main() {
     expect(result.data['home_row_unavailable_reason'], isNotEmpty);
     expect(f.calls.any((r) => r.url.path == '/Items'), isFalse);
     expect(f.calls.every((r) => r.method == 'GET'), isTrue);
+  });
+  test('the standing watch filter drops a title of this profile\'s own log from the cohort (BP-11d)', () async {
+    final personal = AssistantPersonalServices(
+      userName: 'M',
+      recent: () async => const [],
+      everSeen: () async => const {},
+      everSeenIdentities: () async => [(key: 'x', title: 'Film 2', year: 2001, show: false, tokens: <String>{})],
+      taste: () async => const AffinityVector({}, eventCount: 0),
+      picks: (_) async => const [],
+    );
+    Future<List<Object?>> ids(bool on) async {
+      final ctx = _Fixture().context(['1', '2', '3'], personal: personal)..seenFilter = AssistantSeenFilter(on: on);
+      final result = await _recommend(ctx);
+      return [for (final e in result.data['results'] as List) (e as Map)['item_id']];
+    }
+
+    expect(await ids(false), ['1', '2', '3'], reason: 'negative control: no filter, all three');
+    expect(await ids(true), ['1', '3']);
   });
   test('a title with two copies on the server is proven per title: a watched copy rules it out', () async {
     final f = _Fixture();

@@ -7,6 +7,7 @@ import '../i18n/strings.g.dart';
 import '../media/ids.dart';
 import '../media/media_kind.dart';
 import '../profiles/household_kids_store.dart';
+import '../services/memory/exclude_seen_store.dart';
 import '../services/memory/memory_validation.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
 import '../utils/app_logger.dart';
@@ -31,6 +32,7 @@ part 'assistant_run_loop.dart';
 part 'assistant_run_memory.dart';
 part 'assistant_run_prompt.dart';
 part 'assistant_run_result.dart';
+part 'assistant_run_seen.dart';
 part 'assistant_run_single.dart';
 
 /// The user's answer on a confirmation card.

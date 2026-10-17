@@ -130,6 +130,16 @@ final List<AssistantTool> assistantMemoryTools = [
     run: (ctx, _, args) async {
       final turn = ctx.memoryTurn..asked = true;
       final memory = await _memory(ctx);
+      // Pleya already holds the standing "nothing I watched or started" of
+      // this ask on its own card or stored it (BP-11d): no second card.
+      if (turn.standingHandled) {
+        return turn.stored.isEmpty
+            ? const AssistantToolResult({'status': 'proposed', 'note': _proposedNote})
+            : const AssistantToolResult({
+                'status': 'stored',
+                'note': 'Stored. Pleya tells the user the exact sentence itself.',
+              });
+      }
       final category = _memoryCategory(args['category']);
       if (category == null) throw const AssistantToolError('missing_category');
       final replaces = args['replaces'];

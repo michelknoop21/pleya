@@ -62,6 +62,7 @@ extension _AssistantLoop on AssistantRun {
     _ctx.kidsMode = await _ctx.kidsProfile?.call() ?? false;
     final householdNote = await _setAgeGate(prompt);
     await _beginMemory(prompt);
+    final seenNote = await _beginSeenFilter(prompt);
     _ctx.recommend = AssistantRecommendConstraints.fromPrompt(prompt);
     _intent = AssistantIntent.fromPrompt(prompt);
     if (inheritedIntent case final parent?) _intent = _intent.inheriting(parent);
@@ -106,6 +107,7 @@ extension _AssistantLoop on AssistantRun {
       if (_ctx.recommend.describe() case final note?) {'role': 'system', 'content': note},
       if (_intent.describe() case final note?) {'role': 'system', 'content': note},
       ?householdNote,
+      ?seenNote,
       if (memoryNote != null) {'role': 'system', 'content': memoryNote},
       if (memoryOnly) const {'role': 'system', 'content': _memoryScreenNote},
       ..._memoryMessages(),
@@ -288,7 +290,9 @@ extension _AssistantLoop on AssistantRun {
         }
         // Still naming a title the age filter did not pass: Pleya's own line
         // (the controller words it), never the model's text.
-        return _end(AssistantRunEnd.answered, text: _ageNotice ? '' : _presentedAnswer(reply.content));
+        // A dropped watched title the model kept naming: Pleya cuts it.
+        final shown = _ctx.seenFilter.notice ? _withoutSeen(reply.content) : reply.content;
+        return _end(AssistantRunEnd.answered, text: _ageNotice ? '' : _presentedAnswer(shown));
       }
       // Serial on purpose: a write must see the state the previous one left.
       for (final (index, call) in reply.toolCalls.indexed) {
