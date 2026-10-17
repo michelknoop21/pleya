@@ -1664,7 +1664,15 @@ void main() {
       });
     });
 
-    tearDown(() {
+    tearDown(() async {
+      // load() and setTopShelfHero start syncs nobody awaits. Let them land
+      // before the channel and the folder go away, or one finishes during
+      // the next test and logs its failure there.
+      var stable = 0;
+      for (var i = 0, last = -1; i < 200 && stable < 10; i++, last = syncs.length) {
+        stable = syncs.length == last ? stable + 1 : 0;
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
       SystemShelfService.debugForceTopShelf = false;
       SystemShelfService().topShelfImages = TopShelfImages();
@@ -1738,6 +1746,11 @@ void main() {
       provider.setTopShelfHero([film('h2')]);
       await syncWith(['h2']);
       expect(watchedExistedAtSync.last, isTrue, reason: 'the payload being replaced still points at it');
+      // The delete runs after the channel call returns, so it lands a moment
+      // after the sync this test saw.
+      for (var i = 0; i < 400 && old.existsSync(); i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
       expect(old.existsSync(), isFalse);
     });
   });
