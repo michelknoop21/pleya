@@ -278,11 +278,10 @@ AssistantToolContext evalContext({
     personal: world?.profile != null ? evalPersonalFor(world!.profile!) : (personal ? _evalPersonal() : null),
     trakt: world?.trakt,
     requests: world?.seerr == null ? null : AssistantRequestServices(client: () => world!.seerr!.client),
-    memory: world?.memoryServices,
     kidsAges: () async => kidsAges,
     householdKids: () async => householdKids,
     kidsProfile: () async => kids,
     region: () => region,
-    memory: memory,
+    memory: world?.memoryServices ?? memory,
   );
 }
