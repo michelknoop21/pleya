@@ -8,6 +8,7 @@ extension _AssistantResult on AssistantRun {
     // A pick grid the answer never narrowed (cancelled, an action, a step
     // limit) names nothing: its picks were never shown.
     _displays.removeWhere(_pickGrids.contains);
+    _dedupeGrids();
     final evidenceContext = _ctx;
     final namedTitlesCurrent = _namedTitlesCurrent;
     bool displaysCurrent() => evidenceContext.recommendationError == null && (namedTitlesCurrent?.call() ?? true);
