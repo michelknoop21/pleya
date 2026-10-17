@@ -11,6 +11,7 @@ class _CatalogQuery {
     this.partial = false,
     this.sampled = false,
     this.serversLeftOut = const [],
+    this.serversOffline = const [],
     this.genreUnverified = const {},
     this.rowUnavailableReason = 'This query cannot be replayed by a saved Home row.',
     this.coverage,
@@ -70,6 +71,9 @@ class _CatalogQuery {
 
   /// Servers left out because they cannot run a requested filter.
   final List<String> serversLeftOut;
+
+  /// Servers that did not answer: their titles are missing from the result.
+  final List<String> serversOffline;
 
   /// Group ids kept although no source carried genre data to check.
   final Set<String> genreUnverified;
@@ -259,6 +263,11 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   final cutoff = addedWithin == null
       ? null
       : DateTime.now().millisecondsSinceEpoch ~/ 1000 - addedWithin * Duration.secondsPerDay;
+  // A server that does not answer is named, never skipped silently (DEC-142).
+  final offline = [
+    for (final id in ctx.userServers)
+      if (ctx.userClient(id) == null) clipText(ctx.serverName(id), 40),
+  ];
   var windowCapped = false;
   var addedUnknown = 0;
   int? total;
@@ -367,7 +376,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     if (cutoff != null) total = groups.length;
     // A single kind keeps the catalog's order; two kinds need one order.
     if (!rowShaped || kind == null) _order(groups, sort);
-    final countable = complete && !partial && !sampled && !windowCapped;
+    final countable = complete && !partial && !sampled && !windowCapped && offline.isEmpty;
     final kept = groups.skip(offset).take(min(limit ?? groups.length, groups.length)).toList();
     return _CatalogQuery(
       kept,
@@ -381,6 +390,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
           : null,
       sampled: sampled || windowCapped,
       serversLeftOut: leftOut,
+      serversOffline: offline,
       rowUnavailableReason: offset > 0
           ? 'A later page of a list cannot be a Home row; repeat the query without offset.'
           : seenElsewhere > 0
@@ -480,6 +490,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     kept,
     null,
     partial: partial,
+    serversOffline: offline,
     offset: offset,
     nextOffset:
         kept.isNotEmpty && sort != 'random' && offset + kept.length <= 200 && offset + kept.length < groups.length
@@ -492,7 +503,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     addedWithinDays: addedWithin,
     // Everything the servers' search returned, not the listing's length; no
     // total when a server did not answer or its search hit its limit.
-    totalMatches: partial || searchCapped ? null : (total ?? groups.length),
+    totalMatches: partial || searchCapped || offline.isNotEmpty ? null : (total ?? groups.length),
     moreMatches: searchCapped,
     matchesRead: groups.length,
     seenElsewhere: seenBefore,

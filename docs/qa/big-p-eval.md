@@ -48,7 +48,7 @@ Maak één `EvalCase` in het gebied dat past (`test/assistant/eval/cases/`), met
 
 ## Open
 
-- `adm-search-with-offline-server` gebruikt het voorlopige ID BP-11e; het heeft nog geen roadmaprij.
+- `adm-search-with-offline-server` is met BP-11e een gewoon hard geval; de nulmeting is nog van vóór die fix, dus het live effect is niet gemeten.
 - De beheer- en huishoudcases (regel 2 en 7) bewijzen alleen de weigering zonder bevoegdheid; ze wachten op een inzichtenfixture.
 - De kwaliteitsbeoordelaar (stap 5) is uitgesteld.
 - Er is nog geen tweede run om de nulmeting mee te vergelijken; de ruis tussen twee runs van dezelfde code is dus niet gemeten.
