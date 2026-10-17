@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../tool/big_p_eval_report.dart';
@@ -71,5 +73,61 @@ void main() {
     expect(evalReportMain(['--base', _base, '--candidate', _cand, '--strict']), 1);
     expect(evalReportMain(['--base', _base, '--candidate', _base, '--strict']), 0, reason: 'a run against itself');
     expect(evalReportMain(['--base', _base]), 64);
+  });
+
+  test('--strict also fails on a candidate that is empty, filtered away or missing cases', () {
+    final dir = Directory.systemTemp.createTempSync('bp_report');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final empty = File('${dir.path}/empty.jsonl')..writeAsStringSync('');
+    expect(evalReportMain(['--base', _base, '--candidate', empty.path, '--strict']), 1);
+    expect(evalReportMain(['--base', _base, '--candidate', _cand, '--model', 'typo', '--strict']), 1);
+    // The candidate holds one record of the base: the rest is missing.
+    final one = File('${dir.path}/one.jsonl')..writeAsStringSync(File(_base).readAsLinesSync().first);
+    expect(evalReportMain(['--base', _base, '--candidate', one.path, '--strict']), 1);
+    expect(_diff().incomplete, isTrue, reason: 'c-gone is missing from the candidate');
+  });
+
+  test('a known bug that gets worse is no regression, one that holds again is an improvement', () {
+    EvalGroup group(bool ok, int attempts) => EvalGroup('k', 'm', [
+      for (var i = 0; i < attempts; i++)
+        {'case': 'k', 'model': 'm', 'expect_fail': 'BP-11d', 'hard_ok': i == 0 ? true : ok},
+    ]);
+    expect(EvalChange(group(true, 3), group(false, 3)).delta, 0, reason: 'flaky/fail stays known, never negative');
+    final fixed = EvalChange(
+      EvalGroup('k', 'm', [
+        {'case': 'k', 'model': 'm', 'expect_fail': 'BP-11d', 'hard_ok': false},
+      ]),
+      EvalGroup('k', 'm', [
+        {'case': 'k', 'model': 'm', 'expect_fail': 'BP-11d', 'hard_ok': true},
+      ]),
+    );
+    expect(fixed.delta, greaterThan(0));
+  });
+
+  test('bad input gives a usage or input exit code, not a stack trace', () {
+    final dir = Directory.systemTemp.createTempSync('bp_report');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final junk = File('${dir.path}/junk.jsonl')..writeAsStringSync('not json\n');
+    final noModel = File('${dir.path}/nomodel.jsonl')..writeAsStringSync('{"case":"a"}\n');
+    expect(evalReportMain(['--base', _base, '--candidate']), 64);
+    expect(evalReportMain(['--base', _base, '--candidate', '--strict']), 64);
+    expect(evalReportMain(['--base', _base, '--candidate', '${dir.path}/missing.jsonl']), 66);
+    expect(evalReportMain(['--base', _base, '--candidate', junk.path]), 65);
+    expect(evalReportMain(['--base', _base, '--candidate', noModel.path]), 65);
+  });
+
+  test('the median of an even number of attempts is the mean of the middle two', () {
+    final g = EvalGroup('c', 'm', [
+      for (final ms in [1000, 5000])
+        {
+          'case': 'c',
+          'model': 'm',
+          'hard_ok': true,
+          'turns': [
+            {'latency_ms': ms, 'tokens': 10},
+          ],
+        },
+    ]);
+    expect(g.medianLatencyMs, 3000);
   });
 }

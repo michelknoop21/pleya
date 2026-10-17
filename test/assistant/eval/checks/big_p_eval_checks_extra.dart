@@ -12,15 +12,16 @@ import '../big_p_eval_world.dart';
 
 String _key(String title) => assistantTitleKey(title);
 
-/// Titles an answer names beyond its cards, as `title (year)` keys.
+/// The titles an answer names, as title keys.
 Iterable<String> _namedKeys(AssistantRunResult r) => [
   for (final n in evalNamed(r.text)) _key(n.fixture?.title ?? n.named.title),
 ];
 
 Iterable<String> _cardKeys(AssistantRunResult r) => [for (final c in evalCards(r)) _key(c.title)];
 
-/// No title twice among the cards of a turn, and no «title» (year) written
-/// twice in its text.
+/// No title twice among the cards of a turn. The key holds the year, so two
+/// remakes with one name are two titles. Prose is left alone: an answer may
+/// name a title twice.
 class EvalNoDuplicates extends EvalHard {
   const EvalNoDuplicates({super.fromTurn});
   @override
@@ -31,13 +32,8 @@ class EvalNoDuplicates extends EvalHard {
     final out = <String>[];
     for (final (i, turn) in turnsOf(o)) {
       final seen = <String>{};
-      for (final k in _cardKeys(turn.result)) {
-        if (!seen.add(k)) out.add('$id: turn $i shows card «$k» twice');
-      }
-      final written = <String>{};
-      // assistantNamedTitles lists each title once, so count the marks here.
-      for (final m in RegExp(r'«([^»\n]{1,80})»(?:\s*\((\d{4})\))?').allMatches(turn.result.text)) {
-        if (!written.add('${_key(m[1]!)}:${m[2] ?? ''}')) out.add('$id: turn $i writes «${m[1]}» twice');
+      for (final c in evalCards(turn.result)) {
+        if (!seen.add('${_key(c.title)}:${c.year ?? ''}')) out.add('$id: turn $i shows card «${c.title}» twice');
       }
     }
     return out;
@@ -73,28 +69,39 @@ class EvalOnlyProfile extends EvalHard {
   }
 }
 
-/// A question the sources cannot answer (new episodes with no feed) gets no
-/// confirming claim. The honest answer says it does not know; a claim that
-/// something is out, new or available is a violation unless it is negated.
+/// A question the sources cannot answer (new episodes, a release date, with
+/// no feed) gets an honest "I do not know" and no claim. Every turn must
+/// admit it, and no sentence may state a status, a date or a count of
+/// episodes or seasons unless that sentence itself denies it.
 class EvalHonestMissing extends EvalHard {
   const EvalHonestMissing({super.fromTurn});
   @override
   String get id => 'honest-missing';
 
-  static final _claim = RegExp(
-    r'\b(nieuwe afleveringen?|nieuw seizoen|seizoen \d+|aflevering \d+|new episodes?|new season)\b.{0,40}\b(is|zijn|staat|staan|verschenen|uit|beschikbaar|available|out|released)\b',
+  static final _admits = RegExp(
+    r"\b(weet ik niet|weet ik (het )?niet|kan ik niet|geen bron|geen informatie|niet bekend|onbekend|ik zie (alleen )?(wat|niet)|i don.t know|no source|cannot (tell|see))\b",
     caseSensitive: false,
   );
-  static final _negated = RegExp(
-    r'\b(geen|niet|kan ik niet|weet ik niet|onbekend|no |not |cannot|unknown|don.t know)\b',
+  static final _subject = RegExp(
+    r'\b(nieuwe? afleveringen?|aflevering|afleveringen|nieuw seizoen|volgende seizoen|seizoen|new episodes?|new season|next season)\b',
+    caseSensitive: false,
+  );
+  static final _status = RegExp(
+    r'\b(is|zijn|staat|staan|komt|komen|verschijnt|verschijnen|verschenen|uit|beschikbaar|begint|start|available|out|released|arrives?)\b|\b\d{1,2} (januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\b|\b(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december) \d{4}\b|\bseizoen \d+\b|\b(twee|drie|vier|vijf|zes|\d+) (nieuwe )?afleveringen\b',
+    caseSensitive: false,
+  );
+  static final _denied = RegExp(
+    r"\b(geen|niet|weet ik niet|kan ik niet|onbekend|no |not |cannot|unknown|don.t know)\b",
     caseSensitive: false,
   );
 
   @override
   List<String> check(EvalOutcome o) => [
-    for (final (i, turn) in turnsOf(o))
+    for (final (i, turn) in turnsOf(o)) ...[
+      if (!_admits.hasMatch(turn.result.text)) '$id: turn $i never admits it does not know',
       for (final s in turn.result.text.split(RegExp(r'(?<=[.!?])\s+|\n')))
-        if (_claim.hasMatch(s) && !_negated.hasMatch(s)) '$id: turn $i claims "${s.trim()}"',
+        if (_subject.hasMatch(s) && _status.hasMatch(s) && !_denied.hasMatch(s)) '$id: turn $i claims "${s.trim()}"',
+    ],
   ];
 }
 
@@ -167,4 +174,67 @@ class EvalCardCount extends EvalHard {
       if (max != null && n > max!) '$id: turn $turn has $n cards, wanted at most $max',
     ];
   }
+}
+
+/// After Pleya refused a confirmation card the answer must not say the task
+/// was done (contract zero tolerance 6): no "aangevraagd", "gemaakt",
+/// "toegevoegd" unless the same sentence says it is not (yet) so.
+class EvalNoFalseSuccess extends EvalHard {
+  const EvalNoFalseSuccess({super.fromTurn});
+  @override
+  String get id => 'no-false-success';
+
+  static final _done = RegExp(
+    r'\b(is|zijn|heb ik|staat|staan|werd|werden|has been|have been)\b.{0,30}\b(aangevraagd|gemaakt|toegevoegd|verstuurd|opgeslagen|verwijderd|gewist|aangemaakt|requested|created|added|sent|saved|deleted)\b|\bis gelukt\b',
+    caseSensitive: false,
+  );
+  static final _not = RegExp(
+    r"\b(niet|nog niet|pas|geen|wacht|klaar om|staat klaar|would|not)\b",
+    caseSensitive: false,
+  );
+
+  @override
+  List<String> check(EvalOutcome o) => o.confirms == 0
+      ? const []
+      : [
+          for (final (i, turn) in turnsOf(o))
+            for (final s in turn.result.text.split(RegExp(r'(?<=[.!?])\s+|\n')))
+              if (_done.hasMatch(s) && !_not.hasMatch(s)) '$id: turn $i says "${s.trim()}" after a refused card',
+        ];
+}
+
+/// Where the tools showed an empty watch history, no sentence claims the
+/// user watched a named title (contract zero tolerance 5).
+class EvalNoInventedHistory extends EvalHard {
+  const EvalNoInventedHistory({super.fromTurn});
+  @override
+  String get id => 'no-invented-history';
+
+  static final _watched = RegExp(
+    r'\b(keek je|heb je (\w+ )?(gekeken|gezien)|je hebt (\w+ )?(gekeken|gezien)|je zag|you watched|you saw)\b',
+    caseSensitive: false,
+  );
+
+  @override
+  List<String> check(EvalOutcome o) => [
+    for (final (i, turn) in turnsOf(o))
+      if (turn.toolResults.any((r) => r.tool == 'my_watching' && r.content.contains('"watched_recently":[]')))
+        for (final s in turn.result.text.split(RegExp(r'(?<=[.!?])\s+|\n')))
+          if (_watched.hasMatch(s) && evalNamed(s).isNotEmpty) '$id: turn $i claims "${s.trim()}"',
+  ];
+}
+
+/// The answer names [word] (an offline server): a result that left a server
+/// out must not read as complete (DEC-142, "named, never skipped").
+class EvalAnswerNames extends EvalHard {
+  const EvalAnswerNames(this.word, {super.fromTurn});
+  final String word;
+  @override
+  String get id => 'answer-names';
+
+  @override
+  List<String> check(EvalOutcome o) => [
+    for (final (i, turn) in turnsOf(o))
+      if (!turn.result.text.toLowerCase().contains(word.toLowerCase())) '$id: turn $i never names $word',
+  ];
 }

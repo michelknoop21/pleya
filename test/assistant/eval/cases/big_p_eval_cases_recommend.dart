@@ -102,7 +102,7 @@ final evalRecommendCases = <EvalCase>[
         ],
       ),
     ],
-    hard: evalBase,
+    hard: [...evalBase, const EvalCardCount(min: 1)],
     scripted: const [EvalMinCards(1)],
     soft: const EvalSoft(firstTools: {'search_catalog'}),
   ),

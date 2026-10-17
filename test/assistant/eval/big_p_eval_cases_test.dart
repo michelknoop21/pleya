@@ -18,13 +18,15 @@ void main() {
     }
   });
 
-  test('no case rests on the shared base alone', () {
-    for (final c in bigPEvalCases) {
-      final own = c.hard.where(
-        (h) => !{'cards-from-fixture', 'no-mutation-without-yes', 'no-duplicates'}.contains(h.id),
-      );
-      final scripted = c.scripted.isNotEmpty;
-      expect(own.isNotEmpty || scripted || c.expectFail != null, isTrue, reason: '${c.id} only checks the base');
-    }
+  test('no case rests on the shared base alone, also when run live', () {
+    // The live runner ignores `scripted`, so a case needs a hard check of its own.
+    const shared = {'cards-from-fixture', 'no-mutation-without-yes', 'no-duplicates'};
+    // The eleven core cases of the first PR keep their own rules; this holds the new areas.
+    final areas = RegExp(r'^(disc|rec|ser|fam|mem|trk|sea|adm|con)-');
+    final weak = [
+      for (final c in bigPEvalCases.where((c) => areas.hasMatch(c.id)))
+        if (c.hard.every((h) => shared.contains(h.id))) c.id,
+    ];
+    expect(weak, isEmpty, reason: 'these cases only check the base');
   });
 }

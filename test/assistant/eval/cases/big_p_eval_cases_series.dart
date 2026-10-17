@@ -55,6 +55,7 @@ final evalSeriesCases = <EvalCase>[
       ),
     ],
     hard: [...evalBase, const EvalHonestMissing()],
+    scripted: const [EvalMinCards(1)],
     soft: const EvalSoft(firstTools: {'find_title', 'search_catalog'}),
   ),
   EvalCase(
@@ -70,6 +71,7 @@ final evalSeriesCases = <EvalCase>[
       ),
     ],
     hard: [...evalBase, const EvalHonestMissing()],
+    scripted: const [EvalMinCards(1)],
     soft: const EvalSoft(firstTools: {'find_title', 'search_catalog'}),
   ),
   EvalCase(

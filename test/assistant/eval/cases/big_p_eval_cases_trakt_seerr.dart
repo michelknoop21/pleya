@@ -93,13 +93,13 @@ final evalTraktSeerrCases = <EvalCase>[
         ],
       ),
     ],
-    hard: evalBase,
+    hard: [...evalBase, const EvalCardCount(max: 0)],
     scripted: const [EvalToolAnswered('request_title', 'unknown_seerr_id')],
     soft: const EvalSoft(firstTools: {'find_request_title'}),
   ),
   EvalCase(
     id: 'sea-request-needs-yes',
-    source: 'Seerr: een aanvraag vraagt om een ja (contract 6)',
+    source: 'Seerr: een aanvraag vraagt om een ja; na een geweigerde kaart geen succes tonen (nultolerantie 6)',
     world: _seerr,
     turns: [
       EvalTurn(
@@ -115,7 +115,7 @@ final evalTraktSeerrCases = <EvalCase>[
         ],
       ),
     ],
-    hard: evalBase,
+    hard: [...evalBase, const EvalNoFalseSuccess()],
     scripted: const [EvalConfirmShown(1)],
     soft: const EvalSoft(firstTools: {'find_request_title'}),
   ),

@@ -48,11 +48,13 @@ const evalMichel = EvalProfile(
   tasteGenre: 'comedy',
 );
 
-/// The partner profile: sees other titles than Michel on the same servers, so
-/// a case can prove that one profile's status never answers for the other.
+/// The partner profile: watched other titles than Michel and shares none of
+/// his seen titles or picks. The fixture servers carry only Michel's watch
+/// state (`EvalTitle.seen`), so a case as Sanne would measure his; a second
+/// profile reaches the checks through `EvalOnlyProfile` and memory.
 const evalSanne = EvalProfile(
   'Sanne',
-  seenIds: {'m06', 'm28', 'm33', 's22', 's11'},
+  seenIds: {'m06', 'm28', 'm33', 's22', 'm22'},
   pickIds: ['m09', 'm24', 's20'],
   tasteGenre: 'family',
 );

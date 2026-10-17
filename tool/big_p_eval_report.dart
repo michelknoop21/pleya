@@ -75,7 +75,8 @@ class EvalGroup {
   static int _median(List<int> values) {
     if (values.isEmpty) return 0;
     final sorted = [...values]..sort();
-    return sorted[sorted.length ~/ 2];
+    final mid = sorted.length ~/ 2;
+    return sorted.length.isOdd ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) ~/ 2;
   }
 }
 
@@ -104,7 +105,13 @@ class EvalChange {
     EvalGroupStatus.fail => 0,
   };
 
-  int get delta => _rank(candidate) - _rank(base);
+  /// The ranked change. A known bug (`expect_fail`) getting worse is no
+  /// regression: it is known to fail, and only getting better counts.
+  int get delta {
+    final raw = _rank(candidate) - _rank(base);
+    return candidate.known && raw < 0 ? 0 : raw;
+  }
+
   Set<String> get newViolations => candidate.violations.difference(base.violations);
   Set<String> get fixedViolations => base.violations.difference(candidate.violations);
 }
@@ -142,6 +149,10 @@ class EvalDiff {
     for (final c in both)
       if (c.delta < 0) c,
   ];
+
+  /// The candidate lacks cases the base has, or one side is empty: the run
+  /// crashed, was filtered, or is not comparable. `--strict` treats it as a failure.
+  bool get incomplete => onlyBase.isNotEmpty || candidate.isEmpty || base.isEmpty;
 
   /// Groups of [side] that count towards "passed x/N": cases not marked known.
   static (int, int) score(Iterable<EvalGroup> groups) {
@@ -201,6 +212,7 @@ class EvalDiff {
     if (onlyBase.isNotEmpty) {
       out.writeln('Alleen in base: ${onlyBase.map(_id).join(', ')}');
     }
+    if (incomplete) out.writeln('\nLET OP: candidate is niet compleet of niet vergelijkbaar met base.');
     return out.toString();
   }
 
@@ -231,10 +243,26 @@ class EvalDiff {
   }
 }
 
-List<Map<String, Object?>> evalReadJsonl(String path) => [
-  for (final line in File(path).readAsLinesSync())
-    if (line.trim().isNotEmpty) (jsonDecode(line) as Map).cast<String, Object?>(),
-];
+/// The records of a JSONL file. Throws [FormatException] for a line that is
+/// no JSON object or lacks `case` or `model`, and [FileSystemException] for a
+/// file that is not there.
+List<Map<String, Object?>> evalReadJsonl(String path) {
+  final records = <Map<String, Object?>>[];
+  for (final (i, line) in File(path).readAsLinesSync().indexed) {
+    if (line.trim().isEmpty) continue;
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(line);
+    } on FormatException {
+      throw FormatException('$path:${i + 1} is geen JSON');
+    }
+    if (decoded is! Map || decoded['case'] is! String || decoded['model'] is! String) {
+      throw FormatException('$path:${i + 1} is geen record met case en model');
+    }
+    records.add(decoded.cast<String, Object?>());
+  }
+  return records;
+}
 
 void main(List<String> args) {
   exitCode = evalReportMain(args);
@@ -244,14 +272,24 @@ void main(List<String> args) {
 int evalReportMain(List<String> args) {
   String? base, candidate, model;
   var strict = false;
+  String? value(int i) => i + 1 < args.length ? args[i + 1] : null;
   for (var i = 0; i < args.length; i++) {
     switch (args[i]) {
-      case '--base':
-        base = args[++i];
-      case '--candidate':
-        candidate = args[++i];
-      case '--model':
-        model = args[++i];
+      case '--base' || '--candidate' || '--model':
+        final v = value(i);
+        if (v == null || v.startsWith('--')) {
+          stderr.writeln('${args[i]} vraagt een waarde');
+          return 64;
+        }
+        switch (args[i]) {
+          case '--base':
+            base = v;
+          case '--candidate':
+            candidate = v;
+          default:
+            model = v;
+        }
+        i++;
       case '--strict':
         strict = true;
       default:
@@ -265,10 +303,16 @@ int evalReportMain(List<String> args) {
     );
     return 64;
   }
-  final diff = EvalDiff(
-    evalGroups(evalReadJsonl(base), model: model),
-    evalGroups(evalReadJsonl(candidate), model: model),
-  );
+  final EvalDiff diff;
+  try {
+    diff = EvalDiff(evalGroups(evalReadJsonl(base), model: model), evalGroups(evalReadJsonl(candidate), model: model));
+  } on FormatException catch (e) {
+    stderr.writeln(e.message);
+    return 65;
+  } on FileSystemException catch (e) {
+    stderr.writeln('${e.message}: ${e.path}');
+    return 66;
+  }
   stdout.write(diff.render());
-  return strict && diff.regressed.isNotEmpty ? 1 : 0;
+  return strict && (diff.regressed.isNotEmpty || diff.incomplete) ? 1 : 0;
 }

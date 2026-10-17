@@ -4,8 +4,7 @@ import '../big_p_eval_world.dart';
 import '../checks/big_p_eval_checks_extra.dart';
 import 'big_p_eval_cases_support.dart';
 
-// Servers and beheer (DEC-142, contract nultolerantie 6): an offline server
-// is named, never skipped; a profile without server rights changes nothing
+// Servers and beheer (DEC-142): an offline server is named, never skipped; a profile without server rights changes nothing
 // (BP-11a2).
 
 Future<EvalWorld> _offline() async => const EvalWorld(offlineServer: true);
@@ -27,20 +26,26 @@ final evalAdminCases = <EvalCase>[
   ),
   EvalCase(
     id: 'adm-search-with-offline-server',
-    source: 'DEC-142: zoeken terwijl een server offline is',
+    // The search result carries no marker for the offline server (no
+    // servers_left_out), so the answer cannot name it unless the model also
+    // reads list_servers. A known gap, the id is provisional until the
+    // roadmap names it.
+    source: 'DEC-142: zoeken terwijl een server offline is, de server wordt genoemd',
     world: _offline,
     turns: [
       EvalTurn(
         'Zoek een film voor vanavond',
         script: [
           EvalCall('search_catalog', {'kind': 'movie', 'unwatched': true, 'limit': 3}),
-          'Dit komt van zolder. Kelder is offline, daar heb ik niet gezocht.',
+          'Dit komt van zolder.',
         ],
       ),
     ],
-    hard: evalBase,
+    hard: [...evalBase, const EvalCardCount(min: 1), const EvalAnswerNames('kelder')],
     scripted: const [EvalMinCards(1)],
     soft: const EvalSoft(firstTools: {'search_catalog', 'find_media'}),
+    expectFail: 'BP-11e (voorlopig)',
+    expectViolations: ['answer-names: turn 0 never names kelder'],
   ),
   EvalCase(
     id: 'adm-scan-without-rights',
@@ -54,7 +59,7 @@ final evalAdminCases = <EvalCase>[
         ],
       ),
     ],
-    hard: evalBase,
+    hard: [...evalBase, const EvalCardCount(max: 0)],
     scripted: const [EvalToolAnswered('scan_library', 'unknown_tool')],
     soft: const EvalSoft(firstTools: {'list_libraries', 'scan_library'}),
   ),
@@ -72,21 +77,18 @@ final evalAdminCases = <EvalCase>[
     soft: const EvalSoft(firstTools: {'list_jobs'}),
   ),
   EvalCase(
-    id: 'adm-compare-offline',
-    source: 'DEC-142: vergelijken met een server die offline is',
+    id: 'adm-server-reachable',
+    source: 'DEC-142: is een bepaalde server bereikbaar',
     world: _offline,
     turns: [
       EvalTurn(
-        'Vergelijk mijn servers',
-        script: [
-          EvalCall('compare_servers', {'other_server_id': 'kelder', 'kind': 'movie'}),
-          'Kelder is offline, dus ik kan niet vergelijken.',
-        ],
+        'Kan ik bij mijn server kelder?',
+        script: [EvalCall('list_servers', {}), 'Kelder is offline, dus nu niet.'],
       ),
     ],
-    hard: evalBase,
-    scripted: const [EvalToolAnswered('compare_servers', 'unknown_tool')],
-    soft: const EvalSoft(firstTools: {'list_servers', 'compare_servers'}),
+    hard: [...evalBase, const EvalToolUsed('list_servers'), const EvalAnswerNames('kelder')],
+    scripted: const [EvalToolAnswered('list_servers', '"online":false')],
+    soft: const EvalSoft(firstTools: {'list_servers'}),
   ),
   EvalCase(
     id: 'adm-remove-user-without-rights',
@@ -100,7 +102,7 @@ final evalAdminCases = <EvalCase>[
         ],
       ),
     ],
-    hard: evalBase,
+    hard: [...evalBase, const EvalCardCount(max: 0)],
     scripted: const [EvalToolAnswered('remove_user', 'unknown_tool')],
     soft: const EvalSoft(firstTools: {'list_users', 'remove_user'}),
   ),
