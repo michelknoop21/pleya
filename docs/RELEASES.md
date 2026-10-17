@@ -58,7 +58,7 @@ Nothing user-facing since the last published build.
 ### New
 - **You can enter the children in your household.** Under Settings > Big P > Children at home
   you add each child once with a name and a birth month, up to eight, and change or delete them
-  later. Big P then checks titles against the youngest child you mean, on every profile. Names
+  later. Big P then checks titles against the youngest child you mean, on your own profile. Names
   and months stay on this device; the AI model only gets the age of the youngest child. On
   Apple TV you pick the month and year with the remote. A children's profile does not show
   this screen.
@@ -86,7 +86,7 @@ Nothing user-facing since the last published build.
 - **You can enter the children in your household.** Under Settings > Big P > Children at home
   you add each child once with a name and a birth month, up to eight, and change or delete them
   later. On iPhone you can also swipe a child away, after a confirmation. Big P then checks
-  titles against the youngest child you mean, on every profile. Names and months stay on this
+  titles against the youngest child you mean, on your own profile. Names and months stay on this
   device; the AI model only gets the age of the youngest child. A children's profile does not
   show this screen.
 - **Big P asks which children you mean.** If you ask about your children before entering them,
@@ -104,6 +104,7 @@ Nothing user-facing since the last published build.
   Check that the "Which children?" card appears, and that after saving only titles up to the
   age of the youngest child come back.
 - On a children's profile, check that Children at home is not in Big P's settings.
+
 ## 2.8.1 · build 376 · 17 October 2026 · Apple TV
 
 <!-- commit: 06dba51db1fea98d3bd9b4ac2a770f1a07875f43 -->
