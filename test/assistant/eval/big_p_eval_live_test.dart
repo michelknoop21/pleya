@@ -67,6 +67,10 @@ class _MeteredClient extends http.BaseClient {
     meter.calls++;
     if (request is http.Request) meter.observe(request.body);
     final bytes = await response.stream.toBytes();
+    if (response.statusCode != 200) {
+      final body = utf8.decode(bytes, allowMalformed: true);
+      meter.lastError = 'HTTP ${response.statusCode} ${body.length > 300 ? body.substring(0, 300) : body}';
+    }
     try {
       final usage = (jsonDecode(utf8.decode(bytes)) as Map)['usage'];
       if (usage is Map && usage['total_tokens'] is int) meter.tokens += usage['total_tokens'] as int;
@@ -103,6 +107,9 @@ void main() {
         }
         final failures = <String>[];
         for (var attempt = 1; attempt <= _attempts; attempt++) {
+          // The test binding (started by the memory fixtures) answers every HTTP
+          // request with 400; the live run needs the real network again.
+          HttpOverrides.global = null;
           final meter = EvalMeter();
           final client = AssistantModelClient(
             AssistantProviderConfig(
@@ -116,6 +123,7 @@ void main() {
           final outcome = await runEvalCase(c, modelFor: (_) => client, meter: meter);
           client.close();
           final record = evalRecord(c, outcome, model: model, attempt: attempt);
+          if (meter.lastError != null) record['http_error'] = meter.lastError;
           evalWriteJsonl('live-$stamp', [record]);
           final violations = record['violations']! as List;
           if (record['infra_error'] == true) continue; // a provider error is no verdict on the answer

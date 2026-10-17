@@ -213,7 +213,7 @@ class EvalNoFalseSuccess extends EvalHard {
     caseSensitive: false,
   );
   static final _not = RegExp(
-    r"\b(niet|nog niet|pas|geen|wacht|zodra|klaar om|staat klaar|would|not)\b",
+    r"\b(niet|niets|nog niet|pas|geen|wacht|zodra|klaar om|staat klaar|would|not)\b",
     caseSensitive: false,
   );
 

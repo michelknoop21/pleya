@@ -177,6 +177,7 @@ void main() {
     expect(check.check(refused('De rij is toegevoegd aan je beginscherm.')), isNotEmpty);
     expect(check.check(refused('De aanvraag staat klaar; hij wordt pas verstuurd als jij ja zegt.')), isEmpty);
     expect(check.check(refused('Het is niet aangevraagd.')), isEmpty);
+    expect(check.check(refused('Dus er is nog niets aangevraagd.')), isEmpty);
     for (final bad in [
       'Ik heb Severance voor je aangevraagd.',
       'Aangevraagd! Severance komt eraan.',
