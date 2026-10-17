@@ -470,6 +470,27 @@ extension _AssistantAnswer on AssistantRun {
     return (index: index, display: display, current: current);
   }
 
+  /// One card per title across the grids of a run: a second search that finds
+  /// the same title again does not show it twice. The first grid keeps it, a
+  /// grid left empty goes. Runs once, when the run ends.
+  void _dedupeGrids() {
+    final seen = <String>{};
+    for (var i = 0; i < _displays.length; i++) {
+      final grid = _displays[i];
+      if (grid is! AssistantMediaGrid) continue;
+      final kept = [
+        for (final e in grid.entries)
+          if (seen.add('${assistantTitleKey(e.item.title ?? '')}|${e.item.year ?? ''}')) e,
+      ];
+      if (kept.length == grid.entries.length) continue;
+      if (kept.isEmpty) {
+        _displays.removeAt(i--);
+      } else {
+        _displays[i] = AssistantMediaGrid(kept, facts: grid.facts);
+      }
+    }
+  }
+
   /// Narrows the pick grids to the named titles; returns how many cards stay.
   /// A grid not narrowed by the end of the run is dropped in [_end].
   int _narrowPicks(List<({String title, int? year})> named) {

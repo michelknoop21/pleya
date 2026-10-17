@@ -454,6 +454,19 @@ void main() {
       return _cards(r);
     }
 
+    test('the same title found by a second search is one card, not two (BP-11g)', () async {
+      final (r, _) = await _recommend(
+        'Wat is er deze week toegevoegd en echt een aanrader voor mij?',
+        'Kijk «Buddy» (2026).',
+        picks: picks,
+        calls: const ['search_catalog', 'search_catalog'],
+        extraTools: [search(week())],
+      );
+      final cards = _cards(r);
+      expect(cards.toSet(), hasLength(cards.length), reason: '$cards');
+      expect(cards, hasLength(4));
+    });
+
     test('a title named in plain prose with its year goes first', () async {
       expect(await shown('Van de nieuwe toevoegingen raad ik je Spider-Man: Homecoming (2017) aan.'), [
         'Spider-Man: Homecoming',
