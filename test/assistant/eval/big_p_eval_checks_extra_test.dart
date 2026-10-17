@@ -211,6 +211,26 @@ void main() {
     );
   });
 
+  test('EvalNoFalseRemember: claiming a save on a profile that cannot store fails', () {
+    const check = EvalNoFalseRemember();
+    for (final bad in [
+      'Leuk, Frozen dus! Dat onthoud ik.',
+      'Het is opgeslagen.',
+      'Ik heb dat bewaard voor je.',
+      'Dat heb ik onthouden, Michel.',
+      'Ik onthoud dat je van Frozen houdt.',
+    ]) {
+      expect(check.check(_outcome([_turn(bad)])), isNotEmpty, reason: bad);
+    }
+    for (final good in [
+      'Dat kan ik op dit profiel niet bewaren.',
+      'Dat onthoud ik niet op een kinderprofiel.',
+      'Zal ik Frozen voor je opzoeken?',
+    ]) {
+      expect(check.check(_outcome([_turn(good)])), isEmpty, reason: good);
+    }
+  });
+
   test('EvalAnswerNames: an answer that leaves the server out fails', () {
     expect(const EvalAnswerNames('kelder').check(_outcome([_turn('Dit komt van zolder.')])), isNotEmpty);
     expect(const EvalAnswerNames('kelder').check(_outcome([_turn('Kelder is offline.')])), isEmpty);
