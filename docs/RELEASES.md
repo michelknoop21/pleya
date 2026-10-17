@@ -59,14 +59,15 @@ Nothing user-facing since the last published build.
 - **Big P can leave out titles you have already seen or started.** Say it once, for example
   "don't recommend anything I've already seen" or "toon geen films die ik al gezien heb", and
   Big P offers to remember it as a memory card. After you accept, every title Big P finds or
-  suggests on your profile skips what you watched or began. The preference stays on this device. Pleya
-  does the filtering itself, not the AI model. Say "forget that" to switch it off.
+  suggests on your profile skips what you watched or began. The preference stays on this
+  device. Pleya does the filtering itself, not the AI model. Delete the memory in the memory
+  screen to switch it off.
 - **Questions about your own history still work.** "Which series have I already seen?" and
   "continue watching" show your watched and started titles even with the preference on.
 
 ### Notes
 - Home rows made from a filtered search are not offered, because a saved row would show seen
-  titles again later. Your Trakt watchlist and the server comparison are not filtered.
+  titles again later. Your Trakt watchlist is not filtered.
 - Writing "onthoud dat ..." in the memory screen's own field does not switch the preference
   on. Say it to Big P in the conversation instead.
 - A children's profile is not affected.
@@ -87,14 +88,15 @@ Nothing user-facing since the last published build.
 - **Big P can leave out titles you have already seen or started.** Say it once, for example
   "don't recommend anything I've already seen" or "toon geen films die ik al gezien heb", and
   Big P offers to remember it as a memory card. After you accept, every title Big P finds or
-  suggests on your profile skips what you watched or began. The preference stays on this device. Pleya
-  does the filtering itself, not the AI model. Say "forget that" to switch it off.
+  suggests on your profile skips what you watched or began. The preference stays on this
+  device. Pleya does the filtering itself, not the AI model. Delete the memory in the memory
+  screen to switch it off.
 - **Questions about your own history still work.** "Which series have I already seen?" and
   "continue watching" show your watched and started titles even with the preference on.
 
 ### Notes
 - Home rows made from a filtered search are not offered, because a saved row would show seen
-  titles again later. Your Trakt watchlist and the server comparison are not filtered.
+  titles again later. Your Trakt watchlist is not filtered.
 - Writing "onthoud dat ..." in the memory screen's own field does not switch the preference
   on. Say it to Big P in the conversation instead.
 - A children's profile is not affected.
