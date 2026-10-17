@@ -83,6 +83,7 @@ These references retain binding domain rules. Read the relevant sections before 
 ## Always retain
 
 - Prefer existing `provider` / `ChangeNotifier` state; root wiring is in `lib/main.dart`. Shared UI models are in `lib/models/`. Check every `MediaBackend` (Plex, Jellyfin, local, Pleya Server) for backend feature changes.
+- All development is unified-first and relevant work states its Unified impact: follow [Unified-first in the roadmap](docs/ROADMAP.md#unified-first), which is the only copy of the rule.
 - TV has D-pad/focus behavior under `lib/focus/`; do not assume touch-only interactions.
 - Keep pinned git forks and lockfiles consistent. Do not replace forks casually. Generate brand assets with `scripts/gen_brand_assets.py`; do not hand-edit generated platform PNGs.
 - Tests and tooling never touch real user data, credentials, the vault, HOME data outside the repo, `web.pleya.app` or the NAS. Pleya Verify installs under `nl.michelknoop.pleya.verify` on macOS, iOS and tvOS and aborts without that rewrite; widget tests use mocked `SharedPreferences`; server tests use `pleya_server/scripts/test-db.sh`.
