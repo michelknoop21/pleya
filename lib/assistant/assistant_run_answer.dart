@@ -38,6 +38,7 @@ extension _AssistantAnswer on AssistantRun {
     final clean = rejected.isEmpty && unvetted.isEmpty;
     if (clean && step?.display != null) _displays.add(step!.display!);
     if (clean) _keepTheOneNamed(answer);
+    if (clean) _namedFirst(answer);
     if (step != null) {
       onStep?.call(
         AssistantStep(
@@ -146,6 +147,65 @@ extension _AssistantAnswer on AssistantRun {
   /// Whether a closing answer names titles the way Pleya can tell: in « »,
   /// or followed by a year, also on a list line.
   bool _namesTitles(String answer) => answer.contains('«') || RegExp(r'\((?:18|19|20)\d{2}\)').hasMatch(answer);
+
+  /// Where [answer] first names the title, as a position in its plain words, or
+  /// null when it does not: between « and », with its year, or in plain words
+  /// when the title is distinctive (two words or eight letters).
+  int? _mentionAt(String answer, String? title, int? year) {
+    final name = (title ?? '').toLowerCase();
+    if (name.isEmpty) return null;
+    final lower = answer.toLowerCase();
+    final marked = lower.contains('«$name') || (year != null && lower.contains('$name ($year)'));
+    final plain = ' ${assistantPlainWords(answer)} ';
+    for (final w in assistantTitleWords(title!)) {
+      if (!marked && !w.contains(' ') && w.length < 8) continue;
+      final at = plain.indexOf(' $w ');
+      if (at >= 0) return at;
+    }
+    return null;
+  }
+
+  /// A list of cards starts with the titles the answer names, in the order it
+  /// names them, then the rest as they were. Only reorders: the recommendation
+  /// is not the last of five. After an action the action is the answer.
+  void _namedFirst(String answer) {
+    if (_actions.isNotEmpty || _spoilerQuestion != null || _ctx.libraryDoctorMode) return;
+    List<T> sorted<T>(List<T> all, int? Function(T) at) {
+      final named = <(int, T)>[];
+      final rest = <T>[];
+      for (final e in all) {
+        final position = at(e);
+        if (position == null) {
+          rest.add(e);
+        } else {
+          named.add((position, e));
+        }
+      }
+      named.sort((a, b) => a.$1.compareTo(b.$1));
+      return [for (final n in named) n.$2, ...rest];
+    }
+
+    // In place: the lookups and the shown-title bookkeeping know a display by
+    // its identity, so it is not replaced.
+    void reorder<T>(List<T> list, int? Function(T) at) {
+      final next = sorted(list, at);
+      try {
+        list.setAll(0, next);
+      } on UnsupportedError {
+        // An unmodifiable list stays as it is.
+      }
+    }
+
+    for (final display in _displays) {
+      switch (display) {
+        case AssistantMediaGrid(:final entries):
+          reorder(entries, (e) => _mentionAt(answer, e.item.title, e.item.year));
+        case AssistantTitleMatches(:final matches):
+          reorder(matches, (m) => _mentionAt(answer, m.title, m.year));
+        default:
+      }
+    }
+  }
 
   /// The titles [answer] recommends, for a personal answer: those it names
   /// except a title named as the reason ("omdat je Reacher keek"), which is

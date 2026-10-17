@@ -117,6 +117,18 @@ Meting na de wijziging (echte modellen, steekproef, vijf runs per vraag, vier vr
 
 **Niet gemeten:** de situatie op het toestel zelf, andere modellen, lijsten met afkortingen en titels met een punt buiten « », en picks die niet in de bibliotheek staan (de aanname dat Spider-Man: Homecoming en Emily in Paris daarom geen kaart kregen is niet uit het logboek gecontroleerd).
 
+## Aanrader eerst en geen verzonnen smaak (hardwareronde op build 373, 17 oktober 2026)
+
+Op de iPhone gaf "Wat is er deze week toegevoegd en echt een aanrader voor mij? Het mogen meerdere zijn" vijf kaarten, met de aanbevolen Spider-Man: Homecoming (2017) als laatste, en de reden "omdat je houdt van Tom Holland en actiefilms".
+
+**Wijzigingen:**
+- De kaarten beginnen met de titels die het antwoord noemt, in de volgorde van het antwoord, de rest zoals het was (`_namedFirst` in `assistant_run_answer.dart`). Alleen de volgorde verandert, ter plekke, en pas nadat de leeftijds- en kinderpoort hun werk hebben gedaan. Een titel in gewone tekst telt met zijn jaartal, tussen « » of, bij een onderscheidende naam van twee woorden of acht letters, in gewone woorden.
+- Eén promptregel: een reden voor een aanbeveling komt alleen uit wat de tools teruggaven (genre, beoordeling, samenvatting, cast) of uit het opgeslagen geheugen van de gebruiker, en het model zegt nooit dat de gebruiker een acteur, genre of soort titel leuk vindt zonder dat bewijs.
+
+**Meting** (echte modellen via Ollama Cloud, steekproef, zes runs per model en per variant, vijf titels van deze week als zoekresultaat, geen geschiedenis en geen geheugen): de volgorde van de zoeklijst zet The Diplomat vooraan, dus zonder de herschikking was de eerste kaart in elke run The Diplomat, ook wanneer het antwoord Spider-Man: Homecoming of Buddy aanraadt. Met de herschikking was de eerste kaart in alle 24 runs (twee modellen, met en zonder de promptregel) de eerste titel die het antwoord noemt. De smaakclaim ("je houdt van ...") kwam in deze opzet in geen enkele run voor, ook niet zonder de promptregel. De regel is dus niet aantoonbaar effectief gemeten: de claim in de screenshot kwam waarschijnlijk uit een kijkgeschiedenis of een geheugenfeit van de gebruiker, en dat is niet nagekeken.
+
+**Niet bewezen:** of "Tom Holland" uit het geheugen of de geschiedenis van de gebruiker kwam (dan was de reden terecht) of verzonnen was, en het gedrag op het toestel.
+
 ## Hardwarechecklist iOS 369 en tvOS 370 (vanavond)
 
 De builds 369 (iPhone en iPad) en 370 (Apple TV) bevatten de vanavond-route; de teksten staan in beide binaries (markers geteld op 16 oktober 2026, zie PR #347). Op een toestel is niets bevestigd. Voorwaarde: het buildnummer in Instellingen klopt, een beheerdersprofiel met minstens één server online, Big P aan met een ingesteld model. Noteer per punt geslaagd of gefaald, het model en de taal. De chips zijn drie willekeurige mogelijkheden: staat een genoemde chip er niet, open Big P opnieuw. Een getypte vraag telt niet als chip; typ alleen als een punt dat zegt.

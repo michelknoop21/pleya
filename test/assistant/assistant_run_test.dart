@@ -309,6 +309,19 @@ void main() {
     expect(model.toolNamesOffered(0), contains('my_watching'));
   });
 
+  test('a reason for a recommendation comes from the tools or the saved memory, never a guessed taste', () async {
+    final m = await _Server().manager();
+    final model = _Model(AssistantProviderKind.ollamaServer, [_say('Hoi')]);
+    await AssistantRun(
+      model: model.client(),
+      context: AssistantToolContext(servers: m),
+      confirm: (_) async => null,
+      entitlement: const _Entitled(),
+    ).ask('Wat is er nieuw?');
+    final system = ((model.requests.first['messages'] as List).first as Map)['content'] as String;
+    expect(system, contains('Never say the user likes an actor, a genre or a kind of title'));
+  });
+
   test(
     'a tip is told to be a statement from the tool\'s picks, no more than asked, and only where my_watching exists',
     () async {

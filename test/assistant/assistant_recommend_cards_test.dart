@@ -423,4 +423,62 @@ void main() {
       expect(r.text, 'Kijk «The Order» (2024).\n\nVeel plezier.');
     });
   });
+
+  // The recommendation is not the last of five cards (Michel, build 373): the
+  // cards start with the titles the answer names, in its order, and only move.
+  group('the named title leads the cards', () {
+    AssistantTool search(List<AssistantMediaGridEntry> entries) => AssistantTool(
+      name: 'search_catalog',
+      description: 'fake',
+      risk: AssistantToolRisk.read,
+      properties: const {},
+      needsServer: false,
+      serves: (_, _) => true,
+      run: (_, _, _) async => AssistantToolResult(const {'ok': true}, display: AssistantMediaGrid(entries)),
+    );
+    // Fresh per test: the answer reorders the cards in place.
+    List<AssistantMediaGridEntry> week() => [
+      (item: _item('a', 'The Diplomat', MediaKind.show, year: 2023), group: null),
+      (item: _item('b', 'The Florist', MediaKind.movie, year: 2026), group: null),
+      (item: _item('c', 'Buddy', MediaKind.movie, year: 2026), group: null),
+      (item: _item('d', 'Spider-Man: Homecoming', MediaKind.movie, year: 2017), group: null),
+    ];
+    Future<List<String>> shown(String answer) async {
+      final (r, _) = await _recommend(
+        'Wat is er deze week toegevoegd en echt een aanrader voor mij?',
+        answer,
+        picks: picks,
+        calls: const ['search_catalog'],
+        extraTools: [search(week())],
+      );
+      return _cards(r);
+    }
+
+    test('a title named in plain prose with its year goes first', () async {
+      expect(await shown('Van de nieuwe toevoegingen raad ik je Spider-Man: Homecoming (2017) aan.'), [
+        'Spider-Man: Homecoming',
+        'The Diplomat',
+        'The Florist',
+        'Buddy',
+      ]);
+    });
+
+    test('two named titles keep the order the answer names them in, the rest as before', () async {
+      expect(await shown('Eerst «Buddy» (2026), daarna «The Diplomat» (2023).'), [
+        'Buddy',
+        'The Diplomat',
+        'The Florist',
+        'Spider-Man: Homecoming',
+      ]);
+    });
+
+    test('negative control: an answer that names none leaves the order alone', () async {
+      expect(await shown('Dit zijn de nieuwe titels van deze week.'), [
+        'The Diplomat',
+        'The Florist',
+        'Buddy',
+        'Spider-Man: Homecoming',
+      ]);
+    });
+  });
 }
