@@ -152,29 +152,37 @@ extension _AssistantAnswer on AssistantRun {
   /// not: tier 0 when it is marked (between « and », or with its year), tier 1
   /// when only its plain words appear and the title is distinctive (two words or
   /// eight letters). A watched title named without a mark is the reason or the
-  /// one left out, not the pick. [at] is the earliest position in the plain
-  /// words, [length] how much of the answer the match covers, so "Toy Story 2"
-  /// outranks "Toy Story" where both match.
+  /// one left out, not the pick. [at] is where the mark is (tier 0) or the
+  /// earliest plain-words position (tier 1); [length] breaks a tie in favour of
+  /// the longer name, so "Toy Story 2" outranks "Toy Story" where both match.
   ({int tier, int at, int length})? _mentionOf(String answer, String? title, int? year) {
     final name = (title ?? '').toLowerCase();
     if (name.isEmpty) return null;
     final lower = answer.toLowerCase();
-    final marked =
-        lower.contains('«$name»') || lower.contains('«$name (') || (year != null && lower.contains('$name ($year)'));
+    // A marked title ranks by where it is marked, not by where its first words
+    // happen to occur: "Spider-Man: Far From Home" also starts with "Spider-Man".
+    final marks = [
+      for (final needle in ['«$name»', '«$name (', if (year != null) '$name ($year)'])
+        if (lower.indexOf(needle) case final at when at >= 0) at,
+    ]..sort();
+    final marked = marks.isNotEmpty;
+    if (marked) {
+      return (tier: 0, at: marks.first, length: name.length);
+    }
     final plain = ' ${assistantPlainWords(answer)} ';
     int? at;
     var length = 0;
     for (final w in assistantTitleWords(title!)) {
-      if (!marked && !w.contains(' ') && w.length < 8) continue;
+      if (!w.contains(' ') && w.length < 8) continue;
       final found = plain.indexOf(' $w ');
       if (found < 0) continue;
       if (at == null || found < at) at = found;
       if (w.length > length) length = w.length;
     }
     if (at == null) return null;
+    // A watched title in plain words is the reason, or the one left out.
     final watched = _history.any((h) => assistantSameTitle((key: h.key, year: h.year), assistantTitleKey(title), year));
-    if (!marked && watched) return null;
-    return (tier: marked ? 0 : 1, at: at, length: length);
+    return watched ? null : (tier: 1, at: at, length: length);
   }
 
   /// A list of cards starts with the titles the answer names, marked ones

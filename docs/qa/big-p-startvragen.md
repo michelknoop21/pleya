@@ -129,6 +129,8 @@ Op de iPhone gaf "Wat is er deze week toegevoegd en echt een aanrader voor mij? 
 
 Na de review is de herschikking aangescherpt: een titel tussen « » of met jaartal gaat voor een titel die alleen in gewone woorden valt, een titel met meer woorden gaat voor een kortere (Toy Story 2 voor Toy Story, Spider-Man: Homecoming voor Far From Home), en een al gekeken titel die zonder markering in het antwoord staat (de reden, of de titel die wordt weggelaten) telt niet als aanbeveling. Dat is met testlijsten bewezen en niet opnieuw met de modellen gemeten; de 24 van 24 geldt dus voor de eerste versie.
 
+Een gemarkeerde titel rangschikt op de plek van zijn markering, zodat twee titels van één franchise in de volgorde van het antwoord blijven staan. De regel "een al gekeken titel in gewone woorden is de reden" werkt alleen na een `my_watching`-aanroep, want alleen die vult de kijkgeschiedenis; bij een antwoord uit alleen `search_catalog` (je scherm) geldt hij niet.
+
 **Niet bewezen:** of "Tom Holland" uit het geheugen of de geschiedenis van de gebruiker kwam (dan was de reden terecht) of verzonnen was, en het gedrag op het toestel.
 
 ## Hardwarechecklist iOS 369 en tvOS 370 (vanavond)

@@ -505,6 +505,21 @@ void main() {
       expect(await shownIn(toys, 'Kijk «Toy Story 2» (1999).'), ['Toy Story 2', 'Toy Story']);
     });
 
+    test('two marked franchise titles keep the order the answer names them in', () async {
+      List<AssistantMediaGridEntry> grid() => [
+        (item: _item('a', 'Spider-Man: Far From Home', MediaKind.movie, year: 2019), group: null),
+        (item: _item('b', 'Spider-Man: Homecoming', MediaKind.movie, year: 2017), group: null),
+      ];
+      expect(await shownIn(grid(), 'Eerst «Spider-Man: Homecoming» (2017), dan «Spider-Man: Far From Home» (2019).'), [
+        'Spider-Man: Homecoming',
+        'Spider-Man: Far From Home',
+      ]);
+      expect(await shownIn(grid(), 'Eerst «Spider-Man: Far From Home» (2019), dan «Spider-Man: Homecoming» (2017).'), [
+        'Spider-Man: Far From Home',
+        'Spider-Man: Homecoming',
+      ]);
+    });
+
     test('a marked title leads a title only mentioned as the reason', () async {
       final grid = <AssistantMediaGridEntry>[
         (item: _item('a', 'The Diplomat', MediaKind.show, year: 2023), group: null),
