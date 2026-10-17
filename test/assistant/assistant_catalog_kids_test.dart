@@ -83,13 +83,16 @@ void main() {
       activeProfileId: () => 'p1',
     );
     // kidsMode as a run on a children's profile sets it.
-    AssistantToolContext ctx({bool kids = false}) => AssistantToolContext(
-      servers: servers,
-      catalog: catalog,
-      titleFacts: _Facts(),
-      kidsAges: () async => [8],
-      region: () => 'NL',
-    )..kidsMode = kids;
+    AssistantToolContext ctx({bool kids = false}) =>
+        AssistantToolContext(
+            servers: servers,
+            catalog: catalog,
+            titleFacts: _Facts(),
+            kidsAges: () async => [8],
+            region: () => 'NL',
+          )
+          ..kidsMode = kids
+          ..ageGate = kids ? AssistantAgeGate.kidsProfile : AssistantAgeGate.none;
 
     final kids = await _tool('search_catalog').run(ctx(kids: true), null, {'kind': 'movie'}) as AssistantToolResult;
     final grid = kids.display! as AssistantMediaGrid;
@@ -122,13 +125,16 @@ void main() {
       profileId: 'p1',
       activeProfileId: () => 'p1',
     );
-    AssistantToolContext ctx(bool kids) => AssistantToolContext(
-      servers: servers,
-      catalog: catalog,
-      titleFacts: _Facts(),
-      kidsAges: () async => [8],
-      region: () => 'NL',
-    )..kidsMode = kids;
+    AssistantToolContext ctx(bool kids) =>
+        AssistantToolContext(
+            servers: servers,
+            catalog: catalog,
+            titleFacts: _Facts(),
+            kidsAges: () async => [8],
+            region: () => 'NL',
+          )
+          ..kidsMode = kids
+          ..ageGate = kids ? AssistantAgeGate.kidsProfile : AssistantAgeGate.none;
     final args = {'kind': 'movie', 'added_within_days': 7};
     final kids = await _tool('search_catalog').run(ctx(true), null, args) as AssistantToolResult;
     expect(kids.data.containsKey('total_matches'), isFalse);
@@ -152,13 +158,16 @@ void main() {
         profileId: 'p1',
         activeProfileId: () => 'p1',
       );
-      AssistantToolContext ctx() => AssistantToolContext(
-        servers: servers,
-        catalog: catalog,
-        titleFacts: _Facts(),
-        kidsAges: () async => [8],
-        region: () => 'NL',
-      )..kidsMode = true;
+      AssistantToolContext ctx() =>
+          AssistantToolContext(
+              servers: servers,
+              catalog: catalog,
+              titleFacts: _Facts(),
+              kidsAges: () async => [8],
+              region: () => 'NL',
+            )
+            ..kidsMode = true
+            ..ageGate = AssistantAgeGate.kidsProfile;
       final big = await _tool('search_catalog').run(ctx(), null, {'kind': 'movie', 'limit': 50}) as AssistantToolResult;
       expect(big.data['count'], 20);
       expect(big.data['next_offset'], 20);

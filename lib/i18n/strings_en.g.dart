@@ -7721,6 +7721,9 @@ class TranslationsAssistantKidsEn {
 	/// en: 'First I need to know how old the children are.'
 	String get agesFirst => 'First I need to know how old the children are.';
 
+	/// en: 'I do not know yet which children you mean or how old they are, so I show no titles.'
+	String get householdFirst => 'I do not know yet which children you mean or how old they are, so I show no titles.';
+
 	/// en: 'I have no title that suits the children's ages. Ask me another way.'
 	String get noFit => 'I have no title that suits the children\'s ages. Ask me another way.';
 
@@ -11744,6 +11747,7 @@ extension on Translations {
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Subtitles',
 			'assistant.kids.agesFirst' => 'First I need to know how old the children are.',
+			'assistant.kids.householdFirst' => 'I do not know yet which children you mean or how old they are, so I show no titles.',
 			'assistant.kids.noFit' => 'I have no title that suits the children\'s ages. Ask me another way.',
 			'assistant.kids.header' => 'Pleya asks',
 			'assistant.kids.title' => 'How old are the children?',
@@ -12095,9 +12099,9 @@ extension on Translations {
 			'assistant.settings.unreadableTitle' => 'Replace the Big P setup?',
 			'assistant.settings.unreadableBody' => 'Your iCloud keychain holds a Big P setup from a newer Pleya version on another device. This version cannot read it. Replacing it changes the setup on all your devices.',
 			'assistant.settings.replace' => 'Replace',
-			'assistant.settings.currentModel' => 'Model',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.settings.currentModel' => 'Model',
 			'assistant.settings.keyStored' => 'Stored, hidden',
 			'assistant.settings.errorUrlInvalid' => 'Enter an address that starts with http:// or https://.',
 			'assistant.settings.errorHeaderInvalid' => 'This header name or value is not valid.',

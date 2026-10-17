@@ -5,13 +5,21 @@ part of 'assistant_run.dart';
 // model gets one correction round that Pleya itself words.
 
 /// Tool errors that are no failure of the task.
-const _kidsCodes = {'kids_ages_unknown', 'kids_mode_unsupported'};
+const _kidsCodes = {'kids_ages_unknown', 'kids_mode_unsupported', 'household_kids_unknown'};
 
 extension _AssistantAnswer on AssistantRun {
   /// A children's profile without saved ages, while no title tool has read
   /// them yet.
   Future<bool> _kidsAgesMissing() async =>
       _ctx.kidsMode && _ctx.kidsAge == null && (await _ctx.kidsAges?.call() ?? const <int>[]).isEmpty;
+
+  /// A question about the children, with no valid child entered yet.
+  bool get _householdMissing => _ctx.ageGate == AssistantAgeGate.kidAudience && _ctx.audienceAge == null;
+
+  /// Marks that the ask needs the household's children, once per ask.
+  void _askHousehold() {
+    if (!_displays.any((d) => d is AssistantHouseholdKidsPrompt)) _displays.add(const AssistantHouseholdKidsPrompt());
+  }
 
   /// The ages card, once per ask.
   void _askKidsAges() {
@@ -60,7 +68,7 @@ extension _AssistantAnswer on AssistantRun {
   /// one followed by a year counts, so ordinary prose is left alone. The
   /// [rejected] ones are already reported.
   List<String> _unvettedNamed(String answer, List<({String title, int? year, String reason})> rejected) {
-    if (!_ctx.kidsMode) return const [];
+    if (!_ctx.gated) return const [];
     final allowed = [for (final a in _ctx.ageAllowed) (key: assistantTitleKey(a.title), year: a.year)];
     final skip = {for (final r in rejected) assistantTitleKey(r.title)};
     final found = <String>[];
@@ -94,7 +102,7 @@ extension _AssistantAnswer on AssistantRun {
   /// another year passed (Dune 1984, not Dune 2021) only counts when named
   /// with its own year.
   List<({String title, int? year, String reason})> _rejectedNamed(String answer) {
-    if (!_ctx.kidsMode || _ctx.ageRejected.isEmpty) return const [];
+    if (!_ctx.gated || _ctx.ageRejected.isEmpty) return const [];
     final text = ' ${assistantPlainWords(answer)} ';
     final named = assistantNamedTitles(answer);
     final passed = {for (final a in _ctx.ageAllowed) assistantTitleKey(a.title)};
@@ -357,6 +365,7 @@ extension _AssistantAnswer on AssistantRun {
       }
     } on AssistantToolError catch (e) {
       if (e.code == 'kids_ages_unknown') _askKidsAges();
+      if (e.code == 'household_kids_unknown') _askHousehold();
     } catch (e) {
       appLogger.d('Assistant: named titles lookup failed', error: e.runtimeType);
     }

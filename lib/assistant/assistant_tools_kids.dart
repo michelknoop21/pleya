@@ -11,6 +11,13 @@ class AssistantKidsAgesPrompt extends AssistantDisplay {
   final String prompt;
 }
 
+/// A question about the household's children came before any child was
+/// entered: the run ends with Pleya's own line and no title. Entering the
+/// children belongs to the household editor (BP-11c), so no card renders it.
+class AssistantHouseholdKidsPrompt extends AssistantDisplay {
+  const AssistantHouseholdKidsPrompt();
+}
+
 /// How a tool behaves on a children's profile.
 enum KidsTool {
   /// Its titles pass the age gate.
@@ -76,10 +83,23 @@ const assistantKidsRefusal = <String, Object?>{
   'hint': 'For children Pleya only searches titles, trending titles and similar titles.',
 };
 
-/// The youngest child's age on a children's profile, else null. Throws
-/// `kids_ages_unknown` when no ages are saved yet.
+/// The tools that stay open under [AssistantAgeGate.kidAudience] although
+/// kids mode refuses them: they return no titles.
+const kidAudienceOpenTools = {'recall_memory', 'remember_fact', 'forget_fact'};
+
+/// The age every title must suit: the youngest child's on a children's
+/// profile, else the youngest intended household child's when the question is
+/// about the children, else null. Throws `kids_ages_unknown` when a children's
+/// profile has no ages yet, `household_kids_unknown` when the household has
+/// no valid child.
 Future<int?> _kidsAge(AssistantToolContext ctx) async {
-  if (!ctx.kidsMode) return null;
+  if (ctx.ageGate == AssistantAgeGate.none) return null;
+  if (ctx.ageGate == AssistantAgeGate.kidAudience) {
+    // The question is about the household's children, on any profile.
+    final age = ctx.audienceAge;
+    if (age == null) throw const AssistantToolError('household_kids_unknown');
+    return ctx.kidsAge = age;
+  }
   final ages = await ctx.kidsAges?.call() ?? const <int>[];
   if (ages.isEmpty) throw const AssistantToolError('kids_ages_unknown');
   return ctx.kidsAge = ages.reduce(min);

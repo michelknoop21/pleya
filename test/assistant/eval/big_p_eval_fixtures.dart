@@ -12,6 +12,7 @@ import 'package:pleya/media/media_hub.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/services/recommendations/taste_profile.dart';
 import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/profiles/household_kids_store.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
 import 'package:pleya/utils/media_server_http_client.dart' show AbortController;
@@ -245,6 +246,7 @@ AssistantPersonalServices _evalPersonal() {
 AssistantToolContext evalContext({
   required bool kids,
   List<int> kidsAges = const [],
+  List<HouseholdKid> householdKids = const [],
   String region = 'NL',
   bool personal = false,
   void Function(String name)? onSaveRow,
@@ -269,6 +271,7 @@ AssistantToolContext evalContext({
     titleFacts: _EvalFacts(),
     personal: personal ? _evalPersonal() : null,
     kidsAges: () async => kidsAges,
+    householdKids: () async => householdKids,
     kidsProfile: () async => kids,
     region: () => region,
   );

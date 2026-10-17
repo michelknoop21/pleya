@@ -24,7 +24,18 @@ extension _AssistantPrompt on AssistantRun {
   List<Map<String, Object?>> _memoryMessages() {
     final turns = _spoilerQuestion != null || assistantIsDeicticStoryFollowUp(_prompt)
         ? const <AssistantTurn>[]
-        : conversation.where((t) => t.kids == _ctx.kidsMode);
+        // Under a kids question only the turns that were already about the
+        // children are replayed (a follow-up inherits, so the turns are read in
+        // order): an adult turn may name titles the age gate never saw.
+        : [
+            for (final (i, t) in conversation.indexed)
+              if (t.kids == _ctx.kidsMode &&
+                  (_ctx.ageGate != AssistantAgeGate.kidAudience ||
+                      kidAudienceOf(t.question, [
+                        for (final e in conversation.take(i)) e.question,
+                      ], _ctx.householdSnapshot).on))
+                t,
+          ];
     if (turns.isEmpty) return const [];
     return [
       {
@@ -41,6 +52,46 @@ extension _AssistantPrompt on AssistantRun {
         {'role': 'assistant', 'content': '$_quotedAnswer${turn.answer}'},
       ],
     ];
+  }
+
+  /// Sets which age gate holds this ask: the profile's, or the household's
+  /// youngest intended child when the question (or the conversation before it)
+  /// is about the children. Returns the note for the model: only the age,
+  /// never a name.
+  Future<Map<String, Object?>?> _setAgeGate(String prompt) async {
+    _ctx
+      ..ageGate = AssistantAgeGate.none
+      ..audienceAge = null
+      ..kidsAge = null;
+    _audience = noKidAudience;
+    if (_ctx.kidsMode) {
+      _ctx.ageGate = AssistantAgeGate.kidsProfile;
+      return null;
+    }
+    final household = await _ctx.householdKids?.call() ?? const [];
+    var audience = kidAudienceOf(
+      prompt,
+      [for (final t in conversation) t.question],
+      household,
+      initial: inheritedKidAudience,
+    );
+    // Fail closed: a child task of a kids question stays one, whatever words the model gave it.
+    if (inheritedKidAudience.on && !audience.on) audience = inheritedKidAudience;
+    _audience = audience;
+    _ctx.householdSnapshot = household;
+    if (!audience.on) return null;
+    _ctx.ageGate = AssistantAgeGate.kidAudience;
+    final age = householdGateAge(household, _ctx.clock(), ids: audience.ids);
+    if (age == null) return null;
+    _ctx
+      ..audienceAge = age
+      ..kidsAge = age;
+    return {
+      'role': 'system',
+      'content':
+          'The question is about the user\'s children. Youngest intended child: $age years. Pleya itself keeps only '
+          'titles that suit that age and refuses the rest: name only titles from tool results, and never ask for ages.',
+    };
   }
 
   String get _system =>

@@ -2416,6 +2416,7 @@
   "assistant": {
     "kids": {
       "agesFirst": "Ik moet eerst weten hoe oud de kinderen zijn.",
+      "householdFirst": "Ik weet nog niet welke kinderen je bedoelt en hoe oud ze zijn, dus ik laat geen titels zien.",
       "noFit": "Ik heb geen titel die bij de leeftijd van de kinderen past. Vraag het me anders.",
       "header": "Pleya vraagt",
       "title": "Hoe oud zijn de kinderen?",

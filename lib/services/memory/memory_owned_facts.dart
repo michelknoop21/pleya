@@ -97,7 +97,9 @@ final List<RegExp> _ageStatements = [
   // "jongste is 4 jaar oud"
   _phrase('$_eldest$_filler $_is$_filler $_age'),
   // "mijn zoon van 12", "a daughter aged nine", "mijn zoon van 9 van Cars houdt"
-  _phrase('$_child (?:van|of|aged?) $_ageOfChild'),
+  _phrase('$_child (?:van|of|aged?)(?: (?:bijna|ongeveer|ruim|about|almost|nearly))? $_ageOfChild'),
+  // "onze zoon wordt in maart 4", "mijn jongste wordt in mei 3"
+  _phrase('(?:$_child|$_eldest)(?: [^ ]+){0,2} (?:wordt|turns|becomes) in $_start\\p{L}+$_end $_age'),
   // "een 8-jarige zoon", "een achtjarige dochter", "an 8 year old son"
   _phrase(
     '(?:(?<!\\d)\\d{1,2}[ -]?|$_start(?:$_numberWords)-?)(?:jarige?|jaar oude?|years?[ -]old|yo)$_end'

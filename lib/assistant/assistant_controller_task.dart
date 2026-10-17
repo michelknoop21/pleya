@@ -72,6 +72,7 @@ extension _AssistantTaskRunning on AssistantController {
         originalSpoilerPrompt: task.originalSpoilerPrompt,
         originalLibraryDoctorScope: libraryDoctorScope,
         inheritedIntent: task.parentIntent,
+        inheritedKidAudience: task.kidAudience,
         // The question as the user typed it; a task cut off it is not, and
         // neither is a chip, a hand-over or a retry.
         userTyped: allowSplit && task.typed,
@@ -119,6 +120,7 @@ extension _AssistantTaskRunning on AssistantController {
               prompt: inheritedSpoilerPrompt ?? plan.prompt,
               originalSpoilerPrompt: inheritedSpoilerPrompt,
               parentIntent: result.intent,
+              kidAudience: result.kidAudience,
               generation: task.generation,
               budget: task.budget,
             ),
@@ -159,6 +161,8 @@ extension _AssistantTaskRunning on AssistantController {
       // title the age filter did not pass.
       final own = result.kidsAgesNeeded
           ? t.assistant.kids.agesFirst
+          : result.householdKidsNeeded
+          ? t.assistant.kids.householdFirst
           : result.ageFilterNotice
           ? t.assistant.kids.noFit
           : null;
@@ -196,7 +200,7 @@ extension _AssistantMemory on AssistantController {
   void _remember(_AssistantTaskState task, AssistantRunResult result, String text, bool kids) {
     if (task.status != AssistantTaskStatus.completed || result.end != AssistantRunEnd.answered) return;
     if (task.originalSpoilerPrompt != null || result.spoilerPrompt != null) return;
-    if (result.kidsAgesNeeded || result.ageFilterNotice) return;
+    if (result.kidsAgesNeeded || result.householdKidsNeeded || result.ageFilterNotice) return;
     final answer = clipText(text, AssistantController.maxAnswerChars);
     if (answer.isEmpty) return;
     _conversation.add(
@@ -220,6 +224,7 @@ class _AssistantTaskState {
     required this.budget,
     this.originalSpoilerPrompt,
     this.parentIntent,
+    this.kidAudience = noKidAudience,
     required this.memoryEpoch,
     this.typed = false,
   });
@@ -236,6 +241,7 @@ class _AssistantTaskState {
 
   /// What the question this task was split from fixed (audience, kind, period).
   final AssistantIntent? parentIntent;
+  final KidAudience kidAudience;
   final AssistantQuestionBudget budget;
   final AbortController cancel = AbortController();
   AssistantTaskStatus status = AssistantTaskStatus.pending;
