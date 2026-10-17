@@ -57,30 +57,31 @@ Nothing user-facing since the last published build.
 
 ### Improved
 - **The title Big P recommends is the first card.** When Big P recommends a title out of a list
-  of results, for example what was added this week, that title comes first and the others
-  follow in their own order. Two titles of one series keep the order Big P names them in.
-- **Big P gives a reason only when it has one.** A reason now comes from what the library
-  returned (genre, rating, summary, cast), from what you saved in Big P's memory, or from what
-  you said yourself. It no longer says you like an actor or a genre without that.
-- **Questions about your children use their age on your own profile.** When you ask for
-  something for your children on your own profile, Big P checks titles against the youngest
-  child you mean. A children's profile keeps using its own ages. Big P's memory refuses a
-  child's age.
+  of results, for example what was added this week, that title comes first, then any other
+  title it names in the order it names them, then the rest in their own order. Two titles of
+  one series keep the order Big P names them in.
+- **Big P is told to give a reason only when it has one.** A reason should come from what the
+  library returned (genre, rating, summary, cast), from what you saved in Big P's memory, or
+  from what you said yourself. Pleya does not check this, so a reason can still slip through.
+- **Questions about your children are checked against their age on your own profile.** This
+  starts to work once you can enter your children, which comes in a later build. A children's
+  profile keeps using its own ages. Big P's memory refuses a child's age.
 
 ### Notes
 - **Until you can enter your children, a question about them on your own profile shows no
   titles.** Big P says it does not know which children you mean. This includes the start
   question "Do I have something for the kids?". The screen to enter them comes in a later
-  build; a children's profile is not affected.
+  build. A children's profile that already has ages answers as before.
 - Twenty-nine libraries the app builds on were updated in one routine batch, without a change you
   should notice.
-- Nothing in this build has been checked on a device yet.
+- No new behaviour in this build has been checked on a device yet.
 
 ### Worth checking
 - On your own profile, ask Big P "Wat is er deze week toegevoegd en echt een aanrader voor
   mij?". Check that the title it recommends is the first card.
 - Ask "Do I have something for the kids?". Check that Big P says it does not know which
-  children you mean, and that a children's profile still answers.
+  children you mean, and that a children's profile that already has ages still answers. Check
+  that a reason Big P gives is something you told it or something in the library data.
 
 ## 2.8.1 · build 375 · 17 October 2026 · iPhone and iPad
 
@@ -95,30 +96,31 @@ Nothing user-facing since the last published build.
 
 ### Improved
 - **The title Big P recommends is the first card.** When Big P recommends a title out of a list
-  of results, for example what was added this week, that title comes first and the others
-  follow in their own order. Two titles of one series keep the order Big P names them in.
-- **Big P gives a reason only when it has one.** A reason now comes from what the library
-  returned (genre, rating, summary, cast), from what you saved in Big P's memory, or from what
-  you said yourself. It no longer says you like an actor or a genre without that.
-- **Questions about your children use their age on your own profile.** When you ask for
-  something for your children on your own profile, Big P checks titles against the youngest
-  child you mean. A children's profile keeps using its own ages. Big P's memory refuses a
-  child's age.
+  of results, for example what was added this week, that title comes first, then any other
+  title it names in the order it names them, then the rest in their own order. Two titles of
+  one series keep the order Big P names them in.
+- **Big P is told to give a reason only when it has one.** A reason should come from what the
+  library returned (genre, rating, summary, cast), from what you saved in Big P's memory, or
+  from what you said yourself. Pleya does not check this, so a reason can still slip through.
+- **Questions about your children are checked against their age on your own profile.** This
+  starts to work once you can enter your children, which comes in a later build. A children's
+  profile keeps using its own ages. Big P's memory refuses a child's age.
 
 ### Notes
 - **Until you can enter your children, a question about them on your own profile shows no
   titles.** Big P says it does not know which children you mean. This includes the start
   question "Do I have something for the kids?". The screen to enter them comes in a later
-  build; a children's profile is not affected.
+  build. A children's profile that already has ages answers as before.
 - Twenty-nine libraries the app builds on were updated in one routine batch, without a change you
   should notice.
-- Nothing in this build has been checked on a device yet.
+- No new behaviour in this build has been checked on a device yet.
 
 ### Worth checking
 - On your own profile, ask Big P "Wat is er deze week toegevoegd en echt een aanrader voor
   mij?". Check that the title it recommends is the first card.
 - Ask "Do I have something for the kids?". Check that Big P says it does not know which
-  children you mean, and that a children's profile still answers.
+  children you mean, and that a children's profile that already has ages still answers. Check
+  that a reason Big P gives is something you told it or something in the library data.
 - On iPhone or iPad, press and hold a row title on Home and open Customise Home. Move a row,
   hide one and make a row of your own. Check that Home follows.
 
