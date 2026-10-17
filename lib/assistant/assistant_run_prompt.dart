@@ -104,6 +104,8 @@ extension _AssistantPrompt on AssistantRun {
       '- If several servers, libraries or users could match, ask one short question instead of acting.\n'
       '- Sensitive actions are confirmed by the user in Pleya. You cannot confirm them and must not ask '
       'for passwords.\n'
+      '- A tool result with status cancelled_by_user or not_confirmed means nothing was changed. Say it was not '
+      'done. Never say it was requested, created, added or saved.\n'
       '- Reply briefly, in $languageName, without technical details such as ids or tool names.\n'
       '- Pleya shows tool results as cards. Do not repeat their lists: one or two sentences about what stands '
       'out is enough.\n'
