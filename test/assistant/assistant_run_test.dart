@@ -666,6 +666,16 @@ void main() {
       _say('Sam is aangemaakt.'),
     ];
 
+    test('the system prompt tells the model a cancelled card means nothing was done (BP-11f)', () async {
+      final (_, model, _) = await run(createScript, confirm: (_) async => null);
+      final system = [
+        for (final msg in model.requests.first['messages'] as List)
+          if ((msg as Map)['role'] == 'system') msg['content'] as String,
+      ].join('\n');
+      expect(system, contains('cancelled_by_user or not_confirmed means nothing was changed'));
+      expect(system, contains('Never say it was requested, created, added or saved'));
+    });
+
     test('nothing runs when the user cancels, whatever the model sends', () async {
       final (result, model, server) = await run(createScript, confirm: (_) async => null);
       expect(server.writes, isEmpty);
