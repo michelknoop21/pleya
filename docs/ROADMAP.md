@@ -65,7 +65,7 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 | A-03 | P1 | Bestaande app | Bibliotheek-snelkiezer bewaart selectie | Open issue |
 | A-04 | P1 | Bestaande app | Verborgen Plex-bibliotheek op TV | Open issue |
 | A-05 | P1 | Bestaande app | iPhone-detail DEC-140 | Bewijs afronden |
-| A-06 | P1 | Bestaande app | Home, landingen, catalogus en filters | Bibliotheekredesign in uitvoering (Michel, 12 okt), samen met A-08/A-17; VIS-COL-PLAY1 bezit detailstatus; overige acceptatie open; Verder kijken-volgorde en label Nieuwe aflevering/Nieuw seizoen (Michel, 16 okt, DEC-XXX), Pleya Server-veld en TV-rij die meeschuift volgen in eigen PR's |
+| A-06 | P1 | Bestaande app | Home, landingen, catalogus en filters | Bibliotheekredesign in uitvoering (Michel, 12 okt), samen met A-08/A-17; VIS-COL-PLAY1 bezit detailstatus; overige acceptatie open; Verder kijken-volgorde en label Nieuwe aflevering/Nieuw seizoen (Michel, 16 okt, DEC-XXX), Pleya Server-veld en TV-rij die meeschuift volgen in eigen PR's; het label Nieuwe aflevering/Nieuw seizoen staat bewust alleen in Pleya zelf (Home, overzichten, Top Shelf), niet op Android TV Watch Next of in iOS-widgets: die volgen wel de volgorde, zonder extra aanroepen |
 | A-07 | P1 | Bestaande app | Bronkeuze bij meerdere servers | Bewijs afronden |
 | A-08 | P1 | Bestaande app | Mijn Pleya, lijst/downloads/meldingen en contextmenu | Visuele collecties/afspeellijsten in uitvoering (12 okt), VIS-COL-PLAY1; bron-/rechtencontract en overige open werk behouden |
 | A-09 | P0 | Bestaande app | Login, profielkeuze en PIN | Volgens register open; algemene Big P-pauze opgeheven (8 okt); herijking nodig |

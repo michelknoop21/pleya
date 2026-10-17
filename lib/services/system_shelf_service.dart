@@ -10,6 +10,8 @@ import '../media/media_item_types.dart';
 import '../media/media_kind.dart';
 import '../media/media_server_client.dart';
 import '../utils/app_logger.dart';
+import '../utils/continue_watching_labels.dart';
+import '../utils/continue_watching_order.dart';
 import '../utils/platform_detector.dart';
 import 'settings_service.dart' show EpisodePosterMode;
 import 'top_shelf_images.dart';
@@ -323,17 +325,22 @@ class SystemShelfService {
   }
 
   /// "Verder kijken · S2E5 · 42 min over"; a carousel item has no progress bar.
+  /// A new episode or season says so last, so a tvOS that truncates the line
+  /// cuts the label and not the place.
   static String _continueWatchingContext(MediaItem item) {
     final season = item.parentIndex;
     final episode = item.index;
     final offset = item.viewOffsetMs ?? 0;
     final duration = item.durationMs ?? 0;
     final minutesLeft = offset > 0 && duration > offset ? ((duration - offset) / 60000).round() : 0;
+    final now = DateTime.now();
+    final fresh = continueWatchingFreshness(item, now: now);
     return [
       t.discover.continueWatching,
       if (item.kind == MediaKind.episode && season != null && episode != null)
         t.discover.playEpisode(season: season, episode: episode),
       if (minutesLeft > 0) t.discover.minutesLeft(minutes: minutesLeft),
+      if (fresh != ContinueWatchingFreshness.none) continueWatchingNextEpisodeWording(item, now: now),
     ].join(' · ');
   }
 
