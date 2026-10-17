@@ -4685,3 +4685,18 @@ Nieuw geldt alleen als de data het bewijst: een volgende-aflevering-item waarvan
 De laatste kijkdatum van de serie komt uit Jellyfin en Emby (`DateCreated` in NextUp, plus een opzoeking per serie, hoogstens zes per verversing) en uit Plex (één lichte `GET /library/metadata/<serie>`, hoogstens zes, alleen voor volgende afleveringen van de laatste 14 dagen). Mislukt zo'n aanroep, dan geen label. Pleya Server levert het veld pas na een eigen protocolvenster; lokale map en Pleya Share hebben geen volgende afleveringen. Plex laat een uitgekeken serie alleen terugkomen binnen zijn eigen OnDeckWindow. Een gewone volgende aflevering uit Plex heeft zonder die opzoeking geen kijkdatum van de serie: hij sorteert op `addedAt` en komt dus niet in Eerder begonnen terecht; alleen de nieuwe-afleveringsopzoeking (laatste 14 dagen) levert die datum.
 
 Bewust niet gebouwd: series samenvoegen over servers heen. Een voortgang per aflevering blijft de eenheid (11.8).
+
+## DEC-XXX: Alle ontwikkeling is unified-first, met Pleya Server voorbereid en niet volledig
+
+**Date:** 2026-10-17
+**Status:** accepted. Productbesluit van Michel op 10 oktober 2026 ("zorg ook dat unified de basis is voor alle ontwikkelingen"), met de verduidelijking over Pleya Server van dezelfde dag; bindend gemaakt op 17 oktober 2026 via #218. De regel zelf staat in [`docs/ROADMAP.md#unified-first`](ROADMAP.md#unified-first); dit record legt het besluit en de afbakening vast en herhaalt de regel niet.
+
+**Context:** Pleya leest uit Plex, Jellyfin, Emby, een lokale map, Pleya Share en Pleya Server en voegt dat samen tot één bibliotheek. Nieuwe functies werden soms eerst voor één server gebouwd, met het samenvoegen als later werk. De eerste versie van #218 (10 oktober) legde unified-first vast, maar bleef draft: een review op 17 oktober vond verwijzingen naar een vervangen ontwerpregel, een achterhaalde uitspraak over de volgorde van A-21 en een regel die op drie plekken in licht andere woorden stond. #218 is daarom op 17 oktober herschreven tot één tekst in de roadmap met een verwijzing vanuit AGENTS.md.
+
+**Decision:**
+
+1. De regel in [`docs/ROADMAP.md#unified-first`](ROADMAP.md#unified-first) is bindend voor alle ontwikkeling. Bij twijfel over de inhoud geldt die tekst, niet een samenvatting elders.
+2. De afbakening voor Pleya Server (voorbereid, niet volledig) hoort bij het besluit van 10 oktober en staat in dezelfde roadmapsectie.
+3. Dit besluit verandert de volgorde, prioriteiten, WIP-limiet en protocol- en releasepoorten van de roadmap niet en opent geen servervenster.
+
+**Consequences:** Reviews mogen een PR zonder Unified impact, of met een nieuw featurepad per leverancier, terugsturen. De ontwerpbrief voor filters en vensters uit de eerste versie van #218 is niet aangenomen: hij leunde op tien screenshots die niet in de repo staan en komt, als hij terugkomt, als eigen voorstel met de beelden erbij. Verwant: [DEC-141](#dec-141-emby-als-variant-van-de-jellyfin-backend) (Emby als Jellyfin-variant, waar de roadmapregel naar verwijst) en [DEC-145](#dec-145-iphone-home-leest-dezelfde-rijenlijst-als-de-tv-en-kijklijst-en-nu-op-tv-worden-home-rijen).
