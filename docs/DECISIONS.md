@@ -4695,10 +4695,8 @@ Bewust niet gebouwd: series samenvoegen over servers heen. Een voortgang per afl
 
 **Decision:**
 
-1. Unified-first geldt voor alle ontwikkeling, van vormgeving tot gedrag en data: nieuw werk begint bij de bestaande gedeelde modellen, identiteit, state, routes en gedragseigenaren, en providerverschillen blijven in de clients en adapters.
-2. Elke koppeling die een functie raakt wordt apart beoordeeld, ook waar de code ze samenneemt: Emby als Jellyfin-variant ([DEC-141](#dec-141-emby-als-variant-van-de-jellyfin-backend)) en Pleya Share onder `MediaBackend.local`.
-3. Pleya Server is voorbereid, niet volledig: wat de server kan blijft werken en getest, wat hij nog niet kan krijgt een eerlijke niet-ondersteunde toestand en een notitie bij de bestaande servertaak, zonder verzonnen endpoints. Een serverfunctie die nog niet bestaat blokkeert geen oplevering die haar niet nodig heeft.
-4. Relevante specs, mockups, implementatie-PR's en acceptaties noemen een korte Unified impact; werk zonder bibliotheekimpact zegt waarom niet.
-5. Dit besluit verandert de volgorde, prioriteiten, WIP-limiet en protocol- en releasepoorten van de roadmap niet en opent geen servervenster.
+1. De regel in [`docs/ROADMAP.md#unified-first`](ROADMAP.md#unified-first) is bindend voor alle ontwikkeling. Bij twijfel over de inhoud geldt die tekst, niet een samenvatting elders.
+2. De afbakening voor Pleya Server (voorbereid, niet volledig) hoort bij het besluit van 10 oktober en staat in dezelfde roadmapsectie.
+3. Dit besluit verandert de volgorde, prioriteiten, WIP-limiet en protocol- en releasepoorten van de roadmap niet en opent geen servervenster.
 
-**Consequences:** Reviews mogen een PR zonder Unified impact, of met een nieuw featurepad per leverancier, terugsturen. De ontwerpbrief voor filters en vensters uit de eerste versie van #218 is niet aangenomen: hij leunde op tien screenshots die niet in de repo staan en komt, als hij terugkomt, als eigen voorstel met de beelden erbij. Verwant: [DEC-128](#dec-128-e-books-worden-een-contentdomein-van-pleya-server-als-ps-14-en-ps-15) punt 3 (geen tweede bibliotheekmodel naast de Unified Library) en [DEC-145](#dec-145-iphone-home-leest-dezelfde-rijenlijst-als-de-tv-en-kijklijst-en-nu-op-tv-worden-home-rijen).
+**Consequences:** Reviews mogen een PR zonder Unified impact, of met een nieuw featurepad per leverancier, terugsturen. De ontwerpbrief voor filters en vensters uit de eerste versie van #218 is niet aangenomen: hij leunde op tien screenshots die niet in de repo staan en komt, als hij terugkomt, als eigen voorstel met de beelden erbij. Verwant: [DEC-141](#dec-141-emby-als-variant-van-de-jellyfin-backend) (Emby als Jellyfin-variant, waar de roadmapregel naar verwijst) en [DEC-145](#dec-145-iphone-home-leest-dezelfde-rijenlijst-als-de-tv-en-kijklijst-en-nu-op-tv-worden-home-rijen).
