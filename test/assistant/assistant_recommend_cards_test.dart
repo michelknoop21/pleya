@@ -472,6 +472,62 @@ void main() {
       ]);
     });
 
+    Future<List<String>> shownIn(
+      List<AssistantMediaGridEntry> grid,
+      String answer, {
+      List<String> calls = const ['search_catalog'],
+      Map<String, MediaItem> watched = const {},
+    }) async {
+      final (r, _) = await _recommend(
+        'Wat is er deze week toegevoegd en echt een aanrader voor mij?',
+        answer,
+        picks: picks,
+        calls: calls,
+        extraTools: [search(grid)],
+        watched: watched,
+      );
+      return _cards(r);
+    }
+
+    test('a franchise: the sequel or subtitle named leads, not the sibling that shares its first words', () async {
+      final grid = <AssistantMediaGridEntry>[
+        (item: _item('a', 'Spider-Man: Far From Home', MediaKind.movie, year: 2019), group: null),
+        (item: _item('b', 'Spider-Man: Homecoming', MediaKind.movie, year: 2017), group: null),
+      ];
+      expect(await shownIn(grid, 'Ik raad «Spider-Man: Homecoming» (2017) aan.'), [
+        'Spider-Man: Homecoming',
+        'Spider-Man: Far From Home',
+      ]);
+      final toys = <AssistantMediaGridEntry>[
+        (item: _item('a', 'Toy Story', MediaKind.movie, year: 1995), group: null),
+        (item: _item('b', 'Toy Story 2', MediaKind.movie, year: 1999), group: null),
+      ];
+      expect(await shownIn(toys, 'Kijk «Toy Story 2» (1999).'), ['Toy Story 2', 'Toy Story']);
+    });
+
+    test('a marked title leads a title only mentioned as the reason', () async {
+      final grid = <AssistantMediaGridEntry>[
+        (item: _item('a', 'The Diplomat', MediaKind.show, year: 2023), group: null),
+        (item: _item('b', 'Buddy', MediaKind.movie, year: 2026), group: null),
+      ];
+      expect(await shownIn(grid, 'Omdat je The Diplomat keek, raad ik «Buddy» (2026) aan.'), ['Buddy', 'The Diplomat']);
+    });
+
+    test('a watched title named in plain words is the reason, not the pick', () async {
+      final grid = <AssistantMediaGridEntry>[
+        (item: _item('a', 'The Diplomat', MediaKind.show, year: 2023), group: null),
+        (item: _item('b', 'The Florist', MediaKind.movie, year: 2026), group: null),
+      ];
+      final seen = {'w': _item('w', 'The Diplomat', MediaKind.show, year: 2023)};
+      const answer = 'Omdat je The Diplomat keek, raad ik The Florist aan.';
+      expect(await shownIn(grid, answer, calls: const ['my_watching', 'search_catalog'], watched: seen), [
+        'The Florist',
+        'The Diplomat',
+      ]);
+      // Negative control: with nothing watched, the earlier plain mention leads.
+      expect(await shownIn(grid, answer), ['The Diplomat', 'The Florist']);
+    });
+
     test('negative control: an answer that names none leaves the order alone', () async {
       expect(await shown('Dit zijn de nieuwe titels van deze week.'), [
         'The Diplomat',

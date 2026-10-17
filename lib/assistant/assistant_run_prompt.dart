@@ -111,7 +111,7 @@ extension _AssistantPrompt on AssistantRun {
       '- Never use em dashes or en dashes; use a comma, a colon or a new sentence.\n'
       '- Give a reason for a recommendation only from what the tools returned (genres, rating, summary, cast) '
       'or from what the user saved in their memory. Never say the user likes an actor, a genre or a kind of title '
-      'unless a tool result or that memory says so.\n'
+      'unless a tool result, that memory or the user in this conversation says so.\n'
       '- Write every film or series title you name between « and », with the year when you know it: '
       '«Interstellar» (2014). Pleya turns each into a card to open or request. '
       'Mark only titles you recommend or answer with: a title you mention as a reason ("because you watched ...") '

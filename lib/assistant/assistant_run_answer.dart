@@ -148,47 +148,69 @@ extension _AssistantAnswer on AssistantRun {
   /// or followed by a year, also on a list line.
   bool _namesTitles(String answer) => answer.contains('«') || RegExp(r'\((?:18|19|20)\d{2}\)').hasMatch(answer);
 
-  /// Where [answer] first names the title, as a position in its plain words, or
-  /// null when it does not: between « and », with its year, or in plain words
-  /// when the title is distinctive (two words or eight letters).
-  int? _mentionAt(String answer, String? title, int? year) {
+  /// How [answer] names the title, for ranking its card, or null when it does
+  /// not: tier 0 when it is marked (between « and », or with its year), tier 1
+  /// when only its plain words appear and the title is distinctive (two words or
+  /// eight letters). A watched title named without a mark is the reason or the
+  /// one left out, not the pick. [at] is the earliest position in the plain
+  /// words, [length] how much of the answer the match covers, so "Toy Story 2"
+  /// outranks "Toy Story" where both match.
+  ({int tier, int at, int length})? _mentionOf(String answer, String? title, int? year) {
     final name = (title ?? '').toLowerCase();
     if (name.isEmpty) return null;
     final lower = answer.toLowerCase();
-    final marked = lower.contains('«$name') || (year != null && lower.contains('$name ($year)'));
+    final marked =
+        lower.contains('«$name»') || lower.contains('«$name (') || (year != null && lower.contains('$name ($year)'));
     final plain = ' ${assistantPlainWords(answer)} ';
+    int? at;
+    var length = 0;
     for (final w in assistantTitleWords(title!)) {
       if (!marked && !w.contains(' ') && w.length < 8) continue;
-      final at = plain.indexOf(' $w ');
-      if (at >= 0) return at;
+      final found = plain.indexOf(' $w ');
+      if (found < 0) continue;
+      if (at == null || found < at) at = found;
+      if (w.length > length) length = w.length;
     }
-    return null;
+    if (at == null) return null;
+    final watched = _history.any((h) => assistantSameTitle((key: h.key, year: h.year), assistantTitleKey(title), year));
+    if (!marked && watched) return null;
+    return (tier: marked ? 0 : 1, at: at, length: length);
   }
 
-  /// A list of cards starts with the titles the answer names, in the order it
-  /// names them, then the rest as they were. Only reorders: the recommendation
-  /// is not the last of five. After an action the action is the answer.
+  /// A list of cards starts with the titles the answer names, marked ones
+  /// first, in the order it names them, then the rest as they were. Only
+  /// reorders: the recommendation is not the last of five. After an action the
+  /// action is the answer.
   void _namedFirst(String answer) {
     if (_actions.isNotEmpty || _spoilerQuestion != null || _ctx.libraryDoctorMode) return;
-    List<T> sorted<T>(List<T> all, int? Function(T) at) {
-      final named = <(int, T)>[];
+    List<T> sorted<T>(List<T> all, ({int tier, int at, int length})? Function(T) mention) {
+      final named = <(({int tier, int at, int length}), int, T)>[];
       final rest = <T>[];
-      for (final e in all) {
-        final position = at(e);
-        if (position == null) {
+      for (final (index, e) in all.indexed) {
+        final m = mention(e);
+        if (m == null) {
           rest.add(e);
         } else {
-          named.add((position, e));
+          named.add((m, index, e));
         }
       }
-      named.sort((a, b) => a.$1.compareTo(b.$1));
-      return [for (final n in named) n.$2, ...rest];
+      named.sort((a, b) {
+        final x = a.$1;
+        final y = b.$1;
+        final byTier = x.tier.compareTo(y.tier);
+        if (byTier != 0) return byTier;
+        final byAt = x.at.compareTo(y.at);
+        if (byAt != 0) return byAt;
+        final byLength = y.length.compareTo(x.length);
+        return byLength != 0 ? byLength : a.$2.compareTo(b.$2);
+      });
+      return [for (final n in named) n.$3, ...rest];
     }
 
     // In place: the lookups and the shown-title bookkeeping know a display by
     // its identity, so it is not replaced.
-    void reorder<T>(List<T> list, int? Function(T) at) {
-      final next = sorted(list, at);
+    void reorder<T>(List<T> list, ({int tier, int at, int length})? Function(T) mention) {
+      final next = sorted(list, mention);
       try {
         list.setAll(0, next);
       } on UnsupportedError {
@@ -199,9 +221,9 @@ extension _AssistantAnswer on AssistantRun {
     for (final display in _displays) {
       switch (display) {
         case AssistantMediaGrid(:final entries):
-          reorder(entries, (e) => _mentionAt(answer, e.item.title, e.item.year));
+          reorder(entries, (e) => _mentionOf(answer, e.item.title, e.item.year));
         case AssistantTitleMatches(:final matches):
-          reorder(matches, (m) => _mentionAt(answer, m.title, m.year));
+          reorder(matches, (m) => _mentionOf(answer, m.title, m.year));
         default:
       }
     }
