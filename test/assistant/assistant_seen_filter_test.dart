@@ -1,10 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_intent.dart';
 import 'package:pleya/assistant/assistant_memory.dart';
+import 'package:pleya/assistant/assistant_recommend_constraints.dart';
 import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/media/media_hub.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/services/memory/exclude_seen_store.dart';
 import 'package:pleya/services/multi_server_manager.dart';
@@ -103,6 +105,10 @@ void main() {
       'waarom raad je dingen aan die ik al gezien heb?',
       'I watched it too, show me more',
       'geef me iets voor vanavond',
+      'Het is laat en ik wil niet nog een lange film, ik heb al een serie gekeken, geef een korte tip',
+      "I don't want to watch that show I started last night",
+      'Ik heb geen tip nodig, ik heb deze serie al gezien',
+      'Toon geen films die ik niet gezien heb',
     ];
     for (final p in standing) {
       expect(assistantSeenWish(p), AssistantSeenWish.standing, reason: p);
@@ -177,6 +183,63 @@ void main() {
       expect(data['filtered_seen'], 1);
     });
 
+    test(
+      'my_watching picks go through the same filter, also without "tip" and for a title started elsewhere',
+      () async {
+        Future<List<String>> picks(bool on) async {
+          final m = MultiServerManager();
+          addTearDown(m.dispose);
+          final personal = AssistantPersonalServices(
+            userName: 'M',
+            recent: () async => const [],
+            everSeen: () async => const {},
+            taste: () async => const AffinityVector({}, eventCount: 0),
+            picks: (_) async => [
+              MediaHub(
+                id: 'r',
+                title: 'Voor jou',
+                type: 'mixed',
+                items: [evalTitle('Interstellar')!.item, evalTitle('The Office')!.item],
+              ),
+            ],
+          );
+          final ctx = AssistantToolContext(servers: m, personal: personal, region: () => 'NL')
+            ..recommend = AssistantRecommendConstraints.fromPrompt('wat is er leuk voor vanavond')
+            ..seenFilter = AssistantSeenFilter(on: on);
+          final rows = (await _tool(ctx, 'my_watching', const {}))['picks'] as List;
+          return [for (final r in rows.cast<Map>()) ..._titles(r['titles'])];
+        }
+
+        expect(
+          await picks(false),
+          contains('Interstellar'),
+          reason: 'negative control: no filter, the started film shows',
+        );
+        expect(await picks(true), ['The Office']);
+      },
+    );
+
+    test('a search for what is in progress is not filtered', () async {
+      final data = await _tool(_filtered(), 'search_catalog', {'in_progress': true, 'kind': 'movie', 'limit': 50});
+      expect(_titles(data['results']), contains('Interstellar'));
+      expect(data.containsKey('filtered_seen'), isFalse);
+    });
+
+    test('a dropped title makes the query no Home row and hides the unfiltered totals', () async {
+      const args = {'kind': 'show', 'limit': 50};
+      final off = await _tool(_filtered(on: false), 'search_catalog', args);
+      expect(off['can_become_home_row'], isTrue, reason: 'negative control');
+      final ctx = _filtered();
+      final on = await _tool(ctx, 'search_catalog', args);
+      expect(on['can_become_home_row'], isFalse);
+      expect(on['home_row_unavailable_reason'], contains('standing filter'));
+      expect(on.containsKey('total_matches'), isFalse);
+      await expectLater(
+        _tool(ctx, 'create_home_row', {'query_id': on['query_id'], 'title': 'Rij'}),
+        throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'query_not_row_compatible')),
+      );
+    });
+
     test('a title the user names in the question is a lookup and stays', () async {
       final data = await _tool(_filtered(prompt: 'waar staat The Bear?'), 'search_catalog', {
         'kind': 'show',
@@ -230,6 +293,22 @@ void main() {
       expect(await profile.service.excludeSeen, isFalse);
     });
 
+    test('a history question ignores the saved preference', () async {
+      await profile.service.setExcludeSeen(true);
+      final history = await _ask(
+        evalContext(kids: false, memory: profile.services),
+        'welke serie heb ik al gezien?',
+        _bearScript,
+      );
+      expect(evalCards(history).map((c) => c.title), contains('The Bear'));
+      final other = await _ask(
+        evalContext(kids: false, memory: profile.services),
+        'geef me iets voor vanavond',
+        _bearScript,
+      );
+      expect(evalCards(other).map((c) => c.title), ['The Office'], reason: 'negative control: the preference holds');
+    });
+
     test('a follow-up in the same conversation keeps the wish without a saved preference', () async {
       final ctx = evalContext(kids: false);
       final next = await _ask(
@@ -259,7 +338,6 @@ void main() {
       profile.kids = true;
       final ctx = evalContext(kids: true, kidsAges: const [17], memory: profile.services);
       final result = await _ask(ctx, _standing, _bearScript);
-      expect(ctx.seenFilter.on, isFalse);
       expect(result.memoryProposals, isEmpty);
     });
   });

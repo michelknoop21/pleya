@@ -133,14 +133,15 @@ final List<AssistantTool> _personalTools = [
       };
       final log = _SeenLog(everSeen, identities);
       bool seenBefore(MediaItem item) =>
+          _dropSeenItem(ctx, log, item) ||
           c.excludeWatched &&
-          (log.logged(item) ||
-              seenTitles.any(
-                (s) =>
-                    s.$1 == assistantTitleKey(item.title ?? '') &&
-                    (s.$3 == MediaKind.show.name) == item.kind.isShowRelated &&
-                    (s.$2 == null || item.year == null || s.$2 == item.year),
-              ));
+              (log.logged(item) ||
+                  seenTitles.any(
+                    (s) =>
+                        s.$1 == assistantTitleKey(item.title ?? '') &&
+                        (s.$3 == MediaKind.show.name) == item.kind.isShowRelated &&
+                        (s.$2 == null || item.year == null || s.$2 == item.year),
+                  ));
       final limit = c.active ? _picksShownConstrained : _picksShown;
       final picks = <MediaItem>[];
       final rows = <Map<String, Object?>>[];

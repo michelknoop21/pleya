@@ -8,7 +8,8 @@ part of 'assistant_run.dart';
 const _seenOnNote =
     'Pleya leaves every title this user watched or started out of the title tool results itself '
     '(filtered_seen counts them). Suggest only from what the tools return and never name a title the user '
-    'watched or started.';
+    'watched or started. When the user is looking for one specific title and filtered_seen is above 0, say it '
+    'was left out because they watched or started it; never say it was not found.';
 
 const _seenIncludeNote =
     'For this question the user also wants titles they watched or started. Do not promise to leave them out.';
@@ -23,8 +24,10 @@ extension _AssistantRunSeen on AssistantRun {
     if (_ctx.kidsMode || memoryOnly) return null;
     final wish = assistantSeenWish(prompt);
     final memory = _ctx.memory;
-    final saved = memory != null && memory.profileCurrent && await memory.service.excludeSeen;
-    final earlier = conversation.any((turn) => assistantSeenWish(turn.question) == AssistantSeenWish.standing);
+    final history = assistantSeenHistoryQuestion(prompt);
+    final saved = !history && memory != null && memory.profileCurrent && await memory.service.excludeSeen;
+    final earlier =
+        !history && conversation.any((turn) => assistantSeenWish(turn.question) == AssistantSeenWish.standing);
     final on = wish != AssistantSeenWish.include && (wish == AssistantSeenWish.standing || earlier || saved);
     _ctx.seenFilter = AssistantSeenFilter(on: on, prompt: prompt);
     if (wish == AssistantSeenWish.standing && !saved) await _offerSeenPreference(prompt);

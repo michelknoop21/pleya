@@ -80,6 +80,15 @@ bool _typedTitle(String prompt, String title) {
   return assistantTitleWords(title).any((w) => (w.contains(' ') || w.length >= 5) && text.contains(' $w '));
 }
 
+/// Whether the ask's filter drops [item]: on, in the log or watched or started
+/// on its server, and not a title the user typed. The drop is remembered.
+bool _dropSeenItem(AssistantToolContext ctx, _SeenLog log, MediaItem item) {
+  final filter = ctx.seenFilter;
+  if (!filter.on || !log.item(item) || _typedTitle(filter.prompt, item.title ?? '')) return false;
+  filter.dropped.add((title: clipText(item.title), year: item.year));
+  return true;
+}
+
 /// [kept] without what the profile watched or started, when the ask's
 /// standing filter is on. Dropped titles are remembered on the filter.
 Future<({List<(T, TitleFacts?)> kept, Map<String, Object?> note})> _dropSeen<T>(

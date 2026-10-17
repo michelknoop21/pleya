@@ -125,13 +125,15 @@ typedef _Gated<T> = ({List<(T, TitleFacts?)> kept, Map<String, Object?> note, St
 /// Looks up facts for [rows] and, with [age], keeps only what AgeGate
 /// allows for that age. Turned-down titles are remembered on [ctx] so the
 /// run can hold the answer to them. After the age gate, and only then, the
-/// ask's standing filter drops what the profile watched or started (BP-11d).
+/// ask's standing filter drops what the profile watched or started (BP-11d),
+/// unless the tool call itself asks for the watch state ([seen] false).
 Future<_Gated<T>> _gateTitles<T>(
   AssistantToolContext ctx,
   List<T> rows,
   TitleRef Function(T row) refOf,
-  int? age,
-) async {
+  int? age, {
+  bool seen = true,
+}) async {
   final refs = [for (final r in rows) refOf(r)];
   final service = ctx.titleFacts;
   final List<TitleFacts?> facts = service == null || rows.isEmpty
@@ -157,7 +159,7 @@ Future<_Gated<T>> _gateTitles<T>(
     }
     note = {'filtered_for_age': rows.length - passed.length, 'kids_age': age};
   }
-  final unseen = await _dropSeen(ctx, passed, refOf);
+  final unseen = seen ? await _dropSeen(ctx, passed, refOf) : (kept: passed, note: const <String, Object?>{});
   return (kept: unseen.kept, note: {...note, ...unseen.note}, region: () => region);
 }
 

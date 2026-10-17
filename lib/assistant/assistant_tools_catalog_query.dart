@@ -74,6 +74,11 @@ class _CatalogQuery {
   /// Group ids kept although no source carried genre data to check.
   final Set<String> genreUnverified;
 
+  /// Global keys of the titles kept when the standing watch filter dropped
+  /// some (BP-11d); null when it dropped none. A Home row replays the query
+  /// without that filter, so it is refused; a collection takes only these.
+  Set<String>? seenKept;
+
   List<AssistantMediaGridEntry> get entries => [for (final g in groups) (item: g.representativeSource.item, group: g)];
 
   /// Every concrete source behind [groups], across servers.
