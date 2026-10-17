@@ -7627,6 +7627,72 @@ class TranslationsUnifiedCatalogHomeRowsEn {
 
 	/// en: '+${count}'
 	String morePosters({required Object count}) => '+${count}';
+
+	/// en: 'Drag the handle to move a row. Featured and Continue Watching stay where they are.'
+	String get dragIntro => 'Drag the handle to move a row. Featured and Continue Watching stay where they are.';
+
+	/// en: 'Drag the handle to move a row. Tap one of your own rows to edit it.'
+	String get dragIntroTablet => 'Drag the handle to move a row. Tap one of your own rows to edit it.';
+
+	/// en: 'Drag a row with the mouse to its new place. Featured and Continue Watching stay where they are.'
+	String get dragIntroDesktop => 'Drag a row with the mouse to its new place. Featured and Continue Watching stay where they are.';
+
+	/// en: 'Fixed'
+	String get sectionFixed => 'Fixed';
+
+	/// en: 'Your rows'
+	String get sectionYours => 'Your rows';
+
+	/// en: '${shown} of ${total} on Home'
+	String onHomeCount({required Object shown, required Object total}) => '${shown} of ${total} on Home';
+
+	/// en: '${count} titles'
+	String titlesCount({required Object count}) => '${count} titles';
+
+	/// en: '${count} sources'
+	String sourcesCount({required Object count}) => '${count} sources';
+
+	/// en: 'off by default'
+	String get optInNote => 'off by default';
+
+	/// en: 'Plex only'
+	String get onlyPlex => 'Plex only';
+
+	/// en: 'Hide on Home'
+	String get hideOnHome => 'Hide on Home';
+
+	/// en: 'Show on Home'
+	String get showOnHome => 'Show on Home';
+
+	/// en: 'All in ${catalog}'
+	String allInCatalogMenu({required Object catalog}) => 'All in ${catalog}';
+
+	/// en: 'More actions'
+	String get moreActions => 'More actions';
+
+	/// en: 'Move'
+	String get dragHandle => 'Move';
+
+	/// en: 'Row ${position} of ${total}'
+	String rowPosition({required Object position, required Object total}) => 'Row ${position} of ${total}';
+
+	/// en: 'Delete this row?'
+	String get removeTitle => 'Delete this row?';
+
+	/// en: '${name} disappears from Home. The titles themselves stay. This cannot be undone.'
+	String removeBody({required Object name}) => '${name} disappears from Home. The titles themselves stay. This cannot be undone.';
+
+	/// en: 'Step ${step} of 3'
+	String stepOf({required Object step}) => 'Step ${step} of 3';
+
+	/// en: 'Close'
+	String get close => 'Close';
+
+	/// en: 'Edit ${name}'
+	String editRowTitle({required Object name}) => 'Edit ${name}';
+
+	/// en: 'Tap one of your own rows to edit it, or make a new one.'
+	String get pickRowToEdit => 'Tap one of your own rows to edit it, or make a new one.';
 }
 
 // Path: tvMyPleya.semantics
@@ -7654,6 +7720,9 @@ class TranslationsAssistantKidsEn {
 
 	/// en: 'First I need to know how old the children are.'
 	String get agesFirst => 'First I need to know how old the children are.';
+
+	/// en: 'I do not know yet which children you mean or how old they are, so I show no titles.'
+	String get householdFirst => 'I do not know yet which children you mean or how old they are, so I show no titles.';
 
 	/// en: 'I have no title that suits the children's ages. Ask me another way.'
 	String get noFit => 'I have no title that suits the children\'s ages. Ask me another way.';
@@ -11564,6 +11633,28 @@ extension on Translations {
 			'unifiedCatalog.homeRows.emptyPreviewTitle' => 'Nothing matches this filter',
 			'unifiedCatalog.homeRows.emptyPreviewBody' => 'Widen the filter, or pick a different sort.',
 			'unifiedCatalog.homeRows.morePosters' => ({required Object count}) => '+${count}',
+			'unifiedCatalog.homeRows.dragIntro' => 'Drag the handle to move a row. Featured and Continue Watching stay where they are.',
+			'unifiedCatalog.homeRows.dragIntroTablet' => 'Drag the handle to move a row. Tap one of your own rows to edit it.',
+			'unifiedCatalog.homeRows.dragIntroDesktop' => 'Drag a row with the mouse to its new place. Featured and Continue Watching stay where they are.',
+			'unifiedCatalog.homeRows.sectionFixed' => 'Fixed',
+			'unifiedCatalog.homeRows.sectionYours' => 'Your rows',
+			'unifiedCatalog.homeRows.onHomeCount' => ({required Object shown, required Object total}) => '${shown} of ${total} on Home',
+			'unifiedCatalog.homeRows.titlesCount' => ({required Object count}) => '${count} titles',
+			'unifiedCatalog.homeRows.sourcesCount' => ({required Object count}) => '${count} sources',
+			'unifiedCatalog.homeRows.optInNote' => 'off by default',
+			'unifiedCatalog.homeRows.onlyPlex' => 'Plex only',
+			'unifiedCatalog.homeRows.hideOnHome' => 'Hide on Home',
+			'unifiedCatalog.homeRows.showOnHome' => 'Show on Home',
+			'unifiedCatalog.homeRows.allInCatalogMenu' => ({required Object catalog}) => 'All in ${catalog}',
+			'unifiedCatalog.homeRows.moreActions' => 'More actions',
+			'unifiedCatalog.homeRows.dragHandle' => 'Move',
+			'unifiedCatalog.homeRows.rowPosition' => ({required Object position, required Object total}) => 'Row ${position} of ${total}',
+			'unifiedCatalog.homeRows.removeTitle' => 'Delete this row?',
+			'unifiedCatalog.homeRows.removeBody' => ({required Object name}) => '${name} disappears from Home. The titles themselves stay. This cannot be undone.',
+			'unifiedCatalog.homeRows.stepOf' => ({required Object step}) => 'Step ${step} of 3',
+			'unifiedCatalog.homeRows.close' => 'Close',
+			'unifiedCatalog.homeRows.editRowTitle' => ({required Object name}) => 'Edit ${name}',
+			'unifiedCatalog.homeRows.pickRowToEdit' => 'Tap one of your own rows to edit it, or make a new one.',
 			'tvNavigation.activeDestination' => 'current section',
 			'tvNavigation.attentionRequired' => 'needs attention',
 			'tvMyPleya.groupContent' => 'My content',
@@ -11656,6 +11747,7 @@ extension on Translations {
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Subtitles',
 			'assistant.kids.agesFirst' => 'First I need to know how old the children are.',
+			'assistant.kids.householdFirst' => 'I do not know yet which children you mean or how old they are, so I show no titles.',
 			'assistant.kids.noFit' => 'I have no title that suits the children\'s ages. Ask me another way.',
 			'assistant.kids.header' => 'Pleya asks',
 			'assistant.kids.title' => 'How old are the children?',
@@ -12007,6 +12099,8 @@ extension on Translations {
 			'assistant.settings.unreadableTitle' => 'Replace the Big P setup?',
 			'assistant.settings.unreadableBody' => 'Your iCloud keychain holds a Big P setup from a newer Pleya version on another device. This version cannot read it. Replacing it changes the setup on all your devices.',
 			'assistant.settings.replace' => 'Replace',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.settings.currentModel' => 'Model',
 			'assistant.settings.keyStored' => 'Stored, hidden',
 			'assistant.settings.errorUrlInvalid' => 'Enter an address that starts with http:// or https://.',
@@ -12030,8 +12124,6 @@ extension on Translations {
 			'assistant.settings.priceHigh' => 'Expensive',
 			'assistant.settings.savedModelGone' => ({required Object model}) => '${model} is no longer offered. Pick another model below.',
 			'assistant.settings.updateModel' => 'Update model',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.settings.updating' => ({required Object status}) => 'Updating: ${status}',
 			'assistant.settings.updateDone' => ({required Object model}) => '${model} is up to date',
 			'assistant.settings.pullErrorUnknown' => 'Ollama no longer has this model in its library. Pick another model.',

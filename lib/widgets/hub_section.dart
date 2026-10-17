@@ -75,6 +75,12 @@ class HubSection extends StatefulWidget {
   /// Use when the parent already provides edge spacing (e.g. inside Padding(16)).
   final bool inset;
 
+  /// Opens the quick menu of Home aanpassen (HOME-R1): long press and right
+  /// click on the header, and the button that shows while the pointer is over
+  /// it. [anchor] is where the pointer was, null for a long press. Null here
+  /// leaves all three off (Verder kijken, rows that are not Home rows).
+  final void Function(Offset? anchor)? onHeaderMenu;
+
   /// Vertical viewport alignment when this hub is focused.
   final double focusScrollAlignment;
 
@@ -95,6 +101,7 @@ class HubSection extends StatefulWidget {
     this.onNavigateUp,
     this.onNavigateToSidebar,
     this.inset = false,
+    this.onHeaderMenu,
     this.focusScrollAlignment = 0.3,
   }) : usesContinueWatchingAction = usesContinueWatchingAction ?? isInContinueWatching;
 
@@ -706,6 +713,10 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
                 child: InkWell(
                   mouseCursor: widget.hub.more ? SystemMouseCursors.click : MouseCursor.defer,
                   onTap: widget.hub.more ? () => _navigateToHubDetail(context) : null,
+                  onLongPress: widget.onHeaderMenu == null || isTv ? null : () => widget.onHeaderMenu!(null),
+                  onSecondaryTapUp: widget.onHeaderMenu == null || isTv
+                      ? null
+                      : (details) => widget.onHeaderMenu!(details.globalPosition),
                   borderRadius: BorderRadius.circular(tokens(context).radiusSm),
                   child: Padding(
                     padding: widget.inset
@@ -760,6 +771,36 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
                             ),
                           AppIcon(Symbols.chevron_right_rounded, fill: 1, size: isTv ? 26 : 18),
                         ],
+                        // HOME-R1 (mockup 44 N): the quick menu, findable by
+                        // someone who does not right click. Only while the
+                        // pointer is on the header, like "Alles bekijken".
+                        if (widget.onHeaderMenu != null && !isTv)
+                          Builder(
+                            builder: (buttonContext) => Padding(
+                              padding: const EdgeInsets.only(left: 6),
+                              child: IgnorePointer(
+                                ignoring: !_headerHovering,
+                                child: AnimatedOpacity(
+                                  opacity: _headerHovering ? 1 : 0,
+                                  duration: tokens(context).fast,
+                                  child: SizedBox(
+                                    width: 28,
+                                    height: 24,
+                                    child: IconButton(
+                                      tooltip: t.unifiedCatalog.homeRows.moreActions,
+                                      padding: EdgeInsets.zero,
+                                      iconSize: 18,
+                                      icon: const Icon(Symbols.more_horiz_rounded),
+                                      onPressed: () {
+                                        final box = buttonContext.findRenderObject() as RenderBox;
+                                        widget.onHeaderMenu!(box.localToGlobal(box.size.bottomLeft(Offset.zero)));
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),

@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:pleya/widgets/pleya_logo.dart';
 import '../widgets/server_activities_button.dart';
+import 'home/customize/home_customize_entry.dart';
 import 'home/mobile_home_screen.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
@@ -1475,6 +1476,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                             icon: _getHubIcon(_hubs[i].title),
                             showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
                             onRefresh: _discover.updateItem,
+                            // HOME-R1: long press, right click and the hover button open the quick menu.
+                            onHeaderMenu: (anchor) =>
+                                showHomeRowQuickMenu(context, ids: [_hubIdentity(_hubs[i])], anchor: anchor),
                             // Hub index is i + 1 if continue watching exists, otherwise i
                             onVerticalNavigation: (isUp) =>
                                 _handleVerticalNavigation(_onDeck.isNotEmpty ? i + 1 : i, isUp),
@@ -1495,6 +1499,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                       icon: Symbols.movie_rounded,
                     ),
                   ),
+
+                // HOME-R1: the way into Home aanpassen, under the last row.
+                if (_hubs.isNotEmpty || _onDeck.isNotEmpty) const SliverToBoxAdapter(child: HomeCustomizeEntryTile()),
 
                 SliverToBoxAdapter(child: SizedBox(height: 24 + bottomPadding)),
               ],

@@ -90,9 +90,21 @@ enum MobileCatalogKind {
 }
 
 class MobileCatalogScreen extends StatefulWidget {
-  const MobileCatalogScreen({super.key, required this.kind, this.onSearchTap, this.debugPrefetcher});
+  const MobileCatalogScreen({
+    super.key,
+    required this.kind,
+    this.onSearchTap,
+    this.debugPrefetcher,
+    this.initialFilterOverride,
+  });
 
   final MobileCatalogKind kind;
+
+  /// A filter to open with instead of the stored per-profile one: the viewer's
+  /// own Home row, opened for this visit only (HOME-R1, the same as the tvOS
+  /// "Alle N" tile). Not written back; a deliberate edit made while viewing it
+  /// saves like any other.
+  final UnifiedCatalogPreferences? initialFilterOverride;
 
   /// Closes this screen and opens search, the same target the landing's own
   /// header search action reaches. Threaded in from `_TitleRow` rather than
@@ -157,7 +169,8 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   /// already carry the user's filters instead of loading unfiltered and
   /// replacing it a frame later.
   Future<void> _restorePreferences() async {
-    final stored = await UnifiedCatalogQueryStore.read(widget.kind.mediaKind);
+    final override = widget.initialFilterOverride;
+    final stored = override ?? await UnifiedCatalogQueryStore.read(widget.kind.mediaKind);
     if (!mounted) return;
     // CAT20: pruned against the server registry, not just the libraries bound
     // right now, so a server that has merely not finished connecting is not
@@ -173,7 +186,9 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
       _preferences = pruned;
       _preferencesLoaded = true;
     });
-    if (pruning.shouldPersist) unawaited(UnifiedCatalogQueryStore.write(widget.kind.mediaKind, pruned));
+    if (override == null && pruning.shouldPersist) {
+      unawaited(UnifiedCatalogQueryStore.write(widget.kind.mediaKind, pruned));
+    }
     await _applyQuery(startIfNeeded: true);
   }
 

@@ -11,6 +11,7 @@ import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_capabilities.dart';
 import 'assistant_entitlement.dart';
 import 'assistant_intent.dart';
+import 'assistant_kid_audience.dart';
 import 'assistant_kids_ages_store.dart';
 import 'assistant_memory.dart';
 import 'assistant_execution.dart';
@@ -400,6 +401,7 @@ class AssistantController extends ChangeNotifier {
     required AssistantQuestionBudget budget,
     String? originalSpoilerPrompt,
     AssistantIntent? parentIntent,
+    KidAudience kidAudience = noKidAudience,
     bool typed = false,
   }) => _AssistantTaskState(
     id: 'task-${++_nextTask}',
@@ -410,6 +412,7 @@ class AssistantController extends ChangeNotifier {
     budget: budget,
     originalSpoilerPrompt: originalSpoilerPrompt,
     parentIntent: parentIntent,
+    kidAudience: kidAudience,
     memoryEpoch: _memoryEpoch,
     typed: typed,
   );

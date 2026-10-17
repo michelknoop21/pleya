@@ -67,6 +67,17 @@ extension _AssistantResult on AssistantRun {
         memoryRefused: refused,
       );
     }
+    if (_displays.any((d) => d is AssistantHouseholdKidsPrompt)) {
+      return AssistantRunResult(
+        end: end,
+        actions: List.unmodifiable(_actions),
+        householdKidsNeeded: true,
+        providerError: error,
+        error: failure,
+        memoryStored: stored,
+        memoryRefused: refused,
+      );
+    }
     final agesFirst = _displays.whereType<AssistantKidsAgesPrompt>().firstOrNull;
     if (agesFirst != null) {
       return AssistantRunResult(

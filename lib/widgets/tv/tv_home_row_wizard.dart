@@ -26,8 +26,6 @@
 /// exists for is exactly the one where the answer is "nothing" (C4).
 library;
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -37,6 +35,7 @@ import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
 import '../../services/unified_catalog/home_custom_row.dart';
 import '../../services/unified_catalog/home_custom_row_loader.dart';
+import '../../services/unified_catalog/home_row_draft.dart';
 import '../../services/unified_catalog/source_cursor.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../theme/mono_tokens.dart';
@@ -110,28 +109,30 @@ class TvHomeRowWizard extends StatefulWidget {
   State<TvHomeRowWizard> createState() => _TvHomeRowWizardState();
 }
 
-enum _Step { nameAndKind, filters, preview }
+typedef _Step = HomeRowWizardStep;
 
 class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
-  late final TextEditingController _name = TextEditingController(text: widget.initial?.name ?? '');
-  late MediaKind _kind = widget.initial?.kind ?? MediaKind.movie;
-  late UnifiedCatalogPreferences _preferences = widget.initial?.preferences ?? UnifiedCatalogPreferences.defaults;
-  late final String _id = widget.initial?.id ?? HomeCustomRow.newId();
+  /// The three steps' state and rules, shared with the phone wizard
+  /// (`home_row_draft.dart`); this widget only draws it with a remote.
+  late final HomeRowDraft _d = HomeRowDraft(initial: widget.initial, preview: widget.preview)..addListener(_onDraft);
 
-  _Step _step = _Step.nameAndKind;
+  void _onDraft() {
+    if (mounted) setState(() {});
+  }
 
-  HomeCustomRowContent? _content;
-  bool _isPreviewing = false;
-
-  /// Bumped on every preview request so a slow answer to a filter the viewer has
-  /// already changed cannot land on top of a newer one.
-  int _previewGeneration = 0;
+  _Step get _step => _d.step;
+  MediaKind get _kind => _d.kind;
+  UnifiedCatalogPreferences get _preferences => _d.preferences;
+  HomeCustomRowContent? get _content => _d.content;
+  bool get _isPreviewing => _d.isPreviewing;
+  TextEditingController get _name => _d.name;
+  String get _id => _d.id;
 
   final Map<String, FocusNode> _nodes = {};
 
   @override
   void dispose() {
-    _name.dispose();
+    _d.dispose();
     for (final entry in _nodes.entries) {
       if (entry.key != _borrowedKey) entry.value.dispose();
     }
@@ -167,7 +168,7 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
     return _nodes.putIfAbsent(key, () => FocusNode(debugLabel: 'TvHomeRowWizard.$key'));
   }
 
-  HomeCustomRow get _draft => HomeCustomRow(id: _id, kind: _kind, name: _name.text.trim(), preferences: _preferences);
+  HomeCustomRow get _draft => _d.draft;
 
   /// Every library the chosen kind could draw from, restriction or not: a
   /// server the viewer excluded still needs a row in the panel, or there is no
@@ -177,21 +178,7 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
   UnifiedFilterCapabilities get _capabilities =>
       unifiedFilterCapabilitiesFor(_libraries.where(_preferences.filters.selects).map((library) => library.backend));
 
-  void _goTo(_Step step) {
-    setState(() => _step = step);
-    if (step == _Step.preview) unawaited(_loadPreview());
-  }
-
-  Future<void> _loadPreview() async {
-    final generation = ++_previewGeneration;
-    setState(() => _isPreviewing = true);
-    final content = await widget.preview(_draft);
-    if (!mounted || generation != _previewGeneration) return;
-    setState(() {
-      _content = content;
-      _isPreviewing = false;
-    });
-  }
+  void _goTo(_Step step) => _d.goTo(step);
 
   Future<void> _openFilters(TvCatalogFilterSection section) async {
     final next = await showTvCatalogFilterPanel(
@@ -203,13 +190,13 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
       clientFor: (serverId) => widget.clientFor?.call(serverId),
     );
     if (next == null || !mounted) return;
-    setState(() => _preferences = _preferences.copyWith(filters: next));
+    _d.setFilters(next);
   }
 
   Future<void> _openSort() async {
     final next = await showTvCatalogSortPanel(context, selected: _preferences.sort);
     if (next == null || !mounted) return;
-    setState(() => _preferences = _preferences.copyWith(sort: next));
+    _d.setSort(next);
   }
 
   @override
@@ -345,12 +332,7 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
               // that no longer exist here. Dropping it is the same rule
               // hoofdstuk 10.6 applies to a vanished server: an invisible
               // filter with no row to untick it is worse than a lost choice.
-              onPressed: () => setState(() {
-                _kind = kind;
-                _preferences = _preferences.copyWith(
-                  filters: _preferences.filters.copyWith(serverIds: const {}, libraryKeys: const {}),
-                );
-              }),
+              onPressed: () => _d.setKind(kind),
             ),
           ],
         ],
@@ -382,45 +364,29 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
   );
 
   Widget _filterStep(MonoTokens mono, double scale) {
-    final filters = _preferences.filters;
-    final rows = <({IconData icon, String label, String value, VoidCallback onPressed, String key})>[
-      (
-        icon: Symbols.visibility_rounded,
-        label: t.unifiedCatalog.homeRows.status,
-        value: unifiedWatchFilterLabel(filters.watchState),
-        onPressed: () => _openFilters(TvCatalogFilterSection.status),
-        key: 'status',
-      ),
-      (
-        icon: Symbols.sort_rounded,
-        label: t.unifiedCatalog.homeRows.genre,
-        value: filters.genres.isEmpty ? t.unifiedCatalog.rail.noFilters : (filters.genres.toList()..sort()).join(', '),
-        onPressed: () => _openFilters(TvCatalogFilterSection.genre),
-        key: 'genre',
-      ),
-      (
-        icon: Symbols.schedule_rounded,
-        label: t.unifiedCatalog.homeRows.year,
-        value: filters.years.isEmpty ? t.unifiedCatalog.homeRows.allYears : (filters.years.toList()..sort()).join(', '),
-        onPressed: () => _openFilters(TvCatalogFilterSection.year),
-        key: 'year',
-      ),
-      (
-        icon: Symbols.dns_rounded,
-        label: t.unifiedCatalog.homeRows.sources,
-        value: filters.restrictsSources
-            ? t.unifiedCatalog.rail.filtersActive(count: filters.activeCount - filters.itemFilterCount)
-            : t.unifiedCatalog.allSources,
-        onPressed: () => _openFilters(TvCatalogFilterSection.servers),
-        key: 'sources',
-      ),
-      (
-        icon: Symbols.swap_vert_rounded,
-        label: t.unifiedCatalog.homeRows.sorting,
-        value: sortLabel(_preferences.sort),
-        onPressed: _openSort,
-        key: 'sort',
-      ),
+    // The words come from the draft, the same five lines the phone wizard
+    // shows; what is TV's own is the icon and the panel each line opens.
+    final rows = [
+      for (final line in _d.filterLines(sortLabel))
+        (
+          icon: switch (line.key) {
+            'status' => Symbols.visibility_rounded,
+            'genre' => Symbols.sort_rounded,
+            'year' => Symbols.schedule_rounded,
+            'sources' => Symbols.dns_rounded,
+            _ => Symbols.swap_vert_rounded,
+          },
+          label: line.label,
+          value: line.value,
+          onPressed: switch (line.key) {
+            'status' => () => _openFilters(TvCatalogFilterSection.status),
+            'genre' => () => _openFilters(TvCatalogFilterSection.genre),
+            'year' => () => _openFilters(TvCatalogFilterSection.year),
+            'sources' => () => _openFilters(TvCatalogFilterSection.servers),
+            _ => _openSort,
+          },
+          key: line.key,
+        ),
     ];
 
     return Column(

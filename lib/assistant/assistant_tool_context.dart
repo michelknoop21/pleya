@@ -2,6 +2,7 @@ import 'assistant_spoiler_context.dart';
 import 'assistant_trakt_services.dart';
 import 'current_user_context.dart';
 import '../media/ids.dart';
+import '../profiles/household_kids_store.dart';
 import '../media/media_library.dart';
 import '../media/media_server_client.dart';
 import '../media/server_administration.dart';
@@ -64,6 +65,8 @@ class AssistantToolContext {
     this.web,
     this.titleFacts,
     this.kidsAges,
+    this.householdKids,
+    this.clock = DateTime.now,
     this.region = assistantRegion,
     this.cancel,
     this.kidsProfile,
@@ -120,6 +123,8 @@ class AssistantToolContext {
     web: web ?? this.web,
     titleFacts: titleFacts,
     kidsAges: kidsAges,
+    householdKids: householdKids,
+    clock: clock,
     region: region,
     cancel: cancel ?? this.cancel,
     kidsProfile: kidsProfile,
@@ -196,6 +201,28 @@ class AssistantToolContext {
   /// through the age gate. On any other profile the whole kids machinery is
   /// off.
   bool kidsMode = false;
+
+  /// The household's children for the age gate on any profile
+  /// ([HouseholdKidsStore.read]). Null or empty: none entered yet.
+  final Future<List<HouseholdKid>> Function()? householdKids;
+
+  /// The clock the children's ages are counted on.
+  final DateTime Function() clock;
+
+  /// Which age gate holds this ask. Set by the run from the profile and from
+  /// the words of the question, never from tool arguments: [kidsProfile]
+  /// follows the profile, [kidAudience] the question about the household's
+  /// children, on any profile.
+  AssistantAgeGate ageGate = AssistantAgeGate.none;
+
+  /// The youngest intended child's age under [AssistantAgeGate.kidAudience];
+  /// null while no valid child is entered.
+  int? audienceAge;
+
+  /// The household as read at the start of this ask, for the history filter.
+  List<HouseholdKid> householdSnapshot = const [];
+
+  bool get gated => ageGate != AssistantAgeGate.none;
 
   /// The youngest child's age once a title tool read it.
   int? kidsAge;
@@ -299,6 +326,9 @@ class AssistantToolContext {
   AssistantKnownUser requireShownUser(ServerId serverId, String id) =>
       _users[serverId.value]?[id] ?? (throw const AssistantToolError('unknown_user_id'));
 }
+
+/// Why titles pass an age gate in this ask.
+enum AssistantAgeGate { none, kidsProfile, kidAudience }
 
 /// A refusal the model gets back as `{"error": code}`. Codes, not prose:
 /// nothing in them comes from a server.

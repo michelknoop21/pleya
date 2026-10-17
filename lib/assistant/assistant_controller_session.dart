@@ -23,6 +23,7 @@ import '../services/trakt/trakt_sync_service.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
 import '../models/plex/plex_home_user.dart' show PlexHomeUser;
 import '../providers/trakt_account_provider.dart';
+import '../profiles/household_kids_store.dart';
 import '../profiles/plex_home_service.dart';
 import 'current_user_binding.dart';
 import 'assistant_spoiler_context.dart';
@@ -230,6 +231,7 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
       online: () => AssistantProviderStore.current?.onlineFacts ?? true,
     ),
     kidsAges: KidsAgesStore().read,
+    householdKids: HouseholdKidsStore().read,
     // Read per ask, so a switch flipped in Instellingen counts from the next
     // question.
     kidsProfile: () => assistantIsKidsProfile(activeProfile.active),
