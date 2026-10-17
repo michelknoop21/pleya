@@ -39,7 +39,7 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 
 ## Unified-first
 
-Productbesluit Michel, 10 oktober 2026, bindend gemaakt op 17 oktober 2026: unified is de basis voor alle ontwikkeling. Dat gaat over de gezamenlijke, backend-onafhankelijke bibliotheek en het gedeelde gedrag, niet alleen over vormgeving of de iPad- en Mac-weergave. Deze regel verandert de volgorde, prioriteiten en WIP-limiet van deze roadmap niet.
+Productbesluit Michel, 10 oktober 2026, bindend gemaakt op 17 oktober 2026: unified is de basis voor alle ontwikkeling. Dat gaat over de gezamenlijke, backend-onafhankelijke bibliotheek en het gedeelde gedrag; vormgeving en de iPad- en Mac-weergave zijn daar een deel van. Deze regel verandert de volgorde, prioriteiten en WIP-limiet van deze roadmap niet.
 
 - Begin bij de bestaande gedeelde modellen, identiteit, state, routes en gedragseigenaren. Providerverschillen blijven in de bestaande clients en adapters. Bouw geen tweede featurepad per leverancier en geen nieuw framework om deze regel af te vinken.
 - Beoordeel elke koppeling waar de functie aan raakt: Plex, Jellyfin, Emby, de lokale map en Pleya Share, en Pleya Server, ook in een gemengde bibliotheek. In de code is Emby een Jellyfin-variant (DEC-141) en valt Pleya Share onder de lokale backend (`MediaBackend.local`); beoordeel ze toch elk apart. Een koppeling valt niet weg omdat de eerste versie op één server is gebouwd.
