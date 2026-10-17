@@ -5,13 +5,21 @@ part of 'assistant_run.dart';
 // model gets one correction round that Pleya itself words.
 
 /// Tool errors that are no failure of the task.
-const _kidsCodes = {'kids_ages_unknown', 'kids_mode_unsupported'};
+const _kidsCodes = {'kids_ages_unknown', 'kids_mode_unsupported', 'household_kids_unknown'};
 
 extension _AssistantAnswer on AssistantRun {
   /// A children's profile without saved ages, while no title tool has read
   /// them yet.
   Future<bool> _kidsAgesMissing() async =>
       _ctx.kidsMode && _ctx.kidsAge == null && (await _ctx.kidsAges?.call() ?? const <int>[]).isEmpty;
+
+  /// A question about the children, with no valid child entered yet.
+  bool get _householdMissing => _ctx.ageGate == AssistantAgeGate.kidAudience && _ctx.audienceAge == null;
+
+  /// Marks that the ask needs the household's children, once per ask.
+  void _askHousehold() {
+    if (!_displays.any((d) => d is AssistantHouseholdKidsPrompt)) _displays.add(const AssistantHouseholdKidsPrompt());
+  }
 
   /// The ages card, once per ask.
   void _askKidsAges() {
@@ -60,7 +68,7 @@ extension _AssistantAnswer on AssistantRun {
   /// one followed by a year counts, so ordinary prose is left alone. The
   /// [rejected] ones are already reported.
   List<String> _unvettedNamed(String answer, List<({String title, int? year, String reason})> rejected) {
-    if (!_ctx.kidsMode) return const [];
+    if (!_ctx.gated) return const [];
     final allowed = [for (final a in _ctx.ageAllowed) (key: assistantTitleKey(a.title), year: a.year)];
     final skip = {for (final r in rejected) assistantTitleKey(r.title)};
     final found = <String>[];
@@ -94,7 +102,7 @@ extension _AssistantAnswer on AssistantRun {
   /// another year passed (Dune 1984, not Dune 2021) only counts when named
   /// with its own year.
   List<({String title, int? year, String reason})> _rejectedNamed(String answer) {
-    if (!_ctx.kidsMode || _ctx.ageRejected.isEmpty) return const [];
+    if (!_ctx.gated || _ctx.ageRejected.isEmpty) return const [];
     final text = ' ${assistantPlainWords(answer)} ';
     final named = assistantNamedTitles(answer);
     final passed = {for (final a in _ctx.ageAllowed) assistantTitleKey(a.title)};
@@ -138,6 +146,115 @@ extension _AssistantAnswer on AssistantRun {
   /// Whether a closing answer names titles the way Pleya can tell: in « »,
   /// or followed by a year, also on a list line.
   bool _namesTitles(String answer) => answer.contains('«') || RegExp(r'\((?:18|19|20)\d{2}\)').hasMatch(answer);
+
+  /// The titles [answer] recommends, for a personal answer: those it names
+  /// except a title named as the reason ("omdat je Reacher keek"), which is
+  /// history and not a pick.
+  List<({String title, int? year})> _namedRecommendations(String answer) => [
+    for (final t in assistantNamedTitles(answer))
+      // Dune (2021) is not the Dune (1984) the user watched.
+      // A pick named with its year is a pick, whatever shares its name
+      // in the history (the series Fargo next to the film from 1996).
+      if (_isPick(t) ||
+          !_history.any((h) => assistantSameTitle((key: h.key, year: h.year), assistantTitleKey(t.title), t.year)))
+        t,
+  ];
+
+  /// The answer as shown. In a personal answer every title it recommends has a
+  /// card: a sentence that names one without a card (past the asked number,
+  /// not in the results, not in the library) is left out, and when nothing that
+  /// names a card is left, Pleya's own short line stands in. Text and cards
+  /// are then the same set. Only removes words, line by line so a list keeps
+  /// its shape; the cards are untouched. After an action the action is the
+  /// answer and its subject is no recommendation.
+  String _presentedAnswer(String text) {
+    if (!_personal ||
+        _actions.isNotEmpty ||
+        _ctx.libraryDoctorMode ||
+        _spoilerQuestion != null ||
+        text.trim().isEmpty) {
+      return text;
+    }
+    final named = _namedRecommendations(text);
+    if (named.isEmpty) return text;
+    final shown = assistantShownTitles(_displays);
+    bool carded(({String title, int? year}) t) =>
+        shown.any((c) => assistantSameTitle(c, assistantTitleKey(t.title), t.year));
+    final missing = [
+      for (final t in named)
+        if (!carded(t)) t,
+    ];
+    if (missing.isEmpty) return text;
+    final cards = named.where(carded).toList();
+    final lines = <String>[];
+    for (final line in text.split('\n')) {
+      if (line.trim().isEmpty) {
+        // A paragraph break stays; one never leads the answer or doubles.
+        if (lines.isNotEmpty && lines.last.isNotEmpty) lines.add('');
+        continue;
+      }
+      final kept = [
+        for (final s in _sentencesOf(line))
+          if (!missing.any((t) => _namesTitle(s, t))) s,
+      ];
+      if (kept.isNotEmpty) lines.add(kept.join(' '));
+    }
+    while (lines.isNotEmpty && lines.last.isEmpty) {
+      lines.removeLast();
+    }
+    final stillNamesCard = lines.any((l) => cards.any((t) => _namesTitle(l, t)));
+    if (lines.isNotEmpty && stillNamesCard) return lines.join('\n');
+    final dutch = languageName == 'Dutch';
+    return cards.isEmpty
+        ? (dutch ? 'Ik kon hier geen titel voor controleren.' : 'I could not check a title for this.')
+        : (dutch ? 'Dit zijn de titels die ik kon controleren.' : 'These are the titles I could check.');
+  }
+
+  /// The sentences of one line. A title between « and » is never cut, and a
+  /// list marker ("1.") or an abbreviation ("Mr.") before a capital is not an
+  /// end: a sentence ends at . ! or ? followed by a space and a capital, « or
+  /// digit, and not after a list marker, an initialism ("U.S.") or a few abbreviations.
+  List<String> _sentencesOf(String line) {
+    final quoted = <String>[];
+    final masked = line.replaceAllMapped(RegExp('«[^»]*»'), (m) {
+      quoted.add(m[0]!);
+      return '\u0001${quoted.length - 1}\u0001';
+    });
+    final parts = <String>[];
+    var start = 0;
+    for (final m in RegExp(r'([.!?])\s+(?=[A-ZÀ-Ý«\u0001\d])').allMatches(masked)) {
+      final head = masked.substring(start, m.start);
+      final lastWord = head.split(RegExp(r'\s+')).last;
+      // A list marker is the whole head ("1."); a number or a letter at the end
+      // of a sentence ("uit 2000.", "plan A.") is an ordinary end.
+      final abbreviation =
+          m[1] == '.' &&
+          (RegExp(r'^\d{1,2}$').hasMatch(head.trim()) ||
+              RegExp(r'^(mrs?|ms|dr|st|jr|sr|vs|nr)$', caseSensitive: false).hasMatch(lastWord) ||
+              RegExp(r'^(?:[A-Za-z]\.)+[A-Za-z]$').hasMatch(lastWord));
+      if (abbreviation) continue;
+      parts.add(masked.substring(start, m.end).trim());
+      start = m.end;
+    }
+    parts.add(masked.substring(start).trim());
+    return [
+      for (final p in parts)
+        if (p.isNotEmpty) p.replaceAllMapped(RegExp('\u0001(\\d+)\u0001'), (m) => quoted[int.parse(m[1]!)]),
+    ];
+  }
+
+  /// Whether [sentence] names [t]: its title between « and », or with its year,
+  /// or in plain words when the title is distinctive (two words or eight
+  /// letters). A short single word ("Her", "It", "Heat") is plain prose and
+  /// only counts when marked.
+  bool _namesTitle(String sentence, ({String title, int? year}) t) {
+    final lower = sentence.toLowerCase();
+    final title = t.title.toLowerCase();
+    if (lower.contains('«$title')) return true;
+    if (t.year != null && lower.contains('$title (${t.year})')) return true;
+    final words = ' ${assistantPlainWords(sentence)} ';
+    return assistantTitleWords(t.title).any((w) => (w.contains(' ') || w.length >= 8) && words.contains(' $w '));
+  }
 
   /// Titles the answer names without a card get one: Pleya looks them up
   /// itself with find_title and keeps the exact titles that can be opened
@@ -191,16 +308,7 @@ extension _AssistantAnswer on AssistantRun {
     var all = assistantNamedTitles(answer);
     var kept = 0;
     if (_personal) {
-      // A title named as the reason ("omdat je Reacher keek") is history, not a pick.
-      all = [
-        for (final t in all)
-          // Dune (2021) is not the Dune (1984) the user watched.
-          // A pick named with its year is a pick, whatever shares its name
-          // in the history (the series Fargo next to the film from 1996).
-          if (_isPick(t) ||
-              !_history.any((h) => assistantSameTitle((key: h.key, year: h.year), assistantTitleKey(t.title), t.year)))
-            t,
-      ];
+      all = _namedRecommendations(answer);
       kept = _narrowPicks(all);
     }
     final shown = assistantShownTitles(_displays);
@@ -257,6 +365,7 @@ extension _AssistantAnswer on AssistantRun {
       }
     } on AssistantToolError catch (e) {
       if (e.code == 'kids_ages_unknown') _askKidsAges();
+      if (e.code == 'household_kids_unknown') _askHousehold();
     } catch (e) {
       appLogger.d('Assistant: named titles lookup failed', error: e.runtimeType);
     }

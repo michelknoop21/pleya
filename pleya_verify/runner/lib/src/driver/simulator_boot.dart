@@ -119,3 +119,95 @@ Future<ProcessResult> timedSimctl(
     rethrow;
   }
 }
+
+/// Ceiling for `simctl launch`. A launch on a healthy runner takes about 18 s;
+/// on the hosted `macos-26` runner it was killed on the three minutes of
+/// [defaultProcessTimeout] in `discover.layout` on 16 October 2026, in three
+/// PR checks (#340, #346, #348), and `app.log` was empty: no app output was
+/// seen. The calls around it were slow too in those runs (`terminate` 23 and
+/// 49 s against 1.7 s, `bootstatus` 82 and 97 s against 65 s), and the
+/// simulator answered a `terminate` right after. What it was, a slow launch or
+/// a stuck one, was not observed. The ceiling is longer than an ordinary call
+/// and one retry follows a timeout; neither is proven to be enough, which is
+/// what the diagnosis lines of [launchApp] are for.
+///
+/// The worst case of one [launchApp] is this ceiling, three diagnosis commands
+/// of [_launchDiagnosisTimeout], a terminate of [_launchTerminateTimeout] and
+/// this ceiling again: about ten minutes, against three before. The macOS job
+/// has thirty for its build and both scenarios.
+const Duration simulatorLaunchTimeout = Duration(minutes: 4);
+
+/// Ceiling for each of the diagnosis commands [launchApp] runs after a launch
+/// that timed out. They must not turn a slow simulator into a longer wait.
+const Duration _launchDiagnosisTimeout = Duration(seconds: 20);
+
+/// Ceiling for the terminate that precedes the retry. In the runs that failed it
+/// took 23 and 49 s, so a minute is room; it is not allowed three.
+const Duration _launchTerminateTimeout = Duration(minutes: 1);
+
+/// How many lines of a diagnosis command go into the driver log.
+const int _launchDiagnosisLines = 40;
+
+/// Launches [bundleId] on the booted simulator [udid].
+///
+/// A `simctl launch` that outlives [simulatorLaunchTimeout] is killed by the
+/// runner and ends in a [ProcessTimeoutException]. That is retried once: the
+/// state of the machine and the simulator goes into the driver log, the app is
+/// terminated (its outcome and its own timeout are not judged, the launch that
+/// follows is), and `simctl launch` runs again under the same ceiling. A second
+/// timeout is thrown as it is. A launch that returns a non-zero exit code is not
+/// retried: that is an answer from the simulator, and the caller reports it.
+Future<ProcessResult> launchApp({
+  required String udid,
+  required String bundleId,
+  required ProcessRunner run,
+  required void Function(String line) log,
+}) async {
+  Future<ProcessResult> launch() => run('xcrun', ['simctl', 'launch', udid, bundleId], timeout: simulatorLaunchTimeout);
+  try {
+    return await launch();
+  } on ProcessTimeoutException catch (e) {
+    log('launch: $e; retrying once after a terminate');
+  }
+  await _logLaunchDiagnosis(udid: udid, run: run, log: log);
+  try {
+    await run('xcrun', ['simctl', 'terminate', udid, bundleId], timeout: _launchTerminateTimeout);
+  } on ProcessTimeoutException catch (e) {
+    log('launch: terminate before the retry timed out ($e)');
+  } on Exception catch (e) {
+    log('launch: terminate before the retry failed ($e)');
+  }
+  return launch();
+}
+
+/// Writes what is known about the machine and the simulator to the driver log,
+/// so a launch that timed out can be told apart as "slow host" or "stuck
+/// simulator" on the next run. It runs after the stranded launch was killed, so
+/// it shows the state then and can miss a load that was already gone. Every
+/// command is bounded, none is judged, and none can fail the launch: a command
+/// that is missing, fails to start or answers with something else is logged.
+Future<void> _logLaunchDiagnosis({
+  required String udid,
+  required ProcessRunner run,
+  required void Function(String line) log,
+}) async {
+  final commands = <List<String>>[
+    ['uptime'],
+    ['xcrun', 'simctl', 'list', 'devices'],
+    // The busiest processes of the host by CPU: a runner that is slow for
+    // everything shows up here, a stuck simulator does not.
+    ['ps', '-Aro', 'pid,etime,pcpu,pmem,comm'],
+  ];
+  for (final command in commands) {
+    try {
+      final result = await run(command.first, command.sublist(1), timeout: _launchDiagnosisTimeout);
+      final lines = result.stdout.toString().trimRight().split('\n');
+      log('launch diagnosis: ${command.join(' ')} (exit ${result.exitCode}, ${lines.length} lines)');
+      lines.take(_launchDiagnosisLines).forEach((line) => log('  $line'));
+    } on ProcessTimeoutException {
+      log('launch diagnosis: ${command.join(' ')} did not answer within $_launchDiagnosisTimeout');
+    } on Exception catch (e) {
+      log('launch diagnosis: ${command.join(' ')} could not be run ($e)');
+    }
+  }
+}

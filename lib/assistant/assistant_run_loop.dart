@@ -3,6 +3,12 @@ part of 'assistant_run.dart';
 // The model loop of one ask: model call, split routing, spoiler fence, answer
 // settling and the serial tool calls, at most [maxSteps] times.
 
+/// The correction after a tool call written as text. Pleya's words, so
+/// nothing of the model's markup is echoed back.
+const _toolMarkupCorrection =
+    'Your last reply wrote a tool call as text. Call tools only through the tools interface, '
+    'never as text or markup. Your answer to the user is plain text without tags.';
+
 extension _AssistantLoop on AssistantRun {
   /// The clarifying answer for a past-watch question with no audience, or null
   /// to run normally. Only for a root question on an adult profile, and only
@@ -54,6 +60,7 @@ extension _AssistantLoop on AssistantRun {
     _ageNotice = false;
     // The profile decides, never the prompt or the model.
     _ctx.kidsMode = await _ctx.kidsProfile?.call() ?? false;
+    final householdNote = await _setAgeGate(prompt);
     await _beginMemory(prompt);
     _ctx.recommend = AssistantRecommendConstraints.fromPrompt(prompt);
     _intent = AssistantIntent.fromPrompt(prompt);
@@ -64,6 +71,7 @@ extension _AssistantLoop on AssistantRun {
     _wanted = assistantAskedCount(prompt);
     _oneTitleAsked = assistantAsksOneTitle(prompt);
     var corrected = false;
+    var markupCorrected = false;
     var callsThisRun = 0;
     if (await entitlement.check() != AssistantEntitlementState.entitled) {
       return const AssistantRunResult(end: AssistantRunEnd.notEntitled);
@@ -97,6 +105,7 @@ extension _AssistantLoop on AssistantRun {
       if (_screenNote() case final note?) {'role': 'system', 'content': note},
       if (_ctx.recommend.describe() case final note?) {'role': 'system', 'content': note},
       if (_intent.describe() case final note?) {'role': 'system', 'content': note},
+      ?householdNote,
       if (memoryNote != null) {'role': 'system', 'content': memoryNote},
       if (memoryOnly) const {'role': 'system', 'content': _memoryScreenNote},
       ..._memoryMessages(),
@@ -211,6 +220,7 @@ extension _AssistantLoop on AssistantRun {
           ]),
           spoilerPrompt: _spoilerQuestion,
           intent: _intent,
+          kidAudience: _audience,
         );
       }
       if (_spoilerQuestion != null) {
@@ -240,12 +250,32 @@ extension _AssistantLoop on AssistantRun {
         if (evidence == null) return _end(AssistantRunEnd.answered, failure: 'kids_mode_unsupported');
         return _end(AssistantRunEnd.answered, text: evidence.answer(languageName));
       }
+      if (reply.toolCalls.isEmpty && assistantLooksLikeToolMarkup(reply.content)) {
+        // A tool call written as text: never shown, never executed, and not
+        // kept in the history as if it were an answer. One correction round
+        // Pleya words, then Pleya's own failure line.
+        messages.removeLast();
+        if (markupCorrected || step + 1 >= maxSteps) {
+          // Pleya already acted and nothing failed: only the closing sentence
+          // is lost, not the action. Retrying would run the action twice.
+          if (_actions.isNotEmpty && _errors.isEmpty) return _end(AssistantRunEnd.answered);
+          return _end(AssistantRunEnd.stepLimit, failure: 'malformed_tool_call');
+        }
+        markupCorrected = true;
+        messages.add(const {'role': 'system', 'content': _toolMarkupCorrection});
+        continue;
+      }
       if (reply.toolCalls.isEmpty) {
         // An answer for children that names titles without any known age:
         // the model named them unchecked, so the ages card replaces it. An
         // answer without titles (a server status) goes through.
         if (_namesTitles(reply.content) && await _kidsAgesMissing()) {
           _askKidsAges();
+          return _end(AssistantRunEnd.answered);
+        }
+        // The same for a question about the children when none is entered.
+        if (_namesTitles(reply.content) && _householdMissing) {
+          _askHousehold();
           return _end(AssistantRunEnd.answered);
         }
         // One correction round when the answer names a title the age
@@ -258,7 +288,7 @@ extension _AssistantLoop on AssistantRun {
         }
         // Still naming a title the age filter did not pass: Pleya's own line
         // (the controller words it), never the model's text.
-        return _end(AssistantRunEnd.answered, text: _ageNotice ? '' : reply.content);
+        return _end(AssistantRunEnd.answered, text: _ageNotice ? '' : _presentedAnswer(reply.content));
       }
       // Serial on purpose: a write must see the state the previous one left.
       for (final (index, call) in reply.toolCalls.indexed) {
@@ -285,6 +315,7 @@ extension _AssistantLoop on AssistantRun {
         }
         callsThisRun++;
         if (output['error'] == 'kids_ages_unknown') _askKidsAges();
+        if (output['error'] == 'household_kids_unknown') _askHousehold();
         messages.add({'role': 'tool', 'tool_call_id': call.id, 'content': jsonEncode(output)});
       }
     }

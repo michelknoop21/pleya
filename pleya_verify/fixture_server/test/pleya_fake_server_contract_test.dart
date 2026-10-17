@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:pleya_verify_fixture_server/named_fixtures.dart';
 import 'package:pleya_verify_fixture_server/pleya_fake_server.dart';
 import 'package:test/test.dart';
 
@@ -112,6 +113,12 @@ void main() {
       'completed': false,
     });
     await record('WatchStatePage', 'GET', '/watch-state');
+
+    // De beheerroutes van de assistent (BP-10): taken, herstart en scan.
+    applyNamedFixture(server, 'server.admin-jobs.v1');
+    await record('JobPage', 'GET', '/jobs?limit=100');
+    await record('Job', 'POST', '/jobs/job-failed-1/retry');
+    await record('Scan', 'POST', '/libraries/lib-1/scan', expect_: 202);
 
     // De foutkant hoort er net zo goed bij: een foutlichaam dat niet aan
     // ErrorEnvelope voldoet breekt de foutafhandeling van de client.

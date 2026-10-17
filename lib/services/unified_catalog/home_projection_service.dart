@@ -29,6 +29,7 @@ import '../../media/unified/unified_media_hub.dart';
 import '../../media/unified/unified_media_source.dart';
 import '../../providers/home_layout_provider.dart';
 import '../../utils/app_logger.dart';
+import '../../utils/continue_watching_order.dart';
 import '../../utils/external_ids.dart';
 import 'grouping_service.dart';
 import 'identity_resolver.dart';
@@ -316,28 +317,23 @@ class HomeProjectionService {
       candidates.add(GroupingCandidate(source: UnifiedMediaSource.fromItem(onDeck[i]), evidence: evidence[i]));
     }
 
-    return _byNewestSourceRecency(groupUnifiedMediaSources(candidates, allowWeakFallback: false));
+    return _inContinueWatchingOrder(groupUnifiedMediaSources(candidates, allowWeakFallback: false));
   }
 
   /// Hoofdstuk 13.3: a card sorts on the newest recency among its own valid
-  /// sources. Groups with no timestamp at all sink below every dated group
-  /// and keep their incoming order among themselves — `List.sort` is not
-  /// stable, so the incoming index is carried along as the final tie-break
-  /// rather than left to chance.
-  static List<UnifiedMediaGroup> _byNewestSourceRecency(List<UnifiedMediaGroup> groups) {
-    final ranked =
-        [for (var i = 0; i < groups.length; i++) (index: i, group: groups[i], recency: _newestRecency(groups[i]))]
-          ..sort((a, b) {
-            final ar = a.recency;
-            final br = b.recency;
-            if (ar != br) {
-              if (ar == null) return 1;
-              if (br == null) return -1;
-              return br.compareTo(ar);
-            }
-            return a.index.compareTo(b.index);
-          });
-    return [for (final entry in ranked) entry.group];
+  /// sources, in the one Verder kijken order ([orderContinueWatching]). That
+  /// is the order `DataAggregationService` already hands over; applying it here
+  /// as well keeps the row right for a list that did not come from there (a
+  /// stored snapshot) and for a card whose sources span two servers.
+  static List<UnifiedMediaGroup> _inContinueWatchingOrder(List<UnifiedMediaGroup> groups) =>
+      orderContinueWatching(groups, itemOf: _orderingItem);
+
+  /// The card's representative, carrying the newest `lastViewedAt` among all
+  /// of the card's sources.
+  static MediaItem _orderingItem(UnifiedMediaGroup group) {
+    final item = group.representativeSource.item;
+    final newest = _newestRecency(group);
+    return newest == null || newest == item.lastViewedAt ? item : item.copyWith(lastViewedAt: newest);
   }
 
   static int? _newestRecency(UnifiedMediaGroup group) {

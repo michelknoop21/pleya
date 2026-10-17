@@ -75,6 +75,43 @@ void main() {
       expect(continueWatchingStatusLine(episode(viewOffsetMs: 5 * minute)), 'S3 E4 · Next episode');
       expect(continueWatchingStatusLine(film()), '');
     });
+    group('new episode and new season', () {
+      final now = DateTime(2026, 10, 16, 12);
+      int secondsAgo(int days) => now.subtract(Duration(days: days)).millisecondsSinceEpoch ~/ 1000;
+
+      MediaItem next({required int season, required int number, int? added, int? watched}) => MediaItem(
+        id: 'next',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.episode,
+        title: 'Next',
+        grandparentTitle: 'The Bear',
+        parentIndex: season,
+        index: number,
+        addedAt: added == null ? null : secondsAgo(added),
+        lastViewedAt: watched == null ? null : secondsAgo(watched),
+        continueWatchingKind: ContinueWatchingKind.nextUp,
+      );
+
+      test('an episode added after the last watch says New episode', () {
+        expect(
+          continueWatchingStatusLine(next(season: 2, number: 5, added: 3, watched: 40), now: now),
+          'S2 E5 · New episode',
+        );
+      });
+      test('the first episode of a later season says New season', () {
+        expect(
+          continueWatchingStatusLine(next(season: 3, number: 1, added: 3, watched: 40), now: now),
+          'S3 E1 · New season',
+        );
+      });
+      test('without proof it stays Next episode', () {
+        expect(continueWatchingStatusLine(next(season: 2, number: 5, added: 3), now: now), 'S2 E5 · Next episode');
+        expect(
+          continueWatchingStatusLine(next(season: 2, number: 5, added: 30, watched: 60), now: now),
+          'S2 E5 · Next episode',
+        );
+      });
+    });
     test('hours and minutes for a long remainder', () {
       expect(continueWatchingStatusLine(film(durationMs: 180 * minute, viewOffsetMs: 70 * minute)), '1h 50 min left');
     });

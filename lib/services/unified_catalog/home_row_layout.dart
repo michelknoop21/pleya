@@ -84,6 +84,98 @@ List<UnifiedMediaHub> applyHomeLayoutToUnifiedRows(
 List<String> homeLayoutIdsOf(UnifiedMediaHub row) =>
     row.contributingRowIds.isEmpty ? [row.hubId] : row.contributingRowIds;
 
+/// Moves the row at [index] in [rows] (already in display order) by [delta]
+/// and returns the order to store (HOME-R1).
+///
+/// Two things the plain "write every row's ids" got wrong:
+///
+/// * **Rows that share a layout id move as one block.** One server can hand
+///   out two hubs with one identifier (Plex gives every movie library its own
+///   `movie.recentlyadded`), so two panel rows answer to the same id and
+///   [applyHomeLayoutToUnifiedRows] can only rank them together. A row placed
+///   between them was written as `[X, own, X]`, the rank map kept the last
+///   `X`, and the own row snapped straight back: "move down" did nothing, on
+///   every press. Treating every row that shares an id as one block, adjacent or
+///   not (one stored order puts them together anyway, and a twin left behind
+///   would hop up next to its sibling on an unrelated move), and writing each
+///   id once, makes every press land where the panel shows it.
+/// * **Ids the panel cannot see keep their place.** A row of a server that is
+///   offline, or an own row still loading, is not in [rows]. Writing only what
+///   is on screen dropped it from the order, and it came back at the bottom.
+///   Every id of [previous] that is not on screen is kept, right after the id
+///   that preceded it there.
+///
+/// Returns null when the move falls outside the list.
+List<String>? homeLayoutOrderAfterMove(
+  List<UnifiedMediaHub> rows,
+  int index,
+  int delta, {
+  required List<String> previous,
+}) {
+  if (index < 0 || index >= rows.length) return null;
+  final blocks = homeLayoutBlocks(rows);
+  final from = blocks.indexWhere((block) => block.contains(index));
+  final to = from + delta;
+  if (delta == 0 || to < 0 || to >= blocks.length) return null;
+  blocks.insert(to, blocks.removeAt(from));
+
+  final seen = <String>{};
+  final next = [
+    for (final block in blocks)
+      for (final i in block)
+        for (final id in homeLayoutIdsOf(rows[i]))
+          if (seen.add(id)) id,
+  ];
+  String? anchor;
+  for (final id in previous) {
+    if (!seen.add(id)) {
+      if (next.contains(id)) anchor = id;
+      continue;
+    }
+    next.insert(anchor == null ? 0 : next.indexOf(anchor) + 1, id);
+    anchor = id;
+  }
+  return next;
+}
+
+/// The blocks [rows] move in: indexes into [rows], one block per group of rows
+/// connected by a shared layout id, in the order of each block's first row.
+/// The panel asks the same function which arrows are live, so the two cannot
+/// disagree about what "one step" is.
+List<List<int>> homeLayoutBlocks(List<UnifiedMediaHub> rows) {
+  final blocks = <List<int>>[];
+  final blockIds = <Set<String>>[];
+  for (var i = 0; i < rows.length; i++) {
+    final ids = homeLayoutIdsOf(rows[i]);
+    final hits = [
+      for (var b = 0; b < blocks.length; b++)
+        if (ids.any(blockIds[b].contains)) b,
+    ];
+    if (hits.isEmpty) {
+      blocks.add([i]);
+      blockIds.add({...ids});
+      continue;
+    }
+    final first = hits.first;
+    for (final b in hits.skip(1).toList().reversed) {
+      blocks[first].addAll(blocks.removeAt(b));
+      blockIds[first].addAll(blockIds.removeAt(b));
+    }
+    blocks[first].add(i);
+    blockIds[first].addAll(ids);
+  }
+  return blocks;
+}
+
+/// Whether the row at [index] can step up and down (HOME-R1): the edges are
+/// the edges of its block, not of the row list.
+({bool up, bool down}) homeLayoutCanMove(List<UnifiedMediaHub> rows, int index) {
+  final blocks = homeLayoutBlocks(rows);
+  final at = blocks.indexWhere((block) => block.contains(index));
+  if (at < 0) return (up: false, down: false);
+  return (up: at > 0, down: at < blocks.length - 1);
+}
+
 /// A viewer-defined Home row's projected content (ROW1b), in the [MediaHub]
 /// shape the phone/desktop feed and the settings screen already draw.
 ///

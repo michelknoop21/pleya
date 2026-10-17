@@ -239,6 +239,23 @@ void main() {
     return (result, model, s);
   }
 
+  test('BP-11: markup twice after a write succeeded: answered, action kept, no markup, no failure', () async {
+    const markup = '<atem:function_calls>\n<atem:invoke name="x"></atem:invoke>\n</atem:function_calls>';
+    final (result, model, server) = await run([
+      _call('list_libraries', {'server_id': 'srv-1'}),
+      _call('scan_library', {'server_id': 'srv-1', 'library_id': 'lib-films'}, id: 'call_2'),
+      _say(markup),
+      _say(markup),
+      _say('nooit gevraagd'),
+    ]);
+    expect(model.requests, hasLength(4), reason: 'one correction round, then the end');
+    expect(server.writes, ['POST /libraries/lib-films/scan'], reason: 'the write ran once');
+    expect(result.end, AssistantRunEnd.answered);
+    expect(result.error, isNull);
+    expect(result.actions.single.kind, AssistantActionKind.scanLibrary);
+    expect(result.text, isEmpty);
+  });
+
   group('one loop for every provider', () {
     for (final kind in AssistantProviderKind.values) {
       test('${kind.name}: scan through tools, same outcome', () async {
@@ -291,6 +308,41 @@ void main() {
     expect(system, contains('use my_watching'));
     expect(model.toolNamesOffered(0), contains('my_watching'));
   });
+
+  test(
+    'a tip is told to be a statement from the tool\'s picks, no more than asked, and only where my_watching exists',
+    () async {
+      final m = await _Server().manager();
+      Future<String> systemFor(AssistantToolContext context) async {
+        final model = _Model(AssistantProviderKind.ollamaServer, [_say('Hoi')]);
+        await AssistantRun(
+          model: model.client(),
+          context: context,
+          confirm: (_) async => null,
+          entitlement: const _Entitled(),
+        ).ask('Geef me een kijktip');
+        return ((model.requests.first['messages'] as List).first as Map)['content'] as String;
+      }
+
+      final withTips = await systemFor(
+        AssistantToolContext(
+          servers: m,
+          personal: AssistantPersonalServices(
+            userName: 'Michel',
+            recent: () async => const [],
+            everSeen: () async => const {},
+            taste: () async => AffinityVector.empty,
+            picks: (_) async => const [],
+          ),
+        ),
+      );
+      expect(withTips, contains('as a statement and never as a question'));
+      expect(withTips, contains('never "a few"'));
+      // Negative control: no personal source, no my_watching, no tip rule.
+      final without = await systemFor(AssistantToolContext(servers: m));
+      expect(without, isNot(contains('as a statement and never as a question')));
+    },
+  );
 
   test('a watch question that names nobody is asked back in code, with period and kind kept', () async {
     final m = await _Server().manager();

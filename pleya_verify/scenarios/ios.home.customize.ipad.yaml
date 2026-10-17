@@ -1,0 +1,47 @@
+name: ios.home.customize.ipad
+target: ios-sim
+# HOME-R1, mockup 44 L: Home aanpassen on the iPad. Run with
+# PLEYA_VERIFY_IOS_UDID pointed at an iPad simulator.
+#
+# iPad Home draws one row per server hub (DEC-103), so the list is that list,
+# and the screen is a dialog with the wizard beside it. The row headers of
+# this Home have no automation id, so the way in is the line under the last
+# row.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - wait_until: {id: discover.continue_watching, timeout: 15000}
+  - settle: 3500
+  - drag: {startX: 600, startY: 700, endX: 600, endY: 100, durationMs: 400}
+  - drag: {startX: 600, startY: 700, endX: 600, endY: 100, durationMs: 400}
+  - drag: {startX: 600, startY: 700, endX: 600, endY: 100, durationMs: 400}
+  - drag: {startX: 600, startY: 700, endX: 600, endY: 100, durationMs: 400}
+  - wait_until: {id: home.customize.entry, timeout: 8000}
+  - assert: {id: home.customize.entry, insideViewport: true, minimumTapTarget: 44}
+  - snapshot: 01-home-entry
+  - tap: {id: home.customize.entry}
+  - wait_until: {id: home.customize, timeout: 8000}
+  - settle: 800
+  - assert: {id: "home.customize.row[0]", insideViewport: true}
+  - snapshot: 02-list
+  - tap: {id: home.customize.new}
+  - wait_until: {id: home.customize.wizard, state: {step: nameAndKind}, timeout: 8000}
+  - settle: 600
+  - tap: {id: "home.customize.wizard.action[next]"}
+  - wait_until: {id: home.customize.wizard, state: {step: filters}, timeout: 5000}
+  - settle: 600
+  # The list stays in view beside the wizard.
+  - assert: {id: "home.customize.row[0]", insideViewport: true}
+  - snapshot: 03-wizard-filters
+  - tap: {id: "home.customize.wizard.action[next]"}
+  - wait_until: {id: home.customize.wizard, state: {step: preview, can_save: true}, timeout: 20000}
+  - settle: 800
+  - snapshot: 04-wizard-preview
+  - tap: {id: "home.customize.wizard.action[next]"}
+  - settle: 1500
+  - assert: {id: "home.customize.row[0]", state: {own: true}}
+  - snapshot: 05-row-added

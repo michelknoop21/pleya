@@ -869,6 +869,8 @@
     "tvShow": "TV Show",
     "minutesLeft": "${minutes} min left",
     "nextEpisodeStatus": "Next episode",
+    "newEpisodeStatus": "New episode",
+    "newSeasonStatus": "New season",
     "cwSectionResumeShows": "Resume series",
     "cwSectionResumeMovies": "Resume films",
     "cwSectionNextEpisodes": "Next episodes",
@@ -2283,7 +2285,29 @@
       "landsBelowContinue": "Lands directly under Continue Watching. You can move it afterwards in Customise Home.",
       "emptyPreviewTitle": "Nothing matches this filter",
       "emptyPreviewBody": "Widen the filter, or pick a different sort.",
-      "morePosters": "+${count}"
+      "morePosters": "+${count}",
+      "dragIntro": "Drag the handle to move a row. Featured and Continue Watching stay where they are.",
+      "dragIntroTablet": "Drag the handle to move a row. Tap one of your own rows to edit it.",
+      "dragIntroDesktop": "Drag a row with the mouse to its new place. Featured and Continue Watching stay where they are.",
+      "sectionFixed": "Fixed",
+      "sectionYours": "Your rows",
+      "onHomeCount": "${shown} of ${total} on Home",
+      "titlesCount": "${count} titles",
+      "sourcesCount": "${count} sources",
+      "optInNote": "off by default",
+      "onlyPlex": "Plex only",
+      "hideOnHome": "Hide on Home",
+      "showOnHome": "Show on Home",
+      "allInCatalogMenu": "All in ${catalog}",
+      "moreActions": "More actions",
+      "dragHandle": "Move",
+      "rowPosition": "Row ${position} of ${total}",
+      "removeTitle": "Delete this row?",
+      "removeBody": "${name} disappears from Home. The titles themselves stay. This cannot be undone.",
+      "stepOf": "Step ${step} of 3",
+      "close": "Close",
+      "editRowTitle": "Edit ${name}",
+      "pickRowToEdit": "Tap one of your own rows to edit it, or make a new one."
     }
   },
   "tvNavigation": {
@@ -2392,6 +2416,7 @@
   "assistant": {
     "kids": {
       "agesFirst": "First I need to know how old the children are.",
+      "householdFirst": "I do not know yet which children you mean or how old they are, so I show no titles.",
       "noFit": "I have no title that suits the children's ages. Ask me another way.",
       "header": "Pleya asks",
       "title": "How old are the children?",
@@ -2817,7 +2842,8 @@
       "modelMissing": "The chosen model is gone. Pick another one in the Big P settings.",
       "sourceChanged": "Your profile or server connection changed. Run the check again.",
       "operationUnavailable": "This command could not be carried out with the available server functions.",
-      "permissionDenied": "You do not have permission for this administration command on the server."
+      "permissionDenied": "You do not have permission for this administration command on the server.",
+      "malformedToolCall": "Something went wrong while looking that up. Please try again."
     },
     "summonHint": "Hold Play/Pause to call Big P",
     "contextAction": "Ask Big P",

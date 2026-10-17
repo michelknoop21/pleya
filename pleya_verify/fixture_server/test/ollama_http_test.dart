@@ -67,6 +67,127 @@ void main() {
       expect(last['content'], 'Klaar.');
     });
   }
+  group('start questions that act (BP-10)', () {
+    /// A chat that offers [tools], each with a one-server `server_id` enum.
+    Future<Map<String, dynamic>> act(
+      String prompt,
+      List<String> tools, {
+      List<Map<String, Object?>> replies = const [],
+    }) async {
+      final response = await post('/v1/chat/completions', {
+        'model': 'pleya-verify',
+        'messages': [
+          {'role': 'user', 'content': prompt},
+          ...replies,
+        ],
+        'tools': [
+          for (final name in tools)
+            {
+              'type': 'function',
+              'function': {
+                'name': name,
+                'parameters': {
+                  'properties': {
+                    'server_id': {
+                      'enum': ['pleya-1'],
+                    },
+                  },
+                },
+              },
+            },
+        ],
+      });
+      expect(response.statusCode, 200, reason: response.body);
+      return (jsonDecode(response.body)['choices'][0]['message'] as Map).cast<String, dynamic>();
+    }
+
+    Map<String, dynamic> toolCall(Map<String, dynamic> message) =>
+        (message['tool_calls'] as List).single['function'] as Map<String, dynamic>;
+    Map<String, Object?> reply(Object output) => {'role': 'tool', 'content': jsonEncode(output)};
+
+    test('scan: lists the libraries, then scans the movie library of the offered server', () async {
+      const prompt = 'Scan alle filmbibliotheken op al mijn servers.';
+      final first = toolCall(await act(prompt, ['scan_library', 'list_libraries']));
+      expect(first['name'], 'list_libraries');
+      expect(jsonDecode(first['arguments'] as String), {'server_id': 'pleya-1'});
+      final libraries = reply({
+        'libraries': [
+          {'library_id': 'shows', 'kind': 'show'},
+          {'library_id': 'movies', 'kind': 'movie'},
+        ],
+      });
+      final second = toolCall(await act(prompt, ['scan_library', 'list_libraries'], replies: [libraries]));
+      expect(second['name'], 'scan_library');
+      expect(jsonDecode(second['arguments'] as String), {'server_id': 'pleya-1', 'library_id': 'movies'});
+      final done = await act(
+        prompt,
+        ['scan_library'],
+        replies: [
+          libraries,
+          reply({'status': 'scan_started'}),
+        ],
+      );
+      expect(done['content'], 'De scan is gestart.');
+    });
+
+    test('restart: lists the jobs, then retries the one that can be retried', () async {
+      const prompt = 'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.';
+      final jobs = reply({
+        'jobs': [
+          {'job_id': 'ok', 'can_retry': false},
+          {'job_id': 'failed', 'can_retry': true},
+        ],
+      });
+      final retry = toolCall(await act(prompt, ['retry_job', 'list_jobs'], replies: [jobs]));
+      expect(retry['name'], 'retry_job');
+      expect(jsonDecode(retry['arguments'] as String), {'server_id': 'pleya-1', 'job_id': 'failed'});
+      final none = await act(
+        prompt,
+        ['retry_job'],
+        replies: [
+          reply({'jobs': []}),
+        ],
+      );
+      expect(none['content'], 'Er zijn geen mislukte taken.');
+    });
+
+    test('Home row: searches, then creates the row only from a result that can become one', () async {
+      const prompt = 'Maak een Home-rij met actiefilms uit de jaren negentig.';
+      final tools = ['search_catalog', 'create_home_row'];
+      expect(toolCall(await act(prompt, tools))['name'], 'search_catalog');
+      final row = toolCall(
+        await act(
+          prompt,
+          tools,
+          replies: [
+            reply({'query_id': 'q1', 'can_become_home_row': true}),
+          ],
+        ),
+      );
+      expect(row['name'], 'create_home_row');
+      expect(jsonDecode(row['arguments'] as String), {'query_id': 'q1', 'title': 'Actiefilms jaren 90'});
+      final refused = await act(
+        prompt,
+        tools,
+        replies: [
+          reply({'query_id': 'q1', 'can_become_home_row': false}),
+        ],
+      );
+      expect(refused['content'], 'Die zoekopdracht kan geen rij worden.');
+    });
+
+    test('negative control: a run that is not offered the tool fails instead of answering', () async {
+      final response = await post('/v1/chat/completions', {
+        'model': 'pleya-verify',
+        'messages': [
+          {'role': 'user', 'content': 'Scan alle filmbibliotheken op al mijn servers.'},
+        ],
+        'tools': const [],
+      });
+      expect(response.statusCode, 400);
+    });
+  });
+
   test('unavailable server reference reaches the app failure path without a real server', () async {
     final first = await chat('Controleer de bibliotheek op een niet-beschikbare server.', ['find_media']);
     final call = (first['tool_calls'] as List).single['function'] as Map;

@@ -1320,6 +1320,57 @@ void main() {
     });
   });
 
+  group('DataAggregationService Continue Watching order', () {
+    final now = DateTime.now();
+    int secondsAgo(int days) => now.subtract(Duration(days: days)).millisecondsSinceEpoch ~/ 1000;
+
+    MediaItem film(String id, int watchedDaysAgo) => MediaItem(
+      id: id,
+      backend: MediaBackend.plex,
+      kind: MediaKind.movie,
+      title: id,
+      serverId: 's1',
+      viewOffsetMs: 1000,
+      lastViewedAt: secondsAgo(watchedDaysAgo),
+      continueWatchingKind: ContinueWatchingKind.resume,
+    );
+
+    MediaItem newEpisode(String id, {required int seriesWatchedDaysAgo, required int addedDaysAgo}) => MediaItem(
+      id: id,
+      backend: MediaBackend.plex,
+      kind: MediaKind.episode,
+      title: id,
+      grandparentTitle: 'Show $id',
+      serverId: 's1',
+      parentIndex: 2,
+      index: 5,
+      lastViewedAt: secondsAgo(seriesWatchedDaysAgo),
+      addedAt: secondsAgo(addedDaysAgo),
+      continueWatchingKind: ContinueWatchingKind.nextUp,
+    );
+
+    test('a new episode of a series left alone for months comes right after the last watched title', () async {
+      final result = await service.mergeContinueWatching(const [], [
+        film('older', 5),
+        film('last', 1),
+        newEpisode('new', seriesWatchedDaysAgo: 200, addedDaysAgo: 2),
+      ]);
+
+      expect(result.map((i) => i.id), ['last', 'new', 'older']);
+    });
+
+    test('the limit cuts after the order, not before', () async {
+      final result = await service.mergeContinueWatching(const [], [
+        film('last', 1),
+        film('b', 5),
+        film('c', 9),
+        newEpisode('new', seriesWatchedDaysAgo: 200, addedDaysAgo: 2),
+      ], limit: 2);
+
+      expect(result.map((i) => i.id), ['last', 'new']);
+    });
+  });
+
   // Fase-0 baseline for Pleya Unified TV 2026 (docs/tvos-unified-experience.md
   // hoofdstuk 27): this group locks in the existing DataAggregationService
   // call-count behavior that fase 0 must not change before any

@@ -247,6 +247,53 @@ void main() {
     });
   });
 
+  group('server.admin-jobs.v1', () {
+    test('lists one failed job, retries it through running to succeeded, and logs a scan', () async {
+      final server = PleyaFakeServer();
+      expect(applyNamedFixture(server, 'server.admin-jobs.v1'), isTrue);
+      expect(server.usersCapability, isTrue);
+      expect(server.adminJobs.single['state'], 'failed');
+
+      Future<Map<String, dynamic>> jobs() async {
+        final response = await server.handle(
+          http.Request('GET', Uri.parse('http://f/pleya/v1/jobs'))..headers['Authorization'] = 'Bearer at-0',
+        );
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+
+      expect((await jobs())['items'].single['state'], 'failed');
+      final retry = await server.handle(
+        http.Request('POST', Uri.parse('http://f/pleya/v1/jobs/job-failed-1/retry'))
+          ..headers['Authorization'] = 'Bearer at-0',
+      );
+      expect(retry.statusCode, 200);
+      expect(server.retryRequests, ['job-failed-1']);
+      for (var i = 0; i < 4; i++) {
+        expect((await jobs())['items'].single['state'], 'running', reason: 'read ${i + 1}');
+      }
+      expect((await jobs())['items'].single['state'], 'succeeded');
+
+      final scan = await server.handle(
+        http.Request('POST', Uri.parse('http://f/pleya/v1/libraries/lib-movies/scan'))
+          ..headers['Authorization'] = 'Bearer at-0',
+      );
+      expect(scan.statusCode, 202);
+      expect(server.scanRequests, ['lib-movies']);
+    });
+
+    test('negative control: without the fixture the routes do not exist, and a reset clears them', () async {
+      final server = PleyaFakeServer();
+      final response = await server.handle(
+        http.Request('GET', Uri.parse('http://f/pleya/v1/jobs'))..headers['Authorization'] = 'Bearer at-0',
+      );
+      expect(response.statusCode, isNot(200));
+      applyNamedFixture(server, 'server.admin-jobs.v1');
+      server.reset();
+      expect(server.adminJobs, isEmpty);
+      expect(server.usersCapability, isFalse);
+    });
+  });
+
   group('activity.active-session.v1', () {
     test('returns false without a tautulli server, seeds one when given', () {
       final server = PleyaFakeServer();
@@ -282,10 +329,7 @@ void main() {
       final seasons = server.items.entries.where((e) => e.value['kind'] == 'season').toList()
         ..sort((a, b) => (a.value['index'] as int).compareTo(b.value['index'] as int));
       expect([for (final s in seasons) s.value['index']], [1, 2, 3, 4]);
-      expect(
-        [for (final s in seasons) server.items.values.where((i) => i['parent_id'] == s.key).length],
-        [2, 3, 4, 5],
-      );
+      expect([for (final s in seasons) server.items.values.where((i) => i['parent_id'] == s.key).length], [2, 3, 4, 5]);
     });
   });
 

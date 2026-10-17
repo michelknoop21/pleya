@@ -123,6 +123,9 @@ class BigPResultCard extends StatelessWidget {
         'error': error,
         'actions': actions.length,
         'reason': failureText,
+        // The phase of the first followed job as one value, for Pleya Verify to
+        // compare (a list never equals a list).
+        'jobPhase': actions.map((a) => a.progress?.phase.name).nonNulls.firstOrNull,
         // Per followed job: phase and percent, for Pleya Verify.
         'jobs': [
           for (final a in actions)

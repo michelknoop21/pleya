@@ -1056,6 +1056,8 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get tvShow => 'TV Serie';
 	@override String minutesLeft({required Object minutes}) => '${minutes} min over';
 	@override String get nextEpisodeStatus => 'Volgende aflevering';
+	@override String get newEpisodeStatus => 'Nieuwe aflevering';
+	@override String get newSeasonStatus => 'Nieuw seizoen';
 	@override String get cwSectionResumeShows => 'Series hervatten';
 	@override String get cwSectionResumeMovies => 'Films hervatten';
 	@override String get cwSectionNextEpisodes => 'Volgende afleveringen';
@@ -3236,6 +3238,28 @@ class _TranslationsUnifiedCatalogHomeRowsNl extends TranslationsUnifiedCatalogHo
 	@override String get emptyPreviewTitle => 'Niets voldoet aan dit filter';
 	@override String get emptyPreviewBody => 'Maak het filter ruimer, of kies een andere sortering.';
 	@override String morePosters({required Object count}) => '+${count}';
+	@override String get dragIntro => 'Sleep aan het handvat om te verplaatsen. Uitgelicht en Verder kijken blijven staan waar ze staan.';
+	@override String get dragIntroTablet => 'Sleep aan het handvat om te verplaatsen. Tik op een eigen rij om hem te bewerken.';
+	@override String get dragIntroDesktop => 'Sleep een rij met de muis naar zijn nieuwe plek. Uitgelicht en Verder kijken blijven staan waar ze staan.';
+	@override String get sectionFixed => 'Vast';
+	@override String get sectionYours => 'Jouw rijen';
+	@override String onHomeCount({required Object shown, required Object total}) => '${shown} van ${total} op Home';
+	@override String titlesCount({required Object count}) => '${count} titels';
+	@override String sourcesCount({required Object count}) => '${count} bronnen';
+	@override String get optInNote => 'standaard uit';
+	@override String get onlyPlex => 'alleen Plex';
+	@override String get hideOnHome => 'Verbergen op Home';
+	@override String get showOnHome => 'Tonen op Home';
+	@override String allInCatalogMenu({required Object catalog}) => 'Alle in ${catalog}';
+	@override String get moreActions => 'Meer acties';
+	@override String get dragHandle => 'Verplaatsen';
+	@override String rowPosition({required Object position, required Object total}) => 'Rij ${position} van ${total}';
+	@override String get removeTitle => 'Rij verwijderen?';
+	@override String removeBody({required Object name}) => '${name} verdwijnt van Home. De titels zelf blijven staan. Dit kun je niet ongedaan maken.';
+	@override String stepOf({required Object step}) => 'Stap ${step} van 3';
+	@override String get close => 'Sluiten';
+	@override String editRowTitle({required Object name}) => '${name} bewerken';
+	@override String get pickRowToEdit => 'Tik op een eigen rij om hem te bewerken, of maak een nieuwe.';
 }
 
 // Path: tvMyPleya.semantics
@@ -3257,6 +3281,7 @@ class _TranslationsAssistantKidsNl extends TranslationsAssistantKidsEn {
 
 	// Translations
 	@override String get agesFirst => 'Ik moet eerst weten hoe oud de kinderen zijn.';
+	@override String get householdFirst => 'Ik weet nog niet welke kinderen je bedoelt en hoe oud ze zijn, dus ik laat geen titels zien.';
 	@override String get noFit => 'Ik heb geen titel die bij de leeftijd van de kinderen past. Vraag het me anders.';
 	@override String get header => 'Pleya vraagt';
 	@override String get title => 'Hoe oud zijn de kinderen?';
@@ -3617,6 +3642,7 @@ class _TranslationsAssistantEndsNl extends TranslationsAssistantEndsEn {
 	@override String get sourceChanged => 'Je profiel of serververbinding is gewijzigd. Voer de controle opnieuw uit.';
 	@override String get operationUnavailable => 'Deze opdracht kon niet worden uitgevoerd met de beschikbare serverfuncties.';
 	@override String get permissionDenied => 'Je hebt geen toestemming voor deze beheeropdracht op de server.';
+	@override String get malformedToolCall => 'Dat ging mis bij het opzoeken. Probeer het nog eens.';
 }
 
 // Path: assistant.settings
@@ -5006,6 +5032,8 @@ extension on TranslationsNl {
 			'discover.tvShow' => 'TV Serie',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min over',
 			'discover.nextEpisodeStatus' => 'Volgende aflevering',
+			'discover.newEpisodeStatus' => 'Nieuwe aflevering',
+			'discover.newSeasonStatus' => 'Nieuw seizoen',
 			'discover.cwSectionResumeShows' => 'Series hervatten',
 			'discover.cwSectionResumeMovies' => 'Films hervatten',
 			'discover.cwSectionNextEpisodes' => 'Volgende afleveringen',
@@ -5217,10 +5245,10 @@ extension on TranslationsNl {
 			'logs.noMatchingLogs' => 'Geen regels op dit niveau',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} van ${total} regels',
 			'licenses.relatedPackages' => 'Gerelateerde pakketten',
-			'licenses.license' => 'Licentie',
-			'licenses.licenseNumber' => ({required Object number}) => 'Licentie ${number}',
 			_ => null,
 		} ?? switch (path) {
+			'licenses.license' => 'Licentie',
+			'licenses.licenseNumber' => ({required Object number}) => 'Licentie ${number}',
 			'licenses.licensesCount' => ({required Object count}) => '${count} licenties',
 			'navigation.libraries' => 'Media',
 			'navigation.downloads' => 'Downloads',
@@ -5731,10 +5759,10 @@ extension on TranslationsNl {
 			'metadataEdit.latestEpisode' => 'Nieuwste aflevering',
 			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Afleveringen toegevoegd in de afgelopen ${count} dagen',
 			'metadataEdit.deleteAfterPlaying' => 'Afleveringen verwijderen na afspelen',
-			'metadataEdit.never' => 'Nooit',
-			'metadataEdit.afterADay' => 'Na een dag',
 			_ => null,
 		} ?? switch (path) {
+			'metadataEdit.never' => 'Nooit',
+			'metadataEdit.afterADay' => 'Na een dag',
 			'metadataEdit.afterAWeek' => 'Na een week',
 			'metadataEdit.afterAMonth' => 'Na een maand',
 			'metadataEdit.onNextRefresh' => 'Bij volgende verversing',
@@ -6245,10 +6273,10 @@ extension on TranslationsNl {
 			'unifiedCatalog.home.featured' => 'Uitgelicht',
 			'unifiedCatalog.homeRows.customize' => 'Home aanpassen',
 			'unifiedCatalog.homeRows.customizeSubtitle' => 'Verplaats of verberg rijen, of maak er een van een filter',
-			'unifiedCatalog.homeRows.customizeIntro' => 'Verplaats, verberg of bewerk je rijen. Uitgelicht en Verder kijken blijven staan waar ze staan.',
-			'unifiedCatalog.homeRows.featured' => 'Uitgelicht',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.homeRows.customizeIntro' => 'Verplaats, verberg of bewerk je rijen. Uitgelicht en Verder kijken blijven staan waar ze staan.',
+			'unifiedCatalog.homeRows.featured' => 'Uitgelicht',
 			'unifiedCatalog.homeRows.alwaysFirst' => 'Altijd bovenaan',
 			'unifiedCatalog.homeRows.alwaysSecond' => 'Altijd tweede',
 			'unifiedCatalog.homeRows.fixed' => 'vast',
@@ -6293,6 +6321,28 @@ extension on TranslationsNl {
 			'unifiedCatalog.homeRows.emptyPreviewTitle' => 'Niets voldoet aan dit filter',
 			'unifiedCatalog.homeRows.emptyPreviewBody' => 'Maak het filter ruimer, of kies een andere sortering.',
 			'unifiedCatalog.homeRows.morePosters' => ({required Object count}) => '+${count}',
+			'unifiedCatalog.homeRows.dragIntro' => 'Sleep aan het handvat om te verplaatsen. Uitgelicht en Verder kijken blijven staan waar ze staan.',
+			'unifiedCatalog.homeRows.dragIntroTablet' => 'Sleep aan het handvat om te verplaatsen. Tik op een eigen rij om hem te bewerken.',
+			'unifiedCatalog.homeRows.dragIntroDesktop' => 'Sleep een rij met de muis naar zijn nieuwe plek. Uitgelicht en Verder kijken blijven staan waar ze staan.',
+			'unifiedCatalog.homeRows.sectionFixed' => 'Vast',
+			'unifiedCatalog.homeRows.sectionYours' => 'Jouw rijen',
+			'unifiedCatalog.homeRows.onHomeCount' => ({required Object shown, required Object total}) => '${shown} van ${total} op Home',
+			'unifiedCatalog.homeRows.titlesCount' => ({required Object count}) => '${count} titels',
+			'unifiedCatalog.homeRows.sourcesCount' => ({required Object count}) => '${count} bronnen',
+			'unifiedCatalog.homeRows.optInNote' => 'standaard uit',
+			'unifiedCatalog.homeRows.onlyPlex' => 'alleen Plex',
+			'unifiedCatalog.homeRows.hideOnHome' => 'Verbergen op Home',
+			'unifiedCatalog.homeRows.showOnHome' => 'Tonen op Home',
+			'unifiedCatalog.homeRows.allInCatalogMenu' => ({required Object catalog}) => 'Alle in ${catalog}',
+			'unifiedCatalog.homeRows.moreActions' => 'Meer acties',
+			'unifiedCatalog.homeRows.dragHandle' => 'Verplaatsen',
+			'unifiedCatalog.homeRows.rowPosition' => ({required Object position, required Object total}) => 'Rij ${position} van ${total}',
+			'unifiedCatalog.homeRows.removeTitle' => 'Rij verwijderen?',
+			'unifiedCatalog.homeRows.removeBody' => ({required Object name}) => '${name} verdwijnt van Home. De titels zelf blijven staan. Dit kun je niet ongedaan maken.',
+			'unifiedCatalog.homeRows.stepOf' => ({required Object step}) => 'Stap ${step} van 3',
+			'unifiedCatalog.homeRows.close' => 'Sluiten',
+			'unifiedCatalog.homeRows.editRowTitle' => ({required Object name}) => '${name} bewerken',
+			'unifiedCatalog.homeRows.pickRowToEdit' => 'Tik op een eigen rij om hem te bewerken, of maak een nieuwe.',
 			'tvNavigation.activeDestination' => 'huidige sectie',
 			'tvNavigation.attentionRequired' => 'vereist aandacht',
 			'tvMyPleya.groupContent' => 'Mijn content',
@@ -6385,6 +6435,7 @@ extension on TranslationsNl {
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Ondertitels',
 			'assistant.kids.agesFirst' => 'Ik moet eerst weten hoe oud de kinderen zijn.',
+			'assistant.kids.householdFirst' => 'Ik weet nog niet welke kinderen je bedoelt en hoe oud ze zijn, dus ik laat geen titels zien.',
 			'assistant.kids.noFit' => 'Ik heb geen titel die bij de leeftijd van de kinderen past. Vraag het me anders.',
 			'assistant.kids.header' => 'Pleya vraagt',
 			'assistant.kids.title' => 'Hoe oud zijn de kinderen?',
@@ -6701,6 +6752,7 @@ extension on TranslationsNl {
 			'assistant.ends.sourceChanged' => 'Je profiel of serververbinding is gewijzigd. Voer de controle opnieuw uit.',
 			'assistant.ends.operationUnavailable' => 'Deze opdracht kon niet worden uitgevoerd met de beschikbare serverfuncties.',
 			'assistant.ends.permissionDenied' => 'Je hebt geen toestemming voor deze beheeropdracht op de server.',
+			'assistant.ends.malformedToolCall' => 'Dat ging mis bij het opzoeken. Probeer het nog eens.',
 			'assistant.summonHint' => 'Houd Play/Pauze ingedrukt om Big P op te roepen',
 			'assistant.contextAction' => 'Vraag Big P',
 			'assistant.settings.title' => 'Big P instellen',
@@ -6735,6 +6787,8 @@ extension on TranslationsNl {
 			'assistant.settings.unreadableTitle' => 'Big P-instelling vervangen?',
 			'assistant.settings.unreadableBody' => 'Je iCloud-sleutelhanger heeft een Big P-instelling van een nieuwere Pleya op een ander apparaat. Deze versie kan die niet lezen. Vervangen wijzigt de instelling op al je apparaten.',
 			'assistant.settings.replace' => 'Vervangen',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.settings.currentModel' => 'Model',
 			'assistant.settings.keyStored' => 'Opgeslagen, verborgen',
 			'assistant.settings.errorUrlInvalid' => 'Vul een adres in dat begint met http:// of https://.',
@@ -6761,8 +6815,6 @@ extension on TranslationsNl {
 			'assistant.settings.updating' => ({required Object status}) => 'Bijwerken: ${status}',
 			'assistant.settings.updateDone' => ({required Object model}) => '${model} is bijgewerkt',
 			'assistant.settings.pullErrorUnknown' => 'Ollama heeft dit model niet meer in de bibliotheek. Kies een ander model.',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.settings.pullErrorDisk' => 'Te weinig schijfruimte op de server om het model bij te werken.',
 			'assistant.settings.pullErrorFailed' => ({required Object reason}) => 'Model bijwerken mislukt: ${reason}',
 			'assistant.settings.webSearch' => 'Zoeken op internet',

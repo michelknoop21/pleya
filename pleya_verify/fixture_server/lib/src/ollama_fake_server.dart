@@ -173,6 +173,57 @@ class OllamaFakeServer {
         } else {
           return _json({'error': 'search tool not offered'}, status: 400);
         }
+      } else if (prompt == 'Scan alle filmbibliotheken op al mijn servers.') {
+        // Start question "scan" (BP-10): list the libraries, scan the movie one.
+        final tool = _tool(body, 'scan_library');
+        if (replies.length >= 2) {
+          message = {'role': 'assistant', 'content': 'De scan is gestart.'};
+        } else if (tool == null) {
+          return _json({'error': 'scan_library not offered'}, status: 400);
+        } else if (replies.isEmpty) {
+          message = _call('list-libraries', 'list_libraries', {'server_id': _serverId(tool)});
+        } else {
+          final libraries = (_output(replies.last)['libraries'] as List?) ?? const [];
+          final movies = libraries.cast<Map>().firstWhere(
+            (library) => library['kind'] == 'movie',
+            orElse: () => libraries.cast<Map>().first,
+          );
+          message = _call('scan-movies', 'scan_library', {
+            'server_id': _serverId(tool),
+            'library_id': movies['library_id'],
+          });
+        }
+      } else if (prompt == 'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.') {
+        // Start question "retryJobs" (BP-10): list the jobs, restart the failed one.
+        final tool = _tool(body, 'retry_job');
+        if (replies.length >= 2) {
+          message = {'role': 'assistant', 'content': 'De taak is opnieuw gestart.'};
+        } else if (tool == null) {
+          return _json({'error': 'retry_job not offered'}, status: 400);
+        } else if (replies.isEmpty) {
+          message = _call('list-jobs', 'list_jobs', {'server_id': _serverId(tool)});
+        } else {
+          final jobs = (_output(replies.last)['jobs'] as List?) ?? const [];
+          final failed = jobs.cast<Map>().firstWhere((job) => job['can_retry'] == true, orElse: () => {});
+          if (failed.isEmpty) {
+            message = {'role': 'assistant', 'content': 'Er zijn geen mislukte taken.'};
+          } else {
+            message = _call('retry-failed', 'retry_job', {'server_id': _serverId(tool), 'job_id': failed['job_id']});
+          }
+        }
+      } else if (prompt == 'Maak een Home-rij met actiefilms uit de jaren negentig.') {
+        // Start question "homeRow" (BP-10): a catalogue search, then the row.
+        if (!names.contains('create_home_row')) return _json({'error': 'create_home_row not offered'}, status: 400);
+        if (replies.length >= 2) {
+          message = {'role': 'assistant', 'content': 'De rij staat op je Home.'};
+        } else if (replies.isEmpty) {
+          message = _call('search-movies', 'search_catalog', {'kind': 'movie'});
+        } else {
+          final output = _output(replies.last);
+          message = output['can_become_home_row'] == true
+              ? _call('home-row', 'create_home_row', {'query_id': output['query_id'], 'title': 'Actiefilms jaren 90'})
+              : {'role': 'assistant', 'content': 'Die zoekopdracht kan geen rij worden.'};
+        }
       } else {
         return _json({'error': 'unsupported fixture transcript'}, status: 400);
       }
@@ -185,6 +236,21 @@ class OllamaFakeServer {
       return _json({'error': 'invalid model fixture request'}, status: 400);
     }
   }
+
+  /// The offered tool called [name], or null when this run was not given it.
+  Map<String, dynamic>? _tool(Map<String, dynamic> body, String name) {
+    for (final tool in body['tools'] as List? ?? const []) {
+      if (tool['function']['name'] == name) return tool as Map<String, dynamic>;
+    }
+    return null;
+  }
+
+  /// The one server the offered tool allows; the fixture never invents one.
+  String? _serverId(Map<String, dynamic> tool) =>
+      ((tool['function']['parameters']['properties']['server_id']?['enum']) as List?)?.firstOrNull as String?;
+
+  Map<String, dynamic> _output(Map<String, dynamic> reply) =>
+      jsonDecode(reply['content'] as String) as Map<String, dynamic>;
 
   Map<String, Object?> _call(String id, String name, Map<String, Object?> arguments) => {
     'role': 'assistant',

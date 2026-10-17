@@ -51,6 +51,160 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 374 · 16 October 2026 · Apple TV
+
+<!-- commit: 55d66c0ab1b95c31fc62d4be59aaf1c50576a95c -->
+
+### Improved
+- **A tip from Big P is a statement, not a question.** Big P says what it recommends and why,
+  and names only titles from your tips, no more than you asked for. Before, a tip could read as
+  "How does it sound?".
+- **In a tip, the titles Big P names are the titles on its cards.** The cards stay within the
+  number you asked for. A sentence that names a title without a card is left out; if nothing
+  is left, Big P says "These are the titles I could check", or "I could not check a title for
+  this" when there are no cards. A film and an alternative count as two.
+- **Continue Watching follows your last watch.** The title you watched last comes first, then
+  at most two series with a new episode or a new season, then the rest. A new episode or
+  season is labelled when it was added in the last two weeks, after your last watch. Titles
+  you have left alone for more than 90 days move to the end, and to "Started earlier" in the
+  full overview.
+
+### Fixed
+- **Big P no longer shows a garbled tool call as its answer.** When a model writes its request
+  as text with tags instead of calling the tool, Big P hides that text, asks the model again
+  once and, if it stays garbled, says so in its own words. An action that already succeeded is
+  not repeated.
+- **Rearranging Home rows on Apple TV keeps your own rows where you put them.** A Plex server with
+  several film libraries shows one "Recently Added" row per library; those rows now move
+  together as one block, a row of your own above them no longer jumps back, and the arrows
+  only light up where a press does something.
+
+### Notes
+- Big P's tip and card behaviour was measured earlier against two cloud models with stand-in servers,
+  not on a device or with your own library. Titles with a short common name are only
+  recognised in a sentence when they are marked or have their year.
+- Continue Watching reads the last watch date per series from Jellyfin, Emby and Plex; a
+  Pleya Server does not provide it yet, so it shows no new-episode label.
+- Nothing in this build has been checked on a device yet.
+
+### Worth checking
+- Ask Big P "geef me een tip voor vanavond", "zoek een film voor vanavond" and "geef me drie
+  tips voor vanavond". Check that each answer is a statement and that it names exactly the
+  titles on its cards: one, one and three.
+- Ask for a film and an alternative. Check that you get two cards and both titles in the text.
+- Open Home. Check that Continue Watching starts with what you watched last, and that an
+  episode added in the last two weeks to a series you watched earlier is labelled.
+- On Apple TV, open Home customisation and move one of your own rows past a "Recently Added"
+  row. Check that it stays where you put it.
+
+## 2.8.1 · build 373 · 16 October 2026 · iPhone and iPad
+
+<!-- commit: 55d66c0ab1b95c31fc62d4be59aaf1c50576a95c -->
+
+### Improved
+- **A tip from Big P is a statement, not a question.** Big P says what it recommends and why,
+  and names only titles from your tips, no more than you asked for. Before, a tip could read as
+  "How does it sound?".
+- **In a tip, the titles Big P names are the titles on its cards.** The cards stay within the
+  number you asked for. A sentence that names a title without a card is left out; if nothing
+  is left, Big P says "These are the titles I could check", or "I could not check a title for
+  this" when there are no cards. A film and an alternative count as two.
+- **Continue Watching follows your last watch.** The title you watched last comes first, then
+  at most two series with a new episode or a new season, then the rest. A new episode or
+  season is labelled when it was added in the last two weeks, after your last watch. Titles
+  you have left alone for more than 90 days move to the end, and to "Started earlier" in the
+  full overview.
+
+### Fixed
+- **Big P no longer shows a garbled tool call as its answer.** When a model writes its request
+  as text with tags instead of calling the tool, Big P hides that text, asks the model again
+  once and, if it stays garbled, says so in its own words. An action that already succeeded is
+  not repeated.
+
+### Notes
+- Big P's tip and card behaviour was measured earlier against two cloud models with stand-in servers,
+  not on a device or with your own library. Titles with a short common name are only
+  recognised in a sentence when they are marked or have their year.
+- Continue Watching reads the last watch date per series from Jellyfin, Emby and Plex; a
+  Pleya Server does not provide it yet, so it shows no new-episode label.
+- Nothing in this build has been checked on a device yet.
+
+### Worth checking
+- Ask Big P "geef me een tip voor vanavond", "zoek een film voor vanavond" and "geef me drie
+  tips voor vanavond". Check that each answer is a statement and that it names exactly the
+  titles on its cards: one, one and three.
+- Ask for a film and an alternative. Check that you get two cards and both titles in the text.
+- Open Home. Check that Continue Watching starts with what you watched last, and that an
+  episode added in the last two weeks to a series you watched earlier is labelled.
+
+## 2.8.1 · build 372 · 16 October 2026 · Apple TV
+
+<!-- commit: 64dd8d8d99172e1063454627d05f9b76f5f8c7f5 -->
+
+### Fixed
+- **Big P keeps the kind of item you asked about.** A question about films or episodes is
+  checked against that kind, also when you answer a follow-up such as "go on". A question that
+  names neither checks both. Before, a kind the model guessed could narrow a check to films or
+  series you did not ask about.
+- **"Show me" no longer means series.** The verb "show" alone no longer counts as a request
+  about series; nouns such as "shows", "series" or "episodes" still do.
+- **A server that drops out during a check no longer ends the whole check.** What Big P read
+  before the server went away stays in the answer, and the answer says that a server could not
+  be reached and its libraries were not checked. An action Big P proposes still needs every
+  server in the check to be reachable.
+- **A profile without servers is no longer told a server is offline.** Big P says it has no
+  checked library data instead of reporting a failed connection.
+- **A long answer lists at most eight groups of titles with several copies.** The rest is
+  counted, not listed.
+
+### Notes
+- Checks remain limited to the titles read within the existing diagnosis budget. Partial
+  coverage is reported; this is not an exhaustive whole-library audit.
+- If every server drops out during a check, Big P reports an error instead of a partial
+  answer.
+- Focused automated tests pass. This correction has not been checked on a physical device.
+
+### Worth checking
+- On a reachable server ask for missing episodes, then answer a follow-up such as "go on".
+  Check that the second answer still reads series and not films.
+- Switch one of two servers off and ask for a check. Check that the answer says a server
+  cannot be reached and still shows what the other one returned. The other server needs
+  libraries of the kind you ask about.
+
+## 2.8.1 · build 371 · 16 October 2026 · iPhone and iPad
+
+<!-- commit: 64dd8d8d99172e1063454627d05f9b76f5f8c7f5 -->
+
+### Fixed
+- **Big P keeps the kind of item you asked about.** A question about films or episodes is
+  checked against that kind, also when you answer a follow-up such as "go on". A question that
+  names neither checks both. Before, a kind the model guessed could narrow a check to films or
+  series you did not ask about.
+- **"Show me" no longer means series.** The verb "show" alone no longer counts as a request
+  about series; nouns such as "shows", "series" or "episodes" still do.
+- **A server that drops out during a check no longer ends the whole check.** What Big P read
+  before the server went away stays in the answer, and the answer says that a server could not
+  be reached and its libraries were not checked. An action Big P proposes still needs every
+  server in the check to be reachable.
+- **A profile without servers is no longer told a server is offline.** Big P says it has no
+  checked library data instead of reporting a failed connection.
+- **A long answer lists at most eight groups of titles with several copies.** The rest is
+  counted, not listed.
+
+### Notes
+- Checks remain limited to the titles read within the existing diagnosis budget. Partial
+  coverage is reported; this is not an exhaustive whole-library audit.
+- If every server drops out during a check, Big P reports an error instead of a partial
+  answer.
+- Focused automated tests pass. This correction has not been checked on a physical device.
+
+### Worth checking
+- On a reachable server ask for missing episodes, then answer a follow-up such as "go on".
+  Check that the second answer still reads series and not films.
+- Switch one of two servers off and ask for a check. Check that the answer says a server
+  cannot be reached and still shows what the other one returned. The other server needs
+  libraries of the kind you ask about.
+
 ## 2.8.1 · build 370 · 15 October 2026 · Apple TV
 
 <!-- commit: 2aaddfd9f982e4849134f9f85f035ed4177a87a7 -->
