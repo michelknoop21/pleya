@@ -18,13 +18,25 @@ import 'big_p_eval_runner.dart';
 //   vault-exec OLLAMA_CLOUD_API --env-var OLLAMA_CLOUD_API -- \
 //     flutter test --tags live-model --run-skipped test/assistant/eval/big_p_eval_live_test.dart
 //
-// Every case runs three times per model; each run is one JSON line in
+// Every case runs three times per model (BIG_P_EVAL_ATTEMPTS, BIG_P_EVAL_MODELS); each run is one JSON line in
 // build/big_p_eval/live-<stamp>.jsonl (ignored by version control). Only the summary goes into the
 // roadmap. A hard violation in a case without expectFail fails the test; an
 // expected failure is only recorded.
 
-const _models = ['glm-5.3-flash', 'gemma4:31b'];
-const _attempts = 3;
+const _defaultModels = ['glm-5.3-flash', 'gemma4:31b'];
+const _defaultAttempts = 3;
+
+/// `BIG_P_EVAL_MODELS=glm-5.3-flash,gemma4:31b` narrows or replaces the
+/// models; `BIG_P_EVAL_ATTEMPTS=1` sets the runs per case (1 to 10).
+final _models = () {
+  final named = (Platform.environment['BIG_P_EVAL_MODELS'] ?? '')
+      .split(',')
+      .map((m) => m.trim())
+      .where((m) => m.isNotEmpty)
+      .toList();
+  return named.isEmpty ? _defaultModels : named;
+}();
+final _attempts = (int.tryParse(Platform.environment['BIG_P_EVAL_ATTEMPTS'] ?? '') ?? _defaultAttempts).clamp(1, 10);
 
 String? _key() {
   // Only this name: under `vault-exec <other credential>` another secret
