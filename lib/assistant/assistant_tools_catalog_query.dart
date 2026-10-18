@@ -379,6 +379,11 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       sampled |= filtered.sampled;
     }
     checkCurrent();
+    // Each server answers "unwatched" for its own copy only. A title this
+    // profile watched as a copy elsewhere is not unseen.
+    applyWindow(groups);
+    final seenElsewhere = unwatched ? await _dropSeenByProfile(ctx, groups) : 0;
+    final startedDropped = unwatched ? _dropStarted(groups) : 0;
     var belowRating = 0;
     double? bestBelow;
     if (minRating != null) {
@@ -390,11 +395,6 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
         return true;
       });
     }
-    // Each server answers "unwatched" for its own copy only. A title this
-    // profile watched as a copy elsewhere is not unseen.
-    applyWindow(groups);
-    final seenElsewhere = unwatched ? await _dropSeenByProfile(ctx, groups) : 0;
-    final startedDropped = unwatched ? _dropStarted(groups) : 0;
     checkCurrent();
     // The window's total was counted before the history dropped titles.
     if (cutoff != null) total = groups.length;
@@ -442,7 +442,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   var partial = false;
   // A server's search stops at its own limit: its hits are then a sample.
   var searchCapped = false;
-  var belowRating = 0;
+  final belowKeys = <String>{};
   double? bestBelow;
   // Every server is asked at the same time and none may hold the others up:
   // one that fails or does not answer in time is named and the rest still
@@ -498,11 +498,6 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       if (years.isNotEmpty && !years.contains(hit.year)) continue;
       if (unwatched && hit.isWatched) continue;
       if (inProgress && !hit.hasActiveProgress) continue;
-      if (minRating != null && (hit.rating ?? -1) < minRating) {
-        belowRating++;
-        if (hit.rating != null && (bestBelow == null || hit.rating! > bestBelow)) bestBelow = hit.rating;
-        continue;
-      }
       final item = (hit.serverId?.isEmpty ?? true) ? hit.copyWith(serverId: id.value) : hit;
       if (filterHiddenLibraryItems([item], hidden).isEmpty) continue;
       // Search hits often carry no genres (Jellyfin's never do): such a hit
@@ -511,6 +506,16 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       if (genres.isNotEmpty && itemGenres.isNotEmpty) {
         if (!genres.any((g) => itemGenres.contains(g.toLowerCase()))) continue;
         genreChecked.add(item.globalKey);
+      }
+      // Last of the filters, and once per title: a title on two servers under
+      // the minimum is one title under it.
+      if (minRating != null && (hit.rating ?? -1) < minRating) {
+        if (belowKeys.add('${assistantTitleKey(item.title ?? '')}|${item.year ?? ''}') &&
+            hit.rating != null &&
+            (bestBelow == null || hit.rating! > bestBelow)) {
+          bestBelow = hit.rating;
+        }
+        continue;
       }
       found.add(item);
     }
@@ -563,7 +568,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     moreMatches: searchCapped,
     matchesRead: groups.length,
     seenElsewhere: seenBefore,
-    belowRating: belowRating,
+    belowRating: belowKeys.length,
     bestBelowRating: bestBelow,
     addedOrder: sort == 'added' || sort == 'added_oldest' ? sort : null,
     addedUnknown: addedUnknown,

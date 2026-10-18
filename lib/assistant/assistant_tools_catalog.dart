@@ -190,7 +190,7 @@ final List<AssistantTool> _catalogTools = [
         },
         if (age == null && query.seenElsewhere > 0) 'seen_before': query.seenElsewhere,
         // Nothing reaches the minimum rating: how many sit just under it.
-        if (query.groups.isEmpty && query.belowRating > 0) ...{
+        if (age == null && query.offset == 0 && query.groups.isEmpty && query.belowRating > 0) ...{
           'below_min_rating': query.belowRating,
           if (query.bestBelowRating != null) 'best_rating_below': query.bestBelowRating,
         },

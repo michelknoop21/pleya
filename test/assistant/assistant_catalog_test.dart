@@ -870,6 +870,37 @@ void main() {
     expect(fine.containsKey('below_min_rating'), isFalse, reason: 'control: a result is left, nothing to explain');
   });
 
+  test(
+    'min_rating: paging past the end says nothing about the rating, and watched titles are not counted (BP-11m)',
+    () async {
+      final (ctx, _, _, _) = await setUpCtx(
+        groups: [
+          _group('m1', 'Alien', rating: 8.1),
+          _group('m2', 'Aliens', rating: 8.4),
+          _group('m3', 'Heat', rating: 5.0),
+        ],
+      );
+      final past = await search(ctx, {'kind': 'movie', 'min_rating': 8, 'offset': 5});
+      expect(past['results'], isEmpty);
+      expect(past.containsKey('below_min_rating'), isFalse, reason: 'two titles reach 8: the page is past the end');
+    },
+  );
+
+  test('min_rating in a text search: a title on two servers under the minimum counts once (BP-11m)', () async {
+    final m = MultiServerManager();
+    addTearDown(m.dispose);
+    for (final id in ['jf-2', 'jf-3']) {
+      m.debugRegisterClientForTesting(
+        _SearchServer(id, MediaBackend.jellyfin, hits: [_movie('a', 'Alien').copyWith(rating: 6.2, serverId: id)]),
+      );
+    }
+    final (ctx, _, _, _) = await setUpCtx(servers: m);
+    final data = await search(ctx, {'text': 'alien', 'min_rating': 7});
+    expect(data['results'], isEmpty);
+    expect(data['best_rating_below'], 6.2);
+    expect(data['below_min_rating'], 1);
+  });
+
   test('find_title says it is not for the films of an actor; search_catalog person is (BP-11m)', () {
     final find = assistantTools.firstWhere((t) => t.name == 'find_title');
     expect(find.description, contains('Not for the films of an actor or director'));
