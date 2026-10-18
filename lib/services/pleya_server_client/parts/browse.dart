@@ -125,6 +125,11 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     try {
       final item = PleyaItem.fromJson(json);
       if (item.kind == null) return null;
+      // The next playback_started claims the revision this client last saw. A
+      // read that moves the item past it, say another device watched on, would
+      // otherwise get that event refused as stale and leave the viewing
+      // without an owner, so its progress would never be stored.
+      _watchLedger.remember(item.id, item.userState?.revision);
       final ancestors = await _ancestorsOf(item);
       return PleyaServerMappers.mediaItem(
         item,

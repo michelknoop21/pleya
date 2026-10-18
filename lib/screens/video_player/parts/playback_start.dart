@@ -203,7 +203,7 @@ extension _VideoPlayerPlaybackStartMethods on VideoPlayerScreenState {
         await ensureAudioFocus();
         if (!attempt.isCurrent) return;
 
-        final resumePosition = await _resolveOpenResumePosition(
+        final resumePosition = await resolveOpenResumePosition(
           metadata: _currentMetadata,
           isOffline: _isOfflinePlayback,
           offlineWatchService: offlineWatchService,
