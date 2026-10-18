@@ -84,11 +84,12 @@ Code: main op 2394cdea, dezelfde opzet (2 modellen, 60 cases, 3 pogingen, 360 ru
 | gemma4:31b | 171 van 180 (eerst 170) | 56 van 60 (eerst 56) |
 | glm-5.3-flash | 169 van 180 (eerst 172) | 55 van 60 (eerst 55) |
 
-Per saldo is er niets aantoonbaar verbeterd of verslechterd: de verschillen zijn drie runs of minder, en dat valt binnen wat een tweede run van dezelfde code ook kan geven. Wat wel gericht gemeten is:
+Per saldo is er niets aantoonbaar verbeterd of verslechterd: de verschillen zijn drie runs of minder. Of dat binnen de ruis valt, is niet gemeten (zie Open). Wat gericht is gemeten:
 
-- `ser-short-series` (glm): van 2 van 3 naar 3 van 3. Begonnen series komen met `unwatched=true` niet meer als kaart terug (BP-11k). `adm-search-with-offline-server` (glm) ging ook van 2 naar 3 van 3, zonder dat BP-11k die case raakt.
+- `ser-short-series` (glm): van 2 van 3 naar 3 van 3. Begonnen series komen met `unwatched=true` niet meer als kaart terug (BP-11k). Verder werden `adm-search-with-offline-server` (glm) en bij gemma `disc-english`, `disc-keyword` en `ser-next-season-no-source` beter; BP-11k raakt die cases niet.
 - Twee promptregels (eerder getoonde titels mogen niet terugkomen; één zoekopdracht voor een genoemd aantal) zijn geprobeerd en geschrapt: gemma zakte met de regels bij `rec-seen-five-others` van 3 van 3 naar 0 van 3, zonder de regels was het weer 3 van 3.
-- Regressies bij glm: `ser-finished-show` (3 van 3 naar 0 van 3, 18 kaarten waar er 2 mochten zijn), `disc-empty-honest` (2 van 3 naar 0 van 3, 5 kaarten waar er geen mochten zijn) en `rec-light-after-dinner` (3 van 3 naar 2 van 3, films bij een serievraag). Bij gemma: `con-everyone-no-capability` (3 van 3 naar 0 van 3, drie kaarten) en `adm-search-with-offline-server` (1 van 3 naar 0 van 3, noemt de offline server niet). Het patroon bij glm en de kaarten bij `con-everyone` is hetzelfde als bij `rec-seen-five-others`: een model dat meerdere zoekopdrachten doet, toont de kaarten van alle zoekopdrachten, ook als het er maar enkele noemt. Dat is een toolprobleem en geen promptprobleem; het is nog niet opgelost.
+- Regressies bij glm: `ser-finished-show` (3 van 3 naar 0 van 3, 18 kaarten waar er 2 mochten zijn), `disc-empty-honest` (2 van 3 naar 0 van 3, 3 tot 5 kaarten waar er geen mochten zijn) en `rec-light-after-dinner` (3 van 3 naar 2 van 3, films bij een serievraag). Bij gemma: `con-everyone-no-capability` (3 van 3 naar 0 van 3, drie kaarten, ook zonder de promptregels) en `adm-search-with-offline-server` (1 van 3 naar 0 van 3, noemt de offline server niet).
+- Waarschijnlijke oorzaak bij glm, uit de kaartaantallen afgeleid en niet met een fix getest: een model dat meerdere zoekopdrachten doet, toont de kaarten van alle zoekopdrachten, ook als het er maar enkele noemt. Bij gemma `con-everyone-no-capability` past dit niet: daar is het één zoekopdracht die drie titels noemt, dus de oorzaak is nog onbekend.
 
 ## HTTP-probleem in de live test
 
@@ -104,4 +105,4 @@ Maak één `EvalCase` in het gebied dat past (`test/assistant/eval/cases/`), met
 - De beheer- en huishoudcases (regel 2 en 7) bewijzen alleen de weigering zonder bevoegdheid; ze wachten op een inzichtenfixture.
 - De kwaliteitsbeoordelaar (stap 5) is uitgesteld.
 - De ruis tussen twee runs van dezelfde code is nog niet gemeten: alle drie de metingen zijn van verschillende code.
-- Kaarten van meerdere zoekopdrachten in één beurt worden samen getoond, ook als het antwoord er maar enkele noemt (`rec-seen-five-others`, `ser-finished-show`, `disc-empty-honest`, `con-everyone-no-capability`).
+- Kaarten van meerdere zoekopdrachten in één beurt worden samen getoond, ook als het antwoord er maar enkele noemt (waarschijnlijk de oorzaak bij `rec-seen-five-others`, `ser-finished-show` en `disc-empty-honest` van glm; niet getest).
