@@ -40,6 +40,7 @@ extension _AssistantAnswer on AssistantRun {
     final clean = !aged && seen.isEmpty;
     if (clean && step?.display != null) _displays.add(step!.display!);
     if (clean) _keepTheOneNamed(answer);
+    if (clean) _keepNamedOnly(answer);
     if (clean) _namedFirst(answer);
     if (step != null) {
       onStep?.call(
