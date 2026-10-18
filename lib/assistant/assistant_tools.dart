@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'assistant_account_key.dart';
 import 'assistant_mainstream.dart';
 import 'assistant_media_key.dart';

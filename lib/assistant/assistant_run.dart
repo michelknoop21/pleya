@@ -214,7 +214,7 @@ class AssistantRun {
     this.maxSteps = 6,
     this.languageName = 'Dutch',
     this.confirmTimeout = const Duration(minutes: 2),
-    this.healthRefresh = const Duration(seconds: 10),
+    this.healthRefresh = const Duration(seconds: 4),
     this.onStep,
     this.cancel,
     this.allowSplit = false,
