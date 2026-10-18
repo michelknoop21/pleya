@@ -35,22 +35,37 @@ class EvalMeter {
   /// The tool answers in the latest request body: what the model was told.
   List<({String tool, String content})> tools = const [];
 
+  /// The same calls with the arguments the model sent and the start of the
+  /// answer, one line each, for the record.
+  List<String> trace = const [];
+
   /// Reads the tool answers out of a chat request body.
   void observe(String body) {
     try {
       final messages = (jsonDecode(body) as Map)['messages'] as List;
       final names = <String, String>{};
+      final argsOf = <String, String>{};
       final found = <({String tool, String content})>[];
       for (final m in messages.cast<Map>()) {
         if (m['role'] == 'assistant') {
           for (final call in (m['tool_calls'] as List? ?? const []).cast<Map>()) {
             names['${call['id']}'] = '${(call['function'] as Map)['name']}';
+            argsOf['${call['id']}'] = '${(call['function'] as Map)['arguments']}';
           }
         } else if (m['role'] == 'tool') {
           found.add((tool: names['${m['tool_call_id']}'] ?? '?', content: '${m['content']}'));
         }
       }
       tools = found;
+      trace = [
+        for (final m in messages.cast<Map>())
+          if (m['role'] == 'tool')
+            () {
+              final id = '${m['tool_call_id']}';
+              final body = '${m['content']}';
+              return '${names[id] ?? '?'} ${argsOf[id] ?? ''} -> ${body.length > 300 ? body.substring(0, 300) : body}';
+            }(),
+      ];
     } catch (_) {
       // Not a chat body: keep what was seen.
     }
@@ -95,6 +110,7 @@ Future<EvalOutcome> runEvalCase(
     final tools = <String>[];
     var errors = 0;
     meter.tools = const [];
+    meter.trace = const [];
     final callsBefore = meter.calls;
     final tokensBefore = meter.tokens;
     final watch = Stopwatch()..start();
@@ -122,6 +138,7 @@ Future<EvalOutcome> runEvalCase(
         ..modelCalls = meter.calls - callsBefore
         ..tokens = meter.tokens - tokensBefore
         ..toolResults = meter.tools
+        ..trace = meter.trace
         ..latencyMs = watch.elapsedMilliseconds,
     );
     history.add(AssistantTurn(question: turn.prompt, answer: result.text, kids: c.kids));
@@ -208,6 +225,7 @@ Map<String, Object?> evalRecord(EvalCase c, EvalOutcome o, {required String mode
           'language': evalLanguage(t.result.text),
           'language_ok': evalLanguage(t.result.text) == c.soft.language,
           'tool_errors': t.toolErrors,
+          'tool_trace': t.trace,
           'model_calls': t.modelCalls,
           'tokens': t.tokens,
           'latency_ms': t.latencyMs,

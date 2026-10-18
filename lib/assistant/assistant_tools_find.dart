@@ -105,7 +105,8 @@ final List<AssistantTool> _findTools = [
     name: 'find_title',
     description:
         'Find a film, series or episode the user describes but cannot name, or titles about a subject or theme '
-        '("a film about space"). Interpret the question once: up to 5 candidate titles you suspect (title, year, '
+        '("a film about space"). Not for the films of an actor or director: search_catalog with person lists '
+        'what the library has, and when it finds nothing say so instead of suggesting titles from memory. Interpret the question once: up to 5 candidate titles you suspect (title, year, '
         'kind; never ids), the kind, and 2-8 search phrases: first the subject itself in English, then in Dutch '
         '(for space: "space", "ruimte"), then short phrases a plot summary would contain ("astronauts in a '
         'spacecraft", "astronauten in een ruimteschip"). For an episode give the series and any season or episode '

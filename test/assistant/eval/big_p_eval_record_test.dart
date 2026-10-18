@@ -20,7 +20,7 @@ void main() {
       expect(record.containsKey(key), isTrue, reason: key);
     }
     final turn = (record['turns']! as List).single as Map;
-    for (final key in ['first_tool', 'first_tool_ok', 'latency_ms', 'tokens', 'end', 'provider_error']) {
+    for (final key in ['first_tool', 'first_tool_ok', 'latency_ms', 'tokens', 'end', 'provider_error', 'tool_trace']) {
       expect(turn.containsKey(key), isTrue, reason: key);
     }
   });

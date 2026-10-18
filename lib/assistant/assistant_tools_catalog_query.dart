@@ -28,6 +28,8 @@ class _CatalogQuery {
     this.matchesRead = 0,
     this.addedOrder,
     this.seenElsewhere = 0,
+    this.belowRating = 0,
+    this.bestBelowRating,
     this.offset = 0,
     this.nextOffset,
   });
@@ -66,6 +68,12 @@ class _CatalogQuery {
   /// Unwatched titles dropped because this profile's own history has them,
   /// watched as a copy on another source.
   final int seenElsewhere;
+
+  /// Titles that matched but sit under the minimum rating asked for, and the
+  /// best rating among them: with no result left, the user can be told how
+  /// close the library comes.
+  final int belowRating;
+  final double? bestBelowRating;
 
   /// A server or library did not answer, or could not run this search.
   final bool partial;
@@ -371,7 +379,17 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       sampled |= filtered.sampled;
     }
     checkCurrent();
-    if (minRating != null) groups.removeWhere((g) => (g.representativeSource.item.rating ?? -1) < minRating);
+    var belowRating = 0;
+    double? bestBelow;
+    if (minRating != null) {
+      groups.removeWhere((g) {
+        final rating = g.representativeSource.item.rating;
+        if ((rating ?? -1) >= minRating) return false;
+        belowRating++;
+        if (rating != null && (bestBelow == null || rating > bestBelow!)) bestBelow = rating;
+        return true;
+      });
+    }
     // Each server answers "unwatched" for its own copy only. A title this
     // profile watched as a copy elsewhere is not unseen.
     applyWindow(groups);
@@ -410,6 +428,8 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       matchesRead: groups.length,
       addedOrder: sort == 'added' || sort == 'added_oldest' ? sort : null,
       seenElsewhere: seenElsewhere,
+      belowRating: belowRating,
+      bestBelowRating: bestBelow,
       addedUnknown: addedUnknown,
     );
   }
@@ -422,6 +442,8 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   var partial = false;
   // A server's search stops at its own limit: its hits are then a sample.
   var searchCapped = false;
+  var belowRating = 0;
+  double? bestBelow;
   // Every server is asked at the same time and none may hold the others up:
   // one that fails or does not answer in time is named and the rest still
   // answer (a server that is down must never cost the whole answer).
@@ -474,9 +496,13 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       if (kind != null && hit.kind != kind) continue;
       if (person != null && textKey != null && !(hit.title ?? '').toLowerCase().contains(textKey)) continue;
       if (years.isNotEmpty && !years.contains(hit.year)) continue;
-      if (minRating != null && (hit.rating ?? -1) < minRating) continue;
       if (unwatched && hit.isWatched) continue;
       if (inProgress && !hit.hasActiveProgress) continue;
+      if (minRating != null && (hit.rating ?? -1) < minRating) {
+        belowRating++;
+        if (hit.rating != null && (bestBelow == null || hit.rating! > bestBelow)) bestBelow = hit.rating;
+        continue;
+      }
       final item = (hit.serverId?.isEmpty ?? true) ? hit.copyWith(serverId: id.value) : hit;
       if (filterHiddenLibraryItems([item], hidden).isEmpty) continue;
       // Search hits often carry no genres (Jellyfin's never do): such a hit
@@ -537,6 +563,8 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     moreMatches: searchCapped,
     matchesRead: groups.length,
     seenElsewhere: seenBefore,
+    belowRating: belowRating,
+    bestBelowRating: bestBelow,
     addedOrder: sort == 'added' || sort == 'added_oldest' ? sort : null,
     addedUnknown: addedUnknown,
     genreUnverified: genres.isEmpty || coverage != null
@@ -620,10 +648,13 @@ Future<List<UnifiedMediaGroup>> _merge(AssistantToolContext ctx, List<MediaItem>
         externalIdTarget: normalizeStableGuid(item.guid) == null ? (serverId: item.serverId!, targetId: item.id) : null,
       ),
   ]);
-  return groupUnifiedMediaSources([
-    for (var i = 0; i < items.length; i++)
-      GroupingCandidate(source: UnifiedMediaSource.fromItem(items[i]), evidence: evidence[i]),
-  ]);
+  // A copy: no hits give a const list, and the callers remove groups from it.
+  return List.of(
+    groupUnifiedMediaSources([
+      for (var i = 0; i < items.length; i++)
+        GroupingCandidate(source: UnifiedMediaSource.fromItem(items[i]), evidence: evidence[i]),
+    ]),
+  );
 }
 
 void _order(List<UnifiedMediaGroup> groups, String sort) {
