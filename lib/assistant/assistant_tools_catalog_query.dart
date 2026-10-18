@@ -432,18 +432,19 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
           return (id: id, hits: null, hidden: null);
         }
         try {
-          final hidden = await _hiddenLibraryKeys(ctx, id);
-          final List<MediaItem> hits;
-          if (person != null) {
-            final people = await (client as PersonSearchClient)
-                .searchPeople(person, limit: 1)
-                .timeout(assistantServerTimeout);
-            hits = people.isEmpty
-                ? const []
-                : await client.fetchPersonMedia(people.first.id).timeout(assistantServerTimeout);
-          } else {
-            hits = await client.searchItems(text!, limit: 50).timeout(assistantServerTimeout);
-          }
+          // One bound for everything this server is asked, so a stalled
+          // library list or person lookup costs 8 seconds once, not per step.
+          final (hits, hidden) = await (() async {
+            final hidden = await _hiddenLibraryKeys(ctx, id);
+            final List<MediaItem> hits;
+            if (person != null) {
+              final people = await (client as PersonSearchClient).searchPeople(person, limit: 1);
+              hits = people.isEmpty ? const [] : await client.fetchPersonMedia(people.first.id);
+            } else {
+              hits = await client.searchItems(text!, limit: 50);
+            }
+            return (hits, hidden);
+          })().timeout(assistantServerTimeout);
           return (id: id, hits: hits, hidden: hidden);
         } on AssistantToolError {
           rethrow;
