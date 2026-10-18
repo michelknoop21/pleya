@@ -438,6 +438,32 @@ void main() {
     });
   });
 
+  test(
+    'a typed "onthoud dat" on a children\'s profile gets Pleya\'s own refusal, not the model\'s promise (BP-11h)',
+    () async {
+      profile.kids = true;
+      final c = make([say('Leuk, dat onthoud ik.')]);
+      await c.submit('Onthoud dat ik van Frozen hou', typed: true);
+
+      expect(c.answer, t.assistant.memory.kids);
+      expect(await profile.values(), isEmpty);
+    },
+  );
+
+  test(
+    'the polite form on a children\'s profile gets the same refusal, and a plain question does not (BP-11h)',
+    () async {
+      profile.kids = true;
+      final polite = make([say('Natuurlijk, dat onthoud ik.')]);
+      await polite.submit('Wil je onthouden dat ik van Frozen hou', typed: true);
+      expect(polite.answer, t.assistant.memory.kids);
+
+      final question = make([say('Frozen is een Disney-film.')]);
+      await question.submit('Wat weet je over Frozen?', typed: true);
+      expect(question.answer, 'Frozen is een Disney-film.');
+    },
+  );
+
   group('the field of the memory screen answers the same way', () {
     for (final (typed, stored) in _innocent) {
       test('"$typed": no model call, the line, the card, a yes stores the typed words', () async {

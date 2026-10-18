@@ -96,14 +96,19 @@ extension _AssistantResult on AssistantRun {
         memoryRefused: refused,
       );
     }
+    // A children's profile keeps no memory: a typed "onthoud dat ..." gets
+    // Pleya's own refusal, whatever the model said (BP-11h).
+    final kidsRefusal = end == AssistantRunEnd.answered && turn.kidsTyped ? t.assistant.memory.kids : null;
     return AssistantRunResult(
       end: end,
-      text: _ctx.libraryDoctorMode
-          ? _ctx.libraryDoctorAnswer?.call(languageName) ??
-                (languageName == 'Dutch'
-                    ? 'Geen gecontroleerde bibliotheekgegevens; de diagnose blijft onbekend.'
-                    : 'No checked library evidence; the diagnosis remains unknown.')
-          : text,
+      text:
+          kidsRefusal ??
+          (_ctx.libraryDoctorMode
+              ? _ctx.libraryDoctorAnswer?.call(languageName) ??
+                    (languageName == 'Dutch'
+                        ? 'Geen gecontroleerde bibliotheekgegevens; de diagnose blijft onbekend.'
+                        : 'No checked library evidence; the diagnosis remains unknown.')
+              : text),
       libraryDoctorError: () => evidenceContext.libraryDoctorError,
       spoilerPrompt: _spoilerQuestion,
       playbackEvidenceCurrent: () => evidenceContext.playbackEvidenceCurrent,

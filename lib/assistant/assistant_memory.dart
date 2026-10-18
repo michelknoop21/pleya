@@ -79,7 +79,7 @@ class AssistantMemoryOutcome {
 /// The memory state of one ask. Made by the run before the first model call,
 /// never copied to another ask.
 class AssistantMemoryTurn {
-  AssistantMemoryTurn({this.enabled = false, this.typedFact, this.typedKnown = false});
+  AssistantMemoryTurn({this.enabled = false, this.typedFact, this.typedKnown = false, this.kidsTyped = false});
 
   /// The memory is on for this profile and it is no children's profile: the
   /// tools are offered.
@@ -90,6 +90,10 @@ class AssistantMemoryTurn {
   /// request, was not typed, named no fact or runs fenced. Decided by code
   /// from the user's words.
   final String? typedFact;
+
+  /// A typed "onthoud dat ..." on a children's profile, which keeps no memory:
+  /// Pleya says so itself, the model's words never reach the user (BP-11h).
+  final bool kidsTyped;
 
   /// [typedFact] was in the memory of this profile before this ask stored
   /// anything: read when the ask began, or reported by the save itself.
