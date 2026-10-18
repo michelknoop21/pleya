@@ -483,6 +483,26 @@ void main() {
       expect(find.textContaining('scan_library'), findsNothing);
     });
 
+    testWidgets('a library or user named like a job kind is shown as written', (tester) async {
+      c
+        ..state = AssistantSurfaceState.result
+        ..actions = [
+          AssistantActionRecord(
+            kind: AssistantActionKind.scanLibrary,
+            serverName: 'Zolder',
+            subject: 'scan_library',
+            job: AssistantJobWatch(
+              serverId: ServerId('srv-1'),
+              startedAt: DateTime(2026, 10, 4, 21, 14),
+              libraryId: 'l',
+            ),
+            progress: const AssistantJobProgress(AssistantJobPhase.started),
+          ),
+        ];
+      await pumpHost(tester);
+      expect(find.text('Scan gestart · scan_library · Zolder'), findsOneWidget);
+    });
+
     testWidgets('a scan is confirmed, and the running tasks are one tap away', (tester) async {
       c
         ..prompt = t.assistant.examples.scan.first

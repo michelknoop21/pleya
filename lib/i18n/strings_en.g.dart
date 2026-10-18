@@ -9135,6 +9135,9 @@ class TranslationsAssistantJobsKindsEn {
 
 	/// en: 'Library scan'
 	String get scan_library => 'Library scan';
+
+	/// en: 'Storage check'
+	String get storage_recheck_roots => 'Storage check';
 }
 
 // Path: assistant.confirm.titles
@@ -12017,6 +12020,7 @@ extension on Translations {
 			'assistant.jobs.retryJob.background' => 'Job still running in the background',
 			'assistant.jobs.retryJob.unknown' => 'Job: status can no longer be determined',
 			'assistant.jobs.kinds.scan_library' => 'Library scan',
+			'assistant.jobs.kinds.storage_recheck_roots' => 'Storage check',
 			'assistant.result.doneBy' => 'Carried out by Pleya',
 			'assistant.result.notDoneBy' => 'Not carried out by Pleya',
 			'assistant.result.done' => 'Done',
@@ -12111,9 +12115,9 @@ extension on Translations {
 			'assistant.settings.disableConfirm' => 'Turn off Big P?',
 			'assistant.settings.disableBody' => 'The provider and key are removed from this device. You can set Big P up again at any time.',
 			'assistant.settings.unreadableTitle' => 'Replace the Big P setup?',
-			'assistant.settings.unreadableBody' => 'Your iCloud keychain holds a Big P setup from a newer Pleya version on another device. This version cannot read it. Replacing it changes the setup on all your devices.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.settings.unreadableBody' => 'Your iCloud keychain holds a Big P setup from a newer Pleya version on another device. This version cannot read it. Replacing it changes the setup on all your devices.',
 			'assistant.settings.replace' => 'Replace',
 			'assistant.settings.currentModel' => 'Model',
 			'assistant.settings.keyStored' => 'Stored, hidden',

@@ -4009,6 +4009,7 @@ class _TranslationsAssistantJobsKindsNl extends TranslationsAssistantJobsKindsEn
 
 	// Translations
 	@override String get scan_library => 'Bibliotheek scannen';
+	@override String get storage_recheck_roots => 'Opslag controleren';
 }
 
 // Path: assistant.confirm.titles
@@ -6703,6 +6704,7 @@ extension on TranslationsNl {
 			'assistant.jobs.retryJob.background' => 'Taak loopt nog op de achtergrond',
 			'assistant.jobs.retryJob.unknown' => 'Taak: status niet meer vast te stellen',
 			'assistant.jobs.kinds.scan_library' => 'Bibliotheek scannen',
+			'assistant.jobs.kinds.storage_recheck_roots' => 'Opslag controleren',
 			'assistant.result.doneBy' => 'Uitgevoerd door Pleya',
 			'assistant.result.notDoneBy' => 'Niet uitgevoerd door Pleya',
 			'assistant.result.done' => 'Klaar',
@@ -6797,9 +6799,9 @@ extension on TranslationsNl {
 			'assistant.settings.disableConfirm' => 'Big P uitschakelen?',
 			'assistant.settings.disableBody' => 'De provider en de sleutel worden van dit apparaat verwijderd. Je kunt Big P altijd opnieuw instellen.',
 			'assistant.settings.unreadableTitle' => 'Big P-instelling vervangen?',
-			'assistant.settings.unreadableBody' => 'Je iCloud-sleutelhanger heeft een Big P-instelling van een nieuwere Pleya op een ander apparaat. Deze versie kan die niet lezen. Vervangen wijzigt de instelling op al je apparaten.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.settings.unreadableBody' => 'Je iCloud-sleutelhanger heeft een Big P-instelling van een nieuwere Pleya op een ander apparaat. Deze versie kan die niet lezen. Vervangen wijzigt de instelling op al je apparaten.',
 			'assistant.settings.replace' => 'Vervangen',
 			'assistant.settings.currentModel' => 'Model',
 			'assistant.settings.keyStored' => 'Opgeslagen, verborgen',

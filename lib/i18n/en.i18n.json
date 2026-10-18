@@ -2771,7 +2771,8 @@
         "unknown": "Job: status can no longer be determined"
       },
       "kinds": {
-        "scan_library": "Library scan"
+        "scan_library": "Library scan",
+        "storage_recheck_roots": "Storage check"
       }
     },
     "result": {

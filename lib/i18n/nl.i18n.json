@@ -2771,7 +2771,8 @@
         "unknown": "Taak: status niet meer vast te stellen"
       },
       "kinds": {
-        "scan_library": "Bibliotheek scannen"
+        "scan_library": "Bibliotheek scannen",
+        "storage_recheck_roots": "Opslag controleren"
       }
     },
     "result": {
