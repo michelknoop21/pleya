@@ -111,7 +111,9 @@ extension _AssistantRunMemory on AssistantRun {
     final key = typed == null ? null : checkMemoryValue(typed).value?.key;
     final known =
         memory != null && key != null && (await memory.service.list()).any((f) => memoryValueKey(f.value) == key);
-    _ctx.memoryTurn = AssistantMemoryTurn(enabled: on, typedFact: typed, typedKnown: known);
+    final kidsTyped =
+        _ctx.kidsMode && userTyped && _spoilerQuestion == null && assistantMemoryTypedFact(prompt) != null;
+    _ctx.memoryTurn = AssistantMemoryTurn(enabled: on, typedFact: typed, typedKnown: known, kidsTyped: kidsTyped);
   }
 
   /// Pleya's own answer to a typed "onthoud dat ..." (or its polite form,

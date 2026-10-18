@@ -438,6 +438,27 @@ void main() {
     });
   });
 
+  test(
+    'a typed "onthoud dat" on a children\'s profile gets Pleya\'s own refusal, not the model\'s promise (BP-11h)',
+    () async {
+      profile.kids = true;
+      final c = make([say('Leuk, dat onthoud ik.')]);
+      await c.submit('Onthoud dat ik van Frozen hou', typed: true);
+
+      expect(c.answer, t.assistant.memory.kids);
+      expect(await profile.values(), isEmpty);
+    },
+  );
+
+  test(
+    'a typed "onthoud dat" on a grown-up profile keeps the model\'s words when it saved nothing on its own',
+    () async {
+      final c = make([say('Prima.')]);
+      await c.submit('Onthoud dat ik van Frozen hou', typed: true);
+      expect(c.answer, isNot(t.assistant.memory.kids));
+    },
+  );
+
   group('the field of the memory screen answers the same way', () {
     for (final (typed, stored) in _innocent) {
       test('"$typed": no model call, the line, the card, a yes stores the typed words', () async {
