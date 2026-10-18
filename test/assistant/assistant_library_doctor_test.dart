@@ -512,19 +512,75 @@ void main() {
 
     Matcher codeIs(String code) => throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', code));
 
-    test('a list that comes in during the wait is used, not failed', () async {
+    // The state right after a start: the server is registered but not connected.
+    _Fixture starting() {
       final f = _Fixture();
+      f.manager.debugRegisterClientForTesting(f.server, online: false);
+      return f;
+    }
+
+    test('a list that comes in during the wait is used, not failed', () async {
+      final f = starting();
       final all = [...f.libraries];
       f.libraries.clear();
-      Timer(const Duration(milliseconds: 100), () => f.libraries.addAll(all));
+      Timer(const Duration(milliseconds: 100), () {
+        f.manager.debugRegisterClientForTesting(f.server);
+        f.libraries.addAll(all);
+      });
       final data = await f.diagnose(args: const {'kind': 'show'});
       expect(data.containsKey('error'), isFalse);
     });
 
-    test('a list that never comes in says the libraries are not ready, not that none exist', () async {
-      final f = _Fixture();
+    test('a list that never comes in while a server is still connecting says not ready', () async {
+      final f = starting();
       f.libraries.clear();
       await expectLater(f.diagnose(args: const {}), codeIs('libraries_not_ready'));
+    });
+
+    test('the same holds when the model passed a server or library: not ready, not unknown', () async {
+      final f = starting();
+      f.libraries.clear();
+      await expectLater(f.diagnose(), codeIs('libraries_not_ready'));
+    });
+
+    test('every server connected and nothing visible (all hidden): the plain error, no wait', () async {
+      final f = _Fixture();
+      f.libraries.clear();
+      final watch = Stopwatch()..start();
+      await expectLater(f.diagnose(args: const {}), codeIs('unknown_visible_library'));
+      expect(watch.elapsed, lessThan(const Duration(milliseconds: 400)));
+    });
+
+    test('a cancelled run does not sit out the wait', () async {
+      final f = starting();
+      f.libraries.clear();
+      final cancel = AbortController();
+      final ctx = f.ctx.fresh(cancel: cancel);
+      Timer(const Duration(milliseconds: 100), cancel.abort);
+      final watch = Stopwatch()..start();
+      await expectLater(
+        (_tool('diagnose_library').run(ctx, null, const {}) as Future),
+        throwsA(isA<AssistantToolError>()),
+      );
+      expect(watch.elapsed, lessThan(const Duration(milliseconds: 450)));
+    });
+
+    test('a server or library the model made up, with libraries loaded: its own error, no wait', () async {
+      final f = _Fixture();
+      final watch = Stopwatch()..start();
+      await expectLater(
+        f.diagnose(args: const {'server_id': 'nope', 'library_id': 'x'}),
+        codeIs('unknown_library_argument'),
+      );
+      expect(watch.elapsed, lessThan(const Duration(milliseconds: 400)));
+    });
+
+    test('libraries exist but none of the asked kind: that error, without a wait', () async {
+      final f = _Fixture();
+      f.libraries.removeWhere((l) => l.kind == MediaKind.show);
+      final watch = Stopwatch()..start();
+      await expectLater(f.diagnose(args: const {'kind': 'show'}), codeIs('unknown_visible_library'));
+      expect(watch.elapsed, lessThan(const Duration(milliseconds: 400)));
     });
 
     test('each of the three failures reads differently on the task card', () {
@@ -547,24 +603,6 @@ void main() {
       expect(labels['unknown_library_argument'], t.assistant.ends.unknownLibrary);
       expect(labels['unknown_visible_library'], t.libraries.noLibrariesFound);
       expect(labels.values.toSet(), hasLength(3));
-    });
-
-    test('a server or library the model made up is its own error, without a wait', () async {
-      final f = _Fixture();
-      final watch = Stopwatch()..start();
-      await expectLater(
-        f.diagnose(args: const {'server_id': 'nope', 'library_id': 'x'}),
-        codeIs('unknown_library_argument'),
-      );
-      expect(watch.elapsed, lessThan(const Duration(milliseconds: 400)));
-    });
-
-    test('libraries exist but none of the asked kind: that error, without a wait', () async {
-      final f = _Fixture();
-      f.libraries.removeWhere((l) => l.kind == MediaKind.show);
-      final watch = Stopwatch()..start();
-      await expectLater(f.diagnose(args: const {'kind': 'show'}), codeIs('unknown_visible_library'));
-      expect(watch.elapsed, lessThan(const Duration(milliseconds: 400)));
     });
   });
 

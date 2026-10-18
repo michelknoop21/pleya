@@ -244,12 +244,15 @@ Future<AssistantToolOutcome> _diagnoseLibrary(AssistantToolContext ctx, Map<Stri
   ];
   var roots = pickRoots();
   bool nothingLoaded() => loader.librariesFor(MediaKind.movie).isEmpty && loader.librariesFor(MediaKind.show).isEmpty;
-  // Right after the app starts, or a profile switch, the library list and the
-  // server connections are still coming in: wait a moment for them instead of
-  // failing the whole diagnosis (BP-11j).
-  if (roots.isEmpty && server == null && library == null) {
+  // A server that is registered but not connected (yet): right after the app
+  // starts or a profile switch the library list and the connections are still
+  // coming in. Only then is an empty list "not ready"; with every server
+  // connected it is the truth (nothing visible, everything hidden).
+  bool serversPending() => ctx.servers.serverIds.any((id) => !ctx.servers.isServerOnline(ServerId(id)));
+  final waiting = roots.isEmpty && nothingLoaded() && serversPending();
+  if (waiting) {
     final until = DateTime.now().add(assistantLibrariesWait);
-    while (roots.isEmpty && nothingLoaded() && DateTime.now().isBefore(until)) {
+    while (roots.isEmpty && nothingLoaded() && !ctx.cancelled && DateTime.now().isBefore(until)) {
       await Future<void>.delayed(const Duration(milliseconds: 250));
       roots = pickRoots();
     }
@@ -258,10 +261,10 @@ Future<AssistantToolOutcome> _diagnoseLibrary(AssistantToolContext ctx, Map<Stri
     // Which of three things it was: the lists are not in yet, the model named a
     // server or library that does not exist, or there is nothing of this kind.
     throw AssistantToolError(
-      server != null || library != null
-          ? 'unknown_library_argument'
-          : nothingLoaded()
+      waiting && nothingLoaded()
           ? 'libraries_not_ready'
+          : server != null || library != null
+          ? 'unknown_library_argument'
           : 'unknown_visible_library',
     );
   }
