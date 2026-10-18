@@ -3696,6 +3696,8 @@ class _TranslationsAssistantEndsNl extends TranslationsAssistantEndsEn {
 	@override String get nothingChanged => 'Er is niets veranderd.';
 	@override String get modelMissing => 'Het gekozen model is er niet meer, kies een ander in Big P instellen.';
 	@override String get sourceChanged => 'Je profiel of serververbinding is gewijzigd. Voer de controle opnieuw uit.';
+	@override String get librariesLoading => 'De bibliotheken worden nog geladen. Probeer het zo opnieuw.';
+	@override String get unknownLibrary => 'Die bibliotheek ken ik niet.';
 	@override String get operationUnavailable => 'Deze opdracht kon niet worden uitgevoerd met de beschikbare serverfuncties.';
 	@override String get permissionDenied => 'Je hebt geen toestemming voor deze beheeropdracht op de server.';
 	@override String get malformedToolCall => 'Dat ging mis bij het opzoeken. Probeer het nog eens.';
@@ -6852,6 +6854,8 @@ extension on TranslationsNl {
 			'assistant.ends.nothingChanged' => 'Er is niets veranderd.',
 			'assistant.ends.modelMissing' => 'Het gekozen model is er niet meer, kies een ander in Big P instellen.',
 			'assistant.ends.sourceChanged' => 'Je profiel of serververbinding is gewijzigd. Voer de controle opnieuw uit.',
+			'assistant.ends.librariesLoading' => 'De bibliotheken worden nog geladen. Probeer het zo opnieuw.',
+			'assistant.ends.unknownLibrary' => 'Die bibliotheek ken ik niet.',
 			'assistant.ends.operationUnavailable' => 'Deze opdracht kon niet worden uitgevoerd met de beschikbare serverfuncties.',
 			'assistant.ends.permissionDenied' => 'Je hebt geen toestemming voor deze beheeropdracht op de server.',
 			'assistant.ends.malformedToolCall' => 'Dat ging mis bij het opzoeken. Probeer het nog eens.',

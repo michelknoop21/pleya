@@ -2876,6 +2876,8 @@
       "nothingChanged": "Er is niets veranderd.",
       "modelMissing": "Het gekozen model is er niet meer, kies een ander in Big P instellen.",
       "sourceChanged": "Je profiel of serververbinding is gewijzigd. Voer de controle opnieuw uit.",
+      "librariesLoading": "De bibliotheken worden nog geladen. Probeer het zo opnieuw.",
+      "unknownLibrary": "Die bibliotheek ken ik niet.",
       "operationUnavailable": "Deze opdracht kon niet worden uitgevoerd met de beschikbare serverfuncties.",
       "permissionDenied": "Je hebt geen toestemming voor deze beheeropdracht op de server.",
       "malformedToolCall": "Dat ging mis bij het opzoeken. Probeer het nog eens."

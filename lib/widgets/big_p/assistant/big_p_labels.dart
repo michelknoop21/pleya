@@ -237,6 +237,8 @@ String assistantTasksHeadline(List<AssistantTask> tasks) {
               'catalog_changed' || 'profile_changed' || 'rights_changed' => t.assistant.ends.sourceChanged,
               'not_allowed' => t.assistant.ends.permissionDenied,
               'unknown_visible_library' => t.libraries.noLibrariesFound,
+              'libraries_not_ready' => t.assistant.ends.librariesLoading,
+              'unknown_library_argument' => t.assistant.ends.unknownLibrary,
               'unknown_tool' ||
               'catalog_unavailable' ||
               'invalid_arguments' ||
