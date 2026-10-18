@@ -53,6 +53,28 @@ Wat de nulmeting opleverde en waar het nu staat:
 
 Nog niet opgepakt: `con-everyone-no-capability` (gemma beantwoordt "wat kijken de anderen" met de eigen lopende titels), `ser-short-series` en `rec-five-unseen-series` (een begonnen serie als "nog niet gezien") en `rec-seen-five-others` (glm toont in de vervolgbeurt 19 tot 24 kaarten). Dat zijn gedragsfouten van de modellen die een promptwijziging en een nieuwe live meting vragen.
 
+## Tweede meting na BP-11e tot en met BP-11h (18 oktober 2026)
+
+Code: main op 3d0acae1, dezelfde opzet (2 modellen, 60 cases, 3 pogingen, 360 runs, label `nulmeting-na-11h`), geen providerfouten, geen cases meer als bekende fout. Vergeleken met de eerste meting via `tool/big_p_eval_report.dart`:
+
+| Model | Runs geslaagd | Cases altijd goed / wisselend / altijd fout | Mediaan tokens per run | Totaal tokens |
+| --- | --- | --- | --- | --- |
+| gemma4:31b | 170 van 180 (eerst 153 van 177) | 56 / 2 / 2 | 6964 | 1,49 miljoen |
+| glm-5.3-flash | 172 van 180 (eerst 151 van 177) | 55 / 4 / 1 | 7801 | 1,81 miljoen |
+
+Let op: een deel van de winst komt van de casecorrecties (`rec-recently-added`, `mem-kids-no-memory`), niet alleen van productfixes, en de eerste meting telde 59 cases tegen 60 nu.
+
+- gemma4:31b: 8 cases verbeterd, 1 regressie (`ser-next-season-no-source`, van 2 van 3 naar 0 van 3: de modelantwoorden erkennen niet dat het niets weet).
+- glm-5.3-flash: 11 cases verbeterd, geen regressie.
+- Alle drie de oorspronkelijke productfouten zijn weg: `sea-request-needs-yes` 3 van 3 goed bij beide modellen, de dubbele kaarten verdwenen uit de violations, en het kinderprofiel zegt niet meer "dat onthoud ik".
+
+Nog open na deze meting:
+
+- `ser-next-season-no-source`: bij beide modellen wisselend of falend. Bij glm telt de check ook een vraag aan de gebruiker ("Wil je dat ik nakijk of er afleveringen ontbreken?") als bewering; dat is waarschijnlijk een fout in de check.
+- `disc-keyword`, `disc-english` (gemma) en `adm-search-with-offline-server`: soms geen kaart of de offline server niet genoemd. Bij die laatste staat `servers_offline` nu wel in het resultaat; het model noemt hem niet altijd.
+- `rec-seen-five-others` (glm): de vervolgbeurt toont nog 15 kaarten, herhaalt eerder getoonde titels en toont begonnen series.
+- Eén meting per versie: de spreiding tussen twee runs van dezelfde code is nog niet gemeten, dus kleine verschillen zijn geen bewijs.
+
 ## HTTP-probleem in de live test
 
 De eerste twee pogingen tot een nulmeting gaven bij gemma 180 van 180 en bij glm 68 van 180 runs een providerfout. De oorzaak lag niet bij Ollama: zodra de geheugenfixtures de Flutter-testbinding starten, beantwoordt die elk HTTP-verzoek met een lege 400. De live test zet daarom voor elke poging `HttpOverrides.global = null` terug. Het record bevat sindsdien `http_error` (status en begin van het antwoord) bij een niet-200.
