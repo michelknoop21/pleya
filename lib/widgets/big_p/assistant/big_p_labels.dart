@@ -250,6 +250,8 @@ String assistantTasksHeadline(List<AssistantTask> tasks) {
               'catalog_changed' || 'profile_changed' || 'rights_changed' => t.assistant.ends.sourceChanged,
               'not_allowed' => t.assistant.ends.permissionDenied,
               'unknown_visible_library' => t.libraries.noLibrariesFound,
+              'libraries_not_ready' => t.assistant.ends.librariesLoading,
+              'unknown_library_argument' => t.assistant.ends.unknownLibrary,
               'unknown_tool' ||
               'catalog_unavailable' ||
               'invalid_arguments' ||
@@ -336,7 +338,7 @@ String assistantPlainAnswer(String answer) => answer
 /// Big P's mood for the controller's stand; a waiting card wins.
 BigPMood bigPMood(AssistantController c) {
   if (c.inputError) return BigPMood.error;
-  if (c.pending != null || c.kidsAgesPrompt != null || c.memoryProposal != null) return BigPMood.attentive;
+  if (c.pending != null || c.kidsCardWaits || c.memoryProposal != null) return BigPMood.attentive;
   return switch (c.state) {
     AssistantSurfaceState.idle => BigPMood.idle,
     AssistantSurfaceState.listening => BigPMood.listening,

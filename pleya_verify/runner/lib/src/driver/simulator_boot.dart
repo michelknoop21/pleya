@@ -137,6 +137,13 @@ Future<ProcessResult> timedSimctl(
 /// has thirty for its build and both scenarios.
 const Duration simulatorLaunchTimeout = Duration(minutes: 4);
 
+/// How long the iOS simulator driver waits for the launched app to announce
+/// itself and answer `/v1/health`. The 20 s every other driver uses was too
+/// short on a loaded CI runner (16 Oct): after a 130 s `simctl launch` the
+/// app needed 37 s between two log lines. The driver logs how long it took,
+/// so a runner that gets slower still shows up in driver.log.
+const Duration simulatorHealthTimeout = Duration(seconds: 60);
+
 /// Ceiling for each of the diagnosis commands [launchApp] runs after a launch
 /// that timed out. They must not turn a slow simulator into a longer wait.
 const Duration _launchDiagnosisTimeout = Duration(seconds: 20);

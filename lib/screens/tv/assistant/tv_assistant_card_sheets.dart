@@ -48,19 +48,22 @@ class TvMemoryCardFocus {
 /// and guards them together.
 class TvAssistantCardSheets {
   final _ages = TvKidsAgesSheet();
+  final _household = TvHouseholdKidsSheet();
   final memory = TvMemoryCardFocus();
 
   /// A card holds the remote: the owner leaves the focus alone.
-  bool get open => _ages.open || memory.open;
+  bool get open => _ages.open || _household.open || memory.open;
 
   /// True when the memory card went and the default focus is due again.
   bool sync(BuildContext context, AssistantController c) {
     _ages.sync(context, c);
+    _household.sync(context, c);
     return memory.sync(c);
   }
 
   void dispose() {
     _ages.dispose();
+    _household.dispose();
     memory.dispose();
   }
 }

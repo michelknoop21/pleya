@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_age_gate.dart';
+import 'package:pleya/assistant/assistant_memory.dart';
 import 'package:pleya/assistant/assistant_named_titles.dart';
 import 'package:pleya/assistant/assistant_title_facts.dart';
 import 'package:pleya/assistant/assistant_title_facts_cache.dart';
@@ -18,6 +19,7 @@ import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
 import 'package:pleya/utils/media_server_http_client.dart' show AbortController;
 
 import '../assistant_find_fakes.dart';
+import 'big_p_eval_world.dart';
 
 // The fake catalogue of the Big P evaluation set (BP-11a): about sixty titles
 // on one Jellyfin server, films and series mixed. Ratings are NL (AL/6/9/12/
@@ -64,6 +66,8 @@ class EvalTitle {
     durationMs: isShow ? null : 6000000,
     viewOffsetMs: !isShow && seen == EvalSeen.inProgress ? 1800000 : null,
     viewCount: !isShow && seen == EvalSeen.watched ? 1 : null,
+    // A day count between 1 and 25 by position, so "recently added" has an answer.
+    addedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000 - (1 + evalTitles.indexOf(this) % 25) * 86400,
     leafCount: isShow ? 20 : null,
     viewedLeafCount: isShow ? const {EvalSeen.no: 0, EvalSeen.watched: 20, EvalSeen.inProgress: 6}[seen] : null,
   );
@@ -249,11 +253,15 @@ AssistantToolContext evalContext({
   List<HouseholdKid> householdKids = const [],
   String region = 'NL',
   bool personal = false,
+  EvalWorld? world,
   void Function(String name)? onSaveRow,
+  // The profile's memory, with the saved "nothing I watched or started" (BP-11d).
+  AssistantMemoryServices? memory,
 }) {
   final m = MultiServerManager();
   addTearDown(m.dispose);
   m.debugRegisterClientForTesting(_EvalServer());
+  if (world?.offlineServer ?? false) m.debugRegisterClientForTesting(evalOfflineServer(), online: false);
   m.setVisibleServerIds(null);
   return AssistantToolContext(
     servers: m,
@@ -269,10 +277,13 @@ AssistantToolContext evalContext({
       saveRow: (row) async => onSaveRow?.call(row.name),
     ),
     titleFacts: _EvalFacts(),
-    personal: personal ? _evalPersonal() : null,
+    personal: world?.profile != null ? evalPersonalFor(world!.profile!) : (personal ? _evalPersonal() : null),
+    trakt: world?.trakt,
+    requests: world?.seerr == null ? null : AssistantRequestServices(client: () => world!.seerr!.client),
     kidsAges: () async => kidsAges,
     householdKids: () async => householdKids,
     kidsProfile: () async => kids,
     region: () => region,
+    memory: world?.memoryServices ?? memory,
   );
 }

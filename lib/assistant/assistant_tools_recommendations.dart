@@ -300,6 +300,10 @@ Future<AssistantToolOutcome> _recommendTogether(
           .any((library) => library.serverId == id && library.libraryId == match.libraryId),
     );
   }
+  if (ctx.seenFilter.on) {
+    final log = await _readSeenLog(ctx);
+    matches.removeWhere((m) => _dropSeenItem(ctx, log, m));
+  }
   final shown = matches.take(limit).toList();
   for (final match in shown) ctx.showItem(id, match.id);
   return AssistantToolResult({

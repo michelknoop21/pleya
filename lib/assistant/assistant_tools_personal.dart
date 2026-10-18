@@ -131,17 +131,17 @@ final List<AssistantTool> _personalTools = [
       final seenTitles = {
         for (final w in watchedList) (assistantTitleKey(w['title'] as String), w['year'] as int?, w['kind'] as String),
       };
-      final seenByIdentity = _SeenIdentities(identities);
+      final log = _SeenLog(everSeen, identities);
       bool seenBefore(MediaItem item) =>
+          _dropSeenItem(ctx, log, item) ||
           c.excludeWatched &&
-          (everSeen.contains(item.globalKey) ||
-              seenByIdentity.contains(item) ||
-              seenTitles.any(
-                (s) =>
-                    s.$1 == assistantTitleKey(item.title ?? '') &&
-                    (s.$3 == MediaKind.show.name) == item.kind.isShowRelated &&
-                    (s.$2 == null || item.year == null || s.$2 == item.year),
-              ));
+              (log.logged(item) ||
+                  seenTitles.any(
+                    (s) =>
+                        s.$1 == assistantTitleKey(item.title ?? '') &&
+                        (s.$3 == MediaKind.show.name) == item.kind.isShowRelated &&
+                        (s.$2 == null || item.year == null || s.$2 == item.year),
+                  ));
       final limit = c.active ? _picksShownConstrained : _picksShown;
       final picks = <MediaItem>[];
       final rows = <Map<String, Object?>>[];
@@ -193,36 +193,3 @@ final List<AssistantTool> _personalTools = [
     },
   ),
 ];
-
-/// The titles of the profile's log by identity. A candidate is seen when it
-/// shares a token (guid or external id) with one, or, when neither side
-/// contradicts the other with a different external id, has the same kind,
-/// title and a year known on both sides: a year that is missing is no match,
-/// so "The Office" does not hide its namesake across a year-less log.
-class _SeenIdentities {
-  _SeenIdentities(List<WatchedIdentity> seen) {
-    for (final w in seen) {
-      tokens.addAll(w.tokens);
-      final title = w.title;
-      if (title != null && w.year != null) (byTitle[assistantTitleKey(title)] ??= []).add(w);
-    }
-  }
-
-  final Set<String> tokens = {};
-  final Map<String, List<WatchedIdentity>> byTitle = {};
-
-  bool contains(MediaItem item) {
-    final identity = interactionIdentityOf(item);
-    if (interactionIdentityProves(identity.tokens, tokens)) return true;
-    final title = identity.title;
-    // An episode's own year is not its series'.
-    final year = item.kind == MediaKind.episode ? null : item.year;
-    if (title == null || year == null) return false;
-    return (byTitle[assistantTitleKey(title)] ?? const []).any(
-      (w) =>
-          w.show == item.kind.isShowRelated &&
-          w.year == year &&
-          !interactionIdentityConflicts(identity.tokens, w.tokens),
-    );
-  }
-}

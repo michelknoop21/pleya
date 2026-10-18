@@ -18,7 +18,7 @@ extension _AssistantAnswer on AssistantRun {
 
   /// Marks that the ask needs the household's children, once per ask.
   void _askHousehold() {
-    if (!_displays.any((d) => d is AssistantHouseholdKidsPrompt)) _displays.add(const AssistantHouseholdKidsPrompt());
+    if (!_displays.any((d) => d is AssistantHouseholdKidsPrompt)) _displays.add(AssistantHouseholdKidsPrompt(_prompt));
   }
 
   /// The ages card, once per ask.
@@ -35,7 +35,9 @@ extension _AssistantAnswer on AssistantRun {
     final step = await _lookupNamedTitles(answer);
     final rejected = _rejectedNamed(answer);
     final unvetted = _unvettedNamed(answer, rejected);
-    final clean = rejected.isEmpty && unvetted.isEmpty;
+    final seen = _seenNamed(answer);
+    final aged = rejected.isNotEmpty || unvetted.isNotEmpty;
+    final clean = !aged && seen.isEmpty;
     if (clean && step?.display != null) _displays.add(step!.display!);
     if (clean) _keepTheOneNamed(answer);
     if (clean) _namedFirst(answer);
@@ -52,7 +54,8 @@ extension _AssistantAnswer on AssistantRun {
     }
     if (clean) return null;
     if (!mayCorrect) {
-      _ageNotice = true;
+      if (aged) _ageNotice = true;
+      if (seen.isNotEmpty) _ctx.seenFilter.notice = true;
       return null;
     }
     return [
@@ -60,7 +63,11 @@ extension _AssistantAnswer on AssistantRun {
         'Not suitable for the youngest child (${_ctx.kidsAge} years): '
             '${[for (final r in rejected) '«${r.title}» (${r.reason})'].join(', ')}.',
       if (unvetted.isNotEmpty) 'Not checked by the age filter: ${unvetted.join(', ')}.',
-      'Name only titles from tool results that passed the age filter, or say that none fits.',
+      if (seen.isNotEmpty)
+        'Left out because the user watched or started them: ${[for (final s in seen) '«${s.title}»'].join(', ')}.',
+      aged
+          ? 'Name only titles from tool results that passed the age filter, or say that none fits.'
+          : 'Name only titles from tool results, or say that none fits.',
     ].join(' ');
   }
 
@@ -461,6 +468,31 @@ extension _AssistantAnswer on AssistantRun {
     }
     if (!current()) return null;
     return (index: index, display: display, current: current);
+  }
+
+  /// One card per title across the grids of a run: a later search that finds
+  /// a title an earlier grid already shows does not show it again. Inside one
+  /// grid nothing is removed (the same title on two servers is that grid's
+  /// own choice). A grid left empty goes; its facts stay with it.
+  void _dedupeGrids() {
+    final shown = <String>{};
+    String keyOf(AssistantMediaGridEntry e) =>
+        '${e.item.kind.name}|${assistantTitleKey(e.item.title ?? '')}|${e.item.year ?? ''}';
+    for (var i = 0; i < _displays.length; i++) {
+      final grid = _displays[i];
+      if (grid is! AssistantMediaGrid) continue;
+      final kept = [
+        for (final e in grid.entries)
+          if (!shown.contains(keyOf(e))) e,
+      ];
+      shown.addAll(grid.entries.map(keyOf));
+      if (kept.length == grid.entries.length) continue;
+      if (kept.isEmpty) {
+        _displays.removeAt(i--);
+      } else {
+        _displays[i] = AssistantMediaGrid(kept, facts: grid.facts);
+      }
+    }
   }
 
   /// Narrows the pick grids to the named titles; returns how many cards stay.

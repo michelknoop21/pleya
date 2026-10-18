@@ -14,6 +14,7 @@ import '../../profiles/profile_connection_registry.dart';
 import '../../profiles/profile_registry.dart';
 import '../../providers/download_provider.dart';
 import '../../providers/multi_server_provider.dart';
+import '../../services/memory/exclude_seen_store.dart';
 import '../../services/memory/memory_enabled_store.dart';
 import '../../services/search_recency_store.dart';
 import '../../services/storage_service.dart';
@@ -112,4 +113,6 @@ Future<void> clearProfileScopedStores(StorageService storage, String profileId) 
   // And whether Big P's memory was on for this profile. The remembered facts
   // live in the database and go in [deleteProfile].
   await MemoryEnabledStore.clearForProfileScope(scope);
+  // And Big P's standing "nothing I watched or started" (BP-11d).
+  await ExcludeSeenStore.clearForProfileScope(scope);
 }

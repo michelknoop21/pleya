@@ -113,6 +113,15 @@ De leeftijdspoort hangt aan de vraag, niet alleen aan het profiel. Een ouder voe
 - Kinderprofielen houden hun profielleeftijden tot een ouder de kinderen invoert; de gezinspoort geldt niet op een kinderprofiel, daar geldt de profielpoort.
 - Geheugen. Leeftijden van kinderen worden geweigerd, ook als "zoon van bijna 4", "dochter is 2", "kids zijn 3 en 5" en "wordt in maart 4".
 
+## Al gekeken of begonnen (BP-11d)
+
+Michel vroeg op 16 oktober om nooit titels voor te stellen die hij al gezien had of waar hij aan begonnen was. Big P beloofde dat en liet in hetzelfde antwoord The Bear en How I Met Your Mother zien. De belofte zat alleen in de modeltekst; nu houdt de code hem vast.
+
+- Herkenning (`lib/assistant/assistant_seen_intent.dart`, geëxporteerd via `assistant_intent.dart`). Een ontkenning naast een werkwoord van voorstellen, gevolgd door de eigen gezien- of begonnen-woorden ("ik wil niet dat je dingen aanraadt die ik al gekeken heb", "never suggest anything I've watched"), is de vaste wens. "Laat ook dingen zien die ik al gezien heb" en "include what I watched" zetten het filter uit voor alleen die vraag. "Wat heb ik al gezien?" is een vraag over de geschiedenis en verandert niets.
+- Afdwingen. Het filter staat aan bij de vaste wens in deze vraag of eerder in dit gesprek, of als het profiel hem bewaard heeft. `_gateTitles` laat dan na de leeftijdspoort weg wat de server als bekeken of begonnen markeert, wat in het kijklog staat (sleutel of identiteit, dus ook een kopie op een andere server) en, voor een rij zonder bibliotheekkopie, een titel met dezelfde naam, soort en (waar bekend) jaar uit het log. Een titel die de gebruiker in de vraag zelf noemt blijft staan: dat is opzoeken, geen voorstel. Noemt het antwoord een weggelaten titel, dan volgt één correctieronde; daarna haalt Pleya die zinnen weg, of zet er een eigen regel voor in de plaats.
+- Bewaren. Per profiel op dit toestel (`assistant_exclude_seen`, profiel-runtimecache, niet gesynchroniseerd en niet geëxporteerd). Pleya toont de bestaande geheugenkaart met de zin "Nooit titels voorstellen die je al gezien of begonnen hebt" en bewaart pas na ja; na een getypt "onthoud dat" direct. Uitzetten gaat door dat feit te vergeten, via Big P of de rij in het geheugenoverzicht, of door het geheugen te wissen.
+- Grenzen. Zonder geheugen geldt de wens alleen voor het gesprek. Een kinderprofiel krijgt geen filter en geen kaart; daar geldt alleen de leeftijdspoort.
+
 ## Vragenset en nulmeting
 
 Ongeveer 40 echte vragen, handmatige poort vóór elke build tegen twee modellen; vaste gevallen lopen als gewone tests in CI. Eerste volledige route: "Wat is deze week aan mijn bibliotheken toegevoegd?" (BP-05). De set groeit per fase met de nultolerantiegevallen hierboven.

@@ -714,7 +714,16 @@ Future<void> _dispatchWaitUntil(ScenarioStep step, VerificationDriver driver) as
   }
 
   while (DateTime.now().isBefore(deadline)) {
-    if (await predicate()) return;
+    // One poll that outlives the client's own deadline is a stalled app on
+    // a starved simulator (CI, 16 Oct: 130 s `simctl launch`, 37 s between
+    // two app log lines), not an answer. It counts as "not yet", so the step
+    // keeps the rest of its own timeout; a stall that lasts past it fails
+    // below with the stall named.
+    try {
+      if (await predicate()) return;
+    } on VerifyClientTimeoutException catch (e) {
+      lastMismatch = e.toString();
+    }
     await Future<void>.delayed(const Duration(milliseconds: 150));
   }
   throw StateError(

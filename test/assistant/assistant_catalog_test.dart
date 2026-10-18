@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -94,7 +95,8 @@ class _Loader implements HomeCustomRowLoader {
 
 /// A server that only answers a text search; everything else is unused here.
 class _SearchServer implements MediaServerClient {
-  _SearchServer(String id, this.backend, {this.hits = const [], this.fail = false}) : serverId = ServerId(id);
+  _SearchServer(String id, this.backend, {this.hits = const [], this.fail = false, this.hang = false})
+    : serverId = ServerId(id);
   @override
   final ServerId serverId;
   @override
@@ -102,11 +104,15 @@ class _SearchServer implements MediaServerClient {
   final List<MediaItem> hits;
   final bool fail;
 
+  /// Never answers: a server that is up for the health check but stalls.
+  final bool hang;
+
   @override
   String get serverName => serverId.value;
 
   @override
-  Future<List<MediaItem>> searchItems(String query, {int limit = 100}) async => fail ? throw StateError('down') : hits;
+  Future<List<MediaItem>> searchItems(String query, {int limit = 100}) =>
+      hang ? Completer<List<MediaItem>>().future : (fail ? Future.error(StateError('down')) : Future.value(hits));
 
   @override
   void close() {}
@@ -682,6 +688,29 @@ void main() {
     expect(server.parents, [null]);
   });
 
+  test('create_collection takes only the titles the standing watch filter kept (BP-11d)', () async {
+    final personal = AssistantPersonalServices(
+      userName: 'M',
+      recent: () async => const [],
+      everSeen: () async => const {},
+      everSeenIdentities: () async => [(key: 'x', title: 'Aliens', year: 2001, show: false, tokens: <String>{})],
+      taste: () async => const AffinityVector({}, eventCount: 0),
+      picks: (_) async => const [],
+    );
+    Future<AssistantPendingAction> collection(bool on) async {
+      final (ctx, _, _, _) = await setUpCtx(personal: personal);
+      ctx.seenFilter = AssistantSeenFilter(on: on);
+      final data = await search(ctx, {'kind': 'movie'});
+      return await _tool('create_collection').run(ctx, id, {'query_id': data['query_id'], 'name': 'Mix'})
+          as AssistantPendingAction;
+    }
+
+    expect((await collection(false)).items, ['Alien', 'Aliens', 'Heat'], reason: 'negative control');
+    final kept = await collection(true);
+    expect(kept.items, ['Alien', 'Heat']);
+    expect(kept.subject, 'Mix');
+  });
+
   test('create_collection reports a created collection whose items did not all land', () async {
     final (ctx, _, _, server) = await setUpCtx();
     server.failAdd = true;
@@ -716,6 +745,57 @@ void main() {
     final title = (results.single as Map)['title'] as String;
     expect(title, isNot(contains('\n')));
     expect(title.length, lessThanOrEqualTo(81));
+  });
+
+  test('a server that does not answer is named, in both search paths (DEC-142)', () async {
+    final (ctx, _, _, _) = await setUpCtx();
+    ctx.servers.debugRegisterClientForTesting(_SearchServer('kelder', MediaBackend.jellyfin), online: false);
+
+    final row = await search(ctx, {'kind': 'movie'});
+    expect(row['servers_offline'], ['kelder']);
+    expect(row['partial'], isTrue, reason: 'the result misses that server');
+    expect(row['total_matches'], isNull, reason: 'no total while a server is missing');
+
+    final text = await search(ctx, {'kind': 'movie', 'text': 'alien'});
+    expect(text['servers_offline'], ['kelder']);
+    expect(text['partial'], isTrue);
+    expect(text['total_matches'], isNull);
+  });
+
+  test('an offline server does not cost the answer: the online servers still list their titles', () async {
+    final (ctx, _, _, _) = await setUpCtx(groups: [_group('m1', 'Alien')]);
+    ctx.servers.debugRegisterClientForTesting(_SearchServer('kelder', MediaBackend.jellyfin), online: false);
+    final data = await search(ctx, {'kind': 'movie'});
+    expect([for (final r in (data['results'] as List).cast<Map>()) r['title']], ['Alien']);
+    expect(data['servers_offline'], ['kelder']);
+  });
+
+  test('a server that stalls is named and the others answer a text search in time', () async {
+    final saved = assistantServerTimeout;
+    assistantServerTimeout = const Duration(milliseconds: 150);
+    addTearDown(() => assistantServerTimeout = saved);
+    final (ctx, _, _, _) = await setUpCtx(
+      servers: (() {
+        final m = MultiServerManager();
+        addTearDown(m.dispose);
+        m.debugRegisterClientForTesting(_SearchServer('jf-2', MediaBackend.jellyfin, hits: [_movie('j1', 'Alien')]));
+        m.debugRegisterClientForTesting(_SearchServer('jf-3', MediaBackend.jellyfin, hang: true));
+        return m;
+      })(),
+    );
+    final watch = Stopwatch()..start();
+    final data = await search(ctx, {'text': 'alien'});
+    expect(watch.elapsed, lessThan(const Duration(seconds: 3)));
+    expect([for (final r in (data['results'] as List).cast<Map>()) r['item_id']], ['j1']);
+    expect(data['servers_offline'], ['jf-3']);
+    expect(data['partial'], isTrue);
+  });
+
+  test('no offline server: no servers_offline marker', () async {
+    final (ctx, _, _, _) = await setUpCtx();
+    final data = await search(ctx, {'kind': 'movie'});
+    expect(data.containsKey('servers_offline'), isFalse);
+    expect(data['total_matches'], isNotNull, reason: 'control: a complete read has a total');
   });
 
   test('servers that cannot run a filter are left out of the query, and named', () async {

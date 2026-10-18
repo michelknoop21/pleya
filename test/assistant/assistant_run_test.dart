@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -448,6 +449,22 @@ void main() {
     expect(seen?['kind'], 'movie');
   });
 
+  test('a server whose health probe never ends does not hold the run: it goes on after the wait', () async {
+    final m = await _Server().manager();
+    final model = _Model(AssistantProviderKind.ollamaServer, [_say('Klaar')]);
+    final watch = Stopwatch()..start();
+    final result = await AssistantRun(
+      model: model.client(),
+      context: AssistantToolContext(servers: m),
+      confirm: (_) async => null,
+      entitlement: const _Entitled(),
+      refreshHealth: () => Completer<void>().future,
+      healthRefresh: const Duration(milliseconds: 100),
+    ).ask('Wat is er nieuw?');
+    expect(result.text, 'Klaar');
+    expect(watch.elapsed, lessThan(const Duration(seconds: 5)));
+  });
+
   test(
     '"what do the others watch": my_watching is refused, the model cannot answer with the asker\'s own data',
     () async {
@@ -665,6 +682,16 @@ void main() {
       }, id: 'c2'),
       _say('Sam is aangemaakt.'),
     ];
+
+    test('the system prompt tells the model a cancelled card means nothing was done (BP-11f)', () async {
+      final (_, model, _) = await run(createScript, confirm: (_) async => null);
+      final system = [
+        for (final msg in model.requests.first['messages'] as List)
+          if ((msg as Map)['role'] == 'system') msg['content'] as String,
+      ].join('\n');
+      expect(system, contains('cancelled_by_user or not_confirmed means nothing was changed'));
+      expect(system, contains('Never say it was requested, created, added or saved'));
+    });
 
     test('nothing runs when the user cancels, whatever the model sends', () async {
       final (result, model, server) = await run(createScript, confirm: (_) async => null);

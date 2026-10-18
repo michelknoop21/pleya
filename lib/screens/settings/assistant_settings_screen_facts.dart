@@ -57,34 +57,48 @@ extension _AssistantSettingsFacts on _AssistantSettingsScreenState {
       const SizedBox(height: 16),
       _kidsProfileRow(),
       const SizedBox(height: 16),
-      FutureBuilder<List<int>>(
-        future: _agesFuture,
+      // A children's profile keeps the ages of this profile (45 H); a parent
+      // enters the household's children under Kinderen in huis (45 A).
+      FutureBuilder<bool>(
+        future: _kidsProfileFuture,
         builder: (context, snapshot) {
-          final ages = snapshot.data ?? const <int>[];
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(s.kidsAges, style: theme.textTheme.titleSmall),
-              const SizedBox(height: 4),
-              Text(
-                ages.isEmpty ? s.kidsAgesNone : s.kidsAgesValue(ages: (ages.toList()..sort()).join(', ')),
-                style: theme.textTheme.bodyMedium?.copyWith(color: muted),
-              ),
-              if (ages.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _button(
-                  instance: 'kidsAgesClear',
-                  label: s.kidsAgesClear,
-                  icon: Symbols.delete_rounded,
-                  primary: false,
-                  onPressed: _clearKidsAges,
-                ),
-              ],
-            ],
-          );
+          final restricted = context.read<ActiveProfileProvider?>()?.active?.plexRestricted ?? false;
+          if (restricted || (snapshot.data ?? false)) return _kidsAgesBlock(theme, muted);
+          return const SizedBox.shrink();
         },
       ),
     ];
+  }
+
+  Widget _kidsAgesBlock(ThemeData theme, Color muted) {
+    final s = t.assistant.settings;
+    return FutureBuilder<List<int>>(
+      future: _agesFuture,
+      builder: (context, snapshot) {
+        final ages = snapshot.data ?? const <int>[];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(s.kidsAges, style: theme.textTheme.titleSmall),
+            const SizedBox(height: 4),
+            Text(
+              ages.isEmpty ? s.kidsAgesNone : s.kidsAgesValue(ages: (ages.toList()..sort()).join(', ')),
+              style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+            ),
+            if (ages.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _button(
+                instance: 'kidsAgesClear',
+                label: s.kidsAgesClear,
+                icon: Symbols.delete_rounded,
+                primary: false,
+                onPressed: _clearKidsAges,
+              ),
+            ],
+          ],
+        );
+      },
+    );
   }
 
   /// Kinderprofiel: on for a Plex account Plex marks as restricted, and

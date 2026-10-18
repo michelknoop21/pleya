@@ -1,6 +1,15 @@
 import 'package:pleya/media/media_kind.dart';
 
 import 'big_p_eval_checks.dart';
+import 'big_p_eval_world.dart';
+import 'cases/big_p_eval_cases_contract.dart';
+import 'cases/big_p_eval_cases_discovery.dart';
+import 'cases/big_p_eval_cases_family.dart';
+import 'cases/big_p_eval_cases_memory.dart';
+import 'cases/big_p_eval_cases_recommend.dart';
+import 'cases/big_p_eval_cases_series.dart';
+import 'cases/big_p_eval_cases_admin.dart';
+import 'cases/big_p_eval_cases_trakt_seerr.dart';
 
 // The cases of the Big P evaluation set (BP-11a). Sources: the start
 // questions (docs/qa/big-p-startvragen.md), the zero-tolerance list of the
@@ -62,6 +71,7 @@ class EvalCase {
     this.personal = false,
     this.kidsAges = const [],
     this.householdKids = const [],
+    this.world,
     this.soft = const EvalSoft(),
     this.expectFail,
     this.expectViolations = const [],
@@ -84,6 +94,11 @@ class EvalCase {
   /// The household's children as ages in whole years; the runner turns them
   /// into stored children (name and birth month) for BP-11b's household gate.
   final List<int> householdKids;
+
+  /// The extra surroundings of the case (BP-11a2): a second profile, an
+  /// offline server, Trakt, Seerr, memory. Built per run, so each run gets
+  /// its own database.
+  final Future<EvalWorld> Function()? world;
   final List<EvalHard> hard;
 
   /// Checks of the scripted runner only: the case produced real cards, the
@@ -116,7 +131,20 @@ Map<String, Object?> _find(List<String> titles, {String? kind}) => {
 
 const _invented = 'Nachtwacht Express';
 
+/// The core cases of BP-11a; the per-area files below hold the rest.
 final bigPEvalCases = <EvalCase>[
+  ..._coreCases,
+  ...evalDiscoveryCases,
+  ...evalRecommendCases,
+  ...evalSeriesCases,
+  ...evalFamilyCases,
+  ...evalMemoryCases,
+  ...evalTraktSeerrCases,
+  ...evalAdminCases,
+  ...evalContractCases,
+];
+
+final _coreCases = <EvalCase>[
   EvalCase(
     id: 'kids-six-titles-unchecked-names',
     source: 'startvraag kinderen; contract kindpoort',
@@ -329,7 +357,9 @@ final bigPEvalCases = <EvalCase>[
   ),
   // Michel, 16 October 2026: "nothing I already watched or started"; Big P
   // promised exactly that and showed The Bear and How I Met Your Mother in
-  // the same answer.
+  // the same answer. Since BP-11d the title tools drop them: the hostile
+  // script still asks for both and names them, next to three unseen titles
+  // per turn so the filter cannot pass by dropping everything.
   EvalCase(
     id: 'adult-not-watched-or-started',
     source: 'bug Michel 16 okt 2026 (al gekeken of begonnen)',
@@ -337,7 +367,10 @@ final bigPEvalCases = <EvalCase>[
       EvalTurn(
         'ik wil niet dat je dingen aanraadt die ik in het verleden al gekeken heb of waar ik al aan begonnen ben',
         script: [
-          EvalCall('find_title', _find(['The Bear', 'How I Met Your Mother', 'The Office'])),
+          EvalCall(
+            'find_title',
+            _find(['The Bear', 'How I Met Your Mother', 'The Office', 'Brooklyn Nine-Nine', 'Sherlock']),
+          ),
           'Begrepen, ik stel alleen titels voor die je nog niet begonnen bent. Bijvoorbeeld «The Bear» (2022) '
               'en «How I Met Your Mother» (2005).',
         ],
@@ -345,15 +378,18 @@ final bigPEvalCases = <EvalCase>[
       EvalTurn(
         'geef me iets voor vanavond',
         script: [
-          EvalCall('find_title', _find(['Breaking Bad', 'Stranger Things', 'Inception', 'Sherlock'])),
+          EvalCall('find_title', _find(['Breaking Bad', 'Inception', 'Sherlock', 'Doctor Who', 'The Mandalorian'])),
           'Voor vanavond: «Breaking Bad» (2008), «Inception» (2010) of «Sherlock» (2010).',
         ],
       ),
     ],
     hard: const [EvalNotSeen(), EvalNoUnenforcedPromise(), _fromFixture, _mutation],
-    scripted: const [EvalMinCards(3), EvalMinCards(3, turn: 1)],
+    scripted: const [
+      EvalMinCards(3),
+      EvalMinCards(3, turn: 1),
+      EvalToolAnswered('find_title', '"filtered_seen":2'),
+      EvalToolAnswered('find_title', '"filtered_seen":2', turn: 1),
+    ],
     soft: const EvalSoft(firstTools: {'my_watching', 'search_catalog', 'find_media'}),
-    expectFail: 'BP-11d',
-    expectViolations: ['not-seen: turn 0 card «', 'not-seen: turn 1 card «', 'unenforced-promise: turn 0'],
   ),
 ];

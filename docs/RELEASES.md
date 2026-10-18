@@ -51,6 +51,191 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 380 · 17 October 2026 · Apple TV
+
+<!-- commit: 3c691d456acfa8030be2ebd783770a012e5f9fd6 -->
+
+### New
+- **Big P can leave out titles you have already seen or started.** Say it once, for example
+  "don't recommend anything I've already seen" or "toon geen films die ik al gezien heb", and
+  Big P offers to remember it as a memory card. After you accept, every title Big P finds or
+  suggests on your profile skips what you watched or began. The preference stays on this
+  device. Pleya does the filtering itself, not the AI model. Delete the memory in the memory
+  screen to switch it off.
+- **Questions about your own history still work.** "Which series have I already seen?" and
+  "continue watching" show your watched and started titles even with the preference on.
+
+### Notes
+- Home rows made from a filtered search are not offered, because a saved row would show seen
+  titles again later. Your Trakt watchlist is not filtered.
+- Writing "onthoud dat ..." in the memory screen's own field does not switch the preference
+  on. Say it to Big P in the conversation instead.
+- A children's profile is not affected.
+- Nothing in this build has been checked on a device yet.
+
+### Worth checking
+- Say "don't recommend anything I've already seen" and accept the memory card. Then ask for
+  "een tip voor vanavond" and check that no film you watched or started comes back.
+- Ask "welke serie heb ik al gezien?" and check that your watched titles are listed.
+- Open the memory screen, find the preference and delete it, then ask for a tip again and
+  check that seen titles can return.
+
+## 2.8.1 · build 379 · 17 October 2026 · iPhone and iPad
+
+<!-- commit: 3c691d456acfa8030be2ebd783770a012e5f9fd6 -->
+
+### New
+- **Big P can leave out titles you have already seen or started.** Say it once, for example
+  "don't recommend anything I've already seen" or "toon geen films die ik al gezien heb", and
+  Big P offers to remember it as a memory card. After you accept, every title Big P finds or
+  suggests on your profile skips what you watched or began. The preference stays on this
+  device. Pleya does the filtering itself, not the AI model. Delete the memory in the memory
+  screen to switch it off.
+- **Questions about your own history still work.** "Which series have I already seen?" and
+  "continue watching" show your watched and started titles even with the preference on.
+
+### Notes
+- Home rows made from a filtered search are not offered, because a saved row would show seen
+  titles again later. Your Trakt watchlist is not filtered.
+- Writing "onthoud dat ..." in the memory screen's own field does not switch the preference
+  on. Say it to Big P in the conversation instead.
+- A children's profile is not affected.
+- Nothing in this build has been checked on a device yet.
+
+### Worth checking
+- Say "don't recommend anything I've already seen" and accept the memory card. Then ask for
+  "een tip voor vanavond" and check that no film you watched or started comes back.
+- Ask "welke serie heb ik al gezien?" and check that your watched titles are listed.
+- Open the memory screen, find the preference and delete it, then ask for a tip again and
+  check that seen titles can return.
+
+## 2.8.1 · build 378 · 17 October 2026 · Apple TV
+
+<!-- commit: c5f4e5f42405bb326624ce2e9c7dc41a02caee86 -->
+
+### New
+- **You can enter the children in your household.** Under Settings > Big P > Children at home
+  you add each child once with a name and a birth month, up to eight, and change or delete them
+  later. Big P then checks titles against the youngest child you mean, on your own profile. Names
+  and months stay on this device; the AI model only gets the age of the youngest child. On
+  Apple TV you pick the month and year with the remote. A children's profile does not show
+  this screen.
+- **Big P asks which children you mean.** If you ask about your children before entering them,
+  Big P shows a "Which children?" card. Add them there and Big P keeps searching.
+
+### Notes
+- In builds 375 and 376 a question about your children on your own profile showed no titles,
+  because there was no way to enter them yet. With the children entered it answers again.
+- Nothing in this build has been checked on a device yet.
+
+### Worth checking
+- Open Settings > Big P > Children at home. Add a child with the remote, change the birth
+  month, and delete the child. Check that deleting asks first.
+- On your own profile, without children entered, ask "Do I have something for the kids?".
+  Check that the "Which children?" card appears, and that after saving only titles up to the
+  age of the youngest child come back.
+- On a children's profile, check that Children at home is not in Big P's settings.
+
+## 2.8.1 · build 377 · 17 October 2026 · iPhone and iPad
+
+<!-- commit: c5f4e5f42405bb326624ce2e9c7dc41a02caee86 -->
+
+### New
+- **You can enter the children in your household.** Under Settings > Big P > Children at home
+  you add each child once with a name and a birth month, up to eight, and change or delete them
+  later. On iPhone you can also swipe a child away, after a confirmation. Big P then checks
+  titles against the youngest child you mean, on your own profile. Names and months stay on this
+  device; the AI model only gets the age of the youngest child. A children's profile does not
+  show this screen.
+- **Big P asks which children you mean.** If you ask about your children before entering them,
+  Big P shows a "Which children?" card. Add them there and Big P keeps searching.
+
+### Notes
+- In builds 375 and 376 a question about your children on your own profile showed no titles,
+  because there was no way to enter them yet. With the children entered it answers again.
+- Nothing in this build has been checked on a device yet.
+
+### Worth checking
+- Open Settings > Big P > Children at home. Add a child, change the birth month, and delete
+  the child by swiping. Check that deleting asks first.
+- On your own profile, without children entered, ask "Do I have something for the kids?".
+  Check that the "Which children?" card appears, and that after saving only titles up to the
+  age of the youngest child come back.
+- On a children's profile, check that Children at home is not in Big P's settings.
+
+## 2.8.1 · build 376 · 17 October 2026 · Apple TV
+
+<!-- commit: 06dba51db1fea98d3bd9b4ac2a770f1a07875f43 -->
+
+### Improved
+- **The title Big P recommends is the first card.** When Big P recommends a title out of a list
+  of results, for example what was added this week, that title comes first, then any other
+  title it names in the order it names them, then the rest in their own order. Two titles of
+  one series keep the order Big P names them in.
+- **Big P is told to give a reason only when it has one.** A reason should come from what the
+  library returned (genre, rating, summary, cast), from what you saved in Big P's memory, or
+  from what you said yourself. Pleya does not check this, so a reason can still slip through.
+- **Questions about your children are checked against their age on your own profile.** This
+  starts to work once you can enter your children, which comes in a later build. A children's
+  profile keeps using its own ages. Big P's memory refuses a child's age.
+
+### Notes
+- **Until you can enter your children, a question about them on your own profile shows no
+  titles.** Big P says it does not know which children you mean. This includes the start
+  question "Do I have something for the kids?". The screen to enter them comes in a later
+  build. A children's profile that already has ages answers as before.
+- Twenty-nine libraries the app builds on were updated in one routine batch, without a change you
+  should notice.
+- No new behaviour in this build has been checked on a device yet.
+
+### Worth checking
+- On your own profile, ask Big P "Wat is er deze week toegevoegd en echt een aanrader voor
+  mij?". Check that the title it recommends is the first card.
+- Ask "Do I have something for the kids?". Check that Big P says it does not know which
+  children you mean, and that a children's profile that already has ages still answers. Check
+  that a reason Big P gives is something you told it or something in the library data.
+
+## 2.8.1 · build 375 · 17 October 2026 · iPhone and iPad
+
+<!-- commit: 06dba51db1fea98d3bd9b4ac2a770f1a07875f43 -->
+
+### New
+- **Home can be customised on iPhone and iPad.** Press and hold a row title, or use the line
+  at the bottom of Home, or the tile in Settings: Move up, Move down, Hide on Home, or open
+  the list. In the list you drag rows by their handle, show or hide each with the eye, and
+  make, edit, hide or delete rows of your own, with three filter steps and a preview. An empty
+  preview is not saved, and deleting asks first.
+
+### Improved
+- **The title Big P recommends is the first card.** When Big P recommends a title out of a list
+  of results, for example what was added this week, that title comes first, then any other
+  title it names in the order it names them, then the rest in their own order. Two titles of
+  one series keep the order Big P names them in.
+- **Big P is told to give a reason only when it has one.** A reason should come from what the
+  library returned (genre, rating, summary, cast), from what you saved in Big P's memory, or
+  from what you said yourself. Pleya does not check this, so a reason can still slip through.
+- **Questions about your children are checked against their age on your own profile.** This
+  starts to work once you can enter your children, which comes in a later build. A children's
+  profile keeps using its own ages. Big P's memory refuses a child's age.
+
+### Notes
+- **Until you can enter your children, a question about them on your own profile shows no
+  titles.** Big P says it does not know which children you mean. This includes the start
+  question "Do I have something for the kids?". The screen to enter them comes in a later
+  build. A children's profile that already has ages answers as before.
+- Twenty-nine libraries the app builds on were updated in one routine batch, without a change you
+  should notice.
+- No new behaviour in this build has been checked on a device yet.
+
+### Worth checking
+- On your own profile, ask Big P "Wat is er deze week toegevoegd en echt een aanrader voor
+  mij?". Check that the title it recommends is the first card.
+- Ask "Do I have something for the kids?". Check that Big P says it does not know which
+  children you mean, and that a children's profile that already has ages still answers. Check
+  that a reason Big P gives is something you told it or something in the library data.
+- On iPhone or iPad, press and hold a row title on Home and open Customise Home. Move a row,
+  hide one and make a row of your own. Check that Home follows.
+
 ## 2.8.1 · build 374 · 16 October 2026 · Apple TV
 
 <!-- commit: 55d66c0ab1b95c31fc62d4be59aaf1c50576a95c -->

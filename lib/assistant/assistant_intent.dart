@@ -1,5 +1,9 @@
 import '../media/media_kind.dart';
 
+// The standing wish about watched titles (BP-11d) lives in its own file, so
+// this one does not grow past its size; it is part of the intent all the same.
+export 'assistant_seen_intent.dart';
+
 /// Where a fact about the question comes from. Higher wins: a lower source
 /// never overrides a higher one (contract: security, then what the user said
 /// now, then the conversation, then memory, then defaults, then the model).
