@@ -818,8 +818,10 @@ void main() {
     );
     final row = await search(ctx, {'unwatched': true, 'kind': 'movie'});
     expect([for (final r in (row['results'] as List).cast<Map>()) r['title']], ['Onaangeroerd']);
+    expect(row['can_become_home_row'], isFalse, reason: 'Home keeps started titles, so the row would differ');
     final all = await search(ctx, {'kind': 'movie'});
     expect((all['results'] as List), hasLength(2), reason: 'control: without the filter both are listed');
+    expect(all['can_become_home_row'], isTrue, reason: 'control: nothing dropped, the row is allowed');
 
     final (textCtx, _, _, _) = await setUpCtx(
       servers: (() {
