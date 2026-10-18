@@ -91,6 +91,25 @@ Per saldo is er niets aantoonbaar verbeterd of verslechterd: de verschillen zijn
 - Regressies bij glm: `ser-finished-show` (3 van 3 naar 0 van 3, 18 kaarten waar er 2 mochten zijn), `disc-empty-honest` (2 van 3 naar 0 van 3, 3 tot 5 kaarten waar er geen mochten zijn) en `rec-light-after-dinner` (3 van 3 naar 2 van 3, films bij een serievraag). Bij gemma: `con-everyone-no-capability` (3 van 3 naar 0 van 3, drie kaarten, ook zonder de promptregels) en `adm-search-with-offline-server` (1 van 3 naar 0 van 3, noemt de offline server niet).
 - Waarschijnlijke oorzaak bij glm, uit de kaartaantallen afgeleid en niet met een fix getest: een model dat meerdere zoekopdrachten doet, toont de kaarten van alle zoekopdrachten, ook als het er maar enkele noemt. Bij gemma `con-everyone-no-capability` past dit niet: daar is het één zoekopdracht die drie titels noemt, dus de oorzaak is nog onbekend.
 
+## Vierde meting na BP-11l (18 oktober 2026)
+
+Code: main op 400c6fd1, dezelfde opzet (2 modellen, 60 cases, 3 pogingen, 360 runs, label `volledig-na-11l`). Eén glm-run (`disc-title-in-library`) gaf een providerfout en telt niet mee. Vergeleken met de derde meting:
+
+| Model | Runs geslaagd | Cases in alle 3 pogingen goed |
+| --- | --- | --- |
+| gemma4:31b | 173 van 180 (eerst 171) | 57 van 60 (eerst 56) |
+| glm-5.3-flash | 166 van 179 (eerst 169 van 180) | 52 van 60 (eerst 55) |
+
+Gericht gemeten:
+
+- `rec-seen-five-others` (glm): van 0 van 3 naar 3 van 3. Het antwoord noemt vijf titels op de vraag om "vijf andere", de kaarten van de overige zoekopdrachten verdwijnen. Gemma bleef 3 van 3.
+- `ser-finished-show` en `disc-empty-honest` (glm) blijven 0 van 3: in die vragen staat geen aantal, dus de regel treedt niet op. `con-everyone-no-capability` (gemma) blijft 0 van 3, zoals verwacht: daar is het één zoekopdracht met drie genoemde titels.
+- Ook beter: `ser-next-season-no-source` (glm en gemma), `disc-keyword` en `adm-search-with-offline-server` (gemma).
+
+Wat slechter werd bij glm: `adm-search-with-offline-server`, `con-kids-no-scan`, `con-series-not-film-reverse`, `sea-find-request` en `sea-request-needs-yes` gingen elk van 3 van 3 naar 2 van 3, en `rec-light-after-dinner` van 2 naar 1. BP-11l is hier niet de oorzaak: de regel werkt alleen als de vraag een aantal van twee of meer noemt, en geen van deze vragen doet dat. Bij `sea-find-request` en `sea-request-needs-yes` roept het model in de mislukte runs `find_title` aan in plaats van `find_request_title` en toont het een kaart (Primer, Severance) die niet in de catalogus staat; dat is modelgedrag. Bij gemma ging `disc-english` van 3 van 3 naar 0 van 3: in alle drie de runs roept het model `search_catalog` en `trending_titles` aan, de trending-aanroep geeft een fout, en er komt geen kaart. Dat is bij elke poging hetzelfde patroon en dus waarschijnlijk geen ruis, maar de oorzaak is niet vastgesteld; BP-11l is het ook niet, want het antwoord noemt geen titels. De overige verschuivingen zijn niet herhaald en dus niet van ruis te onderscheiden.
+
+De vergeleken stand (2394cdea tot 400c6fd1) bevat naast BP-11l ook de wijzigingen van RESUME-SYNC1 (mediaclients, kijkstatus, spelernavigatie). De "52 van 60" bij glm telt `disc-title-in-library` mee als goed: twee geldige runs slaagden, de derde was een providerfout.
+
 ## Ruismeting: dezelfde code twee keer (18 oktober 2026)
 
 Dezelfde commit (400c6fd1), dezelfde opzet, twee volledige runs: `volledig-na-11l` en `ruis-herhaling-400c6fd1` (360 runs elk). De eerste run had één glm-providerfout (`disc-title-in-library`), de herhaling geen. Dit is de eerste meting van de spreiding; het zijn twee runs, geen steekproef waar je een betrouwbaarheidsinterval uit trekt.
