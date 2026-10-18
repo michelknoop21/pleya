@@ -8487,6 +8487,12 @@ class TranslationsAssistantEndsEn {
 	/// en: 'Your profile or server connection changed. Run the check again.'
 	String get sourceChanged => 'Your profile or server connection changed. Run the check again.';
 
+	/// en: 'The libraries are still loading. Try again in a moment.'
+	String get librariesLoading => 'The libraries are still loading. Try again in a moment.';
+
+	/// en: 'I do not know that library.'
+	String get unknownLibrary => 'I do not know that library.';
+
 	/// en: 'This command could not be carried out with the available server functions.'
 	String get operationUnavailable => 'This command could not be carried out with the available server functions.';
 
@@ -12229,6 +12235,8 @@ extension on Translations {
 			'assistant.ends.nothingChanged' => 'Nothing was changed.',
 			'assistant.ends.modelMissing' => 'The chosen model is gone. Pick another one in the Big P settings.',
 			'assistant.ends.sourceChanged' => 'Your profile or server connection changed. Run the check again.',
+			'assistant.ends.librariesLoading' => 'The libraries are still loading. Try again in a moment.',
+			'assistant.ends.unknownLibrary' => 'I do not know that library.',
 			'assistant.ends.operationUnavailable' => 'This command could not be carried out with the available server functions.',
 			'assistant.ends.permissionDenied' => 'You do not have permission for this administration command on the server.',
 			'assistant.ends.malformedToolCall' => 'Something went wrong while looking that up. Please try again.',

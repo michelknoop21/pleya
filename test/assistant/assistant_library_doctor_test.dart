@@ -16,6 +16,9 @@ import 'package:pleya/services/jellyfin_client.dart';
 import 'package:pleya/assistant/assistant_entitlement.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/assistant/assistant_run.dart';
+import 'package:pleya/assistant/assistant_task.dart';
+import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_labels.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/media/ids.dart';
@@ -498,6 +501,71 @@ void main() {
     expect(data['partial'], isTrue);
     expect(((data['coverage'] as Map)['limits'] as List), contains('server_unavailable'));
     expect(f.server.writes, isEmpty);
+  });
+
+  group('an empty library list (BP-11j)', () {
+    setUp(() {
+      final saved = assistantLibrariesWait;
+      assistantLibrariesWait = const Duration(milliseconds: 600);
+      addTearDown(() => assistantLibrariesWait = saved);
+    });
+
+    Matcher codeIs(String code) => throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', code));
+
+    test('a list that comes in during the wait is used, not failed', () async {
+      final f = _Fixture();
+      final all = [...f.libraries];
+      f.libraries.clear();
+      Timer(const Duration(milliseconds: 100), () => f.libraries.addAll(all));
+      final data = await f.diagnose(args: const {'kind': 'show'});
+      expect(data.containsKey('error'), isFalse);
+    });
+
+    test('a list that never comes in says the libraries are not ready, not that none exist', () async {
+      final f = _Fixture();
+      f.libraries.clear();
+      await expectLater(f.diagnose(args: const {}), codeIs('libraries_not_ready'));
+    });
+
+    test('each of the three failures reads differently on the task card', () {
+      AssistantTask failed(String code) => AssistantTask(
+        id: 't',
+        title: 'Doctor',
+        intent: 'diagnose',
+        status: AssistantTaskStatus.failed,
+        answer: '',
+        displays: const [],
+        steps: const [],
+        actions: const [],
+        error: code,
+      );
+      final labels = {
+        for (final code in ['libraries_not_ready', 'unknown_library_argument', 'unknown_visible_library'])
+          code: assistantTaskStatusLabel(failed(code)).detail,
+      };
+      expect(labels['libraries_not_ready'], t.assistant.ends.librariesLoading);
+      expect(labels['unknown_library_argument'], t.assistant.ends.unknownLibrary);
+      expect(labels['unknown_visible_library'], t.libraries.noLibrariesFound);
+      expect(labels.values.toSet(), hasLength(3));
+    });
+
+    test('a server or library the model made up is its own error, without a wait', () async {
+      final f = _Fixture();
+      final watch = Stopwatch()..start();
+      await expectLater(
+        f.diagnose(args: const {'server_id': 'nope', 'library_id': 'x'}),
+        codeIs('unknown_library_argument'),
+      );
+      expect(watch.elapsed, lessThan(const Duration(milliseconds: 400)));
+    });
+
+    test('libraries exist but none of the asked kind: that error, without a wait', () async {
+      final f = _Fixture();
+      f.libraries.removeWhere((l) => l.kind == MediaKind.show);
+      final watch = Stopwatch()..start();
+      await expectLater(f.diagnose(args: const {'kind': 'show'}), codeIs('unknown_visible_library'));
+      expect(watch.elapsed, lessThan(const Duration(milliseconds: 400)));
+    });
   });
 
   test('server going offline during hydration invalidates diagnosis evidence', () async {

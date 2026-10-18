@@ -2876,6 +2876,8 @@
       "nothingChanged": "Nothing was changed.",
       "modelMissing": "The chosen model is gone. Pick another one in the Big P settings.",
       "sourceChanged": "Your profile or server connection changed. Run the check again.",
+      "librariesLoading": "The libraries are still loading. Try again in a moment.",
+      "unknownLibrary": "I do not know that library.",
       "operationUnavailable": "This command could not be carried out with the available server functions.",
       "permissionDenied": "You do not have permission for this administration command on the server.",
       "malformedToolCall": "Something went wrong while looking that up. Please try again."
