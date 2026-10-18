@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -94,7 +95,8 @@ class _Loader implements HomeCustomRowLoader {
 
 /// A server that only answers a text search; everything else is unused here.
 class _SearchServer implements MediaServerClient {
-  _SearchServer(String id, this.backend, {this.hits = const [], this.fail = false}) : serverId = ServerId(id);
+  _SearchServer(String id, this.backend, {this.hits = const [], this.fail = false, this.hang = false})
+    : serverId = ServerId(id);
   @override
   final ServerId serverId;
   @override
@@ -102,11 +104,15 @@ class _SearchServer implements MediaServerClient {
   final List<MediaItem> hits;
   final bool fail;
 
+  /// Never answers: a server that is up for the health check but stalls.
+  final bool hang;
+
   @override
   String get serverName => serverId.value;
 
   @override
-  Future<List<MediaItem>> searchItems(String query, {int limit = 100}) async => fail ? throw StateError('down') : hits;
+  Future<List<MediaItem>> searchItems(String query, {int limit = 100}) =>
+      hang ? Completer<List<MediaItem>>().future : (fail ? Future.error(StateError('down')) : Future.value(hits));
 
   @override
   void close() {}
@@ -754,6 +760,35 @@ void main() {
     expect(text['servers_offline'], ['kelder']);
     expect(text['partial'], isTrue);
     expect(text['total_matches'], isNull);
+  });
+
+  test('an offline server does not cost the answer: the online servers still list their titles', () async {
+    final (ctx, _, _, _) = await setUpCtx(groups: [_group('m1', 'Alien')]);
+    ctx.servers.debugRegisterClientForTesting(_SearchServer('kelder', MediaBackend.jellyfin), online: false);
+    final data = await search(ctx, {'kind': 'movie'});
+    expect([for (final r in (data['results'] as List).cast<Map>()) r['title']], ['Alien']);
+    expect(data['servers_offline'], ['kelder']);
+  });
+
+  test('a server that stalls is named and the others answer a text search in time', () async {
+    final saved = assistantServerTimeout;
+    assistantServerTimeout = const Duration(milliseconds: 150);
+    addTearDown(() => assistantServerTimeout = saved);
+    final (ctx, _, _, _) = await setUpCtx(
+      servers: (() {
+        final m = MultiServerManager();
+        addTearDown(m.dispose);
+        m.debugRegisterClientForTesting(_SearchServer('jf-2', MediaBackend.jellyfin, hits: [_movie('j1', 'Alien')]));
+        m.debugRegisterClientForTesting(_SearchServer('jf-3', MediaBackend.jellyfin, hang: true));
+        return m;
+      })(),
+    );
+    final watch = Stopwatch()..start();
+    final data = await search(ctx, {'text': 'alien'});
+    expect(watch.elapsed, lessThan(const Duration(seconds: 3)));
+    expect([for (final r in (data['results'] as List).cast<Map>()) r['item_id']], ['j1']);
+    expect(data['servers_offline'], ['jf-3']);
+    expect(data['partial'], isTrue);
   });
 
   test('no offline server: no servers_offline marker', () async {

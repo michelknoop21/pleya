@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -446,6 +447,22 @@ void main() {
       tools: [tool],
     ).ask('Welke films kunnen Sam en ik samen kijken?');
     expect(seen?['kind'], 'movie');
+  });
+
+  test('a server whose health probe never ends does not hold the run: it goes on after the wait', () async {
+    final m = await _Server().manager();
+    final model = _Model(AssistantProviderKind.ollamaServer, [_say('Klaar')]);
+    final watch = Stopwatch()..start();
+    final result = await AssistantRun(
+      model: model.client(),
+      context: AssistantToolContext(servers: m),
+      confirm: (_) async => null,
+      entitlement: const _Entitled(),
+      refreshHealth: () => Completer<void>().future,
+      healthRefresh: const Duration(milliseconds: 100),
+    ).ask('Wat is er nieuw?');
+    expect(result.text, 'Klaar');
+    expect(watch.elapsed, lessThan(const Duration(seconds: 5)));
   });
 
   test(
