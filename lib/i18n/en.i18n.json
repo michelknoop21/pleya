@@ -2769,6 +2769,9 @@
         "failed": "Job failed",
         "background": "Job still running in the background",
         "unknown": "Job: status can no longer be determined"
+      },
+      "kinds": {
+        "scan_library": "Library scan"
       }
     },
     "result": {

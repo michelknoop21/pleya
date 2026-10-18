@@ -84,9 +84,19 @@ String assistantActionKindLabel(AssistantActionKind kind) {
 String assistantActionLabel(AssistantActionRecord record) => [
   _jobPhaseLabel(record) ?? assistantActionKindLabel(record.kind),
   if (record.progress case AssistantJobProgress(phase: AssistantJobPhase.running, :final percent?)) '$percent%',
-  record.subject,
+  _subjectLabel(record.subject),
   record.serverName,
 ].where((part) => part.isNotEmpty).join(' · ');
+
+/// The Pleya Server names a job by its kind ("scan_library"); the card shows
+/// a readable name and never the wire word.
+String _subjectLabel(String subject) {
+  if (!RegExp(r'^[a-z]+(_[a-z]+)+$').hasMatch(subject)) return subject;
+  return switch (subject) {
+    'scan_library' => t.assistant.jobs.kinds.scan_library,
+    _ => subject.replaceAll('_', ' '),
+  };
+}
 
 String? _jobPhaseLabel(AssistantActionRecord record) {
   final j = t.assistant.jobs;

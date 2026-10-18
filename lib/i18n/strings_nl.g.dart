@@ -3548,6 +3548,7 @@ class _TranslationsAssistantJobsNl extends TranslationsAssistantJobsEn {
 	// Translations
 	@override late final _TranslationsAssistantJobsScanLibraryNl scanLibrary = _TranslationsAssistantJobsScanLibraryNl._(_root);
 	@override late final _TranslationsAssistantJobsRetryJobNl retryJob = _TranslationsAssistantJobsRetryJobNl._(_root);
+	@override late final _TranslationsAssistantJobsKindsNl kinds = _TranslationsAssistantJobsKindsNl._(_root);
 }
 
 // Path: assistant.result
@@ -3998,6 +3999,16 @@ class _TranslationsAssistantJobsRetryJobNl extends TranslationsAssistantJobsRetr
 	@override String get failed => 'Taak mislukt';
 	@override String get background => 'Taak loopt nog op de achtergrond';
 	@override String get unknown => 'Taak: status niet meer vast te stellen';
+}
+
+// Path: assistant.jobs.kinds
+class _TranslationsAssistantJobsKindsNl extends TranslationsAssistantJobsKindsEn {
+	_TranslationsAssistantJobsKindsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get scan_library => 'Bibliotheek scannen';
 }
 
 // Path: assistant.confirm.titles
@@ -6691,6 +6702,7 @@ extension on TranslationsNl {
 			'assistant.jobs.retryJob.failed' => 'Taak mislukt',
 			'assistant.jobs.retryJob.background' => 'Taak loopt nog op de achtergrond',
 			'assistant.jobs.retryJob.unknown' => 'Taak: status niet meer vast te stellen',
+			'assistant.jobs.kinds.scan_library' => 'Bibliotheek scannen',
 			'assistant.result.doneBy' => 'Uitgevoerd door Pleya',
 			'assistant.result.notDoneBy' => 'Niet uitgevoerd door Pleya',
 			'assistant.result.done' => 'Klaar',
@@ -6786,9 +6798,9 @@ extension on TranslationsNl {
 			'assistant.settings.disableBody' => 'De provider en de sleutel worden van dit apparaat verwijderd. Je kunt Big P altijd opnieuw instellen.',
 			'assistant.settings.unreadableTitle' => 'Big P-instelling vervangen?',
 			'assistant.settings.unreadableBody' => 'Je iCloud-sleutelhanger heeft een Big P-instelling van een nieuwere Pleya op een ander apparaat. Deze versie kan die niet lezen. Vervangen wijzigt de instelling op al je apparaten.',
-			'assistant.settings.replace' => 'Vervangen',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.settings.replace' => 'Vervangen',
 			'assistant.settings.currentModel' => 'Model',
 			'assistant.settings.keyStored' => 'Opgeslagen, verborgen',
 			'assistant.settings.errorUrlInvalid' => 'Vul een adres in dat begint met http:// of https://.',

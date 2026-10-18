@@ -8180,6 +8180,7 @@ class TranslationsAssistantJobsEn {
 	// Translations
 	late final TranslationsAssistantJobsScanLibraryEn scanLibrary = TranslationsAssistantJobsScanLibraryEn.internal(_root);
 	late final TranslationsAssistantJobsRetryJobEn retryJob = TranslationsAssistantJobsRetryJobEn.internal(_root);
+	late final TranslationsAssistantJobsKindsEn kinds = TranslationsAssistantJobsKindsEn.internal(_root);
 }
 
 // Path: assistant.result
@@ -9122,6 +9123,18 @@ class TranslationsAssistantJobsRetryJobEn {
 
 	/// en: 'Job: status can no longer be determined'
 	String get unknown => 'Job: status can no longer be determined';
+}
+
+// Path: assistant.jobs.kinds
+class TranslationsAssistantJobsKindsEn {
+	TranslationsAssistantJobsKindsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Library scan'
+	String get scan_library => 'Library scan';
 }
 
 // Path: assistant.confirm.titles
@@ -12003,6 +12016,7 @@ extension on Translations {
 			'assistant.jobs.retryJob.failed' => 'Job failed',
 			'assistant.jobs.retryJob.background' => 'Job still running in the background',
 			'assistant.jobs.retryJob.unknown' => 'Job: status can no longer be determined',
+			'assistant.jobs.kinds.scan_library' => 'Library scan',
 			'assistant.result.doneBy' => 'Carried out by Pleya',
 			'assistant.result.notDoneBy' => 'Not carried out by Pleya',
 			'assistant.result.done' => 'Done',
@@ -12098,9 +12112,9 @@ extension on Translations {
 			'assistant.settings.disableBody' => 'The provider and key are removed from this device. You can set Big P up again at any time.',
 			'assistant.settings.unreadableTitle' => 'Replace the Big P setup?',
 			'assistant.settings.unreadableBody' => 'Your iCloud keychain holds a Big P setup from a newer Pleya version on another device. This version cannot read it. Replacing it changes the setup on all your devices.',
-			'assistant.settings.replace' => 'Replace',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.settings.replace' => 'Replace',
 			'assistant.settings.currentModel' => 'Model',
 			'assistant.settings.keyStored' => 'Stored, hidden',
 			'assistant.settings.errorUrlInvalid' => 'Enter an address that starts with http:// or https://.',
