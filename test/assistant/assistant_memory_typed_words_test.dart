@@ -451,11 +451,16 @@ void main() {
   );
 
   test(
-    'a typed "onthoud dat" on a grown-up profile keeps the model\'s words when it saved nothing on its own',
+    'the polite form on a children\'s profile gets the same refusal, and a plain question does not (BP-11h)',
     () async {
-      final c = make([say('Prima.')]);
-      await c.submit('Onthoud dat ik van Frozen hou', typed: true);
-      expect(c.answer, isNot(t.assistant.memory.kids));
+      profile.kids = true;
+      final polite = make([say('Natuurlijk, dat onthoud ik.')]);
+      await polite.submit('Wil je onthouden dat ik van Frozen hou', typed: true);
+      expect(polite.answer, t.assistant.memory.kids);
+
+      final question = make([say('Frozen is een Disney-film.')]);
+      await question.submit('Wat weet je over Frozen?', typed: true);
+      expect(question.answer, 'Frozen is een Disney-film.');
     },
   );
 

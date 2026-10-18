@@ -112,7 +112,10 @@ extension _AssistantRunMemory on AssistantRun {
     final known =
         memory != null && key != null && (await memory.service.list()).any((f) => memoryValueKey(f.value) == key);
     final kidsTyped =
-        _ctx.kidsMode && userTyped && _spoilerQuestion == null && assistantMemoryTypedFact(prompt) != null;
+        _ctx.kidsMode &&
+        userTyped &&
+        _spoilerQuestion == null &&
+        assistantMemoryTypedFact(prompt, polite: true) != null;
     _ctx.memoryTurn = AssistantMemoryTurn(enabled: on, typedFact: typed, typedKnown: known, kidsTyped: kidsTyped);
   }
 
