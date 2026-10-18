@@ -47,6 +47,8 @@ UnifiedMediaGroup _group(
   String server = _server,
   int? added,
   MediaBackend backend = MediaBackend.jellyfin,
+  int? leaves,
+  int? viewed,
 }) {
   final source = UnifiedMediaSource.fromItem(
     MediaItem(
@@ -58,6 +60,8 @@ UnifiedMediaGroup _group(
       serverId: server,
       libraryId: library,
       addedAt: added,
+      leafCount: leaves,
+      viewedLeafCount: viewed,
     ),
   );
   return UnifiedMediaGroup(
@@ -789,6 +793,52 @@ void main() {
     expect([for (final r in (data['results'] as List).cast<Map>()) r['item_id']], ['j1']);
     expect(data['servers_offline'], ['jf-3']);
     expect(data['partial'], isTrue);
+  });
+
+  test('a partly watched title is marked started, a watched or untouched one is not (BP-11k)', () async {
+    final (ctx, _, _, _) = await setUpCtx(
+      groups: [
+        _group('s1', 'Begonnen', leaves: 20, viewed: 6),
+        _group('s2', 'Onaangeroerd', leaves: 20, viewed: 0),
+        _group('s3', 'Uitgekeken', leaves: 20, viewed: 20),
+        _group('m1', 'Film'),
+      ],
+    );
+    final data = await search(ctx, {});
+    final results = {for (final r in (data['results'] as List).cast<Map>()) r['title']: r};
+    expect(results['Begonnen']!['started'], isTrue);
+    for (final title in ['Onaangeroerd', 'Uitgekeken', 'Film']) {
+      expect(results[title]!.containsKey('started'), isFalse, reason: title);
+    }
+  });
+
+  test('unwatched=true leaves out started titles, in the row path and the text path (BP-11k)', () async {
+    final (ctx, _, _, _) = await setUpCtx(
+      groups: [_group('s1', 'Begonnen', leaves: 20, viewed: 6), _group('s2', 'Onaangeroerd', leaves: 20, viewed: 0)],
+    );
+    final row = await search(ctx, {'unwatched': true, 'kind': 'movie'});
+    expect([for (final r in (row['results'] as List).cast<Map>()) r['title']], ['Onaangeroerd']);
+    expect(row['can_become_home_row'], isFalse, reason: 'Home keeps started titles, so the row would differ');
+    final all = await search(ctx, {'kind': 'movie'});
+    expect((all['results'] as List), hasLength(2), reason: 'control: without the filter both are listed');
+    expect(all['can_become_home_row'], isTrue, reason: 'control: nothing dropped, the row is allowed');
+
+    final (textCtx, _, _, _) = await setUpCtx(
+      servers: (() {
+        final m = MultiServerManager();
+        addTearDown(m.dispose);
+        m.debugRegisterClientForTesting(
+          _SearchServer(
+            'jf-2',
+            MediaBackend.jellyfin,
+            hits: [_movie('j1', 'Alien').copyWith(durationMs: 6000000, viewOffsetMs: 1800000), _movie('j2', 'Aliens')],
+          ),
+        );
+        return m;
+      })(),
+    );
+    final text = await search(textCtx, {'text': 'alien', 'unwatched': true});
+    expect([for (final r in (text['results'] as List).cast<Map>()) r['item_id']], ['j2']);
   });
 
   test('no offline server: no servers_offline marker', () async {

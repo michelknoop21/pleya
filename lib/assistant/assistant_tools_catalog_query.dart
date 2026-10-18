@@ -376,6 +376,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     // profile watched as a copy elsewhere is not unseen.
     applyWindow(groups);
     final seenElsewhere = unwatched ? await _dropSeenByProfile(ctx, groups) : 0;
+    final startedDropped = unwatched ? _dropStarted(groups) : 0;
     checkCurrent();
     // The window's total was counted before the history dropped titles.
     if (cutoff != null) total = groups.length;
@@ -386,7 +387,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     return _CatalogQuery(
       kept,
       // A Home row cannot repeat the profile's own history filter.
-      rowShaped && kind != null && seenElsewhere == 0 && offset == 0 ? row : null,
+      rowShaped && kind != null && seenElsewhere == 0 && startedDropped == 0 && offset == 0 ? row : null,
       partial: partial,
       offset: offset,
       nextOffset:
@@ -509,6 +510,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   }
   applyWindow(groups);
   final seenBefore = unwatched ? await _dropSeenByProfile(ctx, groups) : 0;
+  if (unwatched) _dropStarted(groups);
   checkCurrent();
   if (cutoff != null) total = groups.length;
   // No sort asked: the servers' relevance order stands.
@@ -544,6 +546,19 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
               if (!g.sources.any((s) => genreChecked.contains(s.sourceKey))) g.groupId,
           },
   );
+}
+
+/// "Unwatched" for the user is "not started": a series with some episodes
+/// played, or a film with a resume point, is left out. The servers' own
+/// unwatched filter keeps such titles in (Home's convention). Returns how
+/// many went.
+int _dropStarted(List<UnifiedMediaGroup> groups) {
+  final before = groups.length;
+  groups.removeWhere((g) {
+    final item = g.representativeSource.item;
+    return item.hasActiveProgress || item.isPartiallyWatched;
+  });
+  return before - groups.length;
 }
 
 /// Removes from [groups] the films the active profile's own log holds as
