@@ -8301,6 +8301,7 @@ class TranslationsAssistantJobsEn {
 	// Translations
 	late final TranslationsAssistantJobsScanLibraryEn scanLibrary = TranslationsAssistantJobsScanLibraryEn.internal(_root);
 	late final TranslationsAssistantJobsRetryJobEn retryJob = TranslationsAssistantJobsRetryJobEn.internal(_root);
+	late final TranslationsAssistantJobsKindsEn kinds = TranslationsAssistantJobsKindsEn.internal(_root);
 }
 
 // Path: assistant.result
@@ -9249,6 +9250,21 @@ class TranslationsAssistantJobsRetryJobEn {
 
 	/// en: 'Job: status can no longer be determined'
 	String get unknown => 'Job: status can no longer be determined';
+}
+
+// Path: assistant.jobs.kinds
+class TranslationsAssistantJobsKindsEn {
+	TranslationsAssistantJobsKindsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Library scan'
+	String get scan_library => 'Library scan';
+
+	/// en: 'Storage check'
+	String get storage_recheck_roots => 'Storage check';
 }
 
 // Path: assistant.confirm.titles
@@ -12174,6 +12190,8 @@ extension on Translations {
 			'assistant.jobs.retryJob.failed' => 'Job failed',
 			'assistant.jobs.retryJob.background' => 'Job still running in the background',
 			'assistant.jobs.retryJob.unknown' => 'Job: status can no longer be determined',
+			'assistant.jobs.kinds.scan_library' => 'Library scan',
+			'assistant.jobs.kinds.storage_recheck_roots' => 'Storage check',
 			'assistant.result.doneBy' => 'Carried out by Pleya',
 			'assistant.result.notDoneBy' => 'Not carried out by Pleya',
 			'assistant.result.done' => 'Done',
@@ -12224,10 +12242,10 @@ extension on Translations {
 			'assistant.notes.replacesAllAccess' => 'Replaces all existing access of this user on this server.',
 			'assistant.ends.noTools' => 'There is nothing Big P can do on your servers right now.',
 			'assistant.ends.toolsUnsupported' => 'This model cannot use tools. Pick another model in the Big P settings.',
-			'assistant.ends.stepLimit' => 'That took too many steps. Try a shorter question.',
-			'assistant.ends.notEntitled' => 'Big P is not available on this account.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.ends.stepLimit' => 'That took too many steps. Try a shorter question.',
+			'assistant.ends.notEntitled' => 'Big P is not available on this account.',
 			'assistant.ends.providerUnauthorized' => 'The AI provider rejected the key. Check it in the Big P settings.',
 			'assistant.ends.providerUnreachable' => 'The AI provider cannot be reached.',
 			'assistant.ends.providerTimeout' => 'The AI provider did not answer in time.',

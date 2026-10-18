@@ -3604,6 +3604,7 @@ class _TranslationsAssistantJobsNl extends TranslationsAssistantJobsEn {
 	// Translations
 	@override late final _TranslationsAssistantJobsScanLibraryNl scanLibrary = _TranslationsAssistantJobsScanLibraryNl._(_root);
 	@override late final _TranslationsAssistantJobsRetryJobNl retryJob = _TranslationsAssistantJobsRetryJobNl._(_root);
+	@override late final _TranslationsAssistantJobsKindsNl kinds = _TranslationsAssistantJobsKindsNl._(_root);
 }
 
 // Path: assistant.result
@@ -4056,6 +4057,17 @@ class _TranslationsAssistantJobsRetryJobNl extends TranslationsAssistantJobsRetr
 	@override String get failed => 'Taak mislukt';
 	@override String get background => 'Taak loopt nog op de achtergrond';
 	@override String get unknown => 'Taak: status niet meer vast te stellen';
+}
+
+// Path: assistant.jobs.kinds
+class _TranslationsAssistantJobsKindsNl extends TranslationsAssistantJobsKindsEn {
+	_TranslationsAssistantJobsKindsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get scan_library => 'Bibliotheek scannen';
+	@override String get storage_recheck_roots => 'Opslag controleren';
 }
 
 // Path: assistant.confirm.titles
@@ -6793,6 +6805,8 @@ extension on TranslationsNl {
 			'assistant.jobs.retryJob.failed' => 'Taak mislukt',
 			'assistant.jobs.retryJob.background' => 'Taak loopt nog op de achtergrond',
 			'assistant.jobs.retryJob.unknown' => 'Taak: status niet meer vast te stellen',
+			'assistant.jobs.kinds.scan_library' => 'Bibliotheek scannen',
+			'assistant.jobs.kinds.storage_recheck_roots' => 'Opslag controleren',
 			'assistant.result.doneBy' => 'Uitgevoerd door Pleya',
 			'assistant.result.notDoneBy' => 'Niet uitgevoerd door Pleya',
 			'assistant.result.done' => 'Klaar',
@@ -6843,10 +6857,10 @@ extension on TranslationsNl {
 			'assistant.notes.replacesAllAccess' => 'Vervangt alle bestaande toegang van deze gebruiker op deze server.',
 			'assistant.ends.noTools' => 'Big P kan nu niets doen op je servers.',
 			'assistant.ends.toolsUnsupported' => 'Dit model kan geen tools gebruiken. Kies een ander model bij de instellingen van Big P.',
-			'assistant.ends.stepLimit' => 'Dit kostte te veel stappen. Probeer een kortere vraag.',
-			'assistant.ends.notEntitled' => 'Big P is niet beschikbaar op dit account.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.ends.stepLimit' => 'Dit kostte te veel stappen. Probeer een kortere vraag.',
+			'assistant.ends.notEntitled' => 'Big P is niet beschikbaar op dit account.',
 			'assistant.ends.providerUnauthorized' => 'De AI-provider weigert de sleutel. Controleer hem bij de instellingen van Big P.',
 			'assistant.ends.providerUnreachable' => 'De AI-provider is niet bereikbaar.',
 			'assistant.ends.providerTimeout' => 'De AI-provider antwoordde niet op tijd.',

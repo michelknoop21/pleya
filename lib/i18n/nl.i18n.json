@@ -2804,6 +2804,10 @@
         "failed": "Taak mislukt",
         "background": "Taak loopt nog op de achtergrond",
         "unknown": "Taak: status niet meer vast te stellen"
+      },
+      "kinds": {
+        "scan_library": "Bibliotheek scannen",
+        "storage_recheck_roots": "Opslag controleren"
       }
     },
     "result": {

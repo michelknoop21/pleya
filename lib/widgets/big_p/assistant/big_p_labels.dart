@@ -84,9 +84,22 @@ String assistantActionKindLabel(AssistantActionKind kind) {
 String assistantActionLabel(AssistantActionRecord record) => [
   _jobPhaseLabel(record) ?? assistantActionKindLabel(record.kind),
   if (record.progress case AssistantJobProgress(phase: AssistantJobPhase.running, :final percent?)) '$percent%',
-  record.subject,
+  _subjectLabel(record),
   record.serverName,
 ].where((part) => part.isNotEmpty).join(' · ');
+
+/// The Pleya Server names a job by its kind ("scan_library"); a restarted or
+/// cancelled job shows a readable name, never the wire word. Other subjects
+/// (a user, a library, a title) are the user's own words and stay as written.
+String _subjectLabel(AssistantActionRecord record) {
+  final subject = record.subject;
+  if (record.kind != AssistantActionKind.retryJob && record.kind != AssistantActionKind.cancelJob) return subject;
+  return switch (subject) {
+    'scan_library' => t.assistant.jobs.kinds.scan_library,
+    'storage_recheck_roots' => t.assistant.jobs.kinds.storage_recheck_roots,
+    _ => subject,
+  };
+}
 
 String? _jobPhaseLabel(AssistantActionRecord record) {
   final j = t.assistant.jobs;
