@@ -88,6 +88,11 @@ class WatchStateStore extends ChangeNotifier with DisposableChangeNotifierMixin 
   Map<String, String?> _activeClientScopesByServer = const {};
   int _sequence = 0;
 
+  /// Capture before an explicit source read to retain only local events
+  /// received after that read began. This orders events without comparing
+  /// wall clocks on different devices.
+  int get revision => _sequence;
+
   _WatchStatePatchEntry? _entryFor(String globalKey) {
     _WatchStatePatchEntry? scopedEntry;
     final parsed = parseGlobalKey(globalKey);
@@ -105,7 +110,7 @@ class WatchStateStore extends ChangeNotifier with DisposableChangeNotifierMixin 
 
   WatchStatePatch? patchForGlobalKey(String globalKey) => _entryFor(globalKey)?.patch;
 
-  WatchStatePatch? patchForItem(MediaItem item) {
+  WatchStatePatch? patchForItem(MediaItem item, {int? afterRevision}) {
     var best = _entryFor(item.globalKey);
     if (item.parentChain.isNotEmpty) {
       final serverId = serverIdOrNull(item.serverId);
@@ -115,7 +120,11 @@ class WatchStateStore extends ChangeNotifier with DisposableChangeNotifierMixin 
         if (entry != null && (best == null || entry.sequence > best.sequence)) best = entry;
       }
     }
-    if (best == null || _serverOutranks(item, best)) return null;
+    if (best == null) return null;
+    if (afterRevision != null) {
+      return best.sequence > afterRevision ? best.patch : null;
+    }
+    if (_serverOutranks(item, best)) return null;
     return best.patch;
   }
 
@@ -132,8 +141,11 @@ class WatchStateStore extends ChangeNotifier with DisposableChangeNotifierMixin 
     return serverMs - entry.createdAtMsEpoch > serverWinsMargin.inMilliseconds;
   }
 
-  MediaItem apply(MediaItem item) {
-    return applyPatch(item, patchForItem(item));
+  /// For a proven fresh source read, pass the [revision] captured before the
+  /// request. Omit it for cached/offline snapshots, which still need their
+  /// session-local bridge.
+  MediaItem apply(MediaItem item, {int? afterRevision}) {
+    return applyPatch(item, patchForItem(item, afterRevision: afterRevision));
   }
 
   List<MediaItem> applyAll(List<MediaItem> items) {
