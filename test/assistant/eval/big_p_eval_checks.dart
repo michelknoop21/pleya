@@ -25,6 +25,9 @@ class EvalTurnOutcome {
   /// What the tools answered the model this turn, in order: tool name and
   /// the JSON the model received.
   List<({String tool, String content})> toolResults = const [];
+
+  /// The same calls as one line each: tool, arguments, start of the answer.
+  List<String> trace = const [];
 }
 
 class EvalOutcome {

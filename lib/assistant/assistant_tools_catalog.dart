@@ -84,6 +84,8 @@ final List<AssistantTool> _catalogTools = [
         'For "more" or "the next ones" repeat the same query (not with sort random) with offset set to next_offset. total_matches is the whole query and is '
         'absent when unknown; with more_matches say "at least matches_at_least", never a total. '
         'seen_before counts films left out because this profile\'s own watch history has them as finished. '
+        'When results is empty and below_min_rating is set, no title reaches min_rating: say so, or search again '
+        'with a lower min_rating (best_rating_below is the highest score found). '
         'Joint unseen uses recommend_together. Returns a task-local query_id; save only if can_become_home_row. '
         'Explain home_row_unavailable_reason, partial, sampled, servers_left_out, servers_offline and coverage as returned.',
     risk: AssistantToolRisk.read,
@@ -187,6 +189,11 @@ final List<AssistantTool> _catalogTools = [
           'matches_at_least': query.matchesRead,
         },
         if (age == null && query.seenElsewhere > 0) 'seen_before': query.seenElsewhere,
+        // Nothing reaches the minimum rating: how many sit just under it.
+        if (age == null && query.offset == 0 && query.groups.isEmpty && query.belowRating > 0) ...{
+          'below_min_rating': query.belowRating,
+          if (query.bestBelowRating != null) 'best_rating_below': query.bestBelowRating,
+        },
         // Only a query that used the seen filter says how it was built.
         if (args['unwatched'] == true) ...{
           if (ctx.personal?.seenIncludesTrakt() == true) 'seen_includes_trakt': true,

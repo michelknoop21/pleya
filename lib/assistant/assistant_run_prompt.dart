@@ -148,12 +148,19 @@ extension _AssistantPrompt on AssistantRun {
     final person = name.isEmpty ? 'the person using this Pleya profile' : '$name, the person using this Pleya profile';
     // The tool is offered only with a personal source and outside a Doctor
     // diagnosis; naming it otherwise sends the model to a tool that is not there.
-    if (!_available().keys.any((t) => t.name == 'my_watching')) {
-      return '- You talk with $person. I, me and my mean them.';
+    // unwatched and in_progress are this person's own state. Gemma answered
+    // "what do the others watch" with the asker's own in-progress titles.
+    final personalTool = _available().keys.any((t) => t.name == 'my_watching');
+    final others =
+        ' What other people on the servers watch comes only from watch_stats; when that does not answer, say it '
+        'is not available. Never answer it with ${personalTool ? 'search_catalog or my_watching' : 'search_catalog'}: '
+        'unwatched and in_progress there are only this person\'s own state.';
+    if (!personalTool) {
+      return '- You talk with $person. I, me and my mean them.$others';
     }
     return '- You talk with $person. I, me and my mean them. For their own watching, history or a tip for them '
         'use my_watching; watch_stats is everyone on the servers, under server account names that need not '
-        'match theirs.\n'
+        'match theirs.$others\n'
         // A tip answer read as a question ("How does The Bear sound?") and promised "a few" tips beside one
         // card: the tool's picks are the titles, and the user's count the limit.
         '- For a tip for them: say what you recommend and why in one or two sentences, as a statement and never as '
