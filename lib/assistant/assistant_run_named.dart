@@ -15,7 +15,7 @@ extension _AssistantNamedOnly on AssistantRun {
     if (_actions.isNotEmpty || _spoilerQuestion != null || _ctx.libraryDoctorMode) return;
     // A question without a number ("what was added this week") is a listing:
     // the model may highlight two, the rest of the list is still the answer.
-    final need = _wanted;
+    final need = assistantAskedTitleCount(_prompt);
     if (need == null || need < 2) return;
     final named = assistantNamedTitles(answer);
     if (named.length < need) return;

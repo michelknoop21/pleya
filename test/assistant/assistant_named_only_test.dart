@@ -64,6 +64,24 @@ void main() {
     expect(cardsOf(r), hasLength(7));
   });
 
+  test('"geef me er vijf andere" counts as five: the named five stay, the other searches go', () async {
+    final r = await singleAsk(
+      [...calls, 'Probeer «Alpha» (2001), «Bravo» (2002), «Echo» (2005), «Foxtrot» (2006) of «Golf» (2007).'],
+      'die heb ik al gezien, geef me er vijf andere',
+      tools: tools,
+    );
+    expect(cardsOf(r), ['Alpha', 'Bravo', 'Echo', 'Foxtrot', 'Golf']);
+  });
+
+  test('two different numbers in one question: the cards stay whole', () async {
+    final r = await singleAsk(
+      [...calls, 'Probeer «Alpha» (2001), «Bravo» (2002) en «Charlie» (2003).'],
+      'Toon 3 series en 10 films',
+      tools: tools,
+    );
+    expect(cardsOf(r), hasLength(7));
+  });
+
   test('one title named is left to the single-title rule: the cards stay whole', () async {
     final r = await singleAsk(
       [...calls, 'Probeer «Bravo» (2002).'],

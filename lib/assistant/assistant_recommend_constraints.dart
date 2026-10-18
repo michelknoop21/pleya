@@ -166,5 +166,26 @@ int? assistantAskedCount(String prompt) {
   return _alternative.hasMatch(lower) && (asked ?? 1) < 2 ? 2 : asked;
 }
 
+// A number without a noun after it: "geef me er vijf andere", "five more".
+final _bareCount = RegExp(
+  r'(?<!\w)(\d+|twee|drie|vier|vijf|zes|two|three|four|five|six)\s+(?:andere|anderen|nieuwe|meer|stuks|extra|others?|more)\b',
+  unicode: true,
+);
+
+/// [assistantAskedCount], and also a number that stands before "andere",
+/// "meer", "others" or "more" without a title noun ("geef me er vijf andere").
+/// Null when the question names two different numbers ("5 series en 10
+/// films"): one count cannot stand for both.
+int? assistantAskedTitleCount(String prompt) {
+  final lower = prompt.toLowerCase();
+  final numbers = <int>{
+    for (final m in _count.allMatches(lower))
+      if (!_articles.contains(m[1]!)) ?(int.tryParse(m[1]!) ?? _countWords[m[1]!]),
+    for (final m in _bareCount.allMatches(lower)) ?(int.tryParse(m[1]!) ?? _countWords[m[1]!]),
+  };
+  if (numbers.length > 1) return null;
+  return numbers.singleOrNull ?? assistantAskedCount(prompt);
+}
+
 // Singular with an article: "een alternatief", "an alternative". "Alternatieven voor Dune" asks for a list.
 final _alternative = RegExp(r'\b(?:een|één|an?|one)\s+(?:alternatie(?:f|ve)|alternative)\b|\bplan b\b');
