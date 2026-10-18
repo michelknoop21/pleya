@@ -196,6 +196,18 @@ _PlaybackOpenTiming _playbackOpenTiming({
   );
 }
 
+/// Height cap for the avfoundation VO's subtitle layer, `0` for no cap.
+///
+/// The VO sizes that layer to the display, so on a 4K Apple TV the first
+/// subtitle of a session allocates a 3840x2160 BGRA pool (31.6 MiB a buffer,
+/// at least three). Twice (PLR12, logs `l87js` and `6ahef`) the app stopped
+/// within two seconds of that allocation, while the player panel closed. No
+/// crash report exists, so the link is a measured coincidence and not a proven
+/// cause; the cap takes about 70 MB out of exactly that moment. The layer is
+/// upscaled to the display, so 4K subtitles are rendered at 1080p.
+@visibleForTesting
+int avfoundationOsdMaxHeight({required bool isAppleTV}) => isAppleTV ? 1080 : 0;
+
 /// Builds a [TrackPreferencePersister] that writes the per-episode stream
 /// selection out to a [PlexClient] resolved lazily on each call. Returns a
 /// no-op-on-null persister so the [TrackManager] doesn't have to import
@@ -1006,6 +1018,10 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
           settingsService.read(SettingsService.subtitleRenderResolution) == SubtitleRenderResolution.video
               ? 'yes'
               : 'no',
+        );
+        await currentPlayer.setProperty(
+          'avfoundation-osd-max-height',
+          avfoundationOsdMaxHeight(isAppleTV: PlatformDetector.isAppleTV()).toString(),
         );
       }
 
