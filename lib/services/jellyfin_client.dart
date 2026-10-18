@@ -106,6 +106,7 @@ class JellyfinClient
         ServerAuthorityGuard
     implements
         MediaServerClient,
+        FreshMediaItemClient,
         SeasonEpisodePagingClient,
         ScopedMediaServerClient,
         PersonSearchClient,
@@ -115,6 +116,9 @@ class JellyfinClient
         RetryableJobsClient,
         ServerUserAdministration,
         GracefullyCloseable {
+  @override
+  Future<MediaItem?> fetchFreshItem(String id) => _fetchItem(id, allowCacheFallback: false);
+
   JellyfinClient._({required this._connection, required this._http, FavoriteChannelsRepository? favoritesRepository})
     : _favoritesRepository = favoritesRepository ?? const SharedPreferencesFavoriteChannelsRepository() {
     if (_connection.isEmby) embyServerIds.add(_connection.serverMachineId);

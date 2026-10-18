@@ -73,6 +73,17 @@ abstract interface class GracefullyCloseable {
   Future<void> closeGracefully({Duration drainTimeout});
 }
 
+/// A client that can read current per-user watch state from its source.
+///
+/// Unlike [MediaServerClient.fetchItem], this read never returns a cached
+/// fallback. An unavailable/offline source returns null or throws, leaving
+/// the caller's local fallback intact. Clients with only cached catalogue
+/// reads do not implement this capability. An unsupported watch-state feature
+/// or a response without watch state must not authorize replacing local progress.
+abstract interface class FreshMediaItemClient implements MediaServerClient {
+  Future<MediaItem?> fetchFreshItem(String id);
+}
+
 abstract class MediaServerClient {
   ServerId get serverId;
   String? get serverName;
@@ -742,8 +753,10 @@ mixin MediaServerCacheMixin implements MediaServerClient {
     required T? Function(dynamic cachedData) parseCache,
     required T? Function(MediaServerResponse response) parseResponse,
     bool cacheResponse = true,
+    bool allowCacheFallback = true,
   }) async {
     if (isOfflineMode) {
+      if (!allowCacheFallback) return null;
       final cached = await cache.get(ServerId(cacheServerId), cacheKey);
       if (cached != null) return parseCache(cached);
       return null;
@@ -759,6 +772,7 @@ mixin MediaServerCacheMixin implements MediaServerClient {
       }
       return parseResponse(response);
     } catch (e) {
+      if (!allowCacheFallback) rethrow;
       appLogger.w('Network request failed for $cacheKey, trying cache', error: e);
       final cached = await cache.get(ServerId(cacheServerId), cacheKey);
       if (cached != null) return parseCache(cached);
