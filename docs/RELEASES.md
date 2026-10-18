@@ -51,6 +51,64 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 382 · 18 October 2026 · Apple TV
+
+<!-- commit: e914f5b7083576cf38304b252a88593ea2b80c69 -->
+
+### Fixed
+- **Resuming a title you watched further on another device.** Pressing Play used to start from the
+  place where this device had stopped itself, even when another device had since watched on. Pleya
+  now asks the server for the current position first and starts there. If the server cannot be
+  reached, the position this device remembers is still used.
+
+### Improved
+- **Big P is more careful with what it shows.** A server that does not answer is named in the result
+  instead of being skipped silently, and one slow server no longer holds up the others. Cards show
+  only the titles the answer mentions, and the same title appears once even after several searches.
+- **Library Doctor and the status card read clearer.** The doctor waits for your libraries to load,
+  stops when you cancel, and the status card shows a readable task name.
+- **Big P keeps started titles out of "unwatched" results,** and does not offer a Home row made from
+  such a search.
+- **Typing the Dutch phrase "onthoud dat ..." on a children's profile gets Pleya's own refusal,** also in the polite
+  form.
+
+### Notes
+- Nothing in this build has been checked on a device yet.
+
+### Worth checking
+- Watch a title on one device and stop halfway. Press Play on another device for the same title and
+  check that it starts where you stopped, not at an older place.
+- On the device that watched first, press Play again and check that it follows the newer place.
+
+## 2.8.1 · build 381 · 18 October 2026 · iPhone and iPad
+
+<!-- commit: e914f5b7083576cf38304b252a88593ea2b80c69 -->
+
+### Fixed
+- **Resuming a title you watched further on another device.** Pressing Play used to start from the
+  place where this device had stopped itself, even when another device had since watched on. Pleya
+  now asks the server for the current position first and starts there. If the server cannot be
+  reached, the position this device remembers is still used.
+
+### Improved
+- **Big P is more careful with what it shows.** A server that does not answer is named in the result
+  instead of being skipped silently, and one slow server no longer holds up the others. Cards show
+  only the titles the answer mentions, and the same title appears once even after several searches.
+- **Library Doctor and the status card read clearer.** The doctor waits for your libraries to load,
+  stops when you cancel, and the status card shows a readable task name.
+- **Big P keeps started titles out of "unwatched" results,** and does not offer a Home row made from
+  such a search.
+- **Typing the Dutch phrase "onthoud dat ..." on a children's profile gets Pleya's own refusal,** also in the polite
+  form.
+
+### Notes
+- Nothing in this build has been checked on a device yet.
+
+### Worth checking
+- Watch a title on one device and stop halfway. Press Play on another device for the same title and
+  check that it starts where you stopped, not at an older place.
+- On the device that watched first, press Play again and check that it follows the newer place.
+
 ## 2.8.1 · build 380 · 17 October 2026 · Apple TV
 
 <!-- commit: 3c691d456acfa8030be2ebd783770a012e5f9fd6 -->
