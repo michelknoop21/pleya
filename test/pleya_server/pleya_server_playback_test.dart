@@ -141,6 +141,36 @@ void main() {
       expect(progress['session_id'], server.watchEvents.first['session_id'], reason: 'one viewing, one session');
     });
 
+    test('a fresh read of the item hands its revision to the next playback_started', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+      final item = movie(server);
+      // Another device moved the item on, so the server is at revision 20.
+      server.items[item.id] = {
+        ...server.items[item.id]!,
+        'user_state': {
+          'position_ms': 2700000,
+          'watched': false,
+          'play_count': 0,
+          'updated_at': '2026-10-18T10:00:00Z',
+          'revision': 20,
+        },
+      };
+      client = await connected(server);
+
+      await client.fetchFreshItem(item.id);
+      await client.reportPlaybackStarted(
+        itemId: item.id,
+        position: const Duration(minutes: 45),
+        duration: Duration(milliseconds: item.durationMs!),
+      );
+
+      expect(
+        server.watchEvents.single['base_revision'],
+        20,
+        reason: 'a stale base_revision gets playback_started refused, and then nothing owns the viewing',
+      );
+    });
+
     test('the first event of a viewing makes no causal claim it cannot back up', () async {
       server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
       final item = movie(server);

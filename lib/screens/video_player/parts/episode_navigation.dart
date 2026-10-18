@@ -527,7 +527,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         showErrorSnackBar(context, t.videoControls.transcodeUnavailableFallback);
       }
 
-      final openResumePosition = await _resolveOpenResumePosition(
+      final openResumePosition = await resolveOpenResumePosition(
         metadata: metadata,
         isOffline: _offlineLibraryMode || result.isOffline,
         offlineWatchService: offlineWatchService,

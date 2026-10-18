@@ -59,6 +59,49 @@ class _ExternalSubtitleOpenPlan {
   List<SubtitleTrack>? get subtitlesAtOpen => attachesAtOpen && hasExternalSubtitles ? externalSubtitles : null;
 }
 
+/// Resolve where a fresh open should start.
+///
+/// The ordering itself lives in [PlaybackResumeResolver]; this method only
+/// collects the candidates. It used to decide for itself, and got it wrong
+/// in one specific way: playing a downloaded file preferred the local offset
+/// over the server's whenever it was greater than zero, including while
+/// online with a device that had watched further.
+///
+/// [backendProgressIsFresh] states whether [metadata]'s view offset was read
+/// from the backend during this launch. Only the initial start flow can say
+/// yes; reload flows carry a snapshot fetched earlier.
+@visibleForTesting
+Future<Duration?> resolveOpenResumePosition({
+  required MediaItem metadata,
+  required bool isOffline,
+  required OfflineWatchSyncService offlineWatchService,
+  Duration? requested,
+  bool backendProgressIsFresh = false,
+}) async {
+  LocalResumeProgress? local;
+  if (readsOfflineResume(metadata, offlinePlayback: isOffline)) {
+    try {
+      local = await offlineWatchService.getLocalResumeProgress(metadata.globalKey);
+    } catch (e) {
+      appLogger.d('Could not read local resume progress; falling back to the backend value', error: e);
+    }
+  }
+
+  final viewOffsetMs = metadata.viewOffsetMs;
+  final lastViewedAt = metadata.lastViewedAt;
+  final backend = viewOffsetMs == null
+      ? null
+      : BackendResumeProgress(
+          position: Duration(milliseconds: viewOffsetMs),
+          isFresh: backendProgressIsFresh,
+          updatedAt: lastViewedAt == null ? null : DateTime.fromMillisecondsSinceEpoch(lastViewedAt * 1000),
+        );
+
+  final resolution = PlaybackResumeResolver.resolve(requestedPosition: requested, local: local, backend: backend);
+  appLogger.d('Resume resolved to $resolution');
+  return resolution.position;
+}
+
 /// Shared building blocks for opening media on the live player.
 ///
 /// The initial start flow ([_startPlayback]), the in-place reload flow
@@ -114,48 +157,6 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
   /// eligibility rule cannot drift between them.
   bool _shouldAutoSwitchFrameRateForOpen(SettingsService settingsService, double? fps) {
     return Platform.isAndroid && settingsService.read(SettingsService.matchContentFrameRate) && fps != null && fps > 0;
-  }
-
-  /// Resolve where a fresh open should start.
-  ///
-  /// The ordering itself lives in [PlaybackResumeResolver]; this method only
-  /// collects the candidates. It used to decide for itself, and got it wrong
-  /// in one specific way: playing a downloaded file preferred the local offset
-  /// over the server's whenever it was greater than zero, including while
-  /// online with a device that had watched further.
-  ///
-  /// [backendProgressIsFresh] states whether [metadata]'s view offset was read
-  /// from the backend during this launch. Only the initial start flow can say
-  /// yes; reload flows carry a snapshot fetched earlier.
-  Future<Duration?> _resolveOpenResumePosition({
-    required MediaItem metadata,
-    required bool isOffline,
-    required OfflineWatchSyncService offlineWatchService,
-    Duration? requested,
-    bool backendProgressIsFresh = false,
-  }) async {
-    LocalResumeProgress? local;
-    if (readsOfflineResume(metadata, offlinePlayback: isOffline)) {
-      try {
-        local = await offlineWatchService.getLocalResumeProgress(metadata.globalKey);
-      } catch (e) {
-        appLogger.d('Could not read local resume progress; falling back to the backend value', error: e);
-      }
-    }
-
-    final viewOffsetMs = metadata.viewOffsetMs;
-    final lastViewedAt = metadata.lastViewedAt;
-    final backend = viewOffsetMs == null
-        ? null
-        : BackendResumeProgress(
-            position: Duration(milliseconds: viewOffsetMs),
-            isFresh: backendProgressIsFresh,
-            updatedAt: lastViewedAt == null ? null : DateTime.fromMillisecondsSinceEpoch(lastViewedAt * 1000),
-          );
-
-    final resolution = PlaybackResumeResolver.resolve(requestedPosition: requested, local: local, backend: backend);
-    appLogger.d('Resume resolved to $resolution');
-    return resolution.position;
   }
 
   /// Run the Android pre-open frame-rate strategy for the initial start:

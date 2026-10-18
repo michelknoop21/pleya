@@ -2,7 +2,7 @@
 ///
 /// Before this existed the answer was assembled in two places that did not
 /// agree: `navigateToVideoPlayer` only refetched the item when it carried no
-/// view offset at all, and `_resolveOpenResumePosition` preferred locally
+/// view offset at all, and `resolveOpenResumePosition` preferred locally
 /// tracked offline progress over the server value whenever playback ran off a
 /// downloaded file — including while the app was online and another device had
 /// watched further. The result was a resume that could walk backwards.
