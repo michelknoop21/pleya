@@ -110,6 +110,25 @@ Wat slechter werd bij glm: `adm-search-with-offline-server`, `con-kids-no-scan`,
 
 De vergeleken stand (2394cdea tot 400c6fd1) bevat naast BP-11l ook de wijzigingen van RESUME-SYNC1 (mediaclients, kijkstatus, spelernavigatie). De "52 van 60" bij glm telt `disc-title-in-library` mee als goed: twee geldige runs slaagden, de derde was een providerfout.
 
+## Ruismeting: dezelfde code twee keer (18 oktober 2026)
+
+Dezelfde commit (400c6fd1), dezelfde opzet, twee volledige runs: `volledig-na-11l` en `ruis-herhaling-400c6fd1` (360 runs elk). De eerste run had één glm-providerfout (`disc-title-in-library`), de herhaling geen. Dit is de eerste meting van de spreiding; het zijn twee runs, geen steekproef waar je een betrouwbaarheidsinterval uit trekt.
+
+| Model | Runs geslaagd, eerste / tweede | Cases altijd goed, eerste / tweede | Cases met een ander aantal geslaagde pogingen |
+| --- | --- | --- | --- |
+| gemma4:31b | 173 / 167 van 180 | 57 / 55 van 60 | 3 van 60 |
+| glm-5.3-flash | 166 van 179 / 170 van 180 | 52 / 54 van 60 | 9 van 60 (8 zonder de providerfout) |
+
+Bij glm telt de eerste run `disc-title-in-library` als altijd goed (2 geldige pogingen, beide geslaagd); strikt gelezen is dat 51 van 60.
+
+Wat dit zegt:
+
+- Zonder één regel code te wijzigen verschuift het totaal bij gemma met 6 runs en bij glm met 4. Verschillen van die orde tussen twee metingen zijn geen bewijs voor een fix of een regressie.
+- Vijf glm-cases die in de vorige meting als slechter werden genoemd (`con-kids-no-scan`, `con-series-not-film-reverse`, `sea-request-needs-yes`, `rec-light-after-dinner`, `disc-title-in-library`) zijn in de herhaling weer 3 van 3. Dat past bij ruis, maar één herhaling bewijst het niet. Niet alles herstelde: `ser-finished-show` (0, 0, 0 over drie runs) en `disc-empty-honest` (0, 0, 1) bleven slecht.
+- `rec-seen-five-others` (glm), het doel van BP-11l: 3 en 2 van 3 op 400c6fd1 (0 van 3 in de run daarvoor, op 2394cdea). De verbetering is er, maar niet stabiel 3 van 3.
+- `disc-english` (gemma) is geen ruis in de gewone zin: 3 van 3 in de run van 14:41 op 2394cdea, daarna 0 van 3 in beide runs op 400c6fd1, en 0 van 3 in een losse herhaling van alleen die case op zowel 2394cdea als 400c6fd1. Dezelfde code gaf dus een andere uitkomst. In de mislukte pogingen roept gemma `search_catalog` en daarna `trending_titles` aan en komt er geen kaart; in de geslaagde pogingen van 14:41 roept het `trending_titles` niet aan en zoekt het twee keer. Het verschil zit dus in de toolkeuze van het model. De fout van `trending_titles` zelf is normaal (die komt in bijna elke case voor die hem aanroept). Het record bewaart alleen het aantal toolfouten, niet welke tool faalde of wat `search_catalog` teruggaf, dus waarom de zoekopdracht niets opleverde is niet vastgesteld.
+- `con-everyone-no-capability` (gemma) is 0 van 3 in alle drie de runs sinds 14:41, een vaste fout. `disc-keyword` (gemma) gaat 2, 3, 0 van 3.
+
 ## HTTP-probleem in de live test
 
 De eerste twee pogingen tot een nulmeting gaven bij gemma 180 van 180 en bij glm 68 van 180 runs een providerfout. De oorzaak lag niet bij Ollama: zodra de geheugenfixtures de Flutter-testbinding starten, beantwoordt die elk HTTP-verzoek met een lege 400. De live test zet daarom voor elke poging `HttpOverrides.global = null` terug. Het record bevat sindsdien `http_error` (status en begin van het antwoord) bij een niet-200.
@@ -123,5 +142,5 @@ Maak één `EvalCase` in het gebied dat past (`test/assistant/eval/cases/`), met
 - `adm-search-with-offline-server` is met BP-11e een gewoon hard geval; de nulmeting is nog van vóór die fix, dus het live effect is niet gemeten.
 - De beheer- en huishoudcases (regel 2 en 7) bewijzen alleen de weigering zonder bevoegdheid; ze wachten op een inzichtenfixture.
 - De kwaliteitsbeoordelaar (stap 5) is uitgesteld.
-- De ruis tussen twee runs van dezelfde code is nog niet gemeten: alle drie de metingen zijn van verschillende code.
+- De ruis is gemeten met één herhaling (zie de ruismeting); een derde run op dezelfde code zou de schatting verbeteren.
 - Kaarten van meerdere zoekopdrachten in één beurt worden samen getoond, ook als het antwoord er maar enkele noemt (waarschijnlijk de oorzaak bij `rec-seen-five-others`, `ser-finished-show` en `disc-empty-honest` van glm; niet getest).
