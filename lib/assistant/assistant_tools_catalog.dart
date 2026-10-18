@@ -74,6 +74,7 @@ final List<AssistantTool> _catalogTools = [
         'For what was added to the libraries in a period ("this week", "last 14 days") pass added_within_days (1-31): '
         'results then carry added_at; added_unknown counts the titles without a date. '
         'What the user has not watched yet in their library, also "my library", is unwatched=true here, not my_watching; '
+        'it leaves out titles the user started (a result with started: true is partly watched). '
         'for what has been waiting the longest ("al lang ongezien", "oldest unwatched") add sort=added_oldest: '
         'time since the title was added, never its release year; results carry added_at. '
         'Choose a useful shortlist with limit for recommendations or a requested number. For a listing of library titles '
@@ -149,6 +150,8 @@ final List<AssistantTool> _catalogTools = [
           if (item.year != null) 'year': item.year,
           'kind': item.kind.name,
           'server_id': serverId.value,
+          // Some of it was played: "unwatched" on a series still lets such a title through.
+          if (item.hasActiveProgress || item.isPartiallyWatched) 'started': true,
           if (query.genreUnverified.contains(g.groupId)) 'genre_unverified': true,
           if (_listedAddedAt(query, g) case final added?)
             'added_at': DateTime.fromMillisecondsSinceEpoch(

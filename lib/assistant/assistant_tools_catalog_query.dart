@@ -376,6 +376,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     // profile watched as a copy elsewhere is not unseen.
     applyWindow(groups);
     final seenElsewhere = unwatched ? await _dropSeenByProfile(ctx, groups) : 0;
+    if (unwatched) _dropStarted(groups);
     checkCurrent();
     // The window's total was counted before the history dropped titles.
     if (cutoff != null) total = groups.length;
@@ -509,6 +510,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   }
   applyWindow(groups);
   final seenBefore = unwatched ? await _dropSeenByProfile(ctx, groups) : 0;
+  if (unwatched) _dropStarted(groups);
   checkCurrent();
   if (cutoff != null) total = groups.length;
   // No sort asked: the servers' relevance order stands.
@@ -545,6 +547,14 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
           },
   );
 }
+
+/// "Unwatched" for the user is "not started": a series with some episodes
+/// played, or a film with a resume point, is left out. The servers' own
+/// unwatched filter keeps such titles in (Home's convention).
+void _dropStarted(List<UnifiedMediaGroup> groups) => groups.removeWhere((g) {
+  final item = g.representativeSource.item;
+  return item.hasActiveProgress || item.isPartiallyWatched;
+});
 
 /// Removes from [groups] the films the active profile's own log holds as
 /// finished, by key or by identity, and returns how many went. Films only: a
