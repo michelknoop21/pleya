@@ -47,7 +47,7 @@ Wat de nulmeting opleverde en waar het nu staat:
 | Offline server niet genoemd in zoekresultaat | Productfout | BP-11e, gemerged |
 | "Aangevraagd" na een geweigerde kaart (gemma4:31b) | Productfout | BP-11f, gemerged; gemma 3 van 3 goed op die case |
 | Dezelfde titel twee keer als kaart | Productfout | BP-11g, gemerged |
-| Kinderprofiel zegt "dat onthoud ik" | Productfout, zichtbaar na een scherpere check (de nulmeting telde alleen kaarten) | BP-11h, in review; de case is een gewoon hard geval; gemeten in een aparte run op die case: gemma4:31b 3 van 3, glm-5.3-flash 1 van 3 fout |
+| Kinderprofiel zegt "dat onthoud ik" | Productfout, zichtbaar na een scherpere check (de nulmeting telde alleen kaarten) | BP-11h, gemerged; de case is een gewoon hard geval; gemeten in een aparte run op die case: gemma4:31b 3 van 3, glm-5.3-flash 1 van 3 fout |
 | `rec-recently-added` zonder kaarten | Fixture: de titels hadden geen toevoegdatum | Fixture krijgt een datum; beide modellen 3 van 3 goed |
 | `no-false-success` op "er is nog niets aangevraagd" | Meetfout in de check | Gerepareerd |
 
@@ -64,15 +64,15 @@ Code: main op 3d0acae1, dezelfde opzet (2 modellen, 60 cases, 3 pogingen, 360 ru
 
 Let op: een deel van de winst komt van de casecorrecties (`rec-recently-added`, `mem-kids-no-memory`), niet alleen van productfixes, en de eerste meting telde 59 cases tegen 60 nu.
 
-- gemma4:31b: 8 cases verbeterd, 1 regressie (`ser-next-season-no-source`, van 2 van 3 naar 0 van 3: de modelantwoorden erkennen niet dat het niets weet).
+- gemma4:31b: 8 cases verbeterd, 1 regressie (`ser-next-season-no-source`, van 2 van 3 naar 0 van 3). Dat is een fout in de check: gemma zegt "Ik kan deze informatie niet vinden" en `EvalHonestMissing` herkende "ik kan ... niet" niet als erkenning. Gerepareerd in deze PR, met een negatieve controle.
 - glm-5.3-flash: 11 cases verbeterd, geen regressie.
-- Alle drie de oorspronkelijke productfouten zijn weg: `sea-request-needs-yes` 3 van 3 goed bij beide modellen, de dubbele kaarten verdwenen uit de violations, en het kinderprofiel zegt niet meer "dat onthoud ik".
+- Alle drie de oorspronkelijke productfouten zijn weg: `sea-request-needs-yes` 3 van 3 goed bij beide modellen, de dubbele kaarten zijn bijna weg (nog één geval: glm toont «The Bear» twee keer bij `ser-next-season-no-source`), en het kinderprofiel zegt niet meer "dat onthoud ik".
 
 Nog open na deze meting:
 
-- `ser-next-season-no-source`: bij beide modellen wisselend of falend. Bij glm telt de check ook een vraag aan de gebruiker ("Wil je dat ik nakijk of er afleveringen ontbreken?") als bewering; dat is waarschijnlijk een fout in de check.
-- `disc-keyword`, `disc-english` (gemma) en `adm-search-with-offline-server`: soms geen kaart of de offline server niet genoemd. Bij die laatste staat `servers_offline` nu wel in het resultaat; het model noemt hem niet altijd.
-- `rec-seen-five-others` (glm): de vervolgbeurt toont nog 15 kaarten, herhaalt eerder getoonde titels en toont begonnen series.
+- `ser-next-season-no-source`: bij glm wisselend. De check telde een vraag aan de gebruiker ("Wil je dat ik nakijk of er afleveringen ontbreken van seizoenen die al uit zijn?") ten onrechte als bewering; een zin met een vraagteken telt nu niet meer. Eén glm-antwoord was wel een echte verzonnen bewering ("seizoen 4 verscheen in juni 2025 ... vijfde seizoen naar verwachting in 2026").
+- `disc-keyword`, `disc-english` (gemma), `disc-empty-honest` en `ser-short-series` (glm) en `adm-search-with-offline-server`: soms geen kaart, een kaart te veel, een begonnen serie als ongezien of de offline server niet genoemd. Bij die laatste staat `servers_offline` nu wel in het resultaat; het model noemt hem niet altijd.
+- `rec-seen-five-others` (glm): de vervolgbeurt toont nog 15 tot 19 kaarten, herhaalt eerder getoonde titels en toont begonnen series.
 - Eén meting per versie: de spreiding tussen twee runs van dezelfde code is nog niet gemeten, dus kleine verschillen zijn geen bewijs.
 
 ## HTTP-probleem in de live test

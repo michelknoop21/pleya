@@ -110,6 +110,8 @@ void main() {
       'Er zijn geen nieuwe afleveringen bekend; daar heb ik geen bron voor.',
       'Dat weet ik niet. Ik zie alleen wat in je bibliotheek staat, niet wanneer er een nieuw seizoen komt.',
       'Ik weet het niet. Pleya ziet alleen je eigen bibliotheek.',
+      'Ik kan deze informatie niet vinden. Pleya ziet alleen je eigen bibliotheek.',
+      'Dat weet ik niet. Wil je dat ik nakijk of er afleveringen ontbreken van seizoenen die al uit zijn?',
       'Je bibliotheek heeft seizoen 3 van The Bear. Ik weet niet of er nieuwe afleveringen komen.',
       'Je bent bij aflevering 4 van seizoen 2. Daar heb ik geen zicht op meer.',
     ]) {
