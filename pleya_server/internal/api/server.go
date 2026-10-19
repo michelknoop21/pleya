@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/edde746/plezy/pleya_server/internal/artwork"
 	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
@@ -96,6 +97,11 @@ type Options struct {
 	// CacheDir is waar gecachede provider-afbeeldingen staan (0013). Leeg betekent
 	// dat er geen cache is en dat /artwork alleen afbeeldingen van schijf levert.
 	CacheDir string
+
+	// Artwork maakt afgeleide maten van afbeeldingen (S4.4). Nil of niet
+	// beschikbaar betekent: altijd het origineel, en capabilities.artwork_sizes
+	// is dan false.
+	Artwork *artwork.Resizer
 
 	// Jobs is de wachtrij achter POST /storage/roots/recheck (S2.3). Nil
 	// betekent dat dat endpoint niets kan inplannen en server.internal
