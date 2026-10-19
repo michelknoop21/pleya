@@ -5,8 +5,10 @@ import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/unified/unified_media_group.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
+import 'package:pleya/utils/continue_watching_order.dart';
 import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/tv/tv_discovery_rail.dart';
@@ -21,7 +23,13 @@ import '../test_helpers/tv_discovery_fixtures.dart';
 void main() {
   int daysAgo(int d) => DateTime.now().subtract(Duration(days: d)).millisecondsSinceEpoch ~/ 1000;
 
-  MediaItem nextUp({required int season, required int episode, int? addedAt, int? lastViewedAt}) => MediaItem(
+  MediaItem nextUp({
+    required int season,
+    required int episode,
+    int? addedAt,
+    int? lastViewedAt,
+    String serverId = 'nas',
+  }) => MediaItem(
     id: 's${season}e$episode',
     backend: MediaBackend.jellyfin,
     kind: MediaKind.episode,
@@ -29,8 +37,8 @@ void main() {
     grandparentTitle: 'The Bear',
     parentIndex: season,
     index: episode,
-    serverId: 'nas',
-    serverName: 'NAS',
+    serverId: serverId,
+    serverName: serverId.toUpperCase(),
     continueWatchingKind: ContinueWatchingKind.nextUp,
     addedAt: addedAt,
     lastViewedAt: lastViewedAt,
@@ -63,6 +71,30 @@ void main() {
     test('outside Verder kijken the label never appears', () {
       final item = nextUp(season: 2, episode: 5, addedAt: daysAgo(2), lastViewedAt: daysAgo(30));
       expect(line(item, inContinueWatching: false), isNot(contains(t.discover.newEpisodeStatus)));
+    });
+  });
+
+  group('a card on two servers', () {
+    // Server A last saw the series 30 days ago, server B yesterday. The episode
+    // was added 2 days ago: against A's date it is new, against the card's
+    // newest date (B's) it is not, and order, section and label must agree.
+    UnifiedMediaGroup twoServers() => tvDiscoveryEpisodeGroup('g-two', [
+      nextUp(season: 2, episode: 5, addedAt: daysAgo(2), lastViewedAt: daysAgo(30), serverId: 'a'),
+      nextUp(season: 2, episode: 5, addedAt: daysAgo(2), lastViewedAt: daysAgo(1), serverId: 'b'),
+    ]);
+
+    test('the label reads the newest watch date of the card, like the order', () {
+      final group = twoServers();
+      expect(continueWatchingItemOf(group).lastViewedAt, group.sources[1].item.lastViewedAt);
+      final context = discoveryContextFor(group, inContinueWatching: true).context;
+      expect(context, isNot(contains(t.discover.newEpisodeStatus)));
+      expect(context, endsWith(t.discover.nextEpisodeStatus));
+    });
+
+    test('with one server the representative is unchanged', () {
+      final item = nextUp(season: 2, episode: 5, addedAt: daysAgo(2), lastViewedAt: daysAgo(30));
+      final group = tvDiscoveryEpisodeGroup('g-one', [item]);
+      expect(identical(continueWatchingItemOf(group), group.representativeSource.item), isTrue);
     });
   });
 

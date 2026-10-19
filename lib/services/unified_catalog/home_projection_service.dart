@@ -326,25 +326,7 @@ class HomeProjectionService {
   /// as well keeps the row right for a list that did not come from there (a
   /// stored snapshot) and for a card whose sources span two servers.
   static List<UnifiedMediaGroup> _inContinueWatchingOrder(List<UnifiedMediaGroup> groups) =>
-      orderContinueWatching(groups, itemOf: _orderingItem);
-
-  /// The card's representative, carrying the newest `lastViewedAt` among all
-  /// of the card's sources.
-  static MediaItem _orderingItem(UnifiedMediaGroup group) {
-    final item = group.representativeSource.item;
-    final newest = _newestRecency(group);
-    return newest == null || newest == item.lastViewedAt ? item : item.copyWith(lastViewedAt: newest);
-  }
-
-  static int? _newestRecency(UnifiedMediaGroup group) {
-    int? newest;
-    for (final source in group.sources) {
-      final viewed = source.item.lastViewedAt;
-      if (viewed == null) continue;
-      if (newest == null || viewed > newest) newest = viewed;
-    }
-    return newest;
-  }
+      orderContinueWatching(groups, itemOf: continueWatchingItemOf);
 
   static UnifiedHubKind _hubKindOfItem(MediaItem item) => switch (item.kind) {
     MediaKind.movie => UnifiedHubKind.movie,

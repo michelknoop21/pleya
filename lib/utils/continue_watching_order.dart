@@ -16,6 +16,7 @@ library;
 
 import '../media/media_item.dart';
 import '../media/media_item_types.dart';
+import '../media/unified/unified_media_group.dart';
 
 /// Michel, 4 oktober 2026: a fixed product rule, not a user setting.
 const Duration continueWatchingStaleAfter = Duration(days: 90);
@@ -103,4 +104,19 @@ List<T> orderContinueWatching<T>(Iterable<T> items, {required MediaItem Function
 int _byDescending(int a, int b, int aIndex, int bIndex) {
   final byValue = b.compareTo(a);
   return byValue != 0 ? byValue : aIndex.compareTo(bIndex);
+}
+
+/// The item a Verder kijken card is judged on: the group's representative,
+/// carrying the newest `lastViewedAt` among all of its sources. Order, section
+/// and label all read this one item, so a card whose sources span two servers
+/// cannot be ordered as "not new" by one copy's watch date and labelled "new"
+/// by another's.
+MediaItem continueWatchingItemOf(UnifiedMediaGroup group) {
+  final item = group.representativeSource.item;
+  int? newest;
+  for (final source in group.sources) {
+    final viewed = source.item.lastViewedAt;
+    if (viewed != null && (newest == null || viewed > newest)) newest = viewed;
+  }
+  return newest == null || newest == item.lastViewedAt ? item : item.copyWith(lastViewedAt: newest);
 }

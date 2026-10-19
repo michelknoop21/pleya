@@ -26,6 +26,7 @@ import '../../screens/tv/tv_unified_activation.dart';
 import '../../services/unified_catalog/mobile_media_source_picker_route.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/continue_watching_labels.dart';
+import '../../utils/continue_watching_order.dart';
 import '../../utils/continue_watching_sections.dart';
 import '../../utils/formatters.dart';
 import '../../utils/provider_extensions.dart';
@@ -68,7 +69,7 @@ class MobileContinueWatchingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final projection = context.watch<TvHomeProjectionProvider>();
     final groups = projection.continueWatchingAll?.groups ?? const <UnifiedMediaGroup>[];
-    final sections = continueWatchingSections(groups, itemOf: (g) => g.representativeSource.item);
+    final sections = continueWatchingSections(groups, itemOf: continueWatchingItemOf);
     final muted = tokens(context).textMuted;
     final hiddenCount = context.watch<ContinueWatchingHiddenProvider?>()?.count ?? 0;
 
@@ -193,8 +194,8 @@ class _Row extends StatelessWidget {
         ? [?formatSeasonEpisodeLabel(item.parentIndex, item.index), ?item.displaySubtitle].join(' · ')
         : [if (item.genres?.isNotEmpty ?? false) item.genres!.first, if (item.year != null) '${item.year}'].join(' · ');
     final status = [
-      continueWatchingStatusLine(item, includePlace: false),
-      ?lastWatchedLabel(item),
+      continueWatchingStatusLine(continueWatchingItemOf(group), includePlace: false),
+      ?lastWatchedLabel(continueWatchingItemOf(group)),
       if (group.hasMultipleSources) t.unifiedCatalog.sources(count: group.sources.length),
     ].where((s) => s.isNotEmpty).join(' · ');
     final subtitleStyle = TextStyle(fontSize: 13, color: tk.textMuted, height: 1.2);

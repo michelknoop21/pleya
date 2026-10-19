@@ -24,6 +24,7 @@ import '../../providers/continue_watching_hidden_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/tv_home_projection_provider.dart';
 import '../../theme/mono_tokens.dart';
+import '../../utils/continue_watching_order.dart';
 import '../../utils/continue_watching_sections.dart';
 import '../../utils/layout_constants.dart';
 import '../../widgets/continue_watching_hidden_items.dart';
@@ -83,7 +84,7 @@ class TvContinueWatchingScreenState extends State<TvContinueWatchingScreen>
   Widget build(BuildContext context) {
     final projection = context.watch<TvHomeProjectionProvider>();
     final groups = projection.continueWatchingAll?.groups ?? const <UnifiedMediaGroup>[];
-    _sections = continueWatchingSections(groups, itemOf: (g) => g.representativeSource.item);
+    _sections = continueWatchingSections(groups, itemOf: continueWatchingItemOf);
 
     final hiddenCount = context.watch<ContinueWatchingHiddenProvider?>()?.count ?? 0;
     _hasHiddenEntry = hiddenCount > 0;
