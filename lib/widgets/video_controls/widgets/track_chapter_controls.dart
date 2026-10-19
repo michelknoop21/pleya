@@ -406,7 +406,7 @@ class TrackChapterControls extends StatelessWidget {
           buttons.add(
             _buildTrackButton(
               buttonIndex: currentIndex,
-              icon: Symbols.cast_connected,
+              icon: Symbols.smart_display,
               tooltip: t.playbackHandoff.button,
               semanticLabel: t.playbackHandoff.button,
               isMobile: isMobile,

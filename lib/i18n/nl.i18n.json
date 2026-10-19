@@ -3083,14 +3083,25 @@
     }
   },
   "playbackHandoff": {
-    "button": "Overdragen naar Apple TV",
-    "title": "Overdragen naar",
-    "subtitle": "Gaat op je Apple TV verder waar je nu bent. Dit is geen AirPlay.",
-    "ready": "Pleya is open",
-    "starting": "Starten op Apple TV...",
-    "failed": "Overdracht mislukt. Controleer of de Apple TV hetzelfde profiel gebruikt. Je kijkt verder op dit toestel.",
-    "noneFound": "Geen Apple TV gevonden. Open Pleya op je Apple TV en controleer dat beide toestellen op hetzelfde wifi-netwerk zitten en hetzelfde profiel gebruiken.",
+    "button": "Afspelen op Apple TV",
+    "title": "Afspelen op",
+    "resumeFrom": "$title · verder vanaf $time",
+    "thisIphone": "Deze iPhone",
+    "thisIpad": "Deze iPad",
+    "playingHere": "Speelt nu",
+    "playingUntil": "Speelt hier tot de Apple TV begint",
+    "tvReady": "Apple TV · Pleya open",
+    "starting": "Starten op de Apple TV…",
+    "wrongProfile": "Gebruikt een ander profiel. Kies op de Apple TV jouw profiel en probeer het opnieuw.",
+    "footer": "Geen AirPlay: Pleya op de Apple TV speelt zelf verder. Staat hij er niet bij? Open Pleya op de Apple TV.",
+    "noneFoundTitle": "Geen Apple TV gevonden",
+    "noneFound": "Een Apple TV kan Pleya niet zelf openen. Open Pleya op je Apple TV en zorg dat beide op hetzelfde wifi-netwerk zitten.",
     "searchAgain": "Opnieuw zoeken",
-    "received": "Overgedragen vanaf $from"
+    "failedTitle": "$name startte niet",
+    "failedBody": "Je kijkt hier verder",
+    "playingOn": "Speelt nu op $name",
+    "playingOnBody": "Verder met de afstandsbediening van je Apple TV",
+    "received": "Overgedragen vanaf $from",
+    "receivedBody": "$title · verder vanaf $time"
   }
 }

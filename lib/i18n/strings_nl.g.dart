@@ -2630,15 +2630,26 @@ class _TranslationsPlaybackHandoffNl extends TranslationsPlaybackHandoffEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get button => 'Overdragen naar Apple TV';
-	@override String get title => 'Overdragen naar';
-	@override String get subtitle => 'Gaat op je Apple TV verder waar je nu bent. Dit is geen AirPlay.';
-	@override String get ready => 'Pleya is open';
-	@override String get starting => 'Starten op Apple TV...';
-	@override String get failed => 'Overdracht mislukt. Controleer of de Apple TV hetzelfde profiel gebruikt. Je kijkt verder op dit toestel.';
-	@override String get noneFound => 'Geen Apple TV gevonden. Open Pleya op je Apple TV en controleer dat beide toestellen op hetzelfde wifi-netwerk zitten en hetzelfde profiel gebruiken.';
+	@override String get button => 'Afspelen op Apple TV';
+	@override String get title => 'Afspelen op';
+	@override String resumeFrom({required Object title, required Object time}) => '${title} · verder vanaf ${time}';
+	@override String get thisIphone => 'Deze iPhone';
+	@override String get thisIpad => 'Deze iPad';
+	@override String get playingHere => 'Speelt nu';
+	@override String get playingUntil => 'Speelt hier tot de Apple TV begint';
+	@override String get tvReady => 'Apple TV · Pleya open';
+	@override String get starting => 'Starten op de Apple TV…';
+	@override String get wrongProfile => 'Gebruikt een ander profiel. Kies op de Apple TV jouw profiel en probeer het opnieuw.';
+	@override String get footer => 'Geen AirPlay: Pleya op de Apple TV speelt zelf verder. Staat hij er niet bij? Open Pleya op de Apple TV.';
+	@override String get noneFoundTitle => 'Geen Apple TV gevonden';
+	@override String get noneFound => 'Een Apple TV kan Pleya niet zelf openen. Open Pleya op je Apple TV en zorg dat beide op hetzelfde wifi-netwerk zitten.';
 	@override String get searchAgain => 'Opnieuw zoeken';
+	@override String failedTitle({required Object name}) => '${name} startte niet';
+	@override String get failedBody => 'Je kijkt hier verder';
+	@override String playingOn({required Object name}) => 'Speelt nu op ${name}';
+	@override String get playingOnBody => 'Verder met de afstandsbediening van je Apple TV';
 	@override String received({required Object from}) => 'Overgedragen vanaf ${from}';
+	@override String receivedBody({required Object title, required Object time}) => '${title} · verder vanaf ${time}';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -7053,15 +7064,26 @@ extension on TranslationsNl {
 			'assistant.match.more' => ({required Object count}) => '+${count}',
 			'assistant.match.allAges' => 'AL',
 			'assistant.match.score' => ({required Object score}) => 'Score ${score}',
-			'playbackHandoff.button' => 'Overdragen naar Apple TV',
-			'playbackHandoff.title' => 'Overdragen naar',
-			'playbackHandoff.subtitle' => 'Gaat op je Apple TV verder waar je nu bent. Dit is geen AirPlay.',
-			'playbackHandoff.ready' => 'Pleya is open',
-			'playbackHandoff.starting' => 'Starten op Apple TV...',
-			'playbackHandoff.failed' => 'Overdracht mislukt. Controleer of de Apple TV hetzelfde profiel gebruikt. Je kijkt verder op dit toestel.',
-			'playbackHandoff.noneFound' => 'Geen Apple TV gevonden. Open Pleya op je Apple TV en controleer dat beide toestellen op hetzelfde wifi-netwerk zitten en hetzelfde profiel gebruiken.',
+			'playbackHandoff.button' => 'Afspelen op Apple TV',
+			'playbackHandoff.title' => 'Afspelen op',
+			'playbackHandoff.resumeFrom' => ({required Object title, required Object time}) => '${title} · verder vanaf ${time}',
+			'playbackHandoff.thisIphone' => 'Deze iPhone',
+			'playbackHandoff.thisIpad' => 'Deze iPad',
+			'playbackHandoff.playingHere' => 'Speelt nu',
+			'playbackHandoff.playingUntil' => 'Speelt hier tot de Apple TV begint',
+			'playbackHandoff.tvReady' => 'Apple TV · Pleya open',
+			'playbackHandoff.starting' => 'Starten op de Apple TV…',
+			'playbackHandoff.wrongProfile' => 'Gebruikt een ander profiel. Kies op de Apple TV jouw profiel en probeer het opnieuw.',
+			'playbackHandoff.footer' => 'Geen AirPlay: Pleya op de Apple TV speelt zelf verder. Staat hij er niet bij? Open Pleya op de Apple TV.',
+			'playbackHandoff.noneFoundTitle' => 'Geen Apple TV gevonden',
+			'playbackHandoff.noneFound' => 'Een Apple TV kan Pleya niet zelf openen. Open Pleya op je Apple TV en zorg dat beide op hetzelfde wifi-netwerk zitten.',
 			'playbackHandoff.searchAgain' => 'Opnieuw zoeken',
+			'playbackHandoff.failedTitle' => ({required Object name}) => '${name} startte niet',
+			'playbackHandoff.failedBody' => 'Je kijkt hier verder',
+			'playbackHandoff.playingOn' => ({required Object name}) => 'Speelt nu op ${name}',
+			'playbackHandoff.playingOnBody' => 'Verder met de afstandsbediening van je Apple TV',
 			'playbackHandoff.received' => ({required Object from}) => 'Overgedragen vanaf ${from}',
+			'playbackHandoff.receivedBody' => ({required Object title, required Object time}) => '${title} · verder vanaf ${time}',
 			_ => null,
 		};
 	}

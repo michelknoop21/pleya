@@ -13,14 +13,20 @@ import '../../../services/companion_remote/companion_remote_receiver.dart';
 import '../../../services/companion_remote/playback_handoff.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/app_logger.dart';
+import '../../../utils/formatters.dart';
 import '../../../utils/haptics.dart';
+import '../../../utils/platform_detector.dart';
 import '../../../widgets/app_icon.dart';
 import '../../../widgets/focusable_list_tile.dart';
+import '../../../widgets/notice/notice.dart';
+import '../../../widgets/notice/notice_controller.dart';
+import '../../../widgets/overlay_sheet.dart';
 import 'base_video_control_sheet.dart';
 
-/// Lists the Apple TVs on the network and hands the current playback to the one
-/// the user picks (A-23). The phone keeps playing until the Apple TV reports
-/// that it plays; on any failure it just keeps playing.
+/// Lists this device and the Apple TVs on the network, AirPlay-style, and hands
+/// the current playback to the one the user picks (A-23, northstar 45-b to 45-g).
+/// The phone keeps playing until the Apple TV reports that it plays; on any
+/// failure it just keeps playing.
 class PlaybackHandoffSheet extends StatefulWidget {
   final Player player;
   final String serverId;
@@ -41,14 +47,20 @@ class PlaybackHandoffSheet extends StatefulWidget {
 
 class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
   static const _searchTimeout = Duration(seconds: 8);
+  static const _amber = Color(0xFFFFB020);
+  static const _ok = Color(0xFF3DD68C);
 
   late final CompanionRemoteProvider _provider = context.read<CompanionRemoteProvider>();
+  // Taken when the sheet opens: the position the header promises.
+  late final Duration _from = widget.player.state.position;
   StreamSubscription<List<DiscoveredHost>>? _subscription;
   Timer? _timeout;
   List<DiscoveredHost> _tvs = const [];
   bool _searching = true;
   DiscoveredHost? _handingTo;
-  bool _failed = false;
+
+  /// The Apple TV that refused because another profile is active on it (45-d).
+  String? _wrongProfileTv;
 
   @override
   void initState() {
@@ -59,7 +71,7 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
   Future<void> _search() async {
     setState(() {
       _searching = true;
-      _failed = false;
+      _wrongProfileTv = null;
     });
     await _subscription?.cancel();
     if (!mounted) return;
@@ -95,14 +107,11 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
   Future<void> _handOff(DiscoveredHost tv) async {
     if (_handingTo != null) return;
     // A phone that hosts its own remote session must not be overwritten by joining one.
-    if (_provider.isHost) {
-      setState(() => _failed = true);
-      return;
-    }
+    if (_provider.isHost) return _showFailed(tv);
     Haptics.light();
     setState(() {
       _handingTo = tv;
-      _failed = false;
+      _wrongProfileTv = null;
     });
     // Taken at the press: this is where the Apple TV starts. The phone plays
     // on until the Apple TV answers, so it can be a few seconds ahead by then.
@@ -125,9 +134,17 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
     }
     if (outcome == PlaybackHandoffOutcome.playing) {
       // The Apple TV plays: close this player the way the remote's Stop does,
-      // also when the sheet was dismissed while waiting.
+      // also when the sheet was dismissed while waiting (45-g).
       await _provider.leaveSession();
       if (CompanionRemoteReceiver.instance.onStop == stopThisPlayer) stopThisPlayer?.call();
+      noticeController.show(
+        Notice(
+          level: NoticeLevel.success,
+          title: t.playbackHandoff.playingOn(name: tv.name),
+          body: t.playbackHandoff.playingOnBody,
+          groupKey: 'playback-handoff:${request.id}',
+        ),
+      );
       return;
     }
     // Giving up: tell the Apple TV, so a late start does not leave both playing.
@@ -137,61 +154,160 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
       await Future<void>.delayed(const Duration(milliseconds: 300));
     }
     await _provider.leaveSession();
-    if (!mounted) return;
-    setState(() {
-      _handingTo = null;
-      _failed = true;
-    });
+    final wrongProfile = outcome == PlaybackHandoffOutcome.wrongProfile;
+    if (wrongProfile && mounted) {
+      // The user can fix this on the Apple TV and try again, so the sheet stays (45-d).
+      setState(() {
+        _handingTo = null;
+        _wrongProfileTv = tv.name;
+      });
+      return;
+    }
+    // Also when the sheet was dismissed while waiting: the user must hear it failed.
+    _showFailed(tv, body: wrongProfile ? t.playbackHandoff.wrongProfile : null);
   }
+
+  /// Closes the sheet and says so in the player; this device keeps playing (45-e).
+  void _showFailed(DiscoveredHost tv, {String? body}) {
+    noticeController.show(
+      Notice(
+        level: NoticeLevel.warning,
+        title: t.playbackHandoff.failedTitle(name: tv.name),
+        body: body ?? t.playbackHandoff.failedBody,
+        groupKey: 'playback-handoff-failed:${tv.clientId}',
+      ),
+    );
+    if (mounted) OverlaySheetController.of(context).close();
+  }
+
+  Widget _row({
+    required IconData icon,
+    required String name,
+    required Widget detail,
+    Widget? trailing,
+    VoidCallback? onTap,
+    bool current = false,
+    bool busy = false,
+    bool dim = false,
+  }) {
+    final fill = Colors.white.withValues(alpha: current || busy ? 0.10 : 0.05);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+      child: Opacity(
+        opacity: dim ? 0.45 : 1,
+        child: Material(
+          color: fill,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: busy ? BorderSide(color: Colors.white.withValues(alpha: 0.28)) : BorderSide.none,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: FocusableListTile(
+            leading: AppIcon(icon, size: 24),
+            title: Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+            subtitle: detail,
+            trailing: trailing,
+            // Never the disabled style: the current device and the busy Apple TV stay bright (45-b, 45-c).
+            enabled: true,
+            onTap: onTap,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _readyDetail(TextStyle style) => Row(
+    children: [
+      Container(
+        width: 7,
+        height: 7,
+        margin: const EdgeInsets.only(right: 6),
+        decoration: const BoxDecoration(color: _ok, shape: BoxShape.circle),
+      ),
+      Flexible(child: Text(t.playbackHandoff.tvReady, style: style)),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
-    final muted = tokens(context).textMuted;
+    final dimText = TextStyle(color: tokens(context).textMuted, fontSize: 12);
+    final busy = _handingTo != null;
     final children = <Widget>[
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-        child: Text(t.playbackHandoff.subtitle, style: TextStyle(color: muted, fontSize: 13)),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+        child: Text(
+          t.playbackHandoff.resumeFrom(title: widget.title, time: formatDurationTimestamp(_from)),
+          style: TextStyle(color: tokens(context).textMuted, fontSize: 13),
+        ),
+      ),
+      _row(
+        icon: Symbols.smartphone,
+        name: PlatformDetector.isTablet(context) ? t.playbackHandoff.thisIpad : t.playbackHandoff.thisIphone,
+        detail: Text(busy ? t.playbackHandoff.playingUntil : t.playbackHandoff.playingHere, style: dimText),
+        trailing: const AppIcon(Symbols.check, size: 20),
+        current: true,
       ),
       for (final tv in _tvs)
-        FocusableListTile(
-          leading: const AppIcon(Symbols.tv_rounded, fill: 1),
-          title: Text(tv.name),
-          subtitle: Text(
-            _handingTo == tv ? t.playbackHandoff.starting : t.playbackHandoff.ready,
-            style: TextStyle(color: muted, fontSize: 12),
-          ),
+        _row(
+          icon: Symbols.tv,
+          name: tv.name,
+          detail: _handingTo == tv
+              ? Text(t.playbackHandoff.starting, style: dimText)
+              : _wrongProfileTv == tv.name
+              ? Text(t.playbackHandoff.wrongProfile, style: dimText.copyWith(color: _amber))
+              : _readyDetail(dimText),
           trailing: _handingTo == tv
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
               : null,
-          enabled: _handingTo == null,
-          onTap: () => unawaited(_handOff(tv)),
-        ),
-      if (_failed)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: Text(t.playbackHandoff.failed, style: const TextStyle(color: Color(0xFFFFB020), fontSize: 13)),
+          busy: _handingTo == tv,
+          dim: busy && _handingTo != tv,
+          onTap: busy ? null : () => unawaited(_handOff(tv)),
         ),
       if (_tvs.isEmpty && _searching)
         const Padding(
-          padding: EdgeInsets.all(24),
+          padding: EdgeInsets.all(20),
           child: Center(child: CircularProgressIndicator()),
         ),
       if (_tvs.isEmpty && !_searching) ...[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Text(t.playbackHandoff.noneFound, style: TextStyle(color: muted, fontSize: 13, height: 1.4)),
+        Container(
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: [
+              Text(
+                t.playbackHandoff.noneFoundTitle,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                t.playbackHandoff.noneFound,
+                style: TextStyle(color: tokens(context).textMuted, fontSize: 13, height: 1.4),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
-        FocusableListTile(
-          leading: const AppIcon(Symbols.refresh_rounded),
-          title: Text(t.playbackHandoff.searchAgain),
+        _row(
+          icon: Symbols.refresh_rounded,
+          name: t.playbackHandoff.searchAgain,
+          detail: const SizedBox.shrink(),
           onTap: () => unawaited(_search()),
         ),
-      ],
+      ] else
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+          child: Text(t.playbackHandoff.footer, style: dimText.copyWith(height: 1.4)),
+        ),
     ];
 
     return BaseVideoControlSheet(
       title: t.playbackHandoff.title,
-      icon: Symbols.cast_connected_rounded,
+      icon: Symbols.smart_display,
       child: ListView(children: children),
     );
   }

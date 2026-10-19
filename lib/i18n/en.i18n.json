@@ -3083,14 +3083,25 @@
     }
   },
   "playbackHandoff": {
-    "button": "Hand off to Apple TV",
-    "title": "Hand off to",
-    "subtitle": "Continues on your Apple TV from where you are. This is not AirPlay.",
-    "ready": "Pleya is open",
-    "starting": "Starting on Apple TV...",
-    "failed": "Hand-off failed. Check that the Apple TV uses the same profile. You keep watching on this device.",
-    "noneFound": "No Apple TV found. Open Pleya on your Apple TV, and make sure both devices are on the same Wi-Fi network and use the same profile.",
+    "button": "Play on Apple TV",
+    "title": "Play on",
+    "resumeFrom": "$title · continue from $time",
+    "thisIphone": "This iPhone",
+    "thisIpad": "This iPad",
+    "playingHere": "Playing now",
+    "playingUntil": "Plays here until the Apple TV starts",
+    "tvReady": "Apple TV · Pleya open",
+    "starting": "Starting on the Apple TV…",
+    "wrongProfile": "Uses another profile. Pick your profile on the Apple TV and try again.",
+    "footer": "Not AirPlay: Pleya on the Apple TV plays it by itself. Not listed? Open Pleya on the Apple TV.",
+    "noneFoundTitle": "No Apple TV found",
+    "noneFound": "An Apple TV cannot open Pleya by itself. Open Pleya on your Apple TV and make sure both are on the same Wi-Fi network.",
     "searchAgain": "Search again",
-    "received": "Handed over from $from"
+    "failedTitle": "$name did not start",
+    "failedBody": "You keep watching here",
+    "playingOn": "Playing on $name",
+    "playingOnBody": "Continue with the remote of your Apple TV",
+    "received": "Handed over from $from",
+    "receivedBody": "$title · continues from $time"
   }
 }

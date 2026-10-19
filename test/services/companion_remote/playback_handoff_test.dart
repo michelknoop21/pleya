@@ -55,6 +55,13 @@ void main() {
       expect(await answer, PlaybackHandoffOutcome.failed);
     });
 
+    test('a refusal for another profile is told apart, so the sheet can say what to fix', () async {
+      final tracker = PlaybackHandoffTracker();
+      final answer = tracker.wait('h1', const Duration(seconds: 5));
+      tracker.handleSyncState({handoffFailedKey: 'h1', handoffReasonKey: handoffReasonWrongProfile});
+      expect(await answer, PlaybackHandoffOutcome.wrongProfile);
+    });
+
     test('silence is a timeout, not a success', () async {
       final tracker = PlaybackHandoffTracker();
       expect(await tracker.wait('h1', const Duration(milliseconds: 20)), PlaybackHandoffOutcome.timedOut);

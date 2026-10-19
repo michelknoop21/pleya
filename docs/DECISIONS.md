@@ -4781,7 +4781,7 @@ niets aan het gedrag.
 ## DEC-XXX: Playback Handoff gaat over de Companion Remote-verbinding en speelt als expliciete startpositie
 
 **Date:** 2026-10-19
-**Status:** accepted (wacht op akkoord van Michel op de northstar `docs/assets/playback-handoff/`)
+**Status:** accepted; northstar `docs/assets/playback-handoff/` (45-a tot en met 45-t2) goedgekeurd door Michel op 19 oktober 2026, ter vervanging van het eerste voorstel
 **Context:** Michel wil tijdens het kijken op een iPhone met één druk de film of aflevering naar Pleya op Apple TV overdragen, zonder AirPlay of schermspiegeling, en zonder dat een oude lokale kijkpositie de overdracht overschrijft. De codebase heeft al wat daarvoor nodig is: de Companion Remote (UDP-discovery op poort 48633, authenticatie op dezelfde Plex-home of Jellyfin-gebruiker, een WebSocket met commando's en `syncState`), `navigateToVideoPlayer` en `PlaybackResumeResolver`, waarvan de bovenste laag een expliciet gevraagde positie is.
 **Decision:**
 1. Transport is de bestaande Companion Remote. Nieuw is één commando, `RemoteCommandType.handoff`, achteraan in de enum (de draad draagt de index). Het draagt `serverId`, `itemId`, `positionMs`, titel en afzendernaam, dus dezelfde sleutel als de Top Shelf-links en geen leverancierspad: Plex, Jellyfin/Emby en Pleya Server werken zolang de ontvanger de server kent. Lokale bestanden, gedownloade items en live tv bieden de knop niet aan.

@@ -90,12 +90,20 @@ enum PlaybackHandoffOutcome {
   /// The Apple TV could not start it; the sender keeps playing.
   failed,
 
+  /// The Apple TV refused because another profile is active there; the sender
+  /// keeps playing and can retry after picking the profile on the Apple TV.
+  wrongProfile,
+
   /// No answer in time; the sender keeps playing.
   timedOut,
 }
 
 const handoffPlayingKey = 'handoffPlaying';
 const handoffFailedKey = 'handoffFailed';
+
+/// Why the Apple TV refused, next to [handoffFailedKey]; absent for any other failure.
+const handoffReasonKey = 'handoffReason';
+const handoffReasonWrongProfile = 'profile';
 
 /// Sent by the phone when it gave up (timeout, failure): a late start on the
 /// Apple TV must not leave both devices playing.
@@ -135,6 +143,9 @@ class PlaybackHandoffTracker {
     final playing = data?[handoffPlayingKey];
     final failed = data?[handoffFailedKey];
     if (playing is String) complete(playing, PlaybackHandoffOutcome.playing);
-    if (failed is String) complete(failed, PlaybackHandoffOutcome.failed);
+    if (failed is String) {
+      final wrongProfile = data?[handoffReasonKey] == handoffReasonWrongProfile;
+      complete(failed, wrongProfile ? PlaybackHandoffOutcome.wrongProfile : PlaybackHandoffOutcome.failed);
+    }
   }
 }

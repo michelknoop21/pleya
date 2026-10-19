@@ -1,0 +1,60 @@
+<style>
+html,body{width:852px;height:393px}
+.pl{position:absolute;inset:0;background:#000}
+.pl img{width:100%;height:100%;object-fit:cover;opacity:.55}
+.pl .top{position:absolute;left:0;right:0;top:0;padding:14px 60px 0;display:flex;align-items:center;gap:14px;color:#fff}
+.pl .top svg{width:26px;height:26px}
+.pl .top .t{flex:1;font-size:15px;font-weight:600}
+.pl .top .t small{display:block;font-size:12px;color:var(--ink-2);font-weight:400}
+.pl .mid{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);display:flex;justify-content:center;gap:64px;align-items:center;color:#fff}
+.pl .mid svg{width:36px;height:36px}
+.pl .mid .big{width:64px;height:64px;border-radius:999px;background:rgba(255,255,255,.14);display:grid;place-items:center}
+.pl .mid .big svg{width:36px;height:36px}
+.pl .bot{position:absolute;left:0;right:0;bottom:0;padding:0 60px 18px;color:#fff}
+.pl .bar{height:4px;background:rgba(255,255,255,.25);border-radius:2px;position:relative;margin:8px 0}
+.pl .bar i{display:block;height:100%;width:46%;background:var(--accent);border-radius:2px}
+.pl .bar b{position:absolute;left:46%;top:50%;width:14px;height:14px;border-radius:999px;background:var(--accent);transform:translate(-50%,-50%)}
+.pl .bar em{position:absolute;top:0;height:100%;width:2px;background:rgba(255,255,255,.7)}
+.pl .times{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-2)}
+.pl .acts{display:flex;justify-content:space-between;margin-top:6px;font-size:12px}
+.pl .acts span{display:flex;align-items:center;gap:6px}
+.pl .acts svg{width:20px;height:20px}
+.pl .skip{position:absolute;right:60px;bottom:78px;background:rgba(255,255,255,.92);color:#141414;font-size:13px;font-weight:700;padding:8px 14px;border-radius:999px}
+
+.pl .top .ho{position:relative;display:grid;place-items:center;width:38px;height:38px;margin:-6px -6px;border-radius:999px}
+.pl .top .ho.on{background:rgba(255,255,255,.18)}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:5}
+.hs{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:452px;background:var(--surface);border-radius:var(--r-md) var(--r-md) 0 0;z-index:6;padding:0 0 14px}
+.hs .grab{width:36px;height:5px;border-radius:3px;background:rgba(255,255,255,.25);margin:8px auto 4px}
+.hs .hd{display:flex;gap:12px;align-items:center;padding:4px 18px 10px}
+.hs .hd img{width:34px;aspect-ratio:2/3;border-radius:5px;object-fit:cover}
+.hs .hd .t{font-size:16px;font-weight:700}
+.hs .hd .s{font-size:12px;color:var(--ink-3);margin-top:1px}
+.hs .rows{padding:0 12px;display:flex;flex-direction:column;gap:6px}
+.hs .r{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.05);border-radius:12px;padding:7px 12px}
+.hs .r.cur{background:rgba(255,255,255,.10)}
+.hs .r.busy{background:rgba(255,255,255,.10);outline:1px solid rgba(255,255,255,.28)}
+.hs .r.dim{opacity:.45}
+.hs .r svg{width:24px;height:24px;flex:none}
+.hs .r .n{font-size:15px;font-weight:600;display:flex;align-items:center;gap:7px}
+.hs .r .d{font-size:12px;color:var(--ink-3);margin-top:1px}
+.hs .r .d.warn{color:var(--amber)}
+.hs .r .end{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2)}
+.hs .r .end svg{width:18px;height:18px}
+.spin{width:16px;height:16px;border-radius:999px;border:2.2px solid rgba(255,255,255,.25);border-top-color:#fff;flex:none}
+.hs .ft{font-size:11.5px;color:var(--ink-3);padding:10px 20px 0;line-height:1.4}
+.hs .empty{margin:0 12px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.05);font-size:13px;color:var(--ink-2);line-height:1.45}
+.hs .empty b{color:var(--ink);display:block;font-size:14px;margin-bottom:3px}
+.hs .btnrow{padding:10px 12px 0}
+.toast{position:absolute;left:50%;transform:translateX(-50%);bottom:86px;z-index:7;display:flex;align-items:center;gap:10px;background:#2F2F2F;border-radius:12px;padding:10px 16px;box-shadow:0 6px 20px rgba(0,0,0,.4);white-space:nowrap}
+.toast .t{font-size:14px;font-weight:700}.toast .s{font-size:12px;color:var(--ink-2);margin-top:1px}
+.toast .dot{width:9px;height:9px;border-radius:999px;flex:none}
+</style>
+<div class="pl"><img src="art/dune2-backdrop.jpg">
+  <div class="top">{{icon:chevd}}<div class="t">Dune: Part Two<small>NAS · 2160p · HDR10 · Dolby Atmos</small></div><span class="ho">{{icon:handoff}}</span>{{icon:cast}}{{icon:airplay}}{{icon:more}}</div>
+  <div class="mid">{{icon:rew}}<div class="big">{{icon:pause}}</div>{{icon:fwd}}</div>
+  <div class="skip">Intro overslaan</div>
+  <div class="bot"><div class="times"><span>1:16:42</span><span>-1:29:18</span></div><div class="bar"><i></i><b></b><em style="left:22%"></em><em style="left:61%"></em><em style="left:83%"></em></div>
+  <div class="acts"><span>{{icon:speed}} 1,0×</span><span>{{icon:lock}} Vergrendelen</span><span>{{icon:cc}} Audio en ondertitels</span><span>{{icon:clock}} Slaaptimer</span><span>{{icon:show}} Afleveringen</span></div></div>
+</div>
+<div class="scrim"></div><div class="hs"><div class="grab"></div><div class="hd"><img src="art/dune2-poster.jpg"><div><div class="t">Afspelen op</div><div class="s">Dune: Part Two · verder vanaf 1:16:42</div></div></div><div class="rows"><div class="r cur">{{icon:phone}}<div><div class="n">Deze iPhone</div><div class="d">Speelt nu</div></div><div class="end">{{icon:check}}</div></div><div class="r ">{{icon:tv}}<div><div class="n">Woonkamer</div><div class="d"><span class='pill-dot ok' style='display:inline-block;width:7px;height:7px;margin-right:5px;vertical-align:1px'></span>Apple TV 4K · Pleya open</div></div><div class="end"></div></div><div class="r ">{{icon:tv}}<div><div class="n">Slaapkamer</div><div class="d"><span class='pill-dot ok' style='display:inline-block;width:7px;height:7px;margin-right:5px;vertical-align:1px'></span>Apple TV HD · Pleya open</div></div><div class="end"></div></div></div><div class="ft">Geen AirPlay: Pleya op de Apple TV speelt zelf verder. Staat hij er niet bij? Open Pleya op de Apple TV.</div></div>
