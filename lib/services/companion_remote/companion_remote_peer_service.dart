@@ -36,6 +36,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
   RemoteSessionRole? _role;
   String? _selectedAuthContextId;
   bool _clientIsHostUser = false;
+  String? _clientUserUuid;
   String? _selectedHostClientId;
 
   // Encrypted channel state
@@ -77,6 +78,9 @@ class CompanionRemotePeerService with KeepaliveMixin {
   /// Host side: the connected phone is the same user as this device's active
   /// profile (see [handoffUserMatches]).
   bool get clientIsHostUser => _clientIsHostUser;
+
+  /// Host side: the user the authenticated phone signed in as.
+  String? get clientUserUuid => _clientUserUuid;
   bool get isHost => _role == RemoteSessionRole.host;
   bool get isConnected => _clientSocket != null || (_channel != null && _channel?.closeCode == null);
 
@@ -346,6 +350,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
               _isAuthenticated = true;
               _selectedAuthContextId = selectedContext.id;
               _selectedHostClientId = selectedContext.clientIdentifier;
+              _clientUserUuid = userUUID;
               _clientIsHostUser = handoffUserMatches(clientUserUuid: userUUID, hostUserUuid: selectedContext.userUuid);
 
               appLogger.d('CompanionRemote: Client authenticated: $deviceName ($platform)');
@@ -402,6 +407,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
           _selectedAuthContextId = null;
           _selectedHostClientId = null;
           _clientIsHostUser = false;
+          _clientUserUuid = null;
           _deviceDisconnectedController.add(null);
           _connectionStateController.add(RemoteSessionStatus.disconnected);
           stopKeepalive();

@@ -1254,9 +1254,9 @@ class _MainScreenState extends State<MainScreen>
         final request = PlaybackHandoffRequest.fromData(command.data);
         if (request == null) return;
         if (!companionRemote.peerIsHostUser) {
-          // Another member of the Home: the progress would land on this profile's account.
-          appLogger.w('Playback handoff ${request.id} refused: sender is not the active user');
-          companionRemote.sendCommand(RemoteCommandType.syncState, data: {handoffFailedKey: request.id});
+          // Another member of the Home: switch to that profile first, so the
+          // progress lands on the sender's own account.
+          unawaited(receivePlaybackHandoffFromOtherUser(context, request, companionRemote.peerUserUuid ?? ''));
           return;
         }
         unawaited(receivePlaybackHandoff(context, request));
@@ -1264,6 +1264,18 @@ class _MainScreenState extends State<MainScreen>
       }
       CompanionRemoteReceiver.instance.handleCommand(command, context);
     };
+
+    // A handoff that switched the profile continues in the session the switch built.
+    final pendingHandoff = takePendingPlaybackHandoff();
+    if (pendingHandoff != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          unawaited(
+            receivePlaybackHandoff(context, pendingHandoff.request, switchedToProfile: pendingHandoff.profileName),
+          );
+        }
+      });
+    }
 
     final receiver = CompanionRemoteReceiver.instance;
 

@@ -4,6 +4,8 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../../i18n/strings.g.dart';
+import '../../profiles/active_profile_binder.dart';
+import '../../profiles/active_profile_provider.dart';
 import '../../media/ids.dart';
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
@@ -23,7 +25,11 @@ import 'playback_handoff.dart';
 /// A handoff is a deliberate press on the phone, so it replaces whatever this
 /// device is doing without asking. Any failure is reported to the phone, which
 /// then keeps playing.
-Future<void> receivePlaybackHandoff(BuildContext context, PlaybackHandoffRequest request) async {
+Future<void> receivePlaybackHandoff(
+  BuildContext context,
+  PlaybackHandoffRequest request, {
+  String? switchedToProfile,
+}) async {
   // One handoff at a time while it fetches and clears the old player: a second
   // arriving now would close and push in parallel.
   if (_receiving) return;
@@ -36,7 +42,7 @@ Future<void> receivePlaybackHandoff(BuildContext context, PlaybackHandoffRequest
   }
 
   try {
-    await _receive(context, request, release);
+    await _receive(context, request, release, switchedToProfile);
   } finally {
     release();
   }
@@ -61,7 +67,12 @@ void cancelPlaybackHandoff(String id) {
 /// cancel that arrived while the player was still opening is not lost.
 bool isPlaybackHandoffCancelled(String id) => _cancelled.contains(id);
 
-Future<void> _receive(BuildContext context, PlaybackHandoffRequest request, VoidCallback release) async {
+Future<void> _receive(
+  BuildContext context,
+  PlaybackHandoffRequest request,
+  VoidCallback release,
+  String? switchedToProfile,
+) async {
   final provider = context.read<CompanionRemoteProvider>();
   void fail(String reason) {
     appLogger.w('Playback handoff ${request.id} failed: $reason');
@@ -103,7 +114,9 @@ Future<void> _receive(BuildContext context, PlaybackHandoffRequest request, Void
     Notice(
       level: NoticeLevel.info,
       title: t.playbackHandoff.received(from: request.from),
-      body: item.displayTitle,
+      body: switchedToProfile == null
+          ? item.displayTitle
+          : '${item.displayTitle} · ${t.playbackHandoff.switchedTo(name: switchedToProfile)}',
       groupKey: 'playback-handoff:${request.id}',
     ),
   );
@@ -122,4 +135,48 @@ Future<void> _receive(BuildContext context, PlaybackHandoffRequest request, Void
     onPlaybackInitFailed: () => fail('player did not start'),
   );
   if (_activeHandoffId == request.id) _activeHandoffId = null;
+}
+
+/// A handoff waiting for the profile switch it asked for. Switching rebuilds the
+/// whole profile session, including the screen that received the request, so
+/// the new session picks it up (see [takePendingPlaybackHandoff]).
+({PlaybackHandoffRequest request, String profileName, DateTime at})? _pending;
+
+/// Taken once by the session that starts after the switch. A request older than
+/// a minute is dropped: the phone has long given up.
+({PlaybackHandoffRequest request, String profileName})? takePendingPlaybackHandoff() {
+  final pending = _pending;
+  _pending = null;
+  if (pending == null || DateTime.now().difference(pending.at) > const Duration(minutes: 1)) return null;
+  return (request: pending.request, profileName: pending.profileName);
+}
+
+/// A phone of another user of the Home hands over: switch this device to that
+/// user's profile first, so playback and progress belong to the right account.
+/// Refused (the phone keeps playing) when that user has no profile here or the
+/// profile has a PIN.
+Future<void> receivePlaybackHandoffFromOtherUser(
+  BuildContext context,
+  PlaybackHandoffRequest request,
+  String clientUserUuid,
+) async {
+  final provider = context.read<CompanionRemoteProvider>();
+  final active = context.read<ActiveProfileProvider>();
+  final binder = context.read<ActiveProfileBinder>();
+  void fail(String reason) {
+    appLogger.w('Playback handoff ${request.id} refused: $reason');
+    provider.sendCommand(RemoteCommandType.syncState, data: {handoffFailedKey: request.id});
+  }
+
+  final target = profileForHandoffUser(active.profiles, clientUserUuid);
+  if (target == null) return fail('no switchable profile for the sender');
+
+  _pending = (request: request, profileName: target.displayName, at: DateTime.now());
+  binder.markUserInitiatedActivation(target.id);
+  final switched =
+      await active.activate(target) && await active.awaitBindingSettle(timeout: const Duration(seconds: 80));
+  if (!switched) {
+    _pending = null;
+    fail('switching to ${target.displayName} failed');
+  }
 }

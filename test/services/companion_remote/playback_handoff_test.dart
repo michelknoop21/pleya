@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/profiles/profile.dart';
 import 'package:pleya/models/companion_remote/remote_command.dart';
 import 'package:pleya/services/companion_remote/playback_handoff.dart';
 import 'package:pleya/services/companion_remote/playback_handoff_receiver.dart';
@@ -117,5 +118,29 @@ void main() {
     expect(handoffUserMatches(clientUserUuid: 'u1', hostUserUuid: 'u1'), isTrue);
     expect(handoffUserMatches(clientUserUuid: 'u2', hostUserUuid: 'u1'), isFalse);
     expect(handoffUserMatches(clientUserUuid: '', hostUserUuid: ''), isFalse);
+  });
+
+  group('profileForHandoffUser', () {
+    Profile home(String id, String uuid, {bool protected = false}) => Profile.plexHome(
+      id: id,
+      displayName: id,
+      plexHomeUserUuid: uuid,
+      plexProtected: protected,
+      createdAt: DateTime(2026),
+    );
+
+    test('finds the Home profile of the sending user', () {
+      final profiles = [home('a', 'u1'), home('b', 'u2')];
+      expect(profileForHandoffUser(profiles, 'u2')?.id, 'b');
+    });
+
+    test('a profile with a PIN is found too: the Apple TV asks for the PIN itself', () {
+      expect(profileForHandoffUser([home('a', 'u1', protected: true)], 'u1')?.id, 'a');
+    });
+
+    test('an unknown or empty sender gets no profile', () {
+      expect(profileForHandoffUser([home('a', 'u1')], 'u9'), isNull);
+      expect(profileForHandoffUser([home('a', '')], ''), isNull);
+    });
   });
 }

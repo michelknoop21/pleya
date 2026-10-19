@@ -77,6 +77,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   String get deviceName => _deviceName;
 
   /// Host side: the connected phone is the same user as the active profile here.
+  String? get peerUserUuid => _peerService?.clientUserUuid;
   bool get peerIsHostUser => _peerService?.clientIsHostUser ?? false;
   bool get isHostServerRunning => _peerService?.isServerRunning ?? false;
 
@@ -718,7 +719,8 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   /// caller keeps playing until this returns [PlaybackHandoffOutcome.playing].
   Future<PlaybackHandoffOutcome> handOffPlayback(
     PlaybackHandoffRequest request, {
-    Duration timeout = const Duration(seconds: 20),
+    // Long enough for a profile switch with a PIN typed on the Apple TV.
+    Duration timeout = const Duration(seconds: 90),
   }) async {
     if (!isConnected) return PlaybackHandoffOutcome.failed;
     final answer = _handoffs.wait(request.id, timeout);

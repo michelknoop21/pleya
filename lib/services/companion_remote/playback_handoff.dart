@@ -13,6 +13,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../media/media_item.dart';
+import '../../profiles/profile.dart';
 
 @immutable
 class PlaybackHandoffRequest {
@@ -81,6 +82,18 @@ MediaItem itemAtHandoffPosition(MediaItem item, PlaybackHandoffRequest request) 
 /// same user may start one.
 bool handoffUserMatches({required String clientUserUuid, required String hostUserUuid}) =>
     clientUserUuid.isNotEmpty && clientUserUuid == hostUserUuid;
+
+/// The profile on this device that belongs to the user who sends a handoff, or
+/// null when there is none. A profile with a PIN is included: the binder asks
+/// for that PIN on this device when it switches, because Plex mints the user
+/// token here and the phone's unlock cannot be passed on.
+Profile? profileForHandoffUser(Iterable<Profile> profiles, String clientUserUuid) {
+  if (clientUserUuid.isEmpty) return null;
+  for (final profile in profiles) {
+    if (profile is PlexHomeProfile && profile.plexHomeUserUuid == clientUserUuid) return profile;
+  }
+  return null;
+}
 
 /// What the receiving Apple TV reports back through `syncState`.
 enum PlaybackHandoffOutcome {
