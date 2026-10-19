@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
+	"github.com/edde746/plezy/pleya_server/internal/artwork"
 	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/config"
@@ -271,6 +272,7 @@ func run() int {
 		Watch:              watch.NewStore(pool),
 		MediaRoots:         cfg.MediaDirs,
 		CacheDir:           cfg.CacheDir,
+		Artwork:            artwork.New(cfg.FFmpegPath, cfg.CacheDir, logging.Component(log, "artwork")),
 		Jobs:               runner,
 		Signer:             signer,
 		Logger:             logging.Component(log, "http"),

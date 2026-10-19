@@ -8,6 +8,7 @@
     "browse": true,
     "search": true,
     "artwork": true,
+    "artwork_sizes": true,
     "watch_state": true,
     "watch_state_ownership": true,
     "stream_sessions": true,

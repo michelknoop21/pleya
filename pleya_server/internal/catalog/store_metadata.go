@@ -344,9 +344,9 @@ func (s *Store) ProviderArtworkFile(ctx context.Context, artworkID id.ID, cacheD
 	var libraryID id.ID
 	var name string
 	err := s.pool.QueryRow(ctx, `
-		SELECT a.id, a.file_name, a.generation, i.library_id
+		SELECT a.id, a.file_name, a.generation, i.library_id, a.kind
 		FROM provider_artwork a JOIN media_items i ON i.id = a.item_id
-		WHERE a.id = $1`, artworkID).Scan(&f.ID, &name, &f.Generation, &libraryID)
+		WHERE a.id = $1`, artworkID).Scan(&f.ID, &name, &f.Generation, &libraryID, &f.Kind)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return f, id.Nil, ErrNotFound
 	}

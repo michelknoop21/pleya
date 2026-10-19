@@ -52,11 +52,6 @@ func (s *Server) handleArtwork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	contentType, known := artworkContentTypes[strings.ToLower(filepath.Ext(file.AbsPath))]
-	if !known {
-		contentType = "application/octet-stream"
-	}
-
 	// De validator hangt aan het id én aan generation. Het id alleen is niet
 	// genoeg: een afbeelding die in plaats wordt vervangen houdt zijn
 	// media_files-rij en dus zijn id, terwijl de bytes veranderen. generation
@@ -66,7 +61,23 @@ func (s *Server) handleArtwork(w http.ResponseWriter, r *http.Request) {
 	// Dit herstelt de belofte bij de ETag-header voor dit endpoint en zegt niets
 	// over de validator voor mediabytes. Of generation dáár de juiste basis is,
 	// is poort 4 uit docs/pleya-server-gates.md, en die staat open tot PS-4.
-	etag := `"` + shortHash(file.ID.String()+":"+strconv.FormatInt(file.Generation, 10)) + `"`
+	// Een gevraagde breedte levert een trede van de ladder, of het origineel.
+	// Elke trede heeft een eigen validator: dezelfde URL met een andere width
+	// zijn andere bytes. Een ongeldige width wordt genegeerd en geeft het origineel.
+	// De trede staat vast vóór de If-None-Match-controle; gemaakt wordt hij pas
+	// als er bytes geleverd moeten worden.
+	step := 0
+	if width, err := strconv.Atoi(r.URL.Query().Get("width")); err == nil && width >= 1 && width <= 4096 {
+		step = s.opts.Artwork.Plan(file.AbsPath, file.Kind, width)
+	}
+	etagFor := func(step int) string {
+		source := file.ID.String() + ":" + strconv.FormatInt(file.Generation, 10)
+		if step > 0 {
+			source += ":w" + strconv.Itoa(step)
+		}
+		return `"` + shortHash(source) + `"`
+	}
+	etag := etagFor(step)
 	w.Header().Set("ETag", etag)
 	// Geen immutable: dezelfde URL kan andere bytes gaan leveren zodra de
 	// afbeelding op schijf vervangen wordt. Cachen mag, blijven geloven zonder
@@ -79,7 +90,22 @@ func (s *Server) handleArtwork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.serveFile(w, r, file, contentType)
+	served := file
+	if step > 0 {
+		key := file.ID.String() + "_" + strconv.FormatInt(file.Generation, 10)
+		if path, ok := s.opts.Artwork.Make(r.Context(), file.AbsPath, key, step); ok {
+			served.AbsPath = path
+		} else {
+			// Terugval op het origineel, met de validator van het origineel: een
+			// cache mag de originele bytes niet onder de validator van een trede bewaren.
+			w.Header().Set("ETag", etagFor(0))
+		}
+	}
+	contentType, known := artworkContentTypes[strings.ToLower(filepath.Ext(served.AbsPath))]
+	if !known {
+		contentType = "application/octet-stream"
+	}
+	s.serveFile(w, r, served, contentType)
 }
 
 // subtitleContentTypes volgen hoofdstuk 12 van de specificatie.

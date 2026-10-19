@@ -454,6 +454,9 @@ type FileOnDisk struct {
 
 	Format   string
 	Language string
+
+	// Kind is poster of backdrop, voor de ladder van artwork.
+	Kind string
 }
 
 // ArtworkFile zoekt de afbeelding achter een artwork-id, met de bibliotheek
@@ -463,12 +466,13 @@ func (s *Store) ArtworkFile(ctx context.Context, artworkID id.ID) (FileOnDisk, i
 	var f FileOnDisk
 	var libraryID id.ID
 	err := s.pool.QueryRow(ctx, `
-		SELECT f.id, l.root_path || '/' || f.relative_path, f.generation, i.library_id
+		SELECT f.id, l.root_path || '/' || f.relative_path, f.generation, i.library_id,
+		       coalesce(f.artwork_kind, 'poster')
 		FROM media_files f
 		JOIN storage_locations l ON l.id = f.storage_location_id
 		JOIN media_items i ON i.id = f.item_id
 		WHERE f.id = $1 AND f.role = 'artwork' AND f.missing_since IS NULL`, artworkID).
-		Scan(&f.ID, &f.AbsPath, &f.Generation, &libraryID)
+		Scan(&f.ID, &f.AbsPath, &f.Generation, &libraryID, &f.Kind)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return f, id.Nil, ErrNotFound
 	}

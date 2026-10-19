@@ -63,6 +63,8 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			Browse:  true,
 			Search:  true,
 			Artwork: true,
+			// ArtworkSizes: de ladder bestaat zodra ffmpeg en een cachemap er zijn.
+			ArtworkSizes: s.opts.Artwork.Available(),
 			// Vanaf PS-4 staat kijkstatus aan, en met het eigendomsmodel eronder.
 			// De vlaggen hangen aan de aanwezigheid van de opslag: een server die
 			// zonder watch-store draait zegt dat eerlijk in plaats van een

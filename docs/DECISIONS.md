@@ -4816,3 +4816,23 @@ overschreven door Engelse.
 **Consequences:** Pakket B4 (`Item.people` met `character`) landt in venster 3. De Nederlandse teksten blijven
 staan. Een titel die TMDB niet kent maar waarvoor een `.nfo` bestaat krijgt toch een samenvatting. RB-27 is op
 punt 1 bijgesteld; de overige regels van RB-27 blijven.
+
+## DEC-154: de artworkladder landt in venster 3 als pakket C1 tot C3, zonder het beheerpad
+
+**Date:** 2026-10-19
+**Status:** accepted. Uitwerking van [DEC-152](#dec-152-protocolvenster-3-opent-voor-de-catalogusrijen-en-m2a-landt-als-eerste-deel) punt 1 (pakket C).
+
+**Decision:**
+
+1. `GET /artwork/{artwork_id}` levert bij `width` een trede van een vaste ladder (poster 240, 480, 960, 1920;
+   backdrop 480, 960, 1920, 3840), naar boven afgerond, nooit opgeschaald, als `image/jpeg`, met een eigen
+   sterke ETag per trede. `capabilities.artwork_sizes` (C1) belooft dit en niets anders. De tekst bij `width` (C2) en de
+   `Cache-Control`-tekst (C3, het werkelijke `public, max-age=300, must-revalidate`) volgen het gedrag.
+2. De bewerking is een terugval-gedreven dienst: een mislukte of te trage ffmpeg-aanroep geeft het origineel
+   met de validator van het origineel. De trede staat vast vóór de `If-None-Match`-controle, dus een 304 maakt niets.
+3. De beheerroutes voor de cache (C4: `GET` en `DELETE /server/artwork-cache`) volgen in een eigen stap met hun
+   autorisatiematrixregels (S4.6). De cache is tot dan niet beheerbaar vanaf de API; de afgeleide maten zijn
+   herbouwbaar en staan onder `CacheDir/artwork-sizes`.
+
+**Consequences:** de Flutter-app stuurt al `?width=` en krijgt na deze uitrol kleinere afbeeldingen zonder nieuwe
+build. De boekcover (A5) gebruikt dezelfde ladder zodra pakket A landt; er is geen contractwijziging voor nodig.

@@ -63,7 +63,9 @@ type Config struct {
 	Libraries  []LibrarySpec
 	InodeTrust map[string]InodeTrust
 
-	FFprobePath    string
+	FFprobePath string
+	// FFmpegPath maakt de afgeleide artworkmaten. Leeg of onvindbaar: geen maten.
+	FFmpegPath     string
 	FFprobeTimeout time.Duration
 
 	ScanOnStart  bool
@@ -237,6 +239,7 @@ func Load(getenv Getenv) (*Config, error) {
 	}
 
 	cfg.FFprobePath = valueOr(getenv, "PLEYA_SERVER_FFPROBE_PATH", DefaultFFprobePath)
+	cfg.FFmpegPath = valueOr(getenv, "PLEYA_SERVER_FFMPEG_PATH", "ffmpeg")
 
 	for _, d := range []struct {
 		key    string

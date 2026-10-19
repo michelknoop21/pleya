@@ -63,6 +63,10 @@ type Capabilities struct {
 	LiveTV       bool `json:"live_tv"`
 	Realtime     bool `json:"realtime"`
 
+	// ArtworkSizes (venster 3, C1). Aan zodra /artwork/{id} afgeleide maten van de
+	// ladder kan maken. Belooft niets over andere routes.
+	ArtworkSizes bool `json:"artwork_sizes"`
+
 	// Users (DEC-121). Aan sinds stap 4 van PS-9: de vijf endpoints onder
 	// /users bestaan, en /auth/login verifieert tegen users en niet meer tegen
 	// alleen de owner-rij. Een client die deze vlag ziet mag ervan uitgaan dat

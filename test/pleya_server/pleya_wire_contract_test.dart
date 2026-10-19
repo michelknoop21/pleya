@@ -207,6 +207,12 @@ void main() {
       expect(info.capabilities.users, isTrue);
       expect(info.capabilities.sessions, isTrue);
       expect(info.capabilities.transcode, isFalse);
+      expect(info.capabilities.artworkSizes, isTrue);
+    });
+
+    test('artwork_sizes is off unless the server says so', () {
+      expect(PleyaInfo.fromJson(load('info.json')).capabilities.artworkSizes, isFalse);
+      expect(PleyaCapabilities.unknown.artworkSizes, isFalse);
     });
 
     test('the pre-connection default claims nothing at all', () {

@@ -150,6 +150,7 @@ class PleyaCapabilities {
     this.liveTv = false,
     this.realtime = false,
     this.users = false,
+    this.artworkSizes = false,
     this.watchStateOwnership = false,
     this.streamSessions = false,
     this.sessions = false,
@@ -179,6 +180,11 @@ class PleyaCapabilities {
   final bool liveTv;
   final bool realtime;
   final bool users;
+
+  /// `GET /artwork/{id}` answers `width` with a step of a fixed ladder instead of
+  /// the original. The app sends `width` regardless: a server without the flag
+  /// ignores it, so the flag changes what comes back and not what is asked.
+  final bool artworkSizes;
 
   /// The server knows the ownership model: `base_revision`, the
   /// `playback_started` acquisition and the backlog marker on a watch-state
@@ -215,6 +221,7 @@ class PleyaCapabilities {
     downloads: booleanOr(json, 'downloads', orElse: false),
     liveTv: booleanOr(json, 'live_tv', orElse: false),
     realtime: booleanOr(json, 'realtime', orElse: false),
+    artworkSizes: booleanOr(json, 'artwork_sizes', orElse: false),
     watchStateOwnership: booleanOr(json, 'watch_state_ownership', orElse: false),
     streamSessions: booleanOr(json, 'stream_sessions', orElse: false),
     users: booleanOr(json, 'users', orElse: false),

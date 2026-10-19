@@ -7,6 +7,7 @@ const all: Capabilities = {
   browse: true,
   search: true,
   artwork: true,
+  artwork_sizes: false,
   watch_state: false,
   playback_plan: false,
   transcode: false,

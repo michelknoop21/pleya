@@ -69,3 +69,16 @@ func itoa(v int) string {
 	}
 	return digits
 }
+
+// MakeImage maakt een echte afbeelding van de gevraagde afmeting (jpg, png).
+func MakeImage(t *testing.T, path string, width, height int) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command("ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+		"-f", "lavfi", "-i", "testsrc=size="+itoa(width)+"x"+itoa(height), "-frames:v", "1", path).CombinedOutput()
+	if err != nil {
+		t.Fatalf("ffmpeg: %v\n%s", err, out)
+	}
+}

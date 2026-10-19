@@ -46,7 +46,7 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **3** | **0** | **23** |
 
-Per taak, en dat is de maat die telt: **155 taken, 27 gereed, 7 bezig, 121 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **155 taken, 27 gereed, 8 bezig, 120 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -292,7 +292,7 @@ de velden uit `.nfo`, op de coverage-gate van 80 procent per bibliotheek (S4.2).
 | S4.1 | `.nfo`-parser inclusief cast en regie | `[~]` | M2b: `internal/nfo` leest film- en serie-`.nfo` (uniqueid, plot, genre, mpaa, cast met personage, regie, schrijvers), geen entiteiten, id alleen numeriek, serie-`.nfo` niet buiten de root gezocht. Seizoens- en afleveringsbestanden volgen. Voorrang volgens [DEC-153](DECISIONS.md) | |
 | S4.2 | Dekkingsmeting met de 80%-poort per bibliotheek | `[ ]` | | |
 | S4.3 | Velden op `Item`, migratie `0014` | `[~]` | M2a: `summary`, `genres`, `content_rating` op `Item` (venster 3, [DEC-152](DECISIONS.md)), migratie `0013` in plaats van `0014`; getoetst met `check_protocol.sh`, `verify-protocol.sh`, Dart-parser. M2b: `people` met `character` (B4) via de `.nfo`; de dekkingspoort (B5) volgt | |
-| S4.4 | Artworkladder met cache en single-flight | `[ ]` | | |
+| S4.4 | Artworkladder met cache en single-flight | `[~]` | M2b: `internal/artwork` maakt trede 240, 480, 960, 1920 (poster) of 480, 960, 1920, 3840 (backdrop) met ffmpeg, naar boven afgerond, nooit opschalen, sterke ETag per trede, single-flight en maximaal twee tegelijk, terugval op het origineel bij een fout, `capabilities.artwork_sizes` (C1). Een 304 maakt niets. Drie negatieve controles rood (validator zonder trede, opschalen toegestaan, 304 na het maken). De app stuurt al `?width=` en profiteert zonder nieuwe build. Single-flight over processen en opruimen op ouderdom volgen met S4.6 | |
 | S4.5 | Boekcovers op dezelfde ladder | `[ ]` | | |
 | S4.6 | Beheerendpoints artworkcache, YAML-tekst rechtgezet | `[ ]` | | |
 
