@@ -149,6 +149,10 @@ func TestSchemaHasExactlyTheExpectedTables(t *testing.T) {
 		// zelfstandig werkpakket naast PS-11A, geen onderdeel van de S1/S2-scope
 		// hierboven.
 		"stream_loudness": true,
+		// M2a, migratie 0013: de kandidatenlaag en de artwork-cache van de
+		// metadata-provider (S22.1 in kleine vorm).
+		"metadata_candidates": true,
+		"provider_artwork":    true,
 	}
 
 	rows, err := pool.Query(ctx, `

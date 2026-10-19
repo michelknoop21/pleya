@@ -702,6 +702,12 @@ Klasse: **`authenticated`**.
 Een `show` draagt daarnaast `child_count`, `episode_count` en `watched_episode_count`. Een `episode`
 draagt `parent_id` en `index`.
 
+**Beschrijvende velden.** `summary` (platte tekst), `genres` (weergavenamen) en `content_rating`
+(vrije tekst zoals de bron hem geeft) zijn optioneel en `null` zolang geen bron ze leverde. Ze zijn
+in de taal van de server (`PLEYA_SERVER_METADATA_LANGUAGE`, standaard `nl-NL`). Een client laat een
+leeg blok weg en toont een onbekende kijkwijzer ongewijzigd. De server vult ze uit een metadata-provider;
+welke dat is en waar een waarde vandaan komt is geen onderdeel van het contract.
+
 **`user_state` is de leeskant van kijkstatus.** Het reist mee in elk itemantwoord, zodat een
 detailscherm geen tweede aanvraag nodig heeft. Zie hoofdstuk 12 voor de schrijfkant. Een item dat de
 identiteit nog nooit heeft aangeraakt draagt `user_state: null`.

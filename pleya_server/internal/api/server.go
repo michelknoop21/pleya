@@ -93,6 +93,10 @@ type Options struct {
 	// setvergelijking zonder bestandssysteemaanroep, wat K rij 10 eist.
 	MediaRoots []string
 
+	// CacheDir is waar gecachede provider-afbeeldingen staan (0013). Leeg betekent
+	// dat er geen cache is en dat /artwork alleen afbeeldingen van schijf levert.
+	CacheDir string
+
 	// Jobs is de wachtrij achter POST /storage/roots/recheck (S2.3). Nil
 	// betekent dat dat endpoint niets kan inplannen en server.internal
 	// antwoordt in plaats van te doen alsof er een ronde loopt.

@@ -104,6 +104,11 @@ type Item struct {
 	Index     *int
 	AddedAt   time.Time
 
+	// Beschrijvende velden (0013); leeg zolang niemand ze gezet heeft.
+	Summary       *string
+	ContentRating *string
+	Genres        []string
+
 	// Afgeleid en niet opgeslagen. Ze staan hier omdat het wire-type ze draagt
 	// en de leeslaag ze per pagina in één keer ophaalt.
 	DurationMs          *int64

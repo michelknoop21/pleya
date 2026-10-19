@@ -98,7 +98,7 @@ func TestScanHandlerRewritesStaleScanRunIDAfterRestart(t *testing.T) {
 	sc := scanner.New(scanner.Options{
 		Store: store, Prober: ffprobe.New("ffprobe", 60*time.Second), Logger: log, Concurrency: 1,
 	})
-	handler := scanHandler(store, sc, runner, log)
+	handler := scanHandler(store, sc, runner, log, nil)
 	if err := handler(ctx, jobs.Job{ID: rec.ID, Kind: rec.Kind, Args: rec.Args}); err != nil {
 		t.Fatalf("scanjob: %v", err)
 	}

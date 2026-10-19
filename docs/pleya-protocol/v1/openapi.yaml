@@ -2600,6 +2600,23 @@ components:
         sort_title: { type: [string, "null"] }
         year: { type: [integer, "null"] }
         added_at: { $ref: "#/components/schemas/Timestamp" }
+        summary:
+          type: [string, "null"]
+          description: |
+            Beschrijving in de taal van de server, platte tekst. `null` of
+            afwezig zolang geen bron hem leverde. Een client toont geen lege
+            plek maar laat het blok weg.
+        genres:
+          type: [array, "null"]
+          items: { type: string }
+          description: Weergavenamen in de taal van de server, in de volgorde van de bron.
+        content_rating:
+          type: [string, "null"]
+          description: |
+            Kijkwijzer zoals de bron hem geeft (`12`, `PG-13`). De server kiest
+            het land van zijn eigen taal en valt terug op de Amerikaanse.
+            Vrije tekst: een client die een waarde niet kent toont hem
+            ongewijzigd.
         duration_ms:
           oneOf:
             - { $ref: "#/components/schemas/DurationMs" }

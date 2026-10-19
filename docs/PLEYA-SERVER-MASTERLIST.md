@@ -291,7 +291,7 @@ de velden uit `.nfo`, op de coverage-gate van 80 procent per bibliotheek (S4.2).
 | --- | --- | --- | --- | --- |
 | S4.1 | `.nfo`-parser inclusief cast en regie | `[ ]` | | |
 | S4.2 | Dekkingsmeting met de 80%-poort per bibliotheek | `[ ]` | | |
-| S4.3 | Velden op `Item`, migratie `0014` | `[ ]` | | |
+| S4.3 | Velden op `Item`, migratie `0014` | `[~]` | M2a: `summary`, `genres`, `content_rating` op `Item` (venster 3, [DEC-152](DECISIONS.md)), migratie `0013` in plaats van `0014`; getoetst met `check_protocol.sh`, `verify-protocol.sh`, Dart-parser. `people` en de dekkingspoort volgen met M2b | |
 | S4.4 | Artworkladder met cache en single-flight | `[ ]` | | |
 | S4.5 | Boekcovers op dezelfde ladder | `[ ]` | | |
 | S4.6 | Beheerendpoints artworkcache, YAML-tekst rechtgezet | `[ ]` | | |
@@ -479,10 +479,10 @@ punt 3 en 4), en aan het venster-besluit.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S22.1 | Providerabstractie en kandidatenlaag, migratie `0020` | `[ ]` | | |
-| S22.2 | TMDB-implementatie met rate-limit-backoff | `[ ]` | | |
-| S22.3 | Automatisch matchen met driestapsregel en ambiguïteitslijst | `[ ]` | | |
-| S22.4 | Automatisch artwork ophalen naar de cache op de ladder | `[ ]` | | |
+| S22.1 | Providerabstractie en kandidatenlaag, migratie `0020` | `[~]` | M2a: `metadata_candidates` en `provider_artwork` in `0013`, store `internal/catalog/store_metadata.go`; de rest van `0020` (`metadata_corrections`, `artwork_candidates`, `external_ids`) volgt met S22.5 | |
+| S22.2 | TMDB-implementatie met rate-limit-backoff | `[~]` | M2a: `internal/metadata/tmdb.go`, vaste hosts, geen redirects, groottegrenzen, 429-backoff, sleutel nooit in een fout; tests tegen een nep-TMDB | |
+| S22.3 | Automatisch matchen met driestapsregel en ambiguïteitslijst | `[~]` | M2a: `Decide` met titel en jaar en ambiguïteit die nooit vanzelf resolvet. Stap 1 (externe id uit de bestandsnaam) ontbreekt nog | |
+| S22.4 | Automatisch artwork ophalen naar de cache op de ladder | `[~]` | M2a: poster en backdrop naar `CacheDir/artwork`, sidecar wint; de ladder (S4.4) ontbreekt, ruwe w780 en w1280 | |
 | S22.5 | Correcties: bevestigen, afwijzen, fix-match, artwork kiezen met pin, per-field overrides met provenance | `[ ]` | | |
 | S22.6 | Mockup 36 goedgekeurd, scherm 29 en 36 gebouwd met provenance per veld | `[~]` | de goedkeuring van mockup 36 is binnen met poort P3 (4 september); wat deze rij openhoudt is het bouwen van scherm 29 en 36 in `pleya_web` | |
 | S22.7 | Attributie zichtbaar in web en app | `[ ]` | | |

@@ -166,6 +166,10 @@ func withTrustedProxies(t *testing.T, raw string) envOption {
 	return func(o *api.Options) { o.TrustedProxies = proxies }
 }
 
+func withCacheDir(dir string) envOption {
+	return func(o *api.Options) { o.CacheDir = dir }
+}
+
 func newEnv(t *testing.T, opts ...envOption) *env {
 	t.Helper()
 	testsupport.HasFFmpeg(t)

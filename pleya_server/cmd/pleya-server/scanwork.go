@@ -19,7 +19,7 @@ import (
 )
 
 // scanHandler voert een scanjob uit.
-func scanHandler(store *catalog.Store, sc *scanner.Scanner, runner *jobs.Runner, log *slog.Logger) jobs.Handler {
+func scanHandler(store *catalog.Store, sc *scanner.Scanner, runner *jobs.Runner, log *slog.Logger, onScanned func()) jobs.Handler {
 	return func(ctx context.Context, job jobs.Job) error {
 		var args api.ScanJobArgs
 		if err := json.Unmarshal(job.Args, &args); err != nil {
@@ -61,6 +61,9 @@ func scanHandler(store *catalog.Store, sc *scanner.Scanner, runner *jobs.Runner,
 			if uerr := runner.UpdateArgs(context.WithoutCancel(ctx), job.ID, args); uerr != nil {
 				log.Warn("scan_run_id in jobargumenten bijwerken mislukt", slog.String("error", uerr.Error()))
 			}
+		}
+		if scanErr == nil && onScanned != nil {
+			onScanned()
 		}
 		return scanErr
 	}

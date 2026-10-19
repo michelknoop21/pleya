@@ -70,6 +70,13 @@ type Config struct {
 	ScanInterval time.Duration
 	JobWorkers   int
 
+	// TMDBKey zet de metadata-provider aan (M2a). Een v4 read-token (begint met
+	// eyJ) gaat als Bearer, een v3-sleutel als api_key. Leeg betekent geen
+	// providerronde, en dan verandert er niets aan het gedrag van vóór 0013.
+	TMDBKey string
+	// MetadataLanguage is de voorkeurstaal van beschrijvingen, bijvoorbeeld nl-NL.
+	MetadataLanguage string
+
 	AccessTokenTTL     time.Duration
 	RefreshTokenTTL    time.Duration
 	RefreshGraceWindow time.Duration
@@ -272,6 +279,9 @@ func Load(getenv Getenv) (*Config, error) {
 		return nil, fmt.Errorf("PLEYA_SERVER_JOB_WORKERS: %w", err)
 	}
 	cfg.JobWorkers = workers
+
+	cfg.TMDBKey = strings.TrimSpace(getenv("PLEYA_SERVER_TMDB_KEY"))
+	cfg.MetadataLanguage = valueOr(getenv, "PLEYA_SERVER_METADATA_LANGUAGE", "nl-NL")
 
 	return cfg, nil
 }
