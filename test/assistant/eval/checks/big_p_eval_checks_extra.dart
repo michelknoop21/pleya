@@ -111,15 +111,21 @@ class EvalHonestMissing extends EvalHard {
 
   /// A condition ("zodra een nieuw seizoen verschijnt") or an indirect
   /// question ("wanneer het volgende seizoen komt") names the subject without
-  /// stating anything about it.
+  /// stating anything about it. The introducer must come before the subject
+  /// in the same clause (no colon, semicolon or comma between), and a date
+  /// keeps the sentence a claim.
   static final _hedged = RegExp(
-    r'\b(zodra|mocht|indien|once|if)\b|\b(wanneer|when|of er|whether)\b.{0,30}\b(nieuwe? aflevering(en)?|nieuw seizoen|volgende seizoen|new episodes?|new season|next season)\b',
+    r'\b(zodra|mocht|indien|once|if|wanneer|when|of er|whether)\b[^:;.,]{0,40}\b(nieuwe? aflevering(en)?|nieuw seizoen|volgende seizoen|new episodes?|new season|next season)\b',
+    caseSensitive: false,
+  );
+  static final _dated = RegExp(
+    r'\b\d{1,2} (januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\b|\b(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december) \d{4}\b|\bin (januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\b|\b(in|vanaf|begin|eind) 20\d\d\b',
     caseSensitive: false,
   );
 
   static bool _claims(String s) =>
       !s.trim().endsWith('?') &&
-      !_hedged.hasMatch(s) &&
+      !(_hedged.hasMatch(s) && !_dated.hasMatch(s)) &&
       (_newSubject.hasMatch(s) && _newStatus.hasMatch(s) || _plainSubject.hasMatch(s) && _release.hasMatch(s)) &&
       !_denied.hasMatch(s);
 

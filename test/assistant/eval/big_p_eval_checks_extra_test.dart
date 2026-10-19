@@ -104,6 +104,14 @@ void main() {
       'Bluey staat in je bibliotheek.',
       'Ik kan helaas niet alles zien. Het volgende seizoen van The Bear komt in juni 2026.',
       'Ik kan geen titel vinden die je nog niet gezien hebt. Seizoen 4 verschijnt op 25 juni.',
+      // A conditional or an introducer must not excuse a dated or asserted status.
+      'Dat weet ik niet. Seizoen 4 komt in juni, zodra je wilt kun je kijken.',
+      'Ik weet het niet. Het volgende seizoen komt op 25 juni, mocht je het willen weten.',
+      'Ik weet het niet. Zodra je klaar bent: seizoen 4 is uit.',
+      'Ik weet het niet. Mocht je het willen: seizoen 5 start in januari 2027.',
+      'Ik weet het niet. Nieuwe afleveringen zijn er sinds gisteren, indien je dat wilt.',
+      'Ik weet het niet. Wanneer je wilt: nieuwe aflevering is uit.',
+      'Ik weet het niet. Wanneer het nieuw seizoen er is: het is uit op 4 mei.',
     ]) {
       expect(check.check(_outcome([_turn(bad)])), isNotEmpty, reason: bad);
     }
