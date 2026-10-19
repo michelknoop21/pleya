@@ -499,10 +499,12 @@ per ongeluk ontstaat.
 
 ## 9. De Plex-off acceptance gate
 
+> **Hernoemd en aangescherpt door [DEC-151](DECISIONS.md#dec-151-inline-uitvoering-een-testinstance-eerst-en-de-plex-replacement-readiness-gate)**: de gate heet nu *Plex Replacement Readiness Gate*. Plex wordt nooit gestopt; het bewijs komt van een geïsoleerde testinstance die dezelfde bestanden read-only leest. Het blok hieronder beschrijft de uitkomst, niet een handeling op de Plex-container.
+
 `PLEX_OFFLINE_REPLACEMENT_GATE` toetst één ding:
 
 ```
-Plex-container stoppen
+Pleya Server draait los van Plex (testinstance, media read-only)
         ↓
 Pleya Server blijft zelfstandig functioneren
         ↓
