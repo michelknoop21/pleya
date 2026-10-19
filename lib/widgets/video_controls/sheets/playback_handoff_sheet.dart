@@ -62,6 +62,10 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
   /// The Apple TV that refused because another profile is active on it (45-d).
   String? _wrongProfileTv;
 
+  /// The profile the Apple TV switches to before it plays (A-23b); a text
+  /// variant of the busy row of 45-c, not a state of its own.
+  ({String profile, bool pin})? _switching;
+
   @override
   void initState() {
     super.initState();
@@ -112,6 +116,7 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
     setState(() {
       _handingTo = tv;
       _wrongProfileTv = null;
+      _switching = null;
     });
     // Taken at the press: this is where the Apple TV starts. The phone plays
     // on until the Apple TV answers, so it can be a few seconds ahead by then.
@@ -128,7 +133,12 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
     var outcome = PlaybackHandoffOutcome.failed;
     try {
       await _provider.connectToDiscoveredHost(tv);
-      outcome = await _provider.handOffPlayback(request);
+      outcome = await _provider.handOffPlayback(
+        request,
+        onSwitching: (profile, pin) {
+          if (mounted) setState(() => _switching = (profile: profile, pin: pin));
+        },
+      );
     } catch (e) {
       appLogger.w('Playback handoff to ${tv.name} failed', error: e);
     }
@@ -160,6 +170,7 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
       setState(() {
         _handingTo = null;
         _wrongProfileTv = tv.name;
+        _switching = null;
       });
       return;
     }
@@ -216,6 +227,12 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
     );
   }
 
+  String _busyText() => switch (_switching) {
+    null => t.playbackHandoff.starting,
+    (profile: final profile, pin: true) => t.playbackHandoff.switchingPin(profile: profile),
+    (profile: final profile, pin: false) => t.playbackHandoff.switching(profile: profile),
+  };
+
   Widget _readyDetail(TextStyle style) => Row(
     children: [
       Container(
@@ -252,7 +269,7 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
           icon: Symbols.tv,
           name: tv.name,
           detail: _handingTo == tv
-              ? Text(t.playbackHandoff.starting, style: dimText)
+              ? Text(_busyText(), style: dimText)
               : _wrongProfileTv == tv.name
               ? Text(t.playbackHandoff.wrongProfile, style: dimText.copyWith(color: _amber))
               : _readyDetail(dimText),

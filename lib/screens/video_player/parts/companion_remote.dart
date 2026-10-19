@@ -106,7 +106,7 @@ extension _VideoPlayerCompanionRemoteMethods on VideoPlayerScreenState {
       return;
     }
     try {
-      context.read<CompanionRemoteProvider>().sendCommand(RemoteCommandType.syncState, data: {handoffPlayingKey: id});
+      reportPlaybackHandoff(context.read<CompanionRemoteProvider>(), id, PlaybackHandoffOutcome.playing);
     } catch (e) {
       appLogger.d('Handoff acknowledgement not sent', error: e);
     }

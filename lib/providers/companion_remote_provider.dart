@@ -78,6 +78,11 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
 
   /// Host side: the connected phone is the same user as the active profile here.
   bool get peerIsHostUser => _peerService?.clientIsHostUser ?? false;
+
+  /// Host side: who the connected phone says it is, and on which connection it
+  /// authenticated; together they name its profile here (A-23b).
+  String? get peerUserUuid => _peerService?.clientUserUuid;
+  String? get peerConnectionId => _authContextForId(_peerService?.selectedAuthContextId)?.connectionId;
   bool get isHostServerRunning => _peerService?.isServerRunning ?? false;
 
   CompanionRemoteProvider() {
@@ -716,12 +721,15 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   /// Pass the current playback to the connected host (A-23). Resolves when the
   /// host reports that it plays, or that it could not, or after [timeout]. The
   /// caller keeps playing until this returns [PlaybackHandoffOutcome.playing].
+  /// When the host switches to this user's profile first, [onSwitching] hears
+  /// it and the wait grows to the tracker's switch budget (A-23b).
   Future<PlaybackHandoffOutcome> handOffPlayback(
     PlaybackHandoffRequest request, {
     Duration timeout = const Duration(seconds: 20),
+    void Function(String profile, bool pin)? onSwitching,
   }) async {
     if (!isConnected) return PlaybackHandoffOutcome.failed;
-    final answer = _handoffs.wait(request.id, timeout);
+    final answer = _handoffs.wait(request.id, timeout, onSwitching: onSwitching);
     sendCommand(RemoteCommandType.handoff, data: request.toData());
     return answer;
   }
@@ -730,6 +738,10 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     _handoffs.handleSyncState(command.data);
     final cancelled = command.data?[handoffCancelKey];
     if (cancelled is String) onHandoffCancelled?.call(cancelled);
+    final query = command.data?[handoffQueryKey];
+    if (query is String) {
+      sendCommand(RemoteCommandType.syncState, data: handoffQueryReply(playbackHandoffLedger, query));
+    }
     final reported = command.data?['playerActive'];
     // Handoff answers carry no player state; they must not flip it.
     if (reported is bool && _isPlayerActive != reported) {
@@ -765,6 +777,8 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   void _scheduleReconnect() {
     if (_reconnectAttempts >= _maxReconnectAttempts) {
       appLogger.w('CompanionRemote: Max reconnect attempts reached');
+      // A handoff that waited for a profile switch will not hear back either.
+      _handoffs.failAll(force: true);
       _session = _session?.copyWith(
         status: RemoteSessionStatus.error,
         errorMessage: t.companionRemote.errors.connectionLostAfterAttempts(attempts: _maxReconnectAttempts),
@@ -785,6 +799,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   Future<void> _attemptReconnect() async {
     if (_lastHostAddresses == null || !isCryptoReady) {
       appLogger.w('CompanionRemote: No stored context for reconnect');
+      _handoffs.failAll(force: true);
       _session = _session?.copyWith(
         status: RemoteSessionStatus.error,
         errorMessage: t.companionRemote.errors.connectionLost,
@@ -819,6 +834,10 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
       _reconnectAttempts = 0;
       safeNotifyListeners();
       appLogger.d('CompanionRemote: Reconnected successfully');
+      // The host may have answered while it switched profile: ask again.
+      for (final id in _handoffs.switchingIds) {
+        sendCommand(RemoteCommandType.syncState, data: {handoffQueryKey: id});
+      }
     } catch (e) {
       appLogger.e('CompanionRemote: Reconnect failed', error: e);
       if (_session?.status == RemoteSessionStatus.reconnecting) {

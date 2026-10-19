@@ -3092,6 +3092,8 @@
     "playingUntil": "Speelt hier tot de Apple TV begint",
     "tvReady": "Apple TV · Pleya open",
     "starting": "Starten op de Apple TV…",
+    "switching": "De Apple TV wisselt naar profiel $profile…",
+    "switchingPin": "Voer op de Apple TV de pincode van $profile in",
     "wrongProfile": "Gebruikt een ander profiel. Kies op de Apple TV jouw profiel en probeer het opnieuw.",
     "footer": "Geen AirPlay: Pleya op de Apple TV speelt zelf verder. Staat hij er niet bij? Open Pleya op de Apple TV.",
     "noneFoundTitle": "Geen Apple TV gevonden",

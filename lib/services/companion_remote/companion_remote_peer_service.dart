@@ -36,6 +36,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
   RemoteSessionRole? _role;
   String? _selectedAuthContextId;
   bool _clientIsHostUser = false;
+  String? _clientUserUuid;
   String? _selectedHostClientId;
 
   // Encrypted channel state
@@ -77,6 +78,10 @@ class CompanionRemotePeerService with KeepaliveMixin {
   /// Host side: the connected phone is the same user as this device's active
   /// profile (see [handoffUserMatches]).
   bool get clientIsHostUser => _clientIsHostUser;
+
+  /// Host side: the user the authenticated phone claims to be. A claim, not a
+  /// proof: any member of the Plex Home can name any member.
+  String? get clientUserUuid => _clientUserUuid;
   bool get isHost => _role == RemoteSessionRole.host;
   bool get isConnected => _clientSocket != null || (_channel != null && _channel?.closeCode == null);
 
@@ -347,6 +352,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
               _selectedAuthContextId = selectedContext.id;
               _selectedHostClientId = selectedContext.clientIdentifier;
               _clientIsHostUser = handoffUserMatches(clientUserUuid: userUUID, hostUserUuid: selectedContext.userUuid);
+              _clientUserUuid = userUUID;
 
               appLogger.d('CompanionRemote: Client authenticated: $deviceName ($platform)');
 
@@ -402,6 +408,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
           _selectedAuthContextId = null;
           _selectedHostClientId = null;
           _clientIsHostUser = false;
+          _clientUserUuid = null;
           _deviceDisconnectedController.add(null);
           _connectionStateController.add(RemoteSessionStatus.disconnected);
           stopKeepalive();

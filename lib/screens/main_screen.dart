@@ -82,6 +82,7 @@ import '../services/companion_remote/companion_remote_host_controller.dart';
 import '../models/companion_remote/remote_command.dart';
 import '../services/companion_remote/companion_remote_receiver.dart';
 import '../services/companion_remote/playback_handoff.dart';
+import '../services/companion_remote/playback_handoff_profile_switch.dart';
 import '../services/companion_remote/playback_handoff_receiver.dart';
 import '../services/fullscreen_state_manager.dart';
 import '../providers/companion_remote_provider.dart';
@@ -1254,12 +1255,8 @@ class _MainScreenState extends State<MainScreen>
         final request = PlaybackHandoffRequest.fromData(command.data);
         if (request == null) return;
         if (!companionRemote.peerIsHostUser) {
-          // Another member of the Home: the progress would land on this profile's account.
-          appLogger.w('Playback handoff ${request.id} refused: sender is not the active user');
-          companionRemote.sendCommand(
-            RemoteCommandType.syncState,
-            data: {handoffFailedKey: request.id, handoffReasonKey: handoffReasonWrongProfile},
-          );
+          // Another member of the Home: progress must land on their account, so switch to their profile first.
+          unawaited(switchProfileForHandoff(context, request));
           return;
         }
         unawaited(receivePlaybackHandoff(context, request));
@@ -1293,6 +1290,7 @@ class _MainScreenState extends State<MainScreen>
     receiver.onTabSettings = () => _selectTab(NavigationTabId.settings);
     receiver.onHome = () => _selectTab(NavigationTabId.discover);
     receiver.onSearchAction = _openSearchWithQuery;
+    unawaited(resumePendingPlaybackHandoff(context));
   }
 
   /// The single entry point to Zoeken from a surface that has no tab slot for
