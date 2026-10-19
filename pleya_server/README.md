@@ -298,6 +298,36 @@ curl -s -X POST http://127.0.0.1:8832/pleya/v1/auth/setup \
 Het antwoord is een tokenpaar. De code vervalt bij die eerste geslaagde inwisseling en daarnaast na
 een halfuur vanzelf; is hij verlopen, dan drukt een herstart een nieuwe af.
 
+## Testinstance
+
+Een tweede, volledig geïsoleerde instance naast productie, voor alles wat nog niet op `web.pleya.app`
+hoort ([DEC-151](../docs/DECISIONS.md)). Ze deelt niets met productie behalve de mediabestanden, en die
+zijn alleen-lezen gemount.
+
+| | Productie | Test |
+| --- | --- | --- |
+| Map op de NAS | `/volume1/docker/pleya-server` | `/volume1/docker/pleya-server-test` |
+| Compose-project | `pleya-server` | `pleya-server-test` |
+| Containers | `pleya-server`, `pleya-server-db` | `pleya-server-test`, `pleya-server-test-db` |
+| Netwerk | `pleya-server_default` | `pleya-server-test_default` (subnet `10.250.0.0/24`, `compose.test.yaml`) |
+| Poort | `127.0.0.1:8832` | `127.0.0.1:8833` |
+| Database en signing key | eigen volume en `data/config` | eigen volume en `data/config` |
+| Tunnel | `pleya-tunnel` hangt eraan | geen |
+
+De namen komen uit `.env` (`PLEYA_SERVER_CONTAINER`, `PLEYA_SERVER_DB_CONTAINER`, `PLEYA_SERVER_NETWORK`,
+`PLEYA_SERVER_HOST_PORT`, `PLEYA_SERVER_BIND`); de standaardwaarden in `compose.yaml` zijn productie, dus
+daar verandert niets. Uitrollen:
+
+```bash
+PLEYA_INSTANCE=test sh deploy-nas.sh
+```
+
+Het script weigert als de `.env` van de testmap een productienaam, productiepoort of het
+productienetwerk bevat. Eenmalig vooraf: de map, drie `data/`-submappen en een `.env` met een eigen
+`POSTGRES_PASSWORD`. Het eerste gebruik gaat via de setupcode in de log, net als bij productie; de
+inloggegevens van de testeigenaar staan alleen op de NAS in `test-credentials.txt` (modus 600). De poort
+is loopback; vanaf de Mac: `ssh -L 8833:127.0.0.1:8833 synology`.
+
 ## Bediening
 
 De webclient staat daarna op `http://127.0.0.1:8832/` van de NAS zelf. Dat is dezelfde LAN-grens als

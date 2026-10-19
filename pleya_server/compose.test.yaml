@@ -1,0 +1,11 @@
+# Alleen voor de geïsoleerde testinstance (PLEYA_INSTANCE=test in deploy-nas.sh).
+#
+# De Docker-daemon op de NAS heeft zijn standaard-adrespool opgebruikt, dus een
+# nieuw netwerk zonder subnet mislukt met "non-overlapping IPv4 address pool".
+# Het testnetwerk krijgt daarom een vast subnet buiten alle bestaande netwerken
+# en buiten het LAN. Productie gebruikt dit bestand niet.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${PLEYA_SERVER_SUBNET:-10.250.0.0/24}
