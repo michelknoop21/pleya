@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:web_socket_channel/io.dart';
 import '../../utils/future_extensions.dart';
 
@@ -36,6 +37,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
   RemoteSessionRole? _role;
   String? _selectedAuthContextId;
   bool _clientIsHostUser = false;
+  String? _clientUserUuid;
   String? _selectedHostClientId;
 
   // Encrypted channel state
@@ -77,6 +79,10 @@ class CompanionRemotePeerService with KeepaliveMixin {
   /// Host side: the connected phone is the same user as this device's active
   /// profile (see [handoffUserMatches]).
   bool get clientIsHostUser => _clientIsHostUser;
+
+  /// Host side: the user the authenticated phone claims to be. A claim, not a
+  /// proof: any member of the Plex Home can name any member.
+  String? get clientUserUuid => _clientUserUuid;
   bool get isHost => _role == RemoteSessionRole.host;
   bool get isConnected => _clientSocket != null || (_channel != null && _channel?.closeCode == null);
 
@@ -139,6 +145,28 @@ class CompanionRemotePeerService with KeepaliveMixin {
     ]);
   }
 
+  /// Binds [preferredPort], retrying briefly: after a profile switch the host of
+  /// the previous session may still be closing it, and a phone that reconnects
+  /// only knows that port (A-23b). A random port follows only when it stays taken.
+  @visibleForTesting
+  static Future<HttpServer> bindHostServer(
+    int preferredPort, {
+    int attempts = 5,
+    Duration pause = const Duration(milliseconds: 200),
+  }) async {
+    for (var attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        final server = await HttpServer.bind(InternetAddress.anyIPv4, preferredPort);
+        appLogger.d('CompanionRemote: Server bound to port $preferredPort');
+        return server;
+      } on SocketException {
+        if (attempt < attempts) await Future<void>.delayed(pause);
+      }
+    }
+    appLogger.w('CompanionRemote: Port $preferredPort occupied, using random port');
+    return HttpServer.bind(InternetAddress.anyIPv4, 0);
+  }
+
   /// Create a host session that accepts any of the provided remote identities.
   Future<({List<String> addresses, int port})> createSessionForContexts(
     String deviceName,
@@ -157,15 +185,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
     _myPeerId = 'host';
 
     try {
-      const int preferredPort = 48632;
-
-      try {
-        _server = await HttpServer.bind(InternetAddress.anyIPv4, preferredPort);
-        appLogger.d('CompanionRemote: Server bound to port $preferredPort');
-      } catch (e) {
-        appLogger.w('CompanionRemote: Port $preferredPort occupied, using random port');
-        _server = await HttpServer.bind(InternetAddress.anyIPv4, 0);
-      }
+      _server = await bindHostServer(48632);
 
       final localIps = await _getAllLocalIpAddresses();
       final port = _server!.port;
@@ -347,6 +367,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
               _selectedAuthContextId = selectedContext.id;
               _selectedHostClientId = selectedContext.clientIdentifier;
               _clientIsHostUser = handoffUserMatches(clientUserUuid: userUUID, hostUserUuid: selectedContext.userUuid);
+              _clientUserUuid = userUUID;
 
               appLogger.d('CompanionRemote: Client authenticated: $deviceName ($platform)');
 
@@ -402,6 +423,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
           _selectedAuthContextId = null;
           _selectedHostClientId = null;
           _clientIsHostUser = false;
+          _clientUserUuid = null;
           _deviceDisconnectedController.add(null);
           _connectionStateController.add(RemoteSessionStatus.disconnected);
           stopKeepalive();
@@ -1015,6 +1037,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
     _role = null;
     _selectedAuthContextId = null;
     _selectedHostClientId = null;
+    _clientUserUuid = null;
     _sessionEncKey = null;
     _sendCounter = 0;
     _recvCounter = 0;

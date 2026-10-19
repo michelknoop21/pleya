@@ -58,6 +58,13 @@ void cancelPlaybackHandoff(String id) {
   if (_activeHandoffId == id) CompanionRemoteReceiver.instance.onStop?.call();
 }
 
+/// Tells the phone how handoff [id] ended, and keeps the answer for a phone that
+/// is still reconnecting after a profile switch and asks later (A-23b).
+void reportPlaybackHandoff(CompanionRemoteProvider provider, String id, PlaybackHandoffOutcome outcome) {
+  playbackHandoffLedger.record(id, outcome);
+  provider.sendCommand(RemoteCommandType.syncState, data: handoffOutcomeData(id, outcome));
+}
+
 /// Whether the phone gave up on [id]. The player asks this when it starts, so a
 /// cancel that arrived while the player was still opening is not lost.
 bool isPlaybackHandoffCancelled(String id) => _cancelled.contains(id);
@@ -66,7 +73,7 @@ Future<void> _receive(BuildContext context, PlaybackHandoffRequest request, Void
   final provider = context.read<CompanionRemoteProvider>();
   void fail(String reason) {
     appLogger.w('Playback handoff ${request.id} failed: $reason');
-    provider.sendCommand(RemoteCommandType.syncState, data: {handoffFailedKey: request.id});
+    reportPlaybackHandoff(provider, request.id, PlaybackHandoffOutcome.failed);
   }
 
   final serverId = ServerId.tryParse(request.serverId);

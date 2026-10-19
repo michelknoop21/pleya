@@ -3,6 +3,8 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/models/companion_remote/remote_command.dart';
+import 'package:pleya/profiles/profile.dart';
+import 'package:pleya/profiles/profile_connection.dart';
 import 'package:pleya/services/companion_remote/playback_handoff.dart';
 import 'package:pleya/services/companion_remote/playback_handoff_receiver.dart';
 import 'package:pleya/services/settings_service.dart';
@@ -62,6 +64,13 @@ void main() {
       expect(await answer, PlaybackHandoffOutcome.wrongProfile);
     });
 
+    test('a PIN not entered on the Apple TV is told apart from another profile', () async {
+      final tracker = PlaybackHandoffTracker();
+      final answer = tracker.wait('h1', const Duration(seconds: 5));
+      tracker.handleSyncState({handoffFailedKey: 'h1', handoffReasonKey: handoffReasonPinCancelled});
+      expect(await answer, PlaybackHandoffOutcome.pinCancelled);
+    });
+
     test('silence is a timeout, not a success', () async {
       final tracker = PlaybackHandoffTracker();
       expect(await tracker.wait('h1', const Duration(milliseconds: 20)), PlaybackHandoffOutcome.timedOut);
@@ -87,6 +96,192 @@ void main() {
       tracker.handleSyncState({handoffPlayingKey: 'h1'});
       tracker.handleSyncState({handoffFailedKey: 'h1'});
       expect(await answer, PlaybackHandoffOutcome.playing);
+    });
+  });
+
+  group('PlaybackHandoffTracker during a profile switch (A-23b)', () {
+    Map<String, dynamic> switching(String id, {bool pin = false}) => {
+      handoffSwitchingKey: id,
+      handoffProfileKey: 'Anna',
+      handoffPinKey: pin,
+    };
+
+    test(
+      'the drop of a switch is expected: the sender keeps waiting and hears the answer after reconnecting',
+      () async {
+        final tracker = PlaybackHandoffTracker();
+        final answer = tracker.wait('h1', const Duration(seconds: 5));
+        tracker.handleSyncState(switching('h1'));
+        tracker.failAll();
+        expect(tracker.switchingIds, ['h1']);
+        tracker.handleSyncState({handoffPlayingKey: 'h1'});
+        expect(await answer, PlaybackHandoffOutcome.playing);
+      },
+    );
+
+    test('the profile name and the PIN question reach the sheet', () async {
+      final tracker = PlaybackHandoffTracker();
+      final heard = <(String, bool)>[];
+      final answer = tracker.wait('h1', const Duration(seconds: 5), onSwitching: (p, pin) => heard.add((p, pin)));
+      tracker.handleSyncState(switching('h1', pin: true));
+      expect(heard, [('Anna', true)]);
+      tracker.complete('h1', PlaybackHandoffOutcome.failed);
+      await answer;
+    });
+
+    test('the switch budget replaces the short wait, and pending keeps the sender waiting', () async {
+      final tracker = PlaybackHandoffTracker(switchBudget: const Duration(milliseconds: 400));
+      final answer = tracker.wait('h1', const Duration(milliseconds: 30));
+      tracker.handleSyncState(switching('h1'));
+      tracker.handleSyncState({handoffPendingKey: 'h1'});
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      tracker.handleSyncState({handoffPlayingKey: 'h1'});
+      expect(await answer, PlaybackHandoffOutcome.playing);
+    });
+
+    test('the switch budget ends in a timeout', () async {
+      final tracker = PlaybackHandoffTracker(switchBudget: const Duration(milliseconds: 80));
+      final answer = tracker.wait('h1', const Duration(seconds: 30));
+      tracker.handleSyncState(switching('h1'));
+      expect(await answer, PlaybackHandoffOutcome.timedOut);
+    }, timeout: const Timeout(Duration(seconds: 3)));
+
+    test('a phone that stops reconnecting fails a switching handoff too', () async {
+      final tracker = PlaybackHandoffTracker();
+      final answer = tracker.wait('h1', const Duration(seconds: 5));
+      tracker.handleSyncState(switching('h1'));
+      tracker.failAll(force: true);
+      expect(await answer, PlaybackHandoffOutcome.failed);
+    });
+  });
+
+  group('PlaybackHandoffLedger', () {
+    var now = DateTime(2026, 10, 19, 20);
+    PlaybackHandoffLedger ledger() => PlaybackHandoffLedger(clock: () => now);
+    setUp(() => now = DateTime(2026, 10, 19, 20));
+
+    PlaybackHandoffLedger accepted() => ledger()
+      ..arm(_request(), 'anna')
+      ..mayActivate('h1');
+
+    test('only the session of the armed profile takes the request', () {
+      final l = accepted();
+      expect(l.takeFor('anna')?.id, 'h1');
+      expect(l.takeFor('anna'), isNull, reason: 'taken once');
+    });
+
+    test('another profile drops the request, and the phone hears it failed', () {
+      final l = accepted();
+      expect(l.takeFor('michel'), isNull);
+      expect(l.takeFor('anna'), isNull);
+      expect(handoffQueryReply(l, 'h1'), {handoffFailedKey: 'h1'});
+    });
+
+    test('a long PIN dialog keeps the switch armed: the start window begins at the PIN', () {
+      final l = ledger()..arm(_request(), 'anna');
+      now = now.add(const Duration(seconds: 50));
+      expect(l.isArmed, isTrue);
+      expect(l.mayActivate('h1'), isTrue);
+      now = now.add(PlaybackHandoffLedger.startWindow - const Duration(seconds: 1));
+      expect(l.takeFor('anna')?.id, 'h1');
+      expect(l.mayStart('h1'), isTrue);
+    });
+
+    test('a PIN after the PIN wait does not switch', () {
+      final l = ledger()..arm(_request(), 'anna');
+      now = now.add(PlaybackHandoffLedger.pinWait + const Duration(seconds: 1));
+      expect(l.mayActivate('h1'), isFalse);
+      expect(l.mayActivate('h2'), isFalse, reason: 'not the armed handoff');
+    });
+
+    test('past the start window nothing starts: not at the take, not right before playing', () {
+      final early = accepted();
+      now = now.add(PlaybackHandoffLedger.startWindow + const Duration(seconds: 1));
+      expect(early.isArmed, isFalse);
+      expect(handoffQueryReply(early, 'h1'), {handoffFailedKey: 'h1'});
+      expect(early.takeFor('anna'), isNull);
+
+      final taken = accepted()..takeFor('anna');
+      expect(taken.mayStart('h1'), isTrue);
+      now = now.add(PlaybackHandoffLedger.startWindow + const Duration(seconds: 1));
+      expect(taken.mayStart('h1'), isFalse);
+    });
+
+    test('a request that never had its PIN accepted is not taken', () {
+      final l = ledger()..arm(_request(), 'anna');
+      expect(l.takeFor('anna'), isNull);
+    });
+
+    test('the Apple TV starts at the latest 90 s after the switch, 30 s before the phone gives up', () {
+      final latestStart = PlaybackHandoffLedger.pinWait + PlaybackHandoffLedger.startWindow;
+      expect(latestStart, const Duration(seconds: 90));
+      expect(PlaybackHandoffTracker().switchBudget - latestStart, greaterThanOrEqualTo(const Duration(seconds: 30)));
+    });
+
+    test('a reconnected phone hears pending, then the recorded answer', () {
+      final l = ledger()..arm(_request(), 'anna');
+      expect(handoffQueryReply(l, 'h1'), {handoffPendingKey: 'h1'});
+      l.mayActivate('h1');
+      l.takeFor('anna');
+      expect(handoffQueryReply(l, 'h1'), {handoffPendingKey: 'h1'});
+      l.record('h1', PlaybackHandoffOutcome.playing);
+      expect(handoffQueryReply(l, 'h1'), {handoffPlayingKey: 'h1'});
+      l.record('h2', PlaybackHandoffOutcome.wrongProfile);
+      expect(handoffQueryReply(l, 'h2'), {handoffFailedKey: 'h2', handoffReasonKey: handoffReasonWrongProfile});
+      l.record('h3', PlaybackHandoffOutcome.pinCancelled);
+      expect(handoffQueryReply(l, 'h3'), {handoffFailedKey: 'h3', handoffReasonKey: handoffReasonPinCancelled});
+      expect(handoffQueryReply(l, 'unknown'), {handoffFailedKey: 'unknown'});
+    });
+  });
+
+  group('profileForHandoffSender', () {
+    final created = DateTime(2026);
+    final anna = Profile.plexHome(
+      id: 'plex-anna',
+      displayName: 'Anna',
+      parentConnectionId: 'plex-1',
+      plexHomeUserUuid: 'u-anna',
+      createdAt: created,
+    );
+    final kids = Profile.local(id: 'local-kids', displayName: 'Kinderen', createdAt: created);
+    final guest = Profile.local(id: 'local-guest', displayName: 'Gast', createdAt: created);
+    ProfileConnection row(String profileId, String uuid) =>
+        ProfileConnection(profileId: profileId, connectionId: 'plex-1', userIdentifier: uuid);
+
+    test('a Plex Home profile of the sender on the same account', () {
+      final match = profileForHandoffSender(
+        [kids, anna],
+        connectionId: 'plex-1',
+        userUuid: 'u-anna',
+        joinRows: [row('local-kids', 'u-anna')],
+      );
+      expect(match?.id, 'plex-anna');
+    });
+
+    test('the same user on another account is not the sender', () {
+      expect(profileForHandoffSender([anna], connectionId: 'plex-2', userUuid: 'u-anna', joinRows: const []), isNull);
+    });
+
+    test('a local profile that holds the account for the sender', () {
+      final match = profileForHandoffSender(
+        [kids, guest],
+        connectionId: 'plex-1',
+        userUuid: 'u-sam',
+        joinRows: [row('local-kids', 'u-sam'), row('local-guest', 'u-other')],
+      );
+      expect(match?.id, 'local-kids');
+    });
+
+    test('two local profiles for the sender are ambiguous: no switch', () {
+      expect(
+        profileForHandoffSender(
+          [kids, guest],
+          connectionId: 'plex-1',
+          userUuid: 'u-sam',
+          joinRows: [row('local-kids', 'u-sam'), row('local-guest', 'u-sam')],
+        ),
+        isNull,
+      );
     });
   });
 
