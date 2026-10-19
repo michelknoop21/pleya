@@ -24,6 +24,29 @@ import 'playback_handoff.dart';
 /// device is doing without asking. Any failure is reported to the phone, which
 /// then keeps playing.
 Future<void> receivePlaybackHandoff(BuildContext context, PlaybackHandoffRequest request) async {
+  // One handoff at a time while it fetches and clears the old player: a second
+  // arriving now would close and push in parallel.
+  if (_receiving) return;
+  _receiving = true;
+  try {
+    await _receive(context, request);
+  } finally {
+    _receiving = false;
+  }
+}
+
+bool _receiving = false;
+final Set<String> _cancelled = {};
+String? _activeHandoffId;
+
+/// The phone gave up on [id]. Skips a start that has not happened yet, and
+/// closes the player if it already did.
+void cancelPlaybackHandoff(String id) {
+  _cancelled.add(id);
+  if (_activeHandoffId == id) CompanionRemoteReceiver.instance.onStop?.call();
+}
+
+Future<void> _receive(BuildContext context, PlaybackHandoffRequest request) async {
   final provider = context.read<CompanionRemoteProvider>();
   void fail(String reason) {
     appLogger.w('Playback handoff ${request.id} failed: $reason');
@@ -49,9 +72,14 @@ Future<void> receivePlaybackHandoff(BuildContext context, PlaybackHandoffRequest
   final closePlayer = CompanionRemoteReceiver.instance.onStop;
   if (closePlayer != null) {
     closePlayer();
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    // The player unregisters its Stop when it is gone; wait for that, not a guess.
+    for (var i = 0; i < 20 && CompanionRemoteReceiver.instance.onStop != null; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    }
     if (!context.mounted) return;
+    if (CompanionRemoteReceiver.instance.onStop != null) return fail('previous player did not close');
   }
+  if (_cancelled.remove(request.id)) return;
 
   noticeController.show(
     Notice(
@@ -62,6 +90,7 @@ Future<void> receivePlaybackHandoff(BuildContext context, PlaybackHandoffRequest
     ),
   );
 
+  _activeHandoffId = request.id;
   await navigateToVideoPlayer(
     context,
     metadata: item,
@@ -71,4 +100,5 @@ Future<void> receivePlaybackHandoff(BuildContext context, PlaybackHandoffRequest
     handoffId: request.id,
     onPlaybackInitFailed: () => fail('player did not start'),
   );
+  if (_activeHandoffId == request.id) _activeHandoffId = null;
 }

@@ -34,7 +34,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   CompanionRemotePeerService? _peerService;
   LanDiscoveryService? _discoveryService;
   String _deviceName = t.companionRemote.unknownDevice;
-  String _platform = 'unknown';
+  String _platform = PlatformDetector.isAppleTV() ? 'tvOS' : 'unknown';
   bool _isPlayerActive = false;
   final PlaybackHandoffTracker _handoffs = PlaybackHandoffTracker();
 
@@ -62,6 +62,9 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   StreamSubscription<RemoteSessionStatus>? _statusSubscription;
 
   CommandReceivedCallback? onCommandReceived;
+
+  /// Host side: the phone gave up on a handoff (see [handoffCancelKey]).
+  void Function(String id)? onHandoffCancelled;
 
   bool get isInSession => _session != null && _session!.status != RemoteSessionStatus.disconnected;
   bool get isHost => _session?.isHost ?? false;
@@ -722,6 +725,8 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
 
   void _handleSyncState(RemoteCommand command) {
     _handoffs.handleSyncState(command.data);
+    final cancelled = command.data?[handoffCancelKey];
+    if (cancelled is String) onHandoffCancelled?.call(cancelled);
     final playerActive = command.data?['playerActive'] as bool? ?? false;
     if (_isPlayerActive != playerActive) {
       _isPlayerActive = playerActive;

@@ -81,6 +81,10 @@ enum PlaybackHandoffOutcome {
 const handoffPlayingKey = 'handoffPlaying';
 const handoffFailedKey = 'handoffFailed';
 
+/// Sent by the phone when it gave up (timeout, failure): a late start on the
+/// Apple TV must not leave both devices playing.
+const handoffCancelKey = 'handoffCancel';
+
 /// Matches the host's answers to the requests a phone has outstanding.
 class PlaybackHandoffTracker {
   final Map<String, Completer<PlaybackHandoffOutcome>> _pending = {};

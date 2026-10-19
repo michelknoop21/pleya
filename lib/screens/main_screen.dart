@@ -1247,6 +1247,7 @@ class _MainScreenState extends State<MainScreen>
 
   void _setupCompanionRemote() {
     final companionRemote = context.read<CompanionRemoteProvider>();
+    companionRemote.onHandoffCancelled = cancelPlaybackHandoff;
     companionRemote.onCommandReceived = (command) {
       if (!mounted) return;
       if (command.type == RemoteCommandType.handoff) {

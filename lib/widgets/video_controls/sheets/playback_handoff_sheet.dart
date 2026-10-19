@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../../i18n/strings.g.dart';
 import '../../../mpv/mpv.dart';
+import '../../../models/companion_remote/remote_command.dart';
 import '../../../providers/companion_remote_provider.dart';
 import '../../../services/companion_remote/companion_remote_host_controller.dart';
 import '../../../services/companion_remote/companion_remote_receiver.dart';
@@ -93,6 +94,11 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
 
   Future<void> _handOff(DiscoveredHost tv) async {
     if (_handingTo != null) return;
+    // A phone that hosts its own remote session must not be overwritten by joining one.
+    if (_provider.isHost) {
+      setState(() => _failed = true);
+      return;
+    }
     Haptics.light();
     setState(() {
       _handingTo = tv;
@@ -115,13 +121,19 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
     } catch (e) {
       appLogger.w('Playback handoff to ${tv.name} failed', error: e);
     }
-    await _provider.leaveSession();
-    if (!mounted) return;
     if (outcome == PlaybackHandoffOutcome.playing) {
-      // The Apple TV plays: close this player the way the remote's Stop does.
+      // The Apple TV plays: close this player the way the remote's Stop does,
+      // also when the sheet was dismissed while waiting.
+      await _provider.leaveSession();
       CompanionRemoteReceiver.instance.onStop?.call();
       return;
     }
+    // Giving up: tell the Apple TV, so a late start does not leave both playing.
+    if (outcome == PlaybackHandoffOutcome.timedOut) {
+      _provider.sendCommand(RemoteCommandType.syncState, data: {handoffCancelKey: request.id});
+    }
+    await _provider.leaveSession();
+    if (!mounted) return;
     setState(() {
       _handingTo = null;
       _failed = true;
