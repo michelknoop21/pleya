@@ -17,6 +17,7 @@ import '../../media/unified/unified_media_group.dart';
 import '../../services/settings_service.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/continue_watching_labels.dart';
+import '../../utils/continue_watching_order.dart';
 import '../../utils/provider_extensions.dart';
 import '../app_icon.dart';
 import '../media_card_grid_layout.dart';
@@ -118,7 +119,11 @@ class MobileMediaCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: MediaCardGridLayout.titleStyle.copyWith(color: DefaultTextStyle.of(context).style.color),
                 ),
-                _CaptionSubtitle(item: item, shape: shape, isInContinueWatching: isInContinueWatching),
+                _CaptionSubtitle(
+                  item: isInContinueWatching ? continueWatchingItemOf(group) : item,
+                  shape: shape,
+                  isInContinueWatching: isInContinueWatching,
+                ),
               ],
             ),
           ),

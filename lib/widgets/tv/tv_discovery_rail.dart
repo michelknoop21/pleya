@@ -57,6 +57,7 @@ import '../../focus/focus_theme.dart';
 import '../../services/unified_catalog/unified_artwork_prefetcher.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/continue_watching_labels.dart' show continueWatchingNextEpisodeWording;
+import '../../utils/continue_watching_order.dart' show continueWatchingItemOf;
 import '../../utils/formatters.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/media_image_helper.dart' show ImageType;
@@ -117,7 +118,8 @@ DiscoveryContext discoveryContextFor(UnifiedMediaGroup group, {bool inContinueWa
     if (isEpisode) ...[
       ?_episodeLabel(item),
       ?item.displaySubtitle,
-      ?(_remainingLabel(group, item) ?? (inContinueWatching ? continueWatchingNextEpisodeWording(item) : null)),
+      ?(_remainingLabel(group, item) ??
+          (inContinueWatching ? continueWatchingNextEpisodeWording(continueWatchingItemOf(group)) : null)),
     ] else ...[
       ?_remainingLabel(group, item),
       if (item.year != null) '${item.year}',

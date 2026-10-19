@@ -14,6 +14,7 @@ import '../../media/media_item_types.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../utils/continue_watching_labels.dart';
+import '../../utils/continue_watching_order.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/media_image_helper.dart' show ImageType;
 import '../../theme/mono_tokens.dart';
@@ -57,7 +58,7 @@ class TvContinueWatchingCard extends StatelessWidget {
     final tk = tokens(context);
     final item = group.representativeSource.item;
     final title = item.isEpisode ? (item.grandparentTitle ?? item.displayTitle) : item.displayTitle;
-    final status = continueWatchingStatusLine(item);
+    final status = continueWatchingStatusLine(continueWatchingItemOf(group));
     // A title with no wide artwork still gets its picture, not a grey tile.
     final widePath = discoveryWideArtPath(item);
     final artPath = widePath ?? discoveryPosterPath(item);
