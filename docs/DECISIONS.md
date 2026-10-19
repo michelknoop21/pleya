@@ -4790,3 +4790,29 @@ niets aan het gedrag.
 4. Een Apple TV luistert standaard (`enableCompanionRemoteServer` staat nu ook op tvOS aan); op iPhone blijft de standaard uit, de afzender start geen host.
 **Beperking tvOS (niet te omzeilen):** een iPhone kan Pleya op een Apple TV niet starten. tvOS kent geen app-start van een ander toestel (geen universal link of Handoff/NSUserActivity van iOS naar tvOS), en een geschorste app houdt zijn socket en UDP-beacon niet vast. De overdracht werkt dus alleen als Pleya open staat op de Apple TV (op elk scherm, ook in de speler). Is Pleya niet gevonden, dan zegt de sheet dat eerlijk en vraagt hij Pleya op de Apple TV te openen. Geen Apple TV-code of server in de weg: een wakker-maakpad via de mediaserver (Plex player-API, Jellyfin Sessions) valt om dezelfde reden weg.
 **Consequences:** De afzender neemt de positie op het moment van de druk; de iPhone speelt door tot het antwoord komt, dus de Apple TV kan enkele seconden terug beginnen. Het eindrapport van de iPhone (stop) en de eerste rapporten van de Apple TV gaan allebei naar de mediaserver; de laatste schrijver wint en dat is niet gegarandeerd de Apple TV (het stoprapport van de iPhone kan na de eerste voortgangsmelding van de Apple TV aankomen). De iPhone stuurt `handoffCancel` bij een time-out, zodat een late start op de Apple TV niet blijft spelen; een gepauzeerde iPhone wordt een spelende Apple TV, want de pauzestand gaat niet mee. Bekende grenzen na een adversariële Codex-ronde, bewust niet opgelost: (1) `handoffPlaying` volgt `pause == false`, niet het eerste beeld of een oplopende positie, dus een vastlopende stream kan de iPhone te vroeg laten stoppen; (2) [opgelost met een beperking] de handshake laat elke gebruiker van de Plex Home toe, maar een overdracht schrijft voortgang naar het account van het actieve profiel; de Apple TV weigert daarom (`handoffFailed`) tenzij de gebruiker van de iPhone gelijk is aan die van het actieve profiel (`handoffUserMatches`). Automatisch wisselen naar het profiel van de afzender (ook met pincode) is bedoeld maar bewust niet gebouwd: de `CompanionRemoteProvider` hangt in de profielsessie en wordt bij een wissel samen met de verbinding naar de iPhone vernietigd, dus de bevestiging kan niet meer terug; het succes van een wissel (`awaitBindingSettle`) meldt alleen dat er iets bond, zodat een geannuleerde pincode kan tellen als gelukt wanneer een andere verbinding van dat profiel bindt; en een rollback herstelt de clients van het vorige profiel niet altijd. Vervolgwerk: de handoff-status buiten de profielsessie bewaren, de iPhone laten herverbinden en de status laten opvragen, en de wissel op de uitkomst van de pincodecontrole van het gekozen profiel laten wachten; (3) het stoprapport van de iPhone gebruikt de gewone Stop en trekt zijn schrijfrecht niet in; (4) twee overdrachten vlak na elkaar kunnen elkaar op de Apple TV kruisen, en een vastlopende `fetchItem` houdt de ontvanger tot de volgende start bezet. Wel opgelost: het transcode-offset (het item krijgt de overdrachtspositie als view offset, anders start Plex en Jellyfin op de oude serverpositie), een laat succes sluit alleen de speler waar de overdracht begon, een geannuleerde overdracht sluit geen lopende speler, en de annuleerlijst is begrensd. Niet op een toestel geverifieerd: discovery op tvOS, de overgangstijd en het gedrag op een echt netwerk staan open voor de hardwareronde (A-22). Een Apple TV van een ander profiel wordt wel getoond maar weigert de overdracht (zie boven). Een iPhone die zelf host is, krijgt de knop wel maar weigert de overdracht, en een lopende remote-sessie van de iPhone wordt door de overdracht verlaten.
+
+## DEC-153: Voorrang van bronnen per veld, en de .nfo als bron die ids en cast levert
+
+**Date:** 2026-10-19
+**Status:** accepted. Productbesluit van Michel op 19 oktober 2026. Wijkt op één punt af van RB-27 ("sidecar wint van provider").
+
+**Context:** De bibliotheek bevat zo'n 2800 `.nfo`-bestanden (Radarr, Sonarr) met een TMDB-id, plot, genres,
+kijkwijzer en cast. De tekst in die bestanden is Engels, de server levert via TMDB Nederlands. Volgde de regel
+uit RB-27 letterlijk, dan werden de Nederlandse samenvattingen die de app al toonde bij de eerste scan
+overschreven door Engelse.
+
+**Decision:**
+
+1. Voorrang per veld, hoog naar laag: handmatige correctie, dan de provider in de servertaal, dan de
+   sidecar, dan wat technisch uit het bestand volgt. De sidecar vult alleen wat de provider niet vult.
+2. De sidecar behoudt één taak waar hij wel voorgaat: een TMDB-id in de `.nfo` is een verwijzing en geen gok. Het
+   is stap 1 van de driestapsregel en slaat het zoeken over. Een dubbelzinnige titel is met een id geen probleem.
+3. Cast en regie (`Item.people`) komen uit de `.nfo`, want TMDB-credits halen we niet apart op. Afbeeldings-
+   adressen uit een `.nfo` worden niet gevolgd: ze wijzen naar willekeurige hosts, en alleen de vaste
+   providerhost mag worden aangeroepen.
+4. Een rondenummer (`metadata_candidates.pass`) laat een nieuwe versie van de ronde elk item één keer
+   opnieuw doorlopen, ook eerder gematchte en ambigue.
+
+**Consequences:** Pakket B4 (`Item.people` met `character`) landt in venster 3. De Nederlandse teksten blijven
+staan. Een titel die TMDB niet kent maar waarvoor een `.nfo` bestaat krijgt toch een samenvatting. RB-27 is op
+punt 1 bijgesteld; de overige regels van RB-27 blijven.

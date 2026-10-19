@@ -28,6 +28,19 @@ type MetadataTarget struct {
 	Kind  string
 	Title string
 	Year  *int
+
+	// MediaRoot en MediaPath wijzen naar één mediabestand van het item (bij een
+	// serie: van een aflevering), voor het vinden van een .nfo ernaast. Leeg
+	// zolang het item geen beschikbaar bestand heeft.
+	MediaRoot string
+	MediaPath string
+}
+
+// Person is een acteur, regisseur of schrijver bij een item.
+type Person struct {
+	Name      string `json:"name"`
+	Role      string `json:"role"`
+	Character string `json:"character,omitempty"`
 }
 
 // MetadataDetails is wat een provider over één titel weet, in onze eigen vorm.
@@ -35,6 +48,7 @@ type MetadataDetails struct {
 	Summary       string   `json:"summary,omitempty"`
 	Genres        []string `json:"genres,omitempty"`
 	ContentRating string   `json:"content_rating,omitempty"`
+	People        []Person `json:"people,omitempty"`
 	PosterRef     string   `json:"poster_ref,omitempty"`
 	BackdropRef   string   `json:"backdrop_ref,omitempty"`
 }
@@ -47,6 +61,8 @@ type MetadataCandidate struct {
 	ExternalID  string
 	Details     *MetadataDetails
 	NextAttempt *time.Time
+	// Pass is het rondenummer waarmee dit resultaat is vastgelegd.
+	Pass int
 }
 
 // MetadataDue geeft top-level items (films en series) die nog geen uitkomst
@@ -56,22 +72,41 @@ type MetadataCandidate struct {
 //
 // Eén kandidaatrij per item, ongeacht de provider: M2a kent er één. Een tweede
 // provider vraagt een sleutel op (item_id, provider) in een eigen migratie.
-func (s *Store) MetadataDue(ctx context.Context, provider string, exclude []id.ID, limit int) ([]MetadataTarget, error) {
+func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, exclude []id.ID, limit int) ([]MetadataTarget, error) {
 	if exclude == nil {
 		// Een NULL-array maakt van NOT (id = ANY(NULL)) een NULL en daarmee een lege pagina.
 		exclude = []id.ID{}
 	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT i.id, i.kind, i.title, i.year
+		SELECT i.id, i.kind, i.title, i.year,
+		       coalesce(mp.root_path, sp.root_path, ''),
+		       coalesce(mp.relative_path, sp.relative_path, '')
 		FROM media_items i
 		LEFT JOIN metadata_candidates c ON c.item_id = i.id AND c.provider = $1
+		LEFT JOIN LATERAL (
+		    SELECT sl.root_path, f.relative_path
+		    FROM media_versions v
+		    JOIN media_files f ON f.version_id = v.id AND f.role = 'media' AND f.missing_since IS NULL
+		    JOIN storage_locations sl ON sl.id = f.storage_location_id
+		    WHERE v.item_id = i.id AND i.kind = 'movie'
+		    ORDER BY f.relative_path LIMIT 1) mp ON true
+		LEFT JOIN LATERAL (
+		    SELECT sl.root_path, f.relative_path
+		    FROM media_items s
+		    JOIN media_items e ON e.parent_id = s.id
+		    JOIN media_versions v ON v.item_id = e.id
+		    JOIN media_files f ON f.version_id = v.id AND f.role = 'media' AND f.missing_since IS NULL
+		    JOIN storage_locations sl ON sl.id = f.storage_location_id
+		    WHERE s.parent_id = i.id AND i.kind = 'show'
+		    ORDER BY f.relative_path LIMIT 1) sp ON true
 		WHERE i.kind IN ('movie', 'show')
 		  AND (c.item_id IS NULL
+		       OR c.pass < $4
 		       OR (c.state IN ('unmatched', 'failed', 'matched')
 		           AND c.next_attempt_at IS NOT NULL AND c.next_attempt_at <= now()))
 		  AND NOT (i.id = ANY($3))
 		ORDER BY i.added_at, i.id
-		LIMIT $2`, provider, limit, exclude)
+		LIMIT $2`, provider, limit, exclude, pass)
 	if err != nil {
 		return nil, fmt.Errorf("metadata-werk lezen: %w", err)
 	}
@@ -80,7 +115,7 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, exclude []id.I
 	var out []MetadataTarget
 	for rows.Next() {
 		var t MetadataTarget
-		if err := rows.Scan(&t.ID, &t.Kind, &t.Title, &t.Year); err != nil {
+		if err := rows.Scan(&t.ID, &t.Kind, &t.Title, &t.Year, &t.MediaRoot, &t.MediaPath); err != nil {
 			return nil, err
 		}
 		out = append(out, t)
@@ -105,8 +140,8 @@ func (s *Store) SaveCandidate(ctx context.Context, c MetadataCandidate) error {
 	}
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO metadata_candidates
-		    (item_id, provider, state, external_id, details, attempts, next_attempt_at)
-		VALUES ($1, $2, $3, $4, $5, 1, $6)
+		    (item_id, provider, state, external_id, details, attempts, next_attempt_at, pass)
+		VALUES ($1, $2, $3, $4, $5, 1, $6, $7)
 		ON CONFLICT (item_id) DO UPDATE SET
 		    provider = EXCLUDED.provider,
 		    state = EXCLUDED.state,
@@ -115,8 +150,9 @@ func (s *Store) SaveCandidate(ctx context.Context, c MetadataCandidate) error {
 		    attempts = metadata_candidates.attempts + 1,
 		    last_attempt_at = now(),
 		    next_attempt_at = EXCLUDED.next_attempt_at,
+		    pass = EXCLUDED.pass,
 		    updated_at = now()`,
-		c.ItemID, c.Provider, c.State, ext, details, c.NextAttempt)
+		c.ItemID, c.Provider, c.State, ext, details, c.NextAttempt, max(c.Pass, 1))
 	if err != nil {
 		return fmt.Errorf("kandidaat opslaan: %w", err)
 	}
@@ -145,9 +181,12 @@ func (s *Store) ApplyMetadata(ctx context.Context, itemID id.ID, provider string
 		sources = map[string]string{}
 	}
 
+	// Een veld is schrijfbaar als niemand het zette, of als de nieuwe bron minstens
+	// even zwaar weegt als de huidige. Rang: handmatig, dan een provider in de
+	// servertaal, dan een sidecar (DEC-153).
 	free := func(field string) bool {
 		src, set := sources[field]
-		return !set || src == provider
+		return !set || sourceRank(provider) >= sourceRank(src)
 	}
 
 	if d.Summary != "" && free("summary") {
@@ -169,6 +208,17 @@ func (s *Store) ApplyMetadata(ctx context.Context, itemID id.ID, provider string
 		sources["content_rating"] = provider
 	}
 
+	if len(d.People) > 0 && free("people") {
+		raw, err := json.Marshal(d.People)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE media_items SET people = $2, updated_at = now() WHERE id = $1`, itemID, raw); err != nil {
+			return err
+		}
+		sources["people"] = provider
+	}
+
 	out, err := json.Marshal(sources)
 	if err != nil {
 		return err
@@ -177,6 +227,25 @@ func (s *Store) ApplyMetadata(ctx context.Context, itemID id.ID, provider string
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+// SourceNFO en SourceManual zijn de bronnen naast een provider.
+const (
+	SourceNFO    = "nfo"
+	SourceManual = "manual"
+)
+
+// sourceRank is de voorrang van een bron: hoger wint. Een onbekende bron (een
+// tweede provider) staat tussen de .nfo en de eerste provider.
+func sourceRank(src string) int {
+	switch src {
+	case SourceManual:
+		return 100
+	case SourceNFO:
+		return 10
+	default:
+		return 20
+	}
 }
 
 // ProviderArtwork is een afbeelding in CacheDir.
@@ -241,9 +310,10 @@ func (s *Store) LocalArtwork(ctx context.Context, itemID id.ID) (poster, backdro
 // attachMetadata vult samenvatting, genres en kijkwijzer per pagina in één query.
 func (s *Store) attachMetadata(ctx context.Context, ids []id.ID, byID map[id.ID]*Item) error {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, summary, content_rating, genres
+		SELECT id, summary, content_rating, genres, people
 		FROM media_items
-		WHERE id = ANY($1) AND (summary IS NOT NULL OR content_rating IS NOT NULL OR genres IS NOT NULL)`, ids)
+		WHERE id = ANY($1) AND (summary IS NOT NULL OR content_rating IS NOT NULL OR genres IS NOT NULL
+		                        OR people IS NOT NULL)`, ids)
 	if err != nil {
 		return fmt.Errorf("metadata lezen: %w", err)
 	}
@@ -253,11 +323,15 @@ func (s *Store) attachMetadata(ctx context.Context, ids []id.ID, byID map[id.ID]
 		var itemID id.ID
 		var summary, rating *string
 		var genres []string
-		if err := rows.Scan(&itemID, &summary, &rating, &genres); err != nil {
+		var rawPeople []byte
+		if err := rows.Scan(&itemID, &summary, &rating, &genres, &rawPeople); err != nil {
 			return err
 		}
 		if it := byID[itemID]; it != nil {
 			it.Summary, it.ContentRating, it.Genres = summary, rating, genres
+			if len(rawPeople) > 0 {
+				_ = json.Unmarshal(rawPeople, &it.People) // een onleesbare lijst is geen reden de pagina te weigeren
+			}
 		}
 	}
 	return rows.Err()

@@ -254,6 +254,44 @@ List<String>? _stringListOrNull(Object? raw) => raw is List
       ]
     : null;
 
+/// `PersonRole`, unknown-safe.
+enum PleyaPersonRole {
+  actor,
+  director,
+  writer;
+
+  static PleyaPersonRole? tryParse(String? value) {
+    for (final role in values) {
+      if (role.name == value) return role;
+    }
+    return null;
+  }
+}
+
+/// `Person`: a name with a role, no identity of its own.
+class PleyaPerson {
+  const PleyaPerson({required this.name, required this.role, this.character});
+
+  final String name;
+  final PleyaPersonRole role;
+
+  /// The character, for an actor.
+  final String? character;
+}
+
+List<PleyaPerson>? _peopleOrNull(Object? raw) {
+  if (raw is! List) return null;
+  final out = <PleyaPerson>[];
+  for (final entry in raw) {
+    if (entry is! Map<String, dynamic>) continue;
+    final name = strOrNull(entry, 'name');
+    final role = PleyaPersonRole.tryParse(strOrNull(entry, 'role'));
+    if (name == null || name.isEmpty || role == null) continue;
+    out.add(PleyaPerson(name: name, role: role, character: strOrNull(entry, 'character')));
+  }
+  return out;
+}
+
 /// `Item`.
 class PleyaItem {
   const PleyaItem({
@@ -266,6 +304,7 @@ class PleyaItem {
     this.summary,
     this.genres,
     this.contentRating,
+    this.people,
     this.durationMs,
     this.parentId,
     this.index,
@@ -295,6 +334,10 @@ class PleyaItem {
 
   /// Free text as the source gave it (`12`, `PG-13`); shown unchanged.
   final String? contentRating;
+
+  /// Cast and crew in the order of the source. A person with a role this build
+  /// does not know is dropped.
+  final List<PleyaPerson>? people;
   final int? durationMs;
   final String? parentId;
 
@@ -321,6 +364,7 @@ class PleyaItem {
       summary: strOrNull(json, 'summary'),
       genres: _stringListOrNull(json['genres']),
       contentRating: strOrNull(json, 'content_rating'),
+      people: _peopleOrNull(json['people']),
       durationMs: integerOrNull(json, 'duration_ms'),
       parentId: strOrNull(json, 'parent_id'),
       index: integerOrNull(json, 'index'),

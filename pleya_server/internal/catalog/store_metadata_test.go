@@ -49,7 +49,7 @@ func metadataFixture(t *testing.T) (*catalog.Store, context.Context, map[string]
 func TestMetadataDueSkipsDoneAmbiguousAndSeasons(t *testing.T) {
 	store, ctx, ids, _ := metadataFixture(t)
 
-	due, err := store.MetadataDue(ctx, "tmdb", nil, 10)
+	due, err := store.MetadataDue(ctx, "tmdb", 1, nil, 10)
 	if err != nil || len(due) != 3 {
 		t.Fatalf("MetadataDue = %d items, %v; verwacht twee films en een serie, geen seizoen", len(due), err)
 	}
@@ -62,19 +62,19 @@ func TestMetadataDueSkipsDoneAmbiguousAndSeasons(t *testing.T) {
 	if err := store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["heat"], Provider: "tmdb", State: catalog.CandidateUnmatched, NextAttempt: &past}); err != nil {
 		t.Fatal(err)
 	}
-	due, _ = store.MetadataDue(ctx, "tmdb", nil, 10)
+	due, _ = store.MetadataDue(ctx, "tmdb", 1, nil, 10)
 	if len(due) != 1 || due[0].ID != ids["heat"] {
 		t.Fatalf("na ambigu en een verlopen unmatched hoort alleen Heat terug te komen, kreeg %+v", due)
 	}
 
 	future := time.Now().Add(time.Hour)
 	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["heat"], Provider: "tmdb", State: catalog.CandidateUnmatched, NextAttempt: &future})
-	if due, _ = store.MetadataDue(ctx, "tmdb", nil, 10); len(due) != 0 {
+	if due, _ = store.MetadataDue(ctx, "tmdb", 1, nil, 10); len(due) != 0 {
 		t.Fatalf("een unmatched met een toekomstige poging kwam al terug: %+v", due)
 	}
 
 	// exclude houdt een item dat deze ronde al is geprobeerd buiten beeld.
-	if _, err := store.MetadataDue(ctx, "tmdb", []id.ID{ids["alien"]}, 10); err != nil {
+	if _, err := store.MetadataDue(ctx, "tmdb", 1, []id.ID{ids["alien"]}, 10); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -179,7 +179,7 @@ func TestFailedAndMatchedWithArtworkRetryComeBackWhenDue(t *testing.T) {
 	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["heat"], Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "949", NextAttempt: &future})
 	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["show"], Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "1"})
 
-	due, err := store.MetadataDue(ctx, "tmdb", nil, 10)
+	due, err := store.MetadataDue(ctx, "tmdb", 1, nil, 10)
 	if err != nil || len(due) != 1 || due[0].ID != ids["alien"] {
 		t.Fatalf("alleen de verlopen failed hoort terug te komen, kreeg %+v (%v)", due, err)
 	}
@@ -204,12 +204,86 @@ func TestDropProviderArtworkPutsTheItemBackInTheQueue(t *testing.T) {
 	if err := store.DropProviderArtwork(ctx, artID); err != nil {
 		t.Fatalf("een tweede keer droppen hoort geen fout te zijn: %v", err)
 	}
-	due, _ := store.MetadataDue(ctx, "tmdb", nil, 10)
+	due, _ := store.MetadataDue(ctx, "tmdb", 1, nil, 10)
 	found := false
 	for _, d := range due {
 		found = found || d.ID == ids["alien"]
 	}
 	if !found {
 		t.Fatal("het item staat na het droppen niet aan de beurt")
+	}
+}
+
+func TestRaisingThePassPutsEveryItemBackExceptNothingIsLost(t *testing.T) {
+	store, ctx, ids, _ := metadataFixture(t)
+	for _, k := range []string{"alien", "heat"} {
+		_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids[k], Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "1", Pass: 1})
+	}
+	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["show"], Provider: "tmdb", State: catalog.CandidateAmbiguous, Pass: 1})
+
+	if due, _ := store.MetadataDue(ctx, "tmdb", 1, nil, 10); len(due) != 0 {
+		t.Fatalf("pass 1 hoort niets te geven: %+v", due)
+	}
+	due, _ := store.MetadataDue(ctx, "tmdb", 2, nil, 10)
+	if len(due) != 3 {
+		t.Fatalf("pass 2 hoort alle drie opnieuw aan de beurt te zetten (ook de ambigue), kreeg %d", len(due))
+	}
+	// Eenmaal vastgelegd op pass 2 komt een item niet nog eens.
+	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["alien"], Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "1", Pass: 2})
+	if due, _ = store.MetadataDue(ctx, "tmdb", 2, nil, 10); len(due) != 2 {
+		t.Fatalf("na vastleggen op pass 2 horen er twee over te zijn, kreeg %d", len(due))
+	}
+}
+
+func TestSidecarRanksBelowTheProviderAndPeopleAreStored(t *testing.T) {
+	store, ctx, ids, _ := metadataFixture(t)
+
+	// De .nfo gaat eerst: zet de velden die er nog niet zijn.
+	if err := store.ApplyMetadata(ctx, ids["alien"], catalog.SourceNFO, catalog.MetadataDetails{
+		Summary: "Engels", Genres: []string{"Horror"},
+		People: []catalog.Person{{Name: "Sigourney Weaver", Role: "actor"}}}); err != nil {
+		t.Fatal(err)
+	}
+	// De provider overschrijft hem: hogere rang.
+	if err := store.ApplyMetadata(ctx, ids["alien"], "tmdb", catalog.MetadataDetails{Summary: "Nederlands"}); err != nil {
+		t.Fatal(err)
+	}
+	// Een latere .nfo-ronde raakt de providerwaarde niet meer aan.
+	if err := store.ApplyMetadata(ctx, ids["alien"], catalog.SourceNFO, catalog.MetadataDetails{Summary: "Engels, opnieuw"}); err != nil {
+		t.Fatal(err)
+	}
+	it, _ := store.Item(ctx, ids["alien"])
+	if *it.Summary != "Nederlands" {
+		t.Fatalf("samenvatting %q; de provider hoort te winnen van de .nfo", *it.Summary)
+	}
+	if len(it.Genres) != 1 || len(it.People) != 1 || it.People[0].Name != "Sigourney Weaver" {
+		t.Fatalf("genres %v mensen %+v; wat de provider niet zet blijft van de .nfo", it.Genres, it.People)
+	}
+}
+
+func TestMetadataDueCarriesTheMediaPathForSidecars(t *testing.T) {
+	store, ctx, ids, pool := metadataFixture(t)
+	sl, ver, file := id.New(), id.New(), id.New()
+	var lib id.ID
+	_ = pool.QueryRow(ctx, `SELECT id FROM libraries LIMIT 1`).Scan(&lib)
+	mustExec := func(q string, a ...any) {
+		t.Helper()
+		if _, err := pool.Exec(ctx, q, a...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mustExec(`INSERT INTO storage_locations (id, library_id, root_path) VALUES ($1, $2, '/m')`, sl, lib)
+	mustExec(`INSERT INTO media_versions (id, item_id, grouping_key, container, duration_ms) VALUES ($1, $2, 'v', 'mkv', 1000)`, ver, ids["alien"])
+	mustExec(`INSERT INTO media_files (id, storage_location_id, relative_path, role, version_id, size_bytes, mtime_unix)
+		VALUES ($1, $2, 'Alien (1979)/Alien (1979).mkv', 'media', $3, 1, 1)`, file, sl, ver)
+
+	due, err := store.MetadataDue(ctx, "tmdb", 1, nil, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range due {
+		if d.ID == ids["alien"] && (d.MediaRoot != "/m" || d.MediaPath != "Alien (1979)/Alien (1979).mkv") {
+			t.Fatalf("pad ontbreekt: %+v", d)
+		}
 	}
 }

@@ -2590,6 +2590,20 @@ components:
             POST /watch-state, en alleen op een server met
             capabilities.watch_state_ownership.
 
+    PersonRole:
+      type: string
+      enum: [actor, director, writer]
+      x-unknown-safe: true
+    Person:
+      type: object
+      required: [name, role]
+      properties:
+        name: { type: string }
+        role: { $ref: "#/components/schemas/PersonRole" }
+        character:
+          type: [string, "null"]
+          description: Het personage, alleen bij een acteur.
+
     Item:
       type: object
       required: [id, kind, title, added_at]
@@ -2617,6 +2631,13 @@ components:
             het land van zijn eigen taal en valt terug op de Amerikaanse.
             Vrije tekst: een client die een waarde niet kent toont hem
             ongewijzigd.
+        people:
+          type: [array, "null"]
+          items: { $ref: "#/components/schemas/Person" }
+          description: |
+            Cast en crew in de volgorde van de bron. Een persoon is een naam met
+            een rol en heeft geen eigen identiteit. Een client laat een persoon
+            met een onbekende rol weg.
         duration_ms:
           oneOf:
             - { $ref: "#/components/schemas/DurationMs" }

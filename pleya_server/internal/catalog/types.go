@@ -108,6 +108,7 @@ type Item struct {
 	Summary       *string
 	ContentRating *string
 	Genres        []string
+	People        []Person
 
 	// Afgeleid en niet opgeslagen. Ze staan hier omdat het wire-type ze draagt
 	// en de leeslaag ze per pagina in één keer ophaalt.

@@ -70,6 +70,41 @@ void main() {
       expect(item.serverId, serverId);
     });
 
+    test('description fields and cast reach the app model', () {
+      final item = mapFixture('item_movie.json');
+      expect(item.summary, startsWith('Danny en Sandy'));
+      expect(item.genres, ['Muziek', 'Romantiek']);
+      expect(item.contentRating, 'AL');
+      expect(item.directors, ['Randal Kleiser']);
+      expect(item.roles!.map((r) => r.tag), ['John Travolta', 'Olivia Newton-John']);
+      expect(item.roles!.first.role, 'Danny Zuko');
+    });
+
+    test('a person with an unknown role is dropped, a missing list stays null', () {
+      final withUnknown = PleyaItem.fromJson({
+        'id': 'a',
+        'kind': 'movie',
+        'title': 'X',
+        'added_at': '2026-06-18T21:34:02Z',
+        'people': [
+          {'name': 'Known', 'role': 'actor'},
+          {'name': 'Future', 'role': 'stuntman'},
+          {'name': '', 'role': 'actor'},
+        ],
+      });
+      expect(withUnknown.people!.map((p) => p.name), ['Known']);
+
+      final without = PleyaItem.fromJson({
+        'id': 'a',
+        'kind': 'movie',
+        'title': 'X',
+        'added_at': '2026-06-18T21:34:02Z',
+      });
+      expect(without.people, isNull);
+      expect(without.summary, isNull);
+      expect(without.genres, isNull);
+    });
+
     test('added_at becomes app-standard seconds, not milliseconds', () {
       final item = mapFixture('item_movie.json');
       expect(item.addedAt, DateTime.utc(2026, 6, 18, 21, 34, 2).millisecondsSinceEpoch ~/ 1000);
