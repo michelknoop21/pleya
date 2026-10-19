@@ -26,6 +26,13 @@ class IntentField<T> {
 /// Whose data a question is about.
 enum AssistantAudience { me, others, everyone }
 
+/// The asker speaks of themself in the same question ("en wat kan ik nog verder
+/// kijken", "die ik nog niet heb gezien"): their own state is then wanted too.
+/// "mijn server" is not that, so only the pronouns and their own lists count.
+final _askerOwnState = RegExp(
+  r'\b(ik|mij|ikzelf|i|me|myself)\b|\bmijn (begonnen|lopende|kijklijst|series die)\b|\bmy (started|unfinished|watchlist)\b',
+);
+
 // A watch verb, the anchor for every audience word: "others" or "everyone" on
 // its own also appear in recommendation sentences ("a film everyone likes").
 const _watch = r'(?:kijk\w*|ke+k\w*|gekeken|bekeken|gezien|watch\w*|seen)';
@@ -419,6 +426,7 @@ class AssistantIntent {
             audience.value != AssistantAudience.me &&
             !mixedAudience &&
             !unseenInLibrary &&
+            !_askerOwnState.hasMatch(words) &&
             (args['in_progress'] == true || args['unwatched'] == true)) {
           return (args: out, error: 'own_state_only');
         }

@@ -15,6 +15,16 @@ void main() {
         _i('Wat kijkt iedereen?').constrain('search_catalog', const {'in_progress': true}).error,
         'own_state_only',
       );
+      for (final q in [
+        'Wat kijken de anderen en wat kan ik nog verder kijken',
+        'Wat kijken de anderen? Ik wil verder kijken waar ik gebleven was',
+        'Welke films hebben de anderen gezien die ik nog niet heb gezien?',
+        'Wat kijkt iedereen? Laat mijn begonnen series zien',
+      ]) {
+        final i = _i(q);
+        expect(i.constrain('search_catalog', const {'in_progress': true}).error, isNull, reason: q);
+        expect(i.constrain('search_catalog', const {'unwatched': true}).error, isNull, reason: q);
+      }
       expect(_i('Wat heb ik nog niet gezien?').constrain('search_catalog', const {'unwatched': true}).error, isNull);
       expect(
         _i('Welke films staan al lang ongezien in mijn bibliotheek?').constrain('search_catalog', const {}).error,
