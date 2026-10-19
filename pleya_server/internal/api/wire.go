@@ -374,6 +374,7 @@ type Item struct {
 	Summary             *string    `json:"summary"`
 	Genres              []string   `json:"genres"`
 	ContentRating       *string    `json:"content_rating"`
+	People              []Person   `json:"people"`
 	DurationMs          *int64     `json:"duration_ms"`
 	ParentID            *string    `json:"parent_id"`
 	Index               *int       `json:"index"`
@@ -383,6 +384,24 @@ type Item struct {
 	Artwork             Artwork    `json:"artwork"`
 	Versions            []Version  `json:"versions"`
 	UserState           *UserState `json:"user_state"`
+}
+
+// Person is één persoon bij een item (B4).
+type Person struct {
+	Name      string  `json:"name"`
+	Role      string  `json:"role"`
+	Character *string `json:"character"`
+}
+
+func mapPeople(in []catalog.Person) []Person {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]Person, 0, len(in))
+	for _, p := range in {
+		out = append(out, Person{Name: p.Name, Role: p.Role, Character: optString(p.Character)})
+	}
+	return out
 }
 
 // ItemPage is een pagina items.
@@ -408,6 +427,7 @@ func mapItem(it catalog.Item) Item {
 		Summary:             it.Summary,
 		Genres:              it.Genres,
 		ContentRating:       it.ContentRating,
+		People:              mapPeople(it.People),
 		DurationMs:          it.DurationMs,
 		ParentID:            optID(it.ParentID),
 		Index:               it.Index,

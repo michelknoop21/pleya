@@ -9,15 +9,17 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/nfo"
 )
 
 // Store is wat de ronde van de catalogus nodig heeft.
 type Store interface {
-	MetadataDue(ctx context.Context, provider string, exclude []id.ID, limit int) ([]catalog.MetadataTarget, error)
+	MetadataDue(ctx context.Context, provider string, pass int, exclude []id.ID, limit int) ([]catalog.MetadataTarget, error)
 	SaveCandidate(ctx context.Context, c catalog.MetadataCandidate) error
 	ApplyMetadata(ctx context.Context, itemID id.ID, provider string, d catalog.MetadataDetails) error
 	LocalArtwork(ctx context.Context, itemID id.ID) (poster, backdrop bool, err error)
@@ -35,6 +37,10 @@ type Provider interface {
 	Image(ctx context.Context, kind, ref string) ([]byte, string, error)
 }
 
+// currentPass is het rondenummer van deze versie van de ronde. Verhogen zet
+// elk item één keer opnieuw aan de beurt. 2: .nfo als bron (M2b).
+const currentPass = 2
+
 // Runner voert providerrondes uit.
 type Runner struct {
 	store    Store
@@ -42,6 +48,7 @@ type Runner struct {
 	name     string
 	cacheDir string
 	log      *slog.Logger
+	sidecar  Sidecar
 
 	batch          int
 	retryUnmatch   time.Duration
@@ -68,9 +75,14 @@ func NewRunner(store Store, provider Provider, name, cacheDir string, log *slog.
 	}
 }
 
+// WithSidecar zet de .nfo-bron aan. Zonder blijft de runner puur providergedreven.
+func (r *Runner) WithSidecar(s Sidecar) *Runner { r.sidecar = s; return r }
+
 // RoundStats telt wat een ronde deed.
 type RoundStats struct {
 	Matched, Ambiguous, Unmatched, Failed, ArtworkSaved int
+	// ByID telt matches die via een externe id uit de .nfo liepen, zonder zoeken.
+	ByID int
 }
 
 // Round verwerkt alle titels die aan de beurt zijn. Een tijdelijke fout laat het
@@ -86,7 +98,7 @@ func (r *Runner) Round(ctx context.Context) (RoundStats, error) {
 	}
 
 	for {
-		targets, err := r.store.MetadataDue(ctx, r.name, seen, r.batch)
+		targets, err := r.store.MetadataDue(ctx, r.name, currentPass, seen, r.batch)
 		if err != nil {
 			return st, err
 		}
@@ -142,18 +154,43 @@ func withBackoff[T any](ctx context.Context, r *Runner, call func() (T, error)) 
 }
 
 func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundStats) error {
-	state, chosen, err := r.decide(ctx, t)
+	var side *nfo.Result
+	if r.sidecar != nil {
+		side = r.sidecar.Read(t)
+	}
+
+	state, chosen, byID, err := r.decide(ctx, t, side)
 	if err != nil {
 		return err
 	}
+	if byID {
+		st.ByID++
+	}
+
+	// De .nfo vult wat de provider niet vult, en wint nergens van een
+	// providerwaarde (rang in ApplyMetadata). Hij gaat ook door bij een titel die
+	// de provider niet kent: dan is de .nfo het enige dat er is.
+	applySidecar := func() error {
+		if side == nil {
+			return nil
+		}
+		return r.store.ApplyMetadata(ctx, t.ID, catalog.SourceNFO, sidecarDetails(side))
+	}
+
 	switch state {
 	case catalog.CandidateAmbiguous:
 		st.Ambiguous++
-		return r.store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: t.ID, Provider: r.name, State: state})
+		if err := applySidecar(); err != nil {
+			return err
+		}
+		return r.store.SaveCandidate(ctx, catalog.MetadataCandidate{Pass: currentPass, ItemID: t.ID, Provider: r.name, State: state})
 	case catalog.CandidateUnmatched:
 		st.Unmatched++
+		if err := applySidecar(); err != nil {
+			return err
+		}
 		next := time.Now().Add(r.retryUnmatch)
-		return r.store.SaveCandidate(ctx, catalog.MetadataCandidate{
+		return r.store.SaveCandidate(ctx, catalog.MetadataCandidate{Pass: currentPass,
 			ItemID: t.ID, Provider: r.name, State: state, NextAttempt: &next})
 	}
 
@@ -166,6 +203,9 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 	// Eerst toepassen, dan pas vastleggen: een fout hier laat het item aan de
 	// beurt in plaats van het als gedaan te boeken zonder velden.
 	if err := r.store.ApplyMetadata(ctx, t.ID, r.name, details); err != nil {
+		return err
+	}
+	if err := applySidecar(); err != nil {
 		return err
 	}
 
@@ -200,7 +240,7 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 		}
 	}
 
-	if err := r.store.SaveCandidate(ctx, catalog.MetadataCandidate{
+	if err := r.store.SaveCandidate(ctx, catalog.MetadataCandidate{Pass: currentPass,
 		ItemID: t.ID, Provider: r.name, State: state,
 		ExternalID: fmt.Sprint(chosen.ID), Details: &details, NextAttempt: retry,
 	}); err != nil {
@@ -214,12 +254,19 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 // bestandsnaam die een jaar afwijkt van de releasedatum mag een match niet
 // onmogelijk maken, en het jaarfilter houdt een gangbare titel binnen de eerste
 // pagina treffers.
-func (r *Runner) decide(ctx context.Context, t catalog.MetadataTarget) (string, SearchResult, error) {
+func (r *Runner) decide(ctx context.Context, t catalog.MetadataTarget, side *nfo.Result) (string, SearchResult, bool, error) {
+	// Stap 1 van de driestapsregel: een TMDB-id in de .nfo is geen gok maar een
+	// verwijzing, dus zoeken is overbodig en een dubbelzinnige titel geen probleem.
+	if side != nil {
+		if n, err := strconv.Atoi(side.IDs["tmdb"]); err == nil && n > 0 {
+			return catalog.CandidateMatched, SearchResult{ID: n, Title: t.Title}, true, nil
+		}
+	}
 	results, err := withBackoff(ctx, r, func() ([]SearchResult, error) {
 		return r.provider.Search(ctx, t.Kind, t.Title, t.Year)
 	})
 	if err != nil {
-		return "", SearchResult{}, err
+		return "", SearchResult{}, false, err
 	}
 	state, chosen := Decide(t.Title, t.Year, results)
 	if state == catalog.CandidateUnmatched && t.Year != nil {
@@ -227,11 +274,11 @@ func (r *Runner) decide(ctx context.Context, t catalog.MetadataTarget) (string, 
 			return r.provider.Search(ctx, t.Kind, t.Title, nil)
 		})
 		if err != nil {
-			return "", SearchResult{}, err
+			return "", SearchResult{}, false, err
 		}
 		state, chosen = Decide(t.Title, t.Year, results)
 	}
-	return state, chosen, nil
+	return state, chosen, false, nil
 }
 
 // recordFailure zet een mislukt item achteraan met oplopende vertraging, zodat
@@ -246,7 +293,7 @@ func (r *Runner) recordFailure(ctx context.Context, t catalog.MetadataTarget) {
 		wait = r.failBackoffMax
 	}
 	next := time.Now().Add(wait)
-	if err := r.store.SaveCandidate(ctx, catalog.MetadataCandidate{
+	if err := r.store.SaveCandidate(ctx, catalog.MetadataCandidate{Pass: currentPass,
 		ItemID: t.ID, Provider: r.name, State: catalog.CandidateFailed, NextAttempt: &next}); err != nil {
 		r.log.Warn("mislukte poging vastleggen mislukt", slog.String("error", err.Error()))
 	}
@@ -361,7 +408,7 @@ func (r *Runner) Run(ctx context.Context, trigger <-chan struct{}, interval time
 			r.log.Info("metadata-ronde klaar", slog.String("reason", reason),
 				slog.Int("matched", st.Matched), slog.Int("ambiguous", st.Ambiguous),
 				slog.Int("unmatched", st.Unmatched), slog.Int("failed", st.Failed),
-				slog.Int("artwork", st.ArtworkSaved))
+				slog.Int("artwork", st.ArtworkSaved), slog.Int("by_id", st.ByID))
 		}
 	}
 	do("startup")

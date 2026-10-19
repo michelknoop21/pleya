@@ -227,7 +227,7 @@ func run() int {
 	if cfg.TMDBKey != "" {
 		workers.Add(1)
 		mdRunner := metadata.NewRunner(catalogStore, metadata.NewTMDB(cfg.TMDBKey, cfg.MetadataLanguage),
-			metadata.ProviderTMDB, cfg.CacheDir, logging.Component(log, "metadata"))
+			metadata.ProviderTMDB, cfg.CacheDir, logging.Component(log, "metadata")).WithSidecar(metadata.FSSidecar{})
 		go func() { defer workers.Done(); mdRunner.Run(workCtx, scanned, 6*time.Hour) }()
 		startup.Info("metadata-provider aan", slog.String("provider", metadata.ProviderTMDB), slog.String("language", cfg.MetadataLanguage))
 	}

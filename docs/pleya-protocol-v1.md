@@ -707,6 +707,8 @@ draagt `parent_id` en `index`.
 in de taal van de server (`PLEYA_SERVER_METADATA_LANGUAGE`, standaard `nl-NL`). Een client laat een
 leeg blok weg en toont een onbekende kijkwijzer ongewijzigd. De server vult ze uit een metadata-provider;
 welke dat is en waar een waarde vandaan komt is geen onderdeel van het contract.
+`people` is een lijst van `{name, role}` met `role` een van `actor`, `director` en `writer`; de
+rol is `x-unknown-safe`, dus een client laat een persoon met een andere rol weg.
 
 **`user_state` is de leeskant van kijkstatus.** Het reist mee in elk itemantwoord, zodat een
 detailscherm geen tweede aanvraag nodig heeft. Zie hoofdstuk 12 voor de schrijfkant. Een item dat de

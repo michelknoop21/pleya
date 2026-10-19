@@ -13,6 +13,7 @@ import (
 
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/nfo"
 )
 
 type fakeStore struct {
@@ -23,6 +24,7 @@ type fakeStore struct {
 	localPost  map[id.ID]bool
 	attempts   map[id.ID]int
 	applyErr   error
+	onApply    func(source string)
 }
 
 func newFakeStore(ts ...catalog.MetadataTarget) *fakeStore {
@@ -31,7 +33,7 @@ func newFakeStore(ts ...catalog.MetadataTarget) *fakeStore {
 		localPost: map[id.ID]bool{}, attempts: map[id.ID]int{}}
 }
 
-func (f *fakeStore) MetadataDue(_ context.Context, _ string, exclude []id.ID, limit int) ([]catalog.MetadataTarget, error) {
+func (f *fakeStore) MetadataDue(_ context.Context, _ string, _ int, exclude []id.ID, limit int) ([]catalog.MetadataTarget, error) {
 	skip := map[id.ID]bool{}
 	for _, e := range exclude {
 		skip[e] = true
@@ -49,11 +51,16 @@ func (f *fakeStore) SaveCandidate(_ context.Context, c catalog.MetadataCandidate
 	f.candidates[c.ItemID] = c
 	return nil
 }
-func (f *fakeStore) ApplyMetadata(_ context.Context, item id.ID, _ string, d catalog.MetadataDetails) error {
+func (f *fakeStore) ApplyMetadata(_ context.Context, item id.ID, source string, d catalog.MetadataDetails) error {
 	if f.applyErr != nil {
 		return f.applyErr
 	}
-	f.applied[item] = d
+	if f.onApply != nil {
+		f.onApply(source)
+	}
+	if _, set := f.applied[item]; !set || source == ProviderTMDB {
+		f.applied[item] = d
+	}
 	return nil
 }
 func (f *fakeStore) LocalArtwork(_ context.Context, item id.ID) (bool, bool, error) {
@@ -347,5 +354,65 @@ func TestMissingCacheFileIsFetchedAgainAndOrphansAreSwept(t *testing.T) {
 	}
 	if _, err := os.Stat(fresh); err != nil {
 		t.Error("een bestand van minder dan een uur oud mag niet weg: zijn rij kan nog onderweg zijn")
+	}
+}
+
+type fakeSidecar map[id.ID]*nfo.Result
+
+func (f fakeSidecar) Read(t catalog.MetadataTarget) *nfo.Result { return f[t.ID] }
+
+func TestSidecarIDMatchesWithoutSearchingEvenWhenTheTitleIsAmbiguous(t *testing.T) {
+	year := 1996
+	h := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Hamlet", Year: &year}
+	st := newFakeStore(h)
+	prov := &fakeProvider{results: map[string][]SearchResult{"Hamlet": {{ID: 1, Title: "Hamlet", Year: 1996}, {ID: 2, Title: "Hamlet", Year: 1996}}}}
+	side := fakeSidecar{h.ID: {Kind: "movie", Summary: "Engelse plot", IDs: map[string]string{"tmdb": "2"},
+		People: []nfo.Person{{Name: "Kenneth Branagh", Role: "actor"}}}}
+
+	stats, err := testRunner(st, prov, t.TempDir()).WithSidecar(side).Round(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.ByID != 1 || stats.Matched != 1 || prov.calls != 0 {
+		t.Fatalf("stats %+v, zoekaanroepen %d; een id hoort niet te zoeken", stats, prov.calls)
+	}
+	if st.candidates[h.ID].ExternalID != "2" {
+		t.Fatalf("externe id %q, verwacht 2", st.candidates[h.ID].ExternalID)
+	}
+}
+
+func TestSidecarFillsWhatTheProviderCannotAndAppliesWithoutAMatch(t *testing.T) {
+	a := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Bad Boys 4"} // de provider kent hem niet
+	st := newFakeStore(a)
+	var gotSources []string
+	st.onApply = func(src string) { gotSources = append(gotSources, src) }
+	side := fakeSidecar{a.ID: {Kind: "movie", Summary: "Plot uit de nfo", Genres: []string{"Action"}}}
+
+	stats, err := testRunner(st, &fakeProvider{}, t.TempDir()).WithSidecar(side).Round(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.Unmatched != 1 {
+		t.Fatalf("stats %+v", stats)
+	}
+	if len(gotSources) != 1 || gotSources[0] != catalog.SourceNFO || st.applied[a.ID].Summary != "Plot uit de nfo" {
+		t.Fatalf("de .nfo is niet toegepast bij een onbekende titel: %v %+v", gotSources, st.applied[a.ID])
+	}
+}
+
+func TestSidecarIsAppliedAfterTheProviderSoTheProviderWins(t *testing.T) {
+	year := 1979
+	a := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Alien", Year: &year}
+	st := newFakeStore(a)
+	var order []string
+	st.onApply = func(src string) { order = append(order, src) }
+	prov := &fakeProvider{results: map[string][]SearchResult{"Alien": {{ID: 348, Title: "Alien", Year: 1979}}}}
+	side := fakeSidecar{a.ID: {Kind: "movie", Summary: "Engels"}}
+
+	if _, err := testRunner(st, prov, t.TempDir()).WithSidecar(side).Round(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(order) != 2 || order[0] != ProviderTMDB || order[1] != catalog.SourceNFO {
+		t.Fatalf("volgorde %v; de provider hoort eerst, de .nfo erna", order)
 	}
 }

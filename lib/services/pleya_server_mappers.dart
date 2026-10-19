@@ -3,6 +3,7 @@ import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../media/media_library.dart';
 import '../media/media_part.dart';
+import '../media/media_role.dart';
 import '../media/media_stream.dart';
 import '../media/media_version.dart';
 import '../models/pleya_server/pleya_wire.dart';
@@ -136,6 +137,9 @@ class PleyaServerMappers {
       summary: wire.summary,
       contentRating: wire.contentRating,
       genres: wire.genres,
+      directors: _names(wire.people, PleyaPersonRole.director),
+      writers: _names(wire.people, PleyaPersonRole.writer),
+      roles: _actors(wire.people),
       // An episode hangs under a season and a season under a show, so an
       // episode's `parentId` is its season and its `grandparentId` its show.
       // That is the same shape the Plex and Jellyfin mappers produce, which is
@@ -166,6 +170,22 @@ class PleyaServerMappers {
       serverId: serverId,
       serverName: serverName,
     );
+  }
+
+  static List<String>? _names(List<PleyaPerson>? people, PleyaPersonRole role) {
+    final names = [
+      for (final p in people ?? const <PleyaPerson>[])
+        if (p.role == role) p.name,
+    ];
+    return names.isEmpty ? null : names;
+  }
+
+  static List<MediaRole>? _actors(List<PleyaPerson>? people) {
+    final actors = [
+      for (final p in people ?? const <PleyaPerson>[])
+        if (p.role == PleyaPersonRole.actor) MediaRole(tag: p.name, role: p.character),
+    ];
+    return actors.isEmpty ? null : actors;
   }
 
   static String? _posterPath(PleyaItem? item) {

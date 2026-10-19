@@ -8,6 +8,11 @@
   "summary": "Danny en Sandy beleven een zomerliefde die op school anders uitpakt dan op het strand.",
   "genres": ["Muziek", "Romantiek"],
   "content_rating": "AL",
+  "people": [
+    { "name": "Randal Kleiser", "role": "director" },
+    { "name": "John Travolta", "role": "actor", "character": "Danny Zuko" },
+    { "name": "Olivia Newton-John", "role": "actor", "character": "Sandy Olsson" }
+  ],
   "duration_ms": 6720000,
   "parent_id": null,
   "index": null,
