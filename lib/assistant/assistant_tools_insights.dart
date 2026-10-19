@@ -92,8 +92,19 @@ const _playsPerUser = 200;
 /// One play for the period aggregate, already clipped. [userKey] is the
 /// account on [server], so two people who clip to one display name on one
 /// server stay two users. [named] is false for a fallback label ("User 7"),
-/// which is never matched across servers.
-typedef _Play = ({String server, String titleKey, String title, String userKey, String user, int seconds, bool named});
+/// which is never matched across servers. [account] is the server's own
+/// account name, unclipped, so an exclusion by account still lands when
+/// [user] is a friendly name or was clipped.
+typedef _Play = ({
+  String server,
+  String titleKey,
+  String title,
+  String userKey,
+  String user,
+  String account,
+  int seconds,
+  bool named,
+});
 
 /// The wall-clock budget of one tool call. [race] answers null once it is
 /// spent, so a slow server ends the reading instead of the whole tool.
@@ -345,12 +356,15 @@ final List<AssistantTool> _insightTools = [
       };
       final excluded = switch (args['exclude_users']) {
         null => const <String>{},
-        final List<Object?> l when l.every((e) => e is String) => {
-          for (final e in l) (e as String).trim().toLowerCase(),
+        final List<Object?> l when l.length <= 10 && l.every((e) => e is String) => {
+          for (final e in l)
+            if ((e as String).trim().isNotEmpty) e.trim().toLowerCase(),
         },
         _ => throw const AssistantToolError('invalid_exclude_users'),
       };
-      return scope == 'now' ? _watchedNow(ctx) : _watchedPeriod(ctx, days, media: media, excluded: excluded);
+      return scope == 'now'
+          ? _watchedNow(ctx, excluded: excluded)
+          : _watchedPeriod(ctx, days, media: media, excluded: excluded);
     },
   ),
 ];

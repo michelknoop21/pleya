@@ -240,9 +240,15 @@ String? formatRemainingTime(int? durationMs, int? viewOffsetMs) {
   final offset = viewOffsetMs ?? 0;
   if (durationMs == null || offset <= 0 || durationMs <= offset) return null;
   // "18 min left", as in the approved mockups; formatDurationTextual packs the
-  // unit against the number ("18min"), which reads as a typo on a card.
-  final time = formatDurationTextual(
-    durationMs - offset,
-  ).replaceAllMapped(RegExp(r'(\d)(min)\b'), (m) => '${m[1]} ${m[2]}');
+  // unit against the number ("18min"), which reads as a typo on a card. Built
+  // from the locale's own unit names so no language depends on one spelling.
+  final left = Duration(milliseconds: durationMs - offset);
+  final hours = left.inHours;
+  final minutes = hours == 0 ? left.inMinutes.clamp(1, 59) : left.inMinutes.remainder(60);
+  final locale = _getDurationLocale();
+  final time = [
+    if (hours > 0) '$hours${locale.hour(hours, true)}',
+    if (minutes > 0) '$minutes ${locale.minute(minutes, true)}',
+  ].join(' ');
   return t.nowWatching.remaining(time: time);
 }

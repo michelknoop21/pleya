@@ -92,7 +92,9 @@ class WatchedTick extends StatelessWidget {
 }
 
 /// The resume bar along the artwork's bottom edge: brand red on a dark
-/// track, flush with the artwork's own clip.
+/// track, flush with the artwork's own clip. Fixed 3 px high: inside a
+/// `StackFit.expand` stack it must sit in a `Positioned` (bottom, left and
+/// right), or the stack stretches it over the whole artwork.
 class ResumeLine extends StatelessWidget {
   final double fraction;
 

@@ -25,6 +25,16 @@ final _watchShown = Expando<Set<String>>();
 AssistantDisplay? _onceInRun(AssistantToolContext ctx, String key, AssistantDisplay display) =>
     (_watchShown[ctx] ??= {}).add(key) ? display : null;
 
+/// Whether an account the asker left out is this one, by the server's account
+/// name or by the label shown for it.
+bool _isExcluded(Set<String> excluded, String account, String user) =>
+    excluded.contains(account.trim().toLowerCase()) || excluded.contains(user.trim().toLowerCase());
+
+/// The key a repeat call is recognized by. The exclusions are encoded as a
+/// list: names may hold commas, so a plain join would merge two filters.
+String _watchKey(String scope, Set<String> excluded, [String? rest]) =>
+    jsonEncode([scope, ?rest, (excluded.toList()..sort())]);
+
 /// The owner token Plex's history and session routes need, as the detail
 /// screen's "Watched by" row uses it.
 String? _plexOwnerToken(AssistantToolContext ctx, ServerId id) {
@@ -89,7 +99,7 @@ Future<List<JellyfinActiveSession>?> _streamsOn(AssistantToolContext ctx, Server
 
 /// Streams on every server. Ids are positional: no server session id is
 /// passed on. Paused and transcoding are left out where a server does not say.
-Future<AssistantToolResult> _watchedNow(AssistantToolContext ctx) async {
+Future<AssistantToolResult> _watchedNow(AssistantToolContext ctx, {Set<String> excluded = const {}}) async {
   final read = await _perServer(ctx, (id) => _streamsOn(ctx, id));
   final answered = [
     for (final (id, s) in read)
@@ -101,7 +111,8 @@ Future<AssistantToolResult> _watchedNow(AssistantToolContext ctx) async {
   ];
   final shown = [
     for (final (id, streams) in read)
-      for (final s in streams ?? const <JellyfinActiveSession>[]) (server: ctx.serverName(id), s: s),
+      for (final s in streams ?? const <JellyfinActiveSession>[])
+        if (!_isExcluded(excluded, s.userName, s.userName)) (server: ctx.serverName(id), s: s),
   ].take(20).toList();
   return AssistantToolResult(
     {
@@ -123,7 +134,7 @@ Future<AssistantToolResult> _watchedNow(AssistantToolContext ctx) async {
     },
     display: _onceInRun(
       ctx,
-      'now',
+      _watchKey('now', excluded),
       AssistantWatchStats(
         serverName: _servedLabel(ctx, answered, unavailable),
         unavailable: [for (final id in unavailable) ctx.serverName(id)],
@@ -223,6 +234,7 @@ Future<_ServerPlays> _tautulliPlays(ServerId id, TautulliClient tautulli, int da
             title: clipText(_historyTitle(e)),
             userKey: e.userId != null ? 'id${e.userId}' : 'name${e.user ?? e.displayName}',
             user: clipText(e.displayName, 40),
+            account: e.user ?? e.displayName,
             seconds: e.playSeconds ?? 0,
             named: true,
           ),
@@ -250,6 +262,7 @@ Future<_ServerPlays?> _plexPlays(ServerId id, PlexClient plex, String token, int
           userKey: 'id${p.accountId}',
           // Same fallback label as fetchItemWatchers when /accounts is silent.
           user: clipText(p.userName ?? 'User ${p.accountId}', 40),
+          account: p.userName ?? '',
           seconds: 0,
           named: p.userName != null,
         ),
@@ -285,6 +298,7 @@ Future<_ServerPlays> _jellyfinPlays(ServerId id, JellyfinClient client, int days
         title: clipText(item.seriesName ?? item.title),
         userKey: user.id,
         user: clipText(user.name, 40),
+        account: user.name,
         seconds: 0,
         named: true,
       ));
@@ -324,6 +338,7 @@ Future<_ServerPlays?> _pleyaPlays(ServerId id, PleyaServerClient ps, int days) a
             title: clipText(w.seriesTitle ?? w.title),
             userKey: w.userId,
             user: clipText(w.userName, 40),
+            account: w.userName,
             seconds: 0,
             named: true,
           ),
@@ -356,15 +371,13 @@ Future<AssistantToolResult> _watchedPeriod(
     for (final r in served)
       for (final p in r.plays)
         if ((media == null || p.titleKey.startsWith('show:') == (media == 'show')) &&
-            !excluded.contains(p.user.trim().toLowerCase()))
+            !_isExcluded(excluded, p.account, p.user))
           p,
   ];
   final hours = served.isNotEmpty && served.every((r) => r.hours);
   // A server that ran out of time, or whose history hit the cap, may miss
   // plays: the card says so rather than ranking as if complete.
-  final partial = served.any(
-    (r) => r.extra['partial'] == true || r.extra.keys.any((k) => k.startsWith('capped_at_plays')),
-  );
+  final partial = served.any((r) => r.extra['partial'] == true || r.extra.keys.any((k) => k.startsWith('capped_at_')));
 
   final titles = <String, ({String title, int plays, Set<String> viewers, Set<ServerId> servers, bool show})>{};
   final users = <String, ({String name, int plays, int seconds})>{};
@@ -424,7 +437,7 @@ Future<AssistantToolResult> _watchedPeriod(
     },
     display: _onceInRun(
       ctx,
-      'period/$days/${media ?? 'all'}/${(excluded.toList()..sort()).join(',')}',
+      _watchKey('period', excluded, '$days/${media ?? 'all'}'),
       AssistantWatchStats(
         serverName: _servedLabel(ctx, answered, unavailable),
         days: days,

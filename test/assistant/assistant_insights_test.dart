@@ -782,6 +782,95 @@ void main() {
       },
     );
 
+    test('Jellyfin period: exclude_users matches a long account name, not only its clipped label', () async {
+      final inside = DateTime.now().subtract(const Duration(days: 1));
+      final long = 'averylongaccountname_' * 3;
+      final jf = _Jf(
+        'woon',
+        'Woonkamer',
+        users: [
+          ServerUser(id: 'u1', name: long, role: ServerUserRole.admin, allLibraries: true),
+          const ServerUser(id: 'u2', name: 'Sam', role: ServerUserRole.member, allLibraries: true),
+        ],
+        played: {
+          'u1': [_played('m1', 'Dune', inside)],
+          'u2': [_played('m2', 'Barbie', inside)],
+        },
+      );
+      final result =
+          await _tool('watch_stats').run(_ctx([jf]), ServerId('woon'), {
+                'scope': 'period',
+                'days': 7,
+                'exclude_users': [long],
+              })
+              as AssistantToolResult;
+      expect(result.data['plays'], 1, reason: 'the 40-character label of the long account must not survive');
+      expect((result.data['top_users']! as List).cast<Map<String, Object?>>().single['user'], 'Sam');
+    });
+
+    test('Jellyfin now: exclude_users leaves the asker\'s stream out of answer and card', () async {
+      _Jf server() => _Jf(
+        'woon',
+        'Woonkamer',
+        sessions: [
+          (
+            userName: 'Alex',
+            title: 'Severance',
+            episode: null,
+            progressPercent: 30,
+            paused: null,
+            transcoding: null,
+            device: null,
+          ),
+          (
+            userName: 'Sam',
+            title: 'Dune',
+            episode: null,
+            progressPercent: 10,
+            paused: null,
+            transcoding: null,
+            device: null,
+          ),
+        ],
+      );
+      final result =
+          await _tool('watch_stats').run(_ctx([server()]), ServerId('woon'), {
+                'scope': 'now',
+                'exclude_users': ['alex'],
+              })
+              as AssistantToolResult;
+      final sessions = (result.data['sessions']! as List).cast<Map<String, Object?>>();
+      expect(sessions.map((s) => s['user']), ['Sam']);
+      expect((result.display! as AssistantWatchStats).sessions.map((s) => s.title), ['Dune']);
+    });
+
+    test('exclude_users: a comma inside one name is not two names, and more than ten names are refused', () async {
+      final inside = DateTime.now().subtract(const Duration(days: 1));
+      final jf = _Jf(
+        'woon',
+        'Woonkamer',
+        users: const [
+          ServerUser(id: 'u1', name: 'Alex', role: ServerUserRole.admin, allLibraries: true),
+          ServerUser(id: 'u2', name: 'Bob', role: ServerUserRole.member, allLibraries: true),
+        ],
+        played: {
+          'u1': [_played('m1', 'Dune', inside)],
+          'u2': [_played('m2', 'Barbie', inside)],
+        },
+      );
+      final ctx = _ctx([jf]);
+      Future<AssistantToolResult> ask(List<String> names) async =>
+          await _tool('watch_stats').run(ctx, ServerId('woon'), {'scope': 'period', 'days': 7, 'exclude_users': names})
+              as AssistantToolResult;
+      final one = await ask(['alex,bob']);
+      final two = await ask(['alex', 'bob']);
+      expect(one.display, isNotNull);
+      expect(two.display, isNotNull, reason: 'a different filter in the same run still gets its own card');
+      expect(one.data['plays'], 2);
+      expect(two.data['plays'], 0);
+      await expectLater(ask([for (var i = 0; i < 11; i++) 'u$i']), throwsA(isA<AssistantToolError>()));
+    });
+
     test('Jellyfin period: users and plays per user are capped', () async {
       final day = DateTime.now();
       final jf = _Jf(
