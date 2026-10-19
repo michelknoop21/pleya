@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../database/app_database.dart';
 import '../../utils/app_logger.dart';
+import 'exclude_seen_store.dart';
 import 'memory_enabled_store.dart';
 import 'memory_models.dart';
 import 'memory_relevance.dart';
@@ -36,12 +37,14 @@ class MemoryService {
     required AppDatabase database,
     required String profileId,
     MemoryEnabledStore? enabledStore,
+    ExcludeSeenStore? excludeSeenStore,
     String Function()? newId,
     DateTime Function()? now,
   }) : _profileId = profileId,
        _removals = AssistantMemoryEpochs.removals(profileId),
        _store = MemoryStore(database, profileId),
        _enabledStore = enabledStore ?? MemoryEnabledStore(profileId),
+       _excludeSeenStore = excludeSeenStore ?? ExcludeSeenStore(profileId),
        _newId = newId ?? const Uuid().v4,
        _now = now ?? DateTime.now;
 
@@ -49,6 +52,7 @@ class MemoryService {
   final int _removals;
   final MemoryStore _store;
   final MemoryEnabledStore _enabledStore;
+  final ExcludeSeenStore _excludeSeenStore;
   final String Function() _newId;
   final DateTime Function() _now;
 
@@ -75,6 +79,15 @@ class MemoryService {
   Future<bool> get enabled => _enabledStore.read();
 
   Future<void> setEnabled(bool value) => _enabledStore.save(value);
+
+  /// Whether Big P leaves out what this profile watched or started (BP-11d).
+  /// Its fact in the memory is how it is seen and removed: deleting that fact
+  /// or wiping the memory turns it off.
+  Future<bool> get excludeSeen => _excludeSeenStore.read();
+
+  Future<void> setExcludeSeen(bool value) async {
+    if (_hasProfile && !_profileGone) await _excludeSeenStore.save(value);
+  }
 
   /// This profile's facts, newest change first. [query] keeps the facts that
   /// hold every word of it. Empty when the lookup fails.
@@ -175,6 +188,10 @@ class MemoryService {
           at: now > current.updatedAt ? now : current.updatedAt + 1,
         );
         await _store.deleteOverview();
+        // Rewording the preference's own fact leaves an ordinary fact behind.
+        if (ExcludeSeenStore.isSentence(current.value) && !ExcludeSeenStore.isSentence(nextValue)) {
+          await _excludeSeenStore.clear();
+        }
         return _stored(id);
       });
     });
@@ -190,6 +207,8 @@ class MemoryService {
         if (current == null) return const MemoryResult(MemoryCode.notFound);
         await _store.deleteById(id);
         await _store.deleteOverview();
+        // The standing preference goes with its own fact.
+        if (ExcludeSeenStore.isSentence(current.value)) await _excludeSeenStore.clear();
         return MemoryResult(MemoryCode.ok, MemoryFact.fromRow(current));
       });
     });
@@ -202,6 +221,7 @@ class MemoryService {
     AssistantMemoryEpochs.noteWipe(_profileId);
     return _guarded(_failed, () async {
       await _store.transaction(_store.deleteAll);
+      await _excludeSeenStore.clear();
       return const MemoryResult(MemoryCode.ok);
     });
   }

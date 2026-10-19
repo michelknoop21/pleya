@@ -104,11 +104,16 @@ extension _AssistantPrompt on AssistantRun {
       '- If several servers, libraries or users could match, ask one short question instead of acting.\n'
       '- Sensitive actions are confirmed by the user in Pleya. You cannot confirm them and must not ask '
       'for passwords.\n'
+      '- A tool result with status cancelled_by_user or not_confirmed means nothing was changed. Say it was not '
+      'done. Never say it was requested, created, added or saved.\n'
       '- Reply briefly, in $languageName, without technical details such as ids or tool names.\n'
       '- Pleya shows tool results as cards. Do not repeat their lists: one or two sentences about what stands '
       'out is enough.\n'
       '- Plain text only: no Markdown, no asterisks, headings or tables.\n'
       '- Never use em dashes or en dashes; use a comma, a colon or a new sentence.\n'
+      '- Give a reason for a recommendation only from what the tools returned (genres, rating, summary, cast) '
+      'or from what the user saved in their memory. Never say the user likes an actor, a genre or a kind of title '
+      'unless a tool result, that memory or the user in this conversation says so.\n'
       '- Write every film or series title you name between « and », with the year when you know it: '
       '«Interstellar» (2014). Pleya turns each into a card to open or request. '
       'Mark only titles you recommend or answer with: a title you mention as a reason ("because you watched ...") '
@@ -143,12 +148,19 @@ extension _AssistantPrompt on AssistantRun {
     final person = name.isEmpty ? 'the person using this Pleya profile' : '$name, the person using this Pleya profile';
     // The tool is offered only with a personal source and outside a Doctor
     // diagnosis; naming it otherwise sends the model to a tool that is not there.
-    if (!_available().keys.any((t) => t.name == 'my_watching')) {
-      return '- You talk with $person. I, me and my mean them.';
+    // unwatched and in_progress are this person's own state. Gemma answered
+    // "what do the others watch" with the asker's own in-progress titles.
+    final personalTool = _available().keys.any((t) => t.name == 'my_watching');
+    final others =
+        ' What other people on the servers watch comes only from watch_stats; when that does not answer, say it '
+        'is not available. Never answer it with ${personalTool ? 'search_catalog or my_watching' : 'search_catalog'}: '
+        'unwatched and in_progress there are only this person\'s own state.';
+    if (!personalTool) {
+      return '- You talk with $person. I, me and my mean them.$others';
     }
     return '- You talk with $person. I, me and my mean them. For their own watching, history or a tip for them '
         'use my_watching; watch_stats is everyone on the servers, under server account names that need not '
-        'match theirs.\n'
+        'match theirs.$others\n'
         // A tip answer read as a question ("How does The Bear sound?") and promised "a few" tips beside one
         // card: the tool's picks are the titles, and the user's count the limit.
         '- For a tip for them: say what you recommend and why in one or two sentences, as a statement and never as '

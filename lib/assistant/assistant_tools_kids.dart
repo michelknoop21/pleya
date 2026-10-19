@@ -12,10 +12,11 @@ class AssistantKidsAgesPrompt extends AssistantDisplay {
 }
 
 /// A question about the household's children came before any child was
-/// entered: the run ends with Pleya's own line and no title. Entering the
-/// children belongs to the household editor (BP-11c), so no card renders it.
+/// entered: the run ends with Pleya's own line and no title, and a card asks
+/// for the children (45 G). Pleya then submits [prompt] again.
 class AssistantHouseholdKidsPrompt extends AssistantDisplay {
-  const AssistantHouseholdKidsPrompt();
+  const AssistantHouseholdKidsPrompt(this.prompt);
+  final String prompt;
 }
 
 /// How a tool behaves on a children's profile.
@@ -123,13 +124,16 @@ typedef _Gated<T> = ({List<(T, TitleFacts?)> kept, Map<String, Object?> note, St
 
 /// Looks up facts for [rows] and, with [age], keeps only what AgeGate
 /// allows for that age. Turned-down titles are remembered on [ctx] so the
-/// run can hold the answer to them.
+/// run can hold the answer to them. After the age gate, and only then, the
+/// ask's standing filter drops what the profile watched or started (BP-11d),
+/// unless the tool call itself asks for the watch state ([seen] false).
 Future<_Gated<T>> _gateTitles<T>(
   AssistantToolContext ctx,
   List<T> rows,
   TitleRef Function(T row) refOf,
-  int? age,
-) async {
+  int? age, {
+  bool seen = true,
+}) async {
   final refs = [for (final r in rows) refOf(r)];
   final service = ctx.titleFacts;
   final List<TitleFacts?> facts = service == null || rows.isEmpty
@@ -137,24 +141,26 @@ Future<_Gated<T>> _gateTitles<T>(
       : await service.factsFor(refs);
   // Read once, and only when something needs it.
   late final region = ctx.region();
+  final List<(T, TitleFacts?)> passed;
+  final Map<String, Object?> note;
   if (age == null) {
-    return (
-      kept: [for (final (i, r) in rows.indexed) (r, facts[i])],
-      note: const <String, Object?>{},
-      region: () => region,
-    );
-  }
-  final kept = <(T, TitleFacts?)>[];
-  for (final (i, r) in rows.indexed) {
-    final f = facts[i] ?? const TitleFacts();
-    if (AgeGate.allows(f, age, region)) {
-      kept.add((r, facts[i]));
-      ctx.ageAllowed.add((title: refs[i].title, year: refs[i].year));
-    } else {
-      ctx.ageRejected.add((title: clipText(refs[i].title), year: refs[i].year, reason: AgeGate.reason(f, region)));
+    passed = [for (final (i, r) in rows.indexed) (r, facts[i])];
+    note = const <String, Object?>{};
+  } else {
+    passed = <(T, TitleFacts?)>[];
+    for (final (i, r) in rows.indexed) {
+      final f = facts[i] ?? const TitleFacts();
+      if (AgeGate.allows(f, age, region)) {
+        passed.add((r, facts[i]));
+        ctx.ageAllowed.add((title: refs[i].title, year: refs[i].year));
+      } else {
+        ctx.ageRejected.add((title: clipText(refs[i].title), year: refs[i].year, reason: AgeGate.reason(f, region)));
+      }
     }
+    note = {'filtered_for_age': rows.length - passed.length, 'kids_age': age};
   }
-  return (kept: kept, note: {'filtered_for_age': rows.length - kept.length, 'kids_age': age}, region: () => region);
+  final unseen = seen ? await _dropSeen(ctx, passed, refOf) : (kept: passed, note: const <String, Object?>{});
+  return (kept: unseen.kept, note: {...note, ...unseen.note}, region: () => region);
 }
 
 /// The compact facts for a row, or nothing when there are none.

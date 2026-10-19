@@ -2414,6 +2414,41 @@
     "kindSubtitles": "Subtitles"
   },
   "assistant": {
+    "household": {
+      "title": "Children at home",
+      "tileNone": "No children entered yet",
+      "tileCount": "${n} children",
+      "tileOne": "1 child",
+      "section": "Children",
+      "count": "${n} children",
+      "countOne": "1 child",
+      "add": "Add child",
+      "edit": "Edit child",
+      "note": "On this device only. Big P uses this to filter suggestions for your children, on every profile. Names never go to the AI model, only the age of the youngest child.",
+      "emptyTitle": "No children yet",
+      "name": "Name",
+      "birth": "Birth month",
+      "month": "Month",
+      "year": "Year",
+      "ageYears": "${n} years",
+      "ageMonths": "${n} months",
+      "ageNewborn": "Newborn",
+      "ageIgnored": "No longer counted",
+      "preview": "Now ${age}",
+      "save": "Save",
+      "delete": "Delete",
+      "deleteTitle": "Delete ${name}?",
+      "deleteBody": "Big P will no longer filter for this child.",
+      "deleteLast": "Big P will ask for the children again when you ask about your children.",
+      "limit": "At most 8 children.",
+      "tvHint": "Up and down chooses. Right goes to the year, OK to Save.",
+      "cardTitle": "Which children?",
+      "cardBody": "Add them once. Big P then filters with this on every profile. Names and months stay on this device. The AI model only gets the age of the youngest child.",
+      "cardFull": "There are already 8 children at home. Change them under Settings > Big P > Children at home.",
+      "addAnother": "Add another child",
+      "saveAndSearch": "Save and keep searching",
+      "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    },
     "kids": {
       "agesFirst": "First I need to know how old the children are.",
       "householdFirst": "I do not know yet which children you mean or how old they are, so I show no titles.",
@@ -2769,6 +2804,10 @@
         "failed": "Job failed",
         "background": "Job still running in the background",
         "unknown": "Job: status can no longer be determined"
+      },
+      "kinds": {
+        "scan_library": "Library scan",
+        "storage_recheck_roots": "Storage check"
       }
     },
     "result": {
@@ -2841,6 +2880,8 @@
       "nothingChanged": "Nothing was changed.",
       "modelMissing": "The chosen model is gone. Pick another one in the Big P settings.",
       "sourceChanged": "Your profile or server connection changed. Run the check again.",
+      "librariesLoading": "The libraries are still loading. Try again in a moment.",
+      "unknownLibrary": "I do not know that library.",
       "operationUnavailable": "This command could not be carried out with the available server functions.",
       "permissionDenied": "You do not have permission for this administration command on the server.",
       "malformedToolCall": "Something went wrong while looking that up. Please try again."

@@ -72,6 +72,7 @@ class NowWatchingService {
     return WatchSession(
       id: s.sessionKey,
       userName: s.displayName,
+      login: s.user,
       userThumb: s.userThumb,
       title: _title(s),
       subtitle: _subtitle(s),

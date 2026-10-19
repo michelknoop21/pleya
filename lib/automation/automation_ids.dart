@@ -311,6 +311,16 @@ class AutomationIds {
   /// and `[skip]`.
   static const String assistantKidsAgesButton = 'assistant.kidsAges.button';
 
+  /// Kinderen in huis: `[row]` per child on the list, the add/edit sheet and
+  /// its `[save]`, `[cancel]`, `[delete]`, `[month]`, `[year]` controls, and
+  /// the card Pleya shows when a kids question comes with no children entered
+  /// (state carries `kids`, the number saved so far plus the one being typed).
+  static const String householdKidsRow = 'household.kids.row';
+  static const String householdKidsButton = 'household.kids.button';
+  static const String householdKidSheet = 'household.kids.sheet';
+  static const String householdKidsField = 'household.kids.field';
+  static const String assistantHouseholdKids = 'assistant.householdKids';
+
   /// The card under an answer that asks whether to remember, replace or
   /// forget a fact; state carries the `kind`.
   static const String assistantMemory = 'assistant.memory';
@@ -760,6 +770,8 @@ class AutomationIds {
     assistantTaskCancel,
     assistantConfirmButton,
     assistantKidsAgesButton,
+    householdKidsRow,
+    householdKidsButton,
     assistantMemoryButton,
     bigpFollowUp,
     bigpLibraryAsk,
@@ -888,6 +900,11 @@ class AutomationIds {
     {'id': assistantConfirmButton, 'role': 'button', 'instanceable': true},
     {'id': assistantKidsAges, 'role': 'sheet', 'instanceable': false},
     {'id': assistantKidsAgesButton, 'role': 'button', 'instanceable': true},
+    {'id': householdKidsRow, 'role': 'list.item', 'instanceable': true},
+    {'id': householdKidsButton, 'role': 'button', 'instanceable': true},
+    {'id': householdKidSheet, 'role': 'sheet', 'instanceable': false},
+    {'id': householdKidsField, 'role': 'field', 'instanceable': false},
+    {'id': assistantHouseholdKids, 'role': 'sheet', 'instanceable': false},
     {'id': assistantMemory, 'role': 'sheet', 'instanceable': false},
     {'id': assistantMemoryButton, 'role': 'button', 'instanceable': true},
     {'id': assistantAnswer, 'role': 'region', 'instanceable': false},

@@ -221,13 +221,15 @@ void main() {
           ),
         ],
       );
-      expect(cardsOf(r), [gump, mile]);
+      // Nothing is narrowed; the named title leads, so the order is free.
+      expect(cardsOf(r), unorderedEquals([gump, mile]));
     });
 
     test('an answer that names two titles keeps every card', () async {
       final before = cardsOf(await singleAsk([findHanks, 'Hier zijn ze.'], 'Films met Tom Hanks'));
       final r = await singleAsk([findHanks, 'Dat is «$mile» (1999) of anders «$gump» (1994).'], one);
-      expect(cardsOf(r), before);
+      expect(cardsOf(r), unorderedEquals(before));
+      expect(cardsOf(r).take(2), [mile, gump], reason: 'the two it names lead, in its order');
     });
   });
 

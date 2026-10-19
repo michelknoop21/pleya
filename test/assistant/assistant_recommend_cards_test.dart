@@ -423,4 +423,178 @@ void main() {
       expect(r.text, 'Kijk «The Order» (2024).\n\nVeel plezier.');
     });
   });
+
+  // The recommendation is not the last of five cards (Michel, build 373): the
+  // cards start with the titles the answer names, in its order, and only move.
+  group('the named title leads the cards', () {
+    AssistantTool search(List<AssistantMediaGridEntry> entries) => AssistantTool(
+      name: 'search_catalog',
+      description: 'fake',
+      risk: AssistantToolRisk.read,
+      properties: const {},
+      needsServer: false,
+      serves: (_, _) => true,
+      run: (_, _, _) async => AssistantToolResult(const {'ok': true}, display: AssistantMediaGrid(entries)),
+    );
+    // Fresh per test: the answer reorders the cards in place.
+    List<AssistantMediaGridEntry> week() => [
+      (item: _item('a', 'The Diplomat', MediaKind.show, year: 2023), group: null),
+      (item: _item('b', 'The Florist', MediaKind.movie, year: 2026), group: null),
+      (item: _item('c', 'Buddy', MediaKind.movie, year: 2026), group: null),
+      (item: _item('d', 'Spider-Man: Homecoming', MediaKind.movie, year: 2017), group: null),
+    ];
+    Future<List<String>> shown(String answer) async {
+      final (r, _) = await _recommend(
+        'Wat is er deze week toegevoegd en echt een aanrader voor mij?',
+        answer,
+        picks: picks,
+        calls: const ['search_catalog'],
+        extraTools: [search(week())],
+      );
+      return _cards(r);
+    }
+
+    test('the same title found by a second search is one card, not two (BP-11g)', () async {
+      var call = 0;
+      final tool = AssistantTool(
+        name: 'search_catalog',
+        description: 'fake',
+        risk: AssistantToolRisk.read,
+        properties: const {},
+        needsServer: false,
+        serves: (_, _) => true,
+        // A fresh list per call; the second search overlaps the first in two
+        // titles, adds one, and finds a remake (other year) and a series of
+        // the same name and year.
+        run: (_, _, _) async => AssistantToolResult(
+          const {'ok': true},
+          display: AssistantMediaGrid(
+            call++ == 0
+                ? week()
+                : [
+                    (item: _item('a2', 'The Diplomat', MediaKind.show, year: 2023), group: null),
+                    (item: _item('b2', 'The Florist', MediaKind.movie, year: 2026), group: null),
+                    (item: _item('e', 'Moana', MediaKind.movie, year: 2016), group: null),
+                    (item: _item('f', 'Buddy', MediaKind.movie, year: 2012), group: null),
+                    (item: _item('g', 'Buddy', MediaKind.show, year: 2026), group: null),
+                  ],
+          ),
+        ),
+      );
+      final (r, _) = await _recommend(
+        'Wat is er deze week toegevoegd en echt een aanrader voor mij?',
+        'Kijk «Buddy» (2026).',
+        picks: picks,
+        calls: const ['search_catalog', 'search_catalog'],
+        extraTools: [tool],
+      );
+      expect(_cards(r).toList()..sort(), [
+        'Buddy',
+        'Buddy',
+        'Buddy',
+        'Moana',
+        'Spider-Man: Homecoming',
+        'The Diplomat',
+        'The Florist',
+      ], reason: 'two overlaps gone; the remake and the series of the same name stay');
+    });
+
+    test('a title named in plain prose with its year goes first', () async {
+      expect(await shown('Van de nieuwe toevoegingen raad ik je Spider-Man: Homecoming (2017) aan.'), [
+        'Spider-Man: Homecoming',
+        'The Diplomat',
+        'The Florist',
+        'Buddy',
+      ]);
+    });
+
+    test('two named titles keep the order the answer names them in, the rest as before', () async {
+      expect(await shown('Eerst «Buddy» (2026), daarna «The Diplomat» (2023).'), [
+        'Buddy',
+        'The Diplomat',
+        'The Florist',
+        'Spider-Man: Homecoming',
+      ]);
+    });
+
+    Future<List<String>> shownIn(
+      List<AssistantMediaGridEntry> grid,
+      String answer, {
+      List<String> calls = const ['search_catalog'],
+      Map<String, MediaItem> watched = const {},
+    }) async {
+      final (r, _) = await _recommend(
+        'Wat is er deze week toegevoegd en echt een aanrader voor mij?',
+        answer,
+        picks: picks,
+        calls: calls,
+        extraTools: [search(grid)],
+        watched: watched,
+      );
+      return _cards(r);
+    }
+
+    test('a franchise: the sequel or subtitle named leads, not the sibling that shares its first words', () async {
+      final grid = <AssistantMediaGridEntry>[
+        (item: _item('a', 'Spider-Man: Far From Home', MediaKind.movie, year: 2019), group: null),
+        (item: _item('b', 'Spider-Man: Homecoming', MediaKind.movie, year: 2017), group: null),
+      ];
+      expect(await shownIn(grid, 'Ik raad «Spider-Man: Homecoming» (2017) aan.'), [
+        'Spider-Man: Homecoming',
+        'Spider-Man: Far From Home',
+      ]);
+      final toys = <AssistantMediaGridEntry>[
+        (item: _item('a', 'Toy Story', MediaKind.movie, year: 1995), group: null),
+        (item: _item('b', 'Toy Story 2', MediaKind.movie, year: 1999), group: null),
+      ];
+      expect(await shownIn(toys, 'Kijk «Toy Story 2» (1999).'), ['Toy Story 2', 'Toy Story']);
+    });
+
+    test('two marked franchise titles keep the order the answer names them in', () async {
+      List<AssistantMediaGridEntry> grid() => [
+        (item: _item('a', 'Spider-Man: Far From Home', MediaKind.movie, year: 2019), group: null),
+        (item: _item('b', 'Spider-Man: Homecoming', MediaKind.movie, year: 2017), group: null),
+      ];
+      expect(await shownIn(grid(), 'Eerst «Spider-Man: Homecoming» (2017), dan «Spider-Man: Far From Home» (2019).'), [
+        'Spider-Man: Homecoming',
+        'Spider-Man: Far From Home',
+      ]);
+      expect(await shownIn(grid(), 'Eerst «Spider-Man: Far From Home» (2019), dan «Spider-Man: Homecoming» (2017).'), [
+        'Spider-Man: Far From Home',
+        'Spider-Man: Homecoming',
+      ]);
+    });
+
+    test('a marked title leads a title only mentioned as the reason', () async {
+      final grid = <AssistantMediaGridEntry>[
+        (item: _item('a', 'The Diplomat', MediaKind.show, year: 2023), group: null),
+        (item: _item('b', 'Buddy', MediaKind.movie, year: 2026), group: null),
+      ];
+      expect(await shownIn(grid, 'Omdat je The Diplomat keek, raad ik «Buddy» (2026) aan.'), ['Buddy', 'The Diplomat']);
+    });
+
+    test('a watched title named in plain words is the reason, not the pick', () async {
+      final grid = <AssistantMediaGridEntry>[
+        (item: _item('a', 'The Diplomat', MediaKind.show, year: 2023), group: null),
+        (item: _item('b', 'The Florist', MediaKind.movie, year: 2026), group: null),
+      ];
+      final seen = {'w': _item('w', 'The Diplomat', MediaKind.show, year: 2023)};
+      const answer = 'Omdat je The Diplomat keek, raad ik The Florist aan.';
+      expect(await shownIn(grid, answer, calls: const ['my_watching', 'search_catalog'], watched: seen), [
+        'The Florist',
+        'The Diplomat',
+      ]);
+      // Negative control: with nothing watched, the earlier plain mention leads.
+      expect(await shownIn(grid, answer), ['The Diplomat', 'The Florist']);
+    });
+
+    test('negative control: an answer that names none leaves the order alone', () async {
+      expect(await shown('Dit zijn de nieuwe titels van deze week.'), [
+        'The Diplomat',
+        'The Florist',
+        'Buddy',
+        'Spider-Man: Homecoming',
+      ]);
+    });
+  });
 }

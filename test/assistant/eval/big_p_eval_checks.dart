@@ -25,6 +25,9 @@ class EvalTurnOutcome {
   /// What the tools answered the model this turn, in order: tool name and
   /// the JSON the model received.
   List<({String tool, String content})> toolResults = const [];
+
+  /// The same calls as one line each: tool, arguments, start of the answer.
+  List<String> trace = const [];
 }
 
 class EvalOutcome {
@@ -81,7 +84,7 @@ List<({EvalNamed named, EvalTitle? fixture})> evalNamed(String text) {
   return found;
 }
 
-sealed class EvalHard {
+abstract class EvalHard {
   const EvalHard({this.fromTurn = 0});
 
   /// The first turn the check applies to: a statement turn before it may
@@ -221,10 +224,10 @@ class EvalNoToolMarkup extends EvalHard {
   ];
 }
 
-/// No answer promises a watch filter. Pleya enforces none today (BP-11d), so
-/// any promise to leave out what the user saw or started is one the code
-/// does not keep. When BP-11d enforces it, this check narrows to answers
-/// whose cards break the promise.
+/// No answer promises a watch filter its own cards break. Since BP-11d the
+/// title tools drop what the user watched or started once the wish is
+/// stated, so a promise is only a violation in a turn that still shows a
+/// card of a watched or started title.
 class EvalNoUnenforcedPromise extends EvalHard {
   const EvalNoUnenforcedPromise({super.fromTurn});
   @override
@@ -239,8 +242,9 @@ class EvalNoUnenforcedPromise extends EvalHard {
   @override
   List<String> check(EvalOutcome o) => [
     for (final (i, turn) in turnsOf(o))
-      for (final sentence in turn.result.text.split(RegExp(r'(?<=[.!?])\s+|\n')))
-        if (_promise.hasMatch(sentence) && _seen.hasMatch(sentence)) '$id: turn $i "${sentence.trim()}"',
+      if (evalCards(turn.result).any((c) => (evalTitle(c.title, c.year)?.seen ?? EvalSeen.no) != EvalSeen.no))
+        for (final sentence in turn.result.text.split(RegExp(r'(?<=[.!?])\s+|\n')))
+          if (_promise.hasMatch(sentence) && _seen.hasMatch(sentence)) '$id: turn $i "${sentence.trim()}"',
   ];
 }
 

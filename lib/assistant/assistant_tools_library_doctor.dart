@@ -45,6 +45,10 @@ MediaKind? assistantLibraryDoctorKind(String prompt) {
 
 final _doctorProposals = Expando<Map<String, _DoctorProposal>>('libraryDoctorProposals');
 
+/// How long a diagnosis waits for the library list to come in when it is empty.
+@visibleForTesting
+Duration assistantLibrariesWait = const Duration(seconds: 3);
+
 final List<AssistantTool> _libraryDoctorTools = [
   AssistantTool(
     name: 'diagnose_library',
@@ -233,12 +237,37 @@ Future<AssistantToolOutcome> _diagnoseLibrary(AssistantToolContext ctx, Map<Stri
   final itemId = args.containsKey('item_id') ? _string(args, 'item_id') : null;
   if ((library != null || itemId != null) && server == null) throw const AssistantToolError('missing_server_id');
   if (itemId != null) ctx.requireShownItem(ServerId(server!), itemId);
-  final roots = [
+  List<CatalogLibrary> pickRoots() => [
     for (final readKind in kind == null ? const [MediaKind.movie, MediaKind.show] : [kind])
       for (final root in loader.librariesFor(readKind))
         if ((server == null || root.serverId.value == server) && (library == null || root.libraryId == library)) root,
   ];
-  if (roots.isEmpty) throw const AssistantToolError('unknown_visible_library');
+  var roots = pickRoots();
+  bool nothingLoaded() => loader.librariesFor(MediaKind.movie).isEmpty && loader.librariesFor(MediaKind.show).isEmpty;
+  // A server that is registered but not connected (yet): right after the app
+  // starts or a profile switch the library list and the connections are still
+  // coming in. Only then is an empty list "not ready"; with every server
+  // connected it is the truth (nothing visible, everything hidden).
+  bool serversPending() => ctx.servers.serverIds.any((id) => !ctx.servers.isServerOnline(ServerId(id)));
+  final waiting = roots.isEmpty && nothingLoaded() && serversPending();
+  if (waiting) {
+    final until = DateTime.now().add(assistantLibrariesWait);
+    while (roots.isEmpty && nothingLoaded() && !ctx.cancelled && DateTime.now().isBefore(until)) {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      roots = pickRoots();
+    }
+  }
+  if (roots.isEmpty) {
+    // Which of three things it was: the lists are not in yet, the model named a
+    // server or library that does not exist, or there is nothing of this kind.
+    throw AssistantToolError(
+      waiting && nothingLoaded()
+          ? 'libraries_not_ready'
+          : server != null || library != null
+          ? 'unknown_library_argument'
+          : 'unknown_visible_library',
+    );
+  }
   final scan = _DoctorScan(ctx, loader, roots);
   scan.check();
   if (scan.clients.values.every((client) => client == null)) {

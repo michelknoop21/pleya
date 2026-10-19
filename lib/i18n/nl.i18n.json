@@ -2414,6 +2414,41 @@
     "kindSubtitles": "Ondertitels"
   },
   "assistant": {
+    "household": {
+      "title": "Kinderen in huis",
+      "tileNone": "Nog geen kinderen ingevoerd",
+      "tileCount": "${n} kinderen",
+      "tileOne": "1 kind",
+      "section": "Kinderen",
+      "count": "${n} kinderen",
+      "countOne": "1 kind",
+      "add": "Kind toevoegen",
+      "edit": "Kind bewerken",
+      "note": "Alleen op dit toestel. Big P gebruikt dit om voorstellen voor je kinderen te filteren, op elk profiel. De namen gaan nooit naar het AI-model, alleen de leeftijd van het jongste kind.",
+      "emptyTitle": "Nog geen kinderen",
+      "name": "Naam",
+      "birth": "Geboortemaand",
+      "month": "Maand",
+      "year": "Jaar",
+      "ageYears": "${n} jaar",
+      "ageMonths": "${n} maanden",
+      "ageNewborn": "Pas geboren",
+      "ageIgnored": "Telt niet meer mee",
+      "preview": "Wordt nu ${age}",
+      "save": "Bewaar",
+      "delete": "Verwijderen",
+      "deleteTitle": "${name} verwijderen?",
+      "deleteBody": "Big P filtert daarna niet meer op dit kind.",
+      "deleteLast": "Big P vraagt de kinderen daarna opnieuw als je naar je kinderen vraagt.",
+      "limit": "Maximaal 8 kinderen.",
+      "tvHint": "Omhoog en omlaag kiest. Rechts gaat naar het jaar, OK naar Bewaar.",
+      "cardTitle": "Voor welke kinderen?",
+      "cardBody": "Voeg ze één keer toe. Dan filtert Big P hiermee op elk profiel. Namen en maanden blijven op dit toestel. Het AI-model krijgt alleen de leeftijd van het jongste kind.",
+      "cardFull": "Er staan al 8 kinderen in huis. Pas ze aan bij Instellingen > Big P > Kinderen in huis.",
+      "addAnother": "Nog een kind toevoegen",
+      "saveAndSearch": "Bewaar en zoek verder",
+      "months": ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"]
+    },
     "kids": {
       "agesFirst": "Ik moet eerst weten hoe oud de kinderen zijn.",
       "householdFirst": "Ik weet nog niet welke kinderen je bedoelt en hoe oud ze zijn, dus ik laat geen titels zien.",
@@ -2769,6 +2804,10 @@
         "failed": "Taak mislukt",
         "background": "Taak loopt nog op de achtergrond",
         "unknown": "Taak: status niet meer vast te stellen"
+      },
+      "kinds": {
+        "scan_library": "Bibliotheek scannen",
+        "storage_recheck_roots": "Opslag controleren"
       }
     },
     "result": {
@@ -2841,6 +2880,8 @@
       "nothingChanged": "Er is niets veranderd.",
       "modelMissing": "Het gekozen model is er niet meer, kies een ander in Big P instellen.",
       "sourceChanged": "Je profiel of serververbinding is gewijzigd. Voer de controle opnieuw uit.",
+      "librariesLoading": "De bibliotheken worden nog geladen. Probeer het zo opnieuw.",
+      "unknownLibrary": "Die bibliotheek ken ik niet.",
       "operationUnavailable": "Deze opdracht kon niet worden uitgevoerd met de beschikbare serverfuncties.",
       "permissionDenied": "Je hebt geen toestemming voor deze beheeropdracht op de server.",
       "malformedToolCall": "Dat ging mis bij het opzoeken. Probeer het nog eens."

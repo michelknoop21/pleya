@@ -24,7 +24,7 @@ class BigPMobileFollowUps extends StatelessWidget {
     if (c.state != AssistantSurfaceState.result ||
         c.resultIsError ||
         c.pending != null ||
-        c.kidsAgesPrompt != null ||
+        c.kidsCardWaits ||
         c.memoryProposal != null) {
       return const [];
     }

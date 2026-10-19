@@ -1,5 +1,9 @@
 import '../media/media_kind.dart';
 
+// The standing wish about watched titles (BP-11d) lives in its own file, so
+// this one does not grow past its size; it is part of the intent all the same.
+export 'assistant_seen_intent.dart';
+
 /// Where a fact about the question comes from. Higher wins: a lower source
 /// never overrides a higher one (contract: security, then what the user said
 /// now, then the conversation, then memory, then defaults, then the model).
@@ -21,6 +25,14 @@ class IntentField<T> {
 
 /// Whose data a question is about.
 enum AssistantAudience { me, others, everyone }
+
+/// The asker speaks of themself in the same question ("en wat kan ik nog verder
+/// kijken", "die ik nog niet heb gezien"): their own state is then wanted too.
+/// Only phrases that ask for it count: "mijn server", "laat me zien", "behalve
+/// mij" and "ik ben benieuwd" are not that.
+final _askerOwnState = RegExp(
+  r"\b(kan|moet|mag|heb|zou|wil)\s+ik\b|\b(die|dat|waar|wat|welke)\s+ik\b|\bik\s+(nog\s+|al\s+)?(niet|verder|gebleven)\b|\bik wil (verder|iets)\b|\bmijn (begonnen|lopende|kijklijst)\b|\b(can|should|do) i\b|\bi('ve| have| haven't| left)\b|\bmy (started|unfinished|watchlist)\b",
+);
 
 // A watch verb, the anchor for every audience word: "others" or "everyone" on
 // its own also appear in recommendation sentences ("a film everyone likes").
@@ -408,6 +420,17 @@ class AssistantIntent {
       case 'list_servers':
         if (addedToLibraries) return (args: out, error: 'use_search_catalog');
       case 'search_catalog':
+        // in_progress and unwatched are this person's own state: for a question
+        // about what the others watch they answer with the asker's titles as
+        // cards (19 Oct 2026, gemma after watch_stats was unknown).
+        if (audience.explicit &&
+            audience.value != AssistantAudience.me &&
+            !mixedAudience &&
+            !unseenInLibrary &&
+            !_askerOwnState.hasMatch(words) &&
+            (args['in_progress'] == true || args['unwatched'] == true)) {
+          return (args: out, error: 'own_state_only');
+        }
         if (addedToLibraries && previousWeek) return (args: out, error: 'previous_week_not_supported');
         if (addedToLibraries) {
           if (longPeriodAsked && !mixedAudience && !audience.known) return (args: out, error: 'window_not_supported');

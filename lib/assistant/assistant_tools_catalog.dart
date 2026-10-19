@@ -74,6 +74,7 @@ final List<AssistantTool> _catalogTools = [
         'For what was added to the libraries in a period ("this week", "last 14 days") pass added_within_days (1-31): '
         'results then carry added_at; added_unknown counts the titles without a date. '
         'What the user has not watched yet in their library, also "my library", is unwatched=true here, not my_watching; '
+        'it leaves out titles the user started (a result with started: true is partly watched). '
         'for what has been waiting the longest ("al lang ongezien", "oldest unwatched") add sort=added_oldest: '
         'time since the title was added, never its release year; results carry added_at. '
         'Choose a useful shortlist with limit for recommendations or a requested number. For a listing of library titles '
@@ -83,8 +84,10 @@ final List<AssistantTool> _catalogTools = [
         'For "more" or "the next ones" repeat the same query (not with sort random) with offset set to next_offset. total_matches is the whole query and is '
         'absent when unknown; with more_matches say "at least matches_at_least", never a total. '
         'seen_before counts films left out because this profile\'s own watch history has them as finished. '
+        'When results is empty and below_min_rating is set, no title reaches min_rating: say so, or search again '
+        'with a lower min_rating (best_rating_below is the highest score found). '
         'Joint unseen uses recommend_together. Returns a task-local query_id; save only if can_become_home_row. '
-        'Explain home_row_unavailable_reason, partial, sampled, servers_left_out and coverage as returned.',
+        'Explain home_row_unavailable_reason, partial, sampled, servers_left_out, servers_offline and coverage as returned.',
     risk: AssistantToolRisk.read,
     properties: const {
       ...AssistantStrictFilters.properties,
@@ -130,7 +133,11 @@ final List<AssistantTool> _catalogTools = [
         query.groups,
         (g) => _itemRef(g.representativeSource.item.copyWith(serverId: g.representativeSource.serverId.value)),
         age,
+        seen: !(args['in_progress'] == true && ctx.seenFilter.continueAsk),
       );
+      // A saved Home row replays the query without the filter, and the totals
+      // count what it dropped: with the filter applied neither is offered.
+      final seenOn = age == null && ctx.seenFilter.on && !(args['in_progress'] == true && ctx.seenFilter.continueAsk);
       final facts = <String, TitleFacts>{};
       for (final (g, f) in gated.kept) {
         // The source's own server id: always set, unlike the item's.
@@ -145,6 +152,8 @@ final List<AssistantTool> _catalogTools = [
           if (item.year != null) 'year': item.year,
           'kind': item.kind.name,
           'server_id': serverId.value,
+          // Some of it was played: "unwatched" on a series still lets such a title through.
+          if (item.hasActiveProgress || item.isPartiallyWatched) 'started': true,
           if (query.genreUnverified.contains(g.groupId)) 'genre_unverified': true,
           if (_listedAddedAt(query, g) case final added?)
             'added_at': DateTime.fromMillisecondsSinceEpoch(
@@ -161,6 +170,12 @@ final List<AssistantTool> _catalogTools = [
           buildGlobalKey(g.representativeSource.serverId, g.representativeSource.item.id),
       };
       final entries = query.entries.where((e) => kept.contains(AssistantMediaGrid.keyOf(e))).toList();
+      if (seenOn) {
+        query.seenKept = {
+          for (final (g, _) in gated.kept)
+            for (final s in g.sources) buildGlobalKey(s.serverId, s.item.id),
+        };
+      }
       return AssistantToolResult({
         'query_id': queryId,
         // For children only what passed counts.
@@ -168,9 +183,17 @@ final List<AssistantTool> _catalogTools = [
         'count': entries.length,
         // The kids gate only sees the listed titles: no whole-set figure then,
         // and no count of titles that were never checked.
-        if (age == null && query.totalMatches != null) 'total_matches': query.totalMatches,
-        if (age == null && query.moreMatches) ...{'more_matches': true, 'matches_at_least': query.matchesRead},
+        if (age == null && !seenOn && query.totalMatches != null) 'total_matches': query.totalMatches,
+        if (age == null && !seenOn && query.moreMatches) ...{
+          'more_matches': true,
+          'matches_at_least': query.matchesRead,
+        },
         if (age == null && query.seenElsewhere > 0) 'seen_before': query.seenElsewhere,
+        // Nothing reaches the minimum rating: how many sit just under it.
+        if (age == null && query.offset == 0 && query.groups.isEmpty && query.belowRating > 0) ...{
+          'below_min_rating': query.belowRating,
+          if (query.bestBelowRating != null) 'best_rating_below': query.bestBelowRating,
+        },
         // Only a query that used the seen filter says how it was built.
         if (args['unwatched'] == true) ...{
           if (ctx.personal?.seenIncludesTrakt() == true) 'seen_includes_trakt': true,
@@ -185,13 +208,18 @@ final List<AssistantTool> _catalogTools = [
         // The next page of this query; absent when the read ends here, and then
         // more_matches says the library has more than was read.
         if (query.nextOffset case final next?) 'next_offset': next,
-        'can_become_home_row': query.row != null,
-        if (query.row == null) 'home_row_unavailable_reason': query.rowUnavailableReason,
+        'can_become_home_row': query.row != null && !seenOn,
+        if (seenOn)
+          'home_row_unavailable_reason':
+              'A saved Home row cannot repeat the standing filter for titles the user watched or started.'
+        else if (query.row == null)
+          'home_row_unavailable_reason': query.rowUnavailableReason,
         if (query.coverage != null) 'coverage': query.coverage,
         // A bare flag for a child: titles without a date are left out, nothing more.
-        if (query.partial || query.addedUnknown > 0) 'partial': true,
+        if (query.partial || query.addedUnknown > 0 || query.serversOffline.isNotEmpty) 'partial': true,
         if (query.sampled) 'sampled': true,
         if (query.serversLeftOut.isNotEmpty) 'servers_left_out': query.serversLeftOut,
+        if (query.serversOffline.isNotEmpty) 'servers_offline': query.serversOffline,
         if (query.genreUnverified.isNotEmpty) 'genre_unverified': query.genreUnverified.length,
         ...gated.note,
         'results': evidence,
@@ -220,7 +248,8 @@ final List<AssistantTool> _catalogTools = [
       final query = _requireQuery(ctx, args);
       query.checkCurrent?.call();
       final title = _label(args, 'title');
-      final row = query.row ?? (throw const AssistantToolError('query_not_row_compatible'));
+      final row = query.seenKept != null ? null : query.row;
+      if (row == null) throw const AssistantToolError('query_not_row_compatible');
       // A Home row belongs to the profile, not to a server. The run checks
       // `serves` again against this id, which holds for any profile server.
       final serverId = ctx.userServers.firstOrNull ?? (throw const AssistantToolError('no_servers'));
@@ -259,10 +288,19 @@ final List<AssistantTool> _catalogTools = [
       final query = _requireQuery(ctx, args);
       final name = _label(args, 'name');
       final client = _collectionClient(ctx, id!) ?? (throw const AssistantToolError('server_not_available'));
+      final seenKept = query.seenKept;
       final onServer = [
         for (final source in query.sources)
-          if (source.serverId == id) source,
+          if (source.serverId == id &&
+              (seenKept == null || seenKept.contains(buildGlobalKey(source.serverId, source.item.id))))
+            source,
       ];
+      final groups = seenKept == null
+          ? query.groups
+          : [
+              for (final g in query.groups)
+                if (g.sources.any((s) => seenKept.contains(buildGlobalKey(s.serverId, s.item.id)))) g,
+            ];
       var chosen = onServer;
       MediaLibrary? library;
       if (client.backend == MediaBackend.plex) {
@@ -280,13 +318,13 @@ final List<AssistantTool> _catalogTools = [
       final items = [for (final s in chosen) s.item];
       final elsewhere = onServer.length - items.length;
       // The card counts titles of the whole result, as the user saw them.
-      final included = query.groups.where((g) => g.sources.any(chosen.contains)).length;
+      final included = groups.where((g) => g.sources.any(chosen.contains)).length;
       return AssistantPendingAction(
         kind: AssistantActionKind.createCollection,
         serverId: id,
         serverName: ctx.serverName(id),
         // Built by Pleya: the card says how many of the result's titles go in.
-        subject: included == query.groups.length ? name : '$name ($included/${query.groups.length})',
+        subject: included == groups.length ? name : '$name ($included/${groups.length})',
         libraryNames: [?library?.title],
         items: _titles(items, 30),
         execute: ({password}) async {

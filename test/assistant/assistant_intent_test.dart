@@ -5,6 +5,46 @@ import 'package:pleya/media/media_kind.dart';
 AssistantIntent _i(String p) => AssistantIntent.fromPrompt(p);
 
 void main() {
+  group('own state under a question about others', () {
+    test('in_progress and unwatched are refused, the library questions are not', () {
+      final others = _i('Wat kijken de anderen op mijn server?');
+      expect(others.constrain('search_catalog', const {'in_progress': true}).error, 'own_state_only');
+      expect(others.constrain('search_catalog', const {'unwatched': true}).error, 'own_state_only');
+      expect(others.constrain('search_catalog', const {'unwatched': false}).error, isNull);
+      expect(
+        _i('Wat kijkt iedereen?').constrain('search_catalog', const {'in_progress': true}).error,
+        'own_state_only',
+      );
+      for (final q in [
+        'Wat kijken de anderen en wat kan ik nog verder kijken',
+        'Wat kijken de anderen? Ik wil verder kijken waar ik gebleven was',
+        'Welke films hebben de anderen gezien die ik nog niet heb gezien?',
+        'Wat kijkt iedereen? Laat mijn begonnen series zien',
+      ]) {
+        final i = _i(q);
+        expect(i.constrain('search_catalog', const {'in_progress': true}).error, isNull, reason: q);
+        expect(i.constrain('search_catalog', const {'unwatched': true}).error, isNull, reason: q);
+      }
+      for (final q in [
+        'Laat me zien wat de anderen kijken',
+        'Show me what the others watch',
+        'Wat kijken de anderen met mij op mijn server',
+        'Wat kijken de anderen? Geef me een lijst',
+        'Wat kijkt iedereen? Ik ben benieuwd',
+        'Wat kijkt iedereen behalve mij?',
+        'Wat kijken de anderen meer dan ik',
+        'what do the others watch, i mean on the server',
+      ]) {
+        expect(_i(q).constrain('search_catalog', const {'in_progress': true}).error, 'own_state_only', reason: q);
+      }
+      expect(_i('Wat heb ik nog niet gezien?').constrain('search_catalog', const {'unwatched': true}).error, isNull);
+      expect(
+        _i('Welke films staan al lang ongezien in mijn bibliotheek?').constrain('search_catalog', const {}).error,
+        isNull,
+      );
+    });
+  });
+
   group('fromPrompt', () {
     test('others, me and everyone, in Dutch and English, each marked explicit', () {
       expect(_i('Wat kijken de anderen het meest?').audience.value, AssistantAudience.others);

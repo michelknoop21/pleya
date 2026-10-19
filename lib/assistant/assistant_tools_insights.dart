@@ -103,7 +103,9 @@ const _playsPerUser = 200;
 /// server stay two users. [named] is false for a fallback label ("User 7"),
 /// which is never matched across servers. [account] is the source's own key
 /// for the person (a plex.tv id from Tautulli is global; every other id is
-/// that server's), null when the source gives none. [year] and [ids] are the
+/// that server's), null when the source gives none. [login] is the server's
+/// own account name, unclipped, so an exclusion by that name still lands when
+/// [user] is a friendly name or was clipped. [year] and [ids] are the
 /// title's own, null where the source gives none (most history rows).
 typedef _Play = ({
   String server,
@@ -111,6 +113,7 @@ typedef _Play = ({
   String title,
   String userKey,
   String user,
+  String login,
   int seconds,
   bool named,
   AssistantAccountKey? account,

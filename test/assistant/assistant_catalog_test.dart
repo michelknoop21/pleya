@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -46,6 +47,9 @@ UnifiedMediaGroup _group(
   String server = _server,
   int? added,
   MediaBackend backend = MediaBackend.jellyfin,
+  int? leaves,
+  int? viewed,
+  double? rating,
 }) {
   final source = UnifiedMediaSource.fromItem(
     MediaItem(
@@ -57,6 +61,9 @@ UnifiedMediaGroup _group(
       serverId: server,
       libraryId: library,
       addedAt: added,
+      leafCount: leaves,
+      viewedLeafCount: viewed,
+      rating: rating,
     ),
   );
   return UnifiedMediaGroup(
@@ -94,7 +101,8 @@ class _Loader implements HomeCustomRowLoader {
 
 /// A server that only answers a text search; everything else is unused here.
 class _SearchServer implements MediaServerClient {
-  _SearchServer(String id, this.backend, {this.hits = const [], this.fail = false}) : serverId = ServerId(id);
+  _SearchServer(String id, this.backend, {this.hits = const [], this.fail = false, this.hang = false})
+    : serverId = ServerId(id);
   @override
   final ServerId serverId;
   @override
@@ -102,11 +110,15 @@ class _SearchServer implements MediaServerClient {
   final List<MediaItem> hits;
   final bool fail;
 
+  /// Never answers: a server that is up for the health check but stalls.
+  final bool hang;
+
   @override
   String get serverName => serverId.value;
 
   @override
-  Future<List<MediaItem>> searchItems(String query, {int limit = 100}) async => fail ? throw StateError('down') : hits;
+  Future<List<MediaItem>> searchItems(String query, {int limit = 100}) =>
+      hang ? Completer<List<MediaItem>>().future : (fail ? Future.error(StateError('down')) : Future.value(hits));
 
   @override
   void close() {}
@@ -682,6 +694,29 @@ void main() {
     expect(server.parents, [null]);
   });
 
+  test('create_collection takes only the titles the standing watch filter kept (BP-11d)', () async {
+    final personal = AssistantPersonalServices(
+      userName: 'M',
+      recent: () async => const [],
+      everSeen: () async => const {},
+      everSeenIdentities: () async => [(key: 'x', title: 'Aliens', year: 2001, show: false, tokens: <String>{})],
+      taste: () async => const AffinityVector({}, eventCount: 0),
+      picks: (_) async => const [],
+    );
+    Future<AssistantPendingAction> collection(bool on) async {
+      final (ctx, _, _, _) = await setUpCtx(personal: personal);
+      ctx.seenFilter = AssistantSeenFilter(on: on);
+      final data = await search(ctx, {'kind': 'movie'});
+      return await _tool('create_collection').run(ctx, id, {'query_id': data['query_id'], 'name': 'Mix'})
+          as AssistantPendingAction;
+    }
+
+    expect((await collection(false)).items, ['Alien', 'Aliens', 'Heat'], reason: 'negative control');
+    final kept = await collection(true);
+    expect(kept.items, ['Alien', 'Heat']);
+    expect(kept.subject, 'Mix');
+  });
+
   test('create_collection reports a created collection whose items did not all land', () async {
     final (ctx, _, _, server) = await setUpCtx();
     server.failAdd = true;
@@ -716,6 +751,166 @@ void main() {
     final title = (results.single as Map)['title'] as String;
     expect(title, isNot(contains('\n')));
     expect(title.length, lessThanOrEqualTo(81));
+  });
+
+  test('a server that does not answer is named, in both search paths (DEC-142)', () async {
+    final (ctx, _, _, _) = await setUpCtx();
+    ctx.servers.debugRegisterClientForTesting(_SearchServer('kelder', MediaBackend.jellyfin), online: false);
+
+    final row = await search(ctx, {'kind': 'movie'});
+    expect(row['servers_offline'], ['kelder']);
+    expect(row['partial'], isTrue, reason: 'the result misses that server');
+    expect(row['total_matches'], isNull, reason: 'no total while a server is missing');
+
+    final text = await search(ctx, {'kind': 'movie', 'text': 'alien'});
+    expect(text['servers_offline'], ['kelder']);
+    expect(text['partial'], isTrue);
+    expect(text['total_matches'], isNull);
+  });
+
+  test('an offline server does not cost the answer: the online servers still list their titles', () async {
+    final (ctx, _, _, _) = await setUpCtx(groups: [_group('m1', 'Alien')]);
+    ctx.servers.debugRegisterClientForTesting(_SearchServer('kelder', MediaBackend.jellyfin), online: false);
+    final data = await search(ctx, {'kind': 'movie'});
+    expect([for (final r in (data['results'] as List).cast<Map>()) r['title']], ['Alien']);
+    expect(data['servers_offline'], ['kelder']);
+  });
+
+  test('a server that stalls is named and the others answer a text search in time', () async {
+    final saved = assistantServerTimeout;
+    assistantServerTimeout = const Duration(milliseconds: 150);
+    addTearDown(() => assistantServerTimeout = saved);
+    final (ctx, _, _, _) = await setUpCtx(
+      servers: (() {
+        final m = MultiServerManager();
+        addTearDown(m.dispose);
+        m.debugRegisterClientForTesting(_SearchServer('jf-2', MediaBackend.jellyfin, hits: [_movie('j1', 'Alien')]));
+        m.debugRegisterClientForTesting(_SearchServer('jf-3', MediaBackend.jellyfin, hang: true));
+        return m;
+      })(),
+    );
+    final watch = Stopwatch()..start();
+    final data = await search(ctx, {'text': 'alien'});
+    expect(watch.elapsed, lessThan(const Duration(seconds: 3)));
+    expect([for (final r in (data['results'] as List).cast<Map>()) r['item_id']], ['j1']);
+    expect(data['servers_offline'], ['jf-3']);
+    expect(data['partial'], isTrue);
+  });
+
+  test('a partly watched title is marked started, a watched or untouched one is not (BP-11k)', () async {
+    final (ctx, _, _, _) = await setUpCtx(
+      groups: [
+        _group('s1', 'Begonnen', leaves: 20, viewed: 6),
+        _group('s2', 'Onaangeroerd', leaves: 20, viewed: 0),
+        _group('s3', 'Uitgekeken', leaves: 20, viewed: 20),
+        _group('m1', 'Film'),
+      ],
+    );
+    final data = await search(ctx, {});
+    final results = {for (final r in (data['results'] as List).cast<Map>()) r['title']: r};
+    expect(results['Begonnen']!['started'], isTrue);
+    for (final title in ['Onaangeroerd', 'Uitgekeken', 'Film']) {
+      expect(results[title]!.containsKey('started'), isFalse, reason: title);
+    }
+  });
+
+  test('unwatched=true leaves out started titles, in the row path and the text path (BP-11k)', () async {
+    final (ctx, _, _, _) = await setUpCtx(
+      groups: [_group('s1', 'Begonnen', leaves: 20, viewed: 6), _group('s2', 'Onaangeroerd', leaves: 20, viewed: 0)],
+    );
+    final row = await search(ctx, {'unwatched': true, 'kind': 'movie'});
+    expect([for (final r in (row['results'] as List).cast<Map>()) r['title']], ['Onaangeroerd']);
+    expect(row['can_become_home_row'], isFalse, reason: 'Home keeps started titles, so the row would differ');
+    final all = await search(ctx, {'kind': 'movie'});
+    expect((all['results'] as List), hasLength(2), reason: 'control: without the filter both are listed');
+    expect(all['can_become_home_row'], isTrue, reason: 'control: nothing dropped, the row is allowed');
+
+    final (textCtx, _, _, _) = await setUpCtx(
+      servers: (() {
+        final m = MultiServerManager();
+        addTearDown(m.dispose);
+        m.debugRegisterClientForTesting(
+          _SearchServer(
+            'jf-2',
+            MediaBackend.jellyfin,
+            hits: [_movie('j1', 'Alien').copyWith(durationMs: 6000000, viewOffsetMs: 1800000), _movie('j2', 'Aliens')],
+          ),
+        );
+        return m;
+      })(),
+    );
+    final text = await search(textCtx, {'text': 'alien', 'unwatched': true});
+    expect([for (final r in (text['results'] as List).cast<Map>()) r['item_id']], ['j2']);
+  });
+
+  test('a text search with unwatched=true that finds nothing answers empty, not failed (BP-11m)', () async {
+    final (ctx, _, _, _) = await setUpCtx(
+      servers: (() {
+        final m = MultiServerManager();
+        addTearDown(m.dispose);
+        m.debugRegisterClientForTesting(_SearchServer('jf-2', MediaBackend.jellyfin, hits: const []));
+        return m;
+      })(),
+    );
+    final data = await search(ctx, {'text': 'friends', 'unwatched': true});
+    expect(data.containsKey('error'), isFalse, reason: '$data');
+    expect(data['results'], isEmpty);
+  });
+
+  test('a minimum rating nothing reaches says how many sit under it and the best score (BP-11m)', () async {
+    final (ctx, _, _, _) = await setUpCtx(
+      groups: [_group('m1', 'Alien', rating: 6.1), _group('m2', 'Aliens', rating: 6.8), _group('m3', 'Heat')],
+    );
+    final low = await search(ctx, {'kind': 'movie', 'min_rating': 7});
+    expect(low['results'], isEmpty);
+    expect(low['below_min_rating'], 3);
+    expect(low['best_rating_below'], 6.8);
+    final fine = await search(ctx, {'kind': 'movie', 'min_rating': 6.5});
+    expect((fine['results'] as List), hasLength(1));
+    expect(fine.containsKey('below_min_rating'), isFalse, reason: 'control: a result is left, nothing to explain');
+  });
+
+  test(
+    'min_rating: paging past the end says nothing about the rating, and watched titles are not counted (BP-11m)',
+    () async {
+      final (ctx, _, _, _) = await setUpCtx(
+        groups: [
+          _group('m1', 'Alien', rating: 8.1),
+          _group('m2', 'Aliens', rating: 8.4),
+          _group('m3', 'Heat', rating: 5.0),
+        ],
+      );
+      final past = await search(ctx, {'kind': 'movie', 'min_rating': 8, 'offset': 5});
+      expect(past['results'], isEmpty);
+      expect(past.containsKey('below_min_rating'), isFalse, reason: 'two titles reach 8: the page is past the end');
+    },
+  );
+
+  test('min_rating in a text search: a title on two servers under the minimum counts once (BP-11m)', () async {
+    final m = MultiServerManager();
+    addTearDown(m.dispose);
+    for (final id in ['jf-2', 'jf-3']) {
+      m.debugRegisterClientForTesting(
+        _SearchServer(id, MediaBackend.jellyfin, hits: [_movie('a', 'Alien').copyWith(rating: 6.2, serverId: id)]),
+      );
+    }
+    final (ctx, _, _, _) = await setUpCtx(servers: m);
+    final data = await search(ctx, {'text': 'alien', 'min_rating': 7});
+    expect(data['results'], isEmpty);
+    expect(data['best_rating_below'], 6.2);
+    expect(data['below_min_rating'], 1);
+  });
+
+  test('find_title says it is not for the films of an actor; search_catalog person is (BP-11m)', () {
+    final find = assistantTools.firstWhere((t) => t.name == 'find_title');
+    expect(find.description, contains('Not for the films of an actor or director'));
+  });
+
+  test('no offline server: no servers_offline marker', () async {
+    final (ctx, _, _, _) = await setUpCtx();
+    final data = await search(ctx, {'kind': 'movie'});
+    expect(data.containsKey('servers_offline'), isFalse);
+    expect(data['total_matches'], isNotNull, reason: 'control: a complete read has a total');
   });
 
   test('servers that cannot run a filter are left out of the query, and named', () async {

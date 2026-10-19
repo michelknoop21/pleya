@@ -96,7 +96,16 @@ class PleyaServerClient
         _PleyaServerUnsupportedMethods,
         _PleyaServerAdminMethods,
         ServerAuthorityGuard
-    implements MediaServerClient, ScopedMediaServerClient, GracefullyCloseable {
+    implements MediaServerClient, FreshMediaItemClient, ScopedMediaServerClient, GracefullyCloseable {
+  @override
+  Future<MediaItem?> fetchFreshItem(String id) async {
+    if (!wireCapabilities.watchState) return null;
+    // The item endpoint is network-only, but user_state is optional. A
+    // catalogue-only answer cannot replace this session's local stop.
+    final item = await fetchItem(id);
+    return item?.viewOffsetMs == null ? null : item;
+  }
+
   PleyaServerClient._({required PleyaServerSession session, required MediaServerHttpClient http})
     : _session = session,
       _http = http;

@@ -25,6 +25,16 @@ final _watchShown = Expando<Set<String>>();
 AssistantDisplay? _onceInRun(AssistantToolContext ctx, String key, AssistantDisplay display) =>
     (_watchShown[ctx] ??= {}).add(key) ? display : null;
 
+/// Whether an account the asker left out is this one, by the server's account
+/// name or by the label shown for it.
+bool _isExcluded(Set<String> excluded, String login, String user) =>
+    excluded.contains(login.trim().toLowerCase()) || excluded.contains(user.trim().toLowerCase());
+
+/// The key a repeat call is recognized by. The exclusions are encoded as a
+/// list: names may hold commas, so a plain join would merge two filters.
+String _watchKey(String scope, Set<String> excluded, List<Object?> rest) =>
+    jsonEncode([scope, ...rest, (excluded.toList()..sort())]);
+
 /// The owner token Plex's history and session routes need, as the detail
 /// screen's "Watched by" row uses it.
 String? _plexOwnerToken(AssistantToolContext ctx, ServerId id) {
@@ -59,7 +69,7 @@ String _servedLabel(AssistantToolContext ctx, List<ServerId> answered, List<Serv
 /// A stream with what is known of its kind: true an episode, false a film,
 /// null not a film or episode, or the source does not say (a track, a clip, a
 /// recording; Pleya Server's stream list carries no kind).
-typedef _Stream = ({JellyfinActiveSession s, bool? episode});
+typedef _Stream = ({JellyfinActiveSession s, bool? episode, String? login});
 
 bool? _episodeOf(String? kind) => switch (kind) {
   'episode' => true,
@@ -68,7 +78,9 @@ bool? _episodeOf(String? kind) => switch (kind) {
 };
 
 Future<List<_Stream>?> _streamsOn(AssistantToolContext ctx, ServerId id) async {
-  List<_Stream> tag(List<JellyfinActiveSession> list) => [for (final s in list) (s: s, episode: _episodeOf(s.kind))];
+  List<_Stream> tag(List<JellyfinActiveSession> list) => [
+    for (final s in list) (s: s, episode: _episodeOf(s.kind), login: null),
+  ];
   // Tautulli answers only for the Plex server it monitors.
   if (ctx.insights?.tautulliFor(id) case final tautulli?) {
     final now = await const NowWatchingService().resolve(tautulli);
@@ -88,6 +100,7 @@ Future<List<_Stream>?> _streamsOn(AssistantToolContext ctx, ServerId id) async {
             ),
             // Tautulli's own media_type, never the display subtitle.
             episode: _episodeOf(s.mediaType),
+            login: s.login,
           ),
       ];
     }
@@ -123,18 +136,25 @@ Future<AssistantToolResult> _watchedNow(
   // Only what is playing right now, never history. A kind asks for the streams
   // known to be of that kind; those whose source does not say are counted, not
   // listed as if they were.
+  var leftOutByName = 0;
   var kindUnknown = 0;
   var otherKind = 0;
   final all = <({String server, JellyfinActiveSession s})>[];
   for (final (id, streams) in read) {
     for (final st in streams ?? const <_Stream>[]) {
-      if (excluded.contains(st.s.userName.trim().toLowerCase())) continue;
+      final gone = _isExcluded(excluded, st.login ?? st.s.userName, st.s.userName);
       if (media == null || st.episode == (media == 'show')) {
-        all.add((server: ctx.serverName(id), s: st.s));
-      } else if (st.s.kind == null) {
-        kindUnknown++;
-      } else {
-        otherKind++;
+        if (gone) {
+          leftOutByName++;
+        } else {
+          all.add((server: ctx.serverName(id), s: st.s));
+        }
+      } else if (!gone) {
+        if (st.s.kind == null) {
+          kindUnknown++;
+        } else {
+          otherKind++;
+        }
       }
     }
   }
@@ -142,6 +162,8 @@ Future<AssistantToolResult> _watchedNow(
   return AssistantToolResult(
     {
       'live_streams_only': true,
+      // Said so the model does not read an empty list as "nobody is watching".
+      if (leftOutByName > 0) 'streams_excluded': leftOutByName,
       if (media != null) ...{
         'kind_filter': media,
         'streams_kind_unknown': kindUnknown,
@@ -165,7 +187,7 @@ Future<AssistantToolResult> _watchedNow(
     },
     display: _onceInRun(
       ctx,
-      'now',
+      _watchKey('now', excluded, [media]),
       AssistantWatchStats(
         serverName: _servedLabel(ctx, answered, unavailable),
         kindFilter: media == null ? null : (media == 'show' ? MediaKind.show : MediaKind.movie),
@@ -261,7 +283,7 @@ Future<AssistantToolResult> _watchedPeriod(
     for (final r in served)
       for (final p in r.plays)
         if ((media == null || p.titleKey.startsWith('show:') == (media == 'show')) &&
-            !excluded.contains(p.user.trim().toLowerCase()))
+            !_isExcluded(excluded, p.login, p.user))
           p,
   ];
   // "The others" is decided on account keys. A play whose person cannot be told
@@ -357,7 +379,7 @@ Future<AssistantToolResult> _watchedPeriod(
     },
     display: _onceInRun(
       ctx,
-      'period/$days/${media ?? 'all'}/${others ? 'others' : 'all'}/${(excluded.toList()..sort()).join(',')}',
+      _watchKey('period', excluded, [days, media, others]),
       AssistantWatchStats(
         serverName: _servedLabel(ctx, answered, unavailable),
         days: days,

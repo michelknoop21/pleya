@@ -2590,6 +2590,7 @@ class _TranslationsAssistantNl extends TranslationsAssistantEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override late final _TranslationsAssistantHouseholdNl household = _TranslationsAssistantHouseholdNl._(_root);
 	@override late final _TranslationsAssistantKidsNl kids = _TranslationsAssistantKidsNl._(_root);
 	@override late final _TranslationsAssistantMemoryNl memory = _TranslationsAssistantMemoryNl._(_root);
 	@override String get tileTitle => 'Big P';
@@ -3273,6 +3274,61 @@ class _TranslationsTvMyPleyaSemanticsNl extends TranslationsTvMyPleyaSemanticsEn
 	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
 }
 
+// Path: assistant.household
+class _TranslationsAssistantHouseholdNl extends TranslationsAssistantHouseholdEn {
+	_TranslationsAssistantHouseholdNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Kinderen in huis';
+	@override String get tileNone => 'Nog geen kinderen ingevoerd';
+	@override String tileCount({required Object n}) => '${n} kinderen';
+	@override String get tileOne => '1 kind';
+	@override String get section => 'Kinderen';
+	@override String count({required Object n}) => '${n} kinderen';
+	@override String get countOne => '1 kind';
+	@override String get add => 'Kind toevoegen';
+	@override String get edit => 'Kind bewerken';
+	@override String get note => 'Alleen op dit toestel. Big P gebruikt dit om voorstellen voor je kinderen te filteren, op elk profiel. De namen gaan nooit naar het AI-model, alleen de leeftijd van het jongste kind.';
+	@override String get emptyTitle => 'Nog geen kinderen';
+	@override String get name => 'Naam';
+	@override String get birth => 'Geboortemaand';
+	@override String get month => 'Maand';
+	@override String get year => 'Jaar';
+	@override String ageYears({required Object n}) => '${n} jaar';
+	@override String ageMonths({required Object n}) => '${n} maanden';
+	@override String get ageNewborn => 'Pas geboren';
+	@override String get ageIgnored => 'Telt niet meer mee';
+	@override String preview({required Object age}) => 'Wordt nu ${age}';
+	@override String get save => 'Bewaar';
+	@override String get delete => 'Verwijderen';
+	@override String deleteTitle({required Object name}) => '${name} verwijderen?';
+	@override String get deleteBody => 'Big P filtert daarna niet meer op dit kind.';
+	@override String get deleteLast => 'Big P vraagt de kinderen daarna opnieuw als je naar je kinderen vraagt.';
+	@override String get limit => 'Maximaal 8 kinderen.';
+	@override String get tvHint => 'Omhoog en omlaag kiest. Rechts gaat naar het jaar, OK naar Bewaar.';
+	@override String get cardTitle => 'Voor welke kinderen?';
+	@override String get cardBody => 'Voeg ze één keer toe. Dan filtert Big P hiermee op elk profiel. Namen en maanden blijven op dit toestel. Het AI-model krijgt alleen de leeftijd van het jongste kind.';
+	@override String get cardFull => 'Er staan al 8 kinderen in huis. Pas ze aan bij Instellingen > Big P > Kinderen in huis.';
+	@override String get addAnother => 'Nog een kind toevoegen';
+	@override String get saveAndSearch => 'Bewaar en zoek verder';
+	@override List<String> get months => [
+		'januari',
+		'februari',
+		'maart',
+		'april',
+		'mei',
+		'juni',
+		'juli',
+		'augustus',
+		'september',
+		'oktober',
+		'november',
+		'december',
+	];
+}
+
 // Path: assistant.kids
 class _TranslationsAssistantKidsNl extends TranslationsAssistantKidsEn {
 	_TranslationsAssistantKidsNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -3548,6 +3604,7 @@ class _TranslationsAssistantJobsNl extends TranslationsAssistantJobsEn {
 	// Translations
 	@override late final _TranslationsAssistantJobsScanLibraryNl scanLibrary = _TranslationsAssistantJobsScanLibraryNl._(_root);
 	@override late final _TranslationsAssistantJobsRetryJobNl retryJob = _TranslationsAssistantJobsRetryJobNl._(_root);
+	@override late final _TranslationsAssistantJobsKindsNl kinds = _TranslationsAssistantJobsKindsNl._(_root);
 }
 
 // Path: assistant.result
@@ -3640,6 +3697,8 @@ class _TranslationsAssistantEndsNl extends TranslationsAssistantEndsEn {
 	@override String get nothingChanged => 'Er is niets veranderd.';
 	@override String get modelMissing => 'Het gekozen model is er niet meer, kies een ander in Big P instellen.';
 	@override String get sourceChanged => 'Je profiel of serververbinding is gewijzigd. Voer de controle opnieuw uit.';
+	@override String get librariesLoading => 'De bibliotheken worden nog geladen. Probeer het zo opnieuw.';
+	@override String get unknownLibrary => 'Die bibliotheek ken ik niet.';
 	@override String get operationUnavailable => 'Deze opdracht kon niet worden uitgevoerd met de beschikbare serverfuncties.';
 	@override String get permissionDenied => 'Je hebt geen toestemming voor deze beheeropdracht op de server.';
 	@override String get malformedToolCall => 'Dat ging mis bij het opzoeken. Probeer het nog eens.';
@@ -3998,6 +4057,17 @@ class _TranslationsAssistantJobsRetryJobNl extends TranslationsAssistantJobsRetr
 	@override String get failed => 'Taak mislukt';
 	@override String get background => 'Taak loopt nog op de achtergrond';
 	@override String get unknown => 'Taak: status niet meer vast te stellen';
+}
+
+// Path: assistant.jobs.kinds
+class _TranslationsAssistantJobsKindsNl extends TranslationsAssistantJobsKindsEn {
+	_TranslationsAssistantJobsKindsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get scan_library => 'Bibliotheek scannen';
+	@override String get storage_recheck_roots => 'Opslag controleren';
 }
 
 // Path: assistant.confirm.titles
@@ -6434,6 +6504,50 @@ extension on TranslationsNl {
 			'languageSettings.toastFallbackDetailGlobal' => ({required Object wanted}) => 'Je globale voorkeur blijft ${wanted} en geldt weer zodra een aflevering hem heeft.',
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Ondertitels',
+			'assistant.household.title' => 'Kinderen in huis',
+			'assistant.household.tileNone' => 'Nog geen kinderen ingevoerd',
+			'assistant.household.tileCount' => ({required Object n}) => '${n} kinderen',
+			'assistant.household.tileOne' => '1 kind',
+			'assistant.household.section' => 'Kinderen',
+			'assistant.household.count' => ({required Object n}) => '${n} kinderen',
+			'assistant.household.countOne' => '1 kind',
+			'assistant.household.add' => 'Kind toevoegen',
+			'assistant.household.edit' => 'Kind bewerken',
+			'assistant.household.note' => 'Alleen op dit toestel. Big P gebruikt dit om voorstellen voor je kinderen te filteren, op elk profiel. De namen gaan nooit naar het AI-model, alleen de leeftijd van het jongste kind.',
+			'assistant.household.emptyTitle' => 'Nog geen kinderen',
+			'assistant.household.name' => 'Naam',
+			'assistant.household.birth' => 'Geboortemaand',
+			'assistant.household.month' => 'Maand',
+			'assistant.household.year' => 'Jaar',
+			'assistant.household.ageYears' => ({required Object n}) => '${n} jaar',
+			'assistant.household.ageMonths' => ({required Object n}) => '${n} maanden',
+			'assistant.household.ageNewborn' => 'Pas geboren',
+			'assistant.household.ageIgnored' => 'Telt niet meer mee',
+			'assistant.household.preview' => ({required Object age}) => 'Wordt nu ${age}',
+			'assistant.household.save' => 'Bewaar',
+			'assistant.household.delete' => 'Verwijderen',
+			'assistant.household.deleteTitle' => ({required Object name}) => '${name} verwijderen?',
+			'assistant.household.deleteBody' => 'Big P filtert daarna niet meer op dit kind.',
+			'assistant.household.deleteLast' => 'Big P vraagt de kinderen daarna opnieuw als je naar je kinderen vraagt.',
+			'assistant.household.limit' => 'Maximaal 8 kinderen.',
+			'assistant.household.tvHint' => 'Omhoog en omlaag kiest. Rechts gaat naar het jaar, OK naar Bewaar.',
+			'assistant.household.cardTitle' => 'Voor welke kinderen?',
+			'assistant.household.cardBody' => 'Voeg ze één keer toe. Dan filtert Big P hiermee op elk profiel. Namen en maanden blijven op dit toestel. Het AI-model krijgt alleen de leeftijd van het jongste kind.',
+			'assistant.household.cardFull' => 'Er staan al 8 kinderen in huis. Pas ze aan bij Instellingen > Big P > Kinderen in huis.',
+			'assistant.household.addAnother' => 'Nog een kind toevoegen',
+			'assistant.household.saveAndSearch' => 'Bewaar en zoek verder',
+			'assistant.household.months.0' => 'januari',
+			'assistant.household.months.1' => 'februari',
+			'assistant.household.months.2' => 'maart',
+			'assistant.household.months.3' => 'april',
+			'assistant.household.months.4' => 'mei',
+			'assistant.household.months.5' => 'juni',
+			'assistant.household.months.6' => 'juli',
+			'assistant.household.months.7' => 'augustus',
+			'assistant.household.months.8' => 'september',
+			'assistant.household.months.9' => 'oktober',
+			'assistant.household.months.10' => 'november',
+			'assistant.household.months.11' => 'december',
 			'assistant.kids.agesFirst' => 'Ik moet eerst weten hoe oud de kinderen zijn.',
 			'assistant.kids.householdFirst' => 'Ik weet nog niet welke kinderen je bedoelt en hoe oud ze zijn, dus ik laat geen titels zien.',
 			'assistant.kids.noFit' => 'Ik heb geen titel die bij de leeftijd van de kinderen past. Vraag het me anders.',
@@ -6691,6 +6805,8 @@ extension on TranslationsNl {
 			'assistant.jobs.retryJob.failed' => 'Taak mislukt',
 			'assistant.jobs.retryJob.background' => 'Taak loopt nog op de achtergrond',
 			'assistant.jobs.retryJob.unknown' => 'Taak: status niet meer vast te stellen',
+			'assistant.jobs.kinds.scan_library' => 'Bibliotheek scannen',
+			'assistant.jobs.kinds.storage_recheck_roots' => 'Opslag controleren',
 			'assistant.result.doneBy' => 'Uitgevoerd door Pleya',
 			'assistant.result.notDoneBy' => 'Niet uitgevoerd door Pleya',
 			'assistant.result.done' => 'Klaar',
@@ -6741,6 +6857,8 @@ extension on TranslationsNl {
 			'assistant.notes.replacesAllAccess' => 'Vervangt alle bestaande toegang van deze gebruiker op deze server.',
 			'assistant.ends.noTools' => 'Big P kan nu niets doen op je servers.',
 			'assistant.ends.toolsUnsupported' => 'Dit model kan geen tools gebruiken. Kies een ander model bij de instellingen van Big P.',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.ends.stepLimit' => 'Dit kostte te veel stappen. Probeer een kortere vraag.',
 			'assistant.ends.notEntitled' => 'Big P is niet beschikbaar op dit account.',
 			'assistant.ends.providerUnauthorized' => 'De AI-provider weigert de sleutel. Controleer hem bij de instellingen van Big P.',
@@ -6750,6 +6868,8 @@ extension on TranslationsNl {
 			'assistant.ends.nothingChanged' => 'Er is niets veranderd.',
 			'assistant.ends.modelMissing' => 'Het gekozen model is er niet meer, kies een ander in Big P instellen.',
 			'assistant.ends.sourceChanged' => 'Je profiel of serververbinding is gewijzigd. Voer de controle opnieuw uit.',
+			'assistant.ends.librariesLoading' => 'De bibliotheken worden nog geladen. Probeer het zo opnieuw.',
+			'assistant.ends.unknownLibrary' => 'Die bibliotheek ken ik niet.',
 			'assistant.ends.operationUnavailable' => 'Deze opdracht kon niet worden uitgevoerd met de beschikbare serverfuncties.',
 			'assistant.ends.permissionDenied' => 'Je hebt geen toestemming voor deze beheeropdracht op de server.',
 			'assistant.ends.malformedToolCall' => 'Dat ging mis bij het opzoeken. Probeer het nog eens.',
@@ -6787,8 +6907,6 @@ extension on TranslationsNl {
 			'assistant.settings.unreadableTitle' => 'Big P-instelling vervangen?',
 			'assistant.settings.unreadableBody' => 'Je iCloud-sleutelhanger heeft een Big P-instelling van een nieuwere Pleya op een ander apparaat. Deze versie kan die niet lezen. Vervangen wijzigt de instelling op al je apparaten.',
 			'assistant.settings.replace' => 'Vervangen',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.settings.currentModel' => 'Model',
 			'assistant.settings.keyStored' => 'Opgeslagen, verborgen',
 			'assistant.settings.errorUrlInvalid' => 'Vul een adres in dat begint met http:// of https://.',

@@ -244,7 +244,7 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware, Widget
   bool _asks(AssistantController c) =>
       c.availability == AssistantAvailability.ready &&
       c.pending == null &&
-      c.kidsAgesPrompt == null &&
+      !c.kidsCardWaits &&
       c.memoryProposal == null;
 
   Widget _avatar(AssistantController c, double size) => RepaintBoundary(

@@ -8,6 +8,7 @@ extension _AssistantResult on AssistantRun {
     // A pick grid the answer never narrowed (cancelled, an action, a step
     // limit) names nothing: its picks were never shown.
     _displays.removeWhere(_pickGrids.contains);
+    _dedupeGrids();
     final evidenceContext = _ctx;
     final namedTitlesCurrent = _namedTitlesCurrent;
     bool displaysCurrent() => evidenceContext.recommendationError == null && (namedTitlesCurrent?.call() ?? true);
@@ -71,6 +72,7 @@ extension _AssistantResult on AssistantRun {
       return AssistantRunResult(
         end: end,
         actions: List.unmodifiable(_actions),
+        displays: [_displays.whereType<AssistantHouseholdKidsPrompt>().first],
         householdKidsNeeded: true,
         providerError: error,
         error: failure,
@@ -94,14 +96,19 @@ extension _AssistantResult on AssistantRun {
         memoryRefused: refused,
       );
     }
+    // A children's profile keeps no memory: a typed "onthoud dat ..." gets
+    // Pleya's own refusal, whatever the model said (BP-11h).
+    final kidsRefusal = end == AssistantRunEnd.answered && turn.kidsTyped ? t.assistant.memory.kids : null;
     return AssistantRunResult(
       end: end,
-      text: _ctx.libraryDoctorMode
-          ? _ctx.libraryDoctorAnswer?.call(languageName) ??
-                (languageName == 'Dutch'
-                    ? 'Geen gecontroleerde bibliotheekgegevens; de diagnose blijft onbekend.'
-                    : 'No checked library evidence; the diagnosis remains unknown.')
-          : text,
+      text:
+          kidsRefusal ??
+          (_ctx.libraryDoctorMode
+              ? _ctx.libraryDoctorAnswer?.call(languageName) ??
+                    (languageName == 'Dutch'
+                        ? 'Geen gecontroleerde bibliotheekgegevens; de diagnose blijft onbekend.'
+                        : 'No checked library evidence; the diagnosis remains unknown.')
+              : text),
       libraryDoctorError: () => evidenceContext.libraryDoctorError,
       spoilerPrompt: _spoilerQuestion,
       playbackEvidenceCurrent: () => evidenceContext.playbackEvidenceCurrent,

@@ -209,5 +209,75 @@ void main() {
 
       expect(resolved.viewOffsetMs, 600000);
     });
+
+    test('a cached server value two seconds behind still keeps the local bridge', () async {
+      final store = await storeWithProgressPatch();
+
+      final resolved = store.apply(
+        movie(viewOffsetMs: 300000, lastViewedAt: secondsAfterPatch(const Duration(seconds: -2))),
+      );
+
+      expect(resolved.viewOffsetMs, 600000);
+    });
+
+    for (final timestamp in [null, 0, secondsAfterPatch(const Duration(seconds: -2))]) {
+      test('an explicit fresh read ignores a pre-existing patch with timestamp $timestamp', () async {
+        final store = await storeWithProgressPatch();
+        final beforeRead = store.revision;
+        final fresh = movie(viewOffsetMs: 2700000, lastViewedAt: timestamp);
+
+        expect(store.apply(fresh, afterRevision: beforeRead), same(fresh));
+        // Reading the server must not destroy the bridge needed if a later
+        // request fails or an offline screen still holds cached metadata.
+        expect(store.apply(movie(viewOffsetMs: 300000)).viewOffsetMs, 600000);
+      });
+    }
+
+    test('a local event after a read began wins even with the same wall clock', () async {
+      final store = await storeWithProgressPatch();
+      final beforeRead = store.revision;
+      await _emit(_event(changeType: WatchStateChangeType.progressUpdate, isNowWatched: false, viewOffset: 3000000));
+
+      final resolved = store.apply(movie(viewOffsetMs: 2700000), afterRevision: beforeRead);
+
+      expect(resolved.viewOffsetMs, 3000000);
+    });
+
+    test('an unrelated event does not make an old item patch new again', () async {
+      final store = await storeWithProgressPatch();
+      final beforeRead = store.revision;
+      await _emit(_event(changeType: WatchStateChangeType.unwatched, isNowWatched: false, itemId: 'other'));
+
+      expect(store.apply(movie(viewOffsetMs: 2700000), afterRevision: beforeRead).viewOffsetMs, 2700000);
+    });
+
+    test('a fresh child read keeps only ancestor changes made during that read', () async {
+      final store = WatchStateStore(now: () => patchedAt);
+      addTearDown(store.dispose);
+      store.setActiveClientScopesByServer({'jf-machine': 'jf-machine/user-a'});
+      await _emit(
+        _event(
+          changeType: WatchStateChangeType.watched,
+          isNowWatched: true,
+          itemId: 'show-1',
+          cacheServerId: 'jf-machine/user-a',
+        ),
+      );
+      final beforeRead = store.revision;
+      final fresh = _episode.copyWith(viewOffsetMs: 2700000);
+
+      expect(store.apply(fresh, afterRevision: beforeRead), same(fresh));
+      await _emit(
+        _event(
+          changeType: WatchStateChangeType.unwatched,
+          isNowWatched: false,
+          itemId: 'season-1',
+          cacheServerId: 'jf-machine/user-a',
+        ),
+      );
+      final resolved = store.apply(fresh, afterRevision: beforeRead);
+      expect(resolved.isWatched, isFalse);
+      expect(resolved.viewOffsetMs, 0);
+    });
   });
 }

@@ -215,6 +215,7 @@ class PlexClient
     with MediaServerCacheMixin, _PlexLiveTvClientMethods, ServerAuthorityGuard
     implements
         MediaServerClient,
+        FreshMediaItemClient,
         SeasonEpisodePagingClient,
         PersonSearchClient,
         GracefullyCloseable,
@@ -1120,12 +1121,13 @@ class PlexClient
   /// Get metadata by rating key with images (includes clearLogo)
   /// Uses cache when offline or as fallback on network error
   /// Always fetches with chapters/markers but caches at base endpoint
-  Future<PlexMetadataDto?> _getMetadataWithImages(String ratingKey) async {
+  Future<PlexMetadataDto?> _getMetadataWithImages(String ratingKey, {bool allowCacheFallback = true}) async {
     // Cache key is always the base endpoint (no query params)
     final cacheKey = '/library/metadata/$ratingKey';
 
     return fetchWithCacheFallback<PlexMetadataDto>(
       cacheKey: cacheKey,
+      allowCacheFallback: allowCacheFallback,
       networkCall: () async {
         final response = await _http.get(
           '/library/metadata/$ratingKey',
@@ -3330,6 +3332,12 @@ class PlexClient
   @override
   Future<MediaItem?> fetchItem(String id) async {
     final metadata = await _getMetadataWithImages(id);
+    return metadata == null ? null : PlexMappers.mediaItem(metadata);
+  }
+
+  @override
+  Future<MediaItem?> fetchFreshItem(String id) async {
+    final metadata = await _getMetadataWithImages(id, allowCacheFallback: false);
     return metadata == null ? null : PlexMappers.mediaItem(metadata);
   }
 

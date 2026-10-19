@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+
 import '../services/settings_service.dart';
 
 /// One child of the household, as a parent entered it: a name (never sent to
@@ -20,6 +22,14 @@ class HouseholdKid {
   }
 
   static final _month = RegExp(r'^(\d{4})-(0[1-9]|1[0-2])$');
+
+  /// Whole months since the birth month in [now]; null for a future month.
+  int? monthsAt(DateTime now) {
+    final m = _month.firstMatch(birthMonth);
+    if (m == null) return null;
+    final diff = (now.year - int.parse(m[1]!)) * 12 + now.month - int.parse(m[2]!);
+    return diff < 0 ? null : diff;
+  }
 
   /// Whole years of age in [now], strict: the birthday counts from the month
   /// after the birth month. Null for a birth month in the future or a child
@@ -51,6 +61,12 @@ int? householdGateAge(List<HouseholdKid> kids, DateTime now, {Set<String> ids = 
 class HouseholdKidsStore {
   static const _pref = StringPref('household_kids');
 
+  /// At most this many children; [save] refuses more.
+  static const maxKids = 8;
+
+  /// Bumps after every save, so a screen that shows the children re-reads.
+  static final changes = ValueNotifier<int>(0);
+
   Future<List<HouseholdKid>> read() async {
     final raw = (await SettingsService.getInstance()).read(_pref);
     if (raw.isEmpty) return const [];
@@ -61,10 +77,11 @@ class HouseholdKidsStore {
     }
   }
 
-  /// Saves [kids]; refused (false) on a children's profile.
+  /// Saves [kids]; refused (false) on a children's profile or above [maxKids].
   Future<bool> save(List<HouseholdKid> kids, {required bool kidsProfile}) async {
-    if (kidsProfile) return false;
+    if (kidsProfile || kids.length > maxKids) return false;
     await (await SettingsService.getInstance()).write(_pref, jsonEncode([for (final k in kids) k.toJson()]));
+    changes.value++;
     return true;
   }
 }

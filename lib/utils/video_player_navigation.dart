@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../media/media_item.dart';
+import '../media/media_server_client.dart';
 import '../mpv/mpv.dart';
 import '../models/transcode_quality_preset.dart';
 import '../providers/download_provider.dart';
@@ -262,11 +263,10 @@ Future<bool?> navigateToVideoPlayer(
         ? manager.getClient(serverId)
         : null;
 
-    // Refetch so the resume position is the server's current one, not whatever
-    // the list or detail snapshot happened to carry. `fetchWithCacheFallback` is
-    // network-first, so this is a real read; it only falls back to the cache when
-    // the request fails, which is the behaviour we want anyway.
-    // Fetch failure → play what we have, flagged as not fresh.
+    // A normal fetchItem can silently return cached data. Only the explicit
+    // fresh-read capability may replace the local fallback. Capture the
+    // store's revision before awaiting so a late response cannot wipe a local
+    // event received while this request was in flight.
     var resumeProgressIsFresh = false;
     if (shouldRefetchForFreshResume(
       resolveWatchState: resolveWatchState,
@@ -274,15 +274,27 @@ Future<bool?> navigateToVideoPlayer(
       hasClient: mediaClient != null,
       kind: metadata.kind,
     )) {
+      final watchStateStore = context.read<WatchStateStore?>();
+      final beforeRead = watchStateStore?.revision;
+      final freshClient = mediaClient is FreshMediaItemClient ? mediaClient : null;
       try {
-        final fetched = await mediaClient!.fetchItem(metadata.id);
+        final fetched = freshClient != null
+            ? await freshClient.fetchFreshItem(metadata.id)
+            : await mediaClient!.fetchItem(metadata.id);
         if (!context.mounted) return null;
         if (fetched != null) {
-          metadata = fetched;
-          resumeProgressIsFresh = true;
+          metadata = freshClient != null
+              ? watchStateStore?.apply(fetched, afterRevision: beforeRead) ?? fetched
+              : context.readFreshWatchState(fetched);
+          // A concurrent local event is useful, but is not server evidence.
+          resumeProgressIsFresh = freshClient != null && identical(metadata, fetched);
+        } else {
+          metadata = context.readFreshWatchState(metadata);
         }
+      } catch (_) {
+        if (!context.mounted) return null;
         metadata = context.readFreshWatchState(metadata);
-      } catch (_) {}
+      }
     }
     if (!context.mounted) return null;
 

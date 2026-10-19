@@ -36,6 +36,7 @@ Future<_ServerPlays> _tautulliPlays(ServerId id, TautulliClient tautulli, int da
             title: clipText(_historyTitle(e)),
             userKey: e.userId != null ? 'id${e.userId}' : 'name${e.user ?? e.displayName}',
             user: clipText(e.displayName, 40),
+            login: e.user ?? e.displayName,
             seconds: e.playSeconds ?? 0,
             named: true,
             // Tautulli reports plex.tv ids, global to the service.
@@ -67,6 +68,7 @@ Future<_ServerPlays?> _plexPlays(ServerId id, PlexClient plex, String token, int
           userKey: 'id${p.accountId}',
           // Same fallback label as fetchItemWatchers when /accounts is silent.
           user: clipText(p.userName ?? 'User ${p.accountId}', 40),
+          login: p.userName ?? '',
           seconds: 0,
           named: p.userName != null,
           // The Plex server's own account numbering, valid on that server only.
@@ -106,6 +108,7 @@ Future<_ServerPlays> _jellyfinPlays(ServerId id, JellyfinClient client, int days
         title: clipText(item.seriesName ?? item.title),
         userKey: user.id,
         user: clipText(user.name, 40),
+        login: user.name,
         seconds: 0,
         named: true,
         account: AssistantAccountKey(
@@ -152,6 +155,7 @@ Future<_ServerPlays?> _pleyaPlays(ServerId id, PleyaServerClient ps, int days) a
             title: clipText(w.seriesTitle ?? w.title),
             userKey: w.userId,
             user: clipText(w.userName, 40),
+            login: w.userName,
             seconds: 0,
             named: true,
             account: AssistantAccountKey(AssistantAccountProvider.pleyaServer, w.userId, serverId: id.value),

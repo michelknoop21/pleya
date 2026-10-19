@@ -18,7 +18,7 @@ extension _AssistantAnswer on AssistantRun {
 
   /// Marks that the ask needs the household's children, once per ask.
   void _askHousehold() {
-    if (!_displays.any((d) => d is AssistantHouseholdKidsPrompt)) _displays.add(const AssistantHouseholdKidsPrompt());
+    if (!_displays.any((d) => d is AssistantHouseholdKidsPrompt)) _displays.add(AssistantHouseholdKidsPrompt(_prompt));
   }
 
   /// The ages card, once per ask.
@@ -35,9 +35,13 @@ extension _AssistantAnswer on AssistantRun {
     final step = await _lookupNamedTitles(answer);
     final rejected = _rejectedNamed(answer);
     final unvetted = _unvettedNamed(answer, rejected);
-    final clean = rejected.isEmpty && unvetted.isEmpty;
+    final seen = _seenNamed(answer);
+    final aged = rejected.isNotEmpty || unvetted.isNotEmpty;
+    final clean = !aged && seen.isEmpty;
     if (clean && step?.display != null) _displays.add(step!.display!);
     if (clean) _keepTheOneNamed(answer);
+    if (clean) _keepNamedOnly(answer);
+    if (clean) _namedFirst(answer);
     if (step != null) {
       onStep?.call(
         AssistantStep(
@@ -51,7 +55,8 @@ extension _AssistantAnswer on AssistantRun {
     }
     if (clean) return null;
     if (!mayCorrect) {
-      _ageNotice = true;
+      if (aged) _ageNotice = true;
+      if (seen.isNotEmpty) _ctx.seenFilter.notice = true;
       return null;
     }
     return [
@@ -59,7 +64,11 @@ extension _AssistantAnswer on AssistantRun {
         'Not suitable for the youngest child (${_ctx.kidsAge} years): '
             '${[for (final r in rejected) '«${r.title}» (${r.reason})'].join(', ')}.',
       if (unvetted.isNotEmpty) 'Not checked by the age filter: ${unvetted.join(', ')}.',
-      'Name only titles from tool results that passed the age filter, or say that none fits.',
+      if (seen.isNotEmpty)
+        'Left out because the user watched or started them: ${[for (final s in seen) '«${s.title}»'].join(', ')}.',
+      aged
+          ? 'Name only titles from tool results that passed the age filter, or say that none fits.'
+          : 'Name only titles from tool results, or say that none fits.',
     ].join(' ');
   }
 
@@ -146,6 +155,95 @@ extension _AssistantAnswer on AssistantRun {
   /// Whether a closing answer names titles the way Pleya can tell: in « »,
   /// or followed by a year, also on a list line.
   bool _namesTitles(String answer) => answer.contains('«') || RegExp(r'\((?:18|19|20)\d{2}\)').hasMatch(answer);
+
+  /// How [answer] names the title, for ranking its card, or null when it does
+  /// not: tier 0 when it is marked (between « and », or with its year), tier 1
+  /// when only its plain words appear and the title is distinctive (two words or
+  /// eight letters). A watched title named without a mark is the reason or the
+  /// one left out, not the pick. [at] is where the mark is (tier 0) or the
+  /// earliest plain-words position (tier 1); [length] breaks a tie in favour of
+  /// the longer name, so "Toy Story 2" outranks "Toy Story" where both match.
+  ({int tier, int at, int length})? _mentionOf(String answer, String? title, int? year) {
+    final name = (title ?? '').toLowerCase();
+    if (name.isEmpty) return null;
+    final lower = answer.toLowerCase();
+    // A marked title ranks by where it is marked, not by where its first words
+    // happen to occur: "Spider-Man: Far From Home" also starts with "Spider-Man".
+    final marks = [
+      for (final needle in ['«$name»', '«$name (', if (year != null) '$name ($year)'])
+        if (lower.indexOf(needle) case final at when at >= 0) at,
+    ]..sort();
+    final marked = marks.isNotEmpty;
+    if (marked) {
+      return (tier: 0, at: marks.first, length: name.length);
+    }
+    final plain = ' ${assistantPlainWords(answer)} ';
+    int? at;
+    var length = 0;
+    for (final w in assistantTitleWords(title!)) {
+      if (!w.contains(' ') && w.length < 8) continue;
+      final found = plain.indexOf(' $w ');
+      if (found < 0) continue;
+      if (at == null || found < at) at = found;
+      if (w.length > length) length = w.length;
+    }
+    if (at == null) return null;
+    // A watched title in plain words is the reason, or the one left out.
+    final watched = _history.any((h) => assistantSameTitle((key: h.key, year: h.year), assistantTitleKey(title), year));
+    return watched ? null : (tier: 1, at: at, length: length);
+  }
+
+  /// A list of cards starts with the titles the answer names, marked ones
+  /// first, in the order it names them, then the rest as they were. Only
+  /// reorders: the recommendation is not the last of five. After an action the
+  /// action is the answer.
+  void _namedFirst(String answer) {
+    if (_actions.isNotEmpty || _spoilerQuestion != null || _ctx.libraryDoctorMode) return;
+    List<T> sorted<T>(List<T> all, ({int tier, int at, int length})? Function(T) mention) {
+      final named = <(({int tier, int at, int length}), int, T)>[];
+      final rest = <T>[];
+      for (final (index, e) in all.indexed) {
+        final m = mention(e);
+        if (m == null) {
+          rest.add(e);
+        } else {
+          named.add((m, index, e));
+        }
+      }
+      named.sort((a, b) {
+        final x = a.$1;
+        final y = b.$1;
+        final byTier = x.tier.compareTo(y.tier);
+        if (byTier != 0) return byTier;
+        final byAt = x.at.compareTo(y.at);
+        if (byAt != 0) return byAt;
+        final byLength = y.length.compareTo(x.length);
+        return byLength != 0 ? byLength : a.$2.compareTo(b.$2);
+      });
+      return [for (final n in named) n.$3, ...rest];
+    }
+
+    // In place: the lookups and the shown-title bookkeeping know a display by
+    // its identity, so it is not replaced.
+    void reorder<T>(List<T> list, ({int tier, int at, int length})? Function(T) mention) {
+      final next = sorted(list, mention);
+      try {
+        list.setAll(0, next);
+      } on UnsupportedError {
+        // An unmodifiable list stays as it is.
+      }
+    }
+
+    for (final display in _displays) {
+      switch (display) {
+        case AssistantMediaGrid(:final entries):
+          reorder(entries, (e) => _mentionOf(answer, e.item.title, e.item.year));
+        case AssistantTitleMatches(:final matches):
+          reorder(matches, (m) => _mentionOf(answer, m.title, m.year));
+        default:
+      }
+    }
+  }
 
   /// The titles [answer] recommends, for a personal answer: those it names
   /// except a title named as the reason ("omdat je Reacher keek"), which is
@@ -371,6 +469,31 @@ extension _AssistantAnswer on AssistantRun {
     }
     if (!current()) return null;
     return (index: index, display: display, current: current);
+  }
+
+  /// One card per title across the grids of a run: a later search that finds
+  /// a title an earlier grid already shows does not show it again. Inside one
+  /// grid nothing is removed (the same title on two servers is that grid's
+  /// own choice). A grid left empty goes; its facts stay with it.
+  void _dedupeGrids() {
+    final shown = <String>{};
+    String keyOf(AssistantMediaGridEntry e) =>
+        '${e.item.kind.name}|${assistantTitleKey(e.item.title ?? '')}|${e.item.year ?? ''}';
+    for (var i = 0; i < _displays.length; i++) {
+      final grid = _displays[i];
+      if (grid is! AssistantMediaGrid) continue;
+      final kept = [
+        for (final e in grid.entries)
+          if (!shown.contains(keyOf(e))) e,
+      ];
+      shown.addAll(grid.entries.map(keyOf));
+      if (kept.length == grid.entries.length) continue;
+      if (kept.isEmpty) {
+        _displays.removeAt(i--);
+      } else {
+        _displays[i] = AssistantMediaGrid(kept, facts: grid.facts);
+      }
+    }
   }
 
   /// Narrows the pick grids to the named titles; returns how many cards stay.

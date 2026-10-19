@@ -646,7 +646,9 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
   }
 
   @override
-  Future<MediaItem?> fetchItem(String id) async {
+  Future<MediaItem?> fetchItem(String id) => _fetchItem(id);
+
+  Future<MediaItem?> _fetchItem(String id, {bool allowCacheFallback = true}) async {
     final endpoint = '/Users/${_segment(connection.userId)}/Items/${_segment(id)}';
     // Contract:
     //   - 200 with parseable Map → MediaItem
@@ -659,6 +661,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     //   - Pure transport errors (no HTTP response) → fall back to cached row
     //     when present, otherwise rethrow.
     if (isOfflineMode) {
+      if (!allowCacheFallback) return null;
       final cached = await cache.get(ServerId(cacheServerId), endpoint);
       if (cached is Map<String, dynamic>) return _mapItem(cached);
       return null;
@@ -678,6 +681,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
       if (e.statusCode == 404) return null;
       rethrow;
     } catch (e) {
+      if (!allowCacheFallback) rethrow;
       // Transport-layer failure: socket error, DNS, TLS, etc. Try cache.
       appLogger.w('JellyfinClient.fetchItem network call failed', error: e);
       try {

@@ -21,7 +21,8 @@ void main() {
 
   group('lock one shut: the question asks for more than the one title', () {
     Future<void> keepsAll(String prompt, String answer) async {
-      expect(cardsOf(await singleAsk([findHanks, answer], prompt)), all, reason: prompt);
+      // Every card stays; the one the answer names leads, so the order is free.
+      expect(cardsOf(await singleAsk([findHanks, answer], prompt)), unorderedEquals(all), reason: prompt);
     }
 
     test('R3: the title and its sequel', () async {
@@ -84,7 +85,7 @@ void main() {
         'You have both, «$toy» (1995) first.',
       ]) {
         final r = await singleAsk([findHanks, answer], one);
-        expect(cardsOf(r), all, reason: answer);
+        expect(cardsOf(r), unorderedEquals(all), reason: answer);
       }
     });
 
@@ -110,7 +111,7 @@ void main() {
         'Dat is «$mile» (1999).\n1. een dodencel\n2. een bewaker',
       ]) {
         final r = await singleAsk([findHanks, answer], one);
-        expect(cardsOf(r), all, reason: answer);
+        expect(cardsOf(r), unorderedEquals(all), reason: answer);
       }
     });
 
