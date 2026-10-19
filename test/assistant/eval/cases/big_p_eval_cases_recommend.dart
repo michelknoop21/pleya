@@ -86,7 +86,10 @@ final evalRecommendCases = <EvalCase>[
         ],
       ),
     ],
-    hard: [...evalBase, const EvalNotSeen(), const EvalKindAsked(MediaKind.show)],
+    // The question names no kind, so a film is as good an answer as a series.
+    // (It demanded a series until 19 Oct 2026: gemma answered with a film in
+    // all three attempts, which is allowed, and the check failed it.)
+    hard: [...evalBase, const EvalNotSeen(), const EvalCardCount(min: 1)],
     scripted: const [EvalMinCards(1)],
     soft: const EvalSoft(firstTools: {'my_watching', 'search_catalog'}),
   ),
