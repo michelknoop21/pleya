@@ -202,6 +202,14 @@ func yearOf(date string) int {
 // Search zoekt een titel. kind is het itemsoort uit de catalogus (movie of show).
 func (c *TMDB) Search(ctx context.Context, kind, title string, year *int) ([]SearchResult, error) {
 	q := url.Values{"query": {title}, "language": {c.language}, "include_adult": {"false"}}
+	if year != nil {
+		// Het jaarfilter houdt een gangbare titel binnen de eerste pagina treffers.
+		if kind == "show" {
+			q.Set("first_air_date_year", strconv.Itoa(*year))
+		} else {
+			q.Set("year", strconv.Itoa(*year))
+		}
+	}
 	var raw struct {
 		Results []struct {
 			ID            int    `json:"id"`

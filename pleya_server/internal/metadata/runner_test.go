@@ -3,6 +3,7 @@ package metadata
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -20,12 +21,14 @@ type fakeStore struct {
 	applied    map[id.ID]catalog.MetadataDetails
 	art        map[string]catalog.ProviderArtwork
 	localPost  map[id.ID]bool
+	attempts   map[id.ID]int
+	applyErr   error
 }
 
 func newFakeStore(ts ...catalog.MetadataTarget) *fakeStore {
 	return &fakeStore{targets: ts, candidates: map[id.ID]catalog.MetadataCandidate{},
 		applied: map[id.ID]catalog.MetadataDetails{}, art: map[string]catalog.ProviderArtwork{},
-		localPost: map[id.ID]bool{}}
+		localPost: map[id.ID]bool{}, attempts: map[id.ID]int{}}
 }
 
 func (f *fakeStore) MetadataDue(_ context.Context, _ string, exclude []id.ID, limit int) ([]catalog.MetadataTarget, error) {
@@ -42,10 +45,14 @@ func (f *fakeStore) MetadataDue(_ context.Context, _ string, exclude []id.ID, li
 	return out, nil
 }
 func (f *fakeStore) SaveCandidate(_ context.Context, c catalog.MetadataCandidate) error {
+	f.attempts[c.ItemID]++
 	f.candidates[c.ItemID] = c
 	return nil
 }
 func (f *fakeStore) ApplyMetadata(_ context.Context, item id.ID, _ string, d catalog.MetadataDetails) error {
+	if f.applyErr != nil {
+		return f.applyErr
+	}
 	f.applied[item] = d
 	return nil
 }
@@ -61,15 +68,42 @@ func (f *fakeStore) UpsertProviderArtwork(_ context.Context, a catalog.ProviderA
 	return nil
 }
 
+func (f *fakeStore) CandidateAttempts(_ context.Context, item id.ID) (int, error) {
+	return f.attempts[item], nil
+}
+func (f *fakeStore) ListProviderArtwork(context.Context) ([]catalog.ProviderArtwork, error) {
+	var out []catalog.ProviderArtwork
+	for _, a := range f.art {
+		out = append(out, a)
+	}
+	return out, nil
+}
+func (f *fakeStore) DropProviderArtwork(_ context.Context, artID id.ID) error {
+	for k, a := range f.art {
+		if a.ID == artID {
+			delete(f.art, k)
+			delete(f.candidates, a.ItemID) // het item is weer aan de beurt
+		}
+	}
+	return nil
+}
+
 type fakeProvider struct {
 	results map[string][]SearchResult
 	fail    map[string]error
 	imgs    int
 	calls   int
+	imgErr  error
+	years   []*int
+	byYear  map[string][]SearchResult // sleutel "titel|jaar"; wint van results als gevuld
 }
 
-func (p *fakeProvider) Search(_ context.Context, _ string, title string, _ *int) ([]SearchResult, error) {
+func (p *fakeProvider) Search(_ context.Context, _ string, title string, year *int) ([]SearchResult, error) {
 	p.calls++
+	p.years = append(p.years, year)
+	if p.byYear != nil && year != nil {
+		return p.byYear[fmt.Sprintf("%s|%d", title, *year)], nil
+	}
 	if err := p.fail[title]; err != nil {
 		return nil, err
 	}
@@ -81,6 +115,9 @@ func (p *fakeProvider) Details(_ context.Context, _ string, n int) (catalog.Meta
 }
 func (p *fakeProvider) Image(context.Context, string, string) ([]byte, string, error) {
 	p.imgs++
+	if p.imgErr != nil {
+		return nil, "", p.imgErr
+	}
 	return []byte("jpegbytes"), ".jpg", nil
 }
 
@@ -143,7 +180,7 @@ func TestLocalPosterWinsOverProviderPoster(t *testing.T) {
 	}
 }
 
-func TestTransientFailureLeavesItemForNextRound(t *testing.T) {
+func TestTransientFailureIsRecordedAsFailedNotAsAnOutcome(t *testing.T) {
 	a := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "A"}
 	st := newFakeStore(a)
 	prov := &fakeProvider{fail: map[string]error{"A": errors.New("provider onbereikbaar")}}
@@ -152,8 +189,9 @@ func TestTransientFailureLeavesItemForNextRound(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, recorded := st.candidates[a.ID]; recorded || stats.Failed != 1 {
-		t.Fatalf("een tijdelijke fout werd als uitkomst vastgelegd: %+v", stats)
+	// Een tijdelijke fout is geen uitkomst: alleen 'failed' met uitstel, nooit matched of unmatched.
+	if c := st.candidates[a.ID]; c.State != catalog.CandidateFailed || stats.Failed != 1 {
+		t.Fatalf("een tijdelijke fout werd als %q vastgelegd: %+v", c.State, stats)
 	}
 	if prov.calls != 1 {
 		t.Fatalf("het item werd binnen dezelfde ronde opnieuw geprobeerd (%d aanroepen)", prov.calls)
@@ -202,5 +240,112 @@ func TestRoundStopsAfterRepeatedFailures(t *testing.T) {
 	_, err := testRunner(newFakeStore(ts...), prov, t.TempDir()).Round(context.Background())
 	if err == nil || prov.calls != 5 {
 		t.Fatalf("ronde stopte niet na vijf fouten: err=%v calls=%d", err, prov.calls)
+	}
+}
+
+func TestApplyFailureLeavesTheItemDue(t *testing.T) {
+	year := 1979
+	a := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Alien", Year: &year}
+	st := newFakeStore(a)
+	st.applyErr = errors.New("database even weg")
+	prov := &fakeProvider{results: map[string][]SearchResult{"Alien": {{ID: 348, Title: "Alien", Year: 1979}}}}
+
+	if _, err := testRunner(st, prov, t.TempDir()).Round(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	// Alleen de mislukking is vastgelegd (met uitstel), nooit een 'matched' zonder velden.
+	if c := st.candidates[a.ID]; c.State != catalog.CandidateFailed || c.NextAttempt == nil {
+		t.Fatalf("kandidaat %+v; verwacht failed met uitstel", c)
+	}
+}
+
+func TestFailedArtworkDownloadSchedulesARetry(t *testing.T) {
+	a := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "A"}
+	st := newFakeStore(a)
+	prov := &fakeProvider{results: map[string][]SearchResult{"A": {{ID: 1, Title: "A"}}}, imgErr: errors.New("cdn plat")}
+
+	stats, err := testRunner(st, prov, t.TempDir()).Round(context.Background())
+	if err != nil || stats.Matched != 1 {
+		t.Fatalf("stats %+v err %v", stats, err)
+	}
+	c := st.candidates[a.ID]
+	if c.State != catalog.CandidateMatched || c.NextAttempt == nil {
+		t.Fatalf("een match met ontbrekende afbeelding hoort een nieuwe poging te plannen: %+v", c)
+	}
+	if st.applied[a.ID].Summary == "" {
+		t.Fatal("de tekst werd niet toegepast omdat de afbeelding faalde")
+	}
+}
+
+func TestPersistentFailureBacksOffInsteadOfBlockingTheRound(t *testing.T) {
+	bad := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "kapot"}
+	good := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "goed"}
+	st := newFakeStore(bad, good)
+	prov := &fakeProvider{
+		fail:    map[string]error{"kapot": errors.New("404 op details")},
+		results: map[string][]SearchResult{"goed": {{ID: 2, Title: "goed"}}},
+	}
+	if _, err := testRunner(st, prov, t.TempDir()).Round(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if c := st.candidates[bad.ID]; c.State != catalog.CandidateFailed || c.NextAttempt == nil || !c.NextAttempt.After(time.Now()) {
+		t.Fatalf("mislukte titel: %+v", c)
+	}
+	if st.candidates[good.ID].State != catalog.CandidateMatched {
+		t.Fatal("de titel achter de mislukte kwam niet aan bod")
+	}
+}
+
+func TestSearchRetriesWithoutYearWhenTheYearFindsNothing(t *testing.T) {
+	year := 1995
+	h := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Heat", Year: &year}
+	st := newFakeStore(h)
+	prov := &fakeProvider{
+		byYear:  map[string][]SearchResult{}, // het jaarfilter vindt niets
+		results: map[string][]SearchResult{"Heat": {{ID: 949, Title: "Heat", Year: 1996}}},
+	}
+	if _, err := testRunner(st, prov, t.TempDir()).Round(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(prov.years) != 2 || prov.years[0] == nil || prov.years[1] != nil {
+		t.Fatalf("zoekopdrachten %v; verwacht eerst met jaar, dan zonder", prov.years)
+	}
+	if st.candidates[h.ID].State != catalog.CandidateMatched {
+		t.Fatalf("jaar één af hoort via de terugval te matchen: %+v", st.candidates[h.ID])
+	}
+}
+
+func TestMissingCacheFileIsFetchedAgainAndOrphansAreSwept(t *testing.T) {
+	dir := t.TempDir()
+	artDir := filepath.Join(dir, "artwork")
+	if err := os.MkdirAll(artDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	item := id.New()
+	artID := id.New()
+	st := newFakeStore()
+	st.art[item.String()+"poster"] = catalog.ProviderArtwork{ID: artID, ItemID: item, Kind: "poster", FileName: artID.String() + ".jpg"}
+	st.candidates[item] = catalog.MetadataCandidate{ItemID: item, State: catalog.CandidateMatched}
+	orphan := filepath.Join(artDir, "weeskind.jpg")
+	fresh := filepath.Join(artDir, "vers.jpg")
+	for _, f := range []string{orphan, fresh} {
+		if err := os.WriteFile(f, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	old := time.Now().Add(-2 * time.Hour)
+	_ = os.Chtimes(orphan, old, old)
+
+	if err := testRunner(st, &fakeProvider{}, dir).repairCache(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, still := st.candidates[item]; still {
+		t.Error("het item met een ontbrekend bestand staat niet meer aan de beurt")
+	}
+	if _, err := os.Stat(orphan); !os.IsNotExist(err) {
+		t.Error("het weeskind is niet opgeruimd")
+	}
+	if _, err := os.Stat(fresh); err != nil {
+		t.Error("een bestand van minder dan een uur oud mag niet weg: zijn rij kan nog onderweg zijn")
 	}
 }

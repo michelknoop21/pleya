@@ -21,6 +21,9 @@ type Store interface {
 	SaveCandidate(ctx context.Context, c catalog.MetadataCandidate) error
 	ApplyMetadata(ctx context.Context, itemID id.ID, provider string, d catalog.MetadataDetails) error
 	LocalArtwork(ctx context.Context, itemID id.ID) (poster, backdrop bool, err error)
+	CandidateAttempts(ctx context.Context, itemID id.ID) (int, error)
+	ListProviderArtwork(ctx context.Context) ([]catalog.ProviderArtwork, error)
+	DropProviderArtwork(ctx context.Context, artworkID id.ID) error
 	GetProviderArtwork(ctx context.Context, itemID id.ID, kind, provider string) (catalog.ProviderArtwork, bool, error)
 	UpsertProviderArtwork(ctx context.Context, a catalog.ProviderArtwork) error
 }
@@ -40,22 +43,28 @@ type Runner struct {
 	cacheDir string
 	log      *slog.Logger
 
-	batch         int
-	retryUnmatch  time.Duration
-	maxRateWaits  int
-	maxRateWait   time.Duration
-	failuresLimit int
+	batch          int
+	retryUnmatch   time.Duration
+	retryArtwork   time.Duration
+	failBackoff    time.Duration
+	failBackoffMax time.Duration
+	maxRateWaits   int
+	maxRateWait    time.Duration
+	failuresLimit  int
 }
 
 // NewRunner bouwt een runner. cacheDir is CacheDir; afbeeldingen komen onder artwork/.
 func NewRunner(store Store, provider Provider, name, cacheDir string, log *slog.Logger) *Runner {
 	return &Runner{
 		store: store, provider: provider, name: name, cacheDir: cacheDir, log: log,
-		batch:         50,
-		retryUnmatch:  7 * 24 * time.Hour,
-		maxRateWaits:  3,
-		maxRateWait:   5 * time.Minute,
-		failuresLimit: 5,
+		batch:          50,
+		retryUnmatch:   7 * 24 * time.Hour,
+		retryArtwork:   time.Hour,
+		failBackoff:    15 * time.Minute,
+		failBackoffMax: 24 * time.Hour,
+		maxRateWaits:   3,
+		maxRateWait:    5 * time.Minute,
+		failuresLimit:  5,
 	}
 }
 
@@ -71,6 +80,10 @@ func (r *Runner) Round(ctx context.Context) (RoundStats, error) {
 	var st RoundStats
 	var seen []id.ID
 	consecutive := 0
+
+	if err := r.repairCache(ctx); err != nil {
+		r.log.Warn("cache nalopen mislukt", slog.String("error", err.Error()))
+	}
 
 	for {
 		targets, err := r.store.MetadataDue(ctx, r.name, seen, r.batch)
@@ -90,6 +103,9 @@ func (r *Runner) Round(ctx context.Context) (RoundStats, error) {
 				consecutive++
 				r.log.Warn("metadata ophalen mislukt",
 					slog.String("title", t.Title), slog.String("error", err.Error()))
+				if ctx.Err() == nil {
+					r.recordFailure(ctx, t)
+				}
 				if consecutive >= r.failuresLimit {
 					return st, fmt.Errorf("ronde gestopt na %d fouten achter elkaar: %w", consecutive, err)
 				}
@@ -126,14 +142,10 @@ func withBackoff[T any](ctx context.Context, r *Runner, call func() (T, error)) 
 }
 
 func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundStats) error {
-	results, err := withBackoff(ctx, r, func() ([]SearchResult, error) {
-		return r.provider.Search(ctx, t.Kind, t.Title, t.Year)
-	})
+	state, chosen, err := r.decide(ctx, t)
 	if err != nil {
 		return err
 	}
-
-	state, chosen := Decide(t.Title, t.Year, results)
 	switch state {
 	case catalog.CandidateAmbiguous:
 		st.Ambiguous++
@@ -151,23 +163,19 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 	if err != nil {
 		return err
 	}
-	if err := r.store.SaveCandidate(ctx, catalog.MetadataCandidate{
-		ItemID: t.ID, Provider: r.name, State: state,
-		ExternalID: fmt.Sprint(chosen.ID), Details: &details,
-	}); err != nil {
-		return err
-	}
+	// Eerst toepassen, dan pas vastleggen: een fout hier laat het item aan de
+	// beurt in plaats van het als gedaan te boeken zonder velden.
 	if err := r.store.ApplyMetadata(ctx, t.ID, r.name, details); err != nil {
 		return err
 	}
-	st.Matched++
 
 	// Afbeeldingen zijn een bonus op de tekst: een mislukte download maakt de
-	// match niet ongedaan, maar komt wel in de log.
+	// match niet ongedaan, maar zet het item over een uur opnieuw aan de beurt.
 	hasPoster, hasBackdrop, err := r.store.LocalArtwork(ctx, t.ID)
 	if err != nil {
 		return err
 	}
+	var retry *time.Time
 	for _, a := range []struct {
 		kind  string
 		ref   string
@@ -183,11 +191,100 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 		if err != nil {
 			r.log.Warn("afbeelding ophalen mislukt",
 				slog.String("title", t.Title), slog.String("kind", a.kind), slog.String("error", err.Error()))
+			next := time.Now().Add(r.retryArtwork)
+			retry = &next
 			continue
 		}
 		if saved {
 			st.ArtworkSaved++
 		}
+	}
+
+	if err := r.store.SaveCandidate(ctx, catalog.MetadataCandidate{
+		ItemID: t.ID, Provider: r.name, State: state,
+		ExternalID: fmt.Sprint(chosen.ID), Details: &details, NextAttempt: retry,
+	}); err != nil {
+		return err
+	}
+	st.Matched++
+	return nil
+}
+
+// decide zoekt met het jaar erbij, en zonder jaar als dat niets oplevert: een
+// bestandsnaam die een jaar afwijkt van de releasedatum mag een match niet
+// onmogelijk maken, en het jaarfilter houdt een gangbare titel binnen de eerste
+// pagina treffers.
+func (r *Runner) decide(ctx context.Context, t catalog.MetadataTarget) (string, SearchResult, error) {
+	results, err := withBackoff(ctx, r, func() ([]SearchResult, error) {
+		return r.provider.Search(ctx, t.Kind, t.Title, t.Year)
+	})
+	if err != nil {
+		return "", SearchResult{}, err
+	}
+	state, chosen := Decide(t.Title, t.Year, results)
+	if state == catalog.CandidateUnmatched && t.Year != nil {
+		results, err = withBackoff(ctx, r, func() ([]SearchResult, error) {
+			return r.provider.Search(ctx, t.Kind, t.Title, nil)
+		})
+		if err != nil {
+			return "", SearchResult{}, err
+		}
+		state, chosen = Decide(t.Title, t.Year, results)
+	}
+	return state, chosen, nil
+}
+
+// recordFailure zet een mislukt item achteraan met oplopende vertraging, zodat
+// één hardnekkige titel de rest niet tegenhoudt.
+func (r *Runner) recordFailure(ctx context.Context, t catalog.MetadataTarget) {
+	attempts := 1
+	if n, err := r.store.CandidateAttempts(ctx, t.ID); err == nil {
+		attempts = n + 1
+	}
+	wait := r.failBackoff << min(attempts-1, 10)
+	if wait <= 0 || wait > r.failBackoffMax {
+		wait = r.failBackoffMax
+	}
+	next := time.Now().Add(wait)
+	if err := r.store.SaveCandidate(ctx, catalog.MetadataCandidate{
+		ItemID: t.ID, Provider: r.name, State: catalog.CandidateFailed, NextAttempt: &next}); err != nil {
+		r.log.Warn("mislukte poging vastleggen mislukt", slog.String("error", err.Error()))
+	}
+}
+
+// repairCache zet items weer aan de beurt waarvan het gecachede bestand weg is
+// (een opgeruimde of herkoppelde cache), en ruimt bestanden op die nergens meer
+// bij horen.
+func (r *Runner) repairCache(ctx context.Context) error {
+	rows, err := r.store.ListProviderArtwork(ctx)
+	if err != nil {
+		return err
+	}
+	dir := filepath.Join(r.cacheDir, "artwork")
+	known := make(map[string]bool, len(rows))
+	for _, a := range rows {
+		known[a.FileName] = true
+		if _, err := os.Stat(filepath.Join(dir, a.FileName)); errors.Is(err, os.ErrNotExist) {
+			r.log.Warn("gecachede afbeelding ontbreekt; opnieuw ophalen", slog.String("file", a.FileName))
+			if err := r.store.DropProviderArtwork(ctx, a.ID); err != nil {
+				return err
+			}
+		}
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	for _, e := range entries {
+		info, err := e.Info()
+		// Een uur respijt: een bestand dat net is neergezet heeft zijn rij misschien nog niet.
+		if err != nil || e.IsDir() || known[e.Name()] || time.Since(info.ModTime()) < time.Hour {
+			continue
+		}
+		_ = os.Remove(filepath.Join(dir, e.Name()))
 	}
 	return nil
 }

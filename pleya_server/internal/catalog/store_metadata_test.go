@@ -169,3 +169,47 @@ func TestProviderArtworkFillsOnlyWhereDiskHasNothing(t *testing.T) {
 		t.Fatalf("LocalArtwork = %v %v", hasPoster, hasBackdrop)
 	}
 }
+
+func TestFailedAndMatchedWithArtworkRetryComeBackWhenDue(t *testing.T) {
+	store, ctx, ids, _ := metadataFixture(t)
+	past := time.Now().Add(-time.Minute)
+	future := time.Now().Add(time.Hour)
+
+	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["alien"], Provider: "tmdb", State: catalog.CandidateFailed, NextAttempt: &past})
+	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["heat"], Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "949", NextAttempt: &future})
+	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["show"], Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "1"})
+
+	due, err := store.MetadataDue(ctx, "tmdb", nil, 10)
+	if err != nil || len(due) != 1 || due[0].ID != ids["alien"] {
+		t.Fatalf("alleen de verlopen failed hoort terug te komen, kreeg %+v (%v)", due, err)
+	}
+	if n, _ := store.CandidateAttempts(ctx, ids["alien"]); n != 1 {
+		t.Fatalf("attempts %d, verwacht 1", n)
+	}
+}
+
+func TestDropProviderArtworkPutsTheItemBackInTheQueue(t *testing.T) {
+	store, ctx, ids, _ := metadataFixture(t)
+	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["alien"], Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "348"})
+	artID := id.New()
+	_ = store.UpsertProviderArtwork(ctx, catalog.ProviderArtwork{ID: artID, ItemID: ids["alien"], Kind: "poster",
+		Provider: "tmdb", SourceRef: "/p.jpg", FileName: artID.String() + ".jpg", SHA256: "a"})
+
+	if rows, _ := store.ListProviderArtwork(ctx); len(rows) != 1 {
+		t.Fatalf("ListProviderArtwork gaf %d rijen", len(rows))
+	}
+	if err := store.DropProviderArtwork(ctx, artID); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DropProviderArtwork(ctx, artID); err != nil {
+		t.Fatalf("een tweede keer droppen hoort geen fout te zijn: %v", err)
+	}
+	due, _ := store.MetadataDue(ctx, "tmdb", nil, 10)
+	found := false
+	for _, d := range due {
+		found = found || d.ID == ids["alien"]
+	}
+	if !found {
+		t.Fatal("het item staat na het droppen niet aan de beurt")
+	}
+}

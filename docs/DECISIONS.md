@@ -4768,7 +4768,7 @@ testhandeling; de zeven categorieën blijven.
    M2b, en tot dan geldt de poort niet omdat geen sidecar de waarde zet. `Item.people`, B5 en B6 blijven
    voor M2b.
 3. Migratie `0013_metadata.sql` draagt de kolommen en de eerste helft van de kandidatenlaag
-   (`metadata_candidates`, `provider_artwork`). Dat is het nummer dat J.6 aan S3 gaf; S3 neemt het
+   (`metadata_candidates`, `provider_artwork`); `0014_metadata_failed.sql` voegt de kandidaattoestand `failed` toe, zodat een hardnekkig falende titel met oplopend uitstel achteraan komt in plaats van de ronde te blokkeren. Dat is het nummer dat J.6 aan S3 gaf; S3 neemt het
    eerstvolgende vrije nummer, zoals 8.1 van het voorstel al zegt.
 4. De providerronde loopt nu als eigen werker in het serverproces en niet als job. De job-vorm met
    `GET /jobs`-zichtbaarheid hoort bij S22 (venster 8) en wijzigt het contract.

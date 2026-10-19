@@ -17,6 +17,9 @@ const (
 	CandidateMatched   = "matched"
 	CandidateAmbiguous = "ambiguous"
 	CandidateUnmatched = "unmatched"
+	// CandidateFailed is een poging die technisch mislukte (0014). Komt terug na
+	// next_attempt_at.
+	CandidateFailed = "failed"
 )
 
 // MetadataTarget is een item waar een provider nog naar moet kijken.
@@ -47,8 +50,12 @@ type MetadataCandidate struct {
 }
 
 // MetadataDue geeft top-level items (films en series) die nog geen uitkomst
-// hebben, of waarvan een eerdere poging zonder treffer opnieuw aan de beurt is.
-// 'ambiguous' staat hier bewust nooit in: die wacht op een mens.
+// hebben, of waarvan een eerdere poging (zonder treffer, mislukt, of een match
+// waarvan een afbeelding ontbrak) opnieuw aan de beurt is. 'ambiguous' staat hier
+// bewust nooit in: die wacht op een mens.
+//
+// Eén kandidaatrij per item, ongeacht de provider: M2a kent er één. Een tweede
+// provider vraagt een sleutel op (item_id, provider) in een eigen migratie.
 func (s *Store) MetadataDue(ctx context.Context, provider string, exclude []id.ID, limit int) ([]MetadataTarget, error) {
 	if exclude == nil {
 		// Een NULL-array maakt van NOT (id = ANY(NULL)) een NULL en daarmee een lege pagina.
@@ -60,7 +67,8 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, exclude []id.I
 		LEFT JOIN metadata_candidates c ON c.item_id = i.id AND c.provider = $1
 		WHERE i.kind IN ('movie', 'show')
 		  AND (c.item_id IS NULL
-		       OR (c.state = 'unmatched' AND c.next_attempt_at IS NOT NULL AND c.next_attempt_at <= now()))
+		       OR (c.state IN ('unmatched', 'failed', 'matched')
+		           AND c.next_attempt_at IS NOT NULL AND c.next_attempt_at <= now()))
 		  AND NOT (i.id = ANY($3))
 		ORDER BY i.added_at, i.id
 		LIMIT $2`, provider, limit, exclude)
@@ -274,4 +282,57 @@ func (s *Store) ProviderArtworkFile(ctx context.Context, artworkID id.ID, cacheD
 	f.AbsPath = cacheDir + "/artwork/" + name
 	f.Role = RoleArtwork
 	return f, libraryID, nil
+}
+
+// ListProviderArtwork geeft alle gecachede afbeeldingen, voor het opruimen.
+func (s *Store) ListProviderArtwork(ctx context.Context) ([]ProviderArtwork, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, item_id, kind, provider, source_ref, file_name, sha256, generation FROM provider_artwork`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ProviderArtwork
+	for rows.Next() {
+		var a ProviderArtwork
+		if err := rows.Scan(&a.ID, &a.ItemID, &a.Kind, &a.Provider, &a.SourceRef, &a.FileName, &a.SHA256, &a.Generation); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// DropProviderArtwork verwijdert de cacherij van een afbeelding waarvan het
+// bestand weg is en zet het item meteen weer aan de beurt, zodat de volgende
+// ronde hem opnieuw ophaalt.
+func (s *Store) DropProviderArtwork(ctx context.Context, artworkID id.ID) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var itemID id.ID
+	if err := tx.QueryRow(ctx, `DELETE FROM provider_artwork WHERE id = $1 RETURNING item_id`, artworkID).Scan(&itemID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE metadata_candidates SET next_attempt_at = now(), updated_at = now()
+		WHERE item_id = $1 AND state = 'matched'`, itemID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// CandidateAttempts geeft het aantal pogingen dat voor een item is vastgelegd.
+func (s *Store) CandidateAttempts(ctx context.Context, itemID id.ID) (int, error) {
+	var n int
+	err := s.pool.QueryRow(ctx, `SELECT attempts FROM metadata_candidates WHERE item_id = $1`, itemID).Scan(&n)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil
+	}
+	return n, err
 }
