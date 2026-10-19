@@ -1350,7 +1350,7 @@ class _MainScreenState extends State<MainScreen>
     final activeProfile = context.read<ActiveProfileProvider>();
     final activeId = activeProfile.activeId;
     if (activeId == null || activeProfile.isBinding) return;
-    final pending = takePendingPlaybackHandoff(activeProfileId: activeId);
+    final pending = PendingHandoff.take(activeProfileId: activeId);
     if (pending == null) return;
     unawaited(receivePlaybackHandoff(context, pending.request, switchedToProfile: pending.profileName));
   }

@@ -158,21 +158,24 @@ _PendingHandoff? _pending;
 /// Tells the screen of the new session that a pending handoff became ready.
 final ValueNotifier<int> pendingPlaybackHandoffChanged = ValueNotifier<int>(0);
 
-/// Taken once, by the session of the profile the handoff switched to, and only
-/// when the switch has settled. A request that waited more than two minutes
-/// after that is dropped: the phone has long given up.
-({PlaybackHandoffRequest request, String profileName})? takePendingPlaybackHandoff({required String activeProfileId}) {
-  final pending = _pending;
-  final settledAt = pending?.settledAt;
-  if (pending == null || settledAt == null || pending.profileId != activeProfileId) return null;
-  _pending = null;
-  if (DateTime.now().difference(settledAt) > const Duration(minutes: 2)) return null;
-  return (request: pending.request, profileName: pending.profileName);
-}
+/// The handoff that waits for its profile switch to settle.
+abstract final class PendingHandoff {
+  /// Taken once, by the session of the profile the handoff switched to, and only
+  /// when the switch has settled. A request that waited more than two minutes
+  /// after that is dropped: the phone has long given up.
+  static ({PlaybackHandoffRequest request, String profileName})? take({required String activeProfileId}) {
+    final pending = _pending;
+    final settledAt = pending?.settledAt;
+    if (pending == null || settledAt == null || pending.profileId != activeProfileId) return null;
+    _pending = null;
+    if (DateTime.now().difference(settledAt) > const Duration(minutes: 2)) return null;
+    return (request: pending.request, profileName: pending.profileName);
+  }
 
-@visibleForTesting
-void debugSetPendingPlaybackHandoff(PlaybackHandoffRequest request, String profileId, {DateTime? settledAt}) {
-  _pending = _PendingHandoff(request, profileId, 'Test')..settledAt = settledAt;
+  @visibleForTesting
+  static void debugSet(PlaybackHandoffRequest request, String profileId, {DateTime? settledAt}) {
+    _pending = _PendingHandoff(request, profileId, 'Test')..settledAt = settledAt;
+  }
 }
 
 /// A phone of another user of the Home hands over: switch this device to that
