@@ -98,6 +98,22 @@ binnen een golf is de volgorde vrij. De kolom "taken" telt wat er open of bezig 
 slice die er is. Hij staat hier achteraan omdat hij niets blokkeert, niet omdat hij moet
 wachten; wie ruimte heeft trekt hem naar voren.
 
+### 2.1a Voorgestelde volgorde: Plex-off eerst (wacht op akkoord)
+
+[`pleya-server-plexoff-first-deviation.md`](pleya-server-plexoff-first-deviation.md) stelt een andere
+volgorde voor, met [DEC-150](DECISIONS.md) en [DEC-151](DECISIONS.md). **Tot Michel akkoord geeft
+geldt de tabel hierboven.** De rijen die in het voorstel uitgesteld worden staan al op `[!]` met
+verwijzing; keurt Michel het af, dan gaan ze terug op `[ ]`.
+
+| Golf | Taken | Levert op |
+| --- | --- | --- |
+| A | S2.6, S2.7 | S2 en venster 2 dicht, eerste NAS-deploy van de s25-stand |
+| B | S4.1 tot 4.4 en 4.6, S5.1 tot 5.3 en 5.5, S22.1 tot 22.5 en 22.7 tot 22.9 | catalogus compleet |
+| C | S17, S18, S14.1 tot 14.3 en 14.5 | PlaybackPlan, transcode, app op het contract |
+| D | S20.1 tot 20.3 en 20.5 tot 20.6, S23.1 tot 23.3 en 23.5 | persoonlijke laag, downloads |
+| E | S7 afmaken, S10, S24, S25 | beheer-web, remote hardening, back-up en restore |
+| slot | S15.1, 15.2, 15.3, 15.5, 15.6, 15.7 | Plex-off gate groen, merge, NAS |
+
 ### 2.2 De kritieke lijn
 
 `S1 → S3 → S5 en S6 → S14 → S17 → S18 → S23 → S15`. Vertraging daarop schuift de release op;
@@ -192,12 +208,12 @@ niet de bouw.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S3.1 | Migratie `0013`, `publications`, `publication_files`, soort `books` | `[ ]` | | |
-| S3.2 | EPUB-analyser met zip- en XML-grenzen | `[ ]` | | |
-| S3.3 | Scannerdispatch per bibliotheeksoort, bestaande scannertests ongewijzigd groen | `[ ]` | | |
-| S3.4 | `/ebooks`-resources, `item_count`, `library.wrong_kind` | `[ ]` | | |
-| S3.5 | Cover- en bestandsroute met sterke validator | `[ ]` | | |
-| S3.6 | Capability `ebooks`, protocolvenster 3 dicht | `[ ]` | | |
+| S3.1 | Migratie `0013`, `publications`, `publication_files`, soort `books` | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S3.2 | EPUB-analyser met zip- en XML-grenzen | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S3.3 | Scannerdispatch per bibliotheeksoort, bestaande scannertests ongewijzigd groen | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S3.4 | `/ebooks`-resources, `item_count`, `library.wrong_kind` | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S3.5 | Cover- en bestandsroute met sterke validator | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S3.6 | Capability `ebooks`, protocolvenster 3 dicht | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 
 ### S4 Sidecars en artworkladder (PS-7N, PS-7A)
 
@@ -207,7 +223,7 @@ niet de bouw.
 | S4.2 | Dekkingsmeting met de 80%-poort per bibliotheek | `[ ]` | | |
 | S4.3 | Velden op `Item`, migratie `0014` | `[ ]` | | |
 | S4.4 | Artworkladder met cache en single-flight | `[ ]` | | |
-| S4.5 | Boekcovers op dezelfde ladder | `[ ]` | | |
+| S4.5 | Boekcovers op dezelfde ladder | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 | S4.6 | Beheerendpoints artworkcache, YAML-tekst rechtgezet | `[ ]` | | |
 
 ### S5 Filters, facetten, zoeken
@@ -217,18 +233,18 @@ niet de bouw.
 | S5.1 | Migratie `0015`, `pg_trgm` en indexen | `[ ]` | | |
 | S5.2 | Filterparameters en extra sorteringen | `[ ]` | | |
 | S5.3 | Facetten-endpoint met tellingen | `[ ]` | | |
-| S5.4 | Boekenzoekweg en auteurs | `[ ]` | | |
+| S5.4 | Boekenzoekweg en auteurs | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 | S5.5 | Injectietest en meting op de NAS, capability `filters`, venster 4 deel 1 | `[ ]` | | |
 
 ### S6 Leesvoortgang (PS-15 server)
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S6.1 | DEC Readium Locator plus publicatie-digest, manifest en resources (RB-12 bijgesteld) | `[ ]` | | |
-| S6.2 | Migratie `0016`, `reading_states`, pure functie | `[ ]` | | |
-| S6.3 | `POST`/`GET /reading-state`, hydratie op `Publication` | `[ ]` | | |
-| S6.4 | Toestelnaam bij laatst gekeken | `[ ]` | | |
-| S6.5 | Capability `reading_state`, venster 4 deel 2 | `[ ]` | | |
+| S6.1 | DEC Readium Locator plus publicatie-digest, manifest en resources (RB-12 bijgesteld) | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S6.2 | Migratie `0016`, `reading_states`, pure functie | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S6.3 | `POST`/`GET /reading-state`, hydratie op `Publication` | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S6.4 | Toestelnaam bij laatst gekeken | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S6.5 | Capability `reading_state`, venster 4 deel 2 | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 
 ### S7 Webshell en designsysteem
 
@@ -245,22 +261,22 @@ niet de bouw.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S8.1 | Home met zes rijen, lege rij verdwijnt | `[ ]` | | |
-| S8.2 | Films- en Series-landing | `[ ]` | | |
-| S8.3 | Complete catalogus met filters en facetten | `[ ]` | | |
-| S8.4 | Zoeken gesectioneerd, lege staat met uitweg | `[ ]` | | |
-| S8.5 | Film- en seriedetail herschreven en gesplitst | `[ ]` | | |
-| S8.6 | Mijn Pleya en staten | `[ ]` | | |
-| S8.7 | PS-4E criteria 1, 2, 4, 5 gehaald | `[ ]` | | |
+| S8.1 | Home met zes rijen, lege rij verdwijnt | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S8.2 | Films- en Series-landing | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S8.3 | Complete catalogus met filters en facetten | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S8.4 | Zoeken gesectioneerd, lege staat met uitweg | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S8.5 | Film- en seriedetail herschreven en gesplitst | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S8.6 | Mijn Pleya en staten | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S8.7 | PS-4E criteria 1, 2, 4, 5 gehaald | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 
 ### S9 Web Boeken
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S9.1 | API-laag en kaarten met cover-fallback | `[ ]` | | |
-| S9.2 | Landing en alle boeken met filters | `[ ]` | | |
-| S9.3 | Boekdetail, ambience, downloaden | `[ ]` | | |
-| S9.4 | Home-rijen en zoeken met boeken en auteurs | `[ ]` | | |
+| S9.1 | API-laag en kaarten met cover-fallback | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S9.2 | Landing en alle boeken met filters | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S9.3 | Boekdetail, ambience, downloaden | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S9.4 | Home-rijen en zoeken met boeken en auteurs | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 
 ### S10 Web beheer (PS-11A frontend)
 
@@ -278,26 +294,26 @@ niet de bouw.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S11.1 | Vier stappen, hervatbaar, gedane stappen overgeslagen | `[ ]` | | |
-| S11.2 | Overnamevariant bij `.env`-bibliotheken | `[ ]` | | |
-| S11.3 | Golden journey 1 groen | `[ ]` | | |
+| S11.1 | Vier stappen, hervatbaar, gedane stappen overgeslagen | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S11.2 | Overnamevariant bij `.env`-bibliotheken | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S11.3 | Golden journey 1 groen | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 
 ### S12 Webreader (PS-15W)
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
 | S12.1 | Mockup 51 (readerschil op `@readium/navigator`) goedgekeurd | `[x]` | gedekt door poort P3: mockup 51 is gebouwd, gereviewd (C.7) en op 4 september door Michel goedgekeurd, en zit met zijn gerenderde beeld in de APPROVED set met `SHA256SUMS`. Deze rij stond nog open omdat P3 zes mockups in één ronde afvinkte en de slice-rijen niet meebewogen | 2026-09-04 |
-| S12.2 | Spike Readium TypeScript Toolkit tegen het manifest; epub.js alleen als gedocumenteerde contingency | `[ ]` | | |
-| S12.3 | Reader met leespositie en client-local instellingen | `[ ]` | | |
+| S12.2 | Spike Readium TypeScript Toolkit tegen het manifest; epub.js alleen als gedocumenteerde contingency | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S12.3 | Reader met leespositie en client-local instellingen | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 
 ### S13 Browserspeler (PS-4W)
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
 | S13.1 | Mockup 50 (spelerschil) goedgekeurd | `[x]` | gedekt door poort P3, op dezelfde grond als S12.1: gebouwd, gereviewd (C.7), akkoord Michel 4 september, in de APPROVED set met `SHA256SUMS` | 2026-09-04 |
-| S13.2 | Schil met `<video>` op de streamsessie | `[ ]` | | |
-| S13.3 | Kijkstatus met `session_id` en `base_revision` | `[ ]` | | |
-| S13.4 | Ondertitelconversie naar WebVTT | `[ ]` | | |
+| S13.2 | Schil met `<video>` op de streamsessie | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S13.3 | Kijkstatus met `session_id` en `base_revision` | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S13.4 | Ondertitelconversie naar WebVTT | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 
 ### S14 Flutter-clients op het contract
 
@@ -306,9 +322,9 @@ niet de bouw.
 | S14.1 | Nieuwe capabilities in `pleya_wire.dart` | `[ ]` | | |
 | S14.2 | `_postJson`-fout dicht met regressietest | `[ ]` | | |
 | S14.3 | Filterstubs vervangen, `refreshLibraryMetadata` werkend | `[ ]` | | |
-| S14.4 | `PleyaServerBooksSource` met mappers | `[ ]` | | |
+| S14.4 | `PleyaServerBooksSource` met mappers | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 | S14.5 | Artworkladder in de imagecache-URL | `[ ]` | | |
-| S14.6 | Verify-scenario voor de boekenbron | `[ ]` | | |
+| S14.6 | Verify-scenario voor de boekenbron | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 
 ### S15 Hardening, journeys, docs, release
 
@@ -317,22 +333,22 @@ niet de bouw.
 | S15.1 | Rate limit op `/auth/refresh`, opruimjob streamsessies | `[ ]` | | |
 | S15.2 | Golden journeys 1 tot 14 groen | `[ ]` | | |
 | S15.3 | Securitymatrix K.2 volledig groen, vastgelegd in `docs/qa/` | `[ ]` | | |
-| S15.4 | Documentatie uit deel M compleet | `[ ]` | | |
+| S15.4 | Documentatie uit deel M compleet | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 | S15.5 | `PLEX_OFFLINE_REPLACEMENT_GATE` groen (migratie als keuze) | `[ ]` | | |
 | S15.6 | PS-5-hardwareronde afgerond | `[ ]` | | |
 | S15.7 | Merge naar `main`, NAS uitgerold | `[ ]` | | |
-| S15.8 | Tweede TestFlight-gate tegen de releasecandidate (vraag 62) | `[ ]` | | |
+| S15.8 | Tweede TestFlight-gate tegen de releasecandidate (vraag 62) | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 
 ### S16 MCP-beheerlaag
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S16.1 | Transport en toolregister op `/mcp` | `[ ]` | | |
-| S16.2 | Leestools met dezelfde autorisatie | `[ ]` | | |
-| S16.3 | Beheertools, destructief met `confirm` | `[ ]` | | |
-| S16.4 | Auditlog en scherm 34 gevuld | `[ ]` | | |
-| S16.5 | Generator uit `openapi.yaml`, contracttest tool tegen operatie | `[ ]` | | |
-| S16.6 | Golden journey 8 groen | `[ ]` | | |
+| S16.1 | Transport en toolregister op `/mcp` | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S16.2 | Leestools met dezelfde autorisatie | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S16.3 | Beheertools, destructief met `confirm` | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S16.4 | Auditlog en scherm 34 gevuld | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S16.5 | Generator uit `openapi.yaml`, contracttest tool tegen operatie | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S16.6 | Golden journey 8 groen | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 
 ### S17 PlaybackPlan (PS-6)
 
@@ -358,11 +374,11 @@ niet de bouw.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S19.1 | Migratie `0018`, tabellen en zichtbaarheid | `[ ]` | | |
-| S19.2 | Endpoints inclusief herordenen | `[ ]` | | |
-| S19.3 | Web: schermen 17 en 18, "Toevoegen aan" op de kaart | `[ ]` | | |
-| S19.4 | App: bestaande members geïmplementeerd | `[ ]` | | |
-| S19.5 | Venster 6 deel 1, journey 11 | `[ ]` | | |
+| S19.1 | Migratie `0018`, tabellen en zichtbaarheid | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S19.2 | Endpoints inclusief herordenen | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S19.3 | Web: schermen 17 en 18, "Toevoegen aan" op de kaart | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S19.4 | App: bestaande members geïmplementeerd | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S19.5 | Venster 6 deel 1, journey 11 | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 
 ### S20 Persoonlijke laag (PS-9P, PS-9T)
 
@@ -371,7 +387,7 @@ niet de bouw.
 | S20.1 | Migratie `0019`, geschiedenis uit watch-state-events | `[ ]` | | |
 | S20.2 | Favorieten en waarderingen | `[ ]` | | |
 | S20.3 | Spoorvoorkeuren over toestellen | `[ ]` | | |
-| S20.4 | Web scherm 19 en "Bekeken door" op detail | `[ ]` | | |
+| S20.4 | Web scherm 19 en "Bekeken door" op detail | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 | S20.5 | App: `setFavorite`, `rate`, spoorkeuze | `[ ]` | | |
 | S20.6 | Venster 6 deel 2 | `[ ]` | | |
 
@@ -379,10 +395,10 @@ niet de bouw.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S21.1 | Hub met volgnummers, `GET /events` met bearer in het eerste bericht | `[ ]` | | |
-| S21.2 | Events gefilterd per zicht, `since=` dicht een gat | `[ ]` | | |
-| S21.3 | Web en app abonneren met terugval op polling; scherm 38 gebouwd | `[ ]` | | |
-| S21.4 | Capability `realtime`, venster 7 deel 1, journey 12 | `[ ]` | | |
+| S21.1 | Hub met volgnummers, `GET /events` met bearer in het eerste bericht | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S21.2 | Events gefilterd per zicht, `since=` dicht een gat | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S21.3 | Web en app abonneren met terugval op polling; scherm 38 gebouwd | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
+| S21.4 | Capability `realtime`, venster 7 deel 1, journey 12 | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 
 ### S22 Metadata-providers (PS-7)
 
@@ -393,7 +409,7 @@ niet de bouw.
 | S22.3 | Automatisch matchen met driestapsregel en ambiguïteitslijst | `[ ]` | | |
 | S22.4 | Automatisch artwork ophalen naar de cache op de ladder | `[ ]` | | |
 | S22.5 | Correcties: bevestigen, afwijzen, fix-match, artwork kiezen met pin, per-field overrides met provenance | `[ ]` | | |
-| S22.6 | Mockup 36 goedgekeurd, scherm 29 en 36 gebouwd met provenance per veld | `[~]` | de goedkeuring van mockup 36 is binnen met poort P3 (4 september); wat deze rij openhoudt is het bouwen van scherm 29 en 36 in `pleya_web` | |
+| S22.6 | Mockup 36 goedgekeurd, scherm 29 en 36 gebouwd met provenance per veld | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` (was bezig: de goedkeuring van mockup 36 is binnen met poort P3 (4 september); wat deze rij openhoudt is het bouwen van scherm 29 en 36 in `pleya_web`) | |
 | S22.7 | Attributie zichtbaar in web en app | `[ ]` | | |
 | S22.8 | Correctie overleeft drie rondes, SSRF-grens getest, venster 8 | `[ ]` | | |
 | S22.9 | PS-7 criteria 1 tot 4 op de NAS, journey 14 | `[ ]` | | |
@@ -405,7 +421,7 @@ niet de bouw.
 | S23.1 | Migratie `0021`, `POST /downloads` met recht `download` | `[ ]` | | |
 | S23.2 | Levering met digest, hervatten alleen bij gelijke digest | `[ ]` | | |
 | S23.3 | App: bestaande wachtrij op de nieuwe bron, sync-back | `[ ]` | | |
-| S23.4 | Web toont downloads op Mijn Pleya (scherm 11b) | `[ ]` | | |
+| S23.4 | Web toont downloads op Mijn Pleya (scherm 11b) | `[!]` | uitgesteld tot na de Plex-off gate, zie `pleya-server-plexoff-first-deviation.md` | |
 | S23.5 | Capability `downloads`, venster 5 deel 3, journey 10 | `[ ]` | | |
 
 ### S24 Remote hardening (PS-11)

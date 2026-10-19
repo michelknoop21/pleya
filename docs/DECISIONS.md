@@ -4535,3 +4535,18 @@ alleen het wisselen naar AirPods.
 **Open.** Het bewijs is een stress-run met `ao-reload` in een lus op de tvOS-simulator en tien keer wisselen
 tussen luidsprekers en AirPods op de Apple TV. Dat de 1.0.28-libmpv patch 0026 echt bevat is alleen via zo'n
 run aan te tonen. De patch heeft geen reproduceerbare regressietest, want het is een timingrace.
+
+## DEC-150: Plex-off eerst, boeken en web-consumer na de gate
+
+**Date:** 2026-10-19
+**Status:** voorgesteld, wacht op Michels akkoord. Onderbouwing en de zes onderdelen uit hoofdstuk 23.1 staan in [`pleya-server-plexoff-first-deviation.md`](pleya-server-plexoff-first-deviation.md).
+
+De volgorde van de re-baseline loopt door boeken en leesvoortgang voordat afspelen, persoonlijke laag en beheer aan de beurt zijn, terwijl `PLEX_OFFLINE_REPLACEMENT_GATE` over film en serie gaat. Het voorstel zet de kritieke lijn naar de gate vooraan in vijf golven plus een slot (A tot E) en verschuift S3, S6, S8, S9, S11, S12, S13, S16, S19, S21 en een reeks losse taken naar na de gate. Die taken blijven productscope; er vervalt niets, alleen de eis dat ze vóór de eerste gate af zijn. Wordt het afgewezen, dan blijft S2.6 de eerstvolgende taak en geldt de bestaande volgorde.
+
+## DEC-151: Inline werkwijze en een protocolvenster per golf
+
+**Date:** 2026-10-19
+**Status:** voorgesteld, wacht op Michels akkoord, samen met [DEC-150](#dec-150-plex-off-eerst-boeken-en-web-consumer-na-de-gate).
+
+Subagent-driven development met een ledger in `.superpowers/sdd/` kost per taak meer tokens dan het werk. Vanaf golf A werkt één sessie inline in de s25-worktree: per taak code, test en masterlijstregel in één commit, per slice één `/code-review` op medium, na elke golf een NAS-deploy. Protocolvensters gaan open en dicht per golf in plaats van per slice, elk met één DEC die opent en één die sluit. Venster 2 sluit in golf A met S2.6 zoals gepland. De zes compatibiliteitsregels uit hoofdstuk 3 van de specificatie en `scripts/check_protocol.sh` blijven ongewijzigd de poortwachter, en de rijen van de uitgestelde slices gaan mee naar vensters ná de gate.
+
