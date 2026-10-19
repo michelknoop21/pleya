@@ -1266,16 +1266,8 @@ class _MainScreenState extends State<MainScreen>
     };
 
     // A handoff that switched the profile continues in the session the switch built.
-    final pendingHandoff = takePendingPlaybackHandoff();
-    if (pendingHandoff != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          unawaited(
-            receivePlaybackHandoff(context, pendingHandoff.request, switchedToProfile: pendingHandoff.profileName),
-          );
-        }
-      });
-    }
+    pendingPlaybackHandoffChanged.addListener(_continuePendingHandoff);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _continuePendingHandoff());
 
     final receiver = CompanionRemoteReceiver.instance;
 
@@ -1353,6 +1345,16 @@ class _MainScreenState extends State<MainScreen>
     });
   }
 
+  void _continuePendingHandoff() {
+    if (!mounted) return;
+    final activeProfile = context.read<ActiveProfileProvider>();
+    final activeId = activeProfile.activeId;
+    if (activeId == null || activeProfile.isBinding) return;
+    final pending = takePendingPlaybackHandoff(activeProfileId: activeId);
+    if (pending == null) return;
+    unawaited(receivePlaybackHandoff(context, pending.request, switchedToProfile: pending.profileName));
+  }
+
   Future<void> _autoStartCompanionRemoteServer() async {
     try {
       final settings = await SettingsService.getInstance();
@@ -1366,6 +1368,7 @@ class _MainScreenState extends State<MainScreen>
 
   @override
   void dispose() {
+    pendingPlaybackHandoffChanged.removeListener(_continuePendingHandoff);
     tvContentRouteRegistry.detach(_pushTvContentRoute);
     OpenedFileService.instance.detach(_onOpenedFile);
     if (kPleyaVerify) {

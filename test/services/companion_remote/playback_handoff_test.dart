@@ -143,4 +143,23 @@ void main() {
       expect(profileForHandoffUser([home('a', '')], ''), isNull);
     });
   });
+
+  group('pending handoff after a profile switch', () {
+    test('is not released before the switch has settled: the old profile would still play it', () {
+      debugSetPendingPlaybackHandoff(_request(), 'p2');
+      expect(takePendingPlaybackHandoff(activeProfileId: 'p2'), isNull);
+    });
+
+    test('is released once, and only to the profile it switched to', () {
+      debugSetPendingPlaybackHandoff(_request(), 'p2', settledAt: DateTime.now());
+      expect(takePendingPlaybackHandoff(activeProfileId: 'p1'), isNull);
+      expect(takePendingPlaybackHandoff(activeProfileId: 'p2')?.request.id, 'h1');
+      expect(takePendingPlaybackHandoff(activeProfileId: 'p2'), isNull);
+    });
+
+    test('is dropped when it waited too long after the switch', () {
+      debugSetPendingPlaybackHandoff(_request(), 'p2', settledAt: DateTime.now().subtract(const Duration(minutes: 3)));
+      expect(takePendingPlaybackHandoff(activeProfileId: 'p2'), isNull);
+    });
+  });
 }

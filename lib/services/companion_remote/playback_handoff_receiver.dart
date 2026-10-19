@@ -139,22 +139,47 @@ Future<void> _receive(
 
 /// A handoff waiting for the profile switch it asked for. Switching rebuilds the
 /// whole profile session, including the screen that received the request, so
-/// the new session picks it up (see [takePendingPlaybackHandoff]).
-({PlaybackHandoffRequest request, String profileName, DateTime at})? _pending;
+/// the new session picks it up once the switch has settled (see
+/// [takePendingPlaybackHandoff]).
+class _PendingHandoff {
+  _PendingHandoff(this.request, this.profileId, this.profileName);
 
-/// Taken once by the session that starts after the switch. A request older than
-/// a minute is dropped: the phone has long given up.
-({PlaybackHandoffRequest request, String profileName})? takePendingPlaybackHandoff() {
+  final PlaybackHandoffRequest request;
+  final String profileId;
+  final String profileName;
+
+  /// Set when the profile is active and its servers are bound; before that the
+  /// previous profile's clients are still the ones that would play.
+  DateTime? settledAt;
+}
+
+_PendingHandoff? _pending;
+
+/// Tells the screen of the new session that a pending handoff became ready.
+final ValueNotifier<int> pendingPlaybackHandoffChanged = ValueNotifier<int>(0);
+
+/// Taken once, by the session of the profile the handoff switched to, and only
+/// when the switch has settled. A request that waited more than two minutes
+/// after that is dropped: the phone has long given up.
+({PlaybackHandoffRequest request, String profileName})? takePendingPlaybackHandoff({required String activeProfileId}) {
   final pending = _pending;
+  final settledAt = pending?.settledAt;
+  if (pending == null || settledAt == null || pending.profileId != activeProfileId) return null;
   _pending = null;
-  if (pending == null || DateTime.now().difference(pending.at) > const Duration(minutes: 1)) return null;
+  if (DateTime.now().difference(settledAt) > const Duration(minutes: 2)) return null;
   return (request: pending.request, profileName: pending.profileName);
+}
+
+@visibleForTesting
+void debugSetPendingPlaybackHandoff(PlaybackHandoffRequest request, String profileId, {DateTime? settledAt}) {
+  _pending = _PendingHandoff(request, profileId, 'Test')..settledAt = settledAt;
 }
 
 /// A phone of another user of the Home hands over: switch this device to that
 /// user's profile first, so playback and progress belong to the right account.
-/// Refused (the phone keeps playing) when that user has no profile here or the
-/// profile has a PIN.
+/// Refused (the phone keeps playing) when that user has no profile here, when a
+/// switch is already under way, or when the switch fails; a failed switch goes
+/// back to the profile that was active.
 Future<void> receivePlaybackHandoffFromOtherUser(
   BuildContext context,
   PlaybackHandoffRequest request,
@@ -168,15 +193,25 @@ Future<void> receivePlaybackHandoffFromOtherUser(
     provider.sendCommand(RemoteCommandType.syncState, data: {handoffFailedKey: request.id});
   }
 
+  if (_pending != null) return fail('another switch is under way');
   final target = profileForHandoffUser(active.profiles, clientUserUuid);
   if (target == null) return fail('no switchable profile for the sender');
 
-  _pending = (request: request, profileName: target.displayName, at: DateTime.now());
+  final previous = active.active;
+  final pending = _pending = _PendingHandoff(request, target.id, target.displayName);
   binder.markUserInitiatedActivation(target.id);
+  // A PIN prompt on this device is part of the binding, so settling can take a while.
   final switched =
       await active.activate(target) && await active.awaitBindingSettle(timeout: const Duration(seconds: 80));
-  if (!switched) {
-    _pending = null;
-    fail('switching to ${target.displayName} failed');
+  if (switched && active.activeId == target.id) {
+    pending.settledAt = DateTime.now();
+    pendingPlaybackHandoffChanged.value++;
+    return;
+  }
+  if (identical(_pending, pending)) _pending = null;
+  fail('switching to ${target.displayName} failed');
+  if (previous != null && active.activeId != previous.id) {
+    binder.markUserInitiatedActivation(previous.id);
+    await active.activate(previous);
   }
 }
