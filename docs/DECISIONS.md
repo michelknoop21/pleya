@@ -4700,3 +4700,53 @@ Het label staat op Home, in de overzichten en in Top Shelf (contextregel, achter
 3. Dit besluit verandert de volgorde, prioriteiten, WIP-limiet en protocol- en releasepoorten van de roadmap niet en opent geen servervenster.
 
 **Consequences:** Reviews mogen een PR zonder Unified impact, of met een nieuw featurepad per leverancier, terugsturen. De ontwerpbrief voor filters en vensters uit de eerste versie van #218 is niet aangenomen: hij leunde op tien screenshots die niet in de repo staan en komt, als hij terugkomt, als eigen voorstel met de beelden erbij. Verwant: [DEC-141](#dec-141-emby-als-variant-van-de-jellyfin-backend) (Emby als Jellyfin-variant, waar de roadmapregel naar verwijst) en [DEC-145](#dec-145-iphone-home-leest-dezelfde-rijenlijst-als-de-tv-en-kijklijst-en-nu-op-tv-worden-home-rijen).
+
+## DEC-150: Volgorde van het resterende serverwerk, eerst een werkende keten, daarna de vervangingsgate, boeken direct erna
+
+**Date:** 2026-10-19
+**Status:** accepted. Productbesluit van Michel op 19 oktober 2026. Wijzigt de volgorde in masterlijst 2.1, niet de afhankelijkheden uit deel I en niet de fasetabel.
+
+**Context:** S1 en S2 zijn gesloten en uitgerold. Wat een gebruiker nog niet kan is het geheel: er is geen
+`.nfo`-, TMDB- of artworkcode, dus titels hebben geen poster of samenvatting, ook al scant en speelt de
+server. De golfindeling in 2.1 stelde boeken (S3) vooraan, omdat die de kritieke lijn aanvoerde.
+
+**Decision:**
+
+1. Eerst één volledige keten (bibliotheek, scan, metadata en artwork, direct play, kijkstatus over twee
+   toestellen), daarna browsen, daarna afspelen van wat direct play niet kan, de persoonlijke laag en
+   beheer, en dan de gate. Boeken (S3, vrijgegeven met DEC-149) volgen direct na de gate en blijven in de
+   roadmap. M7 vertraagt de gate niet; Michel kan hem naar voren halen zonder dat de rest verschuift.
+2. Niets wordt geschrapt of op `[!]` gezet. Uitgesteld is niet geschrapt: elke rij blijft `[ ]` met zijn
+   afhankelijkheid. S3-rijen blijven in het contractvoorstel voor venster 3 staan voor later.
+3. Delen van slices die niet aan boeken hangen worden naar voren gehaald (S14.1 tot en met S14.3 en S14.5,
+   S4, S5 behalve S5.4, S20 behalve 20.4, S23 behalve 23.4). De boekenvlaggen komen later additief.
+4. Migratienummers volgen de werkelijke volgorde, niet de nummers uit deel I (S4 krijgt `0013`). De
+   masterlijst wordt in dezelfde commit meegenummerd.
+5. De bestaande voorwaarden blijven: `media_*` blijft audiovisueel (DEC-128), en `play_history` krijgt een
+   onderwerp-verwijzing die later een publicatie aankan.
+
+**Consequences:** Venster 3 opent voor de catalogusrijen van S4, S5 en S22 volgens
+`docs/pleya-server-contract-window-3.md`, met een eigen besluit zodra de eerste rij erin landt.
+
+## DEC-151: Inline uitvoering, een testinstance eerst, en de Plex Replacement Readiness Gate
+
+**Date:** 2026-10-19
+**Status:** accepted. Productbesluit van Michel op 19 oktober 2026.
+
+**Decision:**
+
+1. Uitvoering gebeurt in één sessie zonder standaard-subagents. Per taak code en test, per mijlpaal één
+   review, een PR naar `main` en een compact rapport. Contractwijzigingen gaan per venster, niet per slice.
+2. Nieuw werk wordt eerst uitgerold op een volledig geïsoleerde testinstance naast productie: eigen map,
+   compose-project, containernamen, netwerk, poort, databasevolume, `.env`, signing key en gebruikers.
+   Geen tunnelkoppeling, geen gedeelde secrets, media alleen read-only. Productie (`web.pleya.app`) wordt
+   alleen met een aparte go van Michel aangeraakt.
+3. `PLEX_OFFLINE_REPLACEMENT_GATE` heet voortaan de **Plex Replacement Readiness Gate**; de technische
+   sleutel blijft staan. Plex blijft draaien en wordt nooit gestopt, gewijzigd of verwijderd, ook niet in
+   acceptatietests. De gate is groen wanneer Pleya Server zelfstandig werkt (bibliotheken, metadata,
+   artwork, playback, transcode, gebruikers, voortgang), veilig naast Plex op dezelfde bestanden draait
+   (read-only) en geen verplichte Plex-koppeling of -migratie kent. Het bewijs komt van de testinstance.
+4. De status van code, CI en hardware wordt apart gerapporteerd.
+
+**Consequences:** Het "Plex-container stoppen" in hoofdstuk 9 van de vervangingsmatrix vervalt als
+testhandeling; de zeven categorieën blijven.

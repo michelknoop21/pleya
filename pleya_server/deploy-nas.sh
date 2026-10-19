@@ -9,8 +9,28 @@
 set -e
 cd "$(dirname "$0")"
 
-REMOTE_DIR=/volume1/docker/pleya-server
+# PLEYA_INSTANCE=test deployt naar een volledig geïsoleerde tweede instance
+# (eigen map, compose-project, containers, netwerk, poort, database, .env en
+# signing key). Productie is de standaard en verandert niet. Zie README.md.
+INSTANCE=${PLEYA_INSTANCE:-prod}
 SSH_HOST=synology
+case "$INSTANCE" in
+  prod) REMOTE_DIR=/volume1/docker/pleya-server ;;
+  test) REMOTE_DIR=/volume1/docker/pleya-server-test ;;
+  *) echo "✗ onbekende PLEYA_INSTANCE '$INSTANCE' (prod of test)" >&2; exit 1 ;;
+esac
+
+if [ "$INSTANCE" = test ]; then
+  # Een testinstance die per ongeluk productiewaarden erft zou naast productie
+  # dezelfde containernaam, poort of netwerk claimen. Weiger dat vooraf.
+  if ! ssh "$SSH_HOST" "grep -q '^PLEYA_SERVER_CONTAINER=pleya-server-test$' $REMOTE_DIR/.env \
+    && grep -q '^PLEYA_SERVER_DB_CONTAINER=pleya-server-test-db$' $REMOTE_DIR/.env \
+    && grep -q '^PLEYA_SERVER_NETWORK=pleya-server-test_default$' $REMOTE_DIR/.env \
+    && ! grep -q '^PLEYA_SERVER_HOST_PORT=8832$' $REMOTE_DIR/.env" 2>/dev/null; then
+    echo "✗ $REMOTE_DIR/.env mist de geïsoleerde namen (container, db-container, netwerk, andere poort) — zie README.md" >&2
+    exit 1
+  fi
+fi
 
 if ! ssh "$SSH_HOST" "grep -q '^POSTGRES_PASSWORD=.\{16,\}' $REMOTE_DIR/.env" 2>/dev/null; then
   echo "✗ $REMOTE_DIR/.env mist een POSTGRES_PASSWORD — zie README.md" >&2
@@ -26,11 +46,14 @@ echo "→ Pleya Web bouwen"
 ../pleya_web/scripts/build-into-server.sh
 
 echo "→ bronnen versturen naar $SSH_HOST:$REMOTE_DIR"
-COPYFILE_DISABLE=1 tar czf - Dockerfile compose.yaml .dockerignore go.mod go.sum cmd internal \
+COPYFILE_DISABLE=1 tar czf - Dockerfile compose.yaml compose.test.yaml .dockerignore go.mod go.sum cmd internal \
   | ssh "$SSH_HOST" "mkdir -p $REMOTE_DIR && tar xzf - -C $REMOTE_DIR"
 
+COMPOSE_FILES="-f compose.yaml"
+[ "$INSTANCE" = test ] && COMPOSE_FILES="-f compose.yaml -f compose.test.yaml"
+
 echo "→ containers bouwen en starten"
-ssh "$SSH_HOST" "export PATH=\$PATH:/usr/local/bin; cd $REMOTE_DIR && docker compose up -d --build --remove-orphans"
+ssh "$SSH_HOST" "export PATH=\$PATH:/usr/local/bin; cd $REMOTE_DIR && docker compose $COMPOSE_FILES up -d --build --remove-orphans"
 
 echo "→ wachten tot de server gereed is"
 ssh "$SSH_HOST" "export PATH=\$PATH:/usr/local/bin; \
@@ -45,6 +68,11 @@ ssh "$SSH_HOST" "export PATH=\$PATH:/usr/local/bin; \
   echo '  readyz werd niet groen' >&2; \
   docker compose -f $REMOTE_DIR/compose.yaml logs --tail 40 >&2; \
   exit 1"
+
+if [ "$INSTANCE" = test ]; then
+  echo "→ klaar (testinstance). Geen tunnel en niet op productie; bereikbaar op de poort uit $REMOTE_DIR/.env."
+  exit 0
+fi
 
 echo "→ tunnelkoppeling controleren"
 # Alleen lezen. web.pleya.app loopt via pleya-tunnel uit de relay-stack, die

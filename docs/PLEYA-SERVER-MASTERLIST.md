@@ -84,18 +84,20 @@ afhankelijkheden respecteert doet niets fout.
 Elke golf is een topologisch niveau: alles erin kan pas beginnen als de golf ervoor staat, en
 binnen een golf is de volgorde vrij. De kolom "taken" telt wat er open of bezig is.
 
-| Golf | Slices | Taken | Wat het oplevert | Wacht op |
-| --- | --- | --- | --- | --- |
-| 1, gesloten | S1, S2 | 0 | beheer-backend compleet: instellingen, diagnostiek, tokens, audit, bibliotheken, opslag, scans | niets |
-| 2 | S3, S4, S5, S6 | 22 | de catalogus verbreedt: boeken, `.nfo`-sidecars, artworkladder, filters en facetten, leesvoortgang | S2 dicht; vóór S3 de laag C-meting en het venster-besluit; P5 én vrijgave PS-15 vóór S6 |
-| 3 | S14, S16 | 12 | de Flutter-clients en de MCP-beheerlaag komen op het verbrede contract | S1, S3, S5, S6 |
-| 4 | S7, S8, S9, S10, S11, S12, S13 | 32 | Pleya Web: shell en designsysteem, consumer, boeken, beheer, setup-wizard, reader, speler | S7 kan meteen; de rest hangt aan golf 2 en 3 |
-| 5 | S17, S18, S23 | 16 | afspelen op eigen kracht: PlaybackPlan, transcode, downloads | S14 |
-| 6 | S19, S20, S21 | 15 | verzamelingen en afspeellijsten, persoonlijke laag, realtime | S1, S6, S2 |
-| 7 | S22 | 9 | metadata-providers met automatisch matchen en artwork | S4 |
-| 8 | S24, S25 | 12 | remote hardening en observability, back-up, restore, upgrade, faalpaden | S1, S2 |
-| slot | S15 | 9 | hardening, veertien golden journeys, documentatie, Plex-off gate, merge naar `main`, NAS | alles |
-| keuze | PS-12 | 0 | Plex-migratie, met een eigen vrijgave na S15 | Michel |
+| Golf | Slices | Wat het oplevert | Wacht op |
+| --- | --- | --- | --- |
+| 1, gesloten | S1, S2 | beheer-backend compleet | niets |
+| E1 (M1) | testinstance | geïsoleerde instance naast productie; NAS, scan, direct play, kijkstatus bewezen | niets |
+| E2 (M2) | S4.1 tot 4.4 en 4.6, S22.1 tot 22.5 en 22.7 tot 22.9, S14.5 | volledige keten met metadata en artwork; eerst M2a (TMDB op titel en jaar), daarna M2b (`.nfo`, dekkingspoort, ladder) | E1, venster 3 |
+| E3 (M3) | S5.1 tot 5.3 en 5.5, S14.1 tot 14.3 | filters, facetten, zoeken | E2 |
+| E4 (M4) | S17, S18 | PlaybackPlan, transcode, remux | E3 |
+| E5 (M5) | S20 (excl. 20.4), S23 (excl. 23.4) | geschiedenis, favorieten, downloads | E4 |
+| E6 (M6) | S7, S10, S24, S25 | beheer-GUI, remote hardening, back-up en restore | E5 |
+| Gate | S15 | Plex Replacement Readiness Gate op de testinstance; productie-switch alleen met Michels go | E6 |
+| E7 (M7) | S3, rest van golf 2 tot 4 | boeken en de rest van de oorspronkelijke graaf | gate (naar voren te halen) |
+| keuze | PS-12 | Plex-migratie, eigen vrijgave | Michel |
+
+*Volgorde gewijzigd door [DEC-150](DECISIONS.md) op 19 oktober 2026. Geen rij is geschrapt of op `[!]` gezet; de afhankelijkheden uit deel I gelden ongewijzigd. De oude golfindeling (2 tot 8) staat in de git-geschiedenis.*
 
 **S22 staat laat en hoeft dat niet.** Hij kan starten zodra S4 staat, en hij is de zwaarste losse
 slice die er is. Hij staat hier achteraan omdat hij niets blokkeert, niet omdat hij moet
@@ -132,7 +134,7 @@ van de 128 resterende in de golven; PS-12.0 is een keuze en telt daar niet mee. 
 | **Vrijgave van PS-15** (leesvoortgangsdeel, S6) | S6 | open; DEC-149 punt 3 en 4 laten PS-15 en PS-16 ongewijzigd, niet vrijgegeven |
 | **Vrijgave van PS-14 (S3)** | S3, en via S3 S6, S9, S12, S14 | genomen op 10 oktober 2026 ([DEC-149](DECISIONS.md)); geeft S3 vrij en S6 niet. Open blijven het contractvenster voor S3 tot en met S6, dat een eigen besluit vraagt, en de laag C-meting op hardware (DEC-128 punt 7, DEC-149 punt 4) |
 | **PS-12 voor of na Plex uit (S15.9)** | S15.5 | open; zonder migratie begint het huishouden met een lege kijkstatus |
-| **Pushen naar `origin`** | niets technisch, wel elk verlies bij een schijfstoring | de branch bestaat op `origin` maar loopt er dertien commits op voor; pushen vraagt Michels go |
+| **Pushen naar `github`** | niets technisch | `github` is leidend; branches en PR's gaan daarheen, `origin` (Gitea) loopt achter en wordt gespiegeld |
 | **PS-12 vrijgeven** | niets; het is een keuzefase | pas ná S15, met een eigen besluit |
 | Mockups 50, 51 en 36 | S12.1, S13.1, deel van S22.6 | goedgekeurd met poort P3 op 4 september; S12.1 en S13.1 zijn daarmee gesloten, S22.6 houdt de bouw van scherm 29 en 36 over |
 
@@ -405,11 +407,11 @@ punt 3 en 4), en aan het venster-besluit.
 | S15.2 | Golden journeys 1 tot 14 groen | `[ ]` | | |
 | S15.3 | Securitymatrix K.2 volledig groen, vastgelegd in `docs/qa/` | `[ ]` | | |
 | S15.4 | Documentatie uit deel M compleet | `[ ]` | | |
-| S15.5 | `PLEX_OFFLINE_REPLACEMENT_GATE` groen (migratie als keuze) | `[ ]` | | |
+| S15.5 | Plex Replacement Readiness Gate (`PLEX_OFFLINE_REPLACEMENT_GATE`) groen op de geïsoleerde testinstance, Plex blijft draaien (migratie als keuze) | `[ ]` | | |
 | S15.6 | PS-5-hardwareronde afgerond | `[ ]` | nog geen bewijs; OVERDUE sinds 25 sep 2026 en blokkeert de publieke clientrelease en de indiening bij App Review of Beta App Review met PS-5- of PS-9-gedrag en de eerste publieke release van Pleya Server, zie P7 | |
 | S15.7 | Merge naar `main`, NAS uitgerold | `[ ]` | | |
 | S15.8 | Tweede TestFlight-gate tegen de releasecandidate (vraag 62) | `[ ]` | | |
-| S15.9 | Besluit van Michel over PS-12 vóór S15.5: de kijkgeschiedenis van het huishouden migreren, of met een lege staat beginnen. Zonder PS-12 verliest een Plex-uit-gate de bestaande kijkstatus | `[ ]` | | |
+| S15.9 | Besluit van Michel over PS-12 vóór S15.5: de kijkgeschiedenis van het huishouden migreren, of met een lege staat beginnen. Zonder PS-12 verliest de vervangingsgate de bestaande kijkstatus | `[ ]` | | |
 
 ### S16 MCP-beheerlaag
 
