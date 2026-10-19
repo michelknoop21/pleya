@@ -198,6 +198,11 @@ Future<bool?> navigateToVideoPlayer(
   bool resolveWatchState = true,
   VoidCallback? onPlaybackInitFailed,
 
+  /// Explicit start position (Playback Handoff), and the handoff to answer once
+  /// playing. See [VideoPlayerScreen.startPosition].
+  Duration? startPosition,
+  String? handoffId,
+
   /// Called when the player's route is pushed, with a future that completes
   /// when that route is gone. Never called when no player starts.
   void Function(Future<void> gone)? onPlayerRoute,
@@ -379,6 +384,8 @@ Future<bool?> navigateToVideoPlayer(
         isOffline: isOffline,
         resumeProgressIsFresh: resumeProgressIsFresh,
         onPlaybackInitFailed: onPlaybackInitFailed,
+        startPosition: startPosition,
+        handoffId: handoffId,
       ),
     );
 

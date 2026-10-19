@@ -95,6 +95,23 @@ extension _VideoPlayerCompanionRemoteMethods on VideoPlayerScreenState {
     _companionRemoteProvider = null;
   }
 
+  /// Tell the phone that handed this playback over that it now plays, once.
+  void _acknowledgeHandoff() {
+    final id = widget.handoffId;
+    if (id == null || _handoffAcknowledged) return;
+    _handoffAcknowledged = true;
+    if (isPlaybackHandoffCancelled(id)) {
+      // The phone gave up while this player opened: do not keep two devices playing.
+      unawaited(_handleBackButton());
+      return;
+    }
+    try {
+      context.read<CompanionRemoteProvider>().sendCommand(RemoteCommandType.syncState, data: {handoffPlayingKey: id});
+    } catch (e) {
+      appLogger.d('Handoff acknowledgement not sent', error: e);
+    }
+  }
+
   void _cycleSubtitleTrack() => _trackManager?.cycleSubtitleTrack();
 
   void _cycleAudioTrack() => _trackManager?.cycleAudioTrack();

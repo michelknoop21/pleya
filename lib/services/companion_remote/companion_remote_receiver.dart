@@ -128,6 +128,8 @@ class CompanionRemoteReceiver {
       case RemoteCommandType.deviceInfo:
       case RemoteCommandType.disconnect:
       case RemoteCommandType.syncState:
+      case RemoteCommandType.handoff:
+        // handoff is routed by the main screen, never turned into a key press.
         break;
 
       default:

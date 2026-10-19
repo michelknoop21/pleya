@@ -591,9 +591,17 @@ class SettingsService extends BaseSharedPreferencesService {
     'video_player_navigation_enabled',
     defaultValueProvider: TvDetectionService.isTVSync,
   );
+  static bool _companionRemoteServerDefault() =>
+      companionRemoteServerDefaultFor(desktop: PlatformDetector.isDesktopOS(), appleTv: PlatformDetector.isAppleTV());
+
+  /// Desktop hosts a remote; an Apple TV listens so a phone can hand playback over (A-23).
+  @visibleForTesting
+  static bool companionRemoteServerDefaultFor({required bool desktop, required bool appleTv}) => desktop || appleTv;
+
   static const enableCompanionRemoteServer = BoolPref(
     'enable_companion_remote_server',
-    defaultValueProvider: PlatformDetector.isDesktopOS,
+    // Apple TV listens by default: it is the receiver of a Playback Handoff (A-23).
+    defaultValueProvider: _companionRemoteServerDefault,
   );
   static const startInFullscreen = BoolPref('start_in_fullscreen');
   static const exitFullscreenOnPlayerClose = BoolPref('exit_fullscreen_on_player_close');

@@ -9,33 +9,39 @@ import '../../profiles/profile_connection_registry.dart';
 import '../../providers/companion_remote_provider.dart';
 import '../../utils/app_logger.dart';
 
+/// Builds the auth contexts for the active profile, so this device can host or
+/// join a Companion Remote session. False when no usable identity exists.
+Future<bool> ensureCompanionRemoteCrypto(BuildContext context) async {
+  final companionRemote = context.read<CompanionRemoteProvider>();
+  final connections = context.read<ConnectionRegistry>();
+  final activeProfile = context.read<ActiveProfileProvider>();
+  final profileConnections = context.read<ProfileConnectionRegistry>();
+  final plexHome = context.read<PlexHomeService>();
+  final identity = await resolveActivePlexIdentity(
+    activeProfile: activeProfile,
+    connections: connections,
+    profileConnections: profileConnections,
+  );
+  if (!context.mounted) return false;
+  final home = identity == null ? null : await plexHome.materializePlexHomeForConnection(identity.account.id);
+  if (!context.mounted) return false;
+  final ok = await companionRemote.ensureCryptoReady(
+    home,
+    connections: connections,
+    activeProfile: activeProfile,
+    profileConnections: profileConnections,
+    identity: identity,
+    plexHomeForConnection: plexHome.materializePlexHomeForConnection,
+  );
+  return context.mounted && ok;
+}
+
 Future<bool> startCompanionRemoteHost(BuildContext context) async {
   final companionRemote = context.read<CompanionRemoteProvider>();
   if (companionRemote.isHostServerRunning) return true;
 
   try {
-    final connections = context.read<ConnectionRegistry>();
-    final activeProfile = context.read<ActiveProfileProvider>();
-    final profileConnections = context.read<ProfileConnectionRegistry>();
-    final plexHome = context.read<PlexHomeService>();
-    final identity = await resolveActivePlexIdentity(
-      activeProfile: activeProfile,
-      connections: connections,
-      profileConnections: profileConnections,
-    );
-    if (!context.mounted) return false;
-    final home = identity == null ? null : await plexHome.materializePlexHomeForConnection(identity.account.id);
-    if (!context.mounted) return false;
-    final ok = await companionRemote.ensureCryptoReady(
-      home,
-      connections: connections,
-      activeProfile: activeProfile,
-      profileConnections: profileConnections,
-      identity: identity,
-      plexHomeForConnection: plexHome.materializePlexHomeForConnection,
-    );
-    if (!context.mounted || !ok) return false;
-
+    if (!await ensureCompanionRemoteCrypto(context)) return false;
     await companionRemote.startHostServer();
     return companionRemote.isHostServerRunning;
   } catch (e) {

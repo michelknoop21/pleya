@@ -16,6 +16,7 @@ import '../profiles/profile.dart';
 import '../profiles/profile_connection_registry.dart';
 import '../services/companion_remote/companion_remote_peer_service.dart';
 import '../services/companion_remote/lan_discovery_service.dart';
+import '../services/companion_remote/playback_handoff.dart';
 import '../services/companion_remote/remote_auth_context.dart';
 import '../services/companion_remote/remote_auth_service.dart';
 import '../utils/app_logger.dart';
@@ -33,8 +34,9 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   CompanionRemotePeerService? _peerService;
   LanDiscoveryService? _discoveryService;
   String _deviceName = t.companionRemote.unknownDevice;
-  String _platform = 'unknown';
+  String _platform = PlatformDetector.isAppleTV() ? 'tvOS' : 'unknown';
   bool _isPlayerActive = false;
+  final PlaybackHandoffTracker _handoffs = PlaybackHandoffTracker();
 
   static const int _maxReconnectAttempts = 5;
 
@@ -61,6 +63,9 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
 
   CommandReceivedCallback? onCommandReceived;
 
+  /// Host side: the phone gave up on a handoff (see [handoffCancelKey]).
+  void Function(String id)? onHandoffCancelled;
+
   bool get isInSession => _session != null && _session!.status != RemoteSessionStatus.disconnected;
   bool get isHost => _session?.isHost ?? false;
   bool get isRemote => _session?.isRemote ?? false;
@@ -69,6 +74,10 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   RemoteSessionStatus get status => _session?.status ?? RemoteSessionStatus.disconnected;
   RemoteDevice? get connectedDevice => _session?.connectedDevice;
   bool get isPlayerActive => _isPlayerActive;
+  String get deviceName => _deviceName;
+
+  /// Host side: the connected phone is the same user as the active profile here.
+  bool get peerIsHostUser => _peerService?.clientIsHostUser ?? false;
   bool get isHostServerRunning => _peerService?.isServerRunning ?? false;
 
   CompanionRemoteProvider() {
@@ -106,6 +115,9 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
       _deviceName = t.companionRemote.unknownDevice;
       _platform = Platform.operatingSystem;
     }
+
+    // The iOS runtime also hosts tvOS; the handoff picker lists only Apple TVs.
+    if (PlatformDetector.isAppleTV()) _platform = 'tvOS';
 
     safeNotifyListeners();
   }
@@ -652,6 +664,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     });
 
     _deviceDisconnectedSubscription = _peerService!.onDeviceDisconnected.listen((_) {
+      _handoffs.failAll();
       appLogger.d('CompanionRemote: Device disconnected (intentional: $_intentionalDisconnect)');
       if (_intentionalDisconnect) {
         _session = _session?.copyWith(status: RemoteSessionStatus.disconnected, connectedDevice: null);
@@ -700,9 +713,27 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     }
   }
 
+  /// Pass the current playback to the connected host (A-23). Resolves when the
+  /// host reports that it plays, or that it could not, or after [timeout]. The
+  /// caller keeps playing until this returns [PlaybackHandoffOutcome.playing].
+  Future<PlaybackHandoffOutcome> handOffPlayback(
+    PlaybackHandoffRequest request, {
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    if (!isConnected) return PlaybackHandoffOutcome.failed;
+    final answer = _handoffs.wait(request.id, timeout);
+    sendCommand(RemoteCommandType.handoff, data: request.toData());
+    return answer;
+  }
+
   void _handleSyncState(RemoteCommand command) {
-    final playerActive = command.data?['playerActive'] as bool? ?? false;
-    if (_isPlayerActive != playerActive) {
+    _handoffs.handleSyncState(command.data);
+    final cancelled = command.data?[handoffCancelKey];
+    if (cancelled is String) onHandoffCancelled?.call(cancelled);
+    final reported = command.data?['playerActive'];
+    // Handoff answers carry no player state; they must not flip it.
+    if (reported is bool && _isPlayerActive != reported) {
+      final playerActive = reported;
       _isPlayerActive = playerActive;
       safeNotifyListeners();
     }

@@ -152,6 +152,11 @@ extension _PlexVideoControlsTrackMethods on _PlexVideoControlsState {
       mediaTitle: widget.metadata.title,
       onSubtitleDownloaded: _onSubtitleDownloaded,
       subtitleSearchSupported: _canOfferSubtitleSearch(),
+      canHandoff:
+          !widget.isLive &&
+          !widget.isOfflinePlayback &&
+          widget.metadata.serverId != null &&
+          widget.metadata.backend != MediaBackend.local,
     );
   }
 

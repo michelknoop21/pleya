@@ -104,6 +104,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTvContextMenuNl tvContextMenu = _TranslationsTvContextMenuNl._(_root);
 	@override late final _TranslationsLanguageSettingsNl languageSettings = _TranslationsLanguageSettingsNl._(_root);
 	@override late final _TranslationsAssistantNl assistant = _TranslationsAssistantNl._(_root);
+	@override late final _TranslationsPlaybackHandoffNl playbackHandoff = _TranslationsPlaybackHandoffNl._(_root);
 }
 
 // Path: states
@@ -2620,6 +2621,24 @@ class _TranslationsAssistantNl extends TranslationsAssistantEn {
 	@override late final _TranslationsAssistantClarifyNl clarify = _TranslationsAssistantClarifyNl._(_root);
 	@override late final _TranslationsAssistantFollowUpNl followUp = _TranslationsAssistantFollowUpNl._(_root);
 	@override late final _TranslationsAssistantMatchNl match = _TranslationsAssistantMatchNl._(_root);
+}
+
+// Path: playbackHandoff
+class _TranslationsPlaybackHandoffNl extends TranslationsPlaybackHandoffEn {
+	_TranslationsPlaybackHandoffNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get button => 'Overdragen naar Apple TV';
+	@override String get title => 'Overdragen naar';
+	@override String get subtitle => 'Gaat op je Apple TV verder waar je nu bent. Dit is geen AirPlay.';
+	@override String get ready => 'Pleya is open';
+	@override String get starting => 'Starten op Apple TV...';
+	@override String get failed => 'Overdracht mislukt. Controleer of de Apple TV hetzelfde profiel gebruikt. Je kijkt verder op dit toestel.';
+	@override String get noneFound => 'Geen Apple TV gevonden. Open Pleya op je Apple TV en controleer dat beide toestellen op hetzelfde wifi-netwerk zitten en hetzelfde profiel gebruiken.';
+	@override String get searchAgain => 'Opnieuw zoeken';
+	@override String received({required Object from}) => 'Overgedragen vanaf ${from}';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -7034,6 +7053,15 @@ extension on TranslationsNl {
 			'assistant.match.more' => ({required Object count}) => '+${count}',
 			'assistant.match.allAges' => 'AL',
 			'assistant.match.score' => ({required Object score}) => 'Score ${score}',
+			'playbackHandoff.button' => 'Overdragen naar Apple TV',
+			'playbackHandoff.title' => 'Overdragen naar',
+			'playbackHandoff.subtitle' => 'Gaat op je Apple TV verder waar je nu bent. Dit is geen AirPlay.',
+			'playbackHandoff.ready' => 'Pleya is open',
+			'playbackHandoff.starting' => 'Starten op Apple TV...',
+			'playbackHandoff.failed' => 'Overdracht mislukt. Controleer of de Apple TV hetzelfde profiel gebruikt. Je kijkt verder op dit toestel.',
+			'playbackHandoff.noneFound' => 'Geen Apple TV gevonden. Open Pleya op je Apple TV en controleer dat beide toestellen op hetzelfde wifi-netwerk zitten en hetzelfde profiel gebruiken.',
+			'playbackHandoff.searchAgain' => 'Opnieuw zoeken',
+			'playbackHandoff.received' => ({required Object from}) => 'Overgedragen vanaf ${from}',
 			_ => null,
 		};
 	}

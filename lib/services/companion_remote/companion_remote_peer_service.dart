@@ -11,6 +11,7 @@ import '../../models/companion_remote/remote_command.dart';
 import '../../models/companion_remote/remote_session.dart';
 import '../../utils/app_logger.dart';
 import '../base_peer_service.dart';
+import 'playback_handoff.dart';
 import 'remote_auth_context.dart';
 import 'remote_auth_service.dart';
 
@@ -34,6 +35,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
   String? _hostAddress; // Format: "ip:port"
   RemoteSessionRole? _role;
   String? _selectedAuthContextId;
+  bool _clientIsHostUser = false;
   String? _selectedHostClientId;
 
   // Encrypted channel state
@@ -71,6 +73,10 @@ class CompanionRemotePeerService with KeepaliveMixin {
   RemoteSessionRole? get role => _role;
   String? get selectedAuthContextId => _selectedAuthContextId;
   String? get selectedHostClientId => _selectedHostClientId;
+
+  /// Host side: the connected phone is the same user as this device's active
+  /// profile (see [handoffUserMatches]).
+  bool get clientIsHostUser => _clientIsHostUser;
   bool get isHost => _role == RemoteSessionRole.host;
   bool get isConnected => _clientSocket != null || (_channel != null && _channel?.closeCode == null);
 
@@ -340,6 +346,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
               _isAuthenticated = true;
               _selectedAuthContextId = selectedContext.id;
               _selectedHostClientId = selectedContext.clientIdentifier;
+              _clientIsHostUser = handoffUserMatches(clientUserUuid: userUUID, hostUserUuid: selectedContext.userUuid);
 
               appLogger.d('CompanionRemote: Client authenticated: $deviceName ($platform)');
 
@@ -394,6 +401,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
           _isAuthenticated = false;
           _selectedAuthContextId = null;
           _selectedHostClientId = null;
+          _clientIsHostUser = false;
           _deviceDisconnectedController.add(null);
           _connectionStateController.add(RemoteSessionStatus.disconnected);
           stopKeepalive();

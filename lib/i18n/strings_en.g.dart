@@ -105,6 +105,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsTvContextMenuEn tvContextMenu = TranslationsTvContextMenuEn.internal(_root);
 	late final TranslationsLanguageSettingsEn languageSettings = TranslationsLanguageSettingsEn.internal(_root);
 	late final TranslationsAssistantEn assistant = TranslationsAssistantEn.internal(_root);
+	late final TranslationsPlaybackHandoffEn playbackHandoff = TranslationsPlaybackHandoffEn.internal(_root);
 }
 
 // Path: states
@@ -6368,6 +6369,42 @@ class TranslationsAssistantEn {
 	late final TranslationsAssistantMatchEn match = TranslationsAssistantMatchEn.internal(_root);
 }
 
+// Path: playbackHandoff
+class TranslationsPlaybackHandoffEn {
+	TranslationsPlaybackHandoffEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Hand off to Apple TV'
+	String get button => 'Hand off to Apple TV';
+
+	/// en: 'Hand off to'
+	String get title => 'Hand off to';
+
+	/// en: 'Continues on your Apple TV from where you are. This is not AirPlay.'
+	String get subtitle => 'Continues on your Apple TV from where you are. This is not AirPlay.';
+
+	/// en: 'Pleya is open'
+	String get ready => 'Pleya is open';
+
+	/// en: 'Starting on Apple TV...'
+	String get starting => 'Starting on Apple TV...';
+
+	/// en: 'Hand-off failed. Check that the Apple TV uses the same profile. You keep watching on this device.'
+	String get failed => 'Hand-off failed. Check that the Apple TV uses the same profile. You keep watching on this device.';
+
+	/// en: 'No Apple TV found. Open Pleya on your Apple TV, and make sure both devices are on the same Wi-Fi network and use the same profile.'
+	String get noneFound => 'No Apple TV found. Open Pleya on your Apple TV, and make sure both devices are on the same Wi-Fi network and use the same profile.';
+
+	/// en: 'Search again'
+	String get searchAgain => 'Search again';
+
+	/// en: 'Handed over from $from'
+	String received({required Object from}) => 'Handed over from ${from}';
+}
+
 // Path: settings.displayMaxResolutionOptions
 class TranslationsSettingsDisplayMaxResolutionOptionsEn {
 	TranslationsSettingsDisplayMaxResolutionOptionsEn.internal(this._root);
@@ -12419,6 +12456,15 @@ extension on Translations {
 			'assistant.match.more' => ({required Object count}) => '+${count}',
 			'assistant.match.allAges' => 'All',
 			'assistant.match.score' => ({required Object score}) => 'Score ${score}',
+			'playbackHandoff.button' => 'Hand off to Apple TV',
+			'playbackHandoff.title' => 'Hand off to',
+			'playbackHandoff.subtitle' => 'Continues on your Apple TV from where you are. This is not AirPlay.',
+			'playbackHandoff.ready' => 'Pleya is open',
+			'playbackHandoff.starting' => 'Starting on Apple TV...',
+			'playbackHandoff.failed' => 'Hand-off failed. Check that the Apple TV uses the same profile. You keep watching on this device.',
+			'playbackHandoff.noneFound' => 'No Apple TV found. Open Pleya on your Apple TV, and make sure both devices are on the same Wi-Fi network and use the same profile.',
+			'playbackHandoff.searchAgain' => 'Search again',
+			'playbackHandoff.received' => ({required Object from}) => 'Handed over from ${from}',
 			_ => null,
 		};
 	}

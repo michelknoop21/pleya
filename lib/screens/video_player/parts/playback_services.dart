@@ -425,6 +425,8 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
 
     unawaited(_setWakelock(isPlaying));
 
+    if (isPlaying) _acknowledgeHandoff();
+
     if (isPlaying) {
       // Force a texture refresh on resume to unstick stale frames
       // (Linux/macOS texture registrars can miss frame-available
