@@ -195,7 +195,7 @@ class _Row extends StatelessWidget {
         : [if (item.genres?.isNotEmpty ?? false) item.genres!.first, if (item.year != null) '${item.year}'].join(' · ');
     final status = [
       continueWatchingStatusLine(continueWatchingItemOf(group), includePlace: false),
-      ?lastWatchedLabel(item),
+      ?lastWatchedLabel(continueWatchingItemOf(group)),
       if (group.hasMultipleSources) t.unifiedCatalog.sources(count: group.sources.length),
     ].where((s) => s.isNotEmpty).join(' · ');
     final subtitleStyle = TextStyle(fontSize: 13, color: tk.textMuted, height: 1.2);
