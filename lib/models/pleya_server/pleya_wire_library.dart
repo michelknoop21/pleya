@@ -247,6 +247,13 @@ class PleyaUserState {
   );
 }
 
+List<String>? _stringListOrNull(Object? raw) => raw is List
+    ? [
+        for (final v in raw)
+          if (v is String && v.isNotEmpty) v,
+      ]
+    : null;
+
 /// `Item`.
 class PleyaItem {
   const PleyaItem({
@@ -256,6 +263,9 @@ class PleyaItem {
     required this.addedAt,
     this.sortTitle,
     this.year,
+    this.summary,
+    this.genres,
+    this.contentRating,
     this.durationMs,
     this.parentId,
     this.index,
@@ -277,6 +287,14 @@ class PleyaItem {
   final DateTime addedAt;
   final String? sortTitle;
   final int? year;
+
+  /// Null until a source supplied them. A screen leaves the block out rather
+  /// than showing an empty one.
+  final String? summary;
+  final List<String>? genres;
+
+  /// Free text as the source gave it (`12`, `PG-13`); shown unchanged.
+  final String? contentRating;
   final int? durationMs;
   final String? parentId;
 
@@ -300,6 +318,9 @@ class PleyaItem {
       addedAt: timestamp(json, 'added_at'),
       sortTitle: strOrNull(json, 'sort_title'),
       year: integerOrNull(json, 'year'),
+      summary: strOrNull(json, 'summary'),
+      genres: _stringListOrNull(json['genres']),
+      contentRating: strOrNull(json, 'content_rating'),
       durationMs: integerOrNull(json, 'duration_ms'),
       parentId: strOrNull(json, 'parent_id'),
       index: integerOrNull(json, 'index'),

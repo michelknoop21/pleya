@@ -37,6 +37,11 @@ func (s *Server) handleArtwork(w http.ResponseWriter, r *http.Request) {
 	}
 
 	file, libraryID, err := s.opts.Catalog.ArtworkFile(r.Context(), artworkID)
+	if errors.Is(err, catalog.ErrNotFound) && s.opts.CacheDir != "" {
+		// Geen afbeelding naast de media: misschien een die een provider in de
+		// cache zette (0013). Dezelfde autorisatie en dezelfde validator.
+		file, libraryID, err = s.opts.Catalog.ProviderArtworkFile(r.Context(), artworkID, s.opts.CacheDir)
+	}
 	if err != nil {
 		// Een artwork-id dat de server niet heeft is een normale toestand en geen
 		// storing: in v1 levert hij uitsluitend afbeeldingen die op schijf staan.

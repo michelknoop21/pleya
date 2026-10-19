@@ -133,6 +133,9 @@ class PleyaServerMappers {
       title: wire.title,
       titleSort: wire.sortTitle,
       year: wire.year,
+      summary: wire.summary,
+      contentRating: wire.contentRating,
+      genres: wire.genres,
       // An episode hangs under a season and a season under a show, so an
       // episode's `parentId` is its season and its `grandparentId` its show.
       // That is the same shape the Plex and Jellyfin mappers produce, which is

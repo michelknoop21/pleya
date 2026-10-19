@@ -28,6 +28,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/httpserver"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
+	"github.com/edde746/plezy/pleya_server/internal/metadata"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/mounts"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
@@ -185,7 +186,16 @@ func run() int {
 		Workers:  cfg.JobWorkers,
 		Instance: serverID.String()[:8],
 	})
-	runner.Register(api.JobScanLibrary, scanHandler(catalogStore, sc, runner, logging.Component(log, "scanner")))
+	// Een afgeronde scan wekt de metadata-ronde (M2a). Niet-blokkerend: is er al
+	// een signaal onderweg, dan zegt een tweede niets nieuws.
+	scanned := make(chan struct{}, 1)
+	onScanned := func() {
+		select {
+		case scanned <- struct{}{}:
+		default:
+		}
+	}
+	runner.Register(api.JobScanLibrary, scanHandler(catalogStore, sc, runner, logging.Component(log, "scanner"), onScanned))
 	runner.Register(api.JobStorageRecheckRoots, storageRecheckHandler(catalogStore, cfg, logging.Component(log, "storage")))
 
 	if n, err := runner.Requeue(ctx); err != nil {
@@ -214,6 +224,13 @@ func run() int {
 
 	workers := &sync.WaitGroup{}
 	workers.Add(3)
+	if cfg.TMDBKey != "" {
+		workers.Add(1)
+		mdRunner := metadata.NewRunner(catalogStore, metadata.NewTMDB(cfg.TMDBKey, cfg.MetadataLanguage),
+			metadata.ProviderTMDB, cfg.CacheDir, logging.Component(log, "metadata"))
+		go func() { defer workers.Done(); mdRunner.Run(workCtx, scanned, 6*time.Hour) }()
+		startup.Info("metadata-provider aan", slog.String("provider", metadata.ProviderTMDB), slog.String("language", cfg.MetadataLanguage))
+	}
 	go func() { defer workers.Done(); runner.Run(workCtx) }()
 	go func() {
 		defer workers.Done()
@@ -253,6 +270,7 @@ func run() int {
 		Auth:               authStore,
 		Watch:              watch.NewStore(pool),
 		MediaRoots:         cfg.MediaDirs,
+		CacheDir:           cfg.CacheDir,
 		Jobs:               runner,
 		Signer:             signer,
 		Logger:             logging.Component(log, "http"),

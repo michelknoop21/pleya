@@ -4750,3 +4750,30 @@ server. De golfindeling in 2.1 stelde boeken (S3) vooraan, omdat die de kritieke
 
 **Consequences:** Het "Plex-container stoppen" in hoofdstuk 9 van de vervangingsmatrix vervalt als
 testhandeling; de zeven categorieën blijven.
+
+## DEC-152: protocolvenster 3 opent voor de catalogusrijen, en M2a landt als eerste deel
+
+**Date:** 2026-10-19
+**Status:** accepted. Uitwerking van [DEC-150](#dec-150-volgorde-van-het-resterende-serverwerk-eerst-een-werkende-keten-daarna-de-vervangingsgate-boeken-direct-erna) en [DEC-149](#dec-149-ps-14-is-vrijgegeven-voor-uitvoering-en-geeft-s3-vrij-en-s6-niet) punt 5; Michel gaf akkoord op 19 oktober 2026.
+
+**Decision:**
+
+1. Venster 3 (`docs/pleya-server-contract-window-3.md`) opent voor de catalogusrijen: pakket B (S4.1 tot
+   S4.3), pakket C (S4.4 tot S4.6) en pakket D1 (S5.1 tot S5.3, S5.5). De pakketten A, D2, E, F en G
+   (boeken, boekzoeken, leesvoortgang) blijven in het voorstel staan en blijven dicht tot hun eigen besluit.
+   Het venster sluit voor de catalogusrijen zodra D1 geland is (M3).
+2. Het eerste deel is **M2a**: `Item.summary`, `Item.genres` en `Item.content_rating` uit pakket B
+   (B1 tot B3), alle drie optioneel en nullable. De bron is voorlopig de metadata-provider (TMDB); de
+   `.nfo`-bron en de dekkingspoort (B2 "alleen gevuld als de bibliotheek door de 80%-poort is") volgen met
+   M2b, en tot dan geldt de poort niet omdat geen sidecar de waarde zet. `Item.people`, B5 en B6 blijven
+   voor M2b.
+3. Migratie `0013_metadata.sql` draagt de kolommen en de eerste helft van de kandidatenlaag
+   (`metadata_candidates`, `provider_artwork`); `0014_metadata_failed.sql` voegt de kandidaattoestand `failed` toe, zodat een hardnekkig falende titel met oplopend uitstel achteraan komt in plaats van de ronde te blokkeren. Dat is het nummer dat J.6 aan S3 gaf; S3 neemt het
+   eerstvolgende vrije nummer, zoals 8.1 van het voorstel al zegt.
+4. De providerronde loopt nu als eigen werker in het serverproces en niet als job. De job-vorm met
+   `GET /jobs`-zichtbaarheid hoort bij S22 (venster 8) en wijzigt het contract.
+
+**Consequences:** Een client die de velden niet kent merkt niets (optioneel, additief, regel 1 tot 3 van
+hoofdstuk 3). De velden zijn getoetst met `check_protocol.sh`, `verify-protocol.sh` (echte antwoorden) en de
+Dart-parser. De TMDB-sleutel staat als `PLEYA_SERVER_TMDB_KEY` in de omgeving; zonder sleutel verandert er
+niets aan het gedrag.

@@ -371,6 +371,9 @@ type Item struct {
 	SortTitle           *string    `json:"sort_title"`
 	Year                *int       `json:"year"`
 	AddedAt             string     `json:"added_at"`
+	Summary             *string    `json:"summary"`
+	Genres              []string   `json:"genres"`
+	ContentRating       *string    `json:"content_rating"`
 	DurationMs          *int64     `json:"duration_ms"`
 	ParentID            *string    `json:"parent_id"`
 	Index               *int       `json:"index"`
@@ -402,6 +405,9 @@ func mapItem(it catalog.Item) Item {
 		SortTitle:           optString(it.SortTitle),
 		Year:                it.Year,
 		AddedAt:             formatTime(it.AddedAt),
+		Summary:             it.Summary,
+		Genres:              it.Genres,
+		ContentRating:       it.ContentRating,
 		DurationMs:          it.DurationMs,
 		ParentID:            optID(it.ParentID),
 		Index:               it.Index,

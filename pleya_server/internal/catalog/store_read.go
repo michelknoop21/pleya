@@ -202,6 +202,9 @@ func (s *Store) hydrate(ctx context.Context, items []Item) error {
 	if err := s.attachArtwork(ctx, ids, byID); err != nil {
 		return err
 	}
+	if err := s.attachMetadata(ctx, ids, byID); err != nil {
+		return err
+	}
 	return s.attachCounts(ctx, ids, byID)
 }
 
@@ -333,7 +336,42 @@ func (s *Store) attachArtwork(ctx context.Context, ids []id.ID, byID map[id.ID]*
 			}
 		}
 	}
-	return rows.Err()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	// Voorrang per veld: een sidecar naast de media wint van wat een provider
+	// ophaalde. Alleen waar de schijf niets heeft, vult de cache aan.
+	cached, err := s.pool.Query(ctx, `
+		SELECT item_id, kind, id FROM provider_artwork
+		WHERE item_id = ANY($1) ORDER BY item_id, kind, provider`, ids)
+	if err != nil {
+		return fmt.Errorf("providerartwork lezen: %w", err)
+	}
+	defer cached.Close()
+	for cached.Next() {
+		var itemID, artID id.ID
+		var kind string
+		if err := cached.Scan(&itemID, &kind, &artID); err != nil {
+			return err
+		}
+		item := byID[itemID]
+		if item == nil {
+			continue
+		}
+		art := artID
+		switch kind {
+		case "poster":
+			if item.PosterID == nil {
+				item.PosterID = &art
+			}
+		case "backdrop":
+			if item.BackdropID == nil {
+				item.BackdropID = &art
+			}
+		}
+	}
+	return cached.Err()
 }
 
 func (s *Store) attachCounts(ctx context.Context, ids []id.ID, byID map[id.ID]*Item) error {
