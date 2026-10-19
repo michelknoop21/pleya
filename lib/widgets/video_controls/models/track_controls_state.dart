@@ -80,6 +80,10 @@ class TrackControlsState {
   /// this is false.
   final bool subtitleSearchSupported;
 
+  /// Whether this playback can be handed to an Apple TV (A-23): a server item
+  /// that is neither live, downloaded nor a local file.
+  final bool canHandoff;
+
   const TrackControlsState({
     this.availableVersions = const [],
     this.selectedMediaIndex = 0,
@@ -135,6 +139,7 @@ class TrackControlsState {
     this.mediaTitle,
     this.onSubtitleDownloaded,
     this.subtitleSearchSupported = true,
+    this.canHandoff = false,
   });
 
   /// Source subtitles can only be selected when playback can be re-opened with

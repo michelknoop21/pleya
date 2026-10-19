@@ -3081,5 +3081,16 @@
       "allAges": "All",
       "score": "Score ${score}"
     }
+  },
+  "playbackHandoff": {
+    "button": "Hand off to Apple TV",
+    "title": "Hand off to",
+    "subtitle": "Continues on your Apple TV from where you are. This is not AirPlay.",
+    "ready": "Pleya is open",
+    "starting": "Starting on Apple TV...",
+    "failed": "Hand-off failed. You keep watching on this device.",
+    "noneFound": "No Apple TV found. Open Pleya on your Apple TV, and make sure both devices are on the same Wi-Fi network and use the same profile.",
+    "searchAgain": "Search again",
+    "received": "Handed over from $from"
   }
 }

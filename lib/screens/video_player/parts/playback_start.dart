@@ -210,6 +210,7 @@ extension _VideoPlayerPlaybackStartMethods on VideoPlayerScreenState {
           // Only the launch flow can have refetched the item; the reload flows
           // below carry a snapshot that was fetched earlier.
           backendProgressIsFresh: widget.resumeProgressIsFresh,
+          requested: widget.startPosition,
         );
         if (!mounted || player != currentPlayer) return;
 

@@ -50,6 +50,7 @@ import '../providers/playback_state_provider.dart';
 import '../models/companion_remote/remote_command.dart';
 import '../providers/companion_remote_provider.dart';
 import '../services/companion_remote/companion_remote_receiver.dart';
+import '../services/companion_remote/playback_handoff.dart';
 import '../services/fullscreen_state_manager.dart';
 import '../services/discord_rpc_service.dart';
 import '../services/trackers/tracker_coordinator.dart';
@@ -305,6 +306,14 @@ class VideoPlayerScreen extends StatefulWidget {
   /// them today except that one.
   final VoidCallback? onPlaybackInitFailed;
 
+  /// Explicit start position, from a Playback Handoff (A-23). Outranks every
+  /// local and backend progress value in [PlaybackResumeResolver].
+  final Duration? startPosition;
+
+  /// Set when this playback answers a handoff; the first time it plays, the
+  /// sending phone is told so it can stop.
+  final String? handoffId;
+
   bool get isLive => live != null;
 
   const VideoPlayerScreen({
@@ -321,6 +330,8 @@ class VideoPlayerScreen extends StatefulWidget {
     this.selectedAudioStreamId,
     this.live,
     this.onPlaybackInitFailed,
+    this.startPosition,
+    this.handoffId,
   });
 
   @override
@@ -565,6 +576,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   WatchTogetherProvider? _watchTogetherProvider;
 
   CompanionRemoteProvider? _companionRemoteProvider;
+  bool _handoffAcknowledged = false;
   VoidCallback? _savedOnHome;
 
   /// Backend-neutral lookup. Returns whichever client (Plex or Jellyfin)

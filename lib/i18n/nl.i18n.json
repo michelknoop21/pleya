@@ -3081,5 +3081,16 @@
       "allAges": "AL",
       "score": "Score ${score}"
     }
+  },
+  "playbackHandoff": {
+    "button": "Overdragen naar Apple TV",
+    "title": "Overdragen naar",
+    "subtitle": "Gaat op je Apple TV verder waar je nu bent. Dit is geen AirPlay.",
+    "ready": "Pleya is open",
+    "starting": "Starten op Apple TV...",
+    "failed": "Overdracht mislukt. Je kijkt verder op dit toestel.",
+    "noneFound": "Geen Apple TV gevonden. Open Pleya op je Apple TV en controleer dat beide toestellen op hetzelfde wifi-netwerk zitten en hetzelfde profiel gebruiken.",
+    "searchAgain": "Opnieuw zoeken",
+    "received": "Overgedragen vanaf $from"
   }
 }

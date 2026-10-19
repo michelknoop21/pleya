@@ -16,6 +16,7 @@ import '../profiles/profile.dart';
 import '../profiles/profile_connection_registry.dart';
 import '../services/companion_remote/companion_remote_peer_service.dart';
 import '../services/companion_remote/lan_discovery_service.dart';
+import '../services/companion_remote/playback_handoff.dart';
 import '../services/companion_remote/remote_auth_context.dart';
 import '../services/companion_remote/remote_auth_service.dart';
 import '../utils/app_logger.dart';
@@ -35,6 +36,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   String _deviceName = t.companionRemote.unknownDevice;
   String _platform = 'unknown';
   bool _isPlayerActive = false;
+  final PlaybackHandoffTracker _handoffs = PlaybackHandoffTracker();
 
   static const int _maxReconnectAttempts = 5;
 
@@ -69,6 +71,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   RemoteSessionStatus get status => _session?.status ?? RemoteSessionStatus.disconnected;
   RemoteDevice? get connectedDevice => _session?.connectedDevice;
   bool get isPlayerActive => _isPlayerActive;
+  String get deviceName => _deviceName;
   bool get isHostServerRunning => _peerService?.isServerRunning ?? false;
 
   CompanionRemoteProvider() {
@@ -106,6 +109,9 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
       _deviceName = t.companionRemote.unknownDevice;
       _platform = Platform.operatingSystem;
     }
+
+    // The iOS runtime also hosts tvOS; the handoff picker lists only Apple TVs.
+    if (PlatformDetector.isAppleTV()) _platform = 'tvOS';
 
     safeNotifyListeners();
   }
@@ -652,6 +658,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     });
 
     _deviceDisconnectedSubscription = _peerService!.onDeviceDisconnected.listen((_) {
+      _handoffs.failAll();
       appLogger.d('CompanionRemote: Device disconnected (intentional: $_intentionalDisconnect)');
       if (_intentionalDisconnect) {
         _session = _session?.copyWith(status: RemoteSessionStatus.disconnected, connectedDevice: null);
@@ -700,7 +707,21 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     }
   }
 
+  /// Pass the current playback to the connected host (A-23). Resolves when the
+  /// host reports that it plays, or that it could not, or after [timeout]. The
+  /// caller keeps playing until this returns [PlaybackHandoffOutcome.playing].
+  Future<PlaybackHandoffOutcome> handOffPlayback(
+    PlaybackHandoffRequest request, {
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    if (!isConnected) return PlaybackHandoffOutcome.failed;
+    final answer = _handoffs.wait(request.id, timeout);
+    sendCommand(RemoteCommandType.handoff, data: request.toData());
+    return answer;
+  }
+
   void _handleSyncState(RemoteCommand command) {
+    _handoffs.handleSyncState(command.data);
     final playerActive = command.data?['playerActive'] as bool? ?? false;
     if (_isPlayerActive != playerActive) {
       _isPlayerActive = playerActive;

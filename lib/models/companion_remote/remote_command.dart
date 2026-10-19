@@ -52,6 +52,9 @@ enum RemoteCommandType {
   disconnect,
   ack,
   syncState,
+
+  /// Playback Handoff (A-23). Appended last: the wire format is the enum index.
+  handoff,
 }
 
 class _RemoteCommandTypeConverter extends IndexedEnumConverter<RemoteCommandType> {

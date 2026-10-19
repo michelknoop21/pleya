@@ -96,5 +96,19 @@ void main() {
 
       expect(position, isNull);
     });
+
+    test('a handoff start position beats a fresh backend offset and a newer local record', () async {
+      // The phone said "from 3:46"; neither the Apple TV's own old progress nor
+      // the server value may pull the start elsewhere.
+      final position = await resolveOpenResumePosition(
+        metadata: _movie(),
+        isOffline: true,
+        offlineWatchService: _FakeOfflineWatch(_passiveLocal),
+        backendProgressIsFresh: true,
+        requested: const Duration(minutes: 3, seconds: 46),
+      );
+
+      expect(position, const Duration(minutes: 3, seconds: 46));
+    });
   });
 }

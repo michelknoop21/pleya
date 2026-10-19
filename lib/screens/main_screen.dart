@@ -79,7 +79,10 @@ import '../services/settings_service.dart';
 import '../services/speech_search_service.dart';
 import '../providers/offline_mode_provider.dart';
 import '../services/companion_remote/companion_remote_host_controller.dart';
+import '../models/companion_remote/remote_command.dart';
 import '../services/companion_remote/companion_remote_receiver.dart';
+import '../services/companion_remote/playback_handoff.dart';
+import '../services/companion_remote/playback_handoff_receiver.dart';
 import '../services/fullscreen_state_manager.dart';
 import '../providers/companion_remote_provider.dart';
 import '../utils/desktop_window_padding.dart';
@@ -1245,9 +1248,13 @@ class _MainScreenState extends State<MainScreen>
   void _setupCompanionRemote() {
     final companionRemote = context.read<CompanionRemoteProvider>();
     companionRemote.onCommandReceived = (command) {
-      if (mounted) {
-        CompanionRemoteReceiver.instance.handleCommand(command, context);
+      if (!mounted) return;
+      if (command.type == RemoteCommandType.handoff) {
+        final request = PlaybackHandoffRequest.fromData(command.data);
+        if (request != null) unawaited(receivePlaybackHandoff(context, request));
+        return;
       }
+      CompanionRemoteReceiver.instance.handleCommand(command, context);
     };
 
     final receiver = CompanionRemoteReceiver.instance;
