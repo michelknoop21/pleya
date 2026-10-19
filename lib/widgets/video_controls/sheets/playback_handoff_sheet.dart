@@ -114,6 +114,8 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
       title: widget.title,
       from: _provider.deviceName,
     );
+    // The Stop of the player this handoff started from. A later player has its own.
+    final stopThisPlayer = CompanionRemoteReceiver.instance.onStop;
     var outcome = PlaybackHandoffOutcome.failed;
     try {
       await _provider.connectToDiscoveredHost(tv);
@@ -125,7 +127,7 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
       // The Apple TV plays: close this player the way the remote's Stop does,
       // also when the sheet was dismissed while waiting.
       await _provider.leaveSession();
-      CompanionRemoteReceiver.instance.onStop?.call();
+      if (CompanionRemoteReceiver.instance.onStop == stopThisPlayer) stopThisPlayer?.call();
       return;
     }
     // Giving up: tell the Apple TV, so a late start does not leave both playing.

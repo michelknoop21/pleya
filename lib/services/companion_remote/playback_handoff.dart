@@ -12,6 +12,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../media/media_item.dart';
+
 @immutable
 class PlaybackHandoffRequest {
   const PlaybackHandoffRequest({
@@ -65,6 +67,13 @@ class PlaybackHandoffRequest {
     );
   }
 }
+
+/// The item as the handoff wants it played. Transcode start paths (Plex and
+/// Jellyfin) take their offset from the item's view offset, not from the
+/// player's start position, so both must say the same thing: otherwise the
+/// stream starts at the old server position and reports the new one.
+MediaItem itemAtHandoffPosition(MediaItem item, PlaybackHandoffRequest request) =>
+    item.copyWith(viewOffsetMs: request.positionMs);
 
 /// What the receiving Apple TV reports back through `syncState`.
 enum PlaybackHandoffOutcome {

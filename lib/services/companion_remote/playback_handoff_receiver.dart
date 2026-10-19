@@ -50,6 +50,10 @@ String? _activeHandoffId;
 /// closes the player if it already did.
 void cancelPlaybackHandoff(String id) {
   _cancelled.add(id);
+  // Bounded: ids arrive from the network and are only removed when they match a start.
+  while (_cancelled.length > 16) {
+    _cancelled.remove(_cancelled.first);
+  }
   if (_activeHandoffId == id) CompanionRemoteReceiver.instance.onStop?.call();
 }
 
@@ -79,6 +83,9 @@ Future<void> _receive(BuildContext context, PlaybackHandoffRequest request, Void
     return fail('item ${request.itemId} not playable');
   }
 
+  // The phone may have given up while this was fetching: do not close what plays for nothing.
+  if (_cancelled.remove(request.id)) return;
+
   // A player that is already open is closed first; two players must never stack.
   final closePlayer = CompanionRemoteReceiver.instance.onStop;
   if (closePlayer != null) {
@@ -107,7 +114,7 @@ Future<void> _receive(BuildContext context, PlaybackHandoffRequest request, Void
   release();
   await navigateToVideoPlayer(
     context,
-    metadata: item,
+    metadata: itemAtHandoffPosition(item, request),
     // The sender's position is the intent; a refetch or a cached offset must not compete with it.
     resolveWatchState: false,
     startPosition: Duration(milliseconds: request.positionMs),

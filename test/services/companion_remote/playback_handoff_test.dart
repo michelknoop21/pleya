@@ -1,4 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/models/companion_remote/remote_command.dart';
 import 'package:pleya/services/companion_remote/playback_handoff.dart';
 import 'package:pleya/services/companion_remote/playback_handoff_receiver.dart';
@@ -96,5 +99,17 @@ void main() {
     cancelPlaybackHandoff('h9');
     expect(isPlaybackHandoffCancelled('h9'), isTrue);
     expect(isPlaybackHandoffCancelled('h10'), isFalse);
+  });
+
+  test('the item is played at the handed-over position, not the server one (transcode offset)', () {
+    final item = MediaItem(
+      backend: MediaBackend.plex,
+      kind: MediaKind.movie,
+      id: 'item_9',
+      serverId: 'server_1',
+      title: 'Big Buck Bunny',
+      viewOffsetMs: 600000,
+    );
+    expect(itemAtHandoffPosition(item, _request()).viewOffsetMs, 226000);
   });
 }
