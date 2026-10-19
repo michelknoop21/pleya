@@ -51,6 +51,7 @@ import '../models/companion_remote/remote_command.dart';
 import '../providers/companion_remote_provider.dart';
 import '../services/companion_remote/companion_remote_receiver.dart';
 import '../services/companion_remote/playback_handoff.dart';
+import '../services/companion_remote/playback_handoff_receiver.dart';
 import '../services/fullscreen_state_manager.dart';
 import '../services/discord_rpc_service.dart';
 import '../services/trackers/tracker_coordinator.dart';

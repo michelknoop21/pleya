@@ -131,6 +131,8 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
     // Giving up: tell the Apple TV, so a late start does not leave both playing.
     if (outcome == PlaybackHandoffOutcome.timedOut) {
       _provider.sendCommand(RemoteCommandType.syncState, data: {handoffCancelKey: request.id});
+      // Sending encrypts asynchronously; closing the session now could drop it.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
     }
     await _provider.leaveSession();
     if (!mounted) return;

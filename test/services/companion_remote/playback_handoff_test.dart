@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/models/companion_remote/remote_command.dart';
 import 'package:pleya/services/companion_remote/playback_handoff.dart';
+import 'package:pleya/services/companion_remote/playback_handoff_receiver.dart';
 import 'package:pleya/services/settings_service.dart';
 
 PlaybackHandoffRequest _request() => const PlaybackHandoffRequest(
@@ -88,5 +89,12 @@ void main() {
     expect(SettingsService.companionRemoteServerDefaultFor(desktop: false, appleTv: true), isTrue);
     expect(SettingsService.companionRemoteServerDefaultFor(desktop: true, appleTv: false), isTrue);
     expect(SettingsService.companionRemoteServerDefaultFor(desktop: false, appleTv: false), isFalse);
+  });
+
+  test('a cancel that arrives before the player mounts is remembered for the start', () {
+    expect(isPlaybackHandoffCancelled('h9'), isFalse);
+    cancelPlaybackHandoff('h9');
+    expect(isPlaybackHandoffCancelled('h9'), isTrue);
+    expect(isPlaybackHandoffCancelled('h10'), isFalse);
   });
 }

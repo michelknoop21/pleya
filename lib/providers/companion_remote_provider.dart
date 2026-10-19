@@ -727,8 +727,10 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     _handoffs.handleSyncState(command.data);
     final cancelled = command.data?[handoffCancelKey];
     if (cancelled is String) onHandoffCancelled?.call(cancelled);
-    final playerActive = command.data?['playerActive'] as bool? ?? false;
-    if (_isPlayerActive != playerActive) {
+    final reported = command.data?['playerActive'];
+    // Handoff answers carry no player state; they must not flip it.
+    if (reported is bool && _isPlayerActive != reported) {
+      final playerActive = reported;
       _isPlayerActive = playerActive;
       safeNotifyListeners();
     }

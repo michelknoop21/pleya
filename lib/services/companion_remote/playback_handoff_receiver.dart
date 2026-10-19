@@ -28,10 +28,17 @@ Future<void> receivePlaybackHandoff(BuildContext context, PlaybackHandoffRequest
   // arriving now would close and push in parallel.
   if (_receiving) return;
   _receiving = true;
-  try {
-    await _receive(context, request);
-  } finally {
+  var released = false;
+  void release() {
+    if (released) return;
+    released = true;
     _receiving = false;
+  }
+
+  try {
+    await _receive(context, request, release);
+  } finally {
+    release();
   }
 }
 
@@ -46,7 +53,11 @@ void cancelPlaybackHandoff(String id) {
   if (_activeHandoffId == id) CompanionRemoteReceiver.instance.onStop?.call();
 }
 
-Future<void> _receive(BuildContext context, PlaybackHandoffRequest request) async {
+/// Whether the phone gave up on [id]. The player asks this when it starts, so a
+/// cancel that arrived while the player was still opening is not lost.
+bool isPlaybackHandoffCancelled(String id) => _cancelled.contains(id);
+
+Future<void> _receive(BuildContext context, PlaybackHandoffRequest request, VoidCallback release) async {
   final provider = context.read<CompanionRemoteProvider>();
   void fail(String reason) {
     appLogger.w('Playback handoff ${request.id} failed: $reason');
@@ -91,6 +102,9 @@ Future<void> _receive(BuildContext context, PlaybackHandoffRequest request) asyn
   );
 
   _activeHandoffId = request.id;
+  // The guard covers fetching and clearing the old player; once the player is
+  // pushed, a new handoff may replace it.
+  release();
   await navigateToVideoPlayer(
     context,
     metadata: item,

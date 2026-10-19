@@ -100,6 +100,11 @@ extension _VideoPlayerCompanionRemoteMethods on VideoPlayerScreenState {
     final id = widget.handoffId;
     if (id == null || _handoffAcknowledged) return;
     _handoffAcknowledged = true;
+    if (isPlaybackHandoffCancelled(id)) {
+      // The phone gave up while this player opened: do not keep two devices playing.
+      unawaited(_handleBackButton());
+      return;
+    }
     try {
       context.read<CompanionRemoteProvider>().sendCommand(RemoteCommandType.syncState, data: {handoffPlayingKey: id});
     } catch (e) {
