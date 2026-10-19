@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:web_socket_channel/io.dart';
 import '../../utils/future_extensions.dart';
 
@@ -144,6 +145,28 @@ class CompanionRemotePeerService with KeepaliveMixin {
     ]);
   }
 
+  /// Binds [preferredPort], retrying briefly: after a profile switch the host of
+  /// the previous session may still be closing it, and a phone that reconnects
+  /// only knows that port (A-23b). A random port follows only when it stays taken.
+  @visibleForTesting
+  static Future<HttpServer> bindHostServer(
+    int preferredPort, {
+    int attempts = 5,
+    Duration pause = const Duration(milliseconds: 200),
+  }) async {
+    for (var attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        final server = await HttpServer.bind(InternetAddress.anyIPv4, preferredPort);
+        appLogger.d('CompanionRemote: Server bound to port $preferredPort');
+        return server;
+      } on SocketException {
+        if (attempt < attempts) await Future<void>.delayed(pause);
+      }
+    }
+    appLogger.w('CompanionRemote: Port $preferredPort occupied, using random port');
+    return HttpServer.bind(InternetAddress.anyIPv4, 0);
+  }
+
   /// Create a host session that accepts any of the provided remote identities.
   Future<({List<String> addresses, int port})> createSessionForContexts(
     String deviceName,
@@ -162,15 +185,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
     _myPeerId = 'host';
 
     try {
-      const int preferredPort = 48632;
-
-      try {
-        _server = await HttpServer.bind(InternetAddress.anyIPv4, preferredPort);
-        appLogger.d('CompanionRemote: Server bound to port $preferredPort');
-      } catch (e) {
-        appLogger.w('CompanionRemote: Port $preferredPort occupied, using random port');
-        _server = await HttpServer.bind(InternetAddress.anyIPv4, 0);
-      }
+      _server = await bindHostServer(48632);
 
       final localIps = await _getAllLocalIpAddresses();
       final port = _server!.port;
@@ -1022,6 +1037,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
     _role = null;
     _selectedAuthContextId = null;
     _selectedHostClientId = null;
+    _clientUserUuid = null;
     _sessionEncKey = null;
     _sendCounter = 0;
     _recvCounter = 0;

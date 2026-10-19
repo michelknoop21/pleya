@@ -59,8 +59,9 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
   bool _searching = true;
   DiscoveredHost? _handingTo;
 
-  /// The Apple TV that refused because another profile is active on it (45-d).
-  String? _wrongProfileTv;
+  /// The Apple TV that refused and why: another profile is active on it (45-d),
+  /// or the PIN of the sender's profile was not entered there (A-23b).
+  ({String tv, String text})? _refusal;
 
   /// The profile the Apple TV switches to before it plays (A-23b); a text
   /// variant of the busy row of 45-c, not a state of its own.
@@ -75,7 +76,7 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
   Future<void> _search() async {
     setState(() {
       _searching = true;
-      _wrongProfileTv = null;
+      _refusal = null;
     });
     await _subscription?.cancel();
     if (!mounted) return;
@@ -115,7 +116,7 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
     Haptics.light();
     setState(() {
       _handingTo = tv;
-      _wrongProfileTv = null;
+      _refusal = null;
       _switching = null;
     });
     // Taken at the press: this is where the Apple TV starts. The phone plays
@@ -164,18 +165,22 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
       await Future<void>.delayed(const Duration(milliseconds: 300));
     }
     await _provider.leaveSession();
-    final wrongProfile = outcome == PlaybackHandoffOutcome.wrongProfile;
-    if (wrongProfile && mounted) {
+    final refusal = switch (outcome) {
+      PlaybackHandoffOutcome.wrongProfile => t.playbackHandoff.wrongProfile,
+      PlaybackHandoffOutcome.pinCancelled => t.playbackHandoff.pinNotEntered,
+      _ => null,
+    };
+    if (refusal != null && mounted) {
       // The user can fix this on the Apple TV and try again, so the sheet stays (45-d).
       setState(() {
         _handingTo = null;
-        _wrongProfileTv = tv.name;
+        _refusal = (tv: tv.name, text: refusal);
         _switching = null;
       });
       return;
     }
     // Also when the sheet was dismissed while waiting: the user must hear it failed.
-    _showFailed(tv, body: wrongProfile ? t.playbackHandoff.wrongProfile : null);
+    _showFailed(tv, body: refusal);
   }
 
   /// Closes the sheet and says so in the player; this device keeps playing (45-e).
@@ -270,8 +275,8 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
           name: tv.name,
           detail: _handingTo == tv
               ? Text(_busyText(), style: dimText)
-              : _wrongProfileTv == tv.name
-              ? Text(t.playbackHandoff.wrongProfile, style: dimText.copyWith(color: _amber))
+              : _refusal?.tv == tv.name
+              ? Text(_refusal!.text, style: dimText.copyWith(color: _amber))
               : _readyDetail(dimText),
           trailing: _handingTo == tv
               ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))

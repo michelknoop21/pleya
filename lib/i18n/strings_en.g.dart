@@ -6410,6 +6410,9 @@ class TranslationsPlaybackHandoffEn {
 	/// en: 'Enter the PIN for $profile on the Apple TV'
 	String switchingPin({required Object profile}) => 'Enter the PIN for ${profile} on the Apple TV';
 
+	/// en: 'PIN not entered on the Apple TV. It keeps playing here.'
+	String get pinNotEntered => 'PIN not entered on the Apple TV. It keeps playing here.';
+
 	/// en: 'Uses another profile. Pick your profile on the Apple TV and try again.'
 	String get wrongProfile => 'Uses another profile. Pick your profile on the Apple TV and try again.';
 
@@ -12506,6 +12509,7 @@ extension on Translations {
 			'playbackHandoff.starting' => 'Starting on the Apple TV…',
 			'playbackHandoff.switching' => ({required Object profile}) => 'The Apple TV switches to the ${profile} profile…',
 			'playbackHandoff.switchingPin' => ({required Object profile}) => 'Enter the PIN for ${profile} on the Apple TV',
+			'playbackHandoff.pinNotEntered' => 'PIN not entered on the Apple TV. It keeps playing here.',
 			'playbackHandoff.wrongProfile' => 'Uses another profile. Pick your profile on the Apple TV and try again.',
 			'playbackHandoff.footer' => 'Not AirPlay: Pleya on the Apple TV plays it by itself. Not listed? Open Pleya on the Apple TV.',
 			'playbackHandoff.noneFoundTitle' => 'No Apple TV found',

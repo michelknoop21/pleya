@@ -27,20 +27,26 @@ import 'profile_connection_registry.dart';
 /// failed PIN never flips `_active`. The minted user-token is saved and
 /// the profile is marked pre-verified on the binder, so it reuses the cached
 /// token instead of re-prompting for the same PIN.
-Future<bool> activateProfileWithPin(BuildContext context, Profile profile) async {
+///
+/// [mayActivate] is asked once the PIN is accepted, right before the switch;
+/// false returns `false` without switching (a handoff whose phone gave up).
+Future<bool> activateProfileWithPin(BuildContext context, Profile profile, {bool Function()? mayActivate}) async {
   final active = context.read<ActiveProfileProvider>();
   final binder = context.read<ActiveProfileBinder>();
+  bool allowed() => mayActivate?.call() ?? true;
 
   if (profile.isPlexHome) {
     if (profile.plexProtected) {
       final ok = await _preVerifyPlexHomePin(context, profile);
       if (!ok) return false;
     }
+    if (!allowed()) return false;
     binder.markUserInitiatedActivation(profile.id);
     return active.activate(profile);
   }
 
   if (!profile.isPinProtected) {
+    if (!allowed()) return false;
     binder.markUserInitiatedActivation(profile.id);
     return active.activate(profile);
   }
@@ -52,6 +58,7 @@ Future<bool> activateProfileWithPin(BuildContext context, Profile profile) async
     if (pin == null) return false; // user cancelled
     final hash = profile.pinHash;
     if (hash != null && verifyPin(pin, hash)) {
+      if (!allowed()) return false;
       binder.markUserInitiatedActivation(profile.id);
       return active.activate(profile, pin: pin);
     }

@@ -3094,6 +3094,7 @@
     "starting": "Starting on the Apple TV…",
     "switching": "The Apple TV switches to the $profile profile…",
     "switchingPin": "Enter the PIN for $profile on the Apple TV",
+    "pinNotEntered": "PIN not entered on the Apple TV. It keeps playing here.",
     "wrongProfile": "Uses another profile. Pick your profile on the Apple TV and try again.",
     "footer": "Not AirPlay: Pleya on the Apple TV plays it by itself. Not listed? Open Pleya on the Apple TV.",
     "noneFoundTitle": "No Apple TV found",

@@ -52,21 +52,24 @@ Future<void> switchProfileForHandoff(BuildContext context, PlaybackHandoffReques
     target: profile,
     ledger: playbackHandoffLedger,
     send: (data) => provider.sendCommand(RemoteCommandType.syncState, data: data),
-    activate: () => context.mounted ? activateProfileWithPin(context, profile) : Future.value(false),
+    activate: (mayActivate) =>
+        context.mounted ? activateProfileWithPin(context, profile, mayActivate: mayActivate) : Future.value(false),
   );
 }
 
-/// The switch itself, with the device parts passed in. The phone hears about
-/// the switch before it starts, and the request is armed before the profile
-/// activates: a successful activation tears this session down at once. One
-/// switch at a time: a second handoff meanwhile is refused, without a dialog.
+/// The switch itself, with the device parts passed in. The request is armed
+/// before anything else, so a second handoff meanwhile is refused without a
+/// second dialog. The phone hears about the switch before it starts: a
+/// successful activation tears this session down at once. The PIN dialog is
+/// never closed for the phone, but a PIN that comes after the phone gave up
+/// (its cancel arrived, or [PlaybackHandoffLedger.pinWait] passed) does not switch.
 @visibleForTesting
 Future<void> runHandoffProfileSwitch({
   required PlaybackHandoffRequest request,
   required Profile target,
   required PlaybackHandoffLedger ledger,
   required void Function(Map<String, dynamic> data) send,
-  required Future<bool> Function() activate,
+  required Future<bool> Function(bool Function() mayActivate) activate,
   Duration sendDelay = const Duration(milliseconds: 300),
 }) async {
   if (ledger.isArmed) {
@@ -74,38 +77,62 @@ Future<void> runHandoffProfileSwitch({
     ledger.record(request.id, PlaybackHandoffOutcome.failed);
     return send(handoffOutcomeData(request.id, PlaybackHandoffOutcome.failed));
   }
+  ledger.arm(request, target.id);
   send({handoffSwitchingKey: request.id, handoffProfileKey: target.displayName, handoffPinKey: target.isPinProtected});
   // Sending encrypts asynchronously; a switch without a PIN closes the connection right after.
   await Future<void>.delayed(sendDelay);
-  ledger.arm(request, target.id);
   var switched = false;
   try {
-    switched = await activate();
+    switched = await activate(() => !isPlaybackHandoffCancelled(request.id) && ledger.mayActivate(request.id));
   } catch (e) {
     appLogger.w('Playback handoff ${request.id}: profile switch failed', error: e);
   }
   if (switched) return;
-  // Cancelled PIN or a failed check: still the old profile, and the phone is still connected.
+  // No PIN in time, or a failed check: still the old profile, and the phone is still connected.
+  final outcome = target.isPinProtected ? PlaybackHandoffOutcome.pinCancelled : PlaybackHandoffOutcome.failed;
   ledger.clear();
-  ledger.record(request.id, PlaybackHandoffOutcome.wrongProfile);
-  send(handoffOutcomeData(request.id, PlaybackHandoffOutcome.wrongProfile));
+  ledger.record(request.id, outcome);
+  send(handoffOutcomeData(request.id, outcome));
 }
 
 /// Called by the session of a newly active profile: plays the handoff that
 /// switched to it, once its servers are bound.
-Future<void> resumePendingPlaybackHandoff(BuildContext context) async {
+Future<void> resumePendingPlaybackHandoff(BuildContext context) {
   final active = context.read<ActiveProfileProvider>();
-  final request = playbackHandoffLedger.takeFor(active.activeId);
+  final provider = context.read<CompanionRemoteProvider>();
+  return runPendingHandoffResume(
+    ledger: playbackHandoffLedger,
+    profileId: active.activeId,
+    awaitBinding: active.awaitBindingSettle,
+    report: (id, outcome) =>
+        context.mounted ? reportPlaybackHandoff(provider, id, outcome) : playbackHandoffLedger.record(id, outcome),
+    receive: (request) async {
+      if (context.mounted) return receivePlaybackHandoff(context, request);
+      playbackHandoffLedger.record(request.id, PlaybackHandoffOutcome.failed);
+    },
+  );
+}
+
+/// The resume itself, with the device parts passed in. The start window is
+/// checked again after binding, which takes time: the phone may have given up.
+@visibleForTesting
+Future<void> runPendingHandoffResume({
+  required PlaybackHandoffLedger ledger,
+  required String? profileId,
+  required Future<bool> Function() awaitBinding,
+  required void Function(String id, PlaybackHandoffOutcome outcome) report,
+  required Future<void> Function(PlaybackHandoffRequest request) receive,
+}) async {
+  final request = ledger.takeFor(profileId);
   if (request == null) return;
   // The receiver needs this profile's server clients.
-  final bound = await active.awaitBindingSettle();
-  if (!context.mounted) {
-    playbackHandoffLedger.record(request.id, PlaybackHandoffOutcome.failed);
-    return;
+  final bound = await awaitBinding();
+  final late = !ledger.mayStart(request.id);
+  if (!bound || late) {
+    appLogger.w(
+      'Playback handoff ${request.id} failed: ${late ? 'past its start window' : 'the profile did not bind'}',
+    );
+    return report(request.id, PlaybackHandoffOutcome.failed);
   }
-  if (!bound) {
-    appLogger.w('Playback handoff ${request.id} failed: the new profile did not bind');
-    return reportPlaybackHandoff(context.read<CompanionRemoteProvider>(), request.id, PlaybackHandoffOutcome.failed);
-  }
-  await receivePlaybackHandoff(context, request);
+  await receive(request);
 }

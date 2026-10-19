@@ -92,10 +92,14 @@ enum PlaybackHandoffOutcome {
   /// The Apple TV could not start it; the sender keeps playing.
   failed,
 
-  /// The Apple TV refused because another profile is active there and it could
-  /// not switch to the sender's (none, or the PIN was cancelled); the sender
-  /// keeps playing and can retry after picking the profile on the Apple TV.
+  /// The Apple TV refused because another profile is active there and it has no
+  /// profile of the sender to switch to; the sender keeps playing and can retry
+  /// after picking the profile on the Apple TV.
   wrongProfile,
+
+  /// The Apple TV would switch to the sender's profile, but its PIN was not
+  /// entered there (cancelled, wrong, or too late); the sender keeps playing.
+  pinCancelled,
 
   /// No answer in time; the sender keeps playing.
   timedOut,
@@ -107,6 +111,7 @@ const handoffFailedKey = 'handoffFailed';
 /// Why the Apple TV refused, next to [handoffFailedKey]; absent for any other failure.
 const handoffReasonKey = 'handoffReason';
 const handoffReasonWrongProfile = 'profile';
+const handoffReasonPinCancelled = 'pin';
 
 /// Sent by the phone when it gave up (timeout, failure): a late start on the
 /// Apple TV must not leave both devices playing.
@@ -129,6 +134,7 @@ const handoffPendingKey = 'handoffPending';
 Map<String, dynamic> handoffOutcomeData(String id, PlaybackHandoffOutcome outcome) => switch (outcome) {
   PlaybackHandoffOutcome.playing => {handoffPlayingKey: id},
   PlaybackHandoffOutcome.wrongProfile => {handoffFailedKey: id, handoffReasonKey: handoffReasonWrongProfile},
+  PlaybackHandoffOutcome.pinCancelled => {handoffFailedKey: id, handoffReasonKey: handoffReasonPinCancelled},
   PlaybackHandoffOutcome.failed || PlaybackHandoffOutcome.timedOut => {handoffFailedKey: id},
 };
 
@@ -170,11 +176,13 @@ class _Waiting {
 
 /// Matches the host's answers to the requests a phone has outstanding.
 class PlaybackHandoffTracker {
-  PlaybackHandoffTracker({this.switchBudget = const Duration(seconds: 90)});
+  PlaybackHandoffTracker({this.switchBudget = const Duration(seconds: 120)});
 
   /// How long the phone waits once the Apple TV says it switches profile: a PIN
-  /// typed there, a new session, and the phone reconnecting. Longer than
-  /// [PlaybackHandoffLedger.ttl], so the Apple TV never starts after the phone gave up.
+  /// typed there, a new session, and the phone reconnecting. The Apple TV starts
+  /// at the latest [PlaybackHandoffLedger.pinWait] plus
+  /// [PlaybackHandoffLedger.startWindow] (90 s) after it sent that, which leaves
+  /// 30 s for fetching the item, opening the player and the answer.
   final Duration switchBudget;
 
   final Map<String, _Waiting> _pending = {};
@@ -230,8 +238,11 @@ class PlaybackHandoffTracker {
     final failed = data?[handoffFailedKey];
     if (playing is String) complete(playing, PlaybackHandoffOutcome.playing);
     if (failed is String) {
-      final wrongProfile = data?[handoffReasonKey] == handoffReasonWrongProfile;
-      complete(failed, wrongProfile ? PlaybackHandoffOutcome.wrongProfile : PlaybackHandoffOutcome.failed);
+      complete(failed, switch (data?[handoffReasonKey]) {
+        handoffReasonWrongProfile => PlaybackHandoffOutcome.wrongProfile,
+        handoffReasonPinCancelled => PlaybackHandoffOutcome.pinCancelled,
+        _ => PlaybackHandoffOutcome.failed,
+      });
     }
   }
 
@@ -249,48 +260,74 @@ class PlaybackHandoffTracker {
 /// rebuilds the profile session, and the Companion Remote connection with it,
 /// so this lives outside it: the new session takes the request from here, and
 /// a phone that reconnects asks here how its handoff ended.
+///
+/// Deadlines, so the Apple TV never starts after the phone gave up (a cancel
+/// cannot reach it while the connection is down): the PIN must be accepted
+/// within [pinWait] of [arm], and playback must start within [startWindow] of
+/// that. Both together stay below [PlaybackHandoffTracker.switchBudget].
 class PlaybackHandoffLedger {
   PlaybackHandoffLedger({DateTime Function()? clock}) : _clock = clock ?? DateTime.now;
 
-  /// Shorter than [PlaybackHandoffTracker.switchBudget]: a cancel from the phone
-  /// cannot reach this device during the switch, so this budget must run out first.
-  static const ttl = Duration(seconds: 60);
+  static const pinWait = Duration(seconds: 60);
+  static const startWindow = Duration(seconds: 30);
 
   final DateTime Function() _clock;
-  ({PlaybackHandoffRequest request, String profileId, DateTime at})? _armed;
+  _ArmedHandoff? _armed;
+  ({String id, DateTime startBy})? _taken;
 
   /// Recent handoffs by id; null while one is still under way. Bounded, since
   /// ids arrive from the network.
   final Map<String, PlaybackHandoffOutcome?> _outcomes = {};
 
-  bool _expired(DateTime at) => _clock().difference(at) > ttl;
+  bool _late(DateTime deadline) => _clock().isAfter(deadline);
 
-  /// A switch for a handoff is under way.
+  /// A switch for a handoff is under way: its PIN dialog is open, or the new
+  /// session has not taken it yet and may still.
   bool get isArmed {
-    final armed = _armed;
-    return armed != null && !_expired(armed.at);
+    final startBy = _armed?.startBy;
+    return _armed != null && (startBy == null || !_late(startBy));
   }
 
-  /// [request] plays once the profile [profileId] is active.
+  /// [request] plays once the profile [profileId] is active. Call before
+  /// anything else of the switch, so a second handoff meets [isArmed].
   void arm(PlaybackHandoffRequest request, String profileId) {
-    _armed = (request: request, profileId: profileId, at: _clock());
+    _armed = _ArmedHandoff(request, profileId, _clock());
     _remember(request.id, null);
+  }
+
+  /// The PIN for [id] was accepted: may the profile switch now? Not when it came
+  /// after [pinWait]. Yes starts the [startWindow].
+  bool mayActivate(String id) {
+    final armed = _armed;
+    if (armed == null || armed.request.id != id || _late(armed.at.add(pinWait))) return false;
+    armed.startBy = _clock().add(startWindow);
+    return true;
   }
 
   /// The switch was cancelled or failed.
   void clear() => _armed = null;
 
   /// The armed request, taken once by the session of [profileId]. A request
-  /// armed for another profile, or older than [ttl], is dropped as failed.
+  /// for another profile, one that never passed [mayActivate], or one past its
+  /// start window is dropped as failed.
   PlaybackHandoffRequest? takeFor(String? profileId) {
     final armed = _armed;
     if (armed == null) return null;
     _armed = null;
-    if (armed.profileId != profileId || _expired(armed.at)) {
+    final startBy = armed.startBy;
+    if (armed.profileId != profileId || startBy == null || _late(startBy)) {
       record(armed.request.id, PlaybackHandoffOutcome.failed);
       return null;
     }
+    _taken = (id: armed.request.id, startBy: startBy);
     return armed.request;
+  }
+
+  /// A taken request may still start: asked again right before playing, since
+  /// binding the new profile's servers takes time.
+  bool mayStart(String id) {
+    final taken = _taken;
+    return taken != null && taken.id == id && !_late(taken.startBy);
   }
 
   void record(String id, PlaybackHandoffOutcome outcome) => _remember(id, outcome);
@@ -306,11 +343,21 @@ class PlaybackHandoffLedger {
   /// Still under way: armed and in time, or taken and not yet answered.
   bool isPending(String id) {
     if (!_outcomes.containsKey(id) || _outcomes[id] != null) return false;
-    final armed = _armed;
-    return armed == null || armed.request.id != id || !_expired(armed.at);
+    return _armed?.request.id != id || isArmed;
   }
 
   PlaybackHandoffOutcome? outcomeOf(String id) => _outcomes[id];
+}
+
+class _ArmedHandoff {
+  _ArmedHandoff(this.request, this.profileId, this.at);
+
+  final PlaybackHandoffRequest request;
+  final String profileId;
+  final DateTime at;
+
+  /// Set once the PIN was accepted in time; playback must start before it.
+  DateTime? startBy;
 }
 
 /// The handoff state of this device, kept across profile sessions.

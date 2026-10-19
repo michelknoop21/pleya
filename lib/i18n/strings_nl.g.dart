@@ -2641,6 +2641,7 @@ class _TranslationsPlaybackHandoffNl extends TranslationsPlaybackHandoffEn {
 	@override String get starting => 'Starten op de Apple TV…';
 	@override String switching({required Object profile}) => 'De Apple TV wisselt naar profiel ${profile}…';
 	@override String switchingPin({required Object profile}) => 'Voer op de Apple TV de pincode van ${profile} in';
+	@override String get pinNotEntered => 'Pincode niet ingevoerd op de Apple TV. Het blijft hier spelen.';
 	@override String get wrongProfile => 'Gebruikt een ander profiel. Kies op de Apple TV jouw profiel en probeer het opnieuw.';
 	@override String get footer => 'Geen AirPlay: Pleya op de Apple TV speelt zelf verder. Staat hij er niet bij? Open Pleya op de Apple TV.';
 	@override String get noneFoundTitle => 'Geen Apple TV gevonden';
@@ -7077,6 +7078,7 @@ extension on TranslationsNl {
 			'playbackHandoff.starting' => 'Starten op de Apple TV…',
 			'playbackHandoff.switching' => ({required Object profile}) => 'De Apple TV wisselt naar profiel ${profile}…',
 			'playbackHandoff.switchingPin' => ({required Object profile}) => 'Voer op de Apple TV de pincode van ${profile} in',
+			'playbackHandoff.pinNotEntered' => 'Pincode niet ingevoerd op de Apple TV. Het blijft hier spelen.',
 			'playbackHandoff.wrongProfile' => 'Gebruikt een ander profiel. Kies op de Apple TV jouw profiel en probeer het opnieuw.',
 			'playbackHandoff.footer' => 'Geen AirPlay: Pleya op de Apple TV speelt zelf verder. Staat hij er niet bij? Open Pleya op de Apple TV.',
 			'playbackHandoff.noneFoundTitle' => 'Geen Apple TV gevonden',

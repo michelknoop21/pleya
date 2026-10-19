@@ -774,10 +774,21 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     _peerService!.sendCommand(RemoteCommand(type: type, data: data));
   }
 
+  /// The wait before the next reconnect attempt, or null to give up. While a
+  /// handoff waits for a profile switch on the host, the phone keeps trying
+  /// every few seconds until the tracker's switch budget ends that wait: giving
+  /// up earlier would leave it playing while the host still starts (A-23b).
+  @visibleForTesting
+  static Duration? reconnectDelay(int attempts, {required bool waitingForSwitch}) {
+    if (waitingForSwitch) return Duration(seconds: attempts < 2 ? 1 << attempts : 4);
+    if (attempts >= _maxReconnectAttempts) return null;
+    return Duration(seconds: 1 << attempts);
+  }
+
   void _scheduleReconnect() {
-    if (_reconnectAttempts >= _maxReconnectAttempts) {
+    final delay = reconnectDelay(_reconnectAttempts, waitingForSwitch: _handoffs.switchingIds.isNotEmpty);
+    if (delay == null) {
       appLogger.w('CompanionRemote: Max reconnect attempts reached');
-      // A handoff that waited for a profile switch will not hear back either.
       _handoffs.failAll(force: true);
       _session = _session?.copyWith(
         status: RemoteSessionStatus.error,
@@ -788,7 +799,6 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
       return;
     }
 
-    final delay = Duration(seconds: 1 << _reconnectAttempts);
     _reconnectAttempts++;
     appLogger.d('CompanionRemote: Reconnect attempt $_reconnectAttempts in ${delay.inSeconds}s');
 
@@ -840,7 +850,8 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
       }
     } catch (e) {
       appLogger.e('CompanionRemote: Reconnect failed', error: e);
-      if (_session?.status == RemoteSessionStatus.reconnecting) {
+      // A peer error may have moved the status on; a handoff waiting for a switch still needs the host back.
+      if (_session?.status == RemoteSessionStatus.reconnecting || _handoffs.switchingIds.isNotEmpty) {
         _scheduleReconnect();
       }
     }
@@ -855,6 +866,8 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   void cancelReconnect() {
     _reconnectTimer?.cancel();
     _reconnectAttempts = 0;
+    // Deliberately stopped: nothing will answer a handoff, also not one waiting for a switch.
+    _handoffs.failAll(force: true);
     _session = _session?.copyWith(status: RemoteSessionStatus.disconnected, connectedDevice: null);
     safeNotifyListeners();
   }
@@ -863,6 +876,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     _intentionalDisconnect = true;
     _reconnectTimer?.cancel();
     _reconnectAttempts = 0;
+    _handoffs.failAll(force: true);
 
     // Don't stop the host server when leaving — only stop discovery listening
     if (_peerService != null && !isHost) {

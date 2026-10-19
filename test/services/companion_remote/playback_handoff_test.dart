@@ -64,6 +64,13 @@ void main() {
       expect(await answer, PlaybackHandoffOutcome.wrongProfile);
     });
 
+    test('a PIN not entered on the Apple TV is told apart from another profile', () async {
+      final tracker = PlaybackHandoffTracker();
+      final answer = tracker.wait('h1', const Duration(seconds: 5));
+      tracker.handleSyncState({handoffFailedKey: 'h1', handoffReasonKey: handoffReasonPinCancelled});
+      expect(await answer, PlaybackHandoffOutcome.pinCancelled);
+    });
+
     test('silence is a timeout, not a success', () async {
       final tracker = PlaybackHandoffTracker();
       expect(await tracker.wait('h1', const Duration(milliseconds: 20)), PlaybackHandoffOutcome.timedOut);
@@ -153,40 +160,76 @@ void main() {
     PlaybackHandoffLedger ledger() => PlaybackHandoffLedger(clock: () => now);
     setUp(() => now = DateTime(2026, 10, 19, 20));
 
+    PlaybackHandoffLedger accepted() => ledger()
+      ..arm(_request(), 'anna')
+      ..mayActivate('h1');
+
     test('only the session of the armed profile takes the request', () {
-      final l = ledger()..arm(_request(), 'anna');
+      final l = accepted();
       expect(l.takeFor('anna')?.id, 'h1');
       expect(l.takeFor('anna'), isNull, reason: 'taken once');
     });
 
     test('another profile drops the request, and the phone hears it failed', () {
-      final l = ledger()..arm(_request(), 'anna');
+      final l = accepted();
       expect(l.takeFor('michel'), isNull);
       expect(l.takeFor('anna'), isNull);
       expect(handoffQueryReply(l, 'h1'), {handoffFailedKey: 'h1'});
     });
 
-    test('a request older than the budget is dropped', () {
+    test('a long PIN dialog keeps the switch armed: the start window begins at the PIN', () {
       final l = ledger()..arm(_request(), 'anna');
-      now = now.add(PlaybackHandoffLedger.ttl + const Duration(seconds: 1));
-      expect(l.isArmed, isFalse);
-      expect(handoffQueryReply(l, 'h1'), {handoffFailedKey: 'h1'});
+      now = now.add(const Duration(seconds: 50));
+      expect(l.isArmed, isTrue);
+      expect(l.mayActivate('h1'), isTrue);
+      now = now.add(PlaybackHandoffLedger.startWindow - const Duration(seconds: 1));
+      expect(l.takeFor('anna')?.id, 'h1');
+      expect(l.mayStart('h1'), isTrue);
+    });
+
+    test('a PIN after the PIN wait does not switch', () {
+      final l = ledger()..arm(_request(), 'anna');
+      now = now.add(PlaybackHandoffLedger.pinWait + const Duration(seconds: 1));
+      expect(l.mayActivate('h1'), isFalse);
+      expect(l.mayActivate('h2'), isFalse, reason: 'not the armed handoff');
+    });
+
+    test('past the start window nothing starts: not at the take, not right before playing', () {
+      final early = accepted();
+      now = now.add(PlaybackHandoffLedger.startWindow + const Duration(seconds: 1));
+      expect(early.isArmed, isFalse);
+      expect(handoffQueryReply(early, 'h1'), {handoffFailedKey: 'h1'});
+      expect(early.takeFor('anna'), isNull);
+
+      final taken = accepted()..takeFor('anna');
+      expect(taken.mayStart('h1'), isTrue);
+      now = now.add(PlaybackHandoffLedger.startWindow + const Duration(seconds: 1));
+      expect(taken.mayStart('h1'), isFalse);
+    });
+
+    test('a request that never had its PIN accepted is not taken', () {
+      final l = ledger()..arm(_request(), 'anna');
       expect(l.takeFor('anna'), isNull);
     });
 
-    test('the Apple TV budget is shorter than the phone waits during a switch', () {
-      expect(PlaybackHandoffLedger.ttl, lessThan(PlaybackHandoffTracker().switchBudget));
+    test('the Apple TV starts at the latest 90 s after the switch, 30 s before the phone gives up', () {
+      final latestStart = PlaybackHandoffLedger.pinWait + PlaybackHandoffLedger.startWindow;
+      expect(latestStart, const Duration(seconds: 90));
+      expect(PlaybackHandoffTracker().switchBudget - latestStart, greaterThanOrEqualTo(const Duration(seconds: 30)));
     });
 
     test('a reconnected phone hears pending, then the recorded answer', () {
       final l = ledger()..arm(_request(), 'anna');
       expect(handoffQueryReply(l, 'h1'), {handoffPendingKey: 'h1'});
+      l.mayActivate('h1');
       l.takeFor('anna');
       expect(handoffQueryReply(l, 'h1'), {handoffPendingKey: 'h1'});
       l.record('h1', PlaybackHandoffOutcome.playing);
       expect(handoffQueryReply(l, 'h1'), {handoffPlayingKey: 'h1'});
       l.record('h2', PlaybackHandoffOutcome.wrongProfile);
       expect(handoffQueryReply(l, 'h2'), {handoffFailedKey: 'h2', handoffReasonKey: handoffReasonWrongProfile});
+      l.record('h3', PlaybackHandoffOutcome.pinCancelled);
+      expect(handoffQueryReply(l, 'h3'), {handoffFailedKey: 'h3', handoffReasonKey: handoffReasonPinCancelled});
       expect(handoffQueryReply(l, 'unknown'), {handoffFailedKey: 'unknown'});
     });
   });
