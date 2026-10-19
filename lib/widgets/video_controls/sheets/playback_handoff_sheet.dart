@@ -154,8 +154,8 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
       await Future<void>.delayed(const Duration(milliseconds: 300));
     }
     await _provider.leaveSession();
-    if (!mounted) return;
-    if (outcome == PlaybackHandoffOutcome.wrongProfile) {
+    final wrongProfile = outcome == PlaybackHandoffOutcome.wrongProfile;
+    if (wrongProfile && mounted) {
       // The user can fix this on the Apple TV and try again, so the sheet stays (45-d).
       setState(() {
         _handingTo = null;
@@ -163,16 +163,17 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
       });
       return;
     }
-    _showFailed(tv);
+    // Also when the sheet was dismissed while waiting: the user must hear it failed.
+    _showFailed(tv, body: wrongProfile ? t.playbackHandoff.wrongProfile : null);
   }
 
   /// Closes the sheet and says so in the player; this device keeps playing (45-e).
-  void _showFailed(DiscoveredHost tv) {
+  void _showFailed(DiscoveredHost tv, {String? body}) {
     noticeController.show(
       Notice(
         level: NoticeLevel.warning,
         title: t.playbackHandoff.failedTitle(name: tv.name),
-        body: t.playbackHandoff.failedBody,
+        body: body ?? t.playbackHandoff.failedBody,
         groupKey: 'playback-handoff-failed:${tv.clientId}',
       ),
     );
@@ -206,7 +207,8 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
             title: Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             subtitle: detail,
             trailing: trailing,
-            enabled: onTap != null,
+            // Never the disabled style: the current device and the busy Apple TV stay bright (45-b, 45-c).
+            enabled: true,
             onTap: onTap,
           ),
         ),
