@@ -3091,7 +3091,6 @@
     "failed": "Overdracht mislukt. Controleer of de Apple TV hetzelfde profiel gebruikt. Je kijkt verder op dit toestel.",
     "noneFound": "Geen Apple TV gevonden. Open Pleya op je Apple TV en controleer dat beide toestellen op hetzelfde wifi-netwerk zitten en hetzelfde profiel gebruiken.",
     "searchAgain": "Opnieuw zoeken",
-    "switchedTo": "Gewisseld naar $name",
     "received": "Overgedragen vanaf $from"
   }
 }

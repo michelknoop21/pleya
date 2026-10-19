@@ -6401,9 +6401,6 @@ class TranslationsPlaybackHandoffEn {
 	/// en: 'Search again'
 	String get searchAgain => 'Search again';
 
-	/// en: 'Switched to $name'
-	String switchedTo({required Object name}) => 'Switched to ${name}';
-
 	/// en: 'Handed over from $from'
 	String received({required Object from}) => 'Handed over from ${from}';
 }
@@ -12467,7 +12464,6 @@ extension on Translations {
 			'playbackHandoff.failed' => 'Hand-off failed. Check that the Apple TV uses the same profile. You keep watching on this device.',
 			'playbackHandoff.noneFound' => 'No Apple TV found. Open Pleya on your Apple TV, and make sure both devices are on the same Wi-Fi network and use the same profile.',
 			'playbackHandoff.searchAgain' => 'Search again',
-			'playbackHandoff.switchedTo' => ({required Object name}) => 'Switched to ${name}',
 			'playbackHandoff.received' => ({required Object from}) => 'Handed over from ${from}',
 			_ => null,
 		};

@@ -2638,7 +2638,6 @@ class _TranslationsPlaybackHandoffNl extends TranslationsPlaybackHandoffEn {
 	@override String get failed => 'Overdracht mislukt. Controleer of de Apple TV hetzelfde profiel gebruikt. Je kijkt verder op dit toestel.';
 	@override String get noneFound => 'Geen Apple TV gevonden. Open Pleya op je Apple TV en controleer dat beide toestellen op hetzelfde wifi-netwerk zitten en hetzelfde profiel gebruiken.';
 	@override String get searchAgain => 'Opnieuw zoeken';
-	@override String switchedTo({required Object name}) => 'Gewisseld naar ${name}';
 	@override String received({required Object from}) => 'Overgedragen vanaf ${from}';
 }
 
@@ -7062,7 +7061,6 @@ extension on TranslationsNl {
 			'playbackHandoff.failed' => 'Overdracht mislukt. Controleer of de Apple TV hetzelfde profiel gebruikt. Je kijkt verder op dit toestel.',
 			'playbackHandoff.noneFound' => 'Geen Apple TV gevonden. Open Pleya op je Apple TV en controleer dat beide toestellen op hetzelfde wifi-netwerk zitten en hetzelfde profiel gebruiken.',
 			'playbackHandoff.searchAgain' => 'Opnieuw zoeken',
-			'playbackHandoff.switchedTo' => ({required Object name}) => 'Gewisseld naar ${name}',
 			'playbackHandoff.received' => ({required Object from}) => 'Overgedragen vanaf ${from}',
 			_ => null,
 		};

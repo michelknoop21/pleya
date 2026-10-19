@@ -3091,7 +3091,6 @@
     "failed": "Hand-off failed. Check that the Apple TV uses the same profile. You keep watching on this device.",
     "noneFound": "No Apple TV found. Open Pleya on your Apple TV, and make sure both devices are on the same Wi-Fi network and use the same profile.",
     "searchAgain": "Search again",
-    "switchedTo": "Switched to $name",
     "received": "Handed over from $from"
   }
 }

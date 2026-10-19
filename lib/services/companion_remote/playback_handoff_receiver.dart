@@ -4,8 +4,6 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../../i18n/strings.g.dart';
-import '../../profiles/active_profile_binder.dart';
-import '../../profiles/active_profile_provider.dart';
 import '../../media/ids.dart';
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
@@ -25,11 +23,7 @@ import 'playback_handoff.dart';
 /// A handoff is a deliberate press on the phone, so it replaces whatever this
 /// device is doing without asking. Any failure is reported to the phone, which
 /// then keeps playing.
-Future<void> receivePlaybackHandoff(
-  BuildContext context,
-  PlaybackHandoffRequest request, {
-  String? switchedToProfile,
-}) async {
+Future<void> receivePlaybackHandoff(BuildContext context, PlaybackHandoffRequest request) async {
   // One handoff at a time while it fetches and clears the old player: a second
   // arriving now would close and push in parallel.
   if (_receiving) return;
@@ -42,7 +36,7 @@ Future<void> receivePlaybackHandoff(
   }
 
   try {
-    await _receive(context, request, release, switchedToProfile);
+    await _receive(context, request, release);
   } finally {
     release();
   }
@@ -67,12 +61,7 @@ void cancelPlaybackHandoff(String id) {
 /// cancel that arrived while the player was still opening is not lost.
 bool isPlaybackHandoffCancelled(String id) => _cancelled.contains(id);
 
-Future<void> _receive(
-  BuildContext context,
-  PlaybackHandoffRequest request,
-  VoidCallback release,
-  String? switchedToProfile,
-) async {
+Future<void> _receive(BuildContext context, PlaybackHandoffRequest request, VoidCallback release) async {
   final provider = context.read<CompanionRemoteProvider>();
   void fail(String reason) {
     appLogger.w('Playback handoff ${request.id} failed: $reason');
@@ -114,9 +103,7 @@ Future<void> _receive(
     Notice(
       level: NoticeLevel.info,
       title: t.playbackHandoff.received(from: request.from),
-      body: switchedToProfile == null
-          ? item.displayTitle
-          : '${item.displayTitle} · ${t.playbackHandoff.switchedTo(name: switchedToProfile)}',
+      body: item.displayTitle,
       groupKey: 'playback-handoff:${request.id}',
     ),
   );
@@ -135,86 +122,4 @@ Future<void> _receive(
     onPlaybackInitFailed: () => fail('player did not start'),
   );
   if (_activeHandoffId == request.id) _activeHandoffId = null;
-}
-
-/// A handoff waiting for the profile switch it asked for. Switching rebuilds the
-/// whole profile session, including the screen that received the request, so
-/// the new session picks it up once the switch has settled (see
-/// [takePendingPlaybackHandoff]).
-class _PendingHandoff {
-  _PendingHandoff(this.request, this.profileId, this.profileName);
-
-  final PlaybackHandoffRequest request;
-  final String profileId;
-  final String profileName;
-
-  /// Set when the profile is active and its servers are bound; before that the
-  /// previous profile's clients are still the ones that would play.
-  DateTime? settledAt;
-}
-
-_PendingHandoff? _pending;
-
-/// Tells the screen of the new session that a pending handoff became ready.
-final ValueNotifier<int> pendingPlaybackHandoffChanged = ValueNotifier<int>(0);
-
-/// The handoff that waits for its profile switch to settle.
-abstract final class PendingHandoff {
-  /// Taken once, by the session of the profile the handoff switched to, and only
-  /// when the switch has settled. A request that waited more than two minutes
-  /// after that is dropped: the phone has long given up.
-  static ({PlaybackHandoffRequest request, String profileName})? take({required String activeProfileId}) {
-    final pending = _pending;
-    final settledAt = pending?.settledAt;
-    if (pending == null || settledAt == null || pending.profileId != activeProfileId) return null;
-    _pending = null;
-    if (DateTime.now().difference(settledAt) > const Duration(minutes: 2)) return null;
-    return (request: pending.request, profileName: pending.profileName);
-  }
-
-  @visibleForTesting
-  static void debugSet(PlaybackHandoffRequest request, String profileId, {DateTime? settledAt}) {
-    _pending = _PendingHandoff(request, profileId, 'Test')..settledAt = settledAt;
-  }
-}
-
-/// A phone of another user of the Home hands over: switch this device to that
-/// user's profile first, so playback and progress belong to the right account.
-/// Refused (the phone keeps playing) when that user has no profile here, when a
-/// switch is already under way, or when the switch fails; a failed switch goes
-/// back to the profile that was active.
-Future<void> receivePlaybackHandoffFromOtherUser(
-  BuildContext context,
-  PlaybackHandoffRequest request,
-  String clientUserUuid,
-) async {
-  final provider = context.read<CompanionRemoteProvider>();
-  final active = context.read<ActiveProfileProvider>();
-  final binder = context.read<ActiveProfileBinder>();
-  void fail(String reason) {
-    appLogger.w('Playback handoff ${request.id} refused: $reason');
-    provider.sendCommand(RemoteCommandType.syncState, data: {handoffFailedKey: request.id});
-  }
-
-  if (_pending != null) return fail('another switch is under way');
-  final target = profileForHandoffUser(active.profiles, clientUserUuid);
-  if (target == null) return fail('no switchable profile for the sender');
-
-  final previous = active.active;
-  final pending = _pending = _PendingHandoff(request, target.id, target.displayName);
-  binder.markUserInitiatedActivation(target.id);
-  // A PIN prompt on this device is part of the binding, so settling can take a while.
-  final switched =
-      await active.activate(target) && await active.awaitBindingSettle(timeout: const Duration(seconds: 80));
-  if (switched && active.activeId == target.id) {
-    pending.settledAt = DateTime.now();
-    pendingPlaybackHandoffChanged.value++;
-    return;
-  }
-  if (identical(_pending, pending)) _pending = null;
-  fail('switching to ${target.displayName} failed');
-  if (previous != null && active.activeId != previous.id) {
-    binder.markUserInitiatedActivation(previous.id);
-    await active.activate(previous);
-  }
 }

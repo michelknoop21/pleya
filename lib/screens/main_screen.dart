@@ -1254,9 +1254,9 @@ class _MainScreenState extends State<MainScreen>
         final request = PlaybackHandoffRequest.fromData(command.data);
         if (request == null) return;
         if (!companionRemote.peerIsHostUser) {
-          // Another member of the Home: switch to that profile first, so the
-          // progress lands on the sender's own account.
-          unawaited(receivePlaybackHandoffFromOtherUser(context, request, companionRemote.peerUserUuid ?? ''));
+          // Another member of the Home: the progress would land on this profile's account.
+          appLogger.w('Playback handoff ${request.id} refused: sender is not the active user');
+          companionRemote.sendCommand(RemoteCommandType.syncState, data: {handoffFailedKey: request.id});
           return;
         }
         unawaited(receivePlaybackHandoff(context, request));
@@ -1264,10 +1264,6 @@ class _MainScreenState extends State<MainScreen>
       }
       CompanionRemoteReceiver.instance.handleCommand(command, context);
     };
-
-    // A handoff that switched the profile continues in the session the switch built.
-    pendingPlaybackHandoffChanged.addListener(_continuePendingHandoff);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _continuePendingHandoff());
 
     final receiver = CompanionRemoteReceiver.instance;
 
@@ -1345,16 +1341,6 @@ class _MainScreenState extends State<MainScreen>
     });
   }
 
-  void _continuePendingHandoff() {
-    if (!mounted) return;
-    final activeProfile = context.read<ActiveProfileProvider>();
-    final activeId = activeProfile.activeId;
-    if (activeId == null || activeProfile.isBinding) return;
-    final pending = PendingHandoff.take(activeProfileId: activeId);
-    if (pending == null) return;
-    unawaited(receivePlaybackHandoff(context, pending.request, switchedToProfile: pending.profileName));
-  }
-
   Future<void> _autoStartCompanionRemoteServer() async {
     try {
       final settings = await SettingsService.getInstance();
@@ -1368,7 +1354,6 @@ class _MainScreenState extends State<MainScreen>
 
   @override
   void dispose() {
-    pendingPlaybackHandoffChanged.removeListener(_continuePendingHandoff);
     tvContentRouteRegistry.detach(_pushTvContentRoute);
     OpenedFileService.instance.detach(_onOpenedFile);
     if (kPleyaVerify) {
