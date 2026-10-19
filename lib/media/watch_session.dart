@@ -85,9 +85,14 @@ class WatchSession {
   /// the source names neither.
   final String? playerLabel;
 
+  /// The server's own account name, where [userName] is a friendly name that
+  /// may differ from it. Null when the source gives one name only.
+  final String? login;
+
   const WatchSession({
     required this.id,
     required this.userName,
+    this.login,
     this.userThumb,
     this.isSelf = false,
     required this.title,

@@ -120,6 +120,15 @@ void main() {
       expect(now.totalBandwidthKbps, greaterThan(0));
     });
 
+    test('a session keeps the account name beside a different friendly name', () {
+      final raw = File('test/fixtures/tautulli/activity_movie_direct_play.json').readAsStringSync();
+      final renamed = raw.replaceAll('"friendly_name": "user67"', '"friendly_name": "Michel"');
+      expect(renamed, isNot(raw), reason: 'the fixture must actually carry the friendly name');
+      final now = service.map(TautulliActivity.fromJson(json.decode(renamed) as Map<String, dynamic>), selfUserId: 999);
+      expect(now.sessions.single.userName, 'Michel');
+      expect(now.sessions.single.login, 'user67', reason: 'an exclusion by account name needs this');
+    });
+
     test('someone else stays in the list', () {
       final now = service.map(activityFrom('activity_movie_direct_play.json'), selfUserId: 999);
       expect(now.sessions, hasLength(1));

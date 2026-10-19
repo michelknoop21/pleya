@@ -69,7 +69,7 @@ String _servedLabel(AssistantToolContext ctx, List<ServerId> answered, List<Serv
 /// A stream with what is known of its kind: true an episode, false a film,
 /// null not a film or episode, or the source does not say (a track, a clip, a
 /// recording; Pleya Server's stream list carries no kind).
-typedef _Stream = ({JellyfinActiveSession s, bool? episode});
+typedef _Stream = ({JellyfinActiveSession s, bool? episode, String? login});
 
 bool? _episodeOf(String? kind) => switch (kind) {
   'episode' => true,
@@ -78,7 +78,9 @@ bool? _episodeOf(String? kind) => switch (kind) {
 };
 
 Future<List<_Stream>?> _streamsOn(AssistantToolContext ctx, ServerId id) async {
-  List<_Stream> tag(List<JellyfinActiveSession> list) => [for (final s in list) (s: s, episode: _episodeOf(s.kind))];
+  List<_Stream> tag(List<JellyfinActiveSession> list) => [
+    for (final s in list) (s: s, episode: _episodeOf(s.kind), login: null),
+  ];
   // Tautulli answers only for the Plex server it monitors.
   if (ctx.insights?.tautulliFor(id) case final tautulli?) {
     final now = await const NowWatchingService().resolve(tautulli);
@@ -98,6 +100,7 @@ Future<List<_Stream>?> _streamsOn(AssistantToolContext ctx, ServerId id) async {
             ),
             // Tautulli's own media_type, never the display subtitle.
             episode: _episodeOf(s.mediaType),
+            login: s.login,
           ),
       ];
     }
@@ -139,16 +142,19 @@ Future<AssistantToolResult> _watchedNow(
   final all = <({String server, JellyfinActiveSession s})>[];
   for (final (id, streams) in read) {
     for (final st in streams ?? const <_Stream>[]) {
-      if (_isExcluded(excluded, st.s.userName, st.s.userName)) {
-        leftOutByName++;
-        continue;
-      }
+      final gone = _isExcluded(excluded, st.login ?? st.s.userName, st.s.userName);
       if (media == null || st.episode == (media == 'show')) {
-        all.add((server: ctx.serverName(id), s: st.s));
-      } else if (st.s.kind == null) {
-        kindUnknown++;
-      } else {
-        otherKind++;
+        if (gone) {
+          leftOutByName++;
+        } else {
+          all.add((server: ctx.serverName(id), s: st.s));
+        }
+      } else if (!gone) {
+        if (st.s.kind == null) {
+          kindUnknown++;
+        } else {
+          otherKind++;
+        }
       }
     }
   }
