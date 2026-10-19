@@ -412,6 +412,16 @@ class AssistantIntent {
       case 'list_servers':
         if (addedToLibraries) return (args: out, error: 'use_search_catalog');
       case 'search_catalog':
+        // in_progress and unwatched are this person's own state: for a question
+        // about what the others watch they answer with the asker's titles as
+        // cards (19 Oct 2026, gemma after watch_stats was unknown).
+        if (audience.explicit &&
+            audience.value != AssistantAudience.me &&
+            !mixedAudience &&
+            !unseenInLibrary &&
+            (args['in_progress'] == true || args['unwatched'] == true)) {
+          return (args: out, error: 'own_state_only');
+        }
         if (addedToLibraries && previousWeek) return (args: out, error: 'previous_week_not_supported');
         if (addedToLibraries) {
           if (longPeriodAsked && !mixedAudience && !audience.known) return (args: out, error: 'window_not_supported');

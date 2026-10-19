@@ -5,6 +5,24 @@ import 'package:pleya/media/media_kind.dart';
 AssistantIntent _i(String p) => AssistantIntent.fromPrompt(p);
 
 void main() {
+  group('own state under a question about others', () {
+    test('in_progress and unwatched are refused, the library questions are not', () {
+      final others = _i('Wat kijken de anderen op mijn server?');
+      expect(others.constrain('search_catalog', const {'in_progress': true}).error, 'own_state_only');
+      expect(others.constrain('search_catalog', const {'unwatched': true}).error, 'own_state_only');
+      expect(others.constrain('search_catalog', const {'unwatched': false}).error, isNull);
+      expect(
+        _i('Wat kijkt iedereen?').constrain('search_catalog', const {'in_progress': true}).error,
+        'own_state_only',
+      );
+      expect(_i('Wat heb ik nog niet gezien?').constrain('search_catalog', const {'unwatched': true}).error, isNull);
+      expect(
+        _i('Welke films staan al lang ongezien in mijn bibliotheek?').constrain('search_catalog', const {}).error,
+        isNull,
+      );
+    });
+  });
+
   group('fromPrompt', () {
     test('others, me and everyone, in Dutch and English, each marked explicit', () {
       expect(_i('Wat kijken de anderen het meest?').audience.value, AssistantAudience.others);

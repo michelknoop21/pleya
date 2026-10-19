@@ -110,12 +110,17 @@ final evalContractCases = <EvalCase>[
         'Wat kijken de anderen op mijn server?',
         script: [
           EvalCall('watch_stats', {'scope': 'server'}),
+          // gemma's fallback: the asker's own state is no answer about others.
+          EvalCall('search_catalog', {'in_progress': true}),
           'Kijkgedrag van anderen kan ik met dit profiel niet inzien.',
         ],
       ),
     ],
     hard: [...evalBase, const EvalCardCount(max: 0)],
-    scripted: const [EvalToolAnswered('watch_stats', 'unknown_tool')],
+    scripted: const [
+      EvalToolAnswered('watch_stats', 'unknown_tool'),
+      EvalToolAnswered('search_catalog', 'own_state_only'),
+    ],
     soft: const EvalSoft(firstTools: {'watch_stats', 'list_users'}),
   ),
 ];
