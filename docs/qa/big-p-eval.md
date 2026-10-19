@@ -138,22 +138,22 @@ Code: main op e914f5b7, dezelfde opzet (2 modellen, 60 cases, 3 pogingen, 360 ru
 | gemma4:31b | 173 / 167 / 165 van 180 | 57 / 55 / 55 van 60 |
 | glm-5.3-flash | 166 van 179 / 170 / 174 van 180 | 52 / 54 / 55 van 60 |
 
-Bij gemma ligt de nieuwe run 2 en 8 runs onder de twee eerdere; bij glm 4 en 8 erboven. De ruis tussen twee runs op dezelfde code was 6 (gemma) en 4 (glm). Het verschil van 8 ten opzichte van na-11l ligt bij beide modellen net buiten wat die herhaling liet zien, maar in tegengestelde richting. Eén run per versie is te weinig om dat een effect te noemen.
+Bij gemma ligt de nieuwe run 2 en 8 runs onder de twee eerdere; bij glm 4 en 8 erboven. De ruis tussen twee runs op dezelfde code was 6 (gemma) en 4 (glm). Het verschil van 8 ten opzichte van na-11l ligt bij beide modellen buiten wat die herhaling liet zien, maar in tegengestelde richting. Eén run per versie is te weinig om dat een effect te noemen.
 
 Gericht gemeten, aantal pogingen van 3 geslaagd (na-11l / ruis-herhaling / nu):
 
-- `ser-finished-show` (glm): 0 / 0 / 3 en `disc-empty-honest` (glm): 0 / 1 / 3. Dit zijn de twee cases die BP-11k (tool-niveau, begonnen series en de `min_rating`-melding) moest oplossen. Het is de enige verschuiving die over drie runs consistent is, maar nog één run.
+- `ser-finished-show` (glm): 0 / 0 / 3 en `disc-empty-honest` (glm): 0 / 1 / 3. BP-11k zat al in 400c6fd1 en gaf daar nog 0 en 0 / 0 en 1; de omzetting valt tussen 400c6fd1 en e914f5b7, dus op de code met BP-11m (tekst met `unwatched` zonder treffers, `min_rating`-melding). Welk deel van BP-11m het doet is niet uitgesplitst, en het is één run.
 - `disc-english` (gemma): 3 / 0 / 3. De toolkeuze van het model bepaalt de uitkomst (zie de ruismeting). Dat BP-11m de oorzaak is, is niet aangetoond; de omschrijving van `find_title` raakt deze vraag niet.
-- `con-everyone-no-capability` (gemma): 0 / 0 / 0, onveranderd. De regel in het systeemprompt hielp niet: gemma roept `watch_stats` aan, krijgt `unknown_tool` en valt terug op `search_catalog` met `in_progress`. In de nieuwe run toont het zelfs 60 kaarten. Dit is niet met een prompt te sluiten en vraagt een wijziging op tool- of resultaatniveau; die is niet gedaan.
-- `rec-seen-five-others` (glm): 3 / 2 / 2. Beter dan voor BP-11l (0), niet stabiel 3 van 3.
+- `con-everyone-no-capability` (gemma): 0 / 0 / 0, onveranderd. De ene promptregel die is geprobeerd hielp niet: in 2 van 3 pogingen roept gemma `watch_stats` aan, krijgt `unknown_tool` en valt terug op `search_catalog` met `in_progress` (3 kaarten); in 1 van 3 gebruikt het `recommend_together` en daarna `search_catalog` met `unwatched: false`, wat 60 kaarten geeft. Waarschijnlijk is een wijziging op tool- of resultaatniveau nodig; die is niet gedaan.
+- `rec-seen-five-others` (glm): 3 / 2 / 2. Beter dan voor BP-11l (0 van 3, zie de vierde meting), niet stabiel 3 van 3.
 
 Slechter in de nieuwe run:
 
-- `rec-light-after-dinner` (gemma): 3 / 3 / 0. In alle drie de pogingen komt «Toy Story» als kaart terwijl een serie gevraagd is. Het record bewaart niet welke tools de zoekopdracht deden, dus de oorzaak is niet vastgesteld.
-- `ser-next-season-no-source` (gemma 3 / 2 / 0, glm 3 / 2 / 1) en `ser-new-episodes-no-source` (glm 3 / 3 / 2). De meeste meldingen zijn echter eerlijke antwoorden die de check als bewering telt: "Ik kan helaas niet zien wanneer het volgende seizoen van «The Bear» komt" en "Ik weet helaas niet wanneer het volgende seizoen van The Bear komt" staan als `honest-missing: claims`. Bij gemma is dat het hele verschil. Dat is een zwakte van de check (een ontkenning in de zin maakt een bewering niet ongeldig als de zin zelf het volgende seizoen noemt), geen aantoonbare achteruitgang van het product. Bij glm staan er wel echte beweringen tussen ("er lijken nieuwe afleveringen te zijn" op basis van een bijwerkdatum). De check is niet aangepast.
+- `rec-light-after-dinner` (gemma): 3 / 3 / 0. In alle drie de pogingen komt «Toy Story» als kaart terwijl een serie gevraagd is. De toolreeks is in alle drie de pogingen `my_watching`, `search_catalog`, `search_catalog` met als antwoord «Toy Story» en een enkele kaart; waarom het `kind` een film oplevert is niet uitgezocht.
+- `ser-next-season-no-source` (gemma 3 / 2 / 0, glm 3 / 2 / 1) en `ser-new-episodes-no-source` (glm 3 / 3 / 2). De meldingen bij gemma zijn eerlijke antwoorden die de check als bewering telt: "Ik kan helaas niet zien wanneer het volgende seizoen van «The Bear» komt" en "Ik weet helaas niet wanneer het volgende seizoen van The Bear komt" staan als `honest-missing: claims`. Bij gemma is dat het hele verschil. Dat is een zwakte van de check (een ontkenning in de zin maakt een bewering niet ongeldig als de zin zelf het volgende seizoen noemt), geen aantoonbare achteruitgang van het product. Bij glm is `ser-next-season-no-source` ook een checkfout: een antwoord met "Ik kan geen bevestigde releasedatum vinden" geldt als "never admits" (de check kent "kan geen" niet), en een hedge over de bibliotheek en een advies om de officiële pagina te raadplegen tellen als beweringen. Alleen bij `ser-new-episodes-no-source` zit een echte bewering ("er lijken nieuwe afleveringen te zijn" op basis van een bijwerkdatum). De check is niet aangepast.
 - `disc-keyword` (glm): 3 / 3 / 2, zonder kaart in de mislukte poging. Gemma 3 / 0 / 0.
 
-Wat dit zegt: BP-11k heeft twee glm-cases omgezet die in alle voorgaande runs mislukten, en BP-11m heeft het doel (`con-everyone-no-capability`) niet gehaald. De totalen verschuiven ongeveer zoveel als de ruis, bij gemma omlaag en bij glm omhoog. Dat is geen bewijs dat de drie reparaties samen niets verslechteren: bij gemma staan `rec-light-after-dinner` en de check voor `ser-next-season-no-source` hier tegenover.
+Wat dit zegt: Twee glm-cases die in alle voorgaande runs mislukten zijn omgezet op de code met BP-11m, en het doel van BP-11m (`con-everyone-no-capability`) is niet gehaald. De totalen verschuiven ongeveer zoveel als de ruis, bij gemma omlaag en bij glm omhoog. Dat is geen bewijs dat de drie reparaties samen niets verslechteren: bij gemma staan `rec-light-after-dinner` en de check voor `ser-next-season-no-source` hier tegenover.
 
 ## HTTP-probleem in de live test
 
@@ -170,6 +170,6 @@ Maak één `EvalCase` in het gebied dat past (`test/assistant/eval/cases/`), met
 - De kwaliteitsbeoordelaar (stap 5) is uitgesteld.
 - De ruis is gemeten met één herhaling op 400c6fd1; de vijfde meting is een andere code en dus geen derde run op dezelfde code.
 - `con-everyone-no-capability` (gemma) blijft 0 van 3 en vraagt een wijziging op tool- of resultaatniveau.
-- De check `EvalHonestMissing` markeert een eerlijk "ik kan niet zien wanneer het volgende seizoen komt" als bewering; daardoor zijn `ser-next-season-no-source` en `ser-new-episodes-no-source` onbetrouwbaar tot de check is aangescherpt.
-- `rec-light-after-dinner` (gemma, 0 van 3 met een filmkaart bij een serievraag) en de Library Doctor-oorzaak op het toestel zijn niet onderzocht.
+- De check `EvalHonestMissing` markeert een eerlijk "ik kan niet zien wanneer het volgende seizoen komt" als bewering en kent "ik kan geen releasedatum vinden" niet als erkenning; daardoor zijn `ser-next-season-no-source` en `ser-new-episodes-no-source` onbetrouwbaar tot de check is aangescherpt.
+- `rec-light-after-dinner` (gemma, 0 van 3 met een filmkaart bij een serievraag, toolreeks bekend maar oorzaak niet) en de Library Doctor-oorzaak op het toestel zijn niet onderzocht.
 - Kaarten van meerdere zoekopdrachten in één beurt worden samen getoond, ook als het antwoord er maar enkele noemt (waarschijnlijk de oorzaak bij `rec-seen-five-others`, `ser-finished-show` en `disc-empty-honest` van glm; niet getest).
