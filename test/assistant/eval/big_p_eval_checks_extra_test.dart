@@ -102,6 +102,8 @@ void main() {
       'Seizoen 4 is uit, maar je hebt het nog niet gezien. Meer weet ik niet.',
       'Seizoen 4 is uit, maar je hebt het nog niet gezien.',
       'Bluey staat in je bibliotheek.',
+      'Ik kan helaas niet alles zien. Het volgende seizoen van The Bear komt in juni 2026.',
+      'Ik kan geen titel vinden die je nog niet gezien hebt. Seizoen 4 verschijnt op 25 juni.',
     ]) {
       expect(check.check(_outcome([_turn(bad)])), isNotEmpty, reason: bad);
     }
@@ -114,6 +116,12 @@ void main() {
       'Dat weet ik niet. Wil je dat ik nakijk of er afleveringen ontbreken van seizoenen die al uit zijn?',
       'Je bibliotheek heeft seizoen 3 van The Bear. Ik weet niet of er nieuwe afleveringen komen.',
       'Je bent bij aflevering 4 van seizoen 2. Daar heb ik geen zicht op meer.',
+      // Honest answers the live run (19 Oct 2026) counted as claims or as no admission.
+      'Ik kan helaas niet zien wanneer het volgende seizoen van «The Bear» komt, want ik heb geen toegang tot releasedata van toekomstige seizoenen.',
+      'Ik weet helaas niet wanneer het volgende seizoen van The Bear komt, want ik kan daar geen informatie over vinden in je bibliotheek of via mijn zoekfuncties.',
+      'Ik kan geen bevestigde releasedatum vinden. Daar wil ik niets over verzinnen.',
+      'Dat kan ik helaas niet opzoeken. «The Bear» (2022) staat in jullie bibliotheek, dus zodra een nieuw seizoen verschijnt, staat het daar hopelijk snel bij.',
+      "Dat kan ik helaas niet opzoeken. Op de officiële pagina's van de serie vind je het betrouwbaarst wanneer het volgende seizoen komt.",
     ]) {
       expect(check.check(_outcome([_turn(good)])), isEmpty, reason: good);
     }
