@@ -25,6 +25,18 @@ void main() {
         expect(i.constrain('search_catalog', const {'in_progress': true}).error, isNull, reason: q);
         expect(i.constrain('search_catalog', const {'unwatched': true}).error, isNull, reason: q);
       }
+      for (final q in [
+        'Laat me zien wat de anderen kijken',
+        'Show me what the others watch',
+        'Wat kijken de anderen met mij op mijn server',
+        'Wat kijken de anderen? Geef me een lijst',
+        'Wat kijkt iedereen? Ik ben benieuwd',
+        'Wat kijkt iedereen behalve mij?',
+        'Wat kijken de anderen meer dan ik',
+        'what do the others watch, i mean on the server',
+      ]) {
+        expect(_i(q).constrain('search_catalog', const {'in_progress': true}).error, 'own_state_only', reason: q);
+      }
       expect(_i('Wat heb ik nog niet gezien?').constrain('search_catalog', const {'unwatched': true}).error, isNull);
       expect(
         _i('Welke films staan al lang ongezien in mijn bibliotheek?').constrain('search_catalog', const {}).error,

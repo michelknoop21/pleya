@@ -28,9 +28,10 @@ enum AssistantAudience { me, others, everyone }
 
 /// The asker speaks of themself in the same question ("en wat kan ik nog verder
 /// kijken", "die ik nog niet heb gezien"): their own state is then wanted too.
-/// "mijn server" is not that, so only the pronouns and their own lists count.
+/// Only phrases that ask for it count: "mijn server", "laat me zien", "behalve
+/// mij" and "ik ben benieuwd" are not that.
 final _askerOwnState = RegExp(
-  r'\b(ik|mij|ikzelf|i|me|myself)\b|\bmijn (begonnen|lopende|kijklijst|series die)\b|\bmy (started|unfinished|watchlist)\b',
+  r"\b(kan|moet|mag|heb|zou|wil)\s+ik\b|\b(die|dat|waar|wat|welke)\s+ik\b|\bik\s+(nog\s+|al\s+)?(niet|verder|gebleven)\b|\bik wil (verder|iets)\b|\bmijn (begonnen|lopende|kijklijst)\b|\b(can|should|do) i\b|\bi('ve| have| haven't| left)\b|\bmy (started|unfinished|watchlist)\b",
 );
 
 // A watch verb, the anchor for every audience word: "others" or "everyone" on
