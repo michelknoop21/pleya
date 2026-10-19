@@ -1256,7 +1256,10 @@ class _MainScreenState extends State<MainScreen>
         if (!companionRemote.peerIsHostUser) {
           // Another member of the Home: the progress would land on this profile's account.
           appLogger.w('Playback handoff ${request.id} refused: sender is not the active user');
-          companionRemote.sendCommand(RemoteCommandType.syncState, data: {handoffFailedKey: request.id});
+          companionRemote.sendCommand(
+            RemoteCommandType.syncState,
+            data: {handoffFailedKey: request.id, handoffReasonKey: handoffReasonWrongProfile},
+          );
           return;
         }
         unawaited(receivePlaybackHandoff(context, request));

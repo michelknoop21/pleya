@@ -11,6 +11,7 @@ import '../../models/companion_remote/remote_command.dart';
 import '../../providers/companion_remote_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../utils/app_logger.dart';
+import '../../utils/formatters.dart';
 import '../../utils/video_player_navigation.dart';
 import '../../widgets/notice/notice.dart';
 import '../../widgets/notice/notice_controller.dart';
@@ -103,7 +104,10 @@ Future<void> _receive(BuildContext context, PlaybackHandoffRequest request, Void
     Notice(
       level: NoticeLevel.info,
       title: t.playbackHandoff.received(from: request.from),
-      body: item.displayTitle,
+      body: t.playbackHandoff.receivedBody(
+        title: item.displayTitle,
+        time: formatDurationTimestamp(Duration(milliseconds: request.positionMs)),
+      ),
       groupKey: 'playback-handoff:${request.id}',
     ),
   );

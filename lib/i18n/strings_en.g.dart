@@ -6377,32 +6377,65 @@ class TranslationsPlaybackHandoffEn {
 
 	// Translations
 
-	/// en: 'Hand off to Apple TV'
-	String get button => 'Hand off to Apple TV';
+	/// en: 'Play on Apple TV'
+	String get button => 'Play on Apple TV';
 
-	/// en: 'Hand off to'
-	String get title => 'Hand off to';
+	/// en: 'Play on'
+	String get title => 'Play on';
 
-	/// en: 'Continues on your Apple TV from where you are. This is not AirPlay.'
-	String get subtitle => 'Continues on your Apple TV from where you are. This is not AirPlay.';
+	/// en: '$title · continue from $time'
+	String resumeFrom({required Object title, required Object time}) => '${title} · continue from ${time}';
 
-	/// en: 'Pleya is open'
-	String get ready => 'Pleya is open';
+	/// en: 'This iPhone'
+	String get thisIphone => 'This iPhone';
 
-	/// en: 'Starting on Apple TV...'
-	String get starting => 'Starting on Apple TV...';
+	/// en: 'This iPad'
+	String get thisIpad => 'This iPad';
 
-	/// en: 'Hand-off failed. Check that the Apple TV uses the same profile. You keep watching on this device.'
-	String get failed => 'Hand-off failed. Check that the Apple TV uses the same profile. You keep watching on this device.';
+	/// en: 'Playing now'
+	String get playingHere => 'Playing now';
 
-	/// en: 'No Apple TV found. Open Pleya on your Apple TV, and make sure both devices are on the same Wi-Fi network and use the same profile.'
-	String get noneFound => 'No Apple TV found. Open Pleya on your Apple TV, and make sure both devices are on the same Wi-Fi network and use the same profile.';
+	/// en: 'Plays here until the Apple TV starts'
+	String get playingUntil => 'Plays here until the Apple TV starts';
+
+	/// en: 'Apple TV · Pleya open'
+	String get tvReady => 'Apple TV · Pleya open';
+
+	/// en: 'Starting on the Apple TV…'
+	String get starting => 'Starting on the Apple TV…';
+
+	/// en: 'Uses another profile. Pick your profile on the Apple TV and try again.'
+	String get wrongProfile => 'Uses another profile. Pick your profile on the Apple TV and try again.';
+
+	/// en: 'Not AirPlay: Pleya on the Apple TV plays it by itself. Not listed? Open Pleya on the Apple TV.'
+	String get footer => 'Not AirPlay: Pleya on the Apple TV plays it by itself. Not listed? Open Pleya on the Apple TV.';
+
+	/// en: 'No Apple TV found'
+	String get noneFoundTitle => 'No Apple TV found';
+
+	/// en: 'An Apple TV cannot open Pleya by itself. Open Pleya on your Apple TV and make sure both are on the same Wi-Fi network.'
+	String get noneFound => 'An Apple TV cannot open Pleya by itself. Open Pleya on your Apple TV and make sure both are on the same Wi-Fi network.';
 
 	/// en: 'Search again'
 	String get searchAgain => 'Search again';
 
+	/// en: '$name did not start'
+	String failedTitle({required Object name}) => '${name} did not start';
+
+	/// en: 'You keep watching here'
+	String get failedBody => 'You keep watching here';
+
+	/// en: 'Playing on $name'
+	String playingOn({required Object name}) => 'Playing on ${name}';
+
+	/// en: 'Continue with the remote of your Apple TV'
+	String get playingOnBody => 'Continue with the remote of your Apple TV';
+
 	/// en: 'Handed over from $from'
 	String received({required Object from}) => 'Handed over from ${from}';
+
+	/// en: '$title · continues from $time'
+	String receivedBody({required Object title, required Object time}) => '${title} · continues from ${time}';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -12456,15 +12489,26 @@ extension on Translations {
 			'assistant.match.more' => ({required Object count}) => '+${count}',
 			'assistant.match.allAges' => 'All',
 			'assistant.match.score' => ({required Object score}) => 'Score ${score}',
-			'playbackHandoff.button' => 'Hand off to Apple TV',
-			'playbackHandoff.title' => 'Hand off to',
-			'playbackHandoff.subtitle' => 'Continues on your Apple TV from where you are. This is not AirPlay.',
-			'playbackHandoff.ready' => 'Pleya is open',
-			'playbackHandoff.starting' => 'Starting on Apple TV...',
-			'playbackHandoff.failed' => 'Hand-off failed. Check that the Apple TV uses the same profile. You keep watching on this device.',
-			'playbackHandoff.noneFound' => 'No Apple TV found. Open Pleya on your Apple TV, and make sure both devices are on the same Wi-Fi network and use the same profile.',
+			'playbackHandoff.button' => 'Play on Apple TV',
+			'playbackHandoff.title' => 'Play on',
+			'playbackHandoff.resumeFrom' => ({required Object title, required Object time}) => '${title} · continue from ${time}',
+			'playbackHandoff.thisIphone' => 'This iPhone',
+			'playbackHandoff.thisIpad' => 'This iPad',
+			'playbackHandoff.playingHere' => 'Playing now',
+			'playbackHandoff.playingUntil' => 'Plays here until the Apple TV starts',
+			'playbackHandoff.tvReady' => 'Apple TV · Pleya open',
+			'playbackHandoff.starting' => 'Starting on the Apple TV…',
+			'playbackHandoff.wrongProfile' => 'Uses another profile. Pick your profile on the Apple TV and try again.',
+			'playbackHandoff.footer' => 'Not AirPlay: Pleya on the Apple TV plays it by itself. Not listed? Open Pleya on the Apple TV.',
+			'playbackHandoff.noneFoundTitle' => 'No Apple TV found',
+			'playbackHandoff.noneFound' => 'An Apple TV cannot open Pleya by itself. Open Pleya on your Apple TV and make sure both are on the same Wi-Fi network.',
 			'playbackHandoff.searchAgain' => 'Search again',
+			'playbackHandoff.failedTitle' => ({required Object name}) => '${name} did not start',
+			'playbackHandoff.failedBody' => 'You keep watching here',
+			'playbackHandoff.playingOn' => ({required Object name}) => 'Playing on ${name}',
+			'playbackHandoff.playingOnBody' => 'Continue with the remote of your Apple TV',
 			'playbackHandoff.received' => ({required Object from}) => 'Handed over from ${from}',
+			'playbackHandoff.receivedBody' => ({required Object title, required Object time}) => '${title} · continues from ${time}',
 			_ => null,
 		};
 	}
