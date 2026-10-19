@@ -75,6 +75,9 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   RemoteDevice? get connectedDevice => _session?.connectedDevice;
   bool get isPlayerActive => _isPlayerActive;
   String get deviceName => _deviceName;
+
+  /// Host side: the connected phone is the same user as the active profile here.
+  bool get peerIsHostUser => _peerService?.clientIsHostUser ?? false;
   bool get isHostServerRunning => _peerService?.isServerRunning ?? false;
 
   CompanionRemoteProvider() {

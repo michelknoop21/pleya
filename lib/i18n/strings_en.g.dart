@@ -6392,8 +6392,8 @@ class TranslationsPlaybackHandoffEn {
 	/// en: 'Starting on Apple TV...'
 	String get starting => 'Starting on Apple TV...';
 
-	/// en: 'Hand-off failed. You keep watching on this device.'
-	String get failed => 'Hand-off failed. You keep watching on this device.';
+	/// en: 'Hand-off failed. Check that the Apple TV uses the same profile. You keep watching on this device.'
+	String get failed => 'Hand-off failed. Check that the Apple TV uses the same profile. You keep watching on this device.';
 
 	/// en: 'No Apple TV found. Open Pleya on your Apple TV, and make sure both devices are on the same Wi-Fi network and use the same profile.'
 	String get noneFound => 'No Apple TV found. Open Pleya on your Apple TV, and make sure both devices are on the same Wi-Fi network and use the same profile.';
@@ -12461,7 +12461,7 @@ extension on Translations {
 			'playbackHandoff.subtitle' => 'Continues on your Apple TV from where you are. This is not AirPlay.',
 			'playbackHandoff.ready' => 'Pleya is open',
 			'playbackHandoff.starting' => 'Starting on Apple TV...',
-			'playbackHandoff.failed' => 'Hand-off failed. You keep watching on this device.',
+			'playbackHandoff.failed' => 'Hand-off failed. Check that the Apple TV uses the same profile. You keep watching on this device.',
 			'playbackHandoff.noneFound' => 'No Apple TV found. Open Pleya on your Apple TV, and make sure both devices are on the same Wi-Fi network and use the same profile.',
 			'playbackHandoff.searchAgain' => 'Search again',
 			'playbackHandoff.received' => ({required Object from}) => 'Handed over from ${from}',

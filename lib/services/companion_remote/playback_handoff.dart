@@ -75,6 +75,13 @@ class PlaybackHandoffRequest {
 MediaItem itemAtHandoffPosition(MediaItem item, PlaybackHandoffRequest request) =>
     item.copyWith(viewOffsetMs: request.positionMs);
 
+/// Whether a phone may hand playback to this device. The companion handshake
+/// admits every member of the Plex Home, but a handoff plays under the active
+/// profile of this device and writes its progress to that account, so only the
+/// same user may start one.
+bool handoffUserMatches({required String clientUserUuid, required String hostUserUuid}) =>
+    clientUserUuid.isNotEmpty && clientUserUuid == hostUserUuid;
+
 /// What the receiving Apple TV reports back through `syncState`.
 enum PlaybackHandoffOutcome {
   /// The Apple TV is playing; the sender may stop.

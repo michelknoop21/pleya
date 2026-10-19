@@ -112,4 +112,10 @@ void main() {
     );
     expect(itemAtHandoffPosition(item, _request()).viewOffsetMs, 226000);
   });
+
+  test('only the active user of the Apple TV may hand over: progress lands on that account', () {
+    expect(handoffUserMatches(clientUserUuid: 'u1', hostUserUuid: 'u1'), isTrue);
+    expect(handoffUserMatches(clientUserUuid: 'u2', hostUserUuid: 'u1'), isFalse);
+    expect(handoffUserMatches(clientUserUuid: '', hostUserUuid: ''), isFalse);
+  });
 }
