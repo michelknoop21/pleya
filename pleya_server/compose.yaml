@@ -10,7 +10,9 @@ services:
       context: .
       args:
         VERSION: ${PLEYA_SERVER_VERSION:-dev}
-    container_name: pleya-server
+    # Overschrijfbaar voor de testinstance (README.md, "Testinstance"); de
+    # standaardwaarden zijn productie en veranderen daar niets.
+    container_name: ${PLEYA_SERVER_CONTAINER:-pleya-server}
     restart: unless-stopped
 
     # Loopback, en dat is een securitygrens en geen netwerkarchitectuur. De
@@ -18,7 +20,7 @@ services:
     # openstellen gebeurt achter een omgekeerde proxy of een tunnel, en dat is
     # een bewuste stap en geen bijproduct van deze fase.
     ports:
-      - "127.0.0.1:${PLEYA_SERVER_HOST_PORT:-8832}:8080"
+      - "${PLEYA_SERVER_BIND:-127.0.0.1}:${PLEYA_SERVER_HOST_PORT:-8832}:8080"
 
     # Op de NAS is dit 1026:100, dezelfde uid/gid waarmee Plex al draait. De
     # mediabibliotheek is daarmee bewezen leesbaar zonder één rechtenwijziging.
@@ -124,7 +126,7 @@ services:
 
   postgres:
     image: postgres:18.6-bookworm@sha256:7d2695c3aa88e792e8b3b233e7e4adb296a20412c6c0ca361e3edaaacfada108
-    container_name: pleya-server-db
+    container_name: ${PLEYA_SERVER_DB_CONTAINER:-pleya-server-db}
     restart: unless-stopped
 
     # Geen ports. De database is uitsluitend over het interne netwerk
@@ -166,7 +168,7 @@ networks:
   # projectnaam nog wel. De naam hier is dezelfde die Compose al afleidde, dus op de NAS
   # verandert er bij de eerstvolgende deploy niets.
   default:
-    name: pleya-server_default
+    name: ${PLEYA_SERVER_NETWORK:-pleya-server_default}
 
 volumes:
   pleya_pgdata:
