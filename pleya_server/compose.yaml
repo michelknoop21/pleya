@@ -74,6 +74,12 @@ services:
       PLEYA_SERVER_SCAN_INTERVAL: ${PLEYA_SERVER_SCAN_INTERVAL:-6h}
       PLEYA_SERVER_JOB_WORKERS: ${PLEYA_SERVER_JOB_WORKERS:-2}
 
+      # Metadata-provider (TMDB). Zonder sleutel draait er geen providerronde en
+      # verandert er niets. Een v4 read-token of een v3-sleutel; de waarde komt
+      # uit de .env op de NAS en staat niet in git.
+      PLEYA_SERVER_TMDB_KEY: ${PLEYA_SERVER_TMDB_KEY:-}
+      PLEYA_SERVER_METADATA_LANGUAGE: ${PLEYA_SERVER_METADATA_LANGUAGE:-nl-NL}
+
     volumes:
       # Drie schrijfbare mappen met drie verschillende levensduren. Op één
       # volume neemt een vollopende transcode-scratch de database mee, en dan
