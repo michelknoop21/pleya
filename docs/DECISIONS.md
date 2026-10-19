@@ -4684,7 +4684,7 @@ Nieuw geldt alleen als de data het bewijst: een volgende-aflevering-item waarvan
 
 De laatste kijkdatum van de serie komt uit Jellyfin en Emby (`DateCreated` in NextUp, plus een opzoeking per serie, hoogstens zes per verversing) en uit Plex (één lichte `GET /library/metadata/<serie>`, hoogstens zes, alleen voor volgende afleveringen van de laatste 14 dagen). Mislukt zo'n aanroep, dan geen label. Pleya Server levert het veld pas na een eigen protocolvenster; lokale map en Pleya Share hebben geen volgende afleveringen. Plex laat een uitgekeken serie alleen terugkomen binnen zijn eigen OnDeckWindow. Een gewone volgende aflevering uit Plex heeft zonder die opzoeking geen kijkdatum van de serie: hij sorteert op `addedAt` en komt dus niet in Eerder begonnen terecht; alleen de nieuwe-afleveringsopzoeking (laatste 14 dagen) levert die datum.
 
-Bewust niet gebouwd: series samenvoegen over servers heen. Een voortgang per aflevering blijft de eenheid (11.8).
+Het label staat op Home, in de overzichten en in Top Shelf (contextregel, achteraan). Android TV Watch Next en iOS-widgets krijgen het bewust niet: ze volgen de lijstvolgorde, maar een eigen labelweergave vraagt platformspecifiek werk dat niet bij deze wijziging past. Bewust niet gebouwd: series samenvoegen over servers heen. Een voortgang per aflevering blijft de eenheid (11.8).
 
 ## DEC-XXX: Alle ontwikkeling is unified-first, met Pleya Server voorbereid en niet volledig
 
