@@ -134,6 +134,7 @@ void main() {
     );
     expect(setup, contains('installHostCommandRouting('));
     expect(setup, contains('handoffOnly: handoffOnly'));
+    expect(setup, contains('final handoffOnly = !PlatformDetector.shouldActAsRemoteHost(context);'));
     expect(setup, isNot(contains('onCommandReceived =')), reason: 'one place installs the routing');
     final lifecycle = source.substring(source.indexOf('void didChangeAppLifecycleState('));
     expect(lifecycle.substring(0, lifecycle.indexOf('\n  }\n')), contains('_followLifecycleWithPleyaFlyHost(state)'));

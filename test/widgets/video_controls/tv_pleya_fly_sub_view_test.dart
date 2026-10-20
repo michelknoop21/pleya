@@ -192,6 +192,18 @@ void main() {
     await finish(tester);
   });
 
+  test('the failure notice says why the phone refused', () {
+    expect(
+      pleyaFlyFailureBody('iPad', PlaybackHandoffRefusal.wrongProfile),
+      t.playbackHandoff.wrongProfileOn(name: 'iPad'),
+    );
+    expect(
+      pleyaFlyFailureBody('iPad', PlaybackHandoffRefusal.pinNotEntered),
+      t.playbackHandoff.pinNotEnteredOn(name: 'iPad'),
+    );
+    expect(pleyaFlyFailureBody('iPad', null), t.playbackHandoff.failedBody);
+  });
+
   group('the Video tab', () {
     Future<List<TvInfoPanelSubView>> pumpTab(WidgetTester tester, {required bool canHandoff}) async {
       final opened = <TvInfoPanelSubView>[];

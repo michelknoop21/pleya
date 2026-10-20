@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/connection/connection.dart';
 import 'package:pleya/providers/companion_remote_provider.dart';
+import 'package:pleya/services/companion_remote/companion_remote_peer_service.dart';
 
 import '../test_helpers/prefs.dart';
 
@@ -14,6 +15,7 @@ import '../test_helpers/prefs.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(resetSharedPreferencesForTest);
+  tearDown(() => CompanionRemotePeerService.debugBindDelay = Duration.zero);
 
   Future<CompanionRemoteProvider> phone({bool disposeOnTearDown = true}) async {
     final p = CompanionRemoteProvider();
@@ -148,5 +150,111 @@ void main() {
     p.dispose();
     await p.startHostServer(handoffOnly: true);
     expect(p.isHostServerRunning, isFalse);
+  });
+
+  test('no host starts while a client session holds the peer service', () async {
+    final p = await listening();
+    await expectLater(p.connectToManualHost('127.0.0.1:1'), throwsA(anything));
+
+    await p.startHostServer(handoffOnly: true);
+    expect(p.isHostServerRunning, isFalse, reason: 'the client channel would be taken over');
+    expect(p.isRemote, isTrue);
+  });
+
+  test('a leave and a join that overlap leave no orphan server behind', () async {
+    final baseline = CompanionRemotePeerService.debugLiveHostServers;
+    final p = await listening();
+    await expectLater(p.connectToManualHost('127.0.0.1:1'), throwsA(anything));
+
+    // The user leaves and joins again within the two seconds a close may take.
+    final leave = p.leaveSession();
+    final join = expectLater(p.connectToManualHost('127.0.0.1:1'), throwsA(anything));
+    await leave;
+    await join;
+    await p.leaveSession();
+    expect(p.isHandoffOnlyHost, isTrue);
+
+    await p.stopHostServer();
+    expect(CompanionRemotePeerService.debugLiveHostServers, baseline, reason: 'every bound server was closed');
+  });
+
+  test('giving up on a lost Apple TV brings the host back', () async {
+    final tv = await phone();
+    await tv.startHostServer();
+    final port = tv.debugHostPort!;
+    final p = await listening();
+    p.debugReconnectDelay = (_) => null;
+
+    await p.connectToManualHost('127.0.0.1:$port');
+    expect(p.isRemote, isTrue);
+    expect(p.isConnected, isTrue);
+
+    await tv.stopHostServer();
+    await eventually(() => p.isHandoffOnlyHost);
+    expect(p.isHandoffOnlyHost, isTrue);
+  });
+
+  test('a host stopped while it still binds leaves no server behind', () async {
+    final baseline = CompanionRemotePeerService.debugLiveHostServers;
+    final p = await phone();
+    CompanionRemotePeerService.debugBindDelay = const Duration(milliseconds: 300);
+    final starting = p.startHostServer(handoffOnly: true);
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    await p.stopHostServer();
+    await starting;
+
+    expect(p.isHostServerRunning, isFalse);
+    expect(CompanionRemotePeerService.debugLiveHostServers, baseline, reason: 'the late bind was closed, not orphaned');
+  });
+
+  test('a join while the restored host still binds waits for it and leaves no orphan', () async {
+    final baseline = CompanionRemotePeerService.debugLiveHostServers;
+    final p = await listening();
+    await expectLater(p.connectToManualHost('127.0.0.1:1'), throwsA(anything));
+
+    CompanionRemotePeerService.debugBindDelay = const Duration(milliseconds: 1500);
+    // Leave closes the failed channel (bounded at 2 s) and then restores the
+    // host; the user joins again while that host binds.
+    final leave = p.leaveSession();
+    await Future<void>.delayed(const Duration(milliseconds: 2600));
+    final join = expectLater(p.connectToManualHost('127.0.0.1:1'), throwsA(anything));
+    await leave;
+    await join;
+    CompanionRemotePeerService.debugBindDelay = Duration.zero;
+
+    expect(p.isRemote, isTrue, reason: 'the join is the session now');
+    expect(p.isHostServerRunning, isFalse);
+    await p.leaveSession();
+    expect(p.isHandoffOnlyHost, isTrue);
+    await p.stopHostServer();
+    expect(CompanionRemotePeerService.debugLiveHostServers, baseline);
+  });
+
+  test('a slow leave does not tear down the session of a join that came after it', () async {
+    final tv = await phone();
+    await tv.startHostServer();
+    final port = tv.debugHostPort!;
+    final p = await listening();
+    await expectLater(p.connectToManualHost('127.0.0.1:1'), throwsA(anything));
+
+    // The failed channel takes up to 2 s to close; the user joins the Apple TV meanwhile.
+    final leave = p.leaveSession();
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    await p.connectToManualHost('127.0.0.1:$port');
+    await leave;
+
+    expect(p.isRemote, isTrue);
+    expect(p.isConnected, isTrue, reason: 'the old leave must not clear the new session');
+    expect(p.isHostServerRunning, isFalse, reason: 'no host restored under the new client session');
+  });
+
+  test('two host starts at once bind one server', () async {
+    final baseline = CompanionRemotePeerService.debugLiveHostServers;
+    final p = await phone();
+    CompanionRemotePeerService.debugBindDelay = const Duration(milliseconds: 200);
+    await Future.wait([p.startHostServer(handoffOnly: true), p.startHostServer(handoffOnly: true)]);
+    expect(CompanionRemotePeerService.debugLiveHostServers, baseline + 1);
+    await p.stopHostServer();
+    expect(CompanionRemotePeerService.debugLiveHostServers, baseline);
   });
 }

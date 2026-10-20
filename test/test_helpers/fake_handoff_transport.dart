@@ -32,6 +32,9 @@ class FakeHandoffTransport implements PlaybackHandoffTransport {
   /// Runs inside [discover], as deriving the identity would.
   void Function()? onDiscover;
 
+  /// Awaited inside [discover]: an identity that takes a while to derive.
+  Future<void> Function()? onDiscoverAsync;
+
   /// What the receiver answers; defaults to playing.
   Future<PlaybackHandoffOutcome> Function(PlaybackHandoffRequest request)? answer;
   final requests = <PlaybackHandoffRequest>[];
@@ -44,6 +47,7 @@ class FakeHandoffTransport implements PlaybackHandoffTransport {
     discoverCalls++;
     log.add('discover');
     onDiscover?.call();
+    await onDiscoverAsync?.call();
     return discoverable ? beacons.stream : null;
   }
 

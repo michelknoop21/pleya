@@ -40,11 +40,7 @@ PlaybackHandoffSender createTvPleyaFlySender(BuildContext context, {required Voi
         Notice(
           level: NoticeLevel.warning,
           title: t.playbackHandoff.failedTitle(name: host.name),
-          body: switch (refusal) {
-            PlaybackHandoffRefusal.wrongProfile => t.playbackHandoff.wrongProfileOn(name: host.name),
-            PlaybackHandoffRefusal.pinNotEntered => t.playbackHandoff.pinNotEnteredOn(name: host.name),
-            null => t.playbackHandoff.failedBody,
-          },
+          body: pleyaFlyFailureBody(host.name, refusal),
           groupKey: 'playback-handoff-failed:${host.clientId}',
         ),
       );
@@ -52,6 +48,14 @@ PlaybackHandoffSender createTvPleyaFlySender(BuildContext context, {required Voi
     },
   );
 }
+
+/// The second line of the notice for a fly that did not start: why, when the
+/// phone said so, else that this device keeps playing.
+String pleyaFlyFailureBody(String name, PlaybackHandoffRefusal? refusal) => switch (refusal) {
+  PlaybackHandoffRefusal.wrongProfile => t.playbackHandoff.wrongProfileOn(name: name),
+  PlaybackHandoffRefusal.pinNotEntered => t.playbackHandoff.pinNotEnteredOn(name: name),
+  null => t.playbackHandoff.failedBody,
+};
 
 /// Pleya Fly from the Apple TV (A-23d): the iPhones and iPads with Pleya open,
 /// as a sub-view of the player panel (DEC-101: the panel is the only player

@@ -164,6 +164,8 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
     if (isDisposed || busy) return;
     _searching = true;
     _refusal = null;
+    // Rows of the last search may be gone; only beacons of this one are offered.
+    _hosts = const [];
     safeNotifyListeners();
     await _subscription?.cancel();
     _subscription = null;
@@ -176,7 +178,9 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
     } catch (e) {
       appLogger.w('Pleya Fly: discovery failed (${e.runtimeType})');
     }
-    if (hadHost && !transport.hostRunning) {
+    // Not while a fly runs: it stopped the host itself and holds the client
+    // session a restart would take over (it restarts the host when it ends).
+    if (hadHost && !busy && !transport.hostRunning) {
       try {
         await transport.restartHost();
       } catch (e) {

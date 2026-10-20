@@ -260,6 +260,7 @@ void main() {
           provider.dispose();
         });
         await provider.initializeCrypto(home: _home('admin-a'), account: accountA, activeProfile: _localProfile('a'));
+        if (handoffOnly) await provider.requestHandoffOnlyHost();
         await provider.startHostServer(handoffOnly: handoffOnly);
         expect(provider.isHostServerRunning, isTrue);
 
@@ -275,6 +276,68 @@ void main() {
         expect(provider.debugCryptoConnectionId, accountB.id, reason: 'the identity was rebuilt');
         expect(provider.isHostServerRunning, isTrue);
         expect(provider.isHandoffOnlyHost, handoffOnly);
+      });
+    }
+
+    for (final handoffOnly in [true]) {
+      test('ensureCryptoReady does not restart a fly host nobody wants any more', () async {
+        final db = AppDatabase.forTesting(NativeDatabase.memory());
+        final connections = ConnectionRegistry(db);
+        final profileConnections = ProfileConnectionRegistry(db);
+        final profiles = ProfileRegistry(db);
+        final storage = await StorageService.getInstance();
+        final plexHome = PlexHomeService(
+          connections: connections,
+          profileConnections: profileConnections,
+          storage: storage,
+          plexHomeUserFetcher: (_) async => const [],
+        );
+        final active = ActiveProfileProvider(
+          registry: profiles,
+          plexHome: plexHome,
+          connections: connections,
+          storage: storage,
+        );
+        addTearDown(() async {
+          await active.resetForTesting();
+          active.dispose();
+          await plexHome.dispose();
+          await db.close();
+        });
+
+        final accountA = _plexAccount('plex-a', 'client-a');
+        final accountB = _plexAccount('plex-b', 'client-b');
+        final profileB = _localProfile('profile-b');
+        await connections.upsert(accountB);
+        await profiles.upsert(profileB);
+        await profileConnections.upsert(
+          ProfileConnection(profileId: profileB.id, connectionId: accountB.id, userIdentifier: 'admin-b'),
+          makeDefault: true,
+        );
+        await storage.setActiveProfileId(profileB.id);
+        await active.initialize();
+
+        final provider = CompanionRemoteProvider();
+        addTearDown(() async {
+          await provider.stopHostServer();
+          provider.dispose();
+        });
+        await provider.initializeCrypto(home: _home('admin-a'), account: accountA, activeProfile: _localProfile('a'));
+        // Started, then the lifecycle stopped wanting it (no requestHandoffOnlyHost).
+        await provider.startHostServer(handoffOnly: handoffOnly);
+        expect(provider.isHostServerRunning, isTrue);
+
+        final ok = await provider.ensureCryptoReady(
+          _home('admin-b'),
+          connections: connections,
+          activeProfile: active,
+          profileConnections: profileConnections,
+          account: accountB,
+        );
+
+        expect(ok, isTrue);
+        expect(provider.debugCryptoConnectionId, accountB.id, reason: 'the identity was rebuilt');
+        expect(provider.isHostServerRunning, isFalse);
       });
     }
 

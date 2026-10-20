@@ -49,6 +49,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   bool _handoffOnly = false;
   bool _handoffHostWanted = false;
   int? _hostPort;
+  Future<void>? _hostStarting;
 
   // Reconnection context (only hostAddresses and hostClientId are connection-specific)
   List<String>? _lastHostAddresses;
@@ -286,7 +287,10 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     _authContexts = nextContexts;
     _cryptoProfileId = profile.id;
     appLogger.d('CompanionRemote: Crypto contexts initialized (${nextContexts.length})');
-    if (hostToRestore != null) await startHostServer(handoffOnly: hostToRestore.handoffOnly);
+    // A fly listener the lifecycle stopped meanwhile stays stopped.
+    if (hostToRestore != null && (!hostToRestore.handoffOnly || _handoffHostWanted)) {
+      await startHostServer(handoffOnly: hostToRestore.handoffOnly);
+    }
     return true;
   }
 
@@ -500,10 +504,21 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   /// Starts hosting. [handoffOnly] marks a host that receives a Pleya Fly and
   /// nothing else (A-23d): the app then drops every other command, and joining
   /// another host as a client stops it for the time of that session.
-  Future<void> startHostServer({bool handoffOnly = false}) async {
+  ///
+  /// One start at a time: a second call while one runs waits for it.
+  Future<void> startHostServer({bool handoffOnly = false}) =>
+      _hostStarting ??= _startHostServer(handoffOnly: handoffOnly).whenComplete(() => _hostStarting = null);
+
+  Future<void> _startHostServer({required bool handoffOnly}) async {
     // A provider torn down by a profile switch must not bind a server nobody stops.
     if (isDisposed) return;
     if (_peerService?.isServerRunning == true) return;
+    // A client session holds the peer service: hosting now would take over its
+    // channel and drop the device it is connected to (A-23d).
+    if (_session != null && !_session!.isHost) {
+      appLogger.w('CompanionRemote: Not starting a host while a client session exists');
+      return;
+    }
     if (!isCryptoReady) {
       appLogger.w('CompanionRemote: Cannot start host — crypto not initialized');
       return;
@@ -511,14 +526,16 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
 
     appLogger.d('CompanionRemote: Starting host server');
 
-    _peerService ??= CompanionRemotePeerService();
+    final peer = _peerService ??= CompanionRemotePeerService();
     _setupPeerServiceListeners();
 
     try {
       final contexts = List<RemoteAuthContext>.unmodifiable(_authContexts);
-      final result = await _peerService!.createSessionForContexts(_deviceName, _platform, contexts);
-      if (isDisposed) {
-        await _peerService?.disconnect();
+      final result = await peer.createSessionForContexts(_deviceName, _platform, contexts);
+      // Disposed, or another session took the peer service meanwhile: this
+      // server belongs to nobody, so close it instead of leaving it bound.
+      if (isDisposed || !identical(_peerService, peer)) {
+        await peer.disconnect();
         return;
       }
       _hostPort = result.port;
@@ -604,6 +621,8 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   /// A handoff-only host gives way to a client session: both would share the
   /// one peer service, and the host would leak.
   Future<void> _yieldHandoffOnlyHost() async {
+    // A host that is still starting must finish before it can give way.
+    await _hostStarting;
     if (isHandoffOnlyHost) await stopHostServer();
   }
 
@@ -634,6 +653,8 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
 
     await _yieldHandoffOnlyHost();
     await _leaveSession(restoreHandoffHost: false);
+    // A leave that ran alongside may have brought the host back meanwhile.
+    await _yieldHandoffOnlyHost();
 
     _lastHostAddresses = host.addresses;
     _lastHostClientId = host.clientId;
@@ -683,6 +704,8 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
 
     await _yieldHandoffOnlyHost();
     await _leaveSession(restoreHandoffHost: false);
+    // A leave that ran alongside may have brought the host back meanwhile.
+    await _yieldHandoffOnlyHost();
 
     _lastHostAddresses = [hostAddress];
     _lastHostClientId = '';
@@ -858,8 +881,15 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     return Duration(seconds: 1 << attempts);
   }
 
+  /// Test seam: replaces [reconnectDelay]; null from it means give up.
+  @visibleForTesting
+  Duration? Function(int attempts)? debugReconnectDelay;
+
   void _scheduleReconnect() {
-    final delay = reconnectDelay(_reconnectAttempts, waitingForSwitch: _handoffs.switchingIds.isNotEmpty);
+    final override = debugReconnectDelay;
+    final delay = override != null
+        ? override(_reconnectAttempts)
+        : reconnectDelay(_reconnectAttempts, waitingForSwitch: _handoffs.switchingIds.isNotEmpty);
     if (delay == null) {
       appLogger.w('CompanionRemote: Max reconnect attempts reached');
       _handoffs.failAll(force: true);
@@ -951,26 +981,31 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   Future<void> leaveSession() => _leaveSession(restoreHandoffHost: true);
 
   Future<void> _leaveSession({required bool restoreHandoffHost}) async {
-    _intentionalDisconnect = true;
+    // A host that is still starting decides whether this device hosts or not.
+    await _hostStarting;
     _reconnectTimer?.cancel();
     _reconnectAttempts = 0;
     _handoffs.failAll(force: true);
 
-    // Don't stop the host server when leaving — only stop discovery listening
-    if (_peerService != null && !isHost) {
+    // Don't stop the host server when leaving — only stop discovery listening.
+    // The client peer is detached before it closes: a join or a host start that
+    // runs while the close is under way gets a peer service of its own, and
+    // this leave never clears one it did not take (A-23d).
+    final leaving = isHost ? null : _peerService;
+    if (leaving != null) {
       appLogger.d('CompanionRemote: Leaving session');
-      await _peerService!.disconnect();
       _peerService = null;
     }
 
+    // Before the close, so its disconnect event cannot schedule a reconnect.
     _cleanupSubscriptions();
 
     if (!isHost) {
       _session = null;
     }
     _isPlayerActive = false;
-    _intentionalDisconnect = false;
     safeNotifyListeners();
+    await leaving?.disconnect();
     // The client session that made a handoff-only host give way is over.
     if (restoreHandoffHost && _handoffHostWanted && _session == null && _peerService == null && isCryptoReady) {
       await startHostServer(handoffOnly: true);

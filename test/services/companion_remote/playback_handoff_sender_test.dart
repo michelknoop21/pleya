@@ -212,6 +212,39 @@ void main() {
       expect(transport.log, ['discover', 'restartHost']);
     });
 
+    test('does not restart the host under a fly that started meanwhile', () async {
+      final identity = Completer<void>();
+      transport.onDiscoverAsync = () => identity.future;
+      final answer = Completer<PlaybackHandoffOutcome>();
+      transport.answer = (_) => answer.future;
+      final s = sender();
+      final searching = s.search();
+      await Future<void>.delayed(Duration.zero);
+      final running = fly(s);
+      await Future<void>.delayed(Duration.zero);
+      expect(transport.hostRunning, isFalse, reason: 'the fly stopped it to join the phone');
+
+      identity.complete();
+      await searching;
+      expect(transport.log, isNot(contains('restartHost')), reason: 'a restart now would take the client channel');
+
+      answer.complete(PlaybackHandoffOutcome.failed);
+      await running;
+      expect(transport.log.where((l) => l == 'restartHost'), hasLength(1));
+      expect(transport.log.last, isNot('stopHost'));
+    });
+
+    test('a new search drops the rows of the last one', () async {
+      final s = sender();
+      await s.search();
+      transport.beacons.add([fakeHost('iPhone van Michel')]);
+      await Future<void>.delayed(Duration.zero);
+      expect(s.hosts, hasLength(1));
+      await s.search();
+      expect(s.hosts, isEmpty);
+      expect(s.searching, isTrue);
+    });
+
     test('does not start a host this device did not run', () async {
       transport.hostRunning = false;
       await sender().search();
