@@ -1252,7 +1252,7 @@ class _TranslationsAboutNl extends TranslationsAboutEn {
 	@override String get privacyPolicy => 'Privacybeleid';
 	@override String get licence => 'Licentie';
 	@override String get sources => 'Bronnen';
-	@override String get tmdbSource => 'TMDB: leeftijdsclassificatie, genres, cast, score, streamingdiensten, trending en vergelijkbare titels voor Big P.';
+	@override String get tmdbSource => 'TMDB: leeftijdsclassificatie, genres, cast, score, streamingdiensten, trending en vergelijkbare titels voor Big P, en beschrijvingen, genres, kijkwijzers en afbeeldingen van titels op een Pleya Server.';
 	@override String get tmdbAttribution => 'This product uses the TMDB API but is not endorsed or certified by TMDB.';
 	@override String get wikidataSource => 'Wikidata (CC0): leeftijdsclassificatie (MPA) van films voor Big P.';
 	@override String get tvmazeSource => 'TVmaze (CC BY-SA): genres, speelduur en score van series voor Big P.';
@@ -5317,7 +5317,7 @@ extension on TranslationsNl {
 			'about.privacyPolicy' => 'Privacybeleid',
 			'about.licence' => 'Licentie',
 			'about.sources' => 'Bronnen',
-			'about.tmdbSource' => 'TMDB: leeftijdsclassificatie, genres, cast, score, streamingdiensten, trending en vergelijkbare titels voor Big P.',
+			'about.tmdbSource' => 'TMDB: leeftijdsclassificatie, genres, cast, score, streamingdiensten, trending en vergelijkbare titels voor Big P, en beschrijvingen, genres, kijkwijzers en afbeeldingen van titels op een Pleya Server.',
 			'about.tmdbAttribution' => 'This product uses the TMDB API but is not endorsed or certified by TMDB.',
 			'about.wikidataSource' => 'Wikidata (CC0): leeftijdsclassificatie (MPA) van films voor Big P.',
 			'about.tvmazeSource' => 'TVmaze (CC BY-SA): genres, speelduur en score van series voor Big P.',
