@@ -115,6 +115,30 @@ void main() {
     expect(playbackHandoffLedger.outcomeOf(next), PlaybackHandoffOutcome.failed);
   });
 
+  testWidgets('the plain path without a profile switch also frees the receiver when the fetch hangs', (tester) async {
+    await pump(tester);
+    final saved = plainHandoffStartWindow;
+    plainHandoffStartWindow = const Duration(milliseconds: 50);
+    addTearDown(() => plainHandoffStartWindow = saved);
+    final id = 'plain-${DateTime.now().microsecondsSinceEpoch}';
+    var done = false;
+    await tester.runAsync(() async {
+      unawaited(receivePlaybackHandoff(context, _request(id)).then((_) => done = true));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    });
+    expect(done, isTrue, reason: 'the receiver does not wait for the fetch past the plain start window');
+    expect(playbackHandoffLedger.outcomeOf(id), PlaybackHandoffOutcome.failed);
+
+    fetch.complete(movie);
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    expect(pushes.pushes, 0);
+
+    fetch = Completer<MediaItem?>()..complete(null);
+    final next = 'next-$id';
+    await tester.runAsync(() => receivePlaybackHandoff(context, _request(next)));
+    expect(playbackHandoffLedger.outcomeOf(next), PlaybackHandoffOutcome.failed);
+  });
+
   testWidgets('a fetch that ends after the last start time does not open the player', (tester) async {
     await pump(tester);
     final id = 'late-${DateTime.now().microsecondsSinceEpoch}';
