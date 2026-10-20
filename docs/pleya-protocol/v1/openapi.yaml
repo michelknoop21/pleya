@@ -1669,10 +1669,12 @@ paths:
       operationId: listTranscodeSessions
       summary: De lopende omzetsessies, het maximum en de hardwarestatus.
       description: |
-        Klasse `admin`, `404` voor de rest (venster 5 deel 2, S18.5). Alleen
-        aanwezig wanneer `capabilities.transcode` waar is. `hardware.accel` is
-        `none` wanneer opstarten geen werkende versnelling vond, met de reden in
-        `hardware.reason`; wie versnelling verwacht ziet hier waarom hij ontbreekt.
+        Klasse `admin`, `404` voor de rest (venster 5 deel 2, S18.5). Zonder
+        omzetter (`capabilities.transcode` onwaar) is de lijst leeg met
+        `max_sessions` nul. `hardware.accel` is `none` wanneer opstarten geen
+        werkende versnelling vond, met de reden in `hardware.reason`; wie
+        versnelling verwacht ziet hier waarom hij ontbreekt. Een sessie die na
+        een mislukte hardwarestart in software draait, meldt `hw_accel` null.
       responses:
         "200":
           description: De sessies.
@@ -3321,7 +3323,7 @@ components:
         user_id: { $ref: "#/components/schemas/Id" }
         version_id: { $ref: "#/components/schemas/Id" }
         mode: { type: string, enum: [remux, direct_stream, transcode], x-unknown-safe: true }
-        hw_accel: { type: [string, "null"] }
+        hw_accel: { type: [string, "null"], description: vaapi, of null bij software. }
         started_at: { type: string, format: date-time }
         last_heartbeat_at: { type: string, format: date-time }
 

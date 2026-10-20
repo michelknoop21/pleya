@@ -25,6 +25,10 @@ var (
 	// ErrFailed: ffmpeg haalde geen speelbare uitvoer. De tekst draagt het eind
 	// van zijn foutuitvoer voor het log, niet voor de client.
 	ErrFailed = errors.New("transcode: ffmpeg leverde geen uitvoer")
+	// ErrStopped: de sessie is gestopt terwijl hij nog opstartte (een beheerder,
+	// of Close). Anders dan ErrFailed: er is niets misgegaan en er volgt geen
+	// nieuwe poging.
+	ErrStopped = errors.New("transcode: sessie gestopt tijdens het opstarten")
 	// ErrNotFound: de sessie bestaat niet (meer).
 	ErrNotFound = errors.New("transcode: sessie niet gevonden")
 )
@@ -155,7 +159,7 @@ func (m *Manager) HW() HWAccel { return m.o.HW }
 // een bron die de GPU niet aankan hoort geen gebroken afspeelpoging op te leveren.
 func (m *Manager) Start(ctx context.Context, p Params) (Session, error) {
 	sess, err := m.startWith(ctx, p, m.o.HW)
-	if err != nil && errors.Is(err, ErrFailed) && m.o.HW != HWNone && p.Job.Mode == ModeTranscode {
+	if err != nil && errors.Is(err, ErrFailed) && !errors.Is(err, ErrStopped) && m.o.HW != HWNone && p.Job.Mode == ModeTranscode {
 		m.o.Log.Warn("omzetten met hardware mislukte, nieuwe poging in software", slog.String("error", err.Error()))
 		return m.startWith(ctx, p, HWNone)
 	}
@@ -270,6 +274,9 @@ func (m *Manager) waitReady(ctx context.Context, r *running, stderr *tailBuffer)
 		}
 		select {
 		case <-r.done:
+			if m.wasStopped(r) {
+				return ErrStopped
+			}
 			if ready(r.s.Dir) {
 				return nil
 			}
@@ -281,6 +288,12 @@ func (m *Manager) waitReady(ctx context.Context, r *running, stderr *tailBuffer)
 		case <-tick.C:
 		}
 	}
+}
+
+func (m *Manager) wasStopped(r *running) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return r.reason == StateStopped
 }
 
 func ready(dir string) bool {
@@ -339,7 +352,12 @@ func (m *Manager) end(sid id.ID, reason State) error {
 	m.mu.Unlock()
 	r.cancel()
 	<-r.done
-	return os.RemoveAll(r.s.Dir)
+	// De sessie is weg en het proces is gestopt; een map die niet te wissen is
+	// is een zaak voor het log, niet voor wie het stoppen vroeg.
+	if err := os.RemoveAll(r.s.Dir); err != nil {
+		m.o.Log.Warn("sessiemap niet opgeruimd", slog.String("dir", r.s.Dir), slog.String("error", err.Error()))
+	}
+	return nil
 }
 
 // List geeft de sessies, oudste eerst.

@@ -442,8 +442,7 @@ func newMatrixFixture(e *env) *matrixFixture {
 			plan, _ := e.planFor(map[string]any{"item_id": f.itemID, "capabilities": capsWire("vp9")}, http.StatusOK)
 			return *plan.SessionID
 		}
-		plan, _ := e.planFor(map[string]any{"item_id": f.itemID, "capabilities": capsWire("vp9")}, http.StatusOK)
-		f.playbackSessionID = *plan.SessionID
+		f.playbackSessionID = f.freshSession()
 	}
 	f.doneJobID = id.New().String()
 	if _, err := e.pool.Exec(ctx, `INSERT INTO jobs (id, kind, state, finished_at) VALUES ($1, 'storage_recheck_roots', 'succeeded', now())`, f.doneJobID); err != nil {

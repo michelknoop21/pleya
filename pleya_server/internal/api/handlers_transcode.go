@@ -73,6 +73,9 @@ func (s *Server) startTranscode(w http.ResponseWriter, r *http.Request, plan pla
 	case errors.Is(err, transcode.ErrBusy):
 		writeError(w, s.log, CodeTranscodeBusy, "all transcode sessions are in use", nil)
 		return nil, false
+	case errors.Is(err, transcode.ErrStopped):
+		writeError(w, s.log, CodeTranscodeFailed, "the playback session was stopped while it started", nil)
+		return nil, false
 	case err != nil:
 		s.log.Warn("omzetten starten mislukt", "error", err.Error())
 		writeError(w, s.log, CodeTranscodeFailed, "the server could not prepare this version for playback", nil)

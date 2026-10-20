@@ -39,6 +39,12 @@ exec sleep 3600
 // komt mee terug voor tests die in de sessiemap willen kijken.
 func transcodeEnv(t *testing.T, max int) (*env, *transcode.Manager) {
 	t.Helper()
+	return transcodeEnvHW(t, max, transcode.HWNone, "")
+}
+
+// transcodeEnvHW kiest ook de hardwarestatus die de manager meldt.
+func transcodeEnvHW(t *testing.T, max int, hw transcode.HWAccel, reason string) (*env, *transcode.Manager) {
+	t.Helper()
 	dir := t.TempDir()
 	stub := filepath.Join(dir, "ffmpeg")
 	if err := os.WriteFile(stub, []byte(stubFFmpeg), 0o755); err != nil {
@@ -47,6 +53,7 @@ func transcodeEnv(t *testing.T, max int) (*env, *transcode.Manager) {
 	m, err := transcode.New(transcode.Options{
 		FFmpegPath: stub, Dir: filepath.Join(dir, "work"), Max: max,
 		IdleTimeout: time.Minute, StartTimeout: 10 * time.Second,
+		HW: hw, RenderNode: "/dev/dri/renderD128", HWReason: reason,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -245,5 +252,41 @@ func TestAdminSeesAndStopsTranscodeSessions(t *testing.T) {
 	}
 	if rec := e.do(http.MethodDelete, "/pleya/v1/transcode-sessions/"+*plan.SessionID, nil); rec.Code != http.StatusNotFound {
 		t.Fatalf("tweede keer stoppen gaf %d", rec.Code)
+	}
+}
+
+// De lijst meldt de versnelling van de manager en die van elke sessie, en de
+// reden als er geen is.
+func TestTranscodeSessionListReportsHardware(t *testing.T) {
+	e, _ := transcodeEnvHW(t, 2, transcode.HWVAAPI, "")
+	plan := e.transcodePlan(e.findMovie("Grease").ID)
+	var list api.TranscodeSessionList
+	e.getJSON("/pleya/v1/transcode-sessions", "TranscodeSessionList", http.StatusOK, &list)
+	if list.Hardware.Accel != "vaapi" || list.Hardware.Reason != nil {
+		t.Fatalf("hardware %+v", list.Hardware)
+	}
+	if len(list.Items) != 1 || list.Items[0].ID != *plan.SessionID || list.Items[0].HWAccel == nil || *list.Items[0].HWAccel != "vaapi" {
+		t.Fatalf("sessie %+v", list.Items)
+	}
+
+	e2, _ := transcodeEnvHW(t, 2, transcode.HWNone, "geen render-device op /dev/dri/renderD128")
+	var none api.TranscodeSessionList
+	e2.getJSON("/pleya/v1/transcode-sessions", "TranscodeSessionList", http.StatusOK, &none)
+	if none.Hardware.Accel != "none" || none.Hardware.Reason == nil || *none.Hardware.Reason == "" {
+		t.Fatalf("zonder hardware %+v", none.Hardware)
+	}
+}
+
+// Zonder omzetter bestaat de lijst, leeg en met maximum nul.
+func TestTranscodeSessionListWithoutTranscoder(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	var list api.TranscodeSessionList
+	e.getJSON("/pleya/v1/transcode-sessions", "TranscodeSessionList", http.StatusOK, &list)
+	if list.MaxSessions != 0 || len(list.Items) != 0 || list.Hardware.Accel != "none" {
+		t.Fatalf("lijst %+v", list)
+	}
+	if rec := e.do(http.MethodDelete, "/pleya/v1/transcode-sessions/"+list.Hardware.Accel, nil); rec.Code != http.StatusNotFound {
+		t.Fatalf("stoppen zonder omzetter gaf %d", rec.Code)
 	}
 }
