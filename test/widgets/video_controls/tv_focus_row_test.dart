@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:pleya/focus/focusable_wrapper.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
@@ -144,6 +145,22 @@ void main() {
       (key.currentState! as dynamic).navigateFromTrackToVolume();
       await tester.pump();
       expect(FocusManager.instance.primaryFocus, skipForward);
+    });
+
+    testWidgets('een externe node wordt weer focusbaar als zijn uitgeschakelde wrapper verdwijnt', (tester) async {
+      final node = FocusNode();
+      addTearDown(node.dispose);
+      Widget host({required bool mounted, required bool enabled}) => MaterialApp(
+        home: mounted
+            ? FocusableWrapper(focusNode: node, canRequestFocus: enabled, child: const SizedBox(width: 10, height: 10))
+            : const SizedBox(),
+      );
+
+      await tester.pumpWidget(host(mounted: true, enabled: false));
+      expect(node.canRequestFocus, isFalse);
+      await tester.pumpWidget(host(mounted: false, enabled: false));
+      await tester.pumpWidget(host(mounted: true, enabled: true));
+      expect(node.canRequestFocus, isTrue);
     });
   });
 }
