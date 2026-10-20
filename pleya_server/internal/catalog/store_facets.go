@@ -96,25 +96,24 @@ func (s *Store) Facets(ctx context.Context, libraryID id.ID, subject string) (Fa
 		GROUP BY lower(i.content_rating) ORDER BY count(*) DESC, lower(i.content_rating)`, libraryID, kind); err != nil {
 		return Facets{}, fmt.Errorf("kijkwijzerfacet: %w", err)
 	}
+	// Eén keer per spoor de eigenaar bepalen en dan tellen; zie streamOwner.
+	owned := fmt.Sprintf(`(SELECT %s AS owner, st.kind, st.language, st.width, st.height
+		FROM media_streams st %s) st`, streamOwner, streamOwnerJoins)
 	if out.AudioLanguages, err = rows(fmt.Sprintf(`
 		SELECT st.language, count(DISTINCT i.id)::int
-		FROM media_items i
-		JOIN media_versions v ON %s
-		JOIN media_streams st ON st.version_id = v.id
+		FROM %s JOIN media_items i ON i.id = st.owner
 		WHERE i.library_id = $1 AND i.kind = $2 AND st.kind = 'audio' AND st.language IS NOT NULL
-		GROUP BY st.language ORDER BY count(DISTINCT i.id) DESC, st.language`, streamScope), libraryID, kind); err != nil {
+		GROUP BY st.language ORDER BY count(DISTINCT i.id) DESC, st.language`, owned), libraryID, kind); err != nil {
 		return Facets{}, fmt.Errorf("taalfacet: %w", err)
 	}
 	if out.Resolutions, err = rows(fmt.Sprintf(`
 		SELECT res, count(DISTINCT id)::int FROM (
 			SELECT (%s) AS res, i.id
-			FROM media_items i
-			JOIN media_versions v ON %s
-			JOIN media_streams st ON st.version_id = v.id
+			FROM %s JOIN media_items i ON i.id = st.owner
 			WHERE i.library_id = $1 AND i.kind = $2 AND st.kind = 'video') r
 		GROUP BY res
 		ORDER BY CASE res WHEN 'uhd' THEN 0 WHEN 'fhd' THEN 1 WHEN 'hd' THEN 2 ELSE 3 END`,
-		resolutionClass, streamScope), libraryID, kind); err != nil {
+		resolutionClass, owned), libraryID, kind); err != nil {
 		return Facets{}, fmt.Errorf("resolutiefacet: %w", err)
 	}
 

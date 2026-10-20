@@ -449,3 +449,50 @@ func TestSubjectSortCursorBelongsToItsSubject(t *testing.T) {
 		t.Fatal("een sortering die niet van de aanvrager afhangt hoort er geen te dragen")
 	}
 }
+
+// Een serie telt mee voor de taal en de resolutie van haar afleveringen, en
+// maar één keer, ook met meer afleveringen met dezelfde taal.
+func TestShowStreamFiltersFollowItsEpisodes(t *testing.T) {
+	f := filterLibrary(t, "shows")
+	f.item(t, "s1", "show", "Dark", "", ptr(2017), nil, nil)
+	f.item(t, "k1", "season", "Seizoen 1", "s1", nil, nil, nil)
+	f.item(t, "e1", "episode", "Aflevering 1", "k1", nil, nil, nil)
+	f.item(t, "e2", "episode", "Aflevering 2", "k1", nil, nil, nil)
+	f.item(t, "s2", "show", "Stil", "", ptr(2018), nil, nil)
+	f.item(t, "k2", "season", "Seizoen 1", "s2", nil, nil, nil)
+	f.item(t, "e3", "episode", "Aflevering 1", "k2", nil, nil, nil)
+	f.stream(t, "e1", 3000000, 3840, 2160, ptr("ger"))
+	f.stream(t, "e2", 3000000, 1920, 1080, ptr("ger"))
+	f.stream(t, "e3", 3000000, 1280, 720, ptr("eng"))
+
+	q := func(fl catalog.Filters) []string {
+		return titlesOf(t, f, catalog.Query{Kinds: []string{"show"}, Filters: fl})
+	}
+	if got := q(catalog.Filters{AudioLanguages: []string{"ger"}}); !slices.Equal(got, []string{"Dark"}) {
+		t.Fatalf("audiotaal ger: %v", got)
+	}
+	if got := q(catalog.Filters{Resolutions: []string{"uhd"}}); !slices.Equal(got, []string{"Dark"}) {
+		t.Fatalf("resolutie uhd: %v", got)
+	}
+	if got := q(catalog.Filters{Resolutions: []string{"hd"}}); !slices.Equal(got, []string{"Stil"}) {
+		t.Fatalf("resolutie hd: %v", got)
+	}
+	fc, err := f.store.Facets(f.ctx, f.lib, f.owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	counts := map[string]int{}
+	for _, v := range fc.AudioLanguages {
+		counts[v.Value] = v.Count
+	}
+	if counts["ger"] != 1 || counts["eng"] != 1 {
+		t.Fatalf("taalfacet telt een serie per taal: %+v", fc.AudioLanguages)
+	}
+	res := map[string]int{}
+	for _, v := range fc.Resolutions {
+		res[v.Value] = v.Count
+	}
+	if res["uhd"] != 1 || res["fhd"] != 1 || res["hd"] != 1 {
+		t.Fatalf("resolutiefacet: %+v", fc.Resolutions)
+	}
+}

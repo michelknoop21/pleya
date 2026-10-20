@@ -103,10 +103,25 @@ const resolutionClass = `CASE
 	WHEN coalesce(st.width, 0) >= 1200 OR coalesce(st.height, 0) >= 700 THEN 'hd'
 	ELSE 'sd' END`
 
-// streamScope zegt dat een spoor bij dit item hoort: bij een film via zijn
-// versies, bij een serie via de versies van haar afleveringen.
-const streamScope = `(v.item_id = i.id OR v.item_id IN (
-		SELECT e.id FROM media_items se JOIN media_items e ON e.parent_id = se.id WHERE se.parent_id = i.id))`
+// streamOwner is het item van de lijst waar een spoor bij hoort: de film zelf,
+// of bij een aflevering de serie erboven. Met streamOwnerJoins (de versie en zijn
+// item staan als v en vi, het seizoen als se) kan dit in een gewone join of in
+// een onafhankelijke IN-subquery, zodat Postgres hem één keer uitrekent. Een
+// gecorreleerde variant (spoor hoort bij i als het bij i of bij een aflevering
+// onder i hangt) liep op de NAS uit tot een kwart miljoen herhalingen: 25 seconden
+// voor één facet.
+const (
+	streamOwner      = `CASE WHEN vi.kind = 'episode' THEN se.parent_id ELSE vi.id END`
+	streamOwnerJoins = `JOIN media_versions v ON v.id = st.version_id
+		JOIN media_items vi ON vi.id = v.item_id
+		LEFT JOIN media_items se ON se.id = vi.parent_id AND vi.kind = 'episode'`
+)
+
+// streamOwnersWhere geeft de eigenaars (items van de lijst) van alle sporen die aan
+// where voldoen.
+func streamOwnersWhere(where string) string {
+	return fmt.Sprintf("SELECT %s FROM media_streams st %s WHERE %s", streamOwner, streamOwnerJoins, where)
+}
 
 // watchPredicate geeft de SQL voor één kijkfilter, met subject als parameter
 // $subjectArg. De betekenis staat in 4.1 van het contractvoorstel: unwatched
@@ -157,12 +172,12 @@ func (f Filters) where(clauses *[]string, param func(any) int) {
 		*clauses = append(*clauses, fmt.Sprintf("lower(i.content_rating) = ANY($%d::text[])", param(f.ContentRatings)))
 	}
 	if len(f.AudioLanguages) > 0 {
-		*clauses = append(*clauses, fmt.Sprintf(`EXISTS (SELECT 1 FROM media_streams st JOIN media_versions v ON v.id = st.version_id
-			WHERE st.kind = 'audio' AND st.language = ANY($%d::text[]) AND %s)`, param(f.AudioLanguages), streamScope))
+		*clauses = append(*clauses, fmt.Sprintf("i.id IN (%s)",
+			streamOwnersWhere(fmt.Sprintf("st.kind = 'audio' AND st.language = ANY($%d::text[])", param(f.AudioLanguages)))))
 	}
 	if len(f.Resolutions) > 0 {
-		*clauses = append(*clauses, fmt.Sprintf(`EXISTS (SELECT 1 FROM media_streams st JOIN media_versions v ON v.id = st.version_id
-			WHERE st.kind = 'video' AND (%s) = ANY($%d::text[]) AND %s)`, resolutionClass, param(f.Resolutions), streamScope))
+		*clauses = append(*clauses, fmt.Sprintf("i.id IN (%s)",
+			streamOwnersWhere(fmt.Sprintf("st.kind = 'video' AND (%s) = ANY($%d::text[])", resolutionClass, param(f.Resolutions)))))
 	}
 	if f.Watch != "" {
 		*clauses = append(*clauses, watchPredicate(f.Watch, param(f.Subject)))
