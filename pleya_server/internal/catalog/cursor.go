@@ -69,6 +69,16 @@ func ParseSort(raw string, def Sort) (Sort, bool) {
 // Descending zegt of deze sortering aflopend is.
 func (s Sort) Descending() bool { return len(s) > 0 && s[0] == '-' }
 
+// durationMax is de langste versie van het item, of bij een serie de langste
+// aflevering eronder: de versies hangen aan afleveringen, niet aan de serie zelf.
+// De tweede tak is leeg voor een film en kost er niets.
+const durationMax = `greatest(
+		(SELECT max(v.duration_ms) FROM media_versions v WHERE v.item_id = i.id),
+		(SELECT max(v.duration_ms) FROM media_items se
+			JOIN media_items ep ON ep.parent_id = se.id AND ep.kind = 'episode'
+			JOIN media_versions v ON v.item_id = ep.id
+			WHERE i.kind = 'show' AND se.parent_id = i.id))`
+
 // keyExpression is de SQL waarop gesorteerd en vergeleken wordt.
 //
 // Eén niet-nullbare uitdrukking per sortering, zodat de cursorvergelijking een
@@ -85,9 +95,9 @@ func (s Sort) keyExpression() string {
 	case SortIndex:
 		return "coalesce(i.item_index, 0)"
 	case SortDuration:
-		return "coalesce((SELECT max(v.duration_ms) FROM media_versions v WHERE v.item_id = i.id), 9223372036854775807)"
+		return "coalesce("+durationMax+", 9223372036854775807)"
 	case SortDurationDesc:
-		return "coalesce((SELECT max(v.duration_ms) FROM media_versions v WHERE v.item_id = i.id), -1)"
+		return "coalesce("+durationMax+", -1)"
 	case SortWatchUpdatedDesc:
 		return "w.updated_at"
 	case SortNextUpDesc:

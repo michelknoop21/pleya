@@ -83,12 +83,16 @@ func (f Filters) Fingerprint() string {
 }
 
 // CursorTag is wat de cursor van een lijst als herkenning meedraagt: de
-// vingerafdruk van de filterset, en bij een sortering die van de aanvrager
-// afhangt (last_played_at) ook een korte hash van die aanvrager. Een cursor van
-// de ene identiteit is dan geen vervolg van de lijst van een andere.
-func (f Filters) CursorTag(sort Sort) string {
+// vingerafdruk van de filterset, de bibliotheek (scope) en, wanneer de lijst van
+// de aanvrager afhangt (sortering last_played_at of een kijkfilter), een korte
+// hash van die aanvrager. Een cursor van een andere bibliotheek of identiteit is
+// dan geen vervolg van deze lijst.
+func (f Filters) CursorTag(sort Sort, scope string) string {
 	tag := f.Fingerprint()
-	if !sort.needsSubject() {
+	if scope != "" {
+		tag += "#" + scope
+	}
+	if !sort.needsSubject() && f.Watch == "" {
 		return tag
 	}
 	sum := sha256.Sum256([]byte(f.Subject))
