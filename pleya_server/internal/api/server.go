@@ -315,6 +315,7 @@ func (s *Server) routeTable() []route {
 		{"DELETE " + p + "/items/{item_id}/metadata-match", s.authenticated(s.handleClearMetadataMatch)},
 
 		{"GET " + p + "/libraries/{library_id}/items", s.authenticated(s.handleLibraryItems)},
+		{"GET " + p + "/libraries/{library_id}/facets", s.authenticated(s.handleLibraryFacets)},
 		{"GET " + p + "/items/{item_id}", s.authenticated(s.handleItem)},
 		{"GET " + p + "/items/{item_id}/children", s.authenticated(s.handleChildren)},
 		{"GET " + p + "/search", s.authenticated(s.handleSearch)},

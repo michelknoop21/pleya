@@ -25,10 +25,11 @@
 ///
 /// Hoofdstuk 10.4 lists genre, year and watch state as globally safe, and for
 /// Plex and Jellyfin they are: `library_query_translator.dart` maps all three
-/// on both sides. The Pleya Server client does not — its browse call carries
-/// sort, offset and limit only, and the PS-1 wire contract is frozen — so a
-/// genre filter with a Pleya Server library in the mix would return that
-/// server's items unfiltered and quietly present them as matches.
+/// on both sides. The Pleya Server client does so since venster 3 (pakket D1,
+/// `capabilities.filters`); against a server without that capability it answers
+/// an empty page and never an unfiltered one, so a filter cannot present a
+/// whole library as its matches. The local folder client still has no index to
+/// filter on.
 ///
 /// Hoofdstuk 10.4's own rule for exactly this ("Geen filter tonen dat
 /// UnifiedCatalogQuery niet correct kan uitvoeren") is therefore applied as a
@@ -167,18 +168,22 @@ UnifiedFilterCapabilities unifiedFilterCapabilitiesFor(Iterable<MediaBackend> ba
 /// Verified against `library_query_translator.dart`, which is the one place
 /// either backend turns a [LibraryQuery] into wire parameters — Plex at
 /// `genre`/`year`, Jellyfin at `Genres`/`Years`. The Pleya Server client
-/// (`pleya_server_client/parts/browse.dart`) passes only sort/offset/limit, and
-/// the local folder client browses a filesystem with no such index.
-bool _executesMetadataFilters(MediaBackend backend) => backend == MediaBackend.plex || backend == MediaBackend.jellyfin;
+/// (`pleya_server_client/parts/browse.dart`) sends them as repeated protocol
+/// parameters, and the local folder client browses a filesystem with no such
+/// index.
+bool _executesMetadataFilters(MediaBackend backend) =>
+    backend == MediaBackend.plex || backend == MediaBackend.jellyfin || backend == MediaBackend.pleyaServer;
 
 /// Whether [backend]'s client translates `includeWatched: false` and
 /// `inProgressOnly`.
-bool _executesWatchFilter(MediaBackend backend) => backend == MediaBackend.plex || backend == MediaBackend.jellyfin;
+bool _executesWatchFilter(MediaBackend backend) =>
+    backend == MediaBackend.plex || backend == MediaBackend.jellyfin || backend == MediaBackend.pleyaServer;
 
-/// Whether [backend]'s client translates `watchedOnly`. Jellyfin only: the
-/// Plex translator ignores it until a live server proves what `unwatched=0`
-/// returns.
-bool _executesWatchedFilter(MediaBackend backend) => backend == MediaBackend.jellyfin;
+/// Whether [backend]'s client translates `watchedOnly`. Jellyfin and Pleya
+/// Server (`watch=watched`): the Plex translator ignores it until a live server
+/// proves what `unwatched=0` returns.
+bool _executesWatchedFilter(MediaBackend backend) =>
+    backend == MediaBackend.jellyfin || backend == MediaBackend.pleyaServer;
 
 /// One catalog's current narrowing, as the user set it.
 ///

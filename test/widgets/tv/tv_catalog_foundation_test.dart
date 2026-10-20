@@ -534,7 +534,7 @@ void main() {
             serverName: 'Schuur',
             libraryId: '3',
             libraryTitle: 'Archief',
-            backend: MediaBackend.pleyaServer,
+            backend: MediaBackend.local,
           ),
         ],
         section: TvCatalogFilterSection.servers,
@@ -569,7 +569,7 @@ void main() {
           serverName: 'Schuur',
           libraryId: '3',
           libraryTitle: 'Archief',
-          backend: MediaBackend.pleyaServer,
+          backend: MediaBackend.local,
         ),
       ];
       await tester.pumpWidget(
@@ -652,7 +652,7 @@ void main() {
             serverName: 'Schuur',
             libraryId: '3',
             libraryTitle: 'Archief',
-            backend: MediaBackend.pleyaServer,
+            backend: MediaBackend.local,
           ),
         ],
         section: TvCatalogFilterSection.genre,

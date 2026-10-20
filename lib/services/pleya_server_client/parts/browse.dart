@@ -59,9 +59,10 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
 
   /// Sort options the contract actually accepts.
   ///
-  /// Three keys, both directions. This is a fixed list and not a server call,
-  /// because the protocol has no sort-listing endpoint: the enum on
-  /// `/libraries/{id}/items` is the whole truth and it is frozen in v1.
+  /// A fixed list and not a server call, because the protocol has no
+  /// sort-listing endpoint: the enum on `/libraries/{id}/items` is the whole
+  /// truth. Title, date added and year always; last watched and duration only
+  /// under `capabilities.filters`, since an older server answers 400 on them.
   Future<List<MediaSort>> fetchSortOptions(String libraryId, {String? libraryType}) async => [
     MediaSort(key: 'title', descKey: 'title:desc', title: t.libraries.sortLabels.title, defaultDirection: 'asc'),
     MediaSort(
@@ -76,6 +77,20 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       title: t.libraries.sortLabels.productionYear,
       defaultDirection: 'desc',
     ),
+    if (wireCapabilities.filters) ...[
+      MediaSort(
+        key: 'lastViewedAt',
+        descKey: 'lastViewedAt:desc',
+        title: t.libraries.sortLabels.lastPlayed,
+        defaultDirection: 'desc',
+      ),
+      MediaSort(
+        key: 'duration',
+        descKey: 'duration:desc',
+        title: t.libraries.sortLabels.runtime,
+        defaultDirection: 'asc',
+      ),
+    ],
   ];
 
   Future<LibraryPage<MediaItem>> fetchLibraryContent(String libraryId, LibraryQuery query) =>
@@ -88,16 +103,121 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     AbortController? abort,
   }) async {
     if (!wireCapabilities.browse) return const LibraryPage(items: [], totalCount: 0);
+    final filters = _filterParameters(query);
+    if (filters.isNotEmpty && !wireCapabilities.filters) {
+      // A server without the capability ignores these parameters and would hand
+      // back the whole library as the answer to a filter. An empty page is
+      // wrong in an honest way; an unfiltered one is wrong in a misleading way.
+      appLogger.w('PleyaServerClient: filters requested but the server does not advertise them');
+      return const LibraryPage(items: [], totalCount: 0);
+    }
     final sort = _sortFor(query.sort);
+    final extra = <String, dynamic>{'sort': sort, ...filters};
     return _walkPage(
       path: '/libraries/${Uri.encodeComponent(libraryId)}/items',
-      ledgerKey: PleyaServerCursorLedger.key(scope: 'library:$libraryId', sort: sort),
+      // The cursor belongs to a sort and a filter set, so both are in the key.
+      ledgerKey: PleyaServerCursorLedger.key(scope: 'library:$libraryId', sort: '$sort|${_filterKey(filters)}'),
       offset: query.offset,
       limit: query.limit,
-      extraQuery: {'sort': sort},
+      extraQuery: extra,
       libraryId: libraryId,
       abort: abort,
     );
+  }
+
+  /// The wire spelling of the filters in [query], as repeated query parameters.
+  ///
+  /// The filter sheet hands over one comma-joined string per field (the Plex
+  /// habit), so each entry is split again. Watch has three spellings on the
+  /// neutral query and one on the wire; `watchedOnly` wins over `inProgressOnly`
+  /// over `includeWatched: false`, which is the order of how much they narrow.
+  Map<String, List<String>> _filterParameters(LibraryQuery query) {
+    List<String> split(List<String>? raw) => [
+      for (final entry in raw ?? const <String>[])
+        for (final part in entry.split(','))
+          if (part.trim().isNotEmpty) part.trim(),
+    ];
+    final out = <String, List<String>>{};
+    void put(String key, List<String> values) {
+      if (values.isNotEmpty) out[key] = values;
+    }
+
+    put('genre', split(query.genres));
+    put('year', [
+      for (final y in query.years ?? const <int>[])
+        if (y >= 1800 && y <= 2200) '$y',
+    ]);
+    put('content_rating', split(query.officialRatings));
+    put('audio_language', split(query.audioLanguages));
+    for (final filter in query.filters) {
+      if (filter.field == 'resolution') put('resolution', split(filter.values));
+    }
+    if (query.watchedOnly) {
+      out['watch'] = const ['watched'];
+    } else if (query.inProgressOnly) {
+      out['watch'] = const ['in_progress'];
+    } else if (!query.includeWatched) {
+      out['watch'] = const ['unwatched'];
+    }
+    return out;
+  }
+
+  String _filterKey(Map<String, List<String>> filters) {
+    final keys = filters.keys.toList()..sort();
+    return keys.map((k) => '$k=${([...filters[k]!]..sort()).join(',')}').join('&');
+  }
+
+  /// The filter sheet's categories and values, from `GET /libraries/{id}/facets`.
+  ///
+  /// One call returns every category with its values, so the result is
+  /// pre-populated the way Jellyfin's is and the sheet skips the per-category
+  /// fetch. Category keys are Plex's (`genre`, `audioLanguage`, `year`,
+  /// `contentRating`) because that is the vocabulary the sheet and the query
+  /// translator share; `resolution` and the synthetic `unwatched` toggle are
+  /// the two additions. A server without `capabilities.filters` answers empty,
+  /// which is a sheet with nothing on it rather than one that cannot filter.
+  Future<LibraryFilterResult> fetchLibraryFiltersWithValues(String libraryId) async {
+    if (!wireCapabilities.browse || !wireCapabilities.filters) return LibraryFilterResult.empty;
+    final json = await _getJson('/libraries/${Uri.encodeComponent(libraryId)}/facets');
+    if (json == null) return LibraryFilterResult.empty;
+    final PleyaFacets facets;
+    try {
+      facets = PleyaFacets.fromJson(json);
+    } on PleyaWireFormatException catch (e) {
+      appLogger.w('PleyaServerClient: facets did not match the contract', error: e);
+      return LibraryFilterResult.empty;
+    }
+
+    final filters = <MediaFilter>[
+      MediaFilter(
+        filter: 'unwatched',
+        filterType: 'boolean',
+        key: 'pleya:unwatched',
+        title: t.libraries.filterCategories.unwatched,
+        type: 'filter',
+      ),
+    ];
+    final values = <String, List<MediaFilterValue>>{};
+    void category(String filter, String title, List<PleyaFacetValue> facet, {String Function(String)? label}) {
+      if (facet.isEmpty) return;
+      filters.add(
+        MediaFilter(filter: filter, filterType: 'string', key: 'pleya:$filter', title: title, type: 'filter'),
+      );
+      values[filter] = [for (final v in facet) MediaFilterValue(key: v.value, title: label?.call(v.value) ?? v.value)];
+    }
+
+    final categories = t.libraries.filterCategories;
+    category('genre', categories.genre, facets.genres);
+    category(
+      'audioLanguage',
+      categories.audioLanguage,
+      facets.audioLanguages,
+      label: (code) => languageDisplayName(code) ?? code,
+    );
+    category('year', categories.year, facets.years);
+    category('contentRating', categories.contentRating, facets.contentRatings);
+    category('resolution', categories.resolution, facets.resolutions, label: (value) => value.toUpperCase());
+    return LibraryFilterResult(filters: filters, cachedValues: values);
   }
 
   /// The contract's sort spelling for a neutral [LibrarySort].
@@ -105,11 +225,15 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   /// A field the protocol does not carry falls back to title rather than being
   /// passed through. The server would answer 400 on an unknown value, and a
   /// library that renders in the wrong order beats one that renders an error.
+  /// The two sorts that only exist under `capabilities.filters` fall back the
+  /// same way on a server without it.
   String _sortFor(LibrarySort? sort) {
     final descending = sort?.direction == LibrarySortDirection.descending;
     final key = switch (sort?.field) {
       'addedAt' || 'added_at' => PleyaSortKey.addedAt,
       'year' || 'productionYear' || 'originallyAvailableAt' => PleyaSortKey.year,
+      'lastViewedAt' || 'last_played_at' when wireCapabilities.filters => PleyaSortKey.lastPlayedAt,
+      'duration' when wireCapabilities.filters => PleyaSortKey.duration,
       _ => PleyaSortKey.title,
     };
     return key.query(descending: descending);
@@ -402,7 +526,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     required String ledgerKey,
     required int offset,
     required int limit,
-    Map<String, String> extraQuery = const {},
+    Map<String, dynamic> extraQuery = const {},
     String? libraryId,
     String? parentId,
     AbortController? abort,

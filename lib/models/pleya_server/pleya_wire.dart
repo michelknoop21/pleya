@@ -101,12 +101,15 @@ enum PleyaSubtitleFormat {
 }
 
 /// Sort keys `GET /libraries/{id}/items` accepts. Closed: the contract lists
-/// six literal values and marks the field `x-unknown-safe: false`, so this is
-/// the whole set a client may send.
+/// the literal values (each with its `-` twin) and marks the field
+/// `x-unknown-safe: false`, so this is the whole set a client may send.
+/// `lastPlayedAt` and `duration` exist only under `capabilities.filters`.
 enum PleyaSortKey {
   title('title'),
   addedAt('added_at'),
-  year('year');
+  year('year'),
+  lastPlayedAt('last_played_at'),
+  duration('duration');
 
   const PleyaSortKey(this.wire);
 
@@ -151,6 +154,7 @@ class PleyaCapabilities {
     this.realtime = false,
     this.users = false,
     this.artworkSizes = false,
+    this.filters = false,
     this.watchStateOwnership = false,
     this.streamSessions = false,
     this.sessions = false,
@@ -185,6 +189,13 @@ class PleyaCapabilities {
   /// the original. The app sends `width` regardless: a server without the flag
   /// ignores it, so the flag changes what comes back and not what is asked.
   final bool artworkSizes;
+
+  /// `GET /libraries/{id}/items` executes the filter parameters (`genre`,
+  /// `year`, `watch`, ...) and the sorts `last_played_at` and `duration`, and
+  /// `GET /libraries/{id}/facets` exists. A server without the flag ignores
+  /// the parameters, so a client that sent them anyway would show a whole
+  /// library as the answer to a filter; this flag decides whether they are sent.
+  final bool filters;
 
   /// The server knows the ownership model: `base_revision`, the
   /// `playback_started` acquisition and the backlog marker on a watch-state
@@ -222,6 +233,7 @@ class PleyaCapabilities {
     liveTv: booleanOr(json, 'live_tv', orElse: false),
     realtime: booleanOr(json, 'realtime', orElse: false),
     artworkSizes: booleanOr(json, 'artwork_sizes', orElse: false),
+    filters: booleanOr(json, 'filters', orElse: false),
     watchStateOwnership: booleanOr(json, 'watch_state_ownership', orElse: false),
     streamSessions: booleanOr(json, 'stream_sessions', orElse: false),
     users: booleanOr(json, 'users', orElse: false),

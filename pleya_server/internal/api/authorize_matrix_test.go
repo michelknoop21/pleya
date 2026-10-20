@@ -306,6 +306,9 @@ func matrixProbes() []matrixProbe {
 		{row: 44, name: "DELETE /items/{id}/metadata-match", method: http.MethodDelete,
 			path: func(f *matrixFixture) string { return "/pleya/v1/items/" + f.itemID + "/metadata-match" },
 			body: noBody, ok: http.StatusOK, expect: adminSurface()},
+		{row: 45, name: "GET /libraries/{id}/facets", method: http.MethodGet,
+			path: func(f *matrixFixture) string { return "/pleya/v1/libraries/" + f.libraryID + "/facets" },
+			body: noBody, ok: http.StatusOK, expect: everyRole()},
 		{row: 39, name: "GET /watch-history", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/watch-history"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
 	}
@@ -360,6 +363,12 @@ func newMatrixFixture(e *env) *matrixFixture {
 	// en 30): e.libs[0] is "films", door newEnv zelf gesynct.
 	f.libraryID = e.libs[0].ID.String()
 	e.markDBManaged(e.t, f.libraryID)
+	// Leesrecht op die bibliotheek voor de rollen die het niet vanzelf hebben,
+	// voor de routes van klasse authenticated met bibliotheekautorisatie
+	// (regel 45). De admin-routes kijken niet naar dit recht.
+	for _, role := range []string{roleMember, roleRestricted} {
+		e.grantLibrary(f.self[role], e.libs[0].ID, "view")
+	}
 
 	ctx := context.Background()
 	// Een bestaande film voor de metadatacorrecties (regel 43 en 44).

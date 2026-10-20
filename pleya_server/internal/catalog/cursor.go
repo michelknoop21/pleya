@@ -27,6 +27,13 @@ const (
 	SortAddedAtDesc Sort = "-added_at"
 	SortYearDesc    Sort = "-year"
 	SortIndex       Sort = "index"
+
+	// D1.2: laatst gekeken (per aanvrager) en duur. Items zonder waarde staan
+	// achteraan, in beide richtingen.
+	SortLastPlayed     Sort = "last_played_at"
+	SortLastPlayedDesc Sort = "-last_played_at"
+	SortDuration       Sort = "duration"
+	SortDurationDesc   Sort = "-duration"
 )
 
 // De twee sorteringen achter de kijkstatushubs. Net als SortIndex komen ze niet
@@ -51,7 +58,8 @@ func ParseSort(raw string, def Sort) (Sort, bool) {
 		return def, true
 	}
 	switch Sort(raw) {
-	case SortTitle, SortAddedAt, SortYear, SortTitleDesc, SortAddedAtDesc, SortYearDesc:
+	case SortTitle, SortAddedAt, SortYear, SortTitleDesc, SortAddedAtDesc, SortYearDesc,
+		SortLastPlayed, SortLastPlayedDesc, SortDuration, SortDurationDesc:
 		return Sort(raw), true
 	default:
 		return "", false
@@ -76,6 +84,10 @@ func (s Sort) keyExpression() string {
 		return "coalesce(i.year, 0)"
 	case SortIndex:
 		return "coalesce(i.item_index, 0)"
+	case SortDuration:
+		return "coalesce((SELECT max(v.duration_ms) FROM media_versions v WHERE v.item_id = i.id), 9223372036854775807)"
+	case SortDurationDesc:
+		return "coalesce((SELECT max(v.duration_ms) FROM media_versions v WHERE v.item_id = i.id), -1)"
 	case SortWatchUpdatedDesc:
 		return "w.updated_at"
 	case SortNextUpDesc:
@@ -85,9 +97,33 @@ func (s Sort) keyExpression() string {
 	}
 }
 
+// needsSubject zegt of de sorteersleutel van de aanvrager afhangt.
+func (s Sort) needsSubject() bool { return s == SortLastPlayed || s == SortLastPlayedDesc }
+
+// subjectKey is de sorteersleutel van de sorteringen die een aanvrager nodig
+// hebben, met zijn id als parameter $subjectArg. Een item zonder waarde krijgt
+// een eindwaarde, zodat het achteraan staat en de cursorvergelijking totaal
+// blijft: een NULL in een tupelvergelijking sluit de rij stilzwijgend uit.
+func (s Sort) subjectKey(subjectArg int) string {
+	sentinel := "'infinity'::timestamptz"
+	if s.Descending() {
+		sentinel = "'-infinity'::timestamptz"
+	}
+	return fmt.Sprintf(`coalesce(CASE WHEN i.kind = 'show'
+		THEN (SELECT max(w.last_played_at) FROM watch_states w
+		      JOIN media_items e ON e.id = w.item_id JOIN media_items se ON se.id = e.parent_id
+		      WHERE w.subject = $%[1]d AND se.parent_id = i.id)
+		ELSE (SELECT w.last_played_at FROM watch_states w WHERE w.subject = $%[1]d AND w.item_id = i.id) END, %[2]s)`,
+		subjectArg, sentinel)
+}
+
 // castSuffix typeert de cursorwaarde in de vergelijking.
 func (s Sort) castSuffix() string {
 	switch s {
+	case SortLastPlayed, SortLastPlayedDesc:
+		return "::timestamptz"
+	case SortDuration, SortDurationDesc:
+		return "::bigint"
 	case SortAddedAt, SortAddedAtDesc, SortWatchUpdatedDesc, SortNextUpDesc:
 		return "::timestamptz"
 	case SortYear, SortYearDesc, SortIndex:
@@ -106,6 +142,9 @@ type Cursor struct {
 	Sort Sort   `json:"s"`
 	Key  string `json:"k"`
 	ID   string `json:"i"`
+	// Filter is de vingerafdruk van de filterset waar deze cursor bij hoort
+	// (D1.7); leeg zonder filters.
+	Filter string `json:"f,omitempty"`
 }
 
 // Encode maakt de string die de client terugkrijgt.
@@ -119,6 +158,13 @@ func (c Cursor) Encode() string {
 
 // DecodeCursor leest een cursor en controleert dat hij bij deze sortering hoort.
 func DecodeCursor(raw string, want Sort) (*Cursor, error) {
+	return DecodeCursorFor(raw, want, "")
+}
+
+// DecodeCursorFor doet hetzelfde en controleert daarnaast dat de cursor bij
+// precies deze filterset hoort (D1.7): een cursor uit een andere combinatie van
+// sortering en filters is geen vervolg van deze lijst.
+func DecodeCursorFor(raw string, want Sort, filter string) (*Cursor, error) {
 	if raw == "" {
 		return nil, nil
 	}
@@ -132,6 +178,9 @@ func DecodeCursor(raw string, want Sort) (*Cursor, error) {
 	}
 	if c.Sort != want {
 		return nil, fmt.Errorf("%w: hoort bij sortering %q", ErrCursorInvalid, c.Sort)
+	}
+	if c.Filter != filter {
+		return nil, fmt.Errorf("%w: hoort bij een andere filterset", ErrCursorInvalid)
 	}
 	if _, err := id.Parse(c.ID); err != nil {
 		return nil, ErrCursorInvalid
@@ -154,6 +203,13 @@ func (s Sort) keyValid(key string) bool {
 	case SortYear, SortYearDesc, SortIndex:
 		_, err := strconv.Atoi(key)
 		return err == nil
+	case SortDuration, SortDurationDesc:
+		_, err := strconv.ParseInt(key, 10, 64)
+		return err == nil
+	case SortLastPlayed, SortLastPlayedDesc:
+		// Postgres-tekst of een eindwaarde (infinity); alleen leeg is zeker fout.
+		// De cast in de query is het vangnet voor de rest.
+		return key != ""
 	default:
 		return true
 	}

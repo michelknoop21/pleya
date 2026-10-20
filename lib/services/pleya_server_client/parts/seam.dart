@@ -27,7 +27,8 @@ mixin _PleyaServerRequests {
     AbortController? abort,
   });
 
-  /// POST a protocol path with a JSON body and hand back its JSON object.
+  /// POST a protocol path with a JSON body and hand back its JSON object. A
+  /// failed write throws; only offline mode answers null.
   Future<Map<String, dynamic>?> _postJson(String path, Map<String, dynamic> body);
 
   /// One item by id. The playback part needs it to turn watch-state rows back

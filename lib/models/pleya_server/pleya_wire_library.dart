@@ -519,3 +519,60 @@ class PleyaWatchStateEntry {
     for (final entry in objectList(json['items'], 'items')) PleyaWatchStateEntry.fromJson(entry),
   ];
 }
+
+/// `FacetValue`. The value is always text: a year arrives as `"2021"`.
+class PleyaFacetValue {
+  const PleyaFacetValue({required this.value, required this.count});
+
+  final String value;
+  final int count;
+
+  factory PleyaFacetValue.fromJson(Map<String, dynamic> json) =>
+      PleyaFacetValue(value: str(json, 'value'), count: integer(json, 'count'));
+}
+
+/// `Facets`: what a library can be filtered on, with counts. The lists cover the
+/// whole library and ignore the active filters; `watch` is for this identity.
+/// The genre list is empty while the library's coverage gate is closed.
+class PleyaFacets {
+  const PleyaFacets({
+    required this.genres,
+    required this.years,
+    required this.contentRatings,
+    required this.audioLanguages,
+    required this.resolutions,
+    required this.unwatched,
+    required this.inProgress,
+    required this.watched,
+  });
+
+  final List<PleyaFacetValue> genres;
+  final List<PleyaFacetValue> years;
+  final List<PleyaFacetValue> contentRatings;
+  final List<PleyaFacetValue> audioLanguages;
+
+  /// Resolution classes (`sd`, `hd`, `fhd`, `uhd`), highest first. The list can
+  /// grow; an unknown class is kept as a raw string.
+  final List<PleyaFacetValue> resolutions;
+
+  final int unwatched;
+  final int inProgress;
+  final int watched;
+
+  factory PleyaFacets.fromJson(Map<String, dynamic> json) {
+    List<PleyaFacetValue> values(String key) => [
+      for (final item in objectList(json[key], key)) PleyaFacetValue.fromJson(item),
+    ];
+    final watch = obj(json['watch'], 'watch');
+    return PleyaFacets(
+      genres: values('genres'),
+      years: values('years'),
+      contentRatings: values('content_ratings'),
+      audioLanguages: values('audio_languages'),
+      resolutions: values('resolutions'),
+      unwatched: integer(watch, 'unwatched'),
+      inProgress: integer(watch, 'in_progress'),
+      watched: integer(watch, 'watched'),
+    );
+  }
+}

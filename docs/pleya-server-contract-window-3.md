@@ -1,6 +1,6 @@
 # Contractvenster 3: boeken, sidecars, artwork, filters en leesvoortgang (S3 tot en met S6)
 
-**Status:** voorstel, niet geaccepteerd. Herzien op 10 oktober 2026 na een review (één kritieke en
+**Status:** voorstel, deels geaccepteerd: pakket B, C en D1 zijn vrijgegeven met DEC-152 (D1 uitgewerkt in 4.4); de rest blijft voorstel. Herzien op 10 oktober 2026 na een review (één kritieke en
 elf belangrijke bevindingen, verwerkt in deze versie). `docs/pleya-protocol/v1/openapi.yaml`, de
 schema's en de fixtures zijn niet aangeraakt; het venster staat dicht.
 **Datum:** 10 oktober 2026
@@ -164,7 +164,7 @@ hetzelfde betekent:
 | Soort | `unwatched` | `in_progress` | `watched` |
 | --- | --- | --- | --- |
 | `movies` | geen `watch_states`-rij voor de aanroeper, of `watched = false`; dus inclusief half bekeken | `watched = false` en `position_ms > 0` | `watched = true` |
-| `shows` (op serieniveau) | minstens één aflevering niet bekeken; een half bekeken serie valt eronder | minstens één aflevering bekeken of begonnen, en niet alle bekeken | `episode_count > 0` en alle afleveringen bekeken |
+| `shows` (op serieniveau) | elke serie die niet helemaal bekeken is, dus ook een half bekeken serie en een serie zonder afleveringen (zo vormen `unwatched` en `watched` samen het totaal) | minstens één aflevering bekeken of begonnen, en niet alle bekeken | `episode_count > 0` en alle afleveringen bekeken |
 | `books` | n.v.t.: `/libraries/{id}/items` geeft `library.wrong_kind`. Leesstaat filtert via `state` op `/ebooks` (pakket F), met dezelfde overlap: `unread` is niet uitgelezen, dus inclusief begonnen. | | |
 
 `in_progress` is dus een deelverzameling van `unwatched`. Dat is bewust en staat zo in de
@@ -212,6 +212,24 @@ plus de reparatie is de kleinste wijziging die de Unified-belofte waar houdt.
 Een server negeert een onbekende queryparameter stil, dus elke filterparameter hangt achter een vlag.
 Eén vlag voor items en boeken zou D1 aan S3 en D2 aan S4 koppelen; met twee vlaggen landt elk deel
 zodra zijn data er is.
+
+### 4.4 Uitwerking van D1 bij de bouw (20 oktober 2026, M3)
+
+Pakket D1 is vrijgegeven met [DEC-152](DECISIONS.md) en gebouwd in M3 (S5.1 tot S5.3 en S5.5, met S14.1
+tot S14.3 aan de app-kant). Bij het bouwen zijn zes punten vastgelegd die hierboven open of anders stonden.
+
+| Punt | Besluit | Reden |
+| --- | --- | --- |
+| Migratienummers | `0017_filters.sql` (`pg_trgm`, trigramindexen op `title` en `sort_title`, `watch_states.last_played_at`) en `0018_audio_language_codes.sql` (D1.8). De nummers 0015 en 0016 uit 8.1 zijn bezet door `people` en de metadatacorrecties. | 8.1 zei al: het eerstvolgende vrije nummer bij het committen. |
+| `last_played_at` | Gevuld bij elke geaccepteerde schrijving met voortgang (positie boven nul of `watched`); `mark_unwatched` en `restart` laten hem staan, want zij zetten beide terug. **Wel een backfill** voor bestaande rijen: `updated_at` van elke rij met positie of `watched`. | 8.1 zei "geen backfill". Zonder backfill krijgt de kijkgeschiedenis die er al is geen sorteerwaarde, en "laatst gekeken" is dan leeg tot iedereen opnieuw kijkt. `updated_at` is de dichtstbijzijnde waarheid die er is. |
+| Wanneer `library.filter_invalid` | Een onbekende `watch`- of `resolution`-waarde; een `year`, `year_from` of `year_to` die geen jaar tussen 1800 en 2200 is; `year_from` boven `year_to`; een `audio_language` die geen taal is (twee of drie letters; `nl`, `nld` en `dut` zijn dezelfde taal, `und` niet); meer dan vijftig waarden voor één herhaalbare parameter. `details.parameter` is de naam, `details.value` de eerste afgekeurde waarde. | Een stil genegeerde parameter geeft een lijst die niet is wat de client vroeg; liever een fout met de naam erbij. |
+| Wat facetten tellen | Alle films of series van de bibliotheek, zonder de andere filters toe te passen; `watch` per aanvrager. Het genrefacet is leeg zolang de dekkingspoort (B2) dicht staat. | Een facet dat meebeweegt met de selectie is een ander product (Plex doet dat ook niet). Met de poort dicht tonen we geen genres, dus ook geen genrefacet. |
+| `null` bij sorteren | Items zonder waarde staan achteraan, in beide richtingen: de sorteersleutel krijgt een eindwaarde (`infinity` of `-infinity`, of een grens voor `duration`), en die eindwaarde zit ook in de cursor. | Een `NULL` in een keyset-vergelijking sluit de rij uit; een eindwaarde houdt de volgorde totaal. |
+| Cursor en filters | De cursor draagt een korte vingerafdruk van (sortering, filterset), en bij `last_played_at` ook een hash van de aanvrager. Een cursor uit een andere combinatie geeft `library.cursor_invalid`. | D1.7. Zonder dat springt een vervolgpagina naar een andere lijst als de client het filter wijzigt maar de cursor houdt. |
+
+Het genrefilter zelf is niet gepoort: de poort bepaalt of de server genres toont en als facet aanbiedt, niet of
+een client die de waarde al kent erop kan filteren. `/search` krijgt de trigramindex maar geen nieuw gedrag in
+M3; de rangschikking uit RB-5 volgt met een eigen meting.
 
 ## 5. S6, leesvoortgang (PS-15 server)
 

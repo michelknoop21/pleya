@@ -92,7 +92,19 @@ func (s *Server) handleLibraryItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cursor, err := catalog.DecodeCursor(r.URL.Query().Get("cursor"), sort)
+	subject, err := s.subjectID(r)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+	filters, bad := parseItemFilters(r.URL.Query(), subject.String())
+	if bad != nil {
+		writeError(w, s.log, CodeFilterInvalid, "filter parameter is invalid",
+			map[string]any{"parameter": bad.parameter, "value": truncateValue(bad.value)})
+		return
+	}
+
+	cursor, err := catalog.DecodeCursorFor(r.URL.Query().Get("cursor"), sort, filters.CursorTag(sort))
 	if err != nil {
 		writeError(w, s.log, CodeCursorInvalid, err.Error(), nil)
 		return
@@ -112,6 +124,7 @@ func (s *Server) handleLibraryItems(w http.ResponseWriter, r *http.Request) {
 		Sort:      sort,
 		Cursor:    cursor,
 		Limit:     limit,
+		Filters:   filters,
 	})
 	if err != nil {
 		s.writeStoreError(w, err)

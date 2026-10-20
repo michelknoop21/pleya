@@ -2846,6 +2846,7 @@ class _TranslationsLibrariesFilterCategoriesNl extends TranslationsLibrariesFilt
 	@override String get contentRating => 'Leeftijdsclassificatie';
 	@override String get tag => 'Tag';
 	@override String get unwatched => 'Onbekeken';
+	@override String get resolution => 'Resolutie';
 }
 
 // Path: libraries.sortLabels
@@ -5284,6 +5285,7 @@ extension on TranslationsNl {
 			'libraries.filterCategories.contentRating' => 'Leeftijdsclassificatie',
 			'libraries.filterCategories.tag' => 'Tag',
 			'libraries.filterCategories.unwatched' => 'Onbekeken',
+			'libraries.filterCategories.resolution' => 'Resolutie',
 			'libraries.sortLabels.title' => 'Titel',
 			'libraries.sortLabels.dateAdded' => 'Toegevoegd op',
 			'libraries.sortLabels.releaseDate' => 'Uitgavedatum',
@@ -5347,9 +5349,9 @@ extension on TranslationsNl {
 			'logs.levelErrors' => 'Fouten',
 			'logs.noMatchingLogs' => 'Geen regels op dit niveau',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} van ${total} regels',
-			'licenses.relatedPackages' => 'Gerelateerde pakketten',
 			_ => null,
 		} ?? switch (path) {
+			'licenses.relatedPackages' => 'Gerelateerde pakketten',
 			'licenses.license' => 'Licentie',
 			'licenses.licenseNumber' => ({required Object number}) => 'Licentie ${number}',
 			'licenses.licensesCount' => ({required Object count}) => '${count} licenties',
@@ -5861,9 +5863,9 @@ extension on TranslationsNl {
 			'metadataEdit.latestEpisodes' => ({required Object count}) => '${count} nieuwste afleveringen',
 			'metadataEdit.latestEpisode' => 'Nieuwste aflevering',
 			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Afleveringen toegevoegd in de afgelopen ${count} dagen',
-			'metadataEdit.deleteAfterPlaying' => 'Afleveringen verwijderen na afspelen',
 			_ => null,
 		} ?? switch (path) {
+			'metadataEdit.deleteAfterPlaying' => 'Afleveringen verwijderen na afspelen',
 			'metadataEdit.never' => 'Nooit',
 			'metadataEdit.afterADay' => 'Na een dag',
 			'metadataEdit.afterAWeek' => 'Na een week',
@@ -6375,9 +6377,9 @@ extension on TranslationsNl {
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Alle series bekijken, opent de volledige catalogus',
 			'unifiedCatalog.home.featured' => 'Uitgelicht',
 			'unifiedCatalog.homeRows.customize' => 'Home aanpassen',
-			'unifiedCatalog.homeRows.customizeSubtitle' => 'Verplaats of verberg rijen, of maak er een van een filter',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.homeRows.customizeSubtitle' => 'Verplaats of verberg rijen, of maak er een van een filter',
 			'unifiedCatalog.homeRows.customizeIntro' => 'Verplaats, verberg of bewerk je rijen. Uitgelicht en Verder kijken blijven staan waar ze staan.',
 			'unifiedCatalog.homeRows.featured' => 'Uitgelicht',
 			'unifiedCatalog.homeRows.alwaysFirst' => 'Altijd bovenaan',
@@ -6889,9 +6891,9 @@ extension on TranslationsNl {
 			'assistant.notes.plexHomeMember' => 'Lid van je Plex Home. Alleen de share op deze server verandert.',
 			'assistant.notes.replacesAllAccess' => 'Vervangt alle bestaande toegang van deze gebruiker op deze server.',
 			'assistant.ends.noTools' => 'Big P kan nu niets doen op je servers.',
-			'assistant.ends.toolsUnsupported' => 'Dit model kan geen tools gebruiken. Kies een ander model bij de instellingen van Big P.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.ends.toolsUnsupported' => 'Dit model kan geen tools gebruiken. Kies een ander model bij de instellingen van Big P.',
 			'assistant.ends.stepLimit' => 'Dit kostte te veel stappen. Probeer een kortere vraag.',
 			'assistant.ends.notEntitled' => 'Big P is niet beschikbaar op dit account.',
 			'assistant.ends.providerUnauthorized' => 'De AI-provider weigert de sleutel. Controleer hem bij de instellingen van Big P.',

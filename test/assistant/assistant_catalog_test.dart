@@ -914,7 +914,7 @@ void main() {
   });
 
   test('servers that cannot run a filter are left out of the query, and named', () async {
-    final pleya = _SearchServer('ps-1', MediaBackend.pleyaServer);
+    final pleya = _SearchServer('ps-1', MediaBackend.local);
     final (ctx, loader, _, _) = await setUpCtx(others: [pleya]);
     final data = await search(ctx, {
       'kind': 'movie',

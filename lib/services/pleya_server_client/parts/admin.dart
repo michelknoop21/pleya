@@ -84,6 +84,11 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
     await _adminSend('POST', '/libraries/${adminPathSegment(libraryId)}/scan');
   }
 
+  /// Refresh a library's metadata. A scan is the only refresh the protocol has:
+  /// it walks the files and then runs the metadata pass over what is due, so
+  /// this starts one. Admin only, like the scan itself.
+  Future<void> refreshLibraryMetadata(String libraryId) => scanLibrary(libraryId);
+
   /// The newest page of jobs.
   // ponytail: one page of 100; follow `next_cursor` when a screen needs history.
   @override

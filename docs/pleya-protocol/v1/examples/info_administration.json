@@ -9,6 +9,7 @@
     "search": true,
     "artwork": true,
     "artwork_sizes": true,
+    "filters": true,
     "watch_state": true,
     "watch_state_ownership": true,
     "stream_sessions": true,

@@ -1038,7 +1038,8 @@
       "year": "Year",
       "contentRating": "Content Rating",
       "tag": "Tag",
-      "unwatched": "Unwatched"
+      "unwatched": "Unwatched",
+      "resolution": "Resolution"
     },
     "sortLabels": {
       "title": "Title",

@@ -33,6 +33,8 @@ type Query struct {
 	Sort       Sort
 	Cursor     *Cursor
 	Limit      int
+	// Filters zijn de filterparameters van de bibliotheeklijst (D1.1).
+	Filters Filters
 }
 
 // Items levert een pagina items met hun versies, sporen en artwork.
@@ -71,7 +73,18 @@ func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
 		where = append(where, fmt.Sprintf("(i.title ILIKE $%d ESCAPE '\\' OR i.sort_title ILIKE $%d ESCAPE '\\')", len(args), len(args)))
 	}
 
+	if !q.Filters.Empty() {
+		q.Filters.where(&where, func(v any) int {
+			args = append(args, v)
+			return len(args)
+		})
+	}
+
 	key := q.Sort.keyExpression()
+	if q.Sort.needsSubject() {
+		args = append(args, q.Filters.Subject)
+		key = q.Sort.subjectKey(len(args))
+	}
 	direction := "ASC"
 	comparison := ">"
 	if q.Sort.Descending() {
@@ -100,7 +113,7 @@ func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
 		LIMIT $%d`,
 		itemColumns, key, strings.Join(where, " AND "), key, direction, direction, len(args))
 
-	return s.itemPage(ctx, sql, args, q.Sort, limit, q.Cursor)
+	return s.itemPage(ctx, sql, args, q.Sort, limit, q.Cursor, q.Filters.CursorTag(q.Sort))
 }
 
 // itemColumns is de kolomlijst die scanItems verwacht, met i als alias voor
@@ -114,7 +127,7 @@ const itemColumns = `i.id, i.library_id, i.parent_id, i.kind, i.title,
 
 // itemPage voert een query uit die itemColumns plus een sorteersleutel levert,
 // knipt de pagina op limit, zet de volgende cursor en hydrateert.
-func (s *Store) itemPage(ctx context.Context, sql string, args []any, sort Sort, limit int, cursor *Cursor) (Page, error) {
+func (s *Store) itemPage(ctx context.Context, sql string, args []any, sort Sort, limit int, cursor *Cursor, filter string) (Page, error) {
 	rows, err := s.pool.Query(ctx, sql, args...)
 	if err != nil {
 		return Page{}, cursorOrWrap(cursor, err, "items lezen")
@@ -128,7 +141,7 @@ func (s *Store) itemPage(ctx context.Context, sql string, args []any, sort Sort,
 	page := Page{Items: items}
 	if len(page.Items) > limit {
 		last := page.Items[limit-1]
-		page.NextCursor = Cursor{Sort: sort, Key: keys[limit-1], ID: last.ID.String()}.Encode()
+		page.NextCursor = Cursor{Sort: sort, Key: keys[limit-1], ID: last.ID.String(), Filter: filter}.Encode()
 		page.Items = page.Items[:limit]
 	}
 

@@ -397,6 +397,16 @@
       "file": "error_invalid_match.json",
       "schema": "ErrorEnvelope",
       "note": "S22.5: external_id is geen positief geheel getal"
+    },
+    {
+      "file": "facets.json",
+      "schema": "Facets",
+      "note": "D1: GET /libraries/{id}/facets, genrepoort open, kijktelling van de aanvrager"
+    },
+    {
+      "file": "error_filter_invalid.json",
+      "schema": "ErrorEnvelope",
+      "note": "D1: een filterparameter met een onbekende waarde, met de parameter in details"
     }
   ]
 }

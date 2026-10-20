@@ -33,30 +33,31 @@ void main() {
       expect(capabilities.supportsWatchFilter, isTrue);
     });
 
-    // `pleya_server_client/parts/browse.dart` passes only sort, offset and
-    // limit, and the PS-1 wire contract is frozen. Offering a genre filter over
-    // a catalog containing one would present that server's whole library as
-    // matches.
-    test('one Pleya Server library suppresses the item filters for everyone', () {
-      final capabilities = unifiedFilterCapabilitiesFor([
-        MediaBackend.plex,
-        MediaBackend.jellyfin,
-        MediaBackend.pleyaServer,
-      ]);
+    // The local folder client browses a filesystem with no index to filter on.
+    // Offering a genre filter over a catalog containing one would present that
+    // library as matches.
+    test('one local library suppresses the item filters for everyone', () {
+      final capabilities = unifiedFilterCapabilitiesFor([MediaBackend.plex, MediaBackend.jellyfin, MediaBackend.local]);
       expect(capabilities.supportsMetadataFilters, isFalse);
       expect(capabilities.supportsWatchFilter, isFalse);
     });
 
+    // Pleya Server executes them since venster 3 (`capabilities.filters`), and
+    // answers an empty page rather than an unfiltered one without it.
+    test('Pleya Server executes the global filters, watched included', () {
+      final capabilities = unifiedFilterCapabilitiesFor([MediaBackend.jellyfin, MediaBackend.pleyaServer]);
+      expect(capabilities.supportsMetadataFilters, isTrue);
+      expect(capabilities.supportsWatchFilter, isTrue);
+      expect(capabilities.supportsWatchedFilter, isTrue);
+    });
+
     // Jellyfin has `Filters=IsPlayed`; Plex `unwatched=0` is undocumented as
     // "watched only", so one Plex library withholds Bekeken for everyone.
-    test('watched is offered only when every backend is Jellyfin', () {
+    test('watched is offered only when no backend is Plex or local', () {
       expect(unifiedFilterCapabilitiesFor([MediaBackend.jellyfin]).supportsWatchedFilter, isTrue);
       expect(unifiedFilterCapabilitiesFor([MediaBackend.plex, MediaBackend.jellyfin]).supportsWatchedFilter, isFalse);
       expect(unifiedFilterCapabilitiesFor([MediaBackend.plex]).supportsWatchedFilter, isFalse);
-      expect(
-        unifiedFilterCapabilitiesFor([MediaBackend.jellyfin, MediaBackend.pleyaServer]).supportsWatchedFilter,
-        isFalse,
-      );
+      expect(unifiedFilterCapabilitiesFor([MediaBackend.jellyfin, MediaBackend.local]).supportsWatchedFilter, isFalse);
     });
 
     test('an empty catalog promises nothing rather than everything', () {
@@ -120,13 +121,13 @@ void main() {
       expect(effective.serverIds, {'nas'}, reason: 'source filters are backend-independent');
     });
 
-    test('a Pleya Server in the mix drops Actief bezig and Leeftijd, and keeps them stored', () {
+    test('a local library in the mix drops Actief bezig and Leeftijd, and keeps them stored', () {
       const selection = UnifiedCatalogFilterSelection(
         watchState: UnifiedWatchFilter.inProgress,
         officialRatings: {'12'},
       );
       final effective = selection.constrainedTo(
-        unifiedFilterCapabilitiesFor([MediaBackend.jellyfin, MediaBackend.pleyaServer]),
+        unifiedFilterCapabilitiesFor([MediaBackend.jellyfin, MediaBackend.local]),
       );
       expect(effective.watchState, UnifiedWatchFilter.all);
       expect(effective.officialRatings, isEmpty);
