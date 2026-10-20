@@ -489,6 +489,10 @@ class AutomationIds {
   /// reaches the panel on a simulator that cannot swipe.
   static const String playerSettingsButton = 'player.settings_button';
 
+  /// The Apple TV handoff button in the iPhone/iPad player bar (A-23); opens
+  /// the device picker sheet.
+  static const String playerHandoffButton = 'player.handoff_button';
+
   /// The play/pause button in the player bar; `state.playing` mirrors the
   /// icon it draws. On TV the player opens with this button focused.
   static const String playerPlayPause = 'player.play_pause';
@@ -945,6 +949,7 @@ class AutomationIds {
     {'id': playerPanelTab, 'role': 'tab', 'instanceable': true},
     {'id': playerPanelRow, 'role': 'list.item', 'instanceable': true},
     {'id': playerSettingsButton, 'role': 'button', 'instanceable': false},
+    {'id': playerHandoffButton, 'role': 'button', 'instanceable': false},
     {'id': tvosMenuPassthrough, 'role': 'service', 'instanceable': false},
     {'id': tvosNativeTextEntry, 'role': 'service', 'instanceable': false},
     {'id': homeHeader, 'role': 'region', 'instanceable': false},

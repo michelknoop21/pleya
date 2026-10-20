@@ -133,6 +133,17 @@ const double _panelMaxWidth = 560;
 /// Gap between a centred panel and the viewport edge.
 const double _panelEdgePadding = 24;
 
+/// Widest a sheet over the player gets on a phone held sideways (A-23, Michel
+/// on 20 October 2026). The desktop box of 700 is what a landscape iPhone
+/// (852 wide) fell into, and it turned a two-row device picker into a wall in
+/// front of the film. 440 still fits the widest player sheet (the settings
+/// rows with a value on the right) without truncating a label.
+const double _videoSheetPhoneLandscapeMaxWidth = 440;
+
+/// Share of the viewport height that sheet may take, so a band of the film
+/// stays visible above it.
+const double _videoSheetPhoneLandscapeHeightFraction = 0.85;
+
 /// Vertical breathing room a centred panel leaves in total (split over top and
 /// bottom), on top of the 80%-of-height ceiling.
 const double _panelVerticalMargin = 96;
@@ -252,6 +263,7 @@ OverlaySheetGeometry resolveOverlaySheetGeometry({
   required Alignment? alignment,
   required bool isTV,
   BoxConstraints? explicitConstraints,
+  bool overVideo = false,
 }) {
   final resolvedAlignment = alignment ?? Alignment.bottomCenter;
 
@@ -274,7 +286,12 @@ OverlaySheetGeometry resolveOverlaySheetGeometry({
   final usePanel = presentation == OverlaySheetPresentation.panel && !ScreenBreakpoints.isMobile(viewport.width);
   return usePanel
       ? _panelGeometry(viewport: viewport, explicitConstraints: explicitConstraints)
-      : _sheetGeometry(viewport: viewport, alignment: resolvedAlignment, explicitConstraints: explicitConstraints);
+      : _sheetGeometry(
+          viewport: viewport,
+          alignment: resolvedAlignment,
+          explicitConstraints: explicitConstraints,
+          overVideo: overVideo,
+        );
 }
 
 /// A television overlay that the caller placed itself.
@@ -378,31 +395,47 @@ List<BoxShadow> _tvPanelShadows({
 /// The edge-hugging sheet: phones, tablets and desktop windows. Never a
 /// television, because [resolveOverlaySheetGeometry] sends every TV overlay to
 /// [_tvPanelGeometry] before this is reached.
+///
+/// [overVideo] is the player's host. On a phone in landscape its sheets get
+/// the compact box of [_videoSheetPhoneLandscapeMaxWidth]; portrait, tablets
+/// and every other host keep the numbers below.
 OverlaySheetGeometry _sheetGeometry({
   required Size viewport,
   required Alignment alignment,
   BoxConstraints? explicitConstraints,
+  bool overVideo = false,
 }) {
   final isDesktop = viewport.width > _sheetDesktopWidth;
+  final compactOverVideo = overVideo && _isPhoneLandscape(viewport);
   final isTop = alignment.y < 0;
   return OverlaySheetGeometry(
     alignment: alignment,
     constraints:
         explicitConstraints ??
-        BoxConstraints(
-          maxWidth: isDesktop ? 700 : double.infinity,
-          maxHeight: isDesktop ? 400 : viewport.height * 0.75,
-        ),
+        (compactOverVideo
+            ? BoxConstraints(
+                maxWidth: _videoSheetPhoneLandscapeMaxWidth,
+                maxHeight: viewport.height * _videoSheetPhoneLandscapeHeightFraction,
+              )
+            : BoxConstraints(
+                maxWidth: isDesktop ? 700 : double.infinity,
+                maxHeight: isDesktop ? 400 : viewport.height * 0.75,
+              )),
     borderRadius: isTop
         ? const BorderRadius.vertical(bottom: Radius.circular(16))
         : const BorderRadius.vertical(top: Radius.circular(16)),
-    edgePadding: isDesktop ? 16 : 0,
+    edgePadding: isDesktop || compactOverVideo ? 16 : 0,
     allowPointerAnchor: true,
     allowDragHandle: !isTop,
     enterOffset: Offset(0, isTop ? -viewport.height : viewport.height),
     fadeIn: false,
   );
 }
+
+/// A phone on its side: wider than tall, and the short side below the tablet
+/// breakpoint. An iPad in landscape (744 short side and up) is not one.
+bool _isPhoneLandscape(Size viewport) =>
+    viewport.width > viewport.height && viewport.shortestSide < ScreenBreakpoints.mobile;
 
 OverlaySheetGeometry _panelGeometry({required Size viewport, BoxConstraints? explicitConstraints}) {
   // Only a viewport at least [ScreenBreakpoints.mobile] wide reaches this

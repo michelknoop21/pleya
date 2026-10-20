@@ -11,6 +11,7 @@ import '../focus/key_event_utils.dart';
 import '../theme/tv_switch_theme.dart';
 import '../utils/platform_detector.dart';
 import 'overlay_sheet_geometry.dart';
+import 'overlay_sheet_surface.dart';
 
 /// Entry in the sheet page stack.
 class _OverlaySheetEntry {
@@ -284,7 +285,20 @@ class OverlaySheetHost extends StatefulWidget {
   /// so the system path dedups against the key path.
   final VoidCallback? onSystemBack;
 
-  const OverlaySheetHost({super.key, required this.child, this.onOpenChanged, this.canPop, this.onSystemBack});
+  /// The host sits over the video player (A-23). Its sheets then take the
+  /// compact landscape box on a phone (`resolveOverlaySheetGeometry`), and with
+  /// Liquid Glass on they draw as a translucent plate over a light barrier so
+  /// the film stays visible (`OverlaySheetSurface`). False everywhere else.
+  final bool overVideo;
+
+  const OverlaySheetHost({
+    super.key,
+    required this.child,
+    this.onOpenChanged,
+    this.canPop,
+    this.onSystemBack,
+    this.overVideo = false,
+  });
 
   @override
   State<OverlaySheetHost> createState() => _OverlaySheetHostState();
@@ -293,7 +307,10 @@ class OverlaySheetHost extends StatefulWidget {
 class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerProviderStateMixin {
   late final AnimationController _animationController;
   late final CurvedAnimation _slideCurve;
-  late final Animation<double> _barrierAnimation;
+  late final CurvedAnimation _barrierAnimation;
+
+  /// 1 with no sheet, 0 with one fully open; see the host child in [build].
+  late final Animation<double> _childOpacity;
   late final OverlaySheetController _controller;
 
   final List<_OverlaySheetEntry> _pageStack = [];
@@ -332,10 +349,9 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
       reverseCurve: Curves.easeInCubic,
     );
 
-    _barrierAnimation = Tween<double>(
-      begin: 0,
-      end: 0.5,
-    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic));
+    // 0..1; the build scales it by [overlaySheetBarrierOpacity].
+    _barrierAnimation = CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic);
+    _childOpacity = ReverseAnimation(_barrierAnimation);
   }
 
   @override
@@ -348,6 +364,7 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
     _unregisterFallbackKeyHandler();
     _sheetFocusScopeNode.dispose();
     _slideCurve.dispose();
+    _barrierAnimation.dispose();
     _animationController.dispose();
     super.dispose();
   }
@@ -484,6 +501,7 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
       alignment: alignment,
       isTV: PlatformDetector.isTV(),
       explicitConstraints: constraints,
+      overVideo: widget.overVideo,
     );
     if (!geometry.allowPointerAnchor) return null;
     return _lastPointerPosition?.dx;
@@ -628,15 +646,26 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
     return false;
   }
 
+  /// Whether open sheets draw as glass over the player; see [OverlaySheetHost.overVideo].
+  /// A caller that names its own background colour keeps it.
+  bool _videoGlass(BuildContext context) =>
+      widget.overVideo && _explicitBackgroundColor == null && overlaySheetVideoGlassOn(context);
+
   @override
   Widget build(BuildContext context) {
+    final videoGlass = _videoGlass(context);
+    final barrierOpacity = overlaySheetBarrierOpacity(videoGlass: videoGlass);
     Widget content = Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: _rememberPointerPosition,
       onPointerHover: _rememberPointerPosition,
       child: Stack(
         children: [
-          widget.child,
+          // Under a glass sheet the player's controls fade out with the
+          // barrier, or they show through the plate behind its text; the film
+          // itself is a native layer below Flutter and stays. Always wrapped,
+          // so opening a sheet never reparents (and resets) the screen.
+          FadeTransition(opacity: videoGlass ? _childOpacity : kAlwaysCompleteAnimation, child: widget.child),
           // Barrier + sheet only when open
           if (_isOpen) ...[
             Positioned.fill(
@@ -645,7 +674,7 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
                 builder: (context, child) {
                   return GestureDetector(
                     onTap: _barrierDismissible ? () => _close() : null,
-                    child: ColoredBox(color: Colors.black.withValues(alpha: _barrierAnimation.value)),
+                    child: ColoredBox(color: Colors.black.withValues(alpha: _barrierAnimation.value * barrierOpacity)),
                   );
                 },
               ),
@@ -706,6 +735,7 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
       alignment: _alignment,
       isTV: PlatformDetector.isTV(),
       explicitConstraints: _constraints,
+      overVideo: widget.overVideo,
     );
     final isTop = geometry.alignment.y < 0;
     final showHandle = _showDragHandle && geometry.allowDragHandle;
@@ -819,23 +849,20 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
                 // centred 10-foot panel asks for one (`geometry.shadows`);
                 // every other presentation gets a const-empty list and the
                 // wrapper collapses to the Material it always was.
-                child: _CastShadow(
+                child: OverlaySheetSurface(
+                  materialKey: _sheetKey,
                   shadows: geometry.shadows,
                   borderRadius: borderRadius,
-                  child: Material(
-                    key: _sheetKey,
-                    color: _explicitBackgroundColor ?? colorScheme.surface,
-                    borderRadius: borderRadius,
-                    clipBehavior: Clip.antiAlias,
-                    // A floating panel touches no edge, so it needs no notch or
-                    // home-indicator padding; an edge-hugging sheet does.
-                    child: SafeArea(
-                      top: !geometry.isCentered && isTop,
-                      bottom: !geometry.isCentered && !isTop,
-                      left: false,
-                      right: false,
-                      child: ConstrainedBox(constraints: effectiveConstraints, child: sheetContent),
-                    ),
+                  color: _explicitBackgroundColor ?? colorScheme.surface,
+                  videoGlass: _videoGlass(context),
+                  // A floating panel touches no edge, so it needs no notch or
+                  // home-indicator padding; an edge-hugging sheet does.
+                  child: SafeArea(
+                    top: !geometry.isCentered && isTop,
+                    bottom: !geometry.isCentered && !isTop,
+                    left: false,
+                    right: false,
+                    child: ConstrainedBox(constraints: effectiveConstraints, child: sheetContent),
                   ),
                 ),
               ),
@@ -876,25 +903,6 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
     }
 
     return sheet;
-  }
-}
-
-/// Paints [shadows] behind [child], or gets out of the way entirely when there
-/// are none — which is every presentation except the centred 10-foot panel.
-class _CastShadow extends StatelessWidget {
-  const _CastShadow({required this.shadows, required this.borderRadius, required this.child});
-
-  final List<BoxShadow> shadows;
-  final BorderRadius borderRadius;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    if (shadows.isEmpty) return child;
-    return DecoratedBox(
-      decoration: BoxDecoration(borderRadius: borderRadius, boxShadow: shadows),
-      child: child,
-    );
   }
 }
 
