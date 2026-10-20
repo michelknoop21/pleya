@@ -13,6 +13,10 @@ class BaseVideoControlSheet extends StatelessWidget {
   final Color? iconColor;
   final VoidCallback? onBack;
 
+  /// Size the sheet to its content instead of filling the host's height. For
+  /// a short list (the handoff picker's two rows), not for a long one.
+  final bool shrinkWrap;
+
   const BaseVideoControlSheet({
     super.key,
     required this.title,
@@ -21,6 +25,7 @@ class BaseVideoControlSheet extends StatelessWidget {
     required this.child,
     this.iconColor,
     this.onBack,
+    this.shrinkWrap = false,
   });
 
   @override
@@ -34,6 +39,7 @@ class BaseVideoControlSheet extends StatelessWidget {
       titleStyle: const TextStyle(fontSize: 18, fontWeight: .bold),
       showHeaderBorder: false,
       showHeaderDivider: true,
+      shrinkWrap: shrinkWrap,
       child: child,
     );
   }

@@ -356,4 +356,59 @@ void main() {
       expect(greedy.constraints.maxHeight + greedy.edgePadding * 2, lessThanOrEqualTo(500));
     });
   });
+
+  group('player sheets are compact on a phone in landscape (A-23, 20 October 2026)', () {
+    OverlaySheetGeometry videoSheetAt(Size size, {bool isTV = false}) => resolveOverlaySheetGeometry(
+      presentation: OverlaySheetPresentation.sheet,
+      viewport: size,
+      alignment: null,
+      isTV: isTV,
+      overVideo: true,
+    );
+
+    for (final size in const [Size(852, 393), Size(932, 430), Size(667, 375), Size(568, 320)]) {
+      test('${size.width.toInt()}x${size.height.toInt()}: 440 wide, centred on the bottom edge, film above it', () {
+        final g = videoSheetAt(size);
+
+        expect(g.constraints.maxWidth, 440);
+        expect(g.constraints.maxHeight, size.height * 0.85);
+        expect(g.alignment, Alignment.bottomCenter);
+        expect(g.edgePadding, 16);
+        expect(g.borderRadius, const BorderRadius.vertical(top: Radius.circular(16)));
+        expect(g.allowDragHandle, isTrue);
+      });
+    }
+
+    test('the same viewport without the player keeps the 700 box', () {
+      expect(sheetAt(const Size(852, 393)).constraints.maxWidth, 700);
+    });
+
+    test('portrait phone: unchanged, full width', () {
+      expect(videoSheetAt(const Size(393, 852)), sheetAt(const Size(393, 852)));
+    });
+
+    for (final size in const [Size(1194, 834), Size(834, 1194), Size(1280, 800)]) {
+      test('${size.width.toInt()}x${size.height.toInt()}: a tablet or desktop window keeps its box', () {
+        expect(videoSheetAt(size), sheetAt(size));
+      });
+    }
+
+    test('a caller box still wins', () {
+      final g = resolveOverlaySheetGeometry(
+        presentation: OverlaySheetPresentation.sheet,
+        viewport: const Size(852, 393),
+        alignment: null,
+        isTV: false,
+        explicitConstraints: const BoxConstraints(maxWidth: 320, maxHeight: 200),
+        overVideo: true,
+      );
+      expect(g.constraints, const BoxConstraints(maxWidth: 320, maxHeight: 200));
+    });
+
+    test('a television is untouched', () {
+      for (final size in const [Size(1038, 584), Size(1920, 1080)]) {
+        expect(videoSheetAt(size, isTV: true), sheetAt(size, isTV: true));
+      }
+    });
+  });
 }

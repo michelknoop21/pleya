@@ -411,6 +411,7 @@ class TrackChapterControls extends StatelessWidget {
               buttonIndex: currentIndex,
               icon: Symbols.flight_rounded,
               iconWidget: const PleyaFlyIcon(),
+              automationId: AutomationIds.playerHandoffButton,
               tooltip: '${t.playbackHandoff.button} · ${t.playbackHandoff.description}',
               semanticLabel: t.playbackHandoff.button,
               isMobile: isMobile,
