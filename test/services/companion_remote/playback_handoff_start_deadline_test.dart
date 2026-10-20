@@ -126,4 +126,44 @@ void main() {
     expect(pushes.pushes, 0);
     expect(playbackHandoffLedger.outcomeOf(id), PlaybackHandoffOutcome.failed);
   });
+
+  testWidgets('a context that is gone when the deadline passes still fails the handoff and frees the receiver', (
+    tester,
+  ) async {
+    await pump(tester);
+    final id = 'gone-${DateTime.now().microsecondsSinceEpoch}';
+    var done = false;
+    await tester.runAsync(() async {
+      unawaited(
+        receivePlaybackHandoff(
+          context,
+          _request(id),
+          mayStart: () => true,
+          startWithin: const Duration(milliseconds: 50),
+        ).then((_) => done = true),
+      );
+      await tester.pumpWidget(const SizedBox());
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    });
+    expect(done, isTrue);
+    expect(playbackHandoffLedger.outcomeOf(id), PlaybackHandoffOutcome.failed);
+  });
+
+  testWidgets('a fetch that ends in time reports once', (tester) async {
+    await pump(tester);
+    final id = 'once-${DateTime.now().microsecondsSinceEpoch}';
+    await tester.runAsync(() async {
+      final receiving = receivePlaybackHandoff(
+        context,
+        _request(id),
+        mayStart: () => true,
+        startWithin: const Duration(milliseconds: 80),
+      );
+      fetch.complete(null);
+      await receiving;
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    });
+    expect(playbackHandoffLedger.outcomeOf(id), PlaybackHandoffOutcome.failed);
+    expect(pushes.pushes, 0);
+  });
 }

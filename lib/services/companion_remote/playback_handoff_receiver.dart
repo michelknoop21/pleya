@@ -47,6 +47,8 @@ Future<void> receivePlaybackHandoff(
     _receiving = false;
   }
 
+  // Read now: the context may be gone by the time the timer fires.
+  final provider = context.read<CompanionRemoteProvider>();
   final attempt = _HandoffAttempt(mayStart);
   Timer? timer;
   final expired = Completer<void>();
@@ -55,7 +57,7 @@ Future<void> receivePlaybackHandoff(
       if (attempt.opened) return;
       attempt.expired = true;
       appLogger.w('Playback handoff ${request.id} failed: past its start window');
-      reportPlaybackHandoff(context.read<CompanionRemoteProvider>(), request.id, PlaybackHandoffOutcome.failed);
+      reportPlaybackHandoff(provider, request.id, PlaybackHandoffOutcome.failed);
       release();
       expired.complete();
     });
