@@ -51,6 +51,59 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 385 · 20 October 2026 · Apple TV
+
+<!-- commit: 7f6fc695d359677a2b1dc84dad1e5820ef6d3541 -->
+
+### New
+
+- **Pleya Server titles now show what they are about.** Films and series from a Pleya Server carry
+  a description in your language, genres, an age rating, and cast and director. Titles whose
+  folder holds a Kodi-style info file, which is most of a Radarr or Sonarr library, are matched
+  without guessing.
+- **Hand over what you are watching from iPhone to Apple TV.** Choose the Apple TV in the handoff
+  picker on the iPhone and the film or episode starts there at the same position.
+
+### Improved
+
+- **Posters from a Pleya Server load much faster.** The server now sends a size that fits the
+  place the poster is shown, about 30 to 80 KB instead of roughly 215 KB for a full poster, and
+  never a size larger than the original.
+- **Top Shelf says when something is a new episode or a new season** on its context line.
+
+### Notes
+
+- **Worth checking:** the handoff on a real iPhone and Apple TV pair, with more than one profile
+  in the household. It has not been checked on hardware.
+- **Worth checking:** description, genres, age rating and cast on the title page of a Pleya
+  Server title. The server sends them; this is the first build that reads them.
+
+## 2.8.1 · build 384 · 20 October 2026 · iPhone and iPad
+
+<!-- commit: 7f6fc695d359677a2b1dc84dad1e5820ef6d3541 -->
+
+### New
+
+- **Pleya Server titles now show what they are about.** Films and series from a Pleya Server carry
+  a description in your language, genres, an age rating, and cast and director. Titles whose
+  folder holds a Kodi-style info file, which is most of a Radarr or Sonarr library, are matched
+  without guessing.
+- **Hand over what you are watching from iPhone to Apple TV.** Choose the Apple TV in the handoff
+  picker on the iPhone and the film or episode starts there at the same position.
+
+### Improved
+
+- **Posters from a Pleya Server load much faster.** The server now sends a size that fits the
+  place the poster is shown, about 30 to 80 KB instead of roughly 215 KB for a full poster, and
+  never a size larger than the original.
+
+### Notes
+
+- **Worth checking:** the handoff from the iPhone to an Apple TV on the same account. It has not
+  been checked on hardware.
+- **Worth checking:** description, genres, age rating and cast on the title page of a Pleya
+  Server title. The server sends them; this is the first build that reads them.
+
 ## 2.8.1 · build 382 · 18 October 2026 · Apple TV
 
 <!-- commit: e914f5b7083576cf38304b252a88593ea2b80c69 -->
