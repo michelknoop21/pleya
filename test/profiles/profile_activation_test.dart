@@ -22,6 +22,7 @@ import 'package:pleya/screens/profile/pin_entry_dialog.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/storage_service.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
@@ -213,6 +214,47 @@ void main() {
       var cancelled = 0;
       bool? ok;
       unawaited(activateProfileWithPin(context, _localAnna, onPinCancelled: () => cancelled++).then((v) => ok = v));
+      await tester.pumpAndSettle();
+      expect(find.byType(PinEntryDialog), findsOneWidget);
+      await tester.tap(find.text(t.common.cancel));
+      await tester.pumpAndSettle();
+      expect(ok, isFalse);
+      expect(cancelled, 1);
+      expect(active.activeId, isNull);
+    });
+
+    testWidgets('backing out of a Plex Home PIN dialog calls onPinCancelled and does not switch', (tester) async {
+      late BuildContext context;
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<ConnectionRegistry>.value(value: connections),
+            Provider<ProfileConnectionRegistry>.value(value: profileConnections),
+            ChangeNotifierProvider<ActiveProfileProvider>.value(value: active),
+            Provider<ActiveProfileBinder>.value(value: binder),
+          ],
+          child: MaterialApp(
+            home: Builder(
+              builder: (c) {
+                context = c;
+                return const SizedBox();
+              },
+            ),
+          ),
+        ),
+      );
+      PackageInfo.setMockInitialValues(
+        appName: 'Pleya',
+        packageName: 'nl.michelknoop.pleya',
+        version: '2.8.0',
+        buildNumber: '1',
+        buildSignature: '',
+      );
+      var cancelled = 0;
+      bool? ok;
+      unawaited(activateProfileWithPin(context, _anna, onPinCancelled: () => cancelled++).then((v) => ok = v));
+      // The connection lookup and PlexAuthService.create run on real async time.
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
       await tester.pumpAndSettle();
       expect(find.byType(PinEntryDialog), findsOneWidget);
       await tester.tap(find.text(t.common.cancel));
