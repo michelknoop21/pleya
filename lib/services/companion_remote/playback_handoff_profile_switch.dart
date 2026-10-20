@@ -190,7 +190,14 @@ Future<void> resumePendingPlaybackHandoff(BuildContext context) {
     report: (id, outcome) =>
         context.mounted ? reportPlaybackHandoff(provider, id, outcome) : playbackHandoffLedger.record(id, outcome),
     receive: (request) async {
-      if (context.mounted) return receivePlaybackHandoff(context, request);
+      if (context.mounted) {
+        return receivePlaybackHandoff(
+          context,
+          request,
+          mayStart: () => playbackHandoffLedger.mayStart(request.id),
+          startWithin: playbackHandoffLedger.startTimeLeft(request.id),
+        );
+      }
       playbackHandoffLedger.record(request.id, PlaybackHandoffOutcome.failed);
     },
   );

@@ -24,7 +24,18 @@ import 'playback_handoff.dart';
 /// A handoff is a deliberate press on the phone, so it replaces whatever this
 /// device is doing without asking. Any failure is reported to the phone, which
 /// then keeps playing.
-Future<void> receivePlaybackHandoff(BuildContext context, PlaybackHandoffRequest request) async {
+///
+/// After a profile switch (A-23b) the phone gives up at a fixed time, so the
+/// caller passes [mayStart] and [startWithin]: the time left until the last
+/// start time. The player is never opened after it, and a fetch that hangs
+/// past it neither keeps the receiver busy nor starts anything when it ends.
+/// Both null (the plain path) means no deadline.
+Future<void> receivePlaybackHandoff(
+  BuildContext context,
+  PlaybackHandoffRequest request, {
+  bool Function()? mayStart,
+  Duration? startWithin,
+}) async {
   // One handoff at a time while it fetches and clears the old player: a second
   // arriving now would close and push in parallel.
   if (_receiving) return;
@@ -36,11 +47,42 @@ Future<void> receivePlaybackHandoff(BuildContext context, PlaybackHandoffRequest
     _receiving = false;
   }
 
+  // Read now: the context may be gone by the time the timer fires.
+  final provider = context.read<CompanionRemoteProvider>();
+  final attempt = _HandoffAttempt(mayStart);
+  Timer? timer;
+  final expired = Completer<void>();
+  if (startWithin != null) {
+    timer = Timer(startWithin < Duration.zero ? Duration.zero : startWithin, () {
+      if (attempt.opened) return;
+      attempt.expired = true;
+      appLogger.w('Playback handoff ${request.id} failed: past its start window');
+      // Free the receiver first: a provider torn down by a profile switch may throw.
+      release();
+      expired.complete();
+      reportPlaybackHandoff(provider, request.id, PlaybackHandoffOutcome.failed);
+    });
+  }
   try {
-    await _receive(context, request, release);
+    await Future.any([_receive(context, request, release, attempt), expired.future]);
   } finally {
+    timer?.cancel();
     release();
   }
+}
+
+/// One start under a deadline: [expired] is set by the timer, and everything
+/// that comes after it (a late fetch, a late player) stands down.
+class _HandoffAttempt {
+  _HandoffAttempt(this._mayStart);
+
+  final bool Function()? _mayStart;
+  bool expired = false;
+
+  /// The player is being opened; the deadline no longer applies.
+  bool opened = false;
+
+  bool get late => expired || (_mayStart != null && !_mayStart());
 }
 
 bool _receiving = false;
@@ -69,9 +111,16 @@ void reportPlaybackHandoff(CompanionRemoteProvider provider, String id, Playback
 /// cancel that arrived while the player was still opening is not lost.
 bool isPlaybackHandoffCancelled(String id) => _cancelled.contains(id);
 
-Future<void> _receive(BuildContext context, PlaybackHandoffRequest request, VoidCallback release) async {
+Future<void> _receive(
+  BuildContext context,
+  PlaybackHandoffRequest request,
+  VoidCallback release,
+  _HandoffAttempt attempt,
+) async {
   final provider = context.read<CompanionRemoteProvider>();
   void fail(String reason) {
+    // The timer already told the phone.
+    if (attempt.expired) return;
     appLogger.w('Playback handoff ${request.id} failed: $reason');
     reportPlaybackHandoff(provider, request.id, PlaybackHandoffOutcome.failed);
   }
@@ -86,13 +135,14 @@ Future<void> _receive(BuildContext context, PlaybackHandoffRequest request, Void
   } catch (e) {
     appLogger.d('Playback handoff item fetch failed', error: e);
   }
-  if (!context.mounted) return;
+  if (!context.mounted || attempt.expired) return;
   if (item == null || (item.kind != MediaKind.movie && item.kind != MediaKind.episode)) {
     return fail('item ${request.itemId} not playable');
   }
 
   // The phone may have given up while this was fetching: do not close what plays for nothing.
   if (_cancelled.remove(request.id)) return;
+  if (attempt.late) return fail('past its start window');
 
   // A player that is already open is closed first; two players must never stack.
   final closePlayer = CompanionRemoteReceiver.instance.onStop;
@@ -102,10 +152,11 @@ Future<void> _receive(BuildContext context, PlaybackHandoffRequest request, Void
     for (var i = 0; i < 20 && CompanionRemoteReceiver.instance.onStop != null; i++) {
       await Future<void>.delayed(const Duration(milliseconds: 150));
     }
-    if (!context.mounted) return;
+    if (!context.mounted || attempt.expired) return;
     if (CompanionRemoteReceiver.instance.onStop != null) return fail('previous player did not close');
   }
   if (_cancelled.remove(request.id)) return;
+  if (attempt.late) return fail('past its start window');
 
   noticeController.show(
     Notice(
@@ -119,6 +170,7 @@ Future<void> _receive(BuildContext context, PlaybackHandoffRequest request, Void
     ),
   );
 
+  attempt.opened = true;
   _activeHandoffId = request.id;
   // The guard covers fetching and clearing the old player; once the player is
   // pushed, a new handoff may replace it.

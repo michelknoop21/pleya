@@ -423,6 +423,15 @@ class PlaybackHandoffLedger {
     return taken != null && taken.id == id && !_late(taken.startBy);
   }
 
+  /// Time left until the last start time of a taken request; zero when it is
+  /// past, null for an id that was not taken.
+  Duration? startTimeLeft(String id) {
+    final taken = _taken;
+    if (taken == null || taken.id != id) return null;
+    final left = taken.startBy.difference(_clock());
+    return left.isNegative ? Duration.zero : left;
+  }
+
   void record(String id, PlaybackHandoffOutcome outcome) => _remember(id, outcome);
 
   void _remember(String id, PlaybackHandoffOutcome? outcome) {
