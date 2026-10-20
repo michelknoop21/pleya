@@ -46,11 +46,18 @@ echo "→ Pleya Web bouwen"
 ../pleya_web/scripts/build-into-server.sh
 
 echo "→ bronnen versturen naar $SSH_HOST:$REMOTE_DIR"
-COPYFILE_DISABLE=1 tar czf - Dockerfile compose.yaml compose.test.yaml .dockerignore go.mod go.sum cmd internal \
+COPYFILE_DISABLE=1 tar czf - Dockerfile compose.yaml compose.test.yaml compose.hwaccel.yaml .dockerignore go.mod go.sum cmd internal \
   | ssh "$SSH_HOST" "mkdir -p $REMOTE_DIR && tar xzf - -C $REMOTE_DIR"
 
 COMPOSE_FILES="-f compose.yaml"
 [ "$INSTANCE" = test ] && COMPOSE_FILES="-f compose.yaml -f compose.test.yaml"
+# Hardwareversnelling alleen als de NAS een render-device heeft (S18.7).
+if ssh "$SSH_HOST" "test -e /dev/dri/renderD128"; then
+  COMPOSE_FILES="$COMPOSE_FILES -f compose.hwaccel.yaml"
+  echo "→ /dev/dri/renderD128 gevonden: hardwareversnelling aan"
+else
+  echo "→ geen /dev/dri/renderD128: omzetten in software"
+fi
 
 echo "→ containers bouwen en starten"
 ssh "$SSH_HOST" "export PATH=\$PATH:/usr/local/bin; cd $REMOTE_DIR && docker compose $COMPOSE_FILES up -d --build --remove-orphans"

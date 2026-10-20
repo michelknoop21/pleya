@@ -1539,6 +1539,14 @@ paths:
         `playback.not_playable`, met in `details.reasons` waarom de goedkoopste
         versie niet paste en als laatste `server.transcode_unavailable`.
 
+        Met `capabilities.transcode` start een plan dat meer dan direct play is
+        meteen een sessie: `session_id` is gezet, `stream_url` wijst naar de
+        HLS-afspeellijst van die sessie, `container` is `hls` en `seekable` is
+        `false` (de lijst groeit mee met de omzetting, een speler kan alleen
+        zoeken in wat er al ligt). Alle sessies bezet is `503`
+        `playback.transcode_busy`, ffmpeg die niets levert `502`
+        `playback.transcode_failed`.
+
         `reason` is de hoofdreden en het eerste element van `reasons`. Een reden
         is een domeincode met parameters, geen vertaalsleutel; een client die
         een code niet kent toont een generieke tekst en logt de code.
@@ -1565,6 +1573,94 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "502":
+          description: playback.transcode_failed, de omzetting leverde niets.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "503":
+          description: playback.transcode_busy, alle omzetsessies zijn bezet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /playback/sessions/{session_id}/heartbeat:
+    post:
+      tags: [playback]
+      operationId: heartbeatPlaybackSession
+      summary: Houd een omzetsessie levend.
+      description: |
+        Klasse `authenticated`, alleen voor de gebruiker die de sessie startte
+        (venster 5 deel 2, S18). Een sessie zonder hartslag of aanvraag voor zijn
+        bestanden wordt na een minuut gestopt en opgeruimd, ook wanneer de client
+        zonder DELETE verdwijnt. Een sessie van een ander is `404`.
+      parameters:
+        - $ref: "#/components/parameters/PlaybackSessionId"
+      responses:
+        "204": { description: De sessie leeft. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /playback/sessions/{session_id}:
+    delete:
+      tags: [playback]
+      operationId: stopPlaybackSession
+      summary: Stop een omzetsessie en ruim hem op.
+      description: |
+        Klasse `authenticated`, alleen voor de eigenaar van de sessie. Het
+        ffmpeg-proces stopt en zijn bestanden verdwijnen.
+      parameters:
+        - $ref: "#/components/parameters/PlaybackSessionId"
+      responses:
+        "204": { description: De sessie is gestopt. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /playback/sessions/{session_id}/{file}:
+    get:
+      tags: [playback]
+      operationId: getPlaybackSessionFile
+      summary: De afspeellijst, het initsegment of een segment van een omzetsessie.
+      description: |
+        Autorisatie als op de stream: een bearer (alleen de eigenaar van de
+        sessie), een `stream_token` van de versie die wordt omgezet, of een
+        browser-streamsessie. Elke aanvraag telt als hartslag.
+
+        De afspeellijst is HLS met fMP4-segmenten. Draagt de aanvraag een
+        `stream_token` of `ss`, dan krijgt elke verwijzing in de lijst diezelfde
+        query mee, omdat een speler de query van de lijst niet overneemt. Alleen
+        de namen `index.m3u8`, `init.mp4` en `seg_NNNNN.m4s` bestaan.
+      security:
+        - bearerAuth: []
+        - streamToken: []
+        - streamSession: []
+      parameters:
+        - $ref: "#/components/parameters/PlaybackSessionId"
+        - name: file
+          in: path
+          required: true
+          schema: { type: string, pattern: "^(index\\.m3u8|init\\.mp4|seg_[0-9]{5}\\.m4s)$" }
+        - name: stream_token
+          in: query
+          required: false
+          schema: { type: string }
+        - name: ss
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Het bestand.
+          content:
+            application/vnd.apple.mpegurl:
+              schema: { type: string }
+            video/mp4:
+              schema: { type: string, format: binary }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
   /items/{item_id}:
@@ -1976,6 +2072,11 @@ components:
       schema: { $ref: "#/components/schemas/Id" }
     JobId:
       name: job_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    PlaybackSessionId:
+      name: session_id
       in: path
       required: true
       schema: { $ref: "#/components/schemas/Id" }
@@ -3161,7 +3262,7 @@ components:
         seekable: { type: boolean }
         session_id:
           type: [string, "null"]
-          description: Altijd null bij `direct_play`; een uitvoerende modus krijgt hier zijn sessie (S18).
+          description: Null bij `direct_play`; een omzetting draagt hier de id van zijn sessie.
         reason: { $ref: "#/components/schemas/PlaybackReason" }
         reasons:
           type: array

@@ -4917,3 +4917,33 @@ Pleya Server nu mee als filteruitvoerder; de lokale map is de bron die dat niet 
 **Consequences:** zesenvijftig operaties; geen bestaand veld verandert. `ColorTransfer` en `DoviProfile` staan nu op `catalog.Stream`
 (de kolommen bestonden al sinds 0002). S18 heeft het beleid en de sessiekant nog te doen.
 
+## DEC-158: Omzetten (S18) draait ffmpeg per sessie naar HLS met fMP4, en de planner blijft ongewijzigd
+
+**Date:** 2026-10-20
+**Status:** accepted. Vervolg op DEC-157 binnen dezelfde opdracht (M4).
+
+**Decision:**
+
+1. **Een sessie is een ffmpeg-proces.** `POST /playback/plan` start bij `remux`, `direct_stream` of `transcode` een sessie en wacht
+   tot het eerste segment bestaat. Uitvoer is HLS met fMP4-segmenten in `/transcode/<sessie>/`; `container` is `hls`, `seekable`
+   is `false` (de lijst groeit mee, er is geen herstart op een zoekpositie). Dat laatste is een bekende grens, geen aanname: zoeken
+   buiten het omgezette deel is een vervolg op S18.
+2. **De argumenten zijn een vaste lijst** (`transcode.BuildArgs`). Het pad komt uit de catalogus; de audiocodec is `aac` of `eac3`,
+   de kanalen 1 tot en met 8. Een test legt vast dat het pad precies één keer voorkomt, direct na `-i`.
+3. **Levensduur.** Een sessie leeft zolang er een hartslag (`POST .../heartbeat`) of een bestandsaanvraag komt; na een minuut
+   zonder beide stopt de server hem en ruimt de map op. `DELETE` stopt hem direct. Een herstart ruimt `/transcode` en zet achtergebleven
+   rijen op `stopped`. Het maximum is `PLEYA_SERVER_TRANSCODE_MAX_SESSIONS` (standaard 2, 0 zet omzetten uit); een volgende sessie
+   is `503 playback.transcode_busy`.
+4. **Eigendom.** Een sessie is van de gebruiker die hem startte; voor ieder ander, ook een beheerder, is hij onvindbaar
+   (matrixregel 47 tot en met 49, byte-gelijk aan een sessie die niet bestaat). Segmenten volgen de autorisatie van de stream, en
+   bij een `stream_token` of `ss` krijgt elke verwijzing in de lijst die query mee, want een speler neemt hem niet over.
+5. **Hardware.** Opstarten test VAAPI met een echte testcodering; slaagt die niet, dan is software het antwoord met een reden in het
+   log. Alleen SDR-transcode gebruikt VAAPI, HDR gaat door een tone-mapping in software. De image krijgt `intel-media-va-driver`,
+   `i965-va-driver` en `vainfo` uit de distributie (geen eigen ffmpeg-bouw nodig, dus geen compilatie op de Celeron);
+   `compose.hwaccel.yaml` mapt `/dev/dri` en groep 937, en `deploy-nas.sh` voegt hem toe als `renderD128` bestaat.
+6. **Buiten deze stap:** ondertitels inbranden en WebVTT-sidecars (matrix uit het plan), een kwaliteitsladder met bitratekeuze,
+   zoeken met herstart, en `GET/DELETE /transcode-sessions` voor beheer met scherm 37 (S18.5).
+
+**Consequences:** negenenvijftig operaties; nieuwe foutcodes `playback.transcode_busy` (503) en `playback.transcode_failed` (502).
+Migratie `0019_transcode_sessions.sql` (de masterlijst noemde `0017`, dat was bezet).
+

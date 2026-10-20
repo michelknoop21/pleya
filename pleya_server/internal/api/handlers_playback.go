@@ -8,6 +8,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/playback"
+	"github.com/edde746/plezy/pleya_server/internal/transcode"
 )
 
 // CapabilityWire is één capability van het toestel (architectuur 9.1). Een
@@ -124,7 +125,6 @@ func (s *Server) handlePlaybackPlan(w http.ResponseWriter, r *http.Request) {
 	if req.Capabilities != nil {
 		caps = req.Capabilities.model()
 	}
-	// Er is nog geen transcoder (S18): alleen wat direct speelt wordt geleverd.
 	plan, err := playback.Decide(sources, caps, s.playbackPolicy())
 	var np *playback.NotPlayableError
 	if errors.As(err, &np) {
@@ -136,12 +136,24 @@ func (s *Server) handlePlaybackPlan(w http.ResponseWriter, r *http.Request) {
 		writeInternal(w, s.log, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, mapPlan(itemID, plan))
+	var sess *transcode.Session
+	if plan.Mode != playback.DirectPlay {
+		var ok bool
+		if sess, ok = s.startTranscode(w, r, plan, chosenSource(sources, plan.VersionID)); !ok {
+			return
+		}
+	}
+	writeJSON(w, http.StatusOK, mapPlan(itemID, plan, sess))
 }
 
-// playbackPolicy is wat de server uitvoert. Het verhoogt zichzelf zodra de
-// transcoder bestaat; tot dan blijft het bij direct play.
-func (s *Server) playbackPolicy() playback.Policy { return playback.Policy{} }
+func chosenSource(sources []playback.Source, versionID string) playback.Source {
+	for _, src := range sources {
+		if src.VersionID == versionID {
+			return src
+		}
+	}
+	return playback.Source{}
+}
 
 func planSource(v catalog.Version) playback.Source {
 	src := playback.Source{VersionID: v.ID.String(), Container: v.Container}
@@ -214,18 +226,26 @@ func reasonsWire(in []playback.Reason) []PlaybackReason {
 	return out
 }
 
-func mapPlan(itemID id.ID, p playback.Plan) PlaybackPlan {
+func mapPlan(itemID id.ID, p playback.Plan, sess *transcode.Session) PlaybackPlan {
 	reasons := reasonsWire(p.Reasons)
 	audio := PlaybackTrackPlan{Action: p.AudioAction}
 	if p.AudioAction == "transcode" {
 		codec, ch := p.AudioCodec, p.AudioMaxCh
 		audio.Codec, audio.Channels = &codec, &ch
 	}
+	streamURL := "/pleya/v1/stream/" + p.VersionID
+	var sessionID *string
+	if sess != nil {
+		sid := sess.ID.String()
+		sessionID = &sid
+		streamURL = "/pleya/v1/playback/sessions/" + sid + "/" + transcode.PlaylistName
+	}
 	return PlaybackPlan{
 		ItemID:       itemID.String(),
 		VersionID:    p.VersionID,
 		DeliveryMode: string(p.Mode),
-		StreamURL:    "/pleya/v1/stream/" + p.VersionID,
+		StreamURL:    streamURL,
+		SessionID:    sessionID,
 		Container:    p.Container,
 		Video:        PlaybackTrackPlan{Action: p.VideoAction},
 		Audio:        audio,

@@ -50,11 +50,25 @@ PleyaFakeServer _seeded() {
   final server = PleyaFakeServer(setupRequired: true);
   server.addLibrary(id: 'lib-1', title: 'Films', kind: 'movies', itemCount: 2);
   server.addItem(id: 'item-1', kind: 'movie', title: 'Sintel', libraryId: 'lib-1', year: 2010, durationMs: 888000);
-  server.addItem(id: 'item-2', kind: 'movie', title: 'Tears of Steel', libraryId: 'lib-1', year: 2012, durationMs: 734000);
+  server.addItem(
+    id: 'item-2',
+    kind: 'movie',
+    title: 'Tears of Steel',
+    libraryId: 'lib-1',
+    year: 2012,
+    durationMs: 734000,
+  );
   server.addLibrary(id: 'lib-2', title: 'Series', kind: 'shows', itemCount: 1);
   server.addItem(id: 'show-1', kind: 'show', title: 'Serie', libraryId: 'lib-2');
   server.addItem(id: 'season-1', kind: 'season', title: 'Season 1', libraryId: 'lib-2', parentId: 'show-1');
-  server.addItem(id: 'ep-1', kind: 'episode', title: 'Aflevering 1', libraryId: 'lib-2', parentId: 'season-1', durationMs: 1500000);
+  server.addItem(
+    id: 'ep-1',
+    kind: 'episode',
+    title: 'Aflevering 1',
+    libraryId: 'lib-2',
+    parentId: 'season-1',
+    durationMs: 1500000,
+  );
   return server;
 }
 
@@ -92,11 +106,12 @@ void main() {
     // De routes die de fake server werkelijk bedient, elk tegen het schema dat
     // het contract voor dat endpoint belooft.
     await record('Info', 'GET', '/info');
-    await record('TokenPair', 'POST', '/auth/setup', body: {
-      'setup_code': 'VERIFY-SETUP-CODE',
-      'username': 'eigenaar',
-      'password': 'hunter2',
-    });
+    await record(
+      'TokenPair',
+      'POST',
+      '/auth/setup',
+      body: {'setup_code': 'VERIFY-SETUP-CODE', 'username': 'eigenaar', 'password': 'hunter2'},
+    );
     await record('TokenPair', 'POST', '/auth/login', body: {'username': 'eigenaar', 'password': 'hunter2'});
     await record('TokenPair', 'POST', '/auth/refresh');
     await record('ServerDetail', 'GET', '/server');
@@ -106,12 +121,12 @@ void main() {
     await record('ItemPage', 'GET', '/items/show-1/children');
     await record('ItemPage', 'GET', '/search?q=sintel');
     await record('StreamToken', 'POST', '/auth/stream-token', body: {'version_id': 'ver-1'});
-    await record('UserState', 'POST', '/watch-state', body: {
-      'item_id': 'item-1',
-      'position_ms': 12000,
-      'duration_ms': 888000,
-      'completed': false,
-    });
+    await record(
+      'UserState',
+      'POST',
+      '/watch-state',
+      body: {'item_id': 'item-1', 'position_ms': 12000, 'duration_ms': 888000, 'completed': false},
+    );
     await record('WatchStatePage', 'GET', '/watch-state');
 
     // De beheerroutes van de assistent (BP-10): taken, herstart en scan.
@@ -122,8 +137,13 @@ void main() {
 
     // De foutkant hoort er net zo goed bij: een foutlichaam dat niet aan
     // ErrorEnvelope voldoet breekt de foutafhandeling van de client.
-    await record('ErrorEnvelope', 'POST', '/auth/login',
-        body: {'username': 'michel', 'password': 'fout'}, expect_: 401);
+    await record(
+      'ErrorEnvelope',
+      'POST',
+      '/auth/login',
+      body: {'username': 'michel', 'password': 'fout'},
+      expect_: 401,
+    );
     await record('ErrorEnvelope', 'GET', '/items/bestaat-niet', expect_: 404);
 
     expect(captured, isNotEmpty);

@@ -107,7 +107,12 @@ type matrixProbe struct {
 	path   func(f *matrixFixture) string
 	body   func(f *matrixFixture) any
 	ok     int // de status die answers betekent voor deze probe
-	expect map[string]outcome
+	// missing, indien gezet, is dezelfde aanvraag op een resource die niet
+	// bestaat. De weigering moet daar byte-gelijk aan zijn in plaats van aan de
+	// referentie voor beheerhandelingen: een sessie van een ander is net zo
+	// onvindbaar als een sessie die er niet is.
+	missing func(f *matrixFixture) string
+	expect  map[string]outcome
 }
 
 // matrixFixture is de opstelling waar elke probe uit put.
@@ -117,6 +122,9 @@ type matrixFixture struct {
 	other     id.ID  // het doel van een beheerhandeling: een bestaande gebruiker
 	libraryID string // een bestaande bibliotheek, voor de PATCH/DELETE-probes van S2.2
 	itemID    string // een bestaande film, voor de correcties op de metadata (41 tot en met 44)
+
+	// S18: een lopende omzetsessie van de owner, voor regel 47 tot en met 49.
+	playbackSessionID string
 
 	// S2.4: de laatste scan van libraryID, een afgeronde job (cancel geeft 409)
 	// en een pending scanjob met dedupe scan:<libraryID> (POST /scan geeft
@@ -132,6 +140,21 @@ const (
 	roleMember     = "member"
 	roleRestricted = "restricted"
 )
+
+// missingSession is het pad van een omzetsessie die niet bestaat, met dezelfde
+// staart als de probe.
+func missingSession(tail string) func(*matrixFixture) string {
+	return func(*matrixFixture) string {
+		return "/pleya/v1/playback/sessions/" + id.New().String() + tail
+	}
+}
+
+// ownerOnly is de uitkomstenset van een resource die van de aanvrager zelf is:
+// alleen de owner (de gebruiker die de fixture aanmaakte) krijgt antwoord, ook
+// een beheerder krijgt de canonieke weigering.
+func ownerOnly() map[string]outcome {
+	return map[string]outcome{roleOwner: answers, roleAdmin: refused, roleMember: refused, roleRestricted: refused}
+}
 
 // adminSurface is de uitkomstenset van een oppervlak dat alleen de adminklasse
 // hoort te zien: de twee rollen erbinnen krijgen antwoord, de twee erbuiten de
@@ -313,6 +336,22 @@ func matrixProbes() []matrixProbe {
 			path: fixedPath("/pleya/v1/playback/plan"),
 			body: func(f *matrixFixture) any { return map[string]string{"item_id": f.itemID} },
 			ok:   http.StatusOK, expect: everyRole()},
+		// Regel 47 tot en met 49: een omzetsessie is van wie hem startte, voor
+		// de rest van de wereld (ook een beheerder) onvindbaar. De DELETE staat
+		// als laatste, want hij beëindigt de sessie voor de rest van de ronde.
+		{row: 47, name: "POST /playback/sessions/{id}/heartbeat", method: http.MethodPost,
+			path: func(f *matrixFixture) string {
+				return "/pleya/v1/playback/sessions/" + f.playbackSessionID + "/heartbeat"
+			},
+			body: noBody, ok: http.StatusNoContent, expect: ownerOnly(), missing: missingSession("/heartbeat")},
+		{row: 49, name: "GET /playback/sessions/{id}/{file}", method: http.MethodGet,
+			path: func(f *matrixFixture) string {
+				return "/pleya/v1/playback/sessions/" + f.playbackSessionID + "/index.m3u8"
+			},
+			body: noBody, ok: http.StatusOK, expect: ownerOnly(), missing: missingSession("/index.m3u8")},
+		{row: 48, name: "DELETE /playback/sessions/{id}", method: http.MethodDelete,
+			path: func(f *matrixFixture) string { return "/pleya/v1/playback/sessions/" + f.playbackSessionID },
+			body: noBody, ok: http.StatusNoContent, expect: ownerOnly(), missing: missingSession("")},
 		{row: 39, name: "GET /watch-history", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/watch-history"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
 	}
@@ -384,6 +423,13 @@ func newMatrixFixture(e *env) *matrixFixture {
 		e.t.Fatalf("laatste scan van de fixturebibliotheek: %v", err)
 	}
 	f.scanID = runID.String()
+	// Zonder omzetter is het een id dat niet bestaat: genoeg voor de probes die
+	// alleen de ontbrekende token toetsen.
+	f.playbackSessionID = id.New().String()
+	if e.hasTranscoder {
+		plan, _ := e.planFor(map[string]any{"item_id": f.itemID, "capabilities": capsWire("vp9")}, http.StatusOK)
+		f.playbackSessionID = *plan.SessionID
+	}
 	f.doneJobID = id.New().String()
 	if _, err := e.pool.Exec(ctx, `INSERT INTO jobs (id, kind, state, finished_at) VALUES ($1, 'storage_recheck_roots', 'succeeded', now())`, f.doneJobID); err != nil {
 		e.t.Fatal(err)
@@ -400,8 +446,7 @@ func newMatrixFixture(e *env) *matrixFixture {
 // TestAuthorizationMatrixRolesOnEveryRouteOfS1 is de drie-rollen-ronde van K
 // rij 2, over elke route die S1 heeft toegevoegd.
 func TestAuthorizationMatrixRolesOnEveryRouteOfS1(t *testing.T) {
-	e := newEnv(t)
-	e.setup(e.putSetupCode())
+	e, _ := transcodeEnv(t, 4)
 
 	denial := e.canonicalNotFound()
 	f := newMatrixFixture(e)
@@ -430,9 +475,13 @@ func TestAuthorizationMatrixRolesOnEveryRouteOfS1(t *testing.T) {
 					if rec.Code != http.StatusNotFound {
 						t.Fatalf("gaf %d, wil 404: %s", rec.Code, rec.Body.String())
 					}
-					if rec.Body.String() != denial {
+					reference := denial
+					if probe.missing != nil {
+						reference = e.do(probe.method, probe.missing(f), body, asUser(f.tokens[roleOwner])).Body.String()
+					}
+					if rec.Body.String() != reference {
 						t.Fatalf("de weigering is niet byte-gelijk aan die van een niet-bestaand id:\n%s\n%s",
-							rec.Body.String(), denial)
+							rec.Body.String(), reference)
 					}
 				}
 			})

@@ -112,13 +112,9 @@ services:
     # kost is gemeten en staat in README.md, maar één meting is te weinig om er
     # een harde grens op te zetten.
 
-    # Toekomstige hardwaretranscodering op de DS920+ (QuickSync, UHD 600).
-    # Volledig inert zolang dit uitstaat; de gid is gemeten op de NAS zelf,
-    # groep "videodriver". Aanzetten hoort bij PS-8, niet hier.
-    # devices:
-    #   - /dev/dri:/dev/dri
-    # group_add:
-    #   - "937"
+    # Hardwaretranscodering op de DS920+ (QuickSync, UHD 600) staat in
+    # compose.hwaccel.yaml, dat deploy-nas.sh meegeeft zodra /dev/dri bestaat.
+    # Zonder die laag omzet de server in software.
 
     depends_on:
       postgres:

@@ -417,6 +417,11 @@
       "file": "error_not_playable.json",
       "schema": "ErrorEnvelope",
       "note": "S17: geen versie past, met de redenen in details"
+    },
+    {
+      "file": "playback_plan_transcode.json",
+      "schema": "PlaybackPlan",
+      "note": "S18: alleen het geluid wordt omgezet, met een sessie en een HLS-afspeellijst"
     }
   ]
 }

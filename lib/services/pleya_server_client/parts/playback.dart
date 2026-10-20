@@ -76,6 +76,23 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     // is fresh at open time.
     await _session.authHeaders();
 
+    // A delivery the server converts comes with a session: the player opens
+    // its HLS playlist, and this client keeps the session alive until the
+    // playback is reported stopped.
+    final sessionId = plan?.sessionId;
+    if (plan != null && sessionId != null && plan.deliveryMode != PleyaDeliveryMode.directPlay) {
+      _holdTranscodeSession(options.metadata.id, sessionId);
+      return PlaybackInitializationResult(
+        availableVersions: versions,
+        videoUrl: '${connection.baseUrl}${plan.streamUrl}',
+        selectedMediaIndex: index,
+        isTranscoding: plan.deliveryMode == PleyaDeliveryMode.transcode,
+        playMethod: plan.deliveryMode == PleyaDeliveryMode.transcode ? 'Transcode' : 'DirectStream',
+        playSessionId: _watchLedger.sessionFor(options.metadata.id, _mintSessionId),
+        externalSubtitles: const [],
+      );
+    }
+
     return PlaybackInitializationResult(
       availableVersions: versions,
       videoUrl: _streamUrl(version.id),
@@ -86,10 +103,49 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     );
   }
 
+  /// The transcode sessions this client keeps alive, by item id.
+  final Map<String, ({String sessionId, Timer timer})> _transcodeSessions = {};
+
+  /// How often a held session is told it is still wanted. The server reaps a
+  /// session after a minute without a heartbeat or a file request.
+  static const Duration _heartbeatEvery = Duration(seconds: 15);
+
+  void _holdTranscodeSession(String itemId, String sessionId) {
+    unawaited(_releaseTranscodeSession(itemId));
+    final timer = Timer.periodic(_heartbeatEvery, (t) async {
+      try {
+        await _adminSend('POST', '/playback/sessions/$sessionId/heartbeat');
+      } on MediaServerHttpException catch (e) {
+        // 404: the server forgot it (timeout, restart). Nothing left to keep.
+        if (e.statusCode == 404) t.cancel();
+      } catch (e) {
+        appLogger.d('PleyaServerClient: transcode heartbeat failed', error: e);
+      }
+    });
+    _transcodeSessions[itemId] = (sessionId: sessionId, timer: timer);
+  }
+
+  Future<void> _releaseTranscodeSession(String itemId) async {
+    final held = _transcodeSessions.remove(itemId);
+    if (held == null) return;
+    held.timer.cancel();
+    try {
+      await _adminSend('DELETE', '/playback/sessions/${held.sessionId}');
+    } catch (e) {
+      appLogger.d('PleyaServerClient: stopping the transcode session failed', error: e);
+    }
+  }
+
+  /// Stop every held session: used when the client closes.
+  Future<void> _releaseAllTranscodeSessions() async {
+    for (final itemId in _transcodeSessions.keys.toList()) {
+      await _releaseTranscodeSession(itemId);
+    }
+  }
+
   /// Ask the server for a plan. Null means "no plan, keep direct play": the
   /// server does not offer one, the call failed, or the plan names a delivery
-  /// this build cannot follow yet (only `direct_play` exists server-side until
-  /// the transcoder lands, and an unknown mode must not change what we play).
+  /// this build does not know (an unknown mode must not change what we play).
   ///
   /// The default selection (index 0) lets the server choose the cheapest
   /// fitting version; any other index is the user's explicit choice and goes
@@ -104,7 +160,8 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       });
       if (json == null) return null;
       final plan = PleyaPlaybackPlan.fromJson(json);
-      return plan.deliveryMode == PleyaDeliveryMode.directPlay ? plan : null;
+      if (plan.deliveryMode == PleyaDeliveryMode.directPlay) return plan;
+      return plan.deliveryMode != null && plan.sessionId != null ? plan : null;
     } on PleyaWireFormatException catch (e) {
       appLogger.w('PleyaServerClient: playback plan did not match the contract', error: e);
       return null;
@@ -213,6 +270,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
         duration.inMilliseconds > 0 &&
         position.inMilliseconds >= _watchedFraction * duration.inMilliseconds;
 
+    await _releaseTranscodeSession(itemId);
     await _applyWatchState(
       itemId: itemId,
       sessionId: _watchLedger.sessionFor(itemId, _mintSessionId),

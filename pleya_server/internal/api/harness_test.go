@@ -142,6 +142,9 @@ type env struct {
 
 	revocations *auth.Revocations
 
+	// hasTranscoder zegt dat de omgeving een omzetter met de stub-ffmpeg heeft.
+	hasTranscoder bool
+
 	// settings is dezelfde cache als die de server leest. Een test die de
 	// tabel rechtstreeks vult moet hem kunnen herladen, want de server doet dat
 	// alleen na een geslaagde PATCH.
