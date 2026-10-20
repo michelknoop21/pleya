@@ -51,6 +51,76 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 387 · 20 October 2026 · Apple TV
+
+<!-- commit: 51c079a28f1bb7d794e01c30d1d133ca10be9f7a -->
+
+### New
+
+- **No PIN on the Apple TV when your iPhone is already in that profile.** If the profile you
+  hand over from is protected and you are signed in to it on the iPhone, the iPhone vouches for
+  you and the Apple TV switches without asking for the PIN. Plex checks that it is really you;
+  if it cannot, the Apple TV asks for the PIN as before. This works for Plex Home profiles and
+  for a Pleya profile linked to a single Plex user.
+- **Filter and sort a Pleya Server library.** Libraries on a Pleya Server can be filtered by
+  genre, year, watch state, age rating, audio language and resolution, and sorted by last
+  played and running time. The filter lists only offer values that occur in that library.
+
+### Improved
+
+- **Handoff gives up cleanly when the Apple TV cannot start in time.** If fetching the film or
+  opening the player takes too long, the Apple TV no longer starts playing after the iPhone has
+  stopped waiting, so you do not end up with both playing. It reports the failure and is ready
+  for the next handoff straight away.
+- **"PIN not entered" only when it is true.** The iPhone shows that message only when the PIN
+  prompt on the Apple TV was cancelled. Any other failure during the profile switch shows the
+  general handoff failure.
+- **The TMDB credit in About now also covers Pleya Server titles,** whose descriptions,
+  genres, age ratings and artwork come from TMDB.
+
+### Notes
+
+- **Worth checking:** a handoff from a PIN-protected profile on the iPhone to an Apple TV on
+  another profile, once without a PIN prompt and once with Plex unreachable (the PIN prompt
+  should appear). Also a handoff to an Apple TV with a slow server. None of this has been
+  checked on a real iPhone and Apple TV yet.
+- **Worth checking:** the Pleya Server filter screen on Apple TV.
+
+## 2.8.1 · build 386 · 20 October 2026 · iPhone and iPad
+
+<!-- commit: 51c079a28f1bb7d794e01c30d1d133ca10be9f7a -->
+
+### New
+
+- **No PIN on the Apple TV when your iPhone is already in that profile.** If the profile you
+  hand over from is protected and you are signed in to it on the iPhone, the iPhone vouches for
+  you and the Apple TV switches without asking for the PIN. Plex checks that it is really you;
+  if it cannot, the Apple TV asks for the PIN as before. This works for Plex Home profiles and
+  for a Pleya profile linked to a single Plex user.
+- **Filter and sort a Pleya Server library.** Libraries on a Pleya Server can be filtered by
+  genre, year, watch state, age rating, audio language and resolution, and sorted by last
+  played and running time. The filter lists only offer values that occur in that library.
+
+### Improved
+
+- **Handoff gives up cleanly when the Apple TV cannot start in time.** If fetching the film or
+  opening the player takes too long, the Apple TV no longer starts playing after the iPhone has
+  stopped waiting, so you do not end up with both playing. It reports the failure and is ready
+  for the next handoff straight away.
+- **"PIN not entered" only when it is true.** The iPhone shows that message only when the PIN
+  prompt on the Apple TV was cancelled. Any other failure during the profile switch shows the
+  general handoff failure.
+- **The TMDB credit in About now also covers Pleya Server titles,** whose descriptions,
+  genres, age ratings and artwork come from TMDB.
+
+### Notes
+
+- **Worth checking:** a handoff from a PIN-protected profile on the iPhone to an Apple TV on
+  another profile, once without a PIN prompt and once with Plex unreachable (the PIN prompt
+  should appear). Also a handoff to an Apple TV with a slow server. None of this has been
+  checked on a real iPhone and Apple TV yet.
+- **Worth checking:** the Pleya Server filters on iPhone and iPad.
+
 ## 2.8.1 · build 385 · 20 October 2026 · Apple TV
 
 <!-- commit: 7f6fc695d359677a2b1dc84dad1e5820ef6d3541 -->
