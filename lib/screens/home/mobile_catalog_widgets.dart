@@ -2,6 +2,7 @@
 /// translucent top panel, the edge fades and the skeleton and empty bodies.
 library;
 
+import 'dart:async' show unawaited;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -15,12 +16,19 @@ import '../../widgets/skeleton_media_card.dart';
 @visibleForTesting
 const catalogTopMenuKey = ValueKey<String>('catalog.top_menu');
 
+/// How long the top panel takes to leave and to come back (A-06). It leaves a
+/// little slower than it returns, both on [Curves.easeOutCubic]: quick to
+/// start, soft to settle, in either direction.
+const catalogPanelHideDuration = Duration(milliseconds: 260);
+const catalogPanelShowDuration = Duration(milliseconds: 200);
+
 /// The catalogue's top panel (status bar inset, title row, chips, count line)
 /// as a translucent layer over the grid, in the tab bar's frosted idiom: a
-/// blur plus a tint of the page background, ending in a soft fade. It slides
-/// off the top when [collapsed] and, being an overlay, never changes the
-/// grid's viewport, so collapsing cannot move or re-clamp the scroll position.
-class CatalogTopPanel extends StatelessWidget {
+/// blur plus a tint of the page background. When [collapsed] it slides off
+/// the top while its content, tint and blur fade out; reduce motion snaps it
+/// instead. Being an overlay, it never changes the grid's viewport, so
+/// collapsing cannot move or re-clamp the scroll position.
+class CatalogTopPanel extends StatefulWidget {
   const CatalogTopPanel({
     super.key,
     required this.collapsed,
@@ -34,45 +42,137 @@ class CatalogTopPanel extends StatelessWidget {
   final GlobalKey measureKey;
   final Widget child;
 
-  static const double _fadeTail = 14;
+  /// Height of the soft lower edge below the measured content, where the tint
+  /// runs out over the grid.
+  static const double fadeTail = 16;
+
+  @override
+  State<CatalogTopPanel> createState() => _CatalogTopPanelState();
+}
+
+class _CatalogTopPanelState extends State<CatalogTopPanel> with SingleTickerProviderStateMixin {
+  /// 0 is fully shown, 1 is fully gone. Driven with `animateTo` and its own
+  /// curve, so a reversal mid-flight eases from wherever the panel is instead
+  /// of jumping to another curve's value.
+  late final AnimationController _hidden = AnimationController(vsync: this, value: widget.collapsed ? 1 : 0);
+
+  static const double _sigma = 18;
+  static const double _tintAlpha = 0.78;
+
+  /// The blur does not stop at one line: it steps down across the content's
+  /// last few pixels and the top of the tail, strongest first.
+  static const List<double> _blurSteps = [0.7, 0.45, 0.25, 0.1];
+  static const double _blurStepHeight = 4;
+
+  @override
+  void didUpdateWidget(CatalogTopPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.collapsed == oldWidget.collapsed) return;
+    final target = widget.collapsed ? 1.0 : 0.0;
+    final full = widget.collapsed ? catalogPanelHideDuration : catalogPanelShowDuration;
+    final duration = reduceMotion(context, full * (target - _hidden.value).abs());
+    if (duration == Duration.zero) {
+      _hidden.value = target;
+    } else {
+      unawaited(_hidden.animateTo(target, duration: duration, curve: Curves.easeOutCubic));
+    }
+  }
+
+  @override
+  void dispose() {
+    _hidden.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedSlide(
-      offset: collapsed ? const Offset(0, -1) : Offset.zero,
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutCubic,
-      child: ExcludeSemantics(
-        excluding: collapsed,
-        child: Column(
-          key: catalogTopMenuKey,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                child: ColoredBox(
-                  color: background.withValues(alpha: 0.78),
-                  child: KeyedSubtree(key: measureKey, child: child),
-                ),
-              ),
-            ),
-            SizedBox(
-              height: _fadeTail,
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [background.withValues(alpha: 0.78), background.withValues(alpha: 0)],
-                    ),
+    return AnimatedBuilder(
+      animation: _hidden,
+      child: KeyedSubtree(key: widget.measureKey, child: widget.child),
+      builder: (context, content) {
+        final visible = 1 - _hidden.value;
+        return FractionalTranslation(
+          translation: Offset(0, -_hidden.value),
+          child: IgnorePointer(
+            ignoring: widget.collapsed,
+            child: ExcludeSemantics(
+              excluding: widget.collapsed,
+              child: Stack(
+                key: catalogTopMenuKey,
+                children: [
+                  Positioned.fill(child: _blur(visible)),
+                  Positioned.fill(child: _tint(visible)),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Opacity(opacity: visible, child: content),
+                      const SizedBox(height: CatalogTopPanel.fadeTail),
+                    ],
                   ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _blur(double visible) {
+    Widget layer(double strength) {
+      final sigma = _sigma * strength * visible;
+      return ClipRect(
+        child: BackdropFilter(
+          enabled: sigma > 0,
+          filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+          child: const SizedBox.expand(),
+        ),
+      );
+    }
+
+    // Half the ramp sits on the content's last pixels, half on the tail; the
+    // rest of the tail is tint only.
+    final rampIntoTail = _blurSteps.length * _blurStepHeight / 2;
+    return IgnorePointer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: layer(1)),
+          for (final step in _blurSteps) SizedBox(height: _blurStepHeight, child: layer(step)),
+          SizedBox(height: CatalogTopPanel.fadeTail - rampIntoTail),
+        ],
+      ),
+    );
+  }
+
+  Widget _tint(double visible) {
+    final color = widget.background;
+    final alpha = _tintAlpha * visible;
+    return IgnorePointer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: ColoredBox(color: color.withValues(alpha: alpha)),
+          ),
+          SizedBox(
+            height: CatalogTopPanel.fadeTail,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                // Eased rather than linear, so the tint has no visible kink
+                // where it starts to run out.
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: const [0, 0.2, 0.45, 0.7, 0.88, 1],
+                  colors: [
+                    for (final f in const [1.0, 0.72, 0.42, 0.18, 0.05, 0.0]) color.withValues(alpha: alpha * f),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

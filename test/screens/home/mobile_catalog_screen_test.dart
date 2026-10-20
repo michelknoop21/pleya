@@ -175,6 +175,7 @@ void main() {
     bool useEmpty = false,
     double width = 393,
     double textScale = 1,
+    bool disableAnimations = false,
     bool pumpAfter = true,
   }) async {
     tester.view.physicalSize = Size(width, 852);
@@ -190,7 +191,9 @@ void main() {
         child: MaterialApp(
           theme: monoTheme(dark: true),
           builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(textScale), disableAnimations: disableAnimations),
             child: child!,
           ),
           home: OverlaySheetHost(
@@ -363,6 +366,105 @@ void main() {
       expect(shown(tester), isTrue, reason: 'at offset 0 it is fully shown');
     });
 
+    /// Scrolls with the finger kept down, so no fling moves the grid while
+    /// the panel animates; the caller lifts it.
+    Future<TestGesture> holdScroll(WidgetTester tester, double dy) async {
+      final gesture = await tester.startGesture(tester.getCenter(find.byType(CustomScrollView)));
+      final step = dy.sign * 20;
+      for (var moved = 0.0; moved.abs() < dy.abs(); moved += step) {
+        await gesture.moveBy(Offset(0, step));
+      }
+      return gesture;
+    }
+
+    /// Fraction of its own height the panel has moved up: 0 shown, 1 gone.
+    double progress(WidgetTester tester) => -panel(tester).top / panel(tester).height;
+
+    double titleOpacity(WidgetTester tester) => tester
+        .widget<Opacity>(
+          find.ancestor(of: find.text(t.unifiedCatalog.moviesTitle), matching: find.byType(Opacity)).first,
+        )
+        .opacity;
+
+    testWidgets('leaving is an eased slide and fade over several frames, and the grid stays put', (tester) async {
+      films(18);
+      await pumpCatalog(tester);
+      await settle(tester);
+
+      final gesture = await holdScroll(tester, -200);
+      // The frame that flips the state starts the motion; the next one is
+      // the ticker's first tick.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      final grid = tester.getRect(find.text('Film 6'));
+
+      final steps = <double>[];
+      final opacities = <double>[];
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 40));
+        steps.add(progress(tester));
+        opacities.add(titleOpacity(tester));
+        expect(tester.getRect(find.text('Film 6')), grid, reason: 'the panel moving must not move the grid');
+      }
+      expect(steps.first, inExclusiveRange(0, 1), reason: 'no jump: 40 ms in, the panel is on its way: $steps');
+      for (var i = 1; i < steps.length; i++) {
+        expect(steps[i], greaterThan(steps[i - 1]), reason: 'it keeps moving, frame by frame: $steps');
+      }
+      expect(
+        steps[1] - steps[0],
+        greaterThan(2 * (steps[4] - steps[3])),
+        reason: 'eased out: fast start, soft end: $steps',
+      );
+      expect(opacities.first, inExclusiveRange(0, 1), reason: 'and fades on the way: $opacities');
+
+      await tester.pump(catalogPanelHideDuration);
+      expect(progress(tester), 1);
+      expect(hidden(tester), isTrue);
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('it comes back quicker than it left', (tester) async {
+      films(18);
+      await pumpCatalog(tester);
+      await settle(tester);
+
+      final down = await holdScroll(tester, -300);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 100));
+      final leftAfter100 = progress(tester);
+      await tester.pump(const Duration(milliseconds: 400));
+      await down.up();
+      await tester.pumpAndSettle();
+      expect(hidden(tester), isTrue);
+
+      final up = await holdScroll(tester, 60);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 100));
+      final backAfter100 = 1 - progress(tester);
+      expect(backAfter100, inExclusiveRange(0, 1), reason: 'coming back is a motion too');
+      expect(backAfter100, greaterThan(leftAfter100), reason: 'return $backAfter100 vs leave $leftAfter100');
+
+      await tester.pump(catalogPanelShowDuration);
+      expect(panel(tester).top, 0, reason: 'fully back within the show duration');
+      await up.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('reduce motion snaps the panel instead of animating it', (tester) async {
+      films(18);
+      await pumpCatalog(tester, disableAnimations: true);
+      await settle(tester);
+
+      final gesture = await holdScroll(tester, -200);
+      await tester.pump();
+      expect(hidden(tester), isTrue, reason: 'gone in the same frame, no in-between');
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
     testWidgets('the grid scrolls under the status bar and the home indicator and stays reachable', (tester) async {
       films(18);
       await pumpWithInsets(tester);
@@ -388,7 +490,10 @@ void main() {
 
       final indicator = tester.widget<RefreshIndicator>(find.byType(RefreshIndicator));
       expect(indicator.edgeOffset, greaterThan(100), reason: 'the spinner settles under the translucent panel');
-      expect(indicator.edgeOffset, closeTo(tester.getRect(find.byKey(catalogTopMenuKey)).bottom - 14, 1.5));
+      expect(
+        indicator.edgeOffset,
+        closeTo(tester.getRect(find.byKey(catalogTopMenuKey)).bottom - CatalogTopPanel.fadeTail, 1.5),
+      );
     });
 
     testWidgets('the grid is not shown a frame before the panel is measured', (tester) async {
