@@ -12,6 +12,9 @@ import '../../focus/focusable_wrapper.dart';
 class VideoControlButton extends StatelessWidget {
   final IconData icon;
 
+  /// Replaces [icon] when set (e.g. an SVG glyph). It inherits colour and size from an IconTheme.
+  final Widget? iconWidget;
+
   final VoidCallback? onPressed;
 
   /// The color of the icon. Defaults to white, or amber if [isActive] is true.
@@ -46,6 +49,7 @@ class VideoControlButton extends StatelessWidget {
   const VideoControlButton({
     super.key,
     required this.icon,
+    this.iconWidget,
     required this.onPressed,
     this.color,
     this.tooltip,
@@ -64,7 +68,12 @@ class VideoControlButton extends StatelessWidget {
     final effectiveColor = color ?? (isActive ? Colors.amber : Colors.white);
 
     final button = IconButton(
-      icon: AppIcon(icon, fill: 1, color: effectiveColor),
+      icon: iconWidget != null
+          ? IconTheme.merge(
+              data: IconThemeData(color: effectiveColor),
+              child: iconWidget!,
+            )
+          : AppIcon(icon, fill: 1, color: effectiveColor),
       onPressed: onPressed,
       tooltip: tooltip,
       constraints: const BoxConstraints(minWidth: 40, minHeight: 40),

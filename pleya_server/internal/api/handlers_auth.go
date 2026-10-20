@@ -74,11 +74,13 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			WatchState:          s.opts.Watch != nil,
 			WatchStateOwnership: s.opts.Watch != nil,
 			StreamSessions:      true,
-			PlaybackPlan:        false,
-			Transcode:           false,
-			Downloads:           false,
-			LiveTV:              false,
-			Realtime:            false,
+			// PlaybackPlan: S17 is gebouwd, POST /playback/plan bestaat.
+			PlaybackPlan: true,
+			// Transcode: aan zodra er een manager met sessies is (S18).
+			Transcode: s.transcodeEnabled(),
+			Downloads: false,
+			LiveTV:    false,
+			Realtime:  false,
 			// Users: de vijf endpoints uit DEC-121 staan er sinds stap 4, en
 			// login kent sindsdien elke rij in users en niet alleen de owner.
 			Users: true,

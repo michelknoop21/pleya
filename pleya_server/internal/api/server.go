@@ -21,6 +21,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
+	"github.com/edde746/plezy/pleya_server/internal/transcode"
 	"github.com/edde746/plezy/pleya_server/internal/watch"
 	"github.com/edde746/plezy/pleya_server/internal/web"
 )
@@ -102,6 +103,10 @@ type Options struct {
 	// beschikbaar betekent: altijd het origineel, en capabilities.artwork_sizes
 	// is dan false.
 	Artwork *artwork.Resizer
+
+	// Transcode voert remux en transcode uit (S18). Nil of zonder sessies:
+	// de server levert alleen direct play.
+	Transcode *transcode.Manager
 
 	// OnMetadataChange wekt de metadata-ronde na een handmatige correctie. Nil is
 	// toegestaan: de ronde pakt de wijziging dan bij haar volgende tik op.
@@ -316,6 +321,18 @@ func (s *Server) routeTable() []route {
 
 		{"GET " + p + "/libraries/{library_id}/items", s.authenticated(s.handleLibraryItems)},
 		{"GET " + p + "/libraries/{library_id}/facets", s.authenticated(s.handleLibraryFacets)},
+
+		// Afspeelplan (venster 5 deel 1, S17, matrixregel 46). Klasse
+		// authenticated met dezelfde bibliotheekautorisatie als het item.
+		{"POST " + p + "/playback/plan", s.authenticated(s.handlePlaybackPlan)},
+
+		// Omzetsessies (venster 5 deel 2, S18, matrixregels 47 tot en met 49).
+		// De hartslag en het stoppen horen bij de eigenaar van de sessie; de
+		// bestanden gaan als de bytes van een stream: bearer, streamtoken of
+		// browser-streamsessie.
+		{"POST " + p + "/playback/sessions/{session_id}/heartbeat", s.authenticated(s.handlePlaybackHeartbeat)},
+		{"DELETE " + p + "/playback/sessions/{session_id}", s.authenticated(s.handlePlaybackStop)},
+		{"GET " + p + "/playback/sessions/{session_id}/{file}", s.streamAuthorized(s.handlePlaybackFile)},
 		{"GET " + p + "/items/{item_id}", s.authenticated(s.handleItem)},
 		{"GET " + p + "/items/{item_id}/children", s.authenticated(s.handleChildren)},
 		{"GET " + p + "/search", s.authenticated(s.handleSearch)},

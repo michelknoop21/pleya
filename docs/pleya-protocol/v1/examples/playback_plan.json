@@ -1,0 +1,29 @@
+{
+  "item_id": "01a15486-f53b-7001-a2c0-dad3c02bbd3a",
+  "version_id": "01a15487-0a11-7000-9b3a-5c1d2e3f4a5b",
+  "delivery_mode": "direct_play",
+  "stream_url": "/pleya/v1/stream/01a15487-0a11-7000-9b3a-5c1d2e3f4a5b",
+  "container": "original",
+  "video": {
+    "action": "copy"
+  },
+  "audio": {
+    "action": "copy"
+  },
+  "seekable": true,
+  "session_id": null,
+  "reason": {
+    "code": "direct.supported",
+    "params": {
+      "container": "mkv"
+    }
+  },
+  "reasons": [
+    {
+      "code": "direct.supported",
+      "params": {
+        "container": "mkv"
+      }
+    }
+  ]
+}

@@ -26,6 +26,7 @@ import '../sheets/video_settings_sheet.dart';
 import '../tv_info_panel/tv_panel_types.dart';
 import '../../../services/shader_service.dart';
 import '../video_control_button.dart';
+import '../../pleya_fly_icon.dart';
 
 /// Row of track and chapter control buttons for the video player
 class TrackChapterControls extends StatelessWidget {
@@ -164,6 +165,7 @@ class TrackChapterControls extends StatelessWidget {
   Widget _buildTrackButton({
     required int buttonIndex,
     required IconData icon,
+    Widget? iconWidget,
     required String semanticLabel,
     required VoidCallback? onPressed,
     required bool isMobile,
@@ -174,6 +176,7 @@ class TrackChapterControls extends StatelessWidget {
   }) {
     return VideoControlButton(
       icon: icon,
+      iconWidget: iconWidget,
       tooltip: tooltip,
       semanticLabel: semanticLabel,
       isActive: isActive,
@@ -406,9 +409,10 @@ class TrackChapterControls extends StatelessWidget {
           buttons.add(
             _buildTrackButton(
               buttonIndex: currentIndex,
-              icon: Symbols.smart_display,
+              icon: Symbols.flight_rounded,
+              iconWidget: const PleyaFlyIcon(),
               automationId: AutomationIds.playerHandoffButton,
-              tooltip: t.playbackHandoff.button,
+              tooltip: '${t.playbackHandoff.button} · ${t.playbackHandoff.description}',
               semanticLabel: t.playbackHandoff.button,
               isMobile: isMobile,
               isDesktop: isDesktop,

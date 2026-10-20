@@ -26,14 +26,20 @@ var ErrMissingDatabaseURL = errors.New("DATABASE_URL ontbreekt")
 
 // Config is de volledige serverconfiguratie.
 type Config struct {
-	DatabaseURL     string
-	HTTPAddr        string
-	ConfigDir       string
-	CacheDir        string
-	TranscodeDir    string
-	MediaDirs       []string
-	LogLevel        slog.Level
-	ShutdownTimeout time.Duration
+	DatabaseURL  string
+	HTTPAddr     string
+	ConfigDir    string
+	CacheDir     string
+	TranscodeDir string
+
+	// TranscodeMaxSessions is het aantal gelijktijdige omzettingen (S18). 0 zet
+	// omzetten uit: de server levert dan alleen direct play. TranscodeRenderNode
+	// is het render-device voor hardwareversnelling; onvindbaar betekent software.
+	TranscodeMaxSessions int
+	TranscodeRenderNode  string
+	MediaDirs            []string
+	LogLevel             slog.Level
+	ShutdownTimeout      time.Duration
 
 	// ServerName staat in GET /server, achter authenticatie. Hij staat bewust
 	// niet in GET /info: een servernaam aan de buitenkant is een gratis
@@ -95,15 +101,20 @@ type Config struct {
 // herbouwbaar, en /transcode is vluchtig met hoge churn. Op één volume neemt een
 // vollopende scratch de database mee.
 const (
-	DefaultHTTPAddr        = ":8080"
-	DefaultConfigDir       = "/config"
-	DefaultCacheDir        = "/cache"
-	DefaultTranscodeDir    = "/transcode"
-	DefaultMediaDirs       = "/media/library"
-	DefaultLogLevel        = "info"
-	DefaultShutdownTimeout = 15 * time.Second
-	DefaultServerName      = "Pleya"
-	DefaultFFprobePath     = "ffprobe"
+	DefaultHTTPAddr     = ":8080"
+	DefaultConfigDir    = "/config"
+	DefaultCacheDir     = "/cache"
+	DefaultTranscodeDir = "/transcode"
+
+	// Twee gelijktijdige omzettingen is wat een Celeron J4125 met hardwareversnelling
+	// aankan; meer is een bewuste keuze, tot de bovengrens.
+	DefaultTranscodeMaxSessions = 2
+	MaxTranscodeMaxSessions     = 8
+	DefaultMediaDirs            = "/media/library"
+	DefaultLogLevel             = "info"
+	DefaultShutdownTimeout      = 15 * time.Second
+	DefaultServerName           = "Pleya"
+	DefaultFFprobePath          = "ffprobe"
 
 	// Eén bestand analyseren hoort seconden te duren. Een minuut is ruim genoeg
 	// voor een groot bestand op een trage USB-schijf en kort genoeg dat een
@@ -240,6 +251,16 @@ func Load(getenv Getenv) (*Config, error) {
 
 	cfg.FFprobePath = valueOr(getenv, "PLEYA_SERVER_FFPROBE_PATH", DefaultFFprobePath)
 	cfg.FFmpegPath = valueOr(getenv, "PLEYA_SERVER_FFMPEG_PATH", "ffmpeg")
+
+	cfg.TranscodeMaxSessions = DefaultTranscodeMaxSessions
+	if raw := strings.TrimSpace(getenv("PLEYA_SERVER_TRANSCODE_MAX_SESSIONS")); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 0 || n > MaxTranscodeMaxSessions {
+			return nil, fmt.Errorf("PLEYA_SERVER_TRANSCODE_MAX_SESSIONS: %q is geen getal van 0 tot en met %d", raw, MaxTranscodeMaxSessions)
+		}
+		cfg.TranscodeMaxSessions = n
+	}
+	cfg.TranscodeRenderNode = valueOr(getenv, "PLEYA_SERVER_TRANSCODE_RENDER_NODE", "/dev/dri/renderD128")
 
 	for _, d := range []struct {
 		key    string

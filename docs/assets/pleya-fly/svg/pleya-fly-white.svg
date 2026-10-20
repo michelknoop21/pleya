@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <title>Pleya Fly</title>
+  <desc>Een Pleya-P met twee kleine vleugelveren en een gevuld afspeeldriehoekje. Verder kijken op een ander apparaat.</desc>
+  <g fill="none" stroke="#FFFFFF" stroke-width="1.3333" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 8.3333 4.4167 H 16.1667 C 19 4.4167 21.1667 6.5833 21.1667 9.5 C 21.1667 12.4167 19.1667 14.4167 16.1667 14.4167 H 14 L 11 19.5833 H 8.3333 Z"/>
+    <path d="M 8.3333 4.4167 H 2.8333 C 3.3333 6.4167 4.5 7.25 6.6667 7.25 H 8.3333"/>
+    <path d="M 4.5 7.25 C 4.8333 8.9167 6 9.9167 7.6667 9.9167 H 8.3333"/>
+  </g>
+  <path d="M 12.6667 8.0833 C 12.6667 7.4167 13 7.0833 13.5 7.4167 L 16.6667 9.4167 C 17.1667 9.75 17.1667 10.0833 16.6667 10.4167 L 13.5 12.4167 C 13 12.75 12.6667 12.4167 12.6667 11.75 Z" fill="#FFFFFF"/>
+</svg>

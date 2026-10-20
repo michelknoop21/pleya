@@ -24,6 +24,7 @@ import '../../../widgets/focusable_list_tile.dart';
 import '../../../widgets/notice/notice.dart';
 import '../../../widgets/notice/notice_controller.dart';
 import '../../../widgets/overlay_sheet.dart';
+import '../../../widgets/pleya_fly_icon.dart';
 import 'base_video_control_sheet.dart';
 
 /// Lists this device and the Apple TVs on the network, AirPlay-style, and hands
@@ -360,7 +361,7 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
     // Sized to its rows: two options do not need the full height (A-23, 20 October 2026).
     return BaseVideoControlSheet(
       title: t.playbackHandoff.title,
-      icon: Symbols.smart_display,
+      leading: const PleyaFlyIcon(),
       shrinkWrap: true,
       child: ListView(shrinkWrap: true, children: children),
     );

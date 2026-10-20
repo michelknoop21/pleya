@@ -537,6 +537,8 @@ contract keurt ze af.
 | `playback.version_unavailable` | 409 | ja | het bestand is er wel maar nu niet te lezen |
 | `playback.range_not_satisfiable` | 416 | nee | de gevraagde range valt buiten het bestand |
 | `playback.not_playable` | 415 | nee | deze versie is niet zonder bewerking te leveren |
+| `playback.transcode_busy` | 503 | ja | alle omzetsessies zijn bezet |
+| `playback.transcode_failed` | 502 | nee | de omzetting leverde geen speelbare uitvoer |
 | `storage.unavailable` | 503 | ja | de opslag achter deze resource is niet bereikbaar |
 | `storage.full` | 507 | nee | de server kan niet schrijven |
 | `session.invalid` | 400 | nee | onbekende of afgesloten kijksessie |
@@ -921,6 +923,66 @@ toevoegt verdwijnt de foutcode zonder dat er iets aan de catalogus verandert.
 
 ---
 
+### 13.4 `POST /pleya/v1/playback/plan`
+
+Klasse: **`authenticated`**, met de bibliotheekautorisatie van het item (matrixregel 46). Alleen onder
+`capabilities.playback_plan`. De body is gesloten: `item_id`, optioneel `version_id`, optioneel
+`capabilities` in de vorm van `DeviceCapabilities` (de vier lagen uit het PS-5-model, met per veld
+`{value, confidence, overridden}`).
+
+```json
+{
+  "item_id": "01a15486-...",
+  "capabilities": {
+    "decoder": { "video_codecs": { "value": ["h264", "hevc"], "confidence": "detected" } },
+    "display": { "hdr_transfers": { "value": ["sdr", "hdr10"], "confidence": "detected" } }
+  }
+}
+```
+
+De planner is een pure functie van de versies van het item en deze capabilities. Hij vertakt nooit op
+het clienttype. Een veld dat ontbreekt of `unknown` is keurt niets af, zodat een client die niets
+meldt `direct_play` krijgt, zoals vóór dit endpoint. De drempel verschilt per eigenschap: een
+`inferred` lijst van codecs of containers telt mee, een `inferred` HDR-lijst niet, want of het scherm
+HDR toont weet alleen het scherm. De bitrategrens geldt niet op het lokale netwerk.
+
+Het antwoord kiest de goedkoopste versie die past: eerst de lichtste leveringswijze (`direct_play`,
+dan `remux`, dan `direct_stream` waarbij alleen het geluid wordt omgezet, dan `transcode`), daarna de
+laagste bitrate. De hoogste kwaliteit is geen criterium; wie meer wil, vraagt een `version_id`.
+
+```json
+{
+  "item_id": "01a15486-...", "version_id": "01a15487-...",
+  "delivery_mode": "direct_play", "stream_url": "/pleya/v1/stream/01a15487-...",
+  "container": "original", "video": { "action": "copy" }, "audio": { "action": "copy" },
+  "seekable": true, "session_id": null,
+  "reason": { "code": "direct.supported", "params": { "container": "mkv" } },
+  "reasons": [{ "code": "direct.supported", "params": { "container": "mkv" } }]
+}
+```
+
+`reason` is de hoofdreden en het eerste element van `reasons`. Een reden is een domeincode met
+parameters en geen vertaalsleutel: `container.unsupported`, `video.codec_unsupported`,
+`video.profile_unsupported`, `video.bit_depth_unsupported`, `video.hdr_unsupported`,
+`video.dovi_unsupported`, `audio.codec_unsupported`, `connection.bitrate_exceeded`, en bij een
+leverbaar plan `direct.supported`. Een client mapt de code naar eigen tekst en toont bij een onbekende
+code een generieke melding; de code gaat naar het log.
+
+**Zolang `capabilities.transcode` uit staat** levert de server alleen `direct_play`. Past geen versie,
+dan is het antwoord `415` met `playback.not_playable`, en `details.reasons` noemt waarom de goedkoopste
+versie niet paste, met als laatste `server.transcode_unavailable`. `404` voor een onbekend item of een
+versie die niet bij het item hoort, `409` met `playback.version_unavailable` voor een item zonder
+leverbare versie.
+
+
+**Met `capabilities.transcode`** start een plan dat meer is dan `direct_play` meteen een sessie
+(regel 47 tot en met 49). `session_id` is gezet, `stream_url` wijst naar de HLS-afspeellijst van die
+sessie en `container` is `hls`. De segmenten zijn fMP4. `seekable` is `false`: de lijst groeit mee
+met de omzetting, dus een speler zoekt alleen in wat er al ligt. De client houdt de sessie levend met
+`POST .../heartbeat` (elke vijftien seconden is ruim genoeg; na een minuut zonder hartslag of
+aanvraag ruimt de server hem zelf op) en stopt hem met `DELETE`. Alle sessies bezet is `503` met
+`playback.transcode_busy`, en ffmpeg die niets levert `502` met `playback.transcode_failed`.
+
 ## 14. Kijkstatus
 
 De server is gezaghebbend. De client houdt een lokale kopie voor offline gebruik.
@@ -1239,6 +1301,10 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 43 | `PUT /items/{id}/metadata-match` | de keuze van een beheerder voor een providernummer, en het meteen ophalen van die titel | klasse `admin`, `404` voor de rest en voor een item dat geen film of serie is; alleen een positief geheel getal komt door, anders `library.invalid_match` (S22.5) |
 | 44 | `DELETE /items/{id}/metadata-match` | het wegnemen van wat de provider bij dit item zette, en het nooit meer terugkomen | klasse `admin`, `404` voor de rest en voor een item dat geen film of serie is; idempotent; velden uit een sidecar blijven staan (S22.5) |
 | 45 | `GET /libraries/{id}/facets` | de waarden en tellingen van één bibliotheek, en de kijktelling van de aanvrager | klasse `authenticated` met dezelfde bibliotheekautorisatie als de lijst: `404` voor een bibliotheek buiten bereik of die niet bestaat; de kijktelling geldt alleen voor de aanvrager (venster 3, D1) |
+| 46 | `POST /playback/plan` | de keuze van een versie en leveringswijze voor een toestel, en de reden | klasse `authenticated` met de bibliotheekautorisatie van het item: `404` voor een item buiten bereik of dat niet bestaat, op de identiteitsas hetzelfde antwoord als een onbekend id (venster 5, S17) |
+| 47 | `POST /playback/sessions/{id}/heartbeat` | het levend houden van een omzetsessie | klasse `authenticated`, alleen de gebruiker die de sessie startte; voor ieder ander, ook een beheerder, `404` zoals voor een sessie die niet bestaat (venster 5, S18) |
+| 48 | `DELETE /playback/sessions/{id}` | het stoppen en opruimen van een omzetsessie | als regel 47 |
+| 49 | `GET /playback/sessions/{id}/{file}` | de afspeellijst, het initsegment en de segmenten van een omzetsessie | klasse `authenticated` of met `stream_token` of browser-streamsessie zoals de stream; een bearer alleen voor de eigenaar van de sessie, een token alleen voor de versie die wordt omgezet |
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
 zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
@@ -1979,8 +2045,12 @@ Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries
 | `PUT /pleya/v1/items/{id}/metadata-match` | `admin` | ja |
 | `DELETE /pleya/v1/items/{id}/metadata-match` | `admin` | ja |
 | `GET /pleya/v1/libraries/{id}/facets` | `authenticated` | nee |
+| `POST /pleya/v1/playback/plan` | `authenticated` | nee |
+| `POST /pleya/v1/playback/sessions/{id}/heartbeat` | `authenticated` | nee |
+| `DELETE /pleya/v1/playback/sessions/{id}` | `authenticated` | ja |
+| `GET /pleya/v1/playback/sessions/{id}/{file}` | `authenticated` of streamtoken | nee |
 
-Vijfenvijftig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Negenenvijftig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit
@@ -2005,8 +2075,7 @@ client iets uit leest.
 
 ## 19. Wat er bewust niet in zit
 
-Geen afspeelplan en geen `delivery_mode`. Geen transcode-sessies. Geen device-capabilities. Geen
-downloads. Geen verzamelingen, afspeellijsten, kijkgeschiedenis, favorieten of waarderingen. Geen
+Geen transcode-sessies. Geen downloads. Geen verzamelingen, afspeellijsten, kijkgeschiedenis, favorieten of waarderingen. Geen
 metadata-providers, geen match-correctie, geen artwork-upload. Geen websockets en geen
 server-sent events. Geen Live TV. Geen beheerscherm voor gebruikers of bibliotheekrechten: hoofdstuk
 16 levert de API, niet het scherm.

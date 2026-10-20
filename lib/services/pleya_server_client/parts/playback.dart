@@ -45,20 +45,29 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
 
   /// Resolve an item to a playable URL.
   ///
-  /// No plan and no capability negotiation: PS-4 is direct play, and a file
-  /// this device cannot decode fails visibly in the player. That is the
-  /// documented boundary, not a gap — inventing a transcode path here would be
-  /// PS-8 arriving early and would hide the one signal that says a later phase
-  /// is needed.
+  /// With `capabilities.playback_plan` the server picks the version and says
+  /// how it is delivered (S17); this client follows that plan. Without the
+  /// flag, or when the plan call fails, it behaves as it did in PS-4: direct
+  /// play of the selected version, where a file this device cannot decode
+  /// fails visibly in the player. A plan the server could not make is not a
+  /// reason to refuse playback, because the device report may be wrong and the
+  /// player is the better judge of last resort.
   Future<PlaybackInitializationResult> getPlaybackInitialization(PlaybackInitializationOptions options) async {
     final versions = options.metadata.mediaVersions ?? const <MediaVersion>[];
     if (versions.isEmpty) {
       return PlaybackInitializationResult(availableVersions: const []);
     }
 
-    final index = options.selectedMediaIndex >= 0 && options.selectedMediaIndex < versions.length
+    var index = options.selectedMediaIndex >= 0 && options.selectedMediaIndex < versions.length
         ? options.selectedMediaIndex
         : 0;
+
+    final plan = await _planPlayback(options.metadata.id, versions, index);
+    if (plan != null) {
+      final planned = versions.indexWhere((v) => v.id == plan.versionId);
+      if (planned >= 0) index = planned;
+      appLogger.d('PleyaServerClient: plan ${plan.deliveryMode?.wire} because ${plan.reason.code}');
+    }
     final version = versions[index];
 
     // Warm the header before the player opens the URL. The token is short
@@ -66,6 +75,23 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     // the one thing this call has to guarantee is that the header handed to it
     // is fresh at open time.
     await _session.authHeaders();
+
+    // A delivery the server converts comes with a session: the player opens
+    // its HLS playlist, and this client keeps the session alive until the
+    // playback is reported stopped.
+    final sessionId = plan?.sessionId;
+    if (plan != null && sessionId != null && plan.deliveryMode != PleyaDeliveryMode.directPlay) {
+      _holdTranscodeSession(options.metadata.id, sessionId);
+      return PlaybackInitializationResult(
+        availableVersions: versions,
+        videoUrl: '${connection.baseUrl}${plan.streamUrl}',
+        selectedMediaIndex: index,
+        isTranscoding: plan.deliveryMode == PleyaDeliveryMode.transcode,
+        playMethod: plan.deliveryMode == PleyaDeliveryMode.transcode ? 'Transcode' : 'DirectStream',
+        playSessionId: _watchLedger.sessionFor(options.metadata.id, _mintSessionId),
+        externalSubtitles: const [],
+      );
+    }
 
     return PlaybackInitializationResult(
       availableVersions: versions,
@@ -75,6 +101,74 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       playSessionId: _watchLedger.sessionFor(options.metadata.id, _mintSessionId),
       externalSubtitles: const [],
     );
+  }
+
+  /// The transcode sessions this client keeps alive, by item id.
+  final Map<String, ({String sessionId, Timer timer})> _transcodeSessions = {};
+
+  /// How often a held session is told it is still wanted. The server reaps a
+  /// session after a minute without a heartbeat or a file request.
+  static const Duration _heartbeatEvery = Duration(seconds: 15);
+
+  void _holdTranscodeSession(String itemId, String sessionId) {
+    unawaited(_releaseTranscodeSession(itemId));
+    final timer = Timer.periodic(_heartbeatEvery, (t) async {
+      try {
+        await _adminSend('POST', '/playback/sessions/$sessionId/heartbeat');
+      } on MediaServerHttpException catch (e) {
+        // 404: the server forgot it (timeout, restart). Nothing left to keep.
+        if (e.statusCode == 404) t.cancel();
+      } catch (e) {
+        appLogger.d('PleyaServerClient: transcode heartbeat failed', error: e);
+      }
+    });
+    _transcodeSessions[itemId] = (sessionId: sessionId, timer: timer);
+  }
+
+  Future<void> _releaseTranscodeSession(String itemId) async {
+    final held = _transcodeSessions.remove(itemId);
+    if (held == null) return;
+    held.timer.cancel();
+    try {
+      await _adminSend('DELETE', '/playback/sessions/${held.sessionId}');
+    } catch (e) {
+      appLogger.d('PleyaServerClient: stopping the transcode session failed', error: e);
+    }
+  }
+
+  /// Stop every held session: used when the client closes.
+  Future<void> _releaseAllTranscodeSessions() async {
+    for (final itemId in _transcodeSessions.keys.toList()) {
+      await _releaseTranscodeSession(itemId);
+    }
+  }
+
+  /// Ask the server for a plan. Null means "no plan, keep direct play": the
+  /// server does not offer one, the call failed, or the plan names a delivery
+  /// this build does not know (an unknown mode must not change what we play).
+  ///
+  /// The default selection (index 0) lets the server choose the cheapest
+  /// fitting version; any other index is the user's explicit choice and goes
+  /// out as `version_id`.
+  Future<PleyaPlaybackPlan?> _planPlayback(String itemId, List<MediaVersion> versions, int index) async {
+    if (!wireCapabilities.playbackPlan) return null;
+    try {
+      final json = await _postJson('/playback/plan', {
+        'item_id': itemId,
+        if (index != 0) 'version_id': versions[index].id,
+        'capabilities': pleyaDeviceCapabilitiesToWire(DeviceCapabilitiesService.currentSnapshot),
+      });
+      if (json == null) return null;
+      final plan = PleyaPlaybackPlan.fromJson(json);
+      if (plan.deliveryMode == PleyaDeliveryMode.directPlay) return plan;
+      return plan.deliveryMode != null && plan.sessionId != null ? plan : null;
+    } on PleyaWireFormatException catch (e) {
+      appLogger.w('PleyaServerClient: playback plan did not match the contract', error: e);
+      return null;
+    } catch (e) {
+      appLogger.d('PleyaServerClient: no playback plan, playing directly', error: e);
+      return null;
+    }
   }
 
   /// A URL an external player can open on its own.
@@ -176,6 +270,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
         duration.inMilliseconds > 0 &&
         position.inMilliseconds >= _watchedFraction * duration.inMilliseconds;
 
+    await _releaseTranscodeSession(itemId);
     await _applyWatchState(
       itemId: itemId,
       sessionId: _watchLedger.sessionFor(itemId, _mintSessionId),

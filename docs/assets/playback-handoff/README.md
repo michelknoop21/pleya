@@ -35,3 +35,7 @@ de pagina's als `{{icon:...}}` staan. De Apple TV-pagina's staan in
     PLEYA_MOCKUP_ART=<art-map> PLEYA_MOCKUP_DEST=<uit> node docs/assets/tvos-unified/src/build.mjs 45-t
 
 De art (filmbeelden) staat niet in git; de PNG's hier zijn de bron van waarheid.
+
+Naam en icoon: de functie heet voor gebruikers Pleya Fly (Michel Knoop, 20 oktober 2026). Het icoon
+(een Pleya-P met vleugelveren en afspeeldriehoekje) komt uit `docs/assets/pleya-fly/` en vervangt het
+schermicoon uit 45-a; de beelden hier blijven het ontwerp van lay-out en gedrag.

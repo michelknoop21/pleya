@@ -1,0 +1,23 @@
+{
+  "error": {
+    "code": "playback.not_playable",
+    "message": "no version can be played on this device",
+    "retryable": false,
+    "details": {
+      "reasons": [
+        {
+          "code": "video.codec_unsupported",
+          "params": {
+            "source_codec": "av1"
+          }
+        },
+        {
+          "code": "server.transcode_unavailable",
+          "params": {
+            "mode": "transcode"
+          }
+        }
+      ]
+    }
+  }
+}
