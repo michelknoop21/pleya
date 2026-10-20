@@ -145,6 +145,7 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
 
     int? lastObservedPositionMs;
     int? handoffFirstPositionMs;
+    int? handoffPreviousPositionMs;
     _positionSubscription = currentPlayer.streams.position.listen((position) {
       final activePlayer = player;
       if (activePlayer == null || activePlayer != currentPlayer) return;
@@ -165,7 +166,14 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
       // Handoff: confirm on real progress, not on the `playing` event. That
       // event fires once at mpv init, before the listener is attached, and
       // never again on tvOS; a moving position proves the picture runs.
-      handoffFirstPositionMs ??= position.inMilliseconds;
+      if (!_handoffAcknowledged) {
+        handoffFirstPositionMs = nextHandoffBaselineMs(
+          baselineMs: handoffFirstPositionMs,
+          previousMs: handoffPreviousPositionMs,
+          positionMs: position.inMilliseconds,
+        );
+        handoffPreviousPositionMs = position.inMilliseconds;
+      }
       if (shouldAcknowledgeHandoff(
         handoffId: widget.handoffId,
         acknowledged: _handoffAcknowledged,

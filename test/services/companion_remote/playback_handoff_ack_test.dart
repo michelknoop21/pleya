@@ -30,4 +30,35 @@ void main() {
   test('no ack while not playing', () => expect(_ack(playing: false), isFalse));
   test('no ack without a first position', () => expect(_ack(first: null), isFalse));
   test('only once', () => expect(_ack(acknowledged: true), isFalse));
+  _seekTests();
+}
+
+void _feed(List<int> positions, void Function(int baseline, int position) onEach) {
+  int? baseline;
+  int? previous;
+  for (final p in positions) {
+    baseline = nextHandoffBaselineMs(baselineMs: baseline, previousMs: previous, positionMs: p);
+    previous = p;
+    onEach(baseline, p);
+  }
+}
+
+bool _ackAfter(List<int> positions) {
+  var acked = false;
+  _feed(positions, (b, p) {
+    if (!acked) acked = _ack(first: b, position: p);
+  });
+  return acked;
+}
+
+void _seekTests() {
+  group('seek is no progress', () {
+    test('jump 1404 s to 1410 s gives no ack', () => expect(_ackAfter([1404000, 1410000]), isFalse));
+    test('then one second of normal progress acks', () {
+      expect(_ackAfter([1404000, 1410000, 1410500]), isFalse);
+      expect(_ackAfter([1404000, 1410000, 1410500, 1411000]), isTrue);
+    });
+    test('step backwards resets', () => expect(_ackAfter([1404000, 1404500, 1400000, 1400500]), isFalse));
+    test('plain progress acks', () => expect(_ackAfter([1000, 1500, 2000]), isTrue));
+  });
 }
