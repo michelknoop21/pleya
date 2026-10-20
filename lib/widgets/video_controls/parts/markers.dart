@@ -80,10 +80,12 @@ extension _PlexVideoControlsMarkerMethods on _PlexVideoControlsState {
       _startSkipButtonDismissTimer();
     }
 
-    // Auto-focus skip button on TV when marker appears (only in keyboard/TV mode)
+    // Auto-focus skip button on TV when marker appears (only in keyboard/TV mode).
+    // Never while the TV panel is open: the button sits outside the panel's
+    // scope, so taking focus there strands Menu outside the panel (build 389).
     if (PlatformDetector.isTV() && InputModeTracker.isKeyboardMode(context)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
+        if (mounted && !_tvInfoPanelVisible) {
           _skipMarkerFocusNode.requestFocus();
         }
       });
