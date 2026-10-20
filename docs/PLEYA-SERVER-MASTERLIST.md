@@ -46,7 +46,7 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **3** | **0** | **23** |
 
-Per taak, en dat is de maat die telt: **155 taken, 34 gereed, 10 bezig, 111 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **155 taken, 37 gereed, 11 bezig, 107 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -428,10 +428,10 @@ punt 3 en 4), en aan het venster-besluit.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S17.1 | Planner als pure functie met tabeltests | `[ ]` | | |
-| S17.2 | `POST /playback/plan` met reden als code en parameters | `[ ]` | | |
-| S17.3 | App en web sturen capabilities en volgen het plan | `[ ]` | | |
-| S17.4 | Capability `playback_plan`, venster 5 deel 1 | `[ ]` | | |
+| S17.1 | Planner als pure functie met tabeltests | `[x]` | M4: `internal/playback` met 14 tabelrijen (levering én reden), goedkoopste versie, fout bij lege verzameling; 5 negatieve controles (duurste kiezen, inferred-HDR meetellen, onbekend afkeuren, lokaal negeren, seekbaar) geven testfalen (20 oktober 2026) | 2026-10-20 |
+| S17.2 | `POST /playback/plan` met reden als code en parameters | `[x]` | M4: handler, matrixregel 46 (probe `everyRole`), 3 API-tests (direct play zonder capabilities, 415 met redenen, 404 en gesloten body); DEC-157 | 2026-10-20 |
+| S17.3 | App en web sturen capabilities en volgen het plan | `[~]` | M4: app stuurt `DeviceCapabilities` en volgt het plan (5 Dart-tests, fake-server `playbackPlanCapability`); web heeft nog geen speler (S8), `schema.d.ts` gegenereerd | 2026-10-20 |
+| S17.4 | Capability `playback_plan`, venster 5 deel 1 | `[x]` | M4: openapi (pad, 9 schema's), protocoldoc 13.4, fixtures `playback_plan.json` en `error_not_playable.json` (88), `check_protocol.sh` groen; `capabilities.playback_plan: true` | 2026-10-20 |
 
 ### S18 Transcode (PS-8)
 

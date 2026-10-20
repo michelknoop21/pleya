@@ -161,6 +161,11 @@ type Stream struct {
 	IsExternal        bool
 
 	SubtitleFormat string
+
+	// ColorTransfer en DoviProfile zijn rauw zoals ffprobe ze gaf; de planner
+	// (PS-6) leest er beleid uit.
+	ColorTransfer string
+	DoviProfile   *int
 }
 
 // ProbedVersion is wat de scanner na een geslaagde analyse wegschrijft.

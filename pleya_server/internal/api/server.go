@@ -316,6 +316,10 @@ func (s *Server) routeTable() []route {
 
 		{"GET " + p + "/libraries/{library_id}/items", s.authenticated(s.handleLibraryItems)},
 		{"GET " + p + "/libraries/{library_id}/facets", s.authenticated(s.handleLibraryFacets)},
+
+		// Afspeelplan (venster 5 deel 1, S17, matrixregel 46). Klasse
+		// authenticated met dezelfde bibliotheekautorisatie als het item.
+		{"POST " + p + "/playback/plan", s.authenticated(s.handlePlaybackPlan)},
 		{"GET " + p + "/items/{item_id}", s.authenticated(s.handleItem)},
 		{"GET " + p + "/items/{item_id}/children", s.authenticated(s.handleChildren)},
 		{"GET " + p + "/search", s.authenticated(s.handleSearch)},

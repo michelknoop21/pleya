@@ -4889,3 +4889,31 @@ build. De boekcover (A5) gebruikt dezelfde ladder zodra pakket A landt; er is ge
 
 **Consequences:** vijfenvijftig operaties; geen bestaand veld of enum verandert. De `unified_catalog`-filtercapaciteit rekent
 Pleya Server nu mee als filteruitvoerder; de lokale map is de bron die dat niet doet.
+
+## DEC-157: Venster 5 deel 1 gaat open voor `POST /playback/plan`, en het plan levert voorlopig alleen direct play
+
+**Date:** 2026-10-20
+**Status:** accepted. Opdracht van Michel op 20 oktober 2026 om M4 (S17 en S18) door te bouwen volgens de masterlijst.
+
+**Decision:**
+
+1. **Eén operatie, regel 46.** `POST /playback/plan` (klasse `authenticated`, bibliotheekautorisatie van het item), onder
+   `capabilities.playback_plan`. Body gesloten: `item_id`, `version_id?`, `capabilities?` (`DeviceCapabilities`, de vier lagen van
+   PS-5 met per veld `{value, confidence, overridden}`). Antwoord `PlaybackPlan` met `delivery_mode`, `stream_url`, `container`,
+   `video`/`audio`-besluit, `seekable`, `session_id` en `reason` plus `reasons`. De foutcode `playback.not_playable` (415) krijgt
+   hiermee zijn zender; hij stond al in het register.
+2. **De planner is een pure functie** (`internal/playback`) van versie-eigenschappen, capabilities en beleid, getest met een tabel
+   die per rij levering én reden vastlegt. Onbekend keurt niets af (gedrag van vóór PS-5). De drempel verschilt per eigenschap:
+   een `inferred` codec- of containerlijst telt mee, een `inferred` HDR-lijst niet. De bitrategrens geldt niet op het lokale netwerk.
+3. **Goedkoopste passende versie**, niet de beste: eerst de lichtste levering, dan de laagste bitrate, een onbekende bitrate als
+   duurste. Wie meer wil vraagt een `version_id`.
+4. **Beleid.** Zolang S18 niet bestaat staan remux en transcode uit (`Policy{}`), dus de server levert alleen `direct_play`. Laat het
+   harde filter niets over, dan is dat `415` met de redenen, de laatste `server.transcode_unavailable`. Zodra de transcoder er is,
+   verhoogt alleen `playbackPolicy()` en verandert de planner niet.
+5. **App.** `PleyaServerClient` stuurt de capabilities uit `DeviceCapabilitiesService` en volgt een `direct_play`-plan (versiekeuze).
+   Een mislukt of onbekend plan houdt direct play van de gekozen versie: een verkeerd gemeld toestel mag afspelen niet blokkeren.
+   De webspeler volgt in S8; het web heeft nog geen afspeelpad.
+
+**Consequences:** zesenvijftig operaties; geen bestaand veld verandert. `ColorTransfer` en `DoviProfile` staan nu op `catalog.Stream`
+(de kolommen bestonden al sinds 0002). S18 heeft het beleid en de sessiekant nog te doen.
+

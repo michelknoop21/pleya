@@ -304,7 +304,7 @@ func (s *Store) attachVersions(ctx context.Context, ids []id.ID, byID map[id.ID]
 		       s.bit_depth, s.frame_rate, s.channels, coalesce(s.channel_layout, ''),
 		       coalesce(s.language, ''), coalesce(s.title, ''),
 		       s.is_default, s.is_forced, s.is_hearing_impaired, s.is_external,
-		       coalesce(s.subtitle_format, '')
+		       coalesce(s.subtitle_format, ''), coalesce(s.color_transfer, ''), s.dovi_profile
 		FROM media_streams s
 		JOIN media_files f ON f.id = s.file_id
 		WHERE s.version_id = ANY($1) AND f.missing_since IS NULL
@@ -320,7 +320,7 @@ func (s *Store) attachVersions(ctx context.Context, ids []id.ID, byID map[id.ID]
 			&st.Ordinal, &st.Codec, &st.Profile, &st.Width, &st.Height, &st.BitDepth,
 			&st.FrameRate, &st.Channels, &st.ChannelLayout, &st.Language, &st.Title,
 			&st.IsDefault, &st.IsForced, &st.IsHearingImpaired, &st.IsExternal,
-			&st.SubtitleFormat); err != nil {
+			&st.SubtitleFormat, &st.ColorTransfer, &st.DoviProfile); err != nil {
 			return err
 		}
 		if v := versionByID[st.VersionID]; v != nil {

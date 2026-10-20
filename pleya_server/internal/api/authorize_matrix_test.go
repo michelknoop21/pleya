@@ -309,6 +309,10 @@ func matrixProbes() []matrixProbe {
 		{row: 45, name: "GET /libraries/{id}/facets", method: http.MethodGet,
 			path: func(f *matrixFixture) string { return "/pleya/v1/libraries/" + f.libraryID + "/facets" },
 			body: noBody, ok: http.StatusOK, expect: everyRole()},
+		{row: 46, name: "POST /playback/plan", method: http.MethodPost,
+			path: fixedPath("/pleya/v1/playback/plan"),
+			body: func(f *matrixFixture) any { return map[string]string{"item_id": f.itemID} },
+			ok:   http.StatusOK, expect: everyRole()},
 		{row: 39, name: "GET /watch-history", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/watch-history"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
 	}
