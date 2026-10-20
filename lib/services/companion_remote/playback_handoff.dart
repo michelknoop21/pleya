@@ -15,6 +15,8 @@ import 'package:flutter/foundation.dart';
 import '../../media/media_item.dart';
 import '../../profiles/profile.dart';
 import '../../profiles/profile_connection.dart';
+import '../../utils/app_logger.dart';
+import '../../utils/log_redaction_manager.dart';
 
 @immutable
 class PlaybackHandoffRequest {
@@ -25,6 +27,7 @@ class PlaybackHandoffRequest {
     required this.positionMs,
     required this.title,
     required this.from,
+    this.plexUserToken,
   });
 
   /// Correlates the request with the acknowledgement.
@@ -37,6 +40,11 @@ class PlaybackHandoffRequest {
   /// Name of the sending device, shown on the Apple TV.
   final String from;
 
+  /// The Plex token of the sender's protected profile (A-23c). The Apple TV
+  /// checks it with plex.tv and then skips the PIN of that profile; without it,
+  /// or when the check fails, it asks the PIN. Never log it.
+  final String? plexUserToken;
+
   Map<String, dynamic> toData() => {
     'id': id,
     'serverId': serverId,
@@ -44,7 +52,24 @@ class PlaybackHandoffRequest {
     'positionMs': positionMs,
     'title': title,
     'from': from,
+    if (plexUserToken != null) _plexUserTokenKey: plexUserToken,
   };
+
+  static const _plexUserTokenKey = 'plexUserToken';
+
+  /// A Plex token is about 20 characters; anything far longer is not one and
+  /// is dropped before it reaches plex.tv or the log redaction list.
+  static const maxPlexUserTokenLength = 128;
+
+  PlaybackHandoffRequest withPlexUserToken(String? token) => PlaybackHandoffRequest(
+    id: id,
+    serverId: serverId,
+    itemId: itemId,
+    positionMs: positionMs,
+    title: title,
+    from: from,
+    plexUserToken: token,
+  );
 
   /// Null for a malformed request: it came over the wire, so nothing is trusted.
   static PlaybackHandoffRequest? fromData(Map<String, dynamic>? data) {
@@ -59,6 +84,8 @@ class PlaybackHandoffRequest {
     if (positionMs is! int || positionMs < 0) return null;
     final title = data['title'];
     final from = data['from'];
+    // A token of the wrong type only costs the PIN skip, not the handoff.
+    final token = data[_plexUserTokenKey];
     return PlaybackHandoffRequest(
       id: id,
       serverId: serverId,
@@ -66,6 +93,7 @@ class PlaybackHandoffRequest {
       positionMs: positionMs,
       title: title is String ? title : '',
       from: from is String ? from : '',
+      plexUserToken: token is String && token.isNotEmpty && token.length <= maxPlexUserTokenLength ? token : null,
     );
   }
 }
@@ -163,6 +191,71 @@ Profile? profileForHandoffSender(
       if (profile.isLocal && localIds.contains(profile.id)) profile,
   ];
   return locals.length == 1 ? locals.single : null;
+}
+
+/// The Plex token a phone sends along so the Apple TV can skip the PIN of the
+/// sender's profile there (A-23c): only when [profile], the active profile on
+/// the phone, is protected itself, and only the token of its [row] for
+/// [plexConnectionId], the Plex account the handshake used. Null otherwise.
+String? plexUserTokenForHandoff({
+  required Profile? profile,
+  required String? plexConnectionId,
+  required ProfileConnection? row,
+}) {
+  if (profile == null || !profile.isPinProtected) return null;
+  if (plexConnectionId == null || plexConnectionId.isEmpty) return null;
+  if (profile.isPlexHome && profile.parentConnectionId != plexConnectionId) return null;
+  if (!profile.isPlexHome && !profile.isLocal) return null;
+  if (row == null || row.profileId != profile.id || row.connectionId != plexConnectionId || !row.hasToken) return null;
+  return row.userToken;
+}
+
+/// The Plex user a token must belong to before it replaces the PIN of [target]
+/// (A-23c), or null when no token may: [target] is not protected, or it is not
+/// tied to exactly that user. A Plex Home profile on the account of the
+/// handshake [connectionId]; a local profile only with a single join row
+/// ([targetRows]), and that row on [connectionId]. A local profile with more
+/// rows opens more than that one Plex user, so its PIN stays.
+String? handoffTokenProofUuid(
+  Profile target, {
+  required String connectionId,
+  required List<ProfileConnection> targetRows,
+}) {
+  if (!target.isPinProtected || connectionId.isEmpty) return null;
+  if (target.isPlexHome) {
+    final uuid = target.plexHomeUserUuid;
+    return target.parentConnectionId == connectionId && uuid != null && uuid.isNotEmpty ? uuid : null;
+  }
+  if (!target.isLocal || targetRows.length != 1) return null;
+  final row = targetRows.single;
+  if (row.profileId != target.id || row.connectionId != connectionId || row.userIdentifier.isEmpty) return null;
+  return row.userIdentifier;
+}
+
+/// Returns [token] when plex.tv says it belongs to [expectedUuid] and the
+/// handshake named that same user ([peerUuid]); null on anything else,
+/// including an error or no answer within [timeout]. The PIN then stays.
+Future<String?> verifyPlexHomeTokenProof({
+  required Future<Map<String, dynamic>> Function(String token) userInfo,
+  required String? token,
+  required String expectedUuid,
+  required String? peerUuid,
+  Duration timeout = const Duration(seconds: 8),
+}) async {
+  if (token == null || token.isEmpty || expectedUuid.isEmpty || peerUuid != expectedUuid) return null;
+  try {
+    final uuid = (await userInfo(token).timeout(timeout))['uuid'];
+    if (uuid is String && uuid.trim() == expectedUuid) {
+      // Only a proven token joins the bounded redaction list: forged ones would push real tokens out.
+      LogRedactionManager.registerToken(token);
+      return token;
+    }
+    appLogger.w('Playback handoff: the Plex token belongs to another user');
+  } catch (e) {
+    // Only the type: an error text could carry the request.
+    appLogger.w('Playback handoff: the Plex token could not be checked (${e.runtimeType})');
+  }
+  return null;
 }
 
 class _Waiting {
