@@ -21,6 +21,10 @@ func TestProviderMetadataAndCachedArtworkReachTheClient(t *testing.T) {
 	e := newEnv(t, withCacheDir(cache))
 	e.setup(e.putSetupCode())
 
+	// De genrepoort (B2) staat pas open bij genoeg dekking; hier gaat het om de keten.
+	if _, err := e.pool.Exec(context.Background(), `UPDATE media_items SET genres = ARRAY['x'] WHERE kind IN ('movie', 'show')`); err != nil {
+		t.Fatal(err)
+	}
 	grease := e.findMovie("Grease")
 	ctx := context.Background()
 	itemID := id.MustParse(grease.ID)

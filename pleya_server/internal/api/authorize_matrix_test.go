@@ -116,6 +116,7 @@ type matrixFixture struct {
 	self      map[string]id.ID
 	other     id.ID  // het doel van een beheerhandeling: een bestaande gebruiker
 	libraryID string // een bestaande bibliotheek, voor de PATCH/DELETE-probes van S2.2
+	itemID    string // een bestaande film, voor de correcties op de metadata (41 tot en met 44)
 
 	// S2.4: de laatste scan van libraryID, een afgeronde job (cancel geeft 409)
 	// en een pending scanjob met dedupe scan:<libraryID> (POST /scan geeft
@@ -292,6 +293,19 @@ func matrixProbes() []matrixProbe {
 		{row: 40, name: "POST /libraries/{id}/adopt", method: http.MethodPost,
 			path: func(f *matrixFixture) string { return "/pleya/v1/libraries/" + f.libraryID + "/adopt" },
 			body: noBody, ok: http.StatusConflict, expect: adminSurface()},
+		{row: 41, name: "GET /libraries/{id}/metadata-coverage", method: http.MethodGet,
+			path: func(f *matrixFixture) string { return "/pleya/v1/libraries/" + f.libraryID + "/metadata-coverage" },
+			body: noBody, ok: http.StatusOK, expect: adminSurface()},
+		{row: 42, name: "GET /metadata/attention", method: http.MethodGet,
+			path: fixedPath("/pleya/v1/metadata/attention"), body: noBody,
+			ok: http.StatusOK, expect: adminSurface()},
+		{row: 43, name: "PUT /items/{id}/metadata-match", method: http.MethodPut,
+			path: func(f *matrixFixture) string { return "/pleya/v1/items/" + f.itemID + "/metadata-match" },
+			body: func(*matrixFixture) any { return map[string]string{"external_id": "603"} },
+			ok:   http.StatusAccepted, expect: adminSurface()},
+		{row: 44, name: "DELETE /items/{id}/metadata-match", method: http.MethodDelete,
+			path: func(f *matrixFixture) string { return "/pleya/v1/items/" + f.itemID + "/metadata-match" },
+			body: noBody, ok: http.StatusOK, expect: adminSurface()},
 		{row: 39, name: "GET /watch-history", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/watch-history"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
 	}
@@ -348,6 +362,10 @@ func newMatrixFixture(e *env) *matrixFixture {
 	e.markDBManaged(e.t, f.libraryID)
 
 	ctx := context.Background()
+	// Een bestaande film voor de metadatacorrecties (regel 43 en 44).
+	if err := e.pool.QueryRow(ctx, `SELECT id FROM media_items WHERE kind = 'movie' ORDER BY id LIMIT 1`).Scan(&f.itemID); err != nil {
+		e.t.Fatalf("een fixturefilm zoeken: %v", err)
+	}
 	runID, _, _, err := e.store.LatestScanRun(ctx, e.libs[0].ID)
 	if err != nil {
 		e.t.Fatalf("laatste scan van de fixturebibliotheek: %v", err)

@@ -55,6 +55,10 @@ const (
 	auditStartScan = "startScan"
 	auditCancelJob = "cancelJob"
 	auditRetryJob  = "retryJob"
+
+	// Correcties op de providermatch (S22.5). De lees-endpoints schrijven niets weg.
+	auditSetMetadataMatch   = "setMetadataMatch"
+	auditClearMetadataMatch = "clearMetadataMatch"
 )
 
 // auditEvent schrijft één regel over de aanvrager van deze aanvraag.

@@ -272,6 +272,7 @@ func run() int {
 		Watch:              watch.NewStore(pool),
 		MediaRoots:         cfg.MediaDirs,
 		CacheDir:           cfg.CacheDir,
+		OnMetadataChange:   onScanned,
 		Artwork:            artwork.New(cfg.FFmpegPath, cfg.CacheDir, logging.Component(log, "artwork")),
 		Jobs:               runner,
 		Signer:             signer,

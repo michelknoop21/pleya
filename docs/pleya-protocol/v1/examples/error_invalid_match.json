@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "library.invalid_match",
+    "message": "external_id must be a positive number",
+    "retryable": false
+  }
+}

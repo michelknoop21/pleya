@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
@@ -38,8 +39,12 @@ type Provider interface {
 }
 
 // currentPass is het rondenummer van deze versie van de ronde. Verhogen zet
-// elk item één keer opnieuw aan de beurt. 2: .nfo als bron (M2b).
-const currentPass = 2
+// elk item één keer opnieuw aan de beurt. 2: .nfo als bron. 3: alternatieven bij
+// titels die niet matchen, en handmatige keuzes (M2b).
+const currentPass = 3
+
+// maxAlternatives is het aantal zoektreffers dat een beheerder te zien krijgt.
+const maxAlternatives = 5
 
 // Runner voert providerrondes uit.
 type Runner struct {
@@ -83,6 +88,8 @@ type RoundStats struct {
 	Matched, Ambiguous, Unmatched, Failed, ArtworkSaved int
 	// ByID telt matches die via een externe id uit de .nfo liepen, zonder zoeken.
 	ByID int
+	// Manual telt matches die een beheerder koos.
+	Manual int
 }
 
 // Round verwerkt alle titels die aan de beurt zijn. Een tijdelijke fout laat het
@@ -159,13 +166,17 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 		side = r.sidecar.Read(t)
 	}
 
-	state, chosen, byID, err := r.decide(ctx, t, side)
+	state, chosen, how, results, err := r.decide(ctx, t, side)
 	if err != nil {
 		return err
 	}
-	if byID {
+	switch how {
+	case byManual:
+		st.Manual++
+	case bySidecar:
 		st.ByID++
 	}
+	alternatives := alternativesOf(results)
 
 	// De .nfo vult wat de provider niet vult, en wint nergens van een
 	// providerwaarde (rang in ApplyMetadata). Hij gaat ook door bij een titel die
@@ -183,7 +194,8 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 		if err := applySidecar(); err != nil {
 			return err
 		}
-		return r.store.SaveCandidate(ctx, catalog.MetadataCandidate{Pass: currentPass, ItemID: t.ID, Provider: r.name, State: state})
+		return r.store.SaveCandidate(ctx, catalog.MetadataCandidate{Pass: currentPass, ItemID: t.ID, Provider: r.name, State: state,
+			Details: alternativesDetails(alternatives)})
 	case catalog.CandidateUnmatched:
 		st.Unmatched++
 		if err := applySidecar(); err != nil {
@@ -191,7 +203,8 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 		}
 		next := time.Now().Add(r.retryUnmatch)
 		return r.store.SaveCandidate(ctx, catalog.MetadataCandidate{Pass: currentPass,
-			ItemID: t.ID, Provider: r.name, State: state, NextAttempt: &next})
+			ItemID: t.ID, Provider: r.name, State: state, NextAttempt: &next,
+			Details: alternativesDetails(alternatives)})
 	}
 
 	details, err := withBackoff(ctx, r, func() (catalog.MetadataDetails, error) {
@@ -250,23 +263,39 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 	return nil
 }
 
-// decide zoekt met het jaar erbij, en zonder jaar als dat niets oplevert: een
-// bestandsnaam die een jaar afwijkt van de releasedatum mag een match niet
-// onmogelijk maken, en het jaarfilter houdt een gangbare titel binnen de eerste
-// pagina treffers.
-func (r *Runner) decide(ctx context.Context, t catalog.MetadataTarget, side *nfo.Result) (string, SearchResult, bool, error) {
+// how zegt langs welke weg een match tot stand kwam.
+type how int
+
+const (
+	bySearch how = iota
+	bySidecar
+	byManual
+)
+
+// decide bepaalt de uitkomst voor één titel. Volgorde: een keuze van een
+// beheerder, een TMDB-id uit de .nfo, en dan zoeken met het jaar erbij en
+// zonder jaar als dat niets oplevert (een bestandsnaam die een jaar afwijkt van
+// de releasedatum mag een match niet onmogelijk maken, en het jaarfilter houdt
+// een gangbare titel binnen de eerste pagina treffers). De zoektreffers komen
+// mee terug voor de alternatieven.
+func (r *Runner) decide(ctx context.Context, t catalog.MetadataTarget, side *nfo.Result) (string, SearchResult, how, []SearchResult, error) {
+	// Een handmatige keuze wint van alles: een mens heeft naar deze titel gekeken.
+	if n, err := strconv.Atoi(t.ManualExternalID); err == nil && n > 0 {
+		return catalog.CandidateMatched, SearchResult{ID: n, Title: t.Title}, byManual, nil, nil
+	}
 	// Stap 1 van de driestapsregel: een TMDB-id in de .nfo is geen gok maar een
 	// verwijzing, dus zoeken is overbodig en een dubbelzinnige titel geen probleem.
 	if side != nil {
 		if n, err := strconv.Atoi(side.IDs["tmdb"]); err == nil && n > 0 {
-			return catalog.CandidateMatched, SearchResult{ID: n, Title: t.Title}, true, nil
+			return catalog.CandidateMatched, SearchResult{ID: n, Title: t.Title}, bySidecar, nil, nil
 		}
 	}
+
 	results, err := withBackoff(ctx, r, func() ([]SearchResult, error) {
 		return r.provider.Search(ctx, t.Kind, t.Title, t.Year)
 	})
 	if err != nil {
-		return "", SearchResult{}, false, err
+		return "", SearchResult{}, bySearch, nil, err
 	}
 	state, chosen := Decide(t.Title, t.Year, results)
 	if state == catalog.CandidateUnmatched && t.Year != nil {
@@ -274,11 +303,33 @@ func (r *Runner) decide(ctx context.Context, t catalog.MetadataTarget, side *nfo
 			return r.provider.Search(ctx, t.Kind, t.Title, nil)
 		})
 		if err != nil {
-			return "", SearchResult{}, false, err
+			return "", SearchResult{}, bySearch, nil, err
 		}
 		state, chosen = Decide(t.Title, t.Year, results)
 	}
-	return state, chosen, false, nil
+	return state, chosen, bySearch, results, nil
+}
+
+// alternativesOf maakt van zoektreffers de lijst die een beheerder kan kiezen.
+func alternativesOf(results []SearchResult) []catalog.Alternative {
+	var out []catalog.Alternative
+	for _, res := range results {
+		if res.ID <= 0 || strings.TrimSpace(res.Title) == "" {
+			continue
+		}
+		out = append(out, catalog.Alternative{ExternalID: strconv.Itoa(res.ID), Title: res.Title, Year: res.Year})
+		if len(out) == maxAlternatives {
+			break
+		}
+	}
+	return out
+}
+
+func alternativesDetails(alts []catalog.Alternative) *catalog.MetadataDetails {
+	if len(alts) == 0 {
+		return nil
+	}
+	return &catalog.MetadataDetails{Alternatives: alts}
 }
 
 // recordFailure zet een mislukt item achteraan met oplopende vertraging, zodat
@@ -408,7 +459,7 @@ func (r *Runner) Run(ctx context.Context, trigger <-chan struct{}, interval time
 			r.log.Info("metadata-ronde klaar", slog.String("reason", reason),
 				slog.Int("matched", st.Matched), slog.Int("ambiguous", st.Ambiguous),
 				slog.Int("unmatched", st.Unmatched), slog.Int("failed", st.Failed),
-				slog.Int("artwork", st.ArtworkSaved), slog.Int("by_id", st.ByID))
+				slog.Int("artwork", st.ArtworkSaved), slog.Int("by_id", st.ByID), slog.Int("manual", st.Manual))
 		}
 	}
 	do("startup")

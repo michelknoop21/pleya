@@ -367,6 +367,36 @@
       "file": "watch_history.json",
       "schema": "WatchHistory",
       "note": "DEC-143: een film en een aflevering, de aflevering met haar serie"
+    },
+    {
+      "file": "metadata_coverage.json",
+      "schema": "MetadataCoverage",
+      "note": "B5: dekking van een bibliotheek met de genrepoort open"
+    },
+    {
+      "file": "metadata_attention_list.json",
+      "schema": "MetadataAttentionList",
+      "note": "S22.5: een niet-gevonden titel met alternatieven en een afgewezen titel"
+    },
+    {
+      "file": "metadata_match_accepted.json",
+      "schema": "MetadataMatch",
+      "note": "S22.5: PUT /items/{id}/metadata-match, de keuze staat vast"
+    },
+    {
+      "file": "metadata_match_rejected.json",
+      "schema": "MetadataMatch",
+      "note": "S22.5: DELETE /items/{id}/metadata-match"
+    },
+    {
+      "file": "set_metadata_match_request.json",
+      "schema": "SetMetadataMatchRequest",
+      "note": "S22.5: de gesloten aanvraagbody"
+    },
+    {
+      "file": "error_invalid_match.json",
+      "schema": "ErrorEnvelope",
+      "note": "S22.5: external_id is geen positief geheel getal"
     }
   ]
 }

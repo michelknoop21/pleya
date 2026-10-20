@@ -55,6 +55,7 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"library.confirm_mismatch":       {409, false},
 		"storage.root_not_offered":       {400, false},
 		"job.not_cancellable":            {409, false},
+		"library.invalid_match":          {400, false},
 	}
 
 	// Deze tabel spiegelt hoofdstuk 7.1 voor zover deze server hem draait.

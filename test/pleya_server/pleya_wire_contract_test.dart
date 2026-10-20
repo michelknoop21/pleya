@@ -41,6 +41,16 @@ void main() {
   /// device fields on login in `pleya_server_sessions_test.dart`.
   const deferredSchemas = <String>{
     // Beheer, geen Flutter-consument tot S10.
+    // Venster 3, B5 en S22.5: dekking, aandachtslijst en correcties van de
+    // metadata. De app toont geen beheer; het correctiescherm is van het web.
+    'MetadataCoverage',
+    'MetadataAlternative',
+    'MetadataAttentionState',
+    'MetadataAttention',
+    'MetadataAttentionList',
+    'SetMetadataMatchRequest',
+    'MetadataMatchState',
+    'MetadataMatch',
     'Scan',
     'Job',
     'UserList',
@@ -152,8 +162,8 @@ void main() {
       );
     });
 
-    test('covers the 78 fixtures the contract ships', () {
-      expect(fixtures, hasLength(78));
+    test('covers the 84 fixtures the contract ships', () {
+      expect(fixtures, hasLength(84));
     });
 
     for (final fixture in fixtures) {

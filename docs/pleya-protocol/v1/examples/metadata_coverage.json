@@ -1,0 +1,9 @@
+{
+  "items": 478,
+  "with_sidecar": 440,
+  "with_summary": 451,
+  "with_genres": 447,
+  "ratio": 0.935,
+  "threshold": 0.8,
+  "gate_met": true
+}

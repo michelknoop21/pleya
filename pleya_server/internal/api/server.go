@@ -103,6 +103,10 @@ type Options struct {
 	// is dan false.
 	Artwork *artwork.Resizer
 
+	// OnMetadataChange wekt de metadata-ronde na een handmatige correctie. Nil is
+	// toegestaan: de ronde pakt de wijziging dan bij haar volgende tik op.
+	OnMetadataChange func()
+
 	// Jobs is de wachtrij achter POST /storage/roots/recheck (S2.3). Nil
 	// betekent dat dat endpoint niets kan inplannen en server.internal
 	// antwoordt in plaats van te doen alsof er een ronde loopt.
@@ -302,6 +306,13 @@ func (s *Server) routeTable() []route {
 		{"GET " + p + "/jobs", s.authenticated(s.handleListJobs)},
 		{"POST " + p + "/jobs/{job_id}/cancel", s.authenticated(s.handleCancelJob)},
 		{"POST " + p + "/jobs/{job_id}/retry", s.authenticated(s.handleRetryJob)},
+
+		// Metadata (venster 3, B5 en S22.5, matrixregels 41 tot en met 44). Klasse
+		// admin, in de handler zoals hierboven.
+		{"GET " + p + "/libraries/{library_id}/metadata-coverage", s.authenticated(s.handleMetadataCoverage)},
+		{"GET " + p + "/metadata/attention", s.authenticated(s.handleMetadataAttention)},
+		{"PUT " + p + "/items/{item_id}/metadata-match", s.authenticated(s.handleSetMetadataMatch)},
+		{"DELETE " + p + "/items/{item_id}/metadata-match", s.authenticated(s.handleClearMetadataMatch)},
 
 		{"GET " + p + "/libraries/{library_id}/items", s.authenticated(s.handleLibraryItems)},
 		{"GET " + p + "/items/{item_id}", s.authenticated(s.handleItem)},
