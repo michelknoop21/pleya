@@ -63,8 +63,10 @@ Nothing user-facing since the last published build.
   if it cannot, the Apple TV asks for the PIN as before. This works for Plex Home profiles and
   for a Pleya profile linked to a single Plex user.
 - **Filter and sort a Pleya Server library.** Libraries on a Pleya Server can be filtered by
-  genre, year, watch state, age rating, audio language and resolution, and sorted by last
-  played and running time. The filter lists only offer values that occur in that library.
+  genre, year, age rating, audio language and resolution, narrowed to unwatched titles, and
+  sorted by last played and running time. The filter lists only offer values that occur in that
+  library. This needs an up-to-date Pleya Server; the genre list appears once enough titles in
+  the library have genres.
 
 ### Improved
 
@@ -98,8 +100,10 @@ Nothing user-facing since the last published build.
   if it cannot, the Apple TV asks for the PIN as before. This works for Plex Home profiles and
   for a Pleya profile linked to a single Plex user.
 - **Filter and sort a Pleya Server library.** Libraries on a Pleya Server can be filtered by
-  genre, year, watch state, age rating, audio language and resolution, and sorted by last
-  played and running time. The filter lists only offer values that occur in that library.
+  genre, year, age rating, audio language and resolution, narrowed to unwatched titles, and
+  sorted by last played and running time. The filter lists only offer values that occur in that
+  library. This needs an up-to-date Pleya Server; the genre list appears once enough titles in
+  the library have genres.
 
 ### Improved
 
