@@ -44,6 +44,8 @@ void main() {
     // Beheer, geen Flutter-consument tot S10.
     // Venster 3, B5 en S22.5: dekking, aandachtslijst en correcties van de
     // metadata. De app toont geen beheer; het correctiescherm is van het web.
+    // S18.5: het beheer van omzetsessies is een beheerscherm (S10, scherm 37).
+    'TranscodeSessionList',
     'MetadataCoverage',
     'MetadataAlternative',
     'MetadataAttentionState',
@@ -178,8 +180,8 @@ void main() {
       );
     });
 
-    test('covers the 89 fixtures the contract ships', () {
-      expect(fixtures, hasLength(89));
+    test('covers the 90 fixtures the contract ships', () {
+      expect(fixtures, hasLength(90));
     });
 
     for (final fixture in fixtures) {

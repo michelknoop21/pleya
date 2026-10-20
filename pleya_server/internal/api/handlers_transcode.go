@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/playback"
@@ -71,6 +72,9 @@ func (s *Server) startTranscode(w http.ResponseWriter, r *http.Request, plan pla
 	switch {
 	case errors.Is(err, transcode.ErrBusy):
 		writeError(w, s.log, CodeTranscodeBusy, "all transcode sessions are in use", nil)
+		return nil, false
+	case errors.Is(err, transcode.ErrStopped):
+		writeError(w, s.log, CodeTranscodeFailed, "the playback session was stopped while it started", nil)
 		return nil, false
 	case err != nil:
 		s.log.Warn("omzetten starten mislukt", "error", err.Error())
@@ -240,4 +244,78 @@ func between(s, start, end string) string {
 		return ""
 	}
 	return rest[:j]
+}
+
+// TranscodeHardwareWire zegt of omzetten versneld wordt, en zo niet waarom.
+type TranscodeHardwareWire struct {
+	Accel  string  `json:"accel"`
+	Reason *string `json:"reason"`
+}
+
+// TranscodeSessionWire is één lopende omzetting, voor beheer.
+type TranscodeSessionWire struct {
+	ID              string  `json:"id"`
+	UserID          string  `json:"user_id"`
+	VersionID       string  `json:"version_id"`
+	Mode            string  `json:"mode"`
+	HWAccel         *string `json:"hw_accel"`
+	StartedAt       string  `json:"started_at"`
+	LastHeartbeatAt string  `json:"last_heartbeat_at"`
+}
+
+// TranscodeSessionList is het antwoord van GET /transcode-sessions.
+type TranscodeSessionList struct {
+	MaxSessions int                    `json:"max_sessions"`
+	Hardware    TranscodeHardwareWire  `json:"hardware"`
+	Items       []TranscodeSessionWire `json:"items"`
+}
+
+func (s *Server) handleListTranscodeSessions(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAdmin(w, r); !ok {
+		return
+	}
+	out := TranscodeSessionList{Hardware: TranscodeHardwareWire{Accel: "none"}, Items: []TranscodeSessionWire{}}
+	if m := s.opts.Transcode; m != nil {
+		out.MaxSessions = m.Max()
+		if m.HW() != transcode.HWNone {
+			out.Hardware.Accel = string(m.HW())
+		} else if reason := m.HWReason(); reason != "" {
+			out.Hardware.Reason = &reason
+		}
+		for _, sess := range m.List() {
+			item := TranscodeSessionWire{
+				ID: sess.ID.String(), UserID: sess.UserID.String(), VersionID: sess.VersionID.String(),
+				Mode: string(sess.Mode), StartedAt: formatTime(sess.StartedAt), LastHeartbeatAt: formatTime(sess.LastBeat),
+			}
+			if sess.HW != transcode.HWNone {
+				hw := string(sess.HW)
+				item.HWAccel = &hw
+			}
+			out.Items = append(out.Items, item)
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+func (s *Server) handleStopTranscodeSession(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAdmin(w, r); !ok {
+		return
+	}
+	sid, ok := s.pathID(w, r, "session_id")
+	if !ok {
+		return
+	}
+	var err error = transcode.ErrNotFound
+	if s.opts.Transcode != nil {
+		err = s.opts.Transcode.Stop(sid)
+	}
+	switch {
+	case errors.Is(err, transcode.ErrNotFound):
+		writeError(w, s.log, CodeNotFound, "not found", nil)
+	case err != nil:
+		writeInternal(w, s.log, err)
+	default:
+		s.auditEvent(r, auditStopTranscodeSession, sid.String(), audit.OutcomeOK, nil)
+		w.WriteHeader(http.StatusNoContent)
+	}
 }
