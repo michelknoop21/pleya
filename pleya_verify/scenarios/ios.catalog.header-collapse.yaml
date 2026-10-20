@@ -19,14 +19,21 @@ steps:
   - assert: {id: "catalog.header[movies]", insideViewport: true}
   - assert: {id: "catalog.chip.sources[movies]", insideViewport: true}
   - snapshot: catalog-top-shown
-  # Scroll down: the menu folds away, the count line and the grid stay.
+  # Scroll down: the panel (title row, chips, count line) folds away and the
+  # posters scroll up under the translucent status bar zone.
   - drag: {startX: 187, startY: 560, endX: 187, endY: 200, durationMs: 400}
   - settle: 800
   - snapshot: catalog-top-hidden
-  - assert: {id: "catalog.count[movies]", insideViewport: true}
   # A short scroll up mid-list brings it back.
   - drag: {startX: 187, startY: 300, endX: 187, endY: 380, durationMs: 400}
   - settle: 800
   - assert: {id: "catalog.header[movies]", insideViewport: true}
   - assert: {id: "catalog.chip.sources[movies]", insideViewport: true}
   - snapshot: catalog-top-back-mid-list
+  # Bottom edge: scrolled to the end, the posters pass under the home
+  # indicator and the last row still scrolls clear of it.
+  - drag: {startX: 187, startY: 700, endX: 187, endY: 100, durationMs: 300}
+  - drag: {startX: 187, startY: 700, endX: 187, endY: 100, durationMs: 300}
+  - drag: {startX: 187, startY: 700, endX: 187, endY: 100, durationMs: 300}
+  - settle: 1000
+  - snapshot: catalog-bottom-edge

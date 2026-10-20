@@ -21,6 +21,7 @@
 library;
 
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -43,6 +44,7 @@ import '../../providers/unified_catalogs.dart';
 import '../../screens/tv/tv_unified_activation.dart';
 import '../../services/unified_catalog/mobile_media_source_picker_route.dart';
 import '../../services/unified_catalog/unified_artwork_prefetcher.dart';
+import '../../services/unified_catalog/unified_catalog_snapshot.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../services/unified_catalog/unified_catalog_query_store.dart';
 import '../../theme/mono_tokens.dart';
@@ -130,6 +132,13 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   final _scrollController = ScrollController();
   bool _headerHidden = false;
   double _headerScrollTravel = 0;
+  final _panelKey = GlobalKey();
+
+  /// Height of the translucent top panel (status bar inset, title row, chips
+  /// and count line), measured after layout. The grid scrolls under the panel
+  /// and carries this much padding on top, so at offset 0 the first row starts
+  /// below it.
+  double _panelHeight = 0;
   UnifiedArtworkPrefetcher? _prefetcher;
 
   UnifiedCatalogPreferences _preferences = UnifiedCatalogPreferences.defaults;
@@ -326,6 +335,9 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     if (metrics.pixels > metrics.maxScrollExtent) return false;
     final delta = notification.scrollDelta ?? 0;
     if (delta == 0) return false;
+    // The last step of a bottom bounce travels back up without a finger on
+    // the screen; it must not reveal the panel.
+    if (delta < 0 && notification.dragDetails == null && metrics.pixels >= metrics.maxScrollExtent - 1) return false;
     // A reversal restarts the count, so only a sustained run changes the state.
     if (delta.sign != _headerScrollTravel.sign) _headerScrollTravel = 0;
     _headerScrollTravel += delta;
@@ -335,6 +347,16 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
       _setHeaderHidden(false);
     }
     return false;
+  }
+
+  /// Content that stops overflowing (source change, refresh, rotation to a
+  /// larger viewport) leaves nothing to scroll back with, so the panel returns.
+  void _onHeaderMetrics(ScrollMetrics metrics) {
+    if (metrics.axis != Axis.vertical) return;
+    if (metrics.pixels <= 0 || metrics.maxScrollExtent <= 0) {
+      _headerScrollTravel = 0;
+      _setHeaderHidden(false);
+    }
   }
 
   void _setHeaderHidden(bool hidden) {
@@ -402,28 +424,74 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
         },
         child: Builder(
           // Below the host, so the chips can reach it.
-          builder: (sheetContext) => Scaffold(
-            body: SafeArea(
-              bottom: false,
-              child: Column(
+          builder: (sheetContext) {
+            _schedulePanelMeasure();
+            final safe = MediaQuery.paddingOf(context);
+            final background = Theme.of(context).scaffoldBackgroundColor;
+            return Scaffold(
+              // The grid scrolls under the status bar, the top panel and the
+              // home indicator; only the panel and two fades sit above it.
+              body: Stack(
                 children: [
-                  // Only while a grid is scrolling: an empty or loading body
-                  // has nothing to scroll back with, so the menu stays put.
-                  _CollapsibleTopMenu(
-                    collapsed: _headerHidden && _catalog.snapshot.groups.isNotEmpty,
-                    child: Column(children: [_buildHeader(), _buildChips(sheetContext, filters)]),
+                  Positioned.fill(child: _buildBody(filters)),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    // Only while a grid is scrolling: an empty or loading body
+                    // has nothing to scroll back with, so the panel stays put.
+                    child: _CollapsibleTopPanel(
+                      collapsed: _headerHidden && _catalog.snapshot.groups.isNotEmpty,
+                      background: background,
+                      measureKey: _panelKey,
+                      child: Padding(
+                        padding: EdgeInsets.only(top: safe.top),
+                        child: Column(
+                          children: [
+                            _buildHeader(),
+                            _buildChips(sheetContext, filters),
+                            const SizedBox(height: 8),
+                            _buildCountRow(filters),
+                            const SizedBox(height: 8),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  _buildCountRow(filters),
-                  const SizedBox(height: 8),
-                  Expanded(child: _buildBody(filters)),
+                  // Status bar zone: stays when the panel is gone, so the
+                  // clock and Dynamic Island keep a readable backdrop.
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: safe.top + 12,
+                    child: _EdgeFade(color: background, fromTop: true),
+                  ),
+                  // Home indicator zone.
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: safe.bottom + 16,
+                    child: _EdgeFade(color: background, fromTop: false),
+                  ),
                 ],
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
+  }
+
+  void _schedulePanelMeasure() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final box = _panelKey.currentContext?.findRenderObject();
+      if (box is! RenderBox || !box.hasSize) return;
+      if ((box.size.height - _panelHeight).abs() < 0.5) return;
+      setState(() => _panelHeight = box.size.height);
+    });
   }
 
   Widget _buildHeader() {
@@ -556,81 +624,100 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     final snapshot = _catalog.snapshot;
 
     if (!_preferencesLoaded || (_catalog.isInitialLoading && snapshot.groups.isEmpty)) {
-      return _CatalogSkeletonGrid(cardWidth: _cardWidth(MediaQuery.sizeOf(context).width));
+      return Padding(
+        padding: EdgeInsets.only(top: _panelHeight),
+        child: _CatalogSkeletonGrid(cardWidth: _cardWidth(MediaQuery.sizeOf(context).width)),
+      );
     }
 
     if (snapshot.groups.isEmpty) {
-      if (snapshot.initialLoadFailed || _catalog.loadFailed) {
-        return _EmptyState(
-          title: t.unifiedCatalog.states.errorTitle,
-          body: t.unifiedCatalog.states.errorBody,
-          actionLabel: t.common.retry,
-          onAction: _catalog.refresh,
-        );
-      }
-      if (!filters.isEmpty) {
-        return _EmptyState(
-          title: t.unifiedCatalog.states.filterEmptyTitle,
-          body: t.unifiedCatalog.states.filterEmptyBody,
-          actionLabel: t.unifiedCatalog.states.clearFilters,
-          onAction: () => _updatePreferences(_preferences.copyWith(filters: UnifiedCatalogFilterSelection.empty)),
-        );
-      }
-      return _EmptyState(title: t.unifiedCatalog.states.emptyTitle, body: t.unifiedCatalog.states.emptyBody);
+      return Padding(
+        padding: EdgeInsets.only(top: _panelHeight),
+        child: _buildEmptyState(filters, snapshot),
+      );
     }
+    return _buildGrid(filters, snapshot);
+  }
 
+  Widget _buildEmptyState(UnifiedCatalogFilterSelection filters, UnifiedCatalogSnapshot snapshot) {
+    if (snapshot.initialLoadFailed || _catalog.loadFailed) {
+      return _EmptyState(
+        title: t.unifiedCatalog.states.errorTitle,
+        body: t.unifiedCatalog.states.errorBody,
+        actionLabel: t.common.retry,
+        onAction: _catalog.refresh,
+      );
+    }
+    if (!filters.isEmpty) {
+      return _EmptyState(
+        title: t.unifiedCatalog.states.filterEmptyTitle,
+        body: t.unifiedCatalog.states.filterEmptyBody,
+        actionLabel: t.unifiedCatalog.states.clearFilters,
+        onAction: () => _updatePreferences(_preferences.copyWith(filters: UnifiedCatalogFilterSelection.empty)),
+      );
+    }
+    return _EmptyState(title: t.unifiedCatalog.states.emptyTitle, body: t.unifiedCatalog.states.emptyBody);
+  }
+
+  Widget _buildGrid(UnifiedCatalogFilterSelection filters, UnifiedCatalogSnapshot snapshot) {
     return MobileRefreshScope(
       onRefresh: _catalog.refresh,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final cardWidth = _cardWidth(constraints.maxWidth);
           final cardHeight = cardWidth / (2 / 3) + MediaCardGridLayout.textExtentFor(context);
-          return NotificationListener<ScrollNotification>(
+          return NotificationListener<ScrollMetricsNotification>(
             onNotification: (notification) {
-              _onScroll();
-              return _onHeaderScroll(notification);
+              _onHeaderMetrics(notification.metrics);
+              return false;
             },
-            child: CustomScrollView(
-              controller: _scrollController,
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(mobileRailInset, 8, mobileRailInset, 0),
-                  sliver: AutomationNode(
-                    id: AutomationIds.catalogGrid,
-                    instance: widget.kind.automationInstance,
-                    role: 'grid',
-                    child: SliverGrid(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        mainAxisSpacing: mobileRailGutter,
-                        crossAxisSpacing: mobileRailGutter,
-                        childAspectRatio: cardWidth / cardHeight,
-                      ),
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        if (index >= snapshot.groups.length) {
-                          if (snapshot.hasMore && !_catalog.isLoadingMore) {
-                            unawaited(_catalog.loadMore());
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                _onScroll();
+                return _onHeaderScroll(notification);
+              },
+              child: CustomScrollView(
+                controller: _scrollController,
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(mobileRailInset, _panelHeight + 8, mobileRailInset, 0),
+                    sliver: AutomationNode(
+                      id: AutomationIds.catalogGrid,
+                      instance: widget.kind.automationInstance,
+                      role: 'grid',
+                      child: SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          mainAxisSpacing: mobileRailGutter,
+                          crossAxisSpacing: mobileRailGutter,
+                          childAspectRatio: cardWidth / cardHeight,
+                        ),
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          if (index >= snapshot.groups.length) {
+                            if (snapshot.hasMore && !_catalog.isLoadingMore) {
+                              unawaited(_catalog.loadMore());
+                            }
+                            return const SkeletonMediaCard();
                           }
-                          return const SkeletonMediaCard();
-                        }
-                        final group = snapshot.groups[index];
-                        return AutomationNode(
-                          id: AutomationIds.catalogGridItem,
-                          instance: '${widget.kind.automationInstance}.$index',
-                          role: 'grid.item',
-                          child: MobileMediaCard(
-                            group: group,
-                            shape: MobileCardShape.portrait,
-                            width: cardWidth,
-                            onTap: () => _openDetails(group),
-                          ),
-                        );
-                      }, childCount: snapshot.groups.length + (snapshot.hasMore ? 3 : 0)),
+                          final group = snapshot.groups[index];
+                          return AutomationNode(
+                            id: AutomationIds.catalogGridItem,
+                            instance: '${widget.kind.automationInstance}.$index',
+                            role: 'grid.item',
+                            child: MobileMediaCard(
+                              group: group,
+                              shape: MobileCardShape.portrait,
+                              width: cardWidth,
+                              onTap: () => _openDetails(group),
+                            ),
+                          );
+                        }, childCount: snapshot.groups.length + (snapshot.hasMore ? 3 : 0)),
+                      ),
                     ),
                   ),
-                ),
-                SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 16)),
-              ],
+                  SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 16)),
+                ],
+              ),
             ),
           );
         },
@@ -639,28 +726,94 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   }
 }
 
-/// Lets tests measure the top menu's current height.
+/// Lets tests find the top panel.
 @visibleForTesting
 const catalogTopMenuKey = ValueKey<String>('catalog.top_menu');
 
-/// Slides the catalogue's top menu away without a jump: the clip shrinks with
-/// the height factor, so the grid below follows the menu instead of snapping.
-class _CollapsibleTopMenu extends StatelessWidget {
-  const _CollapsibleTopMenu({required this.collapsed, required this.child});
+/// The catalogue's top panel (status bar inset, title row, chips, count line)
+/// as a translucent layer over the grid, in the tab bar's frosted idiom: a
+/// blur plus a tint of the page background, ending in a soft fade. It slides
+/// off the top when [collapsed] and, being an overlay, never changes the
+/// grid's viewport, so collapsing cannot move or re-clamp the scroll position.
+class _CollapsibleTopPanel extends StatelessWidget {
+  const _CollapsibleTopPanel({
+    required this.collapsed,
+    required this.background,
+    required this.measureKey,
+    required this.child,
+  });
 
   final bool collapsed;
+  final Color background;
+  final GlobalKey measureKey;
   final Widget child;
+
+  static const double _fadeTail = 14;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRect(
-      key: catalogTopMenuKey,
-      child: AnimatedAlign(
-        alignment: Alignment.topCenter,
-        heightFactor: collapsed ? 0 : 1,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
-        child: ExcludeSemantics(excluding: collapsed, child: child),
+    return AnimatedSlide(
+      offset: collapsed ? const Offset(0, -1) : Offset.zero,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+      child: ExcludeSemantics(
+        excluding: collapsed,
+        child: Column(
+          key: catalogTopMenuKey,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: ColoredBox(
+                  color: background.withValues(alpha: 0.78),
+                  child: KeyedSubtree(key: measureKey, child: child),
+                ),
+              ),
+            ),
+            SizedBox(
+              height: _fadeTail,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [background.withValues(alpha: 0.78), background.withValues(alpha: 0)],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A fade from the page background to transparent, for the status bar and
+/// home indicator zones: the grid scrolls through it, the system chrome on top
+/// stays readable.
+class _EdgeFade extends StatelessWidget {
+  const _EdgeFade({required this.color, required this.fromTop});
+
+  final Color color;
+  final bool fromTop;
+
+  @override
+  Widget build(BuildContext context) {
+    final solid = color.withValues(alpha: 0.85);
+    final clear = color.withValues(alpha: 0);
+    return IgnorePointer(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: fromTop ? Alignment.topCenter : Alignment.bottomCenter,
+            end: fromTop ? Alignment.bottomCenter : Alignment.topCenter,
+            colors: [solid, clear],
+          ),
+        ),
       ),
     );
   }
