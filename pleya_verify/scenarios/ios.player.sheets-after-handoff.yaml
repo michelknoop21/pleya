@@ -1,8 +1,10 @@
 name: ios.player.sheets-after-handoff
 target: ios-sim
-# A sheet opened after the Pleya Fly picker was dismissed (A-23). The picker
-# closes while it still searches; the settings sheet that follows must build
-# its own content instead of a framework assertion.
+# A sheet opened after the Pleya Fly picker was dismissed (A-23). The fixture
+# has no Plex identity, so the picker never starts discovery and closes
+# without having touched the remote provider: the path that used to break the
+# next sheet. Settings must then build its own content, not a framework
+# assertion.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
@@ -27,7 +29,7 @@ steps:
   - tap: {id: player.handoff_button}
   - settle: 1500
   - snapshot: handoff-searching
-  # Close through the barrier while the search still runs.
+  # Close through the barrier, top left, clear of the sheet.
   - tap: {x: 40, y: 40}
   - settle: 2500
   - assert: {id: player.settings_button, insideViewport: true}
