@@ -3,8 +3,12 @@
 Roadmap: A-06 / A-08 / A-17; Web C-05. Itemstatus blijft in VIS-COL-PLAY1.
 
 Michel geeft op 12 oktober 2026 opdracht tot inbouwen van de gekozen stijl.
-Laatste ontwerpcorrecties: achtergrond volgt selectie; alle achtergrondbeelden
-zijn uniform geblurd; kaartgeometrie en density blijven behouden.
+Laatste ontwerpcorrecties: kaartgeometrie en density blijven behouden.
+
+Besluit Michel (20 oktober 2026): de geblurde sfeerlaag is overal verwijderd, op
+alle platforms. De selectiegebonden achtergrond uit de rest van dit document
+(`LibraryAtmosphere`, `library.atmosphere`) bestaat niet meer; schermen tonen de
+gewone scaffoldachtergrond. De regels hieronder over de sfeerlaag zijn historisch.
 
 ## Ontwerpautoriteit
 
@@ -20,7 +24,7 @@ Deze tabletbeelden bewijzen geen runtime- of hardwaregedrag.
 | Ontwerpdeel | Bestaande eigenaar / gedrag | Implementatieplicht | Bewijs |
 | --- | --- | --- | --- |
 | Zwevende lokale navigatie | LibrariesScreen; bestaande tabs, bronkiezer en acties | Dezelfde handlers/focusnodes, geen rode lijn; telefoon heeft een eigen 48px navigatierij | Implementatie + gerichte geometrie-/focustests; native beeldreview afzonderlijk |
-| Selectiegebonden sfeer | Bestaande concrete MediaItem/MediaPlaylist of representativeSource van UnifiedMediaGroup | Brongebonden artwork; TV focus, desktop hover/focus, mobiel zichtbare kaart; geen extra tap | Native catalogus Verify + Web keyboardbeeld; fixturebewijs |
+| Selectiegebonden sfeer (vervallen, 20 okt) | Bestaande concrete MediaItem/MediaPlaylist of representativeSource van UnifiedMediaGroup | Brongebonden artwork; TV focus, desktop hover/focus, mobiel zichtbare kaart; geen extra tap | Native catalogus Verify + Web keyboardbeeld; fixturebewijs |
 | Bladeren | LibraryBrowseTab, MobileCatalogScreen, TvUnifiedCatalogScreen | Alle filters/sortering/paging/focus/sourcekeuze behouden | Open |
 | Aanbevolen | LibraryRecommendedTab, MobileLandingScreen, TvDiscoveryLandingScreen | Bestaande rails/projecties en activering behouden; geen eerste-film lock | Open |
 | Collecties/afspeellijsten | Bibliotheektabs en TvPersonalMediaOverviewScreens / PersonalMediaProvider | Visuele covers, titel/aantal/bron, retry/partial failure en terugkeer behouden | Open |
@@ -58,7 +62,7 @@ Negatieve controles tonen oud artwork na leeg/vervangen resultaat en focusdiefst
 zonder de guards. De geneste TV-grid gebruikt de beschikbare constraintsbreedte;
 de eerste integratierun reproduceerde 67px overflow met de oude schermbreedte.
 
-Verify: `tvos.library.atmosphere` PASS op een verse aparte simulator, met drie
+Verify (vervallen, scenario verwijderd op 20 okt 2026): `tvos.library.atmosphere` PASS op een verse aparte simulator, met drie
 native beelden (kalibratiefixture; geen hardwarebewijs). De bestaande simulator
 weigerde de Verify TopShelf-installatie. iOS generieke build stuitte op macOS
 `lipo -verify_arch arm64 x86_64`; een alleen-ARM64 simulatorbuild slaagde. Geen
@@ -91,7 +95,7 @@ blijven open onder VIS-COL-PLAY1 en S19/S22; geen volledige acceptatieclaim.
 
 PR #329 is gemerged (644cfe69). De volledige testsuite telde 11164 geslaagde
 tests, twaalf golden-afwijkingen en 211 skips. Zonder bruikbare bronartwork
-moet de sfeerlaag transparant blijven en houdt het catalogusvenster zijn
+moest de sfeerlaag transparant blijven (vervallen: de laag is op 20 okt 2026 verwijderd) en houdt het catalogusvenster zijn
 bestaande lift, met de shell als eigenaar wanneer aanwezig. Een gerichte
 negatieve controle bevestigt de ongewenste opaque laag. De bestaande Linux-workflow 38380971041 slaagde met 27 gerichte goldentests.
 Exact zeven discoveryreferenties zijn gewijzigd en onafhankelijk inhoudelijk

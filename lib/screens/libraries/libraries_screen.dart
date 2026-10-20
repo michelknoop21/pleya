@@ -46,7 +46,6 @@ import '../../mixins/item_updatable.dart';
 import '../../i18n/strings.g.dart';
 import '../../theme/mono_tokens.dart';
 import '../../widgets/library_header_bar.dart';
-import '../../widgets/library_atmosphere.dart';
 import '../../widgets/focusable_tab_chip.dart';
 import '../../widgets/tv/tv_page_chip_bar.dart';
 import 'state_messages.dart';
@@ -1523,13 +1522,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
       id: AutomationIds.screenLibraries,
       readiness: () =>
           isLoadingLibraries ? const AutomationReadiness.loading('libraries') : const AutomationReadiness.ready(),
-      child: Scaffold(
-        body: LibraryAtmosphere(
-          automationInstance: 'libraries',
-          selectionKey: (_selectedLibraryGlobalKey, currentTabType),
-          child: scrollBody,
-        ),
-      ),
+      child: Scaffold(body: scrollBody),
     );
   }
 }
