@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
@@ -29,7 +30,7 @@ import 'playback_handoff.dart';
 /// caller passes [mayStart] and [startWithin]: the time left until the last
 /// start time. The player is never opened after it, and a fetch that hangs
 /// past it neither keeps the receiver busy nor starts anything when it ends.
-/// Both null (the plain path) means no deadline.
+/// The plain path (no [startWithin]) gets [plainHandoffStartWindow].
 Future<void> receivePlaybackHandoff(
   BuildContext context,
   PlaybackHandoffRequest request, {
@@ -50,26 +51,31 @@ Future<void> receivePlaybackHandoff(
   // Read now: the context may be gone by the time the timer fires.
   final provider = context.read<CompanionRemoteProvider>();
   final attempt = _HandoffAttempt(mayStart);
-  Timer? timer;
   final expired = Completer<void>();
-  if (startWithin != null) {
-    timer = Timer(startWithin < Duration.zero ? Duration.zero : startWithin, () {
-      if (attempt.opened) return;
-      attempt.expired = true;
-      appLogger.w('Playback handoff ${request.id} failed: past its start window');
-      // Free the receiver first: a provider torn down by a profile switch may throw.
-      release();
-      expired.complete();
-      reportPlaybackHandoff(provider, request.id, PlaybackHandoffOutcome.failed);
-    });
-  }
+  final window = startWithin ?? plainHandoffStartWindow;
+  final timer = Timer(window < Duration.zero ? Duration.zero : window, () {
+    if (attempt.opened) return;
+    attempt.expired = true;
+    appLogger.w('Playback handoff ${request.id} failed: past its start window');
+    // Free the receiver first: a provider torn down by a profile switch may throw.
+    release();
+    expired.complete();
+    reportPlaybackHandoff(provider, request.id, PlaybackHandoffOutcome.failed);
+  });
   try {
     await Future.any([_receive(context, request, release, attempt), expired.future]);
   } finally {
-    timer?.cancel();
+    timer.cancel();
     release();
   }
 }
+
+/// Time the plain path (no profile switch) has to start the player. The phone
+/// gives up on it after 20 seconds (`handOffPlayback`); 15 leaves 5 for the
+/// command to arrive, the player to open and the answer to travel back, so the
+/// Apple TV never starts after the phone has stopped waiting.
+@visibleForTesting
+Duration plainHandoffStartWindow = const Duration(seconds: 15);
 
 /// One start under a deadline: [expired] is set by the timer, and everything
 /// that comes after it (a late fetch, a late player) stands down.
