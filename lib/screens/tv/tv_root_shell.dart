@@ -501,7 +501,7 @@ class TvRootShell extends StatelessWidget {
 /// readable against artwork, and it slides out of view while [hidden]. Sliding
 /// is a paint translation: the bar's measured height, and with it the band Home
 /// bleeds its hero into, stays what it was.
-class _TvCollapsibleNav extends StatelessWidget {
+class _TvCollapsibleNav extends StatefulWidget {
   const _TvCollapsibleNav({required this.overlay, required this.hidden, required this.child, this.scrollAway = false});
 
   final bool overlay;
@@ -514,22 +514,51 @@ class _TvCollapsibleNav extends StatelessWidget {
   final Widget child;
 
   @override
+  State<_TvCollapsibleNav> createState() => _TvCollapsibleNavState();
+}
+
+class _TvCollapsibleNavState extends State<_TvCollapsibleNav> with SingleTickerProviderStateMixin {
+  /// 1 is on screen, 0 is slid away. One controller for every presentation,
+  /// so a route opening or closing changes how it moves and never what it is.
+  late final AnimationController _shown = AnimationController(vsync: this, value: widget.hidden ? 0 : 1);
+  late final Animation<Offset> _slide = _shown.drive(Tween(begin: const Offset(0, -1), end: Offset.zero));
+
+  @override
+  void didUpdateWidget(_TvCollapsibleNav oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.hidden == oldWidget.hidden) return;
+    final target = widget.hidden ? 0.0 : 1.0;
+    if (!widget.scrollAway) {
+      // DEC-115, unchanged: the full quick slide from wherever it is.
+      _shown.animateTo(target, duration: TvTopNavLayout.focusDuration, curve: Curves.easeOut);
+      return;
+    }
+    // A-06b: the same rule as `TvScrollAwayPage`, so on a quick reversal the
+    // bar and the heading turn round together instead of drifting apart.
+    final duration = TvTopNavScrollAwayMotion.durationFor(context, showing: !widget.hidden);
+    final remaining = (target - _shown.value).abs();
+    if (duration == Duration.zero || remaining == 0) {
+      _shown.value = target;
+      return;
+    }
+    _shown.animateTo(target, duration: duration * remaining, curve: TvTopNavScrollAwayMotion.curve);
+  }
+
+  @override
+  void dispose() {
+    _shown.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final tk = tokens(context);
-    final duration = scrollAway
-        ? TvTopNavScrollAwayMotion.durationFor(context, showing: !hidden)
-        : TvTopNavLayout.focusDuration;
-    final curve = scrollAway ? TvTopNavScrollAwayMotion.curve : Curves.easeOut;
-    return AnimatedSlide(
-      offset: hidden ? const Offset(0, -1) : Offset.zero,
-      duration: duration,
-      curve: curve,
-      child: AnimatedOpacity(
-        opacity: scrollAway && hidden ? 0 : 1,
-        duration: duration,
-        curve: curve,
+    return SlideTransition(
+      position: _slide,
+      child: FadeTransition(
+        opacity: widget.scrollAway ? _shown : kAlwaysCompleteAnimation,
         child: DecoratedBox(
-          decoration: overlay
+          decoration: widget.overlay
               ? BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
@@ -538,7 +567,7 @@ class _TvCollapsibleNav extends StatelessWidget {
                   ),
                 )
               : const BoxDecoration(),
-          child: child,
+          child: widget.child,
         ),
       ),
     );

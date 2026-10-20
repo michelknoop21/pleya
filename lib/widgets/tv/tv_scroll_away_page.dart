@@ -86,12 +86,20 @@ class _TvScrollAwayPageState extends State<TvScrollAwayPage> with SingleTickerPr
           fitBody: widget.fitBody,
         ),
         children: [
-          LayoutId(id: _Slot.body, child: widget.body),
+          // Own layers: the slide repaints only the two offsets, never the
+          // cards or the heading themselves.
+          LayoutId(
+            id: _Slot.body,
+            child: RepaintBoundary(child: widget.body),
+          ),
           LayoutId(
             id: _Slot.header,
             child: ExcludeSemantics(
               excluding: !widget.expanded,
-              child: FadeTransition(opacity: _reveal, child: widget.header),
+              child: FadeTransition(
+                opacity: _reveal,
+                child: RepaintBoundary(child: widget.header),
+              ),
             ),
           ),
         ],

@@ -199,6 +199,7 @@ void main() {
   late TvNavigationCoordinator coordinator;
   late MultiServerProvider multiServer;
   late UnifiedCatalogProvider catalog;
+  late _FakeLibraryClient client;
   final hostKey = GlobalKey<_HostState>();
 
   setUpAll(() => TvDetectionService.debugSetAppleTVOverride(true));
@@ -212,8 +213,8 @@ void main() {
     SelectKeyUpSuppressor.clearSuppression();
 
     coordinator = TvNavigationCoordinator()..updateConditions(const TvNavConditions(hasLiveTv: false));
-    final manager = MultiServerManager()
-      ..debugRegisterClientForTesting(_FakeLibraryClient([for (var i = 0; i < _titles; i++) _movie(i)]));
+    client = _FakeLibraryClient([for (var i = 0; i < _titles; i++) _movie(i)]);
+    final manager = MultiServerManager()..debugRegisterClientForTesting(client);
     multiServer = MultiServerProvider(manager, DataAggregationService(manager));
     final libraries = LibrariesProvider()
       ..debugSetLibraries([
@@ -436,8 +437,90 @@ void main() {
     await tester.pump(const Duration(milliseconds: 140));
     expect(gridRect(tester).top, closeTo(restTop, 0.5));
     expect(headerOpacity(tester), 1);
+    expect(navRect(tester).top, closeTo(0, 0.5), reason: 'the bar turned round with the page, not on its own clock');
     await tester.pumpAndSettle();
     expectShown(tester);
+  });
+
+  testWidgets('a grid that empties under a folded page brings the bar and the heading back', (tester) async {
+    await pump(tester);
+    await openCatalog(tester);
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    await press(tester, LogicalKeyboardKey.arrowLeft);
+    expect(primary()?.debugLabel, 'TvCatalogRailSources');
+    expectFolded(tester);
+
+    // The ring stays in the rail, so nothing moves the focus into the bar:
+    // only the page's own flag can bring it back.
+    client.items.clear();
+    await catalog.refresh();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TvCatalogCardGrid), findsNothing, reason: 'the empty state replaced the grid');
+    expect(primary()?.debugLabel, 'TvCatalogRailSources');
+    expect(hostKey.currentState!.isNavFocused, isFalse);
+    expect(navRect(tester).top, 0, reason: 'nothing to be past, so the bar is back');
+    expect(headerOpacity(tester), 1);
+  });
+
+  testWidgets('closing the route with the ring in the bar keeps the same bar, no remount', (tester) async {
+    await pump(tester);
+    await openCatalog(tester);
+    await press(tester, LogicalKeyboardKey.arrowUp);
+    expect(hostKey.currentState!.isNavFocused, isTrue);
+    final navNode = hostKey.currentState!.navNodes.get(coordinator.active.focusKey);
+    expect(navNode.hasPrimaryFocus, isTrue);
+    final barElement = tester.element(find.byType(TvTopNavigation));
+    final itemFinder = find.byWidgetPredicate((w) => w is Focus && identical(w.focusNode, navNode));
+    final itemElement = tester.element(itemFinder);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+
+    expect(coordinator.activeCanPop, isFalse, reason: 'the catalog route is gone, the bar is persistent again');
+    expect(identical(tester.element(find.byType(TvTopNavigation)), barElement), isTrue);
+    expect(
+      identical(tester.element(itemFinder), itemElement),
+      isTrue,
+      reason: 'the Focus that held the ring is the same element, so its node was never detached',
+    );
+    await tester.pumpAndSettle();
+    expect(navRect(tester).top, 0);
+  });
+
+  testWidgets('back from a detail opened on row 2 returns to a folded page, ring on the same card', (tester) async {
+    await pump(tester);
+    await openCatalog(tester);
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    expect(primary()?.debugLabel, cardLabel(12));
+    expectFolded(tester);
+
+    final detailStop = FocusNode(debugLabel: 'detail stop');
+    addTearDown(detailStop.dispose);
+    hostKey.currentState!.open(
+      TvNestedRoute(
+        id: 'detail',
+        topNav: TvTopNavPresentation.collapsible,
+        builder: (_) => Focus(
+          focusNode: detailStop,
+          child: const SizedBox.expand(child: Text('detail')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(primary(), detailStop);
+    expect(barHidden(tester), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    for (var frame = 0; frame < 20; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(barHidden(tester), isTrue, reason: 'the bar never flashes in on the way back (frame $frame)');
+    }
+    await tester.pumpAndSettle();
+
+    expect(primary()?.debugLabel, cardLabel(12));
+    expectFolded(tester);
   });
 
   testWidgets('reduce motion: both states are reached on the next frame', (tester) async {
