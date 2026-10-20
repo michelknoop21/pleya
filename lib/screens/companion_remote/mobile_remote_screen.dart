@@ -37,8 +37,7 @@ class _MobileRemoteScreenState extends State<MobileRemoteScreen> {
           actions: [
             Consumer<CompanionRemoteProvider>(
               builder: (context, provider, child) {
-                // A handoff-only host is no session the user joined (A-23d).
-                if (provider.isConnected && !provider.isHandoffOnlyHost) {
+                if (provider.isConnected) {
                   return IconButton(
                     icon: const Icon(Icons.link_off),
                     onPressed: () async {
@@ -64,10 +63,10 @@ class _MobileRemoteScreenState extends State<MobileRemoteScreen> {
         ),
         body: Consumer<CompanionRemoteProvider>(
           builder: (context, provider, child) {
-            // An iPhone that listens for Pleya Fly hosts in the background (A-23d);
-            // the remote shows the list of hosts to steer, not that host.
-            final listeningForFly = provider.isHandoffOnlyHost;
-            if (!listeningForFly && provider.status == RemoteSessionStatus.reconnecting) {
+            // An iPhone that listens for Pleya Fly hosts in the background and
+            // never shows as connected (A-23d); a fly that ends leaves that host
+            // waiting for its client, which is no reconnect of the remote.
+            if (!provider.isHandoffOnlyHost && provider.status == RemoteSessionStatus.reconnecting) {
               return Center(
                 child: Column(
                   mainAxisAlignment: .center,
@@ -97,7 +96,7 @@ class _MobileRemoteScreenState extends State<MobileRemoteScreen> {
               );
             }
 
-            if (listeningForFly || !provider.isConnected) {
+            if (!provider.isConnected) {
               return const DiscoveryView();
             }
 

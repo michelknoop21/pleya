@@ -114,8 +114,9 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
   /// The phone plays; this device has stopped its player.
   final void Function(DiscoveredHost host)? onPlaying;
 
-  /// The phone did not start; this device keeps playing.
-  final void Function(DiscoveredHost host)? onFailed;
+  /// The phone did not start; this device keeps playing. [refusal] says why,
+  /// when the phone said so and no open view could mark its row.
+  final void Function(DiscoveredHost host, PlaybackHandoffRefusal? refusal)? onFailed;
 
   final Duration searchTimeout;
 
@@ -127,6 +128,7 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
   DiscoveredHost? _handingTo;
   ({String profile, bool pin})? _switching;
   ({String clientId, PlaybackHandoffRefusal reason})? _refusal;
+  bool _viewOpen = false;
 
   /// The iPhones and iPads with Pleya open; other hosts are not targets.
   List<DiscoveredHost> get hosts => _hosts;
@@ -134,25 +136,52 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
   DiscoveredHost? get handingTo => _handingTo;
   bool get busy => _handingTo != null;
 
+  /// Whether [host] is the phone this fly goes to. Beacons are rebuilt as they
+  /// arrive, so a host is known by its client id, not by the object.
+  bool isHandingTo(DiscoveredHost host) => _handingTo?.clientId == host.clientId;
+
+  /// The phones to show: the search result, plus the phone a fly goes to when
+  /// its beacon dropped out meanwhile, so the busy row never turns into the
+  /// empty state with a Search again in the middle of a fly.
+  List<DiscoveredHost> get visibleHosts {
+    final target = _handingTo;
+    if (target == null || _hosts.any(isHandingTo)) return _hosts;
+    return [target, ..._hosts];
+  }
+
   /// The profile the phone switches to first (A-23b), with or without PIN.
   ({String profile, bool pin})? get switching => _switching;
 
   PlaybackHandoffRefusal? refusalFor(DiscoveredHost host) =>
       _refusal?.clientId == host.clientId ? _refusal!.reason : null;
 
-  /// Starts a fresh search; the list fills as beacons arrive.
+  /// A view shows this sender; until [stopSearch] it marks a refusal on its row.
+  void attachView() => _viewOpen = true;
+
+  /// Starts a fresh search; the list fills as beacons arrive. Not while a fly
+  /// runs: that fly holds the session the search would rebuild.
   Future<void> search() async {
-    if (isDisposed) return;
+    if (isDisposed || busy) return;
     _searching = true;
     _refusal = null;
     safeNotifyListeners();
     await _subscription?.cancel();
     _subscription = null;
+    // Deriving the identity for the search can stop a running host (a crypto
+    // rebuild); a phone must still be able to reach this Apple TV afterwards.
+    final hadHost = transport.hostRunning;
     Stream<List<DiscoveredHost>>? stream;
     try {
       stream = await transport.discover();
     } catch (e) {
       appLogger.w('Pleya Fly: discovery failed (${e.runtimeType})');
+    }
+    if (hadHost && !transport.hostRunning) {
+      try {
+        await transport.restartHost();
+      } catch (e) {
+        appLogger.w('Pleya Fly: restarting the host after the search failed (${e.runtimeType})');
+      }
     }
     if (isDisposed) return;
     if (stream == null) {
@@ -172,8 +201,9 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
     });
   }
 
-  /// Stops listening for beacons; a fly that runs goes on.
+  /// Stops listening for beacons and detaches the view; a fly that runs goes on.
   void stopSearch() {
+    _viewOpen = false;
     _timeout?.cancel();
     unawaited(_subscription?.cancel());
     _subscription = null;
@@ -242,7 +272,7 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
     _handingTo = null;
     _switching = null;
     // The view closed while this ran: its search stopped, so stop listening too.
-    if (isDisposed) transport.stopDiscovery();
+    if (!_viewOpen) transport.stopDiscovery();
     if (outcome == PlaybackHandoffOutcome.playing) {
       if (currentStop() == stopThisPlayer) stopThisPlayer?.call();
       safeNotifyListeners();
@@ -255,14 +285,14 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
       _ => null,
     };
     // A closed view cannot mark the row: the user must still hear that it failed.
-    if (refusal != null && !isDisposed) {
+    if (refusal != null && _viewOpen && !isDisposed) {
       // The user can fix it on the phone and try again, so the list stays.
       _refusal = (clientId: host.clientId, reason: refusal);
       safeNotifyListeners();
       return;
     }
     safeNotifyListeners();
-    onFailed?.call(host);
+    onFailed?.call(host, refusal);
   }
 
   @override

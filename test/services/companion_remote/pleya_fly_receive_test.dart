@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/models/companion_remote/remote_command.dart';
+import 'package:pleya/providers/companion_remote_provider.dart';
 import 'package:pleya/services/companion_remote/pleya_fly_receive.dart';
 import 'package:pleya/services/settings_service.dart';
 
@@ -8,6 +11,8 @@ import '../../test_helpers/fake_handoff_transport.dart';
 
 // A-23d: an iPhone or iPad hosts the Companion Remote only to receive Pleya Fly.
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('routesHostCommand', () {
     test('a handoff-only host takes the fly and drops every other command', () {
       expect(routesHostCommand(RemoteCommandType.handoff, handoffOnly: true), isTrue);
@@ -64,5 +69,74 @@ void main() {
     expect(isRemoteControlTarget(phone), isFalse);
     expect(isRemoteControlTarget(tv), isTrue);
     expect(isRemoteControlTarget(mac), isTrue);
+  });
+
+  group('installHostCommandRouting', () {
+    List<String> route(bool handoffOnly, List<RemoteCommandType> types, {bool mounted = true}) {
+      final provider = CompanionRemoteProvider();
+      addTearDown(provider.dispose);
+      final seen = <String>[];
+      installHostCommandRouting(
+        provider,
+        handoffOnly: handoffOnly,
+        isMounted: () => mounted,
+        onHandoff: (c) => seen.add('handoff'),
+        onCommand: (c) => seen.add(c.type.name),
+      );
+      for (final type in types) {
+        provider.onCommandReceived!(RemoteCommand(type: type));
+      }
+      return seen;
+    }
+
+    const types = [RemoteCommandType.dpadUp, RemoteCommandType.handoff, RemoteCommandType.select];
+
+    test('a phone acts on the fly only', () {
+      expect(route(true, types), ['handoff']);
+    });
+
+    test('an Apple TV or desktop acts on everything', () {
+      expect(route(false, types), ['dpadUp', 'handoff', 'select']);
+    });
+
+    test('nothing reaches a screen that is gone', () {
+      expect(route(false, types, mounted: false), isEmpty);
+    });
+  });
+
+  test('followLifecycleWithPleyaFlyHost starts on resume and stops on suspend', () async {
+    final calls = <String>[];
+    Future<void> follow(AppLifecycleState state) => followLifecycleWithPleyaFlyHost(
+      state,
+      receiveSupported: true,
+      enabled: true,
+      start: () async => calls.add('start'),
+      stop: () async => calls.add('stop'),
+    );
+    for (final state in [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+      AppLifecycleState.resumed,
+    ]) {
+      await follow(state);
+    }
+    expect(calls, ['stop', 'start']);
+  });
+
+  // The units above only count while the main screen uses them: a phone that
+  // routes everything takes D-pad presses from any member of the Home.
+  test('the main screen wires the command routing and the lifecycle', () {
+    final source = File('lib/screens/main_screen.dart').readAsStringSync();
+    final setup = source.substring(
+      source.indexOf('void _setupCompanionRemote()'),
+      source.indexOf('final receiver = CompanionRemoteReceiver.instance;'),
+    );
+    expect(setup, contains('installHostCommandRouting('));
+    expect(setup, contains('handoffOnly: handoffOnly'));
+    expect(setup, isNot(contains('onCommandReceived =')), reason: 'one place installs the routing');
+    final lifecycle = source.substring(source.indexOf('void didChangeAppLifecycleState('));
+    expect(lifecycle.substring(0, lifecycle.indexOf('\n  }\n')), contains('_followLifecycleWithPleyaFlyHost(state)'));
+    expect(source, contains('await followLifecycleWithPleyaFlyHost('));
   });
 }

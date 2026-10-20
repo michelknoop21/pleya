@@ -66,11 +66,11 @@ Future<void> applyCompanionRemoteServerSetting(BuildContext context, bool enable
 /// brings it back.
 Future<bool> startPleyaFlyReceiveHost(BuildContext context) async {
   final companionRemote = context.read<CompanionRemoteProvider>();
-  if (!companionRemote.requestHandoffOnlyHost()) return companionRemote.isHandoffOnlyHost;
+  if (!await companionRemote.requestHandoffOnlyHost()) return companionRemote.isHandoffOnlyHost;
   try {
     if (!await ensureCompanionRemoteCrypto(context)) return false;
     // A client session may have started while the identity was derived.
-    if (!companionRemote.requestHandoffOnlyHost()) return false;
+    if (!await companionRemote.requestHandoffOnlyHost()) return false;
     await companionRemote.startHostServer(handoffOnly: true);
     return companionRemote.isHandoffOnlyHost;
   } catch (e) {

@@ -79,7 +79,6 @@ import '../services/settings_service.dart';
 import '../services/speech_search_service.dart';
 import '../providers/offline_mode_provider.dart';
 import '../services/companion_remote/companion_remote_host_controller.dart';
-import '../models/companion_remote/remote_command.dart';
 import '../services/companion_remote/companion_remote_receiver.dart';
 import '../services/companion_remote/playback_handoff.dart';
 import '../services/companion_remote/playback_handoff_profile_switch.dart';
@@ -1253,10 +1252,11 @@ class _MainScreenState extends State<MainScreen>
     // A phone hosts only for Pleya Fly: whatever else arrives is dropped (A-23d).
     final handoffOnly = !PlatformDetector.shouldActAsRemoteHost(context);
     companionRemote.onHandoffCancelled = cancelPlaybackHandoff;
-    companionRemote.onCommandReceived = (command) {
-      if (!mounted) return;
-      if (!routesHostCommand(command.type, handoffOnly: handoffOnly)) return;
-      if (command.type == RemoteCommandType.handoff) {
+    installHostCommandRouting(
+      companionRemote,
+      handoffOnly: handoffOnly,
+      isMounted: () => mounted,
+      onHandoff: (command) {
         final request = PlaybackHandoffRequest.fromData(command.data);
         if (request == null) return;
         if (!companionRemote.peerIsHostUser) {
@@ -1265,10 +1265,9 @@ class _MainScreenState extends State<MainScreen>
           return;
         }
         unawaited(receivePlaybackHandoff(context, request));
-        return;
-      }
-      CompanionRemoteReceiver.instance.handleCommand(command, context);
-    };
+      },
+      onCommand: (command) => CompanionRemoteReceiver.instance.handleCommand(command, context),
+    );
 
     final receiver = CompanionRemoteReceiver.instance;
 
@@ -1434,19 +1433,16 @@ class _MainScreenState extends State<MainScreen>
     try {
       final settings = await SettingsService.getInstance();
       if (!mounted) return;
-      final action = pleyaFlyHostActionFor(
+      final companionRemote = context.read<CompanionRemoteProvider>();
+      await followLifecycleWithPleyaFlyHost(
         state,
         receiveSupported: pleyaFlyReceiveSupported(),
         enabled: settings.read(SettingsService.enablePleyaFlyReceive),
+        start: () async {
+          if (!_isOffline && mounted) await startPleyaFlyReceiveHost(context);
+        },
+        stop: companionRemote.stopHandoffOnlyHost,
       );
-      switch (action) {
-        case PleyaFlyHostAction.start:
-          if (!_isOffline) await startPleyaFlyReceiveHost(context);
-        case PleyaFlyHostAction.stop:
-          await context.read<CompanionRemoteProvider>().stopHandoffOnlyHost();
-        case PleyaFlyHostAction.none:
-          break;
-      }
     } catch (e) {
       appLogger.e('CompanionRemote: Pleya Fly host did not follow the lifecycle', error: e);
     }

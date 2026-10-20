@@ -11,6 +11,7 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 
 import '../../models/companion_remote/remote_command.dart';
+import '../../providers/companion_remote_provider.dart';
 import '../../utils/platform_detector.dart';
 import 'lan_discovery_service.dart';
 
@@ -51,5 +52,41 @@ PleyaFlyHostAction pleyaFlyHostActionFor(
     AppLifecycleState.resumed => enabled ? PleyaFlyHostAction.start : PleyaFlyHostAction.none,
     AppLifecycleState.paused || AppLifecycleState.detached => PleyaFlyHostAction.stop,
     AppLifecycleState.inactive || AppLifecycleState.hidden => PleyaFlyHostAction.none,
+  };
+}
+
+/// Runs the lifecycle [action] of a receiving host: [start] on resume, [stop]
+/// on suspend (see [pleyaFlyHostActionFor]).
+Future<void> followLifecycleWithPleyaFlyHost(
+  AppLifecycleState state, {
+  required bool receiveSupported,
+  required bool enabled,
+  required Future<void> Function() start,
+  required Future<void> Function() stop,
+}) async {
+  switch (pleyaFlyHostActionFor(state, receiveSupported: receiveSupported, enabled: enabled)) {
+    case PleyaFlyHostAction.start:
+      await start();
+    case PleyaFlyHostAction.stop:
+      await stop();
+    case PleyaFlyHostAction.none:
+      break;
+  }
+}
+
+/// Wires what a host receives: a fly to [onHandoff], every other command to
+/// [onCommand]. A handoff-only host drops the rest ([routesHostCommand]).
+void installHostCommandRouting(
+  CompanionRemoteProvider provider, {
+  required bool handoffOnly,
+  required bool Function() isMounted,
+  required void Function(RemoteCommand command) onHandoff,
+  required void Function(RemoteCommand command) onCommand,
+}) {
+  provider.onCommandReceived = (command) {
+    if (!isMounted()) return;
+    if (!routesHostCommand(command.type, handoffOnly: handoffOnly)) return;
+    if (command.type == RemoteCommandType.handoff) return onHandoff(command);
+    onCommand(command);
   };
 }

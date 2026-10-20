@@ -214,6 +214,70 @@ void main() {
       expect(provider.debugCryptoProfileId, profileB.id);
     });
 
+    // A-23d: a search derives the identity again; when that rebuilds it, the
+    // host this device ran must run again, or no phone reaches it afterwards.
+    for (final handoffOnly in [true, false]) {
+      test('ensureCryptoReady keeps a running ${handoffOnly ? 'handoff-only' : 'full'} host running', () async {
+        final db = AppDatabase.forTesting(NativeDatabase.memory());
+        final connections = ConnectionRegistry(db);
+        final profileConnections = ProfileConnectionRegistry(db);
+        final profiles = ProfileRegistry(db);
+        final storage = await StorageService.getInstance();
+        final plexHome = PlexHomeService(
+          connections: connections,
+          profileConnections: profileConnections,
+          storage: storage,
+          plexHomeUserFetcher: (_) async => const [],
+        );
+        final active = ActiveProfileProvider(
+          registry: profiles,
+          plexHome: plexHome,
+          connections: connections,
+          storage: storage,
+        );
+        addTearDown(() async {
+          await active.resetForTesting();
+          active.dispose();
+          await plexHome.dispose();
+          await db.close();
+        });
+
+        final accountA = _plexAccount('plex-a', 'client-a');
+        final accountB = _plexAccount('plex-b', 'client-b');
+        final profileB = _localProfile('profile-b');
+        await connections.upsert(accountB);
+        await profiles.upsert(profileB);
+        await profileConnections.upsert(
+          ProfileConnection(profileId: profileB.id, connectionId: accountB.id, userIdentifier: 'admin-b'),
+          makeDefault: true,
+        );
+        await storage.setActiveProfileId(profileB.id);
+        await active.initialize();
+
+        final provider = CompanionRemoteProvider();
+        addTearDown(() async {
+          await provider.stopHostServer();
+          provider.dispose();
+        });
+        await provider.initializeCrypto(home: _home('admin-a'), account: accountA, activeProfile: _localProfile('a'));
+        await provider.startHostServer(handoffOnly: handoffOnly);
+        expect(provider.isHostServerRunning, isTrue);
+
+        final ok = await provider.ensureCryptoReady(
+          _home('admin-b'),
+          connections: connections,
+          activeProfile: active,
+          profileConnections: profileConnections,
+          account: accountB,
+        );
+
+        expect(ok, isTrue);
+        expect(provider.debugCryptoConnectionId, accountB.id, reason: 'the identity was rebuilt');
+        expect(provider.isHostServerRunning, isTrue);
+        expect(provider.isHandoffOnlyHost, handoffOnly);
+      });
+    }
+
     test('ensureCryptoReady uses the active local profile Plex row', () async {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
       final connections = ConnectionRegistry(db);

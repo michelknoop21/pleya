@@ -162,6 +162,36 @@ void main() {
     await finish(tester);
   });
 
+  testWidgets('a fly keeps its busy row when the beacons change, and offers no Search again', (tester) async {
+    final answer = Completer<PlaybackHandoffOutcome>();
+    transport.answer = (_) => answer.future;
+    await pumpView(tester);
+    final phone = fakeHost('iPhone van Michel');
+    transport.beacons.add([phone]);
+    await tester.pump();
+    await tester.pump();
+    unawaited(sender.handOff(phone, serverId: 'srv', itemId: '42', positionMs: 0, title: 'Big Buck Bunny'));
+    await tester.pump();
+
+    // A new beacon object for the same phone.
+    transport.beacons.add([fakeHost('iPhone van Michel')]);
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Starting on iPhone van Michel…'), findsOneWidget);
+
+    // Its beacon goes stale.
+    transport.beacons.add([]);
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Starting on iPhone van Michel…'), findsOneWidget);
+    expect(find.text('Search again'), findsNothing);
+
+    answer.complete(PlaybackHandoffOutcome.failed);
+    await tester.pump();
+    await tester.pump();
+    await finish(tester);
+  });
+
   group('the Video tab', () {
     Future<List<TvInfoPanelSubView>> pumpTab(WidgetTester tester, {required bool canHandoff}) async {
       final opened = <TvInfoPanelSubView>[];

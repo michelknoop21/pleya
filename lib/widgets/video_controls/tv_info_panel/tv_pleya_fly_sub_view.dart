@@ -35,12 +35,16 @@ PlaybackHandoffSender createTvPleyaFlySender(BuildContext context, {required Voi
         groupKey: 'pleya-fly:${host.clientId}',
       ),
     ),
-    onFailed: (host) {
+    onFailed: (host, refusal) {
       noticeController.show(
         Notice(
           level: NoticeLevel.warning,
           title: t.playbackHandoff.failedTitle(name: host.name),
-          body: t.playbackHandoff.failedBody,
+          body: switch (refusal) {
+            PlaybackHandoffRefusal.wrongProfile => t.playbackHandoff.wrongProfileOn(name: host.name),
+            PlaybackHandoffRefusal.pinNotEntered => t.playbackHandoff.pinNotEnteredOn(name: host.name),
+            null => t.playbackHandoff.failedBody,
+          },
           groupKey: 'playback-handoff-failed:${host.clientId}',
         ),
       );
@@ -79,6 +83,7 @@ class _TvPleyaFlySubViewState extends State<TvPleyaFlySubView> {
   @override
   void initState() {
     super.initState();
+    widget.sender.attachView();
     // A fly under way keeps its list; a fresh view searches.
     if (!widget.sender.busy) unawaited(widget.sender.search());
   }
@@ -91,7 +96,7 @@ class _TvPleyaFlySubViewState extends State<TvPleyaFlySubView> {
 
   String _detail(DiscoveredHost host) {
     final sender = widget.sender;
-    if (sender.handingTo == host) {
+    if (sender.isHandingTo(host)) {
       return switch (sender.switching) {
         null => t.playbackHandoff.startingOn(name: host.name),
         (profile: _, pin: true) => t.playbackHandoff.switchingPinOn(name: host.name),
@@ -107,7 +112,7 @@ class _TvPleyaFlySubViewState extends State<TvPleyaFlySubView> {
 
   List<Widget> _left(BuildContext context) {
     final sender = widget.sender;
-    final hosts = sender.hosts;
+    final hosts = sender.visibleHosts;
     final m = TvPanelMetrics.of(context);
     final left = <Widget>[TvPanelSectionHeader(label: t.playbackHandoff.continueOn)];
     if (hosts.isEmpty && sender.searching) {
@@ -158,10 +163,10 @@ class _TvPleyaFlySubViewState extends State<TvPleyaFlySubView> {
               icon: Symbols.smartphone,
               title: host.name,
               subtitle: _detail(host),
-              highlighted: sender.handingTo == host,
+              highlighted: sender.isHandingTo(host),
               // While one phone starts, the others are dimmed and take no Select.
-              dimmed: busy && sender.handingTo != host,
-              trailing: sender.handingTo == host
+              dimmed: busy && !sender.isHandingTo(host),
+              trailing: sender.isHandingTo(host)
                   ? SizedBox(
                       width: m.gap(20),
                       height: m.gap(20),
@@ -171,7 +176,7 @@ class _TvPleyaFlySubViewState extends State<TvPleyaFlySubView> {
               onSelect: busy ? null : () => widget.onSelectHost(host),
               automationId: AutomationIds.playerPanelRow,
               automationInstance: 'pleya_fly.device.$i',
-              automationState: () => {'busy': sender.handingTo == host, 'refused': sender.refusalFor(host)?.name},
+              automationState: () => {'busy': sender.isHandingTo(host), 'refused': sender.refusalFor(host)?.name},
             ),
         ],
       ),
