@@ -406,14 +406,37 @@ void main() {
     final firstFrame = gridRect(tester).top;
     expect(firstFrame, lessThan(restTop), reason: 'it has started moving');
     expect(firstFrame, greaterThan(TvTopNavLayout.topInset), reason: 'but it did not jump there');
-    await tester.pump(const Duration(milliseconds: 240));
-    expect(barHidden(tester), isFalse, reason: 'still leaving at 256 ms of 320');
+    await tester.pump(const Duration(milliseconds: 160));
+    expect(barHidden(tester), isFalse, reason: 'still leaving at 176 ms of 260');
     await tester.pumpAndSettle();
     expectFolded(tester);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 230));
+    await tester.pump(const Duration(milliseconds: 210));
+    expectShown(tester);
+  });
+
+  testWidgets('a reversal halfway carries on from where it is, in the time the distance left needs', (tester) async {
+    await pump(tester);
+    await openCatalog(tester);
+    final restTop = gridRect(tester).top;
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 60));
+    final midway = gridRect(tester).top;
+    expect(midway, lessThan(restTop));
+    expect(midway, greaterThan(TvTopNavLayout.topInset));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(gridRect(tester).top, closeTo(midway, 1), reason: 'no jump back to either end');
+    // About half the way is left, so about half of the 200 ms return.
+    await tester.pump(const Duration(milliseconds: 140));
+    expect(gridRect(tester).top, closeTo(restTop, 0.5));
+    expect(headerOpacity(tester), 1);
+    await tester.pumpAndSettle();
     expectShown(tester);
   });
 

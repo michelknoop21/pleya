@@ -62,7 +62,10 @@ class _TvScrollAwayPageState extends State<TvScrollAwayPage> with SingleTickerPr
     if (duration == Duration.zero) {
       _reveal.value = target;
     } else {
-      _reveal.animateTo(target, duration: duration, curve: TvTopNavScrollAwayMotion.curve);
+      // Scaled to the distance left, so a reversal halfway takes half the time
+      // instead of crawling back at full length.
+      final remaining = (target - _reveal.value).abs();
+      _reveal.animateTo(target, duration: duration * remaining, curve: TvTopNavScrollAwayMotion.curve);
     }
   }
 

@@ -20,10 +20,11 @@ import '../../theme/mono_tokens.dart';
 /// (Michel, 20 October 2026): the viewer pressed UP to get the heading back and
 /// should not wait for it, while leaving can take its time because nothing is
 /// being asked for. Reduce motion (system setting or Pleya's own TV switch)
-/// makes both instant through [reduceMotion].
+/// makes both instant through [reduceMotion]. Same values as the iPhone
+/// catalogue heading (A-06), so the two platforms move alike.
 abstract final class TvTopNavScrollAwayMotion {
-  static const Duration hide = Duration(milliseconds: 320);
-  static const Duration show = Duration(milliseconds: 220);
+  static const Duration hide = Duration(milliseconds: 260);
+  static const Duration show = Duration(milliseconds: 200);
   static const Curve curve = Curves.easeOutCubic;
 
   static Duration durationFor(BuildContext context, {required bool showing}) =>
