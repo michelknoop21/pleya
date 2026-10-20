@@ -58,7 +58,11 @@ void _seekTests() {
       expect(_ackAfter([1404000, 1410000, 1410500]), isFalse);
       expect(_ackAfter([1404000, 1410000, 1410500, 1411000]), isTrue);
     });
-    test('step backwards resets', () => expect(_ackAfter([1404000, 1404500, 1400000, 1400500]), isFalse));
+    test('step backwards resets', () {
+      expect(_ackAfter([1404000, 1404500, 1400000, 1400500]), isFalse);
+      // Only a reset baseline (1400000) sees this second of progress.
+      expect(_ackAfter([1404000, 1400000, 1400500, 1401000]), isTrue);
+    });
     test('plain progress acks', () => expect(_ackAfter([1000, 1500, 2000]), isTrue));
   });
 }
