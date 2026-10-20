@@ -1,4 +1,4 @@
-PLEYA FLY — LOSSE ICOONBESTANDEN
+PLEYA FLY: LOSSE ICOONBESTANDEN
 20 oktober 2026
 
 Deze bestanden zijn een nette vectoruitwerking van het gekozen Pleya Fly-ontwerp. De geometrie is overgenomen uit het goedgekeurde beeld en opgebouwd uit eenvoudige vectorpaden. De SVG is het bronbestand voor alle PNG-exports.
@@ -24,7 +24,7 @@ png/pleya-fly-white-512.png
 Elke PNG is vierkant, heeft een echte transparante achtergrond en behoudt hetzelfde canvas en dezelfde marges. 24, 48 en 72 pixels zijn bruikbaar als 1×-, 2×- en 3×-exports bij een weergave van 24 pixels. De 512-pixelversie is bedoeld voor een groot voorbeeld of verder gebruik.
 
 OVERDRACHT
-pleya-fly-claude.txt                    Korte opdracht voor Claude
+pleya-fly-opdracht.txt                    Korte opdracht voor de integratie
 pleya-fly-preview.png                   Voorbeeld van de echte SVG-uitwerking
 reference/pleya-fly-approved-design.png  Ongewijzigd gekozen ontwerp uit het gesprek
 

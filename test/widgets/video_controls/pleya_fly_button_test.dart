@@ -4,11 +4,13 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/services/airplay_service.dart';
 import 'package:pleya/widgets/pleya_fly_icon.dart';
 import 'package:pleya/widgets/video_controls/models/track_controls_state.dart';
+import 'package:pleya/widgets/video_controls/video_control_button.dart';
 import 'package:pleya/widgets/video_controls/widgets/track_chapter_controls.dart';
 
 import '../../test_helpers/watch_together_fakes.dart';
@@ -23,6 +25,8 @@ Future<void> _loadSymbols() async {
     ..addFont(Future.value(ByteData.sublistView(File(_symbolsFont).readAsBytesSync())));
   await loader.load();
 }
+
+ColorFilter? _fly(WidgetTester tester) => tester.widget<SvgPicture>(find.byType(SvgPicture)).colorFilter;
 
 void main() {
   setUpAll(_loadSymbols);
@@ -72,6 +76,35 @@ void main() {
           File('$_shots/player-bar-$name.png').writeAsBytesSync(data!.buffer.asUint8List());
         });
       }
+    });
+  }
+
+  // Light theme: its IconTheme colour is dark, so only the button's own colour can make the glyph white.
+  for (final (name, button, expected) in [
+    (
+      'white by default',
+      const VideoControlButton(icon: Icons.add, iconWidget: PleyaFlyIcon(), onPressed: null),
+      Colors.white,
+    ),
+    (
+      'amber when active',
+      const VideoControlButton(icon: Icons.add, iconWidget: PleyaFlyIcon(), isActive: true, onPressed: null),
+      Colors.amber,
+    ),
+    (
+      'the explicit colour',
+      const VideoControlButton(icon: Icons.add, iconWidget: PleyaFlyIcon(), color: Colors.red, onPressed: null),
+      Colors.red,
+    ),
+  ]) {
+    testWidgets('the Pleya Fly glyph follows the button colour: $name', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.light(),
+          home: Scaffold(body: Center(child: button)),
+        ),
+      );
+      expect(_fly(tester), ColorFilter.mode(expected, BlendMode.srcIn));
     });
   }
 }

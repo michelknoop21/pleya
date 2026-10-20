@@ -19,7 +19,7 @@ class PleyaFlyIcon extends StatelessWidget {
       asset,
       width: side,
       height: side,
-      colorFilter: ColorFilter.mode(color ?? theme.color ?? Colors.white, BlendMode.srcIn),
+      colorFilter: ColorFilter.mode(color ?? theme.color ?? Theme.of(context).colorScheme.onSurface, BlendMode.srcIn),
     );
   }
 }

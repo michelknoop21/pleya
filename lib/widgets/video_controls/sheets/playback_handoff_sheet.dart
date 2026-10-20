@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 
 import '../../../connection/connection_registry.dart';
 import '../../../i18n/strings.g.dart';
-import '../../pleya_fly_icon.dart';
 import '../../../mpv/mpv.dart';
 import '../../../profiles/active_profile_provider.dart';
 import '../../../profiles/profile_connection_registry.dart';
@@ -18,6 +17,7 @@ import '../../../services/companion_remote/playback_handoff.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/app_logger.dart';
 import '../../../utils/formatters.dart';
+import '../../pleya_fly_icon.dart';
 import '../../../utils/haptics.dart';
 import '../../../utils/platform_detector.dart';
 import '../../../widgets/app_icon.dart';
