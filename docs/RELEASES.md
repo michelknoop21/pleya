@@ -63,8 +63,8 @@ Nothing user-facing since the last published build.
 
 ### Fixed
 
-- **The iPhone now hears that the Apple TV has started.** In builds 386 and 387 the Apple TV
-  started playing after a handoff, but never told the iPhone, which then reported that the
+- **The iPhone now hears that the Apple TV has started.** With Apple TV build 387 and iPhone
+  build 386 the Apple TV started playing after a handoff, but never told the iPhone, which then reported that the
   Apple TV did not start. The Apple TV now confirms once the film is actually running, and the
   iPhone closes its own player at that moment.
 
@@ -89,10 +89,10 @@ Nothing user-facing since the last published build.
 
 ### Improved
 
-- **Smaller, see-through menus in the player.** In landscape the Pleya Fly, audio and
-  subtitle, and settings menus are a compact panel instead of a wide box. With Liquid Glass
+- **Smaller, see-through menus in the player.** On an iPhone in landscape the Pleya Fly, audio
+  and subtitle, and settings menus are a compact panel instead of a wide box. With Liquid Glass
   on, they are translucent so the film stays visible behind them, and the player buttons fade
-  out underneath. On iPad they stay solid.
+  out underneath. On iPad nothing changes: same size, solid.
 
 ### Fixed
 
