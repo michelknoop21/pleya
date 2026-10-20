@@ -62,7 +62,7 @@ Negatieve controles tonen oud artwork na leeg/vervangen resultaat en focusdiefst
 zonder de guards. De geneste TV-grid gebruikt de beschikbare constraintsbreedte;
 de eerste integratierun reproduceerde 67px overflow met de oude schermbreedte.
 
-Verify: `tvos.library.atmosphere` PASS op een verse aparte simulator, met drie
+Verify (vervallen, scenario verwijderd op 20 okt 2026): `tvos.library.atmosphere` PASS op een verse aparte simulator, met drie
 native beelden (kalibratiefixture; geen hardwarebewijs). De bestaande simulator
 weigerde de Verify TopShelf-installatie. iOS generieke build stuitte op macOS
 `lipo -verify_arch arm64 x86_64`; een alleen-ARM64 simulatorbuild slaagde. Geen
@@ -95,7 +95,7 @@ blijven open onder VIS-COL-PLAY1 en S19/S22; geen volledige acceptatieclaim.
 
 PR #329 is gemerged (644cfe69). De volledige testsuite telde 11164 geslaagde
 tests, twaalf golden-afwijkingen en 211 skips. Zonder bruikbare bronartwork
-moet de sfeerlaag transparant blijven en houdt het catalogusvenster zijn
+moest de sfeerlaag transparant blijven (vervallen: de laag is op 20 okt 2026 verwijderd) en houdt het catalogusvenster zijn
 bestaande lift, met de shell als eigenaar wanneer aanwezig. Een gerichte
 negatieve controle bevestigt de ongewenste opaque laag. De bestaande Linux-workflow 38380971041 slaagde met 27 gerichte goldentests.
 Exact zeven discoveryreferenties zijn gewijzigd en onafhankelijk inhoudelijk
