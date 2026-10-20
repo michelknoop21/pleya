@@ -1077,7 +1077,7 @@
     "privacyPolicy": "Privacy policy",
     "licence": "Licence",
     "sources": "Sources",
-    "tmdbSource": "TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P.",
+    "tmdbSource": "TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P, and descriptions, genres, age ratings and artwork for titles on a Pleya Server.",
     "tmdbAttribution": "This product uses the TMDB API but is not endorsed or certified by TMDB.",
     "wikidataSource": "Wikidata (CC0): age rating (MPA) of films for Big P.",
     "tvmazeSource": "TVmaze (CC BY-SA): genres, runtime and score of series for Big P.",

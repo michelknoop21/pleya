@@ -1077,7 +1077,7 @@
     "privacyPolicy": "Privacybeleid",
     "licence": "Licentie",
     "sources": "Bronnen",
-    "tmdbSource": "TMDB: leeftijdsclassificatie, genres, cast, score, streamingdiensten, trending en vergelijkbare titels voor Big P.",
+    "tmdbSource": "TMDB: leeftijdsclassificatie, genres, cast, score, streamingdiensten, trending en vergelijkbare titels voor Big P, en beschrijvingen, genres, kijkwijzers en afbeeldingen van titels op een Pleya Server.",
     "tmdbAttribution": "This product uses the TMDB API but is not endorsed or certified by TMDB.",
     "wikidataSource": "Wikidata (CC0): leeftijdsclassificatie (MPA) van films voor Big P.",
     "tvmazeSource": "TVmaze (CC BY-SA): genres, speelduur en score van series voor Big P.",

@@ -2999,8 +2999,8 @@ class TranslationsAboutEn {
 	/// en: 'Sources'
 	String get sources => 'Sources';
 
-	/// en: 'TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P.'
-	String get tmdbSource => 'TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P.';
+	/// en: 'TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P, and descriptions, genres, age ratings and artwork for titles on a Pleya Server.'
+	String get tmdbSource => 'TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P, and descriptions, genres, age ratings and artwork for titles on a Pleya Server.';
 
 	/// en: 'This product uses the TMDB API but is not endorsed or certified by TMDB.'
 	String get tmdbAttribution => 'This product uses the TMDB API but is not endorsed or certified by TMDB.';
@@ -10748,7 +10748,7 @@ extension on Translations {
 			'about.privacyPolicy' => 'Privacy policy',
 			'about.licence' => 'Licence',
 			'about.sources' => 'Sources',
-			'about.tmdbSource' => 'TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P.',
+			'about.tmdbSource' => 'TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P, and descriptions, genres, age ratings and artwork for titles on a Pleya Server.',
 			'about.tmdbAttribution' => 'This product uses the TMDB API but is not endorsed or certified by TMDB.',
 			'about.wikidataSource' => 'Wikidata (CC0): age rating (MPA) of films for Big P.',
 			'about.tvmazeSource' => 'TVmaze (CC BY-SA): genres, runtime and score of series for Big P.',
