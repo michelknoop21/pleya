@@ -113,7 +113,7 @@ func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
 		LIMIT $%d`,
 		itemColumns, key, strings.Join(where, " AND "), key, direction, direction, len(args))
 
-	return s.itemPage(ctx, sql, args, q.Sort, limit, q.Cursor, q.Filters.Fingerprint())
+	return s.itemPage(ctx, sql, args, q.Sort, limit, q.Cursor, q.Filters.CursorTag(q.Sort))
 }
 
 // itemColumns is de kolomlijst die scanItems verwacht, met i als alias voor

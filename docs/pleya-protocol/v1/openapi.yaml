@@ -1435,7 +1435,9 @@ paths:
             `in_progress` is de deelverzameling met voortgang, `watched` is
             uitgekeken. Bij een serie telt de som van haar afleveringen: alle
             afleveringen gezien is `watched`, een deel gezien of begonnen is
-            `in_progress`, en `unwatched` zolang er een aflevering openstaat.
+            `in_progress`, en `unwatched` is elke serie die niet helemaal gezien
+            is (ook een serie zonder afleveringen), zodat unwatched en watched
+            samen het totaal vormen.
           schema:
             type: string
             enum: [unwatched, in_progress, watched]
@@ -1451,10 +1453,12 @@ paths:
           in: query
           required: false
           description: |
-            Herhaalbaar; een ISO 639-2/B-code van drie letters (`dut`, `eng`).
+            Herhaalbaar; een taalcode van twee of drie letters (`nl`, `nld`, `dut`).
+            De server zet hem om naar ISO 639-2/B zoals de facetten hem tonen
+            (`dut`); `und` en onbekende codes zijn `library.filter_invalid`.
             Een titel telt mee als een geluidsspoor van een van zijn versies
             (bij een serie: van een van haar afleveringen) die taal heeft.
-          schema: { type: array, items: { type: string, pattern: "^[A-Za-z]{3}$" }, maxItems: 50 }
+          schema: { type: array, items: { type: string, pattern: "^[A-Za-z]{2,3}$" }, maxItems: 50 }
           style: form
           explode: true
         - name: resolution

@@ -423,7 +423,7 @@ void main() {
   });
 
   // The panel with every section in a different state at once: Status and
-  // Servers usable, Genre and Year suppressed because a Pleya Server library
+  // Servers usable, Genre and Year suppressed because a local library
   // takes part and cannot execute them (hoofdstuk 10.4), and Libraries showing
   // the server under each name.
   testWidgets('filter panel with suppressed sections', (tester) async {

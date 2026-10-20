@@ -82,6 +82,19 @@ func (f Filters) Fingerprint() string {
 	return hex.EncodeToString(sum[:6])
 }
 
+// CursorTag is wat de cursor van een lijst als herkenning meedraagt: de
+// vingerafdruk van de filterset, en bij een sortering die van de aanvrager
+// afhangt (last_played_at) ook een korte hash van die aanvrager. Een cursor van
+// de ene identiteit is dan geen vervolg van de lijst van een andere.
+func (f Filters) CursorTag(sort Sort) string {
+	tag := f.Fingerprint()
+	if !sort.needsSubject() {
+		return tag
+	}
+	sum := sha256.Sum256([]byte(f.Subject))
+	return tag + "@" + hex.EncodeToString(sum[:4])
+}
+
 // resolutionClass is de SQL die een videospoor in een label deelt. Op breedte én
 // hoogte: een 1920x804 film (letterbox) is fhd, en een 1280x544 is hd.
 const resolutionClass = `CASE
@@ -111,7 +124,9 @@ func watchPredicate(w WatchFilter, subjectArg int) string {
 
 	switch w {
 	case WatchUnwatched:
-		return fmt.Sprintf("(CASE WHEN i.kind = 'show' THEN %s ELSE NOT %s END)", epNotWatched, fmt.Sprintf(watchedRow, "i.id"))
+		// Een serie is unwatched zolang ze niet helemaal gezien is, ook een serie
+		// zonder afleveringen: zo tellen unwatched en watched op tot het totaal.
+		return fmt.Sprintf("(CASE WHEN i.kind = 'show' THEN NOT (%s AND NOT %s) ELSE NOT %s END)", epExists, epNotWatched, fmt.Sprintf(watchedRow, "i.id"))
 	case WatchInProgress:
 		return fmt.Sprintf(`(CASE WHEN i.kind = 'show' THEN (%s AND %s)
 		        ELSE (NOT %s AND EXISTS (SELECT 1 FROM watch_states w WHERE w.subject = %s AND w.item_id = i.id AND w.position_ms > 0)) END)`,

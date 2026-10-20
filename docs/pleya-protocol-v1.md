@@ -665,9 +665,9 @@ EN.
 | `genre` | herhaalbaar, tekst | een van de genres, zonder hoofdletters; de dekkingspoort (S4.2) bepaalt alleen of de server genres toont en als facet aanbiedt, het filter werkt ook met de poort dicht |
 | `year` | herhaalbaar, vier cijfers | productiejaar, 1800 tot en met 2200 |
 | `year_from`, `year_to` | vier cijfers | bereik, inclusief; `year_from` niet na `year_to` |
-| `watch` | `unwatched`, `in_progress`, `watched` | voor de aanvrager; `unwatched` bevat ook wat half bekeken is, `in_progress` is de deelverzameling met voortgang. Bij een serie telt de som van haar afleveringen: alle gezien is `watched`, een deel gezien of begonnen is `in_progress`, en `unwatched` geldt zolang er een aflevering openstaat |
+| `watch` | `unwatched`, `in_progress`, `watched` | voor de aanvrager; `unwatched` bevat ook wat half bekeken is, `in_progress` is de deelverzameling met voortgang. Bij een serie telt de som van haar afleveringen: alle gezien is `watched`, een deel gezien of begonnen is `in_progress`, en `unwatched` is elke serie die niet helemaal gezien is, ook een serie zonder afleveringen |
 | `content_rating` | herhaalbaar, tekst | kijkwijzer zoals op `Item`, zonder hoofdletters |
-| `audio_language` | herhaalbaar, drie letters | ISO 639-2/B (`dut`, `eng`); een film telt mee met een geluidsspoor van een van zijn versies, een serie met een spoor van een van haar afleveringen |
+| `audio_language` | herhaalbaar, twee of drie letters | `nl`, `nld` en `dut` zijn dezelfde taal; de server zet om naar ISO 639-2/B zoals de facetten (`dut`, `eng`), `und` en onbekende codes zijn een fout; een film telt mee met een geluidsspoor van een van zijn versies, een serie met een spoor van een van haar afleveringen |
 | `resolution` | herhaalbaar, `sd`, `hd`, `fhd`, `uhd` | de klasse van het videospoor, op breedte of hoogte: `uhd` vanaf 3200 of 2000, `fhd` vanaf 1800 of 1000, `hd` vanaf 1200 of 700, anders `sd`. Een letterboxfilm van 1920x804 is dus `fhd` |
 
 Een waarde die de server niet kan uitvoeren is `400 library.filter_invalid` met `details.parameter`

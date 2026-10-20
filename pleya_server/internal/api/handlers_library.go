@@ -100,11 +100,11 @@ func (s *Server) handleLibraryItems(w http.ResponseWriter, r *http.Request) {
 	filters, bad := parseItemFilters(r.URL.Query(), subject.String())
 	if bad != nil {
 		writeError(w, s.log, CodeFilterInvalid, "filter parameter is invalid",
-			map[string]any{"parameter": bad.parameter, "value": bad.value})
+			map[string]any{"parameter": bad.parameter, "value": truncateValue(bad.value)})
 		return
 	}
 
-	cursor, err := catalog.DecodeCursorFor(r.URL.Query().Get("cursor"), sort, filters.Fingerprint())
+	cursor, err := catalog.DecodeCursorFor(r.URL.Query().Get("cursor"), sort, filters.CursorTag(sort))
 	if err != nil {
 		writeError(w, s.log, CodeCursorInvalid, err.Error(), nil)
 		return

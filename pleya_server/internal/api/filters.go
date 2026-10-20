@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
+	"github.com/edde746/plezy/pleya_server/internal/nameparse"
 )
 
 // maxFilterValues is de bovengrens op het aantal waarden van één herhaalbare
@@ -100,11 +101,12 @@ func parseItemFilters(q url.Values, subject string) (catalog.Filters, *filterErr
 		return f, bad
 	}
 	for _, l := range langs {
-		l = strings.ToLower(l)
-		if !languagePattern.MatchString(l) {
+		// Dezelfde omzetting als voor de opgeslagen sporen: nld en nl zijn dut.
+		code, ok := nameparse.LanguageCode(l)
+		if !ok || !languagePattern.MatchString(code) {
 			return f, &filterError{parameter: "audio_language", value: l}
 		}
-		f.AudioLanguages = append(f.AudioLanguages, l)
+		f.AudioLanguages = append(f.AudioLanguages, code)
 	}
 
 	res, bad := values("resolution")
@@ -128,6 +130,18 @@ func parseItemFilters(q url.Values, subject string) (catalog.Filters, *filterErr
 		}
 	}
 	return f, nil
+}
+
+// maxEchoedValue begrenst hoeveel van een afgekeurde waarde in het antwoord
+// terugkomt: een client kan er een megabyte insturen.
+const maxEchoedValue = 64
+
+func truncateValue(v string) string {
+	r := []rune(v)
+	if len(r) <= maxEchoedValue {
+		return v
+	}
+	return string(r[:maxEchoedValue])
 }
 
 func parseYear(s string) (int, bool) {

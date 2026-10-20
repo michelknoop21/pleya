@@ -236,8 +236,9 @@ func TestShowWatchFilterFollowsItsEpisodes(t *testing.T) {
 	q := func(w catalog.WatchFilter) []string {
 		return titlesOf(t, f, catalog.Query{Kinds: []string{"show"}, Filters: catalog.Filters{Subject: f.owner, Watch: w}})
 	}
-	// Niets bekeken: Dark is unwatched; een serie zonder afleveringen is nooit watched.
-	if got := q(catalog.WatchUnwatched); !slices.Equal(got, []string{"Dark"}) {
+	// Niets bekeken: beide series zijn unwatched, ook die zonder afleveringen,
+	// en geen van beide is watched.
+	if got := q(catalog.WatchUnwatched); !slices.Equal(got, []string{"Dark", "Leeg"}) {
 		t.Fatalf("unwatched zonder kijkstatus: %v", got)
 	}
 	f.watch(t, f.owner, "e1", 0, true, "2026-01-01T10:00:00Z")
@@ -251,8 +252,15 @@ func TestShowWatchFilterFollowsItsEpisodes(t *testing.T) {
 	if got := q(catalog.WatchWatched); !slices.Equal(got, []string{"Dark"}) {
 		t.Fatalf("watched na alle afleveringen: %v", got)
 	}
-	if got := q(catalog.WatchUnwatched); len(got) != 0 {
+	if got := q(catalog.WatchUnwatched); !slices.Equal(got, []string{"Leeg"}) {
 		t.Fatalf("unwatched na alle afleveringen: %v", got)
+	}
+	fc, err := f.store.Facets(f.ctx, f.lib, f.owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fc.Watch.Unwatched+fc.Watch.Watched != 2 || fc.Watch.Watched != 1 {
+		t.Fatalf("de kijktellingen tellen niet op tot het totaal: %+v", fc.Watch)
 	}
 }
 
@@ -310,7 +318,7 @@ func TestPagingThroughNullSortsLosesNothing(t *testing.T) {
 			if page.NextCursor == "" {
 				break
 			}
-			cur, err = catalog.DecodeCursorFor(page.NextCursor, s, catalog.Filters{Subject: f.owner}.Fingerprint())
+			cur, err = catalog.DecodeCursorFor(page.NextCursor, s, catalog.Filters{Subject: f.owner}.CursorTag(s))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -413,5 +421,31 @@ func TestGenreFacetIsEmptyBelowTheCoverageGate(t *testing.T) {
 	}
 	if _, err := catalog.NewStore(f.pool).Facets(f.ctx, id.New(), f.owner); err == nil {
 		t.Fatal("een onbekende bibliotheek gaf geen fout")
+	}
+}
+
+// Een cursor met een onzinnige sleutel is een cursorfout, ook op de sortering
+// waarvan de sleutel geen getal is.
+func TestJunkLastPlayedCursorKeyIsACursorError(t *testing.T) {
+	f := moviesFixture(t)
+	_, err := f.store.Items(f.ctx, catalog.Query{
+		LibraryID: &f.lib, Sort: catalog.SortLastPlayed, Limit: 10,
+		Filters: catalog.Filters{Subject: f.owner},
+		Cursor:  &catalog.Cursor{Sort: catalog.SortLastPlayed, Key: "geen tijdstip", ID: id.New().String()},
+	})
+	if !errors.Is(err, catalog.ErrCursorInvalid) {
+		t.Fatalf("kreeg %v, verwacht ErrCursorInvalid", err)
+	}
+}
+
+// Een cursor onder een sortering die van de aanvrager afhangt hoort bij die aanvrager.
+func TestSubjectSortCursorBelongsToItsSubject(t *testing.T) {
+	a := catalog.Filters{Subject: "een"}
+	b := catalog.Filters{Subject: "twee"}
+	if a.CursorTag(catalog.SortLastPlayed) == b.CursorTag(catalog.SortLastPlayed) {
+		t.Fatal("twee aanvragers delen een cursorherkenning")
+	}
+	if a.CursorTag(catalog.SortTitle) != b.CursorTag(catalog.SortTitle) {
+		t.Fatal("een sortering die niet van de aanvrager afhangt hoort er geen te dragen")
 	}
 }

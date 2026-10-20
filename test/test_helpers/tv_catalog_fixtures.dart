@@ -242,9 +242,9 @@ UnifiedMediaGroup tvGoldenShowGroup(String id, List<MediaItem> items, {bool watc
   );
 }
 
-/// Three libraries on three servers, one per backend — which is what makes the
-/// filter panel's capability rule visible: the Pleya Server library is the one
-/// that takes genre, year and status out of the rail.
+/// Three libraries on three servers — which is what makes the filter panel's
+/// capability rule visible: the local library is the one that takes genre, year
+/// and status out of the rail (a folder has no index to filter on).
 final tvGoldenLibraries = <CatalogLibrary>[
   (serverId: ServerId('nas'), serverName: 'NAS', libraryId: '1', libraryTitle: 'Films 4K', backend: MediaBackend.plex),
   (
@@ -259,6 +259,6 @@ final tvGoldenLibraries = <CatalogLibrary>[
     serverName: 'Schuur',
     libraryId: '3',
     libraryTitle: 'Archief',
-    backend: MediaBackend.pleyaServer,
+    backend: MediaBackend.local,
   ),
 ];

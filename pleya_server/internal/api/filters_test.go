@@ -75,8 +75,9 @@ func TestFilterInvalidNamesTheParameter(t *testing.T) {
 		{"year=1700", "year"},
 		{"year_from=abcd", "year_from"},
 		{"year_from=2000&year_to=1990", "year_from"},
-		{"audio_language=nl", "audio_language"},
-		{"audio_language=nld1", "audio_language"},
+		{"audio_language=zz9", "audio_language"},
+		{"audio_language=und", "audio_language"},
+		{"audio_language=x", "audio_language"},
 		{"genre=", "genre"},
 		{"genre=" + strings.Repeat("a&genre=", 50) + "a", "genre"},
 	}
@@ -198,5 +199,29 @@ func TestLibraryFacets(t *testing.T) {
 	items := e.do(http.MethodGet, "/pleya/v1/libraries/"+films+"/items?genre=x", nil, asUser(e.tokenFor(stranger)))
 	if items.Code != http.StatusNotFound {
 		t.Fatalf("filters op een bibliotheek zonder recht gaven %d", items.Code)
+	}
+}
+
+// nl, nld en dut zijn dezelfde taal; de filterwaarde volgt de omzetting van de sporen.
+func TestAudioLanguageFilterAcceptsEveryFormOfALanguage(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	for _, v := range []string{"nl", "nld", "dut", "NL"} {
+		rec := e.do(http.MethodGet, "/pleya/v1/libraries/"+e.libraryID("movies")+"/items?audio_language="+v, nil)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("audio_language=%s gaf %d: %s", v, rec.Code, rec.Body.String())
+		}
+	}
+}
+
+func TestFilterErrorEchoesAtMostSixtyFourCharacters(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	rec := e.do(http.MethodGet, "/pleya/v1/libraries/"+e.libraryID("movies")+"/items?watch="+strings.Repeat("x", 5000), nil)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("gaf %d", rec.Code)
+	}
+	if rec.Body.Len() > 1000 {
+		t.Fatalf("antwoord van %d bytes: de waarde komt onbegrensd terug", rec.Body.Len())
 	}
 }
