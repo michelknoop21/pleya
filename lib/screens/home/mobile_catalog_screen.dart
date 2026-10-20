@@ -128,6 +128,8 @@ class MobileCatalogScreen extends StatefulWidget {
 class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   late final UnifiedCatalogProvider _catalog;
   final _scrollController = ScrollController();
+  bool _headerHidden = false;
+  double _headerScrollTravel = 0;
   UnifiedArtworkPrefetcher? _prefetcher;
 
   UnifiedCatalogPreferences _preferences = UnifiedCatalogPreferences.defaults;
@@ -304,6 +306,42 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     return parts.isEmpty ? null : parts.join(' · ');
   }
 
+  /// Distance the finger has to travel in one direction before the top menu
+  /// follows. Keeps a jittery thumb from flickering the header.
+  static const double _headerScrollSlop = 12;
+
+  /// Hide the top menu (title row and chips) on scroll down, bring it back on
+  /// any scroll up, even mid-list, and always at the very top (A-06, decision
+  /// Michel 20 Oct 2026). Overscroll at either end is ignored so a rubber-band
+  /// bounce cannot flip it.
+  bool _onHeaderScroll(ScrollNotification notification) {
+    if (notification.depth != 0 || notification.metrics.axis != Axis.vertical) return false;
+    final metrics = notification.metrics;
+    if (metrics.pixels <= 0) {
+      _headerScrollTravel = 0;
+      _setHeaderHidden(false);
+      return false;
+    }
+    if (notification is! ScrollUpdateNotification) return false;
+    if (metrics.pixels > metrics.maxScrollExtent) return false;
+    final delta = notification.scrollDelta ?? 0;
+    if (delta == 0) return false;
+    // A reversal restarts the count, so only a sustained run changes the state.
+    if (delta.sign != _headerScrollTravel.sign) _headerScrollTravel = 0;
+    _headerScrollTravel += delta;
+    if (_headerScrollTravel >= _headerScrollSlop) {
+      _setHeaderHidden(true);
+    } else if (_headerScrollTravel <= -_headerScrollSlop) {
+      _setHeaderHidden(false);
+    }
+    return false;
+  }
+
+  void _setHeaderHidden(bool hidden) {
+    if (_headerHidden == hidden || !mounted) return;
+    setState(() => _headerHidden = hidden);
+  }
+
   void _onScroll() {
     final prefetcher = _prefetcher;
     if (prefetcher == null || !_scrollController.hasClients) return;
@@ -369,8 +407,12 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
               bottom: false,
               child: Column(
                 children: [
-                  _buildHeader(),
-                  _buildChips(sheetContext, filters),
+                  // Only while a grid is scrolling: an empty or loading body
+                  // has nothing to scroll back with, so the menu stays put.
+                  _CollapsibleTopMenu(
+                    collapsed: _headerHidden && _catalog.snapshot.groups.isNotEmpty,
+                    child: Column(children: [_buildHeader(), _buildChips(sheetContext, filters)]),
+                  ),
                   const SizedBox(height: 8),
                   _buildCountRow(filters),
                   const SizedBox(height: 8),
@@ -544,9 +586,9 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
           final cardWidth = _cardWidth(constraints.maxWidth);
           final cardHeight = cardWidth / (2 / 3) + MediaCardGridLayout.textExtentFor(context);
           return NotificationListener<ScrollNotification>(
-            onNotification: (_) {
+            onNotification: (notification) {
               _onScroll();
-              return false;
+              return _onHeaderScroll(notification);
             },
             child: CustomScrollView(
               controller: _scrollController,
@@ -592,6 +634,33 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Lets tests measure the top menu's current height.
+@visibleForTesting
+const catalogTopMenuKey = ValueKey<String>('catalog.top_menu');
+
+/// Slides the catalogue's top menu away without a jump: the clip shrinks with
+/// the height factor, so the grid below follows the menu instead of snapping.
+class _CollapsibleTopMenu extends StatelessWidget {
+  const _CollapsibleTopMenu({required this.collapsed, required this.child});
+
+  final bool collapsed;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      key: catalogTopMenuKey,
+      child: AnimatedAlign(
+        alignment: Alignment.topCenter,
+        heightFactor: collapsed ? 0 : 1,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: ExcludeSemantics(excluding: collapsed, child: child),
       ),
     );
   }

@@ -317,6 +317,36 @@ void main() {
     await settle(tester);
   });
 
+  group('top menu collapses on scroll (A-06)', () {
+    double menuHeight(WidgetTester tester) => tester.getSize(find.byKey(catalogTopMenuKey)).height;
+
+    Future<void> scrollBy(WidgetTester tester, double dy) async {
+      await tester.drag(find.byType(CustomScrollView), Offset(0, dy));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('hides on scroll down, returns on any scroll up, fully shown at the top', (tester) async {
+      client.itemsByLibrary['A'] = [for (var i = 0; i < 18; i++) _movie('m$i', title: 'Film $i', serverId: 's1')];
+      await pumpCatalog(tester);
+      await settle(tester);
+
+      final full = menuHeight(tester);
+      expect(full, greaterThan(80), reason: 'title row plus chip row at rest');
+
+      await scrollBy(tester, -300);
+      expect(menuHeight(tester), 0, reason: 'scrolling down hides the menu');
+
+      await scrollBy(tester, 60);
+      expect(menuHeight(tester), full, reason: 'a short scroll up mid-list brings it back');
+
+      await scrollBy(tester, -300);
+      expect(menuHeight(tester), 0);
+      await scrollBy(tester, 3000);
+      expect(menuHeight(tester), full, reason: 'at offset 0 it is fully shown');
+    });
+  });
+
   testWidgets('shows the populated grid, the count line and the chip labels once loaded', (tester) async {
     await pumpCatalog(tester);
     await settle(tester);

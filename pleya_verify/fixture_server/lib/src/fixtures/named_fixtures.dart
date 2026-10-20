@@ -33,6 +33,9 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
     case 'catalog.long-rails.v1':
       _applyCatalogLongRailsV1(server);
       return true;
+    case 'catalog.long-grid.v1':
+      _applyCatalogLongGridV1(server);
+      return true;
     case 'catalog.seasons.v1':
       _applyCatalogSeasonsV1(server);
       return true;
@@ -373,6 +376,36 @@ void _applyCatalogLongRailsV1(PleyaFakeServer server) {
       libraryId: libraryId,
       year: 2010 + ids.length,
       durationMs: 5400000 + ids.length * 60000,
+      posterId: _registerArtwork(server, movieId),
+    );
+  }
+
+  server.hubs['recently_added']!.addAll(ids);
+}
+
+/// Eighteen movies in one library, so the mobile catalogue grid is taller than
+/// the screen and can scroll (A-06: the top menu folds away on scroll). Kept
+/// under one catalogue page (twenty groups) so no load-more round-trip runs
+/// mid-scroll. Every other fixture has three or four movies.
+void _applyCatalogLongGridV1(PleyaFakeServer server) {
+  const fixture = 'catalog.long-grid.v1';
+  server.resetCatalog();
+
+  final libraryId = _mintId(server, fixture, 'library', 'movies');
+  server.addLibrary(id: libraryId, title: 'Movies', kind: 'movies', itemCount: 18);
+
+  final ids = <String>[];
+  for (var i = 1; i <= 18; i++) {
+    final slug = 'longgrid-${i.toString().padLeft(2, '0')}';
+    final movieId = _mintId(server, fixture, 'movie', slug);
+    ids.add(movieId);
+    server.addItem(
+      id: movieId,
+      kind: 'movie',
+      title: slug,
+      libraryId: libraryId,
+      year: 2000 + i,
+      durationMs: 5400000 + i * 60000,
       posterId: _registerArtwork(server, movieId),
     );
   }
