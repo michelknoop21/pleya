@@ -17,7 +17,6 @@ import '../../../services/companion_remote/playback_handoff.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/app_logger.dart';
 import '../../../utils/formatters.dart';
-import '../../pleya_fly_icon.dart';
 import '../../../utils/haptics.dart';
 import '../../../utils/platform_detector.dart';
 import '../../../widgets/app_icon.dart';
@@ -25,6 +24,7 @@ import '../../../widgets/focusable_list_tile.dart';
 import '../../../widgets/notice/notice.dart';
 import '../../../widgets/notice/notice_controller.dart';
 import '../../../widgets/overlay_sheet.dart';
+import '../../../widgets/pleya_fly_icon.dart';
 import 'base_video_control_sheet.dart';
 
 /// Lists this device and the Apple TVs on the network, AirPlay-style, and hands
