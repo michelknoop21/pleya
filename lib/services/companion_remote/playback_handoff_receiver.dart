@@ -57,9 +57,10 @@ Future<void> receivePlaybackHandoff(
       if (attempt.opened) return;
       attempt.expired = true;
       appLogger.w('Playback handoff ${request.id} failed: past its start window');
-      reportPlaybackHandoff(provider, request.id, PlaybackHandoffOutcome.failed);
+      // Free the receiver first: a provider torn down by a profile switch may throw.
       release();
       expired.complete();
+      reportPlaybackHandoff(provider, request.id, PlaybackHandoffOutcome.failed);
     });
   }
   try {
