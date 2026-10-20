@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/profiles/profile.dart';
 import 'package:pleya/profiles/profile_connection.dart';
 import 'package:pleya/services/companion_remote/playback_handoff.dart';
+import 'package:pleya/utils/log_redaction_manager.dart';
 
 // A-23c: the Plex token that lets the Apple TV skip the PIN of the sender's profile.
 
@@ -53,6 +54,15 @@ void main() {
       expect(back, isNotNull);
       expect(back!.id, 'h1');
       expect(back.plexUserToken, isNull);
+    });
+
+    test('a token far longer than a Plex token is dropped, the handoff stays', () {
+      final long = 'x' * (PlaybackHandoffRequest.maxPlexUserTokenLength + 1);
+      final back = PlaybackHandoffRequest.fromData(_request(token: long).toData());
+      expect(back, isNotNull);
+      expect(back!.plexUserToken, isNull);
+      final edge = 'x' * PlaybackHandoffRequest.maxPlexUserTokenLength;
+      expect(PlaybackHandoffRequest.fromData(_request(token: edge).toData())?.plexUserToken, edge);
     });
 
     test('withPlexUserToken keeps everything else', () {
@@ -233,6 +243,32 @@ void main() {
         peerUuid: 'u-anna',
       );
       expect(proof, isNull);
+    });
+
+    test('only a proven token joins the redaction list, so forged ones cannot push real ones out', () async {
+      LogRedactionManager.clearTrackedValues();
+      await verifyPlexHomeTokenProof(
+        userInfo: answer('u-bram'),
+        token: 'forged-token-1',
+        expectedUuid: 'u-anna',
+        peerUuid: 'u-anna',
+      );
+      await verifyPlexHomeTokenProof(
+        userInfo: answer(Exception('401')),
+        token: 'forged-token-2',
+        expectedUuid: 'u-anna',
+        peerUuid: 'u-anna',
+      );
+      expect(LogRedactionManager.redact('t=forged-token-1 forged-token-2'), contains('forged-token-1'));
+      expect(LogRedactionManager.redact('t=forged-token-2'), contains('forged-token-2'));
+      await verifyPlexHomeTokenProof(
+        userInfo: answer('u-anna'),
+        token: 'real-token-anna',
+        expectedUuid: 'u-anna',
+        peerUuid: 'u-anna',
+      );
+      expect(LogRedactionManager.redact('t=real-token-anna'), isNot(contains('real-token-anna')));
+      LogRedactionManager.clearTrackedValues();
     });
 
     test('a handshake that named someone else is no proof, without asking plex.tv', () async {

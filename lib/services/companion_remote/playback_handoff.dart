@@ -57,6 +57,10 @@ class PlaybackHandoffRequest {
 
   static const _plexUserTokenKey = 'plexUserToken';
 
+  /// A Plex token is about 20 characters; anything far longer is not one and
+  /// is dropped before it reaches plex.tv or the log redaction list.
+  static const maxPlexUserTokenLength = 128;
+
   PlaybackHandoffRequest withPlexUserToken(String? token) => PlaybackHandoffRequest(
     id: id,
     serverId: serverId,
@@ -89,7 +93,7 @@ class PlaybackHandoffRequest {
       positionMs: positionMs,
       title: title is String ? title : '',
       from: from is String ? from : '',
-      plexUserToken: token is String && token.isNotEmpty ? token : null,
+      plexUserToken: token is String && token.isNotEmpty && token.length <= maxPlexUserTokenLength ? token : null,
     );
   }
 }
@@ -239,10 +243,13 @@ Future<String?> verifyPlexHomeTokenProof({
   Duration timeout = const Duration(seconds: 8),
 }) async {
   if (token == null || token.isEmpty || expectedUuid.isEmpty || peerUuid != expectedUuid) return null;
-  LogRedactionManager.registerToken(token);
   try {
     final uuid = (await userInfo(token).timeout(timeout))['uuid'];
-    if (uuid is String && uuid.trim() == expectedUuid) return token;
+    if (uuid is String && uuid.trim() == expectedUuid) {
+      // Only a proven token joins the bounded redaction list: forged ones would push real tokens out.
+      LogRedactionManager.registerToken(token);
+      return token;
+    }
     appLogger.w('Playback handoff: the Plex token belongs to another user');
   } catch (e) {
     // Only the type: an error text could carry the request.

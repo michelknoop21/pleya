@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -175,6 +177,14 @@ void main() {
       expect(ok, isFalse);
       expect(active.activeId, isNull);
     });
+  });
+
+  test('only activateProfileWithPin may skip the PIN of a local profile', () {
+    final callers = [
+      for (final file in Directory('lib').listSync(recursive: true).whereType<File>())
+        if (file.path.endsWith('.dart') && file.readAsStringSync().contains(RegExp(r'pinProven\s*:'))) file.path,
+    ];
+    expect(callers, ['lib/profiles/profile_activation.dart']);
   });
 
   group('ActiveProfileProvider.activate', () {
