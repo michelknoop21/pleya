@@ -51,6 +51,61 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 389 · 20 October 2026 · Apple TV
+
+<!-- commit: b585b81721c205ea790f11250a5a498b3f6049ae -->
+
+### New
+
+- **Pleya Server converts what the Apple TV cannot play.** The Apple TV tells the server what
+  it can play, and a file it cannot play is converted on the server while you watch. The
+  server ends the conversion when you stop. This needs an up-to-date Pleya Server.
+
+### Fixed
+
+- **The iPhone now hears that the Apple TV has started.** With Apple TV build 387 and iPhone
+  build 386 the Apple TV started playing after a handoff, but never told the iPhone, which then reported that the
+  Apple TV did not start. The Apple TV now confirms once the film is actually running, and the
+  iPhone closes its own player at that moment.
+
+### Notes
+
+- **Worth checking:** a handoff from the iPhone in build 388: the Apple TV takes over, the
+  iPhone shows no failure and closes its player, with as little silence as possible in
+  between. Also a film on a Pleya Server that needs converting.
+
+## 2.8.1 · build 388 · 20 October 2026 · iPhone and iPad
+
+<!-- commit: b585b81721c205ea790f11250a5a498b3f6049ae -->
+
+### New
+
+- **Handoff is now called Pleya Fly, with its own icon.** The button next to AirPlay in the
+  player and the sheet it opens carry the Pleya Fly name and icon: keep watching on another
+  device.
+- **Pleya Server converts what the iPhone cannot play.** The iPhone tells the server what it
+  can play, and a file it cannot play is converted on the server while you watch. This needs
+  an up-to-date Pleya Server.
+
+### Improved
+
+- **Smaller, see-through menus in the player.** On an iPhone in landscape the Pleya Fly, audio
+  and subtitle, and settings menus are a compact panel instead of a wide box. With Liquid Glass
+  on, they are translucent so the film stays visible behind them, and the player buttons fade
+  out underneath. On iPad nothing changes: same size, solid.
+
+### Fixed
+
+- **The iPhone closes its player once the Apple TV has taken over.** It used to keep playing
+  and then report that the Apple TV did not start, even though it had. Together with Apple TV
+  build 389, the iPhone now waits until the film is really running on the Apple TV and then
+  closes its own player.
+
+### Notes
+
+- **Worth checking:** Pleya Fly to an Apple TV on build 389, and the player menus with Liquid
+  Glass on and off. None of this has been checked on a real iPhone yet.
+
 ## 2.8.1 · build 387 · 20 October 2026 · Apple TV
 
 <!-- commit: 51c079a28f1bb7d794e01c30d1d133ca10be9f7a -->
