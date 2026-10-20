@@ -24,6 +24,7 @@ import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/unified_catalogs.dart';
 import 'package:pleya/screens/home/mobile_catalog_screen.dart';
+import 'package:pleya/screens/home/mobile_catalog_widgets.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
@@ -174,6 +175,7 @@ void main() {
     bool useEmpty = false,
     double width = 393,
     double textScale = 1,
+    bool pumpAfter = true,
   }) async {
     tester.view.physicalSize = Size(width, 852);
     tester.view.devicePixelRatio = 1.0;
@@ -203,7 +205,7 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
+    if (pumpAfter) await tester.pump();
   }
 
   /// Mounts the screen the way `_TitleRow` does: pushed with
@@ -315,6 +317,122 @@ void main() {
     expect(find.byType(GridView), findsNothing);
     expect(find.text(t.unifiedCatalog.states.emptyTitle), findsNothing);
     await settle(tester);
+  });
+
+  group('top panel collapses on scroll (A-06)', () {
+    Rect panel(WidgetTester tester) => tester.getRect(find.byKey(catalogTopMenuKey));
+    bool shown(WidgetTester tester) => panel(tester).bottom > 80;
+    bool hidden(WidgetTester tester) => panel(tester).bottom <= 0.5;
+
+    Future<void> scrollBy(WidgetTester tester, double dy) async {
+      await tester.drag(find.byType(CustomScrollView), Offset(0, dy));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    void films(int count) {
+      client.itemsByLibrary['A'] = [for (var i = 0; i < count; i++) _movie('m$i', title: 'Film $i', serverId: 's1')];
+    }
+
+    Future<void> pumpWithInsets(WidgetTester tester) async {
+      tester.view.padding = const FakeViewPadding(top: 47, bottom: 34);
+      tester.view.viewPadding = const FakeViewPadding(top: 47, bottom: 34);
+      addTearDown(tester.view.resetPadding);
+      addTearDown(tester.view.resetViewPadding);
+      await pumpCatalog(tester);
+      await settle(tester);
+    }
+
+    testWidgets('hides on scroll down, returns on any scroll up, fully shown at the top', (tester) async {
+      films(18);
+      await pumpCatalog(tester);
+      await settle(tester);
+
+      expect(shown(tester), isTrue);
+      expect(panel(tester).top, 0);
+
+      await scrollBy(tester, -300);
+      expect(hidden(tester), isTrue, reason: 'scrolling down hides the panel');
+
+      await scrollBy(tester, 60);
+      expect(shown(tester), isTrue, reason: 'a short scroll up mid-list brings it back');
+
+      await scrollBy(tester, -300);
+      expect(hidden(tester), isTrue);
+      await scrollBy(tester, 3000);
+      expect(shown(tester), isTrue, reason: 'at offset 0 it is fully shown');
+    });
+
+    testWidgets('the grid scrolls under the status bar and the home indicator and stays reachable', (tester) async {
+      films(18);
+      await pumpWithInsets(tester);
+
+      final scroll = tester.getRect(find.byType(CustomScrollView));
+      expect(scroll.top, 0, reason: 'the grid reaches under the status bar');
+      expect(scroll.bottom, 852, reason: 'and under the home indicator');
+      final panelBottom = panel(tester).bottom;
+      expect(
+        tester.getRect(find.text('Film 0')).top,
+        greaterThanOrEqualTo(panelBottom - 16),
+        reason: 'at offset 0 the first row starts below the panel',
+      );
+
+      await scrollBy(tester, -4000);
+      final last = tester.getRect(find.text('Film 17'));
+      expect(last.bottom, lessThanOrEqualTo(852 - 34), reason: 'the last row scrolls clear of the home indicator');
+    });
+
+    testWidgets('pull-to-refresh starts below the panel, not behind it', (tester) async {
+      films(18);
+      await pumpWithInsets(tester);
+
+      final indicator = tester.widget<RefreshIndicator>(find.byType(RefreshIndicator));
+      expect(indicator.edgeOffset, greaterThan(100), reason: 'the spinner settles under the translucent panel');
+      expect(indicator.edgeOffset, closeTo(tester.getRect(find.byKey(catalogTopMenuKey)).bottom - 14, 1.5));
+    });
+
+    testWidgets('the grid is not shown a frame before the panel is measured', (tester) async {
+      films(18);
+      await pumpCatalog(tester, pumpAfter: false);
+      // First frame after mount: nothing is visible yet, so nothing can jump.
+      expect(tester.widget<Opacity>(find.byKey(const ValueKey('catalog.body'))).opacity, 0);
+      await settle(tester);
+      expect(tester.widget<Opacity>(find.byKey(const ValueKey('catalog.body'))).opacity, 1);
+    });
+
+    testWidgets('a list that barely overflows never flaps', (tester) async {
+      films(9);
+      await pumpCatalog(tester);
+      await settle(tester);
+
+      final states = <bool>[];
+      for (var i = 0; i < 4; i++) {
+        await scrollBy(tester, -120);
+        states.add(hidden(tester));
+        await tester.pump(const Duration(milliseconds: 300));
+        states.add(hidden(tester));
+      }
+      expect(states.toSet().length, 1, reason: 'the state never alternates while dragging down: $states');
+      await scrollBy(tester, 400);
+      expect(shown(tester), isTrue);
+    });
+
+    testWidgets('returns when the content stops overflowing while hidden', (tester) async {
+      films(18);
+      await pumpCatalog(tester);
+      await settle(tester);
+
+      await scrollBy(tester, -300);
+      expect(hidden(tester), isTrue);
+
+      tester.view.physicalSize = const Size(393, 4000);
+      await tester.pump();
+      // The metrics notification is dispatched after the frame that changed
+      // them; the next frame carries the reaction.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(shown(tester), isTrue, reason: 'nothing left to scroll back with');
+    });
   });
 
   testWidgets('shows the populated grid, the count line and the chip labels once loaded', (tester) async {

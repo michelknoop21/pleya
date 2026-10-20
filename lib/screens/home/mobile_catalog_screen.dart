@@ -43,6 +43,8 @@ import '../../providers/unified_catalogs.dart';
 import '../../screens/tv/tv_unified_activation.dart';
 import '../../services/unified_catalog/mobile_media_source_picker_route.dart';
 import '../../services/unified_catalog/unified_artwork_prefetcher.dart';
+import '../../services/unified_catalog/unified_catalog_snapshot.dart';
+import 'mobile_catalog_widgets.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../services/unified_catalog/unified_catalog_query_store.dart';
 import '../../theme/mono_tokens.dart';
@@ -128,6 +130,16 @@ class MobileCatalogScreen extends StatefulWidget {
 class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   late final UnifiedCatalogProvider _catalog;
   final _scrollController = ScrollController();
+  bool _headerHidden = false;
+  double _headerScrollTravel = 0;
+  final _panelKey = GlobalKey();
+
+  /// Height of the translucent top panel (status bar inset, title row, chips
+  /// and count line), measured after layout. The grid scrolls under the panel
+  /// and carries this much padding on top, so at offset 0 the first row starts
+  /// below it.
+  double _panelHeight = 0;
+  bool _panelMeasured = false;
   UnifiedArtworkPrefetcher? _prefetcher;
 
   UnifiedCatalogPreferences _preferences = UnifiedCatalogPreferences.defaults;
@@ -304,6 +316,55 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     return parts.isEmpty ? null : parts.join(' · ');
   }
 
+  /// Distance the finger has to travel in one direction before the top menu
+  /// follows. Keeps a jittery thumb from flickering the header.
+  static const double _headerScrollSlop = 12;
+
+  /// Hide the top menu (title row and chips) on scroll down, bring it back on
+  /// any scroll up, even mid-list, and always at the very top (A-06, decision
+  /// Michel 20 Oct 2026). Overscroll at either end is ignored so a rubber-band
+  /// bounce cannot flip it.
+  bool _onHeaderScroll(ScrollNotification notification) {
+    if (notification.depth != 0 || notification.metrics.axis != Axis.vertical) return false;
+    final metrics = notification.metrics;
+    if (metrics.pixels <= 0) {
+      _headerScrollTravel = 0;
+      _setHeaderHidden(false);
+      return false;
+    }
+    if (notification is! ScrollUpdateNotification) return false;
+    if (metrics.pixels > metrics.maxScrollExtent) return false;
+    final delta = notification.scrollDelta ?? 0;
+    if (delta == 0) return false;
+    // The last step of a bottom bounce travels back up without a finger on
+    // the screen; it must not reveal the panel.
+    if (delta < 0 && notification.dragDetails == null && metrics.pixels >= metrics.maxScrollExtent - 1) return false;
+    // A reversal restarts the count, so only a sustained run changes the state.
+    if (delta.sign != _headerScrollTravel.sign) _headerScrollTravel = 0;
+    _headerScrollTravel += delta;
+    if (_headerScrollTravel >= _headerScrollSlop) {
+      _setHeaderHidden(true);
+    } else if (_headerScrollTravel <= -_headerScrollSlop) {
+      _setHeaderHidden(false);
+    }
+    return false;
+  }
+
+  /// Content that stops overflowing (source change, refresh, rotation to a
+  /// larger viewport) leaves nothing to scroll back with, so the panel returns.
+  void _onHeaderMetrics(ScrollMetrics metrics) {
+    if (metrics.axis != Axis.vertical) return;
+    if (metrics.pixels <= 0 || metrics.maxScrollExtent <= 0) {
+      _headerScrollTravel = 0;
+      _setHeaderHidden(false);
+    }
+  }
+
+  void _setHeaderHidden(bool hidden) {
+    if (_headerHidden == hidden || !mounted) return;
+    setState(() => _headerHidden = hidden);
+  }
+
   void _onScroll() {
     final prefetcher = _prefetcher;
     if (prefetcher == null || !_scrollController.hasClients) return;
@@ -364,24 +425,85 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
         },
         child: Builder(
           // Below the host, so the chips can reach it.
-          builder: (sheetContext) => Scaffold(
-            body: SafeArea(
-              bottom: false,
-              child: Column(
+          builder: (sheetContext) {
+            _schedulePanelMeasure();
+            final safe = MediaQuery.paddingOf(context);
+            final background = Theme.of(context).scaffoldBackgroundColor;
+            return Scaffold(
+              // The grid scrolls under the status bar, the top panel and the
+              // home indicator; only the panel and two fades sit above it.
+              body: Stack(
                 children: [
-                  _buildHeader(),
-                  _buildChips(sheetContext, filters),
-                  const SizedBox(height: 8),
-                  _buildCountRow(filters),
-                  const SizedBox(height: 8),
-                  Expanded(child: _buildBody(filters)),
+                  // Hidden until the panel is measured, so the grid does not
+                  // jump down one frame after it first appears.
+                  Positioned.fill(
+                    child: Opacity(
+                      key: const ValueKey('catalog.body'),
+                      opacity: _panelMeasured ? 1 : 0,
+                      child: _buildBody(filters),
+                    ),
+                  ),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    // Only while a grid is scrolling: an empty or loading body
+                    // has nothing to scroll back with, so the panel stays put.
+                    child: CatalogTopPanel(
+                      collapsed: _headerHidden && _catalog.snapshot.groups.isNotEmpty,
+                      background: background,
+                      measureKey: _panelKey,
+                      child: Padding(
+                        padding: EdgeInsets.only(top: safe.top),
+                        child: Column(
+                          children: [
+                            _buildHeader(),
+                            _buildChips(sheetContext, filters),
+                            const SizedBox(height: 8),
+                            _buildCountRow(filters),
+                            const SizedBox(height: 8),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Status bar zone: stays when the panel is gone, so the
+                  // clock and Dynamic Island keep a readable backdrop.
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: safe.top + 12,
+                    child: CatalogEdgeFade(color: background, fromTop: true),
+                  ),
+                  // Home indicator zone.
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: safe.bottom + 16,
+                    child: CatalogEdgeFade(color: background, fromTop: false),
+                  ),
                 ],
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
+  }
+
+  void _schedulePanelMeasure() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final box = _panelKey.currentContext?.findRenderObject();
+      if (box is! RenderBox || !box.hasSize) return;
+      if (_panelMeasured && (box.size.height - _panelHeight).abs() < 0.5) return;
+      setState(() {
+        _panelHeight = box.size.height;
+        _panelMeasured = true;
+      });
+    });
   }
 
   Widget _buildHeader() {
@@ -514,164 +636,105 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     final snapshot = _catalog.snapshot;
 
     if (!_preferencesLoaded || (_catalog.isInitialLoading && snapshot.groups.isEmpty)) {
-      return _CatalogSkeletonGrid(cardWidth: _cardWidth(MediaQuery.sizeOf(context).width));
+      return Padding(
+        padding: EdgeInsets.only(top: _panelHeight),
+        child: CatalogSkeletonGrid(cardWidth: _cardWidth(MediaQuery.sizeOf(context).width)),
+      );
     }
 
     if (snapshot.groups.isEmpty) {
-      if (snapshot.initialLoadFailed || _catalog.loadFailed) {
-        return _EmptyState(
-          title: t.unifiedCatalog.states.errorTitle,
-          body: t.unifiedCatalog.states.errorBody,
-          actionLabel: t.common.retry,
-          onAction: _catalog.refresh,
-        );
-      }
-      if (!filters.isEmpty) {
-        return _EmptyState(
-          title: t.unifiedCatalog.states.filterEmptyTitle,
-          body: t.unifiedCatalog.states.filterEmptyBody,
-          actionLabel: t.unifiedCatalog.states.clearFilters,
-          onAction: () => _updatePreferences(_preferences.copyWith(filters: UnifiedCatalogFilterSelection.empty)),
-        );
-      }
-      return _EmptyState(title: t.unifiedCatalog.states.emptyTitle, body: t.unifiedCatalog.states.emptyBody);
+      return Padding(
+        padding: EdgeInsets.only(top: _panelHeight),
+        child: _buildEmptyState(filters, snapshot),
+      );
     }
+    return _buildGrid(filters, snapshot);
+  }
 
+  Widget _buildEmptyState(UnifiedCatalogFilterSelection filters, UnifiedCatalogSnapshot snapshot) {
+    if (snapshot.initialLoadFailed || _catalog.loadFailed) {
+      return CatalogEmptyState(
+        title: t.unifiedCatalog.states.errorTitle,
+        body: t.unifiedCatalog.states.errorBody,
+        actionLabel: t.common.retry,
+        onAction: _catalog.refresh,
+      );
+    }
+    if (!filters.isEmpty) {
+      return CatalogEmptyState(
+        title: t.unifiedCatalog.states.filterEmptyTitle,
+        body: t.unifiedCatalog.states.filterEmptyBody,
+        actionLabel: t.unifiedCatalog.states.clearFilters,
+        onAction: () => _updatePreferences(_preferences.copyWith(filters: UnifiedCatalogFilterSelection.empty)),
+      );
+    }
+    return CatalogEmptyState(title: t.unifiedCatalog.states.emptyTitle, body: t.unifiedCatalog.states.emptyBody);
+  }
+
+  Widget _buildGrid(UnifiedCatalogFilterSelection filters, UnifiedCatalogSnapshot snapshot) {
     return MobileRefreshScope(
       onRefresh: _catalog.refresh,
+      // The panel overlays the grid, so the spinner starts below it.
+      edgeOffset: _panelHeight,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final cardWidth = _cardWidth(constraints.maxWidth);
           final cardHeight = cardWidth / (2 / 3) + MediaCardGridLayout.textExtentFor(context);
-          return NotificationListener<ScrollNotification>(
-            onNotification: (_) {
-              _onScroll();
+          return NotificationListener<ScrollMetricsNotification>(
+            onNotification: (notification) {
+              _onHeaderMetrics(notification.metrics);
               return false;
             },
-            child: CustomScrollView(
-              controller: _scrollController,
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(mobileRailInset, 8, mobileRailInset, 0),
-                  sliver: AutomationNode(
-                    id: AutomationIds.catalogGrid,
-                    instance: widget.kind.automationInstance,
-                    role: 'grid',
-                    child: SliverGrid(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        mainAxisSpacing: mobileRailGutter,
-                        crossAxisSpacing: mobileRailGutter,
-                        childAspectRatio: cardWidth / cardHeight,
-                      ),
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        if (index >= snapshot.groups.length) {
-                          if (snapshot.hasMore && !_catalog.isLoadingMore) {
-                            unawaited(_catalog.loadMore());
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                _onScroll();
+                return _onHeaderScroll(notification);
+              },
+              child: CustomScrollView(
+                controller: _scrollController,
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(mobileRailInset, _panelHeight + 8, mobileRailInset, 0),
+                    sliver: AutomationNode(
+                      id: AutomationIds.catalogGrid,
+                      instance: widget.kind.automationInstance,
+                      role: 'grid',
+                      child: SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          mainAxisSpacing: mobileRailGutter,
+                          crossAxisSpacing: mobileRailGutter,
+                          childAspectRatio: cardWidth / cardHeight,
+                        ),
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          if (index >= snapshot.groups.length) {
+                            if (snapshot.hasMore && !_catalog.isLoadingMore) {
+                              unawaited(_catalog.loadMore());
+                            }
+                            return const SkeletonMediaCard();
                           }
-                          return const SkeletonMediaCard();
-                        }
-                        final group = snapshot.groups[index];
-                        return AutomationNode(
-                          id: AutomationIds.catalogGridItem,
-                          instance: '${widget.kind.automationInstance}.$index',
-                          role: 'grid.item',
-                          child: MobileMediaCard(
-                            group: group,
-                            shape: MobileCardShape.portrait,
-                            width: cardWidth,
-                            onTap: () => _openDetails(group),
-                          ),
-                        );
-                      }, childCount: snapshot.groups.length + (snapshot.hasMore ? 3 : 0)),
+                          final group = snapshot.groups[index];
+                          return AutomationNode(
+                            id: AutomationIds.catalogGridItem,
+                            instance: '${widget.kind.automationInstance}.$index',
+                            role: 'grid.item',
+                            child: MobileMediaCard(
+                              group: group,
+                              shape: MobileCardShape.portrait,
+                              width: cardWidth,
+                              onTap: () => _openDetails(group),
+                            ),
+                          );
+                        }, childCount: snapshot.groups.length + (snapshot.hasMore ? 3 : 0)),
+                      ),
                     ),
                   ),
-                ),
-                SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 16)),
-              ],
+                  SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 16)),
+                ],
+              ),
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-/// The 2:3 grid on its own geometry, before the first round of results
-/// lands, same reasoning `TvCatalogSkeletonGrid` gives: the placeholder is
-/// the page's own layout, not a centred spinner that gets replaced by a
-/// differently-shaped wall of posters a frame later.
-class _CatalogSkeletonGrid extends StatelessWidget {
-  const _CatalogSkeletonGrid({required this.cardWidth});
-
-  final double cardWidth;
-
-  @override
-  Widget build(BuildContext context) {
-    final cardHeight = cardWidth / (2 / 3) + MediaCardGridLayout.textExtentFor(context);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final rowExtent = cardHeight + mobileRailGutter;
-        final rows = constraints.maxHeight.isFinite ? (constraints.maxHeight / rowExtent).ceil().clamp(1, 6) : 3;
-        return SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: mobileRailInset, vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var row = 0; row < rows; row++) ...[
-                if (row > 0) const SizedBox(height: mobileRailGutter),
-                Row(
-                  children: [
-                    for (var column = 0; column < 3; column++) ...[
-                      if (column > 0) const SizedBox(width: mobileRailGutter),
-                      SizedBox(width: cardWidth, height: cardHeight, child: const SkeletonMediaCard()),
-                    ],
-                  ],
-                ),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.title, required this.body, this.actionLabel, this.onAction});
-
-  final String title;
-  final String body;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final tk = tokens(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: tk.text),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              body,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: tk.textMuted),
-            ),
-            if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 16),
-              FilledButton(onPressed: onAction, child: Text(actionLabel!)),
-            ],
-          ],
-        ),
       ),
     );
   }

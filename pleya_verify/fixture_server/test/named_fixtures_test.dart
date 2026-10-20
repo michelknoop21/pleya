@@ -316,6 +316,17 @@ void main() {
     });
   });
 
+  group('catalog.long-grid.v1', () {
+    test('one library with eighteen movies, under one catalogue page', () {
+      final server = PleyaFakeServer();
+      final applied = applyNamedFixture(server, 'catalog.long-grid.v1');
+
+      expect(applied, isTrue);
+      expect(server.libraries, hasLength(1));
+      expect(server.items.values.where((i) => i['kind'] == 'movie'), hasLength(18));
+    });
+  });
+
   group('catalog.seasons.v1', () {
     test('one show with four seasons of two to five episodes, on the first rail', () {
       final server = PleyaFakeServer();
