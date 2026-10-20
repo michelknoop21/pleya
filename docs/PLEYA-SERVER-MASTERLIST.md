@@ -46,7 +46,7 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **3** | **0** | **23** |
 
-Per taak, en dat is de maat die telt: **155 taken, 33 gereed, 11 bezig, 111 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **155 taken, 34 gereed, 10 bezig, 111 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -304,7 +304,7 @@ de velden uit `.nfo`, op de coverage-gate van 80 procent per bibliotheek (S4.2).
 | S5.2 | Filterparameters en extra sorteringen | `[x]` | M3: `genre`, `year`, `year_from`, `year_to`, `watch`, `content_rating`, `audio_language`, `resolution` op `/libraries/{id}/items`; sorteringen `last_played_at` en `duration` met `null` achteraan; `library.filter_invalid` met `details`; cursor met vingerafdruk van de filterset. `internal/catalog/store_filters_test.go` (filters, watch-betekenissen per aanvrager en voor series, null-sorteringen, paginering, cursor) en `internal/api/filters_test.go`; injectietest met `DROP TABLE` in de tekstparameters | 2026-10-20 |
 | S5.3 | Facetten-endpoint met tellingen | `[x]` | M3: `GET /libraries/{id}/facets` (matrixregel 45, klasse `authenticated`); tellingen over de hele bibliotheek, `watch` per aanvrager, genrefacet leeg onder de dekkingspoort. `TestFacetCountsWholeLibraryPerSubject`, `TestGenreFacetIsEmptyBelowTheCoverageGate`, `TestLibraryFacets` | 2026-10-20 |
 | S5.4 | Boekenzoekweg en auteurs | `[ ]` | | |
-| S5.5 | Injectietest en meting op de NAS, capability `filters`, venster 4 deel 1 | `[~]` | M3: injectietest (`TestFilterValuesAreNeverSQL`, `TestFilterValueIsNotSQL`) en capability `filters` in `/info` zijn klaar; de meting op de NAS volgt na de uitrol op de testinstance |  |
+| S5.5 | Injectietest en meting op de NAS, capability `filters`, venster 4 deel 1 | `[x]` | M3: injectietest (`TestFilterValuesAreNeverSQL`, `TestFilterValueIsNotSQL`); `capabilities.filters: true` in `/info` van de NAS-testinstance (20 oktober 2026). Meting op de testinstance (573 titels, 6771 videosporen, 7197 audiosporen): `pg_trgm` aangemaakt door de database-eigenaar zonder superuser, migratie 17 en 18 toegepast, filters en sorteringen 4 tot 215 ms. De eerste meting gaf 12,9 en 33,3 seconden voor de facetten (gecorreleerde subquery, een kwart miljoen herhalingen); herschreven naar één join, daarna 73 en 163 ms. Van de audiosporen heeft 942 (13 procent) geen taal: een aparte re-probe-taak, niet in M3 | 2026-10-20 |
 
 ### S6 Leesvoortgang (PS-15 server)
 
