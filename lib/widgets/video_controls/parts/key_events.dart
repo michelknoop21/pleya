@@ -95,6 +95,8 @@ extension _PlexVideoControlsKeyEventMethods on _PlexVideoControlsState {
     if (_tvInfoPanelVisible) {
       if (!event.logicalKey.isBackKey || _focusNode.hasFocus) return false;
       if (OverlaySheetController.maybeOf(context)?.isOpen ?? false) return false;
+      // Deliberately calls _hideTvInfoPanel directly: a last-resort close, no
+      // animation and no PLR12 checkpoints.
       return handleBackKeyAction(event, _hideTvInfoPanel) != KeyEventResult.ignored;
     }
 
@@ -216,6 +218,8 @@ extension _PlexVideoControlsKeyEventMethods on _PlexVideoControlsState {
     if (_tvInfoPanelVisible) {
       if (!event.logicalKey.isBackKey) return KeyEventResult.ignored;
       if (PlatformDetector.isTV() && event is KeyDownEvent) BackKeyCoordinator.markHandled();
+      // Deliberately calls _hideTvInfoPanel directly: a last-resort close, no
+      // animation and no PLR12 checkpoints.
       return handleBackKeyAction(event, _hideTvInfoPanel);
     }
     // On Windows/Linux with navigation off, ESC only exits fullscreen —

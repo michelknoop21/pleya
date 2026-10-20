@@ -57,7 +57,7 @@ const _tokens = MonoTokens(
 
 const _serverId = 'srv-skip';
 
-/// The intro the hardware run sat in: 7:00 to 8:00, playback at 7:19.
+/// Test fixture: an intro from 7:00 to 8:00, playback at 7:19.
 final _intro = MediaMarker(id: 1, type: 'intro', startTimeOffset: 420000, endTimeOffset: 480000);
 
 /// Feeds the position stream, which the real player drives and the shared
