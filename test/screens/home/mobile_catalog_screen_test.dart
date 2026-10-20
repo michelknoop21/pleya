@@ -380,9 +380,14 @@ void main() {
     /// Fraction of its own height the panel has moved up: 0 shown, 1 gone.
     double progress(WidgetTester tester) => -panel(tester).top / panel(tester).height;
 
+    /// The panel's own fade: the one Opacity inside the panel that wraps the
+    /// title. `tester.widget` throws if that ever matches more than one.
     double titleOpacity(WidgetTester tester) => tester
         .widget<Opacity>(
-          find.ancestor(of: find.text(t.unifiedCatalog.moviesTitle), matching: find.byType(Opacity)).first,
+          find.descendant(
+            of: find.byKey(catalogTopMenuKey),
+            matching: find.ancestor(of: find.text(t.unifiedCatalog.moviesTitle), matching: find.byType(Opacity)),
+          ),
         )
         .opacity;
 
@@ -450,6 +455,37 @@ void main() {
       await tester.pump(catalogPanelShowDuration);
       expect(panel(tester).top, 0, reason: 'fully back within the show duration');
       await up.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('a reversal halfway turns back from where the panel is', (tester) async {
+      films(18);
+      await pumpCatalog(tester);
+      await settle(tester);
+
+      final gesture = await holdScroll(tester, -200);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 60));
+      final atFlip = progress(tester);
+      expect(atFlip, inExclusiveRange(0, 1), reason: 'the flip lands mid-flight');
+
+      // Same finger, now up: the panel turns around.
+      for (var i = 0; i < 3; i++) {
+        await gesture.moveBy(const Offset(0, 20));
+      }
+      final back = <double>[];
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 30));
+        back.add(progress(tester));
+      }
+      expect(back.first, lessThanOrEqualTo(atFlip + 0.15), reason: 'no jump at the flip: $atFlip -> $back');
+      for (var i = 1; i < back.length; i++) {
+        expect(back[i], lessThanOrEqualTo(back[i - 1]), reason: 'only ever on its way back: $atFlip -> $back');
+      }
+      await tester.pump(catalogPanelShowDuration);
+      expect(panel(tester).top, 0, reason: 'and fully back');
+      await gesture.up();
       await tester.pumpAndSettle();
     });
 

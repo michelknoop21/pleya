@@ -51,9 +51,9 @@ class CatalogTopPanel extends StatefulWidget {
 }
 
 class _CatalogTopPanelState extends State<CatalogTopPanel> with SingleTickerProviderStateMixin {
-  /// 0 is fully shown, 1 is fully gone. Driven with `animateTo` and its own
-  /// curve, so a reversal mid-flight eases from wherever the panel is instead
-  /// of jumping to another curve's value.
+  /// 0 is fully shown, 1 is fully gone. Driven with `animateTo` from the
+  /// current value, so a reversal mid-flight starts where the panel is: the
+  /// position stays continuous, the speed changes at the flip.
   late final AnimationController _hidden = AnimationController(vsync: this, value: widget.collapsed ? 1 : 0);
 
   static const double _sigma = 18;
