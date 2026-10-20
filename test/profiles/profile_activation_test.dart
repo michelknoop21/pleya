@@ -1,11 +1,13 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:drift/native.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/connection/connection.dart';
 import 'package:pleya/connection/connection_registry.dart';
 import 'package:pleya/database/app_database.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/models/plex/plex_home_user.dart';
 import 'package:pleya/profiles/active_profile_binder.dart';
 import 'package:pleya/profiles/active_profile_provider.dart';
@@ -16,6 +18,7 @@ import 'package:pleya/profiles/profile_connection.dart';
 import 'package:pleya/profiles/profile_connection_registry.dart';
 import 'package:pleya/profiles/profile_registry.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/screens/profile/pin_entry_dialog.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/storage_service.dart';
@@ -112,6 +115,7 @@ void main() {
     Profile profile, {
     required bool Function() mayActivate,
     String? token,
+    void Function()? onPinCancelled,
   }) async {
     late BuildContext context;
     await tester.pumpWidget(
@@ -131,7 +135,13 @@ void main() {
       ),
     );
     return tester.runAsync(
-      () => activateProfileWithPin(context, profile, mayActivate: mayActivate, verifiedPlexUserToken: token),
+      () => activateProfileWithPin(
+        context,
+        profile,
+        mayActivate: mayActivate,
+        verifiedPlexUserToken: token,
+        onPinCancelled: onPinCancelled,
+      ),
     );
   }
 
@@ -176,6 +186,53 @@ void main() {
       final ok = await activate(tester, _localAnna, mayActivate: () => false, token: _token);
       expect(ok, isFalse);
       expect(active.activeId, isNull);
+    });
+  });
+
+  group('activateProfileWithPin reports a cancelled PIN', () {
+    testWidgets('backing out of the PIN dialog calls onPinCancelled and does not switch', (tester) async {
+      late BuildContext context;
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<ConnectionRegistry>.value(value: connections),
+            Provider<ProfileConnectionRegistry>.value(value: profileConnections),
+            ChangeNotifierProvider<ActiveProfileProvider>.value(value: active),
+            Provider<ActiveProfileBinder>.value(value: binder),
+          ],
+          child: MaterialApp(
+            home: Builder(
+              builder: (c) {
+                context = c;
+                return const SizedBox();
+              },
+            ),
+          ),
+        ),
+      );
+      var cancelled = 0;
+      bool? ok;
+      unawaited(activateProfileWithPin(context, _localAnna, onPinCancelled: () => cancelled++).then((v) => ok = v));
+      await tester.pumpAndSettle();
+      expect(find.byType(PinEntryDialog), findsOneWidget);
+      await tester.tap(find.text(t.common.cancel));
+      await tester.pumpAndSettle();
+      expect(ok, isFalse);
+      expect(cancelled, 1);
+      expect(active.activeId, isNull);
+    });
+
+    testWidgets('a refusal by mayActivate is not a cancelled PIN', (tester) async {
+      var cancelled = 0;
+      final ok = await activate(
+        tester,
+        _localAnna,
+        mayActivate: () => false,
+        token: _token,
+        onPinCancelled: () => cancelled++,
+      );
+      expect(ok, isFalse);
+      expect(cancelled, 0);
     });
   });
 

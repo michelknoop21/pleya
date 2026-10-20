@@ -24,6 +24,8 @@ final _anna = Profile.plexHome(
   createdAt: DateTime(2026),
 );
 
+bool _always() => true;
+
 void main() {
   late DateTime now;
   late PlaybackHandoffLedger ledger;
@@ -37,29 +39,35 @@ void main() {
 
   /// [pin] stands in for the PIN dialog: it returns whether the PIN was
   /// accepted, after which the real activation asks `mayActivate`. [proof]
-  /// stands in for the plex.tv check of the phone's token (A-23c).
+  /// stands in for the plex.tv check of the phone's token (A-23c). A [pin] that
+  /// returns false is the user cancelling the dialog. [activation] is what the
+  /// real `active.activate` would return once the PIN and `mayActivate` pass.
   Future<void> run(
     String id, {
     Future<bool> Function()? pin,
     Future<String?> Function()? proof,
     Profile? target,
     Duration sendDelay = Duration.zero,
+    bool Function() activation = _always,
   }) => runHandoffProfileSwitch(
     request: _request(id),
     target: target ?? _anna,
     ledger: ledger,
     send: (data) => events.add('send $data'),
     verifyProof: proof,
-    activate: (mayActivate, verifiedToken) async {
+    activate: (mayActivate, verifiedToken, onPinCancelled) async {
       if (verifiedToken != null) {
         events.add('token $verifiedToken');
       } else {
         events.add('dialog armed=${ledger.isArmed}');
-        if (!await (pin ?? () async => true)()) return false;
+        if (!await (pin ?? () async => true)()) {
+          onPinCancelled();
+          return false;
+        }
       }
       final allowed = mayActivate();
       events.add('activate $allowed');
-      return allowed;
+      return allowed && activation();
     },
     sendDelay: sendDelay,
   );
@@ -96,7 +104,7 @@ void main() {
       expect(ledger.takeFor('plex-anna')?.id, 'h1');
     });
 
-    test('a PIN entered after the PIN wait does not switch', () async {
+    test('a PIN entered after the PIN wait does not switch and is a plain failure', () async {
       await run(
         'h1',
         pin: () async {
@@ -105,7 +113,22 @@ void main() {
         },
       );
       expect(events, contains('activate false'));
-      expect(events.last, 'send {$handoffFailedKey: h1, $handoffReasonKey: $handoffReasonPinCancelled}');
+      expect(events.last, 'send {$handoffFailedKey: h1}');
+      expect(ledger.isArmed, isFalse);
+    });
+
+    test('an activation that returns false after the PIN is a plain failure, not a missed PIN', () async {
+      await run('h1', activation: () => false);
+      expect(events, contains('activate true'));
+      expect(events.last, 'send {$handoffFailedKey: h1}');
+      expect(handoffQueryReply(ledger, 'h1'), {handoffFailedKey: 'h1'});
+      expect(ledger.isArmed, isFalse);
+    });
+
+    test('an exception during the switch is a plain failure, not a missed PIN', () async {
+      await run('h1', activation: () => throw StateError('storage failed'));
+      expect(events.last, 'send {$handoffFailedKey: h1}');
+      expect(handoffQueryReply(ledger, 'h1'), {handoffFailedKey: 'h1'});
       expect(ledger.isArmed, isFalse);
     });
 
