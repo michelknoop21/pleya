@@ -54,7 +54,10 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
   static const _amber = Color(0xFFFFB020);
   static const _ok = Color(0xFF3DD68C);
 
-  late final CompanionRemoteProvider _provider = context.read<CompanionRemoteProvider>();
+  // Read in initState, never lazily: a sheet closed before discovery started
+  // would otherwise do its first lookup in dispose, on a deactivated context,
+  // and that throw leaves the host's sheet subtree half unmounted.
+  late final CompanionRemoteProvider _provider;
   // Taken when the sheet opens: the position the header promises.
   late final Duration _from = widget.player.state.position;
   StreamSubscription<List<DiscoveredHost>>? _subscription;
@@ -74,6 +77,7 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
   @override
   void initState() {
     super.initState();
+    _provider = context.read<CompanionRemoteProvider>();
     unawaited(_search());
   }
 
