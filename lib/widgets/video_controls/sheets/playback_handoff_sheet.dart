@@ -357,10 +357,12 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
         ),
     ];
 
+    // Sized to its rows: two options do not need the full height (A-23, 20 October 2026).
     return BaseVideoControlSheet(
       title: t.playbackHandoff.title,
       icon: Symbols.smart_display,
-      child: ListView(children: children),
+      shrinkWrap: true,
+      child: ListView(shrinkWrap: true, children: children),
     );
   }
 }
