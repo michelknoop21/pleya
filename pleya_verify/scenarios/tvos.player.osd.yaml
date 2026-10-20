@@ -7,7 +7,9 @@ target: tvos-sim
 #   1. the player opens with its controls up and play/pause focused, and Select
 #      on it really pauses (`player.play_pause.state.playing` mirrors the icon);
 #   2. the title block, the timeline and the title-safe rect are on screen;
-#   3. Menu with the controls up hides them (focus leaves play/pause) and does
+#   3. on Apple TV a paused bar stays up: six seconds later play/pause still
+#      has focus (PLR-REMOTE-UX1; before, it vanished after five);
+#   4. Menu with the controls up hides them (focus leaves play/pause) and does
 #      not leave the player; UP brings them back with play/pause focused.
 #
 # The fixture clip lasts fifteen seconds, so pausing is the first thing the
@@ -49,6 +51,12 @@ steps:
   - assert: {id: player.settings_button, insideViewport: true}
   - assert: {id: player.settings_button, sameRow: player.play_pause}
   - snapshot: 01-osd-paused
+
+  # A paused bar on Apple TV stays: it used to hide five seconds after the pause.
+  - settle: 6500
+  - assert: {id: player.play_pause, focused: true}
+  - assert: {id: player.title, insideViewport: true}
+  - snapshot: 02-osd-paused-still-up
 
   # Menu with the controls up hides them and stays in the player.
   - press: menu

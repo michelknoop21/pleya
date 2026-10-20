@@ -22,6 +22,8 @@ class PlayerChromeController extends ChangeNotifier implements ValueListenable<b
   Duration _hideDelay = const Duration(seconds: 3);
   Timer? _hideTimer;
   PlayerChromeFocusTarget? _pendingFocusTarget;
+  bool _keepVisibleWhilePaused = false;
+  bool _pendingExplicitPauseChrome = false;
   final Set<PlayerChromeHold> _holds = <PlayerChromeHold>{};
   final Stopwatch _pointerActivityStopwatch = Stopwatch()..start();
   int _lastPointerActivityMs = -1000;
@@ -48,8 +50,12 @@ class PlayerChromeController extends ChangeNotifier implements ValueListenable<b
   bool isHeld(PlayerChromeHold hold) => _holds.contains(hold);
   PlayerChromeFocusTarget? get pendingFocusTarget => _pendingFocusTarget;
 
-  void configure({Duration? hideDelay, bool? hasFirstFrame}) {
+  void configure({Duration? hideDelay, bool? hasFirstFrame, bool? keepVisibleWhilePaused}) {
     var restartTimer = false;
+    if (keepVisibleWhilePaused != null && keepVisibleWhilePaused != _keepVisibleWhilePaused) {
+      _keepVisibleWhilePaused = keepVisibleWhilePaused;
+      restartTimer = true;
+    }
     if (hideDelay != null && hideDelay != _hideDelay) {
       _hideDelay = hideDelay;
       restartTimer = true;
@@ -112,6 +118,20 @@ class PlayerChromeController extends ChangeNotifier implements ValueListenable<b
     return target;
   }
 
+  /// Asks the player to open the chrome on Play/Pause after an explicit pause
+  /// (the native Apple TV remote). The controls consume it in [takeExplicitPauseChromeRequest]
+  /// so they can skip it while the info panel or a sheet owns the screen.
+  void requestExplicitPauseChrome() {
+    _pendingExplicitPauseChrome = true;
+    notifyListeners();
+  }
+
+  bool takeExplicitPauseChromeRequest() {
+    final pending = _pendingExplicitPauseChrome;
+    _pendingExplicitPauseChrome = false;
+    return pending;
+  }
+
   bool hide({bool ignoreHolds = false}) {
     if (!_controlsVisible) return false;
     // contentStrip implies a hold, so the strip cleanup below is only
@@ -156,7 +176,7 @@ class PlayerChromeController extends ChangeNotifier implements ValueListenable<b
 
   void startPausedAutoHide() {
     _hideTimer?.cancel();
-    if (!_controlsVisible || !_hasFirstFrame || _holds.isNotEmpty) return;
+    if (!_controlsVisible || !_hasFirstFrame || _holds.isNotEmpty || _keepVisibleWhilePaused) return;
     _hideTimer = Timer(_hideDelay, hide);
   }
 

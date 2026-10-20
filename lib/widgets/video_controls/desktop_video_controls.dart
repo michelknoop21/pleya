@@ -371,7 +371,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     if (PlatformDetector.isTV()) {
       // On TV (no volume), go to last mounted button
       for (int i = _buttonFocusNodes.length - 1; i >= 0; i--) {
-        if (_buttonFocusNodes[i].context != null) {
+        if (_isFocusTarget(_buttonFocusNodes[i])) {
           _buttonFocusNodes[i].requestFocus();
           widget.onFocusActivity?.call();
           return;
@@ -517,12 +517,15 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     return true;
   }
 
+  /// A mounted button that can take focus; a disabled one (`onPressed: null`) cannot.
+  static bool _isFocusTarget(FocusNode node) => node.context != null && node.canRequestFocus;
+
   /// Handle key events for horizontal button navigation
   KeyEventResult _handleButtonKeyEvent(FocusNode _, KeyEvent event, int index) {
     // Find nearest mounted left neighbor
     FocusNode? leftTarget;
     for (int i = index - 1; i >= 0; i--) {
-      if (_buttonFocusNodes[i].context != null) {
+      if (_isFocusTarget(_buttonFocusNodes[i])) {
         leftTarget = _buttonFocusNodes[i];
         break;
       }
@@ -531,7 +534,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     // Find nearest mounted right neighbor, falling through to volume/track controls
     FocusNode? rightTarget;
     for (int i = index + 1; i < _buttonFocusNodes.length; i++) {
-      if (_buttonFocusNodes[i].context != null) {
+      if (_isFocusTarget(_buttonFocusNodes[i])) {
         rightTarget = _buttonFocusNodes[i];
         break;
       }
@@ -1390,6 +1393,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
   }) {
     return FocusableWrapper(
       focusNode: focusNode,
+      canRequestFocus: onPressed != null,
       onSelect: onPressed,
       onKeyEvent: (node, event) => _handleButtonKeyEvent(node, event, index),
       onFocusChange: _onFocusChange,

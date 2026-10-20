@@ -276,6 +276,8 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
     if (widget.focusNode != null) {
       _focusNode = widget.focusNode!;
       _ownsNode = false;
+      // An external node starts focusable; only a disabled wrapper has to say so.
+      if (!widget.canRequestFocus) _focusNode.canRequestFocus = false;
     } else {
       _focusNode = FocusNode(
         debugLabel: widget.semanticLabel ?? 'FocusableWrapper',
