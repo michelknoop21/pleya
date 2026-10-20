@@ -197,6 +197,7 @@ void main() {
   test('a host stopped while it still binds leaves no server behind', () async {
     final baseline = CompanionRemotePeerService.debugLiveHostServers;
     final p = await phone();
+    await p.requestHandoffOnlyHost();
     CompanionRemotePeerService.debugBindDelay = const Duration(milliseconds: 300);
     final starting = p.startHostServer(handoffOnly: true);
     await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -207,27 +208,40 @@ void main() {
     expect(CompanionRemotePeerService.debugLiveHostServers, baseline, reason: 'the late bind was closed, not orphaned');
   });
 
-  test('a join while the restored host still binds waits for it and leaves no orphan', () async {
+  test('a host restored while a join still closes the old channel gives way to that join', () async {
     final baseline = CompanionRemotePeerService.debugLiveHostServers;
     final p = await listening();
     await expectLater(p.connectToManualHost('127.0.0.1:1'), throwsA(anything));
 
-    CompanionRemotePeerService.debugBindDelay = const Duration(milliseconds: 1500);
-    // Leave closes the failed channel (bounded at 2 s) and then restores the
-    // host; the user joins again while that host binds.
+    // The leave closes the failed channel (bounded at 2 s) and then restores
+    // the host; the join, 100 ms later, waits on the same close and finishes
+    // after that restore, so it finds a running host it must stop first.
     final leave = p.leaveSession();
-    await Future<void>.delayed(const Duration(milliseconds: 2600));
+    await Future<void>.delayed(const Duration(milliseconds: 100));
     final join = expectLater(p.connectToManualHost('127.0.0.1:1'), throwsA(anything));
     await leave;
     await join;
-    CompanionRemotePeerService.debugBindDelay = Duration.zero;
 
     expect(p.isRemote, isTrue, reason: 'the join is the session now');
     expect(p.isHostServerRunning, isFalse);
     await p.leaveSession();
-    expect(p.isHandoffOnlyHost, isTrue);
     await p.stopHostServer();
+    expect(CompanionRemotePeerService.debugLiveHostServers, baseline, reason: 'the restored host was closed');
+  });
+
+  test('a pause while the fly host still binds leaves nothing running', () async {
+    final baseline = CompanionRemotePeerService.debugLiveHostServers;
+    final p = await phone();
+    await p.requestHandoffOnlyHost();
+    CompanionRemotePeerService.debugBindDelay = const Duration(milliseconds: 300);
+    final starting = p.startHostServer(handoffOnly: true);
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    await p.stopHandoffOnlyHost();
+    await starting;
+
+    expect(p.isHostServerRunning, isFalse, reason: 'iOS would take the socket; the provider must not think it runs');
     expect(CompanionRemotePeerService.debugLiveHostServers, baseline);
+    expect(p.canStartHandoffOnlyHost, isFalse);
   });
 
   test('a slow leave does not tear down the session of a join that came after it', () async {
@@ -251,6 +265,7 @@ void main() {
   test('two host starts at once bind one server', () async {
     final baseline = CompanionRemotePeerService.debugLiveHostServers;
     final p = await phone();
+    await p.requestHandoffOnlyHost();
     CompanionRemotePeerService.debugBindDelay = const Duration(milliseconds: 200);
     await Future.wait([p.startHostServer(handoffOnly: true), p.startHostServer(handoffOnly: true)]);
     expect(CompanionRemotePeerService.debugLiveHostServers, baseline + 1);
