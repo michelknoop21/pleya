@@ -1,0 +1,37 @@
+{
+  "item_id": "01a15486-f53b-7001-a2c0-dad3c02bbd3a",
+  "version_id": "01a15487-0a11-7000-9b3a-5c1d2e3f4a5b",
+  "delivery_mode": "direct_stream",
+  "stream_url": "/pleya/v1/playback/sessions/01a15488-7c20-7000-8f01-2a9b6d3c5e10/index.m3u8",
+  "container": "hls",
+  "video": {
+    "action": "copy"
+  },
+  "audio": {
+    "action": "transcode",
+    "codec": "aac",
+    "channels": 2
+  },
+  "seekable": false,
+  "session_id": "01a15488-7c20-7000-8f01-2a9b6d3c5e10",
+  "reason": {
+    "code": "audio.codec_unsupported",
+    "params": {
+      "source_codec": "truehd",
+      "channels": 8,
+      "target_codec": "aac",
+      "target_channels": 2
+    }
+  },
+  "reasons": [
+    {
+      "code": "audio.codec_unsupported",
+      "params": {
+        "source_codec": "truehd",
+        "channels": 8,
+        "target_codec": "aac",
+        "target_channels": 2
+      }
+    }
+  ]
+}

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"os/signal"
 	"runtime"
 	"sync"
@@ -34,7 +35,9 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/mounts"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
+	"github.com/edde746/plezy/pleya_server/internal/transcode"
 	"github.com/edde746/plezy/pleya_server/internal/watch"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // version wordt bij het bouwen gezet met -ldflags "-X main.version=...".
@@ -266,7 +269,13 @@ func run() int {
 		startup.Warn("instellingen lezen mislukt, de omgeving blijft gelden", slog.String("error", err.Error()))
 	}
 
+	transcoder := startTranscoder(ctx, cfg, pool, logging.Component(log, "transcode"), startup)
+	if transcoder != nil {
+		defer transcoder.Close()
+	}
+
 	apiServer := api.New(api.Options{
+		Transcode:          transcoder,
 		Catalog:            catalogStore,
 		Auth:               authStore,
 		Watch:              watch.NewStore(pool),
@@ -437,3 +446,31 @@ func runHealthcheck(getenv config.Getenv) int {
 }
 
 var errNotOK = errors.New("healthz gaf geen 200")
+
+// startTranscoder zet de omzetter op, of niets: zonder ffmpeg of met nul
+// sessies levert de server alleen direct play en zegt capabilities.transcode dat.
+func startTranscoder(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, log *slog.Logger, startup *slog.Logger) *transcode.Manager {
+	if cfg.TranscodeMaxSessions <= 0 {
+		startup.Info("omzetten staat uit", slog.String("reason", "PLEYA_SERVER_TRANSCODE_MAX_SESSIONS is 0"))
+		return nil
+	}
+	if _, err := exec.LookPath(cfg.FFmpegPath); err != nil {
+		startup.Warn("omzetten staat uit: ffmpeg is niet bereikbaar", slog.String("path", cfg.FFmpegPath))
+		return nil
+	}
+	hw := transcode.DetectHW(ctx, cfg.FFmpegPath, cfg.TranscodeRenderNode)
+	if hw.Accel == transcode.HWNone {
+		startup.Info("omzetten in software", slog.String("reason", hw.Reason))
+	} else {
+		startup.Info("omzetten met hardwareversnelling", slog.String("accel", string(hw.Accel)), slog.String("node", hw.Node))
+	}
+	m, err := transcode.New(transcode.Options{
+		FFmpegPath: cfg.FFmpegPath, Dir: cfg.TranscodeDir, Max: cfg.TranscodeMaxSessions,
+		HW: hw.Accel, RenderNode: hw.Node, Recorder: transcode.NewStore(pool), Log: log,
+	})
+	if err != nil {
+		startup.Warn("omzetten staat uit", slog.String("error", err.Error()))
+		return nil
+	}
+	return m
+}

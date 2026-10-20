@@ -244,6 +244,9 @@ class PleyaServerClient
 
   @override
   Future<void> closeGracefully({Duration drainTimeout = const Duration(seconds: 2)}) async {
+    // The server reaps a forgotten session after a minute, but a client that
+    // can say goodbye frees the transcoder at once.
+    await _releaseAllTranscodeSessions().timeout(drainTimeout, onTimeout: () {});
     close();
   }
 

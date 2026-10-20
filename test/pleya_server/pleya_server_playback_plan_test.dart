@@ -94,7 +94,21 @@ void main() {
       expect(result.playMethod, 'DirectPlay');
     });
 
-    test('a delivery the build cannot follow yet keeps direct play', () async {
+    test('a delivery the build does not know keeps direct play', () async {
+      server = PleyaFakeServer(watchState: true)
+        ..playbackPlanCapability = true
+        ..planDeliveryMode = 'warp'
+        ..planVersionId = 'version-2';
+      final item = twoVersions(server);
+      client = await connected(server);
+
+      final result = await play(item);
+
+      expect(result.videoUrl, endsWith('/stream/version-1'));
+      expect(result.isTranscoding, isFalse);
+    });
+
+    test('a transcode plan opens the HLS playlist of its session', () async {
       server = PleyaFakeServer(watchState: true)
         ..playbackPlanCapability = true
         ..planDeliveryMode = 'transcode'
@@ -104,7 +118,38 @@ void main() {
 
       final result = await play(item);
 
-      expect(result.videoUrl, endsWith('/stream/version-1'));
+      expect(result.videoUrl, 'http://nas.lan:8832/pleya/v1/playback/sessions/sess-1/index.m3u8');
+      expect(result.isTranscoding, isTrue);
+      expect(result.playMethod, 'Transcode');
+      expect(result.selectedMediaIndex, 1);
+      expect(server.sessionCalls, isEmpty, reason: 'nothing is called before the first heartbeat is due');
+    });
+
+    test('reporting the playback stopped stops the session', () async {
+      server = PleyaFakeServer(watchState: true)
+        ..playbackPlanCapability = true
+        ..planDeliveryMode = 'direct_stream';
+      final item = twoVersions(server);
+      client = await connected(server);
+
+      final result = await play(item);
+      expect(result.playMethod, 'DirectStream');
+      await client.reportPlaybackStopped(itemId: 'movie-1', position: const Duration(minutes: 3));
+
+      expect(server.sessionCalls, ['DELETE /playback/sessions/sess-1']);
+    });
+
+    test('closing the client stops a session it still holds', () async {
+      server = PleyaFakeServer(watchState: true)
+        ..playbackPlanCapability = true
+        ..planDeliveryMode = 'remux';
+      final item = twoVersions(server);
+      client = await connected(server);
+
+      await play(item);
+      await client.closeGracefully();
+
+      expect(server.sessionCalls, ['DELETE /playback/sessions/sess-1']);
     });
   });
 

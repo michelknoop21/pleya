@@ -64,6 +64,9 @@ class PleyaFakeServer {
   int? planFailureStatus;
   final List<Map<String, dynamic>> planRequests = [];
 
+  /// Calls on `/playback/sessions/{id}` and below, as `METHOD path`.
+  final List<String> sessionCalls = [];
+
   /// While set, `POST /watch-state` answers with this status and an error
   /// envelope, without recording the event. Reads (the 5xx regression of
   /// backlog 24.3) need a write that fails fast, not a timeout.
@@ -244,6 +247,7 @@ class PleyaFakeServer {
     planDeliveryMode = 'direct_play';
     planFailureStatus = null;
     planRequests.clear();
+    sessionCalls.clear();
     watchStateFailureStatus = null;
     usersCapability = false;
     adminJobs.clear();
@@ -577,19 +581,27 @@ class PleyaFakeServer {
         'code': planDeliveryMode == 'direct_play' ? 'direct.supported' : 'container.unsupported',
         'params': <String, dynamic>{},
       };
+      final direct = planDeliveryMode == 'direct_play';
+      // A mode the client does not know still comes with a session, like a
+      // newer server would send it.
       return _json({
         'item_id': body['item_id'],
         'version_id': versionId,
         'delivery_mode': planDeliveryMode,
-        'stream_url': '/pleya/v1/stream/$versionId',
-        'container': 'original',
+        'stream_url': direct ? '/pleya/v1/stream/$versionId' : '/pleya/v1/playback/sessions/sess-1/index.m3u8',
+        'container': direct ? 'original' : 'hls',
         'video': {'action': 'copy'},
         'audio': {'action': 'copy'},
-        'seekable': planDeliveryMode == 'direct_play',
-        'session_id': null,
+        'seekable': direct,
+        'session_id': direct ? null : 'sess-1',
         'reason': reason,
         'reasons': [reason],
       });
+    }
+
+    if (path.startsWith('/playback/sessions/') && playbackPlanCapability) {
+      sessionCalls.add('${request.method} $path');
+      return http.Response('', 204);
     }
 
     if (path == '/watch-state' && request.method == 'POST') {

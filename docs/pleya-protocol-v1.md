@@ -537,6 +537,8 @@ contract keurt ze af.
 | `playback.version_unavailable` | 409 | ja | het bestand is er wel maar nu niet te lezen |
 | `playback.range_not_satisfiable` | 416 | nee | de gevraagde range valt buiten het bestand |
 | `playback.not_playable` | 415 | nee | deze versie is niet zonder bewerking te leveren |
+| `playback.transcode_busy` | 503 | ja | alle omzetsessies zijn bezet |
+| `playback.transcode_failed` | 502 | nee | de omzetting leverde geen speelbare uitvoer |
 | `storage.unavailable` | 503 | ja | de opslag achter deze resource is niet bereikbaar |
 | `storage.full` | 507 | nee | de server kan niet schrijven |
 | `session.invalid` | 400 | nee | onbekende of afgesloten kijksessie |
@@ -972,6 +974,15 @@ versie niet paste, met als laatste `server.transcode_unavailable`. `404` voor ee
 versie die niet bij het item hoort, `409` met `playback.version_unavailable` voor een item zonder
 leverbare versie.
 
+
+**Met `capabilities.transcode`** start een plan dat meer is dan `direct_play` meteen een sessie
+(regel 47 tot en met 49). `session_id` is gezet, `stream_url` wijst naar de HLS-afspeellijst van die
+sessie en `container` is `hls`. De segmenten zijn fMP4. `seekable` is `false`: de lijst groeit mee
+met de omzetting, dus een speler zoekt alleen in wat er al ligt. De client houdt de sessie levend met
+`POST .../heartbeat` (elke vijftien seconden is ruim genoeg; na een minuut zonder hartslag of
+aanvraag ruimt de server hem zelf op) en stopt hem met `DELETE`. Alle sessies bezet is `503` met
+`playback.transcode_busy`, en ffmpeg die niets levert `502` met `playback.transcode_failed`.
+
 ## 14. Kijkstatus
 
 De server is gezaghebbend. De client houdt een lokale kopie voor offline gebruik.
@@ -1291,6 +1302,9 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 44 | `DELETE /items/{id}/metadata-match` | het wegnemen van wat de provider bij dit item zette, en het nooit meer terugkomen | klasse `admin`, `404` voor de rest en voor een item dat geen film of serie is; idempotent; velden uit een sidecar blijven staan (S22.5) |
 | 45 | `GET /libraries/{id}/facets` | de waarden en tellingen van één bibliotheek, en de kijktelling van de aanvrager | klasse `authenticated` met dezelfde bibliotheekautorisatie als de lijst: `404` voor een bibliotheek buiten bereik of die niet bestaat; de kijktelling geldt alleen voor de aanvrager (venster 3, D1) |
 | 46 | `POST /playback/plan` | de keuze van een versie en leveringswijze voor een toestel, en de reden | klasse `authenticated` met de bibliotheekautorisatie van het item: `404` voor een item buiten bereik of dat niet bestaat, op de identiteitsas hetzelfde antwoord als een onbekend id (venster 5, S17) |
+| 47 | `POST /playback/sessions/{id}/heartbeat` | het levend houden van een omzetsessie | klasse `authenticated`, alleen de gebruiker die de sessie startte; voor ieder ander, ook een beheerder, `404` zoals voor een sessie die niet bestaat (venster 5, S18) |
+| 48 | `DELETE /playback/sessions/{id}` | het stoppen en opruimen van een omzetsessie | als regel 47 |
+| 49 | `GET /playback/sessions/{id}/{file}` | de afspeellijst, het initsegment en de segmenten van een omzetsessie | klasse `authenticated` of met `stream_token` of browser-streamsessie zoals de stream; een bearer alleen voor de eigenaar van de sessie, een token alleen voor de versie die wordt omgezet |
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
 zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
@@ -2032,8 +2046,11 @@ Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries
 | `DELETE /pleya/v1/items/{id}/metadata-match` | `admin` | ja |
 | `GET /pleya/v1/libraries/{id}/facets` | `authenticated` | nee |
 | `POST /pleya/v1/playback/plan` | `authenticated` | nee |
+| `POST /pleya/v1/playback/sessions/{id}/heartbeat` | `authenticated` | nee |
+| `DELETE /pleya/v1/playback/sessions/{id}` | `authenticated` | ja |
+| `GET /pleya/v1/playback/sessions/{id}/{file}` | `authenticated` of streamtoken | nee |
 
-Zesenvijftig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Negenenvijftig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit

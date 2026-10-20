@@ -125,7 +125,7 @@ type Reason struct {
 type Plan struct {
 	VersionID string
 	Mode      Mode
-	// Container is original, fmp4 of hls.
+	// Container is original voor direct play en hls voor alles wat de server omzet.
 	Container string
 	// VideoAction en AudioAction zijn copy of transcode.
 	VideoAction string
@@ -295,9 +295,9 @@ func evaluate(s Source, caps Capabilities, policy Policy) Plan {
 			p.AudioAction, p.AudioCodec, p.AudioMaxCh = "transcode", audioTarget, targetCh
 		}
 	case len(audioReasons) > 0:
-		p.Mode, p.Container, p.AudioAction, p.AudioCodec, p.AudioMaxCh = DirectStream, "fmp4", "transcode", audioTarget, targetCh
+		p.Mode, p.Container, p.AudioAction, p.AudioCodec, p.AudioMaxCh = DirectStream, "hls", "transcode", audioTarget, targetCh
 	case len(containerReasons) > 0:
-		p.Mode, p.Container = Remux, "fmp4"
+		p.Mode, p.Container = Remux, "hls"
 	default:
 		p.Mode = DirectPlay
 	}
@@ -312,6 +312,9 @@ func evaluate(s Source, caps Capabilities, policy Policy) Plan {
 	p.Seekable = p.Mode == DirectPlay
 	return p
 }
+
+// IsHDRTransfer zegt of een kleuroverdracht HDR is (PQ of HLG).
+func IsHDRTransfer(transfer string) bool { return hdrKind(transfer) != "" }
 
 func hdrKind(transfer string) string {
 	switch strings.ToLower(transfer) {

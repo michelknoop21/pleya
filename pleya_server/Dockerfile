@@ -54,13 +54,18 @@ FROM debian:bookworm-slim@sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639
 # Pleya nergens voor gebruikt; ze komen mee via een keten van harde Depends
 # (ffprobe -> libavdevice59 -> libgl1 -> ... -> libLLVM-15), dus
 # --no-install-recommends verandert er niets aan. Zelf bouwen met
-# --disable-avdevice haalt ze eruit en gebeurt bij PS-8, dat de ffmpeg-bouw
-# toch aanraakt voor QuickSync. Zie DEC-044 en pleya_server/README.md.
+# --disable-avdevice haalt ze eruit; dat is niet gebeurd: PS-8 bleek geen eigen
+# ffmpeg-bouw nodig te hebben, want de distributie-ffmpeg kent VAAPI. De
+# drivers hieronder (iHD voor nieuwere, i965 voor oudere Intel-GPU's) en
+# vainfo voor diagnose komen er alleen bij. Zie DEC-044 en DEC-158.
 ARG FFMPEG_VERSION=7:5.1.9-0+deb12u1
 RUN apt-get update \
  && apt-get install --no-install-recommends -y \
       ca-certificates \
       "ffmpeg=${FFMPEG_VERSION}" \
+      intel-media-va-driver \
+      i965-va-driver \
+      vainfo \
  && rm -rf /var/lib/apt/lists/* \
  && ffprobe -version | head -1
 

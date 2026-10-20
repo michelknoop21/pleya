@@ -144,6 +144,13 @@ const (
 	CodeRangeNotSatisfiable = "playback.range_not_satisfiable"
 	CodeNotPlayable         = "playback.not_playable"
 
+	// CodeTranscodeBusy: alle omzetsessies zijn bezet (venster 5 deel 2, S18).
+	// Retryable: een sessie die stopt maakt ruimte.
+	CodeTranscodeBusy = "playback.transcode_busy"
+	// CodeTranscodeFailed: ffmpeg haalde geen speelbare uitvoer. De oorzaak
+	// staat in het serverlog, niet in het antwoord.
+	CodeTranscodeFailed = "playback.transcode_failed"
+
 	CodeStorageUnavailable = "storage.unavailable"
 	CodeStorageFull        = "storage.full"
 
@@ -240,6 +247,8 @@ var errorTable = map[string]struct {
 	CodeVersionUnavailable:  {http.StatusConflict, true},
 	CodeRangeNotSatisfiable: {http.StatusRequestedRangeNotSatisfiable, false},
 	CodeNotPlayable:         {http.StatusUnsupportedMediaType, false},
+	CodeTranscodeBusy:       {http.StatusServiceUnavailable, true},
+	CodeTranscodeFailed:     {http.StatusBadGateway, false},
 
 	CodeStorageUnavailable:    {http.StatusServiceUnavailable, true},
 	CodeStorageFull:           {http.StatusInsufficientStorage, false},

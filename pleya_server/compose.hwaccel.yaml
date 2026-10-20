@@ -1,0 +1,13 @@
+# Hardwareversnelling voor omzetten op de DS920+ (S18.4, S18.7).
+#
+# Een aparte laag en niet in compose.yaml: een host zonder /dev/dri (een
+# ontwikkelmachine, CI) zou op de ontbrekende device-mapping uitvallen.
+# deploy-nas.sh voegt dit bestand toe wanneer /dev/dri/renderD128 op de NAS
+# bestaat. De groep is gemeten op de NAS zelf, "videodriver" (gid 937);
+# PLEYA_SERVER_RENDER_GID overschrijft hem voor een andere host.
+services:
+  pleya-server:
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "${PLEYA_SERVER_RENDER_GID:-937}"

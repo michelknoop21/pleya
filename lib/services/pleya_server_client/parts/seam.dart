@@ -31,6 +31,11 @@ mixin _PleyaServerRequests {
   /// failed write throws; only offline mode answers null.
   Future<Map<String, dynamic>?> _postJson(String path, Map<String, dynamic> body);
 
+  /// Send a request that answers with JSON, nothing, or 202/204. Retries once
+  /// on a 401 and throws on anything else outside 2xx. The playback part uses
+  /// it for the transcode-session calls.
+  Future<Map<String, dynamic>?> _adminSend(String method, String path);
+
   /// One item by id. The playback part needs it to turn watch-state rows back
   /// into items, and the browse part already implements it.
   Future<MediaItem?> fetchItem(String id);

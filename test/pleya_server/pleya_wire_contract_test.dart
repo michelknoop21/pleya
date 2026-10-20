@@ -121,10 +121,11 @@ void main() {
     'ServerDetail': (json) => PleyaServerDetail.fromJson(json),
     'PlaybackPlan': (json) {
       final plan = PleyaPlaybackPlan.fromJson(json);
-      expect(plan.deliveryMode, PleyaDeliveryMode.directPlay);
-      expect(plan.reason.code, 'direct.supported');
-      expect(plan.seekable, isTrue);
-      expect(plan.sessionId, isNull);
+      expect(plan.deliveryMode, isNotNull);
+      final direct = plan.deliveryMode == PleyaDeliveryMode.directPlay;
+      expect(plan.sessionId == null, direct, reason: 'only a converted delivery has a session');
+      expect(plan.seekable, direct, reason: 'a converted delivery is not seekable by range');
+      expect(plan.reason.code, plan.reasons.first.code);
     },
     'Facets': (json) {
       final facets = PleyaFacets.fromJson(json);
@@ -177,8 +178,8 @@ void main() {
       );
     });
 
-    test('covers the 88 fixtures the contract ships', () {
-      expect(fixtures, hasLength(88));
+    test('covers the 89 fixtures the contract ships', () {
+      expect(fixtures, hasLength(89));
     });
 
     for (final fixture in fixtures) {
