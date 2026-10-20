@@ -64,8 +64,14 @@ Future<void> switchProfileForHandoff(BuildContext context, PlaybackHandoffReques
       connections: connections,
       profileConnections: profileConnections,
     ),
-    activate: (mayActivate, verifiedToken) => context.mounted
-        ? activateProfileWithPin(context, profile, mayActivate: mayActivate, verifiedPlexUserToken: verifiedToken)
+    activate: (mayActivate, verifiedToken, onPinCancelled) => context.mounted
+        ? activateProfileWithPin(
+            context,
+            profile,
+            mayActivate: mayActivate,
+            verifiedPlexUserToken: verifiedToken,
+            onPinCancelled: onPinCancelled,
+          )
         : Future.value(false),
   );
 }
@@ -114,13 +120,23 @@ Future<String?> _verifyHandoffToken(
 /// the protected [target] (A-23c); that token then replaces the PIN and goes to
 /// [activate]. It runs after arming, so a second handoff meanwhile is refused.
 /// Null, or any error, keeps the PIN.
+///
+/// [activate] calls its third argument when the user cancelled the PIN dialog.
+/// Only that tells the phone the PIN was not entered; every other failure
+/// (activation, storage, binding, an exception, [PlaybackHandoffLedger.mayActivate]
+/// refusing after the phone gave up) is a plain failure without a reason.
 @visibleForTesting
 Future<void> runHandoffProfileSwitch({
   required PlaybackHandoffRequest request,
   required Profile target,
   required PlaybackHandoffLedger ledger,
   required void Function(Map<String, dynamic> data) send,
-  required Future<bool> Function(bool Function() mayActivate, String? verifiedPlexUserToken) activate,
+  required Future<bool> Function(
+    bool Function() mayActivate,
+    String? verifiedPlexUserToken,
+    void Function() onPinCancelled,
+  )
+  activate,
   Future<String?> Function()? verifyProof,
   Duration sendDelay = const Duration(milliseconds: 300),
 }) async {
@@ -144,14 +160,19 @@ Future<void> runHandoffProfileSwitch({
   // Sending encrypts asynchronously; a switch without a PIN closes the connection right after.
   await Future<void>.delayed(sendDelay);
   var switched = false;
+  var pinCancelled = false;
   try {
-    switched = await activate(() => !isPlaybackHandoffCancelled(request.id) && ledger.mayActivate(request.id), proven);
+    switched = await activate(
+      () => !isPlaybackHandoffCancelled(request.id) && ledger.mayActivate(request.id),
+      proven,
+      () => pinCancelled = true,
+    );
   } catch (e) {
     appLogger.w('Playback handoff ${request.id}: profile switch failed (${e.runtimeType})');
   }
   if (switched) return;
-  // No PIN in time, or a failed check: still the old profile, and the phone is still connected.
-  final outcome = pin ? PlaybackHandoffOutcome.pinCancelled : PlaybackHandoffOutcome.failed;
+  // Still the old profile, and the phone is still connected.
+  final outcome = pin && pinCancelled ? PlaybackHandoffOutcome.pinCancelled : PlaybackHandoffOutcome.failed;
   ledger.clear();
   ledger.record(request.id, outcome);
   send(handoffOutcomeData(request.id, outcome));

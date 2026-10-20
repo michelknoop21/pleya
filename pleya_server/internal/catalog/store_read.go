@@ -37,14 +37,18 @@ type Query struct {
 	Filters Filters
 }
 
-// Items levert een pagina items met hun versies, sporen en artwork.
-//
-// Vier queries per pagina en niet vier per item: de versies, de sporen, het
-// artwork en de aantallen worden per pagina in één keer opgehaald. Op een NAS is
-// het aantal rondgangen naar de database wat telt, niet het aantal rijen.
-func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
-	limit := ClampLimit(q.Limit)
+// scope is wat een cursor van deze query aan de lijst bindt: de bibliotheek.
+func (q Query) scope() string {
+	if q.LibraryID == nil {
+		return ""
+	}
+	return q.LibraryID.String()
+}
 
+// conditions bouwt de WHERE-voorwaarden en parameters van een query, zonder
+// sortering en cursor. Items en Count delen ze, zodat het getal bij een lijst
+// precies de rijen telt die de lijst kan tonen.
+func (q Query) conditions() ([]string, []any) {
 	where := []string{"1 = 1"}
 	args := []any{}
 
@@ -79,6 +83,18 @@ func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
 			return len(args)
 		})
 	}
+	return where, args
+}
+
+// Items levert een pagina items met hun versies, sporen en artwork.
+//
+// Vier queries per pagina en niet vier per item: de versies, de sporen, het
+// artwork en de aantallen worden per pagina in één keer opgehaald. Op een NAS is
+// het aantal rondgangen naar de database wat telt, niet het aantal rijen.
+func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
+	limit := ClampLimit(q.Limit)
+
+	where, args := q.conditions()
 
 	key := q.Sort.keyExpression()
 	if q.Sort.needsSubject() {
@@ -113,7 +129,7 @@ func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
 		LIMIT $%d`,
 		itemColumns, key, strings.Join(where, " AND "), key, direction, direction, len(args))
 
-	return s.itemPage(ctx, sql, args, q.Sort, limit, q.Cursor, q.Filters.CursorTag(q.Sort))
+	return s.itemPage(ctx, sql, args, q.Sort, limit, q.Cursor, q.Filters.CursorTag(q.Sort, q.scope()))
 }
 
 // itemColumns is de kolomlijst die scanItems verwacht, met i als alias voor
@@ -442,7 +458,20 @@ func (s *Store) attachCounts(ctx context.Context, ids []id.ID, byID map[id.ID]*I
 	return epRows.Err()
 }
 
-// ItemCount telt de items die aan een filter voldoen, als schatting voor de UI.
+// Count telt de items die aan de voorwaarden van q voldoen (filters inbegrepen),
+// zonder cursor en limiet: het totaal achter een gefilterde lijst.
+func (s *Store) Count(ctx context.Context, q Query) (int, error) {
+	where, args := q.conditions()
+	var n int64
+	err := s.pool.QueryRow(ctx, fmt.Sprintf(
+		"SELECT count(*) FROM media_items i WHERE %s", strings.Join(where, " AND ")), args...).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("items tellen: %w", err)
+	}
+	return int(n), nil
+}
+
+// ItemCount telt de items van een bibliotheek zonder filters, als schatting voor de UI.
 func (s *Store) ItemCount(ctx context.Context, libraryID *id.ID, kinds []string) (int, error) {
 	var n int64
 	err := s.pool.QueryRow(ctx, `
