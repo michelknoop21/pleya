@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../../connection/connection_registry.dart';
 import '../../../i18n/strings.g.dart';
+import '../../pleya_fly_icon.dart';
 import '../../../mpv/mpv.dart';
 import '../../../profiles/active_profile_provider.dart';
 import '../../../profiles/profile_connection_registry.dart';
@@ -359,7 +360,7 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
 
     return BaseVideoControlSheet(
       title: t.playbackHandoff.title,
-      icon: Symbols.smart_display,
+      leading: const PleyaFlyIcon(),
       child: ListView(children: children),
     );
   }
