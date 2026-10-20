@@ -133,6 +133,35 @@ enum PlaybackHandoffOutcome {
   timedOut,
 }
 
+/// Progress the player must show before the receiver tells the sender it plays.
+const handoffProgressThresholdMs = 1000;
+
+/// A step forward larger than this between two position events is a seek, not playback.
+const handoffMaxStepMs = 2000;
+
+/// The position progress is measured from. A first position, a step backwards or a
+/// step larger than [handoffMaxStepMs] (a seek or resume jump) restarts the baseline.
+int nextHandoffBaselineMs({required int? baselineMs, required int? previousMs, required int positionMs}) {
+  if (baselineMs == null || previousMs == null) return positionMs;
+  final step = positionMs - previousMs;
+  if (step < 0 || step > handoffMaxStepMs) return positionMs;
+  return baselineMs;
+}
+
+/// Whether the receiver may now report `handoffPlaying`: only for a handoff,
+/// once, while playing, and after the position moved at least
+/// [handoffProgressThresholdMs] past the first position seen in this player.
+bool shouldAcknowledgeHandoff({
+  required String? handoffId,
+  required bool acknowledged,
+  required bool playing,
+  required int? firstPositionMs,
+  required int positionMs,
+}) {
+  if (handoffId == null || acknowledged || !playing || firstPositionMs == null) return false;
+  return positionMs - firstPositionMs >= handoffProgressThresholdMs;
+}
+
 const handoffPlayingKey = 'handoffPlaying';
 const handoffFailedKey = 'handoffFailed';
 

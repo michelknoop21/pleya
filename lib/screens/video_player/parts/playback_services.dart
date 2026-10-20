@@ -144,6 +144,8 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
     });
 
     int? lastObservedPositionMs;
+    int? handoffFirstPositionMs;
+    int? handoffPreviousPositionMs;
     _positionSubscription = currentPlayer.streams.position.listen((position) {
       final activePlayer = player;
       if (activePlayer == null || activePlayer != currentPlayer) return;
@@ -159,6 +161,27 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
           unawaited(_markFirstFrameReady(currentPlayer, settingsService));
         }
         lastObservedPositionMs = position.inMilliseconds;
+      }
+
+      // Handoff: confirm on real progress, not on the `playing` event. That
+      // event fires once at mpv init, before the listener is attached, and
+      // never again on tvOS; a moving position proves the picture runs.
+      if (!_handoffAcknowledged) {
+        handoffFirstPositionMs = nextHandoffBaselineMs(
+          baselineMs: handoffFirstPositionMs,
+          previousMs: handoffPreviousPositionMs,
+          positionMs: position.inMilliseconds,
+        );
+        handoffPreviousPositionMs = position.inMilliseconds;
+      }
+      if (shouldAcknowledgeHandoff(
+        handoffId: widget.handoffId,
+        acknowledged: _handoffAcknowledged,
+        playing: activePlayer.state.playing,
+        firstPositionMs: handoffFirstPositionMs,
+        positionMs: position.inMilliseconds,
+      )) {
+        _acknowledgeHandoff();
       }
 
       final duration = activePlayer.state.duration;
@@ -424,8 +447,6 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
     }
 
     unawaited(_setWakelock(isPlaying));
-
-    if (isPlaying) _acknowledgeHandoff();
 
     if (isPlaying) {
       // Force a texture refresh on resume to unstick stale frames
