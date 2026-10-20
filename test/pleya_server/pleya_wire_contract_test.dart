@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/models/pleya_server/pleya_wire.dart';
 import 'package:pleya/models/pleya_server/pleya_wire_library.dart';
+import 'package:pleya/models/pleya_server/pleya_wire_playback.dart';
 import 'package:pleya/services/pleya_server_client.dart' show pleyaWatchHistoryFromJson;
 
 /// The Dart wire types are a hand transcription of
@@ -118,6 +119,13 @@ void main() {
       expect(info.serverId, isNotEmpty);
     },
     'ServerDetail': (json) => PleyaServerDetail.fromJson(json),
+    'PlaybackPlan': (json) {
+      final plan = PleyaPlaybackPlan.fromJson(json);
+      expect(plan.deliveryMode, PleyaDeliveryMode.directPlay);
+      expect(plan.reason.code, 'direct.supported');
+      expect(plan.seekable, isTrue);
+      expect(plan.sessionId, isNull);
+    },
     'Facets': (json) {
       final facets = PleyaFacets.fromJson(json);
       expect(facets.genres.map((g) => g.value), contains('Drama'));
@@ -169,8 +177,8 @@ void main() {
       );
     });
 
-    test('covers the 86 fixtures the contract ships', () {
-      expect(fixtures, hasLength(86));
+    test('covers the 88 fixtures the contract ships', () {
+      expect(fixtures, hasLength(88));
     });
 
     for (final fixture in fixtures) {

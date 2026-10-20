@@ -18,7 +18,7 @@
     "cookie_auth": true,
     "administration": true,
     "mcp": false,
-    "playback_plan": false,
+    "playback_plan": true,
     "transcode": false,
     "downloads": false,
     "live_tv": false,

@@ -45,20 +45,29 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
 
   /// Resolve an item to a playable URL.
   ///
-  /// No plan and no capability negotiation: PS-4 is direct play, and a file
-  /// this device cannot decode fails visibly in the player. That is the
-  /// documented boundary, not a gap — inventing a transcode path here would be
-  /// PS-8 arriving early and would hide the one signal that says a later phase
-  /// is needed.
+  /// With `capabilities.playback_plan` the server picks the version and says
+  /// how it is delivered (S17); this client follows that plan. Without the
+  /// flag, or when the plan call fails, it behaves as it did in PS-4: direct
+  /// play of the selected version, where a file this device cannot decode
+  /// fails visibly in the player. A plan the server could not make is not a
+  /// reason to refuse playback, because the device report may be wrong and the
+  /// player is the better judge of last resort.
   Future<PlaybackInitializationResult> getPlaybackInitialization(PlaybackInitializationOptions options) async {
     final versions = options.metadata.mediaVersions ?? const <MediaVersion>[];
     if (versions.isEmpty) {
       return PlaybackInitializationResult(availableVersions: const []);
     }
 
-    final index = options.selectedMediaIndex >= 0 && options.selectedMediaIndex < versions.length
+    var index = options.selectedMediaIndex >= 0 && options.selectedMediaIndex < versions.length
         ? options.selectedMediaIndex
         : 0;
+
+    final plan = await _planPlayback(options.metadata.id, versions, index);
+    if (plan != null) {
+      final planned = versions.indexWhere((v) => v.id == plan.versionId);
+      if (planned >= 0) index = planned;
+      appLogger.d('PleyaServerClient: plan ${plan.deliveryMode?.wire} because ${plan.reason.code}');
+    }
     final version = versions[index];
 
     // Warm the header before the player opens the URL. The token is short
@@ -75,6 +84,34 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       playSessionId: _watchLedger.sessionFor(options.metadata.id, _mintSessionId),
       externalSubtitles: const [],
     );
+  }
+
+  /// Ask the server for a plan. Null means "no plan, keep direct play": the
+  /// server does not offer one, the call failed, or the plan names a delivery
+  /// this build cannot follow yet (only `direct_play` exists server-side until
+  /// the transcoder lands, and an unknown mode must not change what we play).
+  ///
+  /// The default selection (index 0) lets the server choose the cheapest
+  /// fitting version; any other index is the user's explicit choice and goes
+  /// out as `version_id`.
+  Future<PleyaPlaybackPlan?> _planPlayback(String itemId, List<MediaVersion> versions, int index) async {
+    if (!wireCapabilities.playbackPlan) return null;
+    try {
+      final json = await _postJson('/playback/plan', {
+        'item_id': itemId,
+        if (index != 0) 'version_id': versions[index].id,
+        'capabilities': pleyaDeviceCapabilitiesToWire(DeviceCapabilitiesService.currentSnapshot),
+      });
+      if (json == null) return null;
+      final plan = PleyaPlaybackPlan.fromJson(json);
+      return plan.deliveryMode == PleyaDeliveryMode.directPlay ? plan : null;
+    } on PleyaWireFormatException catch (e) {
+      appLogger.w('PleyaServerClient: playback plan did not match the contract', error: e);
+      return null;
+    } catch (e) {
+      appLogger.d('PleyaServerClient: no playback plan, playing directly', error: e);
+      return null;
+    }
   }
 
   /// A URL an external player can open on its own.

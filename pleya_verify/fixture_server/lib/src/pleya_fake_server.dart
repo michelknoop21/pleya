@@ -53,6 +53,17 @@ class PleyaFakeServer {
   /// not opt in proves what the client does against one.
   bool filtersCapability = false;
 
+  /// Whether `/info` advertises `playback_plan` and `POST /playback/plan`
+  /// answers. [planVersionId] is the version the planner picks when the request
+  /// names none, [planDeliveryMode] the mode it reports, and a non-null
+  /// [planFailureStatus] makes the route fail with that status. Every request
+  /// body lands in [planRequests].
+  bool playbackPlanCapability = false;
+  String planVersionId = 'version-1';
+  String planDeliveryMode = 'direct_play';
+  int? planFailureStatus;
+  final List<Map<String, dynamic>> planRequests = [];
+
   /// While set, `POST /watch-state` answers with this status and an error
   /// envelope, without recording the event. Reads (the 5xx regression of
   /// backlog 24.3) need a write that fails fast, not a timeout.
@@ -228,6 +239,11 @@ class PleyaFakeServer {
     watchStates.clear();
     ownedByThisSession = true;
     filtersCapability = false;
+    playbackPlanCapability = false;
+    planVersionId = 'version-1';
+    planDeliveryMode = 'direct_play';
+    planFailureStatus = null;
+    planRequests.clear();
     watchStateFailureStatus = null;
     usersCapability = false;
     adminJobs.clear();
@@ -551,6 +567,31 @@ class PleyaFakeServer {
       return _json({'stream_token': 'st-for-${body['version_id']}', 'expires_at': '2026-08-21T21:09:11Z'});
     }
 
+    if (path == '/playback/plan' && request.method == 'POST' && playbackPlanCapability) {
+      final failure = planFailureStatus;
+      if (failure != null) return _json(_error('playback.not_playable'), status: failure);
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      planRequests.add(body);
+      final versionId = (body['version_id'] as String?) ?? planVersionId;
+      final reason = {
+        'code': planDeliveryMode == 'direct_play' ? 'direct.supported' : 'container.unsupported',
+        'params': <String, dynamic>{},
+      };
+      return _json({
+        'item_id': body['item_id'],
+        'version_id': versionId,
+        'delivery_mode': planDeliveryMode,
+        'stream_url': '/pleya/v1/stream/$versionId',
+        'container': 'original',
+        'video': {'action': 'copy'},
+        'audio': {'action': 'copy'},
+        'seekable': planDeliveryMode == 'direct_play',
+        'session_id': null,
+        'reason': reason,
+        'reasons': [reason],
+      });
+    }
+
     if (path == '/watch-state' && request.method == 'POST') {
       final failure = watchStateFailureStatus;
       if (failure != null) return _json(_error('server.internal'), status: failure);
@@ -800,6 +841,7 @@ class PleyaFakeServer {
       'watch_state_ownership': watchStateOwnership,
       'stream_sessions': watchState,
       if (filtersCapability) 'filters': true,
+      if (playbackPlanCapability) 'playback_plan': true,
     },
     'auth': {
       'methods': ['password'],

@@ -407,6 +407,16 @@
       "file": "error_filter_invalid.json",
       "schema": "ErrorEnvelope",
       "note": "D1: een filterparameter met een onbekende waarde, met de parameter in details"
+    },
+    {
+      "file": "playback_plan.json",
+      "schema": "PlaybackPlan",
+      "note": "S17: POST /playback/plan, direct play van de goedkoopste versie"
+    },
+    {
+      "file": "error_not_playable.json",
+      "schema": "ErrorEnvelope",
+      "note": "S17: geen versie past, met de redenen in details"
     }
   ]
 }
