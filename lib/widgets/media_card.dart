@@ -1,5 +1,4 @@
 import 'library_cover_artwork.dart';
-import 'library_atmosphere.dart';
 import 'dart:ui';
 import '../media/ids.dart';
 
@@ -255,8 +254,7 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
       ],
       builder: _buildContent,
     );
-    // TV's FocusableMediaCard already observes remote focus around this card.
-    return PlatformDetector.isTV() ? card : LibraryArtworkSelection(item: widget.item, child: card);
+    return card;
   }
 
   Widget _buildContent(BuildContext context) {

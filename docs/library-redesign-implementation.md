@@ -3,8 +3,12 @@
 Roadmap: A-06 / A-08 / A-17; Web C-05. Itemstatus blijft in VIS-COL-PLAY1.
 
 Michel geeft op 12 oktober 2026 opdracht tot inbouwen van de gekozen stijl.
-Laatste ontwerpcorrecties: achtergrond volgt selectie; alle achtergrondbeelden
-zijn uniform geblurd; kaartgeometrie en density blijven behouden.
+Laatste ontwerpcorrecties: kaartgeometrie en density blijven behouden.
+
+Besluit Michel (20 oktober 2026): de geblurde sfeerlaag is overal verwijderd, op
+alle platforms. De selectiegebonden achtergrond uit de rest van dit document
+(`LibraryAtmosphere`, `library.atmosphere`) bestaat niet meer; schermen tonen de
+gewone scaffoldachtergrond. De regels hieronder over de sfeerlaag zijn historisch.
 
 ## Ontwerpautoriteit
 
@@ -20,7 +24,7 @@ Deze tabletbeelden bewijzen geen runtime- of hardwaregedrag.
 | Ontwerpdeel | Bestaande eigenaar / gedrag | Implementatieplicht | Bewijs |
 | --- | --- | --- | --- |
 | Zwevende lokale navigatie | LibrariesScreen; bestaande tabs, bronkiezer en acties | Dezelfde handlers/focusnodes, geen rode lijn; telefoon heeft een eigen 48px navigatierij | Implementatie + gerichte geometrie-/focustests; native beeldreview afzonderlijk |
-| Selectiegebonden sfeer | Bestaande concrete MediaItem/MediaPlaylist of representativeSource van UnifiedMediaGroup | Brongebonden artwork; TV focus, desktop hover/focus, mobiel zichtbare kaart; geen extra tap | Native catalogus Verify + Web keyboardbeeld; fixturebewijs |
+| Selectiegebonden sfeer (vervallen, 20 okt) | Bestaande concrete MediaItem/MediaPlaylist of representativeSource van UnifiedMediaGroup | Brongebonden artwork; TV focus, desktop hover/focus, mobiel zichtbare kaart; geen extra tap | Native catalogus Verify + Web keyboardbeeld; fixturebewijs |
 | Bladeren | LibraryBrowseTab, MobileCatalogScreen, TvUnifiedCatalogScreen | Alle filters/sortering/paging/focus/sourcekeuze behouden | Open |
 | Aanbevolen | LibraryRecommendedTab, MobileLandingScreen, TvDiscoveryLandingScreen | Bestaande rails/projecties en activering behouden; geen eerste-film lock | Open |
 | Collecties/afspeellijsten | Bibliotheektabs en TvPersonalMediaOverviewScreens / PersonalMediaProvider | Visuele covers, titel/aantal/bron, retry/partial failure en terugkeer behouden | Open |

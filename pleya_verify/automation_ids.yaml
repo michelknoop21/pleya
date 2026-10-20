@@ -105,9 +105,6 @@ ids:
   - id: library.header
     role: region
     instanceable: false
-  - id: library.atmosphere
-    role: image
-    instanceable: true
   - id: library.filter.grouping
     role: filter
     instanceable: false

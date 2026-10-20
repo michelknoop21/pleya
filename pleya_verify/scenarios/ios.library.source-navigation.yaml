@@ -28,5 +28,4 @@ steps:
   - wait_until: {id: screen.libraries, timeout: 15000}
   - settle: 4000
   - assert: {id: library.header, insideViewport: true}
-  - assert: {id: "library.atmosphere[libraries]", state: {available: true, blur_sigma: 14}}
   - snapshot: source-library-navigation

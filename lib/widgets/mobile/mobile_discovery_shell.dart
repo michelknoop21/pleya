@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 
 import 'mobile_refresh_scope.dart';
 import '../skeletons.dart';
-import '../library_atmosphere.dart';
 
 /// The 34pt/w800 title style both Home's `Voor jou` heading and a landing's
 /// title row draw.
@@ -29,14 +28,12 @@ Widget mobileDiscoveryScaffold({
   required BuildContext context,
   required Future<void> Function() onRefresh,
   required List<Widget> slivers,
-  bool libraryAtmosphere = false,
 }) {
-  final content = Material(
-    color: libraryAtmosphere ? Colors.transparent : Theme.of(context).scaffoldBackgroundColor,
+  return Material(
+    color: Theme.of(context).scaffoldBackgroundColor,
     child: MobileRefreshScope(
       onRefresh: onRefresh,
       child: CustomScrollView(slivers: slivers),
     ),
   );
-  return libraryAtmosphere ? LibraryAtmosphere(child: content) : content;
 }

@@ -53,7 +53,6 @@
 /// filter session wander off to a different catalog on the next LEFT press.
 library;
 
-import '../../widgets/library_atmosphere.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -746,18 +745,14 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
                 stops: const [0, 0.55],
               ),
             ),
-      child: LibraryAtmosphere(
-        automationInstance: 'tv_catalog.$_surface',
-        selectionKey: widget.catalog.query.kind,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // The tags are capped here and uncapped in the rail: the heading has
-            // one line and no way to scroll, the panel wraps.
-            TvCatalogHeaderBar(title: widget.title, tags: _railExpanded ? const [] : _selectionTags()),
-            Expanded(child: _buildContentArea()),
-          ],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // The tags are capped here and uncapped in the rail: the heading has
+          // one line and no way to scroll, the panel wraps.
+          TvCatalogHeaderBar(title: widget.title, tags: _railExpanded ? const [] : _selectionTags()),
+          Expanded(child: _buildContentArea()),
+        ],
       ),
     );
   }
