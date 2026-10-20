@@ -95,9 +95,9 @@ func (s Sort) keyExpression() string {
 	case SortIndex:
 		return "coalesce(i.item_index, 0)"
 	case SortDuration:
-		return "coalesce("+durationMax+", 9223372036854775807)"
+		return "coalesce(" + durationMax + ", 9223372036854775807)"
 	case SortDurationDesc:
-		return "coalesce("+durationMax+", -1)"
+		return "coalesce(" + durationMax + ", -1)"
 	case SortWatchUpdatedDesc:
 		return "w.updated_at"
 	case SortNextUpDesc:
