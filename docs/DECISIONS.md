@@ -4942,7 +4942,11 @@ Pleya Server nu mee als filteruitvoerder; de lokale map is de bron die dat niet 
    log. Alleen SDR-transcode gebruikt VAAPI, HDR gaat door een tone-mapping in software. De image krijgt `intel-media-va-driver`,
    `i965-va-driver` en `vainfo` uit de distributie (geen eigen ffmpeg-bouw nodig, dus geen compilatie op de Celeron);
    `compose.hwaccel.yaml` mapt `/dev/dri` en groep 937, en `deploy-nas.sh` voegt hem toe als `renderD128` bestaat.
-6. **Buiten deze stap:** ondertitels inbranden en WebVTT-sidecars (matrix uit het plan), een kwaliteitsladder met bitratekeuze,
+6. **Gemeten op de NAS-testinstance (20 oktober 2026).** VAAPI werkt op `renderD128`: HEVC naar H.264, eerste segment na
+   2,1 s, ongeveer 4,7 keer realtime (19 segmenten van vijf seconden in 20 s), `/transcode` leeg na het stoppen. De eerste opzet liet
+   de GPU ook decoderen en faalde op de eerste testfilm ('requested VAProfile is not supported'); sindsdien decodeert software en codeert
+   de GPU, en een mislukte hardwarestart wordt één keer in software herhaald.
+7. **Buiten deze stap:** ondertitels inbranden en WebVTT-sidecars (matrix uit het plan), een kwaliteitsladder met bitratekeuze,
    zoeken met herstart, en `GET/DELETE /transcode-sessions` voor beheer met scherm 37 (S18.5).
 
 **Consequences:** negenenvijftig operaties; nieuwe foutcodes `playback.transcode_busy` (503) en `playback.transcode_failed` (502).

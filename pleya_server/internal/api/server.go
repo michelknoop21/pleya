@@ -333,6 +333,10 @@ func (s *Server) routeTable() []route {
 		{"POST " + p + "/playback/sessions/{session_id}/heartbeat", s.authenticated(s.handlePlaybackHeartbeat)},
 		{"DELETE " + p + "/playback/sessions/{session_id}", s.authenticated(s.handlePlaybackStop)},
 		{"GET " + p + "/playback/sessions/{session_id}/{file}", s.streamAuthorized(s.handlePlaybackFile)},
+
+		// Beheer van omzetsessies (S18.5, matrixregel 50 en 51). Klasse admin.
+		{"GET " + p + "/transcode-sessions", s.authenticated(s.handleListTranscodeSessions)},
+		{"DELETE " + p + "/transcode-sessions/{session_id}", s.authenticated(s.handleStopTranscodeSession)},
 		{"GET " + p + "/items/{item_id}", s.authenticated(s.handleItem)},
 		{"GET " + p + "/items/{item_id}/children", s.authenticated(s.handleChildren)},
 		{"GET " + p + "/search", s.authenticated(s.handleSearch)},

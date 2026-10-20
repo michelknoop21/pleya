@@ -56,6 +56,9 @@ const (
 	auditCancelJob = "cancelJob"
 	auditRetryJob  = "retryJob"
 
+	// Omzetsessies (S18.5). De lijst schrijft niets weg.
+	auditStopTranscodeSession = "stopTranscodeSession"
+
 	// Correcties op de providermatch (S22.5). De lees-endpoints schrijven niets weg.
 	auditSetMetadataMatch   = "setMetadataMatch"
 	auditClearMetadataMatch = "clearMetadataMatch"

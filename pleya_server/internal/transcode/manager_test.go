@@ -179,3 +179,53 @@ func TestHardwareFailureFallsBackToSoftware(t *testing.T) {
 		t.Fatalf("sessie meldt hardware %q terwijl de GPU weigerde", s.HW)
 	}
 }
+
+// Stopt iemand een sessie terwijl hij opstart, dan komt er geen sessie terug:
+// geen ErrFailed en dus ook geen tweede poging in software.
+func TestStopDuringStartDoesNotRestartInSoftware(t *testing.T) {
+	src := source(t)
+	real, err := exec.LookPath("ffmpeg")
+	if err != nil {
+		t.Skip("ffmpeg ontbreekt")
+	}
+	// Een ffmpeg die traag opstart: de manager wacht op het eerste segment.
+	wrapper := filepath.Join(t.TempDir(), "ffmpeg")
+	if err := os.WriteFile(wrapper, []byte("#!/bin/sh\nsleep 3\nexec "+real+" \"$@\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	m, err := transcode.New(transcode.Options{
+		FFmpegPath: wrapper, Dir: t.TempDir(), Max: 2, StartTimeout: 40 * time.Second,
+		HW: transcode.HWVAAPI, RenderNode: "/dev/dri/renderD128",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(m.Close)
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := m.Start(context.Background(), params(src, transcode.ModeTranscode))
+		done <- err
+	}()
+	var sid id.ID
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		if l := m.List(); len(l) == 1 {
+			sid = l[0].ID
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if sid == id.Nil {
+		t.Fatal("de sessie startte niet")
+	}
+	if err := m.Stop(sid); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; !errors.Is(err, transcode.ErrStopped) {
+		t.Fatalf("start gaf %v, verwacht ErrStopped", err)
+	}
+	if len(m.List()) != 0 {
+		t.Fatal("er staat een sessie terwijl hij gestopt was")
+	}
+}

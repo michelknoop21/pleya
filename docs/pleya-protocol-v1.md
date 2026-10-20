@@ -1305,6 +1305,8 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 47 | `POST /playback/sessions/{id}/heartbeat` | het levend houden van een omzetsessie | klasse `authenticated`, alleen de gebruiker die de sessie startte; voor ieder ander, ook een beheerder, `404` zoals voor een sessie die niet bestaat (venster 5, S18) |
 | 48 | `DELETE /playback/sessions/{id}` | het stoppen en opruimen van een omzetsessie | als regel 47 |
 | 49 | `GET /playback/sessions/{id}/{file}` | de afspeellijst, het initsegment en de segmenten van een omzetsessie | klasse `authenticated` of met `stream_token` of browser-streamsessie zoals de stream; een bearer alleen voor de eigenaar van de sessie, een token alleen voor de versie die wordt omgezet |
+| 50 | `GET /transcode-sessions` | de lopende omzetsessies van iedereen, het maximum en of er hardwareversnelling is | klasse `admin`, `404` voor de rest (venster 5, S18.5) |
+| 51 | `DELETE /transcode-sessions/{id}` | het stoppen van de omzetsessie van wie dan ook | klasse `admin`, `404` voor de rest, ook voor een id dat niet bestaat; komt in het auditlog als `stopTranscodeSession` |
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
 zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
@@ -2049,8 +2051,10 @@ Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries
 | `POST /pleya/v1/playback/sessions/{id}/heartbeat` | `authenticated` | nee |
 | `DELETE /pleya/v1/playback/sessions/{id}` | `authenticated` | ja |
 | `GET /pleya/v1/playback/sessions/{id}/{file}` | `authenticated` of streamtoken | nee |
+| `GET /pleya/v1/transcode-sessions` | `admin` | nee |
+| `DELETE /pleya/v1/transcode-sessions/{id}` | `admin` | ja |
 
-Negenenvijftig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Eenenzestig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit
