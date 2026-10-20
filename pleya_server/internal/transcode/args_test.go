@@ -55,8 +55,10 @@ func TestTranscodeUsesSoftwareUnlessVAAPIAndSDR(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(args, "h264_vaapi") || !slices.Contains(args, "/dev/dri/renderD128") {
-		t.Fatalf("vaapi: %v", args)
+	joined := strings.Join(args, " ")
+	if !slices.Contains(args, "h264_vaapi") || !strings.Contains(joined, "vaapi=va:/dev/dri/renderD128") ||
+		!strings.Contains(joined, "format=nv12,hwupload") || strings.Contains(joined, "-hwaccel ") {
+		t.Fatalf("vaapi hoort software te decoderen en alleen te coderen op de GPU: %v", args)
 	}
 
 	// HDR gaat door de software-tonemap, ook met hardware beschikbaar.

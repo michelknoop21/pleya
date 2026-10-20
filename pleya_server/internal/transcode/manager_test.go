@@ -148,3 +148,34 @@ func TestBrokenInputFailsWithoutLeavingASession(t *testing.T) {
 		t.Fatal("een mislukte start liet een sessie achter")
 	}
 }
+
+// Faalt de hardware, dan levert een tweede poging in software toch een sessie.
+// De "ffmpeg" hier weigert elke aanroep met -init_hw_device en doet verder niets.
+func TestHardwareFailureFallsBackToSoftware(t *testing.T) {
+	src := source(t)
+	real, err := exec.LookPath("ffmpeg")
+	if err != nil {
+		t.Skip("ffmpeg ontbreekt")
+	}
+	wrapper := filepath.Join(t.TempDir(), "ffmpeg")
+	script := "#!/bin/sh\nfor a; do [ \"$a\" = -init_hw_device ] && { echo 'geen gpu' >&2; exit 1; }; done\nexec " + real + " \"$@\"\n"
+	if err := os.WriteFile(wrapper, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	m, err := transcode.New(transcode.Options{
+		FFmpegPath: wrapper, Dir: t.TempDir(), Max: 1, StartTimeout: 40 * time.Second,
+		HW: transcode.HWVAAPI, RenderNode: "/dev/dri/renderD128",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(m.Close)
+
+	s, err := m.Start(context.Background(), params(src, transcode.ModeTranscode))
+	if err != nil {
+		t.Fatalf("de terugval in software faalde: %v", err)
+	}
+	if s.HW != transcode.HWNone {
+		t.Fatalf("sessie meldt hardware %q terwijl de GPU weigerde", s.HW)
+	}
+}

@@ -79,7 +79,11 @@ func BuildArgs(j Job) ([]string, error) {
 		if j.RenderNode == "" {
 			return nil, fmt.Errorf("render node ontbreekt")
 		}
-		a = append(a, "-hwaccel", "vaapi", "-hwaccel_output_format", "vaapi", "-vaapi_device", j.RenderNode)
+		// Alleen het coderen gaat naar de GPU. Het decoderen blijft software: de
+		// hardwaredecoder van een Celeron kent niet elk profiel (10 bit, sommige
+		// HEVC-niveaus), en een bron die daar op stukloopt is precies de bron die
+		// omgezet moet worden.
+		a = append(a, "-init_hw_device", "vaapi=va:"+j.RenderNode, "-filter_hw_device", "va")
 	}
 	a = append(a, "-i", j.InputPath, "-map", "0:v:0", "-map", "0:a:0?", "-sn", "-dn")
 
@@ -97,7 +101,7 @@ func BuildArgs(j Job) ([]string, error) {
 	case ModeTranscode:
 		switch {
 		case hw:
-			a = append(a, "-vf", "scale_vaapi=format=nv12", "-c:v", "h264_vaapi", "-qp", "23")
+			a = append(a, "-vf", "format=nv12,hwupload", "-c:v", "h264_vaapi", "-qp", "23")
 		case j.HDR:
 			a = append(a, "-vf", hdrToSDRFilter, "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p")
 		default:

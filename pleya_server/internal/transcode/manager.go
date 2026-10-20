@@ -80,8 +80,10 @@ type Options struct {
 	StartTimeout time.Duration
 	HW           HWAccel
 	RenderNode   string
-	Recorder     Recorder
-	Log          *slog.Logger
+	// HWReason zegt waarom er geen hardwareversnelling is, voor beheer.
+	HWReason string
+	Recorder Recorder
+	Log      *slog.Logger
 }
 
 // Manager houdt de sessies bij en bewaakt de ffmpeg-processen.
@@ -139,11 +141,28 @@ func New(o Options) (*Manager, error) {
 // Enabled zegt of deze manager sessies mag starten.
 func (m *Manager) Enabled() bool { return m != nil && m.o.Max > 0 }
 
+// Max is het aantal gelijktijdige sessies dat deze manager toelaat.
+func (m *Manager) Max() int { return m.o.Max }
+
+// HWReason is waarom er geen hardwareversnelling is; leeg als die er wel is.
+func (m *Manager) HWReason() string { return m.o.HWReason }
+
 // HW is de hardwareversnelling die deze manager gebruikt.
 func (m *Manager) HW() HWAccel { return m.o.HW }
 
-// Start zet een sessie op en wacht tot het eerste segment er ligt.
+// Start zet een sessie op en wacht tot het eerste segment er ligt. Faalt een
+// omzetting met hardwareversnelling, dan probeert hij het één keer in software:
+// een bron die de GPU niet aankan hoort geen gebroken afspeelpoging op te leveren.
 func (m *Manager) Start(ctx context.Context, p Params) (Session, error) {
+	sess, err := m.startWith(ctx, p, m.o.HW)
+	if err != nil && errors.Is(err, ErrFailed) && m.o.HW != HWNone && p.Job.Mode == ModeTranscode {
+		m.o.Log.Warn("omzetten met hardware mislukte, nieuwe poging in software", slog.String("error", err.Error()))
+		return m.startWith(ctx, p, HWNone)
+	}
+	return sess, err
+}
+
+func (m *Manager) startWith(ctx context.Context, p Params, hw HWAccel) (Session, error) {
 	m.mu.Lock()
 	if m.closed {
 		m.mu.Unlock()
@@ -157,7 +176,7 @@ func (m *Manager) Start(ctx context.Context, p Params) (Session, error) {
 	dir := filepath.Join(m.o.Dir, sid.String())
 	job := p.Job
 	job.OutDir = dir
-	job.HW, job.RenderNode = m.o.HW, m.o.RenderNode
+	job.HW, job.RenderNode = hw, m.o.RenderNode
 	args, err := BuildArgs(job)
 	if err != nil {
 		m.mu.Unlock()
@@ -176,8 +195,12 @@ func (m *Manager) Start(ctx context.Context, p Params) (Session, error) {
 	cmd.Stderr = &stderr
 
 	now := time.Now()
+	used := HWNone
+	if job.Mode == ModeTranscode && !job.HDR {
+		used = hw
+	}
 	r := &running{
-		s: Session{ID: sid, UserID: p.UserID, VersionID: p.VersionID, Mode: job.Mode, HW: m.o.HW,
+		s: Session{ID: sid, UserID: p.UserID, VersionID: p.VersionID, Mode: job.Mode, HW: used,
 			Dir: dir, StartedAt: now, LastBeat: now, State: StateRunning},
 		cancel: cancel, done: make(chan struct{}),
 	}
