@@ -46,7 +46,7 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **3** | **0** | **23** |
 
-Per taak, en dat is de maat die telt: **155 taken, 39 gereed, 13 bezig, 103 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **155 taken, 41 gereed, 14 bezig, 100 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -440,10 +440,10 @@ punt 3 en 4), en aan het venster-besluit.
 | S18.1 | Migratie `0017`, sessiemodel | `[x]` | M4: migratie `0019_transcode_sessions.sql` (de nummers 0017 en 0018 waren bezet), `transcode.Store` met Started/Ended/ResetRunning, test op een echte database (20 oktober 2026) | 2026-10-20 |
 | S18.2 | ffmpeg-supervisie met vaste argumenten en time-out | `[x]` | M4: `transcode.Manager` (start met wachten op eerste segment, hartslag, inactiviteit, stop, maximum), `BuildArgs` als vaste lijst; 7 integratietests met echte ffmpeg (HLS-uitvoer in drie modi, opruimen, bezet, hartslag, verlopen, kapotte invoer) en 6 argumenttests (pad alleen na `-i`) | 2026-10-20 |
 | S18.3 | fMP4 en HLS, browserspeler met hls.js | `[~]` | M4: fMP4/HLS uit de server en de app volgt de sessie met hartslag (4 Dart-tests); de webspeler met hls.js volgt met de webspeler zelf (S8) | 2026-10-20 |
-| S18.4 | Hardwareversnelling gedetecteerd en zichtbaar | `[~]` | M4: `DetectHW` met echte testcodering, VAAPI-pad in `BuildArgs`, resultaat in het opstartlog; zichtbaar in beheer volgt met S18.5 en meting op de NAS volgt met S18.7 | 2026-10-20 |
-| S18.7 | Image met VAAPI/QSV-driver (nu alleen `ca-certificates` en ffmpeg 5.1), `/dev/dri` en `group_add 937` in compose, gemeten op de DS920+ (renderD128 bestaat); image op de Mac gebouwd en via het Gitea-register naar de NAS, niet op de Celeron | `[ ]` | | |
-| S18.5 | Beheer: sessies zien en stoppen, instellingen; scherm 37 gebouwd | `[ ]` | | |
-| S18.6 | Capability `transcode`, venster 5 deel 2, journey 9 | `[ ]` | | |
+| S18.4 | Hardwareversnelling gedetecteerd en zichtbaar | `[x]` | M4: `DetectHW` met echte testcodering; op de NAS-testinstance `accel: vaapi` op `renderD128` (20 oktober 2026), zichtbaar in `GET /transcode-sessions` (`hardware.accel`, `reason`); VAAPI codeert, het decoderen blijft software en een mislukte start valt terug op software (test) | 2026-10-20 |
+| S18.7 | Image met VAAPI/QSV-driver (nu alleen `ca-certificates` en ffmpeg 5.1), `/dev/dri` en `group_add 937` in compose, gemeten op de DS920+ (renderD128 bestaat); image op de Mac gebouwd en via het Gitea-register naar de NAS, niet op de Celeron | `[x]` | M4: `intel-media-va-driver`, `i965-va-driver` en `vainfo` in de image, `compose.hwaccel.yaml` met `/dev/dri` en groep 937 (deploy-nas.sh voegt hem toe als `renderD128` bestaat); gemeten op de NAS-testinstance: HEVC naar H.264 via VAAPI, eerste segment na 2,1 s en 19 segmenten (95 s beeld) in 20 s, `/transcode` leeg na stoppen. Afwijking: geen eigen ffmpeg-bouw en geen registerroute nodig, de distributiepakketten volstaan en de apt-laag draait op de NAS | 2026-10-20 |
+| S18.5 | Beheer: sessies zien en stoppen, instellingen; scherm 37 gebouwd | `[~]` | M4: `GET` en `DELETE /transcode-sessions` (klasse admin, matrixregel 50 en 51, audit `stopTranscodeSession`, 2 tests); scherm 37 en de instellingen (maximum, kwaliteit) volgen met de webbeheer-GUI (S10) | 2026-10-20 |
+| S18.6 | Capability `transcode`, venster 5 deel 2, journey 9 | `[~]` | M4: `capabilities.transcode` volgt de omzetter, contract en vijf nieuwe operaties (regel 47 tot en met 51), twee foutcodes, fixtures (90); golden journey 9 volgt met de Verify-set | 2026-10-20 |
 
 ### S19 Verzamelingen en afspeellijsten (PS-9C)
 
