@@ -59,3 +59,27 @@ Future<void> applyCompanionRemoteServerSetting(BuildContext context, bool enable
 
   await startCompanionRemoteHost(context);
 }
+
+/// Starts listening for Pleya Fly on an iPhone or iPad (A-23d): a host that
+/// takes a fly and nothing else. While the phone is a client somewhere (the
+/// remote, or a fly to the Apple TV) it waits, and leaving that session
+/// brings it back.
+Future<bool> startPleyaFlyReceiveHost(BuildContext context) async {
+  final companionRemote = context.read<CompanionRemoteProvider>();
+  if (!companionRemote.requestHandoffOnlyHost()) return companionRemote.isHandoffOnlyHost;
+  try {
+    if (!await ensureCompanionRemoteCrypto(context)) return false;
+    // A client session may have started while the identity was derived.
+    if (!companionRemote.requestHandoffOnlyHost()) return false;
+    await companionRemote.startHostServer(handoffOnly: true);
+    return companionRemote.isHandoffOnlyHost;
+  } catch (e) {
+    appLogger.e('CompanionRemote: Failed to start the Pleya Fly host', error: e);
+    return false;
+  }
+}
+
+Future<void> applyPleyaFlyReceiveSetting(BuildContext context, bool enabled) async {
+  if (!enabled) return context.read<CompanionRemoteProvider>().stopHandoffOnlyHost();
+  await startPleyaFlyReceiveHost(context);
+}

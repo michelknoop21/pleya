@@ -603,6 +603,19 @@ class SettingsService extends BaseSharedPreferencesService {
     // Apple TV listens by default: it is the receiver of a Playback Handoff (A-23).
     defaultValueProvider: _companionRemoteServerDefault,
   );
+  static bool _pleyaFlyReceiveDefault() => pleyaFlyReceiveDefaultFor(
+    iosHandheld: Platform.isIOS && !PlatformDetector.isTV() && !TvDetectionService.isIOSAppOnMacSync(),
+  );
+
+  /// An iPhone or iPad listens for Pleya Fly from the Apple TV while Pleya is
+  /// open (A-23d, decision Michel 20 October 2026); nothing else receives one.
+  @visibleForTesting
+  static bool pleyaFlyReceiveDefaultFor({required bool iosHandheld}) => iosHandheld;
+
+  static const enablePleyaFlyReceive = BoolPref(
+    'enable_pleya_fly_receive',
+    defaultValueProvider: _pleyaFlyReceiveDefault,
+  );
   static const startInFullscreen = BoolPref('start_in_fullscreen');
   static const exitFullscreenOnPlayerClose = BoolPref('exit_fullscreen_on_player_close');
 

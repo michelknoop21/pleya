@@ -403,8 +403,9 @@ class TrackChapterControls extends StatelessWidget {
         }
 
         // Hand the playback to an Apple TV (A-23). Sits next to AirPlay, which it
-        // is not: the Apple TV opens Pleya and plays the same item itself.
-        if (AirPlayService.isAvailable && trackControlsState.canHandoff) {
+        // is not: the Apple TV opens Pleya and plays the same item itself. On TV
+        // it hands over to an iPhone or iPad instead, from the panel (A-23d).
+        if ((AirPlayService.isAvailable || PlatformDetector.isTV()) && trackControlsState.canHandoff) {
           final currentIndex = buttonIndex;
           buttons.add(
             _buildTrackButton(
@@ -417,6 +418,11 @@ class TrackChapterControls extends StatelessWidget {
               isMobile: isMobile,
               isDesktop: isDesktop,
               onPressed: () {
+                final openPanel = onOpenTvPanel;
+                if (openPanel != null) {
+                  openPanel(TvInfoPanelRequest.pleyaFly);
+                  return;
+                }
                 Haptics.light();
                 onCancelAutoHide?.call();
                 OverlaySheetController.of(context)

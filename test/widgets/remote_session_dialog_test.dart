@@ -87,7 +87,7 @@ class _FakeCompanionRemoteProvider extends CompanionRemoteProvider {
   bool get isHostServerRunning => _isHostServerRunning;
 
   @override
-  Future<void> startHostServer() async {
+  Future<void> startHostServer({bool handoffOnly = false}) async {
     startCount++;
     _isHostServerRunning = true;
     notifyListeners();

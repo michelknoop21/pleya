@@ -120,7 +120,8 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
   Future<void> _handOff(DiscoveredHost tv) async {
     if (_handingTo != null) return;
     // A phone that hosts its own remote session must not be overwritten by joining one.
-    if (_provider.isHost) return _showFailed(tv);
+    // Listening for Pleya Fly is no such session: joining stops it and leaving restarts it (A-23d).
+    if (_provider.isHost && !_provider.isHandoffOnlyHost) return _showFailed(tv);
     Haptics.light();
     setState(() {
       _handingTo = tv;

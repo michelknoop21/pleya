@@ -325,6 +325,8 @@
     "libraryVisibilityDescription": "Kies welke bibliotheken in het menu verschijnen",
     "companionRemoteServer": "Companion Remote-server",
     "companionRemoteServerDescription": "Sta mobiele apparaten op je netwerk toe om deze app te bedienen",
+    "pleyaFlyReceive": "Pleya Fly ontvangen",
+    "pleyaFlyReceiveDescription": "Een Apple TV kan het afspelen hierheen sturen. Pleya moet open staan.",
     "autoPip": "Automatische beeld-in-beeld",
     "autoPipDescription": "Ga naar picture-in-picture bij verlaten tijdens afspelen",
     "matchContentFrameRate": "Inhoudsframesnelheid afstemmen",
@@ -3107,6 +3109,18 @@
     "playingOn": "Speelt nu op $name",
     "playingOnBody": "Verder met de afstandsbediening van je Apple TV",
     "received": "Overgedragen vanaf $from",
-    "receivedBody": "$title · verder vanaf $time"
+    "receivedBody": "$title · verder vanaf $time",
+    "continueOn": "Verder kijken op",
+    "phoneReady": "Pleya open",
+    "searchingPhones": "Zoeken naar iPhone en iPad…",
+    "startingOn": "Starten op $name…",
+    "switchingOn": "$name wisselt naar profiel $profile…",
+    "switchingPinOn": "Voer op $name de pincode in",
+    "wrongProfileOn": "Gebruikt een ander profiel. Kies op $name jouw profiel en probeer het opnieuw.",
+    "pinNotEnteredOn": "Pincode niet ingevoerd op $name. Het blijft hier spelen.",
+    "noPhoneTitle": "Geen iPhone of iPad gevonden",
+    "noPhone": "Een Apple TV kan Pleya op je iPhone niet zelf openen. Open Pleya op je iPhone of iPad op hetzelfde wifi-netwerk.",
+    "resumeAt": "Verder vanaf $time",
+    "playingOnPhoneBody": "Kijk verder op je iPhone of iPad"
   }
 }

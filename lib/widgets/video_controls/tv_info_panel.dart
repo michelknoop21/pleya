@@ -17,6 +17,7 @@ import '../../i18n/strings.g.dart';
 import '../../media/media_item.dart';
 import '../../media/media_source_info.dart';
 import '../../mpv/mpv.dart';
+import '../../services/companion_remote/playback_handoff_sender.dart';
 import '../../services/settings_service.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/formatters.dart';
@@ -34,6 +35,7 @@ import 'tv_info_panel/tv_panel_card.dart';
 import 'tv_info_panel/tv_panel_types.dart';
 import 'tv_info_panel/tv_panel_value_row_scope.dart';
 import 'tv_info_panel/tv_panel_widgets.dart';
+import 'tv_info_panel/tv_pleya_fly_sub_view.dart';
 import 'tv_info_panel/tv_shader_sub_view.dart';
 import 'tv_info_panel/tv_sleep_timer_sub_view.dart';
 import 'tv_info_panel/tv_sync_sub_view.dart';
@@ -113,6 +115,12 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
   // First focusable row of an open sub-view.
   final _subViewTopNode = FocusNode(debugLabel: 'TvInfoPanelSubViewTop');
 
+  // Pleya Fly (A-23d): made when its view first opens and kept while the panel
+  // is up, so Menu can close the view while a fly goes on. [_flyFrom] is the
+  // position the view promised when it opened.
+  PlaybackHandoffSender? _flySender;
+  Duration? _flyFrom;
+
   @override
   void initState() {
     super.initState();
@@ -147,6 +155,7 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
     }
     _contentTopNode.dispose();
     _subViewTopNode.dispose();
+    _flySender?.dispose();
     super.dispose();
   }
 
@@ -221,7 +230,10 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
 
   void _closeSubView() {
     if (_subView == TvInfoPanelSubView.none) return;
-    setState(() => _subView = TvInfoPanelSubView.none);
+    setState(() {
+      _subView = TvInfoPanelSubView.none;
+      _flyFrom = null;
+    });
     _focusContent(fallbackToPill: true);
   }
 
@@ -478,6 +490,10 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
         t.shaders.title,
         '${t.videoControls.tvPanel.video} ▸ ${t.videoControls.tvPanel.display}',
       ),
+      TvInfoPanelSubView.pleyaFly => (
+        t.playbackHandoff.title,
+        '${t.videoControls.tvPanel.video} ▸ ${t.videoControls.tvPanel.playback}',
+      ),
       TvInfoPanelSubView.none => ('', ''),
     };
     final m = TvPanelMetrics.of(context);
@@ -561,6 +577,7 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
           selectedMediaIndex: state.selectedMediaIndex,
           selectedQualityPreset: state.selectedQualityPreset,
           serverSupportsTranscoding: state.serverSupportsTranscoding,
+          canHandoff: state.canHandoff && state.serverId != null,
           firstFocusNode: _contentTopNode,
           onNavigateUp: () => _pillNodes[_activeTab.index].requestFocus(),
           onOpenSubView: _openSubView,
@@ -641,9 +658,41 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
           firstFocusNode: _subViewTopNode,
           onDone: _closeSubView,
         );
+      case TvInfoPanelSubView.pleyaFly:
+        return _buildPleyaFly(state);
       case TvInfoPanelSubView.none:
         return const SizedBox.shrink();
     }
+  }
+
+  Widget _buildPleyaFly(TrackControlsState state) {
+    final sender = _flySender ??= createTvPleyaFlySender(
+      context,
+      onFailed: () {
+        if (mounted && _subView == TvInfoPanelSubView.pleyaFly) _closeSubView();
+      },
+    );
+    final title = state.mediaTitle ?? widget.metadata.displayTitle;
+    return TvPleyaFlySubView(
+      sender: sender,
+      title: title,
+      from: _flyFrom ??= widget.player.state.position,
+      firstFocusNode: _subViewTopNode,
+      onSelectHost: (host) {
+        final serverId = state.serverId;
+        if (serverId == null) return;
+        unawaited(
+          sender.handOff(
+            host,
+            serverId: serverId,
+            itemId: state.ratingKey,
+            // Taken at the press: this is where the phone starts.
+            positionMs: widget.player.state.position.inMilliseconds,
+            title: title,
+          ),
+        );
+      },
+    );
   }
 }
 

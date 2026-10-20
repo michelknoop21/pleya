@@ -10,6 +10,7 @@ import '../../mpv/player/platform/player_android.dart';
 import '../../services/audio_output_coordinator.dart';
 import '../../services/audio_output_decision.dart';
 import '../../services/companion_remote/companion_remote_host_controller.dart';
+import '../../services/companion_remote/pleya_fly_receive.dart';
 import '../../services/device_capabilities_service.dart';
 import '../../services/device_capability_overrides.dart';
 import '../../services/discord_rpc_service.dart';
@@ -176,6 +177,15 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
             title: t.settings.companionRemoteServer,
             subtitle: t.settings.companionRemoteServerDescription,
             onAfterWrite: (v) => applyCompanionRemoteServerSetting(context, v),
+          ),
+        // The iPhone or iPad side of Pleya Fly from the Apple TV (A-23d).
+        if (pleyaFlyReceiveSupported())
+          SettingSwitchTile(
+            pref: SettingsService.enablePleyaFlyReceive,
+            icon: Symbols.tv_rounded,
+            title: t.settings.pleyaFlyReceive,
+            subtitle: t.settings.pleyaFlyReceiveDescription,
+            onAfterWrite: (v) => applyPleyaFlyReceiveSetting(context, v),
           ),
         // The two language switches moved to Instellingen ▸ Taal en ondertitels
         // with LANG1: DEC-096 lid 9 makes that page their only owner, and their

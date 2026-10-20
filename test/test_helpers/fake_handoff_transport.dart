@@ -1,0 +1,79 @@
+import 'dart:async';
+
+import 'package:pleya/services/companion_remote/lan_discovery_service.dart';
+import 'package:pleya/services/companion_remote/playback_handoff.dart';
+import 'package:pleya/services/companion_remote/playback_handoff_sender.dart';
+
+/// A beacon as the LAN discovery would report it.
+DiscoveredHost fakeHost(String name, {String platform = 'iOS', String? clientId}) => DiscoveredHost(
+  authContextId: 'ctx',
+  clientId: clientId ?? name,
+  name: name,
+  platform: platform,
+  port: 48632,
+  ips: const ['192.168.1.20'],
+);
+
+/// A transport that records every call in [log] and answers a handoff with
+/// [answer] (A-23d).
+class FakeHandoffTransport implements PlaybackHandoffTransport {
+  FakeHandoffTransport({this.hostRunning = true, this.discoverable = true});
+
+  final log = <String>[];
+  final beacons = StreamController<List<DiscoveredHost>>.broadcast();
+
+  @override
+  bool hostRunning;
+
+  /// False: no remote identity, so discovery gives no stream.
+  bool discoverable;
+  int discoverCalls = 0;
+
+  /// What the receiver answers; defaults to playing.
+  Future<PlaybackHandoffOutcome> Function(PlaybackHandoffRequest request)? answer;
+  final requests = <PlaybackHandoffRequest>[];
+
+  @override
+  String get deviceName => 'Woonkamer';
+
+  @override
+  Future<Stream<List<DiscoveredHost>>?> discover() async {
+    discoverCalls++;
+    log.add('discover');
+    return discoverable ? beacons.stream : null;
+  }
+
+  @override
+  void stopDiscovery() => log.add('stopDiscovery');
+
+  @override
+  Future<void> stopHost() async {
+    log.add('stopHost');
+    hostRunning = false;
+  }
+
+  @override
+  Future<void> restartHost() async {
+    log.add('restartHost');
+    hostRunning = true;
+  }
+
+  @override
+  Future<void> connect(DiscoveredHost host) async => log.add('connect:${host.name}');
+
+  @override
+  Future<PlaybackHandoffOutcome> handOff(
+    PlaybackHandoffRequest request, {
+    void Function(String profile, bool pin)? onSwitching,
+  }) {
+    log.add('handOff');
+    requests.add(request);
+    return answer?.call(request) ?? Future.value(PlaybackHandoffOutcome.playing);
+  }
+
+  @override
+  Future<void> cancel(String requestId) async => log.add('cancel:$requestId');
+
+  @override
+  Future<void> leave() async => log.add('leave');
+}

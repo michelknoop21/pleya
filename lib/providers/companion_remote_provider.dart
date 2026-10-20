@@ -44,6 +44,11 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   int _reconnectAttempts = 0;
   bool _intentionalDisconnect = false;
 
+  // Pleya Fly receive (A-23d): the running host takes only a fly, and the
+  // owner wants one whenever this device is not a client somewhere.
+  bool _handoffOnly = false;
+  bool _handoffHostWanted = false;
+
   // Reconnection context (only hostAddresses and hostClientId are connection-specific)
   List<String>? _lastHostAddresses;
   String? _lastHostClientId;
@@ -84,6 +89,9 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   String? get peerUserUuid => _peerService?.clientUserUuid;
   String? get peerConnectionId => _authContextForId(_peerService?.selectedAuthContextId)?.connectionId;
   bool get isHostServerRunning => _peerService?.isServerRunning ?? false;
+
+  /// The running host receives only a Pleya Fly (A-23d); see [startHostServer].
+  bool get isHandoffOnlyHost => _handoffOnly && isHostServerRunning;
 
   CompanionRemoteProvider() {
     _initializeDeviceInfo();
@@ -453,6 +461,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     _lastHostAddresses = null;
     _lastHostClientId = null;
     _lastAuthContextId = null;
+    _handoffHostWanted = false;
     await stopHostServer();
     stopDiscovery();
     _clearCryptoContext();
@@ -472,7 +481,10 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   @visibleForTesting
   List<String> get debugCryptoConnectionIds => _authContexts.map((context) => context.connectionId).toList();
 
-  Future<void> startHostServer() async {
+  /// Starts hosting. [handoffOnly] marks a host that receives a Pleya Fly and
+  /// nothing else (A-23d): the app then drops every other command, and joining
+  /// another host as a client stops it for the time of that session.
+  Future<void> startHostServer({bool handoffOnly = false}) async {
     if (_peerService?.isServerRunning == true) return;
     if (!isCryptoReady) {
       appLogger.w('CompanionRemote: Cannot start host — crypto not initialized');
@@ -493,6 +505,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
         status: RemoteSessionStatus.connected,
         createdAt: DateTime.now(),
       );
+      _handoffOnly = handoffOnly;
       safeNotifyListeners();
 
       // Start LAN discovery broadcasting
@@ -531,9 +544,30 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     _cleanupSubscriptions();
 
     _session = null;
+    _handoffOnly = false;
     _isPlayerActive = false;
     _intentionalDisconnect = false;
     safeNotifyListeners();
+  }
+
+  /// Asks for a handoff-only host (A-23d). True when it may start now; false
+  /// while this device is a client somewhere, or already hosts. A client
+  /// session that ends brings the host back ([leaveSession]).
+  bool requestHandoffOnlyHost() {
+    _handoffHostWanted = true;
+    return _session == null && _peerService == null;
+  }
+
+  /// Stops a handoff-only host and no longer wants one. A full host stays.
+  Future<void> stopHandoffOnlyHost() async {
+    _handoffHostWanted = false;
+    if (isHandoffOnlyHost) await stopHostServer();
+  }
+
+  /// A handoff-only host gives way to a client session: both would share the
+  /// one peer service, and the host would leak.
+  Future<void> _yieldHandoffOnlyHost() async {
+    if (isHandoffOnlyHost) await stopHostServer();
   }
 
   Stream<List<DiscoveredHost>>? discoverHosts() {
@@ -561,7 +595,8 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
       throw StateError('Matching auth context is no longer available');
     }
 
-    await leaveSession();
+    await _yieldHandoffOnlyHost();
+    await _leaveSession(restoreHandoffHost: false);
 
     _lastHostAddresses = host.addresses;
     _lastHostClientId = host.clientId;
@@ -609,7 +644,8 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
       throw StateError('Crypto not initialized');
     }
 
-    await leaveSession();
+    await _yieldHandoffOnlyHost();
+    await _leaveSession(restoreHandoffHost: false);
 
     _lastHostAddresses = [hostAddress];
     _lastHostClientId = '';
@@ -872,7 +908,9 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     safeNotifyListeners();
   }
 
-  Future<void> leaveSession() async {
+  Future<void> leaveSession() => _leaveSession(restoreHandoffHost: true);
+
+  Future<void> _leaveSession({required bool restoreHandoffHost}) async {
     _intentionalDisconnect = true;
     _reconnectTimer?.cancel();
     _reconnectAttempts = 0;
@@ -893,6 +931,10 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     _isPlayerActive = false;
     _intentionalDisconnect = false;
     safeNotifyListeners();
+    // The client session that made a handoff-only host give way is over.
+    if (restoreHandoffHost && _handoffHostWanted && _session == null && _peerService == null && isCryptoReady) {
+      await startHostServer(handoffOnly: true);
+    }
   }
 
   @override

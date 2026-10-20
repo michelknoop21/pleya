@@ -493,6 +493,8 @@ class PreferenceSyncPolicyRegistry {
     'custom_external_players': _deviceLocalPref,
     // Runs a server on this device's network interface.
     'enable_companion_remote_server': _deviceLocalPref,
+    // Listens for Pleya Fly on this phone's network interface (A-23d).
+    'enable_pleya_fly_receive': _deviceLocalPref,
 
     // -- Runtime and view state.
     'search_history': _profileRuntimeCache,

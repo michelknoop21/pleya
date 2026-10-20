@@ -1004,6 +1004,8 @@ class CompanionRemotePeerService with KeepaliveMixin {
     });
   }
 
+  static const _channelCloseTimeout = Duration(seconds: 2);
+
   Future<void> disconnect() async {
     appLogger.d('CompanionRemote: Disconnecting');
 
@@ -1020,7 +1022,10 @@ class CompanionRemotePeerService with KeepaliveMixin {
 
     if (_channel != null) {
       try {
-        await _channel!.sink.close();
+        // Bounded: on a channel whose connect was refused the close never
+        // completes, and leaving a failed join would hang (A-23d: the Apple TV
+        // then never hosts again after a fly that did not connect).
+        await _channel!.sink.close().timeout(_channelCloseTimeout);
       } catch (e) {
         appLogger.d('CompanionRemote: channel close ignored', error: e);
       }
