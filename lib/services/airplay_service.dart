@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart';
 
 import '../utils/app_logger.dart';
@@ -12,7 +13,11 @@ import '../utils/platform_detector.dart';
 class AirPlayService {
   static const MethodChannel _channel = MethodChannel('com.pleya/airplay');
 
-  static bool get isAvailable => Platform.isIOS && !PlatformDetector.isAppleTV();
+  /// Test seam: forces [isAvailable] on hosts that are not an iPhone.
+  @visibleForTesting
+  static bool? debugAvailableOverride;
+
+  static bool get isAvailable => debugAvailableOverride ?? (Platform.isIOS && !PlatformDetector.isAppleTV());
 
   /// Opens the system AirPlay picker. No-op (returns false) off iOS.
   static Future<bool> showRoutePicker() async {

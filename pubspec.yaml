@@ -160,6 +160,7 @@ flutter:
     - assets/branding/
     - assets/branding/bigp/
     - assets/icons/nav/
+    - assets/icons/pleya-fly.svg
     - assets/plex_chevron.svg
     - assets/jellyfin_icon.svg
     - assets/trakt_circlemark.svg

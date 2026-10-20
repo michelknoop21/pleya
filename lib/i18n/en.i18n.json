@@ -3084,8 +3084,9 @@
     }
   },
   "playbackHandoff": {
-    "button": "Play on Apple TV",
-    "title": "Play on",
+    "button": "Pleya Fly",
+    "description": "Keep watching on another device",
+    "title": "Pleya Fly",
     "resumeFrom": "$title · continue from $time",
     "thisIphone": "This iPhone",
     "thisIpad": "This iPad",

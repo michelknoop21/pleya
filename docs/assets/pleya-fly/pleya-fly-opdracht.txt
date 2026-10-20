@@ -1,0 +1,11 @@
+Gebruik het meegeleverde Pleya Fly-icoon voor de bestaande handoff-functie in de Pleya-afspeler. De functie heet voortaan Pleya Fly.
+
+Gebruik svg/pleya-fly.svg als basis. De witte variant staat in svg/pleya-fly-white.svg. Dit zijn echte, schaalbare vectorbestanden met een transparante achtergrond. Behoud de vorm, verhoudingen, het afspeeldriehoekje en de twee kleine vleugelveren.
+
+Sluit aan op de bestaande iconcomponent, themakleuren en knopformaten. Het icoon moet even rustig ogen als de andere spelerknoppen. Schaal het proportioneel en behoud de bestaande klik-, aanraak- en focusruimte van de knop. Gebruik de SVG waar dat binnen de app past. Gebruik anders de meegeleverde transparante PNG's.
+
+Gebruik als naam “Pleya Fly” en als toelichting “Verder kijken op een ander apparaat”. Neem dit op in de bestaande vertalingen en toegankelijkheidslabels.
+
+Bekijk pleya-fly-preview.png voor de daadwerkelijke vectoruitwerking. In reference/pleya-fly-approved-design.png staat het gekozen ontwerp als referentie. De overige knoppen in die afbeelding zijn alleen context.
+
+Controleer de knop op het echte formaat in de afspeler, in lichte en donkere weergave en met de bestaande focusstatus. Houd de bestaande handoff-werking intact en neem de wijziging mee in de bestaande planning en documentatie. Niet overengineren.
