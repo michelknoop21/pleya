@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../../connection/connection_registry.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../mpv/mpv.dart';
+import '../../../profiles/active_profile_provider.dart';
+import '../../../profiles/profile_connection_registry.dart';
 import '../../../models/companion_remote/remote_command.dart';
 import '../../../providers/companion_remote_provider.dart';
 import '../../../services/companion_remote/companion_remote_host_controller.dart';
@@ -121,7 +124,7 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
     });
     // Taken at the press: this is where the Apple TV starts. The phone plays
     // on until the Apple TV answers, so it can be a few seconds ahead by then.
-    final request = PlaybackHandoffRequest(
+    var request = PlaybackHandoffRequest(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       serverId: widget.serverId,
       itemId: widget.itemId,
@@ -131,9 +134,13 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
     );
     // The Stop of the player this handoff started from. A later player has its own.
     final stopThisPlayer = CompanionRemoteReceiver.instance.onStop;
+    // Read now: the sheet may be dismissed while it connects.
+    final plexUserToken = _plexUserTokenLookup();
     var outcome = PlaybackHandoffOutcome.failed;
     try {
       await _provider.connectToDiscoveredHost(tv);
+      // Known once connected: the account the handshake used.
+      request = request.withPlexUserToken(await plexUserToken(_provider.peerConnectionId));
       outcome = await _provider.handOffPlayback(
         request,
         onSwitching: (profile, pin) {
@@ -181,6 +188,29 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
     }
     // Also when the sheet was dismissed while waiting: the user must hear it failed.
     _showFailed(tv, body: refusal);
+  }
+
+  /// Looks up the Plex token of this device's protected profile for the
+  /// account of the connected Apple TV, so it can skip the PIN there (A-23c).
+  /// Null on anything missing: the Apple TV then asks the PIN.
+  Future<String?> Function(String? connectionId) _plexUserTokenLookup() {
+    final profile = context.read<ActiveProfileProvider>().active;
+    final connections = context.read<ConnectionRegistry>();
+    final profileConnections = context.read<ProfileConnectionRegistry>();
+    return (connectionId) async {
+      if (profile == null || !profile.isPinProtected || connectionId == null) return null;
+      try {
+        final account = await connections.getPlexAccount(connectionId);
+        return plexUserTokenForHandoff(
+          profile: profile,
+          plexConnectionId: account?.id,
+          row: await profileConnections.get(profile.id, connectionId),
+        );
+      } catch (e) {
+        appLogger.w('Playback handoff: no Plex token for the profile (${e.runtimeType})');
+        return null;
+      }
+    };
   }
 
   /// Closes the sheet and says so in the player; this device keeps playing (45-e).

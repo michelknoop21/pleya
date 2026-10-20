@@ -6,6 +6,7 @@ import '../connection/connection_registry.dart';
 import '../i18n/strings.g.dart';
 import '../screens/profile/pin_entry_dialog.dart';
 import '../services/plex_auth_service.dart';
+import '../utils/app_logger.dart';
 import '../utils/snackbar_helper.dart';
 import 'active_profile_binder.dart';
 import 'active_profile_provider.dart';
@@ -30,17 +31,35 @@ import 'profile_connection_registry.dart';
 ///
 /// [mayActivate] is asked once the PIN is accepted, right before the switch;
 /// false returns `false` without switching (a handoff whose phone gave up).
-Future<bool> activateProfileWithPin(BuildContext context, Profile profile, {bool Function()? mayActivate}) async {
+///
+/// [verifiedPlexUserToken] replaces the PIN of a protected Plex Home or local
+/// profile (A-23c). The caller must have proven it with plex.tv for the one
+/// Plex user of [profile] (see `handoffTokenProofUuid`). A Plex Home profile
+/// keeps it as its cached user token; should Plex reject it later, the binder
+/// asks the PIN as before. [mayActivate] is still asked, before anything is saved.
+Future<bool> activateProfileWithPin(
+  BuildContext context,
+  Profile profile, {
+  bool Function()? mayActivate,
+  String? verifiedPlexUserToken,
+}) async {
   final active = context.read<ActiveProfileProvider>();
   final binder = context.read<ActiveProfileBinder>();
   bool allowed() => mayActivate?.call() ?? true;
+  final proven = profile.isPinProtected && verifiedPlexUserToken != null && verifiedPlexUserToken.isNotEmpty;
 
   if (profile.isPlexHome) {
-    if (profile.plexProtected) {
-      final ok = await _preVerifyPlexHomePin(context, profile);
+    if (proven) {
+      if (!allowed()) return false;
+      final ok = await _keepVerifiedPlexHomeToken(context, profile, verifiedPlexUserToken);
       if (!ok) return false;
+    } else {
+      if (profile.plexProtected) {
+        final ok = await _preVerifyPlexHomePin(context, profile);
+        if (!ok) return false;
+      }
+      if (!allowed()) return false;
     }
-    if (!allowed()) return false;
     binder.markUserInitiatedActivation(profile.id);
     return active.activate(profile);
   }
@@ -49,6 +68,13 @@ Future<bool> activateProfileWithPin(BuildContext context, Profile profile, {bool
     if (!allowed()) return false;
     binder.markUserInitiatedActivation(profile.id);
     return active.activate(profile);
+  }
+
+  if (proven && profile.isLocal) {
+    // The token proved the only Plex user behind this local profile; its join row stays as it is.
+    if (!allowed()) return false;
+    binder.markUserInitiatedActivation(profile.id);
+    return active.activate(profile, pinProven: true);
   }
 
   String? errorMessage;
@@ -129,22 +155,67 @@ Future<bool> _preVerifyPlexHomePin(BuildContext context, Profile profile) async 
     );
     if (!result.succeeded) return false;
     if (!context.mounted) return false;
-    final pcRegistry = context.read<ProfileConnectionRegistry>();
-    await pcRegistry.upsert(
-      ProfileConnection(
-        profileId: profile.id,
-        connectionId: account.id,
-        userToken: result.userToken,
-        userIdentifier: homeUuid,
-        tokenAcquiredAt: DateTime.now(),
-      ),
+    return _savePlexHomeUserToken(
+      context,
+      profile,
+      connectionId: account.id,
+      homeUuid: homeUuid,
+      userToken: result.userToken,
     );
-    if (!context.mounted) return false;
-    context.read<ActiveProfileBinder>().markPlexHomePreVerified(profile.id);
-    return true;
   } finally {
     auth.dispose();
   }
+}
+
+/// A user token the handoff proved for [profile] (A-23c), kept the way a PIN
+/// entered here keeps the minted one. Missing metadata or a missing parent
+/// account saves nothing and lets the binder decide, as [_preVerifyPlexHomePin]
+/// does. A failed save does not mark the profile, so the binder asks the PIN.
+Future<bool> _keepVerifiedPlexHomeToken(BuildContext context, Profile profile, String userToken) async {
+  final parentId = profile.parentConnectionId;
+  final homeUuid = profile.plexHomeUserUuid;
+  if (parentId == null || homeUuid == null) return true;
+  final connections = context.read<ConnectionRegistry>();
+  try {
+    final account = await connections.getPlexAccount(parentId);
+    if (account == null) return true;
+    if (!context.mounted) return false;
+    return await _savePlexHomeUserToken(
+      context,
+      profile,
+      connectionId: account.id,
+      homeUuid: homeUuid,
+      userToken: userToken,
+    );
+  } catch (e) {
+    appLogger.w('Profile activation: the proven Plex token was not saved (${e.runtimeType})');
+    return context.mounted;
+  }
+}
+
+/// Persist [userToken] on [profile]'s row for its Plex account and mark the
+/// profile pre-verified, so [ActiveProfileBinder] uses this token once instead
+/// of asking the PIN again.
+Future<bool> _savePlexHomeUserToken(
+  BuildContext context,
+  Profile profile, {
+  required String connectionId,
+  required String homeUuid,
+  required String? userToken,
+}) async {
+  final binder = context.read<ActiveProfileBinder>();
+  await context.read<ProfileConnectionRegistry>().upsert(
+    ProfileConnection(
+      profileId: profile.id,
+      connectionId: connectionId,
+      userToken: userToken,
+      userIdentifier: homeUuid,
+      tokenAcquiredAt: DateTime.now(),
+    ),
+  );
+  if (!context.mounted) return false;
+  binder.markPlexHomePreVerified(profile.id);
+  return true;
 }
 
 /// Verify [pin] against [profile]'s stored PIN hash *without* activating it.

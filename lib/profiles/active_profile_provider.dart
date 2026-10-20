@@ -223,9 +223,11 @@ class ActiveProfileProvider extends ChangeNotifier with DisposableChangeNotifier
 
   /// Activate [profile]. PIN-protected local profiles must supply a matching
   /// PIN; for Plex Home profiles the binder enforces the PIN via
-  /// `/home/users/{uuid}/switch` after activation.
-  Future<bool> activate(Profile profile, {String? pin}) async {
-    if (profile.isLocal && profile.isPinProtected) {
+  /// `/home/users/{uuid}/switch` after activation. [pinProven] says the caller
+  /// proved the user another way: a Plex token checked with plex.tv for the
+  /// one Plex user of the profile, in a Playback Handoff (A-23c).
+  Future<bool> activate(Profile profile, {String? pin, bool pinProven = false}) async {
+    if (profile.isLocal && profile.isPinProtected && !pinProven) {
       final hash = profile.pinHash;
       if (pin == null || hash == null || !verifyPin(pin, hash)) {
         return false;

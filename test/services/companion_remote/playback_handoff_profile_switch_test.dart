@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/profiles/profile.dart';
 import 'package:pleya/services/companion_remote/playback_handoff.dart';
@@ -34,22 +36,33 @@ void main() {
   });
 
   /// [pin] stands in for the PIN dialog: it returns whether the PIN was
-  /// accepted, after which the real activation asks `mayActivate`.
-  Future<void> run(String id, {Future<bool> Function()? pin, Duration sendDelay = Duration.zero}) =>
-      runHandoffProfileSwitch(
-        request: _request(id),
-        target: _anna,
-        ledger: ledger,
-        send: (data) => events.add('send $data'),
-        activate: (mayActivate) async {
-          events.add('dialog armed=${ledger.isArmed}');
-          if (!await (pin ?? () async => true)()) return false;
-          final allowed = mayActivate();
-          events.add('activate $allowed');
-          return allowed;
-        },
-        sendDelay: sendDelay,
-      );
+  /// accepted, after which the real activation asks `mayActivate`. [proof]
+  /// stands in for the plex.tv check of the phone's token (A-23c).
+  Future<void> run(
+    String id, {
+    Future<bool> Function()? pin,
+    Future<String?> Function()? proof,
+    Profile? target,
+    Duration sendDelay = Duration.zero,
+  }) => runHandoffProfileSwitch(
+    request: _request(id),
+    target: target ?? _anna,
+    ledger: ledger,
+    send: (data) => events.add('send $data'),
+    verifyProof: proof,
+    activate: (mayActivate, verifiedToken) async {
+      if (verifiedToken != null) {
+        events.add('token $verifiedToken');
+      } else {
+        events.add('dialog armed=${ledger.isArmed}');
+        if (!await (pin ?? () async => true)()) return false;
+      }
+      final allowed = mayActivate();
+      events.add('activate $allowed');
+      return allowed;
+    },
+    sendDelay: sendDelay,
+  );
 
   group('runHandoffProfileSwitch', () {
     test('the phone hears the switch first, and the request is armed before the profile activates', () async {
@@ -123,6 +136,83 @@ void main() {
       ]);
       expect(events.where((e) => e.startsWith('dialog')), hasLength(1));
       expect(events, contains('send {$handoffFailedKey: h2}'));
+    });
+  });
+
+  group('runHandoffProfileSwitch with a Plex token of the sender (A-23c)', () {
+    test('a proven token skips the PIN: the phone hears no PIN and the token reaches the activation', () async {
+      await run('h1', proof: () async => 'tok-anna');
+      expect(events, [
+        'send {$handoffSwitchingKey: h1, $handoffProfileKey: Anna, $handoffPinKey: false}',
+        'token tok-anna',
+        'activate true',
+      ]);
+      expect(ledger.takeFor('plex-anna')?.id, 'h1');
+    });
+
+    test('no proof keeps the PIN', () async {
+      await run('h1', proof: () async => null);
+      expect(events.first, 'send {$handoffSwitchingKey: h1, $handoffProfileKey: Anna, $handoffPinKey: true}');
+      expect(events[1], 'dialog armed=true');
+    });
+
+    test('a proof that throws keeps the PIN', () async {
+      await run('h1', proof: () async => throw Exception('plex.tv unreachable'));
+      expect(events.first, 'send {$handoffSwitchingKey: h1, $handoffProfileKey: Anna, $handoffPinKey: true}');
+      expect(events[1], 'dialog armed=true');
+    });
+
+    test('the proof runs once the request is armed, so a second handoff meanwhile is refused', () async {
+      final checking = Completer<String?>();
+      var armedAtProof = false;
+      final first = run(
+        'h1',
+        proof: () {
+          armedAtProof = ledger.isArmed;
+          return checking.future;
+        },
+      );
+      await Future<void>.delayed(Duration.zero);
+      await run('h2');
+      checking.complete('tok-anna');
+      await first;
+      expect(armedAtProof, isTrue);
+      expect(events, contains('send {$handoffFailedKey: h2}'));
+      expect(events.where((e) => e.startsWith('token')), ['token tok-anna']);
+    });
+
+    test('an unprotected profile is never checked', () async {
+      var checked = false;
+      final open = Profile.plexHome(
+        id: 'plex-anna',
+        displayName: 'Anna',
+        parentConnectionId: 'plex-1',
+        plexHomeUserUuid: 'u-anna',
+        createdAt: DateTime(2026),
+      );
+      await run(
+        'h1',
+        target: open,
+        proof: () async {
+          checked = true;
+          return 'tok-anna';
+        },
+      );
+      expect(checked, isFalse);
+      expect(events.first, 'send {$handoffSwitchingKey: h1, $handoffProfileKey: Anna, $handoffPinKey: false}');
+    });
+
+    test('a proven switch the phone gave up on is a plain failure, not a missed PIN', () async {
+      await run(
+        'a23c-cancelled',
+        proof: () async {
+          cancelPlaybackHandoff('a23c-cancelled');
+          return 'tok-anna';
+        },
+      );
+      expect(events, contains('activate false'));
+      expect(events.last, 'send {$handoffFailedKey: a23c-cancelled}');
+      expect(ledger.isArmed, isFalse);
     });
   });
 

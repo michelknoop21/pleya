@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+import '../../connection/connection_registry.dart';
 import '../../models/companion_remote/remote_command.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../profiles/profile.dart';
@@ -8,6 +9,7 @@ import '../../profiles/profile_activation.dart';
 import '../../profiles/profile_connection_registry.dart';
 import '../../providers/companion_remote_provider.dart';
 import '../../utils/app_logger.dart';
+import '../plex_auth_service.dart';
 import 'playback_handoff.dart';
 import 'playback_handoff_receiver.dart';
 
@@ -47,14 +49,58 @@ Future<void> switchProfileForHandoff(BuildContext context, PlaybackHandoffReques
   }
 
   final profile = target;
+  final connections = context.read<ConnectionRegistry>();
+  final profileConnections = context.read<ProfileConnectionRegistry>();
   await runHandoffProfileSwitch(
     request: request,
     target: profile,
     ledger: playbackHandoffLedger,
     send: (data) => provider.sendCommand(RemoteCommandType.syncState, data: data),
-    activate: (mayActivate) =>
-        context.mounted ? activateProfileWithPin(context, profile, mayActivate: mayActivate) : Future.value(false),
+    verifyProof: () => _verifyHandoffToken(
+      request,
+      profile,
+      connectionId: connectionId,
+      peerUuid: userUuid,
+      connections: connections,
+      profileConnections: profileConnections,
+    ),
+    activate: (mayActivate, verifiedToken) => context.mounted
+        ? activateProfileWithPin(context, profile, mayActivate: mayActivate, verifiedPlexUserToken: verifiedToken)
+        : Future.value(false),
   );
+}
+
+/// The Plex token of the request when plex.tv confirms it belongs to the user
+/// of [target] and of the handshake (A-23c); null keeps the PIN.
+Future<String?> _verifyHandoffToken(
+  PlaybackHandoffRequest request,
+  Profile target, {
+  required String? connectionId,
+  required String? peerUuid,
+  required ConnectionRegistry connections,
+  required ProfileConnectionRegistry profileConnections,
+}) async {
+  final token = request.plexUserToken;
+  if (token == null || connectionId == null) return null;
+  // Only a Plex account says which Plex user the handshake named.
+  if (await connections.getPlexAccount(connectionId) == null) return null;
+  final expected = handoffTokenProofUuid(
+    target,
+    connectionId: connectionId,
+    targetRows: await profileConnections.listForProfile(target.id),
+  );
+  if (expected == null) return null;
+  final auth = await PlexAuthService.create();
+  try {
+    return await verifyPlexHomeTokenProof(
+      userInfo: auth.getUserInfo,
+      token: token,
+      expectedUuid: expected,
+      peerUuid: peerUuid,
+    );
+  } finally {
+    auth.dispose();
+  }
 }
 
 /// The switch itself, with the device parts passed in. The request is armed
@@ -63,13 +109,19 @@ Future<void> switchProfileForHandoff(BuildContext context, PlaybackHandoffReques
 /// successful activation tears this session down at once. The PIN dialog is
 /// never closed for the phone, but a PIN that comes after the phone gave up
 /// (its cancel arrived, or [PlaybackHandoffLedger.pinWait] passed) does not switch.
+///
+/// [verifyProof] returns the sender's Plex token once it is proven to belong to
+/// the protected [target] (A-23c); that token then replaces the PIN and goes to
+/// [activate]. It runs after arming, so a second handoff meanwhile is refused.
+/// Null, or any error, keeps the PIN.
 @visibleForTesting
 Future<void> runHandoffProfileSwitch({
   required PlaybackHandoffRequest request,
   required Profile target,
   required PlaybackHandoffLedger ledger,
   required void Function(Map<String, dynamic> data) send,
-  required Future<bool> Function(bool Function() mayActivate) activate,
+  required Future<bool> Function(bool Function() mayActivate, String? verifiedPlexUserToken) activate,
+  Future<String?> Function()? verifyProof,
   Duration sendDelay = const Duration(milliseconds: 300),
 }) async {
   if (ledger.isArmed) {
@@ -78,18 +130,28 @@ Future<void> runHandoffProfileSwitch({
     return send(handoffOutcomeData(request.id, PlaybackHandoffOutcome.failed));
   }
   ledger.arm(request, target.id);
-  send({handoffSwitchingKey: request.id, handoffProfileKey: target.displayName, handoffPinKey: target.isPinProtected});
+  String? proven;
+  if (target.isPinProtected && verifyProof != null) {
+    try {
+      proven = await verifyProof();
+    } catch (e) {
+      // Only the type: an error text could carry the request.
+      appLogger.w('Playback handoff ${request.id}: no proof for the profile (${e.runtimeType})');
+    }
+  }
+  final pin = target.isPinProtected && proven == null;
+  send({handoffSwitchingKey: request.id, handoffProfileKey: target.displayName, handoffPinKey: pin});
   // Sending encrypts asynchronously; a switch without a PIN closes the connection right after.
   await Future<void>.delayed(sendDelay);
   var switched = false;
   try {
-    switched = await activate(() => !isPlaybackHandoffCancelled(request.id) && ledger.mayActivate(request.id));
+    switched = await activate(() => !isPlaybackHandoffCancelled(request.id) && ledger.mayActivate(request.id), proven);
   } catch (e) {
-    appLogger.w('Playback handoff ${request.id}: profile switch failed', error: e);
+    appLogger.w('Playback handoff ${request.id}: profile switch failed (${e.runtimeType})');
   }
   if (switched) return;
   // No PIN in time, or a failed check: still the old profile, and the phone is still connected.
-  final outcome = target.isPinProtected ? PlaybackHandoffOutcome.pinCancelled : PlaybackHandoffOutcome.failed;
+  final outcome = pin ? PlaybackHandoffOutcome.pinCancelled : PlaybackHandoffOutcome.failed;
   ledger.clear();
   ledger.record(request.id, outcome);
   send(handoffOutcomeData(request.id, outcome));
