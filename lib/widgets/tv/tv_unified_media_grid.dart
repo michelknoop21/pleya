@@ -48,6 +48,7 @@ class TvUnifiedMediaGrid extends StatefulWidget {
     this.controller,
     this.initialFocusedGroupId,
     this.onFocusedGroupChanged,
+    this.onFocusedRow,
     this.precache,
     this.reservedLeading = 0,
     this.automationSurface,
@@ -99,6 +100,10 @@ class TvUnifiedMediaGrid extends StatefulWidget {
   /// Reports the card the remote moved to, so a screen that will be torn down
   /// can hand it to whatever outlives it.
   final ValueChanged<String>? onFocusedGroupChanged;
+
+  /// The row the remote moved to, counted from 0 at the top. A-06b folds the
+  /// page heading and the top navigation away from row 1 on.
+  final ValueChanged<int>? onFocusedRow;
 
   /// Replaces the artwork warm-up call. Null in production, where the
   /// prefetcher uses `precacheImage`; a test injects its own to assert *which*
@@ -171,7 +176,10 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       controller: widget.controller,
       initialFocusedId: widget.initialFocusedGroupId,
       onFocusedIdChanged: widget.onFocusedGroupChanged,
-      onFocusedCell: _warmAround,
+      onFocusedCell: (index, grid) {
+        _warmAround(index, grid);
+        if (grid.columns > 0) widget.onFocusedRow?.call(index ~/ grid.columns);
+      },
       hasMore: widget.hasMore,
       isLoadingMore: widget.isLoadingMore,
       onLoadMore: widget.onLoadMore,
