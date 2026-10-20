@@ -1038,7 +1038,8 @@
       "year": "Jaar",
       "contentRating": "Leeftijdsclassificatie",
       "tag": "Tag",
-      "unwatched": "Onbekeken"
+      "unwatched": "Onbekeken",
+      "resolution": "Resolutie"
     },
     "sortLabels": {
       "title": "Titel",

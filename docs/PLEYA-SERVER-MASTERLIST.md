@@ -46,7 +46,7 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **3** | **0** | **23** |
 
-Per taak, en dat is de maat die telt: **155 taken, 28 gereed, 9 bezig, 118 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **155 taken, 33 gereed, 11 bezig, 111 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -300,11 +300,11 @@ de velden uit `.nfo`, op de coverage-gate van 80 procent per bibliotheek (S4.2).
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S5.1 | Migratie `0015`, `pg_trgm` en indexen | `[ ]` | | |
-| S5.2 | Filterparameters en extra sorteringen | `[ ]` | | |
-| S5.3 | Facetten-endpoint met tellingen | `[ ]` | | |
+| S5.1 | Migratie `0015`, `pg_trgm` en indexen | `[x]` | M3: migratie `0017_filters.sql` (de nummers 0015 en 0016 waren bezet): `pg_trgm` in schema `public`, trigramindexen op `title` en `sort_title`, `watch_states.last_played_at` met backfill uit `updated_at`; `0018` zet taalcodes in `media_streams` van T- naar B-vorm. Getoetst door de migratietests en `TestLastPlayedAtMovesOnProgressAndStaysOnReset`. Zie [DEC-156](DECISIONS.md) | 2026-10-20 |
+| S5.2 | Filterparameters en extra sorteringen | `[x]` | M3: `genre`, `year`, `year_from`, `year_to`, `watch`, `content_rating`, `audio_language`, `resolution` op `/libraries/{id}/items`; sorteringen `last_played_at` en `duration` met `null` achteraan; `library.filter_invalid` met `details`; cursor met vingerafdruk van de filterset. `internal/catalog/store_filters_test.go` (filters, watch-betekenissen per aanvrager en voor series, null-sorteringen, paginering, cursor) en `internal/api/filters_test.go`; injectietest met `DROP TABLE` in de tekstparameters | 2026-10-20 |
+| S5.3 | Facetten-endpoint met tellingen | `[x]` | M3: `GET /libraries/{id}/facets` (matrixregel 45, klasse `authenticated`); tellingen over de hele bibliotheek, `watch` per aanvrager, genrefacet leeg onder de dekkingspoort. `TestFacetCountsWholeLibraryPerSubject`, `TestGenreFacetIsEmptyBelowTheCoverageGate`, `TestLibraryFacets` | 2026-10-20 |
 | S5.4 | Boekenzoekweg en auteurs | `[ ]` | | |
-| S5.5 | Injectietest en meting op de NAS, capability `filters`, venster 4 deel 1 | `[ ]` | | |
+| S5.5 | Injectietest en meting op de NAS, capability `filters`, venster 4 deel 1 | `[~]` | M3: injectietest (`TestFilterValuesAreNeverSQL`, `TestFilterValueIsNotSQL`) en capability `filters` in `/info` zijn klaar; de meting op de NAS volgt na de uitrol op de testinstance |  |
 
 ### S6 Leesvoortgang (PS-15 server)
 
@@ -392,9 +392,9 @@ punt 3 en 4), en aan het venster-besluit.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S14.1 | Nieuwe capabilities in `pleya_wire.dart` | `[ ]` | | |
-| S14.2 | `_postJson`-fout dicht met regressietest | `[ ]` | | |
-| S14.3 | Filterstubs vervangen, `refreshLibraryMetadata` werkend | `[ ]` | | |
+| S14.1 | Nieuwe capabilities in `pleya_wire.dart` | `[x]` | M3: `PleyaCapabilities.filters`, `PleyaFacets`, de sorteersleutels `last_played_at` en `duration`; `pleya_wire_contract_test.dart` leest de 86 fixtures, inclusief `facets.json` en `info_administration.json` met de vlag | 2026-10-20 |
+| S14.2 | `_postJson`-fout dicht met regressietest | `[x]` | M3: `_postJson` gooit bij een niet-2xx en bij een transportfout (alleen offlinemodus geeft `null`); de stream-token-aanvraag houdt haar "geen URL"-lezing. `pleya_server_filters_test.dart`: een snelle 503 en een 404 op `POST /watch-state` bereiken de aanroeper, zonder dat de server iets opsloeg | 2026-10-20 |
+| S14.3 | Filterstubs vervangen, `refreshLibraryMetadata` werkend | `[~]` | M3: `fetchLibraryFiltersWithValues` uit de facetten, filterparameters in de browse-aanroep (zonder de vlag een lege pagina, nooit een ongefilterde), nieuwe sorteringen, de unified filtercapaciteit rekent Pleya Server mee, `refreshLibraryMetadata` start een scan (admin). Getoetst met de fake-server; het scherm op tvOS-hardware ontbreekt nog |  |
 | S14.4 | `PleyaServerBooksSource` met mappers | `[ ]` | | |
 | S14.5 | Artworkladder in de imagecache-URL | `[ ]` | | |
 | S14.6 | Verify-scenario voor de boekenbron | `[ ]` | | |

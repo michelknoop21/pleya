@@ -6844,6 +6844,9 @@ class TranslationsLibrariesFilterCategoriesEn {
 
 	/// en: 'Unwatched'
 	String get unwatched => 'Unwatched';
+
+	/// en: 'Resolution'
+	String get resolution => 'Resolution';
 }
 
 // Path: libraries.sortLabels
@@ -10715,6 +10718,7 @@ extension on Translations {
 			'libraries.filterCategories.contentRating' => 'Content Rating',
 			'libraries.filterCategories.tag' => 'Tag',
 			'libraries.filterCategories.unwatched' => 'Unwatched',
+			'libraries.filterCategories.resolution' => 'Resolution',
 			'libraries.sortLabels.title' => 'Title',
 			'libraries.sortLabels.dateAdded' => 'Date Added',
 			'libraries.sortLabels.releaseDate' => 'Release Date',
@@ -10778,9 +10782,9 @@ extension on Translations {
 			'logs.levelErrors' => 'Errors',
 			'logs.noMatchingLogs' => 'No lines at this level',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} of ${total} lines',
-			'licenses.relatedPackages' => 'Related Packages',
 			_ => null,
 		} ?? switch (path) {
+			'licenses.relatedPackages' => 'Related Packages',
 			'licenses.license' => 'License',
 			'licenses.licenseNumber' => ({required Object number}) => 'License ${number}',
 			'licenses.licensesCount' => ({required Object count}) => '${count} licenses',
@@ -11292,9 +11296,9 @@ extension on Translations {
 			'metadataEdit.latestEpisodes' => ({required Object count}) => '${count} latest episodes',
 			'metadataEdit.latestEpisode' => 'Latest episode',
 			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Episodes added in the past ${count} days',
-			'metadataEdit.deleteAfterPlaying' => 'Delete Episodes After Playing',
 			_ => null,
 		} ?? switch (path) {
+			'metadataEdit.deleteAfterPlaying' => 'Delete Episodes After Playing',
 			'metadataEdit.never' => 'Never',
 			'metadataEdit.afterADay' => 'After a day',
 			'metadataEdit.afterAWeek' => 'After a week',
@@ -11806,9 +11810,9 @@ extension on Translations {
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'View all series, opens the complete catalog',
 			'unifiedCatalog.home.featured' => 'Featured',
 			'unifiedCatalog.homeRows.customize' => 'Customise Home',
-			'unifiedCatalog.homeRows.customizeSubtitle' => 'Move or hide rows, or build one from a filter',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.homeRows.customizeSubtitle' => 'Move or hide rows, or build one from a filter',
 			'unifiedCatalog.homeRows.customizeIntro' => 'Move, hide or edit your rows. Featured and Continue Watching stay where they are.',
 			'unifiedCatalog.homeRows.featured' => 'Featured',
 			'unifiedCatalog.homeRows.alwaysFirst' => 'Always at the top',
@@ -12320,9 +12324,9 @@ extension on Translations {
 			'assistant.notes.plexHomeMember' => 'Member of your Plex Home. Only the share on this server changes.',
 			'assistant.notes.replacesAllAccess' => 'Replaces all existing access of this user on this server.',
 			'assistant.ends.noTools' => 'There is nothing Big P can do on your servers right now.',
-			'assistant.ends.toolsUnsupported' => 'This model cannot use tools. Pick another model in the Big P settings.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.ends.toolsUnsupported' => 'This model cannot use tools. Pick another model in the Big P settings.',
 			'assistant.ends.stepLimit' => 'That took too many steps. Try a shorter question.',
 			'assistant.ends.notEntitled' => 'Big P is not available on this account.',
 			'assistant.ends.providerUnauthorized' => 'The AI provider rejected the key. Check it in the Big P settings.',

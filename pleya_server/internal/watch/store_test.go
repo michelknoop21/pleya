@@ -340,3 +340,55 @@ func TestSubjectsAreIsolated(t *testing.T) {
 		t.Fatalf("eerste subject ziet %d regels, wil 1 (zijn eigen)", len(firstList.Entries))
 	}
 }
+
+// last_played_at (0017, D1.2): de sorteerwaarde voor "laatst gekeken".
+// Voortgang verzet hem; mark_unwatched en restart zetten positie en watched
+// terug en laten hem staan.
+func TestLastPlayedAtMovesOnProgressAndStaysOnReset(t *testing.T) {
+	pool, store, itemID, subject := fixture(t)
+	ctx := context.Background()
+	read := func() *time.Time {
+		var at *time.Time
+		if err := pool.QueryRow(ctx, `SELECT last_played_at FROM watch_states WHERE item_id = $1`, itemID).Scan(&at); err != nil {
+			t.Fatal(err)
+		}
+		return at
+	}
+
+	// Alleen starten zonder positie is nog geen kijken.
+	if _, err := store.Apply(ctx, subject, itemID, watch.Event{
+		SessionID: "tv", Action: watch.ActionPlaybackStarted, Cause: watch.CauseUserStarted,
+	}, when, watch.MinLease); err != nil {
+		t.Fatal(err)
+	}
+	if at := read(); at != nil {
+		t.Fatalf("last_played_at %v zonder voortgang", at)
+	}
+
+	t1 := when.Add(time.Second)
+	if _, err := store.Apply(ctx, subject, itemID, watch.Event{SessionID: "tv", PositionMs: 60_000, BaseRevision: rev(1)}, t1, watch.MinLease); err != nil {
+		t.Fatal(err)
+	}
+	first := read()
+	if first == nil {
+		t.Fatal("last_played_at ontbreekt na voortgang")
+	}
+
+	t2 := when.Add(2 * time.Second)
+	if _, err := store.Apply(ctx, subject, itemID, watch.Event{SessionID: "tv", PositionMs: 120_000, BaseRevision: rev(2)}, t2, watch.MinLease); err != nil {
+		t.Fatal(err)
+	}
+	if second := read(); second == nil || !second.After(*first) {
+		t.Fatalf("meer voortgang hoort de waarde te verzetten: %v na %v", second, first)
+	}
+	afterProgress := *read()
+
+	if _, err := store.Apply(ctx, subject, itemID, watch.Event{
+		SessionID: "tv", Action: watch.ActionMarkUnwatched,
+	}, when.Add(3*time.Second), watch.MinLease); err != nil {
+		t.Fatal(err)
+	}
+	if at := read(); at == nil || !at.Equal(afterProgress) {
+		t.Fatalf("mark_unwatched verzette last_played_at: %v, was %v", at, afterProgress)
+	}
+}

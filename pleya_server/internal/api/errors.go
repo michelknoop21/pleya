@@ -133,6 +133,13 @@ const (
 	// domein library en geen nieuw domein: het gaat over de catalogus.
 	CodeInvalidMatch = "library.invalid_match"
 
+	// CodeFilterInvalid is het antwoord van GET /libraries/{id}/items op een
+	// filterparameter die de server niet kan uitvoeren (venster 3, D1.4).
+	// details.parameter noemt de parameter, details.value de eerste afgekeurde
+	// waarde. Een stil genegeerd filter levert een lijst op die niet is wat de
+	// client vroeg.
+	CodeFilterInvalid = "library.filter_invalid"
+
 	CodeVersionUnavailable  = "playback.version_unavailable"
 	CodeRangeNotSatisfiable = "playback.range_not_satisfiable"
 	CodeNotPlayable         = "playback.not_playable"
@@ -227,6 +234,7 @@ var errorTable = map[string]struct {
 	CodeLibraryNotConfigManaged: {http.StatusConflict, false},
 	CodeLibraryConfirmMismatch:  {http.StatusConflict, false},
 	CodeInvalidMatch:            {http.StatusBadRequest, false},
+	CodeFilterInvalid:           {http.StatusBadRequest, false},
 	CodeJobNotCancellable:       {http.StatusConflict, false},
 
 	CodeVersionUnavailable:  {http.StatusConflict, true},

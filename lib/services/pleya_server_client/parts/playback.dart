@@ -88,7 +88,15 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     final index = mediaIndex >= 0 && mediaIndex < versions.length ? mediaIndex : 0;
     final versionId = versions[index].id;
 
-    final json = await _postJson('/auth/stream-token', {'version_id': versionId});
+    // An external player URL is optional: a failed mint is "no URL", not an
+    // error the caller has to handle (`_postJson` throws on failure).
+    final Map<String, dynamic>? json;
+    try {
+      json = await _postJson('/auth/stream-token', {'version_id': versionId});
+    } catch (e) {
+      appLogger.d('PleyaServerClient: stream token mint failed', error: e);
+      return null;
+    }
     if (json == null) return null;
     try {
       final token = PleyaStreamToken.fromJson(json);

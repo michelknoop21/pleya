@@ -63,6 +63,11 @@ type Capabilities struct {
 	LiveTV       bool `json:"live_tv"`
 	Realtime     bool `json:"realtime"`
 
+	// Filters (venster 3, D1.5). Aan zodra /libraries/{id}/items de filter- en
+	// sorteerparameters uit D1 kent en /libraries/{id}/facets bestaat. Belooft
+	// niets over boeken.
+	Filters bool `json:"filters"`
+
 	// ArtworkSizes (venster 3, C1). Aan zodra /artwork/{id} afgeleide maten van de
 	// ladder kan maken. Belooft niets over andere routes.
 	ArtworkSizes bool `json:"artwork_sizes"`
@@ -559,4 +564,27 @@ func derefInt(v *int) int {
 		return 0
 	}
 	return *v
+}
+
+// FacetValue is één waarde van een facet (schema FacetValue).
+type FacetValue struct {
+	Value string `json:"value"`
+	Count int    `json:"count"`
+}
+
+// WatchFacet zijn de drie kijktellingen voor de aanvrager.
+type WatchFacet struct {
+	Unwatched  int `json:"unwatched"`
+	InProgress int `json:"in_progress"`
+	Watched    int `json:"watched"`
+}
+
+// Facets is het antwoord van GET /libraries/{id}/facets (D1.3).
+type Facets struct {
+	Genres         []FacetValue `json:"genres"`
+	Years          []FacetValue `json:"years"`
+	ContentRatings []FacetValue `json:"content_ratings"`
+	AudioLanguages []FacetValue `json:"audio_languages"`
+	Resolutions    []FacetValue `json:"resolutions"`
+	Watch          WatchFacet   `json:"watch"`
 }

@@ -103,7 +103,7 @@ func (s *Store) ContinueWatching(ctx context.Context, q HubQuery) (Page, error) 
 		LIMIT $%d`,
 		itemColumns, key, strings.Join(where, " AND "), key, len(args))
 
-	return s.itemPage(ctx, sql, args, SortWatchUpdatedDesc, limit, q.Cursor)
+	return s.itemPage(ctx, sql, args, SortWatchUpdatedDesc, limit, q.Cursor, "")
 }
 
 // NextUp levert per begonnen serie precies één aflevering: de volgende.
@@ -193,5 +193,5 @@ func (s *Store) NextUp(ctx context.Context, q HubQuery) (Page, error) {
 		strings.Join(epWhere, " AND "), itemColumns, key,
 		strings.Join(outerWhere, " AND "), key, len(args))
 
-	return s.itemPage(ctx, sql, args, SortNextUpDesc, limit, q.Cursor)
+	return s.itemPage(ctx, sql, args, SortNextUpDesc, limit, q.Cursor, "")
 }

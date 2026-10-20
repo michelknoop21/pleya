@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "library.filter_invalid",
+    "message": "watch must be one of unwatched, in_progress, watched",
+    "retryable": false,
+    "details": { "parameter": "watch", "value": "gezien" }
+  }
+}

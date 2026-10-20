@@ -12,6 +12,7 @@ import '../media/server_administration.dart';
 import '../media/server_authority_guard.dart';
 import '../media/ids.dart';
 import '../media/library_filter_result.dart';
+import '../media/media_filter.dart';
 import '../media/library_first_character.dart';
 import '../media/library_query.dart';
 import '../media/live_tv_dvr_support.dart';
@@ -36,6 +37,7 @@ import '../models/pleya_server/pleya_wire.dart';
 import '../models/pleya_server/pleya_wire_library.dart';
 import '../utils/app_logger.dart';
 import '../utils/external_ids.dart';
+import '../utils/language_codes.dart';
 import '../utils/media_server_http_client.dart';
 import '../utils/media_server_timeouts.dart';
 import 'api_cache.dart';
@@ -384,39 +386,40 @@ class PleyaServerClient
 
   /// POST a protocol path with a JSON body and hand back its JSON object.
   ///
-  /// Same null contract as [_getJson]: offline mode, a non-2xx answer and a
-  /// body that is not an object all answer null. A write that could not apply
-  /// is not an error the UI has to render, and the interface says so.
+  /// A failed write throws. Offline mode is the one quiet case and answers null,
+  /// because nothing was attempted. A non-2xx answer and a transport failure
+  /// both reach the caller as a [MediaServerHttpException] (the same one Jellyfin's
+  /// `throwIfHttpError` raises), so a progress report that did not land is a
+  /// failure the playback tracker and its offline queue can see, instead of a
+  /// success that left no trace (backlog 24.3). A body that is not an object
+  /// still answers null: the write landed, only the echo is unreadable.
+  ///
+  /// A caller that wants the old "null on any failure" reading wraps the call;
+  /// see the stream-token mint.
   @override
   Future<Map<String, dynamic>?> _postJson(String path, Map<String, dynamic> body) async {
     if (_offlineMode) return null;
-    try {
-      final response = await _http.post(
+    var response = await _http.post(
+      path,
+      body: jsonEncode(body),
+      headers: await _session.authHeaders(),
+      timeout: MediaServerTimeouts.interactive,
+    );
+    if (response.statusCode == 401) {
+      _session.invalidateAccessToken();
+      response = await _http.post(
         path,
         body: jsonEncode(body),
         headers: await _session.authHeaders(),
         timeout: MediaServerTimeouts.interactive,
       );
-      if (response.statusCode == 401) {
-        _session.invalidateAccessToken();
-        final retry = await _http.post(
-          path,
-          body: jsonEncode(body),
-          headers: await _session.authHeaders(),
-          timeout: MediaServerTimeouts.interactive,
-        );
-        return retry.statusCode >= 400 ? null : _asObject(path, retry);
-      }
-      if (response.statusCode >= 400) {
-        final error = PleyaError.tryParse(response.data);
-        appLogger.d('PleyaServerClient: POST $path -> ${response.statusCode} ${error?.code ?? ''}');
-        return null;
-      }
-      return _asObject(path, response);
-    } catch (e) {
-      appLogger.d('PleyaServerClient: POST $path failed', error: e);
-      return null;
     }
+    if (response.statusCode >= 400) {
+      final error = PleyaError.tryParse(response.data);
+      appLogger.d('PleyaServerClient: POST $path -> ${response.statusCode} ${error?.code ?? ''}');
+      throwIfHttpError(response);
+    }
+    return _asObject(path, response);
   }
 
   Map<String, dynamic>? _asObject(String path, MediaServerResponse response) {

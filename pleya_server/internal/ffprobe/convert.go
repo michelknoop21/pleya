@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/edde746/plezy/pleya_server/internal/nameparse"
 )
 
 // containerAliases vertaalt de opsomming die ffprobe teruggeeft naar één naam.
@@ -298,18 +300,12 @@ func secondsToMs(v string) (int64, bool) {
 // letters, of niets. Een tag als "eng-US" of "English" levert liever geen taal
 // op dan een taal die een client verkeerd interpreteert.
 func normalizeLanguage(raw string) string {
-	v := strings.ToLower(strings.TrimSpace(raw))
-	v, _, _ = strings.Cut(v, "-")
-	if len(v) != 3 {
+	// nameparse.LanguageCode kent de omzetting naar de bibliografische code en
+	// de tweeletterige tags; dezelfde tabel als voor sidecars, zodat een spoor in
+	// het bestand en een spoor ernaast dezelfde taal dezelfde code geven.
+	code, ok := nameparse.LanguageCode(raw)
+	if !ok {
 		return ""
 	}
-	for _, r := range v {
-		if r < 'a' || r > 'z' {
-			return ""
-		}
-	}
-	if v == "und" || v == "zxx" {
-		return ""
-	}
-	return v
+	return code
 }

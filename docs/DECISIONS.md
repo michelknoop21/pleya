@@ -4859,3 +4859,31 @@ build. De boekcover (A5) gebruikt dezelfde ladder zodra pakket A landt; er is ge
 5. Tot het beheerscherm in de webclient (S10) bestaat, loopt dit via `curl` met een admintoken. Een app-scherm komt er niet.
 
 **Consequences:** matrixregels 41 tot en met 44 (vierenvijftig operaties). Geen bestaand veld of enum verandert; alles is additief.
+
+## DEC-156: D1 landt met filters, facetten en `library.filter_invalid`, en een backfill voor "laatst gekeken"
+
+**Date:** 2026-10-20
+**Status:** accepted. Opdracht van Michel op 20 oktober 2026 ("begin met het ontwerp van de contractrijen in docs/pleya-server-contract-window-3.md (pakket D1) en bouw daarna de server"). Werkt pakket D1 uit dat [DEC-152](#dec-152-protocolvenster-3-opent-voor-de-catalogusrijen-en-m2a-landt-als-eerste-deel) vrijgaf. De uitwerking staat in 4.4 van `docs/pleya-server-contract-window-3.md`.
+
+**Decision:**
+
+1. **Filters op `GET /libraries/{id}/items`.** `genre`, `year`, `year_from`, `year_to`, `watch`, `content_rating`, `audio_language`
+   en `resolution`; OF binnen een herhaalde parameter, EN tussen parameters. De sorteringen `last_played_at` en `duration` komen
+   erbij, met `null` achteraan in beide richtingen. Alles onder de nieuwe vlag `capabilities.filters`.
+2. **`GET /libraries/{id}/facets`** (klasse `authenticated`, matrixregel 45): de waarden met tellingen over de hele bibliotheek,
+   `watch` per aanvrager, genrefacet leeg zolang de dekkingspoort dicht staat. Het genrefilter zelf is niet gepoort.
+3. **Eén nieuwe foutcode, `library.filter_invalid`** (400), met `details.parameter` en `details.value`. Een stil genegeerd
+   filter geeft een lijst die niet is wat de client vroeg.
+4. **De cursor draagt een vingerafdruk van sortering en filterset**; een cursor uit een andere combinatie is
+   `library.cursor_invalid`.
+5. **Migratie `0017`** (`pg_trgm` in schema `public`, trigramindexen, `watch_states.last_played_at`) en **`0018`** (taalcodes in
+   `media_streams` van de T-vorm naar de B-vorm). **Afwijking van 8.1 ("geen backfill"):** `0017` vult `last_played_at` voor
+   bestaande rijen met positie of `watched` uit `updated_at`, want zonder die stap is de kijkgeschiedenis die er al is niet te
+   sorteren.
+6. **App (S14).** `PleyaCapabilities.filters`, de filterparameters in de browse-aanroep, `fetchLibraryFiltersWithValues` uit
+   de facetten, en `refreshLibraryMetadata` als scan (admin). Zonder de vlag stuurt de client geen filters en geeft een
+   gefilterde aanvraag een lege pagina, nooit een ongefilterde. `_postJson` gooit nu bij een mislukte schrijfactie (backlog 24.3),
+   zodat de offline-wachtrij een 5xx op `POST /watch-state` ziet.
+
+**Consequences:** vijfenvijftig operaties; geen bestaand veld of enum verandert. De `unified_catalog`-filtercapaciteit rekent
+Pleya Server nu mee als filteruitvoerder; de lokale map is de bron die dat niet doet.

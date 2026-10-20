@@ -113,8 +113,9 @@ func upsertState(ctx context.Context, tx pgx.Tx, subject string, itemID id.ID, s
 	_, err := tx.Exec(ctx, `
 		INSERT INTO watch_states (subject, item_id, position_ms, duration_ms, watched, play_count,
 		                          revision, owner_session_id, owner_lease_until,
-		                          last_explicit_at, last_explicit_kind, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		                          last_explicit_at, last_explicit_kind, updated_at, last_played_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+		        CASE WHEN $3::bigint > 0 OR $5::boolean THEN $12::timestamptz END)
 		ON CONFLICT (subject, item_id) DO UPDATE SET
 			position_ms        = EXCLUDED.position_ms,
 			duration_ms        = EXCLUDED.duration_ms,
@@ -125,7 +126,12 @@ func upsertState(ctx context.Context, tx pgx.Tx, subject string, itemID id.ID, s
 			owner_lease_until  = EXCLUDED.owner_lease_until,
 			last_explicit_at   = EXCLUDED.last_explicit_at,
 			last_explicit_kind = EXCLUDED.last_explicit_kind,
-			updated_at         = EXCLUDED.updated_at`,
+			updated_at         = EXCLUDED.updated_at,
+			-- Een schrijving met voortgang verzet het moment van laatst gekeken; een
+			-- mark_unwatched of restart zet positie en watched terug en laat het staan.
+			last_played_at     = CASE WHEN EXCLUDED.position_ms > 0 OR EXCLUDED.watched
+			                          THEN EXCLUDED.updated_at
+			                          ELSE watch_states.last_played_at END`,
 		subject, itemID, st.PositionMs, st.DurationMs, st.Watched, st.PlayCount,
 		st.Revision, ownerSession, st.OwnerLeaseUntil,
 		st.LastExplicitAt, explicitKind, st.UpdatedAt)

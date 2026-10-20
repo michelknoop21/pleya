@@ -47,6 +47,17 @@ class PleyaFakeServer {
   /// The next `POST /watch-state` answers with this owner verdict.
   bool ownedByThisSession = true;
 
+  /// Whether `/info` advertises `filters` and the library routes honour the
+  /// filter parameters and `/libraries/{id}/facets`. Off by default: a server
+  /// that predates the capability ignores the parameters, and a test that does
+  /// not opt in proves what the client does against one.
+  bool filtersCapability = false;
+
+  /// While set, `POST /watch-state` answers with this status and an error
+  /// envelope, without recording the event. Reads (the 5xx regression of
+  /// backlog 24.3) need a write that fails fast, not a timeout.
+  int? watchStateFailureStatus;
+
   /// Whether `/info` advertises `users` and `administration` and `/users/me`
   /// answers with the signed-in account as `owner`. Off by default: every
   /// scenario that does not opt in keeps the role-less session it always had,
@@ -216,6 +227,8 @@ class PleyaFakeServer {
     watchEvents.clear();
     watchStates.clear();
     ownedByThisSession = true;
+    filtersCapability = false;
+    watchStateFailureStatus = null;
     usersCapability = false;
     adminJobs.clear();
     scanRequests.clear();
@@ -323,6 +336,8 @@ class PleyaFakeServer {
     String? edition,
     Map<String, dynamic>? userState,
     String addedAt = '2026-06-18T21:34:02Z',
+    List<String>? genres,
+    String? contentRating,
   }) {
     final item = <String, dynamic>{
       'id': id,
@@ -330,6 +345,8 @@ class PleyaFakeServer {
       'title': title,
       'sort_title': title,
       'year': year,
+      'genres': ?genres,
+      'content_rating': ?contentRating,
       'added_at': addedAt,
       'duration_ms': durationMs,
       'parent_id': parentId,
@@ -535,6 +552,8 @@ class PleyaFakeServer {
     }
 
     if (path == '/watch-state' && request.method == 'POST') {
+      final failure = watchStateFailureStatus;
+      if (failure != null) return _json(_error('server.internal'), status: failure);
       final event = jsonDecode(request.body) as Map<String, dynamic>;
       watchEvents.add(event);
       final itemId = event['item_id'] as String;
@@ -586,7 +605,15 @@ class PleyaFakeServer {
     if (libraryMatch != null) {
       final ids = libraryItems[Uri.decodeComponent(libraryMatch.group(1)!)];
       if (ids == null) return _json(_error('library.not_found'), status: 404);
-      return _json(_page(_sorted(ids, query['sort']), query));
+      final narrowed = filtersCapability ? _filtered(ids, request.url.queryParametersAll) : ids;
+      return _json(_page(_sorted(narrowed, query['sort']), query));
+    }
+
+    final facetsMatch = RegExp(r'^/libraries/([^/]+)/facets$').firstMatch(path);
+    if (facetsMatch != null && filtersCapability) {
+      final ids = libraryItems[Uri.decodeComponent(facetsMatch.group(1)!)];
+      if (ids == null) return _json(_error('library.not_found'), status: 404);
+      return _json(_facets(ids));
     }
 
     final childrenMatch = RegExp(r'^/items/([^/]+)/children$').firstMatch(path);
@@ -629,6 +656,96 @@ class PleyaFakeServer {
     }
 
     return _json(_error('library.not_found'), status: 404);
+  }
+
+  /// The subset of the filter parameters this fixture can answer from the data
+  /// it holds: genre, year, a year range, content rating and the three watch
+  /// states. Audio language and resolution have no data in the fixture and are
+  /// not applied; a scenario that sends them proves the request, not the answer.
+  List<String> _filtered(List<String> ids, Map<String, List<String>> params) {
+    final genres = [for (final g in params['genre'] ?? const <String>[]) g.toLowerCase()];
+    final years = {for (final y in params['year'] ?? const <String>[]) int.tryParse(y)};
+    final ratings = [for (final r in params['content_rating'] ?? const <String>[]) r.toLowerCase()];
+    final from = int.tryParse(params['year_from']?.first ?? '');
+    final to = int.tryParse(params['year_to']?.first ?? '');
+    final watch = params['watch']?.first;
+    return [
+      for (final id in ids)
+        if (_matches(items[id]!, genres: genres, years: years, ratings: ratings, from: from, to: to, watch: watch)) id,
+    ];
+  }
+
+  bool _matches(
+    Map<String, dynamic> item, {
+    required List<String> genres,
+    required Set<int?> years,
+    required List<String> ratings,
+    required int? from,
+    required int? to,
+    required String? watch,
+  }) {
+    final itemGenres = [for (final g in (item['genres'] as List?) ?? const []) (g as String).toLowerCase()];
+    if (genres.isNotEmpty && !genres.any(itemGenres.contains)) return false;
+    final year = item['year'] as int?;
+    if (years.isNotEmpty && !years.contains(year)) return false;
+    if (from != null && (year == null || year < from)) return false;
+    if (to != null && (year == null || year > to)) return false;
+    final rating = (item['content_rating'] as String?)?.toLowerCase();
+    if (ratings.isNotEmpty && !ratings.contains(rating)) return false;
+    if (watch != null) {
+      final state = watchStates[item['id']] ?? (item['user_state'] as Map<String, dynamic>?);
+      final watched = state?['watched'] == true;
+      final started = ((state?['position_ms'] as int?) ?? 0) > 0;
+      final ok = switch (watch) {
+        'unwatched' => !watched,
+        'in_progress' => !watched && started,
+        'watched' => watched,
+        _ => true,
+      };
+      if (!ok) return false;
+    }
+    return true;
+  }
+
+  Map<String, dynamic> _facets(List<String> ids) {
+    List<Map<String, dynamic>> count(Iterable<String> values, {bool numericDesc = false}) {
+      final tally = <String, int>{};
+      for (final v in values) {
+        tally[v] = (tally[v] ?? 0) + 1;
+      }
+      final keys = tally.keys.toList()
+        ..sort(numericDesc ? (a, b) => int.parse(b).compareTo(int.parse(a)) : (a, b) => tally[b]!.compareTo(tally[a]!));
+      return [
+        for (final k in keys) {'value': k, 'count': tally[k]},
+      ];
+    }
+
+    final rows = [for (final id in ids) items[id]!];
+    var unwatched = 0, inProgress = 0, watched = 0;
+    for (final item in rows) {
+      final state = watchStates[item['id']] ?? (item['user_state'] as Map<String, dynamic>?);
+      final isWatched = state?['watched'] == true;
+      if (isWatched) {
+        watched++;
+      } else {
+        unwatched++;
+        if (((state?['position_ms'] as int?) ?? 0) > 0) inProgress++;
+      }
+    }
+    return {
+      'genres': count([for (final r in rows) ...((r['genres'] as List?) ?? const []).cast<String>()]),
+      'years': count([
+        for (final r in rows)
+          if (r['year'] != null) '${r['year']}',
+      ], numericDesc: true),
+      'content_ratings': count([
+        for (final r in rows)
+          if (r['content_rating'] != null) r['content_rating'] as String,
+      ]),
+      'audio_languages': <Map<String, dynamic>>[],
+      'resolutions': <Map<String, dynamic>>[],
+      'watch': {'unwatched': unwatched, 'in_progress': inProgress, 'watched': watched},
+    };
   }
 
   List<String> _sorted(List<String> ids, String? sort) {
@@ -682,6 +799,7 @@ class PleyaFakeServer {
       'administration': usersCapability,
       'watch_state_ownership': watchStateOwnership,
       'stream_sessions': watchState,
+      if (filtersCapability) 'filters': true,
     },
     'auth': {
       'methods': ['password'],

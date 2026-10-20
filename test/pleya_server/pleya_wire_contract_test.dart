@@ -118,6 +118,13 @@ void main() {
       expect(info.serverId, isNotEmpty);
     },
     'ServerDetail': (json) => PleyaServerDetail.fromJson(json),
+    'Facets': (json) {
+      final facets = PleyaFacets.fromJson(json);
+      expect(facets.genres.map((g) => g.value), contains('Drama'));
+      expect(facets.years.first.value, '2023', reason: 'years arrive as text, newest first');
+      expect(facets.resolutions.first.value, 'uhd');
+      expect(facets.unwatched + facets.inProgress + facets.watched, greaterThan(0));
+    },
     'TokenPair': (json) => PleyaTokenPair.fromJson(json),
     'User': (json) => PleyaUser.fromJson(json),
     'StreamToken': (json) => PleyaStreamToken.fromJson(json),
@@ -162,8 +169,8 @@ void main() {
       );
     });
 
-    test('covers the 84 fixtures the contract ships', () {
-      expect(fixtures, hasLength(84));
+    test('covers the 86 fixtures the contract ships', () {
+      expect(fixtures, hasLength(86));
     });
 
     for (final fixture in fixtures) {
@@ -218,6 +225,12 @@ void main() {
       expect(info.capabilities.sessions, isTrue);
       expect(info.capabilities.transcode, isFalse);
       expect(info.capabilities.artworkSizes, isTrue);
+    });
+
+    test('filters is read from the server and off by default', () {
+      expect(PleyaInfo.fromJson(load('info_administration.json')).capabilities.filters, isTrue);
+      expect(PleyaInfo.fromJson(load('info.json')).capabilities.filters, isFalse);
+      expect(PleyaCapabilities.unknown.filters, isFalse);
     });
 
     test('artwork_sizes is off unless the server says so', () {

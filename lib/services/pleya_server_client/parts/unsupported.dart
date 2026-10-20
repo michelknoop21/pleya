@@ -28,12 +28,6 @@ part of '../../pleya_server_client.dart';
 mixin _PleyaServerUnsupportedMethods {
   // ── Library shape the contract does not carry ──
 
-  /// The contract has `limit`, `cursor` and `sort` on a library listing and no
-  /// filter parameter at all. Answering with a synthetic category list would
-  /// put a filter sheet on screen that cannot filter. G13 in the replacement
-  /// matrix.
-  Future<LibraryFilterResult> fetchLibraryFiltersWithValues(String libraryId) async => LibraryFilterResult.empty;
-
   /// No first-character endpoint and no name-prefix filter. Counting a page
   /// client-side would place the bar's offsets against a cursored list, and
   /// every jump past the first page would land somewhere else.
@@ -53,11 +47,6 @@ mixin _PleyaServerUnsupportedMethods {
     String? libraryTitle,
     void Function(List<MediaItem> itemsSoFar)? onPage,
   }) async => const [];
-
-  /// The protocol has a library scan (`POST /libraries/{id}/scan`, used by
-  /// `scanLibrary` in the admin part) but no metadata-refresh route, so this
-  /// stays a no-op. G6.
-  Future<void> refreshLibraryMetadata(String libraryId) async {}
 
   /// No extras, trailers or behind-the-scenes in the catalogue.
   Future<List<MediaItem>> fetchExtras(String id) async => const [];

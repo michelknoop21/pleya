@@ -1378,19 +1378,136 @@ paths:
         - name: sort
           in: query
           required: false
-          description: Een voorafgaand minteken keert de volgorde om.
+          description: |
+            Een voorafgaand minteken keert de volgorde om. Een item zonder
+            waarde (geen jaar, geen duur, nooit gekeken) staat in beide
+            richtingen achteraan. `last_played_at` is het laatste moment waarop
+            de aanvrager voortgang op het item boekte (bij een serie: op een van
+            haar afleveringen); `duration` is de duur van de langste versie.
           schema:
             type: string
-            enum: [title, added_at, year, "-title", "-added_at", "-year"]
+            enum:
+              - title
+              - added_at
+              - year
+              - last_played_at
+              - duration
+              - "-title"
+              - "-added_at"
+              - "-year"
+              - "-last_played_at"
+              - "-duration"
             default: title
             x-unknown-safe: false
+        - name: genre
+          in: query
+          required: false
+          description: |
+            Herhaalbaar; een titel met een van de waarden telt mee. Vergelijkt
+            zonder hoofdletters. De dekkingspoort (zie metadata-coverage) bepaalt
+            alleen of de server genres toont en als facet aanbiedt; het filter
+            zelf werkt ook met de poort dicht, voor wie de waarde al kent.
+          schema: { type: array, items: { type: string }, maxItems: 50 }
+          style: form
+          explode: true
+        - name: year
+          in: query
+          required: false
+          description: Herhaalbaar, vier cijfers, 1800 tot en met 2200.
+          schema: { type: array, items: { type: string, pattern: "^[0-9]{4}$" }, maxItems: 50 }
+          style: form
+          explode: true
+        - name: year_from
+          in: query
+          required: false
+          description: Vanaf dit jaar, inclusief. Niet na `year_to`.
+          schema: { type: string, pattern: "^[0-9]{4}$" }
+        - name: year_to
+          in: query
+          required: false
+          description: Tot dit jaar, inclusief.
+          schema: { type: string, pattern: "^[0-9]{4}$" }
+        - name: watch
+          in: query
+          required: false
+          description: |
+            Voor de aanvrager. `unwatched` bevat ook wat half bekeken is,
+            `in_progress` is de deelverzameling met voortgang, `watched` is
+            uitgekeken. Bij een serie telt de som van haar afleveringen: alle
+            afleveringen gezien is `watched`, een deel gezien of begonnen is
+            `in_progress`, en `unwatched` zolang er een aflevering openstaat.
+          schema:
+            type: string
+            enum: [unwatched, in_progress, watched]
+            x-unknown-safe: false
+        - name: content_rating
+          in: query
+          required: false
+          description: Herhaalbaar; zonder hoofdletters, zoals de kijkwijzer in `Item` staat.
+          schema: { type: array, items: { type: string }, maxItems: 50 }
+          style: form
+          explode: true
+        - name: audio_language
+          in: query
+          required: false
+          description: |
+            Herhaalbaar; een ISO 639-2/B-code van drie letters (`dut`, `eng`).
+            Een titel telt mee als een geluidsspoor van een van zijn versies
+            (bij een serie: van een van haar afleveringen) die taal heeft.
+          schema: { type: array, items: { type: string, pattern: "^[A-Za-z]{3}$" }, maxItems: 50 }
+          style: form
+          explode: true
+        - name: resolution
+          in: query
+          required: false
+          description: |
+            Herhaalbaar; de klasse van het videospoor: `sd`, `hd` (vanaf 1200 of
+            700), `fhd` (1800 of 1000), `uhd` (3200 of 2000), breedte of hoogte.
+            De lijst kan groeien; een client toont onbekende waarden uit
+            `/facets` zonder ze te herkennen.
+          schema:
+            type: array
+            maxItems: 50
+            items: { type: string, enum: [sd, hd, fhd, uhd], x-unknown-safe: true }
+          style: form
+          explode: true
       responses:
         "200":
           description: Een pagina items.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ItemPage" }
-        "400": { $ref: "#/components/responses/Error" }
+        "400":
+          description: |
+            `library.cursor_invalid`, of `library.filter_invalid` met
+            `details.parameter` en `details.value` voor een filter dat de server
+            niet kan uitvoeren.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /libraries/{library_id}/facets:
+    get:
+      tags: [library]
+      operationId: getLibraryFacets
+      summary: De waarden waarop een bibliotheek te filteren is, met tellingen.
+      description: |
+        Klasse `authenticated`, met dezelfde bibliotheekautorisatie als de
+        lijst (venster 3, pakket D1). Telt alle films of series van de
+        bibliotheek en past de andere filters niet toe; `watch` geldt voor de
+        aanvrager. Het genrefacet is een lege lijst zolang de dekkingspoort
+        van de bibliotheek dicht staat.
+      parameters:
+        - $ref: "#/components/parameters/LibraryId"
+      responses:
+        "200":
+          description: De facetten.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Facets" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
@@ -1832,7 +1949,9 @@ components:
       name: cursor
       in: query
       required: false
-      description: Ondoorzichtig. Hoort bij een sortering; bij een andere sortering ongeldig.
+      description: |
+        Ondoorzichtig. Hoort bij een sortering en bij een filterset; bij een
+        andere sortering of andere filters ongeldig (`library.cursor_invalid`).
       schema: { type: string }
 
   responses:
@@ -2014,6 +2133,15 @@ components:
             `GET /artwork/{artwork_id}` levert afgeleide maten van een vaste
             ladder bij een `width` (venster 3, pakket C). Belooft niets over
             andere routes. Zonder deze vlag levert de route altijd het origineel.
+        filters:
+          type: boolean
+          default: false
+          description: |
+            `GET /libraries/{id}/items` kent de filterparameters en de
+            sorteringen `last_played_at` en `duration`, en
+            `GET /libraries/{id}/facets` bestaat (venster 3, pakket D1). Zonder
+            de vlag stuurt een client geen filterparameters: een oudere server
+            negeert ze stil en levert dan een ongefilterde lijst.
         api_tokens:
           type: boolean
           default: false
@@ -2798,6 +2926,44 @@ components:
           oneOf:
             - { $ref: "#/components/schemas/UserState" }
             - { type: "null" }
+
+    FacetValue:
+      type: object
+      required: [value, count]
+      properties:
+        value:
+          type: string
+          description: |
+            Een jaar als tekst, een genre of kijkwijzer in de schrijfwijze die
+            het vaakst voorkomt, een taalcode van drie letters, of een
+            resolutieklasse. Het filter vergelijkt zonder hoofdletters.
+        count: { type: integer, minimum: 0 }
+
+    WatchFacet:
+      type: object
+      required: [unwatched, in_progress, watched]
+      properties:
+        unwatched: { type: integer, minimum: 0, description: Inclusief wat half bekeken is. }
+        in_progress: { type: integer, minimum: 0 }
+        watched: { type: integer, minimum: 0 }
+
+    Facets:
+      type: object
+      required: [genres, years, content_ratings, audio_languages, resolutions, watch]
+      properties:
+        genres: { type: array, items: { $ref: "#/components/schemas/FacetValue" } }
+        years:
+          type: array
+          description: Nieuwste jaar eerst.
+          items: { $ref: "#/components/schemas/FacetValue" }
+        content_ratings: { type: array, items: { $ref: "#/components/schemas/FacetValue" } }
+        audio_languages: { type: array, items: { $ref: "#/components/schemas/FacetValue" } }
+        resolutions:
+          type: array
+          description: Hoogste klasse eerst. De lijst kan groeien.
+          items: { $ref: "#/components/schemas/FacetValue" }
+          x-unknown-safe: true
+        watch: { $ref: "#/components/schemas/WatchFacet" }
 
     MetadataCoverage:
       type: object

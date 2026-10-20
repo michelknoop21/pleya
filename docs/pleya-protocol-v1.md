@@ -559,6 +559,7 @@ contract keurt ze af.
 | `storage.root_not_offered` | 400 | nee | `POST` en `PATCH /libraries`: een `root_path` overlapt met een bestaande root of met een andere root in dezelfde aanvraag, valt niet onder een van de mounts uit `PLEYA_SERVER_MEDIA_DIRS` (S2.3, hoofdstuk 17e.4), of de aanvraagbody zelf is onleesbaar |
 | `job.not_cancellable` | 409 | nee | de job is al afgerond, of dezelfde dedupe-sleutel staat al in de wachtrij; `details.reason` zegt welke |
 | `library.invalid_match` | 400 | nee | `PUT /items/{id}/metadata-match`: `external_id` is geen positief geheel getal tot tien cijfers, of de body is geen gesloten `{external_id}`; een geweigerde poging staat als `denied` in het audit (S22.5) |
+| `library.filter_invalid` | 400 | nee | `GET /libraries/{id}/items`: een filterparameter heeft een onbekende of onmogelijke waarde (`watch`, `resolution`, een jaar buiten 1800 tot 2200 of niet vier cijfers, `year_from` na `year_to`, een `audio_language` die geen drie letters is, of meer dan vijftig waarden); `details.parameter` noemt de parameter en `details.value` de waarde (venster 3, D1) |
 
 `auth.permission_not_allowed` is de ene code in het `auth.`-domein die geen `404` is, en dat is geen
 gat in de regel hieronder. Die regel verbergt het bestaan van iets dat de aanvrager niet mag zien;
@@ -645,12 +646,57 @@ Klasse: **`authenticated`**. Niet gepagineerd; een huishouden heeft er een handv
 
 Klasse: **`authenticated`**. Gepagineerd volgens hoofdstuk 8.
 
-Parameters: `limit`, `cursor`, `sort`. `sort` is een van `title`, `added_at`, `year`, `-title`,
-`-added_at`, `-year`. Een voorafgaand minteken keert de volgorde om. De default is `title` voor
-`movies` en `shows`.
+Parameters: `limit`, `cursor`, `sort` en de filters hieronder. `sort` is een van `title`,
+`added_at`, `year`, `last_played_at`, `duration`, elk met een voorafgaand minteken voor de omgekeerde
+volgorde. De default is `title` voor `movies` en `shows`. `last_played_at` en `duration` bestaan
+alleen onder `capabilities.filters`. Een item zonder waarde (geen jaar, geen duur, nooit gekeken)
+staat in beide richtingen achteraan. `last_played_at` is het laatste moment waarop de aanvrager
+voortgang op het item boekte (bij een serie: op een van haar afleveringen).
 
 Een bibliotheek van soort `shows` levert **uitsluitend items met `kind: "show"`**. Seizoenen en
 afleveringen bereikt u via 9.5.
+
+**Filters** (venster 3, pakket D1; alleen onder `capabilities.filters`, een oudere server negeert ze
+stil en een client stuurt ze dan niet). Binnen één herhaalde parameter geldt OF, tussen parameters
+EN.
+
+| Parameter | Waarde | Betekenis |
+| --- | --- | --- |
+| `genre` | herhaalbaar, tekst | een van de genres, zonder hoofdletters; de dekkingspoort (S4.2) bepaalt alleen of de server genres toont en als facet aanbiedt, het filter werkt ook met de poort dicht |
+| `year` | herhaalbaar, vier cijfers | productiejaar, 1800 tot en met 2200 |
+| `year_from`, `year_to` | vier cijfers | bereik, inclusief; `year_from` niet na `year_to` |
+| `watch` | `unwatched`, `in_progress`, `watched` | voor de aanvrager; `unwatched` bevat ook wat half bekeken is, `in_progress` is de deelverzameling met voortgang. Bij een serie telt de som van haar afleveringen: alle gezien is `watched`, een deel gezien of begonnen is `in_progress`, en `unwatched` geldt zolang er een aflevering openstaat |
+| `content_rating` | herhaalbaar, tekst | kijkwijzer zoals op `Item`, zonder hoofdletters |
+| `audio_language` | herhaalbaar, drie letters | ISO 639-2/B (`dut`, `eng`); een film telt mee met een geluidsspoor van een van zijn versies, een serie met een spoor van een van haar afleveringen |
+| `resolution` | herhaalbaar, `sd`, `hd`, `fhd`, `uhd` | de klasse van het videospoor, op breedte of hoogte: `uhd` vanaf 3200 of 2000, `fhd` vanaf 1800 of 1000, `hd` vanaf 1200 of 700, anders `sd`. Een letterboxfilm van 1920x804 is dus `fhd` |
+
+Een waarde die de server niet kan uitvoeren is `400 library.filter_invalid` met `details.parameter`
+en `details.value`, en geen stil genegeerd filter. Meer dan vijftig waarden in één parameter telt als
+zo'n fout. De `cursor` hoort bij één sortering **en** één filterset: dezelfde cursor met andere
+filters is `library.cursor_invalid`.
+
+### 9.3a `GET /pleya/v1/libraries/{library_id}/facets`
+
+Klasse: **`authenticated`**, met dezelfde bibliotheekautorisatie als 9.3. Alleen onder
+`capabilities.filters`. Het antwoord telt alle films of series van de bibliotheek, past de filters van
+9.3 niet toe, en geeft per facet de waarden met het aantal titels dat ze draagt:
+
+```json
+{
+  "genres": [{ "value": "Drama", "count": 41 }],
+  "years": [{ "value": "2023", "count": 9 }],
+  "content_ratings": [{ "value": "16", "count": 22 }],
+  "audio_languages": [{ "value": "dut", "count": 19 }],
+  "resolutions": [{ "value": "uhd", "count": 11 }, { "value": "fhd", "count": 48 }],
+  "watch": { "unwatched": 57, "in_progress": 4, "watched": 15 }
+}
+```
+
+`value` is altijd tekst, ook bij een jaar. Een genre of kijkwijzer staat in de schrijfwijze die het
+vaakst voorkomt; het filter vergelijkt zonder hoofdletters. `years` loopt van nieuw naar oud,
+`resolutions` van hoog naar laag en kan groeien (een client toont een onbekende klasse zonder hem te
+herkennen). `watch` geldt voor de aanvrager. Het genrefacet is een lege lijst zolang de dekkingspoort
+van de bibliotheek dicht staat.
 
 ### 9.4 `GET /pleya/v1/items/{item_id}`
 
@@ -1192,6 +1238,7 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 42 | `GET /metadata/attention` | de titels die niet vanzelf een providermatch kregen, of die een beheerder afwees | klasse `admin`, `404` voor de rest; afgekapt op `limit` (standaard 100, hoogstens 500), `total` is het werkelijke aantal (S22.5) |
 | 43 | `PUT /items/{id}/metadata-match` | de keuze van een beheerder voor een providernummer, en het meteen ophalen van die titel | klasse `admin`, `404` voor de rest en voor een item dat geen film of serie is; alleen een positief geheel getal komt door, anders `library.invalid_match` (S22.5) |
 | 44 | `DELETE /items/{id}/metadata-match` | het wegnemen van wat de provider bij dit item zette, en het nooit meer terugkomen | klasse `admin`, `404` voor de rest en voor een item dat geen film of serie is; idempotent; velden uit een sidecar blijven staan (S22.5) |
+| 45 | `GET /libraries/{id}/facets` | de waarden en tellingen van één bibliotheek, en de kijktelling van de aanvrager | klasse `authenticated` met dezelfde bibliotheekautorisatie als de lijst: `404` voor een bibliotheek buiten bereik of die niet bestaat; de kijktelling geldt alleen voor de aanvrager (venster 3, D1) |
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
 zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
@@ -1931,8 +1978,9 @@ Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries
 | `GET /pleya/v1/metadata/attention` | `admin` | nee |
 | `PUT /pleya/v1/items/{id}/metadata-match` | `admin` | ja |
 | `DELETE /pleya/v1/items/{id}/metadata-match` | `admin` | ja |
+| `GET /pleya/v1/libraries/{id}/facets` | `authenticated` | nee |
 
-Vierenvijftig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Vijfenvijftig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit
@@ -1941,8 +1989,8 @@ bibliotheek-CRUD van S2.2, en de laatste twee `GET /storage/roots` en `POST /sto
 van S2.3 (samen J.3, venster 2, rijen 7 en 8), en de zes van S2.4: starten van een scan, de
 scanlijst en het scandetail, de joblijst, annuleren en opnieuw proberen (hoofdstuk 17f). De overname
 `POST /libraries/{id}/adopt` van S2.5 (hoofdstuk 17e.5) is de tiende en laatste wijziging van venster 2.
-`GET /watch-history` (17b.7) kwam buiten venster 2 door DEC-143. De laatste vier zijn de metadatacorrecties
-van venster 3: de dekking (B5) en de aandachtslijst, de keuze van een beheerder en het afwijzen (S22.5, DEC-155).
+`GET /watch-history` (17b.7) kwam buiten venster 2 door DEC-143. De vier daarna zijn de metadatacorrecties
+van venster 3: de dekking (B5) en de aandachtslijst, de keuze van een beheerder en het afwijzen (S22.5, DEC-155). De laatste is de facetlijst van hetzelfde venster (D1, S5.1).
 `GET /pleya/v1/server` en `GET /pleya/v1/libraries` staan er elk maar één keer in en groeien met de
 klasse van de aanvrager, niet met een tweede regel. De rest van venster 2 landt bij de commitgrens
 die hem bedient.

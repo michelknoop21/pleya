@@ -1,0 +1,28 @@
+{
+  "genres": [
+    { "value": "Drama", "count": 41 },
+    { "value": "Komedie", "count": 28 },
+    { "value": "Sci-Fi", "count": 12 }
+  ],
+  "years": [
+    { "value": "2023", "count": 9 },
+    { "value": "2021", "count": 14 },
+    { "value": "1999", "count": 3 }
+  ],
+  "content_ratings": [
+    { "value": "16", "count": 22 },
+    { "value": "12", "count": 17 },
+    { "value": "AL", "count": 8 }
+  ],
+  "audio_languages": [
+    { "value": "eng", "count": 61 },
+    { "value": "dut", "count": 19 }
+  ],
+  "resolutions": [
+    { "value": "uhd", "count": 11 },
+    { "value": "fhd", "count": 48 },
+    { "value": "hd", "count": 14 },
+    { "value": "sd", "count": 3 }
+  ],
+  "watch": { "unwatched": 57, "in_progress": 4, "watched": 15 }
+}

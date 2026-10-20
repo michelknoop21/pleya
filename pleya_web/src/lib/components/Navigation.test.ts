@@ -12,6 +12,7 @@ const caps: Capabilities = {
   search: true,
   artwork: true,
   artwork_sizes: false,
+  filters: false,
   watch_state: false,
   playback_plan: false,
   transcode: false,
