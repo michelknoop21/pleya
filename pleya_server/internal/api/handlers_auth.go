@@ -67,6 +67,11 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			ArtworkSizes: s.opts.Artwork.Available(),
 			// Filters: D1 is gebouwd, dus de parameters en de facetten bestaan.
 			Filters: true,
+			// S20: de persoonlijke laag bestaat zodra de opslag er is.
+			History:          s.opts.Personal != nil,
+			Favorites:        s.opts.Personal != nil,
+			Ratings:          s.opts.Personal != nil,
+			TrackPreferences: s.opts.Personal != nil,
 			// Vanaf PS-4 staat kijkstatus aan, en met het eigendomsmodel eronder.
 			// De vlaggen hangen aan de aanwezigheid van de opslag: een server die
 			// zonder watch-store draait zegt dat eerlijk in plaats van een

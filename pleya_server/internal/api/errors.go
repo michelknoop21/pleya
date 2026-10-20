@@ -151,6 +151,10 @@ const (
 	// staat in het serverlog, niet in het antwoord.
 	CodeTranscodeFailed = "playback.transcode_failed"
 
+	// CodePersonalInvalid: een waardering of spoorvoorkeur die de server niet
+	// kan bewaren (S20). details.field noemt het veld.
+	CodePersonalInvalid = "library.personal_invalid"
+
 	CodeStorageUnavailable = "storage.unavailable"
 	CodeStorageFull        = "storage.full"
 
@@ -249,6 +253,7 @@ var errorTable = map[string]struct {
 	CodeNotPlayable:         {http.StatusUnsupportedMediaType, false},
 	CodeTranscodeBusy:       {http.StatusServiceUnavailable, true},
 	CodeTranscodeFailed:     {http.StatusBadGateway, false},
+	CodePersonalInvalid:     {http.StatusBadRequest, false},
 
 	CodeStorageUnavailable:    {http.StatusServiceUnavailable, true},
 	CodeStorageFull:           {http.StatusInsufficientStorage, false},

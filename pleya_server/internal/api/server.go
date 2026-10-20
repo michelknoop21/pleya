@@ -20,6 +20,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
+	"github.com/edde746/plezy/pleya_server/internal/personal"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/transcode"
 	"github.com/edde746/plezy/pleya_server/internal/watch"
@@ -31,6 +32,7 @@ type Options struct {
 	Catalog   *catalog.Store
 	Auth      *auth.Store
 	Watch     *watch.Store
+	Personal  *personal.Store
 	Signer    *auth.Signer
 	Logger    *slog.Logger
 	Ready     func() bool
@@ -333,6 +335,19 @@ func (s *Server) routeTable() []route {
 		{"POST " + p + "/playback/sessions/{session_id}/heartbeat", s.authenticated(s.handlePlaybackHeartbeat)},
 		{"DELETE " + p + "/playback/sessions/{session_id}", s.authenticated(s.handlePlaybackStop)},
 		{"GET " + p + "/playback/sessions/{session_id}/{file}", s.streamAuthorized(s.handlePlaybackFile)},
+
+		// De persoonlijke laag (venster 6 deel 2, S20, matrixregels 52 tot en met 60).
+		// Alles klasse authenticated, over de aanvrager zelf; een item buiten de
+		// bibliotheken van de aanvrager is een 404.
+		{"GET " + p + "/history", s.authenticated(s.handleHistory)},
+		{"GET " + p + "/favorites", s.authenticated(s.handleListFavorites)},
+		{"PUT " + p + "/favorites/{item_id}", s.authenticated(s.handleSetFavorite)},
+		{"DELETE " + p + "/favorites/{item_id}", s.authenticated(s.handleClearFavorite)},
+		{"PUT " + p + "/ratings/{item_id}", s.authenticated(s.handleSetRating)},
+		{"DELETE " + p + "/ratings/{item_id}", s.authenticated(s.handleClearRating)},
+		{"GET " + p + "/track-preferences/{item_id}", s.authenticated(s.handleGetTrackPreference)},
+		{"PUT " + p + "/track-preferences/{item_id}", s.authenticated(s.handleSetTrackPreference)},
+		{"DELETE " + p + "/track-preferences/{item_id}", s.authenticated(s.handleClearTrackPreference)},
 
 		// Beheer van omzetsessies (S18.5, matrixregel 50 en 51). Klasse admin.
 		{"GET " + p + "/transcode-sessions", s.authenticated(s.handleListTranscodeSessions)},

@@ -1702,6 +1702,177 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /history:
+    get:
+      tags: [library]
+      operationId: getHistory
+      summary: De afspeelgeschiedenis van de aanvrager, de laatste sessie eerst.
+      description: |
+        Klasse `authenticated`, alleen onder `capabilities.history` (venster 6
+        deel 2, S20). Eén regel per afspeelsessie (de `session_id` van de client
+        uit `POST /watch-state`), die met de meldingen van die sessie meegroeit:
+        een film van twee uur met een melding per tien seconden is één regel. Ook
+        een offline backlog komt erin, een melding van een toestel zonder
+        schrijfrecht niet. Beperkt tot de bibliotheken die de aanvrager mag zien.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Een pagina geschiedenis.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HistoryPage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /favorites:
+    get:
+      tags: [library]
+      operationId: listFavorites
+      summary: De favorieten van de aanvrager, de laatst toegevoegde eerst.
+      description: Klasse `authenticated`, alleen onder `capabilities.favorites`. Beperkt tot de bibliotheken die de aanvrager mag zien.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Een pagina items.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemPage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /favorites/{item_id}:
+    put:
+      tags: [library]
+      operationId: setFavorite
+      summary: Maak een item favoriet.
+      description: Herhalen is onschadelijk. Een item buiten de bibliotheken van de aanvrager is `404`.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "204": { description: Het item is favoriet. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [library]
+      operationId: clearFavorite
+      summary: Haal een item uit de favorieten.
+      description: Een item dat geen favoriet was is geen fout.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "204": { description: Het item is geen favoriet meer. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /ratings/{item_id}:
+    put:
+      tags: [library]
+      operationId: setRating
+      summary: Waardeer een item met een cijfer van 1 tot en met 10.
+      description: Alleen onder `capabilities.ratings`. Een cijfer buiten bereik is `400` met `library.personal_invalid`.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RatingRequest" }
+      responses:
+        "204": { description: De waardering is bewaard. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [library]
+      operationId: clearRating
+      summary: Haal de waardering van een item weg.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "204": { description: Er is geen waardering meer. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /track-preferences/{item_id}:
+    get:
+      tags: [library]
+      operationId: getTrackPreference
+      summary: De voorkeur voor audio en ondertitels die voor een item geldt.
+      description: |
+        Alleen onder `capabilities.track_preferences`. De voorkeur van het item
+        zelf, anders die van het seizoen of de serie erboven (`source_item_id`
+        zegt waar hij aan hangt). Zonder voorkeur zijn alle velden null. Hij reist
+        met de gebruiker mee naar elk toestel.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "200":
+          description: De voorkeur.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TrackPreference" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [library]
+      operationId: setTrackPreference
+      summary: Leg de voorkeur voor audio en ondertitels vast bij een item.
+      description: |
+        Bij een film, een serie of een aflevering. Een veld dat ontbreekt zegt
+        niets over die keuze. Minstens één veld is verplicht; een ongeldige waarde
+        is `400` met `library.personal_invalid` en `details.field`.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TrackPreferenceRequest" }
+      responses:
+        "200":
+          description: De voorkeur zoals hij nu geldt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TrackPreference" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [library]
+      operationId: clearTrackPreference
+      summary: Haal de voorkeur bij precies dit item weg.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "204": { description: De voorkeur bij dit item is weg. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /items/{item_id}:
     get:
       tags: [library]
@@ -2296,6 +2467,10 @@ components:
         live_tv: { type: boolean, default: false }
         realtime: { type: boolean, default: false }
         users: { type: boolean, default: false }
+        history: { type: boolean, default: false }
+        favorites: { type: boolean, default: false }
+        ratings: { type: boolean, default: false }
+        track_preferences: { type: boolean, default: false }
         watch_state_ownership:
           type: boolean
           default: false
@@ -3113,6 +3288,17 @@ components:
           type: [integer, "null"]
           description: Backend-neutrale naam; het interne model van de client heet anders.
         watched_episode_count: { type: [integer, "null"] }
+        favorite:
+          type: boolean
+          description: |
+            De aanvrager heeft dit item als favoriet (S20). Los van `user_state`:
+            een favoriet die nooit is gekeken heeft geen kijkstatus. Ontbreekt bij
+            een server zonder `capabilities.favorites`.
+        rating:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 10
+          description: De waardering van de aanvrager, of null (S20).
         artwork: { $ref: "#/components/schemas/Artwork" }
         versions:
           type: array
@@ -3334,6 +3520,57 @@ components:
         max_sessions: { type: integer, minimum: 0 }
         hardware: { $ref: "#/components/schemas/TranscodeHardware" }
         items: { type: array, items: { $ref: "#/components/schemas/TranscodeSession" } }
+
+    RatingRequest:
+      type: object
+      required: [rating]
+      additionalProperties: false
+      properties:
+        rating: { type: integer, minimum: 1, maximum: 10 }
+
+    SubtitleMode:
+      type: string
+      enum: ["off", "on", "forced"]
+      x-unknown-safe: true
+
+    TrackPreferenceRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        audio_language: { type: [string, "null"], pattern: "^[a-zA-Z]{2,3}$" }
+        subtitle_language: { type: [string, "null"], pattern: "^[a-zA-Z]{2,3}$" }
+        subtitle_mode: { $ref: "#/components/schemas/SubtitleMode" }
+
+    TrackPreference:
+      type: object
+      required: [source_item_id, audio_language, subtitle_language, subtitle_mode, updated_at]
+      properties:
+        source_item_id: { oneOf: [{ $ref: "#/components/schemas/Id" }, { type: "null" }] }
+        audio_language: { type: [string, "null"] }
+        subtitle_language: { type: [string, "null"] }
+        subtitle_mode: { oneOf: [{ $ref: "#/components/schemas/SubtitleMode" }, { type: "null" }] }
+        updated_at: { type: [string, "null"], format: date-time }
+
+    HistoryEntry:
+      type: object
+      required: [id, item, started_at, ended_at, start_position_ms, end_position_ms, duration_ms, completed, device_name]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        item: { $ref: "#/components/schemas/Item" }
+        started_at: { type: string, format: date-time }
+        ended_at: { type: string, format: date-time, description: De laatste melding van deze sessie. }
+        start_position_ms: { type: integer, minimum: 0 }
+        end_position_ms: { type: integer, minimum: 0 }
+        duration_ms: { type: [integer, "null"], minimum: 0 }
+        completed: { type: boolean }
+        device_name: { type: [string, "null"] }
+
+    HistoryPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/HistoryEntry" } }
+        next_cursor: { type: [string, "null"] }
 
     MetadataAttentionState:
       type: string

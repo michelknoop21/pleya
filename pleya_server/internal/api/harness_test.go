@@ -27,6 +27,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
+	"github.com/edde746/plezy/pleya_server/internal/personal"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
@@ -281,6 +282,7 @@ func newEnv(t *testing.T, opts ...envOption) *env {
 		Catalog:            store,
 		Auth:               authStore,
 		Watch:              watchStore,
+		Personal:           personal.NewStore(pool),
 		Signer:             signer,
 		Logger:             logger,
 		Ready:              func() bool { return true },
@@ -734,4 +736,12 @@ func itoa(v int) string {
 		v /= 10
 	}
 	return out
+}
+
+// decodeInto leest een antwoord in een waarde.
+func (e *env) decodeInto(rec *httptest.ResponseRecorder, target any) {
+	e.t.Helper()
+	if err := json.Unmarshal(rec.Body.Bytes(), target); err != nil {
+		e.t.Fatalf("antwoord onleesbaar: %v (%s)", err, rec.Body.String())
+	}
 }

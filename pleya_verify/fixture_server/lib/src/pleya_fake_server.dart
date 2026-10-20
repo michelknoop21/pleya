@@ -59,6 +59,13 @@ class PleyaFakeServer {
   /// [planFailureStatus] makes the route fail with that status. Every request
   /// body lands in [planRequests].
   bool playbackPlanCapability = false;
+
+  /// S20: favorites, ratings and remembered tracks. The fake keeps them per
+  /// item id and records each call so a test can read what the app sent.
+  bool personalCapability = false;
+  final Set<String> favoriteIds = {};
+  final Map<String, int> ratingsByItem = {};
+  final Map<String, Map<String, dynamic>> trackPreferences = {};
   String planVersionId = 'version-1';
   String planDeliveryMode = 'direct_play';
   int? planFailureStatus;
@@ -243,6 +250,10 @@ class PleyaFakeServer {
     ownedByThisSession = true;
     filtersCapability = false;
     playbackPlanCapability = false;
+    personalCapability = false;
+    favoriteIds.clear();
+    ratingsByItem.clear();
+    trackPreferences.clear();
     planVersionId = 'version-1';
     planDeliveryMode = 'direct_play';
     planFailureStatus = null;
@@ -604,6 +615,11 @@ class PleyaFakeServer {
       return http.Response('', 204);
     }
 
+    if (personalCapability) {
+      final personal = _personal(request, path);
+      if (personal != null) return personal;
+    }
+
     if (path == '/watch-state' && request.method == 'POST') {
       final failure = watchStateFailureStatus;
       if (failure != null) return _json(_error('server.internal'), status: failure);
@@ -854,6 +870,7 @@ class PleyaFakeServer {
       'stream_sessions': watchState,
       if (filtersCapability) 'filters': true,
       if (playbackPlanCapability) 'playback_plan': true,
+      if (personalCapability) ...{'history': true, 'favorites': true, 'ratings': true, 'track_preferences': true},
     },
     'auth': {
       'methods': ['password'],
@@ -950,6 +967,41 @@ class PleyaFakeServer {
   Map<String, dynamic> _error(String code) => {
     'error': {'code': code, 'message': code, 'retryable': false},
   };
+
+  http.Response? _personal(http.Request request, String path) {
+    final id = path.split('/').last;
+    if (path.startsWith('/favorites/')) {
+      if (request.method == 'PUT') favoriteIds.add(id);
+      if (request.method == 'DELETE') favoriteIds.remove(id);
+      return http.Response('', 204);
+    }
+    if (path.startsWith('/ratings/')) {
+      if (request.method == 'PUT') {
+        ratingsByItem[id] = (jsonDecode(request.body) as Map<String, dynamic>)['rating'] as int;
+      }
+      if (request.method == 'DELETE') ratingsByItem.remove(id);
+      return http.Response('', 204);
+    }
+    if (path.startsWith('/track-preferences/')) {
+      if (request.method == 'PUT') {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        trackPreferences[id] = {'source_item_id': id, 'updated_at': '2026-10-20T20:00:00Z', ...body};
+      }
+      if (request.method == 'DELETE') {
+        trackPreferences.remove(id);
+        return http.Response('', 204);
+      }
+      final stored = trackPreferences[id];
+      return _json({
+        'source_item_id': stored?['source_item_id'],
+        'audio_language': stored?['audio_language'],
+        'subtitle_language': stored?['subtitle_language'],
+        'subtitle_mode': stored?['subtitle_mode'],
+        'updated_at': stored?['updated_at'],
+      });
+    }
+    return null;
+  }
 
   http.Response _json(Object body, {int status = 200}) =>
       http.Response(jsonEncode(body), status, headers: const {'content-type': 'application/json'});

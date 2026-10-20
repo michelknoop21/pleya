@@ -50,6 +50,9 @@ const (
 	// SortNextUpDesc ordent series op hun laatste kijkactiviteit, aflopend. De
 	// sleutel hangt dus aan de serie en niet aan de aflevering die getoond wordt.
 	SortNextUpDesc Sort = "-next_up_activity"
+	// SortFavoritedDesc ordent favorieten op wanneer ze zijn toegevoegd,
+	// aflopend (S20). Ook geen aanvraagwaarde.
+	SortFavoritedDesc Sort = "-favorited_at"
 )
 
 // ParseSort leest de sort-parameter. Leeg levert de default.
@@ -102,6 +105,8 @@ func (s Sort) keyExpression() string {
 		return "w.updated_at"
 	case SortNextUpDesc:
 		return "a.activity_at"
+	case SortFavoritedDesc:
+		return "f.created_at"
 	default:
 		return "coalesce(i.sort_title, i.title)"
 	}
@@ -134,7 +139,7 @@ func (s Sort) castSuffix() string {
 		return "::timestamptz"
 	case SortDuration, SortDurationDesc:
 		return "::bigint"
-	case SortAddedAt, SortAddedAtDesc, SortWatchUpdatedDesc, SortNextUpDesc:
+	case SortAddedAt, SortAddedAtDesc, SortWatchUpdatedDesc, SortNextUpDesc, SortFavoritedDesc:
 		return "::timestamptz"
 	case SortYear, SortYearDesc, SortIndex:
 		return "::integer"

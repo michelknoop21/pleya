@@ -63,6 +63,14 @@ func (s *Store) Apply(ctx context.Context, subject string, itemID id.ID, ev Even
 	}
 
 	out = Decide(cur, ev, now, lease)
+	// De geschiedenis kent meer dan de toestand: een geweigerd event van een
+	// toestel zonder schrijfrecht verplaatst de positie niet, maar een offline
+	// backlog is precies wat een geschiedenis moet bewaren (DEC-049, regel 5).
+	if (out.Accepted || ev.Backlog) && ev.recordsPlay() {
+		if err := recordPlay(ctx, tx, subject, itemID, ev, now); err != nil {
+			return out, err
+		}
+	}
 	if !out.Accepted {
 		if err := tx.Commit(ctx); err != nil {
 			return out, err
@@ -77,6 +85,22 @@ func (s *Store) Apply(ctx context.Context, subject string, itemID id.ID, ev Even
 		return out, err
 	}
 	return out, nil
+}
+
+// recordPlay zet een event in de rij van zijn afspeelsessie (S20): één rij per
+// (gebruiker, item, sessie-id van de client), die met de events meegroeit.
+func recordPlay(ctx context.Context, tx pgx.Tx, subject string, itemID id.ID, ev Event, now time.Time) error {
+	_, err := tx.Exec(ctx, `
+		INSERT INTO play_history (id, user_id, item_id, session_id, auth_session_id, started_at, last_event_at,
+		                          start_position_ms, end_position_ms, duration_ms, completed)
+		VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $7, $8, $9)
+		ON CONFLICT (user_id, item_id, session_id) DO UPDATE SET
+			last_event_at = EXCLUDED.last_event_at,
+			end_position_ms = EXCLUDED.end_position_ms,
+			duration_ms = coalesce(EXCLUDED.duration_ms, play_history.duration_ms),
+			completed = play_history.completed OR EXCLUDED.completed`,
+		id.New(), subject, itemID, ev.SessionID, ev.AuthSessionID, now, ev.PositionMs, ev.DurationMs, ev.Completed)
+	return err
 }
 
 func lockState(ctx context.Context, tx pgx.Tx, subject string, itemID id.ID) (State, error) {

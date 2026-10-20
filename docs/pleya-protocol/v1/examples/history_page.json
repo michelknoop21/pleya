@@ -1,0 +1,23 @@
+{
+  "items": [
+    {
+      "id": "01a15a60-1c10-7000-8a11-5e3f2d9b7c01",
+      "item": {
+        "id": "01a15486-f53b-7001-a2c0-dad3c02bbd3a",
+        "kind": "movie",
+        "title": "Grease",
+        "added_at": "2026-10-01T10:00:00Z",
+        "favorite": true,
+        "rating": 8
+      },
+      "started_at": "2026-10-20T19:02:11Z",
+      "ended_at": "2026-10-20T20:48:40Z",
+      "start_position_ms": 0,
+      "end_position_ms": 6300000,
+      "duration_ms": 6720000,
+      "completed": true,
+      "device_name": "Apple TV"
+    }
+  ],
+  "next_cursor": null
+}

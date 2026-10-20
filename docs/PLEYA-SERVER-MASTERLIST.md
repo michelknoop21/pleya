@@ -46,7 +46,7 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **3** | **0** | **23** |
 
-Per taak, en dat is de maat die telt: **155 taken, 41 gereed, 14 bezig, 100 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **155 taken, 46 gereed, 14 bezig, 95 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -459,12 +459,12 @@ punt 3 en 4), en aan het venster-besluit.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S20.1 | Migratie `0019`, geschiedenis uit watch-state-events | `[ ]` | | |
-| S20.2 | Favorieten en waarderingen | `[ ]` | | |
-| S20.3 | Spoorvoorkeuren over toestellen | `[ ]` | | |
+| S20.1 | Migratie `0019`, geschiedenis uit watch-state-events | `[x]` | M5: migratie `0020_personal.sql` (`0019` was bezet) met `play_history` (een rij per afspeelsessie, backfill uit `watch_states`), `watch.Apply` schrijft de rij in dezelfde transactie, ook backlog, niet bij mark_watched/unwatched of een geweigerde gebeurtenis; `GET /history` met cursor en zichtbaarheidsfilter; `history_test.go` (3 tests) en negatieve controle op de hook (20 oktober 2026) | 2026-10-20 |
+| S20.2 | Favorieten en waarderingen | `[x]` | M5: `PUT/DELETE /favorites/{id}`, `GET /favorites`, `PUT/DELETE /ratings/{id}` (1 tot 10), `Item.favorite` en `Item.rating` per aanvrager; matrixregel 52 tot en met 57; `personal_api_test.go` (andere gebruiker ziet niets van de jouwe, ongeldige waardering 400 `library.personal_invalid`) | 2026-10-20 |
+| S20.3 | Spoorvoorkeuren over toestellen | `[x]` | M5: `GET/PUT/DELETE /track-preferences/{id}` met terugval aflevering, seizoen, serie; matrixregel 58 tot en met 60; negatieve controle op de terugval (test faalt zonder voorouderketen) | 2026-10-20 |
 | S20.4 | Web scherm 19 en "Bekeken door" op detail | `[ ]` | | |
-| S20.5 | App: `setFavorite`, `rate`, spoorkeuze | `[ ]` | | |
-| S20.6 | Venster 6 deel 2 | `[ ]` | | |
+| S20.5 | App: `setFavorite`, `rate`, spoorkeuze | `[x]` | M5: `PleyaCapabilities` met vier vlaggen, `setItemFavorite`, `setItemRating`, `getTrackPreference`, `saveTrackPreference`, `clearItemTrackPreference` achter de vlag (de namen `setFavorite`/`rate` botsen met de bestaande interface), `PleyaTrackPreference`, fake-server en `pleya_server_personal_test.dart`; `flutter test test/pleya_server` 333 groen | 2026-10-20 |
+| S20.6 | Venster 6 deel 2 | `[x]` | M5: openapi (vijf paden, zes schema's, vier vlaggen), protocolhoofdstuk 14a, matrixregel 52 tot en met 60, fixtures `history_page.json` en `track_preference.json` (92), `check_protocol.sh` groen | 2026-10-20 |
 
 ### S21 Realtime (PS-11R)
 

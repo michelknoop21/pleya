@@ -427,6 +427,16 @@
       "file": "transcode_sessions.json",
       "schema": "TranscodeSessionList",
       "note": "S18.5: GET /transcode-sessions, klasse admin, zonder versnelling en met de reden"
+    },
+    {
+      "file": "history_page.json",
+      "schema": "HistoryPage",
+      "note": "S20: GET /history, één regel per afspeelsessie met het item erbij"
+    },
+    {
+      "file": "track_preference.json",
+      "schema": "TrackPreference",
+      "note": "S20: GET /track-preferences/{item_id}, de voorkeur die voor een item geldt"
     }
   ]
 }

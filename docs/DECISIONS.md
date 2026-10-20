@@ -4964,3 +4964,22 @@ Migratie `0019_transcode_sessions.sql` (de masterlijst noemde `0017`, dat was be
 **Context:** De tweerijen-fit maakte posters smaller, behield zes kolommen en voegde de vrijgekomen breedte aan de zijmarges toe. Michel keurde de Films-bladerstand van [de mockup](assets/tvos-library-width-2026-10-22/index.html) goed, inclusief de ruimere art/titelafstand, en gaf opdracht tot en met tvOS TestFlight.
 **Decision:** De bibliotheekcatalogus (Alle films/series en dezelfde gedeelde catalogusroute voor een bron of Alles bekijken) gebruikt op standaarddensity het brede raster, met zes grote posters op het TV-referentiecanvas. De actieve rij blijft volledig zichtbaar; een volgende rij mag deels zichtbaar zijn. De dichtheidsvoorkeur blijft werken. De gemeenschappelijke TV-kaart krijgt vaste extra ruimte tussen art/focusring en titel; kaarten verschuiven niet bij focus.
 **Consequences:** Dit vervangt voor de catalogus de eerdere eis van twee volledige rijen uit A06B-ROOM1. Andere rasters behouden hun expliciete tweerijen-fit. Gedeelde kaartafstand en veilige zijmarges gelden ook daar; hun bestaande acties, metadata, focus en rechten blijven behouden. Unified impact: alleen gedeelde TV-presentatie, geen leverancierspad, bron-/rechtensamenvoeging of backendwijziging. TestFlight en simulatorbewijs zijn geen fysieke Apple TV-acceptatie.
+
+## DEC-159: De persoonlijke laag (S20) koppelt favoriet en waardering los van kijkstatus, en geschiedenis is een rij per afspeelsessie
+
+**Status:** besloten, 20 oktober 2026 (M5, S20). Raakt het protocolvenster alleen voor de rijen 52 tot en met 60.
+
+**Decision:**
+
+1. **Geschiedenis.** `play_history` krijgt een rij per (gebruiker, item, sessie), geschreven door `watch.Apply` in dezelfde transactie
+   als de kijkstatus. Alleen echt kijken telt: `mark_watched` en `mark_unwatched` maken geen rij, een geweigerde gebeurtenis ook niet
+   (een backlog-melding wel, want die is echt gekeken). Bestaande `watch_states` worden bij de migratie met sessie `backfill` overgenomen.
+2. **`Item.favorite` en `Item.rating` staan buiten `user_state`.** Kijkstatus is server-authoritative met een eigenaar en een
+   lease (DEC-049); favoriet en waardering zijn gewone aantekeningen van de aanvrager. Door ze los te houden hoeft `user_state` niet
+   te veranderen en ziet een ander ze nooit.
+3. **Spoorvoorkeur met terugval.** Een keuze op een serie geldt voor haar seizoenen en afleveringen, tenzij daar een eigen keuze staat
+   (aflevering, dan seizoen, dan serie). Het antwoord noemt `source_item_id`, zodat een app weet waar de keuze vandaan kwam.
+4. **Nummering.** De migratie heet `0020_personal.sql`; de masterlijst noemde `0019`, dat was bezet door de omzetsessies.
+
+**Consequences:** zeventig operaties; nieuwe foutcode `library.personal_invalid` (400, `details.field`); vier capabilityvlaggen
+(`history`, `favorites`, `ratings`, `track_preferences`). Het web-scherm 19 en "Bekeken door" op detail (S20.4) volgen met de webslices.
