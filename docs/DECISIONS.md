@@ -4875,7 +4875,9 @@ build. De boekcover (A5) gebruikt dezelfde ladder zodra pakket A landt; er is ge
 3. **Eén nieuwe foutcode, `library.filter_invalid`** (400), met `details.parameter` en `details.value`. Een stil genegeerd
    filter geeft een lijst die niet is wat de client vroeg.
 4. **De cursor draagt een vingerafdruk van sortering en filterset**; een cursor uit een andere combinatie is
-   `library.cursor_invalid`.
+   `library.cursor_invalid`. Na de challenge-review van 20 oktober draagt hij ook de bibliotheek, en de aanvrager zodra de
+   lijst van die aanvrager afhangt (`last_played_at` of een `watch`-filter).
+   `total_estimate` telt de gefilterde lijst, en `duration` sorteert een serie op zijn langste aflevering.
 5. **Migratie `0017`** (`pg_trgm` in schema `public`, trigramindexen, `watch_states.last_played_at`) en **`0018`** (taalcodes in
    `media_streams` van de T-vorm naar de B-vorm). **Afwijking van 8.1 ("geen backfill"):** `0017` vult `last_played_at` voor
    bestaande rijen met positie of `watched` uit `updated_at`, want zonder die stap is de kijkgeschiedenis die er al is niet te

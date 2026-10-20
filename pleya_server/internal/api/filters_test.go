@@ -225,3 +225,38 @@ func TestFilterErrorEchoesAtMostSixtyFourCharacters(t *testing.T) {
 		t.Fatalf("antwoord van %d bytes: de waarde komt onbegrensd terug", rec.Body.Len())
 	}
 }
+
+// total_estimate hoort bij de gefilterde lijst, niet bij de hele bibliotheek.
+func TestTotalEstimateFollowsTheFilters(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	films := e.libraryID("movies")
+
+	var all, one api.ItemPage
+	e.getJSON("/pleya/v1/libraries/"+films+"/items?limit=1", "", http.StatusOK, &all)
+	e.getJSON("/pleya/v1/libraries/"+films+"/items?limit=1&year=1982", "", http.StatusOK, &one)
+	if all.TotalEstimate == nil || *all.TotalEstimate != 3 {
+		t.Fatalf("ongefilterd totaal %v", all.TotalEstimate)
+	}
+	if one.TotalEstimate == nil || *one.TotalEstimate != 1 {
+		t.Fatalf("totaal met year=1982 is %v", one.TotalEstimate)
+	}
+}
+
+// Een cursor uit de ene bibliotheek is geen vervolg van de lijst van een andere.
+func TestCursorDoesNotCrossLibraries(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+
+	var first api.ItemPage
+	e.getJSON("/pleya/v1/libraries/"+e.libraryID("movies")+"/items?limit=1", "", http.StatusOK, &first)
+	if first.NextCursor == nil {
+		t.Fatal("geen next_cursor")
+	}
+	other := e.libraryID("shows")
+	rec := e.do(http.MethodGet, "/pleya/v1/libraries/"+other+"/items?limit=1&cursor="+url.QueryEscape(*first.NextCursor), nil)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("cursor uit andere bibliotheek gaf %d", rec.Code)
+	}
+	e.expectCode(rec, api.CodeCursorInvalid)
+}

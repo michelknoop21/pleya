@@ -318,7 +318,7 @@ func TestPagingThroughNullSortsLosesNothing(t *testing.T) {
 			if page.NextCursor == "" {
 				break
 			}
-			cur, err = catalog.DecodeCursorFor(page.NextCursor, s, catalog.Filters{Subject: f.owner}.CursorTag(s))
+			cur, err = catalog.DecodeCursorFor(page.NextCursor, s, catalog.Filters{Subject: f.owner}.CursorTag(s, f.lib.String()))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -442,10 +442,10 @@ func TestJunkLastPlayedCursorKeyIsACursorError(t *testing.T) {
 func TestSubjectSortCursorBelongsToItsSubject(t *testing.T) {
 	a := catalog.Filters{Subject: "een"}
 	b := catalog.Filters{Subject: "twee"}
-	if a.CursorTag(catalog.SortLastPlayed) == b.CursorTag(catalog.SortLastPlayed) {
+	if a.CursorTag(catalog.SortLastPlayed, "") == b.CursorTag(catalog.SortLastPlayed, "") {
 		t.Fatal("twee aanvragers delen een cursorherkenning")
 	}
-	if a.CursorTag(catalog.SortTitle) != b.CursorTag(catalog.SortTitle) {
+	if a.CursorTag(catalog.SortTitle, "") != b.CursorTag(catalog.SortTitle, "") {
 		t.Fatal("een sortering die niet van de aanvrager afhangt hoort er geen te dragen")
 	}
 }
@@ -494,5 +494,59 @@ func TestShowStreamFiltersFollowItsEpisodes(t *testing.T) {
 	}
 	if res["uhd"] != 1 || res["fhd"] != 1 || res["hd"] != 1 {
 		t.Fatalf("resolutiefacet: %+v", fc.Resolutions)
+	}
+}
+
+// De versies hangen aan afleveringen: een serie sorteert op zijn langste aflevering.
+func TestDurationSortOrdersShowsByTheirLongestEpisode(t *testing.T) {
+	f := filterLibrary(t, "shows")
+	f.item(t, "s1", "show", "Lang", "", nil, nil, nil)
+	f.item(t, "k1", "season", "Seizoen 1", "s1", nil, nil, nil)
+	f.item(t, "e1", "episode", "A", "k1", nil, nil, nil)
+	f.item(t, "s2", "show", "Kort", "", nil, nil, nil)
+	f.item(t, "k2", "season", "Seizoen 1", "s2", nil, nil, nil)
+	f.item(t, "e2", "episode", "A", "k2", nil, nil, nil)
+	f.item(t, "s3", "show", "Leeg", "", nil, nil, nil)
+	f.stream(t, "e1", 9000000, 1920, 1080, nil)
+	f.stream(t, "e2", 1200000, 1920, 1080, nil)
+
+	asc := titlesOf(t, f, catalog.Query{Kinds: []string{"show"}, Sort: catalog.SortDuration})
+	if !slices.Equal(asc, []string{"Kort", "Lang", "Leeg"}) {
+		t.Fatalf("duration oplopend: %v", asc)
+	}
+	desc := titlesOf(t, f, catalog.Query{Kinds: []string{"show"}, Sort: catalog.SortDurationDesc})
+	if !slices.Equal(desc, []string{"Lang", "Kort", "Leeg"}) {
+		t.Fatalf("duration aflopend: %v", desc)
+	}
+}
+
+// Het totaal bij een gefilterde lijst telt alleen wat het filter overhoudt.
+func TestCountFollowsTheFilters(t *testing.T) {
+	f := moviesFixture(t)
+	all, err := f.store.Count(f.ctx, catalog.Query{LibraryID: &f.lib, Kinds: []string{"movie"}})
+	if err != nil || all != 5 {
+		t.Fatalf("ongefilterd totaal = %d, %v", all, err)
+	}
+	got, err := f.store.Count(f.ctx, catalog.Query{LibraryID: &f.lib, Kinds: []string{"movie"},
+		Filters: catalog.Filters{Genres: []string{"horror"}}})
+	if err != nil || got != 2 {
+		t.Fatalf("totaal met genre horror = %d, %v", got, err)
+	}
+}
+
+// Een cursor hoort bij zijn bibliotheek, en bij een kijkfilter ook bij zijn aanvrager.
+func TestCursorBelongsToLibraryAndWatchSubject(t *testing.T) {
+	a, b := id.New().String(), id.New().String()
+	fl := catalog.Filters{Subject: "u1"}
+	if fl.CursorTag(catalog.SortTitle, a) == fl.CursorTag(catalog.SortTitle, b) {
+		t.Fatal("cursor onderscheidt bibliotheken niet")
+	}
+	w1 := catalog.Filters{Watch: catalog.WatchUnwatched, Subject: "u1"}
+	w2 := catalog.Filters{Watch: catalog.WatchUnwatched, Subject: "u2"}
+	if w1.CursorTag(catalog.SortTitle, a) == w2.CursorTag(catalog.SortTitle, a) {
+		t.Fatal("cursor met kijkfilter onderscheidt aanvragers niet")
+	}
+	if fl.CursorTag(catalog.SortTitle, a) != (catalog.Filters{Subject: "u2"}).CursorTag(catalog.SortTitle, a) {
+		t.Fatal("zonder kijkfilter of last_played hoort de aanvrager niet in de cursor")
 	}
 }

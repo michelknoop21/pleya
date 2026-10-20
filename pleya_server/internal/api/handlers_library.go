@@ -104,7 +104,7 @@ func (s *Server) handleLibraryItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cursor, err := catalog.DecodeCursorFor(r.URL.Query().Get("cursor"), sort, filters.CursorTag(sort))
+	cursor, err := catalog.DecodeCursorFor(r.URL.Query().Get("cursor"), sort, filters.CursorTag(sort, libraryID.String()))
 	if err != nil {
 		writeError(w, s.log, CodeCursorInvalid, err.Error(), nil)
 		return
@@ -118,20 +118,22 @@ func (s *Server) handleLibraryItems(w http.ResponseWriter, r *http.Request) {
 	}
 
 	limit, _ := queryInt(r, "limit")
-	page, err := s.opts.Catalog.Items(r.Context(), catalog.Query{
+	query := catalog.Query{
 		LibraryID: &libraryID,
 		Kinds:     kinds,
 		Sort:      sort,
 		Cursor:    cursor,
 		Limit:     limit,
 		Filters:   filters,
-	})
+	}
+	page, err := s.opts.Catalog.Items(r.Context(), query)
 	if err != nil {
 		s.writeStoreError(w, err)
 		return
 	}
 
-	total, err := s.opts.Catalog.ItemCount(r.Context(), &libraryID, kinds)
+	query.Cursor = nil
+	total, err := s.opts.Catalog.Count(r.Context(), query)
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
