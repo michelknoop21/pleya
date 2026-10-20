@@ -133,6 +133,23 @@ enum PlaybackHandoffOutcome {
   timedOut,
 }
 
+/// Progress the player must show before the receiver tells the sender it plays.
+const handoffProgressThresholdMs = 1000;
+
+/// Whether the receiver may now report `handoffPlaying`: only for a handoff,
+/// once, while playing, and after the position moved at least
+/// [handoffProgressThresholdMs] past the first position seen in this player.
+bool shouldAcknowledgeHandoff({
+  required String? handoffId,
+  required bool acknowledged,
+  required bool playing,
+  required int? firstPositionMs,
+  required int positionMs,
+}) {
+  if (handoffId == null || acknowledged || !playing || firstPositionMs == null) return false;
+  return positionMs - firstPositionMs >= handoffProgressThresholdMs;
+}
+
 const handoffPlayingKey = 'handoffPlaying';
 const handoffFailedKey = 'handoffFailed';
 
