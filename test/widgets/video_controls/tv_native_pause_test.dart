@@ -18,7 +18,9 @@ import 'package:pleya/providers/playback_state_provider.dart';
 import 'package:pleya/providers/shader_provider.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/apple_tv_remote_touch_service.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
+import 'package:pleya/widgets/video_controls/tv_info_panel.dart';
 import 'package:pleya/widgets/video_controls/player_chrome_controller.dart';
 import 'package:pleya/widgets/video_controls/video_controls.dart';
 import 'package:pleya/widgets/video_controls/widgets/player_toast_indicator.dart';
@@ -46,6 +48,12 @@ const _testTokens = MonoTokens(
   accentAlt: Color(0xFFFFB020),
   splashFactory: NoSplash.splashFactory,
 );
+
+/// Calls every arrow-down a swipe, the gesture that opens the info panel.
+class _SwipeDownTouch extends AppleTvRemoteTouchService {
+  @override
+  bool isSwipeDirectional(LogicalKeyboardKey key) => key == LogicalKeyboardKey.arrowDown;
+}
 
 class _ControlsPlayer extends FakeSyncPlayer {
   _ControlsPlayer({super.playing, super.position, super.duration});
@@ -137,6 +145,19 @@ void main() {
       unawaited(sheets.show<void>(builder: (_) => const SizedBox(width: 200, height: 100, child: Text('sheet'))));
       await tester.pump(const Duration(milliseconds: 400));
       expect(sheets.isOpen, isTrue);
+
+      chrome.requestExplicitPauseChrome();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(chrome.controlsVisible, isFalse);
+    });
+    testWidgets('een open infopaneel houdt de balk verborgen', (tester) async {
+      AppleTvRemoteTouchService.debugInstanceOverride = _SwipeDownTouch();
+      addTearDown(() => AppleTvRemoteTouchService.debugInstanceOverride = null);
+      final chrome = await pumpPlayer(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(TvInfoPanel), findsOneWidget);
 
       chrome.requestExplicitPauseChrome();
       await tester.pump(const Duration(milliseconds: 400));
