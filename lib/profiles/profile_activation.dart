@@ -37,11 +37,16 @@ import 'profile_connection_registry.dart';
 /// Plex user of [profile] (see `handoffTokenProofUuid`). A Plex Home profile
 /// keeps it as its cached user token; should Plex reject it later, the binder
 /// asks the PIN as before. [mayActivate] is still asked, before anything is saved.
+///
+/// [onPinCancelled] is called when the user backed out of the PIN dialog, just
+/// before this returns `false`, so a caller can tell that from any other
+/// failure (an activation that returned false, a failed save, [mayActivate]).
 Future<bool> activateProfileWithPin(
   BuildContext context,
   Profile profile, {
   bool Function()? mayActivate,
   String? verifiedPlexUserToken,
+  void Function()? onPinCancelled,
 }) async {
   final active = context.read<ActiveProfileProvider>();
   final binder = context.read<ActiveProfileBinder>();
@@ -55,7 +60,7 @@ Future<bool> activateProfileWithPin(
       if (!ok) return false;
     } else {
       if (profile.plexProtected) {
-        final ok = await _preVerifyPlexHomePin(context, profile);
+        final ok = await _preVerifyPlexHomePin(context, profile, onPinCancelled: onPinCancelled);
         if (!ok) return false;
       }
       if (!allowed()) return false;
@@ -81,7 +86,10 @@ Future<bool> activateProfileWithPin(
   while (true) {
     if (!context.mounted) return false;
     final pin = await showPinEntryDialog(context, profile.displayName, errorMessage: errorMessage);
-    if (pin == null) return false; // user cancelled
+    if (pin == null) {
+      onPinCancelled?.call();
+      return false; // user cancelled
+    }
     final hash = profile.pinHash;
     if (hash != null && verifyPin(pin, hash)) {
       if (!allowed()) return false;
@@ -124,7 +132,7 @@ Future<bool> switchProfileFromUi(BuildContext context, Profile profile) async {
 /// binder's existing missing-metadata path will fire and silently
 /// produce an empty bind, matching today's behavior. We don't want to
 /// fail activation outright for users in unusual data states.
-Future<bool> _preVerifyPlexHomePin(BuildContext context, Profile profile) async {
+Future<bool> _preVerifyPlexHomePin(BuildContext context, Profile profile, {void Function()? onPinCancelled}) async {
   final parentId = profile.parentConnectionId;
   final homeUuid = profile.plexHomeUserUuid;
   if (parentId == null || homeUuid == null) return true;
@@ -153,6 +161,7 @@ Future<bool> _preVerifyPlexHomePin(BuildContext context, Profile profile) async 
       },
       logLabel: profile.displayName,
     );
+    if (result.status == PlexHomeSwitchStatus.cancelled) onPinCancelled?.call();
     if (!result.succeeded) return false;
     if (!context.mounted) return false;
     return _savePlexHomeUserToken(
