@@ -416,3 +416,65 @@ func TestSidecarIsAppliedAfterTheProviderSoTheProviderWins(t *testing.T) {
 		t.Fatalf("volgorde %v; de provider hoort eerst, de .nfo erna", order)
 	}
 }
+
+func TestManualChoiceWinsOverTheNFOAndSearchAndNeverSearches(t *testing.T) {
+	h := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Hamlet", ManualExternalID: "777"}
+	st := newFakeStore(h)
+	prov := &fakeProvider{results: map[string][]SearchResult{"Hamlet": {{ID: 1, Title: "Hamlet"}}}}
+	side := fakeSidecar{h.ID: {Kind: "movie", IDs: map[string]string{"tmdb": "2"}}}
+
+	stats, err := testRunner(st, prov, t.TempDir()).WithSidecar(side).Round(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.Manual != 1 || stats.ByID != 0 || prov.calls != 0 {
+		t.Fatalf("stats %+v, zoekaanroepen %d; een keuze van een mens zoekt niet en gaat voor de .nfo", stats, prov.calls)
+	}
+	if st.candidates[h.ID].ExternalID != "777" {
+		t.Fatalf("externe id %q, verwacht 777", st.candidates[h.ID].ExternalID)
+	}
+}
+
+func TestAmbiguousAndUnmatchedKeepTheBestAlternatives(t *testing.T) {
+	year := 2023
+	dub := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Hamlet", Year: &year}
+	none := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Fast & Furious 10", Year: &year}
+	st := newFakeStore(dub, none)
+	var many []SearchResult
+	for i := 1; i <= 8; i++ {
+		many = append(many, SearchResult{ID: i, Title: fmt.Sprintf("Fast X %d", i), Year: 2023})
+	}
+	prov := &fakeProvider{
+		results: map[string][]SearchResult{
+			"Hamlet":            {{ID: 1, Title: "Hamlet", Year: 2023}, {ID: 2, Title: "Hamlet", Year: 2023}},
+			"Fast & Furious 10": many,
+		},
+	}
+
+	if _, err := testRunner(st, prov, t.TempDir()).Round(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	amb := st.candidates[dub.ID]
+	if amb.State != catalog.CandidateAmbiguous || amb.Details == nil || len(amb.Details.Alternatives) != 2 {
+		t.Fatalf("ambigu zonder alternatieven: %+v", amb)
+	}
+	un := st.candidates[none.ID]
+	if un.State != catalog.CandidateUnmatched || un.Details == nil || len(un.Details.Alternatives) != maxAlternatives {
+		t.Fatalf("niet gevonden hoort de beste %d treffers te bewaren: %+v", maxAlternatives, un.Details)
+	}
+	if un.Details.Alternatives[0].ExternalID != "1" {
+		t.Fatalf("de volgorde van de provider is de volgorde van de keuzes: %+v", un.Details.Alternatives)
+	}
+}
+
+func TestPassThreeRerunsEveryoneOnceAndTheCandidatesCarryIt(t *testing.T) {
+	a := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "A"}
+	st := newFakeStore(a)
+	prov := &fakeProvider{results: map[string][]SearchResult{"A": {{ID: 1, Title: "A"}}}}
+	if _, err := testRunner(st, prov, t.TempDir()).Round(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if st.candidates[a.ID].Pass != currentPass || currentPass < 3 {
+		t.Fatalf("kandidaat op pass %d, huidige pass %d", st.candidates[a.ID].Pass, currentPass)
+	}
+}

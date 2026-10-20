@@ -2,6 +2,7 @@ package catalog_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -46,6 +47,15 @@ func metadataFixture(t *testing.T) (*catalog.Store, context.Context, map[string]
 	return store, ctx, ids, pool
 }
 
+// openGenreGate geeft elke film en serie genres zodat de dekkingspoort (B2)
+// openstaat; de tests die genres lezen gaan over iets anders dan de poort.
+func openGenreGate(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+	t.Helper()
+	if _, err := pool.Exec(ctx, `UPDATE media_items SET genres = ARRAY['x'] WHERE kind IN ('movie', 'show') AND genres IS NULL`); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestMetadataDueSkipsDoneAmbiguousAndSeasons(t *testing.T) {
 	store, ctx, ids, _ := metadataFixture(t)
 
@@ -87,6 +97,7 @@ func TestApplyMetadataRespectsFieldPrecedence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	openGenreGate(t, ctx, pool)
 	it, err := store.Item(ctx, ids["alien"])
 	if err != nil {
 		t.Fatal(err)
@@ -236,7 +247,7 @@ func TestRaisingThePassPutsEveryItemBackExceptNothingIsLost(t *testing.T) {
 }
 
 func TestSidecarRanksBelowTheProviderAndPeopleAreStored(t *testing.T) {
-	store, ctx, ids, _ := metadataFixture(t)
+	store, ctx, ids, pool := metadataFixture(t)
 
 	// De .nfo gaat eerst: zet de velden die er nog niet zijn.
 	if err := store.ApplyMetadata(ctx, ids["alien"], catalog.SourceNFO, catalog.MetadataDetails{
@@ -252,6 +263,7 @@ func TestSidecarRanksBelowTheProviderAndPeopleAreStored(t *testing.T) {
 	if err := store.ApplyMetadata(ctx, ids["alien"], catalog.SourceNFO, catalog.MetadataDetails{Summary: "Engels, opnieuw"}); err != nil {
 		t.Fatal(err)
 	}
+	openGenreGate(t, ctx, pool)
 	it, _ := store.Item(ctx, ids["alien"])
 	if *it.Summary != "Nederlands" {
 		t.Fatalf("samenvatting %q; de provider hoort te winnen van de .nfo", *it.Summary)
@@ -285,5 +297,137 @@ func TestMetadataDueCarriesTheMediaPathForSidecars(t *testing.T) {
 		if d.ID == ids["alien"] && (d.MediaRoot != "/m" || d.MediaPath != "Alien (1979)/Alien (1979).mkv") {
 			t.Fatalf("pad ontbreekt: %+v", d)
 		}
+	}
+}
+
+// De dekkingspoort van B2: genres alleen in een bibliotheek die er genoeg van heeft.
+func TestGenresStayHiddenBelowTheCoverageGate(t *testing.T) {
+	store, ctx, ids, pool := metadataFixture(t)
+	// Drie titels (alien, heat, show), genres bij één: 33 procent, onder de 80.
+	if err := store.ApplyMetadata(ctx, ids["alien"], "tmdb", catalog.MetadataDetails{
+		Summary: "tekst", Genres: []string{"Horror"}}); err != nil {
+		t.Fatal(err)
+	}
+	it, _ := store.Item(ctx, ids["alien"])
+	if len(it.Genres) != 0 {
+		t.Fatalf("genres %v zichtbaar bij een dekking van een derde", it.Genres)
+	}
+	if it.Summary == nil {
+		t.Fatal("de poort hoort alleen genres te verbergen, geen samenvatting")
+	}
+
+	lib, _ := store.Libraries(ctx)
+	cov, err := store.MetadataCoverage(ctx, lib[0].ID)
+	if err != nil || cov.Items != 3 || cov.WithGenres != 1 || cov.GateMet || cov.Threshold != 0.8 {
+		t.Fatalf("dekking %+v %v", cov, err)
+	}
+
+	// Bij volle dekking gaat de poort open; de uitslag staat kort in een cache, dus
+	// een nieuwe store (zoals na een herstart) meet opnieuw.
+	openGenreGate(t, ctx, pool)
+	fresh := catalog.NewStore(pool)
+	it, _ = fresh.Item(ctx, ids["alien"])
+	if len(it.Genres) != 1 || it.Genres[0] != "Horror" {
+		t.Fatalf("genres %v bij volle dekking", it.Genres)
+	}
+	cov, _ = fresh.MetadataCoverage(ctx, lib[0].ID)
+	if !cov.GateMet || cov.Ratio != 1 {
+		t.Fatalf("dekking %+v", cov)
+	}
+}
+
+func TestCoverageCountsSidecarContributionAndIsNotFoundForAnUnknownLibrary(t *testing.T) {
+	store, ctx, ids, _ := metadataFixture(t)
+	if _, err := store.MetadataCoverage(ctx, id.New()); !errors.Is(err, catalog.ErrNotFound) {
+		t.Fatalf("onbekende bibliotheek gaf %v", err)
+	}
+	_ = store.ApplyMetadata(ctx, ids["alien"], catalog.SourceNFO, catalog.MetadataDetails{
+		People: []catalog.Person{{Name: "X", Role: "actor"}}})
+	_ = store.ApplyMetadata(ctx, ids["heat"], "tmdb", catalog.MetadataDetails{Summary: "s"})
+	lib, _ := store.Libraries(ctx)
+	cov, _ := store.MetadataCoverage(ctx, lib[0].ID)
+	if cov.WithSidecar != 1 || cov.WithSummary != 1 {
+		t.Fatalf("with_sidecar %d with_summary %d; verwacht 1 en 1", cov.WithSidecar, cov.WithSummary)
+	}
+}
+
+func TestManualMatchRejectAndAttention(t *testing.T) {
+	store, ctx, ids, pool := metadataFixture(t)
+
+	// Alleen films en series: een seizoen kent geen providermatch.
+	if err := store.SetManualMatch(ctx, ids["season"], "tmdb", "1"); !errors.Is(err, catalog.ErrNotFound) {
+		t.Fatalf("seizoen gaf %v, verwacht ErrNotFound", err)
+	}
+	if err := store.SetManualMatch(ctx, id.New(), "tmdb", "1"); !errors.Is(err, catalog.ErrNotFound) {
+		t.Fatalf("onbekend item gaf %v", err)
+	}
+
+	// Een ambigue titel met alternatieven staat in de aandachtslijst.
+	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["alien"], Provider: "tmdb", State: catalog.CandidateAmbiguous, Pass: 3,
+		Details: &catalog.MetadataDetails{Alternatives: []catalog.Alternative{{ExternalID: "348", Title: "Alien", Year: 1979}}}})
+	items, total, err := store.MetadataAttention(ctx, 10)
+	if err != nil || total != 1 || len(items) != 1 || len(items[0].Alternatives) != 1 || items[0].Alternatives[0].ExternalID != "348" {
+		t.Fatalf("aandacht %+v %d %v", items, total, err)
+	}
+
+	// De keuze van een beheerder zet het item aan de beurt met zijn id.
+	if err := store.SetManualMatch(ctx, ids["alien"], "tmdb", "348"); err != nil {
+		t.Fatal(err)
+	}
+	due, _ := store.MetadataDue(ctx, "tmdb", 3, nil, 10)
+	var got *catalog.MetadataTarget
+	for i := range due {
+		if due[i].ID == ids["alien"] {
+			got = &due[i]
+		}
+	}
+	if got == nil || got.ManualExternalID != "348" {
+		t.Fatalf("handmatige keuze niet aan de beurt of zonder id: %+v", due)
+	}
+	if _, total, _ := store.MetadataAttention(ctx, 10); total != 0 {
+		t.Fatalf("een gekozen titel hoort niet meer in de aandachtslijst, total %d", total)
+	}
+
+	// Afwijzen haalt de providervelden en -afbeeldingen weg en laat een sidecar staan.
+	_ = store.ApplyMetadata(ctx, ids["alien"], "tmdb", catalog.MetadataDetails{Summary: "provider", ContentRating: "16"})
+	_ = store.ApplyMetadata(ctx, ids["alien"], catalog.SourceNFO, catalog.MetadataDetails{
+		People: []catalog.Person{{Name: "Weaver", Role: "actor"}}})
+	artID := id.New()
+	_ = store.UpsertProviderArtwork(ctx, catalog.ProviderArtwork{ID: artID, ItemID: ids["alien"], Kind: "poster", Provider: "tmdb",
+		SourceRef: "/p.jpg", FileName: artID.String() + ".jpg", SHA256: "x"})
+
+	files, err := store.RejectMatch(ctx, ids["alien"], "tmdb")
+	if err != nil || len(files) != 1 || files[0] != artID.String()+".jpg" {
+		t.Fatalf("RejectMatch gaf %v %v", files, err)
+	}
+	var summary, rating *string
+	var people []byte
+	_ = pool.QueryRow(ctx, `SELECT summary, content_rating, people FROM media_items WHERE id = $1`, ids["alien"]).Scan(&summary, &rating, &people)
+	if summary != nil || rating != nil || len(people) == 0 {
+		t.Fatalf("na afwijzen: samenvatting %v kijkwijzer %v cast %s", summary, rating, people)
+	}
+	if rows, _ := store.ListProviderArtwork(ctx); len(rows) != 0 {
+		t.Fatal("de providerafbeelding is niet verwijderd")
+	}
+	// Een afgewezen titel komt nooit terug, ook niet bij een hoger rondenummer.
+	if due, _ := store.MetadataDue(ctx, "tmdb", 99, nil, 10); func() bool {
+		for _, d := range due {
+			if d.ID == ids["alien"] {
+				return true
+			}
+		}
+		return false
+	}() {
+		t.Fatal("een afgewezen titel kwam weer aan de beurt")
+	}
+	if items, _, _ := store.MetadataAttention(ctx, 10); len(items) != 1 || items[0].State != catalog.CandidateRejected {
+		t.Fatalf("een afgewezen titel hoort in de lijst te staan om ongedaan te maken: %+v", items)
+	}
+	// Opnieuw kiezen maakt het ongedaan.
+	if err := store.SetManualMatch(ctx, ids["alien"], "tmdb", "348"); err != nil {
+		t.Fatal(err)
+	}
+	if _, total, _ := store.MetadataAttention(ctx, 10); total != 0 {
+		t.Fatal("kiezen na afwijzen hoort de afwijzing op te heffen")
 	}
 }

@@ -128,6 +128,11 @@ const (
 	// kijken om te weten welk woord er verwacht wordt.
 	CodeLibraryConfirmMismatch = "library.confirm_mismatch"
 
+	// CodeInvalidMatch is het antwoord van PUT /items/{id}/metadata-match op een
+	// external_id die geen providernummer is (venster 3, S22.5). Een code in het
+	// domein library en geen nieuw domein: het gaat over de catalogus.
+	CodeInvalidMatch = "library.invalid_match"
+
 	CodeVersionUnavailable  = "playback.version_unavailable"
 	CodeRangeNotSatisfiable = "playback.range_not_satisfiable"
 	CodeNotPlayable         = "playback.not_playable"
@@ -221,6 +226,7 @@ var errorTable = map[string]struct {
 	CodeLibraryConfigManaged:    {http.StatusConflict, false},
 	CodeLibraryNotConfigManaged: {http.StatusConflict, false},
 	CodeLibraryConfirmMismatch:  {http.StatusConflict, false},
+	CodeInvalidMatch:            {http.StatusBadRequest, false},
 	CodeJobNotCancellable:       {http.StatusConflict, false},
 
 	CodeVersionUnavailable:  {http.StatusConflict, true},

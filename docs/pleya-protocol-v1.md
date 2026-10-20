@@ -558,6 +558,7 @@ contract keurt ze af.
 | `library.confirm_mismatch` | 409 | nee | `DELETE /libraries/{id}` zonder of met een foute `confirm`; `details.expected` draagt de titel die er had moeten staan. Een eigen code naast `server.confirm_mismatch` (die blijft voor `POST /server/rotate-signing-key`), zodat een client niet op het pad hoeft te kijken om te weten welk woord verwacht wordt (K rij 16, S2.2) |
 | `storage.root_not_offered` | 400 | nee | `POST` en `PATCH /libraries`: een `root_path` overlapt met een bestaande root of met een andere root in dezelfde aanvraag, valt niet onder een van de mounts uit `PLEYA_SERVER_MEDIA_DIRS` (S2.3, hoofdstuk 17e.4), of de aanvraagbody zelf is onleesbaar |
 | `job.not_cancellable` | 409 | nee | de job is al afgerond, of dezelfde dedupe-sleutel staat al in de wachtrij; `details.reason` zegt welke |
+| `library.invalid_match` | 400 | nee | `PUT /items/{id}/metadata-match`: `external_id` is geen positief geheel getal tot tien cijfers, of de body is geen gesloten `{external_id}`; een geweigerde poging staat als `denied` in het audit (S22.5) |
 
 `auth.permission_not_allowed` is de ene code in het `auth.`-domein die geen `404` is, en dat is geen
 gat in de regel hieronder. Die regel verbergt het bestaan van iets dat de aanvrager niet mag zien;
@@ -1187,6 +1188,10 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 38 | `POST /jobs/{id}/retry` | direct id | klasse `admin`, `404` voor de rest (S2.4) |
 | 39 | `GET /watch-history` | wat huisgenoten de laatste dagen hebben afgekeken | klasse `admin`, `404` voor de rest; `GET /watch-state` blijft de eigen lijst van iedere gebruiker (DEC-143) |
 | 40 | `POST /libraries/{id}/adopt` | direct id, en het stilleggen van de `.env`-regel voor een bibliotheek | klasse `admin`, `404` voor de rest; geen body, en de overname verandert uitsluitend `managed` (S2.5) |
+| 41 | `GET /libraries/{id}/metadata-coverage` | de dekking van beschrijvende velden en de genrepoort van één bibliotheek | klasse `admin`, `404` voor de rest, en `404` voor een bibliotheek die niet bestaat (venster 3, B5) |
+| 42 | `GET /metadata/attention` | de titels die niet vanzelf een providermatch kregen, of die een beheerder afwees | klasse `admin`, `404` voor de rest; afgekapt op `limit` (standaard 100, hoogstens 500), `total` is het werkelijke aantal (S22.5) |
+| 43 | `PUT /items/{id}/metadata-match` | de keuze van een beheerder voor een providernummer, en het meteen ophalen van die titel | klasse `admin`, `404` voor de rest en voor een item dat geen film of serie is; alleen een positief geheel getal komt door, anders `library.invalid_match` (S22.5) |
+| 44 | `DELETE /items/{id}/metadata-match` | het wegnemen van wat de provider bij dit item zette, en het nooit meer terugkomen | klasse `admin`, `404` voor de rest en voor een item dat geen film of serie is; idempotent; velden uit een sidecar blijven staan (S22.5) |
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
 zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
@@ -1922,8 +1927,12 @@ Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries
 | `GET /pleya/v1/auth/api-tokens` | `authenticated` op zichzelf, `admin` via `?user_id=` | nee |
 | `GET /pleya/v1/audit` | `admin` | ja |
 | `GET /pleya/v1/watch-history` | `admin` | nee |
+| `GET /pleya/v1/libraries/{id}/metadata-coverage` | `admin` | nee |
+| `GET /pleya/v1/metadata/attention` | `admin` | nee |
+| `PUT /pleya/v1/items/{id}/metadata-match` | `admin` | ja |
+| `DELETE /pleya/v1/items/{id}/metadata-match` | `admin` | ja |
 
-Vijftig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Vierenvijftig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit
@@ -1932,7 +1941,8 @@ bibliotheek-CRUD van S2.2, en de laatste twee `GET /storage/roots` en `POST /sto
 van S2.3 (samen J.3, venster 2, rijen 7 en 8), en de zes van S2.4: starten van een scan, de
 scanlijst en het scandetail, de joblijst, annuleren en opnieuw proberen (hoofdstuk 17f). De overname
 `POST /libraries/{id}/adopt` van S2.5 (hoofdstuk 17e.5) is de tiende en laatste wijziging van venster 2.
-De laatste in de tabel is `GET /watch-history` (17b.7), buiten venster 2 toegevoegd door DEC-143.
+`GET /watch-history` (17b.7) kwam buiten venster 2 door DEC-143. De laatste vier zijn de metadatacorrecties
+van venster 3: de dekking (B5) en de aandachtslijst, de keuze van een beheerder en het afwijzen (S22.5, DEC-155).
 `GET /pleya/v1/server` en `GET /pleya/v1/libraries` staan er elk maar één keer in en groeien met de
 klasse van de aanvrager, niet met een tweede regel. De rest van venster 2 landt bij de commitgrens
 die hem bedient.

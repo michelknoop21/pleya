@@ -1,0 +1,28 @@
+{
+  "items": [
+    {
+      "item_id": "0198f2b0-1111-7000-8000-000000000001",
+      "library_id": "0198f2a0-0001-7000-8000-000000000001",
+      "kind": "movie",
+      "title": "Fast & Furious 10",
+      "year": 2023,
+      "state": "unmatched",
+      "alternatives": [
+        { "external_id": "385687", "title": "Fast X", "year": 2023 },
+        { "external_id": "385688", "title": "Fast & Furious 10: Behind the Scenes", "year": null }
+      ],
+      "updated_at": "2026-10-20T08:15:34Z"
+    },
+    {
+      "item_id": "0198f2b0-1111-7000-8000-000000000002",
+      "library_id": "0198f2a0-0001-7000-8000-000000000001",
+      "kind": "movie",
+      "title": "Featurettes",
+      "year": null,
+      "state": "rejected",
+      "alternatives": [],
+      "updated_at": "2026-10-20T09:02:10Z"
+    }
+  ],
+  "total": 2
+}

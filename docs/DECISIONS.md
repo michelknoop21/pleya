@@ -4836,3 +4836,26 @@ punt 1 bijgesteld; de overige regels van RB-27 blijven.
 
 **Consequences:** de Flutter-app stuurt al `?width=` en krijgt na deze uitrol kleinere afbeeldingen zonder nieuwe
 build. De boekcover (A5) gebruikt dezelfde ladder zodra pakket A landt; er is geen contractwijziging voor nodig.
+
+## DEC-155: dekkingspoort, aandachtslijst en handmatige correcties landen in venster 3
+
+**Date:** 2026-10-20
+**Status:** accepted. Opdracht van Michel op 20 oktober 2026 ("de rest van M2b: dekkingspoort, correcties voor de 13 openstaande titels"). Verruimt [DEC-152](#dec-152-protocolvenster-3-opent-voor-de-catalogusrijen-en-m2a-landt-als-eerste-deel) met vier operaties en één foutcode.
+
+**Decision:**
+
+1. **B5, de dekkingspoort.** `GET /libraries/{id}/metadata-coverage` (klasse `admin`) meldt hoeveel films of series
+   samenvatting, genres en sidecar-bijdrage hebben. Onder 80 procent genres laat de server `Item.genres` weg (B2);
+   samenvatting en kijkwijzer vallen er niet onder. De uitslag staat vijf minuten in een geheugencache per
+   bibliotheek; een mislukte meting sluit de poort niet.
+2. **S22.5 in kleine vorm.** `GET /metadata/attention` toont wat niet vanzelf matcht, faalde of is afgewezen, met de beste
+   vijf zoektreffers als alternatieven. `PUT /items/{id}/metadata-match` legt de keuze van een beheerder vast (die gaat voor
+   op een `.nfo`-id en op zoeken) en wekt de ronde. `DELETE` wijst af: de velden en afbeeldingen van de provider gaan weg,
+   sidecarwaarden blijven, en de titel komt nooit meer vanzelf aan de beurt, ook niet bij een nieuw rondenummer.
+3. **Eén nieuwe foutcode, `library.invalid_match`** (400), in het bestaande domein `library`. Een `external_id` is een positief
+   geheel getal tot tien cijfers en niets anders, want hij komt later in een providerpad.
+4. **Migratie `0016`**: toestand `rejected` en de vlag `manual` op `metadata_candidates`. Rondenummer 3 zet elk item één keer
+   opnieuw aan de beurt zodat de alternatieven ook voor de bestaande ambigue en niet-gevonden titels worden vastgelegd.
+5. Tot het beheerscherm in de webclient (S10) bestaat, loopt dit via `curl` met een admintoken. Een app-scherm komt er niet.
+
+**Consequences:** matrixregels 41 tot en met 44 (vierenvijftig operaties). Geen bestaand veld of enum verandert; alles is additief.

@@ -17,6 +17,10 @@ import (
 // Store is de toegang tot de catalogus.
 type Store struct {
 	pool *pgxpool.Pool
+
+	// genres onthoudt per bibliotheek of de genrepoort open staat (B2), zodat een
+	// pagina items er niet elke keer een telling voor draait.
+	genres genreGate
 }
 
 // NewStore bouwt de opslag rond de pool.

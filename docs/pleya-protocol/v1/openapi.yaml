@@ -1055,6 +1055,121 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /libraries/{library_id}/metadata-coverage:
+    get:
+      tags: [administration]
+      operationId: getMetadataCoverage
+      summary: Hoeveel titels van een bibliotheek beschrijvende velden hebben.
+      description: |
+        Klasse `admin` (venster 3, pakket B5). Telt films of series van één
+        bibliotheek. `ratio` is het aandeel met genres; de poort staat open
+        (`gate_met`) vanaf `threshold`. Onder de drempel laat de server `genres`
+        op `Item` weg, want genres bij te weinig titels maken een genrefilter
+        misleidend. Samenvatting en kijkwijzer vallen niet onder de poort.
+      parameters:
+        - $ref: "#/components/parameters/LibraryId"
+      responses:
+        "200":
+          description: De dekking.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MetadataCoverage" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found voor wie geen admin is, of library.not_found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /metadata/attention:
+    get:
+      tags: [administration]
+      operationId: listMetadataAttention
+      summary: Titels waar een beheerder naar moet kijken.
+      description: |
+        Klasse `admin` (S22.5). Titels die niet vanzelf een providermatch kregen
+        (`ambiguous`, `unmatched`), waarvan het ophalen faalde (`failed`), of die
+        een beheerder afwees (`rejected`). Bij `ambiguous` en `unmatched` staan de
+        beste zoektreffers als `alternatives`, in de volgorde van de provider.
+        Afgekapt op `limit`; `total` is het werkelijke aantal.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: De lijst.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MetadataAttentionList" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /items/{item_id}/metadata-match:
+    put:
+      tags: [administration]
+      operationId: setMetadataMatch
+      summary: Kies welke titel van de provider bij dit item hoort.
+      description: |
+        Klasse `admin` (S22.5). Alleen een film of een serie. De keuze gaat voor
+        op een id uit een sidecar en op zoeken; de server haalt de gegevens van
+        die titel meteen op en past ze toe (antwoord `202`). Kiezen na een
+        afwijzing heft de afwijzing op. Een `external_id` die geen positief
+        geheel getal is geeft `library.invalid_match`.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetMetadataMatchRequest" }
+      responses:
+        "202":
+          description: De keuze staat vast; het ophalen gebeurt op de achtergrond.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MetadataMatch" }
+        "400":
+          description: library.invalid_match.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found voor wie geen admin is, of library.not_found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [administration]
+      operationId: clearMetadataMatch
+      summary: Wijs de providermatch af.
+      description: |
+        Klasse `admin` (S22.5). Haalt weg wat de provider bij dit item zette
+        (samenvatting, genres, kijkwijzer, cast, gecachte afbeeldingen) en zorgt
+        dat de titel nooit meer vanzelf aan de beurt komt. Wat een sidecar zette
+        blijft staan. Idempotent.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "200":
+          description: De titel staat op `rejected`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MetadataMatch" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found voor wie geen admin is, of library.not_found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /libraries/{library_id}/scan:
     post:
       tags: [administration]
@@ -2683,6 +2798,81 @@ components:
           oneOf:
             - { $ref: "#/components/schemas/UserState" }
             - { type: "null" }
+
+    MetadataCoverage:
+      type: object
+      required: [items, with_sidecar, with_summary, with_genres, ratio, threshold, gate_met]
+      properties:
+        items: { type: integer, minimum: 0, description: Films of series in de bibliotheek. }
+        with_sidecar:
+          type: integer
+          minimum: 0
+          description: Titels waar een sidecar minstens één veld aan bijdroeg.
+        with_summary: { type: integer, minimum: 0 }
+        with_genres: { type: integer, minimum: 0 }
+        ratio: { type: number, minimum: 0, maximum: 1, description: Aandeel titels met genres. }
+        threshold: { type: number, description: De drempel van de genrepoort. }
+        gate_met: { type: boolean }
+
+    MetadataAlternative:
+      type: object
+      required: [external_id, title, year]
+      properties:
+        external_id: { type: string }
+        title: { type: string }
+        year: { type: [integer, "null"] }
+
+    MetadataAttentionState:
+      type: string
+      enum: [ambiguous, unmatched, failed, rejected]
+      x-unknown-safe: true
+
+    MetadataAttention:
+      type: object
+      required: [item_id, library_id, kind, title, year, state, alternatives, updated_at]
+      properties:
+        item_id: { $ref: "#/components/schemas/Id" }
+        library_id: { $ref: "#/components/schemas/Id" }
+        kind: { $ref: "#/components/schemas/ItemKind" }
+        title: { type: string }
+        year: { type: [integer, "null"] }
+        state: { $ref: "#/components/schemas/MetadataAttentionState" }
+        alternatives:
+          type: array
+          items: { $ref: "#/components/schemas/MetadataAlternative" }
+        updated_at: { $ref: "#/components/schemas/Timestamp" }
+
+    MetadataAttentionList:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/MetadataAttention" }
+        total: { type: integer, minimum: 0 }
+
+    SetMetadataMatchRequest:
+      type: object
+      required: [external_id]
+      additionalProperties: false
+      properties:
+        external_id:
+          type: string
+          pattern: "^[1-9][0-9]{0,9}$"
+          description: Het nummer van de titel bij de provider van deze server.
+
+    MetadataMatchState:
+      type: string
+      enum: [matched, rejected]
+      x-unknown-safe: true
+
+    MetadataMatch:
+      type: object
+      required: [item_id, state, external_id]
+      properties:
+        item_id: { $ref: "#/components/schemas/Id" }
+        state: { $ref: "#/components/schemas/MetadataMatchState" }
+        external_id: { type: [string, "null"] }
 
     ScanState:
       type: string
