@@ -24,6 +24,7 @@ import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/unified_catalogs.dart';
 import 'package:pleya/screens/home/mobile_catalog_screen.dart';
+import 'package:pleya/screens/home/mobile_catalog_widgets.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
@@ -174,6 +175,7 @@ void main() {
     bool useEmpty = false,
     double width = 393,
     double textScale = 1,
+    bool pumpAfter = true,
   }) async {
     tester.view.physicalSize = Size(width, 852);
     tester.view.devicePixelRatio = 1.0;
@@ -203,7 +205,7 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
+    if (pumpAfter) await tester.pump();
   }
 
   /// Mounts the screen the way `_TitleRow` does: pushed with
@@ -378,6 +380,24 @@ void main() {
       await scrollBy(tester, -4000);
       final last = tester.getRect(find.text('Film 17'));
       expect(last.bottom, lessThanOrEqualTo(852 - 34), reason: 'the last row scrolls clear of the home indicator');
+    });
+
+    testWidgets('pull-to-refresh starts below the panel, not behind it', (tester) async {
+      films(18);
+      await pumpWithInsets(tester);
+
+      final indicator = tester.widget<RefreshIndicator>(find.byType(RefreshIndicator));
+      expect(indicator.edgeOffset, greaterThan(100), reason: 'the spinner settles under the translucent panel');
+      expect(indicator.edgeOffset, closeTo(tester.getRect(find.byKey(catalogTopMenuKey)).bottom - 14, 1.5));
+    });
+
+    testWidgets('the grid is not shown a frame before the panel is measured', (tester) async {
+      films(18);
+      await pumpCatalog(tester, pumpAfter: false);
+      // First frame after mount: nothing is visible yet, so nothing can jump.
+      expect(tester.widget<Opacity>(find.byKey(const ValueKey('catalog.body'))).opacity, 0);
+      await settle(tester);
+      expect(tester.widget<Opacity>(find.byKey(const ValueKey('catalog.body'))).opacity, 1);
     });
 
     testWidgets('a list that barely overflows never flaps', (tester) async {

@@ -13,11 +13,15 @@ class MobileRefreshScope extends StatelessWidget {
   final Future<void> Function() onRefresh;
   final Widget child;
 
-  const MobileRefreshScope({super.key, required this.onRefresh, required this.child});
+  /// Where the spinner settles, for screens with an overlay on top.
+  final double edgeOffset;
+
+  const MobileRefreshScope({super.key, required this.onRefresh, required this.child, this.edgeOffset = 0});
 
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
+      edgeOffset: edgeOffset,
       onRefresh: () {
         Haptics.light();
         return onRefresh();

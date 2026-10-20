@@ -21,7 +21,6 @@
 library;
 
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -45,6 +44,7 @@ import '../../screens/tv/tv_unified_activation.dart';
 import '../../services/unified_catalog/mobile_media_source_picker_route.dart';
 import '../../services/unified_catalog/unified_artwork_prefetcher.dart';
 import '../../services/unified_catalog/unified_catalog_snapshot.dart';
+import 'mobile_catalog_widgets.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../services/unified_catalog/unified_catalog_query_store.dart';
 import '../../theme/mono_tokens.dart';
@@ -139,6 +139,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   /// and carries this much padding on top, so at offset 0 the first row starts
   /// below it.
   double _panelHeight = 0;
+  bool _panelMeasured = false;
   UnifiedArtworkPrefetcher? _prefetcher;
 
   UnifiedCatalogPreferences _preferences = UnifiedCatalogPreferences.defaults;
@@ -433,14 +434,22 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
               // home indicator; only the panel and two fades sit above it.
               body: Stack(
                 children: [
-                  Positioned.fill(child: _buildBody(filters)),
+                  // Hidden until the panel is measured, so the grid does not
+                  // jump down one frame after it first appears.
+                  Positioned.fill(
+                    child: Opacity(
+                      key: const ValueKey('catalog.body'),
+                      opacity: _panelMeasured ? 1 : 0,
+                      child: _buildBody(filters),
+                    ),
+                  ),
                   Positioned(
                     top: 0,
                     left: 0,
                     right: 0,
                     // Only while a grid is scrolling: an empty or loading body
                     // has nothing to scroll back with, so the panel stays put.
-                    child: _CollapsibleTopPanel(
+                    child: CatalogTopPanel(
                       collapsed: _headerHidden && _catalog.snapshot.groups.isNotEmpty,
                       background: background,
                       measureKey: _panelKey,
@@ -465,7 +474,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
                     left: 0,
                     right: 0,
                     height: safe.top + 12,
-                    child: _EdgeFade(color: background, fromTop: true),
+                    child: CatalogEdgeFade(color: background, fromTop: true),
                   ),
                   // Home indicator zone.
                   Positioned(
@@ -473,7 +482,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
                     left: 0,
                     right: 0,
                     height: safe.bottom + 16,
-                    child: _EdgeFade(color: background, fromTop: false),
+                    child: CatalogEdgeFade(color: background, fromTop: false),
                   ),
                 ],
               ),
@@ -489,8 +498,11 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
       if (!mounted) return;
       final box = _panelKey.currentContext?.findRenderObject();
       if (box is! RenderBox || !box.hasSize) return;
-      if ((box.size.height - _panelHeight).abs() < 0.5) return;
-      setState(() => _panelHeight = box.size.height);
+      if (_panelMeasured && (box.size.height - _panelHeight).abs() < 0.5) return;
+      setState(() {
+        _panelHeight = box.size.height;
+        _panelMeasured = true;
+      });
     });
   }
 
@@ -626,7 +638,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     if (!_preferencesLoaded || (_catalog.isInitialLoading && snapshot.groups.isEmpty)) {
       return Padding(
         padding: EdgeInsets.only(top: _panelHeight),
-        child: _CatalogSkeletonGrid(cardWidth: _cardWidth(MediaQuery.sizeOf(context).width)),
+        child: CatalogSkeletonGrid(cardWidth: _cardWidth(MediaQuery.sizeOf(context).width)),
       );
     }
 
@@ -641,7 +653,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
 
   Widget _buildEmptyState(UnifiedCatalogFilterSelection filters, UnifiedCatalogSnapshot snapshot) {
     if (snapshot.initialLoadFailed || _catalog.loadFailed) {
-      return _EmptyState(
+      return CatalogEmptyState(
         title: t.unifiedCatalog.states.errorTitle,
         body: t.unifiedCatalog.states.errorBody,
         actionLabel: t.common.retry,
@@ -649,19 +661,21 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
       );
     }
     if (!filters.isEmpty) {
-      return _EmptyState(
+      return CatalogEmptyState(
         title: t.unifiedCatalog.states.filterEmptyTitle,
         body: t.unifiedCatalog.states.filterEmptyBody,
         actionLabel: t.unifiedCatalog.states.clearFilters,
         onAction: () => _updatePreferences(_preferences.copyWith(filters: UnifiedCatalogFilterSelection.empty)),
       );
     }
-    return _EmptyState(title: t.unifiedCatalog.states.emptyTitle, body: t.unifiedCatalog.states.emptyBody);
+    return CatalogEmptyState(title: t.unifiedCatalog.states.emptyTitle, body: t.unifiedCatalog.states.emptyBody);
   }
 
   Widget _buildGrid(UnifiedCatalogFilterSelection filters, UnifiedCatalogSnapshot snapshot) {
     return MobileRefreshScope(
       onRefresh: _catalog.refresh,
+      // The panel overlays the grid, so the spinner starts below it.
+      edgeOffset: _panelHeight,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final cardWidth = _cardWidth(constraints.maxWidth);
@@ -721,179 +735,6 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-/// Lets tests find the top panel.
-@visibleForTesting
-const catalogTopMenuKey = ValueKey<String>('catalog.top_menu');
-
-/// The catalogue's top panel (status bar inset, title row, chips, count line)
-/// as a translucent layer over the grid, in the tab bar's frosted idiom: a
-/// blur plus a tint of the page background, ending in a soft fade. It slides
-/// off the top when [collapsed] and, being an overlay, never changes the
-/// grid's viewport, so collapsing cannot move or re-clamp the scroll position.
-class _CollapsibleTopPanel extends StatelessWidget {
-  const _CollapsibleTopPanel({
-    required this.collapsed,
-    required this.background,
-    required this.measureKey,
-    required this.child,
-  });
-
-  final bool collapsed;
-  final Color background;
-  final GlobalKey measureKey;
-  final Widget child;
-
-  static const double _fadeTail = 14;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedSlide(
-      offset: collapsed ? const Offset(0, -1) : Offset.zero,
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutCubic,
-      child: ExcludeSemantics(
-        excluding: collapsed,
-        child: Column(
-          key: catalogTopMenuKey,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                child: ColoredBox(
-                  color: background.withValues(alpha: 0.78),
-                  child: KeyedSubtree(key: measureKey, child: child),
-                ),
-              ),
-            ),
-            SizedBox(
-              height: _fadeTail,
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [background.withValues(alpha: 0.78), background.withValues(alpha: 0)],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// A fade from the page background to transparent, for the status bar and
-/// home indicator zones: the grid scrolls through it, the system chrome on top
-/// stays readable.
-class _EdgeFade extends StatelessWidget {
-  const _EdgeFade({required this.color, required this.fromTop});
-
-  final Color color;
-  final bool fromTop;
-
-  @override
-  Widget build(BuildContext context) {
-    final solid = color.withValues(alpha: 0.85);
-    final clear = color.withValues(alpha: 0);
-    return IgnorePointer(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: fromTop ? Alignment.topCenter : Alignment.bottomCenter,
-            end: fromTop ? Alignment.bottomCenter : Alignment.topCenter,
-            colors: [solid, clear],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The 2:3 grid on its own geometry, before the first round of results
-/// lands, same reasoning `TvCatalogSkeletonGrid` gives: the placeholder is
-/// the page's own layout, not a centred spinner that gets replaced by a
-/// differently-shaped wall of posters a frame later.
-class _CatalogSkeletonGrid extends StatelessWidget {
-  const _CatalogSkeletonGrid({required this.cardWidth});
-
-  final double cardWidth;
-
-  @override
-  Widget build(BuildContext context) {
-    final cardHeight = cardWidth / (2 / 3) + MediaCardGridLayout.textExtentFor(context);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final rowExtent = cardHeight + mobileRailGutter;
-        final rows = constraints.maxHeight.isFinite ? (constraints.maxHeight / rowExtent).ceil().clamp(1, 6) : 3;
-        return SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: mobileRailInset, vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var row = 0; row < rows; row++) ...[
-                if (row > 0) const SizedBox(height: mobileRailGutter),
-                Row(
-                  children: [
-                    for (var column = 0; column < 3; column++) ...[
-                      if (column > 0) const SizedBox(width: mobileRailGutter),
-                      SizedBox(width: cardWidth, height: cardHeight, child: const SkeletonMediaCard()),
-                    ],
-                  ],
-                ),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.title, required this.body, this.actionLabel, this.onAction});
-
-  final String title;
-  final String body;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final tk = tokens(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: tk.text),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              body,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: tk.textMuted),
-            ),
-            if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 16),
-              FilledButton(onPressed: onAction, child: Text(actionLabel!)),
-            ],
-          ],
-        ),
       ),
     );
   }
