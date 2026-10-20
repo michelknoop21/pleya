@@ -29,9 +29,8 @@ steps:
   - assert: {id: player.play_pause, state: {playing: false}}
   - assert: {id: player.play_pause, insideViewport: true, minimumTapTarget: 44}
   - snapshot: flat-paused
-  # Settings first: on main, any sheet opened after the handoff picker has
-  # closed renders a framework assertion instead (reproduced without this
-  # change, see the A-23 report), so the picker comes last.
+  # Settings first, the picker last. The reverse order (a sheet after the
+  # picker) is covered by `ios.player.sheets-after-handoff`.
   - tap: {id: player.settings_button}
   - settle: 1500
   - snapshot: flat-settings
