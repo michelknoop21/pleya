@@ -1,0 +1,71 @@
+name: ios.player.sheets-glass
+target: ios-sim
+# The player's sheets with Liquid Glass on (A-23, Michel on 20 October 2026):
+# the Apple TV picker and the settings sheet as a translucent plate over the
+# paused film, 440 wide in landscape instead of the 700 desktop box. Same walk
+# as `ios.glass.player` up to the Films landing; the handoff picker finds no Apple TV on a simulator,
+# so its snapshot is the empty state after the eight-second search.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - settle: 2000
+  - tap: {id: nav.myPleya}
+  - wait_until: {id: screen.my_pleya, timeout: 10000}
+  - settle: 1000
+  - tap: {id: "my_pleya.tile[settings]"}
+  - wait_until: {id: screen.settings, timeout: 10000}
+  - settle: 1000
+  - tap: {id: "settings.tile[appearance]"}
+  - wait_until: {id: "my_pleya.section.tile[setting.liquid_glass]", timeout: 10000}
+  - settle: 500
+  - tap: {id: "my_pleya.section.tile[setting.liquid_glass]"}
+  - settle: 500
+  - assert: {id: "my_pleya.section.tile[setting.liquid_glass]", state: {value: true}}
+  # Back to Settings through the app bar's arrow (no id, see
+  # `ios.glass.tabbar`), then Films through the bar.
+  - tap: {x: 28, y: 90}
+  - wait_until: {id: screen.settings, timeout: 10000}
+  - settle: 1000
+  # A tap on Films by id right after the pop does not always land (two of
+  # five runs stayed on Settings), so the second tap goes by coordinate, the
+  # Films slot of the bar on a 402x874 iPhone 17 Pro; a tap on the open tab
+  # only scrolls it to the top.
+  - settle: 1500
+  - tap: {id: nav.movies}
+  - settle: 1500
+  - tap: {x: 247, y: 821}
+  - wait_until: {id: screen.movies, timeout: 15000}
+  - settle: 3500
+  - snapshot: glass-films-landing
+  # Straight from the Films landing: the first poster of its first rail.
+  - tap: {id: "landing.rail.item[movies.0.0]"}
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - settle: 1500
+  - tap: {id: media-detail.play}
+  # The player turns the simulator to landscape; let that land before reading the tree.
+  - settle: 4000
+  - wait_until: {id: player.play_pause, timeout: 25000}
+  # Pause first: the fixture clip is fifteen seconds.
+  - tap: {id: player.play_pause}
+  - settle: 500
+  - assert: {id: player.play_pause, state: {playing: false}}
+  - assert: {id: player.play_pause, insideViewport: true, minimumTapTarget: 44}
+  - snapshot: glass-paused
+  # Settings first: on main, any sheet opened after the handoff picker has
+  # closed renders a framework assertion instead (reproduced without this
+  # change, see the A-23 report), so the picker comes last.
+  - tap: {id: player.settings_button}
+  - settle: 1500
+  - snapshot: glass-settings
+  # Close through the barrier, top left, clear of the 440-wide sheet.
+  - tap: {x: 40, y: 40}
+  - settle: 2500
+  - assert: {id: player.handoff_button, insideViewport: true}
+  - tap: {id: player.handoff_button}
+  # Discovery runs eight seconds before the picker shows its empty state.
+  - settle: 10000
+  - snapshot: glass-handoff

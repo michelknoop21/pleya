@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pleya/widgets/app_icon.dart';
 
+import '../../automation/automation_node.dart';
 import '../../focus/focusable_wrapper.dart';
 
 /// A standardized button for video player controls with improved tap targets.
@@ -99,6 +100,10 @@ class VideoControlButton extends StatelessWidget {
         // App-wide focus language: the standard white ring, same as posters/nav.
         child: result,
       );
+    } else if (automationId != null) {
+      // No focus node on a phone or tablet, so no FocusableWrapper to declare
+      // the id; a scenario still has to find the button there (A-23).
+      result = AutomationNode(id: automationId, role: 'button', label: semanticLabel, child: result);
     }
 
     return result;
