@@ -1663,6 +1663,43 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /transcode-sessions:
+    get:
+      tags: [administration]
+      operationId: listTranscodeSessions
+      summary: De lopende omzetsessies, het maximum en de hardwarestatus.
+      description: |
+        Klasse `admin`, `404` voor de rest (venster 5 deel 2, S18.5). Alleen
+        aanwezig wanneer `capabilities.transcode` waar is. `hardware.accel` is
+        `none` wanneer opstarten geen werkende versnelling vond, met de reden in
+        `hardware.reason`; wie versnelling verwacht ziet hier waarom hij ontbreekt.
+      responses:
+        "200":
+          description: De sessies.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TranscodeSessionList" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /transcode-sessions/{session_id}:
+    delete:
+      tags: [administration]
+      operationId: stopTranscodeSession
+      summary: Stop de omzetsessie van wie dan ook.
+      description: |
+        Klasse `admin`. Het proces stopt en de bestanden verdwijnen; de speler
+        van die sessie krijgt `404` op zijn volgende aanvraag. Komt in het
+        auditlog als `stopTranscodeSession`.
+      parameters:
+        - $ref: "#/components/parameters/PlaybackSessionId"
+      responses:
+        "204": { description: De sessie is gestopt. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /items/{item_id}:
     get:
       tags: [library]
@@ -3268,6 +3305,33 @@ components:
           type: array
           minItems: 1
           items: { $ref: "#/components/schemas/PlaybackReason" }
+
+    TranscodeHardware:
+      type: object
+      required: [accel, reason]
+      properties:
+        accel: { type: string, enum: [none, vaapi], x-unknown-safe: true }
+        reason: { type: [string, "null"] }
+
+    TranscodeSession:
+      type: object
+      required: [id, user_id, version_id, mode, hw_accel, started_at, last_heartbeat_at]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        user_id: { $ref: "#/components/schemas/Id" }
+        version_id: { $ref: "#/components/schemas/Id" }
+        mode: { type: string, enum: [remux, direct_stream, transcode], x-unknown-safe: true }
+        hw_accel: { type: [string, "null"] }
+        started_at: { type: string, format: date-time }
+        last_heartbeat_at: { type: string, format: date-time }
+
+    TranscodeSessionList:
+      type: object
+      required: [max_sessions, hardware, items]
+      properties:
+        max_sessions: { type: integer, minimum: 0 }
+        hardware: { $ref: "#/components/schemas/TranscodeHardware" }
+        items: { type: array, items: { $ref: "#/components/schemas/TranscodeSession" } }
 
     MetadataAttentionState:
       type: string

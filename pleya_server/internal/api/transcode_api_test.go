@@ -210,3 +210,40 @@ func TestPlaylistCarriesTheStreamTokenToItsSegments(t *testing.T) {
 		t.Fatalf("de verwijzingen dragen het token niet: %s", body)
 	}
 }
+
+// Beheer ziet alle sessies en de hardwarestatus, en kan er een van een ander
+// stoppen. Een lid ziet niets van dit oppervlak.
+func TestAdminSeesAndStopsTranscodeSessions(t *testing.T) {
+	e, m := transcodeEnv(t, 2)
+	plan := e.transcodePlan(e.findMovie("Grease").ID)
+
+	var list api.TranscodeSessionList
+	e.getJSON("/pleya/v1/transcode-sessions", "TranscodeSessionList", http.StatusOK, &list)
+	if list.MaxSessions != 2 || len(list.Items) != 1 || list.Items[0].ID != *plan.SessionID || list.Items[0].Mode != "transcode" {
+		t.Fatalf("lijst %+v", list)
+	}
+	if list.Hardware.Accel != "none" {
+		t.Fatalf("hardware %+v", list.Hardware)
+	}
+
+	member := e.tokenFor(e.createUser("member", "lid"))
+	if rec := e.do(http.MethodGet, "/pleya/v1/transcode-sessions", nil, asUser(member)); rec.Code != http.StatusNotFound {
+		t.Fatalf("lid zag de lijst: %d", rec.Code)
+	}
+	if rec := e.do(http.MethodDelete, "/pleya/v1/transcode-sessions/"+*plan.SessionID, nil, asUser(member)); rec.Code != http.StatusNotFound {
+		t.Fatalf("lid stopte een sessie: %d", rec.Code)
+	}
+	if len(m.List()) != 1 {
+		t.Fatal("een geweigerde aanvraag stopte de sessie toch")
+	}
+
+	if rec := e.do(http.MethodDelete, "/pleya/v1/transcode-sessions/"+*plan.SessionID, nil); rec.Code != http.StatusNoContent {
+		t.Fatalf("beheer stoppen gaf %d", rec.Code)
+	}
+	if len(m.List()) != 0 {
+		t.Fatal("de sessie loopt nog")
+	}
+	if rec := e.do(http.MethodDelete, "/pleya/v1/transcode-sessions/"+*plan.SessionID, nil); rec.Code != http.StatusNotFound {
+		t.Fatalf("tweede keer stoppen gaf %d", rec.Code)
+	}
+}

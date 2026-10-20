@@ -422,6 +422,11 @@
       "file": "playback_plan_transcode.json",
       "schema": "PlaybackPlan",
       "note": "S18: alleen het geluid wordt omgezet, met een sessie en een HLS-afspeellijst"
+    },
+    {
+      "file": "transcode_sessions.json",
+      "schema": "TranscodeSessionList",
+      "note": "S18.5: GET /transcode-sessions, klasse admin, zonder versnelling en met de reden"
     }
   ]
 }

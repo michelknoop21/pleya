@@ -466,7 +466,7 @@ func startTranscoder(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool
 	}
 	m, err := transcode.New(transcode.Options{
 		FFmpegPath: cfg.FFmpegPath, Dir: cfg.TranscodeDir, Max: cfg.TranscodeMaxSessions,
-		HW: hw.Accel, RenderNode: hw.Node, Recorder: transcode.NewStore(pool), Log: log,
+		HW: hw.Accel, RenderNode: hw.Node, HWReason: hw.Reason, Recorder: transcode.NewStore(pool), Log: log,
 	})
 	if err != nil {
 		startup.Warn("omzetten staat uit", slog.String("error", err.Error()))

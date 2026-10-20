@@ -125,6 +125,9 @@ type matrixFixture struct {
 
 	// S18: een lopende omzetsessie van de owner, voor regel 47 tot en met 49.
 	playbackSessionID string
+	// freshSession start een nieuwe omzetsessie van de owner en geeft zijn id,
+	// voor de beheerprobes (regel 51) die de sessie stoppen.
+	freshSession func() string
 
 	// S2.4: de laatste scan van libraryID, een afgeronde job (cancel geeft 409)
 	// en een pending scanjob met dedupe scan:<libraryID> (POST /scan geeft
@@ -352,6 +355,13 @@ func matrixProbes() []matrixProbe {
 		{row: 48, name: "DELETE /playback/sessions/{id}", method: http.MethodDelete,
 			path: func(f *matrixFixture) string { return "/pleya/v1/playback/sessions/" + f.playbackSessionID },
 			body: noBody, ok: http.StatusNoContent, expect: ownerOnly(), missing: missingSession("")},
+		// Regel 50 en 51: het beheer van omzetsessies is klasse admin.
+		{row: 50, name: "GET /transcode-sessions", method: http.MethodGet,
+			path: fixedPath("/pleya/v1/transcode-sessions"), body: noBody,
+			ok: http.StatusOK, expect: adminSurface()},
+		{row: 51, name: "DELETE /transcode-sessions/{id}", method: http.MethodDelete,
+			path: func(f *matrixFixture) string { return "/pleya/v1/transcode-sessions/" + f.freshSession() },
+			body: noBody, ok: http.StatusNoContent, expect: adminSurface()},
 		{row: 39, name: "GET /watch-history", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/watch-history"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
 	}
@@ -426,7 +436,12 @@ func newMatrixFixture(e *env) *matrixFixture {
 	// Zonder omzetter is het een id dat niet bestaat: genoeg voor de probes die
 	// alleen de ontbrekende token toetsen.
 	f.playbackSessionID = id.New().String()
+	f.freshSession = func() string { return id.New().String() }
 	if e.hasTranscoder {
+		f.freshSession = func() string {
+			plan, _ := e.planFor(map[string]any{"item_id": f.itemID, "capabilities": capsWire("vp9")}, http.StatusOK)
+			return *plan.SessionID
+		}
 		plan, _ := e.planFor(map[string]any{"item_id": f.itemID, "capabilities": capsWire("vp9")}, http.StatusOK)
 		f.playbackSessionID = *plan.SessionID
 	}
@@ -446,7 +461,7 @@ func newMatrixFixture(e *env) *matrixFixture {
 // TestAuthorizationMatrixRolesOnEveryRouteOfS1 is de drie-rollen-ronde van K
 // rij 2, over elke route die S1 heeft toegevoegd.
 func TestAuthorizationMatrixRolesOnEveryRouteOfS1(t *testing.T) {
-	e, _ := transcodeEnv(t, 4)
+	e, _ := transcodeEnv(t, 16)
 
 	denial := e.canonicalNotFound()
 	f := newMatrixFixture(e)

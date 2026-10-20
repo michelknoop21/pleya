@@ -1,0 +1,18 @@
+{
+  "max_sessions": 2,
+  "hardware": {
+    "accel": "none",
+    "reason": "geen render-device op /dev/dri/renderD128"
+  },
+  "items": [
+    {
+      "id": "01a15488-7c20-7000-8f01-2a9b6d3c5e10",
+      "user_id": "01a15486-0000-7000-8000-000000000001",
+      "version_id": "01a15487-0a11-7000-9b3a-5c1d2e3f4a5b",
+      "mode": "direct_stream",
+      "hw_accel": null,
+      "started_at": "2026-10-20T19:02:11Z",
+      "last_heartbeat_at": "2026-10-20T19:03:26Z"
+    }
+  ]
+}
