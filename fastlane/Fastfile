@@ -1043,6 +1043,12 @@ ensure
   $skip_attach = false
 end
 
+# PLEYA_BETA_PLATFORMS="ios,tvos" bouwt een deel van de platforms onder één
+# buildnummer (ensure_build_number onthoudt het per run). Standaard alle drie.
+def beta_platform?(name)
+  ENV.fetch("PLEYA_BETA_PLATFORMS", "ios,tvos,macos").split(",").map(&:strip).include?(name)
+end
+
 desc "Alle platforms → TestFlight; gaat door als één platform faalt"
 lane :beta do
   failures = []
@@ -1051,19 +1057,19 @@ lane :beta do
   $defer_attach = true
   $pending_attach = {}
   begin
-    ios_beta
+    ios_beta if beta_platform?("ios")
   rescue => e
     UI.error("ios faalde: #{e.message}")
     failures << "ios"
   end
   begin
-    tvos_beta
+    tvos_beta if beta_platform?("tvos")
   rescue => e
     UI.error("tvos faalde: #{e.message}")
     failures << "tvos"
   end
   begin
-    macos_beta
+    macos_beta if beta_platform?("macos")
   rescue => e
     UI.error("macos faalde: #{e.message}")
     failures << "macos"
