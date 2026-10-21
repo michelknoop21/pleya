@@ -576,6 +576,8 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
         platform: _platform,
         wsPort: result.port,
         ips: localIps,
+        // A phone's own broadcast may not reach the Apple TV; it answers the TV's.
+        answerBeacons: handoffOnly,
       );
 
       appLogger.d('CompanionRemote: Host server running, broadcasting on LAN');
