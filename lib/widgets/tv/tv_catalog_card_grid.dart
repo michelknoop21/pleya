@@ -49,6 +49,7 @@ import 'package:flutter/material.dart';
 
 import '../../focus/focus_theme.dart';
 import '../../utils/layout_constants.dart';
+import '../../services/settings_service.dart';
 import '../../theme/mono_tokens.dart';
 import 'tv_catalog_artwork_window.dart';
 import 'tv_catalog_row_alignment.dart';
@@ -117,7 +118,7 @@ class TvCatalogCardGrid extends StatefulWidget {
     this.nodeDebugLabel = 'TvCatalogCard',
     this.rowAligned = false,
     this.fitTwoRows = false,
-    this.fitScale = 1,
+    this.fitScale,
   });
 
   /// One stable id per item, in display order. Identity, not position: see the
@@ -207,8 +208,13 @@ class TvCatalogCardGrid extends StatefulWidget {
   final bool fitTwoRows;
 
   /// Scales the [fitTwoRows] width down, for the library-density setting
-  /// ([tvCatalogDensityScale]).
-  final double fitScale;
+  /// ([tvCatalogDensityScale]). Null reads the setting itself.
+  final double? fitScale;
+
+  /// The narrowest [fitTwoRows] card under a fixed heading, as a share of the
+  /// natural six-across width: the width Alle films settles on at the default
+  /// density, which reads whole (one-line two-word title, full year line).
+  static const double minFitFraction = 0.8;
 
   /// The glide for [rowAligned]: the same easeOutCubic as the page heading,
   /// a little shorter because it runs on every press.
@@ -350,6 +356,34 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
       if ((target - position.pixels).abs() < 0.5) return;
       position.jumpTo(target);
     });
+  }
+
+  /// The [TvCatalogCardGrid.fitTwoRows] card width: two whole rows with room,
+  /// narrowed further by the library-density setting.
+  ///
+  /// Under a fixed heading (every grid but the folded Films/Series page) it
+  /// does not go below [minFitFraction] of the natural width: on the Apple TV
+  /// canvas two rows there would mean a card of about 86 wide, where a status
+  /// label is cut off and a two-word title breaks over two lines (Michel,
+  /// Aanvragen, 21 October 2026). Such a page shows one whole row and part of
+  /// the next instead.
+  double? _fitWidth(double height, TvCatalogGrid natural) {
+    final fit = tvCatalogTwoRowCardWidth(
+      viewport: height,
+      gutter: natural.gutter,
+      bottomMargin: natural.bottomSafeMargin,
+      focusScale: widget.focusScale,
+      cardHeight: widget.cardHeight,
+    );
+    if (fit == null) return null;
+    final density =
+        widget.fitScale ??
+        tvCatalogDensityScale(
+          SettingsService.instanceOrNull?.read(SettingsService.libraryDensity) ?? LibraryDensity.defaultValue,
+        );
+    final width = fit * density;
+    if (widget.rowAligned) return width;
+    return math.max(width, natural.cardWidth * TvCatalogCardGrid.minFitFraction);
   }
 
   /// [TvCatalogCardGrid.rowAligned]'s half of [_keepFocusRingVisible].
@@ -562,17 +596,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
       width,
       scale: scale,
       reservedLeading: widget.reservedLeading,
-      maxCardWidth: !widget.fitTwoRows
-          ? null
-          : widget.fitScale *
-                (tvCatalogTwoRowCardWidth(
-                      viewport: height,
-                      gutter: natural.gutter,
-                      bottomMargin: natural.bottomSafeMargin,
-                      focusScale: widget.focusScale,
-                      cardHeight: widget.cardHeight,
-                    ) ??
-                    double.infinity),
+      maxCardWidth: !widget.fitTwoRows ? null : _fitWidth(height, natural),
     );
     _grid = grid;
     final cardHeight = widget.cardHeight(grid.cardWidth);

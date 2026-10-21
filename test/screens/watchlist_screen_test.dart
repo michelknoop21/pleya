@@ -34,6 +34,7 @@ import 'package:pleya/widgets/focusable_filter_chip.dart';
 import 'package:pleya/widgets/watchlist_sort_sheet.dart';
 import 'package:pleya/widgets/watchlist_filter_sheet.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
+import 'package:pleya/widgets/tv/tv_catalog_card_grid.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:pleya/widgets/tv/tv_catalog_card.dart';
 import 'package:pleya/widgets/tv/tv_catalog_filter_rail.dart';
@@ -795,17 +796,21 @@ void main() {
       expect(find.byType(TvCatalogCard), findsNWidgets(6));
     });
 
-    testWidgets('a card is exactly as wide as a card on Alle films', (tester) async {
-      // P6's other half, restated on the new card: the column count, the card
-      // width, the gutter and the page inset all come from
-      // `TvCatalogGrid.forWidth`, never from `SettingsService.libraryDensity`.
+    testWidgets('a card fits two rows into the grid, but no narrower than the floor', (tester) async {
+      // A-06b (Michel, 21 October 2026). The card used to be exactly as wide as
+      // one on Alle films. Every catalog grid under a fixed heading now takes
+      // the widest card for which two rows fit its own height, never narrower
+      // than `TvCatalogCardGrid.minFitFraction` of the six-across width, so a
+      // two-word title stays on one line. On this canvas the floor decides.
       tester.view.physicalSize = const Size(1038, 584);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
       await pumpScreen(tester, sixFilms(), tv: true);
 
       final grid = TvCatalogGrid.forWidth(1038, scale: 0.85);
-      expect(cardFor(tester, 'a').width, closeTo(grid.cardWidth, 0.01));
+      final width = cardFor(tester, 'a').width;
+      expect(width, lessThanOrEqualTo(grid.cardWidth + 0.01));
+      expect(width, greaterThanOrEqualTo(grid.cardWidth * TvCatalogCardGrid.minFitFraction - 0.01));
     });
 
     testWidgets('the page carries the catalog heading, and no chip bar', (tester) async {

@@ -1090,6 +1090,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         // Scrolled a whole row at a time, so the two rows the folded page
         // holds always stand whole; see `TvCatalogCardGrid.rowAligned`.
         rowAligned: _pageScrolled != null,
+        fitTwoRows: true,
         fitScale: _densityScale,
         groups: snapshot.groups,
         hasMore: snapshot.hasMore,

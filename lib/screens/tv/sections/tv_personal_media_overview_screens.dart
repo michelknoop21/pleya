@@ -86,6 +86,8 @@ class TvCollectionsOverviewScreenState extends State<TvCollectionsOverviewScreen
       expanded: entries.isEmpty
           ? null
           : TvCatalogCardGrid(
+              // A-06b: two whole rows with room around them (Michel, build 396).
+              fitTwoRows: true,
               key: _gridKey,
               itemIds: entries.map(_collectionKey).toList(),
               initialFocusedId: _lastFocusedId,
@@ -216,6 +218,8 @@ class TvPlaylistsOverviewScreenState extends State<TvPlaylistsOverviewScreen> im
       expanded: entries.isEmpty
           ? null
           : TvCatalogCardGrid(
+              // A-06b: two whole rows with room around them (Michel, build 396).
+              fitTwoRows: true,
               key: _gridKey,
               itemIds: entries.map(_playlistKey).toList(),
               initialFocusedId: _lastFocusedId,

@@ -664,6 +664,8 @@ class TvWatchlistViewState extends State<TvWatchlistView> {
       instance: tvWatchlistSurface,
       role: 'grid',
       child: TvCatalogCardGrid(
+        // A-06b: two whole rows with room around them (Michel, build 396).
+        fitTwoRows: true,
         key: _gridKey,
         itemIds: [for (final entry in widget.entries) entry.key],
         cardHeight: (cardWidth) => TvCatalogLayout.cardHeight(cardWidth, scale),
