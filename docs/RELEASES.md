@@ -51,6 +51,38 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 398 · 21 October 2026 · Apple TV
+
+<!-- commit: ce3e8460da01d5e9301c836ff7e2131df8124061 -->
+
+### Fixed
+
+- **All movies and All series fit two whole rows with room around them.** The cards are a bit
+  smaller so posters, titles and years are not cut off at the top or the bottom. The Library
+  density setting now changes the card size here.
+- **Watchlist, collections, playlists and the person page use the same room.** The cards stay
+  large enough that titles keep on one line, so you see one whole row and part of the next.
+
+### Notes
+
+- **Worth checking:** All series: press up and down and check that two whole rows stay on the
+  screen with room above and below. Then change Library density in the settings.
+
+## 2.8.1 · build 397 · 21 October 2026 · iPhone and iPad
+
+<!-- commit: ce3e8460da01d5e9301c836ff7e2131df8124061 -->
+
+### Fixed
+
+- **The white areas on the movie page are glass.** The action buttons and their labels, the
+  rating bar, the details line and the title now show the poster through a soft blur instead
+  of a solid white block. This applies in the light appearance.
+
+### Notes
+
+- **Worth checking:** open a movie in the light appearance and look at the action buttons and
+  the rating bar over a light and a dark poster: the text should stay easy to read.
+
 ## 2.8.1 · build 396 · 21 October 2026 · Apple TV
 
 <!-- commit: 8cc6997d0edd63e4a7df77c9cdc1f4ef3b9e6306 -->
