@@ -21,8 +21,6 @@ import 'package:pleya/widgets/tv/tv_catalog_card.dart';
 import 'package:pleya/widgets/tv/tv_catalog_filter_rail.dart';
 import 'package:pleya/widgets/tv/tv_catalog_selection_tags.dart';
 import 'package:pleya/widgets/tv/tv_seerr_card.dart';
-import 'package:pleya/focus/focus_theme.dart';
-import 'package:pleya/widgets/tv/tv_catalog_card_grid.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 
 SeerrRequest _request(
@@ -125,27 +123,14 @@ void main() {
     );
   });
 
-  testWidgets('two whole rows of request cards fit the grid, with room around them', (tester) async {
-    // A-06b (Michel, build 396). Until then a card was exactly as wide as one on
-    // Alle films, and on the Apple TV canvas (1038 x 584 logical) one whole row
-    // fitted under this page's heading. Every catalog grid now takes the
-    // widest card for which two rows fit its own height, so the widths differ
-    // per page on purpose: this one has a heading, Alle films folds its away.
+  testWidgets('a card is exactly as wide as a card on Alle films', (tester) async {
     tester.view.physicalSize = const Size(1038, 584);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await pumpView(tester, [_request(1)]);
 
-    final natural = TvCatalogGrid.forWidth(1038, scale: 0.85);
-    final grid = tester.getSize(find.byType(TvCatalogCardGrid));
-    final card = tester.getSize(find.byType(TvSeerrRequestCard));
-    final ring = card.height * (FocusTheme.fullCardFocusScale - 1) / 2;
-    expect(card.width, lessThan(natural.cardWidth), reason: 'narrower than the six-across width');
-    expect(
-      2 * card.height + natural.gutter + 2 * ring + natural.bottomSafeMargin,
-      lessThanOrEqualTo(grid.height + 0.5),
-      reason: 'two rows, both rings and the bottom margin fit in the grid',
-    );
+    final grid = TvCatalogGrid.forWidth(1038, scale: 0.85);
+    expect(tester.widget<TvSeerrRequestCard>(find.byType(TvSeerrRequestCard)).width, closeTo(grid.cardWidth, 0.01));
   });
 
   testWidgets('a request card is one line taller than every other catalog card', (tester) async {
