@@ -51,6 +51,44 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 396 · 21 October 2026 · Apple TV
+
+<!-- commit: 8cc6997d0edd63e4a7df77c9cdc1f4ef3b9e6306 -->
+
+### New
+
+- **All movies and All series show two whole rows.** The empty band at the top is gone. Each
+  press up or down moves exactly one row, so posters, titles and years are never cut off.
+
+### Fixed
+
+- **Pleya Fly connects to the iPhone.** Two messages that arrived together could break the
+  connection, so the phone was found but the transfer failed.
+- **Search no longer asks the requests server twice.** Moving down from the keyboard to the
+  results could repeat the request for the same text.
+
+### Notes
+
+- **Worth checking:** All series: press down and up through the list and check that two whole
+  rows stay on screen. Then try Pleya Fly to an iPhone with Pleya open (build 395).
+
+## 2.8.1 · build 395 · 21 October 2026 · iPhone and iPad
+
+<!-- commit: 8cc6997d0edd63e4a7df77c9cdc1f4ef3b9e6306 -->
+
+### Fixed
+
+- **Pleya Fly from the Apple TV connects to your iPhone.** Two messages that arrived together
+  could break the connection, and the phone then stopped listening. Now it keeps listening
+  and the transfer goes through.
+- **Search no longer repeats a request for the same text.** Typing and then pressing search
+  could ask the requests server twice.
+
+### Notes
+
+- **Worth checking:** start Pleya Fly from the Apple TV (build 396) with Pleya open on this
+  phone: the film should start at the same place.
+
 ## 2.8.1 · build 394 · 21 October 2026 · Apple TV
 
 <!-- commit: 2d32234a35f9a4cc990cb2f09811b96ae6bdb23a -->
