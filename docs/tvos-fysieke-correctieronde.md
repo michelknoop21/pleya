@@ -4756,3 +4756,11 @@ Fix:
 
 Open op hardware, na de volgende build: geen `Failed to sync system shelf` meer in het log; de Top Shelf toont de carrousel; staat er `Top Shelf artwork folder unavailable`, dan is ook `Library/Caches` geweigerd en toont de Top Shelf alleen de rij. Bijvangst, niet opgelost: `tvos/scripts/wire_top_shelf.rb` noemt nog het oude team `G88U5B5783`.
 
+
+## A-06b: kop en topmenu van de catalogus glijden weg, 20 oktober 2026
+
+Roadmap: A-06b. Functieverzoek van Michel, de tvOS-tegenhanger van de iPhone-kop uit A-06 (PR #438).
+
+| ID | Bevinding | Status | SHA | Notitie |
+|---|---|---|---|---|
+| A06B-SCROLLAWAY1 | Michel 20 okt: op Apple TV verdwijnen de paginakop en het topmenu van Alle films en Alle series bij omlaag navigeren en komen ze terug bij omhoog, vloeiend zoals Netflix en Apple TV+. | IN REVIEW · HARDWARE OPEN | PR #442 | Weg zodra de focus voorbij rij 0 staat, terug op rij 0 of in het topmenu; het topmenu verdwijnt nooit terwijl de focus erin staat. Wegglijden 260 ms, terugkomen 200 ms, easeOutCubic met fade, direct bij Reduce motion. `tv_catalog_scroll_away_test.dart` met zeven negatieve controles; hardwarebewijs via A-22. |

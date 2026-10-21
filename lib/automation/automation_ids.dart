@@ -735,6 +735,10 @@ class AutomationIds {
   /// filtered-empty or failed. Instanceable by surface, like the rest.
   static const String tvCatalogState = 'tv.catalog.state';
 
+  /// The page heading of Films and Series. `state.collapsed` is true while it
+  /// is folded away with the top navigation (A-06b).
+  static const String tvCatalogHeader = 'tv.catalog.header';
+
   /// Base ids a scenario may address as `id[instance]` — see
   /// `pleya_verify/automation_ids.yaml`'s `instanceable` field and the Pleya
   /// Verify plan's instance-ID semantics (Fase 5).
@@ -824,6 +828,7 @@ class AutomationIds {
     tvCatalogRail,
     tvCatalogRailRow,
     tvCatalogState,
+    tvCatalogHeader,
     offlineHomeAction,
     profileTile,
   };
@@ -1021,6 +1026,7 @@ class AutomationIds {
     {'id': tvCatalogRail, 'role': 'region', 'instanceable': true},
     {'id': tvCatalogRailRow, 'role': 'list.item', 'instanceable': true},
     {'id': tvCatalogState, 'role': 'region', 'instanceable': true},
+    {'id': tvCatalogHeader, 'role': 'region', 'instanceable': true},
     {'id': playerPlayPause, 'role': 'button', 'instanceable': false},
     {'id': offlineHomeAction, 'role': 'button', 'instanceable': true},
     {'id': profileTile, 'role': 'grid.item', 'instanceable': true},

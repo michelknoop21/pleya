@@ -594,6 +594,9 @@ ids:
   - id: tv.catalog.state
     role: region
     instanceable: true
+  - id: tv.catalog.header
+    role: region
+    instanceable: true
   - id: player.play_pause
     role: button
     instanceable: false
