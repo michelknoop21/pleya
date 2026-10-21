@@ -353,6 +353,24 @@ void main() {
       expect(s.hosts, isEmpty, reason: 'no subscription outlives the closed view');
     });
 
+    test('disposing while the identity is derived leaves nothing listening', () async {
+      final identity = Completer<void>();
+      transport.onDiscoverAsync = () => identity.future;
+      final s = PlaybackHandoffSender(transport: transport, currentStop: () => null)..attachView();
+      final searching = s.search();
+      await Future<void>.delayed(Duration.zero);
+      s.dispose();
+      final stopsAtDispose = transport.log.where((l) => l == 'stopDiscovery').length;
+      // Deriving the identity ends after the dispose; discovery then listens again.
+      identity.complete();
+      await searching;
+      expect(
+        transport.log.where((l) => l == 'stopDiscovery').length,
+        stopsAtDispose + 1,
+        reason: 'discovery started again for a sender that is gone',
+      );
+    });
+
     test('of two overlapping searches only the newest subscribes', () async {
       final pending = [Completer<void>(), Completer<void>()];
       var call = 0;

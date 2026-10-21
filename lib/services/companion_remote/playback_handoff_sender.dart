@@ -206,9 +206,9 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
         appLogger.w('Pleya Fly: restarting the host after the search failed (${e.runtimeType})');
       }
     }
-    if (isDisposed) return;
-    if (generation != _searchGeneration) {
-      // Discovery may have started listening again after the view closed.
+    // Disposed or stale (a newer search, a closed view): discovery may have
+    // started listening again meanwhile, so stop it unless something uses it.
+    if (isDisposed || generation != _searchGeneration) {
       if (!_viewOpen && !busy) transport.stopDiscovery();
       return;
     }

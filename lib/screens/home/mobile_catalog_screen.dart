@@ -642,7 +642,10 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     if (!_preferencesLoaded || (_catalog.isInitialLoading && snapshot.groups.isEmpty)) {
       return Padding(
         padding: EdgeInsets.only(top: _panelHeight),
-        child: CatalogSkeletonGrid(cardWidth: _cardWidth(MediaQuery.sizeOf(context).width)),
+        // The body sits between the left and right safe edges; size to it.
+        child: LayoutBuilder(
+          builder: (context, constraints) => CatalogSkeletonGrid(cardWidth: _cardWidth(constraints.maxWidth)),
+        ),
       );
     }
 

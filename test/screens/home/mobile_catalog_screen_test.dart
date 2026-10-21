@@ -37,6 +37,7 @@ import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/widgets/focusable_filter_chip.dart';
+import 'package:pleya/widgets/skeleton_media_card.dart';
 import 'package:pleya/widgets/mobile/mobile_catalog_sort_sheet.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:provider/provider.dart';
@@ -320,6 +321,24 @@ void main() {
     // One frame in: `_restorePreferences` has not resolved its first await yet.
     expect(find.byType(GridView), findsNothing);
     expect(find.text(t.unifiedCatalog.states.emptyTitle), findsNothing);
+    await settle(tester);
+  });
+
+  testWidgets('in landscape with a cutout the skeleton fits between the safe edges', (tester) async {
+    tester.view.padding = const FakeViewPadding(left: 59, right: 59, bottom: 21);
+    tester.view.viewPadding = const FakeViewPadding(left: 59, right: 59, bottom: 21);
+    addTearDown(tester.view.resetPadding);
+    addTearDown(tester.view.resetViewPadding);
+    await pumpCatalog(tester, width: 852, pumpAfter: false);
+    // The first frame: the skeleton shows, sized to the body between the edges.
+    expect(find.byType(CatalogSkeletonGrid), findsOneWidget);
+    final cards = find.descendant(of: find.byType(CatalogSkeletonGrid), matching: find.byType(SkeletonMediaCard));
+    expect(tester.getRect(cards.at(0)).left, greaterThanOrEqualTo(59));
+    expect(
+      tester.getRect(cards.at(2)).right,
+      lessThanOrEqualTo(852 - 59),
+      reason: 'the third card of a row ends inside the body, not under the cutout',
+    );
     await settle(tester);
   });
 

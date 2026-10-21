@@ -24,7 +24,13 @@ PlaybackHandoffSender createTvPleyaFlySender(BuildContext context) {
   return PlaybackHandoffSender(
     transport: CompanionRemoteHandoffTransport(
       context.read<CompanionRemoteProvider>(),
-      ensureCrypto: () => context.mounted ? ensureCompanionRemoteCrypto(context) : Future.value(false),
+      // The panel that shows the sender now: a fly can outlive the panel that
+      // started it, and a search after it runs in the reopened one (A-23d).
+      ensureCrypto: () {
+        final current = _tvFlyContext;
+        final view = current != null && current.mounted ? current : context;
+        return view.mounted ? ensureCompanionRemoteCrypto(view) : Future.value(false);
+      },
     ),
     currentStop: () => CompanionRemoteReceiver.instance.onStop,
     onPlaying: (host) => noticeController.show(
@@ -51,6 +57,10 @@ PlaybackHandoffSender createTvPleyaFlySender(BuildContext context) {
 /// The sender of the most recent TV panel; a fly it runs outlives the panel.
 PlaybackHandoffSender? _tvFlySender;
 
+/// The context of the panel that shows [_tvFlySender]; its identity lookup
+/// follows the panel that is open now.
+BuildContext? _tvFlyContext;
+
 /// The sender for a panel that opens Pleya Fly: the running one while a fly is
 /// under way, so closing and reopening the panel shows that fly instead of
 /// starting a second sender on the same session (A-23d); else a new one.
@@ -65,6 +75,7 @@ PlaybackHandoffSender tvPleyaFlySender(
       ? running
       : (create ?? () => createTvPleyaFlySender(context))();
   _tvFlySender = sender;
+  _tvFlyContext = context;
   sender.adoptView(onViewFailed);
   return sender;
 }
@@ -191,6 +202,11 @@ class _TvPleyaFlySubViewState extends State<TvPleyaFlySubView> {
       return left;
     }
     final busy = sender.busy;
+    // The phone that held the landing focus dropped out while it had the
+    // focus: the first phone that is left takes the anchor, and with it the
+    // focus, instead of the focus vanishing until the next press.
+    final anchorGone = _anchorClientId != null && !hosts.any((h) => h.clientId == _anchorClientId);
+    if (anchorGone && widget.firstFocusNode.hasFocus) _anchorClientId = null;
     _anchorClientId ??= hosts.first.clientId;
     left.add(
       TvPanelGroup(

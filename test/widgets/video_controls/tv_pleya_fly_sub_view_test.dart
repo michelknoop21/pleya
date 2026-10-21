@@ -224,6 +224,24 @@ void main() {
     await finish(tester);
   });
 
+  testWidgets('when the focused first phone drops out, the focus goes to the next one', (tester) async {
+    await pumpView(tester);
+    transport.beacons.add([fakeHost('iPhone van Michel'), fakeHost('iPad', clientId: 'ipad')]);
+    await tester.pump();
+    await tester.pump();
+    first.requestFocus();
+    await tester.pump();
+
+    transport.beacons.add([fakeHost('iPad', clientId: 'ipad')]);
+    await tester.pump();
+    await tester.pump();
+    expect(first.hasPrimaryFocus, isTrue, reason: 'the focus vanished with the phone');
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    expect(selected.map((h) => h.name), ['iPad']);
+    await finish(tester);
+  });
+
   testWidgets('the landing focus stays on its row when the first phone appears', (tester) async {
     await pumpView(tester);
     first.requestFocus();
