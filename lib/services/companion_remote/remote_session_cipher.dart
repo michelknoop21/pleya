@@ -43,19 +43,18 @@ class RemoteSessionCipher {
     _consecutiveFailures = 0;
   }
 
-  /// Encrypt [plaintext] with the next send counter. Callers that send over a
-  /// socket go through [runSend] so the counter order is the wire order.
-  Future<List<int>> encrypt(String plaintext, {required bool isHost}) async {
+  /// Encrypt [plaintext] with the next send counter, reserved before the first
+  /// await so two overlapping calls can never share a nonce. Callers that send
+  /// over a socket go through [runSend] so the counter order is the wire
+  /// order. Returns null when the session ended or restarted meanwhile.
+  Future<List<int>?> encrypt(String plaintext, {required bool isHost}) {
     final key = _key;
-    if (key == null) throw StateError('No session key');
-    final encrypted = await RemoteAuthService.instance.encrypt(
-      key,
-      utf8.encode(plaintext),
-      isHost: isHost,
-      counter: _sendCounter,
-    );
-    _sendCounter++;
-    return encrypted;
+    if (key == null) return Future.value(null);
+    final generation = _generation;
+    final counter = _sendCounter++;
+    return RemoteAuthService.instance
+        .encrypt(key, utf8.encode(plaintext), isHost: isHost, counter: counter)
+        .then<List<int>?>((encrypted) => generation == _generation ? encrypted : null);
   }
 
   /// Run [task] after every earlier send has finished.

@@ -857,10 +857,20 @@ class CompanionRemotePeerService with KeepaliveMixin {
 
   // ── Encrypted send/receive ──
 
-  Future<void> _sendEncryptedToSocket(WebSocket socket, String plaintext) async {
-    if (!_cipher.hasKey) return;
-    final encrypted = await _cipher.encrypt(plaintext, isHost: _role == RemoteSessionRole.host);
-    socket.add(encrypted);
+  /// Queued behind earlier sends, so it keeps its place in counter order.
+  Future<void> _sendEncryptedToSocket(WebSocket socket, String plaintext) {
+    final done = Completer<void>();
+    _cipher.runSend(() async {
+      try {
+        final encrypted = await _cipher.encrypt(plaintext, isHost: _role == RemoteSessionRole.host);
+        if (encrypted != null && identical(_clientSocket, socket)) socket.add(encrypted);
+      } catch (e) {
+        appLogger.e('CompanionRemote: Failed to send frame', error: e);
+      } finally {
+        done.complete();
+      }
+    });
+    return done.future;
   }
 
   static const _maxDecryptFailures = 3;
@@ -972,6 +982,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
       try {
         final json = jsonEncode(command.toJson());
         final encrypted = await _cipher.encrypt(json, isHost: _role == RemoteSessionRole.host);
+        if (encrypted == null) return;
 
         if (_role == RemoteSessionRole.host && _clientSocket != null) {
           _clientSocket!.add(encrypted);
@@ -1007,6 +1018,8 @@ class CompanionRemotePeerService with KeepaliveMixin {
     appLogger.d('CompanionRemote: Disconnecting');
 
     stopKeepalive();
+    // First, so nothing is encrypted or decrypted while the sockets close.
+    _cipher.reset();
 
     if (_clientSocket != null) {
       try {
@@ -1042,7 +1055,6 @@ class CompanionRemotePeerService with KeepaliveMixin {
     _selectedAuthContextId = null;
     _selectedHostClientId = null;
     _clientUserUuid = null;
-    _cipher.reset();
     _isAuthenticated = false;
     // Lockouts survive a disconnect on purpose: stopping/restarting the host
     // session must not reset an attacker's brute-force lockout window.

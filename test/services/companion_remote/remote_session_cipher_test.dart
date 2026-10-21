@@ -9,7 +9,7 @@ void main() {
 
   Future<List<List<int>>> peerFrames(List<String> messages, {required bool isHost}) async {
     final sender = RemoteSessionCipher()..start(key);
-    return [for (final m in messages) await sender.encrypt(m, isHost: isHost)];
+    return [for (final m in messages) (await sender.encrypt(m, isHost: isHost))!];
   }
 
   group('receive order (A-23d)', () {
@@ -63,6 +63,27 @@ void main() {
   });
 
   group('send order', () {
+    test('overlapping encrypts never share a counter', () async {
+      final sender = RemoteSessionCipher()..start(key);
+      final frames = await Future.wait([sender.encrypt('a', isHost: true), sender.encrypt('b', isHost: true)]);
+      final receiver = RemoteSessionCipher()..start(key);
+
+      expect(await receiver.decrypt(frames[0]!, fromHost: true), 'a');
+      expect(await receiver.decrypt(frames[1]!, fromHost: true), 'b');
+    });
+
+    test('a frame encrypted for an earlier session is discarded', () async {
+      final sender = RemoteSessionCipher()..start(key);
+      final pending = sender.encrypt('old', isHost: true);
+      sender.start(List<int>.generate(32, (i) => 100 + i));
+
+      expect(await pending, isNull);
+      // The new session still starts at counter 0.
+      final frame = (await sender.encrypt('new', isHost: true))!;
+      final receiver = RemoteSessionCipher()..start(List<int>.generate(32, (i) => 100 + i));
+      expect(await receiver.decrypt(frame, fromHost: true), 'new');
+    });
+
     test('queued sends run one after the other', () async {
       final cipher = RemoteSessionCipher()..start(key);
       final order = <String>[];
