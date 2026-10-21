@@ -276,7 +276,18 @@ extension _PlexVideoControlsVisibilityMethods on _PlexVideoControlsState {
     final controlsVisible = widget.chromeController.controlsVisible;
     final visibilityChanged = controlsVisible != _lastControlsVisible;
     final focusTarget = widget.chromeController.takeFocusTarget();
+    final explicitPause = widget.chromeController.takeExplicitPauseChromeRequest();
     _lastControlsVisible = controlsVisible;
+
+    if (explicitPause) {
+      // Same guards as _requestFocusTarget: the info panel and open sheets own
+      // focus, so a pause behind them must not pull the bar over them.
+      final sheetOpen = OverlaySheetController.maybeOf(context)?.isOpen ?? false;
+      if (!_tvInfoPanelVisible && !sheetOpen) {
+        widget.chromeController.show(focusTarget: PlayerChromeFocusTarget.playPause);
+        return;
+      }
+    }
 
     if (visibilityChanged && !controlsVisible) {
       _desktopControlsKey.currentState?.hideContentStrip();

@@ -1526,7 +1526,10 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         await _seekBackForRewind(currentPlayer);
         if (!mounted || player != currentPlayer) return;
       }
+      final wasPlaying = currentPlayer.state.playing;
       await _playOrPauseWithPlaybackIntent(currentPlayer);
+      // Pausing from the native remote opens the bar on Play, like the key path.
+      if (wasPlaying && mounted && player == currentPlayer) _chromeController.requestExplicitPauseChrome();
     } catch (e, st) {
       appLogger.w('Apple TV remote play/pause failed', error: e, stackTrace: st);
     }

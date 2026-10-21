@@ -105,6 +105,62 @@ void main() {
       expect(controller.controlsVisible, isFalse);
     });
 
+    group('keepVisibleWhilePaused (Apple TV)', () {
+      testWidgets('a paused bar stays up and hide still works', (tester) async {
+        final controller = PlayerChromeController();
+        addTearDown(controller.dispose);
+
+        controller.configure(hideDelay: const Duration(milliseconds: 100), keepVisibleWhilePaused: true);
+        controller.setPlaying(true);
+        controller.setPlaying(false);
+
+        await tester.pump(const Duration(seconds: 10));
+        expect(controller.controlsVisible, isTrue);
+        controller.show();
+        await tester.pump(const Duration(seconds: 10));
+        expect(controller.controlsVisible, isTrue);
+
+        expect(controller.hide(), isTrue);
+        expect(controller.controlsVisible, isFalse);
+      });
+
+      testWidgets('resuming starts the normal playing auto-hide', (tester) async {
+        final controller = PlayerChromeController();
+        addTearDown(controller.dispose);
+
+        controller.configure(hideDelay: const Duration(milliseconds: 100), keepVisibleWhilePaused: true);
+        controller.setPlaying(true);
+        controller.setPlaying(false);
+        await tester.pump(const Duration(seconds: 1));
+        controller.setPlaying(true);
+
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(controller.controlsVisible, isFalse);
+      });
+
+      testWidgets('a hidden bar does not open by itself when playback pauses', (tester) async {
+        final controller = PlayerChromeController(controlsVisible: false);
+        addTearDown(controller.dispose);
+
+        controller.configure(keepVisibleWhilePaused: true);
+        controller.setPlaying(true);
+        controller.setPlaying(false);
+        expect(controller.controlsVisible, isFalse);
+      });
+
+      test('requestExplicitPauseChrome notifies and is consumed once', () {
+        final controller = PlayerChromeController();
+        addTearDown(controller.dispose);
+        var notified = 0;
+        controller.addListener(() => notified++);
+
+        controller.requestExplicitPauseChrome();
+        expect(notified, 1);
+        expect(controller.takeExplicitPauseChromeRequest(), isTrue);
+        expect(controller.takeExplicitPauseChromeRequest(), isFalse);
+      });
+    });
+
     test('show stores focus target and notifies even when already visible', () {
       final controller = PlayerChromeController();
       addTearDown(controller.dispose);

@@ -272,10 +272,19 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
     _automationToken = null;
   }
 
+  /// The wrapper switched an external node off; it hands the node back on dispose
+  /// so a later wrapper on the same node starts focusable again.
+  bool _disabledExternalNode = false;
+
   void _initFocusNode() {
     if (widget.focusNode != null) {
       _focusNode = widget.focusNode!;
       _ownsNode = false;
+      // An external node starts focusable; only a disabled wrapper has to say so.
+      if (!widget.canRequestFocus) {
+        _focusNode.canRequestFocus = false;
+        _disabledExternalNode = true;
+      }
     } else {
       _focusNode = FocusNode(
         debugLabel: widget.semanticLabel ?? 'FocusableWrapper',
@@ -333,6 +342,8 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
     _animationController.dispose();
     if (_ownsNode) {
       _focusNode.dispose();
+    } else if (_disabledExternalNode) {
+      _focusNode.canRequestFocus = true;
     }
     _unregisterAutomationNode();
     super.dispose();
