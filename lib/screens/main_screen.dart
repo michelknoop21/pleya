@@ -2406,6 +2406,9 @@ class _MainScreenState extends State<MainScreen>
       TvNestedRoute(
         id: 'tvCatalog_${destination.name}',
         screenKey: GlobalKey(debugLabel: 'tvCatalog_${destination.name}'),
+        // A-06b: the heading and the bar glide away once the remote is past
+        // the first row, and come back on the first row or in the bar.
+        topNav: TvTopNavPresentation.scrollAway,
         // Hoofdstuk 7.6, register I22/I23. The catalog is the one TV surface
         // that is torn down and rebuilt on a destination switch — every
         // destination *root* stays mounted in the `IndexedStack` and keeps its

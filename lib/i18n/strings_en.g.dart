@@ -6377,11 +6377,14 @@ class TranslationsPlaybackHandoffEn {
 
 	// Translations
 
-	/// en: 'Play on Apple TV'
-	String get button => 'Play on Apple TV';
+	/// en: 'Pleya Fly'
+	String get button => 'Pleya Fly';
 
-	/// en: 'Play on'
-	String get title => 'Play on';
+	/// en: 'Keep watching on another device'
+	String get description => 'Keep watching on another device';
+
+	/// en: 'Pleya Fly'
+	String get title => 'Pleya Fly';
 
 	/// en: '$title · continue from $time'
 	String resumeFrom({required Object title, required Object time}) => '${title} · continue from ${time}';
@@ -12502,8 +12505,9 @@ extension on Translations {
 			'assistant.match.more' => ({required Object count}) => '+${count}',
 			'assistant.match.allAges' => 'All',
 			'assistant.match.score' => ({required Object score}) => 'Score ${score}',
-			'playbackHandoff.button' => 'Play on Apple TV',
-			'playbackHandoff.title' => 'Play on',
+			'playbackHandoff.button' => 'Pleya Fly',
+			'playbackHandoff.description' => 'Keep watching on another device',
+			'playbackHandoff.title' => 'Pleya Fly',
 			'playbackHandoff.resumeFrom' => ({required Object title, required Object time}) => '${title} · continue from ${time}',
 			'playbackHandoff.thisIphone' => 'This iPhone',
 			'playbackHandoff.thisIpad' => 'This iPad',

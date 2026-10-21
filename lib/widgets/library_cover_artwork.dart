@@ -7,7 +7,6 @@ import '../media/media_kind.dart';
 import '../media/media_playlist.dart';
 import '../media/media_server_client.dart';
 import '../utils/media_server_http_client.dart';
-import 'library_atmosphere.dart';
 import 'optimized_media_image.dart';
 
 /// Source-owned cover, otherwise the first four real list positions.
@@ -54,7 +53,6 @@ class _LibraryCoverArtworkState extends State<LibraryCoverArtwork> {
     final generation = ++_generation;
     _abort?.abort();
     _members = const [];
-    LibraryAtmosphere.setCoverFallback(context, widget.item, null);
     final client = widget.client;
     if (client == null || _identity.$3?.isNotEmpty == true) return;
     final abort = _abort = AbortController();
@@ -80,10 +78,6 @@ class _LibraryCoverArtworkState extends State<LibraryCoverArtwork> {
       if (!mounted || abort.isAborted || generation != _generation) return;
       // Keep slots and duplicates: an unavailable poster is not a new order.
       setState(() => _members = page.items.take(4).toList());
-      final first = _members.firstOrNull;
-      if (first != null && (first.serverId == null || first.serverId == client.serverId.value)) {
-        LibraryAtmosphere.setCoverFallback(context, widget.item, first.copyWith(serverId: client.serverId.value));
-      }
     } catch (_) {
       // Decorative artwork failure never disables the collection's real action.
       if (!mounted || abort.isAborted || generation != _generation) return;

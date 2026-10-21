@@ -24,6 +24,7 @@ import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/unified_catalogs.dart';
 import 'package:pleya/screens/home/mobile_catalog_screen.dart';
+import 'package:pleya/screens/home/mobile_catalog_widgets.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
@@ -174,6 +175,8 @@ void main() {
     bool useEmpty = false,
     double width = 393,
     double textScale = 1,
+    bool disableAnimations = false,
+    bool pumpAfter = true,
   }) async {
     tester.view.physicalSize = Size(width, 852);
     tester.view.devicePixelRatio = 1.0;
@@ -188,7 +191,9 @@ void main() {
         child: MaterialApp(
           theme: monoTheme(dark: true),
           builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(textScale), disableAnimations: disableAnimations),
             child: child!,
           ),
           home: OverlaySheetHost(
@@ -203,7 +208,7 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
+    if (pumpAfter) await tester.pump();
   }
 
   /// Mounts the screen the way `_TitleRow` does: pushed with
@@ -315,6 +320,260 @@ void main() {
     expect(find.byType(GridView), findsNothing);
     expect(find.text(t.unifiedCatalog.states.emptyTitle), findsNothing);
     await settle(tester);
+  });
+
+  group('top panel collapses on scroll (A-06)', () {
+    Rect panel(WidgetTester tester) => tester.getRect(find.byKey(catalogTopMenuKey));
+    bool shown(WidgetTester tester) => panel(tester).bottom > 80;
+    bool hidden(WidgetTester tester) => panel(tester).bottom <= 0.5;
+
+    Future<void> scrollBy(WidgetTester tester, double dy) async {
+      await tester.drag(find.byType(CustomScrollView), Offset(0, dy));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    void films(int count) {
+      client.itemsByLibrary['A'] = [for (var i = 0; i < count; i++) _movie('m$i', title: 'Film $i', serverId: 's1')];
+    }
+
+    Future<void> pumpWithInsets(WidgetTester tester) async {
+      tester.view.padding = const FakeViewPadding(top: 47, bottom: 34);
+      tester.view.viewPadding = const FakeViewPadding(top: 47, bottom: 34);
+      addTearDown(tester.view.resetPadding);
+      addTearDown(tester.view.resetViewPadding);
+      await pumpCatalog(tester);
+      await settle(tester);
+    }
+
+    testWidgets('hides on scroll down, returns on any scroll up, fully shown at the top', (tester) async {
+      films(18);
+      await pumpCatalog(tester);
+      await settle(tester);
+
+      expect(shown(tester), isTrue);
+      expect(panel(tester).top, 0);
+
+      await scrollBy(tester, -300);
+      expect(hidden(tester), isTrue, reason: 'scrolling down hides the panel');
+
+      await scrollBy(tester, 60);
+      expect(shown(tester), isTrue, reason: 'a short scroll up mid-list brings it back');
+
+      await scrollBy(tester, -300);
+      expect(hidden(tester), isTrue);
+      await scrollBy(tester, 3000);
+      expect(shown(tester), isTrue, reason: 'at offset 0 it is fully shown');
+    });
+
+    /// Scrolls with the finger kept down, so no fling moves the grid while
+    /// the panel animates; the caller lifts it.
+    Future<TestGesture> holdScroll(WidgetTester tester, double dy) async {
+      final gesture = await tester.startGesture(tester.getCenter(find.byType(CustomScrollView)));
+      final step = dy.sign * 20;
+      for (var moved = 0.0; moved.abs() < dy.abs(); moved += step) {
+        await gesture.moveBy(Offset(0, step));
+      }
+      return gesture;
+    }
+
+    /// Fraction of its own height the panel has moved up: 0 shown, 1 gone.
+    double progress(WidgetTester tester) => -panel(tester).top / panel(tester).height;
+
+    /// The panel's own fade: the one Opacity inside the panel that wraps the
+    /// title. `tester.widget` throws if that ever matches more than one.
+    double titleOpacity(WidgetTester tester) => tester
+        .widget<Opacity>(
+          find.descendant(
+            of: find.byKey(catalogTopMenuKey),
+            matching: find.ancestor(of: find.text(t.unifiedCatalog.moviesTitle), matching: find.byType(Opacity)),
+          ),
+        )
+        .opacity;
+
+    testWidgets('leaving is an eased slide and fade over several frames, and the grid stays put', (tester) async {
+      films(18);
+      await pumpCatalog(tester);
+      await settle(tester);
+
+      final gesture = await holdScroll(tester, -200);
+      // The frame that flips the state starts the motion; the next one is
+      // the ticker's first tick.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      final grid = tester.getRect(find.text('Film 6'));
+
+      final steps = <double>[];
+      final opacities = <double>[];
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 40));
+        steps.add(progress(tester));
+        opacities.add(titleOpacity(tester));
+        expect(tester.getRect(find.text('Film 6')), grid, reason: 'the panel moving must not move the grid');
+      }
+      expect(steps.first, inExclusiveRange(0, 1), reason: 'no jump: 40 ms in, the panel is on its way: $steps');
+      for (var i = 1; i < steps.length; i++) {
+        expect(steps[i], greaterThan(steps[i - 1]), reason: 'it keeps moving, frame by frame: $steps');
+      }
+      expect(
+        steps[1] - steps[0],
+        greaterThan(2 * (steps[4] - steps[3])),
+        reason: 'eased out: fast start, soft end: $steps',
+      );
+      expect(opacities.first, inExclusiveRange(0, 1), reason: 'and fades on the way: $opacities');
+
+      await tester.pump(catalogPanelHideDuration);
+      expect(progress(tester), 1);
+      expect(hidden(tester), isTrue);
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('it comes back quicker than it left', (tester) async {
+      films(18);
+      await pumpCatalog(tester);
+      await settle(tester);
+
+      final down = await holdScroll(tester, -300);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 100));
+      final leftAfter100 = progress(tester);
+      await tester.pump(const Duration(milliseconds: 400));
+      await down.up();
+      await tester.pumpAndSettle();
+      expect(hidden(tester), isTrue);
+
+      final up = await holdScroll(tester, 60);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 100));
+      final backAfter100 = 1 - progress(tester);
+      expect(backAfter100, inExclusiveRange(0, 1), reason: 'coming back is a motion too');
+      expect(backAfter100, greaterThan(leftAfter100), reason: 'return $backAfter100 vs leave $leftAfter100');
+
+      await tester.pump(catalogPanelShowDuration);
+      expect(panel(tester).top, 0, reason: 'fully back within the show duration');
+      await up.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('a reversal halfway turns back from where the panel is', (tester) async {
+      films(18);
+      await pumpCatalog(tester);
+      await settle(tester);
+
+      final gesture = await holdScroll(tester, -200);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 60));
+      final atFlip = progress(tester);
+      expect(atFlip, inExclusiveRange(0, 1), reason: 'the flip lands mid-flight');
+
+      // Same finger, now up: the panel turns around.
+      for (var i = 0; i < 3; i++) {
+        await gesture.moveBy(const Offset(0, 20));
+      }
+      final back = <double>[];
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 30));
+        back.add(progress(tester));
+      }
+      expect(back.first, lessThanOrEqualTo(atFlip + 0.15), reason: 'no jump at the flip: $atFlip -> $back');
+      for (var i = 1; i < back.length; i++) {
+        expect(back[i], lessThanOrEqualTo(back[i - 1]), reason: 'only ever on its way back: $atFlip -> $back');
+      }
+      await tester.pump(catalogPanelShowDuration);
+      expect(panel(tester).top, 0, reason: 'and fully back');
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('reduce motion snaps the panel instead of animating it', (tester) async {
+      films(18);
+      await pumpCatalog(tester, disableAnimations: true);
+      await settle(tester);
+
+      final gesture = await holdScroll(tester, -200);
+      await tester.pump();
+      expect(hidden(tester), isTrue, reason: 'gone in the same frame, no in-between');
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('the grid scrolls under the status bar and the home indicator and stays reachable', (tester) async {
+      films(18);
+      await pumpWithInsets(tester);
+
+      final scroll = tester.getRect(find.byType(CustomScrollView));
+      expect(scroll.top, 0, reason: 'the grid reaches under the status bar');
+      expect(scroll.bottom, 852, reason: 'and under the home indicator');
+      final panelBottom = panel(tester).bottom;
+      expect(
+        tester.getRect(find.text('Film 0')).top,
+        greaterThanOrEqualTo(panelBottom - 16),
+        reason: 'at offset 0 the first row starts below the panel',
+      );
+
+      await scrollBy(tester, -4000);
+      final last = tester.getRect(find.text('Film 17'));
+      expect(last.bottom, lessThanOrEqualTo(852 - 34), reason: 'the last row scrolls clear of the home indicator');
+    });
+
+    testWidgets('pull-to-refresh starts below the panel, not behind it', (tester) async {
+      films(18);
+      await pumpWithInsets(tester);
+
+      final indicator = tester.widget<RefreshIndicator>(find.byType(RefreshIndicator));
+      expect(indicator.edgeOffset, greaterThan(100), reason: 'the spinner settles under the translucent panel');
+      expect(
+        indicator.edgeOffset,
+        closeTo(tester.getRect(find.byKey(catalogTopMenuKey)).bottom - CatalogTopPanel.fadeTail, 1.5),
+      );
+    });
+
+    testWidgets('the grid is not shown a frame before the panel is measured', (tester) async {
+      films(18);
+      await pumpCatalog(tester, pumpAfter: false);
+      // First frame after mount: nothing is visible yet, so nothing can jump.
+      expect(tester.widget<Opacity>(find.byKey(const ValueKey('catalog.body'))).opacity, 0);
+      await settle(tester);
+      expect(tester.widget<Opacity>(find.byKey(const ValueKey('catalog.body'))).opacity, 1);
+    });
+
+    testWidgets('a list that barely overflows never flaps', (tester) async {
+      films(9);
+      await pumpCatalog(tester);
+      await settle(tester);
+
+      final states = <bool>[];
+      for (var i = 0; i < 4; i++) {
+        await scrollBy(tester, -120);
+        states.add(hidden(tester));
+        await tester.pump(const Duration(milliseconds: 300));
+        states.add(hidden(tester));
+      }
+      expect(states.toSet().length, 1, reason: 'the state never alternates while dragging down: $states');
+      await scrollBy(tester, 400);
+      expect(shown(tester), isTrue);
+    });
+
+    testWidgets('returns when the content stops overflowing while hidden', (tester) async {
+      films(18);
+      await pumpCatalog(tester);
+      await settle(tester);
+
+      await scrollBy(tester, -300);
+      expect(hidden(tester), isTrue);
+
+      tester.view.physicalSize = const Size(393, 4000);
+      await tester.pump();
+      // The metrics notification is dispatched after the frame that changed
+      // them; the next frame carries the reaction.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(shown(tester), isTrue, reason: 'nothing left to scroll back with');
+    });
   });
 
   testWidgets('shows the populated grid, the count line and the chip labels once loaded', (tester) async {

@@ -3084,8 +3084,9 @@
     }
   },
   "playbackHandoff": {
-    "button": "Afspelen op Apple TV",
-    "title": "Afspelen op",
+    "button": "Pleya Fly",
+    "description": "Verder kijken op een ander apparaat",
+    "title": "Pleya Fly",
     "resumeFrom": "$title · verder vanaf $time",
     "thisIphone": "Deze iPhone",
     "thisIpad": "Deze iPad",

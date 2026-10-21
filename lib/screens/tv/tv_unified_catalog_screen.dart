@@ -53,7 +53,6 @@
 /// filter session wander off to a different catalog on the next LEFT press.
 library;
 
-import '../../widgets/library_atmosphere.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -71,6 +70,7 @@ import '../../media/unified/unified_route_context.dart';
 import '../../mixins/refreshable.dart';
 import '../../navigation/main_screen_scope.dart';
 import '../../navigation/tv/tv_navigation_coordinator.dart';
+import '../../navigation/tv/tv_top_nav_scroll_away.dart';
 import 'tv_root_shell.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../providers/hidden_libraries_provider.dart';
@@ -93,6 +93,7 @@ import '../../widgets/tv/tv_catalog_rail_scaffold.dart';
 import '../../widgets/tv/tv_catalog_selection_tags.dart';
 import '../../widgets/tv/tv_catalog_skeleton_grid.dart';
 import '../../widgets/tv/tv_catalog_sort_panel.dart';
+import '../../widgets/tv/tv_scroll_away_page.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import '../../widgets/tv/tv_unified_media_grid.dart';
 import 'tv_media_source_picker_route.dart';
@@ -212,6 +213,14 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   SourceAllResolver? _resolver;
   String? _resolverProfileId;
 
+  /// A-06b: whether the remote was last on a grid row below the first. Kept
+  /// while the focus is in the rail, so opening the rail moves nothing.
+  bool _pastFirstRow = false;
+
+  /// The flag a scroll-away route shares with the shell, or null when this
+  /// page is not hosted that way and keeps its heading in place.
+  ValueNotifier<bool>? _pageScrolled;
+
   @override
   void initState() {
     super.initState();
@@ -239,6 +248,18 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       ),
     );
     super.deactivate();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final pageScrolled = TvTopNavScrollAwayScope.maybeOf(context)?.pageScrolled;
+    if (identical(pageScrolled, _pageScrolled)) return;
+    _pageScrolled = pageScrolled;
+    // A remount on the same route (a destination switch and back) starts at
+    // the top until the remote says otherwise; the route may still carry the
+    // previous visit's value.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncPageScrolled());
   }
 
   @override
@@ -727,6 +748,30 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   }
 
   // ---------------------------------------------------------------------------
+  // Scroll-away heading (A-06b)
+  // ---------------------------------------------------------------------------
+
+  /// The grid is on screen, not the skeleton and not one of the three states.
+  bool get _showsGrid => _preferencesLoaded && widget.catalog.snapshot.groups.isNotEmpty;
+
+  /// Folded away only over a grid: an empty state has no rows to be past.
+  bool get _scrolled => _pastFirstRow && _showsGrid;
+
+  void _onFocusedRow(int row) {
+    final past = row > 0;
+    if (past == _pastFirstRow) return;
+    setState(() => _pastFirstRow = past);
+    _syncPageScrolled();
+  }
+
+  /// Never called during a build: the shell listens to this flag.
+  void _syncPageScrolled() {
+    final pageScrolled = _pageScrolled;
+    if (!mounted || pageScrolled == null) return;
+    pageScrolled.value = _scrolled;
+  }
+
+  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -746,19 +791,45 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
                 stops: const [0, 0.55],
               ),
             ),
-      child: LibraryAtmosphere(
-        automationInstance: 'tv_catalog.$_surface',
-        selectionKey: widget.catalog.query.kind,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // The tags are capped here and uncapped in the rail: the heading has
-            // one line and no way to scroll, the panel wraps.
-            TvCatalogHeaderBar(title: widget.title, tags: _railExpanded ? const [] : _selectionTags()),
-            Expanded(child: _buildContentArea()),
-          ],
-        ),
-      ),
+      child: _buildPage(),
+    );
+  }
+
+  Widget _buildPage() {
+    final pageScrolled = _pageScrolled;
+    // Folded away while the remote is past the first row, and back as soon as
+    // it enters the top navigation: the shell shows the bar then, and the
+    // heading belongs under it.
+    final expanded = pageScrolled == null || !_scrolled || MainScreenFocusScope.isSidebarFocusedOf(context);
+    final header = AutomationNode(
+      id: AutomationIds.tvCatalogHeader,
+      instance: _surface,
+      role: 'region',
+      state: () => {'collapsed': !expanded},
+      // The tags are capped here and uncapped in the rail: the heading has
+      // one line and no way to scroll, the panel wraps.
+      child: TvCatalogHeaderBar(title: widget.title, tags: _railExpanded ? const [] : _selectionTags()),
+    );
+    if (pageScrolled == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          header,
+          Expanded(child: _buildContentArea()),
+        ],
+      );
+    }
+    // The flag the shell reads follows what this build decided, a frame later
+    // at most (a filter that empties the grid, a late first page).
+    if (pageScrolled.value != _scrolled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _syncPageScrolled());
+    }
+    return TvScrollAwayPage(
+      expanded: expanded,
+      topBand: TvShellSurface.topBandHeightOf(context),
+      fitBody: !_showsGrid,
+      header: header,
+      body: _buildContentArea(),
     );
   }
 
@@ -955,6 +1026,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         controller: _scrollController,
         initialFocusedGroupId: _focusedGroupId,
         onFocusedGroupChanged: (groupId) => _focusedGroupId = groupId,
+        onFocusedRow: _pageScrolled == null ? null : _onFocusedRow,
         groups: snapshot.groups,
         hasMore: snapshot.hasMore,
         isLoadingMore: catalog.isLoadingMore,

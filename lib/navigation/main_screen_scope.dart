@@ -78,6 +78,12 @@ class MainScreenFocusScope extends InheritedModel<MainScreenScopeAspect> {
     return _dependOn(context, MainScreenScopeAspect.offset)?.sideNavigationWidth ?? 0.0;
   }
 
+  /// Whether the root navigation (the TV top bar, the desktop rail) holds the
+  /// focus. Depends on the focus aspect only.
+  static bool isSidebarFocusedOf(BuildContext context) {
+    return _dependOn(context, MainScreenScopeAspect.focus)?.isSidebarFocused ?? false;
+  }
+
   /// Content box left edge. Changes per sidebar flip — depend on it only from
   /// small positioning builders.
   static double foregroundLeftOf(BuildContext context) {

@@ -24,6 +24,7 @@ import '../../../widgets/focusable_list_tile.dart';
 import '../../../widgets/notice/notice.dart';
 import '../../../widgets/notice/notice_controller.dart';
 import '../../../widgets/overlay_sheet.dart';
+import '../../../widgets/pleya_fly_icon.dart';
 import 'base_video_control_sheet.dart';
 
 /// Lists this device and the Apple TVs on the network, AirPlay-style, and hands
@@ -53,7 +54,10 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
   static const _amber = Color(0xFFFFB020);
   static const _ok = Color(0xFF3DD68C);
 
-  late final CompanionRemoteProvider _provider = context.read<CompanionRemoteProvider>();
+  // Read in initState, never lazily: a sheet closed before discovery started
+  // would otherwise do its first lookup in dispose, on a deactivated context,
+  // and that throw leaves the host's sheet subtree half unmounted.
+  late final CompanionRemoteProvider _provider;
   // Taken when the sheet opens: the position the header promises.
   late final Duration _from = widget.player.state.position;
   StreamSubscription<List<DiscoveredHost>>? _subscription;
@@ -73,6 +77,7 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
   @override
   void initState() {
     super.initState();
+    _provider = context.read<CompanionRemoteProvider>();
     unawaited(_search());
   }
 
@@ -357,10 +362,12 @@ class _PlaybackHandoffSheetState extends State<PlaybackHandoffSheet> {
         ),
     ];
 
+    // Sized to its rows: two options do not need the full height (A-23, 20 October 2026).
     return BaseVideoControlSheet(
       title: t.playbackHandoff.title,
-      icon: Symbols.smart_display,
-      child: ListView(children: children),
+      leading: const PleyaFlyIcon(),
+      shrinkWrap: true,
+      child: ListView(shrinkWrap: true, children: children),
     );
   }
 }

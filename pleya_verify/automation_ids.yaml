@@ -105,9 +105,6 @@ ids:
   - id: library.header
     role: region
     instanceable: false
-  - id: library.atmosphere
-    role: image
-    instanceable: true
   - id: library.filter.grouping
     role: filter
     instanceable: false
@@ -381,6 +378,9 @@ ids:
   - id: player.settings_button
     role: button
     instanceable: false
+  - id: player.handoff_button
+    role: button
+    instanceable: false
   - id: tvos.menu_passthrough
     role: service
     instanceable: false
@@ -592,6 +592,9 @@ ids:
     role: list.item
     instanceable: true
   - id: tv.catalog.state
+    role: region
+    instanceable: true
+  - id: tv.catalog.header
     role: region
     instanceable: true
   - id: player.play_pause

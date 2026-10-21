@@ -455,7 +455,6 @@ class AutomationIds {
   /// only thing a scenario could read was a chip's own `selected` flag, and a
   /// chip that marks itself is not evidence that the page behind it changed.
   static const String libraryHeader = 'library.header';
-  static const String libraryAtmosphere = 'library.atmosphere';
 
   /// The video player's rendering surface (`lib/mpv/video.dart`).
   static const String playerSurface = 'player.surface';
@@ -489,6 +488,10 @@ class AutomationIds {
   /// Video tab; RIGHT from play/pause lands on it, which is how a scenario
   /// reaches the panel on a simulator that cannot swipe.
   static const String playerSettingsButton = 'player.settings_button';
+
+  /// The Apple TV handoff button in the iPhone/iPad player bar (A-23); opens
+  /// the device picker sheet.
+  static const String playerHandoffButton = 'player.handoff_button';
 
   /// The play/pause button in the player bar; `state.playing` mirrors the
   /// icon it draws. On TV the player opens with this button focused.
@@ -732,6 +735,10 @@ class AutomationIds {
   /// filtered-empty or failed. Instanceable by surface, like the rest.
   static const String tvCatalogState = 'tv.catalog.state';
 
+  /// The page heading of Films and Series. `state.collapsed` is true while it
+  /// is folded away with the top navigation (A-06b).
+  static const String tvCatalogHeader = 'tv.catalog.header';
+
   /// Base ids a scenario may address as `id[instance]` — see
   /// `pleya_verify/automation_ids.yaml`'s `instanceable` field and the Pleya
   /// Verify plan's instance-ID semantics (Fase 5).
@@ -821,6 +828,7 @@ class AutomationIds {
     tvCatalogRail,
     tvCatalogRailRow,
     tvCatalogState,
+    tvCatalogHeader,
     offlineHomeAction,
     profileTile,
   };
@@ -855,7 +863,6 @@ class AutomationIds {
     {'id': libraryGrid, 'role': 'grid', 'instanceable': false},
     {'id': libraryGridItem, 'role': 'grid.item', 'instanceable': true},
     {'id': libraryHeader, 'role': 'region', 'instanceable': false},
-    {'id': libraryAtmosphere, 'role': 'image', 'instanceable': true},
     {'id': libraryFilterGrouping, 'role': 'filter', 'instanceable': false},
     {'id': libraryFilterFilters, 'role': 'filter', 'instanceable': false},
     {'id': libraryFilterSort, 'role': 'filter', 'instanceable': false},
@@ -947,6 +954,7 @@ class AutomationIds {
     {'id': playerPanelTab, 'role': 'tab', 'instanceable': true},
     {'id': playerPanelRow, 'role': 'list.item', 'instanceable': true},
     {'id': playerSettingsButton, 'role': 'button', 'instanceable': false},
+    {'id': playerHandoffButton, 'role': 'button', 'instanceable': false},
     {'id': tvosMenuPassthrough, 'role': 'service', 'instanceable': false},
     {'id': tvosNativeTextEntry, 'role': 'service', 'instanceable': false},
     {'id': homeHeader, 'role': 'region', 'instanceable': false},
@@ -1018,6 +1026,7 @@ class AutomationIds {
     {'id': tvCatalogRail, 'role': 'region', 'instanceable': true},
     {'id': tvCatalogRailRow, 'role': 'list.item', 'instanceable': true},
     {'id': tvCatalogState, 'role': 'region', 'instanceable': true},
+    {'id': tvCatalogHeader, 'role': 'region', 'instanceable': true},
     {'id': playerPlayPause, 'role': 'button', 'instanceable': false},
     {'id': offlineHomeAction, 'role': 'button', 'instanceable': true},
     {'id': profileTile, 'role': 'grid.item', 'instanceable': true},

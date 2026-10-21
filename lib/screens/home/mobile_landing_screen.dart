@@ -131,7 +131,6 @@ class MobileLandingScreen extends StatelessWidget {
       readiness: () => isLoading ? const AutomationReadiness.loading('hubs') : const AutomationReadiness.ready(),
       child: mobileDiscoveryScaffold(
         context: context,
-        libraryAtmosphere: true,
         onRefresh: discover.load,
         slivers: [
           SliverToBoxAdapter(

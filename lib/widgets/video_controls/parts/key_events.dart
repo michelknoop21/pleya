@@ -88,8 +88,17 @@ extension _PlexVideoControlsKeyEventMethods on _PlexVideoControlsState {
     if (event.isActionable) _cancelAutoSkipFromUserInteraction();
 
     // While the TV info panel is open it owns the focus scope and all keys;
-    // let the event fall through to it (and its back handler).
-    if (_tvInfoPanelVisible) return false;
+    // let the event fall through to it (and its back handler). The one
+    // exception is Menu with the focus outside the player altogether (its
+    // node was disposed): no focus handler can see that press, so close the
+    // panel here, as OverlaySheetHost._fallbackKeyHandler does for a sheet.
+    if (_tvInfoPanelVisible) {
+      if (!event.logicalKey.isBackKey || _focusNode.hasFocus) return false;
+      if (OverlaySheetController.maybeOf(context)?.isOpen ?? false) return false;
+      // Deliberately calls _hideTvInfoPanel directly: a last-resort close, no
+      // animation and no PLR12 checkpoints.
+      return handleBackKeyAction(event, _hideTvInfoPanel) != KeyEventResult.ignored;
+    }
 
     // When an overlay sheet is open (e.g. subtitle search with text fields),
     // don't consume key events — let text input work normally.
@@ -202,8 +211,17 @@ extension _PlexVideoControlsKeyEventMethods on _PlexVideoControlsState {
 
   KeyEventResult _handleControlsKeyEvent(KeyEvent event, bool isMobile) {
     // While the TV info panel is open, its own FocusScope handles every key.
-    // Stay out of the way so directional/select/back reach the panel.
-    if (_tvInfoPanelVisible) return KeyEventResult.ignored;
+    // Stay out of the way so directional/select/back reach the panel. The
+    // panel consumes every back key it sees, so one that still arrives here
+    // came from focus outside the panel (the skip button, or this root after
+    // the button let go): close the panel, or Menu could never reach it.
+    if (_tvInfoPanelVisible) {
+      if (!event.logicalKey.isBackKey) return KeyEventResult.ignored;
+      if (PlatformDetector.isTV() && event is KeyDownEvent) BackKeyCoordinator.markHandled();
+      // Deliberately calls _hideTvInfoPanel directly: a last-resort close, no
+      // animation and no PLR12 checkpoints.
+      return handleBackKeyAction(event, _hideTvInfoPanel);
+    }
     // On Windows/Linux with navigation off, ESC only exits fullscreen —
     // never exits the player. Consume all back key events and check
     // actual window state asynchronously.

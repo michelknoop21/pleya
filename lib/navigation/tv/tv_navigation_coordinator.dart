@@ -392,6 +392,17 @@ enum TvTopNavPresentation {
   /// route's box never changes and nothing underneath it jumps. Film and series
   /// detail open this way.
   collapsible,
+
+  /// A-06b: the route gets the whole window like [collapsible], but the bar
+  /// stays on screen while the page sits at its top. Once the page reports
+  /// through [TvNestedRoute.pageScrolled] that the remote went past its first
+  /// row, the bar glides away together with the page heading, and it comes
+  /// back when the remote returns to the first row or enters the bar. Alle
+  /// films and Alle series open this way.
+  scrollAway;
+
+  /// Whether the route's box runs up behind the bar, to the top of the window.
+  bool get coversWindow => this != persistent;
 }
 
 /// A screen shown inside a destination, above its root, with the top navigation
@@ -437,6 +448,15 @@ class TvNestedRoute {
   /// [TvTopNavPresentation]; the default is the bar every route had before
   /// DEC-115.
   final TvTopNavPresentation topNav;
+
+  /// A-06b: true while a [TvTopNavPresentation.scrollAway] route has the
+  /// remote past its first row. Written by the page (through
+  /// `TvTopNavScrollAwayScope`), read by the shell to slide the bar away. On
+  /// the route rather than in the page's `State`, because the shell needs it
+  /// and the page is built far below the shell; and the shell still hides the
+  /// bar only while the remote is not in it, so this flag can never hide the
+  /// item that holds the focus.
+  final ValueNotifier<bool> pageScrolled = ValueNotifier<bool>(false);
 
   /// The focus key to return to when this route pops (hoofdstuk 7.6). Mijn
   /// Pleya's own mechanism, untouched by HERO7's [restoreTarget]: the two

@@ -1681,6 +1681,8 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         // with no sheet, exit the player. canPop:false keeps swipe-back disabled
         // so it doesn't fight timeline scrubbing.
         canPop: false,
+        // Compact on a phone in landscape, glass with Liquid Glass on (A-23).
+        overVideo: true,
         onSystemBack: () {
           if (BackKeyCoordinator.consumeIfHandled()) return;
           BackKeyCoordinator.markHandled();

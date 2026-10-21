@@ -2630,8 +2630,9 @@ class _TranslationsPlaybackHandoffNl extends TranslationsPlaybackHandoffEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get button => 'Afspelen op Apple TV';
-	@override String get title => 'Afspelen op';
+	@override String get button => 'Pleya Fly';
+	@override String get description => 'Verder kijken op een ander apparaat';
+	@override String get title => 'Pleya Fly';
 	@override String resumeFrom({required Object title, required Object time}) => '${title} · verder vanaf ${time}';
 	@override String get thisIphone => 'Deze iPhone';
 	@override String get thisIpad => 'Deze iPad';
@@ -7069,8 +7070,9 @@ extension on TranslationsNl {
 			'assistant.match.more' => ({required Object count}) => '+${count}',
 			'assistant.match.allAges' => 'AL',
 			'assistant.match.score' => ({required Object score}) => 'Score ${score}',
-			'playbackHandoff.button' => 'Afspelen op Apple TV',
-			'playbackHandoff.title' => 'Afspelen op',
+			'playbackHandoff.button' => 'Pleya Fly',
+			'playbackHandoff.description' => 'Verder kijken op een ander apparaat',
+			'playbackHandoff.title' => 'Pleya Fly',
 			'playbackHandoff.resumeFrom' => ({required Object title, required Object time}) => '${title} · verder vanaf ${time}',
 			'playbackHandoff.thisIphone' => 'Deze iPhone',
 			'playbackHandoff.thisIpad' => 'Deze iPad',

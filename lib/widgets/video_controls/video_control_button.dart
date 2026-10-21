@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pleya/widgets/app_icon.dart';
 
+import '../../automation/automation_node.dart';
 import '../../focus/focusable_wrapper.dart';
 
 /// A standardized button for video player controls with improved tap targets.
@@ -10,6 +11,9 @@ import '../../focus/focusable_wrapper.dart';
 /// buttons easier to interact with, especially on mobile devices.
 class VideoControlButton extends StatelessWidget {
   final IconData icon;
+
+  /// Replaces [icon] when set (e.g. an SVG glyph). It inherits colour and size from an IconTheme.
+  final Widget? iconWidget;
 
   final VoidCallback? onPressed;
 
@@ -45,6 +49,7 @@ class VideoControlButton extends StatelessWidget {
   const VideoControlButton({
     super.key,
     required this.icon,
+    this.iconWidget,
     required this.onPressed,
     this.color,
     this.tooltip,
@@ -63,7 +68,12 @@ class VideoControlButton extends StatelessWidget {
     final effectiveColor = color ?? (isActive ? Colors.amber : Colors.white);
 
     final button = IconButton(
-      icon: AppIcon(icon, fill: 1, color: effectiveColor),
+      icon: iconWidget != null
+          ? IconTheme.merge(
+              data: IconThemeData(color: effectiveColor),
+              child: iconWidget!,
+            )
+          : AppIcon(icon, fill: 1, color: effectiveColor),
       onPressed: onPressed,
       tooltip: tooltip,
       constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
@@ -90,6 +100,10 @@ class VideoControlButton extends StatelessWidget {
         // App-wide focus language: the standard white ring, same as posters/nav.
         child: result,
       );
+    } else if (automationId != null) {
+      // No focus node on a phone or tablet, so no FocusableWrapper to declare
+      // the id; a scenario still has to find the button there (A-23).
+      result = AutomationNode(id: automationId, role: 'button', label: semanticLabel, child: result);
     }
 
     return result;

@@ -1,0 +1,79 @@
+name: tvos.catalog.header-scroll-away
+target: tvos-sim
+# A-06b (Michel, 20 Oct 2026): on Alle films the page heading and the top
+# navigation glide away once the remote is past the first grid row, and come
+# back on the first row or in the bar. The bar never leaves while the ring is
+# in it.
+#
+# `catalog.long-grid.v1` seeds 18 films, three rows of six. Reached through the
+# Films landing's "Alle films" action, the same route `tvos.catalog.sort-order`
+# takes. `tv.catalog.header[movies]` carries `collapsed` from the value the
+# page lays itself out with.
+setup:
+  - reset_app
+  - seed: catalog.long-grid.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - walk: {direction: right, expect: [nav.series, nav.movies], timeout: 40000, settle: 800}
+  - press: select
+  - settle: 1500
+  - press: select
+  - wait_until: {id: "tv.catalog.grid[movies]", timeout: 20000}
+  - wait_until: {id: "tv.catalog.grid.item[movies.17]", timeout: 10000}
+  - settle: 1000
+  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true}
+  - assert: {id: "tv.catalog.header[movies]", insideViewport: true, state: {collapsed: false}}
+  - assert: {id: nav.movies, insideViewport: true}
+  - snapshot: 00-top
+
+  # Row 1: heading and bar glide away, the ring stays on the card.
+  - press: down
+  - settle: 900
+  - assert: {id: "tv.catalog.grid.item[movies.6]", focused: true}
+  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: true}}
+  - snapshot: 01-folded-row1
+
+  # Row 2: nothing changes.
+  - press: down
+  - settle: 900
+  - assert: {id: "tv.catalog.grid.item[movies.12]", focused: true}
+  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: true}}
+  - snapshot: 02-folded-row2
+
+  # Back to row 0: both return.
+  - press: up
+  - settle: 600
+  - press: up
+  - settle: 900
+  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true}
+  - assert: {id: "tv.catalog.header[movies]", insideViewport: true, state: {collapsed: false}}
+  - assert: {id: nav.movies, insideViewport: true}
+  - snapshot: 03-back-top
+
+  # UP from row 0 lands in a visible bar.
+  - press: up
+  - settle: 900
+  - assert: {id: nav.movies, focused: true, insideViewport: true}
+  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: false}}
+  - snapshot: 04-in-bar
+
+  # Folded on row 1, LEFT into the rail keeps it folded; UP out of the rail
+  # brings the bar back with the ring in it.
+  - press: down
+  - settle: 900
+  - press: down
+  - settle: 900
+  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: true}}
+  - press: left
+  - settle: 900
+  - assert: {id: "tv.catalog.rail.row[movies.sources]", focused: true}
+  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: true}}
+  - snapshot: 05-rail-folded
+  - press: up
+  - settle: 900
+  - assert: {id: nav.movies, focused: true, insideViewport: true}
+  - assert: {id: "tv.catalog.header[movies]", insideViewport: true, state: {collapsed: false}}
+  - snapshot: 06-rail-up-bar
