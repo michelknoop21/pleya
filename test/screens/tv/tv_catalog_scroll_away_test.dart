@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/dpad_navigator.dart';
+import 'package:pleya/focus/focus_theme.dart';
 import 'package:pleya/focus/focus_memory_tracker.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -315,8 +316,8 @@ void main() {
     expect(headerOpacity(tester), 0, reason: 'the heading has faded out');
     expect(
       gridRect(tester).top,
-      closeTo(TvTopNavLayout.topInset, 0.5),
-      reason: 'the grid moved up to the overscan line, scale 1.0 at 1080',
+      closeTo(TvCatalogLayout.topSafeInset, 0.5),
+      reason: 'the grid moved up to the overscan band of hoofdstuk 8.1, 56 of 1080, not to the bar inset',
     );
   }
 
@@ -521,6 +522,85 @@ void main() {
 
     expect(primary()?.debugLabel, cardLabel(12));
     expectFolded(tester);
+  });
+
+  /// Sixty films, ten rows: enough for the grid to really scroll.
+  Future<void> growCatalog() async {
+    client.items
+      ..clear()
+      ..addAll([for (var i = 0; i < 60; i++) _movie(i)]);
+    await catalog.refresh();
+  }
+
+  Rect cardRect(WidgetTester tester, int index) =>
+      tester.getRect(find.byWidgetPredicate((w) => w is Focus && w.focusNode?.debugLabel == cardLabel(index)).first);
+
+  double scrollOffset(WidgetTester tester) => tester
+      .state<ScrollableState>(
+        find.descendant(of: find.byType(TvCatalogCardGrid), matching: find.byType(Scrollable)).first,
+      )
+      .position
+      .pixels;
+
+  testWidgets('UP through the folded rows keeps the focused row and its ring out of the overscan band', (tester) async {
+    await growCatalog();
+    await pump(tester);
+    await openCatalog(tester);
+    for (var i = 0; i < 6; i++) {
+      await press(tester, LogicalKeyboardKey.arrowDown);
+    }
+    for (var row = 5; row >= 1; row--) {
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(primary()?.debugLabel, cardLabel(row * 6));
+      final card = cardRect(tester, row * 6);
+      final ring = card.height * (FocusTheme.fullCardFocusScale - 1) / 2;
+      expect(
+        card.top - ring,
+        greaterThanOrEqualTo(TvCatalogLayout.topSafeInset - 0.5),
+        reason: 'row $row: the ring stays below the outer 56 of 1080, where a set that overscans cuts',
+      );
+      expect(card.bottom, lessThanOrEqualTo(_window.height));
+      expectFolded(tester);
+    }
+  });
+
+  testWidgets('UP out of the rail into the bar brings the first row back whole under the heading', (tester) async {
+    await growCatalog();
+    await pump(tester);
+    await openCatalog(tester);
+    for (var i = 0; i < 4; i++) {
+      await press(tester, LogicalKeyboardKey.arrowDown);
+    }
+    expect(scrollOffset(tester), greaterThan(0), reason: 'the grid really scrolled');
+    await press(tester, LogicalKeyboardKey.arrowLeft);
+    expect(primary()?.debugLabel, 'TvCatalogRailSources');
+
+    await press(tester, LogicalKeyboardKey.arrowUp);
+
+    expect(hostKey.currentState!.isNavFocused, isTrue);
+    expectShown(tester);
+    expect(scrollOffset(tester), 0, reason: 'the page is back at its top together with the heading');
+    final first = cardRect(tester, 0);
+    expect(first.top, greaterThanOrEqualTo(headerRect(tester).bottom), reason: 'poster not under the heading');
+    expect(first.bottom, lessThanOrEqualTo(_window.height), reason: 'title and year on screen');
+  });
+
+  testWidgets('UP onto the first row puts it whole under the returning heading', (tester) async {
+    await growCatalog();
+    await pump(tester);
+    await openCatalog(tester);
+    for (var i = 0; i < 4; i++) {
+      await press(tester, LogicalKeyboardKey.arrowDown);
+    }
+    for (var i = 0; i < 4; i++) {
+      await press(tester, LogicalKeyboardKey.arrowUp);
+    }
+    expect(primary()?.debugLabel, cardLabel(0));
+    expectShown(tester);
+    expect(scrollOffset(tester), 0);
+    final first = cardRect(tester, 0);
+    expect(first.top, greaterThanOrEqualTo(headerRect(tester).bottom));
+    expect(first.bottom, lessThanOrEqualTo(_window.height));
   });
 
   testWidgets('reduce motion: both states are reached on the next frame', (tester) async {

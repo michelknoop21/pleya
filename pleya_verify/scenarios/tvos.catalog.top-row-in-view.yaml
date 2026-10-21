@@ -1,0 +1,62 @@
+name: tvos.catalog.top-row-in-view
+target: tvos-sim
+# A-06b follow-up (Michel, hardware, build 391): moving UP in Alle films or
+# Alle series left the top row just off the screen. Two causes, both covered:
+#
+# - Folded, the grid started at the bar's inset (28 of 1080), half the outer
+#   band of hoofdstuk 8.1, so the row the remote moved UP to sat with its ring
+#   inside the band a set overscans. The folded grid now starts at 56 of 1080.
+# - UP out of the rail into the bar brought the heading back but left the grid
+#   scrolled, the first row cut off under the heading. The grid now returns to
+#   its top together with the heading.
+#
+# `catalog.long-grid.v1` seeds 18 films, three rows of six.
+setup:
+  - reset_app
+  - seed: catalog.long-grid.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - walk: {direction: right, expect: [nav.series, nav.movies], timeout: 40000, settle: 800}
+  - press: select
+  - settle: 1500
+  - press: select
+  - wait_until: {id: "tv.catalog.grid[movies]", timeout: 20000}
+  - wait_until: {id: "tv.catalog.grid.item[movies.17]", timeout: 10000}
+  - settle: 1000
+
+  # Down to row 2, then UP to row 1: folded, row 1 parked at the top.
+  - press: down
+  - settle: 700
+  - press: down
+  - settle: 900
+  - press: up
+  - settle: 900
+  - assert: {id: "tv.catalog.grid.item[movies.6]", focused: true, insideViewport: true}
+  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: true}}
+  - snapshot: 01-up-to-row1-folded
+
+  # UP onto row 0: heading back, the whole first row under it.
+  - press: up
+  - settle: 900
+  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true, insideViewport: true, below: "tv.catalog.header[movies]"}
+  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: false}}
+  - snapshot: 02-row0-after-up
+
+  # Folded on row 2, LEFT into the rail, UP into the bar: the grid goes back
+  # to its top with the heading.
+  - press: down
+  - settle: 700
+  - press: down
+  - settle: 900
+  - press: left
+  - settle: 900
+  - assert: {id: "tv.catalog.rail.row[movies.sources]", focused: true}
+  - press: up
+  - settle: 900
+  - assert: {id: nav.movies, focused: true, insideViewport: true}
+  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: false}}
+  - assert: {id: "tv.catalog.grid.item[movies.0]", insideViewport: true, below: "tv.catalog.header[movies]"}
+  - snapshot: 03-rail-to-bar-row0

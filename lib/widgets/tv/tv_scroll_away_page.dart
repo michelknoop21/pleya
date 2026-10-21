@@ -9,6 +9,7 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 
 import '../../navigation/tv/tv_top_nav_scroll_away.dart';
+import 'tv_unified_layout.dart';
 
 /// A page heading over a body, on the whole window, where the heading and the
 /// band above it fold away while [expanded] is false.
@@ -43,6 +44,21 @@ class TvScrollAwayPage extends StatefulWidget {
   final Widget header;
   final Widget body;
   final bool fitBody;
+
+  /// Where the body starts while everything is folded away: the outer band
+  /// of hoofdstuk 8.1 ("geen tekst of focusring binnen de buitenste 56
+  /// pixels", [TvCatalogLayout.topSafeInset] of the 1080 reference), and never
+  /// less than the inset the shell hands a whole-window route.
+  ///
+  /// The shell's inset alone is the bar's, 28 reference pixels, which is half
+  /// that band. Folded, the grid parks a row flush against this line whenever
+  /// the remote moves UP, ring included, so with the bar's inset the row the
+  /// viewer moved to sat at four per cent of the screen and a set that
+  /// overscans cut it off (Michel, build 391).
+  static double foldedTopOf(BuildContext context) => math.max(
+    MediaQuery.paddingOf(context).top,
+    MediaQuery.sizeOf(context).height * (TvCatalogLayout.topSafeInset / 1080),
+  );
 
   @override
   State<TvScrollAwayPage> createState() => _TvScrollAwayPageState();
@@ -82,7 +98,7 @@ class _TvScrollAwayPageState extends State<TvScrollAwayPage> with SingleTickerPr
         delegate: _ScrollAwayLayout(
           reveal: _reveal,
           topBand: widget.topBand,
-          safeTop: MediaQuery.paddingOf(context).top,
+          safeTop: TvScrollAwayPage.foldedTopOf(context),
           fitBody: widget.fitBody,
         ),
         children: [

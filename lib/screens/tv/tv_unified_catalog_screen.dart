@@ -221,6 +221,10 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// page is not hosted that way and keeps its heading in place.
   ValueNotifier<bool>? _pageScrolled;
 
+  /// What the last build laid the page out as, so the frame the heading comes
+  /// back on can be told apart from one where it simply stays.
+  bool _wasExpanded = true;
+
   @override
   void initState() {
     super.initState();
@@ -764,6 +768,24 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     _syncPageScrolled();
   }
 
+  /// The heading is coming back, so the page is at its top again: the first
+  /// row belongs whole under it, poster to year. Moving UP onto row 0 already
+  /// gets there through the grid's own clamp; this covers the other way back,
+  /// UP out of the rail into the bar, which left the grid where it was and the
+  /// first row cut off under the heading. Same motion as the heading, so the
+  /// two arrive together.
+  void _revealFirstRow() {
+    if (!mounted || !_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.pixels <= position.minScrollExtent) return;
+    final duration = TvTopNavScrollAwayMotion.durationFor(context, showing: true);
+    if (duration == Duration.zero) {
+      position.jumpTo(position.minScrollExtent);
+    } else {
+      position.animateTo(position.minScrollExtent, duration: duration, curve: TvTopNavScrollAwayMotion.curve);
+    }
+  }
+
   /// Never called during a build: the shell listens to this flag.
   void _syncPageScrolled() {
     final pageScrolled = _pageScrolled;
@@ -824,6 +846,10 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     if (pageScrolled.value != _scrolled) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _syncPageScrolled());
     }
+    if (expanded && !_wasExpanded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _revealFirstRow());
+    }
+    _wasExpanded = expanded;
     return TvScrollAwayPage(
       expanded: expanded,
       topBand: TvShellSurface.topBandHeightOf(context),
