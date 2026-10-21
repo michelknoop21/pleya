@@ -49,7 +49,9 @@ import 'package:flutter/material.dart';
 
 import '../../focus/focus_theme.dart';
 import '../../utils/layout_constants.dart';
+import '../../theme/mono_tokens.dart';
 import 'tv_catalog_artwork_window.dart';
+import 'tv_catalog_row_alignment.dart';
 import 'tv_unified_layout.dart';
 
 /// One cell's wiring, handed to [TvCatalogCardGrid.itemBuilder].
@@ -113,6 +115,7 @@ class TvCatalogCardGrid extends StatefulWidget {
     this.reservedLeading = 0,
     this.onBack,
     this.nodeDebugLabel = 'TvCatalogCard',
+    this.rowAligned = false,
   });
 
   /// One stable id per item, in display order. Identity, not position: see the
@@ -184,6 +187,19 @@ class TvCatalogCardGrid extends StatefulWidget {
   /// Prefix of the focus nodes' debug labels, so a focus trace says which grid
   /// a node belongs to when two are mounted at once.
   final String nodeDebugLabel;
+
+  /// A-06b (Michel, build 394): scroll a whole row at a time and keep every
+  /// visible row whole. UP and DOWN are wired here instead of falling through
+  /// to Flutter's traversal, whose `ensureVisible` jumps the content into place
+  /// and leaves rows cut off at the edge; the grid moves the focus to the card
+  /// above or below and glides the content to a row boundary
+  /// ([tvCatalogRowAlignedOffset]). Off by default, so every other surface on
+  /// this grid keeps the CAT10 clamp it has.
+  final bool rowAligned;
+
+  /// The glide for [rowAligned]: the same easeOutCubic as the page heading,
+  /// a little shorter because it runs on every press.
+  static const Duration rowScrollDuration = Duration(milliseconds: 220);
 
   /// How close to the end of the loaded pages the focus has to get before the
   /// next page is asked for, in grid rows.
@@ -296,6 +312,10 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     final grid = _grid;
     final cardHeight = _cardHeight;
     if (grid == null || cardHeight == null) return;
+    if (widget.rowAligned) {
+      _alignToRow(index, grid, cardHeight);
+      return;
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_controller.hasClients) return;
@@ -317,6 +337,47 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
       if ((target - position.pixels).abs() < 0.5) return;
       position.jumpTo(target);
     });
+  }
+
+  /// [TvCatalogCardGrid.rowAligned]'s half of [_keepFocusRingVisible].
+  ///
+  /// Always settles the position, even when it is already right: the card's
+  /// own `FocusableWrapper` starts a scroll of its own on focus (centring the
+  /// card), and that one runs first. Only an explicit move from here replaces
+  /// it, so "nothing to do" still has to say so.
+  void _alignToRow(int index, TvCatalogGrid grid, double cardHeight) {
+    final duration = reduceMotion(context, TvCatalogCardGrid.rowScrollDuration);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_controller.hasClients) return;
+      final position = _controller.position;
+      if (!position.hasViewportDimension || !position.hasContentDimensions) return;
+      final target = tvCatalogRowAlignedOffset(
+        row: index ~/ grid.columns,
+        pixels: position.pixels,
+        viewport: position.viewportDimension,
+        cardHeight: cardHeight,
+        gutter: grid.gutter,
+        growth: TvCatalogGrid.focusHeadroom(cardHeight: cardHeight, focusScale: widget.focusScale),
+        minScrollExtent: position.minScrollExtent,
+        maxScrollExtent: position.maxScrollExtent,
+      );
+      if (duration == Duration.zero || (target - position.pixels).abs() < 0.5) {
+        position.jumpTo(target);
+      } else {
+        position.animateTo(target, duration: duration, curve: Curves.easeOutCubic);
+      }
+    });
+  }
+
+  /// UP or DOWN to the card in the same column of the neighbouring row, for
+  /// [TvCatalogCardGrid.rowAligned]. A shorter last row takes its last card.
+  void _moveToRow(int index, int columns, int direction) {
+    final ids = widget.itemIds;
+    if (ids.isEmpty) return;
+    final target = (index + direction * columns).clamp(0, ids.length - 1);
+    if (target == index) return;
+    final node = _nodes[ids[target]];
+    if (node != null && node.canRequestFocus) node.requestFocus();
   }
 
   /// Asks for the next page once the focus is within
@@ -543,13 +604,21 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
           widget.onFocusedCell?.call(index, grid);
           _maybeLoadMore(index);
         },
-        onNavigateUp: isFirstRow ? widget.onExitTop : null,
+        onNavigateUp: isFirstRow
+            ? widget.onExitTop
+            : widget.rowAligned
+            ? () => _moveToRow(index, grid.columns, -1)
+            : null,
         // DOWN on the last row is the *backstop*, not the trigger any more —
         // see [_maybeLoadMore], which fires two rows earlier. It fires the load
         // and keeps focus exactly where it is: hoofdstuk 28 forbids a reflow,
         // and moving focus to a card that does not exist yet is the reset this
         // whole widget is built to avoid.
-        onNavigateDown: isLastRow && widget.hasMore && !widget.isLoadingMore ? widget.onLoadMore : null,
+        onNavigateDown: isLastRow
+            ? (widget.hasMore && !widget.isLoadingMore ? widget.onLoadMore : null)
+            : widget.rowAligned
+            ? () => _moveToRow(index, grid.columns, 1)
+            : null,
         onNavigateLeft: isFirstColumn ? widget.onExitLeft : null,
         onNavigateRight: null,
         onBack: widget.onBack,

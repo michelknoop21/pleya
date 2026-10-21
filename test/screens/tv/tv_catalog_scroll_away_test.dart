@@ -44,6 +44,8 @@ import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/tv/tv_catalog_card_grid.dart';
 import 'package:pleya/widgets/tv/tv_catalog_header_bar.dart';
+import 'package:pleya/widgets/tv/tv_catalog_row_alignment.dart';
+import 'package:pleya/widgets/tv/tv_scroll_away_page.dart';
 import 'package:pleya/widgets/tv/tv_top_navigation.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:provider/provider.dart';
@@ -51,6 +53,9 @@ import 'package:provider/provider.dart';
 import '../../test_helpers/prefs.dart';
 
 const _window = Size(1920, 1080);
+
+/// Where the folded grid starts at [_window], scale 1.0.
+final double foldedTop = TvScrollAwayPage.foldedTopForGrid(size: _window, scale: 1);
 
 /// Three rows of six at 1920 wide.
 const int _titles = 18;
@@ -316,8 +321,8 @@ void main() {
     expect(headerOpacity(tester), 0, reason: 'the heading has faded out');
     expect(
       gridRect(tester).top,
-      closeTo(TvCatalogLayout.bottomSafeInset, 0.5),
-      reason: 'the grid moved up to the same clearance the bottom edge keeps, 81 of 1080, not to the bar inset',
+      closeTo(foldedTop, 0.5),
+      reason: 'folded, the grid starts where two whole rows fit with equal room above and below',
     );
   }
 
@@ -542,26 +547,74 @@ void main() {
       .position
       .pixels;
 
-  testWidgets('UP through the folded rows keeps the focused row and its ring out of the overscan band', (tester) async {
+  /// Rows [top] and [top] + 1 stand whole on screen, poster to year, the top
+  /// one on the same line every time, and the focused card's ring is clear of
+  /// both edges.
+  void expectTwoWholeRows(WidgetTester tester, {required int top, required int focusedRow}) {
+    final upper = cardRect(tester, top * 6);
+    final lower = cardRect(tester, (top + 1) * 6);
+    final ring = upper.height * (FocusTheme.fullCardFocusScale - 1) / 2;
+    expect(upper.top, closeTo(foldedTop + ring, 0.5), reason: 'row $top is the top row, on the row line');
+    expect(lower.bottom, lessThanOrEqualTo(_window.height - foldedTop + 0.5), reason: 'row ${top + 1} whole');
+    final focused = cardRect(tester, focusedRow * 6);
+    expect(focused.top - ring, greaterThanOrEqualTo(0));
+    expect(focused.bottom + ring, lessThanOrEqualTo(_window.height));
+  }
+
+  testWidgets('folded, DOWN and UP keep two whole rows on screen, a row at a time', (tester) async {
     await growCatalog();
     await pump(tester);
     await openCatalog(tester);
-    for (var i = 0; i < 6; i++) {
+    expect(foldedTop, inInclusiveRange(20, 60), reason: 'a small margin, not a band of dead space');
+
+    for (var row = 1; row <= 6; row++) {
       await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(primary()?.debugLabel, cardLabel(row * 6));
+      expectTwoWholeRows(tester, top: row - 1, focusedRow: row);
+      expectFolded(tester);
     }
     for (var row = 5; row >= 1; row--) {
       await press(tester, LogicalKeyboardKey.arrowUp);
       expect(primary()?.debugLabel, cardLabel(row * 6));
-      final card = cardRect(tester, row * 6);
-      final ring = card.height * (FocusTheme.fullCardFocusScale - 1) / 2;
-      expect(
-        card.top - ring,
-        greaterThanOrEqualTo(TvCatalogLayout.bottomSafeInset - 0.5),
-        reason: 'row $row: the ring keeps 81 of 1080 clear above it, the bottom edge\'s margin, not the 56 floor',
-      );
-      expect(card.bottom, lessThanOrEqualTo(_window.height));
+      expectTwoWholeRows(tester, top: row, focusedRow: row);
       expectFolded(tester);
     }
+  });
+
+  testWidgets('a row change glides the content, it does not jump a row at once', (tester) async {
+    await growCatalog();
+    await pump(tester);
+    await openCatalog(tester);
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    expect(scrollOffset(tester), 0, reason: 'rows 0 and 1 both fit, nothing to scroll yet');
+    final pitch = cardRect(tester, 6).top - cardRect(tester, 0).top;
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 16));
+    final early = scrollOffset(tester);
+    expect(early, greaterThan(0), reason: 'it has started');
+    // Traversal's own ensureVisible would have jumped to ~95% of a row.
+    expect(early, lessThan(pitch * 0.8), reason: 'and is on its way, not already there');
+    await tester.pumpAndSettle();
+    expect(scrollOffset(tester), closeTo(pitch, 0.5), reason: 'it ends exactly one row further');
+  });
+
+  test('two whole rows fit at the size Apple TV renders at', () {
+    // 1920 x 1080 logical is the 4K panel at a device pixel ratio of 2.
+    expect(
+      tvCatalogWholeRowsThatFit(
+        viewport: _window.height - foldedTop,
+        cardHeight: TvCatalogLayout.cardHeight(TvCatalogGrid.forWidth(_window.width, scale: 1).cardWidth, 1),
+        gutter: TvCatalogGrid.forWidth(_window.width, scale: 1).gutter,
+        growth: TvCatalogGrid.focusHeadroom(
+          cardHeight: TvCatalogLayout.cardHeight(TvCatalogGrid.forWidth(_window.width, scale: 1).cardWidth, 1),
+          focusScale: FocusTheme.fullCardFocusScale,
+        ),
+      ),
+      2,
+    );
   });
 
   testWidgets('UP out of the rail into the bar brings the first row back whole under the heading', (tester) async {

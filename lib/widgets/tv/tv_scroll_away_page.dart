@@ -8,6 +8,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
+import '../../focus/focus_theme.dart';
 import '../../navigation/tv/tv_top_nav_scroll_away.dart';
 import 'tv_unified_layout.dart';
 
@@ -33,6 +34,7 @@ class TvScrollAwayPage extends StatefulWidget {
     required this.topBand,
     required this.header,
     required this.body,
+    required this.foldedTop,
     this.fitBody = false,
   });
 
@@ -45,22 +47,35 @@ class TvScrollAwayPage extends StatefulWidget {
   final Widget body;
   final bool fitBody;
 
-  /// Where the body starts while everything is folded away: the clearance
-  /// the bottom edge already keeps, [TvCatalogLayout.bottomSafeInset] of the
-  /// 1080 reference (81, 7.5%), and never less than the inset the shell hands
-  /// a whole-window route.
+  /// Where the body starts while folded; see [foldedTopForGrid].
+  final double foldedTop;
+
+  /// Where a grid body starts while everything is folded away, so that two
+  /// whole rows of [cardHeight] fit on the screen at once, poster to year,
+  /// with the focus ring of either one clear of both edges (Michel, build
+  /// 394: "je kan makkelijk twee rijen volledig zichtbaar laten zijn").
   ///
-  /// Folded, this edge plays the bottom edge's part: the grid parks the row
-  /// the remote moved UP to with its ring flush against it, the way it parks
-  /// the row it moved DOWN to against the bottom one. Hoofdstuk 8.1's 56 is a
-  /// floor, not a margin (see [TvCatalogLayout.bottomSafeInset] and P12), and
-  /// the shell's inset alone is the bar's, 28, half of that floor: with it the
-  /// row sat at four per cent of the screen and a set that overscans cut it
-  /// off (Michel, build 391).
-  static double foldedTopOf(BuildContext context) => math.max(
-    MediaQuery.paddingOf(context).top,
-    MediaQuery.sizeOf(context).height * (TvCatalogLayout.bottomSafeInset / 1080),
-  );
+  /// The two rows, the gutter between them and the ring's headroom above the
+  /// top one and below the bottom one take what they take; what is left of the
+  /// height is shared equally between the top and the bottom edge, and that
+  /// share is this value. It is capped at Apple's title-safe inset of 60 of
+  /// 1080, so a larger screen does not grow a band of dead space, and it is 0
+  /// rather than negative where two rows cannot fit at all. On the 1920 x 1080
+  /// canvas that is about 26: two rows of 488 plus a gutter of 22 and two
+  /// rings of 15 leave 52. Hoofdstuk 8.1's 56 and the earlier 81 could not
+  /// hold two rows; Michel's set does not overscan and he chose the rows.
+  static double foldedTopForGrid({
+    required Size size,
+    required double scale,
+    double focusScale = FocusTheme.fullCardFocusScale,
+  }) {
+    final grid = TvCatalogGrid.forWidth(size.width, scale: scale);
+    final cardHeight = TvCatalogLayout.cardHeight(grid.cardWidth, scale);
+    final growth = TvCatalogGrid.focusHeadroom(cardHeight: cardHeight, focusScale: focusScale);
+    final twoRows = 2 * cardHeight + grid.gutter + 2 * growth;
+    final appleTitleSafe = size.height * (60 / 1080);
+    return ((size.height - twoRows) / 2).clamp(0.0, appleTitleSafe);
+  }
 
   @override
   State<TvScrollAwayPage> createState() => _TvScrollAwayPageState();
@@ -100,7 +115,7 @@ class _TvScrollAwayPageState extends State<TvScrollAwayPage> with SingleTickerPr
         delegate: _ScrollAwayLayout(
           reveal: _reveal,
           topBand: widget.topBand,
-          safeTop: TvScrollAwayPage.foldedTopOf(context),
+          safeTop: widget.foldedTop,
           fitBody: widget.fitBody,
         ),
         children: [
