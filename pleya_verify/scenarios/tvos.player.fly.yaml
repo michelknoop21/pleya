@@ -1,0 +1,103 @@
+name: tvos.player.fly
+target: tvos-sim
+# A-23d: Pleya Fly from the Apple TV to an iPhone or iPad. On TV the picker is
+# a sub-view of the player panel (DEC-101, mockup 33 idiom), reached two ways:
+# the Pleya Fly button in the player bar, and the Pleya Fly row in the
+# Playback column of the Video tab, under the sleep timer.
+#
+# The walk into the player and the pause are the ones `tvos.player.panel`
+# uses; see there why the first Select pauses before the fixture clip ends.
+# From play/pause, RIGHT passes the three transport buttons, then the tune
+# button and the tracks button; the clip has no chapters, so the fifth RIGHT
+# is the Pleya Fly button.
+#
+# What this proves: the button and the row open the picker, the picker lands
+# its focus inside, and Menu goes back one layer. What it cannot prove: a
+# real fly. The fixture profile signs in to Pleya Server, which has no
+# Companion Remote identity, so the search ends at once in the empty state;
+# an iPhone or iPad with Pleya open, the PIN on the phone, the phone's
+# background and resume, and broadcast from iOS are hardware items under A-22.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - wait_until: {id: discover.hero, timeout: 15000}
+  - press: down
+  - settle: 800
+  - press: down
+  - settle: 800
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 20000}
+  - settle: 1500
+  - press: select
+  - wait_until: {id: player.surface, timeout: 25000}
+
+  - settle: 200
+  - press: select
+  - settle: 400
+  - assert: {id: player.play_pause, state: {playing: false}}
+  - press: right
+  - settle: 250
+  - press: right
+  - settle: 250
+  - press: right
+  - settle: 250
+  - press: right
+  - settle: 300
+  - assert: {id: player.settings_button, focused: true}
+  - press: right
+  - settle: 250
+  - press: right
+  - settle: 300
+  - assert: {id: player.handoff_button, focused: true}
+  - snapshot: 01-player-bar-fly-button
+
+  # The button opens the panel straight on the picker, over the Video tab.
+  - press: select
+  - wait_until: {id: player.panel, timeout: 5000}
+  - settle: 600
+  - assert: {id: player.panel, state: {tab: video, subView: pleyaFly}}
+  - assert: {id: player.panel, insideViewport: true}
+  - wait_until: {id: "player.panel.row[pleya_fly.search_again]", timeout: 12000}
+  - settle: 400
+  - assert: {id: "player.panel.row[pleya_fly.search_again]", focused: true, insideViewport: true}
+  - snapshot: 02-fly-empty-state
+
+  # Menu closes the picker, not the panel.
+  - press: menu
+  - settle: 500
+  - assert: {id: player.panel, state: {tab: video, subView: none}}
+  - assert: {id: "player.panel.row[aspect_ratio]", focused: true}
+
+  # The row in the Playback column, under the sleep timer.
+  - press: right
+  - settle: 300
+  - assert: {id: "player.panel.row[speed]", focused: true}
+  - press: down
+  - settle: 300
+  - assert: {id: "player.panel.row[sleep_timer]", focused: true}
+  - press: down
+  - settle: 300
+  - assert: {id: "player.panel.row[pleya_fly]", focused: true, insideViewport: true}
+  - assert: {id: "player.panel.row[pleya_fly]", below: "player.panel.row[sleep_timer]"}
+  - snapshot: 03-panel-fly-row
+  - press: select
+  - settle: 600
+  - assert: {id: player.panel, state: {tab: video, subView: pleyaFly}}
+  - wait_until: {id: "player.panel.row[pleya_fly.search_again]", timeout: 12000}
+  - assert: {id: "player.panel.row[pleya_fly.search_again]", focused: true}
+  - snapshot: 04-fly-from-row
+
+  # Menu twice: back to the tab, then out of the panel to the player.
+  - press: menu
+  - settle: 500
+  - assert: {id: player.panel, state: {tab: video, subView: none}}
+  - press: menu
+  - settle: 600
+  - press: up
+  - settle: 400
+  - assert: {id: player.title, insideViewport: true}

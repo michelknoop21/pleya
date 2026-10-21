@@ -8,8 +8,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/services/airplay_service.dart';
+import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/pleya_fly_icon.dart';
 import 'package:pleya/widgets/video_controls/models/track_controls_state.dart';
+import 'package:pleya/widgets/video_controls/tv_info_panel/tv_panel_types.dart';
 import 'package:pleya/widgets/video_controls/video_control_button.dart';
 import 'package:pleya/widgets/video_controls/widgets/track_chapter_controls.dart';
 
@@ -107,4 +109,51 @@ void main() {
       expect(_fly(tester), ColorFilter.mode(expected, BlendMode.srcIn));
     });
   }
+
+  // A-23d: on TV the button exists without AirPlay and opens the panel picker.
+  group('on TV', () {
+    setUp(() {
+      AirPlayService.debugAvailableOverride = false;
+      TvDetectionService.debugSetAppleTVOverride(true);
+    });
+    tearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+
+    Future<List<TvInfoPanelRequest>> pumpTvBar(WidgetTester tester, {required bool canHandoff}) async {
+      final requests = <TvInfoPanelRequest>[];
+      final player = FakeSyncPlayer(playing: true, duration: const Duration(minutes: 90));
+      addTearDown(player.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: TrackChapterControls(
+                player: player,
+                chapters: const [],
+                chaptersLoaded: true,
+                trackControlsState: TrackControlsState(canHandoff: canHandoff, serverId: 'srv', ratingKey: '1'),
+                onOpenTvPanel: requests.add,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return requests;
+    }
+
+    final flyButton = find.byTooltip('${t.playbackHandoff.button} · ${t.playbackHandoff.description}');
+
+    testWidgets('the Pleya Fly button shows without AirPlay and asks the panel for the picker', (tester) async {
+      final requests = await pumpTvBar(tester, canHandoff: true);
+      expect(flyButton, findsOneWidget);
+      await tester.tap(flyButton);
+      await tester.pumpAndSettle();
+      expect(requests, [TvInfoPanelRequest.pleyaFly]);
+    });
+
+    testWidgets('no button when the playback cannot fly', (tester) async {
+      await pumpTvBar(tester, canHandoff: false);
+      expect(flyButton, findsNothing);
+    });
+  });
 }

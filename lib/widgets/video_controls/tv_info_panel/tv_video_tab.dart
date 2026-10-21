@@ -18,6 +18,7 @@ import '../../../utils/quality_preset_labels.dart';
 import '../../../automation/automation_ids.dart';
 import 'tv_panel_types.dart';
 import 'tv_panel_widgets.dart';
+import 'tv_pleya_fly_sub_view.dart' show TvPleyaFlyGlyph;
 
 /// Ambient lighting intensity steps. `off` disables the effect; the others map
 /// to shader brightness in AmbientLightingService.
@@ -56,6 +57,9 @@ class TvVideoTab extends StatelessWidget {
   final int selectedMediaIndex;
   final TranscodeQualityPreset selectedQualityPreset;
   final bool serverSupportsTranscoding;
+
+  /// Whether this playback can fly to an iPhone or iPad (A-23d).
+  final bool canHandoff;
   final FocusNode firstFocusNode;
   final VoidCallback onNavigateUp;
   final ValueChanged<TvInfoPanelSubView> onOpenSubView;
@@ -81,6 +85,7 @@ class TvVideoTab extends StatelessWidget {
     this.selectedMediaIndex = 0,
     this.selectedQualityPreset = TranscodeQualityPreset.original,
     this.serverSupportsTranscoding = false,
+    this.canHandoff = false,
     required this.firstFocusNode,
     required this.onNavigateUp,
     required this.onOpenSubView,
@@ -357,6 +362,20 @@ class TvVideoTab extends StatelessWidget {
         },
       ),
     );
+    // Pleya Fly to an iPhone or iPad (A-23d), beside the sleep timer: a list
+    // row that opens the picker as a sub-view.
+    if (canHandoff) {
+      playback.add(
+        TvPanelRow(
+          leading: const TvPleyaFlyGlyph(),
+          title: t.playbackHandoff.button,
+          showChevron: true,
+          onSelect: () => onOpenSubView(TvInfoPanelSubView.pleyaFly),
+          automationId: AutomationIds.playerPanelRow,
+          automationInstance: 'pleya_fly',
+        ),
+      );
+    }
     playback.add(
       ValueListenableBuilder<bool>(
         valueListenable: settings.listenable(SettingsService.autoPlayNextEpisode),

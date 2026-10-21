@@ -154,6 +154,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
     int attempts = 5,
     Duration pause = const Duration(milliseconds: 200),
   }) async {
+    if (debugBindDelay > Duration.zero) await Future<void>.delayed(debugBindDelay);
     for (var attempt = 1; attempt <= attempts; attempt++) {
       try {
         final server = await HttpServer.bind(InternetAddress.anyIPv4, preferredPort);
@@ -186,6 +187,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
 
     try {
       _server = await bindHostServer(48632);
+      debugLiveHostServers++;
 
       final localIps = await _getAllLocalIpAddresses();
       final port = _server!.port;
@@ -1004,6 +1006,17 @@ class CompanionRemotePeerService with KeepaliveMixin {
     });
   }
 
+  static const _channelCloseTimeout = Duration(seconds: 2);
+
+  /// Host servers bound and not yet closed, across all peer services: a test
+  /// sees an orphan that nothing references any more (A-23d).
+  @visibleForTesting
+  static int debugLiveHostServers = 0;
+
+  /// Test seam: a bind that takes this long, so a test can act while it runs.
+  @visibleForTesting
+  static Duration debugBindDelay = Duration.zero;
+
   Future<void> disconnect() async {
     appLogger.d('CompanionRemote: Disconnecting');
 
@@ -1020,7 +1033,10 @@ class CompanionRemotePeerService with KeepaliveMixin {
 
     if (_channel != null) {
       try {
-        await _channel!.sink.close();
+        // Bounded: on a channel whose connect was refused the close never
+        // completes, and leaving a failed join would hang (A-23d: the Apple TV
+        // then never hosts again after a fly that did not connect).
+        await _channel!.sink.close().timeout(_channelCloseTimeout);
       } catch (e) {
         appLogger.d('CompanionRemote: channel close ignored', error: e);
       }
@@ -1028,8 +1044,10 @@ class CompanionRemotePeerService with KeepaliveMixin {
     }
 
     if (_server != null) {
-      await _server!.close();
+      final server = _server!;
       _server = null;
+      debugLiveHostServers--;
+      await server.close();
     }
 
     _myPeerId = null;

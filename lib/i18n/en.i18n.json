@@ -330,6 +330,8 @@
     "homeLayoutMoveDown": "Move down",
     "companionRemoteServer": "Companion Remote Server",
     "companionRemoteServerDescription": "Allow mobile devices on your network to control this app",
+    "pleyaFlyReceive": "Receive Pleya Fly",
+    "pleyaFlyReceiveDescription": "An Apple TV can hand its playback to this device. Pleya has to be open.",
     "autoPip": "Auto Picture-in-Picture",
     "autoPipDescription": "Enter picture-in-picture when leaving during playback",
     "matchContentFrameRate": "Match Content Frame Rate",
@@ -3107,6 +3109,18 @@
     "playingOn": "Playing on $name",
     "playingOnBody": "Continue with the remote of your Apple TV",
     "received": "Handed over from $from",
-    "receivedBody": "$title · continues from $time"
+    "receivedBody": "$title · continues from $time",
+    "continueOn": "Continue watching on",
+    "phoneReady": "Pleya open",
+    "searchingPhones": "Looking for iPhone and iPad…",
+    "startingOn": "Starting on $name…",
+    "switchingOn": "$name switches to the $profile profile…",
+    "switchingPinOn": "Enter the PIN on $name",
+    "wrongProfileOn": "Uses another profile. Pick your profile on $name and try again.",
+    "pinNotEnteredOn": "PIN not entered on $name. It keeps playing here.",
+    "noPhoneTitle": "No iPhone or iPad found",
+    "noPhone": "An Apple TV cannot open Pleya on your iPhone by itself. Open Pleya on your iPhone or iPad on the same Wi-Fi network.",
+    "resumeAt": "Continue from $time",
+    "playingOnPhoneBody": "Pick it up on your iPhone or iPad"
   }
 }

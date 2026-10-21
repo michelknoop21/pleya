@@ -473,6 +473,8 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get libraryVisibilityDescription => 'Kies welke bibliotheken in het menu verschijnen';
 	@override String get companionRemoteServer => 'Companion Remote-server';
 	@override String get companionRemoteServerDescription => 'Sta mobiele apparaten op je netwerk toe om deze app te bedienen';
+	@override String get pleyaFlyReceive => 'Pleya Fly ontvangen';
+	@override String get pleyaFlyReceiveDescription => 'Een Apple TV kan het afspelen hierheen sturen. Pleya moet open staan.';
 	@override String get autoPip => 'Automatische beeld-in-beeld';
 	@override String get autoPipDescription => 'Ga naar picture-in-picture bij verlaten tijdens afspelen';
 	@override String get matchContentFrameRate => 'Inhoudsframesnelheid afstemmen';
@@ -2654,6 +2656,18 @@ class _TranslationsPlaybackHandoffNl extends TranslationsPlaybackHandoffEn {
 	@override String get playingOnBody => 'Verder met de afstandsbediening van je Apple TV';
 	@override String received({required Object from}) => 'Overgedragen vanaf ${from}';
 	@override String receivedBody({required Object title, required Object time}) => '${title} · verder vanaf ${time}';
+	@override String get continueOn => 'Verder kijken op';
+	@override String get phoneReady => 'Pleya open';
+	@override String get searchingPhones => 'Zoeken naar iPhone en iPad…';
+	@override String startingOn({required Object name}) => 'Starten op ${name}…';
+	@override String switchingOn({required Object name, required Object profile}) => '${name} wisselt naar profiel ${profile}…';
+	@override String switchingPinOn({required Object name}) => 'Voer op ${name} de pincode in';
+	@override String wrongProfileOn({required Object name}) => 'Gebruikt een ander profiel. Kies op ${name} jouw profiel en probeer het opnieuw.';
+	@override String pinNotEnteredOn({required Object name}) => 'Pincode niet ingevoerd op ${name}. Het blijft hier spelen.';
+	@override String get noPhoneTitle => 'Geen iPhone of iPad gevonden';
+	@override String get noPhone => 'Een Apple TV kan Pleya op je iPhone niet zelf openen. Open Pleya op je iPhone of iPad op hetzelfde wifi-netwerk.';
+	@override String resumeAt({required Object time}) => 'Verder vanaf ${time}';
+	@override String get playingOnPhoneBody => 'Kijk verder op je iPhone of iPad';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -4633,6 +4647,8 @@ extension on TranslationsNl {
 			'settings.libraryVisibilityDescription' => 'Kies welke bibliotheken in het menu verschijnen',
 			'settings.companionRemoteServer' => 'Companion Remote-server',
 			'settings.companionRemoteServerDescription' => 'Sta mobiele apparaten op je netwerk toe om deze app te bedienen',
+			'settings.pleyaFlyReceive' => 'Pleya Fly ontvangen',
+			'settings.pleyaFlyReceiveDescription' => 'Een Apple TV kan het afspelen hierheen sturen. Pleya moet open staan.',
 			'settings.autoPip' => 'Automatische beeld-in-beeld',
 			'settings.autoPipDescription' => 'Ga naar picture-in-picture bij verlaten tijdens afspelen',
 			'settings.matchContentFrameRate' => 'Inhoudsframesnelheid afstemmen',
@@ -4834,10 +4850,10 @@ extension on TranslationsNl {
 			'videoControls.lockRotation' => 'Vergrendel rotatie',
 			'videoControls.unlockRotation' => 'Ontgrendel rotatie',
 			'videoControls.timerActive' => 'Timer actief',
-			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Afspelen wordt gepauzeerd over ${duration}',
-			'videoControls.sleepTimerEndOfVideo' => 'Einde van huidige video',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Afspelen wordt gepauzeerd over ${duration}',
+			'videoControls.sleepTimerEndOfVideo' => 'Einde van huidige video',
 			'videoControls.sleepTimerStopAtHeader' => 'Stoppen bij',
 			'videoControls.sleepTimerDurationHeader' => 'Timer',
 			'videoControls.playbackWillPauseAtEnd' => 'Afspelen wordt gepauzeerd aan het einde van deze video',
@@ -5348,10 +5364,10 @@ extension on TranslationsNl {
 			'logs.levelAll' => 'Alles',
 			'logs.levelWarnings' => 'Waarschuwingen',
 			'logs.levelErrors' => 'Fouten',
-			'logs.noMatchingLogs' => 'Geen regels op dit niveau',
-			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} van ${total} regels',
 			_ => null,
 		} ?? switch (path) {
+			'logs.noMatchingLogs' => 'Geen regels op dit niveau',
+			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} van ${total} regels',
 			'licenses.relatedPackages' => 'Gerelateerde pakketten',
 			'licenses.license' => 'Licentie',
 			'licenses.licenseNumber' => ({required Object number}) => 'Licentie ${number}',
@@ -5862,10 +5878,10 @@ extension on TranslationsNl {
 			'metadataEdit.keep' => 'Bewaren',
 			'metadataEdit.allEpisodes' => 'Alle afleveringen',
 			'metadataEdit.latestEpisodes' => ({required Object count}) => '${count} nieuwste afleveringen',
-			'metadataEdit.latestEpisode' => 'Nieuwste aflevering',
-			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Afleveringen toegevoegd in de afgelopen ${count} dagen',
 			_ => null,
 		} ?? switch (path) {
+			'metadataEdit.latestEpisode' => 'Nieuwste aflevering',
+			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Afleveringen toegevoegd in de afgelopen ${count} dagen',
 			'metadataEdit.deleteAfterPlaying' => 'Afleveringen verwijderen na afspelen',
 			'metadataEdit.never' => 'Nooit',
 			'metadataEdit.afterADay' => 'Na een dag',
@@ -6376,10 +6392,10 @@ extension on TranslationsNl {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} van ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Alle films bekijken, opent de volledige catalogus',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Alle series bekijken, opent de volledige catalogus',
-			'unifiedCatalog.home.featured' => 'Uitgelicht',
-			'unifiedCatalog.homeRows.customize' => 'Home aanpassen',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.home.featured' => 'Uitgelicht',
+			'unifiedCatalog.homeRows.customize' => 'Home aanpassen',
 			'unifiedCatalog.homeRows.customizeSubtitle' => 'Verplaats of verberg rijen, of maak er een van een filter',
 			'unifiedCatalog.homeRows.customizeIntro' => 'Verplaats, verberg of bewerk je rijen. Uitgelicht en Verder kijken blijven staan waar ze staan.',
 			'unifiedCatalog.homeRows.featured' => 'Uitgelicht',
@@ -6890,10 +6906,10 @@ extension on TranslationsNl {
 			'assistant.notes.plexManagedHomeUser' => 'Beheerde Plex Home-gebruiker, met een share op deze server.',
 			'assistant.notes.plexShare' => 'Een share op deze Plex-server.',
 			'assistant.notes.plexHomeMember' => 'Lid van je Plex Home. Alleen de share op deze server verandert.',
-			'assistant.notes.replacesAllAccess' => 'Vervangt alle bestaande toegang van deze gebruiker op deze server.',
-			'assistant.ends.noTools' => 'Big P kan nu niets doen op je servers.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.notes.replacesAllAccess' => 'Vervangt alle bestaande toegang van deze gebruiker op deze server.',
+			'assistant.ends.noTools' => 'Big P kan nu niets doen op je servers.',
 			'assistant.ends.toolsUnsupported' => 'Dit model kan geen tools gebruiken. Kies een ander model bij de instellingen van Big P.',
 			'assistant.ends.stepLimit' => 'Dit kostte te veel stappen. Probeer een kortere vraag.',
 			'assistant.ends.notEntitled' => 'Big P is niet beschikbaar op dit account.',
@@ -7094,6 +7110,18 @@ extension on TranslationsNl {
 			'playbackHandoff.playingOnBody' => 'Verder met de afstandsbediening van je Apple TV',
 			'playbackHandoff.received' => ({required Object from}) => 'Overgedragen vanaf ${from}',
 			'playbackHandoff.receivedBody' => ({required Object title, required Object time}) => '${title} · verder vanaf ${time}',
+			'playbackHandoff.continueOn' => 'Verder kijken op',
+			'playbackHandoff.phoneReady' => 'Pleya open',
+			'playbackHandoff.searchingPhones' => 'Zoeken naar iPhone en iPad…',
+			'playbackHandoff.startingOn' => ({required Object name}) => 'Starten op ${name}…',
+			'playbackHandoff.switchingOn' => ({required Object name, required Object profile}) => '${name} wisselt naar profiel ${profile}…',
+			'playbackHandoff.switchingPinOn' => ({required Object name}) => 'Voer op ${name} de pincode in',
+			'playbackHandoff.wrongProfileOn' => ({required Object name}) => 'Gebruikt een ander profiel. Kies op ${name} jouw profiel en probeer het opnieuw.',
+			'playbackHandoff.pinNotEnteredOn' => ({required Object name}) => 'Pincode niet ingevoerd op ${name}. Het blijft hier spelen.',
+			'playbackHandoff.noPhoneTitle' => 'Geen iPhone of iPad gevonden',
+			'playbackHandoff.noPhone' => 'Een Apple TV kan Pleya op je iPhone niet zelf openen. Open Pleya op je iPhone of iPad op hetzelfde wifi-netwerk.',
+			'playbackHandoff.resumeAt' => ({required Object time}) => 'Verder vanaf ${time}',
+			'playbackHandoff.playingOnPhoneBody' => 'Kijk verder op je iPhone of iPad',
 			_ => null,
 		};
 	}

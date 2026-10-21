@@ -2,7 +2,7 @@
 enum TvInfoPanelTab { information, video, audio, subtitles }
 
 /// A layer the panel can open over a tab. Menu goes back one layer.
-enum TvInfoPanelSubView { none, audioSync, subtitleSync, chapters, sleepTimer, versionQuality, shaders }
+enum TvInfoPanelSubView { none, audioSync, subtitleSync, chapters, sleepTimer, versionQuality, shaders, pleyaFly }
 
 /// What a caller asks the panel to open on: a tab, and optionally a sub-view
 /// over it. The tune button asks for [TvInfoPanelTab.video], the tracks button
@@ -18,6 +18,9 @@ class TvInfoPanelRequest {
   static const audio = TvInfoPanelRequest(TvInfoPanelTab.audio);
   static const subtitles = TvInfoPanelRequest(TvInfoPanelTab.subtitles);
   static const chapters = TvInfoPanelRequest(TvInfoPanelTab.video, subView: TvInfoPanelSubView.chapters);
+
+  /// The Pleya Fly button: the picker of iPhones and iPads (A-23d).
+  static const pleyaFly = TvInfoPanelRequest(TvInfoPanelTab.video, subView: TvInfoPanelSubView.pleyaFly);
 
   @override
   bool operator ==(Object other) => other is TvInfoPanelRequest && other.tab == tab && other.subView == subView;

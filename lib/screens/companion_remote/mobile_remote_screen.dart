@@ -63,7 +63,10 @@ class _MobileRemoteScreenState extends State<MobileRemoteScreen> {
         ),
         body: Consumer<CompanionRemoteProvider>(
           builder: (context, provider, child) {
-            if (provider.status == RemoteSessionStatus.reconnecting) {
+            // An iPhone that listens for Pleya Fly hosts in the background and
+            // never shows as connected (A-23d); a fly that ends leaves that host
+            // waiting for its client, which is no reconnect of the remote.
+            if (!provider.isHandoffOnlyHost && provider.status == RemoteSessionStatus.reconnecting) {
               return Center(
                 child: Column(
                   mainAxisAlignment: .center,

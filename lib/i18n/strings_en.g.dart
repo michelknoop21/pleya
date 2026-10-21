@@ -1097,6 +1097,12 @@ class TranslationsSettingsEn {
 	/// en: 'Allow mobile devices on your network to control this app'
 	String get companionRemoteServerDescription => 'Allow mobile devices on your network to control this app';
 
+	/// en: 'Receive Pleya Fly'
+	String get pleyaFlyReceive => 'Receive Pleya Fly';
+
+	/// en: 'An Apple TV can hand its playback to this device. Pleya has to be open.'
+	String get pleyaFlyReceiveDescription => 'An Apple TV can hand its playback to this device. Pleya has to be open.';
+
 	/// en: 'Auto Picture-in-Picture'
 	String get autoPip => 'Auto Picture-in-Picture';
 
@@ -6448,6 +6454,42 @@ class TranslationsPlaybackHandoffEn {
 
 	/// en: '$title · continues from $time'
 	String receivedBody({required Object title, required Object time}) => '${title} · continues from ${time}';
+
+	/// en: 'Continue watching on'
+	String get continueOn => 'Continue watching on';
+
+	/// en: 'Pleya open'
+	String get phoneReady => 'Pleya open';
+
+	/// en: 'Looking for iPhone and iPad…'
+	String get searchingPhones => 'Looking for iPhone and iPad…';
+
+	/// en: 'Starting on $name…'
+	String startingOn({required Object name}) => 'Starting on ${name}…';
+
+	/// en: '$name switches to the $profile profile…'
+	String switchingOn({required Object name, required Object profile}) => '${name} switches to the ${profile} profile…';
+
+	/// en: 'Enter the PIN on $name'
+	String switchingPinOn({required Object name}) => 'Enter the PIN on ${name}';
+
+	/// en: 'Uses another profile. Pick your profile on $name and try again.'
+	String wrongProfileOn({required Object name}) => 'Uses another profile. Pick your profile on ${name} and try again.';
+
+	/// en: 'PIN not entered on $name. It keeps playing here.'
+	String pinNotEnteredOn({required Object name}) => 'PIN not entered on ${name}. It keeps playing here.';
+
+	/// en: 'No iPhone or iPad found'
+	String get noPhoneTitle => 'No iPhone or iPad found';
+
+	/// en: 'An Apple TV cannot open Pleya on your iPhone by itself. Open Pleya on your iPhone or iPad on the same Wi-Fi network.'
+	String get noPhone => 'An Apple TV cannot open Pleya on your iPhone by itself. Open Pleya on your iPhone or iPad on the same Wi-Fi network.';
+
+	/// en: 'Continue from $time'
+	String resumeAt({required Object time}) => 'Continue from ${time}';
+
+	/// en: 'Pick it up on your iPhone or iPad'
+	String get playingOnPhoneBody => 'Pick it up on your iPhone or iPad';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -10073,6 +10115,8 @@ extension on Translations {
 			'settings.homeLayoutMoveDown' => 'Move down',
 			'settings.companionRemoteServer' => 'Companion Remote Server',
 			'settings.companionRemoteServerDescription' => 'Allow mobile devices on your network to control this app',
+			'settings.pleyaFlyReceive' => 'Receive Pleya Fly',
+			'settings.pleyaFlyReceiveDescription' => 'An Apple TV can hand its playback to this device. Pleya has to be open.',
 			'settings.autoPip' => 'Auto Picture-in-Picture',
 			'settings.autoPipDescription' => 'Enter picture-in-picture when leaving during playback',
 			'settings.matchContentFrameRate' => 'Match Content Frame Rate',
@@ -10269,10 +10313,10 @@ extension on Translations {
 			'videoControls.lockRotation' => 'Lock rotation',
 			'videoControls.unlockRotation' => 'Unlock rotation',
 			'videoControls.timerActive' => 'Timer Active',
-			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Playback will pause in ${duration}',
-			'videoControls.sleepTimerEndOfVideo' => 'End of current video',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Playback will pause in ${duration}',
+			'videoControls.sleepTimerEndOfVideo' => 'End of current video',
 			'videoControls.sleepTimerStopAtHeader' => 'Stop at',
 			'videoControls.sleepTimerDurationHeader' => 'Timer',
 			'videoControls.playbackWillPauseAtEnd' => 'Playback will pause at the end of this video',
@@ -10783,10 +10827,10 @@ extension on Translations {
 			'logs.levelAll' => 'All',
 			'logs.levelWarnings' => 'Warnings',
 			'logs.levelErrors' => 'Errors',
-			'logs.noMatchingLogs' => 'No lines at this level',
-			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} of ${total} lines',
 			_ => null,
 		} ?? switch (path) {
+			'logs.noMatchingLogs' => 'No lines at this level',
+			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} of ${total} lines',
 			'licenses.relatedPackages' => 'Related Packages',
 			'licenses.license' => 'License',
 			'licenses.licenseNumber' => ({required Object number}) => 'License ${number}',
@@ -11297,10 +11341,10 @@ extension on Translations {
 			'metadataEdit.keep' => 'Keep',
 			'metadataEdit.allEpisodes' => 'All episodes',
 			'metadataEdit.latestEpisodes' => ({required Object count}) => '${count} latest episodes',
-			'metadataEdit.latestEpisode' => 'Latest episode',
-			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Episodes added in the past ${count} days',
 			_ => null,
 		} ?? switch (path) {
+			'metadataEdit.latestEpisode' => 'Latest episode',
+			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Episodes added in the past ${count} days',
 			'metadataEdit.deleteAfterPlaying' => 'Delete Episodes After Playing',
 			'metadataEdit.never' => 'Never',
 			'metadataEdit.afterADay' => 'After a day',
@@ -11811,10 +11855,10 @@ extension on Translations {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} of ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'View all movies, opens the complete catalog',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'View all series, opens the complete catalog',
-			'unifiedCatalog.home.featured' => 'Featured',
-			'unifiedCatalog.homeRows.customize' => 'Customise Home',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.home.featured' => 'Featured',
+			'unifiedCatalog.homeRows.customize' => 'Customise Home',
 			'unifiedCatalog.homeRows.customizeSubtitle' => 'Move or hide rows, or build one from a filter',
 			'unifiedCatalog.homeRows.customizeIntro' => 'Move, hide or edit your rows. Featured and Continue Watching stay where they are.',
 			'unifiedCatalog.homeRows.featured' => 'Featured',
@@ -12325,10 +12369,10 @@ extension on Translations {
 			'assistant.notes.plexManagedHomeUser' => 'Managed Plex Home user, with a share on this server.',
 			'assistant.notes.plexShare' => 'A share on this Plex server.',
 			'assistant.notes.plexHomeMember' => 'Member of your Plex Home. Only the share on this server changes.',
-			'assistant.notes.replacesAllAccess' => 'Replaces all existing access of this user on this server.',
-			'assistant.ends.noTools' => 'There is nothing Big P can do on your servers right now.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.notes.replacesAllAccess' => 'Replaces all existing access of this user on this server.',
+			'assistant.ends.noTools' => 'There is nothing Big P can do on your servers right now.',
 			'assistant.ends.toolsUnsupported' => 'This model cannot use tools. Pick another model in the Big P settings.',
 			'assistant.ends.stepLimit' => 'That took too many steps. Try a shorter question.',
 			'assistant.ends.notEntitled' => 'Big P is not available on this account.',
@@ -12529,6 +12573,18 @@ extension on Translations {
 			'playbackHandoff.playingOnBody' => 'Continue with the remote of your Apple TV',
 			'playbackHandoff.received' => ({required Object from}) => 'Handed over from ${from}',
 			'playbackHandoff.receivedBody' => ({required Object title, required Object time}) => '${title} · continues from ${time}',
+			'playbackHandoff.continueOn' => 'Continue watching on',
+			'playbackHandoff.phoneReady' => 'Pleya open',
+			'playbackHandoff.searchingPhones' => 'Looking for iPhone and iPad…',
+			'playbackHandoff.startingOn' => ({required Object name}) => 'Starting on ${name}…',
+			'playbackHandoff.switchingOn' => ({required Object name, required Object profile}) => '${name} switches to the ${profile} profile…',
+			'playbackHandoff.switchingPinOn' => ({required Object name}) => 'Enter the PIN on ${name}',
+			'playbackHandoff.wrongProfileOn' => ({required Object name}) => 'Uses another profile. Pick your profile on ${name} and try again.',
+			'playbackHandoff.pinNotEnteredOn' => ({required Object name}) => 'PIN not entered on ${name}. It keeps playing here.',
+			'playbackHandoff.noPhoneTitle' => 'No iPhone or iPad found',
+			'playbackHandoff.noPhone' => 'An Apple TV cannot open Pleya on your iPhone by itself. Open Pleya on your iPhone or iPad on the same Wi-Fi network.',
+			'playbackHandoff.resumeAt' => ({required Object time}) => 'Continue from ${time}',
+			'playbackHandoff.playingOnPhoneBody' => 'Pick it up on your iPhone or iPad',
 			_ => null,
 		};
 	}

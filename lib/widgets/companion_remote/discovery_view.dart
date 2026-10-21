@@ -16,6 +16,7 @@ import '../../profiles/active_profile_provider.dart';
 import '../../profiles/plex_home_service.dart';
 import '../../profiles/profile_connection_registry.dart';
 import '../../providers/companion_remote_provider.dart';
+import '../../services/companion_remote/pleya_fly_receive.dart';
 import '../../services/settings_service.dart';
 import '../../utils/app_logger.dart';
 import '../loading_indicator_box.dart';
@@ -110,7 +111,8 @@ class _DiscoveryViewState extends State<DiscoveryView> with ControllerDisposerMi
     _discoverySubscription = stream.listen((hosts) {
       if (mounted) {
         setState(() {
-          _hosts = hosts;
+          // An iPhone or iPad hosts only to receive Pleya Fly (A-23d), not to be steered.
+          _hosts = hosts.where(isRemoteControlTarget).toList();
           if (hosts.isNotEmpty) _isSearching = false;
         });
       }
