@@ -76,14 +76,14 @@ Nothing user-facing since the last published build.
 
 ### Fixed
 
-- **The Apple TV can find your iPhone for Pleya Fly.** Pleya now answers the search of the
-  Apple TV directly, so the phone shows up in the picker while Pleya is open. Whether this
-  works on your network still has to be confirmed on the devices.
+- **The iPhone now answers the Apple TV's search for Pleya Fly.** Pleya replies to the search
+  of the Apple TV directly, so the phone should show up in the picker while Pleya is open.
+  Whether this works on your network still has to be confirmed on the devices.
 - **The Movies and Series overview fits around the notch in landscape.** The back button,
   the filters and the posters no longer end up under the cutout, also while the placeholders
   load.
 - **Pleya Fly keeps working after a pause.** Switching away from Pleya and back quickly could
-  leave the phone deaf to the Apple TV until the next time you left the app.
+  leave the phone deaf to the Apple TV until the next pause and resume.
 
 ### Notes
 
