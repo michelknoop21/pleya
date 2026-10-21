@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import '../../utils/app_logger.dart';
 import '../../utils/udp_broadcast_sockets.dart';
 import 'remote_auth_context.dart';
@@ -93,6 +95,7 @@ class LanDiscoveryService {
     required String platform,
     required int wsPort,
     required List<String> ips,
+    bool answerBeacons = false,
   }) async {
     await stopBroadcasting();
     if (contexts.isEmpty) return;
@@ -102,6 +105,10 @@ class LanDiscoveryService {
       if (_broadcastSockets!.isEmpty) return;
 
       appLogger.d('LanDiscovery: Broadcasting started on port $discoveryPort');
+
+      if (answerBeacons) {
+        unawaited(_bindAnswerSocket(contexts, deviceName, platform, wsPort, ips));
+      }
 
       // Send immediately, then periodically
       for (final context in contexts) {
@@ -123,23 +130,32 @@ class LanDiscoveryService {
     if (broadcastSockets == null || broadcastSockets.isEmpty) return;
 
     try {
-      final auth = RemoteAuthService.instance;
-      final discoveryKey = context.discoveryKey;
-      final clientId = context.clientIdentifier;
-      final homeHash = auth.computeDiscoveryTag(discoveryKey);
+      final data = _encodeBeacon(context, deviceName, platform, wsPort, ips);
+      broadcastSockets.send(data, UdpBroadcastSockets.limitedBroadcastAddress, discoveryPort);
+    } catch (e) {
+      appLogger.e('LanDiscovery: Failed to send beacon', error: e);
+    }
+  }
 
-      final beaconHmac = auth.computeBeaconHmac(
-        discoveryKey: discoveryKey,
-        version: _beaconVersion,
-        homeHash: homeHash,
-        name: deviceName,
-        platform: platform,
-        clientId: clientId,
-        port: wsPort,
-        ips: ips,
-      );
+  List<int> _encodeBeacon(RemoteAuthContext context, String deviceName, String platform, int wsPort, List<String> ips) {
+    final auth = RemoteAuthService.instance;
+    final discoveryKey = context.discoveryKey;
+    final clientId = context.clientIdentifier;
+    final homeHash = auth.computeDiscoveryTag(discoveryKey);
 
-      final packet = jsonEncode({
+    final beaconHmac = auth.computeBeaconHmac(
+      discoveryKey: discoveryKey,
+      version: _beaconVersion,
+      homeHash: homeHash,
+      name: deviceName,
+      platform: platform,
+      clientId: clientId,
+      port: wsPort,
+      ips: ips,
+    );
+
+    return utf8.encode(
+      jsonEncode({
         'app': 'pleya',
         'v': _beaconVersion,
         'homeHash': homeHash,
@@ -149,21 +165,111 @@ class LanDiscoveryService {
         'port': wsPort,
         'ips': ips,
         'hmac': beaconHmac,
-      });
-
-      final data = utf8.encode(packet);
-      broadcastSockets.send(data, UdpBroadcastSockets.limitedBroadcastAddress, discoveryPort);
-    } catch (e) {
-      appLogger.e('LanDiscovery: Failed to send beacon', error: e);
-    }
+      }),
+    );
   }
 
   Future<void> stopBroadcasting() async {
     _broadcastTimer?.cancel();
     _broadcastTimer = null;
+    _closeAnswerSocket();
     await _broadcastSockets?.close();
     _broadcastSockets = null;
     appLogger.d('LanDiscovery: Broadcasting stopped');
+  }
+
+  // ── Host: answering beacons ──
+
+  /// A phone's own broadcast does not reliably reach the Apple TV: iOS may drop
+  /// a broadcast from an app without the multicast entitlement, with no error
+  /// to the sender. What does work is receiving the TV's broadcast and sending
+  /// unicast, so a host that [startBroadcastingForContexts] with
+  /// `answerBeacons` also listens for beacons of an Apple TV in its own home
+  /// and answers each with its beacon, straight to the TV (A-23d).
+  RawDatagramSocket? _answerSocket;
+  StreamSubscription<RawSocketEvent>? _answerSubscription;
+  final Map<String, DateTime> _lastAnswerAt = {};
+  // A bind that finishes after a stop (or after a newer start) must close its socket.
+  int _answerGeneration = 0;
+  static const Duration _answerInterval = Duration(seconds: 2);
+
+  Future<void> _bindAnswerSocket(
+    List<RemoteAuthContext> contexts,
+    String deviceName,
+    String platform,
+    int wsPort,
+    List<String> ips,
+  ) async {
+    final generation = ++_answerGeneration;
+    try {
+      final socket = await RawDatagramSocket.bind(
+        InternetAddress.anyIPv4,
+        discoveryPort,
+        reuseAddress: true,
+        reusePort: true,
+      );
+      // Stopped, or replaced by a newer start, while binding: nobody wants this
+      // socket (or its stale contexts) any more.
+      if (generation != _answerGeneration || _broadcastTimer == null) {
+        socket.close();
+        return;
+      }
+      _answerSocket = socket;
+      _answerSubscription = socket.listenDatagrams(
+        (datagram) => _answerDatagram(socket, datagram, contexts, deviceName, platform, wsPort, ips),
+        debugLabel: 'LanDiscovery answer',
+      );
+      appLogger.d('LanDiscovery: Answering Apple TV beacons on port $discoveryPort');
+    } catch (e) {
+      appLogger.w('LanDiscovery: Failed to bind the answer socket', error: e);
+    }
+  }
+
+  void _answerDatagram(
+    RawDatagramSocket socket,
+    Datagram datagram,
+    List<RemoteAuthContext> contexts,
+    String deviceName,
+    String platform,
+    int wsPort,
+    List<String> ips,
+  ) {
+    try {
+      final json = jsonDecode(utf8.decode(datagram.data)) as Map<String, dynamic>;
+      if (!shouldAnswerBeacon(json, ownClientIds: contexts.map((c) => c.clientIdentifier).toSet())) return;
+      final matched = _matchContext(json, contexts);
+      if (matched == null) return;
+
+      final address = datagram.address.address;
+      final now = DateTime.now();
+      final last = _lastAnswerAt[address];
+      if (last != null && now.difference(last) < _answerInterval) return;
+      _lastAnswerAt[address] = now;
+
+      // Only the home the TV proved to share; other homes' beacons stay unanswered.
+      socket.send(_encodeBeacon(matched, deviceName, platform, wsPort, ips), datagram.address, discoveryPort);
+      appLogger.d('LanDiscovery: Answered the beacon of ${json['name']} at $address');
+    } catch (e) {
+      // Ignore malformed packets
+    }
+  }
+
+  void _closeAnswerSocket() {
+    _answerGeneration++;
+    _answerSubscription?.cancel();
+    _answerSubscription = null;
+    _answerSocket?.close();
+    _answerSocket = null;
+    _lastAnswerAt.clear();
+  }
+
+  /// Whether a beacon is one an iPhone answers: from an Apple TV, and not its own.
+  @visibleForTesting
+  static bool shouldAnswerBeacon(Map<String, dynamic> beacon, {required Set<String> ownClientIds}) {
+    if (beacon['app'] != 'pleya') return false;
+    if (beacon['platform'] != 'tvOS') return false;
+    final clientId = beacon['clientId'];
+    return clientId is! String || !ownClientIds.contains(clientId);
   }
 
   // ── Client: Listening ──
@@ -231,6 +337,39 @@ class LanDiscoveryService {
     }
   }
 
+  /// The context whose home key verifies [json], or null for another home.
+  RemoteAuthContext? _matchContext(Map<String, dynamic> json, List<RemoteAuthContext> contexts) {
+    final version = json['v'] as int? ?? 0;
+    final homeHash = json['homeHash'] as String? ?? '';
+    final name = json['name'] as String? ?? '';
+    final platform = json['platform'] as String? ?? '';
+    final clientId = json['clientId'] as String? ?? '';
+    final port = json['port'] as int? ?? 0;
+    final ips = (json['ips'] as List<dynamic>?)?.cast<String>() ?? [];
+    final hmac = json['hmac'] as String? ?? '';
+
+    final auth = RemoteAuthService.instance;
+    for (final context in contexts) {
+      final discoveryKey = context.discoveryKey;
+      if (!auth.verifyBeaconHmac(
+        receivedHmac: hmac,
+        discoveryKey: discoveryKey,
+        version: version,
+        homeHash: homeHash,
+        name: name,
+        platform: platform,
+        clientId: clientId,
+        port: port,
+        ips: ips,
+      )) {
+        continue;
+      }
+      if (!auth.matchesDiscoveryTag(homeHash, discoveryKey)) continue;
+      return context;
+    }
+    return null;
+  }
+
   void _handleDatagram(Datagram datagram, List<RemoteAuthContext> contexts) {
     try {
       final packet = utf8.decode(datagram.data);
@@ -238,40 +377,20 @@ class LanDiscoveryService {
 
       if (json['app'] != 'pleya') return;
 
-      final version = json['v'] as int? ?? 0;
-      final homeHash = json['homeHash'] as String? ?? '';
       final name = json['name'] as String? ?? '';
       final platform = json['platform'] as String? ?? '';
       final clientId = json['clientId'] as String? ?? '';
       final port = json['port'] as int? ?? 0;
       final ips = (json['ips'] as List<dynamic>?)?.cast<String>() ?? [];
-      final hmac = json['hmac'] as String? ?? '';
 
-      final auth = RemoteAuthService.instance;
-      RemoteAuthContext? matchedContext;
-      for (final context in contexts) {
-        final discoveryKey = context.discoveryKey;
-        if (!auth.verifyBeaconHmac(
-          receivedHmac: hmac,
-          discoveryKey: discoveryKey,
-          version: version,
-          homeHash: homeHash,
-          name: name,
-          platform: platform,
-          clientId: clientId,
-          port: port,
-          ips: ips,
-        )) {
-          continue;
-        }
-        if (!auth.matchesDiscoveryTag(homeHash, discoveryKey)) {
-          continue;
-        }
-        matchedContext = context;
-        break;
-      }
+      final matchedContext = _matchContext(json, contexts);
       if (matchedContext == null) {
-        return; // Different home
+        // Not for this home, or a beacon that does not verify; the sender's
+        // address says whose it is when a device never shows up.
+        appLogger.d(
+          'LanDiscovery: Ignored a beacon from ${datagram.address.address} (${json['platform']}): no matching home',
+        );
+        return;
       }
 
       // Valid beacon from same home
