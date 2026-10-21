@@ -15,6 +15,7 @@ import '../base_peer_service.dart';
 import 'playback_handoff.dart';
 import 'remote_auth_context.dart';
 import 'remote_auth_service.dart';
+import 'remote_session_cipher.dart';
 
 // Re-export so callers that import from here get the types.
 export '../base_peer_service.dart' show PeerError, PeerErrorType;
@@ -41,9 +42,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
   String? _selectedHostClientId;
 
   // Encrypted channel state
-  List<int>? _sessionEncKey;
-  int _sendCounter = 0;
-  int _recvCounter = 0;
+  final _cipher = RemoteSessionCipher();
   bool _isAuthenticated = false;
 
   final _commandReceivedController = StreamController<RemoteCommand>.broadcast();
@@ -362,9 +361,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
               }
 
               _clientSocket = socket;
-              _sessionEncKey = sessionEncKey;
-              _sendCounter = 0;
-              _recvCounter = 0;
+              _cipher.start(sessionEncKey);
               _isAuthenticated = true;
               _selectedAuthContextId = selectedContext.id;
               _selectedHostClientId = selectedContext.clientIdentifier;
@@ -399,19 +396,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
             final decrypted = await _decryptIncoming(data);
             if (decrypted == null) return;
 
-            final json = jsonDecode(decrypted) as Map<String, dynamic>;
-            final command = RemoteCommand.fromJson(json);
-            appLogger.d('CompanionRemote: Received command: ${command.type}');
-
-            if (_shouldSendAck(command)) {
-              _sendAck(command);
-            }
-
-            _commandReceivedController.add(command);
-
-            if (command.type == RemoteCommandType.ping) {
-              _sendPong();
-            }
+            _dispatchDecrypted(decrypted);
           }
         } catch (e) {
           appLogger.e('CompanionRemote: Failed to process message', error: e);
@@ -422,18 +407,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
         appLogger.d('CompanionRemote: WebSocket connection closed');
         // A client that a new connection replaced closes late; its keys,
         // identity and socket now belong to the replacement (A-23d).
-        if (isAuthenticated && identical(_clientSocket, socket)) {
-          _clientSocket = null;
-          _sessionEncKey = null;
-          _isAuthenticated = false;
-          _selectedAuthContextId = null;
-          _selectedHostClientId = null;
-          _clientIsHostUser = false;
-          _clientUserUuid = null;
-          _deviceDisconnectedController.add(null);
-          _connectionStateController.add(RemoteSessionStatus.disconnected);
-          stopKeepalive();
-        }
+        if (isAuthenticated && identical(_clientSocket, socket)) _forgetHostClient();
       },
       onError: (error) {
         authTimeout?.cancel();
@@ -534,23 +508,19 @@ class CompanionRemotePeerService with KeepaliveMixin {
               final decrypted = await _decryptIncoming(data);
               if (decrypted == null) return;
 
-              final json = jsonDecode(decrypted) as Map<String, dynamic>;
-              final command = RemoteCommand.fromJson(json);
-              appLogger.d('CompanionRemote: Received command: ${command.type}');
-
-              if (_shouldSendAck(command)) {
-                _sendAck(command);
-              }
-
-              _commandReceivedController.add(command);
-
-              if (command.type == RemoteCommandType.ping) {
-                _sendPong();
-              }
-            } else if (_sessionEncKey != null) {
+              _dispatchDecrypted(decrypted);
+            } else if (_cipher.hasKey) {
               // Keys derived, waiting for encrypted authSuccess
               final decrypted = await _decryptIncoming(data);
               if (decrypted == null) return;
+
+              // A frame that followed authSuccess in the same read was queued
+              // while we were still unauthenticated; authSuccess has been
+              // handled by the time its decrypt resolves.
+              if (_isAuthenticated) {
+                _dispatchDecrypted(decrypted);
+                return;
+              }
 
               final json = jsonDecode(decrypted) as Map<String, dynamic>;
               if (json['type'] == 'authSuccess') {
@@ -670,9 +640,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
                   }),
                 );
 
-                _sessionEncKey = await auth.deriveSessionEncKey(selectedContext.homeSecret, hostNonce!, clientNonce!);
-                _sendCounter = 0;
-                _recvCounter = 0;
+                _cipher.start(await auth.deriveSessionEncKey(selectedContext.homeSecret, hostNonce!, clientNonce!));
                 _selectedAuthContextId = selectedContext.id;
                 _selectedHostClientId = receivedHostClientId;
               } else if (messageType == 'authFailed') {
@@ -703,7 +671,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
           _deviceDisconnectedController.add(null);
           _connectionStateController.add(RemoteSessionStatus.disconnected);
           _isAuthenticated = false;
-          _sessionEncKey = null;
+          _cipher.reset();
           _selectedAuthContextId = null;
           _selectedHostClientId = null;
           stopKeepalive();
@@ -889,56 +857,70 @@ class CompanionRemotePeerService with KeepaliveMixin {
 
   // ── Encrypted send/receive ──
 
-  // Serializes async sends to prevent counter interleaving
-  Future<void>? _sendChain;
-
-  Future<List<int>> _encryptOutgoing(String plaintext) async {
-    final encrypted = await RemoteAuthService.instance.encrypt(
-      _sessionEncKey!,
-      utf8.encode(plaintext),
-      isHost: _role == RemoteSessionRole.host,
-      counter: _sendCounter,
-    );
-    _sendCounter++;
-    return encrypted;
-  }
-
   Future<void> _sendEncryptedToSocket(WebSocket socket, String plaintext) async {
-    if (_sessionEncKey == null) return;
-    final encrypted = await _encryptOutgoing(plaintext);
+    if (!_cipher.hasKey) return;
+    final encrypted = await _cipher.encrypt(plaintext, isHost: _role == RemoteSessionRole.host);
     socket.add(encrypted);
   }
 
-  int _consecutiveDecryptFailures = 0;
   static const _maxDecryptFailures = 3;
 
   Future<String?> _decryptIncoming(dynamic data) async {
-    if (_sessionEncKey == null) return null;
     try {
-      final auth = RemoteAuthService.instance;
-      final bytes = data is List<int> ? data : utf8.encode(data as String);
-      final decrypted = await auth.decrypt(
-        bytes,
-        _sessionEncKey!,
-        fromHost: _role == RemoteSessionRole.remote, // If we're remote, incoming is from host
-        expectedCounter: _recvCounter,
-      );
-      _recvCounter++;
-      _consecutiveDecryptFailures = 0;
-      return utf8.decode(decrypted);
+      // If we're remote, incoming is from host
+      return await _cipher.decrypt(data, fromHost: _role == RemoteSessionRole.remote);
     } catch (e) {
-      appLogger.e('CompanionRemote: Decryption failed (counter=$_recvCounter)', error: e);
+      appLogger.e('CompanionRemote: Decryption failed (failures=${_cipher.consecutiveFailures})', error: e);
       // A single dropped/reordered frame desyncs the AEAD counter forever:
       // every later frame would fail while the session still looks
-      // connected. Tear the session down so the normal reconnect/handshake
-      // path re-establishes a working channel.
-      if (++_consecutiveDecryptFailures >= _maxDecryptFailures) {
+      // connected. Drop the session so the normal reconnect/handshake path
+      // re-establishes a working channel.
+      if (_cipher.consecutiveFailures >= _maxDecryptFailures) {
         appLogger.w('CompanionRemote: $_maxDecryptFailures decrypt failures — tearing down desynced session');
-        _consecutiveDecryptFailures = 0;
-        unawaited(disconnect());
+        if (_role == RemoteSessionRole.host) {
+          // The host keeps listening: closing the server too would leave it
+          // advertising on the LAN with nothing to connect to (A-23d).
+          final socket = _clientSocket;
+          if (socket != null) {
+            _forgetHostClient();
+            unawaited(socket.close(4005, 'Session desynced').catchError((_) {}));
+          }
+        } else {
+          unawaited(disconnect());
+        }
       }
       return null;
     }
+  }
+
+  void _dispatchDecrypted(String decrypted) {
+    final json = jsonDecode(decrypted) as Map<String, dynamic>;
+    final command = RemoteCommand.fromJson(json);
+    appLogger.d('CompanionRemote: Received command: ${command.type}');
+
+    if (_shouldSendAck(command)) {
+      _sendAck(command);
+    }
+
+    _commandReceivedController.add(command);
+
+    if (command.type == RemoteCommandType.ping) {
+      _sendPong();
+    }
+  }
+
+  /// Host side: the authenticated client is gone; the server keeps running.
+  void _forgetHostClient() {
+    _clientSocket = null;
+    _cipher.reset();
+    _isAuthenticated = false;
+    _selectedAuthContextId = null;
+    _selectedHostClientId = null;
+    _clientIsHostUser = false;
+    _clientUserUuid = null;
+    _deviceDisconnectedController.add(null);
+    _connectionStateController.add(RemoteSessionStatus.disconnected);
+    stopKeepalive();
   }
 
   // ── Commands ──
@@ -980,16 +962,16 @@ class CompanionRemotePeerService with KeepaliveMixin {
   }
 
   void sendCommand(RemoteCommand command) {
-    if (_sessionEncKey == null || !_isAuthenticated) {
+    if (!_cipher.hasKey || !_isAuthenticated) {
       appLogger.w('CompanionRemote: No connection to send command');
       return;
     }
 
     // Chain sends to prevent counter interleaving from concurrent async encrypts
-    _sendChain = (_sendChain ?? Future.value()).then((_) async {
+    _cipher.runSend(() async {
       try {
         final json = jsonEncode(command.toJson());
-        final encrypted = await _encryptOutgoing(json);
+        final encrypted = await _cipher.encrypt(json, isHost: _role == RemoteSessionRole.host);
 
         if (_role == RemoteSessionRole.host && _clientSocket != null) {
           _clientSocket!.add(encrypted);
@@ -1060,11 +1042,8 @@ class CompanionRemotePeerService with KeepaliveMixin {
     _selectedAuthContextId = null;
     _selectedHostClientId = null;
     _clientUserUuid = null;
-    _sessionEncKey = null;
-    _sendCounter = 0;
-    _recvCounter = 0;
+    _cipher.reset();
     _isAuthenticated = false;
-    _sendChain = null;
     // Lockouts survive a disconnect on purpose: stopping/restarting the host
     // session must not reset an attacker's brute-force lockout window.
 
