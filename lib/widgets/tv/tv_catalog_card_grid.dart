@@ -49,6 +49,7 @@ import 'package:flutter/material.dart';
 
 import '../../focus/focus_theme.dart';
 import '../../utils/layout_constants.dart';
+import '../../services/settings_service.dart';
 import '../../theme/mono_tokens.dart';
 import 'tv_catalog_artwork_window.dart';
 import 'tv_catalog_row_alignment.dart';
@@ -117,7 +118,7 @@ class TvCatalogCardGrid extends StatefulWidget {
     this.nodeDebugLabel = 'TvCatalogCard',
     this.rowAligned = false,
     this.fitTwoRows = false,
-    this.fitScale = 1,
+    this.fitScale,
   });
 
   /// One stable id per item, in display order. Identity, not position: see the
@@ -207,8 +208,8 @@ class TvCatalogCardGrid extends StatefulWidget {
   final bool fitTwoRows;
 
   /// Scales the [fitTwoRows] width down, for the library-density setting
-  /// ([tvCatalogDensityScale]).
-  final double fitScale;
+  /// ([tvCatalogDensityScale]). Null reads the setting itself.
+  final double? fitScale;
 
   /// The glide for [rowAligned]: the same easeOutCubic as the page heading,
   /// a little shorter because it runs on every press.
@@ -564,7 +565,11 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
       reservedLeading: widget.reservedLeading,
       maxCardWidth: !widget.fitTwoRows
           ? null
-          : widget.fitScale *
+          : (widget.fitScale ??
+                    tvCatalogDensityScale(
+                      SettingsService.instanceOrNull?.read(SettingsService.libraryDensity) ??
+                          LibraryDensity.defaultValue,
+                    )) *
                 (tvCatalogTwoRowCardWidth(
                       viewport: height,
                       gutter: natural.gutter,

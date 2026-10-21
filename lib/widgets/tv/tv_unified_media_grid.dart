@@ -50,7 +50,8 @@ class TvUnifiedMediaGrid extends StatefulWidget {
     this.onFocusedGroupChanged,
     this.onFocusedRow,
     this.rowAligned = false,
-    this.fitScale = 1,
+    this.fitScale,
+    this.fitTwoRows = false,
     this.precache,
     this.reservedLeading = 0,
     this.automationSurface,
@@ -111,7 +112,10 @@ class TvUnifiedMediaGrid extends StatefulWidget {
   final bool rowAligned;
 
   /// See [TvCatalogCardGrid.fitScale].
-  final double fitScale;
+  final double? fitScale;
+
+  /// See [TvCatalogCardGrid.fitTwoRows]. Always on for a [rowAligned] grid.
+  final bool fitTwoRows;
 
   /// Replaces the artwork warm-up call. Null in production, where the
   /// prefetcher uses `precacheImage`; a test injects its own to assert *which*
@@ -195,7 +199,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       onExitLeft: widget.onExitLeft,
       onBack: widget.onBack,
       rowAligned: widget.rowAligned,
-      fitTwoRows: widget.rowAligned,
+      fitTwoRows: widget.fitTwoRows || widget.rowAligned,
       fitScale: widget.fitScale,
       reservedLeading: widget.reservedLeading,
       footer: widget.footer,

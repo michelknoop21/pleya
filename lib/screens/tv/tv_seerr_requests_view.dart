@@ -604,6 +604,8 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
       instance: tvSeerrRequestsSurface,
       role: 'grid',
       child: TvCatalogCardGrid(
+        // A-06b: two whole rows with room around them (Michel, build 396).
+        fitTwoRows: true,
         key: _gridKey,
         itemIds: [for (final request in widget.requests) '${request.id}'],
         initialFocusedId: widget.initialFocusedId,

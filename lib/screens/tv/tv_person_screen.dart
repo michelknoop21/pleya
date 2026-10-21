@@ -120,6 +120,8 @@ class _TvPersonScreenState extends State<TvPersonScreen> {
     }
 
     return TvCatalogCardGrid(
+      // A-06b: two whole rows with room around them (Michel, build 396).
+      fitTwoRows: true,
       itemIds: [for (final item in widget.items) item.id],
       cardHeight: (cardWidth) => TvCatalogLayout.cardHeight(cardWidth, scale),
       hasMore: widget.items.length < widget.totalSize,
