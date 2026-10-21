@@ -55,3 +55,39 @@ double tvCatalogRowAlignedOffset({
   }
   return (top * pitch).clamp(minScrollExtent, maxScrollExtent);
 }
+
+/// The widest card for which two whole rows fit in a grid [viewport] tall,
+/// with room around them (Michel, build 396: "nog steeds te weinig ruimte voor
+/// de content").
+///
+/// Two cards, the gutter between them, the 6% focus scale-up above the top one
+/// and below the bottom one, and [bottomMargin] (the grid's own bottom safe
+/// margin) under the lot. On the Apple TV canvas, 1037.8 x 583.8 logical at a
+/// ten-foot scale of 0.85, six columns at their natural width made a card 284
+/// tall, so a viewport under the top navigation held one whole row, and the
+/// folded Films/Series page two with no room at all. The column count stays;
+/// the cards get narrower and the grid wider insets.
+///
+/// [cardHeight] is the caller's card height for a width, linear in the width
+/// (poster block plus a fixed footer). Null when [viewport] is unbounded, so a
+/// grid that is being measured keeps its natural width.
+double? tvCatalogTwoRowCardWidth({
+  required double viewport,
+  required double gutter,
+  required double bottomMargin,
+  required double focusScale,
+  required double Function(double cardWidth) cardHeight,
+}) {
+  if (!viewport.isFinite || viewport <= 0) return null;
+  final maxCardHeight = (viewport - bottomMargin - gutter) / (1 + focusScale);
+  final perWidth = cardHeight(1) - cardHeight(0);
+  if (perWidth <= 0) return null;
+  return math.max(0.0, (maxCardHeight - cardHeight(0)) / perWidth);
+}
+
+/// What the library-density setting (Instellingen, 1 compact to 5 comfortable,
+/// default 3) does to the two-row card width of [tvCatalogTwoRowCardWidth]:
+/// 3 and up keep the full width two rows allow, 2 and 1 take a tenth and a
+/// fifth off it. The setting can only make the cards smaller here, because a
+/// wider card would push the second row off the screen; six columns stay.
+double tvCatalogDensityScale(int density) => density >= 3 ? 1.0 : 1.0 - (3 - density.clamp(1, 3)) * 0.1;

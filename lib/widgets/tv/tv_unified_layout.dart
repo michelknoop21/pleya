@@ -848,7 +848,16 @@ class TvCatalogGrid {
   /// column, in logical pixels, for CAT5's open rail. It is subtracted before the
   /// column count is rounded, so the grid genuinely re-columns around the rail
   /// rather than keeping six columns and pushing the sixth off the screen.
-  factory TvCatalogGrid.forWidth(double width, {required double scale, double reservedLeading = 0}) {
+  /// [maxCardWidth] caps the card width without changing the column count:
+  /// what the cap takes off the cards goes to the side insets, so the grid
+  /// stays centred (A-06b, the folded Films/Series page sizes its cards so two
+  /// rows fit with room around them).
+  factory TvCatalogGrid.forWidth(
+    double width, {
+    required double scale,
+    double reservedLeading = 0,
+    double? maxCardWidth,
+  }) {
     final inset = width * (_referenceInset / referenceWidth);
     final gutter = width * (_referenceGutter / referenceWidth);
     final leading = reservedLeading.clamp(0.0, math.max(0.0, width - inset * 2)).toDouble();
@@ -861,12 +870,13 @@ class TvCatalogGrid {
     // six columns and five.
     final raw = ideal <= 0 ? minColumns : ((available + gutter) / (ideal + gutter)).round();
     final columns = raw.clamp(minColumns, maxColumns);
-    final cardWidth = math.max(0.0, (available - gutter * (columns - 1)) / columns);
+    final natural = math.max(0.0, (available - gutter * (columns - 1)) / columns);
+    final cardWidth = maxCardWidth == null ? natural : math.min(natural, math.max(0.0, maxCardWidth));
     return TvCatalogGrid(
       columns: columns,
       cardWidth: cardWidth,
       gutter: gutter,
-      inset: inset,
+      inset: inset + (natural - cardWidth) * columns / 2,
       bottomSafeMargin: width * (TvCatalogLayout.bottomSafeInset / referenceWidth),
       leading: leading,
     );

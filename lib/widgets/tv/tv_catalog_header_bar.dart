@@ -30,7 +30,7 @@ import 'tv_catalog_selection_tags.dart';
 import 'tv_unified_layout.dart';
 
 class TvCatalogHeaderBar extends StatelessWidget {
-  const TvCatalogHeaderBar({super.key, required this.title, this.tags = const []});
+  const TvCatalogHeaderBar({super.key, required this.title, this.tags = const [], this.maxCardWidth});
 
   final String title;
 
@@ -39,12 +39,16 @@ class TvCatalogHeaderBar extends StatelessWidget {
   /// "Alles" that says the same as the absence would.
   final List<TvCatalogSelectionTag> tags;
 
+  /// The card width cap of the grid under this heading, so the heading lines
+  /// up with a grid that narrowed its cards ([TvCatalogGrid.forWidth]).
+  final double? maxCardWidth;
+
   @override
   Widget build(BuildContext context) {
     final tk = tokens(context);
     final scale = TvLayoutConstants.scaleOf(context);
     final width = MediaQuery.sizeOf(context).width;
-    final grid = TvCatalogGrid.forWidth(width, scale: scale);
+    final grid = TvCatalogGrid.forWidth(width, scale: scale, maxCardWidth: maxCardWidth);
     final horizontalInset = grid.inset + TvCatalogLayout.cardContentInset(scale);
 
     return Padding(
