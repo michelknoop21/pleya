@@ -147,5 +147,34 @@ void main() {
       expect(find.byType(TvInfoPanel), findsNothing);
       expect(rig.chrome.tvInfoPanelOpen, isFalse);
     });
+
+    testWidgets('sluit het paneel terwijl Play Next wacht: de kaart houdt de focus, de root pakt hem niet terug', (
+      tester,
+    ) async {
+      AppleTvRemoteTouchService.debugInstanceOverride = SwipeDownTouch();
+      addTearDown(() => AppleTvRemoteTouchService.debugInstanceOverride = null);
+      final card = FocusNode(debugLabel: 'PlayNextConfirm');
+      addTearDown(card.dispose);
+      final rig = await pumpTvPlayer(
+        tester,
+        kind: MediaKind.episode,
+        position: const Duration(seconds: 30),
+        playing: true,
+        playNextFocusNode: card,
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(rig.chrome.tvInfoPanelOpen, isTrue);
+      // What the screen does when the panel lets go: ask for the card's focus.
+      rig.chrome.addListener(() {
+        if (!rig.chrome.tvInfoPanelOpen) WidgetsBinding.instance.addPostFrameCallback((_) => card.requestFocus());
+      });
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump(const Duration(milliseconds: 800));
+
+      expect(find.byType(TvInfoPanel), findsNothing);
+      expect(card.hasFocus, isTrue);
+    });
   });
 }

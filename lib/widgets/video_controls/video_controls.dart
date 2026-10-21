@@ -673,7 +673,9 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
     widget.chromeController.setTvInfoPanelOpen(false);
     // Reclaim focus for the hidden-controls key handler so the remote keeps working.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !_focusNode.hasFocus) _focusNode.requestFocus();
+      // A Play Next card that was waiting for the panel has just asked for focus
+      // (same frame, queued first); do not take it back.
+      if (mounted && widget.playNextFocusNode == null && !_focusNode.hasFocus) _focusNode.requestFocus();
     });
   }
 

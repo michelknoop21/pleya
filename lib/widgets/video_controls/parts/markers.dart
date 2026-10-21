@@ -96,7 +96,9 @@ extension _PlexVideoControlsMarkerMethods on _PlexVideoControlsState {
   }
 
   bool get _isVideoFocusNeutral {
-    if (_tvInfoPanelVisible || _showControls) return false;
+    if (_tvInfoPanelVisible) return false;
+    // Apple TV keeps focus on the visible bar; other TVs always focused the button.
+    if (_showControls && PlatformDetector.isAppleTV()) return false;
     if (OverlaySheetController.maybeOf(context)?.isOpen ?? false) return false;
     return !AppleTvRemoteTouchService.instance.isScrubPanActive;
   }

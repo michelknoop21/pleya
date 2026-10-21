@@ -89,6 +89,7 @@ Future<TvPlayerRig> pumpTvPlayer(
   MediaKind kind = MediaKind.movie,
   Duration position = const Duration(minutes: 3),
   ValueChanged<bool>? onSheetOpenChanged,
+  FocusNode? playNextFocusNode,
 }) async {
   final player = ControlsPlayer(playing: playing, position: position, duration: const Duration(minutes: 90));
   addTearDown(player.dispose);
@@ -123,13 +124,21 @@ Future<TvPlayerRig> pumpTvPlayer(
             onOpenChanged: onSheetOpenChanged,
             child: Material(
               type: MaterialType.transparency,
-              child: PlexVideoControls(
-                player: player,
-                metadata: MediaItem(id: '1', backend: MediaBackend.plex, kind: kind, title: 'Titel'),
-                toastController: toast,
-                chromeController: chrome,
-                onNext: null,
-                onPrevious: null,
+              child: Stack(
+                children: [
+                  // Stands in for the Play Next card, which owns [playNextFocusNode].
+                  if (playNextFocusNode != null)
+                    Focus(focusNode: playNextFocusNode, child: const SizedBox(width: 10, height: 10)),
+                  PlexVideoControls(
+                    player: player,
+                    metadata: MediaItem(id: '1', backend: MediaBackend.plex, kind: kind, title: 'Titel'),
+                    toastController: toast,
+                    chromeController: chrome,
+                    onNext: null,
+                    onPrevious: null,
+                    playNextFocusNode: playNextFocusNode,
+                  ),
+                ],
               ),
             ),
           ),
