@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/connection/connection.dart';
+import 'package:pleya/models/companion_remote/remote_session.dart';
 import 'package:pleya/providers/companion_remote_provider.dart';
 import 'package:pleya/services/companion_remote/companion_remote_peer_service.dart';
 
@@ -271,5 +272,35 @@ void main() {
     expect(CompanionRemotePeerService.debugLiveHostServers, baseline + 1);
     await p.stopHostServer();
     expect(CompanionRemotePeerService.debugLiveHostServers, baseline);
+  });
+
+  test('a host keeps the client that replaced another one', () async {
+    final tv = await phone();
+    await tv.startHostServer();
+    final port = tv.debugHostPort!;
+    final first = await phone();
+    final second = await phone();
+
+    await first.connectToManualHost('127.0.0.1:$port');
+    await eventually(() => tv.connectedDevice != null);
+    await second.connectToManualHost('127.0.0.1:$port');
+    // The host closes the first socket; its late close must not end the second session.
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+
+    expect(tv.isConnected, isTrue, reason: 'the replaced socket cleared the new client');
+    expect(tv.status, RemoteSessionStatus.connected);
+    expect(tv.peerUserUuid, isNotNull);
+  });
+
+  test('a pause and a resume in quick succession leave the fly host running', () async {
+    final p = await listening();
+    // The pause closes the host; the resume asks for it while that close still runs.
+    final pause = p.stopHandoffOnlyHost();
+    await Future<void>.delayed(Duration.zero);
+    expect(await p.requestHandoffOnlyHost(), isFalse, reason: 'the old peer still exists');
+    await pause;
+
+    await eventually(() => p.isHandoffOnlyHost);
+    expect(p.isHandoffOnlyHost, isTrue, reason: 'the last wish was to listen');
   });
 }

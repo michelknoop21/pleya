@@ -436,7 +436,11 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
                 children: [
                   // Hidden until the panel is measured, so the grid does not
                   // jump down one frame after it first appears.
+                  // Left and right stay clear of a landscape cutout and the
+                  // rounded corners, as the SafeArea before the panel did.
                   Positioned.fill(
+                    left: safe.left,
+                    right: safe.right,
                     child: Opacity(
                       key: const ValueKey('catalog.body'),
                       opacity: _panelMeasured ? 1 : 0,
@@ -454,7 +458,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
                       background: background,
                       measureKey: _panelKey,
                       child: Padding(
-                        padding: EdgeInsets.only(top: safe.top),
+                        padding: EdgeInsets.only(top: safe.top, left: safe.left, right: safe.right),
                         child: Column(
                           children: [
                             _buildHeader(),

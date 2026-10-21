@@ -155,7 +155,8 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
     }
     _contentTopNode.dispose();
     _subViewTopNode.dispose();
-    _flySender?.dispose();
+    // A fly under way runs on; its sender goes when the fly ends.
+    _flySender?.release();
     super.dispose();
   }
 
@@ -666,9 +667,9 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
   }
 
   Widget _buildPleyaFly(TrackControlsState state) {
-    final sender = _flySender ??= createTvPleyaFlySender(
+    final sender = _flySender ??= tvPleyaFlySender(
       context,
-      onFailed: () {
+      onViewFailed: () {
         if (mounted && _subView == TvInfoPanelSubView.pleyaFly) _closeSubView();
       },
     );

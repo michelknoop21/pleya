@@ -35,6 +35,7 @@ import 'package:pleya/services/unified_catalog/unified_catalog_query_store.dart'
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/widgets/focusable_filter_chip.dart';
 import 'package:pleya/widgets/mobile/mobile_catalog_sort_sheet.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
@@ -518,6 +519,27 @@ void main() {
       await scrollBy(tester, -4000);
       final last = tester.getRect(find.text('Film 17'));
       expect(last.bottom, lessThanOrEqualTo(852 - 34), reason: 'the last row scrolls clear of the home indicator');
+    });
+
+    testWidgets('in landscape the back button, the chips and the grid stay clear of the cutout', (tester) async {
+      films(18);
+      tester.view.padding = const FakeViewPadding(left: 59, right: 59, bottom: 21);
+      tester.view.viewPadding = const FakeViewPadding(left: 59, right: 59, bottom: 21);
+      addTearDown(tester.view.resetPadding);
+      addTearDown(tester.view.resetViewPadding);
+      await pumpCatalog(tester, width: 852);
+      await settle(tester);
+
+      final back = tester.getRect(find.byIcon(Symbols.arrow_back_rounded).first);
+      expect(back.left, greaterThanOrEqualTo(59), reason: 'the back button is not under the cutout');
+      for (final chip in tester.widgetList<Widget>(find.byType(FocusableFilterChip)).take(2)) {
+        final rect = tester.getRect(find.byWidget(chip));
+        expect(rect.left, greaterThanOrEqualTo(59), reason: 'a chip is not under the cutout');
+      }
+      final first = tester.getRect(find.text('Film 0'));
+      expect(first.left, greaterThanOrEqualTo(59), reason: 'the first column is not under the cutout');
+      final third = tester.getRect(find.text('Film 2'));
+      expect(third.right, lessThanOrEqualTo(852 - 59), reason: 'the last column stays clear of the right edge');
     });
 
     testWidgets('pull-to-refresh starts below the panel, not behind it', (tester) async {

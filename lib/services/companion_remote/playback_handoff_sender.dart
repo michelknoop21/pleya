@@ -36,6 +36,11 @@ abstract class PlaybackHandoffTransport {
   /// Tells the receiver the sender gave up on [requestId].
   Future<void> cancel(String requestId);
   Future<void> leave();
+
+  /// Claims the one outgoing fly this device may run; false while another
+  /// sender has it. Both would steer the same session (A-23d).
+  bool beginFly();
+  void endFly();
 }
 
 /// The transport over [CompanionRemoteProvider]. [ensureCrypto] derives the
@@ -85,6 +90,12 @@ class CompanionRemoteHandoffTransport implements PlaybackHandoffTransport {
 
   @override
   Future<void> leave() => _provider.leaveSession();
+
+  @override
+  bool beginFly() => _provider.beginOutgoingFly();
+
+  @override
+  void endFly() => _provider.endOutgoingFly();
 }
 
 /// Why a phone refused, shown on its row until the next try (A-23b reasons).
@@ -129,6 +140,12 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
   ({String profile, bool pin})? _switching;
   ({String clientId, PlaybackHandoffRefusal reason})? _refusal;
   bool _viewOpen = false;
+  int _searchGeneration = 0;
+  bool _disposeWhenIdle = false;
+
+  /// Closes the view of a failed fly; the view that shows this sender now
+  /// sets it, so a reopened panel hears it instead of the closed one.
+  VoidCallback? onViewFailed;
 
   /// The iPhones and iPads with Pleya open; other hosts are not targets.
   List<DiscoveredHost> get hosts => _hosts;
@@ -162,6 +179,8 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
   /// runs: that fly holds the session the search would rebuild.
   Future<void> search() async {
     if (isDisposed || busy) return;
+    // A newer search or a closed view makes this one stale.
+    final generation = ++_searchGeneration;
     _searching = true;
     _refusal = null;
     // Rows of the last search may be gone; only beacons of this one are offered.
@@ -188,6 +207,11 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
       }
     }
     if (isDisposed) return;
+    if (generation != _searchGeneration) {
+      // Discovery may have started listening again after the view closed.
+      if (!_viewOpen && !busy) transport.stopDiscovery();
+      return;
+    }
     if (stream == null) {
       _searching = false;
       safeNotifyListeners();
@@ -208,6 +232,7 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
   /// Stops listening for beacons and detaches the view; a fly that runs goes on.
   void stopSearch() {
     _viewOpen = false;
+    _searchGeneration++;
     _timeout?.cancel();
     unawaited(_subscription?.cancel());
     _subscription = null;
@@ -224,6 +249,10 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
     required String title,
   }) async {
     if (_handingTo != null) return;
+    if (!transport.beginFly()) {
+      appLogger.w('Pleya Fly: another fly is under way');
+      return;
+    }
     _handingTo = host;
     _refusal = null;
     _switching = null;
@@ -273,6 +302,7 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
       }
     }
 
+    transport.endFly();
     _handingTo = null;
     _switching = null;
     // The view closed while this ran: its search stopped, so stop listening too.
@@ -281,6 +311,7 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
       if (currentStop() == stopThisPlayer) stopThisPlayer?.call();
       safeNotifyListeners();
       onPlaying?.call(host);
+      _disposeIfReleased();
       return;
     }
     final refusal = switch (outcome) {
@@ -297,6 +328,31 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
     }
     safeNotifyListeners();
     onFailed?.call(host, refusal);
+    onViewFailed?.call();
+    _disposeIfReleased();
+  }
+
+  /// A view shows this sender again: a fly under way keeps its sender, so the
+  /// reopened panel shows it busy instead of starting a second one.
+  void adoptView(VoidCallback onFailed) {
+    _disposeWhenIdle = false;
+    onViewFailed = onFailed;
+  }
+
+  /// The panel closed. A fly under way runs on and its sender goes when the
+  /// fly ends; an idle sender goes now.
+  void release() {
+    onViewFailed = null;
+    if (busy) {
+      _disposeWhenIdle = true;
+      stopSearch();
+      return;
+    }
+    dispose();
+  }
+
+  void _disposeIfReleased() {
+    if (_disposeWhenIdle && !isDisposed) dispose();
   }
 
   @override
