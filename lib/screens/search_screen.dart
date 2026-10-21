@@ -6,7 +6,6 @@ import 'package:flutter/services.dart' show PlatformException;
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
-import 'package:rate_limiter/rate_limiter.dart';
 
 import '../automation/automation_ids.dart';
 import '../automation/automation_node.dart';
@@ -39,6 +38,7 @@ import '../providers/multi_server_provider.dart';
 import 'tv/tv_unified_activation.dart';
 import '../services/unified_catalog/mobile_media_source_picker_route.dart';
 import '../services/unified_catalog/search_projection.dart';
+import '../utils/debouncer.dart';
 import '../utils/external_ids_fetcher.dart';
 import '../utils/provider_extensions.dart';
 
@@ -158,7 +158,7 @@ class _SearchScreenState extends State<SearchScreen>
   final _clearRecentsFocus = FocusNode(debugLabel: 'TvSearchClearRecents');
   bool _isSearching = false;
   bool _hasSearched = false;
-  late final Debounce _searchDebounce;
+  late final Debouncer _searchDebounce;
   String _lastSearchedQuery = '';
   _SearchError? _searchError;
   // TV only: phones and desktops already have a dictation key on the system
@@ -203,7 +203,7 @@ class _SearchScreenState extends State<SearchScreen>
   @override
   void initState() {
     super.initState();
-    _searchDebounce = debounce(_performSearch, const Duration(milliseconds: 500));
+    _searchDebounce = Debouncer(const Duration(milliseconds: 500));
     _searchController.addListener(_onSearchChanged);
     _history = SearchRecencyStore.readHistory();
     _recentItems = readSearchRecents();
@@ -387,12 +387,25 @@ class _SearchScreenState extends State<SearchScreen>
       return;
     }
 
-    // Only search if the query has actually changed
+    // Only search if the query has actually changed. A search still armed for
+    // an earlier text (a letter typed and deleted again) is obsolete then.
     if (query.trim() == _lastSearchedQuery.trim()) {
+      _searchDebounce.cancel();
       return;
     }
 
-    _searchDebounce([query]);
+    _searchDebounce.run(() => _runTypingSearch(query));
+  }
+
+  /// The search the debounce starts after a pause in typing. Skipped when that
+  /// query was searched in the meantime (refresh, a metadata update): running
+  /// it again would re-ask the library for the same words and, on TV, reset
+  /// the requests band of a query the viewer already settled on, which then
+  /// asks the requests server a second time.
+  void _runTypingSearch(String query) {
+    if (!mounted) return;
+    if (!_isSearching && query.trim() == _lastSearchedQuery.trim()) return;
+    unawaited(_performSearch(query));
   }
 
   Future<void> _performSearch(String rawQuery) async {

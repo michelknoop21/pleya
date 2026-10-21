@@ -106,9 +106,8 @@ void main() {
 
     final state = key.currentState!;
     (state as SearchInputFocusable).setSearchQuery('movie');
-    // rate_limiter's Debounce compares DateTime.now() against the fake-clock
-    // timer, so it never invokes under FakeAsync — run the search via
-    // refresh() (same _performSearch path) to get results in place.
+    // Run the search via refresh() (same _performSearch path) to get results
+    // in place without waiting for the typing debounce.
     (state as Refreshable).refresh();
     await tester.pumpAndSettle();
     expect(client.queries, ['movie']);
@@ -171,9 +170,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget, reason: 'the inline keyboard is up');
 
-    // What the debounce does after a pause in typing. rate_limiter's Debounce
-    // never fires under FakeAsync, so the same `_performSearch` is reached
-    // through refresh(), as in the tests above.
+    // What the debounce does after a pause in typing, reached through
+    // refresh() as in the tests above.
     final state = key.currentState!;
     (state as SearchInputFocusable).setSearchQuery('movie');
     (state as Refreshable).refresh();
@@ -254,6 +252,48 @@ void main() {
     await tester.pumpAndSettle();
     expect(fake.sent('GET', '/search'), hasLength(2));
     expect(find.text('Aan te vragen film'), findsWidgets);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('TV: the typing debounce firing after DOWN does not ask the requests server again', (tester) async {
+    // The debounce armed by the typed text is still pending when refresh() has
+    // already searched that text and DOWN settles it. Firing late, it used to
+    // search the same words again and reset the requests band, which asked the
+    // requests server a second time. The fake clock makes the order exact.
+    final fake = FakeSeerr()
+      ..on('GET /search', {
+        'page': 1,
+        'totalPages': 1,
+        'results': [
+          {'id': 901, 'mediaType': 'movie', 'title': 'Aan te vragen film'},
+        ],
+      });
+    final seerr = await seerrProvider(fake);
+    addTearDown(seerr.dispose);
+    final (client, key) = await _pumpTvSearchScreen(tester, seerr: seerr);
+    await tester.pumpAndSettle();
+
+    final state = key.currentState!;
+    (state as SearchInputFocusable).setSearchQuery('movie');
+    (state as Refreshable).refresh();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('Movie 1'), findsOneWidget);
+    expect(client.queries, ['movie']);
+
+    for (var i = 0; i < 8 && FocusManager.instance.primaryFocus?.debugLabel == 'SearchInput'; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(FocusManager.instance.primaryFocus?.debugLabel, isNot('SearchInput'));
+    expect(fake.sent('GET', '/search'), hasLength(1));
+
+    // Past the 500 ms of the debounce, and well past any answer.
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(client.queries, ['movie'], reason: 'the library is not asked for the same words again');
+    expect(fake.sent('GET', '/search'), hasLength(1), reason: 'nor the requests server');
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
