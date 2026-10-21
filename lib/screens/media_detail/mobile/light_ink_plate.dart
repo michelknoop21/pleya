@@ -1,10 +1,15 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
-/// Alpha of the page-coloured backing under dark ink on the light theme, the
-/// same as the back/Meer circles (`GlassCircleButton`).
-const double kLightInkPlateAlpha = 0.92;
+/// Alpha of the page-coloured glass tint under dark ink on the light theme.
+/// Translucent: the artwork shows through the blur, as in `CatalogTopPanel`.
+const double kLightInkPlateAlpha = 0.55;
 
-/// Light theme only: a rounded, near-opaque `surface` plate behind dark ink
+/// Blur radius behind the glass tint, the same as `CatalogTopPanel`.
+const double kLightInkPlateSigma = 18;
+
+/// Light theme only: a rounded, translucent blurred `surface` glass plate behind dark ink
 /// that sits over the poster or its glow, so the text brings its own contrast
 /// whatever the artwork (DEC-140). Dark and OLED get [child] untouched.
 class LightInkPlate extends StatelessWidget {
@@ -23,12 +28,15 @@ class LightInkPlate extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     if (theme.brightness == Brightness.dark) return child;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface.withValues(alpha: kLightInkPlateAlpha),
-        borderRadius: BorderRadius.circular(radius),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: kLightInkPlateSigma, sigmaY: kLightInkPlateSigma),
+        child: DecoratedBox(
+          decoration: BoxDecoration(color: theme.colorScheme.surface.withValues(alpha: kLightInkPlateAlpha)),
+          child: Padding(padding: padding, child: child),
+        ),
       ),
-      child: Padding(padding: padding, child: child),
     );
   }
 }
