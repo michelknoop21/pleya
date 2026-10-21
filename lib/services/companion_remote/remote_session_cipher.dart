@@ -57,9 +57,21 @@ class RemoteSessionCipher {
         .then<List<int>?>((encrypted) => generation == _generation ? encrypted : null);
   }
 
-  /// Run [task] after every earlier send has finished.
-  void runSend(Future<void> Function() task) {
-    _sendChain = (_sendChain ?? Future.value()).then((_) => task());
+  /// Run [task] after every earlier send has finished. The returned future
+  /// always completes: a task queued for an earlier session is skipped, and a
+  /// task that throws does not stop the sends queued behind it.
+  Future<void> runSend(Future<void> Function() task) {
+    final generation = _generation;
+    final run = (_sendChain ?? Future.value()).then<void>((_) async {
+      if (generation != _generation) return;
+      try {
+        await task();
+      } catch (_) {
+        // The task reports its own failure; the chain must survive it.
+      }
+    });
+    _sendChain = run;
+    return run;
   }
 
   /// Decrypt one incoming frame. The call order is the arrival order, because

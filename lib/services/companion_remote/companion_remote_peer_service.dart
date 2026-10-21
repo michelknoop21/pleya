@@ -372,6 +372,8 @@ class CompanionRemotePeerService with KeepaliveMixin {
 
               // Send encrypted authSuccess
               await _sendEncryptedToSocket(socket, jsonEncode({'type': 'authSuccess'}));
+              // Replaced or dropped while authSuccess was being sent.
+              if (!identical(_clientSocket, socket)) return;
 
               // Notify connection
               final device = RemoteDevice(
@@ -859,18 +861,10 @@ class CompanionRemotePeerService with KeepaliveMixin {
 
   /// Queued behind earlier sends, so it keeps its place in counter order.
   Future<void> _sendEncryptedToSocket(WebSocket socket, String plaintext) {
-    final done = Completer<void>();
-    _cipher.runSend(() async {
-      try {
-        final encrypted = await _cipher.encrypt(plaintext, isHost: _role == RemoteSessionRole.host);
-        if (encrypted != null && identical(_clientSocket, socket)) socket.add(encrypted);
-      } catch (e) {
-        appLogger.e('CompanionRemote: Failed to send frame', error: e);
-      } finally {
-        done.complete();
-      }
+    return _cipher.runSend(() async {
+      final encrypted = await _cipher.encrypt(plaintext, isHost: _role == RemoteSessionRole.host);
+      if (encrypted != null && identical(_clientSocket, socket)) socket.add(encrypted);
     });
-    return done.future;
   }
 
   static const _maxDecryptFailures = 3;

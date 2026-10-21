@@ -84,6 +84,24 @@ void main() {
       expect(await receiver.decrypt(frame, fromHost: true), 'new');
     });
 
+    test('a send queued for an earlier session is skipped and a failing send does not stop the chain', () async {
+      final cipher = RemoteSessionCipher()..start(key);
+      final ran = <String>[];
+      final slow = cipher.runSend(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        ran.add('slow');
+      });
+      final stale = cipher.runSend(() async => ran.add('stale'));
+      await Future<void>.delayed(const Duration(milliseconds: 5)); // slow is now running
+      cipher.start(List<int>.generate(32, (i) => 100 + i));
+      final failing = cipher.runSend(() async => throw StateError('boom'));
+      final after = cipher.runSend(() async => ran.add('after'));
+
+      await Future.wait([slow, stale, failing, after]);
+      expect(ran.toSet(), {'slow', 'after'});
+      expect(ran, isNot(contains('stale')));
+    });
+
     test('queued sends run one after the other', () async {
       final cipher = RemoteSessionCipher()..start(key);
       final order = <String>[];
