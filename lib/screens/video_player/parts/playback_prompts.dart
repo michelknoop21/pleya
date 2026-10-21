@@ -81,11 +81,7 @@ extension _VideoPlayerPlaybackPromptMethods on VideoPlayerScreenState {
 
       // Auto-focus Play Next button on TV when dialog appears (only in keyboard/TV mode)
       if (isKeyboardMode) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _playNextConfirmFocusNode.requestFocus();
-          }
-        });
+        _playNextFocusGate.ask();
       }
 
       if (autoPlayEnabled) {
@@ -257,6 +253,7 @@ extension _VideoPlayerPlaybackPromptMethods on VideoPlayerScreenState {
 
   void _unfocusPlayNextPrompt() {
     _playNextCancelFocusNode.unfocus();
+    _playNextFocusGate.cancel();
     _playNextConfirmFocusNode.unfocus();
   }
 
