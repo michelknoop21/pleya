@@ -204,6 +204,94 @@ void main() {
     expect(pleyaFlyFailureBody('iPad', null), t.playbackHandoff.failedBody);
   });
 
+  testWidgets('a phone that drops out does not hand the focus to another phone', (tester) async {
+    await pumpView(tester);
+    transport.beacons.add([fakeHost('iPhone van Michel'), fakeHost('iPad', clientId: 'ipad')]);
+    await tester.pump();
+    await tester.pump();
+
+    // The user moves to the iPad, then the iPhone's beacon goes stale.
+    final ipadFocus = find.descendant(of: find.widgetWithText(TvPanelRow, 'iPad'), matching: find.byType(Focus)).first;
+    tester.widget<Focus>(ipadFocus).focusNode!.requestFocus();
+    await tester.pump();
+    transport.beacons.add([fakeHost('iPad', clientId: 'ipad')]);
+    await tester.pump();
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    expect(selected.map((h) => h.name), ['iPad'], reason: 'Select reaches the phone the user is on');
+    await finish(tester);
+  });
+
+  testWidgets('when the focused first phone drops out, the focus goes to the next one', (tester) async {
+    await pumpView(tester);
+    transport.beacons.add([fakeHost('iPhone van Michel'), fakeHost('iPad', clientId: 'ipad')]);
+    await tester.pump();
+    await tester.pump();
+    first.requestFocus();
+    await tester.pump();
+
+    transport.beacons.add([fakeHost('iPad', clientId: 'ipad')]);
+    await tester.pump();
+    await tester.pump();
+    expect(first.hasPrimaryFocus, isTrue, reason: 'the focus vanished with the phone');
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    expect(selected.map((h) => h.name), ['iPad']);
+    await finish(tester);
+  });
+
+  testWidgets('the landing focus stays on its row when the first phone appears', (tester) async {
+    await pumpView(tester);
+    first.requestFocus();
+    await tester.pump();
+    expect(find.text('Looking for iPhone and iPad…'), findsOneWidget);
+
+    transport.beacons.add([fakeHost('iPhone van Michel')]);
+    await tester.pump();
+    await tester.pump();
+    expect(first.hasPrimaryFocus, isTrue, reason: 'the searching row became the phone row, focus and all');
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    expect(selected.map((h) => h.name), ['iPhone van Michel']);
+    await finish(tester);
+  });
+
+  testWidgets('a reopened panel gets the sender whose fly still runs', (tester) async {
+    late BuildContext context;
+    await tester.pumpWidget(
+      Builder(
+        builder: (c) {
+          context = c;
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+    final answer = Completer<PlaybackHandoffOutcome>();
+    transport.answer = (_) => answer.future;
+    final firstPanel = tvPleyaFlySender(context, onViewFailed: () {}, create: () => sender);
+    final running = firstPanel.handOff(
+      fakeHost('iPhone van Michel'),
+      serverId: 'srv',
+      itemId: '42',
+      positionMs: 0,
+      title: 'Big Buck Bunny',
+    );
+    await tester.pump();
+    firstPanel.release();
+
+    final other = PlaybackHandoffSender(transport: FakeHandoffTransport(), currentStop: () => null);
+    addTearDown(other.dispose);
+    final secondPanel = tvPleyaFlySender(context, onViewFailed: () {}, create: () => other);
+    expect(identical(secondPanel, firstPanel), isTrue);
+    expect(secondPanel.busy, isTrue);
+
+    answer.complete(PlaybackHandoffOutcome.failed);
+    await running;
+    secondPanel.release();
+  });
+
   group('the Video tab', () {
     Future<List<TvInfoPanelSubView>> pumpTab(WidgetTester tester, {required bool canHandoff}) async {
       final opened = <TvInfoPanelSubView>[];

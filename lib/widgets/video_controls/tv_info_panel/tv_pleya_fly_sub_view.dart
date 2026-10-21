@@ -20,11 +20,17 @@ import 'tv_panel_widgets.dart';
 /// The sender of the TV player panel over the Companion Remote. On success the
 /// player this fly started from closes and a notice says where it plays; on a
 /// failure this device keeps playing, says so, and [onFailed] closes the view.
-PlaybackHandoffSender createTvPleyaFlySender(BuildContext context, {required VoidCallback onFailed}) {
+PlaybackHandoffSender createTvPleyaFlySender(BuildContext context) {
   return PlaybackHandoffSender(
     transport: CompanionRemoteHandoffTransport(
       context.read<CompanionRemoteProvider>(),
-      ensureCrypto: () => context.mounted ? ensureCompanionRemoteCrypto(context) : Future.value(false),
+      // The panel that shows the sender now: a fly can outlive the panel that
+      // started it, and a search after it runs in the reopened one (A-23d).
+      ensureCrypto: () {
+        final current = _tvFlyContext;
+        final view = current != null && current.mounted ? current : context;
+        return view.mounted ? ensureCompanionRemoteCrypto(view) : Future.value(false);
+      },
     ),
     currentStop: () => CompanionRemoteReceiver.instance.onStop,
     onPlaying: (host) => noticeController.show(
@@ -44,9 +50,34 @@ PlaybackHandoffSender createTvPleyaFlySender(BuildContext context, {required Voi
           groupKey: 'playback-handoff-failed:${host.clientId}',
         ),
       );
-      onFailed();
     },
   );
+}
+
+/// The sender of the most recent TV panel; a fly it runs outlives the panel.
+PlaybackHandoffSender? _tvFlySender;
+
+/// The context of the panel that shows [_tvFlySender]; its identity lookup
+/// follows the panel that is open now.
+BuildContext? _tvFlyContext;
+
+/// The sender for a panel that opens Pleya Fly: the running one while a fly is
+/// under way, so closing and reopening the panel shows that fly instead of
+/// starting a second sender on the same session (A-23d); else a new one.
+/// [onViewFailed] closes this panel's view when the fly fails.
+PlaybackHandoffSender tvPleyaFlySender(
+  BuildContext context, {
+  required VoidCallback onViewFailed,
+  PlaybackHandoffSender Function()? create,
+}) {
+  final running = _tvFlySender;
+  final sender = running != null && running.busy && !running.isDisposed
+      ? running
+      : (create ?? () => createTvPleyaFlySender(context))();
+  _tvFlySender = sender;
+  _tvFlyContext = context;
+  sender.adoptView(onViewFailed);
+  return sender;
 }
 
 /// The second line of the notice for a fly that did not start: why, when the
@@ -84,6 +115,17 @@ class TvPleyaFlySubView extends StatefulWidget {
 }
 
 class _TvPleyaFlySubViewState extends State<TvPleyaFlySubView> {
+  /// The row that holds the landing focus keeps one key across the searching
+  /// row, the Search again row and the first phone, so its element and focus
+  /// survive the switch between them.
+  static const _anchorKey = ValueKey('pleya-fly-anchor');
+
+  /// The phone whose row holds the landing focus: the first one seen. Rows
+  /// are keyed by client id, so a phone that drops out never hands its place,
+  /// and with it the focus, to another phone; a Select then never reaches a
+  /// phone the user did not pick (A-23d).
+  String? _anchorClientId;
+
   @override
   void initState() {
     super.initState();
@@ -119,12 +161,14 @@ class _TvPleyaFlySubViewState extends State<TvPleyaFlySubView> {
     final hosts = sender.visibleHosts;
     final m = TvPanelMetrics.of(context);
     final left = <Widget>[TvPanelSectionHeader(label: t.playbackHandoff.continueOn)];
+    if (hosts.isEmpty) _anchorClientId = null;
     if (hosts.isEmpty && sender.searching) {
       left.add(
         TvPanelGroup(
           key: const ValueKey('pleya-fly-hosts'),
           children: [
             TvPanelRow(
+              key: _anchorKey,
               focusNode: widget.firstFocusNode,
               icon: Symbols.wifi_find_rounded,
               title: t.playbackHandoff.searchingPhones,
@@ -144,6 +188,7 @@ class _TvPleyaFlySubViewState extends State<TvPleyaFlySubView> {
           key: const ValueKey('pleya-fly-hosts'),
           children: [
             TvPanelRow(
+              key: _anchorKey,
               focusNode: widget.firstFocusNode,
               icon: Symbols.refresh_rounded,
               title: t.playbackHandoff.searchAgain,
@@ -157,13 +202,20 @@ class _TvPleyaFlySubViewState extends State<TvPleyaFlySubView> {
       return left;
     }
     final busy = sender.busy;
+    // The phone that held the landing focus dropped out while it had the
+    // focus: the first phone that is left takes the anchor, and with it the
+    // focus, instead of the focus vanishing until the next press.
+    final anchorGone = _anchorClientId != null && !hosts.any((h) => h.clientId == _anchorClientId);
+    if (anchorGone && widget.firstFocusNode.hasFocus) _anchorClientId = null;
+    _anchorClientId ??= hosts.first.clientId;
     left.add(
       TvPanelGroup(
         key: const ValueKey('pleya-fly-hosts'),
         children: [
           for (final (i, host) in hosts.indexed)
             TvPanelRow(
-              focusNode: i == 0 ? widget.firstFocusNode : null,
+              key: host.clientId == _anchorClientId ? _anchorKey : ValueKey('pleya-fly:${host.clientId}'),
+              focusNode: host.clientId == _anchorClientId ? widget.firstFocusNode : null,
               icon: Symbols.smartphone,
               title: host.name,
               subtitle: _detail(host),

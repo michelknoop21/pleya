@@ -288,6 +288,109 @@ void main() {
     await running;
     expect(s.visibleHosts, isEmpty);
   });
+
+  group('one fly at a time', () {
+    test('a second sender on the same device does not start a fly while one runs', () async {
+      final answer = Completer<PlaybackHandoffOutcome>();
+      transport.answer = (_) => answer.future;
+      final other = FakeHandoffTransport(flyLock: transport.flyLock);
+      final first = sender();
+      final second = PlaybackHandoffSender(transport: other, currentStop: () => null);
+      addTearDown(second.dispose);
+
+      final running = fly(first);
+      await Future<void>.delayed(Duration.zero);
+      await fly(second, name: 'iPad');
+      expect(other.log, isEmpty, reason: 'the second sender must not touch the session of the first');
+      expect(second.busy, isFalse);
+
+      answer.complete(PlaybackHandoffOutcome.failed);
+      await running;
+      expect(transport.flyLock.held, isFalse, reason: 'the fly is over, the next may start');
+    });
+
+    test('a released sender lives until its fly ends; an adopted one stays', () async {
+      final answer = Completer<PlaybackHandoffOutcome>();
+      transport.answer = (_) => answer.future;
+      final s = PlaybackHandoffSender(transport: transport, currentStop: () => null);
+      final running = fly(s);
+      await Future<void>.delayed(Duration.zero);
+
+      s.release();
+      expect(s.isDisposed, isFalse, reason: 'the fly runs on');
+      answer.complete(PlaybackHandoffOutcome.failed);
+      await running;
+      expect(s.isDisposed, isTrue);
+
+      final again = Completer<PlaybackHandoffOutcome>();
+      transport.answer = (_) => again.future;
+      final kept = PlaybackHandoffSender(transport: transport, currentStop: () => null);
+      addTearDown(kept.dispose);
+      final second = fly(kept);
+      await Future<void>.delayed(Duration.zero);
+      kept.release();
+      kept.adoptView(() {});
+      again.complete(PlaybackHandoffOutcome.failed);
+      await second;
+      expect(kept.isDisposed, isFalse, reason: 'a reopened panel shows this sender');
+    });
+  });
+
+  group('a stale search', () {
+    test('closing the view while the identity is derived leaves nothing listening', () async {
+      final identity = Completer<void>();
+      transport.onDiscoverAsync = () => identity.future;
+      final s = sender()..attachView();
+      final searching = s.search();
+      await Future<void>.delayed(Duration.zero);
+      s.stopSearch();
+      identity.complete();
+      await searching;
+
+      expect(transport.log.last, 'stopDiscovery', reason: 'discovery started again after the view closed');
+      transport.beacons.add([fakeHost('iPhone van Michel')]);
+      await Future<void>.delayed(Duration.zero);
+      expect(s.hosts, isEmpty, reason: 'no subscription outlives the closed view');
+    });
+
+    test('disposing while the identity is derived leaves nothing listening', () async {
+      final identity = Completer<void>();
+      transport.onDiscoverAsync = () => identity.future;
+      final s = PlaybackHandoffSender(transport: transport, currentStop: () => null)..attachView();
+      final searching = s.search();
+      await Future<void>.delayed(Duration.zero);
+      s.dispose();
+      final stopsAtDispose = transport.log.where((l) => l == 'stopDiscovery').length;
+      // Deriving the identity ends after the dispose; discovery then listens again.
+      identity.complete();
+      await searching;
+      expect(
+        transport.log.where((l) => l == 'stopDiscovery').length,
+        stopsAtDispose + 1,
+        reason: 'discovery started again for a sender that is gone',
+      );
+    });
+
+    test('of two overlapping searches only the newest subscribes', () async {
+      final pending = [Completer<void>(), Completer<void>()];
+      var call = 0;
+      transport.onDiscoverAsync = () => pending[call++].future;
+      final s = sender()..attachView();
+      final first = s.search();
+      await Future<void>.delayed(Duration.zero);
+      final second = s.search();
+      await Future<void>.delayed(Duration.zero);
+      pending[1].complete();
+      await second;
+      pending[0].complete();
+      await first;
+
+      s.stopSearch();
+      transport.beacons.add([fakeHost('iPhone van Michel')]);
+      await Future<void>.delayed(Duration.zero);
+      expect(s.hosts, isEmpty, reason: 'the older search left a subscription behind');
+    });
+  });
 }
 
 class _ThrowingConnect extends FakeHandoffTransport {

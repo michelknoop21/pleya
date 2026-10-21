@@ -16,8 +16,16 @@ DiscoveredHost fakeHost(String name, {String platform = 'iOS', String? clientId}
 
 /// A transport that records every call in [log] and answers a handoff with
 /// [answer] (A-23d).
+/// The one outgoing fly a device may run, shared by the fakes of one device.
+class FakeFlyLock {
+  bool held = false;
+}
+
 class FakeHandoffTransport implements PlaybackHandoffTransport {
-  FakeHandoffTransport({this.hostRunning = true, this.discoverable = true});
+  FakeHandoffTransport({this.hostRunning = true, this.discoverable = true, FakeFlyLock? flyLock})
+    : flyLock = flyLock ?? FakeFlyLock();
+
+  final FakeFlyLock flyLock;
 
   final log = <String>[];
   final beacons = StreamController<List<DiscoveredHost>>.broadcast();
@@ -84,4 +92,14 @@ class FakeHandoffTransport implements PlaybackHandoffTransport {
 
   @override
   Future<void> leave() async => log.add('leave');
+
+  @override
+  bool beginFly() {
+    if (flyLock.held) return false;
+    flyLock.held = true;
+    return true;
+  }
+
+  @override
+  void endFly() => flyLock.held = false;
 }

@@ -393,6 +393,8 @@ class CompanionRemotePeerService with KeepaliveMixin {
               unawaited(socket.close(4002, 'Authentication required'));
             }
           } else {
+            // A replaced client may still send: its frames are not for this session's keys.
+            if (!identical(_clientSocket, socket)) return;
             // Encrypted command — data is binary
             final decrypted = await _decryptIncoming(data);
             if (decrypted == null) return;
@@ -418,7 +420,9 @@ class CompanionRemotePeerService with KeepaliveMixin {
       onDone: () {
         authTimeout?.cancel();
         appLogger.d('CompanionRemote: WebSocket connection closed');
-        if (isAuthenticated) {
+        // A client that a new connection replaced closes late; its keys,
+        // identity and socket now belong to the replacement (A-23d).
+        if (isAuthenticated && identical(_clientSocket, socket)) {
           _clientSocket = null;
           _sessionEncKey = null;
           _isAuthenticated = false;

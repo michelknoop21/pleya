@@ -638,8 +638,25 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     _handoffHostWanted = false;
     // A start under way finishes first; it then closes itself (see [_startHostServer]).
     await _hostStarting;
-    if (isHandoffOnlyHost) await stopHostServer();
+    if (!isHandoffOnlyHost) return;
+    await stopHostServer();
+    // A resume during that close asked for the host and returned early, since
+    // the old peer still existed; the last wish wins (A-23d).
+    if (canStartHandoffOnlyHost && isCryptoReady) await startHostServer(handoffOnly: true);
   }
+
+  bool _outgoingFly = false;
+
+  /// Claims the one outgoing Pleya Fly of this device; false while one runs.
+  /// Two senders on one provider would join, leave and restart the same
+  /// session over each other (A-23d).
+  bool beginOutgoingFly() {
+    if (_outgoingFly) return false;
+    _outgoingFly = true;
+    return true;
+  }
+
+  void endOutgoingFly() => _outgoingFly = false;
 
   /// Whether a handoff-only host may start now, without asking for one again:
   /// the second check after deriving the identity, when a pause may have

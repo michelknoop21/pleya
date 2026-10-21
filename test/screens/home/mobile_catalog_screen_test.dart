@@ -35,7 +35,9 @@ import 'package:pleya/services/unified_catalog/unified_catalog_query_store.dart'
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/widgets/focusable_filter_chip.dart';
+import 'package:pleya/widgets/skeleton_media_card.dart';
 import 'package:pleya/widgets/mobile/mobile_catalog_sort_sheet.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:provider/provider.dart';
@@ -322,6 +324,24 @@ void main() {
     await settle(tester);
   });
 
+  testWidgets('in landscape with a cutout the skeleton fits between the safe edges', (tester) async {
+    tester.view.padding = const FakeViewPadding(left: 59, right: 59, bottom: 21);
+    tester.view.viewPadding = const FakeViewPadding(left: 59, right: 59, bottom: 21);
+    addTearDown(tester.view.resetPadding);
+    addTearDown(tester.view.resetViewPadding);
+    await pumpCatalog(tester, width: 852, pumpAfter: false);
+    // The first frame: the skeleton shows, sized to the body between the edges.
+    expect(find.byType(CatalogSkeletonGrid), findsOneWidget);
+    final cards = find.descendant(of: find.byType(CatalogSkeletonGrid), matching: find.byType(SkeletonMediaCard));
+    expect(tester.getRect(cards.at(0)).left, greaterThanOrEqualTo(59));
+    expect(
+      tester.getRect(cards.at(2)).right,
+      lessThanOrEqualTo(852 - 59),
+      reason: 'the third card of a row ends inside the body, not under the cutout',
+    );
+    await settle(tester);
+  });
+
   group('top panel collapses on scroll (A-06)', () {
     Rect panel(WidgetTester tester) => tester.getRect(find.byKey(catalogTopMenuKey));
     bool shown(WidgetTester tester) => panel(tester).bottom > 80;
@@ -518,6 +538,27 @@ void main() {
       await scrollBy(tester, -4000);
       final last = tester.getRect(find.text('Film 17'));
       expect(last.bottom, lessThanOrEqualTo(852 - 34), reason: 'the last row scrolls clear of the home indicator');
+    });
+
+    testWidgets('in landscape the back button, the chips and the grid stay clear of the cutout', (tester) async {
+      films(18);
+      tester.view.padding = const FakeViewPadding(left: 59, right: 59, bottom: 21);
+      tester.view.viewPadding = const FakeViewPadding(left: 59, right: 59, bottom: 21);
+      addTearDown(tester.view.resetPadding);
+      addTearDown(tester.view.resetViewPadding);
+      await pumpCatalog(tester, width: 852);
+      await settle(tester);
+
+      final back = tester.getRect(find.byIcon(Symbols.arrow_back_rounded).first);
+      expect(back.left, greaterThanOrEqualTo(59), reason: 'the back button is not under the cutout');
+      for (final chip in tester.widgetList<Widget>(find.byType(FocusableFilterChip)).take(2)) {
+        final rect = tester.getRect(find.byWidget(chip));
+        expect(rect.left, greaterThanOrEqualTo(59), reason: 'a chip is not under the cutout');
+      }
+      final first = tester.getRect(find.text('Film 0'));
+      expect(first.left, greaterThanOrEqualTo(59), reason: 'the first column is not under the cutout');
+      final third = tester.getRect(find.text('Film 2'));
+      expect(third.right, lessThanOrEqualTo(852 - 59), reason: 'the last column stays clear of the right edge');
     });
 
     testWidgets('pull-to-refresh starts below the panel, not behind it', (tester) async {
