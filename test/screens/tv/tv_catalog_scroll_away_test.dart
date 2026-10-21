@@ -58,14 +58,18 @@ import '../../test_helpers/prefs.dart';
 const _window = Size(1920, 1080);
 
 /// Where the folded grid starts at [_window], scale 1.0.
-/// The Apple TV canvas: a 3840 x 2160 panel at the device pixel ratio the app
-/// runs at there (DEC-028, 1.85 x 2), so 1037.8 x 583.8 logical with the
-/// ten-foot scale clamped to 0.85. Measured on the tvOS simulator.
-const double _appleTvDpr = 3.7;
+/// The Apple TV canvas as `_AppleTvScale` in `main.dart` builds it: a
+/// 3840 x 2160 panel at a device pixel ratio of 2, a 1920 x 1080 surface the
+/// app lays out at 1/1.85 of (1037.8 x 583.8, ten-foot scale clamped to
+/// 0.85) and draws back up through a root `Transform.scale` (DEC-028).
 const Size _appleTvPanel = Size(3840, 2160);
+const double _appleTvRootScale = 1.85;
 
 /// The logical size the last [pump] laid out at.
 Size _view = _window;
+
+/// The root scale the last [pump] drew through; rects come back divided by it.
+double _rootScale = 1;
 
 ({double top, double overhang, double margin}) _frame() =>
     TvScrollAwayPage.foldedGridFrame(size: _view, scale: TvLayoutConstants.scaleForSize(_view));
@@ -264,10 +268,11 @@ void main() {
     await catalog.ensureStarted();
   });
 
-  Future<void> pump(WidgetTester tester, {bool reduceMotion = false, Size physical = _window, double dpr = 1}) async {
-    tester.view.physicalSize = physical;
-    tester.view.devicePixelRatio = dpr;
-    _view = physical / dpr;
+  Future<void> pump(WidgetTester tester, {bool reduceMotion = false, bool appleTv = false}) async {
+    tester.view.physicalSize = appleTv ? _appleTvPanel : _window;
+    tester.view.devicePixelRatio = appleTv ? 2 : 1;
+    _rootScale = appleTv ? _appleTvRootScale : 1;
+    _view = (appleTv ? _appleTvPanel / 2 : _window) / _rootScale;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ChangeNotifierProvider<MultiServerProvider>.value(
@@ -276,10 +281,25 @@ void main() {
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: monoTheme(dark: true),
-            builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(context).copyWith(disableAnimations: reduceMotion),
-              child: child!,
-            ),
+            builder: (context, child) {
+              final media = MediaQuery.of(context).copyWith(disableAnimations: reduceMotion);
+              if (_rootScale == 1) return MediaQuery(data: media, child: child!);
+              return Transform.scale(
+                scale: _rootScale,
+                alignment: Alignment.topLeft,
+                child: OverflowBox(
+                  alignment: Alignment.topLeft,
+                  minWidth: _view.width,
+                  maxWidth: _view.width,
+                  minHeight: _view.height,
+                  maxHeight: _view.height,
+                  child: MediaQuery(
+                    data: media.copyWith(size: _view, devicePixelRatio: media.devicePixelRatio * _rootScale),
+                    child: child!,
+                  ),
+                ),
+              );
+            },
             home: InputModeTracker(
               child: _Host(key: hostKey, coordinator: coordinator),
             ),
@@ -308,9 +328,13 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Rect navRect(WidgetTester tester) => tester.getRect(find.byType(TvTopNavigation));
-  Rect headerRect(WidgetTester tester) => tester.getRect(find.byType(TvCatalogHeaderBar));
-  Rect gridRect(WidgetTester tester) => tester.getRect(find.byType(TvCatalogCardGrid));
+  /// A rect in the app's own logical pixels, under any root scale.
+  Rect logical(Rect r) => _rootScale == 1
+      ? r
+      : Rect.fromLTRB(r.left / _rootScale, r.top / _rootScale, r.right / _rootScale, r.bottom / _rootScale);
+  Rect navRect(WidgetTester tester) => logical(tester.getRect(find.byType(TvTopNavigation)));
+  Rect headerRect(WidgetTester tester) => logical(tester.getRect(find.byType(TvCatalogHeaderBar)));
+  Rect gridRect(WidgetTester tester) => logical(tester.getRect(find.byType(TvCatalogCardGrid)));
   double headerOpacity(WidgetTester tester) => tester
       .widget<FadeTransition>(
         find.ancestor(of: find.byType(TvCatalogHeaderBar), matching: find.byType(FadeTransition)).first,
@@ -551,8 +575,9 @@ void main() {
     await catalog.refresh();
   }
 
-  Rect cardRect(WidgetTester tester, int index) =>
-      tester.getRect(find.byWidgetPredicate((w) => w is Focus && w.focusNode?.debugLabel == cardLabel(index)).first);
+  Rect cardRect(WidgetTester tester, int index) => logical(
+    tester.getRect(find.byWidgetPredicate((w) => w is Focus && w.focusNode?.debugLabel == cardLabel(index)).first),
+  );
 
   double scrollOffset(WidgetTester tester) => tester
       .state<ScrollableState>(
@@ -603,7 +628,7 @@ void main() {
 
   testWidgets('on the Apple TV canvas too, where the two rows fill the screen', (tester) async {
     await growCatalog();
-    await pump(tester, physical: _appleTvPanel, dpr: _appleTvDpr);
+    await pump(tester, appleTv: true);
     await openCatalog(tester);
     expect(_view.height, closeTo(583.8, 0.1));
     expect(_frame().margin, inInclusiveRange(0, 5), reason: 'two rows and a gutter take all but a few pixels');
@@ -631,7 +656,7 @@ void main() {
   });
 
   test('two whole rows fit in the folded frame on both canvases', () {
-    for (final view in [_window, _appleTvPanel / _appleTvDpr]) {
+    for (final view in [_window, _appleTvPanel / 2 / _appleTvRootScale]) {
       _view = view;
       final scale = TvLayoutConstants.scaleForSize(view);
       final grid = TvCatalogGrid.forWidth(view.width, scale: scale);

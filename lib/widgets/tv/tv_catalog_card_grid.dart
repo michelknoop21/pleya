@@ -382,7 +382,13 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     final first = _nodes[ids.first]?.context?.findRenderObject();
     final below = _nodes[ids[columns]]?.context?.findRenderObject();
     if (first is! RenderBox || below is! RenderBox || !first.hasSize || !below.hasSize) return null;
-    final pitch = below.localToGlobal(Offset.zero).dy - first.localToGlobal(Offset.zero).dy;
+    // Measured inside this grid, not on the screen: the TV shell draws the
+    // whole app through a root scale (DEC-028), and a global distance would
+    // come back 1.85 times too long.
+    final grid = context.findRenderObject();
+    if (grid == null) return null;
+    final pitch =
+        below.localToGlobal(Offset.zero, ancestor: grid).dy - first.localToGlobal(Offset.zero, ancestor: grid).dy;
     if (pitch <= 0) return null;
     return (height: first.size.height, pitch: pitch);
   }
