@@ -628,6 +628,22 @@ void main() {
     await walkTwoRows(tester);
   });
 
+  testWidgets('the library-density setting narrows the cards, and two rows still fit', (tester) async {
+    await growCatalog();
+    await pump(tester, appleTv: true);
+    await openCatalog(tester);
+    final atDefault = cardRect(tester, 0).width;
+
+    await SettingsService.instance.write(SettingsService.libraryDensity, LibraryDensity.min);
+    coordinator.popNested();
+    await tester.pumpAndSettle();
+    await openCatalog(tester);
+    final atCompact = cardRect(tester, 0).width;
+
+    expect(atCompact, closeTo(atDefault * 0.8, 1), reason: 'density 1 takes a fifth off the two-row width');
+    await walkTwoRows(tester);
+  });
+
   testWidgets('a row change glides the content, it does not jump a row at once', (tester) async {
     await growCatalog();
     await pump(tester);

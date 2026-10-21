@@ -84,3 +84,10 @@ double? tvCatalogTwoRowCardWidth({
   if (perWidth <= 0) return null;
   return math.max(0.0, (maxCardHeight - cardHeight(0)) / perWidth);
 }
+
+/// What the library-density setting (Instellingen, 1 compact to 5 comfortable,
+/// default 3) does to the two-row card width of [tvCatalogTwoRowCardWidth]:
+/// 3 and up keep the full width two rows allow, 2 and 1 take a tenth and a
+/// fifth off it. The setting can only make the cards smaller here, because a
+/// wider card would push the second row off the screen; six columns stay.
+double tvCatalogDensityScale(int density) => density >= 3 ? 1.0 : 1.0 - (3 - density.clamp(1, 3)) * 0.1;

@@ -117,6 +117,7 @@ class TvCatalogCardGrid extends StatefulWidget {
     this.nodeDebugLabel = 'TvCatalogCard',
     this.rowAligned = false,
     this.fitTwoRows = false,
+    this.fitScale = 1,
   });
 
   /// One stable id per item, in display order. Identity, not position: see the
@@ -204,6 +205,10 @@ class TvCatalogCardGrid extends StatefulWidget {
   /// one card width with Alle films, and only the folded Films/Series page
   /// (Michel, build 396) asks for this.
   final bool fitTwoRows;
+
+  /// Scales the [fitTwoRows] width down, for the library-density setting
+  /// ([tvCatalogDensityScale]).
+  final double fitScale;
 
   /// The glide for [rowAligned]: the same easeOutCubic as the page heading,
   /// a little shorter because it runs on every press.
@@ -559,13 +564,15 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
       reservedLeading: widget.reservedLeading,
       maxCardWidth: !widget.fitTwoRows
           ? null
-          : tvCatalogTwoRowCardWidth(
-              viewport: height,
-              gutter: natural.gutter,
-              bottomMargin: natural.bottomSafeMargin,
-              focusScale: widget.focusScale,
-              cardHeight: widget.cardHeight,
-            ),
+          : widget.fitScale *
+                (tvCatalogTwoRowCardWidth(
+                      viewport: height,
+                      gutter: natural.gutter,
+                      bottomMargin: natural.bottomSafeMargin,
+                      focusScale: widget.focusScale,
+                      cardHeight: widget.cardHeight,
+                    ) ??
+                    double.infinity),
     );
     _grid = grid;
     final cardHeight = widget.cardHeight(grid.cardWidth);

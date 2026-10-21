@@ -79,6 +79,7 @@ import '../../providers/multi_server_provider.dart';
 import '../../providers/offline_mode_provider.dart';
 import '../../providers/unified_catalog_provider.dart';
 import '../../services/api_cache.dart';
+import '../../services/settings_service.dart';
 import '../../services/unified_catalog/source_resolver.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../services/unified_catalog/unified_catalog_query_store.dart';
@@ -819,19 +820,26 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     );
   }
 
+  /// The library-density setting, which on this page can only narrow the
+  /// cards the two-row fit allows; see [tvCatalogDensityScale].
+  double get _densityScale => tvCatalogDensityScale(
+    SettingsService.instanceOrNull?.read(SettingsService.libraryDensity) ?? LibraryDensity.defaultValue,
+  );
+
   /// The card width the grid settles on under a folded page (it fits two
   /// rows into the frame's height), so the heading lines up with it.
   double? _foldedCardWidth() {
     final size = MediaQuery.sizeOf(context);
     final scale = TvLayoutConstants.scaleOf(context);
     final natural = TvCatalogGrid.forWidth(size.width, scale: scale);
-    return tvCatalogTwoRowCardWidth(
+    final fit = tvCatalogTwoRowCardWidth(
       viewport: size.height - TvScrollAwayPage.foldedGridFrame(size: size).top,
       gutter: natural.gutter,
       bottomMargin: natural.bottomSafeMargin,
       focusScale: FocusTheme.fullCardFocusScale,
       cardHeight: (cardWidth) => TvCatalogLayout.cardHeight(cardWidth, scale),
     );
+    return fit == null ? null : fit * _densityScale;
   }
 
   Widget _buildPage() {
@@ -1082,6 +1090,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         // Scrolled a whole row at a time, so the two rows the folded page
         // holds always stand whole; see `TvCatalogCardGrid.rowAligned`.
         rowAligned: _pageScrolled != null,
+        fitScale: _densityScale,
         groups: snapshot.groups,
         hasMore: snapshot.hasMore,
         isLoadingMore: catalog.isLoadingMore,
