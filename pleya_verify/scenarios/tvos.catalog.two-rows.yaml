@@ -1,0 +1,80 @@
+name: tvos.catalog.two-rows
+target: tvos-sim
+# A-06b, hardware feedback Michel on build 394: "Als je naar boven toe
+# scrolt, zijn nog steeds niet de afbeeldingen volledig zichtbaar. En ik wil
+# ook gewoon dat je volledig scherm gebruikt. Je kan makkelijk twee rijen
+# volledig zichtbaar laten zijn."
+#
+# Folded, Alle films holds two whole rows (poster, title, year) with a small
+# equal margin above and below, and scrolls a row at a time in both
+# directions. `catalog.long-grid.v2` seeds nineteen films: rows of six, six,
+# six and one, so DOWN reaches a short last row and UP has rows to scroll
+# back through.
+setup:
+  - reset_app
+  - seed: catalog.long-grid.v2
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - walk: {direction: right, expect: [nav.series, nav.movies], timeout: 40000, settle: 800}
+  - press: select
+  - settle: 1500
+  - press: select
+  - wait_until: {id: "tv.catalog.grid[movies]", timeout: 20000}
+  - wait_until: {id: "tv.catalog.grid.item[movies.18]", timeout: 10000}
+  - settle: 1000
+  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true, insideViewport: true, below: "tv.catalog.header[movies]"}
+  - snapshot: 00-rest
+
+  # DOWN: rows 0+1, then 1+2, then 2+3, each pair whole.
+  - press: down
+  - settle: 900
+  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: true}}
+  - assert: {id: "tv.catalog.grid.item[movies.6]", focused: true, insideViewport: true}
+  - assert: {id: "tv.catalog.grid.item[movies.0]", insideViewport: true}
+  - snapshot: 01-down-row1
+  - press: down
+  - settle: 900
+  - assert: {id: "tv.catalog.grid.item[movies.12]", focused: true, insideViewport: true}
+  - assert: {id: "tv.catalog.grid.item[movies.6]", insideViewport: true}
+  - snapshot: 02-down-row2
+  - press: down
+  - settle: 900
+  - assert: {id: "tv.catalog.grid.item[movies.18]", focused: true, insideViewport: true}
+  - assert: {id: "tv.catalog.grid.item[movies.12]", insideViewport: true}
+  - snapshot: 03-down-row3
+
+  # UP: rows 2+3 stay, then 1+2, then the heading comes back over row 0.
+  - press: up
+  - settle: 900
+  - assert: {id: "tv.catalog.grid.item[movies.12]", focused: true, insideViewport: true}
+  - assert: {id: "tv.catalog.grid.item[movies.18]", insideViewport: true}
+  - snapshot: 04-up-row2
+  - press: up
+  - settle: 900
+  - assert: {id: "tv.catalog.grid.item[movies.6]", focused: true, insideViewport: true}
+  - assert: {id: "tv.catalog.grid.item[movies.12]", insideViewport: true}
+  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: true}}
+  - snapshot: 05-up-row1
+  - press: up
+  - settle: 900
+  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true, insideViewport: true, below: "tv.catalog.header[movies]"}
+  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: false}}
+  - snapshot: 06-up-row0
+
+  # With the heading back through the rail: row 2, LEFT, UP into the bar.
+  - press: down
+  - settle: 700
+  - press: down
+  - settle: 900
+  - press: left
+  - settle: 900
+  - assert: {id: "tv.catalog.rail.row[movies.sources]", focused: true}
+  - press: up
+  - settle: 900
+  - assert: {id: nav.movies, focused: true, insideViewport: true}
+  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: false}}
+  - assert: {id: "tv.catalog.grid.item[movies.0]", insideViewport: true, below: "tv.catalog.header[movies]"}
+  - snapshot: 07-rail-to-bar

@@ -34,7 +34,10 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
       _applyCatalogLongRailsV1(server);
       return true;
     case 'catalog.long-grid.v1':
-      _applyCatalogLongGridV1(server);
+      _applyCatalogLongGrid(server, fixture: 'catalog.long-grid.v1', count: 18);
+      return true;
+    case 'catalog.long-grid.v2':
+      _applyCatalogLongGrid(server, fixture: 'catalog.long-grid.v2', count: 19);
       return true;
     case 'catalog.seasons.v1':
       _applyCatalogSeasonsV1(server);
@@ -383,19 +386,22 @@ void _applyCatalogLongRailsV1(PleyaFakeServer server) {
   server.hubs['recently_added']!.addAll(ids);
 }
 
-/// Eighteen movies in one library, so the mobile catalogue grid is taller than
-/// the screen and can scroll (A-06: the top menu folds away on scroll). Kept
-/// under one catalogue page (twenty groups) so no load-more round-trip runs
-/// mid-scroll. Every other fixture has three or four movies.
-void _applyCatalogLongGridV1(PleyaFakeServer server) {
-  const fixture = 'catalog.long-grid.v1';
+/// Movies in one library, so a catalogue grid is taller than the screen and
+/// can scroll. Kept under one catalogue page (twenty groups) so no load-more
+/// round-trip runs mid-scroll. Every other fixture has three or four movies.
+///
+/// - `catalog.long-grid.v1`: eighteen, for the mobile catalogue (A-06: the
+///   top menu folds away on scroll) and the TV catalogue's three rows of six.
+/// - `catalog.long-grid.v2`: nineteen, four TV rows (the last one short), so
+///   the folded TV page scrolls a row in both directions (A-06b, build 394).
+void _applyCatalogLongGrid(PleyaFakeServer server, {required String fixture, required int count}) {
   server.resetCatalog();
 
   final libraryId = _mintId(server, fixture, 'library', 'movies');
-  server.addLibrary(id: libraryId, title: 'Movies', kind: 'movies', itemCount: 18);
+  server.addLibrary(id: libraryId, title: 'Movies', kind: 'movies', itemCount: count);
 
   final ids = <String>[];
-  for (var i = 1; i <= 18; i++) {
+  for (var i = 1; i <= count; i++) {
     final slug = 'longgrid-${i.toString().padLeft(2, '0')}';
     final movieId = _mintId(server, fixture, 'movie', slug);
     ids.add(movieId);
