@@ -15,6 +15,9 @@ class Debouncer {
     _timer = Timer(delay, action);
   }
 
+  /// True while an action is armed and has not run yet.
+  bool get isPending => _timer?.isActive ?? false;
+
   void cancel() => _timer?.cancel();
 
   void dispose() => cancel();
