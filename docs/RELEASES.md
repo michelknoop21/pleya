@@ -51,6 +51,45 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 394 · 21 October 2026 · Apple TV
+
+<!-- commit: 2d32234a35f9a4cc990cb2f09811b96ae6bdb23a -->
+
+### Fixed
+
+- **The top row in All movies and All series fits on the screen.** When you move up the list the
+  first row used to sit right at the edge and could be cut off. The grid now keeps a margin
+  at the top, the same size as at the bottom.
+- **Pleya Fly picks the phone you chose.** When a phone dropped out of the list while you were
+  choosing, the selection could jump to another phone. Each phone now keeps its own place.
+- **Closing the panel during a Pleya Fly no longer breaks it.** Open the panel again and the
+  running transfer shows as busy instead of starting a second one that cancels the first.
+
+### Notes
+
+- **Worth checking:** Pleya Fly to an iPhone or iPad with Pleya open, build 393 or newer.
+  Move up in All movies and check that the whole first row is visible, with the header back.
+
+## 2.8.1 · build 393 · 21 October 2026 · iPhone and iPad
+
+<!-- commit: 2d32234a35f9a4cc990cb2f09811b96ae6bdb23a -->
+
+### Fixed
+
+- **The Apple TV can find your iPhone for Pleya Fly.** Pleya now answers the search of the
+  Apple TV directly, so the phone shows up in the picker while Pleya is open. Whether this
+  works on your network still has to be confirmed on the devices.
+- **The Movies and Series overview fits around the notch in landscape.** The back button,
+  the filters and the posters no longer end up under the cutout, also while the placeholders
+  load.
+- **Pleya Fly keeps working after a pause.** Switching away from Pleya and back quickly could
+  leave the phone deaf to the Apple TV until the next time you left the app.
+
+### Notes
+
+- **Worth checking:** open the Pleya Fly picker on the Apple TV (build 394) with Pleya open
+  on this phone: it should list the phone. Turn the phone to landscape in Movies.
+
 ## 2.8.1 · build 391 · 21 October 2026 · Apple TV
 
 <!-- commit: 07e72f4eb302fadcecbebb56a0f5b52b4b5a486d -->
