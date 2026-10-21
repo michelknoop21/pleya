@@ -316,8 +316,8 @@ void main() {
     expect(headerOpacity(tester), 0, reason: 'the heading has faded out');
     expect(
       gridRect(tester).top,
-      closeTo(TvCatalogLayout.topSafeInset, 0.5),
-      reason: 'the grid moved up to the overscan band of hoofdstuk 8.1, 56 of 1080, not to the bar inset',
+      closeTo(TvCatalogLayout.bottomSafeInset, 0.5),
+      reason: 'the grid moved up to the same clearance the bottom edge keeps, 81 of 1080, not to the bar inset',
     );
   }
 
@@ -556,8 +556,8 @@ void main() {
       final ring = card.height * (FocusTheme.fullCardFocusScale - 1) / 2;
       expect(
         card.top - ring,
-        greaterThanOrEqualTo(TvCatalogLayout.topSafeInset - 0.5),
-        reason: 'row $row: the ring stays below the outer 56 of 1080, where a set that overscans cuts',
+        greaterThanOrEqualTo(TvCatalogLayout.bottomSafeInset - 0.5),
+        reason: 'row $row: the ring keeps 81 of 1080 clear above it, the bottom edge\'s margin, not the 56 floor',
       );
       expect(card.bottom, lessThanOrEqualTo(_window.height));
       expectFolded(tester);

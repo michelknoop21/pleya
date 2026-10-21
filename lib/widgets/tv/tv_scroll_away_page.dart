@@ -45,19 +45,21 @@ class TvScrollAwayPage extends StatefulWidget {
   final Widget body;
   final bool fitBody;
 
-  /// Where the body starts while everything is folded away: the outer band
-  /// of hoofdstuk 8.1 ("geen tekst of focusring binnen de buitenste 56
-  /// pixels", [TvCatalogLayout.topSafeInset] of the 1080 reference), and never
-  /// less than the inset the shell hands a whole-window route.
+  /// Where the body starts while everything is folded away: the clearance
+  /// the bottom edge already keeps, [TvCatalogLayout.bottomSafeInset] of the
+  /// 1080 reference (81, 7.5%), and never less than the inset the shell hands
+  /// a whole-window route.
   ///
-  /// The shell's inset alone is the bar's, 28 reference pixels, which is half
-  /// that band. Folded, the grid parks a row flush against this line whenever
-  /// the remote moves UP, ring included, so with the bar's inset the row the
-  /// viewer moved to sat at four per cent of the screen and a set that
-  /// overscans cut it off (Michel, build 391).
+  /// Folded, this edge plays the bottom edge's part: the grid parks the row
+  /// the remote moved UP to with its ring flush against it, the way it parks
+  /// the row it moved DOWN to against the bottom one. Hoofdstuk 8.1's 56 is a
+  /// floor, not a margin (see [TvCatalogLayout.bottomSafeInset] and P12), and
+  /// the shell's inset alone is the bar's, 28, half of that floor: with it the
+  /// row sat at four per cent of the screen and a set that overscans cut it
+  /// off (Michel, build 391).
   static double foldedTopOf(BuildContext context) => math.max(
     MediaQuery.paddingOf(context).top,
-    MediaQuery.sizeOf(context).height * (TvCatalogLayout.topSafeInset / 1080),
+    MediaQuery.sizeOf(context).height * (TvCatalogLayout.bottomSafeInset / 1080),
   );
 
   @override
