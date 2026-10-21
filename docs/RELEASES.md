@@ -51,6 +51,53 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 391 · 21 October 2026 · Apple TV
+
+<!-- commit: 07e72f4eb302fadcecbebb56a0f5b52b4b5a486d -->
+
+### New
+
+- **Pleya Fly from the Apple TV to your iPhone or iPad.** Open the Video tab in the player panel,
+  choose Pleya Fly and pick the phone. Pleya has to be open on the phone, on the same Wi-Fi.
+- **The header and the top menu slide away as you move down a list.** In All movies and All
+  series they come back when you move up again.
+
+### Fixed
+
+- **The blurred cover art behind lists is gone.** Series, movies and the other overviews now
+  show a plain background.
+- **Menu closes the info panel again when Skip intro appears.** The Skip intro button could take
+  the focus while the panel was open, so Menu had nothing to close.
+
+### Notes
+
+- **Worth checking:** Pleya Fly to a phone with Pleya open, including a profile with a PIN.
+  Scroll down in All movies and watch the header and the top menu leave and return.
+
+## 2.8.1 · build 390 · 21 October 2026 · iPhone and iPad
+
+<!-- commit: 07e72f4eb302fadcecbebb56a0f5b52b4b5a486d -->
+
+### New
+
+- **Pleya listens for Pleya Fly from the Apple TV.** While Pleya is open on your iPhone or iPad,
+  the Apple TV can send what it is playing to it, and it starts at the same place. No question
+  is asked on the phone. A profile with a PIN asks for the PIN on the phone. This can be turned
+  off in the playback settings.
+- **The header of Movies and Series slides away as you scroll down** and comes back when you
+  scroll up. The posters now run under the status bar and the home indicator.
+
+### Fixed
+
+- **The blurred cover art behind lists is gone.** Overviews show a plain background.
+- **No red error after the Pleya Fly picker.** Opening a sheet after choosing a device could
+  show a red error screen.
+
+### Notes
+
+- **Worth checking:** Pleya Fly from the Apple TV (build 391) with Pleya open on this device.
+  Scroll the Movies catalog down and up and watch the header.
+
 ## 2.8.1 · build 389 · 20 October 2026 · Apple TV
 
 <!-- commit: b585b81721c205ea790f11250a5a498b3f6049ae -->
