@@ -51,6 +51,40 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 392 · 21 October 2026 · iPhone and Apple TV
+
+<!-- commit: 2ad359c8618a549e37edf2464db8a06cf24b7845 -->
+
+### New
+
+- **Pause on the Siri Remote opens the controls.** Pressing Play/Pause on the Apple TV remote
+  pauses and shows the bar with Play selected. While paused the bar stays up instead of
+  disappearing after five seconds. Menu hides it.
+
+### Improved
+
+- **Left and right in the bottom row skip buttons that do nothing.** In a film without chapters
+  or a next episode the selection no longer stops on a button that cannot be pressed.
+- **Skip intro, Skip credits and Play Next only take over from the plain video.** They no longer
+  grab the selection from the info panel, a menu, the controls or a scrub preview. A Skip button
+  you are on stays while it still applies, instead of vanishing after seven seconds. Play Next
+  waits until the info panel is closed, and keeps the selection once it is.
+
+### Fixed
+
+- **Pleya Fly from the Apple TV did not find the iPhone in build 391.** The Apple TV listened
+  and the phone was open, but the phone's own signal never arrived. The phone now answers the
+  Apple TV's signal directly. This is not confirmed on devices yet.
+- **The top row of All movies and All series stays on screen when you move up.** It sat too
+  close to the top edge.
+
+### Notes
+
+- **Worth checking:** Pleya Fly from the Apple TV with Pleya open on the iPhone, on the same
+  Wi-Fi. Pause with the Play/Pause button of the real Siri Remote (the simulator cannot show
+  this): the bar should appear with Play selected and stay. In an episode with a Skip intro
+  button, move to the button and leave it for ten seconds.
+
 ## 2.8.1 · build 391 · 21 October 2026 · Apple TV
 
 <!-- commit: 07e72f4eb302fadcecbebb56a0f5b52b4b5a486d -->
