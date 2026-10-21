@@ -172,9 +172,9 @@ class LanDiscoveryService {
   Future<void> stopBroadcasting() async {
     _broadcastTimer?.cancel();
     _broadcastTimer = null;
+    _closeAnswerSocket();
     await _broadcastSockets?.close();
     _broadcastSockets = null;
-    _closeAnswerSocket();
     appLogger.d('LanDiscovery: Broadcasting stopped');
   }
 
@@ -189,6 +189,8 @@ class LanDiscoveryService {
   RawDatagramSocket? _answerSocket;
   StreamSubscription<RawSocketEvent>? _answerSubscription;
   final Map<String, DateTime> _lastAnswerAt = {};
+  // A bind that finishes after a stop (or after a newer start) must close its socket.
+  int _answerGeneration = 0;
   static const Duration _answerInterval = Duration(seconds: 2);
 
   Future<void> _bindAnswerSocket(
@@ -198,6 +200,7 @@ class LanDiscoveryService {
     int wsPort,
     List<String> ips,
   ) async {
+    final generation = ++_answerGeneration;
     try {
       final socket = await RawDatagramSocket.bind(
         InternetAddress.anyIPv4,
@@ -205,8 +208,9 @@ class LanDiscoveryService {
         reuseAddress: true,
         reusePort: true,
       );
-      // Stopped while binding: nobody wants this socket any more.
-      if (_broadcastTimer == null) {
+      // Stopped, or replaced by a newer start, while binding: nobody wants this
+      // socket (or its stale contexts) any more.
+      if (generation != _answerGeneration || _broadcastTimer == null) {
         socket.close();
         return;
       }
@@ -233,7 +237,8 @@ class LanDiscoveryService {
     try {
       final json = jsonDecode(utf8.decode(datagram.data)) as Map<String, dynamic>;
       if (!shouldAnswerBeacon(json, ownClientIds: contexts.map((c) => c.clientIdentifier).toSet())) return;
-      if (_matchContext(json, contexts) == null) return;
+      final matched = _matchContext(json, contexts);
+      if (matched == null) return;
 
       final address = datagram.address.address;
       final now = DateTime.now();
@@ -241,9 +246,8 @@ class LanDiscoveryService {
       if (last != null && now.difference(last) < _answerInterval) return;
       _lastAnswerAt[address] = now;
 
-      for (final context in contexts) {
-        socket.send(_encodeBeacon(context, deviceName, platform, wsPort, ips), datagram.address, discoveryPort);
-      }
+      // Only the home the TV proved to share; other homes' beacons stay unanswered.
+      socket.send(_encodeBeacon(matched, deviceName, platform, wsPort, ips), datagram.address, discoveryPort);
       appLogger.d('LanDiscovery: Answered the beacon of ${json['name']} at $address');
     } catch (e) {
       // Ignore malformed packets
@@ -251,6 +255,7 @@ class LanDiscoveryService {
   }
 
   void _closeAnswerSocket() {
+    _answerGeneration++;
     _answerSubscription?.cancel();
     _answerSubscription = null;
     _answerSocket?.close();
