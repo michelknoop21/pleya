@@ -9,6 +9,8 @@
 /// [TvTopNavPresentation.scrollAway], exactly as `_openTvCompleteCatalog` does.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -42,8 +44,11 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/widgets/tv/tv_catalog_card_grid.dart';
 import 'package:pleya/widgets/tv/tv_catalog_header_bar.dart';
+import 'package:pleya/widgets/tv/tv_catalog_row_alignment.dart';
+import 'package:pleya/widgets/tv/tv_scroll_away_page.dart';
 import 'package:pleya/widgets/tv/tv_top_navigation.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:provider/provider.dart';
@@ -51,6 +56,23 @@ import 'package:provider/provider.dart';
 import '../../test_helpers/prefs.dart';
 
 const _window = Size(1920, 1080);
+
+/// Where the folded grid starts at [_window], scale 1.0.
+/// The Apple TV canvas as `_AppleTvScale` in `main.dart` builds it: a
+/// 3840 x 2160 panel at a device pixel ratio of 2, a 1920 x 1080 surface the
+/// app lays out at 1/1.85 of (1037.8 x 583.8, ten-foot scale clamped to
+/// 0.85) and draws back up through a root `Transform.scale` (DEC-028).
+const Size _appleTvPanel = Size(3840, 2160);
+const double _appleTvRootScale = 1.85;
+
+/// The logical size the last [pump] laid out at.
+Size _view = _window;
+
+/// The root scale the last [pump] drew through; rects come back divided by it.
+double _rootScale = 1;
+
+({double top, double overhang, double margin}) _frame() =>
+    TvScrollAwayPage.foldedGridFrame(size: _view, scale: TvLayoutConstants.scaleForSize(_view));
 
 /// Three rows of six at 1920 wide.
 const int _titles = 18;
@@ -246,9 +268,11 @@ void main() {
     await catalog.ensureStarted();
   });
 
-  Future<void> pump(WidgetTester tester, {bool reduceMotion = false}) async {
-    tester.view.physicalSize = _window;
-    tester.view.devicePixelRatio = 1.0;
+  Future<void> pump(WidgetTester tester, {bool reduceMotion = false, bool appleTv = false}) async {
+    tester.view.physicalSize = appleTv ? _appleTvPanel : _window;
+    tester.view.devicePixelRatio = appleTv ? 2 : 1;
+    _rootScale = appleTv ? _appleTvRootScale : 1;
+    _view = (appleTv ? _appleTvPanel / 2 : _window) / _rootScale;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ChangeNotifierProvider<MultiServerProvider>.value(
@@ -257,10 +281,25 @@ void main() {
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: monoTheme(dark: true),
-            builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(context).copyWith(disableAnimations: reduceMotion),
-              child: child!,
-            ),
+            builder: (context, child) {
+              final media = MediaQuery.of(context).copyWith(disableAnimations: reduceMotion);
+              if (_rootScale == 1) return MediaQuery(data: media, child: child!);
+              return Transform.scale(
+                scale: _rootScale,
+                alignment: Alignment.topLeft,
+                child: OverflowBox(
+                  alignment: Alignment.topLeft,
+                  minWidth: _view.width,
+                  maxWidth: _view.width,
+                  minHeight: _view.height,
+                  maxHeight: _view.height,
+                  child: MediaQuery(
+                    data: media.copyWith(size: _view, devicePixelRatio: media.devicePixelRatio * _rootScale),
+                    child: child!,
+                  ),
+                ),
+              );
+            },
             home: InputModeTracker(
               child: _Host(key: hostKey, coordinator: coordinator),
             ),
@@ -289,9 +328,13 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Rect navRect(WidgetTester tester) => tester.getRect(find.byType(TvTopNavigation));
-  Rect headerRect(WidgetTester tester) => tester.getRect(find.byType(TvCatalogHeaderBar));
-  Rect gridRect(WidgetTester tester) => tester.getRect(find.byType(TvCatalogCardGrid));
+  /// A rect in the app's own logical pixels, under any root scale.
+  Rect logical(Rect r) => _rootScale == 1
+      ? r
+      : Rect.fromLTRB(r.left / _rootScale, r.top / _rootScale, r.right / _rootScale, r.bottom / _rootScale);
+  Rect navRect(WidgetTester tester) => logical(tester.getRect(find.byType(TvTopNavigation)));
+  Rect headerRect(WidgetTester tester) => logical(tester.getRect(find.byType(TvCatalogHeaderBar)));
+  Rect gridRect(WidgetTester tester) => logical(tester.getRect(find.byType(TvCatalogCardGrid)));
   double headerOpacity(WidgetTester tester) => tester
       .widget<FadeTransition>(
         find.ancestor(of: find.byType(TvCatalogHeaderBar), matching: find.byType(FadeTransition)).first,
@@ -316,8 +359,8 @@ void main() {
     expect(headerOpacity(tester), 0, reason: 'the heading has faded out');
     expect(
       gridRect(tester).top,
-      closeTo(TvCatalogLayout.bottomSafeInset, 0.5),
-      reason: 'the grid moved up to the same clearance the bottom edge keeps, 81 of 1080, not to the bar inset',
+      closeTo(_frame().top, 0.5),
+      reason: 'folded, the grid starts where two whole rows fit with equal room above and below',
     );
   }
 
@@ -532,8 +575,9 @@ void main() {
     await catalog.refresh();
   }
 
-  Rect cardRect(WidgetTester tester, int index) =>
-      tester.getRect(find.byWidgetPredicate((w) => w is Focus && w.focusNode?.debugLabel == cardLabel(index)).first);
+  Rect cardRect(WidgetTester tester, int index) => logical(
+    tester.getRect(find.byWidgetPredicate((w) => w is Focus && w.focusNode?.debugLabel == cardLabel(index)).first),
+  );
 
   double scrollOffset(WidgetTester tester) => tester
       .state<ScrollableState>(
@@ -542,26 +586,94 @@ void main() {
       .position
       .pixels;
 
-  testWidgets('UP through the folded rows keeps the focused row and its ring out of the overscan band', (tester) async {
-    await growCatalog();
-    await pump(tester);
-    await openCatalog(tester);
-    for (var i = 0; i < 6; i++) {
+  /// Rows [top] and [top] + 1 stand whole on screen, poster to year, the top
+  /// one on the same line every time. The focused card's 6% scale-up may reach
+  /// past an edge only by what the margin could not hold.
+  void expectTwoWholeRows(WidgetTester tester, {required int top, required int focusedRow}) {
+    final margin = _frame().margin;
+    final upper = cardRect(tester, top * 6);
+    final lower = cardRect(tester, (top + 1) * 6);
+    final ring = upper.height * (FocusTheme.fullCardFocusScale - 1) / 2;
+    expect(upper.top, closeTo(margin, 0.5), reason: 'row $top is the top row, on the row line');
+    expect(upper.top, greaterThanOrEqualTo(0), reason: 'row $top whole');
+    expect(lower.bottom, lessThanOrEqualTo(_view.height + 0.5), reason: 'row ${top + 1} whole');
+    final focused = cardRect(tester, focusedRow * 6);
+    final spill = math.max(0.0, ring - margin) + 0.5;
+    expect(focused.top - ring, greaterThanOrEqualTo(-spill));
+    expect(focused.bottom + ring, lessThanOrEqualTo(_view.height + spill));
+  }
+
+  Future<void> walkTwoRows(WidgetTester tester) async {
+    for (var row = 1; row <= 6; row++) {
       await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(primary()?.debugLabel, cardLabel(row * 6));
+      expectTwoWholeRows(tester, top: row - 1, focusedRow: row);
+      expectFolded(tester);
     }
     for (var row = 5; row >= 1; row--) {
       await press(tester, LogicalKeyboardKey.arrowUp);
       expect(primary()?.debugLabel, cardLabel(row * 6));
-      final card = cardRect(tester, row * 6);
-      final ring = card.height * (FocusTheme.fullCardFocusScale - 1) / 2;
-      expect(
-        card.top - ring,
-        greaterThanOrEqualTo(TvCatalogLayout.bottomSafeInset - 0.5),
-        reason: 'row $row: the ring keeps 81 of 1080 clear above it, the bottom edge\'s margin, not the 56 floor',
-      );
-      expect(card.bottom, lessThanOrEqualTo(_window.height));
+      expectTwoWholeRows(tester, top: row, focusedRow: row);
       expectFolded(tester);
     }
+  }
+
+  testWidgets('folded, DOWN and UP keep two whole rows on screen, a row at a time', (tester) async {
+    await growCatalog();
+    await pump(tester);
+    await openCatalog(tester);
+    expect(_frame().margin, inInclusiveRange(20, 60), reason: 'a small margin, not a band of dead space');
+    await walkTwoRows(tester);
+  });
+
+  testWidgets('on the Apple TV canvas too, where the two rows fill the screen', (tester) async {
+    await growCatalog();
+    await pump(tester, appleTv: true);
+    await openCatalog(tester);
+    expect(_view.height, closeTo(583.8, 0.1));
+    expect(_frame().margin, inInclusiveRange(0, 5), reason: 'two rows and a gutter take all but a few pixels');
+    await walkTwoRows(tester);
+  });
+
+  testWidgets('a row change glides the content, it does not jump a row at once', (tester) async {
+    await growCatalog();
+    await pump(tester);
+    await openCatalog(tester);
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    expect(scrollOffset(tester), 0, reason: 'rows 0 and 1 both fit, nothing to scroll yet');
+    final pitch = cardRect(tester, 6).top - cardRect(tester, 0).top;
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 16));
+    final early = scrollOffset(tester);
+    expect(early, greaterThan(0), reason: 'it has started');
+    // Traversal's own ensureVisible would have jumped to ~95% of a row.
+    expect(early, lessThan(pitch * 0.8), reason: 'and is on its way, not already there');
+    await tester.pumpAndSettle();
+    expect(scrollOffset(tester), closeTo(pitch, 0.5), reason: 'it ends exactly one row further');
+  });
+
+  test('two whole rows fit in the folded frame on both canvases', () {
+    for (final view in [_window, _appleTvPanel / 2 / _appleTvRootScale]) {
+      _view = view;
+      final scale = TvLayoutConstants.scaleForSize(view);
+      final grid = TvCatalogGrid.forWidth(view.width, scale: scale);
+      final cardHeight = TvCatalogLayout.cardHeight(grid.cardWidth, scale);
+      final frame = _frame();
+      expect(
+        tvCatalogWholeRowsThatFit(
+          viewport: view.height - frame.top + frame.overhang,
+          cardHeight: cardHeight,
+          gutter: grid.gutter,
+          growth: TvCatalogGrid.focusHeadroom(cardHeight: cardHeight, focusScale: FocusTheme.fullCardFocusScale),
+        ),
+        2,
+        reason: '$view',
+      );
+    }
+    _view = _window;
   });
 
   testWidgets('UP out of the rail into the bar brings the first row back whole under the heading', (tester) async {

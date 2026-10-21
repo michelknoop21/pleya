@@ -850,9 +850,16 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       WidgetsBinding.instance.addPostFrameCallback((_) => _revealFirstRow());
     }
     _wasExpanded = expanded;
+    final frame = TvScrollAwayPage.foldedGridFrame(
+      size: MediaQuery.sizeOf(context),
+      scale: TvLayoutConstants.scaleOf(context),
+    );
     return TvScrollAwayPage(
       expanded: expanded,
       topBand: TvShellSurface.topBandHeightOf(context),
+      // Two whole rows on screen, the margin shared by both edges.
+      foldedTop: frame.top,
+      foldedOverhang: frame.overhang,
       fitBody: !_showsGrid,
       header: header,
       body: _buildContentArea(),
@@ -1053,6 +1060,9 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         initialFocusedGroupId: _focusedGroupId,
         onFocusedGroupChanged: (groupId) => _focusedGroupId = groupId,
         onFocusedRow: _pageScrolled == null ? null : _onFocusedRow,
+        // Scrolled a whole row at a time, so the two rows the folded page
+        // holds always stand whole; see `TvCatalogCardGrid.rowAligned`.
+        rowAligned: _pageScrolled != null,
         groups: snapshot.groups,
         hasMore: snapshot.hasMore,
         isLoadingMore: catalog.isLoadingMore,
