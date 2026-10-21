@@ -35,6 +35,7 @@ class TvScrollAwayPage extends StatefulWidget {
     required this.header,
     required this.body,
     required this.foldedTop,
+    this.foldedOverhang = 0,
     this.fitBody = false,
   });
 
@@ -47,24 +48,33 @@ class TvScrollAwayPage extends StatefulWidget {
   final Widget body;
   final bool fitBody;
 
-  /// Where the body starts while folded; see [foldedTopForGrid].
+  /// Where the body starts while folded; see [foldedGridFrame]. May be
+  /// negative: the grid's own top padding (the focus headroom) can lie above
+  /// the screen.
   final double foldedTop;
 
-  /// Where a grid body starts while everything is folded away, so that two
-  /// whole rows of [cardHeight] fit on the screen at once, poster to year,
-  /// with the focus ring of either one clear of both edges (Michel, build
-  /// 394: "je kan makkelijk twee rijen volledig zichtbaar laten zijn").
+  /// How far the body runs on below the screen while folded, for the same
+  /// headroom at the bottom; see [foldedGridFrame]. Clipped, never drawn.
+  final double foldedOverhang;
+
+  /// The folded frame of a grid body: two whole rows of cards (poster, title,
+  /// year) on screen at once, the top one on a fixed line (Michel, build 394:
+  /// "je kan makkelijk twee rijen volledig zichtbaar laten zijn").
   ///
-  /// The two rows, the gutter between them and the ring's headroom above the
-  /// top one and below the bottom one take what they take; what is left of the
-  /// height is shared equally between the top and the bottom edge, and that
-  /// share is this value. It is capped at Apple's title-safe inset of 60 of
-  /// 1080, so a larger screen does not grow a band of dead space, and it is 0
-  /// rather than negative where two rows cannot fit at all. On the 1920 x 1080
-  /// canvas that is about 26: two rows of 488 plus a gutter of 22 and two
-  /// rings of 15 leave 52. Hoofdstuk 8.1's 56 and the earlier 81 could not
-  /// hold two rows; Michel's set does not overscan and he chose the rows.
-  static double foldedTopForGrid({
+  /// Measured on the Apple TV canvas (1037.8 x 583.8 logical, scale clamped
+  /// to 0.85) the two rows and the gutter between them take 580.1 of 583.8,
+  /// so the room left, [margin], is shared equally by the top and the bottom
+  /// edge, capped at Apple's title-safe 60 of 1080 where a screen has more.
+  /// The 6% focus scale-up does not fit on top of that: it reaches past the
+  /// card's box into the grid's padding, which is why the body starts that
+  /// padding above the screen ([top] is `margin - growth`) and runs on below
+  /// it ([overhang]). What can then fall off the edge is the outer few pixels
+  /// of a focused edge card's ring, never a poster or a line of text: the
+  /// poster sits inset inside the card and the footer ends in padding.
+  ///
+  /// Where two rows do not fit at all the frame is the screen, and the grid
+  /// scrolls a single row at a time.
+  static ({double top, double overhang, double margin}) foldedGridFrame({
     required Size size,
     required double scale,
     double focusScale = FocusTheme.fullCardFocusScale,
@@ -72,9 +82,13 @@ class TvScrollAwayPage extends StatefulWidget {
     final grid = TvCatalogGrid.forWidth(size.width, scale: scale);
     final cardHeight = TvCatalogLayout.cardHeight(grid.cardWidth, scale);
     final growth = TvCatalogGrid.focusHeadroom(cardHeight: cardHeight, focusScale: focusScale);
-    final twoRows = 2 * cardHeight + grid.gutter + 2 * growth;
-    final appleTitleSafe = size.height * (60 / 1080);
-    return ((size.height - twoRows) / 2).clamp(0.0, appleTitleSafe);
+    final twoRows = 2 * cardHeight + grid.gutter;
+    final spare = size.height - twoRows;
+    if (spare < 0) return (top: 0, overhang: 0, margin: 0);
+    final margin = math.min(spare / 2, size.height * (60 / 1080));
+    final top = margin - growth;
+    final overhang = math.max(0.0, margin + twoRows + growth - size.height);
+    return (top: top, overhang: overhang, margin: margin);
   }
 
   @override
@@ -116,6 +130,7 @@ class _TvScrollAwayPageState extends State<TvScrollAwayPage> with SingleTickerPr
           reveal: _reveal,
           topBand: widget.topBand,
           safeTop: widget.foldedTop,
+          overhang: widget.foldedOverhang,
           fitBody: widget.fitBody,
         ),
         children: [
@@ -149,12 +164,18 @@ enum _Slot { header, body }
 /// constraints every time, so their own layout is skipped and only the two
 /// offsets move.
 class _ScrollAwayLayout extends MultiChildLayoutDelegate {
-  _ScrollAwayLayout({required this.reveal, required this.topBand, required this.safeTop, required this.fitBody})
-    : super(relayout: reveal);
+  _ScrollAwayLayout({
+    required this.reveal,
+    required this.topBand,
+    required this.safeTop,
+    required this.overhang,
+    required this.fitBody,
+  }) : super(relayout: reveal);
 
   final Animation<double> reveal;
   final double topBand;
   final double safeTop;
+  final double overhang;
   final bool fitBody;
 
   @override
@@ -163,7 +184,7 @@ class _ScrollAwayLayout extends MultiChildLayoutDelegate {
     // How far the body travels: from right under the heading (expanded) to
     // the overscan line at the top of the window (folded away).
     final travel = math.max(0.0, topBand + header.height - safeTop);
-    final bodyHeight = math.max(0.0, size.height - safeTop - (fitBody ? travel : 0));
+    final bodyHeight = math.max(0.0, fitBody ? size.height - safeTop - travel : size.height - safeTop + overhang);
     layoutChild(_Slot.body, BoxConstraints.tightFor(width: size.width, height: bodyHeight));
     final bodyTop = safeTop + travel * reveal.value;
     positionChild(_Slot.body, Offset(0, bodyTop));
@@ -175,5 +196,6 @@ class _ScrollAwayLayout extends MultiChildLayoutDelegate {
       oldDelegate.reveal != reveal ||
       oldDelegate.topBand != topBand ||
       oldDelegate.safeTop != safeTop ||
+      oldDelegate.overhang != overhang ||
       oldDelegate.fitBody != fitBody;
 }

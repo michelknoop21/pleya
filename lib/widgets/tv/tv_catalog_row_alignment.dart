@@ -19,7 +19,9 @@ int tvCatalogWholeRowsThatFit({
 }) {
   final pitch = cardHeight + gutter;
   if (pitch <= 0) return 1;
-  return math.max(1, ((viewport - 2 * growth + gutter) / pitch).floor());
+  // A hair of tolerance: a frame built to hold exactly two rows must not
+  // round down to one.
+  return math.max(1, ((viewport - 2 * growth + gutter) / pitch + 1e-6).floor());
 }
 
 /// The scroll offset that puts [row] on screen while keeping every visible

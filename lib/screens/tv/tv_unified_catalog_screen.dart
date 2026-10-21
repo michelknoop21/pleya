@@ -850,14 +850,16 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       WidgetsBinding.instance.addPostFrameCallback((_) => _revealFirstRow());
     }
     _wasExpanded = expanded;
+    final frame = TvScrollAwayPage.foldedGridFrame(
+      size: MediaQuery.sizeOf(context),
+      scale: TvLayoutConstants.scaleOf(context),
+    );
     return TvScrollAwayPage(
       expanded: expanded,
       topBand: TvShellSurface.topBandHeightOf(context),
       // Two whole rows on screen, the margin shared by both edges.
-      foldedTop: TvScrollAwayPage.foldedTopForGrid(
-        size: MediaQuery.sizeOf(context),
-        scale: TvLayoutConstants.scaleOf(context),
-      ),
+      foldedTop: frame.top,
+      foldedOverhang: frame.overhang,
       fitBody: !_showsGrid,
       header: header,
       body: _buildContentArea(),

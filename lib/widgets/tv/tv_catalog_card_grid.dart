@@ -351,12 +351,17 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
       if (!mounted || !_controller.hasClients) return;
       final position = _controller.position;
       if (!position.hasViewportDimension || !position.hasContentDimensions) return;
+      // The rows as laid out, not as budgeted: [TvCatalogLayout.cardHeight]
+      // rounds the meta line up and the card does not, so the budget runs a
+      // pixel long per row and an offset of `n` budgeted rows drifts off the
+      // row line further down the catalogue.
+      final measured = _measuredRow(grid.columns) ?? (height: cardHeight, pitch: cardHeight + grid.gutter);
       final target = tvCatalogRowAlignedOffset(
         row: index ~/ grid.columns,
         pixels: position.pixels,
         viewport: position.viewportDimension,
-        cardHeight: cardHeight,
-        gutter: grid.gutter,
+        cardHeight: measured.height,
+        gutter: measured.pitch - measured.height,
         growth: TvCatalogGrid.focusHeadroom(cardHeight: cardHeight, focusScale: widget.focusScale),
         minScrollExtent: position.minScrollExtent,
         maxScrollExtent: position.maxScrollExtent,
@@ -367,6 +372,19 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
         position.animateTo(target, duration: duration, curve: Curves.easeOutCubic);
       }
     });
+  }
+
+  /// The first card's laid-out height and the distance from the first row to
+  /// the second, or null while there is no second row to measure against.
+  ({double height, double pitch})? _measuredRow(int columns) {
+    final ids = widget.itemIds;
+    if (ids.length <= columns) return null;
+    final first = _nodes[ids.first]?.context?.findRenderObject();
+    final below = _nodes[ids[columns]]?.context?.findRenderObject();
+    if (first is! RenderBox || below is! RenderBox || !first.hasSize || !below.hasSize) return null;
+    final pitch = below.localToGlobal(Offset.zero).dy - first.localToGlobal(Offset.zero).dy;
+    if (pitch <= 0) return null;
+    return (height: first.size.height, pitch: pitch);
   }
 
   /// UP or DOWN to the card in the same column of the neighbouring row, for
