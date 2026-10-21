@@ -9,6 +9,7 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 
 import '../../navigation/tv/tv_top_nav_scroll_away.dart';
+import 'tv_unified_layout.dart';
 
 /// A page heading over a body, on the whole window, where the heading and the
 /// band above it fold away while [expanded] is false.
@@ -43,6 +44,23 @@ class TvScrollAwayPage extends StatefulWidget {
   final Widget header;
   final Widget body;
   final bool fitBody;
+
+  /// Where the body starts while everything is folded away: the clearance
+  /// the bottom edge already keeps, [TvCatalogLayout.bottomSafeInset] of the
+  /// 1080 reference (81, 7.5%), and never less than the inset the shell hands
+  /// a whole-window route.
+  ///
+  /// Folded, this edge plays the bottom edge's part: the grid parks the row
+  /// the remote moved UP to with its ring flush against it, the way it parks
+  /// the row it moved DOWN to against the bottom one. Hoofdstuk 8.1's 56 is a
+  /// floor, not a margin (see [TvCatalogLayout.bottomSafeInset] and P12), and
+  /// the shell's inset alone is the bar's, 28, half of that floor: with it the
+  /// row sat at four per cent of the screen and a set that overscans cut it
+  /// off (Michel, build 391).
+  static double foldedTopOf(BuildContext context) => math.max(
+    MediaQuery.paddingOf(context).top,
+    MediaQuery.sizeOf(context).height * (TvCatalogLayout.bottomSafeInset / 1080),
+  );
 
   @override
   State<TvScrollAwayPage> createState() => _TvScrollAwayPageState();
@@ -82,7 +100,7 @@ class _TvScrollAwayPageState extends State<TvScrollAwayPage> with SingleTickerPr
         delegate: _ScrollAwayLayout(
           reveal: _reveal,
           topBand: widget.topBand,
-          safeTop: MediaQuery.paddingOf(context).top,
+          safeTop: TvScrollAwayPage.foldedTopOf(context),
           fitBody: widget.fitBody,
         ),
         children: [
