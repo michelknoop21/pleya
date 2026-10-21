@@ -9,8 +9,6 @@
 /// [TvTopNavPresentation.scrollAway], exactly as `_openTvCompleteCatalog` does.
 library;
 
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -44,10 +42,8 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/platform_detector.dart';
-import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/widgets/tv/tv_catalog_card_grid.dart';
 import 'package:pleya/widgets/tv/tv_catalog_header_bar.dart';
-import 'package:pleya/widgets/tv/tv_catalog_row_alignment.dart';
 import 'package:pleya/widgets/tv/tv_scroll_away_page.dart';
 import 'package:pleya/widgets/tv/tv_top_navigation.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
@@ -71,8 +67,7 @@ Size _view = _window;
 /// The root scale the last [pump] drew through; rects come back divided by it.
 double _rootScale = 1;
 
-({double top, double overhang, double margin}) _frame() =>
-    TvScrollAwayPage.foldedGridFrame(size: _view, scale: TvLayoutConstants.scaleForSize(_view));
+({double top, double overhang, double margin}) _frame() => TvScrollAwayPage.foldedGridFrame(size: _view);
 
 /// Three rows of six at 1920 wide.
 const int _titles = 18;
@@ -587,20 +582,18 @@ void main() {
       .pixels;
 
   /// Rows [top] and [top] + 1 stand whole on screen, poster to year, the top
-  /// one on the same line every time. The focused card's 6% scale-up may reach
-  /// past an edge only by what the margin could not hold.
+  /// one on the same line every time, and the focused card, 6% scale-up
+  /// included, keeps Apple's title-safe 60 of 1080 clear at both edges.
   void expectTwoWholeRows(WidgetTester tester, {required int top, required int focusedRow}) {
     final margin = _frame().margin;
     final upper = cardRect(tester, top * 6);
     final lower = cardRect(tester, (top + 1) * 6);
     final ring = upper.height * (FocusTheme.fullCardFocusScale - 1) / 2;
-    expect(upper.top, closeTo(margin, 0.5), reason: 'row $top is the top row, on the row line');
-    expect(upper.top, greaterThanOrEqualTo(0), reason: 'row $top whole');
-    expect(lower.bottom, lessThanOrEqualTo(_view.height + 0.5), reason: 'row ${top + 1} whole');
+    expect(upper.top - ring, closeTo(margin, 0.5), reason: 'row $top is the top row, on the row line');
+    expect(lower.bottom + ring, lessThanOrEqualTo(_view.height - margin + 0.5), reason: 'room under row ${top + 1}');
     final focused = cardRect(tester, focusedRow * 6);
-    final spill = math.max(0.0, ring - margin) + 0.5;
-    expect(focused.top - ring, greaterThanOrEqualTo(-spill));
-    expect(focused.bottom + ring, lessThanOrEqualTo(_view.height + spill));
+    expect(focused.top - ring, greaterThanOrEqualTo(margin - 0.5));
+    expect(focused.bottom + ring, lessThanOrEqualTo(_view.height - margin + 0.5));
   }
 
   Future<void> walkTwoRows(WidgetTester tester) async {
@@ -622,16 +615,16 @@ void main() {
     await growCatalog();
     await pump(tester);
     await openCatalog(tester);
-    expect(_frame().margin, inInclusiveRange(20, 60), reason: 'a small margin, not a band of dead space');
+    expect(_frame().margin, closeTo(60, 0.1), reason: "Apple's title-safe 60 of 1080");
     await walkTwoRows(tester);
   });
 
-  testWidgets('on the Apple TV canvas too, where the two rows fill the screen', (tester) async {
+  testWidgets('on the Apple TV canvas too, with room around the two rows', (tester) async {
     await growCatalog();
     await pump(tester, appleTv: true);
     await openCatalog(tester);
     expect(_view.height, closeTo(583.8, 0.1));
-    expect(_frame().margin, inInclusiveRange(0, 5), reason: 'two rows and a gutter take all but a few pixels');
+    expect(_frame().margin, closeTo(583.8 * 60 / 1080, 0.1), reason: "Apple's title-safe 60 of 1080");
     await walkTwoRows(tester);
   });
 
@@ -653,27 +646,6 @@ void main() {
     expect(early, lessThan(pitch * 0.8), reason: 'and is on its way, not already there');
     await tester.pumpAndSettle();
     expect(scrollOffset(tester), closeTo(pitch, 0.5), reason: 'it ends exactly one row further');
-  });
-
-  test('two whole rows fit in the folded frame on both canvases', () {
-    for (final view in [_window, _appleTvPanel / 2 / _appleTvRootScale]) {
-      _view = view;
-      final scale = TvLayoutConstants.scaleForSize(view);
-      final grid = TvCatalogGrid.forWidth(view.width, scale: scale);
-      final cardHeight = TvCatalogLayout.cardHeight(grid.cardWidth, scale);
-      final frame = _frame();
-      expect(
-        tvCatalogWholeRowsThatFit(
-          viewport: view.height - frame.top + frame.overhang,
-          cardHeight: cardHeight,
-          gutter: grid.gutter,
-          growth: TvCatalogGrid.focusHeadroom(cardHeight: cardHeight, focusScale: FocusTheme.fullCardFocusScale),
-        ),
-        2,
-        reason: '$view',
-      );
-    }
-    _view = _window;
   });
 
   testWidgets('UP out of the rail into the bar brings the first row back whole under the heading', (tester) async {

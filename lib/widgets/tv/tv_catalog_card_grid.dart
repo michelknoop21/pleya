@@ -116,6 +116,7 @@ class TvCatalogCardGrid extends StatefulWidget {
     this.onBack,
     this.nodeDebugLabel = 'TvCatalogCard',
     this.rowAligned = false,
+    this.fitTwoRows = false,
   });
 
   /// One stable id per item, in display order. Identity, not position: see the
@@ -196,6 +197,13 @@ class TvCatalogCardGrid extends StatefulWidget {
   /// ([tvCatalogRowAlignedOffset]). Off by default, so every other surface on
   /// this grid keeps the CAT10 clamp it has.
   final bool rowAligned;
+
+  /// Narrow the cards (same column count, wider insets) until two whole rows
+  /// fit in this grid's height with room around them; see
+  /// [tvCatalogTwoRowCardWidth]. Off by default: every catalog surface shares
+  /// one card width with Alle films, and only the folded Films/Series page
+  /// (Michel, build 396) asks for this.
+  final bool fitTwoRows;
 
   /// The glide for [rowAligned]: the same easeOutCubic as the page heading,
   /// a little shorter because it runs on every press.
@@ -538,12 +546,27 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      LayoutBuilder(builder: (context, constraints) => _buildForWidth(context, constraints.maxWidth));
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => _buildForWidth(context, constraints.maxWidth, constraints.maxHeight),
+  );
 
-  Widget _buildForWidth(BuildContext context, double width) {
+  Widget _buildForWidth(BuildContext context, double width, double height) {
     final scale = TvLayoutConstants.scaleOf(context);
-    final grid = TvCatalogGrid.forWidth(width, scale: scale, reservedLeading: widget.reservedLeading);
+    final natural = TvCatalogGrid.forWidth(width, scale: scale, reservedLeading: widget.reservedLeading);
+    final grid = TvCatalogGrid.forWidth(
+      width,
+      scale: scale,
+      reservedLeading: widget.reservedLeading,
+      maxCardWidth: !widget.fitTwoRows
+          ? null
+          : tvCatalogTwoRowCardWidth(
+              viewport: height,
+              gutter: natural.gutter,
+              bottomMargin: natural.bottomSafeMargin,
+              focusScale: widget.focusScale,
+              cardHeight: widget.cardHeight,
+            ),
+    );
     _grid = grid;
     final cardHeight = widget.cardHeight(grid.cardWidth);
     _cardHeight = cardHeight;

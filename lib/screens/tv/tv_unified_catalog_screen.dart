@@ -61,6 +61,7 @@ import 'package:provider/provider.dart';
 
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
+import '../../focus/focus_theme.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
 import '../../media/media_backend.dart';
@@ -89,6 +90,7 @@ import '../../widgets/tv/tv_catalog_empty_state.dart';
 import '../../widgets/tv/tv_catalog_filter_panel.dart';
 import '../../widgets/tv/tv_catalog_filter_rail.dart';
 import '../../widgets/tv/tv_catalog_header_bar.dart';
+import '../../widgets/tv/tv_catalog_row_alignment.dart';
 import '../../widgets/tv/tv_catalog_rail_scaffold.dart';
 import '../../widgets/tv/tv_catalog_selection_tags.dart';
 import '../../widgets/tv/tv_catalog_skeleton_grid.dart';
@@ -817,6 +819,21 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     );
   }
 
+  /// The card width the grid settles on under a folded page (it fits two
+  /// rows into the frame's height), so the heading lines up with it.
+  double? _foldedCardWidth() {
+    final size = MediaQuery.sizeOf(context);
+    final scale = TvLayoutConstants.scaleOf(context);
+    final natural = TvCatalogGrid.forWidth(size.width, scale: scale);
+    return tvCatalogTwoRowCardWidth(
+      viewport: size.height - TvScrollAwayPage.foldedGridFrame(size: size).top,
+      gutter: natural.gutter,
+      bottomMargin: natural.bottomSafeMargin,
+      focusScale: FocusTheme.fullCardFocusScale,
+      cardHeight: (cardWidth) => TvCatalogLayout.cardHeight(cardWidth, scale),
+    );
+  }
+
   Widget _buildPage() {
     final pageScrolled = _pageScrolled;
     // Folded away while the remote is past the first row, and back as soon as
@@ -830,7 +847,11 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       state: () => {'collapsed': !expanded},
       // The tags are capped here and uncapped in the rail: the heading has
       // one line and no way to scroll, the panel wraps.
-      child: TvCatalogHeaderBar(title: widget.title, tags: _railExpanded ? const [] : _selectionTags()),
+      child: TvCatalogHeaderBar(
+        title: widget.title,
+        tags: _railExpanded ? const [] : _selectionTags(),
+        maxCardWidth: pageScrolled == null ? null : _foldedCardWidth(),
+      ),
     );
     if (pageScrolled == null) {
       return Column(
@@ -850,10 +871,8 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       WidgetsBinding.instance.addPostFrameCallback((_) => _revealFirstRow());
     }
     _wasExpanded = expanded;
-    final frame = TvScrollAwayPage.foldedGridFrame(
-      size: MediaQuery.sizeOf(context),
-      scale: TvLayoutConstants.scaleOf(context),
-    );
+    final size = MediaQuery.sizeOf(context);
+    final frame = TvScrollAwayPage.foldedGridFrame(size: size);
     return TvScrollAwayPage(
       expanded: expanded,
       topBand: TvShellSurface.topBandHeightOf(context),

@@ -191,6 +191,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       onExitLeft: widget.onExitLeft,
       onBack: widget.onBack,
       rowAligned: widget.rowAligned,
+      fitTwoRows: widget.rowAligned,
       reservedLeading: widget.reservedLeading,
       footer: widget.footer,
       nodeDebugLabel: 'TvUnifiedCard',

@@ -8,9 +8,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
-import '../../focus/focus_theme.dart';
 import '../../navigation/tv/tv_top_nav_scroll_away.dart';
-import 'tv_unified_layout.dart';
 
 /// A page heading over a body, on the whole window, where the heading and the
 /// band above it fold away while [expanded] is false.
@@ -57,38 +55,14 @@ class TvScrollAwayPage extends StatefulWidget {
   /// headroom at the bottom; see [foldedGridFrame]. Clipped, never drawn.
   final double foldedOverhang;
 
-  /// The folded frame of a grid body: two whole rows of cards (poster, title,
-  /// year) on screen at once, the top one on a fixed line (Michel, build 394:
-  /// "je kan makkelijk twee rijen volledig zichtbaar laten zijn").
-  ///
-  /// Measured on the Apple TV canvas (1037.8 x 583.8 logical, scale clamped
-  /// to 0.85) the two rows and the gutter between them take 580.1 of 583.8,
-  /// so the room left, [margin], is shared equally by the top and the bottom
-  /// edge, capped at Apple's title-safe 60 of 1080 where a screen has more.
-  /// The 6% focus scale-up does not fit on top of that: it reaches past the
-  /// card's box into the grid's padding, which is why the body starts that
-  /// padding above the screen ([top] is `margin - growth`) and runs on below
-  /// it ([overhang]). What can then fall off the edge is the outer few pixels
-  /// of a focused edge card's ring, never a poster or a line of text: the
-  /// poster sits inset inside the card and the footer ends in padding.
-  ///
-  /// Where two rows do not fit at all the frame is the screen, and the grid
-  /// scrolls a single row at a time.
-  static ({double top, double overhang, double margin}) foldedGridFrame({
-    required Size size,
-    required double scale,
-    double focusScale = FocusTheme.fullCardFocusScale,
-  }) {
-    final grid = TvCatalogGrid.forWidth(size.width, scale: scale);
-    final cardHeight = TvCatalogLayout.cardHeight(grid.cardWidth, scale);
-    final growth = TvCatalogGrid.focusHeadroom(cardHeight: cardHeight, focusScale: focusScale);
-    final twoRows = 2 * cardHeight + grid.gutter;
-    final spare = size.height - twoRows;
-    if (spare < 0) return (top: 0, overhang: 0, margin: 0);
-    final margin = math.min(spare / 2, size.height * (60 / 1080));
-    final top = margin - growth;
-    final overhang = math.max(0.0, margin + twoRows + growth - size.height);
-    return (top: top, overhang: overhang, margin: margin);
+  /// The folded frame of a grid body: it starts at Apple's title-safe line,
+  /// 60 of 1080, and runs to the bottom of the screen. The grid sizes its
+  /// cards to that height so two whole rows fit with room around them
+  /// (`tvCatalogTwoRowCardWidth`), so the frame no longer has to bend round
+  /// the cards (Michel, build 396).
+  static ({double top, double overhang, double margin}) foldedGridFrame({required Size size}) {
+    final margin = size.height * (60 / 1080);
+    return (top: margin, overhang: 0, margin: margin);
   }
 
   @override
