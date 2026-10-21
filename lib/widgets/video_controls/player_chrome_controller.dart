@@ -24,6 +24,7 @@ class PlayerChromeController extends ChangeNotifier implements ValueListenable<b
   PlayerChromeFocusTarget? _pendingFocusTarget;
   bool _keepVisibleWhilePaused = false;
   bool _pendingExplicitPauseChrome = false;
+  bool _tvInfoPanelOpen = false;
   final Set<PlayerChromeHold> _holds = <PlayerChromeHold>{};
   final Stopwatch _pointerActivityStopwatch = Stopwatch()..start();
   int _lastPointerActivityMs = -1000;
@@ -116,6 +117,16 @@ class PlayerChromeController extends ChangeNotifier implements ValueListenable<b
     final target = _pendingFocusTarget;
     _pendingFocusTarget = null;
     return target;
+  }
+
+  /// Whether the TV info panel is open. The screen reads it to hold back focus
+  /// requests (Play Next) that must not cross the panel; the controls own it.
+  bool get tvInfoPanelOpen => _tvInfoPanelOpen;
+
+  void setTvInfoPanelOpen(bool open, {bool notify = true}) {
+    if (_tvInfoPanelOpen == open) return;
+    _tvInfoPanelOpen = open;
+    if (notify) notifyListeners();
   }
 
   /// Asks the player to open the chrome on Play/Pause after an explicit pause

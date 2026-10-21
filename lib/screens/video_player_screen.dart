@@ -108,6 +108,7 @@ import 'video_player/live_tv_session_state.dart';
 import 'video_player/widgets/player_prompt_overlays.dart';
 import '../widgets/overlay_sheet.dart';
 import '../widgets/video_controls/player_chrome_controller.dart';
+import 'video_player/deferred_focus_gate.dart';
 import '../widgets/video_controls/video_controls.dart';
 import '../widgets/video_controls/widgets/player_toast_indicator.dart';
 import '../focus/focusable_button.dart';
@@ -495,6 +496,19 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
 
   late final FocusNode _playNextCancelFocusNode;
   late final FocusNode _playNextConfirmFocusNode;
+  bool _sheetOpen = false;
+  // Play Next waits for the info panel or a sheet to release focus (PLR-REMOTE-UX1).
+  late final DeferredFocusGate _playNextFocusGate = DeferredFocusGate(
+    isBlocked: () => _chromeController.tvInfoPanelOpen || _sheetOpen,
+    request: () => WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_showPlayNextDialog) return;
+      if (_chromeController.tvInfoPanelOpen || _sheetOpen) {
+        _playNextFocusGate.ask();
+        return;
+      }
+      _playNextConfirmFocusNode.requestFocus();
+    }),
+  );
 
   bool _showStillWatchingPrompt = false;
   int _stillWatchingCountdown = 30;
@@ -697,7 +711,10 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     // Ensures a single stable focus target across loading → initialized phases.
     _screenFocusNode = FocusNode(debugLabel: 'VideoPlayerScreen');
     _screenFocusNode.addListener(_onScreenFocusChanged);
-    _chromeController.addListener(() => _syncTvSubtitleLift());
+    _chromeController.addListener(() {
+      _syncTvSubtitleLift();
+      _playNextFocusGate.retry();
+    });
 
     appLogger.d('VideoPlayerScreen initialized for: ${_currentMetadata.title}');
     if (_preferredAudioTrack != null) {
@@ -1681,6 +1698,10 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         // with no sheet, exit the player. canPop:false keeps swipe-back disabled
         // so it doesn't fight timeline scrubbing.
         canPop: false,
+        onOpenChanged: (open) {
+          _sheetOpen = open;
+          if (!open) _playNextFocusGate.retry();
+        },
         // Compact on a phone in landscape, glass with Liquid Glass on (A-23).
         overVideo: true,
         onSystemBack: () {

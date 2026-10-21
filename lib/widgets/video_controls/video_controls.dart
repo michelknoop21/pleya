@@ -561,7 +561,7 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
   void initState() {
     super.initState();
     _lastControlsVisible = widget.chromeController.controlsVisible;
-    _focusNode = FocusNode();
+    _focusNode = FocusNode(debugLabel: 'PlayerControlsRoot');
     _skipMarkerFocusNode = FocusNode(debugLabel: 'SkipMarkerButton');
     _seekThrottle = throttle(
       (Duration pos) {
@@ -648,6 +648,10 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
 
   void _setControlsState(VoidCallback fn) => setStateIfMounted(fn);
 
+  /// Test seam: feeds chapters and markers the way the loader does.
+  @visibleForTesting
+  void debugApplyPlaybackExtras(PlaybackExtras extras) => _applyPlaybackExtras(extras);
+
   /// Open the Infuse-style TV info panel (swipe-down). Controls are hidden while
   /// it is up; the panel owns its own focus scope.
   void _showTvInfoPanel([TvInfoPanelRequest request = TvInfoPanelRequest.information]) {
@@ -658,6 +662,7 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
     // synchronously during hide()) sees the panel is open and stays out of the
     // way — otherwise it fights the panel's pill for focus.
     _tvInfoPanelVisible = true;
+    widget.chromeController.setTvInfoPanelOpen(true, notify: false);
     if (_showControls) _hideControls();
     _setControlsState(() {});
   }
@@ -665,9 +670,12 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
   void _hideTvInfoPanel() {
     if (!_tvInfoPanelVisible) return;
     _setControlsState(() => _tvInfoPanelVisible = false);
+    widget.chromeController.setTvInfoPanelOpen(false);
     // Reclaim focus for the hidden-controls key handler so the remote keeps working.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !_focusNode.hasFocus) _focusNode.requestFocus();
+      // A Play Next card that was waiting for the panel has just asked for focus
+      // (same frame, queued first); do not take it back.
+      if (mounted && widget.playNextFocusNode == null && !_focusNode.hasFocus) _focusNode.requestFocus();
     });
   }
 
@@ -707,6 +715,7 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_handleGlobalKeyEvent);
     widget.chromeController.removeListener(_onChromeChanged);
+    widget.chromeController.setTvInfoPanelOpen(false, notify: false);
     widget.hasFirstFrame?.removeListener(_onFirstFrameReady);
     _feedbackTimer?.cancel();
     _feedbackHideTimer?.cancel();

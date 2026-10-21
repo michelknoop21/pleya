@@ -47,6 +47,7 @@ extension _PlexVideoControlsMarkerMethods on _PlexVideoControlsState {
         _skipButtonDismissed = false;
       });
     }
+    _restoreFocusFromSkipMarker();
     if (_skipMarkerFocusNode.hasFocus) _skipMarkerFocusNode.unfocus();
     _cancelAutoSkipTimer();
     _cancelSkipButtonDismissTimer();
@@ -83,13 +84,38 @@ extension _PlexVideoControlsMarkerMethods on _PlexVideoControlsState {
     // Auto-focus skip button on TV when marker appears (only in keyboard/TV mode).
     // Never while the TV panel is open: the button sits outside the panel's
     // scope, so taking focus there strands Menu outside the panel (build 389).
+    // Only from the neutral video (PLR-REMOTE-UX1): not over the panel, a sheet,
+    // the queue, a scrub preview or visible controls, which each own focus.
     if (PlatformDetector.isTV() && InputModeTracker.isKeyboardMode(context)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !_tvInfoPanelVisible) {
+        if (mounted && _isVideoFocusNeutral) {
           _skipMarkerFocusNode.requestFocus();
         }
       });
     }
+  }
+
+  bool get _isVideoFocusNeutral {
+    if (_tvInfoPanelVisible) return false;
+    // Apple TV keeps focus on the visible bar; other TVs always focused the button.
+    if (_showControls && PlatformDetector.isAppleTV()) return false;
+    if (OverlaySheetController.maybeOf(context)?.isOpen ?? false) return false;
+    return !AppleTvRemoteTouchService.instance.isScrubPanActive;
+  }
+
+  /// The skip button is going away under focus: hand focus to a place that
+  /// exists, the way the controls hide does, unless another layer has it.
+  void _restoreFocusFromSkipMarker() {
+    if (!_skipMarkerFocusNode.hasFocus) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _tvInfoPanelVisible) return;
+      if (OverlaySheetController.maybeOf(context)?.isOpen ?? false) return;
+      if (_showControls) {
+        _desktopControlsKey.currentState?.requestPlayPauseFocus();
+      } else {
+        _focusNode.requestFocus();
+      }
+    });
   }
 
   Future<void> _skipMarker({bool skipAutoPlayCountdown = false}) async {
@@ -107,6 +133,7 @@ extension _PlexVideoControlsMarkerMethods on _PlexVideoControlsState {
         // Drop the marker before the await: the parent opens its Play Next card
         // off the back of onReachedEnd, and a marker that is still set would
         // leave this button on screen next to that card.
+        _restoreFocusFromSkipMarker();
         _setControlsState(() {
           _currentMarker = null;
         });
@@ -120,6 +147,7 @@ extension _PlexVideoControlsMarkerMethods on _PlexVideoControlsState {
     }
 
     if (!mounted) return;
+    _restoreFocusFromSkipMarker();
     _setControlsState(() {
       _currentMarker = null;
     });
@@ -187,6 +215,12 @@ extension _PlexVideoControlsMarkerMethods on _PlexVideoControlsState {
     if (!_hasRenderedFirstFrame) return;
     _skipButtonDismissTimer = Timer(const Duration(seconds: 7), () {
       if (!mounted || _currentMarker == null) return;
+      // Never pull the button out from under the focus it holds while the
+      // marker still applies; look again in seven seconds.
+      if (_skipMarkerFocusNode.hasFocus) {
+        _startSkipButtonDismissTimer();
+        return;
+      }
       _setControlsState(() {
         _skipButtonDismissed = true;
       });
