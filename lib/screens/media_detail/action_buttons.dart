@@ -379,7 +379,9 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
   Widget _buildUnifiedSourceLine({bool card = false}) {
     final routeContext = widget.unifiedRouteContext;
     if (routeContext == null || !routeContext.hasAlternativeSources) return const SizedBox.shrink();
-    if (card) return _buildUnifiedSourceCard(routeContext);
+    // The card sits on the always-dark phone detail page; a Builder gives it
+    // the context under that page's theme instead of the State's (app) one.
+    if (card) return Builder(builder: (context) => _buildUnifiedSourceCard(context, routeContext));
 
     final isTv = PlatformDetector.isTV();
     final tvScale = TvLayoutConstants.scaleOf(context);
@@ -436,7 +438,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     );
   }
 
-  Widget _buildUnifiedSourceCard(UnifiedMediaRouteContext routeContext) {
+  Widget _buildUnifiedSourceCard(BuildContext context, UnifiedMediaRouteContext routeContext) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final parts = [
       _metadata.serverName ?? routeContext.sourceKey.split(':').first,

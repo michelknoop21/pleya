@@ -47,6 +47,7 @@ import 'package:pleya/providers/watchlist_provider.dart';
 import 'package:pleya/providers/watchlist_store.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_activity_card.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_ambient_background.dart';
+import 'package:pleya/screens/media_detail/mobile/detail_dark_style.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_seasons_rail.dart';
 import 'package:pleya/screens/media_detail/mobile/mobile_poster_hero.dart';
 import 'package:pleya/screens/media_detail_screen.dart';
@@ -1090,6 +1091,8 @@ void main() {
       // way the app's profile navigator has it.
       bool scopeAboveNavigator = false,
       ThemeData? theme,
+      UnifiedMediaRouteContext? unifiedRouteContext,
+      Future<void> Function(BuildContext detailContext)? onChangeSource,
     }) async {
       TvDetectionService.debugSetAppleTVOverride(false);
       await SettingsService.getInstance();
@@ -1160,6 +1163,8 @@ void main() {
                   initialSeasonId: initialSeasonId,
                   initialSeasonIndex: initialSeasonIndex,
                   initialEpisodeId: initialEpisodeId,
+                  unifiedRouteContext: unifiedRouteContext,
+                  onChangeSource: onChangeSource,
                 ),
               ),
             ),
@@ -1969,6 +1974,51 @@ void main() {
           expect(tester.widget<Text>(find.text('2024')).style?.color, Colors.white);
         });
       }
+
+      // The source card reads the page's dark theme, not the app's: on the
+      // light app theme its name and "Change" must stay light on the dark page.
+      testWidgets('light theme: the source card keeps light ink on the dark page', (tester) async {
+        final movie = MediaItem(
+          id: 'movie_sources',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'Sintel',
+          year: 2010,
+          serverId: 'server_1',
+          serverName: 'Server',
+        );
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+        const keys = ['server_1:movie_sources', 'attic:i2'];
+
+        await pumpPhoneDetail(
+          tester,
+          client,
+          movie,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+          theme: monoTheme(dark: false),
+          unifiedRouteContext: UnifiedMediaRouteContext(
+            groupId: 'g1',
+            identity: CanonicalMediaIdentity.movie(title: 'Sintel', year: 2010),
+            sourceKey: keys.first,
+            availableSourceKeys: keys,
+            coverage: SourceCoverageState.complete(keys.toSet()),
+            intent: UnifiedActivationIntent.details,
+          ),
+          onChangeSource: (_) async {},
+        );
+
+        double contrast(Color a, Color b) {
+          final (hi, lo) = a.computeLuminance() > b.computeLuminance() ? (a, b) : (b, a);
+          return (hi.computeLuminance() + 0.05) / (lo.computeLuminance() + 0.05);
+        }
+
+        final page = kDetailPageGradient.first;
+        for (final label in ['Server', t.sourcePicker.change]) {
+          final color = tester.widget<Text>(find.text(label)).style!.color!;
+          expect(contrast(color, page), greaterThan(4.5), reason: '"$label" must read on the dark page');
+        }
+      });
 
       testWidgets('a film keeps its title and a white play button (D-01)', (tester) async {
         final movie = buildMovie();
