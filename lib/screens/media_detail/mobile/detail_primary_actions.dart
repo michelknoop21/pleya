@@ -67,11 +67,7 @@ class DetailPrimaryActions extends StatelessWidget {
       height: 52,
       child: FilledButton.icon(
         onPressed: onPlay,
-        style: FilledButton.styleFrom(
-          backgroundColor: kDetailPlayFill,
-          foregroundColor: kDetailPlayInk,
-          shape: const StadiumBorder(),
-        ),
+        style: FilledButton.styleFrom(backgroundColor: kDetailPlayFill, foregroundColor: kDetailPlayInk),
         icon: const Icon(Icons.play_arrow_rounded, size: 28),
         label: Text.rich(
           TextSpan(
