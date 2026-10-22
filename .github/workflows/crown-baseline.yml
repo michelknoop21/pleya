@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - test/widgets/scroll_crown/scroll_crown_measurement_test.dart
+      - test/screens/libraries/alpha_scroll_handle_test.dart
+      - lib/widgets/scroll_crown/**
+      - lib/screens/libraries/alpha_scroll_handle.dart
       - .github/workflows/crown-baseline.yml
 
 permissions:
@@ -20,15 +23,37 @@ jobs:
           flutter-version-file: .fvmrc
           cache: true
       - run: flutter pub get --enforce-lockfile
-      - name: Record formatter output
+      - name: Record runtime and verify committed formatting
         run: |
           mkdir -p build/crown-baseline
-          dart format test/widgets/scroll_crown/scroll_crown_measurement_test.dart
-          git diff -- test/widgets/scroll_crown/scroll_crown_measurement_test.dart | tee build/crown-baseline/format.patch
+          git rev-parse HEAD > build/crown-baseline/commit.txt
+          flutter --version > build/crown-baseline/runtime.txt
+          set -o pipefail
+          dart format --output=none --set-exit-if-changed test/widgets/scroll_crown/scroll_crown_measurement_test.dart 2>&1 | tee build/crown-baseline/format.log
       - name: Run baseline and existing endpoint and loading checks
         run: |
           set -o pipefail
           flutter test --reporter expanded test/widgets/scroll_crown test/screens/libraries/alpha_scroll_handle_test.dart 2>&1 | tee build/crown-baseline/tests.log
+      - name: Run repository code gate
+        run: |
+          set -o pipefail
+          scripts/ci_checks.sh 2>&1 | tee build/crown-baseline/gate.log
+      - name: Extract comparable JSON records
+        if: always()
+        run: |
+          python3 - <<'PYCODE'
+          import json
+          from pathlib import Path
+          root = Path('build/crown-baseline')
+          root.mkdir(parents=True, exist_ok=True)
+          log = root / 'tests.log'
+          records = []
+          for line in log.read_text().splitlines() if log.exists() else []:
+              if 'CROWN_BASELINE ' in line:
+                  records.append(json.loads(line.split('CROWN_BASELINE ', 1)[1]))
+          (root / 'baseline.jsonl').write_text(''.join(json.dumps(row) + '\n' for row in records))
+          print(f'Retained {len(records)} crown replay records')
+          PYCODE
       - name: Keep measurement evidence even on failure
         if: always()
         uses: actions/upload-artifact@v6

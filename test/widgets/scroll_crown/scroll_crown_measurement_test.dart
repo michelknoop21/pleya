@@ -16,10 +16,8 @@ String _title(int index) => 'Titel ${index.toString().padLeft(5, '0')}';
 /// A fast approach deliberately overshoots before four slow 1 px corrections.
 List<({double y, int ms})> _motion(int approachMs) => [
   (y: 360, ms: 0),
-  for (var step = 1; step <= 80; step++)
-    (y: 360 + step * 2.0, ms: step * approachMs),
-  for (var step = 1; step <= 4; step++)
-    (y: 520 - step.toDouble(), ms: 80 * approachMs + step * 80),
+  for (var step = 1; step <= 80; step++) (y: 360 + step * 2.0, ms: step * approachMs),
+  for (var step = 1; step <= 4; step++) (y: 520 - step.toDouble(), ms: 80 * approachMs + step * 80),
 ];
 
 class _Library extends StatefulWidget {
@@ -39,8 +37,7 @@ class _LibraryState extends State<_Library> {
   Duration get now => clock?.call() ?? Duration.zero;
   int? selected;
 
-  double get fraction =>
-      controller.hasClients && controller.position.maxScrollExtent > 0
+  double get fraction => controller.hasClients && controller.position.maxScrollExtent > 0
       ? controller.offset / controller.position.maxScrollExtent
       : 0;
 
@@ -62,10 +59,7 @@ class _LibraryState extends State<_Library> {
       padding: EdgeInsets.zero,
       itemExtent: _rowHeight,
       itemCount: widget.count,
-      itemBuilder: (_, index) => TextButton(
-        onPressed: () => selected = index,
-        child: Text(_title(index)),
-      ),
+      itemBuilder: (_, index) => TextButton(onPressed: () => selected = index, child: Text(_title(index))),
     );
     return MaterialApp(
       home: Scaffold(
@@ -84,24 +78,13 @@ class _LibraryState extends State<_Library> {
                       right: 0,
                       child: AlphaScrollHandle(
                         firstCharacters: [
-                          LibraryFirstCharacter(
-                            key: 'A',
-                            title: 'A',
-                            size: widget.count ~/ 2,
-                          ),
-                          LibraryFirstCharacter(
-                            key: 'B',
-                            title: 'B',
-                            size: widget.count - widget.count ~/ 2,
-                          ),
+                          LibraryFirstCharacter(key: 'A', title: 'A', size: widget.count ~/ 2),
+                          LibraryFirstCharacter(key: 'B', title: 'B', size: widget.count - widget.count ~/ 2),
                         ],
                         currentLetter: letter,
                         readScrollFraction: () => fraction,
-                        onScrub: (value) => controller.jumpTo(
-                          value * controller.position.maxScrollExtent,
-                        ),
-                        onJump: (_) =>
-                            throw StateError('A drag must not jump by letter'),
+                        onScrub: (value) => controller.jumpTo(value * controller.position.maxScrollExtent),
+                        onJump: (_) => throw StateError('A drag must not jump by letter'),
                         clock: () => now,
                         onToothTick: () => tick('tooth'),
                         onLetterTick: () => tick('letter'),
@@ -197,68 +180,41 @@ Future<List<Map<String, Object>>> _replay(
       'ticks': state.ticks,
     })}',
   );
-  expect(
-    canChoose,
-    isTrue,
-    reason: 'choose the middle numbered title after correcting',
-  );
+  expect(canChoose, isTrue, reason: 'choose the middle numbered title after correcting');
   expect(state.selected, target);
   expect(state.ticks.where((tick) => tick['kind'] == 'tooth'), isNotEmpty);
-  expect(
-    ticksAfterIdle,
-    ticksBeforeRelease,
-    reason: 'haptics must not queue after release',
-  );
+  expect(ticksAfterIdle, ticksBeforeRelease, reason: 'haptics must not queue after release');
   await tester.pumpWidget(const SizedBox());
   return samples;
 }
 
 void main() {
   for (final count in [100, 1000, 10000]) {
-    testWidgets(
-      'baseline: $count numbered titles, both crowns, three replay speeds',
-      (tester) async {
-        tester.view.physicalSize = _screen;
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.reset);
-        List<Map<String, Object>>? reference;
-        for (final alphabet in [false, true]) {
-          for (final approachMs in [5, 20, 80]) {
-            final samples = await _replay(
-              tester,
-              count: count,
-              alphabet: alphabet,
-              approachMs: approachMs,
-            );
-            if (reference != null) {
-              for (var index = 0; index < samples.length; index++) {
-                expect(
-                  samples[index]['pixels'] as double,
-                  closeTo(reference[index]['pixels'] as double, 0.01),
-                  reason:
-                      'baseline position at sample $index: speed and label do not change the drag model',
-                );
-              }
+    testWidgets('baseline: $count numbered titles, both crowns, three replay speeds', (tester) async {
+      tester.view.physicalSize = _screen;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      List<Map<String, Object>>? reference;
+      for (final alphabet in [false, true]) {
+        for (final approachMs in [5, 20, 80]) {
+          final samples = await _replay(tester, count: count, alphabet: alphabet, approachMs: approachMs);
+          if (reference != null) {
+            for (var index = 0; index < samples.length; index++) {
+              expect(
+                samples[index]['pixels'] as double,
+                closeTo(reference[index]['pixels'] as double, 0.01),
+                reason: 'baseline position at sample $index: speed and label do not change the drag model',
+              );
             }
-            reference ??= samples;
-            final approach = samples
-                .where((sample) => sample['phase'] == 'approach')
-                .last;
-            final corrected = samples
-                .where((sample) => sample['phase'] == 'correction')
-                .last;
-            expect(
-              corrected['pixels'] as double,
-              lessThan(approach['pixels'] as double),
-            );
-            expect(corrected['pixels'] as double, greaterThan(0));
-            expect(
-              corrected['pixels'] as double,
-              lessThan(corrected['maxPixels'] as double),
-            );
           }
+          reference ??= samples;
+          final approach = samples.where((sample) => sample['phase'] == 'approach').last;
+          final corrected = samples.where((sample) => sample['phase'] == 'correction').last;
+          expect(corrected['pixels'] as double, lessThan(approach['pixels'] as double));
+          expect(corrected['pixels'] as double, greaterThan(0));
+          expect(corrected['pixels'] as double, lessThan(corrected['maxPixels'] as double));
         }
-      },
-    );
+      }
+    });
   }
 }

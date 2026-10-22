@@ -47,11 +47,12 @@ scripts/ci_checks.sh
 ```
 
 De gerichte Actions-workflow `Scroll crown baseline` draait dezelfde tests
-en bewaart `tests.log` en formatterverschillen in artifact `crown-baseline`.
+en bewaart `tests.log`, `baseline.jsonl`, commit/runtime en formatter- en gatelogs
+in artifact `crown-baseline`.
 De gewone CI blijft daarnaast actief. De bestaande eindpunt-, bijlaad- en
 alfabettests blijven behouden. Hun bewijs moet bij elke afstelling opnieuw
-groen zijn. Formatteren in de meetjob vervangt geen groene formatcheck van
-de gecommitteerde bron in gewone CI.
+groen zijn. De meetjob controleert de gecommitteerde formattering en draait
+`scripts/ci_checks.sh`; hij repareert geen bronbestanden tijdens de meting.
 
 ## Bewijsgrenzen
 
