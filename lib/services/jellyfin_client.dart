@@ -14,6 +14,7 @@ import '../media/server_authority_guard.dart';
 import '../media/library_filter_result.dart';
 import '../media/library_first_character.dart';
 import '../media/library_query.dart';
+import '../media/title_letter_count_client.dart';
 import 'favorite_channels_repository.dart';
 import 'live_session_tracker.dart';
 import 'file_info_parser.dart';
@@ -83,6 +84,7 @@ part 'jellyfin_client/parts/live_tv.dart';
 part 'jellyfin_client/parts/images_downloads.dart';
 part 'jellyfin_client/parts/metadata_edit.dart';
 part 'jellyfin_client/parts/admin.dart';
+part 'jellyfin_client/parts/title_index.dart';
 
 /// [MediaServerClient] over a Jellyfin server.
 ///
@@ -103,6 +105,7 @@ class JellyfinClient
         _JellyfinImageDownloadMethods,
         _JellyfinMetadataEditMethods,
         _JellyfinAdminMethods,
+        _JellyfinTitleIndexMethods,
         ServerAuthorityGuard
     implements
         MediaServerClient,
@@ -115,7 +118,8 @@ class JellyfinClient
         ItemMetadataRefreshClient,
         RetryableJobsClient,
         ServerUserAdministration,
-        GracefullyCloseable {
+        GracefullyCloseable,
+        TitleLetterCountClient {
   @override
   Future<MediaItem?> fetchFreshItem(String id) => _fetchItem(id, allowCacheFallback: false);
 

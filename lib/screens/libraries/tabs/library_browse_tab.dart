@@ -310,8 +310,11 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
         if (serverId == null) throw StateError('Plex library ${library.id} is missing a serverId');
         return manager.getPlexClient(serverId)!;
       },
+      clientProvider: () => context.getMediaClientForLibrary(library),
       libraryKey: library.id,
+      libraryKind: library.kind,
       isShared: library.isShared,
+      isPhone: _isPhone(context),
     );
   }
 
@@ -767,16 +770,22 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     }
   }
 
+  /// The listing the grid pages through. The phone scrubber's title index is
+  /// built from the same query, so its offsets line up with the grid.
+  LibraryQuery _browseQuery({required int offset, required int limit}) {
+    final filterParams = _buildFilterParams();
+    return libraryQueryFromPlexMap(
+      map: filterParams,
+      libraryKind: filterParams.containsKey('type') ? null : widget.library.kind,
+      offset: offset,
+      limit: limit,
+    );
+  }
+
   @override
   Future<LibraryPage<MediaItem>> fetchPage(int start, int size, AbortController? abort) async {
     final client = context.getMediaClientForLibrary(widget.library);
-    final filterParams = _buildFilterParams();
-    final query = libraryQueryFromPlexMap(
-      map: filterParams,
-      libraryKind: filterParams.containsKey('type') ? null : widget.library.kind,
-      offset: start,
-      limit: size,
-    );
+    final query = _browseQuery(offset: start, limit: size);
     return client.fetchLibraryPagedContent(
       widget.library.id,
       query: query,
@@ -1208,6 +1217,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     isFolderGrouping: _selectedGrouping == 'folders',
     jellyfinAlphaPrefix: _jellyfinAlphaPrefix,
     isPhone: _isPhone(context),
+    indexItemCount: _alphaHelper.totalItemCount,
   );
 
   /// Fetch first characters for the current library/filter state
@@ -1221,6 +1231,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
         filters: filterParams,
         typeId: typeId.isNotEmpty ? int.tryParse(typeId) : null,
         descending: _isTitleSortDescending,
+        query: _browseQuery(offset: 0, limit: 0),
       );
       if (!mounted || currentRequestId != _firstCharactersRequestId) return;
       setState(() {
