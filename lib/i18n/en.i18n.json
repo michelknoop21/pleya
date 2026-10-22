@@ -970,6 +970,7 @@
     "playbackServerErrorBody": "The server hit an error while transcoding"
   },
   "libraries": {
+    "alphabetScrubber": "Browse alphabetically",
     "title": "Libraries",
     "fallbackTitle": "Library",
     "itemCount": "${count} items",

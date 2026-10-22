@@ -292,6 +292,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   int _contentRequestId = 0;
   int _firstCharactersRequestId = 0;
   static const int _fetchSize = 200;
+  static const double _phoneScrubberGridPadding = 24;
   static const int _jellyfinFetchSize = 72;
   Timer? _scrollIdleTimer;
   bool _rangeLoadScheduled = false;
@@ -1345,6 +1346,26 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     _scrollToItemIndex(clamped);
   }
 
+  /// Current scroll position as a fraction of the scrollable range, read by
+  /// the phone scrubber when a drag starts.
+  double _scrollFraction() {
+    final pos = _innerPosition;
+    if (pos == null || !pos.hasContentDimensions || pos.maxScrollExtent <= 0) return 0;
+    return (pos.pixels / pos.maxScrollExtent).clamp(0.0, 1.0);
+  }
+
+  /// Phone scrubber drag: the rail maps onto the whole scrollable range, so
+  /// the grid follows the finger. The letter follows from the scroll position
+  /// through [_onScrollChanged]; range loading fills the rows on the way.
+  void _scrubToFraction(double fraction) {
+    final pos = _innerPosition;
+    if (pos == null || !pos.hasContentDimensions) return;
+    // A scrub supersedes a running letter jump.
+    _jumpScrollGeneration++;
+    _isJumpScrolling = false;
+    pos.jumpTo(fraction.clamp(0.0, 1.0) * pos.maxScrollExtent);
+  }
+
   /// Apply the new Jellyfin `NameStartsWith` prefix from the alpha bar and
   /// refetch from the top of the now-filtered dataset. Used by
   /// [JellyfinAlphaBarStrategy] via [_jumpToIndex].
@@ -1424,15 +1445,13 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
                 ? ListenableSelector<String>(
                     listenable: _currentFirstVisibleIndex,
                     selector: () => _alphaLetterFor(_currentFirstVisibleIndex.value),
-                    builder: (context, currentLetter, _) => ValueListenableBuilder<bool>(
-                      valueListenable: _isScrollActive,
-                      builder: (context, scrolling, _) => AlphaScrollHandle(
-                        firstCharacters: _firstCharacters,
-                        onJump: _jumpToIndex,
-                        currentLetter: currentLetter,
-                        descending: _isTitleSortDescending,
-                        isScrolling: scrolling,
-                      ),
+                    builder: (context, currentLetter, _) => AlphaScrollHandle(
+                      firstCharacters: _firstCharacters,
+                      onJump: _jumpToIndex,
+                      onScrub: _scrubToFraction,
+                      readScrollFraction: _scrollFraction,
+                      currentLetter: currentLetter,
+                      descending: _isTitleSortDescending,
                     ),
                   )
                 : ListenableSelector<String>(
@@ -1858,7 +1877,13 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     final isPhone = _isPhone(context);
     final topPadding = isPhone ? _gridTopPaddingPhone : _gridTopPadding(context);
     _effectiveTopPadding = topPadding;
-    final rightPadding = _shouldShowAlphaJumpBar && !isPhone ? _alphaJumpBarWidth : 8.0;
+    // On the phone the scrubber rail (44 px) overlaps the last column; 24 px
+    // keeps the posters clear of the idle hint line, as in the CN09 prototype.
+    final rightPadding = !_shouldShowAlphaJumpBar
+        ? 8.0
+        : isPhone
+        ? _phoneScrubberGridPadding
+        : _alphaJumpBarWidth;
 
     final useWideRatio = _selectedGrouping == 'episodes' && episodePosterMode == EpisodePosterMode.episodeThumbnail;
 

@@ -970,6 +970,7 @@
     "playbackServerErrorBody": "De server liep vast tijdens het transcoderen"
   },
   "libraries": {
+    "alphabetScrubber": "Alfabetisch bladeren",
     "title": "Bibliotheken",
     "fallbackTitle": "Bibliotheek",
     "itemCount": "${count} items",

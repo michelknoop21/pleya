@@ -1180,6 +1180,7 @@ class _TranslationsLibrariesNl extends TranslationsLibrariesEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get alphabetScrubber => 'Alfabetisch bladeren';
 	@override String get title => 'Bibliotheken';
 	@override String get fallbackTitle => 'Bibliotheek';
 	@override String itemCount({required Object count}) => '${count} items';
@@ -5236,6 +5237,7 @@ extension on TranslationsNl {
 			'notices.playbackConnectionLostBody' => 'Verbinding met de server verloren',
 			'notices.playbackCodecUnsupportedBody' => 'Dit bestandsformaat wordt niet ondersteund op dit toestel',
 			'notices.playbackServerErrorBody' => 'De server liep vast tijdens het transcoderen',
+			'libraries.alphabetScrubber' => 'Alfabetisch bladeren',
 			'libraries.title' => 'Bibliotheken',
 			'libraries.fallbackTitle' => 'Bibliotheek',
 			'libraries.itemCount' => ({required Object count}) => '${count} items',
@@ -5363,9 +5365,9 @@ extension on TranslationsNl {
 			'logs.levelFilter' => 'Niveau',
 			'logs.levelAll' => 'Alles',
 			'logs.levelWarnings' => 'Waarschuwingen',
-			'logs.levelErrors' => 'Fouten',
 			_ => null,
 		} ?? switch (path) {
+			'logs.levelErrors' => 'Fouten',
 			'logs.noMatchingLogs' => 'Geen regels op dit niveau',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} van ${total} regels',
 			'licenses.relatedPackages' => 'Gerelateerde pakketten',
@@ -5877,9 +5879,9 @@ extension on TranslationsNl {
 			'metadataEdit.newestFirst' => 'Nieuwste eerst',
 			'metadataEdit.keep' => 'Bewaren',
 			'metadataEdit.allEpisodes' => 'Alle afleveringen',
-			'metadataEdit.latestEpisodes' => ({required Object count}) => '${count} nieuwste afleveringen',
 			_ => null,
 		} ?? switch (path) {
+			'metadataEdit.latestEpisodes' => ({required Object count}) => '${count} nieuwste afleveringen',
 			'metadataEdit.latestEpisode' => 'Nieuwste aflevering',
 			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Afleveringen toegevoegd in de afgelopen ${count} dagen',
 			'metadataEdit.deleteAfterPlaying' => 'Afleveringen verwijderen na afspelen',
@@ -6391,9 +6393,9 @@ extension on TranslationsNl {
 			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titels',
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} van ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Alle films bekijken, opent de volledige catalogus',
-			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Alle series bekijken, opent de volledige catalogus',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Alle series bekijken, opent de volledige catalogus',
 			'unifiedCatalog.home.featured' => 'Uitgelicht',
 			'unifiedCatalog.homeRows.customize' => 'Home aanpassen',
 			'unifiedCatalog.homeRows.customizeSubtitle' => 'Verplaats of verberg rijen, of maak er een van een filter',
@@ -6905,9 +6907,9 @@ extension on TranslationsNl {
 			'assistant.confirm.create' => 'Aanmaken',
 			'assistant.notes.plexManagedHomeUser' => 'Beheerde Plex Home-gebruiker, met een share op deze server.',
 			'assistant.notes.plexShare' => 'Een share op deze Plex-server.',
-			'assistant.notes.plexHomeMember' => 'Lid van je Plex Home. Alleen de share op deze server verandert.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.notes.plexHomeMember' => 'Lid van je Plex Home. Alleen de share op deze server verandert.',
 			'assistant.notes.replacesAllAccess' => 'Vervangt alle bestaande toegang van deze gebruiker op deze server.',
 			'assistant.ends.noTools' => 'Big P kan nu niets doen op je servers.',
 			'assistant.ends.toolsUnsupported' => 'Dit model kan geen tools gebruiken. Kies een ander model bij de instellingen van Big P.',
