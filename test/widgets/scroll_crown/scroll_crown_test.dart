@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart' show SemanticsAction;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/widgets/scroll_crown/scroll_crown.dart';
+import 'package:pleya/widgets/scroll_crown/scroll_crown_gear.dart';
 import 'package:pleya/widgets/scroll_crown/scroll_crown_painter.dart';
 
 const _screen = Size(400, 800);
@@ -11,43 +12,51 @@ const _railHeight = 800 - _tabBar;
 class _Rig {
   final controller = ScrollController();
   final teeth = <int>[];
+  final rowCount = ValueNotifier<int>(0);
   int taps = 0;
   Duration now = Duration.zero;
 
   /// [rows] rows of 100 px under a viewport of 800 px.
-  Widget host({required int rows, bool reduceMotion = false}) => MaterialApp(
-    home: MediaQuery(
-      data: MediaQueryData(
-        size: _screen,
-        padding: const EdgeInsets.only(bottom: _tabBar),
-        disableAnimations: reduceMotion,
-      ),
-      child: Material(
-        child: ScrollCrown(
-          enabled: true,
-          onToothTick: () => teeth.add(1),
-          clock: () => now,
-          child: ListView(
-            controller: controller,
-            children: [
-              for (var i = 0; i < rows; i++)
-                SizedBox(
-                  height: 100,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(onPressed: () => taps++, child: Text('row $i')),
-                  ),
+  Widget host({required int rows, bool reduceMotion = false}) {
+    rowCount.value = rows;
+    return MaterialApp(
+      home: MediaQuery(
+        data: MediaQueryData(
+          size: _screen,
+          padding: const EdgeInsets.only(bottom: _tabBar),
+          disableAnimations: reduceMotion,
+        ),
+        child: Material(
+          child: ScrollCrown(
+            enabled: true,
+            onToothTick: () => teeth.add(1),
+            clock: () => now,
+            child: ValueListenableBuilder<int>(
+              valueListenable: rowCount,
+              builder: (context, count, _) => ListView.builder(
+                controller: controller,
+                itemCount: count,
+                itemExtent: 100,
+                itemBuilder: (context, i) => Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(onPressed: () => taps++, child: Text('row $i')),
                 ),
-            ],
+              ),
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 Finder get _rail => find.byKey(const ValueKey('scroll_crown_rail'));
 Finder get _gear => find.byKey(const ValueKey('scroll_crown_gear'));
+
+bool _visible(WidgetTester tester) => tester.widget<ScrollCrownGear>(find.byType(ScrollCrownGear)).visible;
+
+/// The x of a touch on the right edge, inside the rail.
+const _edgeX = 400 - 22.0;
 
 double _phase(WidgetTester tester) => (tester.widget<CustomPaint>(_gear).painter! as ScrollCrownPainter).phase;
 
@@ -128,13 +137,81 @@ void main() {
     final rig = _Rig();
     await _setUp(tester, rig);
     expect(_gear, findsOneWidget, reason: 'mounted but hidden');
-    expect(_rail, findsNothing, reason: 'the edge does not take drags while hidden');
+    expect(_visible(tester), isFalse);
 
     await _wake(tester);
-    expect(_rail, findsOneWidget);
+    expect(_visible(tester), isTrue);
 
     await tester.pump(ScrollCrown.hideDelay + const Duration(milliseconds: 50));
-    expect(_rail, findsNothing);
+    expect(_visible(tester), isFalse);
+  });
+
+  testWidgets('after scrolling, a swipe along the edge away from the gear still scrolls normally', (tester) async {
+    final rig = _Rig();
+    await _setUp(tester, rig);
+    await _wake(tester);
+    expect(_visible(tester), isTrue, reason: 'the crown came up through scrolling');
+    final start = rig.controller.offset;
+
+    // Far below the gear (which rests near the top): an ordinary swipe up.
+    await tester.dragFrom(const Offset(_edgeX, 500), const Offset(0, -200));
+    await tester.pump();
+    expect(rig.controller.offset, closeTo(start + 200, 30), reason: 'content follows the finger, not reversed');
+  });
+
+  testWidgets('a touch on the edge makes the whole edge a rail', (tester) async {
+    final rig = _Rig();
+    await _setUp(tester, rig);
+    await tester.tapAt(const Offset(_edgeX, 500));
+    await tester.pump();
+    expect(_visible(tester), isTrue);
+
+    await tester.dragFrom(const Offset(_edgeX, 500), const Offset(0, 100));
+    await tester.pump();
+    final max = rig.controller.position.maxScrollExtent;
+    // A swipe down would stay at 0; the rail maps 100 px onto the range.
+    expect(rig.controller.offset, greaterThan(0.08 * max));
+  });
+
+  testWidgets('the first drag on the gear after it faded already scrubs', (tester) async {
+    final rig = _Rig();
+    await _setUp(tester, rig);
+    await _wake(tester);
+    await tester.pump(ScrollCrown.hideDelay + const Duration(milliseconds: 50));
+    expect(_visible(tester), isFalse);
+    final start = rig.controller.offset;
+
+    await _scrub(tester, rig, steps: 50, step: 2, startY: 20); // 100 px down the rail
+    final max = rig.controller.position.maxScrollExtent;
+    expect(rig.controller.offset, greaterThan(start + 0.08 * max), reason: 'scrubbed, not swiped up to 0');
+  });
+
+  testWidgets('more items loading mid-drag do not stretch the scrub', (tester) async {
+    final rig = _Rig();
+    await _setUp(tester, rig);
+    await _wake(tester);
+    final start = rig.controller.offset;
+    final maxAtStart = rig.controller.position.maxScrollExtent;
+
+    final gesture = await tester.startGesture(const Offset(_edgeX, 20));
+    for (var i = 0; i < 25; i++) {
+      await gesture.moveBy(const Offset(0, 2));
+      await tester.pump();
+    }
+    rig.rowCount.value = 120; // a page loads: three times the content
+    await tester.pump();
+    // The list takes the new length on its next layout, which the next move
+    // brings; the move after that is where a stretched mapping would jump.
+    await gesture.moveBy(const Offset(0, 2));
+    await tester.pump();
+    expect(rig.controller.position.maxScrollExtent, greaterThan(maxAtStart * 2));
+    final beforeMove = rig.controller.offset;
+    await gesture.moveBy(const Offset(0, 2));
+    await tester.pump();
+    expect(rig.controller.offset - beforeMove, closeTo(2 / _railHeight * maxAtStart, 1), reason: 'no jump');
+    await gesture.up();
+    await tester.pump();
+    expect(rig.controller.offset, lessThan(start + 70 / _railHeight * maxAtStart));
   });
 
   testWidgets('a rail drag scrolls pixel-proportionally over the whole range', (tester) async {

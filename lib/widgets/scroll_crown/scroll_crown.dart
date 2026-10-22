@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/gestures.dart' show DragStartBehavior;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -20,10 +20,14 @@ import 'scroll_crown_gear.dart';
 ///
 /// It is the CN09 gear without the letter bubble. It appears when the view
 /// scrolls or the right edge is touched and fades [hideDelay] after the last
-/// activity. While it shows, the whole right edge is a rail: a vertical drag
-/// there scrolls pixel for pixel over the scrollable range (rail height maps
-/// onto scroll length), the gear rides under the finger and its teeth turn
-/// with the drag, with a ratchet tick per tooth through [CrownRatchet].
+/// activity. A vertical drag that starts on the gear (or where it rests while
+/// hidden) scrubs: it scrolls pixel for pixel over the scrollable range as it
+/// was when the drag began (rail height maps onto scroll length), the gear
+/// rides under the finger and its teeth turn with the drag, with a ratchet
+/// tick per tooth through [CrownRatchet]. After a touch on the edge brought
+/// the crown up, the whole edge is a rail until it hides or the content
+/// scrolls; a crown that came up through scrolling leaves ordinary swipes
+/// along the edge to the scroll view.
 ///
 /// It stays out of the way: phones only (no tablet, desktop or TV), only for
 /// the outermost vertical scrollable below it, and only when the content is
@@ -68,6 +72,9 @@ class ScrollCrown extends StatefulWidget {
   static const double minContentScreens = 2.0;
 
   static const double railWidth = 44;
+
+  /// Extra touch room above and below the gear for grabbing it.
+  static const double gearHitMargin = 22;
   static const Duration hideDelay = Duration(milliseconds: 850);
   static const Duration fade = Duration(milliseconds: 150);
 
@@ -105,6 +112,10 @@ class _ScrollCrownState extends State<ScrollCrown> {
   ScrollPosition? _position;
   ScrollMetrics? _metrics;
   bool _active = false;
+
+  /// The crown came up through a touch on the edge, not through scrolling:
+  /// then the whole edge scrubs, not only the gear.
+  bool _touchActivated = false;
   bool _dragging = false;
   double _railHeight = 0;
   double? _fingerY;
@@ -112,6 +123,8 @@ class _ScrollCrownState extends State<ScrollCrown> {
   double _dragStartY = 0;
   double _dragStartPixels = 0;
   double _dragStartPhase = 0;
+  double _dragMinExtent = 0;
+  double _dragMaxExtent = 0;
 
   @override
   void dispose() {
@@ -163,6 +176,7 @@ class _ScrollCrownState extends State<ScrollCrown> {
       if (_active) _update(() => _active = false);
       return false;
     }
+    _touchActivated = false;
     _update(() => _fingerY = null);
     _show();
     return false;
@@ -180,18 +194,37 @@ class _ScrollCrownState extends State<ScrollCrown> {
       if (mounted && !_dragging) {
         setState(() {
           _active = false;
+          _touchActivated = false;
           _fingerY = null;
         });
       }
     });
   }
 
+  /// Whether a touch at rail height [y] takes a vertical drag: on the gear's
+  /// spot (also while hidden, so the first drag after it faded still grabs
+  /// it), or anywhere on the edge once a touch on the edge brought it up.
+  bool _claims(double y) {
+    if (_active && _touchActivated) return true;
+    final top = _gearTop();
+    return y >= top - ScrollCrown.gearHitMargin && y <= top + ScrollCrownGear.height + ScrollCrown.gearHitMargin;
+  }
+
+  void _onEdgeDown(PointerDownEvent _) {
+    if (!_active) _touchActivated = true;
+    _show();
+  }
+
   void _onDragStart(DragStartDetails details) {
     final position = _position;
-    if (position == null) return;
+    if (position == null || !position.hasContentDimensions) return;
     _dragging = true;
     _dragStartY = details.localPosition.dy;
     _dragStartPixels = position.pixels;
+    // Pinned for the whole drag: a page that loads more items mid-drag would
+    // otherwise stretch the mapping and jump the view.
+    _dragMinExtent = position.minScrollExtent;
+    _dragMaxExtent = position.maxScrollExtent;
     _dragStartPhase = _phase;
     _ratchet.reset();
     setState(() => _fingerY = details.localPosition.dy);
@@ -202,15 +235,14 @@ class _ScrollCrownState extends State<ScrollCrown> {
     final position = _position;
     if (!_dragging || position == null || !position.hasContentDimensions || _railHeight <= 0) return;
     final delta = details.localPosition.dy - _dragStartY;
-    position.jumpTo(
-      ScrollCrown.offsetForDrag(
-        startPixels: _dragStartPixels,
-        dragDelta: delta,
-        railHeight: _railHeight,
-        minExtent: position.minScrollExtent,
-        maxExtent: position.maxScrollExtent,
-      ),
+    final target = ScrollCrown.offsetForDrag(
+      startPixels: _dragStartPixels,
+      dragDelta: delta,
+      railHeight: _railHeight,
+      minExtent: _dragMinExtent,
+      maxExtent: _dragMaxExtent,
     );
+    position.jumpTo(target.clamp(position.minScrollExtent, position.maxScrollExtent));
     setState(() {
       _fingerY = details.localPosition.dy;
       if (!prefersReducedMotion(context)) _phase = _dragStartPhase + CrownRatchet.phaseFor(delta);
@@ -284,23 +316,31 @@ class _ScrollCrownState extends State<ScrollCrown> {
             clipBehavior: Clip.none,
             children: [
               Positioned.fill(
-                // Touching the edge brings the crown up; while it shows, the
-                // edge takes vertical drags. Taps and horizontal drags still
-                // reach the content underneath (translucent, no tap handler).
+                // Touching the edge brings the crown up. The drag recognizer is
+                // always there, so the first touch already counts, but it only
+                // joins the arena when [_claims] says so; other vertical drags,
+                // taps and horizontal drags reach the content underneath
+                // (translucent, no tap handler).
                 child: Listener(
                   behavior: HitTestBehavior.translucent,
-                  onPointerDown: (_) => _show(),
-                  child: _active
-                      ? GestureDetector(
-                          key: const ValueKey('scroll_crown_rail'),
-                          behavior: HitTestBehavior.translucent,
-                          dragStartBehavior: DragStartBehavior.down,
-                          onVerticalDragStart: _onDragStart,
-                          onVerticalDragUpdate: _onDragUpdate,
-                          onVerticalDragEnd: (_) => _onDragEnd(),
-                          onVerticalDragCancel: _onDragEnd,
-                        )
-                      : const SizedBox.expand(),
+                  onPointerDown: _onEdgeDown,
+                  child: RawGestureDetector(
+                    key: const ValueKey('scroll_crown_rail'),
+                    behavior: HitTestBehavior.translucent,
+                    gestures: {
+                      _RailDragRecognizer: GestureRecognizerFactoryWithHandlers<_RailDragRecognizer>(
+                        () => _RailDragRecognizer(claims: _claims),
+                        (recognizer) => recognizer
+                          ..claims = _claims
+                          ..dragStartBehavior = DragStartBehavior.down
+                          ..onStart = _onDragStart
+                          ..onUpdate = _onDragUpdate
+                          ..onCancel = _onDragEnd
+                          ..onEnd = ((_) => _onDragEnd()),
+                      ),
+                    },
+                    child: const SizedBox.expand(),
+                  ),
                 ),
               ),
               Positioned(
@@ -346,4 +386,15 @@ class _ScrollCrownState extends State<ScrollCrown> {
       ),
     );
   }
+}
+
+/// A vertical drag recognizer that only takes pointers [claims] accepts,
+/// judged at pointer down in rail coordinates.
+class _RailDragRecognizer extends VerticalDragGestureRecognizer {
+  _RailDragRecognizer({required this.claims});
+
+  bool Function(double y) claims;
+
+  @override
+  bool isPointerAllowed(PointerEvent event) => claims(event.localPosition.dy) && super.isPointerAllowed(event);
 }
