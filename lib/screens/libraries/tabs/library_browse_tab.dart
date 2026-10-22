@@ -291,6 +291,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   /// invalidate in-flight filter/sort fetches without touching item pagination.
   int _contentRequestId = 0;
   int _firstCharactersRequestId = 0;
+  AbortController? _firstCharactersAbort;
   static const int _fetchSize = 200;
   static const double _phoneScrubberGridPadding = 24;
   static const int _jellyfinFetchSize = 72;
@@ -310,8 +311,11 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
         if (serverId == null) throw StateError('Plex library ${library.id} is missing a serverId');
         return manager.getPlexClient(serverId)!;
       },
+      clientProvider: () => context.getMediaClientForLibrary(library),
       libraryKey: library.id,
+      libraryKind: library.kind,
       isShared: library.isShared,
+      isPhone: _isPhone(context),
     );
   }
 
@@ -362,6 +366,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     _scrollActivityTimer?.cancel();
     _scrollIdleTimer?.cancel();
     _alphaUpdateTimer?.cancel();
+    _firstCharactersAbort?.abort();
     _innerPosition?.removeListener(_onScrollChanged);
     // _innerPosition is owned by the inner CustomScrollView's Scrollable.
     // The header outlives this tab and holds our focus nodes, so hand it back
@@ -767,16 +772,22 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     }
   }
 
+  /// The listing the grid pages through. The phone scrubber's title index is
+  /// built from the same query, so its offsets line up with the grid.
+  LibraryQuery _browseQuery({required int offset, required int limit}) {
+    final filterParams = _buildFilterParams();
+    return libraryQueryFromPlexMap(
+      map: filterParams,
+      libraryKind: filterParams.containsKey('type') ? null : widget.library.kind,
+      offset: offset,
+      limit: limit,
+    );
+  }
+
   @override
   Future<LibraryPage<MediaItem>> fetchPage(int start, int size, AbortController? abort) async {
     final client = context.getMediaClientForLibrary(widget.library);
-    final filterParams = _buildFilterParams();
-    final query = libraryQueryFromPlexMap(
-      map: filterParams,
-      libraryKind: filterParams.containsKey('type') ? null : widget.library.kind,
-      offset: start,
-      limit: size,
-    );
+    final query = _browseQuery(offset: start, limit: size);
     return client.fetchLibraryPagedContent(
       widget.library.id,
       query: query,
@@ -1208,19 +1219,41 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     isFolderGrouping: _selectedGrouping == 'folders',
     jellyfinAlphaPrefix: _jellyfinAlphaPrefix,
     isPhone: _isPhone(context),
+    indexItemCount: _alphaHelper.totalItemCount,
   );
 
-  /// Fetch first characters for the current library/filter state
+  /// A card's menu changed the listing (removed, renamed, watched): the grid
+  /// and its letter offsets have to follow together.
+  void _reloadItemsAndIndex() {
+    unawaited(_loadItems());
+    unawaited(_loadFirstCharacters());
+  }
+
+  /// Fetch first characters for the current library/filter state.
+  ///
+  /// The previous index no longer describes the listing, so it is dropped
+  /// first and its requests are aborted: a stale rail would jump to offsets of
+  /// a list that is not on screen any more.
   Future<void> _loadFirstCharacters({int? requestId}) async {
     final currentRequestId = requestId ?? ++_firstCharactersRequestId;
     final filterParams = Map<String, String>.from(_selectedFilters);
     final typeId = _getGroupingTypeId();
+    _firstCharactersAbort?.abort();
+    final abort = _firstCharactersAbort = AbortController();
+    if (_firstCharacters.isNotEmpty || _alphaHelper.totalItemCount != 0) {
+      setState(() {
+        _firstCharacters = [];
+        _alphaHelper = AlphaJumpHelper(const []);
+      });
+    }
 
     try {
       final result = await _alphaStrategy.loadCharacters(
         filters: filterParams,
         typeId: typeId.isNotEmpty ? int.tryParse(typeId) : null,
         descending: _isTitleSortDescending,
+        query: _browseQuery(offset: 0, limit: 0),
+        abort: abort,
       );
       if (!mounted || currentRequestId != _firstCharactersRequestId) return;
       setState(() {
@@ -2019,7 +2052,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
       onNavigateRight: navigateRight,
       onBack: widget.onBack,
       onFocusChange: (hasFocus) => trackGridItemFocus(index, hasFocus),
-      onListRefresh: _loadItems,
+      onListRefresh: _reloadItemsAndIndex,
       fullBleedImage: fullBleedImage,
       automationId: AutomationIds.libraryGridItem,
       automationInstance: '$index',

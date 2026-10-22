@@ -1,7 +1,12 @@
 import '../../media/library_first_character.dart';
+import '../../media/library_query.dart';
 import '../../media/media_backend.dart';
+import '../../media/media_kind.dart';
+import '../../media/media_server_client.dart';
 import '../../services/plex_client.dart';
+import '../../utils/media_server_http_client.dart' show AbortController;
 import 'alpha_jump_helper.dart';
+import 'title_index_alpha_bar_strategy.dart';
 
 /// Backend-specific alpha-jump-bar behaviour.
 ///
@@ -13,7 +18,9 @@ import 'alpha_jump_helper.dart';
 /// Jellyfin libraries have no per-letter count endpoint. The bar synthesises
 /// the 27-letter alphabet (`#`, `A`–`Z`) and acts as a name-prefix filter
 /// that refetches the page when the user picks a letter (matches the JF web
-/// client's UX).
+/// client's UX). On a phone, Jellyfin, local folders and Pleya Server use
+/// [TitleIndexAlphaBarStrategy] instead: a scroll scrubber over an index built
+/// from title counts or from the complete ordered listing.
 abstract class LibraryAlphaBarStrategy {
   /// Whether the bar should be rendered at all. Implementations consider
   /// total item count, sort key, and current filter state.
@@ -24,15 +31,20 @@ abstract class LibraryAlphaBarStrategy {
     required bool isFolderGrouping,
     required String? jellyfinAlphaPrefix,
     required bool isPhone,
+    required int indexItemCount,
   });
 
-  /// Load the first-character buckets for the current filter state.
+  /// Load the first-character buckets for the current filter state. [query] is
+  /// the grid's own listing query; Plex ignores it and uses [filters]. The
+  /// caller triggers [abort] when it leaves the screen or starts a newer load.
   /// Returns the new helper plus the synthesised character list — the caller
   /// stores both in widget state.
   Future<({List<LibraryFirstCharacter> chars, AlphaJumpHelper helper})> loadCharacters({
     required Map<String, String> filters,
     required int? typeId,
     required bool descending,
+    required LibraryQuery query,
+    AbortController? abort,
   });
 
   /// Letter to highlight given the current scroll-derived index. Plex maps
@@ -55,11 +67,18 @@ abstract class LibraryAlphaBarStrategy {
   });
 
   /// Construct the right strategy for [backend].
+  ///
+  /// [isPhone] only matters for the non-Plex backends: the phone scrubber gets
+  /// a [TitleIndexAlphaBarStrategy], every other form factor keeps the
+  /// behaviour it had.
   factory LibraryAlphaBarStrategy.forBackend(
     MediaBackend backend, {
     required PlexClient Function() plexClientProvider,
+    required MediaServerClient Function() clientProvider,
     required String libraryKey,
+    required MediaKind? libraryKind,
     required bool isShared,
+    required bool isPhone,
   }) {
     return switch (backend) {
       MediaBackend.plex => PlexAlphaBarStrategy(
@@ -67,12 +86,23 @@ abstract class LibraryAlphaBarStrategy {
         libraryKey: libraryKey,
         isShared: isShared,
       ),
+      MediaBackend.jellyfin when isPhone => TitleIndexAlphaBarStrategy.counted(
+        clientProvider: clientProvider,
+        libraryKey: libraryKey,
+        libraryKind: libraryKind,
+      ),
       MediaBackend.jellyfin => const JellyfinAlphaBarStrategy(),
-      // Pleya Protocol v1 has no first-character endpoint and no name-prefix
-      // filter, so there is nothing to drive a jump bar with. Synthesising one
-      // client-side over a cursored list would scroll to the wrong place on
-      // every library larger than one page. See G13 and the alpha-bar row in
-      // docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md.
+      // Neither has a first-character endpoint. The phone builds the index
+      // from the complete ordered listing and drops it when the order does not
+      // follow first letters (G13, docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md).
+      MediaBackend.local || MediaBackend.pleyaServer when isPhone => TitleIndexAlphaBarStrategy.fromListing(
+        clientProvider: clientProvider,
+        libraryKey: libraryKey,
+        libraryKind: libraryKind,
+        sortTitleOf: backend == MediaBackend.pleyaServer
+            ? (item) => item.titleSort ?? item.title ?? ''
+            : (item) => item.title ?? '',
+      ),
       MediaBackend.local || MediaBackend.pleyaServer => const NoAlphaBarStrategy(),
     };
   }
@@ -96,6 +126,7 @@ class PlexAlphaBarStrategy implements LibraryAlphaBarStrategy {
     required bool isFolderGrouping,
     required String? jellyfinAlphaPrefix,
     required bool isPhone,
+    required int indexItemCount,
   }) {
     if (isFolderGrouping) return false;
     if (loadedCharacterCount < 6 || totalItemCount < 80) return false;
@@ -108,6 +139,8 @@ class PlexAlphaBarStrategy implements LibraryAlphaBarStrategy {
     required Map<String, String> filters,
     required int? typeId,
     required bool descending,
+    required LibraryQuery query,
+    AbortController? abort,
   }) async {
     if (isShared) {
       // Shared libraries don't support first-characters.
@@ -181,6 +214,7 @@ class JellyfinAlphaBarStrategy implements LibraryAlphaBarStrategy {
     required bool isFolderGrouping,
     required String? jellyfinAlphaPrefix,
     required bool isPhone,
+    required int indexItemCount,
   }) {
     if (isPhone) return false;
     if (isFolderGrouping) return false;
@@ -193,6 +227,8 @@ class JellyfinAlphaBarStrategy implements LibraryAlphaBarStrategy {
     required Map<String, String> filters,
     required int? typeId,
     required bool descending,
+    required LibraryQuery query,
+    AbortController? abort,
   }) async {
     final synthetic = [for (final l in _letters) LibraryFirstCharacter(key: l, title: l, size: 1)];
     return (chars: synthetic, helper: AlphaJumpHelper(synthetic, descending: descending));
@@ -232,6 +268,7 @@ class NoAlphaBarStrategy implements LibraryAlphaBarStrategy {
     required bool isFolderGrouping,
     required String? jellyfinAlphaPrefix,
     required bool isPhone,
+    required int indexItemCount,
   }) => false;
 
   @override
@@ -239,6 +276,8 @@ class NoAlphaBarStrategy implements LibraryAlphaBarStrategy {
     required Map<String, String> filters,
     required int? typeId,
     required bool descending,
+    required LibraryQuery query,
+    AbortController? abort,
   }) async {
     return (chars: <LibraryFirstCharacter>[], helper: AlphaJumpHelper(const []));
   }
