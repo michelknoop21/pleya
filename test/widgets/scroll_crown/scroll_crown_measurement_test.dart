@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show debugPrintSynchronously;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/library_first_character.dart';
@@ -15,8 +16,10 @@ String _title(int index) => 'Titel ${index.toString().padLeft(5, '0')}';
 /// A fast approach deliberately overshoots before four slow 1 px corrections.
 List<({double y, int ms})> _motion(int approachMs) => [
   (y: 360, ms: 0),
-  for (var step = 1; step <= 80; step++) (y: 360 + step * 2.0, ms: step * approachMs),
-  for (var step = 1; step <= 4; step++) (y: 520 - step.toDouble(), ms: 80 * approachMs + step * 80),
+  for (var step = 1; step <= 80; step++)
+    (y: 360 + step * 2.0, ms: step * approachMs),
+  for (var step = 1; step <= 4; step++)
+    (y: 520 - step.toDouble(), ms: 80 * approachMs + step * 80),
 ];
 
 class _Library extends StatefulWidget {
@@ -32,10 +35,12 @@ class _Library extends StatefulWidget {
 class _LibraryState extends State<_Library> {
   final controller = ScrollController();
   final ticks = <Map<String, Object>>[];
-  Duration now = Duration.zero;
+  Duration Function()? clock;
+  Duration get now => clock?.call() ?? Duration.zero;
   int? selected;
 
-  double get fraction => controller.hasClients && controller.position.maxScrollExtent > 0
+  double get fraction =>
+      controller.hasClients && controller.position.maxScrollExtent > 0
       ? controller.offset / controller.position.maxScrollExtent
       : 0;
 
@@ -79,13 +84,24 @@ class _LibraryState extends State<_Library> {
                       right: 0,
                       child: AlphaScrollHandle(
                         firstCharacters: [
-                          LibraryFirstCharacter(key: 'A', title: 'A', size: widget.count ~/ 2),
-                          LibraryFirstCharacter(key: 'B', title: 'B', size: widget.count - widget.count ~/ 2),
+                          LibraryFirstCharacter(
+                            key: 'A',
+                            title: 'A',
+                            size: widget.count ~/ 2,
+                          ),
+                          LibraryFirstCharacter(
+                            key: 'B',
+                            title: 'B',
+                            size: widget.count - widget.count ~/ 2,
+                          ),
                         ],
                         currentLetter: letter,
                         readScrollFraction: () => fraction,
-                        onScrub: (value) => controller.jumpTo(value * controller.position.maxScrollExtent),
-                        onJump: (_) => throw StateError('A drag must not jump by letter'),
+                        onScrub: (value) => controller.jumpTo(
+                          value * controller.position.maxScrollExtent,
+                        ),
+                        onJump: (_) =>
+                            throw StateError('A drag must not jump by letter'),
                         clock: () => now,
                         onToothTick: () => tick('tooth'),
                         onLetterTick: () => tick('letter'),
@@ -125,12 +141,12 @@ Future<List<Map<String, Object>>> _replay(
   state.selected = null;
   state.ticks.clear();
   final epoch = tester.binding.clock.now();
-  final gesture = await tester.startGesture(
-    Offset(378, path.first.y),
-    timeStamp: Duration.zero,
-  );
+  state.clock = () => tester.binding.clock.now().difference(epoch);
+  final gesture = await tester.createGesture();
+  await gesture.down(Offset(378, path.first.y), timeStamp: Duration.zero);
   void sample(double y, String phase) => samples.add({
     'us': state.now.inMicroseconds,
+    'x': 378.0,
     'y': y,
     'phase': phase,
     'pixels': state.controller.offset,
@@ -145,25 +161,24 @@ Future<List<Map<String, Object>>> _replay(
     // Advance frame time, pointer time and haptic clock together.
     final delay = elapsed - tester.binding.clock.now().difference(epoch);
     if (delay > Duration.zero) await tester.pump(delay);
-    state.now = elapsed;
     await gesture.moveTo(Offset(378, point.y), timeStamp: elapsed);
     await tester.pump();
     sample(point.y, index <= 80 ? 'approach' : 'correction');
   }
+  final ticksBeforeRelease = state.ticks.length;
   await gesture.up(timeStamp: state.now);
   await tester.pump();
   sample(path.last.y, 'up');
+  await tester.pump(const Duration(milliseconds: 200));
+  final ticksAfterIdle = state.ticks.length;
   // Concrete choose task, using an actually visible title without ensureVisible.
   final target = count ~/ 2;
   final choice = find.text(_title(target)).hitTestable();
-  expect(choice, findsOneWidget, reason: 'choose the middle numbered title after correcting');
-  await tester.tap(choice);
-  await tester.pump();
-  expect(state.selected, target);
-  final tickCount = state.ticks.length;
-  expect(state.ticks.where((tick) => tick['kind'] == 'tooth'), isNotEmpty);
-  await tester.pump(const Duration(milliseconds: 200));
-  expect(state.ticks.length, tickCount, reason: 'haptics must not queue after release');
+  final canChoose = choice.evaluate().length == 1;
+  if (canChoose) {
+    await tester.tap(choice);
+    await tester.pump();
+  }
   debugPrintSynchronously(
     'CROWN_BASELINE ${jsonEncode({
       'schema': 1,
@@ -174,10 +189,25 @@ Future<List<Map<String, Object>>> _replay(
       'rowHeight': _rowHeight,
       'approachMsPerSample': approachMs,
       'target': _title(target),
-      'selected': _title(state.selected!),
+      'selected': state.selected == null ? null : _title(state.selected!),
+      'targetVisible': canChoose,
+      'ticksBeforeRelease': ticksBeforeRelease,
+      'ticksAfterIdle': ticksAfterIdle,
       'samples': samples,
       'ticks': state.ticks,
     })}',
+  );
+  expect(
+    canChoose,
+    isTrue,
+    reason: 'choose the middle numbered title after correcting',
+  );
+  expect(state.selected, target);
+  expect(state.ticks.where((tick) => tick['kind'] == 'tooth'), isNotEmpty);
+  expect(
+    ticksAfterIdle,
+    ticksBeforeRelease,
+    reason: 'haptics must not queue after release',
   );
   await tester.pumpWidget(const SizedBox());
   return samples;
@@ -185,31 +215,50 @@ Future<List<Map<String, Object>>> _replay(
 
 void main() {
   for (final count in [100, 1000, 10000]) {
-    testWidgets('baseline: $count numbered titles, both crowns, three replay speeds', (tester) async {
-      tester.view.physicalSize = _screen;
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
-      List<Map<String, Object>>? reference;
-      for (final alphabet in [false, true]) {
-        for (final approachMs in [5, 20, 80]) {
-          final samples = await _replay(tester, count: count, alphabet: alphabet, approachMs: approachMs);
-          if (reference != null) {
-            for (var index = 0; index < samples.length; index++) {
-              expect(
-                samples[index]['pixels'] as double,
-                closeTo(reference[index]['pixels'] as double, 0.01),
-                reason: 'baseline position at sample $index: speed and label do not change the drag model',
-              );
+    testWidgets(
+      'baseline: $count numbered titles, both crowns, three replay speeds',
+      (tester) async {
+        tester.view.physicalSize = _screen;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        List<Map<String, Object>>? reference;
+        for (final alphabet in [false, true]) {
+          for (final approachMs in [5, 20, 80]) {
+            final samples = await _replay(
+              tester,
+              count: count,
+              alphabet: alphabet,
+              approachMs: approachMs,
+            );
+            if (reference != null) {
+              for (var index = 0; index < samples.length; index++) {
+                expect(
+                  samples[index]['pixels'] as double,
+                  closeTo(reference[index]['pixels'] as double, 0.01),
+                  reason:
+                      'baseline position at sample $index: speed and label do not change the drag model',
+                );
+              }
             }
+            reference ??= samples;
+            final approach = samples
+                .where((sample) => sample['phase'] == 'approach')
+                .last;
+            final corrected = samples
+                .where((sample) => sample['phase'] == 'correction')
+                .last;
+            expect(
+              corrected['pixels'] as double,
+              lessThan(approach['pixels'] as double),
+            );
+            expect(corrected['pixels'] as double, greaterThan(0));
+            expect(
+              corrected['pixels'] as double,
+              lessThan(corrected['maxPixels'] as double),
+            );
           }
-          reference ??= samples;
-          final approach = samples.where((sample) => sample['phase'] == 'approach').last;
-          final corrected = samples.where((sample) => sample['phase'] == 'correction').last;
-          expect(corrected['pixels'] as double, lessThan(approach['pixels'] as double));
-          expect(corrected['pixels'] as double, greaterThan(0));
-          expect(corrected['pixels'] as double, lessThan(corrected['maxPixels'] as double));
         }
-      }
-    });
+      },
+    );
   }
 }
