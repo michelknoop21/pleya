@@ -11,7 +11,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_ambient_background.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_score_row.dart';
-import 'package:pleya/screens/media_detail/mobile/light_ink_plate.dart';
+import 'package:pleya/screens/media_detail/mobile/detail_dark_style.dart';
 import 'package:pleya/screens/media_detail/mobile/mobile_poster_hero.dart';
 import 'package:pleya/screens/media_detail/mobile_detail_hero.dart';
 import 'package:pleya/theme/mono_theme.dart';
@@ -129,11 +129,10 @@ void main() {
       expect(title.style?.fontWeight, FontWeight.bold);
     });
 
-    testWidgets('light theme: the title text is dark ink on a plate', (tester) async {
-      final theme = monoTheme(dark: false);
-      await pumpArt(tester, theme: theme);
-      expect(tester.widget<Text>(find.text('Puss in Boots')).style?.color, theme.colorScheme.onSurface);
-      expect(find.ancestor(of: find.text('Puss in Boots'), matching: find.byType(LightInkPlate)), findsOneWidget);
+    testWidgets('light app theme: the page theme keeps the title white, no plate behind it', (tester) async {
+      await pumpArt(tester, theme: mobileDetailTheme(monoTheme(dark: false)));
+      expect(tester.widget<Text>(find.text('Puss in Boots')).style?.color, Colors.white);
+      expect(find.byType(BackdropFilter), findsNothing);
     });
   });
 
@@ -157,7 +156,7 @@ void main() {
     expect(find.byType(ShaderMask), findsNothing);
   });
 
-  testWidgets('poster-only: 640 high at 402 wide, poster starts under the back/more bar, no logo or title over it', (
+  testWidgets('poster-only: 640 high at 402 wide, poster runs from the very top, no logo or title over it', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(402, 900);
@@ -190,12 +189,12 @@ void main() {
         ),
       ),
     );
-    // The hero keeps its 640 so the actions stay on the first screen; the
-    // poster starts under the status bar (62) and the back/more bar (60), so
-    // the title art at its top is not covered by the buttons.
+    // The hero keeps its 640 so the actions stay on the first screen; since
+    // variant B the poster fills the screen from the top edge, under the
+    // status bar and the back/more buttons.
     expect(tester.getSize(find.byType(MobilePosterHero)).height, 640);
-    expect(tester.getTopLeft(find.byType(ShaderMask)).dy, 62 + 60);
-    expect(tester.getSize(find.byType(ShaderMask)).height, 640 - 62 - 60);
+    expect(tester.getTopLeft(find.byType(ShaderMask)).dy, 0);
+    expect(tester.getSize(find.byType(ShaderMask)).height, 640);
     expect(tester.widget<ShaderMask>(find.byType(ShaderMask)).blendMode, BlendMode.dstIn);
     expect(find.text('2010'), findsOneWidget);
     expect(find.text('Animation, Fantasy'), findsOneWidget);
@@ -242,7 +241,7 @@ void main() {
 
   // Light theme: the poster fades into a near-white page, so the meta line,
   // the rating frame and the score labels over the fade must be dark ink.
-  group('hero foreground follows the theme', () {
+  group('hero foreground is white on the dark page', () {
     final item = MediaItem(
       id: 'm',
       backend: MediaBackend.jellyfin,
@@ -287,12 +286,11 @@ void main() {
       );
     }
 
-    testWidgets('light theme: meta, rating and scores are dark ink', (tester) async {
-      final theme = monoTheme(dark: false);
-      final c = await pumpPoster(tester, theme);
-      expect(c.meta, theme.colorScheme.onSurface);
-      expect(c.rating, theme.colorScheme.onSurface);
-      expect(c.score, theme.colorScheme.onSurface);
+    testWidgets('light app theme: the page theme keeps meta, rating and scores white', (tester) async {
+      final c = await pumpPoster(tester, mobileDetailTheme(monoTheme(dark: false)));
+      expect(c.meta, Colors.white);
+      expect(c.rating, Colors.white);
+      expect(c.score, Colors.white);
     });
 
     for (final oled in [false, true]) {

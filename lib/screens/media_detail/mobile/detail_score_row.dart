@@ -3,10 +3,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../i18n/strings.g.dart';
 import '../../../media/external_rating.dart';
-import 'light_ink_plate.dart';
+import 'detail_dark_style.dart';
 
 /// The outside scores under the hero (D-01): icon plus value per source,
-/// centred, on its own plate in the light theme. Not tappable (DEC-140).
+/// centred, in one dark pill (Plex look). Not tappable (DEC-140).
 class DetailScoreRow extends StatelessWidget {
   const DetailScoreRow({super.key, required this.ratings});
 
@@ -15,7 +15,7 @@ class DetailScoreRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (ratings.isEmpty) return const SizedBox.shrink();
-    return LightInkPlate(
+    return DetailPill(
       child: Wrap(
         alignment: WrapAlignment.center,
         spacing: 14,

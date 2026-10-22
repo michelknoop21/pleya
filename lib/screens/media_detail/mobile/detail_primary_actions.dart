@@ -1,26 +1,15 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 
 import '../../../automation/automation_ids.dart';
 import '../../../automation/automation_node.dart';
 import '../../../i18n/strings.g.dart';
-import '../../../theme/glass/glass_settings.dart';
-import '../mobile_detail_hero.dart';
-import 'light_ink_plate.dart';
+import 'detail_dark_style.dart';
 
-/// Light theme play capsule: translucent page-coloured glass in the same style as
-/// [LightInkPlate], so the artwork shows through the blur.
-const kLightPlayGlassTokens = GlassTokens(
-  blur: 12,
-  saturation: 1.5,
-  dim: 1,
-  tint: Color.fromRGBO(255, 255, 255, kLightPlayGlassAlpha),
-  edge: 0,
-);
+/// Fill of the solid play button: white in every theme (Plex look).
+const Color kDetailPlayFill = Colors.white;
 
-/// Tint alpha of the light play capsule and the restart circle.
-const double kLightPlayGlassAlpha = 0.3;
+/// Label and icon colour on the play button.
+const Color kDetailPlayInk = Colors.black;
 
 /// One round icon under the play button (D-01 `.acts`).
 class DetailActionItem {
@@ -37,7 +26,7 @@ class DetailActionItem {
   final IconData icon;
   final String label;
 
-  /// Bekeken or on the kijklijst: a white circle with a dark glyph.
+  /// Bekeken or on the kijklijst. Read out as selected; the glyph shows it.
   final bool active;
   final VoidCallback onTap;
 
@@ -46,7 +35,10 @@ class DetailActionItem {
 }
 
 /// The play button, "play from start" beside it while there is progress, and
-/// the icon row below (mockups D-01 and D-03, DEC-140).
+/// the icon row below (mockups D-01 and D-03, DEC-140), in the Plex look:
+/// a solid white full-width button and loose dark translucent circles with
+/// their label underneath, no plate behind them. The page around it is always
+/// dark, so none of this follows the light theme.
 class DetailPrimaryActions extends StatelessWidget {
   const DetailPrimaryActions({
     super.key,
@@ -55,7 +47,6 @@ class DetailPrimaryActions extends StatelessWidget {
     this.onPlay,
     this.onPlayFromStart,
     required this.actions,
-    this.glass = false,
   });
 
   final String playLabel;
@@ -68,52 +59,33 @@ class DetailPrimaryActions extends StatelessWidget {
   final VoidCallback? onPlayFromStart;
   final List<DetailActionItem> actions;
 
-  /// Liquid Glass on: the play button is the prominent glass capsule (LG-02).
-  final bool glass;
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final onSurface = theme.colorScheme.onSurface;
-    final dark = theme.brightness == Brightness.dark;
-    // The page colour: the capsule inverts with the theme.
-    final ink = theme.scaffoldBackgroundColor;
     final detail = playDetail;
-    final label = detail == null ? playLabel : '$playLabel $detail';
-    final Widget play = glass
-        ? GlassCapsuleButton(
-            key: const Key('media-detail.play'),
-            prominent: true,
-            // Light theme: the same low tint as the plates, not the white plate.
-            tokens: dark ? null : kLightPlayGlassTokens,
-            icon: Icons.play_arrow_rounded,
-            label: label,
-            onPressed: onPlay,
-          )
-        : SizedBox(
-            key: const Key('media-detail.play'),
-            height: 52,
-            child: FilledButton.icon(
-              onPressed: onPlay,
-              style: FilledButton.styleFrom(backgroundColor: onSurface, foregroundColor: ink),
-              icon: const Icon(Icons.play_arrow_rounded),
-              label: Text.rich(
+    final Widget play = SizedBox(
+      key: const Key('media-detail.play'),
+      height: 52,
+      child: FilledButton.icon(
+        onPressed: onPlay,
+        style: FilledButton.styleFrom(backgroundColor: kDetailPlayFill, foregroundColor: kDetailPlayInk),
+        icon: const Icon(Icons.play_arrow_rounded, size: 28),
+        label: Text.rich(
+          TextSpan(
+            text: playLabel,
+            children: [
+              if (detail != null)
                 TextSpan(
-                  text: playLabel,
-                  children: [
-                    if (detail != null)
-                      TextSpan(
-                        text: ' $detail',
-                        style: TextStyle(fontWeight: .w400, color: ink.withValues(alpha: 0.62)),
-                      ),
-                  ],
+                  text: ' $detail',
+                  style: TextStyle(fontWeight: .w400, color: kDetailPlayInk.withValues(alpha: 0.62)),
                 ),
-                maxLines: 1,
-                overflow: .ellipsis,
-                style: const TextStyle(fontSize: 17, fontWeight: .w700),
-              ),
-            ),
-          );
+            ],
+          ),
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: const TextStyle(fontSize: 17, fontWeight: .w700),
+        ),
+      ),
+    );
 
     return Column(
       crossAxisAlignment: .stretch,
@@ -131,7 +103,7 @@ class DetailPrimaryActions extends StatelessWidget {
                 role: 'button',
                 child: Tooltip(
                   message: t.mediaMenu.playFromBeginning,
-                  child: _RestartCircle(dark: dark, onTap: onPlayFromStart!),
+                  child: _RestartCircle(onTap: onPlayFromStart!),
                 ),
               ),
             ],
@@ -139,14 +111,9 @@ class DetailPrimaryActions extends StatelessWidget {
         ),
         if (actions.isNotEmpty) ...[
           const SizedBox(height: 22),
-          // Light theme: circles and labels share one plate over the glow.
-          LightInkPlate(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-            radius: 20,
-            child: Row(
-              crossAxisAlignment: .start,
-              children: [for (final action in actions) Expanded(child: _ActionButton(action: action))],
-            ),
+          Row(
+            crossAxisAlignment: .start,
+            children: [for (final action in actions) Expanded(child: _ActionButton(action: action))],
           ),
         ],
       ],
@@ -161,8 +128,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final onSurface = theme.colorScheme.onSurface;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     // `media-detail.action.watched` becomes `media-detail.action[watched]`.
     final key = action.key;
     return AutomationNode(
@@ -182,27 +148,22 @@ class _ActionButton extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
             child: Column(
               children: [
+                // The state shows in the glyph (a filled bookmark or check),
+                // not in the circle, the way Plex does it.
                 DecoratedBox(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: action.active ? onSurface : onSurface.withValues(alpha: 0.08),
+                  decoration: const ShapeDecoration(
+                    color: kDetailPillColor,
+                    shape: CircleBorder(side: BorderSide(color: kDetailPillEdge)),
                   ),
-                  child: SizedBox.square(
-                    dimension: 46,
-                    child: Icon(
-                      action.icon,
-                      size: 22,
-                      color: action.active ? theme.scaffoldBackgroundColor : onSurface,
-                    ),
-                  ),
+                  child: SizedBox.square(dimension: 46, child: Icon(action.icon, size: 22, color: onSurface)),
                 ),
                 const SizedBox(height: 7),
                 Text(
                   action.label,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: .ellipsis,
                   textAlign: .center,
-                  style: TextStyle(fontSize: 11.5, height: 1.2, color: onSurface),
+                  style: TextStyle(fontSize: 11.5, height: 1.2, color: onSurface.withValues(alpha: 0.8)),
                 ),
               ],
             ),
@@ -213,35 +174,24 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-/// The round "play from start" button. Light theme: translucent blurred glass
-/// like [LightInkPlate]; dark and OLED keep the flat tint.
+/// The round "play from start" button beside the play button: dark and
+/// translucent like the action circles.
 class _RestartCircle extends StatelessWidget {
-  const _RestartCircle({required this.dark, required this.onTap});
+  const _RestartCircle({required this.onTap});
 
-  final bool dark;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final onSurface = theme.colorScheme.onSurface;
-    final button = Material(
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    return Material(
       key: const Key('media-detail.play-from-start'),
-      color: dark
-          ? onSurface.withValues(alpha: 0.14)
-          : theme.colorScheme.surface.withValues(alpha: kLightPlayGlassAlpha),
-      shape: const CircleBorder(),
+      color: kDetailPillColor,
+      shape: const CircleBorder(side: BorderSide(color: kDetailPillEdge)),
       clipBehavior: .antiAlias,
       child: InkWell(
         onTap: onTap,
         child: SizedBox.square(dimension: 52, child: Icon(Icons.replay_rounded, size: 23, color: onSurface)),
-      ),
-    );
-    if (dark) return button;
-    return ClipOval(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: kLightInkPlateSigma, sigmaY: kLightInkPlateSigma),
-        child: button,
       ),
     );
   }

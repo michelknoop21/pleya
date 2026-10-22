@@ -1,17 +1,21 @@
 /// The iPhone film page with Liquid Glass (Liquid Glass Task 7, mockup LG-02).
 ///
 /// On the real [MediaDetailScreen]: both glass settings open on the poster
-/// hero (DEC-140). Glass off paints no glass; glass on adds a prominent
-/// Resume capsule, a glass Download capsule and glass back/more circles. Then
-/// contrast of the glass buttons over the lightest real fixture (Big Buck
-/// Bunny), fake tier.
+/// hero (DEC-140). Glass off paints no glass; glass on only makes back and
+/// more glass circles, Resume stays the solid white button (Plex look,
+/// variant B). Then contrast of the back button over the lightest real
+/// fixture (Big Buck Bunny), fake tier.
 library;
 
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 import 'package:pleya/database/app_database.dart';
@@ -43,6 +47,7 @@ import 'package:pleya/services/watchlist/watchlist_repository.dart';
 import 'package:pleya/services/watchlist/watchlist_snapshot_store.dart';
 import 'package:pleya/theme/glass/glass_settings.dart';
 import 'package:pleya/theme/glass/glass_surface.dart';
+import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:provider/provider.dart';
 
@@ -145,6 +150,7 @@ Future<_CountingWatchlistSource> _pumpDetail(
   bool realTier = false,
   MediaServerClient? client,
   MediaItem? metadata,
+  ThemeData? theme,
 }) async {
   TvDetectionService.debugSetAppleTVOverride(false);
   await glassPhone(tester, glass: glass, realTier: realTier);
@@ -193,7 +199,7 @@ Future<_CountingWatchlistSource> _pumpDetail(
         ],
         child: MaterialApp(
           builder: withNoticeLayer(),
-          theme: glassPhoneTheme(),
+          theme: theme ?? glassPhoneTheme(),
           home: withProfileNavigationScope(child: MediaDetailScreen(metadata: metadata ?? _movie)),
         ),
       ),
@@ -237,26 +243,24 @@ void main() {
     expect(find.byKey(const Key('media-detail.action.rate')), findsOneWidget);
   });
 
-  testWidgets('glas aan: posterhero, prominente Resume en glazen terug/meer', (tester) async {
+  testWidgets('glas aan: posterhero tot de bovenrand, solide witte Resume en glazen terug/meer', (tester) async {
     final source = await _pumpDetail(tester, glass: true);
     expect(glassTierFor(tester.element(find.byType(MobilePosterHero))), GlassTier.fake);
 
-    // The hero is 640 high at the mockup's 402 wide; the poster inside it
-    // starts under the status bar and the back/more bar.
+    // The hero is 640 high at the mockup's 402 wide; since variant B the
+    // poster inside it fills the screen from the top edge.
     final hero = tester.getRect(find.byType(MobilePosterHero));
-    final barBottom = tester.view.padding.top / tester.view.devicePixelRatio + 60;
     expect(hero.top, 0);
     expect(hero.height, moreOrLessEquals(640 * hero.width / 402));
     final poster = tester.getRect(
       find.descendant(of: find.byType(MobilePosterHero), matching: find.byType(ShaderMask)),
     );
-    expect(poster.top, moreOrLessEquals(barBottom));
+    expect(poster.top, 0);
 
-    final resume = _surface(shape: StadiumBorder, prominent: true);
-    expect(resume, findsOneWidget);
+    // Resume is the solid white button, glass or not (Plex look).
+    final resume = find.byKey(const Key('media-detail.play'));
     expect(find.descendant(of: resume, matching: find.textContaining(t.common.resume)), findsOneWidget);
-    // Download is an icon in the action row now (D-01), not a glass capsule.
-    expect(_surface(shape: StadiumBorder, prominent: false), findsNothing);
+    expect(_surface(shape: StadiumBorder), findsNothing);
     expect(tester.getRect(resume).top, greaterThanOrEqualTo(hero.bottom));
     // Back and more are glass circles.
     expect(_surface(shape: CircleBorder), findsNWidgets(2));
@@ -354,33 +358,122 @@ void main() {
   });
 
   // B6: the real tier (liquid_glass_renderer) on the iPhone theme. Only
-  // proves the package widgets build on each surface; contrast is measured
-  // on tier fake above.
-  testWidgets('rooktest echt glas op iOS: knoppenrij en Resume', (tester) async {
+  // proves the package widgets build; since variant B only back and more are
+  // glass, Resume is the solid white button.
+  testWidgets('rooktest echt glas op iOS: terug/meer glas, Resume solide', (tester) async {
     await _pumpDetail(tester, glass: true, realTier: true);
     expect(glassTierFor(tester.element(find.byType(MobilePosterHero))), GlassTier.real);
     expect(tester.takeException(), isNull);
 
-    int layersAbove(Finder f) => find.ancestor(of: f, matching: find.byType(LiquidGlassLayer)).evaluate().length;
-    Finder platesIn(Finder layer) => find.descendant(of: layer, matching: find.byType(LiquidGlass));
-    final l10n = MaterialLocalizations.of(tester.element(find.byType(MobilePosterHero)));
-    final bar = find.ancestor(of: find.byTooltip(l10n.backButtonTooltip), matching: find.byType(LiquidGlassLayer));
-    final resume = find.ancestor(of: find.textContaining(t.common.resume), matching: find.byType(LiquidGlassLayer));
+    // Back and more build their glass; Resume sits on no glass plate.
+    expect(find.byType(LiquidGlassLayer), findsWidgets);
+    expect(find.ancestor(of: find.textContaining(t.common.resume), matching: find.byType(LiquidGlass)), findsNothing);
+    expect(
+      find.ancestor(of: find.textContaining(t.common.resume), matching: find.byType(LiquidGlassLayer)),
+      findsNothing,
+    );
+  });
 
-    // Each surface sits in exactly one layer of its own.
-    expect(layersAbove(find.byTooltip(l10n.backButtonTooltip)), 1);
-    expect(layersAbove(find.textContaining(t.common.resume)), 1);
-    expect(find.byType(LiquidGlassLayer), findsNWidgets(2));
-    // Back and more; Resume.
-    expect(platesIn(bar), findsNWidgets(2));
-    expect(platesIn(resume), findsOneWidget);
-    expect(find.byType(LiquidGlass), findsNWidgets(3));
+  // Variant B (Plex look): the page is always dark and the play button is
+  // solid white, also when the app runs the light theme.
+  for (final dark in [false, true]) {
+    testWidgets('variant B: pagina donker en witte hoofdknop bij app-thema dark=$dark', (tester) async {
+      await _pumpDetail(
+        tester,
+        glass: false,
+        theme: monoTheme(dark: dark).copyWith(platform: TargetPlatform.iOS),
+      );
+      final page = tester.element(find.byKey(const Key('media-detail.mobile-page')));
+      expect(Theme.of(page).brightness, Brightness.dark);
+      expect(Theme.of(page).colorScheme.onSurface, Colors.white);
+      expect(tester.widget<Text>(find.text('2008')).style?.color, Colors.white);
+      final play = tester.widget<FilledButton>(
+        find.descendant(of: find.byKey(const Key('media-detail.play')), matching: find.byType(FilledButton)),
+      );
+      expect(play.style?.backgroundColor?.resolve({}), Colors.white);
+      expect(play.style?.foregroundColor?.resolve({}), Colors.black);
+      // Back and more keep their light circles with a dark glyph.
+      final l10n = MaterialLocalizations.of(page);
+      final back = find.descendant(of: find.byTooltip(l10n.backButtonTooltip), matching: find.byType(Icon));
+      expect(tester.widget<Icon>(back).color, monoTheme(dark: false).colorScheme.onSurface);
+    });
+  }
+
+  // Visual evidence of variant B: the real page with a real picture as
+  // poster, art and glow, on the light app theme. Writes a PNG only when
+  // PLEX_SHOT_DIR is set; PLEX_SHOT_POSTER swaps the picture for another file.
+  testWidgets('variant B: schermafdruk van de echte pagina met een echte poster', (tester) async {
+    final dir = Platform.environment['PLEX_SHOT_DIR'];
+    // The image cache asks for a directory once real async work runs.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/path_provider'),
+      (_) async => Directory.systemTemp.path,
+    );
+    final posterFile = Platform.environment['PLEX_SHOT_POSTER'];
+    final poster = posterFile == null
+        ? _lightSceneImage
+        : await tester.runAsync(() async {
+            final codec = await ui.instantiateImageCodec(File(posterFile).readAsBytesSync());
+            return (await codec.getNextFrame()).image;
+          });
+    final movie = _movie.copyWith(
+      title: 'Rules of Engagement',
+      artPath: 'https://x/bbb_art.jpg',
+      year: 2007,
+      genres: const ['Comedy', 'Romance'],
+      contentRating: 'AL',
+      summary:
+          'A group of middle-aged people and friends deal with the challenges and difficulties of life while they '
+          'are in the different stages of relationships.',
+    );
+    final light = monoTheme(dark: false).copyWith(platform: TargetPlatform.iOS);
+    await _pumpDetail(tester, glass: false, metadata: movie, theme: light);
+
+    // Serve the picture from the image cache under the exact providers the
+    // page asked for, then build the page again so it resolves them.
+    final providers = <ImageProvider>{
+      for (final w in tester.widgetList<CachedNetworkImage>(find.byType(CachedNetworkImage)))
+        CachedNetworkImageProvider(w.imageUrl, cacheManager: w.cacheManager),
+      for (final w in tester.widgetList<Image>(find.byType(Image)))
+        if (w.image is CachedNetworkImageProvider) w.image,
+    };
+    expect(providers, isNotEmpty);
+    for (final provider in providers) {
+      PaintingBinding.instance.imageCache.evict(provider);
+      PaintingBinding.instance.imageCache.putIfAbsent(
+        provider,
+        () => OneFrameImageStreamCompleter(SynchronousFuture(ImageInfo(image: poster!.clone()))),
+      );
+    }
+    // Unmount first, so the images resolve again instead of keeping the
+    // pending stream of the first build.
+    await tester.pumpWidget(const SizedBox());
+    await _pumpDetail(tester, glass: false, metadata: movie, theme: light);
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final page = tester.element(find.byKey(const Key('media-detail.mobile-page')));
+    expect(Theme.of(page).brightness, Brightness.dark);
+    // The helpers that take the screen's context (synopsis, genre line) read
+    // the dark page theme too, not the light app theme above it.
+    final genre = tester.widget<Text>(find.text('Comedy · Romance'));
+    expect(genre.style?.color?.computeLuminance(), greaterThan(0.4));
+    if (dir == null) return;
+    await tester.runAsync(() async {
+      final boundary = tester.renderObject<RenderRepaintBoundary>(
+        find
+            .ancestor(of: find.byKey(const Key('media-detail.mobile-page')), matching: find.byType(RepaintBoundary))
+            .first,
+      );
+      final image = await boundary.toImage(pixelRatio: tester.view.devicePixelRatio);
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      File('$dir/detail-variant-b-light-theme.png').writeAsBytesSync(bytes!.buffer.asUint8List());
+    });
   });
 
   testWidgets('contrast over Big Buck Bunny: glasknoppen', (tester) async {
     await glassPhone(tester, glass: true);
     const sceneKey = Key('scene');
-    const backKey = Key('back'), downloadKey = Key('download'), resumeKey = Key('resume');
+    const backKey = Key('back');
 
     // Every foreground is painted transparent with its shadow kept, so the
     // meter reads the background the real glyph sits on. On the page the
@@ -401,31 +494,6 @@ void main() {
                   children: [
                     Positioned.fill(
                       child: RawImage(image: _lightSceneImage, fit: BoxFit.cover),
-                    ),
-                    Positioned(
-                      left: 16,
-                      right: 16,
-                      bottom: 24,
-                      child: Column(
-                        children: [
-                          GlassCapsuleButton(
-                            key: resumeKey,
-                            prominent: true,
-                            icon: Icons.play_arrow_rounded,
-                            label: 'Resume · 7m left',
-                            foregroundColor: Colors.transparent,
-                            onPressed: () {},
-                          ),
-                          const SizedBox(height: 12),
-                          GlassCapsuleButton(
-                            key: downloadKey,
-                            icon: Icons.download_rounded,
-                            label: 'Download',
-                            foregroundColor: Colors.transparent,
-                            onPressed: () {},
-                          ),
-                        ],
-                      ),
                     ),
                     Positioned(
                       top: 0,
@@ -455,13 +523,8 @@ void main() {
     Future<double> text(Finder area, {Color color = Colors.white}) =>
         textContrastOverBackground(tester, area: area, textColor: color, boundary: boundary);
     Finder iconIn(Key key) => find.descendant(of: find.byKey(key), matching: find.byType(Icon));
-    Finder labelIn(Key key) => find.descendant(of: find.byKey(key), matching: find.byType(Text));
 
-    final results = <String, double>{
-      'resume label': await text(labelIn(resumeKey), color: Colors.black),
-      'download label': await text(labelIn(downloadKey)),
-      'back icon': await text(iconIn(backKey)),
-    };
+    final results = <String, double>{'back icon': await text(iconIn(backKey))};
     debugPrint('LG-02 contrast: ${results.map((k, v) => MapEntry(k, v.toStringAsFixed(2)))}');
 
     for (final e in results.entries) {

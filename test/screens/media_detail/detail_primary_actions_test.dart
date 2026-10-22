@@ -1,5 +1,8 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/screens/media_detail/mobile/detail_dark_style.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_primary_actions.dart';
 import 'package:pleya/theme/mono_theme.dart';
 
@@ -29,7 +32,9 @@ void main() {
     expect(find.byKey(const Key('media-detail.play-from-start')), findsOneWidget);
   });
 
-  testWidgets('six actions share the width equally, the active one is a white circle', (tester) async {
+  testWidgets('six actions share the width equally, every circle is the same dark pill, active is only semantic', (
+    tester,
+  ) async {
     final tapped = <String>[];
     DetailActionItem item(String id, {bool active = false}) => DetailActionItem(
       key: Key('media-detail.action.$id'),
@@ -80,44 +85,51 @@ void main() {
                       ),
                     )
                     .decoration)
-                as BoxDecoration)
+                as ShapeDecoration)
             .color;
-    expect(circleOf('watched'), Colors.white);
-    expect(circleOf('rate'), isNot(Colors.white));
+    // Plex look: no white circle for the active state, the glyph carries it.
+    expect(circleOf('watched'), kDetailPillColor);
+    expect(circleOf('rate'), kDetailPillColor);
+    final watched = tester.getSemantics(find.byKey(const Key('media-detail.action.watched'))).getSemanticsData();
+    expect(watched.flagsCollection.isSelected, ui.Tristate.isTrue);
 
     expect(find.bySemanticsLabel('spoken watched'), findsOneWidget);
     await tester.tap(find.byKey(const Key('media-detail.action.more')));
     expect(tapped, ['more']);
   });
 
-  testWidgets('light theme: the play capsule and the active circle invert, nothing white on white', (tester) async {
-    final theme = monoTheme(dark: false);
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: theme,
-        home: Scaffold(
-          body: DetailPrimaryActions(
-            playLabel: 'Afspelen',
-            onPlay: () {},
-            actions: [
-              DetailActionItem(
-                key: const Key('media-detail.action.watched'),
-                icon: Icons.circle,
-                label: 'watched',
-                active: true,
-                onTap: () {},
-              ),
-            ],
+  // Variant B: the page is always dark, so the play button is solid white
+  // with a black label in every theme, and nothing sits on a plate.
+  for (final dark in [false, true]) {
+    testWidgets('play button is solid white with black ink (dark theme: $dark), no plate', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: monoTheme(dark: dark),
+          home: Scaffold(
+            body: DetailPrimaryActions(
+              playLabel: 'Afspelen',
+              onPlay: () {},
+              onPlayFromStart: () {},
+              actions: [
+                DetailActionItem(
+                  key: const Key('media-detail.action.watched'),
+                  icon: Icons.circle,
+                  label: 'watched',
+                  active: true,
+                  onTap: () {},
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
-    final play = tester.widget<FilledButton>(find.byType(FilledButton));
-    expect(play.style?.backgroundColor?.resolve({}), theme.colorScheme.onSurface);
-    expect(play.style?.foregroundColor?.resolve({}), theme.scaffoldBackgroundColor);
-    final circle = tester.widget<DecoratedBox>(
-      find.descendant(of: find.byKey(const Key('media-detail.action.watched')), matching: find.byType(DecoratedBox)),
-    );
-    expect((circle.decoration as BoxDecoration).color, theme.colorScheme.onSurface);
-  });
+      );
+      final play = tester.widget<FilledButton>(find.byType(FilledButton));
+      expect(play.style?.backgroundColor?.resolve({}), Colors.white);
+      expect(play.style?.backgroundColor?.resolve({})?.a, 1.0);
+      expect(play.style?.foregroundColor?.resolve({}), Colors.black);
+      final restart = tester.widget<Material>(find.byKey(const Key('media-detail.play-from-start')));
+      expect(restart.color, kDetailPillColor);
+      expect(find.byType(BackdropFilter), findsNothing);
+    });
+  }
 }
