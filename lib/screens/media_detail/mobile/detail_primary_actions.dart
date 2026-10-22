@@ -1,10 +1,26 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
 import '../../../automation/automation_ids.dart';
 import '../../../automation/automation_node.dart';
 import '../../../i18n/strings.g.dart';
+import '../../../theme/glass/glass_settings.dart';
 import '../mobile_detail_hero.dart';
 import 'light_ink_plate.dart';
+
+/// Light theme play capsule: translucent page-coloured glass in the same style as
+/// [LightInkPlate], so the artwork shows through the blur.
+const kLightPlayGlassTokens = GlassTokens(
+  blur: 12,
+  saturation: 1.5,
+  dim: 1,
+  tint: Color.fromRGBO(255, 255, 255, kLightPlayGlassAlpha),
+  edge: 0,
+);
+
+/// Tint alpha of the light play capsule and the restart circle.
+const double kLightPlayGlassAlpha = 0.3;
 
 /// One round icon under the play button (D-01 `.acts`).
 class DetailActionItem {
@@ -68,6 +84,8 @@ class DetailPrimaryActions extends StatelessWidget {
         ? GlassCapsuleButton(
             key: const Key('media-detail.play'),
             prominent: true,
+            // Light theme: the same low tint as the plates, not the white plate.
+            tokens: dark ? null : kLightPlayGlassTokens,
             icon: Icons.play_arrow_rounded,
             label: label,
             onPressed: onPlay,
@@ -113,23 +131,7 @@ class DetailPrimaryActions extends StatelessWidget {
                 role: 'button',
                 child: Tooltip(
                   message: t.mediaMenu.playFromBeginning,
-                  child: Material(
-                    key: const Key('media-detail.play-from-start'),
-                    // Light theme: an opaque page-coloured circle, so the
-                    // glyph does not take its contrast from the glow.
-                    color: dark
-                        ? onSurface.withValues(alpha: 0.14)
-                        : theme.colorScheme.surface.withValues(alpha: kLightInkPlateAlpha),
-                    shape: const CircleBorder(),
-                    clipBehavior: .antiAlias,
-                    child: InkWell(
-                      onTap: onPlayFromStart,
-                      child: SizedBox.square(
-                        dimension: 52,
-                        child: Icon(Icons.replay_rounded, size: 23, color: onSurface),
-                      ),
-                    ),
-                  ),
+                  child: _RestartCircle(dark: dark, onTap: onPlayFromStart!),
                 ),
               ),
             ],
@@ -206,6 +208,40 @@ class _ActionButton extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The round "play from start" button. Light theme: translucent blurred glass
+/// like [LightInkPlate]; dark and OLED keep the flat tint.
+class _RestartCircle extends StatelessWidget {
+  const _RestartCircle({required this.dark, required this.onTap});
+
+  final bool dark;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+    final button = Material(
+      key: const Key('media-detail.play-from-start'),
+      color: dark
+          ? onSurface.withValues(alpha: 0.14)
+          : theme.colorScheme.surface.withValues(alpha: kLightPlayGlassAlpha),
+      shape: const CircleBorder(),
+      clipBehavior: .antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox.square(dimension: 52, child: Icon(Icons.replay_rounded, size: 23, color: onSurface)),
+      ),
+    );
+    if (dark) return button;
+    return ClipOval(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: kLightInkPlateSigma, sigmaY: kLightInkPlateSigma),
+        child: button,
       ),
     );
   }

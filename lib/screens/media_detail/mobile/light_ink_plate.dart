@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 /// Alpha of the page-coloured glass tint under dark ink on the light theme.
 /// Translucent: the artwork shows through the blur, as in `CatalogTopPanel`.
-const double kLightInkPlateAlpha = 0.55;
+const double kLightInkPlateAlpha = 0.3;
 
 /// Blur radius behind the glass tint, the same as `CatalogTopPanel`.
 const double kLightInkPlateSigma = 18;

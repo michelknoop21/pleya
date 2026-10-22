@@ -14,8 +14,8 @@ void main() {
       find.descendant(of: find.byType(BackdropFilter), matching: find.byType(DecoratedBox)),
     );
     final color = (box.decoration as BoxDecoration).color!;
-    expect(color.a, lessThan(0.7));
-    expect(color.a, greaterThan(0.2));
+    expect(color.a, lessThanOrEqualTo(0.35));
+    expect(color.a, greaterThan(0.1));
   });
 
   testWidgets('dark theme gets the child untouched', (tester) async {
