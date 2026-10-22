@@ -2,6 +2,8 @@ include: package:flutter_lints/flutter.yaml
 
 analyzer:
   exclude:
+    # Pinned third-party code; guarded by scripts/test_spm_plugins.py.
+    - "third_party/**"
     - "**/*.g.dart"
     - "**/*.freezed.dart"
     # Standalone Dart package with its own pubspec/analysis; resolved and

@@ -7,7 +7,7 @@ Pod::Spec.new do |s|
   s.license          = { :type => 'GPL-3.0' }
   s.author           = { 'Michel Knoop' => 'info@michelknoop.nl' }
   s.source           = { :path => '.' }
-  s.source_files     = 'Classes/**/*'
+  s.source_files     = 'pleya_aware/Sources/pleya_aware/**/*'
   s.dependency 'Flutter'
   s.platform         = :ios, '15.0'
   s.swift_version    = '5.9'
