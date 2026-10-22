@@ -114,7 +114,7 @@ class TvUnifiedMediaGrid extends StatefulWidget {
   /// See [TvCatalogCardGrid.fitScale].
   final double? fitScale;
 
-  /// See [TvCatalogCardGrid.fitTwoRows]. Always on for a [rowAligned] grid.
+  /// See [TvCatalogCardGrid.fitTwoRows]. Independent of row-aligned scrolling.
   final bool fitTwoRows;
 
   /// Replaces the artwork warm-up call. Null in production, where the
@@ -199,7 +199,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       onExitLeft: widget.onExitLeft,
       onBack: widget.onBack,
       rowAligned: widget.rowAligned,
-      fitTwoRows: widget.fitTwoRows || widget.rowAligned,
+      fitTwoRows: widget.fitTwoRows,
       fitScale: widget.fitScale,
       reservedLeading: widget.reservedLeading,
       footer: widget.footer,

@@ -191,8 +191,7 @@ class TvCatalogCardGrid extends StatefulWidget {
   /// a node belongs to when two are mounted at once.
   final String nodeDebugLabel;
 
-  /// A-06b (Michel, build 394): scroll a whole row at a time and keep every
-  /// visible row whole. UP and DOWN are wired here instead of falling through
+  /// A-06b: scroll a whole row at a time and keep the focused row whole. UP and DOWN are wired here instead of falling through
   /// to Flutter's traversal, whose `ensureVisible` jumps the content into place
   /// and leaves rows cut off at the edge; the grid moves the focus to the card
   /// above or below and glides the content to a row boundary
@@ -201,14 +200,12 @@ class TvCatalogCardGrid extends StatefulWidget {
   final bool rowAligned;
 
   /// Narrow the cards (same column count, wider insets) until two whole rows
-  /// fit in this grid's height with room around them; see
-  /// [tvCatalogTwoRowCardWidth]. Off by default: every catalog surface shares
-  /// one card width with Alle films, and only the folded Films/Series page
-  /// (Michel, build 396) asks for this.
+  /// fit, with room around them; see [tvCatalogTwoRowCardWidth]. Opt-in for
+  /// fixed-heading grids. The broad library catalog keeps its natural width.
   final bool fitTwoRows;
 
-  /// Scales the [fitTwoRows] width down, for the library-density setting
-  /// ([tvCatalogDensityScale]). Null reads the setting itself.
+  /// Scales the two-row width, or the natural width when [fitTwoRows] is off.
+  /// Null reads the density setting only for a two-row grid.
   final double? fitScale;
 
   /// The narrowest [fitTwoRows] card under a fixed heading, as a share of the
@@ -596,7 +593,11 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
       width,
       scale: scale,
       reservedLeading: widget.reservedLeading,
-      maxCardWidth: !widget.fitTwoRows ? null : _fitWidth(height, natural),
+      maxCardWidth: widget.fitTwoRows
+          ? _fitWidth(height, natural)
+          : widget.fitScale == null
+          ? null
+          : natural.cardWidth * widget.fitScale!,
     );
     _grid = grid;
     final cardHeight = widget.cardHeight(grid.cardWidth);

@@ -347,7 +347,7 @@ class TvCatalogLayout {
   /// the title starts on the poster's own left edge, which is what makes a
   /// column of cards line up as a column. The vertical value is the gap between
   /// the poster and its title.
-  static const double cardFooterPaddingVertical = 6;
+  static const double cardFooterPaddingVertical = 13;
   static const double cardFooterLineGap = 3;
 
   /// The height `TvUnifiedMediaCard` lays out for a card [cardWidth] wide, and
@@ -806,17 +806,9 @@ class TvCatalogGrid {
   static const double _referenceCardWidth = 281;
   static const double _referenceGutter = 22;
 
-  /// The page's own side margin, in reference pixels, rather than
-  /// [TvLayoutConstants.horizontalInset].
-  ///
-  /// 72 is the shared TV inset and it stays that for every other surface; a
-  /// panel or a source row is content in the middle of the screen and can
-  /// afford it. A wall of posters cannot: sixteen reference pixels a side is
-  /// most of a gutter, and on this page it was margin bought at the posters'
-  /// expense. 56 is hoofdstuk 8.1's actual floor — "geen tekst of focusring
-  /// binnen de buitenste 56 pixels" — so this spends the slack the shared
-  /// constant was holding in reserve, and spends it on artwork.
-  static const double _referenceInset = 56;
+  /// The approved broad library grid keeps its focus ring inside the 56px
+  /// safe band, including the focused card's scale-up (A06B-WIDTH1).
+  static const double _referenceInset = 72;
 
   /// The surface every box measurement in this file is a fraction of.
   static const double referenceWidth = 1920;
