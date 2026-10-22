@@ -51,6 +51,21 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 399 · 22 October 2026 · iPhone and iPad
+
+<!-- commit: 6ba988105a9bb3c106b07fc02a7fe1df5d9f9ae4 -->
+
+### Fixed
+
+- **The Resume and Play button and the replay circle are now glass in the light appearance.**
+  The white behind them is see-through, like the rest of the action row, so the poster shows
+  through. The tint of the glass plates is lighter as well. Dark and OLED look the same as before.
+
+### Notes
+
+- **Worth checking:** open a film or series in the light appearance, on a dark and on a light
+  poster. Check that the text on the glass stays readable on the dark poster.
+
 ## 2.8.1 · build 398 · 21 October 2026 · Apple TV
 
 <!-- commit: ce3e8460da01d5e9301c836ff7e2131df8124061 -->
