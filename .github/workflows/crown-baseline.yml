@@ -1,0 +1,37 @@
+name: Scroll crown baseline
+
+on:
+  pull_request:
+    paths:
+      - test/widgets/scroll_crown/scroll_crown_measurement_test.dart
+      - .github/workflows/crown-baseline.yml
+
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          channel: stable
+          flutter-version-file: .fvmrc
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - name: Record formatter output
+        run: |
+          mkdir -p build/crown-baseline
+          dart format test/widgets/scroll_crown/scroll_crown_measurement_test.dart
+          git diff -- test/widgets/scroll_crown/scroll_crown_measurement_test.dart | tee build/crown-baseline/format.patch
+      - name: Run baseline and existing endpoint and loading checks
+        run: |
+          set -o pipefail
+          flutter test --reporter expanded test/widgets/scroll_crown test/screens/libraries/alpha_scroll_handle_test.dart 2>&1 | tee build/crown-baseline/tests.log
+      - name: Keep measurement evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: crown-baseline
+          path: build/crown-baseline/
