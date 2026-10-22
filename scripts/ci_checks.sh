@@ -73,6 +73,17 @@ else
 fi
 rm -f "$out"
 
+section "pinned SPM plugin packaging"
+out="$(mktemp)"
+if python3 scripts/test_spm_plugins.py >"$out" 2>&1; then
+  ok "plugin source parity and Swift Package manifests"
+else
+  fail "plugin packaging drift"
+  sed 's/^/    /' "$out"
+  FAILED=1
+fi
+rm -f "$out"
+
 # 1. dart format (mirrors ci.yml "Verify formatting")
 section "dart format"
 files=()

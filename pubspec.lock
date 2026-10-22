@@ -69,11 +69,9 @@ packages:
   auto_updater_macos:
     dependency: "direct overridden"
     description:
-      path: "packages/auto_updater_macos"
-      ref: "9e150f7"
-      resolved-ref: "9e150f71e17495b7361aedbe6df22e89ad52c254"
-      url: "https://github.com/edde746/auto_updater"
-    source: git
+      path: "third_party/auto_updater_macos"
+      relative: true
+    source: path
     version: "1.0.0"
   auto_updater_platform_interface:
     dependency: "direct overridden"
@@ -314,10 +312,9 @@ packages:
   cupertino_http:
     dependency: "direct main"
     description:
-      name: cupertino_http
-      sha256: "82cbec60c90bf785a047a9525688b6dacac444e177e1d5a5876963d3c50369e8"
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/cupertino_http"
+      relative: true
+    source: path
     version: "2.4.0"
   dart_code_linter:
     dependency: "direct dev"
@@ -823,11 +820,9 @@ packages:
   os_media_controls:
     dependency: "direct main"
     description:
-      path: "."
-      ref: f51c805ebc15bf7a2f49a74174aeb470d3c4c78e
-      resolved-ref: f51c805ebc15bf7a2f49a74174aeb470d3c4c78e
-      url: "https://github.com/edde746/media_controls"
-    source: git
+      path: "third_party/os_media_controls"
+      relative: true
+    source: path
     version: "0.2.4"
   package_config:
     dependency: transitive
@@ -1092,12 +1087,11 @@ packages:
     source: hosted
     version: "0.2.0"
   screen_retriever_macos:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: screen_retriever_macos
-      sha256: "71f956e65c97315dd661d71f828708bd97b6d358e776f1a30d5aa7d22d78a149"
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/screen_retriever_macos"
+      relative: true
+    source: path
     version: "0.2.0"
   screen_retriever_platform_interface:
     dependency: transitive
@@ -1389,10 +1383,9 @@ packages:
   universal_gamepad:
     dependency: "direct main"
     description:
-      name: universal_gamepad
-      sha256: eec9726c9e03b4ce54c0c613628ee3998c33f6d5e98ef4a99af3d5d7a79d341b
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/universal_gamepad"
+      relative: true
+    source: path
     version: "1.5.7"
   url_launcher:
     dependency: "direct main"
