@@ -36,6 +36,7 @@ import '../../widgets/media_markers.dart';
 import '../../widgets/mobile/mobile_unified_context_menu.dart';
 import '../../widgets/optimized_media_image.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/scroll_crown/scroll_crown.dart';
 
 class MobileContinueWatchingScreen extends StatelessWidget {
   const MobileContinueWatchingScreen({super.key});
@@ -85,54 +86,56 @@ class MobileContinueWatchingScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
-        children: [
-          if (groups.isEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 48, 16, 8),
-              child: Center(
-                child: Text(t.discover.noContentAvailable, style: TextStyle(color: muted)),
-              ),
-            ),
-          for (final (section, items) in sections) ...[
-            _SectionLabel(continueWatchingSectionTitle(section), count: items.length),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: tokens(context).surface,
-                  borderRadius: BorderRadius.circular(tokens(context).radiusMd),
-                ),
-                child: Column(
-                  children: [
-                    for (final (i, group) in items.indexed)
-                      _Row(
-                        group: group,
-                        dim: section == ContinueWatchingSection.stale,
-                        first: i == 0,
-                        onTap: () => _open(context, group),
-                        onLongPress: () => _menu(context, group),
-                      ),
-                  ],
+      body: ScrollCrown(
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 24),
+          children: [
+            if (groups.isEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 48, 16, 8),
+                child: Center(
+                  child: Text(t.discover.noContentAvailable, style: TextStyle(color: muted)),
                 ),
               ),
-            ),
+            for (final (section, items) in sections) ...[
+              _SectionLabel(continueWatchingSectionTitle(section), count: items.length),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: tokens(context).surface,
+                    borderRadius: BorderRadius.circular(tokens(context).radiusMd),
+                  ),
+                  child: Column(
+                    children: [
+                      for (final (i, group) in items.indexed)
+                        _Row(
+                          group: group,
+                          dim: section == ContinueWatchingSection.stale,
+                          first: i == 0,
+                          onTap: () => _open(context, group),
+                          onLongPress: () => _menu(context, group),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            // Mockup 23: the way back for a title hidden on this device.
+            if (hiddenCount > 0)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 18, 16, 0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => showContinueWatchingHiddenItems(context),
+                    icon: AppIcon(Symbols.visibility_off_rounded, size: 20, color: muted),
+                    label: Text(continueWatchingHiddenLabel(hiddenCount), style: TextStyle(color: muted)),
+                  ),
+                ),
+              ),
           ],
-          // Mockup 23: the way back for a title hidden on this device.
-          if (hiddenCount > 0)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 18, 16, 0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: () => showContinueWatchingHiddenItems(context),
-                  icon: AppIcon(Symbols.visibility_off_rounded, size: 20, color: muted),
-                  label: Text(continueWatchingHiddenLabel(hiddenCount), style: TextStyle(color: muted)),
-                ),
-              ),
-            ),
-        ],
+        ),
       ),
     );
   }

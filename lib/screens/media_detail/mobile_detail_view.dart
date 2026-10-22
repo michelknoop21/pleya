@@ -101,19 +101,21 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
         ),
       ],
     );
-    final content = CustomScrollView(
-      primary: true,
-      slivers: [
-        SliverToBoxAdapter(
-          child: DetailAmbientBackground(
-            image: ambientUrl == null
-                ? null
-                : CachedNetworkImageProvider(ambientUrl, cacheManager: PlexImageCacheManager.instance),
-            child: page,
+    final content = ScrollCrown(
+      child: CustomScrollView(
+        primary: true,
+        slivers: [
+          SliverToBoxAdapter(
+            child: DetailAmbientBackground(
+              image: ambientUrl == null
+                  ? null
+                  : CachedNetworkImageProvider(ambientUrl, cacheManager: PlexImageCacheManager.instance),
+              child: page,
+            ),
           ),
-        ),
-        SliverPadding(padding: .only(bottom: MediaQuery.paddingOf(context).bottom + 16)),
-      ],
+          SliverPadding(padding: .only(bottom: MediaQuery.paddingOf(context).bottom + 16)),
+        ],
+      ),
     );
 
     return PrimaryScrollController(

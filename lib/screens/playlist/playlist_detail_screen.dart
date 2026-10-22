@@ -29,6 +29,7 @@ import '../base_media_list_detail_screen.dart';
 import '../focusable_detail_screen_mixin.dart';
 import '../../mixins/grid_focus_node_mixin.dart';
 import '../../utils/error_message_utils.dart';
+import '../../widgets/scroll_crown/scroll_crown.dart';
 
 /// Screen to display the contents of a playlist
 class PlaylistDetailScreen extends StatefulWidget {
@@ -702,48 +703,54 @@ class _PlaylistDetailScreenState extends BaseMediaListDetailScreen<PlaylistDetai
     // (Focus is a RenderObject widget and cannot directly wrap a sliver)
     final needsListFocus = !_isReadOnly && items.isNotEmpty;
 
-    Widget scrollView = CustomScrollView(
-      primary: true,
-      slivers: [
-        CustomAppBar(
-          title: Column(
-            crossAxisAlignment: .start,
-            children: [
-              Text(widget.playlist.title, style: const TextStyle(fontSize: 16)),
-              if (widget.playlist.smart)
-                Row(
-                  mainAxisSize: .min,
-                  children: [
-                    AppIcon(
-                      Symbols.auto_awesome_rounded,
-                      fill: 1,
-                      size: 12,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      t.playlists.smartPlaylist,
-                      style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.primary, fontWeight: .normal),
-                    ),
-                  ],
-                ),
-            ],
+    Widget scrollView = ScrollCrown(
+      child: CustomScrollView(
+        primary: true,
+        slivers: [
+          CustomAppBar(
+            title: Column(
+              crossAxisAlignment: .start,
+              children: [
+                Text(widget.playlist.title, style: const TextStyle(fontSize: 16)),
+                if (widget.playlist.smart)
+                  Row(
+                    mainAxisSize: .min,
+                    children: [
+                      AppIcon(
+                        Symbols.auto_awesome_rounded,
+                        fill: 1,
+                        size: 12,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        t.playlists.smartPlaylist,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: .normal,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+            actions: buildFocusableAppBarActions(),
           ),
-          actions: buildFocusableAppBarActions(),
-        ),
-        ...buildStateSlivers(),
-        if (items.isNotEmpty) ...[
-          if (_isReadOnly)
-            // Smart playlists / Jellyfin playlists: focusable grid view
-            // (read-only, no reordering or removal)
-            buildFocusableGrid(items: items, onRefresh: updateItem)
-          else
-            // Plex regular playlists: sliver reorderable list
-            _buildReorderableList(isKeyboardMode),
-          if (_isLoadingFullPlaylist || _playlistContinuationErrorMessage != null)
-            _buildPlaylistContinuationStatusSliver(),
+          ...buildStateSlivers(),
+          if (items.isNotEmpty) ...[
+            if (_isReadOnly)
+              // Smart playlists / Jellyfin playlists: focusable grid view
+              // (read-only, no reordering or removal)
+              buildFocusableGrid(items: items, onRefresh: updateItem)
+            else
+              // Plex regular playlists: sliver reorderable list
+              _buildReorderableList(isKeyboardMode),
+            if (_isLoadingFullPlaylist || _playlistContinuationErrorMessage != null)
+              _buildPlaylistContinuationStatusSliver(),
+          ],
         ],
-      ],
+      ),
     );
 
     if (needsListFocus) {

@@ -40,6 +40,7 @@ import '../widgets/app_icon.dart';
 import '../widgets/continue_watching_hidden_items.dart';
 import 'focusable_detail_screen_mixin.dart';
 import '../utils/error_message_utils.dart';
+import '../widgets/scroll_crown/scroll_crown.dart';
 
 /// Screen to display full content of a recommendation hub
 class HubDetailScreen extends StatefulWidget {
@@ -573,146 +574,153 @@ class _HubDetailScreenState extends State<HubDetailScreen>
           },
           child: Scaffold(
             key: _overlayChildKey,
-            body: CustomScrollView(
-              primary: true,
-              clipBehavior: Clip.none,
-              slivers: [
-                CustomAppBar(title: Text(widget.hub.title), pinned: true, actions: buildFocusableAppBarActions()),
-                if (_errorMessage != null)
-                  SliverErrorState(message: _errorMessage!, onRetry: _loadMoreItems)
-                else if (_filteredItems.isEmpty && _isLoading)
-                  SliverPadding(
-                    padding: const EdgeInsets.all(8),
-                    sliver: SliverList.builder(itemCount: 8, itemBuilder: (context, index) => const SkeletonListTile()),
-                  )
-                else if (_filteredItems.isEmpty)
-                  SliverFillRemaining(child: Center(child: Text(t.hubDetail.noItemsFound)))
-                else
-                  SettingsBuilder(
-                    prefs: const [
-                      SettingsService.viewMode,
-                      SettingsService.episodePosterMode,
-                      SettingsService.libraryDensity,
-                      SettingsService.tvFullCardLayout,
-                    ],
-                    builder: (context) {
-                      final svc = SettingsService.instance;
-                      final isListMode = svc.read(SettingsService.viewMode) == ViewMode.list;
-                      final episodePosterMode = svc.read(SettingsService.episodePosterMode);
-                      final libraryDensity = svc.read(SettingsService.libraryDensity);
-                      final fullCardLayout = PlatformDetector.isTV() && svc.read(SettingsService.tvFullCardLayout);
+            body: ScrollCrown(
+              child: CustomScrollView(
+                primary: true,
+                clipBehavior: Clip.none,
+                slivers: [
+                  CustomAppBar(title: Text(widget.hub.title), pinned: true, actions: buildFocusableAppBarActions()),
+                  if (_errorMessage != null)
+                    SliverErrorState(message: _errorMessage!, onRetry: _loadMoreItems)
+                  else if (_filteredItems.isEmpty && _isLoading)
+                    SliverPadding(
+                      padding: const EdgeInsets.all(8),
+                      sliver: SliverList.builder(
+                        itemCount: 8,
+                        itemBuilder: (context, index) => const SkeletonListTile(),
+                      ),
+                    )
+                  else if (_filteredItems.isEmpty)
+                    SliverFillRemaining(child: Center(child: Text(t.hubDetail.noItemsFound)))
+                  else
+                    SettingsBuilder(
+                      prefs: const [
+                        SettingsService.viewMode,
+                        SettingsService.episodePosterMode,
+                        SettingsService.libraryDensity,
+                        SettingsService.tvFullCardLayout,
+                      ],
+                      builder: (context) {
+                        final svc = SettingsService.instance;
+                        final isListMode = svc.read(SettingsService.viewMode) == ViewMode.list;
+                        final episodePosterMode = svc.read(SettingsService.episodePosterMode);
+                        final libraryDensity = svc.read(SettingsService.libraryDensity);
+                        final fullCardLayout = PlatformDetector.isTV() && svc.read(SettingsService.tvFullCardLayout);
 
-                      // Determine hub content type for layout decisions
-                      final hasEpisodes = _filteredItems.any((item) => item.usesWideAspectRatio(episodePosterMode));
-                      final hasNonEpisodes = _filteredItems.any((item) => !item.usesWideAspectRatio(episodePosterMode));
-
-                      // Mixed hub = has both episodes AND non-episodes
-                      final isMixedHub = hasEpisodes && hasNonEpisodes;
-
-                      // Episode-only = all items are episodes with thumbnails
-                      final isEpisodeOnlyHub = hasEpisodes && !hasNonEpisodes;
-
-                      // Use 16:9 for episode-only hubs OR mixed hubs (with episode thumbnail mode)
-                      final useWideLayout =
-                          episodePosterMode == EpisodePosterMode.episodeThumbnail && (isEpisodeOnlyHub || isMixedHub);
-
-                      if (isListMode) {
-                        return SliverPadding(
-                          padding: const EdgeInsets.all(8),
-                          sliver: SliverList.builder(
-                            itemCount: _filteredItems.length,
-                            itemBuilder: (context, index) {
-                              final item = _filteredItems[index];
-                              final focusNode = _focusNodeForIndex(index);
-
-                              return FocusableMediaCard(
-                                focusNode: focusNode,
-                                item: item,
-                                disableScale: true,
-                                onRefresh: _handleItemRefresh,
-                                onRemoveFromContinueWatching: widget.isInContinueWatching
-                                    ? _handleRemoveFromContinueWatching
-                                    : null,
-                                isInContinueWatching: widget.isInContinueWatching,
-                                usesContinueWatchingAction: widget.usesContinueWatchingAction,
-                                onNavigateUp: index == 0 ? navigateToAppBar : null,
-                                onBack: handleBackFromContent,
-                                onFocusChange: (hasFocus) => trackGridItemFocus(index, hasFocus),
-                                mixedHubContext: isMixedHub,
-                              );
-                            },
-                          ),
+                        // Determine hub content type for layout decisions
+                        final hasEpisodes = _filteredItems.any((item) => item.usesWideAspectRatio(episodePosterMode));
+                        final hasNonEpisodes = _filteredItems.any(
+                          (item) => !item.usesWideAspectRatio(episodePosterMode),
                         );
-                      }
 
-                      // DEC-144 fase 2 (mockup 40): Verder kijken is grouped into
-                      // four fixed sections; every other hub stays one grid.
-                      // Indexes run on across sections, so focus memory and the
-                      // first-row/first-column rules are untouched.
-                      final sections = widget.isInContinueWatching
-                          ? continueWatchingSections(_filteredItems, itemOf: (item) => item)
-                          : [(null, _filteredItems)];
-                      var offset = 0;
-                      final slivers = <Widget>[];
-                      for (final (section, items) in sections) {
-                        final start = offset;
-                        offset += items.length;
-                        if (section != null) {
+                        // Mixed hub = has both episodes AND non-episodes
+                        final isMixedHub = hasEpisodes && hasNonEpisodes;
+
+                        // Episode-only = all items are episodes with thumbnails
+                        final isEpisodeOnlyHub = hasEpisodes && !hasNonEpisodes;
+
+                        // Use 16:9 for episode-only hubs OR mixed hubs (with episode thumbnail mode)
+                        final useWideLayout =
+                            episodePosterMode == EpisodePosterMode.episodeThumbnail && (isEpisodeOnlyHub || isMixedHub);
+
+                        if (isListMode) {
+                          return SliverPadding(
+                            padding: const EdgeInsets.all(8),
+                            sliver: SliverList.builder(
+                              itemCount: _filteredItems.length,
+                              itemBuilder: (context, index) {
+                                final item = _filteredItems[index];
+                                final focusNode = _focusNodeForIndex(index);
+
+                                return FocusableMediaCard(
+                                  focusNode: focusNode,
+                                  item: item,
+                                  disableScale: true,
+                                  onRefresh: _handleItemRefresh,
+                                  onRemoveFromContinueWatching: widget.isInContinueWatching
+                                      ? _handleRemoveFromContinueWatching
+                                      : null,
+                                  isInContinueWatching: widget.isInContinueWatching,
+                                  usesContinueWatchingAction: widget.usesContinueWatchingAction,
+                                  onNavigateUp: index == 0 ? navigateToAppBar : null,
+                                  onBack: handleBackFromContent,
+                                  onFocusChange: (hasFocus) => trackGridItemFocus(index, hasFocus),
+                                  mixedHubContext: isMixedHub,
+                                );
+                              },
+                            ),
+                          );
+                        }
+
+                        // DEC-144 fase 2 (mockup 40): Verder kijken is grouped into
+                        // four fixed sections; every other hub stays one grid.
+                        // Indexes run on across sections, so focus memory and the
+                        // first-row/first-column rules are untouched.
+                        final sections = widget.isInContinueWatching
+                            ? continueWatchingSections(_filteredItems, itemOf: (item) => item)
+                            : [(null, _filteredItems)];
+                        var offset = 0;
+                        final slivers = <Widget>[];
+                        for (final (section, items) in sections) {
+                          final start = offset;
+                          offset += items.length;
+                          if (section != null) {
+                            slivers.add(
+                              SliverToBoxAdapter(
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        continueWatchingSectionTitle(section),
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '${items.length}',
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleSmall?.copyWith(color: tokens(context).textMuted),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                          slivers.add(
+                            _gridSliver(items, start, libraryDensity, useWideLayout, fullCardLayout, isMixedHub),
+                          );
+                        }
+                        final hiddenCount = widget.isInContinueWatching
+                            ? (context.watch<ContinueWatchingHiddenProvider?>()?.count ?? 0)
+                            : 0;
+                        if (hiddenCount > 0) {
                           slivers.add(
                             SliverToBoxAdapter(
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      continueWatchingSectionTitle(section),
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '${items.length}',
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleSmall?.copyWith(color: tokens(context).textMuted),
-                                    ),
-                                  ],
+                                padding: const EdgeInsets.fromLTRB(8, 20, 16, 16),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: TextButton.icon(
+                                    onPressed: _openHiddenItems,
+                                    icon: const AppIcon(Symbols.visibility_off_rounded, size: 20),
+                                    label: Text(continueWatchingHiddenLabel(hiddenCount)),
+                                  ),
                                 ),
                               ),
                             ),
                           );
                         }
-                        slivers.add(
-                          _gridSliver(items, start, libraryDensity, useWideLayout, fullCardLayout, isMixedHub),
-                        );
-                      }
-                      final hiddenCount = widget.isInContinueWatching
-                          ? (context.watch<ContinueWatchingHiddenProvider?>()?.count ?? 0)
-                          : 0;
-                      if (hiddenCount > 0) {
-                        slivers.add(
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(8, 20, 16, 16),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: TextButton.icon(
-                                  onPressed: _openHiddenItems,
-                                  icon: const AppIcon(Symbols.visibility_off_rounded, size: 20),
-                                  label: Text(continueWatchingHiddenLabel(hiddenCount)),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-                      return SliverMainAxisGroup(slivers: slivers);
-                    },
-                  ),
-                if (_filteredItems.isNotEmpty && (_isLoadingMore || _continuationErrorMessage != null))
-                  _buildContinuationStatusSliver(),
-              ],
+                        return SliverMainAxisGroup(slivers: slivers);
+                      },
+                    ),
+                  if (_filteredItems.isNotEmpty && (_isLoadingMore || _continuationErrorMessage != null))
+                    _buildContinuationStatusSliver(),
+                ],
+              ),
             ),
           ),
         ),

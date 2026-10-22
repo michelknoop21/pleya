@@ -84,6 +84,7 @@ import '../watch_together/watch_together.dart';
 import '../providers/companion_remote_provider.dart';
 import '../widgets/companion_remote/remote_session_dialog.dart';
 import 'companion_remote/mobile_remote_screen.dart';
+import '../widgets/scroll_crown/scroll_crown.dart';
 
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key, this.onManageServers, this.onOpenSearch});
@@ -1403,109 +1404,111 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       color: theme.scaffoldBackgroundColor,
       child: Stack(
         children: [
-          CustomScrollView(
-            controller: _scrollController,
-            slivers: [
-              // Hero Section (newest released films) - at top of screen
-              Builder(
-                builder: (context) {
-                  if (_latestMovies.isNotEmpty && showHeroSection) {
-                    return _buildHeroSection();
-                  }
-                  // Add top padding when hero is not shown
-                  return SliverToBoxAdapter(
-                    child: SizedBox(height: kToolbarHeight + MediaQuery.paddingOf(context).top + 16),
-                  );
-                },
-              ),
-              if (_isLoading)
-                const SliverToBoxAdapter(
-                  child: Column(children: [SkeletonHubRow(), SkeletonHubRow(), SkeletonHubRow()]),
+          ScrollCrown(
+            child: CustomScrollView(
+              controller: _scrollController,
+              slivers: [
+                // Hero Section (newest released films) - at top of screen
+                Builder(
+                  builder: (context) {
+                    if (_latestMovies.isNotEmpty && showHeroSection) {
+                      return _buildHeroSection();
+                    }
+                    // Add top padding when hero is not shown
+                    return SliverToBoxAdapter(
+                      child: SizedBox(height: kToolbarHeight + MediaQuery.paddingOf(context).top + 16),
+                    );
+                  },
                 ),
-              if (_errorMessage != null) SliverErrorState(message: _errorMessage!, onRetry: _discover.load),
-              if (!_isLoading && _errorMessage == null) ...[
-                // On Deck / Continue Watching
-                if (_onDeck.isNotEmpty)
-                  SliverToBoxAdapter(
-                    child: AutomationNode(
-                      id: AutomationIds.discoverContinueWatching,
-                      role: 'rail',
-                      // `hero_visible` mirrors the real bool, never a proxy: a
-                      // Verify scenario asserts the DEC-097 fallback ("no
-                      // recent film, so no hero and Continue Watching first")
-                      // on this node because the hero node is not built then.
-                      state: () => {'hero_visible': _isHeroSectionVisible},
-                      child: HubSection(
-                        key: _continueWatchingHubKey,
-                        hub: MediaHub(
-                          id: 'continue_watching',
-                          title: t.discover.continueWatching,
-                          type: 'mixed',
-                          identifier: '_continue_watching_',
-                          size: _discover.continueWatchingCount,
-                          // Always: the overview is also where a hidden title is
-                          // put back (DEC-144 fase 3), not only the overflow.
-                          more: _discover.continueWatchingCount > 0,
-                          items: _onDeck,
+                if (_isLoading)
+                  const SliverToBoxAdapter(
+                    child: Column(children: [SkeletonHubRow(), SkeletonHubRow(), SkeletonHubRow()]),
+                  ),
+                if (_errorMessage != null) SliverErrorState(message: _errorMessage!, onRetry: _discover.load),
+                if (!_isLoading && _errorMessage == null) ...[
+                  // On Deck / Continue Watching
+                  if (_onDeck.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: AutomationNode(
+                        id: AutomationIds.discoverContinueWatching,
+                        role: 'rail',
+                        // `hero_visible` mirrors the real bool, never a proxy: a
+                        // Verify scenario asserts the DEC-097 fallback ("no
+                        // recent film, so no hero and Continue Watching first")
+                        // on this node because the hero node is not built then.
+                        state: () => {'hero_visible': _isHeroSectionVisible},
+                        child: HubSection(
+                          key: _continueWatchingHubKey,
+                          hub: MediaHub(
+                            id: 'continue_watching',
+                            title: t.discover.continueWatching,
+                            type: 'mixed',
+                            identifier: '_continue_watching_',
+                            size: _discover.continueWatchingCount,
+                            // Always: the overview is also where a hidden title is
+                            // put back (DEC-144 fase 3), not only the overflow.
+                            more: _discover.continueWatchingCount > 0,
+                            items: _onDeck,
+                          ),
+                          icon: Symbols.play_circle_rounded,
+                          // The real count beside the title (DEC-144 fase 2).
+                          count: _discover.continueWatchingCount > 0 ? _discover.continueWatchingCount : null,
+                          onRefresh: _discover.updateItem,
+                          onRemoveFromContinueWatching: _discover.refreshContinueWatching,
+                          isInContinueWatching: true,
+                          loadMoreItems: _discover.loadAllContinueWatching,
+                          onVerticalNavigation: (isUp) => _handleVerticalNavigation(0, isUp),
+                          onNavigateUp: _focusTopBoundary,
+                          onNavigateToSidebar: _navigateToSidebar,
                         ),
-                        icon: Symbols.play_circle_rounded,
-                        // The real count beside the title (DEC-144 fase 2).
-                        count: _discover.continueWatchingCount > 0 ? _discover.continueWatchingCount : null,
-                        onRefresh: _discover.updateItem,
-                        onRemoveFromContinueWatching: _discover.refreshContinueWatching,
-                        isInContinueWatching: true,
-                        loadMoreItems: _discover.loadAllContinueWatching,
-                        onVerticalNavigation: (isUp) => _handleVerticalNavigation(0, isUp),
-                        onNavigateUp: _focusTopBoundary,
-                        onNavigateToSidebar: _navigateToSidebar,
                       ),
                     ),
-                  ),
 
-                // Recommendation Hubs (Trending, Top in Genre, etc.)
-                for (int i = 0; i < _hubs.length; i++)
-                  SliverToBoxAdapter(
-                    // Ranked Top-10 row (big outlined numerals) for genuine
-                    // top-10/trending hubs, non-TV only (TV keeps HubSection's
-                    // locked d-pad focus).
-                    child: !PlatformDetector.isTV() && TopTenRow.matches(_hubs[i])
-                        ? TopTenRow(hub: _hubs[i], onRefresh: _discover.updateItem)
-                        : HubSection(
-                            key: i < _orderedHubKeys.length ? _orderedHubKeys[i] : null,
-                            hub: _hubs[i],
-                            icon: _getHubIcon(_hubs[i].title),
-                            showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
-                            onRefresh: _discover.updateItem,
-                            // HOME-R1: long press, right click and the hover button open the quick menu.
-                            onHeaderMenu: (anchor) =>
-                                showHomeRowQuickMenu(context, ids: [_hubIdentity(_hubs[i])], anchor: anchor),
-                            // Hub index is i + 1 if continue watching exists, otherwise i
-                            onVerticalNavigation: (isUp) =>
-                                _handleVerticalNavigation(_onDeck.isNotEmpty ? i + 1 : i, isUp),
-                            onNavigateUp: (i == 0 && _onDeck.isEmpty) ? _focusTopBoundary : null,
-                            onNavigateToSidebar: _navigateToSidebar,
-                          ),
-                  ),
-
-                // Show loading skeleton for hubs while they're loading
-                if (_areHubsLoading && _hubs.isEmpty)
-                  for (int i = 0; i < 3; i++) const SliverToBoxAdapter(child: SkeletonHubRow()),
-
-                if (_onDeck.isEmpty && _hubs.isEmpty && !_areHubsLoading)
-                  SliverFillRemaining(
-                    child: StateView.empty(
-                      title: t.discover.noContentAvailable,
-                      message: t.discover.addMediaToLibraries,
-                      icon: Symbols.movie_rounded,
+                  // Recommendation Hubs (Trending, Top in Genre, etc.)
+                  for (int i = 0; i < _hubs.length; i++)
+                    SliverToBoxAdapter(
+                      // Ranked Top-10 row (big outlined numerals) for genuine
+                      // top-10/trending hubs, non-TV only (TV keeps HubSection's
+                      // locked d-pad focus).
+                      child: !PlatformDetector.isTV() && TopTenRow.matches(_hubs[i])
+                          ? TopTenRow(hub: _hubs[i], onRefresh: _discover.updateItem)
+                          : HubSection(
+                              key: i < _orderedHubKeys.length ? _orderedHubKeys[i] : null,
+                              hub: _hubs[i],
+                              icon: _getHubIcon(_hubs[i].title),
+                              showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
+                              onRefresh: _discover.updateItem,
+                              // HOME-R1: long press, right click and the hover button open the quick menu.
+                              onHeaderMenu: (anchor) =>
+                                  showHomeRowQuickMenu(context, ids: [_hubIdentity(_hubs[i])], anchor: anchor),
+                              // Hub index is i + 1 if continue watching exists, otherwise i
+                              onVerticalNavigation: (isUp) =>
+                                  _handleVerticalNavigation(_onDeck.isNotEmpty ? i + 1 : i, isUp),
+                              onNavigateUp: (i == 0 && _onDeck.isEmpty) ? _focusTopBoundary : null,
+                              onNavigateToSidebar: _navigateToSidebar,
+                            ),
                     ),
-                  ),
 
-                // HOME-R1: the way into Home aanpassen, under the last row.
-                if (_hubs.isNotEmpty || _onDeck.isNotEmpty) const SliverToBoxAdapter(child: HomeCustomizeEntryTile()),
+                  // Show loading skeleton for hubs while they're loading
+                  if (_areHubsLoading && _hubs.isEmpty)
+                    for (int i = 0; i < 3; i++) const SliverToBoxAdapter(child: SkeletonHubRow()),
 
-                SliverToBoxAdapter(child: SizedBox(height: 24 + bottomPadding)),
+                  if (_onDeck.isEmpty && _hubs.isEmpty && !_areHubsLoading)
+                    SliverFillRemaining(
+                      child: StateView.empty(
+                        title: t.discover.noContentAvailable,
+                        message: t.discover.addMediaToLibraries,
+                        icon: Symbols.movie_rounded,
+                      ),
+                    ),
+
+                  // HOME-R1: the way into Home aanpassen, under the last row.
+                  if (_hubs.isNotEmpty || _onDeck.isNotEmpty) const SliverToBoxAdapter(child: HomeCustomizeEntryTile()),
+
+                  SliverToBoxAdapter(child: SizedBox(height: 24 + bottomPadding)),
+                ],
               ],
-            ],
+            ),
           ),
           // Overlaid app bar — excluded from default focus traversal so that
           // initial/tab-switch focus lands on content (hero/hubs), not the toolbar.

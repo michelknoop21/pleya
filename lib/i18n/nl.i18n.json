@@ -520,6 +520,7 @@
     "noConnectedTrackers": "Verbind een tracker in Instellingen om daar te beoordelen."
   },
   "accessibility": {
+    "scrollCrown": "Door de pagina scrollen",
     "mediaCardMovie": "${title}, film",
     "mediaCardShow": "${title}, TV-serie",
     "mediaCardEpisode": "${title}, ${episodeInfo}",

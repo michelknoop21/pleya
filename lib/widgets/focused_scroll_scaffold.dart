@@ -3,6 +3,7 @@ import '../focus/input_mode_tracker.dart';
 import '../focus/key_event_utils.dart';
 import 'desktop_app_bar.dart';
 import 'ios_status_bar_tap_scroll_to_top.dart';
+import 'scroll_crown/scroll_crown.dart';
 
 /// A scaffold widget that wraps Focus + Scaffold + CustomScrollView
 /// with consistent keyboard navigation handling and app bar styling.
@@ -92,18 +93,20 @@ class _FocusedScrollScaffoldState extends State<FocusedScrollScaffold> {
         node: _scopeNode,
         child: IosStatusBarTapScrollToTop(
           child: Scaffold(
-            body: CustomScrollView(
-              slivers: [
-                ExcludeFocus(
-                  child: CustomAppBar(
-                    title: widget.title,
-                    pinned: widget.pinned,
-                    actions: widget.actions,
-                    automaticallyImplyLeading: widget.automaticallyImplyLeading,
+            body: ScrollCrown(
+              child: CustomScrollView(
+                slivers: [
+                  ExcludeFocus(
+                    child: CustomAppBar(
+                      title: widget.title,
+                      pinned: widget.pinned,
+                      actions: widget.actions,
+                      automaticallyImplyLeading: widget.automaticallyImplyLeading,
+                    ),
                   ),
-                ),
-                ...widget.slivers,
-              ],
+                  ...widget.slivers,
+                ],
+              ),
             ),
           ),
         ),

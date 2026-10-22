@@ -32,6 +32,7 @@ import 'servers_screen.dart';
 import 'settings/about_screen.dart';
 import 'tv/tv_my_pleya_screen.dart' show buildTvMyPleyaGroups, TvMyPleyaTile;
 import 'tv/tv_my_pleya_sections.dart' show TvMyPleyaSection;
+import '../widgets/scroll_crown/scroll_crown.dart';
 
 part 'my_pleya_cards.dart';
 
@@ -124,140 +125,143 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> {
       id: AutomationIds.screenMyPleya,
       readiness: () => const AutomationReadiness.ready(),
       child: Scaffold(
-        body: CustomScrollView(
-          clipBehavior: Clip.none,
-          slivers: [
-            CustomAppBar(title: Text(t.myPleya.title), automaticallyImplyLeading: false),
-            SliverToBoxAdapter(
-              child: _ProfileHeader(
-                profile: profile,
-                onSwitchProfile: () => AccountUiActions.openProfiles(context),
-                serversLine: (servers?.totalServerCount ?? 0) == 0
-                    ? t.tvMyPleya.noServers
-                    : t.tvMyPleya.serversOnline(
-                        online: '${servers!.onlineServerCount}',
-                        total: '${servers.totalServerCount}',
-                      ),
-              ),
-            ),
-            if (watchlist?.hasWatchlist ?? false) ...[
+        body: ScrollCrown(
+          child: CustomScrollView(
+            clipBehavior: Clip.none,
+            slivers: [
+              CustomAppBar(title: Text(t.myPleya.title), automaticallyImplyLeading: false),
               SliverToBoxAdapter(
-                child: _SectionRow(
-                  icon: Symbols.bookmark_add_rounded,
-                  label: t.watchlist.title,
-                  trailing: t.watchlist.seeAll,
-                  onTap: () => widget.onOpenTab(NavigationTabId.watchlist),
+                child: _ProfileHeader(
+                  profile: profile,
+                  onSwitchProfile: () => AccountUiActions.openProfiles(context),
+                  serversLine: (servers?.totalServerCount ?? 0) == 0
+                      ? t.tvMyPleya.noServers
+                      : t.tvMyPleya.serversOnline(
+                          online: '${servers!.onlineServerCount}',
+                          total: '${servers.totalServerCount}',
+                        ),
                 ),
               ),
-              SliverToBoxAdapter(
-                child: _WatchlistRail(
-                  provider: watchlist!,
-                  onOpenAll: () => widget.onOpenTab(NavigationTabId.watchlist),
-                ),
-              ),
-            ],
-            SliverToBoxAdapter(child: _MyPleyaGroupLabel(t.tvMyPleya.groupContent)),
-            SliverToBoxAdapter(
-              child: _MyPleyaCardRow(
-                cards: [
-                  if (tileFor[TvMyPleyaSection.watchlist] case final tile?)
-                    _MyPleyaCard(tile: tile, onTap: () => widget.onOpenTab(NavigationTabId.watchlist)),
-                  if (tileFor[TvMyPleyaSection.requests] case final tile?)
-                    _MyPleyaCard(tile: tile, onTap: () => widget.onOpenTab(NavigationTabId.requests)),
-                  if (tileFor[TvMyPleyaSection.downloads] case final tile?)
-                    _MyPleyaCard(tile: tile, onTap: () => widget.onOpenTab(NavigationTabId.downloads)),
-                ],
-              ),
-            ),
-            SliverToBoxAdapter(child: _MyPleyaGroupLabel(t.tvMyPleya.groupSources)),
-            SliverToBoxAdapter(
-              child: _MyPleyaCardRow(
-                cards: [
-                  if (tileFor[TvMyPleyaSection.libraries] case final tile?)
-                    _MyPleyaCard(
-                      tile: tile,
-                      onTap: () => widget.onOpenTab(NavigationTabId.libraries),
-                      onLongPress: widget.onOpenLibraryPicker == null
-                          ? null
-                          : () => widget.onOpenLibraryPicker!(context),
-                    ),
-                  if (tileFor[TvMyPleyaSection.servers] case final tile?)
-                    _MyPleyaCard(
-                      tile: tile,
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ServersScreen())),
-                    ),
-                  if (tileFor[TvMyPleyaSection.activity] case final tile?)
-                    _MyPleyaCard(
-                      tile: tile,
-                      onTap: () =>
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const NowWatchingScreen())),
-                    ),
-                ],
-              ),
-            ),
-            SliverToBoxAdapter(child: _MyPleyaGroupLabel(t.tvMyPleya.groupPleya)),
-            // Mockup 38 A on the phone: Big P's portrait for an icon.
-            if ((tileFor[TvMyPleyaSection.assistant], bigP) case (final tile?, final session?))
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _MyPleyaCardRow(
-                    cards: [
-                      _MyPleyaCard(
-                        tile: tile,
-                        icon: const BigPPortrait(focused: false, size: 40),
-                        onTap: () => session.summon(),
-                      ),
-                    ],
+              if (watchlist?.hasWatchlist ?? false) ...[
+                SliverToBoxAdapter(
+                  child: _SectionRow(
+                    icon: Symbols.bookmark_add_rounded,
+                    label: t.watchlist.title,
+                    trailing: t.watchlist.seeAll,
+                    onTap: () => widget.onOpenTab(NavigationTabId.watchlist),
                   ),
                 ),
-              ),
-            if (tileFor[TvMyPleyaSection.watchTogether] case final tile?)
+                SliverToBoxAdapter(
+                  child: _WatchlistRail(
+                    provider: watchlist!,
+                    onOpenAll: () => widget.onOpenTab(NavigationTabId.watchlist),
+                  ),
+                ),
+              ],
+              SliverToBoxAdapter(child: _MyPleyaGroupLabel(t.tvMyPleya.groupContent)),
               SliverToBoxAdapter(
-                child: _SectionRow(
-                  icon: tile.icon,
-                  label: tile.title,
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WatchTogetherScreen())),
+                child: _MyPleyaCardRow(
+                  cards: [
+                    if (tileFor[TvMyPleyaSection.watchlist] case final tile?)
+                      _MyPleyaCard(tile: tile, onTap: () => widget.onOpenTab(NavigationTabId.watchlist)),
+                    if (tileFor[TvMyPleyaSection.requests] case final tile?)
+                      _MyPleyaCard(tile: tile, onTap: () => widget.onOpenTab(NavigationTabId.requests)),
+                    if (tileFor[TvMyPleyaSection.downloads] case final tile?)
+                      _MyPleyaCard(tile: tile, onTap: () => widget.onOpenTab(NavigationTabId.downloads)),
+                  ],
                 ),
               ),
-            if (tileFor[TvMyPleyaSection.settings] case final tile?)
+              SliverToBoxAdapter(child: _MyPleyaGroupLabel(t.tvMyPleya.groupSources)),
               SliverToBoxAdapter(
-                // Same id/instance convention `_MyPleyaCard` uses
-                // (`myPleyaTile[<section name>]`): Settings has no card
-                // elsewhere on this screen, so there is no collision, unlike
-                // Watchlist's row above, which would double up with its own
-                // card in the first `_MyPleyaCardRow`.
-                child: AutomationNode(
-                  id: AutomationIds.myPleyaTile,
-                  instance: tile.section?.name ?? 'settings',
-                  role: 'list.item',
+                child: _MyPleyaCardRow(
+                  cards: [
+                    if (tileFor[TvMyPleyaSection.libraries] case final tile?)
+                      _MyPleyaCard(
+                        tile: tile,
+                        onTap: () => widget.onOpenTab(NavigationTabId.libraries),
+                        onLongPress: widget.onOpenLibraryPicker == null
+                            ? null
+                            : () => widget.onOpenLibraryPicker!(context),
+                      ),
+                    if (tileFor[TvMyPleyaSection.servers] case final tile?)
+                      _MyPleyaCard(
+                        tile: tile,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ServersScreen())),
+                      ),
+                    if (tileFor[TvMyPleyaSection.activity] case final tile?)
+                      _MyPleyaCard(
+                        tile: tile,
+                        onTap: () =>
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const NowWatchingScreen())),
+                      ),
+                  ],
+                ),
+              ),
+              SliverToBoxAdapter(child: _MyPleyaGroupLabel(t.tvMyPleya.groupPleya)),
+              // Mockup 38 A on the phone: Big P's portrait for an icon.
+              if ((tileFor[TvMyPleyaSection.assistant], bigP) case (final tile?, final session?))
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _MyPleyaCardRow(
+                      cards: [
+                        _MyPleyaCard(
+                          tile: tile,
+                          icon: const BigPPortrait(focused: false, size: 40),
+                          onTap: () => session.summon(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              if (tileFor[TvMyPleyaSection.watchTogether] case final tile?)
+                SliverToBoxAdapter(
                   child: _SectionRow(
                     icon: tile.icon,
                     label: tile.title,
-                    onTap: () => widget.onOpenTab(NavigationTabId.settings),
+                    onTap: () =>
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const WatchTogetherScreen())),
                   ),
                 ),
-              ),
-            if (tileFor[TvMyPleyaSection.about] case final tile?)
+              if (tileFor[TvMyPleyaSection.settings] case final tile?)
+                SliverToBoxAdapter(
+                  // Same id/instance convention `_MyPleyaCard` uses
+                  // (`myPleyaTile[<section name>]`): Settings has no card
+                  // elsewhere on this screen, so there is no collision, unlike
+                  // Watchlist's row above, which would double up with its own
+                  // card in the first `_MyPleyaCardRow`.
+                  child: AutomationNode(
+                    id: AutomationIds.myPleyaTile,
+                    instance: tile.section?.name ?? 'settings',
+                    role: 'list.item',
+                    child: _SectionRow(
+                      icon: tile.icon,
+                      label: tile.title,
+                      onTap: () => widget.onOpenTab(NavigationTabId.settings),
+                    ),
+                  ),
+                ),
+              if (tileFor[TvMyPleyaSection.about] case final tile?)
+                SliverToBoxAdapter(
+                  child: _SectionRow(
+                    icon: tile.icon,
+                    label: tile.title,
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen())),
+                  ),
+                ),
               SliverToBoxAdapter(
                 child: _SectionRow(
-                  icon: tile.icon,
-                  label: tile.title,
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen())),
+                  icon: Symbols.logout_rounded,
+                  label: t.common.logout,
+                  showChevron: false,
+                  onTap: () => unawaited(AccountUiActions.logout(context)),
                 ),
               ),
-            SliverToBoxAdapter(
-              child: _SectionRow(
-                icon: Symbols.logout_rounded,
-                label: t.common.logout,
-                showChevron: false,
-                onTap: () => unawaited(AccountUiActions.logout(context)),
-              ),
-            ),
-            // Clears the floating glass tab bar: with glass on the main Scaffold
-            // extends the body under it and reports its height as bottom padding.
-            SliverPadding(padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 16)),
-          ],
+              // Clears the floating glass tab bar: with glass on the main Scaffold
+              // extends the body under it and reports its height as bottom padding.
+              SliverPadding(padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 16)),
+            ],
+          ),
         ),
       ),
     );

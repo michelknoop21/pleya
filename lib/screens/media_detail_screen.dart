@@ -155,6 +155,7 @@ import '../widgets/tv_browse_rail.dart';
 import '../widgets/tv_spotlight_background.dart';
 import '../navigation/main_screen_scope.dart';
 import '../utils/error_message_utils.dart';
+import '../widgets/scroll_crown/scroll_crown.dart';
 
 part 'media_detail/action_buttons.dart';
 part 'media_detail/audio_selector.dart';
