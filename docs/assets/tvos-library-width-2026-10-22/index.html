@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pleya — bibliotheekbreedte · ontwerpvoorstel</title>
+<style>
+@font-face{font-family:Inter;src:url('../tvos-unified/src/assets/Inter-Regular.otf');font-weight:400}
+@font-face{font-family:Inter;src:url('../tvos-unified/src/assets/Inter-Medium.otf');font-weight:500}
+@font-face{font-family:Inter;src:url('../tvos-unified/src/assets/Inter-Bold.otf');font-weight:700}
+:root{color-scheme:dark;--bg:#141414;--ink:#fff;--muted:#b5b5b5;--red:#e5140f;--surface:#252525}
+*{box-sizing:border-box}body{margin:0;background:#080808;color:var(--ink);font-family:Inter,Arial,sans-serif;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer}button:focus-visible{outline:4px solid white;outline-offset:8px}
+#screen{position:absolute;width:1920px;height:1080px;overflow:hidden;background:var(--bg);transform-origin:top left}
+#chrome{position:absolute;inset:0 0 auto;height:228px;z-index:3;background:var(--bg);transition:transform .24s ease,opacity .2s ease}
+#screen.browsing #chrome{transform:translateY(-228px);opacity:0;pointer-events:none}
+nav{position:absolute;top:46px;left:86px;right:86px;height:64px;display:flex;align-items:center;justify-content:space-between}
+.profile{width:46px;height:46px;object-fit:contain}.wordmark{width:130px;height:58px;object-fit:contain}
+.tabs{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:9px;padding:6px;border:1px solid #565656;border-radius:40px;background:#202020}
+.tab{border:0;background:none;border-radius:30px;padding:12px 29px;font-size:24px;font-weight:500;white-space:nowrap;color:#d3d3d3}
+.tab.active{background:#f5f5f5;color:#141414}.tab.search{padding:11px 20px;display:flex;align-items:center}.search svg{width:28px;height:28px}
+header{position:absolute;top:157px;left:86px;right:86px;display:flex;align-items:center;justify-content:space-between}
+h1{margin:0;font-size:44px;font-weight:700;letter-spacing:-1.3px}.sort{display:flex;align-items:center;gap:14px;color:#cecece;font-size:23px;background:none;border:0;padding:10px 0}.sort svg{width:26px;height:26px}
+#wall{position:absolute;inset:0;overflow:hidden;outline:none}
+#grid{position:absolute;left:86px;right:86px;top:246px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));column-gap:28px;row-gap:40px;transition:transform .24s ease}
+.card{border:0;padding:0;background:transparent;min-width:0;text-align:left;outline:none!important;position:relative;height:528px}
+.art{height:402px;position:relative;border-radius:14px;background:var(--surface);transition:transform .18s ease,box-shadow .18s ease;transform-origin:center center}
+.art img{width:100%;height:100%;object-fit:cover;border-radius:14px;display:block}
+.card.selected{z-index:2}.card.selected .art{transform:scale(1.035);outline:4px solid white;outline-offset:8px;box-shadow:0 10px 30px #0009}
+.caption{margin-top:32px;padding-right:2px}.title{font-size:26px;font-weight:700;line-height:32px;min-height:64px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:break-word}.meta{font-size:22px;line-height:27px;color:var(--muted);margin-top:0}
+.seen{position:absolute;top:12px;right:12px;width:34px;height:34px;background:#141414c9;border-radius:50%;display:grid;place-items:center;font-size:23px}.progress{position:absolute;left:12px;right:12px;bottom:10px;height:5px;background:#0009;border-radius:3px;overflow:hidden}.progress i{height:100%;background:var(--red);display:block;width:38%}
+.edge{pointer-events:none;position:absolute;left:0;right:0;z-index:2;height:45px;bottom:0;background:linear-gradient(transparent,var(--bg))}
+#screen.browsing #wall{mask-image:linear-gradient(transparent 55px,#000 78px,#000 calc(100% - 20px),transparent)}
+#help{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:5;background:#262626f5;border:1px solid #555;border-radius:12px;padding:14px 20px;display:flex;align-items:center;gap:24px;font-size:14px;box-shadow:0 4px 24px #0009}
+#help p{margin:0;color:#d0d0d0}#help button{border:1px solid #777;background:#414141;border-radius:6px;padding:7px 12px;white-space:nowrap}
+#help[hidden]{display:none}#notice{position:absolute;top:500px;left:86px;font-size:26px;z-index:4;background:#252525;padding:20px;border-radius:8px}#notice[hidden]{display:none}
+@media(prefers-reduced-motion:reduce){#grid,#chrome,.art{transition:none}}
+</style>
+</head>
+<body>
+<main id="screen" aria-label="Pleya bibliotheek — interactief ontwerpvoorstel">
+<div id="chrome">
+<nav aria-label="Hoofdnavigatie">
+<img class="profile" src="../tvos-unified/src/assets/pleya_mark.png" alt="Pleya profiel">
+<div class="tabs">
+<button class="tab search" aria-label="Zoeken"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg></button>
+<button class="tab" data-page="home">Home</button>
+<button class="tab active" data-page="series" aria-current="page">Series</button>
+<button class="tab" data-page="films">Films</button>
+<button class="tab" data-page="personal">Mijn Pleya</button>
+</div>
+<img class="wordmark" src="../tvos-unified/src/assets/pleya_wordmark.png" alt="Pleya">
+</nav>
+<header><h1 id="heading">Alle series</h1><button class="sort" aria-label="Sortering: recent toegevoegd">Recent toegevoegd <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h15M4 12h10M4 18h5"/></svg></button></header>
+</div>
+<section id="wall" aria-labelledby="heading"><div id="grid" role="group" aria-label="Titels"></div></section>
+<div class="edge"></div><div id="notice" role="status" hidden></div>
+</main>
+<aside id="help" aria-label="Mockupbediening"><p>Ontwerpvoorstel · ← ↑ ↓ → bladeren · Esc terug · F films/series · H uitleg</p><button id="browse">Bladerstand</button><button id="hide-help">Verberg uitleg</button></aside>
+<script>
+const screen=document.querySelector('#screen'),grid=document.querySelector('#grid'),chrome=document.querySelector('#chrome');
+let catalog,kind='series',index=0,browsing=false,navMode=false;
+const params=new URLSearchParams(location.search);
+function fit(){const scale=Math.min(innerWidth/1920,innerHeight/1080);screen.style.transform=`scale(${scale})`;screen.style.left=(innerWidth-1920*scale)/2+'px';screen.style.top=(innerHeight-1080*scale)/2+'px'}
+addEventListener('resize',fit);fit();
+function update(){
+ const row=Math.floor(index/6);browsing=row>0;
+ screen.classList.toggle('browsing',browsing);chrome.inert=browsing;
+ grid.style.transform=`translateY(${browsing?100-246-row*568:0}px)`;
+ document.querySelectorAll('.card').forEach((card,i)=>{card.classList.toggle('selected',!navMode&&i===index);card.tabIndex=!navMode&&i===index?0:-1});
+ document.querySelector('#browse').textContent=browsing?'Beginstand':'Bladerstand';
+}
+function select(i){index=Math.max(0,Math.min(catalog[kind].length-1,i));navMode=false;update();grid.children[index].focus({preventScroll:true})}
+function render(){
+ grid.replaceChildren();document.querySelector('#heading').textContent=kind==='films'?'Alle films':'Alle series';
+ document.querySelectorAll('[data-page]').forEach(b=>{b.classList.toggle('active',b.dataset.page===kind);if(b.dataset.page===kind)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
+ catalog[kind].forEach((item,i)=>{
+  const card=document.createElement('button');card.className='card';card.setAttribute('aria-label',item.title+', '+item.meta);card.setAttribute('aria-haspopup','false');
+  const art=document.createElement('div');art.className='art';const img=document.createElement('img');img.src=item.art;img.alt='';img.draggable=false;art.append(img);
+  if(i===5||i===7){const seen=document.createElement('span');seen.className='seen';seen.textContent='✓';seen.setAttribute('aria-label','Bekeken');art.append(seen)}
+  if(i===2){const progress=document.createElement('div');progress.className='progress';progress.innerHTML='<i></i>';progress.setAttribute('aria-label','38 procent bekeken');art.append(progress)}
+  const caption=document.createElement('div');caption.className='caption';const title=document.createElement('div');title.className='title';title.textContent=item.title;title.title=item.title;const meta=document.createElement('div');meta.className='meta';meta.textContent=item.meta;caption.append(title,meta);card.append(art,caption);
+  card.addEventListener('focus',()=>{index=i;navMode=false;update()});card.addEventListener('click',()=>select(i));grid.append(card);
+ });index=0;navMode=false;update();
+}
+function switchKind(next){kind=next;render();navMode=chrome.contains(document.activeElement);update()}
+const tabs=[...document.querySelectorAll('.tab')];
+tabs.forEach(b=>b.addEventListener('click',()=>{if(['films','series'].includes(b.dataset.page)){switchKind(b.dataset.page)}else{const n=document.querySelector('#notice');n.textContent='Dit voorstel toont alleen de bibliotheek. Kies Films of Series.';n.hidden=false;setTimeout(()=>n.hidden=true,2600)}}));
+chrome.addEventListener('focusin',()=>{navMode=true;index=index%6;update()});
+document.querySelector('.sort').addEventListener('click',()=>{const n=document.querySelector('#notice');n.textContent='Sortering staat in dit ontwerp vast op recent toegevoegd.';n.hidden=false;setTimeout(()=>n.hidden=true,2600)});
+addEventListener('keydown',e=>{
+ if(!catalog||e.altKey||e.metaKey||e.ctrlKey)return;
+ if(e.key.toLowerCase()==='h'){e.preventDefault();document.querySelector('#help').hidden=!document.querySelector('#help').hidden;return}
+ if(e.key.toLowerCase()==='f'){e.preventDefault();switchKind(kind==='films'?'series':'films');select(0);return}
+ if(e.key==='Escape'){e.preventDefault();index=index%6;navMode=true;update();document.querySelector(`[data-page="${kind}"]`).focus({preventScroll:true});return}
+ if(!e.key.startsWith('Arrow'))return;
+ e.preventDefault();
+ if(navMode){if(e.key==='ArrowDown'){select(index);return}const current=tabs.indexOf(document.activeElement);if(e.key==='ArrowLeft'||e.key==='ArrowRight')tabs[Math.max(0,Math.min(tabs.length-1,current+(e.key==='ArrowRight'?1:-1)))].focus();return}
+ const row=Math.floor(index/6),col=index%6;
+ if(e.key==='ArrowLeft'&&col>0)select(index-1);
+ if(e.key==='ArrowRight'&&col<5)select(index+1);
+ if(e.key==='ArrowDown')select(Math.min(index+6,catalog[kind].length-1));
+ if(e.key==='ArrowUp'){if(row===0){navMode=true;update();document.querySelector(`[data-page="${kind}"]`).focus({preventScroll:true})}else select(index-6)}
+});
+document.querySelector('#browse').onclick=()=>select(browsing?index%6:6+index%6);
+document.querySelector('#hide-help').onclick=()=>{document.querySelector('#help').hidden=true;select(index)};
+fetch('catalog.json').then(r=>{if(!r.ok)throw Error('Catalogus laden mislukt');return r.json()}).then(data=>{catalog=data;kind=params.get('kind')==='films'?'films':'series';render();if(params.get('clean')==='1')document.querySelector('#help').hidden=true;select(params.get('state')==='browse'?6:0)}).catch(error=>{document.querySelector('#notice').textContent=error.message;document.querySelector('#notice').hidden=false});
+</script>
+</body>
+</html>

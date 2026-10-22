@@ -1,0 +1,240 @@
+{
+  "films": [
+    {
+      "title": "Oppenheimer",
+      "meta": "2023 · Film",
+      "art": "art/film-0.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/ptpr0kGAckfQkJeJIt8st5dglvd.jpg"
+    },
+    {
+      "title": "Interstellar",
+      "meta": "2014 · Film",
+      "art": "art/film-1.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg"
+    },
+    {
+      "title": "Dune: Part Two",
+      "meta": "2024 · Film",
+      "art": "art/film-2.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg"
+    },
+    {
+      "title": "Barbie",
+      "meta": "2023 · Film",
+      "art": "art/film-3.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/iuFNMS8U5cb6xfzi51Dbkovj7vM.jpg"
+    },
+    {
+      "title": "The Grand Budapest Hotel",
+      "meta": "2014 · Film",
+      "art": "art/film-4.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/eWdyYQreja6JGCzqHWXpWHDrrPo.jpg"
+    },
+    {
+      "title": "La La Land",
+      "meta": "2016 · Film",
+      "art": "art/film-5.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/uDO8zWDhfWwoFdKS4fzkUJt0Rf0.jpg"
+    },
+    {
+      "title": "The Dark Knight",
+      "meta": "2008 · Film",
+      "art": "art/film-6.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg"
+    },
+    {
+      "title": "The Shawshank Redemption",
+      "meta": "1994 · Film",
+      "art": "art/film-7.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/9cqNxx0GxF0bflZmeSMuL5tnGzr.jpg"
+    },
+    {
+      "title": "Inception",
+      "meta": "2010 · Film",
+      "art": "art/film-8.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg"
+    },
+    {
+      "title": "Parasite",
+      "meta": "2019 · Film",
+      "art": "art/film-9.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg"
+    },
+    {
+      "title": "The Matrix",
+      "meta": "1999 · Film",
+      "art": "art/film-10.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg"
+    },
+    {
+      "title": "Everything Everywhere All at Once",
+      "meta": "2022 · Film",
+      "art": "art/film-11.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/w3LxiVYdWWRvEVdn5RYq6jIqkb1.jpg"
+    },
+    {
+      "title": "Arrival",
+      "meta": "2016 · Film",
+      "art": "art/film-12.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/x2FJsf1ElAgr63Y3PNPtJrcmpoe.jpg"
+    },
+    {
+      "title": "Whiplash",
+      "meta": "2014 · Film",
+      "art": "art/film-13.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/7fn624j5lj3xTme2SgiLCeuedmO.jpg"
+    },
+    {
+      "title": "The Batman",
+      "meta": "2022 · Film",
+      "art": "art/film-14.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/74xTEgt7R36Fpooo50r9T25onhq.jpg"
+    },
+    {
+      "title": "Blade Runner 2049",
+      "meta": "2017 · Film",
+      "art": "art/film-15.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg"
+    },
+    {
+      "title": "Past Lives",
+      "meta": "2023 · Film",
+      "art": "art/film-16.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/k3waqVXSnvCZWfJYNtdamTgTtTA.jpg"
+    },
+    {
+      "title": "The Holdovers",
+      "meta": "2023 · Film",
+      "art": "art/film-17.jpg",
+      "source": "https://image.tmdb.org/t/p/w500/VHSzNBTwxV8vh7wylo7O9CLdac.jpg"
+    }
+  ],
+  "series": [
+    {
+      "title": "The Diplomat",
+      "meta": "2023 · Serie",
+      "art": "art/series-0.jpg",
+      "source": "https://www.tvmaze.com/shows/60213/the-diplomat",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/646/1615567.jpg"
+    },
+    {
+      "title": "Severance",
+      "meta": "2022 · Serie",
+      "art": "art/series-1.jpg",
+      "source": "https://www.tvmaze.com/shows/44933/severance",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/548/1371406.jpg"
+    },
+    {
+      "title": "Slow Horses",
+      "meta": "2022 · Serie",
+      "art": "art/series-2.jpg",
+      "source": "https://www.tvmaze.com/shows/45039/slow-horses",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/641/1604425.jpg"
+    },
+    {
+      "title": "The Bear",
+      "meta": "2022 · Serie",
+      "art": "art/series-3.jpg",
+      "source": "https://www.tvmaze.com/shows/54198/the-bear",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/629/1574642.jpg"
+    },
+    {
+      "title": "The Last of Us",
+      "meta": "2023 · Serie",
+      "art": "art/series-4.jpg",
+      "source": "https://www.tvmaze.com/shows/46562/the-last-of-us",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/563/1409008.jpg"
+    },
+    {
+      "title": "The White Lotus",
+      "meta": "2021 · Serie",
+      "art": "art/series-5.jpg",
+      "source": "https://www.tvmaze.com/shows/51394/the-white-lotus",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/557/1393876.jpg"
+    },
+    {
+      "title": "Breaking Bad",
+      "meta": "2008 · Serie",
+      "art": "art/series-6.jpg",
+      "source": "https://www.tvmaze.com/shows/169/breaking-bad",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/501/1253519.jpg"
+    },
+    {
+      "title": "Better Call Saul",
+      "meta": "2015 · Serie",
+      "art": "art/series-7.jpg",
+      "source": "https://www.tvmaze.com/shows/618/better-call-saul",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/501/1253515.jpg"
+    },
+    {
+      "title": "Stranger Things",
+      "meta": "2016 · Serie",
+      "art": "art/series-8.jpg",
+      "source": "https://www.tvmaze.com/shows/2993/stranger-things",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/595/1489169.jpg"
+    },
+    {
+      "title": "The Penguin",
+      "meta": "2024 · Serie",
+      "art": "art/series-9.jpg",
+      "source": "https://www.tvmaze.com/shows/60920/the-penguin",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/536/1340329.jpg"
+    },
+    {
+      "title": "Succession",
+      "meta": "2018 · Serie",
+      "art": "art/series-10.jpg",
+      "source": "https://www.tvmaze.com/shows/23470/succession",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/453/1134275.jpg"
+    },
+    {
+      "title": "The Crown",
+      "meta": "2016 · Serie",
+      "art": "art/series-11.jpg",
+      "source": "https://www.tvmaze.com/shows/3594/the-crown",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/632/1580063.jpg"
+    },
+    {
+      "title": "Silo",
+      "meta": "2023 · Serie",
+      "art": "art/series-12.jpg",
+      "source": "https://www.tvmaze.com/shows/38052/silo",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/631/1577677.jpg"
+    },
+    {
+      "title": "Andor",
+      "meta": "2022 · Serie",
+      "art": "art/series-13.jpg",
+      "source": "https://www.tvmaze.com/shows/52341/andor",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/564/1411766.jpg"
+    },
+    {
+      "title": "Ted Lasso",
+      "meta": "2020 · Serie",
+      "art": "art/series-14.jpg",
+      "source": "https://www.tvmaze.com/shows/44458/ted-lasso",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/634/1585930.jpg"
+    },
+    {
+      "title": "Fargo",
+      "meta": "2014 · Serie",
+      "art": "art/series-15.jpg",
+      "source": "https://www.tvmaze.com/shows/32/fargo",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/487/1219631.jpg"
+    },
+    {
+      "title": "Dark",
+      "meta": "2017 · Serie",
+      "art": "art/series-16.jpg",
+      "source": "https://www.tvmaze.com/shows/17861/dark",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/504/1262352.jpg"
+    },
+    {
+      "title": "Chernobyl",
+      "meta": "2019 · Serie",
+      "art": "art/series-17.jpg",
+      "source": "https://www.tvmaze.com/shows/30770/chernobyl",
+      "imageSource": "https://static.tvmaze.com/uploads/images/original_untouched/193/482599.jpg"
+    }
+  ]
+}

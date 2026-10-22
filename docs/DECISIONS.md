@@ -4954,3 +4954,13 @@ Pleya Server nu mee als filteruitvoerder; de lokale map is de bron die dat niet 
 **Consequences:** negenenvijftig operaties; nieuwe foutcodes `playback.transcode_busy` (503) en `playback.transcode_failed` (502).
 Migratie `0019_transcode_sessions.sql` (de masterlijst noemde `0017`, dat was bezet).
 
+
+
+## DEC-XXX: tvOS brede bibliotheek met volgende rij als doorkijk
+
+**Date:** 2026-10-22
+**Status:** accepted (Michel)
+**Roadmap:** A-06/A-06b, A06B-WIDTH1.
+**Context:** De tweerijen-fit maakte posters smaller, behield zes kolommen en voegde de vrijgekomen breedte aan de zijmarges toe. Michel keurde de Films-bladerstand van [de mockup](assets/tvos-library-width-2026-10-22/index.html) goed, inclusief de ruimere art/titelafstand, en gaf opdracht tot en met tvOS TestFlight.
+**Decision:** De bibliotheekcatalogus (Alle films/series en dezelfde gedeelde catalogusroute voor een bron of Alles bekijken) gebruikt op standaarddensity het brede raster, met zes grote posters op het TV-referentiecanvas. De actieve rij blijft volledig zichtbaar; een volgende rij mag deels zichtbaar zijn. De dichtheidsvoorkeur blijft werken. De gemeenschappelijke TV-kaart krijgt vaste extra ruimte tussen art/focusring en titel; kaarten verschuiven niet bij focus.
+**Consequences:** Dit vervangt voor de catalogus de eerdere eis van twee volledige rijen uit A06B-ROOM1. Andere rasters behouden hun expliciete tweerijen-fit. Gedeelde kaartafstand en veilige zijmarges gelden ook daar; hun bestaande acties, metadata, focus en rechten blijven behouden. Unified impact: alleen gedeelde TV-presentatie, geen leverancierspad, bron-/rechtensamenvoeging of backendwijziging. TestFlight en simulatorbewijs zijn geen fysieke Apple TV-acceptatie.
