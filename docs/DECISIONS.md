@@ -4956,7 +4956,7 @@ Migratie `0019_transcode_sessions.sql` (de masterlijst noemde `0017`, dat was be
 
 
 
-## DEC-XXX: tvOS brede bibliotheek met volgende rij als doorkijk
+## DEC-159: tvOS brede bibliotheek met volgende rij als doorkijk
 
 **Date:** 2026-10-22
 **Status:** accepted (Michel)

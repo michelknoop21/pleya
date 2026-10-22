@@ -51,6 +51,19 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 402 · 22 October 2026 · Apple TV
+
+<!-- commit: bc24ba3f080bf960d8fff47664b01e50bca5bd19 -->
+
+### Improved
+
+- **Apple TV libraries use the screen width.** Movie and series catalogs show large posters, a fully visible focused row and a glimpse of the next row. The density setting, filters and source selection are preserved.
+- **Posters have more space before their titles.** The focus ring and title have room between them, with a stable layout as you move between cards.
+
+### Notes
+
+- **Please check the library on your Apple TV.** Browse up and down, check the first and last columns, and return through the filter panel to the top menu. Automated and simulator checks passed; physical Siri Remote touch and viewing-distance acceptance remain open.
+
 ## 2.8.1 · build 401 · 22 October 2026 · iPhone and iPad
 
 <!-- commit: 98c62116b5b57abebbfc85eb0829bd3d76707cca -->
