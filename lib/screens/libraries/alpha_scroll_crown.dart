@@ -2,101 +2,128 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// The ribbed roller of the phone alphabet scrubber, drawn like the side
-/// crown of a watch: a short cylinder whose axis points into the screen edge.
+/// The machined gear of the phone alphabet scrubber (CN09 prototype): a short
+/// cylinder at the screen edge with [toothCount] teeth around it and a red
+/// band through the middle.
 ///
-/// [rotation] is the roller's angle in radians. The ribs sit at fixed angles
-/// around the cylinder, so a rib facing the viewer is drawn full strength and
-/// one turning away gets thinner and fainter as it nears the top or bottom.
-/// The parent drives [rotation] from the drag distance, which makes the ribs
-/// travel with the finger.
+/// A tooth at angle theta projects to `y = (sin(theta) + 1) * (h - 3) / 2`;
+/// only teeth with `cos(theta) > 0` face the viewer, and they get thinner and
+/// fainter as they turn away. The parent drives [phase] from the drag
+/// distance, which makes the teeth travel with the finger.
 class AlphaScrollCrownPainter extends CustomPainter {
-  final double rotation;
-  final Brightness brightness;
+  final double phase;
 
-  /// True while the user holds the roller: a deeper shadow lifts it a little.
-  final bool active;
+  static const int toothCount = 48;
 
-  /// Ribs around the full circumference; about half face the viewer.
-  static const int ribCount = 22;
+  /// Angle between two teeth. The scrubber turns the gear by one tooth per
+  /// ratchet step, so what you see and what you feel stay in step.
+  static const double toothAngle = 2 * math.pi / toothCount;
 
-  const AlphaScrollCrownPainter({required this.rotation, required this.brightness, this.active = false});
+  const AlphaScrollCrownPainter({required this.phase});
+
+  static const _facets = [
+    Color(0xFF16181B),
+    Color(0xFF71716E),
+    Color(0xFFD5D3CC),
+    Color(0xFFA4A49F),
+    Color(0xFF555957),
+    Color(0xFFB5B5AE),
+    Color(0xFF787B76),
+    Color(0xFF3C403E),
+    Color(0xFF202426),
+  ];
+  static const _facetStops = [0.0, 0.08, 0.16, 0.24, 0.31, 0.43, 0.64, 0.83, 1.0];
+
+  static const _tooth = [
+    Color(0xFF353A3B),
+    Color(0xFFF5F0DE),
+    Color(0xFF181D21),
+    Color(0xFFA2A8A0),
+    Color(0xFFE5E4D9),
+    Color(0xFF3E4947),
+    Color(0xFF0C1217),
+  ];
+  static const _toothStops = [0.0, 0.17, 0.22, 0.40, 0.52, 0.86, 1.0];
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    final shape = RRect.fromRectAndRadius(rect, Radius.circular(size.width * 0.38));
-    final dark = brightness == Brightness.dark;
+    final shape = RRect.fromRectAndRadius(rect, const Radius.circular(5));
 
-    canvas.drawShadow(Path()..addRRect(shape), Colors.black, active ? 5 : 2.5, true);
-
-    // Titanium body, lit from slightly above the middle.
-    final edge = dark ? const Color(0xFF2E2E31) : const Color(0xFF7C7C82);
-    final mid = dark ? const Color(0xFF8D8D93) : const Color(0xFFD6D6DB);
-    final shine = dark ? const Color(0xFFD9D9DE) : const Color(0xFFFFFFFF);
+    canvas.drawRRect(
+      shape.shift(const Offset(-2, 1)),
+      Paint()
+        ..color = const Color(0x66000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+    );
 
     canvas.save();
     canvas.clipRRect(shape);
     canvas.drawRect(
       rect,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [edge, mid, shine, mid, edge],
-          stops: const [0.0, 0.22, 0.4, 0.72, 1.0],
-        ).createShader(rect),
+      Paint()..shader = const LinearGradient(colors: _facets, stops: _facetStops).createShader(rect),
     );
 
-    // Ribs. A rib at angle theta projects to y = cy + r * sin(theta); only
-    // the half with cos(theta) > 0 faces the viewer.
-    final radius = size.height / 2;
-    final cy = size.height / 2;
-    const step = 2 * math.pi / ribCount;
-    final groove = Paint()..strokeCap = StrokeCap.round;
-    final bevel = Paint()..strokeCap = StrokeCap.round;
-    for (var k = 0; k < ribCount; k++) {
-      final theta = rotation + k * step;
-      final facing = math.cos(theta);
-      if (facing <= 0.08) continue;
-      final y = cy + radius * math.sin(theta);
-      groove
-        ..strokeWidth = 0.4 + 1.3 * facing
-        ..color = Colors.black.withValues(alpha: (dark ? 0.55 : 0.4) * facing);
-      bevel
-        ..strokeWidth = 0.4 + 0.6 * facing
-        ..color = Colors.white.withValues(alpha: (dark ? 0.22 : 0.5) * facing);
-      canvas.drawLine(Offset(2, y), Offset(size.width - 2, y), groove);
-      canvas.drawLine(Offset(2, y + 1.1), Offset(size.width - 2, y + 1.1), bevel);
+    for (var i = 0; i < toothCount; i++) {
+      final theta = i * toothAngle + phase;
+      final front = math.cos(theta);
+      if (front <= 0) continue;
+      final opacity = 0.15 + front * 0.7;
+      final y = (math.sin(theta) + 1) * (size.height - 3) / 2;
+      final h = math.max(0.25, front);
+      final toothRect = Rect.fromLTWH(0, y, size.width, h);
+      canvas.drawRect(
+        Rect.fromLTWH(0, y + h, size.width, 1),
+        Paint()..color = const Color(0xFF080B0E).withValues(alpha: 0.75 * opacity),
+      );
+      canvas.drawRect(
+        toothRect,
+        Paint()
+          ..shader = LinearGradient(
+            colors: [for (final c in _tooth) c.withValues(alpha: opacity)],
+            stops: _toothStops,
+          ).createShader(toothRect),
+      );
     }
 
-    // Side shading: the free end (left) catches less light and the collar
-    // where the roller meets the screen edge (right) sits in shadow.
     canvas.drawRect(
       rect,
       Paint()
-        ..shader = LinearGradient(
+        ..shader = const LinearGradient(
           colors: [
-            Colors.black.withValues(alpha: 0.22),
-            Colors.transparent,
-            Colors.transparent,
-            Colors.black.withValues(alpha: 0.3),
+            Color(0x44080B0E),
+            Color(0x00000000),
+            Color(0x18FFFFED),
+            Color(0x00000000),
+            Color(0x22000000),
+            Color(0x99080B0E),
           ],
-          stops: const [0.0, 0.3, 0.7, 1.0],
+          stops: [0.0, 0.16, 0.22, 0.30, 0.78, 1.0],
         ).createShader(rect),
     );
+
+    // Red band through the middle, a dark edge above and a light one below.
+    final bandTop = size.height / 2 - 1;
+    canvas.drawRect(Rect.fromLTWH(0, bandTop - 1, size.width, 1), Paint()..color = const Color(0xFF191C1D));
+    final band = Rect.fromLTWH(0, bandTop, size.width, 2);
+    canvas.drawRect(
+      band,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFF611B24), Color(0xFFF15B64), Color(0xFFAE2937), Color(0xFF3E131B)],
+          stops: [0.0, 0.25, 0.65, 1.0],
+        ).createShader(band),
+    );
+    canvas.drawRect(Rect.fromLTWH(0, bandTop + 2, size.width, 1), Paint()..color = const Color(0x44B8B0A1));
+
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, 1), Paint()..color = const Color(0xFFE3DFD3));
+    canvas.drawRect(Rect.fromLTWH(0, size.height - 1, size.width, 1), Paint()..color = const Color(0xFF6C706B));
     canvas.restore();
 
-    canvas.drawRRect(
-      shape,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.8
-        ..color = dark ? Colors.white.withValues(alpha: 0.18) : Colors.black.withValues(alpha: 0.3),
-    );
+    // Edge highlight on the inner side.
+    canvas.drawRect(Rect.fromLTWH(-1, 2, 1, size.height - 4), Paint()..color = const Color(0x66B0B0A6));
   }
 
   @override
-  bool shouldRepaint(AlphaScrollCrownPainter oldDelegate) =>
-      oldDelegate.rotation != rotation || oldDelegate.brightness != brightness || oldDelegate.active != active;
+  bool shouldRepaint(AlphaScrollCrownPainter oldDelegate) => oldDelegate.phase != phase;
 }

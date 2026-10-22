@@ -2808,6 +2808,9 @@ class TranslationsLibrariesEn {
 
 	// Translations
 
+	/// en: 'Browse alphabetically'
+	String get alphabetScrubber => 'Browse alphabetically';
+
 	/// en: 'Libraries'
 	String get title => 'Libraries';
 
@@ -10699,6 +10702,7 @@ extension on Translations {
 			'notices.playbackConnectionLostBody' => 'Lost connection to the server',
 			'notices.playbackCodecUnsupportedBody' => 'This file\'s format isn\'t supported on this device',
 			'notices.playbackServerErrorBody' => 'The server hit an error while transcoding',
+			'libraries.alphabetScrubber' => 'Browse alphabetically',
 			'libraries.title' => 'Libraries',
 			'libraries.fallbackTitle' => 'Library',
 			'libraries.itemCount' => ({required Object count}) => '${count} items',
@@ -10826,9 +10830,9 @@ extension on Translations {
 			'logs.levelFilter' => 'Level',
 			'logs.levelAll' => 'All',
 			'logs.levelWarnings' => 'Warnings',
-			'logs.levelErrors' => 'Errors',
 			_ => null,
 		} ?? switch (path) {
+			'logs.levelErrors' => 'Errors',
 			'logs.noMatchingLogs' => 'No lines at this level',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} of ${total} lines',
 			'licenses.relatedPackages' => 'Related Packages',
@@ -11340,9 +11344,9 @@ extension on Translations {
 			'metadataEdit.newestFirst' => 'Newest first',
 			'metadataEdit.keep' => 'Keep',
 			'metadataEdit.allEpisodes' => 'All episodes',
-			'metadataEdit.latestEpisodes' => ({required Object count}) => '${count} latest episodes',
 			_ => null,
 		} ?? switch (path) {
+			'metadataEdit.latestEpisodes' => ({required Object count}) => '${count} latest episodes',
 			'metadataEdit.latestEpisode' => 'Latest episode',
 			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Episodes added in the past ${count} days',
 			'metadataEdit.deleteAfterPlaying' => 'Delete Episodes After Playing',
@@ -11854,9 +11858,9 @@ extension on Translations {
 			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titles',
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} of ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'View all movies, opens the complete catalog',
-			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'View all series, opens the complete catalog',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'View all series, opens the complete catalog',
 			'unifiedCatalog.home.featured' => 'Featured',
 			'unifiedCatalog.homeRows.customize' => 'Customise Home',
 			'unifiedCatalog.homeRows.customizeSubtitle' => 'Move or hide rows, or build one from a filter',
@@ -12368,9 +12372,9 @@ extension on Translations {
 			'assistant.confirm.create' => 'Create',
 			'assistant.notes.plexManagedHomeUser' => 'Managed Plex Home user, with a share on this server.',
 			'assistant.notes.plexShare' => 'A share on this Plex server.',
-			'assistant.notes.plexHomeMember' => 'Member of your Plex Home. Only the share on this server changes.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.notes.plexHomeMember' => 'Member of your Plex Home. Only the share on this server changes.',
 			'assistant.notes.replacesAllAccess' => 'Replaces all existing access of this user on this server.',
 			'assistant.ends.noTools' => 'There is nothing Big P can do on your servers right now.',
 			'assistant.ends.toolsUnsupported' => 'This model cannot use tools. Pick another model in the Big P settings.',
