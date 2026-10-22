@@ -4,6 +4,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/haptics.dart';
@@ -21,8 +23,8 @@ import 'scroll_crown_gear.dart';
 /// It is the CN09 gear without the letter bubble. It appears when the view
 /// scrolls or the right edge is touched and fades [hideDelay] after the last
 /// activity. A vertical drag that starts on the gear (or where it rests while
-/// hidden) scrubs: it scrolls pixel for pixel over the scrollable range as it
-/// was when the drag began (rail height maps onto scroll length), the gear
+/// hidden) scrubs: it maps the available travel above and below the finger onto the remaining
+/// scroll range, without jumping when grabbed, the gear
 /// rides under the finger and its teeth turn with the drag, with a ratchet
 /// tick per tooth through [CrownRatchet]. After a touch on the edge brought
 /// the crown up, the whole edge is a rail until it hides or the content
@@ -86,18 +88,23 @@ class ScrollCrown extends StatefulWidget {
     return range >= metrics.viewportDimension * (minContentScreens - 1);
   }
 
-  /// The scroll offset for a drag of [dragDelta] on a rail of [railHeight]
-  /// that started at [startPixels]: the rail maps onto the whole scrollable
-  /// range, so a full-rail drag covers it end to end.
+  /// Anchors the current offset to the finger, with both rail ends reachable.
   static double offsetForDrag({
     required double startPixels,
+    required double startY,
     required double dragDelta,
     required double railHeight,
     required double minExtent,
     required double maxExtent,
   }) {
-    if (railHeight <= 0 || maxExtent <= minExtent) return startPixels.clamp(minExtent, maxExtent);
-    return (startPixels + dragDelta / railHeight * (maxExtent - minExtent)).clamp(minExtent, maxExtent);
+    final start = startPixels.clamp(minExtent, maxExtent);
+    if (railHeight <= ScrollCrownGear.height || maxExtent <= minExtent || dragDelta == 0) return start;
+    final origin = startY.clamp(0.0, railHeight);
+    final towardEnd = dragDelta > 0;
+    final target = towardEnd ? maxExtent : minExtent;
+    final room = towardEnd ? railHeight - ScrollCrownGear.height / 2 - origin : origin - ScrollCrownGear.height / 2;
+    if (room <= 0 || dragDelta.abs() >= room) return target;
+    return start + dragDelta.abs() / room * (target - start);
   }
 
   @override
@@ -163,6 +170,23 @@ class _ScrollCrownState extends State<ScrollCrown> {
     final wasEligible = _eligible;
     _metrics = notification.metrics;
     _position = _positionFrom(notification.context) ?? _position;
+    if (_dragging &&
+        _fingerY != null &&
+        _fingerY! >= _railHeight - ScrollCrownGear.height / 2 &&
+        notification.metrics.extentAfter > 0.5) {
+      // A lazy list can discover its final extent only after the edge jump.
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        final position = _position;
+        if (mounted &&
+            _dragging &&
+            _fingerY != null &&
+            _fingerY! >= _railHeight - ScrollCrownGear.height / 2 &&
+            position != null &&
+            position.hasContentDimensions) {
+          position.jumpTo(position.maxScrollExtent);
+        }
+      });
+    }
     if (wasEligible != _eligible) _update(() {});
     return false;
   }
@@ -237,10 +261,15 @@ class _ScrollCrownState extends State<ScrollCrown> {
     final delta = details.localPosition.dy - _dragStartY;
     final target = ScrollCrown.offsetForDrag(
       startPixels: _dragStartPixels,
+      startY: _dragStartY,
       dragDelta: delta,
       railHeight: _railHeight,
       minExtent: _dragMinExtent,
-      maxExtent: _dragMaxExtent,
+      // Keep the interior mapping stable while loading, but let the edge reach
+      // the actual end if the content grew during this drag.
+      maxExtent: details.localPosition.dy >= _railHeight - ScrollCrownGear.height / 2
+          ? position.maxScrollExtent
+          : _dragMaxExtent,
     );
     position.jumpTo(target.clamp(position.minScrollExtent, position.maxScrollExtent));
     setState(() {
@@ -379,7 +408,17 @@ class _ScrollCrownState extends State<ScrollCrown> {
                 bottom: padding.bottom,
                 right: 0,
                 width: ScrollCrown.railWidth,
-                child: _rail(context),
+                child: AutomationNode(
+                  id: AutomationIds.overlayScrollCrown,
+                  role: 'slider',
+                  state: () => {
+                    'at_start': _metrics!.extentBefore <= 0.5,
+                    'at_end': _metrics!.extentAfter <= 0.5,
+                    'visible': _active,
+                    'gear_height': ScrollCrownGear.height,
+                  },
+                  child: _rail(context),
+                ),
               ),
           ],
         ),

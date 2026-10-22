@@ -1,0 +1,33 @@
+name: ios.scroll-crown.ends
+target: ios-sim
+# IOS-CROWN-END1 / A-06. iPhone SE (375x667): grab in the middle,
+# then reach the actual bottom and top without taking another grip.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - configure_view: {orientation: portrait}
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - settle: 3500
+  - tap: {id: nav.myPleya}
+  - wait_until: {id: screen.my_pleya, timeout: 10000}
+  - settle: 800
+  - tap: {id: "my_pleya.tile[settings]"}
+  - wait_until: {id: screen.settings, timeout: 10000}
+  - wait_until: {id: overlay.scroll_crown, timeout: 5000}
+  - assert: {id: overlay.scroll_crown, state: {at_start: true, gear_height: 96}}
+  - tap: {x: 368, y: 330}
+  - drag: {startX: 368, startY: 330, endX: 368, endY: 635, durationMs: 700}
+  - settle: 100
+  - assert: {id: overlay.scroll_crown, state: {at_end: true}}
+  - assert: {id: screen.settings}
+  - snapshot: crown-bottom
+  - settle: 1100
+  - tap: {x: 368, y: 330}
+  - drag: {startX: 368, startY: 330, endX: 368, endY: 30, durationMs: 700}
+  - settle: 100
+  - assert: {id: overlay.scroll_crown, state: {at_start: true}}
+  - assert: {id: screen.settings}
+  - snapshot: crown-top

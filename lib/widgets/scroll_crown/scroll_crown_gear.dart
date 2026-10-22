@@ -24,7 +24,7 @@ class ScrollCrownGear extends StatelessWidget {
   final Key? paintKey;
 
   static const double width = 22;
-  static const double height = 70;
+  static const double height = 96;
 
   /// Offset from the screen edge: the gear sits partly outside it.
   static const double right = -6;
