@@ -3,11 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../media/library_first_character.dart';
+import '../../theme/mono_tokens.dart';
+import '../../utils/haptics.dart';
 import 'alpha_jump_helper.dart';
+import 'alpha_scroll_crown.dart';
 
-/// Phone-optimized draggable scroll handle that appears on scroll and shows
-/// a letter bubble when dragged. Designed to match the Plex app's scroll
-/// indicator behavior.
+/// Phone alphabet scrubber: a ribbed roller at the right edge that appears on
+/// scroll and shows a letter bubble while dragged, like the Plex app's scroll
+/// knob. The roller turns with the drag (not under reduce motion) and every
+/// change of letter jumps the grid and gives one selection tick.
 ///
 /// Desktop/tablet/TV should use [AlphaJumpBar] instead.
 class AlphaScrollHandle extends StatefulWidget {
@@ -22,6 +26,11 @@ class AlphaScrollHandle extends StatefulWidget {
   /// Whether the parent scroll view is currently scrolling.
   final bool isScrolling;
 
+  /// Called once per letter change during a drag. Defaults to
+  /// [Haptics.selection]; tests inject a counter because the haptic channel is
+  /// a no-op on the desktop host that runs them.
+  final VoidCallback? onLetterTick;
+
   const AlphaScrollHandle({
     super.key,
     required this.firstCharacters,
@@ -29,6 +38,7 @@ class AlphaScrollHandle extends StatefulWidget {
     required this.currentLetter,
     this.descending = false,
     required this.isScrolling,
+    this.onLetterTick,
   });
 
   @override
@@ -48,21 +58,24 @@ class _AlphaScrollHandleState extends State<AlphaScrollHandle> with SingleTicker
   /// Cached track height from the last layout pass, used in drag callbacks.
   double _trackHeight = 0;
 
+  /// Roller angle in radians. Kept after release so the ribs stay where the
+  /// finger left them.
+  double _rotation = 0;
+
   static const _showDuration = Duration(milliseconds: 200);
   static const _hideDuration = Duration(milliseconds: 200);
   static const _autoHideDelay = Duration(seconds: 2);
 
-  // Handle dimensions
-  static const double _handleWidth = 6.0;
-  static const double _handleHeight = 44.0;
+  // Roller dimensions
+  static const double _handleWidth = 22.0;
+  static const double _handleHeight = 60.0;
   static const double _touchTargetWidth = 44.0;
   static const double _touchTargetVerticalPadding = 20.0;
-  static const double _handleRadius = 3.0;
 
   // Bubble dimensions
-  static const double _bubbleSize = 56.0;
-  static const double _bubbleFontSize = 24.0;
-  static const double _bubbleMarginRight = 8.0;
+  static const double _bubbleSize = 72.0;
+  static const double _bubbleFontSize = 34.0;
+  static const double _bubbleMarginRight = 12.0;
 
   @override
   void initState() {
@@ -126,8 +139,16 @@ class _AlphaScrollHandleState extends State<AlphaScrollHandle> with SingleTicker
     _dragFraction = newFraction;
 
     final letter = _helper.letterAtFraction(newFraction);
+    final letterChanged = letter != _dragLetter;
 
-    setState(() => _dragLetter = letter);
+    setState(() {
+      _dragLetter = letter;
+      // Roll without slipping: the surface under the finger moves as far as
+      // the finger, so the angle is the distance over the roller's radius.
+      if (!prefersReducedMotion(context)) _rotation += details.delta.dy / (_handleHeight / 2);
+    });
+    if (!letterChanged) return;
+    (widget.onLetterTick ?? Haptics.selection)();
     widget.onJump(_helper.indexForLetter(letter) ?? 0);
   }
 
@@ -162,7 +183,8 @@ class _AlphaScrollHandleState extends State<AlphaScrollHandle> with SingleTicker
           final usableHeight = trackHeight - _handleHeight;
           final handleTop = usableHeight > 0 ? (fraction * usableHeight) : 0.0;
 
-          final colorScheme = Theme.of(context).colorScheme;
+          final theme = Theme.of(context);
+          final colorScheme = theme.colorScheme;
 
           return SizedBox(
             width: _touchTargetWidth + _bubbleSize + _bubbleMarginRight,
@@ -188,13 +210,16 @@ class _AlphaScrollHandleState extends State<AlphaScrollHandle> with SingleTicker
                         height: _handleHeight + _touchTargetVerticalPadding * 2,
                         child: Align(
                           alignment: .centerRight,
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 2),
-                            width: _handleWidth,
-                            height: _handleHeight,
-                            decoration: BoxDecoration(
-                              color: colorScheme.onSurface.withValues(alpha: 0.5),
-                              borderRadius: const BorderRadius.all(Radius.circular(_handleRadius)),
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 3),
+                            child: CustomPaint(
+                              key: const ValueKey('alpha_scroll_crown'),
+                              size: const Size(_handleWidth, _handleHeight),
+                              painter: AlphaScrollCrownPainter(
+                                rotation: _rotation,
+                                brightness: theme.brightness,
+                                active: _isDragging,
+                              ),
                             ),
                           ),
                         ),
@@ -208,9 +233,14 @@ class _AlphaScrollHandleState extends State<AlphaScrollHandle> with SingleTicker
                     right: _touchTargetWidth + _bubbleMarginRight,
                     top: handleTop + (_handleHeight - _bubbleSize) / 2,
                     child: Container(
+                      key: const ValueKey('alpha_scroll_bubble'),
                       width: _bubbleSize,
                       height: _bubbleSize,
-                      decoration: BoxDecoration(color: colorScheme.primary, shape: BoxShape.circle),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary,
+                        shape: BoxShape.circle,
+                        boxShadow: const [BoxShadow(color: Color(0x59000000), blurRadius: 12, offset: Offset(0, 3))],
+                      ),
                       alignment: .center,
                       child: Text(
                         _dragLetter!,

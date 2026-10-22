@@ -17,11 +17,14 @@ MonoTokens tokens(BuildContext context) => Theme.of(context).extension<MonoToken
 /// widget tests that reach a call site never bootstrap the settings
 /// singleton, and the pref's own default (`false`) is the right answer for
 /// "not initialized yet" regardless.
-Duration reduceMotion(BuildContext context, Duration d) =>
+Duration reduceMotion(BuildContext context, Duration d) => prefersReducedMotion(context) ? Duration.zero : d;
+
+/// Whether motion should be suppressed: the OS accessibility toggle or
+/// [SettingsService.tvReduceMotion]. For motion that is not a timed
+/// animation, such as a control that visibly turns while it is dragged.
+bool prefersReducedMotion(BuildContext context) =>
     MediaQuery.disableAnimationsOf(context) ||
-        (SettingsService.instanceOrNull?.read(SettingsService.tvReduceMotion) ?? false)
-    ? Duration.zero
-    : d;
+    (SettingsService.instanceOrNull?.read(SettingsService.tvReduceMotion) ?? false);
 
 @immutable
 class MonoTokens extends ThemeExtension<MonoTokens> {
