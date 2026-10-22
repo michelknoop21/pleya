@@ -51,6 +51,33 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 400 · 22 October 2026 · iPhone and iPad
+
+<!-- commit: b282f814a9ee2f800e8b31768de7721ebf284918 -->
+
+### New
+
+- **A scroll knob on the right edge of long screens.** Drag along the right edge and a ribbed
+  knob turns under your finger while you scroll. You feel it tick through the phone's vibration
+  motor, with a firmer tick when the letter changes. It shows on home, search, the watchlist,
+  requests, settings and film and series pages, and only on content longer than two screens.
+- **Alphabet scrubbing in All movies and All series.** The knob shows the letter you are on in a
+  bubble next to your finger. It now also works for Jellyfin and Pleya Server libraries with at
+  least 80 titles, sorted by title. Local folders have no title sort yet, so no knob there.
+
+### Changed
+
+- **The film and series page now looks like Plex.** The poster runs to the top of the screen, the
+  page is dark in every appearance, the main button is solid white, and the actions are loose round
+  buttons with the label below.
+
+### Notes
+
+- **Worth checking:** drag the right edge on a long list and feel the ticks. Then open a film in
+  the light appearance and check that the source name stays readable.
+- **Known limit:** a library with a title that starts with an accented or non-Latin letter shows
+  no alphabet knob.
+
 ## 2.8.1 · build 399 · 22 October 2026 · iPhone and iPad
 
 <!-- commit: 6ba988105a9bb3c106b07fc02a7fe1df5d9f9ae4 -->
