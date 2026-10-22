@@ -51,6 +51,22 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 401 · 22 October 2026 · iPhone and iPad
+
+<!-- commit: 98c62116b5b57abebbfc85eb0829bd3d76707cca -->
+
+### Improved
+
+- **The iPhone scroll knob is taller.** More of its turning animation stays visible around your finger. The letter bubble remains centered beside it.
+
+### Fixed
+
+- **The scroll knob reaches the top and bottom in one drag.** You can grab it partway down the screen and still reach either end without taking another grip. This also applies to alphabet scrubbing in movie and series libraries.
+
+### Notes
+
+- **Please check the knob on your iPhone.** The standard knob reached both ends in the simulator; alphabet scrubbing passed automated tests. Finger coverage and vibration still need a check on an iPhone.
+
 ## 2.8.1 · build 400 · 22 October 2026 · iPhone and iPad
 
 <!-- commit: b282f814a9ee2f800e8b31768de7721ebf284918 -->
