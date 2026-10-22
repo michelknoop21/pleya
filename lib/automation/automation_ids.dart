@@ -49,6 +49,8 @@ class AutomationIds {
   /// over the bar has to be able to name.
   static const String navReconnect = 'nav.reconnect';
 
+  static const String overlayScrollCrown = 'overlay.scroll_crown';
+
   static const String screenMain = 'screen.main';
   static const String screenDiscover = 'screen.discover';
   static const String screenLibraries = 'screen.libraries';
@@ -840,6 +842,7 @@ class AutomationIds {
   /// holds whatever screen happens to be on screen, while a scenario needs
   /// the full, screen-independent set.
   static List<Map<String, Object?>> catalog() => [
+    {'id': overlayScrollCrown, 'role': 'slider', 'instanceable': false},
     {'id': screenAuth, 'role': 'screen', 'instanceable': false},
     {'id': authHeading, 'role': 'heading', 'instanceable': false},
     {'id': authChoice, 'role': 'button', 'instanceable': true},

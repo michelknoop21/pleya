@@ -87,3 +87,9 @@ Uiterlijk (default uit) en gelden niet op de iPad. Contrastwaarden en open punte
 
 Een rij verandert alleen met een SHA en het bewijs per soort erbij, volgens de bewijsregel in de
 closure. Een rij verdwijnt alleen door een eindstatus.
+
+## Scrollkroon
+
+| ID | Onderwerp | Status | CODE | VERIFY/SIM | HARDWARE |
+|---|---|---|---|---|---|
+| IOS-CROWN-END1 | A-06: de gewone en alfabetische iPhone-kroon bereiken vanaf ieder aangrijppunt de boven- en onderkant; kroonhoogte 70 → 96 pt zodat de vinger minder van de animatie bedekt. Michel, 22 oktober 2026, na build 400. | CODE VERIFIED · SIMULATOR VERIFIED (gewone kroon) · HARDWARE OPEN | Deze commit op `fix/crown-scroll-end`: resterende sleepafstand naar het eindpunt, stabiel binnenbereik tijdens laden en live einde zolang de onderrand vastgehouden wordt; alfabetkroon gebruikt dezelfde berekening. 32 gerichte tests groen, inclusief licht/donker-goldens en negatieve controles voor beide kroonvarianten en naladende rijen; `scripts/ci_checks.sh` groen. | `ios.scroll-crown.ends` PASS op iPhone SE (375×667, iOS 27), 22 okt 2026, werkboom op `c79b111a` plus deze wijziging. Bundel `ios-scroll-crown-ends-1792674980446`: begin/einde en 96 pt geassert, native beelden `crown-bottom.png` en `crown-top.png` gelezen. Alfabetkroon: widget- en goldenbewijs; niet live met een bibliotheek getest. | Herhaling op de telefoon open; vingerbedekking en haptiek niet met de simulator bewezen. |

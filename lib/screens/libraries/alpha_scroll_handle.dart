@@ -9,6 +9,7 @@ import '../../media/library_first_character.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/haptics.dart';
 import '../../widgets/scroll_crown/crown_ratchet.dart';
+import '../../widgets/scroll_crown/scroll_crown.dart';
 import '../../widgets/scroll_crown/scroll_crown_gear.dart';
 import 'alpha_jump_helper.dart';
 
@@ -163,7 +164,16 @@ class _AlphaScrollHandleState extends State<AlphaScrollHandle> {
   void _onDragUpdate(DragUpdateDetails details) {
     if (_railHeight <= 0) return;
     final delta = details.localPosition.dy - _dragStartY;
-    widget.onScrub((_dragStartFraction + delta / _railHeight).clamp(0.0, 1.0));
+    widget.onScrub(
+      ScrollCrown.offsetForDrag(
+        startPixels: _dragStartFraction,
+        startY: _dragStartY,
+        dragDelta: delta,
+        railHeight: _railHeight,
+        minExtent: 0,
+        maxExtent: 1,
+      ),
+    );
     setState(() {
       _gearTop = _clampGearTop(details.localPosition.dy);
       if (!prefersReducedMotion(context)) {
@@ -304,7 +314,7 @@ class _AlphaScrollHandleState extends State<AlphaScrollHandle> {
                   ),
                   Positioned(
                     right: _bubbleRight,
-                    top: gearTop + 14,
+                    top: gearTop + (_gearHeight - _bubbleSize) / 2,
                     child: IgnorePointer(
                       child: AnimatedOpacity(
                         opacity: visible && widget.currentLetter.isNotEmpty ? 1 : 0,

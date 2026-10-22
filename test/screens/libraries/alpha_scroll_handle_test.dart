@@ -125,10 +125,23 @@ void main() {
     await tester.pumpWidget(rig.host());
 
     await _drag(tester, rig, steps: 140, step: 2);
-    expect(rig.scrubs.last, closeTo(280 / _railHeight, 0.01), reason: 'half the rail is half the list');
+    expect(rig.scrubs.last, closeTo(0.55, 0.01), reason: 'the available rail ends at the taller gear centre');
 
-    await _drag(tester, rig, steps: 200, step: 2);
+    await _drag(tester, rig, steps: 270, step: 2);
     expect(rig.scrubs.last, 1.0, reason: 'clamped at the end of the list');
+  });
+
+  testWidgets('a crown grabbed halfway down the rail reaches both ends', (tester) async {
+    final rig = _Rig();
+    await tester.pumpWidget(rig.host());
+    final middle = tester.getTopLeft(_rail) + const Offset(22, _railHeight / 2);
+    await tester.dragFrom(middle, const Offset(0, _railHeight / 2 - 10));
+    await tester.pump();
+    expect(rig.scrubs.last, 1.0);
+
+    await tester.dragFrom(middle, const Offset(0, -_railHeight / 2 + 10));
+    await tester.pump();
+    expect(rig.scrubs.last, 0.0);
   });
 
   testWidgets('ratchet ticks scale with the drag distance', (tester) async {

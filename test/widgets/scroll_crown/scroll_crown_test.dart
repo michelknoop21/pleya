@@ -98,14 +98,45 @@ Future<void> _scrub(
 }
 
 void main() {
-  test('a drag maps the rail height onto the scrollable length', () {
-    double map(double delta, {double start = 0}) =>
-        ScrollCrown.offsetForDrag(startPixels: start, dragDelta: delta, railHeight: 700, minExtent: 0, maxExtent: 7000);
-    expect(map(350), 3500, reason: 'half the rail is half the scroll length');
-    expect(map(7), 70, reason: 'one tooth of drag is a tenth-of-a-percent step');
-    expect(map(-100, start: 3500), 2500, reason: 'dragging up scrolls back');
-    expect(map(2000), 7000, reason: 'clamped at the end');
-    expect(map(-50), 0, reason: 'clamped at the start');
+  test('a drag anchors the offset and reaches both ends from any grab point', () {
+    for (final startY in [48.0, 200.0, 350.0, 600.0, 652.0]) {
+      double map(double delta) => ScrollCrown.offsetForDrag(
+        startPixels: 3000,
+        startY: startY,
+        dragDelta: delta,
+        railHeight: 700,
+        minExtent: -100,
+        maxExtent: 7000,
+      );
+      expect(map(0), 3000, reason: 'grabbing does not jump');
+      expect(map(700 - startY), 7000);
+      expect(map(-startY), -100);
+    }
+  });
+
+  test('dragging inward from the rail padding starts smoothly', () {
+    expect(
+      ScrollCrown.offsetForDrag(
+        startPixels: 3000,
+        startY: 690,
+        dragDelta: -0.001,
+        railHeight: 700,
+        minExtent: 0,
+        maxExtent: 7000,
+      ),
+      closeTo(3000, 0.1),
+    );
+    expect(
+      ScrollCrown.offsetForDrag(
+        startPixels: 3000,
+        startY: 10,
+        dragDelta: 0.001,
+        railHeight: 700,
+        minExtent: 0,
+        maxExtent: 7000,
+      ),
+      closeTo(3000, 0.1),
+    );
   });
 
   test('content shorter than two screens gets no crown', () {
@@ -226,6 +257,42 @@ void main() {
     // The touch slop before the drag is recognised costs a few pixels.
     expect(rig.controller.offset, closeTo(expected, 20 / _railHeight * max));
     expect(rig.teeth, isNotEmpty);
+  });
+
+  testWidgets('a crown grabbed halfway down the rail reaches both ends', (tester) async {
+    final rig = _Rig();
+    await _setUp(tester, rig);
+    await tester.tapAt(const Offset(_edgeX, 360));
+    await tester.pump();
+
+    await tester.dragFrom(const Offset(_edgeX, 360), const Offset(0, 340));
+    await tester.pump();
+    expect(rig.controller.offset, closeTo(rig.controller.position.maxScrollExtent, 0.01));
+
+    await tester.dragFrom(const Offset(_edgeX, 360), const Offset(0, -340));
+    await tester.pump();
+    expect(rig.controller.offset, closeTo(rig.controller.position.minScrollExtent, 0.01));
+  });
+
+  testWidgets('the rail end reaches rows loaded during the drag', (tester) async {
+    final rig = _Rig();
+    await _setUp(tester, rig);
+    await tester.tapAt(const Offset(_edgeX, 360));
+    await tester.pump();
+    final gesture = await tester.startGesture(const Offset(_edgeX, 360));
+    await gesture.moveBy(const Offset(0, 100));
+    await tester.pump();
+    rig.rowCount.value = 120;
+    await tester.pump();
+    await gesture.moveTo(const Offset(_edgeX, 700));
+    await tester.pumpAndSettle();
+    expect(rig.controller.offset, closeTo(rig.controller.position.maxScrollExtent, 0.01));
+    await gesture.up();
+    await tester.pump();
+    final releasedOffset = rig.controller.offset;
+    rig.rowCount.value = 160;
+    await tester.pumpAndSettle();
+    expect(rig.controller.offset, releasedOffset, reason: 'loading after release must not take over scrolling');
   });
 
   testWidgets('ratchet ticks scale with the drag distance', (tester) async {
