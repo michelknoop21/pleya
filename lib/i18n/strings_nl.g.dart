@@ -684,6 +684,7 @@ class _TranslationsAccessibilityNl extends TranslationsAccessibilityEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get scrollCrown => 'Door de pagina scrollen';
 	@override String mediaCardMovie({required Object title}) => '${title}, film';
 	@override String mediaCardShow({required Object title}) => '${title}, TV-serie';
 	@override String mediaCardEpisode({required Object title, required Object episodeInfo}) => '${title}, ${episodeInfo}';
@@ -4825,6 +4826,7 @@ extension on TranslationsNl {
 			'rateSheet.saved' => 'Opgeslagen',
 			'rateSheet.notAvailable' => 'Geen match gevonden',
 			'rateSheet.noConnectedTrackers' => 'Verbind een tracker in Instellingen om daar te beoordelen.',
+			'accessibility.scrollCrown' => 'Door de pagina scrollen',
 			'accessibility.mediaCardMovie' => ({required Object title}) => '${title}, film',
 			'accessibility.mediaCardShow' => ({required Object title}) => '${title}, TV-serie',
 			'accessibility.mediaCardEpisode' => ({required Object title, required Object episodeInfo}) => '${title}, ${episodeInfo}',
@@ -4850,9 +4852,9 @@ extension on TranslationsNl {
 			'videoControls.stretch' => 'Uitrekken',
 			'videoControls.lockRotation' => 'Vergrendel rotatie',
 			'videoControls.unlockRotation' => 'Ontgrendel rotatie',
-			'videoControls.timerActive' => 'Timer actief',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.timerActive' => 'Timer actief',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Afspelen wordt gepauzeerd over ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'Einde van huidige video',
 			'videoControls.sleepTimerStopAtHeader' => 'Stoppen bij',
@@ -5364,9 +5366,9 @@ extension on TranslationsNl {
 			'logs.refreshLogs' => 'Verversen',
 			'logs.levelFilter' => 'Niveau',
 			'logs.levelAll' => 'Alles',
-			'logs.levelWarnings' => 'Waarschuwingen',
 			_ => null,
 		} ?? switch (path) {
+			'logs.levelWarnings' => 'Waarschuwingen',
 			'logs.levelErrors' => 'Fouten',
 			'logs.noMatchingLogs' => 'Geen regels op dit niveau',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} van ${total} regels',
@@ -5878,9 +5880,9 @@ extension on TranslationsNl {
 			'metadataEdit.oldestFirst' => 'Oudste eerst',
 			'metadataEdit.newestFirst' => 'Nieuwste eerst',
 			'metadataEdit.keep' => 'Bewaren',
-			'metadataEdit.allEpisodes' => 'Alle afleveringen',
 			_ => null,
 		} ?? switch (path) {
+			'metadataEdit.allEpisodes' => 'Alle afleveringen',
 			'metadataEdit.latestEpisodes' => ({required Object count}) => '${count} nieuwste afleveringen',
 			'metadataEdit.latestEpisode' => 'Nieuwste aflevering',
 			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Afleveringen toegevoegd in de afgelopen ${count} dagen',
@@ -6392,9 +6394,9 @@ extension on TranslationsNl {
 			'unifiedCatalog.discovery.emptyBody' => 'Geen zichtbare bibliotheek heeft hier iets te tonen.',
 			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titels',
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} van ${count}',
-			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Alle films bekijken, opent de volledige catalogus',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Alle films bekijken, opent de volledige catalogus',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Alle series bekijken, opent de volledige catalogus',
 			'unifiedCatalog.home.featured' => 'Uitgelicht',
 			'unifiedCatalog.homeRows.customize' => 'Home aanpassen',
@@ -6906,9 +6908,9 @@ extension on TranslationsNl {
 			'assistant.confirm.approve' => 'Bevestigen',
 			'assistant.confirm.create' => 'Aanmaken',
 			'assistant.notes.plexManagedHomeUser' => 'Beheerde Plex Home-gebruiker, met een share op deze server.',
-			'assistant.notes.plexShare' => 'Een share op deze Plex-server.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.notes.plexShare' => 'Een share op deze Plex-server.',
 			'assistant.notes.plexHomeMember' => 'Lid van je Plex Home. Alleen de share op deze server verandert.',
 			'assistant.notes.replacesAllAccess' => 'Vervangt alle bestaande toegang van deze gebruiker op deze server.',
 			'assistant.ends.noTools' => 'Big P kan nu niets doen op je servers.',

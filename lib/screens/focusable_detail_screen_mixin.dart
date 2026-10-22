@@ -15,6 +15,7 @@ import '../widgets/focusable_media_card.dart';
 import '../widgets/media_grid_delegate.dart';
 import '../widgets/skeleton_media_card.dart';
 import '../widgets/sliver_cross_axis_layout_builder.dart';
+import '../widgets/scroll_crown/scroll_crown.dart';
 
 /// Extract the stable id from a [MediaItem]/[MediaPlaylist] for use as a
 /// Flutter widget Key.
@@ -143,7 +144,9 @@ mixin FocusableDetailScreenMixin<T extends StatefulWidget> on State<T>, GridFocu
         controller: scrollController,
         child: IosStatusBarTapScrollToTop(
           controller: scrollController,
-          child: Scaffold(body: CustomScrollView(primary: true, slivers: slivers)),
+          child: Scaffold(
+            body: ScrollCrown(child: CustomScrollView(primary: true, slivers: slivers)),
+          ),
         ),
       ),
     );

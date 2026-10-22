@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// The machined gear of the phone alphabet scrubber (CN09 prototype): a short
+/// The machined gear of the phone scroll crown (CN09 prototype): a short
 /// cylinder at the screen edge with [toothCount] teeth around it and a red
 /// band through the middle.
 ///
@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 /// only teeth with `cos(theta) > 0` face the viewer, and they get thinner and
 /// fainter as they turn away. The parent drives [phase] from the drag
 /// distance, which makes the teeth travel with the finger.
-class AlphaScrollCrownPainter extends CustomPainter {
+class ScrollCrownPainter extends CustomPainter {
   final double phase;
 
   static const int toothCount = 48;
@@ -19,7 +19,7 @@ class AlphaScrollCrownPainter extends CustomPainter {
   /// ratchet step, so what you see and what you feel stay in step.
   static const double toothAngle = 2 * math.pi / toothCount;
 
-  const AlphaScrollCrownPainter({required this.phase});
+  const ScrollCrownPainter({required this.phase});
 
   static const _facets = [
     Color(0xFF16181B),
@@ -125,5 +125,5 @@ class AlphaScrollCrownPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(AlphaScrollCrownPainter oldDelegate) => oldDelegate.phase != phase;
+  bool shouldRepaint(ScrollCrownPainter oldDelegate) => oldDelegate.phase != phase;
 }

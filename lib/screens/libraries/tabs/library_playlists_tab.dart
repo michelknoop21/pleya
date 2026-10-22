@@ -20,6 +20,7 @@ import '../../../i18n/strings.g.dart';
 import '../../main_screen.dart';
 import 'base_library_tab.dart';
 import '../../../utils/error_message_utils.dart';
+import '../../../widgets/scroll_crown/scroll_crown.dart';
 
 /// Playlists tab for library screen
 /// Shows playlists that contain items from the current library
@@ -117,15 +118,18 @@ class _LibraryPlaylistsTabState extends BaseLibraryTabState<MediaPlaylist, Libra
         final viewMode = settings.read(SettingsService.viewMode);
         final density = settings.read(SettingsService.libraryDensity);
         final fullCardLayout = PlatformDetector.isTV() && settings.read(SettingsService.tvFullCardLayout);
-        return CustomScrollView(
-          clipBehavior: Clip.none,
-          slivers: [
-            SliverOverlapInjector(handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context)),
-            if (viewMode == ViewMode.list)
-              _buildListSliver(density)
-            else
-              _buildGridSliver(density, fullCardLayout: fullCardLayout),
-          ],
+        return ScrollCrown(
+          topInset: kToolbarHeight,
+          child: CustomScrollView(
+            clipBehavior: Clip.none,
+            slivers: [
+              SliverOverlapInjector(handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context)),
+              if (viewMode == ViewMode.list)
+                _buildListSliver(density)
+              else
+                _buildGridSliver(density, fullCardLayout: fullCardLayout),
+            ],
+          ),
         );
       },
     );

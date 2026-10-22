@@ -71,6 +71,7 @@ import 'actor_media_screen.dart';
 
 import '../utils/focus_utils.dart';
 import 'main_screen.dart';
+import '../widgets/scroll_crown/scroll_crown.dart';
 
 /// Client-side result type filter over whatever [searchAcrossServers] returns.
 /// There is no "people" row — search results carry no person items. The
@@ -1505,130 +1506,132 @@ class _SearchScreenState extends State<SearchScreen>
 
     return Scaffold(
       body: SafeArea(
-        child: CustomScrollView(
-          primary: false,
-          slivers: [
-            DesktopSliverAppBar(
-              title: Text(t.common.search),
-              floating: true,
-              // I4/`05-zoeken.png`: only the phone build reaches Zoeken by tab
-              // selection rather than a pushed route (see `MainScreen._openSearch`),
-              // so it is the only one that needs an explicit way back.
-              leading: isPhone && widget.onBack != null ? BackButton(onPressed: widget.onBack) : null,
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-                child: FocusableTextField(
-                  controller: _searchController,
-                  focusNode: _searchFocusNode,
-                  textInputAction: TextInputAction.search,
-                  // Don't auto-open the TV keyboard the instant the field
-                  // autofocuses: the field losing/regaining focus around the
-                  // keyboard route races the auto-reopen guard and traps the
-                  // user in the keyboard. Open on explicit select instead —
-                  // same fix already applied to the Seerr search field.
-                  tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
-                  onNavigateLeft: _navigateToSidebar,
-                  onNavigateDown: _searchResults.isNotEmpty && !_isSearching ? _focusFirstResult : null,
-                  onEditingComplete: PlatformDetector.isTV() ? _handleSearchSubmit : null,
-                  onBack: () {
-                    if (_searchController.text.isNotEmpty) {
-                      _searchController.clear();
-                    } else {
-                      _navigateToSidebar();
-                    }
-                  },
-                  decoration: pillInputDecoration(
-                    context,
-                    hintText: t.search.hint,
-                    prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? AutomationNode(
-                            id: AutomationIds.searchClear,
-                            role: 'button',
-                            child: IconButton(
-                              icon: const AppIcon(Symbols.clear_rounded, fill: 1),
-                              onPressed: () {
-                                _searchController.clear();
-                              },
-                            ),
-                          )
-                        : null,
-                  ),
-                ),
+        child: ScrollCrown(
+          child: CustomScrollView(
+            primary: false,
+            slivers: [
+              DesktopSliverAppBar(
+                title: Text(t.common.search),
+                floating: true,
+                // I4/`05-zoeken.png`: only the phone build reaches Zoeken by tab
+                // selection rather than a pushed route (see `MainScreen._openSearch`),
+                // so it is the only one that needs an explicit way back.
+                leading: isPhone && widget.onBack != null ? BackButton(onPressed: widget.onBack) : null,
               ),
-            ),
-            if (_isSearching)
-              SliverPadding(
-                padding: const EdgeInsets.all(16),
-                sliver: SliverList.builder(itemCount: 6, itemBuilder: (context, index) => const SkeletonListTile()),
-              )
-            else if (_searchError != null)
-              SliverFillRemaining(
-                child: _searchError == _SearchError.noServers
-                    ? StateView.error(
-                        title: t.search.noServersTitle,
-                        message: t.search.noServersBody,
-                        icon: Symbols.dns_rounded,
-                      )
-                    : StateView.error(
-                        title: t.search.errorTitle,
-                        message: t.search.errorNetwork,
-                        icon: Symbols.wifi_off_rounded,
-                        onRetry: _retrySearch,
-                      ),
-              )
-            else if (!_hasSearched)
-              if (_history.isNotEmpty)
-                _buildRecentSearches(context)
-              else
-                SliverFillRemaining(
-                  child: StateView.empty(
-                    title: t.search.searchYourMedia,
-                    message: t.search.enterTitleActorOrKeyword,
-                    icon: Symbols.search_rounded,
-                  ),
-                )
-            // On phone, "no results" has to look at the projection, not just
-            // `_searchResults`: SRCH-2 means a query can match a person with
-            // no matching title at all, and `_searchResults` alone would
-            // then read as empty even though `_buildMobileResults` has a
-            // people section to draw.
-            else if (isPhone ? (_projection?.isEmpty ?? _searchResults.isEmpty) : _searchResults.isEmpty) ...[
-              ?askBigP(top: 16),
-              if (context.watch<SeerrProvider?>()?.isConfigured ?? false) ...[
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-                    child: Text(
-                      t.messages.noResultsFound,
-                      style: Theme.of(context).textTheme.titleMedium,
-                      textAlign: TextAlign.center,
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+                  child: FocusableTextField(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    textInputAction: TextInputAction.search,
+                    // Don't auto-open the TV keyboard the instant the field
+                    // autofocuses: the field losing/regaining focus around the
+                    // keyboard route races the auto-reopen guard and traps the
+                    // user in the keyboard. Open on explicit select instead —
+                    // same fix already applied to the Seerr search field.
+                    tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
+                    onNavigateLeft: _navigateToSidebar,
+                    onNavigateDown: _searchResults.isNotEmpty && !_isSearching ? _focusFirstResult : null,
+                    onEditingComplete: PlatformDetector.isTV() ? _handleSearchSubmit : null,
+                    onBack: () {
+                      if (_searchController.text.isNotEmpty) {
+                        _searchController.clear();
+                      } else {
+                        _navigateToSidebar();
+                      }
+                    },
+                    decoration: pillInputDecoration(
+                      context,
+                      hintText: t.search.hint,
+                      prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? AutomationNode(
+                              id: AutomationIds.searchClear,
+                              role: 'button',
+                              child: IconButton(
+                                icon: const AppIcon(Symbols.clear_rounded, fill: 1),
+                                onPressed: () {
+                                  _searchController.clear();
+                                },
+                              ),
+                            )
+                          : null,
                     ),
                   ),
                 ),
-                _buildSeerrFallback(context),
-              ] else
+              ),
+              if (_isSearching)
+                SliverPadding(
+                  padding: const EdgeInsets.all(16),
+                  sliver: SliverList.builder(itemCount: 6, itemBuilder: (context, index) => const SkeletonListTile()),
+                )
+              else if (_searchError != null)
                 SliverFillRemaining(
-                  child: StateView.empty(
-                    title: t.messages.noResultsFound,
-                    message: t.search.tryDifferentTerm,
-                    icon: Symbols.search_off_rounded,
+                  child: _searchError == _SearchError.noServers
+                      ? StateView.error(
+                          title: t.search.noServersTitle,
+                          message: t.search.noServersBody,
+                          icon: Symbols.dns_rounded,
+                        )
+                      : StateView.error(
+                          title: t.search.errorTitle,
+                          message: t.search.errorNetwork,
+                          icon: Symbols.wifi_off_rounded,
+                          onRetry: _retrySearch,
+                        ),
+                )
+              else if (!_hasSearched)
+                if (_history.isNotEmpty)
+                  _buildRecentSearches(context)
+                else
+                  SliverFillRemaining(
+                    child: StateView.empty(
+                      title: t.search.searchYourMedia,
+                      message: t.search.enterTitleActorOrKeyword,
+                      icon: Symbols.search_rounded,
+                    ),
+                  )
+              // On phone, "no results" has to look at the projection, not just
+              // `_searchResults`: SRCH-2 means a query can match a person with
+              // no matching title at all, and `_searchResults` alone would
+              // then read as empty even though `_buildMobileResults` has a
+              // people section to draw.
+              else if (isPhone ? (_projection?.isEmpty ?? _searchResults.isEmpty) : _searchResults.isEmpty) ...[
+                ?askBigP(top: 16),
+                if (context.watch<SeerrProvider?>()?.isConfigured ?? false) ...[
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+                      child: Text(
+                        t.messages.noResultsFound,
+                        style: Theme.of(context).textTheme.titleMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   ),
-                ),
-            ] else if (isPhone) ...[
-              SliverToBoxAdapter(child: _buildFilterChips(context)),
-              ?askBigP(),
-              _buildMobileResults(context),
-              if (context.watch<SeerrProvider?>()?.isConfigured ?? false) _buildSeerrFallback(context),
-            ] else ...[
-              SliverToBoxAdapter(child: _buildFilterChips(context)),
-              ?askBigP(top: 16),
-              _buildResultsList(context),
-              if (context.watch<SeerrProvider?>()?.isConfigured ?? false) _buildSeerrFallback(context),
+                  _buildSeerrFallback(context),
+                ] else
+                  SliverFillRemaining(
+                    child: StateView.empty(
+                      title: t.messages.noResultsFound,
+                      message: t.search.tryDifferentTerm,
+                      icon: Symbols.search_off_rounded,
+                    ),
+                  ),
+              ] else if (isPhone) ...[
+                SliverToBoxAdapter(child: _buildFilterChips(context)),
+                ?askBigP(),
+                _buildMobileResults(context),
+                if (context.watch<SeerrProvider?>()?.isConfigured ?? false) _buildSeerrFallback(context),
+              ] else ...[
+                SliverToBoxAdapter(child: _buildFilterChips(context)),
+                ?askBigP(top: 16),
+                _buildResultsList(context),
+                if (context.watch<SeerrProvider?>()?.isConfigured ?? false) _buildSeerrFallback(context),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

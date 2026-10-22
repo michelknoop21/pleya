@@ -63,6 +63,7 @@ import '../../widgets/mobile/mobile_media_rail.dart' show mobileRailGutter, mobi
 import '../../widgets/mobile/mobile_refresh_scope.dart';
 import '../../widgets/overlay_sheet.dart';
 import '../../widgets/skeleton_media_card.dart';
+import '../../widgets/scroll_crown/scroll_crown.dart';
 
 /// Which catalogue this is. Deliberately its own enum, not [MediaKind]
 /// directly: [MobileLandingKind] made the same choice, and this screen needs
@@ -697,47 +698,49 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
                 _onScroll();
                 return _onHeaderScroll(notification);
               },
-              child: CustomScrollView(
-                controller: _scrollController,
-                slivers: [
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(mobileRailInset, _panelHeight + 8, mobileRailInset, 0),
-                    sliver: AutomationNode(
-                      id: AutomationIds.catalogGrid,
-                      instance: widget.kind.automationInstance,
-                      role: 'grid',
-                      child: SliverGrid(
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          mainAxisSpacing: mobileRailGutter,
-                          crossAxisSpacing: mobileRailGutter,
-                          childAspectRatio: cardWidth / cardHeight,
-                        ),
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          if (index >= snapshot.groups.length) {
-                            if (snapshot.hasMore && !_catalog.isLoadingMore) {
-                              unawaited(_catalog.loadMore());
+              child: ScrollCrown(
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  slivers: [
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(mobileRailInset, _panelHeight + 8, mobileRailInset, 0),
+                      sliver: AutomationNode(
+                        id: AutomationIds.catalogGrid,
+                        instance: widget.kind.automationInstance,
+                        role: 'grid',
+                        child: SliverGrid(
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            mainAxisSpacing: mobileRailGutter,
+                            crossAxisSpacing: mobileRailGutter,
+                            childAspectRatio: cardWidth / cardHeight,
+                          ),
+                          delegate: SliverChildBuilderDelegate((context, index) {
+                            if (index >= snapshot.groups.length) {
+                              if (snapshot.hasMore && !_catalog.isLoadingMore) {
+                                unawaited(_catalog.loadMore());
+                              }
+                              return const SkeletonMediaCard();
                             }
-                            return const SkeletonMediaCard();
-                          }
-                          final group = snapshot.groups[index];
-                          return AutomationNode(
-                            id: AutomationIds.catalogGridItem,
-                            instance: '${widget.kind.automationInstance}.$index',
-                            role: 'grid.item',
-                            child: MobileMediaCard(
-                              group: group,
-                              shape: MobileCardShape.portrait,
-                              width: cardWidth,
-                              onTap: () => _openDetails(group),
-                            ),
-                          );
-                        }, childCount: snapshot.groups.length + (snapshot.hasMore ? 3 : 0)),
+                            final group = snapshot.groups[index];
+                            return AutomationNode(
+                              id: AutomationIds.catalogGridItem,
+                              instance: '${widget.kind.automationInstance}.$index',
+                              role: 'grid.item',
+                              child: MobileMediaCard(
+                                group: group,
+                                shape: MobileCardShape.portrait,
+                                width: cardWidth,
+                                onTap: () => _openDetails(group),
+                              ),
+                            );
+                          }, childCount: snapshot.groups.length + (snapshot.hasMore ? 3 : 0)),
+                        ),
                       ),
                     ),
-                  ),
-                  SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 16)),
-                ],
+                    SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 16)),
+                  ],
+                ),
               ),
             ),
           );

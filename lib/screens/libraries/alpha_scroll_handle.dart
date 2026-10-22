@@ -8,8 +8,9 @@ import '../../i18n/strings.g.dart';
 import '../../media/library_first_character.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/haptics.dart';
+import '../../widgets/scroll_crown/crown_ratchet.dart';
+import '../../widgets/scroll_crown/scroll_crown_gear.dart';
 import 'alpha_jump_helper.dart';
-import 'alpha_scroll_crown.dart';
 
 /// Phone alphabet scrubber after the CN09 prototype: the whole right edge is
 /// a touch rail. At rest only a thin hint line shows; touching the edge brings
@@ -49,10 +50,10 @@ class AlphaScrollHandle extends StatefulWidget {
   final Duration Function()? clock;
 
   /// Drag distance per tooth: one ratchet tick and one tooth of rotation.
-  static const double toothPitch = 7.0;
+  static const double toothPitch = CrownRatchet.toothPitch;
 
   /// Fastest ratchet rate (about 28 ticks a second); faster drags drop teeth.
-  static const Duration minTickInterval = Duration(milliseconds: 35);
+  static const Duration minTickInterval = CrownRatchet.minTickInterval;
 
   const AlphaScrollHandle({
     super.key,
@@ -75,6 +76,7 @@ class _AlphaScrollHandleState extends State<AlphaScrollHandle> {
   late AlphaJumpHelper _helper;
   final FocusNode _focusNode = FocusNode(debugLabel: 'alpha_scroll_handle');
   final Stopwatch _stopwatch = Stopwatch()..start();
+  late final CrownRatchet _ratchetState = CrownRatchet(now: _now);
   Timer? _hideTimer;
 
   bool _active = false;
@@ -86,13 +88,9 @@ class _AlphaScrollHandleState extends State<AlphaScrollHandle> {
   double _dragStartY = 0;
   double _dragStartFraction = 0;
   double _dragStartPhase = 0;
-  double _toothTravel = 0;
-  Duration? _lastTick;
 
   static const double _railWidth = 44;
-  static const double _gearWidth = 22;
-  static const double _gearHeight = 70;
-  static const double _gearRight = -6;
+  static const double _gearHeight = ScrollCrownGear.height;
   static const double _bubbleSize = 43;
   static const double _bubbleRight = 34;
   static const double _hintHeight = 30;
@@ -126,21 +124,14 @@ class _AlphaScrollHandleState extends State<AlphaScrollHandle> {
   Duration _now() => widget.clock?.call() ?? _stopwatch.elapsed;
 
   void _letterTick() {
-    _lastTick = _now();
+    _ratchetState.markTick();
     (widget.onLetterTick ?? Haptics.light)();
   }
 
-  /// One tick per [AlphaScrollHandle.toothPitch] of travel, never faster than
-  /// [AlphaScrollHandle.minTickInterval]; teeth that pass inside the interval
-  /// are dropped rather than queued, so a fast drag never buzzes on.
+  /// One tick per [AlphaScrollHandle.toothPitch] of travel, rate limited by
+  /// the shared [CrownRatchet].
   void _ratchet(double distance) {
-    _toothTravel += distance;
-    if (_toothTravel < AlphaScrollHandle.toothPitch) return;
-    _toothTravel %= AlphaScrollHandle.toothPitch;
-    final now = _now();
-    if (_lastTick != null && now - _lastTick! < AlphaScrollHandle.minTickInterval) return;
-    _lastTick = now;
-    (widget.onToothTick ?? Haptics.selection)();
+    if (_ratchetState.advance(distance)) (widget.onToothTick ?? Haptics.selection)();
   }
 
   double _clampGearTop(double centerY) =>
@@ -164,7 +155,7 @@ class _AlphaScrollHandleState extends State<AlphaScrollHandle> {
     _dragStartY = details.localPosition.dy;
     _dragStartFraction = widget.readScrollFraction();
     _dragStartPhase = _phase;
-    _toothTravel = 0;
+    _ratchetState.reset();
     setState(() => _gearTop = _clampGearTop(details.localPosition.dy));
     _show(autoHide: false);
   }
@@ -176,7 +167,7 @@ class _AlphaScrollHandleState extends State<AlphaScrollHandle> {
     setState(() {
       _gearTop = _clampGearTop(details.localPosition.dy);
       if (!prefersReducedMotion(context)) {
-        _phase = _dragStartPhase + delta * AlphaScrollCrownPainter.toothAngle / AlphaScrollHandle.toothPitch;
+        _phase = _dragStartPhase + CrownRatchet.phaseFor(delta);
       }
     });
     _ratchet(details.delta.dy.abs());
@@ -301,32 +292,14 @@ class _AlphaScrollHandleState extends State<AlphaScrollHandle> {
                     ),
                   ),
                   Positioned(
-                    right: _gearRight,
+                    right: ScrollCrownGear.right,
                     top: gearTop,
-                    child: IgnorePointer(
-                      child: AnimatedOpacity(
-                        opacity: visible ? 1 : 0,
-                        duration: fade,
-                        child: AnimatedSlide(
-                          offset: visible ? Offset.zero : const Offset(8 / _gearWidth, 0),
-                          duration: fade,
-                          child: DecoratedBox(
-                            position: DecorationPosition.foreground,
-                            decoration: BoxDecoration(
-                              border: _focused ? Border.all(color: const Color(0xFFD9D6D0), width: 2) : null,
-                              borderRadius: BorderRadius.circular(7),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(2),
-                              child: CustomPaint(
-                                key: const ValueKey('alpha_scroll_crown'),
-                                size: const Size(_gearWidth, _gearHeight),
-                                painter: AlphaScrollCrownPainter(phase: _phase),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+                    child: ScrollCrownGear(
+                      paintKey: const ValueKey('alpha_scroll_crown'),
+                      phase: _phase,
+                      visible: visible,
+                      focused: _focused,
+                      fade: fade,
                     ),
                   ),
                   Positioned(

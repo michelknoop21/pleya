@@ -3,7 +3,7 @@ import 'package:flutter/semantics.dart' show SemanticsAction;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/library_first_character.dart';
 import 'package:pleya/screens/libraries/alpha_jump_helper.dart';
-import 'package:pleya/screens/libraries/alpha_scroll_crown.dart';
+import 'package:pleya/widgets/scroll_crown/scroll_crown_painter.dart';
 import 'package:pleya/screens/libraries/alpha_scroll_handle.dart';
 
 const _chars = [
@@ -94,7 +94,7 @@ Finder get _rail => find.byKey(const ValueKey('alpha_scroll_rail'));
 
 double _phase(WidgetTester tester) {
   final paint = tester.widget<CustomPaint>(find.byKey(const ValueKey('alpha_scroll_crown')));
-  return (paint.painter! as AlphaScrollCrownPainter).phase;
+  return (paint.painter! as ScrollCrownPainter).phase;
 }
 
 /// Drags down the rail from near its top in [steps] moves of [step] px,

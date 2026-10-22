@@ -520,6 +520,7 @@
     "noConnectedTrackers": "Connect a tracker in Settings to rate there."
   },
   "accessibility": {
+    "scrollCrown": "Scroll through the page",
     "mediaCardMovie": "${title}, movie",
     "mediaCardShow": "${title}, TV show",
     "mediaCardEpisode": "${title}, ${episodeInfo}",

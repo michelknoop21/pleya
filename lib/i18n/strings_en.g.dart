@@ -1587,6 +1587,9 @@ class TranslationsAccessibilityEn {
 
 	// Translations
 
+	/// en: 'Scroll through the page'
+	String get scrollCrown => 'Scroll through the page';
+
 	/// en: '${title}, movie'
 	String mediaCardMovie({required Object title}) => '${title}, movie';
 
@@ -10290,6 +10293,7 @@ extension on Translations {
 			'rateSheet.saved' => 'Saved',
 			'rateSheet.notAvailable' => 'No match found',
 			'rateSheet.noConnectedTrackers' => 'Connect a tracker in Settings to rate there.',
+			'accessibility.scrollCrown' => 'Scroll through the page',
 			'accessibility.mediaCardMovie' => ({required Object title}) => '${title}, movie',
 			'accessibility.mediaCardShow' => ({required Object title}) => '${title}, TV show',
 			'accessibility.mediaCardEpisode' => ({required Object title, required Object episodeInfo}) => '${title}, ${episodeInfo}',
@@ -10315,9 +10319,9 @@ extension on Translations {
 			'videoControls.stretch' => 'Stretch',
 			'videoControls.lockRotation' => 'Lock rotation',
 			'videoControls.unlockRotation' => 'Unlock rotation',
-			'videoControls.timerActive' => 'Timer Active',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.timerActive' => 'Timer Active',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Playback will pause in ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'End of current video',
 			'videoControls.sleepTimerStopAtHeader' => 'Stop at',
@@ -10829,9 +10833,9 @@ extension on Translations {
 			'logs.refreshLogs' => 'Refresh',
 			'logs.levelFilter' => 'Level',
 			'logs.levelAll' => 'All',
-			'logs.levelWarnings' => 'Warnings',
 			_ => null,
 		} ?? switch (path) {
+			'logs.levelWarnings' => 'Warnings',
 			'logs.levelErrors' => 'Errors',
 			'logs.noMatchingLogs' => 'No lines at this level',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} of ${total} lines',
@@ -11343,9 +11347,9 @@ extension on Translations {
 			'metadataEdit.oldestFirst' => 'Oldest first',
 			'metadataEdit.newestFirst' => 'Newest first',
 			'metadataEdit.keep' => 'Keep',
-			'metadataEdit.allEpisodes' => 'All episodes',
 			_ => null,
 		} ?? switch (path) {
+			'metadataEdit.allEpisodes' => 'All episodes',
 			'metadataEdit.latestEpisodes' => ({required Object count}) => '${count} latest episodes',
 			'metadataEdit.latestEpisode' => 'Latest episode',
 			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Episodes added in the past ${count} days',
@@ -11857,9 +11861,9 @@ extension on Translations {
 			'unifiedCatalog.discovery.emptyBody' => 'No visible library has anything to show here.',
 			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titles',
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} of ${count}',
-			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'View all movies, opens the complete catalog',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'View all movies, opens the complete catalog',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'View all series, opens the complete catalog',
 			'unifiedCatalog.home.featured' => 'Featured',
 			'unifiedCatalog.homeRows.customize' => 'Customise Home',
@@ -12371,9 +12375,9 @@ extension on Translations {
 			'assistant.confirm.approve' => 'Confirm',
 			'assistant.confirm.create' => 'Create',
 			'assistant.notes.plexManagedHomeUser' => 'Managed Plex Home user, with a share on this server.',
-			'assistant.notes.plexShare' => 'A share on this Plex server.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.notes.plexShare' => 'A share on this Plex server.',
 			'assistant.notes.plexHomeMember' => 'Member of your Plex Home. Only the share on this server changes.',
 			'assistant.notes.replacesAllAccess' => 'Replaces all existing access of this user on this server.',
 			'assistant.ends.noTools' => 'There is nothing Big P can do on your servers right now.',

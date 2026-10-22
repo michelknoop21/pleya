@@ -37,6 +37,7 @@ import '../utils/layout_constants.dart';
 import '../utils/platform_detector.dart';
 import '../utils/media_navigation_helper.dart';
 import 'tv/tv_watchlist_view.dart';
+import '../widgets/scroll_crown/scroll_crown.dart';
 
 /// The full kijklijst.
 ///
@@ -225,41 +226,43 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
     if (PlatformDetector.isTV()) return _buildTv(provider, all, entries, isOffline: isOffline);
 
     return Scaffold(
-      body: CustomScrollView(
-        // Not the default Clip.hardEdge: a focused card grows past its cell and
-        // the ring would be sheared off at the viewport edge on TV.
-        clipBehavior: Clip.none,
-        slivers: [
-          CustomAppBar(title: Text(t.watchlist.title), automaticallyImplyLeading: false),
-          SliverToBoxAdapter(
-            child: _FilterBar(
-              firstChipFocusNode: _filterBarFocus,
-              selection: _selection,
-              onFiltersPressed: _pickFilters,
-              sort: _sort,
-              onSortPressed: _pickSort,
-            ),
-          ),
-          if (provider == null || (provider.isLoading && all.isEmpty))
-            const SliverFillRemaining(hasScrollBody: false, child: Center(child: CircularProgressIndicator()))
-          else if (entries.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: StateView.empty(
-                icon: Symbols.bookmark_add_rounded,
-                // An empty watchlist and a filter that hides everything are
-                // different problems and get different words.
-                title: all.isEmpty ? t.watchlist.empty : t.watchlist.emptyFiltered,
-                message: all.isEmpty ? t.watchlist.emptyBody : null,
-                // Without a retry there is no focusable element left here, and
-                // a TV remote would have nowhere to go.
-                onRetry: all.isEmpty ? _reload : () => _setSelection(WatchlistFilterSelection.none),
-                retryLabel: all.isEmpty ? t.watchlist.retry : t.watchlist.filterAll,
+      body: ScrollCrown(
+        child: CustomScrollView(
+          // Not the default Clip.hardEdge: a focused card grows past its cell and
+          // the ring would be sheared off at the viewport edge on TV.
+          clipBehavior: Clip.none,
+          slivers: [
+            CustomAppBar(title: Text(t.watchlist.title), automaticallyImplyLeading: false),
+            SliverToBoxAdapter(
+              child: _FilterBar(
+                firstChipFocusNode: _filterBarFocus,
+                selection: _selection,
+                onFiltersPressed: _pickFilters,
+                sort: _sort,
+                onSortPressed: _pickSort,
               ),
-            )
-          else
-            _buildGrid(provider, entries),
-        ],
+            ),
+            if (provider == null || (provider.isLoading && all.isEmpty))
+              const SliverFillRemaining(hasScrollBody: false, child: Center(child: CircularProgressIndicator()))
+            else if (entries.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: StateView.empty(
+                  icon: Symbols.bookmark_add_rounded,
+                  // An empty watchlist and a filter that hides everything are
+                  // different problems and get different words.
+                  title: all.isEmpty ? t.watchlist.empty : t.watchlist.emptyFiltered,
+                  message: all.isEmpty ? t.watchlist.emptyBody : null,
+                  // Without a retry there is no focusable element left here, and
+                  // a TV remote would have nowhere to go.
+                  onRetry: all.isEmpty ? _reload : () => _setSelection(WatchlistFilterSelection.none),
+                  retryLabel: all.isEmpty ? t.watchlist.retry : t.watchlist.filterAll,
+                ),
+              )
+            else
+              _buildGrid(provider, entries),
+          ],
+        ),
       ),
     );
   }

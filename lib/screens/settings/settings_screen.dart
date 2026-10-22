@@ -73,6 +73,7 @@ import '../../widgets/tv/tv_menu_grid.dart';
 import '../../widgets/tv/tv_page_surface.dart';
 import '../tv/sections/tv_about_screen.dart';
 import '../../navigation/tv/tv_content_route_registry.dart';
+import '../../widgets/scroll_crown/scroll_crown.dart';
 
 part 'parts/settings_tv_page.dart';
 
@@ -208,75 +209,77 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
     return Scaffold(
       body: Focus(
         onKeyEvent: _handleKeyEvent,
-        child: CustomScrollView(
-          primary: false,
-          slivers: [
-            ExcludeFocus(child: CustomAppBar(title: Text(t.settings.title), pinned: true)),
-            if (_searchEnabled) SliverToBoxAdapter(child: SettingsWidthLimit(child: _buildSearchField())),
-            if (_searchQuery.isNotEmpty)
-              _buildSearchResults()
-            else
-              SliverList(
-                delegate: SliverChildListDelegate(
-                  [
-                    if (DonationService.isEnabled) SettingsGroup(children: [_buildDonateTile()]),
+        child: ScrollCrown(
+          child: CustomScrollView(
+            primary: false,
+            slivers: [
+              ExcludeFocus(child: CustomAppBar(title: Text(t.settings.title), pinned: true)),
+              if (_searchEnabled) SliverToBoxAdapter(child: SettingsWidthLimit(child: _buildSearchField())),
+              if (_searchQuery.isNotEmpty)
+                _buildSearchResults()
+              else
+                SliverList(
+                  delegate: SliverChildListDelegate(
+                    [
+                      if (DonationService.isEnabled) SettingsGroup(children: [_buildDonateTile()]),
 
-                    SettingsGroup(
-                      title: t.settings.sectionLibrary,
-                      children: [
-                        _buildAppearanceTile(),
-                        _buildLibraryVisibilityTile(),
-                        _buildHomeLayoutTile(),
-                        _buildPlaybackTile(),
-                        _buildLanguageTile(),
-                        _buildSubtitleStylingTile(),
-                        if (!PlatformDetector.isAppleTV()) _buildDownloadsTile(),
-                      ],
-                    ),
+                      SettingsGroup(
+                        title: t.settings.sectionLibrary,
+                        children: [
+                          _buildAppearanceTile(),
+                          _buildLibraryVisibilityTile(),
+                          _buildHomeLayoutTile(),
+                          _buildPlaybackTile(),
+                          _buildLanguageTile(),
+                          _buildSubtitleStylingTile(),
+                          if (!PlatformDetector.isAppleTV()) _buildDownloadsTile(),
+                        ],
+                      ),
 
-                    SettingsGroup(
-                      title: t.settings.sectionIntegrations,
-                      children: [
-                        _buildTrackersTile(),
-                        _buildRequestsTile(),
-                        _buildTautulliTile(),
-                        ?assistantSettingsTile(context),
-                        _buildProfilesTile(),
-                      ],
-                    ),
+                      SettingsGroup(
+                        title: t.settings.sectionIntegrations,
+                        children: [
+                          _buildTrackersTile(),
+                          _buildRequestsTile(),
+                          _buildTautulliTile(),
+                          ?assistantSettingsTile(context),
+                          _buildProfilesTile(),
+                        ],
+                      ),
 
-                    _buildServersSection(),
+                      _buildServersSection(),
 
-                    if (_keyboardShortcutsSupported) ...[_buildKeyboardShortcutsSection()],
+                      if (_keyboardShortcutsSupported) ...[_buildKeyboardShortcutsSection()],
 
-                    _buildAdvancedSection(),
+                      _buildAdvancedSection(),
 
-                    if (UpdateService.isUpdateCheckEnabled) ...[_buildUpdateSection()],
+                      if (UpdateService.isUpdateCheckEnabled) ...[_buildUpdateSection()],
 
-                    if (!PlatformDetector.isTV() || _icloudSyncPlatform) _buildBackupSection(),
+                      if (!PlatformDetector.isTV() || _icloudSyncPlatform) _buildBackupSection(),
 
-                    if (kDebugMode) _buildDebugSection(),
+                      if (kDebugMode) _buildDebugSection(),
 
-                    SettingsGroup(
-                      children: [
-                        SettingNavigationTile(
-                          focusNode: _focusTracker.get(_kAbout),
-                          icon: Symbols.info_rounded,
-                          title: t.settings.about,
-                          subtitle: t.settings.aboutDescription,
-                          destinationBuilder: (context) => const AboutScreen(),
-                        ),
-                      ],
-                    ),
-                    // Plus the bottom inset: with Liquid Glass the tab bar floats
-                    // over this list and the main Scaffold reports its height here.
-                    SizedBox(height: 24 + MediaQuery.paddingOf(context).bottom),
-                    // Every card gets the same maximum width so the column stays
-                    // centred on a wide window instead of stretching across it.
-                  ].map((w) => SettingsWidthLimit(child: w)).toList(),
+                      SettingsGroup(
+                        children: [
+                          SettingNavigationTile(
+                            focusNode: _focusTracker.get(_kAbout),
+                            icon: Symbols.info_rounded,
+                            title: t.settings.about,
+                            subtitle: t.settings.aboutDescription,
+                            destinationBuilder: (context) => const AboutScreen(),
+                          ),
+                        ],
+                      ),
+                      // Plus the bottom inset: with Liquid Glass the tab bar floats
+                      // over this list and the main Scaffold reports its height here.
+                      SizedBox(height: 24 + MediaQuery.paddingOf(context).bottom),
+                      // Every card gets the same maximum width so the column stays
+                      // centred on a wide window instead of stretching across it.
+                    ].map((w) => SettingsWidthLimit(child: w)).toList(),
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
