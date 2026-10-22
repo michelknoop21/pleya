@@ -153,6 +153,7 @@ class GlassCapsuleButton extends StatelessWidget {
     required this.onPressed,
     this.prominent = false,
     this.foregroundColor,
+    this.tokens,
   });
 
   static const double height = 52;
@@ -163,6 +164,9 @@ class GlassCapsuleButton extends StatelessWidget {
   final bool prominent;
   final Color? foregroundColor;
 
+  /// Overrides the plate tokens, for a more translucent plate on the light theme.
+  final GlassTokens? tokens;
+
   @override
   Widget build(BuildContext context) {
     final fg = foregroundColor ?? (prominent ? Colors.black : Colors.white);
@@ -170,6 +174,7 @@ class GlassCapsuleButton extends StatelessWidget {
     final surface = GlassSurface(
       shape: const StadiumBorder(),
       prominent: prominent,
+      tokens: tokens,
       child: SizedBox(
         width: double.infinity,
         height: height,
@@ -188,6 +193,6 @@ class GlassCapsuleButton extends StatelessWidget {
     );
     // On the real tier a plate takes its tint from the nearest layer, so the
     // white plate needs a layer of its own next to the dark ones.
-    return prominent ? GlassLayer(tokens: const GlassTokens.prominent(), child: surface) : surface;
+    return prominent ? GlassLayer(tokens: tokens ?? const GlassTokens.prominent(), child: surface) : surface;
   }
 }
