@@ -55,7 +55,7 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
   /// tap reuses the handler the TV row and the context menu already call;
   /// Delen and Aanvragen moved into the Meer menu, which this owns
   /// ([_contextMenuKey]) so the app bar's more button opens the same menu.
-  Widget _buildMobilePrimaryActions(BuildContext context, MediaItem metadata, {bool glass = false}) {
+  Widget _buildMobilePrimaryActions(BuildContext context, MediaItem metadata) {
     final resumeTarget = metadata.isShow
         ? (_onDeckEpisode ?? metadata)
         : metadata.isSeason
@@ -86,7 +86,6 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
     }
 
     DetailPrimaryActions buildActions(DownloadProvider? downloadProvider) => DetailPrimaryActions(
-      glass: glass,
       playLabel: isResuming ? t.common.resume : t.common.play,
       playDetail: playDetail.isEmpty ? null : playDetail,
       // A season plays its next episode, not its first (DEC-140).
@@ -120,7 +119,8 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
           ),
         DetailActionItem(
           key: const Key('media-detail.action.watched'),
-          icon: Icons.check_circle_outline_rounded,
+          // Filled when watched: the circle no longer shows the state.
+          icon: metadata.isWatched ? Icons.check_circle_rounded : Icons.check_circle_outline_rounded,
           label: t.detailActions.watched,
           semanticLabel: metadata.isWatched ? t.tooltips.markAsUnwatched : t.tooltips.markAsWatched,
           active: metadata.isWatched,

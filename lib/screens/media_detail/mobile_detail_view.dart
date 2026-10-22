@@ -20,6 +20,18 @@ part of '../media_detail_screen.dart';
 /// `_MediaDetailScreenState`, same as today.
 extension _MobileMediaDetailView on _MediaDetailScreenState {
   Widget _buildMobileDetailScreen(BuildContext context, MediaItem metadata) {
+    // Plex look, variant B: the page is always dark, also on the light
+    // theme. The page is built under that theme, so every helper below reads
+    // the dark one from its context; the back/more buttons keep their light
+    // circles (`_buildMobileGlassHeroBar`).
+    final appTheme = Theme.of(context);
+    return Theme(
+      data: mobileDetailTheme(appTheme),
+      child: Builder(builder: (context) => _buildMobileDetailPage(context, metadata, appTheme)),
+    );
+  }
+
+  Widget _buildMobileDetailPage(BuildContext context, MediaItem metadata, ThemeData appTheme) {
     final client = _getMediaClientForMetadata(context);
     _scheduleDetailAudioTracksLoad(metadata);
     // Same shell the pre-northstar mobile layout used: OverlaySheetHost owns
@@ -28,9 +40,6 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
     // what media_detail_screen_test.dart's back/menu-suppression tests
     // attach to.
     final blockSystemBack = InputModeTracker.shouldBlockSystemBack(context);
-    // With Liquid Glass on the CTAs are glass capsules (LG-02); the page
-    // itself is the same either way (DEC-140).
-    final glass = glassTierFor(context) != GlassTier.off;
     final posterUrl = _mobileImageUrl(context, client, metadata.thumbPath, ImageType.poster);
     final artUrl = _mobileImageUrl(context, client, MobilePosterHero.textlessArtPath(metadata), ImageType.art);
     final logoUrl = _mobileImageUrl(context, client, metadata.clearLogoPath, ImageType.logo);
@@ -50,7 +59,7 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
           child: Column(
             crossAxisAlignment: .start,
             children: [
-              _buildMobilePrimaryActions(context, metadata, glass: glass),
+              _buildMobilePrimaryActions(context, metadata),
               // The only way to change source from the detail page; draws
               // nothing unless the item has alternative sources
               // (`hasAlternativeSources`, action_buttons.dart).
@@ -125,11 +134,24 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
           child: Focus(
             onKeyEvent: _handleMediaDetailBackKey,
             child: Scaffold(
-              body: Stack(
-                children: [
-                  content,
-                  Positioned(top: 0, left: 0, right: 0, child: _buildMobileGlassHeroBar(context, metadata)),
-                ],
+              key: const Key('media-detail.mobile-page'),
+              backgroundColor: kDetailPageGradient.first,
+              body: DecoratedBox(
+                // The fixed page ground: it runs on to the bottom under the
+                // poster glow that scrolls with the page.
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: kDetailPageGradient,
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    content,
+                    Positioned(top: 0, left: 0, right: 0, child: _buildMobileGlassHeroBar(context, metadata, appTheme)),
+                  ],
+                ),
               ),
             ),
           ),
@@ -207,10 +229,12 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
 
   /// The LG-02 back/more row, pinned over the page (see [MobileDetailHeroBar]).
   /// Only the bar listens to the scroll offset; it turns opaque with the title
-  /// over the last 60 pt before the poster hero passes under it (D-03b).
-  /// The glyphs take the page text colour ([GlassCircleButton]): white on
-  /// the dark themes, dark ink on the light one.
-  Widget _buildMobileGlassHeroBar(BuildContext context, MediaItem metadata) {
+  /// over the last 60 pt before the poster hero passes under it (D-03b), in
+  /// the dark page colour. The two buttons are light circles with a dark
+  /// glyph in every theme (variant B): they take the light theme of
+  /// [GlassCircleButton], with the app's platform and glass settings.
+  Widget _buildMobileGlassHeroBar(BuildContext context, MediaItem metadata, ThemeData appTheme) {
+    final buttonTheme = appTheme.brightness == Brightness.light ? appTheme : monoTheme(dark: false);
     final heroBottom = MobilePosterHero.heightFor(MediaQuery.sizeOf(context).width);
     final collapsedAt = heroBottom - MediaQuery.paddingOf(context).top - 60;
     return ValueListenableBuilder<double>(
@@ -218,12 +242,15 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
       builder: (context, offset, _) {
         final progress = (offset - (collapsedAt - 60)) / 60;
         return MobileDetailHeroBar(
-          leading: GlassCircleButton(
-            icon: Icons.arrow_back_rounded,
-            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-            onPressed: () => Navigator.pop(context, _watchStateChanged),
+          leading: Theme(
+            data: buttonTheme,
+            child: GlassCircleButton(
+              icon: Icons.arrow_back_rounded,
+              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+              onPressed: () => Navigator.pop(context, _watchStateChanged),
+            ),
           ),
-          trailing: [if (!widget.isOffline) _buildMobileMoreButton(context)],
+          trailing: [if (!widget.isOffline) Theme(data: buttonTheme, child: _buildMobileMoreButton(context))],
           title: metadata.displayTitle,
           collapseProgress: progress,
         );

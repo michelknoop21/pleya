@@ -8,7 +8,7 @@ import '../../../services/image_cache_service.dart';
 import '../../../utils/content_utils.dart';
 import '../../../utils/formatters.dart';
 import '../../../widgets/placeholder_container.dart';
-import 'light_ink_plate.dart';
+import 'detail_dark_style.dart';
 
 /// Mockup width the hero sizes below are taken from (D-01, D-03).
 const double _kMockupWidth = 402;
@@ -18,12 +18,13 @@ const double _kMockupWidth = 402;
 /// full width from the very top, under the status bar and the back/more bar,
 /// fading out into [DetailAmbientBackground]. The app draws the title over
 /// the bottom of the art: the clear logo ([logoUrl]) centred, or the title as
-/// bold text without one. The meta line and [scoreRow] follow.
+/// bold text without one. The meta line and [scoreRow] follow, white on the
+/// always-dark page (Plex look, variant B).
 ///
 /// Without textless art it falls back to the portrait poster, which carries
-/// its own title: that starts under the back/more bar so the buttons do not
-/// cover it, and gets no logo or text title on top. With neither, only the
-/// text.
+/// its own title: that also runs from the very top, under the status bar and
+/// the back/more buttons, and gets no logo or text title on top. With
+/// neither, only the text.
 class MobilePosterHero extends StatelessWidget {
   const MobilePosterHero({
     super.key,
@@ -55,9 +56,8 @@ class MobilePosterHero extends StatelessWidget {
   /// Room above the poster for the status bar and the back/more bar.
   static double topInset(BuildContext context) => MediaQuery.paddingOf(context).top + 60;
 
-  /// Height of the poster hero at [width]. The poster starts under
-  /// [topInset] and gives up that room at its bottom, where it fades out
-  /// anyway, so the Play button and action row stay on the first screen.
+  /// Height of the poster hero at [width], so the Play button and action row
+  /// stay on the first screen.
   static double heightFor(double width) => 640 * width / _kMockupWidth;
 
   @override
@@ -93,7 +93,7 @@ class MobilePosterHero extends StatelessWidget {
               stops: const [0, 0.6, 0.82, 1],
             ),
           ),
-          _statusBand(theme),
+          _statusBand(),
           Positioned(
             left: 16,
             right: 16,
@@ -112,17 +112,15 @@ class MobilePosterHero extends StatelessWidget {
     );
   }
 
-  /// The clear logo, or the title as bold text when there is none or it
-  /// fails to load. The text gets the same light-theme plate as the meta line.
+  /// The clear logo, or the title as bold white text when there is none or
+  /// it fails to load.
   Widget _buildLogoOrTitle(BuildContext context, Color ink, {required double maxWidth, required double maxHeight}) {
-    final title = LightInkPlate(
-      child: Text(
-        item.displayTitle,
-        textAlign: TextAlign.center,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: ink, fontWeight: FontWeight.bold),
-      ),
+    final title = Text(
+      item.displayTitle,
+      textAlign: TextAlign.center,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: ink, fontWeight: FontWeight.bold),
     );
     final logoUrl = this.logoUrl;
     if (logoUrl == null) return title;
@@ -141,68 +139,56 @@ class MobilePosterHero extends StatelessWidget {
     // A series poster stops higher and fades faster (D-03), leaving room for
     // the meta line on the glow.
     final isShow = item.isShow;
-    // Text over the fade: white on the dark themes, dark ink on the light
-    // one, where the fade ends on a near-white page.
     final theme = Theme.of(context);
     final ink = theme.colorScheme.onSurface;
-    final topInset = MobilePosterHero.topInset(context);
     return SizedBox(
       height: 640 * scale,
       child: Stack(
         children: [
+          // Variant B: the poster fills the screen from the very top, under
+          // the status bar and the back/more buttons.
           Positioned(
-            top: topInset,
+            top: 0,
             left: 0,
             right: 0,
-            height: (isShow ? 545 : 640) * scale - topInset,
+            height: (isShow ? 545 : 640) * scale,
             child: Semantics(
               image: true,
               label: item.displayTitle,
               child: _fade(
                 _image(url, const Alignment(0, -1)),
-                // A short fade at the top edge too, into the glow under the bar.
                 colors: isShow
-                    ? const [Colors.transparent, Colors.black, Colors.black, Colors.transparent]
-                    : const [Colors.transparent, Colors.black, Colors.black, Color(0x99000000), Colors.transparent],
-                stops: isShow ? const [0, 0.06, 0.7, 0.97] : const [0, 0.05, 0.55, 0.78, 1.0],
+                    ? const [Colors.black, Colors.black, Colors.transparent]
+                    : const [Colors.black, Colors.black, Color(0x99000000), Colors.transparent],
+                stops: isShow ? const [0, 0.7, 0.97] : const [0, 0.55, 0.78, 1.0],
               ),
             ),
           ),
-          _statusBand(theme),
+          _statusBand(),
           Positioned(left: 16, right: 16, bottom: 28, child: _foreground(context, ink)),
         ],
       ),
     );
   }
 
-  /// Status bar band and a touch of shade under the meta line, in the page
-  /// colour on the light theme. The ink there owns its contrast through its
-  /// own plates; the band only supports it.
-  static Widget _statusBand(ThemeData theme) {
-    final dark = theme.brightness == Brightness.dark;
-    return Positioned.fill(
+  /// Status bar band and a touch of shade under the meta line. The page is
+  /// always dark, so the band is always black.
+  static Widget _statusBand() {
+    return const Positioned.fill(
       child: IgnorePointer(
         child: DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: dark
-                  ? const [
-                      Color(0x8C000000),
-                      Colors.transparent,
-                      Colors.transparent,
-                      Color(0x26000000),
-                      Colors.transparent,
-                    ]
-                  : [
-                      theme.scaffoldBackgroundColor.withAlpha(0x8C),
-                      Colors.transparent,
-                      Colors.transparent,
-                      theme.scaffoldBackgroundColor.withAlpha(0x26),
-                      Colors.transparent,
-                    ],
-              stops: const [0, 0.14, 0.45, 0.8, 1],
+              colors: [
+                Color(0x8C000000),
+                Colors.transparent,
+                Colors.transparent,
+                Color(0x26000000),
+                Colors.transparent,
+              ],
+              stops: [0, 0.14, 0.45, 0.8, 1],
             ),
           ),
         ),
@@ -210,18 +196,17 @@ class MobilePosterHero extends StatelessWidget {
     );
   }
 
-  /// [title] (if any), the meta line and [scoreRow] over the fade: white
-  /// with a soft shadow on the dark themes, dark ink on the light one.
+  /// [title] (if any), the meta line and [scoreRow] over the fade, white with
+  /// a soft shadow.
   Widget _foreground(BuildContext context, Color ink, {Widget? title}) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
     return DefaultTextStyle.merge(
       style: TextStyle(
         color: ink,
-        shadows: dark ? const [Shadow(blurRadius: 8, color: Color(0x80000000))] : null,
+        shadows: const [Shadow(blurRadius: 8, color: Color(0x80000000))],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: [?title, _buildMeta(context, ink), const SizedBox(height: 24), scoreRow],
+        children: [?title, _buildMeta(context, ink), const SizedBox(height: 14), scoreRow],
       ),
     );
   }
@@ -252,8 +237,8 @@ class MobilePosterHero extends StatelessWidget {
     );
   }
 
-  /// Year · duration or seasons · genres, then the age rating in a frame, on
-  /// its own plate in the light theme ([LightInkPlate]).
+  /// Year, duration or seasons, genres, then the age rating in a dark framed
+  /// badge, centred and without separators, the way Plex sets it.
   Widget _buildMeta(BuildContext context, Color color) {
     final seasons = item.isShow ? item.childCount : null;
     final genres = item.genres ?? const <String>[];
@@ -266,22 +251,19 @@ class MobilePosterHero extends StatelessWidget {
     ];
     final rating = item.contentRating == null ? '' : formatContentRating(item.contentRating);
     if (parts.isEmpty && rating.isEmpty) return const SizedBox.shrink();
-    final dot = Text('·', style: TextStyle(color: color.withValues(alpha: 0.5)));
-    final line = Wrap(
+    return Wrap(
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 9,
+      spacing: 12,
       runSpacing: 4,
       children: [
-        for (var i = 0; i < parts.length; i++) ...[
-          if (i > 0) dot,
-          Text(parts[i], style: TextStyle(color: color, fontSize: 15)),
-        ],
+        for (final part in parts) Text(part, style: TextStyle(color: color, fontSize: 15)),
         if (rating.isNotEmpty)
           DecoratedBox(
             decoration: BoxDecoration(
+              color: kDetailPillColor,
               border: Border.all(color: color.withValues(alpha: 0.6)),
-              borderRadius: BorderRadius.circular(5),
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
@@ -293,7 +275,6 @@ class MobilePosterHero extends StatelessWidget {
           ),
       ],
     );
-    return LightInkPlate(child: line);
   }
 
   static Widget _fade(Widget child, {required List<Color> colors, required List<double> stops}) => ShaderMask(

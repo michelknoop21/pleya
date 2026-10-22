@@ -4,9 +4,11 @@ import '../../../i18n/strings.g.dart';
 import '../../../media/item_watcher.dart';
 import '../../../widgets/watcher_avatar.dart';
 import '../watched_by_row.dart';
+import 'detail_dark_style.dart';
 
 /// Who watched this, who is watching it now and how often it was played, in
-/// one card under the source line (`.act` in D-01/D-03, DEC-140). iPhone only;
+/// one dark pill under the source line (`.act` in D-01/D-03, DEC-140; Plex
+/// look since variant B). iPhone only;
 /// TV, iPad and desktop keep [WatchedByRow] and its siblings.
 ///
 /// Takes what the detail page already loaded, so it fetches nothing and adds
@@ -53,9 +55,13 @@ class DetailActivityCard extends StatelessWidget {
     ];
 
     return Container(
-      margin: const EdgeInsets.only(top: 14),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(color: onSurface.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14)),
+      margin: const EdgeInsets.only(top: 18),
+      padding: const EdgeInsets.fromLTRB(8, 8, 18, 8),
+      decoration: BoxDecoration(
+        color: kDetailPillColor,
+        border: Border.all(color: kDetailPillEdge),
+        borderRadius: BorderRadius.circular(32),
+      ),
       child: Row(
         children: [
           if (watchers.isNotEmpty) ...[_avatars(), const SizedBox(width: 14)],

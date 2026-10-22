@@ -1932,14 +1932,14 @@ void main() {
         }
       });
 
-      // The back/more glyphs and the meta line sit over the poster and its
-      // fade into the page colour: dark ink on the light page, white on dark.
+      // Variant B (Plex look): the page is dark in every theme, so the meta
+      // line is white; back and more keep their light circles with dark ink.
       for (final (name, theme) in [
         ('light', monoTheme(dark: false)),
         ('dark', monoTheme(dark: true)),
         ('oled', monoTheme(dark: true, oled: true)),
       ]) {
-        testWidgets('hero bar glyphs and meta line follow the $name theme (DEC-140)', (tester) async {
+        testWidgets('$name theme: white meta line on the dark page, dark glyphs on light circles', (tester) async {
           final movie = MediaItem(
             id: 'movie_theme',
             backend: MediaBackend.jellyfin,
@@ -1962,11 +1962,11 @@ void main() {
             theme: theme,
           );
 
-          final ink = name == 'light' ? theme.colorScheme.onSurface : Colors.white;
+          final glyph = monoTheme(dark: false).colorScheme.onSurface;
           expect(find.byType(MobilePosterHero), findsOneWidget);
-          expect(tester.widget<Icon>(find.byIcon(Icons.arrow_back_rounded)).color, ink);
-          expect(tester.widget<Icon>(find.byIcon(Icons.more_horiz_rounded)).color, ink);
-          expect(tester.widget<Text>(find.text('2024')).style?.color, ink);
+          expect(tester.widget<Icon>(find.byIcon(Icons.arrow_back_rounded)).color, glyph);
+          expect(tester.widget<Icon>(find.byIcon(Icons.more_horiz_rounded)).color, glyph);
+          expect(tester.widget<Text>(find.text('2024')).style?.color, Colors.white);
         });
       }
 
