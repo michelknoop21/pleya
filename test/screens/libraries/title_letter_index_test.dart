@@ -26,7 +26,8 @@ class _ListingClient implements MediaServerClient {
 
   final List<String> titles;
   final int reportedTotal;
-  LibraryQuery? lastQuery;
+  final queries = <LibraryQuery>[];
+  LibraryQuery? get lastQuery => queries.lastOrNull;
 
   @override
   ServerId get serverId => ServerId('srv');
@@ -38,9 +39,9 @@ class _ListingClient implements MediaServerClient {
     MediaKind? libraryKind,
     AbortController? abort,
   }) async {
-    lastQuery = query;
+    queries.add(query);
     final items = [
-      for (var i = 0; i < titles.length; i++)
+      for (var i = 0; i < titles.length && i < query.limit; i++)
         MediaItem(id: '$i', backend: MediaBackend.local, kind: MediaKind.movie, title: titles[i], serverId: 'srv'),
     ];
     return LibraryPage(items: items, totalCount: reportedTotal, offset: 0);
@@ -75,7 +76,7 @@ void main() {
     // Counts as the demo server answered them for its 12 films:
     // b c c c [the] d e g s s s t w. "The Daily Dweebs" counts under D.
     final before = {
-      for (final bound in titleIndexBounds)
+      for (final bound in [...titleIndexBounds, titleIndexEndBound])
         bound: switch (bound) {
           'a' || 'b' => 0,
           'c' => 1,
@@ -97,14 +98,19 @@ void main() {
       expect(helper.totalItemCount, 12);
     });
 
-    test('titles before a and after z land in # and Z, offsets stay put', () {
+    test('titles before a land in #, offsets stay put', () {
       final shifted = {for (final e in before.entries) e.key: e.value + 3};
-      final helper = AlphaJumpHelper(letterIndexFromCountsBefore(total: 17, before: shifted)!);
+      final helper = AlphaJumpHelper(letterIndexFromCountsBefore(total: 15, before: shifted)!);
       expect(helper.letters.first, '#');
       expect(helper.letterToIndex['#'], 0);
       expect(helper.letterToIndex['B'], 3);
-      expect(helper.letterToIndex['Z'], 15);
-      expect(helper.totalItemCount, 17);
+      expect(helper.totalItemCount, 15);
+    });
+
+    test('titles that sort after z (another script) give no index instead of a wrong Z', () {
+      // Two Cyrillic titles after the twelve Latin ones: before `{` stays 12.
+      expect(letterIndexFromCountsBefore(total: 14, before: before), isNull);
+      expect(letterIndexFromCountsBefore(total: 12, before: {...before}..remove(titleIndexEndBound)), isNull);
     });
 
     test('a count that goes down means the listing moved: no index', () {
@@ -138,10 +144,11 @@ void main() {
         clientProvider: () => client,
         libraryKey: 'lib1',
         libraryKind: MediaKind.movie,
+        debounce: Duration.zero,
       );
       final result = await strategy.loadCharacters(filters: const {}, typeId: null, descending: true, query: query);
 
-      expect(requests, hasLength(27));
+      expect(requests, hasLength(28));
       for (final url in requests) {
         expect(url.path, '/Items');
         expect(url.queryParameters['ParentId'], 'lib1');
@@ -152,7 +159,10 @@ void main() {
         expect(url.queryParameters.containsKey('SortBy'), isFalse);
         expect(url.queryParameters.containsKey('NameStartsWith'), isFalse);
       }
-      expect(requests.map((u) => u.queryParameters['NameLessThan']).whereType<String>().toList(), titleIndexBounds);
+      expect(requests.map((u) => u.queryParameters['NameLessThan']).whereType<String>().toList(), [
+        ...titleIndexBounds,
+        titleIndexEndBound,
+      ]);
       // Descending: the helper reverses the buckets, W first.
       expect(result.helper.letters.first, 'W');
       expect(result.helper.letterToIndex['W'], 0);
@@ -174,11 +184,44 @@ void main() {
         clientProvider: () => client,
         libraryKey: 'lib1',
         libraryKind: MediaKind.movie,
+        debounce: Duration.zero,
       );
       expect(
         strategy.loadCharacters(filters: const {}, typeId: null, descending: false, query: _query),
         throwsStateError,
       );
+    });
+    test('a load aborted during the debounce sends no request at all', () async {
+      final requests = <Uri>[];
+      final client = JellyfinClient.forTesting(
+        connection: _conn(),
+        httpClient: MockClient((request) async {
+          requests.add(request.url);
+          return http.Response(
+            jsonEncode({'Items': <Object>[], 'TotalRecordCount': 12}),
+            200,
+            headers: const {'content-type': 'application/json'},
+          );
+        }),
+      );
+      final strategy = TitleIndexAlphaBarStrategy.counted(
+        clientProvider: () => client,
+        libraryKey: 'lib1',
+        libraryKind: MediaKind.movie,
+        debounce: const Duration(milliseconds: 20),
+      );
+      final abort = AbortController();
+      final pending = strategy.loadCharacters(
+        filters: const {},
+        typeId: null,
+        descending: false,
+        query: _query,
+        abort: abort,
+      );
+      abort.abort();
+      final result = await pending;
+      expect(result.chars, isEmpty);
+      expect(requests, isEmpty);
     });
   });
 
@@ -230,6 +273,51 @@ void main() {
       expect(result.chars, isEmpty);
     });
 
+    test('a listing above the cap is probed with one item and never read in full', () async {
+      final client = _ListingClient(_titles('ABCDEF'), reportedTotal: TitleIndexAlphaBarStrategy.maxListingItems + 1);
+      final strategy = TitleIndexAlphaBarStrategy.fromListing(
+        clientProvider: () => client,
+        libraryKey: 'lib',
+        libraryKind: MediaKind.movie,
+        sortTitleOf: (item) => item.title ?? '',
+      );
+      final result = await strategy.loadCharacters(filters: const {}, typeId: null, descending: false, query: _query);
+      expect(result.chars, isEmpty);
+      expect(client.queries.map((q) => q.limit), [1]);
+    });
+
+    test('the full read asks for exactly the probed total', () async {
+      final client = _ListingClient(_titles('ABCDEF'));
+      final strategy = TitleIndexAlphaBarStrategy.fromListing(
+        clientProvider: () => client,
+        libraryKey: 'lib',
+        libraryKind: MediaKind.movie,
+        sortTitleOf: (item) => item.title ?? '',
+      );
+      await strategy.loadCharacters(filters: const {}, typeId: null, descending: false, query: _query);
+      expect(client.queries.map((q) => q.limit), [1, 120]);
+    });
+
+    test('an aborted load stops after the probe', () async {
+      final client = _ListingClient(_titles('ABCDEF'));
+      final strategy = TitleIndexAlphaBarStrategy.fromListing(
+        clientProvider: () => client,
+        libraryKey: 'lib',
+        libraryKind: MediaKind.movie,
+        sortTitleOf: (item) => item.title ?? '',
+      );
+      final abort = AbortController()..abort();
+      final result = await strategy.loadCharacters(
+        filters: const {},
+        typeId: null,
+        descending: false,
+        query: _query,
+        abort: abort,
+      );
+      expect(result.chars, isEmpty);
+      expect(client.queries, hasLength(1));
+    });
+
     test('a non-title sort sends no request at all', () async {
       final client = _ListingClient(_titles('ABCDEF'));
       final strategy = TitleIndexAlphaBarStrategy.fromListing(
@@ -251,7 +339,7 @@ void main() {
 
   group('visibility', () {
     final chars = [for (final l in 'ABCDEF'.split('')) LibraryFirstCharacter(key: l, title: l, size: 20)];
-    final strategy = TitleIndexAlphaBarStrategy((query, {required descending}) async => chars);
+    final strategy = TitleIndexAlphaBarStrategy((query, {required descending, abort}) async => chars);
 
     bool show({
       int total = 120,

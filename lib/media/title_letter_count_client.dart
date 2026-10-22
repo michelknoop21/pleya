@@ -1,3 +1,4 @@
+import '../utils/media_server_http_client.dart' show AbortController;
 import 'library_query.dart';
 import 'media_kind.dart';
 
@@ -10,11 +11,13 @@ abstract interface class TitleLetterCountClient {
   /// Count the titles in the listing [query] describes (offset, limit and sort
   /// ignored) that sort before each entry of [bounds], plus the listing total.
   ///
-  /// Throws when the server does not report an exact total.
+  /// Throws when the server does not report an exact total. [abort] cancels
+  /// the requests still in flight.
   Future<({int total, Map<String, int> before})> fetchTitleCountsBefore(
     String libraryId, {
     required LibraryQuery query,
     MediaKind? libraryKind,
     required List<String> bounds,
+    AbortController? abort,
   });
 }

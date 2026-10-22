@@ -15,6 +15,7 @@ mixin _JellyfinTitleIndexMethods on MediaServerCacheMixin {
     required LibraryQuery query,
     MediaKind? libraryKind,
     required List<String> bounds,
+    AbortController? abort,
   }) async {
     final effective = (query.kind == null && libraryKind != null && libraryKind != MediaKind.unknown)
         ? query.copyWith(kind: libraryKind)
@@ -29,7 +30,7 @@ mixin _JellyfinTitleIndexMethods on MediaServerCacheMixin {
       ..remove('SortOrder');
 
     Future<int> count(String? bound) async {
-      final response = await _http.get('/Items', queryParameters: {...base, 'NameLessThan': ?bound});
+      final response = await _http.get('/Items', queryParameters: {...base, 'NameLessThan': ?bound}, abort: abort);
       throwIfHttpError(response);
       final data = response.data;
       final total = data is Map<String, dynamic> ? data['TotalRecordCount'] : null;

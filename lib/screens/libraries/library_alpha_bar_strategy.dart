@@ -4,6 +4,7 @@ import '../../media/media_backend.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
 import '../../services/plex_client.dart';
+import '../../utils/media_server_http_client.dart' show AbortController;
 import 'alpha_jump_helper.dart';
 import 'title_index_alpha_bar_strategy.dart';
 
@@ -34,7 +35,8 @@ abstract class LibraryAlphaBarStrategy {
   });
 
   /// Load the first-character buckets for the current filter state. [query] is
-  /// the grid's own listing query; Plex ignores it and uses [filters].
+  /// the grid's own listing query; Plex ignores it and uses [filters]. The
+  /// caller triggers [abort] when it leaves the screen or starts a newer load.
   /// Returns the new helper plus the synthesised character list — the caller
   /// stores both in widget state.
   Future<({List<LibraryFirstCharacter> chars, AlphaJumpHelper helper})> loadCharacters({
@@ -42,6 +44,7 @@ abstract class LibraryAlphaBarStrategy {
     required int? typeId,
     required bool descending,
     required LibraryQuery query,
+    AbortController? abort,
   });
 
   /// Letter to highlight given the current scroll-derived index. Plex maps
@@ -137,6 +140,7 @@ class PlexAlphaBarStrategy implements LibraryAlphaBarStrategy {
     required int? typeId,
     required bool descending,
     required LibraryQuery query,
+    AbortController? abort,
   }) async {
     if (isShared) {
       // Shared libraries don't support first-characters.
@@ -224,6 +228,7 @@ class JellyfinAlphaBarStrategy implements LibraryAlphaBarStrategy {
     required int? typeId,
     required bool descending,
     required LibraryQuery query,
+    AbortController? abort,
   }) async {
     final synthetic = [for (final l in _letters) LibraryFirstCharacter(key: l, title: l, size: 1)];
     return (chars: synthetic, helper: AlphaJumpHelper(synthetic, descending: descending));
@@ -272,6 +277,7 @@ class NoAlphaBarStrategy implements LibraryAlphaBarStrategy {
     required int? typeId,
     required bool descending,
     required LibraryQuery query,
+    AbortController? abort,
   }) async {
     return (chars: <LibraryFirstCharacter>[], helper: AlphaJumpHelper(const []));
   }
