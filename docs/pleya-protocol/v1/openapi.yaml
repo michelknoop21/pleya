@@ -1838,7 +1838,7 @@ paths:
         Klasse `authenticated`, alleen onder `capabilities.downloads` (venster 6
         deel 3, S23). Vraagt het recht `download` op de bibliotheek van het item:
         een bibliotheek die de aanvrager niet mag zien is `404`, een die hij wel mag
-        zien maar niet mag downloaden is `403` met `download.not_permitted`. Zonder
+        zien maar niet mag downloaden is `403` met `library.download_not_permitted`. Zonder
         `version_id` geldt de eerste versie. Een versie van meer dan één bestand is
         `409` met `library.version_multifile`. De download is eerst `preparing`
         terwijl de server de SHA-256 uitrekent; de client leest `GET /downloads/{id}`
@@ -1916,8 +1916,8 @@ paths:
         (`"sha256-<hex>"`) en `Digest` en `Repr-Digest` dragen dezelfde SHA-256.
         `Range` werkt alleen samen met een `If-Range` gelijk aan die `ETag`; zonder
         komt het hele bestand. Een download die nog `preparing` is geeft `409` met
-        `download.not_ready` (herhaalbaar), een bestand dat na het uitrekenen van
-        grootte of wijzigingstijd veranderde `409` met `download.changed`: de client
+        `library.download_not_ready` (herhaalbaar), een bestand dat na het uitrekenen van
+        grootte of wijzigingstijd veranderde `409` met `library.download_changed`: de client
         vraagt dan een nieuwe download.
       parameters:
         - $ref: "#/components/parameters/DownloadId"

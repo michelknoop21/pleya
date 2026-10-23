@@ -74,6 +74,7 @@ func TestDownloadIsPreparedThenDeliveredWithDigestAndResumesOnlyOnEqualContent(t
 		t.Fatalf("bestand vóór de hash gaf %d", rec.Code)
 	}
 	e.expectCode(rec, api.CodeDownloadNotReady)
+	e.recordVariant("ErrorEnvelope", "download_not_ready", http.MethodGet, dl.FileURL, rec)
 
 	e.runDigest(dl.ID)
 	var ready api.DownloadWire
@@ -132,6 +133,7 @@ func TestDownloadBelongsToItsOwnerAndNeedsTheDownloadRight(t *testing.T) {
 		t.Fatalf("alleen kijken gaf %d, verwacht 403", rec.Code)
 	}
 	e.expectCode(rec, api.CodeDownloadNotPermitted)
+	e.recordVariant("ErrorEnvelope", "download_not_permitted", http.MethodPost, "/pleya/v1/downloads", rec)
 
 	nobody := e.createUser("member", "vreemde")
 	rec = e.do(http.MethodPost, "/pleya/v1/downloads", map[string]any{"item_id": movie.ID}, asUser(e.tokenFor(nobody)))
@@ -189,6 +191,7 @@ func TestDownloadRefusesAFileThatChangedAfterTheHash(t *testing.T) {
 		t.Fatalf("na de wijziging gaf het bestand %d, verwacht 409", rec.Code)
 	}
 	e.expectCode(rec, api.CodeDownloadChanged)
+	e.recordVariant("ErrorEnvelope", "download_changed", http.MethodGet, dl.FileURL, rec)
 }
 
 func TestDownloadCanBeDeletedAndTheMediaFileStays(t *testing.T) {

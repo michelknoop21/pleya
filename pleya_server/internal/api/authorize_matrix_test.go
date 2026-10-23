@@ -91,7 +91,7 @@ const (
 	// refused: de canonieke weigering van deze as, byte-gelijk.
 	refused
 	// notPermitted: de bibliotheek is zichtbaar maar het downloadrecht ontbreekt
-	// (S23): 403 met download.not_permitted, geen 404.
+	// (S23): 403 met library.download_not_permitted, geen 404.
 	notPermitted
 )
 
@@ -607,8 +607,8 @@ func TestAuthorizationMatrixRolesOnEveryRouteOfS1(t *testing.T) {
 						t.Fatalf("gaf %d, wil %d: %s", rec.Code, probe.ok, rec.Body.String())
 					}
 				case notPermitted:
-					if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "download.not_permitted") {
-						t.Fatalf("gaf %d, wil 403 download.not_permitted: %s", rec.Code, rec.Body.String())
+					if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "library.download_not_permitted") {
+						t.Fatalf("gaf %d, wil 403 library.download_not_permitted: %s", rec.Code, rec.Body.String())
 					}
 				case refused:
 					if rec.Code != http.StatusNotFound {

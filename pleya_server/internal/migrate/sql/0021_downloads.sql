@@ -10,7 +10,7 @@
 --
 -- status loopt preparing -> ready of failed. Alleen een ready-rij levert bytes.
 -- Een bestand dat na het hashen van grootte of tijd verandert maakt de rij
--- ongeldig (409 download.changed): de client begint dan opnieuw met een nieuwe
+-- ongeldig (409 library.download_changed): de client begint dan opnieuw met een nieuwe
 -- download in plaats van een half oud, half nieuw bestand te krijgen.
 --
 -- Hangt aan de gebruiker en aan de versie met ON DELETE CASCADE. Terugdraaien:
