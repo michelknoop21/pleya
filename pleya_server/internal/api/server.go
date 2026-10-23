@@ -21,6 +21,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
+	"github.com/edde746/plezy/pleya_server/internal/metrics"
 	"github.com/edde746/plezy/pleya_server/internal/personal"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/transcode"
@@ -35,6 +36,8 @@ type Options struct {
 	Watch     *watch.Store
 	Personal  *personal.Store
 	Downloads *downloads.Store
+	// Metrics telt de gekozen leveringswijze per afspeelplan (S24.3). Nil telt niet.
+	Metrics   *metrics.Registry
 	Signer    *auth.Signer
 	Logger    *slog.Logger
 	Ready     func() bool

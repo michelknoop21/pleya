@@ -26,8 +26,12 @@ var ErrMissingDatabaseURL = errors.New("DATABASE_URL ontbreekt")
 
 // Config is de volledige serverconfiguratie.
 type Config struct {
-	DatabaseURL  string
-	HTTPAddr     string
+	DatabaseURL string
+	HTTPAddr    string
+
+	// MetricsAddr is waar /metrics luistert. Leeg zet het uit. Standaard loopback:
+	// een publiek adres is een bewuste keuze van de operator.
+	MetricsAddr  string
 	ConfigDir    string
 	CacheDir     string
 	TranscodeDir string
@@ -102,6 +106,7 @@ type Config struct {
 // vollopende scratch de database mee.
 const (
 	DefaultHTTPAddr     = ":8080"
+	DefaultMetricsAddr  = "127.0.0.1:9464"
 	DefaultConfigDir    = "/config"
 	DefaultCacheDir     = "/cache"
 	DefaultTranscodeDir = "/transcode"
@@ -185,6 +190,17 @@ func Load(getenv Getenv) (*Config, error) {
 	if err := validateAddr(cfg.HTTPAddr); err != nil {
 		return nil, fmt.Errorf("PLEYA_SERVER_HTTP_ADDR: %w", err)
 	}
+
+	metricsAddr := strings.TrimSpace(valueOr(getenv, "PLEYA_SERVER_METRICS_ADDR", DefaultMetricsAddr))
+	if strings.EqualFold(metricsAddr, "off") {
+		metricsAddr = ""
+	}
+	if metricsAddr != "" {
+		if err := validateAddr(metricsAddr); err != nil {
+			return nil, fmt.Errorf("PLEYA_SERVER_METRICS_ADDR: %w", err)
+		}
+	}
+	cfg.MetricsAddr = metricsAddr
 
 	cfg.MediaDirs = splitList(valueOr(getenv, "PLEYA_SERVER_MEDIA_DIRS", DefaultMediaDirs))
 	if len(cfg.MediaDirs) == 0 {

@@ -4997,3 +4997,15 @@ Migratie `0019_transcode_sessions.sql` (de masterlijst noemde `0017`, dat was be
 4. In de app krijgt `DownloadResolution` een `headers`-veld en een `sha256`; de manager geeft de headers aan de taak en vergelijkt na afloop de digest. Een afwijkend bestand wordt verwijderd en de download mislukt.
 **Consequences:** Vijfenzeventig operaties; foutcodes `download.not_permitted` (403), `download.not_ready` (409, herhaalbaar), `download.changed` (409). Migratie `0021_downloads.sql`. Buiten deze stap: omgezette versies (de ladder) als downloadbron, sidecar-ondertitels en het scherm op Mijn Pleya (S23.4, bij de webslices). Na een herstart van de app is de verwachte digest niet meer in het geheugen, dus een in die tussentijd afgeronde download wordt niet gecontroleerd; de digest in de database opslaan is een vervolg als dat in de praktijk voorkomt. Bekende beperkingen uit de review: een nieuwe aanvraag voor dezelfde versie vervangt de vorige rij van die gebruiker; de bearer-header wordt bij het klaarzetten in de taak gezet, dus een transfer die langer dan de levensduur van het toegangstoken wacht of pauzeert krijgt een 401 en moet opnieuw worden klaargezet; de gecachete SHA-256 vertrouwt op grootte en wijzigingstijd; `capabilities.downloads` staat alleen aan met een jobrunner.
 
+## DEC-161: Remote hardening (S24) telt in eigen tekstformaat en laat het subpad aan de proxy
+
+**Date:** 2026-10-23
+**Status:** accepted (mandaat M1 tot en met M7)
+**Roadmap:** S24.1 tot en met S24.5.
+**Context:** S1.8 had vertrouwde proxy's, publieke URL, CORS en de limiter op login al gebouwd, en de publieke-endpointlijst stond al als test. Wat ontbrak waren metrics, een Range-testset door proxy's en de recepten.
+**Decision:**
+1. Metrics zijn een kleine eigen implementatie in het Prometheus-tekstformaat, zonder bibliotheek, op een aparte listener die standaard op loopback staat (`PLEYA_SERVER_METRICS_ADDR`, `off` zet hem uit). Het endpoint is niet geauthenticeerd; het adres is de beveiliging. Er zijn twee tellers, zonder pad als label.
+2. Het subpad is een taak van de proxy. De server kent geen voorvoegsel, want elke client plakt zijn basis-URL voor elk pad uit een antwoord.
+3. De Range-testset gebruikt drie proxy-opstellingen in-process (`httputil.ReverseProxy`); de echte tunnel blijft een handmatige controle via `POST /server/connectivity-check`.
+**Consequences:** Geen contractwijziging en geen migratie. Histogrammen voor latency en een gauge voor lopende omzetsessies ontbreken en zijn een vervolg als een operator ze nodig heeft.
+
