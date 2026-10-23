@@ -42,9 +42,9 @@ Bron voor de scope:
 | Backend basis | S1 tot S6 | 2 | 0 | 4 |
 | Web | S7 tot S13 | 0 | 0 | 7 |
 | Clients en agents | S14, S16 | 0 | 0 | 2 |
-| Uitgebreide scope | S17 tot S25 | 0 | 0 | 9 |
+| Uitgebreide scope | S17 tot S25 | 1 | 0 | 8 |
 | Afronding | S15 | 0 | 0 | 1 |
-| **Totaal** | **26** | **3** | **0** | **23** |
+| **Totaal** | **26** | **4** | **0** | **22** |
 
 Per taak, en dat is de maat die telt: **155 taken, 55 gereed, 14 bezig, 86 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2;
