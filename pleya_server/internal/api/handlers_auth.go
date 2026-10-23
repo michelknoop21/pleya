@@ -84,8 +84,10 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			// Transcode: aan zodra er een manager met sessies is (S18).
 			Transcode: s.transcodeEnabled(),
 			Downloads: s.opts.Downloads != nil && s.opts.Jobs != nil,
-			LiveTV:    false,
-			Realtime:  false,
+			// Backups: S25, zodra de service en de wachtrij er zijn.
+			Backups:  s.opts.Backups != nil && s.opts.Jobs != nil,
+			LiveTV:   false,
+			Realtime: false,
 			// Users: de vijf endpoints uit DEC-121 staan er sinds stap 4, en
 			// login kent sindsdien elke rij in users en niet alleen de owner.
 			Users: true,

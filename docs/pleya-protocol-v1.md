@@ -543,6 +543,11 @@ contract keurt ze af.
 | `download.not_permitted` | 403 | nee | de bibliotheek is zichtbaar maar het recht `download` ontbreekt |
 | `download.not_ready` | 409 | ja | de download is nog `preparing`, probeer het zo opnieuw |
 | `download.changed` | 409 | nee | het bestand veranderde na het uitrekenen van de SHA-256, vraag een nieuwe download |
+| `playback.file_corrupt` | 422 | nee | een omzetting mislukte en een tweede analyse van de bron ook: het bestand zelf is stuk (faalpad "kapot bestand", S25.5) |
+| `server.maintenance` | 503 | ja | de server zet een back-up terug en neemt niets aan tot hij herstart is (S25.3) |
+| `server.database_unavailable` | 503 | ja | de database is niet bereikbaar (faalpad "database weg", S25.5); een query die fout is blijft `server.internal` |
+| `server.backup_busy` | 409 | ja | er wacht of loopt al een back-up of hersteltest |
+| `server.backup_not_restorable` | 409 | nee | de back-up is niet geslaagd of verdwenen, van een nieuwer schema dan deze server, of de sleutel past niet op zijn geheimen; `details.reason` is `status`, `schema_newer`, `key` of `unreadable` |
 | `storage.unavailable` | 503 | ja | de opslag achter deze resource is niet bereikbaar |
 | `storage.full` | 507 | nee | de server kan niet schrijven |
 | `session.invalid` | 400 | nee | onbekende of afgesloten kijksessie |
@@ -1374,6 +1379,11 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 63 | `GET /downloads/{id}` | de stand van een download | alleen de eigenaar; elke ander krijgt de canonieke `404`, ook de admin |
 | 64 | `GET /downloads/{id}/file` | de bytes, met `ETag`, `Digest` en hervatten | als regel 63, en het recht `download` wordt opnieuw getoetst |
 | 65 | `DELETE /downloads/{id}` | een download weghalen | als regel 63 |
+| 66 | `GET /backups` | de back-ups, met doel, tijdstip en bewaartermijn | klasse `admin`, `404` voor de rest (venster 7, S25) |
+| 67 | `POST /backups` | nu een back-up maken | klasse `admin` |
+| 68 | `GET /backups/{id}` | één back-up met zijn laatste hersteltest | klasse `admin` |
+| 69 | `POST /backups/{id}/verify` | een hersteltest starten | klasse `admin` |
+| 70 | `POST /backups/{id}/restore` | een back-up terugzetten | klasse `admin`, met de bevestigingszin uit `restore_confirmation` |
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
 zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
@@ -2053,6 +2063,54 @@ scanrondes van de oude bibliotheek weg.
 
 Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries/{id}/scan` hem aanmaakt, `running` wordt wanneer de job hem claimt en eindigt op `done`, `failed` of `cancelled`. Annuleren gaat via de job (`Job.scan_id` wijst terug): de scanner stopt binnen één walk-stap en laat de tellers staan. Een retry zet `attempts` op nul en, voor een scanjob, ook `probe_attempts` van die bibliotheek. Een bestand waarvan de probe faalde wacht `min(2^(pogingen-1), 24)` uur voordat een volgende ronde het opnieuw analyseert, tenzij het bestand zelf veranderde. `current_path` is afgekort tot de bestandsnaam met een ellipsis ervoor en is nooit het volledige pad.
 
+### 17g. Back-up, restore en faalpaden
+
+Onder `capabilities.backups`, alles klasse `admin` (venster 7, S25, RB-26). Een back-up is één tar in
+de back-upmap met een manifest, een `pg_dump` van de database (gzip), de gewone bestanden uit
+`/config` en, versleuteld, de geheime. Een tar en geen eigen formaat: een beheerder zonder Pleya kan
+hem uitpakken en de dump met `psql` terugzetten.
+
+**Doel, tijdstip en bewaartermijn komen uit de omgeving** (`PLEYA_SERVER_BACKUP_DIR`, standaard
+`/backups`; `PLEYA_SERVER_BACKUP_TIME`, standaard `03:30`; `PLEYA_SERVER_BACKUP_RETENTION_DAYS`,
+standaard 14) en staan in `GET /backups`, niet in `PATCH /settings`. Een pad is geen instelling
+(17a.3), en een bewaartermijn die over de API omlaag kan, kan ook door wie de API heeft overgenomen
+omlaag. De nieuwste geslaagde back-up blijft altijd staan, hoe oud ook. `same_failure_domain`
+waarschuwt dat de back-upmap op hetzelfde bestandssysteem staat als `/config`: dan neemt één kapotte
+schijf beide mee.
+
+**Geheimen staan nooit leesbaar in een back-up.** De ondertekensleutel staat bewust niet in de
+database (een dump mag geen sessies opleveren), en een tar met dump en sleutel naast elkaar zou dat
+alsnog doen. Met `PLEYA_SERVER_BACKUP_KEY` (minstens zestien tekens) gaan de geheime bestanden
+versleuteld mee, met Argon2id en AES-256-GCM; zonder die sleutel blijven ze weg en zegt
+`secrets_included: false` dat. Er is geen route om een back-up te downloaden: hij bevat de hele
+database, en zonder route lekt hij aan niemand. Het bestand heeft rechten `0600`.
+
+**De hersteltest raakt de echte database nooit.** `POST /backups/{id}/verify` (en wekelijks de server
+zelf, na de geplande back-up) maakt een tijdelijke database met een eigen naam, zet de dump daarin
+terug, draait de migraties van deze server en telt titels, gebruikers, bibliotheken en kijkstatus na
+tegen het manifest. Daarna verdwijnt de tijdelijke database weer. `schema_from` en `schema_to` laten
+zien dat een back-up van een ouder schema met de huidige migraties meekomt.
+
+**Een restore vraagt een zin die zegt wat er verloren gaat.** `restore_confirmation` is bijvoorbeeld
+`herstel 2026-10-23T01:30:00Z: kijkstatus, gebruikers, sessies, instellingen en scans van daarna gaan
+verloren`, en `confirm` moet daar letterlijk aan gelijk zijn. Daarna gaat de server in onderhoud
+(`server.maintenance` op elke aanvraag), zet de dump in één transactie terug, schrijft `/config` terug
+en herstart. Faalt het terugzetten van de database, dan is er niets gebeurd en herstart hij op de oude. De
+lijst van back-ups en hersteltests hoort bij de map en niet bij het moment van de dump: na een
+restore registreert de server opnieuw wat er in de back-upmap staat, en de geschiedenis van
+hersteltests van vóór de restore is dan weg.
+
+**Upgrade.** Een nieuwe image die migraties meebrengt, maakt vóór de eerste migratie zelf een
+back-up (`trigger: upgrade`) en start niet als dat mislukt. Een database die nieuwer is dan de
+binary wordt geweigerd met een melding die zegt wat te doen; terugmigreren bestaat niet, terugrollen
+is een back-up terugzetten.
+
+**Vier faalpaden, vier codes.** Een volle schijf is `storage.full` (op een mislukte back-up in
+`failure_code`, en op elk endpoint dat niet kan schrijven), een weggevallen database
+`server.database_unavailable`, een crashende omzetter `playback.transcode_failed`, en een bronbestand
+dat stuk is `playback.file_corrupt`. De laatste twee hebben dezelfde buitenkant; een tweede analyse
+van de bron beslist welke het is.
+
 ---
 
 ## 18. Endpointoverzicht
@@ -2134,8 +2192,13 @@ Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries
 | `GET /pleya/v1/downloads/{id}` | `authenticated` | nee |
 | `GET /pleya/v1/downloads/{id}/file` | `authenticated` | nee |
 | `DELETE /pleya/v1/downloads/{id}` | `authenticated` | nee |
+| `GET /pleya/v1/backups` | `admin` | nee |
+| `POST /pleya/v1/backups` | `admin` | nee |
+| `GET /pleya/v1/backups/{id}` | `admin` | nee |
+| `POST /pleya/v1/backups/{id}/verify` | `admin` | nee |
+| `POST /pleya/v1/backups/{id}/restore` | `admin` | nee |
 
-Vijfenzeventig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Tachtig operaties. De vijf laatste zijn back-up en restore uit hoofdstuk 17g (venster 7, S25). De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit

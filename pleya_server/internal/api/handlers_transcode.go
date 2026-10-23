@@ -78,6 +78,18 @@ func (s *Server) startTranscode(w http.ResponseWriter, r *http.Request, plan pla
 		return nil, false
 	case err != nil:
 		s.log.Warn("omzetten starten mislukt", "error", err.Error())
+		// Twee faalpaden met dezelfde buitenkant (S25.5): de omzetter crashte, of
+		// het bestand is stuk. Een tweede analyse van de bron beslist. Lukt die
+		// wel, dan lag het aan de omzetter; lukt die ook niet, dan helpt geen
+		// enkele nieuwe poging en hoort de client dat te horen.
+		if s.opts.Prober != nil {
+			if _, probeErr := s.opts.Prober.Probe(r.Context(), file.AbsPath); probeErr != nil {
+				s.log.Warn("bronbestand is niet te analyseren", "version", versionID.String(), "error", probeErr.Error())
+				writeError(w, s.log, CodeFileCorrupt, "the source file of this version is damaged",
+					map[string]any{"version_id": versionID.String()})
+				return nil, false
+			}
+		}
 		writeError(w, s.log, CodeTranscodeFailed, "the server could not prepare this version for playback", nil)
 		return nil, false
 	}

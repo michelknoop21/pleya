@@ -19,6 +19,19 @@ func HasFFmpeg(t *testing.T) bool {
 	return true
 }
 
+// HasPostgresClient zegt of pg_dump en psql op het pad staan. De back-uptests
+// (S25) draaien tegen dezelfde binaries als de runtime-image, uit de testimage.
+func HasPostgresClient(t *testing.T) bool {
+	t.Helper()
+	for _, tool := range []string{"pg_dump", "psql"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("%s ontbreekt; draai scripts/test-image.sh en zet GO_IMAGE", tool)
+			return false
+		}
+	}
+	return true
+}
+
 // MakeVideo maakt een klein echt mediabestand.
 //
 // Een testbestand dat ffprobe werkelijk leest en niet een verzonnen antwoord uit

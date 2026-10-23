@@ -1,0 +1,24 @@
+{
+  "id": "01a16a20-3e00-7000-9a41-2c7d5e8b0f13",
+  "status": "ok",
+  "trigger": "schedule",
+  "started_at": "2026-10-23T01:30:00Z",
+  "finished_at": "2026-10-23T01:31:12Z",
+  "size_bytes": 18734592,
+  "schema_version": 22,
+  "titles": 1284,
+  "secrets_included": true,
+  "failure_code": null,
+  "restore_confirmation": "herstel 2026-10-23T01:30:00Z: kijkstatus, gebruikers, sessies, instellingen en scans van daarna gaan verloren",
+  "last_restore_test": {
+    "id": "01a16a24-9c10-7001-b2e8-5f0a7c3d1e64",
+    "status": "ok",
+    "started_at": "2026-10-23T01:31:13Z",
+    "finished_at": "2026-10-23T01:32:40Z",
+    "schema_from": 22,
+    "schema_to": 22,
+    "titles_expected": 1284,
+    "titles_found": 1284,
+    "failure_code": null
+  }
+}
