@@ -157,7 +157,14 @@
     transform: translateX(18px);
   }
 
-  .tgl--dis {
+  /*
+   * Uitgeschakeld dimt de schakelaar en zijn label, niet de beschrijving: die
+   * zegt juist waarom hij uit staat ("Komt in PS-8") en moet leesbaar blijven.
+   * Met de hele rij op 0,5 haalde de beschrijving geen 4,5:1 meer (axe op de
+   * galerij).
+   */
+  .tgl--dis .tgl__label,
+  .tgl--dis .tgl__hit {
     opacity: 0.5;
   }
 

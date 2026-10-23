@@ -65,7 +65,7 @@
 
 <GallerySection id="tabel" title="Tabel">
   <DataTable label="Bibliotheken, scrollend" {columns} {rows} cell={statusCell}>
-    {#snippet title()}Bibliotheken{/snippet}
+    {#snippet title()}Scrollende tabel{/snippet}
     {#snippet actions()}
       <button type="button" class="btn btn--secondary btn--sm">Toevoegen</button>
     {/snippet}

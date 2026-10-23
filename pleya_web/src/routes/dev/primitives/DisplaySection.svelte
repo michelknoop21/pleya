@@ -55,7 +55,7 @@
       </div>
     </Panel>
     <Panel tone="danger">
-      {#snippet title()}Gevarenzone{/snippet}
+      {#snippet title()}Paneel met gevaartoon{/snippet}
       <div class="gal-body">
         <p class="t-body">Bibliotheek verwijderen haalt alle kijkstatus weg.</p>
         <button type="button" class="btn btn--danger btn--sm">Verwijderen</button>

@@ -30,7 +30,7 @@
 <GallerySection id="velden" title="Velden">
   <!-- Velden horen in een paneel: daar leest de uitsparing (--inset-bg) als bedoeld. -->
   <Panel>
-    {#snippet title()}Bibliotheek bewerken{/snippet}
+    {#snippet title()}Velden in een paneel{/snippet}
     <div class="gs__stack">
       <div class="gs__grid">
         <Field label="Naam" bind:value={name} />
