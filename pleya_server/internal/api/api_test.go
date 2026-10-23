@@ -100,11 +100,11 @@ func TestInfoBeforeAndAfterSetup(t *testing.T) {
 	// test zou het gemerkt hebben als hij er weer uit was gevallen.
 	if !before.Capabilities.WatchState || !before.Capabilities.WatchStateOwnership ||
 		!before.Capabilities.StreamSessions || !before.Capabilities.Users ||
-		!before.Capabilities.Sessions || !before.Capabilities.PlaybackPlan {
+		!before.Capabilities.Sessions || !before.Capabilities.PlaybackPlan || !before.Capabilities.Downloads {
 		t.Fatalf("een capability van deze fase staat uit: %+v", before.Capabilities)
 	}
 	if before.Capabilities.Transcode ||
-		before.Capabilities.Downloads || before.Capabilities.LiveTV ||
+		before.Capabilities.LiveTV ||
 		before.Capabilities.Realtime {
 		t.Fatalf("een capability staat aan die deze fase niet heeft: %+v", before.Capabilities)
 	}

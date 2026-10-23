@@ -155,6 +155,8 @@ func TestSchemaHasExactlyTheExpectedTables(t *testing.T) {
 		"provider_artwork":    true,
 		// S18, migratie 0019: de omzetsessies van PS-8.
 		"transcode_sessions": true,
+		// S23, migratie 0021: de klaargezette downloads.
+		"downloads": true,
 		// S20, migratie 0020: de persoonlijke laag.
 		"play_history":      true,
 		"favorites":         true,
