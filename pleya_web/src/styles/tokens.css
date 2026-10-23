@@ -92,7 +92,6 @@
    */
   --card-caption-gap: 7px; /* MediaCard: beeld tot titel, web.css .card .cap */
   --card-caption-line-gap: 2px; /* MediaCard: titel tot onderregel, web.css .card .s */
-  --grid-cell-min: 180px; /* MediaGrid: minimale kolom vanaf 1600 */
   /*
    * Hero, web.css .hero: 21:9 vanaf 1200, 16:9 tussen 900 en 1199, en
    * daaronder geen verhouding maar een portret van 520 hoog. Skelet en Hero
@@ -326,7 +325,6 @@
 @media (max-width: 1599px) {
   :root {
     --poster-w: 170px;
-    --grid-cell-min: 168px;
   }
 }
 @media (max-width: 1199px) {
@@ -334,7 +332,6 @@
     --inset: 32px;
     --poster-w: 150px;
     --rail-gap: 16px;
-    --grid-cell-min: 150px;
     --hero-aspect: 16 / 9;
   }
 }
@@ -345,14 +342,8 @@
     --poster-w: 110px;
     --rail-gap: 12px;
     --radius-hero: 16px;
-    --grid-cell-min: 132px;
     --hero-aspect: auto;
     --text-card-title-size: 13px;
     --text-card-sub-size: 11px;
-  }
-}
-@media (max-width: 599px) {
-  :root {
-    --grid-cell-min: 110px;
   }
 }

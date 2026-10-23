@@ -126,14 +126,14 @@
   /* Het raster volgt MediaGrid. */
   .skp__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(var(--grid-cell-min), 1fr));
-    gap: var(--space);
+    grid-template-columns: repeat(auto-fill, minmax(var(--poster-w), 1fr));
+    gap: 22px 16px;
   }
 
-  @media (min-width: 1600px) {
+  @media (max-width: 899px) {
     .skp__grid {
-      grid-template-columns: repeat(auto-fill, minmax(var(--grid-cell-min), 220px));
-      justify-content: start;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px 10px;
     }
   }
 
