@@ -115,6 +115,12 @@ void main() {
     'CreateLibraryRequest',
     'UpdateLibraryRequest',
     'DeleteLibraryRequest',
+    // S25 adds backups and restore (protocol window 7). The screen that reads
+    // them is screen 35 (S25.6), on the web admin first; until that slice
+    // builds a Dart type there is nothing to parse them, and a living-room
+    // client has no business restoring a server.
+    'Backup',
+    'BackupList',
   };
 
   final parsers = <String, void Function(Map<String, dynamic>)>{
@@ -196,8 +202,8 @@ void main() {
       );
     });
 
-    test('covers the 94 fixtures the contract ships', () {
-      expect(fixtures, hasLength(94));
+    test('covers the 98 fixtures the contract ships', () {
+      expect(fixtures, hasLength(98));
     });
 
     for (final fixture in fixtures) {

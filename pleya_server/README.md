@@ -183,14 +183,19 @@ een back-up te houden.
 
 ```sh
 ssh synology
-mkdir -p /volume1/docker/pleya-server/data/{config,cache,transcode}
+mkdir -p /volume1/docker/pleya-server/data/{config,cache,transcode,backups}
 ```
+
+`data/backups` hoort het liefst op een andere schijf dan `data/config` en heeft dezelfde eigenaar
+nodig. Wat erin komt en hoe je terugzet staat in
+[`docs/pleya-server-operator-backup.md`](../docs/pleya-server-operator-backup.md).
 
 | Map | Levensduur | In de back-up |
 | --- | --- | --- |
 | `data/config` | duurzaam, dit is de back-up-eenheid | ja |
 | `data/cache` | herbouwbaar | nee |
 | `data/transcode` | vluchtig, hoge churn | nee |
+| `data/backups` | de back-ups zelf (S25) | n.v.t. |
 
 In `data/config` komt ook de ondertekensleutel te staan, in `token-signing.key` met rechten 0600. Die
 staat bewust niet in Postgres: een databasedump mag geen sessies opleveren. Raakt het bestand kwijt,
@@ -424,6 +429,14 @@ curl -s -X POST -H "Authorization: Bearer $A" $B/jobs/<job_id>/retry
 
 `job` is het achtste foutdomein. Na een mislukte probe van een bestand wacht de scanner volgens
 `probe_attempts` steeds langer voor hij het opnieuw probeert (`probeBackoff`).
+
+### Back-ups en restore
+
+Sinds S25 maakt de server elke nacht een back-up (database, `/config`, versleutelde geheimen),
+test hij wekelijks of die terug te zetten is, en maakt hij vóór elke migratie zelf een back-up.
+`GET/POST /backups`, `GET /backups/{id}` en de hersteltest en restore eronder zijn klasse `admin`.
+De volledige bediening staat in
+[`docs/pleya-server-operator-backup.md`](../docs/pleya-server-operator-backup.md).
 
 ### Serverinstellingen wijzigen
 

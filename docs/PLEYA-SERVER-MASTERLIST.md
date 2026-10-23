@@ -18,7 +18,7 @@ zet in dezelfde commit de status om en vult het bewijs in. Een taak die zonder b
 
 Bewijs is een commit-sha, een testnaam, een meting of een bestandspad. "Werkt" is geen bewijs.
 
-Laatst bijgewerkt: 2026-10-11 (S2.8 gerepareerd: de `.env`-sync claimt geen geneste root van een
+Laatst bijgewerkt: 2026-10-23 (S25.1 tot en met S25.5 gereed: back-up, hersteltest, restore, upgrade-guard en faalpaden, DEC-162; S25.6 en S25.7 open). Daarvoor, op 2026-10-11 (S2.8 gerepareerd: de `.env`-sync claimt geen geneste root van een
 `db`-bibliotheek meer, en daarmee staat S2 volledig op gereed). Daarvoor, op 2026-10-10: S2 gesloten,
 masterlijst gereconcilieerd met `main`. S2.5 (overname van
 `.env`-bibliotheken) en S2.6 (migratietest op de NAS-vangst, venster 2 dicht) zijn gereed, en daarmee
@@ -46,7 +46,7 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **4** | **0** | **22** |
 
-Per taak, en dat is de maat die telt: **155 taken, 55 gereed, 14 bezig, 86 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **155 taken, 60 gereed, 14 bezig, 81 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -514,11 +514,11 @@ punt 3 en 4), en aan het venster-besluit.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S25.1 | Migratie `0022`, back-up gepland en handmatig | `[ ]` | | |
-| S25.2 | Wekelijkse hersteltest met natellen | `[ ]` | | |
-| S25.3 | Restore met onderhoudsmodus en bevestiging | `[ ]` | | |
-| S25.4 | Upgrade-guard: back-up vóór migratie, weigering op nieuwere database | `[ ]` | | |
-| S25.5 | Vier faalpaden met foutcodes en settest | `[ ]` | | |
+| S25.1 | Migratie `0022`, back-up gepland en handmatig | `[x]` | M6: `0022_backups.sql` (`backups`, `backup_restore_tests`), `internal/backup` (tar met manifest, `pg_dump` als gzip uit één geëxporteerde snapshot, `/config`, geheimen versleuteld met Argon2id en AES-256-GCM of weggelaten zonder `PLEYA_SERVER_BACKUP_KEY`), job `backup_create`, dagelijks op `PLEYA_SERVER_BACKUP_TIME` (03:30) en via `POST /backups`, bewaartermijn 14 dagen met de nieuwste geslaagde altijd bewaard, waarschuwing `same_failure_domain`; `pg_dump`/`psql` 18.6 met `COPY --from` uit de gepinde postgres-image in `Dockerfile` en `scripts/test-image.sh`. Tests: `backup_test.go` (11), `TestBackupIsMadeVerifiedAndListedForAnAdmin`. Negatieve controle: de geheime bestanden bij de gewone zetten maakt `TestBackupCarriesDumpAndConfigButNeverAReadableSecret` en `TestBackupWithoutAKeyLeavesTheSecretOut` rood | 2026-10-23 |
+| S25.2 | Wekelijkse hersteltest met natellen | `[x]` | M6: job `backup_verify` zet de dump terug in een eigen database `pleya_restoretest_<willekeurig>`, draait de migraties en telt titels, gebruikers, bibliotheken en kijkstatus na tegen het manifest; wekelijks na de geplande back-up (`VerifyDue`) en via `POST /backups/{id}/verify`. `TestRestoreTestUsesAScratchDatabaseAndLeavesTheLiveOneAlone`, `TestUpgradeBackupOfAnOlderSchemaRestoresAndMigrates` (schema 20 naar 22). Negatieve controle: de hersteltest naar de echte database laten laden maakt de eerste rood (de bibliotheek van na de back-up verdwijnt) | 2026-10-23 |
+| S25.3 | Restore met onderhoudsmodus en bevestiging | `[x]` | M6: `POST /backups/{id}/restore` met de letterlijke zin uit `restore_confirmation` (tijdstip en wat verloren gaat), anders `409 server.confirm_mismatch` met de zin in `details.expected`; daarna `server.maintenance` op elke aanvraag, de dump in één `psql --single-transaction`, `/config` terug, herstart met exitcode 75. `TestRestoreNeedsTheExactConfirmationAndRunsInMaintenance`, `TestRestoreBringsBackTheBackupAndABrokenDumpChangesNothing`. Negatieve controles: zonder de bevestigingstoets geeft een lege `confirm` 202; zonder `maintenanceGate` geeft een aanvraag tijdens de restore 200; psql niet doden bij een leesfout commit een leeg schema | 2026-10-23 |
+| S25.4 | Upgrade-guard: back-up vóór migratie, weigering op nieuwere database | `[x]` | M6: `upgradeGuard` in `cmd/pleya-server/backupwork.go` vóór `migrate.Run`: nieuwere database geweigerd met uitleg, achterlopende eerst een back-up (`trigger: upgrade`) en niet starten als die mislukt; `migrate.Status`; `deploy-nas.sh` weigert zonder back-upmap. `TestUpgradeGuardBacksUpBeforeMigratingAndRefusesANewerDatabase`, `TestUpgradeGuardRefusesARealNewerDatabase`, `TestStatusReadsTheSchemaWithoutMigrating`, `TestRestoreRefusesABackupFromANewerSchema`. Negatieve controle: de weigering op `current > target` weghalen maakt beide guardtests rood | 2026-10-23 |
+| S25.5 | Vier faalpaden met foutcodes en settest | `[x]` | M6: `TestFailurePathsEachHaveTheirOwnCode` met echte oorzaken: schijf vol (`/dev/full`, `storage.full`), database weg (pool op een dode poort, `server.database_unavailable`, nieuw), transcoder-crash (ffmpeg met segfault, `playback.transcode_failed`), kapot bestand (rommel in het mkv, `playback.file_corrupt`, nieuw, een tweede ffprobe beslist). `writeInternal` vertaalt ENOSPC en een weggevallen database op elk endpoint. Negatieve controles: zonder de ffprobe-toets wordt kapot bestand `transcode_failed`, zonder de databasetoets wordt database weg `server.internal` | 2026-10-23 |
 | S25.6 | Scherm 35 gebouwd, journey 13 | `[ ]` | | |
 | S25.7 | Off-site back-up: een kopie van de dump en `/config` buiten de NAS (Hyper Backup of externe bestemming), met een hersteltest vanaf die kopie | `[ ]` | | |
 

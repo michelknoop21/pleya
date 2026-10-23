@@ -98,6 +98,9 @@ type Config struct {
 
 	// WatchLease is het schrijfrecht op de kijkstatus (DEC-049 regel 4).
 	WatchLease time.Duration
+
+	// Backup is doel, tijdstip, bewaartermijn en sleutel van de back-ups (S25).
+	Backup Backup
 }
 
 // Defaults zoals ze in de container gelden. De drie schrijfbare mappen staan
@@ -322,6 +325,10 @@ func Load(getenv Getenv) (*Config, error) {
 
 	cfg.TMDBKey = strings.TrimSpace(getenv("PLEYA_SERVER_TMDB_KEY"))
 	cfg.MetadataLanguage = valueOr(getenv, "PLEYA_SERVER_METADATA_LANGUAGE", "nl-NL")
+
+	if cfg.Backup, err = loadBackup(getenv); err != nil {
+		return nil, err
+	}
 
 	return cfg, nil
 }

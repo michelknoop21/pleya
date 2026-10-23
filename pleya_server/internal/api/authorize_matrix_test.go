@@ -148,6 +148,15 @@ type matrixFixture struct {
 	scanID       string
 	doneJobID    string
 	pendingJobID string
+
+	// S25: een geslaagde en een mislukte back-up in het register, zonder bestand.
+	// De probes komen niet verder dan de bevestiging of de statuscontrole, dus
+	// een bestand is niet nodig. clearBackupJobs haalt een wachtende back-upjob
+	// weg, zodat de tweede rol die POST /backups doet niet op de dedupe van de
+	// eerste stukloopt.
+	okBackupID      string
+	failedBackupID  string
+	clearBackupJobs func()
 }
 
 const (
@@ -428,6 +437,25 @@ func matrixProbes() []matrixProbe {
 		{row: 65, name: "DELETE /downloads/{id}", method: http.MethodDelete,
 			path: func(f *matrixFixture) string { return "/pleya/v1/downloads/" + f.freshDownload() },
 			body: noBody, ok: http.StatusNoContent, expect: ownerOnly(), missing: missingDownload("")},
+		// Regel 66 tot en met 70: back-up en restore (venster 7, S25), klasse admin.
+		// Verify staat op een mislukte back-up en restore op een foute
+		// bevestiging, hetzelfde patroon als regel 21: herhaalbaar voor owner én
+		// admin zonder iets te wijzigen.
+		{row: 66, name: "GET /backups", method: http.MethodGet,
+			path: fixedPath("/pleya/v1/backups"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
+		{row: 67, name: "POST /backups", method: http.MethodPost,
+			path: func(f *matrixFixture) string { f.clearBackupJobs(); return "/pleya/v1/backups" },
+			body: noBody, ok: http.StatusAccepted, expect: adminSurface()},
+		{row: 68, name: "GET /backups/{id}", method: http.MethodGet,
+			path: func(f *matrixFixture) string { return "/pleya/v1/backups/" + f.okBackupID },
+			body: noBody, ok: http.StatusOK, expect: adminSurface()},
+		{row: 69, name: "POST /backups/{id}/verify", method: http.MethodPost,
+			path: func(f *matrixFixture) string { return "/pleya/v1/backups/" + f.failedBackupID + "/verify" },
+			body: noBody, ok: http.StatusConflict, expect: adminSurface()},
+		{row: 70, name: "POST /backups/{id}/restore", method: http.MethodPost,
+			path: func(f *matrixFixture) string { return "/pleya/v1/backups/" + f.okBackupID + "/restore" },
+			body: func(*matrixFixture) any { return map[string]string{"confirm": "nee"} },
+			ok:   http.StatusConflict, expect: adminSurface()},
 		{row: 39, name: "GET /watch-history", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/watch-history"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
 	}
@@ -528,6 +556,18 @@ func newMatrixFixture(e *env) *matrixFixture {
 	f.doneJobID = id.New().String()
 	if _, err := e.pool.Exec(ctx, `INSERT INTO jobs (id, kind, state, finished_at) VALUES ($1, 'storage_recheck_roots', 'succeeded', now())`, f.doneJobID); err != nil {
 		e.t.Fatal(err)
+	}
+	f.okBackupID, f.failedBackupID = id.New().String(), id.New().String()
+	if _, err := e.pool.Exec(ctx, `
+		INSERT INTO backups (id, file_name, trigger, status, schema_version, titles, finished_at)
+		VALUES ($1, 'pleya-backup-matrix.tar', 'manual', 'ok', 22, 5, now()),
+		       ($2, NULL, 'manual', 'failed', NULL, NULL, now())`, f.okBackupID, f.failedBackupID); err != nil {
+		e.t.Fatal(err)
+	}
+	f.clearBackupJobs = func() {
+		if _, err := e.pool.Exec(ctx, `DELETE FROM jobs WHERE kind = 'backup_create'`); err != nil {
+			e.t.Fatal(err)
+		}
 	}
 	f.pendingJobID = id.New().String()
 	pendingArgs, _ := json.Marshal(api.ScanJobArgs{LibraryID: f.libraryID, Trigger: "manual"})

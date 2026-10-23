@@ -17,6 +17,7 @@ const all: Capabilities = {
   track_preferences: false,
   transcode: false,
   downloads: false,
+  backups: false,
   live_tv: false,
   realtime: false,
   users: false,

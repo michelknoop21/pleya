@@ -31,14 +31,16 @@ const maxRequestBodyBytes = 8 << 10
 // antwoord dat recovery schrijft. cors staat daaronder omdat hij een preflight
 // zelf afmaakt en de mux dan niet meer hoeft te bereiken, en boven bodyLimit
 // omdat een preflight geen lichaam heeft. bodyLimit staat het dichtst bij de
-// mux, want hij raakt alleen het verzoek.
+// mux, want hij raakt alleen het verzoek. maintenanceGate staat boven cors: in
+// onderhoud (S25.3) hoort ook een preflight geen ja te krijgen voor een
+// aanvraag die toch geweigerd wordt.
 func (s *Server) Handler() http.Handler { return s.chain(s.mux) }
 
 // chain is de keten zelf, los van de mux, zodat een test hem op een eigen
 // handler kan leggen. Zou de test de volgorde overschrijven, dan bewees hij een
 // keten die niet draait.
 func (s *Server) chain(inner http.Handler) http.Handler {
-	return s.logging(s.recovery(s.securityHeaders(s.cors(s.bodyLimit(inner)))))
+	return s.logging(s.recovery(s.securityHeaders(s.maintenanceGate(s.cors(s.bodyLimit(inner))))))
 }
 
 // recovery vangt een panic af en maakt er de foutvorm van het protocol van.

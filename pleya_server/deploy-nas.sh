@@ -37,6 +37,17 @@ if ! ssh "$SSH_HOST" "grep -q '^POSTGRES_PASSWORD=.\{16,\}' $REMOTE_DIR/.env" 2>
   exit 1
 fi
 
+# De upgrade-guard (S25.4) maakt vóór elke migratie een back-up en start niet
+# als dat mislukt. Zonder back-upmap op de NAS zou de eerste deploy met een
+# migratie dus een server opleveren die niet opkomt; dat hoort hier te stoppen
+# en niet pas bij readyz.
+BACKUP_HOST=$(ssh "$SSH_HOST" "grep -E '^PLEYA_SERVER_BACKUP_HOST=' $REMOTE_DIR/.env | cut -d= -f2" 2>/dev/null)
+BACKUP_HOST=${BACKUP_HOST:-./data/backups}
+if ! ssh "$SSH_HOST" "cd $REMOTE_DIR && test -d '$BACKUP_HOST'" 2>/dev/null; then
+  echo "✗ de back-upmap $BACKUP_HOST bestaat niet op de NAS — zie docs/pleya-server-operator-backup.md" >&2
+  exit 1
+fi
+
 echo "→ Pleya Web bouwen"
 # De frontend wordt hier gebouwd en gaat als bundel mee in de tar. De NAS bouwt
 # wel de Go-binary zelf, want hij is amd64 en de ontwikkelmachine meestal niet;

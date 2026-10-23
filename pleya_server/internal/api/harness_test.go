@@ -19,6 +19,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/api"
 	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
+	"github.com/edde746/plezy/pleya_server/internal/backup"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/config"
 	"github.com/edde746/plezy/pleya_server/internal/diag"
@@ -143,6 +144,13 @@ type env struct {
 	log     *slog.Logger
 	probes  *probeLog
 	audit   *audit.Store
+
+	// backups is de back-upservice (S25), met een eigen back-upmap. Back-ups
+	// maken vraagt pg_dump en psql uit de testimage; de matrixprobes niet.
+	backups   *backup.Service
+	backupDir string
+	// restored krijgt de uitkomst van een restore, in plaats van een herstart.
+	restored chan error
 
 	revocations *auth.Revocations
 
@@ -281,8 +289,20 @@ func newEnv(t *testing.T, opts ...envOption) *env {
 	// goed doet.
 	revocations := auth.NewRevocations(0)
 
+	// De back-upservice met de echte pool en een eigen map. De restore laat in
+	// productie het proces herstarten; hier komt de uitkomst op een kanaal.
+	backupDir := t.TempDir()
+	backups := backup.New(backup.Options{
+		Pool: pool, Dir: backupDir, ConfigDir: configDir, Key: "een-wachtzin-voor-de-testserver",
+		RetentionDays: 14, Version: "0.2.0-test", Schedule: "03:30", Logger: logger,
+	})
+	restored := make(chan error, 1)
+
 	reg := &metrics.Registry{}
 	options := api.Options{
+		Backups:            backups,
+		AfterRestore:       func(err error) { restored <- err },
+		Prober:             ffprobe.New("ffprobe", 60*time.Second),
 		Catalog:            store,
 		Auth:               authStore,
 		Watch:              watchStore,
@@ -344,7 +364,8 @@ func newEnv(t *testing.T, opts ...envOption) *env {
 	return &env{t: t, server: srv, store: store, auth: authStore, watch: watchStore, pool: pool,
 		root: root, metrics: reg, libs: libs, cap: shared, argon2: light, signer: signer, logs: logs,
 		settings: settingsCache, ring: ring, environ: environ, config: configDir,
-		log: logger, probes: probes, audit: auditStore, revocations: revocations}
+		log: logger, probes: probes, audit: auditStore, revocations: revocations,
+		backups: options.Backups, backupDir: backupDir, restored: restored}
 }
 
 // freshRevocations leegt het intrekkingsregister, zoals na een herstart van het

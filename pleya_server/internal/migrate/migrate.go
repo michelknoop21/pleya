@@ -246,6 +246,31 @@ func runTo(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger, cap int) (
 	return result, nil
 }
 
+// Status leest de schemaversie van de database en die van deze binary, zonder
+// iets te wijzigen.
+//
+// De upgrade-guard (S25.4, RB-26) heeft het nodig vóór Run: een database die
+// nieuwer is dan de binary wordt geweigerd voordat er iets gebeurt, en een
+// database die achterloopt krijgt eerst een back-up. Een database zonder
+// schema_migrations is een verse installatie en staat op 0.
+func Status(ctx context.Context, pool *pgxpool.Pool) (current, target int, err error) {
+	target, err = Target()
+	if err != nil {
+		return 0, 0, err
+	}
+	var exists bool
+	if err := pool.QueryRow(ctx, `SELECT to_regclass('schema_migrations') IS NOT NULL`).Scan(&exists); err != nil {
+		return 0, target, fmt.Errorf("schemaversie lezen: %w", err)
+	}
+	if !exists {
+		return 0, target, nil
+	}
+	if err := pool.QueryRow(ctx, `SELECT coalesce(max(version), 0) FROM schema_migrations`).Scan(&current); err != nil {
+		return 0, target, fmt.Errorf("schemaversie lezen: %w", err)
+	}
+	return current, target, nil
+}
+
 func ensureTable(ctx context.Context, conn *pgx.Conn) error {
 	const ddl = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
