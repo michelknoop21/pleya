@@ -51,6 +51,8 @@ AutomationInputResult dispatchAutomationKey(String key) {
 }
 
 int _nextPointerId = 1;
+// Velocity-sensitive widgets need real monotonic source timestamps in Verify.
+final _pointerClock = Stopwatch()..start();
 
 /// `POST /v1/input/pointer`. Synthesizes a tap (down + up) at [position] in
 /// logical pixels, going through the real gesture-binding hit-test pipeline
@@ -69,11 +71,11 @@ Future<AutomationInputResult> dispatchAutomationPointerTap(Offset position, {Dur
 
   final pointer = _nextPointerId++;
   final binding = GestureBinding.instance;
-  binding.handlePointerEvent(PointerAddedEvent(position: position));
-  binding.handlePointerEvent(PointerDownEvent(pointer: pointer, position: position));
+  binding.handlePointerEvent(PointerAddedEvent(timeStamp: _pointerClock.elapsed, position: position));
+  binding.handlePointerEvent(PointerDownEvent(timeStamp: _pointerClock.elapsed, pointer: pointer, position: position));
   if (hold != null) await Future<void>.delayed(hold);
-  binding.handlePointerEvent(PointerUpEvent(pointer: pointer, position: position));
-  binding.handlePointerEvent(PointerRemovedEvent(position: position));
+  binding.handlePointerEvent(PointerUpEvent(timeStamp: _pointerClock.elapsed, pointer: pointer, position: position));
+  binding.handlePointerEvent(PointerRemovedEvent(timeStamp: _pointerClock.elapsed, position: position));
   AutomationEventLog.instance.emit('input.received', {
     'source': 'transport',
     'x': position.dx,
@@ -97,19 +99,26 @@ Future<AutomationInputResult> dispatchAutomationPointerDrag(
 
   final pointer = _nextPointerId++;
   final binding = GestureBinding.instance;
-  binding.handlePointerEvent(PointerAddedEvent(pointer: pointer, position: start));
-  binding.handlePointerEvent(PointerDownEvent(pointer: pointer, position: start));
+  binding.handlePointerEvent(PointerAddedEvent(timeStamp: _pointerClock.elapsed, pointer: pointer, position: start));
+  binding.handlePointerEvent(PointerDownEvent(timeStamp: _pointerClock.elapsed, pointer: pointer, position: start));
   const steps = 12;
   var previous = start;
   final delay = Duration(microseconds: duration.inMicroseconds ~/ steps);
   for (var step = 1; step <= steps; step++) {
     await Future<void>.delayed(delay);
     final position = Offset.lerp(start, end, step / steps)!;
-    binding.handlePointerEvent(PointerMoveEvent(pointer: pointer, position: position, delta: position - previous));
+    binding.handlePointerEvent(
+      PointerMoveEvent(
+        timeStamp: _pointerClock.elapsed,
+        pointer: pointer,
+        position: position,
+        delta: position - previous,
+      ),
+    );
     previous = position;
   }
-  binding.handlePointerEvent(PointerUpEvent(pointer: pointer, position: end));
-  binding.handlePointerEvent(PointerRemovedEvent(pointer: pointer, position: end));
+  binding.handlePointerEvent(PointerUpEvent(timeStamp: _pointerClock.elapsed, pointer: pointer, position: end));
+  binding.handlePointerEvent(PointerRemovedEvent(timeStamp: _pointerClock.elapsed, pointer: pointer, position: end));
   AutomationEventLog.instance.emit('input.received', {
     'source': 'transport',
     'gesture': 'drag',

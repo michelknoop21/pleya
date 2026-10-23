@@ -34,7 +34,7 @@ import '../../../utils/media_image_helper.dart';
 import '../../../utils/provider_extensions.dart';
 import '../alpha_jump_bar.dart';
 import '../alpha_jump_helper.dart';
-import '../alpha_scroll_handle.dart';
+import '../../../widgets/scroll_crown/scroll_crown.dart';
 import '../library_alpha_bar_strategy.dart';
 import '../library_alpha_scroll_metrics.dart';
 import '../library_filter_sort_loader.dart';
@@ -1379,24 +1379,9 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     _scrollToItemIndex(clamped);
   }
 
-  /// Current scroll position as a fraction of the scrollable range, read by
-  /// the phone scrubber when a drag starts.
-  double _scrollFraction() {
-    final pos = _innerPosition;
-    if (pos == null || !pos.hasContentDimensions || pos.maxScrollExtent <= 0) return 0;
-    return (pos.pixels / pos.maxScrollExtent).clamp(0.0, 1.0);
-  }
-
-  /// Phone scrubber drag: the rail maps onto the whole scrollable range, so
-  /// the grid follows the finger. The letter follows from the scroll position
-  /// through [_onScrollChanged]; range loading fills the rows on the way.
-  void _scrubToFraction(double fraction) {
-    final pos = _innerPosition;
-    if (pos == null || !pos.hasContentDimensions) return;
-    // A scrub supersedes a running letter jump.
+  void _beginCrownScrub() {
     _jumpScrollGeneration++;
     _isJumpScrolling = false;
-    pos.jumpTo(fraction.clamp(0.0, 1.0) * pos.maxScrollExtent);
   }
 
   /// Apply the new Jellyfin `NameStartsWith` prefix from the alpha bar and
@@ -1463,43 +1448,40 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     final media = MediaQuery.of(context);
     final overlayTopPadding = media.padding.top + kToolbarHeight;
 
+    final content = _buildScrollableContent();
+    if (_isPhone(context)) {
+      return ListenableSelector<String>(
+        listenable: _currentFirstVisibleIndex,
+        selector: () => _shouldShowAlphaJumpBar ? _alphaLetterFor(_currentFirstVisibleIndex.value) : '',
+        builder: (context, letter, _) => ScrollCrown(
+          topInset: kToolbarHeight,
+          positionLabel: letter,
+          onScrubStart: _beginCrownScrub,
+          child: content,
+        ),
+      );
+    }
     return Stack(
       children: [
-        Positioned.fill(child: _buildScrollableContent()),
+        Positioned.fill(child: content),
         if (_shouldShowAlphaJumpBar)
           Positioned(
             top: overlayTopPadding,
             right: 0,
             bottom: 0,
-            // Select the derived letter rather than listening to the raw
-            // index: the index changes every scrolled row, but the bar only
-            // needs a rebuild when the letter itself flips.
-            child: _isPhone(context)
-                ? ListenableSelector<String>(
-                    listenable: _currentFirstVisibleIndex,
-                    selector: () => _alphaLetterFor(_currentFirstVisibleIndex.value),
-                    builder: (context, currentLetter, _) => AlphaScrollHandle(
-                      firstCharacters: _firstCharacters,
-                      onJump: _jumpToIndex,
-                      onScrub: _scrubToFraction,
-                      readScrollFraction: _scrollFraction,
-                      currentLetter: currentLetter,
-                      descending: _isTitleSortDescending,
-                    ),
-                  )
-                : ListenableSelector<String>(
-                    listenable: _currentFirstVisibleIndex,
-                    selector: () => _alphaLetterFor(_currentFirstVisibleIndex.value),
-                    builder: (context, currentLetter, _) => AlphaJumpBar(
-                      firstCharacters: _firstCharacters,
-                      onJump: _jumpToIndex,
-                      currentLetter: currentLetter,
-                      descending: _isTitleSortDescending,
-                      focusNode: _alphaJumpBarFocusNode,
-                      onNavigateLeft: _navigateToGridNearScroll,
-                      onBack: _navigateToGridNearScroll,
-                    ),
-                  ),
+            child: ListenableSelector<String>(
+              listenable: _currentFirstVisibleIndex,
+              selector: () => _alphaLetterFor(_currentFirstVisibleIndex.value),
+              builder: (context, currentLetter, _) => AlphaJumpBar(
+                firstCharacters: _firstCharacters,
+                onJump: _jumpToIndex,
+                currentLetter: currentLetter,
+                descending: _isTitleSortDescending,
+                focusNode: _alphaJumpBarFocusNode,
+                onNavigateLeft: _navigateToGridNearScroll,
+                onBack: _navigateToGridNearScroll,
+              ),
+            ),
           ),
       ],
     );
@@ -1831,7 +1813,10 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
       AutomationNode(
         id: AutomationIds.libraryGrid,
         role: 'grid',
-        state: () => {'child_count': totalSize},
+        state: () => {
+          'child_count': totalSize,
+          'view_mode': SettingsService.instanceOrNull?.read(SettingsService.viewMode).name,
+        },
         child: SettingsBuilder(
           prefs: const [
             SettingsService.viewMode,

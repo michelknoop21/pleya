@@ -2,7 +2,7 @@ import '../../data/ducet_order.dart';
 import '../../media/library_first_character.dart';
 
 /// Shared letter-index mapping logic used by both [AlphaJumpBar] (desktop/tablet/TV)
-/// and [AlphaScrollHandle] (phone).
+/// and the phone crown position readout.
 ///
 /// Builds a dynamic letter list and cumulative index map from [LibraryFirstCharacter]
 /// data returned by the server's first-character endpoint. Only letters that
