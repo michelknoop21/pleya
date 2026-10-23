@@ -278,6 +278,42 @@ class PleyaTrackPreference {
   );
 }
 
+/// `Download`: a file the server prepared for the requester to take offline.
+/// [status] is `preparing` while the server computes the digest, then `ready`
+/// or `failed`; [sizeBytes] and [sha256] are null until it is ready.
+class PleyaDownload {
+  const PleyaDownload({
+    required this.id,
+    required this.itemId,
+    required this.versionId,
+    required this.status,
+    required this.fileUrl,
+    this.sizeBytes,
+    this.sha256,
+  });
+
+  final String id;
+  final String itemId;
+  final String versionId;
+  final String status;
+  final String fileUrl;
+  final int? sizeBytes;
+  final String? sha256;
+
+  bool get isReady => status == 'ready';
+  bool get isFailed => status == 'failed';
+
+  factory PleyaDownload.fromJson(Map<String, dynamic> json) => PleyaDownload(
+    id: str(json, 'id'),
+    itemId: str(json, 'item_id'),
+    versionId: str(json, 'version_id'),
+    status: str(json, 'status'),
+    fileUrl: str(json, 'file_url'),
+    sizeBytes: integerOrNull(json, 'size_bytes'),
+    sha256: strOrNull(json, 'sha256'),
+  );
+}
+
 /// `Info.auth`.
 class PleyaAuthInfo {
   const PleyaAuthInfo({required this.methods, required this.setupRequired});

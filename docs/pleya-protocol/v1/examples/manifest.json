@@ -437,6 +437,16 @@
       "file": "track_preference.json",
       "schema": "TrackPreference",
       "note": "S20: GET /track-preferences/{item_id}, de voorkeur die voor een item geldt"
+    },
+    {
+      "file": "download.json",
+      "schema": "Download",
+      "note": "S23: GET /downloads/{id}, een klaargezette download met grootte en SHA-256"
+    },
+    {
+      "file": "download_list.json",
+      "schema": "DownloadList",
+      "note": "S23: GET /downloads, de nieuwste eerst, ook een download die nog preparing is"
     }
   ]
 }

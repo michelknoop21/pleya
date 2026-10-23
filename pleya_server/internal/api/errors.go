@@ -155,6 +155,13 @@ const (
 	// kan bewaren (S20). details.field noemt het veld.
 	CodePersonalInvalid = "library.personal_invalid"
 
+	// Downloads (S23). Niet toegestaan is een 403 omdat de bibliotheek wel
+	// zichtbaar is; niet klaar en veranderd zijn 409's: de eerste gaat vanzelf
+	// over (retryable), de tweede vraagt een nieuwe download.
+	CodeDownloadNotPermitted = "download.not_permitted"
+	CodeDownloadNotReady     = "download.not_ready"
+	CodeDownloadChanged      = "download.changed"
+
 	CodeStorageUnavailable = "storage.unavailable"
 	CodeStorageFull        = "storage.full"
 
@@ -248,12 +255,15 @@ var errorTable = map[string]struct {
 	CodeFilterInvalid:           {http.StatusBadRequest, false},
 	CodeJobNotCancellable:       {http.StatusConflict, false},
 
-	CodeVersionUnavailable:  {http.StatusConflict, true},
-	CodeRangeNotSatisfiable: {http.StatusRequestedRangeNotSatisfiable, false},
-	CodeNotPlayable:         {http.StatusUnsupportedMediaType, false},
-	CodeTranscodeBusy:       {http.StatusServiceUnavailable, true},
-	CodeTranscodeFailed:     {http.StatusBadGateway, false},
-	CodePersonalInvalid:     {http.StatusBadRequest, false},
+	CodeVersionUnavailable:   {http.StatusConflict, true},
+	CodeRangeNotSatisfiable:  {http.StatusRequestedRangeNotSatisfiable, false},
+	CodeNotPlayable:          {http.StatusUnsupportedMediaType, false},
+	CodeTranscodeBusy:        {http.StatusServiceUnavailable, true},
+	CodeTranscodeFailed:      {http.StatusBadGateway, false},
+	CodePersonalInvalid:      {http.StatusBadRequest, false},
+	CodeDownloadNotPermitted: {http.StatusForbidden, false},
+	CodeDownloadNotReady:     {http.StatusConflict, true},
+	CodeDownloadChanged:      {http.StatusConflict, false},
 
 	CodeStorageUnavailable:    {http.StatusServiceUnavailable, true},
 	CodeStorageFull:           {http.StatusInsufficientStorage, false},

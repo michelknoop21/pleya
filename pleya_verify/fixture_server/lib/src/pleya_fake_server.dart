@@ -63,6 +63,17 @@ class PleyaFakeServer {
   /// S20: favorites, ratings and remembered tracks. The fake keeps them per
   /// item id and records each call so a test can read what the app sent.
   bool personalCapability = false;
+
+  /// S23: the server offers downloads. A download reads `preparing` for
+  /// [downloadPrepareRounds] polls, then `ready` with [downloadSha256], or
+  /// `failed` when [downloadFails] is set. [downloadRequests] records each
+  /// `POST /downloads` body.
+  bool downloadsCapability = false;
+  int downloadPrepareRounds = 0;
+  bool downloadFails = false;
+  String downloadSha256 = 'a' * 64;
+  final List<Map<String, dynamic>> downloadRequests = [];
+  final Map<String, int> _downloadPolls = {};
   final Set<String> favoriteIds = {};
   final Map<String, int> ratingsByItem = {};
   final Map<String, Map<String, dynamic>> trackPreferences = {};
@@ -251,6 +262,11 @@ class PleyaFakeServer {
     filtersCapability = false;
     playbackPlanCapability = false;
     personalCapability = false;
+    downloadsCapability = false;
+    downloadPrepareRounds = 0;
+    downloadFails = false;
+    downloadRequests.clear();
+    _downloadPolls.clear();
     favoriteIds.clear();
     ratingsByItem.clear();
     trackPreferences.clear();
@@ -619,6 +635,7 @@ class PleyaFakeServer {
       final personal = _personal(request, path);
       if (personal != null) return personal;
     }
+    if (downloadsCapability && path.startsWith('/downloads')) return _downloads(request, path);
 
     if (path == '/watch-state' && request.method == 'POST') {
       final failure = watchStateFailureStatus;
@@ -870,6 +887,7 @@ class PleyaFakeServer {
       'stream_sessions': watchState,
       if (filtersCapability) 'filters': true,
       if (playbackPlanCapability) 'playback_plan': true,
+      if (downloadsCapability) 'downloads': true,
       if (personalCapability) ...{'history': true, 'favorites': true, 'ratings': true, 'track_preferences': true},
     },
     'auth': {
@@ -1001,6 +1019,28 @@ class PleyaFakeServer {
       });
     }
     return null;
+  }
+
+  http.Response _downloads(http.Request request, String path) {
+    Map<String, dynamic> wire(String id, String status) => {
+      'id': id,
+      'item_id': 'movie-1',
+      'version_id': 'version-1',
+      'status': status,
+      'size_bytes': status == 'ready' ? 1024 : null,
+      'sha256': status == 'ready' ? downloadSha256 : null,
+      'file_url': '/pleya/v1/downloads/$id/file',
+      'created_at': '2026-10-23T09:15:00Z',
+    };
+    if (path == '/downloads' && request.method == 'POST') {
+      downloadRequests.add(jsonDecode(request.body) as Map<String, dynamic>);
+      return _json(wire('dl-1', 'preparing'), status: 201);
+    }
+    if (request.method == 'DELETE') return http.Response('', 204);
+    final id = path.split('/').last;
+    final polls = _downloadPolls[id] = (_downloadPolls[id] ?? 0) + 1;
+    if (downloadFails) return _json(wire(id, 'failed'));
+    return _json(wire(id, polls > downloadPrepareRounds ? 'ready' : 'preparing'));
   }
 
   http.Response _json(Object body, {int status = 200}) =>

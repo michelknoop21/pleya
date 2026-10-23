@@ -128,6 +128,15 @@ void main() {
       final pref = PleyaTrackPreference.fromJson(json);
       expect(pref.subtitleMode, anyOf(isNull, 'off', 'on', 'forced'));
     },
+    'Download': (json) {
+      final download = PleyaDownload.fromJson(json);
+      expect(download.isReady, download.sha256 != null, reason: 'a digest exists exactly when the file is ready');
+    },
+    'DownloadList': (json) {
+      for (final row in (json['items'] as List).cast<Map<String, dynamic>>()) {
+        PleyaDownload.fromJson(row);
+      }
+    },
     'PlaybackPlan': (json) {
       final plan = PleyaPlaybackPlan.fromJson(json);
       expect(plan.deliveryMode, isNotNull);
@@ -187,8 +196,8 @@ void main() {
       );
     });
 
-    test('covers the 92 fixtures the contract ships', () {
-      expect(fixtures, hasLength(92));
+    test('covers the 94 fixtures the contract ships', () {
+      expect(fixtures, hasLength(94));
     });
 
     for (final fixture in fixtures) {
