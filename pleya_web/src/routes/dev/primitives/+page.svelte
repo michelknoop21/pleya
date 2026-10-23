@@ -101,7 +101,7 @@
   }
 
   .gal__library {
-    padding: var(--space-1-5) var(--page-inset, var(--space));
+    padding: var(--space-1-5) var(--inset);
   }
 
   .gal__title {

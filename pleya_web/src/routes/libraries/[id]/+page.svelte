@@ -238,7 +238,7 @@
   .page {
     position: relative;
     isolation: isolate;
-    padding: 8px var(--inset) var(--space-2);
+    padding: var(--page-top) var(--inset) var(--space-2);
   }
 
   /* Onder 900 vult de actie de regel (PageHeader); erboven houdt hij een

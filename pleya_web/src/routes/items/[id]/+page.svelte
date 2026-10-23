@@ -3,12 +3,14 @@
 
   import Artwork from '$lib/components/Artwork.svelte';
   import MediaGrid from '$lib/components/MediaGrid.svelte';
+  import PageHeader from '$lib/components/PageHeader.svelte';
   import StateView from '$lib/components/StateView.svelte';
   import SkeletonPage from '$lib/components/SkeletonPage.svelte';
+  import VersionPanel from '$lib/components/VersionPanel.svelte';
   import { session } from '$lib/stores/session.svelte';
   import { describeError } from '$lib/api/errors';
   import type { Item } from '$lib/api/types';
-  import { formatDate, formatDuration, formatLanguage } from '$lib/util/format';
+  import { formatDate, formatDuration } from '$lib/util/format';
   import { t } from '$lib/i18n';
 
   const itemId = $derived(page.params['id'] ?? '');
@@ -78,13 +80,17 @@
 <svelte:head><title>{item?.title ?? t('loading')} · {t('app.name')}</title></svelte:head>
 
 {#if loading}
-  <SkeletonPage variant="detail" />
+  <SkeletonPage variant="detail" heading={t('item.title')} />
 {:else if error}
-  <StateView
-    kind="error"
-    message={error}
-    onRetry={() => void load(itemId, new AbortController().signal)}
-  />
+  <!-- De fout is een h2 onder de paginakop; zonder kop stond hij los in de pagina. -->
+  <div class="detail">
+    <PageHeader title={t('item.title')} />
+    <StateView
+      kind="error"
+      message={error}
+      onRetry={() => void load(itemId, new AbortController().signal)}
+    />
+  </div>
 {:else if item}
   <article class="detail">
     <header class="detail__head">
@@ -129,75 +135,12 @@
     </header>
 
     {#if version}
-      <section class="section">
-        <h2 class="t-title-lg">{t('item.versions')}</h2>
-        <div class="version">
-          <p class="t-small">
-            {[version.container, formatDuration(version.duration_ms)].filter(Boolean).join(' · ')}
-          </p>
-
-          {#if version.video_streams && version.video_streams.length > 0}
-            <h3 class="t-title">{t('item.video')}</h3>
-            <ul class="streams">
-              {#each version.video_streams as stream (stream.id)}
-                <li class="t-small">
-                  {[
-                    stream.codec,
-                    stream.width && stream.height ? `${stream.width}×${stream.height}` : null,
-                    stream.bit_depth ? `${stream.bit_depth}-bit` : null,
-                    stream.frame_rate ? `${stream.frame_rate.toFixed(3)} fps` : null
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </li>
-              {/each}
-            </ul>
-          {/if}
-
-          {#if version.audio_streams && version.audio_streams.length > 0}
-            <h3 class="t-title">{t('item.audio')}</h3>
-            <ul class="streams">
-              {#each version.audio_streams as stream (stream.id)}
-                <li class="t-small">
-                  {[
-                    formatLanguage(stream.language),
-                    stream.codec,
-                    stream.channels ? `${stream.channels}ch` : null,
-                    stream.title,
-                    stream.is_default ? t('item.default') : null
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </li>
-              {/each}
-            </ul>
-          {/if}
-
-          {#if version.subtitle_streams && version.subtitle_streams.length > 0}
-            <h3 class="t-title">{t('item.subtitles')}</h3>
-            <ul class="streams">
-              {#each version.subtitle_streams as stream (stream.id)}
-                <li class="t-small">
-                  {[
-                    formatLanguage(stream.language),
-                    stream.format,
-                    stream.is_forced ? t('item.forced') : null,
-                    stream.is_hearing_impaired ? t('item.sdh') : null,
-                    stream.is_external ? t('item.external') : null
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </li>
-              {/each}
-            </ul>
-          {/if}
-        </div>
-      </section>
+      <VersionPanel {version} />
     {/if}
 
     {#if item.kind === 'show' || item.kind === 'season'}
       <section class="section">
-        <h2 class="t-title-lg">{childHeading}</h2>
+        <h2 class="section-h">{childHeading}</h2>
         {#if children.length === 0}
           <StateView compact title={t('item.noChildren')} />
         {:else}
@@ -213,7 +156,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-    padding: var(--space-1-5) var(--page-inset, var(--space));
+    padding: var(--space-1-5) var(--inset);
   }
 
   .detail__head {
@@ -279,19 +222,18 @@
     gap: var(--space);
   }
 
-  .version {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-half);
-    padding: var(--space);
-    background: var(--surface);
-    border: 1px solid var(--outline);
-    border-radius: var(--radius-card);
+  /* web.css .section-h: 20/700, onder 900 18. */
+  .section-h {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--ink);
   }
 
-  .streams {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+  @media (max-width: 899px) {
+    .section-h {
+      font-size: 18px;
+    }
   }
 </style>

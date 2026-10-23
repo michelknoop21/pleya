@@ -77,6 +77,7 @@ export const web = {
   'search.seasonsNote': 'Seasons are listed on the show, not in search results.',
   'search.filters.label': 'Type',
 
+  'item.title': 'Details',
   'item.seasons': 'Seasons',
   'item.episodes': 'Episodes',
   'item.seasonsCount.one': '{count} season',
@@ -98,7 +99,8 @@ export const web = {
   'item.external': 'external',
   'item.default': 'default',
 
-  'server.title': 'Server',
+  'server.title': 'My Pleya',
+  'server.about': 'About the server',
   'server.name': 'Name',
   'server.version': 'Version',
   'server.startedAt': 'Running since',
@@ -109,6 +111,8 @@ export const web = {
   'server.capabilities': 'Capabilities',
   'server.capabilityOn': 'available',
   'server.capabilityOff': 'not available',
+  'server.libraryKind': 'Type',
+  'server.libraryItems': 'Items',
   'server.libraries': 'Libraries',
 
   'theme.oled': 'OLED',

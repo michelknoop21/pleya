@@ -75,6 +75,7 @@
   /* --- Paginamaat. DESIGN.md hoofdstuk 2; verschuift op de vier ----------
          breekpunten onderaan dit bestand. ------------------------------- */
   --inset: 48px; /* pagina-inset */
+  --page-top: 8px; /* ruimte boven de paginakop, web.css .page */
   --poster-w: 190px; /* railposter; HubRail en de skeletrail lezen hem allebei */
   --rail-gap: 20px;
   /*
@@ -99,7 +100,6 @@
    */
   --hero-aspect: 21 / 9;
   --hero-h-narrow: 520px;
-  --page-inset: var(--inset); /* oude naam, tot elke route hem niet meer noemt */
 
   /* --- Raakvlak. Web-eigen: 44px is de ondergrens op aanraakschermen. ---- */
   --touch-target: 44px;

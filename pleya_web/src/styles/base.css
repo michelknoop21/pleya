@@ -338,28 +338,6 @@ ol {
   width: 100%;
 }
 
-/* --- Invoer, uit _inputDecorationTheme: gevuld, radius 12, geen rand. -- */
-.field {
-  width: 100%;
-  min-height: var(--touch-target);
-  padding: var(--space) 14px;
-  border-radius: var(--radius-md);
-  border: 0;
-  background: color-mix(in srgb, var(--text) 8%, transparent);
-  transition: background var(--dur-fast) var(--ease);
-}
-.field::placeholder {
-  color: var(--text-muted);
-}
-.field:focus-visible {
-  background: color-mix(in srgb, var(--text) 18%, transparent);
-}
-
-.card-surface {
-  background: var(--surface);
-  border-radius: var(--radius-card);
-}
-
 /* Paden, slugs en sleutels: wat iemand letterlijk overtypt staat in mono. */
 .mono {
   font-family: var(--font-mono);

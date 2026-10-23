@@ -10,7 +10,8 @@
 <script lang="ts">
   import { LOCALES, changeLocale, locale, t, type Locale } from '../i18n';
 
-  let { reload }: { reload?: () => void } = $props();
+  /** `labelledby`: id van de kop die dit veld benoemt; zonder valt hij terug op een eigen label. */
+  let { reload, labelledby }: { reload?: () => void; labelledby?: string } = $props();
 
   // Eigen naam per taal, bewust niet via t().
   const NAMES: Record<Locale, string> = { en: 'English', nl: 'Nederlands' };
@@ -20,10 +21,10 @@
   }
 </script>
 
-<label class="picker">
-  <span class="visually-hidden">{t('settings.language')}</span>
+{#snippet control()}
   <select
     class="picker__select"
+    aria-labelledby={labelledby}
     value={locale()}
     onchange={(event) => {
       const value = event.currentTarget.value;
@@ -34,7 +35,18 @@
       <option value={code} lang={code}>{NAMES[code]}</option>
     {/each}
   </select>
-</label>
+{/snippet}
+
+<!-- Met `labelledby` is de kop van het paneel de naam; een tweede verborgen
+     label zou de schermlezer dezelfde woorden twee keer laten zeggen. -->
+{#if labelledby}
+  {@render control()}
+{:else}
+  <label class="picker">
+    <span class="visually-hidden">{t('settings.language')}</span>
+    {@render control()}
+  </label>
+{/if}
 
 <style>
   .picker__select {

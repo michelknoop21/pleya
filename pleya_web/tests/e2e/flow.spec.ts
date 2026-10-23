@@ -139,7 +139,7 @@ test.describe('de verticale slice', () => {
 
   test('het serveroverzicht toont alleen wat /server en /info dragen', async ({ page }) => {
     await page.goto('/server');
-    await expect(page.getByRole('heading', { name: 'Server', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: label('en', 'server.title'), level: 1 })).toBeVisible();
     await expect(page.getByText('Capabilities')).toBeVisible();
 
     // Er is geen endpoint voor scannen, jobs of opslag, dus er is ook geen knop.
@@ -149,6 +149,33 @@ test.describe('de verticale slice', () => {
     }
 
     await expectNoAxeViolations(page, 'serveroverzicht');
+  });
+
+  test('elke capability op Mijn Pleya noemt zijn status in tekst, niet alleen met een kleur', async ({
+    page
+  }) => {
+    await page.goto('/server');
+    const panel = page.getByRole('region', { name: label('en', 'server.capabilities') });
+    const rows = panel.getByRole('listitem');
+    // count() wacht niet, dus eerst op de eerste rij.
+    await expect(rows.first()).toBeVisible();
+
+    const on = label('en', 'server.capabilityOn');
+    const off = label('en', 'server.capabilityOff');
+    for (const row of await rows.all()) {
+      // Het eerste woord is de sleutel; de status staat erachter als gewone tekst.
+      const text = (await row.innerText()).trim();
+      expect(text, text).toMatch(new RegExp(`(^|\\s)(${on}|${off})$`));
+    }
+  });
+
+  test('de bibliotheken op Mijn Pleya staan in een tabel met titel, soort en aantal', async ({
+    page
+  }) => {
+    await page.goto('/server');
+    const table = page.getByRole('table', { name: label('en', 'server.libraries') });
+    await expect(table).toBeAttached();
+    await expect(page.locator('tr[data-library-kind][data-library-id]').first()).toBeVisible();
   });
 });
 

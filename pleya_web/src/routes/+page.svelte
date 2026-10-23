@@ -98,6 +98,6 @@
 
   /* web.css .page: de inzet van de pagina, 8 boven de kop. */
   .home-page {
-    padding: 8px var(--inset) 0;
+    padding: var(--page-top) var(--inset) 0;
   }
 </style>

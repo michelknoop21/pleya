@@ -80,6 +80,7 @@ export const webNl = {
   'search.seasonsNote': 'Seizoenen staan bij de serie, niet in de zoekresultaten.',
   'search.filters.label': 'Soort',
 
+  'item.title': 'Titel',
   'item.seasons': 'Seizoenen',
   'item.episodes': 'Afleveringen',
   'item.seasonsCount.one': '{count} seizoen',
@@ -101,7 +102,8 @@ export const webNl = {
   'item.external': 'extern bestand',
   'item.default': 'standaard',
 
-  'server.title': 'Server',
+  'server.title': 'Mijn Pleya',
+  'server.about': 'Over de server',
   'server.name': 'Naam',
   'server.version': 'Versie',
   'server.startedAt': 'Draait sinds',
@@ -112,6 +114,8 @@ export const webNl = {
   'server.capabilities': 'Mogelijkheden',
   'server.capabilityOn': 'beschikbaar',
   'server.capabilityOff': 'niet beschikbaar',
+  'server.libraryKind': 'Soort',
+  'server.libraryItems': 'Titels',
   'server.libraries': 'Bibliotheken',
 
   'theme.oled': 'OLED',

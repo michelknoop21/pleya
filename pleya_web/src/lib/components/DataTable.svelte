@@ -38,7 +38,7 @@
 </script>
 
 <script lang="ts" generics="T">
-  import type { Snippet } from 'svelte';
+  import { onMount, type Snippet } from 'svelte';
 
   import { t } from '../i18n';
   import Panel from './Panel.svelte';
@@ -52,6 +52,11 @@
     cell?: Snippet<[T, Column]>;
     empty?: Snippet;
     stack?: boolean;
+    /**
+     * Gegevensattributen per rij (`data-*`), voor een test of een script dat
+     * een rij op inhoud moet vinden zonder op de tekst te leunen.
+     */
+    rowData?: (row: T) => Record<`data-${string}`, string>;
     title?: Snippet;
     actions?: Snippet;
   }
@@ -64,12 +69,39 @@
     cell,
     empty,
     stack = false,
+    rowData,
     title,
     actions
   }: Props = $props();
 
   // Zoveel cellen staan gestapeld links onder elkaar; de rechterkolom spant ze.
   const startCount = $derived(columns.filter((c) => c.align !== 'end').length);
+
+  /*
+   * De gestapelde tabel is onder 900 een lijst kaarten en scrolt niet. Vanaf
+   * 900 is hij weer een gewone tabel, en past die niet in zijn paneel (de
+   * galerij op 1024 stak er 3 px buiten), dan schuift hij binnen het paneel en
+   * hoort hij een tabstop en een naam te hebben. Meten wat er scrolt is
+   * eerlijker dan raden bij welke breedte dat gebeurt.
+   */
+  let scroller = $state<HTMLDivElement | null>(null);
+  let overflows = $state(false);
+
+  onMount(() => {
+    if (!scroller || typeof ResizeObserver === 'undefined') return;
+    const el = scroller;
+    const measure = () => {
+      overflows = el.scrollWidth > el.clientWidth + 1;
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    const table = el.firstElementChild;
+    if (table) observer.observe(table);
+    measure();
+    return () => observer.disconnect();
+  });
+
+  const focusable = $derived(!stack || overflows);
 
   function plain(row: T, column: Column): string {
     const value = (row as Record<string, unknown>)[column.key];
@@ -85,11 +117,12 @@
   {:else}
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
     <div
+      bind:this={scroller}
       class="tbl__scroll"
       class:tbl__scroll--stack={stack}
-      role={stack ? undefined : 'region'}
-      aria-label={stack ? undefined : label}
-      tabindex={stack ? undefined : 0}
+      role={focusable ? 'region' : undefined}
+      aria-label={focusable ? label : undefined}
+      tabindex={focusable ? 0 : undefined}
     >
       <table class="tbl" class:tbl--stack={stack} style:--tbl-rows={startCount}>
         <caption class="visually-hidden">{label}</caption>
@@ -104,7 +137,7 @@
         </thead>
         <tbody>
           {#each rows as row, index (rowKey(row, index))}
-            <tr>
+            <tr {...rowData?.(row)}>
               {#each columns as column, ci (column.key)}
                 <td class:tbl__end={column.align === 'end'} class:tbl__mono={column.mono}>
                   {#if ci > 0 && column.align !== 'end' && !column.hideLabel}
@@ -186,11 +219,12 @@
     }
   }
 
-  @media (max-width: 899px) {
-    .tbl__scroll {
-      overflow-x: auto;
-    }
+  /* Past de tabel niet, dan schuift hij hier en niet met de pagina mee. */
+  .tbl__scroll {
+    overflow-x: auto;
+  }
 
+  @media (max-width: 899px) {
     .tbl {
       min-width: 640px;
     }

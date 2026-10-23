@@ -111,4 +111,19 @@ describe('DataTable', () => {
     expect(label).toHaveTextContent('Kind');
     expect(label).not.toHaveClass('visually-hidden');
   });
+
+  it('zet gegevensattributen per rij als rowData ze geeft', () => {
+    render(DataTable<Lib>, {
+      props: {
+        columns,
+        rows,
+        label: 'Libraries',
+        cell,
+        rowData: (r: Lib) => ({ 'data-library-kind': r.kind, 'data-library-id': r.id })
+      }
+    });
+    const bodyRows = screen.getAllByRole('row').slice(1);
+    expect(bodyRows[0]).toHaveAttribute('data-library-kind', 'Movies');
+    expect(bodyRows[1]).toHaveAttribute('data-library-id', 'series');
+  });
 });
