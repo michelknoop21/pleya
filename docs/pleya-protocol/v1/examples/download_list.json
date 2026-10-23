@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "id": "01a15b10-4e20-7001-8c33-6a1d0e5f2b72",
+      "item_id": "01a15486-f53b-7001-a2c0-dad3c02bbd3a",
+      "version_id": "01a15486-f53b-7002-8b10-9c0e41d7a6f2",
+      "status": "preparing",
+      "size_bytes": null,
+      "sha256": null,
+      "file_url": "/pleya/v1/downloads/01a15b10-4e20-7001-8c33-6a1d0e5f2b72/file",
+      "created_at": "2026-10-23T09:16:00Z"
+    },
+    {
+      "id": "01a15b10-4e20-7000-8c33-6a1d0e5f2b71",
+      "item_id": "01a15486-f53b-7001-a2c0-dad3c02bbd3a",
+      "version_id": "01a15486-f53b-7002-8b10-9c0e41d7a6f2",
+      "status": "ready",
+      "size_bytes": 4831838208,
+      "sha256": "9f2c1b7e5a3d4c8f0b6e1a2d3c4b5a69788796a5b4c3d2e1f001122334455667",
+      "file_url": "/pleya/v1/downloads/01a15b10-4e20-7000-8c33-6a1d0e5f2b71/file",
+      "created_at": "2026-10-23T09:15:00Z"
+    }
+  ]
+}

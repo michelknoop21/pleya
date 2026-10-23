@@ -540,6 +540,9 @@ contract keurt ze af.
 | `playback.transcode_busy` | 503 | ja | alle omzetsessies zijn bezet |
 | `playback.transcode_failed` | 502 | nee | de omzetting leverde geen speelbare uitvoer |
 | `library.personal_invalid` | 400 | nee | een waardering of spoorvoorkeur die niet te bewaren is, zie `details.field` |
+| `download.not_permitted` | 403 | nee | de bibliotheek is zichtbaar maar het recht `download` ontbreekt |
+| `download.not_ready` | 409 | ja | de download is nog `preparing`, probeer het zo opnieuw |
+| `download.changed` | 409 | nee | het bestand veranderde na het uitrekenen van de SHA-256, vraag een nieuwe download |
 | `storage.unavailable` | 503 | ja | de opslag achter deze resource is niet bereikbaar |
 | `storage.full` | 507 | nee | de server kan niet schrijven |
 | `session.invalid` | 400 | nee | onbekende of afgesloten kijksessie |
@@ -1128,6 +1131,24 @@ het item zelf, anders die van het seizoen of de serie erboven, met in `source_it
 Een veld dat ontbreekt zegt niets over die keuze. `DELETE` haalt alleen de voorkeur bij precies dit item
 weg.
 
+### Downloads (S23)
+
+Onder `capabilities.downloads`. **`POST /pleya/v1/downloads`** met een `item_id` (en eventueel een
+`version_id`) zet het bestand van die versie klaar. De server rekent op de achtergrond de SHA-256 uit
+(taak `download_digest`), dus een nieuwe download is eerst `preparing` en wordt `ready` of `failed`;
+`GET /downloads/{id}` geeft die stand. Het recht `download` op de bibliotheek staat boven `view` en onder
+`manage`; het wordt bij het aanmaken en bij elke byte-aanvraag getoetst. Een bibliotheek die de aanvrager
+niet mag zien is `404`, een die hij wel mag zien maar niet mag downloaden `403` met
+`download.not_permitted`, zodat een app de knop weglaat. De download van een ander bestaat niet (`404`).
+
+**`GET /downloads/{id}/file`** levert de bytes met een sterke `ETag` (`"sha256-<hex>"`) en dezelfde
+SHA-256 in `Digest` en `Repr-Digest`. Hervatten werkt met `Range` en `If-Range` gelijk aan die `ETag`;
+een `If-Range` die niet klopt geeft het hele bestand, nooit een stuk van een ander bestand. Veranderde het
+bestand na het uitrekenen (grootte of wijzigingstijd), dan is het `409` met `download.changed` en vraagt
+de client een nieuwe download. `DELETE /downloads/{id}` haalt de download weg en laat het mediabestand staan.
+Een versie van meer dan één bestand is `409` met `library.version_multifile`. De ladder (omgezette
+versies als downloadbron) en sidecar-ondertitels horen er niet bij.
+
 ## 15. Home-bouwstenen
 
 ### `GET /pleya/v1/hubs/{hub_id}`
@@ -1348,6 +1369,11 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 58 | `GET /track-preferences/{id}` | de voorkeur voor audio en ondertitels bij een item | als regel 54 |
 | 59 | `PUT /track-preferences/{id}` | die voorkeur vastleggen | als regel 54 |
 | 60 | `DELETE /track-preferences/{id}` | die voorkeur weghalen | als regel 54 |
+| 61 | `POST /downloads` | een bestand klaarzetten om te downloaden | klasse `authenticated` met bibliotheekautorisatie en het recht `download`: `404` voor een bibliotheek buiten bereik, `403` `download.not_permitted` voor wie alleen mag kijken (venster 6, S23) |
+| 62 | `GET /downloads` | de eigen downloads | klasse `authenticated`, alleen de eigen rijen |
+| 63 | `GET /downloads/{id}` | de stand van een download | alleen de eigenaar; elke ander krijgt de canonieke `404`, ook de admin |
+| 64 | `GET /downloads/{id}/file` | de bytes, met `ETag`, `Digest` en hervatten | als regel 63, en het recht `download` wordt opnieuw getoetst |
+| 65 | `DELETE /downloads/{id}` | een download weghalen | als regel 63 |
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
 zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
@@ -2103,8 +2129,13 @@ Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries
 | `GET /pleya/v1/track-preferences/{id}` | `authenticated` | nee |
 | `PUT /pleya/v1/track-preferences/{id}` | `authenticated` | nee |
 | `DELETE /pleya/v1/track-preferences/{id}` | `authenticated` | nee |
+| `POST /pleya/v1/downloads` | `authenticated` | nee |
+| `GET /pleya/v1/downloads` | `authenticated` | nee |
+| `GET /pleya/v1/downloads/{id}` | `authenticated` | nee |
+| `GET /pleya/v1/downloads/{id}/file` | `authenticated` | nee |
+| `DELETE /pleya/v1/downloads/{id}` | `authenticated` | nee |
 
-Zeventig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Vijfenzeventig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit

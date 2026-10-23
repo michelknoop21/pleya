@@ -4983,3 +4983,17 @@ Migratie `0019_transcode_sessions.sql` (de masterlijst noemde `0017`, dat was be
 
 **Consequences:** zeventig operaties; nieuwe foutcode `library.personal_invalid` (400, `details.field`); vier capabilityvlaggen
 (`history`, `favorites`, `ratings`, `track_preferences`). Het web-scherm 19 en "Bekeken door" op detail (S20.4) volgen met de webslices.
+
+## DEC-160: Downloads (S23) leveren een bestand met een door de server uitgerekende SHA-256, en de app controleert hem
+
+**Date:** 2026-10-23
+**Status:** accepted (mandaat M1 tot en met M7)
+**Roadmap:** S23.1, S23.2, S23.3, S23.5.
+**Context:** De bestaande downloadwachtrij van de app kent alleen een url en haalt die op. Plex en Jellyfin zetten hun token in de url; Pleya Server gebruikt een bearer-header, en een hervatting mag nooit een stuk van een ander bestand aan een onvolledig bestand plakken.
+**Decision:**
+1. Een download is een eigen rij (`POST /downloads`), eerst `preparing` terwijl de taak `download_digest` de SHA-256 uitrekent, dan `ready` of `failed`. De client leest de stand tot `ready`.
+2. Levering heeft een sterke `ETag` (`"sha256-<hex>"`) en `Digest` en `Repr-Digest`. `Range` werkt alleen met een `If-Range` gelijk aan die ETag. Verandert het bestand na het hashen (grootte of wijzigingstijd), dan is het 409 `download.changed` en vraagt de client een nieuwe download.
+3. Het recht `download` (tussen `view` en `manage`) wordt bij het aanmaken en bij elke byte-aanvraag getoetst. Een onzichtbare bibliotheek is 404, een zichtbare zonder recht 403 `download.not_permitted`, zodat de app de knop weglaat. De download van een ander bestaat niet.
+4. In de app krijgt `DownloadResolution` een `headers`-veld en een `sha256`; de manager geeft de headers aan de taak en vergelijkt na afloop de digest. Een afwijkend bestand wordt verwijderd en de download mislukt.
+**Consequences:** Vijfenzeventig operaties; foutcodes `download.not_permitted` (403), `download.not_ready` (409, herhaalbaar), `download.changed` (409). Migratie `0021_downloads.sql`. Buiten deze stap: omgezette versies (de ladder) als downloadbron, sidecar-ondertitels en het scherm op Mijn Pleya (S23.4, bij de webslices). Na een herstart van de app is de verwachte digest niet meer in het geheugen, dus een in die tussentijd afgeronde download wordt niet gecontroleerd; de digest in de database opslaan is een vervolg als dat in de praktijk voorkomt.
+

@@ -4,6 +4,7 @@ import 'dart:async';
 import '../media/ids.dart';
 import 'dart:io';
 import 'package:background_downloader/background_downloader.dart';
+import 'package:crypto/crypto.dart' show sha256;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
@@ -49,6 +50,7 @@ class _DownloadContext {
   final int? showYear;
   final bool isSafMode;
   final List<DownloadSubtitleSpec>? subtitles;
+  final String? expectedSha256;
 
   _DownloadContext({
     required this.metadata,
@@ -59,6 +61,7 @@ class _DownloadContext {
     this.showYear,
     this.isSafMode = false,
     this.subtitles,
+    this.expectedSha256,
   });
 }
 
@@ -1384,6 +1387,7 @@ class DownloadManagerService {
 
         final task = UriDownloadTask(
           url: resolution.videoUrl!,
+          headers: resolution.headers,
           filename: safFileName,
           directoryUri: Uri.parse(safDirUri),
           group: _downloadGroup,
@@ -1433,6 +1437,7 @@ class DownloadManagerService {
 
         final task = DownloadTask(
           url: resolution.videoUrl!,
+          headers: resolution.headers,
           filename: path.basename(downloadFilePath),
           directory: path.dirname(downloadFilePath),
           baseDirectory: BaseDirectory.root,
@@ -1453,6 +1458,7 @@ class DownloadManagerService {
           client: client,
           showYear: showYear,
           subtitles: resolution.externalSubtitles,
+          expectedSha256: resolution.sha256,
         );
 
         await _database.updateBgTaskId(globalKey, task.taskId);
@@ -1900,6 +1906,11 @@ class DownloadManagerService {
           // Normal mode recovery: reconstruct from task
           storedPath = await _storageService.toRelativePath('${task.directory}/${task.filename}');
         }
+      }
+
+      final expected = ctx?.expectedSha256;
+      if (expected != null && ctx != null && !ctx.isSafMode) {
+        await verifyDownloadDigest(ctx.filePath, expected);
       }
 
       await _database.updateVideoFilePath(globalKey, storedPath);
@@ -3056,6 +3067,18 @@ class DownloadManagerService {
     _progressController.close();
     _deletionProgressController.close();
   }
+}
+
+/// Hash the finished file and compare it with the digest the server stated. A
+/// mismatch removes the file and fails the download, so a truncated or
+/// corrupted copy never reaches the library. Without a stated digest nothing is
+/// checked, and a download recovered after a restart has none in memory.
+@visibleForTesting
+Future<void> verifyDownloadDigest(String filePath, String expected) async {
+  final actual = (await sha256.bind(File(filePath).openRead()).first).toString();
+  if (actual == expected.toLowerCase()) return;
+  await File(filePath).delete();
+  throw Exception('Download digest mismatch');
 }
 
 String? downloadExtensionFromUrl(String url) {

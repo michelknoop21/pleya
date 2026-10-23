@@ -1702,6 +1702,124 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /downloads:
+    post:
+      tags: [library]
+      operationId: createDownload
+      summary: Een bestand klaarzetten om te downloaden.
+      description: |
+        Klasse `authenticated`, alleen onder `capabilities.downloads` (venster 6
+        deel 3, S23). Vraagt het recht `download` op de bibliotheek van het item:
+        een bibliotheek die de aanvrager niet mag zien is `404`, een die hij wel mag
+        zien maar niet mag downloaden is `403` met `download.not_permitted`. Zonder
+        `version_id` geldt de eerste versie. Een versie van meer dan één bestand is
+        `409` met `library.version_multifile`. De download is eerst `preparing`
+        terwijl de server de SHA-256 uitrekent; de client leest `GET /downloads/{id}`
+        tot `ready` en haalt dan `file_url` op.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateDownloadRequest" }
+      responses:
+        "201":
+          description: De download is aangemaakt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Download" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    get:
+      tags: [library]
+      operationId: listDownloads
+      summary: De downloads van de aanvrager, de nieuwste eerst.
+      description: Klasse `authenticated`, alleen onder `capabilities.downloads`. Alleen de eigen downloads.
+      responses:
+        "200":
+          description: De downloads.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DownloadList" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /downloads/{download_id}:
+    get:
+      tags: [library]
+      operationId: getDownload
+      summary: De stand van één download.
+      description: Klasse `authenticated`. De download van een ander bestaat niet (`404`).
+      parameters:
+        - $ref: "#/components/parameters/DownloadId"
+      responses:
+        "200":
+          description: De download.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Download" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [library]
+      operationId: deleteDownload
+      summary: Een download weghalen.
+      description: Het mediabestand blijft staan; alleen de klaargezette download verdwijnt.
+      parameters:
+        - $ref: "#/components/parameters/DownloadId"
+      responses:
+        "204": { description: De download is weg. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /downloads/{download_id}/file:
+    get:
+      tags: [library]
+      operationId: getDownloadFile
+      summary: De bytes van een klaargezette download, met controlesom en hervatten.
+      description: |
+        Klasse `authenticated`; het recht `download` wordt bij elke aanvraag
+        opnieuw getoetst, ook tijdens een hervatting. De `ETag` is sterk
+        (`"sha256-<hex>"`) en `Digest` en `Repr-Digest` dragen dezelfde SHA-256.
+        `Range` werkt alleen samen met een `If-Range` gelijk aan die `ETag`; zonder
+        komt het hele bestand. Een download die nog `preparing` is geeft `409` met
+        `download.not_ready` (herhaalbaar), een bestand dat na het uitrekenen van
+        grootte of wijzigingstijd veranderde `409` met `download.changed`: de client
+        vraagt dan een nieuwe download.
+      parameters:
+        - $ref: "#/components/parameters/DownloadId"
+        - name: Range
+          in: header
+          required: false
+          schema: { type: string }
+        - name: If-Range
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Het hele bestand.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206":
+          description: Het gevraagde stuk.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "416": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /history:
     get:
       tags: [library]
@@ -2287,6 +2405,11 @@ components:
       schema: { $ref: "#/components/schemas/Id" }
     PlaybackSessionId:
       name: session_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    DownloadId:
+      name: download_id
       in: path
       required: true
       schema: { $ref: "#/components/schemas/Id" }
@@ -3520,6 +3643,32 @@ components:
         max_sessions: { type: integer, minimum: 0 }
         hardware: { $ref: "#/components/schemas/TranscodeHardware" }
         items: { type: array, items: { $ref: "#/components/schemas/TranscodeSession" } }
+
+    Download:
+      type: object
+      required: [id, item_id, version_id, status, size_bytes, sha256, file_url, created_at]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        item_id: { $ref: "#/components/schemas/Id" }
+        version_id: { $ref: "#/components/schemas/Id" }
+        status: { type: string, enum: [preparing, ready, failed], x-unknown-safe: true }
+        size_bytes: { type: [integer, "null"], description: Null zolang de download preparing is. }
+        sha256: { type: [string, "null"], description: Hexadecimale SHA-256, null zolang de download preparing is. }
+        file_url: { type: string, description: Pad naar de bytes, relatief aan de serverroot. }
+        created_at: { type: string, format: date-time }
+
+    DownloadList:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/Download" } }
+
+    CreateDownloadRequest:
+      type: object
+      required: [item_id]
+      properties:
+        item_id: { $ref: "#/components/schemas/Id" }
+        version_id: { $ref: "#/components/schemas/Id" }
 
     RatingRequest:
       type: object

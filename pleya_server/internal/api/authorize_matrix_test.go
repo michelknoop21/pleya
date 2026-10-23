@@ -90,11 +90,17 @@ const (
 	answers outcome = iota
 	// refused: de canonieke weigering van deze as, byte-gelijk.
 	refused
+	// notPermitted: de bibliotheek is zichtbaar maar het downloadrecht ontbreekt
+	// (S23): 403 met download.not_permitted, geen 404.
+	notPermitted
 )
 
 func (o outcome) String() string {
-	if o == answers {
+	switch o {
+	case answers:
 		return "answers"
+	case notPermitted:
+		return "notPermitted"
 	}
 	return "refused"
 }
@@ -129,6 +135,11 @@ type matrixFixture struct {
 	// voor de beheerprobes (regel 51) die de sessie stoppen.
 	freshSession func() string
 
+	// S23: een klaargezette download van de owner (regel 63 en 64) en een
+	// functie die er een nieuwe aanmaakt voor de probe die hem verwijdert.
+	downloadID    string
+	freshDownload func() string
+
 	// S2.4: de laatste scan van libraryID, een afgeronde job (cancel geeft 409)
 	// en een pending scanjob met dedupe scan:<libraryID> (POST /scan geeft
 	// herhaalbaar 409, retry laat hem ongemoeid en geeft 200).
@@ -149,6 +160,12 @@ const (
 func missingSession(tail string) func(*matrixFixture) string {
 	return func(*matrixFixture) string {
 		return "/pleya/v1/playback/sessions/" + id.New().String() + tail
+	}
+}
+
+func missingDownload(tail string) func(*matrixFixture) string {
+	return func(*matrixFixture) string {
+		return "/pleya/v1/downloads/" + id.New().String() + tail
 	}
 }
 
@@ -389,6 +406,26 @@ func matrixProbes() []matrixProbe {
 		{row: 60, name: "DELETE /track-preferences/{id}", method: http.MethodDelete,
 			path: func(f *matrixFixture) string { return "/pleya/v1/track-preferences/" + f.itemID },
 			body: noBody, ok: http.StatusNoContent, expect: everyRole()},
+		// Regel 61 tot en met 65: downloads (S23). Wie de bibliotheek mag zien maar
+		// niet mag downloaden krijgt 403 in plaats van de 404 van de rest.
+		{row: 61, name: "POST /downloads", method: http.MethodPost,
+			path: fixedPath("/pleya/v1/downloads"),
+			body: func(f *matrixFixture) any { return map[string]string{"item_id": f.itemID} },
+			ok:   http.StatusCreated,
+			expect: map[string]outcome{
+				roleOwner: answers, roleAdmin: answers, roleMember: notPermitted, roleRestricted: notPermitted,
+			}},
+		{row: 62, name: "GET /downloads", method: http.MethodGet,
+			path: fixedPath("/pleya/v1/downloads"), body: noBody, ok: http.StatusOK, expect: everyRole()},
+		{row: 63, name: "GET /downloads/{id}", method: http.MethodGet,
+			path: func(f *matrixFixture) string { return "/pleya/v1/downloads/" + f.downloadID },
+			body: noBody, ok: http.StatusOK, expect: ownerOnly(), missing: missingDownload("")},
+		{row: 64, name: "GET /downloads/{id}/file", method: http.MethodGet,
+			path: func(f *matrixFixture) string { return "/pleya/v1/downloads/" + f.downloadID + "/file" },
+			body: noBody, ok: http.StatusOK, expect: ownerOnly(), missing: missingDownload("/file")},
+		{row: 65, name: "DELETE /downloads/{id}", method: http.MethodDelete,
+			path: func(f *matrixFixture) string { return "/pleya/v1/downloads/" + f.freshDownload() },
+			body: noBody, ok: http.StatusNoContent, expect: ownerOnly(), missing: missingDownload("")},
 		{row: 39, name: "GET /watch-history", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/watch-history"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
 	}
@@ -460,6 +497,21 @@ func newMatrixFixture(e *env) *matrixFixture {
 		e.t.Fatalf("laatste scan van de fixturebibliotheek: %v", err)
 	}
 	f.scanID = runID.String()
+	// S23: een klaargezette download van de owner, en een verse per aanroep.
+	newDownload := func(prepare bool) string {
+		rec := e.do(http.MethodPost, "/pleya/v1/downloads", map[string]string{"item_id": f.itemID}, asUser(f.tokens[roleOwner]))
+		if rec.Code != http.StatusCreated {
+			e.t.Fatalf("fixturedownload starten gaf %d: %s", rec.Code, rec.Body.String())
+		}
+		var d api.DownloadWire
+		e.decodeInto(rec, &d)
+		if prepare {
+			e.runDigest(d.ID)
+		}
+		return d.ID
+	}
+	f.downloadID = newDownload(true)
+	f.freshDownload = func() string { return newDownload(false) }
 	// Zonder omzetter is het een id dat niet bestaat: genoeg voor de probes die
 	// alleen de ontbrekende token toetsen.
 	f.playbackSessionID = id.New().String()
@@ -511,6 +563,10 @@ func TestAuthorizationMatrixRolesOnEveryRouteOfS1(t *testing.T) {
 				case answers:
 					if rec.Code != probe.ok {
 						t.Fatalf("gaf %d, wil %d: %s", rec.Code, probe.ok, rec.Body.String())
+					}
+				case notPermitted:
+					if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "download.not_permitted") {
+						t.Fatalf("gaf %d, wil 403 download.not_permitted: %s", rec.Code, rec.Body.String())
 					}
 				case refused:
 					if rec.Code != http.StatusNotFound {

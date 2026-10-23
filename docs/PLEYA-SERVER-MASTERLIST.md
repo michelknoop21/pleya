@@ -46,7 +46,7 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **3** | **0** | **23** |
 
-Per taak, en dat is de maat die telt: **155 taken, 46 gereed, 14 bezig, 95 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **155 taken, 50 gereed, 14 bezig, 91 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -493,11 +493,11 @@ punt 3 en 4), en aan het venster-besluit.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S23.1 | Migratie `0021`, `POST /downloads` met recht `download` | `[ ]` | | |
-| S23.2 | Levering met digest, hervatten alleen bij gelijke digest | `[ ]` | | |
-| S23.3 | App: bestaande wachtrij op de nieuwe bron, sync-back | `[ ]` | | |
+| S23.1 | Migratie `0021`, `POST /downloads` met recht `download` | `[x]` | M5: `0021_downloads.sql`, `internal/downloads` (store, taak `download_digest` rekent de SHA-256 uit), `POST/GET/DELETE /downloads`; recht `download` bij aanmaken en elke byte-aanvraag, 403 `download.not_permitted` voor wie alleen mag kijken, 404 buiten bereik of van een ander; matrixrij 61 tot en met 65 met een nieuwe uitkomst `notPermitted`; `downloads_api_test.go` (4 tests). Negatieve controle: de herhaalde rechtentoets weggehaald maakt `TestDownloadBelongsToItsOwnerAndNeedsTheDownloadRight` rood | 2026-10-23 |
+| S23.2 | Levering met digest, hervatten alleen bij gelijke digest | `[x]` | M5: `GET /downloads/{id}/file` met sterke `ETag "sha256-<hex>"`, `Digest` en `Repr-Digest`, `Range` alleen met `If-Range` gelijk aan die ETag, 409 `download.changed` als grootte of wijzigingstijd na het hashen veranderde, 409 `download.not_ready` tijdens `preparing`. Negatieve controle: `If-Range` altijd honoreren (`ir == etag \|\| true`) maakt `TestDownloadIsPreparedThenDeliveredWithDigestAndResumesOnlyOnEqualContent` rood | 2026-10-23 |
+| S23.3 | App: bestaande wachtrij op de nieuwe bron, sync-back | `[x]` | M5: `PleyaServerClient.resolveDownload` maakt de download, wacht tot `ready` en geeft url, `Authorization`-header en SHA-256 aan de bestaande wachtrij (`DownloadResolution` kreeg `headers` en `sha256`); de manager controleert de digest van het afgeronde bestand (`verifyDownloadDigest`) en verwijdert een afwijkend bestand. Sync-back is het bestaande offline-pad: `playback.dart` meldt een offline herhaling als `backlog`. Beperking: na een herstart van de app staat de digest niet meer in het geheugen en wordt niet gecontroleerd. Tests: `pleya_server_downloads_test.dart` (5), contracttest 94 fixtures. Negatieve controle: een digestcontrole die altijd slaagt maakt de mismatch-test rood. Hardware: niet bewezen op een toestel | 2026-10-23 |
 | S23.4 | Web toont downloads op Mijn Pleya (scherm 11b) | `[ ]` | | |
-| S23.5 | Capability `downloads`, venster 5 deel 3, journey 10 | `[ ]` | | |
+| S23.5 | Capability `downloads`, venster 5 deel 3, journey 10 | `[x]` | M5: `capabilities.downloads` staat aan zodra de store er is, openapi `Download`, `DownloadList`, `CreateDownloadRequest` en vijf operaties (75), hoofdstuk Downloads in het protocol, fixtures `download.json` en `download_list.json`, `check_protocol.sh` groen. Journey 10 op een toestel staat open met S23.3 | 2026-10-23 |
 
 ### S24 Remote hardening (PS-11)
 
