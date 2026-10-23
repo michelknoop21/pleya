@@ -32,6 +32,7 @@ export const web = {
     'Forgot your password? An administrator can reset it. This server does not send email.',
   'login.username': 'Username',
   'login.password': 'Password',
+  'field.showPassword': 'Show password',
   'login.submit': 'Sign in',
   'login.rateLimited': 'Too many attempts. Try again in {seconds}s.',
 

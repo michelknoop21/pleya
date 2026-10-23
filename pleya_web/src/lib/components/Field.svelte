@@ -8,6 +8,10 @@
   alleen de bedrading: de snippet krijgt het id, de aria-describedby en de
   foutstaat mee en legt die op zijn eigen element. Zo gebruiken Select en
   ConfirmDialog hetzelfde label- en foutpad zonder een tweede kopie ervan.
+
+  Een wachtwoordveld krijgt rechts in het vak de oog-knop uit beeld 12 en 40.
+  Het label blijft "Wachtwoord tonen"; `aria-pressed` zegt of het zichtbaar is,
+  zodat een schermlezer niet bij elke druk een andere knop hoort.
 -->
 <script lang="ts" module>
   /** Wat een eigen besturingselement nodig heeft om aan het label te hangen. */
@@ -23,6 +27,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import type { HTMLInputAttributes } from 'svelte/elements';
+  import { t } from '../i18n';
 
   interface Props {
     label: string;
@@ -65,6 +70,8 @@
   const hintId = $derived(`${controlId}-hint`);
   const errorId = $derived(`${controlId}-error`);
   const invalid = $derived(Boolean(error));
+  let revealed = $state(false);
+  const inputType = $derived(type === 'password' && revealed ? 'text' : type);
 
   // De fout staat vóór de hint in de beschrijving: die is wat er nu toe doet.
   const describedby = $derived(
@@ -83,13 +90,13 @@
 <div class="fld" class:fld--err={invalid} class:fld--dis={disabled} class:fld--mono={mono}>
   <label class="fld__label" class:visually-hidden={hideLabel} for={controlId}>{label}</label>
 
-  <div class="fld__control">
+  <div class="fld__control" class:fld__control--reveal={type === 'password' && !children}>
     {#if children}
       {@render children(control)}
     {:else}
       <input
         id={controlId}
-        {type}
+        type={inputType}
         {placeholder}
         {autocomplete}
         {disabled}
@@ -99,6 +106,26 @@
         bind:value
         oninput={(event) => oninput?.(event.currentTarget.value)}
       />
+      {#if type === 'password'}
+        <button
+          type="button"
+          class="fld__reveal"
+          aria-label={t('field.showPassword')}
+          aria-pressed={revealed}
+          aria-controls={controlId}
+          {disabled}
+          onclick={() => (revealed = !revealed)}
+        >
+          <!-- Het oog uit build.mjs; doorgestreept zolang het wachtwoord zichtbaar is. -->
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+            <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" />
+              <circle cx="12" cy="12" r="3" />
+              {#if revealed}<path d="M4 4l16 16" />{/if}
+            </g>
+          </svg>
+        </button>
+      {/if}
     {/if}
   </div>
 
@@ -191,6 +218,34 @@
   .fld__control :global(:is(input, select, textarea):disabled) {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  .fld__control--reveal {
+    position: relative;
+  }
+
+  /* Ruimte voor de oog-knop, zodat lange invoer er niet onder verdwijnt. */
+  .fld__control--reveal :global(input:not([type='checkbox']):not([type='radio'])) {
+    padding-right: 48px;
+  }
+
+  .fld__reveal {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: grid;
+    place-items: center;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    border: 0;
+    border-radius: var(--radius-md);
+    background: none;
+    color: var(--ink-2);
+    cursor: pointer;
+  }
+
+  .fld__reveal[aria-pressed='true'] {
+    color: var(--ink);
   }
 
   .fld__help {

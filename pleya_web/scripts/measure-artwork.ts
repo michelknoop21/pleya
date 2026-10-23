@@ -70,12 +70,12 @@ async function signIn(page: Page): Promise<void> {
     await page.waitForURL('**/setup');
     await page.getByLabel('Setup code').fill(SETUP_CODE);
     await page.getByLabel('Username').fill(USERNAME);
-    await page.getByLabel('Password', { exact: false }).fill(PASSWORD);
+    await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
     await page.getByRole('button', { name: 'Create owner' }).click();
   } else {
     await page.waitForURL('**/login');
     await page.getByLabel('Username').fill(USERNAME);
-    await page.getByLabel('Password').fill(PASSWORD);
+    await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
     await page.getByRole('button', { name: 'Sign in' }).click();
   }
   await page.getByRole('navigation', { name: 'Primary' }).waitFor();

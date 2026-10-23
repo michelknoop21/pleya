@@ -56,4 +56,25 @@ describe('Field', () => {
     expect(screen.getByText('Search')).toHaveClass('visually-hidden');
     expect(screen.getByRole('textbox', { name: 'Search' })).toBeInTheDocument();
   });
+
+  it('geeft een wachtwoordveld een oog-knop die het wachtwoord laat zien en weer verbergt', async () => {
+    const { container } = render(Field, { props: { label: 'Password', type: 'password' } });
+    const input = container.querySelector('input')!;
+    const toggle = screen.getByRole('button', { name: 'Show password' });
+    expect(input).toHaveAttribute('type', 'password');
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(toggle).toHaveAttribute('aria-controls', input.id);
+
+    await userEvent.click(toggle);
+    expect(input).toHaveAttribute('type', 'text');
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+    await userEvent.click(toggle);
+    expect(input).toHaveAttribute('type', 'password');
+  });
+
+  it('geeft een gewoon tekstveld geen oog-knop', () => {
+    render(Field, { props: { label: 'Name' } });
+    expect(screen.queryByRole('button')).toBeNull();
+  });
 });

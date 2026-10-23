@@ -51,12 +51,12 @@ async function signIn(page: Page): Promise<void> {
     if (LOCALE) await shootAuth(page, 'setup');
     await page.getByLabel(t('setup.code')).fill(SETUP_CODE);
     await page.getByLabel(t('setup.username')).fill('e2e');
-    await page.getByLabel(t('setup.password'), { exact: false }).fill('een-lang-genoeg-wachtwoord');
+    await page.getByLabel(t('setup.password'), { exact: true }).fill('een-lang-genoeg-wachtwoord');
     await page.getByRole('button', { name: t('setup.submit') }).click();
   } else {
     await page.waitForURL('**/login');
     await page.getByLabel(t('login.username')).fill('e2e');
-    await page.getByLabel(t('login.password')).fill('een-lang-genoeg-wachtwoord');
+    await page.getByLabel(t('login.password'), { exact: true }).fill('een-lang-genoeg-wachtwoord');
     await page.getByRole('button', { name: t('login.submit') }).click();
   }
   await page.getByRole('navigation', { name: t('nav.primary') }).waitFor();

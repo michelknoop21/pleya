@@ -35,6 +35,7 @@ export const webNl = {
     'Wachtwoord vergeten? Een beheerder kan het opnieuw instellen. Deze server verstuurt geen e-mail.',
   'login.username': 'Gebruikersnaam',
   'login.password': 'Wachtwoord',
+  'field.showPassword': 'Wachtwoord tonen',
   'login.submit': 'Inloggen',
   'login.rateLimited': 'Te veel pogingen. Probeer het over {seconds} s opnieuw.',
 
