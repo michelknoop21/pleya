@@ -540,9 +540,9 @@ contract keurt ze af.
 | `playback.transcode_busy` | 503 | ja | alle omzetsessies zijn bezet |
 | `playback.transcode_failed` | 502 | nee | de omzetting leverde geen speelbare uitvoer |
 | `library.personal_invalid` | 400 | nee | een waardering of spoorvoorkeur die niet te bewaren is, zie `details.field` |
-| `download.not_permitted` | 403 | nee | de bibliotheek is zichtbaar maar het recht `download` ontbreekt |
-| `download.not_ready` | 409 | ja | de download is nog `preparing`, probeer het zo opnieuw |
-| `download.changed` | 409 | nee | het bestand veranderde na het uitrekenen van de SHA-256, vraag een nieuwe download |
+| `library.download_not_permitted` | 403 | nee | de bibliotheek is zichtbaar maar het recht `download` ontbreekt |
+| `library.download_not_ready` | 409 | ja | de download is nog `preparing`, probeer het zo opnieuw |
+| `library.download_changed` | 409 | nee | het bestand veranderde na het uitrekenen van de SHA-256, vraag een nieuwe download |
 | `playback.file_corrupt` | 422 | nee | een omzetting mislukte en een tweede analyse van de bron ook: het bestand zelf is stuk (faalpad "kapot bestand", S25.5) |
 | `server.maintenance` | 503 | ja | de server zet een back-up terug en neemt niets aan tot hij herstart is (S25.3) |
 | `server.database_unavailable` | 503 | ja | de database is niet bereikbaar (faalpad "database weg", S25.5); een query die fout is blijft `server.internal` |
@@ -1144,12 +1144,12 @@ Onder `capabilities.downloads`. **`POST /pleya/v1/downloads`** met een `item_id`
 `GET /downloads/{id}` geeft die stand. Het recht `download` op de bibliotheek staat boven `view` en onder
 `manage`; het wordt bij het aanmaken en bij elke byte-aanvraag getoetst. Een bibliotheek die de aanvrager
 niet mag zien is `404`, een die hij wel mag zien maar niet mag downloaden `403` met
-`download.not_permitted`, zodat een app de knop weglaat. De download van een ander bestaat niet (`404`).
+`library.download_not_permitted`, zodat een app de knop weglaat. De download van een ander bestaat niet (`404`).
 
 **`GET /downloads/{id}/file`** levert de bytes met een sterke `ETag` (`"sha256-<hex>"`) en dezelfde
 SHA-256 in `Digest` en `Repr-Digest`. Hervatten werkt met `Range` en `If-Range` gelijk aan die `ETag`;
 een `If-Range` die niet klopt geeft het hele bestand, nooit een stuk van een ander bestand. Veranderde het
-bestand na het uitrekenen (grootte of wijzigingstijd), dan is het `409` met `download.changed` en vraagt
+bestand na het uitrekenen (grootte of wijzigingstijd), dan is het `409` met `library.download_changed` en vraagt
 de client een nieuwe download. `DELETE /downloads/{id}` haalt de download weg en laat het mediabestand staan.
 Een versie van meer dan één bestand is `409` met `library.version_multifile`. De ladder (omgezette
 versies als downloadbron) en sidecar-ondertitels horen er niet bij.
@@ -1374,7 +1374,7 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 58 | `GET /track-preferences/{id}` | de voorkeur voor audio en ondertitels bij een item | als regel 54 |
 | 59 | `PUT /track-preferences/{id}` | die voorkeur vastleggen | als regel 54 |
 | 60 | `DELETE /track-preferences/{id}` | die voorkeur weghalen | als regel 54 |
-| 61 | `POST /downloads` | een bestand klaarzetten om te downloaden | klasse `authenticated` met bibliotheekautorisatie en het recht `download`: `404` voor een bibliotheek buiten bereik, `403` `download.not_permitted` voor wie alleen mag kijken (venster 6, S23) |
+| 61 | `POST /downloads` | een bestand klaarzetten om te downloaden | klasse `authenticated` met bibliotheekautorisatie en het recht `download`: `404` voor een bibliotheek buiten bereik, `403` `library.download_not_permitted` voor wie alleen mag kijken (venster 6, S23) |
 | 62 | `GET /downloads` | de eigen downloads | klasse `authenticated`, alleen de eigen rijen |
 | 63 | `GET /downloads/{id}` | de stand van een download | alleen de eigenaar; elke ander krijgt de canonieke `404`, ook de admin |
 | 64 | `GET /downloads/{id}/file` | de bytes, met `ETag`, `Digest` en hervatten | als regel 63, en het recht `download` wordt opnieuw getoetst |

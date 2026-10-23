@@ -162,9 +162,9 @@ const (
 	// Downloads (S23). Niet toegestaan is een 403 omdat de bibliotheek wel
 	// zichtbaar is; niet klaar en veranderd zijn 409's: de eerste gaat vanzelf
 	// over (retryable), de tweede vraagt een nieuwe download.
-	CodeDownloadNotPermitted = "download.not_permitted"
-	CodeDownloadNotReady     = "download.not_ready"
-	CodeDownloadChanged      = "download.changed"
+	CodeDownloadNotPermitted = "library.download_not_permitted"
+	CodeDownloadNotReady     = "library.download_not_ready"
+	CodeDownloadChanged      = "library.download_changed"
 
 	CodeStorageUnavailable = "storage.unavailable"
 	CodeStorageFull        = "storage.full"

@@ -72,7 +72,7 @@ func (s *Server) downloadsStore(w http.ResponseWriter) *downloads.Store {
 
 // authorizeDownload is authorizeLibraryFor met de trede download erbij: een
 // bibliotheek die de aanvrager niet mag zien is 404, een die hij wel mag zien
-// maar niet mag downloaden is 403 download.not_permitted. De app laat de knop
+// maar niet mag downloaden is 403 library.download_not_permitted. De app laat de knop
 // dan weg in plaats van een download te laten mislukken.
 func (s *Server) authorizeDownload(w http.ResponseWriter, r *http.Request, user, libraryID id.ID) bool {
 	if !s.authorizeLibraryFor(w, r, user, libraryID) {
