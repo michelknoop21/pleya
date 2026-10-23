@@ -66,7 +66,12 @@ func scan(row pgx.Row) (Download, error) {
 }
 
 // Create legt een download aan in toestand preparing.
+// Een eerdere download van dezelfde gebruiker en versie vervalt: een nieuwe
+// aanvraag vervangt hem, zodat herhalen of hervatten geen rijen opstapelt.
 func (s *Store) Create(ctx context.Context, user, item, version id.ID) (Download, error) {
+	if _, err := s.pool.Exec(ctx, `DELETE FROM downloads WHERE user_id = $1 AND version_id = $2`, user, version); err != nil {
+		return Download{}, fmt.Errorf("eerdere download opruimen: %w", err)
+	}
 	d, err := scan(s.pool.QueryRow(ctx, `
 		INSERT INTO downloads (id, user_id, item_id, version_id) VALUES ($1, $2, $3, $4)
 		RETURNING `+columns, id.New(), user, item, version))

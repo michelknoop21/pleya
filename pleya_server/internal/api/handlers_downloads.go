@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -295,7 +296,7 @@ func (s *Server) handleDownloadFile(w http.ResponseWriter, r *http.Request) {
 	h.Set("Repr-Digest", "sha-256=:"+b64+":")
 	h.Set("Accept-Ranges", "bytes")
 	h.Set("Content-Type", contentType)
-	h.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filepath.Base(file.AbsPath)))
+	h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filepath.Base(file.AbsPath)}))
 	h.Set("Cache-Control", "private, no-store")
 
 	// If-Range met precies deze ETag laat een deelantwoord toe; alles anders is

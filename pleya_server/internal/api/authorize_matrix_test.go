@@ -137,7 +137,9 @@ type matrixFixture struct {
 
 	// S23: een klaargezette download van de owner (regel 63 en 64) en een
 	// functie die er een nieuwe aanmaakt voor de probe die hem verwijdert.
-	downloadID    string
+	// Een nieuwe download vervangt de vorige van dezelfde versie, dus elke probe
+	// maakt de zijne.
+	readyDownload func() string
 	freshDownload func() string
 
 	// S2.4: de laatste scan van libraryID, een afgeronde job (cancel geeft 409)
@@ -418,10 +420,10 @@ func matrixProbes() []matrixProbe {
 		{row: 62, name: "GET /downloads", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/downloads"), body: noBody, ok: http.StatusOK, expect: everyRole()},
 		{row: 63, name: "GET /downloads/{id}", method: http.MethodGet,
-			path: func(f *matrixFixture) string { return "/pleya/v1/downloads/" + f.downloadID },
+			path: func(f *matrixFixture) string { return "/pleya/v1/downloads/" + f.readyDownload() },
 			body: noBody, ok: http.StatusOK, expect: ownerOnly(), missing: missingDownload("")},
 		{row: 64, name: "GET /downloads/{id}/file", method: http.MethodGet,
-			path: func(f *matrixFixture) string { return "/pleya/v1/downloads/" + f.downloadID + "/file" },
+			path: func(f *matrixFixture) string { return "/pleya/v1/downloads/" + f.readyDownload() + "/file" },
 			body: noBody, ok: http.StatusOK, expect: ownerOnly(), missing: missingDownload("/file")},
 		{row: 65, name: "DELETE /downloads/{id}", method: http.MethodDelete,
 			path: func(f *matrixFixture) string { return "/pleya/v1/downloads/" + f.freshDownload() },
@@ -510,7 +512,7 @@ func newMatrixFixture(e *env) *matrixFixture {
 		}
 		return d.ID
 	}
-	f.downloadID = newDownload(true)
+	f.readyDownload = func() string { return newDownload(true) }
 	f.freshDownload = func() string { return newDownload(false) }
 	// Zonder omzetter is het een id dat niet bestaat: genoeg voor de probes die
 	// alleen de ontbrekende token toetsen.

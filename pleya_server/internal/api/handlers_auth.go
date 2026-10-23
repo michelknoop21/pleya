@@ -83,7 +83,7 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			PlaybackPlan: true,
 			// Transcode: aan zodra er een manager met sessies is (S18).
 			Transcode: s.transcodeEnabled(),
-			Downloads: s.opts.Downloads != nil,
+			Downloads: s.opts.Downloads != nil && s.opts.Jobs != nil,
 			LiveTV:    false,
 			Realtime:  false,
 			// Users: de vijf endpoints uit DEC-121 staan er sinds stap 4, en

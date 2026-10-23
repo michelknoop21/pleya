@@ -34,6 +34,7 @@ func (e *env) startDownload(itemID string, opts ...func(*http.Request)) api.Down
 	if rec.Code != http.StatusCreated {
 		e.t.Fatalf("download starten gaf %d: %s", rec.Code, rec.Body.String())
 	}
+	e.record("Download", http.MethodPost, "/pleya/v1/downloads", rec)
 	var d api.DownloadWire
 	e.decodeInto(rec, &d)
 	return d
@@ -76,7 +77,7 @@ func TestDownloadIsPreparedThenDeliveredWithDigestAndResumesOnlyOnEqualContent(t
 
 	e.runDigest(dl.ID)
 	var ready api.DownloadWire
-	e.getJSON("/pleya/v1/downloads/"+dl.ID, "", http.StatusOK, &ready)
+	e.getJSON("/pleya/v1/downloads/"+dl.ID, "Download", http.StatusOK, &ready)
 	raw, err := os.ReadFile(abs)
 	if err != nil {
 		t.Fatal(err)
@@ -154,7 +155,7 @@ func TestDownloadBelongsToItsOwnerAndNeedsTheDownloadRight(t *testing.T) {
 		t.Fatalf("verwijderen van een ander gaf %d", rec.Code)
 	}
 	var list api.DownloadList
-	e.getJSON("/pleya/v1/downloads", "", http.StatusOK, &list)
+	e.getJSON("/pleya/v1/downloads", "DownloadList", http.StatusOK, &list)
 	if len(list.Items) != 0 {
 		t.Fatalf("de lijst van de owner bevat downloads van een ander: %+v", list.Items)
 	}
@@ -203,5 +204,19 @@ func TestDownloadCanBeDeletedAndTheMediaFileStays(t *testing.T) {
 	}
 	if _, err := os.Stat(abs); err != nil {
 		t.Fatalf("het mediabestand verdween met de download: %v", err)
+	}
+}
+
+func TestANewDownloadReplacesTheEarlierOneOfTheSameVersion(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	item, _ := e.moviePath("Grease")
+	first := e.startDownload(item.ID)
+	second := e.startDownload(item.ID)
+	if first.ID == second.ID {
+		t.Fatal("een tweede aanvraag gaf dezelfde download")
+	}
+	if rec := e.do(http.MethodGet, "/pleya/v1/downloads/"+first.ID, nil); rec.Code != http.StatusNotFound {
+		t.Fatalf("de eerdere download bestaat nog: %d", rec.Code)
 	}
 }

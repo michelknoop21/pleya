@@ -936,7 +936,11 @@ class DownloadManagerService {
 
         // Attempt subtitles
         try {
-          final resolution = await itemClient.resolveDownload(metadata);
+          // Pleya Server has no sidecar subtitles, and resolving would prepare
+          // another server-side download just to read an empty list.
+          final resolution = itemClient.backend == MediaBackend.pleyaServer
+              ? const DownloadResolution(videoUrl: null)
+              : await itemClient.resolveDownload(metadata);
           if (resolution.externalSubtitles.isNotEmpty) {
             await _downloadSubtitles(globalKey, metadata, resolution.externalSubtitles, itemClient, showYear: showYear);
           }
@@ -1937,7 +1941,7 @@ class DownloadManagerService {
           }
           if (downloadSubtitles) {
             var subtitles = ctx?.subtitles;
-            if (subtitles == null) {
+            if (subtitles == null && client.backend != MediaBackend.pleyaServer) {
               try {
                 final resolution = await client.resolveDownload(metadata);
                 subtitles = resolution.externalSubtitles;
