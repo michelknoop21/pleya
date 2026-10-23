@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
@@ -11,6 +12,7 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/haptics.dart';
 import '../../utils/platform_detector.dart';
 import 'crown_ratchet.dart';
+import 'crown_drag_motion.dart';
 import 'scroll_crown_gear.dart';
 
 /// The phone scroll crown for any vertical scroll view: wrap the scroll view
@@ -23,8 +25,8 @@ import 'scroll_crown_gear.dart';
 /// It is the CN09 gear without the letter bubble. It appears when the view
 /// scrolls or the right edge is touched and fades [hideDelay] after the last
 /// activity. A vertical drag that starts on the gear (or where it rests while
-/// hidden) scrubs: it maps the available travel above and below the finger onto the remaining
-/// scroll range, without jumping when grabbed, the gear
+/// hidden) scrubs directly from the library start to its end in one stroke.
+/// It has no speed or distance acceleration. The gear
 /// rides under the finger and its teeth turn with the drag, with a ratchet
 /// tick per tooth through [CrownRatchet]. After a touch on the edge brought
 /// the crown up, the whole edge is a rail until it hides or the content
@@ -38,8 +40,7 @@ import 'scroll_crown_gear.dart';
 /// vertical drags, so horizontal rails and swipe gestures keep working. Under
 /// reduce motion the teeth stay still; scrubbing still works.
 ///
-/// The library grid sorted by title uses the alphabet variant
-/// (`AlphaScrollHandle`) instead.
+/// The library grid supplies a passive [positionLabel] to this same wheel.
 class ScrollCrown extends StatefulWidget {
   const ScrollCrown({
     super.key,
@@ -49,9 +50,16 @@ class ScrollCrown extends StatefulWidget {
     this.topInset = 0,
     this.onToothTick,
     this.clock,
+    this.onDragSample,
+    this.positionLabel,
+    this.onScrubStart,
   });
 
   final Widget child;
+
+  /// Passive position readout, such as the first visible title letter.
+  final String? positionLabel;
+  final VoidCallback? onScrubStart;
 
   /// The scroll view's controller. Without one the crown picks the position
   /// up from the scroll view's own notifications.
@@ -69,6 +77,9 @@ class ScrollCrown extends StatefulWidget {
 
   /// Monotonic time source for the tick rate limit; tests inject one.
   final Duration Function()? clock;
+
+  /// Diagnostic observer for calibration; never changes the drag calculation.
+  final ValueChanged<Map<String, Object>>? onDragSample;
 
   /// Content shorter than this many viewports gets no crown.
   static const double minContentScreens = 2.0;
@@ -88,25 +99,6 @@ class ScrollCrown extends StatefulWidget {
     return range >= metrics.viewportDimension * (minContentScreens - 1);
   }
 
-  /// Anchors the current offset to the finger, with both rail ends reachable.
-  static double offsetForDrag({
-    required double startPixels,
-    required double startY,
-    required double dragDelta,
-    required double railHeight,
-    required double minExtent,
-    required double maxExtent,
-  }) {
-    final start = startPixels.clamp(minExtent, maxExtent);
-    if (railHeight <= ScrollCrownGear.height || maxExtent <= minExtent || dragDelta == 0) return start;
-    final origin = startY.clamp(0.0, railHeight);
-    final towardEnd = dragDelta > 0;
-    final target = towardEnd ? maxExtent : minExtent;
-    final room = towardEnd ? railHeight - ScrollCrownGear.height / 2 - origin : origin - ScrollCrownGear.height / 2;
-    if (room <= 0 || dragDelta.abs() >= room) return target;
-    return start + dragDelta.abs() / room * (target - start);
-  }
-
   @override
   State<ScrollCrown> createState() => _ScrollCrownState();
 }
@@ -119,6 +111,7 @@ class _ScrollCrownState extends State<ScrollCrown> {
   ScrollPosition? _position;
   ScrollMetrics? _metrics;
   bool _active = false;
+  bool _focused = false;
 
   /// The crown came up through a touch on the edge, not through scrolling:
   /// then the whole edge scrubs, not only the gear.
@@ -126,16 +119,27 @@ class _ScrollCrownState extends State<ScrollCrown> {
   bool _dragging = false;
   double _railHeight = 0;
   double? _fingerY;
+  Offset? _fingerGlobalPosition;
+  BuildContext? _railContext;
+  bool _fingerRefreshPending = false;
   double _phase = 0;
   double _dragStartY = 0;
+  double _dragStartGlobalY = 0;
+  double _dragTravel = 0;
   double _dragStartPixels = 0;
   double _dragStartPhase = 0;
   double _dragMinExtent = 0;
   double _dragMaxExtent = 0;
+  CrownDragMotion? _motion;
+  Drag? _nestedDrag;
+  Duration _pointerDownTime = Duration.zero;
+  Duration _motionTime = Duration.zero;
+  bool _followingEnd = false;
 
   @override
   void dispose() {
     _hideTimer?.cancel();
+    _nestedDrag?.cancel();
     super.dispose();
   }
 
@@ -163,38 +167,75 @@ class _ScrollCrownState extends State<ScrollCrown> {
     return context == null ? null : Scrollable.maybeOf(context)?.position;
   }
 
+  ScrollPosition? get _outerPosition {
+    final nested = context.findAncestorStateOfType<NestedScrollViewState>();
+    if (nested == null || !nested.innerController.positions.contains(_position) || !nested.outerController.hasClients)
+      return null;
+    return nested.outerController.position;
+  }
+
+  ScrollMetrics _combinedMetrics(ScrollMetrics inner) {
+    final outer = _outerPosition;
+    if (outer == null || !outer.hasContentDimensions || !inner.hasContentDimensions) return inner;
+    return inner.copyWith(
+      viewportDimension: outer.viewportDimension,
+      pixels: inner.pixels + outer.pixels,
+      minScrollExtent: inner.minScrollExtent + outer.minScrollExtent,
+      maxScrollExtent: inner.maxScrollExtent + outer.maxScrollExtent,
+    );
+  }
+
+  void _jumpTo(double target) {
+    final position = _position!;
+    if (_outerPosition == null) {
+      position.jumpTo(target);
+    } else {
+      // Keep a nested drag active: per-update jumps collapse or snap its header.
+      final delta = target - _combinedMetrics(position).pixels;
+      final drag = _nestedDrag;
+      if (drag == null) {
+        position.pointerScroll(delta);
+      } else if (delta != 0) {
+        drag.update(DragUpdateDetails(delta: Offset(0, -delta), primaryDelta: -delta, globalPosition: Offset.zero));
+      }
+    }
+  }
+
   bool _isOurs(int depth, ScrollMetrics metrics) => depth == 0 && metrics.axis == Axis.vertical;
 
   bool _onMetrics(ScrollMetricsNotification notification) {
     if (!_isOurs(notification.depth, notification.metrics)) return false;
     final wasEligible = _eligible;
-    _metrics = notification.metrics;
     _position = _positionFrom(notification.context) ?? _position;
+    _metrics = _combinedMetrics(notification.metrics);
     if (_dragging &&
+        _followingEnd &&
         _fingerY != null &&
         _fingerY! >= _railHeight - ScrollCrownGear.height / 2 &&
-        notification.metrics.extentAfter > 0.5) {
+        _metrics!.extentAfter > 0.5) {
       // A lazy list can discover its final extent only after the edge jump.
       SchedulerBinding.instance.addPostFrameCallback((_) {
         final position = _position;
         if (mounted &&
             _dragging &&
+            _followingEnd &&
             _fingerY != null &&
             _fingerY! >= _railHeight - ScrollCrownGear.height / 2 &&
             position != null &&
             position.hasContentDimensions) {
-          position.jumpTo(position.maxScrollExtent);
+          _jumpTo(_combinedMetrics(position).maxScrollExtent);
         }
       });
     }
     if (wasEligible != _eligible) _update(() {});
+    _refreshFingerAfterLayout();
     return false;
   }
 
   bool _onScroll(ScrollNotification notification) {
     if (!_isOurs(notification.depth, notification.metrics)) return false;
-    _metrics = notification.metrics;
     _position = _positionFrom(notification.context) ?? _position;
+    _metrics = _combinedMetrics(notification.metrics);
     if (_dragging || notification is! ScrollUpdateNotification) return false;
     if (!_eligible) {
       if (_active) _update(() => _active = false);
@@ -206,6 +247,24 @@ class _ScrollCrownState extends State<ScrollCrown> {
     return false;
   }
 
+  void _refreshFingerAfterLayout() {
+    if (_fingerRefreshPending || !_dragging || _outerPosition == null) return;
+    _fingerRefreshPending = true;
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.postFrameCallbacks) {
+      SchedulerBinding.instance.scheduleFrame();
+    }
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _fingerRefreshPending = false;
+      final railContext = _railContext;
+      final finger = _fingerGlobalPosition;
+      if (!mounted || !_dragging || finger == null || railContext == null || !railContext.mounted) return;
+      final rail = railContext.findRenderObject();
+      if (rail is! RenderBox || !rail.hasSize) return;
+      final y = rail.globalToLocal(finger).dy;
+      if (_fingerY == null || (y - _fingerY!).abs() > .01) setState(() => _fingerY = y);
+    });
+  }
+
   void _show({bool autoHide = true}) {
     _hideTimer?.cancel();
     if (!_active) _update(() => _active = true);
@@ -215,7 +274,7 @@ class _ScrollCrownState extends State<ScrollCrown> {
   void _scheduleHide() {
     _hideTimer?.cancel();
     _hideTimer = Timer(ScrollCrown.hideDelay, () {
-      if (mounted && !_dragging) {
+      if (mounted && !_dragging && !_focused) {
         setState(() {
           _active = false;
           _touchActivated = false;
@@ -229,12 +288,13 @@ class _ScrollCrownState extends State<ScrollCrown> {
   /// spot (also while hidden, so the first drag after it faded still grabs
   /// it), or anywhere on the edge once a touch on the edge brought it up.
   bool _claims(double y) {
-    if (_active && _touchActivated) return true;
+    if (!_active || _touchActivated) return true;
     final top = _gearTop();
     return y >= top - ScrollCrown.gearHitMargin && y <= top + ScrollCrownGear.height + ScrollCrown.gearHitMargin;
   }
 
-  void _onEdgeDown(PointerDownEvent _) {
+  void _onEdgeDown(PointerDownEvent event) {
+    _pointerDownTime = event.timeStamp;
     if (!_active) _touchActivated = true;
     _show();
   }
@@ -242,46 +302,90 @@ class _ScrollCrownState extends State<ScrollCrown> {
   void _onDragStart(DragStartDetails details) {
     final position = _position;
     if (position == null || !position.hasContentDimensions) return;
+    widget.onScrubStart?.call();
+    _motionTime = _pointerDownTime;
+    _motion = CrownDragMotion(y: details.localPosition.dy - ScrollCrownGear.height / 2, time: _pointerDownTime);
+    _followingEnd = false;
     _dragging = true;
+    if (_outerPosition != null) {
+      _nestedDrag = position.drag(details, () => _nestedDrag = null);
+    }
     _dragStartY = details.localPosition.dy;
-    _dragStartPixels = position.pixels;
+    _dragStartGlobalY = details.globalPosition.dy;
+    _fingerGlobalPosition = details.globalPosition;
+    _dragTravel = _railHeight - ScrollCrownGear.height;
+    final metrics = _combinedMetrics(position);
+    _dragStartPixels = metrics.pixels;
     // Pinned for the whole drag: a page that loads more items mid-drag would
     // otherwise stretch the mapping and jump the view.
-    _dragMinExtent = position.minScrollExtent;
-    _dragMaxExtent = position.maxScrollExtent;
+    _dragMinExtent = metrics.minScrollExtent;
+    _dragMaxExtent = metrics.maxScrollExtent;
     _dragStartPhase = _phase;
     _ratchet.reset();
     setState(() => _fingerY = details.localPosition.dy);
     _show(autoHide: false);
+    _sample('start', details.localPosition.dy);
+  }
+
+  void _sample(String event, double y) {
+    final metrics = _combinedMetrics(_position!);
+    widget.onDragSample?.call({
+      'event': event,
+      't_us': (widget.clock?.call() ?? _stopwatch.elapsed).inMicroseconds,
+      'y': y,
+      'start_y': _dragStartY,
+      'start_pixels': _dragStartPixels,
+      'min': _dragMinExtent,
+      'max': y >= _railHeight - ScrollCrownGear.height / 2 ? metrics.maxScrollExtent : _dragMaxExtent,
+      'rail_height': _railHeight,
+      'pixels': metrics.pixels,
+      'mapping': CrownDragMotion.model,
+      'input_down_us': _pointerDownTime.inMicroseconds,
+      'input_time_us': _motionTime.inMicroseconds,
+      'range_extent': _dragMaxExtent - _dragMinExtent,
+      'live_min': metrics.minScrollExtent,
+      'live_max': metrics.maxScrollExtent,
+    });
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
     final position = _position;
     if (!_dragging || position == null || !position.hasContentDimensions || _railHeight <= 0) return;
-    final delta = details.localPosition.dy - _dragStartY;
-    final target = ScrollCrown.offsetForDrag(
-      startPixels: _dragStartPixels,
-      startY: _dragStartY,
-      dragDelta: delta,
-      railHeight: _railHeight,
-      minExtent: _dragMinExtent,
-      // Keep the interior mapping stable while loading, but let the edge reach
-      // the actual end if the content grew during this drag.
-      maxExtent: details.localPosition.dy >= _railHeight - ScrollCrownGear.height / 2
-          ? position.maxScrollExtent
-          : _dragMaxExtent,
+    _fingerGlobalPosition = details.globalPosition;
+    final delta = details.globalPosition.dy - _dragStartGlobalY;
+    final metrics = _combinedMetrics(position);
+    _motionTime = details.sourceTimeStamp ?? _motionTime;
+    final target = _motion!.move(
+      y: _dragStartY + delta - ScrollCrownGear.height / 2,
+      time: _motionTime,
+      pixels: metrics.pixels,
+      travel: _dragTravel,
+      rangeExtent: _dragMaxExtent - _dragMinExtent,
+      minExtent: metrics.minScrollExtent,
+      maxExtent: metrics.maxScrollExtent,
     );
-    position.jumpTo(target.clamp(position.minScrollExtent, position.maxScrollExtent));
+    _jumpTo(target);
+    _followingEnd = _combinedMetrics(position).extentAfter <= 0.5;
+    final rail = _railContext?.findRenderObject();
     setState(() {
-      _fingerY = details.localPosition.dy;
+      _fingerY = rail is RenderBox ? rail.globalToLocal(details.globalPosition).dy : details.localPosition.dy;
       if (!prefersReducedMotion(context)) _phase = _dragStartPhase + CrownRatchet.phaseFor(delta);
     });
     if (_ratchet.advance(details.delta.dy.abs())) (widget.onToothTick ?? Haptics.selection)();
+    _sample('update', details.localPosition.dy);
+    _refreshFingerAfterLayout();
   }
 
   void _onDragEnd() {
     if (!_dragging) return;
     _dragging = false;
+    _fingerGlobalPosition = null;
+    _nestedDrag?.end(DragEndDetails(primaryVelocity: 0));
+    _nestedDrag = null;
+    _motion = null;
+    _followingEnd = false;
+    _sample('end', _fingerY ?? _dragStartY);
+    setState(() => _fingerY = null);
     _scheduleHide();
   }
 
@@ -316,9 +420,10 @@ class _ScrollCrownState extends State<ScrollCrown> {
   void _page(int direction) {
     final position = _position;
     if (position == null || !position.hasContentDimensions) return;
-    final target = _pageTarget(position, direction);
-    if (prefersReducedMotion(context)) {
-      position.jumpTo(target);
+    widget.onScrubStart?.call();
+    final target = _pageTarget(_combinedMetrics(position), direction);
+    if (_outerPosition != null || prefersReducedMotion(context)) {
+      _jumpTo(target);
     } else {
       unawaited(position.animateTo(target, duration: const Duration(milliseconds: 250), curve: Curves.easeOut));
     }
@@ -340,6 +445,7 @@ class _ScrollCrownState extends State<ScrollCrown> {
       onDecrease: atStart ? null : () => _page(-1),
       child: LayoutBuilder(
         builder: (context, constraints) {
+          _railContext = context;
           _railHeight = constraints.maxHeight;
           return Stack(
             clipBehavior: Clip.none,
@@ -373,12 +479,64 @@ class _ScrollCrownState extends State<ScrollCrown> {
                 ),
               ),
               Positioned(
+                right: 2,
+                top: (_railHeight - 30) / 2,
+                child: IgnorePointer(
+                  child: AnimatedOpacity(
+                    opacity: _active ? 0 : 1,
+                    duration: fade,
+                    child: Container(
+                      width: 2,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0x55D3CEC7)
+                            : const Color(0x66595550),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              if (widget.positionLabel case final label? when label.isNotEmpty)
+                Positioned(
+                  right: 34,
+                  top: _gearTop() + (ScrollCrownGear.height - 43) / 2,
+                  child: IgnorePointer(
+                    child: AnimatedOpacity(
+                      opacity: _active ? 1 : 0,
+                      duration: fade,
+                      child: Container(
+                        width: 43,
+                        height: 43,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDFDDD8),
+                          borderRadius: BorderRadius.circular(13),
+                          boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 16, offset: Offset(0, 3))],
+                        ),
+                        child: Text(
+                          label,
+                          style: const TextStyle(
+                            color: Color(0xFF252527),
+                            fontSize: 26,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -1,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              Positioned(
                 right: ScrollCrownGear.right,
                 top: _gearTop(),
                 child: ScrollCrownGear(
                   paintKey: const ValueKey('scroll_crown_gear'),
                   phase: _phase,
                   visible: _active,
+                  focused: _focused,
                   fade: fade,
                 ),
               ),
@@ -416,8 +574,38 @@ class _ScrollCrownState extends State<ScrollCrown> {
                     'at_end': _metrics!.extentAfter <= 0.5,
                     'visible': _active,
                     'gear_height': ScrollCrownGear.height,
+                    'motion_model': CrownDragMotion.model,
+                    'position_label': widget.positionLabel,
+                    'dragging': _dragging,
                   },
-                  child: _rail(context),
+                  child: Focus(
+                    onKeyEvent: (_, event) {
+                      if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+                      final key = event.logicalKey;
+                      if (key == LogicalKeyboardKey.arrowDown || key == LogicalKeyboardKey.arrowRight) {
+                        _page(1);
+                      } else if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowLeft) {
+                        _page(-1);
+                      } else if (key == LogicalKeyboardKey.home || key == LogicalKeyboardKey.end) {
+                        final metrics = _combinedMetrics(_position!);
+                        widget.onScrubStart?.call();
+                        _jumpTo(key == LogicalKeyboardKey.home ? metrics.minScrollExtent : metrics.maxScrollExtent);
+                      } else {
+                        return KeyEventResult.ignored;
+                      }
+                      _show();
+                      return KeyEventResult.handled;
+                    },
+                    onFocusChange: (focused) {
+                      _update(() => _focused = focused);
+                      if (focused) {
+                        _show(autoHide: false);
+                      } else {
+                        _scheduleHide();
+                      }
+                    },
+                    child: _rail(context),
+                  ),
                 ),
               ),
           ],
@@ -433,6 +621,28 @@ class _RailDragRecognizer extends VerticalDragGestureRecognizer {
   _RailDragRecognizer({required this.claims});
 
   bool Function(double y) claims;
+  Offset? _start;
+
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    _start ??= event.position;
+    super.addAllowedPointer(event);
+  }
+
+  @override
+  bool hasSufficientGlobalDistanceToAccept(PointerDeviceKind kind, double? deviceTouchSlop) {
+    final start = _start;
+    if (start == null) return super.hasSufficientGlobalDistanceToAccept(kind, deviceTouchSlop);
+    final delta = lastPosition.global - start;
+    // Fine crown motion must win before a card's long press; horizontal swipes still pass.
+    return delta.dy.abs() > delta.dx.abs();
+  }
+
+  @override
+  void didStopTrackingLastPointer(int pointer) {
+    super.didStopTrackingLastPointer(pointer);
+    _start = null;
+  }
 
   @override
   bool isPointerAllowed(PointerEvent event) => claims(event.localPosition.dy) && super.isPointerAllowed(event);
