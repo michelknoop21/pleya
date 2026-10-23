@@ -68,6 +68,8 @@ export const web = {
   'libraries.loadMore': 'Load more',
   'libraries.loading': 'Loading more…',
   'libraries.endOfList': 'End of the list.',
+  'libraries.gridEmptyBody': 'Nothing in {library} yet. Once the server finds files there, they show up here.',
+  'libraries.allLibraries': 'All libraries',
   'libraries.approximate.one': 'about {count} item',
   'libraries.approximate.other': 'about {count} items',
 

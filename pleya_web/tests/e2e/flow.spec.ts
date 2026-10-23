@@ -46,6 +46,25 @@ test.describe('de verticale slice', () => {
     await expectNoAxeViolations(page, 'bibliotheekraster');
   });
 
+  test('een lege bibliotheek legt uit wat er aan de hand is en wijst de weg terug', async ({
+    page
+  }) => {
+    // Een echte lege bibliotheek heeft de testdata niet; de server antwoordt
+    // hier wel, alleen zonder items, zoals na een eerste scan die niets vond.
+    await page.route('**/pleya/v1/libraries/*/items*', async (route) => {
+      const res = await route.fetch();
+      const body = (await res.json()) as Record<string, unknown>;
+      await route.fulfill({ response: res, json: { ...body, items: [], next_cursor: null } });
+    });
+    const path = await openLibraryOfKind(page, 'movies');
+    test.skip(!path, 'deze server heeft geen filmbibliotheek');
+
+    await expect(page.getByRole('heading', { name: label('en', 'states.emptyTitle') })).toBeVisible();
+    const back = page.getByRole('main').getByRole('link', { name: label('en', 'libraries.allLibraries') });
+    await expect(back).toHaveAttribute('href', '/libraries');
+    await expectNoAxeViolations(page, 'lege bibliotheek');
+  });
+
   test('sorteren begint de lijst opnieuw en levert een andere volgorde', async ({ page }) => {
     await page.goto('/libraries');
     await page.getByRole('link').filter({ hasText: /\bitems?\b/ }).first().click();

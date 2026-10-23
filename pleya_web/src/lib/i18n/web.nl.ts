@@ -71,6 +71,8 @@ export const webNl = {
   'libraries.loadMore': 'Meer laden',
   'libraries.loading': 'Meer laden…',
   'libraries.endOfList': 'Einde van de lijst.',
+  'libraries.gridEmptyBody': 'In {library} staat nog niets. Zodra de server er bestanden vindt, verschijnen ze hier.',
+  'libraries.allLibraries': 'Alle bibliotheken',
   'libraries.approximate.one': 'ongeveer {count} titel',
   'libraries.approximate.other': 'ongeveer {count} titels',
 

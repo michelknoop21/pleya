@@ -198,7 +198,15 @@
     -->
     <SkeletonPage variant="grid" />
   {:else if pager.items.length === 0 && pager.done}
-    <StateView title={t('states.emptyTitle')} />
+    <!-- Beeld 13 zonder de beheerknoppen: scannen is S10. De uitweg is de bibliotheeklijst. -->
+    <StateView
+      title={t('states.emptyTitle')}
+      message={t('libraries.gridEmptyBody', { library: library?.title ?? t('libraries.title') })}
+    >
+      {#snippet actions()}
+        <a class="btn btn--sm" href="/libraries">{t('libraries.allLibraries')}</a>
+      {/snippet}
+    </StateView>
   {:else}
     {#if pager.items.length > 0}
       <div bind:this={gridHost}>
