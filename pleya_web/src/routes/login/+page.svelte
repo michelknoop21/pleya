@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Wordmark from '$lib/components/Wordmark.svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import Field from '$lib/components/Field.svelte';
@@ -56,8 +57,7 @@
   <div class="login__pane">
     <form class="login__box" onsubmit={submit}>
       <div class="login__brand">
-        <img src="/brand/pleya-mark-64.png" alt="" width="36" height="36" />
-        <span>{t('app.name')}</span>
+        <Wordmark size="form" />
       </div>
       <h1 class="login__title">{t('login.title')}</h1>
       <p class="login__sub">{t('login.subtitle')}</p>
@@ -150,16 +150,8 @@
   .login__brand {
     display: flex;
     align-items: center;
-    gap: 10px;
     height: 36px;
     margin-bottom: 28px;
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: -0.2px;
-  }
-
-  .login__brand img {
-    border-radius: var(--radius-sm);
   }
 
   .login__title {

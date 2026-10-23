@@ -4,6 +4,7 @@
 -->
 <script lang="ts">
   import NavIcon from './NavIcon.svelte';
+  import Wordmark from './Wordmark.svelte';
   import { t } from '../i18n';
 
   interface Props {
@@ -16,8 +17,7 @@
 
 <header class="mhead">
   <a class="brand" href="/">
-    <img src="/brand/pleya-mark-64.png" alt="" width="28" height="28" />
-    <span class="brand__name">{t('app.name')}</span>
+    <Wordmark size="mobile" />
   </a>
 
   {#if showSearch}
@@ -48,12 +48,7 @@
   .brand {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-half);
-  }
-
-  .brand__name {
-    font-weight: 700;
-    letter-spacing: -0.2px;
+    min-height: var(--touch-target);
   }
 
   .search {

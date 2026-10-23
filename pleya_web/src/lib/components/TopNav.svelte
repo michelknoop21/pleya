@@ -8,6 +8,7 @@
 -->
 <script lang="ts">
   import NavIcon from './NavIcon.svelte';
+  import Wordmark from './Wordmark.svelte';
   import type { NavItem } from './navItems';
   import { t } from '../i18n';
 
@@ -24,8 +25,7 @@
 
 <nav class="topnav" aria-label={t('nav.primary')}>
   <a class="brand" href="/">
-    <img src="/brand/pleya-mark-64.png" alt="" width="30" height="30" />
-    <span class="brand__name">{t('app.name')}</span>
+    <Wordmark />
   </a>
 
   <ul class="cluster">
@@ -80,14 +80,7 @@
   .brand {
     display: flex;
     align-items: center;
-    gap: 10px;
     justify-self: start;
-  }
-
-  .brand__name {
-    font-weight: 700;
-    font-size: var(--text-title-size);
-    letter-spacing: -0.2px;
   }
 
   .cluster {

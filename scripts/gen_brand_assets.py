@@ -428,6 +428,13 @@ PW = f"{ROOT}/pleya_web/static/brand"
 if os.path.isdir(os.path.dirname(PW)):
     for s_ in (64, 256):
         save(mark_canvas(s_, s_, 0.96, BG), f"{PW}/pleya-mark-{s_}.png")
+    # Het lockup van de kop (northstar `.topnav .brand img`, 30 hoog; mobiel 26)
+    # als dezelfde twee lagen als in de app: de P houdt zijn kleuren, de
+    # belettering is een masker dat de webkop in de inkt van het thema vult.
+    # Op 60 hoog, twee keer de grootste getekende maat.
+    wm_w = round(WORDMARK.width * 60 / WORDMARK.height)
+    save(_wm_mark.resize((wm_w, 60), Image.LANCZOS), f"{PW}/pleya-wordmark-mark.png")
+    save(_wm_text.resize((wm_w, 60), Image.LANCZOS), f"{PW}/pleya-wordmark-text.png")
 
 # ---- README-beeld ----
 # Ook een afgeleide die nooit meebewoog. Niet gebundeld (geen `assets/`-glob in
