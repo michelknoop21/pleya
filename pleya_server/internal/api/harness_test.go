@@ -27,6 +27,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
+	"github.com/edde746/plezy/pleya_server/internal/metrics"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/personal"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
@@ -121,6 +122,7 @@ func (c *logCapture) firstAfter(message string, since time.Time) (time.Time, boo
 }
 
 type env struct {
+	metrics *metrics.Registry
 	t       *testing.T
 	server  *api.Server
 	store   *catalog.Store
@@ -279,12 +281,14 @@ func newEnv(t *testing.T, opts ...envOption) *env {
 	// goed doet.
 	revocations := auth.NewRevocations(0)
 
+	reg := &metrics.Registry{}
 	options := api.Options{
 		Catalog:            store,
 		Auth:               authStore,
 		Watch:              watchStore,
 		Personal:           personal.NewStore(pool),
 		Downloads:          downloads.NewStore(pool),
+		Metrics:            reg,
 		Signer:             signer,
 		Logger:             logger,
 		Ready:              func() bool { return true },
@@ -338,7 +342,7 @@ func newEnv(t *testing.T, opts ...envOption) *env {
 	srv := api.New(options)
 
 	return &env{t: t, server: srv, store: store, auth: authStore, watch: watchStore, pool: pool,
-		root: root, libs: libs, cap: shared, argon2: light, signer: signer, logs: logs,
+		root: root, metrics: reg, libs: libs, cap: shared, argon2: light, signer: signer, logs: logs,
 		settings: settingsCache, ring: ring, environ: environ, config: configDir,
 		log: logger, probes: probes, audit: auditStore, revocations: revocations}
 }

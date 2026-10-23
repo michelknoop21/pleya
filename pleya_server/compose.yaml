@@ -69,6 +69,9 @@ services:
       # komma-gescheiden (10.0.0.1 of 172.18.0.0/16). Bewust geen instelling:
       # wie dit over de API kan zetten kan de server elke client laten geloven.
       PLEYA_SERVER_TRUSTED_PROXIES: ${PLEYA_SERVER_TRUSTED_PROXIES:-}
+      # /metrics luistert binnen de container op loopback; "off" zet het uit. Een
+      # ander adres is een bewuste keuze, de endpoint is niet geauthenticeerd.
+      PLEYA_SERVER_METRICS_ADDR: ${PLEYA_SERVER_METRICS_ADDR:-}
 
       PLEYA_SERVER_SCAN_ON_START: ${PLEYA_SERVER_SCAN_ON_START:-true}
       PLEYA_SERVER_SCAN_INTERVAL: ${PLEYA_SERVER_SCAN_INTERVAL:-6h}

@@ -143,6 +143,7 @@ func (s *Server) handlePlaybackPlan(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	s.opts.Metrics.Inc("pleya_playback_plans_total", "Afspeelplannen per leveringswijze.", "mode", string(plan.Mode))
 	writeJSON(w, http.StatusOK, mapPlan(itemID, plan, sess))
 }
 

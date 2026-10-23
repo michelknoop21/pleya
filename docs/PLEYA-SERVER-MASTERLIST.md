@@ -46,7 +46,7 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **3** | **0** | **23** |
 
-Per taak, en dat is de maat die telt: **155 taken, 50 gereed, 14 bezig, 91 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **155 taken, 55 gereed, 14 bezig, 86 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -503,11 +503,11 @@ punt 3 en 4), en aan het venster-besluit.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S24.1 | Vertrouwde proxy's, publieke URL, subpad | `[ ]` | | |
-| S24.2 | Rate limits en de publieke-endpointlijst als test | `[ ]` | | |
-| S24.3 | Prometheus-metrics op loopback | `[ ]` | | |
-| S24.4 | Range-testset door twee proxy-opstellingen | `[ ]` | | |
-| S24.5 | Deploymentrecepten in de operatordoc | `[ ]` | | |
+| S24.1 | Vertrouwde proxy's, publieke URL, subpad | `[x]` | Vertrouwde proxy's en publieke URL waren er met S1.8 (`PLEYA_SERVER_TRUSTED_PROXIES`, `PLEYA_SERVER_PUBLIC_URL`, waarschuwing bij een forwarded-header zonder vertrouwde proxy). Subpad is bewust een proxy die het voorvoegsel afstript: de server kent geen voorvoegsel omdat de client zijn basis-URL voor elk pad uit een antwoord plakt. `TestRangeSurvivesTwoProxySetups/subpad` bewijst dat met een proxy op `/media`; recept in `docs/pleya-server-operator-remote.md`. De server kan dus niet zelf onder een subpad draaien zonder proxy | 2026-10-23 |
+| S24.2 | Rate limits en de publieke-endpointlijst als test | `[x]` | Was al gebouwd en getest vóór deze slice: limiter op login per gebruikersnaam (`limiter_test.go`, reset na geldige login) en de publieke lijst in `routes_internal_test.go` (`TestEveryRouteOutsideThePublicListNeedsACredential`, `TestThePublicListHasNoStaleEntries`, `TestThePublicRoutesAnswerWithoutACredential`). Hier alleen vastgesteld en in de operatordoc beschreven; geen nieuwe code | 2026-10-23 |
+| S24.3 | Prometheus-metrics op loopback | `[x]` | `internal/metrics` (tekstformaat, geen afhankelijkheid), eigen listener `PLEYA_SERVER_METRICS_ADDR` (standaard `127.0.0.1:9464`, `off` zet uit, nooit op de API-poort), `pleya_http_requests_total{method,class}` zonder pad en `pleya_playback_plans_total{mode}`. Tests: `metrics_test.go`, `TestMetricsCountThePlanByDeliveryMode`, `TestMetricsAddrCanBeTurnedOffOrMoved`. Negatieve controle: de plantelling weghalen maakt de metric-test rood. Alleen tellers; geen histogrammen of gauges | 2026-10-23 |
+| S24.4 | Range-testset door twee proxy-opstellingen | `[x]` | `TestRangeSurvivesTwoProxySetups`: doorgeefproxy, proxy met forwarded-headers en een proxy op een subpad; volledig, `bytes=10-29` en `bytes=-5` met inhoudsvergelijking. Negatieve controle: een proxy die `Range` weglaat maakt de test rood. Echte tunnel of nginx staan buiten de test | 2026-10-23 |
+| S24.5 | Deploymentrecepten in de operatordoc | `[x]` | `docs/pleya-server-operator-remote.md`: tunnel, mesh-VPN en eigen proxy, de vijf instellingen, subpad, metrics en brute-force | 2026-10-23 |
 | S24.6 | Tunnelnetwerk in `compose.yaml` als vast netwerk, zodat een relay-deploy `web.pleya.app` niet meer op 502 zet | `[x]` | Code gereed en op 11 oktober 2026 op de NAS uitgerold (`deploy-nas.sh` vanuit main `329c0406`, exit 0, vooraf databasebackup `pleya-pre-s246-20261011-104208.sql`). De relay-kant stond al sinds `9ef7233` (`server/docker-compose.yml` hangt `cloudflared` aan het externe `pleya-server_default`); de serverkant leunde nog op de projectnaam. `pleya_server/compose.yaml` zet nu `networks.default.name: pleya-server_default`; `docker compose config` exit 0 toont die naam, en ook met `-p andere-naam` blijft de netwerknaam gelijk (volume en `container_name` volgen de projectnaam wel). `deploy-nas.sh` meldt na `readyz` of `pleya-tunnel` aan het netwerk hangt (alleen lezen en niet fataal, ook niet als ssh faalt; `bash -n` en `shellcheck -S warning` schoon); README beschrijft het herstel in de relay-stack. Bewezen na de deploy: `readyz` groen, `pleya-server` healthy, `pleya-tunnel` hangt aan `pleya-server_default`, `https://web.pleya.app/pleya/v1/info`, `/readyz` en `/` geven 200 en de serverlog toont dezelfde server-id. Relay-proef op 11 oktober 2026: `docker compose up -d --build --force-recreate` in `/volume1/docker/pleya-relay` met de bestanden die er stonden, dus `pleya-relay` en `pleya-tunnel` beide opnieuw aangemaakt. `https://web.pleya.app/pleya/v1/info` en `https://ice.pleya.app/health` gaven 530 op +10 s en 200 op +15 s, daarna 200 op `/pleya/v1/info`, `/readyz` en `/`. `pleya-tunnel` hing na afloop aan `pleya-relay_default` en `pleya-server_default` zonder `docker network connect`, en `pleya-server` bleef `healthy`. Kanttekening: de proef draaide met de relay-bronnen die al op de NAS stonden. `server/main.go` en `server/main_test.go` op main wijken daarvan af en zijn niet uitgerold | 2026-10-11 |
 
 ### S25 Back-up, restore, upgrade, faalpaden (PS-11B)

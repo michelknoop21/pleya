@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -32,6 +33,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
 	"github.com/edde746/plezy/pleya_server/internal/metadata"
+	"github.com/edde746/plezy/pleya_server/internal/metrics"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/mounts"
 	"github.com/edde746/plezy/pleya_server/internal/personal"
@@ -278,6 +280,7 @@ func run() int {
 		defer transcoder.Close()
 	}
 
+	reg := &metrics.Registry{}
 	apiServer := api.New(api.Options{
 		Transcode:          transcoder,
 		Catalog:            catalogStore,
@@ -285,6 +288,7 @@ func run() int {
 		Watch:              watch.NewStore(pool),
 		Personal:           personal.NewStore(pool),
 		Downloads:          downloadStore,
+		Metrics:            reg,
 		MediaRoots:         cfg.MediaDirs,
 		CacheDir:           cfg.CacheDir,
 		OnMetadataChange:   onScanned,
@@ -320,8 +324,20 @@ func run() int {
 		Addr:    cfg.HTTPAddr,
 		DB:      pool,
 		Logger:  logging.Component(log, "http"),
-		Handler: apiServer.Handler(),
+		Handler: reg.Middleware(apiServer.Handler()),
 	})
+
+	if cfg.MetricsAddr != "" {
+		mux := http.NewServeMux()
+		mux.Handle("GET /metrics", reg.Handler())
+		metricsSrv := &http.Server{Addr: cfg.MetricsAddr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+		go func() {
+			if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Warn("metrics-listener gestopt", "addr", cfg.MetricsAddr, "error", err)
+			}
+		}()
+		defer metricsSrv.Close()
+	}
 
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.ListenAndServe() }()
