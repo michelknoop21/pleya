@@ -60,13 +60,25 @@ type Capabilities struct {
 	PlaybackPlan bool `json:"playback_plan"`
 	Transcode    bool `json:"transcode"`
 	Downloads    bool `json:"downloads"`
-	LiveTV       bool `json:"live_tv"`
-	Realtime     bool `json:"realtime"`
+	// Backups (venster 7, S25). Aan zodra de back-upservice en de wachtrij er
+	// zijn: GET/POST /backups, GET /backups/{id} en de hersteltest en restore
+	// eronder bestaan dan voor klasse admin.
+	Backups  bool `json:"backups"`
+	LiveTV   bool `json:"live_tv"`
+	Realtime bool `json:"realtime"`
 
 	// Filters (venster 3, D1.5). Aan zodra /libraries/{id}/items de filter- en
 	// sorteerparameters uit D1 kent en /libraries/{id}/facets bestaat. Belooft
 	// niets over boeken.
 	Filters bool `json:"filters"`
+
+	// History, Favorites, Ratings en TrackPreferences (venster 6 deel 2, S20).
+	// Elk is aan zodra de persoonlijke opslag er is; ze belooft niets over
+	// verzamelingen.
+	History          bool `json:"history"`
+	Favorites        bool `json:"favorites"`
+	Ratings          bool `json:"ratings"`
+	TrackPreferences bool `json:"track_preferences"`
 
 	// ArtworkSizes (venster 3, C1). Aan zodra /artwork/{id} afgeleide maten van de
 	// ladder kan maken. Belooft niets over andere routes.
@@ -374,25 +386,31 @@ type StreamSession struct {
 
 // Item is één item op de lijn.
 type Item struct {
-	ID                  string     `json:"id"`
-	Kind                string     `json:"kind"`
-	Title               string     `json:"title"`
-	SortTitle           *string    `json:"sort_title"`
-	Year                *int       `json:"year"`
-	AddedAt             string     `json:"added_at"`
-	Summary             *string    `json:"summary"`
-	Genres              []string   `json:"genres"`
-	ContentRating       *string    `json:"content_rating"`
-	People              []Person   `json:"people"`
-	DurationMs          *int64     `json:"duration_ms"`
-	ParentID            *string    `json:"parent_id"`
-	Index               *int       `json:"index"`
-	ChildCount          *int       `json:"child_count"`
-	EpisodeCount        *int       `json:"episode_count"`
-	WatchedEpisodeCount *int       `json:"watched_episode_count"`
-	Artwork             Artwork    `json:"artwork"`
-	Versions            []Version  `json:"versions"`
-	UserState           *UserState `json:"user_state"`
+	ID                  string   `json:"id"`
+	Kind                string   `json:"kind"`
+	Title               string   `json:"title"`
+	SortTitle           *string  `json:"sort_title"`
+	Year                *int     `json:"year"`
+	AddedAt             string   `json:"added_at"`
+	Summary             *string  `json:"summary"`
+	Genres              []string `json:"genres"`
+	ContentRating       *string  `json:"content_rating"`
+	People              []Person `json:"people"`
+	DurationMs          *int64   `json:"duration_ms"`
+	ParentID            *string  `json:"parent_id"`
+	Index               *int     `json:"index"`
+	ChildCount          *int     `json:"child_count"`
+	EpisodeCount        *int     `json:"episode_count"`
+	WatchedEpisodeCount *int     `json:"watched_episode_count"`
+
+	// Favorite en Rating zijn de aantekeningen van de aanvrager bij dit item
+	// (S20). Ze staan los van user_state: een favoriet die nooit is gekeken heeft
+	// geen kijkstatus, en null betekent daar "nooit geopend".
+	Favorite  bool       `json:"favorite"`
+	Rating    *int       `json:"rating"`
+	Artwork   Artwork    `json:"artwork"`
+	Versions  []Version  `json:"versions"`
+	UserState *UserState `json:"user_state"`
 }
 
 // Person is één persoon bij een item (B4).

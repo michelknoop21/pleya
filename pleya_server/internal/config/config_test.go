@@ -41,6 +41,23 @@ func TestLoadDefaults(t *testing.T) {
 	if len(cfg.MediaDirs) != 1 || cfg.MediaDirs[0] != DefaultMediaDirs {
 		t.Errorf("MediaDirs = %v, verwacht [%s]", cfg.MediaDirs, DefaultMediaDirs)
 	}
+	if cfg.MetricsAddr != DefaultMetricsAddr {
+		t.Errorf("MetricsAddr = %q, verwacht loopback %q", cfg.MetricsAddr, DefaultMetricsAddr)
+	}
+}
+
+func TestMetricsAddrCanBeTurnedOffOrMoved(t *testing.T) {
+	off, err := Load(env(map[string]string{"DATABASE_URL": validDSN, "PLEYA_SERVER_METRICS_ADDR": "off"}))
+	if err != nil || off.MetricsAddr != "" {
+		t.Fatalf("off: %q, %v", off.MetricsAddr, err)
+	}
+	moved, err := Load(env(map[string]string{"DATABASE_URL": validDSN, "PLEYA_SERVER_METRICS_ADDR": "10.0.0.2:9000"}))
+	if err != nil || moved.MetricsAddr != "10.0.0.2:9000" {
+		t.Fatalf("moved: %q, %v", moved.MetricsAddr, err)
+	}
+	if _, err := Load(env(map[string]string{"DATABASE_URL": validDSN, "PLEYA_SERVER_METRICS_ADDR": "geen-poort"})); err == nil {
+		t.Fatal("een adres zonder poort is geweigerd moeten worden")
+	}
 }
 
 // De databaseverbinding is de enige instelling zonder werkende default.

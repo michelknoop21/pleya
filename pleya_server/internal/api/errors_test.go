@@ -3,9 +3,14 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"syscall"
 	"testing"
+
+	"github.com/edde746/plezy/pleya_server/internal/database"
 )
 
 // TestErrorRegisterMatchesTheSpecification houdt de tabel gelijk aan hoofdstuk
@@ -42,7 +47,11 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"playback.range_not_satisfiable": {416, false},
 		"playback.not_playable":          {415, false},
 		"playback.transcode_busy":        {503, true},
+		"library.download_not_permitted": {403, false},
+		"library.download_not_ready":     {409, true},
+		"library.download_changed":       {409, false},
 		"playback.transcode_failed":      {502, false},
+		"library.personal_invalid":       {400, false},
 		"storage.unavailable":            {503, true},
 		"storage.full":                   {507, false},
 		"session.invalid":                {400, false},
@@ -59,12 +68,17 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"job.not_cancellable":            {409, false},
 		"library.invalid_match":          {400, false},
 		"library.filter_invalid":         {400, false},
+		"server.maintenance":             {503, true},
+		"server.database_unavailable":    {503, true},
+		"server.backup_busy":             {409, true},
+		"server.backup_not_restorable":   {409, false},
+		"playback.file_corrupt":          {422, false},
 	}
 
 	// Deze tabel spiegelt hoofdstuk 7.1 voor zover deze server hem draait.
 	// settings.invalid_value kwam erbij met S1.2, server.confirm_mismatch met
 	// S1.3, auth.permission_not_allowed met S1.4, auth.scope_exceeds_role met
-	// S1.5, auth.origin_rejected met S1.8 en de vier bibliotheekcodes met S2.2, job.not_cancellable met S2.4 (het achtste domein), library.not_config_managed met S2.5,
+	// S1.5, auth.origin_rejected met S1.8 en de vier bibliotheekcodes met S2.2, job.not_cancellable met S2.4 (het achtste domein), library.not_config_managed met S2.5, de vijf codes van venster 7 met S25,
 	// elk samen met het endpoint dat hem stuurt: een code in het register
 	// zonder handler zou hier groen staan en in het contract een belofte zijn
 	// die niemand nakomt.
@@ -139,5 +153,29 @@ func TestStorageUnavailableKeepsItsOwnMeaning(t *testing.T) {
 	}
 	if !body.Error.Retryable {
 		t.Fatal("retryable = false; opslag die weg is kan terugkomen, en dan is opnieuw proberen juist wel zinvol")
+	}
+}
+
+// TestWriteInternalNamesTheTwoFailurePaths: een volle schijf en een weggevallen
+// database zijn geen fout van de handler en krijgen hun eigen code (S25.5),
+// ook op een pad dat er zelf niet aan dacht. De echte oorzaken staan in de
+// settest in failure_paths_test.go; dit is de vertaling zelf.
+func TestWriteInternalNamesTheTwoFailurePaths(t *testing.T) {
+	for _, tc := range []struct {
+		err    error
+		code   string
+		status int
+	}{
+		{&os.PathError{Op: "write", Path: "/config/token-signing.key.tmp", Err: syscall.ENOSPC}, CodeStorageFull, 507},
+		{fmt.Errorf("query: %w", database.ErrUnavailable), CodeDatabaseUnavailable, 503},
+		{errors.New("iets anders"), CodeInternal, 500},
+	} {
+		rec := httptest.NewRecorder()
+		writeInternal(rec, nil, tc.err)
+		var body errorEnvelope
+		_ = json.Unmarshal(rec.Body.Bytes(), &body)
+		if rec.Code != tc.status || body.Error.Code != tc.code {
+			t.Errorf("%v gaf %d %s, verwacht %d %s", tc.err, rec.Code, body.Error.Code, tc.status, tc.code)
+		}
 	}
 }

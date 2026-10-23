@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
@@ -60,6 +61,8 @@ part 'pleya_server_client/parts/artwork.dart';
 part 'pleya_server_client/parts/browse.dart';
 part 'pleya_server_client/parts/search.dart';
 part 'pleya_server_client/parts/playback.dart';
+part 'pleya_server_client/parts/personal.dart';
+part 'pleya_server_client/parts/downloads.dart';
 part 'pleya_server_client/parts/unsupported.dart';
 part 'pleya_server_client/parts/admin.dart';
 
@@ -98,6 +101,8 @@ class PleyaServerClient
         _PleyaServerSearchMethods,
         _PleyaServerArtworkMethods,
         _PleyaServerPlaybackMethods,
+        _PleyaServerPersonalMethods,
+        _PleyaServerDownloadMethods,
         _PleyaServerUnsupportedMethods,
         _PleyaServerAdminMethods,
         ServerAuthorityGuard

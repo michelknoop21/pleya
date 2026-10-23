@@ -355,7 +355,7 @@ void main() {
     expect(
       gridRect(tester).top,
       closeTo(_frame().top, 0.5),
-      reason: 'folded, the grid starts where two whole rows fit with equal room above and below',
+      reason: 'folded, the active row starts inside the safe frame',
     );
   }
 
@@ -581,54 +581,62 @@ void main() {
       .position
       .pixels;
 
-  /// Rows [top] and [top] + 1 stand whole on screen, poster to year, the top
-  /// one on the same line every time, and the focused card, 6% scale-up
-  /// included, keeps Apple's title-safe 60 of 1080 clear at both edges.
-  void expectTwoWholeRows(WidgetTester tester, {required int top, required int focusedRow}) {
+  void expectActiveRow(WidgetTester tester, int row, {bool nextRowPeeks = true}) {
     final margin = _frame().margin;
-    final upper = cardRect(tester, top * 6);
-    final lower = cardRect(tester, (top + 1) * 6);
-    final ring = upper.height * (FocusTheme.fullCardFocusScale - 1) / 2;
-    expect(upper.top - ring, closeTo(margin, 0.5), reason: 'row $top is the top row, on the row line');
-    expect(lower.bottom + ring, lessThanOrEqualTo(_view.height - margin + 0.5), reason: 'room under row ${top + 1}');
-    final focused = cardRect(tester, focusedRow * 6);
-    expect(focused.top - ring, greaterThanOrEqualTo(margin - 0.5));
-    expect(focused.bottom + ring, lessThanOrEqualTo(_view.height - margin + 0.5));
+    final active = cardRect(tester, row * 6);
+    final growth = active.height * (FocusTheme.fullCardFocusScale - 1) / 2;
+    expect(active.top - growth, greaterThanOrEqualTo(margin - 0.5));
+    expect(active.bottom + growth, lessThanOrEqualTo(_view.height - margin + 0.5));
+    if (nextRowPeeks) {
+      expect(active.top - growth, closeTo(margin, 0.5));
+      final next = cardRect(tester, (row + 1) * 6);
+      expect(next.top, lessThan(_view.height), reason: 'the next row invites scrolling');
+      expect(next.bottom, greaterThan(_view.height), reason: 'large posters instead of two shrunken rows');
+    }
   }
 
-  Future<void> walkTwoRows(WidgetTester tester) async {
+  Future<void> walkRows(WidgetTester tester, {bool nextRowPeeks = true}) async {
     for (var row = 1; row <= 6; row++) {
       await press(tester, LogicalKeyboardKey.arrowDown);
       expect(primary()?.debugLabel, cardLabel(row * 6));
-      expectTwoWholeRows(tester, top: row - 1, focusedRow: row);
+      expectActiveRow(tester, row, nextRowPeeks: nextRowPeeks);
       expectFolded(tester);
     }
     for (var row = 5; row >= 1; row--) {
       await press(tester, LogicalKeyboardKey.arrowUp);
       expect(primary()?.debugLabel, cardLabel(row * 6));
-      expectTwoWholeRows(tester, top: row, focusedRow: row);
+      expectActiveRow(tester, row, nextRowPeeks: nextRowPeeks);
       expectFolded(tester);
     }
   }
 
-  testWidgets('folded, DOWN and UP keep two whole rows on screen, a row at a time', (tester) async {
+  testWidgets('default catalog uses the full six-column width on Apple TV', (tester) async {
+    await growCatalog();
+    await pump(tester, appleTv: true);
+    await openCatalog(tester);
+    final natural = TvCatalogGrid.forWidth(_view.width, scale: 0.85);
+    expect(cardRect(tester, 0).width, closeTo(natural.cardWidth, 0.5));
+    expect(cardRect(tester, 5).right, greaterThan(_view.width * 0.94));
+  });
+
+  testWidgets('folded, DOWN and UP keep the active row whole with a next-row peek', (tester) async {
     await growCatalog();
     await pump(tester);
     await openCatalog(tester);
     expect(_frame().margin, closeTo(60, 0.1), reason: "Apple's title-safe 60 of 1080");
-    await walkTwoRows(tester);
+    await walkRows(tester);
   });
 
-  testWidgets('on the Apple TV canvas too, with room around the two rows', (tester) async {
+  testWidgets('large posters and the next-row peek also fit the Apple TV canvas', (tester) async {
     await growCatalog();
     await pump(tester, appleTv: true);
     await openCatalog(tester);
     expect(_view.height, closeTo(583.8, 0.1));
     expect(_frame().margin, closeTo(583.8 * 60 / 1080, 0.1), reason: "Apple's title-safe 60 of 1080");
-    await walkTwoRows(tester);
+    await walkRows(tester);
   });
 
-  testWidgets('the library-density setting narrows the cards, and two rows still fit', (tester) async {
+  testWidgets('the library-density setting still narrows the cards', (tester) async {
     await growCatalog();
     await pump(tester, appleTv: true);
     await openCatalog(tester);
@@ -640,16 +648,15 @@ void main() {
     await openCatalog(tester);
     final atCompact = cardRect(tester, 0).width;
 
-    expect(atCompact, closeTo(atDefault * 0.8, 1), reason: 'density 1 takes a fifth off the two-row width');
-    await walkTwoRows(tester);
+    expect(atCompact, closeTo(atDefault * 0.8, 1), reason: 'density 1 still takes a fifth off the natural width');
+    await walkRows(tester, nextRowPeeks: false);
   });
 
   testWidgets('a row change glides the content, it does not jump a row at once', (tester) async {
     await growCatalog();
     await pump(tester);
     await openCatalog(tester);
-    await press(tester, LogicalKeyboardKey.arrowDown);
-    expect(scrollOffset(tester), 0, reason: 'rows 0 and 1 both fit, nothing to scroll yet');
+    expect(scrollOffset(tester), 0, reason: 'the first row starts at the top');
     final pitch = cardRect(tester, 6).top - cardRect(tester, 0).top;
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);

@@ -1,15 +1,8 @@
 name: tvos.catalog.two-rows
 target: tvos-sim
-# A-06b, hardware feedback Michel on build 394: "Als je naar boven toe
-# scrolt, zijn nog steeds niet de afbeeldingen volledig zichtbaar. En ik wil
-# ook gewoon dat je volledig scherm gebruikt. Je kan makkelijk twee rijen
-# volledig zichtbaar laten zijn."
-#
-# Folded, Alle films holds two whole rows (poster, title, year) with a small
-# equal margin above and below, and scrolls a row at a time in both
-# directions. `catalog.long-grid.v2` seeds nineteen films: rows of six, six,
-# six and one, so DOWN reaches a short last row and UP has rows to scroll
-# back through.
+# A06B-WIDTH1, approved 22 October: broad six-column library, active row
+# whole and next row partially visible. Replaces the former two-whole-row
+# requirement. The v2 fixture has 19 films, including a short last row.
 setup:
   - reset_app
   - seed: catalog.long-grid.v2
@@ -28,34 +21,29 @@ steps:
   - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true, insideViewport: true, below: "tv.catalog.header[movies]"}
   - snapshot: 00-rest
 
-  # DOWN: rows 0+1, then 1+2, then 2+3, each pair whole.
+  # DOWN: the focused row stays whole, including the short last row.
   - press: down
   - settle: 900
   - assert: {id: "tv.catalog.header[movies]", state: {collapsed: true}}
   - assert: {id: "tv.catalog.grid.item[movies.6]", focused: true, insideViewport: true}
-  - assert: {id: "tv.catalog.grid.item[movies.0]", insideViewport: true}
   - snapshot: 01-down-row1
   - press: down
   - settle: 900
   - assert: {id: "tv.catalog.grid.item[movies.12]", focused: true, insideViewport: true}
-  - assert: {id: "tv.catalog.grid.item[movies.6]", insideViewport: true}
   - snapshot: 02-down-row2
   - press: down
   - settle: 900
   - assert: {id: "tv.catalog.grid.item[movies.18]", focused: true, insideViewport: true}
-  - assert: {id: "tv.catalog.grid.item[movies.12]", insideViewport: true}
   - snapshot: 03-down-row3
 
-  # UP: rows 2+3 stay, then 1+2, then the heading comes back over row 0.
+  # UP: move one row at a time; the heading returns on row 0.
   - press: up
   - settle: 900
   - assert: {id: "tv.catalog.grid.item[movies.12]", focused: true, insideViewport: true}
-  - assert: {id: "tv.catalog.grid.item[movies.18]", insideViewport: true}
   - snapshot: 04-up-row2
   - press: up
   - settle: 900
   - assert: {id: "tv.catalog.grid.item[movies.6]", focused: true, insideViewport: true}
-  - assert: {id: "tv.catalog.grid.item[movies.12]", insideViewport: true}
   - assert: {id: "tv.catalog.header[movies]", state: {collapsed: true}}
   - snapshot: 05-up-row1
   - press: up

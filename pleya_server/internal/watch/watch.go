@@ -12,7 +12,11 @@
 // events allebei op dezelfde revision beslissen.
 package watch
 
-import "time"
+import (
+	"time"
+
+	"github.com/edde746/plezy/pleya_server/internal/id"
+)
 
 // Action is de expliciete handeling bij een gebeurtenis.
 type Action string
@@ -83,6 +87,20 @@ type Event struct {
 
 	// Backlog markeert een event uit een offline wachtrij.
 	Backlog bool
+
+	// AuthSessionID is de inlogsessie die het event stuurde, voor de naam van
+	// het toestel in de geschiedenis. Nil als die niet bekend is.
+	AuthSessionID *id.ID
+}
+
+// recordsPlay zegt of een event een afspeelsessie voortzet. Alleen markeren als
+// gezien of ongezien is geen afspelen, en zonder sessie-id valt er niets te
+// groeperen.
+func (e Event) recordsPlay() bool {
+	if e.SessionID == "" {
+		return false
+	}
+	return e.Action != ActionMarkWatched && e.Action != ActionMarkUnwatched
 }
 
 // Redenen waarom een gebeurtenis de toestand niet verplaatst. Ze gaan naar het

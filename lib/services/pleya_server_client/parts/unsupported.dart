@@ -181,10 +181,8 @@ mixin _PleyaServerUnsupportedMethods {
 
   LiveTvDvrSupport? get liveTvDvr => null;
 
-  // ── Downloads: PS-10 ──
-
-  Future<DownloadResolution> resolveDownload(MediaItem item, {int mediaIndex = 0}) async =>
-      const DownloadResolution(videoUrl: null);
+  // ── Downloads ──
+  // `resolveDownload` lives in downloads.dart (S23).
 
   List<DownloadArtworkSpec> resolveDownloadArtwork(MediaItem item) => const [];
 }

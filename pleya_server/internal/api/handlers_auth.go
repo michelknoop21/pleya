@@ -67,6 +67,11 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			ArtworkSizes: s.opts.Artwork.Available(),
 			// Filters: D1 is gebouwd, dus de parameters en de facetten bestaan.
 			Filters: true,
+			// S20: de persoonlijke laag bestaat zodra de opslag er is.
+			History:          s.opts.Personal != nil,
+			Favorites:        s.opts.Personal != nil,
+			Ratings:          s.opts.Personal != nil,
+			TrackPreferences: s.opts.Personal != nil,
 			// Vanaf PS-4 staat kijkstatus aan, en met het eigendomsmodel eronder.
 			// De vlaggen hangen aan de aanwezigheid van de opslag: een server die
 			// zonder watch-store draait zegt dat eerlijk in plaats van een
@@ -78,9 +83,11 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			PlaybackPlan: true,
 			// Transcode: aan zodra er een manager met sessies is (S18).
 			Transcode: s.transcodeEnabled(),
-			Downloads: false,
-			LiveTV:    false,
-			Realtime:  false,
+			Downloads: s.opts.Downloads != nil && s.opts.Jobs != nil,
+			// Backups: S25, zodra de service en de wachtrij er zijn.
+			Backups:  s.opts.Backups != nil && s.opts.Jobs != nil,
+			LiveTV:   false,
+			Realtime: false,
 			// Users: de vijf endpoints uit DEC-121 staan er sinds stap 4, en
 			// login kent sindsdien elke rij in users en niet alleen de owner.
 			Users: true,

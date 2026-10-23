@@ -1702,6 +1702,422 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /backups:
+    get:
+      tags: [administration]
+      operationId: listBackups
+      summary: De back-ups, de nieuwste eerst, met doel, tijdstip en bewaartermijn.
+      description: |
+        Klasse `admin`, `404` voor de rest, alleen onder `capabilities.backups`
+        (venster 7, S25). `dir`, `schedule` en `retention_days` komen uit de
+        omgeving en zijn geen instelling. `same_failure_domain` waarschuwt dat de
+        back-upmap op hetzelfde bestandssysteem staat als `/config`;
+        `secrets_key_configured` onwaar betekent dat de geheimen uit `/config`
+        niet in een back-up meegaan.
+      responses:
+        "200":
+          description: De back-ups.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BackupList" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [administration]
+      operationId: createBackup
+      summary: Nu een back-up maken.
+      description: |
+        Klasse `admin`. De back-up loopt als job; het antwoord is de nieuwe rij
+        met `status: running`. Er loopt er één tegelijk: een tweede aanvraag
+        terwijl de eerste wacht of loopt is `409` met `server.backup_busy`
+        (herhaalbaar). Een mislukte back-up draagt in `failure_code` de code van
+        zijn faalpad, `storage.full` voor een volle schijf.
+      responses:
+        "202":
+          description: De back-up staat in de wachtrij.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Backup" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/Error" }
+
+  /backups/{backup_id}:
+    get:
+      tags: [administration]
+      operationId: getBackup
+      summary: Eén back-up, met de laatste hersteltest.
+      description: Klasse `admin`. Een onbekende back-up is `404` met `library.not_found`.
+      parameters:
+        - $ref: "#/components/parameters/BackupId"
+      responses:
+        "200":
+          description: De back-up.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Backup" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/Error" }
+
+  /backups/{backup_id}/verify:
+    post:
+      tags: [administration]
+      operationId: verifyBackup
+      summary: Een hersteltest starten.
+      description: |
+        Klasse `admin`. Zet de back-up terug in een eigen tijdelijke database,
+        draait daar de migraties van deze server overheen en telt titels,
+        gebruikers, bibliotheken en kijkstatus na tegen het manifest. De echte
+        database blijft onaangeraakt. De server doet dit zelf wekelijks na de
+        geplande back-up; deze aanroep doet het nu. Een back-up die niet geslaagd
+        is, is `409` met `server.backup_not_restorable`.
+      parameters:
+        - $ref: "#/components/parameters/BackupId"
+      responses:
+        "202":
+          description: De hersteltest staat in de wachtrij; `last_restore_test` loopt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Backup" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/Error" }
+
+  /backups/{backup_id}/restore:
+    post:
+      tags: [administration]
+      operationId: restoreBackup
+      summary: Een back-up terugzetten.
+      description: |
+        Klasse `admin`. `confirm` moet letterlijk gelijk zijn aan
+        `restore_confirmation` van de back-up: die zin noemt het tijdstip en wat
+        er verloren gaat. Een andere waarde is `409` met
+        `server.confirm_mismatch`, met de zin in `details.expected`. Een back-up
+        die niet geslaagd is, van een nieuwer schema dan deze server, of waarvan
+        de sleutel niet past op de geheimen, is `409` met
+        `server.backup_not_restorable` en de reden in `details.reason`. Loopt er
+        een back-up of hersteltest, dan `409` met `server.backup_busy`.
+
+        Na de controles gaat de server in onderhoud: elke aanvraag krijgt `503`
+        met `server.maintenance`, `/readyz` is niet gereed. De restore gebeurt in
+        één transactie; daarna herstart de server, ook als het terugzetten
+        mislukte, en dan is de database ongewijzigd.
+      parameters:
+        - $ref: "#/components/parameters/BackupId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RestoreBackupRequest" }
+      responses:
+        "202":
+          description: De restore is begonnen.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Backup" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/Error" }
+
+  /downloads:
+    post:
+      tags: [library]
+      operationId: createDownload
+      summary: Een bestand klaarzetten om te downloaden.
+      description: |
+        Klasse `authenticated`, alleen onder `capabilities.downloads` (venster 6
+        deel 3, S23). Vraagt het recht `download` op de bibliotheek van het item:
+        een bibliotheek die de aanvrager niet mag zien is `404`, een die hij wel mag
+        zien maar niet mag downloaden is `403` met `library.download_not_permitted`. Zonder
+        `version_id` geldt de eerste versie. Een versie van meer dan één bestand is
+        `409` met `library.version_multifile`. De download is eerst `preparing`
+        terwijl de server de SHA-256 uitrekent; de client leest `GET /downloads/{id}`
+        tot `ready` en haalt dan `file_url` op.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateDownloadRequest" }
+      responses:
+        "201":
+          description: De download is aangemaakt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Download" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    get:
+      tags: [library]
+      operationId: listDownloads
+      summary: De downloads van de aanvrager, de nieuwste eerst.
+      description: Klasse `authenticated`, alleen onder `capabilities.downloads`. Alleen de eigen downloads.
+      responses:
+        "200":
+          description: De downloads.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DownloadList" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /downloads/{download_id}:
+    get:
+      tags: [library]
+      operationId: getDownload
+      summary: De stand van één download.
+      description: Klasse `authenticated`. De download van een ander bestaat niet (`404`).
+      parameters:
+        - $ref: "#/components/parameters/DownloadId"
+      responses:
+        "200":
+          description: De download.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Download" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [library]
+      operationId: deleteDownload
+      summary: Een download weghalen.
+      description: Het mediabestand blijft staan; alleen de klaargezette download verdwijnt.
+      parameters:
+        - $ref: "#/components/parameters/DownloadId"
+      responses:
+        "204": { description: De download is weg. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /downloads/{download_id}/file:
+    get:
+      tags: [library]
+      operationId: getDownloadFile
+      summary: De bytes van een klaargezette download, met controlesom en hervatten.
+      description: |
+        Klasse `authenticated`; het recht `download` wordt bij elke aanvraag
+        opnieuw getoetst, ook tijdens een hervatting. De `ETag` is sterk
+        (`"sha256-<hex>"`) en `Digest` en `Repr-Digest` dragen dezelfde SHA-256.
+        `Range` werkt alleen samen met een `If-Range` gelijk aan die `ETag`; zonder
+        komt het hele bestand. Een download die nog `preparing` is geeft `409` met
+        `library.download_not_ready` (herhaalbaar), een bestand dat na het uitrekenen van
+        grootte of wijzigingstijd veranderde `409` met `library.download_changed`: de client
+        vraagt dan een nieuwe download.
+      parameters:
+        - $ref: "#/components/parameters/DownloadId"
+        - name: Range
+          in: header
+          required: false
+          schema: { type: string }
+        - name: If-Range
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Het hele bestand.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206":
+          description: Het gevraagde stuk.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "416": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /history:
+    get:
+      tags: [library]
+      operationId: getHistory
+      summary: De afspeelgeschiedenis van de aanvrager, de laatste sessie eerst.
+      description: |
+        Klasse `authenticated`, alleen onder `capabilities.history` (venster 6
+        deel 2, S20). Eén regel per afspeelsessie (de `session_id` van de client
+        uit `POST /watch-state`), die met de meldingen van die sessie meegroeit:
+        een film van twee uur met een melding per tien seconden is één regel. Ook
+        een offline backlog komt erin, een melding van een toestel zonder
+        schrijfrecht niet. Beperkt tot de bibliotheken die de aanvrager mag zien.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Een pagina geschiedenis.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HistoryPage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /favorites:
+    get:
+      tags: [library]
+      operationId: listFavorites
+      summary: De favorieten van de aanvrager, de laatst toegevoegde eerst.
+      description: Klasse `authenticated`, alleen onder `capabilities.favorites`. Beperkt tot de bibliotheken die de aanvrager mag zien.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Een pagina items.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemPage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /favorites/{item_id}:
+    put:
+      tags: [library]
+      operationId: setFavorite
+      summary: Maak een item favoriet.
+      description: Herhalen is onschadelijk. Een item buiten de bibliotheken van de aanvrager is `404`.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "204": { description: Het item is favoriet. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [library]
+      operationId: clearFavorite
+      summary: Haal een item uit de favorieten.
+      description: Een item dat geen favoriet was is geen fout.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "204": { description: Het item is geen favoriet meer. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /ratings/{item_id}:
+    put:
+      tags: [library]
+      operationId: setRating
+      summary: Waardeer een item met een cijfer van 1 tot en met 10.
+      description: Alleen onder `capabilities.ratings`. Een cijfer buiten bereik is `400` met `library.personal_invalid`.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RatingRequest" }
+      responses:
+        "204": { description: De waardering is bewaard. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [library]
+      operationId: clearRating
+      summary: Haal de waardering van een item weg.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "204": { description: Er is geen waardering meer. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /track-preferences/{item_id}:
+    get:
+      tags: [library]
+      operationId: getTrackPreference
+      summary: De voorkeur voor audio en ondertitels die voor een item geldt.
+      description: |
+        Alleen onder `capabilities.track_preferences`. De voorkeur van het item
+        zelf, anders die van het seizoen of de serie erboven (`source_item_id`
+        zegt waar hij aan hangt). Zonder voorkeur zijn alle velden null. Hij reist
+        met de gebruiker mee naar elk toestel.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "200":
+          description: De voorkeur.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TrackPreference" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [library]
+      operationId: setTrackPreference
+      summary: Leg de voorkeur voor audio en ondertitels vast bij een item.
+      description: |
+        Bij een film, een serie of een aflevering. Een veld dat ontbreekt zegt
+        niets over die keuze. Minstens één veld is verplicht; een ongeldige waarde
+        is `400` met `library.personal_invalid` en `details.field`.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TrackPreferenceRequest" }
+      responses:
+        "200":
+          description: De voorkeur zoals hij nu geldt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TrackPreference" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [library]
+      operationId: clearTrackPreference
+      summary: Haal de voorkeur bij precies dit item weg.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "204": { description: De voorkeur bij dit item is weg. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /items/{item_id}:
     get:
       tags: [library]
@@ -2119,6 +2535,16 @@ components:
       in: path
       required: true
       schema: { $ref: "#/components/schemas/Id" }
+    BackupId:
+      name: backup_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    DownloadId:
+      name: download_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
     ItemId:
       name: item_id
       in: path
@@ -2293,9 +2719,19 @@ components:
         playback_plan: { type: boolean, default: false }
         transcode: { type: boolean, default: false }
         downloads: { type: boolean, default: false }
+        backups:
+          type: boolean
+          default: false
+          description: |
+            Venster 7, S25. De server kent GET/POST /backups, GET /backups/{id}
+            en de hersteltest en restore eronder, voor klasse admin.
         live_tv: { type: boolean, default: false }
         realtime: { type: boolean, default: false }
         users: { type: boolean, default: false }
+        history: { type: boolean, default: false }
+        favorites: { type: boolean, default: false }
+        ratings: { type: boolean, default: false }
+        track_preferences: { type: boolean, default: false }
         watch_state_ownership:
           type: boolean
           default: false
@@ -3113,6 +3549,17 @@ components:
           type: [integer, "null"]
           description: Backend-neutrale naam; het interne model van de client heet anders.
         watched_episode_count: { type: [integer, "null"] }
+        favorite:
+          type: boolean
+          description: |
+            De aanvrager heeft dit item als favoriet (S20). Los van `user_state`:
+            een favoriet die nooit is gekeken heeft geen kijkstatus. Ontbreekt bij
+            een server zonder `capabilities.favorites`.
+        rating:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 10
+          description: De waardering van de aanvrager, of null (S20).
         artwork: { $ref: "#/components/schemas/Artwork" }
         versions:
           type: array
@@ -3334,6 +3781,146 @@ components:
         max_sessions: { type: integer, minimum: 0 }
         hardware: { $ref: "#/components/schemas/TranscodeHardware" }
         items: { type: array, items: { $ref: "#/components/schemas/TranscodeSession" } }
+
+    Backup:
+      type: object
+      required: [id, status, trigger, started_at, finished_at, size_bytes, schema_version, titles,
+        secrets_included, failure_code, restore_confirmation, last_restore_test]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        status:
+          type: string
+          enum: [running, ok, failed, missing]
+          x-unknown-safe: true
+          description: missing betekent dat het bestand uit de back-upmap verdween zonder dat de server het weghaalde.
+        trigger: { type: string, enum: [schedule, manual, upgrade], x-unknown-safe: true }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+        size_bytes: { type: [integer, "null"], minimum: 0 }
+        schema_version: { type: [integer, "null"], description: De schemaversie van de gedumpte database. }
+        titles: { type: [integer, "null"], minimum: 0, description: Films en series op het moment van de dump. }
+        secrets_included:
+          type: boolean
+          description: De geheimen uit /config gingen versleuteld mee. Onwaar betekent dat ze wegbleven, nooit dat ze leesbaar meegingen.
+        failure_code:
+          type: [string, "null"]
+          description: De foutcode van het faalpad bij een mislukte back-up, `storage.full` voor een volle schijf.
+        restore_confirmation:
+          type: [string, "null"]
+          description: De zin die POST /backups/{id}/restore als confirm verwacht. Alleen bij status ok.
+        last_restore_test:
+          oneOf:
+            - $ref: "#/components/schemas/BackupRestoreTest"
+            - type: "null"
+
+    BackupRestoreTest:
+      type: object
+      required: [id, status, started_at, finished_at, schema_from, schema_to, titles_expected, titles_found, failure_code]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        status: { type: string, enum: [running, ok, failed], x-unknown-safe: true }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+        schema_from: { type: [integer, "null"], description: Het schema van de back-up. }
+        schema_to: { type: [integer, "null"], description: Het schema na de migraties van deze server. }
+        titles_expected: { type: [integer, "null"], minimum: 0 }
+        titles_found: { type: [integer, "null"], minimum: 0 }
+        failure_code: { type: [string, "null"] }
+
+    BackupList:
+      type: object
+      required: [items, dir, schedule, retention_days, same_failure_domain, secrets_key_configured]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/Backup" } }
+        dir: { type: string, description: De back-upmap in de container. }
+        schedule: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$", description: Tijdstip van de dagelijkse back-up, in de tijdzone van de server. }
+        retention_days: { type: integer, minimum: 1 }
+        same_failure_domain: { type: boolean }
+        secrets_key_configured: { type: boolean }
+
+    RestoreBackupRequest:
+      type: object
+      required: [confirm]
+      additionalProperties: false
+      properties:
+        confirm: { type: string }
+
+    Download:
+      type: object
+      required: [id, item_id, version_id, status, size_bytes, sha256, file_url, created_at]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        item_id: { $ref: "#/components/schemas/Id" }
+        version_id: { $ref: "#/components/schemas/Id" }
+        status: { type: string, enum: [preparing, ready, failed], x-unknown-safe: true }
+        size_bytes: { type: [integer, "null"], description: Null zolang de download preparing is. }
+        sha256: { type: [string, "null"], description: Hexadecimale SHA-256, null zolang de download preparing is. }
+        file_url: { type: string, description: Pad naar de bytes, relatief aan de serverroot. }
+        created_at: { type: string, format: date-time }
+
+    DownloadList:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/Download" } }
+
+    CreateDownloadRequest:
+      type: object
+      required: [item_id]
+      properties:
+        item_id: { $ref: "#/components/schemas/Id" }
+        version_id: { $ref: "#/components/schemas/Id" }
+
+    RatingRequest:
+      type: object
+      required: [rating]
+      additionalProperties: false
+      properties:
+        rating: { type: integer, minimum: 1, maximum: 10 }
+
+    SubtitleMode:
+      type: string
+      enum: ["off", "on", "forced"]
+      x-unknown-safe: true
+
+    TrackPreferenceRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        audio_language: { type: [string, "null"], pattern: "^[a-zA-Z]{2,3}$" }
+        subtitle_language: { type: [string, "null"], pattern: "^[a-zA-Z]{2,3}$" }
+        subtitle_mode: { $ref: "#/components/schemas/SubtitleMode" }
+
+    TrackPreference:
+      type: object
+      required: [source_item_id, audio_language, subtitle_language, subtitle_mode, updated_at]
+      properties:
+        source_item_id: { oneOf: [{ $ref: "#/components/schemas/Id" }, { type: "null" }] }
+        audio_language: { type: [string, "null"] }
+        subtitle_language: { type: [string, "null"] }
+        subtitle_mode: { oneOf: [{ $ref: "#/components/schemas/SubtitleMode" }, { type: "null" }] }
+        updated_at: { type: [string, "null"], format: date-time }
+
+    HistoryEntry:
+      type: object
+      required: [id, item, started_at, ended_at, start_position_ms, end_position_ms, duration_ms, completed, device_name]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        item: { $ref: "#/components/schemas/Item" }
+        started_at: { type: string, format: date-time }
+        ended_at: { type: string, format: date-time, description: De laatste melding van deze sessie. }
+        start_position_ms: { type: integer, minimum: 0 }
+        end_position_ms: { type: integer, minimum: 0 }
+        duration_ms: { type: [integer, "null"], minimum: 0 }
+        completed: { type: boolean }
+        device_name: { type: [string, "null"] }
+
+    HistoryPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/HistoryEntry" } }
+        next_cursor: { type: [string, "null"] }
 
     MetadataAttentionState:
       type: string

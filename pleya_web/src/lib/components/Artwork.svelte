@@ -22,9 +22,11 @@
        verschillende dingen en zien er alle drie anders uit.
 -->
 <script lang="ts">
-  import { onDestroy, untrack } from 'svelte';
+  import { onDestroy, untrack, type Snippet } from 'svelte';
   import { session } from '../stores/session.svelte';
   import { t } from '../i18n';
+  import { requestWidth, type ArtworkRole } from '../util/srcset';
+  import { getArtworkLoader, type ArtworkLoader } from './artworkLoader';
 
   interface Props {
     artworkId: string | null | undefined;
@@ -37,6 +39,14 @@
     eager?: boolean;
     /** Vlak zonder ronde hoeken, voor beeld dat de volle breedte vult. */
     flat?: boolean;
+    /** Welke artworkladder geldt; standaard volgt dat uit `shape`. */
+    role?: ArtworkRole;
+    /**
+     * Wat er staat als er geen beeld is (geen id, of laden mislukt). Zonder
+     * snippet het pictogram; een kaart geeft titel en jaar mee, want een
+     * grijs vlak zonder tekst zegt in een raster niets.
+     */
+    fallback?: Snippet;
   }
 
   let {
@@ -45,7 +55,9 @@
     shape = 'poster',
     rootMargin = '400px',
     eager = false,
-    flat = false
+    flat = false,
+    role,
+    fallback
   }: Props = $props();
 
   let host = $state<HTMLDivElement | null>(null);
@@ -54,6 +66,13 @@
   // `eager` is een prop en verandert niet gedurende het leven van deze
   // component; de beginwaarde is dus de juiste startwaarde.
   let visible = $state(untrack(() => eager));
+
+  // De loader komt uit de context (galerij, tests) of is de echte client.
+  const contextLoader = getArtworkLoader();
+  // `shape` en `role` veranderen niet gedurende het leven van de component.
+  const ladderRole: ArtworkRole = untrack(() =>
+    role ?? (shape === 'poster' ? 'poster' : 'backdrop')
+  );
 
   let controller: AbortController | null = null;
   let currentUrl: string | null = null;
@@ -78,7 +97,20 @@
     const own = new AbortController();
     controller = own;
     try {
-      const blob = await session.client.artworkBlob(id, own.signal);
+      // Het getekende vlak bepaalt de trede; onmeetbaar of geen formaten op
+      // de server betekent geen breedte en dus het origineel.
+      const width = requestWidth(
+        host?.clientWidth ?? 0,
+        window.devicePixelRatio || 1,
+        ladderRole,
+        session.capabilities?.artwork_sizes === true
+      );
+      const fetchArtwork =
+        contextLoader ??
+        ((...args: Parameters<ArtworkLoader>) => session.client.artworkBlob(...args));
+      const blob = await (width === undefined
+        ? fetchArtwork(id, own.signal)
+        : fetchArtwork(id, own.signal, width));
       if (own.signal.aborted) return;
       const url = URL.createObjectURL(blob);
       currentUrl = url;
@@ -143,6 +175,8 @@
 >
   {#if objectUrl}
     <img src={objectUrl} {alt} decoding="async" />
+  {:else if (status === 'error' || (!artworkId && visible)) && fallback}
+    {@render fallback()}
   {:else if status === 'error' || (!artworkId && visible)}
     <div class="artwork__fallback" role="img" aria-label={alt || t('artwork.none')}>
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">

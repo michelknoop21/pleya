@@ -3,6 +3,9 @@
   import { replaceState } from '$app/navigation';
 
   import MediaGrid from '$lib/components/MediaGrid.svelte';
+  import Chips from '$lib/components/Chips.svelte';
+  import Field from '$lib/components/Field.svelte';
+  import PageHeader from '$lib/components/PageHeader.svelte';
   import StateView from '$lib/components/StateView.svelte';
   import { session } from '$lib/stores/session.svelte';
   import { describeError } from '$lib/api/errors';
@@ -78,37 +81,28 @@
 <svelte:head><title>{t('search.title')} · {t('app.name')}</title></svelte:head>
 
 <div class="page">
-  <h1 class="t-headline">{t('search.title')}</h1>
+  <PageHeader title={t('search.title')} />
 
   <form class="search" role="search" onsubmit={(event) => event.preventDefault()}>
-    <label class="search__field">
-      <span class="visually-hidden">{t('search.hint')}</span>
-      <input
-        class="field"
-        type="search"
-        bind:value={query}
-        placeholder={t('search.hint')}
-        autocomplete="off"
-        spellcheck="false"
-      />
-    </label>
+    <Field
+      type="search"
+      label={t('search.hint')}
+      hideLabel
+      placeholder={t('search.hint')}
+      autocomplete="off"
+      bind:value={query}
+    />
 
-    <div class="search__filters" role="group" aria-label={t('search.filters.all')}>
-      {#each FILTERS as option (option.id)}
-        <button
-          type="button"
-          class="chip"
-          class:chip--active={filter === option.id}
-          aria-pressed={filter === option.id}
-          onclick={() => (filter = option.id)}
-        >
-          {option.label}
-        </button>
-      {/each}
-    </div>
+    <Chips
+      variant="outline"
+      label={t('search.filters.label')}
+      options={FILTERS}
+      selected={[filter]}
+      onchange={(selected) => (filter = selected[0] as 'all' | ItemKind)}
+    />
   </form>
 
-  <p class="t-small" aria-live="polite">
+  <p class="search__status" aria-live="polite">
     {#if searching}
       {t('loading')}
     {:else if searched}
@@ -122,7 +116,7 @@
     <StateView title={t('search.searchYourMedia')} message={t('search.enterTitleActorOrKeyword')} />
   {:else if searched && results.length === 0 && !searching}
     <StateView title={t('search.noResultsTitle')} message={t('search.tryDifferentTerm')}>
-      <p class="t-small">{t('search.seasonsNote')}</p>
+      <p>{t('search.seasonsNote')}</p>
     </StateView>
   {:else}
     <MediaGrid items={results} label={t('search.title')} />
@@ -130,52 +124,29 @@
 </div>
 
 <style>
+  /* web.css .page: de inzet van de pagina, 8 boven de kop. */
   .page {
     display: flex;
     flex-direction: column;
     gap: var(--space);
-    padding: var(--space-1-5) var(--page-inset, var(--space));
+    padding: 8px var(--inset) var(--space-2);
   }
 
   .search {
     display: flex;
     flex-direction: column;
-    gap: var(--space);
-  }
-
-  .search__field {
-    display: block;
-    max-width: 560px;
-  }
-
-  .search__filters {
-    display: flex;
-    flex-wrap: wrap;
     gap: var(--space-half);
   }
 
-  .chip {
-    min-height: var(--touch-target);
-    padding: var(--space-half) var(--space-1-5);
-    border-radius: var(--radius-pill);
-    background: color-mix(in srgb, var(--text) 8%, transparent);
-    color: var(--text-muted);
-    font-weight: 600;
-    font-size: var(--text-small-size);
-    transition:
-      background var(--dur-fast) var(--ease),
-      color var(--dur-fast) var(--ease);
+  .search__status {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ink-3);
   }
 
-  .chip--active {
-    background: var(--text);
-    color: var(--bg);
-  }
-
-  @media (hover: hover) {
-    .chip:not(.chip--active):hover {
-      background: color-mix(in srgb, var(--text) 16%, transparent);
-      color: var(--text);
-    }
+  /* De live region blijft in de DOM (een schermlezer meldt anders de eerste
+     tekst niet), maar een lege regel mag de kolomafstand niet verdubbelen. */
+  .search__status:empty {
+    margin-top: calc(-1 * var(--space));
   }
 </style>

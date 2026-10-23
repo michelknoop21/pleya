@@ -50,5 +50,18 @@ class DownloadResolution {
   final String? mediaSourceId;
   final List<DownloadSubtitleSpec> externalSubtitles;
 
-  const DownloadResolution({required this.videoUrl, this.mediaSourceId, this.externalSubtitles = const []});
+  /// Request headers the file transfer needs (a bearer token for Pleya Server;
+  /// Plex and Jellyfin carry their token in the URL and leave this empty).
+  final Map<String, String> headers;
+
+  /// Hex SHA-256 the finished file must match, when the server states one.
+  final String? sha256;
+
+  const DownloadResolution({
+    required this.videoUrl,
+    this.mediaSourceId,
+    this.externalSubtitles = const [],
+    this.headers = const {},
+    this.sha256,
+  });
 }

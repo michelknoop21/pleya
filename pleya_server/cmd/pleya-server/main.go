@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -23,16 +24,20 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/artwork"
 	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
+	"github.com/edde746/plezy/pleya_server/internal/backup"
 	"github.com/edde746/plezy/pleya_server/internal/config"
 	"github.com/edde746/plezy/pleya_server/internal/database"
 	"github.com/edde746/plezy/pleya_server/internal/diag"
+	"github.com/edde746/plezy/pleya_server/internal/downloads"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
 	"github.com/edde746/plezy/pleya_server/internal/httpserver"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
 	"github.com/edde746/plezy/pleya_server/internal/metadata"
+	"github.com/edde746/plezy/pleya_server/internal/metrics"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/mounts"
+	"github.com/edde746/plezy/pleya_server/internal/personal"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/transcode"
@@ -125,8 +130,15 @@ func run() int {
 	}
 
 	// Vanaf hier praat alles met de database. De HTTP-laag komt pas omhoog nadat
-	// de migraties gedraaid zijn, want /readyz belooft dat.
-	migrateCtx, cancelMigrate := context.WithTimeout(ctx, 5*time.Minute)
+	// de migraties gedraaid zijn, want /readyz belooft dat. Vóór de eerste
+	// migratie staat de upgrade-guard (S25.4): een nieuwere database wordt
+	// geweigerd, een oudere krijgt eerst een back-up.
+	backups := newBackupService(cfg, pool, logging.Component(log, "backup"))
+	migrateCtx, cancelMigrate := context.WithTimeout(ctx, 30*time.Minute)
+	if code := runUpgradeGuard(migrateCtx, pool, backups, startup); code != 0 {
+		cancelMigrate()
+		return code
+	}
 	result, err := migrate.Run(migrateCtx, pool, logging.Component(log, "migrate"))
 	cancelMigrate()
 	if err != nil {
@@ -134,6 +146,15 @@ func run() int {
 		return config.ExitConfig
 	}
 	ready.migrated.Store(true)
+	// Het register volgt de back-upmap: na een upgrade staat de back-up van de
+	// guard er nog niet in, na een restore staat er niets meer in.
+	if err := backups.Sync(ctx); err != nil {
+		startup.Warn("back-upregister bijwerken mislukt", slog.String("error", err.Error()))
+	}
+	if backups.SameFailureDomain() {
+		startup.Warn("de back-upmap staat op hetzelfde bestandssysteem als /config; één kapotte schijf neemt beide mee",
+			slog.String("dir", cfg.Backup.Dir))
+	}
 	startup.Info("schema gereed",
 		slog.Int("from", result.From),
 		slog.Int("to", result.To),
@@ -200,7 +221,11 @@ func run() int {
 		}
 	}
 	runner.Register(api.JobScanLibrary, scanHandler(catalogStore, sc, runner, logging.Component(log, "scanner"), onScanned))
+	downloadStore := downloads.NewStore(pool)
+	runner.Register(api.JobDownloadDigest, downloads.DigestHandler(downloadStore, catalogStore, logging.Component(log, "downloads")))
 	runner.Register(api.JobStorageRecheckRoots, storageRecheckHandler(catalogStore, cfg, logging.Component(log, "storage")))
+	runner.Register(backup.JobCreate, backup.CreateHandler(backups, runner))
+	runner.Register(backup.JobVerify, backup.VerifyHandler(backups))
 
 	if n, err := runner.Requeue(ctx); err != nil {
 		startup.Warn("lopende jobs terugzetten mislukt", slog.String("error", err.Error()))
@@ -227,7 +252,7 @@ func run() int {
 	auditStore := audit.NewStore(pool)
 
 	workers := &sync.WaitGroup{}
-	workers.Add(3)
+	workers.Add(4)
 	if cfg.TMDBKey != "" {
 		workers.Add(1)
 		mdRunner := metadata.NewRunner(catalogStore, metadata.NewTMDB(cfg.TMDBKey, cfg.MetadataLanguage),
@@ -239,6 +264,10 @@ func run() int {
 	go func() {
 		defer workers.Done()
 		schedule(workCtx, runner, catalogStore, cfg.ScanInterval, logging.Component(log, "scanner"))
+	}()
+	go func() {
+		defer workers.Done()
+		scheduleBackups(workCtx, backups, runner, cfg.Backup.Hour, cfg.Backup.Minute, logging.Component(log, "backup"))
 	}()
 	go func() {
 		defer workers.Done()
@@ -274,11 +303,22 @@ func run() int {
 		defer transcoder.Close()
 	}
 
+	// Een restore (S25.3) stopt eerst het achtergrondwerk en laat het proces
+	// daarna herstarten; restarted brengt dat signaal naar de select hieronder.
+	restarted := make(chan error, 1)
+	reg := &metrics.Registry{}
 	apiServer := api.New(api.Options{
+		Backups:            backups,
+		BeforeRestore:      func() { stopWork(); workers.Wait() },
+		AfterRestore:       func(err error) { restarted <- err },
+		Prober:             prober,
 		Transcode:          transcoder,
 		Catalog:            catalogStore,
 		Auth:               authStore,
 		Watch:              watch.NewStore(pool),
+		Personal:           personal.NewStore(pool),
+		Downloads:          downloadStore,
+		Metrics:            reg,
 		MediaRoots:         cfg.MediaDirs,
 		CacheDir:           cfg.CacheDir,
 		OnMetadataChange:   onScanned,
@@ -314,10 +354,23 @@ func run() int {
 		Addr:    cfg.HTTPAddr,
 		DB:      pool,
 		Logger:  logging.Component(log, "http"),
-		Handler: apiServer.Handler(),
+		Handler: reg.Middleware(apiServer.Handler()),
 	})
 
+	if cfg.MetricsAddr != "" {
+		mux := http.NewServeMux()
+		mux.Handle("GET /metrics", reg.Handler())
+		metricsSrv := &http.Server{Addr: cfg.MetricsAddr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+		go func() {
+			if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Warn("metrics-listener gestopt", "addr", cfg.MetricsAddr, "error", err)
+			}
+		}()
+		defer metricsSrv.Close()
+	}
+
 	serveErr := make(chan error, 1)
+	restartCode := 0
 	go func() { serveErr <- srv.ListenAndServe() }()
 
 	sig := make(chan os.Signal, 1)
@@ -332,6 +385,13 @@ func run() int {
 		return 0
 	case s := <-sig:
 		log.Info("signaal ontvangen, afsluiten", slog.String("signal", s.String()))
+	case err := <-restarted:
+		if err != nil {
+			log.Error("restore mislukt; de server herstart", slog.String("error", err.Error()))
+		} else {
+			log.Warn("restore klaar; de server herstart op de teruggezette database")
+		}
+		restartCode = exitRestart
 	}
 
 	// Eerst het werk stoppen, dan de aanvragen. Een scan die halverwege afbreekt
@@ -343,7 +403,7 @@ func run() int {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 
-	code := 0
+	code := restartCode
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Error("afsluiten liep niet netjes af", slog.String("error", err.Error()))
 		code = 1

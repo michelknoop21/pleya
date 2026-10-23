@@ -427,6 +427,46 @@
       "file": "transcode_sessions.json",
       "schema": "TranscodeSessionList",
       "note": "S18.5: GET /transcode-sessions, klasse admin, zonder versnelling en met de reden"
+    },
+    {
+      "file": "history_page.json",
+      "schema": "HistoryPage",
+      "note": "S20: GET /history, één regel per afspeelsessie met het item erbij"
+    },
+    {
+      "file": "track_preference.json",
+      "schema": "TrackPreference",
+      "note": "S20: GET /track-preferences/{item_id}, de voorkeur die voor een item geldt"
+    },
+    {
+      "file": "download.json",
+      "schema": "Download",
+      "note": "S23: GET /downloads/{id}, een klaargezette download met grootte en SHA-256"
+    },
+    {
+      "file": "download_list.json",
+      "schema": "DownloadList",
+      "note": "S23: GET /downloads, de nieuwste eerst, ook een download die nog preparing is"
+    },
+    {
+      "file": "backup.json",
+      "schema": "Backup",
+      "note": "S25: GET /backups/{id}, een geplande back-up met een geslaagde hersteltest"
+    },
+    {
+      "file": "backup_list.json",
+      "schema": "BackupList",
+      "note": "S25: GET /backups, de nieuwste eerst, ook een die op een volle schijf mislukte"
+    },
+    {
+      "file": "error_restore_confirm_mismatch.json",
+      "schema": "ErrorEnvelope",
+      "note": "S25: POST /backups/{id}/restore met een confirm die niet de zin uit restore_confirmation is"
+    },
+    {
+      "file": "error_server_maintenance.json",
+      "schema": "ErrorEnvelope",
+      "note": "S25: elke aanvraag terwijl de server een back-up terugzet"
     }
   ]
 }

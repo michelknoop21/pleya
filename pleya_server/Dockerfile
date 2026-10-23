@@ -37,6 +37,16 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     -o /out/pleya-server ./cmd/pleya-server
 
 
+# pg_dump en psql voor de back-ups (S25). Uit dezelfde postgres-image, op
+# dezelfde digest, als de database in compose.yaml: een pg_dump moet minstens zo
+# nieuw zijn als de server die hij dumpt, en Debian bookworm levert versie 15
+# tegen een database op 18. Het PGDG-archief zou een tweede bron met een eigen
+# sleutel en eigen pins zijn; deze laag is al gepind en al vertrouwd. Alleen de
+# twee binaries en libpq gaan mee, de rest van de image niet: gemeten op
+# linux/amd64 is dat 3,4 MiB (du -sx /, 575 668 naar 579 192 KiB).
+FROM postgres:18.6-bookworm@sha256:7d2695c3aa88e792e8b3b233e7e4adb296a20412c6c0ca361e3edaaacfada108 AS pgclient
+
+
 FROM debian:bookworm-slim@sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639d36e7456b0b229241
 
 # ffmpeg op een exacte versie, want een mediaserver waarvan het gedrag afhangt
@@ -66,8 +76,16 @@ RUN apt-get update \
       intel-media-va-driver \
       i965-va-driver \
       vainfo \
+      libldap-2.5-0 libgssapi-krb5-2 libzstd1 liblz4-1 libreadline8 \
  && rm -rf /var/lib/apt/lists/* \
  && ffprobe -version | head -1
+
+# De vijf bibliotheken hierboven zijn wat pg_dump, psql en libpq 18 vragen
+# bovenop wat de ffmpeg-stack al meebrengt. Ontbreekt er een, dan faalt de
+# versieregel hieronder de build in plaats van de eerste back-up op de NAS.
+COPY --from=pgclient /usr/lib/postgresql/18/bin/pg_dump /usr/lib/postgresql/18/bin/psql /usr/local/bin/
+COPY --from=pgclient /usr/lib/*-linux-gnu/libpq.so.5* /usr/local/lib/
+RUN ldconfig && pg_dump --version && psql --version
 
 # Een non-root gebruiker in de image zelf, zodat "docker run" zonder compose
 # ook niet als root draait. Compose overschrijft de uid/gid met die van de
@@ -77,11 +95,12 @@ RUN groupadd --system --gid 1000 pleya \
 
 COPY --from=build /out/pleya-server /usr/local/bin/pleya-server
 
-# De drie schrijfbare mappen bestaan in de image, zodat een start zonder mounts
+# De schrijfbare mappen bestaan in de image, zodat een start zonder mounts
 # ook werkt. Ze horen los van elkaar gemount te worden: /config is duurzaam en
-# is de back-up-eenheid, /cache is herbouwbaar, /transcode is vluchtig.
-RUN mkdir -p /config /cache /transcode /media \
- && chown pleya:pleya /config /cache /transcode
+# is de back-up-eenheid, /cache is herbouwbaar, /transcode is vluchtig, en
+# /backups hoort het liefst op een andere schijf dan /config (S25).
+RUN mkdir -p /config /cache /transcode /backups /media \
+ && chown pleya:pleya /config /cache /transcode /backups
 
 USER 1000:1000
 EXPOSE 8080

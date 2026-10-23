@@ -539,6 +539,15 @@ contract keurt ze af.
 | `playback.not_playable` | 415 | nee | deze versie is niet zonder bewerking te leveren |
 | `playback.transcode_busy` | 503 | ja | alle omzetsessies zijn bezet |
 | `playback.transcode_failed` | 502 | nee | de omzetting leverde geen speelbare uitvoer |
+| `library.personal_invalid` | 400 | nee | een waardering of spoorvoorkeur die niet te bewaren is, zie `details.field` |
+| `library.download_not_permitted` | 403 | nee | de bibliotheek is zichtbaar maar het recht `download` ontbreekt |
+| `library.download_not_ready` | 409 | ja | de download is nog `preparing`, probeer het zo opnieuw |
+| `library.download_changed` | 409 | nee | het bestand veranderde na het uitrekenen van de SHA-256, vraag een nieuwe download |
+| `playback.file_corrupt` | 422 | nee | een omzetting mislukte en een tweede analyse van de bron ook: het bestand zelf is stuk (faalpad "kapot bestand", S25.5) |
+| `server.maintenance` | 503 | ja | de server zet een back-up terug en neemt niets aan tot hij herstart is (S25.3) |
+| `server.database_unavailable` | 503 | ja | de database is niet bereikbaar (faalpad "database weg", S25.5); een query die fout is blijft `server.internal` |
+| `server.backup_busy` | 409 | ja | er wacht of loopt al een back-up of hersteltest |
+| `server.backup_not_restorable` | 409 | nee | de back-up is niet geslaagd of verdwenen, van een nieuwer schema dan deze server, of de sleutel past niet op zijn geheimen; `details.reason` is `status`, `schema_newer`, `key` of `unreadable` |
 | `storage.unavailable` | 503 | ja | de opslag achter deze resource is niet bereikbaar |
 | `storage.full` | 507 | nee | de server kan niet schrijven |
 | `session.invalid` | 400 | nee | onbekende of afgesloten kijksessie |
@@ -1096,6 +1105,55 @@ hele catalogus op te halen.
 
 ---
 
+## 14a. Geschiedenis, favorieten, waarderingen en spoorvoorkeuren
+
+Alles in dit hoofdstuk is van de aanvrager zelf en reist met zijn account naar elk toestel (venster 6
+deel 2, S20). Elke operatie is klasse **`authenticated`**, en een item buiten de bibliotheken van de
+aanvrager is `404`, hetzelfde antwoord als een item dat niet bestaat (matrixregel 52 tot en met 60).
+Elk onderdeel heeft zijn eigen vlag: `capabilities.history`, `favorites`, `ratings` en
+`track_preferences`.
+
+**`GET /pleya/v1/history`** levert één regel per afspeelsessie, de laatste eerst. De sessie is de
+`session_id` die de client al in `POST /watch-state` meestuurt: de regel wordt bij de eerste melding
+aangemaakt en groeit met de volgende mee (`ended_at`, `end_position_ms`, `completed`). Een film van twee
+uur met een melding per tien seconden is dus één regel. Alleen als gezien of ongezien markeren is geen
+afspelen en maakt geen regel. Een melding van een toestel zonder schrijfrecht verplaatst de kijkstatus
+niet en komt er ook niet in; een offline backlog doet dat wel, want dat is precies wat een geschiedenis
+moet bewaren. Elke regel draagt het volledige `Item`, de naam van het toestel (`null` als de inlogsessie
+al weg is) en is beperkt tot de bibliotheken die de aanvrager mag zien.
+
+**Favorieten** zijn `GET /favorites` (een `ItemPage`, de laatst toegevoegde eerst), `PUT` en `DELETE
+/favorites/{item_id}`. Herhalen is onschadelijk. **Waarderingen** zijn `PUT /ratings/{item_id}` met een
+geheel cijfer van 1 tot en met 10 en `DELETE`; een cijfer erbuiten is `400` met `library.personal_invalid`
+en `details.field`. Beide staan ook op het `Item` zelf (`favorite`, `rating`), naast en niet in
+`user_state`, want een favoriet die nooit is gekeken heeft geen kijkstatus en `user_state: null` blijft
+"nooit geopend" betekenen.
+
+**Spoorvoorkeuren** zijn `GET`, `PUT` en `DELETE /track-preferences/{item_id}`. Een voorkeur hangt aan een
+film, een serie of een aflevering en bestaat uit een audiotaal, een ondertiteltaal (twee of drie letters)
+en een ondertitelmodus (`off`, `on` of `forced`). `GET` geeft de voorkeur die voor het item geldt: die van
+het item zelf, anders die van het seizoen of de serie erboven, met in `source_item_id` waar hij aan hangt.
+Een veld dat ontbreekt zegt niets over die keuze. `DELETE` haalt alleen de voorkeur bij precies dit item
+weg.
+
+### Downloads (S23)
+
+Onder `capabilities.downloads`. **`POST /pleya/v1/downloads`** met een `item_id` (en eventueel een
+`version_id`) zet het bestand van die versie klaar. De server rekent op de achtergrond de SHA-256 uit
+(taak `download_digest`), dus een nieuwe download is eerst `preparing` en wordt `ready` of `failed`;
+`GET /downloads/{id}` geeft die stand. Het recht `download` op de bibliotheek staat boven `view` en onder
+`manage`; het wordt bij het aanmaken en bij elke byte-aanvraag getoetst. Een bibliotheek die de aanvrager
+niet mag zien is `404`, een die hij wel mag zien maar niet mag downloaden `403` met
+`library.download_not_permitted`, zodat een app de knop weglaat. De download van een ander bestaat niet (`404`).
+
+**`GET /downloads/{id}/file`** levert de bytes met een sterke `ETag` (`"sha256-<hex>"`) en dezelfde
+SHA-256 in `Digest` en `Repr-Digest`. Hervatten werkt met `Range` en `If-Range` gelijk aan die `ETag`;
+een `If-Range` die niet klopt geeft het hele bestand, nooit een stuk van een ander bestand. Veranderde het
+bestand na het uitrekenen (grootte of wijzigingstijd), dan is het `409` met `library.download_changed` en vraagt
+de client een nieuwe download. `DELETE /downloads/{id}` haalt de download weg en laat het mediabestand staan.
+Een versie van meer dan één bestand is `409` met `library.version_multifile`. De ladder (omgezette
+versies als downloadbron) en sidecar-ondertitels horen er niet bij.
+
 ## 15. Home-bouwstenen
 
 ### `GET /pleya/v1/hubs/{hub_id}`
@@ -1307,6 +1365,25 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 49 | `GET /playback/sessions/{id}/{file}` | de afspeellijst, het initsegment en de segmenten van een omzetsessie | klasse `authenticated` of met `stream_token` of browser-streamsessie zoals de stream; een bearer alleen voor de eigenaar van de sessie, een token alleen voor de versie die wordt omgezet |
 | 50 | `GET /transcode-sessions` | de lopende omzetsessies van iedereen, het maximum en of er hardwareversnelling is | klasse `admin`, `404` voor de rest (venster 5, S18.5) |
 | 51 | `DELETE /transcode-sessions/{id}` | het stoppen van de omzetsessie van wie dan ook | klasse `admin`, `404` voor de rest, ook voor een id dat niet bestaat; komt in het auditlog als `stopTranscodeSession` |
+| 52 | `GET /history` | de afspeelgeschiedenis van de aanvrager | klasse `authenticated`, alleen de eigen regels en alleen uit bibliotheken die de aanvrager mag zien (venster 6, S20) |
+| 53 | `GET /favorites` | de favorieten van de aanvrager | als regel 52 |
+| 54 | `PUT /favorites/{id}` | een item als favoriet zetten | klasse `authenticated` met de bibliotheekautorisatie van het item: `404` voor een item buiten bereik of dat niet bestaat |
+| 55 | `DELETE /favorites/{id}` | een item uit de favorieten halen | als regel 54 |
+| 56 | `PUT /ratings/{id}` | een waardering bewaren | als regel 54 |
+| 57 | `DELETE /ratings/{id}` | een waardering wegnemen | als regel 54 |
+| 58 | `GET /track-preferences/{id}` | de voorkeur voor audio en ondertitels bij een item | als regel 54 |
+| 59 | `PUT /track-preferences/{id}` | die voorkeur vastleggen | als regel 54 |
+| 60 | `DELETE /track-preferences/{id}` | die voorkeur weghalen | als regel 54 |
+| 61 | `POST /downloads` | een bestand klaarzetten om te downloaden | klasse `authenticated` met bibliotheekautorisatie en het recht `download`: `404` voor een bibliotheek buiten bereik, `403` `library.download_not_permitted` voor wie alleen mag kijken (venster 6, S23) |
+| 62 | `GET /downloads` | de eigen downloads | klasse `authenticated`, alleen de eigen rijen |
+| 63 | `GET /downloads/{id}` | de stand van een download | alleen de eigenaar; elke ander krijgt de canonieke `404`, ook de admin |
+| 64 | `GET /downloads/{id}/file` | de bytes, met `ETag`, `Digest` en hervatten | als regel 63, en het recht `download` wordt opnieuw getoetst |
+| 65 | `DELETE /downloads/{id}` | een download weghalen | als regel 63 |
+| 66 | `GET /backups` | de back-ups, met doel, tijdstip en bewaartermijn | klasse `admin`, `404` voor de rest (venster 7, S25) |
+| 67 | `POST /backups` | nu een back-up maken | klasse `admin` |
+| 68 | `GET /backups/{id}` | één back-up met zijn laatste hersteltest | klasse `admin` |
+| 69 | `POST /backups/{id}/verify` | een hersteltest starten | klasse `admin` |
+| 70 | `POST /backups/{id}/restore` | een back-up terugzetten | klasse `admin`, met de bevestigingszin uit `restore_confirmation` |
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
 zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
@@ -1986,6 +2063,54 @@ scanrondes van de oude bibliotheek weg.
 
 Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries/{id}/scan` hem aanmaakt, `running` wordt wanneer de job hem claimt en eindigt op `done`, `failed` of `cancelled`. Annuleren gaat via de job (`Job.scan_id` wijst terug): de scanner stopt binnen één walk-stap en laat de tellers staan. Een retry zet `attempts` op nul en, voor een scanjob, ook `probe_attempts` van die bibliotheek. Een bestand waarvan de probe faalde wacht `min(2^(pogingen-1), 24)` uur voordat een volgende ronde het opnieuw analyseert, tenzij het bestand zelf veranderde. `current_path` is afgekort tot de bestandsnaam met een ellipsis ervoor en is nooit het volledige pad.
 
+### 17g. Back-up, restore en faalpaden
+
+Onder `capabilities.backups`, alles klasse `admin` (venster 7, S25, RB-26). Een back-up is één tar in
+de back-upmap met een manifest, een `pg_dump` van de database (gzip), de gewone bestanden uit
+`/config` en, versleuteld, de geheime. Een tar en geen eigen formaat: een beheerder zonder Pleya kan
+hem uitpakken en de dump met `psql` terugzetten.
+
+**Doel, tijdstip en bewaartermijn komen uit de omgeving** (`PLEYA_SERVER_BACKUP_DIR`, standaard
+`/backups`; `PLEYA_SERVER_BACKUP_TIME`, standaard `03:30`; `PLEYA_SERVER_BACKUP_RETENTION_DAYS`,
+standaard 14) en staan in `GET /backups`, niet in `PATCH /settings`. Een pad is geen instelling
+(17a.3), en een bewaartermijn die over de API omlaag kan, kan ook door wie de API heeft overgenomen
+omlaag. De nieuwste geslaagde back-up blijft altijd staan, hoe oud ook. `same_failure_domain`
+waarschuwt dat de back-upmap op hetzelfde bestandssysteem staat als `/config`: dan neemt één kapotte
+schijf beide mee.
+
+**Geheimen staan nooit leesbaar in een back-up.** De ondertekensleutel staat bewust niet in de
+database (een dump mag geen sessies opleveren), en een tar met dump en sleutel naast elkaar zou dat
+alsnog doen. Met `PLEYA_SERVER_BACKUP_KEY` (minstens zestien tekens) gaan de geheime bestanden
+versleuteld mee, met Argon2id en AES-256-GCM; zonder die sleutel blijven ze weg en zegt
+`secrets_included: false` dat. Er is geen route om een back-up te downloaden: hij bevat de hele
+database, en zonder route lekt hij aan niemand. Het bestand heeft rechten `0600`.
+
+**De hersteltest raakt de echte database nooit.** `POST /backups/{id}/verify` (en wekelijks de server
+zelf, na de geplande back-up) maakt een tijdelijke database met een eigen naam, zet de dump daarin
+terug, draait de migraties van deze server en telt titels, gebruikers, bibliotheken en kijkstatus na
+tegen het manifest. Daarna verdwijnt de tijdelijke database weer. `schema_from` en `schema_to` laten
+zien dat een back-up van een ouder schema met de huidige migraties meekomt.
+
+**Een restore vraagt een zin die zegt wat er verloren gaat.** `restore_confirmation` is bijvoorbeeld
+`herstel 2026-10-23T01:30:00Z: kijkstatus, gebruikers, sessies, instellingen en scans van daarna gaan
+verloren`, en `confirm` moet daar letterlijk aan gelijk zijn. Daarna gaat de server in onderhoud
+(`server.maintenance` op elke aanvraag), zet de dump in één transactie terug, schrijft `/config` terug
+en herstart. Faalt het terugzetten van de database, dan is er niets gebeurd en herstart hij op de oude. De
+lijst van back-ups en hersteltests hoort bij de map en niet bij het moment van de dump: na een
+restore registreert de server opnieuw wat er in de back-upmap staat, en de geschiedenis van
+hersteltests van vóór de restore is dan weg.
+
+**Upgrade.** Een nieuwe image die migraties meebrengt, maakt vóór de eerste migratie zelf een
+back-up (`trigger: upgrade`) en start niet als dat mislukt. Een database die nieuwer is dan de
+binary wordt geweigerd met een melding die zegt wat te doen; terugmigreren bestaat niet, terugrollen
+is een back-up terugzetten.
+
+**Vier faalpaden, vier codes.** Een volle schijf is `storage.full` (op een mislukte back-up in
+`failure_code`, en op elk endpoint dat niet kan schrijven), een weggevallen database
+`server.database_unavailable`, een crashende omzetter `playback.transcode_failed`, en een bronbestand
+dat stuk is `playback.file_corrupt`. De laatste twee hebben dezelfde buitenkant; een tweede analyse
+van de bron beslist welke het is.
+
 ---
 
 ## 18. Endpointoverzicht
@@ -2053,8 +2178,27 @@ Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries
 | `GET /pleya/v1/playback/sessions/{id}/{file}` | `authenticated` of streamtoken | nee |
 | `GET /pleya/v1/transcode-sessions` | `admin` | nee |
 | `DELETE /pleya/v1/transcode-sessions/{id}` | `admin` | ja |
+| `GET /pleya/v1/history` | `authenticated` | nee |
+| `GET /pleya/v1/favorites` | `authenticated` | nee |
+| `PUT /pleya/v1/favorites/{id}` | `authenticated` | nee |
+| `DELETE /pleya/v1/favorites/{id}` | `authenticated` | nee |
+| `PUT /pleya/v1/ratings/{id}` | `authenticated` | nee |
+| `DELETE /pleya/v1/ratings/{id}` | `authenticated` | nee |
+| `GET /pleya/v1/track-preferences/{id}` | `authenticated` | nee |
+| `PUT /pleya/v1/track-preferences/{id}` | `authenticated` | nee |
+| `DELETE /pleya/v1/track-preferences/{id}` | `authenticated` | nee |
+| `POST /pleya/v1/downloads` | `authenticated` | nee |
+| `GET /pleya/v1/downloads` | `authenticated` | nee |
+| `GET /pleya/v1/downloads/{id}` | `authenticated` | nee |
+| `GET /pleya/v1/downloads/{id}/file` | `authenticated` | nee |
+| `DELETE /pleya/v1/downloads/{id}` | `authenticated` | nee |
+| `GET /pleya/v1/backups` | `admin` | nee |
+| `POST /pleya/v1/backups` | `admin` | nee |
+| `GET /pleya/v1/backups/{id}` | `admin` | nee |
+| `POST /pleya/v1/backups/{id}/verify` | `admin` | nee |
+| `POST /pleya/v1/backups/{id}/restore` | `admin` | nee |
 
-Eenenzestig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Tachtig operaties. De vijf laatste zijn back-up en restore uit hoofdstuk 17g (venster 7, S25). De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit
@@ -2079,7 +2223,7 @@ client iets uit leest.
 
 ## 19. Wat er bewust niet in zit
 
-Geen transcode-sessies. Geen downloads. Geen verzamelingen, afspeellijsten, kijkgeschiedenis, favorieten of waarderingen. Geen
+Geen transcode-sessies. Geen downloads. Geen verzamelingen of afspeellijsten. Geen
 metadata-providers, geen match-correctie, geen artwork-upload. Geen websockets en geen
 server-sent events. Geen Live TV. Geen beheerscherm voor gebruikers of bibliotheekrechten: hoofdstuk
 16 levert de API, niet het scherm.

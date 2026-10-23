@@ -148,6 +148,10 @@ class PleyaCapabilities {
     required this.artwork,
     required this.watchState,
     this.playbackPlan = false,
+    this.history = false,
+    this.favorites = false,
+    this.ratings = false,
+    this.trackPreferences = false,
     this.transcode = false,
     this.downloads = false,
     this.liveTv = false,
@@ -179,6 +183,13 @@ class PleyaCapabilities {
   final bool artwork;
   final bool watchState;
   final bool playbackPlan;
+
+  /// The personal layer of S20: play history, favorites and ratings on items,
+  /// and the remembered audio and subtitle choice per title.
+  final bool history;
+  final bool favorites;
+  final bool ratings;
+  final bool trackPreferences;
   final bool transcode;
   final bool downloads;
   final bool liveTv;
@@ -228,6 +239,10 @@ class PleyaCapabilities {
     artwork: boolean(json, 'artwork'),
     watchState: boolean(json, 'watch_state'),
     playbackPlan: booleanOr(json, 'playback_plan', orElse: false),
+    history: booleanOr(json, 'history', orElse: false),
+    favorites: booleanOr(json, 'favorites', orElse: false),
+    ratings: booleanOr(json, 'ratings', orElse: false),
+    trackPreferences: booleanOr(json, 'track_preferences', orElse: false),
     transcode: booleanOr(json, 'transcode', orElse: false),
     downloads: booleanOr(json, 'downloads', orElse: false),
     liveTv: booleanOr(json, 'live_tv', orElse: false),
@@ -239,6 +254,63 @@ class PleyaCapabilities {
     users: booleanOr(json, 'users', orElse: false),
     sessions: booleanOr(json, 'sessions', orElse: false),
     administration: booleanOr(json, 'administration', orElse: false),
+  );
+}
+
+/// `TrackPreference`: the audio and subtitle choice remembered for a title.
+/// [sourceItemId] names the item it was set on, which is an ancestor when the
+/// choice carried over from a show to its episodes.
+class PleyaTrackPreference {
+  const PleyaTrackPreference({this.sourceItemId, this.audioLanguage, this.subtitleLanguage, this.subtitleMode});
+
+  final String? sourceItemId;
+  final String? audioLanguage;
+  final String? subtitleLanguage;
+
+  /// `off`, `on` or `forced`; null when no choice is remembered.
+  final String? subtitleMode;
+
+  factory PleyaTrackPreference.fromJson(Map<String, dynamic> json) => PleyaTrackPreference(
+    sourceItemId: json['source_item_id'] as String?,
+    audioLanguage: json['audio_language'] as String?,
+    subtitleLanguage: json['subtitle_language'] as String?,
+    subtitleMode: json['subtitle_mode'] as String?,
+  );
+}
+
+/// `Download`: a file the server prepared for the requester to take offline.
+/// [status] is `preparing` while the server computes the digest, then `ready`
+/// or `failed`; [sizeBytes] and [sha256] are null until it is ready.
+class PleyaDownload {
+  const PleyaDownload({
+    required this.id,
+    required this.itemId,
+    required this.versionId,
+    required this.status,
+    required this.fileUrl,
+    this.sizeBytes,
+    this.sha256,
+  });
+
+  final String id;
+  final String itemId;
+  final String versionId;
+  final String status;
+  final String fileUrl;
+  final int? sizeBytes;
+  final String? sha256;
+
+  bool get isReady => status == 'ready';
+  bool get isFailed => status == 'failed';
+
+  factory PleyaDownload.fromJson(Map<String, dynamic> json) => PleyaDownload(
+    id: str(json, 'id'),
+    itemId: str(json, 'item_id'),
+    versionId: str(json, 'version_id'),
+    status: str(json, 'status'),
+    fileUrl: str(json, 'file_url'),
+    sizeBytes: integerOrNull(json, 'size_bytes'),
+    sha256: strOrNull(json, 'sha256'),
   );
 }
 

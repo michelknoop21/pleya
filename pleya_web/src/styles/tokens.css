@@ -10,8 +10,10 @@
  * (0xB3FFFFFF) staat hier dezelfde kleur als rgb() met alpha in decimalen; de
  * omrekening staat bij de regel.
  *
- * OLED is de standaard, net als in de app: ThemeProvider start op
- * settings.ThemeMode.oled.
+ * Dark is de standaard van de web-app, anders dan in de app (die start op
+ * settings.ThemeMode.oled). De northstar is getekend op #141414, en de
+ * diepte van designsysteem v2 (paneel boven pagina, invoer erin gesneden)
+ * leest op donkergrijs beter dan op zwart. OLED en light blijven kiesbaar.
  */
 
 :root {
@@ -35,8 +37,16 @@
   --radius-sm: 8px; /* MonoTokens.radiusSm, dialogTheme */
   --radius-md: 12px; /* MonoTokens.radiusMd, inputs, nav-items, sheet-top */
   --radius-card: 14px; /* cardTheme */
-  --radius-button: 4px; /* buttonStyle shape */
+  --radius-panel: 18px; /* designsysteem v2: paneel en tegel in beheer */
+  --radius-hero: 18px; /* TV-billboard 18, iOS 16: zie de media query onderaan */
   --radius-pill: 999px;
+  /*
+   * De knop is een capsule (Unified 2026, DEC-090 hoofdstuk 2: StadiumBorder).
+   * monoTheme() draagt nog radius 4; dat verschil is bewust en geldt tot de
+   * app-kant dezelfde stap zet (DESIGN.md hoofdstuk 5).
+   */
+  --radius-button: 999px;
+  --radius-focus: 4px; /* de focusring van elementen zonder eigen vorm */
 
   /* --- Duur. MonoTokens fast/normal/slow. -------------------------------- */
   --dur-fast: 120ms;
@@ -45,8 +55,9 @@
   --ease: cubic-bezier(0.33, 0, 0.2, 1); /* Curves.easeOutCubic */
 
   /* --- Knoppen. buttonStyle: padding 18/14, radius 4. -------------------- */
-  --button-padding-x: 18px;
-  --button-padding-y: 14px;
+  --button-padding-x: 20px;
+  --button-padding-y: 0px;
+  --button-height: 44px;
 
   /* --- Verhoudingen. GridLayoutConstants. -------------------------------- */
   --aspect-poster: 2 / 3; /* fullCardPosterAspectRatio */
@@ -56,7 +67,38 @@
   /* --- Navigatie. SideNavigationRailState. ------------------------------- */
   --rail-collapsed: 80px;
   --rail-expanded: 220px;
-  --bottom-bar-height: 64px;
+  --nav-h: 64px; /* web: topnav vanaf 900 */
+  --tab-h: 56px; /* web: tabbalk onder 900, plus 14px veilige onderrand */
+  --bottom-bar-height: calc(var(--tab-h) + 14px);
+  --ring: 3px; /* web: focusring, dunner dan de 4px op TV */
+
+  /* --- Paginamaat. DESIGN.md hoofdstuk 2; verschuift op de vier ----------
+         breekpunten onderaan dit bestand. ------------------------------- */
+  --inset: 48px; /* pagina-inset */
+  --page-top: 8px; /* ruimte boven de paginakop, web.css .page */
+  --poster-w: 190px; /* railposter; HubRail en de skeletrail lezen hem allebei */
+  --rail-gap: 20px;
+  /*
+   * Ruimte boven een sectie, web.css .section: 26, onder 900 18. Home en het
+   * Home-skelet lezen hem allebei, zodat de eerste rij op dezelfde hoogte
+   * begint vóór en na het binnenkomen van de data.
+   */
+  --section-gap: 26px;
+  /*
+   * Maten van de kaarten en de hero zoals ze vandaag getekend worden. Ze staan
+   * hier en niet in de componenten zelf omdat het skelet (SkeletonPage) exact
+   * dezelfde ruimte moet innemen als de inhoud die erna komt; twee kopieën van
+   * dezelfde getallen lopen vroeg of laat uit elkaar en dan springt de pagina.
+   */
+  --card-caption-gap: 7px; /* MediaCard: beeld tot titel, web.css .card .cap */
+  --card-caption-line-gap: 2px; /* MediaCard: titel tot onderregel, web.css .card .s */
+  /*
+   * Hero, web.css .hero: 21:9 vanaf 1200, 16:9 tussen 900 en 1199, en
+   * daaronder geen verhouding maar een portret van 520 hoog. Skelet en Hero
+   * lezen allebei deze twee, zodat de pagina niet verspringt.
+   */
+  --hero-aspect: 21 / 9;
+  --hero-h-narrow: 520px;
 
   /* --- Raakvlak. Web-eigen: 44px is de ondergrens op aanraakschermen. ---- */
   --touch-target: 44px;
@@ -65,6 +107,16 @@
          monoTheme(); de kaartregels uit MediaCardGridLayout. -------------- */
   --font-sans:
     'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Hero-titel en detailtitel op breed; zie @font-face in base.css. */
+  --font-display: 'ArchivoBlack', var(--font-sans);
+  /* Paden, slugs en sleutels: alles wat iemand letterlijk overtypt. */
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --text-mono-size: 13px;
+  /* Designsysteem v2: paginatitel 36/800, tegelwaarde 32/750, kapitalen 11. */
+  --text-page-title-size: 36px;
+  --text-value-size: 32px;
+  --text-caps-size: 11px;
+  --text-caps-track: 0.09em;
   --text-display-size: 57px;
   --text-display-line: 64px;
   --text-headline-size: 24px;
@@ -73,23 +125,50 @@
   --text-title-lg-line: 28px;
   --text-title-size: 16px;
   --text-title-line: 24px;
-  --text-body-size: 14px;
+  --text-body-size: 15px; /* web: basismaat 15 (iOS 15, TV 22), regelhoogte 1,35 */
   --text-body-line: 20px;
   --text-small-size: 12px;
   --text-small-line: 16px;
   --text-label-size: 11px;
   --text-label-line: 16px;
-  --text-card-title-size: 13px; /* MediaCardGridLayout.titleFontSize */
-  --text-card-sub-size: 11px; /* MediaCardGridLayout.subtitleFontSize */
-  --text-card-line: 1.1; /* MediaCardGridLayout.lineHeightFactor */
+  /*
+   * Kaartbijschrift volgens northstar web.css (.card .t en .s) en specimen v3:
+   * titel 14, onderregel 12, onder 900 een stap kleiner (media query onderaan).
+   * De app tekent 13/11 op 1,1; op een webraster las dat te krap. Het skelet
+   * leest dezelfde tokens, dus het reserveert precies deze hoogte.
+   */
+  --text-card-title-size: 14px;
+  --text-card-sub-size: 12px;
+  --text-card-line: 1.2;
 
-  /* --- Thema: OLED. De standaard, zoals in de app. ---------------------- */
-  --bg: #000000;
-  --surface: #141414;
+  /* --- Thema: dark. De standaard op web (zie de kop van dit bestand). --- */
+  /* Native onderdelen (select-lijst, scrollbalk) volgen het thema, niet het OS. */
+  color-scheme: dark;
+  --bg: #141414;
+  --surface: #1f1f1f;
   --surface-elevated: #2f2f2f;
   --outline: rgba(255, 255, 255, 0.122); /* 0x1FFFFFFF */
   --text: #ffffff;
   --text-muted: rgba(255, 255, 255, 0.702); /* 0xB3FFFFFF */
+
+  /*
+   * Diepte, designsysteem v2 (docs/qa/s7-primitives/v2-specimen). Vier lagen
+   * in één neutrale tint, alleen de lichtheid schuift: pagina, paneel, paneel
+   * in een paneel, en invoer. Invoer ligt dieper dan het paneel waar hij in
+   * staat, zodat een veld leest als een uitsparing en niet als een knop. Het
+   * specimen rekent vanaf #121212; hier vanaf de northstar-pagina #141414 met
+   * dezelfde stappen. Panelen krijgen een rand van 7 procent inkt plus een
+   * zachte ring en schaduw, zodat ze ook zonder kleurverschil loskomen.
+   */
+  --panel: #1c1c1c;
+  --panel-2: #222222;
+  --inset-bg: #0f0f0f;
+  --hairline: rgba(255, 255, 255, 0.07);
+  --hairline-strong: rgba(255, 255, 255, 0.14);
+  --row-hover: rgba(255, 255, 255, 0.028);
+  --ring-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 8px 24px -12px rgba(0, 0, 0, 0.6);
 
   /*
    * Inkt en waas over artwork. Artwork draait niet mee met het thema, dus een
@@ -101,19 +180,69 @@
   --scrim: var(--bg);
   --scrim-strong: 0.9;
   --scrim-mid: 0.62;
-  --scrim-mid-alpha: 0;
   --on-artwork: var(--text);
-  --on-artwork-ink-strong: 0.9;
   --on-artwork-ink: 0.66;
   --nav-focus-wash: rgba(255, 255, 255, 0.12);
   --nav-selected-wash: rgba(255, 255, 255, 0.06);
   --bar-backdrop: rgba(15, 15, 15, 0.9);
   --skeleton: rgba(255, 255, 255, 0.07);
+
+  /* --- Northstar-namen, als afleiding van de tokens hierboven, zodat ----
+         ze met elk thema meedraaien. Contractnamen uit web.css. --------- */
+  --amber: var(--accent-alt);
+  --ok: var(--success);
+  --elevated: var(--surface-elevated);
+  --ink: var(--text);
+  --ink-2: var(--text-muted);
+  /*
+   * --ink-3 is tekst (hints, tabelkoppen, bijschriften). Op dark en OLED haalt
+   * wit op 50 procent 5,05 tot 5,34:1 (dark: paneel 5,20, paneel-2 5,05, inset
+   * 5,34; OLED: paneel 5,26, paneel-2 5,15, inset 5,30). Light zet een vaste
+   * waarde, want #111 op 50 procent haalde daar 3,54 / 3,49 / 3,45.
+   * --ink-4 is alleen nog grafisch (stip, rand), nooit tekst: 2,5 tot 2,7:1.
+   */
+  --ink-3: color-mix(in srgb, var(--text) 50%, transparent);
+  --ink-4: color-mix(in srgb, var(--text) 30%, transparent);
+  --fill: color-mix(in srgb, var(--text) 8%, transparent);
+  --fill-2: color-mix(in srgb, var(--text) 14%, transparent);
+  --danger-ink: #ff6a63; /* tekst en rand van een gevaarlijke actie op donker */
+  /*
+   * Toonkleur als tekst of stip. Op donker zijn dat de merkkleuren zelf; light
+   * zet ze donkerder, want amber en groen halen op wit maar 1,8:1. Vlakken en
+   * tinten (pill-achtergrond, paneelrand) blijven op --amber en --ok.
+   */
+  --warn-ink: var(--amber);
+  --ok-ink: var(--ok);
+  /*
+   * Grafiekkleuren voor StorageMeter: een balksegment en zijn legendastip.
+   * --blue is #7aa7ff uit specimen v2 (7,1:1 op het paneel). Light zet beide
+   * donkerder, zodat een segment op het witte paneel 3:1 haalt (WCAG 1.4.11):
+   * #7aa7ff haalde daar 2,4 en amber 1,8. Tekst gebruikt deze tokens niet.
+   */
+  --blue: #7aa7ff;
+  --amber-graphic: var(--amber);
+
+  /*
+   * Inkt en schaduw óp artwork: badges, het vinkje, de voortgangsbaan en de
+   * actieknoppen op een kaart. Artwork draait niet mee met het thema, dus
+   * deze twee zijn in dark, OLED en light bewust gelijk (wit en zwart, zoals
+   * .seen, .prog en .over in northstar web.css). --ink zou in light een
+   * donkere schijf op een donkere poster geven.
+   */
+  --art-ink: #ffffff;
+  --art-shade: #000000;
 }
 
-[data-theme='dark'] {
-  --bg: #141414;
-  --surface: #1f1f1f;
+/*
+ * OLED: zwarte pagina, zoals de standaard van de app. Panelen staan hier
+ * bewust lichter en met een sterkere rand dan in dark: #141414 op #000 zonder
+ * rand werd in de eerste galerijronde één vlek. De schaduw valt op zwart weg,
+ * dus de ring van inkt doet het werk.
+ */
+[data-theme='oled'] {
+  color-scheme: dark;
+  --bg: #000000;
+  --surface: #141414;
   --surface-elevated: #2f2f2f;
   --outline: rgba(255, 255, 255, 0.122);
   --text: #ffffff;
@@ -122,9 +251,17 @@
   --nav-selected-wash: rgba(255, 255, 255, 0.06);
   --bar-backdrop: rgba(15, 15, 15, 0.9);
   --skeleton: rgba(255, 255, 255, 0.07);
+  --panel: #171717;
+  --panel-2: #1e1e1e;
+  --inset-bg: #050505;
+  --hairline: rgba(255, 255, 255, 0.1);
+  --hairline-strong: rgba(255, 255, 255, 0.18);
+  --row-hover: rgba(255, 255, 255, 0.04);
+  --ring-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 [data-theme='light'] {
+  color-scheme: light;
   --bg: #f7f7f8;
   --surface: #ffffff;
   --surface-elevated: #ededed;
@@ -133,10 +270,80 @@
   --text-muted: rgba(17, 17, 17, 0.6); /* 0x99111111 */
   --scrim-strong: 0.97;
   --scrim-mid: 0.62;
-  --on-artwork-ink-strong: 0.95;
-  --on-artwork-ink: 0.8;
+  /* 0,9 en niet 0,8: de synopsis loopt op 16:9 rond 900 voorbij de
+     middenstop van de waas en haalde daar met 0,8 maar 3,93:1. */
+  --on-artwork-ink: 0.9;
   --nav-focus-wash: rgba(17, 17, 17, 0.22);
   --nav-selected-wash: rgba(17, 17, 17, 0.13);
   --bar-backdrop: rgba(247, 247, 248, 0.92);
   --skeleton: rgba(17, 17, 17, 0.07);
+  /*
+   * Toonkleuren als tekst, donker genoeg voor 4,5:1 op elk vlak waar ze in
+   * light op staan. Berekend met WCAG 2.x-luminantie, telkens op wit, op de
+   * pagina #f7f7f8 en op de inset #f1f1f3:
+   *   --danger-ink #a81d18: vlak 7,36 / 6,87 / 6,52; err-pill (eigen tint
+   *     14 procent) 5,77 / 5,41 / 5,15; gekozen outline-chip (merkrood 18
+   *     procent) 5,44 / 5,11 / 4,87; err-melding (7 procent) 6,53 / 6,11 / 5,81.
+   *   --warn-ink #7a4f00: vlak 7,13 / 6,66 / 6,32; warn-pill (amber 14
+   *     procent) 6,54 / 6,15 / 5,87; op een tint van zichzelf 5,76 / 5,40 /
+   *     5,15; warn-melding (amber 7 procent) 6,83 / 6,40 / 6,09.
+   *   --ok-ink #0c6b3c: vlak 6,60 / 6,16 / 5,85; ok-pill (groen 14 procent)
+   *     6,01 / 5,65 / 5,40; op een tint van zichzelf 5,34 / 5,01 / 4,77; de
+   *     witte toggleknop erop 6,60.
+   * De merkkleuren zelf haalden op wit 1,8 (amber, groen) en 2,8 (#ff6a63).
+   * Dark en OLED houden #ff6a63, amber en groen (6,1 tot 7,5:1 voor rood).
+   */
+  --danger-ink: #a81d18;
+  --warn-ink: #7a4f00;
+  --ok-ink: #0c6b3c;
+  /*
+   * Secundaire tekst. #6b6b70 haalt 5,30 op wit, 4,95 op de pagina #f7f7f8,
+   * 5,08 op paneel-2 #fafafa en 4,70 op de inset #f1f1f3. --ink-2 (#111 op
+   * 60 procent) haalt 4,95 / 4,83 / 4,72 en blijft zoals hij is.
+   */
+  --ink-3: #6b6b70;
+  /* Grafiek: #3d72e0 haalt 4,49 op wit en 4,19 op de pagina, #c27c00 3,40 en 3,18. */
+  --blue: #3d72e0;
+  --amber-graphic: #c27c00;
+  /* Wit paneel op #f7f7f8; invoer een tikje dieper dan de pagina. */
+  --panel: #ffffff;
+  --panel-2: #fafafa;
+  --inset-bg: #f1f1f3;
+  --hairline: rgba(17, 17, 17, 0.08);
+  --hairline-strong: rgba(17, 17, 17, 0.16);
+  --row-hover: rgba(17, 17, 17, 0.03);
+  --ring-shadow:
+    0 0 0 1px rgba(17, 17, 17, 0.03), 0 1px 2px rgba(17, 17, 17, 0.06),
+    0 8px 24px -12px rgba(17, 17, 17, 0.14);
+}
+
+/*
+ * De vier breekpunten uit ScreenBreakpoints (600 / 900 / 1200 / 1600). Wat hier
+ * verschuift is paginamaat, plus het kaartbijschrift onder 900; kleur
+ * verschuift niet.
+ */
+@media (max-width: 1599px) {
+  :root {
+    --poster-w: 170px;
+  }
+}
+@media (max-width: 1199px) {
+  :root {
+    --inset: 32px;
+    --poster-w: 150px;
+    --rail-gap: 16px;
+    --hero-aspect: 16 / 9;
+  }
+}
+@media (max-width: 899px) {
+  :root {
+    --inset: 16px;
+    --section-gap: 18px;
+    --poster-w: 110px;
+    --rail-gap: 12px;
+    --radius-hero: 16px;
+    --hero-aspect: auto;
+    --text-card-title-size: 13px;
+    --text-card-sub-size: 11px;
+  }
 }

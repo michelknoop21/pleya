@@ -55,11 +55,8 @@ class TvScrollAwayPage extends StatefulWidget {
   /// headroom at the bottom; see [foldedGridFrame]. Clipped, never drawn.
   final double foldedOverhang;
 
-  /// The folded frame of a grid body: it starts at Apple's title-safe line,
-  /// 60 of 1080, and runs to the bottom of the screen. The grid sizes its
-  /// cards to that height so two whole rows fit with room around them
-  /// (`tvCatalogTwoRowCardWidth`), so the frame no longer has to bend round
-  /// the cards (Michel, build 396).
+  /// The folded grid starts at Apple's title-safe 60 of 1080. The active
+  /// row stays whole; the next row may be partially visible (A06B-WIDTH1).
   static ({double top, double overhang, double margin}) foldedGridFrame({required Size size}) {
     final margin = size.height * (60 / 1080);
     return (top: margin, overhang: 0, margin: margin);

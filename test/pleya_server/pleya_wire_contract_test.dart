@@ -46,6 +46,9 @@ void main() {
     // metadata. De app toont geen beheer; het correctiescherm is van het web.
     // S18.5: het beheer van omzetsessies is een beheerscherm (S10, scherm 37).
     'TranscodeSessionList',
+    // S20: de geschiedenispagina is een scherm voor later; favorieten, waardering
+    // en spoorvoorkeur hebben wel een lezer.
+    'HistoryPage',
     'MetadataCoverage',
     'MetadataAlternative',
     'MetadataAttentionState',
@@ -112,6 +115,12 @@ void main() {
     'CreateLibraryRequest',
     'UpdateLibraryRequest',
     'DeleteLibraryRequest',
+    // S25 adds backups and restore (protocol window 7). The screen that reads
+    // them is screen 35 (S25.6), on the web admin first; until that slice
+    // builds a Dart type there is nothing to parse them, and a living-room
+    // client has no business restoring a server.
+    'Backup',
+    'BackupList',
   };
 
   final parsers = <String, void Function(Map<String, dynamic>)>{
@@ -121,6 +130,19 @@ void main() {
       expect(info.serverId, isNotEmpty);
     },
     'ServerDetail': (json) => PleyaServerDetail.fromJson(json),
+    'TrackPreference': (json) {
+      final pref = PleyaTrackPreference.fromJson(json);
+      expect(pref.subtitleMode, anyOf(isNull, 'off', 'on', 'forced'));
+    },
+    'Download': (json) {
+      final download = PleyaDownload.fromJson(json);
+      expect(download.isReady, download.sha256 != null, reason: 'a digest exists exactly when the file is ready');
+    },
+    'DownloadList': (json) {
+      for (final row in (json['items'] as List).cast<Map<String, dynamic>>()) {
+        PleyaDownload.fromJson(row);
+      }
+    },
     'PlaybackPlan': (json) {
       final plan = PleyaPlaybackPlan.fromJson(json);
       expect(plan.deliveryMode, isNotNull);
@@ -180,8 +202,8 @@ void main() {
       );
     });
 
-    test('covers the 90 fixtures the contract ships', () {
-      expect(fixtures, hasLength(90));
+    test('covers the 98 fixtures the contract ships', () {
+      expect(fixtures, hasLength(98));
     });
 
     for (final fixture in fixtures) {

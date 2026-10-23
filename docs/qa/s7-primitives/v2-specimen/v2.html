@@ -1,0 +1,157 @@
+<!doctype html><html lang="nl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pleya beheer, primitieven v2</title>
+<style>
+:root{
+  /* oppervlakken: pagina, paneel, verhoogd, invoer. Eén tint (neutraal, 0 chroma), alleen lichtheid verschuift. */
+  --bg:#121212; --panel:#1a1a1a; --panel-2:#202020; --raised:#2a2a2a; --inset:#0e0e0e;
+  --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.14);
+  --ink:#f4f4f2; --ink-2:rgba(244,244,242,.7); --ink-3:rgba(244,244,242,.48); --ink-4:rgba(244,244,242,.28);
+  --red:#e5140f; --amber:#ffb020; --ok:#3dd68c; --danger:#ff6a63; --blue:#7aa7ff;
+  --r-s:8px; --r-m:12px; --r-l:18px;
+  --ring:0 0 0 1px rgba(255,255,255,.06), 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  font-family:Inter,-apple-system,"SF Pro Text","Segoe UI",sans-serif;font-size:15px;color:var(--ink);-webkit-font-smoothing:antialiased;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
+svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+/* zijbalk */
+aside{padding:22px 16px;border-right:1px solid var(--line);position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px}
+.brand{display:flex;align-items:center;gap:10px;padding:0 10px 22px;font-weight:800;letter-spacing:.02em;font-size:17px}
+.brand i{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--red),var(--amber));display:block}
+aside small{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-4);font-weight:600;padding:8px 10px 6px}
+aside a{display:flex;align-items:center;gap:12px;height:40px;padding:0 10px;border-radius:10px;color:var(--ink-2);font-size:14px;font-weight:500}
+aside a.on{background:rgba(255,255,255,.075);color:var(--ink);font-weight:600}
+aside a .b{margin-left:auto;min-width:20px;height:20px;border-radius:10px;display:grid;place-items:center;font-size:11px;font-weight:700;background:var(--red);color:#fff;padding:0 6px}
+aside a .b.am{background:var(--amber);color:#2a1a00}
+aside .back{margin-top:auto;border-top:1px solid var(--line);border-radius:0;padding-top:14px;height:auto;color:var(--ink-3)}
+/* pagina */
+main{padding:28px 56px 72px;max-width:1280px;width:100%}
+.crumb{font-size:13px;color:var(--ink-3);display:flex;gap:8px;align-items:center}
+.head{display:flex;justify-content:space-between;align-items:flex-end;margin:8px 0 22px}
+h1{margin:0;font-size:36px;line-height:1.08;letter-spacing:-.028em;font-weight:800}
+.live{font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
+.live i{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 4px rgba(61,214,140,.16)}
+/* knoppen: capsule, vier niveaus */
+.btn{height:40px;border-radius:999px;padding:0 16px;display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px;background:var(--raised);color:var(--ink);border:1px solid var(--line);white-space:nowrap}
+.btn.pri{background:#fff;color:#111;border-color:#fff}
+.btn.ghost{background:transparent;border-color:var(--line-2)}
+.btn.dng{background:transparent;color:var(--danger);border-color:rgba(255,106,99,.42)}
+.btn.sm{height:32px;padding:0 12px;font-size:13px}
+.btn.ic{width:32px;padding:0;justify-content:center}
+/* melding */
+.alert{display:flex;gap:14px;align-items:center;padding:14px 16px;border-radius:var(--r-m);border:1px solid rgba(255,176,32,.34);background:linear-gradient(0deg,rgba(255,176,32,.07),rgba(255,176,32,.07)),var(--panel);line-height:1.45;margin-bottom:16px}
+.alert svg{color:var(--amber)} .alert .t{flex:1;font-size:14px;color:var(--ink-2)} .alert b{color:var(--ink);font-weight:600}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:13px}
+/* paneel */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-l);box-shadow:var(--ring)}
+.p-h{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0}
+.p-h h3{margin:0;font-size:16px;font-weight:650;letter-spacing:-.01em}
+.p-h a{font-size:13px;color:var(--ink-3);font-weight:500}
+/* tegels */
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}
+.tile{padding:16px 18px 16px;position:relative;overflow:hidden}
+.tile .l{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--ink-3);font-weight:500}
+.tile .v{font-size:32px;font-weight:750;letter-spacing:-.03em;line-height:1;margin:14px 0 8px;font-variant-numeric:tabular-nums}
+.tile .v small{font-size:15px;color:var(--ink-3);font-weight:600;letter-spacing:0;margin-left:4px}
+.tile .d{font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.spark{position:absolute;right:0;bottom:0;width:46%;height:46px;opacity:.9}
+.spark path{fill:none;stroke:var(--ok);stroke-width:1.6;vector-effect:non-scaling-stroke}
+.spark .a{fill:url(#g);stroke:none}
+/* opslagmeter, het handelsmerk: een rij segmenten per bibliotheek */
+.meter{display:flex;gap:3px;height:10px;border-radius:5px;overflow:hidden;margin:16px 20px 12px}
+.meter i{display:block;border-radius:2px}
+.legend{display:flex;gap:20px;padding:0 20px 18px;font-size:13px;color:var(--ink-2);flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
+.legend s{width:9px;height:9px;border-radius:3px;display:block}
+.legend em{font-style:normal;color:var(--ink-3)}
+/* tabel */
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);text-align:left;padding:14px 20px 10px;font-weight:600}
+td{padding:14px 20px;border-top:1px solid var(--line);vertical-align:middle;font-size:14px}
+tr:hover td{background:rgba(255,255,255,.028)}
+td .n{font-weight:600;display:block}
+td small{color:var(--ink-3);font-size:12px;margin-top:3px;display:block}
+td .mono{color:var(--ink-2)}
+.num{font-variant-numeric:tabular-nums}
+.tag{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;font-size:11px;font-weight:650;letter-spacing:.01em;margin-left:8px;vertical-align:1px}
+.tag.am{background:rgba(255,176,32,.14);color:var(--amber)} .tag.rd{background:rgba(255,106,99,.14);color:var(--danger)}
+/* status */
+.st{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.st i{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.st.run i{background:var(--amber);animation:p 1.6s ease-in-out infinite}.st.err i{background:var(--danger)}
+@keyframes p{50%{opacity:.35}}
+.bar{height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;width:120px}.bar i{display:block;height:100%;background:var(--amber);border-radius:3px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px;align-items:start}
+.under{display:grid;grid-template-columns:1.2fr 1fr;gap:14px;align-items:start}
+main{min-width:0}
+.panel{min-width:0}
+.tag,.num,.st,.btn{white-space:nowrap}
+td .n{white-space:nowrap}
+@media (max-width:900px){body{grid-template-columns:minmax(0,1fr)}.under{grid-template-columns:1fr}aside{display:none}main{padding:20px 16px 56px}.tiles{grid-template-columns:1fr 1fr}.cols{grid-template-columns:1fr}h1{font-size:28px}.head{flex-direction:column;align-items:flex-start;gap:8px}.panel table{display:block;overflow-x:auto}}
+/* velden */
+.form{padding:18px 20px 20px;display:grid;gap:16px}
+label{display:block;font-size:13px;font-weight:550;color:var(--ink-2);margin-bottom:7px}
+.in{height:44px;border-radius:var(--r-m);background:var(--inset);border:1px solid var(--line);padding:0 14px;display:flex;align-items:center;gap:10px;color:var(--ink)}
+.in.f{border-color:var(--ink)} .in.e{border-color:var(--danger);box-shadow:0 0 0 1px var(--danger)}
+.hint{font-size:12px;color:var(--ink-3);margin-top:7px}.hint.e{color:var(--danger)}
+.sw{display:flex;align-items:center;justify-content:space-between;padding:2px 0}
+.sw b{font-size:14px;font-weight:600;display:block}.sw span{font-size:12.5px;color:var(--ink-3)}
+.tg{width:46px;height:28px;border-radius:14px;background:var(--ok);position:relative;flex:none}.tg::after{content:"";position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff}
+.tg.off{background:var(--raised)}.tg.off::after{right:auto;left:3px;background:rgba(255,255,255,.7)}
+.sk{border-radius:7px;background:linear-gradient(90deg,rgba(255,255,255,.04) 0%,rgba(255,255,255,.085) 50%,rgba(255,255,255,.04) 100%)}
+</style>
+<aside>
+ <div class="brand"><i></i>PLEYA</div>
+ <small>Serverbeheer</small>
+ <a class="on"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Overzicht</a>
+ <a><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Bibliotheken</a>
+ <a><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 12h.01"/></svg>Opslag<span class="b">1</span></a>
+ <a><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Scans en taken<span class="b am">1</span></a>
+ <a><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M16 11a3 3 0 1 0 0-6M21 20a5 5 0 0 0-4-5"/></svg>Gebruikers</a>
+ <a><svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></svg>Media en streaming</a>
+ <a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Netwerk</a>
+ <a class="back"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Terug naar Pleya</a>
+</aside>
+<main>
+ <div class="crumb">Serverbeheer</div>
+ <div class="head"><h1>Pleya-server</h1><div class="live"><i></i>Online · versie 0.9.0 · 6 dagen actief</div></div>
+ <div class="alert"><svg viewBox="0 0 24 24"><path d="M12 3 2 20h20zM12 10v4M12 17h.01"/></svg><div class="t"><b>Opslagroot niet bereikbaar.</b> <span class="mono">/volume1/media/Boeken</span> is sinds 07:12 niet gemount. Boeken blijft zichtbaar met de laatst bekende inhoud.</div><span class="btn sm">Bekijk opslag</span></div>
+
+ <div class="tiles">
+  <div class="panel tile"><div class="l">Titels<svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 5v14M16 5v14"/></svg></div><div class="v">1.284</div><div class="d">+12 deze week</div>
+   <svg class="spark" viewBox="0 0 100 40" preserveAspectRatio="none"><defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3dd68c" stop-opacity=".25"/><stop offset="1" stop-color="#3dd68c" stop-opacity="0"/></linearGradient></defs><path class="a" d="M0 34 L15 30 L30 31 L45 22 L60 24 L75 14 L100 8 L100 40 L0 40Z"/><path d="M0 34 L15 30 L30 31 L45 22 L60 24 L75 14 L100 8"/></svg></div>
+  <div class="panel tile"><div class="l">Opslag<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/></svg></div><div class="v">3,2<small>TB vrij</small></div><div class="d">van 16 TB · 1 root niet gemount</div></div>
+  <div class="panel tile"><div class="l">Scan<svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></div><div class="v">62<small>%</small></div><div class="d">Series · 3.104 van 5.012</div></div>
+  <div class="panel tile"><div class="l">Nu aan het kijken<svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></svg></div><div class="v">2</div><div class="d">Apple TV woonkamer · iPhone</div></div>
+ </div>
+
+ <div class="panel">
+  <div class="p-h"><h3>Opslag per bibliotheek</h3><a>Alles bekijken</a></div>
+  <div class="meter"><i style="flex:46;background:#f4f4f2"></i><i style="flex:21;background:#ffb020"></i><i style="flex:6;background:#e5140f"></i><i style="flex:3;background:#7aa7ff"></i><i style="flex:24;background:rgba(255,255,255,.1)"></i></div>
+  <div class="legend"><span><s style="background:#f4f4f2"></s>Films <em>7,4 TB</em></span><span><s style="background:#ffb020"></s>Series <em>3,4 TB</em></span><span><s style="background:#e5140f"></s>Kids <em>0,9 TB</em></span><span><s style="background:#7aa7ff"></s>Boeken <em>0,4 TB</em></span><span><s style="background:rgba(255,255,255,.18)"></s>Vrij <em>3,2 TB</em></span></div>
+ </div>
+
+ <div class="cols">
+  <div class="panel">
+   <div class="p-h"><h3>Bibliotheken</h3><span class="btn sm pri">+ Toevoegen</span></div>
+   <table style="margin-top:10px"><tr><th>Naam</th><th>Opslag</th><th class="num">Inhoud</th><th>Laatste scan</th><th></th></tr>
+    <tr><td><span class="n">Films</span><small class="mono">films</small></td><td class="mono">/volume1/media/Films</td><td class="num">461 titels</td><td><span class="st"><i></i>vandaag 08:12</span></td><td align="right"><span class="btn sm ic ghost"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></span></td></tr>
+    <tr><td><span class="n">Series</span><small class="mono">series</small></td><td class="mono">/volume1/media/Series</td><td class="num">97 series</td><td><span class="st run"><i></i>bezig</span><div class="bar" style="margin-top:7px"><i style="width:62%"></i></div></td><td align="right"><span class="btn sm ghost">Afbreken</span></td></tr>
+    <tr><td><span class="n">Kids<span class="tag am">beheerd via .env</span></span><small class="mono">kids</small></td><td class="mono">/volume1/media/Kids</td><td class="num">5 series</td><td><span class="st"><i></i>vandaag 08:00</span></td><td align="right"><span class="btn sm ghost">Overnemen</span></td></tr>
+    <tr><td><span class="n">Boeken<span class="tag rd">niet gemount</span></span><small class="mono">boeken</small></td><td class="mono">/volume1/media/Boeken</td><td class="num">38 boeken</td><td><span class="st err"><i></i>overgeslagen 07:12</span></td><td align="right"><span class="btn sm ghost">Opslag</span></td></tr>
+   </table><div style="height:8px"></div>
+  </div>
+  <div class="under"><div class="panel" style="display:none"></div><div class="grid" style="display:grid;gap:14px;align-content:start">
+   <div class="panel"><div class="p-h"><h3>Bibliotheek bewerken</h3></div>
+    <div class="form">
+     <div><label>Naam</label><div class="in f">Films</div></div>
+     <div><label>Pad</label><div class="in mono"><svg viewBox="0 0 24 24" style="color:var(--ink-3)"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>/volume1/media/Films</div><div class="hint">Het pad staat op de server, niet op dit toestel.</div></div>
+     <div><label>Poort</label><div class="in e mono">80800</div><div class="hint e">Kies een poort tussen 1 en 65535.</div></div>
+     <div class="sw"><div><b>Automatisch scannen</b><span>Nieuwe bestanden binnen een minuut</span></div><div class="tg"></div></div>
+     <div class="sw"><div><b>Transcoderen</b><span>Alleen als direct play niet kan</span></div><div class="tg off"></div></div>
+    </div></div>
+   <div class="panel" style="padding:16px 18px;border-color:rgba(255,106,99,.34)"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><div><div style="color:var(--danger);font-weight:650">Gevarenzone</div><div style="font-size:13px;color:var(--ink-3);margin-top:4px">Verwijderen haalt alle kijkstatus weg.</div></div><span class="btn dng sm">Verwijderen</span></div></div>
+   <div class="panel" style="padding:18px"><div style="display:grid;grid-template-columns:64px 1fr;gap:14px"><div class="sk" style="aspect-ratio:2/3"></div><div style="display:grid;gap:10px;align-content:center"><div class="sk" style="height:16px;width:70%"></div><div class="sk" style="height:11px;width:92%"></div><div class="sk" style="height:11px;width:48%"></div></div></div></div>
+  </div></div>
+ </div>
+</main></html>

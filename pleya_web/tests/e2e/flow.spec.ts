@@ -5,6 +5,8 @@ import {
   expectNoHorizontalOverflow,
   expectShell,
   grid,
+  heightFor,
+  label,
   openLibraryOfKind,
   signIn,
   WIDTHS
@@ -42,6 +44,25 @@ test.describe('de verticale slice', () => {
 
     await expect(page.getByRole('list').getByRole('listitem').first()).toBeVisible();
     await expectNoAxeViolations(page, 'bibliotheekraster');
+  });
+
+  test('een lege bibliotheek legt uit wat er aan de hand is en wijst de weg terug', async ({
+    page
+  }) => {
+    // Een echte lege bibliotheek heeft de testdata niet; de server antwoordt
+    // hier wel, alleen zonder items, zoals na een eerste scan die niets vond.
+    await page.route('**/pleya/v1/libraries/*/items*', async (route) => {
+      const res = await route.fetch();
+      const body = (await res.json()) as Record<string, unknown>;
+      await route.fulfill({ response: res, json: { ...body, items: [], next_cursor: null } });
+    });
+    const path = await openLibraryOfKind(page, 'movies');
+    test.skip(!path, 'deze server heeft geen filmbibliotheek');
+
+    await expect(page.getByRole('heading', { name: label('en', 'states.emptyTitle') })).toBeVisible();
+    const back = page.getByRole('main').getByRole('link', { name: label('en', 'libraries.allLibraries') });
+    await expect(back).toHaveAttribute('href', '/libraries');
+    await expectNoAxeViolations(page, 'lege bibliotheek');
   });
 
   test('sorteren begint de lijst opnieuw en levert een andere volgorde', async ({ page }) => {
@@ -119,9 +140,26 @@ test.describe('de verticale slice', () => {
     await expectNoAxeViolations(page, 'zoeken');
   });
 
+  test('de filtergroep op zoeken heeft een eigen naam en zet aria-pressed', async ({ page }) => {
+    await page.goto('/search');
+
+    // Niet "Alles": dat is de naam van de eerste chip, geen groepsnaam.
+    const group = page.getByRole('group', { name: label('en', 'search.filters.label'), exact: true });
+    await expect(group).toBeVisible();
+
+    const all = group.getByRole('button', { name: 'All', exact: true });
+    const movies = group.getByRole('button', { name: 'Movies', exact: true });
+    await expect(all).toHaveAttribute('aria-pressed', 'true');
+    await expect(movies).toHaveAttribute('aria-pressed', 'false');
+
+    await movies.click();
+    await expect(movies).toHaveAttribute('aria-pressed', 'true');
+    await expect(all).toHaveAttribute('aria-pressed', 'false');
+  });
+
   test('het serveroverzicht toont alleen wat /server en /info dragen', async ({ page }) => {
     await page.goto('/server');
-    await expect(page.getByRole('heading', { name: 'Server', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: label('en', 'server.title'), level: 1 })).toBeVisible();
     await expect(page.getByText('Capabilities')).toBeVisible();
 
     // Er is geen endpoint voor scannen, jobs of opslag, dus er is ook geen knop.
@@ -131,6 +169,33 @@ test.describe('de verticale slice', () => {
     }
 
     await expectNoAxeViolations(page, 'serveroverzicht');
+  });
+
+  test('elke capability op Mijn Pleya noemt zijn status in tekst, niet alleen met een kleur', async ({
+    page
+  }) => {
+    await page.goto('/server');
+    const panel = page.getByRole('region', { name: label('en', 'server.capabilities') });
+    const rows = panel.getByRole('listitem');
+    // count() wacht niet, dus eerst op de eerste rij.
+    await expect(rows.first()).toBeVisible();
+
+    const on = label('en', 'server.capabilityOn');
+    const off = label('en', 'server.capabilityOff');
+    for (const row of await rows.all()) {
+      // Het eerste woord is de sleutel; de status staat erachter als gewone tekst.
+      const text = (await row.innerText()).trim();
+      expect(text, text).toMatch(new RegExp(`(^|\\s)(${on}|${off})$`));
+    }
+  });
+
+  test('de bibliotheken op Mijn Pleya staan in een tabel met titel, soort en aantal', async ({
+    page
+  }) => {
+    await page.goto('/server');
+    const table = page.getByRole('table', { name: label('en', 'server.libraries') });
+    await expect(table).toBeAttached();
+    await expect(page.locator('tr[data-library-kind][data-library-id]').first()).toBeVisible();
   });
 });
 
@@ -150,30 +215,42 @@ test.describe('toetsenbord', () => {
     await page.keyboard.press('Tab');
     await expect(page.locator('a.skip-link')).toBeFocused();
 
-    // Doorlopen tot de eerste navigatielink de focus heeft.
-    // Merklink, dan elk navigatie-item, in DOM-volgorde.
-    const expected = ['/', '/', '/search', '/libraries', '/server'];
+    // Merklink, dan elk slot in DOM-volgorde (Home, Series, Films, Mijn
+    // Pleya), dan de zoekactie. Bibliotheek-ids zijn per stack anders, dus de
+    // slots voor Series en Films worden op hun pad-voorvoegsel getoetst.
+    const expected: (string | RegExp)[] = [
+      '/',
+      '/',
+      /^\/libraries\/[0-9a-f-]+$/,
+      /^\/libraries\/[0-9a-f-]+$/,
+      '/server',
+      '/search'
+    ];
     for (const href of expected) {
       await page.keyboard.press('Tab');
       const actual = await page.evaluate(() => document.activeElement?.getAttribute('href'));
-      expect(actual).toBe(href);
+      if (typeof href === 'string') expect(actual).toBe(href);
+      else expect(actual).toMatch(href);
     }
   });
 
-  test('op smal is de bottom bar met het toetsenbord te doorlopen', async ({ page }) => {
+  test('op smal is de tabbalk met het toetsenbord te doorlopen', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
     await expectShell(page);
 
-    const hrefs = await page
-      .locator('nav.bar a')
-      .evaluateAll((els) => els.map((el) => el.getAttribute('href')));
-    expect(hrefs).toEqual(['/', '/search', '/libraries', '/server']);
+    const links = page.locator('nav.tabbar a');
+    const hrefs = await links.evaluateAll((els) => els.map((el) => el.getAttribute('href')));
+    expect(hrefs).toHaveLength(4);
+    expect(hrefs[0]).toBe('/');
+    expect(hrefs[1]).toMatch(/^\/libraries\//);
+    expect(hrefs[2]).toMatch(/^\/libraries\//);
+    expect(hrefs[3]).toBe('/server');
 
     // Elke link in de balk is een echte tabstop.
-    for (const href of hrefs) {
-      await page.locator(`nav.bar a[href="${href}"]`).focus();
-      await expect(page.locator(`nav.bar a[href="${href}"]`)).toBeFocused();
+    for (let n = 0; n < hrefs.length; n++) {
+      await links.nth(n).focus();
+      await expect(links.nth(n)).toBeFocused();
     }
   });
 
@@ -185,13 +262,29 @@ test.describe('toetsenbord', () => {
     await expect(page).toHaveURL(/#main$/);
   });
 
-  test('een zichtbare focusring staat op elk bediend element', async ({ page }) => {
+  test('focus is zichtbaar op het zoekveld en op een chip', async ({ page }) => {
     await page.goto('/search');
-    await page.getByRole('searchbox').focus();
-    const outline = await page.getByRole('searchbox').evaluate(
-      (el) => getComputedStyle(el).outlineStyle
-    );
-    expect(outline).not.toBe('none');
+    const box = page.getByRole('searchbox');
+    const border = () => box.evaluate((el) => getComputedStyle(el).borderTopColor);
+
+    await box.focus();
+    // Een tekstvak toont focus als een inkt-rand zonder ring (Field, beeld 23).
+    // De rand loopt over een korte overgang, dus pollen in plaats van één meting.
+    const ink = await page.evaluate(() => {
+      const probe = document.createElement('span');
+      probe.style.color = 'var(--ink)';
+      document.body.append(probe);
+      const resolved = getComputedStyle(probe).color;
+      probe.remove();
+      return resolved;
+    });
+    await expect.poll(border).toBe(ink);
+
+    // Een chip is een knop en houdt wel de ring.
+    await page.keyboard.press('Tab');
+    const chip = page.locator('.chips__hit:focus-visible .chip');
+    await expect(chip).toBeVisible();
+    expect(await chip.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe('none');
   });
 });
 
@@ -202,7 +295,7 @@ test.describe('responsive', () => {
 
   for (const width of WIDTHS) {
     test(`geen horizontale overflow op ${width}px`, async ({ page }) => {
-      await page.setViewportSize({ width, height: 900 });
+      await page.setViewportSize({ width, height: heightFor(width) });
 
       for (const path of ['/', '/libraries', '/search', '/server']) {
         await page.goto(path);
@@ -211,38 +304,26 @@ test.describe('responsive', () => {
     });
   }
 
-  test('onder 900 staat de navigatie onderaan, daarboven aan de zijkant', async ({ page }) => {
+  test('onder 900 staat de navigatie onderaan, daarboven bovenin', async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 900 });
     await page.goto('/');
-    await expect(page.locator('nav.bar')).toBeVisible();
-    await expect(page.locator('nav.rail')).toHaveCount(0);
+    await expect(page.locator('nav.tabbar')).toBeVisible();
+    await expect(page.locator('nav.topnav')).toHaveCount(0);
 
     await page.setViewportSize({ width: 1280, height: 900 });
-    await expect(page.locator('nav.rail')).toBeVisible();
-    await expect(page.locator('nav.bar')).toHaveCount(0);
+    await expect(page.locator('nav.topnav')).toBeVisible();
+    await expect(page.locator('nav.tabbar')).toHaveCount(0);
   });
 
-  test('de zijbalk is 80 breed en klapt uit naar 220', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 900 });
+  test('de bovenbalk is 64 hoog en blijft bovenaan bij scrollen', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 600 });
     await page.goto('/');
 
-    const rail = page.locator('nav.rail');
-    expect((await rail.boundingBox())?.width).toBeCloseTo(80, 0);
+    const bar = page.locator('nav.topnav');
+    expect((await bar.boundingBox())?.height).toBeCloseTo(64, 0);
 
-    const hasHover = await page.evaluate(() => matchMedia('(hover: hover)').matches);
-    if (!hasHover) {
-      // Op een aanraakscherm bestaat er geen aanwijzer om mee uit te klappen,
-      // en dan hoort er ook niets te gebeuren: de regel staat achter
-      // @media (hover: hover). Focus is daar de weg naar de labels.
-      await rail.hover();
-      expect((await rail.boundingBox())?.width).toBeCloseTo(80, 0);
-      await page.locator('nav.rail a').first().focus();
-      await expect.poll(async () => (await rail.boundingBox())?.width).toBeCloseTo(220, 0);
-      return;
-    }
-
-    await rail.hover();
-    await expect.poll(async () => (await rail.boundingBox())?.width).toBeCloseTo(220, 0);
+    await page.evaluate(() => window.scrollTo(0, 400));
+    expect((await bar.boundingBox())?.y).toBeCloseTo(0, 0);
   });
 
   test('de rij op Home springt net zo ver in als zijn kop', async ({ page }) => {
@@ -261,6 +342,93 @@ test.describe('responsive', () => {
     expect(measured.card).toBeCloseTo(measured.heading, 0);
     expect(measured.card).toBeGreaterThan(0);
   });
+
+  // Beeld 15: het skelet neemt de ruimte in van wat erna komt. Verschuift de
+  // eerste rij zodra de data binnenkomt, dan springt de pagina onder de muis of
+  // de vinger van iemand die al wilde klikken.
+  for (const width of [393, 1280]) {
+    test(`de eerste rij op Home verspringt niet als de data binnenkomt (${width}px)`, async ({
+      page
+    }) => {
+      await page.setViewportSize({ width, height: 900 });
+
+      // De hub-aanvraag blijft hangen tot het skelet gemeten is.
+      let release: () => void = () => undefined;
+      const held = new Promise<void>((resolve) => (release = resolve));
+      await page.route('**/pleya/v1/hubs/**', async (route) => {
+        await held;
+        await route.continue().catch(() => undefined);
+      });
+
+      const firstRow = (rail: string, art: string) =>
+        page.evaluate(
+          ([railSelector, artSelector]) => ({
+            rail: document.querySelector(railSelector)?.getBoundingClientRect().top ?? -1,
+            art: document.querySelector(artSelector)?.getBoundingClientRect().top ?? -1
+          }),
+          [rail, art] as const
+        );
+
+      await page.goto('/');
+      await page.locator('.skp__rail').first().waitFor();
+      const skeleton = await firstRow('.skp__rail', '.skp__cell .skc__art');
+
+      release();
+      await page.locator('.rail__cell').first().waitFor();
+      const loaded = await firstRow('section.rail', '.rail__cell .card__art');
+      await page.unroute('**/pleya/v1/hubs/**');
+
+      const seen = JSON.stringify({ skeleton, loaded });
+      expect(skeleton.rail, 'het skelet heeft geen rij getekend').toBeGreaterThan(0);
+      expect(Math.abs(loaded.rail - skeleton.rail), `kop van de rij ${seen}`).toBeLessThanOrEqual(2);
+      expect(Math.abs(loaded.art - skeleton.art), `eerste poster ${seen}`).toBeLessThanOrEqual(2);
+    });
+  }
+
+  // Onder 900 staat het aantal op een eigen regel onder de titel. Komt het pas
+  // met de eerste pagina, dan zakt het raster een regel; de route reserveert
+  // die regel, en deze meting bewaakt dat.
+  for (const width of [393, 1280]) {
+    test(`het raster van een bibliotheek verspringt niet als het aantal binnenkomt (${width}px)`, async ({
+      page
+    }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/libraries');
+      const href = await page
+        .getByRole('link')
+        .filter({ hasText: /\bitems?\b/ })
+        .first()
+        .getAttribute('href');
+
+      let release: () => void = () => undefined;
+      const held = new Promise<void>((resolve) => (release = resolve));
+      await page.route('**/pleya/v1/libraries/*/items*', async (route) => {
+        await held;
+        await route.continue().catch(() => undefined);
+      });
+
+      // Client-side navigeren: een harde load zou de sessie opnieuw opbouwen.
+      await page.locator(`a[href="${href}"]`).first().click();
+      await page.locator('.skp__grid').waitFor();
+      const top = (selector: string) =>
+        page.evaluate(
+          (sel) => document.querySelector(sel)?.getBoundingClientRect().top ?? -1,
+          selector
+        );
+      const skeleton = await top('.skp__grid > *');
+
+      release();
+      await page.locator('ul.grid li').first().waitFor();
+      const loaded = await top('ul.grid li');
+      await page.unroute('**/pleya/v1/libraries/*/items*');
+
+      expect(skeleton, 'het skelet heeft geen raster getekend').toBeGreaterThan(0);
+      expect(
+        Math.abs(loaded - skeleton),
+        `eerste kaart skelet ${skeleton} geladen ${loaded}`
+      ).toBeLessThanOrEqual(2);
+    });
+  }
 
   test('posters worden niet reusachtig op een ultrabreed scherm', async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 900 });

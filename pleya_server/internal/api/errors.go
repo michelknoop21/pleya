@@ -9,8 +9,12 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
+	"syscall"
+
+	"github.com/edde746/plezy/pleya_server/internal/database"
 )
 
 // Error is de enige foutvorm die dit protocol kent.
@@ -151,6 +155,17 @@ const (
 	// staat in het serverlog, niet in het antwoord.
 	CodeTranscodeFailed = "playback.transcode_failed"
 
+	// CodePersonalInvalid: een waardering of spoorvoorkeur die de server niet
+	// kan bewaren (S20). details.field noemt het veld.
+	CodePersonalInvalid = "library.personal_invalid"
+
+	// Downloads (S23). Niet toegestaan is een 403 omdat de bibliotheek wel
+	// zichtbaar is; niet klaar en veranderd zijn 409's: de eerste gaat vanzelf
+	// over (retryable), de tweede vraagt een nieuwe download.
+	CodeDownloadNotPermitted = "library.download_not_permitted"
+	CodeDownloadNotReady     = "library.download_not_ready"
+	CodeDownloadChanged      = "library.download_changed"
+
 	CodeStorageUnavailable = "storage.unavailable"
 	CodeStorageFull        = "storage.full"
 
@@ -204,6 +219,29 @@ const (
 	// ontbrekende of foute confirm eist. Van die twee is K de specifiekere en
 	// de veiligste, en die is hier gevolgd.
 	CodeConfirmMismatch = "server.confirm_mismatch"
+
+	// Back-up en faalpaden (venster 7, S25, RB-26). Alles in het domein server:
+	// venster 7 opent geen nieuw domein. De bevestiging van een restore is
+	// server.confirm_mismatch hierboven, met in details.expected de volledige
+	// zin die noemt wat er verloren gaat.
+	//
+	// CodeMaintenance: de server zet een back-up terug en neemt niets aan tot
+	// hij herstart is. Herhaalbaar, want dat duurt minuten en geen uren.
+	CodeMaintenance = "server.maintenance"
+	// CodeDatabaseUnavailable: het faalpad "database weg". Herhaalbaar, en
+	// precies daarom niet server.internal: een database die terugkomt maakt
+	// hetzelfde verzoek weer geldig.
+	CodeDatabaseUnavailable = "server.database_unavailable"
+	// CodeBackupBusy: er wacht of loopt al een back-up of hersteltest.
+	CodeBackupBusy = "server.backup_busy"
+	// CodeBackupNotRestorable: de back-up is mislukt, verdwenen, van een nieuwer
+	// schema dan deze binary, of de sleutel past niet op zijn geheimen.
+	// details.reason zegt welke.
+	CodeBackupNotRestorable = "server.backup_not_restorable"
+	// CodeFileCorrupt: het faalpad "kapot bestand". Een omzetting mislukte en
+	// een tweede analyse van de bron mislukt ook: het bestand zelf is stuk, en
+	// opnieuw proberen of een andere omzetting helpt niet.
+	CodeFileCorrupt = "playback.file_corrupt"
 )
 
 // httpStatus koppelt elke code aan zijn status en aan retryable. Het staat in
@@ -244,11 +282,15 @@ var errorTable = map[string]struct {
 	CodeFilterInvalid:           {http.StatusBadRequest, false},
 	CodeJobNotCancellable:       {http.StatusConflict, false},
 
-	CodeVersionUnavailable:  {http.StatusConflict, true},
-	CodeRangeNotSatisfiable: {http.StatusRequestedRangeNotSatisfiable, false},
-	CodeNotPlayable:         {http.StatusUnsupportedMediaType, false},
-	CodeTranscodeBusy:       {http.StatusServiceUnavailable, true},
-	CodeTranscodeFailed:     {http.StatusBadGateway, false},
+	CodeVersionUnavailable:   {http.StatusConflict, true},
+	CodeRangeNotSatisfiable:  {http.StatusRequestedRangeNotSatisfiable, false},
+	CodeNotPlayable:          {http.StatusUnsupportedMediaType, false},
+	CodeTranscodeBusy:        {http.StatusServiceUnavailable, true},
+	CodeTranscodeFailed:      {http.StatusBadGateway, false},
+	CodePersonalInvalid:      {http.StatusBadRequest, false},
+	CodeDownloadNotPermitted: {http.StatusForbidden, false},
+	CodeDownloadNotReady:     {http.StatusConflict, true},
+	CodeDownloadChanged:      {http.StatusConflict, false},
 
 	CodeStorageUnavailable:    {http.StatusServiceUnavailable, true},
 	CodeStorageFull:           {http.StatusInsufficientStorage, false},
@@ -260,6 +302,12 @@ var errorTable = map[string]struct {
 
 	CodeInternal:        {http.StatusInternalServerError, false},
 	CodeConfirmMismatch: {http.StatusConflict, false},
+
+	CodeMaintenance:         {http.StatusServiceUnavailable, true},
+	CodeDatabaseUnavailable: {http.StatusServiceUnavailable, true},
+	CodeBackupBusy:          {http.StatusConflict, true},
+	CodeBackupNotRestorable: {http.StatusConflict, false},
+	CodeFileCorrupt:         {http.StatusUnprocessableEntity, false},
 }
 
 // writeError stuurt de foutvorm met de status en retryable die bij de code horen.
@@ -297,7 +345,27 @@ func writeError(w http.ResponseWriter, log *slog.Logger, code, message string, d
 // stuk, en dan blijft een client de server raken op precies het verzoek dat
 // hem omver duwde. storage.unavailable blijft voor het geval waar de opslag
 // werkelijk niet bereikbaar is.
+//
+// Twee oorzaken zijn geen fout van de handler en krijgen hun eigen code, want
+// het zijn faalpaden met een eigen betekenis voor de client (S25.5, RB-26): een
+// volle schijf is storage.full, een weggevallen database is
+// server.database_unavailable. Elke handler die hier eindigt krijgt die
+// onderscheiding vanzelf, ook een die er nooit aan dacht.
 func writeInternal(w http.ResponseWriter, log *slog.Logger, err error) {
+	switch {
+	case errors.Is(err, syscall.ENOSPC), errors.Is(err, syscall.EDQUOT):
+		if log != nil {
+			log.Error("schijf vol", slog.String("error", err.Error()))
+		}
+		writeError(w, nil, CodeStorageFull, "the server cannot write", nil)
+		return
+	case database.Unavailable(err):
+		if log != nil {
+			log.Error("database niet bereikbaar", slog.String("error", err.Error()))
+		}
+		writeError(w, nil, CodeDatabaseUnavailable, "the database is not reachable", nil)
+		return
+	}
 	if log != nil {
 		log.Error("interne fout", slog.String("error", err.Error()))
 	}

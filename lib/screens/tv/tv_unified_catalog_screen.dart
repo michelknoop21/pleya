@@ -61,7 +61,6 @@ import 'package:provider/provider.dart';
 
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
-import '../../focus/focus_theme.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
 import '../../media/media_backend.dart';
@@ -820,26 +819,14 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     );
   }
 
-  /// The library-density setting, which on this page can only narrow the
-  /// cards the two-row fit allows; see [tvCatalogDensityScale].
+  /// Keep the density preference without fitting the posters into two rows.
   double get _densityScale => tvCatalogDensityScale(
     SettingsService.instanceOrNull?.read(SettingsService.libraryDensity) ?? LibraryDensity.defaultValue,
   );
 
-  /// The card width the grid settles on under a folded page (it fits two
-  /// rows into the frame's height), so the heading lines up with it.
-  double? _foldedCardWidth() {
+  double _catalogCardWidth() {
     final size = MediaQuery.sizeOf(context);
-    final scale = TvLayoutConstants.scaleOf(context);
-    final natural = TvCatalogGrid.forWidth(size.width, scale: scale);
-    final fit = tvCatalogTwoRowCardWidth(
-      viewport: size.height - TvScrollAwayPage.foldedGridFrame(size: size).top,
-      gutter: natural.gutter,
-      bottomMargin: natural.bottomSafeMargin,
-      focusScale: FocusTheme.fullCardFocusScale,
-      cardHeight: (cardWidth) => TvCatalogLayout.cardHeight(cardWidth, scale),
-    );
-    return fit == null ? null : fit * _densityScale;
+    return TvCatalogGrid.forWidth(size.width, scale: TvLayoutConstants.scaleOf(context)).cardWidth * _densityScale;
   }
 
   Widget _buildPage() {
@@ -858,7 +845,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       child: TvCatalogHeaderBar(
         title: widget.title,
         tags: _railExpanded ? const [] : _selectionTags(),
-        maxCardWidth: pageScrolled == null ? null : _foldedCardWidth(),
+        maxCardWidth: _catalogCardWidth(),
       ),
     );
     if (pageScrolled == null) {
@@ -884,7 +871,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     return TvScrollAwayPage(
       expanded: expanded,
       topBand: TvShellSurface.topBandHeightOf(context),
-      // Two whole rows on screen, the margin shared by both edges.
+      // Keep the active row clear of overscan; the next row is a scroll hint.
       foldedTop: frame.top,
       foldedOverhang: frame.overhang,
       fitBody: !_showsGrid,
@@ -1087,10 +1074,8 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         initialFocusedGroupId: _focusedGroupId,
         onFocusedGroupChanged: (groupId) => _focusedGroupId = groupId,
         onFocusedRow: _pageScrolled == null ? null : _onFocusedRow,
-        // Scrolled a whole row at a time, so the two rows the folded page
-        // holds always stand whole; see `TvCatalogCardGrid.rowAligned`.
+        // Keep the active row whole while the next row peeks into view.
         rowAligned: _pageScrolled != null,
-        fitTwoRows: true,
         fitScale: _densityScale,
         groups: snapshot.groups,
         hasMore: snapshot.hasMore,

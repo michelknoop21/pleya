@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PageHeader from '$lib/components/PageHeader.svelte';
   import StateView from '$lib/components/StateView.svelte';
   import NavIcon from '$lib/components/NavIcon.svelte';
   import { session } from '$lib/stores/session.svelte';
@@ -9,7 +10,7 @@
 <svelte:head><title>{t('libraries.title')} · {t('app.name')}</title></svelte:head>
 
 <div class="page">
-  <h1 class="t-headline">{t('libraries.title')}</h1>
+  <PageHeader title={t('libraries.title')} />
 
   {#if session.libraries.length === 0}
     <StateView title={t('libraries.emptyTitle')} message={t('libraries.emptyBody')} />
@@ -23,7 +24,7 @@
             </span>
             <span class="tile__text">
               <span class="t-title">{library.title}</span>
-              <span class="t-small">
+              <span class="tile__count">
                 {plural('libraries.itemCount', library.item_count, {
                   count: formatCount(library.item_count)
                 })}
@@ -37,11 +38,9 @@
 </div>
 
 <style>
+  /* web.css .page: de inzet van de pagina, 8 boven de kop. */
   .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1-5);
-    padding: var(--space-1-5) var(--page-inset, var(--space));
+    padding: 8px var(--inset) var(--space-2);
   }
 
   .list {
@@ -50,21 +49,24 @@
     gap: var(--space);
   }
 
+  /* Een tegel is een paneel dat je aanklikt: --panel met een haarlijn, de
+     radius van een kaart. De hover hoort achter hover: hover, anders blijft hij
+     op een telefoon na een tik hangen. */
   .tile {
     display: flex;
     align-items: center;
     gap: var(--space);
     min-height: 72px;
     padding: var(--space);
-    background: var(--surface);
+    background: var(--panel);
+    border: 1px solid var(--hairline);
     border-radius: var(--radius-card);
-    border: 1px solid var(--outline);
     transition: background var(--dur-fast) var(--ease);
   }
 
   @media (hover: hover) {
     .tile:hover {
-      background: var(--surface-elevated);
+      background: var(--panel-2);
     }
   }
 
@@ -74,8 +76,8 @@
     width: 44px;
     height: 44px;
     border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--text) 8%, transparent);
-    color: var(--text);
+    background: var(--fill);
+    color: var(--ink);
     flex: 0 0 auto;
   }
 
@@ -89,5 +91,10 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .tile__count {
+    font-size: 13px;
+    color: var(--ink-3);
   }
 </style>

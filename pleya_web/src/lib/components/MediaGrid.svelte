@@ -44,40 +44,23 @@
 </ul>
 
 <style>
+  /*
+   * web.css `.grid`: auto-fill op de posterbreedte van het breekpunt, en onder
+   * 900 altijd drie kolommen (DESIGN.md hoofdstuk 3). Met `1fr` als maximum
+   * wordt een kolom nooit breder dan twee posters plus een tussenruimte, dus
+   * een ultrabreed scherm krijgt meer kolommen en geen grotere posters. Het
+   * skelet (SkeletonPage) tekent hetzelfde raster.
+   */
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(var(--grid-min, 110px), 1fr));
-    gap: var(--space);
+    grid-template-columns: repeat(auto-fill, minmax(var(--poster-w), 1fr));
+    gap: 22px 16px;
   }
 
-  @media (min-width: 600px) {
+  @media (max-width: 899px) {
     .grid {
-      --grid-min: 132px;
-    }
-  }
-
-  @media (min-width: 900px) {
-    .grid {
-      --grid-min: 150px;
-    }
-  }
-
-  @media (min-width: 1200px) {
-    .grid {
-      --grid-min: 168px;
-    }
-  }
-
-  /*
-   * Boven 1600 groeit het raster niet verder in kaartbreedte maar in
-   * kolommen. Zonder deze grens rekt `1fr` een poster op een ultrabreed scherm
-   * uit tot een halve meter.
-   */
-  @media (min-width: 1600px) {
-    .grid {
-      --grid-min: 180px;
-      grid-template-columns: repeat(auto-fill, minmax(var(--grid-min), 220px));
-      justify-content: start;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px 10px;
     }
   }
 </style>

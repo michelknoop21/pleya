@@ -85,7 +85,7 @@ void main() {
       await tester.pumpAndSettle();
       expectFocusedInView(i);
     }
-    expect(controller.position.pixels, controller.position.maxScrollExtent);
+    expect(controller.position.pixels, closeTo(controller.position.maxScrollExtent, 1e-6));
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
     expectFocusedInView(29);

@@ -90,11 +90,17 @@ const (
 	answers outcome = iota
 	// refused: de canonieke weigering van deze as, byte-gelijk.
 	refused
+	// notPermitted: de bibliotheek is zichtbaar maar het downloadrecht ontbreekt
+	// (S23): 403 met library.download_not_permitted, geen 404.
+	notPermitted
 )
 
 func (o outcome) String() string {
-	if o == answers {
+	switch o {
+	case answers:
 		return "answers"
+	case notPermitted:
+		return "notPermitted"
 	}
 	return "refused"
 }
@@ -129,12 +135,28 @@ type matrixFixture struct {
 	// voor de beheerprobes (regel 51) die de sessie stoppen.
 	freshSession func() string
 
+	// S23: een klaargezette download van de owner (regel 63 en 64) en een
+	// functie die er een nieuwe aanmaakt voor de probe die hem verwijdert.
+	// Een nieuwe download vervangt de vorige van dezelfde versie, dus elke probe
+	// maakt de zijne.
+	readyDownload func() string
+	freshDownload func() string
+
 	// S2.4: de laatste scan van libraryID, een afgeronde job (cancel geeft 409)
 	// en een pending scanjob met dedupe scan:<libraryID> (POST /scan geeft
 	// herhaalbaar 409, retry laat hem ongemoeid en geeft 200).
 	scanID       string
 	doneJobID    string
 	pendingJobID string
+
+	// S25: een geslaagde en een mislukte back-up in het register, zonder bestand.
+	// De probes komen niet verder dan de bevestiging of de statuscontrole, dus
+	// een bestand is niet nodig. clearBackupJobs haalt een wachtende back-upjob
+	// weg, zodat de tweede rol die POST /backups doet niet op de dedupe van de
+	// eerste stukloopt.
+	okBackupID      string
+	failedBackupID  string
+	clearBackupJobs func()
 }
 
 const (
@@ -149,6 +171,12 @@ const (
 func missingSession(tail string) func(*matrixFixture) string {
 	return func(*matrixFixture) string {
 		return "/pleya/v1/playback/sessions/" + id.New().String() + tail
+	}
+}
+
+func missingDownload(tail string) func(*matrixFixture) string {
+	return func(*matrixFixture) string {
+		return "/pleya/v1/downloads/" + id.New().String() + tail
 	}
 }
 
@@ -362,6 +390,72 @@ func matrixProbes() []matrixProbe {
 		{row: 51, name: "DELETE /transcode-sessions/{id}", method: http.MethodDelete,
 			path: func(f *matrixFixture) string { return "/pleya/v1/transcode-sessions/" + f.freshSession() },
 			body: noBody, ok: http.StatusNoContent, expect: adminSurface()},
+		// Regel 52 tot en met 60: de persoonlijke laag (S20) is voor wie het item
+		// mag zien. Member en restricted hebben leesrecht op de fixturebibliotheek.
+		{row: 52, name: "GET /history", method: http.MethodGet,
+			path: fixedPath("/pleya/v1/history"), body: noBody, ok: http.StatusOK, expect: everyRole()},
+		{row: 53, name: "GET /favorites", method: http.MethodGet,
+			path: fixedPath("/pleya/v1/favorites"), body: noBody, ok: http.StatusOK, expect: everyRole()},
+		{row: 54, name: "PUT /favorites/{id}", method: http.MethodPut,
+			path: func(f *matrixFixture) string { return "/pleya/v1/favorites/" + f.itemID },
+			body: noBody, ok: http.StatusNoContent, expect: everyRole()},
+		{row: 55, name: "DELETE /favorites/{id}", method: http.MethodDelete,
+			path: func(f *matrixFixture) string { return "/pleya/v1/favorites/" + f.itemID },
+			body: noBody, ok: http.StatusNoContent, expect: everyRole()},
+		{row: 56, name: "PUT /ratings/{id}", method: http.MethodPut,
+			path: func(f *matrixFixture) string { return "/pleya/v1/ratings/" + f.itemID },
+			body: func(*matrixFixture) any { return map[string]int{"rating": 6} }, ok: http.StatusNoContent, expect: everyRole()},
+		{row: 57, name: "DELETE /ratings/{id}", method: http.MethodDelete,
+			path: func(f *matrixFixture) string { return "/pleya/v1/ratings/" + f.itemID },
+			body: noBody, ok: http.StatusNoContent, expect: everyRole()},
+		{row: 58, name: "GET /track-preferences/{id}", method: http.MethodGet,
+			path: func(f *matrixFixture) string { return "/pleya/v1/track-preferences/" + f.itemID },
+			body: noBody, ok: http.StatusOK, expect: everyRole()},
+		{row: 59, name: "PUT /track-preferences/{id}", method: http.MethodPut,
+			path: func(f *matrixFixture) string { return "/pleya/v1/track-preferences/" + f.itemID },
+			body: func(*matrixFixture) any { return map[string]string{"audio_language": "nld"} }, ok: http.StatusOK, expect: everyRole()},
+		{row: 60, name: "DELETE /track-preferences/{id}", method: http.MethodDelete,
+			path: func(f *matrixFixture) string { return "/pleya/v1/track-preferences/" + f.itemID },
+			body: noBody, ok: http.StatusNoContent, expect: everyRole()},
+		// Regel 61 tot en met 65: downloads (S23). Wie de bibliotheek mag zien maar
+		// niet mag downloaden krijgt 403 in plaats van de 404 van de rest.
+		{row: 61, name: "POST /downloads", method: http.MethodPost,
+			path: fixedPath("/pleya/v1/downloads"),
+			body: func(f *matrixFixture) any { return map[string]string{"item_id": f.itemID} },
+			ok:   http.StatusCreated,
+			expect: map[string]outcome{
+				roleOwner: answers, roleAdmin: answers, roleMember: notPermitted, roleRestricted: notPermitted,
+			}},
+		{row: 62, name: "GET /downloads", method: http.MethodGet,
+			path: fixedPath("/pleya/v1/downloads"), body: noBody, ok: http.StatusOK, expect: everyRole()},
+		{row: 63, name: "GET /downloads/{id}", method: http.MethodGet,
+			path: func(f *matrixFixture) string { return "/pleya/v1/downloads/" + f.readyDownload() },
+			body: noBody, ok: http.StatusOK, expect: ownerOnly(), missing: missingDownload("")},
+		{row: 64, name: "GET /downloads/{id}/file", method: http.MethodGet,
+			path: func(f *matrixFixture) string { return "/pleya/v1/downloads/" + f.readyDownload() + "/file" },
+			body: noBody, ok: http.StatusOK, expect: ownerOnly(), missing: missingDownload("/file")},
+		{row: 65, name: "DELETE /downloads/{id}", method: http.MethodDelete,
+			path: func(f *matrixFixture) string { return "/pleya/v1/downloads/" + f.freshDownload() },
+			body: noBody, ok: http.StatusNoContent, expect: ownerOnly(), missing: missingDownload("")},
+		// Regel 66 tot en met 70: back-up en restore (venster 7, S25), klasse admin.
+		// Verify staat op een mislukte back-up en restore op een foute
+		// bevestiging, hetzelfde patroon als regel 21: herhaalbaar voor owner én
+		// admin zonder iets te wijzigen.
+		{row: 66, name: "GET /backups", method: http.MethodGet,
+			path: fixedPath("/pleya/v1/backups"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
+		{row: 67, name: "POST /backups", method: http.MethodPost,
+			path: func(f *matrixFixture) string { f.clearBackupJobs(); return "/pleya/v1/backups" },
+			body: noBody, ok: http.StatusAccepted, expect: adminSurface()},
+		{row: 68, name: "GET /backups/{id}", method: http.MethodGet,
+			path: func(f *matrixFixture) string { return "/pleya/v1/backups/" + f.okBackupID },
+			body: noBody, ok: http.StatusOK, expect: adminSurface()},
+		{row: 69, name: "POST /backups/{id}/verify", method: http.MethodPost,
+			path: func(f *matrixFixture) string { return "/pleya/v1/backups/" + f.failedBackupID + "/verify" },
+			body: noBody, ok: http.StatusConflict, expect: adminSurface()},
+		{row: 70, name: "POST /backups/{id}/restore", method: http.MethodPost,
+			path: func(f *matrixFixture) string { return "/pleya/v1/backups/" + f.okBackupID + "/restore" },
+			body: func(*matrixFixture) any { return map[string]string{"confirm": "nee"} },
+			ok:   http.StatusConflict, expect: adminSurface()},
 		{row: 39, name: "GET /watch-history", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/watch-history"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
 	}
@@ -433,6 +527,21 @@ func newMatrixFixture(e *env) *matrixFixture {
 		e.t.Fatalf("laatste scan van de fixturebibliotheek: %v", err)
 	}
 	f.scanID = runID.String()
+	// S23: een klaargezette download van de owner, en een verse per aanroep.
+	newDownload := func(prepare bool) string {
+		rec := e.do(http.MethodPost, "/pleya/v1/downloads", map[string]string{"item_id": f.itemID}, asUser(f.tokens[roleOwner]))
+		if rec.Code != http.StatusCreated {
+			e.t.Fatalf("fixturedownload starten gaf %d: %s", rec.Code, rec.Body.String())
+		}
+		var d api.DownloadWire
+		e.decodeInto(rec, &d)
+		if prepare {
+			e.runDigest(d.ID)
+		}
+		return d.ID
+	}
+	f.readyDownload = func() string { return newDownload(true) }
+	f.freshDownload = func() string { return newDownload(false) }
 	// Zonder omzetter is het een id dat niet bestaat: genoeg voor de probes die
 	// alleen de ontbrekende token toetsen.
 	f.playbackSessionID = id.New().String()
@@ -447,6 +556,18 @@ func newMatrixFixture(e *env) *matrixFixture {
 	f.doneJobID = id.New().String()
 	if _, err := e.pool.Exec(ctx, `INSERT INTO jobs (id, kind, state, finished_at) VALUES ($1, 'storage_recheck_roots', 'succeeded', now())`, f.doneJobID); err != nil {
 		e.t.Fatal(err)
+	}
+	f.okBackupID, f.failedBackupID = id.New().String(), id.New().String()
+	if _, err := e.pool.Exec(ctx, `
+		INSERT INTO backups (id, file_name, trigger, status, schema_version, titles, finished_at)
+		VALUES ($1, 'pleya-backup-matrix.tar', 'manual', 'ok', 22, 5, now()),
+		       ($2, NULL, 'manual', 'failed', NULL, NULL, now())`, f.okBackupID, f.failedBackupID); err != nil {
+		e.t.Fatal(err)
+	}
+	f.clearBackupJobs = func() {
+		if _, err := e.pool.Exec(ctx, `DELETE FROM jobs WHERE kind = 'backup_create'`); err != nil {
+			e.t.Fatal(err)
+		}
 	}
 	f.pendingJobID = id.New().String()
 	pendingArgs, _ := json.Marshal(api.ScanJobArgs{LibraryID: f.libraryID, Trigger: "manual"})
@@ -484,6 +605,10 @@ func TestAuthorizationMatrixRolesOnEveryRouteOfS1(t *testing.T) {
 				case answers:
 					if rec.Code != probe.ok {
 						t.Fatalf("gaf %d, wil %d: %s", rec.Code, probe.ok, rec.Body.String())
+					}
+				case notPermitted:
+					if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "library.download_not_permitted") {
+						t.Fatalf("gaf %d, wil 403 library.download_not_permitted: %s", rec.Code, rec.Body.String())
 					}
 				case refused:
 					if rec.Code != http.StatusNotFound {
