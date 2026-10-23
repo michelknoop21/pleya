@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_item.dart';
@@ -7,6 +10,10 @@ import 'package:pleya/media/unified/unified_media_group.dart';
 import 'package:pleya/media/unified/unified_media_source.dart';
 import 'package:pleya/media/unified/unified_watch_state.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/providers/local_library_provider.dart';
+import 'package:pleya/services/local_library/local_library_store.dart';
+import 'package:pleya/media/media_library.dart';
+import 'package:pleya/widgets/optimized_media_image.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
@@ -97,6 +104,52 @@ void main() {
     );
     await tester.pump();
   }
+
+  testWidgets('cold offline card reads a persisted poster without a server client', (tester) async {
+    final (root, store, changes, local, cached) = (await tester.runAsync(() async {
+      final root = await Directory.systemTemp.createTemp('pleya-card-cache-');
+      final store = LocalLibraryStore(root);
+      await store.load();
+      const library = MediaLibrary(id: 'films', backend: .plex, title: 'Films', kind: MediaKind.movie, serverId: 'nas');
+      final cached = item().copyWith(libraryId: 'films', thumbPath: '/poster');
+      await store.saveLibrary(library, [cached], complete: true);
+      await store.savePoster(
+        'nas',
+        '/poster',
+        base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN1cAAAAASUVORK5CYII='),
+      );
+      final changes = ChangeNotifier();
+      final local = LocalLibraryProvider(
+        profileId: 'a',
+        directory: root,
+        librariesForSync: () => [],
+        clientFor: (_) => null,
+        mayReadServer: (_) => true,
+        mayReadLibrary: (_) => true,
+        networkConnected: () => false,
+        wifiConnected: () => false,
+        changes: changes,
+      );
+      await local.ready;
+      return (root, store, changes, local, cached);
+    }))!;
+    await pump(
+      tester,
+      ChangeNotifierProvider<LocalLibraryProvider>.value(
+        value: local,
+        child: MobileMediaCard(group: group(cached), shape: MobileCardShape.portrait, width: 118),
+      ),
+    );
+    final image = tester.widget<OptimizedMediaImage>(find.byType(OptimizedMediaImage));
+    expect(image.client, isNull);
+    expect(image.localFilePath, store.posterPath('nas', '/poster'));
+    final rendered = tester.widget<Image>(find.byType(Image));
+    expect((rendered.image as ResizeImage).imageProvider, isA<FileImage>());
+    await tester.pumpWidget(const SizedBox());
+    local.dispose();
+    changes.dispose();
+    await tester.runAsync(() => root.delete(recursive: true));
+  });
 
   testWidgets('a portrait card measures its poster at 2:3', (tester) async {
     const width = 118.0;

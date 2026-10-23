@@ -1,3 +1,5 @@
+import '../providers/local_library_provider.dart';
+import '../providers/offline_mode_provider.dart';
 import '../providers/download_provider.dart';
 import '../services/watchlist/watchlist_snapshot_store.dart';
 import '../services/api_cache.dart';
@@ -5,11 +7,9 @@ import '../providers/watchlist_store.dart';
 import '../providers/watchlist_provider.dart';
 import '../media/media_backend.dart';
 import 'dart:async';
-
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../automation/automation_route_observer.dart';
 import '../focus/key_event_utils.dart';
 import '../media/ids.dart';
@@ -320,11 +320,55 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               // `MobileCatalogScreen` (iOS Unified 2026 fase 3,
               // docs/ios-unified-2026-fase3-plan.md) as well as the TV
               // catalogue screens.
+              ChangeNotifierProvider<LocalLibraryProvider>(
+                lazy: false,
+                create: (context) {
+                  final servers = context.read<MultiServerProvider>();
+                  final libraries = context.read<LibrariesProvider>();
+                  final hidden = context.read<HiddenLibrariesProvider>();
+                  final network = context.read<OfflineModeProvider>();
+                  return LocalLibraryProvider(
+                    profileId: activeId,
+                    librariesForSync: () => libraries.libraries
+                        .where(
+                          (l) =>
+                              l.serverId != null &&
+                              servers.expectedServerIds.contains(l.serverId) &&
+                              servers.serverManager.isServerVisible(ServerId(l.serverId!)) &&
+                              !servers.authErrorServerIds.contains(l.serverId) &&
+                              !l.hidden &&
+                              !hidden.hiddenLibraryKeys.contains(l.globalKey),
+                        )
+                        .toList(),
+                    clientFor: servers.serverManager.getClient,
+                    mayReadServer: (id) =>
+                        servers.expectedServerIds.contains(id) &&
+                        !servers.cacheDeniedServerIds.contains(id) &&
+                        !servers.authErrorServerIds.contains(id),
+                    authoritativeServerAccess: () => {
+                      for (final id in servers.expectedServerIds)
+                        if (servers.authErrorServerIds.contains(id) || servers.cacheDeniedServerIds.contains(id))
+                          id: false
+                        else if (servers.isServerOnline(ServerId(id)))
+                          id: true,
+                    },
+                    mayReadLibrary: (library) => !hidden.hiddenLibraryKeys.contains(library.globalKey),
+                    authoritativeLibraries: () => {
+                      for (final id in libraries.loadedServerIds)
+                        id: libraries.libraries.where((l) => l.serverId == id).map((l) => l.globalKey).toSet(),
+                    },
+                    networkConnected: () => network.hasNetworkConnection,
+                    wifiConnected: () => network.hasWifiOrEthernet,
+                    changes: Listenable.merge([servers, libraries, hidden, network]),
+                  );
+                },
+              ),
               Provider<UnifiedCatalogs>(
                 create: (context) => UnifiedCatalogs(
                   multiServer: context.read<MultiServerProvider>(),
                   libraries: context.read<LibrariesProvider>(),
                   hiddenLibraries: context.read<HiddenLibrariesProvider>(),
+                  localLibrary: context.read<LocalLibraryProvider>(),
                 ),
                 dispose: (_, catalogs) => catalogs.dispose(),
                 lazy: true,

@@ -7,9 +7,7 @@
 library;
 
 import 'dart:async';
-
 import 'package:flutter/foundation.dart';
-
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
@@ -21,6 +19,7 @@ import '../services/unified_catalog/unified_catalog_snapshot.dart';
 import '../utils/app_logger.dart';
 import '../utils/global_key_utils.dart';
 import 'hidden_libraries_provider.dart';
+import 'local_library_provider.dart';
 import 'libraries_provider.dart';
 import 'multi_server_provider.dart';
 
@@ -45,10 +44,13 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
     required LibrariesProvider libraries,
     required HiddenLibrariesProvider hiddenLibraries,
     required MediaKind kind,
+    LocalLibraryProvider? localLibrary,
   }) : _multiServer = multiServer,
        _libraries = libraries,
        _hiddenLibraries = hiddenLibraries,
+       _localLibrary = localLibrary,
        _query = UnifiedCatalogQuery(kind: kind) {
+    _localLibrary?.addListener(_onDependenciesChanged);
     // A late server connecting, a library being hidden/unhidden, or the
     // library list itself changing must feed a fresh eligible-library set
     // into the merge (hoofdstuk 27 fase 3: "late-server delta merge"). Guarded
@@ -62,6 +64,7 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
   final MultiServerProvider _multiServer;
   final LibrariesProvider _libraries;
   final HiddenLibrariesProvider _hiddenLibraries;
+  final LocalLibraryProvider? _localLibrary;
 
   UnifiedCatalogQuery _query;
   UnifiedCatalogService? _service;
@@ -90,9 +93,13 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
   /// This is what a source filter panel lists: a server the user has excluded
   /// still has to appear, with its tick off, or there is no way back to it.
   List<CatalogLibrary> get eligibleLibraries => eligibleCatalogLibraries(
-    libraries: _libraries.libraries,
+    libraries: {
+      for (final l in [...?_localLibrary?.libraries, ..._libraries.libraries]) l.globalKey: l,
+    }.values.where((library) => _localLibrary?.canReadLibrary(library) ?? true).toList(),
     kind: _query.kind,
-    isServerVisible: _multiServer.serverManager.isServerVisible,
+    isServerVisible: (id) =>
+        _multiServer.serverManager.isServerVisible(id) ||
+        (_localLibrary?.libraries.any((l) => l.serverId == id.value) ?? false),
     hiddenLibraryKeys: _hiddenLibraries.hiddenLibraryKeys,
   );
 
@@ -213,6 +220,8 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
         libraries: eligible,
         clientFor: _multiServer.serverManager.getClient,
         preferredSourceKeys: () => _rememberedSourceKeys,
+        cachedPage: (library, query) => _localLibrary?.page('${library.serverId}:${library.libraryId}', query),
+        cachedExternalIds: (server, id) => _localLibrary?.externalIds(server, id),
       );
     } else {
       service.updateQuery(query: _query, libraries: eligible);
@@ -222,6 +231,7 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
     // awaiting) relies on that, matching every other transient-state provider
     // in this codebase. So the preference read, which needs a await, happens
     // after this point rather than before it.
+    _snapshot = _service!.snapshot;
     _loadState = UnifiedCatalogLoadState.loading;
     safeNotifyListeners();
     try {
@@ -251,7 +261,18 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
     for (final library in libraries) buildGlobalKey(library.serverId, library.libraryId),
   };
 
-  void _onDependenciesChanged() => _reconcileEligibleLibraries();
+  int? _lastLocalRevision;
+  void _onDependenciesChanged() {
+    final revision = _localLibrary?.revision;
+    if (_lastLocalRevision != revision) {
+      _lastLocalRevision = revision;
+      if (_service != null) {
+        unawaited(_restart());
+        return;
+      }
+    }
+    _reconcileEligibleLibraries();
+  }
 
   void _onOnlineServersChanged(Set<String> onlineServerIds) => _reconcileEligibleLibraries();
 
@@ -265,6 +286,7 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
 
   @override
   void dispose() {
+    _localLibrary?.removeListener(_onDependenciesChanged);
     _libraries.removeListener(_onDependenciesChanged);
     _hiddenLibraries.removeListener(_onDependenciesChanged);
     _multiServer.removeOnlineServersListener(_onOnlineServersChanged);

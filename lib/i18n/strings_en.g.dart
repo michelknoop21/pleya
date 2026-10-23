@@ -106,6 +106,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsLanguageSettingsEn languageSettings = TranslationsLanguageSettingsEn.internal(_root);
 	late final TranslationsAssistantEn assistant = TranslationsAssistantEn.internal(_root);
 	late final TranslationsPlaybackHandoffEn playbackHandoff = TranslationsPlaybackHandoffEn.internal(_root);
+	late final TranslationsLocalLibraryEn localLibrary = TranslationsLocalLibraryEn.internal(_root);
 }
 
 // Path: states
@@ -6498,6 +6499,96 @@ class TranslationsPlaybackHandoffEn {
 	String get playingOnPhoneBody => 'Pick it up on your iPhone or iPad';
 }
 
+// Path: localLibrary
+class TranslationsLocalLibraryEn {
+	TranslationsLocalLibraryEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Connect to the server or download this video to play.'
+	String get playbackUnavailable => 'Connect to the server or download this video to play.';
+
+	/// en: 'Local library'
+	String get title => 'Local library';
+
+	/// en: 'Store library in advance'
+	String get enable => 'Store library in advance';
+
+	/// en: 'Keep metadata and posters for all your libraries on this device. The first download can take time and use substantial storage. Videos are not downloaded.'
+	String get description => 'Keep metadata and posters for all your libraries on this device. The first download can take time and use substantial storage. Videos are not downloaded.';
+
+	/// en: 'Only on Wi-Fi'
+	String get wifiOnly => 'Only on Wi-Fi';
+
+	/// en: 'Pause prefetch on mobile data. Turn off to also allow mobile data.'
+	String get wifiDescription => 'Pause prefetch on mobile data. Turn off to also allow mobile data.';
+
+	/// en: 'Status'
+	String get status => 'Status';
+
+	/// en: 'Prefetch is off. Previously stored content remains available.'
+	String get disabled => 'Prefetch is off. Previously stored content remains available.';
+
+	/// en: 'Fetching metadata and posters…'
+	String get syncing => 'Fetching metadata and posters…';
+
+	/// en: 'Local library is up to date'
+	String get ready => 'Local library is up to date';
+
+	/// en: 'Waiting for Wi-Fi'
+	String get wifi => 'Waiting for Wi-Fi';
+
+	/// en: 'Offline · showing stored content'
+	String get offline => 'Offline · showing stored content';
+
+	/// en: 'Paused · not enough free storage. Nothing has been deleted.'
+	String get storage => 'Paused · not enough free storage. Nothing has been deleted.';
+
+	/// en: 'Paused · available storage could not be checked'
+	String get storageUnavailable => 'Paused · available storage could not be checked';
+
+	/// en: 'Paused · resumes when Pleya is active'
+	String get paused => 'Paused · resumes when Pleya is active';
+
+	/// en: 'Sync incomplete · previously stored content has been kept'
+	String get error => 'Sync incomplete · previously stored content has been kept';
+
+	/// en: '$count items processed'
+	String progress({required Object count}) => '${count} items processed';
+
+	/// en: 'Storage used'
+	String get usage => 'Storage used';
+
+	/// en: 'Last successful scan'
+	String get lastSync => 'Last successful scan';
+
+	/// en: 'Not yet completed'
+	String get never => 'Not yet completed';
+
+	/// en: 'Update now'
+	String get syncNow => 'Update now';
+
+	/// en: 'Clear local library'
+	String get clear => 'Clear local library';
+
+	/// en: 'Remove locally stored library metadata and posters for this profile? Server content and downloaded videos are kept.'
+	String get clearMessage => 'Remove locally stored library metadata and posters for this profile? Server content and downloaded videos are kept.';
+
+	/// en: 'Local library cleared'
+	String get afterClear => 'Local library cleared';
+
+	/// en: 'Keep prefetch off, or fetch your library again? Your network preference still applies.'
+	String get chooseAfterClear => 'Keep prefetch off, or fetch your library again? Your network preference still applies.';
+
+	/// en: 'Turn prefetch off'
+	String get keepOff => 'Turn prefetch off';
+
+	/// en: 'Fetch library again'
+	String get refill => 'Fetch library again';
+}
+
 // Path: settings.displayMaxResolutionOptions
 class TranslationsSettingsDisplayMaxResolutionOptionsEn {
 	TranslationsSettingsDisplayMaxResolutionOptionsEn.internal(this._root);
@@ -12593,6 +12684,33 @@ extension on Translations {
 			'playbackHandoff.noPhone' => 'An Apple TV cannot open Pleya on your iPhone by itself. Open Pleya on your iPhone or iPad on the same Wi-Fi network.',
 			'playbackHandoff.resumeAt' => ({required Object time}) => 'Continue from ${time}',
 			'playbackHandoff.playingOnPhoneBody' => 'Pick it up on your iPhone or iPad',
+			'localLibrary.playbackUnavailable' => 'Connect to the server or download this video to play.',
+			'localLibrary.title' => 'Local library',
+			'localLibrary.enable' => 'Store library in advance',
+			'localLibrary.description' => 'Keep metadata and posters for all your libraries on this device. The first download can take time and use substantial storage. Videos are not downloaded.',
+			'localLibrary.wifiOnly' => 'Only on Wi-Fi',
+			'localLibrary.wifiDescription' => 'Pause prefetch on mobile data. Turn off to also allow mobile data.',
+			'localLibrary.status' => 'Status',
+			'localLibrary.disabled' => 'Prefetch is off. Previously stored content remains available.',
+			'localLibrary.syncing' => 'Fetching metadata and posters…',
+			'localLibrary.ready' => 'Local library is up to date',
+			'localLibrary.wifi' => 'Waiting for Wi-Fi',
+			'localLibrary.offline' => 'Offline · showing stored content',
+			'localLibrary.storage' => 'Paused · not enough free storage. Nothing has been deleted.',
+			'localLibrary.storageUnavailable' => 'Paused · available storage could not be checked',
+			'localLibrary.paused' => 'Paused · resumes when Pleya is active',
+			'localLibrary.error' => 'Sync incomplete · previously stored content has been kept',
+			'localLibrary.progress' => ({required Object count}) => '${count} items processed',
+			'localLibrary.usage' => 'Storage used',
+			'localLibrary.lastSync' => 'Last successful scan',
+			'localLibrary.never' => 'Not yet completed',
+			'localLibrary.syncNow' => 'Update now',
+			'localLibrary.clear' => 'Clear local library',
+			'localLibrary.clearMessage' => 'Remove locally stored library metadata and posters for this profile? Server content and downloaded videos are kept.',
+			'localLibrary.afterClear' => 'Local library cleared',
+			'localLibrary.chooseAfterClear' => 'Keep prefetch off, or fetch your library again? Your network preference still applies.',
+			'localLibrary.keepOff' => 'Turn prefetch off',
+			'localLibrary.refill' => 'Fetch library again',
 			_ => null,
 		};
 	}

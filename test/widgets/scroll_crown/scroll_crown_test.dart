@@ -105,6 +105,30 @@ Future<void> _scrub(
 }
 
 void main() {
+  testWidgets('slow crown drag remains one scroll activity until release', (tester) async {
+    final rig = _Rig();
+    await _setUp(tester, rig, rows: 400);
+    final gesture = await _start(tester, rig, const Offset(_edgeX, 1));
+    rig.now += const Duration(milliseconds: 20);
+    await gesture.moveBy(const Offset(0, 20), timeStamp: rig.now);
+    await tester.pump();
+    final before = rig.controller.offset;
+    for (var i = 0; i < 20; i++) {
+      rig.now += const Duration(milliseconds: 16);
+      await gesture.moveBy(const Offset(0, 0.25), timeStamp: rig.now);
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(
+        rig.controller.position.isScrollingNotifier.value,
+        isTrue,
+        reason: 'Pointer updates must not repeatedly start/end scrolling and trigger idle loading',
+      );
+    }
+    expect(rig.controller.offset, greaterThan(before));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(rig.controller.position.isScrollingNotifier.value, isFalse);
+  });
+
   test('a drag anchors the offset and reaches both ends from any grab point', () {
     for (final startY in [48.0, 200.0, 350.0, 600.0, 652.0]) {
       double map(double delta) => baselineOffsetForDrag(

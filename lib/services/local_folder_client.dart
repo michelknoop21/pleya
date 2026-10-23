@@ -140,6 +140,9 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   /// unknown, not gone, so a rescan keeps them and stays stale for a retry.
   bool _scanIncomplete = false;
 
+  /// An incomplete listing must never certify removals in a durable snapshot.
+  bool get hasIncompleteScan => _scanIncomplete || (lastScanError != null && !lastScanError!.startsWith('empty:'));
+
   /// Lists a folder below the root, recording an unreadable one.
   Future<List<SafDocumentFile>?> _listSubfolder(String uri) async {
     final children = await SafStorageService.instance.list(uri);

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
-
 import '../i18n/strings.g.dart';
 import '../profiles/active_profile_provider.dart';
 import '../profiles/profile_avatar.dart';
@@ -238,6 +237,7 @@ class NavigationTab {
     bool hasWatchlist = false,
     bool isMobile = false,
     bool isPhone = false,
+    bool hasLocalLibrary = false,
   }) {
     return allNavigationTabs.where((tab) {
       if (isOffline && tab.onlineOnly) {
@@ -246,7 +246,10 @@ class NavigationTab {
         // losing the tab entirely. Every other platform's Home still needs a
         // server to show anything at all, so it stays hidden there.
         final keepsOfflineHomeOnTv = tab.id == NavigationTabId.discover && PlatformDetector.isTV();
-        if (!keepsOfflineHomeOnTv) return false;
+        final cachedDestination =
+            hasLocalLibrary &&
+            (tab.id == NavigationTabId.movies || tab.id == NavigationTabId.series || tab.id == NavigationTabId.search);
+        if (!keepsOfflineHomeOnTv && !cachedDestination) return false;
       }
       if (tab.id == NavigationTabId.liveTv && !hasLiveTv) return false;
       if (tab.id == NavigationTabId.requests && !hasSeerr) return false;
@@ -272,7 +275,8 @@ class NavigationTab {
       // [isMobile].
       if ((tab.id == NavigationTabId.movies || tab.id == NavigationTabId.series) &&
           !isPhone &&
-          !PlatformDetector.isTV()) {
+          !PlatformDetector.isTV() &&
+          !(isOffline && hasLocalLibrary)) {
         return false;
       }
       return true;

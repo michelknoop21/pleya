@@ -151,6 +151,7 @@ Future<_CountingWatchlistSource> _pumpDetail(
   MediaServerClient? client,
   MediaItem? metadata,
   ThemeData? theme,
+  bool isOffline = false,
 }) async {
   TvDetectionService.debugSetAppleTVOverride(false);
   await glassPhone(tester, glass: glass, realTier: realTier);
@@ -200,7 +201,9 @@ Future<_CountingWatchlistSource> _pumpDetail(
         child: MaterialApp(
           builder: withNoticeLayer(),
           theme: theme ?? glassPhoneTheme(),
-          home: withProfileNavigationScope(child: MediaDetailScreen(metadata: metadata ?? _movie)),
+          home: withProfileNavigationScope(
+            child: MediaDetailScreen(metadata: metadata ?? _movie, isOffline: isOffline),
+          ),
         ),
       ),
     ),
@@ -231,6 +234,16 @@ void main() {
   tearDown(() {
     resetNotices();
     TvDetectionService.debugSetAppleTVOverride(null);
+  });
+
+  testWidgets('offline metadata without a video download disables play and explains availability', (tester) async {
+    await _pumpDetail(tester, glass: false, isOffline: true);
+    final button = tester.widget<FilledButton>(
+      find.descendant(of: find.byKey(const Key('media-detail.play')), matching: find.byType(FilledButton)),
+    );
+    expect(button.onPressed, isNull);
+    expect(find.byKey(const Key('media-detail.action.download')), findsNothing);
+    expect(find.text(t.localLibrary.playbackUnavailable), findsOneWidget);
   });
 
   testWidgets('glas uit: posterhero zonder glas, watchlist in de actierij', (tester) async {

@@ -17,8 +17,9 @@
 library;
 
 import 'dart:async';
-
 import '../../media/ids.dart';
+import '../../media/library_query.dart';
+import '../../utils/external_ids.dart';
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
@@ -52,12 +53,16 @@ class UnifiedCatalogService {
     this.maxRawItemsPerLoadMore = 500,
     this.progressiveLoadingGrace = defaultProgressiveLoadingGrace,
     Set<String> Function()? preferredSourceKeys,
+    this.cachedPage,
+    this.cachedExternalIds,
   }) : _clientFor = clientFor,
        _preferredSourceKeys = preferredSourceKeys ?? _noRememberedSources {
     _reset(query: query, libraries: libraries);
   }
 
   final MediaServerClient? Function(ServerId serverId) _clientFor;
+  final LibraryPage<MediaItem>? Function(CatalogLibrary library, LibraryQuery query)? cachedPage;
+  final ExternalIds? Function(String serverId, String targetId)? cachedExternalIds;
 
   /// Per-library page size (hoofdstuk 12.1's per-cursor fetch).
   final int pageSize;
@@ -403,28 +408,31 @@ class UnifiedCatalogService {
     cursor.inFlight = abort;
     try {
       final client = _clientFor(cursor.library.serverId);
-      if (client == null) {
+      final libraryQuery = _query.toLibraryQuery(offset: cursor.offset, limit: pageSize);
+      final localPage = cachedPage?.call(cursor.library, libraryQuery);
+      if (client == null && localPage == null) {
         cursor.lastError = StateError('No client for ${cursor.library.serverId}');
         return;
       }
-      final libraryQuery = _query.toLibraryQuery(offset: cursor.offset, limit: pageSize);
-      final page = await client
-          .fetchLibraryPagedContent(
-            cursor.library.libraryId,
-            query: libraryQuery,
-            libraryKind: _query.kind,
-            abort: abort,
-          )
-          .timeout(
-            MediaServerTimeouts.unifiedCatalogLibraryPage,
-            onTimeout: () {
-              abort.abort();
-              throw TimeoutException(
-                'Unified catalog page fetch timed out',
+      final page =
+          localPage ??
+          await client!
+              .fetchLibraryPagedContent(
+                cursor.library.libraryId,
+                query: libraryQuery,
+                libraryKind: _query.kind,
+                abort: abort,
+              )
+              .timeout(
                 MediaServerTimeouts.unifiedCatalogLibraryPage,
+                onTimeout: () {
+                  abort.abort();
+                  throw TimeoutException(
+                    'Unified catalog page fetch timed out',
+                    MediaServerTimeouts.unifiedCatalogLibraryPage,
+                  );
+                },
               );
-            },
-          );
       if (myGeneration != _generation) return; // superseded while in flight — discard
 
       // E8: totalCount is advisory and never the sole authority for
@@ -514,6 +522,8 @@ class UnifiedCatalogService {
   Future<void> _recomputeGroups() async {
     final resolver = UnifiedIdentityResolver(
       fetchExternalIds: (serverId, targetId) async {
+        final cached = cachedExternalIds?.call(serverId, targetId);
+        if (cached != null) return cached;
         final client = _clientFor(ServerId(serverId));
         if (client == null) throw StateError('No client for server $serverId');
         return client.fetchExternalIds(targetId);

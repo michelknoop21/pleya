@@ -1,11 +1,11 @@
+import '../utils/offline_playback_target.dart';
+import '../providers/local_library_provider.dart';
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
 import '../media/ids.dart';
 import 'dart:io';
-
 import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/material.dart';
-
 import '../automation/automation_event_log.dart';
 import '../automation/automation_ids.dart';
 import '../automation/automation_node.dart';
@@ -25,7 +25,6 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../widgets/collapsible_text.dart';
 import '../widgets/rating_bottom_sheet.dart';
-
 import '../focus/dpad_navigator.dart';
 import '../focus/focusable_action_bar.dart';
 import '../focus/focusable_button.dart';
@@ -1411,7 +1410,9 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   String? _offlineArtworkLocalPath(BuildContext context, String? artworkPath) {
     if (!widget.isOffline || _metadata.serverId == null) return null;
-    final localPath = context.read<DownloadProvider>().getArtworkLocalPath(ServerId(_metadata.serverId!), artworkPath);
+    final localPath =
+        context.read<LocalLibraryProvider?>()?.posterPath(_metadata.serverId, artworkPath) ??
+        context.read<DownloadProvider>().getArtworkLocalPath(ServerId(_metadata.serverId!), artworkPath);
     if (localPath == null || !File(localPath).existsSync()) return null;
     return localPath;
   }
@@ -1579,8 +1580,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   }
 
   Future<void> _loadFullMetadata() async {
+    final stored = _metadata.serverId == null
+        ? null
+        : context.read<LocalLibraryProvider?>()?.item(_metadata.serverId!, _metadata.id);
     setState(() {
-      _isLoadingMetadata = true;
+      _fullMetadata = stored ?? _fullMetadata;
+      _isLoadingMetadata = stored == null;
       _metadataLoadFailed = false;
       _hasLoadedExtras = false;
       _hasLoadedRelatedHubs = false;
@@ -1589,9 +1594,11 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     // Offline mode: try to load full metadata from cache (has clearLogo, summary, etc.)
     if (widget.isOffline) {
       final serverId = serverIdOrNull(_metadata.serverId);
-      final cachedMetadata = serverId == null
-          ? null
-          : await context.read<DownloadProvider>().lookupOfflineMetadata(serverId, _metadata.id);
+      final cachedMetadata =
+          stored ??
+          (serverId == null
+              ? null
+              : await context.read<DownloadProvider>().lookupOfflineMetadata(serverId, _metadata.id));
       if (!mounted) return;
       setState(() {
         _fullMetadata = cachedMetadata ?? _metadata;
@@ -1841,6 +1848,13 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     }
   }
 
+  List<MediaItem> _storedOfflineEpisodes() => {
+    for (final item in context.read<LocalLibraryProvider?>()?.episodes(_metadata) ?? <MediaItem>[])
+      item.globalKey: item,
+    for (final item in context.read<DownloadProvider>().getDownloadedEpisodesForShow(_metadata.id))
+      if (item.serverId == _metadata.serverId) item.globalKey: item,
+  }.values.toList();
+
   /// Load seasons from downloaded episodes (offline mode)
   void _loadSeasonsFromDownloads() {
     _seasonsCompleter = Completer<void>();
@@ -1849,7 +1863,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     });
 
     final downloadProvider = context.read<DownloadProvider>();
-    final episodes = downloadProvider.getDownloadedEpisodesForShow(_metadata.id);
+    final episodes = _storedOfflineEpisodes();
 
     // Group episodes by season
     final Map<int, List<MediaItem>> seasonMap = {};
@@ -1859,13 +1873,17 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     }
 
     // Create synthetic season MediaItems from the grouped episodes.
-    final seasons = seasonMap.entries.map((entry) {
+    final downloadSeasons = seasonMap.entries.map((entry) {
       final firstEp = entry.value.first;
       final seasonId = firstEp.parentId ?? '';
       final seasonGlobalKey = _metadata.serverId == null || seasonId.isEmpty
           ? null
           : buildGlobalKey(ServerId(_metadata.serverId!), seasonId);
-      final storedSeason = seasonGlobalKey == null ? null : downloadProvider.getMetadata(seasonGlobalKey);
+      final storedSeason =
+          (_metadata.serverId == null
+              ? null
+              : context.read<LocalLibraryProvider?>()?.item(_metadata.serverId!, seasonId)) ??
+          (seasonGlobalKey == null ? null : downloadProvider.getMetadata(seasonGlobalKey));
       if (storedSeason != null && storedSeason.isSeason) {
         return _withFallbackLibrary(
           storedSeason.copyWith(
@@ -1893,6 +1911,11 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     }).toList()..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
 
     // Create focus nodes for season tabs and cache episodes per season
+    final seasons = <String, MediaItem>{
+      for (final season in downloadSeasons) season.id: season,
+      for (final season in context.read<LocalLibraryProvider?>()?.children(_metadata) ?? <MediaItem>[])
+        if (season.isSeason) season.id: season,
+    }.values.toList()..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
     _updateSeasonTabFocusNodes(seasons.length);
     for (final entry in seasonMap.entries) {
       final seasonRatingKey = entry.value.first.parentId ?? '';
@@ -1922,7 +1945,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   /// Load episodes from downloaded content for a season
   void _loadEpisodesFromDownloads() {
     final downloadProvider = context.read<DownloadProvider>();
-    final allEpisodes = downloadProvider.getDownloadedEpisodesForShow(_metadata.parentId ?? '');
+    final allEpisodes = {
+      for (final item in context.read<LocalLibraryProvider?>()?.episodes(_metadata) ?? <MediaItem>[])
+        item.globalKey: item,
+      for (final item in downloadProvider.getDownloadedEpisodesForShow(_metadata.parentId ?? ''))
+        if (item.serverId == _metadata.serverId) item.globalKey: item,
+    }.values.toList();
     final seasonEpisodes = allEpisodes.where((ep) => ep.parentIndex == _metadata.index).toList()
       ..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
 
@@ -1997,8 +2025,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     try {
       if (widget.isOffline) {
         // Offline: load from downloads (already the complete set).
-        final downloadProvider = context.read<DownloadProvider>();
-        final allEpisodes = downloadProvider.getDownloadedEpisodesForShow(_metadata.id);
+        final allEpisodes = _storedOfflineEpisodes();
         final seasonEpisodes = allEpisodes.where((ep) => ep.parentIndex == season.index).toList()
           ..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
         _completeSeasonEpisodesLoad(
@@ -3048,13 +3075,13 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                   }
                 : null,
             localPosterPath: localPosterPath,
+            canPlay: !widget.isOffline || _offlinePlaybackTarget(episode) != null,
             onTap: () async {
-              await navigateToVideoPlayerWithRefresh(
-                context,
-                metadata: episode,
-                isOffline: widget.isOffline,
-                onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: episode.id)),
-              );
+              if (widget.isOffline && _offlinePlaybackTarget(episode) == null) {
+                await navigateToMediaItemDetails(context, episode, isOffline: true);
+              } else {
+                await _handlePlayPressed(episode);
+              }
             },
             onRefresh: widget.isOffline ? null : _refreshItemInPlace,
             onListRefresh: widget.isOffline ? null : _refreshCurrentEpisodes,
@@ -3572,7 +3599,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       MediaItem? firstEpisode;
       if (!mounted) return;
       if (widget.isOffline) {
-        // In offline mode, get episodes from downloads
+        // Playback continues to use actual video downloads, not metadata-only rows.
         final downloadProvider = context.read<DownloadProvider>();
         final allEpisodes = downloadProvider.getDownloadedEpisodesForShow(_metadata.id);
         // Filter to episodes of this season

@@ -2452,7 +2452,20 @@
       "cardFull": "Er staan al 8 kinderen in huis. Pas ze aan bij Instellingen > Big P > Kinderen in huis.",
       "addAnother": "Nog een kind toevoegen",
       "saveAndSearch": "Bewaar en zoek verder",
-      "months": ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"]
+      "months": [
+        "januari",
+        "februari",
+        "maart",
+        "april",
+        "mei",
+        "juni",
+        "juli",
+        "augustus",
+        "september",
+        "oktober",
+        "november",
+        "december"
+      ]
     },
     "kids": {
       "agesFirst": "Ik moet eerst weten hoe oud de kinderen zijn.",
@@ -3124,5 +3137,34 @@
     "noPhone": "Een Apple TV kan Pleya op je iPhone niet zelf openen. Open Pleya op je iPhone of iPad op hetzelfde wifi-netwerk.",
     "resumeAt": "Verder vanaf $time",
     "playingOnPhoneBody": "Kijk verder op je iPhone of iPad"
+  },
+  "localLibrary": {
+    "playbackUnavailable": "Maak verbinding met de server of download deze video om af te spelen.",
+    "title": "Lokale bibliotheek",
+    "enable": "Bibliotheek vooraf opslaan",
+    "description": "Bewaar metadata en posters van al je bibliotheken op dit apparaat. De eerste download kan lang duren en veel opslag gebruiken. Video’s worden niet gedownload.",
+    "wifiOnly": "Alleen via wifi",
+    "wifiDescription": "Pauzeer vooraf ophalen via mobiele data. Zet uit om ook mobiele data toe te staan.",
+    "status": "Status",
+    "disabled": "Vooraf ophalen staat uit. Eerder opgeslagen inhoud blijft beschikbaar.",
+    "syncing": "Metadata en posters ophalen…",
+    "ready": "Lokale bibliotheek is bijgewerkt",
+    "wifi": "Wachten op wifi",
+    "offline": "Offline · opgeslagen inhoud wordt getoond",
+    "storage": "Gepauzeerd · onvoldoende vrije opslag. Er is niets gewist.",
+    "storageUnavailable": "Gepauzeerd · vrije opslag kon niet worden gecontroleerd",
+    "paused": "Gepauzeerd · hervat zodra Pleya actief is",
+    "error": "Bijwerken onvolledig · eerder opgeslagen inhoud is behouden",
+    "progress": "$count items verwerkt",
+    "usage": "Gebruikte opslag",
+    "lastSync": "Laatste geslaagde scan",
+    "never": "Nog niet voltooid",
+    "syncNow": "Nu bijwerken",
+    "clear": "Lokale bibliotheek wissen",
+    "clearMessage": "De lokaal opgeslagen bibliotheekmetadata en posters van dit profiel wissen? Inhoud op de server en gedownloade video’s blijven behouden.",
+    "afterClear": "Lokale bibliotheek gewist",
+    "chooseAfterClear": "Vooraf ophalen uitzetten of je bibliotheek opnieuw ophalen? Je netwerkvoorkeur blijft gelden.",
+    "keepOff": "Vooraf ophalen uitzetten",
+    "refill": "Bibliotheek opnieuw ophalen"
   }
 }

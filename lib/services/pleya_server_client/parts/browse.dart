@@ -101,13 +101,18 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     required LibraryQuery query,
     MediaKind? libraryKind,
     AbortController? abort,
+    bool strictSnapshot = false,
   }) async {
-    if (!wireCapabilities.browse) return const LibraryPage(items: [], totalCount: 0);
+    if (!wireCapabilities.browse) {
+      if (strictSnapshot) throw StateError('Browse capability is not available for a snapshot');
+      return const LibraryPage(items: [], totalCount: 0);
+    }
     final filters = _filterParameters(query);
     if (filters.isNotEmpty && !wireCapabilities.filters) {
       // A server without the capability ignores these parameters and would hand
       // back the whole library as the answer to a filter. An empty page is
       // wrong in an honest way; an unfiltered one is wrong in a misleading way.
+      if (strictSnapshot) throw StateError('Required snapshot filters are not supported');
       appLogger.w('PleyaServerClient: filters requested but the server does not advertise them');
       return const LibraryPage(items: [], totalCount: 0);
     }
@@ -122,6 +127,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       extraQuery: extra,
       libraryId: libraryId,
       abort: abort,
+      strictSnapshot: strictSnapshot,
     );
   }
 
@@ -288,8 +294,12 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     int? start,
     int? size,
     AbortController? abort,
+    bool strictSnapshot = false,
   }) async {
-    if (!wireCapabilities.browse) return const LibraryPage(items: [], totalCount: 0);
+    if (!wireCapabilities.browse) {
+      if (strictSnapshot) throw StateError('Browse capability is not available for a snapshot');
+      return const LibraryPage(items: [], totalCount: 0);
+    }
     // Children have no sort parameter in the contract; the server returns them
     // in their natural order, which for seasons and episodes is the order a
     // viewer expects.
@@ -300,6 +310,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       limit: size ?? 100,
       parentId: parentId,
       abort: abort,
+      strictSnapshot: strictSnapshot,
     );
   }
 
@@ -530,6 +541,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     String? libraryId,
     String? parentId,
     AbortController? abort,
+    bool strictSnapshot = false,
   }) async {
     final pageSize = limit <= 0 ? 100 : (limit > _maxPageSize ? _maxPageSize : limit);
     var position = offset <= 0 ? 0 : _cursors.nearestKnownOffset(ledgerKey, offset);
@@ -543,13 +555,20 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
         queryParameters: {'limit': '$pageSize', ...extraQuery, 'cursor': ?cursor},
         abort: abort,
       );
-      if (json == null) break;
+      if (json == null) {
+        if (strictSnapshot) throw StateError('Snapshot page was not received');
+        break;
+      }
       final PleyaItemPage page;
       try {
         page = PleyaItemPage.fromJson(json);
       } on PleyaWireFormatException catch (e) {
+        if (strictSnapshot) rethrow;
         appLogger.w('PleyaServerClient: $path did not match the contract', error: e);
         break;
+      }
+      if (strictSnapshot && page.items.length != page.knownItems.length) {
+        throw StateError('Snapshot contains unsupported items');
       }
       _cursors.recordPage(
         ledgerKey,
@@ -595,6 +614,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       parents: await _ancestorsFor(window, parentId: parentId),
     );
     final estimate = _cursors.totalEstimate(ledgerKey);
+    if (strictSnapshot && estimate == null) throw StateError('Snapshot count is unavailable');
     return LibraryPage(items: items, totalCount: estimate ?? (offset + items.length), offset: offset);
   }
 

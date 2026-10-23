@@ -26,6 +26,8 @@ const Set<String> setupVerbs = {
 /// validated, never implemented, never defined — and is removed for the
 /// same reason.
 const Set<String> stepVerbs = {
+  // Cold restart while preserving this scenario's app data and fixture.
+  'restart',
   'press',
   'tap',
   'drag',

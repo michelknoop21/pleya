@@ -787,6 +787,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
   @override
   Future<LibraryPage<MediaItem>> fetchChildrenPage(
     String parentId, {
+    bool requireTotalCount = false,
     int? start,
     int? size,
     AbortController? abort,
@@ -836,7 +837,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
         final items = _itemsArray(data);
         final rawTotal = data is Map<String, dynamic> ? data['TotalRecordCount'] : null;
         if (items.isNotEmpty || (rawTotal is int && rawTotal > 0)) {
-          return _pagedMediaItems(data, offset: offset, requestedSize: pageSize);
+          return _pagedMediaItems(data, offset: offset, requestedSize: pageSize, requireTotalCount: requireTotalCount);
         }
       }
     } on MediaServerHttpException {
@@ -858,7 +859,12 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
       abort: abort,
     );
     throwIfHttpError(response);
-    return _pagedMediaItems(response.data, offset: offset, requestedSize: pageSize);
+    return _pagedMediaItems(
+      response.data,
+      offset: offset,
+      requestedSize: pageSize,
+      requireTotalCount: requireTotalCount,
+    );
   }
 
   Future<LibraryPage<MediaItem>> fetchSeasonEpisodesPage(
@@ -1849,9 +1855,21 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     }
   }
 
-  LibraryPage<MediaItem> _pagedMediaItems(Object? data, {required int offset, required int requestedSize}) {
+  LibraryPage<MediaItem> _pagedMediaItems(
+    Object? data, {
+    required int offset,
+    required int requestedSize,
+    bool requireTotalCount = false,
+  }) {
     final rawItems = _itemsArray(data);
     final rawTotal = data is Map<String, dynamic> ? data['TotalRecordCount'] : null;
+    if (requireTotalCount &&
+        (rawTotal is! int ||
+            rawTotal < 0 ||
+            data is! Map ||
+            data['Items'] is! List ||
+            (data['Items'] as List).length != _mapItems(rawItems).length))
+      throw StateError('Unverified child page');
     final fallbackTotal = _fallbackPageTotal(offset: offset, itemCount: rawItems.length, requestedSize: requestedSize);
     return LibraryPage<MediaItem>(
       items: _mapItems(rawItems),

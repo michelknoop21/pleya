@@ -56,13 +56,16 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
   /// Delen and Aanvragen moved into the Meer menu, which this owns
   /// ([_contextMenuKey]) so the app bar's more button opens the same menu.
   Widget _buildMobilePrimaryActions(BuildContext context, MediaItem metadata) {
-    final resumeTarget = metadata.isShow
+    final offlineTarget = widget.isOffline ? _offlinePlaybackTarget(metadata) : null;
+    final resumeTarget = widget.isOffline
+        ? (offlineTarget ?? metadata)
+        : metadata.isShow
         ? (_onDeckEpisode ?? metadata)
         : metadata.isSeason
         ? (_seasonNextEpisode ?? metadata)
         : metadata;
     final viewOffsetMs = resumeTarget.viewOffsetMs ?? 0;
-    final isResuming = viewOffsetMs > 0;
+    final isResuming = (!widget.isOffline || offlineTarget != null) && viewOffsetMs > 0;
     final detail = StringBuffer();
     if ((metadata.isShow || metadata.isSeason) && resumeTarget.parentIndex != null && resumeTarget.index != null) {
       detail.write(
@@ -89,8 +92,23 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
       playLabel: isResuming ? t.common.resume : t.common.play,
       playDetail: playDetail.isEmpty ? null : playDetail,
       // A season plays its next episode, not its first (DEC-140).
-      onPlay: () => unawaited(_handlePlayPressed(metadata.isSeason ? resumeTarget : metadata)),
-      onPlayFromStart: isResuming ? () => unawaited(_handlePlayFromStartPressed(resumeTarget)) : null,
+      onPlay: !widget.isOffline || _offlinePlaybackTarget(metadata) != null
+          ? () => unawaited(
+              _handlePlayPressed(
+                widget.isOffline
+                    ? metadata
+                    : metadata.isSeason
+                    ? resumeTarget
+                    : metadata,
+              ),
+            )
+          : null,
+      unavailableMessage: widget.isOffline && _offlinePlaybackTarget(metadata) == null
+          ? t.localLibrary.playbackUnavailable
+          : null,
+      onPlayFromStart: isResuming && (!widget.isOffline || _offlinePlaybackTarget(resumeTarget) != null)
+          ? () => unawaited(_handlePlayFromStartPressed(resumeTarget))
+          : null,
       actions: [
         if (canOfferWatchlist)
           DetailActionItem(
@@ -126,7 +144,7 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
           active: metadata.isWatched,
           onTap: () => unawaited(_handleWatchedTogglePressed(metadata)),
         ),
-        if (downloadProvider != null) _mobileDownloadAction(downloadProvider, metadata),
+        if (canDownload && downloadProvider != null) _mobileDownloadAction(downloadProvider, metadata),
         if (!widget.isOffline)
           DetailActionItem(
             key: const Key('media-detail.action.more'),
@@ -151,7 +169,7 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
           ? () => unawaited(_handleRequestPressed(metadata))
           : null,
       // Download progress rebuilds only this row, not the whole page.
-      child: canDownload
+      child: (canDownload || widget.isOffline)
           ? Consumer<DownloadProvider>(builder: (context, downloadProvider, _) => buildActions(downloadProvider))
           : buildActions(null),
     );

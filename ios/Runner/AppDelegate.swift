@@ -33,6 +33,21 @@ import MediaPlayer
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "LocalLibraryStorage") {
+      let channel = FlutterMethodChannel(name: "com.pleya/local_library", binaryMessenger: registrar.messenger())
+      channel.setMethodCallHandler { call, result in
+        guard call.method == "availableBytes" else { result(FlutterMethodNotImplemented); return }
+        do {
+          let values = try URL(fileURLWithPath: NSHomeDirectory()).resourceValues(forKeys: [
+            .volumeAvailableCapacityForImportantUsageKey, .volumeAvailableCapacityKey,
+          ])
+          result(values.volumeAvailableCapacityForImportantUsage ?? values.volumeAvailableCapacity.map { Int64($0) })
+        } catch {
+          result(FlutterError(code: "STORAGE_UNAVAILABLE", message: "Unable to read available storage", details: nil))
+        }
+      }
+    }
+
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
 
     // Register MPV player plugin
