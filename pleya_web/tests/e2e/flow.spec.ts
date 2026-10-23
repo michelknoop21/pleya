@@ -5,6 +5,7 @@ import {
   expectNoHorizontalOverflow,
   expectShell,
   grid,
+  heightFor,
   label,
   openLibraryOfKind,
   signIn,
@@ -275,7 +276,7 @@ test.describe('responsive', () => {
 
   for (const width of WIDTHS) {
     test(`geen horizontale overflow op ${width}px`, async ({ page }) => {
-      await page.setViewportSize({ width, height: 900 });
+      await page.setViewportSize({ width, height: heightFor(width) });
 
       for (const path of ['/', '/libraries', '/search', '/server']) {
         await page.goto(path);

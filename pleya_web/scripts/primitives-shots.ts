@@ -13,9 +13,10 @@
  * `--locale nl|en` zet de browsertaal en wist de bewaarde keuze (shot-locale.ts).
  */
 import { chromium, type Page } from '@playwright/test';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 
 import { SECTIONS as GALLERY_SECTIONS } from '../src/routes/dev/primitives/sections';
+import { compare as compareShot } from './shot-compare';
 import { forgetStoredLocale, localeContextOptions, parseLocaleFlag } from './shot-locale';
 
 const BASE = process.env['PLEYA_DEV_URL'] ?? 'http://localhost:5173';
@@ -167,26 +168,6 @@ async function heroShot(name: string): Promise<void> {
  * maakt alleen deze opnamen: hover en focus los, de thema's van kaarten en
  * hero, de skeletonhome, en de vergelijkingsbeelden (northstar rechts).
  */
-const NORTHSTAR = '../docs/assets/pleya-web-northstar';
-async function compare(name: string, mine: string, northstarFile: string, width: number): Promise<void> {
-  const b64 = (p: string) => readFileSync(p).toString('base64');
-  const html = `<body style="margin:0;background:#000;color:#aaa;font:12px sans-serif">
-    <div style="display:flex;gap:16px;padding:12px;align-items:flex-start">
-      <figure style="margin:0;flex:1 1 0;min-width:0"><figcaption style="padding:0 0 6px">galerij (pleya_web)</figcaption>
-        <img style="width:100%" src="data:image/png;base64,${b64(mine)}"></figure>
-      <figure style="margin:0;flex:1 1 0;min-width:0"><figcaption style="padding:0 0 6px">northstar ${northstarFile}</figcaption>
-        <img style="width:100%" src="data:image/jpeg;base64,${b64(`${NORTHSTAR}/${northstarFile}`)}"></figure>
-    </div></body>`;
-  const cmp = await context.newPage();
-  await cmp.setViewportSize({ width: Math.max(width * 2 + 56, 900), height: 800 });
-  await cmp.setContent(html);
-  await cmp.waitForFunction(() => Array.from(document.images).every((i) => i.complete));
-  const path = `${OUT}/${name}-vs-northstar@${width}.png`;
-  await cmp.screenshot({ path, fullPage: true });
-  await cmp.close();
-  console.log(path);
-}
-
 if (process.env['PLEYA_SHOTS_ROUND'] === 'c4') {
   const NS: Record<string, (w: number) => string> = {
     kaarten: () => '16-kaartstaten@1600.jpg',
@@ -223,7 +204,7 @@ if (process.env['PLEYA_SHOTS_ROUND'] === 'c4') {
     await heroShot(`hero@${width}`);
     await railStates(`rail@${width}`);
     for (const n of ['kaarten', 'hero', 'rail']) {
-      await compare(n, `${OUT}/${n}@${width}.png`, NS[n]!(width), width);
+      console.log(await compareShot(context, `${OUT}/${n}`, `${OUT}/${n}@${width}.png`, NS[n]!(width), width));
     }
   }
   for (const theme of ['oled', 'light']) {
@@ -237,7 +218,9 @@ if (process.env['PLEYA_SHOTS_ROUND'] === 'c4') {
     await open(`${GALLERY}?skeleton=home`, width);
     await shot(page, `skeleton-home@${width}`);
     if (width === 393 || width === 1600) {
-      await compare('skeleton-home', `${OUT}/skeleton-home@${width}.png`, NS['skeleton']!(width), width);
+      console.log(
+        await compareShot(context, `${OUT}/skeleton-home`, `${OUT}/skeleton-home@${width}.png`, NS['skeleton']!(width), width)
+      );
     }
   }
   await browser.close();

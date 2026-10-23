@@ -105,8 +105,9 @@ met een `playHref`, synopsis alleen met een `summary`. `HubRail` is een horizont
 "View all", een fade rechts en pijlen vanaf 900 met een muis, en tekent zich niet zonder items.
 
 `Artwork.svelte` vraagt per vlak een trede van de artworkladder (`src/lib/util/srcset.ts`: 240 tot
-1920 voor poster, 480 tot 3840 voor backdrop). Zolang `ARTWORK_SIZES_AVAILABLE` false is, gaat er
-geen `?width=` over de lijn en komt het origineel terug. Een vervangbare loader loopt via de
+1920 voor poster, 480 tot 3840 voor backdrop), gemeten aan de getekende breedte maal de
+`devicePixelRatio`. Alleen als de server `capabilities.artwork_sizes` meldt gaat die trede als
+`?width=` over de lijn; zonder de vlag komt het origineel terug. Een vervangbare loader loopt via de
 Svelte-context in `artworkLoader.ts`; de galerij en de tests gebruiken hem om zonder server beeld
 te hebben, productie zet hem nergens.
 
@@ -236,7 +237,7 @@ blijven staan. De sessie overleeft het herladen, want het refreshtoken staat in 
 Weigert de opslag, dan gaat de taal alleen in het geheugen om.
 
 `web.nl.ts` gebruikt `satisfies Record<WebKey, string>`: een ontbrekende of overtollige sleutel is
-een compileerfout in `bun run check`. Daarnaast bewaakt `src/lib/i18n/parity.test.ts` dat geen
+een compileerfout in `bun run check`. `src/lib/i18n/parity.test.ts` bewaakt dat geen
 Nederlandse tekst stilzwijgend een kopie van de Engelse is (uitzonderingen staan in
 `SAME_ON_PURPOSE`) en dat plaatshouders in beide talen gelijk zijn; `literals.test.ts` weigert vaste
 `aria-label`-, `title`-, `placeholder`- en `alt`-teksten in de componenten (de dev-galerij is
@@ -344,3 +345,24 @@ scripts/e2e-stack.sh down
 De end-to-end-tests draaien tegen de echte binary met de echte API, niet tegen `vite dev` en niet
 tegen mocks. Dat is het punt: ze meten of de bundel geserveerd wordt, of de protocolroutes
 voorrang houden, en of de flow tegen het echte contract werkt.
+
+`tests/e2e/a11y-routes.spec.ts` draait axe (`wcag2a` tot en met `wcag22aa` plus `best-practice`)
+op elke route en staat, in het Engels en het Nederlands, op de breedtes uit `WIDTHS` in
+`tests/e2e/helpers.ts`: 320, 390, 768, 1024, 1280, 1440, 1600 en 1920 (die laatste op 1080
+hoog). Per meting eist hij nul overtredingen, hooguit 1 px horizontale overloop, de juiste
+`lang` en een hoofdnavigatie met naam. De setupmeting heeft een server zonder eigenaar nodig en
+draait dus alleen op een verse stack; de spec staat daarom alfabetisch vóór `auth.spec.ts`.
+
+`scripts/routes-shots.ts` legt elke route en de staten 12 (inloggen met een fout), 13 (lege
+bibliotheek), 14 (server onbereikbaar) en 15 (laden) vast op 1920, 1440, 1280, 390 en 320, en
+naast het northstar-beeld op de breedtes waarop dat bestaat. De staten komen uit `page.route`,
+niet uit een nagebootste server. Uitvoer en toelichting staan in `docs/qa/s7-routes/`.
+
+```sh
+bun run scripts/routes-shots.ts ../docs/qa/s7-routes --locale nl
+```
+
+Op Apple silicon bouwt de runtime-image van de server niet: `intel-media-va-driver` bestaat
+alleen voor amd64. Een compose-override met `platform: linux/amd64` op de dienst `pleya-server`
+(via `COMPOSE_FILE=compose.yaml:<override>`) laat de stack onder emulatie draaien; de database
+blijft native.

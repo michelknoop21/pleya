@@ -14,10 +14,17 @@ export const USERNAME = process.env['PLEYA_E2E_USER'] ?? 'e2e';
 export const PASSWORD = process.env['PLEYA_E2E_PASS'] ?? 'een-lang-genoeg-wachtwoord';
 
 /**
- * De vijf breedtes van de northstar (docs/assets/pleya-web-northstar). 393 en
- * niet 390: de northstar tekent op de breedte van een huidige iPhone.
+ * De breedtes waarop elke route gemeten wordt: de vaste vijf van de werkafspraak
+ * (320, 390, 1280, 1440, 1920) en de breekpunten van de northstar ertussen (768
+ * en 1024 aan weerszijden van 900, 1600 voor de breedste inzet). 390 staat voor
+ * de 393 van de northstar; drie pixels verschuiven geen breekpunt.
  */
-export const WIDTHS = [393, 768, 1024, 1280, 1600] as const;
+export const WIDTHS = [320, 390, 768, 1024, 1280, 1440, 1600, 1920] as const;
+
+/** Hoogte bij een breedte: 1920 als volledig HD-scherm, de rest op 900. */
+export function heightFor(width: number): number {
+  return width >= 1920 ? 1080 : 900;
+}
 
 /**
  * De tags van de eerdere a11y-gates. `best-practice` hoort erbij omdat de gate
@@ -52,12 +59,12 @@ export async function signIn(page: Page, locale: Locale = 'en'): Promise<void> {
     await page.waitForURL('**/setup');
     await page.getByLabel(label(locale, 'setup.code')).fill(SETUP_CODE);
     await page.getByLabel(label(locale, 'setup.username')).fill(USERNAME);
-    await page.getByLabel(label(locale, 'setup.password'), { exact: false }).fill(PASSWORD);
+    await page.getByLabel(label(locale, 'setup.password'), { exact: true }).fill(PASSWORD);
     await page.getByRole('button', { name: label(locale, 'setup.submit') }).click();
   } else {
     await page.waitForURL('**/login');
     await page.getByLabel(label(locale, 'login.username')).fill(USERNAME);
-    await page.getByLabel(label(locale, 'login.password')).fill(PASSWORD);
+    await page.getByLabel(label(locale, 'login.password'), { exact: true }).fill(PASSWORD);
     await page.getByRole('button', { name: label(locale, 'login.submit') }).click();
   }
 

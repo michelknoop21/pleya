@@ -186,14 +186,14 @@
   }
 
   .detail__parent {
-    color: var(--text-muted);
+    color: var(--ink-2);
     min-height: var(--touch-target);
     display: inline-flex;
     align-items: center;
   }
 
   .detail__line {
-    color: var(--text-muted);
+    color: var(--ink-2);
   }
 
   .facts {

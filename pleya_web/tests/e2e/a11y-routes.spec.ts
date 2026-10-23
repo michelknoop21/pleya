@@ -6,6 +6,7 @@ import {
   AXE_TAGS,
   axeMessage,
   grid,
+  heightFor,
   label,
   openLibraryOfKind,
   setupRequired,
@@ -15,7 +16,7 @@ import {
 
 /**
  * De a11y-meetlat van S7.6: axe, horizontale overloop en de documenttaal, op
- * elke route, op de vijf breedtes van de northstar en in beide talen.
+ * elke route, op de breedtes uit `WIDTHS` en in beide talen.
  *
  * Eén ingelogde test per taal met zachte asserties, zodat één run de hele
  * matrix rapporteert in plaats van te stoppen bij de eerste rode cel, en er
@@ -46,7 +47,7 @@ type Target = { name: string; path: string };
 async function prepare(page: Page, projectName: string): Promise<void> {
   test.skip(
     projectName !== 'chromium',
-    'de spec zet zelf vijf breedtes; in het mobiele project zou hij dezelfde matrix nog eens meten'
+    'de spec zet zelf elke breedte uit WIDTHS; in het mobiele project zou hij dezelfde matrix nog eens meten'
   );
   test.setTimeout(300_000);
   await page.addInitScript(() => {
@@ -71,7 +72,7 @@ async function settle(page: Page): Promise<void> {
 }
 
 /**
- * Meet één doel op alle vijf breedtes: axe, overloop en `lang`, en binnen de
+ * Meet één doel op alle breedtes uit `WIDTHS`: axe, overloop en `lang`, en binnen de
  * schil ook de naam van de hoofdnavigatie.
  *
  * Die laatste staat er omdat axe een naamloze navigatie niet afkeurt zolang er
@@ -98,7 +99,7 @@ async function measure(
   options: { settle?: boolean; shell?: boolean; knownRed?: readonly string[] } = {}
 ): Promise<void> {
   for (const width of WIDTHS) {
-    await page.setViewportSize({ width, height: 900 });
+    await page.setViewportSize({ width, height: heightFor(width) });
     if (options.settle !== false) await settle(page);
     const where = `${target} [${locale}]`;
 
@@ -208,7 +209,7 @@ for (const { locale, context } of LOCALES) {
   test.describe(`a11y zonder eigenaar (${locale})`, () => {
     test.use({ locale: context });
 
-    test(`/setup op vijf breedtes (${locale})`, async ({ page }, info) => {
+    test(`/setup op elke meetbreedte (${locale})`, async ({ page }, info) => {
       await prepare(page, info.project.name);
       await page.goto('/setup');
       test.skip(
@@ -226,7 +227,7 @@ for (const { locale, context } of LOCALES) {
   test.describe(`a11y ingelogd (${locale})`, () => {
     test.use({ locale: context });
 
-    test(`elke route op vijf breedtes (${locale})`, async ({ page }, info) => {
+    test(`elke route op elke meetbreedte (${locale})`, async ({ page }, info) => {
       await prepare(page, info.project.name);
       await signIn(page, locale);
 
@@ -296,7 +297,7 @@ for (const { locale, context } of LOCALES) {
   test.describe(`a11y inlogscherm (${locale})`, () => {
     test.use({ locale: context });
 
-    test(`/login op vijf breedtes (${locale})`, async ({ page }, info) => {
+    test(`/login op elke meetbreedte (${locale})`, async ({ page }, info) => {
       await prepare(page, info.project.name);
       await page.goto('/login');
       test.skip(
@@ -316,7 +317,7 @@ for (const { locale, context } of LOCALES) {
       );
       // Een eigen gebruikersnaam: de limiter telt per naam, en zo eet deze
       // meting de pogingen van auth.spec.ts niet op.
-      const password = page.getByLabel(label(locale, 'login.password'));
+      const password = page.getByLabel(label(locale, 'login.password'), { exact: true });
       await page.getByLabel(label(locale, 'login.username')).fill(`a11y-fout-${locale}`);
       await password.fill('dit-is-niet-het-wachtwoord');
       await page.getByRole('button', { name: label(locale, 'login.submit') }).click();
