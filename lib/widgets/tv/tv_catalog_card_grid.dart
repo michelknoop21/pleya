@@ -220,11 +220,11 @@ class TvCatalogCardGrid extends StatefulWidget {
   /// How close to the end of the loaded pages the focus has to get before the
   /// next page is asked for, in grid rows.
   ///
-  /// Two, measured in rows rather than in cards because the column count is
-  /// 5–7 depending on the panel: two rows is one D-pad press of warning at
-  /// the slowest, and it is what turns "press DOWN, wait, then the row
-  /// appears" into "the row is already there".
-  static const int loadMoreRowThreshold = 2;
+  /// Four, measured in rows rather than in cards because the column count is
+  /// 5–7 depending on the panel: each row is one D-pad press of warning, and it is what turns "press DOWN, wait, then the row
+  /// appears" into "the row is already there". Four rows is roughly one page
+  /// (20 groups) of warning, which keeps up with a held D-pad.
+  static const int loadMoreRowThreshold = 4;
 
   @override
   State<TvCatalogCardGrid> createState() => TvCatalogCardGridState();
@@ -286,6 +286,17 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     // ordinary case on a restored mount: the remembered card only becomes
     // resolvable once it is actually in the list.
     _focusedId ??= _restoredId();
+    // A finished load can leave the focus inside the threshold again (fast
+    // scrolling, or a short page); no focus event will follow, so re-check.
+    final focusedId = _focusedId;
+    if (oldWidget.isLoadingMore && !widget.isLoadingMore && focusedId != null) {
+      final index = widget.itemIds.indexOf(focusedId);
+      if (index >= 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _maybeLoadMore(index);
+        });
+      }
+    }
   }
 
   @override

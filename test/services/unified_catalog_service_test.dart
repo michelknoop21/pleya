@@ -38,6 +38,11 @@ class _FakeLibraryClient implements MediaServerClient {
   final Map<String, int Function(int callNumber)> totalCountOverride = {};
   final Map<String, int> _callCount = {};
 
+  /// Every [fetchExternalIds] call, in order, so a test can prove how often
+  /// the identity pipeline went back to the network for the same item.
+  final List<String> externalIdFetches = [];
+  final Set<String> failExternalIdsOnce = {};
+
   /// E8's other pathological case: a backend that answers with the exact
   /// same page every time, ignoring the offset it was given.
   final Set<String> repeatsFirstPageForever = {};
@@ -79,7 +84,11 @@ class _FakeLibraryClient implements MediaServerClient {
   }
 
   @override
-  Future<ExternalIds> fetchExternalIds(String itemId) async => const ExternalIds();
+  Future<ExternalIds> fetchExternalIds(String itemId) async {
+    externalIdFetches.add(itemId);
+    if (failExternalIdsOnce.remove(itemId)) throw StateError('external ids unavailable');
+    return const ExternalIds();
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) =>
@@ -335,6 +344,53 @@ void main() {
         expect(dune.sources, hasLength(2));
       },
     );
+
+    group('external-id cache across loadMore rounds', () {
+      Map<String, _FakeLibraryClient> twoServers() => {
+        's1': _FakeLibraryClient(
+          itemsByLibrary: {
+            'A': [for (var i = 0; i < 6; i++) _movie('a$i', title: 'Title $i', serverId: 's1', year: 2000)],
+          },
+        ),
+        's2': _FakeLibraryClient(
+          itemsByLibrary: {
+            'B': [for (var i = 0; i < 6; i++) _movie('b$i', title: 'Title $i', serverId: 's2', year: 2000)],
+          },
+        ),
+      };
+
+      UnifiedCatalogService serviceFor(Map<String, _FakeLibraryClient> servers) => UnifiedCatalogService(
+        query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+        libraries: [_library('s1', 'A'), _library('s2', 'B')],
+        clientFor: (id) => servers[id.value],
+        pageSize: 2,
+        groupsPerPage: 2,
+      );
+
+      test('each duplicate-bucket item is looked up once, however many rounds follow', () async {
+        final servers = twoServers();
+        final service = serviceFor(servers);
+
+        for (var round = 0; round < 3; round++) {
+          await service.loadMore();
+        }
+
+        final all = [...servers['s1']!.externalIdFetches, ...servers['s2']!.externalIdFetches];
+        expect(all, isNotEmpty);
+        expect(all.toSet().length, all.length, reason: 'no item may be fetched twice across rounds');
+      });
+
+      test('a failed lookup is retried on the next round instead of being cached', () async {
+        final servers = twoServers();
+        servers['s1']!.failExternalIdsOnce.add('a0');
+        final service = serviceFor(servers);
+
+        await service.loadMore();
+        await service.loadMore();
+
+        expect(servers['s1']!.externalIdFetches.where((id) => id == 'a0'), hasLength(2));
+      });
+    });
 
     group('I19: applyUpdatedSourceItem', () {
       test('re-reads one item in place without touching the cursors', () async {
