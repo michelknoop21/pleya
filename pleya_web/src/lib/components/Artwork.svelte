@@ -99,7 +99,12 @@
     try {
       // Het getekende vlak bepaalt de trede; onmeetbaar of geen formaten op
       // de server betekent geen breedte en dus het origineel.
-      const width = requestWidth(host?.clientWidth ?? 0, window.devicePixelRatio || 1, ladderRole);
+      const width = requestWidth(
+        host?.clientWidth ?? 0,
+        window.devicePixelRatio || 1,
+        ladderRole,
+        session.capabilities?.artwork_sizes === true
+      );
       const fetchArtwork =
         contextLoader ??
         ((...args: Parameters<ArtworkLoader>) => session.client.artworkBlob(...args));

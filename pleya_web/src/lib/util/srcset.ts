@@ -7,9 +7,9 @@
  * helper doet het werk van `srcset` en `sizes` aan de clientkant: één trede
  * per vlak, gemeten aan de getekende breedte.
  *
- * Zolang `ARTWORK_SIZES_AVAILABLE` false is gaat er geen `?width=` over de
- * lijn; de terugval is het origineel, precies wat het contract belooft. Er
- * wordt geen capability-veld gelezen dat het protocol niet kent.
+ * Alleen als de server `capabilities.artwork_sizes` meldt gaat er een
+ * `?width=` over de lijn (DEC-154). Zonder die vlag, bij een oudere server, is
+ * de terugval het origineel, precies wat het contract belooft.
  */
 
 /** RB-7, poster en boekcover. */
@@ -18,9 +18,6 @@ export const POSTER_LADDER = [240, 480, 960, 1920] as const;
 export const BACKDROP_LADDER = [480, 960, 1920, 3840] as const;
 
 export type ArtworkRole = 'poster' | 'backdrop';
-
-/** Of de server afgeleide formaten levert. Vandaag altijd false: S4.4 zet hem aan. */
-export const ARTWORK_SIZES_AVAILABLE = false;
 
 /** Kleinste trede die cssWidth * dpr dekt; boven de top de top. */
 export function ladderStep(
@@ -38,13 +35,14 @@ export function ladderStep(
 
 /**
  * De breedte om te vragen, of undefined: dan het origineel. Een onmeetbaar
- * vlak (breedte 0, nog niet getekend) vraagt ook het origineel.
+ * vlak (breedte 0, nog niet getekend) vraagt ook het origineel. `available` is
+ * `capabilities.artwork_sizes` van de server.
  */
 export function requestWidth(
   cssWidth: number,
   dpr: number,
   role: ArtworkRole,
-  available: boolean = ARTWORK_SIZES_AVAILABLE,
+  available: boolean,
 ): number | undefined {
   if (!available) return undefined;
   if (!(cssWidth > 0) || !(dpr > 0)) return undefined;

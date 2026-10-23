@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ARTWORK_SIZES_AVAILABLE, ladderStep, requestWidth } from './srcset';
+import { ladderStep, requestWidth } from './srcset';
 
 describe('ladderStep', () => {
   it('kiest de kleinste trede die breedte maal dpr dekt', () => {
@@ -27,8 +27,6 @@ describe('ladderStep', () => {
 
 describe('requestWidth', () => {
   it('vraagt niets zolang de server geen formaten levert', () => {
-    expect(ARTWORK_SIZES_AVAILABLE).toBe(false);
-    expect(requestWidth(190, 2, 'poster')).toBeUndefined();
     expect(requestWidth(190, 2, 'poster', false)).toBeUndefined();
   });
 

@@ -7,8 +7,15 @@ import { ApiError } from '../api/errors';
 import { ARTWORK_LOADER_KEY } from './artworkLoader';
 
 const artworkBlob = vi.fn();
+// `capabilities` is per test te zetten: de ladder volgt artwork_sizes.
+const caps = vi.hoisted(() => ({ value: null as { artwork_sizes: boolean } | null }));
 vi.mock('../stores/session.svelte', () => ({
-  session: { client: { artworkBlob: (...args: unknown[]) => artworkBlob(...args) } }
+  session: {
+    client: { artworkBlob: (...args: unknown[]) => artworkBlob(...args) },
+    get capabilities() {
+      return caps.value;
+    }
+  }
 }));
 
 // jsdom kent geen object-URL's; ze worden hier geteld zodat de test kan zien
@@ -20,6 +27,7 @@ beforeEach(() => {
   created.length = 0;
   revoked.length = 0;
   artworkBlob.mockReset();
+  caps.value = null;
   let counter = 0;
   URL.createObjectURL = vi.fn(() => {
     const url = `blob:test/${counter++}`;
@@ -37,6 +45,28 @@ describe('Artwork', () => {
     const img = await screen.findByAltText('Poster');
     expect(img).toHaveAttribute('src', created[0]);
     expect(artworkBlob).toHaveBeenCalledWith('a1', expect.any(AbortSignal));
+  });
+
+  it('vraagt een trede van de ladder als de server formaten levert, anders het origineel', async () => {
+    artworkBlob.mockResolvedValue(new Blob(['bytes']));
+    // jsdom tekent niets; het vlak krijgt hier de breedte van een railposter.
+    const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(190);
+    vi.stubGlobal('devicePixelRatio', 2);
+    try {
+      caps.value = { artwork_sizes: true };
+      const first = render(Artwork, { props: { artworkId: 'a1', alt: 'Poster', eager: true } });
+      await screen.findByAltText('Poster');
+      expect(artworkBlob).toHaveBeenLastCalledWith('a1', expect.any(AbortSignal), 480);
+      first.unmount();
+
+      caps.value = { artwork_sizes: false };
+      render(Artwork, { props: { artworkId: 'a2', alt: 'Poster', eager: true } });
+      await screen.findByAltText('Poster');
+      expect(artworkBlob).toHaveBeenLastCalledWith('a2', expect.any(AbortSignal));
+    } finally {
+      width.mockRestore();
+      vi.unstubAllGlobals();
+    }
   });
 
   it('trekt de object-URL in wanneer de component verdwijnt', async () => {
