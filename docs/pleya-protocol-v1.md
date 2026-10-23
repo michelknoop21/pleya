@@ -539,6 +539,7 @@ contract keurt ze af.
 | `playback.not_playable` | 415 | nee | deze versie is niet zonder bewerking te leveren |
 | `playback.transcode_busy` | 503 | ja | alle omzetsessies zijn bezet |
 | `playback.transcode_failed` | 502 | nee | de omzetting leverde geen speelbare uitvoer |
+| `library.personal_invalid` | 400 | nee | een waardering of spoorvoorkeur die niet te bewaren is, zie `details.field` |
 | `storage.unavailable` | 503 | ja | de opslag achter deze resource is niet bereikbaar |
 | `storage.full` | 507 | nee | de server kan niet schrijven |
 | `session.invalid` | 400 | nee | onbekende of afgesloten kijksessie |
@@ -1096,6 +1097,37 @@ hele catalogus op te halen.
 
 ---
 
+## 14a. Geschiedenis, favorieten, waarderingen en spoorvoorkeuren
+
+Alles in dit hoofdstuk is van de aanvrager zelf en reist met zijn account naar elk toestel (venster 6
+deel 2, S20). Elke operatie is klasse **`authenticated`**, en een item buiten de bibliotheken van de
+aanvrager is `404`, hetzelfde antwoord als een item dat niet bestaat (matrixregel 52 tot en met 60).
+Elk onderdeel heeft zijn eigen vlag: `capabilities.history`, `favorites`, `ratings` en
+`track_preferences`.
+
+**`GET /pleya/v1/history`** levert één regel per afspeelsessie, de laatste eerst. De sessie is de
+`session_id` die de client al in `POST /watch-state` meestuurt: de regel wordt bij de eerste melding
+aangemaakt en groeit met de volgende mee (`ended_at`, `end_position_ms`, `completed`). Een film van twee
+uur met een melding per tien seconden is dus één regel. Alleen als gezien of ongezien markeren is geen
+afspelen en maakt geen regel. Een melding van een toestel zonder schrijfrecht verplaatst de kijkstatus
+niet en komt er ook niet in; een offline backlog doet dat wel, want dat is precies wat een geschiedenis
+moet bewaren. Elke regel draagt het volledige `Item`, de naam van het toestel (`null` als de inlogsessie
+al weg is) en is beperkt tot de bibliotheken die de aanvrager mag zien.
+
+**Favorieten** zijn `GET /favorites` (een `ItemPage`, de laatst toegevoegde eerst), `PUT` en `DELETE
+/favorites/{item_id}`. Herhalen is onschadelijk. **Waarderingen** zijn `PUT /ratings/{item_id}` met een
+geheel cijfer van 1 tot en met 10 en `DELETE`; een cijfer erbuiten is `400` met `library.personal_invalid`
+en `details.field`. Beide staan ook op het `Item` zelf (`favorite`, `rating`), naast en niet in
+`user_state`, want een favoriet die nooit is gekeken heeft geen kijkstatus en `user_state: null` blijft
+"nooit geopend" betekenen.
+
+**Spoorvoorkeuren** zijn `GET`, `PUT` en `DELETE /track-preferences/{item_id}`. Een voorkeur hangt aan een
+film, een serie of een aflevering en bestaat uit een audiotaal, een ondertiteltaal (twee of drie letters)
+en een ondertitelmodus (`off`, `on` of `forced`). `GET` geeft de voorkeur die voor het item geldt: die van
+het item zelf, anders die van het seizoen of de serie erboven, met in `source_item_id` waar hij aan hangt.
+Een veld dat ontbreekt zegt niets over die keuze. `DELETE` haalt alleen de voorkeur bij precies dit item
+weg.
+
 ## 15. Home-bouwstenen
 
 ### `GET /pleya/v1/hubs/{hub_id}`
@@ -1307,6 +1339,15 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 49 | `GET /playback/sessions/{id}/{file}` | de afspeellijst, het initsegment en de segmenten van een omzetsessie | klasse `authenticated` of met `stream_token` of browser-streamsessie zoals de stream; een bearer alleen voor de eigenaar van de sessie, een token alleen voor de versie die wordt omgezet |
 | 50 | `GET /transcode-sessions` | de lopende omzetsessies van iedereen, het maximum en of er hardwareversnelling is | klasse `admin`, `404` voor de rest (venster 5, S18.5) |
 | 51 | `DELETE /transcode-sessions/{id}` | het stoppen van de omzetsessie van wie dan ook | klasse `admin`, `404` voor de rest, ook voor een id dat niet bestaat; komt in het auditlog als `stopTranscodeSession` |
+| 52 | `GET /history` | de afspeelgeschiedenis van de aanvrager | klasse `authenticated`, alleen de eigen regels en alleen uit bibliotheken die de aanvrager mag zien (venster 6, S20) |
+| 53 | `GET /favorites` | de favorieten van de aanvrager | als regel 52 |
+| 54 | `PUT /favorites/{id}` | een item als favoriet zetten | klasse `authenticated` met de bibliotheekautorisatie van het item: `404` voor een item buiten bereik of dat niet bestaat |
+| 55 | `DELETE /favorites/{id}` | een item uit de favorieten halen | als regel 54 |
+| 56 | `PUT /ratings/{id}` | een waardering bewaren | als regel 54 |
+| 57 | `DELETE /ratings/{id}` | een waardering wegnemen | als regel 54 |
+| 58 | `GET /track-preferences/{id}` | de voorkeur voor audio en ondertitels bij een item | als regel 54 |
+| 59 | `PUT /track-preferences/{id}` | die voorkeur vastleggen | als regel 54 |
+| 60 | `DELETE /track-preferences/{id}` | die voorkeur weghalen | als regel 54 |
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
 zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
@@ -2053,8 +2094,17 @@ Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries
 | `GET /pleya/v1/playback/sessions/{id}/{file}` | `authenticated` of streamtoken | nee |
 | `GET /pleya/v1/transcode-sessions` | `admin` | nee |
 | `DELETE /pleya/v1/transcode-sessions/{id}` | `admin` | ja |
+| `GET /pleya/v1/history` | `authenticated` | nee |
+| `GET /pleya/v1/favorites` | `authenticated` | nee |
+| `PUT /pleya/v1/favorites/{id}` | `authenticated` | nee |
+| `DELETE /pleya/v1/favorites/{id}` | `authenticated` | nee |
+| `PUT /pleya/v1/ratings/{id}` | `authenticated` | nee |
+| `DELETE /pleya/v1/ratings/{id}` | `authenticated` | nee |
+| `GET /pleya/v1/track-preferences/{id}` | `authenticated` | nee |
+| `PUT /pleya/v1/track-preferences/{id}` | `authenticated` | nee |
+| `DELETE /pleya/v1/track-preferences/{id}` | `authenticated` | nee |
 
-Eenenzestig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Zeventig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit
@@ -2079,7 +2129,7 @@ client iets uit leest.
 
 ## 19. Wat er bewust niet in zit
 
-Geen transcode-sessies. Geen downloads. Geen verzamelingen, afspeellijsten, kijkgeschiedenis, favorieten of waarderingen. Geen
+Geen transcode-sessies. Geen downloads. Geen verzamelingen of afspeellijsten. Geen
 metadata-providers, geen match-correctie, geen artwork-upload. Geen websockets en geen
 server-sent events. Geen Live TV. Geen beheerscherm voor gebruikers of bibliotheekrechten: hoofdstuk
 16 levert de API, niet het scherm.

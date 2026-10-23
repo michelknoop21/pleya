@@ -43,6 +43,7 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"playback.not_playable":          {415, false},
 		"playback.transcode_busy":        {503, true},
 		"playback.transcode_failed":      {502, false},
+		"library.personal_invalid":       {400, false},
 		"storage.unavailable":            {503, true},
 		"storage.full":                   {507, false},
 		"session.invalid":                {400, false},

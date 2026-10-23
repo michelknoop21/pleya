@@ -86,6 +86,12 @@ func (s *Server) handleWatchStateReport(w http.ResponseWriter, r *http.Request) 
 		BaseRevision: req.BaseRevision,
 		Backlog:      req.Backlog,
 	}
+	// De inlogsessie geeft de geschiedenis de naam van het toestel.
+	if claims, ok := claimsFromContext(r.Context()); ok {
+		if sid, err := id.Parse(claims.Sid); err == nil {
+			ev.AuthSessionID = &sid
+		}
+	}
 
 	subject := userID.String()
 
@@ -243,7 +249,11 @@ func parseCause(raw string, action watch.Action) (watch.Cause, bool) {
 // pagina te laten falen: een lijst zonder voortgangsbalk is bruikbaar, een lege
 // bibliotheek niet.
 func (s *Server) hydrateItems(r *http.Request, items []Item) {
-	if s.opts.Watch == nil || len(items) == 0 {
+	if len(items) == 0 {
+		return
+	}
+	s.hydrateMarks(r, items)
+	if s.opts.Watch == nil {
 		return
 	}
 

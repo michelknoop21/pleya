@@ -33,6 +33,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/metadata"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/mounts"
+	"github.com/edde746/plezy/pleya_server/internal/personal"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/transcode"
@@ -279,6 +280,7 @@ func run() int {
 		Catalog:            catalogStore,
 		Auth:               authStore,
 		Watch:              watch.NewStore(pool),
+		Personal:           personal.NewStore(pool),
 		MediaRoots:         cfg.MediaDirs,
 		CacheDir:           cfg.CacheDir,
 		OnMetadataChange:   onScanned,

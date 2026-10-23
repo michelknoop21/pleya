@@ -46,6 +46,9 @@ void main() {
     // metadata. De app toont geen beheer; het correctiescherm is van het web.
     // S18.5: het beheer van omzetsessies is een beheerscherm (S10, scherm 37).
     'TranscodeSessionList',
+    // S20: de geschiedenispagina is een scherm voor later; favorieten, waardering
+    // en spoorvoorkeur hebben wel een lezer.
+    'HistoryPage',
     'MetadataCoverage',
     'MetadataAlternative',
     'MetadataAttentionState',
@@ -121,6 +124,10 @@ void main() {
       expect(info.serverId, isNotEmpty);
     },
     'ServerDetail': (json) => PleyaServerDetail.fromJson(json),
+    'TrackPreference': (json) {
+      final pref = PleyaTrackPreference.fromJson(json);
+      expect(pref.subtitleMode, anyOf(isNull, 'off', 'on', 'forced'));
+    },
     'PlaybackPlan': (json) {
       final plan = PleyaPlaybackPlan.fromJson(json);
       expect(plan.deliveryMode, isNotNull);
@@ -180,8 +187,8 @@ void main() {
       );
     });
 
-    test('covers the 90 fixtures the contract ships', () {
-      expect(fixtures, hasLength(90));
+    test('covers the 92 fixtures the contract ships', () {
+      expect(fixtures, hasLength(92));
     });
 
     for (final fixture in fixtures) {
