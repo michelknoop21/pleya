@@ -7,10 +7,10 @@ import NavIcon from './NavIcon.svelte';
 import { theme } from '../stores/theme.svelte';
 
 describe('ThemePicker', () => {
-  it('biedt dezelfde vier standen als de app en start op OLED', () => {
+  it('biedt dezelfde vier standen als de app en start op dark', () => {
     render(ThemePicker);
     const select = screen.getByRole('combobox', { name: 'Theme' });
-    expect(select).toHaveValue('oled');
+    expect(select).toHaveValue('dark');
     expect(
       [...select.querySelectorAll('option')].map((o) => o.value)
     ).toEqual(['oled', 'dark', 'light', 'system']);
@@ -24,7 +24,7 @@ describe('ThemePicker', () => {
     expect(theme.mode).toBe('light');
     expect(theme.palette).toBe('light');
 
-    theme.set('oled');
+    theme.set('dark');
   });
 });
 

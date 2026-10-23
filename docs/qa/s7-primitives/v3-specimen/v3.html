@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="nl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pleya kaart, hero, rail v3</title>
+<!--
+  Specimen v3, S7 commitgrens 4: MediaCard, Hero en HubRail vóór de bouw.
+  Statisch en zonder externe bron. Lettertypen komen relatief uit pleya_web/static/fonts,
+  artwork is gegenereerd met CSS-verlopen; er staat geen TMDb-materiaal in.
+  ?only=kaarten|hero|rail toont één sectie, voor de opnamen naast de northstar.
+-->
+<style>
+@font-face{font-family:Inter;src:url('../../../../pleya_web/static/fonts/Inter-Regular.woff2') format('woff2');font-weight:400}
+@font-face{font-family:Inter;src:url('../../../../pleya_web/static/fonts/Inter-Medium.woff2') format('woff2');font-weight:500}
+@font-face{font-family:Inter;src:url('../../../../pleya_web/static/fonts/Inter-Bold.woff2') format('woff2');font-weight:700}
+@font-face{font-family:ArchivoBlack;src:url('../../../../pleya_web/static/fonts/ArchivoBlack-Regular.woff2') format('woff2');font-weight:900}
+
+/* Waarden uit pleya_web/src/styles/tokens.css, thema dark (de webstandaard). */
+:root{
+  --accent:#e5140f; --amber:#ffb020; --ok:#3dd68c;
+  --bg:#141414; --surface:#1f1f1f; --panel:#1c1c1c; --panel-2:#222222; --inset-bg:#0f0f0f;
+  --hairline:rgba(255,255,255,.07); --hairline-strong:rgba(255,255,255,.14);
+  --ink:#fff; --ink-2:rgba(255,255,255,.702); --ink-3:color-mix(in srgb,#fff 50%,transparent); --ink-4:color-mix(in srgb,#fff 30%,transparent);
+  --fill:color-mix(in srgb,#fff 8%,transparent); --fill-2:color-mix(in srgb,#fff 14%,transparent);
+  --ring-shadow:0 0 0 1px rgba(255,255,255,.06),0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+  --radius-sm:8px; --radius-panel:18px; --radius-hero:18px;
+  --ring:3px; --inset:48px; --poster-w:190px; --rail-gap:20px;
+  --font-sans:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --font-display:ArchivoBlack,var(--font-sans);
+  color-scheme:dark;
+}
+@media (max-width:1599px){:root{--poster-w:170px}}
+@media (max-width:1199px){:root{--inset:32px;--poster-w:150px;--rail-gap:16px}}
+@media (max-width:899px){:root{--inset:16px;--poster-w:110px;--rail-gap:12px;--radius-hero:16px}}
+
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.35 var(--font-sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+svg.ic{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+main{padding:28px var(--inset) 72px}
+
+/* Paginakop en sectiekoppen in de v2-uitvoering (galerij /dev/primitives). */
+.crumb{font-size:13px;color:var(--ink-3)}
+h1{margin:8px 0 6px;font-size:36px;line-height:1.08;letter-spacing:-.028em;font-weight:700}
+.lede{margin:0 0 8px;color:var(--ink-2);font-size:14px;max-width:720px}
+.sec{margin-top:40px}
+.sec-h{display:flex;align-items:center;gap:12px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);font-weight:700;margin:0 0 20px}
+.sec-h::after{content:"";flex:1;height:1px;background:var(--hairline)}
+.sub-h{font-size:13px;color:var(--ink-3);margin:28px 0 10px;font-weight:500}
+@media (max-width:899px){h1{font-size:28px}main{padding-top:20px}}
+body.only main>header{display:none}
+body.only .sec{margin-top:0}
+
+/* ---------- MediaCard: maten uit web.css 154 tot 180 ---------- */
+.states{display:flex;flex-wrap:wrap;gap:22px var(--rail-gap);align-items:flex-start}
+.cell{width:var(--poster-w)}
+.cell.wide{width:calc(var(--poster-w) * 1.78)}
+.note{font-size:12px;color:var(--ink-3);text-align:center;margin-top:8px;line-height:1.4}
+.card{position:relative;width:var(--poster-w);flex:0 0 var(--poster-w)}
+.card.wide{width:calc(var(--poster-w) * 1.78);flex-basis:calc(var(--poster-w) * 1.78)}
+.card a{color:inherit;text-decoration:none;display:block;outline:none}
+.art{position:relative;aspect-ratio:2/3;border-radius:var(--radius-sm);overflow:hidden;background:var(--surface);transition:transform 200ms cubic-bezier(.33,0,.2,1),box-shadow 200ms cubic-bezier(.33,0,.2,1)}
+.card.wide .art{aspect-ratio:16/9}
+.cap{padding-top:7px}
+.t{font-size:14px;font-weight:500;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s{font-size:12px;color:var(--ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:899px){.t{font-size:13px}.s{font-size:11px}}
+/* hover: ring in inkt, lift 3, schaduw, titel 700, acties onderin */
+.card.is-hover .art{box-shadow:0 0 0 var(--ring) var(--ink),0 18px 40px rgba(0,0,0,.55);transform:translateY(-3px)}
+.card.is-hover .t{font-weight:700}
+/* toetsenbordfocus: ring op een gap van 3, geen lift */
+.card.is-focus .art{box-shadow:0 0 0 3px var(--bg),0 0 0 calc(3px + var(--ring)) var(--ink)}
+.over{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(0,0,0,.7));display:flex;align-items:flex-end;justify-content:center;padding-bottom:12px;gap:8px}
+.over .pl{width:40px;height:40px;border-radius:999px;background:var(--ink);color:var(--bg);display:grid;place-items:center}
+.over .pl svg{fill:currentColor;stroke:none;width:16px;height:16px;margin-left:2px}
+.over .sm{width:34px;height:34px;border-radius:999px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.5);color:var(--ink);display:grid;place-items:center}
+.over .sm svg{width:16px;height:16px}
+/* onder 900 is de kaart 110 breed: 40+34+34 plus ruimte past daar niet */
+@media (max-width:899px){.over{gap:6px;padding-bottom:8px}.over .pl{width:34px;height:34px}.over .sm{width:30px;height:30px}}
+.prog{position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.22)}
+.prog i{display:block;height:100%;background:var(--accent)}
+.badge-src{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.62);color:var(--ink);font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px}
+.seen{position:absolute;right:8px;top:8px;width:22px;height:22px;border-radius:999px;background:var(--ink);color:var(--bg);display:grid;place-items:center}
+.seen svg{width:13px;height:13px;stroke-width:3}
+.dot-new{position:absolute;right:8px;top:8px;width:9px;height:9px;border-radius:999px;background:var(--amber);box-shadow:0 0 0 2px rgba(0,0,0,.5)}
+/* geen artwork: titel en jaar op het paneel, met de haarlijn uit v2 */
+.art.none{background:var(--panel);box-shadow:inset 0 0 0 1px var(--hairline);display:grid;place-items:center;text-align:center;padding:12px}
+.art.none b{display:block;font-size:15px;font-weight:700;line-height:1.25}
+.art.none span{display:block;font-size:12px;color:var(--ink-3);margin-top:6px}
+@media (max-width:899px){.art.none b{font-size:13px}.art.none span{font-size:11px}}
+
+/* gegenereerd artwork: verloop plus titel, nooit een echt beeld */
+.ph{position:absolute;inset:0;background:radial-gradient(circle at var(--sx,50%) var(--sy,32%),var(--c3) 0 var(--sr,0%),transparent calc(var(--sr,0%) + 1px)),linear-gradient(170deg,var(--c1),var(--c2));display:flex;flex-direction:column;justify-content:space-between;padding:9% 7% 30%;text-align:center}
+.ph .cr{font-size:clamp(6px,4.4cqw,9px);letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.62);font-weight:500}
+.ph .tt{font-weight:700;text-transform:uppercase;letter-spacing:.08em;line-height:1.08;color:#fff;font-size:clamp(8px,8.6cqw,18px);text-shadow:0 1px 8px rgba(0,0,0,.35)}
+.art{container-type:inline-size}
+.card.wide .ph{justify-content:flex-end;text-align:left;padding:7% 6%}
+.card.wide .ph .cr{display:none}
+.card.wide .ph .tt{font-size:clamp(9px,5.4cqw,20px)}
+
+/* ---------- Hero: web.css 226 tot 247 ---------- */
+.hero{position:relative;border-radius:var(--radius-hero);overflow:hidden;background:var(--surface);aspect-ratio:21/9;margin-bottom:20px}
+.hero .bg{position:absolute;inset:0;background:radial-gradient(ellipse 28% 48% at 62% 34%,rgba(255,225,190,.32),transparent 70%),radial-gradient(ellipse 60% 90% at 70% 10%,#8a6a4c,transparent 60%),linear-gradient(115deg,#2b2016 0%,#5c4632 45%,#a58866 72%,#cbb79b 100%)}
+.hero .bg.night{background:radial-gradient(circle at 74% 30%,#f2c26b 0 7%,transparent 7.3%),radial-gradient(ellipse 70% 80% at 74% 30%,rgba(242,140,60,.45),transparent 60%),linear-gradient(160deg,#1b2440,#3a1f3d 55%,#120d16)}
+.hero .scrim{position:absolute;inset:0;background:linear-gradient(90deg,rgba(20,20,20,.92) 0%,rgba(20,20,20,.55) 45%,rgba(20,20,20,0) 75%),linear-gradient(0deg,rgba(20,20,20,.85) 0%,rgba(20,20,20,0) 45%)}
+.hero .body{position:absolute;left:44px;right:44px;bottom:40px;max-width:560px}
+.hero .logo{font-family:var(--font-display);font-weight:900;font-size:48px;letter-spacing:.12em;text-transform:uppercase;line-height:1;margin:0 0 12px}
+.hero .meta{font-size:15px;color:var(--ink-2);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hero .meta i{font-style:normal;color:var(--ink-3)}
+.hero .syn{font-size:15px;color:var(--ink-2);margin:10px 0 18px;line-height:1.4;max-width:520px}
+.hero .meta+.cta{margin-top:18px}
+.cta{display:flex;gap:10px}
+.btn{height:44px;padding:0 20px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:700;white-space:nowrap;color:var(--ink);text-decoration:none}
+.btn.primary{background:var(--ink);color:var(--bg)}
+.btn.primary svg{fill:currentColor;stroke:none;width:16px;height:16px}
+.btn.secondary{background:var(--fill-2);color:var(--ink);backdrop-filter:blur(8px)}
+.hero.none .bg{background:var(--panel)}
+.hero.none{box-shadow:inset 0 0 0 1px var(--hairline)}
+@media (max-width:1199px){.hero{aspect-ratio:16/9}.hero .logo{font-size:38px}.hero .body{left:32px;bottom:28px}}
+@media (max-width:899px){
+  .hero{aspect-ratio:auto;height:520px}
+  .hero .bg{background-position:50% 20%}
+  .hero .scrim{background:linear-gradient(180deg,rgba(20,20,20,0) 35%,rgba(20,20,20,.55) 62%,rgba(20,20,20,.94) 100%)}
+  .hero .body{left:16px;right:16px;bottom:16px;max-width:none;text-align:center}
+  .hero .logo{font-size:32px;letter-spacing:.2em}
+  .hero .meta{justify-content:center;font-size:14px}
+  .hero .syn{margin:8px 6px 14px;font-size:14px}
+  .hero .cta .btn{flex:1}
+}
+
+/* ---------- HubRail: web.css 150 tot 152, plus kop, pijlen en fade ---------- */
+.rail-sec{position:relative;margin-top:28px}
+.rail-head{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;margin-bottom:4px}
+.rail-head h2{margin:0;font-size:20px;font-weight:700;letter-spacing:-.01em}
+.rail-head a{display:inline-flex;align-items:center;gap:4px;min-height:44px;font-size:14px;font-weight:500;color:var(--ink-2);text-decoration:none}
+.rail-head a svg{width:14px;height:14px}
+@media (max-width:899px){.rail-head h2{font-size:18px}.rail-head a{font-size:13px}}
+.rail-wrap{position:relative;margin:0 calc(-1 * var(--inset))}
+.rail{display:flex;gap:var(--rail-gap);overflow-x:auto;scrollbar-width:none;padding:6px var(--inset) 4px;scroll-padding-inline:var(--inset)}
+.rail::-webkit-scrollbar{display:none}
+.fade-r{position:absolute;right:0;top:0;bottom:0;width:90px;background:linear-gradient(90deg,transparent,var(--bg));pointer-events:none}
+.arrow{position:absolute;top:calc(6px + var(--art-h) / 2 - 22px);width:44px;height:44px;border-radius:999px;background:rgba(20,20,20,.78);border:1px solid var(--hairline-strong);color:var(--ink);display:none;place-items:center;z-index:2}
+.arrow.l{left:calc(var(--inset) - 22px)}
+.arrow.r{right:calc(var(--inset) - 22px)}
+.arrow[aria-disabled=true]{opacity:.35}
+.rail-sec.show-arrows .arrow{display:grid}
+@media (max-width:899px){.rail-sec.show-arrows .arrow{display:none}}
+.rail-sec{--art-h:calc(var(--poster-w) * 1.5)}
+.rail-sec.wide-rail{--art-h:calc(var(--poster-w) * 1.78 * 9 / 16)}
+.tagline{font-size:12px;color:var(--ink-3);margin:6px 0 0}
+</style>
+
+<body>
+<main>
+ <header>
+  <div class="crumb">S7 commitgrens 4 · specimen v3 · wacht op akkoord</div>
+  <h1>Kaart, hero en rail</h1>
+  <p class="lede">Statische vooruitblik op <b>MediaCard</b>, <b>Hero</b> en <b>HubRail</b> in de v2-uitvoering, met de tokens uit <code>tokens.css</code>. Artwork is gegenereerd; titels en aantallen zijn voorbeeld.</p>
+ </header>
+
+ <section class="sec" data-sec="kaarten">
+  <div class="sec-h">Kaartstaten · beeld 16</div>
+  <div class="states" id="states"></div>
+ </section>
+
+ <section class="sec" data-sec="hero">
+  <div class="sec-h">Hero · beeld 01 · 21:9 vanaf 1200, 16:9 vanaf 900, portret van 520 daaronder</div>
+  <div id="heroes"></div>
+ </section>
+
+ <section class="sec" data-sec="rail">
+  <div class="sec-h">Rails · beeld 01 · bleed tot de rand, fade rechts</div>
+  <div id="rails"></div>
+ </section>
+</main>
+
+<script>
+// Gegenereerde posters: [titel, kleur boven, kleur onder, accentkleur, zonstraal, credit]
+const ART = {
+  dune2:['Dune: Part Two','#f2a640','#3b1a0d','#ffd27a','24%','Denis Villeneuve'],
+  dune:['Dune','#e08a3c','#2a140a','#ffcf8a','0%','Part one'],
+  inter:['Interstellar','#20324a','#0b1118','#d9e4f2','14%','Christopher Nolan'],
+  anora:['Anora','#c2347a','#2a0f2a','#ffb0e0','0%','Sean Baker'],
+  sev:['Severance','#4aa6d6','#0d2a3a','#d8f1ff','0%','Apple TV+'],
+  fallout:['Fallout','#6b5a3c','#121410','#e8d29a','18%','S1 · A7'],
+  opp:['Oppenheimer','#e2541c','#2a0b05','#ffc070','16%','Christopher Nolan'],
+  bear:['The Bear','#5b6670','#16191c','#f2e3c4','0%','FX'],
+  slow:['Slow Horses','#d9d4c8','#2c2a26','#c8241a','0%','Apple TV+'],
+  poor:['Poor Things','#9fb3c4','#2c3a46','#f4ece0','12%','Yorgos Lanthimos'],
+  andor:['Andor','#7a6a52','#1b1712','#e9d3a2','0%','Lucasfilm'],
+  hold:['The Holdovers','#c9b79a','#3a2b1f','#7a1d14','0%','Alexander Payne'],
+  shogun:['Shogun','#2b3b36','#0c1210','#e7c86b','20%','FX'],
+  arcane:['Arcane','#2e3f7a','#170b26','#c04fd9','10%','Fortiche'],
+  tlou:['The Last of Us','#4b5a3a','#121510','#cfd9a6','0%','HBO'],
+  penguin:['The Penguin','#3b3530','#0f0d0b','#d02a2a','0%','HBO'],
+  conclave:['Conclave','#a3221c','#1c0a08','#f2e2d0','0%','Edward Berger'],
+  nosf:['Nosferatu','#7d8590','#14161a','#e8ecf2','8%','Robert Eggers'],
+  glad:['Gladiator II','#8a6a44','#1d140c','#f0d08a','0%','Ridley Scott'],
+  civil:['Civil War','#3a4630','#0d0f0b','#b9f23a','0%','Alex Garland'],
+  furiosa:['Furiosa','#e3902a','#3a1608','#ffe08a','22%','George Miller'],
+  wicked:['Wicked','#3f8a4c','#e07ab8','#f9e6f0','0%','Jon M. Chu'],
+  subst:['The Substance','#e9e9e9','#9a9a9a','#d8d8d8','0%','Coralie Fargeat'],
+};
+const ic = {
+  play:'<svg class="ic" viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z"/></svg>',
+  plus:'<svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  more:'<svg class="ic" viewBox="0 0 24 24"><path d="M6 12h.01M12 12h.01M18 12h.01" stroke-width="3"/></svg>',
+  check:'<svg class="ic" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  info:'<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>',
+  chev:'<svg class="ic" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
+  chevL:'<svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>',
+};
+function ph(key){
+  const [t,c1,c2,c3,sr,cr] = ART[key];
+  return `<div class="ph" style="--c1:${c1};--c2:${c2};--c3:${sr==='0%'?'transparent':c3};--sr:${sr}"><div class="cr">${cr}</div><div class="tt">${t}</div></div>`;
+}
+// Eén kaart. o: {art, t, s, wide, hover, focus, prog, seen, isNew, versions, none, year}
+function card(o){
+  const cls = ['card', o.wide&&'wide', o.hover&&'is-hover', o.focus&&'is-focus'].filter(Boolean).join(' ');
+  let art = o.none
+    ? `<div class="art none"><div><b>${o.t}</b><span>${o.year}</span></div></div>`
+    : `<div class="art">${ph(o.art)}` +
+      (o.versions?`<span class="badge-src">${o.versions} versies</span>`:'') +
+      (o.seen?`<span class="seen" aria-label="Gezien">${ic.check}</span>`:(o.isNew?`<span class="dot-new" aria-label="Nieuw"></span>`:'')) +
+      (o.prog!=null?`<div class="prog"><i style="width:${o.prog}%"></i></div>`:'') +
+      (o.hover?`<div class="over"><span class="pl">${ic.play}</span><span class="sm">${ic.plus}</span><span class="sm">${ic.more}</span></div>`:'') +
+      `</div>`;
+  return `<div class="${cls}"><a href="#">${art}<div class="cap"><div class="t">${o.t}</div><div class="s">${o.s}</div></div></a></div>`;
+}
+
+// --- kaartstaten, volgorde van beeld 16 ---
+const D2 = {art:'dune2',t:'Dune: Part Two',s:'2024 · Sciencefiction'};
+const states = [
+  [{...D2},'rust'],
+  [{...D2,hover:true},'muis erover: witte ring, lift, acties onderin (afspelen · mijn lijst · meer)'],
+  [{...D2,focus:true},'toetsenbordfocus: ring op een gap, geen lift'],
+  [{art:'dune',t:'Dune',s:'nog 1u 12m',prog:38},'voortgang uit user_state'],
+  [{art:'inter',t:'Interstellar',s:'2014 · Sciencefiction',seen:true},'gezien'],
+  [{art:'anora',t:'Anora',s:'2024 · Drama',isNew:true},'nieuw sinds je laatste bezoek: amber punt'],
+  [{art:'sev',t:'Severance',s:'S2 · A3 · nog 31 min',prog:62},'aflevering in Verder kijken: serieposter, afleveringsregel'],
+  [{art:'fallout',t:'Fallout',s:'S1 · A7 · De rand',wide:true},'volgende aflevering: 16:9, breedte 1,78 × poster'],
+  [{t:'The Zone of Interest',s:'2023 · Drama',none:true,year:'2023'},'geen artwork: titel en jaar op het paneel'],
+  [{art:'opp',t:'Oppenheimer',s:'2023 · Drama',versions:2},'meerdere versies (4K en 1080p) op één item'],
+  [{art:'civil',t:'Civil War',s:'2024 · Actie',seen:true,isNew:true},'gezien én nieuw: gezien wint, geen punt'],
+];
+document.getElementById('states').innerHTML = states.map(([o,n]) =>
+  `<div class="cell${o.wide?' wide':''}">${card(o)}<div class="note">${n}</div></div>`).join('');
+
+// --- hero ---
+function hero(o){
+  return `<div class="sub-h">${o.label}</div>
+  <div class="hero${o.none?' none':''}"><div class="bg ${o.bg||''}"></div>${o.none?'':'<div class="scrim"></div>'}
+   <div class="body"><h2 class="logo">${o.title}</h2>
+    <div class="meta">${o.meta.map((m,i)=>(i?'<i>·</i>':'')+'<span>'+m+'</span>').join('')}</div>
+    ${o.syn?`<p class="syn">${o.syn}</p>`:''}
+    <div class="cta">${o.play?`<a class="btn primary" href="#">${ic.play}Afspelen</a>`:''}<a class="btn secondary" href="#">${ic.info}Meer info</a></div>
+   </div></div>`;
+}
+document.getElementById('heroes').innerHTML = [
+  hero({label:'A · met playHref en summary (Afspelen pas na PS-4W)',title:'Dune: Part Two',meta:['Film','Sciencefiction','2024','2u 46m'],
+        syn:'Paul Atreides trekt met de Fremen de woestijn in en moet kiezen tussen wraak en de toekomst die hij in zijn visioenen ziet.',play:true}),
+  hero({label:'B · zoals de routes hem in deze grens aanroepen: geen playHref, geen summary, lange titel',bg:'night',
+        title:'The Lord of the Rings: The Return of the King',meta:['Film','Avontuur','2003','3u 21m']}),
+  hero({label:'C · zonder artwork',none:true,title:'The Zone of Interest',meta:['Film','Drama','2023','1u 45m']}),
+].join('');
+
+// --- rails ---
+function rail(o){
+  const items = o.items.map(card).join('');
+  return `<div class="rail-sec${o.wide?' wide-rail':''}${o.arrows?' show-arrows':''}">
+   <div class="rail-head"><h2>${o.title}</h2>${o.href?`<a href="#">Alles bekijken${ic.chev}</a>`:''}</div>
+   <div class="rail-wrap"><div class="rail">${items}</div><div class="fade-r"></div>
+    <span class="arrow l" aria-disabled="true" aria-label="Naar links">${ic.chevL}</span><span class="arrow r" aria-label="Naar rechts">${ic.chev}</span>
+   </div>${o.tag?`<p class="tagline">${o.tag}</p>`:''}</div>`;
+}
+const P = (art,s,extra={}) => ({art,t:ART[art][0],s,...extra});
+document.getElementById('rails').innerHTML = [
+  rail({title:'Verder kijken',href:true,items:[
+    P('sev','S2 · A3 · nog 31 min',{prog:62}),P('dune','nog 1u 12m',{prog:38}),P('bear','S3 · A1 · nog 18 min',{prog:55}),
+    P('opp','nog 2u 04m',{prog:12}),P('slow','S4 · A2 · nog 40 min',{prog:20}),P('poor','nog 48 min',{prog:70}),
+    P('andor','S2 · A6 · nog 22 min',{prog:66}),P('hold','nog 1u 39m',{prog:18}),P('shogun','S1 · A5 · nog 12 min',{prog:80}),
+    P('arcane','S2 · A2 · nog 33 min',{prog:30})]}),
+  rail({title:'Volgende afleveringen',wide:true,items:[
+    P('fallout','S1 · A7 · De rand',{wide:true}),P('shogun','S1 · A5 · Gebroken naar de vuist',{wide:true}),
+    P('arcane','S2 · A2 · Als je wilt',{wide:true}),P('tlou','S2 · A3 · Het pad',{wide:true}),P('penguin','S1 · A4 · Cent\'anni',{wide:true})],
+    tag:'zonder href: geen "Alles bekijken"'}),
+  rail({title:'Recent toegevoegd in Films',href:true,arrows:true,items:[
+    P('anora','2024 · Drama',{isNew:true}),P('conclave','2024 · Thriller',{isNew:true}),P('nosf','2024 · Horror'),P('glad','2024 · Actie'),
+    P('civil','2024 · Actie'),P('furiosa','2024 · Actie'),P('wicked','2024 · Musical'),P('subst','2024 · Horror'),
+    P('opp','2023 · Drama',{versions:2}),P('inter','2014 · Sciencefiction',{seen:true}),P('poor','2023 · Komedie'),P('dune2','2024 · Sciencefiction')],
+    tag:'muis boven de rail (vanaf 900, alleen met hover): pijlen verschijnen, de linker is uit aan het begin'}),
+].join('');
+
+// ?only=sectie: één sectie voor de vergelijkingsopnamen
+const only = new URLSearchParams(location.search).get('only');
+if (only){document.body.classList.add('only');document.querySelectorAll('.sec').forEach(s=>{if(s.dataset.sec!==only)s.remove()});}
+</script>
+</body>
+</html>

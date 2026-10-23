@@ -283,8 +283,10 @@ export class PleyaClient {
    * komen dus hier binnen en gaan als object-URL aan het element. Een
    * querytoken zou een protocolwijziging zijn en die valt buiten PS-3W.
    */
-  async artworkBlob(artworkId: string, signal?: AbortSignal): Promise<Blob> {
-    const url = `${this.baseUrl}/artwork/${encodeURIComponent(artworkId)}`;
+  async artworkBlob(artworkId: string, signal?: AbortSignal, width?: number): Promise<Blob> {
+    const base = `${this.baseUrl}/artwork/${encodeURIComponent(artworkId)}`;
+    // Alleen met een gekozen artworkladder-trede; anders het origineel.
+    const url = width !== undefined ? `${base}?width=${width}` : base;
     const headers = new Headers();
     const access = this.tokens.accessToken;
     if (access) headers.set('Authorization', `Bearer ${access}`);

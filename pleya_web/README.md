@@ -79,7 +79,9 @@ De Flutter-app is de enige designbron. `src/styles/tokens.css` neemt letterlijk 
 | zijbalk 80/220, rode balk op het actieve item | `lib/widgets/side_navigation_rail.dart` |
 | bottom bar met indicator van 18×3 | `lib/screens/main_screen.dart` |
 
-OLED is de standaard, net als in de app (`ThemeProvider` start op `ThemeMode.oled`).
+Het donkere thema (`dark`) is de standaard. De app start op OLED, maar de northstar van het web
+tekent donkergrijs, en OLED zet het paneel zo dicht bij de achtergrond dat de diepte verdwijnt.
+OLED blijft kiesbaar (zie "Thema's" hieronder).
 
 Wat web-eigen is: `prefers-reduced-motion`, `:focus-visible`, CSS Grid, `aspect-ratio`,
 browser-eigen schuiven, en een hero die met de breedte meebeweegt. Hover staat overal achter
@@ -93,6 +95,22 @@ Twee kleuren uit de app staan bewust niet in de tokens: het teal `#54B9C5` in
 `#E5140F` zit. Ze staan als design debt in hoofdstuk 24.3 van de architectuur en worden in app en
 web samen rechtgetrokken, niet eenzijdig hier.
 
+### Kaart, hero en rail
+
+`MediaCard` is één item in een raster of rij, met de staten van northstar-scherm 16: rust, hover
+met acties, toetsenbordfocus, voortgang, gezien, nieuw, aflevering in Verder kijken, volgende
+aflevering (`shape="wide"`), geen artwork en versies. `Hero` staat bovenaan Home op de geometrie
+van beeld 01 (21:9 vanaf 1200, 16:9 vanaf 900, daaronder een portret); Afspelen verschijnt alleen
+met een `playHref`, synopsis alleen met een `summary`. `HubRail` is een horizontale rij met kop,
+"View all", een fade rechts en pijlen vanaf 900 met een muis, en tekent zich niet zonder items.
+
+`Artwork.svelte` vraagt per vlak een trede van de artworkladder (`src/lib/util/srcset.ts`: 240 tot
+1920 voor poster, 480 tot 3840 voor backdrop), gemeten aan de getekende breedte maal de
+`devicePixelRatio`. Alleen als de server `capabilities.artwork_sizes` meldt gaat die trede als
+`?width=` over de lijn; zonder de vlag komt het origineel terug. Een vervangbare loader loopt via de
+Svelte-context in `artworkLoader.ts`; de galerij en de tests gebruiken hem om zonder server beeld
+te hebben, productie zet hem nergens.
+
 ### Letters
 
 De app levert Inter in 400, 500 en 700 (`pubspec.yaml`) en gebruikt daarnaast op tientallen
@@ -102,16 +120,23 @@ zou web juist van de referentie laten afwijken.
 
 De drie bestanden zijn wel omgezet naar woff2: samen 1,8 MB aan OTF is over een LAN de eerste
 seconde van elk bezoek, en 548 kB is dat niet. Dat is een hercodering en geen andere letter.
-Opnieuw maken uit `assets/fonts/`:
+ArchivoBlack, de displayletter van de hero-titel, komt op dezelfde manier uit
+`assets/fonts/ArchivoBlack-Regular.ttf`. Opnieuw maken uit `assets/fonts/`:
 
 ```sh
-docker run --rm -v "$PWD/static/fonts:/f" -w /f python:3.12-slim sh -c \
-  "pip install --quiet fonttools brotli && python3 -c \"
+docker run --rm -v "$PWD/static/fonts:/f" -v "$PWD/../assets/fonts:/src:ro" -w /f \
+  python:3.12-slim sh -c "pip install --quiet fonttools brotli && python3 -c \"
 from fontTools.ttLib import TTFont
-for n in ['Inter-Regular','Inter-Medium','Inter-Bold']:
-    f = TTFont(f'/f/{n}.otf'); f.flavor = 'woff2'; f.save(f'/f/{n}.woff2')
+for n, ext in [('Inter-Regular','otf'),('Inter-Medium','otf'),('Inter-Bold','otf'),('ArchivoBlack-Regular','ttf')]:
+    f = TTFont(f'/src/{n}.{ext}'); f.flavor = 'woff2'; f.save(f'/f/{n}.woff2')
 \""
 ```
+
+Beide families vallen onder de SIL Open Font License 1.1, zo staat het in de naamtabel van de
+bronbestanden: Inter van The Inter Project Authors (Rasmus Andersson), ArchivoBlack van The
+Archivo Black Project Authors (Omnibus-Type). De OFL staat omzetten naar woff2 en herverdelen
+toe, op voorwaarde dat de licentietekst meegaat (https://openfontlicense.org). `static/fonts/`
+bevat die tekst nog niet; dat is een open punt vóór een publieke release.
 
 De merkmarkeringen in `static/brand/` komen uit `scripts/gen_brand_assets.py`, net als elk ander
 afgeleid merkbeeld:
@@ -127,6 +152,103 @@ handmatig recept te hebben.
 
 De navigatieglyphs staan inline in `src/lib/components/NavIcon.svelte`, met de paden letterlijk uit
 `assets/icons/nav/`. Wijzigt daar een glyph, dan hoort hij hier mee te wijzigen.
+
+### Primitieven
+
+De bouwstenen staan in `src/lib/components/`, elk met een eigen test. Eén regel per component:
+
+- `Field`: tekstveld met label, hint en foutregel; `label`, `error`, `hint`, `type`, `mono`, `hideLabel`, en een `children`-snippet voor een eigen invoer.
+- `Select`: keuzelijst in dezelfde omhulling als `Field`; `options`, `placeholder`, `error`.
+- `Toggle`: schakelaar met `role="switch"`; `label`, `description`, `checked`, `onchange`.
+- `Choice`: één keuze uit tegels of een lijst (radiogroep); `legend`, `options`, `layout`, `columns`.
+- `Panel`: kaart met kop en acties; `title`, `actions`, `flush`, `tone` (`danger` of `warn`).
+- `StatTile`: getal met label en optioneel een lijntje; `label`, `value`, `unit`, `sub`, `spark`.
+- `StatusPill`: korte status als capsule of stip; `label`, `tone`, `size`, `variant`.
+- `Alert`: melding in toon `warn`, `err` of `info`; `title`, `children`, `actions`, `live`.
+- `Chips`: filterchips als groep; `options`, `selected`, `multiple`, `variant`.
+- `DataTable`: tabel die onder de breekpunt stapelt; `columns`, `rows`, `cell`, `empty`, `stack`.
+- `Steps`: voortgang in stappen; `steps`, `current`.
+- `ConfirmDialog`: bevestiging van een ingrijpende actie, met `requirePhrase` om een zin over te typen en `busy`.
+- `Skeleton`: één wachtvlak; `kind` (block, line, title, card of hero), `shape`, `width`, `height`.
+- `SkeletonPage`: een hele pagina aan wachtvlakken; `variant` (home, grid, detail of compact).
+- `StorageMeter`: gesegmenteerde balk met legenda; `segments`, `total`, `format`, `empty`.
+- `StateView`: alleen nog leeg en fout. Laden is `Skeleton` of `SkeletonPage`.
+
+### Diepte en kleurgebruik
+
+Diepte komt vooral uit lagen in één neutrale tint. Een vlak is `--panel`, een verzonken veld erin
+is `--inset-bg`, een verhoogd element binnen een paneel is `--panel-2`, en `--hairline` is de
+randlijn. `--ring-shadow` legt daar een ring van 1 px plus een zachte schaduw onder, op `Panel`,
+`StatTile` en de dialoog; op OLED valt de schaduw weg en doet de ring het werk. Focus heeft er niets
+mee te maken: dat is de globale `:focus-visible` in `src/styles/base.css`, 3 px (`--ring`) in
+`--ink` op een gap van 3 px.
+
+Tekst die een toestand draagt gebruikt een `ink`-token (`--danger-ink`, `--warn-ink`,
+`--ok-ink`). Grafische vlakken, zoals een segment van de opslagbalk of de lijn van een sparkline,
+gebruiken een `graphic`-token (`--amber-graphic`, `--blue`). De twee groepen vallen in het donker
+samen, maar niet in het lichte thema: tekst moet daar 4,5:1 halen op wit, een vlak 3:1. Een amber dat
+als vlak 3:1 haalt, haalt als tekst geen 4,5:1, dus er zijn er twee. Gebruik nooit `--amber` of `--ok`
+voor tekst.
+
+### Thema's
+
+`dark` is de standaard (`data-theme="dark"` in `src/app.html`). `oled`, `light` en `system` zijn
+kiesbaar in Mijn Pleya (`ThemePicker`); de keuze staat in `localStorage` en valt bij geweigerde
+opslag terug op `dark`. Een eigen kleur hoort in `tokens.css` onder elk van de drie paletten, niet
+in het component.
+
+### Galerij en opnamen
+
+`/dev/primitives` toont alle primitieven in alle staten en bestaat alleen onder `bun run dev`: in
+een build geeft hij 404 (`+page.ts`, bewaakt door `guard.test.ts`). De opnamen in
+`docs/qa/s7-primitives/` komen uit `scripts/primitives-shots.ts`:
+
+```sh
+bun run dev
+PLEYA_DEV_URL=http://localhost:5173 bun run scripts/primitives-shots.ts
+PLEYA_SHOTS_THEME=light PLEYA_DEV_URL=http://localhost:5173 bun run scripts/primitives-shots.ts
+```
+
+`PLEYA_SHOTS_THEME` (`light` of `oled`) maakt alleen de opnamen van dat thema opnieuw.
+
+### Geen inline stijl
+
+De CSP laat geen `style`-attribuut toe (zie "Content Security Policy"). Variatie loopt via klassen
+en tokens. Voor een waarde die per instantie verschilt, zoals de breedte van een segment in
+`StorageMeter`, gebruik je een Svelte-`style:`-directive: die zet de eigenschap via de CSSOM en
+valt niet onder de regel.
+
+## Taal
+
+Er zijn twee catalogi, Engels en Nederlands, en elke zichtbare tekst gaat door `t()`. Elke
+catalogus heeft twee helften: `shared.ts` wordt gegenereerd uit `lib/i18n/en.i18n.json` en
+`nl.i18n.json` van de app (`bun run scripts/gen-i18n.ts`, alleen de expliciet gekozen sleutels),
+`web.ts` en `web.nl.ts` bevatten wat alleen de webclient kent. Ontbreekt een sleutel in het
+Nederlands, dan valt `t()` per sleutel terug op Engels, en ontbreekt hij ook daar dan komt de
+sleutel zelf terug.
+
+De taal volgt deze volgorde: de bewaarde keuze (`localStorage`, sleutel `pleya.locale`), dan de
+browsertalen, dan Engels. Een browser op Duits krijgt dus Engels. `initLocale()` bepaalt dit
+bovenaan de layout, vóór de eerste markup, en zet `<html lang>`.
+
+Een taalwissel herlaadt de pagina. `t()` leest een gewone variabele en geen `$state`, en labels die
+in een `<script>`-blok worden berekend (`ThemePicker`, `navItems`) zouden anders in de oude taal
+blijven staan. De sessie overleeft het herladen, want het refreshtoken staat in `localStorage`.
+Weigert de opslag, dan gaat de taal alleen in het geheugen om.
+
+`web.nl.ts` gebruikt `satisfies Record<WebKey, string>`: een ontbrekende of overtollige sleutel is
+een compileerfout in `bun run check`. `src/lib/i18n/parity.test.ts` bewaakt dat geen
+Nederlandse tekst stilzwijgend een kopie van de Engelse is (uitzonderingen staan in
+`SAME_ON_PURPOSE`) en dat plaatshouders in beide talen gelijk zijn; `literals.test.ts` weigert vaste
+`aria-label`-, `title`-, `placeholder`- en `alt`-teksten in de componenten (de dev-galerij is
+uitgezonderd).
+
+De northstar (`docs/assets/pleya-web-northstar`) bepaalt de terminologie. Gedeelde app-termen die
+daarvan afwijken, worden in web niet overgenomen maar als eigen webtekst gevoerd.
+
+De opnamescripts (`screenshots.ts`, `primitives-shots.ts`) nemen `--locale nl|en`: dat zet de
+browsertaal van de context en wist `pleya.locale` vóór elk script van de pagina draait, zodat een
+eerdere keuze de vlag niet overschrijft. De opnamen staan in `docs/qa/s7-locale/`.
 
 ## Het contract
 
@@ -223,3 +345,24 @@ scripts/e2e-stack.sh down
 De end-to-end-tests draaien tegen de echte binary met de echte API, niet tegen `vite dev` en niet
 tegen mocks. Dat is het punt: ze meten of de bundel geserveerd wordt, of de protocolroutes
 voorrang houden, en of de flow tegen het echte contract werkt.
+
+`tests/e2e/a11y-routes.spec.ts` draait axe (`wcag2a` tot en met `wcag22aa` plus `best-practice`)
+op elke route en staat, in het Engels en het Nederlands, op de breedtes uit `WIDTHS` in
+`tests/e2e/helpers.ts`: 320, 390, 768, 1024, 1280, 1440, 1600 en 1920 (die laatste op 1080
+hoog). Per meting eist hij nul overtredingen, hooguit 1 px horizontale overloop, de juiste
+`lang` en een hoofdnavigatie met naam. De setupmeting heeft een server zonder eigenaar nodig en
+draait dus alleen op een verse stack; de spec staat daarom alfabetisch vóór `auth.spec.ts`.
+
+`scripts/routes-shots.ts` legt elke route en de staten 12 (inloggen met een fout), 13 (lege
+bibliotheek), 14 (server onbereikbaar) en 15 (laden) vast op 1920, 1440, 1280, 390 en 320, en
+naast het northstar-beeld op de breedtes waarop dat bestaat. De staten komen uit `page.route`,
+niet uit een nagebootste server. Uitvoer en toelichting staan in `docs/qa/s7-routes/`.
+
+```sh
+bun run scripts/routes-shots.ts ../docs/qa/s7-routes --locale nl
+```
+
+Op Apple silicon bouwt de runtime-image van de server niet: `intel-media-va-driver` bestaat
+alleen voor amd64. Een compose-override met `platform: linux/amd64` op de dienst `pleya-server`
+(via `COMPOSE_FILE=compose.yaml:<override>`) laat de stack onder emulatie draaien; de database
+blijft native.

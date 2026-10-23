@@ -37,6 +37,16 @@
   font-style: normal;
   font-display: swap;
 }
+/* Alleen voor de hero-titel en de detailtitel op breed (DESIGN.md hoofdstuk 2).
+   Wel een preload in app.html: de titel staat boven de vouw op Home, en zonder
+   preload brak hij bij het binnenkomen van de letter naar een extra regel. */
+@font-face {
+  font-family: 'ArchivoBlack';
+  src: url('/fonts/ArchivoBlack-Regular.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 *,
 *::before,
@@ -71,6 +81,30 @@ h4,
 p,
 figure {
   margin: 0;
+}
+
+/*
+ * Afbreken op taal (M-1). Nederlands plakt samen wat Engels met spaties
+ * schrijft: "Kinderboekenweekgeschenk" past op 393 niet in een herotitel en
+ * brak dan midden in het woord, zonder streepje. `hyphens: auto` breekt op
+ * de lettergrepen van de taal uit `<html lang>` (taak 1 zet die), dus dezelfde
+ * regel volgt vanzelf de Engelse of de Nederlandse woordenlijst. Zonder taal op
+ * een voorouder doet de browser niets, en dan is `overflow-wrap` de vangrail.
+ *
+ * `-webkit-hyphens` voor Safari onder 17, dat de eigenschap alleen met
+ * voorvoegsel kent (MDN browser-compat-data, css.properties.hyphens).
+ * `hyphenate-limit-chars` staat er bewust niet: Safari ondersteunt hem niet.
+ *
+ * Koppen en de klasse `.hyphenate` voor titels die geen kop zijn. Lopende
+ * tekst blijft heel: daar breekt de spatie al vaak genoeg.
+ */
+h1,
+h2,
+h3,
+.hyphenate {
+  -webkit-hyphens: auto;
+  hyphens: auto;
+  overflow-wrap: break-word;
 }
 
 img {
@@ -110,24 +144,47 @@ ol {
  * met een wash plus een rode balk; op web is de ring het idioom, in dezelfde
  * merkkleur.
  */
+/*
+ * Zolang een modale laag open is (lib/util/scrollLock.ts). De overflow staat op
+ * body en niet op <html>: body heeft al overflow-x en height 100%, en zodra
+ * <html> zelf een overflow krijgt, propageert die van body niet meer naar het
+ * venster. Body wordt dan een eigen scrollvlak van één schermhoogte en de
+ * pagina achter de dialoog valt weg. Op body propageert hij wél, dus het
+ * venster stopt met scrollen en de positie blijft staan. De goot blijft
+ * staan, anders schuift de pagina op desktop opzij als de scrollbalk wegvalt.
+ */
+:root.scroll-locked {
+  scrollbar-gutter: stable;
+}
+
+:root.scroll-locked body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 :focus {
   outline: none;
 }
 
+/*
+ * De focusring uit DESIGN.md: --ring (3 px) in inkt op een gap van 3 px. Inkt
+ * is wit op dark en OLED en #111 op light, dus de ring staat op elk thema
+ * tegen de pagina af. Tekstvakken in Field tonen in plaats daarvan een rand
+ * van 1 px (Field.svelte).
+ */
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-button);
+  outline: var(--ring) solid var(--ink);
+  outline-offset: 3px;
+  border-radius: var(--radius-focus);
 }
 
 /*
  * SvelteKit zet zelf een aankondigingsvlak in de pagina dat na elke
- * clientnavigatie de nieuwe paginatitel voorleest, en stijlt dat met een
- * `style`-attribuut. De strikte `style-src 'self'` uit de CSP blokkeert dat,
- * dus de stijl staat hier. De browser meldt de geblokkeerde regel in de
- * console; dat is verwacht en niet stuk. De keuze is bewust: `'unsafe-inline'`
- * toevoegen om één regel van het framework te laten staan zou elke
- * geïnjecteerde stijl meteen toelaten.
+ * clientnavigatie de nieuwe paginatitel voorleest, met een inline style. Op
+ * deze branch staat style-src in svelte.config.js nog op 'self', dus de CSP
+ * blokkeert die stijl en deze regel houdt het element verborgen. De hash die
+ * de stijl toelaat (#219) komt pas binnen met de merge naar feat/pleyaserver
+ * (2e9f2aa2); daarna blijft deze regel als vangnet staan.
  */
 #svelte-announcer {
   position: absolute;
@@ -175,6 +232,15 @@ ol {
   font-weight: 700;
   letter-spacing: -0.5px;
 }
+/* De displayletter (ArchivoBlack) in kapitalen, voor de herotitel en later de
+   detailtitel op breed (DESIGN.md hoofdstuk 2). Maat en spatiëring zet het
+   element zelf, want die verschillen per plek en per breekpunt. */
+.t-display-face {
+  font-family: var(--font-display);
+  font-weight: 900;
+  text-transform: uppercase;
+  line-height: 1;
+}
 .t-headline {
   font-size: var(--text-headline-size);
   line-height: var(--text-headline-line);
@@ -206,18 +272,20 @@ ol {
   line-height: var(--text-label-line);
 }
 
-/* --- Knop, uit buttonStyle: 18/14, radius 4, tekstkleur omgekeerd. ----- */
+/* --- Knop: capsule, 44 hoog, wit op donker. Varianten uit web.css `.btn`. */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-half);
-  min-height: var(--touch-target);
+  min-height: var(--button-height);
   padding: var(--button-padding-y) var(--button-padding-x);
   border-radius: var(--radius-button);
   background: var(--text);
   color: var(--bg);
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
   transition: opacity var(--dur-fast) var(--ease);
 }
 .btn:disabled {
@@ -231,8 +299,14 @@ ol {
 }
 
 .btn--secondary {
-  background: var(--surface-elevated);
+  background: var(--fill-2);
   color: var(--text);
+}
+
+.btn--ghost {
+  background: var(--fill);
+  color: var(--text);
+  font-weight: 600;
 }
 
 .btn--quiet {
@@ -241,26 +315,33 @@ ol {
   border: 1px solid var(--outline);
 }
 
-/* --- Invoer, uit _inputDecorationTheme: gevuld, radius 12, geen rand. -- */
-.field {
-  width: 100%;
-  min-height: var(--touch-target);
-  padding: var(--space) 14px;
-  border-radius: var(--radius-md);
-  border: 0;
-  background: color-mix(in srgb, var(--text) 8%, transparent);
-  transition: background var(--dur-fast) var(--ease);
+.btn--danger {
+  background: transparent;
+  color: var(--danger-ink);
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
 }
-.field::placeholder {
-  color: var(--text-muted);
-}
-.field:focus-visible {
-  background: color-mix(in srgb, var(--text) 18%, transparent);
+.btn--danger-solid {
+  background: var(--accent);
+  color: #fff;
 }
 
-.card-surface {
-  background: var(--surface);
-  border-radius: var(--radius-card);
+.btn--sm {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+.btn--icon {
+  width: var(--button-height);
+  padding: 0;
+}
+.btn--full {
+  width: 100%;
+}
+
+/* Paden, slugs en sleutels: wat iemand letterlijk overtypt staat in mono. */
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-size);
 }
 
 /* Brede inhoud schuift in zijn eigen container, nooit met de pagina mee. */

@@ -6,7 +6,10 @@
   import { replaceState } from '$app/navigation';
 
   import MediaGrid from '$lib/components/MediaGrid.svelte';
+  import PageHeader from '$lib/components/PageHeader.svelte';
+  import Select from '$lib/components/Select.svelte';
   import StateView from '$lib/components/StateView.svelte';
+  import SkeletonPage from '$lib/components/SkeletonPage.svelte';
   import { session } from '$lib/stores/session.svelte';
   import { describeError } from '$lib/api/errors';
   import { SORT_OPTIONS, isSortOption, type SortOption, type Item } from '$lib/api/types';
@@ -61,6 +64,27 @@
     year: t('libraries.sort.year'),
     '-year': t('libraries.sort.-year')
   };
+
+  // Onder 900 staat `sub` op een eigen regel. Verschijnt het aantal pas als de
+  // eerste pagina binnen is, dan springt het raster een regel omlaag; een
+  // niet-afbrekende spatie houdt die regel vast zolang het aantal onbekend is.
+  const RESERVED_LINE = '\u00A0';
+
+  const sortOptions = SORT_OPTIONS.map((value) => ({ value, label: sortLabels[value] }));
+
+  // Een schatting die groter is dan wat er staat is "ongeveer"; is de lijst
+  // even groot of kleiner, dan telt het werkelijke aantal. Zo staat er nooit
+  // "ongeveer 1 titel" boven een lijst met die ene titel.
+  const countLabel = $derived.by(() => {
+    const loaded = pager.items.length;
+    const estimate = pager.totalEstimate;
+    if (estimate !== null && estimate > loaded) {
+      return plural('libraries.approximate', estimate, { count: formatCount(estimate) });
+    }
+    if (estimate === null && !pager.done) return undefined;
+    if (loaded === 0) return undefined;
+    return plural('libraries.itemCount', loaded, { count: formatCount(loaded) });
+  });
 
   /**
    * Haalt de volgende pagina op.
@@ -140,31 +164,19 @@
 
 <div class="page">
   <LibraryAtmosphere artworkId={highlighted?.artwork?.backdrop_id ?? highlighted?.artwork?.poster_id} />
-  <header class="page__header">
-    <div class="page__heading">
-      <h1 class="t-headline">{library?.title ?? t('libraries.title')}</h1>
-      {#if pager.totalEstimate !== null}
-        <p class="t-small">
-          {plural('libraries.approximate', pager.totalEstimate, {
-            count: formatCount(pager.totalEstimate)
-          })}
-        </p>
-      {/if}
-    </div>
-
-    <label class="page__sort">
-      <span class="visually-hidden">{t('libraries.sort')}</span>
-      <select
-        class="page__select"
-        value={sort}
-        onchange={(event) => changeSort(event.currentTarget.value)}
-      >
-        {#each SORT_OPTIONS as option (option)}
-          <option value={option}>{sortLabels[option]}</option>
-        {/each}
-      </select>
-    </label>
-  </header>
+  <PageHeader title={library?.title ?? t('libraries.title')} sub={countLabel ?? RESERVED_LINE}>
+    {#snippet actions()}
+      <div class="page__sort">
+        <Select
+          label={t('libraries.sort')}
+          hideLabel
+          value={sort}
+          options={sortOptions}
+          onchange={changeSort}
+        />
+      </div>
+    {/snippet}
+  </PageHeader>
 
   {#if pager.error && pager.items.length === 0}
     <StateView
@@ -175,20 +187,38 @@
         void fetchMore(new AbortController().signal);
       }}
     />
-  {:else if pager.loading && pager.items.length === 0}
-    <StateView kind="loading" />
-  {:else if pager.items.length === 0}
-    <StateView title={t('states.emptyTitle')} />
+  {:else if pager.items.length === 0 && pager.cursor === null && !pager.done}
+    <!--
+      Niet op `pager.loading`: loadNext geeft de ladende toestand pas terug als
+      het antwoord er al is, dus tijdens de eerste aanvraag stond hier "niets
+      hier". Leeg zonder cursor en nog niet klaar is de eerste aanvraag; leeg en
+      klaar is echt leeg. Een eerste pagina met nul items en een next_cursor
+      valt door naar de lijst, want alleen daar staat de waarnemer die verder
+      bladert; anders bleef het skelet staan.
+    -->
+    <SkeletonPage variant="grid" />
+  {:else if pager.items.length === 0 && pager.done}
+    <!-- Beeld 13 zonder de beheerknoppen: scannen is S10. De uitweg is de bibliotheeklijst. -->
+    <StateView
+      title={t('states.emptyTitle')}
+      message={t('libraries.gridEmptyBody', { library: library?.title ?? t('libraries.title') })}
+    >
+      {#snippet actions()}
+        <a class="btn btn--sm" href="/libraries">{t('libraries.allLibraries')}</a>
+      {/snippet}
+    </StateView>
   {:else}
-    <div bind:this={gridHost}>
-      <MediaGrid items={pager.items} onHighlight={highlight} label={library?.title ?? t('libraries.title')} />
-    </div>
+    {#if pager.items.length > 0}
+      <div bind:this={gridHost}>
+        <MediaGrid items={pager.items} onHighlight={highlight} label={library?.title ?? t('libraries.title')} />
+      </div>
+    {/if}
 
     <div bind:this={sentinel} class="page__more">
       {#if pager.loading}
-        <p class="t-small" aria-live="polite">{t('libraries.loading')}</p>
+        <p class="page__note" aria-live="polite">{t('libraries.loading')}</p>
       {:else if pager.error}
-        <p class="t-small" role="alert">{describeError(pager.error)}</p>
+        <p class="page__note" role="alert">{describeError(pager.error)}</p>
         <button
           type="button"
           class="btn btn--secondary"
@@ -205,45 +235,35 @@
           {t('libraries.loadMore')}
         </button>
       {:else}
-        <p class="t-small">{t('libraries.endOfList')}</p>
+        <p class="page__note">{t('libraries.endOfList')}</p>
       {/if}
     </div>
   {/if}
 </div>
 
 <style>
+  /* web.css .page: de inzet van de pagina, 8 boven de kop. */
   .page {
     position: relative;
     isolation: isolate;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1-5);
-    padding: var(--space-1-5) var(--page-inset, var(--space));
+    padding: var(--page-top) var(--inset) var(--space-2);
   }
 
-  .page__header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space);
+  /* Onder 900 vult de actie de regel (PageHeader); erboven houdt hij een
+     vaste breedte naast de titel. */
+  .page__sort {
+    width: 100%;
   }
 
-  .page__heading {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
+  @media (min-width: 900px) {
+    .page__sort {
+      width: 240px;
+    }
   }
 
-  .page__select {
-    min-height: var(--touch-target);
-    padding: var(--space-half) var(--space);
-    border-radius: var(--radius-md);
-    border: 0;
-    background: color-mix(in srgb, var(--surface) 78%, transparent);
-    backdrop-filter: blur(24px);
-    color: var(--text);
+  .page__note {
+    font-size: 13px;
+    color: var(--ink-3);
   }
 
   .page__more {
