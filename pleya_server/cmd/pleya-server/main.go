@@ -26,6 +26,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/config"
 	"github.com/edde746/plezy/pleya_server/internal/database"
 	"github.com/edde746/plezy/pleya_server/internal/diag"
+	"github.com/edde746/plezy/pleya_server/internal/downloads"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
 	"github.com/edde746/plezy/pleya_server/internal/httpserver"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
@@ -201,6 +202,8 @@ func run() int {
 		}
 	}
 	runner.Register(api.JobScanLibrary, scanHandler(catalogStore, sc, runner, logging.Component(log, "scanner"), onScanned))
+	downloadStore := downloads.NewStore(pool)
+	runner.Register(api.JobDownloadDigest, downloads.DigestHandler(downloadStore, catalogStore, logging.Component(log, "downloads")))
 	runner.Register(api.JobStorageRecheckRoots, storageRecheckHandler(catalogStore, cfg, logging.Component(log, "storage")))
 
 	if n, err := runner.Requeue(ctx); err != nil {
@@ -281,6 +284,7 @@ func run() int {
 		Auth:               authStore,
 		Watch:              watch.NewStore(pool),
 		Personal:           personal.NewStore(pool),
+		Downloads:          downloadStore,
 		MediaRoots:         cfg.MediaDirs,
 		CacheDir:           cfg.CacheDir,
 		OnMetadataChange:   onScanned,

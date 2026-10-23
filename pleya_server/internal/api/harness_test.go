@@ -22,6 +22,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/config"
 	"github.com/edde746/plezy/pleya_server/internal/diag"
+	"github.com/edde746/plezy/pleya_server/internal/downloads"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
@@ -283,6 +284,7 @@ func newEnv(t *testing.T, opts ...envOption) *env {
 		Auth:               authStore,
 		Watch:              watchStore,
 		Personal:           personal.NewStore(pool),
+		Downloads:          downloads.NewStore(pool),
 		Signer:             signer,
 		Logger:             logger,
 		Ready:              func() bool { return true },

@@ -17,6 +17,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/config"
 	"github.com/edde746/plezy/pleya_server/internal/diag"
+	"github.com/edde746/plezy/pleya_server/internal/downloads"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
@@ -33,6 +34,7 @@ type Options struct {
 	Auth      *auth.Store
 	Watch     *watch.Store
 	Personal  *personal.Store
+	Downloads *downloads.Store
 	Signer    *auth.Signer
 	Logger    *slog.Logger
 	Ready     func() bool
@@ -348,6 +350,15 @@ func (s *Server) routeTable() []route {
 		{"GET " + p + "/track-preferences/{item_id}", s.authenticated(s.handleGetTrackPreference)},
 		{"PUT " + p + "/track-preferences/{item_id}", s.authenticated(s.handleSetTrackPreference)},
 		{"DELETE " + p + "/track-preferences/{item_id}", s.authenticated(s.handleClearTrackPreference)},
+
+		// Downloads voor offline kijken (venster 5 deel 3, S23, matrixregel 61 tot en
+		// met 65). Alles klasse authenticated en van de eigenaar; de trede download
+		// op de bibliotheek wordt bij het aanmaken en bij elke byte-aanvraag getoetst.
+		{"POST " + p + "/downloads", s.authenticated(s.handleCreateDownload)},
+		{"GET " + p + "/downloads", s.authenticated(s.handleListDownloads)},
+		{"GET " + p + "/downloads/{download_id}", s.authenticated(s.handleGetDownload)},
+		{"GET " + p + "/downloads/{download_id}/file", s.authenticated(s.handleDownloadFile)},
+		{"DELETE " + p + "/downloads/{download_id}", s.authenticated(s.handleDeleteDownload)},
 
 		// Beheer van omzetsessies (S18.5, matrixregel 50 en 51). Klasse admin.
 		{"GET " + p + "/transcode-sessions", s.authenticated(s.handleListTranscodeSessions)},
