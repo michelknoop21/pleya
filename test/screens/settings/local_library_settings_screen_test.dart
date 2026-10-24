@@ -36,6 +36,11 @@ void main() {
       await root.delete(recursive: true);
     });
     LocaleSettings.setLocaleSync(AppLocale.en);
+    // Room for the page under the A-24 Studio header: `ensureVisible` does not
+    // know about the pinned bar and would park the row underneath it.
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
         value: provider,

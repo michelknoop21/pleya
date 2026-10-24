@@ -152,6 +152,10 @@ void main() {
     });
 
     await _pumpPage(tester);
+    // The A-24 Studio header pushes the series list below the fold: scroll
+    // until the row can actually take the tap.
+    await tester.dragUntilVisible(find.text('Severance'), find.byType(Scrollable).first, const Offset(0, -120));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Severance'));
     await tester.pumpAndSettle();
 

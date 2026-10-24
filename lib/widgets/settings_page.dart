@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../utils/platform_detector.dart';
 import 'focused_scroll_scaffold.dart';
+import 'settings/settings_studio_header.dart';
 import 'settings_section.dart';
 
 /// Standard scaffold for settings pages made of ordinary list rows.
@@ -46,9 +48,22 @@ class SettingsPage extends StatelessWidget {
         pinned: pinned,
         automaticallyImplyLeading: automaticallyImplyLeading,
         onBackPressed: onBackPressed,
+        header: _studioHeader(),
         slivers: pageSlivers,
       ),
     );
+  }
+
+  /// A-24: off TV every settings page opens on the Studio header, built from
+  /// the page title. TV keeps its plain bar; a title that is not a plain
+  /// [Text] keeps it too, rather than guessing at its string.
+  Widget? _studioHeader() {
+    if (PlatformDetector.isTV()) return null;
+    final label = switch (title) {
+      Text(:final data?) => data,
+      _ => null,
+    };
+    return label == null ? null : SettingsStudioHeader(title: label);
   }
 
   Widget _buildListSliver() {

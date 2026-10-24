@@ -4,6 +4,7 @@ import '../focus/key_event_utils.dart';
 import 'desktop_app_bar.dart';
 import 'ios_status_bar_tap_scroll_to_top.dart';
 import 'scroll_crown/scroll_crown.dart';
+import 'settings/settings_studio_header.dart';
 
 /// A scaffold widget that wraps Focus + Scaffold + CustomScrollView
 /// with consistent keyboard navigation handling and app bar styling.
@@ -40,6 +41,12 @@ class FocusedScrollScaffold extends StatefulWidget {
   /// [handleBackKeyNavigation] (which pops the current route).
   final VoidCallback? onBackPressed;
 
+  /// A large header between the app bar and [slivers] that scrolls away with
+  /// the content (A-24: the settings Studio header off TV). While it is in
+  /// view the pinned bar leaves its own title out, and fades it in once the
+  /// header has gone under the bar. Null keeps the plain bar.
+  final Widget? header;
+
   const FocusedScrollScaffold({
     super.key,
     required this.title,
@@ -48,6 +55,7 @@ class FocusedScrollScaffold extends StatefulWidget {
     this.pinned = true,
     this.automaticallyImplyLeading = true,
     this.onBackPressed,
+    this.header,
   });
 
   @override
@@ -56,11 +64,13 @@ class FocusedScrollScaffold extends StatefulWidget {
 
 class _FocusedScrollScaffoldState extends State<FocusedScrollScaffold> {
   final _scopeNode = FocusScopeNode();
+  final _headerCollapsed = ValueNotifier<bool>(false);
   bool _focusRequested = false;
 
   @override
   void dispose() {
     _scopeNode.dispose();
+    _headerCollapsed.dispose();
     super.dispose();
   }
 
@@ -81,6 +91,32 @@ class _FocusedScrollScaffoldState extends State<FocusedScrollScaffold> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _requestInitialFocus());
     }
 
+    final header = widget.header;
+    Widget body = ScrollCrown(
+      child: CustomScrollView(
+        slivers: [
+          ExcludeFocus(
+            child: CustomAppBar(
+              title: header == null
+                  ? widget.title
+                  : SettingsStudioCompactTitle(collapsed: _headerCollapsed, child: widget.title),
+              pinned: widget.pinned,
+              actions: widget.actions,
+              automaticallyImplyLeading: widget.automaticallyImplyLeading,
+            ),
+          ),
+          if (header != null) SliverToBoxAdapter(child: ExcludeFocus(child: header)),
+          ...widget.slivers,
+        ],
+      ),
+    );
+    if (header != null) {
+      body = NotificationListener<ScrollNotification>(
+        onNotification: (n) => settingsStudioTrackScroll(_headerCollapsed, n),
+        child: body,
+      );
+    }
+
     return Focus(
       canRequestFocus: false,
       onKeyEvent: (_, event) {
@@ -91,25 +127,7 @@ class _FocusedScrollScaffoldState extends State<FocusedScrollScaffold> {
       },
       child: FocusScope(
         node: _scopeNode,
-        child: IosStatusBarTapScrollToTop(
-          child: Scaffold(
-            body: ScrollCrown(
-              child: CustomScrollView(
-                slivers: [
-                  ExcludeFocus(
-                    child: CustomAppBar(
-                      title: widget.title,
-                      pinned: widget.pinned,
-                      actions: widget.actions,
-                      automaticallyImplyLeading: widget.automaticallyImplyLeading,
-                    ),
-                  ),
-                  ...widget.slivers,
-                ],
-              ),
-            ),
-          ),
-        ),
+        child: IosStatusBarTapScrollToTop(child: Scaffold(body: body)),
       ),
     );
   }
