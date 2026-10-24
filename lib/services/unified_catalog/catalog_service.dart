@@ -23,6 +23,7 @@ import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/canonical_media_identity.dart';
+import '../../media/unified/identity_evidence.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_source.dart';
 import '../../utils/app_logger.dart';
@@ -69,6 +70,16 @@ class UnifiedCatalogService {
   /// re-fetched the ids of pages 1..N-1. Cleared in [_reset]; a failed lookup
   /// removes itself so the next round retries it.
   final Map<String, Future<ExternalIds>> _externalIdCache = {};
+
+  /// Per popped item, by [MediaItem.globalKey], what [_recomputeGroups] would
+  /// otherwise rebuild from scratch every round: the resolvable facts (title
+  /// normalisation is the expensive part) and evidence that came from fetched
+  /// ids. Together with [_externalIdCache] this keeps a round's cost to the new
+  /// items plus one grouping pass instead of re-resolving the whole history.
+  /// Cleared in [_reset]; an item is dropped when [applyUpdatedSourceItem]
+  /// replaces it.
+  final Map<String, ResolvableItem> _resolvableCache = {};
+  final Map<String, IdentityEvidence> _evidenceCache = {};
 
   /// Per-library page size (hoofdstuk 12.1's per-cursor fetch).
   final int pageSize;
@@ -191,6 +202,8 @@ class UnifiedCatalogService {
     for (var i = 0; i < _poppedItems.length; i++) {
       if (_poppedItems[i].globalKey == key) {
         _poppedItems[i] = updated;
+        _resolvableCache.remove(key);
+        _evidenceCache.remove(key);
         found = true;
       }
     }
@@ -240,6 +253,8 @@ class UnifiedCatalogService {
     _cursors = [for (final library in libraries) UnifiedSourceCursor(library)];
     _poppedItems.clear();
     _externalIdCache.clear();
+    _resolvableCache.clear();
+    _evidenceCache.clear();
     _groups = [];
     _everSucceeded = false;
   }
@@ -527,6 +542,7 @@ class UnifiedCatalogService {
   /// which [_externalIdCache] now makes a one-time cost per item per
   /// generation instead of a per-round one.
   Future<void> _recomputeGroups() async {
+    final generation = _generation;
     final resolver = UnifiedIdentityResolver(
       fetchExternalIds: (serverId, targetId) async {
         final cached = cachedExternalIds?.call(serverId, targetId);
@@ -548,14 +564,30 @@ class UnifiedCatalogService {
     );
     final resolvables = [
       for (final item in _poppedItems)
-        ResolvableItem(
-          item: item,
-          identity: canonicalIdentityOf(item),
-          scope: _scopeOf(item),
-          externalIdTarget: _externalIdTargetFor(item),
+        _resolvableCache.putIfAbsent(
+          item.globalKey,
+          () => ResolvableItem(
+            item: item,
+            identity: canonicalIdentityOf(item),
+            scope: _scopeOf(item),
+            externalIdTarget: _externalIdTargetFor(item),
+          ),
         ),
     ];
-    final evidence = await resolver.resolveEvidence(resolvables);
+    final evidence = await resolver.resolveEvidence(
+      resolvables,
+      known: (i) => _evidenceCache[resolvables[i].item.globalKey],
+      // A reset while the fetches ran must not leak this generation's evidence,
+      // and neither may an update that replaced the item meanwhile: its
+      // resolvable is gone from the cache, so evidence derived from the old
+      // item is dropped instead of stored.
+      onResolved: (i, resolved) {
+        final key = resolvables[i].item.globalKey;
+        if (generation == _generation && identical(_resolvableCache[key], resolvables[i])) {
+          _evidenceCache[key] = resolved;
+        }
+      },
+    );
 
     final candidates = <GroupingCandidate>[];
     for (var i = 0; i < _poppedItems.length; i++) {
