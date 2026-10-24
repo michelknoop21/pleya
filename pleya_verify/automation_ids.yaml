@@ -51,6 +51,27 @@ ids:
   - id: settings.tile
     role: list.item
     instanceable: true
+  - id: screen.local_library
+    role: screen
+    instanceable: false
+  - id: local_library.enable
+    role: switch
+    instanceable: false
+  - id: local_library.wifi
+    role: switch
+    instanceable: false
+  - id: local_library.status
+    role: status
+    instanceable: false
+  - id: local_library.sync
+    role: button
+    instanceable: false
+  - id: local_library.clear
+    role: button
+    instanceable: false
+  - id: local_library.action
+    role: button
+    instanceable: true
   - id: nav.discover
     role: nav
     instanceable: false

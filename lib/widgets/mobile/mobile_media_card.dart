@@ -7,6 +7,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:provider/provider.dart';
+
+import '../../providers/local_library_provider.dart';
 
 import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
@@ -55,6 +58,8 @@ class MobileMediaCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final item = group.representativeSource.item;
     final client = context.tryGetMediaClientWithFallback(serverIdOrNull(item.serverId));
+    final imagePath = shape == MobileCardShape.portrait ? item.posterThumb() : item.thumbPath;
+    final localPath = context.select<LocalLibraryProvider?, String?>((p) => p?.posterPath(item.serverId, imagePath));
     final aspect = shape == MobileCardShape.portrait ? 2 / 3 : 16 / 9;
     final height = width / aspect;
     final resumeFraction = resumeFractionFor(group);
@@ -64,6 +69,7 @@ class MobileMediaCard extends StatelessWidget {
     final poster = shape == MobileCardShape.portrait
         ? OptimizedMediaImage.poster(
             client: client,
+            localFilePath: localPath,
             imagePath: item.posterThumb(),
             width: width,
             height: height,
@@ -72,6 +78,7 @@ class MobileMediaCard extends StatelessWidget {
           )
         : OptimizedMediaImage.thumb(
             client: client,
+            localFilePath: localPath,
             imagePath: item.thumbPath,
             width: width,
             height: height,

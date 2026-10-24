@@ -104,6 +104,36 @@ void main() {
     return profile;
   }
 
+  test('credential mismatch remains expected for reconnect but cannot read offline cache', () async {
+    final profile = Profile.pleyaServer(
+      id: 'ps-child',
+      displayName: 'Child',
+      pleyaConnectionId: 'pleyaServer.child',
+      pleyaUsername: 'child',
+      createdAt: DateTime(2026, 1, 1),
+    );
+    final other = PleyaServerConnection(
+      id: 'pleyaServer.owner',
+      baseUrl: 'http://fixture.invalid',
+      serverId: 'srv-1',
+      serverName: 'Fixture',
+      userName: 'owner',
+      refreshToken: 'fixture',
+      createdAt: DateTime(2026, 1, 1),
+    );
+    await profiles.upsert(profile);
+    await connections.upsert(other);
+    await profileConnections.upsert(
+      ProfileConnection(profileId: profile.id, connectionId: other.id, userIdentifier: 'owner'),
+    );
+    await storage.setActiveProfileId(profile.id);
+    await activeProfile.initialize();
+    await binder.rebindActive();
+    expect(multiServerProvider.expectedServerIds, contains('srv-1'));
+    expect(multiServerProvider.cacheDeniedServerIds, contains('srv-1'));
+    expect(manager.getClient(ServerId('srv-1')), isNull);
+  });
+
   test('local profile with no connections binds successfully with empty visibility', () async {
     final profile = Profile.local(id: 'local-owner', displayName: 'Owner', createdAt: DateTime(2026, 1, 1));
     await profiles.upsert(profile);

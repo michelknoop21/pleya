@@ -5,9 +5,12 @@
 /// consumer has opted in.
 library;
 
+import 'dart:io';
+
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/foundation.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/library_query.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -18,6 +21,9 @@ import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
+import 'package:pleya/providers/local_library_provider.dart';
+import 'package:pleya/services/local_library/local_library_store.dart';
+import 'package:pleya/utils/deletion_notifier.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/unified_catalog_provider.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
@@ -140,6 +146,113 @@ void main() {
     libraries.dispose();
     hiddenLibraries.dispose();
     multiServer.dispose();
+  });
+
+  test('auth rejection clears an open local snapshot synchronously despite retained live keys', () async {
+    final dir = await Directory.systemTemp.createTemp('pleya-unified-denied-');
+    final store = LocalLibraryStore(dir);
+    await store.load();
+    await store.saveLibrary(_library('A', serverId: 's1'), [
+      for (final row in client.itemsByLibrary['A']!) row.copyWith(libraryId: 'A'),
+    ], complete: true);
+    final changes = ChangeNotifier();
+    var allowed = true;
+    final local = LocalLibraryProvider(
+      profileId: 'a',
+      directory: dir,
+      librariesForSync: () => [],
+      clientFor: (_) => null,
+      mayReadServer: (_) => allowed,
+      mayReadLibrary: (_) => true,
+      networkConnected: () => false,
+      wifiConnected: () => false,
+      changes: changes,
+    );
+    await local.ready;
+    provider.dispose();
+    provider = UnifiedCatalogProvider(
+      multiServer: multiServer,
+      libraries: libraries,
+      hiddenLibraries: hiddenLibraries,
+      kind: MediaKind.movie,
+      localLibrary: local,
+    );
+    await provider.ensureStarted();
+    expect(provider.snapshot.groups, hasLength(2));
+    allowed = false;
+    changes.notifyListeners();
+    expect(provider.snapshot.groups, isEmpty);
+    await pumpEventQueue();
+    expect(provider.snapshot.groups, isEmpty);
+    expect(libraries.libraries, hasLength(1));
+    provider.dispose();
+    local.dispose();
+    changes.dispose();
+    await dir.delete(recursive: true);
+    provider = UnifiedCatalogProvider(
+      multiServer: multiServer,
+      libraries: libraries,
+      hiddenLibraries: hiddenLibraries,
+      kind: MediaKind.movie,
+    );
+  });
+
+  test('local deletion and clear refresh loaded groups with unchanged library keys', () async {
+    final dir = await Directory.systemTemp.createTemp('pleya-unified-local-');
+    final store = LocalLibraryStore(dir);
+    await store.load();
+    final cachedLibrary = _library('A', serverId: 's1');
+    await store.saveLibrary(cachedLibrary, [
+      for (final row in client.itemsByLibrary['A']!) row.copyWith(libraryId: 'A'),
+    ], complete: true);
+    final changes = ChangeNotifier();
+    final local = LocalLibraryProvider(
+      profileId: 'a',
+      directory: dir,
+      librariesForSync: () => [],
+      clientFor: (_) => null,
+      mayReadServer: (_) => true,
+      mayReadLibrary: (_) => true,
+      networkConnected: () => false,
+      wifiConnected: () => false,
+      changes: changes,
+    );
+    await local.ready;
+    provider.dispose();
+    provider = UnifiedCatalogProvider(
+      multiServer: multiServer,
+      libraries: libraries,
+      hiddenLibraries: hiddenLibraries,
+      kind: MediaKind.movie,
+      localLibrary: local,
+    );
+    multiServer.setVisibleServerIds({});
+    await provider.ensureStarted();
+    expect(
+      provider.snapshot.groups,
+      hasLength(2),
+      reason: 'authorized local libraries do not need a live visible client',
+    );
+    DeletionNotifier().notifyDeletedItem(item: client.itemsByLibrary['A']!.first);
+    for (var i = 0; i < 100 && provider.snapshot.groups.length != 1; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(provider.snapshot.groups.map((g) => g.representativeSource.item.id), ['a2']);
+    client.itemsByLibrary['A'] = [];
+    await local.clear();
+    await pumpEventQueue();
+    expect(provider.snapshot.groups, isEmpty);
+    provider.dispose();
+    local.dispose();
+    changes.dispose();
+    await dir.delete(recursive: true);
+    // tearDown owns the normal provider reference.
+    provider = UnifiedCatalogProvider(
+      multiServer: multiServer,
+      libraries: libraries,
+      hiddenLibraries: hiddenLibraries,
+      kind: MediaKind.movie,
+    );
   });
 
   test('construction starts no load — no fetch until ensureStarted', () async {

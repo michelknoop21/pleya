@@ -128,6 +128,12 @@ Future<ScenarioRunResult> runScenario({
           // nothing further is needed on a target with no simulator to
           // install onto.
           break;
+        case 'restart':
+          await driver.terminate();
+          launchAttempted = true;
+          await driver.launch();
+          launched = true;
+          break;
         case 'launch':
           launchAttempted = true;
           await driver.launch();

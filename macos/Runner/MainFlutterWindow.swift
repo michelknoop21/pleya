@@ -49,6 +49,22 @@ class MainFlutterWindow: NSWindow {
     ICloudKvsPlugin.register(
       with: flutterViewController.registrar(forPlugin: "ICloudKvsPlugin"))
 
+    let registrar = flutterViewController.registrar(forPlugin: "LocalLibraryStorage")
+    do {
+      let channel = FlutterMethodChannel(name: "com.pleya/local_library", binaryMessenger: registrar.messenger)
+      channel.setMethodCallHandler { call, result in
+        guard call.method == "availableBytes" else { result(FlutterMethodNotImplemented); return }
+        do {
+          let values = try URL(fileURLWithPath: NSHomeDirectory()).resourceValues(forKeys: [
+            .volumeAvailableCapacityForImportantUsageKey, .volumeAvailableCapacityKey,
+          ])
+          result(values.volumeAvailableCapacityForImportantUsage ?? values.volumeAvailableCapacity.map { Int64($0) })
+        } catch {
+          result(FlutterError(code: "STORAGE_UNAVAILABLE", message: "Unable to read available storage", details: nil))
+        }
+      }
+    }
+
     RegisterGeneratedPlugins(registry: flutterViewController)
 
     // Enable window position/size persistence

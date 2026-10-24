@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +20,10 @@ import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:provider/provider.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:pleya/providers/local_library_provider.dart';
+import 'package:pleya/providers/offline_mode_provider.dart';
 
 import '../test_helpers/prefs.dart';
 
@@ -29,6 +35,9 @@ void main() {
   });
 
   testWidgets('profile switch disposes the profile navigator, routes, and providers', (tester) async {
+    final root = (await tester.runAsync(() => Directory.systemTemp.createTemp('pleya-profile-session-')))!;
+    final originalPaths = PathProviderPlatform.instance;
+    PathProviderPlatform.instance = _FixturePaths(root.path);
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     final profileRegistry = ProfileRegistry(db);
     final connectionRegistry = ConnectionRegistry(db);
@@ -47,6 +56,8 @@ void main() {
     );
     final serverManager = MultiServerManager();
     final multiServer = MultiServerProvider(serverManager, DataAggregationService(serverManager));
+    final network = OfflineModeProvider(serverManager, multiServerProvider: multiServer);
+    final localProviders = <LocalLibraryProvider>[];
     final discoverProviders = <DiscoverProvider>[];
     final hiddenProviders = <HiddenLibrariesProvider>[];
     final disposedActiveIds = <String>[];
@@ -56,10 +67,13 @@ void main() {
       await tester.pump();
       await activeProfile.resetForTesting();
       activeProfile.dispose();
+      network.dispose();
       multiServer.dispose();
       serverManager.dispose();
       await plexHome.dispose();
       await db.close();
+      PathProviderPlatform.instance = originalPaths;
+      await tester.runAsync(() => root.delete(recursive: true));
     });
 
     final owner = Profile.local(id: 'local-owner', displayName: 'Owner', createdAt: DateTime(2026, 1, 1));
@@ -79,11 +93,13 @@ void main() {
           Provider<ProfileConnectionRegistry>.value(value: profileConnectionRegistry),
           ChangeNotifierProvider<ActiveProfileProvider>.value(value: activeProfile),
           ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
+          ChangeNotifierProvider<OfflineModeProvider>.value(value: network),
         ],
         child: MaterialApp(
           home: ProfileSessionScreen.forTesting(
             initialPromptHandled: true,
             profileShellBuilder: (context) => _ProfileProbeShell(
+              localProviders: localProviders,
               discoverProviders: discoverProviders,
               hiddenProviders: hiddenProviders,
               disposedActiveIds: disposedActiveIds,
@@ -94,6 +110,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    for (var i = 0; i < 50 && !localProviders.single.initialized; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+      await tester.pump();
+    }
+    expect(localProviders.single.initialized, isTrue);
+    final ownerLocal = localProviders.single;
+    expect(ownerLocal.profileId, owner.id);
     expect(find.text('active:local-owner'), findsOneWidget);
     expect(discoverProviders, hasLength(1));
     expect(hiddenProviders, hasLength(1));
@@ -111,6 +134,15 @@ void main() {
     expect(await activeProfile.activate(kids), isTrue);
     await tester.pumpAndSettle();
 
+    for (var i = 0; i < 50 && !localProviders.last.initialized; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+      await tester.pump();
+    }
+    expect(ownerLocal.isDisposed, isTrue);
+    expect(localProviders, hasLength(2));
+    expect(localProviders.last.profileId, kids.id);
+    expect(localProviders.last.initialized, isTrue);
+    expect(localProviders.last.items, isEmpty);
     expect(find.text('old profile route'), findsNothing);
     expect(find.text('active:local-kids'), findsOneWidget);
     expect(disposedActiveIds, contains('local-owner'));
@@ -127,11 +159,13 @@ void main() {
 
 class _ProfileProbeShell extends StatefulWidget {
   const _ProfileProbeShell({
+    required this.localProviders,
     required this.discoverProviders,
     required this.hiddenProviders,
     required this.disposedActiveIds,
   });
 
+  final List<LocalLibraryProvider> localProviders;
   final List<DiscoverProvider> discoverProviders;
   final List<HiddenLibrariesProvider> hiddenProviders;
   final List<String> disposedActiveIds;
@@ -148,6 +182,9 @@ class _ProfileProbeShellState extends State<_ProfileProbeShell> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final local = context.read<LocalLibraryProvider>();
+    if (widget.localProviders.isEmpty || !identical(widget.localProviders.last, local))
+      widget.localProviders.add(local);
     _discoverProvider = context.read<DiscoverProvider>();
     _hiddenProvider = context.read<HiddenLibrariesProvider>();
     _activeId = context.read<ActiveProfileProvider>().activeId ?? 'none';
@@ -203,4 +240,11 @@ class _FakePlexHomeService extends PlexHomeService {
 
   @override
   Future<void> dispose() async {}
+}
+
+class _FixturePaths extends PathProviderPlatform with MockPlatformInterfaceMixin {
+  _FixturePaths(this.root);
+  final String root;
+  @override
+  Future<String?> getApplicationSupportPath() async => root;
 }

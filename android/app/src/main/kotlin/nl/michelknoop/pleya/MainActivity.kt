@@ -528,6 +528,14 @@ class MainActivity : FlutterActivity() {
       }
     }
 
+    MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.pleya/local_library").setMethodCallHandler { call, result ->
+      if (call.method == "availableBytes") {
+        result.success(filesDir.usableSpace)
+      } else {
+        result.notImplemented()
+      }
+    }
+
     MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DEVICE_CHANNEL).setMethodCallHandler { call, result ->
       when (call.method) {
         "getTvDetection" -> result.success(getAndroidTvDetection())

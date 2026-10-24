@@ -20,12 +20,11 @@
 /// page, not a new IndexedStack state.
 library;
 
+import '../../providers/offline_mode_provider.dart';
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
-
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../automation/automation_screen.dart';
@@ -96,6 +95,7 @@ class MobileCatalogScreen extends StatefulWidget {
     super.key,
     required this.kind,
     this.onSearchTap,
+    this.isTabRoot = false,
     this.debugPrefetcher,
     this.initialFilterOverride,
   });
@@ -114,6 +114,9 @@ class MobileCatalogScreen extends StatefulWidget {
   /// covers (see this file's own doc comment on why a push covers the bar),
   /// so search can only become visible again once this screen is gone.
   final VoidCallback? onSearchTap;
+
+  /// Offline catalogs can be embedded in the root tab instead of pushed.
+  final bool isTabRoot;
 
   /// Test-only seam. When set, this prefetcher is used instead of
   /// constructing the real one, and this widget never disposes it; the
@@ -465,6 +468,11 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
                             _buildHeader(),
                             _buildChips(sheetContext, filters),
                             const SizedBox(height: 8),
+                            if (context.watch<OfflineModeProvider?>()?.isOffline ?? false)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(t.localLibrary.offline),
+                              ),
                             _buildCountRow(filters),
                             const SizedBox(height: 8),
                           ],
@@ -538,7 +546,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
               role: 'button',
               child: IconButton(
                 onPressed: () {
-                  Navigator.of(context).maybePop();
+                  if (!widget.isTabRoot) Navigator.of(context).maybePop();
                   widget.onSearchTap?.call();
                 },
                 icon: const AppIcon(Symbols.search_rounded),

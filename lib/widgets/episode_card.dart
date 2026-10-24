@@ -36,6 +36,7 @@ class EpisodeCard extends StatefulWidget {
   final Future<void> Function()? onListRefresh;
   final bool autofocus;
   final bool isOffline;
+  final bool canPlay;
   final String? localPosterPath;
   final FocusNode? focusNode;
   final VoidCallback? onNavigateUp;
@@ -57,6 +58,7 @@ class EpisodeCard extends StatefulWidget {
     this.onListRefresh,
     this.autofocus = false,
     this.isOffline = false,
+    this.canPlay = true,
     this.localPosterPath,
     this.focusNode,
     this.onNavigateUp,
@@ -220,8 +222,8 @@ class _EpisodeCardState extends State<EpisodeCard> with ContextMenuTapMixin<Epis
                                     color: Colors.black.withValues(alpha: 0.6),
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const AppIcon(
-                                    Symbols.play_arrow_rounded,
+                                  child: AppIcon(
+                                    widget.canPlay ? Symbols.play_arrow_rounded : Symbols.info_rounded,
                                     fill: 1,
                                     color: Colors.white,
                                     size: 20,

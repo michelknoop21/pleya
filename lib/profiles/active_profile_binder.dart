@@ -25,14 +25,23 @@ typedef PlexHomePinPrompt = Future<String?> Function(Profile profile, {String? e
 typedef ShouldDeferInitialBind = FutureOr<bool> Function(Profile profile);
 
 class _ProfileBindResult {
-  const _ProfileBindResult({required this.visibleServerIds, required this.expectedServerIds});
+  const _ProfileBindResult({
+    required this.visibleServerIds,
+    required this.expectedServerIds,
+    this.cacheDeniedServerIds = const {},
+  });
 
-  const _ProfileBindResult.empty() : visibleServerIds = const {}, expectedServerIds = const {};
+  const _ProfileBindResult.empty()
+    : visibleServerIds = const {},
+      expectedServerIds = const {},
+      cacheDeniedServerIds = const {};
 
   _ProfileBindResult.visible(Set<String> ids)
     : visibleServerIds = Set.unmodifiable(ids),
-      expectedServerIds = Set.unmodifiable(ids);
+      expectedServerIds = Set.unmodifiable(ids),
+      cacheDeniedServerIds = const {};
 
+  final Set<String> cacheDeniedServerIds;
   final Set<String> visibleServerIds;
   final Set<String> expectedServerIds;
 }
@@ -311,6 +320,7 @@ class ActiveProfileBinder {
         plexAccountClientIds: restrictions.plexAccounts,
         serverIds: restrictions.serverIds,
       );
+      multiServerProvider.setCacheDeniedServerIds({for (final result in results) ...result.cacheDeniedServerIds});
       multiServerProvider.setExpectedVisibleServerIds(expectedServerIds);
       multiServerProvider.setVisibleServerIds(visibleServerIds);
       success = (profile.isLocal && !localProfileHasJoinRows) || visibleServerIds.isNotEmpty;
@@ -586,7 +596,11 @@ class ActiveProfileBinder {
       visible.addAll(result.visibleServerIds);
       expected.addAll(result.expectedServerIds);
     }
-    return _ProfileBindResult(visibleServerIds: visible, expectedServerIds: expected);
+    return _ProfileBindResult(
+      visibleServerIds: visible,
+      expectedServerIds: expected,
+      cacheDeniedServerIds: {for (final result in results) ...result.cacheDeniedServerIds},
+    );
   }
 
   Future<_ProfileBindResult> _bindLocalPlexConnection({
@@ -1007,7 +1021,11 @@ class ActiveProfileBinder {
     final resolved = const PleyaServerCredentialResolver().resolve(profile, conn);
     if (!resolved.isHit) {
       appLogger.w('ActiveProfileBinder: ${profile.displayName} may not act with ${conn.serverName} (${resolved.miss})');
-      return _ProfileBindResult(visibleServerIds: const {}, expectedServerIds: {conn.serverId});
+      return _ProfileBindResult(
+        visibleServerIds: const {},
+        expectedServerIds: {conn.serverId},
+        cacheDeniedServerIds: {conn.serverId},
+      );
     }
 
     final ok = await serverManager.addPleyaServerConnection(conn);

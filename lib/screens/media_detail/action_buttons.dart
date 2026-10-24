@@ -1,12 +1,27 @@
 part of '../media_detail_screen.dart';
 
 extension _MediaDetailActionButtons on _MediaDetailScreenState {
+  MediaItem? _offlinePlaybackTarget(MediaItem metadata) {
+    final downloads = context.read<DownloadProvider>();
+    final candidates = metadata.isShow || metadata.isSeason
+        ? downloads.getDownloadedEpisodesForShow(metadata.isShow ? metadata.id : metadata.parentId ?? '')
+        : downloads.isDownloaded(metadata.globalKey)
+        ? [metadata]
+        : <MediaItem>[];
+    return offlinePlaybackTarget(metadata, candidates, preferred: _onDeckEpisode);
+  }
+
   /// Plays [metadata]: the on-deck episode for a show, the first episode for
   /// a season, or the item itself for a movie/episode. Shared by the action
   /// row's play button (TV and the pre-northstar mobile layout) and the
   /// northstar mobile CTA capsule (`mobile_detail_view.dart`) so both drive
   /// the exact same resume/refresh behavior.
   Future<void> _handlePlayPressed(MediaItem metadata) async {
+    if (widget.isOffline) {
+      final target = _offlinePlaybackTarget(metadata);
+      if (target != null) await _playWithDetailPick(target);
+      return;
+    }
     if (metadata.isShow) {
       if (_onDeckEpisode != null) {
         appLogger.d('Playing on deck episode: ${_onDeckEpisode!.title}');
@@ -44,6 +59,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
   }
 
   Widget _buildActionButtons(MediaItem metadata) {
+    if (widget.isOffline) context.watch<DownloadProvider>();
     final isTv = PlatformDetector.isTV();
     // DENS1: on TV the row is sized in HIG points. A 60 pt button (tvOS asks
     // for at least 56) carrying Body text (29 pt), where `scaleOf` made it a
@@ -58,7 +74,9 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     final tvScale = TvHig.body * pt / 21;
     final playButtonIcon = AppIcon(_getPlayButtonIcon(metadata), fill: 1, size: playIconSize);
 
-    Future<void> onPlayPressed() => _handlePlayPressed(metadata);
+    final VoidCallback? onPlayPressed = !widget.isOffline || _offlinePlaybackTarget(metadata) != null
+        ? () => unawaited(_handlePlayPressed(metadata))
+        : null;
 
     final primaryTrailer = _getPrimaryTrailer();
 
@@ -166,6 +184,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       builder: (context, state) => AutomationNode(
         id: AutomationIds.mediaDetailPlay,
         role: 'button',
+        state: () => {'enabled': onPlayPressed != null},
         focusNode: _playButtonFocusNode,
         child: playButton(state),
       ),
@@ -184,7 +203,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
             ),
           );
 
-    final shuffleAction = (metadata.isShow || metadata.isSeason)
+    final shuffleAction = !widget.isOffline && (metadata.isShow || metadata.isSeason)
         ? FocusableAction(
             debugLabel: 'detail_shuffle',
             onPressed: () async {

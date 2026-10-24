@@ -58,6 +58,9 @@
 /// next second or two are worth holding.
 library;
 
+import 'dart:io';
+import 'package:provider/provider.dart';
+import '../../providers/local_library_provider.dart';
 import 'dart:collection';
 
 import 'package:cached_network_image_ce/cached_network_image.dart';
@@ -360,7 +363,7 @@ class UnifiedArtworkPrefetcher {
     required UnifiedArtworkImageTypeResolver typeOf,
   }) {
     if (_pending.length >= maxWindowItems) return;
-    final request = _buildRequest(group, size, devicePixelRatio, pathOf: pathOf, typeOf: typeOf);
+    final request = _buildRequest(group, size, devicePixelRatio, context, pathOf: pathOf, typeOf: typeOf);
     if (request == null) return;
     if (_requested.contains(request.url) || !_pendingUrls.add(request.url)) return;
     _pending.add(_PendingPrefetch(request, context));
@@ -372,7 +375,8 @@ class UnifiedArtworkPrefetcher {
   ArtworkPrefetchRequest? _buildRequest(
     UnifiedMediaGroup group,
     Size posterSize,
-    double devicePixelRatio, {
+    double devicePixelRatio,
+    BuildContext context, {
     required UnifiedArtworkPathResolver pathOf,
     required UnifiedArtworkImageTypeResolver typeOf,
   }) {
@@ -392,16 +396,19 @@ class UnifiedArtworkPrefetcher {
       client = null;
     }
 
+    final localPath = context.read<LocalLibraryProvider?>()?.posterPath(source.serverId, thumbPath);
     final String url;
     try {
-      url = MediaImageHelper.getOptimizedImageUrl(
-        client: client,
-        thumbPath: thumbPath,
-        maxWidth: posterSize.width,
-        maxHeight: posterSize.height,
-        devicePixelRatio: devicePixelRatio,
-        imageType: imageType,
-      );
+      url = localPath != null
+          ? Uri.file(localPath).toString()
+          : MediaImageHelper.getOptimizedImageUrl(
+              client: client,
+              thumbPath: thumbPath,
+              maxWidth: posterSize.width,
+              maxHeight: posterSize.height,
+              devicePixelRatio: devicePixelRatio,
+              imageType: imageType,
+            );
     } catch (_) {
       // A URL that cannot be signed is a poster we do not warm, not a crash.
       return null;
@@ -419,12 +426,14 @@ class UnifiedArtworkPrefetcher {
     // The image widget's own key, not a copy of it: a warmed entry stored
     // under a different key is a second copy the card never finds.
     final cacheKey = OptimizedMediaImage.artworkCacheKey(url);
-    final provider = CachedNetworkImageProvider(
-      url,
-      cacheKey: cacheKey,
-      cacheManager: PlexImageCacheManager.instance,
-      headers: const {'User-Agent': 'Pleya'},
-    );
+    final ImageProvider<Object> provider = localPath != null
+        ? FileImage(File(localPath))
+        : CachedNetworkImageProvider(
+            url,
+            cacheKey: cacheKey,
+            cacheManager: PlexImageCacheManager.instance,
+            headers: const {'User-Agent': 'Pleya'},
+          );
 
     return ArtworkPrefetchRequest(
       groupId: group.groupId,

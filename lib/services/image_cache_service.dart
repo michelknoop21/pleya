@@ -154,7 +154,9 @@ class _SharedHttpClient extends http.BaseClient {
     // Applied before the permit so a slow token refresh does not hold one of
     // the few concurrent artwork slots.
     final auth = await ArtworkAuthorizationRegistry.headersFor(request.url);
-    if (auth.isNotEmpty) request.headers.addAll(auth);
+    for (final entry in auth.entries) {
+      request.headers.putIfAbsent(entry.key, () => entry.value);
+    }
     final permit = await _artworkRequestLimiter.acquire();
     _permits.add(permit);
     try {

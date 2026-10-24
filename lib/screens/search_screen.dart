@@ -1,12 +1,11 @@
+import '../providers/local_library_provider.dart';
 import 'dart:async';
-
 import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
-
 import '../automation/automation_ids.dart';
 import '../automation/automation_node.dart';
 import '../focus/focusable_button.dart';
@@ -41,7 +40,6 @@ import '../services/unified_catalog/search_projection.dart';
 import '../utils/debouncer.dart';
 import '../utils/external_ids_fetcher.dart';
 import '../utils/provider_extensions.dart';
-
 import '../services/apple_tv_native_text_entry.dart';
 import '../services/speech_search_service.dart';
 import '../utils/app_logger.dart';
@@ -68,7 +66,6 @@ import '../services/search_recency_store.dart';
 import '../services/search_recents.dart';
 import '../utils/media_navigation_helper.dart';
 import 'actor_media_screen.dart';
-
 import '../utils/focus_utils.dart';
 import 'main_screen.dart';
 import '../widgets/scroll_crown/scroll_crown.dart';
@@ -466,7 +463,9 @@ class _SearchScreenState extends State<SearchScreen>
       if (!mounted) return;
       final multiServerProvider = Provider.of<MultiServerProvider>(context, listen: false);
 
-      if (!multiServerProvider.hasConnectedServers) {
+      final local = context.read<LocalLibraryProvider?>();
+      final useLocal = !multiServerProvider.hasConnectedServers && (local?.hasContent ?? false);
+      if (!multiServerProvider.hasConnectedServers && !useLocal) {
         throw const _NoServersAvailable();
       }
 
@@ -498,10 +497,16 @@ class _SearchScreenState extends State<SearchScreen>
       // first pass ran on a stale set, not applied late.
       final hiddenLibraries = context.hiddenLibraries;
       _lastSearchedHiddenLibraryKeys = hiddenLibraries.hiddenLibraryKeys;
-      final aggregated = await multiServerProvider.aggregationService.searchAcrossServers(
-        query,
-        hiddenLibraryKeys: _lastSearchedHiddenLibraryKeys,
-      );
+      final aggregated = useLocal
+          ? (
+              items: local!.search(query),
+              people: <MediaItem>[],
+              succeededServerIds: local.libraries.map((l) => l.serverId!).toSet(),
+            )
+          : await multiServerProvider.aggregationService.searchAcrossServers(
+              query,
+              hiddenLibraryKeys: _lastSearchedHiddenLibraryKeys,
+            );
       if (!mounted || isStale()) return;
       // Not one server answered → this is a connection failure, not an empty
       // library. Reporting it as "no results" is what made a dead network look
@@ -522,7 +527,11 @@ class _SearchScreenState extends State<SearchScreen>
       if (PlatformDetector.isTV() || PlatformDetector.isPhone(context)) {
         projection = await searchProjection(
           neutral,
-          fetchExternalIds: externalIdsFetcherFor(multiServerProvider),
+          fetchExternalIds: (server, id) async {
+            final cached = local?.externalIds(server, id);
+            if (cached != null) return cached;
+            return externalIdsFetcherFor(multiServerProvider)(server, id);
+          },
           people: aggregated.people,
         );
         if (!mounted || isStale()) return;
@@ -540,7 +549,7 @@ class _SearchScreenState extends State<SearchScreen>
       // results, for the query the viewer settled on. A search the debounce
       // started is typing in progress, on the native keyboard and on the inline
       // one alike, and asks the requests server nothing.
-      _maybeSearchSeerrForSettledQuery(query);
+      if (!useLocal) _maybeSearchSeerrForSettledQuery(query);
     } catch (e) {
       if (!mounted || isStale()) return;
       _focusResultsForQuery = null;
@@ -1041,7 +1050,11 @@ class _SearchScreenState extends State<SearchScreen>
   /// see [_openPerson].
   void _openConcrete(MediaItem item) {
     _rememberRecent(item);
-    unawaited(navigateToMediaItem(context, item, onRefresh: updateItem));
+    final cached =
+        item.serverId != null &&
+        !context.read<MultiServerProvider>().isServerOnline(ServerId(item.serverId!)) &&
+        context.read<LocalLibraryProvider?>()?.item(item.serverId!, item.id) != null;
+    unawaited(navigateToMediaItem(context, item, isOffline: cached, onRefresh: updateItem));
   }
 
   /// Select on a `people` result (SRCH-2). The item is a stand-in

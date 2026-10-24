@@ -1,6 +1,6 @@
+import 'local_library_settings_screen.dart';
 import 'dart:async';
 import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,7 +8,6 @@ import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../automation/automation_screen.dart';
@@ -228,6 +227,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
                         children: [
                           _buildAppearanceTile(),
                           _buildLibraryVisibilityTile(),
+                          _buildLocalLibraryTile(),
                           _buildHomeLayoutTile(),
                           _buildPlaybackTile(),
                           _buildLanguageTile(),
@@ -579,6 +579,18 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
       ),
     );
   }
+
+  Widget _buildLocalLibraryTile() => AutomationNode(
+    id: AutomationIds.settingsTile,
+    instance: 'local_library',
+    role: 'list.item',
+    child: SettingNavigationTile(
+      icon: Symbols.offline_bolt_rounded,
+      title: t.localLibrary.title,
+      subtitle: t.localLibrary.enable,
+      destinationBuilder: (_) => const LocalLibrarySettingsScreen(),
+    ),
+  );
 
   Widget _buildLibraryVisibilityTile() {
     return SettingNavigationTile(

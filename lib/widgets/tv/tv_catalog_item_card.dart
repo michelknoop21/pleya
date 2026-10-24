@@ -16,6 +16,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:provider/provider.dart';
+
+import '../../providers/local_library_provider.dart';
 
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
@@ -80,6 +83,9 @@ class TvCatalogItemCard extends StatelessWidget {
         child: OptimizedMediaImage(
           client: item.serverId == null ? null : clientFor?.call(item.serverId!),
           imagePath: item.thumbPath,
+          localFilePath: context.select<LocalLibraryProvider?, String?>(
+            (p) => p?.posterPath(item.serverId, item.thumbPath),
+          ),
           fit: BoxFit.cover,
           fallbackIcon: _fallbackIcon,
         ),

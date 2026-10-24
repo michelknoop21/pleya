@@ -96,6 +96,13 @@ class MultiServerProvider extends ChangeNotifier with DisposableChangeNotifierMi
   /// unreachable servers that do not have a live client in [MultiServerManager].
   /// This is intentionally separate from [_visibleServerIds]: visible ids drive
   /// UI/API surfaces, expected ids drive offline/auth decisions.
+  Set<String> _cacheDeniedServerIds = {};
+  Set<String> get cacheDeniedServerIds => Set.unmodifiable(_cacheDeniedServerIds);
+  void setCacheDeniedServerIds(Set<String> ids) {
+    _cacheDeniedServerIds = Set.of(ids);
+    safeNotifyListeners();
+  }
+
   Set<String>? _expectedVisibleServerIds;
 
   /// Replace the active visibility filter and notify listeners. Pass `null`
@@ -295,6 +302,7 @@ class MultiServerProvider extends ChangeNotifier with DisposableChangeNotifierMi
     _serverManager.disconnectAll();
     _serverManager.setVisibleServerIds(null);
     _expectedVisibleServerIds = null;
+    _cacheDeniedServerIds = {};
     appLogger.d('MultiServerProvider: All connections cleared');
     safeNotifyListeners();
   }

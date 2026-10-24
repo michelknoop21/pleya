@@ -105,6 +105,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsLanguageSettingsNl languageSettings = _TranslationsLanguageSettingsNl._(_root);
 	@override late final _TranslationsAssistantNl assistant = _TranslationsAssistantNl._(_root);
 	@override late final _TranslationsPlaybackHandoffNl playbackHandoff = _TranslationsPlaybackHandoffNl._(_root);
+	@override late final _TranslationsLocalLibraryNl localLibrary = _TranslationsLocalLibraryNl._(_root);
 }
 
 // Path: states
@@ -2670,6 +2671,42 @@ class _TranslationsPlaybackHandoffNl extends TranslationsPlaybackHandoffEn {
 	@override String get noPhone => 'Een Apple TV kan Pleya op je iPhone niet zelf openen. Open Pleya op je iPhone of iPad op hetzelfde wifi-netwerk.';
 	@override String resumeAt({required Object time}) => 'Verder vanaf ${time}';
 	@override String get playingOnPhoneBody => 'Kijk verder op je iPhone of iPad';
+}
+
+// Path: localLibrary
+class _TranslationsLocalLibraryNl extends TranslationsLocalLibraryEn {
+	_TranslationsLocalLibraryNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get playbackUnavailable => 'Maak verbinding met de server of download deze video om af te spelen.';
+	@override String get title => 'Lokale bibliotheek';
+	@override String get enable => 'Bibliotheek vooraf opslaan';
+	@override String get description => 'Bewaar metadata en posters van al je bibliotheken op dit apparaat. De eerste download kan lang duren en veel opslag gebruiken. Video’s worden niet gedownload.';
+	@override String get wifiOnly => 'Alleen via wifi';
+	@override String get wifiDescription => 'Pauzeer vooraf ophalen via mobiele data. Zet uit om ook mobiele data toe te staan.';
+	@override String get status => 'Status';
+	@override String get disabled => 'Vooraf ophalen staat uit. Eerder opgeslagen inhoud blijft beschikbaar.';
+	@override String get syncing => 'Metadata en posters ophalen…';
+	@override String get ready => 'Lokale bibliotheek is bijgewerkt';
+	@override String get wifi => 'Wachten op wifi';
+	@override String get offline => 'Offline · opgeslagen inhoud wordt getoond';
+	@override String get storage => 'Gepauzeerd · onvoldoende vrije opslag. Er is niets gewist.';
+	@override String get storageUnavailable => 'Gepauzeerd · vrije opslag kon niet worden gecontroleerd';
+	@override String get paused => 'Gepauzeerd · hervat zodra Pleya actief is';
+	@override String get error => 'Bijwerken onvolledig · eerder opgeslagen inhoud is behouden';
+	@override String progress({required Object count}) => '${count} items verwerkt';
+	@override String get usage => 'Gebruikte opslag';
+	@override String get lastSync => 'Laatste geslaagde scan';
+	@override String get never => 'Nog niet voltooid';
+	@override String get syncNow => 'Nu bijwerken';
+	@override String get clear => 'Lokale bibliotheek wissen';
+	@override String get clearMessage => 'De lokaal opgeslagen bibliotheekmetadata en posters van dit profiel wissen? Inhoud op de server en gedownloade video’s blijven behouden.';
+	@override String get afterClear => 'Lokale bibliotheek gewist';
+	@override String get chooseAfterClear => 'Vooraf ophalen uitzetten of je bibliotheek opnieuw ophalen? Je netwerkvoorkeur blijft gelden.';
+	@override String get keepOff => 'Vooraf ophalen uitzetten';
+	@override String get refill => 'Bibliotheek opnieuw ophalen';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -7126,6 +7163,33 @@ extension on TranslationsNl {
 			'playbackHandoff.noPhone' => 'Een Apple TV kan Pleya op je iPhone niet zelf openen. Open Pleya op je iPhone of iPad op hetzelfde wifi-netwerk.',
 			'playbackHandoff.resumeAt' => ({required Object time}) => 'Verder vanaf ${time}',
 			'playbackHandoff.playingOnPhoneBody' => 'Kijk verder op je iPhone of iPad',
+			'localLibrary.playbackUnavailable' => 'Maak verbinding met de server of download deze video om af te spelen.',
+			'localLibrary.title' => 'Lokale bibliotheek',
+			'localLibrary.enable' => 'Bibliotheek vooraf opslaan',
+			'localLibrary.description' => 'Bewaar metadata en posters van al je bibliotheken op dit apparaat. De eerste download kan lang duren en veel opslag gebruiken. Video’s worden niet gedownload.',
+			'localLibrary.wifiOnly' => 'Alleen via wifi',
+			'localLibrary.wifiDescription' => 'Pauzeer vooraf ophalen via mobiele data. Zet uit om ook mobiele data toe te staan.',
+			'localLibrary.status' => 'Status',
+			'localLibrary.disabled' => 'Vooraf ophalen staat uit. Eerder opgeslagen inhoud blijft beschikbaar.',
+			'localLibrary.syncing' => 'Metadata en posters ophalen…',
+			'localLibrary.ready' => 'Lokale bibliotheek is bijgewerkt',
+			'localLibrary.wifi' => 'Wachten op wifi',
+			'localLibrary.offline' => 'Offline · opgeslagen inhoud wordt getoond',
+			'localLibrary.storage' => 'Gepauzeerd · onvoldoende vrije opslag. Er is niets gewist.',
+			'localLibrary.storageUnavailable' => 'Gepauzeerd · vrije opslag kon niet worden gecontroleerd',
+			'localLibrary.paused' => 'Gepauzeerd · hervat zodra Pleya actief is',
+			'localLibrary.error' => 'Bijwerken onvolledig · eerder opgeslagen inhoud is behouden',
+			'localLibrary.progress' => ({required Object count}) => '${count} items verwerkt',
+			'localLibrary.usage' => 'Gebruikte opslag',
+			'localLibrary.lastSync' => 'Laatste geslaagde scan',
+			'localLibrary.never' => 'Nog niet voltooid',
+			'localLibrary.syncNow' => 'Nu bijwerken',
+			'localLibrary.clear' => 'Lokale bibliotheek wissen',
+			'localLibrary.clearMessage' => 'De lokaal opgeslagen bibliotheekmetadata en posters van dit profiel wissen? Inhoud op de server en gedownloade video’s blijven behouden.',
+			'localLibrary.afterClear' => 'Lokale bibliotheek gewist',
+			'localLibrary.chooseAfterClear' => 'Vooraf ophalen uitzetten of je bibliotheek opnieuw ophalen? Je netwerkvoorkeur blijft gelden.',
+			'localLibrary.keepOff' => 'Vooraf ophalen uitzetten',
+			'localLibrary.refill' => 'Bibliotheek opnieuw ophalen',
 			_ => null,
 		};
 	}

@@ -1,10 +1,12 @@
+import 'dart:io';
+import '../../../providers/local_library_provider.dart';
+import '../../../widgets/optimized_media_image.dart';
 import 'dart:async';
 import '../../../media/ids.dart';
 import '../../../automation/automation_event_log.dart';
 import '../../../automation/automation_ids.dart';
 import '../../../automation/automation_node.dart';
 import '../../../automation/pleya_verify.dart';
-
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
@@ -301,6 +303,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
 
   LibraryAlphaBarStrategy _createAlphaStrategy() {
     final library = widget.library;
+
     return LibraryAlphaBarStrategy.forBackend(
       library.backend,
       // Resolved on demand and only invoked by [PlexAlphaBarStrategy], which is
@@ -788,6 +791,8 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   Future<LibraryPage<MediaItem>> fetchPage(int start, int size, AbortController? abort) async {
     final client = context.getMediaClientForLibrary(widget.library);
     final query = _browseQuery(offset: start, limit: size);
+    final cached = context.read<LocalLibraryProvider?>()?.page(widget.library.globalKey, query);
+    if (cached != null) return cached;
     return client.fetchLibraryPagedContent(
       widget.library.id,
       query: query,
@@ -1653,12 +1658,19 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
         imageType: imageType,
       );
 
+      final localPath = context.read<LocalLibraryProvider?>()?.posterPath(item.serverId, thumb);
       precacheImage(
-        CachedNetworkImageProvider(
-          imageUrl,
-          cacheManager: PlexImageCacheManager.instance,
-          headers: const {'User-Agent': 'Pleya'},
-          maxHeight: memHeight,
+        ResizeImage.resizeIfNeeded(
+          null,
+          memHeight > 0 ? memHeight : null,
+          localPath != null
+              ? FileImage(File(localPath))
+              : CachedNetworkImageProvider(
+                  imageUrl,
+                  cacheKey: OptimizedMediaImage.artworkCacheKey(imageUrl),
+                  cacheManager: PlexImageCacheManager.instance,
+                  headers: const {'User-Agent': 'Pleya'},
+                ),
         ),
         context,
       ).ignore();

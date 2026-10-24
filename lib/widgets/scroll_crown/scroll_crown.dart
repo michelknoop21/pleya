@@ -1,10 +1,8 @@
 import 'dart:async';
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
-
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
@@ -131,7 +129,7 @@ class _ScrollCrownState extends State<ScrollCrown> {
   double _dragMinExtent = 0;
   double _dragMaxExtent = 0;
   CrownDragMotion? _motion;
-  Drag? _nestedDrag;
+  Drag? _scrollDrag;
   Duration _pointerDownTime = Duration.zero;
   Duration _motionTime = Duration.zero;
   bool _followingEnd = false;
@@ -139,7 +137,7 @@ class _ScrollCrownState extends State<ScrollCrown> {
   @override
   void dispose() {
     _hideTimer?.cancel();
-    _nestedDrag?.cancel();
+    _scrollDrag?.cancel();
     super.dispose();
   }
 
@@ -187,17 +185,18 @@ class _ScrollCrownState extends State<ScrollCrown> {
 
   void _jumpTo(double target) {
     final position = _position!;
-    if (_outerPosition == null) {
+    final drag = _scrollDrag;
+    final delta = target - _combinedMetrics(position).pixels;
+    if (drag != null) {
+      // One continuous activity for the entire crown drag. jumpTo emits an
+      // idle/end notification on every pointer update, repeatedly waking
+      // content loading and disrupting the scrolling image pipeline.
+      if (delta != 0)
+        drag.update(DragUpdateDetails(delta: Offset(0, -delta), primaryDelta: -delta, globalPosition: Offset.zero));
+    } else if (_outerPosition == null) {
       position.jumpTo(target);
     } else {
-      // Keep a nested drag active: per-update jumps collapse or snap its header.
-      final delta = target - _combinedMetrics(position).pixels;
-      final drag = _nestedDrag;
-      if (drag == null) {
-        position.pointerScroll(delta);
-      } else if (delta != 0) {
-        drag.update(DragUpdateDetails(delta: Offset(0, -delta), primaryDelta: -delta, globalPosition: Offset.zero));
-      }
+      position.pointerScroll(delta);
     }
   }
 
@@ -307,9 +306,7 @@ class _ScrollCrownState extends State<ScrollCrown> {
     _motion = CrownDragMotion(y: details.localPosition.dy - ScrollCrownGear.height / 2, time: _pointerDownTime);
     _followingEnd = false;
     _dragging = true;
-    if (_outerPosition != null) {
-      _nestedDrag = position.drag(details, () => _nestedDrag = null);
-    }
+    _scrollDrag = position.drag(details, () => _scrollDrag = null);
     _dragStartY = details.localPosition.dy;
     _dragStartGlobalY = details.globalPosition.dy;
     _fingerGlobalPosition = details.globalPosition;
@@ -380,8 +377,8 @@ class _ScrollCrownState extends State<ScrollCrown> {
     if (!_dragging) return;
     _dragging = false;
     _fingerGlobalPosition = null;
-    _nestedDrag?.end(DragEndDetails(primaryVelocity: 0));
-    _nestedDrag = null;
+    _scrollDrag?.end(DragEndDetails(primaryVelocity: 0));
+    _scrollDrag = null;
     _motion = null;
     _followingEnd = false;
     _sample('end', _fingerY ?? _dragStartY);

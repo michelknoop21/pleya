@@ -47,6 +47,17 @@ void main() {
     await db.close();
   });
 
+  test('strict child pages reject malformed emptiness but accept explicit empty', () async {
+    var body = <String, Object?>{};
+    final client = _withMock(
+      MockClient((_) async => http.Response(jsonEncode(body), 200, headers: {'content-type': 'application/json'})),
+    );
+    await expectLater(client.fetchChildrenPage('show', requireTotalCount: true), throwsStateError);
+    body = {'Items': [], 'TotalRecordCount': 0};
+    expect((await client.fetchChildrenPage('show', requireTotalCount: true)).totalCount, 0);
+    client.close();
+  });
+
   group('JellyfinClient.fetchItem failure modes', () {
     test('404 returns null (item not on server)', () async {
       final client = _withMock(MockClient((_) async => http.Response('', 404)));
