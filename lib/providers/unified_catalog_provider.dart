@@ -219,6 +219,8 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
         query: _query,
         libraries: eligible,
         clientFor: _multiServer.serverManager.getClient,
+        // Pages only exist to keep a round short; the TV grid chains them into one list.
+        groupsPerPage: 100,
         preferredSourceKeys: () => _rememberedSourceKeys,
         cachedPage: (library, query) => _localLibrary?.page('${library.serverId}:${library.libraryId}', query),
         cachedExternalIds: (server, id) => _localLibrary?.externalIds(server, id),

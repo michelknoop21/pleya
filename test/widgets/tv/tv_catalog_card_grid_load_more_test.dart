@@ -88,4 +88,61 @@ void main() {
     await tester.pump();
     expect(loadMoreCalls, 2);
   });
+
+  testWidgets('loadEagerly keeps loading without focus until nothing is left', (tester) async {
+    tester.view.physicalSize = _canvas;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final state = ValueNotifier<({bool hasMore, bool loading})>((hasMore: true, loading: false));
+    var calls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: monoTheme(dark: true),
+        home: InputModeTracker(
+          child: Material(
+            child: ValueListenableBuilder(
+              valueListenable: state,
+              builder: (context, s, _) => SizedBox(
+                width: _canvas.width,
+                height: _canvas.height,
+                child: TvCatalogCardGrid(
+                  itemIds: [for (var i = 0; i < 90; i++) 'm$i'],
+                  cardHeight: (width) => TvCatalogLayout.cardHeight(width, 0.85),
+                  hasMore: s.hasMore,
+                  isLoadingMore: s.loading,
+                  loadEagerly: true,
+                  onLoadMore: () => calls++,
+                  itemBuilder: (context, cell) => TvCatalogCard(
+                    width: cell.width,
+                    artwork: const SizedBox(),
+                    title: 'm${cell.index}',
+                    meta: '',
+                    focusNode: cell.focusNode,
+                    onFocusChange: cell.onFocusChange,
+                    onSelect: () {},
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(calls, 1, reason: 'asks at mount, nothing focused');
+
+    state.value = (hasMore: true, loading: true);
+    await tester.pump();
+    state.value = (hasMore: true, loading: false);
+    await tester.pump();
+    await tester.pump();
+    expect(calls, 2, reason: 'chains after a finished load');
+
+    state.value = (hasMore: false, loading: false);
+    await tester.pump();
+    await tester.pump();
+    expect(calls, 2, reason: 'stops when the list is complete');
+  });
 }

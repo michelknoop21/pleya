@@ -19,7 +19,6 @@ library;
 import 'dart:async';
 import '../../media/ids.dart';
 import '../../media/library_query.dart';
-import '../../utils/external_ids.dart';
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
