@@ -224,6 +224,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       onBack: widget.onBack,
       rowAligned: widget.rowAligned,
       fitTwoRows: widget.fitTwoRows,
+      loadEagerly: true,
       fitScale: widget.fitScale,
       reservedLeading: widget.reservedLeading,
       footer: widget.footer,

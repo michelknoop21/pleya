@@ -45,7 +45,9 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
     required HiddenLibrariesProvider hiddenLibraries,
     required MediaKind kind,
     LocalLibraryProvider? localLibrary,
-  }) : _multiServer = multiServer,
+    int groupsPerPage = 20,
+  }) : _groupsPerPage = groupsPerPage,
+       _multiServer = multiServer,
        _libraries = libraries,
        _hiddenLibraries = hiddenLibraries,
        _localLibrary = localLibrary,
@@ -61,6 +63,7 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
     _multiServer.addOnlineServersListener(_onOnlineServersChanged);
   }
 
+  final int _groupsPerPage;
   final MultiServerProvider _multiServer;
   final LibrariesProvider _libraries;
   final HiddenLibrariesProvider _hiddenLibraries;
@@ -219,6 +222,7 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
         query: _query,
         libraries: eligible,
         clientFor: _multiServer.serverManager.getClient,
+        groupsPerPage: _groupsPerPage,
         preferredSourceKeys: () => _rememberedSourceKeys,
         cachedPage: (library, query) => _localLibrary?.page('${library.serverId}:${library.libraryId}', query),
         cachedExternalIds: (server, id) => _localLibrary?.externalIds(server, id),

@@ -25,7 +25,6 @@ import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/optimized_media_image.dart';
 import 'package:pleya/widgets/tv/tv_catalog_artwork_window.dart';
-import 'package:pleya/widgets/tv/tv_catalog_card_grid.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_card.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_grid.dart';
@@ -298,25 +297,14 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('P11: paging', () {
-    testWidgets('the focus crossing into the last rows asks for the next page', (tester) async {
-      // The old trigger was DOWN on the last row and nothing else: no scroll
-      // listener, no threshold, no background prefetch. The viewer had to
-      // navigate into the end of what was loaded and *then* wait, on every
-      // page — which is the stall that was reported.
+    testWidgets('the unified grid is one long list: it asks for the next page without any focus', (tester) async {
+      // Michel, 24 October 2026: no pages, one list. The catalog keeps loading
+      // in the background, so the viewer never reaches an end that is not
+      // there yet.
       var loads = 0;
       await pumpGrid(tester, count: 40, hasMore: true, onLoadMore: () => loads++);
-      final columns = columnsOf(tester);
-
-      Focus.of(tester.element(find.text('Title 0'))).requestFocus();
       await tester.pumpAndSettle();
-      expect(loads, 0, reason: 'the top of the grid is nowhere near the end');
-
-      // Two rows short of the end, which is the threshold.
-      final rows = (40 / columns).ceil();
-      final target = (rows - TvCatalogCardGrid.loadMoreRowThreshold) * columns;
-      Focus.of(tester.element(find.text('Title $target'))).requestFocus();
-      await tester.pumpAndSettle();
-      expect(loads, greaterThan(0), reason: 'the page is requested while there is still a row to walk');
+      expect(loads, 1, reason: 'asked at mount, with nothing focused');
     });
 
     testWidgets('and it does so without moving the focus', (tester) async {

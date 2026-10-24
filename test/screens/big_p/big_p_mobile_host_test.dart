@@ -66,6 +66,7 @@ void main() {
     Size size = const Size(402, 874),
     EdgeInsets safe = const EdgeInsets.only(top: 54, bottom: 34),
     double keyboard = 0,
+    bool dark = true,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -75,7 +76,7 @@ void main() {
         child: ChangeNotifierProvider<BigPMobileSession>.value(
           value: session,
           child: MaterialApp(
-            theme: monoTheme(dark: true),
+            theme: monoTheme(dark: dark),
             home: Builder(
               builder: (context) => MediaQuery(
                 data: MediaQuery.of(context).copyWith(
@@ -115,6 +116,15 @@ void main() {
     await tester.tap(find.byType(BigPFaceButton));
     await settle(tester);
   }
+
+  testWidgets('in the light app theme the greeting is still light text on the dark balloon', (tester) async {
+    await pump(tester, dark: false);
+    await summon(tester);
+
+    final greeting = tester.widget<Text>(find.textContaining('wat zoeken we').first);
+    final colour = greeting.style!.color!;
+    expect(colour.computeLuminance(), greaterThan(0.5), reason: 'dark text on the black dim is unreadable');
+  });
 
   test('an action bar gives Big P no slot while hidden or without the rollout flag', () {
     for (final a in AssistantAvailability.values) {
