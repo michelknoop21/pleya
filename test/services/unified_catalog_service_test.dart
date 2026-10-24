@@ -42,6 +42,7 @@ class _FakeLibraryClient implements MediaServerClient {
   /// the identity pipeline went back to the network for the same item.
   final List<String> externalIdFetches = [];
   final Set<String> failExternalIdsOnce = {};
+  Completer<void>? externalIdsGate;
 
   /// E8's other pathological case: a backend that answers with the exact
   /// same page every time, ignoring the offset it was given.
@@ -86,6 +87,7 @@ class _FakeLibraryClient implements MediaServerClient {
   @override
   Future<ExternalIds> fetchExternalIds(String itemId) async {
     externalIdFetches.add(itemId);
+    await externalIdsGate?.future;
     if (failExternalIdsOnce.remove(itemId)) throw StateError('external ids unavailable');
     return const ExternalIds();
   }
@@ -393,6 +395,44 @@ void main() {
     });
 
     group('I19: applyUpdatedSourceItem', () {
+      test('an update that lands while ids are being fetched is not overwritten by older evidence', () async {
+        final a = _FakeLibraryClient(
+          itemsByLibrary: {
+            'A': [_movie('a1', title: 'Dune', serverId: 's1', year: 2021, guid: 'plex://movie/x')],
+          },
+        )..externalIdsGate = Completer<void>();
+        final b = _FakeLibraryClient(
+          itemsByLibrary: {
+            'B': [
+              _movie('b1', title: 'Dune', serverId: 's2', year: 2021, guid: 'plex://movie/x'),
+              _movie('b2', title: 'Zeta', serverId: 's2', year: 2000),
+            ],
+          },
+        );
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+          libraries: [_library('s1', 'A'), _library('s2', 'B')],
+          clientFor: (id) => id.value == 's1' ? a : b,
+          pageSize: 1,
+          groupsPerPage: 100,
+        );
+
+        final round = service.loadMore();
+        while (a.externalIdFetches.isEmpty) {
+          await Future<void>.delayed(Duration.zero);
+        }
+        // A re-match changes the guid while the lookup is still in flight.
+        service.applyUpdatedSourceItem(_movie('a1', title: 'Dune', serverId: 's1', year: 2021, guid: 'plex://movie/y'));
+        a.externalIdsGate!.complete();
+        final snapshot = await round;
+
+        expect(
+          snapshot.groups.where((g) => g.representativeSource.item.title == 'Dune'),
+          hasLength(2),
+          reason: 'different guids are conflicting evidence; the stale guid must not merge them',
+        );
+      });
+
       test('re-reads one item in place without touching the cursors', () async {
         final client = _FakeLibraryClient(
           itemsByLibrary: {

@@ -577,9 +577,15 @@ class UnifiedCatalogService {
     final evidence = await resolver.resolveEvidence(
       resolvables,
       known: (i) => _evidenceCache[resolvables[i].item.globalKey],
-      // A reset while the fetches ran must not leak this generation's evidence.
+      // A reset while the fetches ran must not leak this generation's evidence,
+      // and neither may an update that replaced the item meanwhile: its
+      // resolvable is gone from the cache, so evidence derived from the old
+      // item is dropped instead of stored.
       onResolved: (i, resolved) {
-        if (generation == _generation) _evidenceCache[resolvables[i].item.globalKey] = resolved;
+        final key = resolvables[i].item.globalKey;
+        if (generation == _generation && identical(_resolvableCache[key], resolvables[i])) {
+          _evidenceCache[key] = resolved;
+        }
       },
     );
 
