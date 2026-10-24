@@ -24,6 +24,7 @@ import '../../providers/watchlist_provider.dart';
 import '../../providers/watchlist_store.dart';
 import '../../screens/tv/tv_unified_context_actions.dart';
 import '../../screens/tv/tv_unified_context_menu.dart';
+import '../../theme/mono_tokens.dart';
 import '../app_menu.dart';
 import '../overlay_sheet.dart';
 
@@ -154,6 +155,7 @@ Future<void> showMobileUnifiedQuickMenu(
     context: context,
     useRootNavigator: false,
     position: RelativeRect.fromRect(anchor, Offset.zero & overlay.size),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(tokens(context).radiusMd)),
     items: [
       PopupMenuItem<UnifiedGroupAction?>(
         height: 44,

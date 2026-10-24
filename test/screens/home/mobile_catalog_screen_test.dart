@@ -762,6 +762,14 @@ void main() {
   // room, not a second line the screen grows by default. Series' short labels
   // (`1 bron`, `Recent bekeken`) stay on one line, and so does everything else
   // that fits.
+  testWidgets('the compact title row fits a 320 pt wide phone', (tester) async {
+    await pumpCatalog(tester, width: 320);
+    await settle(tester);
+
+    expect(tester.takeException(), isNull);
+    expect(tester.getRect(find.text(t.unifiedCatalog.titlesLoaded(count: 3))).right, lessThanOrEqualTo(320));
+  });
+
   testWidgets('chips that fit stay on a single line', (tester) async {
     await pumpCatalog(tester, width: 1200);
     await settle(tester);
