@@ -16,6 +16,7 @@ import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../navigation/profile_navigation_scope.dart';
 import '../../profiles/active_profile_provider.dart';
+import '../../theme/mono_theme.dart';
 import '../../utils/media_navigation_helper.dart';
 import '../../widgets/big_p/assistant/big_p_labels.dart';
 import '../../widgets/big_p/assistant/big_p_voice_mouth.dart';
@@ -174,65 +175,71 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware, Widget
       listenable: session.controller,
       builder: (context, _) {
         // Above the Scaffold: the field and the ink need their own Material.
-        return Material(
-          type: MaterialType.transparency,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: GestureDetector(
-                  key: const ValueKey('bigp-dim'),
-                  behavior: HitTestBehavior.opaque,
-                  // Ignored while a confirmation waits (session.park).
-                  onTap: session.park,
-                  child: AnimatedOpacity(
-                    opacity: _shown ? 1 : 0,
-                    duration: motion,
-                    child: const ColoredBox(color: Color(0x99000000)),
+        // The dim and the balloon are always dark, so the text tokens must be
+        // the dark ones too: in the light app theme the greeting and the
+        // field were dark on dark.
+        return Theme(
+          data: monoTheme(dark: true),
+          child: Material(
+            type: MaterialType.transparency,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: GestureDetector(
+                    key: const ValueKey('bigp-dim'),
+                    behavior: HitTestBehavior.opaque,
+                    // Ignored while a confirmation waits (session.park).
+                    onTap: session.park,
+                    child: AnimatedOpacity(
+                      opacity: _shown ? 1 : 0,
+                      duration: motion,
+                      child: const ColoredBox(color: Color(0x99000000)),
+                    ),
                   ),
                 ),
-              ),
-              // Darker under the follow-ups and Big P: Home's posters and
-              // titles do not show through their text.
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: AnimatedOpacity(
-                    opacity: _shown ? 1 : 0,
-                    duration: motion,
-                    child: const DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          stops: [0.4, 0.75],
-                          colors: [Color(0x00000000), Color(0xD9000000)],
+                // Darker under the follow-ups and Big P: Home's posters and
+                // titles do not show through their text.
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: AnimatedOpacity(
+                      opacity: _shown ? 1 : 0,
+                      duration: motion,
+                      child: const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            stops: [0.4, 0.75],
+                            colors: [Color(0x00000000), Color(0xD9000000)],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              Positioned(
-                left: 12,
-                right: 12,
-                // A long answer grows over the header (39 F).
-                top: media.viewPadding.top + 4,
-                bottom: bottom,
-                child: AnimatedSlide(
-                  offset: _shown ? Offset.zero : const Offset(0.35, 0),
-                  duration: motion,
-                  curve: _shown ? Curves.easeOutBack : Curves.easeIn,
-                  child: AnimatedOpacity(
-                    opacity: _shown ? 1 : 0,
+                Positioned(
+                  left: 12,
+                  right: 12,
+                  // A long answer grows over the header (39 F).
+                  top: media.viewPadding.top + 4,
+                  bottom: bottom,
+                  child: AnimatedSlide(
+                    offset: _shown ? Offset.zero : const Offset(0.35, 0),
                     duration: motion,
-                    child: LayoutBuilder(
-                      builder: (context, box) => media.size.width >= BigPMobileHost.regularWidth
-                          ? _regular(context, session, box)
-                          : _compact(context, session, box),
+                    curve: _shown ? Curves.easeOutBack : Curves.easeIn,
+                    child: AnimatedOpacity(
+                      opacity: _shown ? 1 : 0,
+                      duration: motion,
+                      child: LayoutBuilder(
+                        builder: (context, box) => media.size.width >= BigPMobileHost.regularWidth
+                            ? _regular(context, session, box)
+                            : _compact(context, session, box),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
