@@ -51,6 +51,22 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 407 · 24 October 2026 · iPhone
+
+<!-- commit: ae5d4a5fd301263ad2dbd56b273e351aab6fbcaa -->
+
+### Improved
+
+- **More posters fit on the screen in Films and Series on iPhone.** The title count now sits next to the title instead of on its own line, and the filter summary only takes a line while a filter is active. The first row of posters starts higher.
+- **The header stays readable when it comes back mid-list.** Scrolling up halfway through Films or Series brings the header back on a nearly solid background, so the posters behind it no longer show through the buttons.
+- **Hold a poster for a quick menu.** In Films and Series, and on a result row in search, holding opens a small menu next to it: Play, Mark as watched or unwatched, plus Watchlist and Rate when they are available (not offline). Marking as watched applies to every server the title is on; servers that are offline catch up later.
+- **Watchlist, Downloads, Libraries and Requests use the same compact title row** on iPhone. A long title always wins over the count: if both do not fit, the count is left out.
+
+### Notes
+
+- Worth checking on a real iPhone: scroll Films down and back up mid-list, then hold a poster. This has been tested in the iPhone simulator (dark and light mode) and in unit tests, not on a device. iPad was not tested separately.
+- Apple TV has a similar menu on its posters; it did not change in this build.
+
 ## 2.8.1 · build 406 · 24 October 2026 · iPhone, iPad and Apple TV
 
 <!-- commit: b74743eb29f4e258f42383af92722a02401ecc16 -->
