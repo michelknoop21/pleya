@@ -21,6 +21,7 @@ import '../services/seerr/seerr_client.dart';
 import '../widgets/focusable_filter_chip.dart';
 import '../widgets/focusable_list_tile.dart';
 import '../widgets/loading_indicator_box.dart';
+import '../widgets/mobile/mobile_unified_context_menu.dart';
 import '../widgets/optimized_media_image.dart';
 import '../widgets/seerr_poster_card.dart';
 import '../widgets/tv/tv_seerr_card.dart';
@@ -29,8 +30,10 @@ import 'seerr/seerr_media_detail_screen.dart';
 import '../mixins/controller_disposer_mixin.dart';
 import '../mixins/mounted_set_state_mixin.dart';
 import '../mixins/refreshable.dart';
+import '../media/unified/source_availability.dart';
 import '../media/unified/source_coverage_state.dart';
 import '../media/unified/unified_media_group.dart';
+import '../media/unified/unified_media_source.dart';
 import '../media/unified/unified_route_context.dart';
 import '../media/ids.dart';
 import '../providers/multi_server_provider.dart';
@@ -1294,13 +1297,26 @@ class _SearchScreenState extends State<SearchScreen>
   /// the same coordinator-backed path `mobile_home_screen.dart`'s rail cards
   /// use — a picker only when the group actually has more than one usable
   /// source, never a bare representative-source read.
+  ///
+  /// Long-press opens the same anchored quick menu as the catalogue grid
+  /// (Dense Library, A-08).
   Widget _mobileGroupRow(BuildContext context, UnifiedMediaGroup group) {
     final item = group.representativeSource.item;
-    return _mobileResultTile(
-      context,
-      item: item,
-      trailingLabel: formatSourceCount(group.sources.length),
-      onTap: () => _openMobileGroupDetails(group),
+    return Builder(
+      builder: (rowContext) => _mobileResultTile(
+        rowContext,
+        item: item,
+        trailingLabel: formatSourceCount(group.sources.length),
+        onTap: () => _openMobileGroupDetails(group),
+        onLongPress: () => unawaited(
+          openMobileUnifiedQuickMenuAt(
+            this.context,
+            anchorContext: rowContext,
+            group: group,
+            availabilityFor: _mobileAvailabilityFor(),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1319,6 +1335,7 @@ class _SearchScreenState extends State<SearchScreen>
     required MediaItem item,
     required String? trailingLabel,
     required VoidCallback onTap,
+    VoidCallback? onLongPress,
     String? subtitleOverride,
   }) {
     final client = context.tryGetMediaClientWithFallback(serverIdOrNull(item.serverId));
@@ -1347,6 +1364,7 @@ class _SearchScreenState extends State<SearchScreen>
         ],
       ),
       onTap: onTap,
+      onLongPress: onLongPress,
     );
   }
 
@@ -1373,19 +1391,23 @@ class _SearchScreenState extends State<SearchScreen>
     }
   }
 
-  /// See [_mobileGroupRow].
-  void _openMobileGroupDetails(UnifiedMediaGroup group) {
+  SourceAvailability Function(UnifiedMediaSource source) _mobileAvailabilityFor() {
     final manager = context.read<MultiServerProvider>().serverManager;
     final health = unifiedServerHealth(
       isOnline: manager.isServerOnline,
       authErrorServerIds: manager.authErrorServerIds,
     );
+    return (source) => unifiedSourceAvailability(source, health);
+  }
+
+  /// See [_mobileGroupRow].
+  void _openMobileGroupDetails(UnifiedMediaGroup group) {
     unawaited(
       openMobileMediaGroup(
         context,
         group: group,
         intent: UnifiedActivationIntent.details,
-        availabilityFor: (source) => unifiedSourceAvailability(source, health),
+        availabilityFor: _mobileAvailabilityFor(),
         coverage: SourceCoverageState.complete({for (final s in group.sources) s.serverId.value}),
         onRefresh: updateItem,
       ),
