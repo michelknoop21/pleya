@@ -851,6 +851,21 @@ void main() {
       expect((widget as Stack).children.first, isA<MediaDetailScreen>());
     });
 
+    testWidgets('long-pressing a unified group row opens the compact quick menu with Play (A-08)', (tester) async {
+      final client = _FakeMediaServerClient(items: [_dune('dune-a', 'server_1')]);
+      final key = await pumpPhoneSearchScreen(tester, client);
+      (key.currentState! as SearchInputFocusable).setSearchQuery('dune');
+      (key.currentState! as Refreshable).refresh();
+      await tester.pumpAndSettle();
+      expect(find.text(t.common.play), findsNothing);
+
+      await tester.longPress(find.text('Dune'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(t.common.play), findsOneWidget);
+      expect(find.byType(BottomSheet), findsNothing, reason: 'the anchored menu, not the sheet');
+    });
+
     testWidgets('a collection opens through the same source-concrete route every other list uses', (tester) async {
       // CollectionDetailScreen itself needs a DownloadProvider and more that
       // no test in this codebase currently stands up (nothing here mounts it

@@ -7,7 +7,9 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/automation/automation_ids.dart';
 import 'package:pleya/automation/automation_registry.dart';
 import 'package:pleya/automation/automation_screen.dart';
@@ -149,10 +151,30 @@ void main() {
   testWidgets('the back button reaches My Pleya', (tester) async {
     await pump(tester, [filmsNas]);
 
-    await tester.tap(find.byType(BackButton));
+    // The Dense Library header draws its own back arrow, not a BackButton.
+    await tester.tap(find.byIcon(Symbols.arrow_back_rounded));
     await tester.pumpAndSettle();
 
     expect(backTaps, 1);
+  });
+
+  testWidgets('Dense Library header: the library count sits beside the title in one 48 pt row (A-06)', (tester) async {
+    // Wide enough for the test font, which draws every glyph a full em wide.
+    await pump(tester, [filmsNas, seriesNas], size: const Size(800, 852));
+
+    final title = tester.getRect(find.text(t.libraries.title));
+    final count = tester.getRect(find.text(t.tvMyPleya.libraryCount(count: 2)));
+    expect((count.center.dy - title.center.dy).abs(), lessThan(8), reason: 'count beside the title: $title $count');
+    expect(count.left, greaterThan(title.right));
+    expect(count.right, lessThanOrEqualTo(tester.getRect(find.text(t.common.edit)).left));
+    expect(tester.getRect(find.byType(AppBar)).height, 48);
+  });
+
+  testWidgets('Dense Library header: the title is never cut for the count', (tester) async {
+    await pump(tester, [filmsNas, seriesNas]);
+
+    expect(tester.renderObject<RenderParagraph>(find.text(t.libraries.title)).didExceedMaxLines, isFalse);
+    expect(find.text(t.tvMyPleya.libraryCount(count: 2)), findsNothing);
   });
 
   testWidgets('tapping a card persists the selection and opens the shared library content', (tester) async {

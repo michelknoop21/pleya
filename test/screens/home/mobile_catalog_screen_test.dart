@@ -9,6 +9,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
@@ -637,7 +638,8 @@ void main() {
   });
 
   testWidgets('shows the populated grid, the count line and the chip labels once loaded', (tester) async {
-    await pumpCatalog(tester);
+    // Wide enough for the test font, which draws every glyph a full em wide.
+    await pumpCatalog(tester, width: 600);
     await settle(tester);
 
     expect(find.text('Alien'), findsOneWidget);
@@ -767,7 +769,11 @@ void main() {
     await settle(tester);
 
     expect(tester.takeException(), isNull);
-    expect(tester.getRect(find.text(t.unifiedCatalog.titlesLoaded(count: 3))).right, lessThanOrEqualTo(320));
+    // The title keeps its full width; a count that does not fit whole is
+    // left out instead of cut (the test font is a full em per glyph).
+    final title = MobileCatalogKind.movies.title;
+    expect(tester.renderObject<RenderParagraph>(find.text(title)).didExceedMaxLines, isFalse);
+    expect(find.text(t.unifiedCatalog.titlesLoaded(count: 3)), findsNothing);
   });
 
   testWidgets('chips that fit stay on a single line', (tester) async {
@@ -852,7 +858,7 @@ void main() {
 
   group('Dense Library header and long-press menu (A-06, A-08)', () {
     testWidgets('the count sits in the title row and no summary line is built without filters', (tester) async {
-      await pumpCatalog(tester);
+      await pumpCatalog(tester, width: 600);
       await settle(tester);
 
       final title = tester.getRect(find.text(MobileCatalogKind.movies.title));

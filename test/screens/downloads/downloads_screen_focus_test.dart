@@ -6,6 +6,7 @@ import 'package:pleya/connection/connection.dart';
 import 'package:pleya/connection/connection_registry.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/providers/download_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/screens/downloads/downloads_screen.dart';
@@ -16,6 +17,7 @@ import 'package:pleya/services/jellyfin_api_cache.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/widgets/mobile/mobile_dense_title_row.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
@@ -63,9 +65,7 @@ void main() {
     await db.close();
   });
 
-  testWidgets('right from Movies focuses and opens Sync Rules action', (tester) async {
-    final screenKey = GlobalKey<DownloadsScreenState>();
-
+  Future<void> pumpDownloads(WidgetTester tester, {required TargetPlatform platform, Key? key}) async {
     await tester.pumpWidget(
       InputModeTracker(
         child: MultiProvider(
@@ -77,13 +77,22 @@ void main() {
           child: MaterialApp(
             // monoTheme carries the MonoTokens extension the shared widgets read;
             // a bare ThemeData leaves tokens(context) null.
-            theme: monoTheme(dark: true).copyWith(platform: TargetPlatform.macOS),
-            home: DownloadsScreen(key: screenKey),
+            theme: monoTheme(dark: true).copyWith(platform: platform),
+            home: DownloadsScreen(key: key),
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
+  }
+
+  testWidgets('right from Movies focuses and opens Sync Rules action', (tester) async {
+    final screenKey = GlobalKey<DownloadsScreenState>();
+
+    await pumpDownloads(tester, platform: TargetPlatform.macOS, key: screenKey);
+    // Desktop keeps its standard bar with the tabs in it (A-06 is iPhone only).
+    expect(find.byType(MobileDenseTitleRow), findsNothing);
+    expect(tester.getRect(find.byType(AppBar)).height, kToolbarHeight);
 
     final state = screenKey.currentState!;
     state.tabController.index = 2;
@@ -96,5 +105,22 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Sync rules'), findsOneWidget);
+  });
+
+  testWidgets('iPhone: one 48 pt Dense Library row with the title and Sync rules, tab chips below (A-06)', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(393 * 3, 852 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await pumpDownloads(tester, platform: TargetPlatform.iOS);
+
+    expect(find.byType(MobileDenseTitleRow), findsOneWidget);
+    expect(tester.getRect(find.byType(AppBar)).height, 48);
+    final title = tester.getRect(find.text(t.downloads.title));
+    final syncRules = tester.getRect(find.byTooltip(t.downloads.activeSyncRules));
+    expect((syncRules.center.dy - title.center.dy).abs(), lessThan(8));
+    expect(syncRules.left, greaterThan(title.right));
+    expect(tester.getTopLeft(find.text(t.downloads.manage)).dy, greaterThanOrEqualTo(48));
   });
 }

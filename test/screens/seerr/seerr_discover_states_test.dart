@@ -15,6 +15,7 @@ import 'package:pleya/screens/seerr/seerr_discover_screen.dart';
 import 'package:pleya/screens/seerr/seerr_media_detail_screen.dart';
 import 'package:pleya/services/seerr/seerr_constants.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/widgets/mobile/mobile_dense_title_row.dart';
 import 'package:pleya/widgets/seerr_poster_card.dart';
 
 import '../../test_helpers/prefs.dart';
@@ -255,6 +256,7 @@ void main() {
       (widget) => widget is AutomationScreen && widget.id == AutomationIds.screenRequests,
     );
     expect(screen, findsOneWidget);
+    expect(find.byType(MobileDenseTitleRow), findsNothing, reason: 'the Dense Library header is iPhone only');
     expect(tester.widget<AutomationScreen>(screen).readiness().state, AutomationReadinessState.loading);
     slow.complete(FakeSeerr.json(page([603])));
     await seerrSettle(tester);
@@ -264,5 +266,31 @@ void main() {
     await tester.tap(inbox);
     await seerrSettle(tester);
     expect(find.byType(SeerrRequestsScreen), findsOneWidget);
+  });
+
+  testWidgets('iPhone: the loaded count sits beside the title in the 48 pt header, not on a line of its own (A-06)', (
+    tester,
+  ) async {
+    fake.on('GET /discover/movies', page([1, 2, 3]));
+    // Still a phone (shortest side under 600), wide enough for the test
+    // font, which draws every glyph a full em wide.
+    tester.view.physicalSize = const Size(580 * 3, 852 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    provider = await seerrProvider(fake);
+    addTearDown(provider.dispose);
+    await pumpSeerr(tester, provider, const SeerrDiscoverScreen(), host: false);
+    await seerrSettle(tester);
+
+    final countText = find.text(t.unifiedCatalog.titlesLoaded(count: 3));
+    expect(countText, findsOneWidget);
+    final appBar = tester.getRect(find.byType(AppBar));
+    expect(appBar.height, 48);
+    final title = tester.getRect(find.text(t.seerr.title));
+    final count = tester.getRect(countText);
+    expect((count.center.dy - title.center.dy).abs(), lessThan(8), reason: 'count beside the title: $title $count');
+    expect(count.left, greaterThan(title.right));
+    expect(count.right, lessThanOrEqualTo(tester.getRect(seerrNode(AutomationIds.seerrSearchInbox)).left));
+    expect(find.descendant(of: seerrNode(AutomationIds.catalogCount, 'requests'), matching: countText), findsOneWidget);
   });
 }

@@ -16,6 +16,7 @@ import '../../utils/platform_detector.dart';
 import '../../widgets/desktop_app_bar.dart';
 import '../../widgets/focusable_media_card.dart';
 import '../../widgets/media_grid_delegate.dart';
+import '../../widgets/mobile/mobile_dense_title_row.dart';
 import '../../widgets/download_tree_view.dart';
 import '../main_screen.dart';
 import '../../widgets/state_view.dart';
@@ -114,36 +115,64 @@ class DownloadsScreenState extends State<DownloadsScreen>
     return Text(t.downloads.title);
   }
 
+  FocusableAction _syncRulesAction() => FocusableAction(
+    icon: Symbols.rule_settings,
+    tooltip: t.downloads.activeSyncRules,
+    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SyncRulesScreen())),
+  );
+
+  /// iPhone: the compact Dense Library header (A-06). No count: the tabs
+  /// below count different things, and none of them has a cheap total.
+  Widget _buildPhoneAppBar() {
+    final canPop = ModalRoute.of(context)?.canPop ?? false;
+    return MobileDenseSliverAppBar(
+      floating: true,
+      pinned: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      surfaceTintColor: Colors.transparent,
+      shadowColor: Colors.transparent,
+      scrolledUnderElevation: 0,
+      row: MobileDenseTitleRow(
+        title: t.downloads.title,
+        onBack: canPop ? () => Navigator.of(context).maybePop() : null,
+        actions: [
+          FocusableActionBar(
+            key: _actionBarKey,
+            onNavigateLeft: () => getTabChipFocusNode(tabCount - 1).requestFocus(),
+            onNavigateDown: _focusCurrentTab,
+            actions: [_syncRulesAction()],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: CustomScrollView(
         primary: false,
         slivers: [
-          DesktopSliverAppBar(
-            title: _buildAppBarTitle(),
-            floating: true,
-            pinned: true,
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-            surfaceTintColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            scrolledUnderElevation: 0,
-            actions: [
-              FocusableActionBar(
-                key: _actionBarKey,
-                onNavigateLeft: () => getTabChipFocusNode(tabCount - 1).requestFocus(),
-                onNavigateDown: _focusCurrentTab,
-                actions: [
-                  FocusableAction(
-                    icon: Symbols.rule_settings,
-                    tooltip: t.downloads.activeSyncRules,
-                    onPressed: () =>
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const SyncRulesScreen())),
-                  ),
-                ],
-              ),
-            ],
-          ),
+          if (PlatformDetector.isPhone(context))
+            _buildPhoneAppBar()
+          else
+            DesktopSliverAppBar(
+              title: _buildAppBarTitle(),
+              floating: true,
+              pinned: true,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              surfaceTintColor: Colors.transparent,
+              shadowColor: Colors.transparent,
+              scrolledUnderElevation: 0,
+              actions: [
+                FocusableActionBar(
+                  key: _actionBarKey,
+                  onNavigateLeft: () => getTabChipFocusNode(tabCount - 1).requestFocus(),
+                  onNavigateDown: _focusCurrentTab,
+                  actions: [_syncRulesAction()],
+                ),
+              ],
+            ),
           SliverFillRemaining(
             child: Column(
               children: [

@@ -23,7 +23,6 @@ library;
 import '../../providers/offline_mode_provider.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import '../../automation/automation_ids.dart';
@@ -58,6 +57,7 @@ import '../../widgets/focusable_filter_chip.dart';
 import '../../widgets/media_card_grid_layout.dart';
 import '../../widgets/mobile/mobile_catalog_filters_sheet.dart';
 import '../../widgets/mobile/mobile_catalog_sort_sheet.dart';
+import '../../widgets/mobile/mobile_dense_title_row.dart';
 import '../../widgets/mobile/mobile_media_card.dart';
 import '../../widgets/mobile/mobile_media_rail.dart' show mobileRailGutter, mobileRailInset;
 import '../../widgets/mobile/mobile_refresh_scope.dart';
@@ -294,29 +294,12 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     coverage: SourceCoverageState.complete({for (final s in group.sources) s.serverId.value}),
   );
 
-  Future<void> _openQuickMenu(BuildContext cardContext, UnifiedMediaGroup group) async {
-    final box = cardContext.findRenderObject();
-    final overlay = Overlay.of(context).context.findRenderObject();
-    if (box is! RenderBox || overlay is! RenderBox) return;
-    unawaited(HapticFeedback.mediumImpact());
-    final origin = box.localToGlobal(Offset.zero, ancestor: overlay);
-    await showMobileUnifiedQuickMenu(
-      context,
-      anchor: origin & box.size,
-      group: group,
-      availabilityFor: _availabilityFor,
-      isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
-      onPlay: () => unawaited(
-        openMobileMediaGroup(
-          context,
-          group: group,
-          intent: UnifiedActivationIntent.play,
-          availabilityFor: _availabilityFor,
-          coverage: SourceCoverageState.complete({for (final s in group.sources) s.serverId.value}),
-        ),
-      ),
-    );
-  }
+  Future<void> _openQuickMenu(BuildContext cardContext, UnifiedMediaGroup group) => openMobileUnifiedQuickMenuAt(
+    context,
+    anchorContext: cardContext,
+    group: group,
+    availabilityFor: _availabilityFor,
+  );
 
   /// "All sources" until something is excluded, then how many are left:
   /// same rule `TvUnifiedCatalogScreen._sourcesLabel` uses.
@@ -549,61 +532,29 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
       id: AutomationIds.catalogHeader,
       instance: widget.kind.automationInstance,
       role: 'region',
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
-        child: Row(
-          children: [
-            IconButton(
-              onPressed: () => Navigator.of(context).maybePop(),
-              icon: const AppIcon(Symbols.arrow_back_rounded, fill: 1),
+      // Dense Library (variant 3): the count sits next to the title instead
+      // of on a line of its own.
+      child: MobileDenseTitleRow(
+        title: widget.kind.title,
+        count: t.unifiedCatalog.titlesLoaded(count: _catalog.snapshot.groups.length),
+        countAutomationId: AutomationIds.catalogCount,
+        automationInstance: widget.kind.automationInstance,
+        onBack: () => Navigator.of(context).maybePop(),
+        actions: [
+          AutomationNode(
+            id: AutomationIds.catalogHeaderSearch,
+            instance: widget.kind.automationInstance,
+            role: 'button',
+            child: IconButton(
+              onPressed: () {
+                if (!widget.isTabRoot) Navigator.of(context).maybePop();
+                widget.onSearchTap?.call();
+              },
+              icon: const AppIcon(Symbols.search_rounded),
+              tooltip: t.common.search,
             ),
-            // Dense Library (variant 3): the count sits next to the title
-            // instead of on a line of its own.
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Flexible(
-                    child: Text(
-                      widget.kind.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Flexible(
-                    child: AutomationNode(
-                      id: AutomationIds.catalogCount,
-                      instance: widget.kind.automationInstance,
-                      role: 'region',
-                      child: Text(
-                        t.unifiedCatalog.titlesLoaded(count: _catalog.snapshot.groups.length),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 13, color: tokens(context).textMuted),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            AutomationNode(
-              id: AutomationIds.catalogHeaderSearch,
-              instance: widget.kind.automationInstance,
-              role: 'button',
-              child: IconButton(
-                onPressed: () {
-                  if (!widget.isTabRoot) Navigator.of(context).maybePop();
-                  widget.onSearchTap?.call();
-                },
-                icon: const AppIcon(Symbols.search_rounded),
-                tooltip: t.common.search,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

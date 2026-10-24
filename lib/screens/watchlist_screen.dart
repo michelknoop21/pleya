@@ -21,6 +21,7 @@ import '../widgets/desktop_app_bar.dart';
 import '../widgets/seerr_request_sheet.dart';
 import '../widgets/media_card_grid_layout.dart';
 import '../widgets/media_grid_delegate.dart';
+import '../widgets/mobile/mobile_dense_title_row.dart';
 import '../widgets/settings_builder.dart';
 import '../widgets/sliver_cross_axis_layout_builder.dart';
 import '../widgets/state_view.dart';
@@ -232,7 +233,21 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
           // the ring would be sheared off at the viewport edge on TV.
           clipBehavior: Clip.none,
           slivers: [
-            CustomAppBar(title: Text(t.watchlist.title), automaticallyImplyLeading: false),
+            // iPhone: the compact Dense Library header, count on the title's
+            // baseline (A-06). Other form factors keep the standard bar.
+            if (PlatformDetector.isPhone(context))
+              MobileDenseSliverAppBar(
+                row: MobileDenseTitleRow(
+                  title: t.watchlist.title,
+                  count: provider == null || (provider.isLoading && all.isEmpty)
+                      ? null
+                      : entries.length == 1
+                      ? t.unifiedCatalog.oneTitle
+                      : t.unifiedCatalog.titleCount(count: entries.length),
+                ),
+              )
+            else
+              CustomAppBar(title: Text(t.watchlist.title), automaticallyImplyLeading: false),
             SliverToBoxAdapter(
               child: _FilterBar(
                 firstChipFocusNode: _filterBarFocus,

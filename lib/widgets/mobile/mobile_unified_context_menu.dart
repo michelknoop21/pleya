@@ -10,7 +10,10 @@
 /// `representativeSource`).
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
@@ -18,12 +21,16 @@ import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/unified/source_availability.dart';
+import '../../media/unified/source_coverage_state.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_source.dart';
+import '../../media/unified/unified_route_context.dart';
+import '../../providers/offline_mode_provider.dart';
 import '../../providers/watchlist_provider.dart';
 import '../../providers/watchlist_store.dart';
 import '../../screens/tv/tv_unified_context_actions.dart';
 import '../../screens/tv/tv_unified_context_menu.dart';
+import '../../services/unified_catalog/mobile_media_source_picker_route.dart';
 import '../../theme/mono_tokens.dart';
 import '../app_menu.dart';
 import '../overlay_sheet.dart';
@@ -193,5 +200,37 @@ Future<void> showMobileUnifiedQuickMenu(
     group: group,
     availabilityFor: availabilityFor,
     onChanged: onChanged,
+  );
+}
+
+/// Long-press on a unified card or row: a haptic tick, then
+/// [showMobileUnifiedQuickMenu] anchored at [anchorContext]'s box, with Play
+/// going through [openMobileMediaGroup] like a tap on the card does.
+Future<void> openMobileUnifiedQuickMenuAt(
+  BuildContext context, {
+  required BuildContext anchorContext,
+  required UnifiedMediaGroup group,
+  required SourceAvailability Function(UnifiedMediaSource source) availabilityFor,
+}) async {
+  final box = anchorContext.findRenderObject();
+  final overlay = Overlay.of(context).context.findRenderObject();
+  if (box is! RenderBox || overlay is! RenderBox) return;
+  unawaited(HapticFeedback.mediumImpact());
+  final origin = box.localToGlobal(Offset.zero, ancestor: overlay);
+  await showMobileUnifiedQuickMenu(
+    context,
+    anchor: origin & box.size,
+    group: group,
+    availabilityFor: availabilityFor,
+    isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
+    onPlay: () => unawaited(
+      openMobileMediaGroup(
+        context,
+        group: group,
+        intent: UnifiedActivationIntent.play,
+        availabilityFor: availabilityFor,
+        coverage: SourceCoverageState.complete({for (final s in group.sources) s.serverId.value}),
+      ),
+    ),
   );
 }
