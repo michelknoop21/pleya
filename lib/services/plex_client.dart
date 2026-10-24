@@ -1697,21 +1697,32 @@ class PlexClient
   /// Used by the Trakt integration to match Plex items against Trakt's catalog.
   Future<List<dynamic>> fetchExternalGuids(String ratingKey) async {
     try {
-      final response = await _getWithFailover('/library/metadata/$ratingKey', queryParameters: {'includeGuids': 1});
-      final data = response.data;
-      if (data is! Map) return const [];
-      final container = data['MediaContainer'] as Map?;
-      final metadata = container?['Metadata'];
-      if (metadata is! List || metadata.isEmpty) return const [];
-      final first = metadata.first;
-      if (first is! Map) return const [];
-      final guids = first['Guid'];
-      if (guids is List) return guids;
-      return const [];
+      return await _fetchExternalGuidsOrThrow(ratingKey);
     } catch (e) {
       appLogger.d('fetchExternalGuids failed for $ratingKey', error: e);
       return const [];
     }
+  }
+
+  /// Same lookup, but a transport or server failure throws. A 404 (the item is
+  /// gone) is an answer and yields an empty list.
+  Future<List<dynamic>> _fetchExternalGuidsOrThrow(String ratingKey) async {
+    final MediaServerResponse response;
+    try {
+      response = await _getWithFailover('/library/metadata/$ratingKey', queryParameters: {'includeGuids': 1});
+    } on MediaServerHttpException catch (e) {
+      if (e.statusCode == 404) return const [];
+      rethrow;
+    }
+    final data = response.data;
+    if (data is! Map) return const [];
+    final container = data['MediaContainer'] as Map?;
+    final metadata = container?['Metadata'];
+    if (metadata is! List || metadata.isEmpty) return const [];
+    final first = metadata.first;
+    if (first is! Map) return const [];
+    final guids = first['Guid'];
+    return guids is List ? guids : const [];
   }
 
   /// Mark media as watched (transport only — see [MediaServerClient.markWatched]).
@@ -4479,7 +4490,9 @@ class PlexClient
 
   @override
   Future<ExternalIds> fetchExternalIds(String itemId) async {
-    final guids = await fetchExternalGuids(itemId);
+    // Throws on a transport failure: a cached empty answer would pin the item
+    // without identity evidence for the rest of a catalog merge.
+    final guids = await _fetchExternalGuidsOrThrow(itemId);
     return ExternalIds.fromGuids(guids);
   }
 
