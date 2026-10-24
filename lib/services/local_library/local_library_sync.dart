@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show VoidCallback;
 
+import '../../exceptions/media_server_exceptions.dart';
 import '../../media/library_query.dart';
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
@@ -106,7 +107,13 @@ class LocalLibrarySync {
       // neutral mapper intentionally omits the Guid array from raw metadata.
       ExternalIds? ids;
       if ((item.kind == MediaKind.movie || item.kind == MediaKind.show) && item.raw?['pleyaLocalExternalIds'] == null) {
-        ids = await client.fetchExternalIds(item.id).timeout(const Duration(seconds: 20));
+        try {
+          ids = await client.fetchExternalIds(item.id).timeout(const Duration(seconds: 20));
+        } on MediaServerHttpException {
+          // Plex used to answer a failed lookup with no ids. Keep that here: one
+          // flaky includeGuids call must not fail the whole library scan.
+          ids = null;
+        }
         await check();
       }
       next[item.globalKey] = ids == null

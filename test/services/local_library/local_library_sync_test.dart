@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/exceptions/media_server_exceptions.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/library_query.dart';
 import 'package:pleya/media/media_item.dart';
@@ -20,6 +21,7 @@ class Client implements MediaServerClient {
   final entered = Completer<void>();
   bool repeat = false;
   bool childrenFail = false;
+  Object? idsError;
   @override
   Future<LibraryPage<MediaItem>> fetchChildrenPage(
     String parentId, {
@@ -36,7 +38,12 @@ class Client implements MediaServerClient {
   @override
   bool get isOfflineMode => false;
   @override
-  Future<ExternalIds> fetchExternalIds(String id) async => const ExternalIds();
+  Future<ExternalIds> fetchExternalIds(String id) async {
+    final error = idsError;
+    if (error != null) throw error;
+    return const ExternalIds();
+  }
+
   @override
   Future<MediaItem?> fetchItem(String id) async => rows.where((i) => i.id == id).firstOrNull;
   @override
@@ -85,6 +92,14 @@ void main() {
     client.childrenFail = false;
     await LocalLibrarySync(store: store).syncLibrary(shows, client);
     expect(store.items.map((i) => i.id), ['show']);
+  });
+
+  test('a failed Plex id lookup does not fail the scan: the row is kept without ids', () async {
+    client.idsError = MediaServerHttpException(type: MediaServerHttpErrorType.unknown, statusCode: 502);
+
+    await LocalLibrarySync(store: store).syncLibrary(library, client);
+
+    expect(store.items.map((i) => i.id), ['a', 'b']);
   });
 
   test('successful complete scan removes confirmed missing rows', () async {
