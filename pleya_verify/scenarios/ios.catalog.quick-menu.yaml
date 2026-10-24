@@ -16,7 +16,7 @@ steps:
   - wait_until: {id: screen.catalog_movies, timeout: 15000}
   - settle: 800
   - assert: {id: "catalog.grid.item[movies.4]", insideViewport: true}
-  - tap: {id: "catalog.grid.item[movies.4]", holdMs: 600}
+  - tap: {id: "catalog.grid.item[movies.4]", holdMs: 900}
   - wait_until: {id: sheet.context_menu, timeout: 10000}
   - settle: 500
   - assert: {id: sheet.context_menu, insideViewport: true}

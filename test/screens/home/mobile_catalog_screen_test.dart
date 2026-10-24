@@ -883,5 +883,19 @@ void main() {
       expect(find.text(t.mediaMenu.markAsWatched), findsOneWidget);
       expect(find.byType(BottomSheet), findsNothing, reason: 'the grid uses the anchored menu, not the sheet');
     });
+
+    testWidgets('long-press still opens the menu after scrolling down and back up', (tester) async {
+      client.itemsByLibrary['A'] = [for (var i = 0; i < 18; i++) _movie('m$i', title: 'Film $i', serverId: 's1')];
+      await pumpCatalog(tester);
+      await settle(tester);
+
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, 60));
+      await tester.pumpAndSettle();
+      await tester.longPress(find.text('Film 10'));
+      await tester.pumpAndSettle();
+      expect(find.text(t.common.play), findsOneWidget);
+    });
   });
 }
