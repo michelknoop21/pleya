@@ -43,6 +43,7 @@ import '../../widgets/desktop_app_bar.dart';
 import '../../widgets/dialog_action_button.dart';
 import '../../widgets/setting_tile.dart';
 import '../../widgets/settings_builder.dart';
+import '../../widgets/settings/settings_studio_header.dart';
 import '../../widgets/settings_section.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../profiles/active_profile_provider.dart';
@@ -161,6 +162,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   @override
   void dispose() {
     _searchController.dispose();
+    _studioCollapsed.dispose();
     _focusTracker.dispose();
     super.dispose();
   }
@@ -189,7 +191,12 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   /// `setState` is `@protected`, so `_SettingsTvPage` (an extension, not a
   /// `State` subclass method) cannot call it directly — this thin wrapper is
   /// what it passes as `showDownloadLocationDialog`'s `onChanged`.
+  /// `_SettingsPhonePage` calls it after updating the search query.
   void _rebuild() => setState(() {});
+
+  /// Whether the A-24 Studio header has scrolled under the pinned bar, which
+  /// then shows its own title (phone page only).
+  final ValueNotifier<bool> _studioCollapsed = ValueNotifier<bool>(false);
 
   @override
   Widget build(BuildContext context) {
@@ -228,7 +235,14 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
       builder: (context, themeProvider, _) => SettingValueBuilder<int>(
         pref: settings.SettingsService.libraryDensity,
         builder: (context, libraryDensity, _) {
-          final summary = '${themeProvider.themeModeDisplayName} · ${t.settings.libraryDensity} $libraryDensity';
+          // A-24: the theme is the row's value, right-aligned; the density
+          // stays on the line under the title, so the row still says both.
+          final theme = switch (themeProvider.themeMode) {
+            settings.ThemeMode.system => t.settings.systemTheme,
+            settings.ThemeMode.light => t.settings.lightTheme,
+            settings.ThemeMode.dark => t.settings.darkTheme,
+            settings.ThemeMode.oled => t.settings.oledTheme,
+          };
           return AutomationNode(
             id: AutomationIds.settingsTile,
             instance: 'appearance',
@@ -237,7 +251,8 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
               focusNode: _focusTracker.get(_kAppearance),
               icon: Symbols.palette_rounded,
               title: t.settings.appearance,
-              subtitle: summary,
+              subtitle: '${t.settings.libraryDensity} $libraryDensity',
+              trailingLabel: theme,
               destinationBuilder: (context) => const AppearanceSettingsScreen(),
             ),
           );
@@ -362,7 +377,8 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           if (trackers.isAnilistConnected) t.trackers.services.anilist,
           if (trackers.isSimklConnected) t.trackers.services.simkl,
         ];
-        final subtitle = connectedNames.isEmpty ? t.settings.trackersDescription : connectedNames.join(' · ');
+        // A-24: what is connected is the row's value; the description stays.
+        final connected = connectedNames.isEmpty ? null : connectedNames.join(' · ');
         return AutomationNode(
           id: AutomationIds.settingsTile,
           instance: 'trackers',
@@ -371,7 +387,8 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
             focusNode: _focusTracker.get(_kTrackers),
             icon: Symbols.sync_rounded,
             title: t.settings.trackers,
-            subtitle: subtitle,
+            subtitle: t.settings.trackersDescription,
+            trailingLabel: connected,
             destinationBuilder: (_) => const TrackersSettingsScreen(),
           ),
         );
@@ -390,7 +407,8 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
             focusNode: _focusTracker.get(_kRequests),
             icon: Symbols.playlist_add_rounded,
             title: t.settings.requests,
-            subtitle: seerr.isConfigured ? (seerr.host ?? t.settings.requests) : t.settings.requestsDescription,
+            subtitle: t.settings.requestsDescription,
+            trailingLabel: seerr.isConfigured ? (seerr.host ?? t.settings.requests) : null,
             destinationBuilder: (_) => const SeerrSettingsScreen(),
           ),
         );
@@ -417,9 +435,8 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           focusNode: _focusTracker.get(_kTautulli),
           icon: Symbols.insights_rounded,
           title: t.tautulli.title,
-          subtitle: tautulli.isConfigured
-              ? (tautulli.serverName ?? tautulli.host ?? t.tautulli.connected)
-              : t.tautulli.subtitle,
+          subtitle: t.tautulli.subtitle,
+          trailingLabel: tautulli.isConfigured ? (tautulli.serverName ?? tautulli.host ?? t.tautulli.connected) : null,
           destinationBuilder: (_) => const TautulliSettingsScreen(),
         );
       },
@@ -437,7 +454,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
       builder: (context, servers, _) {
         final manager = servers.serverManager;
         final names = [for (final id in servers.serverIds) manager.serverDisplayName(ServerId(id))];
-        final subtitle = names.isEmpty ? t.tvMyPleya.noServers : names.join(', ');
+        final serverNames = names.isEmpty ? t.tvMyPleya.noServers : names.join(', ');
         return SettingsGroup(
           title: t.connections.sectionTitle,
           children: [
@@ -449,7 +466,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
                 focusNode: _focusTracker.get(_kServers),
                 icon: Symbols.dns_rounded,
                 title: t.tvMyPleya.servers,
-                subtitle: subtitle,
+                trailingLabel: serverNames,
                 needsAttention: servers.hasAuthErrorServers,
                 destinationBuilder: (_) => const ServersScreen(),
               ),
@@ -469,11 +486,10 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
         // ActiveProfileProvider notification — only when the active
         // profile's display name actually changes.
         final activeName = context.select<ActiveProfileProvider, String?>((p) => p.active?.displayName);
-        final subtitle = count <= 1
-            ? t.profiles.summarySingle
-            : (activeName != null
-                  ? t.profiles.summaryMultipleWithActive(count: count, activeName: activeName)
-                  : t.profiles.summaryMultiple(count: count));
+        // A-24: with several profiles the active one is the row's value and
+        // the count stays under the title; a single profile keeps its hint.
+        final subtitle = count <= 1 ? t.profiles.summarySingle : t.profiles.summaryMultiple(count: count);
+        final trailing = count <= 1 ? null : activeName;
         return AutomationNode(
           id: AutomationIds.settingsTile,
           instance: 'profiles',
@@ -482,6 +498,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
             icon: Symbols.group_rounded,
             title: t.profiles.sectionTitle,
             subtitle: subtitle,
+            trailingLabel: trailing,
             onTap: () => Navigator.of(
               context,
               rootNavigator: true,

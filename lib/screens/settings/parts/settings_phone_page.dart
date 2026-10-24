@@ -8,80 +8,98 @@ part of '../settings_screen.dart';
 
 extension _SettingsPhonePage on _SettingsScreenState {
   Widget _buildSettingsScaffold(BuildContext context) {
+    // A-24: the eyebrow names whose settings these are, when there is a
+    // profile to name.
+    final profileName = context.select<ActiveProfileProvider?, String?>((p) => p?.active?.displayName);
     return Scaffold(
       body: Focus(
         onKeyEvent: _handleKeyEvent,
-        child: ScrollCrown(
-          child: CustomScrollView(
-            primary: false,
-            slivers: [
-              ExcludeFocus(child: CustomAppBar(title: Text(t.settings.title), pinned: true)),
-              if (_searchEnabled) SliverToBoxAdapter(child: SettingsWidthLimit(child: _buildSearchField())),
-              if (_searchQuery.isNotEmpty)
-                _buildSearchResults()
-              else
-                SliverList(
-                  delegate: SliverChildListDelegate(
-                    [
-                      if (DonationService.isEnabled) SettingsGroup(children: [_buildDonateTile()]),
-
-                      SettingsGroup(
-                        title: t.settings.sectionLibrary,
-                        children: [
-                          _buildAppearanceTile(),
-                          _buildLibraryVisibilityTile(),
-                          _buildLocalLibraryTile(),
-                          _buildHomeLayoutTile(),
-                          _buildPlaybackTile(),
-                          _buildLanguageTile(),
-                          _buildSubtitleStylingTile(),
-                          if (!PlatformDetector.isAppleTV()) _buildDownloadsTile(),
-                        ],
-                      ),
-
-                      SettingsGroup(
-                        title: t.settings.sectionIntegrations,
-                        children: [
-                          _buildTrackersTile(),
-                          _buildRequestsTile(),
-                          _buildTautulliTile(),
-                          ?assistantSettingsTile(context),
-                          _buildProfilesTile(),
-                        ],
-                      ),
-
-                      _buildServersSection(),
-
-                      if (_keyboardShortcutsSupported) ...[_buildKeyboardShortcutsSection()],
-
-                      _buildAdvancedSection(),
-
-                      if (UpdateService.isUpdateCheckEnabled) ...[_buildUpdateSection()],
-
-                      if (!PlatformDetector.isTV() || _SettingsScreenState._icloudSyncPlatform) _buildBackupSection(),
-
-                      if (kDebugMode) _buildDebugSection(),
-
-                      SettingsGroup(
-                        children: [
-                          SettingNavigationTile(
-                            focusNode: _focusTracker.get(_SettingsScreenState._kAbout),
-                            icon: Symbols.info_rounded,
-                            title: t.settings.about,
-                            subtitle: t.settings.aboutDescription,
-                            destinationBuilder: (context) => const AboutScreen(),
-                          ),
-                        ],
-                      ),
-                      // Plus the bottom inset: with Liquid Glass the tab bar floats
-                      // over this list and the main Scaffold reports its height here.
-                      SizedBox(height: 24 + MediaQuery.paddingOf(context).bottom),
-                      // Every card gets the same maximum width so the column stays
-                      // centred on a wide window instead of stretching across it.
-                    ].map((w) => SettingsWidthLimit(child: w)).toList(),
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (n) => settingsStudioTrackScroll(_studioCollapsed, n),
+          child: ScrollCrown(
+            child: CustomScrollView(
+              primary: false,
+              slivers: [
+                ExcludeFocus(
+                  child: CustomAppBar(
+                    title: SettingsStudioCompactTitle(collapsed: _studioCollapsed, child: Text(t.settings.title)),
+                    pinned: true,
                   ),
                 ),
-            ],
+                SliverToBoxAdapter(
+                  child: ExcludeFocus(
+                    child: SettingsWidthLimit(
+                      child: SettingsStudioHeader(title: t.settings.title, section: profileName),
+                    ),
+                  ),
+                ),
+                if (_searchEnabled) SliverToBoxAdapter(child: SettingsWidthLimit(child: _buildSearchField())),
+                if (_searchQuery.isNotEmpty)
+                  _buildSearchResults()
+                else
+                  SliverList(
+                    delegate: SliverChildListDelegate(
+                      [
+                        if (DonationService.isEnabled) SettingsGroup(children: [_buildDonateTile()]),
+
+                        SettingsGroup(
+                          title: t.settings.sectionLibrary,
+                          children: [
+                            _buildAppearanceTile(),
+                            _buildLibraryVisibilityTile(),
+                            _buildLocalLibraryTile(),
+                            _buildHomeLayoutTile(),
+                            _buildPlaybackTile(),
+                            _buildLanguageTile(),
+                            _buildSubtitleStylingTile(),
+                            if (!PlatformDetector.isAppleTV()) _buildDownloadsTile(),
+                          ],
+                        ),
+
+                        SettingsGroup(
+                          title: t.settings.sectionIntegrations,
+                          children: [
+                            _buildTrackersTile(),
+                            _buildRequestsTile(),
+                            _buildTautulliTile(),
+                            ?assistantSettingsTile(context),
+                            _buildProfilesTile(),
+                          ],
+                        ),
+
+                        _buildServersSection(),
+
+                        if (_keyboardShortcutsSupported) ...[_buildKeyboardShortcutsSection()],
+
+                        _buildAdvancedSection(),
+
+                        if (UpdateService.isUpdateCheckEnabled) ...[_buildUpdateSection()],
+
+                        if (!PlatformDetector.isTV() || _SettingsScreenState._icloudSyncPlatform) _buildBackupSection(),
+
+                        if (kDebugMode) _buildDebugSection(),
+
+                        SettingsGroup(
+                          children: [
+                            SettingNavigationTile(
+                              focusNode: _focusTracker.get(_SettingsScreenState._kAbout),
+                              icon: Symbols.info_rounded,
+                              title: t.settings.about,
+                              subtitle: t.settings.aboutDescription,
+                              destinationBuilder: (context) => const AboutScreen(),
+                            ),
+                          ],
+                        ),
+                        // Plus the bottom inset: with Liquid Glass the tab bar floats
+                        // over this list and the main Scaffold reports its height here.
+                        SizedBox(height: 24 + MediaQuery.paddingOf(context).bottom),
+                        // Every card gets the same maximum width so the column stays
+                        // centred on a wide window instead of stretching across it.
+                      ].map((w) => SettingsWidthLimit(child: w)).toList(),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -90,7 +108,9 @@ extension _SettingsPhonePage on _SettingsScreenState {
 
   Widget _buildSearchField() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      // A-24: a filled, rounded bar without an outline. The theme's input
+      // decoration already supplies the fill and the 12 pt radius.
       child: FocusableTextField(
         controller: _searchController,
         decoration: InputDecoration(
@@ -106,7 +126,6 @@ extension _SettingsPhonePage on _SettingsScreenState {
                     _rebuild();
                   },
                 ),
-          border: const OutlineInputBorder(),
           isDense: true,
         ),
         onChanged: (value) {

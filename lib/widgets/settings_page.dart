@@ -63,7 +63,9 @@ class SettingsPage extends StatelessWidget {
       Text(:final data?) => data,
       _ => null,
     };
-    return label == null ? null : SettingsStudioHeader(title: label);
+    // Inside the same width limit as the cards, so the large title lines up
+    // with them on a wide window.
+    return label == null ? null : SettingsWidthLimit(child: SettingsStudioHeader(title: label));
   }
 
   Widget _buildListSliver() {
