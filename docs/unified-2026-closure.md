@@ -216,3 +216,20 @@ vóór merge, finale main-SHA en herleidbare Release-archives blijven vereist. E
 van de gemergede bron gebouwd en met platform, buildnummer en bron-SHA geregistreerd. De
 resterende acceptatiepunten blijven open in hun bestaande registers; deze interne build
 vervangt die waarnemingen niet. Voor de volledige eindacceptatie blijven §7–§8 ongewijzigd gelden.
+
+### Begrensde interne kroonproef — eigenaarbesluit 23 oktober 2026
+
+Michel vraagt in de sessie voor A-06 / IOS-CROWN-CAL1 expliciet: “Ga door tot en
+met build naar testflight”. De snelheids- en afstandskandidaten zijn fysiek
+afgekeurd. De nieuwe opdracht is dezelfde draaiende kroon als directe
+schuifbalk: begin bovenaan, einde onderaan in één haal; precies bijstellen in
+de lijst zelf. Alleen voor deze wijziging is interne iOS-TestFlight-distributie
+vóór de nieuwe fysieke acceptatie toegestaan. Dit is geen fysieke acceptatie,
+volledige redesignclosure of externe/store-release.
+
+Onafhankelijke diff-/beeldreview, negatieve controles, gerichte tests,
+projectgate, groene verplichte PR-checks en een gemergede bron blijven vereist.
+De iOS-archive wordt van die gemergede bron gebouwd en met buildnummer en SHA
+vastgelegd. De fysieke acceptatie en live-providercontrole blijven open in
+`docs/ios-unified-implementation-register.md`. De algemene regels van §7–§8
+blijven voor andere wijzigingen en eindacceptatie gelden.

@@ -179,6 +179,9 @@ void main() {
     double textScale = 1,
     bool disableAnimations = false,
     bool pumpAfter = true,
+    bool isTabRoot = false,
+    VoidCallback? onSearchTap,
+    VoidCallback? onRootPop,
   }) async {
     tester.view.physicalSize = Size(width, 852);
     tester.view.devicePixelRatio = 1.0;
@@ -199,12 +202,18 @@ void main() {
             child: child!,
           ),
           home: OverlaySheetHost(
-            child: MobileCatalogScreen(
-              kind: kind,
-              // A real prefetcher would dispatch a real `precacheImage`
-              // network fetch the moment the grid renders, which nothing
-              // here mocks; it hangs the test instead of failing it.
-              debugPrefetcher: UnifiedArtworkPrefetcher(clientFor: (_) => null, precache: (_, _) async {}),
+            child: PopScope(
+              canPop: false,
+              onPopInvokedWithResult: (_, _) => onRootPop?.call(),
+              child: MobileCatalogScreen(
+                isTabRoot: isTabRoot,
+                onSearchTap: onSearchTap,
+                kind: kind,
+                // A real prefetcher would dispatch a real `precacheImage`
+                // network fetch the moment the grid renders, which nothing
+                // here mocks; it hangs the test instead of failing it.
+                debugPrefetcher: UnifiedArtworkPrefetcher(clientFor: (_) => null, precache: (_, _) async {}),
+              ),
             ),
           ),
         ),
@@ -212,6 +221,16 @@ void main() {
     );
     if (pumpAfter) await tester.pump();
   }
+
+  testWidgets('embedded offline search does not invoke the root back handler', (tester) async {
+    var popped = false;
+    var searched = false;
+    await pumpCatalog(tester, isTabRoot: true, onRootPop: () => popped = true, onSearchTap: () => searched = true);
+    await tester.tap(find.byTooltip(t.common.search));
+    await tester.pump();
+    expect(searched, isTrue);
+    expect(popped, isFalse);
+  });
 
   /// Mounts the screen the way `_TitleRow` does: pushed with
   /// `Navigator.of(context).push` onto a navigator that sits *above* the

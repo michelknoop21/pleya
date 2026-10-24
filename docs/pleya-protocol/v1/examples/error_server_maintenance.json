@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "server.maintenance",
+    "message": "the server is restoring a backup",
+    "retryable": true
+  }
+}

@@ -1,0 +1,374 @@
+/**
+ * Schermafbeeldingen van de primitievengalerij (/dev/primitives) voor
+ * docs/qa/s7-primitives/. Heeft geen server nodig, alleen `vite dev`:
+ *
+ *   bun run dev
+ *   PLEYA_DEV_URL=http://localhost:5173 bun run scripts/primitives-shots.ts
+ *
+ * Naast de opnamen print hij twee metingen die een plaatje niet laat zien:
+ * of de pagina achter de open dialoog meescrolt (scrollY voor en na een
+ * wielscroll van 600 px, moet gelijk blijven), en de berekende kleur van
+ * het skelet naast die van een artworkvlak zonder beeld.
+ *
+ * `--locale nl|en` zet de browsertaal en wist de bewaarde keuze (shot-locale.ts).
+ */
+import { chromium, type Page } from '@playwright/test';
+import { mkdirSync } from 'node:fs';
+
+import { SECTIONS as GALLERY_SECTIONS } from '../src/routes/dev/primitives/sections';
+import { compare as compareShot } from './shot-compare';
+import { forgetStoredLocale, localeContextOptions, parseLocaleFlag } from './shot-locale';
+
+const BASE = process.env['PLEYA_DEV_URL'] ?? 'http://localhost:5173';
+const { locale: LOCALE, rest: ARGS } = parseLocaleFlag(process.argv.slice(2));
+const OUT = ARGS[0] ?? '../docs/qa/s7-primitives';
+const GALLERY = `${BASE}/dev/primitives`;
+
+const WIDTHS = [393, 1024, 1600];
+const SKELETON_WIDTHS = [393, 768, 1024, 1280, 1600];
+// Elke sectie uit de index, behalve de dialoog: die opent hieronder apart.
+const SECTIONS = GALLERY_SECTIONS.map((s) => s.id).filter((id) => id !== 'dialoog');
+
+mkdirSync(OUT, { recursive: true });
+
+const browser = await chromium.launch();
+const context = await browser.newContext({
+  viewport: { width: 1280, height: 900 },
+  ...localeContextOptions(LOCALE)
+});
+if (LOCALE) await forgetStoredLocale(context);
+const page = await context.newPage();
+
+async function open(url: string, width: number, theme = 'dark'): Promise<void> {
+  await page.setViewportSize({ width, height: width < 600 ? 852 : 900 });
+  await page.goto(GALLERY);
+  await page.evaluate((t) => localStorage.setItem('pleya.theme', t), theme);
+  await page.goto(url);
+  await page.locator('main').waitFor({ timeout: 60_000 });
+  await page.waitForTimeout(400);
+}
+
+async function shot(target: Page | ReturnType<Page['locator']>, name: string, full = false) {
+  const path = `${OUT}/${name}.png`;
+  if ('goto' in target) await target.screenshot({ path, fullPage: full });
+  else await target.screenshot({ path });
+  console.log(path);
+}
+
+// PLEYA_SHOTS_THEME=light (of oled, of dark) maakt alleen de opnamen van dat
+// thema opnieuw, voor een gerichte herronde. PLEYA_SHOTS_SECTIONS=velden,tabel
+// beperkt een ronde tot die secties plus de focusopname, en slaat de galerij,
+// de dialoog en de skeletpagina's over.
+const ONLY = process.env['PLEYA_SHOTS_THEME'];
+const PICK = process.env['PLEYA_SHOTS_SECTIONS']?.split(',').filter(Boolean);
+const pick = (ids: readonly string[]) => (PICK ? ids.filter((id) => PICK.includes(id)) : [...ids]);
+
+/** De globale focusring (base.css) op een gewone knop, in een paneel. */
+async function focusButton(name: string): Promise<void> {
+  const button = page.locator('#panelen .btn').first();
+  await button.scrollIntoViewIfNeeded();
+  await page.keyboard.press('Shift'); // toetsenbordmodaliteit, zodat :focus-visible geldt
+  await button.focus();
+  await page.waitForTimeout(200);
+  const ring = await button.evaluate((el) => {
+    const c = getComputedStyle(el);
+    return {
+      matches: el.matches(':focus-visible'),
+      outline: `${c.outlineWidth} ${c.outlineStyle} ${c.outlineColor}`,
+      offset: c.outlineOffset
+    };
+  });
+  console.log(`${name}: ${JSON.stringify(ring)}`);
+  await shot(page.locator('#panelen .panel').first(), name);
+}
+
+/**
+ * Kaarten: hover en toetsenbordfocus zijn echte staten, dus de muis gaat over
+ * de tweede kaart terwijl de derde de focus heeft, zoals specimen v3 ze naast
+ * elkaar toont. Eerst wachten tot het gegenereerde artwork er staat.
+ */
+async function cardStates(name: string): Promise<void> {
+  // Sectiekop net onder de indexstrook (64 hoog onder 900), zodat de hover-
+  // kaart in beeld staat en de strook niet over de opname valt.
+  await page.evaluate(() => {
+    const top = document.getElementById('kaarten')!.getBoundingClientRect().top + scrollY;
+    scrollTo(0, top - 72);
+  });
+  await page.waitForFunction(() => document.querySelectorAll('#kaarten img').length >= 9);
+  await page.keyboard.press('Shift');
+  await page.locator('#kaarten [data-demo="focus"] a').focus();
+  await page.locator('#kaarten [data-demo="hover"] .card').hover();
+  await page.waitForTimeout(400); // lift en overlay lopen over --dur-normal
+  await clipSection('kaarten', name);
+}
+
+/**
+ * Een sectie hoger dan het venster: knippen uit de hele pagina in plaats van
+ * een elementopname. Die zou scrollen en de muis van de kaart halen, en bij
+ * de hero tekende hij het beeld onder de waas niet mee.
+ */
+async function clipSection(id: string, name: string, bleed = false): Promise<void> {
+  // Met `bleed` gaat de uitsnede aan beide kanten --inset breder: de rail
+  // loopt via een negatieve marge buiten zijn sectie door tot de rand.
+  const box = await page.evaluate(
+    ([sectionId, wide]) => {
+      const el = document.getElementById(sectionId)!;
+      const r = el.getBoundingClientRect();
+      const inset = wide ? parseFloat(getComputedStyle(el).getPropertyValue('--inset')) : 0;
+      return { x: r.left + scrollX - inset, y: r.top + scrollY, width: r.width + 2 * inset, height: r.height };
+    },
+    [id, bleed] as const
+  );
+  const path = `${OUT}/${name}.png`;
+  await page.screenshot({ path, fullPage: true, clip: box });
+  console.log(path);
+}
+
+/**
+ * Rails: de muis boven de derde rij, zodat de pijlen verschijnen zoals in
+ * specimen v3, en eerst het beeld in de rijen laden en decoderen. Kaarten
+ * verder naar rechts zijn lazy en staan buiten beeld; die tellen niet mee.
+ * Daarnaast een meting die de opname niet laat zien: loopt de pagina zelf
+ * horizontaal over, of schuift alleen de rail?
+ */
+async function railStates(name: string): Promise<void> {
+  await page.evaluate(() => {
+    const top = document.getElementById('rail')!.getBoundingClientRect().top + scrollY;
+    scrollTo(0, top - 72);
+  });
+  await page.waitForFunction(() => document.querySelectorAll('#rail img').length >= 12);
+  await page.evaluate(() =>
+    Promise.all(Array.from(document.querySelectorAll<HTMLImageElement>('#rail img'), (img) => img.decode()))
+  );
+  await page.locator('#rail .rail').nth(2).locator('h2').hover();
+  await page.waitForTimeout(400);
+  const overflow = await page.evaluate(() => ({
+    page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    tracks: Array.from(document.querySelectorAll<HTMLElement>('#rail .rail__track'), (el) => ({
+      overflow: el.scrollWidth - el.clientWidth,
+      fade: el.parentElement!.querySelector('.rail__fade--on') !== null
+    }))
+  }));
+  console.log(`${name}: ${JSON.stringify(overflow)}`);
+  await clipSection('rail', name, true);
+}
+
+/** Heroes met beeld: eerst laden en decoderen, dan de uitsnede. */
+async function heroShot(name: string): Promise<void> {
+  await page.waitForFunction(() => document.querySelectorAll('#hero img').length >= 3);
+  await page.evaluate(() =>
+    Promise.all(Array.from(document.querySelectorAll<HTMLImageElement>('#hero img'), (img) => img.decode()))
+  );
+  await page.waitForTimeout(400);
+  await clipSection('hero', name);
+}
+
+/**
+ * Commitgrens 4: kaart, hero en rail naast de northstar. PLEYA_SHOTS_ROUND=c4
+ * maakt alleen deze opnamen: hover en focus los, de thema's van kaarten en
+ * hero, de skeletonhome, en de vergelijkingsbeelden (northstar rechts).
+ */
+if (process.env['PLEYA_SHOTS_ROUND'] === 'c4') {
+  const NS: Record<string, (w: number) => string> = {
+    kaarten: () => '16-kaartstaten@1600.jpg',
+    hero: (w) => `01-home@${w}.jpg`,
+    rail: (w) => `01-home@${w}.jpg`,
+    skeleton: (w) => `15-skeleton@${w === 393 ? 393 : 1600}.jpg`
+  };
+  for (const width of WIDTHS) {
+    await open(GALLERY, width);
+    await cardStates(`kaarten@${width}`);
+    // Hover los: de muis boven de tweede kaart, de focus op de pagina.
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.mouse.move(2, 2);
+    await page.locator('#kaarten [data-demo="hover"] .card').hover();
+    await page.waitForTimeout(400);
+    const hover = await page.evaluate(() => {
+      const c = document.querySelector('#kaarten [data-demo="hover"] .card')!;
+      return { hover: c.matches(':hover'), focusWithin: document.querySelector('#kaarten :focus-visible') !== null };
+    });
+    console.log(`kaarten-hover@${width}: ${JSON.stringify(hover)}`);
+    await clipSection('kaarten', `kaarten-hover@${width}`);
+    // Focus los: toetsenbord naar de derde kaart, de muis uit de sectie.
+    await page.mouse.move(2, 2);
+    await page.keyboard.press('Shift');
+    await page.locator('#kaarten [data-demo="focus"] a').focus();
+    await page.waitForTimeout(400);
+    const focus = await page.evaluate(() => {
+      const a = document.querySelector('#kaarten [data-demo="focus"] a')!;
+      const c = getComputedStyle(a);
+      return { focusVisible: a.matches(':focus-visible'), outline: `${c.outlineWidth} ${c.outlineStyle} ${c.outlineColor}` };
+    });
+    console.log(`kaarten-focus@${width}: ${JSON.stringify(focus)}`);
+    await clipSection('kaarten', `kaarten-focus@${width}`);
+    await heroShot(`hero@${width}`);
+    await railStates(`rail@${width}`);
+    for (const n of ['kaarten', 'hero', 'rail']) {
+      console.log(await compareShot(context, `${OUT}/${n}`, `${OUT}/${n}@${width}.png`, NS[n]!(width), width));
+    }
+  }
+  for (const theme of ['oled', 'light']) {
+    for (const width of [393, 1600]) {
+      await open(GALLERY, width, theme);
+      await cardStates(`kaarten-${theme}@${width}`);
+      await heroShot(`hero-${theme}@${width}`);
+    }
+  }
+  for (const width of SKELETON_WIDTHS) {
+    await open(`${GALLERY}?skeleton=home`, width);
+    await shot(page, `skeleton-home@${width}`);
+    if (width === 393 || width === 1600) {
+      console.log(
+        await compareShot(context, `${OUT}/skeleton-home`, `${OUT}/skeleton-home@${width}.png`, NS['skeleton']!(width), width)
+      );
+    }
+  }
+  await browser.close();
+  process.exit(0);
+}
+
+if (!ONLY || ONLY === 'dark') {
+for (const width of WIDTHS) {
+  await open(GALLERY, width);
+  if (!PICK) await shot(page, `galerij@${width}`, true);
+  for (const id of pick(SECTIONS)) {
+    if (id === 'velden') {
+      await page.locator('#veld-hint').focus();
+      await page.waitForTimeout(300); // randovergang van --dur-fast
+    }
+    if (id === 'kaarten') {
+      await cardStates(`${id}@${width}`);
+      continue;
+    }
+    if (id === 'hero') {
+      // Drie heroes met gegenereerd beeld; de vierde heeft bewust geen artwork.
+      await page.waitForFunction(() => document.querySelectorAll('#hero img').length >= 3);
+      // Beeld buiten het venster met decoding="async" is nog niet gedecodeerd,
+      // en een opname van de hele pagina wacht daar niet op: dan staat er
+      // alleen de waas. Dus eerst expliciet decoderen.
+      await page.evaluate(() =>
+        Promise.all(Array.from(document.querySelectorAll<HTMLImageElement>('#hero img'), (img) => img.decode()))
+      );
+      await page.waitForTimeout(400); // inloop van het beeld over --dur-normal
+      await clipSection(id, `${id}@${width}`);
+      continue;
+    }
+    if (id === 'rail') {
+      await railStates(`${id}@${width}`);
+      continue;
+    }
+    await shot(page.locator(`#${id}`), `${id}@${width}`);
+  }
+  if (pick(['chips']).length) {
+    await page.locator('#chips button').first().focus();
+    await shot(page.locator('#chips'), `chips-focus@${width}`);
+  }
+  await focusButton(`focus-knop@${width}`);
+  if (!pick(['velden']).length) continue;
+  // Een veld kan maar één focus hebben: het foutveld met focus apart.
+  await page.locator('#veld-fout-focus').focus();
+  await page.waitForTimeout(300);
+  await shot(page.locator('#velden'), `velden-foutfocus@${width}`);
+  const ring = await page.evaluate(() => {
+    const c = getComputedStyle(document.getElementById('veld-fout-focus')!);
+    return { border: c.borderTopColor, width: c.borderTopWidth, shadow: c.boxShadow, outline: c.outlineStyle };
+  });
+  console.log(`foutveld met focus @${width}: ${JSON.stringify(ring)}`);
+}
+
+for (const width of PICK ? [] : [393, 1600]) {
+  for (const kind of ['plain', 'phrase']) {
+    await open(GALLERY, width);
+    const trigger = page.locator(`[data-open="${kind}"]`);
+    await trigger.scrollIntoViewIfNeeded();
+    await trigger.click();
+    await page.getByRole('dialog').waitFor();
+    await page.waitForTimeout(300);
+    await shot(page, `dialoog-${kind}@${width}`);
+    // Scrolt de pagina achter de dialoog mee? Wiel boven het scherm, buiten de kaart.
+    const before = await page.evaluate(() => scrollY);
+    await page.mouse.move(width / 2, 20);
+    await page.mouse.wheel(0, 600);
+    await page.waitForTimeout(300);
+    const after = await page.evaluate(() => scrollY);
+    const locked = await page.evaluate(() =>
+      document.documentElement.classList.contains('scroll-locked')
+    );
+    console.log(`scroll achter dialoog-${kind}@${width}: ${before} -> ${after} (scroll-locked=${locked})`);
+    if (kind === 'phrase' && width === 393) await shot(page, `dialoog-${kind}-gescrold@${width}`);
+  }
+}
+
+}
+// Dezelfde secties in OLED en light, om contrast en scheiding per thema te zien.
+// Dark staat hierboven al; die opnamen houden hun naam zonder themasuffix.
+const THEMED = [
+  'overzicht',
+  'opslagmeter',
+  'velden',
+  'panelen',
+  'meldingen',
+  'pillen',
+  'chips',
+  'tabel',
+  'stappen'
+];
+const THEMES = ONLY ? (ONLY === 'dark' ? [] : [ONLY]) : ['oled', 'light'];
+for (const theme of THEMES) {
+  for (const width of [393, 1600]) {
+    await open(GALLERY, width, theme);
+    for (const id of pick(THEMED)) await shot(page.locator(`#${id}`), `${id}-${theme}@${width}`);
+    await focusButton(`focus-knop-${theme}@${width}`);
+    if (PICK) continue;
+    await page.locator('#veld-fout-focus').focus();
+    await page.waitForTimeout(300);
+    await shot(page.locator('#velden'), `velden-foutfocus-${theme}@${width}`);
+    const colours = await page.evaluate(() => {
+      const css = (sel: string, prop: 'color' | 'backgroundColor' | 'borderTopColor') => {
+        const el = document.querySelector(sel);
+        return el ? getComputedStyle(el)[prop] : null;
+      };
+      return {
+        foutrand: css('#veld-fout-focus', 'borderTopColor'),
+        fouttekst: css('#velden .fld__help--err', 'color'),
+        errPill: css('#pillen .pill--err', 'color'),
+        runStip: css('#pillen .pill--status.pill--run .pill__dot', 'backgroundColor'),
+        runPill: css('#pillen .pill--run:not(.pill--status)', 'color'),
+        inset: css('#veld-hint', 'backgroundColor'),
+        paneel: css('#panelen .panel', 'backgroundColor')
+      };
+    });
+    console.log(`kleuren ${theme}@${width}: ${JSON.stringify(colours)}`);
+    const trigger = page.locator('[data-open="phrase"]');
+    await trigger.scrollIntoViewIfNeeded();
+    await trigger.click();
+    await page.getByRole('dialog').waitFor();
+    await page.waitForTimeout(300);
+    await shot(page, `dialoog-phrase-${theme}@${width}`);
+  }
+}
+
+if (!ONLY && !PICK) {
+for (const width of SKELETON_WIDTHS) {
+  for (const variant of ['home', 'grid', 'detail']) {
+    await open(`${GALLERY}?skeleton=${variant}`, width);
+    await shot(page, `skeleton-${variant}@${width}`);
+  }
+}
+
+for (const theme of ['oled', 'light']) {
+  await open(GALLERY, 1024, theme);
+  await shot(page.locator('#skelet'), `skelet-${theme}@1024`);
+  const colours = await page.evaluate(() => {
+    const skel = document.querySelector('#skelet .skel');
+    const art = document.querySelector('#skelet .artwork');
+    return {
+      skeleton: skel ? getComputedStyle(skel).backgroundColor : null,
+      artwork: art ? getComputedStyle(art).backgroundColor : null
+    };
+  });
+  console.log(`kleuren ${theme}: ${JSON.stringify(colours)}`);
+}
+
+}
+await browser.close();

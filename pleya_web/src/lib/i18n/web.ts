@@ -7,6 +7,11 @@ export const web = {
   'nav.home': 'Home',
   'nav.search': 'Search',
   'nav.libraries': 'Libraries',
+  'nav.searchPlaceholder': 'Search',
+  'nav.films': 'Films',
+  'nav.series': 'Series',
+  'nav.books': 'Books',
+  'nav.my': 'My Pleya',
   'nav.server': 'Server',
   'nav.primary': 'Primary',
   'nav.skipToContent': 'Skip to content',
@@ -22,16 +27,31 @@ export const web = {
   'setup.submit': 'Create owner',
 
   'login.title': 'Sign in',
+  'login.subtitle': 'Use the account the administrator of this server created for you.',
+  'login.forgotHelp':
+    'Forgot your password? An administrator can reset it. This server does not send email.',
   'login.username': 'Username',
   'login.password': 'Password',
+  'field.showPassword': 'Show password',
   'login.submit': 'Sign in',
   'login.rateLimited': 'Too many attempts. Try again in {seconds}s.',
 
   'home.title': 'Home',
   'home.recentlyAdded': 'Recently added',
-  'home.heroAction': 'More info',
   'home.emptyTitle': 'Nothing has been added yet',
   'home.emptyBody': 'Once the server has scanned your media, new titles show up here.',
+  'home.emptyAction': 'Go to My Pleya',
+
+  'hero.play': 'Play',
+  'hero.moreInfo': 'More info',
+  'hero.kind.movie': 'Movie',
+  'hero.kind.show': 'Series',
+  'hero.kind.season': 'Season',
+  'hero.kind.episode': 'Episode',
+
+  'rail.viewAll': 'View all',
+  'rail.scrollLeft': 'Scroll left',
+  'rail.scrollRight': 'Scroll right',
 
   'libraries.title': 'Libraries',
   'libraries.emptyTitle': 'No libraries configured',
@@ -48,6 +68,8 @@ export const web = {
   'libraries.loadMore': 'Load more',
   'libraries.loading': 'Loading more…',
   'libraries.endOfList': 'End of the list.',
+  'libraries.gridEmptyBody': 'Nothing in {library} yet. Once the server finds files there, they show up here.',
+  'libraries.allLibraries': 'All libraries',
   'libraries.approximate.one': 'about {count} item',
   'libraries.approximate.other': 'about {count} items',
 
@@ -56,7 +78,9 @@ export const web = {
   'search.resultsFor': 'Results for “{query}”',
   'search.noResultsTitle': 'No results',
   'search.seasonsNote': 'Seasons are listed on the show, not in search results.',
+  'search.filters.label': 'Type',
 
+  'item.title': 'Details',
   'item.seasons': 'Seasons',
   'item.episodes': 'Episodes',
   'item.seasonsCount.one': '{count} season',
@@ -78,7 +102,8 @@ export const web = {
   'item.external': 'external',
   'item.default': 'default',
 
-  'server.title': 'Server',
+  'server.title': 'My Pleya',
+  'server.about': 'About the server',
   'server.name': 'Name',
   'server.version': 'Version',
   'server.startedAt': 'Running since',
@@ -89,6 +114,8 @@ export const web = {
   'server.capabilities': 'Capabilities',
   'server.capabilityOn': 'available',
   'server.capabilityOff': 'not available',
+  'server.libraryKind': 'Type',
+  'server.libraryItems': 'Items',
   'server.libraries': 'Libraries',
 
   'theme.oled': 'OLED',
@@ -96,10 +123,64 @@ export const web = {
   'theme.light': 'Light',
   'theme.system': 'System',
 
+  'table.empty': 'Nothing here yet.',
+  'steps.label': 'Progress',
+  'steps.done': 'done',
+  'dialog.cancel': 'Cancel',
+  'dialog.typeToConfirm': 'Type {phrase} to confirm',
+
+  'duration.hm': '{h}h {m}m',
+  'duration.h': '{h}h',
+  'duration.m': '{m}m',
+  'duration.s': '{s}s',
+
   'artwork.none': 'No artwork',
-  'unreachable.title': 'Cannot reach the server',
+  'card.remaining': '{duration} left',
+  'card.watched': 'Watched',
+  'card.new': 'New',
+  'card.versions.one': '{count} version',
+  'card.versions.other': '{count} versions',
+
+  // Alleen de galerij (/dev/primitives) gebruikt deze: daar staan demoknoppen
+  // op de hover-kaart, in de app geeft de aanroeper zijn eigen acties mee.
+  'dev.play': 'Play',
+  'dev.myList': 'My list',
+  'dev.more': 'More',
+
+  // Beeld 14. `{host}` in `address` wordt in de staat zelf vervangen door een
+  // element in monospace; de zin eromheen blijft één vertaalbare eenheid.
+  'unreachable.title': '{name} is not reachable',
+  'unreachable.address': 'The address {host} is not responding.',
+  'unreachable.signedIn': 'You are still signed in; once the server is back you pick up where you left off.',
+  'unreachable.lastContact': 'Last contact {when}',
+  'unreachable.countdown': 'retrying in {seconds} s',
+  'unreachable.connecting': 'Connecting…',
+  'unreachable.retryNow': 'Retry now',
   'signedOut.title': 'Signed out',
-  'loading': 'Loading…'
+  'loading': 'Loading…',
+
+  'error.generic': 'Something went wrong.',
+  'error.genericCode': 'Something went wrong ({code}).',
+  'error.auth.invalid_credentials': 'That username and password do not match.',
+  'error.auth.token_expired': 'Your session expired. Sign in again.',
+  'error.auth.token_invalid': 'Your session is no longer valid. Sign in again.',
+  'error.auth.refresh_token_reused': 'Your session was ended for safety. Sign in again.',
+  'error.auth.setup_required': 'This server has no owner yet. Finish setup first.',
+  'error.auth.setup_already_completed': 'This server already has an owner. Sign in instead.',
+  'error.auth.setup_code_invalid': 'That setup code is not valid or has expired.',
+  'error.auth.rate_limited': 'Too many attempts. Wait a moment and try again.',
+  'error.library.not_found': 'That item is not on this server.',
+  'error.library.scan_in_progress': 'A scan is running. Try again in a moment.',
+  'error.library.not_config_managed': 'This library is already managed in Pleya.',
+  'error.library.cursor_invalid': 'The list moved on. Reloading from the start.',
+  'error.library.search_query_empty': 'Type something to search for.',
+  'error.library.version_multifile': 'This version is split across several files.',
+  'error.playback.version_unavailable': 'That file cannot be read right now.',
+  'error.job.not_cancellable': 'This job is already finished.',
+  'error.storage.unavailable': 'The server cannot reach its storage right now.',
+  'error.storage.full': 'The server has no room left to write.',
+  'error.client.malformed_response': 'The server sent something this client cannot read.',
+  'error.client.transport': 'Cannot reach the server. Check the connection and try again.'
 } as const;
 
 export type WebKey = keyof typeof web;

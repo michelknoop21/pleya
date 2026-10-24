@@ -44,6 +44,8 @@
 ///   bronwijziging keert niet door alle eerder gekozen bronnen heen."
 library;
 
+import 'package:provider/provider.dart';
+import '../../providers/local_library_provider.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -135,6 +137,24 @@ Future<UnifiedActivationOutcome> activateUnifiedMediaGroup(
   String? traceId,
   TvFocusRestoreTarget? restoreTarget,
 }) async {
+  if (intent == UnifiedActivationIntent.details &&
+      !playDirectly &&
+      group.sources.every((source) => !environment.availabilityFor(source).isUsable)) {
+    final local = context.read<LocalLibraryProvider?>();
+    for (final source in group.sources) {
+      final item = local?.item(source.serverId, source.item.id);
+      if (item != null) {
+        await navigateToMediaItemDetails(
+          context,
+          item,
+          isOffline: true,
+          onRefresh: onRefresh,
+          restoreTarget: restoreTarget,
+        );
+        return UnifiedActivationOutcome.routed;
+      }
+    }
+  }
   const coordinator = UnifiedActivationCoordinator();
   final preferredSourceKey = await SourcePreferenceStore.read(group.identity);
   final preferredServerId = await PreferredServerStore.read();

@@ -71,6 +71,8 @@ class LibrariesProvider extends ChangeNotifier with DisposableChangeNotifierMixi
   bool get isLoading => _loadState == LibrariesLoadState.loading;
 
   /// Whether libraries have been loaded at least once
+  Set<String> get loadedServerIds => Set.unmodifiable(_loadedServerIds);
+
   bool get hasLoaded => _loadState == LibrariesLoadState.loaded;
 
   /// Current load state

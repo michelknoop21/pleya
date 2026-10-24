@@ -453,6 +453,14 @@ void main() {
   });
 
   group('a server that stops answering', () {
+    test('snapshot reads refuse a missing response instead of certifying an empty library', () async {
+      client = await connected(server);
+      await expectLater(
+        client.fetchLibraryPagedContent('lib-unknown', query: const LibraryQuery(), strictSnapshot: true),
+        throwsA(isA<StateError>()),
+      );
+    });
+
     test('gives an empty page instead of throwing into the grid', () async {
       client = await connected(server);
       final page = await client.fetchLibraryPagedContent('lib-unknown', query: const LibraryQuery());

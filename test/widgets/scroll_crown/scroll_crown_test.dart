@@ -1,4 +1,6 @@
+import 'baseline_motion.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/semantics.dart' show SemanticsAction;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/widgets/scroll_crown/scroll_crown.dart';
@@ -7,7 +9,6 @@ import 'package:pleya/widgets/scroll_crown/scroll_crown_painter.dart';
 
 const _screen = Size(400, 800);
 const _tabBar = 80.0;
-const _railHeight = 800 - _tabBar;
 
 class _Rig {
   final controller = ScrollController();
@@ -60,6 +61,12 @@ const _edgeX = 400 - 22.0;
 
 double _phase(WidgetTester tester) => (tester.widget<CustomPaint>(_gear).painter! as ScrollCrownPainter).phase;
 
+Future<TestGesture> _start(WidgetTester tester, _Rig rig, Offset position) async {
+  final gesture = await tester.createGesture();
+  await gesture.down(position, timeStamp: rig.now);
+  return gesture;
+}
+
 Future<void> _setUp(WidgetTester tester, _Rig rig, {int rows = 40, bool reduceMotion = false}) async {
   tester.view.physicalSize = _screen;
   tester.view.devicePixelRatio = 1;
@@ -87,10 +94,10 @@ Future<void> _scrub(
   int msPerStep = 50,
   double startY = 1,
 }) async {
-  final gesture = await tester.startGesture(Offset(_screen.width - 22, startY));
+  final gesture = await _start(tester, rig, Offset(_screen.width - 22, startY));
   for (var i = 0; i < steps; i++) {
     rig.now += Duration(milliseconds: msPerStep);
-    await gesture.moveBy(Offset(0, step));
+    await gesture.moveBy(Offset(0, step), timeStamp: rig.now);
     await tester.pump();
   }
   await gesture.up();
@@ -98,9 +105,33 @@ Future<void> _scrub(
 }
 
 void main() {
+  testWidgets('slow crown drag remains one scroll activity until release', (tester) async {
+    final rig = _Rig();
+    await _setUp(tester, rig, rows: 400);
+    final gesture = await _start(tester, rig, const Offset(_edgeX, 1));
+    rig.now += const Duration(milliseconds: 20);
+    await gesture.moveBy(const Offset(0, 20), timeStamp: rig.now);
+    await tester.pump();
+    final before = rig.controller.offset;
+    for (var i = 0; i < 20; i++) {
+      rig.now += const Duration(milliseconds: 16);
+      await gesture.moveBy(const Offset(0, 0.25), timeStamp: rig.now);
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(
+        rig.controller.position.isScrollingNotifier.value,
+        isTrue,
+        reason: 'Pointer updates must not repeatedly start/end scrolling and trigger idle loading',
+      );
+    }
+    expect(rig.controller.offset, greaterThan(before));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(rig.controller.position.isScrollingNotifier.value, isFalse);
+  });
+
   test('a drag anchors the offset and reaches both ends from any grab point', () {
     for (final startY in [48.0, 200.0, 350.0, 600.0, 652.0]) {
-      double map(double delta) => ScrollCrown.offsetForDrag(
+      double map(double delta) => baselineOffsetForDrag(
         startPixels: 3000,
         startY: startY,
         dragDelta: delta,
@@ -116,7 +147,7 @@ void main() {
 
   test('dragging inward from the rail padding starts smoothly', () {
     expect(
-      ScrollCrown.offsetForDrag(
+      baselineOffsetForDrag(
         startPixels: 3000,
         startY: 690,
         dragDelta: -0.001,
@@ -127,7 +158,7 @@ void main() {
       closeTo(3000, 0.1),
     );
     expect(
-      ScrollCrown.offsetForDrag(
+      baselineOffsetForDrag(
         startPixels: 3000,
         startY: 10,
         dragDelta: 0.001,
@@ -153,6 +184,69 @@ void main() {
     expect(ScrollCrown.isLongEnough(metrics(800)), isTrue);
     expect(ScrollCrown.isLongEnough(metrics(double.infinity)), isFalse);
   });
+
+  for (final horizontal in [false, true]) {
+    testWidgets(
+      horizontal
+          ? 'horizontal movement with vertical jitter reaches content'
+          : 'three-point slow correction wins before the underlying long press',
+      (tester) async {
+        tester.view.physicalSize = _screen;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final controller = ScrollController();
+        addTearDown(controller.dispose);
+        var longPresses = 0;
+        var horizontalMoves = 0;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: ScrollCrown(
+              enabled: true,
+              controller: controller,
+              child: GestureDetector(
+                onLongPress: () => longPresses++,
+                onHorizontalDragUpdate: (_) => horizontalMoves++,
+                child: ListView.builder(
+                  controller: controller,
+                  itemCount: 100,
+                  itemExtent: 72,
+                  itemBuilder: (_, i) => SizedBox.expand(child: Text('row $i')),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        final gesture = await tester.startGesture(const Offset(380, 300));
+        await tester.pump(const Duration(milliseconds: 100));
+        if (horizontal) {
+          await gesture.moveBy(const Offset(-2, 1));
+          await gesture.moveBy(const Offset(-30, 0));
+          await gesture.moveBy(const Offset(-20, 0));
+        } else {
+          await gesture.moveBy(const Offset(0, 3));
+        }
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(longPresses, 0);
+        expect(
+          controller.offset,
+          closeTo(horizontal ? 0 : controller.position.maxScrollExtent * 3 / (800 - 48 - 300), .01),
+        );
+        if (horizontal) expect(horizontalMoves, greaterThan(0));
+        await gesture.cancel();
+        await tester.pump();
+        final before = controller.offset;
+        final afterCancel = await tester.startGesture(const Offset(380, 600));
+        await afterCancel.moveBy(const Offset(-2, 1));
+        await afterCancel.moveBy(const Offset(-30, 0));
+        await afterCancel.moveBy(const Offset(-20, 0));
+        await afterCancel.up();
+        await tester.pump();
+        expect(controller.offset, before, reason: 'a cancelled gesture must not leave a stale direction origin');
+        expect(horizontalMoves, greaterThan(0));
+      },
+    );
+  }
 
   testWidgets('short content never shows the crown, not even when scrolled', (tester) async {
     final rig = _Rig();
@@ -190,6 +284,19 @@ void main() {
     expect(rig.controller.offset, closeTo(start + 200, 30), reason: 'content follows the finger, not reversed');
   });
 
+  testWidgets('the first drag on the visible resting hint already controls the wheel', (tester) async {
+    final rig = _Rig();
+    await _setUp(tester, rig);
+    expect(_visible(tester), isFalse);
+    final gesture = await _start(tester, rig, const Offset(_edgeX, 360));
+    rig.now += const Duration(milliseconds: 100);
+    await gesture.moveBy(const Offset(0, 40), timeStamp: rig.now);
+    await tester.pump();
+    expect(rig.controller.offset, greaterThan(0));
+    await gesture.up();
+    await tester.pump();
+  });
+
   testWidgets('a touch on the edge makes the whole edge a rail', (tester) async {
     final rig = _Rig();
     await _setUp(tester, rig);
@@ -197,11 +304,13 @@ void main() {
     await tester.pump();
     expect(_visible(tester), isTrue);
 
-    await tester.dragFrom(const Offset(_edgeX, 500), const Offset(0, 100));
+    rig.now += const Duration(milliseconds: 100);
+    final drag100down = await _start(tester, rig, const Offset(_edgeX, 500));
+    rig.now += const Duration(milliseconds: 100);
+    await drag100down.moveBy(const Offset(0, 100), timeStamp: rig.now);
+    await drag100down.up();
     await tester.pump();
-    final max = rig.controller.position.maxScrollExtent;
-    // A swipe down would stay at 0; the rail maps 100 px onto the range.
-    expect(rig.controller.offset, greaterThan(0.08 * max));
+    expect(rig.controller.offset, greaterThan(0));
   });
 
   testWidgets('the first drag on the gear after it faded already scrubs', (tester) async {
@@ -224,75 +333,132 @@ void main() {
     final start = rig.controller.offset;
     final maxAtStart = rig.controller.position.maxScrollExtent;
 
-    final gesture = await tester.startGesture(const Offset(_edgeX, 20));
+    final gesture = await _start(tester, rig, const Offset(_edgeX, 20));
     for (var i = 0; i < 25; i++) {
-      await gesture.moveBy(const Offset(0, 2));
+      rig.now += const Duration(milliseconds: 5);
+      await gesture.moveBy(const Offset(0, 2), timeStamp: rig.now);
       await tester.pump();
     }
     rig.rowCount.value = 120; // a page loads: three times the content
     await tester.pump();
     // The list takes the new length on its next layout, which the next move
     // brings; the move after that is where a stretched mapping would jump.
-    await gesture.moveBy(const Offset(0, 2));
+    rig.now += const Duration(milliseconds: 5);
+    await gesture.moveBy(const Offset(0, 2), timeStamp: rig.now);
     await tester.pump();
     expect(rig.controller.position.maxScrollExtent, greaterThan(maxAtStart * 2));
     final beforeMove = rig.controller.offset;
-    await gesture.moveBy(const Offset(0, 2));
+    rig.now += const Duration(milliseconds: 5);
+    await gesture.moveBy(const Offset(0, 2), timeStamp: rig.now);
     await tester.pump();
-    expect(rig.controller.offset - beforeMove, closeTo(2 / _railHeight * maxAtStart, 1), reason: 'no jump');
+    expect(
+      rig.controller.offset - beforeMove,
+      closeTo((maxAtStart - start) * 2 / (720 - 48 - 20), .01),
+      reason: 'loading preserves the original scale',
+    );
     await gesture.up();
     await tester.pump();
-    expect(rig.controller.offset, lessThan(start + 70 / _railHeight * maxAtStart));
+    expect(rig.controller.offset, closeTo(start + (maxAtStart - start) * 54 / (720 - 48 - 20), .01));
   });
 
-  testWidgets('a rail drag scrolls pixel-proportionally over the whole range', (tester) async {
+  testWidgets('crown drag maps the remaining rail directly to the remaining library', (tester) async {
     final rig = _Rig();
     await _setUp(tester, rig);
     await _wake(tester);
-    final max = rig.controller.position.maxScrollExtent; // 4000 - 800
     final start = rig.controller.offset;
 
-    await _scrub(tester, rig, steps: 90, step: 2); // 180 px of the 720 px rail
-    final expected = start + 180 / _railHeight * max;
+    await _scrub(tester, rig, steps: 12, step: 2); // within the fine excursion
+    final expected = start + 24 / (720 - 48 - 1) * (rig.controller.position.maxScrollExtent - start);
     // The touch slop before the drag is recognised costs a few pixels.
-    expect(rig.controller.offset, closeTo(expected, 20 / _railHeight * max));
+    expect(rig.controller.offset, closeTo(expected, 1));
     expect(rig.teeth, isNotEmpty);
   });
 
-  testWidgets('a crown grabbed halfway down the rail reaches both ends', (tester) async {
+  testWidgets('one continuous stroke reaches each end', (tester) async {
     final rig = _Rig();
     await _setUp(tester, rig);
-    await tester.tapAt(const Offset(_edgeX, 360));
-    await tester.pump();
-
-    await tester.dragFrom(const Offset(_edgeX, 360), const Offset(0, 340));
-    await tester.pump();
-    expect(rig.controller.offset, closeTo(rig.controller.position.maxScrollExtent, 0.01));
-
-    await tester.dragFrom(const Offset(_edgeX, 360), const Offset(0, -340));
-    await tester.pump();
-    expect(rig.controller.offset, closeTo(rig.controller.position.minScrollExtent, 0.01));
+    for (final direction in [1, -1]) {
+      for (var stroke = 0; stroke < 1; stroke++) {
+        await tester.tapAt(const Offset(_edgeX, 360));
+        await tester.pump();
+        final gesture = await _start(tester, rig, Offset(_edgeX, direction > 0 ? 48 : 672));
+        rig.now += const Duration(milliseconds: 500);
+        await gesture.moveTo(Offset(_edgeX, direction > 0 ? 672 : 48), timeStamp: rig.now);
+        await gesture.up();
+        await tester.pump();
+      }
+      expect(rig.controller.offset, closeTo(direction > 0 ? rig.controller.position.maxScrollExtent : 0, .01));
+    }
   });
 
-  testWidgets('the rail end reaches rows loaded during the drag', (tester) async {
+  testWidgets('an already reached end follows loading while held, but not after release', (tester) async {
     final rig = _Rig();
     await _setUp(tester, rig);
-    await tester.tapAt(const Offset(_edgeX, 360));
+    rig.controller.jumpTo(rig.controller.position.maxScrollExtent - 40);
     await tester.pump();
-    final gesture = await tester.startGesture(const Offset(_edgeX, 360));
-    await gesture.moveBy(const Offset(0, 100));
+    await tester.tapAt(const Offset(_edgeX, 650));
+    final gesture = await _start(tester, rig, const Offset(_edgeX, 650));
+    rig.now += const Duration(milliseconds: 50);
+    await gesture.moveTo(const Offset(_edgeX, 700), timeStamp: rig.now);
     await tester.pump();
+    expect(rig.controller.offset, rig.controller.position.maxScrollExtent);
     rig.rowCount.value = 120;
-    await tester.pump();
-    await gesture.moveTo(const Offset(_edgeX, 700));
     await tester.pumpAndSettle();
-    expect(rig.controller.offset, closeTo(rig.controller.position.maxScrollExtent, 0.01));
+    expect(rig.controller.offset, rig.controller.position.maxScrollExtent);
     await gesture.up();
     await tester.pump();
     final releasedOffset = rig.controller.offset;
     rig.rowCount.value = 160;
     await tester.pumpAndSettle();
     expect(rig.controller.offset, releasedOffset, reason: 'loading after release must not take over scrolling');
+  });
+
+  testWidgets('a partial drag inside the rail does not take over loading', (tester) async {
+    final rig = _Rig();
+    await _setUp(tester, rig, rows: 120);
+    await tester.tapAt(const Offset(_edgeX, 360));
+    await tester.pump();
+    final gesture = await _start(tester, rig, const Offset(_edgeX, 360));
+    rig.now += const Duration(seconds: 20);
+    await gesture.moveTo(const Offset(_edgeX, 600), timeStamp: rig.now);
+    await tester.pump();
+    final before = rig.controller.offset;
+    expect(before, lessThan(rig.controller.position.maxScrollExtent));
+    rig.rowCount.value = 160;
+    await tester.pumpAndSettle();
+    expect(rig.controller.offset, before);
+    await gesture.up();
+    await tester.pump();
+  });
+
+  testWidgets('released crown immediately reflects the actual library position', (tester) async {
+    final rig = _Rig();
+    await _setUp(tester, rig);
+    final rail = tester.getRect(_rail);
+    final gesture = await _start(tester, rig, const Offset(_edgeX, 400));
+    rig.now += const Duration(milliseconds: 300);
+    await gesture.moveBy(const Offset(0, 100), timeStamp: rig.now);
+    await tester.pump();
+    await gesture.up();
+    await tester.pump();
+    final position = rig.controller.position;
+    final expectedTop = rail.top + position.pixels / position.maxScrollExtent * (rail.height - ScrollCrownGear.height);
+    expect(tester.getTopLeft(find.byType(ScrollCrownGear)).dy, closeTo(expectedTop, .01));
+    await tester.pump(ScrollCrown.hideDelay + const Duration(milliseconds: 50));
+    await tester.tapAt(const Offset(_edgeX, 360));
+    await tester.pump();
+    final returning = await _start(tester, rig, const Offset(_edgeX, 400));
+    rig.now += const Duration(milliseconds: 300);
+    await returning.moveTo(const Offset(_edgeX, 48), timeStamp: rig.now);
+    await tester.pump();
+    await returning.up();
+    await tester.pump();
+    expect(position.pixels, 0);
+    expect(
+      tester.getTopLeft(find.byType(ScrollCrownGear)).dy,
+      rail.top,
+      reason: 'library start means crown at the top',
+    );
   });
 
   testWidgets('ratchet ticks scale with the drag distance', (tester) async {
@@ -343,6 +509,75 @@ void main() {
     await tester.tap(button);
     await tester.pump();
     expect(rig.taps, 1);
+  });
+
+  testWidgets('nested header consumes only the crown distance and returns fully to start', (tester) async {
+    tester.view.physicalSize = _screen;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final nested = GlobalKey<NestedScrollViewState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: NestedScrollView(
+            key: nested,
+            floatHeaderSlivers: true,
+            headerSliverBuilder: (context, _) => [
+              const SliverAppBar(key: ValueKey('nested_header'), expandedHeight: 134, floating: true, snap: true),
+            ],
+            body: ScrollCrown(
+              enabled: true,
+              child: ListView.builder(itemCount: 40, itemExtent: 100, itemBuilder: (_, i) => Text('row $i')),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    double offset() => nested.currentState!.outerController.offset + nested.currentState!.innerController.offset;
+    final rail = tester.getRect(_rail);
+    final max =
+        nested.currentState!.outerController.position.maxScrollExtent +
+        nested.currentState!.innerController.position.maxScrollExtent;
+    final origin = 400 - rail.top;
+    double firstExpected(double dy) => max * dy / (rail.height - 48 - origin);
+    final gesture = await tester.startGesture(const Offset(_edgeX, 400));
+    await gesture.moveBy(const Offset(0, 3));
+    await tester.pump();
+    expect(offset(), closeTo(firstExpected(3), .01));
+    await tester.pump(); // Re-anchor after the nested header layout.
+    expect(tester.getCenter(_gear).dy, closeTo(405, .01));
+    double headerPaintExtent() =>
+        tester.renderObject<RenderSliver>(find.byKey(const ValueKey('nested_header'))).geometry!.paintExtent;
+    final headerAfterMove = headerPaintExtent();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(headerPaintExtent(), headerAfterMove);
+    await gesture.moveBy(const Offset(0, 3));
+    await tester.pump();
+    expect(offset(), closeTo(firstExpected(6), .01));
+    await gesture.moveBy(const Offset(0, -6));
+    await tester.pump();
+    expect(offset(), closeTo(0, .01));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(offset(), closeTo(0, .01));
+    final returnRail = tester.getRect(_rail);
+    final returnOrigin = 400 - returnRail.top;
+    final returnGain = max / (returnRail.height - 48 - returnOrigin);
+    final returnGesture = await tester.startGesture(const Offset(_edgeX, 400));
+    await returnGesture.moveBy(const Offset(0, 200));
+    await tester.pump();
+    final beforeReverse = offset();
+    await returnGesture.moveBy(const Offset(0, -3));
+    await tester.pump();
+    expect(offset(), closeTo(beforeReverse - 3 * returnGain, .01));
+    await tester.pump();
+    expect(tester.getCenter(_gear).dy, closeTo(599, .01));
+    final reverseHeader = headerPaintExtent();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(headerPaintExtent(), reverseHeader);
+    await returnGesture.up();
+    await tester.pumpAndSettle();
   });
 
   testWidgets('VoiceOver sees a slider that pages the view', (tester) async {

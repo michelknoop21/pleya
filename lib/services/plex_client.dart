@@ -973,6 +973,7 @@ class PlexClient
 
   Future<_LibraryContentResult> _fetchPaginatedList(
     String path, {
+    bool requireTotalCount = false,
     int? start,
     int? size,
     AbortController? abort,
@@ -991,6 +992,7 @@ class PlexClient
       librarySectionTitle: librarySectionTitle,
       start: start,
       requestedSize: size,
+      requireTotalCount: requireTotalCount,
     );
   }
 
@@ -1514,14 +1516,20 @@ class PlexClient
   /// Page through direct children of a metadata item (e.g. episodes of a
   /// season). This uses `/children`; playable descendant paging uses
   /// `/grandchildren` and intentionally has different semantics.
-  Future<_LibraryContentResult> _getChildrenPage(String ratingKey, {int? start, int? size, AbortController? abort}) =>
-      _fetchPaginatedList(
-        '/library/metadata/$ratingKey/children',
-        start: start,
-        size: size,
-        abort: abort,
-        queryParameters: {'includeStreams': 1},
-      );
+  Future<_LibraryContentResult> _getChildrenPage(
+    String ratingKey, {
+    int? start,
+    int? size,
+    AbortController? abort,
+    bool requireTotalCount = false,
+  }) => _fetchPaginatedList(
+    '/library/metadata/$ratingKey/children',
+    requireTotalCount: requireTotalCount,
+    start: start,
+    size: size,
+    abort: abort,
+    queryParameters: {'includeStreams': 1},
+  );
 
   /// Page through playable episodes beneath a show or season. Uses
   /// `/grandchildren` rather than `/allLeaves` because the live server returns
@@ -3350,11 +3358,18 @@ class PlexClient
   @override
   Future<LibraryPage<MediaItem>> fetchChildrenPage(
     String parentId, {
+    bool requireTotalCount = false,
     int? start,
     int? size,
     AbortController? abort,
   }) async {
-    final result = await _getChildrenPage(parentId, start: start, size: size, abort: abort);
+    final result = await _getChildrenPage(
+      parentId,
+      start: start,
+      size: size,
+      abort: abort,
+      requireTotalCount: requireTotalCount,
+    );
     return LibraryPage<MediaItem>(
       items: result.items.map((m) => PlexMappers.mediaItem(m)).toList(),
       totalCount: result.totalSize,

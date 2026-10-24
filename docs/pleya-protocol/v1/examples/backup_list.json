@@ -1,0 +1,37 @@
+{
+  "items": [
+    {
+      "id": "01a16f10-0a00-7000-8d22-41b6c9e07a35",
+      "status": "failed",
+      "trigger": "manual",
+      "started_at": "2026-10-23T18:02:44Z",
+      "finished_at": "2026-10-23T18:02:51Z",
+      "size_bytes": null,
+      "schema_version": null,
+      "titles": null,
+      "secrets_included": false,
+      "failure_code": "storage.full",
+      "restore_confirmation": null,
+      "last_restore_test": null
+    },
+    {
+      "id": "01a16a20-3e00-7000-9a41-2c7d5e8b0f13",
+      "status": "ok",
+      "trigger": "schedule",
+      "started_at": "2026-10-23T01:30:00Z",
+      "finished_at": "2026-10-23T01:31:12Z",
+      "size_bytes": 18734592,
+      "schema_version": 22,
+      "titles": 1284,
+      "secrets_included": true,
+      "failure_code": null,
+      "restore_confirmation": "herstel 2026-10-23T01:30:00Z: kijkstatus, gebruikers, sessies, instellingen en scans van daarna gaan verloren",
+      "last_restore_test": null
+    }
+  ],
+  "dir": "/backups",
+  "schedule": "03:30",
+  "retention_days": 14,
+  "same_failure_domain": true,
+  "secrets_key_configured": true
+}

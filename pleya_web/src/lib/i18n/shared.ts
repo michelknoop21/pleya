@@ -1,4 +1,4 @@
-// Gegenereerd uit lib/i18n/en.i18n.json, de i18n-bron van de app.
+// Gegenereerd uit lib/i18n/en.i18n.json en nl.i18n.json, de i18n-bron van de app.
 // Niet met de hand wijzigen; draai: bun run scripts/gen-i18n.ts
 export const shared = {
   "states.emptyTitle": "Nothing here yet",
@@ -28,6 +28,36 @@ export const shared = {
   "auth.signIn": "Sign in",
   "settings.theme": "Theme",
   "settings.language": "Language"
+} as const;
+
+export const sharedNl = {
+  "states.emptyTitle": "Nog niets hier",
+  "states.errorTitle": "Er ging iets mis",
+  "states.offlineTitle": "Je bent offline",
+  "states.offlineMessage": "Maak opnieuw verbinding om dit te laden.",
+  "common.retry": "Opnieuw proberen",
+  "common.cancel": "Annuleren",
+  "common.close": "Sluiten",
+  "common.clear": "Wissen",
+  "common.search": "Zoeken",
+  "common.home": "Home",
+  "common.settings": "Opties",
+  "common.back": "Terug",
+  "common.error": "Fout",
+  "common.unknown": "Onbekend",
+  "common.logout": "Uitloggen",
+  "common.viewAll": "Alles weergeven",
+  "navigation.libraries": "Media",
+  "search.tryDifferentTerm": "Probeer een andere zoekterm",
+  "search.searchYourMedia": "Zoek in je media",
+  "search.enterTitleActorOrKeyword": "Voer een titel, acteur of trefwoord in",
+  "search.filters.all": "Alles",
+  "search.filters.movies": "Films",
+  "search.filters.shows": "Series",
+  "search.filters.episodes": "Afleveringen",
+  "auth.signIn": "Inloggen",
+  "settings.theme": "Thema",
+  "settings.language": "Taal"
 } as const;
 
 export type SharedKey = keyof typeof shared;

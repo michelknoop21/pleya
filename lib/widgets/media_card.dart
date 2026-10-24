@@ -1,7 +1,7 @@
+import '../providers/local_library_provider.dart';
 import 'library_cover_artwork.dart';
 import 'dart:ui';
 import '../media/ids.dart';
-
 import 'package:flutter/material.dart';
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -1017,6 +1017,7 @@ Widget _buildPosterImage(
     final posterFallbackUrl = item.posterThumbFallback(mode: episodePosterMode, mixedHubContext: mixedHubContext);
     final useRememberedFallback = posterFallbackUrl != null && _hasFailedPosterUrl(primaryPosterUrl);
     posterUrl = useRememberedFallback ? posterFallbackUrl : primaryPosterUrl;
+    localPosterPath ??= context.select<LocalLibraryProvider?, String?>((p) => p?.posterPath(item.serverId, posterUrl));
     final mediaClient = isOffline ? null : context.tryGetMediaClientWithFallback(serverIdOrNull(item.serverId));
     final fallbackIcon = _mediaPosterFallbackIcon(item);
 

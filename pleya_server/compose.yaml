@@ -69,6 +69,9 @@ services:
       # komma-gescheiden (10.0.0.1 of 172.18.0.0/16). Bewust geen instelling:
       # wie dit over de API kan zetten kan de server elke client laten geloven.
       PLEYA_SERVER_TRUSTED_PROXIES: ${PLEYA_SERVER_TRUSTED_PROXIES:-}
+      # /metrics luistert binnen de container op loopback; "off" zet het uit. Een
+      # ander adres is een bewuste keuze, de endpoint is niet geauthenticeerd.
+      PLEYA_SERVER_METRICS_ADDR: ${PLEYA_SERVER_METRICS_ADDR:-}
 
       PLEYA_SERVER_SCAN_ON_START: ${PLEYA_SERVER_SCAN_ON_START:-true}
       PLEYA_SERVER_SCAN_INTERVAL: ${PLEYA_SERVER_SCAN_INTERVAL:-6h}
@@ -80,6 +83,14 @@ services:
       PLEYA_SERVER_TMDB_KEY: ${PLEYA_SERVER_TMDB_KEY:-}
       PLEYA_SERVER_METADATA_LANGUAGE: ${PLEYA_SERVER_METADATA_LANGUAGE:-nl-NL}
 
+      # Back-ups (S25, docs/pleya-server-operator-backup.md). De map is de mount
+      # hieronder; tijdstip en bewaartermijn staan bewust alleen hier en niet
+      # achter de API. Zonder sleutel gaan de geheimen uit /config niet mee.
+      PLEYA_SERVER_BACKUP_DIR: /backups
+      PLEYA_SERVER_BACKUP_TIME: ${PLEYA_SERVER_BACKUP_TIME:-03:30}
+      PLEYA_SERVER_BACKUP_RETENTION_DAYS: ${PLEYA_SERVER_BACKUP_RETENTION_DAYS:-14}
+      PLEYA_SERVER_BACKUP_KEY: ${PLEYA_SERVER_BACKUP_KEY:-}
+
     volumes:
       # Drie schrijfbare mappen met drie verschillende levensduren. Op één
       # volume neemt een vollopende transcode-scratch de database mee, en dan
@@ -87,6 +98,10 @@ services:
       - ${PLEYA_SERVER_CONFIG_HOST:-./data/config}:/config
       - ${PLEYA_SERVER_CACHE_HOST:-./data/cache}:/cache
       - ${PLEYA_SERVER_TRANSCODE_HOST:-./data/transcode}:/transcode
+      # De back-ups. Het liefst op een andere schijf dan data/config; staat hij
+      # op hetzelfde bestandssysteem, dan waarschuwt de server bij het opstarten.
+      # Zonder beschrijfbare map start een upgrade met migraties niet (S25.4).
+      - ${PLEYA_SERVER_BACKUP_HOST:-./data/backups}:/backups
       # Read-only, en dat is geen aanbeveling maar de gedocumenteerde
       # verwachting waar het dreigingsmodel op steunt (hoofdstuk 22).
       - ${PLEYA_SERVER_MEDIA_HOST:-./testdata/media}:/media/library:ro

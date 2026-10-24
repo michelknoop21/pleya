@@ -60,8 +60,12 @@ type Capabilities struct {
 	PlaybackPlan bool `json:"playback_plan"`
 	Transcode    bool `json:"transcode"`
 	Downloads    bool `json:"downloads"`
-	LiveTV       bool `json:"live_tv"`
-	Realtime     bool `json:"realtime"`
+	// Backups (venster 7, S25). Aan zodra de back-upservice en de wachtrij er
+	// zijn: GET/POST /backups, GET /backups/{id} en de hersteltest en restore
+	// eronder bestaan dan voor klasse admin.
+	Backups  bool `json:"backups"`
+	LiveTV   bool `json:"live_tv"`
+	Realtime bool `json:"realtime"`
 
 	// Filters (venster 3, D1.5). Aan zodra /libraries/{id}/items de filter- en
 	// sorteerparameters uit D1 kent en /libraries/{id}/facets bestaat. Belooft

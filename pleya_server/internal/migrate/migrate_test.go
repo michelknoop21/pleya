@@ -157,6 +157,9 @@ func TestSchemaHasExactlyTheExpectedTables(t *testing.T) {
 		"transcode_sessions": true,
 		// S23, migratie 0021: de klaargezette downloads.
 		"downloads": true,
+		// S25, migratie 0022: het register van back-ups en hersteltests.
+		"backups":              true,
+		"backup_restore_tests": true,
 		// S20, migratie 0020: de persoonlijke laag.
 		"play_history":      true,
 		"favorites":         true,
@@ -213,6 +216,31 @@ func TestDatabaseNewerThanBinaryIsRefused(t *testing.T) {
 
 	if _, err := migrate.Run(ctx, pool, nil); err == nil {
 		t.Fatal("een database die nieuwer is dan de binary hoort geweigerd te worden")
+	}
+}
+
+// Status is wat de upgrade-guard (S25.4) leest vóór hij migreert: een verse
+// database staat op 0, een bijgewerkte op target, en een nieuwere erboven.
+func TestStatusReadsTheSchemaWithoutMigrating(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+
+	current, target, err := migrate.Status(ctx, pool)
+	if err != nil || current != 0 {
+		t.Fatalf("verse database: current %d, fout %v", current, err)
+	}
+	if _, err := migrate.RunTo(ctx, pool, nil, 5); err != nil {
+		t.Fatal(err)
+	}
+	if current, _, _ = migrate.Status(ctx, pool); current != 5 {
+		t.Fatalf("na RunTo 5 staat het schema op %d", current)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO schema_migrations (version, name, checksum) VALUES ($1, 'uit_de_toekomst', 'x')`, target+1); err != nil {
+		t.Fatal(err)
+	}
+	if current, _, _ = migrate.Status(ctx, pool); current != target+1 {
+		t.Fatalf("een nieuwere database leest als %d, verwacht %d", current, target+1)
 	}
 }
 

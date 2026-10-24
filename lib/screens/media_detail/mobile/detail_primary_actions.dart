@@ -45,6 +45,7 @@ class DetailPrimaryActions extends StatelessWidget {
     required this.playLabel,
     this.playDetail,
     this.onPlay,
+    this.unavailableMessage,
     this.onPlayFromStart,
     required this.actions,
   });
@@ -54,6 +55,7 @@ class DetailPrimaryActions extends StatelessWidget {
   /// The muted tail after the label, like "· nog 8 min".
   final String? playDetail;
   final VoidCallback? onPlay;
+  final String? unavailableMessage;
 
   /// Null hides the restart button.
   final VoidCallback? onPlayFromStart;
@@ -67,7 +69,12 @@ class DetailPrimaryActions extends StatelessWidget {
       height: 52,
       child: FilledButton.icon(
         onPressed: onPlay,
-        style: FilledButton.styleFrom(backgroundColor: kDetailPlayFill, foregroundColor: kDetailPlayInk),
+        style: FilledButton.styleFrom(
+          backgroundColor: kDetailPlayFill,
+          foregroundColor: kDetailPlayInk,
+          disabledBackgroundColor: Colors.white12,
+          disabledForegroundColor: Colors.white38,
+        ),
         icon: const Icon(Icons.play_arrow_rounded, size: 28),
         label: Text.rich(
           TextSpan(
@@ -94,7 +101,12 @@ class DetailPrimaryActions extends StatelessWidget {
           children: [
             // Same id the TV/desktop play action registers (`action_buttons.dart`).
             Expanded(
-              child: AutomationNode(id: AutomationIds.mediaDetailPlay, role: 'button', child: play),
+              child: AutomationNode(
+                id: AutomationIds.mediaDetailPlay,
+                role: 'button',
+                state: () => {'enabled': onPlay != null},
+                child: play,
+              ),
             ),
             if (onPlayFromStart != null) ...[
               const SizedBox(width: 12),
@@ -109,6 +121,10 @@ class DetailPrimaryActions extends StatelessWidget {
             ],
           ],
         ),
+        if (unavailableMessage != null) ...[
+          const SizedBox(height: 8),
+          Text(unavailableMessage!, style: Theme.of(context).textTheme.bodySmall),
+        ],
         if (actions.isNotEmpty) ...[
           const SizedBox(height: 22),
           Row(

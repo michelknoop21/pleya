@@ -288,6 +288,22 @@ void main() {
     if (repoRoot.existsSync()) repoRoot.deleteSync(recursive: true);
   });
 
+  test('restart relaunches without clearing persisted app state', () async {
+    const source =
+        'name: fixture.restart\ntarget: macos\nsetup:\n  - launch\nsteps:\n  - restart\n  - assert: {id: screen.main}\n';
+    final driver = FakeDriver();
+    final result = await runScenario(
+      scenario: parseScenarioString(source, sourcePath: 'inline.yaml'),
+      scenarioSource: source,
+      driver: driver,
+      repoRoot: repoRoot,
+    );
+    expect(result.passed, isTrue);
+    expect(driver.driverLog.where((line) => line == 'launch'), hasLength(2));
+    expect(driver.freshInstallDone, isFalse);
+    expect(driver.terminateCalled, isTrue);
+  });
+
   test('a passing scenario writes a bundle with result PASS and the expected files', () async {
     final scenario = parseScenarioString(
       'name: fixture.smoke\ntarget: macos\nsetup:\n  - reset_app\n  - launch\nsteps:\n  - wait_until: {id: screen.main, timeout: 2000}\n  - assert: {id: screen.main}\n  - snapshot: boot\n',

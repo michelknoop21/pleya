@@ -1,3 +1,7 @@
+import '../providers/unified_catalogs.dart';
+import 'tv/tv_unified_catalog_screen.dart';
+import '../providers/local_library_provider.dart';
+import 'home/mobile_catalog_screen.dart';
 import '../providers/watchlist_provider.dart';
 import 'watchlist_screen.dart';
 import 'my_pleya_screen.dart';
@@ -26,10 +30,6 @@ import 'tv/tv_my_pleya_sections.dart';
 import 'tv/tv_root_shell.dart';
 import '../navigation/sidebar_focus_coordinator.dart';
 import 'dart:io' show Platform, exit;
-
-export '../navigation/main_screen_scope.dart'
-    show MainScreenFocusScope, MainScreenScopeAspect, SideNavigationBleedBuilder;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'
     show HardwareKeyboard, KeyDownEvent, KeyRepeatEvent, KeyUpEvent, LogicalKeyboardKey;
@@ -109,6 +109,9 @@ import 'tv/tv_series_landing_screen.dart';
 import '../services/opened_file_service.dart';
 import '../services/system_shelf_service.dart';
 import '../watch_together/watch_together.dart';
+
+export '../navigation/main_screen_scope.dart'
+    show MainScreenFocusScope, MainScreenScopeAspect, SideNavigationBleedBuilder;
 
 /// Provides access to the main screen's focus control.
 // MainScreenFocusScope and SideNavigationBleedBuilder live in
@@ -254,7 +257,7 @@ NavigationTabId mainScreenSelectedBarTab({
     NavigationTabId.discover ||
     NavigationTabId.movies ||
     NavigationTabId.series ||
-    NavigationTabId.liveTv => isOffline ? NavigationTabId.downloads : currentTab,
+    NavigationTabId.liveTv => isOffline && !barTabs.contains(currentTab) ? NavigationTabId.downloads : currentTab,
     // Offline the bar is Downloads plus My Pleya, so Downloads points at
     // itself; online it lives behind My Pleya.
     NavigationTabId.downloads => isOffline ? NavigationTabId.downloads : NavigationTabId.myPleya,
@@ -279,7 +282,11 @@ NavigationTabId mainScreenSelectedBarTab({
     // the Home case already produces.
     NavigationTabId.search =>
       isOffline
-          ? NavigationTabId.downloads
+          ? _ownSlotOr(
+              NavigationTabId.search,
+              barTabs,
+              searchOrigin != null && barTabs.contains(searchOrigin) ? searchOrigin : NavigationTabId.downloads,
+            )
           : _ownSlotOr(NavigationTabId.search, barTabs, searchOrigin ?? NavigationTabId.discover),
     NavigationTabId.watchlist ||
     NavigationTabId.requests ||
@@ -502,6 +509,21 @@ class _MainScreenState extends State<MainScreen>
   bool _autoSwitchedToDownloads = false;
 
   OfflineModeProvider? _offlineModeProvider;
+  LocalLibraryProvider? _localLibraryProvider;
+  bool _hasLocalLibrary = false;
+
+  void _handleLocalLibraryChanged() {
+    if (!mounted) return;
+    final available = _localLibraryProvider?.hasContent ?? false;
+    if (available == _hasLocalLibrary) return;
+    final previous = _currentTab;
+    setState(() {
+      _hasLocalLibrary = available;
+      _screens = _buildScreens(_isOffline);
+      _currentTab = _normalizeTabForMode(previous, _isOffline);
+    });
+  }
+
   MultiServerProvider? _multiServerProvider;
   SeerrProvider? _seerrProvider;
   WatchlistProvider? _watchlistProvider;
@@ -1162,6 +1184,14 @@ class _MainScreenState extends State<MainScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
 
+    final localLibrary = context.read<LocalLibraryProvider?>();
+    if (localLibrary != _localLibraryProvider) {
+      _localLibraryProvider?.removeListener(_handleLocalLibraryChanged);
+      _localLibraryProvider = localLibrary;
+      _localLibraryProvider?.addListener(_handleLocalLibraryChanged);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _handleLocalLibraryChanged());
+    }
+
     // Listen for offline/online transitions to refresh navigation & screens.
     // If the provider already observed a failed bind before this listener
     // attached, mirror that missed state after build.
@@ -1376,6 +1406,7 @@ class _MainScreenState extends State<MainScreen>
       windowManager.setPreventClose(false);
     }
     _offlineModeProvider?.removeListener(_handleOfflineStatusChanged);
+    _localLibraryProvider?.removeListener(_handleLocalLibraryChanged);
     _multiServerProvider?.removeListener(_handleLiveTvChanged);
     _seerrProvider?.removeListener(_handleSeerrChanged);
     if (_bindingSettleListener != null) {
@@ -1529,6 +1560,20 @@ class _MainScreenState extends State<MainScreen>
           // complete catalog those screens still are behind "Alles
           // bekijken". TV only; the phone gets the fase-2 landings below
           // (the `isPhone` gate in `getVisibleTabs`).
+          NavigationTabId.movies when offline =>
+            _isMobile
+                ? MobileCatalogScreen(kind: MobileCatalogKind.movies, onSearchTap: _openSearch, isTabRoot: true)
+                : TvUnifiedCatalogScreen(
+                    catalog: context.read<UnifiedCatalogs>().movies,
+                    title: MobileCatalogKind.movies.title,
+                  ),
+          NavigationTabId.series when offline =>
+            _isMobile
+                ? MobileCatalogScreen(kind: MobileCatalogKind.series, onSearchTap: _openSearch, isTabRoot: true)
+                : TvUnifiedCatalogScreen(
+                    catalog: context.read<UnifiedCatalogs>().shows,
+                    title: MobileCatalogKind.series.title,
+                  ),
           NavigationTabId.movies when !_isPhone => TvMoviesLandingScreen(
             landingKey: _moviesKey,
             onManageServers: () => _selectTab(NavigationTabId.settings),
@@ -2650,6 +2695,7 @@ class _MainScreenState extends State<MainScreen>
       hasWatchlist: _hasWatchlist,
       isMobile: _isMobile,
       isPhone: _isPhone,
+      hasLocalLibrary: _hasLocalLibrary,
     );
   }
 

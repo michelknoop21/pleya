@@ -2452,7 +2452,20 @@
       "cardFull": "There are already 8 children at home. Change them under Settings > Big P > Children at home.",
       "addAnother": "Add another child",
       "saveAndSearch": "Save and keep searching",
-      "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+      "months": [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+      ]
     },
     "kids": {
       "agesFirst": "First I need to know how old the children are.",
@@ -3124,5 +3137,34 @@
     "noPhone": "An Apple TV cannot open Pleya on your iPhone by itself. Open Pleya on your iPhone or iPad on the same Wi-Fi network.",
     "resumeAt": "Continue from $time",
     "playingOnPhoneBody": "Pick it up on your iPhone or iPad"
+  },
+  "localLibrary": {
+    "playbackUnavailable": "Connect to the server or download this video to play.",
+    "title": "Local library",
+    "enable": "Store library in advance",
+    "description": "Keep metadata and posters for all your libraries on this device. The first download can take time and use substantial storage. Videos are not downloaded.",
+    "wifiOnly": "Only on Wi-Fi",
+    "wifiDescription": "Pause prefetch on mobile data. Turn off to also allow mobile data.",
+    "status": "Status",
+    "disabled": "Prefetch is off. Previously stored content remains available.",
+    "syncing": "Fetching metadata and posters…",
+    "ready": "Local library is up to date",
+    "wifi": "Waiting for Wi-Fi",
+    "offline": "Offline · showing stored content",
+    "storage": "Paused · not enough free storage. Nothing has been deleted.",
+    "storageUnavailable": "Paused · available storage could not be checked",
+    "paused": "Paused · resumes when Pleya is active",
+    "error": "Sync incomplete · previously stored content has been kept",
+    "progress": "$count items processed",
+    "usage": "Storage used",
+    "lastSync": "Last successful scan",
+    "never": "Not yet completed",
+    "syncNow": "Update now",
+    "clear": "Clear local library",
+    "clearMessage": "Remove locally stored library metadata and posters for this profile? Server content and downloaded videos are kept.",
+    "afterClear": "Local library cleared",
+    "chooseAfterClear": "Keep prefetch off, or fetch your library again? Your network preference still applies.",
+    "keepOff": "Turn prefetch off",
+    "refill": "Fetch library again"
   }
 }

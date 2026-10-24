@@ -10,10 +10,10 @@
 /// playback start.
 library;
 
+import 'package:provider/provider.dart';
+import '../../providers/local_library_provider.dart';
 import 'dart:async';
-
 import 'package:flutter/material.dart';
-
 import '../../i18n/strings.g.dart';
 import '../../media/media_item.dart';
 import '../../media/unified/source_availability.dart';
@@ -44,7 +44,21 @@ Future<MobileActivationOutcome> openMobileMediaGroup(
   bool isOffline = false,
   void Function(String)? onRefresh,
   ValueChanged<MediaItem>? onPlaybackReturned,
-}) {
+}) async {
+  // Offline catalog browsing has metadata, but must never claim the source
+  // is playable. Only the read-only details intent takes this local route.
+  if (intent == UnifiedActivationIntent.details &&
+      !playDirectly &&
+      group.sources.every((source) => !availabilityFor(source).isUsable)) {
+    final local = context.read<LocalLibraryProvider?>();
+    for (final source in group.sources) {
+      final item = local?.item(source.serverId, source.item.id);
+      if (item != null) {
+        await navigateToMediaItemDetails(context, item, isOffline: true, onRefresh: onRefresh);
+        return MobileActivationOutcome.routed;
+      }
+    }
+  }
   return activateMobileMediaGroup(
     context,
     group: group,

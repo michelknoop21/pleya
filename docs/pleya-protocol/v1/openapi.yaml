@@ -1702,6 +1702,133 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /backups:
+    get:
+      tags: [administration]
+      operationId: listBackups
+      summary: De back-ups, de nieuwste eerst, met doel, tijdstip en bewaartermijn.
+      description: |
+        Klasse `admin`, `404` voor de rest, alleen onder `capabilities.backups`
+        (venster 7, S25). `dir`, `schedule` en `retention_days` komen uit de
+        omgeving en zijn geen instelling. `same_failure_domain` waarschuwt dat de
+        back-upmap op hetzelfde bestandssysteem staat als `/config`;
+        `secrets_key_configured` onwaar betekent dat de geheimen uit `/config`
+        niet in een back-up meegaan.
+      responses:
+        "200":
+          description: De back-ups.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BackupList" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [administration]
+      operationId: createBackup
+      summary: Nu een back-up maken.
+      description: |
+        Klasse `admin`. De back-up loopt als job; het antwoord is de nieuwe rij
+        met `status: running`. Er loopt er één tegelijk: een tweede aanvraag
+        terwijl de eerste wacht of loopt is `409` met `server.backup_busy`
+        (herhaalbaar). Een mislukte back-up draagt in `failure_code` de code van
+        zijn faalpad, `storage.full` voor een volle schijf.
+      responses:
+        "202":
+          description: De back-up staat in de wachtrij.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Backup" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/Error" }
+
+  /backups/{backup_id}:
+    get:
+      tags: [administration]
+      operationId: getBackup
+      summary: Eén back-up, met de laatste hersteltest.
+      description: Klasse `admin`. Een onbekende back-up is `404` met `library.not_found`.
+      parameters:
+        - $ref: "#/components/parameters/BackupId"
+      responses:
+        "200":
+          description: De back-up.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Backup" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/Error" }
+
+  /backups/{backup_id}/verify:
+    post:
+      tags: [administration]
+      operationId: verifyBackup
+      summary: Een hersteltest starten.
+      description: |
+        Klasse `admin`. Zet de back-up terug in een eigen tijdelijke database,
+        draait daar de migraties van deze server overheen en telt titels,
+        gebruikers, bibliotheken en kijkstatus na tegen het manifest. De echte
+        database blijft onaangeraakt. De server doet dit zelf wekelijks na de
+        geplande back-up; deze aanroep doet het nu. Een back-up die niet geslaagd
+        is, is `409` met `server.backup_not_restorable`.
+      parameters:
+        - $ref: "#/components/parameters/BackupId"
+      responses:
+        "202":
+          description: De hersteltest staat in de wachtrij; `last_restore_test` loopt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Backup" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/Error" }
+
+  /backups/{backup_id}/restore:
+    post:
+      tags: [administration]
+      operationId: restoreBackup
+      summary: Een back-up terugzetten.
+      description: |
+        Klasse `admin`. `confirm` moet letterlijk gelijk zijn aan
+        `restore_confirmation` van de back-up: die zin noemt het tijdstip en wat
+        er verloren gaat. Een andere waarde is `409` met
+        `server.confirm_mismatch`, met de zin in `details.expected`. Een back-up
+        die niet geslaagd is, van een nieuwer schema dan deze server, of waarvan
+        de sleutel niet past op de geheimen, is `409` met
+        `server.backup_not_restorable` en de reden in `details.reason`. Loopt er
+        een back-up of hersteltest, dan `409` met `server.backup_busy`.
+
+        Na de controles gaat de server in onderhoud: elke aanvraag krijgt `503`
+        met `server.maintenance`, `/readyz` is niet gereed. De restore gebeurt in
+        één transactie; daarna herstart de server, ook als het terugzetten
+        mislukte, en dan is de database ongewijzigd.
+      parameters:
+        - $ref: "#/components/parameters/BackupId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RestoreBackupRequest" }
+      responses:
+        "202":
+          description: De restore is begonnen.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Backup" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/Error" }
+
   /downloads:
     post:
       tags: [library]
@@ -1711,7 +1838,7 @@ paths:
         Klasse `authenticated`, alleen onder `capabilities.downloads` (venster 6
         deel 3, S23). Vraagt het recht `download` op de bibliotheek van het item:
         een bibliotheek die de aanvrager niet mag zien is `404`, een die hij wel mag
-        zien maar niet mag downloaden is `403` met `download.not_permitted`. Zonder
+        zien maar niet mag downloaden is `403` met `library.download_not_permitted`. Zonder
         `version_id` geldt de eerste versie. Een versie van meer dan één bestand is
         `409` met `library.version_multifile`. De download is eerst `preparing`
         terwijl de server de SHA-256 uitrekent; de client leest `GET /downloads/{id}`
@@ -1789,8 +1916,8 @@ paths:
         (`"sha256-<hex>"`) en `Digest` en `Repr-Digest` dragen dezelfde SHA-256.
         `Range` werkt alleen samen met een `If-Range` gelijk aan die `ETag`; zonder
         komt het hele bestand. Een download die nog `preparing` is geeft `409` met
-        `download.not_ready` (herhaalbaar), een bestand dat na het uitrekenen van
-        grootte of wijzigingstijd veranderde `409` met `download.changed`: de client
+        `library.download_not_ready` (herhaalbaar), een bestand dat na het uitrekenen van
+        grootte of wijzigingstijd veranderde `409` met `library.download_changed`: de client
         vraagt dan een nieuwe download.
       parameters:
         - $ref: "#/components/parameters/DownloadId"
@@ -2408,6 +2535,11 @@ components:
       in: path
       required: true
       schema: { $ref: "#/components/schemas/Id" }
+    BackupId:
+      name: backup_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
     DownloadId:
       name: download_id
       in: path
@@ -2587,6 +2719,12 @@ components:
         playback_plan: { type: boolean, default: false }
         transcode: { type: boolean, default: false }
         downloads: { type: boolean, default: false }
+        backups:
+          type: boolean
+          default: false
+          description: |
+            Venster 7, S25. De server kent GET/POST /backups, GET /backups/{id}
+            en de hersteltest en restore eronder, voor klasse admin.
         live_tv: { type: boolean, default: false }
         realtime: { type: boolean, default: false }
         users: { type: boolean, default: false }
@@ -3643,6 +3781,69 @@ components:
         max_sessions: { type: integer, minimum: 0 }
         hardware: { $ref: "#/components/schemas/TranscodeHardware" }
         items: { type: array, items: { $ref: "#/components/schemas/TranscodeSession" } }
+
+    Backup:
+      type: object
+      required: [id, status, trigger, started_at, finished_at, size_bytes, schema_version, titles,
+        secrets_included, failure_code, restore_confirmation, last_restore_test]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        status:
+          type: string
+          enum: [running, ok, failed, missing]
+          x-unknown-safe: true
+          description: missing betekent dat het bestand uit de back-upmap verdween zonder dat de server het weghaalde.
+        trigger: { type: string, enum: [schedule, manual, upgrade], x-unknown-safe: true }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+        size_bytes: { type: [integer, "null"], minimum: 0 }
+        schema_version: { type: [integer, "null"], description: De schemaversie van de gedumpte database. }
+        titles: { type: [integer, "null"], minimum: 0, description: Films en series op het moment van de dump. }
+        secrets_included:
+          type: boolean
+          description: De geheimen uit /config gingen versleuteld mee. Onwaar betekent dat ze wegbleven, nooit dat ze leesbaar meegingen.
+        failure_code:
+          type: [string, "null"]
+          description: De foutcode van het faalpad bij een mislukte back-up, `storage.full` voor een volle schijf.
+        restore_confirmation:
+          type: [string, "null"]
+          description: De zin die POST /backups/{id}/restore als confirm verwacht. Alleen bij status ok.
+        last_restore_test:
+          oneOf:
+            - $ref: "#/components/schemas/BackupRestoreTest"
+            - type: "null"
+
+    BackupRestoreTest:
+      type: object
+      required: [id, status, started_at, finished_at, schema_from, schema_to, titles_expected, titles_found, failure_code]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        status: { type: string, enum: [running, ok, failed], x-unknown-safe: true }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+        schema_from: { type: [integer, "null"], description: Het schema van de back-up. }
+        schema_to: { type: [integer, "null"], description: Het schema na de migraties van deze server. }
+        titles_expected: { type: [integer, "null"], minimum: 0 }
+        titles_found: { type: [integer, "null"], minimum: 0 }
+        failure_code: { type: [string, "null"] }
+
+    BackupList:
+      type: object
+      required: [items, dir, schedule, retention_days, same_failure_domain, secrets_key_configured]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/Backup" } }
+        dir: { type: string, description: De back-upmap in de container. }
+        schedule: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$", description: Tijdstip van de dagelijkse back-up, in de tijdzone van de server. }
+        retention_days: { type: integer, minimum: 1 }
+        same_failure_domain: { type: boolean }
+        secrets_key_configured: { type: boolean }
+
+    RestoreBackupRequest:
+      type: object
+      required: [confirm]
+      additionalProperties: false
+      properties:
+        confirm: { type: string }
 
     Download:
       type: object

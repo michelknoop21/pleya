@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
-
 import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/widgets/app_icon.dart';
-
 import '../media/media_server_client.dart';
+import 'package:provider/provider.dart';
+import '../providers/local_library_provider.dart';
 import '../services/device_performance.dart';
 import '../services/download_artwork_helpers.dart';
 import '../services/image_cache_service.dart';
@@ -287,7 +287,11 @@ class OptimizedMediaImage extends StatelessWidget {
     final debugBuilder = debugImageBuilder;
     if (debugBuilder != null) return debugBuilder(context, imagePath);
 
-    final localFile = localFilePath != null ? File(localFilePath!) : null;
+    final storedPath = context.select<LocalLibraryProvider?, String?>(
+      (p) => p?.posterPath(client?.serverId, imagePath),
+    );
+    final effectiveLocalPath = localFilePath ?? storedPath;
+    final localFile = effectiveLocalPath != null ? File(effectiveLocalPath) : null;
     final hasLocal = localFile != null && localFile.existsSync();
 
     // No local file and no network path → fallback

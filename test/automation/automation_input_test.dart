@@ -8,6 +8,35 @@ import 'package:pleya/utils/native_input_session.dart';
 void main() {
   tearDown(() => NativeInputSession.end());
 
+  testWidgets('transport drag supplies monotonic nonzero elapsed source time', (tester) async {
+    final events = <PointerEvent>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: events.add,
+          onPointerMove: events.add,
+          onPointerUp: events.add,
+          child: const SizedBox.expand(),
+        ),
+      ),
+    );
+    final result = dispatchAutomationPointerDrag(
+      const Offset(100, 100),
+      const Offset(200, 300),
+      duration: const Duration(milliseconds: 120),
+    );
+    for (var i = 0; i < 16; i++) {
+      await tester.pump(const Duration(milliseconds: 20));
+    }
+    expect(await result, AutomationInputResult.dispatched);
+    expect(events.whereType<PointerMoveEvent>().length, 12);
+    expect(events.last.timeStamp, greaterThan(events.first.timeStamp));
+    for (var i = 1; i < events.length; i++) {
+      expect(events[i].timeStamp, greaterThanOrEqualTo(events[i - 1].timeStamp));
+    }
+  });
+
   testWidgets('select dispatches through the real focus tree and activates a button', (tester) async {
     var pressed = false;
     final focusNode = FocusNode();

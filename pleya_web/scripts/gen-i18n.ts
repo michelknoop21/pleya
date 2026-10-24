@@ -6,6 +6,8 @@
  * web dezelfde betekenis hebben. Web-eigen teksten staan los in
  * `src/lib/i18n/web.ts`, zodat een sleutel nooit stil van bron wisselt.
  *
+ * Dezelfde sleutels komen uit `nl.i18n.json`.
+ *
  * Draaien: bun run scripts/gen-i18n.ts
  */
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -14,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const source = resolve(here, '../../lib/i18n/en.i18n.json');
+const sourceNl = resolve(here, '../../lib/i18n/nl.i18n.json');
 const target = resolve(here, '../src/lib/i18n/shared.ts');
 
 /** Precies de sleutels die web overneemt. Volgorde is de uitvoervolgorde. */
@@ -47,26 +50,40 @@ const KEYS = [
   'settings.language'
 ] as const;
 
-const raw = JSON.parse(readFileSync(source, 'utf8')) as Record<string, unknown>;
+function load(file: string): Record<string, unknown> {
+  return JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>;
+}
 
-function pick(path: string): string {
+/** Een sleutel die in een bron ontbreekt laat het script falen, voor elke taal. */
+function pick(raw: Record<string, unknown>, file: string, path: string): string {
   let node: unknown = raw;
   for (const part of path.split('.')) {
     if (typeof node !== 'object' || node === null) {
-      throw new Error(`sleutel ${path} bestaat niet in ${source}`);
+      throw new Error(`sleutel ${path} bestaat niet in ${file}`);
     }
     node = (node as Record<string, unknown>)[part];
   }
-  if (typeof node !== 'string') throw new Error(`sleutel ${path} is geen tekst`);
+  if (typeof node !== 'string') throw new Error(`sleutel ${path} is geen tekst in ${file}`);
   return node;
 }
 
-const lines = KEYS.map((key) => `  ${JSON.stringify(key)}: ${JSON.stringify(pick(key))}`);
+function block(raw: Record<string, unknown>, file: string): string {
+  return KEYS.map(
+    (key) => `  ${JSON.stringify(key)}: ${JSON.stringify(pick(raw, file, key))}`
+  ).join(',\n');
+}
 
-const out = `// Gegenereerd uit lib/i18n/en.i18n.json, de i18n-bron van de app.
+const en = block(load(source), source);
+const nl = block(load(sourceNl), sourceNl);
+
+const out = `// Gegenereerd uit lib/i18n/en.i18n.json en nl.i18n.json, de i18n-bron van de app.
 // Niet met de hand wijzigen; draai: bun run scripts/gen-i18n.ts
 export const shared = {
-${lines.join(',\n')}
+${en}
+} as const;
+
+export const sharedNl = {
+${nl}
 } as const;
 
 export type SharedKey = keyof typeof shared;

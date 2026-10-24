@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "server.confirm_mismatch",
+    "message": "the confirmation does not match",
+    "retryable": false,
+    "details": {
+      "expected": "herstel 2026-10-23T01:30:00Z: kijkstatus, gebruikers, sessies, instellingen en scans van daarna gaan verloren"
+    }
+  }
+}

@@ -39,6 +39,7 @@ library;
 
 import '../media/media_kind.dart';
 import 'hidden_libraries_provider.dart';
+import 'local_library_provider.dart';
 import 'libraries_provider.dart';
 import 'multi_server_provider.dart';
 import 'unified_catalog_provider.dart';
@@ -48,13 +49,16 @@ class UnifiedCatalogs {
     required MultiServerProvider multiServer,
     required LibrariesProvider libraries,
     required HiddenLibrariesProvider hiddenLibraries,
+    LocalLibraryProvider? localLibrary,
   }) : _multiServer = multiServer,
        _libraries = libraries,
-       _hiddenLibraries = hiddenLibraries;
+       _hiddenLibraries = hiddenLibraries,
+       _localLibrary = localLibrary;
 
   final MultiServerProvider _multiServer;
   final LibrariesProvider _libraries;
   final HiddenLibrariesProvider _hiddenLibraries;
+  final LocalLibraryProvider? _localLibrary;
 
   UnifiedCatalogProvider? _movies;
   UnifiedCatalogProvider? _shows;
@@ -81,6 +85,7 @@ class UnifiedCatalogs {
     libraries: _libraries,
     hiddenLibraries: _hiddenLibraries,
     kind: kind,
+    localLibrary: _localLibrary,
   );
 
   /// Disposes whichever catalogs were actually built. Wired to the registering

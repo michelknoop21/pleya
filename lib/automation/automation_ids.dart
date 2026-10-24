@@ -84,6 +84,13 @@ class AutomationIds {
   /// tracker/requests gating), so a slot index would shift under those
   /// conditions in a way a real user's route never depends on.
   static const String settingsTile = 'settings.tile';
+  static const String screenLocalLibrary = 'screen.local_library';
+  static const String localLibraryEnable = 'local_library.enable';
+  static const String localLibraryWifi = 'local_library.wifi';
+  static const String localLibraryStatus = 'local_library.status';
+  static const String localLibrarySync = 'local_library.sync';
+  static const String localLibraryClear = 'local_library.clear';
+  static const String localLibraryAction = 'local_library.action';
 
   /// One category in the TV Appearance page, in its visible display order.
   static const String settingsAppearanceCategory = 'settings.appearance.category';
@@ -857,6 +864,13 @@ class AutomationIds {
     {'id': libraryPickerCard, 'role': 'grid.item', 'instanceable': true},
     {'id': screenSettings, 'role': 'screen', 'instanceable': false},
     {'id': settingsTile, 'role': 'list.item', 'instanceable': true},
+    {'id': screenLocalLibrary, 'role': 'screen', 'instanceable': false},
+    {'id': localLibraryEnable, 'role': 'switch', 'instanceable': false},
+    {'id': localLibraryWifi, 'role': 'switch', 'instanceable': false},
+    {'id': localLibraryStatus, 'role': 'status', 'instanceable': false},
+    {'id': localLibrarySync, 'role': 'button', 'instanceable': false},
+    {'id': localLibraryClear, 'role': 'button', 'instanceable': false},
+    {'id': localLibraryAction, 'role': 'button', 'instanceable': true},
     for (final tab in NavigationTabId.values) {'id': navTab(tab), 'role': 'nav', 'instanceable': false},
     {'id': navProfile, 'role': 'nav', 'instanceable': false},
     {'id': navReconnect, 'role': 'nav', 'instanceable': false},

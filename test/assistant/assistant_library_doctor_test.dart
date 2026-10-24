@@ -101,6 +101,7 @@ class _Server extends find.FakeServer implements LibraryScanClient, ItemMetadata
   @override
   Future<LibraryPage<MediaItem>> fetchChildrenPage(
     String parentId, {
+    bool requireTotalCount = false,
     int? start,
     int? size,
     AbortController? abort,
