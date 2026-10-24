@@ -16,6 +16,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/providers/discover_provider.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/optimized_media_image.dart';
 import 'package:pleya/widgets/pleya_logo.dart';
@@ -125,9 +126,16 @@ void main() {
 
     testWidgets('the bar shows its title once the header has scrolled under it', (tester) async {
       await pump(tester, page(rows: 20));
+      final tk = tokens(tester.element(find.byType(SettingsStudioHeader)));
+      expect(
+        tester.widget<AppBar>(find.byType(AppBar)).backgroundColor,
+        settingsStudioWashTop(tk),
+        reason: 'the bar carries the header wash while the header is in view',
+      );
 
       await tester.drag(find.byType(Scrollable).first, const Offset(0, -300));
       await tester.pumpAndSettle();
+      expect(tester.widget<AppBar>(find.byType(AppBar)).backgroundColor, isNot(settingsStudioWashTop(tk)));
 
       final inBar = find.descendant(of: find.byType(AppBar), matching: find.text('Weergave'));
       expect(inBar, findsOneWidget);

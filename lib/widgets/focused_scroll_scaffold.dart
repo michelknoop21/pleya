@@ -4,7 +4,7 @@ import '../focus/key_event_utils.dart';
 import 'desktop_app_bar.dart';
 import 'ios_status_bar_tap_scroll_to_top.dart';
 import 'scroll_crown/scroll_crown.dart';
-import 'settings/settings_studio_header.dart';
+import 'settings/settings_studio_bar.dart';
 
 /// A scaffold widget that wraps Focus + Scaffold + CustomScrollView
 /// with consistent keyboard navigation handling and app bar styling.
@@ -96,14 +96,20 @@ class _FocusedScrollScaffoldState extends State<FocusedScrollScaffold> {
       child: CustomScrollView(
         slivers: [
           ExcludeFocus(
-            child: CustomAppBar(
-              title: header == null
-                  ? widget.title
-                  : SettingsStudioCompactTitle(collapsed: _headerCollapsed, child: widget.title),
-              pinned: widget.pinned,
-              actions: widget.actions,
-              automaticallyImplyLeading: widget.automaticallyImplyLeading,
-            ),
+            child: header == null
+                ? CustomAppBar(
+                    title: widget.title,
+                    pinned: widget.pinned,
+                    actions: widget.actions,
+                    automaticallyImplyLeading: widget.automaticallyImplyLeading,
+                  )
+                : SettingsStudioBar(
+                    collapsed: _headerCollapsed,
+                    title: widget.title,
+                    pinned: widget.pinned,
+                    actions: widget.actions,
+                    automaticallyImplyLeading: widget.automaticallyImplyLeading,
+                  ),
           ),
           if (header != null) SliverToBoxAdapter(child: ExcludeFocus(child: header)),
           ...widget.slivers,

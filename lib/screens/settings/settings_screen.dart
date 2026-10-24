@@ -39,7 +39,6 @@ import '../../utils/dialogs.dart';
 import '../../utils/snackbar_helper.dart';
 import '../../utils/platform_detector.dart';
 import '../../utils/update_dialog.dart';
-import '../../widgets/desktop_app_bar.dart';
 import '../../widgets/dialog_action_button.dart';
 import '../../widgets/setting_tile.dart';
 import '../../widgets/settings_builder.dart';

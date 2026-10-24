@@ -21,10 +21,7 @@ extension _SettingsPhonePage on _SettingsScreenState {
               primary: false,
               slivers: [
                 ExcludeFocus(
-                  child: CustomAppBar(
-                    title: SettingsStudioCompactTitle(collapsed: _studioCollapsed, child: Text(t.settings.title)),
-                    pinned: true,
-                  ),
+                  child: SettingsStudioBar(collapsed: _studioCollapsed, title: Text(t.settings.title)),
                 ),
                 SliverToBoxAdapter(
                   child: ExcludeFocus(

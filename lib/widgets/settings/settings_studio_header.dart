@@ -14,7 +14,6 @@ library;
 
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -28,7 +27,10 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/media_image_helper.dart';
 import '../optimized_media_image.dart';
 import '../pleya_logo.dart';
+import 'settings_studio_bar.dart';
 import 'settings_studio_style.dart';
+
+export 'settings_studio_bar.dart';
 
 /// Size of the large title, the iOS large-title size.
 const double kSettingsStudioTitleSize = 34;
@@ -50,10 +52,6 @@ const double kSettingsStudioMinHeight = 136;
 /// poster half a screen wide.
 const double kSettingsStudioArtFraction = 0.44;
 const double kSettingsStudioMaxArtWidth = 360;
-
-/// Scroll offset past which the large title sits under the pinned bar and the
-/// bar's compact title takes over.
-const double kSettingsStudioCollapseOffset = 56;
 
 /// The backdrop the header shows: the first item [DiscoverProvider] already
 /// loaded (Verder kijken first, then the newest films) that has wide art.
@@ -200,24 +198,22 @@ class _WarmWash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final strength = tokens.isLight ? 0.08 : 0.16;
+    // Starts at exactly the colour the pinned bar carries above it, so the
+    // wash runs on from the status bar instead of starting on a line.
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            tokens.accent.withValues(alpha: strength),
-            tokens.accent.withValues(alpha: 0),
-          ],
+          colors: [settingsStudioWashTop(tokens), tokens.bg],
         ),
       ),
     );
   }
 }
 
-/// The right-hand panel: the backdrop, or the brand fallback, faded into the
-/// page on its leading and bottom edges so nothing ends in a hard poster edge.
+/// The right-hand panel: the backdrop, or the brand fallback, faded out on its
+/// leading, top and bottom edges so nothing ends in a hard poster edge.
 class _ArtPanel extends StatelessWidget {
   const _ArtPanel({required this.art, required this.tokens});
 
@@ -250,35 +246,32 @@ class _ArtPanel extends StatelessWidget {
         ],
       );
     }
-    final bg = tokens.bg;
+    // The edges fade the picture itself out (an alpha mask), so what shows
+    // through is the header's own wash, not a block of page colour painted
+    // over it.
+    final direction = Directionality.of(context);
     return ClipRect(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          picture,
-          // Leading edge: page colour to clear over the first 75% of the panel.
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: AlignmentDirectional.centerStart,
-                end: AlignmentDirectional.centerEnd,
-                colors: [bg, bg.withValues(alpha: 0.85), bg.withValues(alpha: 0)],
-                stops: const [0, 0.35, 0.75],
-              ),
-            ),
-          ),
-          // Bottom edge, so the panel ends in the page and not on a line.
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [bg.withValues(alpha: 0), bg.withValues(alpha: 0), bg],
-                stops: const [0, 0.6, 1],
-              ),
-            ),
-          ),
-        ],
+      child: ShaderMask(
+        blendMode: BlendMode.dstIn,
+        // Leading edge: clear over the first 75% of the panel.
+        shaderCallback: (rect) => LinearGradient(
+          begin: AlignmentDirectional.centerStart.resolve(direction),
+          end: AlignmentDirectional.centerEnd.resolve(direction),
+          colors: const [Color(0x00000000), Color(0x26000000), Color(0xFF000000)],
+          stops: const [0, 0.35, 0.75],
+        ).createShader(rect),
+        child: ShaderMask(
+          blendMode: BlendMode.dstIn,
+          // Top and bottom: no hard line under the bar, and the panel ends in
+          // the page rather than on an edge.
+          shaderCallback: (rect) => const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0x00000000), Color(0xFF000000), Color(0xFF000000), Color(0x00000000)],
+            stops: [0, 0.22, 0.6, 1],
+          ).createShader(rect),
+          child: picture,
+        ),
       ),
     );
   }
@@ -307,37 +300,4 @@ class _BrandFallback extends StatelessWidget {
       child: const Align(alignment: Alignment(0.35, -0.1), child: PleyaLogo(size: 52)),
     );
   }
-}
-
-/// The pinned bar's title on a page with a [SettingsStudioHeader]: absent
-/// while the large title is in view, faded in once it has scrolled under the
-/// bar. Absent rather than transparent, so the page has one title for screen
-/// readers and for finders at rest, not two.
-class SettingsStudioCompactTitle extends StatelessWidget {
-  const SettingsStudioCompactTitle({super.key, required this.collapsed, required this.child});
-
-  final ValueListenable<bool> collapsed;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: collapsed,
-      builder: (context, isCollapsed, _) => AnimatedSwitcher(
-        duration: reduceMotion(context, tokens(context).fast),
-        child: isCollapsed
-            ? KeyedSubtree(key: const ValueKey(true), child: child)
-            : const SizedBox.shrink(key: ValueKey(false)),
-      ),
-    );
-  }
-}
-
-/// Flips [collapsed] from the offset of the page's own scroll view. Returns
-/// false so the notification keeps bubbling to the scroll crown and others.
-bool settingsStudioTrackScroll(ValueNotifier<bool> collapsed, ScrollNotification notification) {
-  if (notification.depth == 0 && notification.metrics.axis == Axis.vertical) {
-    collapsed.value = notification.metrics.pixels > kSettingsStudioCollapseOffset;
-  }
-  return false;
 }
