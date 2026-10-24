@@ -55,9 +55,9 @@ import wakelock_plus
         guard call.method == "availableBytes" else { result(FlutterMethodNotImplemented); return }
         do {
           let values = try URL(fileURLWithPath: NSHomeDirectory()).resourceValues(forKeys: [
-            .volumeAvailableCapacityForImportantUsageKey, .volumeAvailableCapacityKey,
+            .volumeAvailableCapacityKey
           ])
-          result(values.volumeAvailableCapacityForImportantUsage ?? values.volumeAvailableCapacity.map { Int64($0) })
+          result(values.volumeAvailableCapacity.map { Int64($0) })
         } catch {
           result(FlutterError(code: "STORAGE_UNAVAILABLE", message: "Unable to read available storage", details: nil))
         }
