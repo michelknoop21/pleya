@@ -51,6 +51,25 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 406 · 24 October 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: b74743eb29f4e258f42383af92722a02401ecc16 -->
+
+### Improved
+
+- **Films and Series on Apple TV are one long list.** The library keeps loading in the background, so you no longer wait at the bottom of each page. If a title gets extra details while the list fills up, the focus stays on it instead of jumping to its neighbour.
+- **Long libraries load much faster.** Each round of loading used to redo the work for every title already on screen, so it slowed down with every page. In a test with 20,000 titles per library, loading went from nearly two minutes to about sixteen seconds.
+
+### Fixed
+
+- **Big P is readable in light mode on iPhone.** The greeting and the question field were dark text on a dark background.
+- **A short Plex outage no longer leaves titles unmatched for the rest of the session.** A failed lookup is tried again instead of being remembered as "no details".
+
+### Notes
+
+- Worth checking on Apple TV with a large library on both Plex and Jellyfin: scroll Films to the bottom and see that it keeps loading without pauses and without slowing down. This has been tested in the simulator and in unit tests, not on a real Apple TV.
+- Worth checking on iPhone in light mode: open Big P and read the greeting and the question field.
+
 ## 2.8.1 · build 405 · 24 October 2026 · iPhone, iPad, Apple TV and Mac
 
 <!-- commit: 3f994e401d2a89d4805031d28a5ff613bb0b41f8 -->
