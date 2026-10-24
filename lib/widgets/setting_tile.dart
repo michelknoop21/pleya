@@ -203,7 +203,7 @@ class SettingNavigationTile extends StatelessWidget {
                   Text(trailingLabel!),
                   const SizedBox(width: 16),
                 ] else ...[
-                  SettingValueLabel(trailingLabel!, title: title),
+                  SettingValueLabel(trailingLabel!, title: title, besideDescription: subtitle != null),
                   const SizedBox(width: 8),
                 ],
               if (needsAttention) ...[

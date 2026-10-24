@@ -36,7 +36,7 @@ import 'setting_value_label.dart';
     trailing: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SettingValueLabel(value, title: title),
+        SettingValueLabel(value, title: title, besideDescription: description != null),
         const SizedBox(width: 8),
         chevron,
       ],

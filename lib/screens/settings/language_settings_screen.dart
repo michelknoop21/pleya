@@ -380,7 +380,7 @@ class _ValueRow extends StatelessWidget {
                 ),
               )
             else
-              SettingValueLabel(value, title: title),
+              SettingValueLabel(value, title: title, besideDescription: true),
             const SizedBox(width: 8),
             AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
           ],

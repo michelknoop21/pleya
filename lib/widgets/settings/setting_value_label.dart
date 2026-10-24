@@ -24,12 +24,18 @@ import 'settings_studio_style.dart';
 /// a `ListTile` lays out its trailing slot with loose constraints that say
 /// nothing about the row.
 class SettingValueLabel extends StatelessWidget {
-  const SettingValueLabel(this.value, {super.key, this.title});
+  const SettingValueLabel(this.value, {super.key, this.title, this.besideDescription = false});
 
   final String value;
 
   /// The row's title, when the row has one beside the value.
   final String? title;
+
+  /// The row has explanatory text under its title. That text shares the
+  /// column with the title, so the value takes at most
+  /// [_kDescribedRowValueShare] of the room and the description does not
+  /// stack into five short lines.
+  final bool besideDescription;
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +75,8 @@ class SettingValueLabel extends StatelessWidget {
     final titleWidth = painter.width;
     painter.dispose();
     final floor = text * _kMinShareOfText;
-    return math.max(floor, math.min(text - titleWidth, cap));
+    final ceiling = besideDescription ? math.min(cap, text * _kDescribedRowValueShare) : cap;
+    return math.max(floor, math.min(text - titleWidth, ceiling));
   }
 }
 
@@ -79,3 +86,6 @@ const double _kTrailingChrome = 16 + 8 + 20 + 16;
 
 /// The least share of the title-and-value room a value keeps.
 const double _kMinShareOfText = 0.25;
+
+/// The most a value takes of that room on a row with a description.
+const double _kDescribedRowValueShare = 0.5;

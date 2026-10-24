@@ -153,6 +153,25 @@ void main() {
       expect(tester.getSize(find.byType(ListTile)).height, greaterThanOrEqualTo(44));
     });
 
+    testWidgets('a row with a description gives its value less room', (tester) async {
+      const long = 'Automatisch, met een heel lange uitleg erachter';
+      await pump(
+        tester,
+        SettingsGroup(
+          children: [
+            selectionTile(title: 'Uitvoer', valueBuilder: (_) => long, descriptionBuilder: (_) => 'Uitleg'),
+            selectionTile(title: 'Uitvoer', valueBuilder: (_) => long),
+          ],
+        ),
+      );
+      final widths = tester
+          .widgetList(find.byType(SettingValueLabel))
+          .map((w) => tester.getSize(find.byWidget(w)).width);
+      // The card is 343 wide; title and value share 343 - 68 - 60 = 215.
+      expect(widths.first, lessThanOrEqualTo(215 * 0.5 + 0.5));
+      expect(widths.last, greaterThan(widths.first));
+    });
+
     testWidgets('a navigation row bounds its trailing label the same way', (tester) async {
       await pump(
         tester,
