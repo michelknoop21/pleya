@@ -54,7 +54,11 @@ void main() {
   testWidgets('the tint covers the full width of the panel', (tester) async {
     for (final x in [2.0, 400.0, 797.0]) {
       final red = await redDown(tester, x: x);
-      expect(red[50], lessThan(90), reason: 'the page shows through the panel at x=$x only dimmed: ${red[50]}');
+      expect(
+        red[50],
+        lessThan(30),
+        reason: 'a panel returning mid-list sits on posters; they may not read through it at x=$x: ${red[50]}',
+      );
     }
   });
 

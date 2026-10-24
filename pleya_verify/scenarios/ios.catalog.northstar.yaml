@@ -28,8 +28,8 @@ steps:
   - assert: {id: "catalog.chip.sources[movies]", insideViewport: true}
   - assert: {id: "catalog.chip.filters[movies]", insideViewport: true, minimumTapTarget: 44}
   - assert: {id: "catalog.chip.sort[movies]", insideViewport: true}
-  - assert: {id: "catalog.chip.sources[movies]", above: "catalog.count[movies]"}
-  # The count line sits between the chips and the grid, never a summed total
+  - assert: {id: "catalog.chip.sources[movies]", below: "catalog.count[movies]"}
+  # The count sits beside the title (Dense Library, A-06), never a summed total
   # across sources (10.7, paragraaf 5/6 van het auditrapport). This asserts
   # presence and position, not the number itself, which the fixture's real
   # item count decides.
