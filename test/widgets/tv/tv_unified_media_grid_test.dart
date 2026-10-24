@@ -34,7 +34,7 @@ import '../../test_helpers/golden.dart';
 
 /// A self-contained artwork URL, so `getOptimizedImageUrl` needs no client to
 /// size it and the fixtures stay honest about where the URLs come from.
-UnifiedMediaGroup _group(int index) {
+UnifiedMediaGroup _group(int index, {String? groupId}) {
   final item = MediaItem(
     id: 'i$index',
     backend: MediaBackend.jellyfin,
@@ -46,7 +46,7 @@ UnifiedMediaGroup _group(int index) {
   );
   final source = UnifiedMediaSource.fromItem(item);
   return UnifiedMediaGroup(
-    groupId: 'g$index',
+    groupId: groupId ?? 'g$index',
     identity: CanonicalMediaIdentity.movie(title: 'Title $index', year: 2010),
     sources: [source],
     representativeSourceKey: source.sourceKey,
@@ -141,6 +141,43 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(warmed.length, warmed.toSet().length, reason: 'no poster is fetched twice');
+  });
+
+  testWidgets('focus follows a title whose group id changed because it gained external ids', (tester) async {
+    // A later duplicate gives a group strong ids and so a new content-derived
+    // id. It is the same title on the same source: focus must stay on it and
+    // not jump to a neighbour.
+    final groups = ValueNotifier<List<UnifiedMediaGroup>>([for (var i = 0; i < 12; i++) _group(i)]);
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: InputModeTracker(
+            child: Scaffold(
+              body: ValueListenableBuilder(
+                valueListenable: groups,
+                builder: (context, list, _) => TvUnifiedMediaGrid(
+                  groups: list,
+                  onActivate: (_) {},
+                  hasMore: false,
+                  isLoadingMore: false,
+                  onLoadMore: () {},
+                  precache: (request, context) async {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    Focus.of(tester.element(find.text('Title 4'))).requestFocus();
+    await tester.pumpAndSettle();
+
+    groups.value = [for (var i = 0; i < 12; i++) _group(i, groupId: i == 4 ? 'g4-with-ids' : null)];
+    await tester.pumpAndSettle();
+
+    expect(Focus.of(tester.element(find.text('Title 4'))).hasFocus, isTrue, reason: 'still on the same title');
   });
 
   testWidgets('a grid leaving the tree mid-warm neither throws nor keeps working', (tester) async {

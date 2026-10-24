@@ -143,6 +143,29 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
     precache: widget.precache,
   );
 
+  /// The groups before the latest update, so a focused card whose id changed
+  /// can be found again through the sources it kept.
+  List<UnifiedMediaGroup> _previousGroups = const [];
+
+  @override
+  void didUpdateWidget(TvUnifiedMediaGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _previousGroups = oldWidget.groups;
+  }
+
+  /// A group that gained external ids gets a new content-derived id, but it is
+  /// still the same title: continue it on the current group that holds any of
+  /// its sources.
+  String? _successorOf(String removedId) {
+    final old = _previousGroups.where((g) => g.groupId == removedId).firstOrNull;
+    if (old == null) return null;
+    final keys = {for (final s in old.sources) s.sourceKey};
+    for (final group in widget.groups) {
+      if (group.sources.any((s) => keys.contains(s.sourceKey))) return group.groupId;
+    }
+    return null;
+  }
+
   @override
   void dispose() {
     _prefetcher.dispose();
@@ -183,6 +206,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
     final scale = TvLayoutConstants.scaleOf(context);
     return TvCatalogCardGrid(
       key: _gridKey,
+      successorOf: _successorOf,
       itemIds: [for (final group in widget.groups) group.groupId],
       cardHeight: (cardWidth) => TvCatalogLayout.cardHeight(cardWidth, scale),
       controller: widget.controller,

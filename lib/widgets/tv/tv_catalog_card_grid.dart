@@ -119,6 +119,7 @@ class TvCatalogCardGrid extends StatefulWidget {
     this.rowAligned = false,
     this.fitTwoRows = false,
     this.fitScale,
+    this.successorOf,
   });
 
   /// One stable id per item, in display order. Identity, not position: see the
@@ -142,6 +143,12 @@ class TvCatalogCardGrid extends StatefulWidget {
 
   final bool hasMore;
   final bool isLoadingMore;
+
+  /// Which current item continues [removedId], when an item's id changed
+  /// rather than the item left (a unified group gaining external ids changes
+  /// its content-derived id). Null or a miss falls back to the nearest
+  /// survivor.
+  final String? Function(String removedId)? successorOf;
 
   /// Called when the focus reaches within [loadMoreRowThreshold] rows of the
   /// end and more pages exist. Hoofdstuk 28: no full-page spinner, no reflow —
@@ -536,7 +543,10 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     }
     if (!losesFocus) return;
 
-    final replacement = _nearestSurvivor(previous: previous, from: oldIndex);
+    final successor = widget.successorOf?.call(focusedId);
+    final replacement = successor != null && live.contains(successor)
+        ? successor
+        : _nearestSurvivor(previous: previous, from: oldIndex);
     _focusedId = replacement;
     if (!heldTheFocus) return;
     // After the frame that removes the card: the replacement's node may not be
