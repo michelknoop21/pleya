@@ -119,6 +119,7 @@ class TvCatalogCardGrid extends StatefulWidget {
     this.rowAligned = false,
     this.fitTwoRows = false,
     this.fitScale,
+    this.loadEagerly = false,
   });
 
   /// One stable id per item, in display order. Identity, not position: see the
@@ -142,6 +143,16 @@ class TvCatalogCardGrid extends StatefulWidget {
 
   final bool hasMore;
   final bool isLoadingMore;
+
+  /// One long list instead of pages: keep asking for the next page as soon as
+  /// the previous one landed, wherever the focus is, until [hasMore] is false.
+  /// The focus-based look-ahead then never has anything left to wait for.
+  final bool loadEagerly;
+
+  /// Eager loading stops here: every card is a built widget with its own focus
+  /// node (the grid is not virtualised), so a library beyond this keeps the
+  /// focus look-ahead instead of loading unattended.
+  static const int eagerLoadLimit = 3000;
 
   /// Called when the focus reaches within [loadMoreRowThreshold] rows of the
   /// end and more pages exist. Hoofdstuk 28: no full-page spinner, no reflow —
@@ -220,11 +231,11 @@ class TvCatalogCardGrid extends StatefulWidget {
   /// How close to the end of the loaded pages the focus has to get before the
   /// next page is asked for, in grid rows.
   ///
-  /// Two, measured in rows rather than in cards because the column count is
-  /// 5–7 depending on the panel: two rows is one D-pad press of warning at
-  /// the slowest, and it is what turns "press DOWN, wait, then the row
-  /// appears" into "the row is already there".
-  static const int loadMoreRowThreshold = 2;
+  /// Four, measured in rows rather than in cards because the column count is
+  /// 5–7 depending on the panel: each row is one D-pad press of warning, and it is what turns "press DOWN, wait, then the row
+  /// appears" into "the row is already there". Four rows of warning keep
+  /// up with a held D-pad.
+  static const int loadMoreRowThreshold = 4;
 
   @override
   State<TvCatalogCardGrid> createState() => TvCatalogCardGridState();
@@ -269,6 +280,22 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
   void initState() {
     super.initState();
     _focusedId = _restoredId();
+    _loadEagerly();
+  }
+
+  /// The list length at the last eager request. A round that added nothing
+  /// (slow or failing source) must not be asked again in a loop: the focus
+  /// look-ahead still resumes it once the viewer nears the end.
+  int _eagerRequestedAt = -1;
+
+  void _loadEagerly() {
+    if (!widget.loadEagerly || widget.itemIds.length >= TvCatalogCardGrid.eagerLoadLimit) return;
+    if (widget.itemIds.length == _eagerRequestedAt) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !widget.loadEagerly || !widget.hasMore || widget.isLoadingMore) return;
+      _eagerRequestedAt = widget.itemIds.length;
+      widget.onLoadMore();
+    });
   }
 
   /// The remembered card, but only while it is still in the list.
@@ -286,6 +313,18 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     // ordinary case on a restored mount: the remembered card only becomes
     // resolvable once it is actually in the list.
     _focusedId ??= _restoredId();
+    _loadEagerly();
+    // A finished load can leave the focus inside the threshold again (fast
+    // scrolling, or a short page); no focus event will follow, so re-check.
+    final focusedId = _focusedId;
+    if (!widget.loadEagerly && oldWidget.isLoadingMore && !widget.isLoadingMore && focusedId != null) {
+      final index = widget.itemIds.indexOf(focusedId);
+      if (index >= 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _maybeLoadMore(index);
+        });
+      }
+    }
   }
 
   @override

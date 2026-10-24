@@ -19,7 +19,6 @@ library;
 import 'dart:async';
 import '../../media/ids.dart';
 import '../../media/library_query.dart';
-import '../../utils/external_ids.dart';
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
@@ -27,6 +26,7 @@ import '../../media/unified/canonical_media_identity.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_source.dart';
 import '../../utils/app_logger.dart';
+import '../../utils/external_ids.dart';
 import '../../utils/media_server_http_client.dart';
 import '../../utils/media_server_timeouts.dart';
 import 'grouping_service.dart';
@@ -63,6 +63,12 @@ class UnifiedCatalogService {
   final MediaServerClient? Function(ServerId serverId) _clientFor;
   final LibraryPage<MediaItem>? Function(CatalogLibrary library, LibraryQuery query)? cachedPage;
   final ExternalIds? Function(String serverId, String targetId)? cachedExternalIds;
+
+  /// External-id lookups shared by every [_recomputeGroups] round of one merge
+  /// generation. The resolver's own cache is per call, so without this page N
+  /// re-fetched the ids of pages 1..N-1. Cleared in [_reset]; a failed lookup
+  /// removes itself so the next round retries it.
+  final Map<String, Future<ExternalIds>> _externalIdCache = {};
 
   /// Per-library page size (hoofdstuk 12.1's per-cursor fetch).
   final int pageSize;
@@ -233,6 +239,7 @@ class UnifiedCatalogService {
     _query = query;
     _cursors = [for (final library in libraries) UnifiedSourceCursor(library)];
     _poppedItems.clear();
+    _externalIdCache.clear();
     _groups = [];
     _everSucceeded = false;
   }
@@ -516,17 +523,27 @@ class UnifiedCatalogService {
   /// fallback was built for). Re-resolving already-seen items on every round
   /// re-fetches external ids for any item still sitting in a duplicate
   /// bucket — real but bounded waste (only bucket-colliding items cost a
-  /// fetch at all, per `identity_resolver.dart`'s own two-phase rule)
-  /// accepted for fase 3 rather than adding a second, invalidation-prone
-  /// cache on top of it.
+  /// fetch at all, per `identity_resolver.dart`'s own two-phase rule) —
+  /// which [_externalIdCache] now makes a one-time cost per item per
+  /// generation instead of a per-round one.
   Future<void> _recomputeGroups() async {
     final resolver = UnifiedIdentityResolver(
       fetchExternalIds: (serverId, targetId) async {
         final cached = cachedExternalIds?.call(serverId, targetId);
         if (cached != null) return cached;
-        final client = _clientFor(ServerId(serverId));
-        if (client == null) throw StateError('No client for server $serverId');
-        return client.fetchExternalIds(targetId);
+        final key = '$serverId:$targetId';
+        final cache = _externalIdCache;
+        final future = cache.putIfAbsent(key, () {
+          final client = _clientFor(ServerId(serverId));
+          if (client == null) return Future<ExternalIds>.error(StateError('No client for server $serverId'));
+          return client.fetchExternalIds(targetId);
+        });
+        // Only this generation's own failed entry is dropped: after a reset the
+        // key may already hold the next generation's future.
+        return future.catchError((Object error) {
+          if (identical(cache[key], future)) cache.remove(key);
+          throw error;
+        });
       },
     );
     final resolvables = [
