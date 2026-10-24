@@ -35,6 +35,7 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/profile_language_switch_tile.dart';
+import '../../widgets/settings/setting_value_label.dart';
 import '../../widgets/settings_page.dart';
 import '../../widgets/settings_section.dart';
 import '../../widgets/tv/tv_page_surface.dart';
@@ -366,16 +367,20 @@ class _ValueRow extends StatelessWidget {
           children: [
             // Bounded, because a language name is user data: "Traditional
             // Chinese" in a `ListTile`'s trailing slot takes whatever width it
-            // asks for and pushes the title off a phone.
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 160),
-              child: Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: tokens(context).textMuted),
-              ),
-            ),
+            // asks for and pushes the title off a phone. Off TV the shared
+            // A-24 value label, so this row reads like every other value row.
+            if (PlatformDetector.isTV())
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 160),
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: tokens(context).textMuted),
+                ),
+              )
+            else
+              SettingValueLabel(value, title: title),
             const SizedBox(width: 8),
             AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
           ],

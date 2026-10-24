@@ -19,6 +19,7 @@ import '../../utils/platform_detector.dart';
 import '../../utils/tv_hig.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/setting_tile.dart';
+import '../../widgets/settings/setting_value_label.dart';
 import '../../widgets/settings_page.dart';
 import '../../widgets/settings_builder.dart';
 import '../../widgets/settings_section.dart';
@@ -263,27 +264,58 @@ class AppearanceSettingsScreen extends StatelessWidget {
   Widget _densitySelector() {
     return SettingValueBuilder<int>(
       pref: SettingsService.libraryDensity,
-      builder: (context, density, _) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            const AppIcon(Symbols.grid_view_rounded, fill: 1),
-            const SizedBox(width: 16),
-            if (PlatformDetector.isTV()) ...[Text(t.settings.libraryDensity), const SizedBox(width: 20)],
-            Text(t.settings.compact, style: _densityLabelStyle(context)),
-            Expanded(
-              child: FocusableSlider(
-                value: density.toDouble(),
-                min: 1,
-                max: 5,
-                divisions: 4,
-                onChanged: (v) => SettingsService.instance.write(SettingsService.libraryDensity, v.round()),
-              ),
-            ),
-            Text(t.settings.comfortable, style: _densityLabelStyle(context)),
-          ],
+      builder: (context, density, _) {
+        final slider = FocusableSlider(
+          value: density.toDouble(),
+          min: 1,
+          max: 5,
+          divisions: 4,
+          onChanged: (v) => SettingsService.instance.write(SettingsService.libraryDensity, v.round()),
+        );
+        if (!PlatformDetector.isTV()) return _phoneDensityRow(context, density, slider);
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              const AppIcon(Symbols.grid_view_rounded, fill: 1),
+              const SizedBox(width: 16),
+              Text(t.settings.libraryDensity),
+              const SizedBox(width: 20),
+              Text(t.settings.compact, style: _densityLabelStyle(context)),
+              Expanded(child: slider),
+              Text(t.settings.comfortable, style: _densityLabelStyle(context)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// A-24: off TV the density row reads like the rows around it, the icon
+  /// badge, the title and the current step as its value, with the slider
+  /// and its two end labels on a line of their own under the title.
+  Widget _phoneDensityRow(BuildContext context, int density, Widget slider) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ListTile(
+          contentPadding: settingRowPadding(),
+          leading: const SettingsIconBadge(Symbols.grid_view_rounded),
+          title: Text(t.settings.libraryDensity),
+          trailing: SettingValueLabel('$density', title: t.settings.libraryDensity),
         ),
-      ),
+        Padding(
+          // Under the title: row inset, badge and the tile's title gap.
+          padding: const EdgeInsetsDirectional.fromSTEB(kSettingsSeparatorIndent, 0, 16, 8),
+          child: Row(
+            children: [
+              Text(t.settings.compact, style: _densityLabelStyle(context)),
+              Expanded(child: slider),
+              Text(t.settings.comfortable, style: _densityLabelStyle(context)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
