@@ -1168,7 +1168,7 @@ void main() {
       await pumpScreen(tester, [entry(key: 'a', title: 'Sintel'), entry(key: 'b', title: 'Big Buck Bunny')]);
 
       final title = tester.getRect(find.text(t.watchlist.title));
-      final count = tester.getRect(find.text(t.unifiedCatalog.titlesLoaded(count: 2)));
+      final count = tester.getRect(find.text(t.unifiedCatalog.titleCount(count: 2)));
       expect((count.center.dy - title.center.dy).abs(), lessThan(8), reason: 'count beside the title: $title $count');
       expect(count.left, greaterThan(title.right));
       expect(tester.getRect(find.byType(AppBar)).height, 48);
@@ -1182,7 +1182,7 @@ void main() {
       await pumpScreen(tester, [entry(key: 'a', title: 'Sintel')]);
 
       expect(find.text(t.watchlist.title), findsOneWidget);
-      expect(find.text(t.unifiedCatalog.titlesLoaded(count: 1)), findsNothing);
+      expect(find.text(t.unifiedCatalog.oneTitle), findsNothing);
       expect(tester.getRect(find.byType(AppBar)).height, kToolbarHeight);
     }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
   });

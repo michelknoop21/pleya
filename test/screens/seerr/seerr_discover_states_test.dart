@@ -272,7 +272,9 @@ void main() {
     tester,
   ) async {
     fake.on('GET /discover/movies', page([1, 2, 3]));
-    tester.view.physicalSize = const Size(393 * 3, 852 * 3);
+    // Still a phone (shortest side under 600), wide enough for the test
+    // font, which draws every glyph a full em wide.
+    tester.view.physicalSize = const Size(580 * 3, 852 * 3);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     provider = await seerrProvider(fake);

@@ -13,6 +13,8 @@ import '../app_icon.dart';
 /// Height of [MobileDenseTitleRow] when it sits in a [MobileDenseSliverAppBar].
 const double mobileDenseTitleRowHeight = 48;
 
+const double _countGap = 10;
+
 class MobileDenseTitleRow extends StatelessWidget {
   const MobileDenseTitleRow({
     super.key,
@@ -41,14 +43,10 @@ class MobileDenseTitleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final countText = count;
-    Widget? countWidget = countText == null
-        ? null
-        : Text(
-            countText,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 13, color: tokens(context).textMuted),
-          );
+    // Explicit weight: inside an app bar the title style would make it bold.
+    final countStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: tokens(context).textMuted);
+    const titleStyle = TextStyle(fontSize: 22, fontWeight: FontWeight.w800);
+    Widget? countWidget = countText == null ? null : Text(countText, maxLines: 1, softWrap: false, style: countStyle);
     final countId = countAutomationId;
     if (countWidget != null && countId != null) {
       countWidget = AutomationNode(id: countId, instance: automationInstance, role: 'region', child: countWidget);
@@ -60,20 +58,37 @@ class MobileDenseTitleRow extends StatelessWidget {
         children: [
           if (onBack != null) IconButton(onPressed: onBack, icon: const AppIcon(Symbols.arrow_back_rounded, fill: 1)),
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Flexible(
-                  child: Text(
-                    title,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // The title has priority: the count is shown only when it
+                // fits whole beside it, never cut to "2 bi…".
+                final base = DefaultTextStyle.of(context).style;
+                double widthOf(String text, TextStyle style) {
+                  final painter = TextPainter(
+                    text: TextSpan(text: text, style: base.merge(style)),
+                    textDirection: Directionality.of(context),
+                    textScaler: MediaQuery.textScalerOf(context),
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-                  ),
-                ),
-                if (countWidget != null) ...[const SizedBox(width: 10), Flexible(child: countWidget)],
-              ],
+                  )..layout();
+                  final width = painter.width;
+                  painter.dispose();
+                  return width;
+                }
+
+                final showCount =
+                    countWidget != null &&
+                    widthOf(title, titleStyle) + _countGap + widthOf(countText!, countStyle) <= constraints.maxWidth;
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Flexible(
+                      child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: titleStyle),
+                    ),
+                    if (showCount) ...[const SizedBox(width: _countGap), countWidget],
+                  ],
+                );
+              },
             ),
           ),
           ...actions,

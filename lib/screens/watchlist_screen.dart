@@ -241,7 +241,9 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
                   title: t.watchlist.title,
                   count: provider == null || (provider.isLoading && all.isEmpty)
                       ? null
-                      : t.unifiedCatalog.titlesLoaded(count: entries.length),
+                      : entries.length == 1
+                      ? t.unifiedCatalog.oneTitle
+                      : t.unifiedCatalog.titleCount(count: entries.length),
                 ),
               )
             else
