@@ -12,8 +12,8 @@ import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
 import '../../mixins/controller_disposer_mixin.dart';
 import '../../models/seerr/seerr_media.dart';
-import '../../widgets/desktop_app_bar.dart';
 import 'mobile_seerr_discover_view.dart';
+import '../../widgets/mobile/mobile_dense_title_row.dart';
 import '../../widgets/mobile/mobile_discovery_shell.dart';
 import '../../navigation/main_screen_scope.dart';
 import '../../navigation/tv/tv_content_route_registry.dart';
@@ -844,6 +844,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   /// requests, then the same discover rows desktop shows.
   Widget _buildPhone() {
     final row = _phoneCatalogRow;
+    final canPop = ModalRoute.of(context)?.canPop ?? false;
     return AutomationScreen(
       id: AutomationIds.screenRequests,
       readiness: () => _query.isEmpty && (row?.loadingFirst ?? true)
@@ -852,10 +853,19 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       child: Scaffold(
         body: CustomScrollView(
           slivers: [
-            DesktopSliverAppBar(
-              title: Text(t.seerr.title),
-              leading: widget.onBack == null ? null : BackButton(onPressed: widget.onBack),
-              actions: seerrDiscoverAppBarActions(onOpenRequests: _openRequests),
+            // Dense Library header (A-06): the count that used to be a line of
+            // its own sits on the title's baseline.
+            MobileDenseSliverAppBar(
+              row: MobileDenseTitleRow(
+                title: t.seerr.title,
+                count: _query.isEmpty && row != null && !row.loadingFirst && !row.errored
+                    ? t.unifiedCatalog.titlesLoaded(count: _phoneCatalogItems.length)
+                    : null,
+                countAutomationId: AutomationIds.catalogCount,
+                automationInstance: 'requests',
+                onBack: widget.onBack ?? (canPop ? () => Navigator.of(context).maybePop() : null),
+                actions: seerrDiscoverAppBarActions(onOpenRequests: _openRequests),
+              ),
             ),
             SliverToBoxAdapter(child: _buildSearchField()),
             SliverToBoxAdapter(
@@ -870,21 +880,6 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
               ),
             ),
             if (_query.isEmpty) SliverToBoxAdapter(child: _buildMyRequestsEntry()),
-            if (_query.isEmpty && row != null && !row.loadingFirst && !row.errored)
-              SliverToBoxAdapter(
-                child: AutomationNode(
-                  id: AutomationIds.catalogCount,
-                  instance: 'requests',
-                  role: 'region',
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: Text(
-                      t.unifiedCatalog.titlesLoaded(count: _phoneCatalogItems.length),
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                ),
-              ),
             ..._query.isEmpty ? _buildPhoneCatalogSlivers() : _buildSearchSlivers(),
             mobileDiscoveryTailSliver(context),
           ],

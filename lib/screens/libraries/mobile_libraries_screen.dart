@@ -52,7 +52,7 @@ import '../../utils/content_utils.dart';
 import '../../utils/library_grouping.dart';
 import '../../utils/provider_extensions.dart';
 import '../../widgets/app_icon.dart';
-import '../../widgets/desktop_app_bar.dart';
+import '../../widgets/mobile/mobile_dense_title_row.dart';
 import '../../widgets/mobile/mobile_media_rail.dart';
 import '../../widgets/settings_section.dart' show settingsOutlineColor;
 import '../big_p/big_p_ask_row.dart' show summonableBigP;
@@ -151,10 +151,16 @@ class _MobileLibrariesScreenState extends State<MobileLibrariesScreen> {
             // by drawing its own unconditional `leading` on `DesktopSliverAppBar`
             // instead; this follows that precedent rather than inventing a
             // second one.
-            DesktopSliverAppBar(
-              title: Text(t.libraries.title),
-              leading: BackButton(onPressed: widget.onBack),
-              actions: [TextButton(onPressed: _manageLibraries, child: Text(t.common.edit))],
+            //
+            // Dense Library header (A-06): the count of the libraries shown
+            // sits on the title's baseline.
+            MobileDenseSliverAppBar(
+              row: MobileDenseTitleRow(
+                title: t.libraries.title,
+                count: t.tvMyPleya.libraryCount(count: filtered.length),
+                onBack: widget.onBack,
+                actions: [TextButton(onPressed: _manageLibraries, child: Text(t.common.edit))],
+              ),
             ),
             if (grouped.serverOrder.length > 1)
               SliverToBoxAdapter(

@@ -1159,4 +1159,31 @@ void main() {
       });
     });
   });
+
+  group('Dense Library header (A-06)', () {
+    testWidgets('on a phone the count sits beside the title in one 48 pt row, above the filter bar', (tester) async {
+      tester.view.physicalSize = const Size(393 * 3, 852 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await pumpScreen(tester, [entry(key: 'a', title: 'Sintel'), entry(key: 'b', title: 'Big Buck Bunny')]);
+
+      final title = tester.getRect(find.text(t.watchlist.title));
+      final count = tester.getRect(find.text(t.unifiedCatalog.titlesLoaded(count: 2)));
+      expect((count.center.dy - title.center.dy).abs(), lessThan(8), reason: 'count beside the title: $title $count');
+      expect(count.left, greaterThan(title.right));
+      expect(tester.getRect(find.byType(AppBar)).height, 48);
+      expect(tester.getTopLeft(filterButton()).dy, greaterThanOrEqualTo(48));
+    });
+
+    testWidgets('desktop keeps the standard bar without a count', (tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpScreen(tester, [entry(key: 'a', title: 'Sintel')]);
+
+      expect(find.text(t.watchlist.title), findsOneWidget);
+      expect(find.text(t.unifiedCatalog.titlesLoaded(count: 1)), findsNothing);
+      expect(tester.getRect(find.byType(AppBar)).height, kToolbarHeight);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+  });
 }
