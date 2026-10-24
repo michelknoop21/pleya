@@ -96,7 +96,17 @@ class UnifiedIdentityResolver {
 
   UnifiedIdentityResolver({required this.fetchExternalIds, this.maxConcurrentFetches = 4});
 
-  Future<List<IdentityEvidence>> resolveEvidence(List<ResolvableItem> items) async {
+  /// [known] and [onResolved] let a caller that resolves a growing list every
+  /// round keep its own evidence: an item whose evidence came from fetched ids
+  /// never loses it (bucket counts only grow and ids do not change), so it is
+  /// neither re-derived nor awaited again. Guid-only evidence is never reported
+  /// through [onResolved]: that item may still gain a duplicate-bucket mate, and
+  /// a failed fetch has to be retried.
+  Future<List<IdentityEvidence>> resolveEvidence(
+    List<ResolvableItem> items, {
+    IdentityEvidence? Function(int index)? known,
+    void Function(int index, IdentityEvidence evidence)? onResolved,
+  }) async {
     if (items.isEmpty) return const [];
 
     final bucketCounts = <String, int>{};
@@ -116,7 +126,10 @@ class UnifiedIdentityResolver {
       final entry = items[i];
       final key = entry._effectiveBucketKey;
       final inDuplicateBucket = key != null && duplicateBuckets.contains(key);
-      if (!inDuplicateBucket || entry.externalIdTarget == null) {
+      final remembered = inDuplicateBucket ? known?.call(i) : null;
+      if (remembered != null) {
+        evidence[i] = remembered;
+      } else if (!inDuplicateBucket || entry.externalIdTarget == null) {
         evidence[i] = _guidOnlyEvidence(entry);
       } else {
         pending.add(i);
@@ -131,13 +144,15 @@ class UnifiedIdentityResolver {
         try {
           final cacheKey = '${target.serverId}:${target.targetId}';
           final ids = await cache.putIfAbsent(cacheKey, () => fetchExternalIds(target.serverId, target.targetId));
-          evidence[i] = IdentityEvidence(
+          final resolved = IdentityEvidence(
             identity: entry.identity ?? CanonicalMediaIdentity.opaque(),
             strongTokens: {
               ..._guidTokensFor(entry),
               ...externalIdTokens(scope: entry.scope, ids: ids, discriminator: entry.externalIdDiscriminator),
             },
           );
+          evidence[i] = resolved;
+          onResolved?.call(i, resolved);
         } catch (_) {
           evidence[i] = _guidOnlyEvidence(entry);
         }

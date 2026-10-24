@@ -327,4 +327,51 @@ void main() {
       expect(continueWatchingBucketKey(movie), 'movie:the long harbour');
     });
   });
+
+  group('remembered evidence (known / onResolved)', () {
+    test('remembered evidence is used without a fetch, and fetched evidence is reported once', () async {
+      final a = _resolvable(_movie('a', serverId: 's1'));
+      final b = _resolvable(_movie('b', serverId: 's2'));
+      var fetches = 0;
+      final resolver = UnifiedIdentityResolver(
+        fetchExternalIds: (serverId, targetId) async {
+          fetches++;
+          return const ExternalIds(tmdb: 438631);
+        },
+      );
+      final remembered = <int, IdentityEvidence>{};
+
+      final first = await resolver.resolveEvidence([a, b], onResolved: (i, e) => remembered[i] = e);
+      expect(fetches, 2);
+      expect(remembered.keys, {0, 1});
+
+      final second = await resolver.resolveEvidence([a, b], known: (i) => remembered[i]);
+      expect(fetches, 2, reason: 'nothing is fetched again for items whose evidence is remembered');
+      expect(second.map((e) => _tokenKeys(e.strongTokens)), first.map((e) => _tokenKeys(e.strongTokens)));
+    });
+
+    test('guid-only and failed evidence is never reported, so it is retried or upgraded later', () async {
+      final solo = _resolvable(_movie('solo', title: 'Alone', serverId: 's1'));
+      final a = _resolvable(_movie('a', serverId: 's1'));
+      final b = _resolvable(_movie('b', serverId: 's2'));
+      final resolver = UnifiedIdentityResolver(
+        fetchExternalIds: (serverId, targetId) async => throw StateError('down'),
+      );
+      final reported = <int>[];
+
+      await resolver.resolveEvidence([solo, a, b], onResolved: (i, _) => reported.add(i));
+
+      expect(reported, isEmpty);
+    });
+
+    test('remembered evidence is ignored for an item outside a duplicate bucket', () async {
+      final solo = _resolvable(_movie('solo', title: 'Alone', serverId: 's1'));
+      final resolver = UnifiedIdentityResolver(fetchExternalIds: (serverId, targetId) async => const ExternalIds());
+      final bogus = IdentityEvidence(identity: CanonicalMediaIdentity.opaque(), strongTokens: const {});
+
+      final result = await resolver.resolveEvidence([solo], known: (_) => bogus);
+
+      expect(identical(result.single, bogus), isFalse);
+    });
+  });
 }
