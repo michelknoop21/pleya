@@ -841,4 +841,39 @@ void main() {
 
     expect(find.textContaining('Horror · 6, 12'), findsOneWidget);
   });
+
+  group('Dense Library header and long-press menu (A-06, A-08)', () {
+    testWidgets('the count sits in the title row and no summary line is built without filters', (tester) async {
+      await pumpCatalog(tester);
+      await settle(tester);
+
+      final title = tester.getRect(find.text(MobileCatalogKind.movies.title));
+      final count = tester.getRect(find.text(t.unifiedCatalog.titlesLoaded(count: 3)));
+      expect((count.center.dy - title.center.dy).abs(), lessThan(8), reason: 'count beside the title: $title $count');
+      expect(count.left, greaterThan(title.right));
+      expect(find.byKey(const ValueKey('catalog.filterSummary')), findsNothing);
+    });
+
+    testWidgets('the panel ends well above where the old four-line layout ended', (tester) async {
+      await pumpCatalog(tester);
+      await settle(tester);
+
+      // Title row 48 + chips + 6: the old layout measured 132 here (title
+      // row 56, chips, 8, count line, 8).
+      final panel = tester.getRect(find.byKey(catalogTopMenuKey));
+      expect(panel.height - CatalogTopPanel.fadeTail, lessThan(100), reason: '$panel');
+    });
+
+    testWidgets('long-pressing a grid card opens the compact menu with Play', (tester) async {
+      await pumpCatalog(tester);
+      await settle(tester);
+      expect(find.text(t.common.play), findsNothing);
+
+      await tester.longPress(find.text('Alien'));
+      await tester.pumpAndSettle();
+      expect(find.text(t.common.play), findsOneWidget);
+      expect(find.text(t.mediaMenu.markAsWatched), findsOneWidget);
+      expect(find.byType(BottomSheet), findsNothing, reason: 'the grid uses the anchored menu, not the sheet');
+    });
+  });
 }

@@ -23,6 +23,7 @@ library;
 import '../../providers/offline_mode_provider.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import '../../automation/automation_ids.dart';
@@ -60,6 +61,7 @@ import '../../widgets/mobile/mobile_catalog_sort_sheet.dart';
 import '../../widgets/mobile/mobile_media_card.dart';
 import '../../widgets/mobile/mobile_media_rail.dart' show mobileRailGutter, mobileRailInset;
 import '../../widgets/mobile/mobile_refresh_scope.dart';
+import '../../widgets/mobile/mobile_unified_context_menu.dart';
 import '../../widgets/overlay_sheet.dart';
 import '../../widgets/skeleton_media_card.dart';
 import '../../widgets/scroll_crown/scroll_crown.dart';
@@ -292,6 +294,30 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     coverage: SourceCoverageState.complete({for (final s in group.sources) s.serverId.value}),
   );
 
+  Future<void> _openQuickMenu(BuildContext cardContext, UnifiedMediaGroup group) async {
+    final box = cardContext.findRenderObject();
+    final overlay = Overlay.of(context).context.findRenderObject();
+    if (box is! RenderBox || overlay is! RenderBox) return;
+    unawaited(HapticFeedback.mediumImpact());
+    final origin = box.localToGlobal(Offset.zero, ancestor: overlay);
+    await showMobileUnifiedQuickMenu(
+      context,
+      anchor: origin & box.size,
+      group: group,
+      availabilityFor: _availabilityFor,
+      isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
+      onPlay: () => unawaited(
+        openMobileMediaGroup(
+          context,
+          group: group,
+          intent: UnifiedActivationIntent.play,
+          availabilityFor: _availabilityFor,
+          coverage: SourceCoverageState.complete({for (final s in group.sources) s.serverId.value}),
+        ),
+      ),
+    );
+  }
+
   /// "All sources" until something is excluded, then how many are left:
   /// same rule `TvUnifiedCatalogScreen._sourcesLabel` uses.
   String _sourcesLabel(UnifiedCatalogFilterSelection filters) {
@@ -467,14 +493,13 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
                           children: [
                             _buildHeader(),
                             _buildChips(sheetContext, filters),
-                            const SizedBox(height: 8),
                             if (context.watch<OfflineModeProvider?>()?.isOffline ?? false)
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
                                 child: Text(t.localLibrary.offline),
                               ),
-                            _buildCountRow(filters),
-                            const SizedBox(height: 8),
+                            _buildFilterSummary(filters),
+                            const SizedBox(height: 6),
                           ],
                         ),
                       ),
@@ -525,19 +550,43 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
       instance: widget.kind.automationInstance,
       role: 'region',
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(4, 4, 16, 4),
+        padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
         child: Row(
           children: [
             IconButton(
               onPressed: () => Navigator.of(context).maybePop(),
               icon: const AppIcon(Symbols.arrow_back_rounded, fill: 1),
             ),
+            // Dense Library (variant 3): the count sits next to the title
+            // instead of on a line of its own.
             Expanded(
-              child: Text(
-                widget.kind.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Flexible(
+                    child: Text(
+                      widget.kind.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: AutomationNode(
+                      id: AutomationIds.catalogCount,
+                      instance: widget.kind.automationInstance,
+                      role: 'region',
+                      child: Text(
+                        t.unifiedCatalog.titlesLoaded(count: _catalog.snapshot.groups.length),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 13, color: tokens(context).textMuted),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             AutomationNode(
@@ -609,37 +658,21 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     );
   }
 
-  Widget _buildCountRow(UnifiedCatalogFilterSelection filters) {
+  /// What is narrowing the result, on a line of its own only while something
+  /// does: an unfiltered catalogue spends no height on it.
+  Widget _buildFilterSummary(UnifiedCatalogFilterSelection filters) {
     final summary = _filterSummary(filters);
-    return AutomationNode(
-      id: AutomationIds.catalogCount,
-      instance: widget.kind.automationInstance,
-      role: 'region',
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: mobileRailInset),
-        child: Row(
-          children: [
-            Flexible(
-              child: Text(
-                t.unifiedCatalog.titlesLoaded(count: _catalog.snapshot.groups.length),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: tokens(context).textMuted),
-              ),
-            ),
-            if (summary != null) ...[
-              const Spacer(),
-              Flexible(
-                child: Text(
-                  summary,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
-                  style: TextStyle(color: tokens(context).textMuted),
-                ),
-              ),
-            ],
-          ],
+    if (summary == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(mobileRailInset, 6, mobileRailInset, 0),
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: Text(
+          summary,
+          key: const ValueKey('catalog.filterSummary'),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 13, color: tokens(context).textMuted),
         ),
       ),
     );
@@ -735,11 +768,14 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
                               id: AutomationIds.catalogGridItem,
                               instance: '${widget.kind.automationInstance}.$index',
                               role: 'grid.item',
-                              child: MobileMediaCard(
-                                group: group,
-                                shape: MobileCardShape.portrait,
-                                width: cardWidth,
-                                onTap: () => _openDetails(group),
+                              child: Builder(
+                                builder: (cardContext) => MobileMediaCard(
+                                  group: group,
+                                  shape: MobileCardShape.portrait,
+                                  width: cardWidth,
+                                  onTap: () => _openDetails(group),
+                                  onLongPress: () => unawaited(_openQuickMenu(cardContext, group)),
+                                ),
                               ),
                             );
                           }, childCount: snapshot.groups.length + (snapshot.hasMore ? 3 : 0)),

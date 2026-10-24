@@ -57,7 +57,10 @@ class _CatalogTopPanelState extends State<CatalogTopPanel> with SingleTickerProv
   late final AnimationController _hidden = AnimationController(vsync: this, value: widget.collapsed ? 1 : 0);
 
   static const double _sigma = 18;
-  static const double _tintAlpha = 0.78;
+
+  /// Nearly opaque: when the panel returns mid-list it sits on top of
+  /// posters, and the controls must not read against the artwork behind them.
+  static const double _tintAlpha = 0.94;
 
   /// The blur does not stop at one line: it steps down across the content's
   /// last few pixels and the top of the tail, strongest first.
