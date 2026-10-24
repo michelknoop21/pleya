@@ -119,6 +119,7 @@ class TvCatalogCardGrid extends StatefulWidget {
     this.rowAligned = false,
     this.fitTwoRows = false,
     this.fitScale,
+    this.successorOf,
     this.loadEagerly = false,
   });
 
@@ -143,6 +144,12 @@ class TvCatalogCardGrid extends StatefulWidget {
 
   final bool hasMore;
   final bool isLoadingMore;
+
+  /// Which current item continues [removedId], when an item's id changed
+  /// rather than the item left (a unified group gaining external ids changes
+  /// its content-derived id). Null or a miss falls back to the nearest
+  /// survivor.
+  final String? Function(String removedId)? successorOf;
 
   /// One long list instead of pages: keep asking for the next page as soon as
   /// the previous one landed, wherever the focus is, until [hasMore] is false.
@@ -575,7 +582,10 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     }
     if (!losesFocus) return;
 
-    final replacement = _nearestSurvivor(previous: previous, from: oldIndex);
+    final successor = widget.successorOf?.call(focusedId);
+    final replacement = successor != null && live.contains(successor)
+        ? successor
+        : _nearestSurvivor(previous: previous, from: oldIndex);
     _focusedId = replacement;
     if (!heldTheFocus) return;
     // After the frame that removes the card: the replacement's node may not be
