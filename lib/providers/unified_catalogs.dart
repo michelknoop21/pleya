@@ -38,6 +38,7 @@
 library;
 
 import '../media/media_kind.dart';
+import '../utils/platform_detector.dart';
 import 'hidden_libraries_provider.dart';
 import 'local_library_provider.dart';
 import 'libraries_provider.dart';
@@ -86,6 +87,8 @@ class UnifiedCatalogs {
     hiddenLibraries: _hiddenLibraries,
     kind: kind,
     localLibrary: _localLibrary,
+    // The TV grid chains rounds into one long list, so rounds can be big.
+    groupsPerPage: TvDetectionService.isTVSync() ? 100 : 20,
   );
 
   /// Disposes whichever catalogs were actually built. Wired to the registering

@@ -149,6 +149,11 @@ class TvCatalogCardGrid extends StatefulWidget {
   /// The focus-based look-ahead then never has anything left to wait for.
   final bool loadEagerly;
 
+  /// Eager loading stops here: every card is a built widget with its own focus
+  /// node (the grid is not virtualised), so a library beyond this keeps the
+  /// focus look-ahead instead of loading unattended.
+  static const int eagerLoadLimit = 3000;
+
   /// Called when the focus reaches within [loadMoreRowThreshold] rows of the
   /// end and more pages exist. Hoofdstuk 28: no full-page spinner, no reflow —
   /// the loaded cards stay exactly where they are and new rows appear
@@ -228,8 +233,8 @@ class TvCatalogCardGrid extends StatefulWidget {
   ///
   /// Four, measured in rows rather than in cards because the column count is
   /// 5–7 depending on the panel: each row is one D-pad press of warning, and it is what turns "press DOWN, wait, then the row
-  /// appears" into "the row is already there". Four rows is roughly one page
-  /// (20 groups) of warning, which keeps up with a held D-pad.
+  /// appears" into "the row is already there". Four rows of warning keep
+  /// up with a held D-pad.
   static const int loadMoreRowThreshold = 4;
 
   @override
@@ -278,10 +283,18 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     _loadEagerly();
   }
 
+  /// The list length at the last eager request. A round that added nothing
+  /// (slow or failing source) must not be asked again in a loop: the focus
+  /// look-ahead still resumes it once the viewer nears the end.
+  int _eagerRequestedAt = -1;
+
   void _loadEagerly() {
-    if (!widget.loadEagerly) return;
+    if (!widget.loadEagerly || widget.itemIds.length >= TvCatalogCardGrid.eagerLoadLimit) return;
+    if (widget.itemIds.length == _eagerRequestedAt) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && widget.loadEagerly && widget.hasMore && !widget.isLoadingMore) widget.onLoadMore();
+      if (!mounted || !widget.loadEagerly || !widget.hasMore || widget.isLoadingMore) return;
+      _eagerRequestedAt = widget.itemIds.length;
+      widget.onLoadMore();
     });
   }
 
@@ -304,7 +317,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     // A finished load can leave the focus inside the threshold again (fast
     // scrolling, or a short page); no focus event will follow, so re-check.
     final focusedId = _focusedId;
-    if (oldWidget.isLoadingMore && !widget.isLoadingMore && focusedId != null) {
+    if (!widget.loadEagerly && oldWidget.isLoadingMore && !widget.isLoadingMore && focusedId != null) {
       final index = widget.itemIds.indexOf(focusedId);
       if (index >= 0) {
         WidgetsBinding.instance.addPostFrameCallback((_) {

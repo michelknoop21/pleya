@@ -89,12 +89,12 @@ void main() {
     expect(loadMoreCalls, 2);
   });
 
-  testWidgets('loadEagerly keeps loading without focus until nothing is left', (tester) async {
+  testWidgets('loadEagerly chains while the list grows and stops on a round that adds nothing', (tester) async {
     tester.view.physicalSize = _canvas;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    final state = ValueNotifier<({bool hasMore, bool loading})>((hasMore: true, loading: false));
+    final state = ValueNotifier<({int count, bool hasMore, bool loading})>((count: 30, hasMore: true, loading: false));
     var calls = 0;
 
     await tester.pumpWidget(
@@ -108,7 +108,7 @@ void main() {
                 width: _canvas.width,
                 height: _canvas.height,
                 child: TvCatalogCardGrid(
-                  itemIds: [for (var i = 0; i < 90; i++) 'm$i'],
+                  itemIds: [for (var i = 0; i < s.count; i++) 'm$i'],
                   cardHeight: (width) => TvCatalogLayout.cardHeight(width, 0.85),
                   hasMore: s.hasMore,
                   isLoadingMore: s.loading,
@@ -133,16 +133,24 @@ void main() {
     await tester.pump();
     expect(calls, 1, reason: 'asks at mount, nothing focused');
 
-    state.value = (hasMore: true, loading: true);
-    await tester.pump();
-    state.value = (hasMore: true, loading: false);
-    await tester.pump();
-    await tester.pump();
-    expect(calls, 2, reason: 'chains after a finished load');
+    Future<void> finishRound(int count, {bool hasMore = true}) async {
+      state.value = (count: state.value.count, hasMore: true, loading: true);
+      await tester.pump();
+      state.value = (count: count, hasMore: hasMore, loading: false);
+      await tester.pump();
+      await tester.pump();
+    }
 
-    state.value = (hasMore: false, loading: false);
-    await tester.pump();
-    await tester.pump();
-    expect(calls, 2, reason: 'stops when the list is complete');
+    await finishRound(60);
+    expect(calls, 2, reason: 'chains after a round that grew the list');
+
+    await finishRound(60);
+    expect(calls, 2, reason: 'a round that added nothing is not asked again in a loop');
+
+    await finishRound(90);
+    expect(calls, 3, reason: 'growth resumes the chain');
+
+    await finishRound(90, hasMore: false);
+    expect(calls, 3, reason: 'stops when the list is complete');
   });
 }

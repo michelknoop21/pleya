@@ -532,16 +532,18 @@ class UnifiedCatalogService {
         final cached = cachedExternalIds?.call(serverId, targetId);
         if (cached != null) return cached;
         final key = '$serverId:$targetId';
-        return _externalIdCache
-            .putIfAbsent(key, () {
-              final client = _clientFor(ServerId(serverId));
-              if (client == null) return Future<ExternalIds>.error(StateError('No client for server $serverId'));
-              return client.fetchExternalIds(targetId);
-            })
-            .catchError((Object error) {
-              _externalIdCache.remove(key);
-              throw error;
-            });
+        final cache = _externalIdCache;
+        final future = cache.putIfAbsent(key, () {
+          final client = _clientFor(ServerId(serverId));
+          if (client == null) return Future<ExternalIds>.error(StateError('No client for server $serverId'));
+          return client.fetchExternalIds(targetId);
+        });
+        // Only this generation's own failed entry is dropped: after a reset the
+        // key may already hold the next generation's future.
+        return future.catchError((Object error) {
+          if (identical(cache[key], future)) cache.remove(key);
+          throw error;
+        });
       },
     );
     final resolvables = [
