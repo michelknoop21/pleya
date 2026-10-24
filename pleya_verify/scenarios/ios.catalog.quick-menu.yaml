@@ -20,5 +20,6 @@ steps:
   - wait_until: {id: sheet.context_menu, timeout: 10000}
   - settle: 500
   - assert: {id: sheet.context_menu, insideViewport: true}
+  - assert: {id: "sheet.context_menu.item[0]", insideViewport: true}
   - assert: {id: "sheet.context_menu.item[1]", insideViewport: true}
   - snapshot: catalog-quick-menu

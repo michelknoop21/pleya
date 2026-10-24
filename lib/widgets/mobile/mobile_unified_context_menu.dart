@@ -158,15 +158,22 @@ Future<void> showMobileUnifiedQuickMenu(
       PopupMenuItem<UnifiedGroupAction?>(
         height: 44,
         onTap: () => play = true,
+        // A popup has no single box around its items to hang the menu id on,
+        // so the first row carries it alongside its own item id.
         child: AutomationNode(
           id: AutomationIds.sheetContextMenu,
           role: 'sheet',
-          child: Row(
-            children: [
-              const Icon(Symbols.play_arrow_rounded, size: 20),
-              const SizedBox(width: 12),
-              Expanded(child: Text(t.common.play)),
-            ],
+          child: AutomationNode(
+            id: AutomationIds.sheetContextMenuItem,
+            instance: '0',
+            role: 'list.item',
+            child: Row(
+              children: [
+                const Icon(Symbols.play_arrow_rounded, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text(t.common.play)),
+              ],
+            ),
           ),
         ),
       ),
