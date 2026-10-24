@@ -51,7 +51,31 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
-## 2.8.1 · build 404 · 24 October 2026 · iPhone, iPad, Apple TV and Mac
+## 2.8.1 · build 405 · 24 October 2026 · iPhone, iPad, Apple TV and Mac
+
+<!-- commit: 3f994e401d2a89d4805031d28a5ff613bb0b41f8 -->
+
+### New
+
+- **Keep your library ready to browse offline.** In Settings, turn on Library prefetch to save metadata and posters for all accessible libraries of your current profile. Wi-Fi-only fetching is on by default and can be changed. Videos are not downloaded by this setting.
+
+### Improved
+
+- **The library crown handles small movements in one continuous scroll.** It keeps the same direct top-to-bottom range, rotating appearance and fade. Poster prefetch now prepares the same image size used by the grid.
+
+### Fixed
+
+- **Apple TV can use the local library cache.** The storage check uses the API supported by tvOS.
+
+- **Confirmed server removals clean up saved metadata and unused posters.** An offline server or incomplete scan preserves your previous library. Other profiles and video downloads stay separate.
+- **Clearing the saved library asks what happens next.** Choose to leave prefetch off or refill the library. Turning prefetch off by itself keeps saved content available.
+
+### Notes
+
+- Let Library prefetch finish, restart Pleya with your server unavailable, then browse Films or Series, search and open a title. A title needs a reachable server or an actual video download to play.
+- Try very slow crown movements on your iPhone. Scrolling and tactile feedback still need acceptance on a physical iPhone.
+
+## 2.8.1 · build 404 · 24 October 2026 · iPhone, iPad and Mac
 
 <!-- commit: 86502933582861dba6197f54f6298dd394c5eccc -->
 

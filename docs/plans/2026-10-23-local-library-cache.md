@@ -3,7 +3,7 @@
 Roadmap: A-06. Productkeuzes uit het gesprek met Michel op 23 oktober 2026.
 Dit is het goedgekeurde ontwerp na de grill-me-vragen. Implementatie op `feat/local-library-cache` is gericht en native op iPhone
 geverifieerd; onafhankelijke code-/rechten- en fixreview zijn akkoord.
-Releasepakket 404 / PR #477 bundelt deze wijziging; fysieke prestatieacceptatie blijft open. De iPhone-kroon gebruikt tijdens slepen nu één doorlopende
+Releasepakket 405 / PR #477 bundelt deze wijziging; fysieke prestatieacceptatie blijft open. De iPhone-kroon gebruikt tijdens slepen nu één doorlopende
 scrollactiviteit, zodat elke kleine beweging geen aparte scrollstop veroorzaakt.
 Vloeiendheid op het fysieke toestel blijft afzonderlijke acceptatie.
 
