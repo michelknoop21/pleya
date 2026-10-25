@@ -95,7 +95,7 @@ Drie iPhone-scenario's bleven rood. Ze zijn per run uitgezocht en hooguit één 
 
 Niet gedraaid: `ios.library.local-offline` en `ios.library.local-storage`, omdat de standaardroute van de host een VPN-tunnel is (`utun12`) en de index op wifi wacht; `ipados.viewport-density.navigation`, omdat er geen iPad-simulator op deze machine staat.
 
-Goldens die deze branch raakt: `test/goldens/tv_shell_my_pleya.png`, `tv_shell_my_pleya_focused.png`, `tv_shell_my_pleya_full.png` en `tv_shell_auth_my_pleya.png` (alle vier uit `test/goldens/tv_root_shell_golden_test.dart`). Ze worden na de eerste push via `goldens.yml` op de CI-runner opnieuw gemaakt en bekeken voor ze worden gecommit; lokaal op macOS zijn goldens niet te reproduceren.
+Goldens: elke `tv_shell_*`-golden uit `test/goldens/tv_root_shell_golden_test.dart` gebruikt de Mijn Pleya-hub als inhoud, dus alle negen veranderden (`tv_shell_my_pleya`, `_focused`, `_full`, `tv_shell_auth_my_pleya`, `tv_shell_auth_attention`, `tv_shell_home_active`, `tv_shell_focus_not_active`, `tv_shell_live_tv_present`, `tv_shell_long_locale`). De test voor de volledige hub zocht nog de oude Kijklijst-tegel; hij controleert nu de rail (`b41765d9`). De beelden zijn via `goldens.yml` op de CI-runner opnieuw gemaakt, bekeken en gecommit (`a36179a5`).
 
 ## Wat nog niet bewezen is
 
@@ -105,4 +105,3 @@ Goldens die deze branch raakt: `test/goldens/tv_shell_my_pleya.png`, `tv_shell_m
 - De VoiceOver-actie van de Big P-kaart op iPhone zit in de code, maar geen test dekt hem: in testbuilds staat Big P uit.
 - Aanvragen, Activiteit, Collecties en Afspeellijsten staan op geen simulatorscreenshot, omdat de fixture ze niet levert; ze zijn alleen in widgettests bewezen.
 - De Apple TV-bladen zijn niet opnieuw gemaakt na fase 3 en 5; de Verify-ronde hierboven liep wel over die schermen.
-- De vier goldens hierboven zijn nog niet opnieuw gemaakt op de CI-runner.
