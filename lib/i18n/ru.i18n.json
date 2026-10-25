@@ -608,7 +608,6 @@
     "signOutFailed": "Не удалось выйти.",
     "sectionTitle": "Профили",
     "summarySingle": "Добавьте профили, чтобы смешать управляемых пользователей и локальные идентификаторы",
-    "summaryMultipleWithActive": "${count} профилей · активный: ${activeName}",
     "summaryMultiple": "${count} профилей",
     "removeConnectionTitle": "Удалить соединение?",
     "removeConnectionMessage": "Удалить доступ ${displayName} к ${connectionLabel}. У других профилей он останется.",

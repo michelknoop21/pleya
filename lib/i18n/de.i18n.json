@@ -608,7 +608,6 @@
     "signOutFailed": "Abmeldung fehlgeschlagen.",
     "sectionTitle": "Profile",
     "summarySingle": "Profile hinzufügen, um verwaltete Benutzer und lokale Identitäten zu mischen",
-    "summaryMultipleWithActive": "${count} Profile · aktiv: ${activeName}",
     "summaryMultiple": "${count} Profile",
     "removeConnectionTitle": "Verbindung entfernen?",
     "removeConnectionMessage": "Zugriff von ${displayName} auf ${connectionLabel} entfernen. Andere Profile behalten ihn.",

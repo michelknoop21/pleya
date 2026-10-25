@@ -8,10 +8,12 @@ import '../theme/tv_switch_theme.dart';
 import '../utils/platform_detector.dart';
 import '../utils/tv_hig.dart';
 import 'app_icon.dart';
+import 'settings/settings_studio_style.dart';
 import 'settings_rows.dart';
 import 'tv/tv_unified_layout.dart';
 
 export 'settings_rows.dart';
+export 'settings/settings_studio_style.dart';
 
 /// Widest the settings content grows on desktop and TV. Full-width rows on a
 /// 1440pt window put the switch a hand's width away from its label, so the
@@ -19,8 +21,11 @@ export 'settings_rows.dart';
 const double kSettingsMaxWidth = 880;
 
 /// Row inset used by every settings tile. Slightly wider than the Material
-/// default so the icon badge does not touch the card edge.
-const EdgeInsets kSettingRowPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 6);
+/// default so the icon badge does not touch the card edge. A-24: `ListTile`
+/// adds this inset to its own dense minimum (48 pt for one line, 64 for two),
+/// so 2 over and under makes a one-line row 52 pt, the iOS grouped list
+/// height, and every row stays a tap target of at least 44 pt.
+const EdgeInsets kSettingRowPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 2);
 
 /// The row inset a settings tile passes to its `ListTile`. On TV it is null,
 /// so the tile takes [TvSettingsDensity]'s HIG inset from the theme instead of
@@ -158,15 +163,16 @@ class SettingsSectionHeader extends StatelessWidget {
     return Padding(
       // VIS-0926-S1: 28 over and 12 under, between VIS-0925-G's 20/8 and the
       // 32/12 before it.
-      padding: tv ? EdgeInsets.fromLTRB(24 * pt, 28 * pt, 24 * pt, 12 * pt) : const EdgeInsets.fromLTRB(20, 24, 20, 10),
+      padding: tv ? EdgeInsets.fromLTRB(24 * pt, 28 * pt, 24 * pt, 12 * pt) : const EdgeInsets.fromLTRB(20, 24, 20, 8),
       child: Text(
         title.toUpperCase(),
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: tokens(context).textMuted,
+          color: settingsSectionInk(context),
           fontWeight: FontWeight.w700,
-          letterSpacing: 1.1,
+          // A-24: small caps with more air off TV, as in the Studio anchors.
+          letterSpacing: tv ? 1.1 : 1.4,
           // DENS1: HIG Caption 2 (23 pt) on TV, the tvOS minimum.
-          fontSize: tv ? TvHig.caption2 * pt : null,
+          fontSize: tv ? TvHig.caption2 * pt : 12,
         ),
       ),
     );
@@ -198,10 +204,10 @@ class SettingsGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = tokens(context);
     if (children.isEmpty) return const SizedBox.shrink();
-    final radius = BorderRadius.circular(t.radiusMd);
     // VIS-0925-C: on TV no outer border and lighter, indented separators. The
     // bordered card with full-width hairlines read as a table on the tv.
     final tv = PlatformDetector.isTV();
+    final radius = BorderRadius.circular(tv ? t.radiusMd : kSettingsCardRadius);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -211,7 +217,7 @@ class SettingsGroup extends StatelessWidget {
           // The border lives in foregroundDecoration, painted after the rows
           // (see SettingsRows below) so it always wins over a full-bleed
           // focus fill instead of being painted over by the first/last row.
-          decoration: BoxDecoration(color: t.surface, borderRadius: radius),
+          decoration: BoxDecoration(color: settingsCardColor(context), borderRadius: radius),
           foregroundDecoration: tv
               ? null
               : BoxDecoration(
@@ -378,6 +384,21 @@ class SettingsIconBadge extends StatelessWidget {
   }
 }
 
+/// A-24: a one-word segment label ("Systeem") scales down to fit its segment
+/// instead of breaking inside the word at 375 or 320 pt. Labels with spaces
+/// keep wrapping between their words, which reads fine.
+ButtonSegment<T> _unbrokenLabel<T>(ButtonSegment<T> segment) {
+  final label = segment.label;
+  if (label is! Text || (label.data?.contains(' ') ?? true)) return segment;
+  return ButtonSegment<T>(
+    value: segment.value,
+    icon: segment.icon,
+    tooltip: segment.tooltip,
+    enabled: segment.enabled,
+    label: FittedBox(fit: BoxFit.scaleDown, child: label),
+  );
+}
+
 /// A setting with a label + icon row and a full-width SegmentedButton below.
 /// Used for settings with 2-4 short options.
 class SegmentedSetting<T> extends StatelessWidget {
@@ -405,7 +426,9 @@ class SegmentedSetting<T> extends StatelessWidget {
         children: [
           Row(
             children: [
-              AppIcon(icon, fill: 1),
+              // A-24: off TV the same badge as every other settings row, so
+              // a segmented row lines up with the rows above and below it.
+              if (PlatformDetector.isTV()) AppIcon(icon, fill: 1) else SettingsIconBadge(icon),
               const SizedBox(width: 16),
               Text(title, style: Theme.of(context).textTheme.bodyLarge),
             ],
@@ -414,7 +437,7 @@ class SegmentedSetting<T> extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: SegmentedButton<T>(
-              segments: segments,
+              segments: PlatformDetector.isTV() ? segments : segments.map(_unbrokenLabel).toList(),
               selected: {selected},
               onSelectionChanged: (Set<T> newSelection) {
                 onChanged(newSelection.first);

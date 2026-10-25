@@ -803,7 +803,6 @@ class _TranslationsProfilesZh extends TranslationsProfilesEn {
 	@override String get signOutFailed => '退出登录失败。';
 	@override String get sectionTitle => '配置文件';
 	@override String get summarySingle => '添加配置文件以混合托管用户和本地身份';
-	@override String summaryMultipleWithActive({required Object count, required Object activeName}) => '${count} 个配置文件 · 活跃：${activeName}';
 	@override String summaryMultiple({required Object count}) => '${count} 个配置文件';
 	@override String get removeConnectionTitle => '移除连接？';
 	@override String removeConnectionMessage({required Object displayName, required Object connectionLabel}) => '移除 ${displayName} 对 ${connectionLabel} 的访问。其他个人资料仍保留。';
@@ -2848,7 +2847,6 @@ extension on TranslationsZh {
 			'profiles.signOutFailed' => '退出登录失败。',
 			'profiles.sectionTitle' => '配置文件',
 			'profiles.summarySingle' => '添加配置文件以混合托管用户和本地身份',
-			'profiles.summaryMultipleWithActive' => ({required Object count, required Object activeName}) => '${count} 个配置文件 · 活跃：${activeName}',
 			'profiles.summaryMultiple' => ({required Object count}) => '${count} 个配置文件',
 			'profiles.removeConnectionTitle' => '移除连接？',
 			'profiles.removeConnectionMessage' => ({required Object displayName, required Object connectionLabel}) => '移除 ${displayName} 对 ${connectionLabel} 的访问。其他个人资料仍保留。',
@@ -3308,9 +3306,9 @@ extension on TranslationsZh {
 			'companionRemote.session.startServer' => '启动服务器',
 			'companionRemote.session.stopServer' => '停止服务器',
 			'companionRemote.session.minimize' => '最小化',
+			'companionRemote.pairing.discoveryDescription' => '使用同一 Plex 账号的 Pleya 设备会显示在这里',
 			_ => null,
 		} ?? switch (path) {
-			'companionRemote.pairing.discoveryDescription' => '使用同一 Plex 账号的 Pleya 设备会显示在这里',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => '正在连接...',
 			'companionRemote.pairing.searchingForDevices' => '正在搜索设备...',

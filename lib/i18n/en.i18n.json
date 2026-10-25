@@ -780,7 +780,6 @@
     "signOutFailed": "Sign out failed.",
     "sectionTitle": "Profiles",
     "summarySingle": "Add profiles to mix managed users and local identities",
-    "summaryMultipleWithActive": "${count} profiles · active: ${activeName}",
     "summaryMultiple": "${count} profiles",
     "removeConnectionTitle": "Remove connection?",
     "removeConnectionMessage": "Remove ${displayName}'s access to ${connectionLabel}. Other profiles keep it.",

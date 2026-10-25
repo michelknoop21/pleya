@@ -803,7 +803,6 @@ class _TranslationsProfilesPl extends TranslationsProfilesEn {
 	@override String get signOutFailed => 'Wylogowanie nie powiodło się.';
 	@override String get sectionTitle => 'Profile';
 	@override String get summarySingle => 'Dodaj profile, aby łączyć zarządzanych użytkowników i tożsamości lokalne';
-	@override String summaryMultipleWithActive({required Object count, required Object activeName}) => '${count} profili · aktywny: ${activeName}';
 	@override String summaryMultiple({required Object count}) => '${count} profili';
 	@override String get removeConnectionTitle => 'Usunąć połączenie?';
 	@override String removeConnectionMessage({required Object displayName, required Object connectionLabel}) => 'Usuń dostęp ${displayName} do ${connectionLabel}. Inne profile go zachowają.';
@@ -2848,7 +2847,6 @@ extension on TranslationsPl {
 			'profiles.signOutFailed' => 'Wylogowanie nie powiodło się.',
 			'profiles.sectionTitle' => 'Profile',
 			'profiles.summarySingle' => 'Dodaj profile, aby łączyć zarządzanych użytkowników i tożsamości lokalne',
-			'profiles.summaryMultipleWithActive' => ({required Object count, required Object activeName}) => '${count} profili · aktywny: ${activeName}',
 			'profiles.summaryMultiple' => ({required Object count}) => '${count} profili',
 			'profiles.removeConnectionTitle' => 'Usunąć połączenie?',
 			'profiles.removeConnectionMessage' => ({required Object displayName, required Object connectionLabel}) => 'Usuń dostęp ${displayName} do ${connectionLabel}. Inne profile go zachowają.',
@@ -3308,9 +3306,9 @@ extension on TranslationsPl {
 			'companionRemote.session.startServer' => 'Uruchom serwer',
 			'companionRemote.session.stopServer' => 'Zatrzymaj serwer',
 			'companionRemote.session.minimize' => 'Minimalizuj',
+			'companionRemote.pairing.discoveryDescription' => 'Urządzenia Pleya z tym samym kontem Plex pojawią się tutaj',
 			_ => null,
 		} ?? switch (path) {
-			'companionRemote.pairing.discoveryDescription' => 'Urządzenia Pleya z tym samym kontem Plex pojawią się tutaj',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Łączenie...',
 			'companionRemote.pairing.searchingForDevices' => 'Szukanie urządzeń...',

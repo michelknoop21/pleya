@@ -141,7 +141,8 @@ void main() {
     final store = _Store([_kid('a', 'Oud', '2007-01')]);
     await pump(tester, store);
     expect(find.text('Oud'), findsOneWidget);
-    expect(find.text(h.ageIgnored), findsOneWidget);
+    // A-24: a value too wide for the title line shares the line with the birth month.
+    expect(find.textContaining(h.ageIgnored), findsOneWidget);
     expect(store.kids, hasLength(1));
   });
 

@@ -803,7 +803,6 @@ class _TranslationsProfilesSv extends TranslationsProfilesEn {
 	@override String get signOutFailed => 'Utloggningen misslyckades.';
 	@override String get sectionTitle => 'Profiler';
 	@override String get summarySingle => 'Lägg till profiler för att blanda hanterade användare och lokala identiteter';
-	@override String summaryMultipleWithActive({required Object count, required Object activeName}) => '${count} profiler · aktiv: ${activeName}';
 	@override String summaryMultiple({required Object count}) => '${count} profiler';
 	@override String get removeConnectionTitle => 'Ta bort anslutning?';
 	@override String removeConnectionMessage({required Object displayName, required Object connectionLabel}) => 'Ta bort ${displayName}s åtkomst till ${connectionLabel}. Andra profiler behåller den.';
@@ -2848,7 +2847,6 @@ extension on TranslationsSv {
 			'profiles.signOutFailed' => 'Utloggningen misslyckades.',
 			'profiles.sectionTitle' => 'Profiler',
 			'profiles.summarySingle' => 'Lägg till profiler för att blanda hanterade användare och lokala identiteter',
-			'profiles.summaryMultipleWithActive' => ({required Object count, required Object activeName}) => '${count} profiler · aktiv: ${activeName}',
 			'profiles.summaryMultiple' => ({required Object count}) => '${count} profiler',
 			'profiles.removeConnectionTitle' => 'Ta bort anslutning?',
 			'profiles.removeConnectionMessage' => ({required Object displayName, required Object connectionLabel}) => 'Ta bort ${displayName}s åtkomst till ${connectionLabel}. Andra profiler behåller den.',
@@ -3308,9 +3306,9 @@ extension on TranslationsSv {
 			'companionRemote.session.startServer' => 'Starta server',
 			'companionRemote.session.stopServer' => 'Stoppa server',
 			'companionRemote.session.minimize' => 'Minimera',
+			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheter med samma Plex-konto visas här',
 			_ => null,
 		} ?? switch (path) {
-			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheter med samma Plex-konto visas här',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Ansluter...',
 			'companionRemote.pairing.searchingForDevices' => 'Söker efter enheter...',

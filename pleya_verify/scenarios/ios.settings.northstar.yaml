@@ -22,13 +22,19 @@ steps:
   - tap: {id: "my_pleya.tile[settings]"}
   - wait_until: {id: screen.settings, timeout: 10000}
   - settle: 1000
+  # A-24: the Studio header opens the page, above the search field and the
+  # first card, and the first row still clears the 44 pt tap target.
+  - assert: {id: settings.header, insideViewport: true}
+  - assert: {id: settings.header, above: "settings.tile[appearance]"}
   - assert: {id: "settings.tile[appearance]", insideViewport: true, minimumTapTarget: 44}
   - snapshot: settings-top
   # Exercise the real gesture pipeline instead of stopping at the first
   # viewport. The Servers row is near the bottom of this long settings list.
   - drag: {startX: 187, startY: 580, endX: 187, endY: 160, durationMs: 450}
   - settle: 500
-  - drag: {startX: 187, startY: 580, endX: 187, endY: 160, durationMs: 450}
+  # A-24: the Studio rows are shorter (52/68 pt) than before, so the second
+  # drag is a short, slow one; two full flings carried Servers past the top.
+  - drag: {startX: 187, startY: 580, endX: 187, endY: 400, durationMs: 900}
   - settle: 500
   - snapshot: settings-bottom
   - assert: {id: "settings.tile[servers]", insideViewport: true, minimumTapTarget: 44}

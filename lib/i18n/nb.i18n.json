@@ -608,7 +608,6 @@
     "signOutFailed": "Utlogging mislyktes.",
     "sectionTitle": "Profiler",
     "summarySingle": "Legg til profiler for å blande administrerte brukere og lokale identiteter",
-    "summaryMultipleWithActive": "${count} profiler · aktiv: ${activeName}",
     "summaryMultiple": "${count} profiler",
     "removeConnectionTitle": "Fjerne tilkobling?",
     "removeConnectionMessage": "Fjern ${displayName}s tilgang til ${connectionLabel}. Andre profiler beholder den.",

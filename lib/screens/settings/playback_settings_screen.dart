@@ -235,6 +235,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
           icon: Symbols.timer_rounded,
           title: t.settings.autoSkipDelay,
           subtitleBuilder: (v) => t.settings.autoSkipDelayDescription(seconds: v.toString()),
+          valueBuilder: (v) => t.settings.secondsUnit(seconds: v.toString()),
           labelText: t.settings.secondsLabel,
           suffixText: t.settings.secondsShort,
           min: 1,
@@ -368,6 +369,8 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
     icon: Symbols.surround_sound_rounded,
     title: t.videoSettings.audioOutputTitle,
     subtitleBuilder: (mode) => '${_audioOutputModeLabel(mode)} · ${_audioOutputModeDescription(mode)}',
+    valueBuilder: _audioOutputModeLabel,
+    descriptionBuilder: _audioOutputModeDescription,
     options: AudioOutputMode.values
         .map((m) => DialogOption(value: m, title: _audioOutputModeLabel(m), subtitle: _audioOutputModeDescription(m)))
         .toList(),
@@ -444,6 +447,8 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
     icon: Symbols.sync_rounded,
     title: t.videoSettings.audioSync,
     subtitleBuilder: (v) => '${(v / 1000).toStringAsFixed(1)}s · ${t.settings.audioSyncOffsetDescription}',
+    valueBuilder: (v) => '${(v / 1000).toStringAsFixed(1)}s',
+    descriptionBuilder: (_) => t.settings.audioSyncOffsetDescription,
     labelText: t.videoSettings.audioSync,
     suffixText: 'ms',
     min: -5000,
@@ -458,6 +463,8 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
         icon: Symbols.hdr_strong_rounded,
         title: t.settings.dvConversionMode,
         subtitleBuilder: (mode) => '${_dvConversionModeLabel(mode)} · ${t.settings.dvConversionModeDescription}',
+        valueBuilder: _dvConversionModeLabel,
+        descriptionBuilder: (_) => t.settings.dvConversionModeDescription,
         options: DvConversionModePreference.values
             .map((m) => DialogOption(value: m, title: _dvConversionModeLabel(m)))
             .toList(),
@@ -521,6 +528,8 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
     icon: Symbols.aspect_ratio_rounded,
     title: t.settings.displayMaxResolutionTitle,
     subtitleBuilder: _displayMaxResolutionSubtitle,
+    valueBuilder: _displayCapLabel,
+    descriptionBuilder: (_) => _displayMaxResolutionNow(),
     options: DisplayResolutionCap.values
         .map(
           (c) => DialogOption(
@@ -543,11 +552,18 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
   /// "1080p" where it could not. Same form as `"Auto (now: Dolby Atmos)"` in
   /// the player's settings sheet.
   String _displayMaxResolutionSubtitle(DisplayResolutionCap cap) {
+    final now = _displayMaxResolutionNow();
+    if (now == null) return _displayCapLabel(cap);
+    return '${_displayCapLabel(cap)} · $now';
+  }
+
+  /// What the display reports right now, or null when it reports nothing.
+  String? _displayMaxResolutionNow() {
     final detected = DeviceCapabilitiesService.instance.detected.display;
     final width = detected.maxWidth.value;
     final height = detected.maxHeight.value;
-    if (width == null || height == null) return _displayCapLabel(cap);
-    return '${_displayCapLabel(cap)} · ${t.settings.displayMaxResolutionNow(resolution: '${width}x$height')}';
+    if (width == null || height == null) return null;
+    return t.settings.displayMaxResolutionNow(resolution: '${width}x$height');
   }
 
   String _displayCapLabel(DisplayResolutionCap cap) => switch (cap) {

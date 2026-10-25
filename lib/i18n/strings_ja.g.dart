@@ -803,7 +803,6 @@ class _TranslationsProfilesJa extends TranslationsProfilesEn {
 	@override String get signOutFailed => 'サインアウトに失敗しました。';
 	@override String get sectionTitle => 'プロファイル';
 	@override String get summarySingle => 'プロファイルを追加して、管理対象ユーザーとローカルIDを混在させます';
-	@override String summaryMultipleWithActive({required Object count, required Object activeName}) => '${count}個のプロファイル · アクティブ: ${activeName}';
 	@override String summaryMultiple({required Object count}) => '${count}個のプロファイル';
 	@override String get removeConnectionTitle => '接続を削除しますか？';
 	@override String removeConnectionMessage({required Object displayName, required Object connectionLabel}) => '${displayName}の${connectionLabel}へのアクセスを削除します。他のプロフィールには残ります。';
@@ -2848,7 +2847,6 @@ extension on TranslationsJa {
 			'profiles.signOutFailed' => 'サインアウトに失敗しました。',
 			'profiles.sectionTitle' => 'プロファイル',
 			'profiles.summarySingle' => 'プロファイルを追加して、管理対象ユーザーとローカルIDを混在させます',
-			'profiles.summaryMultipleWithActive' => ({required Object count, required Object activeName}) => '${count}個のプロファイル · アクティブ: ${activeName}',
 			'profiles.summaryMultiple' => ({required Object count}) => '${count}個のプロファイル',
 			'profiles.removeConnectionTitle' => '接続を削除しますか？',
 			'profiles.removeConnectionMessage' => ({required Object displayName, required Object connectionLabel}) => '${displayName}の${connectionLabel}へのアクセスを削除します。他のプロフィールには残ります。',
@@ -3308,9 +3306,9 @@ extension on TranslationsJa {
 			'companionRemote.session.startServer' => 'サーバーを起動',
 			'companionRemote.session.stopServer' => 'サーバーを停止',
 			'companionRemote.session.minimize' => '最小化',
+			'companionRemote.pairing.discoveryDescription' => '同じPlexアカウントのPleyaデバイスがここに表示されます',
 			_ => null,
 		} ?? switch (path) {
-			'companionRemote.pairing.discoveryDescription' => '同じPlexアカウントのPleyaデバイスがここに表示されます',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => '接続中...',
 			'companionRemote.pairing.searchingForDevices' => 'デバイスを検索中...',

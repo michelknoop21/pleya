@@ -803,7 +803,6 @@ class _TranslationsProfilesFr extends TranslationsProfilesEn {
 	@override String get signOutFailed => 'Échec de la déconnexion.';
 	@override String get sectionTitle => 'Profils';
 	@override String get summarySingle => 'Ajoutez des profils pour mélanger utilisateurs gérés et identités locales';
-	@override String summaryMultipleWithActive({required Object count, required Object activeName}) => '${count} profils · actif : ${activeName}';
 	@override String summaryMultiple({required Object count}) => '${count} profils';
 	@override String get removeConnectionTitle => 'Retirer la connexion ?';
 	@override String removeConnectionMessage({required Object displayName, required Object connectionLabel}) => 'Supprimer l\'accès de ${displayName} à ${connectionLabel}. Les autres profils le conservent.';
@@ -2848,7 +2847,6 @@ extension on TranslationsFr {
 			'profiles.signOutFailed' => 'Échec de la déconnexion.',
 			'profiles.sectionTitle' => 'Profils',
 			'profiles.summarySingle' => 'Ajoutez des profils pour mélanger utilisateurs gérés et identités locales',
-			'profiles.summaryMultipleWithActive' => ({required Object count, required Object activeName}) => '${count} profils · actif : ${activeName}',
 			'profiles.summaryMultiple' => ({required Object count}) => '${count} profils',
 			'profiles.removeConnectionTitle' => 'Retirer la connexion ?',
 			'profiles.removeConnectionMessage' => ({required Object displayName, required Object connectionLabel}) => 'Supprimer l\'accès de ${displayName} à ${connectionLabel}. Les autres profils le conservent.',
@@ -3308,9 +3306,9 @@ extension on TranslationsFr {
 			'companionRemote.session.startServer' => 'Démarrer le serveur',
 			'companionRemote.session.stopServer' => 'Arrêter le serveur',
 			'companionRemote.session.minimize' => 'Réduire',
+			'companionRemote.pairing.discoveryDescription' => 'Les appareils Pleya avec le même compte Plex apparaissent ici',
 			_ => null,
 		} ?? switch (path) {
-			'companionRemote.pairing.discoveryDescription' => 'Les appareils Pleya avec le même compte Plex apparaissent ici',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Connexion...',
 			'companionRemote.pairing.searchingForDevices' => 'Recherche d\'appareils...',

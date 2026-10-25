@@ -803,7 +803,6 @@ class _TranslationsProfilesDa extends TranslationsProfilesEn {
 	@override String get signOutFailed => 'Log ud mislykkedes.';
 	@override String get sectionTitle => 'Profiler';
 	@override String get summarySingle => 'Tilføj profiler for at blande administrerede brugere og lokale identiteter';
-	@override String summaryMultipleWithActive({required Object count, required Object activeName}) => '${count} profiler · aktiv: ${activeName}';
 	@override String summaryMultiple({required Object count}) => '${count} profiler';
 	@override String get removeConnectionTitle => 'Fjern forbindelse?';
 	@override String removeConnectionMessage({required Object displayName, required Object connectionLabel}) => 'Fjern ${displayName}s adgang til ${connectionLabel}. Andre profiler beholder den.';
@@ -2848,7 +2847,6 @@ extension on TranslationsDa {
 			'profiles.signOutFailed' => 'Log ud mislykkedes.',
 			'profiles.sectionTitle' => 'Profiler',
 			'profiles.summarySingle' => 'Tilføj profiler for at blande administrerede brugere og lokale identiteter',
-			'profiles.summaryMultipleWithActive' => ({required Object count, required Object activeName}) => '${count} profiler · aktiv: ${activeName}',
 			'profiles.summaryMultiple' => ({required Object count}) => '${count} profiler',
 			'profiles.removeConnectionTitle' => 'Fjern forbindelse?',
 			'profiles.removeConnectionMessage' => ({required Object displayName, required Object connectionLabel}) => 'Fjern ${displayName}s adgang til ${connectionLabel}. Andre profiler beholder den.',
@@ -3308,9 +3306,9 @@ extension on TranslationsDa {
 			'companionRemote.session.startServer' => 'Start server',
 			'companionRemote.session.stopServer' => 'Stop server',
 			'companionRemote.session.minimize' => 'Minimér',
+			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheder med samme Plex-konto vises her',
 			_ => null,
 		} ?? switch (path) {
-			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheder med samme Plex-konto vises her',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Opretter forbindelse...',
 			'companionRemote.pairing.searchingForDevices' => 'Søger efter enheder...',

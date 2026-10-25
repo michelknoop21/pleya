@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'focused_scroll_scaffold.dart';
+import 'settings/settings_studio_header.dart';
 import 'settings_section.dart';
 
 /// Standard scaffold for settings pages made of ordinary list rows.
@@ -46,9 +47,23 @@ class SettingsPage extends StatelessWidget {
         pinned: pinned,
         automaticallyImplyLeading: automaticallyImplyLeading,
         onBackPressed: onBackPressed,
+        header: _studioHeader(context),
         slivers: pageSlivers,
       ),
     );
+  }
+
+  /// A-24: on an iPhone every settings page opens on the Studio header, built
+  /// from the page title ([settingsStudioHeaderApplies]). Elsewhere the plain
+  /// bar stays, and so does a title that is not a plain [Text], rather than
+  /// guessing at its string.
+  Widget? _studioHeader(BuildContext context) {
+    if (!settingsStudioHeaderApplies(context)) return null;
+    final label = switch (title) {
+      Text(:final data?) => data,
+      _ => null,
+    };
+    return label == null ? null : SettingsWidthLimit(child: SettingsStudioHeader(title: label));
   }
 
   Widget _buildListSliver() {

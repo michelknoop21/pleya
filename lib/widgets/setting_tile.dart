@@ -7,10 +7,14 @@ import '../i18n/strings.g.dart';
 import '../screens/settings/settings_utils.dart';
 import '../services/settings_service.dart';
 import '../theme/mono_tokens.dart';
+import '../utils/platform_detector.dart';
 import 'app_icon.dart';
 import 'clickable_cursor.dart';
 import 'media_markers.dart';
+import 'settings/setting_value_label.dart';
 import 'settings_section.dart';
+
+export 'settings/setting_value_tiles.dart';
 
 /// Reactive setting tiles bound to a [Pref] via [SettingsService.listenable].
 /// Eliminates the field-mirror + setState + manual reload pattern that used to
@@ -180,6 +184,18 @@ class SettingNavigationTile extends StatelessWidget {
       Navigator.push(context, MaterialPageRoute(builder: destinationBuilder!));
     }
 
+    // A-24, off TV: where the value goes ([settingValuePlacement]). A value
+    // that does not fit beside the title takes the line under it, as the
+    // main settings page showed it before, so nothing is cut.
+    final label = trailingLabel;
+    final placement = label == null || PlatformDetector.isTV()
+        ? null
+        : settingValuePlacement(context, title: title, value: label, hasDescription: subtitle != null);
+    // Joined, like the value tiles do: the value never pushes the description out.
+    final subtitleText = placement == SettingValuePlacement.subtitle
+        ? (subtitle == null ? label : '$label · $subtitle')
+        : subtitle;
+
     return SettingRowFocus(
       focusNode: focusNode,
       onSelect: activate,
@@ -187,12 +203,19 @@ class SettingNavigationTile extends StatelessWidget {
         child: ListTile(
           contentPadding: settingRowPadding(),
           leading: SettingsIconBadge(icon),
-          title: Text(title),
-          subtitle: subtitle != null ? Text(subtitle!) : null,
+          title: placement == SettingValuePlacement.titleLine
+              ? SettingTitleWithValue(title: title, value: label!)
+              : Text(title),
+          subtitle: subtitleText != null ? Text(subtitleText) : null,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (trailingLabel != null) ...[Text(trailingLabel!), const SizedBox(width: 16)],
+              // TV keeps its own text style from TvSettingsDensity.
+              if (label != null && PlatformDetector.isTV()) ...[Text(label), const SizedBox(width: 16)],
+              if (placement == SettingValuePlacement.trailing) ...[
+                SettingValueLabel(label!, title: title),
+                const SizedBox(width: 8),
+              ],
               if (needsAttention) ...[
                 Semantics(label: t.tvNavigation.attentionRequired, child: const NewEpisodeDot()),
                 const SizedBox(width: 8),
@@ -203,133 +226,6 @@ class SettingNavigationTile extends StatelessWidget {
           onTap: activate,
         ),
       ),
-    );
-  }
-}
-
-/// ListTile that opens [showNumericInputDialog] and writes back.
-class SettingNumberTile extends StatelessWidget {
-  final Pref<int> pref;
-  final IconData icon;
-  final String title;
-  final String Function(int) subtitleBuilder;
-  final String labelText;
-  final String suffixText;
-  final int min;
-  final int max;
-  final FutureOr<void> Function(int)? onAfterWrite;
-
-  const SettingNumberTile({
-    super.key,
-    required this.pref,
-    required this.icon,
-    required this.title,
-    required this.subtitleBuilder,
-    required this.labelText,
-    required this.suffixText,
-    required this.min,
-    required this.max,
-    this.onAfterWrite,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final svc = _TileBase._svc;
-    return ValueListenableBuilder<int>(
-      valueListenable: svc.listenable(pref),
-      builder: (_, value, _) {
-        void activate() => showNumericInputDialog(
-          context: context,
-          title: title,
-          labelText: labelText,
-          suffixText: suffixText,
-          min: min,
-          max: max,
-          currentValue: value,
-          onSave: (v) async {
-            await svc.write(pref, v);
-            final callback = onAfterWrite;
-            if (callback != null) await callback(v);
-          },
-        );
-
-        return SettingRowFocus(
-          onSelect: activate,
-          child: ClickableCursor(
-            child: ListTile(
-              leading: SettingsIconBadge(icon),
-              contentPadding: settingRowPadding(),
-              title: Text(title),
-              subtitle: Text(subtitleBuilder(value)),
-              trailing: AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
-              onTap: activate,
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// ListTile that opens [showSelectionDialog] and writes the chosen value.
-/// [encode]/[decode] map between the [Pref<S>] storage type and the option
-/// type [T] (e.g. enum-stored-as-string preset → [TranscodeQualityPreset]).
-class SettingSelectionTile<T, S> extends StatelessWidget {
-  final Pref<S> pref;
-  final IconData icon;
-  final String title;
-  final String Function(T) subtitleBuilder;
-  final List<DialogOption<T>> options;
-  final T Function(S) decode;
-  final S Function(T) encode;
-  final FutureOr<void> Function(T)? onAfterWrite;
-
-  const SettingSelectionTile({
-    super.key,
-    required this.pref,
-    required this.icon,
-    required this.title,
-    required this.subtitleBuilder,
-    required this.options,
-    required this.decode,
-    required this.encode,
-    this.onAfterWrite,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final svc = _TileBase._svc;
-    return ValueListenableBuilder<S>(
-      valueListenable: svc.listenable(pref),
-      builder: (_, raw, _) {
-        final value = decode(raw);
-        Future<void> activate() async {
-          final picked = await showSelectionDialog<T>(
-            context: context,
-            title: title,
-            options: options,
-            currentValue: value,
-          );
-          if (picked == null) return;
-          await svc.write(pref, encode(picked));
-          final callback = onAfterWrite;
-          if (callback != null) await callback(picked);
-        }
-
-        return SettingRowFocus(
-          onSelect: activate,
-          child: ClickableCursor(
-            child: ListTile(
-              leading: SettingsIconBadge(icon),
-              contentPadding: settingRowPadding(),
-              title: Text(title),
-              subtitle: Text(subtitleBuilder(value)),
-              trailing: AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
-              onTap: activate,
-            ),
-          ),
-        );
-      },
     );
   }
 }

@@ -608,7 +608,6 @@
     "signOutFailed": "Error al cerrar sesión.",
     "sectionTitle": "Perfiles",
     "summarySingle": "Añade perfiles para mezclar usuarios gestionados e identidades locales",
-    "summaryMultipleWithActive": "${count} perfiles · activo: ${activeName}",
     "summaryMultiple": "${count} perfiles",
     "removeConnectionTitle": "¿Eliminar conexión?",
     "removeConnectionMessage": "Eliminar el acceso de ${displayName} a ${connectionLabel}. Los demás perfiles lo conservan.",

@@ -955,7 +955,6 @@ class _TranslationsProfilesNl extends TranslationsProfilesEn {
 	@override String get signOutFailed => 'Afmelden mislukt.';
 	@override String get sectionTitle => 'Profielen';
 	@override String get summarySingle => 'Voeg profielen toe om beheerde gebruikers en lokale identiteiten te combineren';
-	@override String summaryMultipleWithActive({required Object count, required Object activeName}) => '${count} profielen · actief: ${activeName}';
 	@override String summaryMultiple({required Object count}) => '${count} profielen';
 	@override String get removeConnectionTitle => 'Verbinding verwijderen?';
 	@override String removeConnectionMessage({required Object displayName, required Object connectionLabel}) => 'Verwijder ${displayName}s toegang tot ${connectionLabel}. Andere profielen behouden die.';
@@ -5105,7 +5104,6 @@ extension on TranslationsNl {
 			'profiles.signOutFailed' => 'Afmelden mislukt.',
 			'profiles.sectionTitle' => 'Profielen',
 			'profiles.summarySingle' => 'Voeg profielen toe om beheerde gebruikers en lokale identiteiten te combineren',
-			'profiles.summaryMultipleWithActive' => ({required Object count, required Object activeName}) => '${count} profielen · actief: ${activeName}',
 			'profiles.summaryMultiple' => ({required Object count}) => '${count} profielen',
 			'profiles.removeConnectionTitle' => 'Verbinding verwijderen?',
 			'profiles.removeConnectionMessage' => ({required Object displayName, required Object connectionLabel}) => 'Verwijder ${displayName}s toegang tot ${connectionLabel}. Andere profielen behouden die.',
@@ -5403,9 +5401,9 @@ extension on TranslationsNl {
 			'logs.refreshLogs' => 'Verversen',
 			'logs.levelFilter' => 'Niveau',
 			'logs.levelAll' => 'Alles',
+			'logs.levelWarnings' => 'Waarschuwingen',
 			_ => null,
 		} ?? switch (path) {
-			'logs.levelWarnings' => 'Waarschuwingen',
 			'logs.levelErrors' => 'Fouten',
 			'logs.noMatchingLogs' => 'Geen regels op dit niveau',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} van ${total} regels',
@@ -5917,9 +5915,9 @@ extension on TranslationsNl {
 			'metadataEdit.oldestFirst' => 'Oudste eerst',
 			'metadataEdit.newestFirst' => 'Nieuwste eerst',
 			'metadataEdit.keep' => 'Bewaren',
+			'metadataEdit.allEpisodes' => 'Alle afleveringen',
 			_ => null,
 		} ?? switch (path) {
-			'metadataEdit.allEpisodes' => 'Alle afleveringen',
 			'metadataEdit.latestEpisodes' => ({required Object count}) => '${count} nieuwste afleveringen',
 			'metadataEdit.latestEpisode' => 'Nieuwste aflevering',
 			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Afleveringen toegevoegd in de afgelopen ${count} dagen',
@@ -6431,9 +6429,9 @@ extension on TranslationsNl {
 			'unifiedCatalog.discovery.emptyBody' => 'Geen zichtbare bibliotheek heeft hier iets te tonen.',
 			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titels',
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} van ${count}',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Alle films bekijken, opent de volledige catalogus',
 			_ => null,
 		} ?? switch (path) {
-			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Alle films bekijken, opent de volledige catalogus',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Alle series bekijken, opent de volledige catalogus',
 			'unifiedCatalog.home.featured' => 'Uitgelicht',
 			'unifiedCatalog.homeRows.customize' => 'Home aanpassen',
@@ -6945,9 +6943,9 @@ extension on TranslationsNl {
 			'assistant.confirm.approve' => 'Bevestigen',
 			'assistant.confirm.create' => 'Aanmaken',
 			'assistant.notes.plexManagedHomeUser' => 'Beheerde Plex Home-gebruiker, met een share op deze server.',
+			'assistant.notes.plexShare' => 'Een share op deze Plex-server.',
 			_ => null,
 		} ?? switch (path) {
-			'assistant.notes.plexShare' => 'Een share op deze Plex-server.',
 			'assistant.notes.plexHomeMember' => 'Lid van je Plex Home. Alleen de share op deze server verandert.',
 			'assistant.notes.replacesAllAccess' => 'Vervangt alle bestaande toegang van deze gebruiker op deze server.',
 			'assistant.ends.noTools' => 'Big P kan nu niets doen op je servers.',

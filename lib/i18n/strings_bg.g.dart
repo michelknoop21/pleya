@@ -803,7 +803,6 @@ class _TranslationsProfilesBg extends TranslationsProfilesEn {
 	@override String get signOutFailed => 'Изходът е неуспешен.';
 	@override String get sectionTitle => 'Профили';
 	@override String get summarySingle => 'Добавете профили, за да комбинирате управлявани потребители и локални идентичности';
-	@override String summaryMultipleWithActive({required Object count, required Object activeName}) => '${count} профила · активен: ${activeName}';
 	@override String summaryMultiple({required Object count}) => '${count} профила';
 	@override String get removeConnectionTitle => 'Да се премахне ли връзката?';
 	@override String removeConnectionMessage({required Object displayName, required Object connectionLabel}) => 'Премахване на достъпа на ${displayName} до ${connectionLabel}. Другите профили го запазват.';
@@ -2848,7 +2847,6 @@ extension on TranslationsBg {
 			'profiles.signOutFailed' => 'Изходът е неуспешен.',
 			'profiles.sectionTitle' => 'Профили',
 			'profiles.summarySingle' => 'Добавете профили, за да комбинирате управлявани потребители и локални идентичности',
-			'profiles.summaryMultipleWithActive' => ({required Object count, required Object activeName}) => '${count} профила · активен: ${activeName}',
 			'profiles.summaryMultiple' => ({required Object count}) => '${count} профила',
 			'profiles.removeConnectionTitle' => 'Да се премахне ли връзката?',
 			'profiles.removeConnectionMessage' => ({required Object displayName, required Object connectionLabel}) => 'Премахване на достъпа на ${displayName} до ${connectionLabel}. Другите профили го запазват.',
@@ -3308,9 +3306,9 @@ extension on TranslationsBg {
 			'companionRemote.session.startServer' => 'Стартирай сървър',
 			'companionRemote.session.stopServer' => 'Спри сървър',
 			'companionRemote.session.minimize' => 'Минимизирай',
+			'companionRemote.pairing.discoveryDescription' => 'Pleya устройства със същия Plex акаунт се показват тук',
 			_ => null,
 		} ?? switch (path) {
-			'companionRemote.pairing.discoveryDescription' => 'Pleya устройства със същия Plex акаунт се показват тук',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Свързване...',
 			'companionRemote.pairing.searchingForDevices' => 'Търсене на устройства...',

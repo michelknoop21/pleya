@@ -608,7 +608,6 @@
     "signOutFailed": "Falha ao sair.",
     "sectionTitle": "Perfis",
     "summarySingle": "Adicione perfis para mesclar usuários gerenciados e identidades locais",
-    "summaryMultipleWithActive": "${count} perfis · ativo: ${activeName}",
     "summaryMultiple": "${count} perfis",
     "removeConnectionTitle": "Remover conexão?",
     "removeConnectionMessage": "Remover acesso de ${displayName} a ${connectionLabel}. Outros perfis mantêm o acesso.",

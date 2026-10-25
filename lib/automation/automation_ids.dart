@@ -84,6 +84,11 @@ class AutomationIds {
   /// tracker/requests gating), so a slot index would shift under those
   /// conditions in a way a real user's route never depends on.
   static const String settingsTile = 'settings.tile';
+
+  /// The Studio header at the top of the settings pages off TV (A-24): the
+  /// large title with its artwork panel. `state.artwork` says whether the
+  /// panel shows a backdrop from the library (true) or the brand fallback.
+  static const String settingsHeader = 'settings.header';
   static const String screenLocalLibrary = 'screen.local_library';
   static const String localLibraryEnable = 'local_library.enable';
   static const String localLibraryWifi = 'local_library.wifi';
@@ -864,6 +869,7 @@ class AutomationIds {
     {'id': libraryPickerCard, 'role': 'grid.item', 'instanceable': true},
     {'id': screenSettings, 'role': 'screen', 'instanceable': false},
     {'id': settingsTile, 'role': 'list.item', 'instanceable': true},
+    {'id': settingsHeader, 'role': 'region', 'instanceable': false},
     {'id': screenLocalLibrary, 'role': 'screen', 'instanceable': false},
     {'id': localLibraryEnable, 'role': 'switch', 'instanceable': false},
     {'id': localLibraryWifi, 'role': 'switch', 'instanceable': false},

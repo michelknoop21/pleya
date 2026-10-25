@@ -780,7 +780,6 @@
     "signOutFailed": "Afmelden mislukt.",
     "sectionTitle": "Profielen",
     "summarySingle": "Voeg profielen toe om beheerde gebruikers en lokale identiteiten te combineren",
-    "summaryMultipleWithActive": "${count} profielen · actief: ${activeName}",
     "summaryMultiple": "${count} profielen",
     "removeConnectionTitle": "Verbinding verwijderen?",
     "removeConnectionMessage": "Verwijder ${displayName}s toegang tot ${connectionLabel}. Andere profielen behouden die.",

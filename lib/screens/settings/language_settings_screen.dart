@@ -35,6 +35,7 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/profile_language_switch_tile.dart';
+import '../../widgets/settings/setting_value_label.dart';
 import '../../widgets/settings_page.dart';
 import '../../widgets/settings_section.dart';
 import '../../widgets/tv/tv_page_surface.dart';
@@ -354,6 +355,25 @@ class _ValueRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final chevron = AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted);
+    if (!PlatformDetector.isTV()) {
+      // A-24: the value ends the title line so the note keeps the full width
+      // under it; a value too long for that line opens the note instead.
+      final onTitleLine =
+          settingValuePlacement(context, title: title, value: value, hasDescription: true) ==
+          SettingValuePlacement.titleLine;
+      return SettingRowFocus(
+        onSelect: onSelect,
+        child: ListTile(
+          contentPadding: settingRowPadding(),
+          leading: SettingsIconBadge(icon),
+          title: onTitleLine ? SettingTitleWithValue(title: title, value: value) : Text(title),
+          subtitle: Text(onTitleLine ? subtitle : '$value · $subtitle'),
+          trailing: chevron,
+          onTap: onSelect,
+        ),
+      );
+    }
     return SettingRowFocus(
       onSelect: onSelect,
       child: ListTile(
@@ -377,7 +397,7 @@ class _ValueRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
+            chevron,
           ],
         ),
         onTap: onSelect,

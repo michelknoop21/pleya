@@ -803,7 +803,6 @@ class _TranslationsProfilesEs extends TranslationsProfilesEn {
 	@override String get signOutFailed => 'Error al cerrar sesión.';
 	@override String get sectionTitle => 'Perfiles';
 	@override String get summarySingle => 'Añade perfiles para mezclar usuarios gestionados e identidades locales';
-	@override String summaryMultipleWithActive({required Object count, required Object activeName}) => '${count} perfiles · activo: ${activeName}';
 	@override String summaryMultiple({required Object count}) => '${count} perfiles';
 	@override String get removeConnectionTitle => '¿Eliminar conexión?';
 	@override String removeConnectionMessage({required Object displayName, required Object connectionLabel}) => 'Eliminar el acceso de ${displayName} a ${connectionLabel}. Los demás perfiles lo conservan.';
@@ -2848,7 +2847,6 @@ extension on TranslationsEs {
 			'profiles.signOutFailed' => 'Error al cerrar sesión.',
 			'profiles.sectionTitle' => 'Perfiles',
 			'profiles.summarySingle' => 'Añade perfiles para mezclar usuarios gestionados e identidades locales',
-			'profiles.summaryMultipleWithActive' => ({required Object count, required Object activeName}) => '${count} perfiles · activo: ${activeName}',
 			'profiles.summaryMultiple' => ({required Object count}) => '${count} perfiles',
 			'profiles.removeConnectionTitle' => '¿Eliminar conexión?',
 			'profiles.removeConnectionMessage' => ({required Object displayName, required Object connectionLabel}) => 'Eliminar el acceso de ${displayName} a ${connectionLabel}. Los demás perfiles lo conservan.',
@@ -3308,9 +3306,9 @@ extension on TranslationsEs {
 			'companionRemote.session.startServer' => 'Iniciar servidor',
 			'companionRemote.session.stopServer' => 'Detener servidor',
 			'companionRemote.session.minimize' => 'Minimizar',
+			'companionRemote.pairing.discoveryDescription' => 'Los dispositivos Pleya con la misma cuenta Plex aparecen aquí',
 			_ => null,
 		} ?? switch (path) {
-			'companionRemote.pairing.discoveryDescription' => 'Los dispositivos Pleya con la misma cuenta Plex aparecen aquí',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Conectando...',
 			'companionRemote.pairing.searchingForDevices' => 'Buscando dispositivos...',
