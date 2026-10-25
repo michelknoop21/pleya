@@ -44,16 +44,23 @@ mixin _PleyaServerArtworkMethods on _PleyaServerRequests {
   /// a rotation between two posters is handled by the same single-flight path
   /// as everything else.
   void _registerArtworkAuthorization() {
-    ArtworkAuthorizationRegistry.register(connection.baseUrl, () => _session.authHeaders());
+    final supplier = _artworkSupplier = () => _session.authHeaders();
+    ArtworkAuthorizationRegistry.register(connection.baseUrl, supplier);
   }
+
+  /// The supplier this client registered, so closing it removes its own
+  /// entry and never a newer client's.
+  Future<Map<String, String>> Function()? _artworkSupplier;
 
   /// Stop answering for this origin.
   ///
-  /// Keyed on the origin, so two connections to one server share an entry and
-  /// removing it on the first close would take the second one's artwork with
-  /// it. That is a PS-9 concern (one server, several identities); for now a
-  /// closed client is a client whose connection is gone.
+  /// Keyed on the origin, so two clients for one server share an entry. A
+  /// profile rebind builds the new client before the old one closes; the old
+  /// one removing the entry then left every poster without a token (401s in
+  /// the A-24b simulator runs). It now removes only its own supplier.
   void _unregisterArtworkAuthorization() {
-    ArtworkAuthorizationRegistry.unregister(connection.baseUrl);
+    final supplier = _artworkSupplier;
+    if (supplier == null) return;
+    ArtworkAuthorizationRegistry.unregister(connection.baseUrl, owner: supplier);
   }
 }

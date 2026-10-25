@@ -150,6 +150,15 @@ void main() {
       client = await connected(server);
     });
 
+    test('an older client closing after a newer one keeps the newer one answering', () async {
+      final older = await connected(server);
+      final url = older.thumbnailUrl(PleyaServerMappers.artworkPath('art-sea'));
+      client = await connected(server); // the rebind's new client, same origin
+      older.close();
+      final headers = await ArtworkAuthorizationRegistry.headersFor(Uri.parse(url));
+      expect(headers['Authorization'], startsWith('Bearer '));
+    });
+
     test('an origin nobody registered gets no headers', () async {
       client = await connected(server);
       expect(await ArtworkAuthorizationRegistry.headersFor(Uri.parse('https://image.tmdb.org/x.jpg')), isEmpty);
