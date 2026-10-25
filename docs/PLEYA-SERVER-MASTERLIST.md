@@ -58,7 +58,11 @@ Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-r
 diagnostiek, tokens, audit, bibliotheken, opslag, scans, jobs en de overname van `.env`-bibliotheken.
 Protocolvensters 1 en 2 zijn gesloten ([DEC-135](DECISIONS.md), [DEC-136](DECISIONS.md),
 [DEC-137](DECISIONS.md); [DEC-138](DECISIONS.md), [DEC-146](DECISIONS.md)) en `openapi.yaml` is weer
-bevroren. De volgende backendslice is S3. PS-14 is op 10 oktober 2026 vrijgegeven
+bevroren. De volgorde sinds [DEC-150](DECISIONS.md) en [DEC-151](DECISIONS.md) is: eerst één bewezen
+keten op de testinstance (scan, metadata en artwork, zoeken, direct play, hervatten, kijkstatus op een
+tweede toestel, transcode, download met digest), daarna de gaten die die ronde aanwijst, dan de
+beheer-GUI (S10), dan de Plex Replacement Readiness Gate (S15) en pas daarna S3. S3 is dus niet de
+volgende backendslice; de uitleg hieronder blijft staan voor M7. PS-14 is op 10 oktober 2026 vrijgegeven
 ([DEC-149](DECISIONS.md)), met de voorwaarden dat het de bestaande architectuur en de Unified Library
 gebruikt, later aansluit op de Pleya-clients en de webclient, en geen nieuwe DRM-, winkel- of
 abonnementsfunctionaliteit brengt zonder afzonderlijk besluit. Dat geeft S3 vrij en S6 niet: het
@@ -93,9 +97,13 @@ binnen een golf is de volgorde vrij. De kolom "taken" telt wat er open of bezig 
 | E4 (M4) | S17, S18 | PlaybackPlan, transcode, remux | E3 |
 | E5 (M5) | S20 (excl. 20.4), S23 (excl. 23.4) | geschiedenis, favorieten, downloads | E4 |
 | E6 (M6) | S7, S10, S24, S25 | beheer-GUI, remote hardening, back-up en restore | E5 |
-| Gate | S15 | Plex Replacement Readiness Gate op de testinstance; productie-switch alleen met Michels go | E6 |
+| Gate | S15 | Plex Replacement Readiness Gate op de testinstance (Plex blijft draaien, bestanden read-only gedeeld); productie-switch alleen met Michels go | E6 |
 | E7 (M7) | S3, rest van golf 2 tot 4 | boeken en de rest van de oorspronkelijke graaf | gate (naar voren te halen) |
 | keuze | PS-12 | Plex-migratie, eigen vrijgave | Michel |
+
+*Binnen E6 geldt: eerst de ketenacceptatie op de testinstance en de gaten die daaruit komen, dan de
+beheer-GUI (S10 met scherm 37, S18.3 en S25.6), en de off-site back-up (S25.7) loopt daar parallel aan.
+De Beheer-pil komt bij S10.1 en de avatar bij S8.6; S7.2 blijft tot dan zichtbaar bezig.*
 
 *Volgorde gewijzigd door [DEC-150](DECISIONS.md) op 19 oktober 2026. Geen rij is geschrapt of op `[!]` gezet; de afhankelijkheden uit deel I gelden ongewijzigd. De oude golfindeling (2 tot 8) staat in de git-geschiedenis.*
 
@@ -105,7 +113,7 @@ wachten; wie ruimte heeft trekt hem naar voren.
 
 ### 2.2 De kritieke lijn
 
-`S3 → S5 en S6 → S14 → S17 → S18 → S23 → S15`, met voor S3 de laag C-meting en het venster-besluit,
+`S3 → S5 en S6 → S14 → S17 → S18 → S23 → S15` (de afhankelijkheidsvolgorde uit deel I; de uitvoeringsvolgorde staat in 2.1), met voor S3 de laag C-meting en het venster-besluit,
 en voor S6 P5 én de vrijgave van PS-15.
 
 *Bijgesteld op 10 oktober 2026: de schakels `S7 → S10 → S11 → vrijgave PS-14` zijn als poort voor S3
@@ -141,7 +149,7 @@ van de 128 resterende in de golven; PS-12.0 is een keuze en telt daar niet mee. 
 ### 2.4 De poorten die nog dicht staan
 
 P5 (locator), P6 (acht protocolvensters geopend en gesloten), P7 (PS-5-hardwareronde, OVERDUE),
-P8 (Plex-off gate). Van de acht protocolvensters zijn er twee geopend én weer gesloten: venster 1, bij
+P8 (Plex Replacement Readiness Gate). Van de acht protocolvensters zijn er twee geopend én weer gesloten: venster 1, bij
 S1, met alle zeventien rijen erin ([DEC-135](DECISIONS.md), [DEC-136](DECISIONS.md),
 [DEC-137](DECISIONS.md)), en venster 2, bij S2, met alle tien ([DEC-138](DECISIONS.md),
 [DEC-146](DECISIONS.md)). Er staat er nu geen open. De volledige stand staat in hoofdstuk 4.
@@ -546,7 +554,7 @@ Start niet automatisch. Zolang PS-12.0 open staat, is geen enkele PS-12-taak toe
 | P5 | Locatorbesluit voor leesvoortgang | `[ ]` | |
 | P6 | Protocolvensters 1 tot 8 geopend en gesloten | `[ ]` | twee van acht: venster 1 (S1.6, DEC-137) en venster 2 (S2.6, DEC-146) |
 | P7 | PS-5-hardwareronde | `[!]` OVERDUE / HARDWARE VALIDATION OPEN | DEC-118-grens (merge van `feat/pleyaserver` naar `main`) gepasseerd op 25 sep 2026 met `638e7524` (PR #94), ronde niet gedraaid; DEC-118 ongewijzigd, de grenzen voor een publieke clientrelease en voor een indiening bij App Review of Beta App Review met PS-5- of PS-9-gedrag blijven gelden. Blokkeert die clientrelease, die indiening en de eerste publieke release van Pleya Server, tot een geslaagde hardwareacceptatie (besluit Michel, 10 okt 2026). Open in `docs/qa/ps5-hardware-round.md`: Jellyfin-blokkade opnieuw meten, T1 tot en met T4, R1, R2, opstartregel op tvOS en opnieuw op macOS. macOS-opstartregel build 246: historische PASS, artefact niet teruggevonden, geen actueel hardwarebewijs |
-| P8 | Plex-off gate groen, migratie als keuze | `[ ]` | |
+| P8 | Plex Replacement Readiness Gate groen (testinstance, Plex blijft draaien), migratie als keuze | `[ ]` | |
 | P9 | Contractdekking compleet: de dekkingslijst in `scripts/check_server_responses.py` dekt elk schema dat de server werkelijk teruggeeft, inclusief `UserList`, `LibraryPermissionList` en `SessionList` | `[x]` 4 sep 2026 | **De dekkingslijst.** `scripts/check_server_responses.py` leidt hem nu af uit `openapi.yaml`: elk schema dat het contract als JSON-antwoordlichaam noemt, met de `components/responses`-indirectie opgelost en niet-JSON-lichamen (artwork, ondertitels, stream) eruit. Dat brengt de eis van 8 naar 15 en dekt `UserList`, `SessionList` en `LibraryPermissionList`. Uit de vangst afleiden zou de poort tautologisch maken; uit het contract afleiden laat hem vanzelf meegroeien. Echte vangst van 32 antwoorden lokaal gedraaid met `GO_IMAGE=pleya-server-test:go-ffmpeg` en `PLEYA_RESPONSE_DIR=/src/.responses` (het containerpad binnen de mount, daar ging het eerder mis): alle 15 gedekt, alle 32 valide. Negatieve controle: met `UserList`, `SessionList` en `LibraryPermissionList` uit de vangst geeft de oude poort exit 0 met "de server houdt zich aan het contract" en de nieuwe exit 1 met de drie endpoints erbij. De afleiding heeft zes eigen controles op een verzonnen contract (`bijt de afleiding`). |
 
 ---
