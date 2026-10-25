@@ -608,7 +608,6 @@
     "signOutFailed": "Wylogowanie nie powiodło się.",
     "sectionTitle": "Profile",
     "summarySingle": "Dodaj profile, aby łączyć zarządzanych użytkowników i tożsamości lokalne",
-    "summaryMultipleWithActive": "${count} profili · aktywny: ${activeName}",
     "summaryMultiple": "${count} profili",
     "removeConnectionTitle": "Usunąć połączenie?",
     "removeConnectionMessage": "Usuń dostęp ${displayName} do ${connectionLabel}. Inne profile go zachowają.",

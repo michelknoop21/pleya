@@ -608,7 +608,6 @@
     "signOutFailed": "Uscita non riuscita.",
     "sectionTitle": "Profili",
     "summarySingle": "Aggiungi profili per combinare utenti gestiti e identità locali",
-    "summaryMultipleWithActive": "${count} profili · attivo: ${activeName}",
     "summaryMultiple": "${count} profili",
     "removeConnectionTitle": "Rimuovere la connessione?",
     "removeConnectionMessage": "Rimuovi l'accesso di ${displayName} a ${connectionLabel}. Gli altri profili lo mantengono.",

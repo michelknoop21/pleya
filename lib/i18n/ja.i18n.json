@@ -608,7 +608,6 @@
     "signOutFailed": "サインアウトに失敗しました。",
     "sectionTitle": "プロファイル",
     "summarySingle": "プロファイルを追加して、管理対象ユーザーとローカルIDを混在させます",
-    "summaryMultipleWithActive": "${count}個のプロファイル · アクティブ: ${activeName}",
     "summaryMultiple": "${count}個のプロファイル",
     "removeConnectionTitle": "接続を削除しますか？",
     "removeConnectionMessage": "${displayName}の${connectionLabel}へのアクセスを削除します。他のプロフィールには残ります。",

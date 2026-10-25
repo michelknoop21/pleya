@@ -2252,9 +2252,6 @@ class TranslationsProfilesEn {
 	/// en: 'Add profiles to mix managed users and local identities'
 	String get summarySingle => 'Add profiles to mix managed users and local identities';
 
-	/// en: '${count} profiles · active: ${activeName}'
-	String summaryMultipleWithActive({required Object count, required Object activeName}) => '${count} profiles · active: ${activeName}';
-
 	/// en: '${count} profiles'
 	String summaryMultiple({required Object count}) => '${count} profiles';
 
@@ -10626,7 +10623,6 @@ extension on Translations {
 			'profiles.signOutFailed' => 'Sign out failed.',
 			'profiles.sectionTitle' => 'Profiles',
 			'profiles.summarySingle' => 'Add profiles to mix managed users and local identities',
-			'profiles.summaryMultipleWithActive' => ({required Object count, required Object activeName}) => '${count} profiles · active: ${activeName}',
 			'profiles.summaryMultiple' => ({required Object count}) => '${count} profiles',
 			'profiles.removeConnectionTitle' => 'Remove connection?',
 			'profiles.removeConnectionMessage' => ({required Object displayName, required Object connectionLabel}) => 'Remove ${displayName}\'s access to ${connectionLabel}. Other profiles keep it.',
@@ -10924,9 +10920,9 @@ extension on Translations {
 			'logs.refreshLogs' => 'Refresh',
 			'logs.levelFilter' => 'Level',
 			'logs.levelAll' => 'All',
+			'logs.levelWarnings' => 'Warnings',
 			_ => null,
 		} ?? switch (path) {
-			'logs.levelWarnings' => 'Warnings',
 			'logs.levelErrors' => 'Errors',
 			'logs.noMatchingLogs' => 'No lines at this level',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} of ${total} lines',
@@ -11438,9 +11434,9 @@ extension on Translations {
 			'metadataEdit.oldestFirst' => 'Oldest first',
 			'metadataEdit.newestFirst' => 'Newest first',
 			'metadataEdit.keep' => 'Keep',
+			'metadataEdit.allEpisodes' => 'All episodes',
 			_ => null,
 		} ?? switch (path) {
-			'metadataEdit.allEpisodes' => 'All episodes',
 			'metadataEdit.latestEpisodes' => ({required Object count}) => '${count} latest episodes',
 			'metadataEdit.latestEpisode' => 'Latest episode',
 			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Episodes added in the past ${count} days',
@@ -11952,9 +11948,9 @@ extension on Translations {
 			'unifiedCatalog.discovery.emptyBody' => 'No visible library has anything to show here.',
 			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titles',
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} of ${count}',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'View all movies, opens the complete catalog',
 			_ => null,
 		} ?? switch (path) {
-			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'View all movies, opens the complete catalog',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'View all series, opens the complete catalog',
 			'unifiedCatalog.home.featured' => 'Featured',
 			'unifiedCatalog.homeRows.customize' => 'Customise Home',
@@ -12466,9 +12462,9 @@ extension on Translations {
 			'assistant.confirm.approve' => 'Confirm',
 			'assistant.confirm.create' => 'Create',
 			'assistant.notes.plexManagedHomeUser' => 'Managed Plex Home user, with a share on this server.',
+			'assistant.notes.plexShare' => 'A share on this Plex server.',
 			_ => null,
 		} ?? switch (path) {
-			'assistant.notes.plexShare' => 'A share on this Plex server.',
 			'assistant.notes.plexHomeMember' => 'Member of your Plex Home. Only the share on this server changes.',
 			'assistant.notes.replacesAllAccess' => 'Replaces all existing access of this user on this server.',
 			'assistant.ends.noTools' => 'There is nothing Big P can do on your servers right now.',

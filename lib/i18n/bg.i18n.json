@@ -608,7 +608,6 @@
     "signOutFailed": "Изходът е неуспешен.",
     "sectionTitle": "Профили",
     "summarySingle": "Добавете профили, за да комбинирате управлявани потребители и локални идентичности",
-    "summaryMultipleWithActive": "${count} профила · активен: ${activeName}",
     "summaryMultiple": "${count} профила",
     "removeConnectionTitle": "Да се премахне ли връзката?",
     "removeConnectionMessage": "Премахване на достъпа на ${displayName} до ${connectionLabel}. Другите профили го запазват.",

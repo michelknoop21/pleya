@@ -608,7 +608,6 @@
     "signOutFailed": "Échec de la déconnexion.",
     "sectionTitle": "Profils",
     "summarySingle": "Ajoutez des profils pour mélanger utilisateurs gérés et identités locales",
-    "summaryMultipleWithActive": "${count} profils · actif : ${activeName}",
     "summaryMultiple": "${count} profils",
     "removeConnectionTitle": "Retirer la connexion ?",
     "removeConnectionMessage": "Supprimer l'accès de ${displayName} à ${connectionLabel}. Les autres profils le conservent.",

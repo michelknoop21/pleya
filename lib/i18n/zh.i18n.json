@@ -608,7 +608,6 @@
     "signOutFailed": "退出登录失败。",
     "sectionTitle": "配置文件",
     "summarySingle": "添加配置文件以混合托管用户和本地身份",
-    "summaryMultipleWithActive": "${count} 个配置文件 · 活跃：${activeName}",
     "summaryMultiple": "${count} 个配置文件",
     "removeConnectionTitle": "移除连接？",
     "removeConnectionMessage": "移除 ${displayName} 对 ${connectionLabel} 的访问。其他个人资料仍保留。",
