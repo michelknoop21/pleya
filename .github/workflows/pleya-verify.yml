@@ -10,8 +10,8 @@ on:
   workflow_dispatch:
   schedule:
     # Weekly extended run for the tvOS gate (idb-dependent, not required on
-    # every push). Portable and macOS jobs also run here: they are cheap
-    # enough that a weekly re-check costs nothing extra.
+    # every push). Portable and macOS jobs also run here as the existing
+    # weekly full regression check.
     - cron: "17 4 * * 1"
 
 # Een nieuwe push op een PR maakt de runs op de vorige commit van diezelfde PR
@@ -52,11 +52,16 @@ jobs:
       - name: Raakt deze verandering de app zelf?
         id: filter
         env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
+          BASE: ${{ github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          files="$(scripts/ci_changed_files.sh "$BASE" "${HEAD:-HEAD}")"
+          files="$(scripts/ci_changed_files.sh "$BASE" "$HEAD")"
+          # Expliciete volledige selectie, onafhankelijk van resterende bronmappen.
+          if [ -z "$files" ] || [ "$files" = "__CI_FULL__" ]; then
+            printf '%s\n' 'apple=true' 'portable=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           # head sluit de pijp na 50 regels; bij meer bestanden dan dat krijgt
           # echo een SIGPIPE en breekt de stap af onder pipefail. Alleen om te
           # tonen, dus een falende preview mag de uitkomst niet meenemen.
@@ -72,7 +77,7 @@ jobs:
           # apple=false. Geverifieerd tegen de git-ls-files-fallback van deze repo
           # (3260 bestanden): met de pijp apple=false, met de here-string
           # apple=true, wat hier het enige juiste antwoord is.
-          if grep -qvE '^(docs/|test/|pleya_server/|pleya_web/|\.githooks/|[^/]*\.md$)' <<< "$files"; then
+          if grep -qvE '^(docs/|test/|pleya_server/|pleya_web/|website/|\.claude/|\.githooks/|[^/]*\.md$)' <<< "$files"; then
             echo "apple=true" >> "$GITHUB_OUTPUT"
           else
             echo "apple=false" >> "$GITHUB_OUTPUT"

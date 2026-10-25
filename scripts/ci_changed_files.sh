@@ -1,37 +1,61 @@
 #!/usr/bin/env bash
-# Print de bestanden die deze CI-run beoordeelt, één per regel.
+# Bestanden voor de scopefilters, één per regel. PR: merge-base...head;
+# push: event.before..event.after (niet HEAD^: een push kan meerdere commits zijn).
+# De workflows geven beide event-SHA's als argumenten door.
 #
-#   scripts/ci_changed_files.sh                 # alles wat in git staat
-#   scripts/ci_changed_files.sh <basis> <kop>   # het bereik van een pull request
-#
-# Alleen bij een pull request valt er iets af te bakenen: daar is de basis
-# bekend. Bij een push naar main, een handmatige run of het schema is er geen
-# zinnige ondergrens, en dan is "alles" het eerlijke antwoord. Een lege lijst
-# zou een gate stilzwijgend overslaan, dus elke twijfel valt de kant van meer
-# werk op.
-#
-# Dit script kiest niet wélke gate draait; het levert alleen de lijst. De
-# workflow die hem aanroept filtert zelf, zodat de reden waarom een gate
-# overgeslagen wordt naast die gate staat en niet hier.
-#
-# --no-renames: git print bij een rename alleen het nieuwe pad. Een bestand
-# dat pleya_server/ verlaat (of lib/) zou daarmee onzichtbaar zijn voor een
-# filter dat op het oude pad let, terwijl beide kanten wel degelijk wijzigen.
-# core.quotePath=false: een pad met een niet-ASCII teken komt anders met
-# aanhalingstekens omheen terug (`"pleya_server/inter\303\251n/a.go"`), en dat
-# matcht geen enkel filter meer.
+# __CI_FULL__ betekent expliciet alle gates, ook als een hele bronmap is gewist.
+# Handmatig/schema, nieuwe branch, force-push en een lege diff vallen daarop terug.
+# Een detectiefout faalt de scopejob; de afhankelijke jobs vallen dan open.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
+full() { echo "ci scope: $*; volledige controles" >&2; echo '__CI_FULL__'; }
+fail() { echo "::error::ci scope: $*" >&2; exit 1; }
+
 base="${1:-}"
 head="${2:-HEAD}"
+event="${GITHUB_EVENT_NAME:-local}"
+case "$event" in
+  workflow_dispatch|schedule) full "$event"; exit 0 ;;
+  push|pull_request)
+    [ -n "${2:-}" ] || fail 'event.head ontbreekt'
+    ;;
+  local)
+    if [ -z "$base" ]; then full 'geen bereik opgegeven'; exit 0; fi
+    ;;
+  *) full "onbekend event $event"; exit 0 ;;
+esac
 
-if [ -z "$base" ] || ! git rev-parse --verify --quiet "${base}^{commit}" >/dev/null; then
-  git ls-files
-  exit 0
+if [ "$event" = push ] && [[ "$base" =~ ^0+$ ]]; then
+  full 'nieuwe branch'; exit 0
+fi
+[ -n "$base" ] || fail 'basis ontbreekt'
+base="$(git rev-parse --verify --quiet --end-of-options "${base}^{commit}")" || fail 'basiscommit ontbreekt'
+head="$(git rev-parse --verify --quiet --end-of-options "${head}^{commit}")" || fail 'headcommit ontbreekt'
+
+if [ "$event" = push ]; then
+  # Een afwijkende checkout mag geen geldige maar ongerelateerde diff opleveren.
+  [ "$(git rev-parse HEAD)" = "$head" ] || fail 'checkout wijkt af van event.after'
+  if ! git merge-base --is-ancestor "$base" "$head"; then
+    full 'push zonder voorouderrelatie'; exit 0
+  fi
+  range="$base..$head"
+else
+  range="$base...$head"
 fi
 
-# Drie stippen: het verschil sinds het gezamenlijke voorouder-commit, niet
-# sinds de kop van main op het moment van het event (die beweegt verder).
-# fetch-depth: 0 in de aanroepende job zorgt dat die voorouder er staat.
-git -c core.quotePath=false diff --no-renames --name-only "$base"..."$head"
+listing="$(mktemp)"
+trap 'rm -f "$listing"' EXIT
+# Geen rename-detectie: oude én nieuwe padnaam moeten hun domein activeren.
+# NUL-delimiters voorkomen quoting van Unicode/spaties. De bestaande filters
+# lezen regels, dus een newline/CR in een pad valt expliciet terug op alles.
+git diff --no-renames --name-only -z "$range" -- > "$listing" || fail 'git diff mislukt'
+files=()
+while IFS= read -r -d '' path; do
+  case "$path" in
+    *$'\n'*|*$'\r'*) full 'regelafbreking in pad'; exit 0 ;;
+  esac
+  files+=("$path")
+done < "$listing"
+if [ "${#files[@]}" -eq 0 ]; then full 'lege diff'; exit 0; fi
+printf '%s\n' "${files[@]}"

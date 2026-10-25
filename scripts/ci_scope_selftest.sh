@@ -29,6 +29,7 @@ cd "$(git rev-parse --show-toplevel)"
 
 exec python3 - "$PWD" <<'PY'
 import os
+import shutil
 import re
 import subprocess
 import sys
@@ -68,18 +69,17 @@ CASES = [
      dict(flutter="true", server="true", web="false", apple="false", portable="false")),
     ("antwoordvalidator", ["scripts/check_server_responses.py"],
      dict(flutter="true", server="true", web="false", apple="true", portable="true")),
-    # Het apple-filter in pleya-verify.yml is niet door deze scoping aangepast
-    # en laat .claude/ en website/ de simulatorrun starten.
+    # Website- en agentdocumentatie hoeven geen gebouwde app te verifiëren.
     ("root-markdown en .claude", ["README.md", "STATUS.md", ".claude/skills/x/SKILL.md"],
-     dict(flutter="false", server="false", web="false", apple="true", portable="false")),
+     dict(flutter="false", server="false", web="false", apple="false", portable="false")),
     ("website/", ["website/src/lib/content/manual/01.md"],
-     dict(flutter="false", server="false", web="false", apple="true", portable="false")),
+     dict(flutter="false", server="false", web="false", apple="false", portable="false")),
     ("docs plus lib", ["docs/CHANGELOG.md", "lib/main.dart"],
      dict(flutter="true", apple="true")),
     ("ci.yml zelf", [".github/workflows/ci.yml"],
-     {"flutter": "true", "ci.yml:server": "true", "server-web.yml:server": "false", "apple": "true"}),
+     {"flutter": "true", "ci.yml:server": "true", "server-web.yml:server": "false", "ci.yml:web": "true", "server-web.yml:web": "false", "apple": "true"}),
     ("server-web.yml zelf", [".github/workflows/server-web.yml"],
-     {"flutter": "true", "ci.yml:server": "false", "server-web.yml:server": "true", "web": "true"}),
+     {"flutter": "true", "ci.yml:server": "false", "server-web.yml:server": "true", "ci.yml:web": "false", "server-web.yml:web": "true"}),
     ("pleya-verify.yml zelf", [".github/workflows/pleya-verify.yml"],
      dict(flutter="true", apple="true", portable="true")),
     # Twee runnertests lezen of draaien bestanden buiten pleya_verify/.
@@ -87,10 +87,21 @@ CASES = [
      dict(flutter="true", server="false", web="false", apple="true", portable="true")),
     ("lib/automation/automation_input.dart", ["lib/automation/automation_input.dart"],
      dict(flutter="true", server="false", web="false", apple="true", portable="true")),
-    ("lege diff", [],
-     dict(flutter="true", server="false", web="false")),
-    # Push op main, handmatig of schema: ci_changed_files.sh geeft dan git ls-files.
-    ("push op main (git ls-files)", None,
+    ("SDK-pin", [".fvmrc"],
+     dict(flutter="true", apple="true", portable="true")),
+    ("app-dependencies", ["pubspec.lock"],
+     dict(flutter="true", apple="true")),
+    ("Apple-native", ["ios/Runner/AppDelegate.swift"],
+     dict(flutter="true", apple="true")),
+    ("onbekende rootconfig", ["new-tool.toml"],
+     dict(flutter="true", apple="true")),
+    ("detector zelf", ["scripts/ci_changed_files.sh"],
+     dict(flutter="true", server="true", web="true", apple="true", portable="true")),
+    ("onverwacht lege detectie", [],
+     dict(flutter="true", server="true", web="true", apple="true", portable="true")),
+    ("volledig signaal", ["__CI_FULL__"],
+     dict(flutter="true", server="true", web="true", apple="true", portable="true")),
+    ("volledige selectie (git ls-files)", None,
      dict(flutter="true", server="true", web="true", apple="true", portable="true")),
 ]
 
@@ -121,7 +132,7 @@ def gated_jobs(doc):
     return out
 
 
-def run_filter(script, files):
+def run_filter(script, files, stub_exit=0, expect_failure=False):
     with tempfile.TemporaryDirectory() as tmp:
         os.makedirs(os.path.join(tmp, "scripts"))
         listing = os.path.join(tmp, "files.txt")
@@ -135,13 +146,17 @@ def run_filter(script, files):
                 fh.write("".join(f + "\n" for f in files))
         stub = os.path.join(tmp, "scripts", "ci_changed_files.sh")
         with open(stub, "w") as fh:
-            fh.write(f"#!/usr/bin/env bash\ncat '{listing}'\n")
+            fh.write(f"#!/usr/bin/env bash\ncat '{listing}'\nexit {stub_exit}\n")
         os.chmod(stub, 0o755)
         output = os.path.join(tmp, "github_output")
         open(output, "w").close()
         env = {"PATH": os.environ["PATH"], "GITHUB_OUTPUT": output, "BASE": "base", "HEAD": "head"}
         proc = subprocess.run(["bash", "-e", "-c", script], cwd=tmp, env=env,
                               capture_output=True, text=True)
+        if expect_failure:
+            if proc.returncode == 0:
+                raise SystemExit("falende detector werd niet doorgegeven")
+            return {}
         if proc.returncode != 0:
             raise SystemExit(f"filterstap faalde ({proc.returncode}):\n{proc.stderr}")
         result = {}
@@ -222,6 +237,10 @@ def outside_paths():
 failures = 0
 docs = {name: load(name) for name in WORKFLOWS}
 
+# De nieuwe webscope mag niet terugvallen op een onvoorwaardelijke job.
+if "needs.changes.outputs.web" not in yaml.safe_dump(docs["ci.yml"]["jobs"]["pleya-web"]):
+    raise SystemExit("ci.yml: webjob mist zijn scopeconditie")
+
 # 1. Statisch: elke job die op changes wacht valt open.
 print("== Statische controle: vallen de gestuurde jobs open?")
 for wf, doc in docs.items():
@@ -286,9 +305,175 @@ for label, files, expected in CASES:
             failures += 1
             print(f"   FOUT: output {key} bestaat in geen enkele workflow")
 
+
+# 4. Test ook de bedrading van de events en de echte detector, niet alleen
+# gestubde padlijsten. Alle gitgeschiedenis staat in een tijdelijke repo.
+print()
+print("== Eventbedrading, volledige selectie en detectorfouten")
+for wf, doc in docs.items():
+    step = next(s for s in doc["jobs"]["changes"]["steps"] if s.get("id") == "filter")
+    wanted_env = {
+        "BASE": "${{ github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}",
+        "HEAD": "${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha }}",
+    }
+    if step.get("env") != wanted_env:
+        raise SystemExit(f"{wf}: before/after/PR-bedrading wijkt af")
+    # PyYAML 1.1 leest de YAML-sleutel 'on' als True.
+    triggers = doc.get("on", doc.get(True, {}))
+    if not all(k in triggers for k in ("push", "pull_request", "workflow_dispatch", "schedule")):
+        raise SystemExit(f"{wf}: trigger of volledig periodiek vangnet ontbreekt")
+    checkout = doc["jobs"]["changes"]["steps"][0]
+    if checkout.get("with", {}).get("fetch-depth") != 0:
+        raise SystemExit(f"{wf}: volledige gitgeschiedenis ontbreekt")
+    script = filter_script(doc)
+    run_filter(script, ["docs/a.md"], stub_exit=1, expect_failure=True)
+    # De statisch gecontroleerde, exacte fail-open-vorm hierboven garandeert
+    # dat alleen success + expliciet false werk overslaat. Een lege/ongeldige
+    # output en een gefaalde scopejob moeten dus altijd werk selecteren.
+    for result, value, want in [("failure", "false", True), ("success", "", True),
+                                 ("success", "invalid", True), ("success", "true", True),
+                                 ("success", "false", False)]:
+        assert (result != "success" or value != "false") == want
+    print(f"  {wf}: event-SHA's, schema, fetch-depth en foutende detector ok")
+
+range_checks = 0
+with tempfile.TemporaryDirectory(prefix="pleya-ci-scope-") as tmp:
+    fixture_env = dict(os.environ)
+    for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX"):
+        fixture_env.pop(key, None)
+
+    def git(*args, check=True):
+        return subprocess.run(["git", "-C", tmp, *args], check=check, env=fixture_env,
+                              capture_output=True, text=True)
+
+    def write(path, text):
+        target = os.path.join(tmp, path)
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        with open(target, "w") as fh:
+            fh.write(text)
+
+    def commit(message):
+        git("add", "-A")
+        git("commit", "-qm", message)
+        return git("rev-parse", "HEAD").stdout.strip()
+
+    git("init", "-q")
+    git("config", "user.name", "Scope selftest")
+    git("config", "user.email", "scope@example.invalid")
+    git("config", "core.hooksPath", "/dev/null")
+    detector = os.path.join(tmp, "scripts", "ci_changed_files.sh")
+    os.makedirs(os.path.dirname(detector))
+    shutil.copy2(os.path.join(root, "scripts", "ci_changed_files.sh"), detector)
+    for path in ["docs/a.md", "lib/app.dart", "pleya_server/a.go", "pleya_web/a.ts"]:
+        write(path, "initial\n")
+    initial = commit("initial")
+
+    def real(event, base, head, expected=None, full=False, error=False, path=None):
+        global range_checks
+        env = dict(os.environ, GITHUB_EVENT_NAME=event, BASE=base, HEAD=head)
+        # Hooks may have exported these for the outer repository.
+        for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX"):
+            env.pop(key, None)
+        if path:
+            env["PATH"] = path
+        outputs = {}
+        for wf, doc in docs.items():
+            output = os.path.join(tmp, ".git", "scope-output")
+            open(output, "w").close()
+            env["GITHUB_OUTPUT"] = output
+            proc = subprocess.run(["bash", "-e", "-c", filter_script(doc)], cwd=tmp,
+                                  env=env, capture_output=True, text=True)
+            with open(output) as fh:
+                got = dict(line.strip().split("=", 1) for line in fh if "=" in line)
+            if error:
+                if proc.returncode == 0 or got:
+                    raise SystemExit(f"{event}/{wf}: detectiefout werd groen: {got}")
+                continue
+            if proc.returncode:
+                raise SystemExit(f"{event}/{wf}: detector faalt: {proc.stderr}")
+            if full and (not got or any(v != "true" for v in got.values())):
+                raise SystemExit(f"{event}/{wf}: geen volledige fallback: {got}")
+            for key, want in (expected or {}).items():
+                if key in got and got[key] != want:
+                    raise SystemExit(f"{event}/{wf}: {key}={got[key]}, verwacht {want}")
+            outputs[wf] = got
+        range_checks += 1
+        return outputs
+
+    write("docs/a.md", "docs only\n")
+    docs_head = commit("docs")
+    real("push", initial, docs_head, dict(flutter="false", server="false", web="false", apple="false", portable="false"))
+    real("pull_request", initial, docs_head, dict(flutter="false", server="false", web="false", apple="false", portable="false"))
+    write("lib/app.dart", "app change\n")
+    app_head = commit("app")
+    # De eerste commit van deze push is relevant, de laatste alleen docs.
+    write("docs/a.md", "last commit docs\n")
+    mixed_head = commit("docs after app")
+    real("push", docs_head, mixed_head, dict(flutter="true", apple="true", server="false", web="false"))
+    real("push", initial, mixed_head, dict(flutter="true", apple="true"))
+    git("rm", "lib/app.dart")
+    deleted_head = commit("delete last app source")
+    real("push", mixed_head, deleted_head, dict(flutter="true", apple="true"))
+
+    # Renames over domeingrenzen, met spaties en Unicode in de padnamen.
+    git("mv", "pleya_server/a.go", "docs/é old.go")
+    moved_head = commit("move out of server")
+    real("push", deleted_head, moved_head, dict(server="true"))
+    git("mv", "docs/é old.go", "pleya_web/é new.ts")
+    moved_back = commit("move into web")
+    real("push", moved_head, moved_back, dict(web="true"))
+    write("pleya_server/b.go", "server\n")
+    server_head = commit("server")
+    real("push", moved_back, server_head, dict(flutter="false", server="true", web="false", apple="false"))
+    write("pleya_web/b.ts", "web\n")
+    web_head = commit("web")
+    real("push", server_head, web_head, dict(flutter="false", server="false", web="true", apple="false"))
+    real("push", moved_back, web_head, dict(server="true", web="true", flutter="false", apple="false"))
+
+    # PR-head vanaf oude basis: wijzigingen die alleen op main staan vallen af.
+    git("checkout", "-qb", "scope-feature", initial)
+    write("pleya_web/a.ts", "feature\n")
+    feature = commit("feature")
+    real("pull_request", web_head, feature, dict(flutter="false", server="false", web="true", apple="false"))
+    real("push", web_head, feature, full=True)  # force-push
+    real("push", "0" * 40, feature, full=True)  # nieuwe branch
+    real("push", feature, feature, full=True)  # lege diff
+    real("workflow_dispatch", "", "", full=True)
+    real("schedule", "", "", full=True)
+    real("unknown_event", "", "", full=True)
+    real("push", "", feature, error=True)
+    real("push", initial, "", error=True)
+    real("push", "1" * 40, feature, error=True)
+    real("push", initial, "1" * 40, error=True)
+    real("push", initial, web_head, error=True)  # verkeerde checkout
+
+    # Los commitobject: geen merge-base met de PR-basis.
+    tree = git("rev-parse", "HEAD^{tree}").stdout.strip()
+    orphan = git("commit-tree", tree, "-m", "unrelated").stdout.strip()
+    real("pull_request", orphan, feature, error=True)
+    write("lib/app.dart", "mixed app\n")
+    write("pleya_server/a.go", "mixed server\n")
+    write("pleya_web/a.ts", "mixed web\n")
+    write("docs/a.md", "mixed docs\n")
+    mixed_all = commit("mixed app server web docs")
+    real("push", feature, mixed_all, dict(flutter="true", server="true", web="true", apple="true"))
+    write("docs/line\nbreak.md", "newline\n")
+    newline_head = commit("newline path")
+    real("push", feature, newline_head, full=True)
+
+    # Git-diff mag ook na een geldige SHA-resolutie falen; geen gedeeltelijke lijst.
+    shim = os.path.join(tmp, "bin")
+    os.makedirs(shim)
+    real_git = shutil.which("git")
+    write("bin/git", '#!/usr/bin/env bash\nif [ "$1" = diff ]; then exit 128; fi\nexec "' + real_git + '" "$@"\n')
+    os.chmod(os.path.join(shim, "git"), 0o755)
+    real("push", feature, newline_head, error=True, path=shim + os.pathsep + os.environ["PATH"])
+
+print(f"  {range_checks} echte git/event-scenario's door alle drie workflowfilters ok")
+
 print()
 if failures:
     print(f"ci_scope_selftest: {failures} afwijking(en)")
     sys.exit(1)
-print(f"ci_scope_selftest: {len(CASES)} voorbeelden en de statische controle kloppen")
+print(f"ci_scope_selftest: {len(CASES)} voorbeelden, {range_checks} git/event-scenario's en de statische controle kloppen")
 PY

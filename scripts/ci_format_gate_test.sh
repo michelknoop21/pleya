@@ -16,8 +16,8 @@ EOF
 chmod +x "$TMP/bin/dart"
 
 awk '
-  /^      - name: Verify formatting$/ { in_step = 1; next }
-  /^      - name: Analyze code$/ { in_step = 0 }
+  /^[[:space:]]*(- )?name: Verify formatting$/ { in_step = 1; next }
+  in_step && /^      - / { in_step = 0 }
   in_step && /^        run: \|$/ { next }
   in_step { sub(/^          /, ""); print }
 ' "$ROOT/.github/workflows/ci.yml" > "$TMP/format-step.sh"

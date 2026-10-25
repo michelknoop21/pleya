@@ -28,6 +28,9 @@ on:
     branches:
       - main
   workflow_dispatch:
+  schedule:
+    # Volledige regressiecontrole naast de bestaande wekelijkse Verify-run.
+    - cron: "17 4 * * 1"
 
 permissions:
   contents: read
@@ -57,11 +60,16 @@ jobs:
       - name: Welke van de twee is geraakt?
         id: filter
         env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
+          BASE: ${{ github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          files="$(scripts/ci_changed_files.sh "$BASE" "${HEAD:-HEAD}")"
+          files="$(scripts/ci_changed_files.sh "$BASE" "$HEAD")"
+          # Expliciete volledige selectie, onafhankelijk van resterende bronmappen.
+          if [ -z "$files" ] || [ "$files" = "__CI_FULL__" ]; then
+            printf '%s\n' 'server=true' 'web=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           # head sluit de pijp na 50 regels; bij meer bestanden dan dat krijgt
           # echo een SIGPIPE en breekt de stap af onder pipefail. Alleen om te
           # tonen, dus een falende preview mag de uitkomst niet meenemen.

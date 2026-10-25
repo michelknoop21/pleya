@@ -22,6 +22,8 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 5. Premium tvOS-afwerking is P2 en gebruikt bestaande pakketten en goedgekeurde Northstars: alleen aantoonbare problemen of expliciet goedgekeurde voorstellen; geen nieuwe shell, componentframework of herbouw.
 6. Sluit de gekozen scope af via bestaande registers, onafhankelijke reviews, gerichte tests, codegate, Pleya Verify met beoordeelde screenshots en toepasselijke fysieke acceptatie. Release exact de geaccepteerde SHA/archive. Pleya Server/Web/e-books behouden hun fase- en protocolpoorten.
 
+**Roadmap deviation REG-03, 25 oktober 2026 (akkoord Michel):** beperk CI-kosten door pushbereiken correct te bepalen, bestaande scopes toe te passen, de onvoorwaardelijke webjob te scopen en website-/agentdocumentatie voor Apple-controles uit te sluiten. Behoud bestaande testdekking, checknamen, foutdetectie en periodieke volledige controles. Afzonderlijke PR met negatieve regressietests en onafhankelijke review; niet mergen zonder Michel's vervolgakkoord. Geen cacheaanpassingen, runner-migratie, private-migratie of releasewijzigingen.
+
 ## Roadmap rules
 
 - Every implementation task must name one roadmap work-package ID before code starts.
