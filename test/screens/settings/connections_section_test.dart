@@ -14,6 +14,7 @@ import 'package:pleya/profiles/profile_connection_registry.dart';
 import 'package:pleya/profiles/profile_registry.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/screens/settings/connection_sources_screen.dart';
 import 'package:pleya/screens/settings/connections_section.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
@@ -106,7 +107,15 @@ void main() {
   /// real I/O, and `testWidgets` runs its body in a fake-async zone where real
   /// I/O never completes. That is also why the cleanup tests next door are
   /// plain `test` cases rather than widget ones.
-  Future<void> pumpSection(WidgetTester tester, {List<Connection> seed = const [], bool appleTv = false}) async {
+  Future<void> pumpSection(
+    WidgetTester tester, {
+    List<Connection> seed = const [],
+    bool appleTv = false,
+    ConnectionSourceKind? sources,
+  }) async {
+    tester.view.physicalSize = const Size(400, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     TvDetectionService.debugSetAppleTVOverride(appleTv ? true : null);
     addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
     await tester.runAsync(() async {
@@ -127,7 +136,10 @@ void main() {
           ],
           child: MaterialApp(
             theme: monoTheme(dark: true),
-            home: Scaffold(body: ListView(children: const [ConnectionsSection()])),
+            // A-24b: the section, or one of the source pages it opens.
+            home: sources == null
+                ? Scaffold(body: ListView(children: const [ConnectionsSection()]))
+                : ConnectionSourcesScreen(kind: sources),
           ),
         ),
       ),
@@ -139,34 +151,23 @@ void main() {
 
   // The reported bug in one sentence: the list filtered on local folders and
   // Pleya Share, so a Pleya Server appeared in neither and had no way out.
+  // A-24b (series `ios/12`): the section has a row per kind of source, and
+  // the rows themselves live on the page that row opens.
   group('a Pleya Server is manageable where Connections says it is', () {
-    // A-24b (series `ios/12`): one card of existing sources, each row saying
-    // on its second line what kind of source it is.
-    testWidgets('it is listed under the existing sources, as a Pleya Server', (tester) async {
+    testWidgets('a Pleya Server gives the section its manage row and the remove row', (tester) async {
       await pumpSection(tester, seed: [_server()]);
 
       expect(find.text(t.settingsStudio.existingSources.toUpperCase()), findsOneWidget);
-      expect(find.text('Zolder'), findsOneWidget);
-      expect(find.textContaining(t.connections.pleyaServers), findsOneWidget);
+      expect(find.text(t.settingsStudio.managePleyaServer), findsOneWidget);
+      expect(find.text(t.settingsStudio.removeSource), findsOneWidget);
+      expect(find.text(t.settingsStudio.managePlex), findsNothing, reason: 'no Plex account on this device');
     });
 
-    testWidgets('it is not called a source on this device', (tester) async {
-      await pumpSection(tester, seed: [_server()]);
+    testWidgets('a source on this device only gives the remove row', (tester) async {
+      await pumpSection(tester, seed: [_folder()]);
 
-      expect(
-        find.textContaining(t.connections.localSources),
-        findsNothing,
-        reason: 'a Pleya Server is an account on a server elsewhere, not a source on this device',
-      );
-    });
-
-    testWidgets('both kinds share the card when there is one of each, the servers first', (tester) async {
-      await pumpSection(tester, seed: [_server(), _folder()]);
-
-      expect(find.text(t.settingsStudio.existingSources.toUpperCase()), findsOneWidget);
-      expect(find.textContaining(t.connections.pleyaServers), findsOneWidget);
-      expect(find.textContaining(t.connections.localSources), findsOneWidget);
-      expect(tester.getTopLeft(find.text('Zolder')).dy, lessThan(tester.getTopLeft(find.text('Films lokaal')).dy));
+      expect(find.text(t.settingsStudio.managePleyaServer), findsNothing);
+      expect(find.text(t.settingsStudio.removeSource), findsOneWidget);
     });
 
     testWidgets('without any source there is no empty card, only the ways to add one', (tester) async {
@@ -174,23 +175,36 @@ void main() {
 
       expect(find.text(t.settingsStudio.existingSources.toUpperCase()), findsNothing);
       expect(find.text(t.connections.addConnection.toUpperCase()), findsOneWidget);
-      expect(
-        tester.getTopLeft(find.text(t.connections.addConnection.toUpperCase())).dy,
-        lessThan(tester.getTopLeft(find.text(t.pleyaShare.hostTitle)).dy),
-      );
+      for (final row in [
+        t.settingsStudio.linkPlex,
+        t.settingsStudio.addJellyfin,
+        t.settingsStudio.addEmby,
+        t.settingsStudio.addPleyaServer,
+        t.pleyaShare.hostTitle,
+      ]) {
+        expect(find.text(row), findsOneWidget, reason: row);
+      }
     });
 
-    testWidgets('an expired session is stated on the row, not only in the top bar', (tester) async {
+    testWidgets('its page lists it, the expired session stated on the row', (tester) async {
       manager.debugMarkAuthErrorForTesting(ServerId('srv-1'));
-      await pumpSection(tester, seed: [_server()]);
+      await pumpSection(tester, seed: [_server()], sources: ConnectionSourceKind.pleyaServer);
 
+      expect(find.text('Zolder'), findsOneWidget);
       expect(find.textContaining(t.connections.reauthRequired), findsOneWidget);
     });
 
     testWidgets('the row says nothing about signing in while the session is fine', (tester) async {
-      await pumpSection(tester, seed: [_server()]);
+      await pumpSection(tester, seed: [_server()], sources: ConnectionSourceKind.pleyaServer);
 
       expect(find.textContaining(t.connections.reauthRequired), findsNothing);
+    });
+
+    testWidgets('the remove page lists servers and sources on this device', (tester) async {
+      await pumpSection(tester, seed: [_server(), _folder()], sources: ConnectionSourceKind.removable);
+
+      expect(find.text('Zolder'), findsOneWidget);
+      expect(find.text('Films lokaal'), findsOneWidget);
     });
   });
 
@@ -198,7 +212,7 @@ void main() {
     Finder rowFor(String title) => find.ancestor(of: find.text(title), matching: find.byType(FocusableWrapper));
 
     testWidgets('the row is a focus stop and its delete asks to confirm', (tester) async {
-      await pumpSection(tester, seed: [_server()], appleTv: true);
+      await pumpSection(tester, seed: [_server()], appleTv: true, sources: ConnectionSourceKind.removable);
 
       final row = rowFor('Zolder');
       expect(row, findsOneWidget, reason: 'a delete that a D-pad cannot land on is not connection management');
@@ -221,7 +235,7 @@ void main() {
 
     testWidgets('an expired session does not disable the disconnect', (tester) async {
       manager.debugMarkAuthErrorForTesting(ServerId('srv-1'));
-      await pumpSection(tester, seed: [_server()], appleTv: true);
+      await pumpSection(tester, seed: [_server()], appleTv: true, sources: ConnectionSourceKind.removable);
 
       // The whole point: you must not have to sign in to a server in order to
       // get rid of it.
@@ -235,7 +249,7 @@ void main() {
     });
 
     testWidgets('SELECT on the focused row opens the same confirm a tap does', (tester) async {
-      await pumpSection(tester, seed: [_server()], appleTv: true);
+      await pumpSection(tester, seed: [_server()], appleTv: true, sources: ConnectionSourceKind.removable);
 
       final row = rowFor('Zolder');
       final focusNode = tester.widget<Focus>(find.descendant(of: row, matching: find.byType(Focus)).first).focusNode!;
@@ -272,30 +286,30 @@ void main() {
       return total;
     }
 
+    // The section: seven ways to add (no active profile, so no borrowing)
+    // make six lines; the sources card adds one line per row after its first.
     testWidgets('neither a server nor a source', (tester) async {
       await pumpSection(tester);
-      // Just "add connection" and "share host": one line between the two.
-      expect(totalSeparators(), 1);
+      expect(totalSeparators(), 6);
     });
 
     testWidgets('a server only', (tester) async {
       await pumpSection(tester, seed: [_server()]);
-      // A one-row card of sources has no line; add / share has one.
-      expect(totalSeparators(), 1);
+      // Pleya Server and the remove row: one line.
+      expect(totalSeparators(), 7);
     });
 
     testWidgets('a source only', (tester) async {
       await pumpSection(tester, seed: [_folder()]);
-      expect(totalSeparators(), 1);
+      expect(totalSeparators(), 6);
     });
 
     testWidgets('a server and a source side by side', (tester) async {
       await pumpSection(tester, seed: [_server(), _folder()]);
-      // server / source in one card, add / share in the other.
-      expect(totalSeparators(), 2);
+      expect(totalSeparators(), 7);
     });
 
-    testWidgets('multiple servers and multiple sources', (tester) async {
+    testWidgets('the remove page draws one line between each two sources', (tester) async {
       await pumpSection(
         tester,
         seed: [
@@ -304,9 +318,40 @@ void main() {
           _folder(id: 'local-1', name: 'Films lokaal'),
           _folder(id: 'local-2', name: 'Series lokaal'),
         ],
+        sources: ConnectionSourceKind.removable,
       );
-      // Three between the four sources, one between add and share.
-      expect(totalSeparators(), 4);
+      expect(totalSeparators(), 3);
+    });
+  });
+
+  group('each kind of source has its own page (A-24b, series ios/12)', () {
+    JellyfinConnection jellyfin({bool emby = false}) => JellyfinConnection(
+      id: emby ? 'emby/1' : 'jf/1',
+      baseUrl: 'https://media.local',
+      serverName: emby ? 'Emby' : 'Jellyfin',
+      serverMachineId: emby ? 'emby' : 'jf',
+      userId: 'u',
+      userName: 'u',
+      accessToken: 'tok',
+      deviceId: 'd',
+      isEmby: emby,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+      lastAuthenticatedAt: DateTime.fromMillisecondsSinceEpoch(0),
+    );
+
+    test('Jellyfin and Emby are told apart; servers and device sources are removable', () {
+      expect(connectionSourceMatches(ConnectionSourceKind.jellyfin, jellyfin()), isTrue);
+      expect(connectionSourceMatches(ConnectionSourceKind.jellyfin, jellyfin(emby: true)), isFalse);
+      expect(connectionSourceMatches(ConnectionSourceKind.emby, jellyfin(emby: true)), isTrue);
+      expect(connectionSourceMatches(ConnectionSourceKind.pleyaServer, _server()), isTrue);
+      expect(connectionSourceMatches(ConnectionSourceKind.removable, _folder()), isTrue);
+      expect(connectionSourceMatches(ConnectionSourceKind.removable, jellyfin()), isFalse);
+    });
+
+    testWidgets('an Emby source gives the Emby row and not the Jellyfin one', (tester) async {
+      await pumpSection(tester, seed: [jellyfin(emby: true)]);
+      expect(find.text(t.settingsStudio.manageEmby), findsOneWidget);
+      expect(find.text(t.settingsStudio.manageJellyfin), findsNothing);
     });
   });
 }

@@ -18,8 +18,16 @@ import '../../services/storage_service.dart';
 import '../../utils/dialogs.dart';
 import '../../widgets/settings_section.dart';
 import '../../widgets/setting_tile.dart';
-import 'add_connection_screen.dart';
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
+import '../profile/borrow_connection_screen.dart';
+import 'add_jellyfin_screen.dart';
+import 'add_local_folder_screen.dart';
+import 'add_plex_account_screen.dart';
+import 'add_pleya_server_screen.dart';
+import 'connection_sources_screen.dart';
 import 'pleya_share_host_screen.dart';
+import 'pleya_share_join_screen.dart';
 
 /// The "Servers en bronnen" page's content: the connections this device
 /// already has, adding one, and hosting a Pleya Share.
@@ -42,164 +50,133 @@ class _ConnectionsSectionState extends State<ConnectionsSection> {
   /// `watchConnections()` returns a fresh stream on every call, so building it
   /// inside `build` handed each rebuild a stream that starts at "waiting" and
   /// then rebuilt on its first event, which starts another one. Two lists on
-  /// the same registry made that a treadmill that never draws a row.
-  /// One per list, and not shared: a single stream handed to two builders is
-  /// a race over who is listening when it emits.
+  /// the same registry made that a treadmill that never draws a row. Since
+  /// A-24b one builder reads it, for which kinds of source exist.
   Stream<List<Connection>>? _serverRows;
-  Stream<List<Connection>>? _sourceRows;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final registry = context.read<ConnectionRegistry>();
     _serverRows ??= registry.watchConnections();
-    _sourceRows ??= registry.watchConnections();
   }
 
   @override
   Widget build(BuildContext context) => _buildConnectionsSection();
 
-  /// Series `ios/12` (A-24b): the sources this device already has first, in
-  /// one card, then the two ways to add one. The card of existing sources is
-  /// left out while there are none ([SettingsGroup] draws nothing empty).
+  /// Series `ios/12` (A-24b): Bestaande bronnen, one row per kind this
+  /// device has (each opens its own list with the remove it always had) and
+  /// the removal of a source in the destructive ink; then Verbinding
+  /// toevoegen, one row per way to add a connection, the add flows the
+  /// picker opens, and hosting a Pleya Share.
   Widget _buildConnectionsSection() {
     final active = context.select<ActiveProfileProvider, Profile?>((p) => p.active);
-    final subtitle = active == null
-        ? t.connections.addConnectionSubtitleNoProfile
-        : t.connections.addConnectionSubtitleScoped(displayName: active.displayName);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildExistingSources(),
-        SettingsGroup(
-          title: t.connections.addConnection,
-          children: [
-            // Connections are managed per-profile (via the Profiles section
-            // and each profile's detail screen). The shortcut here just opens
-            // the picker scoped to the active profile so users can add a Plex
-            // account, Jellyfin server, or borrow from another profile.
-            SettingNavigationTile(
-              icon: Symbols.add_link_rounded,
-              title: t.connections.addConnection,
-              subtitle: subtitle,
-              onTap: () {
-                final active = context.read<ActiveProfileProvider>().active;
-                Navigator.push(
-                  context,
-                  settingsStudioRoute<void>(context, (_) => AddConnectionScreen(targetProfile: active)),
-                );
-              },
-            ),
-            SettingNavigationTile(
-              icon: Symbols.share_rounded,
-              title: t.pleyaShare.hostTitle,
-              subtitle: t.pleyaShare.hostDescription,
-              onTap: () {
-                Navigator.push(context, settingsStudioRoute<void>(context, (_) => const PleyaShareHostScreen()));
-              },
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  /// The Pleya Servers this device is signed in to, then the device-bound
-  /// sources (local folders, Pleya Share hosts), each removable here.
-  ///
-  /// A Pleya Server is not on this device but an account on a server
-  /// somewhere; it used to appear in no list here, so the only way to
-  /// disconnect one was two screens deep under Profiles. The device-bound
-  /// sources are removable regardless of profile bindings: this is also the
-  /// escape hatch for rows orphaned by a vanished (virtual Plex Home) profile
-  /// or a profile-less add.
-  Widget _buildExistingSources() {
-    // `watch`, not `select`. A selector returning a collection compares it with
-    // `==`, and a fresh Set is never equal to the previous one, so every build
-    // looked like a change and the section rebuilt itself without end.
-    final authErrorIds = context.watch<MultiServerProvider>().authErrorServerIds.toSet();
     return StreamBuilder<List<Connection>>(
       stream: _serverRows,
-      builder: (context, serverSnapshot) => StreamBuilder<List<Connection>>(
-        stream: _sourceRows,
-        builder: (context, sourceSnapshot) {
-          final servers = (serverSnapshot.data ?? const <Connection>[]).whereType<PleyaServerConnection>().toList();
-          final sources = (sourceSnapshot.data ?? const <Connection>[])
-              .where((c) => c is LocalFolderConnection || c is PleyaShareConnection)
-              .toList();
-          return SettingsGroup(
-            title: t.settingsStudio.existingSources,
-            children: [
-              for (final server in servers)
-                _connectionRow(
-                  icon: Symbols.dns_rounded,
-                  title: server.displayLabel,
-                  // The durable place to see "this one needs a sign-in", so the
-                  // top-of-app bar does not have to be the only carrier of it.
-                  subtitle: authErrorIds.contains(server.serverId)
-                      ? '${server.displaySubtitle} · ${t.connections.reauthRequired}'
-                      : server.displaySubtitle,
-                  kind: t.connections.pleyaServers,
-                  removeTooltip: t.connections.disconnectServer,
-                  onRemove: () => _disconnectPleyaServer(server),
+      builder: (context, snapshot) {
+        final all = snapshot.data ?? const <Connection>[];
+        bool has(ConnectionSourceKind kind) => all.any((c) => connectionSourceMatches(kind, c));
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SettingsGroup(
+              title: t.settingsStudio.existingSources,
+              children: [
+                for (final kind in const [
+                  ConnectionSourceKind.plex,
+                  ConnectionSourceKind.jellyfin,
+                  ConnectionSourceKind.emby,
+                  ConnectionSourceKind.pleyaServer,
+                ])
+                  if (has(kind)) _sourcesRow(kind),
+                if (has(ConnectionSourceKind.removable)) _sourcesRow(ConnectionSourceKind.removable, destructive: true),
+              ],
+            ),
+            SettingsGroup(
+              title: t.connections.addConnection,
+              children: [
+                _addRow(
+                  'plex',
+                  Symbols.link_rounded,
+                  t.settingsStudio.linkPlex,
+                  (_) => AddPlexAccountScreen(targetProfile: active),
                 ),
-              for (final source in sources)
-                _connectionRow(
-                  icon: source is PleyaShareConnection ? Symbols.devices_rounded : Symbols.folder_rounded,
-                  title: source.displayLabel,
-                  subtitle: source.displaySubtitle,
-                  kind: t.connections.localSources,
-                  removeTooltip: t.connections.removeSource,
-                  onRemove: () => _removeLocalSource(source),
+                _addRow(
+                  'jellyfin',
+                  Symbols.add_rounded,
+                  t.settingsStudio.addJellyfin,
+                  (_) => AddJellyfinScreen(targetProfile: active),
                 ),
-            ],
-          );
-        },
-      ),
+                _addRow(
+                  'emby',
+                  Symbols.add_rounded,
+                  t.settingsStudio.addEmby,
+                  (_) => AddJellyfinScreen(targetProfile: active, emby: true),
+                ),
+                _addRow(
+                  'pleya_server',
+                  Symbols.add_rounded,
+                  t.settingsStudio.addPleyaServer,
+                  (_) => AddPleyaServerScreen(targetProfile: active),
+                ),
+                _addRow(
+                  'local_folder',
+                  Symbols.folder_rounded,
+                  t.addLocalFolder.cardTitle,
+                  (_) => AddLocalFolderScreen(targetProfile: active),
+                ),
+                _addRow(
+                  'pleya_share',
+                  Symbols.devices_rounded,
+                  t.pleyaShare.cardTitle,
+                  (_) => PleyaShareJoinScreen(targetProfile: active),
+                ),
+                if (active != null)
+                  _addRow(
+                    'borrow',
+                    Symbols.group_rounded,
+                    t.addServer.borrowFromAnotherProfile,
+                    (_) => BorrowConnectionScreen(targetProfile: active),
+                  ),
+                SettingNavigationTile(
+                  icon: Symbols.share_rounded,
+                  title: t.pleyaShare.hostTitle,
+                  subtitle: t.pleyaShare.hostDescription,
+                  onTap: () {
+                    Navigator.push(context, settingsStudioRoute<void>(context, (_) => const PleyaShareHostScreen()));
+                  },
+                ),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 
-  /// One removable connection row. Both lists use it so the row stays a single
-  /// focus target with the same shape, which is what a D-pad walks.
-  ///
-  /// [kind] says what the source is ("Pleya Servers", "Lokale bronnen") now
-  /// that both kinds share one card: on the line under the title, before the
-  /// address, and so also to VoiceOver.
-  Widget _connectionRow({
-    required IconData icon,
-    required String title,
-    required String? subtitle,
-    required String kind,
-    required String removeTooltip,
-    required VoidCallback onRemove,
-  }) {
-    final theme = Theme.of(context);
-    final line = subtitle == null ? kind : '$kind · $subtitle';
-    return SettingRowFocus(
-      onSelect: onRemove,
-      child: ListTile(
-        contentPadding: settingRowPadding(),
-        leading: SettingsIconStyleScope.of(context) == SettingsIconStyle.none
-            ? null
-            : Icon(icon, fill: 1, color: theme.colorScheme.primary),
-        title: Text(title),
-        subtitle: Text(line, maxLines: 1, overflow: TextOverflow.ellipsis),
-        trailing: IconButton(
-          tooltip: removeTooltip,
-          icon: Icon(Symbols.delete_outline_rounded, color: settingsDestructiveInk(context)),
-          onPressed: onRemove,
-        ),
-      ),
-    );
-  }
+  Widget _sourcesRow(ConnectionSourceKind kind, {bool destructive = false}) => AutomationNode(
+    id: AutomationIds.settingsTile,
+    instance: 'sources.${kind.name}',
+    role: 'list.item',
+    child: SettingNavigationTile(
+      icon: destructive ? Symbols.delete_outline_rounded : Symbols.dns_rounded,
+      title: connectionSourceTitle(kind),
+      destructive: destructive,
+      destinationBuilder: (_) => ConnectionSourcesScreen(kind: kind),
+    ),
+  );
 
-  /// Disconnecting is a local action and stays available whatever the server
-  /// is doing: offline, expired, or gone for good. Nothing here waits on it.
-  Future<void> _disconnectPleyaServer(PleyaServerConnection server) =>
-      ConnectionsRemoval.disconnectPleyaServer(context, server);
-
-  Future<void> _removeLocalSource(Connection source) => ConnectionsRemoval.removeLocalSource(context, source);
+  /// A way to add a connection: the flow the picker opens for it.
+  Widget _addRow(String instance, IconData icon, String title, WidgetBuilder builder) => AutomationNode(
+    id: AutomationIds.settingsTile,
+    instance: 'add.$instance',
+    role: 'list.item',
+    child: SettingNavigationTile(
+      icon: icon,
+      title: title,
+      onTap: () => Navigator.push(context, settingsStudioRoute<bool>(context, builder)),
+    ),
+  );
 }
 
 /// The confirm-then-remove flows behind a connection row, as functions rather
