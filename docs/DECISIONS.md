@@ -4965,6 +4965,15 @@ Migratie `0019_transcode_sessions.sql` (de masterlijst noemde `0017`, dat was be
 **Decision:** De bibliotheekcatalogus (Alle films/series en dezelfde gedeelde catalogusroute voor een bron of Alles bekijken) gebruikt op standaarddensity het brede raster, met zes grote posters op het TV-referentiecanvas. De actieve rij blijft volledig zichtbaar; een volgende rij mag deels zichtbaar zijn. De dichtheidsvoorkeur blijft werken. De gemeenschappelijke TV-kaart krijgt vaste extra ruimte tussen art/focusring en titel; kaarten verschuiven niet bij focus.
 **Consequences:** Dit vervangt voor de catalogus de eerdere eis van twee volledige rijen uit A06B-ROOM1. Andere rasters behouden hun expliciete tweerijen-fit. Gedeelde kaartafstand en veilige zijmarges gelden ook daar; hun bestaande acties, metadata, focus en rechten blijven behouden. Unified impact: alleen gedeelde TV-presentatie, geen leverancierspad, bron-/rechtensamenvoeging of backendwijziging. TestFlight en simulatorbewijs zijn geen fysieke Apple TV-acceptatie.
 
+## DEC-XXX: Big P is eigen werk van Michel en valt niet onder de GPL
+
+**Date:** 2026-10-25
+**Status:** accepted (Michel)
+**Roadmap:** E-05.
+**Context:** Michel heeft Big P (naam, figuur, beelden en stem) zelf gemaakt en bedacht. De beelden en de stem staan in de publieke GPL-repo, zodat iedereen ze nu mag hergebruiken.
+**Decision:** Beelden en stem van Big P krijgen "alle rechten voorbehouden" en verhuizen naar een aparte private repo; `NOTICE` sluit ze uit van de GPL, naast de bestaande uitzondering voor naam en logo van Pleya. Code en mockups rond Big P blijven GPL tenzij Michel daar apart over besluit. Merkbescherming voor naam en figuur wordt onderzocht.
+**Consequences:** Builds halen de bestanden met leestoegang op; een build zonder toegang krijgt een placeholder. Eerst een juridische toets (herkomst, bijdragen van anderen, binary tegenover bron onder GPLv3, publieke website). Kopieën die al onder de GPL zijn verspreid, ook in de git-historie en forks, blijven onder de GPL. Unified impact: niet van toepassing, het raakt licentie en build en geen bibliotheekgedrag.
+
 ## DEC-159: De persoonlijke laag (S20) koppelt favoriet en waardering los van kijkstatus, en geschiedenis is een rij per afspeelsessie
 
 **Status:** besloten, 20 oktober 2026 (M5, S20). Raakt het protocolvenster alleen voor de rijen 52 tot en met 60.
