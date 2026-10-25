@@ -94,35 +94,41 @@ mixin LocalLibraryRowsHost<T extends StatefulWidget> on State<T> {
       AutomationNode(
         id: AutomationIds.localLibrarySync,
         role: 'button',
-        child: FocusableListTile(
-          enabled: provider.enabled && provider.state != LocalLibraryState.syncing && !_clearing,
-          contentPadding: settingRowPadding(),
-          leading: settingsRowLeading(context, Symbols.sync_rounded),
-          title: Text(labels.syncNow),
-          subtitle: provider.state != LocalLibraryState.syncing
-              ? null
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 8),
-                    const LinearProgressIndicator(),
-                    const SizedBox(height: 6),
-                    Text(labels.progress(count: provider.done)),
-                    Text(provider.currentTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ],
-                ),
-          onTap: () => unawaited(provider.synchronize()),
+        // A Builder: the row reads the icon style of the page it sits in, not
+        // of this State, which is above the page's scope.
+        child: Builder(
+          builder: (context) => FocusableListTile(
+            enabled: provider.enabled && provider.state != LocalLibraryState.syncing && !_clearing,
+            contentPadding: settingRowPadding(),
+            leading: settingsRowLeading(context, Symbols.sync_rounded),
+            title: Text(labels.syncNow),
+            subtitle: provider.state != LocalLibraryState.syncing
+                ? null
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 8),
+                      const LinearProgressIndicator(),
+                      const SizedBox(height: 6),
+                      Text(labels.progress(count: provider.done)),
+                      Text(provider.currentTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+            onTap: () => unawaited(provider.synchronize()),
+          ),
         ),
       ),
       AutomationNode(
         id: AutomationIds.localLibraryClear,
         role: 'button',
-        child: FocusableListTile(
-          enabled: provider.initialized && !_clearing,
-          contentPadding: settingRowPadding(),
-          leading: settingsRowLeading(context, Symbols.delete_outline_rounded),
-          title: Text(labels.clear, style: TextStyle(color: settingsDestructiveInk(context))),
-          onTap: () => unawaited(_clear(provider)),
+        child: Builder(
+          builder: (context) => FocusableListTile(
+            enabled: provider.initialized && !_clearing,
+            contentPadding: settingRowPadding(),
+            leading: settingsRowLeading(context, Symbols.delete_outline_rounded),
+            title: Text(labels.clear, style: TextStyle(color: settingsDestructiveInk(context))),
+            onTap: () => unawaited(_clear(provider)),
+          ),
         ),
       ),
     ];

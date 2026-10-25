@@ -120,6 +120,9 @@ void main() {
     for (var i = 1; i < order.length; i++) {
       expect(top(order[i - 1]), lessThan(top(order[i])), reason: '${order[i - 1]} before ${order[i]}');
     }
+    // Every row's title on the same line as the switches' (no icon slot).
+    expect(tester.getTopLeft(find.text(l.clear)).dx, tester.getTopLeft(find.text(l.enable)).dx);
+    expect(tester.getTopLeft(find.text(l.syncNow)).dx, tester.getTopLeft(find.text(l.enable)).dx);
     final clearInk = tester.widget<Text>(find.text(l.clear)).style?.color;
     expect(clearInk, settingsDestructiveInk(tester.element(find.text(l.clear))));
 
