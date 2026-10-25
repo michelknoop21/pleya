@@ -57,9 +57,9 @@ Nothing user-facing since the last published build.
 
 ### Improved
 
-- **Settings on iPhone open with a large header.** It shows artwork from a title in your own library that Pleya already loaded for Discover, or a warm gradient with the Pleya mark when there is none yet. The header scrolls away with the page; the bar with the search field stays at the top.
-- **Settings rows show their current value.** On iPhone and iPad the value sits on the right of the row title. When it is too long for that line, it moves to the line below together with the description. The cards are rounder, and with the OLED theme they stand out from the black background.
-- **Settings on Apple TV are laid out as categories, rows and a preview.** The sections are listed on the left as categories, and the rows of the selected one fill the middle, each with its value on the right. App & playback adds a preview on the right: three posters from your library in the chosen theme and density. Display settings use the same layout.
+- **Settings on iPhone open with a large header.** It shows artwork from a title in your own library that Pleya already loaded for Discover, or a warm gradient with the Pleya mark when there is none yet. The header and the search field below it scroll away with the page; the bar with the title stays at the top.
+- **Settings rows show their current value next to the title.** On iPhone and iPad the value now sits on the right of the row title instead of under it. When it is too long for that line, it moves to the line below together with the description. The cards are rounder, and with the OLED theme they stand out from the black background.
+- **Settings on Apple TV are laid out as categories, rows and a preview.** The sections are listed on the left as categories, and the rows of the selected one fill the middle, each with its value on the right. App & playback adds a preview on the right: three posters from your library and a line with the current theme and density. The Appearance page uses the same layout.
 - **Select switches an on/off setting on Apple TV from anywhere on its row.** Only the row you are on has a focus ring; the selected category is marked with a bar instead. Coming back to Settings reopens the category of the row you were last on.
 
 ### Fixed
