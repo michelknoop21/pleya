@@ -173,6 +173,12 @@ class PleyaFakeServer {
   /// work until the day the formula changes on one side only.
   final Map<String, String> seededIds = {};
 
+  /// Item ids on the Pleya Verify kijklijst, newest first, answered at
+  /// `/verify/watchlist`. Empty unless `watchlist.studio.v1` is seeded, and
+  /// only ever read by a `PLEYA_VERIFY` build: a real Pleya Server has no such
+  /// route, so a production client never asks.
+  final List<String> verifyWatchlistIds = [];
+
   /// Every path the client asked for, in order. The assertions about "did it
   /// ask twice" read this.
   final List<String> requests = [];
@@ -250,6 +256,7 @@ class PleyaFakeServer {
     artworkById.clear();
     versionBytes.clear();
     seededIds.clear();
+    verifyWatchlistIds.clear();
   }
 
   /// Clears every mutable field back to a fresh instance's state. Used by
@@ -665,6 +672,7 @@ class PleyaFakeServer {
         'next_cursor': null,
       });
     }
+    if (path == '/verify/watchlist') return _json({'item_ids': verifyWatchlistIds});
     if (path.startsWith('/artwork/')) {
       final id = Uri.decodeComponent(path.substring('/artwork/'.length));
       // A resizable artwork honours `?width=`, the way a real server does.
@@ -676,7 +684,8 @@ class PleyaFakeServer {
       if (recipe != null && asked != null && asked > 0) {
         return http.Response.bytes(recipe(asked.clamp(16, 4096)), 200, headers: const {'content-type': 'image/png'});
       }
-      return http.Response.bytes(artworkById[id] ?? artworkBytes, 200, headers: const {'content-type': 'image/png'});
+      final bytes = artworkById[id] ?? artworkBytes;
+      return http.Response.bytes(bytes, 200, headers: {'content-type': _imageContentType(bytes)});
     }
 
     final streamMatch = RegExp(r'^/stream/([^/]+)$').firstMatch(path);
@@ -981,6 +990,11 @@ class PleyaFakeServer {
     if (start >= total || start > end) throw const _RangeNotSatisfiable();
     return (start: start, end: end);
   }
+
+  /// `image/jpeg` for the studio art (a JPEG starts with FF D8), `image/png`
+  /// for everything the fixtures generate.
+  static String _imageContentType(List<int> bytes) =>
+      bytes.length > 1 && bytes[0] == 0xFF && bytes[1] == 0xD8 ? 'image/jpeg' : 'image/png';
 
   Map<String, dynamic> _error(String code) => {
     'error': {'code': code, 'message': code, 'retryable': false},

@@ -52,4 +52,17 @@ mixin _PleyaServerPersonalMethods on _PleyaServerRequests {
     await _adminSend('DELETE', '/track-preferences/$itemId');
     return true;
   }
+
+  /// The Pleya Verify fixture's kijklijst (`watchlist.studio.v1`): item ids,
+  /// newest first. Only `WatchlistSourceFactory` in a `PLEYA_VERIFY` build
+  /// asks; a real Pleya Server has no such route, and its 404 reads as empty.
+  Future<List<String>> fetchVerifyWatchlistIds() async {
+    final ids = (await _getJson('/verify/watchlist'))?['item_ids'];
+    return ids is List
+        ? [
+            for (final id in ids)
+              if (id is String) id,
+          ]
+        : const [];
+  }
 }

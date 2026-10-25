@@ -1,3 +1,4 @@
+import '../../automation/pleya_verify.dart';
 import '../../media/ids.dart';
 import '../../media/media_backend.dart';
 import '../../media/media_server_client.dart';
@@ -6,8 +7,10 @@ import '../../media/watchlist_source.dart';
 import '../../utils/app_logger.dart';
 import '../jellyfin_client.dart';
 import '../plex_watchlist_client.dart';
+import '../pleya_server_client.dart';
 import 'jellyfin_favorites_source.dart';
 import 'plex_account_watchlist_source.dart';
+import 'verify_watchlist_source.dart';
 
 /// Builds the watchlist sources for one profile.
 ///
@@ -26,6 +29,7 @@ class WatchlistSourceFactory {
     required this.clientIdentifier,
     required this.clientsById,
     this.plexClientBuilder,
+    this.verifyWatchlist = kPleyaVerify,
   });
 
   final String profileId;
@@ -40,6 +44,11 @@ class WatchlistSourceFactory {
 
   /// Overridable for tests, which must not open a real socket to plex.tv.
   final PlexWatchlistClient Function()? plexClientBuilder;
+
+  /// Whether a Pleya Server may contribute the Pleya Verify fixture's
+  /// kijklijst ([VerifyWatchlistSource]). Only a `PLEYA_VERIFY` build sets it;
+  /// a test passes it to cover both sides of the gate.
+  final bool verifyWatchlist;
 
   PlexWatchlistClient? _plexClient;
 
@@ -84,6 +93,33 @@ class WatchlistSourceFactory {
       );
     }
 
+    if (verifyWatchlist) sources.addAll(await _verifySources());
+
+    return sources;
+  }
+
+  /// One [VerifyWatchlistSource] per Pleya Server that serves a non-empty
+  /// fixture kijklijst. An empty list adds nothing, so a scenario without
+  /// `watchlist.studio.v1` sees the same "no kijklijst" state as production.
+  Future<List<WatchlistSource>> _verifySources() async {
+    final sources = <WatchlistSource>[];
+    for (final client in clientsById().values) {
+      if (client is! PleyaServerClient) continue;
+      if ((await client.fetchVerifyWatchlistIds()).isEmpty) continue;
+      final connection = client.connection;
+      sources.add(
+        VerifyWatchlistSource(
+          scope: WatchlistScopeId(
+            profileId: profileId,
+            backend: MediaBackend.pleyaServer,
+            accountId: connection.serverId,
+            userId: connection.userName,
+          ),
+          fetchIds: client.fetchVerifyWatchlistIds,
+          fetchItem: client.fetchItem,
+        ),
+      );
+    }
     return sources;
   }
 
