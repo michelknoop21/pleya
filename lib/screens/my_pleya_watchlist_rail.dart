@@ -13,14 +13,12 @@ class _WatchlistRail extends StatelessWidget {
   final WatchlistProvider provider;
   final VoidCallback onOpenAll;
 
-  /// How many posters the rail shows before "Bekijk alles" takes over.
-  static const int maxItems = 12;
   static const double _gap = 8;
   static const double _maxPosterWidth = 120;
 
   @override
   Widget build(BuildContext context) {
-    final entries = provider.entriesByRecentlyAdded.take(maxItems).toList();
+    final entries = myPleyaWatchlistEntries(provider);
     final tk = tokens(context);
     if (entries.isEmpty) {
       return Padding(
@@ -43,7 +41,7 @@ class _WatchlistRail extends StatelessWidget {
             separatorBuilder: (context, _) => const SizedBox(width: _gap),
             itemBuilder: (context, index) => _WatchlistPoster(
               entry: entries[index],
-              playable: provider.isPlayable(entries[index]),
+              match: myPleyaWatchlistTarget(provider, entries[index]),
               width: width,
               height: height,
               onOpenAll: onOpenAll,
@@ -58,47 +56,25 @@ class _WatchlistRail extends StatelessWidget {
 class _WatchlistPoster extends StatelessWidget {
   const _WatchlistPoster({
     required this.entry,
-    required this.playable,
+    required this.match,
     required this.width,
     required this.height,
     required this.onOpenAll,
   });
 
   final WatchlistEntry entry;
-  final bool playable;
+
+  /// What the poster opens; null opens the full kijklijst.
+  final MediaItem? match;
   final double width;
   final double height;
   final VoidCallback onOpenAll;
 
   @override
   Widget build(BuildContext context) {
+    final match = this.match;
     final tk = tokens(context);
-    final match = playable ? entry.lastKnownMatch : null;
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    final placeholder = ColoredBox(color: tk.surfaceElevated);
-
-    final Widget image = match != null
-        ? OptimizedMediaImage.poster(
-            client: context.tryGetMediaClientWithFallback(serverIdOrNull(match.serverId)),
-            imagePath: match.posterThumb(),
-            width: width,
-            height: height,
-            fallbackIcon: Symbols.movie_rounded,
-            blurHash: match.posterBlurHash,
-          )
-        : switch (MediaImageHelper.catalogPosterUrl(
-            entry.posterRef,
-            width: (width * dpr).round(),
-            height: (height * dpr).round(),
-          )) {
-            '' => placeholder,
-            final url => CachedNetworkImage(
-              imageUrl: url,
-              fit: BoxFit.cover,
-              placeholder: (_, _) => placeholder,
-              errorBuilder: (_, _, _) => placeholder,
-            ),
-          };
+    final image = MyPleyaWatchlistArtwork(entry: entry, match: match, width: width, height: height);
 
     final radius = BorderRadius.circular(8);
     return Semantics(

@@ -11,6 +11,7 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/screens/my_pleya_shared.dart';
 import 'package:pleya/screens/tv/sections/tv_libraries_screen.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_navigator.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_screen.dart';
@@ -94,12 +95,16 @@ void main() {
 
     TvMyPleyaScreenState hub(WidgetTester tester) => tester.state<TvMyPleyaScreenState>(find.byType(TvMyPleyaScreen));
 
-    testWidgets('asks the controller for availability and shows the portrait tile', (tester) async {
+    testWidgets('asks the controller for availability and shows the Big P card', (tester) async {
       await pumpHub(tester);
 
       expect(c.refreshes, 1);
       expect(find.text(t.assistant.tileTitle), findsOneWidget);
-      expect(find.byType(BigPPortrait), findsOneWidget);
+      // A-24b, northstar 01: the red card on top of the right column, with
+      // Beheer under it.
+      expect(find.byType(BigPCardFace), findsOneWidget);
+      expect(find.text(t.myPleya.openBigP), findsOneWidget);
+      expect(find.text(t.settingsStudio.manage.toUpperCase()), findsOneWidget);
     });
 
     testWidgets('no tile while the controller hides Big P', (tester) async {
@@ -117,8 +122,8 @@ void main() {
       await tester.pump();
 
       expect(focusedLabel(), TvMyPleyaSection.assistant.tileFocusKey);
-      // Left of Big P is the last tile of the group above; right is Instellingen.
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      // Big P heads the right column; Instellingen is under it.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.pump();
       expect(focusedLabel(), TvMyPleyaSection.settings.tileFocusKey);
     });

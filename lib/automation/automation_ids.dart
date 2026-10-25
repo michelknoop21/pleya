@@ -280,6 +280,11 @@ class AutomationIds {
   /// is a state assertion instead of a screenshot.
   static const String myPleyaLogRow = 'my_pleya.log_row';
 
+  /// One poster in Mijn Pleya's kijklijst rail on TV (`my_pleya.watchlist_item[0]`),
+  /// indexed in the order the rail shows them, newest first. State carries the
+  /// title and whether the poster opens a playable item.
+  static const String myPleyaWatchlistItem = 'my_pleya.watchlist_item';
+
   /// Big P's surface (mockup 38, DEC-142), the Mijn Pleya section and the
   /// contextual route alike. Its state carries `availability`, `state`,
   /// `mood`, `error` and `pending`, so a scenario asserts what the controller
@@ -790,6 +795,7 @@ class AutomationIds {
     myPleyaSectionTile,
     myPleyaChip,
     myPleyaLogRow,
+    myPleyaWatchlistItem,
     assistantButton,
     assistantExample,
     assistantFollowUp,
@@ -926,6 +932,7 @@ class AutomationIds {
     {'id': settingsCategory, 'role': 'button', 'instanceable': true},
     {'id': myPleyaChip, 'role': 'button', 'instanceable': true},
     {'id': myPleyaLogRow, 'role': 'list.item', 'instanceable': true},
+    {'id': myPleyaWatchlistItem, 'role': 'grid.item', 'instanceable': true},
     {'id': screenAssistant, 'role': 'screen', 'instanceable': false},
     {'id': assistantButton, 'role': 'button', 'instanceable': true},
     {'id': assistantExample, 'role': 'button', 'instanceable': true},

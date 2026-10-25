@@ -228,6 +228,9 @@ ids:
   - id: my_pleya.log_row
     role: list.item
     instanceable: true
+  - id: my_pleya.watchlist_item
+    role: grid.item
+    instanceable: true
   - id: screen.assistant
     role: screen
     instanceable: false

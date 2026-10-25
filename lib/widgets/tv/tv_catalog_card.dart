@@ -64,6 +64,7 @@ class TvCatalogCard extends StatefulWidget {
     this.onFocusChange,
     this.semanticLabel,
     this.aspectRatio = TvCatalogLayout.posterAspectRatio,
+    this.titleLines = 2,
     this.overlay,
   });
 
@@ -137,6 +138,11 @@ class TvCatalogCard extends StatefulWidget {
   /// episode stills and film backdrops are 16:9 and cropping them into a
   /// poster slot shows the wrong part of the picture (mockup 38 D).
   final double aspectRatio;
+
+  /// Lines the title reserves, whether it needs them or not: two in a grid
+  /// (hoofdstuk 10.2), one on a single rail such as Mijn Pleya's kijklijst.
+  /// [TvCatalogLayout.cardHeight] takes the same number.
+  final int titleLines;
 
   /// Text drawn on the artwork instead of a footer under it. Non-null drops the
   /// footer, so the card is exactly its artwork block tall
@@ -265,6 +271,7 @@ class _TvCatalogCardState extends State<TvCatalogCard> {
                     showTitle: SettingsService.instanceOrNull?.read(SettingsService.tvShowTitlesUnderPosters) ?? true,
                     meta: widget.meta,
                     tertiary: widget.tertiary,
+                    titleLines: widget.titleLines,
                     scale: scale,
                     tk: tk,
                   ),
@@ -528,11 +535,13 @@ class _Footer extends StatelessWidget {
     required this.showTitle,
     required this.meta,
     required this.tertiary,
+    required this.titleLines,
     required this.scale,
     required this.tk,
   });
 
   final String title;
+  final int titleLines;
 
   /// PB-10 (MOC-20): "titels onder posters" aan of uit. When off, the title
   /// line and its gap collapse rather than sitting blank, so meta and
@@ -568,10 +577,10 @@ class _Footer extends StatelessWidget {
             // grid. Ellipsis rather than shrinking, for the same reason: a title
             // that fits by getting smaller stops matching its neighbours.
             SizedBox(
-              height: TvCatalogLayout.cardTitleFontSize * scale * TvCatalogLayout.cardTitleLineHeight * 2,
+              height: TvCatalogLayout.cardTitleFontSize * scale * TvCatalogLayout.cardTitleLineHeight * titleLines,
               child: Text(
                 title,
-                maxLines: 2,
+                maxLines: titleLines,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: TvCatalogLayout.cardTitleFontSize * scale,

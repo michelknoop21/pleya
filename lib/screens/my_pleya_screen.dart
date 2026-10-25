@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
@@ -9,7 +8,7 @@ import '../automation/automation_ids.dart';
 import '../automation/automation_node.dart';
 import '../automation/automation_screen.dart';
 import '../i18n/strings.g.dart';
-import '../media/ids.dart';
+import '../media/media_item.dart';
 import '../media/watchlist_entry.dart';
 import '../navigation/navigation_tabs.dart';
 import '../profiles/active_profile_provider.dart';
@@ -22,12 +21,8 @@ import '../providers/offline_mode_provider.dart';
 import '../providers/seerr_provider.dart';
 import '../providers/watchlist_provider.dart';
 import '../theme/mono_tokens.dart';
-import '../utils/media_image_helper.dart';
 import '../utils/media_navigation_helper.dart';
-import '../utils/provider_extensions.dart';
 import '../watch_together/screens/watch_together_screen.dart';
-import '../widgets/big_p/big_p_rig.dart' show bigPAsset;
-import '../widgets/optimized_media_image.dart';
 import '../widgets/pleya_logo.dart';
 import '../widgets/watched_indicator.dart';
 import 'big_p/big_p_ask_row.dart' show summonableBigP;
@@ -35,7 +30,8 @@ import 'big_p/big_p_mobile_session.dart';
 import 'now_watching_screen.dart';
 import 'servers_screen.dart';
 import 'settings/about_screen.dart';
-import 'tv/tv_my_pleya_screen.dart' show buildTvMyPleyaGroups, TvMyPleyaTile;
+import 'my_pleya_shared.dart';
+import 'tv/tv_my_pleya_groups.dart';
 import 'tv/tv_my_pleya_sections.dart' show TvMyPleyaSection;
 import '../widgets/scroll_crown/scroll_crown.dart';
 
@@ -109,6 +105,8 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> {
       showAssistant: bigP != null,
       watchlistCount: watchlist?.entriesByRecentlyAdded.length,
       downloadCount: downloads == null ? null : downloads.downloadedMovies.length + downloads.downloadedShows.length,
+      onlineServerCount: servers?.onlineServerCount,
+      totalServerCount: servers?.totalServerCount,
     );
     final tileFor = <TvMyPleyaSection, TvMyPleyaTile>{
       for (final group in groups)
@@ -118,21 +116,16 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> {
     final online = servers?.onlineServerCount ?? 0;
     final total = servers?.totalServerCount ?? 0;
 
-    Widget? row(
-      TvMyPleyaSection section, {
-      required String subtitle,
-      required VoidCallback onTap,
-      String? title,
-      IconData? icon,
-      VoidCallback? onLongPress,
-    }) {
+    // Icon, title and subtitle come from the shared mapping, so this page and
+    // the Apple TV hub cannot drift apart; only what a tap does is local.
+    Widget? row(TvMyPleyaSection section, {required VoidCallback onTap, VoidCallback? onLongPress}) {
       final tile = tileFor[section];
       if (tile == null) return null;
       return _MyPleyaRow(
         instance: section.name,
-        icon: icon ?? tile.icon,
-        title: title ?? tile.title,
-        subtitle: subtitle,
+        icon: tile.icon,
+        title: tile.title,
+        subtitle: tile.subtitle,
         count: tile.count,
         onTap: onTap,
         onLongPress: onLongPress,
@@ -142,53 +135,23 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> {
     final contentRows = [
       row(
         TvMyPleyaSection.libraries,
-        icon: Symbols.grid_view_rounded,
-        subtitle: t.myPleya.librariesSubtitle,
         onTap: () => widget.onOpenTab(NavigationTabId.libraries),
         onLongPress: widget.onOpenLibraryPicker == null ? null : () => widget.onOpenLibraryPicker!(context),
       ),
-      row(
-        TvMyPleyaSection.downloads,
-        subtitle: t.myPleya.downloadsSubtitle,
-        onTap: () => widget.onOpenTab(NavigationTabId.downloads),
-      ),
-      row(
-        TvMyPleyaSection.requests,
-        icon: Symbols.bookmark_add_rounded,
-        subtitle: t.myPleya.requestsSubtitle,
-        onTap: () => widget.onOpenTab(NavigationTabId.requests),
-      ),
+      row(TvMyPleyaSection.downloads, onTap: () => widget.onOpenTab(NavigationTabId.downloads)),
+      row(TvMyPleyaSection.requests, onTap: () => widget.onOpenTab(NavigationTabId.requests)),
     ].nonNulls.toList();
 
     final pleyaRows = [
-      row(
-        TvMyPleyaSection.servers,
-        subtitle: total == 0 ? t.tvMyPleya.noServers : t.myPleya.serversOnline(count: '$online'),
-        onTap: () => _push(const ServersScreen()),
-      ),
-      row(
-        TvMyPleyaSection.activity,
-        subtitle: t.myPleya.activitySubtitle,
-        onTap: () => _push(const NowWatchingScreen()),
-      ),
-      row(
-        TvMyPleyaSection.watchTogether,
-        title: t.myPleya.watchTogether,
-        subtitle: t.myPleya.watchTogetherSubtitle,
-        onTap: () => _push(const WatchTogetherScreen()),
-      ),
+      row(TvMyPleyaSection.servers, onTap: () => _push(const ServersScreen())),
+      row(TvMyPleyaSection.activity, onTap: () => _push(const NowWatchingScreen())),
+      row(TvMyPleyaSection.watchTogether, onTap: () => _push(const WatchTogetherScreen())),
       row(
         TvMyPleyaSection.settings,
-        subtitle: t.myPleya.settingsSubtitle,
         // A tab switch, not a push: the bar keeps My Pleya lit under Settings.
         onTap: () => widget.onOpenTab(NavigationTabId.settings),
       ),
-      row(
-        TvMyPleyaSection.about,
-        title: t.settings.about,
-        subtitle: t.myPleya.aboutSubtitle,
-        onTap: () => _push(const AboutScreen()),
-      ),
+      row(TvMyPleyaSection.about, onTap: () => _push(const AboutScreen())),
       _MyPleyaRow(
         instance: 'logout',
         icon: Symbols.logout_rounded,

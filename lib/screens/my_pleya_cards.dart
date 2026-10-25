@@ -281,10 +281,8 @@ class _MyPleyaRow extends StatelessWidget {
   }
 }
 
-/// The Big P card: brand red, the Pleya mark, title and tagline, and Big P
-/// himself on the right (`still-zwaaien.png`, byte-identical to the package's
-/// `bigp_still.png`). Same in every theme: it is a brand surface, with white
-/// ink on red.
+/// The Big P card: the shared [BigPCardFace] under a tap. The TV hub draws the
+/// same face under the remote's focus.
 class _BigPCard extends StatelessWidget {
   const _BigPCard({required this.onTap});
 
@@ -292,7 +290,6 @@ class _BigPCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = tokens(context).accent;
     final radius = BorderRadius.circular(16);
     return Padding(
       padding: const EdgeInsets.fromLTRB(_kMyPleyaInset, 12, _kMyPleyaInset, 0),
@@ -307,67 +304,16 @@ class _BigPCard extends StatelessWidget {
           child: Material(
             borderRadius: radius,
             clipBehavior: Clip.antiAlias,
-            child: Ink(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color.lerp(accent, const Color(0xFF1A0B10), 0.45)!,
-                    Color.lerp(accent, const Color(0xFF1A0B10), 0.78)!,
-                  ],
-                ),
-              ),
-              child: InkWell(
-                onTap: onTap,
-                child: SizedBox(
-                  height: 100,
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        right: 10,
-                        top: 4,
-                        bottom: 0,
-                        child: Image.asset(bigPAsset('still-zwaaien'), fit: BoxFit.contain),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 110, 16),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const PleyaLogo(size: 38),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    t.assistant.tileTitle,
-                                    maxLines: 1,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 21,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    t.myPleya.bigPSubtitle,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12.5),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+            child: Stack(
+              children: [
+                BigPCardFace(subtitle: t.myPleya.bigPSubtitle),
+                Positioned.fill(
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: InkWell(onTap: onTap),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
