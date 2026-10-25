@@ -371,9 +371,6 @@ void _applyCatalogHeroArtworkV1(PleyaFakeServer server) {
 void _applyCatalogStudioArtV1(PleyaFakeServer server) {
   const fixture = 'catalog.studio-art.v1';
   server.resetCatalog();
-  // Screenshots of a whole session: a second client's refresh must not cut
-  // the image loader's token (see [PleyaFakeServer.earlierAccessTokensStayValid]).
-  server.earlierAccessTokensStayValid = true;
 
   final libraryId = _mintId(server, fixture, 'library', 'movies');
   server.addLibrary(id: libraryId, title: 'Films', kind: 'movies', itemCount: studioArtFilms.length);

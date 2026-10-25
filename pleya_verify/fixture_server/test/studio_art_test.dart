@@ -83,32 +83,6 @@ void main() {
     });
   });
 
-  group('earlier access tokens', () {
-    Future<int> artworkStatusWith(PleyaFakeServer server, String token) async {
-      final id = server.seededIds.values.first;
-      final request = http.Request('GET', Uri.parse('http://fixture/pleya/v1/artwork/$id'));
-      request.headers['Authorization'] = 'Bearer $token';
-      return (await server.handle(request)).statusCode;
-    }
-
-    test('stay valid after a later refresh on the studio catalog', () async {
-      final server = PleyaFakeServer();
-      applyNamedFixture(server, 'catalog.studio-art.v1');
-      server.refreshCount = 2; // a second client has refreshed since at-1
-      expect(await artworkStatusWith(server, 'at-1'), 200);
-      expect(await artworkStatusWith(server, 'at-2'), 200);
-      expect(await artworkStatusWith(server, 'at-3'), 401, reason: 'a token never minted is still refused');
-    });
-
-    test('are retired as before on every other catalog', () async {
-      final server = PleyaFakeServer();
-      applyNamedFixture(server, 'catalog.mixed.v1');
-      server.refreshCount = 2;
-      expect(await artworkStatusWith(server, 'at-1'), 401);
-      expect(await artworkStatusWith(server, 'at-2'), 200);
-    });
-  });
-
   group('watchlist.studio.v1', () {
     test('lists four films of the studio catalog, newest first', () async {
       final server = PleyaFakeServer();

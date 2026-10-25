@@ -205,14 +205,6 @@ class PleyaFakeServer {
   /// again.
   bool rejectCurrentAccessTokens = false;
 
-  /// Whether an access token stays valid after a later refresh, the way a real
-  /// server's access tokens live until they expire. Off by default, so the
-  /// rotation tests keep seeing only the newest token accepted.
-  /// `catalog.studio-art.v1` turns it on: the app builds a second server
-  /// client on a profile rebind, and its first refresh must not retire the
-  /// token the image loader is still using, or every poster answers 401.
-  bool earlierAccessTokensStayValid = false;
-
   /// Answer every request with a transport failure, the way an unplugged NAS
   /// does. Distinct from a 401: offline is not signed out.
   bool unreachable = false;
@@ -300,7 +292,6 @@ class PleyaFakeServer {
     requests.clear();
     refreshCount = 0;
     rejectCurrentAccessTokens = false;
-    earlierAccessTokensStayValid = false;
     unreachable = false;
     refreshOutcome = PleyaFakeRefreshOutcome.rotate;
     setupRequired = _initialSetupRequired;
@@ -593,7 +584,7 @@ class PleyaFakeServer {
       return _json(_mintTokenPair());
     }
     final expected = rejectCurrentAccessTokens ? null : 'Bearer at-$refreshCount';
-    if (expected == null || (request.headers['Authorization'] != expected && !_earlierTokenAccepted(request))) {
+    if (expected == null || request.headers['Authorization'] != expected) {
       return _json(_error('auth.invalid_token'), status: 401);
     }
     if (path == '/server') {
@@ -998,15 +989,6 @@ class PleyaFakeServer {
     // uncaught RangeError instead of the documented 416.
     if (start >= total || start > end) throw const _RangeNotSatisfiable();
     return (start: start, end: end);
-  }
-
-  /// A token this server minted before the current one, when
-  /// [earlierAccessTokensStayValid] allows it.
-  bool _earlierTokenAccepted(http.Request request) {
-    if (!earlierAccessTokensStayValid) return false;
-    final match = RegExp(r'^Bearer at-(\d+)$').firstMatch(request.headers['Authorization'] ?? '');
-    final minted = match == null ? null : int.parse(match.group(1)!);
-    return minted != null && minted < refreshCount;
   }
 
   /// `image/jpeg` for the studio art (a JPEG starts with FF D8), `image/png`
