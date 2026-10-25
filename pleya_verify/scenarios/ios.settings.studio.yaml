@@ -51,6 +51,12 @@ steps:
   - snapshot: 04-afspelen-scrolled-oled
   - tap: {x: 28, y: 48}
   - settle: 1000
+  - assert: {id: "settings.tile[language]", insideViewport: true}
+  - tap: {id: "settings.tile[language]"}
+  - settle: 1500
+  - snapshot: 04b-taal-oled
+  - tap: {x: 28, y: 48}
+  - settle: 1000
   - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
   - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
   - settle: 2500
@@ -88,6 +94,12 @@ steps:
   - drag: {startX: 187, startY: 560, endX: 187, endY: 160, durationMs: 450}
   - settle: 2500
   - snapshot: 10-afspelen-scrolled-dark
+  - tap: {x: 28, y: 48}
+  - settle: 1000
+  - assert: {id: "settings.tile[language]", insideViewport: true}
+  - tap: {id: "settings.tile[language]"}
+  - settle: 1500
+  - snapshot: 10b-taal-dark
   - tap: {x: 28, y: 48}
   - settle: 1000
   - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
