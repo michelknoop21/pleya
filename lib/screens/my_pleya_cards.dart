@@ -216,6 +216,10 @@ class _MyPleyaRow extends StatelessWidget {
       child: Semantics(
         button: true,
         label: label,
+        // excludeSemantics also drops the InkWell's actions, so the node
+        // carries them itself; otherwise VoiceOver finds nothing to activate.
+        onTap: onTap,
+        onLongPress: onLongPress,
         excludeSemantics: true,
         child: Material(
           color: tk.surface,
@@ -300,6 +304,7 @@ class _BigPCard extends StatelessWidget {
         child: Semantics(
           button: true,
           label: t.tvMyPleya.semantics.tile(title: t.assistant.tileTitle, subtitle: t.myPleya.bigPSubtitle),
+          onTap: onTap,
           excludeSemantics: true,
           child: Material(
             borderRadius: radius,

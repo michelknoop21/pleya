@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:pleya/automation/automation_ids.dart';
@@ -228,6 +229,36 @@ void main() {
         reason: '${order[i]} below ${order[i - 1]}',
       );
     }
+  });
+
+  testWidgets('A-24b: VoiceOver reads every Editorial row by its title and can activate it', (tester) async {
+    final semantics = tester.ensureSemantics();
+    tester.view.physicalSize = const Size(390, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final watchlist = StockedWatchlistDouble(railEntries: [watchlistEntryDouble('w1')]);
+    addTearDown(watchlist.dispose);
+    await pumpScreen(tester, seerr: ConfiguredSeerrDouble(), watchlist: watchlist);
+
+    // The poster is read by its title alone; the rows add their subtitle.
+    final poster = tester.getSemantics(find.bySemanticsLabel('Title w1')).getSemanticsData();
+    expect(poster.hasAction(SemanticsAction.tap), isTrue, reason: 'kijklijst poster is not activatable');
+
+    for (final title in [
+      t.libraries.title,
+      t.navigation.downloads,
+      t.seerr.title,
+      t.tvMyPleya.servers,
+      t.myPleya.watchTogether,
+      t.settings.title,
+      t.settings.about,
+      t.common.logout,
+    ]) {
+      final data = tester.getSemantics(find.text(title).first).getSemanticsData();
+      expect(data.label, contains(title), reason: title);
+      expect(data.hasAction(SemanticsAction.tap), isTrue, reason: '$title is not activatable');
+    }
+    semantics.dispose();
   });
 
   testWidgets('no kijklijst means no kijklijst heading', (tester) async {

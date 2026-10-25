@@ -77,12 +77,14 @@ class _WatchlistPoster extends StatelessWidget {
     final image = MyPleyaWatchlistArtwork(entry: entry, match: match, width: width, height: height);
 
     final radius = BorderRadius.circular(8);
+    final VoidCallback open = match == null ? onOpenAll : () => unawaited(navigateToMediaItem(context, match));
     return Semantics(
       button: true,
       label: entry.item.title,
+      onTap: open,
       excludeSemantics: true,
       child: GestureDetector(
-        onTap: match == null ? onOpenAll : () => unawaited(navigateToMediaItem(context, match)),
+        onTap: open,
         child: Container(
           width: width,
           height: height,
