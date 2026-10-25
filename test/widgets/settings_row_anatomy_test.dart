@@ -121,6 +121,52 @@ void main() {
       semantics.dispose();
     });
 
+    testWidgets('a switch row driven by a value also reads its hidden description as the hint', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pump(
+        tester,
+        subpage([
+          SettingSwitchRow(
+            value: true,
+            onChanged: (_) {},
+            icon: Symbols.wifi_rounded,
+            title: 'Alleen via wifi',
+            subtitle: 'Synchroniseer niet over mobiele data',
+          ),
+        ]),
+      );
+
+      expect(find.text('Synchroniseer niet over mobiele data'), findsNothing);
+      expect(
+        tester.getSemantics(find.text('Alleen via wifi')),
+        containsSemantics(hint: 'Synchroniseer niet over mobiele data'),
+      );
+      semantics.dispose();
+    });
+
+    testWidgets('a preference switch reads its hidden description as the hint, with the switch', (tester) async {
+      final semantics = tester.ensureSemantics();
+      resetSharedPreferencesForTest();
+      await tester.runAsync(() => SettingsService.getInstance());
+      await _pump(
+        tester,
+        subpage([
+          SettingSwitchTile(
+            pref: SettingsService.focusGlow,
+            icon: Symbols.light_mode_rounded,
+            title: 'Focusgloed',
+            subtitle: 'Een zachte gloed rond wat de afstandsbediening kiest',
+          ),
+        ]),
+      );
+
+      expect(
+        tester.getSemantics(find.text('Focusgloed')),
+        containsSemantics(hint: 'Een zachte gloed rond wat de afstandsbediening kiest', hasToggledState: true),
+      );
+      semantics.dispose();
+    });
+
     testWidgets('a page that does not opt in keeps its descriptions', (tester) async {
       await _pump(tester, subpage([_row(subtitle: 'Thema en dichtheid')], hide: false));
       expect(find.text('Thema en dichtheid'), findsOneWidget);
@@ -164,7 +210,7 @@ void main() {
     });
 
     for (final (name, dark, oled, coral) in [
-      ('light', false, false, kStudioSwitchLight),
+      ('light', false, false, kStudioTextCoralLight),
       ('dark', true, false, kStudioSwitchDark),
       ('OLED', true, true, kStudioSwitchDark),
     ]) {

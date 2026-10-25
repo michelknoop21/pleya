@@ -50,6 +50,9 @@ steps:
   - wait_until: {focused: "settings.category[2]", timeout: 5000}
   - press: select
   - press: right
+  # Michel, 25 Oct 2026: App-taal is the first row of Taal en ondertitels.
+  - wait_until: {focused: "my_pleya.section.tile[setting.app_locale]", timeout: 5000}
+  - press: down
   - wait_until: {focused: "my_pleya.section.tile[language.language_audio]", timeout: 5000}
   - settle: 1200
   - snapshot: oled-2-taal
@@ -104,6 +107,9 @@ steps:
   - wait_until: {focused: "settings.category[2]", timeout: 5000}
   - press: select
   - press: right
+  # Michel, 25 Oct 2026: App-taal is the first row of Taal en ondertitels.
+  - wait_until: {focused: "my_pleya.section.tile[setting.app_locale]", timeout: 5000}
+  - press: down
   - wait_until: {focused: "my_pleya.section.tile[language.language_audio]", timeout: 5000}
   - settle: 1200
   - snapshot: dark-2-taal
@@ -157,6 +163,9 @@ steps:
   - wait_until: {focused: "settings.category[2]", timeout: 5000}
   - press: select
   - press: right
+  # Michel, 25 Oct 2026: App-taal is the first row of Taal en ondertitels.
+  - wait_until: {focused: "my_pleya.section.tile[setting.app_locale]", timeout: 5000}
+  - press: down
   - wait_until: {focused: "my_pleya.section.tile[language.language_audio]", timeout: 5000}
   - settle: 1200
   - snapshot: light-2-taal

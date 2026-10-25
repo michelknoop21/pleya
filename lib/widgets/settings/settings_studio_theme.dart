@@ -52,6 +52,12 @@ const Color kStudioOledCard = Color(0xFF1E171B);
 const Color kStudioSwitchDark = Color(0xFFFF715A);
 const Color kStudioSwitchLight = Color(0xFFC94E3C);
 
+/// Coral used as text (a destructive row title, the "Live voorbeeld" label).
+/// Light takes a deeper coral than the switch: #C94E3C measures 3.75:1 on the
+/// warm #F1E8E3 fill, #AD412E keeps 4.5:1 on that fill, the card and the page.
+/// Dark and OLED read the switch coral as text already (6:1 and up).
+const Color kStudioTextCoralLight = Color(0xFFAD412E);
+
 /// The wash in the top-right corner of a TV settings page, and how far it
 /// reaches. Light: peach, measured at #F5E6E0 on #F9F5F2. Dark: wine,
 /// measured at #2B161B on the anchor's page. OLED: none.
@@ -87,6 +93,9 @@ Color? settingsStudioWash(MonoTokens tk) {
 
 /// Coral of an "on" switch track for [tk]'s palette.
 Color settingsStudioSwitchColor(MonoTokens tk) => tk.isLight ? kStudioSwitchLight : kStudioSwitchDark;
+
+/// The coral for text inside Instellingen ([kStudioTextCoralLight]).
+Color settingsStudioTextCoral(MonoTokens tk) => tk.isLight ? kStudioTextCoralLight : kStudioSwitchDark;
 
 /// Wraps a settings page in the Studio palette and paints its page: the
 /// page colour, plus on TV the corner wash. Idempotent: inside another

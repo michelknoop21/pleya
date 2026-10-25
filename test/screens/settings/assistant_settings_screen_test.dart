@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/settings_page.dart' show SettingsInlineScope;
 import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/automation/automation_ids.dart';
 import 'package:pleya/automation/automation_registry.dart';
@@ -578,5 +580,53 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
     expect(dismissed, 1);
+  });
+
+  // A-24b review I4: inline as the Big P category of the TV Instellingen page,
+  // Menu first steps back out of a provider draft; only from the provider
+  // choice does it reach the page's own Back.
+  testWidgets('inline on TV, Menu leaves a provider draft before it leaves the page', (tester) async {
+    TvDetectionService.debugSetAppleTVOverride(true);
+    addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+    // Outside the real TV page these rows lack the page's Material between
+    // their tint and the ListTile; that paint warning is not what this tests.
+    final reportError = FlutterError.onError;
+    FlutterError.onError = (details) {
+      if (details.exceptionAsString().contains('ListTile background color')) return;
+      reportError?.call(details);
+    };
+    addTearDown(() => FlutterError.onError = reportError);
+    var pageBack = 0;
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: Focus(
+            onKeyEvent: (_, event) {
+              if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) pageBack++;
+              return KeyEventResult.ignored;
+            },
+            child: Scaffold(
+              body: SettingsInlineScope(
+                child: SingleChildScrollView(
+                  child: AssistantSettingsScreen(store: _FakeStore(), listModels: (_) async => const []),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(s.ollamaServer));
+    await tester.pumpAndSettle();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(pageBack, 0, reason: 'the draft took the Menu press');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(pageBack, 1, reason: 'from the provider choice Menu belongs to the page');
   });
 }

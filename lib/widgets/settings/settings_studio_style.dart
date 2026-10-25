@@ -62,15 +62,16 @@ bool settingsStudioHeaderApplies(BuildContext context) =>
 
 /// Ink of a destructive row's title (Cache wissen, Instellingen herstellen,
 /// a source removed): the Studio coral inside Instellingen, as the series
-/// draws it (#FF715A dark, #C94E3C light), the theme's error colour elsewhere.
+/// draws it (#FF715A dark; in Light the deeper text coral #AD412E for 4.5:1),
+/// the theme's error colour elsewhere.
 Color settingsDestructiveInk(BuildContext context) {
-  if (SettingsStudioTheme.isActive(context)) return settingsStudioSwitchColor(tokens(context));
+  if (SettingsStudioTheme.isActive(context)) return settingsStudioTextCoral(tokens(context));
   return Theme.of(context).colorScheme.error;
 }
 
 /// Ink of an accent label inside Instellingen ("Live voorbeeld"): the same
 /// Studio coral the series uses for it, the brand accent elsewhere.
 Color settingsAccentInk(BuildContext context) {
-  if (SettingsStudioTheme.isActive(context)) return settingsStudioSwitchColor(tokens(context));
+  if (SettingsStudioTheme.isActive(context)) return settingsStudioTextCoral(tokens(context));
   return tokens(context).accent;
 }

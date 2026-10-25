@@ -59,16 +59,15 @@ class SettingSwitchTile extends StatelessWidget {
         automationState: () => {'value': value},
         child: ClickableCursor(
           enabled: enabled,
-          child: settingsRowWithHint(
-            settingsRowHint(context, subtitle, enabled: enabled),
-            SwitchListTile(
-              contentPadding: settingRowPadding(),
-              secondary: settingsRowLeading(context, icon),
-              title: Text(title),
-              subtitle: shown != null ? Text(shown) : null,
-              value: value,
-              onChanged: enabled ? (v) => _write(svc, v) : null,
-            ),
+          // SwitchListTile merges its own semantics, so the hint goes on the
+          // title inside that node, where VoiceOver reads it with the switch.
+          child: SwitchListTile(
+            contentPadding: settingRowPadding(),
+            secondary: settingsRowLeading(context, icon),
+            title: settingsRowWithHint(settingsRowHint(context, subtitle, enabled: enabled), Text(title)),
+            subtitle: shown != null ? Text(shown) : null,
+            value: value,
+            onChanged: enabled ? (v) => _write(svc, v) : null,
           ),
         ),
       ),
@@ -128,10 +127,12 @@ class SettingSwitchRow extends StatelessWidget {
       },
       child: ClickableCursor(
         enabled: active,
+        // The description a Studio page hides stays the VoiceOver hint, on the
+        // title inside the switch's own merged node, as on [SettingSwitchTile].
         child: SwitchListTile(
           contentPadding: settingRowPadding(),
           secondary: settingsRowLeading(context, icon),
-          title: Text(title),
+          title: settingsRowWithHint(settingsRowHint(context, subtitle, enabled: active), Text(title)),
           subtitle: shown != null ? Text(shown) : null,
           value: value,
           // A no-op keeps a locked switch in the active colour.

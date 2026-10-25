@@ -42,8 +42,14 @@ extension _AssistantSettingsViews on _AssistantSettingsScreenState {
   /// density) with the content held to the mockup's 1180 of 1920 px.
   Widget _buildTvFrame(BuildContext context, List<Widget> children) => SettingsInlineScope.isInline(context)
       // A-24b: the Big P category of the TV Instellingen page shows these
-      // rows in place (series `tvos/08-big-p-01..05`); Back is the page's own.
-      ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children)
+      // rows in place (series `tvos/08-big-p-01..05`). Menu first steps back
+      // inside the editor (a provider draft, edit mode); only from the first
+      // step does it reach the page's own Back.
+      ? Focus(
+          canRequestFocus: false,
+          onKeyEvent: (_, event) => _hasInnerStep ? handleBackKeyAction(event, _back) : KeyEventResult.ignored,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+        )
       : Focus(
           canRequestFocus: false,
           onKeyEvent: (_, event) => handleBackKeyAction(event, _back),

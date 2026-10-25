@@ -189,6 +189,10 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
 
   bool get _showSummary => _saved != null && !_editing;
 
+  /// Whether Menu has a step to undo inside this page: a provider draft or
+  /// edit mode.
+  bool get _hasInnerStep => _kind != null || _editing;
+
   void _back() {
     if (_kind != null) {
       final from = _kind!;

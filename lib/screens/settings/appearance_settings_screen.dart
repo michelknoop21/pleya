@@ -18,7 +18,6 @@ import '../../widgets/setting_tile.dart';
 import '../../widgets/settings_page.dart';
 import '../../widgets/settings_section.dart';
 import '../../widgets/settings/settings_live_preview_card.dart';
-import 'parts/app_language_row.dart';
 import 'settings_utils.dart';
 
 part 'parts/appearance_rows.dart';
@@ -71,8 +70,6 @@ class AppearanceSettingsScreen extends StatelessWidget {
       title: t.settings.showSeasonPostersOnTabs,
       subtitle: t.settings.showSeasonPostersOnTabsDescription,
     ),
-    // App-taal has no place in the series; it stays here, last in Scherm.
-    AppLanguageRow(onRestart: () => _restartApp(context)),
 
     SettingsSectionHeader(t.settings.homeScreen),
     SettingSwitchTile(
@@ -146,11 +143,10 @@ class AppearanceSettingsScreen extends StatelessWidget {
   /// Weergave on TV in the series' order (`tvos/02-weergave-01..05`, anchors
   /// `02`/`04`): Scherm, Home, Navigatie and Inhoud. Every row the TV page had
   /// stays under its own condition; Dichtheid is the value row of anchor `04`
-  /// ("3 van 5") instead of the slider, App-taal follows Thema as on the phone.
+  /// ("3 van 5") instead of the slider. App-taal lives in Taal en ondertitels.
   List<Widget> _tvRows(BuildContext context) => [
     SettingsSectionHeader(t.settings.display),
     _themeSelector(),
-    AppLanguageRow(onRestart: () => _restartApp(context)),
     if (Platform.isAndroid) _visualEffectsSelector(context),
     if (glassAppliesTo(context))
       SettingSwitchTile(

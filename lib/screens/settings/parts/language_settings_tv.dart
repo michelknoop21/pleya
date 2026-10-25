@@ -122,6 +122,7 @@ extension _LanguageSettingsTvPage on _LanguageSettingsScreenState {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SettingsSectionHeader(t.languageSettings.globalHeader),
+        const AppLanguageRow(),
         TvSettingsRowList(
           items: [for (final r in rows.take(remember)) item(r)],
           nodes: _focusTracker,
@@ -189,6 +190,10 @@ extension _LanguageSettingsTvPage on _LanguageSettingsScreenState {
               color: tokens(context).text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
             ),
           ),
+        ),
+        Padding(
+          padding: EdgeInsets.only(bottom: TvMyPleyaLayout.tileTitleSubtitleGap * 2 * scale),
+          child: const AppLanguageRow(),
         ),
         for (var index = 0; index < rows.length; index++) ...[
           // Tighter than the hub's tile gap: this column carries six rows and

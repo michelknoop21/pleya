@@ -85,10 +85,10 @@ class StockedWatchlistDouble extends WatchlistProvider {
 final _scope = WatchlistScopeId(profileId: 'p1', backend: MediaBackend.plex, accountId: 'a', userId: 'u');
 
 /// A kijklijst title that has not been resolved against any server.
-WatchlistEntry watchlistEntryDouble(String key, {int year = 2024}) => WatchlistEntry(
+WatchlistEntry watchlistEntryDouble(String key, {int year = 2024, String? title}) => WatchlistEntry(
   key: key,
   kind: MediaKind.movie,
-  item: MediaItem(id: key, backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Title $key', year: year),
+  item: MediaItem(id: key, backend: MediaBackend.plex, kind: MediaKind.movie, title: title ?? 'Title $key', year: year),
   memberships: [WatchlistMembership(scope: _scope, remoteKey: key)],
 );
 

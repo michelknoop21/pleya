@@ -9,13 +9,17 @@ import 'package:pleya/database/app_database.dart';
 import 'package:pleya/focus/focusable_wrapper.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/profiles/active_profile_binder.dart';
 import 'package:pleya/profiles/active_profile_provider.dart';
+import 'package:pleya/profiles/profile.dart';
+import 'package:pleya/profiles/profile_connection.dart';
 import 'package:pleya/profiles/profile_connection_registry.dart';
 import 'package:pleya/profiles/profile_registry.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/screens/settings/connection_sources_screen.dart';
 import 'package:pleya/screens/settings/connections_section.dart';
+import 'package:pleya/screens/settings/edit_jellyfin_connection_screen.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
@@ -112,6 +116,8 @@ void main() {
     List<Connection> seed = const [],
     bool appleTv = false,
     ConnectionSourceKind? sources,
+    Profile? active,
+    ActiveProfileBinder? binder,
   }) async {
     tester.view.physicalSize = const Size(400, 1600);
     tester.view.devicePixelRatio = 1;
@@ -130,7 +136,10 @@ void main() {
           providers: [
             Provider<ConnectionRegistry>.value(value: registry),
             Provider<ProfileConnectionRegistry>.value(value: profileConnections),
-            ChangeNotifierProvider<ActiveProfileProvider>.value(value: activeProfile),
+            ChangeNotifierProvider<ActiveProfileProvider>.value(
+              value: active == null ? activeProfile : _FakeActiveProfile(active),
+            ),
+            Provider<ActiveProfileBinder>.value(value: binder ?? _RecordingBinder()),
             ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
             ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibraries),
           ],
@@ -348,10 +357,68 @@ void main() {
       expect(connectionSourceMatches(ConnectionSourceKind.removable, jellyfin()), isFalse);
     });
 
+    // Review I1: an edit from Instellingen rebinds the active profile, as the
+    // profile page does, so a changed address reaches the session.
+    testWidgets('a saved Jellyfin edit rebinds the active profile', (tester) async {
+      final profile = Profile.local(id: 'local-a', displayName: 'A', createdAt: DateTime(2026));
+      await tester.runAsync(() async {
+        await ProfileRegistry(db).upsert(profile);
+        await connections.upsert(jellyfin());
+        await profileConnections.upsert(
+          ProfileConnection(profileId: profile.id, connectionId: 'jf/1', userIdentifier: 'u'),
+        );
+      });
+      final binder = _RecordingBinder();
+      await pumpSection(
+        tester,
+        seed: [jellyfin()],
+        sources: ConnectionSourceKind.jellyfin,
+        active: profile,
+        binder: binder,
+      );
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+      await tester.pump();
+      await tester.tap(find.byTooltip(t.common.edit));
+      await tester.pumpAndSettle();
+      expect(find.byType(EditJellyfinConnectionScreen), findsOneWidget);
+
+      Navigator.of(tester.element(find.byType(EditJellyfinConnectionScreen))).pop(true);
+      await tester.pumpAndSettle();
+      expect(binder.rebound, ['local-a']);
+      // The bindings stream is a drift `.watch()`: unmount and flush its timer.
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 1));
+    });
+
     testWidgets('an Emby source gives the Emby row and not the Jellyfin one', (tester) async {
       await pumpSection(tester, seed: [jellyfin(emby: true)]);
       expect(find.text(t.settingsStudio.manageEmby), findsOneWidget);
       expect(find.text(t.settingsStudio.manageJellyfin), findsNothing);
     });
   });
+}
+
+class _FakeActiveProfile extends ChangeNotifier implements ActiveProfileProvider {
+  _FakeActiveProfile(this._active);
+
+  final Profile _active;
+
+  @override
+  Profile? get active => _active;
+
+  @override
+  String? get activeId => _active.id;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _RecordingBinder implements ActiveProfileBinder {
+  final List<String> rebound = [];
+
+  @override
+  Future<void> rebindIfActive(String profileId) async => rebound.add(profileId);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

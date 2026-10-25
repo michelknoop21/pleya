@@ -57,6 +57,12 @@ void main() {
         // on the page and on a focused row.
         expect(ratio(settingsStudioSwitchColor(tk), tk.bg), greaterThan(3));
         expect(ratio(settingsStudioSwitchColor(tk), row), greaterThan(3));
+        // Coral as text (destructive titles, "Live voorbeeld"): 4.5:1 on the
+        // page, the card, a focused row and, in Light, the warm #F1E8E3 fill.
+        final text = settingsStudioTextCoral(tk);
+        for (final under in [tk.bg, tk.surface, row, if (tk.isLight) const Color(0xFFF1E8E3)]) {
+          expect(ratio(text, under), greaterThan(4.5), reason: '$name coral text on $under');
+        }
       });
     }
   });

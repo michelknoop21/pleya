@@ -18,6 +18,7 @@ import 'package:provider/provider.dart';
 import '../../connection/connection.dart';
 import '../../connection/connection_registry.dart';
 import '../../i18n/strings.g.dart';
+import '../../profiles/active_profile_binder.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../profiles/profile.dart';
 import '../../profiles/profile_connection.dart';
@@ -144,19 +145,23 @@ class _ConnectionSourcesScreenState extends State<ConnectionSourcesScreen> {
           ConnectionSourceRow(
             title: connection.displayLabel,
             subtitle: connection.displaySubtitle,
-            onEdit: connection is JellyfinConnection
-                ? () => unawaited(
-                    Navigator.of(context).push<bool>(
-                      MaterialPageRoute(builder: (_) => EditJellyfinConnectionScreen(connection: connection)),
-                    ),
-                  )
-                : null,
+            onEdit: connection is JellyfinConnection ? () => unawaited(_edit(profile, connection)) : null,
             removeTooltip: t.profiles.removeConnection,
             onRemove: () =>
                 unawaited(confirmAndRemoveProfileConnection(context, profile: profile, connection: connection)),
           ),
     ];
     return _card(rows);
+  }
+
+  /// Jellyfin's edit, as the profile page runs it: the screen only writes the
+  /// registry, so a changed address reaches the session through a rebind.
+  Future<void> _edit(Profile profile, JellyfinConnection connection) async {
+    final changed = await Navigator.of(
+      context,
+    ).push<bool>(settingsStudioRoute<bool>(context, (_) => EditJellyfinConnectionScreen(connection: connection)));
+    if (changed != true || !mounted) return;
+    await context.read<ActiveProfileBinder>().rebindIfActive(profile.id);
   }
 
   Widget _card(List<Widget> rows) {

@@ -44,6 +44,7 @@ import '../../widgets/tv/tv_page_surface.dart';
 import '../../widgets/tv/tv_settings_rows.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import 'settings_utils.dart';
+import 'parts/app_language_row.dart';
 import 'parts/language_picker_dialog.dart';
 import 'parts/series_language_row.dart';
 import 'parts/series_language_sheet.dart';
@@ -240,6 +241,9 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
       hideDescriptions: true,
       children: [
         SettingsSectionHeader(t.languageSettings.globalHeader),
+        // Michel, 25 October 2026: the app's own language first, above the
+        // audio and subtitle preferences.
+        const AppLanguageRow(),
         _ValueRow(
           icon: Symbols.volume_up_rounded,
           title: t.settingsStudio.preferredAudio,

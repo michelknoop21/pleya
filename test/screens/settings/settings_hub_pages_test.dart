@@ -4,6 +4,8 @@
 /// search still finds each page and each moved destination.
 library;
 
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -178,7 +180,9 @@ void main() {
 
     expect(find.text(t.settings.exportSettings), findsOneWidget);
     expect(find.text(t.settings.importSettings), findsOneWidget);
-    expect(find.text(t.settings.icloudSync), findsOneWidget, reason: 'the test host is Apple');
+    // The iCloud switch exists only on iOS and macOS (`_icloudSyncPlatform`);
+    // CI runs this on Linux.
+    expect(find.text(t.settings.icloudSync), Platform.isIOS || Platform.isMacOS ? findsOneWidget : findsNothing);
 
     await tester.tap(find.text(t.settings.importSettings));
     await tester.pumpAndSettle();

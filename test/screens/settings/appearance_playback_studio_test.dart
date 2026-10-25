@@ -96,8 +96,6 @@ void main() {
         t.settings.episodePosterMode,
         t.settings.showEpisodeNumberOnCards,
         t.settings.showSeasonPostersOnTabs,
-        // No slot in the series: last in Scherm.
-        t.settings.language,
         t.settings.homeScreen.toUpperCase(),
         t.settings.showHeroSection,
         t.settings.personalizedRecommendations,

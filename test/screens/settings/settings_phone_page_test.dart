@@ -55,7 +55,7 @@ void main() {
   /// Points at 3x. An iPhone-sized view (812 or 568 high) reads as a phone to
   /// `PlatformDetector.isPhone`; the default 2400 high view, which builds every
   /// card at once, reads as a tablet and so shows the plain bar.
-  Future<void> pumpSettings(WidgetTester tester, {double width = 375, double height = 2400}) async {
+  Future<void> pumpSettings(WidgetTester tester, {double width = 375, double height = 2400, ThemeData? theme}) async {
     tester.view.physicalSize = Size(width * 3, height * 3);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
@@ -80,7 +80,7 @@ void main() {
             Provider<ProfileRegistry>.value(value: ProfileRegistry(db)),
             ChangeNotifierProvider<ActiveProfileProvider>(create: (_) => _FakeActiveProfile(null)),
           ],
-          child: MaterialApp(theme: monoTheme(dark: false), home: const SettingsScreen()),
+          child: MaterialApp(theme: theme ?? monoTheme(dark: false), home: const SettingsScreen()),
         ),
       ),
     );
@@ -166,6 +166,25 @@ void main() {
     expect(find.text(t.settings.sectionLibrary.toUpperCase()), findsNothing);
     await unmount(tester);
   });
+
+  // Michel, 25 October 2026: a theme changes colours, not structure or
+  // naming. Light uses the group names of dark and OLED, not those of the
+  // light anchor `03`.
+  for (final (name, theme) in [
+    ('Light', monoTheme(dark: false)),
+    ('Dark', monoTheme(dark: true)),
+    ('OLED', monoTheme(dark: true, oled: true)),
+  ]) {
+    testWidgets('A-24b: $name shows the same three group titles', (tester) async {
+      await pumpSettings(tester, theme: theme);
+      final s = t.settingsStudio;
+      for (final title in [s.forYou, s.connectionsAndProfiles, s.system]) {
+        expect(find.text(title.toUpperCase()), findsOneWidget, reason: '$name: $title');
+      }
+      expect(find.text(t.settings.sectionLibrary.toUpperCase()), findsNothing, reason: '$name: no old group');
+      await unmount(tester);
+    });
+  }
 
   testWidgets('the explanation a row no longer shows is its VoiceOver hint', (tester) async {
     await pumpSettings(tester);

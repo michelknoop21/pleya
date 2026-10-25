@@ -31,7 +31,7 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
-import 'package:pleya/widgets/big_p/big_p_portrait.dart';
+import 'package:pleya/screens/my_pleya_shared.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
@@ -106,7 +106,8 @@ void main() {
         ..emit();
       await tester.pump();
       expect(tile(), findsOneWidget);
-      expect(find.descendant(of: tile(), matching: find.byType(BigPPortrait)), findsOneWidget);
+      // A-24b: the Editorial card carries Big P's still, not the portrait.
+      expect(find.descendant(of: tile(), matching: find.byType(BigPCardFace)), findsOneWidget);
       expect(c.refreshes, 1, reason: 'once on appear, not per build');
 
       await tester.tap(tile());

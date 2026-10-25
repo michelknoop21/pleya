@@ -600,6 +600,39 @@ void main() {
         expect(opened, [TvMyPleyaSection.watchlist]);
       });
 
+      // A-24b review I3 and Michel's decision of 25 October: twelve posters,
+      // more than the column shows, stay reachable with RIGHT, and a title
+      // that ellipsized on one line reads whole on the focused card without
+      // any card changing size or place.
+      testWidgets('RIGHT walks all twelve posters inside the rail, titles whole, no card moves on focus', (
+        tester,
+      ) async {
+        final twelve = [
+          for (var i = 0; i < 12; i++) watchlistEntryDouble('w$i', year: 2020, title: i == 1 ? 'Sintel Two' : null),
+        ];
+        await pump(tester, watchlistEntries: twelve);
+
+        final rail = tester.getRect(find.ancestor(of: find.text('Title w0'), matching: find.byType(ListView)).first);
+        state(tester).focusKey('tvMyPleya_poster_w0');
+        await tester.pumpAndSettle();
+        final w2Before = tester.getRect(find.text('Title w2'));
+
+        await press(tester, LogicalKeyboardKey.arrowRight);
+        await tester.pumpAndSettle();
+        expect(focusedLabel(), 'tvMyPleya_poster_w1');
+        // Too wide for one line of the card (the test font is wide), whole on two.
+        expect(tester.renderObject<RenderParagraph>(find.text('Sintel Two')).didExceedMaxLines, isFalse);
+        expect(tester.getRect(find.text('Title w2')), w2Before, reason: 'a neighbour keeps its size and place');
+
+        for (var i = 2; i < 12; i++) {
+          await press(tester, LogicalKeyboardKey.arrowRight);
+          await tester.pumpAndSettle();
+          expect(focusedLabel(), 'tvMyPleya_poster_w$i');
+          final centre = FocusManager.instance.primaryFocus!.rect.center;
+          expect(centre.dx, inInclusiveRange(rail.left, rail.right), reason: 'poster $i is on screen');
+        }
+      });
+
       testWidgets('Down from a poster keeps the column into the tiles below', (tester) async {
         await pump(tester, watchlistEntries: entries);
 

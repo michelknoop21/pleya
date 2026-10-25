@@ -19,7 +19,9 @@ import '../../providers/home_custom_rows_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../services/unified_catalog/home_row_editing.dart';
 import '../../widgets/continue_watching_hidden_items.dart';
+import '../../utils/platform_detector.dart';
 import '../../widgets/setting_tile.dart';
+import '../../widgets/tv/tv_home_customize_controller.dart';
 import '../home/customize/home_customize_row_menu.dart';
 import '../home/customize/home_row_actions.dart';
 import '../home/customize/home_row_wizard_page.dart';
@@ -86,10 +88,19 @@ List<Widget> buildHomeLayoutRows(BuildContext context) {
 Widget _row(String instance, Widget child) =>
     AutomationNode(id: AutomationIds.settingsTile, instance: instance, role: 'list.item', child: child);
 
-/// The row wizard as Home aanpassen opens it on a phone, then the save.
+/// The row wizard as Home aanpassen opens it, then the save: on a TV the
+/// D-pad wizard Home's own panel runs, elsewhere the phone page.
 Future<void> _addRow(BuildContext context) async {
-  final actions = HomeRowActions.of(context);
   final servers = context.read<MultiServerProvider?>();
+  if (PlatformDetector.isTV()) {
+    final tv = TvHomeCustomizeController.maybeOf(context, clientFor: (id) => servers?.getClientForServer(ServerId(id)));
+    if (tv != null) {
+      await tv.runWizard(context);
+      return;
+    }
+  }
+  if (!context.mounted) return;
+  final actions = HomeRowActions.of(context);
   final row = await showHomeRowWizardPage(
     context,
     editing: HomeRowEditing.of(context, clientFor: (id) => servers?.getClientForServer(ServerId(id))),

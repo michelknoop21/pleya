@@ -175,7 +175,11 @@ class _ConnectionsSectionState extends State<ConnectionsSection> {
       icon: icon,
       title: title,
       automationInstance: 'settings.add.$instance',
-      onTap: () => pushSettingsPage(context, builder, id: 'add.$instance'),
+      // A real route, also on TV, as AddConnectionScreen opens these: every
+      // add flow ends in `Navigator.pop(true)`, and inside the TV shell's
+      // nested surface that pop would take MainScreen off the profile
+      // navigator instead of closing the add screen.
+      onTap: () => unawaited(Navigator.push<bool>(context, settingsStudioRoute<bool>(context, builder))),
     ),
   );
 }
