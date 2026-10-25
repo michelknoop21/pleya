@@ -173,6 +173,25 @@ void main() {
       expect(tester.renderObject<RenderParagraph>(find.text(names)).didExceedMaxLines, isFalse);
     });
 
+    testWidgets('a long value under the title keeps the description beside it', (tester) async {
+      const names = 'Trakt, MyAnimeList, AniList, Simkl';
+      await pump(
+        tester,
+        SettingsGroup(
+          children: [
+            SettingNavigationTile(
+              icon: Symbols.sync_rounded,
+              title: 'Trackers',
+              subtitle: 'Kijkgedrag bijhouden',
+              trailingLabel: names,
+              onTap: () {},
+            ),
+          ],
+        ),
+      );
+      expect((tileOf(tester).subtitle! as Text).data, '$names · Kijkgedrag bijhouden');
+    });
+
     testWidgets('a one-word segment label scales down instead of breaking inside the word', (tester) async {
       for (final width in const [375.0, 320.0]) {
         await pump(

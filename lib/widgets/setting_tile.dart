@@ -191,7 +191,10 @@ class SettingNavigationTile extends StatelessWidget {
     final placement = label == null || PlatformDetector.isTV()
         ? null
         : settingValuePlacement(context, title: title, value: label, hasDescription: subtitle != null);
-    final subtitleText = placement == SettingValuePlacement.subtitle ? label : subtitle;
+    // Joined, like the value tiles do: the value never pushes the description out.
+    final subtitleText = placement == SettingValuePlacement.subtitle
+        ? (subtitle == null ? label : '$label · $subtitle')
+        : subtitle;
 
     return SettingRowFocus(
       focusNode: focusNode,
