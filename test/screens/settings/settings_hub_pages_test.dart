@@ -93,21 +93,28 @@ void main() {
       .evaluate()
       .isNotEmpty;
 
-  testWidgets('Bibliotheken opens Bibliotheek & Home with the four rows it took over, Studio and all', (tester) async {
+  testWidgets('Bibliotheken opens Bibliotheek & Home with its rows inline, Studio and all', (tester) async {
     await pump(tester);
     await open(tester, t.settingsStudio.libraries);
 
     expect(find.text(t.settingsStudio.libraryAndHome), findsWidgets);
+    final s = t.settingsStudio;
+    // Series 03-02: the Home aanpassen actions; removing an own row and the
+    // hidden Verder kijken titles only appear when there are some.
     for (final row in [
       t.settings.libraryVisibility,
-      t.localLibrary.title,
-      t.settings.homeLayout,
+      s.reorderRows,
+      s.rowVisibility,
+      s.addOwnRow,
       t.settings.downloads,
     ]) {
       expect(find.text(row), findsOneWidget, reason: row);
     }
-    expect(SettingsStudioTheme.isActive(tester.element(find.text(t.settings.homeLayout))), isTrue);
-    expect(hasTile('home_layout') && hasTile('local_library') && hasTile('downloads'), isTrue);
+    expect(find.text(s.removeOwnRow), findsNothing);
+    expect(find.text(s.hiddenContinueWatching), findsNothing);
+    expect(find.text(t.settings.homeLayout.toUpperCase()), findsOneWidget, reason: 'the group heading');
+    expect(SettingsStudioTheme.isActive(tester.element(find.text(s.reorderRows))), isTrue);
+    expect(hasTile('home_layout') && hasTile('downloads'), isTrue);
 
     await back(tester);
     expect(find.text(t.settingsStudio.forYou.toUpperCase()), findsOneWidget, reason: 'back on the main page');
@@ -123,7 +130,7 @@ void main() {
       for (final child in list.children)
         if (child is SettingsWidthLimit && child.child is SettingsGroup) (child.child as SettingsGroup).title,
     ];
-    expect(titles, [t.settingsStudio.libraries, t.settings.homeScreen]);
+    expect(titles, [t.settingsStudio.libraries, t.settings.homeLayout]);
   });
 
   testWidgets('Koppelingen opens Trackers and Aanvragen; Tautulli only for a Plex owner', (tester) async {

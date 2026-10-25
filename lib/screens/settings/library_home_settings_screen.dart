@@ -1,34 +1,42 @@
 /// Instellingen ▸ Bibliotheken (A-24b, series `ios/03` "Bibliotheek & Home").
 ///
-/// A hub of rows the main page used to carry itself: which libraries show,
-/// the local library, the Home layout and, off Apple TV, Downloads. It adds
-/// no preference of its own; every row opens the page it opened before, with
-/// the same automation id.
+/// Which libraries show, the local library's own rows inline, the Home
+/// aanpassen actions inline, and off Apple TV a row to Downloads. It adds no
+/// preference of its own: every row is a preference or action that already
+/// exists, under the automation id it had before.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:provider/provider.dart';
 
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
+import '../../providers/local_library_provider.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/setting_tile.dart';
 import '../../widgets/settings_page.dart';
 import '../../widgets/settings_section.dart';
 import 'downloads_settings_screen.dart';
-import 'home_layout_screen.dart';
+import 'library_home_rows.dart';
 import 'library_visibility_screen.dart';
-import 'local_library_settings_screen.dart';
+import 'local_library_rows.dart';
 
-class LibraryHomeSettingsScreen extends StatelessWidget {
+class LibraryHomeSettingsScreen extends StatefulWidget {
   const LibraryHomeSettingsScreen({super.key});
 
   @override
+  State<LibraryHomeSettingsScreen> createState() => _LibraryHomeSettingsScreenState();
+}
+
+class _LibraryHomeSettingsScreenState extends State<LibraryHomeSettingsScreen>
+    with LocalLibraryRowsHost<LibraryHomeSettingsScreen> {
+  @override
   Widget build(BuildContext context) {
+    final localLibrary = context.watch<LocalLibraryProvider?>();
     return SettingsPage(
       title: Text(t.settingsStudio.libraryAndHome),
-      hideDescriptions: true,
       children: [
         SettingsSectionHeader(t.settingsStudio.libraries),
         _row(
@@ -40,26 +48,15 @@ class LibraryHomeSettingsScreen extends StatelessWidget {
             destinationBuilder: (_) => const LibraryVisibilityScreen(),
           ),
         ),
-        _row(
-          'local_library',
-          SettingNavigationTile(
-            icon: Symbols.offline_bolt_rounded,
-            title: t.localLibrary.title,
-            subtitle: t.localLibrary.enable,
-            destinationBuilder: (_) => const LocalLibrarySettingsScreen(),
-          ),
-        ),
-        SettingsSectionHeader(t.settings.homeScreen),
-        _row(
-          'home_layout',
-          SettingNavigationTile(
-            icon: Symbols.dashboard_customize_rounded,
-            title: t.settings.homeLayout,
-            subtitle: t.settings.homeLayoutDescription,
-            destinationBuilder: (_) => const HomeLayoutScreen(),
-          ),
-        ),
-        // Apple TV keeps no downloads; everywhere else the page is unchanged.
+        // The local library's own rows, inline as the series draws them.
+        if (localLibrary != null) ...[
+          SettingsSectionHeader(t.localLibrary.title),
+          ...buildLocalLibraryRows(localLibrary),
+        ],
+        SettingsSectionHeader(t.settings.homeLayout),
+        ...buildHomeLayoutRows(context),
+        // Apple TV keeps no downloads; everywhere else Downloads is its own
+        // page (series `ios/07`).
         if (!PlatformDetector.isAppleTV()) ...[
           SettingsSectionHeader(t.settings.downloads),
           _row(
