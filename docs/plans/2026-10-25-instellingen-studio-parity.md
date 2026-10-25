@@ -4,8 +4,11 @@ Besluit Michel, 24 oktober 2026: Instellingen krijgt richting 02, Apple TV+ Stud
 huidige rij vast waar hij na PR 1 staat, zodat de restyle niets toevoegt, weghaalt of anders afschermt.
 De code is de bron; de ontwerpinventaris in de aangeleverde bundel diende alleen als controlelijst.
 
-PR 1 raakt alleen de weergave buiten TV. Op tvOS verandert niets: elke wijziging in de gedeelde rijen
-staat achter `PlatformDetector.isTV()`, en `settings_tv_page.dart` is niet aangeraakt. PR 2 doet tvOS.
+PR 1 raakt alleen de weergave. De Studio-kop, de balk met warme tint en de gevulde zoekbalk staan alleen
+op een iPhone (`settingsStudioHeaderApplies`); iPad, de iOS-app op een Mac, Android en desktop houden de
+gewone balk en het omlijnde zoekveld. De rijstijl hieronder geldt buiten TV overal. Op tvOS verandert
+niets: elke wijziging in de gedeelde rijen staat achter `PlatformDetector.isTV()`, en
+`settings_tv_page.dart` is niet aangeraakt. PR 2 doet tvOS.
 
 ## Wat er in de presentatie verandert
 
@@ -14,11 +17,15 @@ staat achter `PlatformDetector.isTV()`, en `settings_tv_page.dart` is niet aange
   `DiscoverProvider` al heeft geladen (Verder kijken, dan nieuwste films). Zonder provider of zonder
   backdrop: merkverloop met het Pleya-logo. De vaste balk houdt terugknop en acties, draagt de warme tint
   van de kop zolang die in beeld is en toont zijn titel pas als de kop eronder is geschoven.
-- Keuze-, getal- en navigatierijen tonen hun waarde rechts voor de chevron (`SettingValueLabel`); de
-  ondertitel blijft alleen voor uitleg. De titel heeft voorrang op een lange waarde.
+- Keuze-, getal- en navigatierijen tonen hun huidige waarde (`settingValuePlacement`): zonder uitleg
+  rechts voor de chevron, met uitleg aan het eind van de titelregel zodat de uitleg de volle breedte
+  houdt. Past de waarde niet naast de titel, dan staat hij heel op de regel eronder, zoals vóór A-24
+  (bijvoorbeeld drie servernamen of "Auto (Aanbevolen)"). De titel heeft altijd voorrang.
+- Segmentknoppen: een label van één woord ("Systeem") krimpt binnen zijn segment in plaats van midden
+  in het woord af te breken.
 - Kaarten 14 pt rond, op OLED een kaartkleur van `#1A1A1C` tegen de zwarte pagina; sectiekoppen in licht
   `#A0432A` (5,9:1 op de lichte pagina), in donker en OLED de gedempte tekstkleur.
-- Zoekveld op de hoofdpagina: gevulde balk zonder rand, zelfde zoekindex.
+- Zoekveld op de hoofdpagina, op een iPhone: gevulde balk zonder rand, zelfde zoekindex.
 
 ## Hoofdpagina (`settings_screen.dart`, `parts/settings_phone_page.dart`)
 
@@ -36,12 +43,12 @@ Tautulli-voorwaarde; het scenario `ios.settings.northstar` loopt dezelfde lijst 
 | Taal en ondertitels → `LanguageSettingsScreen` | geen | profielvoorkeur taal | Bibliotheek, ongewijzigd | `language_settings_screen_test` |
 | Ondertitel opmaak → `SubtitleStylingScreen` | geen | ondertitelprefs | Bibliotheek, ongewijzigd | `settings_screen_test` |
 | Downloads → `DownloadsSettingsScreen` | niet op Apple TV | downloadprefs | Bibliotheek, ongewijzigd | `downloads_settings_screen_test` |
-| Trackers → `TrackersSettingsScreen` | geen | `TraktAccountProvider`, `TrackersProvider` | Integraties; gekoppelde diensten rechts, beschrijving blijft | `settings_screen_test` |
+| Trackers → `TrackersSettingsScreen` | geen | `TraktAccountProvider`, `TrackersProvider` | Integraties; gekoppelde diensten op de titelregel, beschrijving blijft; te lang: diensten eronder zoals vroeger | `settings_screen_test` |
 | Aanvragen → `SeerrSettingsScreen` | geen | `SeerrProvider` | Integraties; host rechts als gekoppeld | `seerr_settings_screen_test` |
 | Tautulli → `TautulliSettingsScreen` | profiel beheert een Plex-server | `TautulliProvider` | Integraties; servernaam rechts als gekoppeld | `settings_screen_test` (Plex-eigenaar en Jellyfin-beheerder) |
 | Big P → `AssistantSettingsScreen` | rollout-define en een `BigPMobileSession` | assistentconfig | Integraties, ongewijzigd | `assistant_settings_screen_test` |
 | Profielen → `ProfileSwitchScreen` (root) | geen | `ProfileRegistry`, `ActiveProfileProvider` | Integraties; aantal als ondertitel, actief profiel rechts | `settings_screen_test` |
-| Servers → `ServersScreen` | geen | `MultiServerProvider` | Verbindingen; servernamen rechts | `settings_phone_page_test` |
+| Servers → `ServersScreen` | geen | `MultiServerProvider` | Verbindingen; servernamen rechts, of heel eronder als ze niet passen | `settings_phone_page_test` |
 | Sneltoetsen, navigatie met toetsenbord | `KeyboardShortcutsService.isPlatformSupported()` | sneltoetsenservice, `videoPlayerNavigationEnabled` | eigen kaart, ongewijzigd | geen nieuwe |
 | Samen-kijken-relay (dialoog) | geen | `customRelayUrl` | Geavanceerd, ongewijzigd | geen nieuwe |
 | Crashrapportage, debuglogging | geen | `crashReporting`, `enableDebugLogging` | Geavanceerd, ongewijzigd | geen nieuwe |
