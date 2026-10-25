@@ -336,7 +336,10 @@ void main() {
       // The assertion the picture cannot make on its own: this really is the
       // full hub, so a future change that silently drops a tile fails here
       // rather than quietly redrawing the golden.
-      expect(find.text(t.watchlist.title), findsOneWidget);
+      // A-24b: the kijklijst is the poster rail under `Je kijklijst` now, not
+      // a tile titled Kijklijst.
+      expect(find.text(t.settingsStudio.yourWatchlist.toUpperCase()), findsOneWidget);
+      expect(find.text(t.watchlist.title), findsNothing);
       expect(find.text(t.seerr.title), findsOneWidget);
       expect(find.text(t.tvMyPleya.activity), findsOneWidget);
       expect(find.text(t.navigation.downloads), findsNothing, reason: 'hoofdstuk 18.3: never on an Apple TV');
