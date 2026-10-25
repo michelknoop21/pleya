@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/watchlist_scope.dart';
 import 'package:pleya/media/watchlist_source.dart';
 import 'package:pleya/services/watchlist/verify_watchlist_source.dart';
 import 'package:pleya/services/watchlist/watchlist_source_factory.dart';
@@ -78,6 +79,18 @@ void main() {
     final entries = await sources.single.fetch();
     expect([for (final e in entries) e.item.title], ['Charge']);
     expect(before.requests.where((path) => path.contains('/items/')), isEmpty);
+  });
+
+  test('an item lost to a client swap mid-request is asked once more', () async {
+    var calls = 0;
+    final source = VerifyWatchlistSource(
+      scope: const WatchlistScopeId(profileId: 'p1', backend: MediaBackend.pleyaServer, accountId: 'srv', userId: 'u'),
+      fetchIds: () async => ['m-1'],
+      fetchItem: (id) async => ++calls == 1
+          ? null
+          : MediaItem(id: id, backend: MediaBackend.pleyaServer, kind: MediaKind.movie, title: 'Sintel'),
+    );
+    expect([for (final e in await source.fetch()) e.item.title], ['Sintel']);
   });
 
   test('the list is read-only', () async {

@@ -36,7 +36,9 @@ class VerifyWatchlistSource implements WatchlistSource {
   Future<List<WatchlistEntry>> fetch() async {
     final entries = <WatchlistEntry>[];
     for (final id in await fetchIds()) {
-      final item = await fetchItem(id);
+      // One retry: a profile rebind can close the client mid-request, and the
+      // second call reaches its replacement ([fetchItem] looks it up anew).
+      final item = await fetchItem(id) ?? await fetchItem(id);
       if (item == null) continue;
       entries.add(
         WatchlistEntry(
