@@ -45,7 +45,7 @@ Daar valt niets te redden.
 
 ## 2. tvOS, de bindende beeldenset op `main`
 
-Zeven beeldmappen onder `docs/assets/tvos-unified/`, en ze zijn niet gelijkwaardig.
+Zeven beeldmappen onder `docs/assets/tvos-unified/`, en ze zijn niet gelijkwaardig. De laatste tabelrij (A-24b, Instellingen en Mijn Pleya) staat buiten die map, in `docs/assets/a24b-northstars/`, en geldt voor iPhone en Apple TV.
 
 | Map | Beelden | Rol | Autoriteit |
 |---|---|---|---|

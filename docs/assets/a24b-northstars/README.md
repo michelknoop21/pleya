@@ -9,7 +9,7 @@ Roadmap: A-24 (vervolgronde A-24b).
 | Bestand of map | Inhoud |
 |---|---|
 | `START-HIER.md` | de ontwerpafspraak en de leesvolgorde |
-| `CLAUDE_A24B.md` | de volledige vervolgopdracht voor de bouw |
+| `BOUWOPDRACHT_A24B.md` | de volledige vervolgopdracht voor de bouw |
 | `VISUELE_ACCEPTATIE.md` | per scherm wat zichtbaar moet zijn en hoe de beoordeling loopt |
 | `PARITY_TEMPLATE.csv` | lege pariteitstabel, nog niet ingevuld |
 | `01-Instellingen/images/` | Studio donker en licht op iPhone en Apple TV, plus `alle-instellingen/` met alle vervolgborden |

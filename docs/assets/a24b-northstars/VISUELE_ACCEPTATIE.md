@@ -1,4 +1,4 @@
-# A-24b — controleer mockup naast echte Pleya-build
+# A-24b: controleer mockup naast echte Pleya-build
 
 Kijk op **ieder platform** naast elkaar naar dezelfde pagina, thema, tekst, focus en zichtbare/verborgen functies. Vink af met screenshotbewijs. Een stilstaande mockup heeft illustratieve inhoud; verifieer functionaliteit altijd in bron en simulator.
 

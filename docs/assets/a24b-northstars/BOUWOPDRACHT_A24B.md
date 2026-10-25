@@ -1,8 +1,6 @@
-# Claude — Pleya A-24b, bouw de gekozen noordsterren daadwerkelijk na
+# Pleya A-24b: bouw de gekozen noordsterren daadwerkelijk na
 
 De eerste implementatieronde is onvoldoende: Instellingen heeft vooral de bestaande structuur met andere styling gekregen, terwijl Mijn Pleya vrijwel onveranderd is gebleven. **Ronde A-24b herstelt beide.** De onderstaande twee keuzes staan vast; vraag ze niet opnieuw.
-
-**Huidige voortgang Claude (25 oktober):** de A-24b-northstar-gap-analyse is al gestart met een verschillenlijst per scherm tussen mockup en build. **Ga daarmee door; begin de audit niet opnieuw.** Voeg aan diezelfde lijst en implementatieronde expliciet **Mijn Pleya iOS en tvOS** toe. De statusmelding over instellingenfamilies alleen is nog niet voldoende om Mijn Pleya als afgedekt te beschouwen. Werk daarna de ontbrekende northstars en beide schermfamilies af, met vergelijkende screenshots.
 
 - **Instellingen iOS en tvOS: Apple TV+ Studio, richting 02.** Volg de categorieën, groepen, visuele hiërarchie, directe schakelaars, achtergrond, koppen en live voorbeeldkaart uit `01-Instellingen/`.
 - **Mijn Pleya iOS en tvOS: Editorial, richting 01.** Bouw ook deze pagina's om volgens `02-Mijn-Pleya/`. De andere Mijn Pleya-varianten vervallen.
@@ -37,7 +35,7 @@ De eerste implementatieronde is onvoldoende: Instellingen heeft vooral de bestaa
 - Geen Downloads op Apple TV. Toon aanvragen, Seerr, collecties, afspeellijsten, activiteit, Big P of bronacties alleen als de huidige code ze onder de betreffende omstandigheden aanbiedt.
 - Behoud tvOS-topnavigatie, focusherstel, posterfocus zonder overlapping, teruggedrag, serverstatus als niet-focusbaar, en de bestaande provideracties.
 
-## Verplichte tweede vergelijking — vóór gereedmelding
+## Verplichte tweede vergelijking, vóór gereedmelding
 
 Leg de **werkelijk gerenderde screenshots** op hetzelfde platform en in dezelfde staat direct naast de gekozen mockups. Dit is een harde acceptatiestap, geen vrijblijvende beschouwing achteraf.
 

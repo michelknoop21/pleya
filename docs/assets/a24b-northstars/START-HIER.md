@@ -1,4 +1,4 @@
-# Pleya A-24b — herstelde ontwerpafspraak
+# Pleya A-24b: herstelde ontwerpafspraak
 
 **Uitvoering: Instellingen én Mijn Pleya, beide op iPhone en Apple TV.**
 
@@ -20,13 +20,10 @@ Dit document vervangt de te open formulering 'stijlankers als richting' uit eerd
 
 ## Eerst lezen
 
-1. `CLAUDE_A24B.md` — volledige vervolgopdracht.
-2. `VISUELE_ACCEPTATIE.md` — per scherm wat precies zichtbaar moet zijn en hoe ronde twee wordt beoordeeld.
-3. `PARITY_TEMPLATE.csv` — **nog niet afgevinkt**, gevuld met alle rijen uit de *ontwerpinventarissen* en de bekende Mijn Pleya-bestemmingen. De actuele Pleya-bron moet de kolommen 'huidig' en 'voorwaarde' invullen en eventuele extra functies toevoegen. De inventarissen zijn geen bewijs van productiepariteit.
+1. `BOUWOPDRACHT_A24B.md`: volledige vervolgopdracht.
+2. `VISUELE_ACCEPTATIE.md`: per scherm wat precies zichtbaar moet zijn en hoe ronde twee wordt beoordeeld.
+3. `PARITY_TEMPLATE.csv`: **nog niet afgevinkt**, gevuld met alle rijen uit de *ontwerpinventarissen* en de bekende Mijn Pleya-bestemmingen. De actuele Pleya-bron moet de kolommen 'huidig' en 'voorwaarde' invullen en eventuele extra functies toevoegen. De inventarissen zijn geen bewijs van productiepariteit.
 
-Open de twee offline galerijen om elk beeld volledig te bekijken:
-
-- `01-Instellingen/BEKIJK-NORTHSTAR.html` en `01-Instellingen/BEKIJK-ALLE-INSTELLINGEN.html`
-- `02-Mijn-Pleya/BEKIJK-NORTHSTARS.html`
+De offline HTML-galerijen uit het oorspronkelijke pakket zijn niet opgenomen; bekijk de beelden rechtstreeks in `01-Instellingen/images/` en `02-Mijn-Pleya/images/`.
 
 Het pakket bevat statische noordsterbeelden en een uitvoeropdracht. **Het is geen geïmplementeerde app of geslaagde simulatorcontrole.**
