@@ -14,6 +14,18 @@ import 'mobile_tab_bar_theme.dart';
 /// Fill of the active slot's capsule on the glass bar, see [MobileTabBar].
 const Color _kGlassActiveSlot = Color(0x80000000);
 
+// The moving lens's own glass layer refracts the bar's backdrop; sharing the
+// outer layer would merge the lens into the plate.
+const _kGlassSelection = GlassTokens(
+  blur: 2,
+  saturation: 1.5,
+  dim: 0.78,
+  tint: Color(0xA6000000),
+  realTint: Color(0xA6000000),
+  edge: 0.35,
+  edgeWidth: 1,
+);
+
 /// Whether the bar floats as a glass capsule. The main Scaffold keys
 /// `extendBody` on this same answer, so the tab roots scroll under the bar
 /// and get its height back as `MediaQuery` bottom padding.
@@ -28,10 +40,9 @@ double mobileTabBarFloatMargin(BuildContext context) => math.max(10.0, MediaQuer
 double mobileTabBarExtent(BuildContext context) =>
     64 + (mobileTabBarFloats(context) ? mobileTabBarFloatMargin(context) : MediaQuery.paddingOf(context).bottom);
 
-/// The mobile bottom bar, extracted verbatim out of
-/// `_MainScreenState._buildBottomNavigationBar` (no behavior change). State
-/// stays in `_MainScreenState`: this widget only renders what it is given.
-class MobileTabBar extends StatelessWidget {
+/// The mobile bottom bar. Navigation state belongs to MainScreen; only the
+/// glass lens's drag preview is local, committing a tab on release.
+class MobileTabBar extends StatefulWidget {
   const MobileTabBar({
     super.key,
     required this.tabs,
@@ -54,6 +65,9 @@ class MobileTabBar extends StatelessWidget {
   /// hidden, so the contrast test can read the background under them; see
   /// `textContrastOverBackground`.
   final bool debugTransparentForeground;
+
+  @override
+  State<MobileTabBar> createState() => _MobileTabBarState();
 
   /// Wraps one tab's icon/selectedIcon in [AutomationNode] so `nav.<id>`
   /// resolves on both the mobile bar and the desktop/TV rail
@@ -79,9 +93,22 @@ class MobileTabBar extends StatelessWidget {
       enabled: destination.enabled,
     );
   }
+}
+
+class _MobileTabBarState extends State<MobileTabBar> {
+  double? _dragSlot;
 
   @override
   Widget build(BuildContext context) {
+    final MobileTabBar(
+      :tabs,
+      :currentIndex,
+      :onDestinationSelected,
+      :hideLabels,
+      :presentation,
+      :onLibraryLongPress,
+      :debugTransparentForeground,
+    ) = widget;
     final isUnified = presentation == TabBarPresentation.unified2026;
     final glassOn = mobileTabBarFloats(context);
     final transparent = glassOn && debugTransparentForeground;
@@ -92,7 +119,9 @@ class MobileTabBar extends StatelessWidget {
       labelBehavior: hideLabels
           ? NavigationDestinationLabelBehavior.alwaysHide
           : NavigationDestinationLabelBehavior.alwaysShow,
-      destinations: tabs.map((tab) => _withNavTabAutomation(tab, presentation, hideGlyph: transparent)).toList(),
+      destinations: tabs
+          .map((tab) => MobileTabBar._withNavTabAutomation(tab, presentation, hideGlyph: transparent))
+          .toList(),
     );
     final base = NavigationBarTheme.of(context);
     final navigationBar = glassOn
@@ -115,17 +144,23 @@ class MobileTabBar extends StatelessWidget {
     // Glass (LG-01): a floating capsule 16 from the sides, instead of the
     // full-width frosted strip, [mobileTabBarFloatMargin] from the bottom.
     // The bar's own SafeArea is stripped, the Padding carries the margin;
-    // the Scaffold measures the result for the body.
+    // the Scaffold measures the result for the body. The plate is a sibling
+    // under the bar, not its parent: the lens brings its own GlassLayer, and
+    // a LiquidGlassLayer nested in another renders it as a clipped grey patch
+    // on device (iOS Verify, glass-tabbar-movies.png).
     Widget shell(Widget bar) {
       if (!glassOn) return frosted(bar);
       return Padding(
         padding: EdgeInsets.fromLTRB(16, 0, 16, mobileTabBarFloatMargin(context)),
-        child: GlassLayer(
-          child: GlassSurface(
-            shape: const StadiumBorder(),
-            tokens: const GlassTokens.phone(),
-            child: MediaQuery.removePadding(context: context, removeBottom: true, child: bar),
-          ),
+        child: Stack(
+          children: [
+            const Positioned.fill(
+              child: GlassLayer(
+                child: GlassSurface(shape: StadiumBorder(), tokens: GlassTokens.phone(), child: SizedBox.expand()),
+              ),
+            ),
+            MediaQuery.removePadding(context: context, removeBottom: true, child: bar),
+          ],
         ),
       );
     }
@@ -142,15 +177,22 @@ class MobileTabBar extends StatelessWidget {
             final itemWidth = constraints.maxWidth / tabs.length;
             final isRtl = Directionality.of(context) == TextDirection.rtl;
 
-            double itemLeft(int index) => isRtl ? constraints.maxWidth - (itemWidth * (index + 1)) : itemWidth * index;
+            double itemLeft(num index) => isRtl ? constraints.maxWidth - (itemWidth * (index + 1)) : itemWidth * index;
 
-            return Stack(
+            void dragTo(Offset position) {
+              final x = isRtl ? constraints.maxWidth - position.dx : position.dx;
+              setState(() => _dragSlot = (x / itemWidth - 0.5).clamp(0.0, tabs.length - 1.0));
+            }
+
+            final stack = Stack(
               children: [
-                // Glass: a darker capsule under the active slot, the LG-01
-                // selected-slot pill. Dark rather than LG-01's light one:
-                // kAccent tops out at 4.36:1 even on pure black, and on the
-                // bare plate over the Big Buck Bunny fixture the red label
-                // measured 2.33:1 (`mobile_tab_bar_glass_test.dart`).
+                // Glass: a darker capsule anchored under the committed slot,
+                // independent of the moving lens, so the red selected glyph
+                // keeps its backing during a tap transition or drag. Dark
+                // rather than LG-01's light one: kAccent tops out at 4.36:1
+                // even on pure black, and on the bare plate over the Big Buck
+                // Bunny fixture the red label measured 2.33:1
+                // (`mobile_tab_lens_contrast_test.dart`).
                 if (glassOn && currentIndex >= 0)
                   Positioned(
                     left: itemLeft(currentIndex) + 4,
@@ -160,6 +202,28 @@ class MobileTabBar extends StatelessWidget {
                     child: const IgnorePointer(
                       child: DecoratedBox(
                         decoration: ShapeDecoration(shape: StadiumBorder(), color: _kGlassActiveSlot),
+                      ),
+                    ),
+                  ),
+                if (glassOn && currentIndex >= 0)
+                  AnimatedPositioned(
+                    duration: _dragSlot != null || MediaQuery.disableAnimationsOf(context)
+                        ? Duration.zero
+                        : const Duration(milliseconds: 280),
+                    curve: Curves.easeOutCubic,
+                    left: itemLeft((_dragSlot ?? currentIndex.toDouble()).clamp(0, tabs.length - 1)) + 4,
+                    top: 4,
+                    bottom: 4,
+                    width: itemWidth - 8,
+                    child: const IgnorePointer(
+                      child: GlassLayer(
+                        tokens: _kGlassSelection,
+                        child: GlassSurface(
+                          key: ValueKey('mobile-tab-glass-lens'),
+                          shape: StadiumBorder(),
+                          tokens: _kGlassSelection,
+                          child: SizedBox.expand(),
+                        ),
                       ),
                     ),
                   ),
@@ -196,6 +260,27 @@ class MobileTabBar extends StatelessWidget {
                     ),
                   ),
               ],
+            );
+            if (!glassOn) return stack;
+            void cancelDrag() => setState(() => _dragSlot = null);
+            // A cancelled pointer (system gesture, call) still ends an accepted
+            // drag; the Listener sees it first and drops the preview so the end
+            // commits nothing. Excluded from semantics: the tabs carry their own
+            // actions, and a scroll action would land on a coordinate-free slot.
+            return Listener(
+              onPointerCancel: (_) => cancelDrag(),
+              child: GestureDetector(
+                excludeFromSemantics: true,
+                onHorizontalDragStart: (details) => dragTo(details.localPosition),
+                onHorizontalDragUpdate: (details) => dragTo(details.localPosition),
+                onHorizontalDragCancel: cancelDrag,
+                onHorizontalDragEnd: (_) {
+                  final index = _dragSlot?.round().clamp(0, tabs.length - 1);
+                  cancelDrag();
+                  if (index != null && index != currentIndex) onDestinationSelected(index);
+                },
+                child: stack,
+              ),
             );
           },
         ),
