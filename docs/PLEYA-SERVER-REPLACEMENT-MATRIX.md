@@ -7,13 +7,12 @@
 
 Dit document beantwoordt één vraag:
 
-> **Wat moet er aanwezig zijn voordat een Pleya-gebruiker Plex Media Server werkelijk kan
-> uitschakelen?**
+> **Wat moet er aanwezig zijn voordat een Pleya-gebruiker Plex Media Server niet meer nodig heeft?**
 
 Het is geen tweede architectuurdocument. Waar een capability ontwerpuitleg vraagt, staat hier een
 verwijzing naar het hoofdstuk dat hem beschrijft en niet een herhaling ervan. Wat hier wél staat is
 de volledige lijst serververantwoordelijkheden die Pleya vandaag bij Plex afneemt, met per stuk een
-bestemming, een fase, een status en een oordeel of hij de Plex-off gate blokkeert.
+bestemming, een fase, een status en een oordeel of hij de Readiness Gate blokkeert.
 
 ---
 
@@ -27,7 +26,7 @@ bestemming, een fase, een status en een oordeel of hij de Plex-off gate blokkeer
 6. [Roadmapmapping per fase](#6-roadmapmapping-per-fase)
 7. [Roadmap gaps](#7-roadmap-gaps)
 8. [Open productbesluiten](#8-open-productbesluiten)
-9. [De Plex-off acceptance gate](#9-de-plex-off-acceptance-gate)
+9. [De Plex Replacement Readiness Gate](#9-de-plex-replacement-readiness-gate)
 10. [Hoe dit document wordt bijgehouden](#10-hoe-dit-document-wordt-bijgehouden)
 11. [Buiten de Plex-vervanging](#11-buiten-de-plex-vervanging)
 
@@ -58,8 +57,10 @@ eigen levensduur en vertrouwensmodel; zie
 
 ## 2. Wat een Plex-off blocker is
 
-Een capability is een blocker wanneer een normaal huishouden hem bij dagelijks gebruik mist zodra de
-Plex-container stopt. Dat is de enige toets.
+Een capability is een blocker wanneer een normaal huishouden hem bij dagelijks gebruik mist zodra
+Pleya Server de plek van Plex inneemt. Dat is de enige toets. De naam "Plex-off blocker" is een label
+gebleven; sinds [DEC-151](DECISIONS.md#dec-151-inline-uitvoering-een-testinstance-eerst-en-de-plex-replacement-readiness-gate)
+wordt Plex bij die toets nooit gestopt, het bewijs komt van een testinstance naast Plex.
 
 Wat een capability **niet** tot blocker maakt: dat hij technisch lastig is, dat hij in geen enkele
 fase staat, of dat hij bij Plex een betaalde functie was. Wat hem **niet uitsluit**: dat hij zelden
@@ -415,7 +416,7 @@ technisch gereed kan zijn terwijl het product dat niet is.
 | **PS-13** externe workers | de laatste hardwarebeperking | niets | nee |
 
 Zes fasen kunnen technisch gereed zijn terwijl het product dat niet is, en dat is precies waarom de
-gate in [hoofdstuk 9](#9-de-plex-off-acceptance-gate) op productniveau meet en niet op endpointniveau.
+gate in [hoofdstuk 9](#9-de-plex-replacement-readiness-gate) op productniveau meet en niet op endpointniveau.
 
 ---
 
@@ -497,7 +498,7 @@ per ongeluk ontstaat.
 
 ---
 
-## 9. De Plex-off acceptance gate
+## 9. De Plex Replacement Readiness Gate
 
 > **Hernoemd en aangescherpt door [DEC-151](DECISIONS.md#dec-151-inline-uitvoering-een-testinstance-eerst-en-de-plex-replacement-readiness-gate)**: de gate heet nu *Plex Replacement Readiness Gate*. Plex wordt nooit gestopt; het bewijs komt van een geïsoleerde testinstance die dezelfde bestanden read-only leest. Het blok hieronder beschrijft de uitkomst, niet een handeling op de Plex-container.
 
