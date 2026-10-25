@@ -6,6 +6,8 @@
 /// TV a settings page keeps the plain bar.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +18,9 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/providers/discover_provider.dart';
+import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/services/data_aggregation_service.dart';
+import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/optimized_media_image.dart';
@@ -105,6 +110,25 @@ void main() {
 
       expect(find.byKey(const ValueKey('art:/library/metadata/7/art/1')), findsOneWidget);
       expect(find.byKey(const ValueKey('art:/library/metadata/9/art/1')), findsNothing);
+    });
+
+    testWidgets('a backdrop whose server has no client yet shows the brand panel, not a broken image', (tester) async {
+      final manager = MultiServerManager();
+      addTearDown(manager.dispose);
+      final servers = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(servers.dispose);
+      await pump(
+        tester,
+        ChangeNotifierProvider<MultiServerProvider>.value(
+          value: servers,
+          child: Scaffold(body: SettingsStudioHeader(title: 'Instellingen')),
+        ),
+        discover: _Discover(onDeckItems: [_film('met', art: '/library/metadata/7/art/1')]),
+      );
+
+      expect(find.byKey(const ValueKey('art:/library/metadata/7/art/1')), findsNothing);
+      expect(find.byType(OptimizedMediaImage), findsNothing);
+      expect(find.byType(PleyaLogo), findsOneWidget);
     });
 
     testWidgets('without a provider the brand panel stands in', (tester) async {
@@ -205,23 +229,34 @@ void main() {
       expect(region.value, SystemUiOverlayStyle.light);
     }, variant: _iPhone);
 
-    testWidgets('a title of a few words stays on one line, shrunk no further than 26 pt', (tester) async {
-      // The test face is wide (every glyph one em), so a short title stands
-      // in for "Bibliotheek & Home" on the device.
-      await pump(tester, page(title: 'Taal en tvs'));
-      final title = find.text('Taal en tvs');
-      final size = tester.widget<Text>(title).style!.fontSize!;
-      expect(size, inInclusiveRange(kSettingsStudioOneLineMinTitleSize, kSettingsStudioTitleSize));
-      expect(tester.getSize(title).height, lessThan(size * 1.6), reason: 'one line');
+    // The test face is wide (every glyph one em), so these titles are short
+    // stand-ins for the device's "Weergave" and "Bibliotheek & Home".
+    testWidgets('a short title sits at the series size on one line', (tester) async {
+      await pump(tester, page(title: 'Taal'));
+      final title = find.text('Taal');
+      expect(tester.widget<Text>(title).style!.fontSize, 28, reason: 'the series title, about 27 pt on 380 pt');
+      expect(tester.getSize(title).height, lessThan(kSettingsStudioTitleSize * 1.6), reason: 'one line');
     }, variant: _iPhone);
 
+    for (final width in [375.0, 320.0]) {
+      testWidgets('the title never runs over the artwork (${width.toInt()} pt)', (tester) async {
+        await pump(tester, page(title: 'Taal en tv'), width: width);
+        final artLeft = width - math.min(width * kSettingsStudioArtFraction, kSettingsStudioMaxArtWidth);
+        final title = tester.getRect(find.text('Taal en tv'));
+        expect(title.right, lessThanOrEqualTo(artLeft - kSettingsStudioArtGap + 0.5));
+        expect(tester.renderObject<RenderParagraph>(find.text('Taal en tv')).didExceedMaxLines, isFalse);
+        final eyebrow = tester.getRect(find.text('PLEYA · ${t.settings.title.toUpperCase()}'));
+        expect(eyebrow.right, lessThanOrEqualTo(artLeft));
+      }, variant: _iPhone);
+    }
+
     testWidgets('a long title fits a 320 pt phone without overflow or a clipped word', (tester) async {
-      await pump(tester, page(title: 'Taal en ondertitels'), width: 320);
+      await pump(tester, page(title: 'Taal en tv'), width: 320);
 
       expect(tester.takeException(), isNull);
-      final title = tester.renderObject<RenderParagraph>(find.text('Taal en ondertitels'));
+      final title = tester.renderObject<RenderParagraph>(find.text('Taal en tv'));
       expect(title.didExceedMaxLines, isFalse);
-      final rect = tester.getRect(find.text('Taal en ondertitels'));
+      final rect = tester.getRect(find.text('Taal en tv'));
       expect(rect.left, greaterThanOrEqualTo(0));
       expect(rect.right, lessThanOrEqualTo(320));
       final eyebrow = tester.getRect(find.text('PLEYA · ${t.settings.title.toUpperCase()}'));

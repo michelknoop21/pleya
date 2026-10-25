@@ -22,6 +22,7 @@ import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
+import '../../media/media_server_client.dart';
 import '../../providers/discover_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../theme/mono_tokens.dart';
@@ -33,16 +34,21 @@ import 'settings_studio_style.dart';
 
 export 'settings_studio_bar.dart';
 
-/// Size of the large title, the iOS large-title size.
-const double kSettingsStudioTitleSize = 34;
+/// Size of the large title. The series draws it at about 27 pt on a 380 pt
+/// frame ("Downloads", "Weergave"), smaller than the iOS large title.
+const double kSettingsStudioTitleSize = 28;
 
 /// Smallest the large title shrinks to so that it stays on one line; below
 /// it the title wraps between its words instead.
-const double kSettingsStudioOneLineMinTitleSize = 26;
+const double kSettingsStudioOneLineMinTitleSize = 23;
 
 /// Smallest the large title shrinks to when its longest word does not fit the
 /// line ("Bibliotheekzichtbaarheid" on 320 pt).
-const double kSettingsStudioMinTitleSize = 22;
+const double kSettingsStudioMinTitleSize = 18;
+
+/// Room kept between the end of the title, eyebrow or tagline and the start
+/// of the artwork panel: no text runs over the picture.
+const double kSettingsStudioArtGap = 8;
 
 /// Lowest the header block under the status bar gets: a subpage
 /// (`ios/02`-`14`: chevron and title, eyebrow) and the main page, which adds
@@ -114,9 +120,10 @@ class SettingsStudioHeader extends StatelessWidget {
           final width = constraints.maxWidth;
           final artWidth = math.min(width * kSettingsStudioArtFraction, kSettingsStudioMaxArtWidth);
           // The title starts after the chevron's 44 pt target, or at the
-          // inset. Like the series it may run over the artwork panel.
+          // inset, and ends before the artwork panel.
           final titleStart = back ? _kBackStart + 44 + 2 : _kInsetStart;
-          final size = _titleSize(context, width - titleStart - 16);
+          final textEnd = artWidth + kSettingsStudioArtGap;
+          final size = _titleSize(context, width - titleStart - textEnd);
           final titleStyle = TextStyle(
             color: tk.text,
             fontWeight: FontWeight.w700,
@@ -144,7 +151,7 @@ class SettingsStudioHeader extends StatelessWidget {
                   ),
                 ),
                 Padding(
-                  padding: EdgeInsets.fromLTRB(0, top + 14, 16, 24),
+                  padding: EdgeInsetsDirectional.fromSTEB(0, top + 14, textEnd, 24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,7 +176,7 @@ class SettingsStudioHeader extends StatelessWidget {
                                 alignment: AlignmentDirectional.centerStart,
                                 child: Semantics(
                                   header: true,
-                                  child: Text(title, style: titleStyle, maxLines: 3, overflow: TextOverflow.ellipsis),
+                                  child: Text(title, style: titleStyle, maxLines: 2, overflow: TextOverflow.ellipsis),
                                 ),
                               ),
                             ),
@@ -177,26 +184,25 @@ class SettingsStudioHeader extends StatelessWidget {
                         ],
                       ),
                       Padding(
-                        padding: EdgeInsetsDirectional.only(start: _kInsetStart, top: 4, end: artWidth * 0.2),
+                        padding: const EdgeInsetsDirectional.only(start: _kInsetStart, top: 4),
                         child: Text(
                           eyebrow,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: settingsSectionInk(context),
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            letterSpacing: 1.6,
+                            letterSpacing: 1.4,
                           ),
                         ),
                       ),
                       if (tagline != null)
                         Padding(
-                          // Beside the artwork, as the anchor sets it: one line where it fits.
-                          padding: EdgeInsetsDirectional.only(start: _kInsetStart, top: 18, end: artWidth * 0.6),
+                          padding: const EdgeInsetsDirectional.only(start: _kInsetStart, top: 16),
                           child: Text(
                             tagline,
-                            style: TextStyle(color: tk.text.withValues(alpha: 0.86), fontSize: 14, height: 1.3),
+                            style: TextStyle(color: tk.text.withValues(alpha: 0.86), fontSize: 13, height: 1.3),
                           ),
                         ),
                     ],
@@ -228,9 +234,9 @@ class SettingsStudioHeader extends StatelessWidget {
     }
     // One point of slack: a word measured at exactly the column width wraps.
     if (widest <= 0) return kSettingsStudioTitleSize;
-    // The series keeps a title of a few words on one line ("Bibliotheek &
-    // Home"), running over the artwork: shrink it to one line while it stays
-    // at least 26 pt, and only then let it wrap between its words.
+    // One line where the whole title fits beside the artwork, shrunk to no
+    // less than 23 pt; otherwise it wraps between its words, at full size
+    // while its longest word fits.
     final whole = _width(context, title, style);
     if (whole < column - 1) return kSettingsStudioTitleSize;
     final oneLine = kSettingsStudioTitleSize * (column - 1) / whole;
@@ -297,7 +303,15 @@ class _ArtPanel extends StatelessWidget {
       picture = fallback;
     } else {
       final serverId = serverIdOrNull(art.serverId);
-      final client = serverId == null ? null : context.read<MultiServerProvider?>()?.getClientForServer(serverId);
+      // Watched, so the panel fills in once the server's client is there.
+      final hasServers = context.read<MultiServerProvider?>() != null;
+      final client = serverId == null
+          ? null
+          : context.select<MultiServerProvider?, MediaServerClient?>((p) => p?.getClientForServer(serverId));
+      // No client yet: no URL can be built for the backdrop, and the image
+      // widget would draw its own broken-image tile. The brand panel stands
+      // in until the client is registered.
+      if (hasServers && client == null) return ClipRect(child: fallback);
       picture = Stack(
         fit: StackFit.expand,
         children: [
@@ -314,9 +328,21 @@ class _ArtPanel extends StatelessWidget {
         ],
       );
     }
-    // Sharp, as in the series: the panel is a photograph beside the title,
-    // not a fade behind it.
-    return ClipRect(child: picture);
+    // The leading edge fades into the header, so the picture sits behind the
+    // page rather than beside it on a hard line; the text never reaches it.
+    final direction = Directionality.of(context);
+    return ClipRect(
+      child: ShaderMask(
+        blendMode: BlendMode.dstIn,
+        shaderCallback: (rect) => LinearGradient(
+          begin: AlignmentDirectional.centerStart.resolve(direction),
+          end: AlignmentDirectional.centerEnd.resolve(direction),
+          colors: const [Color(0x00000000), Color(0xFF000000)],
+          stops: const [0, 0.22],
+        ).createShader(rect),
+        child: picture,
+      ),
+    );
   }
 }
 
