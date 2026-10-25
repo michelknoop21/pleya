@@ -140,30 +140,44 @@ void main() {
   // The reported bug in one sentence: the list filtered on local folders and
   // Pleya Share, so a Pleya Server appeared in neither and had no way out.
   group('a Pleya Server is manageable where Connections says it is', () {
-    testWidgets('it is listed with its own heading', (tester) async {
+    // A-24b (series `ios/12`): one card of existing sources, each row saying
+    // on its second line what kind of source it is.
+    testWidgets('it is listed under the existing sources, as a Pleya Server', (tester) async {
       await pumpSection(tester, seed: [_server()]);
 
-      expect(find.text(t.connections.pleyaServers), findsOneWidget);
+      expect(find.text(t.settingsStudio.existingSources.toUpperCase()), findsOneWidget);
       expect(find.text('Zolder'), findsOneWidget);
+      expect(find.textContaining(t.connections.pleyaServers), findsOneWidget);
     });
 
-    testWidgets('it does not sit under "sources on this device"', (tester) async {
+    testWidgets('it is not called a source on this device', (tester) async {
       await pumpSection(tester, seed: [_server()]);
 
       expect(
-        find.text(t.connections.localSources),
+        find.textContaining(t.connections.localSources),
         findsNothing,
         reason: 'a Pleya Server is an account on a server elsewhere, not a source on this device',
       );
     });
 
-    testWidgets('both blocks appear side by side when there is one of each', (tester) async {
+    testWidgets('both kinds share the card when there is one of each, the servers first', (tester) async {
       await pumpSection(tester, seed: [_server(), _folder()]);
 
-      expect(find.text(t.connections.pleyaServers), findsOneWidget);
-      expect(find.text(t.connections.localSources), findsOneWidget);
-      expect(find.text('Zolder'), findsOneWidget);
-      expect(find.text('Films lokaal'), findsOneWidget);
+      expect(find.text(t.settingsStudio.existingSources.toUpperCase()), findsOneWidget);
+      expect(find.textContaining(t.connections.pleyaServers), findsOneWidget);
+      expect(find.textContaining(t.connections.localSources), findsOneWidget);
+      expect(tester.getTopLeft(find.text('Zolder')).dy, lessThan(tester.getTopLeft(find.text('Films lokaal')).dy));
+    });
+
+    testWidgets('without any source there is no empty card, only the ways to add one', (tester) async {
+      await pumpSection(tester);
+
+      expect(find.text(t.settingsStudio.existingSources.toUpperCase()), findsNothing);
+      expect(find.text(t.connections.addConnection.toUpperCase()), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text(t.connections.addConnection.toUpperCase())).dy,
+        lessThan(tester.getTopLeft(find.text(t.pleyaShare.hostTitle)).dy),
+      );
     });
 
     testWidgets('an expired session is stated on the row, not only in the top bar', (tester) async {
@@ -266,21 +280,19 @@ void main() {
 
     testWidgets('a server only', (tester) async {
       await pumpSection(tester, seed: [_server()]);
-      // add / share / servers-block: two lines, and none inside the
-      // single-row servers block.
-      expect(totalSeparators(), 2);
+      // A one-row card of sources has no line; add / share has one.
+      expect(totalSeparators(), 1);
     });
 
     testWidgets('a source only', (tester) async {
       await pumpSection(tester, seed: [_folder()]);
-      expect(totalSeparators(), 2);
+      expect(totalSeparators(), 1);
     });
 
     testWidgets('a server and a source side by side', (tester) async {
       await pumpSection(tester, seed: [_server(), _folder()]);
-      // add / share / servers-block / sources-block: three lines, and none
-      // inside either single-row block.
-      expect(totalSeparators(), 3);
+      // server / source in one card, add / share in the other.
+      expect(totalSeparators(), 2);
     });
 
     testWidgets('multiple servers and multiple sources', (tester) async {
@@ -293,9 +305,8 @@ void main() {
           _folder(id: 'local-2', name: 'Series lokaal'),
         ],
       );
-      // The three outer lines, plus one inside the two-row servers block and
-      // one inside the two-row sources block.
-      expect(totalSeparators(), 5);
+      // Three between the four sources, one between add and share.
+      expect(totalSeparators(), 4);
     });
   });
 }

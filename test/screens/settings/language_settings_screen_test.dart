@@ -9,6 +9,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
@@ -117,7 +118,9 @@ void main() {
 
     await _pumpPage(tester);
 
-    expect(find.text('Audio'), findsWidgets);
+    // A-24b (series `ios/05`): the rows carry the Studio labels.
+    expect(find.text(t.settingsStudio.preferredAudio), findsOneWidget);
+    expect(find.text(t.settingsStudio.preferredSubtitles), findsOneWidget);
     expect(find.text('Original language'), findsOneWidget);
     expect(find.text('Dutch'), findsOneWidget);
     expect(find.text('English'), findsOneWidget);
@@ -211,7 +214,7 @@ void main() {
     // terugpakt wanneer de dialoog sluit tekent zijn ink onder het eigen
     // oppervlak, waar Flutter in debug over klaagt. Control Q loopt om dezelfde
     // reden over dit pad.
-    await tester.tap(find.text('Show subtitles'));
+    await tester.tap(find.text(t.settingsStudio.subtitleWhen));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Always'));
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
