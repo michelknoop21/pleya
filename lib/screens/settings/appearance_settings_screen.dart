@@ -44,14 +44,13 @@ class AppearanceSettingsScreen extends StatelessWidget {
   /// anchors `01`/`03`): the live preview, then Scherm, Home, Navigatie and
   /// Inhoud en venster. Every row the page had stays, under the same
   /// conditions; the four with two to four short options open a picker from
-  /// a value row, as the series draws them. App-taal and Dichtheid are not on
-  /// the series and sit in Scherm (anchor `03` shows Dichtheid there).
+  /// a value row, as the series draws them. Dichtheid follows Raster of lijst as
+  /// anchor `03` places it; App-taal has no slot in the series and closes
+  /// Scherm.
   List<Widget> _phoneRows(BuildContext context) => [
     const SettingsLivePreviewCard(),
     SettingsSectionHeader(t.settings.display),
     _themeChoice(),
-    AppLanguageRow(onRestart: () => _restartApp(context)),
-    _densityChoice(),
     if (glassAppliesTo(context))
       SettingSwitchTile(
         pref: SettingsService.liquidGlass,
@@ -61,6 +60,8 @@ class AppearanceSettingsScreen extends StatelessWidget {
       ),
     if (Platform.isAndroid) _visualEffectsSelector(context),
     _viewModeChoice(),
+    // Anchor 03 puts Dichtheid right after Raster of lijst.
+    _densityChoice(),
     _episodePosterModeChoice(),
     SettingSwitchTile(
       pref: SettingsService.showEpisodeNumberOnCards,
@@ -74,6 +75,8 @@ class AppearanceSettingsScreen extends StatelessWidget {
       title: t.settings.showSeasonPostersOnTabs,
       subtitle: t.settings.showSeasonPostersOnTabsDescription,
     ),
+    // App-taal has no place in the series; it stays here, last in Scherm.
+    AppLanguageRow(onRestart: () => _restartApp(context)),
 
     SettingsSectionHeader(t.settings.homeScreen),
     SettingSwitchTile(
