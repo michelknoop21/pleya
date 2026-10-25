@@ -2492,7 +2492,7 @@ wit is gereserveerd voor het écht gefocuste control; footer met precies twee ac
 
 ### 33.8 08-mijn-pleya.jpg
 
-![Mijn Pleya](assets/tvos-unified/northstar/08-mijn-pleya.jpg)
+*Beeld `assets/tvos-unified/northstar/08-mijn-pleya.jpg` verwijderd; vervangen door [`assets/a24b-northstars/02-Mijn-Pleya/`](assets/a24b-northstars/02-Mijn-Pleya/images/01-tvos-landing.png) (A-24b). Hieronder staat de tekst zoals hij was.*
 
 **BINDEND:** de hoofdstuk-18.1-structuur letterlijk: profielheader (avatar, naam, "N van M
 servers online", `Profiel wisselen`-capsule, rechts de serverlijst met status-stippen en de

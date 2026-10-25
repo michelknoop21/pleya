@@ -98,11 +98,11 @@ goedgekeurd (`cmp` op elk bestand, 3 september 2026):
 | `home-comp-gefilterd.png` | `ec86413290cb82c9` | Home met de Series-chip actief |
 | `profiel-laden-comp.png` | `c657452835cd2009` | het profiel-laadscherm |
 | `serie-detail-comp.png` | `95f341df1aee7d9e` | Serie-detail |
-| `mijn-pleya-comp.png` | `bb12bb4c71197c2b` | Mijn Pleya |
+| `mijn-pleya-comp.png` | `bb12bb4c71197c2b` | Mijn Pleya (beeld verwijderd, vervangen door `docs/assets/a24b-northstars/02-Mijn-Pleya/`, A-24b) |
 
 Bij het sluiten van fase 1 is die gelijkheid opnieuw gecontroleerd, niet met `cmp` maar met een
 manifest dat iedereen kan naspelen: `docs/assets/ios-unified/northstar/SHA256SUMS` bevat de SHA-256
-van alle 26 beelden in de map, te controleren met `shasum -a 256 -c SHA256SUMS` vanuit die map. De
+van alle beelden in de map (26 bij het sluiten van fase 1; de drie Instellingen- en Mijn Pleya-beelden zijn later verwijderd en uit het manifest gehaald), te controleren met `shasum -a 256 -c SHA256SUMS` vanuit die map. De
 vijf comps kwamen daarbij één op één uit op de bestanden in `~/Downloads/mobile-netflix`, waarvan de
 namen UUID's zijn: `f2881598…` is `home-comp.png`, `df49951c…` is `home-comp-gefilterd.png`,
 `761bba60…` is `serie-detail-comp.png`, `e97565b8…` is `profiel-laden-comp.png` en `706dd620…` is
@@ -165,11 +165,11 @@ Titels en artwork zijn niet bindend, de UI eromheen wel.
 | 11 | `11-mijn-lijst.png` | `watchlist_screen.dart` | grid met chips Alles / Films / Series / Beschikbaar |
 | 12 | `12-downloads.png` | `downloads_screen.dart` | opslagbalk, Bezig met pauze, Gedownload per titel, synchronisatieregel |
 | 13 | `13-meldingen.png` | bestaat niet | zie 4.5: Vandaag / Deze week, gevoed door server- en aanvraagdata |
-| 14 | `14-instellingen.png` | `settings_screen.dart` | vier groepen, waarde op de subregel, amber punt bij Servers |
+| 14 | `14-instellingen.png` (verwijderd, vervangen door `docs/assets/a24b-northstars/01-Instellingen/`, A-24b) | `settings_screen.dart` | vier groepen, waarde op de subregel, amber punt bij Servers |
 | 15 | `15-bibliotheken.png` | `libraries_screen.dart` | bibliotheekkiezer als tegels met serverstatus, serverchips, recent toegevoegd |
 | 16 | `16-profiel-kiezen.png` | `profile_switch_screen.dart` | "Wie kijkt er?" in ArchivoBlack, 2×2, slotje voor PIN, Toevoegen |
 | 17 | `17-inloggen.png` | `auth_screen.dart` | lockup met tagline, drie backendknoppen, Pleya Share en lokale map als tekstlinks |
-| 18 | `18-mijn-pleya-volledig.png` | `my_pleya_screen.dart` | de 18.1-structuur op een telefoon: header met serverstatus en amber authregel, tegels met counts, groep Pleya als lijst |
+| 18 | `18-mijn-pleya-volledig.png` (verwijderd, vervangen door `docs/assets/a24b-northstars/02-Mijn-Pleya/`, A-24b) | `my_pleya_screen.dart` | de 18.1-structuur op een telefoon: header met serverstatus en amber authregel, tegels met counts, groep Pleya als lijst |
 | 19 | `19-aanvragen.png` | `seerr_discover_screen.dart` | Mijn aanvragen met statusstip, Populair nu, Binnenkort |
 | 20 | `20-speler.png` | `mobile_video_controls.dart` | landschap: bronregel in de top, 10s-knoppen, hoofdstukmarkers, Intro overslaan, actierij |
 | 21 | `21-activiteit.png` | `now_watching_screen.dart` + watch together | Nu aan het kijken met Bedienen, Samen kijken, serveractiviteit |
