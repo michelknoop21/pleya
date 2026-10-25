@@ -40,6 +40,11 @@ steps:
   - drag: {startX: 187, startY: 520, endX: 187, endY: 320, durationMs: 700}
   - settle: 2500
   - snapshot: 02-main-scrolled-oled
+  # A-24b: the rows are 50 pt now, so the scroll carries Afspelen under the
+  # status bar; back to the top before it is asserted and opened.
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - settle: 2500
   - assert: {id: "settings.tile[playback]", insideViewport: true, minimumTapTarget: 44}
   - tap: {id: "settings.tile[playback]"}
   - wait_until: {id: settings.header, timeout: 8000}
@@ -103,6 +108,11 @@ steps:
   - drag: {startX: 187, startY: 520, endX: 187, endY: 320, durationMs: 700}
   - settle: 2500
   - snapshot: 08-main-scrolled-dark
+  # A-24b: the rows are 50 pt now, so the scroll carries Afspelen under the
+  # status bar; back to the top before it is asserted and opened.
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - settle: 2500
   - assert: {id: "settings.tile[playback]", insideViewport: true, minimumTapTarget: 44}
   - tap: {id: "settings.tile[playback]"}
   - wait_until: {id: settings.header, timeout: 8000}
@@ -153,6 +163,11 @@ steps:
   - drag: {startX: 187, startY: 520, endX: 187, endY: 320, durationMs: 700}
   - settle: 2500
   - snapshot: 13-main-scrolled-light
+  # A-24b: the rows are 50 pt now, so the scroll carries Afspelen under the
+  # status bar; back to the top before it is asserted and opened.
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - settle: 2500
   - assert: {id: "settings.tile[playback]", insideViewport: true, minimumTapTarget: 44}
   - tap: {id: "settings.tile[playback]"}
   - wait_until: {id: settings.header, timeout: 8000}
