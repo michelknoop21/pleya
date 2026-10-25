@@ -300,8 +300,13 @@ script alsnog blokkeren. De Go-laag stuurt `frame-ancestors 'none'`, de enige di
 meta-tag niet mag dragen, plus de headers buiten CSP.
 
 `style-src` is `'self'` zonder `'unsafe-inline'`, en dat vraagt dat geen enkele component een
-`style`-attribuut zet. SvelteKit's eigen routeaankondiging doet dat wel; die krijgt zijn stijl uit
-`src/styles/base.css` en de browser meldt de geblokkeerde regel in de console. Dat is verwacht.
+`style`-attribuut zet. Enige uitzondering is SvelteKit's eigen routeaankondiging
+(`#svelte-announcer`): die stijlt zichzelf inline na hydratie, buiten Kits hashmechanisme om. Daarom
+staat naast `'unsafe-hashes'` de hash van die ene stijltekst in `svelte.config.js`; elk ander
+inline stijlattribuut blijft geblokkeerd. `src/csp.test.ts` rekent die hash uit Kits broncode na
+en faalt bij een Kit-versie die de tekst wijzigt. Browsers zonder `unsafe-hashes`-ondersteuning
+melden een schendingsregel in de console, zonder functioneel effect: `base.css` houdt het element
+dan alsnog verborgen.
 
 ## De NAS bereiken
 
