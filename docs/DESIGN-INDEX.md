@@ -55,8 +55,9 @@ Zeven beeldmappen onder `docs/assets/tvos-unified/`, en ze zijn niet gelijkwaard
 | `mockups-2026-09-05/` | 33, spelerpaneel in negen standen | goedgekeurd; vervangt mockup 19 | DEC-101 |
 | `mockups-2026-09-07/` | 34 kijklijst, 35 aanvragen, 36 zoeken | goedgekeurd | DEC-108 en [tvos-redesign-34-36-approved.md](tvos-redesign-34-36-approved.md) |
 | `mockups-2026-09-07-detail/` | 37 A tot en met D | goedgekeurde detailcorrectie voor film, serie en volledige synopsis | DEC-109 en [tvos-redesign-37-approved.md](tvos-redesign-37-approved.md) |
-| `mockups-2026-09-02/` | Mijn Pleya-secties | goedgekeurd voor die secties | de audits in §7 |
-| root, vijf `*-reference.png` | los | **historisch**, voorloper van de northstar | alleen `home-reference` en `source-picker-reference` worden nog genoemd |
+| `mockups-2026-09-02/` | Mijn Pleya-secties, zonder Instellingen | goedgekeurd voor die secties; de Instellingen-beelden (`settings-a`, `settings-b`, `compare/settings`, `before/40`, `42`, `02-hub-entry`) zijn verwijderd | de audits in §7 |
+| root, vier `*-reference.png` | los | **historisch**, voorloper van de northstar (`my-pleya-reference.png` is verwijderd) | alleen `home-reference` en `source-picker-reference` worden nog genoemd |
+| **Instellingen (Studio) en Mijn Pleya (Editorial), iPhone en Apple TV** | `docs/assets/a24b-northstars/` | **actief**, A-24b; vervangt de oudere Instellingen- en Mijn Pleya-beelden in de tvOS- en iOS-sets | [`docs/assets/a24b-northstars/README.md`](assets/a24b-northstars/README.md) |
 | `src/` | HTML-bron | waar de beelden uit gerenderd worden | `build.mjs` en `tv.css` |
 
 ### Statusautoriteit
@@ -100,7 +101,7 @@ bindend voor de iPhone-interface".
 | Wat | Waar |
 |---|---|
 | 21 genummerde beelden, bevroren op `011ffdb` | `docs/assets/ios-unified/northstar/01-…` tot en met `21-activiteit.png` |
-| 5 Home-comps, met een naam en geen nummer zodat de bevroren set de 21 blijft | `home-comp`, `home-comp-gefilterd`, `profiel-laden-comp`, `serie-detail-comp`, `mijn-pleya-comp` |
+| 5 Home-comps, met een naam en geen nummer zodat de bevroren set de 21 blijft | `home-comp`, `home-comp-gefilterd`, `profiel-laden-comp`, `serie-detail-comp`, `mijn-pleya-comp` (verwijderd, vervangen door `a24b-northstars`, A-24b) |
 | hashes | `SHA256SUMS` in dezelfde map |
 | de audit die de set vaststelde | `docs/ios-unified-2026-audit.md`, 266 regels, status bevroren |
 | de gebouwde fasen 1 tot en met 3 | `docs/ios-unified-2026-fase1-plan.md`, `-fase2-plan.md`, `-fase3-plan.md` |

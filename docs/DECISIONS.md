@@ -626,7 +626,7 @@ Wat bewust open blijft staan:
 **Date:** 2026-08-30
 **Status:** accepted
 **Context:** Na DEC-064 is het volledige schermenstelsel als high-fidelity mockups uitgewerkt tegen de echte designtokens (HTML op 1920×1080, headless-Chromium-renders, echt TMDb-artwork) en in meerdere correctierondes door Michel beoordeeld: verticale compositie Home, topnav-positie tegen de Netflix-referentie, raildichtheid, focus-subtiliteit in de grids, de filtercategorie, het merk-lockup. Michel heeft de definitieve set expliciet bevroren ("Bevriezen").
-**Decision:** De acht beelden in `docs/assets/tvos-unified/northstar/` (01-home t/m 08-mijn-pleya) zijn de bindende compositie- en hiërarchiereferentie voor fase 6, 7 en 8. Hoofdstuk 33 is ernaar herschreven (33.1–33.8; het conflictregister is hernummerd naar 33.10 en blijft van kracht; de 2025-referentieset is historisch). De beelden dragen daarnaast zes expliciete, goedgekeurde afwijkingen van de eerdere baseline of de huidige implementatie, die anders stilzwijgend zouden blijven:
+**Decision:** De acht beelden in `docs/assets/tvos-unified/northstar/` (01-home t/m 08-mijn-pleya; `08-mijn-pleya.jpg` is verwijderd en vervangen door `docs/assets/a24b-northstars/`, A-24b) zijn de bindende compositie- en hiërarchiereferentie voor fase 6, 7 en 8. Hoofdstuk 33 is ernaar herschreven (33.1–33.8; het conflictregister is hernummerd naar 33.10 en blijft van kracht; de 2025-referentieset is historisch). De beelden dragen daarnaast zes expliciete, goedgekeurde afwijkingen van de eerdere baseline of de huidige implementatie, die anders stilzwijgend zouden blijven:
 
 1. **Topnav:** de cluster (zoekicoon + items) staat horizontaal gecentreerd; profielchip los uiterst links; rechts het **wordmark-lockup** `assets/branding/pleya_wordmark.png` (het P-merk op de positie van de letter P, gevolgd door LEYA) op navhoogte — niet het losse P-icoon met tekst ernaast.
 2. **Home:** featured card ~66% van de hoogte (in-page, ~2.4:1) met daaronder alléén de peek van de eerste rij; een aparte focus-state (33.2) waarin de hero wegschuift en de CW-rail zijn volle expanded band met metadata toont.
@@ -2310,7 +2310,7 @@ DEC-090 paragraaf 10, de secundaire hero-CTA en de carousel-indicator, blijven o
 
 *Authority-volgorde* voor de iOS-interface, van hoog naar laag:
 
-1. de goedgekeurde iOS-northstar-mockups in `docs/assets/ios-unified/northstar/`, en voor Home, Home gefilterd en het profiel-laadscherm de vijf aangeleverde comps, die sinds 3 september 2026 byte-identiek in diezelfde map staan onder een naam in plaats van een nummer (`home-comp`, `home-comp-gefilterd`, `profiel-laden-comp`, `serie-detail-comp`, `mijn-pleya-comp`; hashes in paragraaf 4.8 van het rapport). Waar een comp en een mockup elkaar raken wint de mockup. Het opnemen van die vijf verandert niets aan wat is goedgekeurd en niets aan deze rangorde: het repareert dat Home, de eerste surface die gebouwd wordt, anders een authority zou hebben die alleen op één machine bestond. De bevroren set blijft de 21 genummerde beelden;
+1. de goedgekeurde iOS-northstar-mockups in `docs/assets/ios-unified/northstar/`, en voor Home, Home gefilterd en het profiel-laadscherm de vijf aangeleverde comps, die sinds 3 september 2026 byte-identiek in diezelfde map staan onder een naam in plaats van een nummer (`home-comp`, `home-comp-gefilterd`, `profiel-laden-comp`, `serie-detail-comp`, `mijn-pleya-comp` (die laatste is verwijderd, vervangen door `docs/assets/a24b-northstars/`, A-24b); hashes in paragraaf 4.8 van het rapport). Waar een comp en een mockup elkaar raken wint de mockup. Het opnemen van die vijf verandert niets aan wat is goedgekeurd en niets aan deze rangorde: het repareert dat Home, de eerste surface die gebouwd wordt, anders een authority zou hebben die alleen op één machine bestond. De bevroren set blijft de 21 genummerde beelden;
 2. het bijbehorende rapport `docs/ios-unified-2026-audit.md`, dat de tokens, de navigatie en de zeven beslispunten vastlegt;
 3. voor Pleya-branding en de gedeelde Unified 2026-principes: de goedgekeurde tvOS-redesign-branch `claude/netflix-redesign-b4x21v` en zijn northstar-set (DEC-065 op die branch), met `mono_theme.dart`, `mono_tokens.dart`, `pleya_wordmark.dart` en hoofdstuk 8, 18, 33 en 34 van `docs/tvos-unified-experience.md` als bron;
 4. de bestaande iOS-code voor functionele en platformcontracten: navigatie via `ProfileNavigationScope`, sheets via `OverlaySheetHost`, kaarten via `MediaCardGridLayout`, de mobiele hero-geometrie in `home_hero_layout.dart`.
@@ -2547,7 +2547,7 @@ beschikbaar heeft.
 **Status:** accepted
 
 **Context:** Rij 8 (I7 Mijn Pleya, [unified-2026-closure.md](unified-2026-closure.md) §5) startte met
-child 18, `my_pleya_screen.dart`. Northstar 18 (`18-mijn-pleya-volledig.png`) groepeert de secties in
+child 18, `my_pleya_screen.dart`. Northstar 18 (`18-mijn-pleya-volledig.png`, verwijderd, vervangen door `docs/assets/a24b-northstars/02-Mijn-Pleya/`, A-24b) groepeert de secties in
 drie blokken: een kaartrij "Mijn content" (Mijn lijst, Aanvragen, Downloads), een kaartrij
 "Bibliotheken en bronnen" (Bibliotheken, Servers, Activiteit) en een lijst "Pleya" (Nieuw voor jou,
 Samen kijken, Instellingen, Over Pleya). TV loste exact dezelfde taxonomie al op in
@@ -2576,7 +2576,7 @@ wrap-aanpak als TV's `TvServersPage`: een kale `Scaffold`/`FocusedScrollScaffold
 **Consequences:** Widgettests (`test/screens/my_pleya_screen_test.dart`) volgen de nieuwe indeling;
 de losse "Profielen"-lijstrij verviel omdat de header-identiteit al dezelfde `ProfileSwitchScreen`
 opent (northstar 18 toont ook geen aparte rij daarvoor). Geen ios-sim Verify-run tegen
-`18-mijn-pleya-volledig.png` vastgelegd deze sessie: widgettests en `flutter analyze` zijn het enige
+`18-mijn-pleya-volledig.png` (verwijderd, zie hierboven) vastgelegd deze sessie: widgettests en `flutter analyze` zijn het enige
 bewijs. Children 11, 12, 13, 14, 15, 19, 21 van I7 blijven ieder een eigen branch met eigen bewijs;
 dit besluit dekt alleen 18's eigen scherm.
 
@@ -2638,7 +2638,7 @@ overdracht. Geen ios-sim Verify-run tegen `15-bibliotheken.png` vastgelegd deze 
 **Date:** 2026-09-13
 **Status:** accepted
 
-**Context:** Northstar 14 (`14-instellingen.png`) toont in de kaart "App en afspelen" vijf tegels,
+**Context:** Northstar 14 (`14-instellingen.png`, verwijderd, vervangen door `docs/assets/a24b-northstars/01-Instellingen/`, A-24b) toont in de kaart "App en afspelen" vijf tegels,
 waaronder één "Ondertitels" met subtitel "Stijl en standaardtaal". De bestaande
 `LanguageSettingsScreen` (DEC-096/mockup 31A) is een strak gechoreografeerde pagina
 (Globale voorkeur/Onthouden/Series-secties) die alleen taalvoorkeuren dekt, geen stijl. De

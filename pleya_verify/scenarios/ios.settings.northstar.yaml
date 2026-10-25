@@ -2,7 +2,7 @@ name: ios.settings.northstar
 target: ios-sim
 # The iPhone Instellingen list (northstar 14, iOS Unified 2026 workitem 8
 # (I7), docs/unified-2026-closure.md §5 row 8, register row 14), against
-# `docs/assets/ios-unified/northstar/14-instellingen.png`. Reached the way a
+# `docs/assets/a24b-northstars/01-Instellingen/images/` (A-24b; the old northstar 14 image was removed). Reached the way a
 # user does: Home, tap `nav.myPleya`, then tap the Instellingen row on My
 # Pleya (`my_pleya.tile[settings]`). `screen.settings` and `settings.tile`
 # did not exist before this scenario: the main settings list had zero
