@@ -355,6 +355,25 @@ class _ValueRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final chevron = AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted);
+    if (!PlatformDetector.isTV()) {
+      // A-24: the value ends the title line so the note keeps the full width
+      // under it; a value too long for that line opens the note instead.
+      final onTitleLine =
+          settingValuePlacement(context, title: title, value: value, hasDescription: true) ==
+          SettingValuePlacement.titleLine;
+      return SettingRowFocus(
+        onSelect: onSelect,
+        child: ListTile(
+          contentPadding: settingRowPadding(),
+          leading: SettingsIconBadge(icon),
+          title: onTitleLine ? SettingTitleWithValue(title: title, value: value) : Text(title),
+          subtitle: Text(onTitleLine ? subtitle : '$value · $subtitle'),
+          trailing: chevron,
+          onTap: onSelect,
+        ),
+      );
+    }
     return SettingRowFocus(
       onSelect: onSelect,
       child: ListTile(
@@ -367,22 +386,18 @@ class _ValueRow extends StatelessWidget {
           children: [
             // Bounded, because a language name is user data: "Traditional
             // Chinese" in a `ListTile`'s trailing slot takes whatever width it
-            // asks for and pushes the title off a phone. Off TV the shared
-            // A-24 value label, so this row reads like every other value row.
-            if (PlatformDetector.isTV())
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 160),
-                child: Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: tokens(context).textMuted),
-                ),
-              )
-            else
-              SettingValueLabel(value, title: title, besideDescription: true),
+            // asks for and pushes the title off a phone.
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 160),
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: tokens(context).textMuted),
+              ),
+            ),
             const SizedBox(width: 8),
-            AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
+            chevron,
           ],
         ),
         onTap: onSelect,

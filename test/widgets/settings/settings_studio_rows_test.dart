@@ -45,7 +45,7 @@ void main() {
   Widget selectionTile({
     String Function(ViewMode)? valueBuilder,
     String? Function(ViewMode)? descriptionBuilder,
-    String title = 'Weergavemodus',
+    String title = 'Modus',
   }) => SettingSelectionTile<ViewMode, ViewMode>(
     pref: SettingsService.viewMode,
     icon: Symbols.view_list_rounded,
@@ -76,6 +76,8 @@ void main() {
   ListTile tileOf(WidgetTester tester) => tester.widget<ListTile>(find.byType(ListTile));
 
   group('off TV', () {
+    // The test font draws every glyph a full em wide, about one and a half
+    // times Inter, so titles and values here are short where they must fit.
     testWidgets('a selection row shows its value trailing, without a value subtitle', (tester) async {
       await pump(tester, SettingsGroup(children: [selectionTile(valueBuilder: (v) => v.name)]));
 
@@ -83,19 +85,9 @@ void main() {
       expect(value, findsOneWidget);
       expect(find.ancestor(of: value, matching: find.byType(SettingValueLabel)), findsOneWidget);
       expect(tileOf(tester).subtitle, isNull, reason: 'the value no longer doubles as the subtitle');
-      expect(tester.getCenter(value).dx, greaterThan(tester.getCenter(find.text('Weergavemodus')).dx));
-      expect(tester.getCenter(value).dy, closeTo(tester.getCenter(find.text('Weergavemodus')).dy, 1));
-    });
-
-    testWidgets('explanatory text stays in the subtitle', (tester) async {
-      await pump(
-        tester,
-        SettingsGroup(
-          children: [selectionTile(valueBuilder: (v) => v.name, descriptionBuilder: (_) => 'Hoe bibliotheken tonen')],
-        ),
-      );
-      expect(find.text('Hoe bibliotheken tonen'), findsOneWidget);
-      expect(find.text(ViewMode.grid.name), findsOneWidget);
+      expect(tester.getCenter(value).dx, greaterThan(tester.getCenter(find.text('Modus')).dx));
+      expect(tester.getCenter(value).dy, closeTo(tester.getCenter(find.text('Modus')).dy, 1));
+      expect(tester.getSize(find.byType(ListTile)).height, 52, reason: 'a one-line row is 52 pt');
     });
 
     testWidgets('a number row shows its value trailing', (tester) async {
@@ -105,74 +97,55 @@ void main() {
       expect(tileOf(tester).subtitle, isNull);
     });
 
-    testWidgets('without a valueBuilder the old value line becomes the trailing value', (tester) async {
-      await pump(tester, SettingsGroup(children: [selectionTile()]));
-      expect(
-        find.ancestor(of: find.text('Raster · lange uitleg'), matching: find.byType(SettingValueLabel)),
-        findsOneWidget,
-      );
+    testWidgets('with a description the value ends the title line and the description runs full width', (tester) async {
+      const note = 'Een uitleg die over de hele breedte van de tekstkolom mag lopen';
+      for (final width in const [375.0, 320.0]) {
+        await pump(
+          tester,
+          SettingsGroup(
+            children: [selectionTile(valueBuilder: (v) => v.name, descriptionBuilder: (_) => note)],
+          ),
+          size: Size(width, 640),
+        );
+        expect(tester.takeException(), isNull);
+        final value = find.text(ViewMode.grid.name);
+        final title = tester.getRect(find.text('Modus'));
+        expect(find.ancestor(of: value, matching: find.byType(SettingTitleWithValue)), findsOneWidget);
+        expect(tester.renderObject<RenderParagraph>(value).didExceedMaxLines, isFalse);
+        expect(tester.getRect(value).top, lessThan(title.bottom), reason: 'on the title line at $width');
+        // The text column: card (width - 32) less badge side (68) and chevron side (52).
+        final column = width - 32 - 68 - 52;
+        expect(tester.getRect(find.text(note)).width, greaterThan(column - 2), reason: 'full width at $width');
+      }
     });
 
-    // The test font draws every glyph a full em wide, about one and a half
-    // times Inter, so the title here is short: what is under test is that the
-    // title keeps its line and the value takes only what is left.
-    testWidgets('at 320 pt a long value ellipsizes and leaves the title its line', (tester) async {
+    testWidgets('a value too long for its line falls back to the old value line, whole', (tester) async {
       const long = 'Een heel lange waarde die nooit op een telefoonregel past';
       await pump(
         tester,
-        SettingsGroup(
-          children: [selectionTile(title: 'Modus', valueBuilder: (_) => long)],
-        ),
+        SettingsGroup(children: [selectionTile(valueBuilder: (_) => long)]),
         size: const Size(320, 640),
       );
-
       expect(tester.takeException(), isNull);
-      final value = tester.getRect(find.byType(SettingValueLabel));
-      expect(value.width, lessThanOrEqualTo((320 - 32) * kSettingsValueMaxFraction));
-      expect(tester.renderObject<RenderParagraph>(find.text(long)).didExceedMaxLines, isTrue);
-      final title = tester.getRect(find.text('Modus'));
-      expect(title.height, lessThan(30), reason: 'the title stays on one line (two would be 40)');
-      expect(title.right, lessThanOrEqualTo(value.left));
-      expect(tester.getSize(find.byType(ListTile)).height, 52, reason: 'a one-line row is 52 pt');
+      expect(find.byType(SettingValueLabel), findsNothing, reason: 'nothing is cut');
+      expect((tileOf(tester).subtitle! as Text).data, 'Raster · lange uitleg');
+      expect(tester.getRect(find.text('Modus')).height, lessThan(30), reason: 'the title keeps its line');
     });
 
-    testWidgets('a long title keeps priority over a long value', (tester) async {
-      const long = 'Een heel lange waarde die nooit op een telefoonregel past';
+    testWidgets('a long title keeps priority: the value moves under it instead of squeezing it', (tester) async {
       await pump(
         tester,
         SettingsGroup(
-          children: [selectionTile(title: 'Weergave en modus', valueBuilder: (_) => long)],
+          children: [selectionTile(title: 'Weergave en modus', valueBuilder: (v) => v.name)],
         ),
         size: const Size(320, 640),
       );
       expect(tester.takeException(), isNull);
-      final value = tester.getRect(find.byType(SettingValueLabel));
-      final title = tester.getRect(find.text('Weergave en modus'));
-      expect(title.right, lessThanOrEqualTo(value.left));
-      expect(title.width, greaterThan(value.width), reason: 'the value yields to the title');
-      expect(tester.getSize(find.byType(ListTile)).height, greaterThanOrEqualTo(44));
+      expect(find.byType(SettingValueLabel), findsNothing);
+      expect(find.text('Raster · lange uitleg'), findsOneWidget);
     });
 
-    testWidgets('a row with a description gives its value less room', (tester) async {
-      const long = 'Automatisch, met een heel lange uitleg erachter';
-      await pump(
-        tester,
-        SettingsGroup(
-          children: [
-            selectionTile(title: 'Uitvoer', valueBuilder: (_) => long, descriptionBuilder: (_) => 'Uitleg'),
-            selectionTile(title: 'Uitvoer', valueBuilder: (_) => long),
-          ],
-        ),
-      );
-      final widths = tester
-          .widgetList(find.byType(SettingValueLabel))
-          .map((w) => tester.getSize(find.byWidget(w)).width);
-      // The card is 343 wide; title and value share 343 - 68 - 60 = 215.
-      expect(widths.first, lessThanOrEqualTo(215 * 0.5 + 0.5));
-      expect(widths.last, greaterThan(widths.first));
-    });
-
-    testWidgets('a navigation row bounds its trailing label the same way', (tester) async {
+    testWidgets('a navigation row with a short value shows it trailing', (tester) async {
       await pump(
         tester,
         SettingsGroup(
@@ -183,6 +156,53 @@ void main() {
       );
       expect(find.ancestor(of: find.text('NAS'), matching: find.byType(SettingValueLabel)), findsOneWidget);
       expect(tester.getSize(find.byType(ListTile)).height, greaterThanOrEqualTo(44));
+    });
+
+    testWidgets('a navigation row with a long list shows all of it under the title, as before', (tester) async {
+      const names = 'NAS Plex, Jellyfin thuis, Emby zolder';
+      await pump(
+        tester,
+        SettingsGroup(
+          children: [
+            SettingNavigationTile(icon: Symbols.dns_rounded, title: 'Servers', trailingLabel: names, onTap: () {}),
+          ],
+        ),
+      );
+      expect(find.byType(SettingValueLabel), findsNothing);
+      expect((tileOf(tester).subtitle! as Text).data, names);
+      expect(tester.renderObject<RenderParagraph>(find.text(names)).didExceedMaxLines, isFalse);
+    });
+
+    testWidgets('a one-word segment label scales down instead of breaking inside the word', (tester) async {
+      for (final width in const [375.0, 320.0]) {
+        await pump(
+          tester,
+          SettingsGroup(
+            children: [
+              SegmentedSetting<int>(
+                icon: Symbols.contrast_rounded,
+                title: 'Thema',
+                segments: const [
+                  ButtonSegment(value: 0, label: Text('Systeem')),
+                  ButtonSegment(value: 1, label: Text('Licht')),
+                  ButtonSegment(value: 2, label: Text('Donker')),
+                  ButtonSegment(value: 3, label: Text('OLED')),
+                ],
+                selected: 3,
+                onChanged: (_) {},
+              ),
+            ],
+          ),
+          size: Size(width, 640),
+        );
+        // Untransformed text height: one line of the 14 pt label, two would be 28 or more.
+        expect(
+          tester.renderObject<RenderParagraph>(find.text('Systeem')).size.height,
+          lessThan(25),
+          reason: 'one line at $width',
+        );
+        expect(find.ancestor(of: find.text('Systeem'), matching: find.byType(FittedBox)), findsOneWidget);
+      }
     });
 
     BoxDecoration cardOf(WidgetTester tester) => tester

@@ -184,6 +184,15 @@ class SettingNavigationTile extends StatelessWidget {
       Navigator.push(context, MaterialPageRoute(builder: destinationBuilder!));
     }
 
+    // A-24, off TV: where the value goes ([settingValuePlacement]). A value
+    // that does not fit beside the title takes the line under it, as the
+    // main settings page showed it before, so nothing is cut.
+    final label = trailingLabel;
+    final placement = label == null || PlatformDetector.isTV()
+        ? null
+        : settingValuePlacement(context, title: title, value: label, hasDescription: subtitle != null);
+    final subtitleText = placement == SettingValuePlacement.subtitle ? label : subtitle;
+
     return SettingRowFocus(
       focusNode: focusNode,
       onSelect: activate,
@@ -191,21 +200,19 @@ class SettingNavigationTile extends StatelessWidget {
         child: ListTile(
           contentPadding: settingRowPadding(),
           leading: SettingsIconBadge(icon),
-          title: Text(title),
-          subtitle: subtitle != null ? Text(subtitle!) : null,
+          title: placement == SettingValuePlacement.titleLine
+              ? SettingTitleWithValue(title: title, value: label!)
+              : Text(title),
+          subtitle: subtitleText != null ? Text(subtitleText) : null,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (trailingLabel != null)
-                // A-24: off TV the bounded, muted value every settings row
-                // shares; TV keeps its own text style from TvSettingsDensity.
-                if (PlatformDetector.isTV()) ...[
-                  Text(trailingLabel!),
-                  const SizedBox(width: 16),
-                ] else ...[
-                  SettingValueLabel(trailingLabel!, title: title, besideDescription: subtitle != null),
-                  const SizedBox(width: 8),
-                ],
+              // TV keeps its own text style from TvSettingsDensity.
+              if (label != null && PlatformDetector.isTV()) ...[Text(label), const SizedBox(width: 16)],
+              if (placement == SettingValuePlacement.trailing) ...[
+                SettingValueLabel(label!, title: title),
+                const SizedBox(width: 8),
+              ],
               if (needsAttention) ...[
                 Semantics(label: t.tvNavigation.attentionRequired, child: const NewEpisodeDot()),
                 const SizedBox(width: 8),

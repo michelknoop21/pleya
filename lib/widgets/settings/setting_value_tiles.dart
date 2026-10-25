@@ -16,13 +16,16 @@ import 'setting_value_label.dart';
 /// change it, bound to a [Pref] like the rest of `setting_tile.dart` (which
 /// re-exports this file, so call sites import nothing new).
 
-/// Subtitle and trailing slot of a row that shows a current value.
+/// Title, subtitle and trailing slot of a row that shows a current value.
 ///
-/// A-24 (Apple TV+ Studio on iOS): off TV the value stands right-aligned before
-/// the chevron, and the subtitle only carries [description], explanatory text,
-/// when there is one. On TV nothing changes: [valueLine] stays the value line
-/// under the title, as `TvSettingsDensity` sizes it.
-({Widget? subtitle, Widget trailing}) _valueRowParts(
+/// A-24 (Apple TV+ Studio on iOS), off TV, per [settingValuePlacement]: the
+/// value stands right-aligned before the chevron on a row without
+/// [description]; on a row with one it ends the title line, so the
+/// description keeps the full text width under it; and a value that would be
+/// cut there falls back to [valueLine] under the title, whole, as before.
+/// On TV nothing changes: [valueLine] stays the value line under the title,
+/// as `TvSettingsDensity` sizes it.
+({Widget title, Widget? subtitle, Widget trailing}) _valueRowParts(
   BuildContext context, {
   required String title,
   required String valueLine,
@@ -30,18 +33,27 @@ import 'setting_value_label.dart';
   String? description,
 }) {
   final chevron = AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted);
-  if (PlatformDetector.isTV()) return (subtitle: Text(valueLine), trailing: chevron);
-  return (
-    subtitle: description == null ? null : Text(description),
-    trailing: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SettingValueLabel(value, title: title, besideDescription: description != null),
-        const SizedBox(width: 8),
-        chevron,
-      ],
+  if (PlatformDetector.isTV()) return (title: Text(title), subtitle: Text(valueLine), trailing: chevron);
+  return switch (settingValuePlacement(context, title: title, value: value, hasDescription: description != null)) {
+    SettingValuePlacement.trailing => (
+      title: Text(title),
+      subtitle: null,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SettingValueLabel(value, title: title),
+          const SizedBox(width: 8),
+          chevron,
+        ],
+      ),
     ),
-  );
+    SettingValuePlacement.titleLine => (
+      title: SettingTitleWithValue(title: title, value: value),
+      subtitle: Text(description!),
+      trailing: chevron,
+    ),
+    SettingValuePlacement.subtitle => (title: Text(title), subtitle: Text(valueLine), trailing: chevron),
+  };
 }
 
 /// ListTile that opens [showNumericInputDialog] and writes back.
@@ -114,7 +126,7 @@ class SettingNumberTile extends StatelessWidget {
             child: ListTile(
               leading: SettingsIconBadge(icon),
               contentPadding: settingRowPadding(),
-              title: Text(title),
+              title: parts.title,
               subtitle: parts.subtitle,
               trailing: parts.trailing,
               onTap: activate,
@@ -195,7 +207,7 @@ class SettingSelectionTile<T, S> extends StatelessWidget {
             child: ListTile(
               leading: SettingsIconBadge(icon),
               contentPadding: settingRowPadding(),
-              title: Text(title),
+              title: parts.title,
               subtitle: parts.subtitle,
               trailing: parts.trailing,
               onTap: activate,

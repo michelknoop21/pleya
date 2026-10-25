@@ -384,6 +384,21 @@ class SettingsIconBadge extends StatelessWidget {
   }
 }
 
+/// A-24: a one-word segment label ("Systeem") scales down to fit its segment
+/// instead of breaking inside the word at 375 or 320 pt. Labels with spaces
+/// keep wrapping between their words, which reads fine.
+ButtonSegment<T> _unbrokenLabel<T>(ButtonSegment<T> segment) {
+  final label = segment.label;
+  if (label is! Text || (label.data?.contains(' ') ?? true)) return segment;
+  return ButtonSegment<T>(
+    value: segment.value,
+    icon: segment.icon,
+    tooltip: segment.tooltip,
+    enabled: segment.enabled,
+    label: FittedBox(fit: BoxFit.scaleDown, child: label),
+  );
+}
+
 /// A setting with a label + icon row and a full-width SegmentedButton below.
 /// Used for settings with 2-4 short options.
 class SegmentedSetting<T> extends StatelessWidget {
@@ -422,7 +437,7 @@ class SegmentedSetting<T> extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: SegmentedButton<T>(
-              segments: segments,
+              segments: PlatformDetector.isTV() ? segments : segments.map(_unbrokenLabel).toList(),
               selected: {selected},
               onSelectionChanged: (Set<T> newSelection) {
                 onChanged(newSelection.first);
