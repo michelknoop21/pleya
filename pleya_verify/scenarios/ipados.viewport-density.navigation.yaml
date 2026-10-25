@@ -34,6 +34,9 @@ steps:
   - assert: {id: "my_pleya.tile[libraries]", insideViewport: true, minimumTapTarget: 44}
   - snapshot: my-pleya
 
+  # A-24b: Instellingen sits in the Pleya group below Big P now; scroll it up.
+  - drag: {startX: 187, startY: 500, endX: 187, endY: 150, durationMs: 400}
+  - settle: 1000
   - tap: {id: "my_pleya.tile[settings]"}
   - wait_until: {id: screen.settings, timeout: 15000}
   - settle: 1000

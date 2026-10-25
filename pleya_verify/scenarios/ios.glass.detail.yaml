@@ -20,6 +20,9 @@ steps:
   - tap: {id: nav.myPleya}
   - wait_until: {id: screen.my_pleya, timeout: 10000}
   - settle: 1000
+  # A-24b: Instellingen sits in the Pleya group below Big P now; scroll it up.
+  - drag: {startX: 187, startY: 500, endX: 187, endY: 150, durationMs: 400}
+  - settle: 1000
   - tap: {id: "my_pleya.tile[settings]"}
   - wait_until: {id: screen.settings, timeout: 10000}
   - settle: 1000
