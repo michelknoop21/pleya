@@ -1629,6 +1629,16 @@
     "oledMode": "OLED 모드",
     "systemMode": "시스템 모드",
     "posterView": "포스터 보기",
-    "listView": "목록 보기"
+    "listView": "목록 보기",
+    "libraries": "보관함",
+    "serversAndSources": "서버 및 소스",
+    "contentAndWindow": "콘텐츠 및 창",
+    "quality": "화질",
+    "maintenance": "유지 관리",
+    "densityValue": "5단계 중 ${value}",
+    "existingSources": "기존 소스",
+    "preferredAudio": "선호 오디오 언어",
+    "preferredSubtitles": "선호 자막 언어",
+    "subtitleWhen": "자막 항상 / 외국어 / 안 함"
   }
 }

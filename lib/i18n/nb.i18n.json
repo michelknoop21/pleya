@@ -1629,6 +1629,16 @@
     "oledMode": "OLED-modus",
     "systemMode": "Systemmodus",
     "posterView": "Plakatvisning",
-    "listView": "Listevisning"
+    "listView": "Listevisning",
+    "libraries": "Biblioteker",
+    "serversAndSources": "Servere og kilder",
+    "contentAndWindow": "Innhold og vindu",
+    "quality": "Kvalitet",
+    "maintenance": "Vedlikehold",
+    "densityValue": "${value} av 5",
+    "existingSources": "Eksisterende kilder",
+    "preferredAudio": "Foretrukket lydspråk",
+    "preferredSubtitles": "Foretrukket undertekstspråk",
+    "subtitleWhen": "Undertekster alltid / fremmedspråk / aldri"
   }
 }

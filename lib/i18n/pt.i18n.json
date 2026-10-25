@@ -1629,6 +1629,16 @@
     "oledMode": "Modo OLED",
     "systemMode": "Modo do sistema",
     "posterView": "Visualização em pôsteres",
-    "listView": "Visualização em lista"
+    "listView": "Visualização em lista",
+    "libraries": "Bibliotecas",
+    "serversAndSources": "Servidores e fontes",
+    "contentAndWindow": "Conteúdo e janela",
+    "quality": "Qualidade",
+    "maintenance": "Manutenção",
+    "densityValue": "${value} de 5",
+    "existingSources": "Fontes existentes",
+    "preferredAudio": "Idioma de áudio preferido",
+    "preferredSubtitles": "Idioma de legendas preferido",
+    "subtitleWhen": "Legendas sempre / idioma estrangeiro / nunca"
   }
 }

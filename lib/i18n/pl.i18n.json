@@ -1629,6 +1629,16 @@
     "oledMode": "Tryb OLED",
     "systemMode": "Tryb systemowy",
     "posterView": "Widok plakatów",
-    "listView": "Widok listy"
+    "listView": "Widok listy",
+    "libraries": "Biblioteki",
+    "serversAndSources": "Serwery i źródła",
+    "contentAndWindow": "Treść i okno",
+    "quality": "Jakość",
+    "maintenance": "Konserwacja",
+    "densityValue": "${value} z 5",
+    "existingSources": "Istniejące źródła",
+    "preferredAudio": "Preferowany język audio",
+    "preferredSubtitles": "Preferowany język napisów",
+    "subtitleWhen": "Napisy zawsze / obcy język / nigdy"
   }
 }

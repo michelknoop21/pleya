@@ -1629,6 +1629,16 @@
     "oledMode": "OLED-Modus",
     "systemMode": "Systemmodus",
     "posterView": "Posteransicht",
-    "listView": "Listenansicht"
+    "listView": "Listenansicht",
+    "libraries": "Bibliotheken",
+    "serversAndSources": "Server und Quellen",
+    "contentAndWindow": "Inhalt und Fenster",
+    "quality": "Qualität",
+    "maintenance": "Wartung",
+    "densityValue": "${value} von 5",
+    "existingSources": "Vorhandene Quellen",
+    "preferredAudio": "Bevorzugte Audiosprache",
+    "preferredSubtitles": "Bevorzugte Untertitelsprache",
+    "subtitleWhen": "Untertitel immer / Fremdsprache / nie"
   }
 }

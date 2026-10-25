@@ -1629,6 +1629,16 @@
     "oledMode": "OLED режим",
     "systemMode": "Системен режим",
     "posterView": "Изглед с плакати",
-    "listView": "Изглед със списък"
+    "listView": "Изглед със списък",
+    "libraries": "Библиотеки",
+    "serversAndSources": "Сървъри и източници",
+    "contentAndWindow": "Съдържание и прозорец",
+    "quality": "Качество",
+    "maintenance": "Поддръжка",
+    "densityValue": "${value} от 5",
+    "existingSources": "Съществуващи източници",
+    "preferredAudio": "Предпочитан език на аудиото",
+    "preferredSubtitles": "Предпочитан език на субтитрите",
+    "subtitleWhen": "Субтитри винаги / чужд език / никога"
   }
 }

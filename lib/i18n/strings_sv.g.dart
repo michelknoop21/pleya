@@ -1890,6 +1890,16 @@ class _TranslationsSettingsStudioSv extends TranslationsSettingsStudioEn {
 	@override String get systemMode => 'Systemläge';
 	@override String get posterView => 'Affischvy';
 	@override String get listView => 'Listvy';
+	@override String get libraries => 'Bibliotek';
+	@override String get serversAndSources => 'Servrar och källor';
+	@override String get contentAndWindow => 'Innehåll och fönster';
+	@override String get quality => 'Kvalitet';
+	@override String get maintenance => 'Underhåll';
+	@override String densityValue({required Object value}) => '${value} av 5';
+	@override String get existingSources => 'Befintliga källor';
+	@override String get preferredAudio => 'Föredraget ljudspråk';
+	@override String get preferredSubtitles => 'Föredraget undertextspråk';
+	@override String get subtitleWhen => 'Undertexter alltid / främmande språk / aldrig';
 }
 
 // Path: search.filters
@@ -3791,6 +3801,16 @@ extension on TranslationsSv {
 			'settingsStudio.systemMode' => 'Systemläge',
 			'settingsStudio.posterView' => 'Affischvy',
 			'settingsStudio.listView' => 'Listvy',
+			'settingsStudio.libraries' => 'Bibliotek',
+			'settingsStudio.serversAndSources' => 'Servrar och källor',
+			'settingsStudio.contentAndWindow' => 'Innehåll och fönster',
+			'settingsStudio.quality' => 'Kvalitet',
+			'settingsStudio.maintenance' => 'Underhåll',
+			'settingsStudio.densityValue' => ({required Object value}) => '${value} av 5',
+			'settingsStudio.existingSources' => 'Befintliga källor',
+			'settingsStudio.preferredAudio' => 'Föredraget ljudspråk',
+			'settingsStudio.preferredSubtitles' => 'Föredraget undertextspråk',
+			'settingsStudio.subtitleWhen' => 'Undertexter alltid / främmande språk / aldrig',
 			_ => null,
 		};
 	}

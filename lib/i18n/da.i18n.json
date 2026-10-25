@@ -1629,6 +1629,16 @@
     "oledMode": "OLED-tilstand",
     "systemMode": "Systemtilstand",
     "posterView": "Plakatvisning",
-    "listView": "Listevisning"
+    "listView": "Listevisning",
+    "libraries": "Biblioteker",
+    "serversAndSources": "Servere og kilder",
+    "contentAndWindow": "Indhold og vindue",
+    "quality": "Kvalitet",
+    "maintenance": "Vedligeholdelse",
+    "densityValue": "${value} af 5",
+    "existingSources": "Eksisterende kilder",
+    "preferredAudio": "Foretrukket lydsprog",
+    "preferredSubtitles": "Foretrukket undertekstsprog",
+    "subtitleWhen": "Undertekster altid / fremmedsprog / aldrig"
   }
 }

@@ -1890,6 +1890,16 @@ class _TranslationsSettingsStudioFr extends TranslationsSettingsStudioEn {
 	@override String get systemMode => 'Mode système';
 	@override String get posterView => 'Vue affiches';
 	@override String get listView => 'Vue liste';
+	@override String get libraries => 'Bibliothèques';
+	@override String get serversAndSources => 'Serveurs et sources';
+	@override String get contentAndWindow => 'Contenu et fenêtre';
+	@override String get quality => 'Qualité';
+	@override String get maintenance => 'Maintenance';
+	@override String densityValue({required Object value}) => '${value} sur 5';
+	@override String get existingSources => 'Sources existantes';
+	@override String get preferredAudio => 'Langue audio préférée';
+	@override String get preferredSubtitles => 'Langue des sous-titres préférée';
+	@override String get subtitleWhen => 'Sous-titres toujours / langue étrangère / jamais';
 }
 
 // Path: search.filters
@@ -3791,6 +3801,16 @@ extension on TranslationsFr {
 			'settingsStudio.systemMode' => 'Mode système',
 			'settingsStudio.posterView' => 'Vue affiches',
 			'settingsStudio.listView' => 'Vue liste',
+			'settingsStudio.libraries' => 'Bibliothèques',
+			'settingsStudio.serversAndSources' => 'Serveurs et sources',
+			'settingsStudio.contentAndWindow' => 'Contenu et fenêtre',
+			'settingsStudio.quality' => 'Qualité',
+			'settingsStudio.maintenance' => 'Maintenance',
+			'settingsStudio.densityValue' => ({required Object value}) => '${value} sur 5',
+			'settingsStudio.existingSources' => 'Sources existantes',
+			'settingsStudio.preferredAudio' => 'Langue audio préférée',
+			'settingsStudio.preferredSubtitles' => 'Langue des sous-titres préférée',
+			'settingsStudio.subtitleWhen' => 'Sous-titres toujours / langue étrangère / jamais',
 			_ => null,
 		};
 	}

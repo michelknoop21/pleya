@@ -1629,6 +1629,16 @@
     "oledMode": "Тема OLED",
     "systemMode": "Системная тема",
     "posterView": "Постеры",
-    "listView": "Список"
+    "listView": "Список",
+    "libraries": "Библиотеки",
+    "serversAndSources": "Серверы и источники",
+    "contentAndWindow": "Контент и окно",
+    "quality": "Качество",
+    "maintenance": "Обслуживание",
+    "densityValue": "${value} из 5",
+    "existingSources": "Существующие источники",
+    "preferredAudio": "Предпочитаемый язык аудио",
+    "preferredSubtitles": "Предпочитаемый язык субтитров",
+    "subtitleWhen": "Субтитры всегда / иностранный язык / никогда"
   }
 }

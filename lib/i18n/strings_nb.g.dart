@@ -1890,6 +1890,16 @@ class _TranslationsSettingsStudioNb extends TranslationsSettingsStudioEn {
 	@override String get systemMode => 'Systemmodus';
 	@override String get posterView => 'Plakatvisning';
 	@override String get listView => 'Listevisning';
+	@override String get libraries => 'Biblioteker';
+	@override String get serversAndSources => 'Servere og kilder';
+	@override String get contentAndWindow => 'Innhold og vindu';
+	@override String get quality => 'Kvalitet';
+	@override String get maintenance => 'Vedlikehold';
+	@override String densityValue({required Object value}) => '${value} av 5';
+	@override String get existingSources => 'Eksisterende kilder';
+	@override String get preferredAudio => 'Foretrukket lydspråk';
+	@override String get preferredSubtitles => 'Foretrukket undertekstspråk';
+	@override String get subtitleWhen => 'Undertekster alltid / fremmedspråk / aldri';
 }
 
 // Path: search.filters
@@ -3791,6 +3801,16 @@ extension on TranslationsNb {
 			'settingsStudio.systemMode' => 'Systemmodus',
 			'settingsStudio.posterView' => 'Plakatvisning',
 			'settingsStudio.listView' => 'Listevisning',
+			'settingsStudio.libraries' => 'Biblioteker',
+			'settingsStudio.serversAndSources' => 'Servere og kilder',
+			'settingsStudio.contentAndWindow' => 'Innhold og vindu',
+			'settingsStudio.quality' => 'Kvalitet',
+			'settingsStudio.maintenance' => 'Vedlikehold',
+			'settingsStudio.densityValue' => ({required Object value}) => '${value} av 5',
+			'settingsStudio.existingSources' => 'Eksisterende kilder',
+			'settingsStudio.preferredAudio' => 'Foretrukket lydspråk',
+			'settingsStudio.preferredSubtitles' => 'Foretrukket undertekstspråk',
+			'settingsStudio.subtitleWhen' => 'Undertekster alltid / fremmedspråk / aldri',
 			_ => null,
 		};
 	}

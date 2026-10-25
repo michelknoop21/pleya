@@ -1629,6 +1629,16 @@
     "oledMode": "OLED モード",
     "systemMode": "システムモード",
     "posterView": "ポスター表示",
-    "listView": "リスト表示"
+    "listView": "リスト表示",
+    "libraries": "ライブラリ",
+    "serversAndSources": "サーバーとソース",
+    "contentAndWindow": "コンテンツとウィンドウ",
+    "quality": "画質",
+    "maintenance": "メンテナンス",
+    "densityValue": "5 段階中 ${value}",
+    "existingSources": "既存のソース",
+    "preferredAudio": "優先する音声言語",
+    "preferredSubtitles": "優先する字幕言語",
+    "subtitleWhen": "字幕：常に / 外国語 / なし"
   }
 }

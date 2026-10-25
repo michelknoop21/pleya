@@ -1890,6 +1890,16 @@ class _TranslationsSettingsStudioZh extends TranslationsSettingsStudioEn {
 	@override String get systemMode => '跟随系统';
 	@override String get posterView => '海报视图';
 	@override String get listView => '列表视图';
+	@override String get libraries => '媒体库';
+	@override String get serversAndSources => '服务器与来源';
+	@override String get contentAndWindow => '内容与窗口';
+	@override String get quality => '画质';
+	@override String get maintenance => '维护';
+	@override String densityValue({required Object value}) => '${value}/5';
+	@override String get existingSources => '现有来源';
+	@override String get preferredAudio => '首选音频语言';
+	@override String get preferredSubtitles => '首选字幕语言';
+	@override String get subtitleWhen => '字幕：始终 / 外语 / 从不';
 }
 
 // Path: search.filters
@@ -3791,6 +3801,16 @@ extension on TranslationsZh {
 			'settingsStudio.systemMode' => '跟随系统',
 			'settingsStudio.posterView' => '海报视图',
 			'settingsStudio.listView' => '列表视图',
+			'settingsStudio.libraries' => '媒体库',
+			'settingsStudio.serversAndSources' => '服务器与来源',
+			'settingsStudio.contentAndWindow' => '内容与窗口',
+			'settingsStudio.quality' => '画质',
+			'settingsStudio.maintenance' => '维护',
+			'settingsStudio.densityValue' => ({required Object value}) => '${value}/5',
+			'settingsStudio.existingSources' => '现有来源',
+			'settingsStudio.preferredAudio' => '首选音频语言',
+			'settingsStudio.preferredSubtitles' => '首选字幕语言',
+			'settingsStudio.subtitleWhen' => '字幕：始终 / 外语 / 从不',
 			_ => null,
 		};
 	}

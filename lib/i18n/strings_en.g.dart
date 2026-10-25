@@ -6660,6 +6660,36 @@ class TranslationsSettingsStudioEn {
 
 	/// en: 'List view'
 	String get listView => 'List view';
+
+	/// en: 'Libraries'
+	String get libraries => 'Libraries';
+
+	/// en: 'Servers and sources'
+	String get serversAndSources => 'Servers and sources';
+
+	/// en: 'Content and window'
+	String get contentAndWindow => 'Content and window';
+
+	/// en: 'Quality'
+	String get quality => 'Quality';
+
+	/// en: 'Maintenance'
+	String get maintenance => 'Maintenance';
+
+	/// en: '${value} of 5'
+	String densityValue({required Object value}) => '${value} of 5';
+
+	/// en: 'Existing sources'
+	String get existingSources => 'Existing sources';
+
+	/// en: 'Preferred audio language'
+	String get preferredAudio => 'Preferred audio language';
+
+	/// en: 'Preferred subtitle language'
+	String get preferredSubtitles => 'Preferred subtitle language';
+
+	/// en: 'Subtitles always / foreign language / never'
+	String get subtitleWhen => 'Subtitles always / foreign language / never';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -12805,6 +12835,16 @@ extension on Translations {
 			'settingsStudio.systemMode' => 'System mode',
 			'settingsStudio.posterView' => 'Poster view',
 			'settingsStudio.listView' => 'List view',
+			'settingsStudio.libraries' => 'Libraries',
+			'settingsStudio.serversAndSources' => 'Servers and sources',
+			'settingsStudio.contentAndWindow' => 'Content and window',
+			'settingsStudio.quality' => 'Quality',
+			'settingsStudio.maintenance' => 'Maintenance',
+			'settingsStudio.densityValue' => ({required Object value}) => '${value} of 5',
+			'settingsStudio.existingSources' => 'Existing sources',
+			'settingsStudio.preferredAudio' => 'Preferred audio language',
+			'settingsStudio.preferredSubtitles' => 'Preferred subtitle language',
+			'settingsStudio.subtitleWhen' => 'Subtitles always / foreign language / never',
 			_ => null,
 		};
 	}

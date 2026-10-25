@@ -1890,6 +1890,16 @@ class _TranslationsSettingsStudioJa extends TranslationsSettingsStudioEn {
 	@override String get systemMode => 'システムモード';
 	@override String get posterView => 'ポスター表示';
 	@override String get listView => 'リスト表示';
+	@override String get libraries => 'ライブラリ';
+	@override String get serversAndSources => 'サーバーとソース';
+	@override String get contentAndWindow => 'コンテンツとウィンドウ';
+	@override String get quality => '画質';
+	@override String get maintenance => 'メンテナンス';
+	@override String densityValue({required Object value}) => '5 段階中 ${value}';
+	@override String get existingSources => '既存のソース';
+	@override String get preferredAudio => '優先する音声言語';
+	@override String get preferredSubtitles => '優先する字幕言語';
+	@override String get subtitleWhen => '字幕：常に / 外国語 / なし';
 }
 
 // Path: search.filters
@@ -3791,6 +3801,16 @@ extension on TranslationsJa {
 			'settingsStudio.systemMode' => 'システムモード',
 			'settingsStudio.posterView' => 'ポスター表示',
 			'settingsStudio.listView' => 'リスト表示',
+			'settingsStudio.libraries' => 'ライブラリ',
+			'settingsStudio.serversAndSources' => 'サーバーとソース',
+			'settingsStudio.contentAndWindow' => 'コンテンツとウィンドウ',
+			'settingsStudio.quality' => '画質',
+			'settingsStudio.maintenance' => 'メンテナンス',
+			'settingsStudio.densityValue' => ({required Object value}) => '5 段階中 ${value}',
+			'settingsStudio.existingSources' => '既存のソース',
+			'settingsStudio.preferredAudio' => '優先する音声言語',
+			'settingsStudio.preferredSubtitles' => '優先する字幕言語',
+			'settingsStudio.subtitleWhen' => '字幕：常に / 外国語 / なし',
 			_ => null,
 		};
 	}

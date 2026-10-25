@@ -1629,6 +1629,16 @@
     "oledMode": "OLED 模式",
     "systemMode": "跟随系统",
     "posterView": "海报视图",
-    "listView": "列表视图"
+    "listView": "列表视图",
+    "libraries": "媒体库",
+    "serversAndSources": "服务器与来源",
+    "contentAndWindow": "内容与窗口",
+    "quality": "画质",
+    "maintenance": "维护",
+    "densityValue": "${value}/5",
+    "existingSources": "现有来源",
+    "preferredAudio": "首选音频语言",
+    "preferredSubtitles": "首选字幕语言",
+    "subtitleWhen": "字幕：始终 / 外语 / 从不"
   }
 }

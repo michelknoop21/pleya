@@ -1890,6 +1890,16 @@ class _TranslationsSettingsStudioRu extends TranslationsSettingsStudioEn {
 	@override String get systemMode => 'Системная тема';
 	@override String get posterView => 'Постеры';
 	@override String get listView => 'Список';
+	@override String get libraries => 'Библиотеки';
+	@override String get serversAndSources => 'Серверы и источники';
+	@override String get contentAndWindow => 'Контент и окно';
+	@override String get quality => 'Качество';
+	@override String get maintenance => 'Обслуживание';
+	@override String densityValue({required Object value}) => '${value} из 5';
+	@override String get existingSources => 'Существующие источники';
+	@override String get preferredAudio => 'Предпочитаемый язык аудио';
+	@override String get preferredSubtitles => 'Предпочитаемый язык субтитров';
+	@override String get subtitleWhen => 'Субтитры всегда / иностранный язык / никогда';
 }
 
 // Path: search.filters
@@ -3791,6 +3801,16 @@ extension on TranslationsRu {
 			'settingsStudio.systemMode' => 'Системная тема',
 			'settingsStudio.posterView' => 'Постеры',
 			'settingsStudio.listView' => 'Список',
+			'settingsStudio.libraries' => 'Библиотеки',
+			'settingsStudio.serversAndSources' => 'Серверы и источники',
+			'settingsStudio.contentAndWindow' => 'Контент и окно',
+			'settingsStudio.quality' => 'Качество',
+			'settingsStudio.maintenance' => 'Обслуживание',
+			'settingsStudio.densityValue' => ({required Object value}) => '${value} из 5',
+			'settingsStudio.existingSources' => 'Существующие источники',
+			'settingsStudio.preferredAudio' => 'Предпочитаемый язык аудио',
+			'settingsStudio.preferredSubtitles' => 'Предпочитаемый язык субтитров',
+			'settingsStudio.subtitleWhen' => 'Субтитры всегда / иностранный язык / никогда',
 			_ => null,
 		};
 	}

@@ -1890,6 +1890,16 @@ class _TranslationsSettingsStudioBg extends TranslationsSettingsStudioEn {
 	@override String get systemMode => 'Системен режим';
 	@override String get posterView => 'Изглед с плакати';
 	@override String get listView => 'Изглед със списък';
+	@override String get libraries => 'Библиотеки';
+	@override String get serversAndSources => 'Сървъри и източници';
+	@override String get contentAndWindow => 'Съдържание и прозорец';
+	@override String get quality => 'Качество';
+	@override String get maintenance => 'Поддръжка';
+	@override String densityValue({required Object value}) => '${value} от 5';
+	@override String get existingSources => 'Съществуващи източници';
+	@override String get preferredAudio => 'Предпочитан език на аудиото';
+	@override String get preferredSubtitles => 'Предпочитан език на субтитрите';
+	@override String get subtitleWhen => 'Субтитри винаги / чужд език / никога';
 }
 
 // Path: search.filters
@@ -3791,6 +3801,16 @@ extension on TranslationsBg {
 			'settingsStudio.systemMode' => 'Системен режим',
 			'settingsStudio.posterView' => 'Изглед с плакати',
 			'settingsStudio.listView' => 'Изглед със списък',
+			'settingsStudio.libraries' => 'Библиотеки',
+			'settingsStudio.serversAndSources' => 'Сървъри и източници',
+			'settingsStudio.contentAndWindow' => 'Съдържание и прозорец',
+			'settingsStudio.quality' => 'Качество',
+			'settingsStudio.maintenance' => 'Поддръжка',
+			'settingsStudio.densityValue' => ({required Object value}) => '${value} от 5',
+			'settingsStudio.existingSources' => 'Съществуващи източници',
+			'settingsStudio.preferredAudio' => 'Предпочитан език на аудиото',
+			'settingsStudio.preferredSubtitles' => 'Предпочитан език на субтитрите',
+			'settingsStudio.subtitleWhen' => 'Субтитри винаги / чужд език / никога',
 			_ => null,
 		};
 	}

@@ -1629,6 +1629,16 @@
     "oledMode": "OLED-läge",
     "systemMode": "Systemläge",
     "posterView": "Affischvy",
-    "listView": "Listvy"
+    "listView": "Listvy",
+    "libraries": "Bibliotek",
+    "serversAndSources": "Servrar och källor",
+    "contentAndWindow": "Innehåll och fönster",
+    "quality": "Kvalitet",
+    "maintenance": "Underhåll",
+    "densityValue": "${value} av 5",
+    "existingSources": "Befintliga källor",
+    "preferredAudio": "Föredraget ljudspråk",
+    "preferredSubtitles": "Föredraget undertextspråk",
+    "subtitleWhen": "Undertexter alltid / främmande språk / aldrig"
   }
 }

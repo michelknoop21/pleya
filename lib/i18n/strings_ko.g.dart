@@ -1890,6 +1890,16 @@ class _TranslationsSettingsStudioKo extends TranslationsSettingsStudioEn {
 	@override String get systemMode => '시스템 모드';
 	@override String get posterView => '포스터 보기';
 	@override String get listView => '목록 보기';
+	@override String get libraries => '보관함';
+	@override String get serversAndSources => '서버 및 소스';
+	@override String get contentAndWindow => '콘텐츠 및 창';
+	@override String get quality => '화질';
+	@override String get maintenance => '유지 관리';
+	@override String densityValue({required Object value}) => '5단계 중 ${value}';
+	@override String get existingSources => '기존 소스';
+	@override String get preferredAudio => '선호 오디오 언어';
+	@override String get preferredSubtitles => '선호 자막 언어';
+	@override String get subtitleWhen => '자막 항상 / 외국어 / 안 함';
 }
 
 // Path: search.filters
@@ -3791,6 +3801,16 @@ extension on TranslationsKo {
 			'settingsStudio.systemMode' => '시스템 모드',
 			'settingsStudio.posterView' => '포스터 보기',
 			'settingsStudio.listView' => '목록 보기',
+			'settingsStudio.libraries' => '보관함',
+			'settingsStudio.serversAndSources' => '서버 및 소스',
+			'settingsStudio.contentAndWindow' => '콘텐츠 및 창',
+			'settingsStudio.quality' => '화질',
+			'settingsStudio.maintenance' => '유지 관리',
+			'settingsStudio.densityValue' => ({required Object value}) => '5단계 중 ${value}',
+			'settingsStudio.existingSources' => '기존 소스',
+			'settingsStudio.preferredAudio' => '선호 오디오 언어',
+			'settingsStudio.preferredSubtitles' => '선호 자막 언어',
+			'settingsStudio.subtitleWhen' => '자막 항상 / 외국어 / 안 함',
 			_ => null,
 		};
 	}
