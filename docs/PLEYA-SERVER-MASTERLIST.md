@@ -46,7 +46,7 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **4** | **1** | **21** |
 
-Per taak, en dat is de maat die telt: **156 taken, 66 gereed, 15 bezig, 75 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **156 taken, 66 gereed, 16 bezig, 74 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -412,7 +412,7 @@ punt 3 en 4), en aan het venster-besluit.
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
 | S15.1 | Rate limit op `/auth/refresh`, opruimjob streamsessies | `[ ]` | | |
-| S15.2 | Golden journeys 1 tot 14 groen | `[ ]` | | |
+| S15.2 | Golden journeys 1 tot 14 groen | `[ ]` | Ketenacceptatie 25 okt op de testinstance (main met #493 tot en met #496): `scripts/chain-smoke.sh` groen voor scan, metadata en artwork (99 van 100 films met poster en samenvatting), zoeken, direct play met 206, positie van toestel A zichtbaar op toestel B, transcode (plan tot eerste segment 2,0 tot 2,35 s) en download met gelijke SHA-256; webclient op de vijf breedtes in `docs/qa/chain-acceptance/` zonder overloop of consolefout na een gevonden rastermeting. 943 audiosporen zonder taal: 60 van 60 gemeten bestanden hebben de tag niet (ffprobe), de scanner laat niets vallen en de client toont onbekend. Journey 1, 9, 10 op een toestel: checklist in `docs/pleya-server-device-checklist.md`, uitkomst staat open | |
 | S15.3 | Securitymatrix K.2 volledig groen, vastgelegd in `docs/qa/` | `[ ]` | | |
 | S15.4 | Documentatie uit deel M compleet | `[ ]` | | |
 | S15.5 | Plex Replacement Readiness Gate (`PLEX_OFFLINE_REPLACEMENT_GATE`) groen op de geïsoleerde testinstance, Plex blijft draaien (migratie als keuze) | `[ ]` | | |
@@ -529,7 +529,7 @@ punt 3 en 4), en aan het venster-besluit.
 | S25.4 | Upgrade-guard: back-up vóór migratie, weigering op nieuwere database | `[x]` | M6: `upgradeGuard` in `cmd/pleya-server/backupwork.go` vóór `migrate.Run`: nieuwere database geweigerd met uitleg, achterlopende eerst een back-up (`trigger: upgrade`) en niet starten als die mislukt; `migrate.Status`; `deploy-nas.sh` weigert zonder back-upmap. `TestUpgradeGuardBacksUpBeforeMigratingAndRefusesANewerDatabase`, `TestUpgradeGuardRefusesARealNewerDatabase`, `TestStatusReadsTheSchemaWithoutMigrating`, `TestRestoreRefusesABackupFromANewerSchema`. Negatieve controle: de weigering op `current > target` weghalen maakt beide guardtests rood | 2026-10-23 |
 | S25.5 | Vier faalpaden met foutcodes en settest | `[x]` | M6: `TestFailurePathsEachHaveTheirOwnCode` met echte oorzaken: schijf vol (`/dev/full`, `storage.full`), database weg (pool op een dode poort, `server.database_unavailable`, nieuw), transcoder-crash (ffmpeg met segfault, `playback.transcode_failed`), kapot bestand (rommel in het mkv, `playback.file_corrupt`, nieuw, een tweede ffprobe beslist). `writeInternal` vertaalt ENOSPC en een weggevallen database op elk endpoint. Negatieve controles: zonder de ffprobe-toets wordt kapot bestand `transcode_failed`, zonder de databasetoets wordt database weg `server.internal` | 2026-10-23 |
 | S25.6 | Scherm 35 gebouwd, journey 13 | `[ ]` | | |
-| S25.7 | Off-site back-up: een kopie van de dump en `/config` buiten de NAS (Hyper Backup of externe bestemming), met een hersteltest vanaf die kopie | `[ ]` | | |
+| S25.7 | Off-site back-up: een kopie van de dump en `/config` buiten de NAS (Hyper Backup of externe bestemming), met een hersteltest vanaf die kopie | `[~]` | 25 okt: geen eigen mechanisme; `docs/pleya-server-operator-backup.md` beschrijft Hyper Backup en rsync, de instellingen blijven omgevingsvariabelen (DEC-162 dicht). Hersteltest vanaf een kopie op de testinstance groen (`scripts/offsite-restore-test.sh`: verse back-up, rsync, bron weg, terugzetten, herstart, verify met 576 van 576 titels). Daarbij gevonden en gefixt: een terugkomende tar bleef op `missing` (`TestSyncRevivesABackupThatComesBackFromACopy`, negatieve controle met de oude SQL rood). Open bij Michel: de echte bestemming en waar `PLEYA_SERVER_BACKUP_KEY` buiten de NAS staat | 2026-10-25 |
 
 ### PS-12 Plex-migratie (keuzefase)
 

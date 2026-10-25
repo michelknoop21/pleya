@@ -189,8 +189,9 @@ func readCounts(ctx context.Context, q interface {
 	return c, nil
 }
 
-// Sync legt het register gelijk aan de map. Het draait bij het opstarten, na de
-// migraties: na een restore is het register leeg, na een upgrade staat de
+// Sync legt het register gelijk aan de map. Een back-up die terugkomt uit een
+// kopie buiten de NAS staat daarna weer op ok in plaats van op missing. Het
+// draait bij het opstarten, na de migraties: na een restore is het register leeg, na een upgrade staat de
 // back-up van de guard er nog niet in, en een rij die op running bleef staan is
 // van een proces dat halverwege stopte.
 func (s *Service) Sync(ctx context.Context) error {
@@ -238,7 +239,8 @@ func (s *Service) Sync(ctx context.Context) error {
 		if _, err := s.o.Pool.Exec(ctx, `
 			INSERT INTO backups (id, file_name, trigger, status, schema_version, size_bytes, titles, secrets_included, started_at, finished_at)
 			VALUES ($1, $2, $3, 'ok', $4, $5, $6, $7, $8, $8)
-			ON CONFLICT (id) DO NOTHING`,
+			ON CONFLICT (id) DO UPDATE SET status = 'ok', size_bytes = EXCLUDED.size_bytes
+			WHERE backups.status = 'missing'`,
 			backupID, name, string(m.Trigger), m.SchemaVersion, info.Size(), m.Counts.Titles, m.Secrets != nil, m.CreatedAt); err != nil {
 			return err
 		}
