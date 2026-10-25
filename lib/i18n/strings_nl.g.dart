@@ -1402,6 +1402,22 @@ class _TranslationsMyPleyaNl extends TranslationsMyPleyaEn {
 	@override String get watchTogetherSubtitle => 'Samen afspelen';
 	@override String get settingsSubtitle => 'Alles naar jouw voorkeur';
 	@override String get aboutSubtitle => 'Versie en informatie';
+	@override String get logsSubtitle => 'Diagnose en hulp';
+	@override String librariesCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: '1 bibliotheek',
+		other: '${n} bibliotheken',
+	);
+	@override String collectionsCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: '1 collectie',
+		other: '${n} collecties',
+	);
+	@override String playlistsCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: '1 lijst',
+		other: '${n} lijsten',
+	);
+	@override String get bigPTvSubtitle => 'Je persoonlijke kijkassistent';
+	@override String get openBigP => 'Open Big P';
+	@override String get switchProfile => 'Profiel wisselen';
 }
 
 // Path: liveTv
@@ -2492,7 +2508,7 @@ class _TranslationsTvMyPleyaNl extends TranslationsTvMyPleyaEn {
 	@override String get statusOffline => 'Offline';
 	@override String get servers => 'Servers';
 	@override String get activity => 'Activiteit';
-	@override String get logs => 'Logs en diagnose';
+	@override String get logs => 'Logboeken';
 	@override String signedInAs({required Object name, required Object version}) => 'Aangemeld als ${name} · Pleya ${version}';
 	@override String get watchlistSubtitle => 'Bewaarde films en series';
 	@override String get requestsSubtitle => 'Verzoeken en ontdekken';
@@ -5531,6 +5547,13 @@ extension on TranslationsNl {
 			'myPleya.watchTogetherSubtitle' => 'Samen afspelen',
 			'myPleya.settingsSubtitle' => 'Alles naar jouw voorkeur',
 			'myPleya.aboutSubtitle' => 'Versie en informatie',
+			'myPleya.logsSubtitle' => 'Diagnose en hulp',
+			'myPleya.librariesCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 bibliotheek', other: '${n} bibliotheken', ), 
+			'myPleya.collectionsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 collectie', other: '${n} collecties', ), 
+			'myPleya.playlistsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 lijst', other: '${n} lijsten', ), 
+			'myPleya.bigPTvSubtitle' => 'Je persoonlijke kijkassistent',
+			'myPleya.openBigP' => 'Open Big P',
+			'myPleya.switchProfile' => 'Profiel wisselen',
 			'liveTv.serverNotAvailable' => 'Live TV-server is niet beschikbaar.',
 			'liveTv.serverNotConnected' => 'Live TV-server is niet verbonden.',
 			'liveTv.title' => 'Live TV',
@@ -5983,6 +6006,8 @@ extension on TranslationsNl {
 			'metadataEdit.selectBackground' => 'Achtergrond selecteren',
 			'metadataEdit.selectLogo' => 'Logo selecteren',
 			'metadataEdit.selectSquareArt' => 'Vierkante afbeelding selecteren',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.fromUrl' => 'Vanaf URL',
 			'metadataEdit.uploadFile' => 'Bestand uploaden',
 			'metadataEdit.enterImageUrl' => 'Voer afbeeldings-URL in',
@@ -5990,8 +6015,6 @@ extension on TranslationsNl {
 			'metadataEdit.metadataUpdated' => 'Metadata bijgewerkt',
 			'metadataEdit.metadataUpdateFailed' => 'Metadata bijwerken mislukt',
 			'metadataEdit.artworkUpdated' => 'Artwork bijgewerkt',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.artworkUpdateFailed' => 'Artwork bijwerken mislukt',
 			'metadataEdit.noArtworkAvailable' => 'Geen artwork beschikbaar',
 			'metadataEdit.notSet' => 'Niet ingesteld',
@@ -6497,6 +6520,8 @@ extension on TranslationsNl {
 			'unifiedCatalog.states.emptyTitle' => 'Deze catalogus is leeg',
 			'unifiedCatalog.states.emptyBody' => 'Geen zichtbare bibliotheek bevat iets voor deze pagina.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Niets voldoet aan deze filters',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.states.filterEmptyBody' => 'Wis een filter om meer titels te zien.',
 			'unifiedCatalog.states.clearFilters' => 'Filters wissen',
 			'unifiedCatalog.states.errorTitle' => 'De catalogus kon niet worden geladen',
@@ -6504,8 +6529,6 @@ extension on TranslationsNl {
 			'unifiedCatalog.states.partialOne' => '1 bibliotheek antwoordde niet',
 			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} bibliotheken antwoordden niet',
 			'unifiedCatalog.semantics.watched' => 'Bekeken',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.semantics.inProgress' => 'Bezig',
 			'unifiedCatalog.semantics.loadingMore' => 'Meer titels laden',
 			'unifiedCatalog.discovery.allMovies' => 'Alle films',
@@ -6600,7 +6623,7 @@ extension on TranslationsNl {
 			'tvMyPleya.statusOffline' => 'Offline',
 			'tvMyPleya.servers' => 'Servers',
 			'tvMyPleya.activity' => 'Activiteit',
-			'tvMyPleya.logs' => 'Logs en diagnose',
+			'tvMyPleya.logs' => 'Logboeken',
 			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Aangemeld als ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Bewaarde films en series',
 			'tvMyPleya.requestsSubtitle' => 'Verzoeken en ontdekken',
@@ -7011,6 +7034,8 @@ extension on TranslationsNl {
 			'assistant.confirm.titles.createHomeRow' => 'Rij op het beginscherm maken',
 			'assistant.confirm.titles.createCollection' => 'Collectie maken',
 			'assistant.confirm.titles.requestTitle' => 'Titel aanvragen',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.confirm.titles.downloadEpisodes' => 'Afleveringen downloaden',
 			'assistant.confirm.titles.downloadSubtitle' => 'Ondertitel downloaden',
 			'assistant.confirm.titles.changePlayback' => 'Afspelen aanpassen',
@@ -7018,8 +7043,6 @@ extension on TranslationsNl {
 			'assistant.confirm.server' => 'Server',
 			'assistant.confirm.access' => 'Toegang',
 			'assistant.confirm.allLibraries' => 'Alle bibliotheken',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.confirm.titlesLabel' => 'Titels',
 			'assistant.confirm.admin' => 'Beheerder',
 			'assistant.confirm.yes' => 'Ja',

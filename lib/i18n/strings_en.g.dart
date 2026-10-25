@@ -3282,8 +3282,8 @@ class TranslationsMyPleyaEn {
 	/// en: 'See all'
 	String get seeAll => 'See all';
 
-	/// en: 'Movies, shows and your own sources'
-	String get librariesSubtitle => 'Movies, shows and your own sources';
+	/// en: 'Movies, shows and sources'
+	String get librariesSubtitle => 'Movies, shows and sources';
 
 	/// en: 'Available offline'
 	String get downloadsSubtitle => 'Available offline';
@@ -3311,6 +3311,36 @@ class TranslationsMyPleyaEn {
 
 	/// en: 'Version and information'
 	String get aboutSubtitle => 'Version and information';
+
+	/// en: 'Diagnostics and help'
+	String get logsSubtitle => 'Diagnostics and help';
+
+	/// en: '(one) {1 library} (other) {${n} libraries}'
+	String librariesCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 library',
+		other: '${n} libraries',
+	);
+
+	/// en: '(one) {1 collection} (other) {${n} collections}'
+	String collectionsCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 collection',
+		other: '${n} collections',
+	);
+
+	/// en: '(one) {1 list} (other) {${n} lists}'
+	String playlistsCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 list',
+		other: '${n} lists',
+	);
+
+	/// en: 'Your personal viewing assistant'
+	String get bigPTvSubtitle => 'Your personal viewing assistant';
+
+	/// en: 'Open Big P'
+	String get openBigP => 'Open Big P';
+
+	/// en: 'Switch profile'
+	String get switchProfile => 'Switch profile';
 }
 
 // Path: liveTv
@@ -6095,8 +6125,8 @@ class TranslationsTvMyPleyaEn {
 	/// en: 'Activity'
 	String get activity => 'Activity';
 
-	/// en: 'Logs and diagnostics'
-	String get logs => 'Logs and diagnostics';
+	/// en: 'Logs'
+	String get logs => 'Logs';
 
 	/// en: 'Signed in as ${name} · Pleya ${version}'
 	String signedInAs({required Object name, required Object version}) => 'Signed in as ${name} · Pleya ${version}';
@@ -11168,7 +11198,7 @@ extension on Translations {
 			'myPleya.title' => 'My Pleya',
 			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 download', other: '{n} downloads', ), 
 			'myPleya.seeAll' => 'See all',
-			'myPleya.librariesSubtitle' => 'Movies, shows and your own sources',
+			'myPleya.librariesSubtitle' => 'Movies, shows and sources',
 			'myPleya.downloadsSubtitle' => 'Available offline',
 			'myPleya.requestsSubtitle' => 'Your requests and their status',
 			'myPleya.bigPSubtitle' => 'Ask, discover and find things faster.',
@@ -11178,6 +11208,13 @@ extension on Translations {
 			'myPleya.watchTogetherSubtitle' => 'Play in sync',
 			'myPleya.settingsSubtitle' => 'Everything the way you like it',
 			'myPleya.aboutSubtitle' => 'Version and information',
+			'myPleya.logsSubtitle' => 'Diagnostics and help',
+			'myPleya.librariesCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 library', other: '${n} libraries', ), 
+			'myPleya.collectionsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 collection', other: '${n} collections', ), 
+			'myPleya.playlistsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 list', other: '${n} lists', ), 
+			'myPleya.bigPTvSubtitle' => 'Your personal viewing assistant',
+			'myPleya.openBigP' => 'Open Big P',
+			'myPleya.switchProfile' => 'Switch profile',
 			'liveTv.serverNotAvailable' => 'Live TV server is not available.',
 			'liveTv.serverNotConnected' => 'Live TV server is not connected.',
 			'liveTv.title' => 'Live TV',
@@ -11630,6 +11667,8 @@ extension on Translations {
 			'metadataEdit.selectBackground' => 'Select Background',
 			'metadataEdit.selectLogo' => 'Select Logo',
 			'metadataEdit.selectSquareArt' => 'Select Square Art',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.fromUrl' => 'From URL',
 			'metadataEdit.uploadFile' => 'Upload File',
 			'metadataEdit.enterImageUrl' => 'Enter image URL',
@@ -11637,8 +11676,6 @@ extension on Translations {
 			'metadataEdit.metadataUpdated' => 'Metadata updated',
 			'metadataEdit.metadataUpdateFailed' => 'Failed to update metadata',
 			'metadataEdit.artworkUpdated' => 'Artwork updated',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.artworkUpdateFailed' => 'Failed to update artwork',
 			'metadataEdit.noArtworkAvailable' => 'No artwork available',
 			'metadataEdit.notSet' => 'Not set',
@@ -12144,6 +12181,8 @@ extension on Translations {
 			'unifiedCatalog.states.emptyTitle' => 'This catalog is empty',
 			'unifiedCatalog.states.emptyBody' => 'No visible library holds anything for this page.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Nothing matches these filters',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.states.filterEmptyBody' => 'Clear a filter to see more titles.',
 			'unifiedCatalog.states.clearFilters' => 'Clear filters',
 			'unifiedCatalog.states.errorTitle' => 'The catalog could not be loaded',
@@ -12151,8 +12190,6 @@ extension on Translations {
 			'unifiedCatalog.states.partialOne' => '1 library did not answer',
 			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} libraries did not answer',
 			'unifiedCatalog.semantics.watched' => 'Watched',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.semantics.inProgress' => 'In progress',
 			'unifiedCatalog.semantics.loadingMore' => 'Loading more titles',
 			'unifiedCatalog.discovery.allMovies' => 'All movies',
@@ -12247,7 +12284,7 @@ extension on Translations {
 			'tvMyPleya.statusOffline' => 'Offline',
 			'tvMyPleya.servers' => 'Servers',
 			'tvMyPleya.activity' => 'Activity',
-			'tvMyPleya.logs' => 'Logs and diagnostics',
+			'tvMyPleya.logs' => 'Logs',
 			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Signed in as ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Saved films and series',
 			'tvMyPleya.requestsSubtitle' => 'Requests and discovery',
@@ -12658,6 +12695,8 @@ extension on Translations {
 			'assistant.confirm.titles.createHomeRow' => 'Create home row',
 			'assistant.confirm.titles.createCollection' => 'Create collection',
 			'assistant.confirm.titles.requestTitle' => 'Request title',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.confirm.titles.downloadEpisodes' => 'Download episodes',
 			'assistant.confirm.titles.downloadSubtitle' => 'Download subtitle',
 			'assistant.confirm.titles.changePlayback' => 'Change playback',
@@ -12665,8 +12704,6 @@ extension on Translations {
 			'assistant.confirm.server' => 'Server',
 			'assistant.confirm.access' => 'Access',
 			'assistant.confirm.allLibraries' => 'All libraries',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.confirm.titlesLabel' => 'Titles',
 			'assistant.confirm.admin' => 'Admin',
 			'assistant.confirm.yes' => 'Yes',

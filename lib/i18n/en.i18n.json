@@ -1170,7 +1170,7 @@
       "other": "{n} downloads"
     },
     "seeAll": "See all",
-    "librariesSubtitle": "Movies, shows and your own sources",
+    "librariesSubtitle": "Movies, shows and sources",
     "downloadsSubtitle": "Available offline",
     "requestsSubtitle": "Your requests and their status",
     "bigPSubtitle": "Ask, discover and find things faster.",
@@ -1179,7 +1179,23 @@
     "watchTogether": "Watch together",
     "watchTogetherSubtitle": "Play in sync",
     "settingsSubtitle": "Everything the way you like it",
-    "aboutSubtitle": "Version and information"
+    "aboutSubtitle": "Version and information",
+    "logsSubtitle": "Diagnostics and help",
+    "librariesCount": {
+      "one": "1 library",
+      "other": "${n} libraries"
+    },
+    "collectionsCount": {
+      "one": "1 collection",
+      "other": "${n} collections"
+    },
+    "playlistsCount": {
+      "one": "1 list",
+      "other": "${n} lists"
+    },
+    "bigPTvSubtitle": "Your personal viewing assistant",
+    "openBigP": "Open Big P",
+    "switchProfile": "Switch profile"
   },
   "liveTv": {
     "serverNotAvailable": "Live TV server is not available.",
@@ -2339,7 +2355,7 @@
     "statusOffline": "Offline",
     "servers": "Servers",
     "activity": "Activity",
-    "logs": "Logs and diagnostics",
+    "logs": "Logs",
     "signedInAs": "Signed in as ${name} · Pleya ${version}",
     "watchlistSubtitle": "Saved films and series",
     "requestsSubtitle": "Requests and discovery",

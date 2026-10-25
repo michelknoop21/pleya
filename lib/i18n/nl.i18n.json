@@ -1179,7 +1179,23 @@
     "watchTogether": "Samen kijken",
     "watchTogetherSubtitle": "Samen afspelen",
     "settingsSubtitle": "Alles naar jouw voorkeur",
-    "aboutSubtitle": "Versie en informatie"
+    "aboutSubtitle": "Versie en informatie",
+    "logsSubtitle": "Diagnose en hulp",
+    "librariesCount": {
+      "one": "1 bibliotheek",
+      "other": "${n} bibliotheken"
+    },
+    "collectionsCount": {
+      "one": "1 collectie",
+      "other": "${n} collecties"
+    },
+    "playlistsCount": {
+      "one": "1 lijst",
+      "other": "${n} lijsten"
+    },
+    "bigPTvSubtitle": "Je persoonlijke kijkassistent",
+    "openBigP": "Open Big P",
+    "switchProfile": "Profiel wisselen"
   },
   "liveTv": {
     "serverNotAvailable": "Live TV-server is niet beschikbaar.",
@@ -2339,7 +2355,7 @@
     "statusOffline": "Offline",
     "servers": "Servers",
     "activity": "Activiteit",
-    "logs": "Logs en diagnose",
+    "logs": "Logboeken",
     "signedInAs": "Aangemeld als ${name} · Pleya ${version}",
     "watchlistSubtitle": "Bewaarde films en series",
     "requestsSubtitle": "Verzoeken en ontdekken",
