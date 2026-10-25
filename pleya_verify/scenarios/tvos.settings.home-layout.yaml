@@ -14,11 +14,24 @@ steps:
   - wait_until: {focused: nav.myPleya, timeout: 5000}
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
+  # Since the Big P tile, Instellingen sits right of it in the Pleya group.
   - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
   - press: down
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
+  - press: right
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
+  # A-24: category on the left, its rows in the middle. Out to the category
+  # and back in, then two rows down.
+  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
+  - press: left
+  - wait_until: {focused: "settings.category[0]", timeout: 5000}
+  - assert: {id: "settings.category[0]", state: {selected: true}}
+  - press: right
+  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 5000}
+  - press: down
   - press: down
   - wait_until: {focused: "my_pleya.section.tile[settings.home_layout]", timeout: 8000}
   - assert: {id: "my_pleya.section.tile[settings.home_layout]", focused: true, insideViewport: true}

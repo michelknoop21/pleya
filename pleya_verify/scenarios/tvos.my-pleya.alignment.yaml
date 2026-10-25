@@ -84,8 +84,11 @@ steps:
   - wait_until: {focused: "my_pleya.tile[watchTogether]", timeout: 8000}
 
   # --- Over ---------------------------------------------------------------
-  # DOWN keeps the column: Over sits directly under Samen Kijken in the hub.
+  # DOWN keeps the column. Since the Big P tile opens the Pleya group, the
+  # tile under Samen Kijken is Logboeken, and Over sits right of it.
   - press: down
+  - wait_until: {focused: "my_pleya.tile[logs]", timeout: 5000}
+  - press: right
   - wait_until: {focused: "my_pleya.tile[about]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section.content[about]", timeout: 15000}
@@ -143,10 +146,20 @@ steps:
   - wait_until: {id: "my_pleya.section.content[settings]", timeout: 15000}
   - settle: 800
   - assert: {id: "my_pleya.section.content[settings]", leftInset: 75.48}
-  - assert: {id: "my_pleya.section.tile[settings.appearance]", leftInset: 75.48}
+  # A-24: the category rail holds the page's left edge; the rows sit beside it.
+  - assert: {id: "settings.category[0]", leftInset: 75.48}
+  - assert: {id: "my_pleya.section.tile[settings.appearance]", rightOf: "settings.category[0]"}
   # "Waarde-instellingen tonen hun huidige stand op de tegel": a switch row
   # became a tile that says its own state, so a viewer does not have to open
-  # anything to read it.
+  # anything to read it. On A-24 those rows live under Geavanceerd, the third
+  # category on Apple TV.
+  - press: left
+  - wait_until: {focused: "settings.category[0]", timeout: 5000}
+  - press: down
+  - press: down
+  - wait_until: {focused: "settings.category[2]", timeout: 5000}
+  - press: select
+  - wait_until: {id: "settings.category[2]", state: {selected: true}, timeout: 5000}
   - assert: {id: "my_pleya.section.tile[settings.crash_reporting]", state: {toggled: true}}
   - assert: {id: "my_pleya.section.tile[settings.debug_logging]", state: {toggled: false}}
   - snapshot: 50-settings-aligned

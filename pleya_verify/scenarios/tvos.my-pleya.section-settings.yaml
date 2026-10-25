@@ -28,8 +28,12 @@ steps:
   - wait_until: {focused: nav.myPleya, timeout: 5000}
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
+  # Since the Big P tile, Instellingen sits right of it in the Pleya group.
   - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
   - press: down
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
+  - press: right
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
   - assert: {id: "my_pleya.tile[settings]", focused: true}
   - snapshot: 00-tile-focused
@@ -40,10 +44,15 @@ steps:
 
   # Movement inside the section, so the record shows whether the remote can do
   # anything once it is there.
+  # A-24: the page opens on its first row, inside the first category.
+  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
   - press: down
+  - wait_until: {focused: "my_pleya.section.tile[settings.library_visibility]", timeout: 5000}
   - snapshot: 02-after-down
-  - press: right
-  - snapshot: 03-after-right
+  - press: left
+  - wait_until: {focused: "settings.category[0]", timeout: 5000}
+  - assert: {id: "settings.category[0]", state: {selected: true}}
+  - snapshot: 03-after-left
 
   # And out again, back onto the tile it came from.
   - press: menu
