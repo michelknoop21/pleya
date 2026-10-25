@@ -406,6 +406,38 @@ func TestSyncRegistersTheDirectoryAndMarksWhatIsGone(t *testing.T) {
 	}
 }
 
+// TestSyncRevivesABackupThatComesBackFromACopy is de off-site hersteltest: de
+// back-up verdwijnt uit de map, de beheerder zet hem terug vanaf een kopie
+// buiten de NAS, en na een herstart hoort hij weer bruikbaar te zijn. Zonder
+// dat bleef hij op missing staan en weigerde verify met 409.
+func TestSyncRevivesABackupThatComesBackFromACopy(t *testing.T) {
+	f := newFixture(t, testKey)
+	ctx := context.Background()
+	rec := f.backup(t)
+	copyOffSite, err := os.ReadFile(f.file(rec))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(f.file(rec)); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.svc.Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := f.svc.Get(ctx, rec.ID); got.Status != StatusMissing {
+		t.Fatalf("een verdwenen bestand staat op %s", got.Status)
+	}
+	if err := os.WriteFile(f.file(rec), copyOffSite, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.svc.Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := f.svc.Get(ctx, rec.ID); got.Status != StatusOK {
+		t.Fatalf("een teruggezette kopie staat op %s, verwacht ok", got.Status)
+	}
+}
+
 func TestDiskFullIsItsOwnFailure(t *testing.T) {
 	f := newFixture(t, testKey)
 	f.svc.o.Create = func(string) (*os.File, error) { return os.OpenFile("/dev/full", os.O_WRONLY, 0) }
