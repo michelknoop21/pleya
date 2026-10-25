@@ -54,6 +54,12 @@ ids:
   - id: settings.header
     role: region
     instanceable: false
+  - id: settings.back
+    role: button
+    instanceable: false
+  - id: settings.choice.option
+    role: list.item
+    instanceable: true
   - id: screen.local_library
     role: screen
     instanceable: false

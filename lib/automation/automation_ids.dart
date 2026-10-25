@@ -89,6 +89,14 @@ class AutomationIds {
   /// large title with its artwork panel. `state.artwork` says whether the
   /// panel shows a backdrop from the library (true) or the brand fallback.
   static const String settingsHeader = 'settings.header';
+
+  /// The back chevron on the line of the Studio header's large title
+  /// (A-24b). Present only while there is a route to go back to.
+  static const String settingsBack = 'settings.back';
+
+  /// One option of a settings picker (`showSelectionDialog`), instance = its
+  /// place in the list from 0; `state.selected` is the current value.
+  static const String settingsChoiceOption = 'settings.choice.option';
   static const String screenLocalLibrary = 'screen.local_library';
   static const String localLibraryEnable = 'local_library.enable';
   static const String localLibraryWifi = 'local_library.wifi';
@@ -874,6 +882,8 @@ class AutomationIds {
     {'id': screenSettings, 'role': 'screen', 'instanceable': false},
     {'id': settingsTile, 'role': 'list.item', 'instanceable': true},
     {'id': settingsHeader, 'role': 'region', 'instanceable': false},
+    {'id': settingsBack, 'role': 'button', 'instanceable': false},
+    {'id': settingsChoiceOption, 'role': 'list.item', 'instanceable': true},
     {'id': screenLocalLibrary, 'role': 'screen', 'instanceable': false},
     {'id': localLibraryEnable, 'role': 'switch', 'instanceable': false},
     {'id': localLibraryWifi, 'role': 'switch', 'instanceable': false},

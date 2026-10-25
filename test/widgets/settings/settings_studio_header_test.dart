@@ -8,6 +8,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -16,7 +17,6 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/providers/discover_provider.dart';
 import 'package:pleya/theme/mono_theme.dart';
-import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/optimized_media_image.dart';
 import 'package:pleya/widgets/pleya_logo.dart';
@@ -127,34 +127,82 @@ void main() {
   });
 
   group('settings page on an iPhone', () {
-    testWidgets('opens on the Studio header with the bar title left out', (tester) async {
+    testWidgets('opens on the Studio header, no bar above it and one title at rest', (tester) async {
       await pump(tester, page());
 
       expect(find.byType(SettingsStudioHeader), findsOneWidget);
+      expect(find.byType(AppBar), findsNothing, reason: 'A-24b: the series has no bar above the header');
       expect(find.text('Weergave'), findsOneWidget, reason: 'one title at rest: the large one');
-      final big = tester.getRect(find.text('Weergave'));
-      expect(big.top, greaterThanOrEqualTo(kToolbarHeight), reason: 'below the pinned bar, not in it');
     }, variant: _iPhone);
 
-    testWidgets('the bar shows its title once the header has scrolled under it', (tester) async {
+    testWidgets('the compact bar takes the title once the header has scrolled under the status bar', (tester) async {
       await pump(tester, page(rows: 20));
-      final tk = tokens(tester.element(find.byType(SettingsStudioHeader)));
-      expect(
-        tester.widget<AppBar>(find.byType(AppBar)).backgroundColor,
-        settingsStudioWashTop(tk),
-        reason: 'the bar carries the header wash while the header is in view',
-      );
+      expect(find.byType(SettingsStudioBackButton), findsNothing, reason: 'a root page has nothing to go back to');
 
       await tester.drag(find.byType(Scrollable).first, const Offset(0, -300));
       await tester.pumpAndSettle();
-      expect(tester.widget<AppBar>(find.byType(AppBar)).backgroundColor, isNot(settingsStudioWashTop(tk)));
-
-      final inBar = find.descendant(of: find.byType(AppBar), matching: find.text('Weergave'));
+      final inBar = find.descendant(of: find.byType(SettingsStudioCompactBar), matching: find.text('Weergave'));
       expect(inBar, findsOneWidget);
+      expect(tester.getRect(inBar).top, lessThan(kSettingsStudioBarHeight + 1));
 
       await tester.drag(find.byType(Scrollable).first, const Offset(0, 600));
       await tester.pumpAndSettle();
-      expect(find.descendant(of: find.byType(AppBar), matching: find.text('Weergave')), findsNothing);
+      expect(find.descendant(of: find.byType(SettingsStudioCompactBar), matching: find.text('Weergave')), findsNothing);
+    }, variant: _iPhone);
+
+    testWidgets('a pushed page draws the back chevron on the line of its title, and it goes back', (tester) async {
+      await pump(
+        tester,
+        Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page())),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      final back = find.byType(SettingsStudioBackButton);
+      expect(back, findsOneWidget);
+      final title = tester.getRect(find.text('Weergave'));
+      final chevron = tester.getRect(back);
+      expect(chevron.right, lessThanOrEqualTo(title.left), reason: 'the chevron precedes the title');
+      expect((chevron.center.dy - title.center.dy).abs(), lessThan(4), reason: 'on the same line');
+      expect(chevron.width, greaterThanOrEqualTo(44));
+      expect(tester.getSemantics(back), matchesSemantics(isButton: true, hasTapAction: true, label: 'Back'));
+
+      await tester.tap(back);
+      await tester.pumpAndSettle();
+      expect(find.text('open'), findsOneWidget);
+      expect(find.byType(SettingsStudioHeader), findsNothing);
+    }, variant: _iPhone);
+
+    testWidgets('the main page carries its section and tagline under the title', (tester) async {
+      await pump(
+        tester,
+        Scaffold(
+          body: SettingsStudioHeader(
+            title: 'Instellingen',
+            section: 'Persoonlijk',
+            tagline: 'Maak Pleya helemaal van jou.',
+          ),
+        ),
+      );
+      final eyebrow = tester.getRect(find.text('PLEYA · PERSOONLIJK'));
+      final tagline = tester.getRect(find.text('Maak Pleya helemaal van jou.'));
+      expect(eyebrow.top, greaterThan(tester.getRect(find.text('Instellingen')).bottom));
+      expect(tagline.top, greaterThan(eyebrow.bottom));
+    }, variant: _iPhone);
+
+    testWidgets('the status bar ink follows the theme, light glyphs on dark and dark on light', (tester) async {
+      await pump(tester, page());
+      final region = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(
+        find.byType(AnnotatedRegion<SystemUiOverlayStyle>).first,
+      );
+      expect(region.value, SystemUiOverlayStyle.light);
     }, variant: _iPhone);
 
     testWidgets('a long title fits a 320 pt phone without overflow or a clipped word', (tester) async {
