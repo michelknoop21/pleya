@@ -19,6 +19,7 @@ import '../media/media_item_types.dart';
 import '../media/media_kind.dart';
 import '../media/media_server_client.dart';
 import 'api_cache.dart';
+import 'pleya_server_client.dart' show PleyaServerClient;
 import 'download_artwork_helpers.dart';
 import 'download_artwork_service.dart';
 import 'download_task_records.dart';
@@ -220,6 +221,13 @@ class DownloadManagerService {
       return _clientResolver(serverId, clientScopeId: clientScopeId);
     }
     return _fallbackClient;
+  }
+
+  /// The digest Pleya Server states for a download that finished after an app
+  /// restart. Other backends state none.
+  Future<String?> _digestAfterRestart(String globalKey, String url) async {
+    final client = await _getClientForDownloadKey(globalKey);
+    return client is PleyaServerClient ? client.expectedDigestForUrl(url) : null;
   }
 
   Future<MediaServerClient?> _getClientForDownloadKey(String globalKey) async {
@@ -1912,9 +1920,16 @@ class DownloadManagerService {
         }
       }
 
-      final expected = ctx?.expectedSha256;
-      if (expected != null && ctx != null && !ctx.isSafMode) {
-        await verifyDownloadDigest(ctx.filePath, expected);
+      // The digest lives in memory, so after a restart ask the server again.
+      if (ctx != null) {
+        final expected = ctx.expectedSha256;
+        if (expected != null && !ctx.isSafMode) await verifyDownloadDigest(ctx.filePath, expected);
+      } else if (task is! UriDownloadTask) {
+        await verifyDownloadAfterRestart(
+          '${task.directory}/${task.filename}',
+          () => _digestAfterRestart(globalKey, task.url),
+          label: globalKey,
+        );
       }
 
       await _database.updateVideoFilePath(globalKey, storedPath);
@@ -3076,13 +3091,41 @@ class DownloadManagerService {
 /// Hash the finished file and compare it with the digest the server stated. A
 /// mismatch removes the file and fails the download, so a truncated or
 /// corrupted copy never reaches the library. Without a stated digest nothing is
-/// checked, and a download recovered after a restart has none in memory.
+/// checked.
 @visibleForTesting
 Future<void> verifyDownloadDigest(String filePath, String expected) async {
   final actual = (await sha256.bind(File(filePath).openRead()).first).toString();
   if (actual == expected.toLowerCase()) return;
   await File(filePath).delete();
   throw Exception('Download digest mismatch');
+}
+
+/// [verifyDownloadDigest] for a download whose in-memory context is gone. The
+/// expected digest is asked again; a missing file, no stated digest or an
+/// unreachable server leaves the download in place with a logged skipped check,
+/// only a digest that disagrees with the file fails it.
+@visibleForTesting
+Future<void> verifyDownloadAfterRestart(
+  String filePath,
+  Future<String?> Function() fetchExpected, {
+  String label = '',
+}) async {
+  if (!await File(filePath).exists()) {
+    appLogger.w('Digest check skipped for $label: file not found at $filePath');
+    return;
+  }
+  final String? expected;
+  try {
+    expected = await fetchExpected();
+  } catch (e) {
+    appLogger.w('Digest check skipped for $label: server unreachable', error: e);
+    return;
+  }
+  if (expected == null) {
+    appLogger.w('Digest check skipped for $label: no digest stated');
+    return;
+  }
+  await verifyDownloadDigest(filePath, expected);
 }
 
 String? downloadExtensionFromUrl(String url) {
