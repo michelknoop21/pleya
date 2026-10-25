@@ -1655,6 +1655,11 @@
     "linkPlex": "Tilknyt Plex-konto",
     "addJellyfin": "Tilføj Jellyfin",
     "addEmby": "Tilføj Emby",
-    "addPleyaServer": "Tilføj Pleya Server"
+    "addPleyaServer": "Tilføj Pleya Server",
+    "tvFooterHint": "Menu: tilbage · Vælg: åbn eller skift",
+    "video": "Video",
+    "controls": "Betjening",
+    "diagnostics": "Diagnose",
+    "activeProfile": "Aktiv profil"
   }
 }

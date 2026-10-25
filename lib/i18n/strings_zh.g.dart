@@ -1916,6 +1916,11 @@ class _TranslationsSettingsStudioZh extends TranslationsSettingsStudioEn {
 	@override String get addJellyfin => '添加 Jellyfin';
 	@override String get addEmby => '添加 Emby';
 	@override String get addPleyaServer => '添加 Pleya Server';
+	@override String get tvFooterHint => '菜单：返回 · 选择：打开或切换';
+	@override String get video => '视频';
+	@override String get controls => '控制';
+	@override String get diagnostics => '诊断';
+	@override String get activeProfile => '当前资料';
 }
 
 // Path: search.filters
@@ -3843,6 +3848,11 @@ extension on TranslationsZh {
 			'settingsStudio.addJellyfin' => '添加 Jellyfin',
 			'settingsStudio.addEmby' => '添加 Emby',
 			'settingsStudio.addPleyaServer' => '添加 Pleya Server',
+			'settingsStudio.tvFooterHint' => '菜单：返回 · 选择：打开或切换',
+			'settingsStudio.video' => '视频',
+			'settingsStudio.controls' => '控制',
+			'settingsStudio.diagnostics' => '诊断',
+			'settingsStudio.activeProfile' => '当前资料',
 			_ => null,
 		};
 	}

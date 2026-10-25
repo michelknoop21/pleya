@@ -1655,6 +1655,11 @@
     "linkPlex": "Vincular cuenta de Plex",
     "addJellyfin": "Añadir Jellyfin",
     "addEmby": "Añadir Emby",
-    "addPleyaServer": "Añadir Pleya Server"
+    "addPleyaServer": "Añadir Pleya Server",
+    "tvFooterHint": "Menú: atrás · Seleccionar: abrir o cambiar",
+    "video": "Vídeo",
+    "controls": "Controles",
+    "diagnostics": "Diagnóstico",
+    "activeProfile": "Perfil activo"
   }
 }

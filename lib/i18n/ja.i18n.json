@@ -1655,6 +1655,11 @@
     "linkPlex": "Plex アカウントをリンク",
     "addJellyfin": "Jellyfin を追加",
     "addEmby": "Emby を追加",
-    "addPleyaServer": "Pleya Server を追加"
+    "addPleyaServer": "Pleya Server を追加",
+    "tvFooterHint": "メニュー: 戻る · 選択: 開く・切り替え",
+    "video": "ビデオ",
+    "controls": "操作",
+    "diagnostics": "診断",
+    "activeProfile": "使用中のプロフィール"
   }
 }

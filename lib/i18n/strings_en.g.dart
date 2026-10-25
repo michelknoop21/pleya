@@ -6738,6 +6738,21 @@ class TranslationsSettingsStudioEn {
 
 	/// en: 'Add Pleya Server'
 	String get addPleyaServer => 'Add Pleya Server';
+
+	/// en: 'Menu: back · Select: open or switch'
+	String get tvFooterHint => 'Menu: back · Select: open or switch';
+
+	/// en: 'Video'
+	String get video => 'Video';
+
+	/// en: 'Controls'
+	String get controls => 'Controls';
+
+	/// en: 'Diagnostics'
+	String get diagnostics => 'Diagnostics';
+
+	/// en: 'Active profile'
+	String get activeProfile => 'Active profile';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -12909,6 +12924,11 @@ extension on Translations {
 			'settingsStudio.addJellyfin' => 'Add Jellyfin',
 			'settingsStudio.addEmby' => 'Add Emby',
 			'settingsStudio.addPleyaServer' => 'Add Pleya Server',
+			'settingsStudio.tvFooterHint' => 'Menu: back · Select: open or switch',
+			'settingsStudio.video' => 'Video',
+			'settingsStudio.controls' => 'Controls',
+			'settingsStudio.diagnostics' => 'Diagnostics',
+			'settingsStudio.activeProfile' => 'Active profile',
 			_ => null,
 		};
 	}

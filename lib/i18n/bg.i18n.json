@@ -1655,6 +1655,11 @@
     "linkPlex": "Свържи Plex акаунт",
     "addJellyfin": "Добави Jellyfin",
     "addEmby": "Добави Emby",
-    "addPleyaServer": "Добави Pleya Server"
+    "addPleyaServer": "Добави Pleya Server",
+    "tvFooterHint": "Меню: назад · Избор: отвори или превключи",
+    "video": "Видео",
+    "controls": "Управление",
+    "diagnostics": "Диагностика",
+    "activeProfile": "Активен профил"
   }
 }

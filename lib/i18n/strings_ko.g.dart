@@ -1916,6 +1916,11 @@ class _TranslationsSettingsStudioKo extends TranslationsSettingsStudioEn {
 	@override String get addJellyfin => 'Jellyfin 추가';
 	@override String get addEmby => 'Emby 추가';
 	@override String get addPleyaServer => 'Pleya Server 추가';
+	@override String get tvFooterHint => '메뉴: 뒤로 · 선택: 열기 또는 전환';
+	@override String get video => '비디오';
+	@override String get controls => '조작';
+	@override String get diagnostics => '진단';
+	@override String get activeProfile => '현재 프로필';
 }
 
 // Path: search.filters
@@ -3843,6 +3848,11 @@ extension on TranslationsKo {
 			'settingsStudio.addJellyfin' => 'Jellyfin 추가',
 			'settingsStudio.addEmby' => 'Emby 추가',
 			'settingsStudio.addPleyaServer' => 'Pleya Server 추가',
+			'settingsStudio.tvFooterHint' => '메뉴: 뒤로 · 선택: 열기 또는 전환',
+			'settingsStudio.video' => '비디오',
+			'settingsStudio.controls' => '조작',
+			'settingsStudio.diagnostics' => '진단',
+			'settingsStudio.activeProfile' => '현재 프로필',
 			_ => null,
 		};
 	}

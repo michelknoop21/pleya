@@ -1916,6 +1916,11 @@ class _TranslationsSettingsStudioJa extends TranslationsSettingsStudioEn {
 	@override String get addJellyfin => 'Jellyfin を追加';
 	@override String get addEmby => 'Emby を追加';
 	@override String get addPleyaServer => 'Pleya Server を追加';
+	@override String get tvFooterHint => 'メニュー: 戻る · 選択: 開く・切り替え';
+	@override String get video => 'ビデオ';
+	@override String get controls => '操作';
+	@override String get diagnostics => '診断';
+	@override String get activeProfile => '使用中のプロフィール';
 }
 
 // Path: search.filters
@@ -3843,6 +3848,11 @@ extension on TranslationsJa {
 			'settingsStudio.addJellyfin' => 'Jellyfin を追加',
 			'settingsStudio.addEmby' => 'Emby を追加',
 			'settingsStudio.addPleyaServer' => 'Pleya Server を追加',
+			'settingsStudio.tvFooterHint' => 'メニュー: 戻る · 選択: 開く・切り替え',
+			'settingsStudio.video' => 'ビデオ',
+			'settingsStudio.controls' => '操作',
+			'settingsStudio.diagnostics' => '診断',
+			'settingsStudio.activeProfile' => '使用中のプロフィール',
 			_ => null,
 		};
 	}

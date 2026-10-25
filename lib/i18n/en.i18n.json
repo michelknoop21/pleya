@@ -3214,6 +3214,11 @@
     "linkPlex": "Link a Plex account",
     "addJellyfin": "Add Jellyfin",
     "addEmby": "Add Emby",
-    "addPleyaServer": "Add Pleya Server"
+    "addPleyaServer": "Add Pleya Server",
+    "tvFooterHint": "Menu: back · Select: open or switch",
+    "video": "Video",
+    "controls": "Controls",
+    "diagnostics": "Diagnostics",
+    "activeProfile": "Active profile"
   }
 }

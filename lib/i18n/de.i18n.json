@@ -1655,6 +1655,11 @@
     "linkPlex": "Plex-Konto verknüpfen",
     "addJellyfin": "Jellyfin hinzufügen",
     "addEmby": "Emby hinzufügen",
-    "addPleyaServer": "Pleya Server hinzufügen"
+    "addPleyaServer": "Pleya Server hinzufügen",
+    "tvFooterHint": "Menü: zurück · Auswählen: öffnen oder umschalten",
+    "video": "Video",
+    "controls": "Steuerung",
+    "diagnostics": "Diagnose",
+    "activeProfile": "Aktives Profil"
   }
 }

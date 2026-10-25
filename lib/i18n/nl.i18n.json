@@ -3214,6 +3214,11 @@
     "linkPlex": "Plex-account koppelen",
     "addJellyfin": "Jellyfin toevoegen",
     "addEmby": "Emby toevoegen",
-    "addPleyaServer": "Pleya Server toevoegen"
+    "addPleyaServer": "Pleya Server toevoegen",
+    "tvFooterHint": "Menu: terug · Selecteer: openen of schakelen",
+    "video": "Video",
+    "controls": "Besturing",
+    "diagnostics": "Diagnose",
+    "activeProfile": "Actief profiel"
   }
 }

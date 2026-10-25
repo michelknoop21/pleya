@@ -1655,6 +1655,11 @@
     "linkPlex": "Koble til Plex-konto",
     "addJellyfin": "Legg til Jellyfin",
     "addEmby": "Legg til Emby",
-    "addPleyaServer": "Legg til Pleya Server"
+    "addPleyaServer": "Legg til Pleya Server",
+    "tvFooterHint": "Meny: tilbake · Velg: åpne eller veksle",
+    "video": "Video",
+    "controls": "Kontroller",
+    "diagnostics": "Diagnostikk",
+    "activeProfile": "Aktiv profil"
   }
 }

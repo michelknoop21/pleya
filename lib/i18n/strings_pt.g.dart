@@ -1916,6 +1916,11 @@ class _TranslationsSettingsStudioPt extends TranslationsSettingsStudioEn {
 	@override String get addJellyfin => 'Adicionar Jellyfin';
 	@override String get addEmby => 'Adicionar Emby';
 	@override String get addPleyaServer => 'Adicionar Pleya Server';
+	@override String get tvFooterHint => 'Menu: voltar · Selecionar: abrir ou alternar';
+	@override String get video => 'Vídeo';
+	@override String get controls => 'Controles';
+	@override String get diagnostics => 'Diagnóstico';
+	@override String get activeProfile => 'Perfil ativo';
 }
 
 // Path: search.filters
@@ -3843,6 +3848,11 @@ extension on TranslationsPt {
 			'settingsStudio.addJellyfin' => 'Adicionar Jellyfin',
 			'settingsStudio.addEmby' => 'Adicionar Emby',
 			'settingsStudio.addPleyaServer' => 'Adicionar Pleya Server',
+			'settingsStudio.tvFooterHint' => 'Menu: voltar · Selecionar: abrir ou alternar',
+			'settingsStudio.video' => 'Vídeo',
+			'settingsStudio.controls' => 'Controles',
+			'settingsStudio.diagnostics' => 'Diagnóstico',
+			'settingsStudio.activeProfile' => 'Perfil ativo',
 			_ => null,
 		};
 	}

@@ -1655,6 +1655,11 @@
     "linkPlex": "Plex 계정 연결",
     "addJellyfin": "Jellyfin 추가",
     "addEmby": "Emby 추가",
-    "addPleyaServer": "Pleya Server 추가"
+    "addPleyaServer": "Pleya Server 추가",
+    "tvFooterHint": "메뉴: 뒤로 · 선택: 열기 또는 전환",
+    "video": "비디오",
+    "controls": "조작",
+    "diagnostics": "진단",
+    "activeProfile": "현재 프로필"
   }
 }

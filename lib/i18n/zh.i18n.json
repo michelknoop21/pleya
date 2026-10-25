@@ -1655,6 +1655,11 @@
     "linkPlex": "关联 Plex 账户",
     "addJellyfin": "添加 Jellyfin",
     "addEmby": "添加 Emby",
-    "addPleyaServer": "添加 Pleya Server"
+    "addPleyaServer": "添加 Pleya Server",
+    "tvFooterHint": "菜单：返回 · 选择：打开或切换",
+    "video": "视频",
+    "controls": "控制",
+    "diagnostics": "诊断",
+    "activeProfile": "当前资料"
   }
 }

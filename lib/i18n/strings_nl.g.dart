@@ -2764,6 +2764,11 @@ class _TranslationsSettingsStudioNl extends TranslationsSettingsStudioEn {
 	@override String get addJellyfin => 'Jellyfin toevoegen';
 	@override String get addEmby => 'Emby toevoegen';
 	@override String get addPleyaServer => 'Pleya Server toevoegen';
+	@override String get tvFooterHint => 'Menu: terug · Selecteer: openen of schakelen';
+	@override String get video => 'Video';
+	@override String get controls => 'Besturing';
+	@override String get diagnostics => 'Diagnose';
+	@override String get activeProfile => 'Actief profiel';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -7294,6 +7299,11 @@ extension on TranslationsNl {
 			'settingsStudio.addJellyfin' => 'Jellyfin toevoegen',
 			'settingsStudio.addEmby' => 'Emby toevoegen',
 			'settingsStudio.addPleyaServer' => 'Pleya Server toevoegen',
+			'settingsStudio.tvFooterHint' => 'Menu: terug · Selecteer: openen of schakelen',
+			'settingsStudio.video' => 'Video',
+			'settingsStudio.controls' => 'Besturing',
+			'settingsStudio.diagnostics' => 'Diagnose',
+			'settingsStudio.activeProfile' => 'Actief profiel',
 			_ => null,
 		};
 	}

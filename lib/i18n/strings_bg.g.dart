@@ -1916,6 +1916,11 @@ class _TranslationsSettingsStudioBg extends TranslationsSettingsStudioEn {
 	@override String get addJellyfin => 'Добави Jellyfin';
 	@override String get addEmby => 'Добави Emby';
 	@override String get addPleyaServer => 'Добави Pleya Server';
+	@override String get tvFooterHint => 'Меню: назад · Избор: отвори или превключи';
+	@override String get video => 'Видео';
+	@override String get controls => 'Управление';
+	@override String get diagnostics => 'Диагностика';
+	@override String get activeProfile => 'Активен профил';
 }
 
 // Path: search.filters
@@ -3843,6 +3848,11 @@ extension on TranslationsBg {
 			'settingsStudio.addJellyfin' => 'Добави Jellyfin',
 			'settingsStudio.addEmby' => 'Добави Emby',
 			'settingsStudio.addPleyaServer' => 'Добави Pleya Server',
+			'settingsStudio.tvFooterHint' => 'Меню: назад · Избор: отвори или превключи',
+			'settingsStudio.video' => 'Видео',
+			'settingsStudio.controls' => 'Управление',
+			'settingsStudio.diagnostics' => 'Диагностика',
+			'settingsStudio.activeProfile' => 'Активен профил',
 			_ => null,
 		};
 	}
