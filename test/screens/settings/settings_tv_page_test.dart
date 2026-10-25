@@ -13,11 +13,13 @@ import 'package:pleya/automation/automation_ids.dart';
 import 'package:pleya/connection/connection.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/focus/focusable_wrapper.dart';
+import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/mixins/refreshable.dart';
 import 'package:pleya/models/plex/plex_config.dart';
 import 'package:pleya/profiles/active_profile_provider.dart';
 import 'package:pleya/profiles/profile.dart';
@@ -77,7 +79,10 @@ Future<void> _pumpTvSettings(WidgetTester tester, {MultiServerManager? manager})
           Provider<ProfileRegistry>.value(value: ProfileRegistry(_db)),
           ChangeNotifierProvider<ActiveProfileProvider>(create: (_) => _FakeActiveProfile()),
         ],
-        child: MaterialApp(theme: monoTheme(dark: true), home: const SettingsScreen()),
+        // Keyboard mode, so `focusActiveTabIfReady` acts as it does on a remote.
+        child: InputModeTracker(
+          child: MaterialApp(theme: monoTheme(dark: true), home: const SettingsScreen()),
+        ),
       ),
     ),
   );
@@ -126,6 +131,16 @@ Future<void> _focus(WidgetTester tester, Finder finder) async {
 Future<void> _choose(WidgetTester tester, String title) async {
   await _focus(tester, _category(_categoryIndex(tester, title)));
   await _press(tester, LogicalKeyboardKey.select);
+}
+
+/// The shell handing the remote back to the page (DOWN from the top bar):
+/// `TvNestedSurface.focusEntry` calls the screen's `focusActiveTabIfReady`.
+Future<void> _restore(WidgetTester tester) async {
+  FocusManager.instance.primaryFocus?.unfocus();
+  await tester.pump();
+  (tester.state(find.byType(SettingsScreen)) as FocusableTab).focusActiveTabIfReady();
+  await tester.pump();
+  await tester.pump();
 }
 
 MediaItem _poster(String id, {String? thumb}) =>
@@ -245,6 +260,59 @@ void main() {
       await tester.pumpAndSettle();
       expect(_row('view_logs'), findsOneWidget);
       expect(_hasFocus(tester, _row('view_logs')), isTrue);
+      await _unmount(tester);
+    });
+
+    // Review I-1: only the chosen category's rows are mounted, so the
+    // remembered row can sit in a category that is not built. Flutter keeps a
+    // focus request on a detached node and grants it whenever the node is
+    // attached again, which used to pull focus off the rail on a later SELECT.
+    testWidgets('a restore chooses the remembered row\'s category, and the rail keeps its SELECT', (tester) async {
+      await tester.runAsync(() => SettingsService.getInstance());
+      await _pumpTvSettings(tester);
+      final advanced = _categoryIndex(tester, t.settings.advanced);
+      final connections = _categoryIndex(tester, t.connections.sectionTitle);
+      final marker = find.byKey(TvStudioCategoryPill.markerKey);
+
+      await _focus(tester, _category(advanced));
+      await _press(tester, LogicalKeyboardKey.arrowRight);
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+      expect(_hasFocus(tester, _row('debug_logging')), isTrue);
+      await _press(tester, LogicalKeyboardKey.arrowLeft);
+      await _focus(tester, _category(connections));
+      await _press(tester, LogicalKeyboardKey.select);
+      expect(_row('debug_logging'), findsNothing);
+
+      await _restore(tester);
+      expect(_hasFocus(tester, _row('debug_logging')), isTrue);
+      expect(find.descendant(of: _category(advanced), matching: marker), findsOneWidget);
+
+      // Away from the row again, then SELECT on its category: the rail keeps
+      // the remote, as a category SELECT always does.
+      await _press(tester, LogicalKeyboardKey.arrowLeft);
+      await _focus(tester, _category(connections));
+      await _press(tester, LogicalKeyboardKey.select);
+      await _focus(tester, _category(advanced));
+      await _press(tester, LogicalKeyboardKey.select);
+      await tester.pump();
+      expect(_hasFocus(tester, _category(advanced)), isTrue);
+      await _unmount(tester);
+    });
+
+    testWidgets('a restore with no remembered row lands on the fallback row, not on a detached one', (tester) async {
+      await tester.runAsync(() => SettingsService.getInstance());
+      await _pumpTvSettings(tester);
+      await _choose(tester, t.settings.advanced);
+
+      await _restore(tester);
+      expect(_hasFocus(tester, _row('appearance')), isTrue);
+
+      final advanced = _categoryIndex(tester, t.settings.advanced);
+      await _focus(tester, _category(advanced));
+      await _press(tester, LogicalKeyboardKey.select);
+      await tester.pump();
+      expect(_hasFocus(tester, _category(advanced)), isTrue);
       await _unmount(tester);
     });
 

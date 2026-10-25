@@ -33,7 +33,13 @@ const double kTvSettingsPreviewWidthPt = 520;
 
 /// One category: its rail label, the rows it shows, and an optional preview.
 class TvSettingsCategory {
-  const TvSettingsCategory({required this.id, required this.title, required this.body, this.preview});
+  const TvSettingsCategory({
+    required this.id,
+    required this.title,
+    required this.body,
+    this.preview,
+    this.rowKeys = const [],
+  });
 
   /// Stable across rebuilds, so the chosen category survives a category
   /// appearing or disappearing before it (an update, iCloud).
@@ -46,6 +52,10 @@ class TvSettingsCategory {
   /// Shown to the right of the rows. Null gives that room to the rows; a
   /// preview is only there when it shows something the rows cannot.
   final Widget? preview;
+
+  /// The focus-memory keys of the rows in [body], so a focus restore can
+  /// choose this category before it focuses one of them.
+  final List<String> rowKeys;
 }
 
 class TvSettingsCategories extends StatefulWidget {
@@ -78,10 +88,10 @@ class TvSettingsCategories extends StatefulWidget {
   final double? maxBodyWidthPt;
 
   @override
-  State<TvSettingsCategories> createState() => _TvSettingsCategoriesState();
+  State<TvSettingsCategories> createState() => TvSettingsCategoriesState();
 }
 
-class _TvSettingsCategoriesState extends State<TvSettingsCategories> {
+class TvSettingsCategoriesState extends State<TvSettingsCategories> {
   String? _selectedId;
   final List<FocusNode> _categoryNodes = [];
   final FocusNode _rowsNode = FocusNode(debugLabel: 'settings.categories.rows', skipTraversal: true);
@@ -108,6 +118,34 @@ class _TvSettingsCategoriesState extends State<TvSettingsCategories> {
   }
 
   void _select(int index) => setState(() => _selectedId = widget.categories[index].id);
+
+  /// Focus restore for a remembered row ([key], [node]). Only the chosen
+  /// category's rows are mounted, so this chooses the category that holds
+  /// [key] first and focuses [node] once it is attached.
+  ///
+  /// [node] is never asked while detached: Flutter keeps such a request and
+  /// grants it whenever the node is attached again, which would pull the
+  /// remote off the rail on a later category SELECT. Returns false when no
+  /// category holds [key].
+  bool focusRow(String key, FocusNode node) {
+    final index = widget.categories.indexWhere((c) => c.rowKeys.contains(key));
+    if (index < 0) return false;
+    if (node.context != null && index == _selected) {
+      node.requestFocus();
+      return true;
+    }
+    _select(index);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && node.context != null) node.requestFocus();
+    });
+    return true;
+  }
+
+  /// The chosen category's pill, for a restore with no row to return to.
+  void focusChosenCategory() {
+    final selected = _selected;
+    if (_categoryNodes.length > selected) _categoryNodes[selected].requestFocus();
+  }
 
   // APP1. The columns used to be joined by geometry alone: LEFT only found the
   // categories from a row level with one, and RIGHT landed on whatever row sat

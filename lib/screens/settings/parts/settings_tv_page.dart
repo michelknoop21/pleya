@@ -383,6 +383,7 @@ extension _SettingsTvPage on _SettingsScreenState {
         // the look its first row sets. Logs, reset and network rows have
         // nothing to show beside them, so their rows take the room.
         return TvSettingsCategories(
+          key: _tvCategories,
           title: t.settings.title,
           automationInstance: 'settings',
           categoryAutomationId: AutomationIds.settingsCategory,
@@ -394,6 +395,7 @@ extension _SettingsTvPage on _SettingsScreenState {
                 id: section.label!,
                 title: section.label!,
                 body: TvSettingsRowList(items: section.items, nodes: _focusTracker, automationInstance: 'settings'),
+                rowKeys: [for (final item in section.items) item.key],
                 preview: section.label == t.settings.sectionLibrary
                     ? TvSettingsLibraryPreview(title: t.settings.appearance, summary: appearanceSummary)
                     : null,
@@ -402,6 +404,19 @@ extension _SettingsTvPage on _SettingsScreenState {
         );
       },
     );
+  }
+
+  /// A-24 focus restore on the TV page: the remembered row, else
+  /// [fallbackKey], each through its own category, else the chosen category.
+  /// False off TV, where every row is mounted and the tracker restores alone.
+  bool _restoreTvFocus(String fallbackKey) {
+    final categories = _tvCategories.currentState;
+    if (categories == null) return false;
+    for (final key in {?_focusTracker.lastFocusedKey, fallbackKey}) {
+      if (categories.focusRow(key, _focusTracker.get(key))) return true;
+    }
+    categories.focusChosenCategory();
+    return true;
   }
 
   bool get _hasPendingUpdate => _updateInfo != null && _updateInfo!['hasUpdate'] == true;
