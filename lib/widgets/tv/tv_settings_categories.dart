@@ -56,6 +56,7 @@ class TvSettingsCategories extends StatefulWidget {
     required this.automationInstance,
     required this.categoryAutomationId,
     this.autofocusFirstCategory = true,
+    this.maxBodyWidthPt,
   });
 
   final String title;
@@ -71,6 +72,10 @@ class TvSettingsCategories extends StatefulWidget {
   /// focus to its remembered row through `FocusableTab`, and an autofocus
   /// here would race that.
   final bool autofocusFirstCategory;
+
+  /// Caps the rows column where a category has no preview, so a row's title
+  /// and value stay within one glance. Null lets the rows take the width.
+  final double? maxBodyWidthPt;
 
   @override
   State<TvSettingsCategories> createState() => _TvSettingsCategoriesState();
@@ -207,14 +212,18 @@ class _TvSettingsCategoriesState extends State<TvSettingsCategories> {
             child: Focus(
               focusNode: _rowsNode,
               onKeyEvent: _handleRowsKey,
-              child: ListView(
-                key: ValueKey(category.id),
-                padding: EdgeInsets.only(top: kTvAppearanceColumnsTopPt * pt),
-                children: [
-                  TvStudioEyebrow(category.title),
-                  SizedBox(height: kTvAppearanceLabelGapPt * pt),
-                  category.body,
-                ],
+              child: _bodyWidth(
+                pt,
+                preview == null ? widget.maxBodyWidthPt : null,
+                ListView(
+                  key: ValueKey(category.id),
+                  padding: EdgeInsets.only(top: kTvAppearanceColumnsTopPt * pt),
+                  children: [
+                    TvStudioEyebrow(category.title),
+                    SizedBox(height: kTvAppearanceLabelGapPt * pt),
+                    category.body,
+                  ],
+                ),
               ),
             ),
           ),
@@ -233,6 +242,17 @@ class _TvSettingsCategoriesState extends State<TvSettingsCategories> {
       children: const [],
     );
   }
+}
+
+Widget _bodyWidth(double pt, double? maxWidthPt, Widget child) {
+  if (maxWidthPt == null) return child;
+  return Align(
+    alignment: AlignmentDirectional.topStart,
+    child: ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidthPt * pt),
+      child: child,
+    ),
+  );
 }
 
 /// The category name over the rows, in the Studio accent ink.
@@ -300,7 +320,7 @@ class TvStudioCategoryPill extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: tvStudioCategoryLabel(tk, selected: selected),
+                color: tvStudioCategoryLabel(tk, selected: selected, focused: focused),
                 fontSize: TvHig.body * pt,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),

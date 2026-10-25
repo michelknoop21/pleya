@@ -20,6 +20,9 @@ import 'tv_menu_grid.dart';
 import 'tv_settings_studio_style.dart';
 import 'tv_unified_layout.dart';
 
+/// Widest share of a row its value may take before it ellipsizes.
+const double kTvSettingsValueMaxFraction = 0.6;
+
 /// A column of [TvSettingsRow]s with its own vertical walk.
 class TvSettingsRowList extends StatelessWidget {
   const TvSettingsRowList({super.key, required this.items, required this.nodes, required this.automationInstance});
@@ -152,68 +155,72 @@ class _RowContent extends StatelessWidget {
       fontWeight: FontWeight.w500,
     );
 
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                item.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: tk.text,
-                  fontSize: TvHig.body * pt,
-                  height: TvHig.bodyLeading / TvHig.body,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              // What the destination is for, where it has no value to show.
-              if (subtitle != null)
+    return LayoutBuilder(
+      builder: (context, constraints) => Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 Text(
-                  subtitle,
+                  item.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: valueStyle.copyWith(
-                    color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
-                    fontWeight: FontWeight.w400,
+                  style: TextStyle(
+                    color: tk.text,
+                    fontSize: TvHig.body * pt,
+                    height: TvHig.bodyLeading / TvHig.body,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-            ],
-          ),
-        ),
-        if (value != null) ...[
-          SizedBox(width: 24 * pt),
-          // At most half the row, so a long server name cannot push the
-          // title out.
-          Flexible(
-            child: Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.end,
-              style: valueStyle,
+                // What the destination is for, where it has no value to show.
+                if (subtitle != null)
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: valueStyle.copyWith(
+                      color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+              ],
             ),
           ),
+          if (value != null) ...[
+            SizedBox(width: 24 * pt),
+            // Up to [kTvSettingsValueMaxFraction] of the row, so a long server
+            // name cannot push the title out, while "OLED · Bibliotheek
+            // dichtheid 3" still fits beside a short title.
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: constraints.maxWidth * kTvSettingsValueMaxFraction),
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+                style: valueStyle,
+              ),
+            ),
+          ],
+          if (item.toggled != null) ...[
+            SizedBox(width: 16 * pt),
+            Icon(
+              item.toggled! ? Icons.toggle_on_rounded : Icons.toggle_off_rounded,
+              size: TvHig.headline * pt,
+              color: item.toggled! ? tvStudioMarkerColor(tk) : tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
+            ),
+          ] else if (item.onSelect != null) ...[
+            SizedBox(width: 12 * pt),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: TvHig.body * pt,
+              color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
+            ),
+          ],
         ],
-        if (item.toggled != null) ...[
-          SizedBox(width: 16 * pt),
-          Icon(
-            item.toggled! ? Icons.toggle_on_rounded : Icons.toggle_off_rounded,
-            size: TvHig.headline * pt,
-            color: item.toggled! ? tvStudioMarkerColor(tk) : tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
-          ),
-        ] else if (item.onSelect != null) ...[
-          SizedBox(width: 12 * pt),
-          Icon(
-            Icons.chevron_right_rounded,
-            size: TvHig.body * pt,
-            color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
-          ),
-        ],
-      ],
+      ),
     );
   }
 }

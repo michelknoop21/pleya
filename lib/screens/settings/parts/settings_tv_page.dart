@@ -387,6 +387,7 @@ extension _SettingsTvPage on _SettingsScreenState {
           automationInstance: 'settings',
           categoryAutomationId: AutomationIds.settingsCategory,
           autofocusFirstCategory: false,
+          maxBodyWidthPt: 1100,
           categories: [
             for (final section in sections)
               TvSettingsCategory(

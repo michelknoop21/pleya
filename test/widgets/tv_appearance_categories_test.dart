@@ -131,9 +131,12 @@ void main() {
     for (final (name, dark, oled) in [('Light', false, false), ('Dark', true, false), ('OLED', true, true)]) {
       test(name, () {
         final tk = monoTheme(dark: dark, oled: oled).extension<MonoTokens>()!;
-        final selected = tvStudioCategoryFill(tk, selected: true, focused: false);
-        final focused = tvStudioCategoryFill(tk, selected: false, focused: true);
-        final idle = tvStudioCategoryFill(tk, selected: false, focused: false);
+        // Fills are translucent; measure them composited on the page.
+        Color fill({required bool selected, required bool focused}) =>
+            Color.alphaBlend(tvStudioCategoryFill(tk, selected: selected, focused: focused), tk.bg);
+        final selected = fill(selected: true, focused: false);
+        final focused = fill(selected: false, focused: true);
+        final idle = fill(selected: false, focused: false);
         Color on(Color ink, Color fill) => Color.alphaBlend(ink, fill);
 
         // The bar is a non-text mark: 3:1 against the fill it sits on.
@@ -150,7 +153,7 @@ void main() {
         expect(ratio(ring, selected), greaterThan(3));
         // Eyebrow and row value ink.
         expect(ratio(tvStudioEyebrow(tk), tk.bg), greaterThan(4.5));
-        final row = tvStudioRowFill(tk, focused: true);
+        final row = Color.alphaBlend(tvStudioRowFill(tk, focused: true), tk.bg);
         expect(ratio(on(tk.text.withValues(alpha: 0.7), row), row), greaterThan(4.5));
         expect(ratio(tk.isLight ? tk.text : Colors.white, row), greaterThan(3));
       });
