@@ -16,19 +16,20 @@ function announcerStyle(): string {
   const source = readFileSync(join(kitRoot, 'src/core/sync/write_root.js'), 'utf8');
   const match = /id="svelte-announcer"[^>]*\sstyle="([^"]+)"/.exec(source);
   if (!match) throw new Error('announcer-stijl niet gevonden in Kit');
-  return match[1];
+  return match[1] ?? '';
 }
+
+const styleSrc = config.kit?.csp?.directives?.['style-src'] ?? [];
 
 describe('CSP style-src', () => {
   it('bevat de hash van de stijl die Kit nu op de announcer zet', () => {
     const hash = `sha256-${createHash('sha256').update(announcerStyle()).digest('base64')}`;
-    const styleSrc = config.kit.csp.directives['style-src'];
     expect(styleSrc).toContain(hash);
     expect(styleSrc).toContain('unsafe-hashes');
   });
 
   it('wijst een gewijzigde stijltekst af (negatieve controle)', () => {
     const hash = `sha256-${createHash('sha256').update(announcerStyle() + ';').digest('base64')}`;
-    expect(config.kit.csp.directives['style-src']).not.toContain(hash);
+    expect(styleSrc).not.toContain(hash);
   });
 });
