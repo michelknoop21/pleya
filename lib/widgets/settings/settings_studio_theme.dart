@@ -18,13 +18,15 @@
 /// * OLED: the page stays pure black and gets no wash; only the card warms.
 ///
 /// Switches take the anchors' coral instead of the brand red, on every
-/// platform; TV keeps its own off-state styling (`TvSwitchTheme`).
+/// platform; TV keeps its own off-state styling (`TvSwitchTheme`). Off TV the
+/// rows draw line icons instead of badges ([SettingsIconStyle.line]).
 library;
 
 import 'package:flutter/material.dart';
 
 import '../../theme/mono_tokens.dart';
 import '../../utils/platform_detector.dart';
+import 'settings_icon_badge.dart';
 
 /// Light page, card and raised fill (anchor `03`/`04`: #F9F5F2, #FFFDFB).
 const Color kStudioLightPage = Color(0xFFF9F5F2);
@@ -105,7 +107,10 @@ class SettingsStudioTheme extends StatelessWidget {
     final wash = PlatformDetector.isTV() ? settingsStudioWash(studio) : null;
     // Ink (ListTile fills, ripples) paints on the nearest Material, so one sits
     // above the page paint; otherwise the page colour would hide it.
-    final content = Material(type: MaterialType.transparency, child: child);
+    // Off TV the rows take the Studio line icons (anchor `01`); TV keeps its
+    // badges until its own rows are redrawn.
+    final rows = PlatformDetector.isTV() ? child : SettingsIconStyleScope(style: SettingsIconStyle.line, child: child);
+    final content = Material(type: MaterialType.transparency, child: rows);
     return _StudioScope(
       child: Theme(
         data: _studioThemeData(base, studio),

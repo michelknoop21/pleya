@@ -9,12 +9,14 @@ import '../utils/platform_detector.dart';
 import '../utils/tv_hig.dart';
 import 'app_icon.dart';
 import 'settings/settings_studio_style.dart';
+import 'settings/settings_icon_badge.dart';
 import 'settings_rows.dart';
 import 'tv/tv_unified_layout.dart';
 
 export 'settings_rows.dart';
 export 'settings/settings_studio_style.dart';
 export 'settings/settings_studio_theme.dart';
+export 'settings/settings_icon_badge.dart';
 
 /// Widest the settings content grows on desktop and TV. Full-width rows on a
 /// 1440pt window put the switch a hand's width away from its label, so the
@@ -352,35 +354,6 @@ class _SettingRowSurface extends StatelessWidget {
         ),
       ),
       child: child,
-    );
-  }
-}
-
-/// Icon in a tinted rounded square. Gives every row the same optical weight and
-/// keeps a long settings list from reading as undifferentiated text.
-class SettingsIconBadge extends StatelessWidget {
-  final IconData icon;
-  final Color? tint;
-
-  const SettingsIconBadge(this.icon, {super.key, this.tint});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = tokens(context);
-    final color = tint ?? t.text;
-    // DENS1: on TV a 44 pt badge around a Body-sized (29 pt) glyph, where the
-    // phone's 36/20 came out at 67/37 pt, taller than the text beside it.
-    final pt = PlatformDetector.isTV() ? TvHig.of(context) : null;
-    final box = pt == null ? 36.0 : 44 * pt;
-    return Container(
-      width: box,
-      height: box,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: t.isLight ? 0.08 : 0.12),
-        borderRadius: BorderRadius.circular(t.radiusSm),
-      ),
-      alignment: Alignment.center,
-      child: AppIcon(icon, fill: 1, size: pt == null ? 20 : TvHig.body * pt, color: color),
     );
   }
 }
