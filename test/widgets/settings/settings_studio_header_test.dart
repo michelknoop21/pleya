@@ -205,6 +205,16 @@ void main() {
       expect(region.value, SystemUiOverlayStyle.light);
     }, variant: _iPhone);
 
+    testWidgets('a title of a few words stays on one line, shrunk no further than 26 pt', (tester) async {
+      // The test face is wide (every glyph one em), so a short title stands
+      // in for "Bibliotheek & Home" on the device.
+      await pump(tester, page(title: 'Taal en tvs'));
+      final title = find.text('Taal en tvs');
+      final size = tester.widget<Text>(title).style!.fontSize!;
+      expect(size, inInclusiveRange(kSettingsStudioOneLineMinTitleSize, kSettingsStudioTitleSize));
+      expect(tester.getSize(title).height, lessThan(size * 1.6), reason: 'one line');
+    }, variant: _iPhone);
+
     testWidgets('a long title fits a 320 pt phone without overflow or a clipped word', (tester) async {
       await pump(tester, page(title: 'Taal en ondertitels'), width: 320);
 

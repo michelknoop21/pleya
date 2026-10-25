@@ -36,6 +36,10 @@ export 'settings_studio_bar.dart';
 /// Size of the large title, the iOS large-title size.
 const double kSettingsStudioTitleSize = 34;
 
+/// Smallest the large title shrinks to so that it stays on one line; below
+/// it the title wraps between its words instead.
+const double kSettingsStudioOneLineMinTitleSize = 26;
+
 /// Smallest the large title shrinks to when its longest word does not fit the
 /// line ("Bibliotheekzichtbaarheid" on 320 pt).
 const double kSettingsStudioMinTitleSize = 22;
@@ -223,8 +227,28 @@ class SettingsStudioHeader extends StatelessWidget {
       painter.dispose();
     }
     // One point of slack: a word measured at exactly the column width wraps.
-    if (widest <= 0 || widest < column - 1) return kSettingsStudioTitleSize;
+    if (widest <= 0) return kSettingsStudioTitleSize;
+    // The series keeps a title of a few words on one line ("Bibliotheek &
+    // Home"), running over the artwork: shrink it to one line while it stays
+    // at least 26 pt, and only then let it wrap between its words.
+    final whole = _width(context, title, style);
+    if (whole < column - 1) return kSettingsStudioTitleSize;
+    final oneLine = kSettingsStudioTitleSize * (column - 1) / whole;
+    if (oneLine >= kSettingsStudioOneLineMinTitleSize) return oneLine;
+    if (widest < column - 1) return kSettingsStudioTitleSize;
     return math.max(kSettingsStudioMinTitleSize, kSettingsStudioTitleSize * (column - 1) / widest);
+  }
+
+  static double _width(BuildContext context, String text, TextStyle style) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: DefaultTextStyle.of(context).style.merge(style)),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    final width = painter.width;
+    painter.dispose();
+    return width;
   }
 }
 
