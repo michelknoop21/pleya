@@ -1639,6 +1639,22 @@
     "existingSources": "Съществуващи източници",
     "preferredAudio": "Предпочитан език на аудиото",
     "preferredSubtitles": "Предпочитан език на субтитрите",
-    "subtitleWhen": "Субтитри винаги / чужд език / никога"
+    "subtitleWhen": "Субтитри винаги / чужд език / никога",
+    "reorderRows": "Подреди редовете",
+    "rowVisibility": "Покажи или скрий ред",
+    "addOwnRow": "Добави собствен ред",
+    "removeOwnRow": "Премахни собствен ред",
+    "chooseRowToRemove": "Кой ред?",
+    "hiddenContinueWatching": "Скрити в „Продължи гледането“",
+    "storage": "Хранилище",
+    "managePlex": "Управление на Plex сървъри",
+    "manageJellyfin": "Управление на Jellyfin източници",
+    "manageEmby": "Управление на Emby източници",
+    "managePleyaServer": "Управление на Pleya Server източници",
+    "removeSource": "Прекъсни / премахни източник",
+    "linkPlex": "Свържи Plex акаунт",
+    "addJellyfin": "Добави Jellyfin",
+    "addEmby": "Добави Emby",
+    "addPleyaServer": "Добави Pleya Server"
   }
 }

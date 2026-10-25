@@ -1900,6 +1900,22 @@ class _TranslationsSettingsStudioJa extends TranslationsSettingsStudioEn {
 	@override String get preferredAudio => '優先する音声言語';
 	@override String get preferredSubtitles => '優先する字幕言語';
 	@override String get subtitleWhen => '字幕：常に / 外国語 / なし';
+	@override String get reorderRows => '行を並べ替え';
+	@override String get rowVisibility => '行の表示・非表示';
+	@override String get addOwnRow => '自分の行を追加';
+	@override String get removeOwnRow => '自分の行を削除';
+	@override String get chooseRowToRemove => 'どの行？';
+	@override String get hiddenContinueWatching => '非表示の「続きを見る」を管理';
+	@override String get storage => 'ストレージ';
+	@override String get managePlex => 'Plex サーバーを管理';
+	@override String get manageJellyfin => 'Jellyfin ソースを管理';
+	@override String get manageEmby => 'Emby ソースを管理';
+	@override String get managePleyaServer => 'Pleya Server ソースを管理';
+	@override String get removeSource => 'ソースの接続解除・削除';
+	@override String get linkPlex => 'Plex アカウントをリンク';
+	@override String get addJellyfin => 'Jellyfin を追加';
+	@override String get addEmby => 'Emby を追加';
+	@override String get addPleyaServer => 'Pleya Server を追加';
 }
 
 // Path: search.filters
@@ -3811,6 +3827,22 @@ extension on TranslationsJa {
 			'settingsStudio.preferredAudio' => '優先する音声言語',
 			'settingsStudio.preferredSubtitles' => '優先する字幕言語',
 			'settingsStudio.subtitleWhen' => '字幕：常に / 外国語 / なし',
+			'settingsStudio.reorderRows' => '行を並べ替え',
+			'settingsStudio.rowVisibility' => '行の表示・非表示',
+			'settingsStudio.addOwnRow' => '自分の行を追加',
+			'settingsStudio.removeOwnRow' => '自分の行を削除',
+			'settingsStudio.chooseRowToRemove' => 'どの行？',
+			'settingsStudio.hiddenContinueWatching' => '非表示の「続きを見る」を管理',
+			'settingsStudio.storage' => 'ストレージ',
+			'settingsStudio.managePlex' => 'Plex サーバーを管理',
+			'settingsStudio.manageJellyfin' => 'Jellyfin ソースを管理',
+			'settingsStudio.manageEmby' => 'Emby ソースを管理',
+			'settingsStudio.managePleyaServer' => 'Pleya Server ソースを管理',
+			'settingsStudio.removeSource' => 'ソースの接続解除・削除',
+			'settingsStudio.linkPlex' => 'Plex アカウントをリンク',
+			'settingsStudio.addJellyfin' => 'Jellyfin を追加',
+			'settingsStudio.addEmby' => 'Emby を追加',
+			'settingsStudio.addPleyaServer' => 'Pleya Server を追加',
 			_ => null,
 		};
 	}

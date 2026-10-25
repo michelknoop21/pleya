@@ -1900,6 +1900,22 @@ class _TranslationsSettingsStudioKo extends TranslationsSettingsStudioEn {
 	@override String get preferredAudio => '선호 오디오 언어';
 	@override String get preferredSubtitles => '선호 자막 언어';
 	@override String get subtitleWhen => '자막 항상 / 외국어 / 안 함';
+	@override String get reorderRows => '행 순서 바꾸기';
+	@override String get rowVisibility => '행 표시 또는 숨기기';
+	@override String get addOwnRow => '내 행 추가';
+	@override String get removeOwnRow => '내 행 삭제';
+	@override String get chooseRowToRemove => '어느 행?';
+	@override String get hiddenContinueWatching => '숨긴 이어보기 관리';
+	@override String get storage => '저장공간';
+	@override String get managePlex => 'Plex 서버 관리';
+	@override String get manageJellyfin => 'Jellyfin 소스 관리';
+	@override String get manageEmby => 'Emby 소스 관리';
+	@override String get managePleyaServer => 'Pleya Server 소스 관리';
+	@override String get removeSource => '소스 연결 해제 / 삭제';
+	@override String get linkPlex => 'Plex 계정 연결';
+	@override String get addJellyfin => 'Jellyfin 추가';
+	@override String get addEmby => 'Emby 추가';
+	@override String get addPleyaServer => 'Pleya Server 추가';
 }
 
 // Path: search.filters
@@ -3811,6 +3827,22 @@ extension on TranslationsKo {
 			'settingsStudio.preferredAudio' => '선호 오디오 언어',
 			'settingsStudio.preferredSubtitles' => '선호 자막 언어',
 			'settingsStudio.subtitleWhen' => '자막 항상 / 외국어 / 안 함',
+			'settingsStudio.reorderRows' => '행 순서 바꾸기',
+			'settingsStudio.rowVisibility' => '행 표시 또는 숨기기',
+			'settingsStudio.addOwnRow' => '내 행 추가',
+			'settingsStudio.removeOwnRow' => '내 행 삭제',
+			'settingsStudio.chooseRowToRemove' => '어느 행?',
+			'settingsStudio.hiddenContinueWatching' => '숨긴 이어보기 관리',
+			'settingsStudio.storage' => '저장공간',
+			'settingsStudio.managePlex' => 'Plex 서버 관리',
+			'settingsStudio.manageJellyfin' => 'Jellyfin 소스 관리',
+			'settingsStudio.manageEmby' => 'Emby 소스 관리',
+			'settingsStudio.managePleyaServer' => 'Pleya Server 소스 관리',
+			'settingsStudio.removeSource' => '소스 연결 해제 / 삭제',
+			'settingsStudio.linkPlex' => 'Plex 계정 연결',
+			'settingsStudio.addJellyfin' => 'Jellyfin 추가',
+			'settingsStudio.addEmby' => 'Emby 추가',
+			'settingsStudio.addPleyaServer' => 'Pleya Server 추가',
 			_ => null,
 		};
 	}

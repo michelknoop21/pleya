@@ -1900,6 +1900,22 @@ class _TranslationsSettingsStudioBg extends TranslationsSettingsStudioEn {
 	@override String get preferredAudio => 'Предпочитан език на аудиото';
 	@override String get preferredSubtitles => 'Предпочитан език на субтитрите';
 	@override String get subtitleWhen => 'Субтитри винаги / чужд език / никога';
+	@override String get reorderRows => 'Подреди редовете';
+	@override String get rowVisibility => 'Покажи или скрий ред';
+	@override String get addOwnRow => 'Добави собствен ред';
+	@override String get removeOwnRow => 'Премахни собствен ред';
+	@override String get chooseRowToRemove => 'Кой ред?';
+	@override String get hiddenContinueWatching => 'Скрити в „Продължи гледането“';
+	@override String get storage => 'Хранилище';
+	@override String get managePlex => 'Управление на Plex сървъри';
+	@override String get manageJellyfin => 'Управление на Jellyfin източници';
+	@override String get manageEmby => 'Управление на Emby източници';
+	@override String get managePleyaServer => 'Управление на Pleya Server източници';
+	@override String get removeSource => 'Прекъсни / премахни източник';
+	@override String get linkPlex => 'Свържи Plex акаунт';
+	@override String get addJellyfin => 'Добави Jellyfin';
+	@override String get addEmby => 'Добави Emby';
+	@override String get addPleyaServer => 'Добави Pleya Server';
 }
 
 // Path: search.filters
@@ -3811,6 +3827,22 @@ extension on TranslationsBg {
 			'settingsStudio.preferredAudio' => 'Предпочитан език на аудиото',
 			'settingsStudio.preferredSubtitles' => 'Предпочитан език на субтитрите',
 			'settingsStudio.subtitleWhen' => 'Субтитри винаги / чужд език / никога',
+			'settingsStudio.reorderRows' => 'Подреди редовете',
+			'settingsStudio.rowVisibility' => 'Покажи или скрий ред',
+			'settingsStudio.addOwnRow' => 'Добави собствен ред',
+			'settingsStudio.removeOwnRow' => 'Премахни собствен ред',
+			'settingsStudio.chooseRowToRemove' => 'Кой ред?',
+			'settingsStudio.hiddenContinueWatching' => 'Скрити в „Продължи гледането“',
+			'settingsStudio.storage' => 'Хранилище',
+			'settingsStudio.managePlex' => 'Управление на Plex сървъри',
+			'settingsStudio.manageJellyfin' => 'Управление на Jellyfin източници',
+			'settingsStudio.manageEmby' => 'Управление на Emby източници',
+			'settingsStudio.managePleyaServer' => 'Управление на Pleya Server източници',
+			'settingsStudio.removeSource' => 'Прекъсни / премахни източник',
+			'settingsStudio.linkPlex' => 'Свържи Plex акаунт',
+			'settingsStudio.addJellyfin' => 'Добави Jellyfin',
+			'settingsStudio.addEmby' => 'Добави Emby',
+			'settingsStudio.addPleyaServer' => 'Добави Pleya Server',
 			_ => null,
 		};
 	}

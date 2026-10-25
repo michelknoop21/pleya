@@ -1900,6 +1900,22 @@ class _TranslationsSettingsStudioFr extends TranslationsSettingsStudioEn {
 	@override String get preferredAudio => 'Langue audio préférée';
 	@override String get preferredSubtitles => 'Langue des sous-titres préférée';
 	@override String get subtitleWhen => 'Sous-titres toujours / langue étrangère / jamais';
+	@override String get reorderRows => 'Réordonner les rangées';
+	@override String get rowVisibility => 'Afficher ou masquer une rangée';
+	@override String get addOwnRow => 'Ajouter une rangée';
+	@override String get removeOwnRow => 'Supprimer une rangée';
+	@override String get chooseRowToRemove => 'Quelle rangée ?';
+	@override String get hiddenContinueWatching => 'Gérer « Reprendre » masqué';
+	@override String get storage => 'Stockage';
+	@override String get managePlex => 'Gérer les serveurs Plex';
+	@override String get manageJellyfin => 'Gérer les sources Jellyfin';
+	@override String get manageEmby => 'Gérer les sources Emby';
+	@override String get managePleyaServer => 'Gérer les sources Pleya Server';
+	@override String get removeSource => 'Déconnecter / supprimer une source';
+	@override String get linkPlex => 'Lier un compte Plex';
+	@override String get addJellyfin => 'Ajouter Jellyfin';
+	@override String get addEmby => 'Ajouter Emby';
+	@override String get addPleyaServer => 'Ajouter Pleya Server';
 }
 
 // Path: search.filters
@@ -3811,6 +3827,22 @@ extension on TranslationsFr {
 			'settingsStudio.preferredAudio' => 'Langue audio préférée',
 			'settingsStudio.preferredSubtitles' => 'Langue des sous-titres préférée',
 			'settingsStudio.subtitleWhen' => 'Sous-titres toujours / langue étrangère / jamais',
+			'settingsStudio.reorderRows' => 'Réordonner les rangées',
+			'settingsStudio.rowVisibility' => 'Afficher ou masquer une rangée',
+			'settingsStudio.addOwnRow' => 'Ajouter une rangée',
+			'settingsStudio.removeOwnRow' => 'Supprimer une rangée',
+			'settingsStudio.chooseRowToRemove' => 'Quelle rangée ?',
+			'settingsStudio.hiddenContinueWatching' => 'Gérer « Reprendre » masqué',
+			'settingsStudio.storage' => 'Stockage',
+			'settingsStudio.managePlex' => 'Gérer les serveurs Plex',
+			'settingsStudio.manageJellyfin' => 'Gérer les sources Jellyfin',
+			'settingsStudio.manageEmby' => 'Gérer les sources Emby',
+			'settingsStudio.managePleyaServer' => 'Gérer les sources Pleya Server',
+			'settingsStudio.removeSource' => 'Déconnecter / supprimer une source',
+			'settingsStudio.linkPlex' => 'Lier un compte Plex',
+			'settingsStudio.addJellyfin' => 'Ajouter Jellyfin',
+			'settingsStudio.addEmby' => 'Ajouter Emby',
+			'settingsStudio.addPleyaServer' => 'Ajouter Pleya Server',
 			_ => null,
 		};
 	}

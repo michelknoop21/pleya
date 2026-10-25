@@ -1639,6 +1639,22 @@
     "existingSources": "Sources existantes",
     "preferredAudio": "Langue audio préférée",
     "preferredSubtitles": "Langue des sous-titres préférée",
-    "subtitleWhen": "Sous-titres toujours / langue étrangère / jamais"
+    "subtitleWhen": "Sous-titres toujours / langue étrangère / jamais",
+    "reorderRows": "Réordonner les rangées",
+    "rowVisibility": "Afficher ou masquer une rangée",
+    "addOwnRow": "Ajouter une rangée",
+    "removeOwnRow": "Supprimer une rangée",
+    "chooseRowToRemove": "Quelle rangée ?",
+    "hiddenContinueWatching": "Gérer « Reprendre » masqué",
+    "storage": "Stockage",
+    "managePlex": "Gérer les serveurs Plex",
+    "manageJellyfin": "Gérer les sources Jellyfin",
+    "manageEmby": "Gérer les sources Emby",
+    "managePleyaServer": "Gérer les sources Pleya Server",
+    "removeSource": "Déconnecter / supprimer une source",
+    "linkPlex": "Lier un compte Plex",
+    "addJellyfin": "Ajouter Jellyfin",
+    "addEmby": "Ajouter Emby",
+    "addPleyaServer": "Ajouter Pleya Server"
   }
 }

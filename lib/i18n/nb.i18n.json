@@ -1639,6 +1639,22 @@
     "existingSources": "Eksisterende kilder",
     "preferredAudio": "Foretrukket lydspråk",
     "preferredSubtitles": "Foretrukket undertekstspråk",
-    "subtitleWhen": "Undertekster alltid / fremmedspråk / aldri"
+    "subtitleWhen": "Undertekster alltid / fremmedspråk / aldri",
+    "reorderRows": "Dra rader i rekkefølge",
+    "rowVisibility": "Vis eller skjul en rad",
+    "addOwnRow": "Legg til egen rad",
+    "removeOwnRow": "Fjern egen rad",
+    "chooseRowToRemove": "Hvilken rad?",
+    "hiddenContinueWatching": "Administrer skjult Fortsett",
+    "storage": "Lagring",
+    "managePlex": "Administrer Plex-servere",
+    "manageJellyfin": "Administrer Jellyfin-kilder",
+    "manageEmby": "Administrer Emby-kilder",
+    "managePleyaServer": "Administrer Pleya Server-kilder",
+    "removeSource": "Koble fra / fjern kilde",
+    "linkPlex": "Koble til Plex-konto",
+    "addJellyfin": "Legg til Jellyfin",
+    "addEmby": "Legg til Emby",
+    "addPleyaServer": "Legg til Pleya Server"
   }
 }

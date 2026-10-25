@@ -1639,6 +1639,22 @@
     "existingSources": "既存のソース",
     "preferredAudio": "優先する音声言語",
     "preferredSubtitles": "優先する字幕言語",
-    "subtitleWhen": "字幕：常に / 外国語 / なし"
+    "subtitleWhen": "字幕：常に / 外国語 / なし",
+    "reorderRows": "行を並べ替え",
+    "rowVisibility": "行の表示・非表示",
+    "addOwnRow": "自分の行を追加",
+    "removeOwnRow": "自分の行を削除",
+    "chooseRowToRemove": "どの行？",
+    "hiddenContinueWatching": "非表示の「続きを見る」を管理",
+    "storage": "ストレージ",
+    "managePlex": "Plex サーバーを管理",
+    "manageJellyfin": "Jellyfin ソースを管理",
+    "manageEmby": "Emby ソースを管理",
+    "managePleyaServer": "Pleya Server ソースを管理",
+    "removeSource": "ソースの接続解除・削除",
+    "linkPlex": "Plex アカウントをリンク",
+    "addJellyfin": "Jellyfin を追加",
+    "addEmby": "Emby を追加",
+    "addPleyaServer": "Pleya Server を追加"
   }
 }

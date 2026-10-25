@@ -6690,6 +6690,54 @@ class TranslationsSettingsStudioEn {
 
 	/// en: 'Subtitles always / foreign language / never'
 	String get subtitleWhen => 'Subtitles always / foreign language / never';
+
+	/// en: 'Drag rows into order'
+	String get reorderRows => 'Drag rows into order';
+
+	/// en: 'Show or hide a row'
+	String get rowVisibility => 'Show or hide a row';
+
+	/// en: 'Add your own row'
+	String get addOwnRow => 'Add your own row';
+
+	/// en: 'Remove your own row'
+	String get removeOwnRow => 'Remove your own row';
+
+	/// en: 'Which row?'
+	String get chooseRowToRemove => 'Which row?';
+
+	/// en: 'Manage hidden Continue Watching'
+	String get hiddenContinueWatching => 'Manage hidden Continue Watching';
+
+	/// en: 'Storage'
+	String get storage => 'Storage';
+
+	/// en: 'Manage Plex servers'
+	String get managePlex => 'Manage Plex servers';
+
+	/// en: 'Manage Jellyfin sources'
+	String get manageJellyfin => 'Manage Jellyfin sources';
+
+	/// en: 'Manage Emby sources'
+	String get manageEmby => 'Manage Emby sources';
+
+	/// en: 'Manage Pleya Server sources'
+	String get managePleyaServer => 'Manage Pleya Server sources';
+
+	/// en: 'Disconnect or remove a source'
+	String get removeSource => 'Disconnect or remove a source';
+
+	/// en: 'Link a Plex account'
+	String get linkPlex => 'Link a Plex account';
+
+	/// en: 'Add Jellyfin'
+	String get addJellyfin => 'Add Jellyfin';
+
+	/// en: 'Add Emby'
+	String get addEmby => 'Add Emby';
+
+	/// en: 'Add Pleya Server'
+	String get addPleyaServer => 'Add Pleya Server';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -12845,6 +12893,22 @@ extension on Translations {
 			'settingsStudio.preferredAudio' => 'Preferred audio language',
 			'settingsStudio.preferredSubtitles' => 'Preferred subtitle language',
 			'settingsStudio.subtitleWhen' => 'Subtitles always / foreign language / never',
+			'settingsStudio.reorderRows' => 'Drag rows into order',
+			'settingsStudio.rowVisibility' => 'Show or hide a row',
+			'settingsStudio.addOwnRow' => 'Add your own row',
+			'settingsStudio.removeOwnRow' => 'Remove your own row',
+			'settingsStudio.chooseRowToRemove' => 'Which row?',
+			'settingsStudio.hiddenContinueWatching' => 'Manage hidden Continue Watching',
+			'settingsStudio.storage' => 'Storage',
+			'settingsStudio.managePlex' => 'Manage Plex servers',
+			'settingsStudio.manageJellyfin' => 'Manage Jellyfin sources',
+			'settingsStudio.manageEmby' => 'Manage Emby sources',
+			'settingsStudio.managePleyaServer' => 'Manage Pleya Server sources',
+			'settingsStudio.removeSource' => 'Disconnect or remove a source',
+			'settingsStudio.linkPlex' => 'Link a Plex account',
+			'settingsStudio.addJellyfin' => 'Add Jellyfin',
+			'settingsStudio.addEmby' => 'Add Emby',
+			'settingsStudio.addPleyaServer' => 'Add Pleya Server',
 			_ => null,
 		};
 	}

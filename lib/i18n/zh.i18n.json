@@ -1639,6 +1639,22 @@
     "existingSources": "现有来源",
     "preferredAudio": "首选音频语言",
     "preferredSubtitles": "首选字幕语言",
-    "subtitleWhen": "字幕：始终 / 外语 / 从不"
+    "subtitleWhen": "字幕：始终 / 外语 / 从不",
+    "reorderRows": "拖动排序",
+    "rowVisibility": "显示或隐藏行",
+    "addOwnRow": "添加自定义行",
+    "removeOwnRow": "删除自定义行",
+    "chooseRowToRemove": "哪一行？",
+    "hiddenContinueWatching": "管理已隐藏的继续观看",
+    "storage": "存储",
+    "managePlex": "管理 Plex 服务器",
+    "manageJellyfin": "管理 Jellyfin 来源",
+    "manageEmby": "管理 Emby 来源",
+    "managePleyaServer": "管理 Pleya Server 来源",
+    "removeSource": "断开 / 删除来源",
+    "linkPlex": "关联 Plex 账户",
+    "addJellyfin": "添加 Jellyfin",
+    "addEmby": "添加 Emby",
+    "addPleyaServer": "添加 Pleya Server"
   }
 }

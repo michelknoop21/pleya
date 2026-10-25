@@ -1900,6 +1900,22 @@ class _TranslationsSettingsStudioDe extends TranslationsSettingsStudioEn {
 	@override String get preferredAudio => 'Bevorzugte Audiosprache';
 	@override String get preferredSubtitles => 'Bevorzugte Untertitelsprache';
 	@override String get subtitleWhen => 'Untertitel immer / Fremdsprache / nie';
+	@override String get reorderRows => 'Zeilen sortieren';
+	@override String get rowVisibility => 'Zeile ein- oder ausblenden';
+	@override String get addOwnRow => 'Eigene Zeile hinzufügen';
+	@override String get removeOwnRow => 'Eigene Zeile entfernen';
+	@override String get chooseRowToRemove => 'Welche Zeile?';
+	@override String get hiddenContinueWatching => 'Ausgeblendetes Weiterschauen verwalten';
+	@override String get storage => 'Speicher';
+	@override String get managePlex => 'Plex-Server verwalten';
+	@override String get manageJellyfin => 'Jellyfin-Quellen verwalten';
+	@override String get manageEmby => 'Emby-Quellen verwalten';
+	@override String get managePleyaServer => 'Pleya-Server-Quellen verwalten';
+	@override String get removeSource => 'Quelle trennen / entfernen';
+	@override String get linkPlex => 'Plex-Konto verknüpfen';
+	@override String get addJellyfin => 'Jellyfin hinzufügen';
+	@override String get addEmby => 'Emby hinzufügen';
+	@override String get addPleyaServer => 'Pleya Server hinzufügen';
 }
 
 // Path: search.filters
@@ -3811,6 +3827,22 @@ extension on TranslationsDe {
 			'settingsStudio.preferredAudio' => 'Bevorzugte Audiosprache',
 			'settingsStudio.preferredSubtitles' => 'Bevorzugte Untertitelsprache',
 			'settingsStudio.subtitleWhen' => 'Untertitel immer / Fremdsprache / nie',
+			'settingsStudio.reorderRows' => 'Zeilen sortieren',
+			'settingsStudio.rowVisibility' => 'Zeile ein- oder ausblenden',
+			'settingsStudio.addOwnRow' => 'Eigene Zeile hinzufügen',
+			'settingsStudio.removeOwnRow' => 'Eigene Zeile entfernen',
+			'settingsStudio.chooseRowToRemove' => 'Welche Zeile?',
+			'settingsStudio.hiddenContinueWatching' => 'Ausgeblendetes Weiterschauen verwalten',
+			'settingsStudio.storage' => 'Speicher',
+			'settingsStudio.managePlex' => 'Plex-Server verwalten',
+			'settingsStudio.manageJellyfin' => 'Jellyfin-Quellen verwalten',
+			'settingsStudio.manageEmby' => 'Emby-Quellen verwalten',
+			'settingsStudio.managePleyaServer' => 'Pleya-Server-Quellen verwalten',
+			'settingsStudio.removeSource' => 'Quelle trennen / entfernen',
+			'settingsStudio.linkPlex' => 'Plex-Konto verknüpfen',
+			'settingsStudio.addJellyfin' => 'Jellyfin hinzufügen',
+			'settingsStudio.addEmby' => 'Emby hinzufügen',
+			'settingsStudio.addPleyaServer' => 'Pleya Server hinzufügen',
 			_ => null,
 		};
 	}

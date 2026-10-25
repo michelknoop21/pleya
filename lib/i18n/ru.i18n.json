@@ -1639,6 +1639,22 @@
     "existingSources": "Существующие источники",
     "preferredAudio": "Предпочитаемый язык аудио",
     "preferredSubtitles": "Предпочитаемый язык субтитров",
-    "subtitleWhen": "Субтитры всегда / иностранный язык / никогда"
+    "subtitleWhen": "Субтитры всегда / иностранный язык / никогда",
+    "reorderRows": "Порядок рядов",
+    "rowVisibility": "Показать или скрыть ряд",
+    "addOwnRow": "Добавить свой ряд",
+    "removeOwnRow": "Удалить свой ряд",
+    "chooseRowToRemove": "Какой ряд?",
+    "hiddenContinueWatching": "Скрытое в «Продолжить просмотр»",
+    "storage": "Хранилище",
+    "managePlex": "Серверы Plex",
+    "manageJellyfin": "Источники Jellyfin",
+    "manageEmby": "Источники Emby",
+    "managePleyaServer": "Источники Pleya Server",
+    "removeSource": "Отключить / удалить источник",
+    "linkPlex": "Привязать аккаунт Plex",
+    "addJellyfin": "Добавить Jellyfin",
+    "addEmby": "Добавить Emby",
+    "addPleyaServer": "Добавить Pleya Server"
   }
 }

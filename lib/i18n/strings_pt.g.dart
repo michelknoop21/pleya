@@ -1900,6 +1900,22 @@ class _TranslationsSettingsStudioPt extends TranslationsSettingsStudioEn {
 	@override String get preferredAudio => 'Idioma de áudio preferido';
 	@override String get preferredSubtitles => 'Idioma de legendas preferido';
 	@override String get subtitleWhen => 'Legendas sempre / idioma estrangeiro / nunca';
+	@override String get reorderRows => 'Reordenar linhas';
+	@override String get rowVisibility => 'Mostrar ou ocultar linha';
+	@override String get addOwnRow => 'Adicionar linha própria';
+	@override String get removeOwnRow => 'Remover linha própria';
+	@override String get chooseRowToRemove => 'Qual linha?';
+	@override String get hiddenContinueWatching => 'Gerenciar Continuar assistindo oculto';
+	@override String get storage => 'Armazenamento';
+	@override String get managePlex => 'Gerenciar servidores Plex';
+	@override String get manageJellyfin => 'Gerenciar fontes Jellyfin';
+	@override String get manageEmby => 'Gerenciar fontes Emby';
+	@override String get managePleyaServer => 'Gerenciar fontes Pleya Server';
+	@override String get removeSource => 'Desconectar / remover fonte';
+	@override String get linkPlex => 'Vincular conta Plex';
+	@override String get addJellyfin => 'Adicionar Jellyfin';
+	@override String get addEmby => 'Adicionar Emby';
+	@override String get addPleyaServer => 'Adicionar Pleya Server';
 }
 
 // Path: search.filters
@@ -3811,6 +3827,22 @@ extension on TranslationsPt {
 			'settingsStudio.preferredAudio' => 'Idioma de áudio preferido',
 			'settingsStudio.preferredSubtitles' => 'Idioma de legendas preferido',
 			'settingsStudio.subtitleWhen' => 'Legendas sempre / idioma estrangeiro / nunca',
+			'settingsStudio.reorderRows' => 'Reordenar linhas',
+			'settingsStudio.rowVisibility' => 'Mostrar ou ocultar linha',
+			'settingsStudio.addOwnRow' => 'Adicionar linha própria',
+			'settingsStudio.removeOwnRow' => 'Remover linha própria',
+			'settingsStudio.chooseRowToRemove' => 'Qual linha?',
+			'settingsStudio.hiddenContinueWatching' => 'Gerenciar Continuar assistindo oculto',
+			'settingsStudio.storage' => 'Armazenamento',
+			'settingsStudio.managePlex' => 'Gerenciar servidores Plex',
+			'settingsStudio.manageJellyfin' => 'Gerenciar fontes Jellyfin',
+			'settingsStudio.manageEmby' => 'Gerenciar fontes Emby',
+			'settingsStudio.managePleyaServer' => 'Gerenciar fontes Pleya Server',
+			'settingsStudio.removeSource' => 'Desconectar / remover fonte',
+			'settingsStudio.linkPlex' => 'Vincular conta Plex',
+			'settingsStudio.addJellyfin' => 'Adicionar Jellyfin',
+			'settingsStudio.addEmby' => 'Adicionar Emby',
+			'settingsStudio.addPleyaServer' => 'Adicionar Pleya Server',
 			_ => null,
 		};
 	}

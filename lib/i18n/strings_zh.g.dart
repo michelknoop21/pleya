@@ -1900,6 +1900,22 @@ class _TranslationsSettingsStudioZh extends TranslationsSettingsStudioEn {
 	@override String get preferredAudio => '首选音频语言';
 	@override String get preferredSubtitles => '首选字幕语言';
 	@override String get subtitleWhen => '字幕：始终 / 外语 / 从不';
+	@override String get reorderRows => '拖动排序';
+	@override String get rowVisibility => '显示或隐藏行';
+	@override String get addOwnRow => '添加自定义行';
+	@override String get removeOwnRow => '删除自定义行';
+	@override String get chooseRowToRemove => '哪一行？';
+	@override String get hiddenContinueWatching => '管理已隐藏的继续观看';
+	@override String get storage => '存储';
+	@override String get managePlex => '管理 Plex 服务器';
+	@override String get manageJellyfin => '管理 Jellyfin 来源';
+	@override String get manageEmby => '管理 Emby 来源';
+	@override String get managePleyaServer => '管理 Pleya Server 来源';
+	@override String get removeSource => '断开 / 删除来源';
+	@override String get linkPlex => '关联 Plex 账户';
+	@override String get addJellyfin => '添加 Jellyfin';
+	@override String get addEmby => '添加 Emby';
+	@override String get addPleyaServer => '添加 Pleya Server';
 }
 
 // Path: search.filters
@@ -3811,6 +3827,22 @@ extension on TranslationsZh {
 			'settingsStudio.preferredAudio' => '首选音频语言',
 			'settingsStudio.preferredSubtitles' => '首选字幕语言',
 			'settingsStudio.subtitleWhen' => '字幕：始终 / 外语 / 从不',
+			'settingsStudio.reorderRows' => '拖动排序',
+			'settingsStudio.rowVisibility' => '显示或隐藏行',
+			'settingsStudio.addOwnRow' => '添加自定义行',
+			'settingsStudio.removeOwnRow' => '删除自定义行',
+			'settingsStudio.chooseRowToRemove' => '哪一行？',
+			'settingsStudio.hiddenContinueWatching' => '管理已隐藏的继续观看',
+			'settingsStudio.storage' => '存储',
+			'settingsStudio.managePlex' => '管理 Plex 服务器',
+			'settingsStudio.manageJellyfin' => '管理 Jellyfin 来源',
+			'settingsStudio.manageEmby' => '管理 Emby 来源',
+			'settingsStudio.managePleyaServer' => '管理 Pleya Server 来源',
+			'settingsStudio.removeSource' => '断开 / 删除来源',
+			'settingsStudio.linkPlex' => '关联 Plex 账户',
+			'settingsStudio.addJellyfin' => '添加 Jellyfin',
+			'settingsStudio.addEmby' => '添加 Emby',
+			'settingsStudio.addPleyaServer' => '添加 Pleya Server',
 			_ => null,
 		};
 	}

@@ -1900,6 +1900,22 @@ class _TranslationsSettingsStudioEs extends TranslationsSettingsStudioEn {
 	@override String get preferredAudio => 'Idioma de audio preferido';
 	@override String get preferredSubtitles => 'Idioma de subtítulos preferido';
 	@override String get subtitleWhen => 'Subtítulos siempre / idioma extranjero / nunca';
+	@override String get reorderRows => 'Ordenar filas';
+	@override String get rowVisibility => 'Mostrar u ocultar una fila';
+	@override String get addOwnRow => 'Añadir fila propia';
+	@override String get removeOwnRow => 'Eliminar fila propia';
+	@override String get chooseRowToRemove => '¿Qué fila?';
+	@override String get hiddenContinueWatching => 'Gestionar Seguir viendo oculto';
+	@override String get storage => 'Almacenamiento';
+	@override String get managePlex => 'Gestionar servidores Plex';
+	@override String get manageJellyfin => 'Gestionar fuentes Jellyfin';
+	@override String get manageEmby => 'Gestionar fuentes Emby';
+	@override String get managePleyaServer => 'Gestionar fuentes Pleya Server';
+	@override String get removeSource => 'Desconectar / eliminar fuente';
+	@override String get linkPlex => 'Vincular cuenta de Plex';
+	@override String get addJellyfin => 'Añadir Jellyfin';
+	@override String get addEmby => 'Añadir Emby';
+	@override String get addPleyaServer => 'Añadir Pleya Server';
 }
 
 // Path: search.filters
@@ -3811,6 +3827,22 @@ extension on TranslationsEs {
 			'settingsStudio.preferredAudio' => 'Idioma de audio preferido',
 			'settingsStudio.preferredSubtitles' => 'Idioma de subtítulos preferido',
 			'settingsStudio.subtitleWhen' => 'Subtítulos siempre / idioma extranjero / nunca',
+			'settingsStudio.reorderRows' => 'Ordenar filas',
+			'settingsStudio.rowVisibility' => 'Mostrar u ocultar una fila',
+			'settingsStudio.addOwnRow' => 'Añadir fila propia',
+			'settingsStudio.removeOwnRow' => 'Eliminar fila propia',
+			'settingsStudio.chooseRowToRemove' => '¿Qué fila?',
+			'settingsStudio.hiddenContinueWatching' => 'Gestionar Seguir viendo oculto',
+			'settingsStudio.storage' => 'Almacenamiento',
+			'settingsStudio.managePlex' => 'Gestionar servidores Plex',
+			'settingsStudio.manageJellyfin' => 'Gestionar fuentes Jellyfin',
+			'settingsStudio.manageEmby' => 'Gestionar fuentes Emby',
+			'settingsStudio.managePleyaServer' => 'Gestionar fuentes Pleya Server',
+			'settingsStudio.removeSource' => 'Desconectar / eliminar fuente',
+			'settingsStudio.linkPlex' => 'Vincular cuenta de Plex',
+			'settingsStudio.addJellyfin' => 'Añadir Jellyfin',
+			'settingsStudio.addEmby' => 'Añadir Emby',
+			'settingsStudio.addPleyaServer' => 'Añadir Pleya Server',
 			_ => null,
 		};
 	}

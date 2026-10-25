@@ -455,7 +455,7 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get downloadLocationReset => 'Downloadlocatie hersteld naar standaard';
 	@override String get downloadLocationInvalid => 'Geselecteerde map is niet beschrijfbaar';
 	@override String get downloadLocationSelectError => 'Kan map niet selecteren';
-	@override String get downloadOnWifiOnly => 'Alleen via WiFi downloaden';
+	@override String get downloadOnWifiOnly => 'Alleen via wifi downloaden';
 	@override String get downloadOnWifiOnlyDescription => 'Voorkom downloads bij gebruik van mobiele data';
 	@override String get autoRemoveWatchedDownloads => 'Bekeken downloads automatisch verwijderen';
 	@override String get autoRemoveWatchedDownloadsDescription => 'Bekeken downloads automatisch verwijderen';
@@ -2682,9 +2682,9 @@ class _TranslationsLocalLibraryNl extends TranslationsLocalLibraryEn {
 	// Translations
 	@override String get playbackUnavailable => 'Maak verbinding met de server of download deze video om af te spelen.';
 	@override String get title => 'Lokale bibliotheek';
-	@override String get enable => 'Bibliotheek vooraf opslaan';
+	@override String get enable => 'Offline index inschakelen';
 	@override String get description => 'Bewaar metadata en posters van al je bibliotheken op dit apparaat. De eerste download kan lang duren en veel opslag gebruiken. Video’s worden niet gedownload.';
-	@override String get wifiOnly => 'Alleen via wifi';
+	@override String get wifiOnly => 'Alleen via wifi synchroniseren';
 	@override String get wifiDescription => 'Pauzeer vooraf ophalen via mobiele data. Zet uit om ook mobiele data toe te staan.';
 	@override String get status => 'Status';
 	@override String get disabled => 'Vooraf ophalen staat uit. Eerder opgeslagen inhoud blijft beschikbaar.';
@@ -2697,11 +2697,11 @@ class _TranslationsLocalLibraryNl extends TranslationsLocalLibraryEn {
 	@override String get paused => 'Gepauzeerd · hervat zodra Pleya actief is';
 	@override String get error => 'Bijwerken onvolledig · eerder opgeslagen inhoud is behouden';
 	@override String progress({required Object count}) => '${count} items verwerkt';
-	@override String get usage => 'Gebruikte opslag';
-	@override String get lastSync => 'Laatste geslaagde scan';
+	@override String get usage => 'Gebruik van opslagruimte';
+	@override String get lastSync => 'Laatste synchronisatie';
 	@override String get never => 'Nog niet voltooid';
-	@override String get syncNow => 'Nu bijwerken';
-	@override String get clear => 'Lokale bibliotheek wissen';
+	@override String get syncNow => 'Nu synchroniseren';
+	@override String get clear => 'Lokale gegevens wissen';
 	@override String get clearMessage => 'De lokaal opgeslagen bibliotheekmetadata en posters van dit profiel wissen? Inhoud op de server en gedownloade video’s blijven behouden.';
 	@override String get afterClear => 'Lokale bibliotheek gewist';
 	@override String get chooseAfterClear => 'Vooraf ophalen uitzetten of je bibliotheek opnieuw ophalen? Je netwerkvoorkeur blijft gelden.';
@@ -2748,6 +2748,22 @@ class _TranslationsSettingsStudioNl extends TranslationsSettingsStudioEn {
 	@override String get preferredAudio => 'Voorkeurstaal audio';
 	@override String get preferredSubtitles => 'Voorkeurstaal ondertitels';
 	@override String get subtitleWhen => 'Ondertitels altijd / vreemde taal / nooit';
+	@override String get reorderRows => 'Rijen in volgorde slepen';
+	@override String get rowVisibility => 'Rij zichtbaar of verborgen';
+	@override String get addOwnRow => 'Eigen rij toevoegen';
+	@override String get removeOwnRow => 'Eigen rij verwijderen';
+	@override String get chooseRowToRemove => 'Welke rij?';
+	@override String get hiddenContinueWatching => 'Verborgen Verder kijken beheren';
+	@override String get storage => 'Opslag';
+	@override String get managePlex => 'Plex-servers beheren';
+	@override String get manageJellyfin => 'Jellyfin-bronnen beheren';
+	@override String get manageEmby => 'Emby-bronnen beheren';
+	@override String get managePleyaServer => 'Pleya Server-bronnen beheren';
+	@override String get removeSource => 'Bron ontkoppelen / verwijderen';
+	@override String get linkPlex => 'Plex-account koppelen';
+	@override String get addJellyfin => 'Jellyfin toevoegen';
+	@override String get addEmby => 'Emby toevoegen';
+	@override String get addPleyaServer => 'Pleya Server toevoegen';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -4707,7 +4723,7 @@ extension on TranslationsNl {
 			'settings.downloadLocationReset' => 'Downloadlocatie hersteld naar standaard',
 			'settings.downloadLocationInvalid' => 'Geselecteerde map is niet beschrijfbaar',
 			'settings.downloadLocationSelectError' => 'Kan map niet selecteren',
-			'settings.downloadOnWifiOnly' => 'Alleen via WiFi downloaden',
+			'settings.downloadOnWifiOnly' => 'Alleen via wifi downloaden',
 			'settings.downloadOnWifiOnlyDescription' => 'Voorkom downloads bij gebruik van mobiele data',
 			'settings.autoRemoveWatchedDownloads' => 'Bekeken downloads automatisch verwijderen',
 			'settings.autoRemoveWatchedDownloadsDescription' => 'Bekeken downloads automatisch verwijderen',
@@ -7205,9 +7221,9 @@ extension on TranslationsNl {
 			'playbackHandoff.playingOnPhoneBody' => 'Kijk verder op je iPhone of iPad',
 			'localLibrary.playbackUnavailable' => 'Maak verbinding met de server of download deze video om af te spelen.',
 			'localLibrary.title' => 'Lokale bibliotheek',
-			'localLibrary.enable' => 'Bibliotheek vooraf opslaan',
+			'localLibrary.enable' => 'Offline index inschakelen',
 			'localLibrary.description' => 'Bewaar metadata en posters van al je bibliotheken op dit apparaat. De eerste download kan lang duren en veel opslag gebruiken. Video’s worden niet gedownload.',
-			'localLibrary.wifiOnly' => 'Alleen via wifi',
+			'localLibrary.wifiOnly' => 'Alleen via wifi synchroniseren',
 			'localLibrary.wifiDescription' => 'Pauzeer vooraf ophalen via mobiele data. Zet uit om ook mobiele data toe te staan.',
 			'localLibrary.status' => 'Status',
 			'localLibrary.disabled' => 'Vooraf ophalen staat uit. Eerder opgeslagen inhoud blijft beschikbaar.',
@@ -7220,11 +7236,11 @@ extension on TranslationsNl {
 			'localLibrary.paused' => 'Gepauzeerd · hervat zodra Pleya actief is',
 			'localLibrary.error' => 'Bijwerken onvolledig · eerder opgeslagen inhoud is behouden',
 			'localLibrary.progress' => ({required Object count}) => '${count} items verwerkt',
-			'localLibrary.usage' => 'Gebruikte opslag',
-			'localLibrary.lastSync' => 'Laatste geslaagde scan',
+			'localLibrary.usage' => 'Gebruik van opslagruimte',
+			'localLibrary.lastSync' => 'Laatste synchronisatie',
 			'localLibrary.never' => 'Nog niet voltooid',
-			'localLibrary.syncNow' => 'Nu bijwerken',
-			'localLibrary.clear' => 'Lokale bibliotheek wissen',
+			'localLibrary.syncNow' => 'Nu synchroniseren',
+			'localLibrary.clear' => 'Lokale gegevens wissen',
 			'localLibrary.clearMessage' => 'De lokaal opgeslagen bibliotheekmetadata en posters van dit profiel wissen? Inhoud op de server en gedownloade video’s blijven behouden.',
 			'localLibrary.afterClear' => 'Lokale bibliotheek gewist',
 			'localLibrary.chooseAfterClear' => 'Vooraf ophalen uitzetten of je bibliotheek opnieuw ophalen? Je netwerkvoorkeur blijft gelden.',
@@ -7262,6 +7278,22 @@ extension on TranslationsNl {
 			'settingsStudio.preferredAudio' => 'Voorkeurstaal audio',
 			'settingsStudio.preferredSubtitles' => 'Voorkeurstaal ondertitels',
 			'settingsStudio.subtitleWhen' => 'Ondertitels altijd / vreemde taal / nooit',
+			'settingsStudio.reorderRows' => 'Rijen in volgorde slepen',
+			'settingsStudio.rowVisibility' => 'Rij zichtbaar of verborgen',
+			'settingsStudio.addOwnRow' => 'Eigen rij toevoegen',
+			'settingsStudio.removeOwnRow' => 'Eigen rij verwijderen',
+			'settingsStudio.chooseRowToRemove' => 'Welke rij?',
+			'settingsStudio.hiddenContinueWatching' => 'Verborgen Verder kijken beheren',
+			'settingsStudio.storage' => 'Opslag',
+			'settingsStudio.managePlex' => 'Plex-servers beheren',
+			'settingsStudio.manageJellyfin' => 'Jellyfin-bronnen beheren',
+			'settingsStudio.manageEmby' => 'Emby-bronnen beheren',
+			'settingsStudio.managePleyaServer' => 'Pleya Server-bronnen beheren',
+			'settingsStudio.removeSource' => 'Bron ontkoppelen / verwijderen',
+			'settingsStudio.linkPlex' => 'Plex-account koppelen',
+			'settingsStudio.addJellyfin' => 'Jellyfin toevoegen',
+			'settingsStudio.addEmby' => 'Emby toevoegen',
+			'settingsStudio.addPleyaServer' => 'Pleya Server toevoegen',
 			_ => null,
 		};
 	}

@@ -1900,6 +1900,22 @@ class _TranslationsSettingsStudioSv extends TranslationsSettingsStudioEn {
 	@override String get preferredAudio => 'Föredraget ljudspråk';
 	@override String get preferredSubtitles => 'Föredraget undertextspråk';
 	@override String get subtitleWhen => 'Undertexter alltid / främmande språk / aldrig';
+	@override String get reorderRows => 'Dra rader i ordning';
+	@override String get rowVisibility => 'Visa eller dölj en rad';
+	@override String get addOwnRow => 'Lägg till egen rad';
+	@override String get removeOwnRow => 'Ta bort egen rad';
+	@override String get chooseRowToRemove => 'Vilken rad?';
+	@override String get hiddenContinueWatching => 'Hantera dolda Fortsätt titta';
+	@override String get storage => 'Lagring';
+	@override String get managePlex => 'Hantera Plex-servrar';
+	@override String get manageJellyfin => 'Hantera Jellyfin-källor';
+	@override String get manageEmby => 'Hantera Emby-källor';
+	@override String get managePleyaServer => 'Hantera Pleya Server-källor';
+	@override String get removeSource => 'Koppla från / ta bort källa';
+	@override String get linkPlex => 'Länka Plex-konto';
+	@override String get addJellyfin => 'Lägg till Jellyfin';
+	@override String get addEmby => 'Lägg till Emby';
+	@override String get addPleyaServer => 'Lägg till Pleya Server';
 }
 
 // Path: search.filters
@@ -3811,6 +3827,22 @@ extension on TranslationsSv {
 			'settingsStudio.preferredAudio' => 'Föredraget ljudspråk',
 			'settingsStudio.preferredSubtitles' => 'Föredraget undertextspråk',
 			'settingsStudio.subtitleWhen' => 'Undertexter alltid / främmande språk / aldrig',
+			'settingsStudio.reorderRows' => 'Dra rader i ordning',
+			'settingsStudio.rowVisibility' => 'Visa eller dölj en rad',
+			'settingsStudio.addOwnRow' => 'Lägg till egen rad',
+			'settingsStudio.removeOwnRow' => 'Ta bort egen rad',
+			'settingsStudio.chooseRowToRemove' => 'Vilken rad?',
+			'settingsStudio.hiddenContinueWatching' => 'Hantera dolda Fortsätt titta',
+			'settingsStudio.storage' => 'Lagring',
+			'settingsStudio.managePlex' => 'Hantera Plex-servrar',
+			'settingsStudio.manageJellyfin' => 'Hantera Jellyfin-källor',
+			'settingsStudio.manageEmby' => 'Hantera Emby-källor',
+			'settingsStudio.managePleyaServer' => 'Hantera Pleya Server-källor',
+			'settingsStudio.removeSource' => 'Koppla från / ta bort källa',
+			'settingsStudio.linkPlex' => 'Länka Plex-konto',
+			'settingsStudio.addJellyfin' => 'Lägg till Jellyfin',
+			'settingsStudio.addEmby' => 'Lägg till Emby',
+			'settingsStudio.addPleyaServer' => 'Lägg till Pleya Server',
 			_ => null,
 		};
 	}
