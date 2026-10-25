@@ -34,7 +34,9 @@ import 'setting_value_label.dart';
 }) {
   final chevron = AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted);
   if (PlatformDetector.isTV()) return (title: Text(title), subtitle: Text(valueLine), trailing: chevron);
-  return switch (settingValuePlacement(context, title: title, value: value, hasDescription: description != null)) {
+  // A-24b Studio rows leave the explanation off screen (read as the hint).
+  final shown = settingsRowDescription(context, description);
+  return switch (settingValuePlacement(context, title: title, value: value, hasDescription: shown != null)) {
     SettingValuePlacement.trailing => (
       title: Text(title),
       subtitle: null,
@@ -49,10 +51,15 @@ import 'setting_value_label.dart';
     ),
     SettingValuePlacement.titleLine => (
       title: SettingTitleWithValue(title: title, value: value),
-      subtitle: Text(description!),
+      subtitle: Text(shown!),
       trailing: chevron,
     ),
-    SettingValuePlacement.subtitle => (title: Text(title), subtitle: Text(valueLine), trailing: chevron),
+    // The value line joins the description; with that hidden, the value alone.
+    SettingValuePlacement.subtitle => (
+      title: Text(title),
+      subtitle: Text(shown == null && description != null ? value : valueLine),
+      trailing: chevron,
+    ),
   };
 }
 
@@ -113,23 +120,30 @@ class SettingNumberTile extends StatelessWidget {
         );
 
         final line = subtitleBuilder(value);
+        final description = descriptionBuilder?.call(value);
         final parts = _valueRowParts(
           context,
           title: title,
           valueLine: line,
           value: valueBuilder?.call(value) ?? line,
-          description: descriptionBuilder?.call(value),
+          description: description,
         );
         return SettingRowFocus(
           onSelect: activate,
+          // The same `setting.<key>` id a switch row registers under.
+          automationInstance: 'setting.${pref.key}',
+          automationState: () => {'value': '$value'},
           child: ClickableCursor(
-            child: ListTile(
-              leading: SettingsIconBadge(icon),
-              contentPadding: settingRowPadding(),
-              title: parts.title,
-              subtitle: parts.subtitle,
-              trailing: parts.trailing,
-              onTap: activate,
+            child: settingsRowWithHint(
+              settingsRowHint(context, description),
+              ListTile(
+                leading: settingsRowLeading(context, icon),
+                contentPadding: settingRowPadding(),
+                title: parts.title,
+                subtitle: parts.subtitle,
+                trailing: parts.trailing,
+                onTap: activate,
+              ),
             ),
           ),
         );
@@ -194,23 +208,30 @@ class SettingSelectionTile<T, S> extends StatelessWidget {
         }
 
         final line = subtitleBuilder(value);
+        final description = descriptionBuilder?.call(value);
         final parts = _valueRowParts(
           context,
           title: title,
           valueLine: line,
           value: valueBuilder?.call(value) ?? line,
-          description: descriptionBuilder?.call(value),
+          description: description,
         );
         return SettingRowFocus(
           onSelect: activate,
+          // The same `setting.<key>` id a switch row registers under.
+          automationInstance: 'setting.${pref.key}',
+          automationState: () => {'value': '$value'},
           child: ClickableCursor(
-            child: ListTile(
-              leading: SettingsIconBadge(icon),
-              contentPadding: settingRowPadding(),
-              title: parts.title,
-              subtitle: parts.subtitle,
-              trailing: parts.trailing,
-              onTap: activate,
+            child: settingsRowWithHint(
+              settingsRowHint(context, description),
+              ListTile(
+                leading: settingsRowLeading(context, icon),
+                contentPadding: settingRowPadding(),
+                title: parts.title,
+                subtitle: parts.subtitle,
+                trailing: parts.trailing,
+                onTap: activate,
+              ),
             ),
           ),
         );

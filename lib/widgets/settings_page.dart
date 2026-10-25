@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../utils/platform_detector.dart';
 import 'focused_scroll_scaffold.dart';
 import 'settings/settings_studio_header.dart';
 import 'settings_section.dart';
@@ -15,6 +16,11 @@ class SettingsPage extends StatelessWidget {
   final bool automaticallyImplyLeading;
   final VoidCallback? onBackPressed;
 
+  /// A-24b Studio rows inside Instellingen off TV: the rows leave their
+  /// explanation off screen (VoiceOver reads it as the hint). Opt-in per page,
+  /// for the pages the Studio series draws; the others keep their lines.
+  final bool hideDescriptions;
+
   const SettingsPage({
     super.key,
     required this.title,
@@ -24,6 +30,7 @@ class SettingsPage extends StatelessWidget {
     this.pinned = true,
     this.automaticallyImplyLeading = true,
     this.onBackPressed,
+    this.hideDescriptions = false,
   }) : slivers = null;
 
   const SettingsPage.slivers({
@@ -34,13 +41,14 @@ class SettingsPage extends StatelessWidget {
     this.pinned = true,
     this.automaticallyImplyLeading = true,
     this.onBackPressed,
+    this.hideDescriptions = false,
   }) : children = null,
        padding = null;
 
   @override
   Widget build(BuildContext context) {
     final pageSlivers = slivers ?? [_buildListSliver()];
-    return TvSettingsDensity(
+    final page = TvSettingsDensity(
       child: FocusedScrollScaffold(
         title: title,
         actions: actions,
@@ -51,6 +59,10 @@ class SettingsPage extends StatelessWidget {
         slivers: pageSlivers,
       ),
     );
+    // A-24b: a settings subpage in the Studio series draws its rows without
+    // an icon (series `ios/02`-`14`); only the main page keeps line icons.
+    if (PlatformDetector.isTV() || !SettingsStudioTheme.isActive(context)) return page;
+    return SettingsIconStyleScope(style: SettingsIconStyle.none, hideDescriptions: hideDescriptions, child: page);
   }
 
   /// A-24: on an iPhone every settings page opens on the Studio header, built
@@ -92,6 +104,10 @@ class SettingsPage extends StatelessWidget {
       if (child is SettingsSectionHeader) {
         flush();
         title = child.title;
+      } else if (child is SettingsStandaloneBlock) {
+        // Between the cards (a footnote, a preview), not a row inside one.
+        flush();
+        out.add(child);
       } else {
         rows.add(child);
       }

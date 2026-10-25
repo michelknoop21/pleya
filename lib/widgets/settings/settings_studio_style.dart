@@ -38,12 +38,15 @@ Color settingsCardColor(BuildContext context) {
   return t.surface;
 }
 
-/// Ink of a section heading and of the Studio header's eyebrow line: the warm
-/// brick in light, the muted text colour in dark and OLED, and always the
-/// muted colour on TV.
+/// Ink of a section heading and of the Studio header's eyebrow line: the
+/// muted text colour, as the Studio series draws it in both themes (A-24b);
+/// the warm brick only on a light settings surface outside the Studio
+/// palette, and always the muted colour on TV.
 Color settingsSectionInk(BuildContext context) {
   final t = tokens(context);
-  if (!PlatformDetector.isTV() && t.isLight) return kSettingsSectionInkLight;
+  if (!PlatformDetector.isTV() && t.isLight && !SettingsStudioTheme.isActive(context)) {
+    return kSettingsSectionInkLight;
+  }
   return t.textMuted;
 }
 
@@ -56,3 +59,18 @@ bool settingsStudioHeaderApplies(BuildContext context) =>
     Theme.of(context).platform == TargetPlatform.iOS &&
     !TvDetectionService.isIOSAppOnMacSync() &&
     PlatformDetector.isPhone(context);
+
+/// Ink of a destructive row's title (Cache wissen, Instellingen herstellen,
+/// a source removed): the Studio coral inside Instellingen, as the series
+/// draws it (#FF715A dark, #C94E3C light), the theme's error colour elsewhere.
+Color settingsDestructiveInk(BuildContext context) {
+  if (SettingsStudioTheme.isActive(context)) return settingsStudioSwitchColor(tokens(context));
+  return Theme.of(context).colorScheme.error;
+}
+
+/// Ink of an accent label inside Instellingen ("Live voorbeeld"): the same
+/// Studio coral the series uses for it, the brand accent elsewhere.
+Color settingsAccentInk(BuildContext context) {
+  if (SettingsStudioTheme.isActive(context)) return settingsStudioSwitchColor(tokens(context));
+  return tokens(context).accent;
+}

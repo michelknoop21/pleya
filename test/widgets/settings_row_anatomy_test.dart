@@ -6,10 +6,17 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/theme/mono_tokens.dart';
+import 'package:pleya/widgets/settings_page.dart';
+import 'package:pleya/widgets/settings_rows.dart';
+
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/setting_tile.dart';
 import 'package:pleya/widgets/settings_section.dart';
+
+import '../test_helpers/prefs.dart';
 
 Widget _row({String? subtitle}) => SettingNavigationTile(
   icon: Symbols.palette_rounded,
@@ -74,6 +81,153 @@ void main() {
     expect(oneLine, inInclusiveRange(44, 56));
     expect(twoLines, greaterThan(oneLine));
     expect(find.text('Thema en dichtheid'), findsOneWidget);
+  });
+
+  group('A-24b Studio subpage rows', () {
+    Widget subpage(List<Widget> rows, {bool hide = true}) => SettingsStudioTheme(
+      child: SettingsPage(title: const Text('Weergave'), hideDescriptions: hide, children: rows),
+    );
+
+    testWidgets('a subpage row draws no icon; its title and separator start at the row inset', (tester) async {
+      await _pump(tester, subpage([_row(), _row(subtitle: 'x')]));
+
+      expect(find.byType(SettingsIconBadge), findsNothing);
+      final card = tester.getRect(find.byType(SettingsGroup).first);
+      expect(tester.getTopLeft(find.text('Weergave').last).dx - card.left, closeTo(16 + 16, 0.5));
+      final rows = tester.renderObject<RenderSettingsRows>(find.byType(SettingsRows).first);
+      expect(rows.separatorRects.single.left, 16);
+    });
+
+    testWidgets('the description is off screen and read as the VoiceOver hint', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pump(
+        tester,
+        subpage([
+          SettingNavigationTile(
+            icon: Symbols.palette_rounded,
+            title: 'Thema',
+            subtitle: 'Licht of donker',
+            onTap: () {},
+          ),
+        ]),
+      );
+
+      expect(find.text('Licht of donker'), findsNothing);
+      expect(tester.getSemantics(find.text('Thema')), containsSemantics(hint: 'Licht of donker'));
+      semantics.dispose();
+    });
+
+    testWidgets('a page that does not opt in keeps its descriptions', (tester) async {
+      await _pump(tester, subpage([_row(subtitle: 'Thema en dichtheid')], hide: false));
+      expect(find.text('Thema en dichtheid'), findsOneWidget);
+    });
+
+    testWidgets('a disabled row keeps its line, because there it says why', (tester) async {
+      resetSharedPreferencesForTest();
+      await tester.runAsync(() => SettingsService.getInstance());
+      await _pump(
+        tester,
+        subpage([
+          SettingSwitchTile(
+            pref: SettingsService.icloudSyncEnabled,
+            icon: Symbols.cloud_sync_rounded,
+            title: 'iCloud',
+            subtitle: 'iCloud is niet beschikbaar',
+            enabled: false,
+          ),
+          SettingSwitchTile(
+            pref: SettingsService.crashReporting,
+            icon: Symbols.monitoring_rounded,
+            title: 'Crashrapportage',
+            subtitle: 'Stuurt crashes',
+          ),
+        ]),
+      );
+
+      expect(find.text('iCloud is niet beschikbaar'), findsOneWidget);
+      expect(find.text('Stuurt crashes'), findsNothing);
+    });
+
+    testWidgets('a Studio row title is the semibold 15 pt line of the series', (tester) async {
+      await _pump(tester, subpage([_row()]));
+      final style = tester
+          .widget<RichText>(find.descendant(of: find.byType(ListTile), matching: find.byType(RichText)).first)
+          .text
+          .style!;
+      expect(style.fontSize, 15);
+      expect(style.fontWeight, FontWeight.w600);
+      expect(tester.getSize(find.byType(ListTile)).height, inInclusiveRange(48, 56));
+    });
+
+    for (final (name, dark, oled, coral) in [
+      ('light', false, false, kStudioSwitchLight),
+      ('dark', true, false, kStudioSwitchDark),
+      ('OLED', true, true, kStudioSwitchDark),
+    ]) {
+      testWidgets('a destructive row takes the Studio coral in $name, the section heading the muted ink', (
+        tester,
+      ) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: monoTheme(dark: dark, oled: oled),
+            home: Scaffold(
+              body: SettingsStudioTheme(
+                child: SettingsGroup(
+                  title: 'Onderhoud',
+                  children: [
+                    SettingNavigationTile(
+                      icon: Symbols.cleaning_services_rounded,
+                      title: 'Cache wissen',
+                      destructive: true,
+                      onTap: () {},
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+        final title = tester.widget<Text>(find.text('Cache wissen'));
+        expect(title.style?.color, coral);
+        final heading = tester.widget<Text>(find.text('ONDERHOUD'));
+        final muted = tokens(tester.element(find.text('ONDERHOUD'))).textMuted;
+        expect(heading.style?.color, muted);
+      });
+    }
+
+    for (final dark in [false, true]) {
+      testWidgets('the card edge and separators are the faint Studio hairline (${dark ? 'dark' : 'light'})', (
+        tester,
+      ) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: monoTheme(dark: dark),
+            home: Scaffold(
+              body: SettingsStudioTheme(child: SettingsGroup(children: [_row(), _row()])),
+            ),
+          ),
+        );
+        final hairline = tokens(tester.element(find.byType(SettingsRows))).outline;
+        expect(hairline.a, lessThan(0.2), reason: 'the Studio hairline carries its own faint alpha');
+        final card = tester.widget<Container>(
+          find.descendant(of: find.byType(SettingsGroup), matching: find.byType(Container)).first,
+        );
+        expect(((card.foregroundDecoration! as BoxDecoration).border! as Border).top.color, hairline);
+        expect(tester.widget<SettingsRows>(find.byType(SettingsRows)).separatorColor, hairline);
+      });
+    }
+
+    testWidgets('outside Instellingen a light section heading keeps the brick', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: monoTheme(dark: false),
+          home: const Scaffold(
+            body: SettingsGroup(title: 'Onderhoud', children: [SizedBox(height: 40)]),
+          ),
+        ),
+      );
+      expect(tester.widget<Text>(find.text('ONDERHOUD')).style?.color, kSettingsSectionInkLight);
+    });
   });
 
   group('TV', () {

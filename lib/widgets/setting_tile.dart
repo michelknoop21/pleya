@@ -48,6 +48,7 @@ class SettingSwitchTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final svc = _TileBase._svc;
+    final shown = settingsRowDescription(context, subtitle, enabled: enabled);
     return ValueListenableBuilder<bool>(
       valueListenable: svc.listenable(pref),
       builder: (_, value, _) => SettingRowFocus(
@@ -58,13 +59,16 @@ class SettingSwitchTile extends StatelessWidget {
         automationState: () => {'value': value},
         child: ClickableCursor(
           enabled: enabled,
-          child: SwitchListTile(
-            contentPadding: settingRowPadding(),
-            secondary: SettingsIconBadge(icon),
-            title: Text(title),
-            subtitle: subtitle != null ? Text(subtitle!) : null,
-            value: value,
-            onChanged: enabled ? (v) => _write(svc, v) : null,
+          child: settingsRowWithHint(
+            settingsRowHint(context, subtitle, enabled: enabled),
+            SwitchListTile(
+              contentPadding: settingRowPadding(),
+              secondary: settingsRowLeading(context, icon),
+              title: Text(title),
+              subtitle: shown != null ? Text(shown) : null,
+              value: value,
+              onChanged: enabled ? (v) => _write(svc, v) : null,
+            ),
           ),
         ),
       ),
@@ -114,6 +118,8 @@ class SettingSwitchRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = enabled && onChanged != null && !locked;
+    // A locked switch keeps its line: it says what holds the value.
+    final shown = settingsRowDescription(context, subtitle, enabled: active);
     return SettingRowFocus(
       enabled: active || locked,
       focusNode: focusNode,
@@ -124,9 +130,9 @@ class SettingSwitchRow extends StatelessWidget {
         enabled: active,
         child: SwitchListTile(
           contentPadding: settingRowPadding(),
-          secondary: SettingsIconBadge(icon),
+          secondary: settingsRowLeading(context, icon),
           title: Text(title),
-          subtitle: subtitle != null ? Text(subtitle!) : null,
+          subtitle: shown != null ? Text(shown) : null,
           value: value,
           // A no-op keeps a locked switch in the active colour.
           onChanged: active ? onChanged : (locked ? (_) {} : null),
@@ -154,6 +160,11 @@ class SettingNavigationTile extends StatelessWidget {
   /// before the chevron.
   final String? trailingLabel;
 
+  /// A row that removes or resets something: its title in the Studio
+  /// series' destructive ink ([settingsDestructiveInk]). The confirmation
+  /// behind it is the action's own.
+  final bool destructive;
+
   /// Amber dot next to the chevron, same convention and color
   /// (`kAccentAlt`) as `TvTopNavigation`'s expired-session marker: something
   /// the viewer can fix from here, not breakage, so it stays off the brand
@@ -171,6 +182,7 @@ class SettingNavigationTile extends StatelessWidget {
     this.trailingIcon = Symbols.chevron_right_rounded,
     this.trailingLabel,
     this.needsAttention = false,
+    this.destructive = false,
   }) : assert(destinationBuilder != null || onTap != null);
 
   @override
@@ -188,42 +200,46 @@ class SettingNavigationTile extends StatelessWidget {
     // that does not fit beside the title takes the line under it, as the
     // main settings page showed it before, so nothing is cut.
     final label = trailingLabel;
+    final description = settingsRowDescription(context, subtitle);
     final placement = label == null || PlatformDetector.isTV()
         ? null
-        : settingValuePlacement(context, title: title, value: label, hasDescription: subtitle != null);
+        : settingValuePlacement(context, title: title, value: label, hasDescription: description != null);
     // Joined, like the value tiles do: the value never pushes the description out.
     final subtitleText = placement == SettingValuePlacement.subtitle
-        ? (subtitle == null ? label : '$label · $subtitle')
-        : subtitle;
+        ? (description == null ? label : '$label · $description')
+        : description;
 
     return SettingRowFocus(
       focusNode: focusNode,
       onSelect: activate,
       child: ClickableCursor(
-        child: ListTile(
-          contentPadding: settingRowPadding(),
-          leading: SettingsIconBadge(icon),
-          title: placement == SettingValuePlacement.titleLine
-              ? SettingTitleWithValue(title: title, value: label!)
-              : Text(title),
-          subtitle: subtitleText != null ? Text(subtitleText) : null,
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // TV keeps its own text style from TvSettingsDensity.
-              if (label != null && PlatformDetector.isTV()) ...[Text(label), const SizedBox(width: 16)],
-              if (placement == SettingValuePlacement.trailing) ...[
-                SettingValueLabel(label!, title: title),
-                const SizedBox(width: 8),
+        child: settingsRowWithHint(
+          settingsRowHint(context, subtitle),
+          ListTile(
+            contentPadding: settingRowPadding(),
+            leading: settingsRowLeading(context, icon),
+            title: placement == SettingValuePlacement.titleLine
+                ? SettingTitleWithValue(title: title, value: label!)
+                : Text(title, style: destructive ? TextStyle(color: settingsDestructiveInk(context)) : null),
+            subtitle: subtitleText != null ? Text(subtitleText) : null,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // TV keeps its own text style from TvSettingsDensity.
+                if (label != null && PlatformDetector.isTV()) ...[Text(label), const SizedBox(width: 16)],
+                if (placement == SettingValuePlacement.trailing) ...[
+                  SettingValueLabel(label!, title: title),
+                  const SizedBox(width: 8),
+                ],
+                if (needsAttention) ...[
+                  Semantics(label: t.tvNavigation.attentionRequired, child: const NewEpisodeDot()),
+                  const SizedBox(width: 8),
+                ],
+                AppIcon(trailingIcon, fill: 1, size: 20, color: tokens(context).textMuted),
               ],
-              if (needsAttention) ...[
-                Semantics(label: t.tvNavigation.attentionRequired, child: const NewEpisodeDot()),
-                const SizedBox(width: 8),
-              ],
-              AppIcon(trailingIcon, fill: 1, size: 20, color: tokens(context).textMuted),
-            ],
+            ),
+            onTap: activate,
           ),
-          onTap: activate,
         ),
       ),
     );
@@ -267,16 +283,20 @@ class SettingRegexTile extends StatelessWidget {
           },
         );
 
+        final shown = settingsRowDescription(context, subtitle);
         return SettingRowFocus(
           onSelect: activate,
           child: ClickableCursor(
-            child: ListTile(
-              leading: SettingsIconBadge(icon),
-              contentPadding: settingRowPadding(),
-              title: Text(title),
-              subtitle: Text(subtitle),
-              trailing: AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
-              onTap: activate,
+            child: settingsRowWithHint(
+              settingsRowHint(context, subtitle),
+              ListTile(
+                leading: settingsRowLeading(context, icon),
+                contentPadding: settingRowPadding(),
+                title: Text(title),
+                subtitle: shown == null ? null : Text(shown),
+                trailing: AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
+                onTap: activate,
+              ),
             ),
           ),
         );
@@ -366,14 +386,15 @@ class SettingColorTile extends StatelessWidget {
           },
         );
 
+        final shown = settingsRowDescription(context, subtitle);
         return SettingRowFocus(
           onSelect: activate,
           child: ClickableCursor(
             child: ListTile(
-              leading: SettingsIconBadge(icon),
+              leading: settingsRowLeading(context, icon),
               contentPadding: settingRowPadding(),
               title: Text(title),
-              subtitle: subtitle != null ? Text(subtitle!) : null,
+              subtitle: shown != null ? Text(shown) : null,
               trailing: Container(
                 width: 28,
                 height: 28,

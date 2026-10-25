@@ -10,6 +10,7 @@ import '../utils/tv_hig.dart';
 import 'app_icon.dart';
 import 'settings/settings_studio_style.dart';
 import 'settings/settings_icon_badge.dart';
+import 'settings/settings_studio_theme.dart';
 import 'settings_rows.dart';
 import 'tv/tv_unified_layout.dart';
 
@@ -122,13 +123,22 @@ const double kSettingsFocusBarAlpha = 0.85;
 /// at [kSettingsOutlineAlpha]. Anything that draws its own settings-style card
 /// (there are a couple, outside [SettingsGroup] itself) reads this instead of
 /// re-deriving the alpha by hand.
-Color settingsOutlineColor(BuildContext context) => tokens(context).outline.withValues(alpha: kSettingsOutlineAlpha);
+///
+/// A-24b: inside Instellingen off TV the Studio hairline already carries its
+/// own faint alpha (12%), so it is used as it is. Setting the alpha to 0.6
+/// over it turned the hairline into a dark brown line in light and a bright
+/// pink one in dark, where the series draws barely visible edges.
+Color settingsOutlineColor(BuildContext context) =>
+    _studioHairline(context) ?? tokens(context).outline.withValues(alpha: kSettingsOutlineAlpha);
+
+Color? _studioHairline(BuildContext context) =>
+    !PlatformDetector.isTV() && SettingsStudioTheme.isActive(context) ? tokens(context).outline : null;
 
 /// The row-separator colour every [SettingsRows] paints: [MonoTokens.outline]
 /// at [kSettingsSeparatorAlpha]. Exposed so a [SettingsRows] built outside
 /// [SettingsGroup] (e.g. a nested connections list) matches it exactly.
 Color settingsSeparatorColor(BuildContext context) =>
-    tokens(context).outline.withValues(alpha: kSettingsSeparatorAlpha);
+    _studioHairline(context) ?? tokens(context).outline.withValues(alpha: kSettingsSeparatorAlpha);
 
 /// Centers settings content once the window is wider than [kSettingsMaxWidth].
 /// On phones it is a plain horizontal inset, so mobile layout is unchanged.
@@ -176,6 +186,35 @@ class SettingsSectionHeader extends StatelessWidget {
           letterSpacing: tv ? 1.1 : 1.4,
           // DENS1: HIG Caption 2 (23 pt) on TV, the tvOS minimum.
           fontSize: tv ? TvHig.caption2 * pt : 12,
+        ),
+      ),
+    );
+  }
+}
+
+/// A child of [SettingsPage]'s flat list that stands on its own between the
+/// cards (a footnote, the Weergave preview) instead of becoming a row inside
+/// the card it follows.
+abstract interface class SettingsStandaloneBlock implements Widget {}
+
+/// A line of prose under a settings card: who a preference belongs to, what
+/// an empty list means. [SettingsPage] places it after the card it follows,
+/// as iOS Settings places a group footer, instead of as a row inside it.
+class SettingsFootnote extends StatelessWidget implements SettingsStandaloneBlock {
+  final String text;
+
+  const SettingsFootnote(this.text, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final pt = PlatformDetector.isTV() ? TvHig.of(context) : 1.0;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(32 * pt, 0, 32 * pt, 12 * pt),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: tokens(context).textMuted,
+          fontSize: PlatformDetector.isTV() ? TvHig.caption2 * pt : 13,
         ),
       ),
     );
@@ -230,12 +269,15 @@ class SettingsGroup extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: Material(
             type: MaterialType.transparency,
-            child: SettingsRows(
-              separatorColor: tv
-                  ? t.outline.withValues(alpha: kTvSettingsSeparatorAlpha)
-                  : settingsSeparatorColor(context),
-              separatorIndent: tv ? kTvSettingsSeparatorIndentPt * TvHig.of(context) : kSettingsSeparatorIndent,
-              children: children,
+            child: _studioRowText(
+              context,
+              SettingsRows(
+                separatorColor: tv
+                    ? t.outline.withValues(alpha: kTvSettingsSeparatorAlpha)
+                    : settingsSeparatorColor(context),
+                separatorIndent: tv ? kTvSettingsSeparatorIndentPt * TvHig.of(context) : settingsRowTextInset(context),
+                children: children,
+              ),
             ),
           ),
         ),
@@ -243,6 +285,34 @@ class SettingsGroup extends StatelessWidget {
     );
   }
 }
+
+/// A-24b: inside Instellingen off TV a row title is the Studio series' short
+/// semibold line (15 pt), not the dense 13 pt default, with its description
+/// a muted 13 pt line. A one-line row stays 52 pt: 48 plus the row inset.
+/// Scoped to the card, so the pickers a row opens keep their own type.
+Widget _studioRowText(BuildContext context, Widget rows) {
+  if (PlatformDetector.isTV() || !SettingsStudioTheme.isActive(context)) return rows;
+  final t = tokens(context);
+  // On the theme's own body style, so the rows keep the app's typeface.
+  final body = Theme.of(context).textTheme.bodyLarge ?? const TextStyle();
+  return ListTileTheme.merge(
+    dense: false,
+    minTileHeight: kSettingsStudioRowMinHeight,
+    titleTextStyle: body.copyWith(
+      color: t.text,
+      fontSize: 15,
+      fontWeight: FontWeight.w600,
+      letterSpacing: -0.1,
+      height: 1.25,
+    ),
+    subtitleTextStyle: body.copyWith(color: t.textMuted, fontSize: 13, letterSpacing: 0, height: 1.3),
+    leadingAndTrailingTextStyle: body.copyWith(color: t.textMuted, fontSize: 14, letterSpacing: 0),
+    child: rows,
+  );
+}
+
+/// Smallest height of a Studio row before the row inset (A-24b).
+const double kSettingsStudioRowMinHeight = 48;
 
 /// One settings row, carrying the focus treatment the rest of the TV UI uses.
 ///
@@ -402,8 +472,9 @@ class SegmentedSetting<T> extends StatelessWidget {
             children: [
               // A-24: off TV the same badge as every other settings row, so
               // a segmented row lines up with the rows above and below it.
-              if (PlatformDetector.isTV()) AppIcon(icon, fill: 1) else SettingsIconBadge(icon),
-              const SizedBox(width: 16),
+              if (PlatformDetector.isTV()) AppIcon(icon, fill: 1) else ?settingsRowLeading(context, icon),
+              if (PlatformDetector.isTV() || SettingsIconStyleScope.of(context) != SettingsIconStyle.none)
+                const SizedBox(width: 16),
               Text(title, style: Theme.of(context).textTheme.bodyLarge),
             ],
           ),
