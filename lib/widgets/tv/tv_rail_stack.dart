@@ -1,36 +1,6 @@
-/// Owns UP and DOWN between the horizontal rails of one stacked TV surface
-/// (LAND4 of `docs/tvos-fysieke-correctieronde.md`).
-///
-/// ## What it is for
-///
-/// Home, the Films landing, the Series landing and TV Search all draw the same
-/// picture: [TvDiscoveryRail]s stacked down the page. The contract for moving
-/// between them is one contract — a step to the rail above or below arrives at
-/// the same horizontal position, so the stack reads as one plane rather than as
-/// a pile of independent rows. This is where that contract lives, once, because
-/// a rule per screen is a rule that drifts on its first bug fix.
-///
-/// ## Why the rails cannot be left to Flutter
-///
-/// Flutter's directional traversal does try to hold the horizontal band, and on
-/// a static grid it succeeds. A rail is not static: it scrolls, and its scroll
-/// offset *is* its focus memory. A rail last walked to its tenth tile is still
-/// parked there, so the tile sitting under the band is its eleventh, not the
-/// third the viewer was on above. Worse, the tiles near the third are not built
-/// at all, so no amount of geometry can reach them.
-///
-/// That makes memory decide traversal, which is the one thing LAND4 forbids:
-/// remembering where a rail was left is what returning from a detail page needs,
-/// and it must survive; it just has no vote in where a keypress goes.
-///
-/// ## What it does not own
-///
-/// The edges. Above the first rail is a page header, a hero carousel or a
-/// search field, and below the last rail of TV Search is a vertical list of
-/// concrete results — none of them rails. [up] and [down] return null there, and
-/// a null vertical handler hands the key back to Flutter's traversal, which
-/// reaches those correctly. A caller with a specific target at an edge passes it
-/// as [whenExhausted].
+/// UP/DOWN between stacked TV content rows (CAROUSEL-LEFT1, Roadmap A-06).
+/// Each destination restores its own selection at the shared left anchor.
+/// Empty rows are skipped; page headers and other controls keep their own routes.
 library;
 
 import 'package:flutter/widgets.dart';
@@ -83,8 +53,8 @@ class TvRailStack {
   ValueChanged<int>? _step(int index, int delta, VoidCallback? whenExhausted) {
     final hasNeighbour = delta < 0 ? index > 0 : index < _order.length - 1;
     if (!hasNeighbour && whenExhausted == null) return null;
-    return (column) {
-      if (!_handOver(index, delta, column)) whenExhausted?.call();
+    return (_) {
+      if (!_handOver(index, delta)) whenExhausted?.call();
     };
   }
 
@@ -94,9 +64,9 @@ class TvRailStack {
   /// contract: a rail with no groups declines, and the focus carries on to the
   /// next one. A rail that is on screen with tiles in it never declines, so it
   /// can never be skipped.
-  bool _handOver(int index, int delta, int column) {
+  bool _handOver(int index, int delta) {
     for (var i = index + delta; i >= 0 && i < _order.length; i += delta) {
-      if (stateAt(i)?.focusColumn(column) ?? false) return true;
+      if (stateAt(i)?.focusCurrent() ?? false) return true;
     }
     return false;
   }

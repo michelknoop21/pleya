@@ -1055,12 +1055,21 @@ void main() {
       final row = rows(tester).first;
       final target = TvFocusRestoreTarget(itemId: row.hub.groups[1].groupId, containerId: row.hub.hubId);
 
+      tileNode(tester, target.itemId).requestFocus();
+      await tester.pumpAndSettle();
+
       // Flutter's own fallback after a scope's history goes empty: the first
       // focusable descendant, `tvHeroPlay` — the exact HERO7 symptom.
       heroNode(tester, 'tvHeroPlay').requestFocus();
       await tester.pump();
 
       final restored = tester.state<TvContentFeedState>(find.byType(TvContentFeed)).restoreTvFocus(target);
+      expect(
+        tester
+            .state<TvContentFeedState>(find.byType(TvContentFeed))
+            .restoreTvFocus(TvFocusRestoreTarget(itemId: target.itemId)),
+        isTrue,
+      );
       await tester.pump();
 
       expect(restored, isTrue);
@@ -1258,7 +1267,7 @@ void main() {
     });
   });
 
-  group('LAND4: a vertical step on Home arrives at the column it left from', () {
+  group('CAROUSEL-LEFT1: Home restores each row selection', () {
     List<MediaItem> films(String prefix, int count) => [
       for (var i = 0; i < count; i++) _film('$prefix$i', title: '$prefix $i'),
     ];
@@ -1289,10 +1298,10 @@ void main() {
 
       await press(tester, LogicalKeyboardKey.arrowDown);
       await tester.pumpAndSettle();
-      expect(focusedTile(), feedRows.last.hub.groups[4].groupId);
+      expect(focusedTile(), feedRows.last.hub.groups[0].groupId);
     });
 
-    testWidgets('the row below may remember where it was left, but it does not decide', (tester) async {
+    testWidgets('the row below restores its own selection', (tester) async {
       // The negative control at feed level: a row's scroll offset is its
       // memory, and geometry read that memory as a destination.
       await bootTwoRows(tester);
@@ -1311,7 +1320,7 @@ void main() {
       await press(tester, LogicalKeyboardKey.arrowDown);
       await tester.pumpAndSettle();
 
-      expect(focusedTile(), feedRows.last.hub.groups[1].groupId);
+      expect(focusedTile(), feedRows.last.hub.groups[8].groupId);
     });
 
     testWidgets('UP out of the top row still reaches the hero', (tester) async {

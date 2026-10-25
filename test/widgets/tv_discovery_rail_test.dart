@@ -355,8 +355,11 @@ void main() {
       expect(widthOf(films[0]), closeTo(TvDiscoveryLayout.posterWidth(scale) + ringPadding, 1.5));
       expect(widthOf(films[2]), closeTo(TvDiscoveryLayout.posterWidth(scale) + ringPadding, 1.5));
 
-      // And the neighbour on each side is still inside the viewport.
-      expect(tester.getTopLeft(find.byKey(ValueKey(films[0].groupId))).dx, greaterThan(-1));
+      // The selected card is the first visible card; following posters keep their shape.
+      expect(
+        tester.getTopLeft(find.byKey(ValueKey(films[1].groupId))).dx,
+        closeTo(TvDiscoveryLayout.railLeadInset(scale), 0.5),
+      );
       expect(tester.getTopLeft(find.byKey(ValueKey(films[2].groupId))).dx, lessThan(kTvGoldenSurfaceSize.width));
     });
 

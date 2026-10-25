@@ -42,6 +42,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../automation/automation_ids.dart';
@@ -49,6 +50,7 @@ import '../../automation/automation_node.dart';
 import '../../focus/card_focus_scope.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
+import '../../utils/scroll_utils.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_item.dart';
 import '../../media/media_server_client.dart';
@@ -289,6 +291,8 @@ const _slot = #tvDiscoveryRailSlot;
 class TvDiscoveryRailState extends State<TvDiscoveryRail> {
   final _nodes = <String, FocusNode>{};
   final _scroll = ScrollController();
+  int _focusRequest = 0;
+  bool _viewAllSelected = false;
   late final ValueNotifier<UnifiedMediaGroup?> _focused;
 
   /// The view-all tile's own node. Not in [_nodes] — there is exactly one of
@@ -361,11 +365,32 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
     // describing the same title when that title is still there, and falls back
     // to the first only when it is not.
     final current = _focused.value;
+    if (_viewAllSelected && widget.viewAll != null) {
+      final request = _focusRequest;
+      final heldFocus = _holdsFocus.value;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || request != _focusRequest || !_viewAllSelected) return;
+        if (heldFocus) _focusIndex(_viewAllIndex);
+        _revealFocused(_viewAllIndex, _scale);
+      });
+      return;
+    }
     if (current == null || !widget.groups.any((g) => g.groupId == current.groupId)) {
-      _focused.value = _restoredOrFirst();
+      final heldFocus = _holdsFocus.value;
+      final oldIndex = oldWidget.groups.indexWhere((g) => g.groupId == current?.groupId);
+      final nextIndex = oldIndex.clamp(0, widget.groups.isEmpty ? 0 : widget.groups.length - 1);
+      _viewAllSelected = false;
+      _focused.value = widget.groups.isEmpty ? null : widget.groups[nextIndex];
+      final request = _focusRequest;
+      if (heldFocus && _lastIndex >= 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && request == _focusRequest) _focusIndex(nextIndex);
+        });
+      }
       return;
     }
     _keepFocusedTileInPlace(oldWidget.groups, current.groupId);
+    _focused.value = widget.groups.firstWhere((group) => group.groupId == current.groupId);
   }
 
   /// A silent Home reload can put a new title in front of the card the remote
@@ -440,9 +465,8 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
   /// null when the band is already there or cannot be measured yet.
   ///
   /// Split out because the arithmetic is the useful half. It reads layout
-  /// tokens and an index, never a render box, so it answers for a tile that has
-  /// not been built — which is what [focusColumn] needs to move the band to a
-  /// tile the viewport has virtualised away.
+  /// tokens for virtualized tiles and measured geometry for built tiles, so
+  /// far restoration and animated card widths share the same anchor.
   double? _revealTarget(int index, double scale) {
     if (!_scroll.hasClients) return null;
     final position = _scroll.position;
@@ -450,53 +474,35 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
     final viewport = position.viewportDimension;
     if (viewport <= 0) return null;
 
-    final lead = TvDiscoveryLayout.railLeadInset(scale);
-    final start = lead + index * TvDiscoveryLayout.railPitch(scale);
-    final end = start + TvDiscoveryLayout.tileWidth(scale, focused: true);
-
-    var target = position.pixels;
-    if (end > target + viewport - lead) target = end - viewport + lead;
-    // Second, and deliberately after: when the expanded tile is wider than the
-    // band can show (a narrow window, a test viewport) the left edge is the one
-    // that has to win, or the viewer is looking at the tail of a tile whose
-    // start they cannot see.
-    if (start < target + lead) target = start - lead;
-    target = target.clamp(position.minScrollExtent, position.maxScrollExtent);
+    var offset = index * TvDiscoveryLayout.railPitch(scale);
+    final childContext = _nodeAt(index)?.context;
+    final child = childContext?.mounted == true ? childContext!.findRenderObject() : null;
+    final renderViewport = child == null ? null : RenderAbstractViewport.maybeOf(child);
+    if (child != null && renderViewport != null) {
+      // Lazy variable-width lists retain their measured origin after a far jump.
+      offset = renderViewport.getOffsetToReveal(child, 0).offset - TvDiscoveryLayout.railLeadInset(scale);
+      for (var i = 0; i < index && i < widget.groups.length; i++) {
+        final previousContext = _nodes[widget.groups[i].groupId]?.context;
+        final previous = previousContext?.mounted == true ? previousContext!.findRenderObject() : null;
+        if (previous is RenderBox && previous.hasSize) {
+          offset -= (previous.size.width - TvDiscoveryLayout.tileWidth(scale, focused: false)).clamp(
+            0.0,
+            double.infinity,
+          );
+        }
+      }
+    }
+    final target = offset.clamp(position.minScrollExtent, position.maxScrollExtent);
     if ((target - position.pixels).abs() < 0.5) return null;
     return target;
   }
 
-  /// Scrolls the band so the tile at [index] is fully visible **at its focused
-  /// width**, inside the page inset on both sides (P9).
-  ///
-  /// Flutter's own directional traversal does scroll a focused item into view,
-  /// and that is exactly the problem: it measures the tile at the instant focus
-  /// lands, which is still its *resting* 2:3 width, and the tile then grows to
-  /// 2.67 times that. `FocusableWrapper._scrollIntoView` cannot help either —
-  /// it looks for the nearest *vertical* scrollable and a rail is horizontal.
-  /// So the arithmetic is done here, from the layout tokens rather than from
-  /// render boxes: every tile before the focused one is at rest, so the focused
-  /// tile's left edge is `lead + index * pitch` and its right edge is that plus
-  /// the focused width. No measurement mid-tween, and therefore no dependence
-  /// on which frame this runs on.
-  ///
-  /// The [TvDiscoveryLayout.railLeadInset] margin is kept on both sides while
-  /// scrolled, not just at offset 0: the band is as wide as the screen, so a
-  /// tile flush against the viewport edge is a focus ring inside the overscan
-  /// band (hoofdstuk 8.1). That is the same rect `tvos.discovery.overscan`
-  /// asserts against `discover.safe_area`.
+  /// The selected tile slides to the page's existing leading inset.
   void _revealFocused(int index, double scale) {
     final target = _revealTarget(index, scale);
     if (target == null) return;
 
-    final duration = reduceMotion(context, FocusTheme.getAnimationDuration(context));
-    if (duration == Duration.zero) {
-      _scroll.jumpTo(target);
-      return;
-    }
-    // The same curve and duration the tile expands on, so the two read as one
-    // movement rather than as a scroll chasing a resize.
-    _scroll.animateTo(target, duration: duration, curve: Curves.easeOutCubic);
+    scrollCarouselToLeading(_scroll, target, duration: reduceMotion(context, FocusTheme.getAnimationDuration(context)));
   }
 
   FocusNode _nodeFor(String groupId) =>
@@ -506,39 +512,17 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
   /// returning from a detail page lands on the title it left from.
   bool focusCurrent() {
     final group = _focused.value;
-    return group != null && focusGroup(group.groupId);
+    if (group == null) return widget.viewAll != null && _focusIndex(_viewAllIndex);
+    return focusGroup(group.groupId);
   }
 
-  /// Puts the focus on one named tile, or reports that it could not.
-  ///
-  /// Fails rather than approximates when the tile is not built: the rail is
-  /// virtualized, so a group scrolled far out of the viewport has no focus node
-  /// yet, and quietly focusing the nearest built tile instead would restore the
-  /// user to a title they never chose. The caller decides what to do with a
-  /// false — for restoration that means falling back to the rail's first tile.
+  /// Restores a group by identity, building it first when it is offscreen.
   bool focusGroup(String groupId) {
-    final node = _nodes[groupId];
-    if (node == null || !node.canRequestFocus) return false;
-    node.requestFocus();
-    return true;
+    final index = widget.groups.indexWhere((group) => group.groupId == groupId);
+    return index >= 0 && _focusIndex(index);
   }
 
-  /// Takes the focus at [column] — the horizontal position a vertical step
-  /// arrived from — and reports whether this rail could take it (LAND4).
-  ///
-  /// The column is an index and not an x-coordinate, and the two are the same
-  /// thing here: [TvDiscoveryLayout.railPitch] is a function of the page scale
-  /// alone, so every rail on a page lays its tiles on one grid and column *n*
-  /// of any rail is column *n* of every other. "every rail on a page lays its
-  /// tiles on one grid" in `test/widgets/tv/tv_discovery_rail_test.dart` holds
-  /// that against the rendered x-positions. Should a rail ever get its own tile
-  /// width, this is the method that has to start comparing centres instead of
-  /// indices, and nothing else does.
-  ///
-  /// A shorter rail clamps rather than declines: seven tiles with the focus on
-  /// the sixth, stepping into a rail of four, is that rail's fourth. Declining
-  /// would send the step past a rail that is plainly there, which is the one
-  /// thing the contract rules out.
+  /// Explicit indexed focus; ordinary vertical navigation uses [focusCurrent].
   bool focusColumn(int column) {
     if (widget.groups.isEmpty && widget.viewAll == null) return false;
     return _focusIndex(column.clamp(0, _lastIndex));
@@ -551,8 +535,15 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
   FocusNode? _nodeAt(int index) => index == _viewAllIndex ? _viewAllNode : _nodes[widget.groups[index].groupId];
 
   bool _focusIndex(int index) {
+    final request = ++_focusRequest;
+    final targetId = index == _viewAllIndex ? null : widget.groups[index].groupId;
     final node = _nodeAt(index);
     if (node != null && node.parent != null && node.canRequestFocus) {
+      if (_scroll.hasClients &&
+          (_scroll.offset - index * TvDiscoveryLayout.railPitch(_scale)).abs() > _scroll.position.viewportDimension) {
+        final target = _revealTarget(index, _scale);
+        if (target != null) _scroll.jumpTo(target);
+      }
       node.requestFocus();
       return true;
     }
@@ -575,12 +566,32 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
     final target = _revealTarget(index, _scale);
     if (target != null) _scroll.jumpTo(target);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      if (!mounted || request != _focusRequest) return;
+      final updatedIndex = targetId == null
+          ? (widget.viewAll == null ? -1 : _viewAllIndex)
+          : widget.groups.indexWhere((group) => group.groupId == targetId);
+      if (updatedIndex < 0) return;
+      if (updatedIndex != index) {
+        _focusIndex(updatedIndex);
+        return;
+      }
       final built = _nodeAt(index);
       if (built != null && built.parent != null && built.canRequestFocus) built.requestFocus();
     });
     WidgetsBinding.instance.ensureVisualUpdate();
     return true;
+  }
+
+  bool get _anchored {
+    if (!_scroll.hasClients) return false;
+    final group = _focused.value;
+    final node = group == null ? _viewAllNode : _nodes[group.groupId];
+    final childContext = node?.context;
+    final child = childContext?.mounted == true ? childContext!.findRenderObject() : null;
+    final viewport = child == null ? null : RenderAbstractViewport.maybeOf(child);
+    if (child == null || viewport == null) return false;
+    final offset = viewport.getOffsetToReveal(child, 0).offset;
+    return (offset - _scroll.offset - TvDiscoveryLayout.railLeadInset(_scale)).abs() < 1;
   }
 
   @override
@@ -626,6 +637,18 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
             instance: widget.automationRailIndex?.toString(),
             role: 'rail',
             label: widget.title,
+            state: () => {
+              'selected_index': _focused.value == null
+                  ? _viewAllIndex
+                  : widget.groups.indexWhere((g) => g.groupId == _focused.value!.groupId),
+              'title': _focused.value == null
+                  ? ''
+                  : discoveryContextFor(_focused.value!, inContinueWatching: widget.isContinueWatching).title,
+              'scroll_offset': _scroll.hasClients ? _scroll.offset : 0,
+              'anchored': _anchored,
+              'reduced_motion': reduceMotion(context, const Duration(milliseconds: 1)) == Duration.zero,
+              'system_reduced_motion': MediaQuery.maybeDisableAnimationsOf(context) ?? false,
+            },
             child: SizedBox(height: TvDiscoveryLayout.railBandHeight(scale), child: _band(scale)),
           ),
           SizedBox(height: TvDiscoveryLayout.railMetaGap * scale),
@@ -680,28 +703,15 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
     return ListView.builder(
       controller: _scroll,
       scrollDirection: Axis.horizontal,
-      // The page inset on both sides, plus the room the last tile needs to
-      // expand into (LAND3).
-      //
-      // P9 was first read as "the last tile has no trailing room", then argued
-      // away: a tile's expansion is an `AnimatedContainer` inside the
-      // scrollable, so growing it grows the content, and `maxScrollExtent` ends
-      // up exactly at the offset [_revealFocused] wants for the last tile, to
-      // the pixel. That is true, and it is true too late. The reveal is decided
-      // on the frame the focus lands, when nothing in this band is expanded
-      // yet, so the extent it clamps against is the *resting* content and the
-      // target comes out [TvDiscoveryLayout.railFocusHeadroom] short. Walking
-      // the rail hides that, because the tile being left is still wide while
-      // the next one grows. Arriving from elsewhere, on a vertical step or a
-      // restore, does not: on the canonical canvas it put the last tile's right
-      // edge at 1209 on a 1038-wide screen (LAND3).
-      //
-      // So the room is reserved, and it is reserved unconditionally: an extent
-      // that changed with where the focus is would be the same frame-ordering
-      // bug wearing a different hat. Nothing scrolls into it, because every
-      // scroll this rail makes comes from [_revealTarget], which asks for the
-      // offset a tile needs and never for the end of the band.
-      padding: EdgeInsets.only(left: lead, right: lead + TvDiscoveryLayout.railFocusHeadroom(scale)),
+      padding: EdgeInsets.only(
+        left: lead,
+        // Reserve against the resting width: a direct arrival precedes expansion.
+        right: carouselTrailingSpace(
+          MediaQuery.sizeOf(context).width,
+          lead,
+          TvDiscoveryLayout.tileWidth(scale, focused: false),
+        ),
+      ),
       // Lazy by construction: only the tiles the viewport can reach are built,
       // so a rail of forty groups costs the images of the six on screen
       // (hoofdstuk 42).
@@ -725,8 +735,8 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
         // remote having a mind of its own. A row is horizontal; its ends are
         // ends (the same convention the top navigation states as "geen wrap
         // van laatste naar eerste").
-        final onNavigateLeft = index == 0 ? () {} : null;
-        final onNavigateRight = index == _lastIndex ? () {} : null;
+        final onNavigateLeft = index == 0 ? () {} : () => _focusIndex(index - 1);
+        final onNavigateRight = index == _lastIndex ? () {} : () => _focusIndex(index + 1);
 
         if (index == _viewAllIndex) {
           final viewAll = widget.viewAll!;
@@ -749,6 +759,7 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
                 // real tile's projection on screen while the remote sits here
                 // would describe content the remote has left.
                 if (!focused) return;
+                _viewAllSelected = true;
                 _focused.value = null;
                 _revealFocused(index, scale);
               },
@@ -772,6 +783,18 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
             group: group,
             clientFor: widget.clientFor,
             focusNode: _nodeFor(group.groupId),
+            onGeometrySettled: () => WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              final node = _nodes[group.groupId];
+              if (node?.hasFocus != true) return;
+              scrollCarouselToLeading(
+                _scroll,
+                index * TvDiscoveryLayout.railPitch(scale),
+                childContext: node!.context,
+                leadingInset: lead,
+                animate: false,
+              );
+            }),
             scrollAlignment: widget.tileScrollAlignment,
             autofocus: widget.autofocus && index == 0,
             // Instance is `<railIndex>.<tileIndex>` so one scenario can address
@@ -794,6 +817,7 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
               // describing where it was left, which is also what the user comes
               // back to.
               if (!focused) return;
+              _viewAllSelected = false;
               _focused.value = group;
               widget.onFocusedGroupChanged?.call(group.groupId);
               _revealFocused(index, scale);

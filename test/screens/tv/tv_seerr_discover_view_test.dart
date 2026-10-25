@@ -302,7 +302,7 @@ void main() {
     );
   });
 
-  testWidgets('LAND4: a step between shelves keeps its column, whatever the lower shelf remembers', (tester) async {
+  testWidgets('CAROUSEL-LEFT1: a step between shelves restores the lower shelf selection', (tester) async {
     // A rail keeps focus memory — that is what makes returning from a detail
     // page land where you left. It must not decide a vertical step: standing on
     // the third card of one shelf, the third card of the next is where DOWN
@@ -329,7 +329,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pumpAndSettle();
-    expect(focusedId(), rails.last.widget.itemIds[2]);
+    expect(focusedId(), rails.last.widget.itemIds[6]);
   });
 
   testWidgets('an empty shelf between two others does not throw off which shelf DOWN reaches', (tester) async {
@@ -362,7 +362,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       focusedId(),
-      rails.last.widget.itemIds[1],
+      rails.last.widget.itemIds[0],
       reason: 'DOWN must reach the Series shelf, not park on Films or land nowhere',
     );
   });

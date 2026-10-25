@@ -1,0 +1,66 @@
+name: tvos.carousel.my-pleya
+target: tvos-sim
+# REQ-SEARCH-ROUTE (docs/tvos-fysieke-correctieronde.md): on Aanvragen the
+# search field got the desktop callbacks. DOWN asked for focus nodes TV never
+# builds and still reported the key as handled, UP had no handler, UP out of
+# the content skipped the field, and Menu on an empty field jumped to the top
+# navigation instead of closing Aanvragen.
+#
+# This walks the route the fix gives it, one press at a time, and asserts the
+# focus after every press: field, first content, field, top navigation, field,
+# inbox, field, and Menu on the empty field back to the Mijn Pleya tile.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - seed: seerr.requests.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - seed_seerr: {base_url: "{{fixture_seerr}}", api_key: "verify-seerr-key"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+
+  # With Seerr configured the content group carries Aanvragen, its only tile
+  # on this fixture: DOWN from the profile control lands on it.
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[requests]", timeout: 5000}
+  - snapshot: 00-hub
+  - press: select
+  - wait_until: {id: seerr.search.field, timeout: 15000}
+  - settle: 2500
+  - snapshot: 01-requests-opened
+
+  - press: down
+  - settle: 700
+  - assert: {id: "tv.catalog.grid.item[discover.Populair nu.0]", focused: true, insideViewport: true}
+  - snapshot: 02-requests-begin
+  - press: right
+  - settle: 250
+  - press: right
+  - settle: 250
+  - settle: 700
+  - assert: {id: "tv.catalog.grid.item[discover.Populair nu.2]", focused: true, insideViewport: true}
+  - snapshot: 03-requests-middle
+  - press: right
+  - settle: 250
+  - press: right
+  - settle: 250
+  - press: right
+  - settle: 250
+  - settle: 700
+  - assert: {id: "tv.catalog.grid.item[discover.Populair nu.5]", focused: true, insideViewport: true}
+  - snapshot: 04-requests-end
+  - press: down
+  - settle: 700
+  - press: up
+  - press: up
+  - settle: 700
+  - assert: {id: "tv.catalog.grid.item[discover.Populair nu.5]", focused: true}
+  - snapshot: 05-requests-remembered

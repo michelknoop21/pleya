@@ -65,11 +65,17 @@ void main() {
     WidgetTester tester,
     List<UnifiedMediaGroup> groups, {
     UnifiedArtworkPrecache? precache,
+    bool disableAnimations = false,
+    TvDiscoveryViewAllTile? viewAll,
   }) async {
     tester.view.physicalSize = _canvas;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
+    tester.platformDispatcher.accessibilityFeaturesTestValue = FakeAccessibilityFeatures(
+      disableAnimations: disableAnimations,
+    );
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     final theme = monoTheme(dark: true);
     await tester.pumpWidget(
       MaterialApp(
@@ -81,7 +87,13 @@ void main() {
             body: Builder(
               builder: (context) => SizedBox(
                 height: TvDiscoveryLayout.railSectionHeight(TvLayoutConstants.scaleOf(context)),
-                child: TvDiscoveryRail(title: 'Films', groups: groups, onActivate: (_) {}, precache: precache),
+                child: TvDiscoveryRail(
+                  title: 'Films',
+                  groups: groups,
+                  onActivate: (_) {},
+                  precache: precache,
+                  viewAll: viewAll,
+                ),
               ),
             ),
           ),
@@ -218,6 +230,94 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('P9: the focused tile is fully on screen, at the width it expands to', () {
+    testWidgets('CAROUSEL-LEFT1 first middle and last share the leading anchor', (tester) async {
+      final groups = tvDiscoveryFilmsRow();
+      final rail = await pumpRail(tester, groups);
+      rail.focusColumn(0);
+      await tester.pumpAndSettle();
+      final anchor = rectOf(tester, groups.first).left;
+      for (final index in [2, groups.length - 1, 1, 0]) {
+        expect(rail.focusColumn(index), isTrue);
+        await tester.pumpAndSettle();
+        expect(rectOf(tester, groups[index]).left, closeTo(anchor, 0.5), reason: "index=$index");
+      }
+    });
+
+    for (final count in [1, 3, 40]) {
+      for (final reduced in [false, true]) {
+        testWidgets('CAROUSEL-LEFT1 $count cards reduced=$reduced', (tester) async {
+          final groups = row('contract', count);
+          final rail = await pumpRail(tester, groups, disableAnimations: reduced);
+          rail.focusColumn(0);
+          await tester.pumpAndSettle();
+          final anchor = rectOf(tester, groups.first).left;
+          for (final index in [count ~/ 2, count - 1, 0]) {
+            rail.focusColumn(index);
+            await tester.pumpAndSettle();
+            expect(rectOf(tester, groups[index]).left, closeTo(anchor, 0.5));
+            expect(focusedTile(), groups[index].groupId);
+          }
+        });
+      }
+    }
+
+    testWidgets('CAROUSEL-LEFT1 refreshed metadata describes the same identity', (tester) async {
+      final original = row('refresh', 3);
+      final rail = await pumpRail(tester, original);
+      rail.focusGroup('refresh1');
+      await tester.pumpAndSettle();
+      final updated = [
+        original[2],
+        tvDiscoveryGroup('refresh1', [_item('refresh1', 'Nieuwe lange titel met bijgewerkte informatie')]),
+        original[0],
+      ];
+      await pumpRail(tester, updated);
+      expect(focusedTile(), 'refresh1');
+      expect(find.text('Nieuwe lange titel met bijgewerkte informatie'), findsOneWidget);
+    });
+
+    testWidgets('CAROUSEL-LEFT1 removing selection rescues active focus only', (tester) async {
+      final groups = row('removal', 3);
+      final rail = await pumpRail(tester, groups);
+      rail.focusGroup('removal1');
+      await tester.pumpAndSettle();
+      await pumpRail(tester, [groups[0], groups[2]]);
+      await tester.pumpAndSettle();
+      expect(focusedTile(), 'removal2');
+      expect(rectOf(tester, groups[2]).left, closeTo(TvDiscoveryLayout.railLeadInset(0.85), 0.5));
+    });
+
+    testWidgets('CAROUSEL-LEFT1 deferred discovery focus follows its reordered identity', (tester) async {
+      final groups = row('deferred', 40);
+      final rail = await pumpRail(tester, groups);
+      rail.focusGroup('deferred25');
+      await pumpRail(tester, [groups[25], ...groups.where((g) => g.groupId != 'deferred25')]);
+      expect(focusedTile(), 'deferred25');
+    });
+
+    testWidgets('CAROUSEL-LEFT1 a newer discovery request cancels the queued target', (tester) async {
+      final groups = row('newer', 40);
+      final rail = await pumpRail(tester, groups);
+      rail.focusColumn(25);
+      rail.focusColumn(1);
+      await tester.pumpAndSettle();
+      expect(focusedTile(), 'newer1');
+    });
+
+    testWidgets('CAROUSEL-LEFT1 view all stays selected and anchored when items arrive', (tester) async {
+      final groups = row('viewall', 5);
+      final viewAll = TvDiscoveryViewAllTile(count: 5, destinationLabel: 'Films', onSelect: () {});
+      final rail = await pumpRail(tester, groups.take(3).toList(), viewAll: viewAll);
+      rail.focusColumn(3);
+      await tester.pumpAndSettle();
+      final firstBox = FocusManager.instance.primaryFocus!.context!.findRenderObject() as RenderBox;
+      final anchor = firstBox.localToGlobal(Offset.zero).dx;
+      await pumpRail(tester, groups, viewAll: viewAll);
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvDiscoveryViewAllTile');
+      final box = FocusManager.instance.primaryFocus!.context!.findRenderObject() as RenderBox;
+      expect(box.localToGlobal(Offset.zero).dx, closeTo(anchor, 0.5));
+    });
+
     testWidgets('walking right keeps the whole expanded tile inside the band', (tester) async {
       // The rail has no `ensureVisible` of its own, and Flutter's traversal
       // policy cannot supply one: it measures the tile at the instant focus
@@ -326,8 +426,8 @@ void main() {
       await tester.pumpAndSettle();
       await press(tester, LogicalKeyboardKey.arrowDown);
 
-      expect(focusedTile(), 'b8');
-      final rect = tester.getRect(find.byKey(const ValueKey('b8')));
+      expect(focusedTile(), 'b0');
+      final rect = tester.getRect(find.byKey(const ValueKey('b0')));
       expect(rect.right, lessThanOrEqualTo(1038 - inset + 0.5), reason: 'the expanded tile ran off the right');
       expect(rect.width, closeTo(TvDiscoveryLayout.tileWidth(scale, focused: true), 0.5));
     });
@@ -587,7 +687,7 @@ void main() {
   // LAND4
   // ---------------------------------------------------------------------------
 
-  group('LAND4: a vertical step arrives at the column it left from', () {
+  group('CAROUSEL-LEFT1: vertical steps restore each rail selection', () {
     testWidgets('DOWN out of a scrolled rail lands under the tile it left', (tester) async {
       // The finding: the stack has to read as one plane. Standing on the sixth
       // tile of a rail and pressing DOWN puts you on the sixth tile of the rail
@@ -601,7 +701,7 @@ void main() {
       expect(focusedTile(), 't5');
 
       await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(focusedTile(), 'b5');
+      expect(focusedTile(), 'b0');
     });
 
     testWidgets('and UP comes back to the same column', (tester) async {
@@ -620,7 +720,7 @@ void main() {
       expect(focusedTile(), 't5');
     });
 
-    testWidgets('the target rail may remember where it was left, but it does not decide', (tester) async {
+    testWidgets('the target rail restores its own selection', (tester) async {
       // The scherpe punt of the contract, and the negative control for it.
       // A rail's scroll offset *is* its focus memory, so leaving the step to
       // geometry lets memory decide traversal: this rail was walked to its
@@ -636,7 +736,7 @@ void main() {
       await tester.pumpAndSettle();
       await press(tester, LogicalKeyboardKey.arrowDown);
 
-      expect(focusedTile(), 'b2', reason: 'the column the step left from, not the tile the rail remembers');
+      expect(focusedTile(), 'b9', reason: 'each rail remembers its own selection');
     });
 
     testWidgets('a shorter rail clamps on its last tile rather than declining the step', (tester) async {
@@ -648,7 +748,7 @@ void main() {
       expect(focusedTile(), 't6');
 
       await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(focusedTile(), 'b3', reason: 'seven items with the focus on the seventh, into a rail of four');
+      expect(focusedTile(), 'b0', reason: 'a short unvisited rail starts at its first tile');
     });
 
     testWidgets('an empty rail is stepped over, a filled one never is', (tester) async {
@@ -657,7 +757,7 @@ void main() {
       rails.first.focusGroup('t3');
       await tester.pumpAndSettle();
       await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(focusedTile(), 'b3', reason: 'the empty rail has nothing to stand on, so the step carries past it');
+      expect(focusedTile(), 'b0', reason: 'skip empty rails and restore the next rail');
 
       await press(tester, LogicalKeyboardKey.arrowUp);
       expect(focusedTile(), 't3', reason: 'and back over it the same way');
@@ -676,9 +776,9 @@ void main() {
       await tester.pumpAndSettle();
       await press(tester, LogicalKeyboardKey.arrowRight, times: 9);
       await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(focusedTile(), 'b9');
+      expect(focusedTile(), 'b0');
 
-      final rect = tester.getRect(find.byKey(const ValueKey('b9')));
+      final rect = tester.getRect(find.byKey(const ValueKey('b0')));
       expect(rect.left, greaterThanOrEqualTo(inset - 0.5));
       expect(rect.right, lessThanOrEqualTo(1038 - inset + 0.5));
       expect(
@@ -710,7 +810,7 @@ void main() {
       await tester.pumpAndSettle();
       await press(tester, LogicalKeyboardKey.arrowDown);
 
-      expect(focusedTile(), 'b1');
+      expect(focusedTile(), 'b25');
     });
 
     testWidgets('leaving the stack is still Flutter\'s job', (tester) async {

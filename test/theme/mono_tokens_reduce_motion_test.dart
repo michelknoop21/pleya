@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_tokens.dart';
+import 'package:pleya/utils/platform_detector.dart';
 
 import '../test_helpers/prefs.dart';
 
@@ -44,6 +45,28 @@ void main() {
     await tester.pumpWidget(_probe(osDisableAnimations: true, onBuilt: (d) => result = d));
 
     expect(result, Duration.zero);
+  });
+
+  testWidgets('CAROUSEL-LEFT1 Apple TV honors the separate platform reduceMotion flag', (tester) async {
+    SettingsService.resetForTesting();
+    TvDetectionService.debugSetAppleTVOverride(true);
+    addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+    tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    late Duration result;
+    await tester.pumpWidget(_probe(osDisableAnimations: false, onBuilt: (d) => result = d));
+    expect(result, Duration.zero);
+  });
+
+  testWidgets('CAROUSEL-LEFT1 the extra platform flag leaves other platforms unchanged', (tester) async {
+    SettingsService.resetForTesting();
+    TvDetectionService.debugSetAppleTVOverride(false);
+    addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+    tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    late Duration result;
+    await tester.pumpWidget(_probe(osDisableAnimations: false, onBuilt: (d) => result = d));
+    expect(result, _d);
   });
 
   testWidgets('tvReduceMotion off keeps the given duration', (tester) async {

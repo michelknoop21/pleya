@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/library_query.dart';
@@ -609,7 +610,7 @@ void main() {
       return tester.stateList<TvCatalogCardRailState>(find.byType(TvCatalogCardRail)).toList();
     }
 
-    testWidgets('DOWN from the Films band lands on the same column of the Series band', (tester) async {
+    testWidgets('CAROUSEL-LEFT1: DOWN restores the Series band selection', (tester) async {
       final bands = await pumpResults(tester);
       expect(bands, hasLength(2), reason: 'sanity: a Films band and a Series band');
       final films = bands.first.widget.itemIds;
@@ -626,11 +627,17 @@ void main() {
       await tester.pumpAndSettle();
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.pumpAndSettle();
-      expect(focusedCardId(), series[2]);
+      expect(focusedCardId(), series[6]);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await tester.pumpAndSettle();
       expect(focusedCardId(), films[2], reason: 'and the round trip ends where it started');
+      FocusManager.instance.primaryFocus!.unfocus();
+      await tester.pumpAndSettle();
+      final host = tester.state(find.byType(SearchScreen)) as TvFocusRestoreHost;
+      expect(host.restoreTvFocus(TvFocusRestoreTarget(itemId: series[6])), isTrue);
+      await tester.pumpAndSettle();
+      expect(focusedCardId(), series[6]);
     });
 
     testWidgets('SEARCH1: the section is named by a heading, which the focus does not move', (tester) async {

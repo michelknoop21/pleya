@@ -65,7 +65,7 @@ class TvContinueWatchingScreenState extends State<TvContinueWatchingScreen>
 
   void _focusBand(int index, int column) {
     if (index < 0 || index >= _sections.length) return;
-    _railKeyFor(_sections[index].$1).currentState?.focusColumn(column);
+    _railKeyFor(_sections[index].$1).currentState?.focusRail();
   }
 
   /// Back from a detail page or the player lands on the band that holds the

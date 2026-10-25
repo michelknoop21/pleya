@@ -22,6 +22,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../navigation/tv/tv_navigation_coordinator.dart';
 import 'package:provider/provider.dart';
 
 import '../../i18n/strings.g.dart';
@@ -96,7 +97,7 @@ class TvDiscoveryLandingScreen extends StatefulWidget {
 
 class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
     with TvDiscoveryActivationMixin
-    implements FocusableTab {
+    implements FocusableTab, TvFocusRestoreHost {
   final _scrollController = ScrollController();
   final _viewAllFocus = FocusNode(debugLabel: 'TvDiscoveryViewAll');
   final _messageActionFocus = FocusNode(debugLabel: 'TvDiscoveryLandingMessageAction');
@@ -109,6 +110,7 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
   // the case a rail's `FocusNode`s were never built at all yet, e.g. the very
   // first frame after a re-projection replaced a scrolled-away tile's node.
   final _focusedGroupIdByHubId = <String, String>{};
+  String? _focusedHubId;
 
   // Who owns UP and DOWN between the rails (LAND4). Keyed by hub id, for the
   // same reason the rails themselves are: a re-projection reorders rows, and a
@@ -248,13 +250,16 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
                     automationRailIndex: i,
                     isPartial: rails[i].isPartial,
                     initialFocusedGroupId: _focusedGroupIdByHubId[rails[i].hubId],
-                    onFocusedGroupChanged: (groupId) => _focusedGroupIdByHubId[rails[i].hubId] = groupId,
+                    onFocusedGroupChanged: (groupId) {
+                      _focusedGroupIdByHubId[rails[i].hubId] = groupId;
+                      _focusedHubId = rails[i].hubId;
+                    },
                     clientFor: (serverId) =>
                         context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId)),
-                    onActivate: (group) => _activate(group),
+                    onActivate: (group) => _activate(group, containerId: rails[i].hubId),
                     onContextMenu: openDiscoveryContextMenu,
-                    // Rail to rail, at the column the step leaves from
-                    // (LAND4). UP that runs out of rails returns to the header
+                    // Rail to rail, restoring each row's selection
+                    // (CAROUSEL-LEFT1). UP that runs out of rails returns to the header
                     // action, so the two are a pair rather than a one-way trip;
                     // DOWN off the last rail has nothing below it and is left
                     // to Flutter, which correctly does nothing.
@@ -281,8 +286,15 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
     );
   }
 
-  Future<void> _activate(UnifiedMediaGroup group) =>
-      activateDiscoveryGroup(group, onManageServers: widget.onManageServers);
+  Future<void> _activate(UnifiedMediaGroup group, {String? containerId}) =>
+      activateDiscoveryGroup(group, onManageServers: widget.onManageServers, containerId: containerId);
+
+  @override
+  bool restoreTvFocus(TvFocusRestoreTarget target) {
+    final containerId = target.containerId ?? _focusedHubId;
+    if (containerId == null) return false;
+    return _rails.keyFor(containerId).currentState?.focusGroup(target.itemId) ?? false;
+  }
 
   /// DOWN out of the header action, into the first rail's current tile.
   ///

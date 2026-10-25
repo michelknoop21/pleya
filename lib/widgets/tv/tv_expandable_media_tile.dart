@@ -87,6 +87,7 @@ class TvExpandableMediaTile extends StatefulWidget {
     this.focusNode,
     this.autofocus = false,
     this.onFocusChange,
+    this.onGeometrySettled,
     this.onNavigateUp,
     this.onNavigateDown,
     this.onNavigateLeft,
@@ -117,6 +118,7 @@ class TvExpandableMediaTile extends StatefulWidget {
   final ValueChanged<bool>? onFocusChange;
   final VoidCallback? onNavigateUp;
   final VoidCallback? onNavigateDown;
+  final VoidCallback? onGeometrySettled;
   final VoidCallback? onNavigateLeft;
   final VoidCallback? onNavigateRight;
 
@@ -193,6 +195,7 @@ class _TvExpandableMediaTileState extends State<TvExpandableMediaTile> {
         child: Padding(
           padding: EdgeInsets.all(TvDiscoveryLayout.cardFocusRingGap * scale),
           child: AnimatedContainer(
+            onEnd: widget.onGeometrySettled,
             duration: reduceMotion(context, FocusTheme.getAnimationDuration(context)),
             curve: Curves.easeOutCubic,
             width: artworkWidth,

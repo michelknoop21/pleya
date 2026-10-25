@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
+import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -220,6 +221,13 @@ void main() {
     // element is the tile itself and its own `Focus` is a descendant, not an
     // ancestor, of that context.
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvDiscoveryTile_$middleGroupId');
+    final host = tester.state(find.byType(TvDiscoveryLandingScreen)) as TvFocusRestoreHost;
+    FocusManager.instance.primaryFocus!.unfocus();
+    await tester.pumpAndSettle();
+    expect(host.restoreTvFocus(TvFocusRestoreTarget(itemId: middleGroupId, containerId: threeItemRail.hubId)), isTrue);
+    expect(host.restoreTvFocus(TvFocusRestoreTarget(itemId: middleGroupId)), isTrue);
+    await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvDiscoveryTile_$middleGroupId');
 
     // Back to the top so the page header is mounted again: focusing a tile
     // scrolled the landing down to that rail, and since DEC-068 the catalog
@@ -373,7 +381,7 @@ void main() {
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvDiscoveryViewAll');
   });
 
-  group('LAND4: a vertical step on a landing arrives at the column it left from', () {
+  group('CAROUSEL-LEFT1: a vertical step restores the destination row', () {
     List<MediaItem> movies(String prefix, int count) => [
       for (var i = 0; i < count; i++) _movie('$prefix$i', '$prefix $i'),
     ];
@@ -420,7 +428,7 @@ void main() {
     /// One body for both because the two landings are one screen with a
     /// different `railsOf` — a second copy of these assertions would be a
     /// second chance to prove only one of them.
-    Future<void> assertColumnIsKept(WidgetTester tester) async {
+    Future<void> assertRowMemoryIsKept(WidgetTester tester) async {
       final rails = tester.stateList<TvDiscoveryRailState>(find.byType(TvDiscoveryRail)).toList();
       expect(rails, hasLength(2), reason: 'sanity: two stacked rails');
       final top = rails.first.widget.groups;
@@ -436,7 +444,7 @@ void main() {
       expect(rails.first.focusGroup(top[2].groupId), isTrue);
       await tester.pumpAndSettle();
       await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(focusedTile(), bottom[2].groupId);
+      expect(focusedTile(), bottom[7].groupId);
 
       await press(tester, LogicalKeyboardKey.arrowUp);
       expect(focusedTile(), top[2].groupId, reason: 'and the round trip ends where it started');
@@ -450,7 +458,7 @@ void main() {
           hub('top-picks-movies', 'Top Picks', movies('p', 10), 'movie'),
         ],
       );
-      await assertColumnIsKept(tester);
+      await assertRowMemoryIsKept(tester);
     });
 
     testWidgets('the Series landing, from the same owner', (tester) async {
@@ -463,7 +471,7 @@ void main() {
           hub('top-picks-shows', 'Top Picks', shows('q', 10), 'show'),
         ],
       );
-      await assertColumnIsKept(tester);
+      await assertRowMemoryIsKept(tester);
     });
 
     testWidgets('UP out of the first rail still reaches the page header', (tester) async {

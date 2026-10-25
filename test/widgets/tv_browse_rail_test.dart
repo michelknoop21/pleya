@@ -28,6 +28,59 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('TvBrowseRailLayout', () {
+    test('CAROUSEL-LEFT1 every detail card shape reaches the leading anchor through its last item', () {
+      for (final type in ['movie', 'episode', 'person']) {
+        for (final count in [1, 3, 40]) {
+          for (final trailing in [false, true]) {
+            final hub = MediaHub(
+              id: 'anchor',
+              title: 'Anchor',
+              type: type,
+              size: count,
+              items: [
+                for (var i = 0; i < count; i++)
+                  MediaItem(
+                    id: '$i',
+                    backend: MediaBackend.plex,
+                    kind: type == 'episode' ? MediaKind.episode : MediaKind.movie,
+                    title: '$i',
+                  ),
+              ],
+            );
+            final metrics = TvBrowseRailLayout.metricsForHub(
+              hub: hub,
+              availableWidth: 1040,
+              density: LibraryDensity.defaultValue,
+              episodePosterMode: EpisodePosterMode.episodeThumbnail,
+              scale: 0.85,
+            );
+            final max = TvBrowseRailLayout.estimatedMaxScrollExtent(
+              hub: hub,
+              metrics: metrics,
+              viewportWidth: 1040,
+              scale: 0.85,
+              hasTrailing: trailing,
+            );
+            final last = trailing ? count : count - 1;
+            for (final index in [0, last ~/ 2, last]) {
+              expect(
+                TvBrowseRailLayout.scrollOffsetForIndex(
+                  hub: hub,
+                  index: index,
+                  metrics: metrics,
+                  viewportWidth: 1040,
+                  maxScrollExtent: max,
+                  scale: 0.85,
+                  hasTrailing: trailing,
+                ),
+                closeTo(index * (metrics.cardWidth + metrics.itemGap), 0.001),
+              );
+            }
+          }
+        }
+      }
+    });
+
     test('density changes card width', () {
       final item = MediaItem(id: 'movie_1', backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Movie');
       final hub = MediaHub(id: 'hub_1', title: 'Movies', type: 'movie', items: [item], size: 1);
@@ -1222,6 +1275,16 @@ void main() {
     await tester.pumpWidget(buildRail(const [emptySeason], initialItemId: episode2.id));
     await tester.pump();
 
+    final partialSeason = MediaHub(
+      id: emptySeason.id,
+      title: emptySeason.title,
+      type: emptySeason.type,
+      items: [episode1],
+      size: 1,
+    );
+    await tester.pumpWidget(buildRail([partialSeason], initialItemId: episode2.id));
+    await tester.pump();
+
     await tester.pumpWidget(buildRail([loadedSeason], initialItemId: episode2.id));
     await tester.pump();
 
@@ -2321,7 +2384,7 @@ void main() {
       );
     }
 
-    testWidgets('reports a refresh that puts another card under the cursor', (tester) async {
+    testWidgets('CAROUSEL-LEFT1 follows the selected identity across reorder', (tester) async {
       final joey = movie('41215');
       Future<bool> handled(MediaHub _, MediaItem _) => Future.value(true);
       await tester.pumpWidget(buildRail(hubOf([joey, movie('2'), movie('3')]), onActivateItem: handled));
@@ -2343,9 +2406,7 @@ void main() {
       await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);
       await tester.pump();
 
-      expect(lines.single, contains('focused_target_changed disposition=replaced'));
-      expect(lines.single, contains('was=s1:41215'));
-      expect(lines.single, contains('occupant=s1:2'));
+      expect(lines.single, contains('selected=s1:41215 activated=s1:41215'));
     });
 
     testWidgets('reports a refresh that drops the focused item altogether', (tester) async {

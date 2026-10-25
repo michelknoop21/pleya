@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../services/settings_service.dart';
+import '../utils/platform_detector.dart';
 
 MonoTokens tokens(BuildContext context) => Theme.of(context).extension<MonoTokens>()!;
 
@@ -24,6 +25,7 @@ Duration reduceMotion(BuildContext context, Duration d) => prefersReducedMotion(
 /// animation, such as a control that visibly turns while it is dragged.
 bool prefersReducedMotion(BuildContext context) =>
     MediaQuery.disableAnimationsOf(context) ||
+    (PlatformDetector.isAppleTV() && WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.reduceMotion) ||
     (SettingsService.instanceOrNull?.read(SettingsService.tvReduceMotion) ?? false);
 
 @immutable

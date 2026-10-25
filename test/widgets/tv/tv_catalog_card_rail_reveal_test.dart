@@ -64,7 +64,7 @@ void main() {
     void expectFocusedInView(int index) {
       expect(focused(), contains('(item$index)'));
       final rect = tester.getRect(find.byKey(ValueKey('card$index')));
-      expect(rect.left, greaterThanOrEqualTo(0), reason: 'card $index starts left of the screen');
+      expect(rect.left, closeTo(72, 0.5), reason: 'CAROUSEL-LEFT1: card $index stays at the leading inset');
       expect(rect.right, lessThanOrEqualTo(1920), reason: 'card $index ends right of the screen');
     }
 

@@ -132,3 +132,32 @@ bool _scrollContextToHorizontalCenterNow(ScrollController controller, BuildConte
   }
   return true;
 }
+
+/// Non-focusable space after the last carousel card, so it can reach the lead.
+double carouselTrailingSpace(double viewport, double leading, double lastItemExtent) =>
+    (viewport - leading - lastItemExtent).clamp(0.0, double.infinity).toDouble();
+
+/// Each TV carousel owns its card geometry; they share this leading-anchor motion.
+void scrollCarouselToLeading(
+  ScrollController controller,
+  double itemOffset, {
+  bool animate = true,
+  Duration duration = const Duration(milliseconds: 150),
+  BuildContext? childContext,
+  double leadingInset = 0,
+}) {
+  if (controller.positions.length != 1) return;
+  final position = controller.position;
+  if (!position.hasContentDimensions || !itemOffset.isFinite) return;
+  final child = childContext?.mounted == true ? childContext!.findRenderObject() : null;
+  final viewport = child == null ? null : RenderAbstractViewport.maybeOf(child);
+  final offset = child == null || viewport == null
+      ? itemOffset
+      : viewport.getOffsetToReveal(child, 0).offset - leadingInset;
+  final target = offset.clamp(position.minScrollExtent, position.maxScrollExtent).toDouble();
+  if (!animate || duration == Duration.zero) {
+    controller.jumpTo(target);
+  } else {
+    unawaited(controller.animateTo(target, duration: duration, curve: Curves.easeOutCubic));
+  }
+}

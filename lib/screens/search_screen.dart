@@ -2,6 +2,7 @@ import '../providers/local_library_provider.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
+import '../navigation/tv/tv_navigation_coordinator.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -128,7 +129,8 @@ class _SearchScreenState extends State<SearchScreen>
         FocusableTab,
         ControllerDisposerMixin,
         MountedSetStateMixin,
-        TvDiscoveryActivationMixin {
+        TvDiscoveryActivationMixin
+    implements TvFocusRestoreHost {
   late final _searchController = createTextEditingController();
   final _searchFocusNode = FocusNode(debugLabel: 'SearchInput');
   final _firstResultFocusNode = FocusNode(debugLabel: 'SearchFirstResult');
@@ -1037,6 +1039,9 @@ class _SearchScreenState extends State<SearchScreen>
     ];
   }
 
+  @override
+  bool restoreTvFocus(TvFocusRestoreTarget target) => _tvSearchKey.currentState?.focusItem(target.itemId) ?? false;
+
   /// Select on a unified result. Remembers the title it opened, so the row at
   /// rest (36 A) is a row of things this viewer actually went to.
   void _activateSearchGroup(UnifiedMediaGroup group) {
@@ -1057,7 +1062,15 @@ class _SearchScreenState extends State<SearchScreen>
         item.serverId != null &&
         !context.read<MultiServerProvider>().isServerOnline(ServerId(item.serverId!)) &&
         context.read<LocalLibraryProvider?>()?.item(item.serverId!, item.id) != null;
-    unawaited(navigateToMediaItem(context, item, isOffline: cached, onRefresh: updateItem));
+    unawaited(
+      navigateToMediaItem(
+        context,
+        item,
+        isOffline: cached,
+        onRefresh: updateItem,
+        restoreTarget: PlatformDetector.isTV() ? TvFocusRestoreTarget(itemId: item.globalKey) : null,
+      ),
+    );
   }
 
   /// Select on a `people` result (SRCH-2). The item is a stand-in
@@ -1086,7 +1099,13 @@ class _SearchScreenState extends State<SearchScreen>
       serverName: person.serverName,
       backend: person.backend,
     );
-    if (openTvContentRoute(id: 'tvPerson_${serverId}_${person.id}', builder: buildPerson) != null) return;
+    if (openTvContentRoute(
+          id: 'tvPerson_${serverId}_${person.id}',
+          builder: buildPerson,
+          restoreTarget: TvFocusRestoreTarget(itemId: person.globalKey),
+        ) !=
+        null)
+      return;
     Navigator.push(context, MaterialPageRoute(builder: buildPerson));
   }
 

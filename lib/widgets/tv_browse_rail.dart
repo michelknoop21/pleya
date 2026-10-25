@@ -26,6 +26,7 @@ import '../utils/media_image_helper.dart';
 import '../utils/media_navigation_helper.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/layout_constants.dart';
+import '../utils/scroll_utils.dart';
 import 'app_icon.dart';
 import 'clickable_cursor.dart';
 import 'focus_builders.dart';
@@ -317,7 +318,14 @@ class TvBrowseRailLayout {
     final showTrailing = hasTrailing ?? hub.more;
     final itemContentWidth = hub.items.length * (metrics.cardWidth + metrics.itemGap);
     final moreContentWidth = showTrailing ? viewAllItemWidthForScale(scale) + metrics.itemGap : 0.0;
-    final contentWidth = (metrics.railEdgePadding * 2) + itemContentWidth + moreContentWidth;
+    final lastExtent = showTrailing
+        ? viewAllItemWidthForScale(scale) + metrics.itemGap
+        : metrics.cardWidth + metrics.itemGap;
+    final contentWidth =
+        metrics.railEdgePadding +
+        itemContentWidth +
+        moreContentWidth +
+        carouselTrailingSpace(viewportWidth, metrics.railEdgePadding, lastExtent);
     return (contentWidth - viewportWidth).clamp(0.0, double.infinity).toDouble();
   }
 
@@ -349,16 +357,7 @@ class TvBrowseRailLayout {
     final clampedIndex = index.clamp(0, totalCount - 1).toInt();
     final normalItemExtent = metrics.cardWidth + metrics.itemGap;
     final normalItemsBefore = clampedIndex < hub.items.length ? clampedIndex : hub.items.length;
-    final leadingOffset = metrics.railEdgePadding + (normalItemsBefore * normalItemExtent);
-    final targetExtent = itemExtentForIndex(
-      hub: hub,
-      index: clampedIndex,
-      metrics: metrics,
-      scale: scale,
-      hasTrailing: showTrailing,
-    );
-    final targetCenter = leadingOffset + (targetExtent / 2);
-    return (targetCenter - (viewportWidth / 2)).clamp(0.0, maxScrollExtent).toDouble();
+    return (normalItemsBefore * normalItemExtent).clamp(0.0, maxScrollExtent).toDouble();
   }
 
   static double estimateHeight({
@@ -632,6 +631,16 @@ class TvBrowseRailState extends State<TvBrowseRail> {
         oldWidget.initialHubId != widget.initialHubId || oldWidget.initialItemId != widget.initialItemId;
 
     if (!hubStateChanged && !initialSelectionChanged) {
+      final oldItem = oldWidget.hubs.isEmpty || _itemIndex >= oldWidget.hubs[_hubIndex].items.length
+          ? null
+          : oldWidget.hubs[_hubIndex].items[_itemIndex];
+      final hub = _activeHub;
+      final item = hub == null || _itemIndex >= hub.items.length ? null : hub.items[_itemIndex];
+      if (_focusNode.hasFocus && item != null && !identical(oldItem, item)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _focusNode.hasFocus) _notifyFocusedItem();
+        });
+      }
       _rememberTrailingStates();
       if (!oldWidget.autofocus && widget.autofocus) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -673,6 +682,11 @@ class TvBrowseRailState extends State<TvBrowseRail> {
     _itemIndex = _itemIndex.clamp(0, _totalItemCount(hub) == 0 ? 0 : _totalItemCount(hub) - 1);
     final selectedInitialItem = _selectInitialItemIfPossible();
     if (oldActiveHubKey == _hubKey(hub)) {
+      final retained = hub.items.indexWhere((item) => hubItemIdentity(item) == focusedBeforeUpdate);
+      if (!selectedInitialItem && retained >= 0) {
+        _itemIndex = retained;
+        _rememberFocus(hub);
+      }
       _reportFocusedTargetChangeAcrossUpdate(focusedBeforeUpdate, hub);
     }
     // notify:false — this runs during the build phase and the enclosing
@@ -688,7 +702,7 @@ class TvBrowseRailState extends State<TvBrowseRail> {
     _rememberTrailingStates();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (selectedInitialItem) _scrollToItem(animate: false);
+      if (selectedInitialItem || activeHubStateChanged) _scrollToItem(animate: false);
       if (shouldJumpAlignActiveHub) {
         _scrollActiveHubToTop(animate: false);
       } else if (shouldAnimateAlignActiveHub) {
@@ -1129,11 +1143,12 @@ class TvBrowseRailState extends State<TvBrowseRail> {
 
     final distance = (position.pixels - target).abs();
     if (distance < 0.5) return;
-    if (!animate || duration == Duration.zero || distance > viewportWidth * _scrollCatchUpViewportDistance) {
-      position.jumpTo(target);
-    } else {
-      unawaited(position.animateTo(target, duration: duration, curve: Curves.easeOutCubic));
-    }
+    scrollCarouselToLeading(
+      controller,
+      target,
+      animate: animate && distance <= viewportWidth * _scrollCatchUpViewportDistance,
+      duration: reduceMotion(context, duration),
+    );
   }
 
   void _scrollToItemAfterLayout({bool animate = true}) {
@@ -1566,7 +1581,15 @@ class TvBrowseRailState extends State<TvBrowseRail> {
       id: id,
       role: 'list',
       focusNode: hubIndex == _hubIndex ? _focusNode : null,
-      state: () => {'child_count': hub.items.length},
+      state: () => {
+        'child_count': hub.items.length,
+        'selected_index': hubIndex == _hubIndex
+            ? _itemIndex
+            : HubFocusMemory.getForHubOnly(_hubKey(hub), _totalItemCount(hub)),
+        'scroll_offset': _scrollControllers[_hubKey(hub)]?.hasClients == true
+            ? _scrollControllers[_hubKey(hub)]!.offset
+            : 0,
+      },
       child: child,
     );
   }
@@ -1608,7 +1631,22 @@ class TvBrowseRailState extends State<TvBrowseRail> {
               controller: scrollController,
               scrollDirection: Axis.horizontal,
               clipBehavior: Clip.none,
-              padding: .fromLTRB(metrics.railEdgePadding, 2 * scale, metrics.railEdgePadding, 6 * scale),
+              padding: .fromLTRB(
+                metrics.railEdgePadding,
+                2 * scale,
+                carouselTrailingSpace(
+                  railViewportWidth,
+                  metrics.railEdgePadding,
+                  TvBrowseRailLayout.itemExtentForIndex(
+                    hub: hub,
+                    index: totalCount - 1,
+                    metrics: metrics,
+                    scale: scale,
+                    hasTrailing: _hasTrailingFor(hub),
+                  ),
+                ),
+                6 * scale,
+              ),
               itemExtentBuilder: (itemIndex, _) => TvBrowseRailLayout.itemExtentForIndex(
                 hub: hub,
                 index: itemIndex,

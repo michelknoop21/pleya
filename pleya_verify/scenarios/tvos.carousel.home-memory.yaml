@@ -1,0 +1,57 @@
+name: tvos.carousel.home-memory
+target: tvos-sim
+# CAROUSEL-LEFT1 / A-06. Real Home projection, menu, detail return and refresh.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - press: down
+  - settle: 700
+  - press: down
+  - settle: 700
+  - snapshot: 00-home-single
+  - press: down
+  - settle: 700
+  - press: down
+  - settle: 700
+  - assert: {id: "discover.rail.item[2.0]", focused: true, state: {title: Aurora}}
+  - assert: {id: "discover.rail[2]", state: {selected_index: 0, anchored: true}}
+  - snapshot: 01-home-begin
+  - press: right
+  - settle: 700
+  - assert: {id: "discover.rail[2]", state: {selected_index: 1, anchored: true}}
+  - snapshot: 02-home-middle
+  - press: right
+  - settle: 700
+  - assert: {id: "discover.rail[2]", state: {selected_index: 2, anchored: true, title: Cascade}}
+  - snapshot: 03-home-end
+  - press: down
+  - settle: 700
+  - press: up
+  - settle: 700
+  - assert: {id: "discover.rail.item[2.2]", focused: true}
+  - press: {key: select, holdMs: 900}
+  - wait_until: {id: sheet.context_menu, timeout: 8000}
+  - snapshot: 04-home-menu
+  - press: menu
+  - settle: 700
+  - assert: {id: "discover.rail.item[2.2]", focused: true}
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - fixture_mutate: {op: add_movie, library_id: "{{fixture_id:library/movies}}", title: Een bijzonder lange filmtitel die op de vaste kijkplek moet blijven zonder de volgende rij te verplaatsen}
+  - settle: 125000
+  - press: menu
+  - settle: 4000
+  - assert: {id: "discover.rail.item[2.3]", focused: true, state: {title: Cascade}}
+  - assert: {id: "discover.rail[2]", state: {selected_index: 3, anchored: true, title: Cascade}}
+  - snapshot: 05-home-refreshed-return
+  - press: left
+  - press: left
+  - press: left
+  - settle: 700
+  - assert: {id: "discover.rail[2]", state: {selected_index: 0, anchored: true}}
+  - snapshot: 06-home-long-title

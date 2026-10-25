@@ -20,22 +20,23 @@ import 'package:pleya/widgets/tv/tv_catalog_card_rail.dart';
 
 List<String> _itemIds(int count) => [for (var i = 0; i < count; i++) 'item$i'];
 
-Widget _rail(GlobalKey<TvCatalogCardRailState> key, List<String> itemIds) {
+Widget _rail(GlobalKey<TvCatalogCardRailState> key, List<String> itemIds, {double factor = 1}) {
   return MaterialApp(
     theme: monoTheme(dark: true),
     home: Scaffold(
       body: TvCatalogCardRail(
         key: key,
         itemIds: itemIds,
+        cardWidthFactor: factor,
         cardHeight: (width) => 200,
         hasMore: false,
         isLoadingMore: false,
         onLoadMore: () {},
         itemBuilder: (context, cell) => Focus(
-          key: ValueKey('focus_item${cell.index}'),
+          key: ValueKey('focus_${itemIds[cell.index]}'),
           focusNode: cell.focusNode,
           onFocusChange: cell.onFocusChange,
-          child: SizedBox(width: cell.width, child: Text('item${cell.index}')),
+          child: SizedBox(width: cell.width, child: Text(itemIds[cell.index])),
         ),
       ),
     ),
@@ -44,6 +45,34 @@ Widget _rail(GlobalKey<TvCatalogCardRailState> key, List<String> itemIds) {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  for (final count in [1, 3, 30]) {
+    for (final factor in [1.0, 1.3]) {
+      for (final reduced in [false, true]) {
+        testWidgets('CAROUSEL-LEFT1 catalog $count factor=$factor reduced=$reduced', (tester) async {
+          tester.view.physicalSize = const Size(1920, 1080);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.reset);
+          tester.platformDispatcher.accessibilityFeaturesTestValue = FakeAccessibilityFeatures(
+            disableAnimations: reduced,
+          );
+          addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+          final key = GlobalKey<TvCatalogCardRailState>();
+          await tester.pumpWidget(_rail(key, _itemIds(count), factor: factor));
+          await tester.pumpAndSettle();
+          key.currentState!.focusColumn(0);
+          await tester.pumpAndSettle();
+          double left(int index) => tester.getTopLeft(find.text('item$index')).dx;
+          final anchor = left(0);
+          for (final index in [count ~/ 2, count - 1, 0]) {
+            key.currentState!.focusColumn(index);
+            await tester.pumpAndSettle();
+            expect(left(index), closeTo(anchor, 0.5));
+          }
+        });
+      }
+    }
+  }
 
   testWidgets('restoring focus on a card that scrolled out of the built range brings it back, not the first card', (
     tester,
@@ -63,7 +92,7 @@ void main() {
     // Scroll far enough right to build item25, focus it (which is what sets
     // `_focusedId`), then scroll all the way back — virtualizing it out of
     // the ListView, as arriving fresh at this rail's start would leave it.
-    controller.jumpTo(controller.position.maxScrollExtent);
+    key.currentState!.focusColumn(25);
     await tester.pumpAndSettle();
     expect(find.text('item25'), findsOneWidget);
 
@@ -85,5 +114,44 @@ void main() {
       reason: 'LAND5: focusRail() must scroll the remembered card back into view, not fall back to the first one',
     );
     expect(find.text('item0').hitTestable(), findsNothing);
+  });
+  testWidgets('CAROUSEL-LEFT1 deferred focus follows identity across reorder', (tester) async {
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final key = GlobalKey<TvCatalogCardRailState>();
+    final items = _itemIds(30);
+    await tester.pumpWidget(_rail(key, items));
+    await tester.pumpAndSettle();
+    key.currentState!.focusColumn(25);
+    await tester.pumpWidget(_rail(key, ['item25', ...items.where((id) => id != 'item25')]));
+    await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvCatalogRailCard(item25)');
+  });
+
+  testWidgets('CAROUSEL-LEFT1 a newer focus request cancels a queued request', (tester) async {
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final key = GlobalKey<TvCatalogCardRailState>();
+    await tester.pumpWidget(_rail(key, _itemIds(30)));
+    await tester.pumpAndSettle();
+    key.currentState!.focusColumn(25);
+    key.currentState!.focusColumn(1);
+    await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvCatalogRailCard(item1)');
+  });
+  testWidgets('CAROUSEL-LEFT1 whole-row replacement rescues focus to a real new card', (tester) async {
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final key = GlobalKey<TvCatalogCardRailState>();
+    await tester.pumpWidget(_rail(key, _itemIds(40)));
+    await tester.pumpAndSettle();
+    key.currentState!.focusColumn(35);
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(_rail(key, [for (var i = 0; i < 40; i++) 'new$i']));
+    await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvCatalogRailCard(new0)');
   });
 }

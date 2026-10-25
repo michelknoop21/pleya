@@ -5098,7 +5098,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       _clearTvDetailFocusedEpisode();
       return;
     }
-    if (_tvDetailFocusedEpisode?.id == item.id) return;
+    if (identical(_tvDetailFocusedEpisode, item)) return;
     setStateIfMounted(() {
       _tvDetailFocusedEpisode = item;
     });

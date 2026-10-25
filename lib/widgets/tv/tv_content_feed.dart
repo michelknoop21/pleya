@@ -119,6 +119,7 @@ class TvContentFeedState extends State<TvContentFeed>
   /// viewer to the title they left, or to its first card when that title is
   /// genuinely gone.
   final _focusedGroupIdByRowId = <String, String>{};
+  String? _focusedRowId;
   String? _heroGroupId;
 
   /// A1a's footer row, one DOWN below the last content row.
@@ -344,7 +345,7 @@ class TvContentFeedState extends State<TvContentFeed>
   /// [TvDiscoveryRailState.focusGroup].
   @override
   bool restoreTvFocus(TvFocusRestoreTarget target) {
-    final containerId = target.containerId;
+    final containerId = target.containerId ?? _focusedRowId;
     if (containerId == null) return false;
     final restored = _rowStack.keyFor(containerId).currentState?.focusGroup(target.itemId) ?? false;
     if (restored) _focusedGroupIdByRowId[containerId] = target.itemId;
@@ -643,7 +644,10 @@ class TvContentFeedState extends State<TvContentFeed>
                               railKey: _rowStack.keyFor(rows[i].hubId),
                               clientFor: _clientFor,
                               initialFocusedGroupId: _focusedGroupIdByRowId[rows[i].hubId],
-                              onFocusedGroupChanged: (id) => _focusedGroupIdByRowId[rows[i].hubId] = id,
+                              onFocusedGroupChanged: (id) {
+                                _focusedGroupIdByRowId[rows[i].hubId] = id;
+                                _focusedRowId = rows[i].hubId;
+                              },
                               onActivate: (group) => _activate(group, containerId: rows[i].hubId),
                               // No menu on a Nu op tv card: every action in
                               // it is about a library title.
@@ -653,8 +657,8 @@ class TvContentFeedState extends State<TvContentFeed>
                                       group,
                                       isInContinueWatching: rows[i].hubId == continueWatchingHubId,
                                     ),
-                              // Row to row, at the column the step leaves from
-                              // (LAND4). UP that runs out of rows above goes back
+                              // Row to row, restoring each row's selection
+                              // (CAROUSEL-LEFT1). UP that runs out of rows above goes back
                               // to the hero; DOWN off the last row has nothing
                               // below it.
                               onNavigateUp: _rowStack.up(

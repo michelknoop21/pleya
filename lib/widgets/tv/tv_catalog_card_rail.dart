@@ -19,13 +19,13 @@
 /// viewer reaches them.
 library;
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../focus/focus_theme.dart';
 import '../../utils/layout_constants.dart';
+import '../../theme/mono_tokens.dart';
 import 'tv_catalog_card_grid.dart';
+import '../../utils/scroll_utils.dart';
 import 'tv_unified_layout.dart';
 
 class TvCatalogCardRail extends StatefulWidget {
@@ -72,10 +72,8 @@ class TvCatalogCardRail extends StatefulWidget {
   /// rows lands on whichever card happens to be nearest in pixels rather than
   /// on the row the viewer meant.
   ///
-  /// The index is what LAND4 needs. A rail keeps focus memory — that is what
-  /// makes returning from a detail page work — but that memory must not decide
-  /// where UP and DOWN land: standing on item 2 of this rail, item 2 of the
-  /// next one is the destination however far right that rail was parked.
+  /// The index remains available to hosts; stacked content rows restore the
+  /// destination's own selection (CAROUSEL-LEFT1).
   final ValueChanged<int>? onExitUp;
   final ValueChanged<int>? onExitDown;
 
@@ -112,20 +110,25 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
   final Map<String, FocusNode> _nodes = {};
   final _controller = ScrollController();
   String? _focusedId;
+  int _focusRequest = 0;
 
   /// The pitch this rail was last laid out on, so [focusColumn] can scroll to a
   /// card that has not been built yet. Set in `build` rather than recomputed,
   /// because the geometry depends on the viewport and on `reservedLeading`, and
   /// a second computation is a second thing to keep in step.
   double _pitch = 0;
-  double _leadingPad = 0;
-  double _cardWidth = 0;
-  double _inset = 0;
 
   @override
   void didUpdateWidget(TvCatalogCardRail oldWidget) {
     super.didUpdateWidget(oldWidget);
     _reconcileNodes(previous: oldWidget.itemIds);
+    final remembered = _focusedId;
+    if (remembered != null && widget.itemIds.contains(remembered)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _focusedId != remembered) return;
+        _reveal(widget.itemIds.indexOf(remembered));
+      });
+    }
   }
 
   @override
@@ -158,6 +161,7 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
     // card that was next to theirs before the update, and the new list no
     // longer contains the position to measure from.
     final oldIndex = losesFocus ? previous.indexOf(focusedId) : -1;
+    final heldFocus = losesFocus && _nodes[focusedId]?.hasFocus == true;
 
     for (final id in removed) {
       _nodes.remove(id)?.dispose();
@@ -166,18 +170,16 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
 
     final replacement = _nearestSurvivor(previous: previous, from: oldIndex);
     _focusedId = replacement;
+    if (!heldFocus) return;
     // After the frame that removes the card: the replacement's node may not be
     // attached yet on this one.
+    final request = _focusRequest;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final node = replacement == null ? null : _nodes[replacement];
-      if (node != null && node.canRequestFocus) {
-        node.requestFocus();
+      if (!mounted || request != _focusRequest || _focusedId != replacement) return;
+      final index = replacement == null ? -1 : widget.itemIds.indexOf(replacement);
+      if (index >= 0) {
+        focusColumn(index);
       } else {
-        // Nothing survived, or it has not been built yet. LEFT is what this
-        // rail's own callers wire to the CAT5 controls (`onExitLeft: _openRail`
-        // on every page), which is the only thing left to operate once the
-        // shelf under the remote has emptied.
         widget.onExitLeft?.call();
       }
     });
@@ -229,37 +231,29 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
       final index = widget.itemIds.indexOf(remembered);
       if (index >= 0 && focusColumn(index)) return true;
     }
-    final node = _nodes[widget.itemIds.firstOrNull];
-    if (node == null || node.parent == null || !node.canRequestFocus) return false;
-    node.requestFocus();
-    return true;
+    return widget.itemIds.isNotEmpty && focusColumn(0);
   }
 
   bool get hasFocusableCard => _nodes.values.any((node) => node.canRequestFocus);
 
-  /// LAND4's destination for a vertical step that left column [column].
-  ///
-  /// Same index is the preferred rule; the clamp is what the geometry rule
-  /// reduces to here. Every rail in the catalog language is laid out by
-  /// [TvCatalogGrid.forWidth] at one card width and one gutter, so column *n*
-  /// of one rail sits at the same horizontal centre as column *n* of the next,
-  /// and "nearest centre" and "same index" are the same answer. A shorter rail
-  /// clamps on its last card: six items, focus on five, into a rail of four
-  /// gives item four.
-  ///
-  /// Deliberately not [focusRail]: that one restores what this rail remembers,
-  /// which is right for arriving from a detail page and wrong for a step from
-  /// the rail above.
+  /// Explicit indexed focus, including cards outside the lazy built window.
+  /// Vertical row navigation uses [focusRail] to restore row memory.
   bool focusColumn(int column) {
+    final request = ++_focusRequest;
     if (widget.itemIds.isEmpty) return false;
     final target = column.clamp(0, widget.itemIds.length - 1);
-    final node = _nodes[widget.itemIds[target]];
+    final targetId = widget.itemIds[target];
+    final node = _nodes[targetId];
     // `node.parent != null` — see [focusRail] for why the attachment test has
     // to come before `canRequestFocus`. A node this branch skips over is not
     // "not built yet": `_nodes` only gains an entry once a cell has actually
     // been built, so an entry that fails this test was built and then scrolled
     // away, which is exactly the case the fallback below exists to recover.
     if (node != null && node.parent != null && node.canRequestFocus) {
+      if (_controller.hasClients &&
+          (_controller.offset - target * _pitch).abs() > _controller.position.viewportDimension) {
+        scrollCarouselToLeading(_controller, target * _pitch, animate: false);
+      }
       node.requestFocus();
       return true;
     }
@@ -274,8 +268,13 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
     final wanted = (target * _pitch).clamp(position.minScrollExtent, position.maxScrollExtent);
     _controller.jumpTo(wanted);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final built = _nodes[widget.itemIds[target]];
+      if (!mounted || request != _focusRequest || !widget.itemIds.contains(targetId)) return;
+      final index = widget.itemIds.indexOf(targetId);
+      if (index != target) {
+        focusColumn(index);
+        return;
+      }
+      final built = _nodes[targetId];
       if (built != null && built.parent != null && built.canRequestFocus) built.requestFocus();
     });
     return true;
@@ -283,39 +282,17 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
 
   void _focusIndex(int index) {
     if (index < 0 || index >= widget.itemIds.length) return;
-    final node = _nodes[widget.itemIds[index]];
-    if (node != null && node.parent != null && node.canRequestFocus) {
-      node.requestFocus();
-      return;
-    }
-    // Not built yet, or built and scrolled away: a held key outruns the
-    // list. Bring the card in and focus it, rather than swallow the press.
     focusColumn(index);
   }
 
-  /// Keeps the focused card inside the row (SEARCH4). A card consumes its
-  /// own arrow keys, so Flutter's traversal and its `ensureVisible` never
-  /// run, and `FocusableWrapper` only scrolls a vertical scrollable into
-  /// view: without this the ring walks off the screen and the row stays put.
-  /// The card keeps the row's margin on whichever side it would otherwise
-  /// leave by.
+  /// Slides the selected card to the fixed leading inset, including the last.
   void _reveal(int index) {
     if (!_controller.hasClients || _pitch <= 0) return;
-    final position = _controller.position;
-    final start = _leadingPad + index * _pitch;
-    final end = start + _cardWidth;
-    var target = position.pixels;
-    if (end > target + position.viewportDimension - _inset) {
-      target = end - position.viewportDimension + _inset;
-    }
-    if (start < target + _leadingPad) target = start - _leadingPad;
-    target = target.clamp(position.minScrollExtent, position.maxScrollExtent);
-    if ((target - position.pixels).abs() < 0.5) return;
-    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
-      _controller.jumpTo(target);
-    } else {
-      unawaited(_controller.animateTo(target, duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic));
-    }
+    scrollCarouselToLeading(
+      _controller,
+      index * _pitch,
+      duration: reduceMotion(context, const Duration(milliseconds: 150)),
+    );
   }
 
   void _maybeLoadMore(int index) {
@@ -336,9 +313,6 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
     // each edge of the row's box, and a `ListView` clips at its own bounds.
     final headroom = TvCatalogGrid.focusHeadroom(cardHeight: cardHeight, focusScale: widget.focusScale);
     _pitch = cardWidth + grid.gutter;
-    _leadingPad = grid.inset + grid.leading;
-    _cardWidth = cardWidth;
-    _inset = grid.inset;
 
     return SizedBox(
       height: cardHeight + headroom * 2,
@@ -349,7 +323,12 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
         // must not shear it off — the padding below is what it grows into, and
         // clipping would take it back.
         clipBehavior: Clip.none,
-        padding: EdgeInsets.symmetric(horizontal: grid.inset + grid.leading, vertical: headroom),
+        padding: EdgeInsets.only(
+          left: grid.inset + grid.leading,
+          right: carouselTrailingSpace(width, grid.inset + grid.leading, cardWidth),
+          top: headroom,
+          bottom: headroom,
+        ),
         itemCount: widget.itemIds.length,
         separatorBuilder: (_, _) => SizedBox(width: grid.gutter),
         itemBuilder: (context, index) {

@@ -342,21 +342,16 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
   List<TvSeerrShelf> _visibleShelves() =>
       widget.shelves.where((shelf) => shelf.items.isNotEmpty).toList(growable: false);
 
-  /// Moves between shelves, keeping the column (LAND4).
+  /// Moves between shelves, restoring each shelf's selection (CAROUSEL-LEFT1).
   ///
-  /// A rail's own focus memory is what makes returning from a detail page land
-  /// where you left; it must not decide a vertical step. Standing on the third
-  /// card of one shelf, the third card of the next is the destination however
-  /// far right that shelf happens to be parked.
   void _focusShelf(int index, {int column = 0}) {
     final shelves = _visibleShelves();
     if (index < 0) return;
     if (index >= shelves.length) return;
-    _railKeyFor(shelves[index].id).currentState?.focusColumn(column);
+    _railKeyFor(shelves[index].id).currentState?.focusRail();
   }
 
-  /// Arriving at a shelf from somewhere that is not another shelf — the rail
-  /// closing, the page opening — where the memory *is* the right answer.
+  /// Closing the controls rail restores the current shelf too.
   void _restoreShelf(int index) {
     final shelves = _visibleShelves();
     if (index < 0 || index >= shelves.length) return;

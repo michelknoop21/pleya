@@ -199,6 +199,15 @@ class TvSearchViewState extends State<TvSearchView> {
     return false;
   }
 
+  /// A detail route returns to its stable item, even outside the built window.
+  bool focusItem(String itemId) {
+    for (final section in widget.sections) {
+      final index = section.itemIds.indexOf(itemId);
+      if (index >= 0) return _railKeyFor(section.id).currentState?.focusColumn(index) ?? false;
+    }
+    return false;
+  }
+
   /// Arriving at a band from something that is not another band — a heading
   /// action above it — where the band's own memory is the right answer.
   void _restoreBand(int index) {
@@ -206,15 +215,11 @@ class TvSearchViewState extends State<TvSearchView> {
     _railKeyFor(widget.sections[index].id).currentState?.focusRail();
   }
 
-  /// Moves between bands, keeping the column (LAND4).
+  /// Moves between bands, restoring each band's selection (CAROUSEL-LEFT1).
   ///
-  /// The band's own focus memory is what makes coming back from a detail page
-  /// land where you left it; it must not decide a vertical step. Standing on
-  /// the third result of Films, the third result of Series is where DOWN goes,
-  /// however far right Series was parked.
   void _focusBand(int index, int column) {
     if (index < 0 || index >= widget.sections.length) return;
-    _railKeyFor(widget.sections[index].id).currentState?.focusColumn(column);
+    _railKeyFor(widget.sections[index].id).currentState?.focusRail();
   }
 
   @override
