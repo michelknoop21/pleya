@@ -101,10 +101,16 @@ class ArtworkAuthorizationRegistry {
     _suppliers[originOf(uri)] = headers;
   }
 
-  static void unregister(String baseUrl) {
+  /// Stop answering for [baseUrl]'s origin. With [owner], only when [owner]
+  /// is still the registered supplier: a client replaced by a newer one for
+  /// the same server (a profile rebind) must not take the newer one's
+  /// headers with it when it closes after it.
+  static void unregister(String baseUrl, {Future<Map<String, String>> Function()? owner}) {
     final uri = Uri.tryParse(baseUrl);
     if (uri == null) return;
-    _suppliers.remove(originOf(uri));
+    final origin = originOf(uri);
+    if (owner != null && !identical(_suppliers[origin], owner)) return;
+    _suppliers.remove(origin);
   }
 
   /// Headers for [uri], or an empty map when nothing is registered for its
