@@ -51,6 +51,24 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 410 · 25 October 2026 · Apple TV
+
+<!-- commit: 6ab0be475dcb7f14a09a92124035dd221620e808 -->
+
+### Improved
+
+- **The selected card stays on the left in horizontal content rows on Apple TV.** The row moves through the same viewing position, including its last card. Its title and information stay with it, while posters and wide cards keep their existing shape.
+- **Each row remembers where you were.** Moving up or down restores that row's selection; returning from a detail page restores the title you opened. Refreshing a row keeps the selected title when it is still available.
+
+### Fixed
+
+- **Quick left/right browsing keeps the card and its information together.** Deferred focus follows the current title when content changes. The system Reduce Motion setting also suppresses these transitions on Apple TV.
+
+### Notes
+
+- Covers Home, Films, Series, Search, Continue Watching, Requests, detail rows and Library Recommended. Existing row heights, badges, menus and actions are retained.
+- Worth checking on a real Apple TV: rapid remote input, moving between rows, returning from details, the last card, Reduce Motion and television overscan. Simulator and focused component tests passed; physical Siri Remote behavior has not been checked. Cast, extras, related-title rows and Library Recommended share the tested components but did not have separate populated simulator runs.
+
 ## 2.8.1 · build 409 · 25 October 2026 · iPhone and iPad
 
 <!-- commit: e8fbf912b8b64e5f56603f1dfca009adf60535a9 -->
