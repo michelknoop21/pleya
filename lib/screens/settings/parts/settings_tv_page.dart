@@ -401,14 +401,15 @@ extension _SettingsTvPage on _SettingsScreenState {
                 body: TvSettingsRowList(items: section.items, nodes: _focusTracker, automationInstance: 'settings'),
                 rowKeys: [for (final item in section.items) item.key],
                 preview: section.label == t.settings.sectionLibrary
-                    // A-24b: the generalised card, "Jouw bibliotheek" and the
-                    // mode line. Its "Bekijk voorbeeld" button waits for phase 3,
-                    // which gives it a place in the RIGHT walk from the rows.
+                    // A-24b: the generalised card, "Jouw bibliotheek", the mode
+                    // line and "Bekijk voorbeeld", which opens Bibliotheken.
+                    // RIGHT from a row reaches it, LEFT goes back to the rows.
                     ? TvSettingsLibraryPreview(
                         modeLine: settingsPreviewModeLine(
                           themeProvider.themeMode,
                           _settingsService.read(settings.SettingsService.viewMode),
                         ),
+                        action: settingsViewPreviewAction(context),
                       )
                     : null,
               ),

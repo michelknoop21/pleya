@@ -59,7 +59,7 @@ class _FakeActiveProfile extends ChangeNotifier implements ActiveProfileProvider
 
 late AppDatabase _db;
 
-Future<void> _pumpTvSettings(WidgetTester tester, {MultiServerManager? manager}) async {
+Future<void> _pumpTvSettings(WidgetTester tester, {MultiServerManager? manager, VoidCallback? openLibraries}) async {
   tester.view.physicalSize = const Size(1920, 1080);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -84,7 +84,19 @@ Future<void> _pumpTvSettings(WidgetTester tester, {MultiServerManager? manager})
         ],
         // Keyboard mode, so `focusActiveTabIfReady` acts as it does on a remote.
         child: InputModeTracker(
-          child: MaterialApp(theme: monoTheme(dark: true), home: const SettingsScreen()),
+          child: MaterialApp(
+            theme: monoTheme(dark: true),
+            home: openLibraries == null
+                ? const SettingsScreen()
+                : MainScreenFocusScope(
+                    focusSidebar: () {},
+                    focusContent: () {},
+                    isSidebarFocused: false,
+                    sideNavigationWidth: 0,
+                    openLibraries: openLibraries,
+                    child: const SettingsScreen(),
+                  ),
+          ),
         ),
       ),
     ),
@@ -182,6 +194,24 @@ void main() {
       await _press(tester, LogicalKeyboardKey.arrowDown);
       await _press(tester, LogicalKeyboardKey.arrowLeft);
       expect(_hasFocus(tester, _category(advanced)), isTrue);
+      await _unmount(tester);
+    });
+
+    testWidgets('A-24b: RIGHT from a library row reaches Bekijk voorbeeld, which opens Bibliotheken', (tester) async {
+      await tester.runAsync(() => SettingsService.getInstance());
+      var libraries = 0;
+      await _pumpTvSettings(tester, openLibraries: () => libraries++);
+      final button = find.widgetWithText(TvPanelButton, t.settingsStudio.viewPreview);
+      expect(button, findsOneWidget);
+
+      await _focus(tester, _row('appearance'));
+      await _press(tester, LogicalKeyboardKey.arrowRight);
+      expect(Focus.of(tester.element(find.text(t.settingsStudio.viewPreview))).hasFocus, isTrue);
+      await _press(tester, LogicalKeyboardKey.select);
+      expect(libraries, 1);
+
+      await _press(tester, LogicalKeyboardKey.arrowLeft);
+      expect(Focus.of(tester.element(find.text(t.settingsStudio.viewPreview))).hasFocus, isFalse);
       await _unmount(tester);
     });
 
