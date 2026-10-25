@@ -46,7 +46,7 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **4** | **1** | **21** |
 
-Per taak, en dat is de maat die telt: **155 taken, 65 gereed, 15 bezig, 75 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **156 taken, 66 gereed, 15 bezig, 75 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -261,7 +261,7 @@ laatste golf.
 
 Drie wijzigingen kwamen tussen 24 september en 3 oktober op `main` zonder regel in deze lijst. Ze zijn
 geen scope creep: X1 en X2 hebben een eigen voorstel of besluit, en X3 herstelt een NAS-start die op
-de bewerkte migraties vastliep. De lijst eist wel dat werk er staat. Ze tellen niet mee in de 155 taken.
+de bewerkte migraties vastliep. De lijst eist wel dat werk er staat. Ze tellen niet mee in de 156 taken.
 
 | # | Wat | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
@@ -504,6 +504,7 @@ punt 3 en 4), en aan het venster-besluit.
 | S23.1 | Migratie `0021`, `POST /downloads` met recht `download` | `[x]` | M5: `0021_downloads.sql`, `internal/downloads` (store, taak `download_digest` rekent de SHA-256 uit), `POST/GET/DELETE /downloads`; recht `download` bij aanmaken en elke byte-aanvraag, 403 `library.download_not_permitted` voor wie alleen mag kijken, 404 buiten bereik of van een ander; matrixrij 61 tot en met 65 met een nieuwe uitkomst `notPermitted`; `downloads_api_test.go` (4 tests). Negatieve controle: de herhaalde rechtentoets weggehaald maakt `TestDownloadBelongsToItsOwnerAndNeedsTheDownloadRight` rood | 2026-10-23 |
 | S23.2 | Levering met digest, hervatten alleen bij gelijke digest | `[x]` | M5: `GET /downloads/{id}/file` met sterke `ETag "sha256-<hex>"`, `Digest` en `Repr-Digest`, `Range` alleen met `If-Range` gelijk aan die ETag, 409 `library.download_changed` als grootte of wijzigingstijd na het hashen veranderde, 409 `library.download_not_ready` tijdens `preparing`. Negatieve controle: `If-Range` altijd honoreren (`ir == etag \|\| true`) maakt `TestDownloadIsPreparedThenDeliveredWithDigestAndResumesOnlyOnEqualContent` rood | 2026-10-23 |
 | S23.3 | App: bestaande wachtrij op de nieuwe bron, sync-back | `[x]` | M5: `PleyaServerClient.resolveDownload` maakt de download, wacht tot `ready` en geeft url, `Authorization`-header en SHA-256 aan de bestaande wachtrij (`DownloadResolution` kreeg `headers` en `sha256`); de manager controleert de digest van het afgeronde bestand (`verifyDownloadDigest`) en verwijdert een afwijkend bestand. Sync-back is het bestaande offline-pad: `playback.dart` meldt een offline herhaling als `backlog`. Na een herstart van de app vraagt de manager de digest opnieuw aan de server (`expectedDigestForUrl`, de download hoort bij de gebruiker) en draait dezelfde controle (`verifyDownloadAfterRestart`); een onbereikbare server, een ontbrekend bestand of een niet-genoemde digest laat de download staan met een gelogde overgeslagen controle. Tests: `pleya_server_downloads_test.dart` (12), contracttest 94 fixtures. Negatieve controles: een digestcontrole die altijd slaagt maakt zowel de mismatch-test als de herstart-test met het gecorrumpeerde bestand rood. Hardware: niet bewezen op een toestel | 2026-10-23 |
+| S23.6 | Een download of back-up wacht niet op een scan: de controlesom, de back-up en de hersteltest krijgen een eigen jobwerker | `[x]` | Ketenrooktest op de testinstance (25 okt): `POST /downloads` bleef twee minuten `preparing` omdat beide werkers in de opstartscan zaten. `jobs.Options.ReservedKinds` start een extra werker die alleen `download_digest`, `backup_create` en `backup_verify` aanneemt (een handmatige back-up bleef bij de off-site hersteltest op dezelfde manier op `running` staan). Tests: `TestReservedKindDoesNotWaitForALongScan` (met en zonder gereserveerde werker). Negatieve controle: de extra werker niet starten maakt de eerste subtest rood | 2026-10-25 |
 | S23.4 | Web toont downloads op Mijn Pleya (scherm 11b) | `[ ]` | | |
 | S23.5 | Capability `downloads`, venster 5 deel 3, journey 10 | `[x]` | M5: `capabilities.downloads` staat aan zodra de store er is, openapi `Download`, `DownloadList`, `CreateDownloadRequest` en vijf operaties (75), hoofdstuk Downloads in het protocol, fixtures `download.json` en `download_list.json`, `check_protocol.sh` groen. Journey 10 op een toestel staat open met S23.3 | 2026-10-23 |
 
