@@ -341,7 +341,7 @@ Scope:
 
 Juridische toets vóór de licentietekst: auteurschap en herkomst (welke beelden of stemmen met externe tools zijn gemaakt, en wat hun voorwaarden zeggen; gedateerde originelen bewaren), bijdragen van anderen aan Big P-materiaal, of een binary met de beelden past bij GPLv3 terwijl de bron ze niet meer bevat, en de beelden op de publieke website. Kopieën die al onder de GPL zijn verspreid, ook in de git-historie en in forks, blijven onder de GPL; de beperking geldt vanaf de wijziging.
 
-Volgorde en impact: dit hoort bij stap 2 hierboven (publicatie en licenties) en loopt samen met E-02. De buildwijziging raakt `pubspec.yaml`, de laadcode van de stem, CI en de releaselanes, dus ze gaat niet in een lopende releasebundel en wacht tot A-24b is gemerged. Daarna eerst de juridische toets, dan de repo-splitsing. Big P-functies wachten er niet op.
+Volgorde en impact: dit hoort bij stap 2 hierboven (publicatie en licenties) en loopt samen met E-02. De buildwijziging raakt `pubspec.yaml`, de laadcode van de stem, CI en de releaselanes, dus ze gaat niet in een lopende releasebundel en wacht tot de lopende A-24-vervolgronde (Instellingen en Mijn Pleya) is gemerged. Daarna eerst de juridische toets, dan de repo-splitsing. Big P-functies wachten er niet op.
 
 ## October work windows
 
