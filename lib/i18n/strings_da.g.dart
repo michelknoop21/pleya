@@ -94,6 +94,7 @@ class TranslationsDa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTvNavigationDa tvNavigation = _TranslationsTvNavigationDa._(_root);
 	@override late final _TranslationsTvMyPleyaDa tvMyPleya = _TranslationsTvMyPleyaDa._(_root);
 	@override late final _TranslationsTvContextMenuDa tvContextMenu = _TranslationsTvContextMenuDa._(_root);
+	@override late final _TranslationsSettingsStudioDa settingsStudio = _TranslationsSettingsStudioDa._(_root);
 }
 
 // Path: app
@@ -1858,6 +1859,37 @@ class _TranslationsTvContextMenuDa extends TranslationsTvContextMenuEn {
 	@override String doneOnSome({required Object done, required Object total}) => 'Udført på ${done} af ${total} kilder. Resten forsøges igen, når de er online igen.';
 	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Udført på ${done} af ${total} kilder.';
 	@override String get failed => 'Det virkede ikke';
+}
+
+// Path: settingsStudio
+class _TranslationsSettingsStudioDa extends TranslationsSettingsStudioEn {
+	_TranslationsSettingsStudioDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get forYou => 'Til dig';
+	@override String get connectionsAndProfiles => 'Forbindelser og profiler';
+	@override String get system => 'System';
+	@override String get integrations => 'Integrationer';
+	@override String get libraryAndHome => 'Bibliotek og Hjem';
+	@override String get personal => 'Personligt';
+	@override String get mainTagline => 'Gør Pleya helt til din egen.';
+	@override String get tvTagline => 'Din seeroplevelse, ned i detaljen.';
+	@override String get appearanceHeadline => 'Sådan ser din Pleya ud';
+	@override String get livePreview => 'Live-forhåndsvisning';
+	@override String get yourLibrary => 'Dit bibliotek';
+	@override String get viewPreview => 'Se forhåndsvisning';
+	@override String get playbackExperience => 'Afspilningsoplevelse';
+	@override String get manage => 'Administrer';
+	@override String get yourWatchlist => 'Din liste';
+	@override String get yourContent => 'Dit indhold';
+	@override String get lightMode => 'Lys tilstand';
+	@override String get darkMode => 'Mørk tilstand';
+	@override String get oledMode => 'OLED-tilstand';
+	@override String get systemMode => 'Systemtilstand';
+	@override String get posterView => 'Plakatvisning';
+	@override String get listView => 'Listevisning';
 }
 
 // Path: search.filters
@@ -3737,6 +3769,28 @@ extension on TranslationsDa {
 			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Udført på ${done} af ${total} kilder. Resten forsøges igen, når de er online igen.',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Udført på ${done} af ${total} kilder.',
 			'tvContextMenu.failed' => 'Det virkede ikke',
+			'settingsStudio.forYou' => 'Til dig',
+			'settingsStudio.connectionsAndProfiles' => 'Forbindelser og profiler',
+			'settingsStudio.system' => 'System',
+			'settingsStudio.integrations' => 'Integrationer',
+			'settingsStudio.libraryAndHome' => 'Bibliotek og Hjem',
+			'settingsStudio.personal' => 'Personligt',
+			'settingsStudio.mainTagline' => 'Gør Pleya helt til din egen.',
+			'settingsStudio.tvTagline' => 'Din seeroplevelse, ned i detaljen.',
+			'settingsStudio.appearanceHeadline' => 'Sådan ser din Pleya ud',
+			'settingsStudio.livePreview' => 'Live-forhåndsvisning',
+			'settingsStudio.yourLibrary' => 'Dit bibliotek',
+			'settingsStudio.viewPreview' => 'Se forhåndsvisning',
+			'settingsStudio.playbackExperience' => 'Afspilningsoplevelse',
+			'settingsStudio.manage' => 'Administrer',
+			'settingsStudio.yourWatchlist' => 'Din liste',
+			'settingsStudio.yourContent' => 'Dit indhold',
+			'settingsStudio.lightMode' => 'Lys tilstand',
+			'settingsStudio.darkMode' => 'Mørk tilstand',
+			'settingsStudio.oledMode' => 'OLED-tilstand',
+			'settingsStudio.systemMode' => 'Systemtilstand',
+			'settingsStudio.posterView' => 'Plakatvisning',
+			'settingsStudio.listView' => 'Listevisning',
 			_ => null,
 		};
 	}

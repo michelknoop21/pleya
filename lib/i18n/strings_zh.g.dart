@@ -94,6 +94,7 @@ class TranslationsZh extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTvNavigationZh tvNavigation = _TranslationsTvNavigationZh._(_root);
 	@override late final _TranslationsTvMyPleyaZh tvMyPleya = _TranslationsTvMyPleyaZh._(_root);
 	@override late final _TranslationsTvContextMenuZh tvContextMenu = _TranslationsTvContextMenuZh._(_root);
+	@override late final _TranslationsSettingsStudioZh settingsStudio = _TranslationsSettingsStudioZh._(_root);
 }
 
 // Path: app
@@ -1858,6 +1859,37 @@ class _TranslationsTvContextMenuZh extends TranslationsTvContextMenuEn {
 	@override String doneOnSome({required Object total, required Object done}) => '已在 ${total} 个来源中的 ${done} 个完成。其余来源恢复在线后将重试。';
 	@override String doneOnSomeNoRetry({required Object total, required Object done}) => '已在 ${total} 个来源中的 ${done} 个完成。';
 	@override String get failed => '操作未成功';
+}
+
+// Path: settingsStudio
+class _TranslationsSettingsStudioZh extends TranslationsSettingsStudioEn {
+	_TranslationsSettingsStudioZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get forYou => '为你推荐';
+	@override String get connectionsAndProfiles => '连接与个人资料';
+	@override String get system => '系统';
+	@override String get integrations => '集成';
+	@override String get libraryAndHome => '媒体库与主页';
+	@override String get personal => '个人';
+	@override String get mainTagline => '让 Pleya 完全属于你。';
+	@override String get tvTagline => '你的观看体验，细致入微。';
+	@override String get appearanceHeadline => '你的 Pleya 是这样的';
+	@override String get livePreview => '实时预览';
+	@override String get yourLibrary => '你的媒体库';
+	@override String get viewPreview => '查看预览';
+	@override String get playbackExperience => '播放体验';
+	@override String get manage => '管理';
+	@override String get yourWatchlist => '你的片单';
+	@override String get yourContent => '你的内容';
+	@override String get lightMode => '浅色模式';
+	@override String get darkMode => '深色模式';
+	@override String get oledMode => 'OLED 模式';
+	@override String get systemMode => '跟随系统';
+	@override String get posterView => '海报视图';
+	@override String get listView => '列表视图';
 }
 
 // Path: search.filters
@@ -3737,6 +3769,28 @@ extension on TranslationsZh {
 			'tvContextMenu.doneOnSome' => ({required Object total, required Object done}) => '已在 ${total} 个来源中的 ${done} 个完成。其余来源恢复在线后将重试。',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object total, required Object done}) => '已在 ${total} 个来源中的 ${done} 个完成。',
 			'tvContextMenu.failed' => '操作未成功',
+			'settingsStudio.forYou' => '为你推荐',
+			'settingsStudio.connectionsAndProfiles' => '连接与个人资料',
+			'settingsStudio.system' => '系统',
+			'settingsStudio.integrations' => '集成',
+			'settingsStudio.libraryAndHome' => '媒体库与主页',
+			'settingsStudio.personal' => '个人',
+			'settingsStudio.mainTagline' => '让 Pleya 完全属于你。',
+			'settingsStudio.tvTagline' => '你的观看体验，细致入微。',
+			'settingsStudio.appearanceHeadline' => '你的 Pleya 是这样的',
+			'settingsStudio.livePreview' => '实时预览',
+			'settingsStudio.yourLibrary' => '你的媒体库',
+			'settingsStudio.viewPreview' => '查看预览',
+			'settingsStudio.playbackExperience' => '播放体验',
+			'settingsStudio.manage' => '管理',
+			'settingsStudio.yourWatchlist' => '你的片单',
+			'settingsStudio.yourContent' => '你的内容',
+			'settingsStudio.lightMode' => '浅色模式',
+			'settingsStudio.darkMode' => '深色模式',
+			'settingsStudio.oledMode' => 'OLED 模式',
+			'settingsStudio.systemMode' => '跟随系统',
+			'settingsStudio.posterView' => '海报视图',
+			'settingsStudio.listView' => '列表视图',
 			_ => null,
 		};
 	}

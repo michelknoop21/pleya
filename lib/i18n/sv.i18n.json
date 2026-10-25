@@ -1606,5 +1606,29 @@
     "doneOnSome": "Klart på ${done} av ${total} källor. Resten försöks igen när de är online igen.",
     "doneOnSomeNoRetry": "Klart på ${done} av ${total} källor.",
     "failed": "Det gick inte"
+  },
+  "settingsStudio": {
+    "forYou": "För dig",
+    "connectionsAndProfiles": "Anslutningar och profiler",
+    "system": "System",
+    "integrations": "Integrationer",
+    "libraryAndHome": "Bibliotek och Hem",
+    "personal": "Personligt",
+    "mainTagline": "Gör Pleya helt till ditt.",
+    "tvTagline": "Din tittarupplevelse, in i minsta detalj.",
+    "appearanceHeadline": "Så här ser ditt Pleya ut",
+    "livePreview": "Liveförhandsvisning",
+    "yourLibrary": "Ditt bibliotek",
+    "viewPreview": "Visa förhandsvisning",
+    "playbackExperience": "Uppspelningsupplevelse",
+    "manage": "Hantera",
+    "yourWatchlist": "Din lista",
+    "yourContent": "Ditt innehåll",
+    "lightMode": "Ljust läge",
+    "darkMode": "Mörkt läge",
+    "oledMode": "OLED-läge",
+    "systemMode": "Systemläge",
+    "posterView": "Affischvy",
+    "listView": "Listvy"
   }
 }

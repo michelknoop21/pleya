@@ -94,6 +94,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTvNavigationEs tvNavigation = _TranslationsTvNavigationEs._(_root);
 	@override late final _TranslationsTvMyPleyaEs tvMyPleya = _TranslationsTvMyPleyaEs._(_root);
 	@override late final _TranslationsTvContextMenuEs tvContextMenu = _TranslationsTvContextMenuEs._(_root);
+	@override late final _TranslationsSettingsStudioEs settingsStudio = _TranslationsSettingsStudioEs._(_root);
 }
 
 // Path: app
@@ -1858,6 +1859,37 @@ class _TranslationsTvContextMenuEs extends TranslationsTvContextMenuEn {
 	@override String doneOnSome({required Object done, required Object total}) => 'Hecho en ${done} de ${total} fuentes. El resto se reintentará cuando vuelvan a estar en línea.';
 	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Hecho en ${done} de ${total} fuentes.';
 	@override String get failed => 'Eso no ha funcionado';
+}
+
+// Path: settingsStudio
+class _TranslationsSettingsStudioEs extends TranslationsSettingsStudioEn {
+	_TranslationsSettingsStudioEs._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get forYou => 'Para ti';
+	@override String get connectionsAndProfiles => 'Conexiones y perfiles';
+	@override String get system => 'Sistema';
+	@override String get integrations => 'Integraciones';
+	@override String get libraryAndHome => 'Biblioteca e inicio';
+	@override String get personal => 'Personal';
+	@override String get mainTagline => 'Haz Pleya completamente tuyo.';
+	@override String get tvTagline => 'Tu experiencia de visualización, al detalle.';
+	@override String get appearanceHeadline => 'Así se ve tu Pleya';
+	@override String get livePreview => 'Vista previa en vivo';
+	@override String get yourLibrary => 'Tu biblioteca';
+	@override String get viewPreview => 'Ver vista previa';
+	@override String get playbackExperience => 'Experiencia de reproducción';
+	@override String get manage => 'Gestionar';
+	@override String get yourWatchlist => 'Tu lista';
+	@override String get yourContent => 'Tu contenido';
+	@override String get lightMode => 'Modo claro';
+	@override String get darkMode => 'Modo oscuro';
+	@override String get oledMode => 'Modo OLED';
+	@override String get systemMode => 'Modo del sistema';
+	@override String get posterView => 'Vista de pósteres';
+	@override String get listView => 'Vista de lista';
 }
 
 // Path: search.filters
@@ -3737,6 +3769,28 @@ extension on TranslationsEs {
 			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Hecho en ${done} de ${total} fuentes. El resto se reintentará cuando vuelvan a estar en línea.',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Hecho en ${done} de ${total} fuentes.',
 			'tvContextMenu.failed' => 'Eso no ha funcionado',
+			'settingsStudio.forYou' => 'Para ti',
+			'settingsStudio.connectionsAndProfiles' => 'Conexiones y perfiles',
+			'settingsStudio.system' => 'Sistema',
+			'settingsStudio.integrations' => 'Integraciones',
+			'settingsStudio.libraryAndHome' => 'Biblioteca e inicio',
+			'settingsStudio.personal' => 'Personal',
+			'settingsStudio.mainTagline' => 'Haz Pleya completamente tuyo.',
+			'settingsStudio.tvTagline' => 'Tu experiencia de visualización, al detalle.',
+			'settingsStudio.appearanceHeadline' => 'Así se ve tu Pleya',
+			'settingsStudio.livePreview' => 'Vista previa en vivo',
+			'settingsStudio.yourLibrary' => 'Tu biblioteca',
+			'settingsStudio.viewPreview' => 'Ver vista previa',
+			'settingsStudio.playbackExperience' => 'Experiencia de reproducción',
+			'settingsStudio.manage' => 'Gestionar',
+			'settingsStudio.yourWatchlist' => 'Tu lista',
+			'settingsStudio.yourContent' => 'Tu contenido',
+			'settingsStudio.lightMode' => 'Modo claro',
+			'settingsStudio.darkMode' => 'Modo oscuro',
+			'settingsStudio.oledMode' => 'Modo OLED',
+			'settingsStudio.systemMode' => 'Modo del sistema',
+			'settingsStudio.posterView' => 'Vista de pósteres',
+			'settingsStudio.listView' => 'Vista de lista',
 			_ => null,
 		};
 	}

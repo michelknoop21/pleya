@@ -107,6 +107,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsAssistantEn assistant = TranslationsAssistantEn.internal(_root);
 	late final TranslationsPlaybackHandoffEn playbackHandoff = TranslationsPlaybackHandoffEn.internal(_root);
 	late final TranslationsLocalLibraryEn localLibrary = TranslationsLocalLibraryEn.internal(_root);
+	late final TranslationsSettingsStudioEn settingsStudio = TranslationsSettingsStudioEn.internal(_root);
 }
 
 // Path: states
@@ -6586,6 +6587,81 @@ class TranslationsLocalLibraryEn {
 	String get refill => 'Fetch library again';
 }
 
+// Path: settingsStudio
+class TranslationsSettingsStudioEn {
+	TranslationsSettingsStudioEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'For you'
+	String get forYou => 'For you';
+
+	/// en: 'Connections and profiles'
+	String get connectionsAndProfiles => 'Connections and profiles';
+
+	/// en: 'System'
+	String get system => 'System';
+
+	/// en: 'Integrations'
+	String get integrations => 'Integrations';
+
+	/// en: 'Library & Home'
+	String get libraryAndHome => 'Library & Home';
+
+	/// en: 'Personal'
+	String get personal => 'Personal';
+
+	/// en: 'Make Pleya entirely yours.'
+	String get mainTagline => 'Make Pleya entirely yours.';
+
+	/// en: 'Your viewing experience, down to the detail.'
+	String get tvTagline => 'Your viewing experience, down to the detail.';
+
+	/// en: 'This is how your Pleya looks'
+	String get appearanceHeadline => 'This is how your Pleya looks';
+
+	/// en: 'Live preview'
+	String get livePreview => 'Live preview';
+
+	/// en: 'Your library'
+	String get yourLibrary => 'Your library';
+
+	/// en: 'View preview'
+	String get viewPreview => 'View preview';
+
+	/// en: 'Playback experience'
+	String get playbackExperience => 'Playback experience';
+
+	/// en: 'Manage'
+	String get manage => 'Manage';
+
+	/// en: 'Your watchlist'
+	String get yourWatchlist => 'Your watchlist';
+
+	/// en: 'Your content'
+	String get yourContent => 'Your content';
+
+	/// en: 'Light mode'
+	String get lightMode => 'Light mode';
+
+	/// en: 'Dark mode'
+	String get darkMode => 'Dark mode';
+
+	/// en: 'OLED mode'
+	String get oledMode => 'OLED mode';
+
+	/// en: 'System mode'
+	String get systemMode => 'System mode';
+
+	/// en: 'Poster view'
+	String get posterView => 'Poster view';
+
+	/// en: 'List view'
+	String get listView => 'List view';
+}
+
 // Path: settings.displayMaxResolutionOptions
 class TranslationsSettingsDisplayMaxResolutionOptionsEn {
 	TranslationsSettingsDisplayMaxResolutionOptionsEn.internal(this._root);
@@ -12707,6 +12783,28 @@ extension on Translations {
 			'localLibrary.chooseAfterClear' => 'Keep prefetch off, or fetch your library again? Your network preference still applies.',
 			'localLibrary.keepOff' => 'Turn prefetch off',
 			'localLibrary.refill' => 'Fetch library again',
+			'settingsStudio.forYou' => 'For you',
+			'settingsStudio.connectionsAndProfiles' => 'Connections and profiles',
+			'settingsStudio.system' => 'System',
+			'settingsStudio.integrations' => 'Integrations',
+			'settingsStudio.libraryAndHome' => 'Library & Home',
+			'settingsStudio.personal' => 'Personal',
+			'settingsStudio.mainTagline' => 'Make Pleya entirely yours.',
+			'settingsStudio.tvTagline' => 'Your viewing experience, down to the detail.',
+			'settingsStudio.appearanceHeadline' => 'This is how your Pleya looks',
+			'settingsStudio.livePreview' => 'Live preview',
+			'settingsStudio.yourLibrary' => 'Your library',
+			'settingsStudio.viewPreview' => 'View preview',
+			'settingsStudio.playbackExperience' => 'Playback experience',
+			'settingsStudio.manage' => 'Manage',
+			'settingsStudio.yourWatchlist' => 'Your watchlist',
+			'settingsStudio.yourContent' => 'Your content',
+			'settingsStudio.lightMode' => 'Light mode',
+			'settingsStudio.darkMode' => 'Dark mode',
+			'settingsStudio.oledMode' => 'OLED mode',
+			'settingsStudio.systemMode' => 'System mode',
+			'settingsStudio.posterView' => 'Poster view',
+			'settingsStudio.listView' => 'List view',
 			_ => null,
 		};
 	}

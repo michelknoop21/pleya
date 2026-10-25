@@ -3165,5 +3165,29 @@
     "chooseAfterClear": "Keep prefetch off, or fetch your library again? Your network preference still applies.",
     "keepOff": "Turn prefetch off",
     "refill": "Fetch library again"
+  },
+  "settingsStudio": {
+    "forYou": "For you",
+    "connectionsAndProfiles": "Connections and profiles",
+    "system": "System",
+    "integrations": "Integrations",
+    "libraryAndHome": "Library & Home",
+    "personal": "Personal",
+    "mainTagline": "Make Pleya entirely yours.",
+    "tvTagline": "Your viewing experience, down to the detail.",
+    "appearanceHeadline": "This is how your Pleya looks",
+    "livePreview": "Live preview",
+    "yourLibrary": "Your library",
+    "viewPreview": "View preview",
+    "playbackExperience": "Playback experience",
+    "manage": "Manage",
+    "yourWatchlist": "Your watchlist",
+    "yourContent": "Your content",
+    "lightMode": "Light mode",
+    "darkMode": "Dark mode",
+    "oledMode": "OLED mode",
+    "systemMode": "System mode",
+    "posterView": "Poster view",
+    "listView": "List view"
   }
 }

@@ -1606,5 +1606,29 @@
     "doneOnSome": "Готово за ${done} от ${total} източника. Останалите ще бъдат опитани отново, когато са отново онлайн.",
     "doneOnSomeNoRetry": "Готово за ${done} от ${total} източника.",
     "failed": "Това не проработи"
+  },
+  "settingsStudio": {
+    "forYou": "За теб",
+    "connectionsAndProfiles": "Връзки и профили",
+    "system": "Система",
+    "integrations": "Интеграции",
+    "libraryAndHome": "Библиотека и начало",
+    "personal": "Лично",
+    "mainTagline": "Направи Pleya изцяло своя.",
+    "tvTagline": "Твоето гледане, до най-малкия детайл.",
+    "appearanceHeadline": "Така изглежда твоята Pleya",
+    "livePreview": "Преглед на живо",
+    "yourLibrary": "Твоята библиотека",
+    "viewPreview": "Виж прегледа",
+    "playbackExperience": "Възпроизвеждане",
+    "manage": "Управление",
+    "yourWatchlist": "Твоят списък",
+    "yourContent": "Твоето съдържание",
+    "lightMode": "Светъл режим",
+    "darkMode": "Тъмен режим",
+    "oledMode": "OLED режим",
+    "systemMode": "Системен режим",
+    "posterView": "Изглед с плакати",
+    "listView": "Изглед със списък"
   }
 }

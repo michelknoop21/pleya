@@ -1606,5 +1606,29 @@
     "doneOnSome": "Effectué sur ${done} sur ${total} sources. Les autres seront retentées dès qu'elles seront à nouveau en ligne.",
     "doneOnSomeNoRetry": "Effectué sur ${done} sur ${total} sources.",
     "failed": "Cela n'a pas fonctionné"
+  },
+  "settingsStudio": {
+    "forYou": "Pour vous",
+    "connectionsAndProfiles": "Connexions et profils",
+    "system": "Système",
+    "integrations": "Intégrations",
+    "libraryAndHome": "Bibliothèque et accueil",
+    "personal": "Personnel",
+    "mainTagline": "Faites de Pleya le vôtre.",
+    "tvTagline": "Votre expérience de visionnage, dans le détail.",
+    "appearanceHeadline": "Voici à quoi ressemble votre Pleya",
+    "livePreview": "Aperçu en direct",
+    "yourLibrary": "Votre bibliothèque",
+    "viewPreview": "Voir l’aperçu",
+    "playbackExperience": "Expérience de lecture",
+    "manage": "Gérer",
+    "yourWatchlist": "Votre liste",
+    "yourContent": "Votre contenu",
+    "lightMode": "Mode clair",
+    "darkMode": "Mode sombre",
+    "oledMode": "Mode OLED",
+    "systemMode": "Mode système",
+    "posterView": "Vue affiches",
+    "listView": "Vue liste"
   }
 }

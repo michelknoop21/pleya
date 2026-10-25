@@ -1606,5 +1606,29 @@
     "doneOnSome": "已在 ${total} 个来源中的 ${done} 个完成。其余来源恢复在线后将重试。",
     "doneOnSomeNoRetry": "已在 ${total} 个来源中的 ${done} 个完成。",
     "failed": "操作未成功"
+  },
+  "settingsStudio": {
+    "forYou": "为你推荐",
+    "connectionsAndProfiles": "连接与个人资料",
+    "system": "系统",
+    "integrations": "集成",
+    "libraryAndHome": "媒体库与主页",
+    "personal": "个人",
+    "mainTagline": "让 Pleya 完全属于你。",
+    "tvTagline": "你的观看体验，细致入微。",
+    "appearanceHeadline": "你的 Pleya 是这样的",
+    "livePreview": "实时预览",
+    "yourLibrary": "你的媒体库",
+    "viewPreview": "查看预览",
+    "playbackExperience": "播放体验",
+    "manage": "管理",
+    "yourWatchlist": "你的片单",
+    "yourContent": "你的内容",
+    "lightMode": "浅色模式",
+    "darkMode": "深色模式",
+    "oledMode": "OLED 模式",
+    "systemMode": "跟随系统",
+    "posterView": "海报视图",
+    "listView": "列表视图"
   }
 }

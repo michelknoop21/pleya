@@ -94,6 +94,7 @@ class TranslationsBg extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTvNavigationBg tvNavigation = _TranslationsTvNavigationBg._(_root);
 	@override late final _TranslationsTvMyPleyaBg tvMyPleya = _TranslationsTvMyPleyaBg._(_root);
 	@override late final _TranslationsTvContextMenuBg tvContextMenu = _TranslationsTvContextMenuBg._(_root);
+	@override late final _TranslationsSettingsStudioBg settingsStudio = _TranslationsSettingsStudioBg._(_root);
 }
 
 // Path: app
@@ -1858,6 +1859,37 @@ class _TranslationsTvContextMenuBg extends TranslationsTvContextMenuEn {
 	@override String doneOnSome({required Object done, required Object total}) => 'Готово за ${done} от ${total} източника. Останалите ще бъдат опитани отново, когато са отново онлайн.';
 	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Готово за ${done} от ${total} източника.';
 	@override String get failed => 'Това не проработи';
+}
+
+// Path: settingsStudio
+class _TranslationsSettingsStudioBg extends TranslationsSettingsStudioEn {
+	_TranslationsSettingsStudioBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get forYou => 'За теб';
+	@override String get connectionsAndProfiles => 'Връзки и профили';
+	@override String get system => 'Система';
+	@override String get integrations => 'Интеграции';
+	@override String get libraryAndHome => 'Библиотека и начало';
+	@override String get personal => 'Лично';
+	@override String get mainTagline => 'Направи Pleya изцяло своя.';
+	@override String get tvTagline => 'Твоето гледане, до най-малкия детайл.';
+	@override String get appearanceHeadline => 'Така изглежда твоята Pleya';
+	@override String get livePreview => 'Преглед на живо';
+	@override String get yourLibrary => 'Твоята библиотека';
+	@override String get viewPreview => 'Виж прегледа';
+	@override String get playbackExperience => 'Възпроизвеждане';
+	@override String get manage => 'Управление';
+	@override String get yourWatchlist => 'Твоят списък';
+	@override String get yourContent => 'Твоето съдържание';
+	@override String get lightMode => 'Светъл режим';
+	@override String get darkMode => 'Тъмен режим';
+	@override String get oledMode => 'OLED режим';
+	@override String get systemMode => 'Системен режим';
+	@override String get posterView => 'Изглед с плакати';
+	@override String get listView => 'Изглед със списък';
 }
 
 // Path: search.filters
@@ -3737,6 +3769,28 @@ extension on TranslationsBg {
 			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Готово за ${done} от ${total} източника. Останалите ще бъдат опитани отново, когато са отново онлайн.',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Готово за ${done} от ${total} източника.',
 			'tvContextMenu.failed' => 'Това не проработи',
+			'settingsStudio.forYou' => 'За теб',
+			'settingsStudio.connectionsAndProfiles' => 'Връзки и профили',
+			'settingsStudio.system' => 'Система',
+			'settingsStudio.integrations' => 'Интеграции',
+			'settingsStudio.libraryAndHome' => 'Библиотека и начало',
+			'settingsStudio.personal' => 'Лично',
+			'settingsStudio.mainTagline' => 'Направи Pleya изцяло своя.',
+			'settingsStudio.tvTagline' => 'Твоето гледане, до най-малкия детайл.',
+			'settingsStudio.appearanceHeadline' => 'Така изглежда твоята Pleya',
+			'settingsStudio.livePreview' => 'Преглед на живо',
+			'settingsStudio.yourLibrary' => 'Твоята библиотека',
+			'settingsStudio.viewPreview' => 'Виж прегледа',
+			'settingsStudio.playbackExperience' => 'Възпроизвеждане',
+			'settingsStudio.manage' => 'Управление',
+			'settingsStudio.yourWatchlist' => 'Твоят списък',
+			'settingsStudio.yourContent' => 'Твоето съдържание',
+			'settingsStudio.lightMode' => 'Светъл режим',
+			'settingsStudio.darkMode' => 'Тъмен режим',
+			'settingsStudio.oledMode' => 'OLED режим',
+			'settingsStudio.systemMode' => 'Системен режим',
+			'settingsStudio.posterView' => 'Изглед с плакати',
+			'settingsStudio.listView' => 'Изглед със списък',
 			_ => null,
 		};
 	}

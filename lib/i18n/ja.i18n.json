@@ -1606,5 +1606,29 @@
     "doneOnSome": "${total}件中${done}件のソースで完了しました。残りはオンラインに戻り次第再試行されます。",
     "doneOnSomeNoRetry": "${total}件中${done}件のソースで完了しました。",
     "failed": "うまくいきませんでした"
+  },
+  "settingsStudio": {
+    "forYou": "あなた向け",
+    "connectionsAndProfiles": "接続とプロフィール",
+    "system": "システム",
+    "integrations": "連携",
+    "libraryAndHome": "ライブラリとホーム",
+    "personal": "パーソナル",
+    "mainTagline": "Pleya をあなた好みに。",
+    "tvTagline": "あなたの視聴体験を、細部まで。",
+    "appearanceHeadline": "あなたの Pleya の見え方",
+    "livePreview": "ライブプレビュー",
+    "yourLibrary": "あなたのライブラリ",
+    "viewPreview": "プレビューを見る",
+    "playbackExperience": "再生体験",
+    "manage": "管理",
+    "yourWatchlist": "ウォッチリスト",
+    "yourContent": "あなたのコンテンツ",
+    "lightMode": "ライトモード",
+    "darkMode": "ダークモード",
+    "oledMode": "OLED モード",
+    "systemMode": "システムモード",
+    "posterView": "ポスター表示",
+    "listView": "リスト表示"
   }
 }

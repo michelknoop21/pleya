@@ -94,6 +94,7 @@ class TranslationsJa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTvNavigationJa tvNavigation = _TranslationsTvNavigationJa._(_root);
 	@override late final _TranslationsTvMyPleyaJa tvMyPleya = _TranslationsTvMyPleyaJa._(_root);
 	@override late final _TranslationsTvContextMenuJa tvContextMenu = _TranslationsTvContextMenuJa._(_root);
+	@override late final _TranslationsSettingsStudioJa settingsStudio = _TranslationsSettingsStudioJa._(_root);
 }
 
 // Path: app
@@ -1858,6 +1859,37 @@ class _TranslationsTvContextMenuJa extends TranslationsTvContextMenuEn {
 	@override String doneOnSome({required Object total, required Object done}) => '${total}件中${done}件のソースで完了しました。残りはオンラインに戻り次第再試行されます。';
 	@override String doneOnSomeNoRetry({required Object total, required Object done}) => '${total}件中${done}件のソースで完了しました。';
 	@override String get failed => 'うまくいきませんでした';
+}
+
+// Path: settingsStudio
+class _TranslationsSettingsStudioJa extends TranslationsSettingsStudioEn {
+	_TranslationsSettingsStudioJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get forYou => 'あなた向け';
+	@override String get connectionsAndProfiles => '接続とプロフィール';
+	@override String get system => 'システム';
+	@override String get integrations => '連携';
+	@override String get libraryAndHome => 'ライブラリとホーム';
+	@override String get personal => 'パーソナル';
+	@override String get mainTagline => 'Pleya をあなた好みに。';
+	@override String get tvTagline => 'あなたの視聴体験を、細部まで。';
+	@override String get appearanceHeadline => 'あなたの Pleya の見え方';
+	@override String get livePreview => 'ライブプレビュー';
+	@override String get yourLibrary => 'あなたのライブラリ';
+	@override String get viewPreview => 'プレビューを見る';
+	@override String get playbackExperience => '再生体験';
+	@override String get manage => '管理';
+	@override String get yourWatchlist => 'ウォッチリスト';
+	@override String get yourContent => 'あなたのコンテンツ';
+	@override String get lightMode => 'ライトモード';
+	@override String get darkMode => 'ダークモード';
+	@override String get oledMode => 'OLED モード';
+	@override String get systemMode => 'システムモード';
+	@override String get posterView => 'ポスター表示';
+	@override String get listView => 'リスト表示';
 }
 
 // Path: search.filters
@@ -3737,6 +3769,28 @@ extension on TranslationsJa {
 			'tvContextMenu.doneOnSome' => ({required Object total, required Object done}) => '${total}件中${done}件のソースで完了しました。残りはオンラインに戻り次第再試行されます。',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object total, required Object done}) => '${total}件中${done}件のソースで完了しました。',
 			'tvContextMenu.failed' => 'うまくいきませんでした',
+			'settingsStudio.forYou' => 'あなた向け',
+			'settingsStudio.connectionsAndProfiles' => '接続とプロフィール',
+			'settingsStudio.system' => 'システム',
+			'settingsStudio.integrations' => '連携',
+			'settingsStudio.libraryAndHome' => 'ライブラリとホーム',
+			'settingsStudio.personal' => 'パーソナル',
+			'settingsStudio.mainTagline' => 'Pleya をあなた好みに。',
+			'settingsStudio.tvTagline' => 'あなたの視聴体験を、細部まで。',
+			'settingsStudio.appearanceHeadline' => 'あなたの Pleya の見え方',
+			'settingsStudio.livePreview' => 'ライブプレビュー',
+			'settingsStudio.yourLibrary' => 'あなたのライブラリ',
+			'settingsStudio.viewPreview' => 'プレビューを見る',
+			'settingsStudio.playbackExperience' => '再生体験',
+			'settingsStudio.manage' => '管理',
+			'settingsStudio.yourWatchlist' => 'ウォッチリスト',
+			'settingsStudio.yourContent' => 'あなたのコンテンツ',
+			'settingsStudio.lightMode' => 'ライトモード',
+			'settingsStudio.darkMode' => 'ダークモード',
+			'settingsStudio.oledMode' => 'OLED モード',
+			'settingsStudio.systemMode' => 'システムモード',
+			'settingsStudio.posterView' => 'ポスター表示',
+			'settingsStudio.listView' => 'リスト表示',
 			_ => null,
 		};
 	}

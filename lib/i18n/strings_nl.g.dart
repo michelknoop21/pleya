@@ -106,6 +106,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAssistantNl assistant = _TranslationsAssistantNl._(_root);
 	@override late final _TranslationsPlaybackHandoffNl playbackHandoff = _TranslationsPlaybackHandoffNl._(_root);
 	@override late final _TranslationsLocalLibraryNl localLibrary = _TranslationsLocalLibraryNl._(_root);
+	@override late final _TranslationsSettingsStudioNl settingsStudio = _TranslationsSettingsStudioNl._(_root);
 }
 
 // Path: states
@@ -2706,6 +2707,37 @@ class _TranslationsLocalLibraryNl extends TranslationsLocalLibraryEn {
 	@override String get chooseAfterClear => 'Vooraf ophalen uitzetten of je bibliotheek opnieuw ophalen? Je netwerkvoorkeur blijft gelden.';
 	@override String get keepOff => 'Vooraf ophalen uitzetten';
 	@override String get refill => 'Bibliotheek opnieuw ophalen';
+}
+
+// Path: settingsStudio
+class _TranslationsSettingsStudioNl extends TranslationsSettingsStudioEn {
+	_TranslationsSettingsStudioNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get forYou => 'Voor jou';
+	@override String get connectionsAndProfiles => 'Verbindingen en profielen';
+	@override String get system => 'Systeem';
+	@override String get integrations => 'Koppelingen';
+	@override String get libraryAndHome => 'Bibliotheek & Home';
+	@override String get personal => 'Persoonlijk';
+	@override String get mainTagline => 'Maak Pleya helemaal van jou.';
+	@override String get tvTagline => 'Jouw kijkervaring, tot in detail.';
+	@override String get appearanceHeadline => 'Zo ziet jouw Pleya eruit';
+	@override String get livePreview => 'Live voorbeeld';
+	@override String get yourLibrary => 'Jouw bibliotheek';
+	@override String get viewPreview => 'Bekijk voorbeeld';
+	@override String get playbackExperience => 'Afspeelervaring';
+	@override String get manage => 'Beheer';
+	@override String get yourWatchlist => 'Je kijklijst';
+	@override String get yourContent => 'Jouw content';
+	@override String get lightMode => 'Lichte modus';
+	@override String get darkMode => 'Donkere modus';
+	@override String get oledMode => 'OLED-modus';
+	@override String get systemMode => 'Systeemmodus';
+	@override String get posterView => 'Posterweergave';
+	@override String get listView => 'Lijstweergave';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -7188,6 +7220,28 @@ extension on TranslationsNl {
 			'localLibrary.chooseAfterClear' => 'Vooraf ophalen uitzetten of je bibliotheek opnieuw ophalen? Je netwerkvoorkeur blijft gelden.',
 			'localLibrary.keepOff' => 'Vooraf ophalen uitzetten',
 			'localLibrary.refill' => 'Bibliotheek opnieuw ophalen',
+			'settingsStudio.forYou' => 'Voor jou',
+			'settingsStudio.connectionsAndProfiles' => 'Verbindingen en profielen',
+			'settingsStudio.system' => 'Systeem',
+			'settingsStudio.integrations' => 'Koppelingen',
+			'settingsStudio.libraryAndHome' => 'Bibliotheek & Home',
+			'settingsStudio.personal' => 'Persoonlijk',
+			'settingsStudio.mainTagline' => 'Maak Pleya helemaal van jou.',
+			'settingsStudio.tvTagline' => 'Jouw kijkervaring, tot in detail.',
+			'settingsStudio.appearanceHeadline' => 'Zo ziet jouw Pleya eruit',
+			'settingsStudio.livePreview' => 'Live voorbeeld',
+			'settingsStudio.yourLibrary' => 'Jouw bibliotheek',
+			'settingsStudio.viewPreview' => 'Bekijk voorbeeld',
+			'settingsStudio.playbackExperience' => 'Afspeelervaring',
+			'settingsStudio.manage' => 'Beheer',
+			'settingsStudio.yourWatchlist' => 'Je kijklijst',
+			'settingsStudio.yourContent' => 'Jouw content',
+			'settingsStudio.lightMode' => 'Lichte modus',
+			'settingsStudio.darkMode' => 'Donkere modus',
+			'settingsStudio.oledMode' => 'OLED-modus',
+			'settingsStudio.systemMode' => 'Systeemmodus',
+			'settingsStudio.posterView' => 'Posterweergave',
+			'settingsStudio.listView' => 'Lijstweergave',
 			_ => null,
 		};
 	}

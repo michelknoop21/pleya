@@ -1606,5 +1606,29 @@
     "doneOnSome": "Auf ${done} von ${total} Quellen erledigt. Die übrigen werden erneut versucht, sobald sie wieder online sind.",
     "doneOnSomeNoRetry": "Auf ${done} von ${total} Quellen erledigt.",
     "failed": "Das hat nicht funktioniert"
+  },
+  "settingsStudio": {
+    "forYou": "Für dich",
+    "connectionsAndProfiles": "Verbindungen und Profile",
+    "system": "System",
+    "integrations": "Verknüpfungen",
+    "libraryAndHome": "Bibliothek & Home",
+    "personal": "Persönlich",
+    "mainTagline": "Mach Pleya ganz zu deinem.",
+    "tvTagline": "Dein Seherlebnis, bis ins Detail.",
+    "appearanceHeadline": "So sieht dein Pleya aus",
+    "livePreview": "Live-Vorschau",
+    "yourLibrary": "Deine Bibliothek",
+    "viewPreview": "Vorschau ansehen",
+    "playbackExperience": "Wiedergabe-Erlebnis",
+    "manage": "Verwalten",
+    "yourWatchlist": "Deine Merkliste",
+    "yourContent": "Deine Inhalte",
+    "lightMode": "Heller Modus",
+    "darkMode": "Dunkler Modus",
+    "oledMode": "OLED-Modus",
+    "systemMode": "Systemmodus",
+    "posterView": "Posteransicht",
+    "listView": "Listenansicht"
   }
 }

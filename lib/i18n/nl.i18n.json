@@ -3165,5 +3165,29 @@
     "chooseAfterClear": "Vooraf ophalen uitzetten of je bibliotheek opnieuw ophalen? Je netwerkvoorkeur blijft gelden.",
     "keepOff": "Vooraf ophalen uitzetten",
     "refill": "Bibliotheek opnieuw ophalen"
+  },
+  "settingsStudio": {
+    "forYou": "Voor jou",
+    "connectionsAndProfiles": "Verbindingen en profielen",
+    "system": "Systeem",
+    "integrations": "Koppelingen",
+    "libraryAndHome": "Bibliotheek & Home",
+    "personal": "Persoonlijk",
+    "mainTagline": "Maak Pleya helemaal van jou.",
+    "tvTagline": "Jouw kijkervaring, tot in detail.",
+    "appearanceHeadline": "Zo ziet jouw Pleya eruit",
+    "livePreview": "Live voorbeeld",
+    "yourLibrary": "Jouw bibliotheek",
+    "viewPreview": "Bekijk voorbeeld",
+    "playbackExperience": "Afspeelervaring",
+    "manage": "Beheer",
+    "yourWatchlist": "Je kijklijst",
+    "yourContent": "Jouw content",
+    "lightMode": "Lichte modus",
+    "darkMode": "Donkere modus",
+    "oledMode": "OLED-modus",
+    "systemMode": "Systeemmodus",
+    "posterView": "Posterweergave",
+    "listView": "Lijstweergave"
   }
 }

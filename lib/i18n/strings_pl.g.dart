@@ -94,6 +94,7 @@ class TranslationsPl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTvNavigationPl tvNavigation = _TranslationsTvNavigationPl._(_root);
 	@override late final _TranslationsTvMyPleyaPl tvMyPleya = _TranslationsTvMyPleyaPl._(_root);
 	@override late final _TranslationsTvContextMenuPl tvContextMenu = _TranslationsTvContextMenuPl._(_root);
+	@override late final _TranslationsSettingsStudioPl settingsStudio = _TranslationsSettingsStudioPl._(_root);
 }
 
 // Path: app
@@ -1858,6 +1859,37 @@ class _TranslationsTvContextMenuPl extends TranslationsTvContextMenuEn {
 	@override String doneOnSome({required Object done, required Object total}) => 'Wykonano na ${done} z ${total} źródeł. Pozostałe zostaną ponowione, gdy wrócą online.';
 	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Wykonano na ${done} z ${total} źródeł.';
 	@override String get failed => 'To nie zadziałało';
+}
+
+// Path: settingsStudio
+class _TranslationsSettingsStudioPl extends TranslationsSettingsStudioEn {
+	_TranslationsSettingsStudioPl._(TranslationsPl root) : this._root = root, super.internal(root);
+
+	final TranslationsPl _root; // ignore: unused_field
+
+	// Translations
+	@override String get forYou => 'Dla ciebie';
+	@override String get connectionsAndProfiles => 'Połączenia i profile';
+	@override String get system => 'System';
+	@override String get integrations => 'Integracje';
+	@override String get libraryAndHome => 'Biblioteka i strona główna';
+	@override String get personal => 'Osobiste';
+	@override String get mainTagline => 'Spraw, by Pleya była całkowicie twoja.';
+	@override String get tvTagline => 'Twoje wrażenia z oglądania, w każdym szczególe.';
+	@override String get appearanceHeadline => 'Tak wygląda twoja Pleya';
+	@override String get livePreview => 'Podgląd na żywo';
+	@override String get yourLibrary => 'Twoja biblioteka';
+	@override String get viewPreview => 'Zobacz podgląd';
+	@override String get playbackExperience => 'Odtwarzanie';
+	@override String get manage => 'Zarządzaj';
+	@override String get yourWatchlist => 'Twoja lista';
+	@override String get yourContent => 'Twoje treści';
+	@override String get lightMode => 'Tryb jasny';
+	@override String get darkMode => 'Tryb ciemny';
+	@override String get oledMode => 'Tryb OLED';
+	@override String get systemMode => 'Tryb systemowy';
+	@override String get posterView => 'Widok plakatów';
+	@override String get listView => 'Widok listy';
 }
 
 // Path: search.filters
@@ -3737,6 +3769,28 @@ extension on TranslationsPl {
 			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Wykonano na ${done} z ${total} źródeł. Pozostałe zostaną ponowione, gdy wrócą online.',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Wykonano na ${done} z ${total} źródeł.',
 			'tvContextMenu.failed' => 'To nie zadziałało',
+			'settingsStudio.forYou' => 'Dla ciebie',
+			'settingsStudio.connectionsAndProfiles' => 'Połączenia i profile',
+			'settingsStudio.system' => 'System',
+			'settingsStudio.integrations' => 'Integracje',
+			'settingsStudio.libraryAndHome' => 'Biblioteka i strona główna',
+			'settingsStudio.personal' => 'Osobiste',
+			'settingsStudio.mainTagline' => 'Spraw, by Pleya była całkowicie twoja.',
+			'settingsStudio.tvTagline' => 'Twoje wrażenia z oglądania, w każdym szczególe.',
+			'settingsStudio.appearanceHeadline' => 'Tak wygląda twoja Pleya',
+			'settingsStudio.livePreview' => 'Podgląd na żywo',
+			'settingsStudio.yourLibrary' => 'Twoja biblioteka',
+			'settingsStudio.viewPreview' => 'Zobacz podgląd',
+			'settingsStudio.playbackExperience' => 'Odtwarzanie',
+			'settingsStudio.manage' => 'Zarządzaj',
+			'settingsStudio.yourWatchlist' => 'Twoja lista',
+			'settingsStudio.yourContent' => 'Twoje treści',
+			'settingsStudio.lightMode' => 'Tryb jasny',
+			'settingsStudio.darkMode' => 'Tryb ciemny',
+			'settingsStudio.oledMode' => 'Tryb OLED',
+			'settingsStudio.systemMode' => 'Tryb systemowy',
+			'settingsStudio.posterView' => 'Widok plakatów',
+			'settingsStudio.listView' => 'Widok listy',
 			_ => null,
 		};
 	}

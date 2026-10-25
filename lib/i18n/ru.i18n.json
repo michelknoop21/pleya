@@ -1606,5 +1606,29 @@
     "doneOnSome": "Выполнено для ${done} из ${total} источников. Остальные будут повторены, когда снова окажутся в сети.",
     "doneOnSomeNoRetry": "Выполнено для ${done} из ${total} источников.",
     "failed": "Не получилось"
+  },
+  "settingsStudio": {
+    "forYou": "Для вас",
+    "connectionsAndProfiles": "Подключения и профили",
+    "system": "Система",
+    "integrations": "Интеграции",
+    "libraryAndHome": "Библиотека и главная",
+    "personal": "Личное",
+    "mainTagline": "Сделайте Pleya полностью своей.",
+    "tvTagline": "Ваш просмотр, до мельчайших деталей.",
+    "appearanceHeadline": "Так выглядит ваша Pleya",
+    "livePreview": "Живой предпросмотр",
+    "yourLibrary": "Ваша библиотека",
+    "viewPreview": "Открыть предпросмотр",
+    "playbackExperience": "Воспроизведение",
+    "manage": "Управление",
+    "yourWatchlist": "Ваш список",
+    "yourContent": "Ваш контент",
+    "lightMode": "Светлая тема",
+    "darkMode": "Тёмная тема",
+    "oledMode": "Тема OLED",
+    "systemMode": "Системная тема",
+    "posterView": "Постеры",
+    "listView": "Список"
   }
 }
