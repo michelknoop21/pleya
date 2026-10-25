@@ -27,6 +27,7 @@ import 'memory_screen.dart';
 import 'memory_screen_model.dart';
 import 'memory_state_card.dart';
 import 'memory_widgets.dart';
+import '../../../widgets/settings/settings_studio_theme.dart';
 
 /// "Herinneringen" (43 D): the facts themselves, to search, filter, open,
 /// add and remove. The children's ages are a reference row to Kinderprofiel
@@ -91,7 +92,7 @@ class MemoryListScreenState extends State<MemoryListScreen> {
 
   /// The ages live with Kinderprofiel, in Big P's settings.
   void openKidsProfile() {
-    Widget builder(BuildContext _) => const AssistantSettingsScreen();
+    final builder = settingsStudioBuilder(context, (_) => const AssistantSettingsScreen());
     if (openTvContentRoute(id: 'tvSettings_assistant', builder: builder) != null) return;
     unawaited(Navigator.of(context).push(MaterialPageRoute<void>(builder: builder)));
   }

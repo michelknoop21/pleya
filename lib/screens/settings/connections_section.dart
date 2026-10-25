@@ -78,7 +78,10 @@ class _ConnectionsSectionState extends State<ConnectionsSection> {
           subtitle: subtitle,
           onTap: () {
             final active = context.read<ActiveProfileProvider>().active;
-            Navigator.push(context, MaterialPageRoute(builder: (_) => AddConnectionScreen(targetProfile: active)));
+            Navigator.push(
+              context,
+              settingsStudioRoute<void>(context, (_) => AddConnectionScreen(targetProfile: active)),
+            );
           },
         ),
         SettingNavigationTile(
@@ -86,7 +89,7 @@ class _ConnectionsSectionState extends State<ConnectionsSection> {
           title: t.pleyaShare.hostTitle,
           subtitle: t.pleyaShare.hostDescription,
           onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const PleyaShareHostScreen()));
+            Navigator.push(context, settingsStudioRoute<void>(context, (_) => const PleyaShareHostScreen()));
           },
         ),
         _buildPleyaServersList(),

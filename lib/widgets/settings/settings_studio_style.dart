@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../../theme/mono_tokens.dart';
 import '../../utils/platform_detector.dart';
+import 'settings_studio_theme.dart';
 
 /// Corner radius of a settings card off TV (A-24, Apple TV+ Studio). TV keeps
 /// [MonoTokens.radiusMd], which its focus ring is drawn against.
@@ -28,8 +29,11 @@ const double kSettingsValueMaxFraction = 0.4;
 bool _isOledPalette(MonoTokens t) => t.bg.toARGB32() == 0xFF000000;
 
 /// Fill of a [SettingsGroup] card. TV keeps [MonoTokens.surface] unchanged.
+/// Inside [SettingsStudioTheme] the surface already is the Studio card, OLED
+/// included (A-24b).
 Color settingsCardColor(BuildContext context) {
   final t = tokens(context);
+  if (SettingsStudioTheme.isActive(context)) return t.surface;
   if (!PlatformDetector.isTV() && _isOledPalette(t)) return kSettingsOledCardColor;
   return t.surface;
 }

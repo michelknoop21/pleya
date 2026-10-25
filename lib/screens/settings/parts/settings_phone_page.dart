@@ -238,7 +238,7 @@ extension _SettingsPhonePage on _SettingsScreenState {
           keywords: const ['hotkey', 'shortcut', 'sneltoets'],
           onTap: (context) => Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => KeyboardShortcutsScreen(keyboardService: _keyboardService!)),
+            settingsStudioRoute<void>(context, (_) => KeyboardShortcutsScreen(keyboardService: _keyboardService!)),
           ),
         ),
       _SettingsSearchEntry(
@@ -254,7 +254,10 @@ extension _SettingsPhonePage on _SettingsScreenState {
         keywords: const ['server', 'plex', 'jellyfin', 'connection', 'verbinding', 'share', 'pair', 'koppelen'],
         onTap: (context) {
           final active = context.read<ActiveProfileProvider>().active;
-          Navigator.push(context, MaterialPageRoute(builder: (_) => AddConnectionScreen(targetProfile: active)));
+          Navigator.push(
+            context,
+            settingsStudioRoute<void>(context, (_) => AddConnectionScreen(targetProfile: active)),
+          );
         },
       ),
       _SettingsSearchEntry(

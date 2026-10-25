@@ -29,6 +29,7 @@ import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/settings/setting_value_label.dart';
 import 'package:pleya/widgets/settings/settings_studio_header.dart';
+import 'package:pleya/widgets/settings/settings_studio_theme.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
@@ -122,6 +123,17 @@ void main() {
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
   );
+
+  testWidgets('A-24b: the page wears the Studio palette, the app around it keeps monoTheme', (tester) async {
+    await pumpSettings(tester, height: 812);
+
+    final page = tester.element(find.byType(Scaffold).first);
+    expect(Theme.of(page).scaffoldBackgroundColor, kStudioLightPage);
+    expect(SettingsStudioTheme.isActive(page), isTrue);
+    final app = tester.element(find.byType(SettingsScreen));
+    expect(Theme.of(app).scaffoldBackgroundColor, const Color(0xFFF7F7F8), reason: 'only Instellingen is warm');
+    await unmount(tester);
+  }, variant: _iPhone);
 
   testWidgets('values: the theme beside the Weergave title, the server line shown whole', (tester) async {
     await pumpSettings(tester);

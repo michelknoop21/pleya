@@ -20,7 +20,11 @@ extension _SettingsSystemTiles on _SettingsScreenState {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => KeyboardShortcutsScreen(keyboardService: _keyboardService!)),
+              // The State's context sits above the page's Studio wrapper, so wrap here.
+              MaterialPageRoute(
+                builder: (context) =>
+                    SettingsStudioTheme(child: KeyboardShortcutsScreen(keyboardService: _keyboardService!)),
+              ),
             );
           },
         ),

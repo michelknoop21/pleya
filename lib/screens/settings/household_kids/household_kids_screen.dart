@@ -23,6 +23,7 @@ import '../../../widgets/tv/tv_page_surface.dart';
 import 'household_birth_picker.dart';
 import 'household_kid_format.dart';
 import 'household_kid_sheet.dart';
+import '../../../widgets/settings/settings_studio_theme.dart';
 
 /// Opens Instellingen > Big P > Kinderen in huis: inside the TV shell when
 /// there is one, as an ordinary page otherwise.
@@ -31,7 +32,7 @@ Future<void> openHouseholdKidsScreen(BuildContext context) async {
   // switched under the row.
   final profile = context.read<ActiveProfileProvider?>()?.active;
   if (await assistantIsKidsProfile(profile) || !context.mounted) return;
-  Widget builder(BuildContext _) => const HouseholdKidsScreen();
+  final builder = settingsStudioBuilder(context, (_) => const HouseholdKidsScreen());
   if (openTvContentRoute(id: 'tvSettings_householdKids', builder: builder) != null) return;
   await Navigator.of(context).push(MaterialPageRoute<void>(builder: builder));
 }

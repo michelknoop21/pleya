@@ -89,8 +89,11 @@ extension _SettingsTvPage on _SettingsScreenState {
     // listening, which is every other platform and every test that mounts this
     // page on its own.
     void open(String id, WidgetBuilder builder) {
-      if (openTvContentRoute(id: 'tvSettings_$id', builder: builder) != null) return;
-      Navigator.push(context, MaterialPageRoute<void>(builder: builder));
+      // Every page opened from here is a settings page: it keeps the Studio
+      // palette (A-24b). [context] is the State's, above the page's wrapper.
+      Widget studio(BuildContext context) => SettingsStudioTheme(child: builder(context));
+      if (openTvContentRoute(id: 'tvSettings_$id', builder: studio) != null) return;
+      Navigator.push(context, MaterialPageRoute<void>(builder: studio));
     }
 
     // Rebuilds when any preference a row shows the state of changes. Without

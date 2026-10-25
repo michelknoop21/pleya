@@ -14,6 +14,7 @@ import 'tv/tv_unified_layout.dart';
 
 export 'settings_rows.dart';
 export 'settings/settings_studio_style.dart';
+export 'settings/settings_studio_theme.dart';
 
 /// Widest the settings content grows on desktop and TV. Full-width rows on a
 /// 1440pt window put the switch a hand's width away from its label, so the

@@ -213,12 +213,17 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
     // `settings-a`. The whole page, not a wrapper around the desktop cards:
     // see `parts/settings_tv_page.dart` for what the audit measured and why
     // the rows become tiles.
-    if (PlatformDetector.isTV()) return _buildTvSettings(context);
+    //
+    // A-24b: both pages wear the Studio palette, and every page they open
+    // keeps it ([settingsStudioRoute]); nothing outside Instellingen does.
+    // Built here, not in a Builder: the tiles call `context.select` on this
+    // State's context, which is only legal while this build runs.
+    if (PlatformDetector.isTV()) return SettingsStudioTheme(child: _buildTvSettings(context));
 
     return AutomationScreen(
       id: AutomationIds.screenSettings,
       readiness: () => const AutomationReadiness.ready(),
-      child: _buildSettingsScaffold(context),
+      child: SettingsStudioTheme(child: _buildSettingsScaffold(context)),
     );
   }
 

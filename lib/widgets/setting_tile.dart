@@ -181,7 +181,7 @@ class SettingNavigationTile extends StatelessWidget {
         handler();
         return;
       }
-      Navigator.push(context, MaterialPageRoute(builder: destinationBuilder!));
+      Navigator.push(context, settingsStudioRoute<void>(context, destinationBuilder!));
     }
 
     // A-24, off TV: where the value goes ([settingValuePlacement]). A value
