@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../providers/multi_server_provider.dart';
 import '../../../services/settings_service.dart';
+import '../../../utils/platform_detector.dart';
 import '../../../widgets/setting_tile.dart';
 import '../settings_utils.dart';
 
@@ -41,12 +42,19 @@ class AppLanguageRow extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => SettingNavigationTile(
-    icon: Symbols.language_rounded,
-    title: t.settings.language,
-    subtitle: appLocaleDisplayName(LocaleSettings.currentLocale),
-    onTap: () => _pick(context),
-  );
+  Widget build(BuildContext context) {
+    final name = appLocaleDisplayName(LocaleSettings.currentLocale);
+    // The language is the row's value: right-aligned off TV (A-24b), the value
+    // line under the title on TV.
+    final tv = PlatformDetector.isTV();
+    return SettingNavigationTile(
+      icon: Symbols.language_rounded,
+      title: t.settings.language,
+      subtitle: tv ? name : null,
+      trailingLabel: tv ? null : name,
+      onTap: () => _pick(context),
+    );
+  }
 }
 
 /// A locale's own name for itself.
