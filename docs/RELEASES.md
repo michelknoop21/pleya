@@ -51,6 +51,26 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 408 · 25 October 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: 58756b116c5beb18e98ede60fc2463cc29f4d384 -->
+
+### Improved
+
+- **Settings on iPhone open with a large header.** It shows artwork from a title in your own library that Pleya already loaded for Discover, or a warm gradient with the Pleya mark when there is none yet. The header scrolls away with the page; the bar with the search field stays at the top.
+- **Settings rows show their current value.** On iPhone and iPad the value sits on the right of the row title. When it is too long for that line, it moves to the line below together with the description. The cards are rounder, and with the OLED theme they stand out from the black background.
+- **Settings on Apple TV are laid out as categories, rows and a preview.** The sections are listed on the left as categories, and the rows of the selected one fill the middle, each with its value on the right. App & playback adds a preview on the right: three posters from your library in the chosen theme and density. Display settings use the same layout.
+- **Select switches an on/off setting on Apple TV from anywhere on its row.** Only the row you are on has a focus ring; the selected category is marked with a bar instead. Coming back to Settings reopens the category of the row you were last on.
+
+### Fixed
+
+- **"System" in the theme choice on iPhone no longer breaks over two lines.**
+
+### Notes
+
+- Worth checking on real hardware: the header artwork on an iPhone with a real library, focus and Select on settings rows on Apple TV, and the light, dark and OLED looks on both. This build was tested in the iPhone and Apple TV simulators and in unit tests, not on a device. iPad gets the new rows but not the header, and was not tested separately.
+- No setting was added or removed; only the layout of the settings pages changed.
+
 ## 2.8.1 · build 407 · 24 October 2026 · iPhone
 
 <!-- commit: ae5d4a5fd301263ad2dbd56b273e351aab6fbcaa -->
