@@ -3278,6 +3278,39 @@ class TranslationsMyPleyaEn {
 		one: '1 download',
 		other: '{n} downloads',
 	);
+
+	/// en: 'See all'
+	String get seeAll => 'See all';
+
+	/// en: 'Movies, shows and your own sources'
+	String get librariesSubtitle => 'Movies, shows and your own sources';
+
+	/// en: 'Available offline'
+	String get downloadsSubtitle => 'Available offline';
+
+	/// en: 'Your requests and their status'
+	String get requestsSubtitle => 'Your requests and their status';
+
+	/// en: 'Ask, discover and find things faster.'
+	String get bigPSubtitle => 'Ask, discover and find things faster.';
+
+	/// en: '${count} online'
+	String serversOnline({required Object count}) => '${count} online';
+
+	/// en: 'Who is watching now?'
+	String get activitySubtitle => 'Who is watching now?';
+
+	/// en: 'Watch together'
+	String get watchTogether => 'Watch together';
+
+	/// en: 'Play in sync'
+	String get watchTogetherSubtitle => 'Play in sync';
+
+	/// en: 'Everything the way you like it'
+	String get settingsSubtitle => 'Everything the way you like it';
+
+	/// en: 'Version and information'
+	String get aboutSubtitle => 'Version and information';
 }
 
 // Path: liveTv
@@ -11134,6 +11167,17 @@ extension on Translations {
 			'watchlist.rail.availability' => 'Availability',
 			'myPleya.title' => 'My Pleya',
 			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 download', other: '{n} downloads', ), 
+			'myPleya.seeAll' => 'See all',
+			'myPleya.librariesSubtitle' => 'Movies, shows and your own sources',
+			'myPleya.downloadsSubtitle' => 'Available offline',
+			'myPleya.requestsSubtitle' => 'Your requests and their status',
+			'myPleya.bigPSubtitle' => 'Ask, discover and find things faster.',
+			'myPleya.serversOnline' => ({required Object count}) => '${count} online',
+			'myPleya.activitySubtitle' => 'Who is watching now?',
+			'myPleya.watchTogether' => 'Watch together',
+			'myPleya.watchTogetherSubtitle' => 'Play in sync',
+			'myPleya.settingsSubtitle' => 'Everything the way you like it',
+			'myPleya.aboutSubtitle' => 'Version and information',
 			'liveTv.serverNotAvailable' => 'Live TV server is not available.',
 			'liveTv.serverNotConnected' => 'Live TV server is not connected.',
 			'liveTv.title' => 'Live TV',
@@ -11593,6 +11637,8 @@ extension on Translations {
 			'metadataEdit.metadataUpdated' => 'Metadata updated',
 			'metadataEdit.metadataUpdateFailed' => 'Failed to update metadata',
 			'metadataEdit.artworkUpdated' => 'Artwork updated',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.artworkUpdateFailed' => 'Failed to update artwork',
 			'metadataEdit.noArtworkAvailable' => 'No artwork available',
 			'metadataEdit.notSet' => 'Not set',
@@ -11604,8 +11650,6 @@ extension on Translations {
 			'metadataEdit.newestFirst' => 'Newest first',
 			'metadataEdit.keep' => 'Keep',
 			'metadataEdit.allEpisodes' => 'All episodes',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.latestEpisodes' => ({required Object count}) => '${count} latest episodes',
 			'metadataEdit.latestEpisode' => 'Latest episode',
 			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Episodes added in the past ${count} days',
@@ -12107,6 +12151,8 @@ extension on Translations {
 			'unifiedCatalog.states.partialOne' => '1 library did not answer',
 			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} libraries did not answer',
 			'unifiedCatalog.semantics.watched' => 'Watched',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.semantics.inProgress' => 'In progress',
 			'unifiedCatalog.semantics.loadingMore' => 'Loading more titles',
 			'unifiedCatalog.discovery.allMovies' => 'All movies',
@@ -12118,8 +12164,6 @@ extension on Translations {
 			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titles',
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} of ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'View all movies, opens the complete catalog',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'View all series, opens the complete catalog',
 			'unifiedCatalog.home.featured' => 'Featured',
 			'unifiedCatalog.homeRows.customize' => 'Customise Home',
@@ -12621,6 +12665,8 @@ extension on Translations {
 			'assistant.confirm.server' => 'Server',
 			'assistant.confirm.access' => 'Access',
 			'assistant.confirm.allLibraries' => 'All libraries',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.confirm.titlesLabel' => 'Titles',
 			'assistant.confirm.admin' => 'Admin',
 			'assistant.confirm.yes' => 'Yes',
@@ -12632,8 +12678,6 @@ extension on Translations {
 			'assistant.confirm.create' => 'Create',
 			'assistant.notes.plexManagedHomeUser' => 'Managed Plex Home user, with a share on this server.',
 			'assistant.notes.plexShare' => 'A share on this Plex server.',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.notes.plexHomeMember' => 'Member of your Plex Home. Only the share on this server changes.',
 			'assistant.notes.replacesAllAccess' => 'Replaces all existing access of this user on this server.',
 			'assistant.ends.noTools' => 'There is nothing Big P can do on your servers right now.',

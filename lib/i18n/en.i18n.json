@@ -1168,7 +1168,18 @@
     "downloadsCount": {
       "one": "1 download",
       "other": "{n} downloads"
-    }
+    },
+    "seeAll": "See all",
+    "librariesSubtitle": "Movies, shows and your own sources",
+    "downloadsSubtitle": "Available offline",
+    "requestsSubtitle": "Your requests and their status",
+    "bigPSubtitle": "Ask, discover and find things faster.",
+    "serversOnline": "${count} online",
+    "activitySubtitle": "Who is watching now?",
+    "watchTogether": "Watch together",
+    "watchTogetherSubtitle": "Play in sync",
+    "settingsSubtitle": "Everything the way you like it",
+    "aboutSubtitle": "Version and information"
   },
   "liveTv": {
     "serverNotAvailable": "Live TV server is not available.",

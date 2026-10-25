@@ -1,9 +1,42 @@
 part of 'my_pleya_screen.dart';
 
-/// Avatar, name and the server-status line from northstar 18. Deliberately
-/// compact so the kijklijst rail lands in the first screenful instead of
-/// below the fold, and so the account actions at the bottom stay secondary to
-/// the content between them.
+/// Side margin of every block on the page, as in the northstar.
+const double _kMyPleyaInset = 16;
+
+/// Large in-page title with the Pleya mark on the right (northstar 00).
+class _MyPleyaTitle extends StatelessWidget {
+  const _MyPleyaTitle();
+
+  @override
+  Widget build(BuildContext context) {
+    final tk = tokens(context);
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(_kMyPleyaInset, 12, _kMyPleyaInset, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Semantics(
+                header: true,
+                child: Text(
+                  t.myPleya.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: tk.text, fontSize: 30, fontWeight: FontWeight.w700, letterSpacing: -0.4),
+                ),
+              ),
+            ),
+            const ExcludeSemantics(child: PleyaLogo(size: 32)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Avatar, name, the server-status line and a chevron; the whole line opens
+/// the profile picker. A hairline closes it off, as in the northstar.
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({required this.profile, required this.onSwitchProfile, required this.serversLine});
 
@@ -13,161 +46,328 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 8, 16),
-      child: Row(
-        children: [
-          // The avatar and the name read as an identity, not as a control, so
-          // what it does is said out loud for anyone who cannot see that
-          // tapping it leads to the profile picker.
-          Semantics(
-            button: true,
-            label: t.screens.switchProfile,
-            child: InkWell(
-              onTap: onSwitchProfile,
-              borderRadius: BorderRadius.circular(24),
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Row(
-                  children: [
-                    ProfileAvatar(profile: profile, size: 40),
-                    const SizedBox(width: 12),
-                    Column(
+    final tk = tokens(context);
+    return Column(
+      children: [
+        // The avatar and the name read as an identity, not as a control, so
+        // what it does is said out loud for anyone who cannot see it.
+        Semantics(
+          button: true,
+          label: t.screens.switchProfile,
+          child: InkWell(
+            onTap: onSwitchProfile,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(_kMyPleyaInset, 10, _kMyPleyaInset - 4, 14),
+              child: Row(
+                children: [
+                  ProfileAvatar(profile: profile, size: 48),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(profile?.displayName ?? '', style: theme.textTheme.titleMedium),
-                        Text(serversLine, style: theme.textTheme.bodySmall),
+                        Text(
+                          profile?.displayName ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: tk.text, fontSize: 21, fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(serversLine, style: TextStyle(color: tk.textMuted, fontSize: 12.5)),
                       ],
                     ),
-                  ],
+                  ),
+                  Icon(Symbols.chevron_right_rounded, color: tk.text, size: 24),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: _kMyPleyaInset),
+          child: Divider(height: 1, thickness: 1, color: tk.outline),
+        ),
+        const SizedBox(height: 6),
+      ],
+    );
+  }
+}
+
+/// The small caps heading above a block ("JE KIJKLIJST", "JOUW CONTENT",
+/// "PLEYA"), with an optional link on the right.
+class _MyPleyaGroupLabel extends StatelessWidget {
+  const _MyPleyaGroupLabel(this.label, {this.action});
+
+  final String label;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(_kMyPleyaInset, 16, action == null ? _kMyPleyaInset : 4, action == null ? 10 : 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Semantics(
+              header: true,
+              child: Text(
+                label.toUpperCase(),
+                style: TextStyle(
+                  color: tokens(context).textMuted,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
                 ),
               ),
             ),
           ),
-          const Spacer(),
+          ?action,
         ],
       ),
     );
   }
 }
 
-/// The small caps section heading above a card row or list group
-/// ("MIJN CONTENT", "BIBLIOTHEKEN EN BRONNEN", "PLEYA" in northstar 18).
-class _MyPleyaGroupLabel extends StatelessWidget {
-  const _MyPleyaGroupLabel(this.label);
+/// "Bekijk alles" in the accent tint. Carries the id the old Kijklijst card
+/// had (`my_pleya.tile[watchlist]`), because it is now the way in.
+class _SeeAllLink extends StatelessWidget {
+  const _SeeAllLink({required this.onTap});
 
-  final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Text(
-        label.toUpperCase(),
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: tokens(context).textMuted, letterSpacing: 0.5),
+    final tk = tokens(context);
+    return AutomationNode(
+      id: AutomationIds.myPleyaTile,
+      instance: TvMyPleyaSection.watchlist.name,
+      role: 'button',
+      child: TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          minimumSize: const Size(44, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          foregroundColor: Color.lerp(tk.accent, tk.text, 0.65),
+        ),
+        child: Text(t.myPleya.seeAll, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
       ),
     );
   }
 }
 
-/// Up to three [_MyPleyaCard]s side by side, evenly split. Fewer cards than
-/// three still fill the row rather than leaving a gap on the right, which
-/// only happens when a section (Aanvragen, Activiteit) is conditionally gone.
-class _MyPleyaCardRow extends StatelessWidget {
-  const _MyPleyaCardRow({required this.cards});
+/// A column of [_MyPleyaRow]s with the northstar's small gap between them.
+class _MyPleyaRowList extends StatelessWidget {
+  const _MyPleyaRowList({required this.rows});
 
-  final List<Widget> cards;
+  final List<Widget> rows;
 
   @override
   Widget build(BuildContext context) {
-    if (cards.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      // IntrinsicHeight, not a bare stretch Row: this row sits in a sliver,
-      // where the incoming height constraint is unbounded, and stretch alone
-      // asks every card to fill that infinity.
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var i = 0; i < cards.length; i++) ...[if (i > 0) const SizedBox(width: 10), Expanded(child: cards[i])],
-          ],
+      padding: const EdgeInsets.symmetric(horizontal: _kMyPleyaInset),
+      child: Column(
+        children: [
+          for (var i = 0; i < rows.length; i++) ...[if (i > 0) const SizedBox(height: 8), rows[i]],
+        ],
+      ),
+    );
+  }
+}
+
+/// One destination as a quiet row card: icon in a circle, title, subtitle,
+/// an optional count and a chevron. Sign out has no chevron (it acts, it does
+/// not open a screen) and reads in the accent red.
+class _MyPleyaRow extends StatelessWidget {
+  const _MyPleyaRow({
+    required this.instance,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.onLongPress,
+    this.count,
+    this.destructive = false,
+  });
+
+  /// `my_pleya.tile[<instance>]`: the section name, or `logout`.
+  final String instance;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final int? count;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final tk = tokens(context);
+    final ink = destructive ? tk.accent : tk.text;
+    final label = count == null
+        ? t.tvMyPleya.semantics.tile(title: title, subtitle: subtitle)
+        : t.tvMyPleya.semantics.tileWithCount(title: title, subtitle: subtitle, count: '$count');
+    final radius = BorderRadius.circular(12);
+
+    return AutomationNode(
+      id: AutomationIds.myPleyaTile,
+      instance: instance,
+      role: 'list.item',
+      child: Semantics(
+        button: true,
+        label: label,
+        excludeSemantics: true,
+        child: Material(
+          color: tk.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: radius,
+            side: BorderSide(color: tk.outline),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            onLongPress: onLongPress,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 60),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(color: ink.withValues(alpha: 0.08), shape: BoxShape.circle),
+                      child: Icon(icon, size: 20, color: ink),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: ink, fontSize: 14.5, fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: tk.textMuted, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (count != null)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Text(
+                          '$count',
+                          style: TextStyle(color: tk.text, fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    if (!destructive) Icon(Symbols.chevron_right_rounded, size: 20, color: tk.textMuted),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-/// One "Mijn content" / "Bibliotheken en bronnen" tile: icon, optional count
-/// top-right, title, subtitle. `surfaceElevated` plus an outline, never a
-/// Material container color — those collapse onto the page background in
-/// this theme (see [[mono-theme-material-collisions]] in the tvOS gotchas).
-class _MyPleyaCard extends StatelessWidget {
-  const _MyPleyaCard({required this.tile, required this.onTap, this.onLongPress, this.icon});
+/// The Big P card: brand red, the Pleya mark, title and tagline, and Big P
+/// himself on the right (`still-zwaaien.png`, byte-identical to the package's
+/// `bigp_still.png`). Same in every theme: it is a brand surface, with white
+/// ink on red.
+class _BigPCard extends StatelessWidget {
+  const _BigPCard({required this.onTap});
 
-  final TvMyPleyaTile tile;
-
-  /// In place of the tile's line icon.
-  final Widget? icon;
   final VoidCallback onTap;
-  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final semanticsLabel = tile.count == null
-        ? t.tvMyPleya.semantics.tile(title: tile.title, subtitle: tile.subtitle)
-        : t.tvMyPleya.semantics.tileWithCount(title: tile.title, subtitle: tile.subtitle, count: '${tile.count}');
-
-    // Same id/instance convention TV's tile uses (`myPleyaTile[<section
-    // name>]`, `logout` for the sign-out tile). This screen re-buckets TV's
-    // tiles into card rows, not a second taxonomy, so it reuses their ids too.
-    return AutomationNode(
-      id: AutomationIds.myPleyaTile,
-      instance: tile.section?.name ?? 'logout',
-      role: 'grid.item',
-      child: Semantics(
-        button: true,
-        label: semanticsLabel,
-        child: InkWell(
-          onTap: onTap,
-          onLongPress: onLongPress,
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: tokens(context).surfaceElevated,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: settingsOutlineColor(context)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    icon ?? Icon(tile.icon, size: 22),
-                    if (tile.count != null) Text('${tile.count}', style: theme.textTheme.titleMedium),
+    final accent = tokens(context).accent;
+    final radius = BorderRadius.circular(16);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(_kMyPleyaInset, 12, _kMyPleyaInset, 0),
+      child: AutomationNode(
+        id: AutomationIds.myPleyaTile,
+        instance: TvMyPleyaSection.assistant.name,
+        role: 'list.item',
+        child: Semantics(
+          button: true,
+          label: t.tvMyPleya.semantics.tile(title: t.assistant.tileTitle, subtitle: t.myPleya.bigPSubtitle),
+          excludeSemantics: true,
+          child: Material(
+            borderRadius: radius,
+            clipBehavior: Clip.antiAlias,
+            child: Ink(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color.lerp(accent, const Color(0xFF1A0B10), 0.45)!,
+                    Color.lerp(accent, const Color(0xFF1A0B10), 0.78)!,
                   ],
                 ),
-                const SizedBox(height: 14),
-                Text(
-                  tile.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: .bold),
+              ),
+              child: InkWell(
+                onTap: onTap,
+                child: SizedBox(
+                  height: 100,
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        right: 10,
+                        top: 4,
+                        bottom: 0,
+                        child: Image.asset(bigPAsset('still-zwaaien'), fit: BoxFit.contain),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 110, 16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const PleyaLogo(size: 38),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    t.assistant.tileTitle,
+                                    maxLines: 1,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 21,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    t.myPleya.bigPSubtitle,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12.5),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  tile.subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(color: tokens(context).textMuted),
-                ),
-              ],
+              ),
             ),
           ),
         ),

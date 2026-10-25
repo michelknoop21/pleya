@@ -1168,7 +1168,18 @@
     "downloadsCount": {
       "one": "1 download",
       "other": "{n} downloads"
-    }
+    },
+    "seeAll": "Bekijk alles",
+    "librariesSubtitle": "Films, series en eigen bronnen",
+    "downloadsSubtitle": "Offline beschikbaar",
+    "requestsSubtitle": "Je aanvragen en status",
+    "bigPSubtitle": "Vraag, ontdek en vind sneller.",
+    "serversOnline": "${count} online",
+    "activitySubtitle": "Wie kijkt er nu?",
+    "watchTogether": "Samen kijken",
+    "watchTogetherSubtitle": "Samen afspelen",
+    "settingsSubtitle": "Alles naar jouw voorkeur",
+    "aboutSubtitle": "Versie en informatie"
   },
   "liveTv": {
     "serverNotAvailable": "Live TV-server is niet beschikbaar.",

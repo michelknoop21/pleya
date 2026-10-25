@@ -1391,6 +1391,17 @@ class _TranslationsMyPleyaNl extends TranslationsMyPleyaEn {
 		one: '1 download',
 		other: '{n} downloads',
 	);
+	@override String get seeAll => 'Bekijk alles';
+	@override String get librariesSubtitle => 'Films, series en eigen bronnen';
+	@override String get downloadsSubtitle => 'Offline beschikbaar';
+	@override String get requestsSubtitle => 'Je aanvragen en status';
+	@override String get bigPSubtitle => 'Vraag, ontdek en vind sneller.';
+	@override String serversOnline({required Object count}) => '${count} online';
+	@override String get activitySubtitle => 'Wie kijkt er nu?';
+	@override String get watchTogether => 'Samen kijken';
+	@override String get watchTogetherSubtitle => 'Samen afspelen';
+	@override String get settingsSubtitle => 'Alles naar jouw voorkeur';
+	@override String get aboutSubtitle => 'Versie en informatie';
 }
 
 // Path: liveTv
@@ -5509,6 +5520,17 @@ extension on TranslationsNl {
 			'watchlist.rail.availability' => 'Beschikbaarheid',
 			'myPleya.title' => 'Mijn Pleya',
 			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 download', other: '{n} downloads', ), 
+			'myPleya.seeAll' => 'Bekijk alles',
+			'myPleya.librariesSubtitle' => 'Films, series en eigen bronnen',
+			'myPleya.downloadsSubtitle' => 'Offline beschikbaar',
+			'myPleya.requestsSubtitle' => 'Je aanvragen en status',
+			'myPleya.bigPSubtitle' => 'Vraag, ontdek en vind sneller.',
+			'myPleya.serversOnline' => ({required Object count}) => '${count} online',
+			'myPleya.activitySubtitle' => 'Wie kijkt er nu?',
+			'myPleya.watchTogether' => 'Samen kijken',
+			'myPleya.watchTogetherSubtitle' => 'Samen afspelen',
+			'myPleya.settingsSubtitle' => 'Alles naar jouw voorkeur',
+			'myPleya.aboutSubtitle' => 'Versie en informatie',
 			'liveTv.serverNotAvailable' => 'Live TV-server is niet beschikbaar.',
 			'liveTv.serverNotConnected' => 'Live TV-server is niet verbonden.',
 			'liveTv.title' => 'Live TV',
@@ -5968,6 +5990,8 @@ extension on TranslationsNl {
 			'metadataEdit.metadataUpdated' => 'Metadata bijgewerkt',
 			'metadataEdit.metadataUpdateFailed' => 'Metadata bijwerken mislukt',
 			'metadataEdit.artworkUpdated' => 'Artwork bijgewerkt',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.artworkUpdateFailed' => 'Artwork bijwerken mislukt',
 			'metadataEdit.noArtworkAvailable' => 'Geen artwork beschikbaar',
 			'metadataEdit.notSet' => 'Niet ingesteld',
@@ -5979,8 +6003,6 @@ extension on TranslationsNl {
 			'metadataEdit.newestFirst' => 'Nieuwste eerst',
 			'metadataEdit.keep' => 'Bewaren',
 			'metadataEdit.allEpisodes' => 'Alle afleveringen',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.latestEpisodes' => ({required Object count}) => '${count} nieuwste afleveringen',
 			'metadataEdit.latestEpisode' => 'Nieuwste aflevering',
 			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Afleveringen toegevoegd in de afgelopen ${count} dagen',
@@ -6482,6 +6504,8 @@ extension on TranslationsNl {
 			'unifiedCatalog.states.partialOne' => '1 bibliotheek antwoordde niet',
 			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} bibliotheken antwoordden niet',
 			'unifiedCatalog.semantics.watched' => 'Bekeken',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.semantics.inProgress' => 'Bezig',
 			'unifiedCatalog.semantics.loadingMore' => 'Meer titels laden',
 			'unifiedCatalog.discovery.allMovies' => 'Alle films',
@@ -6493,8 +6517,6 @@ extension on TranslationsNl {
 			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titels',
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} van ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Alle films bekijken, opent de volledige catalogus',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Alle series bekijken, opent de volledige catalogus',
 			'unifiedCatalog.home.featured' => 'Uitgelicht',
 			'unifiedCatalog.homeRows.customize' => 'Home aanpassen',
@@ -6996,6 +7018,8 @@ extension on TranslationsNl {
 			'assistant.confirm.server' => 'Server',
 			'assistant.confirm.access' => 'Toegang',
 			'assistant.confirm.allLibraries' => 'Alle bibliotheken',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.confirm.titlesLabel' => 'Titels',
 			'assistant.confirm.admin' => 'Beheerder',
 			'assistant.confirm.yes' => 'Ja',
@@ -7007,8 +7031,6 @@ extension on TranslationsNl {
 			'assistant.confirm.create' => 'Aanmaken',
 			'assistant.notes.plexManagedHomeUser' => 'Beheerde Plex Home-gebruiker, met een share op deze server.',
 			'assistant.notes.plexShare' => 'Een share op deze Plex-server.',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.notes.plexHomeMember' => 'Lid van je Plex Home. Alleen de share op deze server verandert.',
 			'assistant.notes.replacesAllAccess' => 'Vervangt alle bestaande toegang van deze gebruiker op deze server.',
 			'assistant.ends.noTools' => 'Big P kan nu niets doen op je servers.',
