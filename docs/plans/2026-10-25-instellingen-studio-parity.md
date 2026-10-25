@@ -1,4 +1,4 @@
-# Instellingen in Studio-stijl: pariteit iOS (A-24, PR 1)
+# Instellingen in Studio-stijl: pariteit iOS en tvOS (A-24)
 
 Besluit Michel, 24 oktober 2026: Instellingen krijgt richting 02, Apple TV+ Studio. Deze tabel legt per
 huidige rij vast waar hij na PR 1 staat, zodat de restyle niets toevoegt, weghaalt of anders afschermt.
@@ -6,9 +6,8 @@ De code is de bron; de ontwerpinventaris in de aangeleverde bundel diende alleen
 
 PR 1 raakt alleen de weergave. De Studio-kop, de balk met warme tint en de gevulde zoekbalk staan alleen
 op een iPhone (`settingsStudioHeaderApplies`); iPad, de iOS-app op een Mac, Android en desktop houden de
-gewone balk en het omlijnde zoekveld. De rijstijl hieronder geldt buiten TV overal. Op tvOS verandert
-niets: elke wijziging in de gedeelde rijen staat achter `PlatformDetector.isTV()`, en
-`settings_tv_page.dart` is niet aangeraakt. PR 2 doet tvOS.
+gewone balk en het omlijnde zoekveld. De rijstijl hieronder geldt buiten TV overal; elke wijziging in de
+gedeelde rijen staat achter `PlatformDetector.isTV()`. tvOS is PR 2, zie het hoofdstuk tvOS onderaan.
 
 ## Wat er in de presentatie verandert
 
@@ -69,7 +68,7 @@ Tautulli-voorwaarde; het scenario `ios.settings.northstar` loopt dezelfde lijst 
 | Afspelen | Studio-kop; keuze- en getalrijen met waarde rechts; audio-uitvoer, audiosync, DV-conversie en maximale resolutie houden hun uitleg als ondertitel | ongewijzigd | `playback_settings_screen_test` |
 | Taal en ondertitels | Studio-kop; de vier waarderijen met het gedeelde waardelabel | ongewijzigd | `language_settings_screen_test` |
 | Overige `SettingsPage`-pagina's | Studio-kop en de gedeelde rijstijl | ongewijzigd | eigen schermtests |
-| tvOS, alle pagina's | niets | n.v.t. | `tv_dens1_hig_test`, `settings_studio_rows_test` (groep TV) |
+| tvOS | zie het hoofdstuk tvOS (PR 2) | n.v.t. | `tv_dens1_hig_test`, `settings_studio_rows_test` (groep TV) |
 
 ## Alleen in de mockups, niet in de code
 
@@ -84,3 +83,42 @@ Gecontroleerd tegen de code op 25 oktober 2026; deze punten komen er in PR 1 nie
 Wel in de code, dus geen mockup-verzinsel: Big P-endpoint, API-sleutel en modelkeuze
 (`assistant_settings_screen*.dart`), MyAnimeList, AniList en Simkl (`TrackersProvider`), en Uitloggen,
 dat in Mijn Pleya staat en niet in Instellingen.
+
+## tvOS (PR 2)
+
+De hoofdpagina (`parts/settings_tv_page.dart`) was een raster van tegels in twee kolommen. Nu staan de
+bestaande secties als categorieën links, de rijen van de gekozen categorie in het midden (titel links,
+waarde rechts) en alleen bij App en afspelen (`sectionLibrary`) een voorbeeld rechts: drie posters uit wat `DiscoverProvider` al
+heeft geladen plus thema en dichtheid. Zonder geladen items toont het voorbeeld alleen die regel. Bij de
+andere categorieën krijgen de rijen die ruimte.
+
+De lijst met secties is dezelfde als vóór PR 2, met dezelfde sleutels, voorwaarden en routes. De twee
+secties zonder kop kregen een bestaand label als categorienaam: Steun Pleya (`supportDeveloper`) en Over
+(`about`). De rijen houden `my_pleya.section.tile[settings.<key>]` met dezelfde state-velden; de categorieën
+registreren als `settings.category[i]`.
+
+| Categorie | Rijen | Voorwaarde | Voorbeeld |
+| --- | --- | --- | --- |
+| Steun Pleya | `donate` | `DonationService.isEnabled` | nee |
+| App en afspelen | `appearance`, `library_visibility`, `home_layout`, `playback`, `language`, `subtitle_styling`, `trackers`, `requests`, `tautulli`, Big P | Tautulli alleen bij een beheerde Plex-server, Big P via `assistantSettingsTvItem` | ja |
+| Verbindingen | `settings_add_connection`, `settings_pleya_share`, `settings_profiles` | geen | nee |
+| Downloads | `download_location` (niet op iOS), wifi, bekeken verwijderen | niet op Apple TV | nee |
+| Sneltoetsen | `video_player_controls`, `video_player_navigation` | `KeyboardShortcutsService.isPlatformSupported()` | nee |
+| Geavanceerd | relay, crashrapportage, debuglogging, logboeken, cache wissen, herstellen | geen; dialogen en bevestigingen ongewijzigd | nee |
+| Updates | controleren, automatisch controleren | `UpdateService.isUpdateCheckEnabled` | nee |
+| Back-up | `icloud_sync` | iOS of macOS | nee |
+| Over | `about` | geen | nee |
+
+Bediening: RIGHT op een categorie gaat naar de eerste rij, LEFT vanaf een rij terug naar de gekozen
+categorie, SELECT op een categorie kiest hem en SELECT op een voorkeursrij schakelt hem om. De pagina opent
+zoals voorheen op Weergave. Terug van een subpagina staat de focus weer op de rij waar je vandaan kwam, in
+dezelfde categorie. Keert de focus via de shell terug (bijvoorbeeld DOWN vanaf de bovenbalk), dan kiest de
+pagina eerst de categorie van de onthouden rij en zet de focus daarna op die rij; een rij die niet in beeld
+is, krijgt nooit een focusverzoek. Weergave (`TvAppearanceCategories`) gebruikt nu dezelfde widget
+(`TvSettingsCategories`) en kreeg daarmee ook de nieuwe categoriemarkering, de accentkop boven de rijen
+(`TvStudioEyebrow` in plaats van `TvPageGroupLabel`) en de scheidingslijn naast de categorieën.
+
+De gekozen categorie krijgt een rode balk op een warme vulling, nooit de focusring; de ring blijft de enige
+focusaanduiding. Kleuren per palet staan in `tv_settings_studio_style.dart`, contrast in
+`tv_appearance_categories_test` (groep A-24). Gedrag in `settings_tv_page_test`.
+

@@ -13,11 +13,13 @@
 /// 3px bar marking the focused row, and 5.3 rows visible with the sixth cut in
 /// half by the pinned app bar.
 ///
-/// This is an index of settings sections, which is functionally the same thing
-/// as the Mijn Pleya hub, so it gets the hub's tile language instead of a
-/// second idiom. Two columns rather than four: a settings row carries its
-/// current value as well as its title, and four of those on one line is
-/// unreadable at ten feet.
+/// A-24 (Apple TV+ Studio) lays it out as the tvOS Settings app does: the
+/// sections as categories on the left, the chosen section's rows in the middle
+/// (title left, current value right), and a preview on the right only where
+/// one shows something, which is the library category. It replaced a
+/// two-column tile grid in the Mijn Pleya hub's language; the rows keep that
+/// grid's keys, focus memory and automation ids
+/// (`my_pleya.section.tile[settings.<key>]`).
 ///
 /// **Same rows, same order, same conditions.** The platform gates are the ones
 /// the mobile list already applies, read from the same expressions, so a tile
@@ -91,8 +93,8 @@ extension _SettingsTvPage on _SettingsScreenState {
       Navigator.push(context, MaterialPageRoute<void>(builder: builder));
     }
 
-    // Rebuilds when any preference a tile shows the state of changes. Without
-    // this the tile would keep drawing the value it was built with, because
+    // Rebuilds when any preference a row shows the state of changes. Without
+    // this the row would keep drawing the value it was built with, because
     // nothing here listens the way `SettingSwitchTile` does per row.
     return SettingsBuilder(
       prefs: [
@@ -105,289 +107,316 @@ extension _SettingsTvPage on _SettingsScreenState {
         settings.SettingsService.autoCheckUpdatesOnStartup,
         settings.SettingsService.icloudSyncEnabled,
       ],
-      builder: (context) => TvPageSurface(
-        title: t.settings.title,
-        automationInstance: 'settings',
-        children: [
-          TvMenuGrid(
-            nodes: _focusTracker,
-            columns: 2,
-            automationInstance: 'settings',
-            sections: [
-              if (DonationService.isEnabled)
-                TvMenuSection(
-                  items: [
-                    TvMenuItem(
-                      key: _SettingsScreenState._kDonate,
-                      icon: Symbols.favorite_rounded,
-                      title: t.settings.supportDeveloper,
-                      subtitle: t.settings.supportDeveloperDescription,
-                      onSelect: _handleDonateTap,
-                    ),
-                  ],
+      builder: (context) {
+        final appearanceSummary =
+            '${themeProvider.themeModeDisplayName} · '
+            '${t.settings.libraryDensity} ${_settingsService.read(settings.SettingsService.libraryDensity)}';
+        final sections = [
+          if (DonationService.isEnabled)
+            TvMenuSection(
+              label: t.settings.supportDeveloper,
+              items: [
+                TvMenuItem(
+                  key: _SettingsScreenState._kDonate,
+                  icon: Symbols.favorite_rounded,
+                  title: t.settings.supportDeveloper,
+                  subtitle: t.settings.supportDeveloperDescription,
+                  onSelect: _handleDonateTap,
                 ),
-              TvMenuSection(
-                label: t.settings.sectionLibrary,
-                items: [
-                  TvMenuItem(
-                    key: _SettingsScreenState._kAppearance,
-                    icon: Symbols.palette_rounded,
-                    title: t.settings.appearance,
-                    value:
-                        '${themeProvider.themeModeDisplayName} · '
-                        '${t.settings.libraryDensity} ${_settingsService.read(settings.SettingsService.libraryDensity)}',
-                    onSelect: () => open('appearance', (_) => const AppearanceSettingsScreen()),
-                  ),
-                  TvMenuItem(
-                    key: _SettingsScreenState._kLibraryVisibility,
-                    icon: Symbols.video_library_rounded,
-                    title: t.settings.libraryVisibility,
-                    subtitle: t.settings.libraryVisibilityDescription,
-                    onSelect: () => open('libraryVisibility', (_) => const LibraryVisibilityScreen()),
-                  ),
-                  TvMenuItem(
-                    key: _SettingsScreenState._kHomeLayout,
-                    icon: Symbols.dashboard_customize_rounded,
-                    title: t.settings.homeLayout,
-                    subtitle: t.settings.homeLayoutDescription,
-                    onSelect: () => open('homeLayout', (_) => const HomeLayoutScreen()),
-                  ),
-                  TvMenuItem(
-                    key: _SettingsScreenState._kPlayback,
-                    icon: Symbols.play_circle_rounded,
-                    title: t.settings.videoPlayback,
-                    subtitle: t.settings.videoPlaybackDescription,
-                    onSelect: () => open('playback', (_) => const PlaybackSettingsScreen()),
-                  ),
-                  TvMenuItem(
-                    key: _SettingsScreenState._kLanguage,
-                    icon: Symbols.translate_rounded,
-                    title: t.languageSettings.title,
-                    subtitle: t.languageSettings.description,
-                    onSelect: () => open('language', (_) => const LanguageSettingsScreen()),
-                  ),
-                  TvMenuItem(
-                    key: _SettingsScreenState._kSubtitleStyling,
-                    icon: Symbols.subtitles_rounded,
-                    title: t.settings.subtitleStyling,
-                    subtitle: t.settings.subtitleStylingDescription,
-                    onSelect: () => open('subtitleStyling', (_) => const SubtitleStylingScreen()),
-                  ),
-                  TvMenuItem(
-                    key: _SettingsScreenState._kTrackers,
-                    icon: Symbols.sync_alt_rounded,
-                    title: t.settings.trackers,
-                    value: connectedTrackers.isEmpty ? null : connectedTrackers.join(' · '),
-                    subtitle: connectedTrackers.isEmpty ? t.settings.trackersDescription : null,
-                    onSelect: () => open('trackers', (_) => const TrackersSettingsScreen()),
-                  ),
-                  TvMenuItem(
-                    key: _SettingsScreenState._kRequests,
-                    icon: Symbols.playlist_add_rounded,
-                    title: t.settings.requests,
-                    value: seerr.isConfigured ? (seerr.host ?? t.settings.requests) : null,
-                    subtitle: seerr.isConfigured ? null : t.settings.requestsDescription,
-                    onSelect: () => open('requests', (_) => const SeerrSettingsScreen()),
-                  ),
-                  if (managesAPlexServer)
-                    TvMenuItem(
-                      key: _SettingsScreenState._kTautulli,
-                      icon: Symbols.insights_rounded,
-                      title: t.tautulli.title,
-                      value: tautulli.isConfigured
-                          ? (tautulli.serverName ?? tautulli.host ?? t.tautulli.connected)
-                          : null,
-                      subtitle: tautulli.isConfigured ? null : t.tautulli.subtitle,
-                      onSelect: () => open('tautulli', (_) => const TautulliSettingsScreen()),
-                    ),
-                  ?assistantSettingsTvItem(onSelect: () => open('assistant', (_) => const AssistantSettingsScreen())),
-                ],
+              ],
+            ),
+          TvMenuSection(
+            label: t.settings.sectionLibrary,
+            items: [
+              TvMenuItem(
+                key: _SettingsScreenState._kAppearance,
+                icon: Symbols.palette_rounded,
+                title: t.settings.appearance,
+                value: appearanceSummary,
+                onSelect: () => open('appearance', (_) => const AppearanceSettingsScreen()),
               ),
-              TvMenuSection(
-                label: t.connections.sectionTitle,
-                items: [
-                  TvMenuItem(
-                    key: 'settings_add_connection',
-                    icon: Symbols.add_link_rounded,
-                    title: t.connections.addConnection,
-                    subtitle: context.read<ActiveProfileProvider>().active == null
-                        ? t.connections.addConnectionSubtitleNoProfile
-                        : t.connections.addConnectionSubtitleScoped(
-                            displayName: context.read<ActiveProfileProvider>().active!.displayName,
-                          ),
-                    onSelect: () => open(
-                      'addConnection',
-                      (_) => AddConnectionScreen(targetProfile: context.read<ActiveProfileProvider>().active),
-                    ),
-                  ),
-                  TvMenuItem(
-                    key: 'settings_pleya_share',
-                    icon: Symbols.share_rounded,
-                    title: t.pleyaShare.hostTitle,
-                    subtitle: t.pleyaShare.hostToggle,
-                    onSelect: () => open('pleyaShareHost', (_) => const PleyaShareHostScreen()),
-                  ),
-                  TvMenuItem(
-                    key: 'settings_profiles',
-                    icon: Symbols.group_rounded,
-                    title: t.profiles.sectionTitle,
-                    subtitle: t.profiles.summarySingle,
-                    onSelect: () => Navigator.of(
-                      context,
-                      rootNavigator: true,
-                    ).push(MaterialPageRoute<void>(builder: (_) => const ProfileSwitchScreen())),
-                  ),
-                ],
+              TvMenuItem(
+                key: _SettingsScreenState._kLibraryVisibility,
+                icon: Symbols.video_library_rounded,
+                title: t.settings.libraryVisibility,
+                subtitle: t.settings.libraryVisibilityDescription,
+                onSelect: () => open('libraryVisibility', (_) => const LibraryVisibilityScreen()),
               ),
-              if (!PlatformDetector.isAppleTV())
-                TvMenuSection(
-                  label: t.settings.downloads,
-                  items: [
-                    if (!Platform.isIOS)
-                      TvMenuItem(
-                        key: _SettingsScreenState._kDownloadLocation,
-                        icon: Symbols.folder_rounded,
-                        title: DownloadStorageService.instance.isUsingCustomPath()
-                            ? t.settings.downloadLocationCustom
-                            : t.settings.downloadLocationDefault,
-                        subtitle: t.settings.downloads,
-                        onSelect: () => showDownloadLocationDialog(context, onChanged: _rebuild),
+              TvMenuItem(
+                key: _SettingsScreenState._kHomeLayout,
+                icon: Symbols.dashboard_customize_rounded,
+                title: t.settings.homeLayout,
+                subtitle: t.settings.homeLayoutDescription,
+                onSelect: () => open('homeLayout', (_) => const HomeLayoutScreen()),
+              ),
+              TvMenuItem(
+                key: _SettingsScreenState._kPlayback,
+                icon: Symbols.play_circle_rounded,
+                title: t.settings.videoPlayback,
+                subtitle: t.settings.videoPlaybackDescription,
+                onSelect: () => open('playback', (_) => const PlaybackSettingsScreen()),
+              ),
+              TvMenuItem(
+                key: _SettingsScreenState._kLanguage,
+                icon: Symbols.translate_rounded,
+                title: t.languageSettings.title,
+                subtitle: t.languageSettings.description,
+                onSelect: () => open('language', (_) => const LanguageSettingsScreen()),
+              ),
+              TvMenuItem(
+                key: _SettingsScreenState._kSubtitleStyling,
+                icon: Symbols.subtitles_rounded,
+                title: t.settings.subtitleStyling,
+                subtitle: t.settings.subtitleStylingDescription,
+                onSelect: () => open('subtitleStyling', (_) => const SubtitleStylingScreen()),
+              ),
+              TvMenuItem(
+                key: _SettingsScreenState._kTrackers,
+                icon: Symbols.sync_alt_rounded,
+                title: t.settings.trackers,
+                value: connectedTrackers.isEmpty ? null : connectedTrackers.join(' · '),
+                subtitle: connectedTrackers.isEmpty ? t.settings.trackersDescription : null,
+                onSelect: () => open('trackers', (_) => const TrackersSettingsScreen()),
+              ),
+              TvMenuItem(
+                key: _SettingsScreenState._kRequests,
+                icon: Symbols.playlist_add_rounded,
+                title: t.settings.requests,
+                value: seerr.isConfigured ? (seerr.host ?? t.settings.requests) : null,
+                subtitle: seerr.isConfigured ? null : t.settings.requestsDescription,
+                onSelect: () => open('requests', (_) => const SeerrSettingsScreen()),
+              ),
+              if (managesAPlexServer)
+                TvMenuItem(
+                  key: _SettingsScreenState._kTautulli,
+                  icon: Symbols.insights_rounded,
+                  title: t.tautulli.title,
+                  value: tautulli.isConfigured ? (tautulli.serverName ?? tautulli.host ?? t.tautulli.connected) : null,
+                  subtitle: tautulli.isConfigured ? null : t.tautulli.subtitle,
+                  onSelect: () => open('tautulli', (_) => const TautulliSettingsScreen()),
+                ),
+              ?assistantSettingsTvItem(onSelect: () => open('assistant', (_) => const AssistantSettingsScreen())),
+            ],
+          ),
+          TvMenuSection(
+            label: t.connections.sectionTitle,
+            items: [
+              TvMenuItem(
+                key: 'settings_add_connection',
+                icon: Symbols.add_link_rounded,
+                title: t.connections.addConnection,
+                subtitle: context.read<ActiveProfileProvider>().active == null
+                    ? t.connections.addConnectionSubtitleNoProfile
+                    : t.connections.addConnectionSubtitleScoped(
+                        displayName: context.read<ActiveProfileProvider>().active!.displayName,
                       ),
-                    _tvToggle(
-                      key: _SettingsScreenState._kDownloadOnWifiOnly,
-                      icon: Symbols.wifi_rounded,
-                      title: t.settings.downloadOnWifiOnly,
-                      pref: settings.SettingsService.downloadOnWifiOnly,
-                    ),
-                    _tvToggle(
-                      key: _SettingsScreenState._kAutoRemoveWatchedDownloads,
-                      icon: Symbols.delete_sweep_rounded,
-                      title: t.settings.autoRemoveWatchedDownloads,
-                      pref: settings.SettingsService.autoRemoveWatchedDownloads,
-                    ),
-                  ],
+                onSelect: () => open(
+                  'addConnection',
+                  (_) => AddConnectionScreen(targetProfile: context.read<ActiveProfileProvider>().active),
                 ),
-              if (_keyboardShortcutsSupported && _keyboardService != null)
-                TvMenuSection(
-                  label: t.settings.keyboardShortcuts,
-                  items: [
-                    TvMenuItem(
-                      key: _SettingsScreenState._kVideoPlayerControls,
-                      icon: Symbols.keyboard_rounded,
-                      title: t.settings.videoPlayerControls,
-                      subtitle: t.settings.keyboardShortcutsDescription,
-                      onSelect: () =>
-                          open('keyboardShortcuts', (_) => KeyboardShortcutsScreen(keyboardService: _keyboardService!)),
-                    ),
-                    _tvToggle(
-                      key: _SettingsScreenState._kVideoPlayerNavigation,
-                      icon: Symbols.gamepad_rounded,
-                      title: t.settings.videoPlayerNavigation,
-                      pref: settings.SettingsService.videoPlayerNavigationEnabled,
-                    ),
-                  ],
-                ),
-              TvMenuSection(
-                label: t.settings.advanced,
-                items: [
-                  TvMenuItem(
-                    key: _SettingsScreenState._kWatchTogetherRelay,
-                    icon: Symbols.dns_rounded,
-                    title: t.settings.watchTogetherRelay,
-                    subtitle: t.settings.watchTogetherRelayDescription,
-                    onSelect: _showRelayUrlDialog,
-                  ),
-                  _tvToggle(
-                    key: _SettingsScreenState._kCrashReporting,
-                    icon: Symbols.monitoring_rounded,
-                    title: t.settings.crashReporting,
-                    pref: settings.SettingsService.crashReporting,
-                  ),
-                  _tvToggle(
-                    key: _SettingsScreenState._kDebugLogging,
-                    icon: Symbols.bug_report_rounded,
-                    title: t.settings.debugLogging,
-                    pref: settings.SettingsService.enableDebugLogging,
-                  ),
-                  TvMenuItem(
-                    key: _SettingsScreenState._kViewLogs,
-                    icon: Symbols.article_rounded,
-                    title: t.settings.viewLogs,
-                    subtitle: t.settings.viewLogsDescription,
-                    onSelect: () => open('logs', (_) => const LogsScreen()),
-                  ),
-                  TvMenuItem(
-                    key: _SettingsScreenState._kClearCache,
-                    icon: Symbols.cleaning_services_rounded,
-                    title: t.settings.clearCache,
-                    subtitle: t.settings.clearCacheDescription,
-                    onSelect: _showClearCacheDialog,
-                  ),
-                  TvMenuItem(
-                    key: _SettingsScreenState._kResetSettings,
-                    icon: Symbols.restore_rounded,
-                    title: t.settings.resetSettings,
-                    subtitle: t.settings.resetSettingsDescription,
-                    onSelect: _showResetSettingsDialog,
-                  ),
-                ],
               ),
-              if (UpdateService.isUpdateCheckEnabled)
-                TvMenuSection(
-                  label: t.settings.updates,
-                  items: [
-                    TvMenuItem(
-                      key: _SettingsScreenState._kCheckForUpdates,
-                      icon: Symbols.system_update_rounded,
-                      title: _hasPendingUpdate ? t.settings.updateAvailable : t.settings.checkForUpdates,
-                      value: _hasPendingUpdate
-                          ? t.update.versionAvailable(version: _updateInfo!['latestVersion'])
-                          : null,
-                      onSelect: _isCheckingForUpdate ? null : _handleCheckForUpdatesTap,
-                    ),
-                    _tvToggle(
-                      key: _SettingsScreenState._kAutoCheckUpdatesOnStartup,
-                      icon: Symbols.notifications_active_rounded,
-                      title: t.settings.autoCheckUpdatesOnStartup,
-                      pref: settings.SettingsService.autoCheckUpdatesOnStartup,
-                    ),
-                  ],
-                ),
-              // Export and import hand a file to a file picker, which a TV has
-              // no sensible surface for, so on TV this group is the iCloud
-              // toggle or it is nothing — the same rule `_buildBackupSection`
-              // applies.
-              if (_SettingsScreenState._icloudSyncPlatform)
-                TvMenuSection(
-                  label: t.settings.backup,
-                  items: [
-                    _tvToggle(
-                      key: _SettingsScreenState._kIcloudSync,
-                      icon: Symbols.cloud_sync_rounded,
-                      title: t.settings.icloudSync,
-                      pref: settings.SettingsService.icloudSyncEnabled,
-                      enabled: _icloudAvailable != false,
-                      subtitle: _icloudAvailable == false ? t.settings.icloudSyncUnavailable : null,
-                      onAfterWrite: _handleIcloudSyncToggle,
-                    ),
-                  ],
-                ),
-              TvMenuSection(
-                items: [
-                  TvMenuItem(
-                    key: _SettingsScreenState._kAbout,
-                    icon: Symbols.info_rounded,
-                    title: t.settings.about,
-                    subtitle: t.settings.aboutDescription,
-                    onSelect: () => open('about', (_) => const TvAboutScreen()),
-                  ),
-                ],
+              TvMenuItem(
+                key: 'settings_pleya_share',
+                icon: Symbols.share_rounded,
+                title: t.pleyaShare.hostTitle,
+                subtitle: t.pleyaShare.hostToggle,
+                onSelect: () => open('pleyaShareHost', (_) => const PleyaShareHostScreen()),
+              ),
+              TvMenuItem(
+                key: 'settings_profiles',
+                icon: Symbols.group_rounded,
+                title: t.profiles.sectionTitle,
+                subtitle: t.profiles.summarySingle,
+                onSelect: () => Navigator.of(
+                  context,
+                  rootNavigator: true,
+                ).push(MaterialPageRoute<void>(builder: (_) => const ProfileSwitchScreen())),
               ),
             ],
           ),
-        ],
-      ),
+          if (!PlatformDetector.isAppleTV())
+            TvMenuSection(
+              label: t.settings.downloads,
+              items: [
+                if (!Platform.isIOS)
+                  TvMenuItem(
+                    key: _SettingsScreenState._kDownloadLocation,
+                    icon: Symbols.folder_rounded,
+                    title: DownloadStorageService.instance.isUsingCustomPath()
+                        ? t.settings.downloadLocationCustom
+                        : t.settings.downloadLocationDefault,
+                    subtitle: t.settings.downloads,
+                    onSelect: () => showDownloadLocationDialog(context, onChanged: _rebuild),
+                  ),
+                _tvToggle(
+                  key: _SettingsScreenState._kDownloadOnWifiOnly,
+                  icon: Symbols.wifi_rounded,
+                  title: t.settings.downloadOnWifiOnly,
+                  pref: settings.SettingsService.downloadOnWifiOnly,
+                ),
+                _tvToggle(
+                  key: _SettingsScreenState._kAutoRemoveWatchedDownloads,
+                  icon: Symbols.delete_sweep_rounded,
+                  title: t.settings.autoRemoveWatchedDownloads,
+                  pref: settings.SettingsService.autoRemoveWatchedDownloads,
+                ),
+              ],
+            ),
+          if (_keyboardShortcutsSupported && _keyboardService != null)
+            TvMenuSection(
+              label: t.settings.keyboardShortcuts,
+              items: [
+                TvMenuItem(
+                  key: _SettingsScreenState._kVideoPlayerControls,
+                  icon: Symbols.keyboard_rounded,
+                  title: t.settings.videoPlayerControls,
+                  subtitle: t.settings.keyboardShortcutsDescription,
+                  onSelect: () =>
+                      open('keyboardShortcuts', (_) => KeyboardShortcutsScreen(keyboardService: _keyboardService!)),
+                ),
+                _tvToggle(
+                  key: _SettingsScreenState._kVideoPlayerNavigation,
+                  icon: Symbols.gamepad_rounded,
+                  title: t.settings.videoPlayerNavigation,
+                  pref: settings.SettingsService.videoPlayerNavigationEnabled,
+                ),
+              ],
+            ),
+          TvMenuSection(
+            label: t.settings.advanced,
+            items: [
+              TvMenuItem(
+                key: _SettingsScreenState._kWatchTogetherRelay,
+                icon: Symbols.dns_rounded,
+                title: t.settings.watchTogetherRelay,
+                subtitle: t.settings.watchTogetherRelayDescription,
+                onSelect: _showRelayUrlDialog,
+              ),
+              _tvToggle(
+                key: _SettingsScreenState._kCrashReporting,
+                icon: Symbols.monitoring_rounded,
+                title: t.settings.crashReporting,
+                pref: settings.SettingsService.crashReporting,
+              ),
+              _tvToggle(
+                key: _SettingsScreenState._kDebugLogging,
+                icon: Symbols.bug_report_rounded,
+                title: t.settings.debugLogging,
+                pref: settings.SettingsService.enableDebugLogging,
+              ),
+              TvMenuItem(
+                key: _SettingsScreenState._kViewLogs,
+                icon: Symbols.article_rounded,
+                title: t.settings.viewLogs,
+                subtitle: t.settings.viewLogsDescription,
+                onSelect: () => open('logs', (_) => const LogsScreen()),
+              ),
+              TvMenuItem(
+                key: _SettingsScreenState._kClearCache,
+                icon: Symbols.cleaning_services_rounded,
+                title: t.settings.clearCache,
+                subtitle: t.settings.clearCacheDescription,
+                onSelect: _showClearCacheDialog,
+              ),
+              TvMenuItem(
+                key: _SettingsScreenState._kResetSettings,
+                icon: Symbols.restore_rounded,
+                title: t.settings.resetSettings,
+                subtitle: t.settings.resetSettingsDescription,
+                onSelect: _showResetSettingsDialog,
+              ),
+            ],
+          ),
+          if (UpdateService.isUpdateCheckEnabled)
+            TvMenuSection(
+              label: t.settings.updates,
+              items: [
+                TvMenuItem(
+                  key: _SettingsScreenState._kCheckForUpdates,
+                  icon: Symbols.system_update_rounded,
+                  title: _hasPendingUpdate ? t.settings.updateAvailable : t.settings.checkForUpdates,
+                  value: _hasPendingUpdate ? t.update.versionAvailable(version: _updateInfo!['latestVersion']) : null,
+                  onSelect: _isCheckingForUpdate ? null : _handleCheckForUpdatesTap,
+                ),
+                _tvToggle(
+                  key: _SettingsScreenState._kAutoCheckUpdatesOnStartup,
+                  icon: Symbols.notifications_active_rounded,
+                  title: t.settings.autoCheckUpdatesOnStartup,
+                  pref: settings.SettingsService.autoCheckUpdatesOnStartup,
+                ),
+              ],
+            ),
+          // Export and import hand a file to a file picker, which a TV has
+          // no sensible surface for, so on TV this group is the iCloud
+          // toggle or it is nothing — the same rule `_buildBackupSection`
+          // applies.
+          if (_SettingsScreenState._icloudSyncPlatform)
+            TvMenuSection(
+              label: t.settings.backup,
+              items: [
+                _tvToggle(
+                  key: _SettingsScreenState._kIcloudSync,
+                  icon: Symbols.cloud_sync_rounded,
+                  title: t.settings.icloudSync,
+                  pref: settings.SettingsService.icloudSyncEnabled,
+                  enabled: _icloudAvailable != false,
+                  subtitle: _icloudAvailable == false ? t.settings.icloudSyncUnavailable : null,
+                  onAfterWrite: _handleIcloudSyncToggle,
+                ),
+              ],
+            ),
+          TvMenuSection(
+            label: t.settings.about,
+            items: [
+              TvMenuItem(
+                key: _SettingsScreenState._kAbout,
+                icon: Symbols.info_rounded,
+                title: t.settings.about,
+                subtitle: t.settings.aboutDescription,
+                onSelect: () => open('about', (_) => const TvAboutScreen()),
+              ),
+            ],
+          ),
+        ];
+        // A-24: the sections become the categories on the left, each one's
+        // rows the middle column. Only the library category has a preview:
+        // the look its first row sets. Logs, reset and network rows have
+        // nothing to show beside them, so their rows take the room.
+        return TvSettingsCategories(
+          key: _tvCategories,
+          title: t.settings.title,
+          automationInstance: 'settings',
+          categoryAutomationId: AutomationIds.settingsCategory,
+          autofocusFirstCategory: false,
+          maxBodyWidthPt: 1100,
+          categories: [
+            for (final section in sections)
+              TvSettingsCategory(
+                id: section.label!,
+                title: section.label!,
+                body: TvSettingsRowList(items: section.items, nodes: _focusTracker, automationInstance: 'settings'),
+                rowKeys: [for (final item in section.items) item.key],
+                preview: section.label == t.settings.sectionLibrary
+                    ? TvSettingsLibraryPreview(title: t.settings.appearance, summary: appearanceSummary)
+                    : null,
+              ),
+          ],
+        );
+      },
     );
+  }
+
+  /// A-24 focus restore on the TV page: the remembered row, else
+  /// [fallbackKey], each through its own category, else the chosen category.
+  /// False off TV, where every row is mounted and the tracker restores alone.
+  bool _restoreTvFocus(String fallbackKey) {
+    final categories = _tvCategories.currentState;
+    if (categories == null) return false;
+    for (final key in {?_focusTracker.lastFocusedKey, fallbackKey}) {
+      if (categories.focusRow(key, _focusTracker.get(key))) return true;
+    }
+    categories.focusChosenCategory();
+    return true;
   }
 
   bool get _hasPendingUpdate => _updateInfo != null && _updateInfo!['hasUpdate'] == true;

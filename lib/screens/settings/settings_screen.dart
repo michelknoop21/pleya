@@ -70,7 +70,9 @@ import 'tautulli_settings_screen.dart';
 import 'trackers_settings_screen.dart';
 import '../../widgets/loading_indicator_box.dart';
 import '../../widgets/tv/tv_menu_grid.dart';
-import '../../widgets/tv/tv_page_surface.dart';
+import '../../widgets/tv/tv_settings_categories.dart';
+import '../../widgets/tv/tv_settings_library_preview.dart';
+import '../../widgets/tv/tv_settings_rows.dart';
 import '../tv/sections/tv_about_screen.dart';
 import '../../navigation/tv/tv_content_route_registry.dart';
 import '../../widgets/scroll_crown/scroll_crown.dart';
@@ -87,6 +89,9 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, MountedSetStateMixin {
   late final FocusMemoryTracker _focusTracker;
+
+  /// The TV page's categories, which own which rows are mounted (A-24).
+  final _tvCategories = GlobalKey<TvSettingsCategoriesState>();
 
   // Focus tracking keys
   static const _kDonate = 'donate';
@@ -170,7 +175,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   @override
   void focusActiveTabIfReady() {
     if (InputModeTracker.isKeyboardMode(context)) {
-      _focusTracker.restoreFocus(fallbackKey: DonationService.isEnabled ? _kDonate : _kAppearance);
+      final fallbackKey = DonationService.isEnabled ? _kDonate : _kAppearance;
+      if (_restoreTvFocus(fallbackKey)) return;
+      _focusTracker.restoreFocus(fallbackKey: fallbackKey);
     }
   }
 

@@ -32,8 +32,12 @@ steps:
   - wait_until: {id: screen.my_pleya, timeout: 15000}
   # Same walk as `tvos.settings.language-preferences`: the hub opens on
   # Profiel wisselen, two DOWNs is Instellingen.
+  # Since the Big P tile, Instellingen sits right of it in the Pleya group.
   - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
   - press: down
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
+  - press: right
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}

@@ -31,19 +31,31 @@ steps:
   - wait_until: {focused: nav.myPleya, timeout: 5000}
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
+  # Since the Big P tile, Instellingen sits right of it in the Pleya group.
   - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
   - press: down
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
+  - press: right
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
 
-  # The settings grid is two columns; Requests sits three rows down in the
-  # right column (Weergave, Indeling van Home, Video afspelen / Taal en
-  # ondertitels, Ondertitel opmaak / Trackers, Aanvragen).
-  - press: down
-  - press: down
-  - press: down
-  - press: right
+  # A-24: the settings page is categories with one column of rows; Aanvragen
+  # is the eighth row of the first category.
+  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
+  - walk:
+      direction: down
+      expect:
+        - "my_pleya.section.tile[settings.library_visibility]"
+        - "my_pleya.section.tile[settings.home_layout]"
+        - "my_pleya.section.tile[settings.playback]"
+        - "my_pleya.section.tile[settings.language]"
+        - "my_pleya.section.tile[settings.subtitle_styling]"
+        - "my_pleya.section.tile[settings.trackers]"
+        - "my_pleya.section.tile[settings.requests]"
+      timeout: 60000
+      settle: 500
   - wait_until: {focused: "my_pleya.section.tile[settings.requests]", timeout: 8000}
   - snapshot: 00-requests-tile-focused
 

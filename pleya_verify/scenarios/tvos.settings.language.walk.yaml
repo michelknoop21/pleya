@@ -28,15 +28,28 @@ steps:
   - wait_until: {focused: nav.myPleya, timeout: 5000}
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
+  # Since the Big P tile, Instellingen sits right of it in the Pleya group.
   - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
   - press: down
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
+  - press: right
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
 
   # Down the settings index to the language tile, which sits under Afspelen.
-  - press: down
-  - press: down
+  # A-24: one column of rows in the first category; Taal is the fifth.
+  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
+  - walk:
+      direction: down
+      expect:
+        - "my_pleya.section.tile[settings.library_visibility]"
+        - "my_pleya.section.tile[settings.home_layout]"
+        - "my_pleya.section.tile[settings.playback]"
+        - "my_pleya.section.tile[settings.language]"
+      timeout: 40000
+      settle: 500
   - wait_until: {focused: "my_pleya.section.tile[settings.language]", timeout: 8000}
   - press: select
   - wait_until: {id: "my_pleya.section.content[language]", timeout: 15000}

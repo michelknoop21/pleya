@@ -25,7 +25,10 @@ steps:
   - wait_until: {focused: "my_pleya.tile[requests]", timeout: 5000}
   - press: down
   - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
+  # Since the Big P tile, Instellingen sits right of it in the Pleya group.
   - press: down
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
+  - press: right
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
   - press: select
   - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
@@ -56,6 +59,8 @@ steps:
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
   - settle: 800
   - snapshot: 03-hub-light
+  - press: left
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
   - press: up
   - press: up
   - wait_until: {focused: "my_pleya.tile[requests]", timeout: 5000}
