@@ -9,6 +9,7 @@ import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/widgets/settings_section.dart';
 import 'package:pleya/widgets/tv/tv_appearance_categories.dart';
 import 'package:pleya/widgets/tv/tv_settings_studio_style.dart';
+import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 
 void main() {
   testWidgets('TV-categorie wisselt de zichtbare instellingen en houdt de paginamarge vrij', (tester) async {
@@ -151,10 +152,15 @@ void main() {
         // ring in Dark and OLED, its dark separator band in Light.
         final ring = tk.isLight ? tk.text : Colors.white;
         expect(ratio(ring, selected), greaterThan(3));
-        // Eyebrow and row value ink.
+        // Eyebrow, and the row's value and description ink at the alphas
+        // `tv_settings_rows.dart` paints, on a focused and an idle row.
         expect(ratio(tvStudioEyebrow(tk), tk.bg), greaterThan(4.5));
         final row = Color.alphaBlend(tvStudioRowFill(tk, focused: true), tk.bg);
-        expect(ratio(on(tk.text.withValues(alpha: 0.7), row), row), greaterThan(4.5));
+        final idleRow = Color.alphaBlend(tvStudioRowFill(tk, focused: false), tk.bg);
+        for (final fill in [row, idleRow]) {
+          expect(ratio(on(tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary), fill), fill), greaterThan(4.5));
+          expect(ratio(on(tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary), fill), fill), greaterThan(4.5));
+        }
         expect(ratio(tk.isLight ? tk.text : Colors.white, row), greaterThan(3));
       });
     }

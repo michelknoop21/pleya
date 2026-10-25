@@ -175,10 +175,12 @@ class _RowContent extends StatelessWidget {
                   ),
                 ),
                 // What the destination is for, where it has no value to show.
+                // Two lines as on `TvMenuTile`: beside the library preview
+                // one line cut most descriptions off.
                 if (subtitle != null)
                   Text(
                     subtitle,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: valueStyle.copyWith(
                       color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
