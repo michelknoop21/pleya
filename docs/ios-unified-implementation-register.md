@@ -58,12 +58,13 @@ werkvolgorde.
 
 Los van de northstar-schermen hierboven. De oppervlakken staan achter de schakelaar Liquid Glass in
 Uiterlijk (default uit) en gelden niet op de iPad. Contrastwaarden en open punten staan in
-[liquid-glass-mockups-2026-09.md](liquid-glass-mockups-2026-09.md#bouwstatus). Branch
-`feat/liquid-glass`, nog niet op `main`.
+[liquid-glass-mockups-2026-09.md](liquid-glass-mockups-2026-09.md#bouwstatus). De tabel hieronder
+onderscheidt code, simulatorbewijs en fysieke acceptatie.
 
 | ID | Oppervlak | Status | CODE | VERIFY/SIM | HARDWARE |
 |---|---|---|---|---|---|
 | LG-01 | Zwevende glazen tabbalk | CODE CLOSED · VERIFY/SIM CLOSED | `mobile_tab_bar.dart` uit `main_screen.dart` geëxtraheerd `0f6d8670`, glasvariant `0859af7d`, fixronde (bodempadding op vier tab-roots, actieve tab icoon rood en label wit) `c299b9f6` | `ios.glass.tabbar` PASS; label 16,27, icoon 3,17 | open |
+| LG-01-VL | Glazen selectielens op de iPhone-tabbalk (Videoland-referentie, 25 oktober 2026) | CODE CLOSED · VERIFY/SIM CLOSED · HARDWARE OPEN | `c8584629`: lens schuift bij tikken en volgt slepen; wissel bij loslaten, geen wissel bij annuleren, RTL en Verminder beweging. Vaste contrastonderlaag; glasplaat en lens als naastliggende renderlagen | 27 gerichte tests groen en negatieve controles; `ios.glass.tabbar` PASS op iPhone 17 Pro / iOS 27, run `ios-glass-tabbar-1792947784692` op werkboom `b392a2e8` met dezelfde productcode. Onafhankelijke review van twee GPU-frames bevestigt afgeronde lens zonder rechthoekige strook. De port naar actuele `main` volgt de PR-gates | open: aanraking, vloeiendheid en kleur-/brekingsovereenkomst boven echte posters; geen volledige Videoland-pariteit bewezen |
 | LG-02 | Filmpagina met hero en glazen knoppen | CODE CLOSED · VERIFY/SIM CLOSED (met bevindingen) | `a10aa935`; hero scrolt weg, serie houdt oude layout | `ios.glass.detail` PASS in de tweede run; laagste ratio 9,4 | open |
 | LG-03 | Spelerbediening | CODE CLOSED · VERIFY/SIM CLOSED (met bevinding) | glas zonder backdrop `5afc34d3`, bediening `e9892e9b`, fixronde `d6952bd1`; spelergeest bij rotatie open | `ios.glass.player` PASS; laagste ratio 4,71 | open: rotatie |
 

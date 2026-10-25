@@ -18,6 +18,10 @@ import 'package:pleya/widgets/mobile/mobile_page_header.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/screens/main/mobile_tab_bar_theme.dart';
+import 'package:pleya/screens/main/mobile_tab_bar.dart';
+import 'package:pleya/navigation/navigation_tabs.dart';
+import 'package:pleya/profiles/active_profile_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:pleya/theme/glass/glass_settings.dart';
 import 'package:pleya/theme/glass/glass_surface.dart';
 import 'package:pleya/theme/mono_theme.dart';
@@ -36,6 +40,52 @@ Future<void> _phone(WidgetTester tester, {required bool glass}) => glassPhone(te
 
 Widget _shell(WidgetBuilder body, {Widget? reconnectStrip, bool transparentForeground = false}) =>
     glassMainShell(body, reconnectStrip: reconnectStrip, transparentForeground: transparentForeground);
+
+const _kLensKey = ValueKey('mobile-tab-glass-lens');
+
+/// The glass [MobileTabBar] alone in a Scaffold; the returned notifier holds
+/// the committed tab, starting at 0.
+Future<ValueNotifier<int>> _pumpLensBar(
+  WidgetTester tester,
+  List<NavigationTab> tabs, {
+  bool rtl = false,
+  bool disableAnimations = false,
+}) async {
+  await _phone(tester, glass: true);
+  final selected = ValueNotifier(0);
+  addTearDown(selected.dispose);
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: glassPhoneTheme(),
+      home: Provider<ActiveProfileProvider?>.value(
+        value: null,
+        child: Builder(
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: disableAnimations),
+            child: Directionality(
+              textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
+              child: ValueListenableBuilder(
+                valueListenable: selected,
+                builder: (context, index, _) => Scaffold(
+                  bottomNavigationBar: MobileTabBar(
+                    tabs: tabs,
+                    currentIndex: index,
+                    onDestinationSelected: (index) => selected.value = index,
+                    hideLabels: false,
+                    presentation: TabBarPresentation.unified2026,
+                    onLibraryLongPress: (_) {},
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return selected;
+}
 
 Widget _longList(BuildContext context, {bool tail = true}) => CustomScrollView(
   slivers: [
@@ -81,16 +131,97 @@ void main() {
     await tester.pumpWidget(_shell((_) => const SizedBox.expand()));
     await tester.pumpAndSettle();
 
-    expect(find.byType(GlassSurface), findsOneWidget);
+    expect(find.byType(GlassSurface), findsNWidgets(2));
     expect(tester.widget<Scaffold>(find.byType(Scaffold)).extendBody, isTrue);
 
-    final plate = tester.getRect(find.byType(GlassSurface));
+    final plate = tester.getRect(find.byType(GlassSurface).first);
     expect(plate.left, 16);
     expect(plate.right, 393 - 16);
     expect(plate.height, 64);
     expect(plate.bottom, 852 - 22);
     final theme = NavigationBarTheme.of(tester.element(find.byType(NavigationBar)));
     expect(theme.backgroundColor, Colors.transparent);
+  });
+
+  for (final rtl in [false, true]) {
+    testWidgets('glazen lens schuift en volgt slepen (rtl: $rtl)', (tester) async {
+      final tabs = glassPhoneTabs();
+      final selection = await _pumpLensBar(tester, tabs, rtl: rtl);
+      int selected() => selection.value;
+      final lens = find.byKey(_kLensKey);
+      final start = tester.getCenter(lens);
+      await tester.tap(find.text(tabs[2].getLabel()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      final middle = tester.getCenter(lens);
+      await tester.pumpAndSettle();
+      final end = tester.getCenter(lens);
+      expect(selected(), 2);
+      expect((middle.dx - start.dx).abs(), greaterThan(1));
+      expect((middle.dx - start.dx).abs(), lessThan((end.dx - start.dx).abs()));
+
+      final bar = tester.getRect(find.byType(NavigationBar));
+      final target = Offset(rtl ? bar.right - bar.width / 8 : bar.left + bar.width / 8, bar.center.dy);
+      final gesture = await tester.startGesture(end);
+      await gesture.moveTo(Offset((end.dx + target.dx) / 2, target.dy));
+      await tester.pump();
+      await gesture.moveTo(target);
+      await tester.pump();
+      expect(selected(), 2); // Previewing a drag must not navigate yet.
+      expect((tester.getCenter(lens).dx - target.dx).abs(), lessThan(1));
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(selected(), 0);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('glazen lens: geannuleerde sleep navigeert niet en veert terug', (tester) async {
+    final tabs = glassPhoneTabs();
+    final selection = await _pumpLensBar(tester, tabs);
+    final lens = find.byKey(_kLensKey);
+    final home = tester.getCenter(lens);
+    final bar = tester.getRect(find.byType(NavigationBar));
+    final target = Offset(bar.right - bar.width / 8, bar.center.dy);
+
+    final gesture = await tester.startGesture(home);
+    await gesture.moveTo(Offset((home.dx + target.dx) / 2, target.dy));
+    await tester.pump();
+    await gesture.moveTo(target);
+    await tester.pump();
+    expect((tester.getCenter(lens).dx - target.dx).abs(), lessThan(1));
+
+    // The system takes the pointer (home indicator swipe, incoming call).
+    await gesture.cancel();
+    await tester.pumpAndSettle();
+    expect(selection.value, 0);
+    expect(tester.getCenter(lens).dx, closeTo(home.dx, 0.5));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('glazen lens: minder beweging springt zonder animatie', (tester) async {
+    final tabs = glassPhoneTabs();
+    final selection = await _pumpLensBar(tester, tabs, disableAnimations: true);
+    final lens = find.byKey(_kLensKey);
+    final start = tester.getCenter(lens);
+
+    await tester.tap(find.text(tabs[2].getLabel()));
+    await tester.pump();
+    final afterOneFrame = tester.getCenter(lens);
+    await tester.pumpAndSettle();
+    expect(selection.value, 2);
+    expect(afterOneFrame.dx, isNot(closeTo(start.dx, 1)));
+    expect(afterOneFrame.dx, closeTo(tester.getCenter(lens).dx, 0.5));
+  });
+
+  testWidgets('glazen lens: de balk biedt VoiceOver geen veegactie aan', (tester) async {
+    final handle = tester.ensureSemantics();
+    await _pumpLensBar(tester, glassPhoneTabs());
+    // A scroll action would feed the drag handler a coordinate-free update
+    // and jump to whatever slot the bar's global center maps to.
+    expect(find.semantics.byAction(ui.SemanticsAction.scrollLeft), findsNothing);
+    expect(find.semantics.byAction(ui.SemanticsAction.scrollRight), findsNothing);
+    handle.dispose();
   });
 
   // Bottom margin max(10, inset - 12): the capsule sits lower on a home
@@ -109,7 +240,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final plate = tester.getRect(find.byType(GlassSurface));
+      final plate = tester.getRect(find.byType(GlassSurface).first);
       expect(plate.bottom, 852 - margin);
       expect(bodyPadding.bottom, 852 - plate.top);
     });
@@ -125,7 +256,7 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -3000));
     await tester.pumpAndSettle();
 
-    final barTop = tester.getTopLeft(find.byType(GlassSurface)).dy;
+    final barTop = tester.getTopLeft(find.byType(GlassSurface).first).dy;
     expect(tester.getBottomLeft(last).dy, lessThanOrEqualTo(barTop));
   });
 
@@ -139,7 +270,7 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -3000));
     await tester.pumpAndSettle();
 
-    final barTop = tester.getTopLeft(find.byType(GlassSurface)).dy;
+    final barTop = tester.getTopLeft(find.byType(GlassSurface).first).dy;
     expect(tester.getBottomLeft(last).dy, greaterThan(barTop));
   });
 
@@ -247,7 +378,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       final rect = tester.getRect(find.byKey(const Key('reconnect')));
-      final plate = tester.getRect(find.byType(GlassSurface));
+      final plate = tester.getRect(find.byType(GlassSurface).first);
       expect(rect.left, plate.left);
       expect(rect.right, plate.right);
       expect(plate.top - rect.bottom, 8);
@@ -321,8 +452,21 @@ void main() {
 
       expect(glassTierFor(tester.element(find.byType(NavigationBar))), GlassTier.real);
       expect(tester.takeException(), isNull);
-      expect(find.byType(LiquidGlassLayer), findsOneWidget);
-      expect(find.byType(LiquidGlass), findsOneWidget);
+      expect(find.byType(LiquidGlassLayer), findsNWidgets(2));
+      expect(find.byType(LiquidGlass), findsNWidgets(2));
+
+      // Plate and lens are sibling layers: a LiquidGlassLayer nested in
+      // another rendered the lens as a clipped grey patch on device.
+      final layers = find.byType(LiquidGlassLayer);
+      expect(find.descendant(of: layers, matching: layers), findsNothing);
+
+      // Geometry unchanged by the split: 64 pt capsule 16 from the sides,
+      // the lens inset 4 inside one slot of the plate.
+      final plate = tester.getRect(find.byType(GlassSurface).first);
+      expect(plate, const Rect.fromLTRB(16, 852 - 22 - 64, 393 - 16, 852 - 22));
+      final lens = tester.getRect(find.byKey(_kLensKey));
+      final slot = plate.width / glassPhoneTabs().length;
+      expect(lens, Rect.fromLTWH(plate.left + 4, plate.top + 4, slot - 8, 56));
     });
 
     testWidgets('kopcirkel', (tester) async {

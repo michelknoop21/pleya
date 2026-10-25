@@ -43,3 +43,13 @@ steps:
   - assert: {id: nav.discover, insideViewport: true}
   - assert: {id: home.header.search, insideViewport: true, minimumTapTarget: 44}
   - snapshot: glass-tabbar
+  - tap: {id: nav.series}
+  - wait_until: {id: screen.series, timeout: 15000}
+  - settle: 500
+  - assert: {id: nav.bar, insideViewport: true}
+  - snapshot: glass-tabbar-series
+  - tap: {id: nav.movies}
+  - wait_until: {id: screen.movies, timeout: 15000}
+  - settle: 500
+  - assert: {id: nav.bar, insideViewport: true}
+  - snapshot: glass-tabbar-movies

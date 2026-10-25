@@ -63,7 +63,7 @@ Future<void> _expectClearOfBar(WidgetTester tester, Finder scrollable, Finder la
     await tester.drag(scrollable, const Offset(0, -600));
     await tester.pumpAndSettle();
   }
-  final barTop = tester.getTopLeft(find.byType(GlassSurface)).dy;
+  final barTop = tester.getTopLeft(find.byType(GlassSurface).first).dy;
   expect(tester.getBottomLeft(last).dy, lessThanOrEqualTo(barTop));
 }
 
