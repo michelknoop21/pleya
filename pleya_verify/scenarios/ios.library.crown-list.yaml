@@ -32,6 +32,10 @@ steps:
   - tap: {id: nav.myPleya}
   - wait_until: {id: screen.my_pleya, timeout: 10000}
   - settle: 1000
+  # Mijn Pleya is still scrolled down from the way to Instellingen, which
+  # leaves Bibliotheken above the screen; back to the top first.
+  - drag: {startX: 187, startY: 150, endX: 187, endY: 560, durationMs: 400}
+  - settle: 1000
   - tap: {id: "my_pleya.tile[libraries]"}
   - wait_until: {id: screen.library_picker, timeout: 10000}
   - settle: 1000

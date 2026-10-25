@@ -2,6 +2,9 @@ name: ios.scroll-crown.ends
 target: ios-sim
 # IOS-CROWN-END1 / A-06. iPhone SE (375x667): grab in the middle,
 # then reach the actual bottom and top without taking another grip.
+# A-24b: on Weergave. The Instellingen main page is three short groups now,
+# under two SE screens once laid out, so it carries no crown
+# (`ScrollCrown.minContentScreens`); Weergave is a long page with one.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
@@ -19,18 +22,20 @@ steps:
   - settle: 1000
   - tap: {id: "my_pleya.tile[settings]"}
   - wait_until: {id: screen.settings, timeout: 10000}
+  - settle: 800
+  - tap: {id: "settings.tile[appearance]"}
+  - wait_until: {id: "my_pleya.section.tile[setting.theme_mode]", timeout: 10000}
+  - settle: 800
   - wait_until: {id: overlay.scroll_crown, timeout: 5000}
   - assert: {id: overlay.scroll_crown, state: {at_start: true, gear_height: 96}}
   - tap: {x: 368, y: 330}
   - drag: {startX: 368, startY: 330, endX: 368, endY: 635, durationMs: 700}
   - settle: 100
   - assert: {id: overlay.scroll_crown, state: {at_end: true}}
-  - assert: {id: screen.settings}
   - snapshot: crown-bottom
   - settle: 1100
   - tap: {x: 368, y: 330}
   - drag: {startX: 368, startY: 330, endX: 368, endY: 30, durationMs: 700}
   - settle: 100
   - assert: {id: overlay.scroll_crown, state: {at_start: true}}
-  - assert: {id: screen.settings}
   - snapshot: crown-top

@@ -2,6 +2,8 @@
 
 Roadmap: A-24 (vervolgronde A-24b). Deze lijst loopt [`VISUELE_ACCEPTATIE.md`](../assets/a24b-northstars/VISUELE_ACCEPTATIE.md) regel voor regel langs: per controlepunt het oordeel, wat de build anders doet, waarom, en wie het verschil heeft geaccepteerd of dat het nog openstaat. De beelden staan in [`docs/assets/a24b-vergelijking/`](../assets/a24b-vergelijking/README.md), de route-voor-route-pariteit in [`PARITEIT_A24B.csv`](PARITEIT_A24B.csv).
 
+**Besluit Michel 25 okt 2026** staat hieronder bij de vijf afwijkingen waarover hij die dag besliste: App-taal, de TV-schakelaar, de TV-rechterkolom, de afgekapte kijklijsttitels op TV en de groepsnamen in Licht.
+
 Oordelen: **Match** (de build toont wat de northstar toont), **Match met verschil** (structuur en inhoud kloppen, een detail wijkt af), **Afwijking** (zichtbaar anders), **Voorwaardelijk** (de functie bestaat, maar de code toont hem in de vastgelegde staat niet). "Open" betekent dat Michel er nog niet over besloten heeft. Alle beelden komen uit simulators; niets is op een echte iPhone of Apple TV bekeken.
 
 ## Instellingen op Apple TV
@@ -14,8 +16,8 @@ Bladen: `03-appletv-instellingen-donker.jpg`, `04-appletv-instellingen-licht.jpg
 | Header | Match met verschil | `Instellingen` en `Jouw kijkervaring, tot in detail.` staan er in dezelfde hiërarchie. Boven de pagina staat de bestaande TV-bovenbalk in plaats van het logo met kruimelpad `Mijn Pleya > Instellingen`. | De bouwopdracht vraagt de topnavigatie te behouden; daarmee geaccepteerd. |
 | Actieve sectie | Match | `WEERGAVE` boven `Zo ziet jouw Pleya eruit`, de gekozen categorie gemarkeerd in de rail. De build zet er groepskoppen onder (`SCHERM`), omdat Weergave op TV meer rijen heeft dan het bord. | Geen besluit nodig. |
 | Achtergrond | Match | Donker: warme wash over `#141414`. Licht: warm gebroken wit (`#F9F5F2`). OLED blijft zwart zonder wash, zodat OLED zijn reden houdt. Contrast getoetst in `tv_settings_studio_contrast_test`. | OLED zonder wash is een keuze uit fase 1; open voor Michel als hij de wash ook op OLED wil. |
-| Rijen | Match met verschil | Fijne scheiding, waarde rechts, één focusring. De rijen zelf volgen de bestaande voorkeuren: de build toont Thema, Taal, Liquid Glass, Raster- of lijstweergave, Dichtheid, de northstar Thema, Visuele effecten, Liquid Glass, Raster, Afleveringsposters. App-taal heeft geen plek in de reeks en staat onder Thema. | Welke rijen bestaan beslist de code (BOUWOPDRACHT, "Betekenis van pariteit"). De plek van App-taal: open. |
-| Directe schakelaar | Match met verschil | Select op de hele rij zet de waarde om, de schakelaar is geen tweede focusstop en de waarde wordt bewaard (`settings_tv_page_test`, "SELECT on a switch row flips it in place, one stop per row"). De schakelaar is een getekende pil in Studio-koraal, geen echt Liquid Glass-materiaal. Anker 04 schrijft "Aan" als tekst; de build toont ook in Licht de pil. | Open. |
+| Rijen | Match met verschil | Fijne scheiding, waarde rechts, één focusring. De rijen zelf volgen de bestaande voorkeuren: de build toont Thema, Liquid Glass, Raster- of lijstweergave, Dichtheid, de northstar Thema, Visuele effecten, Liquid Glass, Raster, Afleveringsposters. App-taal staat niet meer in Weergave maar als eerste rij van Taal en ondertitels. | Welke rijen bestaan beslist de code (BOUWOPDRACHT, "Betekenis van pariteit"). **Besluit Michel 25 okt 2026, veranderd:** App-taal als eigen rij boven de audio- en ondertitelvoorkeuren, op iPhone en TV, id `setting.app_locale` gelijk gebleven. |
+| Directe schakelaar | Match met verschil | Select op de hele rij zet de waarde om, de schakelaar is geen tweede focusstop en de waarde wordt bewaard (`settings_tv_page_test`, "SELECT on a switch row flips it in place, one stop per row"). De schakelaar is een getekende pil in Studio-koraal, geen echt Liquid Glass-materiaal. Anker 04 schrijft "Aan" als tekst; de build toont ook in Licht de pil. VoiceOver leest de rij als schakelaar met aan/uit en de verborgen uitleg als hint (`settings_row_anatomy_test`). | **Besluit Michel 25 okt 2026, geaccepteerd:** de pil blijft, zolang aan/uit en focus duidelijk zijn en de rij één bedienbaar element is zonder tweede focusstop. |
 | Voorbeeldkaart | Match | `LIVE VOORBEELD`, drie posters uit de bibliotheek, `Jouw bibliotheek`, de modusregel uit de actuele voorkeur en `Bekijk voorbeeld`, dat Bibliotheken opent. Zonder Home-items houdt de kaart titel en modusregel (`settings_tv_page_test`, "without items it keeps its text"). Op Afspelen toont de kaart Afspeelervaring met de standaardkwaliteit, niet de tijd- en spoorregel van het bord. | Afspeelervaring: open. |
 
 ## Instellingen op iPhone
@@ -25,9 +27,9 @@ Bladen: `01-iphone-instellingen-donker.jpg`, `02-iphone-instellingen-licht.jpg`,
 | Controle | Oordeel | Wat de build anders doet, en waarom | Besluit |
 | --- | --- | --- | --- |
 | Kop en media | Match met verschil | `Instellingen`, `PLEYA · PERSOONLIJK`, `Maak Pleya helemaal van jou.` en een filmbeeld uit de geladen titels. Zonder titels of zonder klaar staande server een merkpaneel in plaats van een kapot beeld (`settings_studio_header_test`). Een subpaginatitel die niet naast het beeld past breekt af naar twee regels; de reeks laat hem over het beeld lopen. | Twee regels: open. |
-| Structuur | Match met verschil | `VOOR JOU` en `VERBINDINGEN EN PROFIELEN` in het startbeeld, `SYSTEEM` (Geavanceerd, Back-up, Over Pleya) verderop. Ondertitelstijl is een eigen rij in Voor jou. Big P staat alleen in Verbindingen en profielen als de build Big P heeft; het vernieuwde blad `01` komt uit zo'n build en toont hem tussen Koppelingen en Profielen, zoals bord 01. Het lichte bord 03 gebruikt de groepsnamen `KIJKEN` en `JOUW PLEYA`; de build houdt in elk thema de namen van bord 01, die ook in VISUELE_ACCEPTATIE staan. | Groepsnamen: gekozen volgens VISUELE_ACCEPTATIE, Michel kan dat omdraaien. |
+| Structuur | Match | `VOOR JOU` en `VERBINDINGEN EN PROFIELEN` in het startbeeld, `SYSTEEM` (Geavanceerd, Back-up, Over Pleya) verderop. Ondertitelstijl is een eigen rij in Voor jou. Big P staat alleen in Verbindingen en profielen als de build Big P heeft; het vernieuwde blad `01` komt uit zo'n build en toont hem tussen Koppelingen en Profielen, zoals bord 01. Het lichte bord 03 gebruikt de groepsnamen `KIJKEN` en `JOUW PLEYA`; de build houdt in elk thema de namen van bord 01. | **Besluit Michel 25 okt 2026:** een thema verandert kleuren, geen structuur of namen; Licht gebruikt Voor jou, Verbindingen en profielen en Systeem (`settings_phone_page_test`, per thema). |
 | Rijen | Match | Compacte lijst van 50 pt, dunne scheiding, lijniconen zonder vierkant badge op de hoofdpagina, geen iconen op subpagina's, uitleg als VoiceOver-hint (`settings_row_anatomy_test`). Geen tegels meer. | Geen besluit nodig. |
-| Weergave | Match met verschil | Bovenaan de kaart `Live voorbeeld` met een poster, `Jouw bibliotheek` en de modusregel; daaronder Thema met de waarde en directe schakelaars. Liquid Glass staat in de fixture uit, op het bord aan. App-taal staat als laatste rij in Scherm, Dichtheid na Raster of lijst (anker 03). | App-taal: open. |
+| Weergave | Match met verschil | Bovenaan de kaart `Live voorbeeld` met een poster, `Jouw bibliotheek` en de modusregel; daaronder Thema met de waarde en directe schakelaars. Liquid Glass staat in de fixture uit, op het bord aan. Dichtheid staat na Raster of lijst (anker 03). App-taal staat sinds het besluit van 25 oktober niet meer hier. | **Besluit Michel 25 okt 2026:** App-taal naar Taal en ondertitels (`language_settings_screen_test`). |
 | Gedrag | Match met verschil | Zoeken vindt dezelfde bestemmingen (`settings_search_test`, `settings_hub_pages_test`). Na scrollen schuift een compacte balk met de titel over de pagina en bij terugscrollen weer weg (`dark-main-scrolled`). Terug zit als chevron op de titelregel (`settings.back`, `settings_studio_header_test`). De tabbalk blijft onder Instellingen staan, het bord tekent er geen. | Tabbalk is shell en valt buiten A-24b; open als Michel hem binnen Instellingen weg wil. |
 
 ## Mijn Pleya op iPhone (Editorial)
@@ -49,10 +51,10 @@ Bladen: `06-appletv-mijn-pleya.jpg`, `appletv-mijn-pleya-*.jpg`.
 | Controle | Oordeel | Wat de build anders doet, en waarom | Besluit |
 | --- | --- | --- | --- |
 | Top | Match met verschil | Titel, profielregel met `Profiel wisselen` en een niet-focusbare serverstatus (`Pleya Server · Zolder` in de fixture). Eén focus; terugkomen herstelt de laatst gefocuste actie (`tv_my_pleya_screen_test`, Verify `tvos.my-pleya.editorial`). De bovenbalk is de bestaande TV-shell, zonder Live TV en Zoeken als tekst. | Shell valt buiten A-24b. |
-| Kijklijst | Match met verschil | Brede rail met posters, titel en jaar, `Bekijk alles`; links en rechts zonder overlap (blad `posterfocus`). Een lange titel wordt afgekapt op 153 pt ("Tears of S..."). | Afkappen: open. |
+| Kijklijst | Match met verschil | Brede rail met posters, titel en jaar, `Bekijk alles`; links en rechts zonder overlap (blad `posterfocus`). De kaart reserveert nu twee titelregels, zodat een titel als "Tears of Steel" heel leesbaar is, zonder kleinere letter en zonder dat een kaart verschuift; de rail schuift mee met de focus, ook bij twaalf posters (`tv_my_pleya_screen_test`). | **Besluit Michel 25 okt 2026, veranderd:** gefocuste titel volledig leesbaar, maximaal twee regels. |
 | Mijn content | Voorwaardelijk | Aanvragen verschijnt met Seerr (blad `conditioneel`, rechts). Collecties en Afspeellijsten bestaan en zijn getest, maar de fixture levert ze niet, dus ze staan op geen screenshot. Zonder modules verdwijnt de groep en loopt de focus door (blad `conditioneel`, midden). De ondertitel van Aanvragen is die van de iPhone. | Volgt de code. |
 | Bronnen | Match met verschil | Bibliotheken, Servers en Samen kijken met aantal als ondertitel. Activiteit volgt de oude voorwaarde en zit niet in de fixture. | Volgt de code. |
-| Rechterkant | Match met verschil | Big P-kaart en Beheer met Instellingen, Logboeken, Over Pleya en een rode Uitloggen; terug uit Instellingen landt weer op Instellingen. De kolom is 440 pt in plaats van 480 en de Big P-ondertitel loopt over twee regels, zodat vier tegels op 23 pt passen zonder afkapping. De regel "Aangemeld als" staat onder de vouw tot de focus rechts staat. | Breedte en voetregel: open. |
+| Rechterkant | Match met verschil | Big P-kaart en Beheer met Instellingen, Logboeken, Over Pleya en een rode Uitloggen; terug uit Instellingen landt weer op Instellingen. De kolom is 440 pt in plaats van 480 en de Big P-ondertitel loopt over twee regels, zodat vier tegels op 23 pt passen zonder afkapping. De regel "Aangemeld als" staat onder de vouw tot de focus rechts staat. | **Besluit Michel 25 okt 2026, geaccepteerd:** 440 pt, leesbaarheid en bereikbaarheid gaan voor pixelpariteit. Voetregel: open. |
 | Thema | Afwijking | Donker en Licht met leesbare focusring en posters. Het lichte bord 05 heeft een warme gebroken-witte wash; de build houdt in Licht het monoTheme-grijs. | Geaccepteerd: productbesluit 2 in `START-HIER.md` (warm gebroken wit alleen binnen Instellingen) en Michels bevestiging in fase 5. |
 
 ## Pariteit per route
@@ -61,7 +63,7 @@ Bladen: `06-appletv-mijn-pleya.jpg`, `appletv-mijn-pleya-*.jpg`.
 
 De acht rijen ALLEEN MOCKUP zijn geen functie in de code: Bronnaam en server bij elke bron, Verborgen bibliotheken blijven bewaard, Downloadmap bekijken, Opslag en status controleren, Nooit automatisch sync inschakelen, Gezinsbeperkingen, Kindvriendelijke antwoorden en op TV Navigatiebreedte en focus. Bouwen vraagt een productbesluit en valt buiten deze ronde.
 
-De 27 rijen AFWIJKING bestaan wel, maar anders dan het bord ze tekent. De meeste zijn een functie zonder eigen rij: toestemming voor sync is een dialoog bij het inschakelen, configuratie per provider wisselt de velden in plaats van een pagina, bronnen per profiel zitten in Verbinding toevoegen, zoeken in het geheugen is een filter. Updates verschijnt alleen met een build-define en is in App Store-builds verborgen. Uitloggen blijft in Mijn Pleya en krijgt geen tweede ingang in Instellingen. Op iPhone opent Home aanpassen voor slepen en verbergen de bestaande editor in plaats van dat per rij te doen.
+De 27 rijen AFWIJKING bestaan wel, maar anders dan het bord ze tekent. De meeste zijn een functie zonder eigen rij: toestemming voor sync is een dialoog bij het inschakelen, configuratie per provider wisselt de velden in plaats van een pagina, bronnen per profiel staan op de bronpagina van hun soort en op de profielpagina, zoeken in het geheugen is een filter. Updates verschijnt alleen met een build-define en is in App Store-builds verborgen. Uitloggen blijft in Mijn Pleya en krijgt geen tweede ingang in Instellingen. Op iPhone opent Home aanpassen voor slepen en verbergen de bestaande editor in plaats van dat per rij te doen.
 
 ## Tests per gevraagde klasse
 
@@ -76,6 +78,21 @@ De 27 rijen AFWIJKING bestaan wel, maar anders dan het bord ze tekent. De meeste
 | Grotere tekst en breedtes | `test/screens/tv/tv_my_pleya_screen_test.dart` (dubbele tekstgrootte, geen afkapping), `test/screens/settings/settings_studio_shots_test.dart` (320, 390, 1280, 1440 en 1920 pt) en `test/screens/my_pleya_shots_test.dart` (320 en 390 pt) |
 
 De VoiceOver-test van fase 6 vond een echte fout: de rijen, de Big P-kaart en de posters van iPhone Mijn Pleya hadden een label maar geen actie, omdat `excludeSemantics` ook de tikactie van de InkWell wegnam. Hersteld in `bd1b80cc`; de test is rood zonder die fix.
+
+## Reviewronde (PR #500)
+
+Een onafhankelijke review vond één Critical en vijf Important; elk is geverifieerd en hersteld met een test die zonder de fix rood is (`819e0997`):
+
+- C1: Koppelingen ▸ Verbinding toevoegen opende de toevoegschermen op TV als geneste route; hun `Navigator.pop(true)` haalde daarna MainScreen weg. Op de tvOS-simulator vooraf bevestigd met het nieuwe scenario `tvos.settings.add-pleya-server` (na een geslaagde toevoeging stond er geen shell meer). Ze openen nu als echte route, zoals `AddConnectionScreen` dat deed.
+- I1: bewerken van een Jellyfin- of Emby-bron vanuit Servers en bronnen bindt het actieve profiel opnieuw, zoals de profielpagina (`connections_section_test`).
+- I2: TV ▸ Home aanpassen ▸ Eigen rij toevoegen opent de TV-wizard (`tv_home_custom_rows_test`).
+- I3: de TV-kijklijstrail schuift mee met de focus (`tv_my_pleya_screen_test`, twaalf posters).
+- I4: in de Big P-categorie stapt Menu eerst terug uit een conceptprovider (`assistant_settings_screen_test`, scenario `tvos.settings.bigp-inline-back`).
+- I5: een schakelaarrij leest zijn verborgen uitleg als VoiceOver-hint; bij beide schakelaarrijen zat de hint buiten de samengevoegde schakelaarknoop en ging verloren (`settings_row_anatomy_test`).
+- M5: koraal als tekst is in Licht `#AD412E` (4,5:1 op kaart, pagina en `#F1E8E3`); de schakelaar houdt `#C94E3C`.
+- M1 tot en met M3: DEC-XXX en de pariteitstabel zeggen nu wat waar is over automation-ids, testnamen en bronnen per profiel.
+
+Vervolgpunten, niet in deze PR: M4 (een rij "…-bronnen beheren" verschijnt ook als alleen een ander profiel die bron heeft en opent dan een lege lijst), M6 (enkele bevestigingsdialogen in Instellingen tonen het monoTheme-palet), M7 (de verwijderkiezer voor een eigen rij opent op TV zonder focus; de Big P-categorie trekt na SELECT de focus naar zich toe), M8 (`settings_section.dart` is 540 regels).
 
 ## Bewijsronde fase 6
 
@@ -97,11 +114,20 @@ Niet gedraaid: `ios.library.local-offline` en `ios.library.local-storage`, omdat
 
 Goldens: elke `tv_shell_*`-golden uit `test/goldens/tv_root_shell_golden_test.dart` gebruikt de Mijn Pleya-hub als inhoud, dus alle negen veranderden (`tv_shell_my_pleya`, `_focused`, `_full`, `tv_shell_auth_my_pleya`, `tv_shell_auth_attention`, `tv_shell_home_active`, `tv_shell_focus_not_active`, `tv_shell_live_tv_present`, `tv_shell_long_locale`). De test voor de volledige hub zocht nog de oude Kijklijst-tegel; hij controleert nu de rail (`b41765d9`). De beelden zijn via `goldens.yml` op de CI-runner opnieuw gemaakt, bekeken en gecommit (`a36179a5`).
 
+### Ronde na de review
+
+Eén Apple TV-build en één iPhone SE-build van `819e0997`, de SE-simulator vooraf herstart. Apple TV: `tvos.settings.add-pleya-server` (C1), `tvos.settings.bigp-inline-back` (I4), `tvos.my-pleya.editorial` (twee titelregels, de nieuwe bladen), `tvos.settings.studio`, `tvos.my-pleya.section-settings`, `tvos.settings.language.walk` en `tvos.settings.language-preferences` (App-taal als eerste rij van Taal): alle PASS. Het C1-scenario faalde in de eerste run alleen op een eigen fout (het controleerde `nav.bar`, een iPhone-id); na die correctie PASS. Hetzelfde scenario op de build van vóór de fix liet na de toevoeging geen shell meer over.
+
+iPhone SE: `a24b.ios.settings.phase2` PASS (groepsnamen in Licht gelijk aan Donker en OLED, App-taal in Taal). `ios.library.crown-list` PASS na een scenariofix: het scenario scrolde in fase 4 Mijn Pleya omlaag naar Instellingen en tikte later op Bibliotheken terwijl die rij boven het scherm stond, zodat de tik op de Big P-kaart viel. Het scrolt nu eerst terug naar boven. `ios.scroll-crown.ends` staat nu op Weergave, een pagina lang genoeg voor een kroon; daar haalt één greep de onderkant niet (`at_end` onwaar). Open, niet als groen geteld. `ios.glass.player` faalt op een vaste plek: na Instellingen en Films opent een tik op `landing.view_all[movies]` de catalogus niet. De ui-tree houdt de Instellingen-pagina (`settings.header` op y 0) naast de Films-pagina. Onverklaard, niet bewezen.
+
+`tvos.glass.player`: de spelerstap is op main niet bewezen. De controlerun op main stopte eerder, op de Big P-tegel, en heeft de speler niet bereikt.
+
 ## Wat nog niet bewezen is
 
 - Geen run op een echte iPhone of Apple TV, en geen VoiceOver-ronde op een toestel. Alles hierboven komt uit simulators en widgettests.
-- `ios.library.crown-list` en `ios.glass.player` zijn rood zonder verklaring; `ios.scroll-crown.ends` heeft een nieuwe doelpagina nodig; `tvos.glass.player` is al rood op main.
+- `ios.glass.player` is rood zonder verklaring; `ios.scroll-crown.ends` haalt op Weergave de onderkant niet; `tvos.glass.player` is al rood op main, de spelerstap is daar niet bereikt.
 - `ios.library.local-offline`, `ios.library.local-storage` en `ipados.viewport-density.navigation` zijn niet gedraaid (wifi achter de VPN-route, geen iPad-simulator).
 - De VoiceOver-actie van de Big P-kaart op iPhone zit in de code, maar geen test dekt hem: in testbuilds staat Big P uit.
+- TV ▸ Eigen rij toevoegen (I2) is alleen in een widgettest bewezen, niet op de simulator.
 - Aanvragen, Activiteit, Collecties en Afspeellijsten staan op geen simulatorscreenshot, omdat de fixture ze niet levert; ze zijn alleen in widgettests bewezen.
-- De Apple TV-bladen zijn niet opnieuw gemaakt na fase 3 en 5; de Verify-ronde hierboven liep wel over die schermen.
+- De Apple TV Instellingen-bladen zijn niet opnieuw gemaakt na fase 3; de Verify-rondes hierboven liepen wel over die schermen.

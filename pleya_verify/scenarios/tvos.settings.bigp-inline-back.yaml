@@ -1,0 +1,39 @@
+# A-24b review I4: the Big P category of the TV Instellingen page shows its
+# rows in place. Menu from a provider draft steps back to the provider choice
+# inside the page; it does not close Instellingen.
+name: tvos.settings.bigp-inline-back
+target: tvos-sim
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - walk: {direction: right, steps: 7, stopAt: nav.myPleya, timeout: 60000, settle: 600}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 8000}
+  - walk: {direction: right, steps: 4, stopAt: "my_pleya.tile[assistant]", timeout: 60000, settle: 600}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
+  - press: select
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 8000}
+  # Big P, the seventh category.
+  - press: left
+  - walk: {direction: down, steps: 7, stopAt: "settings.category[6]", timeout: 90000, settle: 400}
+  - press: select
+  - wait_until: {id: "settings.category[6]", state: {selected: true}, timeout: 5000}
+  - press: right
+  - wait_until: {focused: "settings.form.button[assistant.provider.ollamaServer]", timeout: 8000}
+  - snapshot: 00-provider-choice
+  - press: select
+  - settle: 1500
+  - snapshot: 01-draft
+  - press: menu
+  - wait_until: {focused: "settings.form.button[assistant.provider.ollamaServer]", timeout: 10000}
+  - assert: {id: "my_pleya.section[settings]"}
+  - assert: {id: "settings.category[6]", state: {selected: true}}
+  - snapshot: 02-back-on-choice

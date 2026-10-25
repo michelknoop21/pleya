@@ -58,5 +58,5 @@ steps:
   - wait_until: {focused: "my_pleya.section.tile[settings.add.pleya_server]", timeout: 30000}
   - settle: 2000
   - assert: {id: "my_pleya.section[settings]"}
-  - assert: {id: nav.bar}
+  - assert: {id: nav.myPleya}
   - snapshot: 03-back-on-instellingen
