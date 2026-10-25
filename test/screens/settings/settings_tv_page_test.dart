@@ -37,11 +37,14 @@ import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/plex_auth_service.dart';
 import 'package:pleya/services/plex_client.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/services/settings_service.dart' as settings_service show ThemeMode, ViewMode;
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/optimized_media_image.dart';
 import 'package:pleya/widgets/tv/tv_settings_categories.dart';
 import 'package:pleya/widgets/tv/tv_settings_library_preview.dart';
+import 'package:pleya/widgets/tv/tv_panel_primitives.dart';
+import 'package:pleya/navigation/main_screen_scope.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
@@ -225,7 +228,20 @@ void main() {
       await tester.runAsync(() => SettingsService.getInstance());
       await _pumpTvSettings(tester);
       expect(find.byType(TvSettingsLibraryPreview), findsOneWidget);
-      // No DiscoverProvider here: the card falls back to its summary line.
+      // A-24b: the generalised card, its title and the mode line for the
+      // default look (OLED, posters).
+      expect(
+        find.descendant(of: find.byType(TvSettingsLibraryPreview), matching: find.text(t.settingsStudio.yourLibrary)),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(TvSettingsLibraryPreview),
+          matching: find.text('${t.settingsStudio.oledMode} · ${t.settingsStudio.posterView}'),
+        ),
+        findsOneWidget,
+      );
+      // No DiscoverProvider here: the card falls back to its text.
       expect(
         find.descendant(of: find.byType(TvSettingsLibraryPreview), matching: find.byType(OptimizedMediaImage)),
         findsNothing,
@@ -392,7 +408,7 @@ void main() {
       expect(picked.map((i) => i.id), ['a', 'b', 'c']);
     });
 
-    Future<void> pumpCard(WidgetTester tester, List<MediaItem> items) async {
+    Future<void> pumpCard(WidgetTester tester, List<MediaItem> items, {SettingsPreviewAction? action}) async {
       tester.view.physicalSize = const Size(1920, 1080);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -402,23 +418,92 @@ void main() {
           home: Scaffold(
             body: SizedBox(
               width: 520,
-              child: TvSettingsPreviewCard(title: 'Weergave', summary: 'Donker · Dichtheid 3', items: items),
+              child: TvSettingsPreviewCard(
+                eyebrow: 'Live voorbeeld',
+                title: 'Jouw bibliotheek',
+                modeLine: 'Donkere modus · Posterweergave',
+                items: items,
+                action: action,
+              ),
             ),
           ),
         ),
       );
     }
 
-    testWidgets('shows posters when Home has items', (tester) async {
+    testWidgets('shows posters, the title and the mode line when Home has items', (tester) async {
       await pumpCard(tester, [_poster('a', thumb: '/a'), _poster('b', thumb: '/b'), _poster('c', thumb: '/c')]);
       expect(find.byType(OptimizedMediaImage), findsNWidgets(3));
-      expect(find.text('Donker · Dichtheid 3'), findsOneWidget);
+      expect(find.text('Jouw bibliotheek'), findsOneWidget);
+      expect(find.text('Donkere modus · Posterweergave'), findsOneWidget);
     });
 
-    testWidgets('falls back to the summary line without items', (tester) async {
+    testWidgets('without items it keeps its text and offers no button (the empty path)', (tester) async {
       await pumpCard(tester, const []);
       expect(find.byType(OptimizedMediaImage), findsNothing);
-      expect(find.text('Donker · Dichtheid 3'), findsOneWidget);
+      expect(find.text('Jouw bibliotheek'), findsOneWidget);
+      expect(find.text('Donkere modus · Posterweergave'), findsOneWidget);
+      expect(find.byType(TvPanelButton), findsNothing);
+    });
+
+    testWidgets('an action is a button on the card that runs on SELECT', (tester) async {
+      var opened = 0;
+      await pumpCard(tester, const [], action: (label: 'Bekijk voorbeeld', onSelect: () => opened++));
+      expect(find.widgetWithText(TvPanelButton, 'Bekijk voorbeeld'), findsOneWidget);
+      // The remote's path: focus on the button, then SELECT.
+      Focus.of(tester.element(find.text('Bekijk voorbeeld'))).requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      expect(opened, 1);
+    });
+
+    test('the mode line names the theme as a mode and the library view', () {
+      expect(
+        settingsPreviewModeLine(settings_service.ThemeMode.dark, settings_service.ViewMode.grid),
+        '${t.settingsStudio.darkMode} · ${t.settingsStudio.posterView}',
+      );
+      expect(
+        settingsPreviewModeLine(settings_service.ThemeMode.light, settings_service.ViewMode.list),
+        '${t.settingsStudio.lightMode} · ${t.settingsStudio.listView}',
+      );
+    });
+
+    testWidgets('"Bekijk voorbeeld" opens Bibliotheken through the shell, and is absent without one', (tester) async {
+      var libraries = 0;
+      SettingsPreviewAction? withShell;
+      SettingsPreviewAction? withoutShell;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Column(
+            children: [
+              MainScreenFocusScope(
+                focusSidebar: () {},
+                focusContent: () {},
+                isSidebarFocused: false,
+                sideNavigationWidth: 0,
+                openLibraries: () => libraries++,
+                child: Builder(
+                  builder: (context) {
+                    withShell = settingsViewPreviewAction(context);
+                    return const SizedBox();
+                  },
+                ),
+              ),
+              Builder(
+                builder: (context) {
+                  withoutShell = settingsViewPreviewAction(context);
+                  return const SizedBox();
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+      expect(withShell?.label, t.settingsStudio.viewPreview);
+      withShell!.onSelect();
+      expect(libraries, 1);
+      expect(withoutShell, isNull);
     });
   });
 }

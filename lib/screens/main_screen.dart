@@ -2604,6 +2604,10 @@ class _MainScreenState extends State<MainScreen>
     Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
   }
 
+  /// Bibliotheken from anywhere below the shell; on TV `_selectTab` turns it
+  /// into the Mijn Pleya section.
+  void _openLibraries() => _selectTab(NavigationTabId.libraries);
+
   void _handleLibrariesScreenSelected(String libraryGlobalKey) {
     if (_selectedLibraryGlobalKey == libraryGlobalKey) return;
     setState(() => _selectedLibraryGlobalKey = libraryGlobalKey);
@@ -2756,6 +2760,7 @@ class _MainScreenState extends State<MainScreen>
       onKeyEvent: _handleTvShellKey,
       selectLibrary: _selectLibrary,
       openSettings: _openSettings,
+      openLibraries: _openLibraries,
       dismissNestedRoute: _popTvNestedRoute,
       // OFF-1: same props the rail (line ~2850) and the bottom nav bar's
       // reconnect strip (line ~2897) already get.
@@ -2943,6 +2948,7 @@ class _MainScreenState extends State<MainScreen>
                         viewportWidth: viewportWidth,
                         selectLibrary: _selectLibrary,
                         openSettings: _openSettings,
+                        openLibraries: _openLibraries,
                         child: SideNavigationScope(
                           child: Stack(
                             clipBehavior: Clip.hardEdge,
