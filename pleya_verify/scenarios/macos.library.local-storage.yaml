@@ -14,6 +14,9 @@ steps:
   - wait_until: {id: screen.settings, timeout: 10000}
   - settle: 800
   - snapshot: 00-settings
+  # A-24b: the local library sits on Bibliotheken (Bibliotheek & Home).
+  - tap: {id: "settings.tile[library_home]"}
+  - settle: 800
   - tap: {id: "settings.tile[local_library]"}
   - wait_until: {id: screen.local_library, timeout: 10000}
   - settle: 800

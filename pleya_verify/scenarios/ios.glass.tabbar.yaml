@@ -28,11 +28,8 @@ steps:
   - tap: {id: "my_pleya.section.tile[setting.liquid_glass]"}
   - settle: 500
   - assert: {id: "my_pleya.section.tile[setting.liquid_glass]", state: {value: true}}
-  # Back to Settings through the app bar's back arrow. There is no id on
-  # that arrow, and `press: menu` (Escape) does not pop a route on iOS, so
-  # this is the arrow's point on a 402-wide iPhone (17 Pro); Settings is a
-  # tab root, so the bar is visible again.
-  - tap: {x: 28, y: 90}
+  # Back to Settings by the Studio header's chevron (A-24b: `settings.back`).
+  - tap: {id: settings.back}
   - wait_until: {id: screen.settings, timeout: 10000}
   - settle: 1000
   - tap: {id: nav.discover}
