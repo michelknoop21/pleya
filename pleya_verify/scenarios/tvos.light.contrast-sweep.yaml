@@ -31,10 +31,8 @@ steps:
   - press: right
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
   - press: select
-  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
-  - press: select
-  - wait_until: {id: "my_pleya.section.content[appearance]", timeout: 8000}
-  - press: right
+  # A-24b: Weergave's rows sit on the Instellingen page; it opens on Thema.
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 8000}
   - settle: 400
   - press: select
   - settle: 1000
@@ -51,10 +49,6 @@ steps:
   - press: down
   - settle: 400
   - snapshot: 01-appearance-light-category-focus
-  - press: menu
-  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
-  - settle: 800
-  - snapshot: 02-settings-index-light
   - press: menu
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
   - settle: 800

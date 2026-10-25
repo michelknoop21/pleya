@@ -16,15 +16,13 @@ steps:
   - wait_until: {focused: nav.myPleya, timeout: 5000}
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
-  - press: down
-  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
-  - press: down
+  # Since the Big P tile, Instellingen sits right of it in the Pleya group.
+  - walk: {direction: down, steps: 6, stopAt: "my_pleya.tile[assistant]", timeout: 90000, settle: 600}
+  - press: right
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
   - press: select
-  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
-  - press: select
-  - wait_until: {id: "my_pleya.section.content[appearance]", timeout: 8000}
-  - press: right
+  # A-24b: Weergave's rows sit on the Instellingen page; it opens on Thema.
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 8000}
   - settle: 400
   - press: select
   - settle: 1000
@@ -37,8 +35,6 @@ steps:
   - press: select
   - settle: 1500
   - snapshot: 00-appearance-dark
-  - press: menu
-  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
   - press: menu
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
   - press: menu

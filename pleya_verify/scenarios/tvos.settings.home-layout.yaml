@@ -23,16 +23,16 @@ steps:
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
-  # A-24: category on the left, its rows in the middle. Out to the category
-  # and back in, then two rows down.
-  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
+  # A-24b: Home aanpassen is a category of its own on the rail (anchor 02),
+  # its rows in place. From Thema: LEFT, down to it, SELECT, RIGHT.
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 8000}
   - press: left
   - wait_until: {focused: "settings.category[0]", timeout: 5000}
   - assert: {id: "settings.category[0]", state: {selected: true}}
+  - walk: {direction: down, steps: 4, stopAt: "settings.category[4]", timeout: 60000, settle: 400}
+  - press: select
+  - wait_until: {id: "settings.category[4]", state: {selected: true}, timeout: 5000}
   - press: right
-  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 5000}
-  - press: down
-  - press: down
   - wait_until: {focused: "my_pleya.section.tile[settings.home_layout]", timeout: 8000}
   - assert: {id: "my_pleya.section.tile[settings.home_layout]", focused: true, insideViewport: true}
   - press: select

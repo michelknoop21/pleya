@@ -44,10 +44,10 @@ steps:
 
   # Movement inside the section, so the record shows whether the remote can do
   # anything once it is there.
-  # A-24: the page opens on its first row, inside the first category.
-  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
+  # A-24b: the page opens on Weergave's first row, Thema, its rows in place.
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 8000}
   - press: down
-  - wait_until: {focused: "my_pleya.section.tile[settings.library_visibility]", timeout: 5000}
+  - wait_until: {focused: "my_pleya.section.tile[setting.app_locale]", timeout: 5000}
   - snapshot: 02-after-down
   - press: left
   - wait_until: {focused: "settings.category[0]", timeout: 5000}
