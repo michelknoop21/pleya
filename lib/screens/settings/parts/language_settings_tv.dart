@@ -96,6 +96,11 @@ extension _LanguageSettingsTvPage on _LanguageSettingsScreenState {
     ),
   ];
 
+  /// App-taal is the first row here (Michel, 25 October 2026) and not on the
+  /// two-column page below: that column is measured for its six rows above the
+  /// 1080 fold, and the TV Instellingen page reaches App-taal through this
+  /// category.
+  ///
   /// A-24b: Taal en ondertitels as a category of the TV Instellingen page
   /// (series `tvos/04-taal-ondertitels-01..05`): one column of Studio rows,
   /// Voorkeuren, Onthouden and Per serie, under the same keys and automation
@@ -190,10 +195,6 @@ extension _LanguageSettingsTvPage on _LanguageSettingsScreenState {
               color: tokens(context).text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
             ),
           ),
-        ),
-        Padding(
-          padding: EdgeInsets.only(bottom: TvMyPleyaLayout.tileTitleSubtitleGap * 2 * scale),
-          child: const AppLanguageRow(),
         ),
         for (var index = 0; index < rows.length; index++) ...[
           // Tighter than the hub's tile gap: this column carries six rows and
