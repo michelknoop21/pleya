@@ -36,14 +36,12 @@ steps:
   - press: down
   - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
 
-  # 38 A: Big P opens the Pleya group, the row under the first group, ahead
-  # of Instellingen.
+  # A-24b (northstar 01): Big P is the card on top of the right column, above
+  # Instellingen; Right along Bronnen crosses to it.
   - assert: {id: "my_pleya.tile[assistant]", insideViewport: true, state: {title: Big P}}
-  - assert: {id: "my_pleya.tile[assistant]", below: "my_pleya.tile[libraries]"}
-  - assert: {id: "my_pleya.tile[assistant]", sameRow: "my_pleya.tile[settings]"}
-  - assert: {id: "my_pleya.tile[assistant]", leftOf: "my_pleya.tile[settings]"}
-  - press: down
-  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
+  - assert: {id: "my_pleya.tile[assistant]", rightOf: "my_pleya.tile[libraries]"}
+  - assert: {id: "my_pleya.tile[assistant]", above: "my_pleya.tile[settings]"}
+  - walk: {direction: right, steps: 4, stopAt: "my_pleya.tile[assistant]", timeout: 60000, settle: 600}
   - settle: 800
   - snapshot: 01-hub-big-p-focused
 

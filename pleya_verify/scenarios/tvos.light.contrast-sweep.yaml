@@ -25,11 +25,10 @@ steps:
   - wait_until: {focused: "my_pleya.tile[requests]", timeout: 5000}
   - press: down
   - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
-  # Since the Big P tile, Instellingen sits right of it in the Pleya group.
-  - press: down
-  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
-  - press: right
-  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
+  # A-24b: with Mijn content above it, Bronnen sits level with Instellingen,
+  # so Right from its end crosses straight onto Instellingen (the right-column
+  # row nearest in height). Big P is above it.
+  - walk: {direction: right, steps: 4, stopAt: "my_pleya.tile[settings]", timeout: 60000, settle: 600}
   - press: select
   # A-24b: Weergave's rows sit on the Instellingen page; it opens on Thema.
   - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 8000}
@@ -53,10 +52,10 @@ steps:
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
   - settle: 800
   - snapshot: 03-hub-light
-  - press: left
+  - press: up
   - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
-  - press: up
-  - press: up
+  # Left from Big P is the left-column row nearest in height: Mijn content.
+  - press: left
   - wait_until: {focused: "my_pleya.tile[requests]", timeout: 5000}
   - press: select
   - wait_until: {id: seerr.search.field, timeout: 15000}

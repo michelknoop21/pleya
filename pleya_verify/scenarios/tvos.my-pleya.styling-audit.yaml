@@ -100,7 +100,10 @@ steps:
   - wait_until: {focused: "my_pleya.tile[watchTogether]", timeout: 8000}
 
   # --- Instellingen -----------------------------------------------------
+  # A-24b: Right from Samen kijken crosses to the right column (Big P where
+  # the build carries it); Beheer runs down it.
   - press: right
+  - walk: {direction: down, steps: 2, stopAt: "my_pleya.tile[settings]", timeout: 30000, settle: 600}
   - assert: {id: "my_pleya.tile[settings]", focused: true}
   - press: select
   - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
@@ -115,9 +118,9 @@ steps:
   - press: menu
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
 
-  # --- Logs en diagnose -------------------------------------------------
-  - press: right
-  - assert: {id: "my_pleya.tile[logs]", focused: true}
+  # --- Logboeken ---------------------------------------------------------
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[logs]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section[logs]", timeout: 15000}
   - settle: 800
@@ -131,8 +134,8 @@ steps:
   - wait_until: {focused: "my_pleya.tile[logs]", timeout: 8000}
 
   # --- Over -------------------------------------------------------------
-  - press: right
-  - assert: {id: "my_pleya.tile[about]", focused: true}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[about]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section[about]", timeout: 15000}
   - settle: 800

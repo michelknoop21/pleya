@@ -27,9 +27,12 @@ steps:
   - wait_until: {focused: nav.myPleya, timeout: 5000}
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
-  # Since the Big P tile, Instellingen sits right of it in the Pleya group.
-  - walk: {direction: down, steps: 6, stopAt: "my_pleya.tile[assistant]", timeout: 90000, settle: 600}
-  - press: right
+  # A-24b: Down to Bibliotheken, Right across to Big P at the top of the right
+  # column, Instellingen under it.
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 8000}
+  - walk: {direction: right, steps: 4, stopAt: "my_pleya.tile[assistant]", timeout: 60000, settle: 600}
+  - press: down
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
