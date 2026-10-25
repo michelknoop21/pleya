@@ -1,11 +1,75 @@
 /// What the rows of Instellingen do beyond opening a page: the confirm
 /// dialogs, export and import, iCloud sync and the update check.
 ///
-/// A `part` of `settings_screen.dart`: one definition of each action, the
-/// one the phone page and the TV page both call.
+/// A `part` of `settings_screen.dart`: one definition of each action. A mixin
+/// rather than an extension since A-24b, because three pages call them: the
+/// TV page and the phone's search results on the main screen, and the phone's
+/// Geavanceerd, Back-up and Updates pages ([_SettingsSystemPage]), which the
+/// Studio series moved these rows to. Each page that mixes it in resolves the
+/// keyboard service and iCloud the same way, from this one place.
 part of '../settings_screen.dart';
 
-extension _SettingsActions on _SettingsScreenState {
+mixin _SettingsActions<W extends StatefulWidget> on State<W> {
+  KeyboardShortcutsService? _keyboardService;
+  late final bool _keyboardShortcutsSupported = KeyboardShortcutsService.isPlatformSupported();
+
+  /// Whether iCloud is signed in. null = not yet resolved (tile stays enabled
+  /// optimistically until the check returns).
+  bool? _icloudAvailable;
+
+  // Update checking state
+  bool _isCheckingForUpdate = false;
+  Map<String, dynamic>? _updateInfo;
+
+  /// Whether this page shows the update row itself. Where it does not (the
+  /// phone's main page, which reaches the check from search), a found update
+  /// opens its dialog straight away.
+  bool get _showsUpdateTile;
+
+  settings.SettingsService get _settingsService => settings.SettingsService.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_keyboardShortcutsSupported) {
+      KeyboardShortcutsService.getInstance().then((s) {
+        if (mounted) setState(() => _keyboardService = s);
+      });
+    }
+    if (_SettingsScreenState._icloudSyncPlatform) {
+      ICloudSyncService.instance?.isAvailable().then((available) {
+        if (mounted) setState(() => _icloudAvailable = available);
+      });
+    }
+  }
+
+  Future<void> _checkForUpdates() async {
+    setState(() => _isCheckingForUpdate = true);
+
+    try {
+      final updateInfo = await UpdateService.checkForUpdates();
+
+      if (mounted) {
+        setState(() {
+          _updateInfo = updateInfo;
+          _isCheckingForUpdate = false;
+        });
+
+        if (updateInfo == null || updateInfo['hasUpdate'] != true) {
+          showAppSnackBar(context, t.update.latestVersion);
+        } else if (!_showsUpdateTile) {
+          // No update row on this page to show it, so surface it directly.
+          _showUpdateDialog();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isCheckingForUpdate = false);
+        showErrorSnackBar(context, t.update.checkFailed);
+      }
+    }
+  }
+
   Future<void> _handleDonateTap() async {
     final url = Uri.parse(DonationService.donationUrl);
     if (await canLaunchUrl(url)) {

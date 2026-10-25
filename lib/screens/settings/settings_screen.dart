@@ -1,4 +1,3 @@
-import 'local_library_settings_screen.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -12,7 +11,6 @@ import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../automation/automation_screen.dart';
 import '../../focus/focus_memory_tracker.dart';
-import '../../media/ids.dart';
 import '../../focus/focusable_text_field.dart';
 import '../../focus/input_mode_tracker.dart';
 import '../../i18n/strings.g.dart';
@@ -43,18 +41,20 @@ import '../../widgets/desktop_app_bar.dart';
 import '../../widgets/dialog_action_button.dart';
 import '../../widgets/setting_tile.dart';
 import '../../widgets/settings_builder.dart';
+import '../../widgets/settings_page.dart';
 import '../../widgets/settings/settings_studio_header.dart';
 import '../../widgets/settings_section.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../profiles/active_profile_provider.dart';
-import '../../profiles/profile.dart';
-import '../../profiles/profile_registry.dart';
 import 'about_screen.dart';
 import 'add_connection_screen.dart';
 import 'pleya_share_host_screen.dart';
 import 'appearance_settings_screen.dart';
 import 'assistant_settings_screen.dart';
 import 'downloads_settings_screen.dart';
+import 'integrations_settings_screen.dart';
+import 'library_home_settings_screen.dart';
+import 'local_library_settings_screen.dart';
 import 'keyboard_shortcuts_screen.dart';
 import 'home_layout_screen.dart';
 import 'library_visibility_screen.dart';
@@ -90,7 +90,8 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, MountedSetStateMixin {
+class _SettingsScreenState extends State<SettingsScreen>
+    with FocusableTab, MountedSetStateMixin, _SettingsActions<SettingsScreen> {
   late final FocusMemoryTracker _focusTracker;
 
   /// The TV page's categories, which own which rows are mounted (A-24).
@@ -122,28 +123,27 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   static const _kAbout = 'about';
   static const _kWatchTogetherRelay = 'watch_together_relay';
   static const _kServers = 'servers';
-  static const _kExportSettings = 'export_settings';
-  static const _kImportSettings = 'import_settings';
   static const _kIcloudSync = 'icloud_sync';
+  // The main page's rows on phones and desktop (A-24b).
+  static const _kLibraryHome = 'library_home';
+  static const _kIntegrations = 'integrations';
+  static const _kProfiles = 'profiles';
+  static const _kAdvanced = 'advanced';
+  static const _kBackup = 'backup';
+  static const _kUpdates = 'updates';
 
   /// iCloud settings-sync tile is Apple-only (tvOS reports as iOS).
   static bool get _icloudSyncPlatform => Platform.isIOS || Platform.isMacOS;
-
-  /// Whether iCloud is signed in. null = not yet resolved (tile stays enabled
-  /// optimistically until the check returns).
-  bool? _icloudAvailable;
-
-  KeyboardShortcutsService? _keyboardService;
-  late final bool _keyboardShortcutsSupported = KeyboardShortcutsService.isPlatformSupported();
 
   // Settings search (desktop/mobile only; TV OSK-search is a separate track).
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool get _searchEnabled => !PlatformDetector.isTV();
 
-  // Update checking state
-  bool _isCheckingForUpdate = false;
-  Map<String, dynamic>? _updateInfo;
+  /// The TV page has an update row; the phone's main page reaches the check
+  /// only from search since A-24b moved Updates to its own page.
+  @override
+  bool get _showsUpdateTile => PlatformDetector.isTV();
 
   @override
   void initState() {
@@ -155,16 +155,6 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
       },
       debugLabelPrefix: 'settings',
     );
-    if (_keyboardShortcutsSupported) {
-      KeyboardShortcutsService.getInstance().then((s) {
-        setStateIfMounted(() => _keyboardService = s);
-      });
-    }
-    if (_icloudSyncPlatform) {
-      ICloudSyncService.instance?.isAvailable().then((available) {
-        setStateIfMounted(() => _icloudAvailable = available);
-      });
-    }
   }
 
   @override
@@ -195,8 +185,6 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
     }
     return KeyEventResult.ignored;
   }
-
-  settings.SettingsService get _settingsService => settings.SettingsService.instance;
 
   /// `setState` is `@protected`, so `_SettingsTvPage` (an extension, not a
   /// `State` subclass method) cannot call it directly — this thin wrapper is
@@ -232,34 +220,4 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   /// allowed to reach the Tautulli screen. A borrowed connection or a
   /// Jellyfin-only administrator does not count.
   static bool _managesAPlexServer(MultiServerProvider multiServer) => multiServer.serverManager.managesAPlexServer;
-
-  /// Stays on the state class: it calls `setState`, which the part files'
-  /// extensions may not.
-  Future<void> _checkForUpdates() async {
-    setState(() => _isCheckingForUpdate = true);
-
-    try {
-      final updateInfo = await UpdateService.checkForUpdates();
-
-      if (mounted) {
-        setState(() {
-          _updateInfo = updateInfo;
-          _isCheckingForUpdate = false;
-        });
-
-        if (updateInfo == null || updateInfo['hasUpdate'] != true) {
-          showAppSnackBar(context, t.update.latestVersion);
-        } else if (_searchQuery.isNotEmpty) {
-          // The update-available tile is hidden while search results are
-          // shown, so surface the found update directly.
-          _showUpdateDialog();
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isCheckingForUpdate = false);
-        showErrorSnackBar(context, t.update.checkFailed);
-      }
-    }
-  }
 }

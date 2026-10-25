@@ -135,20 +135,46 @@ void main() {
     await unmount(tester);
   }, variant: _iPhone);
 
-  testWidgets('values: the theme beside the Weergave title, the server line shown whole', (tester) async {
+  testWidgets('A-24b: the three Studio groups in order, one row per page, no values or lines', (tester) async {
     await pumpSettings(tester);
 
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+    final s = t.settingsStudio;
+    expect(top(s.forYou.toUpperCase()), lessThan(top(s.connectionsAndProfiles.toUpperCase())));
+    expect(top(s.connectionsAndProfiles.toUpperCase()), lessThan(top(s.system.toUpperCase())));
+    final forYou = [
+      t.settings.appearance,
+      t.settings.videoPlayback,
+      t.languageSettings.title,
+      t.settings.subtitleStyling,
+      s.libraries,
+    ];
+    for (var i = 1; i < forYou.length; i++) {
+      expect(top(forYou[i - 1]), lessThan(top(forYou[i])), reason: '${forYou[i - 1]} before ${forYou[i]}');
+    }
+    expect(top(forYou.last), lessThan(top(s.connectionsAndProfiles.toUpperCase())));
+    expect(top(s.integrations), greaterThan(top(s.connectionsAndProfiles.toUpperCase())));
+    expect(top(s.serversAndSources), lessThan(top(s.system.toUpperCase())));
+    expect(top(t.settings.advanced), greaterThan(top(s.system.toUpperCase())));
+    expect(top(t.settings.about), greaterThan(top(t.settings.backup)));
+
+    // The anchor's main page shows no values and no explanation lines.
+    expect(find.byType(SettingValueLabel), findsNothing);
+    expect(find.text(t.settings.oledTheme), findsNothing);
+    expect(find.text(t.settings.videoPlaybackDescription), findsNothing);
+    // The old groups are gone.
+    expect(find.text(t.settings.sectionLibrary.toUpperCase()), findsNothing);
+    await unmount(tester);
+  });
+
+  testWidgets('the explanation a row no longer shows is its VoiceOver hint', (tester) async {
+    await pumpSettings(tester);
+    final semantics = tester.ensureSemantics();
     expect(
-      find.ancestor(of: find.text(t.settings.oledTheme), matching: find.byType(SettingValueLabel)),
-      findsOneWidget,
-      reason: 'the theme (OLED by default) is the Weergave row value',
+      tester.getSemantics(find.text(t.settings.videoPlayback)),
+      containsSemantics(hint: t.settings.videoPlaybackDescription),
     );
-    // Shown whole: beside the title when it fits, under it when it does not.
-    expect(tester.renderObject<RenderParagraph>(find.text(t.tvMyPleya.noServers)).didExceedMaxLines, isFalse);
-    expect(
-      find.text('${t.settings.libraryDensity} ${SettingsService.instance.read(SettingsService.libraryDensity)}'),
-      findsOneWidget,
-    );
+    semantics.dispose();
     await unmount(tester);
   });
 
@@ -159,7 +185,7 @@ void main() {
     await tester.pump();
 
     expect(find.text(t.settings.trackers), findsOneWidget);
-    expect(find.text(t.settings.sectionLibrary.toUpperCase()), findsNothing);
+    expect(find.text(t.settingsStudio.forYou.toUpperCase()), findsNothing);
 
     await tester.enterText(find.byType(TextField), 'zzzz-geen-treffer');
     await tester.pump();

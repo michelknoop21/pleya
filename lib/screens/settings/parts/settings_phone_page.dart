@@ -8,107 +8,114 @@ part of '../settings_screen.dart';
 
 extension _SettingsPhonePage on _SettingsScreenState {
   Widget _buildSettingsScaffold(BuildContext context) {
-    // A-24: the Studio header, its bar and the filled search bar on an iPhone;
+    // A-24: the Studio header and the filled search bar on an iPhone;
     // everywhere else the plain bar and outlined field from before.
     final studio = settingsStudioHeaderApplies(context);
-    // The eyebrow names whose settings these are, when there is a profile.
-    final profileName = context.select<ActiveProfileProvider?, String?>((p) => p?.active?.displayName);
-    return Scaffold(
-      body: Focus(
-        onKeyEvent: _handleKeyEvent,
-        child: NotificationListener<ScrollNotification>(
-          onNotification: (n) => studio && settingsStudioTrackScroll(_studioCollapsed, n),
+    final list = _searchQuery.isNotEmpty ? _buildSearchResults() : _buildGroups(context);
+    if (!studio) {
+      return Scaffold(
+        body: Focus(
+          onKeyEvent: _handleKeyEvent,
           child: ScrollCrown(
             child: CustomScrollView(
               primary: false,
               slivers: [
-                ExcludeFocus(
-                  child: studio
-                      ? SettingsStudioBar(collapsed: _studioCollapsed, title: Text(t.settings.title))
-                      : CustomAppBar(title: Text(t.settings.title), pinned: true),
-                ),
-                if (studio)
+                ExcludeFocus(child: CustomAppBar(title: Text(t.settings.title), pinned: true)),
+                if (_searchEnabled)
+                  SliverToBoxAdapter(child: SettingsWidthLimit(child: _buildSearchField(studio: false))),
+                list,
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    // A-24b, anchor `01`: no bar above the header. The page scrolls from the
+    // top of the screen and the compact bar is laid over it once the large
+    // title has gone under the status bar ([SettingsStudioFrame]).
+    return Scaffold(
+      body: Focus(
+        onKeyEvent: _handleKeyEvent,
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (n) => settingsStudioTrackScroll(_studioCollapsed, n),
+          child: SettingsStudioFrame(
+            collapsed: _studioCollapsed,
+            title: Text(t.settings.title),
+            child: ScrollCrown(
+              child: CustomScrollView(
+                primary: false,
+                slivers: [
                   SliverToBoxAdapter(
                     child: ExcludeFocus(
                       child: SettingsWidthLimit(
-                        child: SettingsStudioHeader(title: t.settings.title, section: profileName),
+                        child: SettingsStudioHeader(
+                          title: t.settings.title,
+                          section: t.settingsStudio.personal,
+                          tagline: t.settingsStudio.mainTagline,
+                        ),
                       ),
                     ),
                   ),
-                if (_searchEnabled)
-                  SliverToBoxAdapter(
-                    child: SettingsWidthLimit(child: _buildSearchField(studio: studio)),
-                  ),
-                if (_searchQuery.isNotEmpty)
-                  _buildSearchResults()
-                else
-                  SliverList(
-                    delegate: SliverChildListDelegate(
-                      [
-                        if (DonationService.isEnabled) SettingsGroup(children: [_buildDonateTile()]),
-
-                        SettingsGroup(
-                          title: t.settings.sectionLibrary,
-                          children: [
-                            _buildAppearanceTile(),
-                            _buildLibraryVisibilityTile(),
-                            _buildLocalLibraryTile(),
-                            _buildHomeLayoutTile(),
-                            _buildPlaybackTile(),
-                            _buildLanguageTile(),
-                            _buildSubtitleStylingTile(),
-                            if (!PlatformDetector.isAppleTV()) _buildDownloadsTile(),
-                          ],
-                        ),
-
-                        SettingsGroup(
-                          title: t.settings.sectionIntegrations,
-                          children: [
-                            _buildTrackersTile(),
-                            _buildRequestsTile(),
-                            _buildTautulliTile(),
-                            ?assistantSettingsTile(context),
-                            _buildProfilesTile(),
-                          ],
-                        ),
-
-                        _buildServersSection(),
-
-                        if (_keyboardShortcutsSupported) ...[_buildKeyboardShortcutsSection()],
-
-                        _buildAdvancedSection(),
-
-                        if (UpdateService.isUpdateCheckEnabled) ...[_buildUpdateSection()],
-
-                        if (!PlatformDetector.isTV() || _SettingsScreenState._icloudSyncPlatform) _buildBackupSection(),
-
-                        if (kDebugMode) _buildDebugSection(),
-
-                        SettingsGroup(
-                          children: [
-                            SettingNavigationTile(
-                              focusNode: _focusTracker.get(_SettingsScreenState._kAbout),
-                              icon: Symbols.info_rounded,
-                              title: t.settings.about,
-                              subtitle: t.settings.aboutDescription,
-                              destinationBuilder: (context) => const AboutScreen(),
-                            ),
-                          ],
-                        ),
-                        // Plus the bottom inset: with Liquid Glass the tab bar floats
-                        // over this list and the main Scaffold reports its height here.
-                        SizedBox(height: 24 + MediaQuery.paddingOf(context).bottom),
-                        // Every card gets the same maximum width so the column stays
-                        // centred on a wide window instead of stretching across it.
-                      ].map((w) => SettingsWidthLimit(child: w)).toList(),
-                    ),
-                  ),
-              ],
+                  if (_searchEnabled)
+                    SliverToBoxAdapter(child: SettingsWidthLimit(child: _buildSearchField(studio: true))),
+                  list,
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  /// The groups of anchor `01` and series `ios/01`: VOOR JOU, VERBINDINGEN EN
+  /// PROFIELEN and SYSTEEM, one row per page. Steun Pleya stays on top where
+  /// the build offers it. Every row of the old groups is on the page its row
+  /// opens; the old-to-new mapping is in the A-24b parity matrix.
+  Widget _buildGroups(BuildContext context) {
+    final groups = <Widget>[
+      if (DonationService.isEnabled) SettingsGroup(children: [_buildDonateTile()]),
+      SettingsGroup(
+        title: t.settingsStudio.forYou,
+        children: [
+          _buildAppearanceTile(),
+          _buildPlaybackTile(),
+          _buildLanguageTile(),
+          _buildSubtitleStylingTile(),
+          _buildLibraryHomeTile(),
+        ],
+      ),
+      SettingsGroup(
+        title: t.settingsStudio.connectionsAndProfiles,
+        children: [
+          _buildIntegrationsTile(),
+          ?assistantSettingsTile(context),
+          _buildProfilesTile(),
+          _buildServersTile(),
+        ],
+      ),
+      SettingsGroup(
+        title: t.settingsStudio.system,
+        children: [
+          _buildAdvancedTile(),
+          _buildBackupTile(),
+          if (UpdateService.isUpdateCheckEnabled) _buildUpdatesTile(),
+          _buildAboutTile(),
+        ],
+      ),
+      // Plus the bottom inset: with Liquid Glass the tab bar floats over this
+      // list and the main Scaffold reports its height here.
+      SizedBox(height: 24 + MediaQuery.paddingOf(context).bottom),
+    ];
+    final sliver = SliverList(
+      // Every card gets the same maximum width so the column stays centred
+      // on a wide window instead of stretching across it.
+      delegate: SliverChildListDelegate([for (final group in groups) SettingsWidthLimit(child: group)]),
+    );
+    // The page always wears the Studio palette off TV ([SettingsScreen.build]
+    // wraps it below this State's context): line icons and titles only, the
+    // description is the row's VoiceOver hint (A-24b).
+    return SettingsIconStyleScope(style: SettingsIconStyle.line, hideDescriptions: true, child: sliver);
   }
 
   Widget _buildSearchField({required bool studio}) {
@@ -144,16 +151,50 @@ extension _SettingsPhonePage on _SettingsScreenState {
   }
 
   /// Static index of navigable settings sub-screens, filtered by the search
-  /// query. Titles/subtitles reuse the same [t] strings as the tiles; tapping a
+  /// query. Grouped (A-24b) or not, every row of every settings page that has
+  /// one destination is here, by its own title or by its page's. Titles/subtitles reuse the same [t] strings as the tiles; tapping a
   /// result navigates to the same destination screen. Platform gating mirrors
   /// the tile list so hidden destinations never surface in search.
   List<_SettingsSearchEntry> _buildSearchIndex() {
     return [
       _SettingsSearchEntry(
-        icon: Symbols.palette_rounded,
+        icon: Symbols.light_mode_rounded,
         title: t.settings.appearance,
-        keywords: const ['theme', 'dark', 'light', 'density', 'thema', 'kleur'],
+        keywords: const ['theme', 'dark', 'light', 'density', 'thema', 'kleur', 'uiterlijk', 'appearance', 'dichtheid'],
         destinationBuilder: (_) => const AppearanceSettingsScreen(),
+      ),
+      // A-24b: the pages the main page's rows open are found by their own
+      // name too, not only by the rows inside them.
+      _SettingsSearchEntry(
+        icon: Symbols.grid_view_rounded,
+        title: t.settingsStudio.libraryAndHome,
+        keywords: const ['libraries', 'bibliotheken', 'home', 'downloads'],
+        destinationBuilder: (_) => const LibraryHomeSettingsScreen(),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.offline_bolt_rounded,
+        title: t.localLibrary.title,
+        subtitle: t.localLibrary.enable,
+        keywords: const ['offline', 'local', 'lokaal', 'sync', 'synchroniseren', 'index'],
+        destinationBuilder: (_) => const LocalLibrarySettingsScreen(),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.cloud_rounded,
+        title: t.settingsStudio.integrations,
+        keywords: const ['integrations', 'trakt', 'seerr', 'tautulli', 'koppelen'],
+        destinationBuilder: (_) => const IntegrationsSettingsScreen(),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.tune_rounded,
+        title: t.settings.advanced,
+        keywords: const ['advanced', 'crash', 'debug', 'logging', 'relay', 'cache', 'reset', 'onderhoud'],
+        destinationBuilder: (_) => const _SettingsSystemPage(_SystemPageKind.advanced),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.cloud_upload_rounded,
+        title: t.settings.backup,
+        keywords: const ['backup', 'icloud', 'sync', 'export', 'import'],
+        destinationBuilder: (_) => const _SettingsSystemPage(_SystemPageKind.backup),
       ),
       _SettingsSearchEntry(
         icon: Symbols.video_library_rounded,
@@ -169,7 +210,7 @@ extension _SettingsPhonePage on _SettingsScreenState {
         destinationBuilder: (_) => const HomeLayoutScreen(),
       ),
       _SettingsSearchEntry(
-        icon: Symbols.play_circle_rounded,
+        icon: Symbols.play_arrow_rounded,
         title: t.settings.videoPlayback,
         subtitle: t.settings.videoPlaybackDescription,
         keywords: const [
@@ -299,8 +340,8 @@ extension _SettingsPhonePage on _SettingsScreenState {
       ),
       _SettingsSearchEntry(
         icon: Symbols.dns_rounded,
-        title: t.tvMyPleya.servers,
-        keywords: const ['server', 'plex', 'jellyfin', 'nas', 'servers'],
+        title: t.settingsStudio.serversAndSources,
+        keywords: const ['server', 'plex', 'jellyfin', 'nas', 'servers', 'bronnen', 'sources'],
         destinationBuilder: (_) => const ServersScreen(),
       ),
       _SettingsSearchEntry(
@@ -340,13 +381,20 @@ extension _SettingsPhonePage on _SettingsScreenState {
           onTap: (_) => _showImportSettingsDialog(),
         ),
       ],
-      if (UpdateService.isUpdateCheckEnabled)
+      if (UpdateService.isUpdateCheckEnabled) ...[
         _SettingsSearchEntry(
           icon: Symbols.system_update_rounded,
           title: t.settings.checkForUpdates,
           keywords: const ['update', 'upgrade', 'versie', 'bijwerken'],
           onTap: (_) => _handleCheckForUpdatesTap(),
         ),
+        _SettingsSearchEntry(
+          icon: Symbols.system_update_rounded,
+          title: t.settings.updates,
+          keywords: const ['update', 'automatic', 'automatisch', 'opstarten'],
+          destinationBuilder: (_) => const _SettingsSystemPage(_SystemPageKind.updates),
+        ),
+      ],
     ];
   }
 
