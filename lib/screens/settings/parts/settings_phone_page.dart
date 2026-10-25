@@ -126,9 +126,16 @@ extension _SettingsPhonePage on _SettingsScreenState {
       // radius. Elsewhere the outlined field from before.
       child: FocusableTextField(
         controller: _searchController,
+        // A-24b: the series' 40 pt search bar with 14 pt text on an iPhone.
+        style: studio ? const TextStyle(fontSize: 14) : null,
         decoration: InputDecoration(
           hintText: t.settings.searchHint,
-          prefixIcon: const AppIcon(Symbols.search_rounded),
+          hintStyle: studio
+              ? (Theme.of(context).inputDecorationTheme.hintStyle ?? const TextStyle()).copyWith(fontSize: 14)
+              : null,
+          prefixIcon: studio ? const AppIcon(Symbols.search_rounded, size: 20) : const AppIcon(Symbols.search_rounded),
+          prefixIconConstraints: studio ? const BoxConstraints(minWidth: 40, minHeight: 40) : null,
+          contentPadding: studio ? const EdgeInsets.symmetric(vertical: 11) : null,
           suffixIcon: _searchQuery.isEmpty
               ? null
               : IconButton(

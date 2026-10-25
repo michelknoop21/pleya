@@ -107,7 +107,11 @@ class SettingsStudioTheme extends StatelessWidget {
     final wash = PlatformDetector.isTV() ? settingsStudioWash(studio) : null;
     // Off TV the rows take the Studio line icons (anchor `01`); TV keeps its
     // badges until its own rows are redrawn.
-    final rows = PlatformDetector.isTV() ? child : SettingsIconStyleScope(style: SettingsIconStyle.line, child: child);
+    // A-24b: and every settings page leaves the explanation under a row off
+    // screen (VoiceOver reads it as the hint), as the whole series draws them.
+    final rows = PlatformDetector.isTV()
+        ? child
+        : SettingsIconStyleScope(style: SettingsIconStyle.line, hideDescriptions: true, child: child);
     // Ink (ListTile fills, ripples) paints on the nearest Material, so one sits
     // above the page paint; otherwise the page colour would hide it.
     final content = Material(type: MaterialType.transparency, child: rows);

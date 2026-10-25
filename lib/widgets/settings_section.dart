@@ -176,16 +176,17 @@ class SettingsSectionHeader extends StatelessWidget {
     return Padding(
       // VIS-0926-S1: 28 over and 12 under, between VIS-0925-G's 20/8 and the
       // 32/12 before it.
-      padding: tv ? EdgeInsets.fromLTRB(24 * pt, 28 * pt, 24 * pt, 12 * pt) : const EdgeInsets.fromLTRB(20, 24, 20, 8),
+      padding: tv ? EdgeInsets.fromLTRB(24 * pt, 28 * pt, 24 * pt, 12 * pt) : const EdgeInsets.fromLTRB(20, 20, 20, 8),
       child: Text(
         title.toUpperCase(),
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
           color: settingsSectionInk(context),
           fontWeight: FontWeight.w700,
           // A-24: small caps with more air off TV, as in the Studio anchors.
-          letterSpacing: tv ? 1.1 : 1.4,
-          // DENS1: HIG Caption 2 (23 pt) on TV, the tvOS minimum.
-          fontSize: tv ? TvHig.caption2 * pt : 12,
+          letterSpacing: tv ? 1.1 : 1.2,
+          // DENS1: HIG Caption 2 (23 pt) on TV, the tvOS minimum. Off TV the
+          // series' 11 pt small caps (A-24b).
+          fontSize: tv ? TvHig.caption2 * pt : 11,
         ),
       ),
     );
@@ -287,8 +288,8 @@ class SettingsGroup extends StatelessWidget {
 }
 
 /// A-24b: inside Instellingen off TV a row title is the Studio series' short
-/// semibold line (15 pt), not the dense 13 pt default, with its description
-/// a muted 13 pt line. A one-line row stays 52 pt: 48 plus the row inset.
+/// semibold line (14 pt), not the dense 13 pt default, with its description
+/// a muted 12 pt line.
 /// Scoped to the card, so the pickers a row opens keep their own type.
 Widget _studioRowText(BuildContext context, Widget rows) {
   if (PlatformDetector.isTV() || !SettingsStudioTheme.isActive(context)) return rows;
@@ -300,19 +301,30 @@ Widget _studioRowText(BuildContext context, Widget rows) {
     minTileHeight: kSettingsStudioRowMinHeight,
     titleTextStyle: body.copyWith(
       color: t.text,
-      fontSize: 15,
+      fontSize: kSettingsStudioRowTitleSize,
       fontWeight: FontWeight.w600,
       letterSpacing: -0.1,
       height: 1.25,
     ),
-    subtitleTextStyle: body.copyWith(color: t.textMuted, fontSize: 13, letterSpacing: 0, height: 1.3),
-    leadingAndTrailingTextStyle: body.copyWith(color: t.textMuted, fontSize: 14, letterSpacing: 0),
+    subtitleTextStyle: body.copyWith(color: t.textMuted, fontSize: 12, letterSpacing: 0, height: 1.3),
+    leadingAndTrailingTextStyle: body.copyWith(
+      color: t.textMuted,
+      fontSize: kSettingsStudioValueSize,
+      letterSpacing: 0,
+    ),
     child: rows,
   );
 }
 
-/// Smallest height of a Studio row before the row inset (A-24b).
-const double kSettingsStudioRowMinHeight = 48;
+/// Smallest height of a Studio row before the row inset (A-24b): 46 plus the
+/// 2 pt inset over and under makes the series' 50 pt row, a tap target above
+/// 44 pt.
+const double kSettingsStudioRowMinHeight = 46;
+
+/// Studio row type, measured on the series (about 13.5 pt titles and 11.5 pt
+/// values on a 380 pt frame).
+const double kSettingsStudioRowTitleSize = 14;
+const double kSettingsStudioValueSize = 12.5;
 
 /// One settings row, carrying the focus treatment the rest of the TV UI uses.
 ///

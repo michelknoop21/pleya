@@ -67,7 +67,7 @@ void main() {
     expect(tester.getSize(find.byType(SettingsIconBadge)).width, kSettingsIconBox);
   });
 
-  testWidgets('without a subtitle the row is one line of a native height', (tester) async {
+  testWidgets('inside Instellingen a row is one line of the series height, its description the hint', (tester) async {
     await _pump(tester, SettingsStudioTheme(child: SettingsGroup(children: [_row()])));
     final oneLine = tester.getSize(find.byType(ListTile)).height;
     await _pump(
@@ -76,10 +76,14 @@ void main() {
         child: SettingsGroup(children: [_row(subtitle: 'Thema en dichtheid')]),
       ),
     );
-    final twoLines = tester.getSize(find.byType(ListTile)).height;
 
-    expect(oneLine, inInclusiveRange(44, 56));
-    expect(twoLines, greaterThan(oneLine));
+    expect(oneLine, inInclusiveRange(48, 52), reason: 'the series row, and a tap target above 44 pt');
+    expect(tester.getSize(find.byType(ListTile)).height, oneLine);
+    expect(find.text('Thema en dichtheid'), findsNothing);
+  });
+
+  testWidgets('outside Instellingen the description stays on screen', (tester) async {
+    await _pump(tester, SettingsGroup(children: [_row(subtitle: 'Thema en dichtheid')]));
     expect(find.text('Thema en dichtheid'), findsOneWidget);
   });
 
@@ -148,15 +152,15 @@ void main() {
       expect(find.text('Stuurt crashes'), findsNothing);
     });
 
-    testWidgets('a Studio row title is the semibold 15 pt line of the series', (tester) async {
+    testWidgets('a Studio row title is the semibold 14 pt line of the series', (tester) async {
       await _pump(tester, subpage([_row()]));
       final style = tester
           .widget<RichText>(find.descendant(of: find.byType(ListTile), matching: find.byType(RichText)).first)
           .text
           .style!;
-      expect(style.fontSize, 15);
+      expect(style.fontSize, kSettingsStudioRowTitleSize);
       expect(style.fontWeight, FontWeight.w600);
-      expect(tester.getSize(find.byType(ListTile)).height, inInclusiveRange(48, 56));
+      expect(tester.getSize(find.byType(ListTile)).height, inInclusiveRange(48, 52));
     });
 
     for (final (name, dark, oled, coral) in [
@@ -216,6 +220,16 @@ void main() {
         expect(tester.widget<SettingsRows>(find.byType(SettingsRows)).separatorColor, hairline);
       });
     }
+
+    testWidgets('a section heading is the series 11 pt small caps off TV', (tester) async {
+      await _pump(
+        tester,
+        SettingsStudioTheme(
+          child: SettingsGroup(title: 'Onderhoud', children: [_row()]),
+        ),
+      );
+      expect(tester.widget<Text>(find.text('ONDERHOUD')).style?.fontSize, 11);
+    });
 
     testWidgets('outside Instellingen a light section heading keeps the brick', (tester) async {
       await tester.pumpWidget(

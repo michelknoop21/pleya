@@ -3,9 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../theme/mono_tokens.dart';
-import '../settings_section.dart' show kSettingsMaxWidth;
+import '../settings_section.dart' show kSettingsMaxWidth, kSettingsStudioValueSize;
 import 'settings_icon_badge.dart';
 import 'settings_studio_style.dart';
+import 'settings_studio_theme.dart';
 
 /// Where a settings row off TV shows its current value (A-24, Apple TV+
 /// Studio on iOS).
@@ -99,8 +100,11 @@ class SettingTitleWithValue extends StatelessWidget {
   }
 }
 
-TextStyle? _valueStyle(BuildContext context) =>
-    Theme.of(context).textTheme.bodyMedium?.copyWith(color: tokens(context).textMuted);
+TextStyle? _valueStyle(BuildContext context) => Theme.of(context).textTheme.bodyMedium?.copyWith(
+  color: tokens(context).textMuted,
+  // A-24b: the Studio rows' smaller value inside Instellingen.
+  fontSize: SettingsStudioTheme.isActive(context) ? kSettingsStudioValueSize : null,
+);
 
 double _textWidth(BuildContext context, String text, TextStyle? style) {
   final painter = TextPainter(

@@ -17,8 +17,8 @@ class SettingsPage extends StatelessWidget {
   final VoidCallback? onBackPressed;
 
   /// A-24b Studio rows inside Instellingen off TV: the rows leave their
-  /// explanation off screen (VoiceOver reads it as the hint). Opt-in per page,
-  /// for the pages the Studio series draws; the others keep their lines.
+  /// explanation off screen (VoiceOver reads it as the hint), as every page of
+  /// the series draws them. False keeps the lines on a page that needs them.
   final bool hideDescriptions;
 
   const SettingsPage({
@@ -30,7 +30,7 @@ class SettingsPage extends StatelessWidget {
     this.pinned = true,
     this.automaticallyImplyLeading = true,
     this.onBackPressed,
-    this.hideDescriptions = false,
+    this.hideDescriptions = true,
   }) : slivers = null;
 
   const SettingsPage.slivers({
@@ -41,7 +41,7 @@ class SettingsPage extends StatelessWidget {
     this.pinned = true,
     this.automaticallyImplyLeading = true,
     this.onBackPressed,
-    this.hideDescriptions = false,
+    this.hideDescriptions = true,
   }) : children = null,
        padding = null;
 

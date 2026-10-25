@@ -29,7 +29,7 @@ import '../tv/tv_expandable_media_tile.dart' show discoveryPosterPath;
 import '../tv/tv_settings_library_preview.dart' show pickSettingsPreviewPosters, settingsPreviewModeLine;
 
 /// Width of the poster on the card; 2:3 like every poster in the app.
-const double kSettingsPreviewPosterWidth = 72;
+const double kSettingsPreviewPosterWidth = 64;
 
 /// The card, placed by [SettingsPage] above the first group rather than as a
 /// row inside it.
@@ -91,7 +91,7 @@ class SettingsLivePreviewCard extends StatelessWidget implements SettingsStandal
                     children: [
                       Text(
                         t.settingsStudio.livePreview,
-                        style: TextStyle(color: settingsAccentInk(context), fontSize: 13, fontWeight: FontWeight.w600),
+                        style: TextStyle(color: settingsAccentInk(context), fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 6),
                       Text(
@@ -110,7 +110,7 @@ class SettingsLivePreviewCard extends StatelessWidget implements SettingsStandal
                         modeLine,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: tk.textMuted, fontSize: 13),
+                        style: TextStyle(color: tk.textMuted, fontSize: 12),
                       ),
                     ],
                   ),
