@@ -123,13 +123,14 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> {
       required String subtitle,
       required VoidCallback onTap,
       String? title,
+      IconData? icon,
       VoidCallback? onLongPress,
     }) {
       final tile = tileFor[section];
       if (tile == null) return null;
       return _MyPleyaRow(
         instance: section.name,
-        icon: tile.icon,
+        icon: icon ?? tile.icon,
         title: title ?? tile.title,
         subtitle: subtitle,
         count: tile.count,
@@ -141,6 +142,7 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> {
     final contentRows = [
       row(
         TvMyPleyaSection.libraries,
+        icon: Symbols.grid_view_rounded,
         subtitle: t.myPleya.librariesSubtitle,
         onTap: () => widget.onOpenTab(NavigationTabId.libraries),
         onLongPress: widget.onOpenLibraryPicker == null ? null : () => widget.onOpenLibraryPicker!(context),
@@ -152,6 +154,7 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> {
       ),
       row(
         TvMyPleyaSection.requests,
+        icon: Symbols.bookmark_add_rounded,
         subtitle: t.myPleya.requestsSubtitle,
         onTap: () => widget.onOpenTab(NavigationTabId.requests),
       ),
