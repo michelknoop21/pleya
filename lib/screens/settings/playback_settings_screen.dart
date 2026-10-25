@@ -121,9 +121,14 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
     ..._autoSkipTiles(),
   ];
 
-  /// Afspelen on TV: unchanged by A-24b phase 2 (the TV page is phase 3).
+  /// Afspelen on TV in the series' groups (`tvos/03-afspelen-01..07`): Video,
+  /// Audio, Besturing, Gedrag and Automatisch overslaan. Every row the TV page
+  /// had stays under its own condition: the MPV configuration closes Video,
+  /// Maximaal volume closes Audio, the chapter markers and the click on the
+  /// video join the jumps under Besturing. Gedrag is not in the TV series; it
+  /// keeps the remote, presence and language rows that exist on TV.
   List<Widget> _tvRows(BuildContext context) => [
-    SettingsSectionHeader(t.settings.player),
+    SettingsSectionHeader(t.settingsStudio.video),
     if (Platform.isAndroid) _playerBackendSelector(),
     if (PlatformDetector.supportsExternalPlayers()) _externalPlayerTile(),
     _hardwareDecodingTile(),
@@ -137,10 +142,6 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
     _bufferSizeTile(),
     _defaultQualityTile(),
     _displayMaxResolutionTile(),
-
-    // Ondertitel opmaak moved to the top-level Settings list (northstar 14),
-    // so only mpv.conf editing is left under this header.
-    SettingsSectionHeader(t.settings.advanced),
     _mpvConfigTile(),
 
     // These controls must retain the live loudness/passthrough behavior
@@ -151,18 +152,18 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
     _audioLevelVolumeTile(),
     _audioReduceLoudSoundsTile(),
     _audioSyncOffsetTile(),
-
-    SettingsSectionHeader(t.settings.seekAndTiming),
-    ..._seekTiles(),
     _maxVolumeTile(),
+
+    SettingsSectionHeader(t.settingsStudio.controls),
+    ..._seekTiles(),
+    _chapterMarkersTile(),
+    if (!PlatformDetector.isMobile(context)) _clickVideoTile(),
 
     SettingsSectionHeader(t.settings.behavior),
     ..._remoteAndPresenceTiles(context),
     // The two language switches moved to Instellingen ▸ Taal en ondertitels
     // with LANG1 (DEC-096 lid 9); this row is what is left of them here.
     _languageRow(),
-    _chapterMarkersTile(),
-    if (!PlatformDetector.isMobile(context)) _clickVideoTile(),
 
     SettingsSectionHeader(t.settings.autoSkip),
     ..._autoSkipTiles(),

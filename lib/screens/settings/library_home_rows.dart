@@ -38,6 +38,7 @@ List<Widget> buildHomeLayoutRows(BuildContext context) {
       SettingNavigationTile(
         icon: Symbols.drag_indicator_rounded,
         title: s.reorderRows,
+        automationInstance: 'settings.home_layout',
         destinationBuilder: (_) => const HomeLayoutScreen(),
       ),
     ),
@@ -46,12 +47,18 @@ List<Widget> buildHomeLayoutRows(BuildContext context) {
       SettingNavigationTile(
         icon: Symbols.visibility_rounded,
         title: s.rowVisibility,
+        automationInstance: 'settings.home_visibility',
         destinationBuilder: (_) => const HomeLayoutScreen(),
       ),
     ),
     _row(
       'home_add_row',
-      SettingNavigationTile(icon: Symbols.add_rounded, title: s.addOwnRow, onTap: () => unawaited(_addRow(context))),
+      SettingNavigationTile(
+        icon: Symbols.add_rounded,
+        title: s.addOwnRow,
+        automationInstance: 'settings.home_add_row',
+        onTap: () => unawaited(_addRow(context)),
+      ),
     ),
     if (hasOwnRows)
       _row(

@@ -142,9 +142,8 @@ class _ConnectionsSectionState extends State<ConnectionsSection> {
                   icon: Symbols.share_rounded,
                   title: t.pleyaShare.hostTitle,
                   subtitle: t.pleyaShare.hostDescription,
-                  onTap: () {
-                    Navigator.push(context, settingsStudioRoute<void>(context, (_) => const PleyaShareHostScreen()));
-                  },
+                  automationInstance: 'settings.settings_pleya_share',
+                  onTap: () => pushSettingsPage(context, (_) => const PleyaShareHostScreen(), id: 'pleyaShareHost'),
                 ),
               ],
             ),
@@ -162,6 +161,7 @@ class _ConnectionsSectionState extends State<ConnectionsSection> {
       icon: destructive ? Symbols.delete_outline_rounded : Symbols.dns_rounded,
       title: connectionSourceTitle(kind),
       destructive: destructive,
+      automationInstance: 'settings.sources.${kind.name}',
       destinationBuilder: (_) => ConnectionSourcesScreen(kind: kind),
     ),
   );
@@ -174,7 +174,8 @@ class _ConnectionsSectionState extends State<ConnectionsSection> {
     child: SettingNavigationTile(
       icon: icon,
       title: title,
-      onTap: () => Navigator.push(context, settingsStudioRoute<bool>(context, builder)),
+      automationInstance: 'settings.add.$instance',
+      onTap: () => pushSettingsPage(context, builder, id: 'add.$instance'),
     ),
   );
 }

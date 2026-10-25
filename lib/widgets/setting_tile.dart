@@ -171,6 +171,11 @@ class SettingNavigationTile extends StatelessWidget {
   /// red.
   final bool needsAttention;
 
+  /// Registers the row as `my_pleya.section.tile[<automationInstance>]`, the
+  /// focusable id a TV scenario walks to. A-24b keeps the ids these rows had
+  /// as tiles on the TV Instellingen page (`settings.<key>`).
+  final String? automationInstance;
+
   const SettingNavigationTile({
     super.key,
     required this.icon,
@@ -183,6 +188,7 @@ class SettingNavigationTile extends StatelessWidget {
     this.trailingLabel,
     this.needsAttention = false,
     this.destructive = false,
+    this.automationInstance,
   }) : assert(destinationBuilder != null || onTap != null);
 
   @override
@@ -193,7 +199,7 @@ class SettingNavigationTile extends StatelessWidget {
         handler();
         return;
       }
-      Navigator.push(context, settingsStudioRoute<void>(context, destinationBuilder!));
+      pushSettingsPage(context, destinationBuilder!, id: title);
     }
 
     // A-24, off TV: where the value goes ([settingValuePlacement]). A value
@@ -212,6 +218,8 @@ class SettingNavigationTile extends StatelessWidget {
     return SettingRowFocus(
       focusNode: focusNode,
       onSelect: activate,
+      automationInstance: automationInstance,
+      automationState: automationInstance == null ? null : () => {'title': title, 'value': ?label},
       child: ClickableCursor(
         child: settingsRowWithHint(
           settingsRowHint(context, subtitle),

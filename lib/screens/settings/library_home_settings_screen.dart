@@ -24,7 +24,11 @@ import 'library_visibility_screen.dart';
 import 'local_library_rows.dart';
 
 class LibraryHomeSettingsScreen extends StatefulWidget {
-  const LibraryHomeSettingsScreen({super.key});
+  const LibraryHomeSettingsScreen({super.key, this.includeHomeLayout = true});
+
+  /// False on the TV Instellingen page, where Home aanpassen is a category of
+  /// its own on the rail (A-24b, anchor `02`).
+  final bool includeHomeLayout;
 
   @override
   State<LibraryHomeSettingsScreen> createState() => _LibraryHomeSettingsScreenState();
@@ -45,6 +49,7 @@ class _LibraryHomeSettingsScreenState extends State<LibraryHomeSettingsScreen>
             icon: Symbols.video_library_rounded,
             title: t.settings.libraryVisibility,
             subtitle: t.settings.libraryVisibilityDescription,
+            automationInstance: 'settings.library_visibility',
             destinationBuilder: (_) => const LibraryVisibilityScreen(),
           ),
         ),
@@ -53,8 +58,10 @@ class _LibraryHomeSettingsScreenState extends State<LibraryHomeSettingsScreen>
           SettingsSectionHeader(t.localLibrary.title),
           ...buildLocalLibraryRows(localLibrary),
         ],
-        SettingsSectionHeader(t.settings.homeLayout),
-        ...buildHomeLayoutRows(context),
+        if (widget.includeHomeLayout) ...[
+          SettingsSectionHeader(t.settings.homeLayout),
+          ...buildHomeLayoutRows(context),
+        ],
         // Apple TV keeps no downloads; everywhere else Downloads is its own
         // page (series `ios/07`).
         if (!PlatformDetector.isAppleTV()) ...[

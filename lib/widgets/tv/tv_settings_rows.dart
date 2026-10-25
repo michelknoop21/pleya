@@ -16,6 +16,7 @@ import '../../focus/focus_theme.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/tv_hig.dart';
+import '../settings_section.dart' show kTvStudioRowInsetPt;
 import 'tv_menu_grid.dart';
 import 'tv_settings_studio_style.dart';
 import 'tv_unified_layout.dart';
@@ -36,12 +37,6 @@ class TvSettingsRowList extends StatelessWidget {
   /// The page name prefixed onto every row's automation instance.
   final String automationInstance;
 
-  void _focus(int index) {
-    if (index < 0 || index >= items.length) return;
-    final node = nodes.get(items[index].key);
-    if (node.canRequestFocus) node.requestFocus();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -57,10 +52,9 @@ class TvSettingsRowList extends StatelessWidget {
           TvSettingsRow(
             item: items[i],
             node: nodes.get(items[i].key, debugLabel: items[i].key),
+            // UP and DOWN belong to the enclosing categories layout, which
+            // walks every row of the column in order (A-24b).
             automationInstance: '$automationInstance.${items[i].key}',
-            // The ends hold rather than wander off into another column.
-            onNavigateUp: () => _focus(i - 1),
-            onNavigateDown: () => _focus(i + 1),
           ),
         ],
       ],
@@ -122,7 +116,8 @@ class TvSettingsRow extends StatelessWidget {
               return AnimatedContainer(
                 duration: TvTopNavLayout.focusDuration,
                 curve: Curves.easeOut,
-                padding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: 18 * pt),
+                // Text on the same line as the list rows beside it (A-24b).
+                padding: EdgeInsets.symmetric(horizontal: 24 * pt - gap, vertical: kTvStudioRowInsetPt * pt - gap),
                 decoration: BoxDecoration(
                   color: tvStudioRowFill(tk, focused: focused),
                   borderRadius: BorderRadius.circular(radius),
@@ -147,54 +142,30 @@ class _RowContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final tk = tokens(context);
     final value = item.value;
-    final subtitle = value == null ? item.subtitle : null;
-    final valueStyle = TextStyle(
-      color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
-      fontSize: TvHig.caption1 * pt,
-      height: TvHig.caption1Leading / TvHig.caption1,
-      fontWeight: FontWeight.w500,
-    );
-
+    final toggled = item.toggled;
+    // A-24b (anchor `02`): title left, value right, chevron or switch. What a
+    // row is for is read as its semantic label, not drawn under the title.
     return LayoutBuilder(
       builder: (context, constraints) => Row(
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  item.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: tk.text,
-                    fontSize: TvHig.body * pt,
-                    height: TvHig.bodyLeading / TvHig.body,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                // What the destination is for, where it has no value to show.
-                // Two lines as on `TvMenuTile`: beside the library preview
-                // one line cut most descriptions off.
-                if (subtitle != null)
-                  Text(
-                    subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: valueStyle.copyWith(
-                      color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-              ],
+            child: Text(
+              item.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: tk.text,
+                fontSize: TvHig.body * pt,
+                height: TvHig.bodyLeading / TvHig.body,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-          if (value != null) ...[
+          // A switch says its state itself; the value line would repeat it.
+          if (value != null && toggled == null) ...[
             SizedBox(width: 24 * pt),
             // Up to [kTvSettingsValueMaxFraction] of the row, so a long server
-            // name cannot push the title out, while "OLED · Bibliotheek
-            // dichtheid 3" still fits beside a short title.
+            // name cannot push the title out.
             ConstrainedBox(
               constraints: BoxConstraints(maxWidth: constraints.maxWidth * kTvSettingsValueMaxFraction),
               child: Text(
@@ -202,17 +173,18 @@ class _RowContent extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.end,
-                style: valueStyle,
+                style: TextStyle(
+                  color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
+                  fontSize: TvHig.caption1 * pt,
+                  height: TvHig.caption1Leading / TvHig.caption1,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],
-          if (item.toggled != null) ...[
+          if (toggled != null) ...[
             SizedBox(width: 16 * pt),
-            Icon(
-              item.toggled! ? Icons.toggle_on_rounded : Icons.toggle_off_rounded,
-              size: TvHig.headline * pt,
-              color: item.toggled! ? tvStudioMarkerColor(tk) : tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
-            ),
+            TvSettingsSwitchPill(value: toggled, enabled: item.onSelect != null),
           ] else if (item.onSelect != null) ...[
             SizedBox(width: 12 * pt),
             Icon(
@@ -222,6 +194,37 @@ class _RowContent extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// The switch drawn in a row (A-24b, anchor `02`). Not a control of its own:
+/// it takes no focus and no pointer, SELECT on the row is what flips it, so
+/// the remote meets one stop per row.
+class TvSettingsSwitchPill extends StatelessWidget {
+  const TvSettingsSwitchPill({super.key, required this.value, this.enabled = true});
+
+  final bool value;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeFocus(
+      child: IgnorePointer(
+        // A no-op rather than null keeps an enabled switch in its active colours.
+        // The height of the title line, so the switch never makes its row
+        // taller than a row with a value.
+        child: SizedBox(
+          height: TvHig.bodyLeading * TvHig.of(context),
+          child: FittedBox(
+            child: Switch(
+              value: value,
+              onChanged: enabled ? (_) {} : null,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+        ),
       ),
     );
   }

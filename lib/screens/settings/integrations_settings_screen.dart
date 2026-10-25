@@ -70,6 +70,7 @@ class _TrackersRow extends StatelessWidget {
         title: t.settings.trackers,
         subtitle: t.settings.trackersDescription,
         trailingLabel: connected.isEmpty ? null : connected.join(' · '),
+        automationInstance: 'settings.trackers',
         destinationBuilder: (_) => const TrackersSettingsScreen(),
       ),
     );
@@ -91,6 +92,7 @@ class _RequestsRow extends StatelessWidget {
         title: t.settings.requests,
         subtitle: t.settings.requestsDescription,
         trailingLabel: seerr.isConfigured ? (seerr.host ?? t.settings.requests) : null,
+        automationInstance: 'settings.requests',
         destinationBuilder: (_) => const SeerrSettingsScreen(),
       ),
     );
@@ -112,6 +114,7 @@ class _TautulliRow extends StatelessWidget {
         title: t.tautulli.title,
         subtitle: t.tautulli.subtitle,
         trailingLabel: tautulli.isConfigured ? (tautulli.serverName ?? tautulli.host ?? t.tautulli.connected) : null,
+        automationInstance: 'settings.tautulli',
         destinationBuilder: (_) => const TautulliSettingsScreen(),
       ),
     );

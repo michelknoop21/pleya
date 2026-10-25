@@ -105,9 +105,6 @@ class AutomationIds {
   static const String localLibraryClear = 'local_library.clear';
   static const String localLibraryAction = 'local_library.action';
 
-  /// One category in the TV Appearance page, in its visible display order.
-  static const String settingsAppearanceCategory = 'settings.appearance.category';
-
   /// One category on the TV settings page (A-24), in its visible order.
   static const String settingsCategory = 'settings.category';
 
@@ -780,7 +777,6 @@ class AutomationIds {
     libraryGridItem,
     libraryPickerCard,
     settingsTile,
-    settingsAppearanceCategory,
     settingsCategory,
     mediaDetailEpisodeListItem,
     mediaDetailSeasonChip,
@@ -927,7 +923,6 @@ class AutomationIds {
     {'id': myPleyaSection, 'role': 'region', 'instanceable': true},
     {'id': myPleyaSectionContent, 'role': 'region', 'instanceable': true},
     {'id': myPleyaSectionTile, 'role': 'grid.item', 'instanceable': true},
-    {'id': settingsAppearanceCategory, 'role': 'button', 'instanceable': true},
     {'id': settingsCategory, 'role': 'button', 'instanceable': true},
     {'id': myPleyaChip, 'role': 'button', 'instanceable': true},
     {'id': myPleyaLogRow, 'role': 'list.item', 'instanceable': true},

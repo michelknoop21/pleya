@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -7,6 +8,7 @@ import '../../screens/settings/settings_utils.dart';
 import '../../services/settings_service.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/platform_detector.dart';
+import '../../utils/tv_hig.dart';
 import '../app_icon.dart';
 import '../clickable_cursor.dart';
 import '../settings_section.dart';
@@ -33,7 +35,34 @@ import 'setting_value_label.dart';
   String? description,
 }) {
   final chevron = AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted);
-  if (PlatformDetector.isTV()) return (title: Text(title), subtitle: Text(valueLine), trailing: chevron);
+  if (PlatformDetector.isTV()) {
+    if (!SettingsIconStyleScope.hidesDescriptions(context)) {
+      return (title: Text(title), subtitle: Text(valueLine), trailing: chevron);
+    }
+    // A-24b inside Instellingen (anchor `02`): the value right, before the
+    // chevron, in the row's trailing text style.
+    return (
+      title: Text(title),
+      subtitle: null,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // At most 360 pt and 40% of the row, so a long value never takes
+          // the title's room.
+          LayoutBuilder(
+            builder: (context, box) => ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: math.min(360 * TvHig.of(context), box.maxWidth * kSettingsValueMaxFraction),
+              ),
+              child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+          ),
+          SizedBox(width: 12 * TvHig.of(context)),
+          chevron,
+        ],
+      ),
+    );
+  }
   // A-24b Studio rows leave the explanation off screen (read as the hint).
   final shown = settingsRowDescription(context, description);
   return switch (settingValuePlacement(context, title: title, value: value, hasDescription: shown != null)) {

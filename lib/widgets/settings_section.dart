@@ -12,6 +12,7 @@ import 'settings/settings_studio_style.dart';
 import 'settings/settings_icon_badge.dart';
 import 'settings/settings_studio_theme.dart';
 import 'settings_rows.dart';
+import 'tv/tv_settings_studio_style.dart';
 import 'tv/tv_unified_layout.dart';
 
 export 'settings_rows.dart';
@@ -69,12 +70,16 @@ class TvSettingsDensity extends StatelessWidget {
         minVerticalPadding: 0,
         minLeadingWidth: 0,
         horizontalTitleGap: 20 * pt,
-        contentPadding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: kTvSettingsRowInsetPt * pt),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: 24 * pt,
+          vertical: (SettingsStudioTheme.isActive(context) ? kTvStudioRowInsetPt : kTvSettingsRowInsetPt) * pt,
+        ),
         titleTextStyle: TextStyle(
           color: t.text,
           fontSize: TvHig.body * pt,
           height: kTvSettingsTitleLeadingPt / TvHig.body,
-          fontWeight: FontWeight.w500,
+          // A-24b: the Studio rows' semibold title, as `TvSettingsRow` draws it.
+          fontWeight: SettingsStudioTheme.isActive(context) ? FontWeight.w600 : FontWeight.w500,
         ),
         subtitleTextStyle: TextStyle(
           color: t.textMuted,
@@ -90,6 +95,10 @@ class TvSettingsDensity extends StatelessWidget {
 
 /// Vertical inset of a TV settings row, in HIG points (VIS-0926-S1).
 const double kTvSettingsRowInsetPt = 16;
+
+/// The same inset inside Instellingen (A-24b): anchor `02` draws a row every
+/// 93 points, a 38 pt title line with 27 above and under it.
+const double kTvStudioRowInsetPt = 27;
 
 /// Line height of a TV settings row's title (Body, 29 pt), in HIG points.
 const double kTvSettingsTitleLeadingPt = 38;
@@ -180,7 +189,11 @@ class SettingsSectionHeader extends StatelessWidget {
       child: Text(
         title.toUpperCase(),
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: settingsSectionInk(context),
+          // A-24b on TV: a group inside Instellingen takes the Studio accent
+          // eyebrow, as the series heads every group (`tvos/02`-`12`).
+          color: tv && SettingsStudioTheme.isActive(context)
+              ? tvStudioEyebrow(tokens(context))
+              : settingsSectionInk(context),
           fontWeight: FontWeight.w700,
           // A-24: small caps with more air off TV, as in the Studio anchors.
           letterSpacing: tv ? 1.1 : 1.2,
@@ -250,17 +263,25 @@ class SettingsGroup extends StatelessWidget {
     // VIS-0925-C: on TV no outer border and lighter, indented separators. The
     // bordered card with full-width hairlines read as a table on the tv.
     final tv = PlatformDetector.isTV();
+    // A-24b on TV inside Instellingen: the rows sit on the page with a
+    // hairline between them, no card, and without an icon the line starts at
+    // the text (anchor `02`).
+    final studioTv = tv && SettingsStudioTheme.isActive(context);
+    final noIcon = SettingsIconStyleScope.of(context) == SettingsIconStyle.none;
     final radius = BorderRadius.circular(tv ? t.radiusMd : kSettingsCardRadius);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (title != null) SettingsSectionHeader(title!),
         Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           // The border lives in foregroundDecoration, painted after the rows
           // (see SettingsRows below) so it always wins over a full-bleed
           // focus fill instead of being painted over by the first/last row.
-          decoration: BoxDecoration(color: settingsCardColor(context), borderRadius: radius),
+          margin: studioTv ? const EdgeInsets.only(bottom: 8) : const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          decoration: BoxDecoration(
+            color: studioTv ? Colors.transparent : settingsCardColor(context),
+            borderRadius: radius,
+          ),
           foregroundDecoration: tv
               ? null
               : BoxDecoration(
@@ -273,10 +294,14 @@ class SettingsGroup extends StatelessWidget {
             child: _studioRowText(
               context,
               SettingsRows(
-                separatorColor: tv
+                separatorColor: studioTv
+                    ? tvStudioSeparator(t)
+                    : tv
                     ? t.outline.withValues(alpha: kTvSettingsSeparatorAlpha)
                     : settingsSeparatorColor(context),
-                separatorIndent: tv ? kTvSettingsSeparatorIndentPt * TvHig.of(context) : settingsRowTextInset(context),
+                separatorIndent: tv
+                    ? (noIcon ? 24 : kTvSettingsSeparatorIndentPt) * TvHig.of(context)
+                    : settingsRowTextInset(context),
                 children: children,
               ),
             ),
@@ -402,7 +427,13 @@ class _SettingRowSurface extends StatelessWidget {
         duration: FocusTheme.getAnimationDuration(context),
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
-          color: focused ? t.text.withValues(alpha: TvMyPleyaLayout.tileFocusedFillAlpha) : Colors.transparent,
+          // A-24b: inside Instellingen the Studio row fill, white in Light
+          // (anchor `04`), the same one `TvSettingsRow` takes.
+          color: SettingsStudioTheme.isActive(context)
+              ? tvStudioRowFill(t, focused: focused)
+              : focused
+              ? t.text.withValues(alpha: TvMyPleyaLayout.tileFocusedFillAlpha)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(t.radiusMd),
         ),
         // Inside the card's clip, so the Light separator has to stay inside

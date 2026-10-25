@@ -30,6 +30,7 @@ import '../../widgets/app_icon.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../../widgets/loading_indicator_box.dart';
 import '../../widgets/setting_tile.dart';
+import '../../widgets/settings_page.dart' show SettingsInlineScope;
 import '../../widgets/tv/tv_menu_grid.dart';
 import '../../widgets/tv/tv_page_surface.dart';
 import '../../widgets/tv/tv_unified_layout.dart';

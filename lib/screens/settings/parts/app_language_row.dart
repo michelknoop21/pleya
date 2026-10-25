@@ -9,6 +9,7 @@ import '../../../providers/multi_server_provider.dart';
 import '../../../services/settings_service.dart';
 import '../../../utils/platform_detector.dart';
 import '../../../widgets/setting_tile.dart';
+import '../../../widgets/settings_section.dart' show SettingsIconStyleScope;
 import '../settings_utils.dart';
 
 /// The app-language row on the Appearance page.
@@ -44,14 +45,15 @@ class AppLanguageRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = appLocaleDisplayName(LocaleSettings.currentLocale);
-    // The language is the row's value: right-aligned off TV (A-24b), the value
-    // line under the title on TV.
-    final tv = PlatformDetector.isTV();
+    // The language is the row's value: right-aligned (A-24b), and on TV
+    // outside Instellingen' Studio rows the value line under the title.
+    final underTitle = PlatformDetector.isTV() && !SettingsIconStyleScope.hidesDescriptions(context);
     return SettingNavigationTile(
       icon: Symbols.language_rounded,
       title: t.settings.language,
-      subtitle: tv ? name : null,
-      trailingLabel: tv ? null : name,
+      subtitle: underTitle ? name : null,
+      trailingLabel: underTitle ? null : name,
+      automationInstance: 'setting.${SettingsService.appLocale.key}',
       onTap: () => _pick(context),
     );
   }

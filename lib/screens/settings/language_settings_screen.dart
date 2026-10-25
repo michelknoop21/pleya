@@ -33,12 +33,15 @@ import '../../services/track_preference_store.dart';
 import '../../utils/platform_detector.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
+import '../../utils/tv_hig.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/profile_language_switch_tile.dart';
 import '../../widgets/settings/setting_value_label.dart';
 import '../../widgets/settings_page.dart';
 import '../../widgets/settings_section.dart';
+import '../../widgets/tv/tv_menu_grid.dart';
 import '../../widgets/tv/tv_page_surface.dart';
+import '../../widgets/tv/tv_settings_rows.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import 'settings_utils.dart';
 import 'parts/language_picker_dialog.dart';
@@ -220,7 +223,8 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
           future: PleyaProfileLanguagePreferenceStore.activeScope(),
           builder: (context, snapshot) {
             final global = _global(stored, snapshot.data);
-            return PlatformDetector.isTV() ? _buildTv(context, global) : _buildList(context, global);
+            if (!PlatformDetector.isTV()) return _buildList(context, global);
+            return SettingsInlineScope.isInline(context) ? _buildTvInline(context, global) : _buildTv(context, global);
           },
         );
       },

@@ -24,10 +24,12 @@ import '../../services/settings_service.dart' show ThemeMode, ViewMode;
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/tv_hig.dart';
+import '../../utils/media_image_helper.dart' show ImageType;
 import '../optimized_media_image.dart';
+import '../settings/settings_studio_header.dart' show settingsStudioArtOf;
 import 'tv_expandable_media_tile.dart' show discoveryPosterPath;
 import 'tv_panel_primitives.dart';
-import 'tv_settings_categories.dart' show TvStudioEyebrow;
+import 'tv_studio_category_pill.dart' show TvStudioEyebrow;
 import 'tv_settings_studio_style.dart';
 import 'tv_unified_layout.dart';
 
@@ -76,11 +78,16 @@ SettingsPreviewAction? settingsViewPreviewAction(BuildContext context) {
 
 /// Reads what Home already holds and hands it to [TvSettingsPreviewCard].
 class TvSettingsLibraryPreview extends StatelessWidget {
-  const TvSettingsLibraryPreview({super.key, required this.modeLine, this.action});
+  const TvSettingsLibraryPreview({super.key, required this.modeLine, this.action, this.eyebrow, this.title});
 
   /// The current look, from [settingsPreviewModeLine].
   final String modeLine;
   final SettingsPreviewAction? action;
+
+  /// Default "Live voorbeeld" and "Jouw bibliotheek"; the Big P card (series
+  /// `tvos/08`) names the assistant and one of its own questions instead.
+  final String? eyebrow;
+  final String? title;
 
   static Iterable<MediaItem> _candidates(DiscoverProvider discover) sync* {
     yield* discover.onDeck;
@@ -97,8 +104,8 @@ class TvSettingsLibraryPreview extends StatelessWidget {
     final discover = context.watch<DiscoverProvider?>();
     final items = discover == null ? const <MediaItem>[] : pickSettingsPreviewPosters(_candidates(discover));
     return TvSettingsPreviewCard(
-      eyebrow: t.settingsStudio.livePreview,
-      title: t.settingsStudio.yourLibrary,
+      eyebrow: eyebrow ?? t.settingsStudio.livePreview,
+      title: title ?? t.settingsStudio.yourLibrary,
       modeLine: modeLine,
       items: items,
       action: action,
@@ -221,6 +228,94 @@ class TvSettingsPreviewCard extends StatelessWidget {
               primary: true,
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// "Afspeelervaring" beside the Afspelen rows (A-24b, series `tvos/03`): a
+/// still from what Home already holds, the player's progress line over it, and
+/// the default quality under it. Without artwork the card keeps its text, the
+/// empty production path.
+class TvSettingsPlaybackPreview extends StatelessWidget {
+  const TvSettingsPlaybackPreview({super.key, required this.qualityLine});
+
+  /// The current default quality, as the Standaardkwaliteit row words it.
+  final String qualityLine;
+
+  @override
+  Widget build(BuildContext context) {
+    final tk = tokens(context);
+    final pt = TvHig.of(context);
+    final radius = tk.radiusMd;
+    final art = settingsStudioArtOf(context.watch<DiscoverProvider?>());
+    final serverId = art?.serverId;
+    final client = serverId == null
+        ? null
+        : context.select<MultiServerProvider?, MediaServerClient?>(
+            (p) => p?.serverManager.getClient(ServerId(serverId)),
+          );
+    return Container(
+      padding: EdgeInsets.all(32 * pt),
+      decoration: BoxDecoration(
+        color: tvStudioPreviewFill(tk),
+        borderRadius: BorderRadius.circular(radius * 1.5),
+        border: Border.all(color: tvStudioSeparator(tk)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TvStudioEyebrow(t.settingsStudio.playbackExperience),
+          SizedBox(height: 12 * pt),
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(radius),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ColoredBox(color: tk.text.withValues(alpha: 0.06)),
+                  if (art != null && client != null)
+                    OptimizedMediaImage(
+                      client: client,
+                      imagePath: art.path,
+                      imageType: ImageType.art,
+                      fit: BoxFit.cover,
+                      fadeInDuration: Duration.zero,
+                    ),
+                  // The player's progress line, as the series draws it.
+                  PositionedDirectional(
+                    start: 20 * pt,
+                    end: 20 * pt,
+                    bottom: 18 * pt,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(3 * pt),
+                      child: LinearProgressIndicator(
+                        value: 0.45,
+                        minHeight: 5 * pt,
+                        color: tvStudioMarkerColor(tk),
+                        backgroundColor: Colors.white.withValues(alpha: 0.35),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: 20 * pt),
+          Text(
+            qualityLine,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
+              fontSize: TvHig.caption1 * pt,
+              height: TvHig.caption1Leading / TvHig.caption1,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );

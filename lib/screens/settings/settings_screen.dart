@@ -20,16 +20,11 @@ import '../../mixins/refreshable.dart';
 import '../../providers/hidden_libraries_provider.dart';
 import '../../providers/libraries_provider.dart';
 import '../../services/donation_service.dart';
-import '../../services/download_storage_service.dart';
 import '../../services/icloud_sync_service.dart';
 import 'icloud_sync_status_line.dart';
 import '../../services/preferences/preference_sync_coordinator.dart';
 import '../../services/settings_export_service.dart';
-import '../../providers/seerr_provider.dart';
-import '../../providers/tautulli_provider.dart';
 import '../../providers/theme_provider.dart';
-import '../../providers/trackers_provider.dart';
-import '../../providers/trakt_account_provider.dart';
 import '../../services/keyboard_shortcuts_service.dart';
 import '../../services/settings_service.dart' as settings;
 import '../../services/update_service.dart';
@@ -37,6 +32,8 @@ import '../../utils/dialogs.dart';
 import '../../utils/snackbar_helper.dart';
 import '../../utils/platform_detector.dart';
 import '../../utils/update_dialog.dart';
+import '../../utils/quality_preset_labels.dart';
+import '../../utils/tv_hig.dart';
 import '../../widgets/desktop_app_bar.dart';
 import '../../widgets/dialog_action_button.dart';
 import '../../widgets/setting_tile.dart';
@@ -53,7 +50,9 @@ import 'appearance_settings_screen.dart';
 import 'assistant_settings_screen.dart';
 import 'downloads_settings_screen.dart';
 import 'integrations_settings_screen.dart';
+import 'library_home_rows.dart';
 import 'library_home_settings_screen.dart';
+import 'connections_section.dart';
 import 'local_library_settings_screen.dart';
 import 'keyboard_shortcuts_screen.dart';
 import 'home_layout_screen.dart';
@@ -63,7 +62,6 @@ import 'language_settings_screen.dart';
 import 'playback_settings_screen.dart';
 import '../profile/profile_switch_screen.dart';
 import '../servers_screen.dart';
-import 'download_location_dialog.dart';
 import 'seerr_settings_screen.dart';
 import 'subtitle_styling_screen.dart';
 import 'tautulli_settings_screen.dart';
@@ -103,14 +101,6 @@ class _SettingsScreenState extends State<SettingsScreen>
   static const _kPlayback = 'playback';
   static const _kLanguage = 'language';
   static const _kSubtitleStyling = 'subtitle_styling';
-  static const _kTrackers = 'trackers';
-  static const _kLibraryVisibility = 'library_visibility';
-  static const _kHomeLayout = 'home_layout';
-  static const _kRequests = 'requests';
-  static const _kTautulli = 'tautulli';
-  static const _kDownloadLocation = 'download_location';
-  static const _kDownloadOnWifiOnly = 'download_on_wifi_only';
-  static const _kAutoRemoveWatchedDownloads = 'auto_remove_watched_downloads';
   static const _kVideoPlayerControls = 'video_player_controls';
   static const _kVideoPlayerNavigation = 'video_player_navigation';
   static const _kCrashReporting = 'crash_reporting';
@@ -169,7 +159,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   void focusActiveTabIfReady() {
     if (InputModeTracker.isKeyboardMode(context)) {
       final fallbackKey = DonationService.isEnabled ? _kDonate : _kAppearance;
-      if (_restoreTvFocus(fallbackKey)) return;
+      if (_restoreTvFocus()) return;
       _focusTracker.restoreFocus(fallbackKey: fallbackKey);
     }
   }

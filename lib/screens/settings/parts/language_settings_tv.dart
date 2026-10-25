@@ -96,6 +96,65 @@ extension _LanguageSettingsTvPage on _LanguageSettingsScreenState {
     ),
   ];
 
+  /// A-24b: Taal en ondertitels as a category of the TV Instellingen page
+  /// (series `tvos/04-taal-ondertitels-01..05`): one column of Studio rows,
+  /// Voorkeuren, Onthouden and Per serie, under the same keys and automation
+  /// ids as the two-column page. UP and DOWN belong to the enclosing layout.
+  Widget _buildTvInline(BuildContext context, PleyaProfileLanguagePreferences global) {
+    final rows = _tvLeftRows(global);
+    TvMenuItem item(({String key, String title, String value, String? note, bool? toggled, VoidCallback onSelect}) r) =>
+        TvMenuItem(
+          key: r.key,
+          icon: Symbols.translate_rounded,
+          title: r.title,
+          subtitle: r.note,
+          value: r.value,
+          toggled: r.toggled,
+          onSelect: r.onSelect,
+        );
+    final remember = rows.indexWhere((r) => r.key == _kTvRemember);
+    final tk = tokens(context);
+    final noteStyle = TextStyle(
+      fontSize: TvMyPleyaLayout.tileSubtitleFontSize * TvLayoutConstants.scaleOf(context),
+      color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SettingsSectionHeader(t.languageSettings.globalHeader),
+        TvSettingsRowList(
+          items: [for (final r in rows.take(remember)) item(r)],
+          nodes: _focusTracker,
+          automationInstance: 'language',
+        ),
+        SettingsFootnote(_ownerLine(context)),
+        SettingsSectionHeader(t.languageSettings.rememberHeader),
+        TvSettingsRowList(
+          items: [for (final r in rows.skip(remember)) item(r)],
+          nodes: _focusTracker,
+          automationInstance: 'language',
+        ),
+        SettingsSectionHeader(t.languageSettings.seriesHeader),
+        if (_loading)
+          const _SeriesPlaceholder()
+        else if (_series.isEmpty)
+          SettingsFootnote(t.languageSettings.seriesEmpty)
+        else ...[
+          for (var index = 0; index < _series.length; index++)
+            TvSeriesLanguageRow(
+              entry: _series[index],
+              node: _focusTracker.get(_seriesKeyFor(index), debugLabel: _seriesKeyFor(index)),
+              onSelect: () => _openSeries(_series[index], global),
+            ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(24 * TvHig.of(context), 12 * TvHig.of(context), 0, 0),
+            child: Text(t.languageSettings.seriesFootnote, style: noteStyle),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildTv(BuildContext context, PleyaProfileLanguagePreferences global) {
     final scale = TvLayoutConstants.scaleOf(context);
 

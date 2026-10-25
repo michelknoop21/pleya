@@ -37,8 +37,13 @@ class _Profiles extends ChangeNotifier implements ActiveProfileProvider {
 void main() {
   late ThemeProvider themeProvider;
 
-  Future<void> pump(WidgetTester tester, Widget page, {bool multipleProfiles = true}) async {
-    tester.view.physicalSize = const Size(393, 4000);
+  Future<void> pump(
+    WidgetTester tester,
+    Widget page, {
+    bool multipleProfiles = true,
+    Size size = const Size(393, 4000),
+  }) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     resetSharedPreferencesForTest();
@@ -206,10 +211,10 @@ void main() {
       expect(find.text(t.settings.hardwareDecodingDescription), findsNothing);
     });
 
-    testWidgets('on TV the order stays as it was, with MPV under Geavanceerd', (tester) async {
+    testWidgets('A-24b: on TV the series\' groups, MPV closing Video', (tester) async {
       TvDetectionService.debugSetAppleTVOverride(true);
       addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
-      await pump(tester, const PlaybackSettingsScreen());
+      await pump(tester, const PlaybackSettingsScreen(), size: const Size(1920, 1080));
       // The TV rows are tall and built lazily, so read the cards' titles from
       // the list itself.
       final list = tester.widget<SliverList>(find.byType(SliverList).first).delegate as SliverChildListDelegate;
@@ -218,10 +223,9 @@ void main() {
           if (child is SettingsWidthLimit && child.child is SettingsGroup) (child.child as SettingsGroup).title,
       ];
       expect(titles, [
-        t.settings.player,
-        t.settings.advanced,
+        t.settingsStudio.video,
         t.settings.audio,
-        t.settings.seekAndTiming,
+        t.settingsStudio.controls,
         t.settings.behavior,
         t.settings.autoSkip,
       ]);

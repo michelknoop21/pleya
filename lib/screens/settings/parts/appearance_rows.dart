@@ -166,40 +166,6 @@ extension _AppearanceRows on AppearanceSettingsScreen {
     );
   }
 
-  /// Bibliotheek dichtheid on TV: the slider between its two end labels.
-  Widget _densitySelector() {
-    return SettingValueBuilder<int>(
-      pref: SettingsService.libraryDensity,
-      builder: (context, density, _) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            const AppIcon(Symbols.grid_view_rounded, fill: 1),
-            const SizedBox(width: 16),
-            Text(t.settings.libraryDensity),
-            const SizedBox(width: 20),
-            Text(t.settings.compact, style: _densityLabelStyle(context)),
-            Expanded(
-              child: FocusableSlider(
-                value: density.toDouble(),
-                min: 1,
-                max: 5,
-                divisions: 4,
-                onChanged: (v) => SettingsService.instance.write(SettingsService.libraryDensity, v.round()),
-              ),
-            ),
-            Text(t.settings.comfortable, style: _densityLabelStyle(context)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// VIS-0925-C: the theme's muted ink rather than a fixed grey, and on TV the
-  /// HIG minimum (Caption 2) instead of a phone size the wrapper blows up.
-  TextStyle _densityLabelStyle(BuildContext context) =>
-      TextStyle(fontSize: TvHig.caption2 * TvHig.of(context), color: tokens(context).textMuted);
-
   /// A value row that opens a picker: the TV rows, and off TV every choice
   /// of the Studio series. [description] is the line under the title off TV.
   Widget _choice<T>({
