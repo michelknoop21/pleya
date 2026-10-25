@@ -22,6 +22,7 @@ import '../../providers/discover_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../services/settings_service.dart' show ThemeMode, ViewMode;
 import '../../theme/mono_tokens.dart';
+import '../../utils/layout_constants.dart';
 import '../../utils/tv_hig.dart';
 import '../optimized_media_image.dart';
 import 'tv_expandable_media_tile.dart' show discoveryPosterPath;
@@ -212,7 +213,13 @@ class TvSettingsPreviewCard extends StatelessWidget {
           ),
           if (action != null) ...[
             SizedBox(height: 24 * pt),
-            TvPanelButton(scale: pt, label: action.label, onPressed: action.onSelect, primary: true),
+            TvPanelButton(
+              // The panel buttons' own scale, not the HIG points the card uses.
+              scale: TvLayoutConstants.scaleOf(context),
+              label: action.label,
+              onPressed: action.onSelect,
+              primary: true,
+            ),
           ],
         ],
       ),

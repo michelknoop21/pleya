@@ -151,6 +151,19 @@ void main() {
       expect(theme.trackColor?.resolve(const {}), isNotNull, reason: 'the TV off track stays its own');
     });
 
+    testWidgets('switching OLED to Dark keeps the page below, so the remote keeps its place', (tester) async {
+      Widget app(String palette) => MaterialApp(
+        theme: _theme(palette),
+        home: const Scaffold(body: SettingsStudioTheme(child: _Counter())),
+      );
+      await tester.pumpWidget(app('oled'));
+      final before = tester.state<_CounterState>(find.byType(_Counter));
+      await tester.pumpWidget(app('dark'));
+      await tester.pumpAndSettle();
+      expect(tokens(tester.element(find.byKey(_probe))).bg, isNot(const Color(0xFF000000)), reason: 'now Dark');
+      expect(tester.state<_CounterState>(find.byType(_Counter)), same(before));
+    });
+
     testWidgets('the page is painted with the wash in Dark', (tester) async {
       await _pump(tester, 'dark', const SettingsStudioTheme(child: SizedBox(key: _probe)));
       final gradients = tester
@@ -163,3 +176,15 @@ void main() {
 }
 
 MonoTokens tokensOf(ThemeData theme) => theme.extension<MonoTokens>()!;
+
+class _Counter extends StatefulWidget {
+  const _Counter();
+
+  @override
+  State<_Counter> createState() => _CounterState();
+}
+
+class _CounterState extends State<_Counter> {
+  @override
+  Widget build(BuildContext context) => const SizedBox(key: _probe);
+}

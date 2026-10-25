@@ -105,11 +105,11 @@ class SettingsStudioTheme extends StatelessWidget {
     if (mono == null || isActive(context)) return child;
     final studio = settingsStudioTokens(mono);
     final wash = PlatformDetector.isTV() ? settingsStudioWash(studio) : null;
-    // Ink (ListTile fills, ripples) paints on the nearest Material, so one sits
-    // above the page paint; otherwise the page colour would hide it.
     // Off TV the rows take the Studio line icons (anchor `01`); TV keeps its
     // badges until its own rows are redrawn.
     final rows = PlatformDetector.isTV() ? child : SettingsIconStyleScope(style: SettingsIconStyle.line, child: child);
+    // Ink (ListTile fills, ripples) paints on the nearest Material, so one sits
+    // above the page paint; otherwise the page colour would hide it.
     final content = Material(type: MaterialType.transparency, child: rows);
     return _StudioScope(
       child: Theme(
@@ -117,18 +117,21 @@ class SettingsStudioTheme extends StatelessWidget {
         child: DecoratedBox(
           decoration: BoxDecoration(color: studio.bg),
           position: DecorationPosition.background,
-          child: wash == null
-              ? content
-              : DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
+          // Always the same widgets, with or without a wash: a theme switch
+          // that changed the tree's shape here would rebuild the page below
+          // and lose the remote's place on it.
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: wash == null
+                  ? null
+                  : RadialGradient(
                       center: Alignment.topRight,
                       radius: kStudioWashRadius,
                       colors: [wash, wash.withValues(alpha: 0)],
                     ),
-                  ),
-                  child: content,
-                ),
+            ),
+            child: content,
+          ),
         ),
       ),
     );
