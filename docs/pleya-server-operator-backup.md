@@ -1,6 +1,6 @@
 # Pleya Server: back-ups, terugzetten en upgraden
 
-Dit document is voor wie de server beheert. Het zegt waar de back-ups staan, wat erin zit, hoe je er een terugzet en wat er bij een upgrade gebeurt. Het gedrag is getest in `pleya_server/internal/backup/backup_test.go`, `pleya_server/internal/api/backups_api_test.go` en `pleya_server/cmd/pleya-server/backupwork_test.go`. Een kopie buiten de NAS (S25.7) en het beheerscherm (S25.6) zijn nog niet gebouwd.
+Dit document is voor wie de server beheert. Het zegt waar de back-ups staan, wat erin zit, hoe je er een terugzet en wat er bij een upgrade gebeurt. Het gedrag is getest in `pleya_server/internal/backup/backup_test.go`, `pleya_server/internal/api/backups_api_test.go` en `pleya_server/cmd/pleya-server/backupwork_test.go`. Het beheerscherm (S25.6) is nog niet gebouwd. Een kopie buiten de NAS (S25.7) doet de server niet zelf; die loopt via de voorziening die de NAS al heeft, en staat onder "Een kopie buiten de NAS".
 
 ## De instellingen
 
@@ -44,6 +44,26 @@ mkdir -p data/backups && chown --reference=data/config data/backups
 ```
 
 `deploy-nas.sh` weigert te deployen zolang die map er niet is. Zie "Upgraden" hieronder voor de reden.
+
+## Een kopie buiten de NAS
+
+De server kopieert niets naar buiten. Een back-up in `data/backups` beschermt tegen een mislukte upgrade en een verkeerde handeling, en bij een andere schijf ook tegen een kapotte schijf, maar niet tegen het verlies van de hele NAS. Daarvoor kopieert de NAS zelf de map weg. Er is één map om te kopiëren: elke tar bevat al database, `/config` en de versleutelde geheimen, dus er hoeft niets anders mee.
+
+**Hyper Backup (DSM).** Maak een taak van het type "Mapjes en pakketten" met `/volume1/docker/pleya-server/data/backups` als bron en een bestemming die niet op deze NAS staat: een externe schijf, een tweede NAS, een rsync-server of een clouddienst. Plan hem na het tijdstip van de dagelijkse back-up (`PLEYA_SERVER_BACKUP_TIME`, standaard 03:30), bijvoorbeeld om 04:30. Zet clientzijdige versleuteling aan als de bestemming niet van jou is, met een wachtwoord dat verschilt van `PLEYA_SERVER_BACKUP_KEY`.
+
+**rsync vanaf een andere machine.** Zonder Hyper Backup volstaat een geplande taak op de machine die de kopie bewaart:
+
+```sh
+rsync -a --chmod=F600 synology:/volume1/docker/pleya-server/data/backups/ /pad/naar/pleya-backups/
+```
+
+Gebruik hier geen `--delete`. De server ruimt zijn eigen map op na `PLEYA_SERVER_BACKUP_RETENTION_DAYS`; de kopie hoeft die termijn niet te volgen en is juist het geheugen voor als de NAS zelf weg is. Ruim de kopie apart op.
+
+**Wat buiten de NAS bewaard moet worden.** De tars zelf, en `PLEYA_SERVER_BACKUP_KEY`. Zonder die wachtzin is de database nog bruikbaar, maar de ondertekensleutel niet: na een restore op een nieuwe NAS logt iedereen opnieuw in. Bewaar de wachtzin in een wachtwoordkluis die niet op de NAS draait; een kopie van de tars en de wachtzin op dezelfde plek maakt de versleuteling zinloos. De instellingen (tijdstip, bewaartermijn, map, wachtzin) blijven omgevingsvariabelen en komen niet in `PATCH /settings`.
+
+**Hersteltest vanaf de kopie.** Een kopie is pas een back-up als hij teruggezet is. Op de testinstance draait `pleya_server/scripts/offsite-restore-test.sh` precies dat: een verse back-up, een rsync naar een tweede map, het verlies van de bron (de back-up staat dan op `missing`), de tars terugzetten vanaf de kopie, de server herstarten en `POST /backups/{id}/verify`. Een tar die terugkomt telt na de herstart weer als `ok`; dat was tot en met 25 oktober 2026 niet zo, omdat het opstarten een rij op `missing` nooit meer terugzette (`TestSyncRevivesABackupThatComesBackFromACopy`). Doe dezelfde stappen met je echte bestemming, op de testinstance en nooit op de productie-NAS, vóór je erop vertrouwt.
+
+Welke bestemming en waar de wachtzin buiten de NAS staat zijn keuzes van de beheerder; dit document legt ze niet vast.
 
 ## Handmatig, gepland en de hersteltest
 

@@ -2,7 +2,7 @@ name: ios.mypleya.northstar
 target: ios-sim
 # The iPhone My Pleya hub (northstar 18, iOS Unified 2026 workitem 8 (I7),
 # docs/unified-2026-closure.md §5 row 8, register row 18), tegen
-# `docs/assets/ios-unified/northstar/18-mijn-pleya-volledig.png`. Reached
+# `docs/assets/a24b-northstars/02-Mijn-Pleya/images/` (A-24b; the old northstar 18 image was removed). Reached
 # zoals een gebruiker dat doet: Home laden, dan de echte tik op de
 # `nav.myPleya`-tabbladknop. `screen.my_pleya` en `my_pleya.tile[<section>]`
 # bestonden al voor TV; dit scenario draait op de eerste keer dat die ids

@@ -133,6 +133,7 @@ Productbesluit Michel, 10 oktober 2026, bindend gemaakt op 17 oktober 2026: unif
 | E-02 | P0 | Commercieel/site | Licenties en publicatiegereedheid | Status herijken; algemene Big P-pauze opgeheven (8 okt) |
 | E-03 | P2 | Commercieel/site | Aankoop, herstel en Pro-toegang | Gepland |
 | E-04 | P1 | Commercieel/site | Website, screenshots en release-informatie | Status herijken |
+| E-05 | P1 | Commercieel/site | Big P als eigen werk beschermen: beelden en stem naar een private repo, uitzondering in `NOTICE`, merkbescherming; zie [E-05](#e-05-big-p-als-eigen-werk) | Gepland. Roadmap deviation: besluit Michel 25 okt 2026 |
 | F-01 | P3 | Optioneel | Apple Intelligence: kleine zoekfilter-MVP | Gepland |
 | F-02 | P3 | Optioneel | Nieuwe ideeën zonder bestaande release te blokkeren | Gepland |
 | HOME-R1 | P1 | Home | Rijen verplaatsen: stap 1 tvOS-bug in het aanpaspaneel, stap 2 mockup voor iOS, iPadOS en macOS, stap 3 bouwen na akkoord (Roadmap deviation: Michel 16 okt, zie hieronder) | Stap 1 gemerged (PR #358, 16 okt), simulator en hardware open; stap 2 gemerged (mockupset 44, PR #359); stap 3 gemerged (PR #364, 16 okt: iPhone, iPad, Mac; Verify op iPhone en iPad, Mac-run en hardware open) |
@@ -326,6 +327,21 @@ Free/Pro and prices remain proposals until explicitly decided. Order:
 5. website/store copy matching the actually released build.
 
 Payment entitlement never substitutes for media-server administration rights.
+
+### E-05: Big P als eigen werk
+
+Besluit Michel, 25 oktober 2026: Big P (naam, figuur, beelden en stem) is zijn eigen werk en valt voortaan niet onder de GPL. Beslisrecord: DEC-XXX in [DECISIONS](DECISIONS.md).
+
+Feit: de publieke GPL-repo bevat nu de Big P-beelden (`assets/branding/bigp`, `website/src/lib/assets/bigp`, `docs/assets/tvos-unified/src/assets/bigp`), de stem (`assets/audio/bigp`: `lines.json` en de opgenomen fragmenten) en code en mockups rond Big P (`lib/assistant/big_p_*`, `website/src/lib/bigp`, `website/src/lib/components/bigp`). Beelden en stem kunnen eruit; code en mockups blijven GPL tenzij Michel ook daarover apart besluit.
+
+Scope:
+1. Beelden en stem naar een aparte private repo met "alle rechten voorbehouden". App, website, CI, goldens, Pleya Verify en de TestFlight-lanes halen ze daar met leestoegang op. Een build zonder toegang krijgt een placeholder; die hoort bij dezelfde buildwijziging.
+2. De uitzondering komt in `NOTICE`, naast de bestaande alinea over naam en logo van Pleya. `LICENSE` blijft de ongewijzigde GPL-tekst.
+3. Merkbescherming voor naam en figuur onderzoeken (Benelux via BOIP of EU via EUIPO).
+
+Juridische toets vóór de licentietekst: auteurschap en herkomst (welke beelden of stemmen met externe tools zijn gemaakt, en wat hun voorwaarden zeggen; gedateerde originelen bewaren), bijdragen van anderen aan Big P-materiaal, of een binary met de beelden past bij GPLv3 terwijl de bron ze niet meer bevat, en de beelden op de publieke website. Kopieën die al onder de GPL zijn verspreid, ook in de git-historie en in forks, blijven onder de GPL; de beperking geldt vanaf de wijziging.
+
+Volgorde en impact: dit hoort bij stap 2 hierboven (publicatie en licenties) en loopt samen met E-02. De buildwijziging raakt `pubspec.yaml`, de laadcode van de stem, CI en de releaselanes, dus ze gaat niet in een lopende releasebundel en wacht tot de lopende A-24-vervolgronde (Instellingen en Mijn Pleya) is gemerged. Daarna eerst de juridische toets, dan de repo-splitsing. Big P-functies wachten er niet op.
 
 ## October work windows
 

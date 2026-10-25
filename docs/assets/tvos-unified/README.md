@@ -13,8 +13,8 @@ staat in [docs/DESIGN-INDEX.md](../../DESIGN-INDEX.md).
 | `mockups-2026-09-07/` | 34 kijklijst, 35 aanvragen, 36 zoeken | goedgekeurd 7 september, DEC-108; manifest met hashes in [tvos-redesign-34-36-approved.md](../../tvos-redesign-34-36-approved.md). `35-aanvragen-c2` is de niet-gekozen kant van één vraag en blijft staan als afweging |
 | `mockups-2026-09-07-detail/` | 37 A tot en met D, film- en seriedetail plus volledige synopsis | goedgekeurd 7 september, DEC-109; [tvos-redesign-37-approved.md](../../tvos-redesign-37-approved.md) is de statusautoriteit en corrigeert 09 en 10 waar expliciet beschreven |
 | `mockups-2026-10-04-home/` | 38 Verder kijken A tot en met E, 39 extra Home-rijen, 40 desktopoverzicht | **proposed**, 4 oktober; README in de map somt zes keuzes op die goedkeuring vragen, waaronder 16:9 in rust en een amendement op DEC-087. De bijbehorende iPhone-beelden 22 tot en met 24 staan in `../ios-unified/mockups-2026-10-04-home/` |
-| `mockups-2026-09-02/` | Mijn Pleya-secties | goedgekeurd voor die secties |
-| de vijf `*-reference.png` hier los | los | **historisch**, de voorloper van de northstar-set. Drie ervan worden nergens meer genoemd |
+| `mockups-2026-09-02/` | Mijn Pleya-secties, zonder Instellingen | goedgekeurd voor die secties; Instellingen is vervangen door [`../a24b-northstars/`](../a24b-northstars/README.md) |
+| de vier `*-reference.png` hier los (`my-pleya-reference.png` is verwijderd) | los | **historisch**, de voorloper van de northstar-set. Twee ervan worden nergens meer genoemd |
 | `src/` | de HTML-bron | waar de mockups uit gerenderd worden, met `build.mjs` en `tv.css`. Wijzig een beeld hier en render opnieuw, teken er geen tweede versie naast |
 
 ## Statusautoriteit

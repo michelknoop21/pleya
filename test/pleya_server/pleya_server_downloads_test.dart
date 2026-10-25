@@ -6,7 +6,7 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_version.dart';
-import 'package:pleya/services/download_manager_service.dart' show verifyDownloadDigest;
+import 'package:pleya/services/download_manager_service.dart' show verifyDownloadAfterRestart, verifyDownloadDigest;
 import 'package:pleya/services/pleya_server_client.dart';
 
 import 'pleya_fake_server.dart';
@@ -66,6 +66,23 @@ void main() {
     expect(server.downloadRequests, isEmpty);
   });
 
+  group('digest after an app restart', () {
+    test('asks the server again for the digest behind the queued file url', () async {
+      final server = PleyaFakeServer()..downloadsCapability = true;
+      client = await connected(server);
+      final resolution = await client.resolveDownload(item);
+
+      expect(await client.expectedDigestForUrl(resolution.videoUrl!), 'a' * 64);
+    });
+
+    test('a url that is not a download file url has no digest', () async {
+      final server = PleyaFakeServer()..downloadsCapability = true;
+      client = await connected(server);
+
+      expect(await client.expectedDigestForUrl('http://nas.lan:8832/pleya/v1/items/x/stream'), isNull);
+    });
+  });
+
   group('digest check on the finished file', () {
     late Directory dir;
     late File file;
@@ -83,6 +100,40 @@ void main() {
     test('removes a file whose digest differs and fails the download', () async {
       await expectLater(verifyDownloadDigest(file.path, 'b' * 64), throwsException);
       expect(file.existsSync(), isFalse);
+    });
+
+    group('after a restart', () {
+      final good = sha256.convert([1, 2, 3, 4]).toString();
+
+      test('a good file passes', () async {
+        await verifyDownloadAfterRestart(file.path, () async => good);
+        expect(file.existsSync(), isTrue);
+      });
+
+      test('a corrupted file fails and is removed (negative control)', () async {
+        file.writeAsBytesSync([9, 9, 9, 9]);
+        await expectLater(verifyDownloadAfterRestart(file.path, () async => good), throwsException);
+        expect(file.existsSync(), isFalse);
+      });
+
+      test('an unreachable server leaves the download standing', () async {
+        await verifyDownloadAfterRestart(file.path, () async => throw const SocketException('offline'));
+        expect(file.existsSync(), isTrue);
+      });
+
+      test('no stated digest leaves the download standing', () async {
+        await verifyDownloadAfterRestart(file.path, () async => null);
+        expect(file.existsSync(), isTrue);
+      });
+
+      test('a missing file is skipped without asking the server', () async {
+        var asked = false;
+        await verifyDownloadAfterRestart('${dir.path}/gone.mkv', () async {
+          asked = true;
+          return good;
+        });
+        expect(asked, isFalse);
+      });
     });
   });
 }

@@ -3224,7 +3224,7 @@ geen enkele Plex-aanroep op het normale Pleya Server-pad
 
 Zeven categorieën, en één rode maakt de hele gate rood: **catalogus**, **playback**, **persoonlijke
 state**, **remote**, **offline**, **beheer** en **migratie**. De meetpunten per categorie staan in
-[hoofdstuk 9 van de replacement matrix](PLEYA-SERVER-REPLACEMENT-MATRIX.md#9-de-plex-off-acceptance-gate),
+[hoofdstuk 9 van de replacement matrix](PLEYA-SERVER-REPLACEMENT-MATRIX.md#9-de-plex-replacement-readiness-gate),
 zodat de criteria op één plek leven en niet in twee documenten uit elkaar kunnen lopen.
 
 Een release van Pleya Server mag pas als volwaardige Plex-vervanging worden aangeduid wanneer deze

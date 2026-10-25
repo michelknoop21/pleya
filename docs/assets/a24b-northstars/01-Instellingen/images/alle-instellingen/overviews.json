@@ -1,0 +1,12 @@
+{
+  "ios": {
+    "file": "images/alle-instellingen/00-overzicht-ios.png",
+    "width": 2440,
+    "height": 1928
+  },
+  "tvos": {
+    "file": "images/alle-instellingen/00-overzicht-tvos.png",
+    "width": 1920,
+    "height": 1440
+  }
+}

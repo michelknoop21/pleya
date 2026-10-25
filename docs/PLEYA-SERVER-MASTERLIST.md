@@ -46,7 +46,7 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **4** | **1** | **21** |
 
-Per taak, en dat is de maat die telt: **155 taken, 65 gereed, 15 bezig, 75 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **156 taken, 66 gereed, 16 bezig, 74 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -58,7 +58,11 @@ Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-r
 diagnostiek, tokens, audit, bibliotheken, opslag, scans, jobs en de overname van `.env`-bibliotheken.
 Protocolvensters 1 en 2 zijn gesloten ([DEC-135](DECISIONS.md), [DEC-136](DECISIONS.md),
 [DEC-137](DECISIONS.md); [DEC-138](DECISIONS.md), [DEC-146](DECISIONS.md)) en `openapi.yaml` is weer
-bevroren. De volgende backendslice is S3. PS-14 is op 10 oktober 2026 vrijgegeven
+bevroren. De volgorde sinds [DEC-150](DECISIONS.md) en [DEC-151](DECISIONS.md) is: eerst één bewezen
+keten op de testinstance (scan, metadata en artwork, zoeken, direct play, hervatten, kijkstatus op een
+tweede toestel, transcode, download met digest), daarna de gaten die die ronde aanwijst, dan de
+beheer-GUI (S10), dan de Plex Replacement Readiness Gate (S15) en pas daarna S3. S3 is dus niet de
+volgende backendslice; de uitleg hieronder blijft staan voor M7. PS-14 is op 10 oktober 2026 vrijgegeven
 ([DEC-149](DECISIONS.md)), met de voorwaarden dat het de bestaande architectuur en de Unified Library
 gebruikt, later aansluit op de Pleya-clients en de webclient, en geen nieuwe DRM-, winkel- of
 abonnementsfunctionaliteit brengt zonder afzonderlijk besluit. Dat geeft S3 vrij en S6 niet: het
@@ -93,9 +97,13 @@ binnen een golf is de volgorde vrij. De kolom "taken" telt wat er open of bezig 
 | E4 (M4) | S17, S18 | PlaybackPlan, transcode, remux | E3 |
 | E5 (M5) | S20 (excl. 20.4), S23 (excl. 23.4) | geschiedenis, favorieten, downloads | E4 |
 | E6 (M6) | S7, S10, S24, S25 | beheer-GUI, remote hardening, back-up en restore | E5 |
-| Gate | S15 | Plex Replacement Readiness Gate op de testinstance; productie-switch alleen met Michels go | E6 |
+| Gate | S15 | Plex Replacement Readiness Gate op de testinstance (Plex blijft draaien, bestanden read-only gedeeld); productie-switch alleen met Michels go | E6 |
 | E7 (M7) | S3, rest van golf 2 tot 4 | boeken en de rest van de oorspronkelijke graaf | gate (naar voren te halen) |
 | keuze | PS-12 | Plex-migratie, eigen vrijgave | Michel |
+
+*Binnen E6 geldt: eerst de ketenacceptatie op de testinstance en de gaten die daaruit komen, dan de
+beheer-GUI (S10 met scherm 37, S18.3 en S25.6), en de off-site back-up (S25.7) loopt daar parallel aan.
+De Beheer-pil komt bij S10.1 en de avatar bij S8.6; S7.2 blijft tot dan zichtbaar bezig.*
 
 *Volgorde gewijzigd door [DEC-150](DECISIONS.md) op 19 oktober 2026. Geen rij is geschrapt of op `[!]` gezet; de afhankelijkheden uit deel I gelden ongewijzigd. De oude golfindeling (2 tot 8) staat in de git-geschiedenis.*
 
@@ -105,7 +113,7 @@ wachten; wie ruimte heeft trekt hem naar voren.
 
 ### 2.2 De kritieke lijn
 
-`S3 → S5 en S6 → S14 → S17 → S18 → S23 → S15`, met voor S3 de laag C-meting en het venster-besluit,
+`S3 → S5 en S6 → S14 → S17 → S18 → S23 → S15` (de afhankelijkheidsvolgorde uit deel I; de uitvoeringsvolgorde staat in 2.1), met voor S3 de laag C-meting en het venster-besluit,
 en voor S6 P5 én de vrijgave van PS-15.
 
 *Bijgesteld op 10 oktober 2026: de schakels `S7 → S10 → S11 → vrijgave PS-14` zijn als poort voor S3
@@ -141,7 +149,7 @@ van de 128 resterende in de golven; PS-12.0 is een keuze en telt daar niet mee. 
 ### 2.4 De poorten die nog dicht staan
 
 P5 (locator), P6 (acht protocolvensters geopend en gesloten), P7 (PS-5-hardwareronde, OVERDUE),
-P8 (Plex-off gate). Van de acht protocolvensters zijn er twee geopend én weer gesloten: venster 1, bij
+P8 (Plex Replacement Readiness Gate). Van de acht protocolvensters zijn er twee geopend én weer gesloten: venster 1, bij
 S1, met alle zeventien rijen erin ([DEC-135](DECISIONS.md), [DEC-136](DECISIONS.md),
 [DEC-137](DECISIONS.md)), en venster 2, bij S2, met alle tien ([DEC-138](DECISIONS.md),
 [DEC-146](DECISIONS.md)). Er staat er nu geen open. De volledige stand staat in hoofdstuk 4.
@@ -253,7 +261,7 @@ laatste golf.
 
 Drie wijzigingen kwamen tussen 24 september en 3 oktober op `main` zonder regel in deze lijst. Ze zijn
 geen scope creep: X1 en X2 hebben een eigen voorstel of besluit, en X3 herstelt een NAS-start die op
-de bewerkte migraties vastliep. De lijst eist wel dat werk er staat. Ze tellen niet mee in de 155 taken.
+de bewerkte migraties vastliep. De lijst eist wel dat werk er staat. Ze tellen niet mee in de 156 taken.
 
 | # | Wat | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
@@ -404,7 +412,7 @@ punt 3 en 4), en aan het venster-besluit.
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
 | S15.1 | Rate limit op `/auth/refresh`, opruimjob streamsessies | `[ ]` | | |
-| S15.2 | Golden journeys 1 tot 14 groen | `[ ]` | | |
+| S15.2 | Golden journeys 1 tot 14 groen | `[ ]` | Ketenacceptatie 25 okt op de testinstance (main met #493 tot en met #496): `scripts/chain-smoke.sh` groen voor scan, metadata en artwork (99 van 100 films met poster en samenvatting), zoeken, direct play met 206, positie van toestel A zichtbaar op toestel B, transcode (plan tot eerste segment 2,0 tot 2,35 s) en download met gelijke SHA-256; webclient op de vijf breedtes in `docs/qa/chain-acceptance/` zonder overloop of consolefout na een gevonden rastermeting. 943 audiosporen zonder taal: 60 van 60 gemeten bestanden hebben de tag niet (ffprobe), de scanner laat niets vallen en de client toont onbekend. Journey 1, 9, 10 op een toestel: checklist in `docs/pleya-server-device-checklist.md`, uitkomst staat open | |
 | S15.3 | Securitymatrix K.2 volledig groen, vastgelegd in `docs/qa/` | `[ ]` | | |
 | S15.4 | Documentatie uit deel M compleet | `[ ]` | | |
 | S15.5 | Plex Replacement Readiness Gate (`PLEX_OFFLINE_REPLACEMENT_GATE`) groen op de geïsoleerde testinstance, Plex blijft draaien (migratie als keuze) | `[ ]` | | |
@@ -495,7 +503,8 @@ punt 3 en 4), en aan het venster-besluit.
 | --- | --- | --- | --- | --- |
 | S23.1 | Migratie `0021`, `POST /downloads` met recht `download` | `[x]` | M5: `0021_downloads.sql`, `internal/downloads` (store, taak `download_digest` rekent de SHA-256 uit), `POST/GET/DELETE /downloads`; recht `download` bij aanmaken en elke byte-aanvraag, 403 `library.download_not_permitted` voor wie alleen mag kijken, 404 buiten bereik of van een ander; matrixrij 61 tot en met 65 met een nieuwe uitkomst `notPermitted`; `downloads_api_test.go` (4 tests). Negatieve controle: de herhaalde rechtentoets weggehaald maakt `TestDownloadBelongsToItsOwnerAndNeedsTheDownloadRight` rood | 2026-10-23 |
 | S23.2 | Levering met digest, hervatten alleen bij gelijke digest | `[x]` | M5: `GET /downloads/{id}/file` met sterke `ETag "sha256-<hex>"`, `Digest` en `Repr-Digest`, `Range` alleen met `If-Range` gelijk aan die ETag, 409 `library.download_changed` als grootte of wijzigingstijd na het hashen veranderde, 409 `library.download_not_ready` tijdens `preparing`. Negatieve controle: `If-Range` altijd honoreren (`ir == etag \|\| true`) maakt `TestDownloadIsPreparedThenDeliveredWithDigestAndResumesOnlyOnEqualContent` rood | 2026-10-23 |
-| S23.3 | App: bestaande wachtrij op de nieuwe bron, sync-back | `[x]` | M5: `PleyaServerClient.resolveDownload` maakt de download, wacht tot `ready` en geeft url, `Authorization`-header en SHA-256 aan de bestaande wachtrij (`DownloadResolution` kreeg `headers` en `sha256`); de manager controleert de digest van het afgeronde bestand (`verifyDownloadDigest`) en verwijdert een afwijkend bestand. Sync-back is het bestaande offline-pad: `playback.dart` meldt een offline herhaling als `backlog`. Beperking: na een herstart van de app staat de digest niet meer in het geheugen en wordt niet gecontroleerd. Tests: `pleya_server_downloads_test.dart` (5), contracttest 94 fixtures. Negatieve controle: een digestcontrole die altijd slaagt maakt de mismatch-test rood. Hardware: niet bewezen op een toestel | 2026-10-23 |
+| S23.3 | App: bestaande wachtrij op de nieuwe bron, sync-back | `[x]` | M5: `PleyaServerClient.resolveDownload` maakt de download, wacht tot `ready` en geeft url, `Authorization`-header en SHA-256 aan de bestaande wachtrij (`DownloadResolution` kreeg `headers` en `sha256`); de manager controleert de digest van het afgeronde bestand (`verifyDownloadDigest`) en verwijdert een afwijkend bestand. Sync-back is het bestaande offline-pad: `playback.dart` meldt een offline herhaling als `backlog`. Na een herstart van de app vraagt de manager de digest opnieuw aan de server (`expectedDigestForUrl`, de download hoort bij de gebruiker) en draait dezelfde controle (`verifyDownloadAfterRestart`); een onbereikbare server, een ontbrekend bestand of een niet-genoemde digest laat de download staan met een gelogde overgeslagen controle. Tests: `pleya_server_downloads_test.dart` (12), contracttest 94 fixtures. Negatieve controles: een digestcontrole die altijd slaagt maakt zowel de mismatch-test als de herstart-test met het gecorrumpeerde bestand rood. Hardware: niet bewezen op een toestel | 2026-10-23 |
+| S23.6 | Een download of back-up wacht niet op een scan: de controlesom, de back-up en de hersteltest krijgen een eigen jobwerker | `[x]` | Ketenrooktest op de testinstance (25 okt): `POST /downloads` bleef twee minuten `preparing` omdat beide werkers in de opstartscan zaten. `jobs.Options.ReservedKinds` start een extra werker die alleen `download_digest`, `backup_create` en `backup_verify` aanneemt (een handmatige back-up bleef bij de off-site hersteltest op dezelfde manier op `running` staan). Tests: `TestReservedKindDoesNotWaitForALongScan` (met en zonder gereserveerde werker). Negatieve controle: de extra werker niet starten maakt de eerste subtest rood | 2026-10-25 |
 | S23.4 | Web toont downloads op Mijn Pleya (scherm 11b) | `[ ]` | | |
 | S23.5 | Capability `downloads`, venster 5 deel 3, journey 10 | `[x]` | M5: `capabilities.downloads` staat aan zodra de store er is, openapi `Download`, `DownloadList`, `CreateDownloadRequest` en vijf operaties (75), hoofdstuk Downloads in het protocol, fixtures `download.json` en `download_list.json`, `check_protocol.sh` groen. Journey 10 op een toestel staat open met S23.3 | 2026-10-23 |
 
@@ -520,7 +529,7 @@ punt 3 en 4), en aan het venster-besluit.
 | S25.4 | Upgrade-guard: back-up vóór migratie, weigering op nieuwere database | `[x]` | M6: `upgradeGuard` in `cmd/pleya-server/backupwork.go` vóór `migrate.Run`: nieuwere database geweigerd met uitleg, achterlopende eerst een back-up (`trigger: upgrade`) en niet starten als die mislukt; `migrate.Status`; `deploy-nas.sh` weigert zonder back-upmap. `TestUpgradeGuardBacksUpBeforeMigratingAndRefusesANewerDatabase`, `TestUpgradeGuardRefusesARealNewerDatabase`, `TestStatusReadsTheSchemaWithoutMigrating`, `TestRestoreRefusesABackupFromANewerSchema`. Negatieve controle: de weigering op `current > target` weghalen maakt beide guardtests rood | 2026-10-23 |
 | S25.5 | Vier faalpaden met foutcodes en settest | `[x]` | M6: `TestFailurePathsEachHaveTheirOwnCode` met echte oorzaken: schijf vol (`/dev/full`, `storage.full`), database weg (pool op een dode poort, `server.database_unavailable`, nieuw), transcoder-crash (ffmpeg met segfault, `playback.transcode_failed`), kapot bestand (rommel in het mkv, `playback.file_corrupt`, nieuw, een tweede ffprobe beslist). `writeInternal` vertaalt ENOSPC en een weggevallen database op elk endpoint. Negatieve controles: zonder de ffprobe-toets wordt kapot bestand `transcode_failed`, zonder de databasetoets wordt database weg `server.internal` | 2026-10-23 |
 | S25.6 | Scherm 35 gebouwd, journey 13 | `[ ]` | | |
-| S25.7 | Off-site back-up: een kopie van de dump en `/config` buiten de NAS (Hyper Backup of externe bestemming), met een hersteltest vanaf die kopie | `[ ]` | | |
+| S25.7 | Off-site back-up: een kopie van de dump en `/config` buiten de NAS (Hyper Backup of externe bestemming), met een hersteltest vanaf die kopie | `[~]` | 25 okt: geen eigen mechanisme; `docs/pleya-server-operator-backup.md` beschrijft Hyper Backup en rsync, de instellingen blijven omgevingsvariabelen (DEC-162 dicht). Hersteltest vanaf een kopie op de testinstance groen (`scripts/offsite-restore-test.sh`: verse back-up, rsync, bron weg, terugzetten, herstart, verify met 576 van 576 titels). Daarbij gevonden en gefixt: een terugkomende tar bleef op `missing` (`TestSyncRevivesABackupThatComesBackFromACopy`, negatieve controle met de oude SQL rood). Open bij Michel: de echte bestemming en waar `PLEYA_SERVER_BACKUP_KEY` buiten de NAS staat | 2026-10-25 |
 
 ### PS-12 Plex-migratie (keuzefase)
 
@@ -546,7 +555,7 @@ Start niet automatisch. Zolang PS-12.0 open staat, is geen enkele PS-12-taak toe
 | P5 | Locatorbesluit voor leesvoortgang | `[ ]` | |
 | P6 | Protocolvensters 1 tot 8 geopend en gesloten | `[ ]` | twee van acht: venster 1 (S1.6, DEC-137) en venster 2 (S2.6, DEC-146) |
 | P7 | PS-5-hardwareronde | `[!]` OVERDUE / HARDWARE VALIDATION OPEN | DEC-118-grens (merge van `feat/pleyaserver` naar `main`) gepasseerd op 25 sep 2026 met `638e7524` (PR #94), ronde niet gedraaid; DEC-118 ongewijzigd, de grenzen voor een publieke clientrelease en voor een indiening bij App Review of Beta App Review met PS-5- of PS-9-gedrag blijven gelden. Blokkeert die clientrelease, die indiening en de eerste publieke release van Pleya Server, tot een geslaagde hardwareacceptatie (besluit Michel, 10 okt 2026). Open in `docs/qa/ps5-hardware-round.md`: Jellyfin-blokkade opnieuw meten, T1 tot en met T4, R1, R2, opstartregel op tvOS en opnieuw op macOS. macOS-opstartregel build 246: historische PASS, artefact niet teruggevonden, geen actueel hardwarebewijs |
-| P8 | Plex-off gate groen, migratie als keuze | `[ ]` | |
+| P8 | Plex Replacement Readiness Gate groen (testinstance, Plex blijft draaien), migratie als keuze | `[ ]` | |
 | P9 | Contractdekking compleet: de dekkingslijst in `scripts/check_server_responses.py` dekt elk schema dat de server werkelijk teruggeeft, inclusief `UserList`, `LibraryPermissionList` en `SessionList` | `[x]` 4 sep 2026 | **De dekkingslijst.** `scripts/check_server_responses.py` leidt hem nu af uit `openapi.yaml`: elk schema dat het contract als JSON-antwoordlichaam noemt, met de `components/responses`-indirectie opgelost en niet-JSON-lichamen (artwork, ondertitels, stream) eruit. Dat brengt de eis van 8 naar 15 en dekt `UserList`, `SessionList` en `LibraryPermissionList`. Uit de vangst afleiden zou de poort tautologisch maken; uit het contract afleiden laat hem vanzelf meegroeien. Echte vangst van 32 antwoorden lokaal gedraaid met `GO_IMAGE=pleya-server-test:go-ffmpeg` en `PLEYA_RESPONSE_DIR=/src/.responses` (het containerpad binnen de mount, daar ging het eerder mis): alle 15 gedekt, alle 32 valide. Negatieve controle: met `UserList`, `SessionList` en `LibraryPermissionList` uit de vangst geeft de oude poort exit 0 met "de server houdt zich aan het contract" en de nieuwe exit 1 met de drie endpoints erbij. De afleiding heeft zes eigen controles op een verzonnen contract (`bijt de afleiding`). |
 
 ---

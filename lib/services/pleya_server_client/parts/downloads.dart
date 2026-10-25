@@ -21,6 +21,18 @@ mixin _PleyaServerDownloadMethods on _PleyaServerRequests {
     return json == null ? null : PleyaDownload.fromJson(json);
   }
 
+  /// The SHA-256 the server states for the download behind [fileUrl] (the
+  /// `…/downloads/{id}/file` url the queue was handed), or null when [fileUrl]
+  /// is not such a url or the server does not know the download any more. A
+  /// download belongs to its user, so the session that created it can ask
+  /// again after the app restarted and the in-memory digest is gone.
+  Future<String?> expectedDigestForUrl(String fileUrl) async {
+    final segments = Uri.tryParse(fileUrl)?.pathSegments ?? const <String>[];
+    final at = segments.lastIndexOf('downloads');
+    if (at < 0 || at + 2 >= segments.length || segments[at + 2] != 'file') return null;
+    return (await getDownload(segments[at + 1]))?.sha256;
+  }
+
   Future<bool> deleteDownload(String downloadId) async {
     if (!wireCapabilities.downloads) return false;
     await _adminSend('DELETE', '/downloads/$downloadId');

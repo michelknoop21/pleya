@@ -5,7 +5,7 @@
   bestanden die de app zelf gebruikt. Ze staan hier inline en niet als los
   bestand met een CSS-masker, om twee redenen: `fill="currentColor"` werkt
   alleen wanneer de SVG in het document staat, en een masker vraagt een
-  `style`-attribuut per instantie, wat de strikte `style-src 'self'` uit de
+  `style`-attribuut per instantie, wat de strikte `style-src` uit de
   CSP blokkeert.
 
   Wijzigt een glyph in `assets/icons/nav/`, dan hoort hij hier mee te wijzigen.

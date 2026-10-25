@@ -92,7 +92,7 @@ dat één reparatie drie pagina's raakt.
 Plex- en Jellyfin-client voor Flutter" halverwege de letters afgesneden. Op
 Instellingen schuift "Library Visibility" bij het scrollen onder dezelfde kopregel
 door en wordt daar doormidden gesneden. Er is geen scrim en geen gereserveerde
-bovenruimte. Bewijs: `60-about-opened.png` en `42-settings-scrolled.png`.
+bovenruimte. Bewijs: `60-about-opened.png` en `42-settings-scrolled.png` (laatstgenoemde verwijderd, in de git-historie; Instellingen is vervangen door `docs/assets/a24b-northstars/01-Instellingen/`, A-24b).
 
 **Twee koppen op één pagina.** Samen Kijken en Over tekenen naast de kop van de
 shell hun eigen gecentreerde titel. Logs tekent er één die anders heet dan de tegel
@@ -194,7 +194,7 @@ Wat per pagina verandert staat in het reviewpakket hieronder.
 
 ### Instellingen
 
-Klasse C. `settings-a.png` (geopend) en `settings-b.png` (eerste tegel gefocust).
+Klasse C. `settings-a.png` (geopend) en `settings-b.png` (eerste tegel gefocust). (Beide beelden en de bijbehorende `before/` en `compare/`-beelden zijn verwijderd, in de git-historie; vervangen door `docs/assets/a24b-northstars/01-Instellingen/`, A-24b.)
 
 Gemeten nu: kop 1,67%, groeplabel 9,64%, kaart 9,14% met een breedte van 81,69%,
 rijsteek 281 pixels oftewel 13,0% van de hoogte, 5,3 rijen zichtbaar en de zesde
