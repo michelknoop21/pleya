@@ -103,9 +103,16 @@ class WatchlistSourceFactory {
   /// `watchlist.studio.v1` sees the same "no kijklijst" state as production.
   Future<List<WatchlistSource>> _verifySources() async {
     final sources = <WatchlistSource>[];
-    for (final client in clientsById().values) {
+    for (final MapEntry(key: serverId, value: client) in clientsById().entries) {
       if (client is! PleyaServerClient) continue;
       if ((await client.fetchVerifyWatchlistIds()).isEmpty) continue;
+      // The client is looked up again on every call. A profile rebind swaps
+      // the client for a new one; the old one refreshing its own session
+      // would retire the new one's token on the single-session fixture.
+      PleyaServerClient? current() => switch (clientsById()[serverId]) {
+        final PleyaServerClient c => c,
+        _ => null,
+      };
       final connection = client.connection;
       sources.add(
         VerifyWatchlistSource(
@@ -115,8 +122,8 @@ class WatchlistSourceFactory {
             accountId: connection.serverId,
             userId: connection.userName,
           ),
-          fetchIds: client.fetchVerifyWatchlistIds,
-          fetchItem: client.fetchItem,
+          fetchIds: () async => await current()?.fetchVerifyWatchlistIds() ?? const [],
+          fetchItem: (id) async => current()?.fetchItem(id),
         ),
       );
     }

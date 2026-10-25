@@ -62,6 +62,24 @@ void main() {
     expect(server.requests.where((path) => path.contains('/verify/')), isEmpty);
   });
 
+  test('a fetch asks the client the profile has now, not the one it was built with', () async {
+    final before = _server(watchlist: ['m-1']);
+    final after = _server(watchlist: ['m-3']);
+    var clients = {'pleyaServer.srv-1': before.client()};
+    final sources = await WatchlistSourceFactory(
+      profileId: 'p1',
+      resolvePlexAuth: () async => null,
+      clientIdentifier: 'client-1',
+      clientsById: () => clients,
+      verifyWatchlist: true,
+    ).build();
+
+    clients = {'pleyaServer.srv-1': after.client()};
+    final entries = await sources.single.fetch();
+    expect([for (final e in entries) e.item.title], ['Charge']);
+    expect(before.requests.where((path) => path.contains('/items/')), isEmpty);
+  });
+
   test('the list is read-only', () async {
     final source = (await _build(_server(watchlist: ['m-1']), verifyWatchlist: true)).single;
     final item = MediaItem(id: 'm-1', backend: MediaBackend.pleyaServer, kind: MediaKind.movie);
