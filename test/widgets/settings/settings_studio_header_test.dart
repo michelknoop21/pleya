@@ -45,6 +45,8 @@ class _Discover extends ChangeNotifier implements DiscoverProvider {
 MediaItem _film(String id, {String? art}) =>
     MediaItem(id: id, backend: MediaBackend.plex, kind: MediaKind.movie, title: id, serverId: 'nas', artPath: art);
 
+final _iPhone = TargetPlatformVariant.only(TargetPlatform.iOS);
+
 void main() {
   setUp(() {
     LocaleSettings.setLocaleSync(AppLocale.en);
@@ -54,9 +56,19 @@ void main() {
     OptimizedMediaImage.debugImageBuilder = null;
   });
 
-  Future<void> pump(WidgetTester tester, Widget child, {DiscoverProvider? discover, double width = 375}) async {
-    tester.view.physicalSize = Size(width, 700);
-    tester.view.devicePixelRatio = 1;
+  /// An iPhone-sized view at 3x, so `PlatformDetector.isPhone` reads it as a
+  /// phone; [width] and [height] are in points. [dpr] 2 with an iPad size
+  /// reads as a tablet.
+  Future<void> pump(
+    WidgetTester tester,
+    Widget child, {
+    DiscoverProvider? discover,
+    double width = 375,
+    double height = 700,
+    double dpr = 3,
+  }) async {
+    tester.view.physicalSize = Size(width * dpr, height * dpr);
+    tester.view.devicePixelRatio = dpr;
     addTearDown(tester.view.reset);
     final app = TranslationProvider(
       child: MaterialApp(debugShowCheckedModeBanner: false, theme: monoTheme(dark: true), home: child),
@@ -114,7 +126,7 @@ void main() {
     });
   });
 
-  group('settings page off TV', () {
+  group('settings page on an iPhone', () {
     testWidgets('opens on the Studio header with the bar title left out', (tester) async {
       await pump(tester, page());
 
@@ -122,7 +134,7 @@ void main() {
       expect(find.text('Weergave'), findsOneWidget, reason: 'one title at rest: the large one');
       final big = tester.getRect(find.text('Weergave'));
       expect(big.top, greaterThanOrEqualTo(kToolbarHeight), reason: 'below the pinned bar, not in it');
-    });
+    }, variant: _iPhone);
 
     testWidgets('the bar shows its title once the header has scrolled under it', (tester) async {
       await pump(tester, page(rows: 20));
@@ -143,7 +155,7 @@ void main() {
       await tester.drag(find.byType(Scrollable).first, const Offset(0, 600));
       await tester.pumpAndSettle();
       expect(find.descendant(of: find.byType(AppBar), matching: find.text('Weergave')), findsNothing);
-    });
+    }, variant: _iPhone);
 
     testWidgets('a long title fits a 320 pt phone without overflow or a clipped word', (tester) async {
       await pump(tester, page(title: 'Taal en ondertitels'), width: 320);
@@ -156,7 +168,26 @@ void main() {
       expect(rect.right, lessThanOrEqualTo(320));
       final eyebrow = tester.getRect(find.text('PLEYA · ${t.settings.title.toUpperCase()}'));
       expect(eyebrow.top, greaterThanOrEqualTo(rect.bottom), reason: 'the eyebrow sits under the title');
-    });
+    }, variant: _iPhone);
+  });
+
+  group('settings page off the iPhone keeps the plain bar', () {
+    testWidgets('on an iPad', (tester) async {
+      await pump(tester, page(), width: 1024, height: 1366, dpr: 2);
+      expect(find.byType(SettingsStudioHeader), findsNothing);
+      expect(find.descendant(of: find.byType(AppBar), matching: find.text('Weergave')), findsOneWidget);
+    }, variant: _iPhone);
+
+    testWidgets('on Android and desktop platforms', (tester) async {
+      await pump(tester, page());
+      expect(find.byType(SettingsStudioHeader), findsNothing);
+      expect(find.descendant(of: find.byType(AppBar), matching: find.text('Weergave')), findsOneWidget);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+    testWidgets('on macOS', (tester) async {
+      await pump(tester, page());
+      expect(find.byType(SettingsStudioHeader), findsNothing);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
   });
 
   group('on TV', () {
@@ -167,6 +198,6 @@ void main() {
       await pump(tester, page());
       expect(find.byType(SettingsStudioHeader), findsNothing);
       expect(find.descendant(of: find.byType(AppBar), matching: find.text('Weergave')), findsOneWidget);
-    });
+    }, variant: _iPhone);
   });
 }

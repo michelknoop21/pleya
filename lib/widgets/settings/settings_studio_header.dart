@@ -1,5 +1,6 @@
-/// The large Studio header of the settings pages off TV (A-24, Michel's
-/// choice of 24 October 2026 for "Apple TV+ Studio").
+/// The large Studio header of the settings pages on an iPhone (A-24, Michel's
+/// choice of 24 October 2026 for "Apple TV+ Studio"; see
+/// [settingsStudioHeaderApplies]).
 ///
 /// A large title with a small-caps `PLEYA · <SECTION>` line under it, and on
 /// the right a backdrop from the viewer's own library that fades into the page.
@@ -7,9 +8,11 @@
 /// keeps its back button and actions, and only shows its own title once this
 /// one has gone under it ([SettingsStudioCompactTitle]).
 ///
-/// The artwork is whatever [DiscoverProvider] already holds: no request is
-/// made for it, and without a provider or without an item that has a backdrop
-/// the panel falls back to the warm brand gradient with the Pleya mark.
+/// The artwork is whatever [DiscoverProvider] already holds: no data request
+/// is made for it, only the backdrop image itself is loaded at the panel's
+/// size, from the image cache when that size is already there. Without a
+/// provider or without an item that has a backdrop the panel falls back to the
+/// warm brand gradient with the Pleya mark.
 library;
 
 import 'dart:math' as math;

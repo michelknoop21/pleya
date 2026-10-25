@@ -8,29 +8,37 @@ part of '../settings_screen.dart';
 
 extension _SettingsPhonePage on _SettingsScreenState {
   Widget _buildSettingsScaffold(BuildContext context) {
-    // A-24: the eyebrow names whose settings these are, when there is a
-    // profile to name.
+    // A-24: the Studio header, its bar and the filled search bar on an iPhone;
+    // everywhere else the plain bar and outlined field from before.
+    final studio = settingsStudioHeaderApplies(context);
+    // The eyebrow names whose settings these are, when there is a profile.
     final profileName = context.select<ActiveProfileProvider?, String?>((p) => p?.active?.displayName);
     return Scaffold(
       body: Focus(
         onKeyEvent: _handleKeyEvent,
         child: NotificationListener<ScrollNotification>(
-          onNotification: (n) => settingsStudioTrackScroll(_studioCollapsed, n),
+          onNotification: (n) => studio && settingsStudioTrackScroll(_studioCollapsed, n),
           child: ScrollCrown(
             child: CustomScrollView(
               primary: false,
               slivers: [
                 ExcludeFocus(
-                  child: SettingsStudioBar(collapsed: _studioCollapsed, title: Text(t.settings.title)),
+                  child: studio
+                      ? SettingsStudioBar(collapsed: _studioCollapsed, title: Text(t.settings.title))
+                      : CustomAppBar(title: Text(t.settings.title), pinned: true),
                 ),
-                SliverToBoxAdapter(
-                  child: ExcludeFocus(
-                    child: SettingsWidthLimit(
-                      child: SettingsStudioHeader(title: t.settings.title, section: profileName),
+                if (studio)
+                  SliverToBoxAdapter(
+                    child: ExcludeFocus(
+                      child: SettingsWidthLimit(
+                        child: SettingsStudioHeader(title: t.settings.title, section: profileName),
+                      ),
                     ),
                   ),
-                ),
-                if (_searchEnabled) SliverToBoxAdapter(child: SettingsWidthLimit(child: _buildSearchField())),
+                if (_searchEnabled)
+                  SliverToBoxAdapter(
+                    child: SettingsWidthLimit(child: _buildSearchField(studio: studio)),
+                  ),
                 if (_searchQuery.isNotEmpty)
                   _buildSearchResults()
                 else
@@ -103,11 +111,12 @@ extension _SettingsPhonePage on _SettingsScreenState {
     );
   }
 
-  Widget _buildSearchField() {
+  Widget _buildSearchField({required bool studio}) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      // A-24: a filled, rounded bar without an outline. The theme's input
-      // decoration already supplies the fill and the 12 pt radius.
+      padding: EdgeInsets.fromLTRB(16, studio ? 0 : 8, 16, 8),
+      // A-24 on an iPhone: a filled, rounded bar without an outline. The
+      // theme's input decoration already supplies the fill and the 12 pt
+      // radius. Elsewhere the outlined field from before.
       child: FocusableTextField(
         controller: _searchController,
         decoration: InputDecoration(
@@ -123,6 +132,7 @@ extension _SettingsPhonePage on _SettingsScreenState {
                     _rebuild();
                   },
                 ),
+          border: studio ? null : const OutlineInputBorder(),
           isDense: true,
         ),
         onChanged: (value) {

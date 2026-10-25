@@ -42,3 +42,13 @@ Color settingsSectionInk(BuildContext context) {
   if (!PlatformDetector.isTV() && t.isLight) return kSettingsSectionInkLight;
   return t.textMuted;
 }
+
+/// Whether a settings page opens on the A-24 Studio header, with its wash bar
+/// and the filled search bar on the main page: on an iPhone only, the scope
+/// of A-24 PR 1. iPad, the iOS app on a Mac, Android, desktop and TV keep the
+/// plain bar. The shared row style above is not gated by this.
+bool settingsStudioHeaderApplies(BuildContext context) =>
+    !PlatformDetector.isTV() &&
+    Theme.of(context).platform == TargetPlatform.iOS &&
+    !TvDetectionService.isIOSAppOnMacSync() &&
+    PlatformDetector.isPhone(context);

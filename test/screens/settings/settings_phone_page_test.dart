@@ -8,6 +8,7 @@ library;
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/focus/focusable_text_field.dart';
@@ -44,13 +45,18 @@ class _FakeActiveProfile extends ChangeNotifier implements ActiveProfileProvider
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+final _iPhone = TargetPlatformVariant.only(TargetPlatform.iOS);
+
 void main() {
   late AppDatabase db;
   setUpAll(() => db = AppDatabase.forTesting(NativeDatabase.memory()));
 
+  /// Points at 3x. An iPhone-sized view (812 or 568 high) reads as a phone to
+  /// `PlatformDetector.isPhone`; the default 2400 high view, which builds every
+  /// card at once, reads as a tablet and so shows the plain bar.
   Future<void> pumpSettings(WidgetTester tester, {double width = 375, double height = 2400}) async {
-    tester.view.physicalSize = Size(width, height);
-    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = Size(width * 3, height * 3);
+    tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
     resetSharedPreferencesForTest();
     await tester.runAsync(() => SettingsService.getInstance());
@@ -89,7 +95,7 @@ void main() {
   }
 
   testWidgets('the Studio header sits above a filled search bar without an outline', (tester) async {
-    await pumpSettings(tester);
+    await pumpSettings(tester, height: 812);
 
     expect(find.byType(SettingsStudioHeader), findsOneWidget);
     final header = tester.getRect(find.byType(SettingsStudioHeader));
@@ -102,9 +108,22 @@ void main() {
     expect(theme.filled, isTrue);
     expect(theme.border, isA<OutlineInputBorder>().having((b) => b.borderSide, 'side', BorderSide.none));
     await unmount(tester);
-  });
+  }, variant: _iPhone);
 
-  testWidgets('values sit trailing: the theme on Weergave, the server line on Servers', (tester) async {
+  testWidgets(
+    'off the iPhone the page keeps the plain bar and the outlined search field',
+    (tester) async {
+      await pumpSettings(tester);
+
+      expect(find.byType(SettingsStudioHeader), findsNothing);
+      expect(find.descendant(of: find.byType(AppBar), matching: find.text(t.settings.title)), findsOneWidget);
+      expect(tester.widget<TextField>(find.byType(TextField)).decoration!.border, isA<OutlineInputBorder>());
+      await unmount(tester);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+
+  testWidgets('values: the theme beside the Weergave title, the server line shown whole', (tester) async {
     await pumpSettings(tester);
 
     expect(
@@ -112,10 +131,8 @@ void main() {
       findsOneWidget,
       reason: 'the theme (OLED by default) is the Weergave row value',
     );
-    expect(
-      find.ancestor(of: find.text(t.tvMyPleya.noServers), matching: find.byType(SettingValueLabel)),
-      findsOneWidget,
-    );
+    // Shown whole: beside the title when it fits, under it when it does not.
+    expect(tester.renderObject<RenderParagraph>(find.text(t.tvMyPleya.noServers)).didExceedMaxLines, isFalse);
     expect(
       find.text('${t.settings.libraryDensity} ${SettingsService.instance.read(SettingsService.libraryDensity)}'),
       findsOneWidget,
@@ -139,12 +156,12 @@ void main() {
   });
 
   testWidgets('at 320 pt the header and every row lay out without overflow', (tester) async {
-    await pumpSettings(tester, width: 320);
+    await pumpSettings(tester, width: 320, height: 568);
     expect(tester.takeException(), isNull);
     final title = tester.getRect(
       find.descendant(of: find.byType(SettingsStudioHeader), matching: find.text(t.settings.title)),
     );
     expect(title.right, lessThanOrEqualTo(320));
     await unmount(tester);
-  });
+  }, variant: _iPhone);
 }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../utils/platform_detector.dart';
 import 'focused_scroll_scaffold.dart';
 import 'settings/settings_studio_header.dart';
 import 'settings_section.dart';
@@ -48,23 +47,22 @@ class SettingsPage extends StatelessWidget {
         pinned: pinned,
         automaticallyImplyLeading: automaticallyImplyLeading,
         onBackPressed: onBackPressed,
-        header: _studioHeader(),
+        header: _studioHeader(context),
         slivers: pageSlivers,
       ),
     );
   }
 
-  /// A-24: off TV every settings page opens on the Studio header, built from
-  /// the page title. TV keeps its plain bar; a title that is not a plain
-  /// [Text] keeps it too, rather than guessing at its string.
-  Widget? _studioHeader() {
-    if (PlatformDetector.isTV()) return null;
+  /// A-24: on an iPhone every settings page opens on the Studio header, built
+  /// from the page title ([settingsStudioHeaderApplies]). Elsewhere the plain
+  /// bar stays, and so does a title that is not a plain [Text], rather than
+  /// guessing at its string.
+  Widget? _studioHeader(BuildContext context) {
+    if (!settingsStudioHeaderApplies(context)) return null;
     final label = switch (title) {
       Text(:final data?) => data,
       _ => null,
     };
-    // Inside the same width limit as the cards, so the large title lines up
-    // with them on a wide window.
     return label == null ? null : SettingsWidthLimit(child: SettingsStudioHeader(title: label));
   }
 
