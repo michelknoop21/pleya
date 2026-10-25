@@ -100,6 +100,9 @@ class AutomationIds {
   /// One category in the TV Appearance page, in its visible display order.
   static const String settingsAppearanceCategory = 'settings.appearance.category';
 
+  /// One category on the TV settings page (A-24), in its visible order.
+  static const String settingsCategory = 'settings.category';
+
   /// The nav rail as a whole — bounds for collapse/expand geometry checks.
   static const String sidebarRail = 'sidebar.rail';
 
@@ -770,6 +773,7 @@ class AutomationIds {
     libraryPickerCard,
     settingsTile,
     settingsAppearanceCategory,
+    settingsCategory,
     mediaDetailEpisodeListItem,
     mediaDetailSeasonChip,
     mediaDetailAction,
@@ -914,6 +918,7 @@ class AutomationIds {
     {'id': myPleyaSectionContent, 'role': 'region', 'instanceable': true},
     {'id': myPleyaSectionTile, 'role': 'grid.item', 'instanceable': true},
     {'id': settingsAppearanceCategory, 'role': 'button', 'instanceable': true},
+    {'id': settingsCategory, 'role': 'button', 'instanceable': true},
     {'id': myPleyaChip, 'role': 'button', 'instanceable': true},
     {'id': myPleyaLogRow, 'role': 'list.item', 'instanceable': true},
     {'id': screenAssistant, 'role': 'screen', 'instanceable': false},

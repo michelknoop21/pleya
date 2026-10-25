@@ -216,6 +216,9 @@ ids:
   - id: settings.appearance.category
     role: button
     instanceable: true
+  - id: settings.category
+    role: button
+    instanceable: true
   - id: my_pleya.chip
     role: button
     instanceable: true
