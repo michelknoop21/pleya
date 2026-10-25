@@ -51,6 +51,24 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 409 · 25 October 2026 · iPhone and iPad
+
+<!-- commit: e8fbf912b8b64e5f56603f1dfca009adf60535a9 -->
+
+### Improved
+
+- **The glass tab bar on iPhone has a sliding selection lens.** With Liquid Glass enabled in Appearance, the lens moves to the tab you tap. You can also drag it across the bar and release to switch tabs. Cancelling the gesture keeps the current tab. Reduce Motion removes the transition animation.
+
+### Fixed
+
+- **Downloads can still be verified after restarting Pleya.** When a download finishes after an app restart, Pleya asks Pleya Server for its checksum again and verifies the file when the server supplies one.
+- **Reconnecting to Pleya Server keeps artwork available.** Closing the replaced connection no longer clears the new connection's artwork token.
+
+### Notes
+
+- The lens is for iPhone; iPad keeps its existing tab bar. Liquid Glass remains optional and off by default.
+- Worth checking on a real iPhone: dragging between tabs, cancelling with a system gesture, Reduce Motion, and the glass over colourful posters. Unit tests and the iOS simulator passed; touch feel and visual correspondence to the reference video have not been checked on hardware.
+
 ## 2.8.1 · build 408 · 25 October 2026 · iPhone, iPad and Apple TV
 
 <!-- commit: 58756b116c5beb18e98ede60fc2463cc29f4d384 -->
