@@ -210,6 +210,8 @@ func run() int {
 		Logger:   logging.Component(log, "jobs"),
 		Workers:  cfg.JobWorkers,
 		Instance: serverID.String()[:8],
+		// Een download wacht op zijn controlesom; een scan mag die niet ophouden.
+		ReservedKinds: []string{api.JobDownloadDigest},
 	})
 	// Een afgeronde scan wekt de metadata-ronde (M2a). Niet-blokkerend: is er al
 	// een signaal onderweg, dan zegt een tweede niets nieuws.

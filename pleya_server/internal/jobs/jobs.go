@@ -74,6 +74,11 @@ type Options struct {
 	Workers  int
 	Interval time.Duration
 	Instance string
+	// ReservedKinds zijn soorten werk waar een gebruiker op staat te wachten
+	// (een download die zijn controlesom nodig heeft). Ze krijgen een eigen
+	// werker die niets anders aanneemt, zodat een scan van tien minuten ze niet
+	// laat verhongeren.
+	ReservedKinds []string
 }
 
 // Runner haalt jobs op en voert ze uit.
@@ -83,6 +88,7 @@ type Runner struct {
 	workers  int
 	interval time.Duration
 	instance string
+	reserved []string
 	handlers map[string]Handler
 
 	mu      sync.Mutex
@@ -103,6 +109,7 @@ func New(opts Options) *Runner {
 		workers:  opts.Workers,
 		interval: opts.Interval,
 		instance: opts.Instance,
+		reserved: opts.ReservedKinds,
 		handlers: map[string]Handler{},
 		running:  map[id.ID]context.CancelCauseFunc{},
 	}
@@ -163,19 +170,29 @@ func (r *Runner) Requeue(ctx context.Context) (int64, error) {
 
 // Run draait tot de context afloopt.
 func (r *Runner) Run(ctx context.Context) {
-	done := make(chan struct{}, r.workers)
-	for w := 0; w < r.workers; w++ {
-		go func(worker int) {
-			defer func() { done <- struct{}{} }()
-			r.loop(ctx, worker)
-		}(w)
+	total := r.workers
+	if len(r.reserved) > 0 {
+		total++
 	}
-	for w := 0; w < r.workers; w++ {
+	done := make(chan struct{}, total)
+	for w := 0; w < total; w++ {
+		var kinds []string
+		if w >= r.workers {
+			kinds = r.reserved
+		}
+		go func(worker int, kinds []string) {
+			defer func() { done <- struct{}{} }()
+			r.loop(ctx, worker, kinds)
+		}(w, kinds)
+	}
+	for w := 0; w < total; w++ {
 		<-done
 	}
 }
 
-func (r *Runner) loop(ctx context.Context, worker int) {
+// loop haalt werk op. Zonder kinds neemt de werker elke soort aan; met kinds
+// alleen die soorten.
+func (r *Runner) loop(ctx context.Context, worker int, kinds []string) {
 	ticker := time.NewTicker(r.interval)
 	defer ticker.Stop()
 
@@ -186,7 +203,7 @@ func (r *Runner) loop(ctx context.Context, worker int) {
 		default:
 		}
 
-		job, ok, err := r.claim(ctx, worker)
+		job, ok, err := r.claim(ctx, worker, kinds)
 		if err != nil {
 			if ctx.Err() != nil {
 				return
@@ -206,7 +223,7 @@ func (r *Runner) loop(ctx context.Context, worker int) {
 	}
 }
 
-func (r *Runner) claim(ctx context.Context, worker int) (Job, bool, error) {
+func (r *Runner) claim(ctx context.Context, worker int, kinds []string) (Job, bool, error) {
 	var job Job
 	err := r.pool.QueryRow(ctx, `
 		UPDATE jobs
@@ -215,12 +232,13 @@ func (r *Runner) claim(ctx context.Context, worker int) (Job, bool, error) {
 		WHERE id = (
 			SELECT id FROM jobs
 			WHERE state = 'pending' AND run_at <= now()
+			  AND ($2::text[] IS NULL OR kind = ANY($2))
 			ORDER BY priority DESC, id
 			FOR UPDATE SKIP LOCKED
 			LIMIT 1
 		)
 		RETURNING id, kind, args, attempts`,
-		fmt.Sprintf("%s#%d", r.instance, worker)).
+		fmt.Sprintf("%s#%d", r.instance, worker), kinds).
 		Scan(&job.ID, &job.Kind, &job.Args, &job.Attempts)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return job, false, nil

@@ -418,3 +418,69 @@ func TestCancelRequestedBeforeRegistrationStillStopsTheHandler(t *testing.T) {
 	stop()
 	<-done
 }
+
+// TestReservedKindDoesNotWaitForALongScan is de download die zijn controlesom
+// nodig heeft terwijl beide werkers in een scan van tien minuten zitten. Zonder
+// gereserveerde werker wacht hij tot die scan klaar is; met een eigen werker
+// niet. De tweede subtest is de negatieve controle op de eerste.
+func TestReservedKindDoesNotWaitForALongScan(t *testing.T) {
+	run := func(t *testing.T, reserved []string) (digestRan func() bool) {
+		t.Helper()
+		pool := testsupport.Pool(t)
+		if _, err := migrate.Run(context.Background(), pool, nil); err != nil {
+			t.Fatalf("migreren: %v", err)
+		}
+		runner := jobs.New(jobs.Options{
+			Pool:          pool,
+			Logger:        slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})),
+			Workers:       1,
+			Interval:      20 * time.Millisecond,
+			Instance:      "test",
+			ReservedKinds: reserved,
+		})
+
+		release := make(chan struct{})
+		scanStarted := make(chan struct{})
+		var digest atomic.Bool
+		runner.Register("scan", func(ctx context.Context, job jobs.Job) error {
+			close(scanStarted)
+			select {
+			case <-release:
+			case <-ctx.Done():
+			}
+			return nil
+		})
+		runner.Register("download_digest", func(ctx context.Context, job jobs.Job) error {
+			digest.Store(true)
+			return nil
+		})
+
+		ctx := context.Background()
+		runCtx, cancel := context.WithCancel(ctx)
+		done := make(chan struct{})
+		go func() { runner.Run(runCtx); close(done) }()
+		t.Cleanup(func() { close(release); cancel(); <-done })
+
+		if _, _, err := runner.Enqueue(ctx, "scan", nil, "", time.Time{}); err != nil {
+			t.Fatal(err)
+		}
+		<-scanStarted
+		if _, _, err := runner.Enqueue(ctx, "download_digest", nil, "", time.Time{}); err != nil {
+			t.Fatal(err)
+		}
+		return digest.Load
+	}
+
+	t.Run("met een gereserveerde werker draait de controlesom meteen", func(t *testing.T) {
+		ran := run(t, []string{"download_digest"})
+		waitFor(t, ran, "de controlesom wachtte op de scan")
+	})
+
+	t.Run("zonder gereserveerde werker wacht hij op de scan", func(t *testing.T) {
+		ran := run(t, nil)
+		time.Sleep(400 * time.Millisecond)
+		if ran() {
+			t.Fatal("de controlesom draaide terwijl de enige werker in de scan zat")
+		}
+	})
+}
