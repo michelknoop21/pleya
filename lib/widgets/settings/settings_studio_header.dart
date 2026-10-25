@@ -159,13 +159,19 @@ class SettingsStudioHeader extends StatelessWidget {
                       Row(
                         children: [
                           if (back)
-                            const Padding(
-                              padding: EdgeInsetsDirectional.only(start: _kBackStart, end: 2),
-                              child: AutomationNode(
-                                id: AutomationIds.settingsBack,
-                                role: 'button',
-                                child: SettingsStudioBackButton(),
-                              ),
+                            Padding(
+                              padding: const EdgeInsetsDirectional.only(start: _kBackStart, end: 2),
+                              // Only the page on top answers to `settings.back`: a page
+                              // under it keeps its chevron (scrolled out of view,
+                              // perhaps) but not the id, so a scenario taps the one
+                              // a viewer would.
+                              child: ModalRoute.isCurrentOf(context) ?? true
+                                  ? const AutomationNode(
+                                      id: AutomationIds.settingsBack,
+                                      role: 'button',
+                                      child: SettingsStudioBackButton(),
+                                    )
+                                  : const SettingsStudioBackButton(),
                             )
                           else
                             const SizedBox(width: _kInsetStart),

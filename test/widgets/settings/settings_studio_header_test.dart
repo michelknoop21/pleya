@@ -6,6 +6,7 @@
 /// TV a settings page keeps the plain bar.
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -13,6 +14,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
@@ -202,6 +205,36 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('open'), findsOneWidget);
       expect(find.byType(SettingsStudioHeader), findsNothing);
+    }, variant: _iPhone);
+
+    testWidgets('only the page on top answers to settings.back', (tester) async {
+      await pump(
+        tester,
+        Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page())),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      final nav = tester.state<NavigatorState>(find.byType(Navigator));
+      unawaited(nav.push(MaterialPageRoute<void>(builder: (_) => page(title: 'Downloads'))));
+      await tester.pumpAndSettle();
+
+      final backIds = find.byWidgetPredicate(
+        (w) => w is AutomationNode && w.id == AutomationIds.settingsBack,
+        skipOffstage: false,
+      );
+      expect(backIds, findsOneWidget, reason: 'the page underneath keeps its chevron but not the id');
+      expect(find.descendant(of: backIds, matching: find.byType(SettingsStudioBackButton)), findsOneWidget);
+      expect(
+        find.ancestor(of: backIds, matching: find.byType(SettingsStudioHeader)).evaluate().single.widget,
+        isA<SettingsStudioHeader>().having((h) => h.title, 'title', 'Downloads'),
+      );
     }, variant: _iPhone);
 
     testWidgets('the main page carries its section and tagline under the title', (tester) async {
