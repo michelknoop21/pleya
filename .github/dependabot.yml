@@ -66,9 +66,19 @@ updates:
         update-types: [minor, patch]
 
   # pleya_web gebruikt bun (bun.lock) met exacte versies in package.json.
+  #
+  # Dependabot kent voor bun geen security-updates (GitHub-docs, supported
+  # ecosystems: Version updates Supported, Security updates Not supported). Open
+  # alerts op pleya_web (vite, @sveltejs/kit) gaan dus alleen dicht via een
+  # versie-update, en die valt onder de cooldown hieronder: patches na 3 dagen,
+  # majors pas na 30. Een alert waarvan de fix een major vraagt, bijvoorbeeld
+  # @sveltejs/kit 3.0.0, wacht dus tot de cooldown voorbij is of wordt met de
+  # hand opgepakt.
+  #
   # Koppels staan vóór de algemene groepen: een dependency valt in de eerste
-  # groep die past. Majors van de koppels komen als één PR, andere majors
-  # als eigen PR.
+  # groep die past. Vite, playwright en testing-library nemen ook majors mee in
+  # één PR. De svelte-groep alleen minor en patch, zodat een major van kit of de
+  # vite-plugin een eigen PR krijgt en de patches er niet op hoeven te wachten.
   - package-ecosystem: bun
     directory: /pleya_web
     schedule:
@@ -85,6 +95,7 @@ updates:
     groups:
       svelte:
         patterns: ["svelte", "svelte-check", "@sveltejs/*"]
+        update-types: [minor, patch]
       vite:
         patterns: ["vite", "vitest", "@vitejs/*"]
       playwright:
