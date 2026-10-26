@@ -5049,3 +5049,16 @@ Migratie `0019_transcode_sessions.sql` (de masterlijst noemde `0017`, dat was be
 3. De code beslist welke functies bestaan, met hun voorkeur, provider en voorwaarde; de borden beslissen waar en hoe ze verschijnen. Wat alleen op een bord staat wordt niet gebouwd zonder apart besluit, wat alleen in de code bestaat krijgt een plek in de groep die het best past.
 4. Besluiten Michel van 25 oktober 2026 over de open afwijkingen: App-taal staat als eerste rij in Taal en ondertitels; de TV-schakelaar als getekende pil en de rechterkolom van 440 pt zijn geaccepteerd; op TV reserveert een kijklijstkaart twee titelregels, zodat een gefocuste titel tot twee regels heel leesbaar is zonder kleinere letter en zonder dat een kaart verschuift (een langere titel wordt nog afgekapt); de groepsnamen zijn in Licht dezelfde als in Donker en OLED.
 **Consequences:** iPhone en Apple TV delen voor Mijn Pleya één indeling en dezelfde regels voor kijklijst en Big P-kaart. Resterende verschillen met de borden staan per acceptatieregel in [`docs/plans/AFWIJKINGEN_A24B.md`](plans/AFWIJKINGEN_A24B.md); de open punten daar wachten op Michel. Simulatorbewijs is geen hardware-acceptatie. Unified impact: alleen presentatie, geen backend-, bron- of rechtenpad.
+
+## DEC-XXX-edge: Edge-to-edge op iPhone, geen effen balk in paginakleur onder de statusbalk
+
+**Date:** 2026-10-26
+**Status:** accepted (Michel, 26 oktober 2026)
+**Roadmap:** A-24 (vervolg op A-24b).
+**Context:** Op iPhone (TestFlight 410) toonde de Instellingen-kop boven de Studio-kop een effen balk in paginakleur achter klok en Dynamic Island. De wash en het artworkpaneel begonnen op `top = MediaQuery.paddingOf(context).top`, dus de statusbalkstrook kreeg alleen de paginakleur.
+**Decision:**
+1. Achtergrond, wash en artwork van een scherm lopen door tot de bovenrand; alleen inhoud respecteert de safe area. Zie [`docs/agents/ui-and-tv.md`](agents/ui-and-tv.md#edge-to-edge-op-iphone).
+2. De Studio-kop begint op y=0; een zachte verticale fade (statusbalk plus 12 pt) over het artwork houdt de glyphs leesbaar.
+3. De ingeklapte Studio-balk is een `GlassSurface` met de paginakleur op 80%. Glas staat standaard uit, dus voor een standaardgebruiker blijft de balk effen; de iPad heeft geen Studio-kop en geen glas.
+4. Het logo in het artwork blijft onder de statusbalk.
+**Consequences:** De regel is alleen voor de Studio-kop en -balk gebouwd. De ingeklapte balk van de detailhero en de gewone instellingenbalken zijn nog effen en blijven open tot hun eigen pakket. Open punt: het artworkpaneel krijgt de statusfade nog niet zolang de serverclient niet is geregistreerd (de merkachtergrond staat er dan voor). Nieuwe schermen met een kop of artwork volgen dezelfde regel. Unified impact: alleen presentatie, geen backend-, bron- of rechtenpad. Hardware-acceptatie op een iPhone blijft open tot Michel het op toestel ziet.

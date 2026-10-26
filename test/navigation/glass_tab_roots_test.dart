@@ -5,6 +5,8 @@
 /// ended behind the capsule.
 library;
 
+import 'dart:math' as math;
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -63,7 +65,12 @@ Future<void> _expectClearOfBar(WidgetTester tester, Finder scrollable, Finder la
     await tester.drag(scrollable, const Offset(0, -600));
     await tester.pumpAndSettle();
   }
-  final barTop = tester.getTopLeft(find.byType(GlassSurface).first).dy;
+  // The capsule is the lowest glass surface: a collapsed Studio bar is glass
+  // too, but it sits at the top of the page.
+  final barTop = tester
+      .widgetList(find.byType(GlassSurface))
+      .map((w) => tester.getTopLeft(find.byWidget(w)).dy)
+      .reduce(math.max);
   expect(tester.getBottomLeft(last).dy, lessThanOrEqualTo(barTop));
 }
 

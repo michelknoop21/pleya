@@ -137,17 +137,17 @@ class SettingsStudioHeader extends StatelessWidget {
             ),
             child: Stack(
               children: [
-                Positioned.fill(
-                  top: top,
-                  child: _WarmWash(tokens: tk),
-                ),
+                // Wash and artwork run up to the top edge, under the status
+                // bar and the Dynamic Island; only the text below keeps to the
+                // safe area (edge-to-edge, DEC-XXX-edge).
+                Positioned.fill(child: _WarmWash(tokens: tk)),
                 Positioned(
-                  top: top,
+                  top: 0,
                   bottom: 0,
                   right: 0,
                   width: artWidth,
                   child: ExcludeSemantics(
-                    child: _ArtPanel(art: art, tokens: tk),
+                    child: _ArtPanel(art: art, tokens: tk, statusInset: top),
                   ),
                 ),
                 Padding(
@@ -269,6 +269,9 @@ class SettingsStudioHeader extends StatelessWidget {
 const double _kBackStart = 4;
 const double _kInsetStart = 20;
 
+/// How far the artwork's top fade reaches below the status bar.
+const double _kStatusFadeExtra = 12;
+
 /// A faint warm tint over the top of the header, the Studio anchors' wash
 /// behind the title. Brand red at low strength, fading out downwards.
 class _WarmWash extends StatelessWidget {
@@ -278,8 +281,8 @@ class _WarmWash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Starts at exactly the colour the pinned bar carries above it, so the
-    // wash runs on from the status bar instead of starting on a line.
+    // Starts at the top edge, under the status bar, so the wash runs on from
+    // the screen's edge instead of starting on a line below it.
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -295,10 +298,15 @@ class _WarmWash extends StatelessWidget {
 /// The right-hand panel: the backdrop, or the brand fallback, faded out on its
 /// leading, top and bottom edges so nothing ends in a hard poster edge.
 class _ArtPanel extends StatelessWidget {
-  const _ArtPanel({required this.art, required this.tokens});
+  const _ArtPanel({required this.art, required this.tokens, this.statusInset = 0});
 
   final SettingsStudioArt? art;
   final MonoTokens tokens;
+
+  /// The status bar's height, now that the panel runs under it: the mark
+  /// stays below it and a fade over the top keeps the glyphs readable over the
+  /// picture. 0 when there is no status bar.
+  final double statusInset;
 
   @override
   Widget build(BuildContext context) {
@@ -330,23 +338,46 @@ class _ArtPanel extends StatelessWidget {
             placeholder: (_, _) => fallback,
             errorWidget: (_, _, _) => fallback,
           ),
-          const PositionedDirectional(top: 10, end: 12, child: PleyaLogo(size: 22)),
+          PositionedDirectional(top: statusInset + 10, end: 12, child: const PleyaLogo(size: 22)),
         ],
       );
     }
     // The leading edge fades into the header, so the picture sits behind the
     // page rather than beside it on a hard line; the text never reaches it.
     final direction = Directionality.of(context);
+    final washTop = settingsStudioWashTop(tokens);
     return ClipRect(
-      child: ShaderMask(
-        blendMode: BlendMode.dstIn,
-        shaderCallback: (rect) => LinearGradient(
-          begin: AlignmentDirectional.centerStart.resolve(direction),
-          end: AlignmentDirectional.centerEnd.resolve(direction),
-          colors: const [Color(0x00000000), Color(0xFF000000)],
-          stops: const [0, 0.22],
-        ).createShader(rect),
-        child: picture,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (rect) => LinearGradient(
+              begin: AlignmentDirectional.centerStart.resolve(direction),
+              end: AlignmentDirectional.centerEnd.resolve(direction),
+              colors: const [Color(0x00000000), Color(0xFF000000)],
+              stops: const [0, 0.22],
+            ).createShader(rect),
+            child: picture,
+          ),
+          if (statusInset > 0)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: statusInset + _kStatusFadeExtra,
+              child: DecoratedBox(
+                key: const ValueKey('settings-studio-status-fade'),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [washTop.withValues(alpha: 0.85), washTop.withValues(alpha: 0)],
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

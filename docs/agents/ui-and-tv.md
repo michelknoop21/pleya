@@ -34,6 +34,22 @@ Roadmap rules) komt van een andere reviewerstoel, volgens de reviewregels in `AG
 2026-afronding op iOS en tvOS; `docs/ios-unified-implementation-register.md` is daarbij de
 iOS-werklijst, naast het bestaande `docs/tvos-redesign-register.md` voor tvOS.
 
+## Edge-to-edge op iPhone
+
+Op de iPhone loopt de achtergrond, wash of artwork van een scherm met een kop door onder de
+statusbalk en het Dynamic Island. Alleen inhoud (tekst, knoppen, chevron, logo) houdt de safe area
+aan. Een effen balk in paginakleur boven de inhoud is daar niet de bedoeling: leesbaarheid van de
+statusbalkglyphs komt van een fade of scrim over het artwork en van een
+`AnnotatedRegion<SystemUiOverlayStyle>`. Een vaste balk is doorschijnend via `GlassSurface`, die op
+effen terugvalt zolang Liquid Glass uit staat (de voorkeur staat standaard uit) en op de iPad, waar
+glas nooit geldt. Besluit Michel, 26 oktober 2026 (DEC-XXX-edge).
+
+Gebouwd voor de Studio-kop en -balk van Instellingen (A-24). Nieuwe iPhone-schermen volgen de regel.
+Bekende uitzonderingen die nog effen zijn: de ingeklapte balk van `MobileDetailHeroBar` en de
+gewone instellingenbalken (`CustomAppBar`). Pas ze aan binnen hun eigen roadmappakket, niet
+meeliftend op ander werk. Een widgettest zet de safe-area-top op 59 en toetst dat de
+achtergrondlaag op y=0 begint en het logo eronder blijft.
+
 ## Pleya Verify
 
 `pleya_verify/` drijft echte scenario's tegen een echte macOS/iOS-sim/tvOS-sim-build, over een vast
