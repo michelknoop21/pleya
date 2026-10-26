@@ -82,7 +82,7 @@
           {#if !root.mounted}
             <StatusPill size="sm" tone="err" label={t('admin.lib.root.unmounted')} />
           {:else if !root.inode_trusted}
-            <StatusPill size="sm" tone="warn" label={root.fs_type?.split('.').pop() ?? ''} />
+            <StatusPill size="sm" tone="warn" label={t('admin.lib.root.untrustedShort')} />
           {:else}
             <StatusPill size="sm" tone="ok" label={t('admin.lib.root.mounted')} />
           {/if}

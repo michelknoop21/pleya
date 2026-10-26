@@ -15,6 +15,7 @@ import {
   changeLines,
   durationLabel,
   durationOptions,
+  ffprobeVersion,
   isOrigin,
   isPublicUrl,
   mediaRisks,
@@ -189,5 +190,20 @@ describe('foutzinnen', () => {
     expect(settingsProblem(apiFail('storage.full', 507))).toMatchObject({ wayOut: 'retry' });
     expect(settingsProblem(apiFail('server.internal', 500, { request_id: 'req-9' })).message).toContain('req-9');
     expect(settingsProblem(apiFail('auth.token_expired', 401))).toMatchObject({ wayOut: 'login' });
+  });
+});
+
+describe('ffprobeVersion', () => {
+  it('haalt het nummer uit de regel van ffprobe', () => {
+    expect(
+      ffprobeVersion('ffprobe version 5.1.9-0+deb12u1 Copyright (c) 2007-2026 the FFmpeg developers')
+    ).toBe('5.1.9-0+deb12u1');
+    expect(ffprobeVersion('ffprobe version n7.0.1')).toBe('n7.0.1');
+  });
+
+  it('kapt een onverwachte uitvoer af in plaats van hem volledig te tonen', () => {
+    const long = 'x'.repeat(200);
+    expect(ffprobeVersion(long).length).toBeLessThanOrEqual(40);
+    expect(ffprobeVersion('5.1.9')).toBe('5.1.9');
   });
 });

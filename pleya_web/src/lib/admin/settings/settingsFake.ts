@@ -45,7 +45,7 @@ export function baseServer(): ServerDetail {
     trusted_proxies: ['172.18.0.0/16'],
     build: 'go1.23 linux/amd64',
     database: { version: '18.6', schema: 8 },
-    ffprobe: { found: true, version: 'ffmpeg 5.1.9' },
+    ffprobe: { found: true, version: 'ffprobe version 5.1.9-0+deb12u1 Copyright (c) 2007-2026 the FFmpeg developers' },
     health: { ready: true, jobs_running: 1, jobs_failed: 2 },
     mcp: { enabled: false, tool_count: 0 }
   } as ServerDetail;

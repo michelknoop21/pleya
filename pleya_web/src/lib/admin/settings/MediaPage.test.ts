@@ -71,7 +71,9 @@ describe('scherm 28, media en streaming', () => {
     expect(screen.getByLabelText('Streamsessies per gebruiker')).toHaveValue('8');
     expect(screen.getByLabelText(/Streamtoken geldig/)).toHaveValue('300');
 
-    expect(screen.getByText('gevonden, ffmpeg 5.1.9')).toBeInTheDocument();
+    // Alleen het nummer: de server geeft de hele regel met copyright door.
+    expect(screen.getByText('gevonden, 5.1.9-0+deb12u1')).toBeInTheDocument();
+    expect(screen.queryByText(/Copyright/)).not.toBeInTheDocument();
     expect(screen.getByText('60s')).toBeInTheDocument();
     expect(screen.getByText('VAAPI actief')).toBeInTheDocument();
     expect(screen.getByText('aan, 1 sessie')).toBeInTheDocument();

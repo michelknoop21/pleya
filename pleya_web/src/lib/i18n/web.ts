@@ -264,6 +264,7 @@ export const web = {
   'admin.lib.root.mounted': 'mounted',
   'admin.lib.root.unmounted': 'not mounted',
   'admin.lib.root.untrusted': 'inode not reliable, the scanner uses the signature',
+  'admin.lib.root.untrustedShort': 'inode not reliable',
   'admin.lib.root.trustedMeasured': 'inode reliable (measured)',
   'admin.lib.root.trustedConfig': 'inode reliable (set in the configuration)',
   'admin.lib.root.trustedDefault': 'inode reliable (by file system)',

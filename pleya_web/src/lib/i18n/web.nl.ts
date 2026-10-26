@@ -262,6 +262,7 @@ export const webNl = {
   'admin.lib.root.mounted': 'gemount',
   'admin.lib.root.unmounted': 'niet gemount',
   'admin.lib.root.untrusted': 'inode niet betrouwbaar, de scanner gebruikt de signatuur',
+  'admin.lib.root.untrustedShort': 'inode onbetrouwbaar',
   'admin.lib.root.trustedMeasured': 'inode betrouwbaar (gemeten)',
   'admin.lib.root.trustedConfig': 'inode betrouwbaar (ingesteld in de configuratie)',
   'admin.lib.root.trustedDefault': 'inode betrouwbaar (volgens het bestandssysteem)',
