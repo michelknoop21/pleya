@@ -5050,7 +5050,7 @@ Migratie `0019_transcode_sessions.sql` (de masterlijst noemde `0017`, dat was be
 4. Besluiten Michel van 25 oktober 2026 over de open afwijkingen: App-taal staat als eerste rij in Taal en ondertitels; de TV-schakelaar als getekende pil en de rechterkolom van 440 pt zijn geaccepteerd; op TV reserveert een kijklijstkaart twee titelregels, zodat een gefocuste titel tot twee regels heel leesbaar is zonder kleinere letter en zonder dat een kaart verschuift (een langere titel wordt nog afgekapt); de groepsnamen zijn in Licht dezelfde als in Donker en OLED.
 **Consequences:** iPhone en Apple TV delen voor Mijn Pleya één indeling en dezelfde regels voor kijklijst en Big P-kaart. Resterende verschillen met de borden staan per acceptatieregel in [`docs/plans/AFWIJKINGEN_A24B.md`](plans/AFWIJKINGEN_A24B.md); de open punten daar wachten op Michel. Simulatorbewijs is geen hardware-acceptatie. Unified impact: alleen presentatie, geen backend-, bron- of rechtenpad.
 
-## DEC-XXX-edge: Edge-to-edge op iPhone, geen effen balk in paginakleur onder de statusbalk
+## DEC-163: Edge-to-edge op iPhone, geen effen balk in paginakleur onder de statusbalk
 
 **Date:** 2026-10-26
 **Status:** accepted (Michel, 26 oktober 2026)
