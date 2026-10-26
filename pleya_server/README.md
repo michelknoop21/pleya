@@ -551,7 +551,7 @@ basis onder de build vandaan wisselt is niet reproduceerbaar.
 
 | Onderdeel | Versie | Pin |
 | --- | --- | --- |
-| Go | 1.26.6 | `golang:1.26.6-bookworm@sha256:116d58cb…` |
+| Go | 1.26.10 | `golang:1.26.10-bookworm@sha256:632dff73…` |
 | Runtime | Debian bookworm-slim | `debian:bookworm-slim@sha256:abd67ffc…` |
 | PostgreSQL | 18.6 | `postgres:18.6-bookworm@sha256:7d2695c3…` |
 | ffmpeg en ffprobe | 5.1.9 | `ffmpeg=7:5.1.9-0+deb12u1` uit bookworm |
