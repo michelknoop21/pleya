@@ -33,7 +33,8 @@ function setup(fail: Parameters<typeof libraryFake>[0]['fail'] = {}) {
       root('/media/Films', films),
       root('/media/Leeg', leeg),
       root('/media/Kids', kids),
-      root('/media/vrij', null)
+      root('/media/vrij', null),
+      root('/media/ntfs', null, { fs_type: 'fuseblk.ntfs', inode_trusted: false })
     ],
     scans: { l1: scan('l1', 'done') },
     fail
@@ -68,6 +69,14 @@ describe('scherm 22, bewerken', () => {
     expect(screen.getByText('461 titels')).toBeInTheDocument();
     expect(await screen.findByText('bij 90% van de titels')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Opslaan' })).toBeDisabled();
+  });
+
+  it('noemt een root zonder betrouwbare inodes bij wat dat betekent, niet bij het bestandssysteem', async () => {
+    setup();
+    await openEditor('l1');
+    // De uitleg staat al onder het pad; de pil zegt het in twee woorden.
+    expect(screen.getByText('inode onbetrouwbaar')).toBeInTheDocument();
+    expect(screen.queryByText('ntfs')).not.toBeInTheDocument();
   });
 
   it('stuurt bij opslaan alleen de gewijzigde velden met PATCH', async () => {

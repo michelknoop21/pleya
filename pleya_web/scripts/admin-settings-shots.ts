@@ -132,7 +132,7 @@ await context.route('**/pleya/v1/**', (route) => {
       return json(route, {
         id: '0191f2a4-7c3e-7d10-9b2a-6f1e0c2d5a77', name: 'Pleya-server', version: '0.9.0', started_at: iso(60 * 24 * 6),
         public_url: 'https://web.pleya.app', listen: ':8080', behind_proxy: true, trusted_proxies: ['172.18.0.0/16'],
-        build: 'go1.24.2 linux/amd64', database: { version: '18.1', schema: 8 }, ffprobe: { found: true, version: 'ffmpeg 5.1.9 (Debian)' },
+        build: 'go1.24.2 linux/amd64', database: { version: '18.1', schema: 8 }, ffprobe: { found: true, version: 'ffprobe version 5.1.9-0+deb12u1 Copyright (c) 2007-2026 the FFmpeg developers' },
         health: { ready: true, jobs_running: 1, jobs_failed: 2 }, mcp: { enabled: false, tool_count: 0 }
       });
     case '/settings':

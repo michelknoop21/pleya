@@ -34,6 +34,16 @@
     overflow-wrap: anywhere;
   }
 
+  /* Een pil met een lange tekst (een versieregel) breekt af in plaats van de
+     pagina breder te maken dan het scherm. */
+  .facts :global(.pill) {
+    max-width: 100%;
+    height: auto;
+    min-height: 24px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
   .facts :global(.muted) {
     color: var(--ink-3);
   }

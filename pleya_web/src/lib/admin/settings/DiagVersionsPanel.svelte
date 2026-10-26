@@ -11,6 +11,7 @@
   import { formatDate } from '../../util/format';
   import { uptimeText } from './diagnostics';
   import FactList from './FactList.svelte';
+  import { ffprobeVersion } from './settings';
 
   let { server, info }: { server: ServerDetail; info: Info } = $props();
 
@@ -46,7 +47,7 @@
     {#if server.ffprobe}
       <dt>ffprobe</dt>
       <dd>
-        {#if server.ffprobe.found}{server.ffprobe.version ?? t('admin.diag.versions.found')}{:else}<span class="muted"
+        {#if server.ffprobe.found}{server.ffprobe.version ? ffprobeVersion(server.ffprobe.version) : t('admin.diag.versions.found')}{:else}<span class="muted"
             >{t('admin.diag.versions.missing')}</span
           >{/if}
       </dd>

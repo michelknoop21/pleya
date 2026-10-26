@@ -59,7 +59,8 @@ describe('scherm 32, diagnostiek', () => {
     expect(screen.getByText('go1.23 linux/amd64')).toBeInTheDocument();
     expect(screen.getByText(/v1, feature level 1/)).toBeInTheDocument();
     expect(screen.getByText('Postgres 18.6, schema 8')).toBeInTheDocument();
-    expect(screen.getByText('ffmpeg 5.1.9')).toBeInTheDocument();
+    expect(screen.getByText('5.1.9-0+deb12u1')).toBeInTheDocument();
+    expect(screen.queryByText(/Copyright/)).not.toBeInTheDocument();
     expect(screen.getByText('1 bezig, 2 mislukt')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Zie Scans en taken' })).toHaveAttribute('href', '/admin/activity');
   });

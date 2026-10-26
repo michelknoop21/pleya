@@ -255,3 +255,17 @@ export function changeLine(key: string, value: unknown): string {
 export function changeLines(patch: SettingsPatch): string[] {
   return Object.entries(patch).map(([key, value]) => changeLine(key, value));
 }
+
+/**
+ * Het versienummer uit wat `ffprobe -version` meldt. De server geeft de hele
+ * eerste regel door ("ffprobe version 5.1.9-0+deb12u1 Copyright (c) 2007-2026
+ * the FFmpeg developers"); alleen het nummer is iets om te tonen. Past de
+ * regel niet op dat patroon, dan blijft de tekst staan maar nooit langer dan
+ * 40 tekens, zodat een onverwachte uitvoer de pagina niet breder maakt.
+ */
+export function ffprobeVersion(raw: string): string {
+  const match = /\bversion\s+(\S+)/i.exec(raw);
+  if (match?.[1]) return match[1];
+  const text = raw.trim();
+  return text.length > 40 ? `${text.slice(0, 39)}…` : text;
+}

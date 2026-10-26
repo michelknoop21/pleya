@@ -12,6 +12,7 @@
   import { t } from '../../i18n';
   import FactList from './FactList.svelte';
   import { ENV_FFPROBE_TIMEOUT, ENV_JOB_WORKERS, envValue, type EnvEntry } from './media';
+  import { ffprobeVersion } from './settings';
 
   interface Props {
     server: ServerDetail;
@@ -50,7 +51,7 @@
           tone={server.ffprobe.found ? 'ok' : 'err'}
           label={server.ffprobe.found
             ? server.ffprobe.version
-              ? t('admin.media.analysis.found', { version: server.ffprobe.version })
+              ? t('admin.media.analysis.found', { version: ffprobeVersion(server.ffprobe.version) })
               : t('admin.media.analysis.foundPlain')
             : t('admin.media.analysis.missing')}
         />
