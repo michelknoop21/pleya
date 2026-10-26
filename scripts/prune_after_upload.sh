@@ -11,18 +11,23 @@
 # Wat weg mag en wat blijft:
 #   build/fastlane/ios en /macos        alles erin: dat zijn alleen de exports
 #                                       van de lane (ipa, pkg, dSYM-zip, archive)
-#   build/fastlane/tvos                 de losse exportbestanden, de mappen
-#                                       device/ en upload/ en de bevroren archive
-#                                       Pleya-tvOS-<nummer>-<sha>.xcarchive van
-#                                       dit nummer; de archives van andere
-#                                       nummers blijven, die wachten mogelijk op
-#                                       hun eigen tvos_upload
+#   build/fastlane/tvos                 de losse exportbestanden, upload/ en de
+#                                       bevroren archive Pleya-tvOS-<nummer>-
+#                                       <sha>.xcarchive met zijn .sha256 van
+#                                       dit nummer. Archives en .sha256 van
+#                                       andere nummers blijven (tvos_upload
+#                                       weigert een archive zonder sidecar) en
+#                                       device/ ook: dat is de export van een
+#                                       bevroren archive voor de hardwareronde
 #   Xcode Archives                      een archive van nl.michelknoop.pleya met
 #                                       dit buildnummer ÉN dit platform. Een
 #                                       beta-run uploadt iOS, tvOS en macOS onder
 #                                       hetzelfde nummer, dus het platform in de
 #                                       app zelf (DTPlatformName) beslist
-# Incrementele mappen (build/ios, tvos/build/dd, SourcePackages, DerivedData)
+# De upload geldt als geslaagd zodra Apple het binary heeft ontvangen; de lanes
+# wachten niet op de verwerking. Wijst Apple de build daarna af, dan moet er een
+# nieuwe archive komen. Incrementele mappen (build/ios, tvos/build/dd,
+# SourcePackages, DerivedData)
 # blijven: die worden bij elke build hergebruikt. De generieke opruiming vóór
 # een build staat in scripts/prune_old_builds.sh.
 set -euo pipefail
@@ -96,8 +101,11 @@ if [[ -d "$fastlane_out" ]]; then
     # wachten mogelijk nog op tvos_upload; alleen die van dit nummer gaat weg.
     while IFS= read -r -d '' entry; do
       case "$(basename "$entry")" in
-        Pleya-tvOS-"$build"-*.xcarchive) remove "$entry" ;;
-        *.xcarchive) ;;
+        Pleya-tvOS-"$build"-*.xcarchive | Pleya-tvOS-"$build"-*.xcarchive.sha256) remove "$entry" ;;
+        # Archive en .sha256 van een ander nummer: tvos_upload weigert een
+        # archive zonder zijn sidecar. device/ is de export van een bevroren
+        # archive voor de hardwareronde en kan bij een ander nummer horen.
+        *.xcarchive | *.xcarchive.sha256 | device) ;;
         *) remove "$entry" ;;
       esac
     done < <(find "$fastlane_out" -mindepth 1 -maxdepth 1 -print0)

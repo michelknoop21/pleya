@@ -48,6 +48,21 @@ class Harness
   class_eval(ATTACH)
 end
 
+class LanePlacementTest < Minitest::Test
+  # Elke aanroep van attach_after_upload staat in een lane na zijn upload_beta,
+  # en upload_beta raised bij een mislukte upload: dan komt de opruiming niet.
+  def test_every_attach_after_upload_call_follows_an_upload
+    calls = SOURCE.lines.each_index.select { |i| SOURCE.lines[i] =~ /^\s+attach_after_upload\(/ }
+    assert_operator calls.size, :>=, 4
+    calls.each do |i|
+      preceding = SOURCE.lines[0...i].reverse
+      lane_start = preceding.index { |l| l =~ /^lane :/ }
+      lane = preceding[0...lane_start]
+      assert(lane.any? { |l| l =~ /^\s+upload_beta\b/ }, "attach_after_upload op regel #{i + 1} staat niet na een upload_beta")
+    end
+  end
+end
+
 class PruneAfterUploadTest < Minitest::Test
   def setup
     $skip_attach = nil

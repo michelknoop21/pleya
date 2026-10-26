@@ -4,7 +4,9 @@
 # anders. Een archive van een ander nummer, van een ander platform onder
 # hetzelfde nummer (een beta-run uploadt drie platforms onder één nummer), van
 # een andere bundle of een bevroren tvOS-archive van een ander nummer blijft
-# staan. --dry-run en PLEYA_KEEP_BUILDS=1 wissen niets; een ongeldig argument
+# staan, met zijn .sha256 (tvos_upload weigert een archive zonder sidecar) en
+# met device/ (de hardware-export van een bevroren archive). 41 raakt 412 en 4120
+# niet. --dry-run en PLEYA_KEEP_BUILDS=1 wissen niets; een ongeldig argument
 # wist niets en geeft een foutcode.
 set -euo pipefail
 
@@ -36,6 +38,8 @@ setup() {
   touch repo/build/fastlane/tvos/{Runner.ipa,Runner.app.dSYM.zip} repo/build/fastlane/tvos/device/x repo/build/fastlane/tvos/upload/y
   mkarchive repo/build/fastlane/tvos/Pleya-tvOS-412-aaaa.xcarchive nl.michelknoop.pleya 412 appletvos Applications/Runner.app Info.plist
   mkarchive repo/build/fastlane/tvos/Pleya-tvOS-413-bbbb.xcarchive nl.michelknoop.pleya 413 appletvos Applications/Runner.app Info.plist
+  mkarchive repo/build/fastlane/tvos/Pleya-tvOS-4120-cccc.xcarchive nl.michelknoop.pleya 4120 appletvos Applications/Runner.app Info.plist
+  touch repo/build/fastlane/tvos/Pleya-tvOS-{412-aaaa,413-bbbb,4120-cccc}.xcarchive.sha256
   local a=home/Library/Developer/Xcode/Archives/2026-10-26
   mkarchive "$a/Runner ios412.xcarchive" nl.michelknoop.pleya 412 iphoneos Applications/Runner.app Info.plist
   mkarchive "$a/Runner tv412.xcarchive" nl.michelknoop.pleya 412 appletvos Applications/Runner.app Info.plist
@@ -50,7 +54,9 @@ A="home/Library/Developer/Xcode/Archives/2026-10-26"
 F=repo/build/fastlane
 everything=("$F/ios/Runner.ipa" "$F/ios/Runner.app.dSYM.zip" "$F/macos/Pleya-signed.pkg"
   "$F/tvos/Runner.ipa" "$F/tvos/Runner.app.dSYM.zip" "$F/tvos/device/x" "$F/tvos/upload/y"
-  "$F/tvos/Pleya-tvOS-412-aaaa.xcarchive" "$F/tvos/Pleya-tvOS-413-bbbb.xcarchive"
+  "$F/tvos/Pleya-tvOS-412-aaaa.xcarchive" "$F/tvos/Pleya-tvOS-413-bbbb.xcarchive" "$F/tvos/Pleya-tvOS-4120-cccc.xcarchive"
+  "$F/tvos/Pleya-tvOS-412-aaaa.xcarchive.sha256" "$F/tvos/Pleya-tvOS-413-bbbb.xcarchive.sha256"
+  "$F/tvos/Pleya-tvOS-4120-cccc.xcarchive.sha256"
   "$A/Runner ios412.xcarchive" "$A/Runner tv412.xcarchive" "$A/Runner mac412.xcarchive"
   "$A/Runner ios410.xcarchive" "$A/Runner verify412.xcarchive")
 
@@ -84,14 +90,22 @@ expect gone "$F/ios/Runner.ipa" "$F/ios/Runner.app.dSYM.zip" "$A/Runner ios412.x
 expect kept "$F/macos/Pleya-signed.pkg" "$F/tvos/Runner.ipa" "$F/tvos/Pleya-tvOS-412-aaaa.xcarchive" \
   "$A/Runner tv412.xcarchive" "$A/Runner mac412.xcarchive" "$A/Runner ios410.xcarchive" "$A/Runner verify412.xcarchive"
 
-# tvOS 412: de losse exports, device/, upload/ en de bevroren archive van 412,
-# maar niet die van 413.
+# tvOS 412: de losse exports, upload/ en de bevroren archive van 412 met zijn
+# .sha256. Het archive en de sidecar van 413 en 4120, en device/, blijven.
 setup
 run appletvos 412 >/dev/null
-expect gone "$F/tvos/Runner.ipa" "$F/tvos/Runner.app.dSYM.zip" "$F/tvos/device/x" "$F/tvos/upload/y" \
-  "$F/tvos/Pleya-tvOS-412-aaaa.xcarchive" "$A/Runner tv412.xcarchive"
-expect kept "$F/tvos/Pleya-tvOS-413-bbbb.xcarchive" "$F/ios/Runner.ipa" "$F/macos/Pleya-signed.pkg" \
+expect gone "$F/tvos/Runner.ipa" "$F/tvos/Runner.app.dSYM.zip" "$F/tvos/upload/y" \
+  "$F/tvos/Pleya-tvOS-412-aaaa.xcarchive" "$F/tvos/Pleya-tvOS-412-aaaa.xcarchive.sha256" "$A/Runner tv412.xcarchive"
+expect kept "$F/tvos/device/x" "$F/tvos/Pleya-tvOS-413-bbbb.xcarchive" "$F/tvos/Pleya-tvOS-413-bbbb.xcarchive.sha256" \
+  "$F/tvos/Pleya-tvOS-4120-cccc.xcarchive" "$F/tvos/Pleya-tvOS-4120-cccc.xcarchive.sha256" \
+  "$F/ios/Runner.ipa" "$F/macos/Pleya-signed.pkg" \
   "$A/Runner ios412.xcarchive" "$A/Runner mac412.xcarchive" "$A/Runner ios410.xcarchive" "$A/Runner verify412.xcarchive"
+
+# tvOS 41: een korter nummer is geen voorvoegsel-treffer op 412 of 4120.
+setup
+run appletvos 41 >/dev/null
+for p in "$F"/tvos/Pleya-tvOS-4*; do [[ -e "$p" ]] || { echo "FOUT: tvOS 41 wiste $p"; exit 1; }; done
+expect kept "$F/tvos/Pleya-tvOS-412-aaaa.xcarchive.sha256" "$F/tvos/Pleya-tvOS-4120-cccc.xcarchive.sha256" "$A/Runner tv412.xcarchive"
 
 # macOS 412: de pkg en de macOS-archive, de rest blijft.
 setup
