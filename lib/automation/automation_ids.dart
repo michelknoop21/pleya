@@ -896,6 +896,7 @@ class AutomationIds {
     {'id': localLibrarySync, 'role': 'button', 'instanceable': false},
     {'id': localLibraryClear, 'role': 'button', 'instanceable': false},
     {'id': localLibraryAction, 'role': 'button', 'instanceable': true},
+    {'id': navigationBack, 'role': 'button', 'instanceable': false},
     for (final tab in NavigationTabId.values) {'id': navTab(tab), 'role': 'nav', 'instanceable': false},
     {'id': navProfile, 'role': 'nav', 'instanceable': false},
     {'id': navReconnect, 'role': 'nav', 'instanceable': false},
