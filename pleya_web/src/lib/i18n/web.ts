@@ -1,8 +1,11 @@
+import { webOps } from './web.ops';
+
 /**
  * Teksten die alleen in de webclient bestaan. Alles wat de app ook kent komt
  * uit `shared.ts` en dus uit `lib/i18n/en.i18n.json`.
  */
 export const web = {
+  ...webOps,
   'app.name': 'Pleya',
   'nav.home': 'Home',
   'nav.search': 'Search',

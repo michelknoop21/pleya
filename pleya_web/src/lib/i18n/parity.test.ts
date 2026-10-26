@@ -36,7 +36,15 @@ const SAME_ON_PURPOSE = [
   'admin.server.database',
   'admin.server.databaseValue',
   'admin.server.versionValue',
-  'admin.lib.status.sidecars'
+  'admin.lib.status.sidecars',
+  'admin.sto.col.root',
+  'admin.sto.col.inode',
+  'admin.sto.col.status',
+  'admin.sto.inodeInfo.after',
+  'admin.act.failures.open',
+  'admin.act.col.status',
+  'admin.act.history.scan',
+  'admin.act.history.scanUnknown'
 ];
 
 function placeholders(text: string): string[] {

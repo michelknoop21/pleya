@@ -1,3 +1,5 @@
+import { webOpsNl } from './web.ops.nl';
+
 import type { WebKey } from './web';
 
 /**
@@ -6,6 +8,7 @@ import type { WebKey } from './web';
  * Termen volgen de northstar (docs/assets/pleya-web-northstar), je-vorm, kort.
  */
 export const webNl = {
+  ...webOpsNl,
   'app.name': 'Pleya',
   'nav.home': 'Home',
   'nav.search': 'Zoeken',

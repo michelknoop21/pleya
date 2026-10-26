@@ -46,6 +46,18 @@ export function adminApi(client: PleyaClient) {
       (await client.request((raw) => raw.GET('/jobs', { params: { query: { limit } }, signal })))
         .items,
 
+    /** Een pagina scans met de cursor voor de volgende (scherm 25, Geschiedenis). */
+    scansPage: async (
+      limit: number,
+      cursor?: string | null,
+      signal?: AbortSignal
+    ): Promise<{ items: Scan[]; nextCursor: string | null }> => {
+      const page = await client.request((raw) =>
+        raw.GET('/scans', { params: { query: { limit, ...(cursor ? { cursor } : {}) } }, signal })
+      );
+      return { items: page.items, nextCursor: page.next_cursor ?? null };
+    },
+
     storageRoots: async (signal?: AbortSignal): Promise<StorageRoot[]> =>
       (await client.request((raw) => raw.GET('/storage/roots', { signal }))).roots,
 
@@ -99,6 +111,32 @@ export function adminApi(client: PleyaClient) {
           ? { data: true, response: result.response }
           : { error: result.error, response: result.response };
       }),
+
+    // --- Opslag, scans en taken (S10.3, schermen 24 en 25) ---------------
+
+    /**
+     * Plant een meetronde in op elke geclaimde root. Het antwoord is een 202
+     * zonder lichaam; de meting loopt daarna via de jobwachtrij, dus de nieuwe
+     * stand is er pas na enkele seconden.
+     */
+    recheckStorageRoots: (): Promise<true> =>
+      client.request<true>(async (raw) => {
+        const result = await raw.POST('/storage/roots/recheck');
+        return result.response.ok
+          ? { data: true, response: result.response }
+          : { error: result.error, response: result.response };
+      }),
+
+    /** Een scan heeft geen eigen afbreekroute: afbreken gaat via zijn job. */
+    cancelJob: (jobId: string): Promise<Job> =>
+      client.request((raw) =>
+        raw.POST('/jobs/{job_id}/cancel', { params: { path: { job_id: jobId } } })
+      ),
+
+    retryJob: (jobId: string): Promise<Job> =>
+      client.request((raw) =>
+        raw.POST('/jobs/{job_id}/retry', { params: { path: { job_id: jobId } } })
+      ),
 
     metadataCoverage: (libraryId: string, signal?: AbortSignal): Promise<MetadataCoverage> =>
       client.request((raw) =>

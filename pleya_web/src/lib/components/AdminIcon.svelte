@@ -9,16 +9,20 @@
   import type { AdminIconName } from '../admin/sections';
 
   interface Props {
-    name: AdminIconName | 'gear' | 'back' | 'chev' | 'chevl' | 'tv' | 'scan' | 'edit' | 'plus' | 'trash';
+    name: AdminIconName | 'gear' | 'back' | 'chev' | 'chevl' | 'tv' | 'scan' | 'edit' | 'plus' | 'trash' | 'refresh' | 'stop';
     size?: number;
   }
 
   let { name, size = 18 }: Props = $props();
 </script>
 
-{#if name === 'play'}
+{#if name === 'play' || name === 'stop'}
   <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" focusable="false">
-    <path fill="currentColor" d="M8 5v14l11-7z" />
+    {#if name === 'stop'}
+      <rect fill="currentColor" x="6" y="6" width="12" height="12" rx="2" />
+    {:else}
+      <path fill="currentColor" d="M8 5v14l11-7z" />
+    {/if}
   </svg>
 {:else}
   <svg
@@ -77,6 +81,8 @@
       <path d="M4 20h4l10-10-4-4L4 16zM13 7l4 4" />
     {:else if name === 'plus'}
       <path d="M12 5v14M5 12h14" />
+    {:else if name === 'refresh'}
+      <path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v5h-5" />
     {:else if name === 'trash'}
       <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
     {/if}
