@@ -11,10 +11,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:pleya/automation/automation_ids.dart';
 import 'package:pleya/connection/connection.dart';
-import 'package:pleya/connection/connection_registry.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/focus/focusable_wrapper.dart';
-import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -22,17 +20,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/mixins/refreshable.dart';
 import 'package:pleya/models/plex/plex_config.dart';
-import 'package:pleya/profiles/active_profile_provider.dart';
-import 'package:pleya/profiles/profile.dart';
-import 'package:pleya/profiles/profile_registry.dart';
-import 'package:pleya/providers/multi_server_provider.dart';
-import 'package:pleya/providers/seerr_provider.dart';
-import 'package:pleya/providers/tautulli_provider.dart';
-import 'package:pleya/providers/theme_provider.dart';
-import 'package:pleya/providers/trackers_provider.dart';
-import 'package:pleya/providers/trakt_account_provider.dart';
 import 'package:pleya/screens/settings/settings_screen.dart';
-import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/plex_auth_service.dart';
@@ -46,76 +34,16 @@ import 'package:pleya/widgets/tv/tv_settings_categories.dart';
 import 'package:pleya/widgets/tv/tv_settings_library_preview.dart';
 import 'package:pleya/widgets/tv/tv_panel_primitives.dart';
 import 'package:pleya/navigation/main_screen_scope.dart';
-import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
-
-class _FakeActiveProfile extends ChangeNotifier implements ActiveProfileProvider {
-  @override
-  Profile? get active => null;
-
-  @override
-  bool get hasMultipleProfiles => false;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
+import '../../test_helpers/settings_tv_harness.dart';
 
 late AppDatabase _db;
 
-Future<void> _pumpTvSettings(WidgetTester tester, {MultiServerManager? manager, VoidCallback? openLibraries}) async {
-  tester.view.physicalSize = const Size(1920, 1080);
-  tester.view.devicePixelRatio = 1.0;
-  addTearDown(tester.view.reset);
-  final serverManager = manager ?? MultiServerManager();
-  if (manager == null) addTearDown(serverManager.dispose);
-  final servers = MultiServerProvider(serverManager, DataAggregationService(serverManager));
-  addTearDown(servers.dispose);
-  await tester.pumpWidget(
-    TranslationProvider(
-      child: MultiProvider(
-        providers: [
-          ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
-          ChangeNotifierProvider<TraktAccountProvider>(
-            create: (_) => TraktAccountProvider(kidsProfileCheck: () async => false),
-          ),
-          ChangeNotifierProvider<TrackersProvider>(create: (_) => TrackersProvider()),
-          ChangeNotifierProvider<SeerrProvider>(create: (_) => SeerrProvider()),
-          ChangeNotifierProvider<TautulliProvider>(create: (_) => TautulliProvider()),
-          ChangeNotifierProvider<MultiServerProvider>.value(value: servers),
-          Provider<ProfileRegistry>.value(value: ProfileRegistry(_db)),
-          Provider<ConnectionRegistry>.value(value: ConnectionRegistry(_db)),
-          ChangeNotifierProvider<ActiveProfileProvider>(create: (_) => _FakeActiveProfile()),
-        ],
-        // Keyboard mode, so `focusActiveTabIfReady` acts as it does on a remote.
-        child: InputModeTracker(
-          child: MaterialApp(
-            theme: monoTheme(dark: true),
-            home: openLibraries == null
-                ? const SettingsScreen()
-                : MainScreenFocusScope(
-                    focusSidebar: () {},
-                    focusContent: () {},
-                    isSidebarFocused: false,
-                    sideNavigationWidth: 0,
-                    openLibraries: openLibraries,
-                    child: const SettingsScreen(),
-                  ),
-          ),
-        ),
-      ),
-    ),
-  );
-  await tester.pump();
-  await tester.pump();
-}
+Future<void> _pumpTvSettings(WidgetTester tester, {MultiServerManager? manager, VoidCallback? openLibraries}) =>
+    pumpTvSettings(tester, db: _db, manager: manager, openLibraries: openLibraries);
 
-/// See `settings_screen_test.dart`: providers with timers must go before the
-/// test body ends.
-Future<void> _unmount(WidgetTester tester) async {
-  await tester.pumpWidget(const SizedBox());
-  await tester.pump(const Duration(milliseconds: 1));
-}
+Future<void> _unmount(WidgetTester tester) => unmountTvSettings(tester);
 
 Finder _wrapper(String id, String instance) =>
     find.byWidgetPredicate((w) => w is FocusableWrapper && w.automationId == id && w.automationInstance == instance);
