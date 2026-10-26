@@ -13,13 +13,13 @@
 
   Weggelaten omdat het contract het niet draagt: aangemaakt op, hernoemen,
   een uitgeschakelde staat voor een gebruiker, en een route om alle sessies in
-  één keer in te trekken.
+  één keer in te trekken. Het toestellenwerk staat in UserDevices.
 -->
 <script lang="ts">
   import { goto } from '$app/navigation';
 
   import { adminApi } from '../api/admin';
-  import { adminUsersApi, type UserSession } from '../api/adminUsers';
+  import { adminUsersApi } from '../api/adminUsers';
   import { describeError } from '../api/errors';
   import type { Role } from '../api/types';
   import Alert from '../components/Alert.svelte';
@@ -32,7 +32,7 @@
   import AdminPageHead from './AdminPageHead.svelte';
   import UserAccountPanel from './UserAccountPanel.svelte';
   import UserDeletePanel from './UserDeletePanel.svelte';
-  import UserDevicesPanel from './UserDevicesPanel.svelte';
+  import UserDevices from './UserDevices.svelte';
   import UserPermissionsPanel from './UserPermissionsPanel.svelte';
   import UserProblemAlert from './UserProblemAlert.svelte';
   import UserRolePanel from './UserRolePanel.svelte';
@@ -76,14 +76,11 @@
   let problem = $state<UserProblem | null>(null);
   let retry = $state<(() => void) | null>(null);
   let notice = $state<string | null>(null);
-  let revoking = $state<Record<string, boolean>>({});
   let resetBusy = $state(false);
 
   let saveOpen = $state(false);
   let deleteOpen = $state(false);
   let deleting = $state(false);
-  let allOpen = $state(false);
-  let allBusy = $state(false);
 
   $effect(() => {
     if (added) notice = t('admin.users.notice.added', { name: added });
@@ -140,12 +137,6 @@
     attempt += 1;
   }
 
-  async function refreshSessions(): Promise<void> {
-    if (!detail?.user) return;
-    const sessions = await usersApi.sessionsOf(detail.user.id).catch(() => null);
-    detail = { ...detail, sessions };
-  }
-
   function requestSave(): void {
     if (!plan || !hasChanges(plan) || saving) return;
     if (plan.needsConfirm) saveOpen = true;
@@ -194,38 +185,6 @@
       return false;
     } finally {
       resetBusy = false;
-    }
-  }
-
-  async function revokeOne(item: UserSession): Promise<void> {
-    problem = null;
-    revoking[item.id] = true;
-    try {
-      await usersApi.revokeSession(item.id);
-      await refreshSessions();
-      notice = t('admin.users.notice.signedOut', { device: item.device_name });
-    } catch (err) {
-      fail(err, () => void revokeOne(item));
-      await refreshSessions();
-    } finally {
-      revoking[item.id] = false;
-    }
-  }
-
-  async function revokeAll(): Promise<void> {
-    problem = null;
-    allBusy = true;
-    try {
-      for (const item of (detail?.sessions ?? []).filter((s) => !s.current)) {
-        await usersApi.revokeSession(item.id);
-      }
-      notice = t('admin.users.notice.signedOutAll', { name });
-    } catch (err) {
-      fail(err, () => (allOpen = true));
-    } finally {
-      await refreshSessions();
-      allBusy = false;
-      allOpen = false;
     }
   }
 
@@ -296,11 +255,20 @@
       />
     </form>
     <div class="side">
-      <UserDevicesPanel
+      <UserDevices
+        {user}
         sessions={detail.sessions}
-        {revoking}
-        onrevoke={(item) => void revokeOne(item)}
-        onrevokeAll={() => (allOpen = true)}
+        {usersApi}
+        onsessions={(sessions) => {
+          if (detail) detail = { ...detail, sessions };
+        }}
+        onnotice={(text) => (notice = text)}
+        onproblem={(found, again) => {
+          notice = null;
+          problem = found;
+          retry = again;
+        }}
+        onclear={() => (problem = null)}
       />
       <UserAccountPanel
         username={user.username}
@@ -372,14 +340,6 @@
       {/if}
     {/if}
   </ConfirmDialog>
-  <ConfirmDialog
-    bind:open={allOpen}
-    busy={allBusy}
-    title={t('admin.users.devices.allTitle', { name })}
-    message={t('admin.users.devices.allBody', { name })}
-    confirmLabel={t('admin.users.devices.signOutAll')}
-    onconfirm={() => void revokeAll()}
-  />
 {/if}
 
 <style>

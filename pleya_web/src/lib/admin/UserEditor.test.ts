@@ -349,13 +349,25 @@ describe('toestellen', () => {
     expect(await screen.findByText('Sanne is overal uitgelogd.')).toBeInTheDocument();
   });
 
-  it('stopt bij een weigering en toont wat er dan nog staat', async () => {
-    const server = setup({ 'DELETE /sessions/s3': apiError('auth.session_not_found', 404) });
+  // Sinds DEC-164 stopt de rij niet meer bij de eerste fout: wie overal wil
+  // uitloggen wil dat de rest ook weg is.
+  it('gaat door na een weigering en zegt hoeveel er wel en niet lukte', async () => {
+    const server = setup({ 'DELETE /sessions/s3': apiError('server.internal', 500) });
     await open('u2');
     await userEvent.click(screen.getByRole('button', { name: 'Overal uitloggen' }));
     await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Overal uitloggen' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('al weg');
-    expect(server.writes()).toHaveLength(1);
+    expect(await screen.findByRole('alert')).toHaveTextContent('1 van 2 sessies van Sanne uitgelogd');
+    expect(server.writes().map((w) => w.path)).toEqual(['/sessions/s3', '/sessions/s4']);
+    expect(screen.getByText('iPhone van Sanne')).toBeInTheDocument();
+    expect(screen.queryByText('Firefox op Windows')).not.toBeInTheDocument();
+  });
+
+  it('telt een sessie die al weg was als uitgelogd', async () => {
+    setup({ 'DELETE /sessions/s3': apiError('auth.session_not_found', 404) });
+    await open('u2');
+    await userEvent.click(screen.getByRole('button', { name: 'Overal uitloggen' }));
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Overal uitloggen' }));
+    expect(await screen.findByText('Sanne is overal uitgelogd.')).toBeInTheDocument();
   });
 });
 

@@ -14,6 +14,7 @@ import createClient, { type Client, type Middleware } from 'openapi-fetch';
 import type { paths } from './schema';
 import { ApiError, TransportError, toApiError } from './errors';
 import { TokenStore } from '../auth/tokens';
+import type { DeviceFields } from '../auth/device';
 import type {
   Info,
   Item,
@@ -173,17 +174,23 @@ export class PleyaClient {
     return this.#unwrap(this.#raw.GET('/info', { signal }));
   }
 
-  async setup(input: {
-    setup_code: string;
-    username: string;
-    password: string;
-  }): Promise<TokenPair> {
+  /**
+   * `device_id` en `device_name` gaan alleen mee als de aanroeper ze geeft, en
+   * dat doet hij alleen bij `capabilities.sessions` (zie `deviceFields`).
+   */
+  async setup(
+    input: {
+      setup_code: string;
+      username: string;
+      password: string;
+    } & DeviceFields
+  ): Promise<TokenPair> {
     const pair = await this.#unwrap(this.#raw.POST('/auth/setup', { body: input }));
     this.tokens.set(pair);
     return pair;
   }
 
-  async login(input: { username: string; password: string }): Promise<TokenPair> {
+  async login(input: { username: string; password: string } & DeviceFields): Promise<TokenPair> {
     const pair = await this.#unwrap(this.#raw.POST('/auth/login', { body: input }));
     this.tokens.set(pair);
     return pair;
@@ -206,11 +213,23 @@ export class PleyaClient {
   }
 
   /**
-   * Meldt lokaal af. Het protocol kent geen uitlogendpoint (voorstel 5.2), dus
-   * er valt hier niets te versturen: het refreshtoken wordt weggegooid en
-   * vervalt vanzelf.
+   * Meldt af. Met `remote` trekt de server eerst de eigen sessie in
+   * (`POST /auth/logout`, onder `capabilities.sessions`); anders bleef die rij
+   * tot het eind van zijn refreshketen in de toestellenlijst staan, en kreeg
+   * dezelfde browser na opnieuw inloggen een tweede rij erbij.
+   *
+   * Lukt de aanroep niet, dan meldt de browser toch af: lokaal uitloggen hoort
+   * niet te hangen aan een server die er even niet is. De sessie verloopt dan
+   * zoals vroeger, of de opruimronde neemt hem mee.
    */
-  signOut(): void {
+  async signOut(options: { remote?: boolean } = {}): Promise<void> {
+    if (options.remote && this.tokens.accessToken) {
+      try {
+        await this.#raw.POST('/auth/logout', {});
+      } catch {
+        // Geen verbinding: alleen lokaal.
+      }
+    }
     this.tokens.clear();
   }
 

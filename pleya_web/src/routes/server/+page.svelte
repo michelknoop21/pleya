@@ -136,7 +136,7 @@
       {/snippet}
     </DataTable>
 
-    <button type="button" class="btn btn--quiet signout" onclick={() => session.signOut()}>
+    <button type="button" class="btn btn--quiet signout" onclick={() => void session.signOut()}>
       {t('common.logout')}
     </button>
   </div>
