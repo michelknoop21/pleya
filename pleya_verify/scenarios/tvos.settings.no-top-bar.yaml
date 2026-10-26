@@ -89,7 +89,7 @@ steps:
   - wait_until: {id: "my_pleya.section.content[about]", timeout: 8000}
   - settle: 1200
   - assert: {id: nav.bar, state: {hidden: true, overlay: true}}
-  - assert: {id: "my_pleya.section.content[about]", insideViewport: true}
+  - assert: {id: "my_pleya.section.tile[about.about_source]", insideViewport: true}
   - snapshot: 03-over-no-bar
 
   # Menu: back on the row it came from, bar still away.
