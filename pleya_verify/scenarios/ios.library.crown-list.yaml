@@ -47,16 +47,16 @@ steps:
   - settle: 1000
   - assert: {id: library.grid, state: {view_mode: list}}
   - wait_until: {id: overlay.scroll_crown, timeout: 5000}
-  - assert: {id: overlay.scroll_crown, leftInset: 331, state: {motion_model: position-direct-v3, gear_height: 96}}
+  - assert: {id: overlay.scroll_crown, leftInset: 331, state: {motion_model: fixed-wheel-v1, fixed: true, gear_height: 96}}
   - snapshot: list-crown-ready
-  - drag: {startX: 354, startY: 400, endX: 354, endY: 403, durationMs: 600}
+  - drag: {startX: 354, startY: 333, endX: 354, endY: 336, durationMs: 600}
   - assert: {id: overlay.scroll_crown, leftInset: 331, state: {visible: true, at_start: false}}
   - snapshot: list-crown-active
-  - drag: {startX: 354, startY: 240, endX: 354, endY: 640, durationMs: 1000}
+  - drag: {startX: 354, startY: 333, endX: 354, endY: 343, durationMs: 1000}
   - settle: 300
-  - assert: {id: overlay.scroll_crown, leftInset: 331, state: {at_end: true}}
-  - snapshot: list-crown-end
-  - drag: {startX: 354, startY: 640, endX: 354, endY: 100, durationMs: 1000}
+  - assert: {id: overlay.scroll_crown, leftInset: 331, state: {at_start: false, at_end: false, fixed: true}}
+  - snapshot: list-crown-turned
+  - drag: {startX: 354, startY: 333, endX: 354, endY: 303, durationMs: 1000}
   - settle: 300
   - assert: {id: overlay.scroll_crown, leftInset: 331, state: {at_start: true}}
   - snapshot: list-crown-start

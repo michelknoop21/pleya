@@ -18,9 +18,10 @@ class _Rig {
   Duration now = Duration.zero;
 
   /// [rows] rows of 100 px under a viewport of 800 px.
-  Widget host({required int rows, bool reduceMotion = false}) {
+  Widget host({required int rows, bool reduceMotion = false, TargetPlatform? platform, String? label}) {
     rowCount.value = rows;
     return MaterialApp(
+      theme: ThemeData(platform: platform),
       home: MediaQuery(
         data: MediaQueryData(
           size: _screen,
@@ -30,6 +31,7 @@ class _Rig {
         child: Material(
           child: ScrollCrown(
             enabled: true,
+            positionLabel: label,
             onToothTick: () => teeth.add(1),
             clock: () => now,
             child: ValueListenableBuilder<int>(
@@ -105,6 +107,125 @@ Future<void> _scrub(
 }
 
 void main() {
+  testWidgets('iOS crown turns at a fixed centre without a letter or grab jump', (tester) async {
+    final rig = _Rig();
+    tester.view.physicalSize = _screen;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(rig.host(rows: 400, platform: TargetPlatform.iOS, label: 'Z'));
+    await tester.pumpAndSettle();
+    final centre = tester.getCenter(_gear);
+    final gesture = await _start(tester, rig, Offset(_edgeX, centre.dy));
+    await tester.pump();
+    expect(rig.controller.offset, 0);
+    expect(find.text('Z'), findsNothing);
+    rig.now += const Duration(milliseconds: 50);
+    await gesture.moveBy(const Offset(0, 24), timeStamp: rig.now);
+    await tester.pump();
+    expect(rig.controller.offset, closeTo(400, 1));
+    expect(tester.getCenter(_gear).dy, centre.dy);
+    expect(_phase(tester), isNot(0));
+    expect(rig.teeth, isNotEmpty);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(tester.getCenter(_gear).dy, centre.dy);
+    // The next grip starts at the current offset, and can turn back.
+    final back = await _start(tester, rig, Offset(_edgeX, centre.dy));
+    await tester.pump();
+    expect(rig.controller.offset, closeTo(400, 1));
+    rig.now += const Duration(milliseconds: 50);
+    await back.moveBy(const Offset(0, -24), timeStamp: rig.now);
+    await tester.pump();
+    expect(rig.controller.offset, closeTo(0, 1));
+    expect(tester.getCenter(_gear).dy, centre.dy);
+    await back.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('iOS edge away from the fixed crown keeps ordinary list scrolling', (tester) async {
+    final rig = _Rig();
+    tester.view.physicalSize = _screen;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(rig.host(rows: 400, platform: TargetPlatform.iOS));
+    await tester.pump();
+    await tester.dragFrom(const Offset(_edgeX, 180), const Offset(0, -50));
+    await tester.pumpAndSettle();
+    expect(rig.controller.offset, greaterThan(0));
+    expect(rig.teeth, isEmpty);
+    expect(_phase(tester), 0);
+  });
+
+  testWidgets('iOS wheel stays at screen centre as the nested header collapses', (tester) async {
+    tester.view.physicalSize = _screen;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(platform: TargetPlatform.iOS),
+        home: Scaffold(
+          body: NestedScrollView(
+            floatHeaderSlivers: true,
+            headerSliverBuilder: (_, _) => [const SliverAppBar(expandedHeight: 134, floating: true, snap: true)],
+            body: ScrollCrown(
+              enabled: true,
+              child: ListView.builder(itemCount: 400, itemExtent: 100, itemBuilder: (_, i) => Text('row $i')),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final centre = tester.getCenter(_gear).dy;
+    expect(centre, closeTo(402, .01)); // The paint has two points of inset.
+    final gesture = await tester.startGesture(Offset(_edgeX, centre));
+    await gesture.moveBy(const Offset(0, 24));
+    await tester.pump();
+    await tester.pump();
+    expect(tester.getCenter(_gear).dy, closeTo(centre, .01));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(tester.getCenter(_gear).dy, closeTo(centre, .01));
+  });
+
+  testWidgets('iOS wheel clamps at both ends and respects reduced motion', (tester) async {
+    final rig = _Rig();
+    tester.view.physicalSize = _screen;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(rig.host(rows: 40, platform: TargetPlatform.iOS, reduceMotion: true));
+    await tester.pump();
+    final centre = tester.getCenter(_gear).dy;
+    final gesture = await tester.startGesture(Offset(_edgeX, centre));
+    await gesture.moveBy(const Offset(0, 300));
+    await tester.pump();
+    expect(rig.controller.offset, rig.controller.position.maxScrollExtent);
+    await gesture.moveBy(const Offset(0, -600));
+    await tester.pump();
+    expect(rig.controller.offset, 0);
+    expect(_phase(tester), 0);
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('iOS metrics remain safe after a shrinking list removes the crown', (tester) async {
+    final rig = _Rig();
+    tester.view.physicalSize = _screen;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(rig.host(rows: 400, platform: TargetPlatform.iOS));
+    await tester.pumpAndSettle();
+    expect(_rail, findsOneWidget);
+    rig.rowCount.value = 2;
+    await tester.pumpAndSettle();
+    expect(_rail, findsNothing);
+    rig.rowCount.value = 3;
+    tester.view.physicalSize = const Size(400, 700);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(_rail, findsNothing);
+  });
+
   testWidgets('slow crown drag remains one scroll activity until release', (tester) async {
     final rig = _Rig();
     await _setUp(tester, rig, rows: 400);
