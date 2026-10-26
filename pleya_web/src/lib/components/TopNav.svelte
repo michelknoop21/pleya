@@ -7,6 +7,7 @@
   ring op een gap van 3 px via de globale :focus-visible.
 -->
 <script lang="ts">
+  import AdminPill from './AdminPill.svelte';
   import NavIcon from './NavIcon.svelte';
   import Wordmark from './Wordmark.svelte';
   import type { NavItem } from './navItems';
@@ -18,9 +19,19 @@
     /** Alleen waar de server zoeken aanbiedt. */
     showSearch?: boolean;
     searchActive?: boolean;
+    /** Alleen voor eigenaar of beheerder (`session.canAdminister`). */
+    showAdmin?: boolean;
+    adminActive?: boolean;
   }
 
-  let { items, activeId, showSearch = false, searchActive = false }: Props = $props();
+  let {
+    items,
+    activeId,
+    showSearch = false,
+    searchActive = false,
+    showAdmin = false,
+    adminActive = false
+  }: Props = $props();
 </script>
 
 <nav class="topnav" aria-label={t('nav.primary')}>
@@ -60,6 +71,9 @@
         <NavIcon name="search" size={18} />
         <span class="search__ph">{t('nav.searchPlaceholder')}</span>
       </a>
+    {/if}
+    {#if showAdmin}
+      <AdminPill active={adminActive} />
     {/if}
   </div>
 </nav>

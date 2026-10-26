@@ -23,7 +23,8 @@ import type {
   LibraryList,
   ServerDetail,
   SortOption,
-  TokenPair
+  TokenPair,
+  User
 } from './types';
 
 export const DEFAULT_BASE_URL = '/pleya/v1';
@@ -215,6 +216,22 @@ export class PleyaClient {
 
   server(signal?: AbortSignal): Promise<ServerDetail> {
     return this.#unwrap(this.#raw.GET('/server', { signal }));
+  }
+
+  /** De aanvrager zelf, met zijn rol. Klasse `authenticated`, elke rol krijgt 200. */
+  me(signal?: AbortSignal): Promise<User> {
+    return this.#unwrap(this.#raw.GET('/users/me', { signal }));
+  }
+
+  /**
+   * Eén getypeerde aanvraag met dezelfde authenticatie en foutvertaling als de
+   * methoden hier. Bedoeld voor een tweede API-module (`admin.ts`), zodat niet
+   * elke beheerroute in dit bestand een methode hoeft te krijgen.
+   */
+  request<T>(
+    call: (raw: Client<paths>) => Promise<{ data?: T; error?: unknown; response: Response }>
+  ): Promise<T> {
+    return this.#unwrap(call(this.#raw));
   }
 
   // --- Catalogus --------------------------------------------------------

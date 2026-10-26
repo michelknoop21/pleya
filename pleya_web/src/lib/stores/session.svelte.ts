@@ -8,7 +8,7 @@
  * uitgegrijsd.
  */
 import { PleyaClient } from '../api/client';
-import type { Capabilities, Info, Library, ServerDetail } from '../api/types';
+import type { Capabilities, Info, Library, ServerDetail, User } from '../api/types';
 import { describeError } from '../api/errors';
 import { readLastContact, writeLastContact, type LastContact } from './lastContact';
 
@@ -19,11 +19,15 @@ class SessionState {
   info = $state<Info | null>(null);
   server = $state<ServerDetail | null>(null);
   libraries = $state<Library[]>([]);
+  /** De ingelogde gebruiker met zijn rol, uit `GET /users/me`; null als de server dat niet kent. */
+  me = $state<User | null>(null);
   error = $state<string | null>(null);
   /** Wat er de laatste keer van de server bekend was; alleen gelezen bij onbereikbaar. */
   lastContact = $state<LastContact | null>(null);
 
   readonly client: PleyaClient;
+
+  #started: Promise<void> | null = null;
 
   constructor(client?: PleyaClient) {
     this.client =
@@ -32,6 +36,7 @@ class SessionState {
         onSessionLost: () => {
           this.server = null;
           this.libraries = [];
+          this.me = null;
           // Een server zonder eigenaar blijft een server zonder eigenaar. Een
           // 401 zegt daar niets over, en hem hier als "uitgelogd" boeken zou
           // een inlogscherm opleveren waar niemand op kan inloggen.
@@ -42,6 +47,33 @@ class SessionState {
 
   get capabilities(): Capabilities | null {
     return this.info?.capabilities ?? null;
+  }
+
+  /**
+   * Of deze gebruiker het beheeroppervlak krijgt: eigenaar of beheerder, op een
+   * server die een beheeroppervlak heeft. Dit is netheid en geen beveiliging;
+   * de server weigert een lid met 404, wat de client ook vraagt. De
+   * beheerlaag vraagt daarom niets zolang dit onwaar is (S10.7).
+   */
+  get canAdminister(): boolean {
+    const role = this.me?.role;
+    return (
+      this.phase === 'ready' &&
+      this.capabilities?.administration === true &&
+      (role === 'owner' || role === 'admin')
+    );
+  }
+
+  /**
+   * Start de sessie hoogstens één keer en geeft die ene poging terug.
+   *
+   * De schil start bij het mounten, maar de load van `/admin` draait vóór dat
+   * mounten en moet de rol al weten. Twee losse starts zouden twee
+   * refreshaanvragen kunnen geven, en het refreshtoken roteert bij elk gebruik.
+   */
+  ensureStarted(): Promise<void> {
+    this.#started ??= this.start();
+    return this.#started;
   }
 
   /**
@@ -83,12 +115,18 @@ class SessionState {
   /** Haalt op wat achter authenticatie zit. Aanroepen na setup of login. */
   async load(): Promise<void> {
     try {
-      const [server, libraries] = await Promise.all([
+      const [server, libraries, me] = await Promise.all([
         this.client.server(),
-        this.client.libraries()
+        this.client.libraries(),
+        // Een oudere server kent /users/me niet (404). Dan is de rol onbekend en
+        // blijft het beheeroppervlak dicht; de rest van de app werkt gewoon.
+        this.info?.capabilities.users === true
+          ? this.client.me().catch(() => null)
+          : Promise.resolve(null)
       ]);
       this.server = server;
       this.libraries = libraries;
+      this.me = me;
       this.phase = 'ready';
       this.error = null;
       writeLastContact({
@@ -117,6 +155,7 @@ class SessionState {
     this.client.signOut();
     this.server = null;
     this.libraries = [];
+    this.me = null;
     this.phase = this.info?.auth.setup_required ? 'setup' : 'signed-out';
   }
 
