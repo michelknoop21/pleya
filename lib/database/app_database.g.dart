@@ -8015,7 +8015,7 @@ class $AssistantMemoriesTable extends AssistantMemories
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {id};
+  Set<GeneratedColumn> get $primaryKey => {profileId, id};
   @override
   AssistantMemoryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -8791,6 +8791,231 @@ class AssistantMemoryOverviewsCompanion
   }
 }
 
+class $AssistantMemorySyncStatesTable extends AssistantMemorySyncStates
+    with TableInfo<$AssistantMemorySyncStatesTable, AssistantMemorySyncRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AssistantMemorySyncStatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _profileIdMeta = const VerificationMeta(
+    'profileId',
+  );
+  @override
+  late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
+    'profile_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [profileId, payload];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'assistant_memory_sync_states';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AssistantMemorySyncRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('profile_id')) {
+      context.handle(
+        _profileIdMeta,
+        profileId.isAcceptableOrUnknown(data['profile_id']!, _profileIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_profileIdMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {profileId};
+  @override
+  AssistantMemorySyncRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AssistantMemorySyncRow(
+      profileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile_id'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+    );
+  }
+
+  @override
+  $AssistantMemorySyncStatesTable createAlias(String alias) {
+    return $AssistantMemorySyncStatesTable(attachedDatabase, alias);
+  }
+}
+
+class AssistantMemorySyncRow extends DataClass
+    implements Insertable<AssistantMemorySyncRow> {
+  final String profileId;
+  final String payload;
+  const AssistantMemorySyncRow({
+    required this.profileId,
+    required this.payload,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['profile_id'] = Variable<String>(profileId);
+    map['payload'] = Variable<String>(payload);
+    return map;
+  }
+
+  AssistantMemorySyncStatesCompanion toCompanion(bool nullToAbsent) {
+    return AssistantMemorySyncStatesCompanion(
+      profileId: Value(profileId),
+      payload: Value(payload),
+    );
+  }
+
+  factory AssistantMemorySyncRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AssistantMemorySyncRow(
+      profileId: serializer.fromJson<String>(json['profileId']),
+      payload: serializer.fromJson<String>(json['payload']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'profileId': serializer.toJson<String>(profileId),
+      'payload': serializer.toJson<String>(payload),
+    };
+  }
+
+  AssistantMemorySyncRow copyWith({String? profileId, String? payload}) =>
+      AssistantMemorySyncRow(
+        profileId: profileId ?? this.profileId,
+        payload: payload ?? this.payload,
+      );
+  AssistantMemorySyncRow copyWithCompanion(
+    AssistantMemorySyncStatesCompanion data,
+  ) {
+    return AssistantMemorySyncRow(
+      profileId: data.profileId.present ? data.profileId.value : this.profileId,
+      payload: data.payload.present ? data.payload.value : this.payload,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AssistantMemorySyncRow(')
+          ..write('profileId: $profileId, ')
+          ..write('payload: $payload')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(profileId, payload);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AssistantMemorySyncRow &&
+          other.profileId == this.profileId &&
+          other.payload == this.payload);
+}
+
+class AssistantMemorySyncStatesCompanion
+    extends UpdateCompanion<AssistantMemorySyncRow> {
+  final Value<String> profileId;
+  final Value<String> payload;
+  final Value<int> rowid;
+  const AssistantMemorySyncStatesCompanion({
+    this.profileId = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AssistantMemorySyncStatesCompanion.insert({
+    required String profileId,
+    required String payload,
+    this.rowid = const Value.absent(),
+  }) : profileId = Value(profileId),
+       payload = Value(payload);
+  static Insertable<AssistantMemorySyncRow> custom({
+    Expression<String>? profileId,
+    Expression<String>? payload,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (profileId != null) 'profile_id': profileId,
+      if (payload != null) 'payload': payload,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AssistantMemorySyncStatesCompanion copyWith({
+    Value<String>? profileId,
+    Value<String>? payload,
+    Value<int>? rowid,
+  }) {
+    return AssistantMemorySyncStatesCompanion(
+      profileId: profileId ?? this.profileId,
+      payload: payload ?? this.payload,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (profileId.present) {
+      map['profile_id'] = Variable<String>(profileId.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AssistantMemorySyncStatesCompanion(')
+          ..write('profileId: $profileId, ')
+          ..write('payload: $payload, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8817,6 +9042,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $AssistantMemoriesTable(this);
   late final $AssistantMemoryOverviewsTable assistantMemoryOverviews =
       $AssistantMemoryOverviewsTable(this);
+  late final $AssistantMemorySyncStatesTable assistantMemorySyncStates =
+      $AssistantMemorySyncStatesTable(this);
   late final Index idxDownloadedMediaStatus = Index(
     'idx_downloaded_media_status',
     'CREATE INDEX idx_downloaded_media_status ON downloaded_media (status)',
@@ -8900,6 +9127,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     historySyncCursors,
     assistantMemories,
     assistantMemoryOverviews,
+    assistantMemorySyncStates,
     idxDownloadedMediaStatus,
     idxDownloadedMediaServer,
     idxDownloadedMediaParent,
@@ -13451,6 +13679,168 @@ typedef $$AssistantMemoryOverviewsTableProcessedTableManager =
       AssistantMemoryOverviewRow,
       PrefetchHooks Function()
     >;
+typedef $$AssistantMemorySyncStatesTableCreateCompanionBuilder =
+    AssistantMemorySyncStatesCompanion Function({
+      required String profileId,
+      required String payload,
+      Value<int> rowid,
+    });
+typedef $$AssistantMemorySyncStatesTableUpdateCompanionBuilder =
+    AssistantMemorySyncStatesCompanion Function({
+      Value<String> profileId,
+      Value<String> payload,
+      Value<int> rowid,
+    });
+
+class $$AssistantMemorySyncStatesTableFilterComposer
+    extends Composer<_$AppDatabase, $AssistantMemorySyncStatesTable> {
+  $$AssistantMemorySyncStatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AssistantMemorySyncStatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $AssistantMemorySyncStatesTable> {
+  $$AssistantMemorySyncStatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AssistantMemorySyncStatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AssistantMemorySyncStatesTable> {
+  $$AssistantMemorySyncStatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get profileId =>
+      $composableBuilder(column: $table.profileId, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+}
+
+class $$AssistantMemorySyncStatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AssistantMemorySyncStatesTable,
+          AssistantMemorySyncRow,
+          $$AssistantMemorySyncStatesTableFilterComposer,
+          $$AssistantMemorySyncStatesTableOrderingComposer,
+          $$AssistantMemorySyncStatesTableAnnotationComposer,
+          $$AssistantMemorySyncStatesTableCreateCompanionBuilder,
+          $$AssistantMemorySyncStatesTableUpdateCompanionBuilder,
+          (
+            AssistantMemorySyncRow,
+            BaseReferences<
+              _$AppDatabase,
+              $AssistantMemorySyncStatesTable,
+              AssistantMemorySyncRow
+            >,
+          ),
+          AssistantMemorySyncRow,
+          PrefetchHooks Function()
+        > {
+  $$AssistantMemorySyncStatesTableTableManager(
+    _$AppDatabase db,
+    $AssistantMemorySyncStatesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AssistantMemorySyncStatesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$AssistantMemorySyncStatesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AssistantMemorySyncStatesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> profileId = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AssistantMemorySyncStatesCompanion(
+                profileId: profileId,
+                payload: payload,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String profileId,
+                required String payload,
+                Value<int> rowid = const Value.absent(),
+              }) => AssistantMemorySyncStatesCompanion.insert(
+                profileId: profileId,
+                payload: payload,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AssistantMemorySyncStatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AssistantMemorySyncStatesTable,
+      AssistantMemorySyncRow,
+      $$AssistantMemorySyncStatesTableFilterComposer,
+      $$AssistantMemorySyncStatesTableOrderingComposer,
+      $$AssistantMemorySyncStatesTableAnnotationComposer,
+      $$AssistantMemorySyncStatesTableCreateCompanionBuilder,
+      $$AssistantMemorySyncStatesTableUpdateCompanionBuilder,
+      (
+        AssistantMemorySyncRow,
+        BaseReferences<
+          _$AppDatabase,
+          $AssistantMemorySyncStatesTable,
+          AssistantMemorySyncRow
+        >,
+      ),
+      AssistantMemorySyncRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -13485,5 +13875,10 @@ class $AppDatabaseManager {
       $$AssistantMemoryOverviewsTableTableManager(
         _db,
         _db.assistantMemoryOverviews,
+      );
+  $$AssistantMemorySyncStatesTableTableManager get assistantMemorySyncStates =>
+      $$AssistantMemorySyncStatesTableTableManager(
+        _db,
+        _db.assistantMemorySyncStates,
       );
 }

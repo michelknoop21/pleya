@@ -33,6 +33,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/httpserver"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
+	"github.com/edde746/plezy/pleya_server/internal/memory"
 	"github.com/edde746/plezy/pleya_server/internal/metadata"
 	"github.com/edde746/plezy/pleya_server/internal/metrics"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
@@ -330,6 +331,7 @@ func run() int {
 		Auth:               authStore,
 		Watch:              watch.NewStore(pool),
 		Personal:           personal.NewStore(pool),
+		Memory:             memory.NewStore(pool),
 		Downloads:          downloadStore,
 		Metrics:            reg,
 		MediaRoots:         cfg.MediaDirs,

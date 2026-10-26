@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/memory"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
 )
@@ -591,4 +592,54 @@ func privateDatabasePool(t *testing.T) *pgxpool.Pool {
 		admin.Close()
 	})
 	return pool
+}
+
+// BP-08b: de echte dump/herstelketen moet de wisgrens wijzigen. Alleen een
+// losse UPDATE-test zou niets bewijzen over de ondersteunde herstelprocedure.
+func TestMemoryRestoreRotatesEpochBeforeReopening(t *testing.T) {
+	f := newFixture(t, testKey)
+	ctx := context.Background()
+	var user id.ID
+	if err := f.pool.QueryRow(ctx, `SELECT id FROM users WHERE role='owner' LIMIT 1`).Scan(&user); err != nil {
+		t.Fatal(err)
+	}
+	s := memory.NewStore(f.pool)
+	base, err := s.Read(ctx, user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fact := memory.Fact{ID: id.New(), Category: "preference", Value: "Houdt van detectives", Source: "user_explicit"}
+	saved, err := s.Replace(ctx, user, base.Epoch, base.Revision, []memory.Fact{fact}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := f.backup(t)
+	deleted, err := s.Replace(ctx, user, saved.Epoch, saved.Revision, []memory.Fact{}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(deleted.Facts) != 0 {
+		t.Fatal("wisactie niet bevestigd")
+	}
+	plan, err := f.svc.PrepareRestore(ctx, rec.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = f.svc.Restore(ctx, plan); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := s.Read(ctx, user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.Epoch == saved.Epoch || restored.Epoch == deleted.Epoch {
+		t.Fatal("herstelde oude wisgrens aangeboden")
+	}
+	if len(restored.Facts) != 1 {
+		t.Fatal("backup niet werkelijk teruggezet")
+	}
+	// De oude client kan de teruggezette inhoud niet als een gewone CAS voortzetten.
+	if _, err = s.Replace(ctx, user, deleted.Epoch, deleted.Revision, []memory.Fact{}, time.Now()); !errors.Is(err, memory.ErrEpoch) {
+		t.Fatal("client passeert herstelgrens")
+	}
 }

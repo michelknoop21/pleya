@@ -93,6 +93,7 @@ const (
 	// notPermitted: de bibliotheek is zichtbaar maar het downloadrecht ontbreekt
 	// (S23): 403 met library.download_not_permitted, geen 404.
 	notPermitted
+	memoryDenied
 )
 
 func (o outcome) String() string {
@@ -456,6 +457,9 @@ func matrixProbes() []matrixProbe {
 			path: func(f *matrixFixture) string { return "/pleya/v1/backups/" + f.okBackupID + "/restore" },
 			body: func(*matrixFixture) any { return map[string]string{"confirm": "nee"} },
 			ok:   http.StatusConflict, expect: adminSurface()},
+		{row: 71, name: "GET /users/me/memory", method: http.MethodGet, path: fixedPath("/pleya/v1/users/me/memory"), body: noBody, ok: http.StatusOK, expect: map[string]outcome{roleOwner: answers, roleAdmin: answers, roleMember: answers, roleRestricted: memoryDenied}},
+		{row: 72, name: "PUT /users/me/memory", method: http.MethodPut, path: fixedPath("/pleya/v1/users/me/memory"), body: func(*matrixFixture) any { return map[string]any{} }, ok: http.StatusBadRequest, expect: map[string]outcome{roleOwner: answers, roleAdmin: answers, roleMember: answers, roleRestricted: memoryDenied}},
+		{row: 73, name: "POST /users/me/memory/clear", method: http.MethodPost, path: fixedPath("/pleya/v1/users/me/memory/clear"), body: func(*matrixFixture) any { return map[string]any{} }, ok: http.StatusBadRequest, expect: map[string]outcome{roleOwner: answers, roleAdmin: answers, roleMember: answers, roleRestricted: memoryDenied}},
 		{row: 39, name: "GET /watch-history", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/watch-history"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
 	}
@@ -609,6 +613,10 @@ func TestAuthorizationMatrixRolesOnEveryRouteOfS1(t *testing.T) {
 				case notPermitted:
 					if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "library.download_not_permitted") {
 						t.Fatalf("gaf %d, wil 403 library.download_not_permitted: %s", rec.Code, rec.Body.String())
+					}
+				case memoryDenied:
+					if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "memory.not_permitted") {
+						t.Fatalf("gaf %d, wil 403 memory.not_permitted", rec.Code)
 					}
 				case refused:
 					if rec.Code != http.StatusNotFound {

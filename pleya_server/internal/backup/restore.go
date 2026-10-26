@@ -22,7 +22,7 @@ import (
 // de back-up gebeurde, en wie dat tijdstip heeft moeten overtypen weet welke
 // back-up hij koos.
 func Confirmation(rec Record) string {
-	return fmt.Sprintf("herstel %s: kijkstatus, gebruikers, sessies, instellingen en scans van daarna gaan verloren",
+	return fmt.Sprintf("herstel %s: kijkstatus, gebruikers, sessies, instellingen en scans van daarna gaan verloren; gewiste herinneringen uit deze back-up vragen opnieuw bevestiging",
 		rec.StartedAt.UTC().Format(time.RFC3339))
 }
 

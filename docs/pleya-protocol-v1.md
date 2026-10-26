@@ -539,6 +539,14 @@ contract keurt ze af.
 | `playback.not_playable` | 415 | nee | deze versie is niet zonder bewerking te leveren |
 | `playback.transcode_busy` | 503 | ja | alle omzetsessies zijn bezet |
 | `playback.transcode_failed` | 502 | nee | de omzetting leverde geen speelbare uitvoer |
+| `memory.invalid` | 400 | nee | ongeldige geheugensnapshot, geen inhoud in foutbody |
+| `memory.not_permitted` | 403 | nee | geen eigen volwassen sessiebearer |
+| `memory.too_large` | 413 | nee | geheugenaanvraag groter dan 256 KiB |
+| `memory.conflict` | 409 | nee | base_revision is niet de huidige revision |
+| `memory.epoch_changed` | 409 | nee | wis- of herstelgrens veranderde, opnieuw lezen |
+| `memory.deleted` | 409 | nee | eerder gewist feit-id opnieuw aangeboden |
+| `memory.limit_reached` | 409 | nee | meer dan 200 feiten |
+| `memory.duplicate` | 409 | nee | dubbele id of valueKey in de snapshot |
 | `library.personal_invalid` | 400 | nee | een waardering of spoorvoorkeur die niet te bewaren is, zie `details.field` |
 | `library.download_not_permitted` | 403 | nee | de bibliotheek is zichtbaar maar het recht `download` ontbreekt |
 | `library.download_not_ready` | 409 | ja | de download is nog `preparing`, probeer het zo opnieuw |
@@ -1384,6 +1392,10 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 68 | `GET /backups/{id}` | één back-up met zijn laatste hersteltest | klasse `admin` |
 | 69 | `POST /backups/{id}/verify` | een hersteltest starten | klasse `admin` |
 | 70 | `POST /backups/{id}/restore` | een back-up terugzetten | klasse `admin`, met de bevestigingszin uit `restore_confirmation` |
+| 71 | `GET /users/me/memory` | eigen Big P-geheugen | eigen sessiebearer, owner/admin/member; restricted en elk API-token 403 `memory.not_permitted` |
+| 72 | `PUT /users/me/memory` | volledige eigen geheugensnapshot met CAS | als regel 71, geen user-id in de body |
+| 73 | `POST /users/me/memory/clear` | eigen geheugen wissen en epoch roteren | als regel 71, geldige epoch en base_revision |
+
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
 zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
@@ -2231,3 +2243,30 @@ server-sent events. Geen Live TV. Geen beheerscherm voor gebruikers of bibliothe
 Voor elk daarvan geldt hetzelfde: het wordt gespecificeerd door de fase die het introduceert, binnen
 de regels uit hoofdstuk 3. Een client die vandaag tegen deze specificatie bouwt hoeft daarvoor
 niets te herschrijven.
+
+
+## BP-08b Persoonlijk Big P-geheugen
+
+Onder `capabilities.assistant_memory` bestaan `GET` en `PUT /users/me/memory` en
+`POST /users/me/memory/clear`. Alleen een eigen sessiebearer geeft toegang; restricted en elk
+API-token krijgen 403 `memory.not_permitted`. Geen user-id in pad/body; rol en sessie worden
+per aanvraag opnieuw gecontroleerd. Alle antwoorden dragen `Cache-Control: no-store`.
+
+GET geeft `{epoch, revision, facts}`. PUT draagt `{epoch, base_revision, facts}`; clear alleen
+`{epoch, base_revision}`. De gesloten facts-input heeft id, category, value en source; de snapshot
+voegt servertijden created_at/updated_at toe. Maximaal 200 feiten van maximaal 200 Unicode-codepunten,
+256 KiB body. Geen household-feiten, kindleeftijden of taalinstellingen. Zelfde valueKey betekent
+één feit; dubbelen worden geweigerd, niet stil samengevoegd.
+
+CAS vergelijkt epoch en revision onder dezelfde accountlock als de wijziging. Elke geaccepteerde
+mutatie verhoogt revision; ontbrekende ids worden tombstones zonder tekst. Clear roteert epoch en
+wist de feiten/tombstones. Een ondersteunde backuprestore roteert alle geheugenepochs binnen de
+restoretransactie vóór requestacceptatie. De client houdt een niet-lege snapshot met gewijzigde
+epoch in quarantaine tot expliciete bevestiging. Backupretentie kan gewiste tekst fysiek bewaren;
+een raw database-restore buiten de ondersteunde procedure biedt deze wisgrens niet.
+
+Codes: `memory.invalid` (400), `memory.not_permitted` (403), `memory.too_large` (413), en
+`memory.conflict`, `memory.epoch_changed`, `memory.deleted`, `memory.limit_reached`,
+`memory.duplicate` (409). Geen code bevat feittekst of een snapshot. Een conflict vraagt opnieuw
+lezen en driepartijenvergelijking; nooit blind opnieuw verzenden. Voor de clientbinding, offline-
+en herstelregels geldt het [BP-08b-plan](plans/2026-10-26-big-p-geheugensync.md).

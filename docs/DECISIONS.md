@@ -5078,3 +5078,24 @@ Migratie `0019_transcode_sessions.sql` (de masterlijst noemde `0017`, dat was be
 6. Login vervangt geen eerdere sessie met dezelfde `device_id`; dat blijft zo (`TestLoginWithAKnownDeviceIDAddsASession`). Stapelen voorkomen is de taak van uitloggen en van deze ronde, niet van login, omdat een native client met twee verbindingen naar dezelfde server elkaar anders zou uitloggen.
 7. Beheer krijgt op scherm 27 en 31 "Oude toestellen opruimen" (30, 60 of 90 dagen, standaard 30) voor sessies die nog wel kunnen verversen maar niet meer gebruikt worden. Nooit het eigen toestel, nooit een API-token, altijd achter een bevestiging die aantal en toestellen noemt. Het zijn losse `DELETE /sessions/{id}`-aanvragen; een fout stopt de rij niet. "Overal uitloggen" gebruikt sindsdien dezelfde rij en stopt ook niet meer bij de eerste fout.
 **Consequences:** De lijst toont na de eerstvolgende start alleen sessies die nog kunnen verversen. Voor de gebruiker verandert er verder niets: een ingetrokken sessie had geen werkend credential meer. De plaatshouder `Unknown device` verschijnt in het beheer als "Onbekend toestel" met de dag van aanmelden. Bestaande rijen zonder naam houden die naam; alleen nieuwe logins vanuit Pleya Web dragen er een. Open: de auditbron `system` (punt 3) en een toestelnaam voor native clients die nog niets sturen.
+
+
+## DEC-165: BP-08b geheugensync krijgt een scoped protocolvenster
+
+**Datum:** 26 oktober 2026
+**Status:** accepted
+**Roadmap:** BP-08b, samen naar TestFlight met A-08 / IOS-DL-BACK1.
+**Besluit:** Michel kiest Pleya Server voor persoonlijke Big P-geheugensync en geeft daarna het
+[concrete contract](plans/2026-10-26-big-p-geheugensync.md) en bijbehorende server/client-migraties
+vrij met de opdracht door te gaan tot een TestFlight-build samen met de Downloads-terugknop.
+Het venster omvat uitsluitend `assistant_memory`, GET/PUT `/users/me/memory`, POST
+`/users/me/memory/clear`, hun nieuwe schemas/foutdomein en autorisatiematrix. De zes
+compatibiliteitsregels staan in het contract getoetst; bestaande routes en enums veranderen niet.
+**Gevolgen:** eigen fase BP-08b naast de bestaande serverstroom, geen algemene refactor of
+chatsync. Geheugen blijft bij één expliciet gekozen eigen serveraccount; geen profielnaamkoppeling,
+kind-/household-sync of MCP-toegang. CAS, duurzame ackgeneraties, wis-epoch/tombstones en
+restorequarantaine beschermen tegen gegevensverlies/herleven. Onafhankelijke adversariële review,
+gerichte tests, code-/protocolgates, simulatorbewijs en normale PR-CI blijven vereist. Het venster
+sluit pas met het voorgeschreven bewijs; een TestFlight-upload is geen hardwareacceptatie.
+Er is geen opdracht voor een productie-NAS-deploy, upload van bestaande gebruikersherinneringen
+of externe/publicatie naar App Review.

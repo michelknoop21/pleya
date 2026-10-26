@@ -141,7 +141,7 @@ func (s *Service) load(ctx context.Context, databaseName, schema string, dump io
 		return toolError("psql", err, "")
 	}
 	preamble := "DROP SCHEMA IF EXISTS " + pgx.Identifier{schema}.Sanitize() + " CASCADE;\n"
-	_, copyErr := io.Copy(stdin, io.MultiReader(strings.NewReader(preamble), dump))
+	_, copyErr := io.Copy(stdin, io.MultiReader(strings.NewReader(preamble), dump, strings.NewReader(memoryRestoreFence(schema))))
 	if copyErr != nil {
 		_ = cmd.Process.Kill()
 		_ = stdin.Close()
@@ -194,4 +194,11 @@ func (l *limitedBuffer) Write(p []byte) (int, error) {
 		}
 	}
 	return len(p), nil
+}
+
+// memoryRestoreFence maakt herstelde feiten herkenbaar vóór dezelfde psql-transactie
+// commit. Ook een restore die daarna faalt bij /config kan nooit de oude epoch aanbieden.
+func memoryRestoreFence(schema string) string {
+	literal := strings.ReplaceAll(schema, "'", "''")
+	return "\nSELECT format('UPDATE %I.assistant_memory_states SET epoch = gen_random_uuid()', nspname) FROM pg_namespace WHERE nspname = '" + literal + "' AND to_regclass(format('%I.assistant_memory_states', nspname)) IS NOT NULL\n\\gexec\n"
 }

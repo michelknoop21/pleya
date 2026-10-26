@@ -2,6 +2,8 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/automation/automation_node.dart';
+import 'package:pleya/automation/automation_ids.dart';
 import 'package:pleya/connection/connection.dart';
 import 'package:pleya/connection/connection_registry.dart';
 import 'package:pleya/database/app_database.dart';
@@ -21,6 +23,7 @@ import 'package:pleya/widgets/mobile/mobile_dense_title_row.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
+import '../../test_helpers/glass_phone.dart';
 import 'package:pleya/theme/mono_theme.dart';
 
 class _FakeConnectionRegistry extends ConnectionRegistry {
@@ -85,6 +88,34 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('phone tab root has a working explicit back action without a pushed route', (tester) async {
+    await glassPhone(tester, glass: false);
+    var returned = false;
+    await tester.pumpWidget(
+      InputModeTracker(
+        child: MultiProvider(
+          providers: [
+            Provider<ConnectionRegistry>.value(value: _FakeConnectionRegistry(db)),
+            ChangeNotifierProvider<DownloadProvider>.value(value: downloadProvider),
+            ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider),
+          ],
+          child: MaterialApp(
+            theme: glassPhoneTheme(),
+            home: DownloadsScreen(onBack: () => returned = true),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final back = find.byWidgetPredicate(
+      (widget) => widget is AutomationNode && widget.id == AutomationIds.navigationBack,
+    );
+    expect(back, findsOneWidget);
+    await tester.tap(back);
+    await tester.pump();
+    expect(returned, isTrue);
+  });
 
   testWidgets('right from Movies focuses and opens Sync Rules action', (tester) async {
     final screenKey = GlobalKey<DownloadsScreenState>();

@@ -40,6 +40,7 @@ extension AssistantMemoryWipe on AppDatabase {
       await transaction(() async {
         await (delete(assistantMemories)..where((t) => t.profileId.equals(profileId))).go();
         await (delete(assistantMemoryOverviews)..where((t) => t.profileId.equals(profileId))).go();
+        await (delete(assistantMemorySyncStates)..where((t) => t.profileId.equals(profileId))).go();
       });
       AssistantMemoryEpochs._removals[profileId] = AssistantMemoryEpochs.removals(profileId) + 1;
     } finally {

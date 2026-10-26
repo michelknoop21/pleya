@@ -1622,7 +1622,10 @@ class _MainScreenState extends State<MainScreen>
             onBack: () => _selectTab(NavigationTabId.myPleya),
           ),
           NavigationTabId.requests => const SeerrDiscoverScreen(),
-          NavigationTabId.downloads => DownloadsScreen(key: _downloadsKey),
+          NavigationTabId.downloads => DownloadsScreen(
+            key: _downloadsKey,
+            onBack: _isPhone ? () => _selectTab(NavigationTabId.myPleya) : null,
+          ),
           NavigationTabId.settings => SettingsScreen(key: _settingsKey),
           NavigationTabId.watchlist => WatchlistScreen(key: _watchlistKey),
           // Fase 7: TV gets its own personal hub ([DEC-063] replaces the TV
