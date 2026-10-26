@@ -14,6 +14,7 @@
   import UnreachableState from '$lib/components/UnreachableState.svelte';
   import { activeItemId, navItems } from '$lib/components/navItems';
   import { adminBackHref, isAdminPath } from '$lib/admin/sections';
+  import { isPlayerPath } from '$lib/player/route';
   import { session } from '$lib/stores/session.svelte';
   import { theme } from '$lib/stores/theme.svelte';
   import { viewport } from '$lib/stores/viewport.svelte';
@@ -58,6 +59,8 @@
   const isAuthRoute = $derived(
     page.url.pathname === '/login' || page.url.pathname === '/setup'
   );
+  // De speler (mockup 50) vult het hele venster, zonder topnav of tabbalk.
+  const isPlayer = $derived(isPlayerPath(page.url.pathname));
 
   onMount(() => {
     const stopTheme = theme.start();
@@ -132,6 +135,10 @@
   </main>
 {:else if !routeMatchesPhase}
   <SkeletonPage variant="compact" />
+{:else if isPlayer && !unreachable}
+  <main id="main" class="player-shell">
+    {@render children()}
+  </main>
 {:else}
   <div class="shell" class:shell--wide={viewport.wide}>
     {#if viewport.wide}
@@ -195,7 +202,8 @@
     );
   }
 
-  .dev-shell {
+  .dev-shell,
+  .player-shell {
     min-height: 100dvh;
   }
 

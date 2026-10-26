@@ -12,6 +12,8 @@
   import type { Item } from '$lib/api/types';
   import { formatDate, formatDuration } from '$lib/util/format';
   import { t } from '$lib/i18n';
+  import { playerHref } from '$lib/player/route';
+  import { formatPlayTime } from '$lib/player/keyboard';
 
   const itemId = $derived(page.params['id'] ?? '');
 
@@ -55,6 +57,14 @@
   });
 
   const version = $derived(item?.versions?.[0]);
+  const playable = $derived(
+    (item?.kind === 'movie' || item?.kind === 'episode') && (item?.versions?.length ?? 0) > 0
+  );
+  const resumeMs = $derived(
+    item?.user_state && !item.user_state.watched && item.user_state.position_ms > 0
+      ? item.user_state.position_ms
+      : null
+  );
   const childHeading = $derived(item?.kind === 'show' ? t('item.seasons') : t('item.episodes'));
 
   /*
@@ -120,6 +130,20 @@
             .filter(Boolean)
             .join(' · ')}
         </p>
+
+        {#if playable}
+          <!-- S13.2: de kijkstatus wordt hier gelezen en getoond (PS-4E), niet geschreven. -->
+          <div class="detail__play">
+            {#if resumeMs}
+              <a class="btn" href={playerHref(item.id, resumeMs)}>
+                {t('player.resume', { time: formatPlayTime(resumeMs / 1000) })}
+              </a>
+              <a class="btn btn--secondary" href={playerHref(item.id)}>{t('player.playFromStart')}</a>
+            {:else}
+              <a class="btn" href={playerHref(item.id)}>{t('player.play')}</a>
+            {/if}
+          </div>
+        {/if}
 
         {#if facts.length > 0}
           <dl class="facts">
@@ -194,6 +218,13 @@
 
   .detail__line {
     color: var(--ink-2);
+  }
+
+  .detail__play {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space);
+    margin-top: var(--space-half);
   }
 
   .facts {

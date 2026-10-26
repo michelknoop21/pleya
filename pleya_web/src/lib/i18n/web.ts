@@ -1,5 +1,6 @@
 import { webBackups } from './webBackups';
 import { webOps } from './web.ops';
+import { webPlayer } from './webPlayer';
 
 /**
  * Teksten die alleen in de webclient bestaan. Alles wat de app ook kent komt
@@ -12,6 +13,7 @@ import { webTokens } from './webTokens';
 
 export const web = {
   ...webOps,
+  ...webPlayer,
   'app.name': 'Pleya',
   'nav.home': 'Home',
   'nav.search': 'Search',

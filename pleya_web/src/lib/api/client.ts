@@ -214,6 +214,18 @@ export class PleyaClient {
     this.tokens.clear();
   }
 
+  /**
+   * Een geldig accesstoken voor een aanvraag die niet via deze client loopt,
+   * zoals de segmenten die hls.js zelf ophaalt. Verlopen betekent eerst één
+   * keer verversen; het token komt alleen in een header, nooit in een URL.
+   */
+  async bearer(): Promise<string | null> {
+    const access = this.tokens.accessToken;
+    if (access) return access;
+    if (!this.tokens.refreshToken) return null;
+    return (await this.#refreshOnce()) ? this.tokens.accessToken : null;
+  }
+
   server(signal?: AbortSignal): Promise<ServerDetail> {
     return this.#unwrap(this.#raw.GET('/server', { signal }));
   }
