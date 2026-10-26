@@ -290,6 +290,76 @@ jobs:
         name: Niets te draaien
         run: echo "Deze verandering raakt de app en haar tests niet."
 
+  # Bewijst dat de Android-toolchain (AGP, Kotlin, Gradle) en de plugins samen
+  # een app bouwen. De rest van deze workflow draait alleen Dart: analyze en
+  # tests zien een te lage AGP of Kotlin voor een plugin niet, en de release-
+  # build in build.yml heeft een keystore nodig en maakt een draft-release.
+  # Debug-APK, geen secrets, geen upload. Zonder key.properties tekent Gradle
+  # met de debugsleutel (android/app/build.gradle.kts).
+  android-debug:
+    name: Android Debug APK
+    needs: changes
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      # Valt open, zoals bij Unit Tests: alleen een geslaagde `changes` met
+      # expliciet "false" slaat het werk over.
+      RUN_FLUTTER: ${{ needs.changes.result != 'success' || needs.changes.outputs.flutter != 'false' }}
+    steps:
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Checkout code
+        uses: actions/checkout@v7
+
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Setup Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: "stable"
+          flutter-version-file: .fvmrc
+          cache: true
+          pub-cache: false
+
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Cache Pub dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.pub-cache
+          key: ${{ runner.os }}-pub-v3-${{ hashFiles('**/pubspec.yaml', '**/pubspec.lock') }}
+
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Cache Gradle
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Install dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Build debug APK
+        run: flutter build apk --debug
+
+      - if: ${{ env.RUN_FLUTTER == 'false' }}
+        name: Niets te draaien
+        run: echo "Deze verandering raakt de app niet, dus ook de Android-build niet."
+
   pleya-server:
     name: Pleya Server (Go, database)
     needs: changes
