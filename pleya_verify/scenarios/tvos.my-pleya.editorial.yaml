@@ -51,6 +51,8 @@ steps:
   # Bekijk alles opens the kijklijst, Menu lands back on it.
   - walk: {direction: up, steps: 3, stopAt: "my_pleya.tile[assistant]", timeout: 30000, settle: 400}
   - press: left
+  - wait_until: {focused: "my_pleya.watchlist_item[3]", timeout: 8000}
+  - press: right
   - wait_until: {focused: "my_pleya.tile[watchlist]", timeout: 8000}
   - press: select
   - wait_until: {id: "my_pleya.section[watchlist]", timeout: 10000}
@@ -87,7 +89,7 @@ steps:
   - snapshot: dark-landing
   # Instellingen again, Thema from Donker to Licht.
   - press: down
-  - wait_until: {focused: "my_pleya.watchlist_item[0]", timeout: 8000}
+  - wait_until: {focused: "my_pleya.watchlist_item[3]", timeout: 8000}
   - walk: {direction: right, steps: 12, stopAt: "my_pleya.tile[watchlist]", timeout: 120000, settle: 400}
   - press: right
   - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
@@ -114,8 +116,9 @@ steps:
   - settle: 1500
   - snapshot: light-landing
   - press: down
-  - wait_until: {focused: "my_pleya.watchlist_item[0]", timeout: 8000}
-  - press: right
+  - wait_until: {focused: "my_pleya.watchlist_item[3]", timeout: 8000}
+  - press: left
+  - press: left
   - wait_until: {focused: "my_pleya.watchlist_item[1]", timeout: 8000}
   - settle: 1200
   - snapshot: light-posterfocus

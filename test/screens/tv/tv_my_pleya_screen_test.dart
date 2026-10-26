@@ -26,6 +26,7 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/watchlist_entry.dart';
 import 'package:pleya/providers/now_watching_provider.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_screen.dart';
+import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_sections.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
@@ -604,7 +605,7 @@ void main() {
       // more than the column shows, stay reachable with RIGHT, and a title
       // that ellipsized on one line reads whole on the focused card without
       // any card changing size or place.
-      testWidgets('RIGHT walks all twelve posters inside the rail, titles whole, no card moves on focus', (
+      testWidgets('CAROUSEL-LEFT1 all twelve watchlist posters stay at the same leading position and size', (
         tester,
       ) async {
         final twelve = [
@@ -616,13 +617,16 @@ void main() {
         state(tester).focusKey('tvMyPleya_poster_w0');
         await tester.pumpAndSettle();
         final w2Before = tester.getRect(find.text('Title w2'));
+        final anchor = FocusManager.instance.primaryFocus!.rect.left;
 
         await press(tester, LogicalKeyboardKey.arrowRight);
         await tester.pumpAndSettle();
         expect(focusedLabel(), 'tvMyPleya_poster_w1');
         // Too wide for one line of the card (the test font is wide), whole on two.
         expect(tester.renderObject<RenderParagraph>(find.text('Sintel Two')).didExceedMaxLines, isFalse);
-        expect(tester.getRect(find.text('Title w2')), w2Before, reason: 'a neighbour keeps its size and place');
+        expect(tester.getRect(find.text('Title w2')).width, closeTo(w2Before.width, 0.01));
+        expect(tester.getRect(find.text('Title w2')).height, closeTo(w2Before.height, 0.01));
+        expect(FocusManager.instance.primaryFocus!.rect.left, closeTo(anchor, 0.5));
 
         for (var i = 2; i < 12; i++) {
           await press(tester, LogicalKeyboardKey.arrowRight);
@@ -630,7 +634,92 @@ void main() {
           expect(focusedLabel(), 'tvMyPleya_poster_w$i');
           final centre = FocusManager.instance.primaryFocus!.rect.center;
           expect(centre.dx, inInclusiveRange(rail.left, rail.right), reason: 'poster $i is on screen');
+          expect(
+            FocusManager.instance.primaryFocus!.rect.left,
+            closeTo(anchor, 0.5),
+            reason: 'poster $i at fixed anchor',
+          );
         }
+      });
+
+      for (final count in [1, 3, 12]) {
+        testWidgets('CAROUSEL-LEFT1 watchlist $count items restores its own selection and rapid input', (tester) async {
+          final items = [for (var i = 0; i < count; i++) watchlistEntryDouble('w$i')];
+          await pump(tester, watchlistEntries: items);
+          state(tester).focusKey('tvMyPleya_poster_w0');
+          await tester.pumpAndSettle();
+          final anchor = FocusManager.instance.primaryFocus!.rect.left;
+          for (var i = 1; i < count; i++) {
+            await press(tester, LogicalKeyboardKey.arrowRight);
+          }
+          await tester.pumpAndSettle();
+          expect(focusedLabel(), 'tvMyPleya_poster_w${count - 1}');
+          expect(FocusManager.instance.primaryFocus!.rect.left, closeTo(anchor, 0.5));
+          await press(tester, LogicalKeyboardKey.arrowDown);
+          await press(tester, LogicalKeyboardKey.arrowUp);
+          await tester.pumpAndSettle();
+          expect(focusedLabel(), 'tvMyPleya_poster_w${count - 1}');
+          await press(tester, LogicalKeyboardKey.arrowUp);
+          await press(tester, LogicalKeyboardKey.arrowDown);
+          await tester.pumpAndSettle();
+          expect(focusedLabel(), 'tvMyPleya_poster_w${count - 1}');
+          state(tester).focusKey(TvMyPleyaSection.settings.tileFocusKey);
+          await tester.pumpAndSettle();
+          expect(state(tester).restoreTvFocus(TvFocusRestoreTarget(itemId: 'tvMyPleya_poster_w${count - 1}')), isTrue);
+          await tester.pumpAndSettle();
+          expect(focusedLabel(), 'tvMyPleya_poster_w${count - 1}');
+          for (var i = 1; i < count; i++) {
+            await press(tester, LogicalKeyboardKey.arrowLeft);
+          }
+          await tester.pumpAndSettle();
+          expect(focusedLabel(), 'tvMyPleya_poster_w0');
+          expect(FocusManager.instance.primaryFocus!.rect.left, closeTo(anchor, 0.5));
+        });
+      }
+
+      testWidgets('CAROUSEL-LEFT1 watchlist reorders by identity and removes without stealing inactive focus', (
+        tester,
+      ) async {
+        await pump(tester, watchlistEntries: entries.toList());
+        state(tester).focusKey('tvMyPleya_poster_w2');
+        await tester.pumpAndSettle();
+        final anchor = FocusManager.instance.primaryFocus!.rect.left;
+        await pump(tester, watchlistEntries: entries.reversed.toList());
+        expect(focusedLabel(), 'tvMyPleya_poster_w2');
+        expect(FocusManager.instance.primaryFocus!.rect.left, closeTo(anchor, 0.5));
+        await pump(tester, watchlistEntries: entries.where((entry) => entry.key != 'w2').toList());
+        expect(focusedLabel(), 'tvMyPleya_poster_w6');
+        expect(FocusManager.instance.primaryFocus!.rect.left, closeTo(anchor, 0.5));
+        state(tester).focusKey(TvMyPleyaSection.settings.tileFocusKey);
+        await tester.pumpAndSettle();
+        await pump(tester, watchlistEntries: entries.take(1).toList());
+        expect(focusedLabel(), TvMyPleyaSection.settings.tileFocusKey);
+        expect(state(tester).restoreTvFocus(const TvFocusRestoreTarget(itemId: 'tvMyPleya_poster_w6')), isTrue);
+        await tester.pumpAndSettle();
+        expect(focusedLabel(), 'tvMyPleya_poster_w0');
+      });
+
+      testWidgets('CAROUSEL-LEFT1 watchlist honors system reduced motion without a transition frame', (tester) async {
+        tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+        addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+        await pump(tester, watchlistEntries: entries.toList());
+        state(tester).focusKey('tvMyPleya_poster_w0');
+        await tester.pumpAndSettle();
+        final anchor = FocusManager.instance.primaryFocus!.rect.left;
+        await press(tester, LogicalKeyboardKey.arrowRight);
+        expect(focusedLabel(), 'tvMyPleya_poster_w1');
+        expect(FocusManager.instance.primaryFocus!.rect.left, closeTo(anchor, 0.5));
+      });
+
+      testWidgets('CAROUSEL-LEFT1 a queued watchlist update cannot reclaim focus from another section', (tester) async {
+        await pump(tester, watchlistEntries: entries.toList());
+        state(tester).focusKey('tvMyPleya_poster_w2');
+        await tester.pumpAndSettle();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          state(tester).focusKey(TvMyPleyaSection.settings.tileFocusKey);
+        });
+        await pump(tester, watchlistEntries: entries.reversed.toList());
+        expect(focusedLabel(), TvMyPleyaSection.settings.tileFocusKey);
       });
 
       testWidgets('Down from a poster keeps the column into the tiles below', (tester) async {

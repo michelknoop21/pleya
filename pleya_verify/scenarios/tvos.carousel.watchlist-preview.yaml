@@ -1,0 +1,55 @@
+name: tvos.carousel.watchlist-preview
+target: tvos-sim
+setup:
+  - reset_app
+  - seed: catalog.studio-art.v1
+  - seed: watchlist.studio.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - walk: {direction: right, steps: 7, stopAt: nav.myPleya, timeout: 60000, settle: 400}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - wait_until: {id: "my_pleya.watchlist_item[0]", timeout: 15000}
+  - press: down
+  - settle: 800
+  - assert: {id: "my_pleya.watchlist_item[0]", focused: true, insideViewport: true, state: {anchored: true}}
+  - snapshot: 00-watchlist-begin
+  - press: right
+  - settle: 800
+  - assert: {id: "my_pleya.watchlist_item[1]", focused: true, insideViewport: true, state: {anchored: true}}
+  - snapshot: 01-watchlist-middle
+  - press: right
+  - press: right
+  - settle: 800
+  - assert: {id: "my_pleya.watchlist_item[3]", focused: true, insideViewport: true, state: {anchored: true}}
+  - snapshot: 02-watchlist-end
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - settle: 800
+  - press: menu
+  - wait_until: {focused: "my_pleya.watchlist_item[3]", timeout: 10000}
+  - assert: {id: "my_pleya.watchlist_item[3]", state: {anchored: true}}
+  - snapshot: 03-watchlist-return
+  - press: down
+  - press: up
+  - wait_until: {focused: "my_pleya.watchlist_item[3]", timeout: 10000}
+  - press: up
+  - press: down
+  - wait_until: {focused: "my_pleya.watchlist_item[3]", timeout: 10000}
+  - press: left
+  - press: left
+  - press: left
+  - press: right
+  - press: right
+  - press: right
+  - settle: 800
+  - assert: {id: "my_pleya.watchlist_item[3]", focused: true, insideViewport: true, state: {anchored: true}}
+  - press: right
+  - wait_until: {focused: "my_pleya.tile[watchlist]", timeout: 8000}
+  - press: select
+  - wait_until: {id: "my_pleya.section[watchlist]", timeout: 10000}
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[watchlist]", timeout: 8000}

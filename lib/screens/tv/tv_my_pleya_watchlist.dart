@@ -11,6 +11,7 @@ class _WatchlistBlock extends StatefulWidget {
     required this.map,
     required this.seeAllNode,
     required this.onOpenAll,
+    required this.onSelectedKeyChanged,
   });
 
   final List<WatchlistEntry> entries;
@@ -18,6 +19,7 @@ class _WatchlistBlock extends StatefulWidget {
   final _HubFocusMap map;
   final FocusNode seeAllNode;
   final VoidCallback onOpenAll;
+  final ValueChanged<String> onSelectedKeyChanged;
 
   /// Poster width and the room between two posters, in points.
   static const double _posterPt = 153;
@@ -36,9 +38,9 @@ class _WatchlistBlockState extends State<_WatchlistBlock> {
   final ScrollController _controller = ScrollController();
 
   /// Card width and card plus gap, in logical pixels, from the last build.
-  double _cardWidth = 0;
   double _pitch = 0;
-  double _margin = 0;
+  String? _selectedKey;
+  int _updateRequest = 0;
 
   @override
   void dispose() {
@@ -46,27 +48,41 @@ class _WatchlistBlockState extends State<_WatchlistBlock> {
     super.dispose();
   }
 
-  /// Keeps the focused poster inside the rail. A card consumes its own arrow
-  /// keys and `FocusableWrapper` only scrolls vertical scrollables, so without
-  /// this the ring walks off the column from the eighth poster on
-  /// (`TvCatalogCardRail._reveal` is the same fix for Home's rails).
-  void _reveal(int index) {
-    if (!_controller.hasClients || _pitch <= 0) return;
-    final position = _controller.position;
-    final start = index * _pitch;
-    final end = start + _cardWidth;
-    var target = position.pixels;
-    if (end > target + position.viewportDimension - _margin) {
-      target = end - position.viewportDimension + _margin;
+  @override
+  void didUpdateWidget(_WatchlistBlock oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final selected = _selectedKey;
+    if (selected == null) return;
+    final previousFocus = oldWidget.map.nodes.nodeFor(selected);
+    final heldFocus = previousFocus?.hasFocus == true;
+    final keys = widget.entries.map(_posterKey).toList();
+    var index = keys.indexOf(selected);
+    if (index < 0) {
+      final oldIndex = oldWidget.entries.indexWhere((entry) => _posterKey(entry) == selected);
+      index = keys.isEmpty ? -1 : oldIndex.clamp(0, keys.length - 1);
+      _selectedKey = index < 0 ? null : keys[index];
+      if (_selectedKey != null) widget.onSelectedKeyChanged(_selectedKey!);
     }
-    if (start < target) target = start;
-    target = target.clamp(position.minScrollExtent, position.maxScrollExtent);
-    if ((target - position.pixels).abs() < 0.5) return;
-    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
-      _controller.jumpTo(target);
-    } else {
-      unawaited(_controller.animateTo(target, duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic));
-    }
+    final request = ++_updateRequest;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || request != _updateRequest) return;
+      final target = widget.entries.indexWhere((entry) => _posterKey(entry) == _selectedKey);
+      if (target >= 0) _reveal(target, animate: false);
+      FocusManager.instance.applyFocusChangesIfNeeded();
+      final currentFocus = FocusManager.instance.primaryFocus;
+      final focusMoved = currentFocus != null && currentFocus is! FocusScopeNode && currentFocus != previousFocus;
+      if (heldFocus && !focusMoved) _focus(widget.map, _selectedKey ?? _seeAllKey);
+    });
+  }
+
+  void _reveal(int index, {bool animate = true}) {
+    if (_pitch <= 0) return;
+    scrollCarouselToLeading(
+      _controller,
+      index * _pitch,
+      animate: animate,
+      duration: reduceMotion(context, const Duration(milliseconds: 150)),
+    );
   }
 
   @override
@@ -84,9 +100,7 @@ class _WatchlistBlockState extends State<_WatchlistBlock> {
     final cardHeight = TvCatalogLayout.cardHeight(cardWidth, scale, titleLines: _WatchlistBlock._titleLines);
     final growth = TvCatalogGrid.focusHeadroom(cardHeight: cardHeight, focusScale: FocusTheme.fullCardFocusScale);
     final gap = (_WatchlistBlock._posterGapPt * pt - inset * 2).clamp(0.0, double.infinity);
-    _cardWidth = cardWidth;
     _pitch = cardWidth + gap;
-    _margin = inset;
     void go(String key, TraversalDirection direction) => _focus(map, map.next(key, direction));
 
     return Column(
@@ -120,51 +134,72 @@ class _WatchlistBlockState extends State<_WatchlistBlock> {
             clipper: _GrownClip(growth + inset),
             child: SizedBox(
               height: cardHeight,
-              child: ListView.separated(
-                controller: _controller,
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                itemCount: entries.length,
-                separatorBuilder: (context, _) => SizedBox(width: gap),
-                itemBuilder: (context, index) {
-                  final entry = entries[index];
-                  final key = _posterKey(entry);
-                  final node = map.nodes.get(key, debugLabel: key);
-                  final target = myPleyaWatchlistTarget(provider, entry);
-                  return AutomationNode(
-                    id: AutomationIds.myPleyaWatchlistItem,
-                    instance: '$index',
-                    role: 'grid.item',
-                    focusNode: node,
-                    state: () => <String, Object?>{'title': entry.item.displayTitle, 'playable': target != null},
-                    // The catalogue card the kijklijst uses on TV, with the
-                    // iPhone rail's picture and its watched mark: one rule for
-                    // what a Mijn Pleya poster shows on both platforms.
-                    child: TvCatalogCard(
-                      width: cardWidth,
-                      artwork: MyPleyaWatchlistArtwork(
-                        entry: entry,
-                        match: target,
-                        width: posterWidth,
-                        height: posterWidth / TvCatalogLayout.posterAspectRatio,
-                      ),
-                      topRightMarker: target?.isWatched == true ? TvCatalogWatchedBadge(scale: scale) : null,
-                      title: entry.item.displayTitle,
-                      titleLines: _WatchlistBlock._titleLines,
-                      meta: entry.item.year == null ? '' : '${entry.item.year}',
-                      semanticLabel: tvWatchlistSemanticLabel(entry),
+              child: LayoutBuilder(
+                builder: (context, constraints) => ListView.separated(
+                  controller: _controller,
+                  scrollDirection: Axis.horizontal,
+                  clipBehavior: Clip.none,
+                  padding: EdgeInsets.only(right: carouselTrailingSpace(constraints.maxWidth, 0, cardWidth)),
+                  // shortcut: this preview is capped at twelve, use virtualized focus if it becomes unbounded.
+                  cacheExtent: _pitch * kMyPleyaWatchlistMax,
+                  itemCount: entries.length,
+                  separatorBuilder: (context, _) => SizedBox(width: gap),
+                  itemBuilder: (context, index) {
+                    final entry = entries[index];
+                    final key = _posterKey(entry);
+                    final node = map.nodes.get(key, debugLabel: key);
+                    final target = myPleyaWatchlistTarget(provider, entry);
+                    return AutomationNode(
+                      id: AutomationIds.myPleyaWatchlistItem,
+                      instance: '$index',
+                      role: 'grid.item',
                       focusNode: node,
-                      onFocusChange: (focused) {
-                        if (focused) _reveal(index);
+                      state: () => <String, Object?>{
+                        'title': entry.item.displayTitle,
+                        'playable': target != null,
+                        'anchored':
+                            _selectedKey == key &&
+                            _controller.hasClients &&
+                            (_controller.offset - index * _pitch).abs() < 0.75,
                       },
-                      onSelect: target == null ? onOpenAll : () => unawaited(navigateToMediaItem(context, target)),
-                      onNavigateLeft: () => go(key, TraversalDirection.left),
-                      onNavigateRight: () => go(key, TraversalDirection.right),
-                      onNavigateUp: () => go(key, TraversalDirection.up),
-                      onNavigateDown: () => go(key, TraversalDirection.down),
-                    ),
-                  );
-                },
+                      // The catalogue card the kijklijst uses on TV, with the
+                      // iPhone rail's picture and its watched mark: one rule for
+                      // what a Mijn Pleya poster shows on both platforms.
+                      child: TvCatalogCard(
+                        width: cardWidth,
+                        artwork: MyPleyaWatchlistArtwork(
+                          entry: entry,
+                          match: target,
+                          width: posterWidth,
+                          height: posterWidth / TvCatalogLayout.posterAspectRatio,
+                        ),
+                        topRightMarker: target?.isWatched == true ? TvCatalogWatchedBadge(scale: scale) : null,
+                        title: entry.item.displayTitle,
+                        titleLines: _WatchlistBlock._titleLines,
+                        meta: entry.item.year == null ? '' : '${entry.item.year}',
+                        semanticLabel: tvWatchlistSemanticLabel(entry),
+                        focusNode: node,
+                        onFocusChange: (focused) {
+                          if (focused) {
+                            _updateRequest++;
+                            _selectedKey = key;
+                            widget.onSelectedKeyChanged(key);
+                            _reveal(index);
+                          }
+                        },
+                        onSelect: target == null
+                            ? onOpenAll
+                            : () => unawaited(
+                                navigateToMediaItem(context, target, restoreTarget: TvFocusRestoreTarget(itemId: key)),
+                              ),
+                        onNavigateLeft: () => go(key, TraversalDirection.left),
+                        onNavigateRight: () => go(key, TraversalDirection.right),
+                        onNavigateUp: () => go(key, TraversalDirection.up),
+                        onNavigateDown: () => go(key, TraversalDirection.down),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ),

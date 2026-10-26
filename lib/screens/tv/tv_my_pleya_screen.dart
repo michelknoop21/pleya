@@ -54,6 +54,8 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/media_navigation_helper.dart';
 import '../../utils/platform_detector.dart';
+import '../../utils/scroll_utils.dart';
+import '../../navigation/tv/tv_navigation_coordinator.dart';
 import '../../utils/tv_hig.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import '../../widgets/tv/tv_catalog_card.dart';
@@ -90,7 +92,7 @@ class TvMyPleyaScreen extends StatefulWidget {
   State<TvMyPleyaScreen> createState() => TvMyPleyaScreenState();
 }
 
-class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTab {
+class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTab, TvFocusRestoreHost {
   /// The sections that have a tile as of the last build. OFF6: the shell
   /// asks this after a rebind, to close a section that no longer exists.
   /// Kijklijst counts while the page offers it, as the rail's `Bekijk alles`.
@@ -101,6 +103,7 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
   /// server going offline must not dispose the node the remote is standing on.
   final FocusMemoryTracker nodes = FocusMemoryTracker(debugLabelPrefix: 'tvMyPleya');
   final Map<String, String> _cameFrom = {};
+  String? _rememberedWatchlist;
 
   String? _appVersion;
 
@@ -151,6 +154,14 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
     if (key == null) return;
     final node = nodes.get(key);
     if (node.canRequestFocus) node.requestFocus();
+  }
+
+  @override
+  bool restoreTvFocus(TvFocusRestoreTarget target) {
+    final key = nodes.nodeFor(target.itemId)?.parent != null ? target.itemId : _rememberedWatchlist;
+    if (key == null || nodes.nodeFor(key)?.parent == null) return false;
+    focusKey(key);
+    return true;
   }
 
   String? get appVersion => _appVersion;
@@ -222,6 +233,7 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
       ],
       rightKeys: [?bigP?.focusKey, for (final tile in manageTiles) tile.focusKey],
       cameFrom: _cameFrom,
+      rememberedRailKey: () => _rememberedWatchlist,
     );
 
     void open(TvMyPleyaTile tile) => tile.section == null ? widget.onSignOut() : widget.onOpenSection(tile.section!);
@@ -242,6 +254,7 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
             map: map,
             seeAllNode: nodes.get(_seeAllKey, debugLabel: _seeAllKey),
             onOpenAll: () => widget.onOpenSection(TvMyPleyaSection.watchlist),
+            onSelectedKeyChanged: (key) => _rememberedWatchlist = key,
           ),
         for (final (index, group) in leftGroups.indexed) ...[
           if (index > 0 || entries != null) SizedBox(height: kTvMyPleyaGroupGapPt * pt),

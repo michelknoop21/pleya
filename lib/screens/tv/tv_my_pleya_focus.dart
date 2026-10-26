@@ -34,9 +34,11 @@ class _HubFocusMap {
     required this.tileRows,
     required this.rightKeys,
     required this.cameFrom,
+    required this.rememberedRailKey,
   });
 
   final FocusMemoryTracker nodes;
+  final String? Function() rememberedRailKey;
 
   /// Where a vertical move landed, keyed by the landing, so the move straight
   /// back returns to the same element instead of the geometrically nearest
@@ -51,7 +53,12 @@ class _HubFocusMap {
 
   List<List<String>> get _leftRows => [if (railKeys.isNotEmpty) railKeys, ...tileRows];
 
-  String? get firstBelowProfile => _leftRows.firstOrNull?.firstOrNull ?? rightKeys.firstOrNull;
+  String? get _rememberedPoster {
+    final key = rememberedRailKey();
+    return railKeys.contains(key) ? key : null;
+  }
+
+  String? get firstBelowProfile => _rememberedPoster ?? _leftRows.firstOrNull?.firstOrNull ?? rightKeys.firstOrNull;
 
   Rect? _rect(String key) {
     final node = nodes.nodeFor(key);
@@ -122,7 +129,7 @@ class _HubFocusMap {
   }
 
   String? _vertical(String key, List<String> candidates, Rect? from) {
-    final back = cameFrom[key];
+    final back = candidates.contains(_rememberedPoster) ? _rememberedPoster : cameFrom[key];
     final target = back != null && candidates.contains(back)
         ? back
         : (from == null ? candidates.firstOrNull : _nearestByX(candidates, from));
@@ -146,6 +153,7 @@ class _HubFocusMap {
       }
     }
     if (bestRow == null) return rows.firstOrNull?.lastOrNull;
+    if (identical(bestRow, railKeys) && _rememberedPoster != null) return _rememberedPoster;
     String? best;
     var bestRight = double.negativeInfinity;
     for (final key in bestRow) {
