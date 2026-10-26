@@ -1,7 +1,7 @@
 <!-- Gallerijlabels zijn hier gewone Nederlandse tekst: de route bestaat alleen in ontwikkeling. -->
 <script lang="ts">
-  import Panel from '$lib/components/Panel.svelte';
-  import StorageMeter, { type MeterSegment } from '$lib/components/StorageMeter.svelte';
+  import Panel from '#lib/components/Panel.svelte';
+  import StorageMeter, { type MeterSegment } from '#lib/components/StorageMeter.svelte';
   import GallerySection from './GallerySection.svelte';
   import { LIBRARY_STORAGE, tb } from './overviewData';
 

@@ -5,7 +5,8 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import config from '../svelte.config.js';
+import { csp } from '../csp.ts';
+import { kitOptions } from '../vite.config.ts';
 
 // Kit zet de stijl van #svelte-announcer inline; de CSP laat alleen die exacte
 // tekst door. Verandert een Kit-versie de tekst, dan hoort deze test als eerste
@@ -13,13 +14,13 @@ import config from '../svelte.config.js';
 const kitRoot = dirname(createRequire(import.meta.url).resolve('@sveltejs/kit/package.json'));
 
 function announcerStyle(): string {
-  const source = readFileSync(join(kitRoot, 'src/core/sync/write_root.js'), 'utf8');
+  const source = readFileSync(join(kitRoot, 'src/runtime/components/root.svelte'), 'utf8');
   const match = /id="svelte-announcer"[^>]*\sstyle="([^"]+)"/.exec(source);
   if (!match) throw new Error('announcer-stijl niet gevonden in Kit');
   return match[1] ?? '';
 }
 
-const styleSrc = config.kit?.csp?.directives?.['style-src'] ?? [];
+const styleSrc = csp.directives?.['style-src'] ?? [];
 
 describe('CSP style-src', () => {
   it('bevat de hash van de stijl die Kit nu op de announcer zet', () => {
@@ -38,7 +39,7 @@ describe('CSP style-src', () => {
 // voor de MediaSource-URL van hls.js en de WebVTT-ondertitel als object-URL.
 // Een worker uit een blob:-URL is er niet bij, want hls.js draait zonder
 // worker; script-src en worker-src blijven dus dicht.
-const directives = (config.kit?.csp?.directives ?? {}) as Record<string, string[] | undefined>;
+const directives = (csp.directives ?? {}) as Record<string, string[] | undefined>;
 
 describe('CSP voor de speler', () => {
   it('staat media alleen van de eigen origin en blob: toe', () => {
@@ -60,5 +61,21 @@ describe('CSP voor de speler', () => {
   it('hls.js draait zonder worker, anders zou worker-src blob: nodig zijn', async () => {
     const { hlsConfig } = await import('./lib/player/hlsEngine');
     expect(hlsConfig(async () => null)['enableWorker']).toBe(false);
+  });
+});
+
+// De CSP staat in csp.ts, maar de build gebruikt wat vite.config.ts aan de
+// Kit-plugin geeft. Zonder deze toets kan een configwijziging `csp` laten
+// vallen terwijl elke andere toets groen blijft en de bundel zonder policy
+// uitgaat.
+describe('CSP in de build-config', () => {
+  it('geeft precies het csp-object uit csp.ts aan de Kit-opties', () => {
+    expect(kitOptions.csp).toBe(csp);
+    expect(kitOptions.csp?.mode).toBe('hash');
+  });
+
+  it('geeft die Kit-opties aan de sveltekit-plugin', () => {
+    const source = readFileSync(join(import.meta.dirname, '../vite.config.ts'), 'utf8');
+    expect(source).toMatch(/sveltekit\(kitOptions\)/);
   });
 });

@@ -1,7 +1,7 @@
 <!-- `/admin/security/agents`: scherm 34, Agents en API-tokens. -->
 <script lang="ts">
-  import TokensPage from '$lib/admin/tokens/TokensPage.svelte';
-  import { t } from '$lib/i18n';
+  import TokensPage from '#lib/admin/tokens/TokensPage.svelte';
+  import { t } from '#lib/i18n/index.js';
 </script>
 
 <svelte:head>

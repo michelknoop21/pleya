@@ -1,10 +1,10 @@
 <script lang="ts">
-  import PageHeader from '$lib/components/PageHeader.svelte';
-  import StateView from '$lib/components/StateView.svelte';
-  import NavIcon from '$lib/components/NavIcon.svelte';
-  import { session } from '$lib/stores/session.svelte';
-  import { formatCount } from '$lib/util/format';
-  import { plural, t } from '$lib/i18n';
+  import PageHeader from '#lib/components/PageHeader.svelte';
+  import StateView from '#lib/components/StateView.svelte';
+  import NavIcon from '#lib/components/NavIcon.svelte';
+  import { session } from '#lib/stores/session.svelte.js';
+  import { formatCount } from '#lib/util/format.js';
+  import { plural, t } from '#lib/i18n/index.js';
 </script>
 
 <svelte:head><title>{t('libraries.title')} · {t('app.name')}</title></svelte:head>

@@ -181,7 +181,7 @@ ol {
 /*
  * SvelteKit zet zelf een aankondigingsvlak in de pagina dat na elke
  * clientnavigatie de nieuwe paginatitel voorleest, met een inline style. De
- * CSP laat die ene stijltekst via een hash door (svelte.config.js); deze regel
+ * CSP laat die ene stijltekst via een hash door (csp.ts); deze regel
  * blijft staan als vangnet voor browsers die `unsafe-hashes` negeren.
  */
 #svelte-announcer {

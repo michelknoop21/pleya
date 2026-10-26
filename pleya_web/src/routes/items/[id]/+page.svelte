@@ -1,19 +1,19 @@
 <script lang="ts">
   import { page } from '$app/state';
 
-  import Artwork from '$lib/components/Artwork.svelte';
-  import MediaGrid from '$lib/components/MediaGrid.svelte';
-  import PageHeader from '$lib/components/PageHeader.svelte';
-  import StateView from '$lib/components/StateView.svelte';
-  import SkeletonPage from '$lib/components/SkeletonPage.svelte';
-  import VersionPanel from '$lib/components/VersionPanel.svelte';
-  import { session } from '$lib/stores/session.svelte';
-  import { describeError } from '$lib/api/errors';
-  import type { Item } from '$lib/api/types';
-  import { formatDate, formatDuration } from '$lib/util/format';
-  import { t } from '$lib/i18n';
-  import { playerHref } from '$lib/player/route';
-  import { formatPlayTime } from '$lib/player/keyboard';
+  import Artwork from '#lib/components/Artwork.svelte';
+  import MediaGrid from '#lib/components/MediaGrid.svelte';
+  import PageHeader from '#lib/components/PageHeader.svelte';
+  import StateView from '#lib/components/StateView.svelte';
+  import SkeletonPage from '#lib/components/SkeletonPage.svelte';
+  import VersionPanel from '#lib/components/VersionPanel.svelte';
+  import { session } from '#lib/stores/session.svelte.js';
+  import { describeError } from '#lib/api/errors.js';
+  import type { Item } from '#lib/api/types.js';
+  import { formatDate, formatDuration } from '#lib/util/format.js';
+  import { t } from '#lib/i18n/index.js';
+  import { playerHref } from '#lib/player/route.js';
+  import { formatPlayTime } from '#lib/player/keyboard.js';
 
   const itemId = $derived(page.params['id'] ?? '');
 

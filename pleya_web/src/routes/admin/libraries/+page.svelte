@@ -2,8 +2,8 @@
 <script lang="ts">
   import { page } from '$app/state';
 
-  import LibrariesPage from '$lib/admin/LibrariesPage.svelte';
-  import { t } from '$lib/i18n';
+  import LibrariesPage from '#lib/admin/LibrariesPage.svelte';
+  import { t } from '#lib/i18n/index.js';
 </script>
 
 <svelte:head>

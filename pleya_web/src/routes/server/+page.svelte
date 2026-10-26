@@ -9,16 +9,16 @@
    * zichtbaar is via /pleya/v1 gaat, en wat er niet is wordt niet getekend.
    * De indeling van beeld 11 (account, content, toestellen) is S8.6.
    */
-  import DataTable, { type Column } from '$lib/components/DataTable.svelte';
-  import LanguagePicker from '$lib/components/LanguagePicker.svelte';
-  import PageHeader from '$lib/components/PageHeader.svelte';
-  import Panel from '$lib/components/Panel.svelte';
-  import StatusPill from '$lib/components/StatusPill.svelte';
-  import ThemePicker from '$lib/components/ThemePicker.svelte';
-  import type { Library } from '$lib/api/types';
-  import { session } from '$lib/stores/session.svelte';
-  import { formatCount, formatDate } from '$lib/util/format';
-  import { plural, t } from '$lib/i18n';
+  import DataTable, { type Column } from '#lib/components/DataTable.svelte';
+  import LanguagePicker from '#lib/components/LanguagePicker.svelte';
+  import PageHeader from '#lib/components/PageHeader.svelte';
+  import Panel from '#lib/components/Panel.svelte';
+  import StatusPill from '#lib/components/StatusPill.svelte';
+  import ThemePicker from '#lib/components/ThemePicker.svelte';
+  import type { Library } from '#lib/api/types.js';
+  import { session } from '#lib/stores/session.svelte.js';
+  import { formatCount, formatDate } from '#lib/util/format.js';
+  import { plural, t } from '#lib/i18n/index.js';
 
   const capabilityRows = $derived.by(() => {
     const caps = session.capabilities;
