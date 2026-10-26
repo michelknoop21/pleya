@@ -12,6 +12,7 @@ import type {
   ConnectivityCheck,
   LogLevel,
   MetadataAttentionList,
+  MetadataMatch,
   ServerEnvironment,
   ServerLog,
   Settings,
@@ -57,6 +58,21 @@ export function adminSettingsApi(client: PleyaClient) {
     metadataAttention: (limit: number, signal?: AbortSignal): Promise<MetadataAttentionList> =>
       client.request((raw) =>
         raw.GET('/metadata/attention', { params: { query: { limit } }, signal })
+      ),
+
+    /** Kiest de titel van de provider; 202, het ophalen gebeurt op de achtergrond. */
+    setMetadataMatch: (itemId: string, externalId: string): Promise<MetadataMatch> =>
+      client.request((raw) =>
+        raw.PUT('/items/{item_id}/metadata-match', {
+          params: { path: { item_id: itemId } },
+          body: { external_id: externalId }
+        })
+      ),
+
+    /** Wijst de match af; haalt weg wat de provider zette. Idempotent. */
+    clearMetadataMatch: (itemId: string): Promise<MetadataMatch> =>
+      client.request((raw) =>
+        raw.DELETE('/items/{item_id}/metadata-match', { params: { path: { item_id: itemId } } })
       ),
 
     stopTranscodeSession: (sessionId: string): Promise<true> =>

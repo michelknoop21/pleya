@@ -63,6 +63,9 @@ export type ServerLog = S['ServerLog'];
 export type LogLevel = S['LogLevel'];
 export type ConnectivityCheck = S['ConnectivityCheck'];
 export type MetadataAttentionList = S['MetadataAttentionList'];
+export type MetadataAttention = S['MetadataAttention'];
+export type MetadataAlternative = S['MetadataAlternative'];
+export type MetadataMatch = S['MetadataMatch'];
 export type TranscodeSession = S['TranscodeSession'];
 
 // Back-ups en terugzetten (S25.6).

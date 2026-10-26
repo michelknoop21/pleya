@@ -45,7 +45,11 @@
 <AdminPageHead
   title={t('admin.nav.metadata')}
   crumbs={[{ label: t('admin.title'), href: '/admin' }, { label: t('admin.nav.metadata') }]}
-/>
+>
+  {#snippet actions()}
+    <a class="btn btn--secondary btn--sm" href="/admin/metadata/match">{t('admin.match.open')}</a>
+  {/snippet}
+</AdminPageHead>
 
 {#if data}
   <AdminColumns>
