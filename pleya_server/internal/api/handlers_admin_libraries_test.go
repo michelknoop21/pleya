@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
@@ -582,4 +583,100 @@ func TestAdoptUnknownLibraryIsNotFound(t *testing.T) {
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("adopt van een onbekend id gaf %d, verwacht 404: %s", rec.Code, rec.Body.String())
 	}
+}
+
+// refusalDetails leest error.details van een weigering.
+func refusalDetails(t *testing.T, rec *httptest.ResponseRecorder) map[string]any {
+	t.Helper()
+	var envelope struct {
+		Error struct {
+			Code    string         `json:"code"`
+			Details map[string]any `json:"details"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &envelope); err != nil {
+		t.Fatalf("weigering lezen: %v: %s", err, rec.Body.String())
+	}
+	if envelope.Error.Code != "storage.root_not_offered" {
+		t.Fatalf("code %q, verwacht storage.root_not_offered: %s", envelope.Error.Code, rec.Body.String())
+	}
+	return envelope.Error.Details
+}
+
+// TestRootRefusalsNameTheirCause: het contract is bevroren, dus de code blijft
+// storage.root_not_offered; de oorzaak staat in details.reason. Elke oorzaak
+// krijgt hier haar eigen reden en de gegevens die een client nodig heeft.
+func TestRootRefusalsNameTheirCause(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	e.createLibraryViaAPI(t, "Documentaires", "movies", []string{"/media/docs"})
+
+	cases := []struct {
+		name    string
+		body    map[string]any
+		reason  string
+		keys    map[string]any
+		missing []string
+	}{
+		{"leeg pad", map[string]any{"title": "A", "kind": "movies", "root_paths": []string{""}}, "invalid_path", nil, nil},
+		{"relatief pad", map[string]any{"title": "A", "kind": "movies", "root_paths": []string{"media/a"}}, "invalid_path", map[string]any{"root": "media/a"}, nil},
+		{"niet genormaliseerd", map[string]any{"title": "A", "kind": "movies", "root_paths": []string{"/media/a/../b"}}, "invalid_path", nil, nil},
+		{"buiten de mounts", map[string]any{"title": "A", "kind": "movies", "root_paths": []string{"/mnt/ergens"}}, "outside_mounts", map[string]any{"root": "/mnt/ergens"}, nil},
+		{"botst met een bibliotheek", map[string]any{"title": "A", "kind": "movies", "root_paths": []string{"/media/docs/sub"}}, "overlaps_library",
+			map[string]any{"root": "/media/docs/sub", "with": "/media/docs", "library": "Documentaires"}, nil},
+		{"zelfde root als een bibliotheek", map[string]any{"title": "A", "kind": "movies", "root_paths": []string{"/media/docs"}}, "overlaps_library",
+			map[string]any{"with": "/media/docs", "library": "Documentaires"}, nil},
+		{"botst binnen de aanvraag", map[string]any{"title": "A", "kind": "movies", "root_paths": []string{"/media/a", "/media/a/sub"}}, "overlaps_request",
+			map[string]any{"root": "/media/a", "with": "/media/a/sub"}, []string{"library"}},
+		{"geen roots", map[string]any{"title": "A", "kind": "movies", "root_paths": []string{}}, "no_roots", nil, nil},
+		{"lege titel", map[string]any{"title": " ", "kind": "movies", "root_paths": []string{"/media/a"}}, "invalid_field", map[string]any{"field": "title"}, nil},
+		{"onbekende soort", map[string]any{"title": "A", "kind": "books", "root_paths": []string{"/media/a"}}, "invalid_field", map[string]any{"field": "kind"}, nil},
+		{"scaninterval", map[string]any{"title": "A", "kind": "movies", "root_paths": []string{"/media/a"}, "scan_interval_seconds": 0}, "invalid_field", map[string]any{"field": "scan_interval_seconds"}, nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := e.do(http.MethodPost, "/pleya/v1/libraries", tc.body)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("gaf %d, verwacht 400: %s", rec.Code, rec.Body.String())
+			}
+			details := refusalDetails(t, rec)
+			if details["reason"] != tc.reason {
+				t.Fatalf("reden %v, verwacht %q: %s", details["reason"], tc.reason, rec.Body.String())
+			}
+			for k, want := range tc.keys {
+				if details[k] != want {
+					t.Errorf("details.%s = %v, verwacht %v", k, details[k], want)
+				}
+			}
+			for _, k := range tc.missing {
+				if _, present := details[k]; present {
+					t.Errorf("details.%s hoort hier niet te staan: %v", k, details)
+				}
+			}
+		})
+	}
+
+	t.Run("buiten de mounts noemt de mounts", func(t *testing.T) {
+		rec := e.do(http.MethodPost, "/pleya/v1/libraries", map[string]any{
+			"title": "A", "kind": "movies", "root_paths": []string{"/mnt/ergens"}})
+		mounts, _ := refusalDetails(t, rec)["mounts"].([]any)
+		if len(mounts) != 1 || mounts[0] != "/media" {
+			t.Fatalf("details.mounts = %v, verwacht [/media]", mounts)
+		}
+	})
+
+	t.Run("PATCH geeft dezelfde redenen", func(t *testing.T) {
+		other := e.createLibraryViaAPI(t, "Andere", "movies", []string{"/media/andere"})
+		rec := e.do(http.MethodPatch, "/pleya/v1/libraries/"+other.ID, map[string]any{"root_paths": []string{"/media/docs"}})
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("PATCH naar een geclaimde root gaf %d: %s", rec.Code, rec.Body.String())
+		}
+		if d := refusalDetails(t, rec); d["reason"] != "overlaps_library" || d["library"] != "Documentaires" {
+			t.Fatalf("details %v, verwacht overlaps_library met Documentaires", d)
+		}
+		rec = e.do(http.MethodPatch, "/pleya/v1/libraries/"+other.ID, map[string]any{"root_paths": []string{"/mnt/ergens"}})
+		if d := refusalDetails(t, rec); d["reason"] != "outside_mounts" {
+			t.Fatalf("details %v, verwacht outside_mounts", d)
+		}
+	})
 }
