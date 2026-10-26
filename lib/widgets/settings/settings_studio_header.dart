@@ -139,7 +139,7 @@ class SettingsStudioHeader extends StatelessWidget {
               children: [
                 // Wash and artwork run up to the top edge, under the status
                 // bar and the Dynamic Island; only the text below keeps to the
-                // safe area (edge-to-edge, DEC-XXX).
+                // safe area (edge-to-edge, DEC-XXX-edge).
                 Positioned.fill(child: _WarmWash(tokens: tk)),
                 Positioned(
                   top: 0,
@@ -147,7 +147,7 @@ class SettingsStudioHeader extends StatelessWidget {
                   right: 0,
                   width: artWidth,
                   child: ExcludeSemantics(
-                    child: _ArtPanel(art: art, tokens: tk, statusFade: top > 0 ? top + _kStatusFadeExtra : 0),
+                    child: _ArtPanel(art: art, tokens: tk, statusInset: top),
                   ),
                 ),
                 Padding(
@@ -281,8 +281,8 @@ class _WarmWash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Starts at exactly the colour the pinned bar carries above it, so the
-    // wash runs on from the status bar instead of starting on a line.
+    // Starts at the top edge, under the status bar, so the wash runs on from
+    // the screen's edge instead of starting on a line below it.
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -298,14 +298,15 @@ class _WarmWash extends StatelessWidget {
 /// The right-hand panel: the backdrop, or the brand fallback, faded out on its
 /// leading, top and bottom edges so nothing ends in a hard poster edge.
 class _ArtPanel extends StatelessWidget {
-  const _ArtPanel({required this.art, required this.tokens, this.statusFade = 0});
+  const _ArtPanel({required this.art, required this.tokens, this.statusInset = 0});
 
   final SettingsStudioArt? art;
   final MonoTokens tokens;
 
-  /// Height of the fade at the top of the panel that keeps the status bar's
-  /// glyphs readable over the picture; 0 when there is no status bar.
-  final double statusFade;
+  /// The status bar's height, now that the panel runs under it: the mark
+  /// stays below it and a fade over the top keeps the glyphs readable over the
+  /// picture. 0 when there is no status bar.
+  final double statusInset;
 
   @override
   Widget build(BuildContext context) {
@@ -337,7 +338,7 @@ class _ArtPanel extends StatelessWidget {
             placeholder: (_, _) => fallback,
             errorWidget: (_, _, _) => fallback,
           ),
-          const PositionedDirectional(top: 10, end: 12, child: PleyaLogo(size: 22)),
+          PositionedDirectional(top: statusInset + 10, end: 12, child: const PleyaLogo(size: 22)),
         ],
       );
     }
@@ -359,12 +360,12 @@ class _ArtPanel extends StatelessWidget {
             ).createShader(rect),
             child: picture,
           ),
-          if (statusFade > 0)
+          if (statusInset > 0)
             Positioned(
               top: 0,
               left: 0,
               right: 0,
-              height: statusFade,
+              height: statusInset + _kStatusFadeExtra,
               child: DecoratedBox(
                 key: const ValueKey('settings-studio-status-fade'),
                 decoration: BoxDecoration(

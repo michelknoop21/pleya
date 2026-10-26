@@ -192,12 +192,16 @@ void main() {
         ),
       );
       expect(tester.getRect(wash.first).top, 0, reason: 'the wash runs under the status bar');
-      expect(tester.getRect(find.text('Weergave')).top, greaterThanOrEqualTo(59));
+      expect(
+        tester.getRect(find.byType(PleyaLogo)).top,
+        greaterThanOrEqualTo(59),
+        reason: 'the mark stays below the status bar glyphs',
+      );
       expect(find.byKey(const ValueKey('settings-studio-status-fade')), findsOneWidget);
       expect(tester.getRect(find.byKey(const ValueKey('settings-studio-status-fade'))).height, 59 + 12);
     });
 
-    testWidgets('the collapsed bar is a glass surface, not a solid bar', (tester) async {
+    testWidgets('the collapsed bar is built on GlassSurface (solid fallback while glass is off)', (tester) async {
       await pumpPadded(tester, page(rows: 20));
       await tester.drag(find.byType(Scrollable).first, const Offset(0, -300));
       await tester.pumpAndSettle();
