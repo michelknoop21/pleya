@@ -19,7 +19,14 @@ function memoryStorage(): TokenStorage {
   };
 }
 
-function json(body: unknown, status = 200): Response {
+/** Een aangemelde client op de nepfetch; delen alle nepservers van beheer. */
+export function clientFor(fetch: FetchLike): PleyaClient {
+  const tokens = new TokenStore(memoryStorage(), memoryStorage());
+  tokens.set({ access_token: 'a', refresh_token: 'r', expires_in_ms: 3_600_000 });
+  return new PleyaClient({ baseUrl: BASE, tokens, fetch });
+}
+
+export function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { 'Content-Type': 'application/json' }
@@ -168,12 +175,8 @@ export function libraryFake(options: LibraryFakeOptions) {
     return apiError('library.not_found', 404);
   };
 
-  const tokens = new TokenStore(memoryStorage(), memoryStorage());
-  tokens.set({ access_token: 'a', refresh_token: 'r', expires_in_ms: 3_600_000 });
-  const client = new PleyaClient({ baseUrl: BASE, tokens, fetch });
-
   return {
-    client,
+    client: clientFor(fetch),
     seen,
     /** Alleen de aanvragen die iets veranderen. */
     writes: () => seen.filter((s) => s.method !== 'GET')
