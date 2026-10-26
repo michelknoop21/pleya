@@ -3,8 +3,10 @@
 # the page takes the window: all eight rail pills sit inside it, Weergave shows
 # its heading and four rows. UP from the top pill brings the bar back, DOWN
 # returns to the page and hides it again. A subpage (Geavanceerd > Over) opens
-# under the same hidden bar, UP from its top tile brings the bar back, Menu returns to the row it came from, and Menu at
-# the page goes back to Mijn Pleya, where the bar is on screen again.
+# under the same hidden bar, UP from its top tile brings the bar back, Menu
+# returns to the row it came from, and Menu at the page goes back to the bar,
+# on Instellingen. Since A-24c Instellingen is a destination in the bar, after
+# Mijn Pleya, rather than a Mijn Pleya tile.
 #
 # `nav.bar` carries `hidden` from the value the bar slides on, so the assertion
 # reads the bar itself, not where the ring happens to be.
@@ -18,16 +20,12 @@ setup:
 steps:
   - wait_until: {id: screen.discover, timeout: 30000}
   - settle: 3500
-  - walk: {direction: right, steps: 7, stopAt: nav.myPleya, timeout: 60000, settle: 600}
+  - walk: {direction: right, steps: 8, stopAt: nav.settings, timeout: 60000, settle: 600}
   - press: select
-  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - wait_until: {id: nav.settings, state: {active: true}, timeout: 15000}
+  # On the pill the bar is on screen, over the page.
+  - assert: {id: nav.bar, state: {hidden: false, overlay: true}}
   - press: down
-  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 8000}
-  - walk: {direction: right, steps: 4, stopAt: "my_pleya.tile[assistant]", timeout: 60000, settle: 600}
-  - press: down
-  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
-  - assert: {id: nav.bar, state: {hidden: false, overlay: false}}
-  - press: select
 
   # In the page: no bar, the whole rail and four rows of Weergave in view.
   - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 8000}
@@ -49,10 +47,10 @@ steps:
 
   # UP from the top row: the bar comes back with the ring in it.
   - press: up
-  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - wait_until: {focused: nav.settings, timeout: 5000}
   - settle: 600
   - assert: {id: nav.bar, state: {hidden: false, overlay: true}}
-  - assert: {id: nav.myPleya, insideViewport: true}
+  - assert: {id: nav.settings, insideViewport: true}
   - snapshot: 01-bar-back-from-row
 
   # DOWN back into the page: the bar leaves again.
@@ -66,7 +64,7 @@ steps:
   - wait_until: {focused: "settings.category[0]", timeout: 5000}
   - assert: {id: nav.bar, state: {hidden: true}}
   - press: up
-  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - wait_until: {focused: nav.settings, timeout: 5000}
   - settle: 600
   - assert: {id: nav.bar, state: {hidden: false}}
   - press: down
@@ -96,7 +94,7 @@ steps:
   # hides it again (review finding 556-I1).
   - wait_until: {focused: "my_pleya.section.tile[about.about_source]", timeout: 5000}
   - press: up
-  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - wait_until: {focused: nav.settings, timeout: 5000}
   - settle: 600
   - assert: {id: nav.bar, state: {hidden: false, overlay: true}}
   - snapshot: 03b-over-bar-back
@@ -113,10 +111,10 @@ steps:
   - assert: {id: "settings.category[7]", state: {selected: true}}
   - snapshot: 04-back-on-over-row
 
-  # Menu at the page: Mijn Pleya, on the tile, with the bar on screen.
+  # Menu at the page: the bar, on Instellingen, on screen again.
   - press: menu
-  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
+  - wait_until: {focused: nav.settings, timeout: 8000}
   - settle: 600
-  - assert: {id: nav.bar, state: {hidden: false, overlay: false}}
-  - assert: {id: nav.myPleya, insideViewport: true}
-  - snapshot: 05-back-on-tile
+  - assert: {id: nav.bar, state: {hidden: false, overlay: true}}
+  - assert: {id: nav.settings, insideViewport: true}
+  - snapshot: 05-back-on-bar

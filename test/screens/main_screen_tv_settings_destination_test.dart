@@ -11,7 +11,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/navigation/tv/tv_destination.dart';
 import 'package:pleya/screens/profile/profile_switch_screen.dart';
+import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
 import 'package:pleya/screens/settings/settings_screen.dart';
+import 'package:pleya/screens/tv/tv_root_shell.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_screen.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/utils/platform_detector.dart';
@@ -50,6 +52,33 @@ void main() {
     expect(find.byType(SettingsScreen), findsOneWidget);
     // A destination of its own, not a section on top of Mijn Pleya.
     expect(h.shell.coordinator.nestedRoutesFor(TvDestinationId.myPleya), isEmpty);
+
+    await h.dispose(tester);
+  });
+
+  testWidgets('Instellingen keeps the collapsible bar of A-24 as a destination of its own', (tester) async {
+    expect(tvRootTopNavFor(TvDestinationId.settings), TvTopNavPresentation.collapsible);
+    for (final other in TvDestinationId.values.where((d) => d != TvDestinationId.settings)) {
+      expect(tvRootTopNavFor(other), TvTopNavPresentation.persistent, reason: other.name);
+    }
+
+    final h = await pumpTvMainScreen(tester);
+    h.shell.onSelectDestination(TvDestinationId.settings);
+    await h.settle();
+    final settingsTop = tester.getRect(find.byType(SettingsScreen)).top;
+    expect(settingsTop, lessThanOrEqualTo(0), reason: 'the page runs up behind the bar');
+
+    // Into the page: the bar slides away.
+    h.shell.onFocusContent(restorePreviousFocus: false);
+    await h.settle();
+    await h.settle();
+    expect(tester.getRect(find.byType(TvTopNavigation)).bottom, lessThanOrEqualTo(1));
+
+    // Back to the bar: it is there again, on Instellingen.
+    h.shell.onFocusNav();
+    await h.settle();
+    await h.settle();
+    expect(tester.getRect(find.byType(TvTopNavigation)).top, greaterThanOrEqualTo(0));
 
     await h.dispose(tester);
   });

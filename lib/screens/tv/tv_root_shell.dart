@@ -57,6 +57,7 @@ import '../../profiles/profile.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../../widgets/overlay_sheet.dart';
+import '../../widgets/settings/settings_studio_theme.dart' show kTvSettingsTopNav;
 import '../../widgets/tv/tv_top_navigation.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import 'assistant/tv_assistant_summon.dart';
@@ -296,7 +297,7 @@ class TvRootShell extends StatelessWidget {
                               isReconnecting: isReconnecting,
                               onReconnect: onReconnect,
                             );
-                            final topNav = route?.topNav ?? TvTopNavPresentation.persistent;
+                            final topNav = route?.topNav ?? tvRootTopNavFor(coordinator.active);
                             // One widget shape for every presentation, so a
                             // route opening or closing changes parameters and
                             // never remounts the bar under a focused item.
@@ -365,12 +366,41 @@ class TvRootShell extends StatelessWidget {
                                   // `MainScreen._buildTickerAwareStack`, and a
                                   // fix in only one of the two still leaves a
                                   // reachable invisible screen.
-                                  ExcludeFocus(
-                                    excluding: nested != null,
-                                    child: Offstage(
-                                      offstage: nested != null,
-                                      child: TickerMode(enabled: nested == null, child: screens!),
-                                    ),
+                                  //
+                                  // A-24c: Instellingen is a destination root
+                                  // under the collapsible bar of A-24, so its
+                                  // root runs up behind the bar the way a
+                                  // collapsible route does, with the same top
+                                  // inset handed to the page.
+                                  Builder(
+                                    builder: (context) {
+                                      final coversWindow = tvRootTopNavFor(coordinator.active).coversWindow;
+                                      final media = MediaQuery.of(context);
+                                      final topInset = coversWindow
+                                          ? TvTopNavLayout.topInset * scale
+                                          : media.padding.top;
+                                      return Positioned(
+                                        top: coversWindow ? -topBand : 0,
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        child: MediaQuery(
+                                          data: media.copyWith(
+                                            padding: media.padding.copyWith(top: topInset),
+                                            viewPadding: media.viewPadding.copyWith(
+                                              top: coversWindow ? topInset : media.viewPadding.top,
+                                            ),
+                                          ),
+                                          child: ExcludeFocus(
+                                            excluding: nested != null,
+                                            child: Offstage(
+                                              offstage: nested != null,
+                                              child: TickerMode(enabled: nested == null, child: screens!),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
                                   // Every nested route, not only Mijn Pleya's:
                                   // the catalog routes open the same way and
@@ -589,3 +619,11 @@ class _TvCollapsibleNavState extends State<_TvCollapsibleNav> with SingleTickerP
     );
   }
 }
+
+/// How the top bar sits over a destination's own root, with no nested route
+/// open. Persistent everywhere except Instellingen, which is a destination of
+/// its own since A-24c and keeps the collapsible bar A-24 gave its pages
+/// ([kTvSettingsTopNav]): the entry is in the bar, on the page the bar slides
+/// away and UP brings it back.
+TvTopNavPresentation tvRootTopNavFor(TvDestinationId destination) =>
+    destination == TvDestinationId.settings ? kTvSettingsTopNav : TvTopNavPresentation.persistent;

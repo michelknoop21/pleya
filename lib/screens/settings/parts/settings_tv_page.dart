@@ -363,8 +363,9 @@ extension _SettingsTvPage on _SettingsScreenState {
   ];
 
   /// Instellingen ▸ Koppelingen ▸ Servers (A-24c). Opened inside the shell
-  /// like every other page from here, and without the Studio wrap: it is the
-  /// page Mijn Pleya opened before, and it keeps that page's look.
+  /// under the collapsible bar like every other page from here (A-24), and
+  /// without the Studio wrap: it is the page Mijn Pleya opened before, and it
+  /// keeps that page's look.
   TvMenuItem _tvServersRow(MultiServerProvider? servers) {
     final total = servers?.totalServerCount ?? 0;
     return TvMenuItem(
@@ -376,7 +377,7 @@ extension _SettingsTvPage on _SettingsScreenState {
           : t.tvMyPleya.serversOnline(online: '${servers?.onlineServerCount ?? 0}', total: '$total'),
       onSelect: () {
         Widget page(BuildContext _) => const TvServersPage();
-        if (openTvContentRoute(id: 'tvSettings_servers', builder: page) != null) return;
+        if (openTvContentRoute(id: 'tvSettings_servers', builder: page, topNav: kTvSettingsTopNav) != null) return;
         Navigator.push(context, MaterialPageRoute<void>(builder: page));
       },
     );
