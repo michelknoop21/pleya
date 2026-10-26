@@ -64,3 +64,8 @@ export type LogLevel = S['LogLevel'];
 export type ConnectivityCheck = S['ConnectivityCheck'];
 export type MetadataAttentionList = S['MetadataAttentionList'];
 export type TranscodeSession = S['TranscodeSession'];
+
+// Back-ups en terugzetten (S25.6).
+export type Backup = S['Backup'];
+export type BackupList = S['BackupList'];
+export type BackupRestoreTest = S['BackupRestoreTest'];

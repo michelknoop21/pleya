@@ -1,3 +1,4 @@
+import { webBackupsNl } from './webBackups.nl';
 import { webOpsNl } from './web.ops.nl';
 
 import { webUsersNl } from './webUsers.nl';
@@ -367,5 +368,6 @@ export const webNl = {
   ...webUsersNl,
   ...webSettingsNl,
   ...webTranscodeNl,
-  ...webTokensNl
+  ...webTokensNl,
+  ...webBackupsNl
 } satisfies Record<WebKey, string>;

@@ -56,6 +56,7 @@
   crumbs={[{ label: t('admin.title'), href: '/admin' }, { label: t('admin.nav.diagnostics') }]}
 >
   {#snippet actions()}
+    <a class="btn btn--secondary btn--sm" href="/admin/diagnostics/maintenance">{t('admin.bak.link')}</a>
     <button type="button" class="btn btn--secondary btn--sm" disabled={!data} onclick={download}>
       {t('admin.diag.report')}
     </button>
