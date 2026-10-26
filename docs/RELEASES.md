@@ -51,30 +51,20 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
-## 2.8.1 · build 410 · 26 October 2026 · iPhone, iPad and Apple TV
+## 2.8.1 · build 411 · 26 October 2026 · Apple TV
 
-<!-- commit: c201f8c95ebcbdf2fcef4f7169c404a773c51026 -->
+<!-- commit: 25bff4834e32fff9efd6b4b2e2bc816bdd103369 -->
 
 ### Improved
 
-- **Settings on iPhone are sorted into three groups.** Under the header, the main page now has
-  For you, Connections and profiles, and System. Rows are compact with a line icon; the
-  explanation that used to sit under a row is read out by VoiceOver as a hint. Library & Home,
-  Integrations, Advanced and Backup each have their own page.
 - **The Apple TV settings rail has new categories.** Appearance, Video Playback, Language &
   subtitles, Libraries, Home Layout, Integrations, Big P and Advanced are listed on the left, and
   the whole settings page of the selected category opens right next to the rail.
-- **Appearance on iPhone shows a Live preview.** A poster from your own library with a line
-  naming the current theme and library view, so you see what you picked. On Apple TV the preview
-  now also sits beside Language & subtitles and Libraries, and View preview opens your libraries.
-- **App language moved to Language & subtitles.** It is the first row there, on iPhone and in the
-  Apple TV category.
+- **The Live preview sits beside more categories.** Besides Appearance it now also appears next
+  to Language & subtitles and Libraries, and View preview opens your libraries.
+- **App language moved to Language & subtitles.** It is the first row of that category.
 - **Settings in light mode use a warm off-white.** This applies to Settings and its subpages
   only; the rest of the app keeps its light look.
-- **My Pleya on iPhone is redesigned.** Your profile and server status sit at the top, your
-  watchlist is a poster rail with See all, and Your content holds Libraries, Downloads and
-  Requests. A Big P card follows, then the remaining rows down to Sign out. With VoiceOver you
-  can open every row, the Big P card and the watchlist posters.
 - **My Pleya on Apple TV has two columns.** The left column has your watchlist rail, My content,
   and Libraries and sources; the right column has Big P and Manage (Settings, Logs, About Pleya,
   Sign out). Switching profiles and the server status are at the top. A watchlist poster keeps
@@ -84,18 +74,46 @@ Nothing user-facing since the last published build.
 
 - **Posters load again after switching profiles on a Pleya Server.** Closing the old connection
   removed the new connection's artwork access, so posters and backdrops stopped loading. iPhone
-  already had this fix in build 409; it is new on Apple TV.
+  got this fix in build 409.
 
 ### Notes
 
-- No setting was removed. Some moved: on Apple TV, Trackers, Seerr, Tautulli, the Pleya Share
-  host and About Pleya are now one level deeper than before.
-- Worth checking on a real iPhone and Apple TV: the Settings groups and the Apple TV rail with
-  the remote, Select on on/off rows, the Live preview, light mode in Settings, both My Pleya
-  layouts, and VoiceOver on My Pleya. This build was tested in the iPhone and Apple TV
-  simulators and in unit tests, not on a device and not with VoiceOver on a device. iPad was not
-  tested separately.
-- Watchlist titles longer than two lines are still cut off on Apple TV.
+- This is the Apple TV build of the same release as iPhone build 410; Apple TV skipped number
+  410. The previous Apple TV build was 408.
+- No setting was removed. Trackers, Seerr, Tautulli, the Pleya Share host and About Pleya are now
+  one level deeper than before.
+- Worth checking on a real Apple TV: the settings rail with the remote, Select on on/off rows,
+  the Live preview, light mode in Settings and the My Pleya columns. This build was tested in the
+  Apple TV simulator and in unit tests, not on a device.
+- Watchlist titles longer than two lines are still cut off.
+
+## 2.8.1 · build 410 · 26 October 2026 · iPhone and iPad
+
+<!-- commit: c201f8c95ebcbdf2fcef4f7169c404a773c51026 -->
+
+### Improved
+
+- **Settings on iPhone are sorted into three groups.** Under the header, the main page now has
+  For you, Connections and profiles, and System. Rows are compact with a line icon; the
+  explanation that used to sit under a row is read out by VoiceOver as a hint. Library & Home,
+  Integrations, Advanced and Backup each have their own page.
+- **Appearance on iPhone shows a Live preview.** A poster from your own library with a line
+  naming the current theme and library view, so you see what you picked.
+- **App language moved to Language & subtitles.** It is the first row there.
+- **Settings in light mode use a warm off-white.** This applies to Settings and its subpages
+  only; the rest of the app keeps its light look.
+- **My Pleya on iPhone is redesigned.** Your profile and server status sit at the top, your
+  watchlist is a poster rail with See all, and Your content holds Libraries, Downloads and
+  Requests. A Big P card follows, then the remaining rows down to Sign out. With VoiceOver you
+  can open every row, the Big P card and the watchlist posters.
+
+### Notes
+
+- No setting was removed; only the layout and grouping of Settings and My Pleya changed.
+- Worth checking on a real iPhone: the Settings groups, the Live preview, light mode in Settings,
+  My Pleya, and VoiceOver on My Pleya. This build was tested in the iPhone simulator and in unit
+  tests, not on a device and not with VoiceOver on a device. iPad was not tested separately.
+- The same release for Apple TV is build 411.
 
 ## 2.8.1 · build 409 · 25 October 2026 · iPhone and iPad
 
