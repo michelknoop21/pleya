@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../automation/automation_node.dart';
+import '../../automation/automation_ids.dart';
 import '../../theme/mono_tokens.dart';
 import '../app_icon.dart';
 
@@ -56,7 +57,12 @@ class MobileDenseTitleRow extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(onBack == null ? 16 : 4, 0, 8, 0),
       child: Row(
         children: [
-          if (onBack != null) IconButton(onPressed: onBack, icon: const AppIcon(Symbols.arrow_back_rounded, fill: 1)),
+          if (onBack != null)
+            AutomationNode(
+              id: AutomationIds.navigationBack,
+              role: 'button',
+              child: IconButton(onPressed: onBack, icon: const AppIcon(Symbols.arrow_back_rounded, fill: 1)),
+            ),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {

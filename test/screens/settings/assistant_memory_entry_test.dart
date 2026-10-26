@@ -67,7 +67,7 @@ void main() {
         providers: [
           ChangeNotifierProvider<ActiveProfileProvider>(create: (_) => FakeActiveProfile(profile)),
           if (memory)
-            Provider<MemoryService>(
+            ChangeNotifierProvider<MemoryService>(
               create: (_) => MemoryService(database: db, profileId: 'p', enabledStore: FakeEnabledStore('p')),
             ),
         ],

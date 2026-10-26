@@ -43,6 +43,8 @@ import '../utils/language_codes.dart';
 import '../utils/media_server_http_client.dart';
 import '../utils/media_server_timeouts.dart';
 import 'api_cache.dart';
+import 'memory/memory_models.dart';
+import 'memory/memory_sync_models.dart';
 import 'device_capabilities_service.dart';
 import 'playback_initialization_types.dart';
 import 'pleya_server_api_cache.dart';
@@ -62,6 +64,7 @@ part 'pleya_server_client/parts/browse.dart';
 part 'pleya_server_client/parts/search.dart';
 part 'pleya_server_client/parts/playback.dart';
 part 'pleya_server_client/parts/personal.dart';
+part 'pleya_server_client/parts/memory.dart';
 part 'pleya_server_client/parts/downloads.dart';
 part 'pleya_server_client/parts/unsupported.dart';
 part 'pleya_server_client/parts/admin.dart';
@@ -162,6 +165,10 @@ class PleyaServerClient
 
   @override
   final PleyaServerWatchLedger _watchLedger = PleyaServerWatchLedger();
+
+  /// Personal facts use this account's existing session; never a library cache.
+  MemorySyncTransport assistantMemoryTransport({required bool Function() isCurrent}) =>
+      _PleyaMemoryTransport(this, isCurrent);
 
   bool _offlineMode = false;
   ServerCapabilities _capabilities = PleyaServerCapabilityResolver.unknown;

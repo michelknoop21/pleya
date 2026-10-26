@@ -127,8 +127,13 @@ func (s *Server) securityHeaders(next http.Handler) http.Handler {
 // de handler vertaalt die naar de code die het contract voor dat endpoint kent.
 func (s *Server) bodyLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		limit := int64(maxRequestBodyBytes)
+		if r.URL.Path == "/pleya/v1/users/me/memory" || r.URL.Path == "/pleya/v1/users/me/memory/clear" {
+			limit = 256 << 10
+			w.Header().Set("Cache-Control", "no-store")
+		}
 		if r.Body != nil {
-			r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
+			r.Body = http.MaxBytesReader(w, r.Body, limit)
 		}
 		next.ServeHTTP(w, r)
 	})

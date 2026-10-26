@@ -35,6 +35,15 @@ type errorEnvelope struct {
 // De codes uit hoofdstuk 7.1 van de specificatie. Uitbreiden mag; de betekenis
 // van een bestaande code wijzigen niet.
 const (
+	CodeMemoryNotPermitted = "memory.not_permitted"
+	CodeMemoryTooLarge     = "memory.too_large"
+	CodeMemoryInvalid      = "memory.invalid"
+	CodeMemoryConflict     = "memory.conflict"
+	CodeMemoryEpoch        = "memory.epoch_changed"
+	CodeMemoryDeleted      = "memory.deleted"
+	CodeMemoryLimit        = "memory.limit_reached"
+	CodeMemoryDuplicate    = "memory.duplicate"
+
 	CodeInvalidCredentials    = "auth.invalid_credentials"
 	CodeTokenExpired          = "auth.token_expired"
 	CodeTokenInvalid          = "auth.token_invalid"
@@ -251,6 +260,14 @@ var errorTable = map[string]struct {
 	status    int
 	retryable bool
 }{
+	CodeMemoryNotPermitted:    {http.StatusForbidden, false},
+	CodeMemoryTooLarge:        {http.StatusRequestEntityTooLarge, false},
+	CodeMemoryInvalid:         {http.StatusBadRequest, false},
+	CodeMemoryConflict:        {http.StatusConflict, false},
+	CodeMemoryEpoch:           {http.StatusConflict, false},
+	CodeMemoryDeleted:         {http.StatusConflict, false},
+	CodeMemoryLimit:           {http.StatusConflict, false},
+	CodeMemoryDuplicate:       {http.StatusConflict, false},
 	CodeInvalidCredentials:    {http.StatusUnauthorized, false},
 	CodeTokenExpired:          {http.StatusUnauthorized, false},
 	CodeTokenInvalid:          {http.StatusUnauthorized, false},

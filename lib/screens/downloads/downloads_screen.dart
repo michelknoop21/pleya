@@ -24,7 +24,9 @@ import '../../i18n/strings.g.dart';
 import 'sync_rules_screen.dart';
 
 class DownloadsScreen extends StatefulWidget {
-  const DownloadsScreen({super.key});
+  const DownloadsScreen({super.key, this.onBack});
+
+  final VoidCallback? onBack;
 
   @override
   State<DownloadsScreen> createState() => DownloadsScreenState();
@@ -134,7 +136,7 @@ class DownloadsScreenState extends State<DownloadsScreen>
       scrolledUnderElevation: 0,
       row: MobileDenseTitleRow(
         title: t.downloads.title,
-        onBack: canPop ? () => Navigator.of(context).maybePop() : null,
+        onBack: widget.onBack ?? (canPop ? () => Navigator.of(context).maybePop() : null),
         actions: [
           FocusableActionBar(
             key: _actionBarKey,

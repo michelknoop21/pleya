@@ -126,6 +126,11 @@ func (s *Server) routeTable() []route {
 		{"DELETE " + p + "/playback/sessions/{session_id}", s.authenticated(s.handlePlaybackStop)},
 		{"GET " + p + "/playback/sessions/{session_id}/{file}", s.streamAuthorized(s.handlePlaybackFile)},
 
+		// BP-08b: alleen het eigen account, uitsluitend een sessiebearer.
+		{"GET " + p + "/users/me/memory", s.authenticated(s.handleGetMemory)},
+		{"PUT " + p + "/users/me/memory", s.authenticated(s.handlePutMemory)},
+		{"POST " + p + "/users/me/memory/clear", s.authenticated(s.handleClearMemory)},
+
 		// De persoonlijke laag (venster 6 deel 2, S20, matrixregels 52 tot en met 60).
 		// Alles klasse authenticated, over de aanvrager zelf; een item buiten de
 		// bibliotheken van de aanvrager is een 404.

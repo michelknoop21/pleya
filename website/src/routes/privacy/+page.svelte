@@ -225,7 +225,7 @@
     <header class="policy-lede">
       <span class="tag">Legal</span>
       <h1>Privacy Policy</h1>
-      <p class="last-updated">Last Updated: October 12, 2026</p>
+      <p class="last-updated">Last Updated: October 26, 2026</p>
 
       <nav class="index" aria-label="On this page">
         <div class="index-core">
@@ -274,7 +274,7 @@
             <h3>Conversations and memory</h3>
             <ul>
               <li>A conversation is kept in memory while you use it. It is not saved to disk</li>
-              <li>Big P stores something in its memory when you ask it to, or after you confirm a suggestion it makes. What it remembers is stored on your device, per profile, and is not synced. You can see and remove it in the memory screen under Settings &gt; Big P, or ask Big P what it remembers and to forget it</li>
+              <li>Big P stores something in its memory when you ask it to, or after you confirm a suggestion it makes. What it remembers is stored on your device, per profile. If you explicitly connect memory to your own Pleya Server account and confirm the memories to share, personal memories are also stored on that server and synced to your other connected devices. Household memories, children's profiles and conversations are excluded from this sync. The derived summary and the switch for using memory remain local. Your server backups may retain older facts until those backups expire; restoring memory requires confirmation before restored facts become active. You can see and remove it in the memory screen under Settings &gt; Big P, or ask Big P what it remembers and to forget it</li>
               <li>When you open that memory screen, Big P asks your provider to write a summary of what it remembers. For that summary the remembered facts are sent to the provider</li>
             </ul>
           </div>

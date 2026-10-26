@@ -6,6 +6,7 @@ import 'package:pleya/models/pleya_server/pleya_wire.dart';
 import 'package:pleya/models/pleya_server/pleya_wire_library.dart';
 import 'package:pleya/models/pleya_server/pleya_wire_playback.dart';
 import 'package:pleya/services/pleya_server_client.dart' show pleyaWatchHistoryFromJson;
+import 'package:pleya/services/memory/memory_sync_models.dart';
 
 /// The Dart wire types are a hand transcription of
 /// `docs/pleya-protocol/v1/openapi.yaml`, so the only thing that keeps them
@@ -121,6 +122,10 @@ void main() {
     // client has no business restoring a server.
     'Backup',
     'BackupList',
+    // Write-only memory requests are constructed by the transport, whose tests
+    // assert their closed body; the client never parses a request from the server.
+    'MemoryReplace',
+    'MemoryClear',
   };
 
   final parsers = <String, void Function(Map<String, dynamic>)>{
@@ -130,6 +135,7 @@ void main() {
       expect(info.serverId, isNotEmpty);
     },
     'ServerDetail': (json) => PleyaServerDetail.fromJson(json),
+    'MemorySnapshot': (json) => MemorySyncSnapshot.fromJson(json),
     'TrackPreference': (json) {
       final pref = PleyaTrackPreference.fromJson(json);
       expect(pref.subtitleMode, anyOf(isNull, 'off', 'on', 'forced'));
@@ -202,8 +208,8 @@ void main() {
       );
     });
 
-    test('covers the 98 fixtures the contract ships', () {
-      expect(fixtures, hasLength(98));
+    test('covers the 101 fixtures the contract ships', () {
+      expect(fixtures, hasLength(101));
     });
 
     for (final fixture in fixtures) {

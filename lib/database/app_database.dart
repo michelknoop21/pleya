@@ -102,6 +102,7 @@ const String _sqlImportedInteractionUniqueIndex =
     HistorySyncCursors,
     AssistantMemories,
     AssistantMemoryOverviews,
+    AssistantMemorySyncStates,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -113,7 +114,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 22;
+  int get schemaVersion => 23;
 
   @override
   MigrationStrategy get migration {
@@ -342,6 +343,15 @@ class AppDatabase extends _$AppDatabase {
             () => m.createIndex(idxAssistantMemoriesProfileValueKey),
           );
           await _ignoreAlreadyExists('AssistantMemoryOverviews table', () => m.createTable(assistantMemoryOverviews));
+        }
+        if (from < 23) {
+          // One server fact can belong to two explicitly linked local profiles.
+          await customStatement('ALTER TABLE assistant_memories RENAME TO assistant_memories_v22');
+          await m.createTable(assistantMemories);
+          await customStatement('INSERT INTO assistant_memories SELECT * FROM assistant_memories_v22');
+          await customStatement('DROP TABLE assistant_memories_v22');
+          await m.createIndex(idxAssistantMemoriesProfileValueKey);
+          await _ignoreAlreadyExists('AssistantMemorySyncStates table', () => m.createTable(assistantMemorySyncStates));
         }
       },
     );

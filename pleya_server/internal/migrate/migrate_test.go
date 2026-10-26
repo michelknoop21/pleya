@@ -158,8 +158,11 @@ func TestSchemaHasExactlyTheExpectedTables(t *testing.T) {
 		// S23, migratie 0021: de klaargezette downloads.
 		"downloads": true,
 		// S25, migratie 0022: het register van back-ups en hersteltests.
-		"backups":              true,
-		"backup_restore_tests": true,
+		"assistant_memory_states":     true,
+		"assistant_memory_facts":      true,
+		"assistant_memory_tombstones": true,
+		"backups":                     true,
+		"backup_restore_tests":        true,
 		// S20, migratie 0020: de persoonlijke laag.
 		"play_history":      true,
 		"favorites":         true,

@@ -83,6 +83,10 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
       if (seerr == null) return false;
       _applySeerrSearchV1(seerr);
       return true;
+    case 'memory.sync.v1':
+      server.usersCapability = true;
+      server.assistantMemoryCapability = true;
+      return true;
     case 'server.owner.v1':
       server.usersCapability = true;
       return true;

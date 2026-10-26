@@ -3550,6 +3550,7 @@ class _TranslationsAssistantMemoryNl extends TranslationsAssistantMemoryEn {
 	@override late final _TranslationsAssistantMemoryCardNl card = _TranslationsAssistantMemoryCardNl._(_root);
 	@override late final _TranslationsAssistantMemoryCategoriesNl categories = _TranslationsAssistantMemoryCategoriesNl._(_root);
 	@override late final _TranslationsAssistantMemoryScreenNl screen = _TranslationsAssistantMemoryScreenNl._(_root);
+	@override late final _TranslationsAssistantMemorySyncNl sync = _TranslationsAssistantMemorySyncNl._(_root);
 }
 
 // Path: assistant.mobile
@@ -4208,6 +4209,47 @@ class _TranslationsAssistantMemoryScreenNl extends TranslationsAssistantMemorySc
 	@override late final _TranslationsAssistantMemoryScreenCodesNl codes = _TranslationsAssistantMemoryScreenCodesNl._(_root);
 }
 
+// Path: assistant.memory.sync
+class _TranslationsAssistantMemorySyncNl extends TranslationsAssistantMemorySyncEn {
+	_TranslationsAssistantMemorySyncNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Sync via Pleya Server';
+	@override String get local => 'Opgeslagen op dit apparaat';
+	@override String get syncing => 'Synchroniseren…';
+	@override String get pending => 'Wijzigingen wachten op synchronisatie';
+	@override String get synced => 'Wijzigingen bevestigd door de server';
+	@override String get unavailable => 'Server onbereikbaar of account niet toegestaan';
+	@override String get error => 'Synchronisatie mislukt. Je lokale herinneringen blijven bewaard.';
+	@override String get conflict => 'Wijzigingen vragen om jouw keuze';
+	@override String get quarantine => 'Het servergeheugen is gewijzigd na wissen of herstel. Controleer het voor gebruik.';
+	@override String get account => 'Kies je eigen Pleya Server-account';
+	@override String get noAccount => 'Er is geen geschikt Pleya Server-account gekoppeld. Meld je met je eigen account aan op een bijgewerkte server.';
+	@override String preview({required Object account}) => 'Deze herinneringen delen met ${account}';
+	@override String get previewNote => 'Bestaande serverherinneringen blijven bewaard. Gezinsherinneringen blijven op dit apparaat. Alleen geselecteerde herinneringen worden gedeeld.';
+	@override String get connect => 'Bevestigen en synchroniseren';
+	@override String get refresh => 'Nu synchroniseren';
+	@override String get disconnect => 'Ontkoppelen';
+	@override String get disconnectNote => 'Synchronisatie van dit profiel stoppen? Herinneringen blijven op dit apparaat en op de server.';
+	@override String get reviewReset => 'Herstelde herinneringen bekijken';
+	@override String get acceptReset => 'Deze serverherinneringen gebruiken';
+	@override String get resetNote => 'Bevestig dit servergeheugen als nieuwe basis. Oude wachtende wijzigingen worden niet automatisch geüpload.';
+	@override String get localVersion => 'Dit apparaat';
+	@override String get serverVersion => 'Server';
+	@override String get keepLocal => 'Deze versie bewaren';
+	@override String get keepServer => 'Serverversie gebruiken';
+	@override String get keepBoth => 'Beide bewaren';
+	@override String get deleted => 'Verwijderd';
+	@override String get select => 'Delen';
+	@override String lastConfirmed({required Object time}) => 'Laatst bevestigd: ${time}';
+	@override String importLimit({required Object count}) => 'Dit zou ${count} herinneringen op dit apparaat opslaan. Het maximum is 200; verwijder herinneringen voordat je koppelt.';
+	@override String get clearChanged => 'De server is gewijzigd nadat je om wissen vroeg. Bekijk deze feiten en bevestig het wissen van dit servergeheugen.';
+	@override String get clearServer => 'Deze serverherinneringen wissen';
+	@override String get clearEverywhere => 'Alle herinneringen van dit profiel en het gekoppelde Pleya Server-account wissen? Andere gekoppelde apparaten ontvangen de wisactie zodra ze weer verbinden.';
+}
+
 // Path: assistant.jobs.scanLibrary
 class _TranslationsAssistantJobsScanLibraryNl extends TranslationsAssistantJobsScanLibraryEn {
 	_TranslationsAssistantJobsScanLibraryNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -4317,7 +4359,7 @@ class _TranslationsAssistantMemoryScreenMenuNl extends TranslationsAssistantMemo
 	@override String get use => 'Geheugen gebruiken';
 	@override String get useOn => 'Geheugen gebruiken: Aan';
 	@override String get useOff => 'Geheugen gebruiken: Uit';
-	@override String get useNote => 'Big P onthoudt wat je hem vraagt te onthouden. Alleen voor dit profiel, alleen op dit apparaat. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag, en voor het overzicht de herinneringen van dit profiel.';
+	@override String get useNote => 'Big P onthoudt wat je hem vraagt te onthouden, voor dit profiel. Herinneringen blijven op dit apparaat tenzij je ze expliciet aan je eigen Pleya Server-account koppelt. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag, en voor het overzicht de herinneringen van dit profiel.';
 	@override String get rewrite => 'Overzicht opnieuw schrijven';
 	@override String get clear => 'Alle herinneringen wissen';
 }
@@ -6829,7 +6871,7 @@ extension on TranslationsNl {
 			'assistant.memory.screen.menu.use' => 'Geheugen gebruiken',
 			'assistant.memory.screen.menu.useOn' => 'Geheugen gebruiken: Aan',
 			'assistant.memory.screen.menu.useOff' => 'Geheugen gebruiken: Uit',
-			'assistant.memory.screen.menu.useNote' => 'Big P onthoudt wat je hem vraagt te onthouden. Alleen voor dit profiel, alleen op dit apparaat. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag, en voor het overzicht de herinneringen van dit profiel.',
+			'assistant.memory.screen.menu.useNote' => 'Big P onthoudt wat je hem vraagt te onthouden, voor dit profiel. Herinneringen blijven op dit apparaat tenzij je ze expliciet aan je eigen Pleya Server-account koppelt. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag, en voor het overzicht de herinneringen van dit profiel.',
 			'assistant.memory.screen.menu.rewrite' => 'Overzicht opnieuw schrijven',
 			'assistant.memory.screen.menu.clear' => 'Alle herinneringen wissen',
 			'assistant.memory.screen.clearDialog.title' => 'Alle herinneringen wissen?',
@@ -6887,6 +6929,38 @@ extension on TranslationsNl {
 			'assistant.memory.screen.codes.notFound' => 'Deze herinnering bestaat niet meer.',
 			'assistant.memory.screen.codes.profileGone' => 'Dit profiel is gewisseld of verwijderd. Er is niets gewijzigd.',
 			'assistant.memory.screen.codes.storageFailed' => 'Opslaan is niet gelukt. Er is niets gewijzigd.',
+			'assistant.memory.sync.title' => 'Sync via Pleya Server',
+			'assistant.memory.sync.local' => 'Opgeslagen op dit apparaat',
+			'assistant.memory.sync.syncing' => 'Synchroniseren…',
+			'assistant.memory.sync.pending' => 'Wijzigingen wachten op synchronisatie',
+			'assistant.memory.sync.synced' => 'Wijzigingen bevestigd door de server',
+			'assistant.memory.sync.unavailable' => 'Server onbereikbaar of account niet toegestaan',
+			'assistant.memory.sync.error' => 'Synchronisatie mislukt. Je lokale herinneringen blijven bewaard.',
+			'assistant.memory.sync.conflict' => 'Wijzigingen vragen om jouw keuze',
+			'assistant.memory.sync.quarantine' => 'Het servergeheugen is gewijzigd na wissen of herstel. Controleer het voor gebruik.',
+			'assistant.memory.sync.account' => 'Kies je eigen Pleya Server-account',
+			'assistant.memory.sync.noAccount' => 'Er is geen geschikt Pleya Server-account gekoppeld. Meld je met je eigen account aan op een bijgewerkte server.',
+			'assistant.memory.sync.preview' => ({required Object account}) => 'Deze herinneringen delen met ${account}',
+			'assistant.memory.sync.previewNote' => 'Bestaande serverherinneringen blijven bewaard. Gezinsherinneringen blijven op dit apparaat. Alleen geselecteerde herinneringen worden gedeeld.',
+			'assistant.memory.sync.connect' => 'Bevestigen en synchroniseren',
+			'assistant.memory.sync.refresh' => 'Nu synchroniseren',
+			'assistant.memory.sync.disconnect' => 'Ontkoppelen',
+			'assistant.memory.sync.disconnectNote' => 'Synchronisatie van dit profiel stoppen? Herinneringen blijven op dit apparaat en op de server.',
+			'assistant.memory.sync.reviewReset' => 'Herstelde herinneringen bekijken',
+			'assistant.memory.sync.acceptReset' => 'Deze serverherinneringen gebruiken',
+			'assistant.memory.sync.resetNote' => 'Bevestig dit servergeheugen als nieuwe basis. Oude wachtende wijzigingen worden niet automatisch geüpload.',
+			'assistant.memory.sync.localVersion' => 'Dit apparaat',
+			'assistant.memory.sync.serverVersion' => 'Server',
+			'assistant.memory.sync.keepLocal' => 'Deze versie bewaren',
+			'assistant.memory.sync.keepServer' => 'Serverversie gebruiken',
+			'assistant.memory.sync.keepBoth' => 'Beide bewaren',
+			'assistant.memory.sync.deleted' => 'Verwijderd',
+			'assistant.memory.sync.select' => 'Delen',
+			'assistant.memory.sync.lastConfirmed' => ({required Object time}) => 'Laatst bevestigd: ${time}',
+			'assistant.memory.sync.importLimit' => ({required Object count}) => 'Dit zou ${count} herinneringen op dit apparaat opslaan. Het maximum is 200; verwijder herinneringen voordat je koppelt.',
+			'assistant.memory.sync.clearChanged' => 'De server is gewijzigd nadat je om wissen vroeg. Bekijk deze feiten en bevestig het wissen van dit servergeheugen.',
+			'assistant.memory.sync.clearServer' => 'Deze serverherinneringen wissen',
+			'assistant.memory.sync.clearEverywhere' => 'Alle herinneringen van dit profiel en het gekoppelde Pleya Server-account wissen? Andere gekoppelde apparaten ontvangen de wisactie zodra ze weer verbinden.',
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI-provider',
@@ -7002,6 +7076,8 @@ extension on TranslationsNl {
 			'assistant.jobs.retryJob.running' => 'Taak loopt',
 			'assistant.jobs.retryJob.done' => 'Taak klaar',
 			'assistant.jobs.retryJob.failed' => 'Taak mislukt',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.jobs.retryJob.background' => 'Taak loopt nog op de achtergrond',
 			'assistant.jobs.retryJob.unknown' => 'Taak: status niet meer vast te stellen',
 			'assistant.jobs.kinds.scan_library' => 'Bibliotheek scannen',
@@ -7034,8 +7110,6 @@ extension on TranslationsNl {
 			'assistant.confirm.titles.createHomeRow' => 'Rij op het beginscherm maken',
 			'assistant.confirm.titles.createCollection' => 'Collectie maken',
 			'assistant.confirm.titles.requestTitle' => 'Titel aanvragen',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.confirm.titles.downloadEpisodes' => 'Afleveringen downloaden',
 			'assistant.confirm.titles.downloadSubtitle' => 'Ondertitel downloaden',
 			'assistant.confirm.titles.changePlayback' => 'Afspelen aanpassen',

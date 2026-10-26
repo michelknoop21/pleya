@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 import '../../database/app_database.dart';
@@ -125,4 +127,45 @@ class MemoryStore {
           generatedAt: at,
         ),
       );
+
+  Future<Map<String, dynamic>?> syncState() async {
+    final row = await (_db.select(
+      _db.assistantMemorySyncStates,
+    )..where((t) => t.profileId.equals(_profileId))).getSingleOrNull();
+    return row == null ? null : jsonDecode(row.payload) as Map<String, dynamic>;
+  }
+
+  Future<void> putSyncState(Map<String, dynamic> state) => _db
+      .into(_db.assistantMemorySyncStates)
+      .insertOnConflictUpdate(
+        AssistantMemorySyncStatesCompanion.insert(profileId: _profileId, payload: jsonEncode(state)),
+      );
+
+  Future<void> removeSyncState() =>
+      (_db.delete(_db.assistantMemorySyncStates)..where((t) => t.profileId.equals(_profileId))).go();
+
+  /// Called inside the same transaction as the edit, so a crash cannot lose a pending mutation.
+  Future<void> noteSyncChange({bool clear = false}) async {
+    final state = await syncState();
+    if (state == null) return;
+    state['generation'] = (state['generation'] as int) + 1;
+    if (clear) {
+      final known = (state['quarantine'] ?? state['base']) as Map<String, dynamic>;
+      state['base'] = {'epoch': known['epoch'], 'revision': known['revision'], 'facts': <Object>[]};
+      state['clearGeneration'] = state['generation'];
+      state['conflicts'] = <Object>[];
+      state['quarantine'] = null;
+      state['inFlight'] = null;
+      state['sentGeneration'] = null;
+      state['excluded'] = <Object>[];
+    }
+    await putSyncState(state);
+  }
+
+  Future<void> replaceFacts(List<AssistantMemoriesCompanion> facts) async {
+    await deleteAll();
+    for (final fact in facts) {
+      await _db.into(_db.assistantMemories).insert(fact);
+    }
+  }
 }

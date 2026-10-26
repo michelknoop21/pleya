@@ -1,6 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../../navigation/profile_memory_sync.dart';
+import 'memory_sync_screen.dart';
 
 import '../../../assistant/assistant_controller_session.dart';
 import '../../../assistant/assistant_kids_ages_store.dart';
@@ -97,15 +101,47 @@ class _AssistantMemoryScreenState extends State<AssistantMemoryScreen> {
     unawaited(Navigator.of(context).push(MaterialPageRoute<void>(builder: builder)));
   }
 
+  void _openSync() {
+    final binding = context.read<ProfileMemorySync?>();
+    if (binding == null) return;
+    final builder = settingsStudioBuilder(context, (_) => MemorySyncScreen(binding: binding));
+    // The shell's ambient content focus does not remember this nested tile.
+    final launcher = FocusManager.instance.primaryFocus;
+    final nested = openTvContentRoute(id: 'tvSettings_assistantMemorySync', builder: builder);
+    if (nested != null) {
+      unawaited(
+        nested.whenComplete(() {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && launcher != null && launcher.context != null && launcher.canRequestFocus) {
+              launcher.requestFocus();
+            }
+          });
+        }),
+      );
+      return;
+    }
+    unawaited(Navigator.of(context).push(MaterialPageRoute<void>(builder: builder)));
+  }
+
   /// "Alle herinneringen wissen": nothing goes without the yes of the dialog.
   Future<void> _clear() async {
-    if (!await confirmClearMemory(context)) return;
+    final linked = context.read<ProfileMemorySync?>()?.sync.accountKey != null;
+    final confirmed = linked
+        ? await showMemoryConfirm(
+            context,
+            title: t.assistant.memory.screen.clearDialog.title,
+            body: t.assistant.memory.sync.clearEverywhere,
+            confirm: t.assistant.memory.screen.clearDialog.confirm,
+          )
+        : await confirmClearMemory(context);
+    if (!confirmed) return;
     final result = await _model.clearAll();
     if (!result.ok && mounted) showErrorSnackBar(context, memoryCodeMessage(result.code));
   }
 
   late final _actions = MemoryActionCallbacks(
     openList: _openList,
+    sync: context.read<ProfileMemorySync?>() == null ? null : _openSync,
     toggle: () => toggleMemory(_model),
     rewrite: () => unawaited(_model.rewrite()),
     clear: () => unawaited(_clear()),

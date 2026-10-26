@@ -80,13 +80,49 @@ void main() {
       for (final profile in ['a', 'b']) {
         await db.into(db.assistantMemories).insert(_fact('f-$profile', profile, 'x'));
         await db.into(db.assistantMemoryOverviews).insert(_overview(profile));
+        await db
+            .into(db.assistantMemorySyncStates)
+            .insert(AssistantMemorySyncStatesCompanion.insert(profileId: profile, payload: '{}'));
       }
 
       await db.deleteAssistantMemoryForProfile('a');
 
       expect((await db.select(db.assistantMemories).get()).map((r) => r.profileId), ['b']);
       expect((await db.select(db.assistantMemoryOverviews).get()).map((r) => r.profileId), ['b']);
+      expect((await db.select(db.assistantMemorySyncStates).get()).map((r) => r.profileId), ['b']);
     });
+  });
+
+  test('v23 adds sync state without changing v22 facts or overview', () async {
+    final directory = await Directory.systemTemp.createTemp('pleya_memory_sync_migration_');
+    final file = File('${directory.path}/test.db');
+    AppDatabase? opened;
+    try {
+      final old = AppDatabase.forTesting(NativeDatabase(file));
+      await old.customStatement('DROP TABLE IF EXISTS assistant_memories');
+      await old.customStatement('''
+        CREATE TABLE assistant_memories (
+          id TEXT NOT NULL PRIMARY KEY, profile_id TEXT NOT NULL,
+          category TEXT NOT NULL, value TEXT NOT NULL, value_key TEXT NOT NULL,
+          source TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+        )
+      ''');
+      await old.into(old.assistantMemories).insert(_fact('preserved', 'p', 'preserved'));
+      await old.into(old.assistantMemoryOverviews).insert(_overview('p'));
+      await old.customStatement('DROP TABLE assistant_memory_sync_states');
+      await old.customStatement('PRAGMA user_version = 22');
+      await old.close();
+      final db = opened = AppDatabase.forTesting(NativeDatabase(file));
+      expect((await db.select(db.assistantMemories).get()).single.value, 'preserved');
+      expect(await db.select(db.assistantMemoryOverviews).get(), hasLength(1));
+      expect(await db.select(db.assistantMemorySyncStates).get(), isEmpty);
+      await db.into(db.assistantMemories).insert(_fact('preserved', 'second-profile', 'second'));
+      expect(await db.select(db.assistantMemories).get(), hasLength(2));
+      expect((await db.customSelect('PRAGMA user_version').getSingle()).read<int>('user_version'), 23);
+    } finally {
+      await opened?.close();
+      await directory.delete(recursive: true);
+    }
   });
 
   group('migration from 21', () {
@@ -114,7 +150,7 @@ void main() {
       expect(await _names(db, 'table'), containsAll(['assistant_memories', 'assistant_memory_overviews']));
       expect(await _indexIsUnique(db), isTrue);
       expect((await db.select(db.apiCache).get()).map((r) => r.cacheKey), ['kept']);
-      expect((await db.customSelect('PRAGMA user_version').getSingle()).read<int>('user_version'), 22);
+      expect((await db.customSelect('PRAGMA user_version').getSingle()).read<int>('user_version'), 23);
 
       await db.into(db.assistantMemories).insert(_fact('1', 'a', 'k'));
       await expectLater(db.into(db.assistantMemories).insert(_fact('2', 'a', 'k')), throwsA(isA<SqliteException>()));
