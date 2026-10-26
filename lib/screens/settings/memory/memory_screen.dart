@@ -105,7 +105,21 @@ class _AssistantMemoryScreenState extends State<AssistantMemoryScreen> {
     final binding = context.read<ProfileMemorySync?>();
     if (binding == null) return;
     final builder = settingsStudioBuilder(context, (_) => MemorySyncScreen(binding: binding));
-    if (openTvContentRoute(id: 'tvSettings_assistantMemorySync', builder: builder) != null) return;
+    // The shell's ambient content focus does not remember this nested tile.
+    final launcher = FocusManager.instance.primaryFocus;
+    final nested = openTvContentRoute(id: 'tvSettings_assistantMemorySync', builder: builder);
+    if (nested != null) {
+      unawaited(
+        nested.whenComplete(() {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && launcher != null && launcher.context != null && launcher.canRequestFocus) {
+              launcher.requestFocus();
+            }
+          });
+        }),
+      );
+      return;
+    }
     unawaited(Navigator.of(context).push(MaterialPageRoute<void>(builder: builder)));
   }
 

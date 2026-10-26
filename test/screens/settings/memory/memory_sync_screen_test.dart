@@ -1,5 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:pleya/navigation/tv/tv_content_route_registry.dart';
+import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
+import 'package:pleya/screens/settings/memory/memory_screen.dart';
+import 'package:pleya/screens/settings/memory/memory_tv_widgets.dart';
 import 'package:pleya/navigation/profile_memory_sync.dart';
 import 'package:pleya/screens/settings/memory/memory_sync_screen.dart';
 import 'package:pleya/screens/settings/memory/memory_widgets.dart';
@@ -159,6 +166,59 @@ void main() {
     final preview = await tester.runAsync(() => sync.preview('account'));
     expect(preview!.combinedCount({}), 201, reason: 'Unselected facts still occupy local space');
     await tester.pumpWidget(const SizedBox.shrink());
+    binding.dispose();
+    sync.dispose();
+    await tester.runAsync(h.dispose);
+  });
+  testWidgets('return from the nested sync route restores its TV launcher', (tester) async {
+    final h = MemoryScreenHarness();
+    final server = _Server();
+    final sync = MemorySyncService(
+      memory: h.service,
+      transportFor: (_) async => server,
+      isEligible: () => true,
+      isCurrent: () => true,
+    );
+    final binding = _Binding(sync);
+    final content = FocusNode(debugLabel: 'Content fallback');
+    final closed = Completer<Object?>();
+    TvNestedRoute? opened;
+    Future<Object?> push(TvNestedRoute route) {
+      opened = route;
+      content.requestFocus();
+      return closed.future;
+    }
+
+    tvContentRouteRegistry.attach(push);
+    await tester.runAsync(useDutch);
+    await pumpMemoryApp(
+      tester,
+      Focus(
+        focusNode: content,
+        child: ChangeNotifierProvider<ProfileMemorySync>.value(
+          value: binding,
+          child: AssistantMemoryScreen(model: h.model),
+        ),
+      ),
+      tv: true,
+      size: tvSize,
+    );
+    final tile = tester
+        .widgetList<MemoryTvTile>(find.byType(MemoryTvTile))
+        .firstWhere((tile) => tile.instance == 'sync');
+    tile.node.requestFocus();
+    await tester.pump();
+    expect(tile.node.hasFocus, isTrue);
+    tile.onSelect!();
+    await tester.pump();
+    expect(opened?.id, 'tvSettings_assistantMemorySync');
+    expect(content.hasPrimaryFocus, isTrue);
+    closed.complete(null);
+    await tester.pumpAndSettle();
+    expect(tile.node.hasFocus, isTrue);
+    tvContentRouteRegistry.detach(push);
+    await tester.pumpWidget(const SizedBox.shrink());
+    content.dispose();
     binding.dispose();
     sync.dispose();
     await tester.runAsync(h.dispose);
