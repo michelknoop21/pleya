@@ -195,6 +195,7 @@ void main() {
     test('the right tool for the right person', () {
       expect(_i('Wat heb ik gekeken?').constrain('watch_stats', {'scope': 'period'}).error, 'use_my_watching');
       expect(_i('Wat kijken de anderen?').constrain('my_watching', const {}).error, 'use_watch_stats');
+      expect(_i('Wat heb ik deze week gekeken?').constrain('my_watching', {'days': 30}).args['days'], 7);
       expect(_i('Wat heb ik gekeken?').constrain('my_watching', const {}).error, isNull);
       expect(_i('Wat kijken de anderen?').constrain('scan_library', {'a': 1}).args, {'a': 1});
     });

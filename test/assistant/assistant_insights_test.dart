@@ -27,6 +27,7 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/plex_auth_service.dart';
 import 'package:pleya/services/plex_client.dart';
+import 'package:pleya/services/recommendations/taste_profile.dart';
 import 'package:pleya/services/pleya_server_client.dart';
 import 'package:pleya/services/tautulli/tautulli_client.dart';
 import 'package:pleya/services/tautulli/tautulli_constants.dart';
@@ -288,6 +289,8 @@ Future<AssistantToolContext> _plexCtx({
   TautulliClient? tautulli,
   List<String>? paths,
   CurrentUserContext currentUser = CurrentUserContext.empty,
+  bool personal = false,
+  bool Function(ServerId)? canReadPersonalHistory,
 }) async {
   final db = AppDatabase.forTesting(NativeDatabase.memory());
   PlexApiCache.initialize(db);
@@ -350,7 +353,19 @@ Future<AssistantToolContext> _plexCtx({
   return AssistantToolContext(
     servers: m,
     currentUser: currentUser,
-    insights: AssistantInsightServices(tautulliFor: (id) => id.value == 'plex-1' ? tautulli : null),
+    personal: personal
+        ? AssistantPersonalServices(
+            userName: 'Michel',
+            recent: () async => [],
+            everSeen: () async => {},
+            taste: () async => AffinityVector.empty,
+            picks: (_) async => [],
+          )
+        : null,
+    insights: AssistantInsightServices(
+      tautulliFor: (id) => id.value == 'plex-1' ? tautulli : null,
+      canReadPersonalHistory: canReadPersonalHistory ?? (_) => true,
+    ),
   );
 }
 
@@ -1392,6 +1407,117 @@ void main() {
           await _tool('watch_stats').run(ctx, null, {'scope': 'period', 'audience': 'others'}) as AssistantToolResult;
       expect(result.data['plays'], 1, reason: 'only the account with another plex.tv id');
       expect(result.data, isNot(contains('left_out')));
+    });
+
+    test('my_watching reads the proven Tautulli account despite empty local history', () async {
+      final calls = <Map<String, String>>[];
+      final tautulli = _tautulli(
+        calls,
+        (_) => {
+          'data': [
+            {'user_id': 5, 'user': 'michel', 'media_type': 'movie', 'full_title': 'Arrival'},
+            {'user_id': 9, 'user': 'michel', 'media_type': 'movie', 'full_title': 'Private other title'},
+            {'user': 'michel', 'media_type': 'movie', 'full_title': 'Unknown account title'},
+          ],
+        },
+      );
+      final me = CurrentUserContext.build(const [
+        AssistantSelfSource(serverId: 'plex-1', backend: MediaBackend.plex, plexTvAccountId: 5),
+      ]);
+      final ctx = await _plexCtx(tautulli: tautulli, currentUser: me, personal: true);
+      final result = await _tool('my_watching').run(ctx, null, {'days': 7}) as AssistantToolResult;
+      expect(result.data['watched_recently'], isEmpty);
+      final source = (result.data['server_history'] as List).single as Map;
+      expect(source['status'], 'ok');
+      expect(source['days'], 7);
+      expect(source['titles'], [
+        {'title': 'Arrival', 'kind': 'movie'},
+      ]);
+      expect(calls.single['user_id'], '5');
+      expect(calls.single['after'], isNotNull);
+      expect(jsonEncode(result.data), isNot(contains('Private other title')));
+      expect(jsonEncode(result.data), isNot(contains('Unknown account title')));
+    });
+
+    test('my_watching applies kind and reports truncation and unsupported age filters', () async {
+      final tautulli = _tautulli(
+        [],
+        (_) => {
+          'data': [
+            for (var i = 0; i < 9; i++) {'user_id': 5, 'media_type': 'movie', 'full_title': 'Film $i'},
+            {'user_id': 5, 'media_type': 'episode', 'grandparent_title': 'Severance', 'full_title': 'Episode'},
+          ],
+        },
+      );
+      final me = CurrentUserContext.build(const [
+        AssistantSelfSource(serverId: 'plex-1', backend: MediaBackend.plex, plexTvAccountId: 5),
+      ]);
+      final ctx = await _plexCtx(tautulli: tautulli, currentUser: me, personal: true);
+      final result = await _tool('my_watching').run(ctx, null, {'kind': 'show'}) as AssistantToolResult;
+      final source = (result.data['server_history'] as List).single as Map;
+      expect(source['titles'], [
+        {'title': 'Severance', 'kind': 'show'},
+      ]);
+      expect(source['partial'], isTrue);
+      final filtered = await _tool('my_watching').run(ctx.fresh(), null, {'exclude_kids': true}) as AssistantToolResult;
+      expect(((filtered.data['server_history'] as List).single as Map)['status'], 'unsupported_filter');
+      final kids = ctx.fresh()..kidsMode = true;
+      final child = await _tool('my_watching').run(kids, null, {}) as AssistantToolResult;
+      expect(((child.data['server_history'] as List).single as Map)['status'], 'unsupported_filter');
+    });
+
+    test('my_watching honors personal-history opt-out before and after reading', () async {
+      final me = CurrentUserContext.build(const [
+        AssistantSelfSource(serverId: 'plex-1', backend: MediaBackend.plex, plexTvAccountId: 5),
+      ]);
+      var allowed = false;
+      final calls = <Map<String, String>>[];
+      final tautulli = _tautulli(calls, (_) {
+        allowed = false;
+        return {
+          'data': [
+            {'user_id': 5, 'media_type': 'movie', 'full_title': 'Private title'},
+          ],
+        };
+      });
+      final ctx = await _plexCtx(
+        tautulli: tautulli,
+        currentUser: me,
+        personal: true,
+        canReadPersonalHistory: (_) => allowed,
+      );
+      final disabled = await _tool('my_watching').run(ctx, null, {}) as AssistantToolResult;
+      expect(((disabled.data['server_history'] as List).single as Map)['status'], 'disabled');
+      expect(calls, isEmpty);
+      allowed = true;
+      final revoked = await _tool('my_watching').run(ctx.fresh(), null, {}) as AssistantToolResult;
+      expect(((revoked.data['server_history'] as List).single as Map)['status'], 'unavailable');
+      expect(jsonEncode(revoked.data), isNot(contains('Private title')));
+    });
+
+    test('my_watching asks about unknown account without reading household history', () async {
+      final calls = <Map<String, String>>[];
+      final ctx = await _plexCtx(tautulli: _tautulli(calls, (_) => throw StateError('must not read')), personal: true);
+      final result = await _tool('my_watching').run(ctx, null, {}) as AssistantToolResult;
+      expect(((result.data['server_history'] as List).single as Map)['status'], 'account_unknown');
+      expect(calls, isEmpty);
+    });
+
+    test('my_watching distinguishes a failed source from a successful empty history', () async {
+      final me = CurrentUserContext.build(const [
+        AssistantSelfSource(serverId: 'plex-1', backend: MediaBackend.plex, plexTvAccountId: 5),
+      ]);
+      for (final fail in [false, true]) {
+        final tautulli = _tautulli([], (_) {
+          if (fail) throw StateError('offline');
+          return {'data': []};
+        });
+        final ctx = await _plexCtx(tautulli: tautulli, currentUser: me, personal: true);
+        final result = await _tool('my_watching').run(ctx, null, {}) as AssistantToolResult;
+        final source = (result.data['server_history'] as List).single as Map;
+        expect(source['status'], fail ? 'unavailable' : 'ok');
+        if (!fail) expect(source['titles'], isEmpty);
+      }
     });
 
     test('a failing Tautulli falls back to Plex history', () async {

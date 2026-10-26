@@ -2,8 +2,8 @@ part of 'assistant_tools.dart';
 
 // The asker's own watching: "a tip for me", "what did I watch". watch_stats
 // covers everyone on the servers under their server account names, which need
-// not match the profile; this reads the profile's own log, the one Home's
-// personal rows are built from (DEC-132), and only ever this profile's.
+// not match the profile; this reads the profile's own log (DEC-132) plus
+// linked Tautulli history, restricted to its proven Plex account id.
 
 /// Wired in by the UI layer from the profile session. Each function answers
 /// for the active profile only and empty when personalization is off.
@@ -67,13 +67,16 @@ final List<AssistantTool> _personalTools = [
         'lately (only the newest titles of the last weeks, see watched_recently_window_days; never say it is all they watched), what they like (genres, actors, directors) and Pleya\'s personal picks for them from their own '
         'libraries, each with the row it comes from ("Because you watched ..."). Use it for a tip for the user or '
         'a question about their history. watch_stats is everyone on the servers under server account names. '
-        'Empty lists mean no history yet or personal recommendations switched off; say so. picks are a few tips, '
-        'not the unwatched titles of the library and not a count of them: for those use search_catalog with '
-        'unwatched. Pass kind when the '
+        'Also reads linked Tautulli history for the proven Plex account in server_history. Prefer that source '
+        'for the requested period; the local list alone never proves nothing was watched. Report unavailable, '
+        'disabled, unsupported_filter or partial sources. For account_unknown ask the user to select/link their Plex account '
+        'in Pleya; never guess from names '
+        'or substitute household history. Empty local lists can also mean personalization is off. picks are a few tips, not the unwatched titles of the library and not a count of them: for those use search_catalog with unwatched. Pass kind when the '
         'user asks for films or for series only, and exclude_kids when they want kids titles left out (a shared '
         'account); the lists and the cards then hold only what fits.',
     risk: AssistantToolRisk.read,
     properties: const {
+      'days': {'type': 'integer', 'minimum': 1, 'maximum': 31},
       'kind': {
         'type': 'string',
         'enum': ['movie', 'show'],
@@ -125,6 +128,7 @@ final List<AssistantTool> _personalTools = [
       ]);
 
       final watchedList = watched.nonNulls.toList();
+      final serverHistory = await _myTautulliHistory(ctx, args, c);
       // Another server's copy of a watched title is as seen as this one.
       // A watched episode without a series key carries no year, and no year
       // matches any: the kind tells the series from a film of the same name.
@@ -187,9 +191,62 @@ final List<AssistantTool> _personalTools = [
         'watched_recently_window_days': kSeedWindow.inDays,
         if (personal.seenIncludesTrakt()) 'seen_includes_trakt': true,
         if (personal.seenTraktUnavailable()) 'seen_trakt_unavailable': true,
+        'server_history': serverHistory,
         'likes': {'genres': likes('genre', 4), 'actors': likes('actor', 3), 'directors': likes('director', 2)},
         'picks': rows,
       }, display: picks.isEmpty ? null : AssistantMediaGrid([for (final item in picks) (item: item, group: null)]));
     },
   ),
 ];
+
+/// The paired admin source stays behind its existing rights gate. Account ids,
+/// never display names, decide which rows may leave the tool.
+Future<List<Map<String, Object?>>> _myTautulliHistory(
+  AssistantToolContext ctx,
+  Map<String, Object?> args,
+  AssistantRecommendConstraints constraints,
+) async {
+  final days = (args['days'] is num ? (args['days'] as num).toInt() : kSeedWindow.inDays).clamp(1, 31);
+  return Future.wait([
+    for (final id in ctx.userServers)
+      if (ctx.insights?.tautulliFor(id) case final tautulli?)
+        () async {
+          final source = <String, Object?>{'server': clipText(ctx.serverName(id)), 'source': 'tautulli', 'days': days};
+          if (ctx.cancelled || ctx.adminClient(id) == null) return {...source, 'status': 'unavailable'};
+          if (!(ctx.insights?.canReadPersonalHistory?.call(id) ?? false)) return {...source, 'status': 'disabled'};
+          final account = ctx.currentUser.on(id.value, AssistantAccountProvider.plexTv).key;
+          final userId = int.tryParse(account?.accountId ?? '');
+          if (userId == null) return {...source, 'status': 'account_unknown'};
+          // History rows have no age/genre evidence for these filters.
+          if (ctx.kidsMode || constraints.excludeKids) return {...source, 'status': 'unsupported_filter'};
+          try {
+            final history = await _tautulliPlays(id, tautulli, days, userId: userId);
+            if (ctx.cancelled ||
+                ctx.adminClient(id) == null ||
+                !(ctx.insights?.canReadPersonalHistory?.call(id) ?? false) ||
+                !identical(ctx.insights?.tautulliFor(id), tautulli)) {
+              return {...source, 'status': 'unavailable'};
+            }
+            return {
+              ...source,
+              'status': 'ok',
+              'partial': history.extra.isNotEmpty || history.plays.length > _recentShown,
+              'titles': [
+                for (final play
+                    in history.plays
+                        .where(
+                          (p) =>
+                              p.account == account &&
+                              (constraints.kind == null ||
+                                  p.titleKey.startsWith('show:') == (constraints.kind == MediaKind.show)),
+                        )
+                        .take(_recentShown))
+                  {'title': play.title, 'kind': play.titleKey.startsWith('show:') ? 'show' : 'movie'},
+              ],
+            };
+          } catch (_) {
+            return {...source, 'status': 'unavailable'};
+          }
+        }(),
+  ]);
+}
