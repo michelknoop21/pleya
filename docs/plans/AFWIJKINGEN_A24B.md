@@ -46,6 +46,8 @@ Bladen: `05-iphone-mijn-pleya.jpg`, `iphone-mijn-pleya-gescrold.jpg`, `iphone-mi
 
 ## Mijn Pleya op Apple TV (Editorial)
 
+**Vervangen door A-24c (26 oktober 2026).** Deze tabel beschrijft de A-24b-pagina met twee kolommen, Beheer, profielregel, kijklijstrail met twee titelregels en voetregel. Die pagina bestaat niet meer: Mijn Pleya op Apple TV volgt nu [`../assets/a24c-northstars/02-Mijn-Pleya-v4/`](../assets/a24c-northstars/02-Mijn-Pleya-v4/LEESMIJ-v4.md), met de routes in `pariteit-v4.csv` en het besluit DEC-XXX (A-24c). De besluiten hieronder over de 440 pt-kolom, de twee titelregels en de voetregel vervallen daarmee. De afwijkingen van de v4-bouw staan in de volgende sectie.
+
 Bladen: `06-appletv-mijn-pleya.jpg`, `appletv-mijn-pleya-*.jpg`.
 
 | Controle | Oordeel | Wat de build anders doet, en waarom | Besluit |
@@ -57,13 +59,27 @@ Bladen: `06-appletv-mijn-pleya.jpg`, `appletv-mijn-pleya-*.jpg`.
 | Rechterkant | Match met verschil | Big P-kaart en Beheer met Instellingen, Logboeken, Over Pleya en een rode Uitloggen; terug uit Instellingen landt weer op Instellingen. De kolom is 440 pt in plaats van 480 en de Big P-ondertitel loopt over twee regels, zodat vier tegels op 23 pt passen zonder afkapping. De regel "Aangemeld als" staat onder de vouw tot de focus rechts staat. | **Besluit Michel 25 okt 2026, geaccepteerd:** 440 pt, leesbaarheid en bereikbaarheid gaan voor pixelpariteit. Voetregel: open. |
 | Thema | Afwijking | Donker en Licht met leesbare focusring en posters. Het lichte bord 05 heeft een warme gebroken-witte wash; de build houdt in Licht het monoTheme-grijs. | Geaccepteerd: productbesluit 2 in `START-HIER.md` (warm gebroken wit alleen binnen Instellingen) en Michels bevestiging in fase 5. |
 
+## Mijn Pleya op Apple TV, v4 (A-24c)
+
+Northstar: `../assets/a24c-northstars/02-Mijn-Pleya-v4/images/A10` tot en met `A15`. Routes en voorwaarden: `pariteit-v4.csv` in dezelfde map; voor tvOS Mijn Pleya vervangt die tabel de Mijn Pleya-rijen van `PARITEIT_A24B.csv`.
+
+| Controle | Oordeel | Wat de build anders doet, en waarom | Besluit |
+| --- | --- | --- | --- |
+| Tekstgrootte | Afwijking | De kleine kapitalen (`JOUW PERSOONLIJKE RUIMTE`, `BIG P · JOUW ASSISTENT`, `JE KIJKLIJST`, `SNEL NAAR`) en `Bekijk alles` tekent het bord op ongeveer 17 tot 20 pt. De build zet ze op 23 pt en schuift de layout mee. Op het canvas van 1038 x 584 past de pagina zonder scrollen (`tv_my_pleya_screen_test`, per conditie en in nl en en). | **Besluit Michel 26 okt 2026:** tekst op tvOS gaat niet onder 23 pt en wordt niet kleiner dan voorheen. |
+| Kijklijstposters | Afwijking | Het bord snijdt de posters breder bij (ongeveer 150 x 193). De build houdt de echte posterverhouding 2:3 op de hoogte van het paneel, dus een poster is iets smaller en er passen er meer naast elkaar. | Volgt de bestaande posterverhouding. |
+| Instellingen in de bovenbalk | Match | Laatste bestemming, direct na Mijn Pleya. De ring op Instellingen laat Mijn Pleya op het scherm tot Select (A13). Alle andere bestemmingen wisselen de pagina nog bij focus (contract van 2 september 2026). | Uitzondering alleen voor Instellingen; de regel uit LEESMIJ-v4 voor alle bestemmingen ligt bij Michel. |
+| Accountmenu | Match | Avatar opent het menu met Wissel profiel en Uitloggen; Back sluit en de focus staat weer op de avatar. Uitloggen staat in een iets lichter rood dan het bord, zodat het op de donkere kaart WCAG AA haalt (`tv_text_contrast_audit_test`). | Contrast gaat voor de kleur van het bord. |
+| Servers | Match | Instellingen > Koppelingen > Servers opent `TvServersPage` met de status eerst en Sluiten als standaard. Het attentiepunt voor een verlopen serversessie staat nu op Instellingen in plaats van op Mijn Pleya. | Volgt LEESMIJ-v4. |
+| Zonder kijklijst | Voorwaardelijk | Zonder kijklijst vult de Big P-kaart de hele breedte; zonder Big P vult het kijklijstpaneel de breedte en krijgt de eerste poster de eerste focus. Het bord tekent die staten niet. | Volgt de code: geen leeg vlak naast een kaart. |
+| Downloads | Voorwaardelijk | Niet op Apple TV. Een Android TV houdt de tegel in de rij; bij zeven tegels krimpt een label dat niet past tot minimaal 23 pt. | Platformvoorwaarde uit `pariteit-v4.csv`. |
+
 ## Pariteit per route
 
 `PARITEIT_A24B.csv` heeft de kolommen van `PARITY_TEMPLATE.csv` en 439 rijen: alle sjabloonrijen plus 22 rijen die alleen in de code bestaan of die de code per platform anders aanbiedt. Status: 404 GEBOUWD, 27 AFWIJKING, 8 ALLEEN MOCKUP. Geen bestaande functie is verdwenen; elke rij noemt een test of het bewijs waarom er geen test is.
 
 De acht rijen ALLEEN MOCKUP zijn geen functie in de code: Bronnaam en server bij elke bron, Verborgen bibliotheken blijven bewaard, Downloadmap bekijken, Opslag en status controleren, Nooit automatisch sync inschakelen, Gezinsbeperkingen, Kindvriendelijke antwoorden en op TV Navigatiebreedte en focus. Bouwen vraagt een productbesluit en valt buiten deze ronde.
 
-De 27 rijen AFWIJKING bestaan wel, maar anders dan het bord ze tekent. De meeste zijn een functie zonder eigen rij: toestemming voor sync is een dialoog bij het inschakelen, configuratie per provider wisselt de velden in plaats van een pagina, bronnen per profiel staan op de bronpagina van hun soort en op de profielpagina, zoeken in het geheugen is een filter. Updates verschijnt alleen met een build-define en is in App Store-builds verborgen. Uitloggen blijft in Mijn Pleya en krijgt geen tweede ingang in Instellingen. Op iPhone opent Home aanpassen voor slepen en verbergen de bestaande editor in plaats van dat per rij te doen.
+De 27 rijen AFWIJKING bestaan wel, maar anders dan het bord ze tekent. De meeste zijn een functie zonder eigen rij: toestemming voor sync is een dialoog bij het inschakelen, configuratie per provider wisselt de velden in plaats van een pagina, bronnen per profiel staan op de bronpagina van hun soort en op de profielpagina, zoeken in het geheugen is een filter. Updates verschijnt alleen met een build-define en is in App Store-builds verborgen. Uitloggen bleef in A-24b in Mijn Pleya; op Apple TV staat het sinds A-24c in het accountmenu onder de avatar, niet in Instellingen. Op iPhone opent Home aanpassen voor slepen en verbergen de bestaande editor in plaats van dat per rij te doen.
 
 ## Tests per gevraagde klasse
 

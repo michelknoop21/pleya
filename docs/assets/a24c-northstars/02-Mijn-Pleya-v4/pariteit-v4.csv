@@ -1,0 +1,21 @@
+route,tvos_voorwaarde,oude_ingang,nieuwe_ingang,interactie,status
+assistant,availability != hidden,Mijn Pleya,primaire Big P kaart,één focusobject opent bestaande assistent,ontworpen
+kijklijst,hasWatchlist,Mijn Pleya,kijklijstrail met Bekijk alles,posters blijven focusbaar en openen bestaande actie,ontworpen
+kijklijst_item,bestaande speelbaarheid,Mijn Pleya poster,zelfde rail,afspelen of bestaande fallback naar lijst,behouden
+watchTogether,altijd,Mijn Pleya,Snel naar: Samen kijken,bestaande route,ontworpen
+collections,supportsCollections,Mijn Pleya,Snel naar: Collecties,bestaande route,ontworpen
+playlists,supportsPlaylists,Mijn Pleya,Snel naar: Afspeellijsten,bestaande route,ontworpen
+requests,SeerrProvider.isConfigured,Mijn Pleya,Snel naar: Aanvragen,bestaande route,ontworpen
+libraries,altijd,Mijn Pleya,Snel naar: Bibliotheken,bibliotheken bekijken en niet instellingen beheren,ontworpen
+activity,NowWatchingProvider.isAvailable,Mijn Pleya,Snel naar: Activiteit,bestaand overzicht wie nu kijkt,ontworpen
+settings,altijd,Mijn Pleya,vaste topmenu-ingang na Mijn Pleya,bestaande SettingsScreen,goedgekeurde toevoeging
+servers,altijd,Mijn Pleya: TvServersPage,Instellingen > Koppelingen > Servers,bestaande TvServersPage behouden inclusief status-eerst-dialoog,routekoppeling bij implementatie verifiëren
+logs,altijd,Mijn Pleya,Instellingen: bestaande Logboeken-bestemming,bestaande LogsScreen,bronmatig aanwezig
+about,altijd,Mijn Pleya,Instellingen > Over Pleya,bestaande TvAboutScreen,bronmatig aanwezig
+profile_switch,altijd,bestaande globale navbar-avatar links,zelfde avatar links > voorgesteld accountmenu > Wissel profiel,bestaande shell callback met asGate true,plaats bronmatig behouden en menu voorgesteld
+logout,altijd,Mijn Pleya,globale avatar links > voorgesteld accountmenu > Uitloggen,AccountUiActions.logout inclusief bestaande bevestiging,ontworpen
+nav_order,bestaande capabilities,bestaande shell,profiel - zoeken - Home - Series - Films - Live TV - Mijn Pleya - Instellingen - woordmerk,Series vóór Films en zoekicoon vooraan,bronmatig gecontroleerd
+nav_profile,altijd,links in globale navbar,links in globale navbar,geen extra profielblok in Mijn Pleya,behouden
+nav_wordmark,altijd,rechts in globale navbar,rechts in globale navbar,echte twee beeldlagen en niet focusbaar,behouden
+nav_live_tv,bestaande Live TV capability,bestaande navbar,bestaande positie tussen Films en Mijn Pleya,geen nieuwe zichtbaarheidsregel,behouden
+downloads,niet op Apple TV,niet getoond,niet getoond,platformvoorwaarde behouden,bewust uitgesloten
