@@ -1,0 +1,109 @@
+# A-24 (Michel, 26 Oct 2026, DEC-XXX): Instellingen on Apple TV opens under
+# the collapsible top bar. While the remote is in the page the bar is gone and
+# the page takes the window: all eight rail pills sit inside it, Weergave shows
+# its heading and four rows. UP from the top pill brings the bar back, DOWN
+# returns to the page and hides it again. A subpage (Geavanceerd > Over) opens
+# under the same hidden bar, Menu returns to the row it came from, and Menu at
+# the page goes back to Mijn Pleya, where the bar is on screen again.
+#
+# `nav.bar` carries `hidden` from the value the bar slides on, so the assertion
+# reads the bar itself, not where the ring happens to be.
+name: tvos.settings.no-top-bar
+target: tvos-sim
+setup:
+  - reset_app
+  - seed: catalog.studio-art.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - walk: {direction: right, steps: 7, stopAt: nav.myPleya, timeout: 60000, settle: 600}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 8000}
+  - walk: {direction: right, steps: 4, stopAt: "my_pleya.tile[assistant]", timeout: 60000, settle: 600}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
+  - assert: {id: nav.bar, state: {hidden: false, overlay: false}}
+  - press: select
+
+  # In the page: no bar, the whole rail and four rows of Weergave in view.
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 8000}
+  - settle: 1200
+  - assert: {id: nav.bar, state: {hidden: true, overlay: true}}
+  - assert: {id: "settings.category[0]", insideViewport: true, state: {selected: true}}
+  - assert: {id: "settings.category[1]", insideViewport: true}
+  - assert: {id: "settings.category[2]", insideViewport: true}
+  - assert: {id: "settings.category[3]", insideViewport: true}
+  - assert: {id: "settings.category[4]", insideViewport: true}
+  - assert: {id: "settings.category[5]", insideViewport: true}
+  - assert: {id: "settings.category[6]", insideViewport: true}
+  - assert: {id: "settings.category[7]", insideViewport: true}
+  - assert: {id: "my_pleya.section.tile[setting.theme_mode]", insideViewport: true}
+  - assert: {id: "my_pleya.section.tile[setting.liquid_glass]", insideViewport: true}
+  - assert: {id: "my_pleya.section.tile[setting.view_mode]", insideViewport: true}
+  - assert: {id: "my_pleya.section.tile[setting.library_density]", insideViewport: true}
+  - snapshot: 00-weergave-no-bar
+
+  # UP from the top row: the bar comes back with the ring in it.
+  - press: up
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - settle: 600
+  - assert: {id: nav.bar, state: {hidden: false, overlay: true}}
+  - assert: {id: nav.myPleya, insideViewport: true}
+  - snapshot: 01-bar-back-from-row
+
+  # DOWN back into the page: the bar leaves again.
+  - press: down
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 5000}
+  - settle: 600
+  - assert: {id: nav.bar, state: {hidden: true}}
+
+  # The same from the top pill.
+  - press: left
+  - wait_until: {focused: "settings.category[0]", timeout: 5000}
+  - assert: {id: nav.bar, state: {hidden: true}}
+  - press: up
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - settle: 600
+  - assert: {id: nav.bar, state: {hidden: false}}
+  - press: down
+  - wait_until: {focused: "settings.category[0]", timeout: 5000}
+  - settle: 600
+  - assert: {id: nav.bar, state: {hidden: true}}
+
+  # The last pill, Geavanceerd, chosen and entered; down to Over.
+  - walk: {direction: down, steps: 7, stopAt: "settings.category[7]", timeout: 60000, settle: 400}
+  - assert: {id: "settings.category[7]", insideViewport: true}
+  - press: select
+  - wait_until: {id: "settings.category[7]", state: {selected: true}, timeout: 5000}
+  - settle: 800
+  - snapshot: 02-geavanceerd
+  - press: right
+  - walk: {direction: down, steps: 14, stopAt: "my_pleya.section.tile[settings.about]", timeout: 120000, settle: 400}
+  - press: select
+
+  # Over: a subpage under the same hidden bar.
+  - wait_until: {id: "my_pleya.section.content[about]", timeout: 8000}
+  - settle: 1200
+  - assert: {id: nav.bar, state: {hidden: true, overlay: true}}
+  - assert: {id: "my_pleya.section.content[about]", insideViewport: true}
+  - snapshot: 03-over-no-bar
+
+  # Menu: back on the row it came from, bar still away.
+  - press: menu
+  - wait_until: {focused: "my_pleya.section.tile[settings.about]", timeout: 8000}
+  - settle: 600
+  - assert: {id: nav.bar, state: {hidden: true}}
+  - assert: {id: "settings.category[7]", state: {selected: true}}
+  - snapshot: 04-back-on-over-row
+
+  # Menu at the page: Mijn Pleya, on the tile, with the bar on screen.
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
+  - settle: 600
+  - assert: {id: nav.bar, state: {hidden: false, overlay: false}}
+  - assert: {id: nav.myPleya, insideViewport: true}
+  - snapshot: 05-back-on-tile

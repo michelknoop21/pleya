@@ -44,6 +44,8 @@ import 'package:provider/provider.dart';
 
 import '../../providers/multi_server_provider.dart';
 import '../../providers/unified_catalogs.dart';
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../focus/focus_memory_tracker.dart';
 import '../../navigation/main_screen_scope.dart';
 import '../../navigation/tv/tv_destination.dart';
@@ -556,6 +558,17 @@ class _TvCollapsibleNavState extends State<_TvCollapsibleNav> with SingleTickerP
   @override
   Widget build(BuildContext context) {
     final tk = tokens(context);
+    // `nav.bar` with the value the bar slides on, so a scenario can tell a
+    // hidden bar from one that is merely off to the side (A-24, Instellingen).
+    return AutomationNode(
+      id: AutomationIds.navBar,
+      role: 'nav',
+      state: () => {'hidden': widget.hidden, 'overlay': widget.overlay, 'scrollAway': widget.scrollAway},
+      child: _slidingBar(tk),
+    );
+  }
+
+  Widget _slidingBar(MonoTokens tk) {
     return SlideTransition(
       position: _slide,
       child: FadeTransition(
