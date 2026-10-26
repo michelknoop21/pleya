@@ -72,7 +72,8 @@ Nothing user-facing since the last published build.
   should stay readable over the artwork. This was checked in the iPhone simulator and in unit
   tests, not on a device.
 - Worth checking: picking a file or a folder. The file picker library was upgraded to a new
-  major version in this build, so check importing a backup and choosing a local folder.
+  major version in this build, so check importing or saving a backup and choosing a local
+  folder.
 - Other screens with a plain bar, such as the detail page bar and the remaining Settings pages,
   keep their solid bar for now.
 
