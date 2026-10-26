@@ -33,12 +33,12 @@ class FilePickerService {
   }) {
     return _guard(
       'pickFiles',
-      () => FilePicker.platform.pickFiles(type: type, allowedExtensions: allowedExtensions, withData: withData),
+      () => FilePicker.pickFiles(type: type, allowedExtensions: allowedExtensions, withData: withData),
     );
   }
 
   Future<String?> getDirectoryPath({String? dialogTitle}) {
-    return _guard('getDirectoryPath', () => FilePicker.platform.getDirectoryPath(dialogTitle: dialogTitle));
+    return _guard('getDirectoryPath', () => FilePicker.getDirectoryPath(dialogTitle: dialogTitle));
   }
 
   Future<String?> saveFile({
@@ -50,7 +50,7 @@ class FilePickerService {
   }) {
     return _guard(
       'saveFile',
-      () => FilePicker.platform.saveFile(
+      () => FilePicker.saveFile(
         dialogTitle: dialogTitle,
         fileName: fileName,
         bytes: bytes,
