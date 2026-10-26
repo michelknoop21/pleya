@@ -74,11 +74,22 @@ func (r *recordingWriter) Write(p []byte) (int, error) {
 // exporteerde. pg_trgm gaat expliciet mee: de extensie hoort bij de database en
 // niet bij het schema (0017), en zonder haar faalt het terugzetten van de
 // trigramindexen op een lege database.
+//
+// Alleen als de extensie er is: migratie 0017 maakt haar aan, en de back-up
+// vóór de migratie van een oudere database (de upgradeguard) heeft haar nog
+// niet. pg_dump weigert dan met "no matching extensions were found" en de
+// server start niet. Zo'n dump heeft ook geen trigramindexen die haar nodig
+// hebben; 0017 maakt de extensie bij het terugzetten en migreren zelf weer aan.
 func (s *Service) dump(ctx context.Context, schema, snapshot string, w io.Writer) error {
-	args := []string{
-		"--format=plain", "--no-owner", "--no-privileges",
-		"--schema=" + schema, "--extension=pg_trgm", "--snapshot=" + snapshot,
+	args := []string{"--format=plain", "--no-owner", "--no-privileges", "--schema=" + schema}
+	has, err := s.hasTrigramExtension(ctx)
+	if err != nil {
+		return err
 	}
+	if has {
+		args = append(args, "--extension=pg_trgm")
+	}
+	args = append(args, "--snapshot="+snapshot)
 	for _, t := range transientTables {
 		args = append(args, "--exclude-table-data="+schema+"."+t)
 	}
@@ -88,7 +99,7 @@ func (s *Service) dump(ctx context.Context, schema, snapshot string, w io.Writer
 	cmd.Stdout = out
 	var stderr bytes.Buffer
 	cmd.Stderr = &limitedBuffer{buf: &stderr, max: 4096}
-	err := cmd.Run()
+	err = cmd.Run()
 	if out.err != nil {
 		return fmt.Errorf("dump wegschrijven: %w", out.err)
 	}
@@ -96,6 +107,15 @@ func (s *Service) dump(ctx context.Context, schema, snapshot string, w io.Writer
 		return toolError("pg_dump", err, stderr.String())
 	}
 	return nil
+}
+
+func (s *Service) hasTrigramExtension(ctx context.Context) (bool, error) {
+	var has bool
+	err := s.o.Pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm')`).Scan(&has)
+	if err != nil {
+		return false, fmt.Errorf("extensies lezen: %w", err)
+	}
+	return has, nil
 }
 
 // load zet een dump terug in databaseName, in één transactie: eerst het schema

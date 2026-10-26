@@ -508,3 +508,51 @@ func TestUpgradeBackupOfAnOlderSchemaRestoresAndMigrates(t *testing.T) {
 		t.Fatalf("hersteltest over twee schemaversies: %+v", lt)
 	}
 }
+
+// De guard maakt zijn back-up vóór de migratie, dus op de database zoals die
+// is. Een database van vóór 0017 heeft pg_trgm nog niet; pg_dump met
+// --extension=pg_trgm faalde daar en liet de server niet starten (productie,
+// 26 oktober 2026). De back-up moet slagen en de hersteltest moet hem naar het
+// nieuwste schema brengen.
+func TestUpgradeBackupBeforeTrigramMigrationWorks(t *testing.T) {
+	testsupport.HasPostgresClient(t)
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+	if _, err := migrate.RunTo(ctx, pool, nil, 16); err != nil {
+		t.Fatal(err)
+	}
+	// De extensie hoort bij de database en overleeft het schema van een eerdere
+	// test; productie had haar op schema 16 niet.
+	if _, err := pool.Exec(ctx, `DROP EXTENSION IF EXISTS pg_trgm`); err != nil {
+		t.Fatal(err)
+	}
+	var has bool
+	if err := pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm')`).Scan(&has); err != nil || has {
+		t.Fatalf("uitgangspunt: pg_trgm hoort er op schema 16 niet te zijn (aanwezig=%v, %v)", has, err)
+	}
+	svc := newService(pool, t.TempDir(), t.TempDir(), testKey)
+	if _, err := svc.CreateNow(ctx, TriggerUpgrade); err != nil {
+		t.Fatalf("back-up op schema 16 zonder pg_trgm: %v", err)
+	}
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	list, err := svc.List(ctx)
+	if err != nil || len(list) != 1 {
+		t.Fatalf("register: %+v, %v", list, err)
+	}
+	testID, err := svc.BeginVerify(ctx, list[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.RunVerify(ctx, testID); err != nil {
+		t.Fatal(err)
+	}
+	rec, _ := svc.Get(ctx, list[0].ID)
+	if rec.LastTest == nil || rec.LastTest.Status != StatusOK {
+		t.Fatalf("hersteltest van de back-up zonder pg_trgm: %+v", rec.LastTest)
+	}
+}
