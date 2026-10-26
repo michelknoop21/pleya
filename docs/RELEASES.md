@@ -51,6 +51,35 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 413 · 26 October 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: 68cc2c5fd8dd2a5323448aa9d4cff2ccf8e7841c -->
+
+### New
+
+- **Big P can share personal memories through your own Pleya Server account.** Open Settings,
+  Big P, Memory, then Sync via Pleya Server. Choose your account and confirm which local memories
+  to share. Changes and deletions travel between connected devices; offline changes are retained.
+  Conflicting edits ask for your choice. Restored server memories need confirmation before use.
+
+### Fixed
+
+- **Downloads on iPhone has a back button to My Pleya.** The Downloads tab root now returns to
+  the screen that opened it, like the other My Pleya pages.
+
+### Notes
+
+- Memory sync requires an updated Pleya Server advertising `assistant_memory`. This build includes
+  the client; it does not upgrade an existing server installation. Until the server is updated,
+  memory stays local. Household memories, children's profiles and conversations are excluded from
+  this sync. Turning memory use off stays a local choice.
+- Worth checking on real devices: connect the same account on an iPhone and Apple TV, add and
+  remove a memory, reconnect after being offline, and return from Downloads to My Pleya. Check
+  Siri Remote navigation, longer memories and increased text size. Physical-device acceptance is
+  still open.
+- The device-information and sharing libraries were updated on main before this build. Check
+  sharing a file and opening the system share sheet on an iPhone.
+
 ## 2.8.1 · build 412 · 26 October 2026 · iPhone and iPad
 
 <!-- commit: 9cd63fa61862df5f8dfa968e02e26480bbcda13c -->
