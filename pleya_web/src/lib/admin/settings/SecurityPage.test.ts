@@ -125,7 +125,8 @@ describe('scherm 31, beveiliging', () => {
     expect(server.seen.find((s) => s.method === 'POST')?.body).toEqual({ confirm: 'rotate' });
     // Elke sessie is ingetrokken: lokaal uitloggen en naar inloggen.
     await waitFor(() => expect(h.goto).toHaveBeenCalledWith('/login'));
-    expect(h.signOut).toHaveBeenCalled();
+    // Lokaal: de server heeft elke sessie al ingetrokken, een logout zou alleen 401 geven.
+    expect(h.signOut).toHaveBeenCalledWith({ local: true });
   });
 
   it('logt niet uit en toont de zin als de rotatie mislukt', async () => {
@@ -146,5 +147,91 @@ describe('scherm 31, beveiliging', () => {
     render(SecurityPage);
     await screen.findByText('Ondertekensleutel');
     expect(document.body.textContent).not.toMatch(/-----BEGIN|signing_key|secret/i);
+  });
+});
+
+describe('scherm 31, oude toestellen opruimen (DEC-164)', () => {
+  const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+
+  function stale() {
+    return setup({
+      sessions: {
+        u1: [
+          device('s1', 'Deze browser', { current: true, last_seen_at: daysAgo(80) }),
+          device('s9', 'Mijn agent', { kind: 'api', last_seen_at: daysAgo(120) }),
+          device('s2', 'Unknown device', { last_seen_at: daysAgo(52), created_at: '2026-09-04T10:00:00Z' })
+        ],
+        u2: [
+          device('s3', 'iPhone van Sanne', { last_seen_at: daysAgo(1) }),
+          device('s4', 'Firefox op Windows', { last_seen_at: daysAgo(64) })
+        ]
+      }
+    });
+  }
+
+  it('toont een toestel zonder naam als Onbekend toestel met de dag van aanmelden', async () => {
+    stale();
+    render(SecurityPage);
+    expect(await screen.findByText('aangemeld op 4 september 2026')).toBeInTheDocument();
+    expect(screen.getByText('Onbekend toestel')).toBeInTheDocument();
+    expect(screen.queryByText('Unknown device')).not.toBeInTheDocument();
+  });
+
+  it('noemt de toestellen met hun gebruiker en trekt na bevestiging alleen die in', async () => {
+    const server = stale();
+    const ui = userEvent.setup();
+    render(SecurityPage);
+    await ui.click(await screen.findByRole('button', { name: 'Oude toestellen opruimen' }));
+    const dialog = screen.getByRole('dialog');
+    const listed = within(dialog).getAllByRole('listitem').map((li) => li.textContent ?? '');
+    expect(listed).toHaveLength(2);
+    expect(listed[0]).toContain('Michel: Onbekend toestel, aangemeld op 4 september 2026');
+    expect(listed[1]).toContain('Sanne: Firefox op Windows');
+    expect(server.writes()).toEqual([]);
+
+    await ui.click(within(dialog).getByRole('button', { name: '2 toestellen uitloggen' }));
+    await waitFor(() => expect(server.writes()).toEqual(['DELETE /sessions/s2', 'DELETE /sessions/s4']));
+    expect(await screen.findByText('2 oude toestellen uitgelogd.')).toBeInTheDocument();
+    expect(screen.getByText('iPhone van Sanne')).toBeInTheDocument();
+    expect(screen.queryByText('Firefox op Windows')).not.toBeInTheDocument();
+  });
+
+  it('laat een ingetypte tokenduur staan na het opruimen', async () => {
+    stale();
+    const ui = userEvent.setup();
+    render(SecurityPage);
+    await ui.selectOptions(await screen.findByLabelText('Toegangstoken geldig'), '1800');
+    await ui.click(screen.getByRole('button', { name: 'Oude toestellen opruimen' }));
+    await ui.click(within(screen.getByRole('dialog')).getByRole('button', { name: '2 toestellen uitloggen' }));
+    await screen.findByText('2 oude toestellen uitgelogd.');
+    expect(screen.getByLabelText('Toegangstoken geldig')).toHaveValue('1800');
+  });
+
+  it('meldt een gedeeltelijke mislukking en laat staan wat niet lukte', async () => {
+    const server = setup({
+      sessions: {
+        u1: [device('s1', 'Deze browser', { current: true })],
+        u2: [
+          device('s3', 'Oude iPad', { last_seen_at: daysAgo(40) }),
+          device('s4', 'Firefox op Windows', { last_seen_at: daysAgo(64) })
+        ]
+      },
+      fail: { 'DELETE /sessions/s3': () => apiError('server.internal', 500) }
+    });
+    const ui = userEvent.setup();
+    render(SecurityPage);
+    await ui.click(await screen.findByRole('button', { name: 'Oude toestellen opruimen' }));
+    await ui.click(within(screen.getByRole('dialog')).getByRole('button', { name: '2 toestellen uitloggen' }));
+    await waitFor(() => expect(server.writes()).toEqual(['DELETE /sessions/s3', 'DELETE /sessions/s4']));
+    expect(await screen.findByText(/1 van 2 toestellen uitgelogd/)).toBeInTheDocument();
+    expect(screen.getByText('Oude iPad')).toBeInTheDocument();
+    expect(screen.queryByText('Firefox op Windows')).not.toBeInTheDocument();
+  });
+
+  it('biedt de knop niet aan als er niets oud is (negatieve controle)', async () => {
+    setup();
+    render(SecurityPage);
+    await screen.findByText('iPhone van Sanne');
+    expect(screen.queryByRole('button', { name: 'Oude toestellen opruimen' })).not.toBeInTheDocument();
   });
 });

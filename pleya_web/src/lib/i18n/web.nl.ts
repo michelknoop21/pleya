@@ -6,6 +6,7 @@ import { webUsersNl } from './webUsers.nl';
 import { webSettingsNl } from './webSettings.nl';
 import { webTranscodeNl } from './webTranscode.nl';
 import { webTokensNl } from './webTokens.nl';
+import { webSessionsNl } from './webSessions.nl';
 import type { WebKey } from './web';
 
 /**
@@ -372,5 +373,6 @@ export const webNl = {
   ...webSettingsNl,
   ...webTranscodeNl,
   ...webTokensNl,
-  ...webBackupsNl
+  ...webBackupsNl,
+  ...webSessionsNl
 } satisfies Record<WebKey, string>;

@@ -5,15 +5,19 @@
   trekken; Overal uitloggen trekt de sessies dus één voor één in. Een
   ingetrokken sessie komt niet meer in de lijst, dus de northstar-pil
   "ingetrokken" bestaat hier niet. De sessie waarmee je zelf kijkt heeft geen
-  knop: die intrekken zou jezelf uitloggen.
+  knop: die intrekken zou jezelf uitloggen. Een toestel zonder naam heet hier
+  "Onbekend toestel"; de regel eronder noemt al de dag van aanmelden.
 -->
 <script lang="ts">
+  import type { Snippet } from 'svelte';
+
   import type { UserSession } from '../api/adminUsers';
   import AdminIcon from '../components/AdminIcon.svelte';
   import Panel from '../components/Panel.svelte';
   import StatusPill from '../components/StatusPill.svelte';
   import { t } from '../i18n';
   import { formatDate, formatRelative } from '../util/format';
+  import { deviceLabel } from './sessionCleanup';
 
   interface Props {
     /** Null als de sessies niet te lezen waren. */
@@ -22,9 +26,11 @@
     revoking: Record<string, boolean>;
     onrevoke: (session: UserSession) => void;
     onrevokeAll: () => void;
+    /** Oude toestellen opruimen (DEC-164), onder de lijst. */
+    cleanup?: Snippet;
   }
 
-  let { sessions, revoking, onrevoke, onrevokeAll }: Props = $props();
+  let { sessions, revoking, onrevoke, onrevokeAll, cleanup }: Props = $props();
 
   const revocable = $derived((sessions ?? []).filter((s) => !s.current));
 </script>
@@ -41,7 +47,7 @@
         <li class="row" data-session={item.id}>
           <span class="ico"><AdminIcon name={item.kind === 'api' ? 'cpu' : 'globe'} size={18} /></span>
           <span class="text">
-            <span class="name">{item.device_name}</span>
+            <span class="name">{deviceLabel(item)}</span>
             <span class="meta">
               {t('admin.users.devices.meta', {
                 created: formatDate(item.created_at) ?? '',
@@ -59,7 +65,7 @@
               type="button"
               class="btn btn--secondary btn--sm"
               disabled={revoking[item.id]}
-              aria-label={t('admin.users.devices.signOutNamed', { device: item.device_name })}
+              aria-label={t('admin.users.devices.signOutNamed', { device: deviceLabel(item, true) })}
               onclick={() => onrevoke(item)}
             >
               {t('admin.users.devices.signOut')}
@@ -73,6 +79,7 @@
         {t('admin.users.devices.signOutAll')}
       </button>
     {/if}
+    {@render cleanup?.()}
   {/if}
 </Panel>
 

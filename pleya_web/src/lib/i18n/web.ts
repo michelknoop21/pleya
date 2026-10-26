@@ -10,6 +10,7 @@ import { webUsers } from './webUsers';
 import { webSettings } from './webSettings';
 import { webTranscode } from './webTranscode';
 import { webTokens } from './webTokens';
+import { webSessions } from './webSessions';
 
 export const web = {
   ...webOps,
@@ -374,7 +375,8 @@ export const web = {
   ...webSettings,
   ...webTranscode,
   ...webTokens,
-  ...webBackups
+  ...webBackups,
+  ...webSessions
 } as const;
 
 export type WebKey = keyof typeof web;

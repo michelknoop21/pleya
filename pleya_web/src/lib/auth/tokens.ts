@@ -21,9 +21,9 @@
  * alleen F5 indrukte. Met een bewaard accesstoken is een refresh de
  * uitzondering in plaats van de regel.
  *
- * Er is bewust geen uitlogendpoint aangeroepen: het protocol heeft er geen
- * (5.2 van hetzelfde voorstel). Afmelden is hier lokaal, en het refreshtoken
- * vervalt vanzelf of bij de volgende rotatie.
+ * Toen dit geschreven werd had het protocol geen uitlogendpoint (5.2 van
+ * hetzelfde voorstel). Dat kwam met `capabilities.sessions`; `PleyaClient`
+ * roept `POST /auth/logout` aan vóór deze opslag geleegd wordt (DEC-164).
  */
 
 const REFRESH_KEY = 'pleya.refresh_token';

@@ -24,8 +24,10 @@
   import SecurityAgentsLink from './SecurityAgentsLink.svelte';
   import SecurityDevicesPanel from './SecurityDevicesPanel.svelte';
   import SecurityTokensPanel from './SecurityTokensPanel.svelte';
+  import { deviceLabel } from '../sessionCleanup';
   import {
     draftFrom,
+    loadDevices,
     loadSecurity,
     securityPatch,
     type DeviceRow,
@@ -78,6 +80,15 @@
     draft = draftFrom(settings);
   }
 
+  async function refreshDevices(): Promise<void> {
+    try {
+      const fresh = await loadDevices(adminApi(session.client), adminUsersApi(session.client));
+      if (data) data = { ...data, ...fresh };
+    } catch {
+      // De lijst blijft staan zoals hij was; Opnieuw laden in de melding haalt hem op.
+    }
+  }
+
   function askRevoke(row: DeviceRow): void {
     revokeTarget = row;
     revokeOpen = true;
@@ -94,7 +105,7 @@
       if (data) data = { ...data, devices: data.devices.filter((d) => d.session.id !== row.session.id) };
     } catch (err) {
       revokeOpen = false;
-      problem = settingsProblem(err, 'session', row.session.device_name);
+      problem = settingsProblem(err, 'session', deviceLabel(row.session));
       retry = () => void revoke();
     } finally {
       revoking[row.session.id] = false;
@@ -108,7 +119,7 @@
       await adminSettingsApi(session.client).rotateSigningKey();
       rotateOpen = false;
       // Elke sessie is ingetrokken, ook deze: lokaal uitloggen en opnieuw beginnen.
-      session.signOut();
+      await session.signOut({ local: true });
       await goto('/login');
     } catch (err) {
       rotateOpen = false;
@@ -143,6 +154,8 @@
         unreadable={data!.unreadable}
         {revoking}
         onrevoke={askRevoke}
+        cleanupRevoke={(id) => adminUsersApi(session.client).revokeSession(id)}
+        oncleaned={refreshDevices}
       />
       <SigningKeyPanel busy={rotating} onrotate={() => (rotateOpen = true)} />
     {/snippet}
@@ -159,7 +172,7 @@
   <ConfirmDialog
     bind:open={revokeOpen}
     busy={revokeTarget ? revoking[revokeTarget.session.id] : false}
-    title={t('admin.sec.devices.revokeTitle', { device: revokeTarget?.session.device_name ?? '' })}
+    title={t('admin.sec.devices.revokeTitle', { device: revokeTarget ? deviceLabel(revokeTarget.session, true) : '' })}
     message={t('admin.sec.devices.revokeBody', { user: revokeTarget?.user.username ?? '' })}
     confirmLabel={t('admin.sec.devices.revoke')}
     onconfirm={() => void revoke()}
