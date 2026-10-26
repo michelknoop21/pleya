@@ -13,6 +13,7 @@
   import SkeletonPage from '$lib/components/SkeletonPage.svelte';
   import UnreachableState from '$lib/components/UnreachableState.svelte';
   import { activeItemId, navItems } from '$lib/components/navItems';
+  import { adminBackHref, isAdminPath } from '$lib/admin/sections';
   import { session } from '$lib/stores/session.svelte';
   import { theme } from '$lib/stores/theme.svelte';
   import { viewport } from '$lib/stores/viewport.svelte';
@@ -44,6 +45,13 @@
   // Zoeken vraagt de server; zolang die niet antwoordt, staat de actie er niet.
   const showSearch = $derived(!unreachable && session.capabilities?.search === true);
   const searchActive = $derived(page.url.pathname.startsWith('/search'));
+  // De Beheer-pil alleen voor eigenaar of beheerder (S10.1); in beheer zelf
+  // wordt de mobiele kop een terugkop naar de index of naar Pleya.
+  const inAdmin = $derived(isAdminPath(page.url.pathname));
+  const adminBack = $derived.by(() => {
+    const href = adminBackHref(page.url.pathname);
+    return href && session.canAdminister ? { href, title: t('admin.title') } : null;
+  });
   // De primitievengalerij heeft geen server nodig en hoort niet achter de
   // sessiepoort; buiten `vite dev` is `dev` onwaar en valt deze tak weg.
   const isDevGallery = $derived(dev && page.url.pathname.startsWith('/dev/'));
@@ -54,7 +62,7 @@
   onMount(() => {
     const stopTheme = theme.start();
     const stopViewport = viewport.start();
-    void session.start();
+    void session.ensureStarted();
     return () => {
       stopTheme();
       stopViewport();
@@ -127,9 +135,21 @@
 {:else}
   <div class="shell" class:shell--wide={viewport.wide}>
     {#if viewport.wide}
-      <TopNav {items} {activeId} {showSearch} {searchActive} />
+      <TopNav
+        {items}
+        {activeId}
+        {showSearch}
+        {searchActive}
+        showAdmin={session.canAdminister}
+        adminActive={inAdmin}
+      />
     {:else}
-      <MobileHeader {showSearch} {searchActive} />
+      <MobileHeader
+        {showSearch}
+        {searchActive}
+        showAdmin={session.canAdminister}
+        back={adminBack}
+      />
     {/if}
 
     <main id="main" class="shell__main">

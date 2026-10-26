@@ -28,7 +28,14 @@ const SAME_ON_PURPOSE = [
   'item.audio',
   'item.sdh',
   'common.home',
-  'search.filters.shows'
+  'search.filters.shows',
+  'admin.tile.scan',
+  'admin.activity.scan',
+  'admin.activity.scanUnknown',
+  'admin.server.title',
+  'admin.server.database',
+  'admin.server.databaseValue',
+  'admin.server.versionValue'
 ];
 
 function placeholders(text: string): string[] {

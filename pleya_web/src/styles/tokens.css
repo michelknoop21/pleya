@@ -23,6 +23,10 @@
   --success: #3dd68c; /* kSuccess */
   --error: #b00020; /* colorScheme.error */
   --brand-gradient: linear-gradient(135deg, var(--accent), var(--accent-alt));
+  /* Inkt op een amber vlak: de actieve Beheer-pil en de telbadge in de
+     beheerzijbalk (web.css `.item.admin.on` en `.bd`, beide #111). Amber is in
+     elk thema hetzelfde, dus de inkt erop ook. */
+  --on-amber: #111111;
 
   /* --- Ruimte. MonoTokens.space is 12. ---------------------------------- */
   --space: 12px;

@@ -25,6 +25,13 @@ export type Version = S['Version'];
 export type VideoStream = S['VideoStream'];
 export type AudioStream = S['AudioStream'];
 export type SubtitleStream = S['SubtitleStream'];
+export type User = S['User'];
+export type Role = S['Role'];
+export type Scan = S['Scan'];
+export type Job = S['Job'];
+export type StorageRoot = S['StorageRoot'];
+export type StreamSessionSummary = S['StreamSessionSummary'];
+export type TranscodeSessionList = S['TranscodeSessionList'];
 export type ErrorEnvelope = S['ErrorEnvelope'];
 
 /** De sorteringen die `GET /libraries/{id}/items` accepteert. */
