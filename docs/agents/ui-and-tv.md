@@ -42,7 +42,7 @@ aan. Een effen balk in paginakleur boven de inhoud is daar niet de bedoeling: le
 statusbalkglyphs komt van een fade of scrim over het artwork en van een
 `AnnotatedRegion<SystemUiOverlayStyle>`. Een vaste balk is doorschijnend via `GlassSurface`, die op
 effen terugvalt zolang Liquid Glass uit staat (de voorkeur staat standaard uit) en op de iPad, waar
-glas nooit geldt. Besluit Michel, 26 oktober 2026 (DEC-XXX-edge).
+glas nooit geldt. Besluit Michel, 26 oktober 2026 (DEC-163).
 
 Gebouwd voor de Studio-kop en -balk van Instellingen (A-24). Nieuwe iPhone-schermen volgen de regel.
 Bekende uitzonderingen die nog effen zijn: de ingeklapte balk van `MobileDetailHeroBar` en de
