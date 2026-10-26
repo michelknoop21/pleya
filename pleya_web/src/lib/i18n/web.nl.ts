@@ -2,6 +2,7 @@ import { webOpsNl } from './web.ops.nl';
 
 import { webUsersNl } from './webUsers.nl';
 import { webSettingsNl } from './webSettings.nl';
+import { webTranscodeNl } from './webTranscode.nl';
 import type { WebKey } from './web';
 
 /**
@@ -363,5 +364,6 @@ export const webNl = {
   'error.client.malformed_response': 'De server stuurde iets wat deze client niet kan lezen.',
   'error.client.transport': 'De server is niet bereikbaar. Controleer de verbinding en probeer het opnieuw.',
   ...webUsersNl,
-  ...webSettingsNl
+  ...webSettingsNl,
+  ...webTranscodeNl
 } satisfies Record<WebKey, string>;

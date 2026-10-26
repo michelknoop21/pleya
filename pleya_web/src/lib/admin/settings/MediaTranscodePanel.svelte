@@ -70,6 +70,8 @@
 
   {#if available}
     <h4 class="sub">{t('admin.media.transcode.running')}</h4>
+    <!-- Scherm 37 is de volwaardige pagina voor dezelfde sessies. -->
+    <a class="all" href="/admin/media/transcode">{t('admin.tc.panelLink')}</a>
     {#if count === 0}
       <p class="note">{t('admin.media.transcode.none')}</p>
     {:else}
@@ -159,5 +161,13 @@
 
   .muted {
     color: var(--ink-3);
+  }
+
+  .all {
+    display: inline-block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-2);
   }
 </style>

@@ -1,0 +1,35 @@
+/** De Nederlandse helft van `webTranscode.ts` (S18.5). Termen volgen de northstar, je-vorm, kort. */
+import type { webTranscode } from './webTranscode';
+
+export const webTranscodeNl = {
+  'admin.tc.title': 'Transcode-sessies',
+  'admin.tc.refresh': 'Verversen',
+  'admin.tc.tile.busy': 'Nu bezig',
+  'admin.tc.tile.busySub.one': '{count} sessie loopt',
+  'admin.tc.tile.busySub.other': '{count} sessies lopen',
+  'admin.tc.tile.busyNone': 'er wordt niets omgezet',
+  'admin.tc.tile.max': 'Maximum',
+  'admin.tc.tile.maxOff': 'uit',
+  'admin.tc.tile.maxSub': 'bepaald door de omgeving van de server',
+  'admin.tc.tile.maxOffSub': 'een maximum van 0 zet transcoderen uit',
+  'admin.tc.tile.hardware': 'Hardware',
+  'admin.tc.tile.software': 'Software',
+  'admin.tc.tile.hardwareSub': 'bij het opstarten gemeten',
+  'admin.tc.full.title': 'De server draait op zijn maximum.',
+  'admin.tc.full.body': 'Een nieuwe aanvraag krijgt playback.transcode_busy en moet wachten of op een andere manier afspelen. Lopende sessies worden nooit stilgezet om plek te maken.',
+  'admin.tc.full.action': 'Waar het maximum staat',
+  'admin.tc.off.title': 'Transcoderen staat uit.',
+  'admin.tc.off.body': 'Deze server meldt geen omzetter, dus er kan geen sessie lopen. Het maximum en de hardware staan bij Media en streaming.',
+  'admin.tc.running.title': 'Lopend',
+  'admin.tc.running.empty': 'Er lopen geen transcode-sessies.',
+  'admin.tc.running.refresh': 'De lijst ververst elke vijf seconden zolang er een sessie loopt.',
+  'admin.tc.running.foot': 'Een sessie waarvan de speler geen hartslagen meer stuurt, ruimt de server zelf op. Stoppen onderbreekt de kijker: de speler krijgt een foutmelding en moet opnieuw beginnen.',
+  'admin.tc.col.user': 'Gebruiker',
+  'admin.tc.col.mode': 'Omzetting',
+  'admin.tc.col.started': 'Begonnen',
+  'admin.tc.col.heartbeat': 'Laatste hartslag',
+  'admin.tc.col.actions': 'Acties',
+  'admin.tc.version': 'versie {id}',
+  'admin.tc.stopping': 'Bezig met stoppen',
+  'admin.tc.panelLink': 'Alle sessies'
+} satisfies Record<keyof typeof webTranscode, string>;
