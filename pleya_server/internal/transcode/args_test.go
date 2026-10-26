@@ -25,6 +25,22 @@ func TestRemuxCopiesBothTracks(t *testing.T) {
 	}
 }
 
+// Zonder +genpts schrijft ffmpeg bij het kopiëren van een bron zonder
+// presentatietijden (AVI met B-frames) een afspeellijst van 0 seconden. De vlag
+// is een invoeroptie en moet dus vóór -i staan, in elke modus.
+func TestEveryModeGeneratesMissingTimestampsBeforeTheInput(t *testing.T) {
+	for _, mode := range []transcode.Mode{transcode.ModeRemux, transcode.ModeDirectStream, transcode.ModeTranscode} {
+		args, err := transcode.BuildArgs(job(mode))
+		if err != nil {
+			t.Fatal(err)
+		}
+		flag, input := slices.Index(args, "-fflags"), slices.Index(args, "-i")
+		if flag < 0 || input < 0 || flag > input || args[flag+1] != "+genpts" {
+			t.Fatalf("%s: -fflags +genpts hoort vóór -i: %v", mode, args)
+		}
+	}
+}
+
 func TestDirectStreamKeepsVideoAndConvertsAudio(t *testing.T) {
 	j := job(transcode.ModeDirectStream)
 	j.HEVCSource = true

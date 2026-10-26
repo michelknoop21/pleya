@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -25,6 +26,24 @@ func source(t *testing.T) string {
 		"-f", "lavfi", "-i", "sine=duration=8", "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "ac3", path).CombinedOutput()
 	if err != nil {
 		t.Fatalf("bron maken: %v: %s", err, out)
+	}
+	return path
+}
+
+// aviSource maakt een H.264-bron met B-frames in een AVI-container: de
+// container bewaart geen presentatietijden, dus zonder +genpts kent de
+// HLS-muxer de duur van een gekopieerd segment niet.
+func aviSource(t *testing.T) string {
+	t.Helper()
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg ontbreekt")
+	}
+	path := filepath.Join(t.TempDir(), "bron.avi")
+	out, err := exec.Command("ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=duration=12:size=320x180:rate=25",
+		"-f", "lavfi", "-i", "sine=duration=12", "-c:v", "libx264", "-preset", "ultrafast", "-bf", "2", "-g", "50",
+		"-c:a", "mp3", path).CombinedOutput()
+	if err != nil {
+		t.Fatalf("avi-bron maken: %v: %s", err, out)
 	}
 	return path
 }
@@ -227,5 +246,33 @@ func TestStopDuringStartDoesNotRestartInSoftware(t *testing.T) {
 	}
 	if len(m.List()) != 0 {
 		t.Fatal("er staat een sessie terwijl hij gestopt was")
+	}
+}
+
+// Remux en direct_stream uit een AVI gaven een afspeellijst met
+// TARGETDURATION:0 en een segment van 0 s (gezien in de browserspeler, 26
+// oktober 2026). De duur moet uit de volgorde van de pakketten komen.
+func TestCopiedAviGivesPlaylistWithRealDurations(t *testing.T) {
+	src := aviSource(t)
+	m := manager(t, 2, time.Minute)
+	for _, mode := range []transcode.Mode{transcode.ModeRemux, transcode.ModeDirectStream} {
+		s, err := m.Start(context.Background(), params(src, mode))
+		if err != nil {
+			t.Fatalf("%s: %v", mode, err)
+		}
+		raw, err := os.ReadFile(filepath.Join(s.Dir, transcode.PlaylistName))
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := string(raw)
+		if strings.Contains(text, "TARGETDURATION:0") || strings.Contains(text, "EXTINF:0.000000") {
+			t.Fatalf("%s: de afspeellijst heeft duur 0:\n%s", mode, text)
+		}
+		if !strings.Contains(text, "#EXTINF:") {
+			t.Fatalf("%s: nog geen segment in de afspeellijst:\n%s", mode, text)
+		}
+		if err := m.Stop(s.ID); err != nil {
+			t.Fatal(err)
+		}
 	}
 }

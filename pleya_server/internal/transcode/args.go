@@ -85,7 +85,12 @@ func BuildArgs(j Job) ([]string, error) {
 		// omgezet moet worden.
 		a = append(a, "-init_hw_device", "vaapi=va:"+j.RenderNode, "-filter_hw_device", "va")
 	}
-	a = append(a, "-i", j.InputPath, "-map", "0:v:0", "-map", "0:a:0?", "-sn", "-dn")
+	// +genpts: een AVI (of een andere container zonder presentatietijden, zoals
+	// een H.264- of DivX-bron met B-frames) levert pakketten zonder PTS. Bij
+	// kopiëren heeft de HLS-muxer daar geen tijd uit en schrijft hij een
+	// afspeellijst met TARGETDURATION:0 en één segment van 0 s, die geen
+	// speler afspeelt. ffmpeg leidt de tijden dan af uit de volgorde.
+	a = append(a, "-fflags", "+genpts", "-i", j.InputPath, "-map", "0:v:0", "-map", "0:a:0?", "-sn", "-dn")
 
 	switch j.Mode {
 	case ModeRemux:
