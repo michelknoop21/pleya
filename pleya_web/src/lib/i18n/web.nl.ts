@@ -1,5 +1,6 @@
 import { webBackupsNl } from './webBackups.nl';
 import { webOpsNl } from './web.ops.nl';
+import { webPlayerNl } from './webPlayer.nl';
 
 import { webUsersNl } from './webUsers.nl';
 import { webSettingsNl } from './webSettings.nl';
@@ -14,6 +15,7 @@ import type { WebKey } from './web';
  */
 export const webNl = {
   ...webOpsNl,
+  ...webPlayerNl,
   'app.name': 'Pleya',
   'nav.home': 'Home',
   'nav.search': 'Zoeken',
