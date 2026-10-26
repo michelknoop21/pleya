@@ -89,6 +89,14 @@ class AutomationIds {
   /// large title with its artwork panel. `state.artwork` says whether the
   /// panel shows a backdrop from the library (true) or the brand fallback.
   static const String settingsHeader = 'settings.header';
+
+  /// The back chevron on the line of the Studio header's large title
+  /// (A-24b). Present only while there is a route to go back to.
+  static const String settingsBack = 'settings.back';
+
+  /// One option of a settings picker (`showSelectionDialog`), instance = its
+  /// place in the list from 0; `state.selected` is the current value.
+  static const String settingsChoiceOption = 'settings.choice.option';
   static const String screenLocalLibrary = 'screen.local_library';
   static const String localLibraryEnable = 'local_library.enable';
   static const String localLibraryWifi = 'local_library.wifi';
@@ -96,9 +104,6 @@ class AutomationIds {
   static const String localLibrarySync = 'local_library.sync';
   static const String localLibraryClear = 'local_library.clear';
   static const String localLibraryAction = 'local_library.action';
-
-  /// One category in the TV Appearance page, in its visible display order.
-  static const String settingsAppearanceCategory = 'settings.appearance.category';
 
   /// One category on the TV settings page (A-24), in its visible order.
   static const String settingsCategory = 'settings.category';
@@ -274,6 +279,11 @@ class AutomationIds {
   /// filtered list. Carries its level, so "the error filter shows only errors"
   /// is a state assertion instead of a screenshot.
   static const String myPleyaLogRow = 'my_pleya.log_row';
+
+  /// One poster in Mijn Pleya's kijklijst rail on TV (`my_pleya.watchlist_item[0]`),
+  /// indexed in the order the rail shows them, newest first. State carries the
+  /// title and whether the poster opens a playable item.
+  static const String myPleyaWatchlistItem = 'my_pleya.watchlist_item';
 
   /// Big P's surface (mockup 38, DEC-142), the Mijn Pleya section and the
   /// contextual route alike. Its state carries `availability`, `state`,
@@ -772,7 +782,6 @@ class AutomationIds {
     libraryGridItem,
     libraryPickerCard,
     settingsTile,
-    settingsAppearanceCategory,
     settingsCategory,
     mediaDetailEpisodeListItem,
     mediaDetailSeasonChip,
@@ -786,6 +795,7 @@ class AutomationIds {
     myPleyaSectionTile,
     myPleyaChip,
     myPleyaLogRow,
+    myPleyaWatchlistItem,
     assistantButton,
     assistantExample,
     assistantFollowUp,
@@ -874,6 +884,8 @@ class AutomationIds {
     {'id': screenSettings, 'role': 'screen', 'instanceable': false},
     {'id': settingsTile, 'role': 'list.item', 'instanceable': true},
     {'id': settingsHeader, 'role': 'region', 'instanceable': false},
+    {'id': settingsBack, 'role': 'button', 'instanceable': false},
+    {'id': settingsChoiceOption, 'role': 'list.item', 'instanceable': true},
     {'id': screenLocalLibrary, 'role': 'screen', 'instanceable': false},
     {'id': localLibraryEnable, 'role': 'switch', 'instanceable': false},
     {'id': localLibraryWifi, 'role': 'switch', 'instanceable': false},
@@ -917,10 +929,10 @@ class AutomationIds {
     {'id': myPleyaSection, 'role': 'region', 'instanceable': true},
     {'id': myPleyaSectionContent, 'role': 'region', 'instanceable': true},
     {'id': myPleyaSectionTile, 'role': 'grid.item', 'instanceable': true},
-    {'id': settingsAppearanceCategory, 'role': 'button', 'instanceable': true},
     {'id': settingsCategory, 'role': 'button', 'instanceable': true},
     {'id': myPleyaChip, 'role': 'button', 'instanceable': true},
     {'id': myPleyaLogRow, 'role': 'list.item', 'instanceable': true},
+    {'id': myPleyaWatchlistItem, 'role': 'grid.item', 'instanceable': true},
     {'id': screenAssistant, 'role': 'screen', 'instanceable': false},
     {'id': assistantButton, 'role': 'button', 'instanceable': true},
     {'id': assistantExample, 'role': 'button', 'instanceable': true},

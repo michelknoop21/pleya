@@ -19,6 +19,7 @@ import 'add_local_folder_screen.dart';
 import 'add_pleya_server_screen.dart';
 import 'add_plex_account_screen.dart';
 import 'pleya_share_join_screen.dart';
+import '../../widgets/settings/settings_studio_theme.dart';
 
 /// Picker shown when the user taps "Add connection".
 ///
@@ -49,7 +50,7 @@ class _AddConnectionScreenState extends State<AddConnectionScreen> {
   }
 
   Future<void> _openOption(WidgetBuilder builder) async {
-    final added = await Navigator.push<bool>(context, MaterialPageRoute(builder: builder));
+    final added = await Navigator.push<bool>(context, settingsStudioRoute<bool>(context, builder));
     if (added != true || !mounted) return;
     final nested = TvNestedRouteScope.readOf(context);
     if (nested != null) {

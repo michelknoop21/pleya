@@ -5,12 +5,10 @@ target: tvos-sim
 # describe.
 #
 # Three things this proves that a widget test cannot:
-#   1. the page is reachable from the settings index and keeps the top bar —
-#      it is a nested route, so a wrong push takes the shell down with it;
-#   2. the two columns of 31 A are both there and the remote can cross between
-#      them, which is explicit traversal rather than geometry and is exactly
-#      what a directional-traversal fallback gets wrong;
-#   3. Menu leaves the page and lands back on the tile it came from.
+#   1. A-24b: Taal en ondertitels is a category of the Instellingen page, its
+#      rows in place (series `tvos/04`), and the remote reaches it from the rail;
+#   2. the global rows and the two switches are one column, walked with DOWN;
+#   3. a picker opens and closes without leaving the page, and Menu leaves it.
 #
 # The series column starts empty on a fresh device: a series preference only
 # exists after someone picks a language during a series. The scenario therefore
@@ -34,70 +32,53 @@ steps:
   # Instellingen. Deliberately not the three RIGHTs the older section scenarios
   # walk: that choreography is stale against this hub and lands on the wrong
   # tile, which the run of 5 September recorded.
-  # Since the Big P tile, Instellingen sits right of it in the Pleya group.
   - press: down
   - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
+  # A-24b: Big P heads the right column with Instellingen under it.
+  - walk: {direction: right, steps: 4, stopAt: "my_pleya.tile[assistant]", timeout: 60000, settle: 600}
   - press: down
-  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
-  - press: right
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
 
-  # Down the settings index to the language tile, which sits under Afspelen.
-  # A-24: one column of rows in the first category; Taal is the fifth.
-  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
-  - walk:
-      direction: down
-      expect:
-        - "my_pleya.section.tile[settings.library_visibility]"
-        - "my_pleya.section.tile[settings.home_layout]"
-        - "my_pleya.section.tile[settings.playback]"
-        - "my_pleya.section.tile[settings.language]"
-      timeout: 40000
-      settle: 500
-  - wait_until: {focused: "my_pleya.section.tile[settings.language]", timeout: 8000}
-  - snapshot: 00-tile-focused
-
+  # A-24b: from Thema, LEFT to the rail, down to Taal en ondertitels, SELECT
+  # chooses it and RIGHT enters it on its first row.
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 8000}
+  - press: left
+  - wait_until: {focused: "settings.category[0]", timeout: 5000}
+  - press: down
+  - press: down
+  - wait_until: {focused: "settings.category[2]", timeout: 5000}
   - press: select
-  - wait_until: {id: "my_pleya.section.content[language]", timeout: 15000}
+  - wait_until: {id: "settings.category[2]", state: {selected: true}, timeout: 5000}
+  - press: right
+  # Michel, 25 Oct 2026: App-taal is the first row of Taal en ondertitels.
+  - wait_until: {focused: "my_pleya.section.tile[setting.app_locale]", timeout: 8000}
+  - press: down
+  - wait_until: {focused: "my_pleya.section.tile[language.language_audio]", timeout: 8000}
   - snapshot: 01-page-opened
 
-  # The left column: the four global rows and the two switches, stacked in one
-  # column rather than flowed two-up like the settings index. `sameColumn` is
-  # what tells those two apart, and `insideViewport` is what catches a column
-  # that renders off the overscan edge.
   - assert: {id: "my_pleya.section.tile[language.language_audio]", insideViewport: true}
   - assert: {id: "my_pleya.section.tile[language.language_fallback]", insideViewport: true}
-  - assert: {id: "my_pleya.section.tile[language.language_remember]", insideViewport: true}
-  # The last row of the column, and the one the first run of 5 September found
-  # below the fold. 31 A puts all six on one screen, so this is the assertion
-  # that says the column still does.
-  - assert: {id: "my_pleya.section.tile[language.language_mirror]", insideViewport: true}
   - assert: {id: "my_pleya.section.tile[language.language_fallback]", sameColumn: "my_pleya.section.tile[language.language_audio]"}
   - assert: {id: "my_pleya.section.tile[language.language_fallback]", below: "my_pleya.section.tile[language.language_audio]"}
   - press: down
   - press: down
   - wait_until: {focused: "my_pleya.section.tile[language.language_fallback]", timeout: 5000}
   - snapshot: 02-left-column
+  # The switches follow in the same column, under Onthouden.
+  - walk: {direction: down, steps: 3, stopAt: "my_pleya.section.tile[language.language_mirror]", timeout: 45000, settle: 400}
+  - assert: {id: "my_pleya.section.tile[language.language_mirror]", insideViewport: true, sameColumn: "my_pleya.section.tile[language.language_audio]"}
+  - walk: {direction: up, steps: 3, stopAt: "my_pleya.section.tile[language.language_fallback]", timeout: 45000, settle: 400}
 
   # The picker of a global row opens and closes without leaving the page.
   - press: select
   - settle: 800
   - snapshot: 03-picker-open
   - press: menu
-  - wait_until: {id: "my_pleya.section.content[language]", timeout: 8000}
+  - wait_until: {focused: "my_pleya.section.tile[language.language_fallback]", timeout: 8000}
   - snapshot: 04-picker-closed
 
-  # And out again. Deliberately not "back onto the tile it came from": the
-  # shell restores a `restoreFocusKey` only for a route opened from the Mijn
-  # Pleya *hub* (`_popTvNestedRoute` asks `_tvMyPleya`), and a settings subpage
-  # is one level deeper than that. Leaving one therefore lands on the settings
-  # index with the focus on its first tile, for every subpage alike and not
-  # only for this one. The run of 5 September recorded it; closing it means
-  # teaching the shell about a focus owner inside a nested route, which is a
-  # change to the navigation contract rather than to this page.
+  # And out, onto the hub's tile.
   - press: menu
-  - wait_until: {id: "my_pleya.section.content[settings]", timeout: 8000}
-  - assert: {id: "my_pleya.section.tile[settings.language]", insideViewport: true}
-  - snapshot: 05-back-in-settings
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}

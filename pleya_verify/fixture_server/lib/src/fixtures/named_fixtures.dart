@@ -6,6 +6,7 @@ import '../pleya_fake_server.dart';
 import '../seerr_fake_server.dart';
 import '../tautulli_fake_server.dart';
 import 'deterministic_png.dart';
+import 'studio_art.dart';
 
 /// The named fixtures Pleya Verify scenarios seed by name (`seed {fixture}`
 /// in the control plane — see `FixtureHttpServer`). Unknown names are the
@@ -45,6 +46,11 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
     case 'catalog.empty.v1':
       server.resetCatalog();
       return true;
+    case 'catalog.studio-art.v1':
+      _applyCatalogStudioArtV1(server);
+      return true;
+    case 'watchlist.studio.v1':
+      return _applyWatchlistStudioV1(server);
     case 'seerr.requests.v1':
       if (seerr == null) return false;
       _applySeerrRequestsV1(seerr);
@@ -352,6 +358,59 @@ void _applyCatalogHeroArtworkV1(PleyaFakeServer server) {
 
   server.hubs['recently_added']!.addAll(ids);
   server.hubs['continue_watching']!.add(ids.first);
+}
+
+/// Six Blender open movies with a real 2:3 poster and a 16:9 backdrop each
+/// ([studioArtFilms]), for the A-24b screenshots of Instellingen and Mijn
+/// Pleya next to their northstars. Fills `recently_added` with all six and
+/// `continue_watching` with the first two, which is what the iPhone Studio
+/// header, the TV settings preview and Home read.
+///
+/// Leaves the kijklijst empty: that is `watchlist.studio.v1`, seeded on top,
+/// so the path without a kijklijst stays testable with this same catalog.
+void _applyCatalogStudioArtV1(PleyaFakeServer server) {
+  const fixture = 'catalog.studio-art.v1';
+  server.resetCatalog();
+
+  final libraryId = _mintId(server, fixture, 'library', 'movies');
+  server.addLibrary(id: libraryId, title: 'Films', kind: 'movies', itemCount: studioArtFilms.length);
+
+  final ids = <String>[];
+  for (final film in studioArtFilms) {
+    final id = _mintId(server, fixture, 'movie', film.slug);
+    ids.add(id);
+    final backdropId = '$id-backdrop';
+    server.artworkById[id] = studioArtBytes(film.poster);
+    server.artworkById[backdropId] = studioArtBytes(film.backdrop);
+    server.addItem(
+      id: id,
+      kind: 'movie',
+      title: film.title,
+      libraryId: libraryId,
+      year: film.year,
+      durationMs: 600000 + ids.length * 60000,
+      posterId: id,
+      backdropId: backdropId,
+    );
+  }
+
+  server.hubs['recently_added']!.addAll(ids);
+  server.hubs['continue_watching']!.addAll(ids.take(2));
+}
+
+/// The kijklijst for `catalog.studio-art.v1`: four of its films, newest
+/// first, served at `/verify/watchlist` for the app's Pleya Verify watchlist
+/// source. Needs that catalog seeded first (it names the films by the ids the
+/// catalog minted) and returns `false` without it, so the control plane
+/// answers 400 instead of seeding a list that points nowhere.
+bool _applyWatchlistStudioV1(PleyaFakeServer server) {
+  const slugs = ['spring', 'charge', 'tears-of-steel', 'coffee-run'];
+  final ids = [for (final slug in slugs) server.seededIds['movie/$slug']];
+  if (ids.any((id) => id == null)) return false;
+  server.verifyWatchlistIds
+    ..clear()
+    ..addAll(ids.cast<String>());
+  return true;
 }
 
 /// Twelve movies in `recently_added`, the hub the movies landing's first rail

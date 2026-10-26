@@ -16,6 +16,7 @@ import '../../services/pleya_share/pleya_share_uri.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import 'connection_persistence.dart';
 import 'pleya_share_scan_screen.dart';
+import '../../widgets/settings/settings_studio_theme.dart';
 
 /// Guest side of Pleya Share: discover hosts on the LAN (or enter an IP),
 /// enter the 6-digit code, pair, and register the host as a media source.
@@ -91,7 +92,7 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
   Future<void> _scan() async {
     final result = await Navigator.of(
       context,
-    ).push<PleyaSharePairUri>(MaterialPageRoute(builder: (_) => const PleyaShareScanScreen()));
+    ).push<PleyaSharePairUri>(settingsStudioRoute(context, (_) => const PleyaShareScanScreen()));
     if (result == null || !mounted || result.ips.isEmpty) return;
     setState(() {
       // Prefill so a failed attempt leaves a retryable form, but pair against

@@ -33,14 +33,18 @@ import '../../services/track_preference_store.dart';
 import '../../utils/platform_detector.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
+import '../../utils/tv_hig.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/profile_language_switch_tile.dart';
 import '../../widgets/settings/setting_value_label.dart';
 import '../../widgets/settings_page.dart';
 import '../../widgets/settings_section.dart';
+import '../../widgets/tv/tv_menu_grid.dart';
 import '../../widgets/tv/tv_page_surface.dart';
+import '../../widgets/tv/tv_settings_rows.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import 'settings_utils.dart';
+import 'parts/app_language_row.dart';
 import 'parts/language_picker_dialog.dart';
 import 'parts/series_language_row.dart';
 import 'parts/series_language_sheet.dart';
@@ -220,29 +224,36 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
           future: PleyaProfileLanguagePreferenceStore.activeScope(),
           builder: (context, snapshot) {
             final global = _global(stored, snapshot.data);
-            return PlatformDetector.isTV() ? _buildTv(context, global) : _buildList(context, global);
+            if (!PlatformDetector.isTV()) return _buildList(context, global);
+            return SettingsInlineScope.isInline(context) ? _buildTvInline(context, global) : _buildTv(context, global);
           },
         );
       },
     );
   }
 
+  /// Off TV, series `ios/05`: Algemeen, Onthouden and Per serie, the rows
+  /// with their value on the right. The owner line and the notes under the
+  /// series list are footnotes under their card, not rows inside it.
   Widget _buildList(BuildContext context, PleyaProfileLanguagePreferences global) {
     return SettingsPage(
       title: Text(t.languageSettings.title),
+      hideDescriptions: true,
       children: [
         SettingsSectionHeader(t.languageSettings.globalHeader),
-        _OwnerLine(text: _ownerLine(context)),
+        // Michel, 25 October 2026: the app's own language first, above the
+        // audio and subtitle preferences.
+        const AppLanguageRow(),
         _ValueRow(
           icon: Symbols.volume_up_rounded,
-          title: t.languageSettings.audio,
+          title: t.settingsStudio.preferredAudio,
           subtitle: t.languageSettings.audioFallbackNote,
           value: _audioValue(global),
           onSelect: () => _editAudioLanguage(global),
         ),
         _ValueRow(
           icon: Symbols.subtitles_rounded,
-          title: t.languageSettings.subtitles,
+          title: t.settingsStudio.preferredSubtitles,
           subtitle: t.languageSettings.subtitlesNote,
           value: _subtitleValue(global),
           onSelect: () => _editSubtitleLanguage(global),
@@ -256,11 +267,12 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
         ),
         _ValueRow(
           icon: Symbols.closed_caption_rounded,
-          title: t.languageSettings.subtitleDisplay,
+          title: t.settingsStudio.subtitleWhen,
           subtitle: t.languageSettings.subtitleDisplayNote,
           value: _policyValue(global),
           onSelect: () => _editSubtitlePolicy(global),
         ),
+        SettingsFootnote(_ownerLine(context)),
 
         SettingsSectionHeader(t.languageSettings.rememberHeader),
         ProfileLanguageSwitchTile(
@@ -282,42 +294,12 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
         if (_loading)
           const _SeriesPlaceholder()
         else if (_series.isEmpty)
-          _Footnote(text: t.languageSettings.seriesEmpty)
+          SettingsFootnote(t.languageSettings.seriesEmpty)
         else ...[
           for (final entry in _series) SeriesLanguageRow(entry: entry, onSelect: () => _openSeries(entry, global)),
-          _Footnote(text: t.languageSettings.seriesFootnote),
+          SettingsFootnote(t.languageSettings.seriesFootnote),
         ],
       ],
-    );
-  }
-}
-
-/// The owner line under the section heading. Prose, not a row: it says who the
-/// preference belongs to and is never something to select.
-class _OwnerLine extends StatelessWidget {
-  const _OwnerLine({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-      child: Text(text, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: tokens(context).textMuted)),
-    );
-  }
-}
-
-class _Footnote extends StatelessWidget {
-  const _Footnote({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Text(text, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: tokens(context).textMuted)),
     );
   }
 }
@@ -359,18 +341,37 @@ class _ValueRow extends StatelessWidget {
     if (!PlatformDetector.isTV()) {
       // A-24: the value ends the title line so the note keeps the full width
       // under it; a value too long for that line opens the note instead.
-      final onTitleLine =
-          settingValuePlacement(context, title: title, value: value, hasDescription: true) ==
-          SettingValuePlacement.titleLine;
+      // A-24b Studio rows: the note is the hint, the value stands right.
+      final note = settingsRowDescription(context, subtitle);
+      final placement = settingValuePlacement(context, title: title, value: value, hasDescription: note != null);
       return SettingRowFocus(
         onSelect: onSelect,
-        child: ListTile(
-          contentPadding: settingRowPadding(),
-          leading: SettingsIconBadge(icon),
-          title: onTitleLine ? SettingTitleWithValue(title: title, value: value) : Text(title),
-          subtitle: Text(onTitleLine ? subtitle : '$value · $subtitle'),
-          trailing: chevron,
-          onTap: onSelect,
+        child: settingsRowWithHint(
+          settingsRowHint(context, subtitle),
+          ListTile(
+            contentPadding: settingRowPadding(),
+            leading: settingsRowLeading(context, icon),
+            title: switch (placement) {
+              SettingValuePlacement.titleLine => SettingTitleWithValue(title: title, value: value),
+              _ => Text(title),
+            },
+            subtitle: switch (placement) {
+              SettingValuePlacement.titleLine => Text(note!),
+              SettingValuePlacement.trailing => null,
+              SettingValuePlacement.subtitle => Text(note == null ? value : '$value · $note'),
+            },
+            trailing: placement == SettingValuePlacement.trailing
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SettingValueLabel(value, title: title),
+                      const SizedBox(width: 8),
+                      chevron,
+                    ],
+                  )
+                : chevron,
+            onTap: onSelect,
+          ),
         ),
       );
     }

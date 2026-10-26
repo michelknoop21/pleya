@@ -94,6 +94,7 @@ class TranslationsPl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTvNavigationPl tvNavigation = _TranslationsTvNavigationPl._(_root);
 	@override late final _TranslationsTvMyPleyaPl tvMyPleya = _TranslationsTvMyPleyaPl._(_root);
 	@override late final _TranslationsTvContextMenuPl tvContextMenu = _TranslationsTvContextMenuPl._(_root);
+	@override late final _TranslationsSettingsStudioPl settingsStudio = _TranslationsSettingsStudioPl._(_root);
 }
 
 // Path: app
@@ -1858,6 +1859,68 @@ class _TranslationsTvContextMenuPl extends TranslationsTvContextMenuEn {
 	@override String doneOnSome({required Object done, required Object total}) => 'Wykonano na ${done} z ${total} źródeł. Pozostałe zostaną ponowione, gdy wrócą online.';
 	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Wykonano na ${done} z ${total} źródeł.';
 	@override String get failed => 'To nie zadziałało';
+}
+
+// Path: settingsStudio
+class _TranslationsSettingsStudioPl extends TranslationsSettingsStudioEn {
+	_TranslationsSettingsStudioPl._(TranslationsPl root) : this._root = root, super.internal(root);
+
+	final TranslationsPl _root; // ignore: unused_field
+
+	// Translations
+	@override String get forYou => 'Dla ciebie';
+	@override String get connectionsAndProfiles => 'Połączenia i profile';
+	@override String get system => 'System';
+	@override String get integrations => 'Integracje';
+	@override String get libraryAndHome => 'Biblioteka i strona główna';
+	@override String get personal => 'Osobiste';
+	@override String get mainTagline => 'Spraw, by Pleya była całkowicie twoja.';
+	@override String get tvTagline => 'Twoje wrażenia z oglądania, w każdym szczególe.';
+	@override String get appearanceHeadline => 'Tak wygląda twoja Pleya';
+	@override String get livePreview => 'Podgląd na żywo';
+	@override String get yourLibrary => 'Twoja biblioteka';
+	@override String get viewPreview => 'Zobacz podgląd';
+	@override String get playbackExperience => 'Odtwarzanie';
+	@override String get manage => 'Zarządzaj';
+	@override String get yourWatchlist => 'Twoja lista';
+	@override String get yourContent => 'Twoje treści';
+	@override String get lightMode => 'Tryb jasny';
+	@override String get darkMode => 'Tryb ciemny';
+	@override String get oledMode => 'Tryb OLED';
+	@override String get systemMode => 'Tryb systemowy';
+	@override String get posterView => 'Widok plakatów';
+	@override String get listView => 'Widok listy';
+	@override String get libraries => 'Biblioteki';
+	@override String get serversAndSources => 'Serwery i źródła';
+	@override String get contentAndWindow => 'Treść i okno';
+	@override String get quality => 'Jakość';
+	@override String get maintenance => 'Konserwacja';
+	@override String densityValue({required Object value}) => '${value} z 5';
+	@override String get existingSources => 'Istniejące źródła';
+	@override String get preferredAudio => 'Preferowany język audio';
+	@override String get preferredSubtitles => 'Preferowany język napisów';
+	@override String get subtitleWhen => 'Napisy zawsze / obcy język / nigdy';
+	@override String get reorderRows => 'Zmień kolejność rzędów';
+	@override String get rowVisibility => 'Pokaż lub ukryj rząd';
+	@override String get addOwnRow => 'Dodaj własny rząd';
+	@override String get removeOwnRow => 'Usuń własny rząd';
+	@override String get chooseRowToRemove => 'Który rząd?';
+	@override String get hiddenContinueWatching => 'Zarządzaj ukrytym Oglądaj dalej';
+	@override String get storage => 'Pamięć';
+	@override String get managePlex => 'Zarządzaj serwerami Plex';
+	@override String get manageJellyfin => 'Zarządzaj źródłami Jellyfin';
+	@override String get manageEmby => 'Zarządzaj źródłami Emby';
+	@override String get managePleyaServer => 'Zarządzaj źródłami Pleya Server';
+	@override String get removeSource => 'Odłącz / usuń źródło';
+	@override String get linkPlex => 'Połącz konto Plex';
+	@override String get addJellyfin => 'Dodaj Jellyfin';
+	@override String get addEmby => 'Dodaj Emby';
+	@override String get addPleyaServer => 'Dodaj Pleya Server';
+	@override String get tvFooterHint => 'Menu: wstecz · Wybierz: otwórz lub przełącz';
+	@override String get video => 'Wideo';
+	@override String get controls => 'Sterowanie';
+	@override String get diagnostics => 'Diagnostyka';
+	@override String get activeProfile => 'Aktywny profil';
 }
 
 // Path: search.filters
@@ -3737,6 +3800,59 @@ extension on TranslationsPl {
 			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Wykonano na ${done} z ${total} źródeł. Pozostałe zostaną ponowione, gdy wrócą online.',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Wykonano na ${done} z ${total} źródeł.',
 			'tvContextMenu.failed' => 'To nie zadziałało',
+			'settingsStudio.forYou' => 'Dla ciebie',
+			'settingsStudio.connectionsAndProfiles' => 'Połączenia i profile',
+			'settingsStudio.system' => 'System',
+			'settingsStudio.integrations' => 'Integracje',
+			'settingsStudio.libraryAndHome' => 'Biblioteka i strona główna',
+			'settingsStudio.personal' => 'Osobiste',
+			'settingsStudio.mainTagline' => 'Spraw, by Pleya była całkowicie twoja.',
+			'settingsStudio.tvTagline' => 'Twoje wrażenia z oglądania, w każdym szczególe.',
+			'settingsStudio.appearanceHeadline' => 'Tak wygląda twoja Pleya',
+			'settingsStudio.livePreview' => 'Podgląd na żywo',
+			'settingsStudio.yourLibrary' => 'Twoja biblioteka',
+			'settingsStudio.viewPreview' => 'Zobacz podgląd',
+			'settingsStudio.playbackExperience' => 'Odtwarzanie',
+			'settingsStudio.manage' => 'Zarządzaj',
+			'settingsStudio.yourWatchlist' => 'Twoja lista',
+			'settingsStudio.yourContent' => 'Twoje treści',
+			'settingsStudio.lightMode' => 'Tryb jasny',
+			'settingsStudio.darkMode' => 'Tryb ciemny',
+			'settingsStudio.oledMode' => 'Tryb OLED',
+			'settingsStudio.systemMode' => 'Tryb systemowy',
+			'settingsStudio.posterView' => 'Widok plakatów',
+			'settingsStudio.listView' => 'Widok listy',
+			'settingsStudio.libraries' => 'Biblioteki',
+			'settingsStudio.serversAndSources' => 'Serwery i źródła',
+			'settingsStudio.contentAndWindow' => 'Treść i okno',
+			'settingsStudio.quality' => 'Jakość',
+			'settingsStudio.maintenance' => 'Konserwacja',
+			'settingsStudio.densityValue' => ({required Object value}) => '${value} z 5',
+			'settingsStudio.existingSources' => 'Istniejące źródła',
+			'settingsStudio.preferredAudio' => 'Preferowany język audio',
+			'settingsStudio.preferredSubtitles' => 'Preferowany język napisów',
+			'settingsStudio.subtitleWhen' => 'Napisy zawsze / obcy język / nigdy',
+			'settingsStudio.reorderRows' => 'Zmień kolejność rzędów',
+			'settingsStudio.rowVisibility' => 'Pokaż lub ukryj rząd',
+			'settingsStudio.addOwnRow' => 'Dodaj własny rząd',
+			'settingsStudio.removeOwnRow' => 'Usuń własny rząd',
+			'settingsStudio.chooseRowToRemove' => 'Który rząd?',
+			'settingsStudio.hiddenContinueWatching' => 'Zarządzaj ukrytym Oglądaj dalej',
+			'settingsStudio.storage' => 'Pamięć',
+			'settingsStudio.managePlex' => 'Zarządzaj serwerami Plex',
+			'settingsStudio.manageJellyfin' => 'Zarządzaj źródłami Jellyfin',
+			'settingsStudio.manageEmby' => 'Zarządzaj źródłami Emby',
+			'settingsStudio.managePleyaServer' => 'Zarządzaj źródłami Pleya Server',
+			'settingsStudio.removeSource' => 'Odłącz / usuń źródło',
+			'settingsStudio.linkPlex' => 'Połącz konto Plex',
+			'settingsStudio.addJellyfin' => 'Dodaj Jellyfin',
+			'settingsStudio.addEmby' => 'Dodaj Emby',
+			'settingsStudio.addPleyaServer' => 'Dodaj Pleya Server',
+			'settingsStudio.tvFooterHint' => 'Menu: wstecz · Wybierz: otwórz lub przełącz',
+			'settingsStudio.video' => 'Wideo',
+			'settingsStudio.controls' => 'Sterowanie',
+			'settingsStudio.diagnostics' => 'Diagnostyka',
+			'settingsStudio.activeProfile' => 'Aktywny profil',
 			_ => null,
 		};
 	}

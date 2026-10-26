@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:pleya/automation/automation_ids.dart';
@@ -10,12 +11,15 @@ import 'package:pleya/profiles/active_profile_provider.dart';
 import 'package:pleya/profiles/profile.dart';
 import 'package:pleya/profiles/profile_avatar.dart';
 import 'package:pleya/providers/offline_mode_provider.dart';
+import 'package:pleya/providers/seerr_provider.dart';
+import 'package:pleya/providers/watchlist_provider.dart';
 import 'package:pleya/screens/my_pleya_screen.dart';
 import 'package:pleya/screens/profile/profile_switch_screen.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 
 import '../test_helpers/prefs.dart';
+import '../test_helpers/tv_my_pleya_conditions.dart';
 
 /// My Pleya became the mobile home of Profiles, Settings and Sign out when the
 /// avatar left the Home header. These check that all three arrived, that they
@@ -73,19 +77,28 @@ void main() {
     routes = _RouteRecorder();
   });
 
-  Future<void> pumpScreen(WidgetTester tester, {Profile? profile, bool offline = false}) async {
+  Future<void> pumpScreen(
+    WidgetTester tester, {
+    Profile? profile,
+    bool offline = false,
+    WatchlistProvider? watchlist,
+    SeerrProvider? seerr,
+    ThemeData? theme,
+  }) async {
     activeProfile = _FakeActiveProfile(profile ?? _profile('Gideuh'));
     addTearDown(activeProfile.dispose);
 
     await tester.pumpWidget(
       TranslationProvider(
         child: MaterialApp(
-          theme: monoTheme(dark: true),
+          theme: theme ?? monoTheme(dark: true),
           navigatorObservers: [routes],
           home: MultiProvider(
             providers: [
               ChangeNotifierProvider<ActiveProfileProvider>.value(value: activeProfile),
               if (offline) ChangeNotifierProvider<OfflineModeProvider>(create: (_) => _OfflineProvider()),
+              if (watchlist != null) ChangeNotifierProvider<WatchlistProvider>.value(value: watchlist),
+              if (seerr != null) ChangeNotifierProvider<SeerrProvider>.value(value: seerr),
             ],
             child: MyPleyaScreen(onOpenTab: opened.add),
           ),
@@ -101,7 +114,7 @@ void main() {
     expect(find.text('Gideuh'), findsOneWidget);
     final avatar = tester.widget<ProfileAvatar>(find.byType(ProfileAvatar).first);
     expect(avatar.profile?.displayName, 'Gideuh');
-    expect(avatar.size, 40);
+    expect(avatar.size, 48);
   });
 
   testWidgets('switching profile updates the header without a restart', (tester) async {
@@ -182,6 +195,94 @@ void main() {
 
     expect(find.byType(ProfileAvatar), findsWidgets);
     expect(find.text('Zonder foto'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  double topOf(WidgetTester tester, String text) => tester.getTopLeft(find.text(text)).dy;
+
+  testWidgets('A-24b Editorial: title, Jouw content and the Pleya rows in the northstar order', (tester) async {
+    tester.view.physicalSize = const Size(390, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await pumpScreen(tester, seerr: ConfiguredSeerrDouble());
+
+    expect(find.text(t.myPleya.title), findsOneWidget);
+    expect(find.text(t.settingsStudio.yourContent.toUpperCase()), findsOneWidget);
+    // The old Kijklijst card is gone from Jouw content: the kijklijst is the
+    // rail with "Bekijk alles" now, and only when there is one.
+    expect(find.text(t.watchlist.title), findsNothing);
+    final order = [
+      t.libraries.title,
+      t.navigation.downloads,
+      t.seerr.title,
+      t.tvMyPleya.groupPleya.toUpperCase(),
+      t.tvMyPleya.servers,
+      t.myPleya.watchTogether,
+      t.settings.title,
+      t.settings.about,
+      t.common.logout,
+    ];
+    for (var i = 1; i < order.length; i++) {
+      expect(
+        topOf(tester, order[i]),
+        greaterThan(topOf(tester, order[i - 1])),
+        reason: '${order[i]} below ${order[i - 1]}',
+      );
+    }
+  });
+
+  testWidgets('A-24b: VoiceOver reads every Editorial row by its title and can activate it', (tester) async {
+    final semantics = tester.ensureSemantics();
+    tester.view.physicalSize = const Size(390, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final watchlist = StockedWatchlistDouble(railEntries: [watchlistEntryDouble('w1')]);
+    addTearDown(watchlist.dispose);
+    await pumpScreen(tester, seerr: ConfiguredSeerrDouble(), watchlist: watchlist);
+
+    // The poster is read by its title alone; the rows add their subtitle.
+    final poster = tester.getSemantics(find.bySemanticsLabel('Title w1')).getSemanticsData();
+    expect(poster.hasAction(SemanticsAction.tap), isTrue, reason: 'kijklijst poster is not activatable');
+
+    for (final title in [
+      t.libraries.title,
+      t.navigation.downloads,
+      t.seerr.title,
+      t.tvMyPleya.servers,
+      t.myPleya.watchTogether,
+      t.settings.title,
+      t.settings.about,
+      t.common.logout,
+    ]) {
+      final data = tester.getSemantics(find.text(title).first).getSemanticsData();
+      expect(data.label, contains(title), reason: title);
+      expect(data.hasAction(SemanticsAction.tap), isTrue, reason: '$title is not activatable');
+    }
+    semantics.dispose();
+  });
+
+  testWidgets('no kijklijst means no kijklijst heading', (tester) async {
+    await pumpScreen(tester);
+
+    expect(find.text(t.settingsStudio.yourWatchlist.toUpperCase()), findsNothing);
+    expect(find.text(t.myPleya.seeAll), findsNothing);
+  });
+
+  testWidgets('an empty kijklijst keeps Bekijk alles, says it is empty, and opens the kijklijst', (tester) async {
+    final watchlist = StockedWatchlistDouble();
+    addTearDown(watchlist.dispose);
+    await pumpScreen(tester, watchlist: watchlist);
+
+    expect(find.text(t.settingsStudio.yourWatchlist.toUpperCase()), findsOneWidget);
+    expect(find.text(t.watchlist.empty), findsOneWidget);
+    await tester.tap(find.text(t.myPleya.seeAll));
+    await tester.pump();
+    expect(opened, [NavigationTabId.watchlist]);
+  });
+
+  testWidgets('light theme renders the same page without errors', (tester) async {
+    await pumpScreen(tester, theme: monoTheme(dark: false));
+    expect(find.text(t.myPleya.title), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

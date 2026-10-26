@@ -77,7 +77,7 @@ class TrackerAccountSettingsBody extends StatelessWidget {
               trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
               onTap: () => Navigator.of(
                 context,
-              ).push(MaterialPageRoute<void>(builder: (_) => TrackerLibraryFilterScreen(service: service))),
+              ).push(settingsStudioRoute<void>(context, (_) => TrackerLibraryFilterScreen(service: service))),
             );
           },
         ),

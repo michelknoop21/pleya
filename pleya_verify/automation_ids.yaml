@@ -54,6 +54,12 @@ ids:
   - id: settings.header
     role: region
     instanceable: false
+  - id: settings.back
+    role: button
+    instanceable: false
+  - id: settings.choice.option
+    role: list.item
+    instanceable: true
   - id: screen.local_library
     role: screen
     instanceable: false
@@ -213,9 +219,6 @@ ids:
   - id: my_pleya.section.tile
     role: grid.item
     instanceable: true
-  - id: settings.appearance.category
-    role: button
-    instanceable: true
   - id: settings.category
     role: button
     instanceable: true
@@ -224,6 +227,9 @@ ids:
     instanceable: true
   - id: my_pleya.log_row
     role: list.item
+    instanceable: true
+  - id: my_pleya.watchlist_item
+    role: grid.item
     instanceable: true
   - id: screen.assistant
     role: screen

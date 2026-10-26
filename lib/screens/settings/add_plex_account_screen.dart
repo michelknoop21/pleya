@@ -24,6 +24,7 @@ import '../auth/plex_pin_auth_flow.dart';
 import '../profile/borrow_connection_screen.dart';
 import 'async_form_state_mixin.dart';
 import 'connection_persistence.dart';
+import '../../widgets/settings/settings_studio_theme.dart';
 
 /// Whether [profile] already reaches the account behind [connectionId]:
 /// as a Plex Home profile of that account, or through one of its stored
@@ -134,7 +135,7 @@ class _AddPlexAccountScreenState extends State<AddPlexAccountScreen> with AsyncF
           if (!mounted) return false;
           if (target != null && !targetOwnsAccount) {
             final borrowed = await Navigator.of(context).push<bool>(
-              MaterialPageRoute(builder: (_) => BorrowConnectionScreen(targetProfile: target, popOnSuccess: true)),
+              settingsStudioRoute(context, (_) => BorrowConnectionScreen(targetProfile: target, popOnSuccess: true)),
             );
             if (!mounted) return borrowed == true;
             if (borrowed == true) {

@@ -17,7 +17,7 @@ import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/utils/tv_hig.dart';
 import 'package:pleya/widgets/setting_tile.dart';
 import 'package:pleya/widgets/settings_section.dart';
-import 'package:pleya/widgets/tv/tv_appearance_categories.dart';
+import 'package:pleya/widgets/tv/tv_settings_categories.dart';
 import 'package:pleya/widgets/tv/tv_menu_grid.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 
@@ -128,13 +128,25 @@ void main() {
     testWidgets('category pills have an 18 pt inset and 16 pt between them', (tester) async {
       await pump(
         tester,
-        TvAppearanceCategories(
-          title: 'Uiterlijk',
-          children: [
-            const SettingsSectionHeader('Weergave'),
-            SettingNavigationTile(icon: Symbols.contrast_rounded, title: 'Thema', onTap: () {}),
-            const SettingsSectionHeader('Startscherm'),
-            SettingNavigationTile(icon: Symbols.home_rounded, title: 'Start', onTap: () {}),
+        TvSettingsCategories(
+          title: 'Instellingen',
+          automationInstance: 'settings',
+          categoryAutomationId: 'settings.category',
+          categories: [
+            TvSettingsCategory(
+              id: 'a',
+              title: 'Weergave',
+              body: SettingsGroup(
+                children: [SettingNavigationTile(icon: Symbols.contrast_rounded, title: 'Thema', onTap: () {})],
+              ),
+            ),
+            TvSettingsCategory(
+              id: 'b',
+              title: 'Startscherm',
+              body: SettingsGroup(
+                children: [SettingNavigationTile(icon: Symbols.home_rounded, title: 'Start', onTap: () {})],
+              ),
+            ),
           ],
         ),
       );
@@ -159,13 +171,27 @@ void main() {
         tester,
         Padding(
           padding: const EdgeInsets.only(top: shellTop),
-          child: TvAppearanceCategories(
-            title: 'Uiterlijk',
-            children: [
-              const SettingsSectionHeader('Startscherm'),
-              for (var i = 0; i < 5; i++)
-                SettingNavigationTile(icon: Symbols.home_rounded, title: 'Rij $i', subtitle: 'Aan', onTap: () {}),
-              SettingNavigationTile(icon: Symbols.home_rounded, title: 'Rij 5', subtitle: 'Een\ntwee', onTap: () {}),
+          child: TvSettingsCategories(
+            title: 'Instellingen',
+            automationInstance: 'settings',
+            categoryAutomationId: 'settings.category',
+            categories: [
+              TvSettingsCategory(
+                id: 'home',
+                title: 'Startscherm',
+                body: SettingsGroup(
+                  children: [
+                    for (var i = 0; i < 5; i++)
+                      SettingNavigationTile(icon: Symbols.home_rounded, title: 'Rij $i', subtitle: 'Aan', onTap: () {}),
+                    SettingNavigationTile(
+                      icon: Symbols.home_rounded,
+                      title: 'Rij 5',
+                      subtitle: 'Een\ntwee',
+                      onTap: () {},
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),

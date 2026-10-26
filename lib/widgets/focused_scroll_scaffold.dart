@@ -41,10 +41,11 @@ class FocusedScrollScaffold extends StatefulWidget {
   /// [handleBackKeyNavigation] (which pops the current route).
   final VoidCallback? onBackPressed;
 
-  /// A large header between the app bar and [slivers] that scrolls away with
-  /// the content (A-24: the settings Studio header off TV). While it is in
-  /// view the pinned bar leaves its own title out, and fades it in once the
-  /// header has gone under the bar. Null keeps the plain bar.
+  /// A large header above [slivers] that scrolls away with the content (A-24:
+  /// the settings Studio header off TV). It replaces the bar: the compact bar
+  /// is laid over the page once the header has gone under the status bar
+  /// ([SettingsStudioFrame]). Its back chevron is a pointer target, so it
+  /// stays out of the focus order, as the bar's did. Null keeps the plain bar.
   final Widget? header;
 
   const FocusedScrollScaffold({
@@ -92,34 +93,42 @@ class _FocusedScrollScaffoldState extends State<FocusedScrollScaffold> {
     }
 
     final header = widget.header;
-    Widget body = ScrollCrown(
-      child: CustomScrollView(
-        slivers: [
-          ExcludeFocus(
-            child: header == null
-                ? CustomAppBar(
-                    title: widget.title,
-                    pinned: widget.pinned,
-                    actions: widget.actions,
-                    automaticallyImplyLeading: widget.automaticallyImplyLeading,
-                  )
-                : SettingsStudioBar(
-                    collapsed: _headerCollapsed,
-                    title: widget.title,
-                    pinned: widget.pinned,
-                    actions: widget.actions,
-                    automaticallyImplyLeading: widget.automaticallyImplyLeading,
-                  ),
-          ),
-          if (header != null) SliverToBoxAdapter(child: ExcludeFocus(child: header)),
-          ...widget.slivers,
-        ],
-      ),
-    );
-    if (header != null) {
+    Widget body;
+    if (header == null) {
+      body = ScrollCrown(
+        child: CustomScrollView(
+          slivers: [
+            ExcludeFocus(
+              child: CustomAppBar(
+                title: widget.title,
+                pinned: widget.pinned,
+                actions: widget.actions,
+                automaticallyImplyLeading: widget.automaticallyImplyLeading,
+              ),
+            ),
+            ...widget.slivers,
+          ],
+        ),
+      );
+    } else {
+      // A-24b: no bar above the Studio header; the compact bar is laid over
+      // the page once the header has scrolled under the status bar.
       body = NotificationListener<ScrollNotification>(
         onNotification: (n) => settingsStudioTrackScroll(_headerCollapsed, n),
-        child: body,
+        child: SettingsStudioFrame(
+          collapsed: _headerCollapsed,
+          title: widget.title,
+          actions: widget.actions,
+          automaticallyImplyLeading: widget.automaticallyImplyLeading,
+          child: ScrollCrown(
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: ExcludeFocus(child: header)),
+                ...widget.slivers,
+              ],
+            ),
+          ),
+        ),
       );
     }
 

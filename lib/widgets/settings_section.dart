@@ -9,11 +9,16 @@ import '../utils/platform_detector.dart';
 import '../utils/tv_hig.dart';
 import 'app_icon.dart';
 import 'settings/settings_studio_style.dart';
+import 'settings/settings_icon_badge.dart';
+import 'settings/settings_studio_theme.dart';
 import 'settings_rows.dart';
+import 'tv/tv_settings_studio_style.dart';
 import 'tv/tv_unified_layout.dart';
 
 export 'settings_rows.dart';
 export 'settings/settings_studio_style.dart';
+export 'settings/settings_studio_theme.dart';
+export 'settings/settings_icon_badge.dart';
 
 /// Widest the settings content grows on desktop and TV. Full-width rows on a
 /// 1440pt window put the switch a hand's width away from its label, so the
@@ -65,12 +70,16 @@ class TvSettingsDensity extends StatelessWidget {
         minVerticalPadding: 0,
         minLeadingWidth: 0,
         horizontalTitleGap: 20 * pt,
-        contentPadding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: kTvSettingsRowInsetPt * pt),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: 24 * pt,
+          vertical: (SettingsStudioTheme.isActive(context) ? kTvStudioRowInsetPt : kTvSettingsRowInsetPt) * pt,
+        ),
         titleTextStyle: TextStyle(
           color: t.text,
           fontSize: TvHig.body * pt,
           height: kTvSettingsTitleLeadingPt / TvHig.body,
-          fontWeight: FontWeight.w500,
+          // A-24b: the Studio rows' semibold title, as `TvSettingsRow` draws it.
+          fontWeight: SettingsStudioTheme.isActive(context) ? FontWeight.w600 : FontWeight.w500,
         ),
         subtitleTextStyle: TextStyle(
           color: t.textMuted,
@@ -86,6 +95,10 @@ class TvSettingsDensity extends StatelessWidget {
 
 /// Vertical inset of a TV settings row, in HIG points (VIS-0926-S1).
 const double kTvSettingsRowInsetPt = 16;
+
+/// The same inset inside Instellingen (A-24b): anchor `02` draws a row every
+/// 93 points, a 38 pt title line with 27 above and under it.
+const double kTvStudioRowInsetPt = 27;
 
 /// Line height of a TV settings row's title (Body, 29 pt), in HIG points.
 const double kTvSettingsTitleLeadingPt = 38;
@@ -119,13 +132,22 @@ const double kSettingsFocusBarAlpha = 0.85;
 /// at [kSettingsOutlineAlpha]. Anything that draws its own settings-style card
 /// (there are a couple, outside [SettingsGroup] itself) reads this instead of
 /// re-deriving the alpha by hand.
-Color settingsOutlineColor(BuildContext context) => tokens(context).outline.withValues(alpha: kSettingsOutlineAlpha);
+///
+/// A-24b: inside Instellingen off TV the Studio hairline already carries its
+/// own faint alpha (12%), so it is used as it is. Setting the alpha to 0.6
+/// over it turned the hairline into a dark brown line in light and a bright
+/// pink one in dark, where the series draws barely visible edges.
+Color settingsOutlineColor(BuildContext context) =>
+    _studioHairline(context) ?? tokens(context).outline.withValues(alpha: kSettingsOutlineAlpha);
+
+Color? _studioHairline(BuildContext context) =>
+    !PlatformDetector.isTV() && SettingsStudioTheme.isActive(context) ? tokens(context).outline : null;
 
 /// The row-separator colour every [SettingsRows] paints: [MonoTokens.outline]
 /// at [kSettingsSeparatorAlpha]. Exposed so a [SettingsRows] built outside
 /// [SettingsGroup] (e.g. a nested connections list) matches it exactly.
 Color settingsSeparatorColor(BuildContext context) =>
-    tokens(context).outline.withValues(alpha: kSettingsSeparatorAlpha);
+    _studioHairline(context) ?? tokens(context).outline.withValues(alpha: kSettingsSeparatorAlpha);
 
 /// Centers settings content once the window is wider than [kSettingsMaxWidth].
 /// On phones it is a plain horizontal inset, so mobile layout is unchanged.
@@ -163,16 +185,50 @@ class SettingsSectionHeader extends StatelessWidget {
     return Padding(
       // VIS-0926-S1: 28 over and 12 under, between VIS-0925-G's 20/8 and the
       // 32/12 before it.
-      padding: tv ? EdgeInsets.fromLTRB(24 * pt, 28 * pt, 24 * pt, 12 * pt) : const EdgeInsets.fromLTRB(20, 24, 20, 8),
+      padding: tv ? EdgeInsets.fromLTRB(24 * pt, 28 * pt, 24 * pt, 12 * pt) : const EdgeInsets.fromLTRB(20, 20, 20, 8),
       child: Text(
         title.toUpperCase(),
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: settingsSectionInk(context),
+          // A-24b on TV: a group inside Instellingen takes the Studio accent
+          // eyebrow, as the series heads every group (`tvos/02`-`12`).
+          color: tv && SettingsStudioTheme.isActive(context)
+              ? tvStudioEyebrow(tokens(context))
+              : settingsSectionInk(context),
           fontWeight: FontWeight.w700,
           // A-24: small caps with more air off TV, as in the Studio anchors.
-          letterSpacing: tv ? 1.1 : 1.4,
-          // DENS1: HIG Caption 2 (23 pt) on TV, the tvOS minimum.
-          fontSize: tv ? TvHig.caption2 * pt : 12,
+          letterSpacing: tv ? 1.1 : 1.2,
+          // DENS1: HIG Caption 2 (23 pt) on TV, the tvOS minimum. Off TV the
+          // series' 11 pt small caps (A-24b).
+          fontSize: tv ? TvHig.caption2 * pt : 11,
+        ),
+      ),
+    );
+  }
+}
+
+/// A child of [SettingsPage]'s flat list that stands on its own between the
+/// cards (a footnote, the Weergave preview) instead of becoming a row inside
+/// the card it follows.
+abstract interface class SettingsStandaloneBlock implements Widget {}
+
+/// A line of prose under a settings card: who a preference belongs to, what
+/// an empty list means. [SettingsPage] places it after the card it follows,
+/// as iOS Settings places a group footer, instead of as a row inside it.
+class SettingsFootnote extends StatelessWidget implements SettingsStandaloneBlock {
+  final String text;
+
+  const SettingsFootnote(this.text, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final pt = PlatformDetector.isTV() ? TvHig.of(context) : 1.0;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(32 * pt, 0, 32 * pt, 12 * pt),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: tokens(context).textMuted,
+          fontSize: PlatformDetector.isTV() ? TvHig.caption2 * pt : 13,
         ),
       ),
     );
@@ -207,17 +263,25 @@ class SettingsGroup extends StatelessWidget {
     // VIS-0925-C: on TV no outer border and lighter, indented separators. The
     // bordered card with full-width hairlines read as a table on the tv.
     final tv = PlatformDetector.isTV();
+    // A-24b on TV inside Instellingen: the rows sit on the page with a
+    // hairline between them, no card, and without an icon the line starts at
+    // the text (anchor `02`).
+    final studioTv = tv && SettingsStudioTheme.isActive(context);
+    final noIcon = SettingsIconStyleScope.of(context) == SettingsIconStyle.none;
     final radius = BorderRadius.circular(tv ? t.radiusMd : kSettingsCardRadius);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (title != null) SettingsSectionHeader(title!),
         Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           // The border lives in foregroundDecoration, painted after the rows
           // (see SettingsRows below) so it always wins over a full-bleed
           // focus fill instead of being painted over by the first/last row.
-          decoration: BoxDecoration(color: settingsCardColor(context), borderRadius: radius),
+          margin: studioTv ? const EdgeInsets.only(bottom: 8) : const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          decoration: BoxDecoration(
+            color: studioTv ? Colors.transparent : settingsCardColor(context),
+            borderRadius: radius,
+          ),
           foregroundDecoration: tv
               ? null
               : BoxDecoration(
@@ -227,12 +291,19 @@ class SettingsGroup extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: Material(
             type: MaterialType.transparency,
-            child: SettingsRows(
-              separatorColor: tv
-                  ? t.outline.withValues(alpha: kTvSettingsSeparatorAlpha)
-                  : settingsSeparatorColor(context),
-              separatorIndent: tv ? kTvSettingsSeparatorIndentPt * TvHig.of(context) : kSettingsSeparatorIndent,
-              children: children,
+            child: _studioRowText(
+              context,
+              SettingsRows(
+                separatorColor: studioTv
+                    ? tvStudioSeparator(t)
+                    : tv
+                    ? t.outline.withValues(alpha: kTvSettingsSeparatorAlpha)
+                    : settingsSeparatorColor(context),
+                separatorIndent: tv
+                    ? (noIcon ? 24 : kTvSettingsSeparatorIndentPt) * TvHig.of(context)
+                    : settingsRowTextInset(context),
+                children: children,
+              ),
             ),
           ),
         ),
@@ -240,6 +311,45 @@ class SettingsGroup extends StatelessWidget {
     );
   }
 }
+
+/// A-24b: inside Instellingen off TV a row title is the Studio series' short
+/// semibold line (14 pt), not the dense 13 pt default, with its description
+/// a muted 12 pt line.
+/// Scoped to the card, so the pickers a row opens keep their own type.
+Widget _studioRowText(BuildContext context, Widget rows) {
+  if (PlatformDetector.isTV() || !SettingsStudioTheme.isActive(context)) return rows;
+  final t = tokens(context);
+  // On the theme's own body style, so the rows keep the app's typeface.
+  final body = Theme.of(context).textTheme.bodyLarge ?? const TextStyle();
+  return ListTileTheme.merge(
+    dense: false,
+    minTileHeight: kSettingsStudioRowMinHeight,
+    titleTextStyle: body.copyWith(
+      color: t.text,
+      fontSize: kSettingsStudioRowTitleSize,
+      fontWeight: FontWeight.w600,
+      letterSpacing: -0.1,
+      height: 1.25,
+    ),
+    subtitleTextStyle: body.copyWith(color: t.textMuted, fontSize: 12, letterSpacing: 0, height: 1.3),
+    leadingAndTrailingTextStyle: body.copyWith(
+      color: t.textMuted,
+      fontSize: kSettingsStudioValueSize,
+      letterSpacing: 0,
+    ),
+    child: rows,
+  );
+}
+
+/// Smallest height of a Studio row before the row inset (A-24b): 46 plus the
+/// 2 pt inset over and under makes the series' 50 pt row, a tap target above
+/// 44 pt.
+const double kSettingsStudioRowMinHeight = 46;
+
+/// Studio row type, measured on the series (about 13.5 pt titles and 11.5 pt
+/// values on a 380 pt frame).
+const double kSettingsStudioRowTitleSize = 14;
+const double kSettingsStudioValueSize = 12.5;
 
 /// One settings row, carrying the focus treatment the rest of the TV UI uses.
 ///
@@ -317,7 +427,13 @@ class _SettingRowSurface extends StatelessWidget {
         duration: FocusTheme.getAnimationDuration(context),
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
-          color: focused ? t.text.withValues(alpha: TvMyPleyaLayout.tileFocusedFillAlpha) : Colors.transparent,
+          // A-24b: inside Instellingen the Studio row fill, white in Light
+          // (anchor `04`), the same one `TvSettingsRow` takes.
+          color: SettingsStudioTheme.isActive(context)
+              ? tvStudioRowFill(t, focused: focused)
+              : focused
+              ? t.text.withValues(alpha: TvMyPleyaLayout.tileFocusedFillAlpha)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(t.radiusMd),
         ),
         // Inside the card's clip, so the Light separator has to stay inside
@@ -351,35 +467,6 @@ class _SettingRowSurface extends StatelessWidget {
         ),
       ),
       child: child,
-    );
-  }
-}
-
-/// Icon in a tinted rounded square. Gives every row the same optical weight and
-/// keeps a long settings list from reading as undifferentiated text.
-class SettingsIconBadge extends StatelessWidget {
-  final IconData icon;
-  final Color? tint;
-
-  const SettingsIconBadge(this.icon, {super.key, this.tint});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = tokens(context);
-    final color = tint ?? t.text;
-    // DENS1: on TV a 44 pt badge around a Body-sized (29 pt) glyph, where the
-    // phone's 36/20 came out at 67/37 pt, taller than the text beside it.
-    final pt = PlatformDetector.isTV() ? TvHig.of(context) : null;
-    final box = pt == null ? 36.0 : 44 * pt;
-    return Container(
-      width: box,
-      height: box,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: t.isLight ? 0.08 : 0.12),
-        borderRadius: BorderRadius.circular(t.radiusSm),
-      ),
-      alignment: Alignment.center,
-      child: AppIcon(icon, fill: 1, size: pt == null ? 20 : TvHig.body * pt, color: color),
     );
   }
 }
@@ -428,8 +515,9 @@ class SegmentedSetting<T> extends StatelessWidget {
             children: [
               // A-24: off TV the same badge as every other settings row, so
               // a segmented row lines up with the rows above and below it.
-              if (PlatformDetector.isTV()) AppIcon(icon, fill: 1) else SettingsIconBadge(icon),
-              const SizedBox(width: 16),
+              if (PlatformDetector.isTV()) AppIcon(icon, fill: 1) else ?settingsRowLeading(context, icon),
+              if (PlatformDetector.isTV() || SettingsIconStyleScope.of(context) != SettingsIconStyle.none)
+                const SizedBox(width: 16),
               Text(title, style: Theme.of(context).textTheme.bodyLarge),
             ],
           ),

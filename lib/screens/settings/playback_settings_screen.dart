@@ -29,6 +29,9 @@ import 'language_settings_screen.dart';
 import 'mpv_config_screen.dart';
 import 'settings_utils.dart';
 
+part 'parts/playback_audio_rows.dart';
+part 'parts/playback_rows.dart';
+
 /// Rebuilds the capability source when Android switches player engines.
 ///
 /// The decoder shape is derived from the engine baked into the platform probe,
@@ -67,521 +70,102 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = PlatformDetector.isMobile(context);
-
-    return SettingsPage(
-      title: Text(t.settings.videoPlayback),
-      children: [
-        SettingsSectionHeader(t.settings.player),
-        if (Platform.isAndroid) _playerBackendSelector(),
-        if (PlatformDetector.supportsExternalPlayers()) _externalPlayerTile(),
-        _hardwareDecodingTile(),
-        if (PlatformDetector.supportsPictureInPicture()) _autoPipTile(),
-        if (Platform.isAndroid) _matchContentFrameRateTile(),
-        if (Platform.isWindows) _matchRefreshRateTile(),
-        if (Platform.isWindows) _matchDynamicRangeTile(),
-        _displaySwitchDelayTile(),
-        _tunneledPlaybackTile(),
-        _dvConversionModeTile(),
-        _bufferSizeTile(),
-        _defaultQualityTile(),
-        _displayMaxResolutionTile(),
-
-        // Ondertitel opmaak moved to the top-level Settings list (northstar
-        // 14, next to "Taal en ondertitels"), so there is exactly one way in
-        // instead of one nested two levels under Afspelen and one at the top.
-        // Only mpv.conf editing is left under this header, so it reads as
-        // "Advanced" rather than the stale "Subtitles & Configuration".
-        SettingsSectionHeader(t.settings.advanced),
-        _mpvConfigTile(),
-
-        // These controls must retain the live loudness/passthrough behavior
-        // from main; the re-baseline branch's extracted section predates it.
-        SettingsSectionHeader(t.settings.audio),
-        if (PlatformDetector.supportsAudioPassthrough()) _audioOutputModeTile(),
-        if (PlatformDetector.supportsAudioPassthrough()) _audioPriorityTile(),
-        _audioLevelVolumeTile(),
-        _audioReduceLoudSoundsTile(),
-        _audioSyncOffsetTile(),
-
-        SettingsSectionHeader(t.settings.seekAndTiming),
-        SettingNumberTile(
-          pref: SettingsService.seekTimeSmall,
-          icon: Symbols.replay_10_rounded,
-          title: t.settings.smallSkipDuration,
-          subtitleBuilder: (v) => t.settings.secondsUnit(seconds: v.toString()),
-          labelText: t.settings.secondsLabel,
-          suffixText: t.settings.secondsShort,
-          min: 1,
-          max: 120,
-          onAfterWrite: (_) => _keyboardService?.refreshFromStorage(),
-        ),
-        SettingNumberTile(
-          pref: SettingsService.seekTimeLarge,
-          icon: Symbols.replay_30_rounded,
-          title: t.settings.largeSkipDuration,
-          subtitleBuilder: (v) => t.settings.secondsUnit(seconds: v.toString()),
-          labelText: t.settings.secondsLabel,
-          suffixText: t.settings.secondsShort,
-          min: 1,
-          max: 120,
-          onAfterWrite: (_) => _keyboardService?.refreshFromStorage(),
-        ),
-        SettingNumberTile(
-          pref: SettingsService.rewindOnResume,
-          icon: Symbols.replay_rounded,
-          title: t.settings.rewindOnResume,
-          subtitleBuilder: (v) => t.settings.secondsUnit(seconds: v.toString()),
-          labelText: t.settings.secondsLabel,
-          suffixText: t.settings.secondsShort,
-          min: 0,
-          max: 10,
-        ),
-        SettingNumberTile(
-          pref: SettingsService.sleepTimerDuration,
-          icon: Symbols.bedtime_rounded,
-          title: t.settings.defaultSleepTimer,
-          subtitleBuilder: (v) => t.settings.minutesUnit(minutes: v.toString()),
-          labelText: t.settings.minutesLabel,
-          suffixText: t.settings.minutesShort,
-          min: 5,
-          max: 240,
-        ),
-        SettingNumberTile(
-          pref: SettingsService.volumeBoost,
-          icon: Symbols.volume_up_rounded,
-          title: t.settings.maxVolume,
-          subtitleBuilder: (v) => t.settings.maxVolumePercent(percent: v.toString()),
-          labelText: t.settings.maxVolumeDescription,
-          suffixText: '%',
-          min: 100,
-          max: 300,
-          // The boost is part of the filter chain now, so a running player has
-          // to be told; it used to be an mpv property the next title read back.
-          onAfterWrite: (_) => _pushLoudness(),
-        ),
-
-        SettingsSectionHeader(t.settings.behavior),
-        if (DiscordRPCService.isAvailable)
-          SettingSwitchTile(
-            pref: SettingsService.enableDiscordRPC,
-            icon: Symbols.chat_rounded,
-            title: t.settings.discordRichPresence,
-            subtitle: t.settings.discordRichPresenceDescription,
-            onAfterWrite: (v) => DiscordRPCService.instance.setEnabled(v),
-          ),
-        if (PlatformDetector.shouldActAsRemoteHost(context))
-          SettingSwitchTile(
-            pref: SettingsService.enableCompanionRemoteServer,
-            icon: Symbols.phone_android_rounded,
-            title: t.settings.companionRemoteServer,
-            subtitle: t.settings.companionRemoteServerDescription,
-            onAfterWrite: (v) => applyCompanionRemoteServerSetting(context, v),
-          ),
-        // The iPhone or iPad side of Pleya Fly from the Apple TV (A-23d).
-        if (pleyaFlyReceiveSupported())
-          SettingSwitchTile(
-            pref: SettingsService.enablePleyaFlyReceive,
-            icon: Symbols.tv_rounded,
-            title: t.settings.pleyaFlyReceive,
-            subtitle: t.settings.pleyaFlyReceiveDescription,
-            onAfterWrite: (v) => applyPleyaFlyReceiveSetting(context, v),
-          ),
-        // The two language switches moved to Instellingen ▸ Taal en ondertitels
-        // with LANG1: DEC-096 lid 9 makes that page their only owner, and their
-        // storage had already moved to the Pleya profile in `eae19cb4`, so this
-        // is a pure relocation. This row is what is left of them here.
-        SettingNavigationTile(
-          icon: Symbols.translate_rounded,
-          title: t.languageSettings.title,
-          subtitle: t.languageSettings.description,
-          destinationBuilder: (_) => const LanguageSettingsScreen(),
-        ),
-        SettingSwitchTile(
-          pref: SettingsService.showChapterMarkersOnTimeline,
-          icon: Symbols.bookmarks_rounded,
-          title: t.settings.showChapterMarkersOnTimeline,
-          subtitle: t.settings.showChapterMarkersOnTimelineDescription,
-        ),
-        if (!isMobile)
-          SettingSwitchTile(
-            pref: SettingsService.clickVideoTogglesPlayback,
-            icon: Symbols.play_pause_rounded,
-            title: t.settings.clickVideoTogglesPlayback,
-            subtitle: t.settings.clickVideoTogglesPlaybackDescription,
-          ),
-
-        SettingsSectionHeader(t.settings.autoSkip),
-        SettingSwitchTile(
-          pref: SettingsService.autoSkipIntro,
-          icon: Symbols.fast_forward_rounded,
-          title: t.settings.autoSkipIntro,
-          subtitle: t.settings.autoSkipIntroDescription,
-        ),
-        SettingSwitchTile(
-          pref: SettingsService.autoSkipCredits,
-          icon: Symbols.skip_next_rounded,
-          title: t.settings.autoSkipCredits,
-          subtitle: t.settings.autoSkipCreditsDescription,
-        ),
-        SettingSwitchTile(
-          pref: SettingsService.forceSkipMarkerFallback,
-          icon: Symbols.tune_rounded,
-          title: t.settings.forceSkipMarkerFallback,
-          subtitle: t.settings.forceSkipMarkerFallbackDescription,
-        ),
-        SettingNumberTile(
-          pref: SettingsService.autoSkipDelay,
-          icon: Symbols.timer_rounded,
-          title: t.settings.autoSkipDelay,
-          subtitleBuilder: (v) => t.settings.autoSkipDelayDescription(seconds: v.toString()),
-          valueBuilder: (v) => t.settings.secondsUnit(seconds: v.toString()),
-          labelText: t.settings.secondsLabel,
-          suffixText: t.settings.secondsShort,
-          min: 1,
-          max: 30,
-        ),
-        SettingRegexTile(
-          pref: SettingsService.introPattern,
-          icon: Symbols.match_case_rounded,
-          title: t.settings.introPattern,
-          subtitle: t.settings.introPatternDescription,
-          defaultValue: SettingsService.defaultIntroPattern,
-        ),
-        SettingRegexTile(
-          pref: SettingsService.creditsPattern,
-          icon: Symbols.match_case_rounded,
-          title: t.settings.creditsPattern,
-          subtitle: t.settings.creditsPatternDescription,
-          defaultValue: SettingsService.defaultCreditsPattern,
-        ),
-      ],
-    );
+    if (!PlatformDetector.isTV()) {
+      return SettingsPage(title: Text(t.settings.videoPlayback), hideDescriptions: true, children: _phoneRows(context));
+    }
+    return SettingsPage(title: Text(t.settings.videoPlayback), children: _tvRows(context));
   }
 
-  Widget _playerBackendSelector() => SettingSegmentedTile<bool, bool>(
-    pref: SettingsService.useExoPlayer,
-    icon: Symbols.play_circle_rounded,
-    title: t.settings.playerBackend,
-    segments: [
-      ButtonSegment(value: true, label: Text(t.settings.exoPlayer)),
-      ButtonSegment(value: false, label: Text(t.settings.mpv)),
-    ],
-    decode: (s) => s,
-    encode: (s) => s,
-    onAfterWrite: refreshDeviceCapabilitiesForPlayerBackend,
-  );
+  /// Afspelen off TV in the Studio series' order (`ios/04-afspelen-01..05`):
+  /// Speler, Kwaliteit, Audio, Zoeken en timing, Gedrag, Automatisch
+  /// overslaan. Every row the page had stays under the same condition; the
+  /// MPV configuration moves to Kwaliteit, Maximaal volume to Audio and the
+  /// chapter markers to Zoeken en timing, as the series places them.
+  List<Widget> _phoneRows(BuildContext context) => [
+    SettingsSectionHeader(t.settings.player),
+    if (Platform.isAndroid) _playerBackendChoice(),
+    if (PlatformDetector.supportsExternalPlayers()) _externalPlayerTile(),
+    _hardwareDecodingTile(),
+    if (PlatformDetector.supportsPictureInPicture()) _autoPipTile(),
+    if (Platform.isAndroid) _matchContentFrameRateTile(),
+    if (Platform.isWindows) _matchRefreshRateTile(),
+    if (Platform.isWindows) _matchDynamicRangeTile(),
+    _displaySwitchDelayTile(),
+    _tunneledPlaybackTile(),
 
-  Widget _externalPlayerTile() => SettingsBuilder(
-    prefs: [SettingsService.useExternalPlayer, SettingsService.selectedExternalPlayer],
-    builder: (context) {
-      final svc = SettingsService.instance;
-      final useExt = svc.read(SettingsService.useExternalPlayer);
-      final player = svc.read(SettingsService.selectedExternalPlayer);
-      return SettingNavigationTile(
-        icon: Symbols.open_in_new_rounded,
-        title: t.externalPlayer.title,
-        subtitle: useExt
-            ? (player.id == 'system_default' ? t.externalPlayer.systemDefault : player.name)
-            : t.externalPlayer.off,
-        destinationBuilder: (_) => const ExternalPlayerScreen(),
-      );
-    },
-  );
+    SettingsSectionHeader(t.settingsStudio.quality),
+    _defaultQualityTile(),
+    _bufferSizeTile(),
+    _displayMaxResolutionTile(),
+    _dvConversionModeTile(),
+    _mpvConfigTile(),
 
-  Widget _hardwareDecodingTile() => SettingSwitchTile(
-    pref: SettingsService.enableHardwareDecoding,
-    icon: Symbols.hardware_rounded,
-    title: t.settings.hardwareDecoding,
-    subtitle: t.settings.hardwareDecodingDescription,
-  );
+    SettingsSectionHeader(t.settings.audio),
+    if (PlatformDetector.supportsAudioPassthrough()) _audioOutputModeTile(),
+    if (PlatformDetector.supportsAudioPassthrough()) _audioPriorityChoice(),
+    _audioLevelVolumeTile(),
+    _audioReduceLoudSoundsTile(),
+    _audioSyncOffsetTile(),
+    _maxVolumeTile(),
 
-  Widget _autoPipTile() => SettingSwitchTile(
-    pref: SettingsService.autoPip,
-    icon: Symbols.picture_in_picture_alt_rounded,
-    title: t.settings.autoPip,
-    subtitle: t.settings.autoPipDescription,
-  );
+    SettingsSectionHeader(t.settings.seekAndTiming),
+    ..._seekTiles(),
+    _chapterMarkersTile(),
 
-  Widget _matchContentFrameRateTile() => SettingSwitchTile(
-    pref: SettingsService.matchContentFrameRate,
-    icon: Symbols.display_settings_rounded,
-    title: t.settings.matchContentFrameRate,
-    subtitle: t.settings.matchContentFrameRateDescription,
-  );
+    SettingsSectionHeader(t.settings.behavior),
+    if (!PlatformDetector.isMobile(context)) _clickVideoTile(),
+    ..._remoteAndPresenceTiles(context),
+    _languageRow(),
 
-  Widget _matchRefreshRateTile() => SettingSwitchTile(
-    pref: SettingsService.matchRefreshRate,
-    icon: Symbols.display_settings_rounded,
-    title: t.settings.matchRefreshRate,
-    subtitle: t.settings.matchRefreshRateDescription,
-  );
+    SettingsSectionHeader(t.settings.autoSkip),
+    ..._autoSkipTiles(),
+  ];
 
-  Widget _matchDynamicRangeTile() => SettingSwitchTile(
-    pref: SettingsService.matchDynamicRange,
-    icon: Symbols.hdr_on_rounded,
-    title: t.settings.matchDynamicRange,
-    subtitle: t.settings.matchDynamicRangeDescription,
-  );
+  /// Afspelen on TV in the series' groups (`tvos/03-afspelen-01..07`): Video,
+  /// Audio, Besturing, Gedrag and Automatisch overslaan. Every row the TV page
+  /// had stays under its own condition: the MPV configuration closes Video,
+  /// Maximaal volume closes Audio, the chapter markers and the click on the
+  /// video join the jumps under Besturing. Gedrag is not in the TV series; it
+  /// keeps the remote, presence and language rows that exist on TV.
+  List<Widget> _tvRows(BuildContext context) => [
+    SettingsSectionHeader(t.settingsStudio.video),
+    if (Platform.isAndroid) _playerBackendSelector(),
+    if (PlatformDetector.supportsExternalPlayers()) _externalPlayerTile(),
+    _hardwareDecodingTile(),
+    if (PlatformDetector.supportsPictureInPicture()) _autoPipTile(),
+    if (Platform.isAndroid) _matchContentFrameRateTile(),
+    if (Platform.isWindows) _matchRefreshRateTile(),
+    if (Platform.isWindows) _matchDynamicRangeTile(),
+    _displaySwitchDelayTile(),
+    _tunneledPlaybackTile(),
+    _dvConversionModeTile(),
+    _bufferSizeTile(),
+    _defaultQualityTile(),
+    _displayMaxResolutionTile(),
+    _mpvConfigTile(),
 
-  Widget _displaySwitchDelayTile() => SettingsBuilder(
-    prefs: const [
-      SettingsService.matchRefreshRate,
-      SettingsService.matchDynamicRange,
-      SettingsService.matchContentFrameRate,
-    ],
-    builder: (context) {
-      final svc = SettingsService.instance;
-      final shouldShow =
-          PlatformDetector.isAppleTV() ||
-          (Platform.isWindows &&
-              (svc.read(SettingsService.matchRefreshRate) || svc.read(SettingsService.matchDynamicRange))) ||
-          (Platform.isAndroid && svc.read(SettingsService.matchContentFrameRate));
-      if (!shouldShow) return const SizedBox.shrink();
-      return SettingNumberTile(
-        pref: SettingsService.displaySwitchDelay,
-        icon: Symbols.timer_rounded,
-        title: t.settings.displaySwitchDelay,
-        subtitleBuilder: (v) => t.settings.secondsUnit(seconds: v.toString()),
-        labelText: t.settings.secondsLabel,
-        suffixText: t.settings.secondsShort,
-        min: 0,
-        max: 10,
-      );
-    },
-  );
+    // These controls must retain the live loudness/passthrough behavior
+    // from main; the re-baseline branch's extracted section predates it.
+    SettingsSectionHeader(t.settings.audio),
+    if (PlatformDetector.supportsAudioPassthrough()) _audioOutputModeTile(),
+    if (PlatformDetector.supportsAudioPassthrough()) _audioPriorityTile(),
+    _audioLevelVolumeTile(),
+    _audioReduceLoudSoundsTile(),
+    _audioSyncOffsetTile(),
+    _maxVolumeTile(),
 
-  Widget _tunneledPlaybackTile() => SettingValueBuilder<bool>(
-    pref: SettingsService.useExoPlayer,
-    builder: (_, useExo, _) {
-      if (!Platform.isAndroid || !useExo) return const SizedBox.shrink();
-      return SettingSwitchTile(
-        pref: SettingsService.tunneledPlayback,
-        icon: Symbols.tv_options_input_settings_rounded,
-        title: t.settings.tunneledPlayback,
-        subtitle: t.settings.tunneledPlaybackDescription,
-      );
-    },
-  );
+    SettingsSectionHeader(t.settingsStudio.controls),
+    ..._seekTiles(),
+    _chapterMarkersTile(),
+    if (!PlatformDetector.isMobile(context)) _clickVideoTile(),
 
-  Widget _audioOutputModeTile() => SettingSelectionTile<AudioOutputMode, AudioOutputMode>(
-    pref: SettingsService.audioOutputMode,
-    icon: Symbols.surround_sound_rounded,
-    title: t.videoSettings.audioOutputTitle,
-    subtitleBuilder: (mode) => '${_audioOutputModeLabel(mode)} · ${_audioOutputModeDescription(mode)}',
-    valueBuilder: _audioOutputModeLabel,
-    descriptionBuilder: _audioOutputModeDescription,
-    options: AudioOutputMode.values
-        .map((m) => DialogOption(value: m, title: _audioOutputModeLabel(m), subtitle: _audioOutputModeDescription(m)))
-        .toList(),
-    decode: (m) => m,
-    encode: (m) => m,
-    // Takes effect on the running player too, not just the next title.
-    onAfterWrite: (_) => AudioOutputCoordinator.current?.onModeChanged(),
-  );
+    SettingsSectionHeader(t.settings.behavior),
+    ..._remoteAndPresenceTiles(context),
+    // The two language switches moved to Instellingen ▸ Taal en ondertitels
+    // with LANG1 (DEC-096 lid 9); this row is what is left of them here.
+    _languageRow(),
 
-  String _audioOutputModeLabel(AudioOutputMode mode) => switch (mode) {
-    AudioOutputMode.auto => t.videoSettings.audioOutputModes.auto,
-    AudioOutputMode.passthrough => t.videoSettings.audioOutputModes.passthrough,
-    AudioOutputMode.pcm => t.videoSettings.audioOutputModes.pcm,
-  };
-
-  String _audioOutputModeDescription(AudioOutputMode mode) => switch (mode) {
-    AudioOutputMode.auto => t.videoSettings.audioOutputModeDescriptions.auto,
-    AudioOutputMode.passthrough => t.videoSettings.audioOutputModeDescriptions.passthrough,
-    AudioOutputMode.pcm => t.videoSettings.audioOutputModeDescriptions.pcm,
-  };
-
-  /// Only shown for Automatic: the explicit Passthrough and PCM modes already
-  /// say which property they protect, so a priority under them would be a
-  /// second answer to a question the user already answered.
-  Widget _audioPriorityTile() => SettingValueBuilder<AudioOutputMode>(
-    pref: SettingsService.audioOutputMode,
-    builder: (context, mode, _) => mode != AudioOutputMode.auto
-        ? const SizedBox.shrink()
-        : SettingSegmentedTile<AudioPriority, AudioPriority>(
-            pref: SettingsService.audioPriority,
-            icon: Symbols.tune_rounded,
-            title: t.videoSettings.audioPriorityTitle,
-            segments: [
-              ButtonSegment(value: AudioPriority.evenVolume, label: Text(t.videoSettings.audioPriorities.evenVolume)),
-              ButtonSegment(
-                value: AudioPriority.originalDolby,
-                label: Text(t.videoSettings.audioPriorities.originalDolby),
-              ),
-            ],
-            decode: (v) => v,
-            encode: (v) => v,
-            onAfterWrite: (_) => AudioOutputCoordinator.current?.onModeChanged(),
-          ),
-  );
-
-  Widget _audioLevelVolumeTile() => SettingSwitchTile(
-    pref: SettingsService.audioLevelVolume,
-    icon: Symbols.graphic_eq_rounded,
-    title: t.videoSettings.audioLevelVolume,
-    subtitle: t.videoSettings.audioLevelVolumeDescription,
-    onAfterWrite: (_) => _pushLoudness(),
-  );
-
-  /// Independent of levelling. Reduce-only used to be refused because a
-  /// compressor with makeup gain and no ceiling ran a test excerpt to
-  /// +5,4 dBFS; with neutral makeup and the true-peak limiter behind it that
-  /// cannot happen, so the switch means what it says on its own.
-  Widget _audioReduceLoudSoundsTile() => SettingSwitchTile(
-    pref: SettingsService.audioReduceLoudSounds,
-    icon: Symbols.compress_rounded,
-    title: t.videoSettings.audioReduceLoudSounds,
-    subtitle: t.videoSettings.audioReduceLoudSoundsDescription,
-    onAfterWrite: (_) => _pushLoudness(),
-  );
-
-  /// Takes effect on the running player too, not just the next title. The
-  /// coordinator is the handle on the playback session currently on screen.
-  Future<void> _pushLoudness() async {
-    await AudioOutputCoordinator.current?.player.setAudioNormalization(audioLoudnessPrefs());
-  }
-
-  Widget _audioSyncOffsetTile() => SettingNumberTile(
-    pref: SettingsService.audioSyncOffset,
-    icon: Symbols.sync_rounded,
-    title: t.videoSettings.audioSync,
-    subtitleBuilder: (v) => '${(v / 1000).toStringAsFixed(1)}s · ${t.settings.audioSyncOffsetDescription}',
-    valueBuilder: (v) => '${(v / 1000).toStringAsFixed(1)}s',
-    descriptionBuilder: (_) => t.settings.audioSyncOffsetDescription,
-    labelText: t.videoSettings.audioSync,
-    suffixText: 'ms',
-    min: -5000,
-    max: 5000,
-  );
-  Widget _dvConversionModeTile() => SettingValueBuilder<bool>(
-    pref: SettingsService.useExoPlayer,
-    builder: (_, useExo, _) {
-      if (!Platform.isAndroid || !useExo) return const SizedBox.shrink();
-      return SettingSelectionTile<DvConversionModePreference, DvConversionModePreference>(
-        pref: SettingsService.dvConversionMode,
-        icon: Symbols.hdr_strong_rounded,
-        title: t.settings.dvConversionMode,
-        subtitleBuilder: (mode) => '${_dvConversionModeLabel(mode)} · ${t.settings.dvConversionModeDescription}',
-        valueBuilder: _dvConversionModeLabel,
-        descriptionBuilder: (_) => t.settings.dvConversionModeDescription,
-        options: DvConversionModePreference.values
-            .map((m) => DialogOption(value: m, title: _dvConversionModeLabel(m)))
-            .toList(),
-        decode: (m) => m,
-        encode: (m) => m,
-      );
-    },
-  );
-
-  String _dvConversionModeLabel(DvConversionModePreference mode) => switch (mode) {
-    DvConversionModePreference.auto => t.settings.dvConversionAuto,
-    DvConversionModePreference.disabled => t.settings.dvConversionNative,
-    DvConversionModePreference.dv81 => t.settings.dvConversionDv81,
-    DvConversionModePreference.hevcStrip => t.settings.dvConversionHevcStrip,
-  };
-
-  Widget _bufferSizeTile() {
-    final bufferOptions = const [0, 64, 128, 256, 512, 1024];
-    return SettingSelectionTile<int, int>(
-      pref: SettingsService.bufferSize,
-      icon: Symbols.memory_rounded,
-      title: t.settings.bufferSize,
-      subtitleBuilder: (v) => v == 0 ? t.settings.bufferSizeAuto : t.settings.bufferSizeMB(size: v.toString()),
-      options: bufferOptions
-          .map((s) => DialogOption(value: s, title: s == 0 ? t.settings.bufferSizeAuto : '${s}MB'))
-          .toList(),
-      decode: (s) => s,
-      encode: (s) => s,
-      onAfterWrite: (value) async {
-        if (Platform.isAndroid && value > 0) {
-          final heapMB = await PlayerAndroid.getHeapSize();
-          if (heapMB > 0 && value > heapMB ~/ 4 && mounted) {
-            showAppSnackBar(context, t.settings.bufferSizeWarning(heap: heapMB.toString(), size: value.toString()));
-          }
-        }
-      },
-    );
-  }
-
-  Widget _defaultQualityTile() => SettingSelectionTile<TranscodeQualityPreset, TranscodeQualityPreset>(
-    pref: SettingsService.defaultQualityPreset,
-    icon: Symbols.high_quality_rounded,
-    title: t.settings.defaultQualityTitle,
-    subtitleBuilder: qualityPresetLabel,
-    options: TranscodeQualityPreset.displayOrder
-        .map((p) => DialogOption(value: p, title: qualityPresetLabel(p)))
-        .toList(),
-    decode: (p) => p,
-    encode: (p) => p,
-    // The bandwidth meaning of the preset is the connection layer of
-    // DeviceCapabilities. Its second role, deciding whether a downloaded copy
-    // beats the server stream, stays where it is in playback_source_resolver.
-    onAfterWrite: (_) => DeviceCapabilitiesService.instance.applyOverrides(DeviceCapabilityOverrides.fromSettings()),
-  );
-
-  /// The override the model needs on the display layer, in the shape the audio
-  /// output tile already uses: the chosen value next to what was actually
-  /// detected, so an override reads as an override.
-  Widget _displayMaxResolutionTile() => SettingSelectionTile<DisplayResolutionCap, DisplayResolutionCap>(
-    pref: SettingsService.displayMaxResolution,
-    icon: Symbols.aspect_ratio_rounded,
-    title: t.settings.displayMaxResolutionTitle,
-    subtitleBuilder: _displayMaxResolutionSubtitle,
-    valueBuilder: _displayCapLabel,
-    descriptionBuilder: (_) => _displayMaxResolutionNow(),
-    options: DisplayResolutionCap.values
-        .map(
-          (c) => DialogOption(
-            value: c,
-            title: _displayCapLabel(c),
-            subtitle: switch (c) {
-              DisplayResolutionCap.auto => t.settings.displayMaxResolutionOptionDescriptions.auto,
-              DisplayResolutionCap.hd1080 => t.settings.displayMaxResolutionOptionDescriptions.hd1080,
-              DisplayResolutionCap.uhd2160 => t.settings.displayMaxResolutionOptionDescriptions.uhd2160,
-            },
-          ),
-        )
-        .toList(),
-    decode: (c) => c,
-    encode: (c) => c,
-    onAfterWrite: (_) => DeviceCapabilitiesService.instance.applyOverrides(DeviceCapabilityOverrides.fromSettings()),
-  );
-
-  /// "1080p (detected: 3840x2160)" where the display could be read, plain
-  /// "1080p" where it could not. Same form as `"Auto (now: Dolby Atmos)"` in
-  /// the player's settings sheet.
-  String _displayMaxResolutionSubtitle(DisplayResolutionCap cap) {
-    final now = _displayMaxResolutionNow();
-    if (now == null) return _displayCapLabel(cap);
-    return '${_displayCapLabel(cap)} · $now';
-  }
-
-  /// What the display reports right now, or null when it reports nothing.
-  String? _displayMaxResolutionNow() {
-    final detected = DeviceCapabilitiesService.instance.detected.display;
-    final width = detected.maxWidth.value;
-    final height = detected.maxHeight.value;
-    if (width == null || height == null) return null;
-    return t.settings.displayMaxResolutionNow(resolution: '${width}x$height');
-  }
-
-  String _displayCapLabel(DisplayResolutionCap cap) => switch (cap) {
-    DisplayResolutionCap.auto => t.settings.displayMaxResolutionOptions.auto,
-    DisplayResolutionCap.hd1080 => t.settings.displayMaxResolutionOptions.hd1080,
-    DisplayResolutionCap.uhd2160 => t.settings.displayMaxResolutionOptions.uhd2160,
-  };
-
-  Widget _mpvConfigTile() => SettingValueBuilder<bool>(
-    pref: SettingsService.useExoPlayer,
-    builder: (_, useExo, _) {
-      if (Platform.isAndroid && useExo) return const SizedBox.shrink();
-      return SettingNavigationTile(
-        icon: Symbols.tune_rounded,
-        title: t.mpvConfig.title,
-        subtitle: t.mpvConfig.description,
-        destinationBuilder: (_) => const MpvConfigScreen(),
-      );
-    },
-  );
+    SettingsSectionHeader(t.settings.autoSkip),
+    ..._autoSkipTiles(),
+  ];
 }

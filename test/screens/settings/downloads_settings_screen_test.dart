@@ -49,6 +49,15 @@ void main() {
     expect(wifiSwitch.value, isFalse);
   });
 
+  testWidgets('A-24b: the rows sit in one Opslag group, as series ios/07 draws them', (tester) async {
+    await pump(tester);
+    expect(find.text(t.settingsStudio.storage.toUpperCase()), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text(t.settingsStudio.storage.toUpperCase())).dy,
+      lessThan(tester.getTopLeft(find.text(t.settings.downloadOnWifiOnly)).dy),
+    );
+  });
+
   testWidgets('toggling WiFi-only writes the preference', (tester) async {
     await pump(tester);
 

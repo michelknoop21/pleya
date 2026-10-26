@@ -9,8 +9,12 @@ library;
 
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
+import 'package:pleya/media/watchlist_entry.dart';
+import 'package:pleya/media/watchlist_scope.dart';
 import 'package:pleya/providers/now_watching_provider.dart';
 import 'package:pleya/providers/seerr_provider.dart';
 import 'package:pleya/providers/watchlist_provider.dart';
@@ -61,11 +65,32 @@ class OnlinePlexClientDouble implements PlexClient {
 /// reaching past it into a repository, so overriding the getter is the whole
 /// double — and the snapshot store below is never read.
 class StockedWatchlistDouble extends WatchlistProvider {
-  StockedWatchlistDouble() : super(snapshots: WatchlistSnapshotStore(cache: _UnusedCache()));
+  StockedWatchlistDouble({this.railEntries = const []})
+    : super(snapshots: WatchlistSnapshotStore(cache: _UnusedCache()));
+
+  /// What the Mijn Pleya rail shows, newest first. None of them resolves to a
+  /// server item, so every poster opens the full kijklijst.
+  final List<WatchlistEntry> railEntries;
 
   @override
   bool get hasWatchlist => true;
+
+  @override
+  List<WatchlistEntry> get entriesByRecentlyAdded => railEntries;
+
+  @override
+  bool isPlayable(WatchlistEntry entry) => false;
 }
+
+final _scope = WatchlistScopeId(profileId: 'p1', backend: MediaBackend.plex, accountId: 'a', userId: 'u');
+
+/// A kijklijst title that has not been resolved against any server.
+WatchlistEntry watchlistEntryDouble(String key, {int year = 2024, String? title}) => WatchlistEntry(
+  key: key,
+  kind: MediaKind.movie,
+  item: MediaItem(id: key, backend: MediaBackend.plex, kind: MediaKind.movie, title: title ?? 'Title $key', year: year),
+  memberships: [WatchlistMembership(scope: _scope, remoteKey: key)],
+);
 
 class ConfiguredSeerrDouble extends SeerrProvider {
   @override

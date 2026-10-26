@@ -107,6 +107,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsAssistantEn assistant = TranslationsAssistantEn.internal(_root);
 	late final TranslationsPlaybackHandoffEn playbackHandoff = TranslationsPlaybackHandoffEn.internal(_root);
 	late final TranslationsLocalLibraryEn localLibrary = TranslationsLocalLibraryEn.internal(_root);
+	late final TranslationsSettingsStudioEn settingsStudio = TranslationsSettingsStudioEn.internal(_root);
 }
 
 // Path: states
@@ -3277,6 +3278,69 @@ class TranslationsMyPleyaEn {
 		one: '1 download',
 		other: '{n} downloads',
 	);
+
+	/// en: 'See all'
+	String get seeAll => 'See all';
+
+	/// en: 'Movies, shows and sources'
+	String get librariesSubtitle => 'Movies, shows and sources';
+
+	/// en: 'Available offline'
+	String get downloadsSubtitle => 'Available offline';
+
+	/// en: 'Your requests and their status'
+	String get requestsSubtitle => 'Your requests and their status';
+
+	/// en: 'Ask, discover and find things faster.'
+	String get bigPSubtitle => 'Ask, discover and find things faster.';
+
+	/// en: '${count} online'
+	String serversOnline({required Object count}) => '${count} online';
+
+	/// en: 'Who is watching now?'
+	String get activitySubtitle => 'Who is watching now?';
+
+	/// en: 'Watch together'
+	String get watchTogether => 'Watch together';
+
+	/// en: 'Play in sync'
+	String get watchTogetherSubtitle => 'Play in sync';
+
+	/// en: 'Everything the way you like it'
+	String get settingsSubtitle => 'Everything the way you like it';
+
+	/// en: 'Version and information'
+	String get aboutSubtitle => 'Version and information';
+
+	/// en: 'Diagnostics and help'
+	String get logsSubtitle => 'Diagnostics and help';
+
+	/// en: '(one) {1 library} (other) {${n} libraries}'
+	String librariesCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 library',
+		other: '${n} libraries',
+	);
+
+	/// en: '(one) {1 collection} (other) {${n} collections}'
+	String collectionsCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 collection',
+		other: '${n} collections',
+	);
+
+	/// en: '(one) {1 list} (other) {${n} lists}'
+	String playlistsCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 list',
+		other: '${n} lists',
+	);
+
+	/// en: 'Your personal viewing assistant'
+	String get bigPTvSubtitle => 'Your personal viewing assistant';
+
+	/// en: 'Open Big P'
+	String get openBigP => 'Open Big P';
+
+	/// en: 'Switch profile'
+	String get switchProfile => 'Switch profile';
 }
 
 // Path: liveTv
@@ -6061,8 +6125,8 @@ class TranslationsTvMyPleyaEn {
 	/// en: 'Activity'
 	String get activity => 'Activity';
 
-	/// en: 'Logs and diagnostics'
-	String get logs => 'Logs and diagnostics';
+	/// en: 'Logs'
+	String get logs => 'Logs';
 
 	/// en: 'Signed in as ${name} · Pleya ${version}'
 	String signedInAs({required Object name, required Object version}) => 'Signed in as ${name} · Pleya ${version}';
@@ -6584,6 +6648,174 @@ class TranslationsLocalLibraryEn {
 
 	/// en: 'Fetch library again'
 	String get refill => 'Fetch library again';
+}
+
+// Path: settingsStudio
+class TranslationsSettingsStudioEn {
+	TranslationsSettingsStudioEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'For you'
+	String get forYou => 'For you';
+
+	/// en: 'Connections and profiles'
+	String get connectionsAndProfiles => 'Connections and profiles';
+
+	/// en: 'System'
+	String get system => 'System';
+
+	/// en: 'Integrations'
+	String get integrations => 'Integrations';
+
+	/// en: 'Library & Home'
+	String get libraryAndHome => 'Library & Home';
+
+	/// en: 'Personal'
+	String get personal => 'Personal';
+
+	/// en: 'Make Pleya entirely yours.'
+	String get mainTagline => 'Make Pleya entirely yours.';
+
+	/// en: 'Your viewing experience, down to the detail.'
+	String get tvTagline => 'Your viewing experience, down to the detail.';
+
+	/// en: 'This is how your Pleya looks'
+	String get appearanceHeadline => 'This is how your Pleya looks';
+
+	/// en: 'Live preview'
+	String get livePreview => 'Live preview';
+
+	/// en: 'Your library'
+	String get yourLibrary => 'Your library';
+
+	/// en: 'View preview'
+	String get viewPreview => 'View preview';
+
+	/// en: 'Playback experience'
+	String get playbackExperience => 'Playback experience';
+
+	/// en: 'Manage'
+	String get manage => 'Manage';
+
+	/// en: 'Your watchlist'
+	String get yourWatchlist => 'Your watchlist';
+
+	/// en: 'Your content'
+	String get yourContent => 'Your content';
+
+	/// en: 'Light mode'
+	String get lightMode => 'Light mode';
+
+	/// en: 'Dark mode'
+	String get darkMode => 'Dark mode';
+
+	/// en: 'OLED mode'
+	String get oledMode => 'OLED mode';
+
+	/// en: 'System mode'
+	String get systemMode => 'System mode';
+
+	/// en: 'Poster view'
+	String get posterView => 'Poster view';
+
+	/// en: 'List view'
+	String get listView => 'List view';
+
+	/// en: 'Libraries'
+	String get libraries => 'Libraries';
+
+	/// en: 'Servers and sources'
+	String get serversAndSources => 'Servers and sources';
+
+	/// en: 'Content and window'
+	String get contentAndWindow => 'Content and window';
+
+	/// en: 'Quality'
+	String get quality => 'Quality';
+
+	/// en: 'Maintenance'
+	String get maintenance => 'Maintenance';
+
+	/// en: '${value} of 5'
+	String densityValue({required Object value}) => '${value} of 5';
+
+	/// en: 'Existing sources'
+	String get existingSources => 'Existing sources';
+
+	/// en: 'Preferred audio language'
+	String get preferredAudio => 'Preferred audio language';
+
+	/// en: 'Preferred subtitle language'
+	String get preferredSubtitles => 'Preferred subtitle language';
+
+	/// en: 'Subtitles always / foreign language / never'
+	String get subtitleWhen => 'Subtitles always / foreign language / never';
+
+	/// en: 'Drag rows into order'
+	String get reorderRows => 'Drag rows into order';
+
+	/// en: 'Show or hide a row'
+	String get rowVisibility => 'Show or hide a row';
+
+	/// en: 'Add your own row'
+	String get addOwnRow => 'Add your own row';
+
+	/// en: 'Remove your own row'
+	String get removeOwnRow => 'Remove your own row';
+
+	/// en: 'Which row?'
+	String get chooseRowToRemove => 'Which row?';
+
+	/// en: 'Manage hidden Continue Watching'
+	String get hiddenContinueWatching => 'Manage hidden Continue Watching';
+
+	/// en: 'Storage'
+	String get storage => 'Storage';
+
+	/// en: 'Manage Plex servers'
+	String get managePlex => 'Manage Plex servers';
+
+	/// en: 'Manage Jellyfin sources'
+	String get manageJellyfin => 'Manage Jellyfin sources';
+
+	/// en: 'Manage Emby sources'
+	String get manageEmby => 'Manage Emby sources';
+
+	/// en: 'Manage Pleya Server sources'
+	String get managePleyaServer => 'Manage Pleya Server sources';
+
+	/// en: 'Disconnect or remove a source'
+	String get removeSource => 'Disconnect or remove a source';
+
+	/// en: 'Link a Plex account'
+	String get linkPlex => 'Link a Plex account';
+
+	/// en: 'Add Jellyfin'
+	String get addJellyfin => 'Add Jellyfin';
+
+	/// en: 'Add Emby'
+	String get addEmby => 'Add Emby';
+
+	/// en: 'Add Pleya Server'
+	String get addPleyaServer => 'Add Pleya Server';
+
+	/// en: 'Menu: back · Select: open or switch'
+	String get tvFooterHint => 'Menu: back · Select: open or switch';
+
+	/// en: 'Video'
+	String get video => 'Video';
+
+	/// en: 'Controls'
+	String get controls => 'Controls';
+
+	/// en: 'Diagnostics'
+	String get diagnostics => 'Diagnostics';
+
+	/// en: 'Active profile'
+	String get activeProfile => 'Active profile';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -10965,6 +11197,24 @@ extension on Translations {
 			'watchlist.rail.availability' => 'Availability',
 			'myPleya.title' => 'My Pleya',
 			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 download', other: '{n} downloads', ), 
+			'myPleya.seeAll' => 'See all',
+			'myPleya.librariesSubtitle' => 'Movies, shows and sources',
+			'myPleya.downloadsSubtitle' => 'Available offline',
+			'myPleya.requestsSubtitle' => 'Your requests and their status',
+			'myPleya.bigPSubtitle' => 'Ask, discover and find things faster.',
+			'myPleya.serversOnline' => ({required Object count}) => '${count} online',
+			'myPleya.activitySubtitle' => 'Who is watching now?',
+			'myPleya.watchTogether' => 'Watch together',
+			'myPleya.watchTogetherSubtitle' => 'Play in sync',
+			'myPleya.settingsSubtitle' => 'Everything the way you like it',
+			'myPleya.aboutSubtitle' => 'Version and information',
+			'myPleya.logsSubtitle' => 'Diagnostics and help',
+			'myPleya.librariesCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 library', other: '${n} libraries', ), 
+			'myPleya.collectionsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 collection', other: '${n} collections', ), 
+			'myPleya.playlistsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 list', other: '${n} lists', ), 
+			'myPleya.bigPTvSubtitle' => 'Your personal viewing assistant',
+			'myPleya.openBigP' => 'Open Big P',
+			'myPleya.switchProfile' => 'Switch profile',
 			'liveTv.serverNotAvailable' => 'Live TV server is not available.',
 			'liveTv.serverNotConnected' => 'Live TV server is not connected.',
 			'liveTv.title' => 'Live TV',
@@ -11417,6 +11667,8 @@ extension on Translations {
 			'metadataEdit.selectBackground' => 'Select Background',
 			'metadataEdit.selectLogo' => 'Select Logo',
 			'metadataEdit.selectSquareArt' => 'Select Square Art',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.fromUrl' => 'From URL',
 			'metadataEdit.uploadFile' => 'Upload File',
 			'metadataEdit.enterImageUrl' => 'Enter image URL',
@@ -11435,8 +11687,6 @@ extension on Translations {
 			'metadataEdit.newestFirst' => 'Newest first',
 			'metadataEdit.keep' => 'Keep',
 			'metadataEdit.allEpisodes' => 'All episodes',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.latestEpisodes' => ({required Object count}) => '${count} latest episodes',
 			'metadataEdit.latestEpisode' => 'Latest episode',
 			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Episodes added in the past ${count} days',
@@ -11931,6 +12181,8 @@ extension on Translations {
 			'unifiedCatalog.states.emptyTitle' => 'This catalog is empty',
 			'unifiedCatalog.states.emptyBody' => 'No visible library holds anything for this page.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Nothing matches these filters',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.states.filterEmptyBody' => 'Clear a filter to see more titles.',
 			'unifiedCatalog.states.clearFilters' => 'Clear filters',
 			'unifiedCatalog.states.errorTitle' => 'The catalog could not be loaded',
@@ -11949,8 +12201,6 @@ extension on Translations {
 			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titles',
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} of ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'View all movies, opens the complete catalog',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'View all series, opens the complete catalog',
 			'unifiedCatalog.home.featured' => 'Featured',
 			'unifiedCatalog.homeRows.customize' => 'Customise Home',
@@ -12034,7 +12284,7 @@ extension on Translations {
 			'tvMyPleya.statusOffline' => 'Offline',
 			'tvMyPleya.servers' => 'Servers',
 			'tvMyPleya.activity' => 'Activity',
-			'tvMyPleya.logs' => 'Logs and diagnostics',
+			'tvMyPleya.logs' => 'Logs',
 			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Signed in as ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Saved films and series',
 			'tvMyPleya.requestsSubtitle' => 'Requests and discovery',
@@ -12445,6 +12695,8 @@ extension on Translations {
 			'assistant.confirm.titles.createHomeRow' => 'Create home row',
 			'assistant.confirm.titles.createCollection' => 'Create collection',
 			'assistant.confirm.titles.requestTitle' => 'Request title',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.confirm.titles.downloadEpisodes' => 'Download episodes',
 			'assistant.confirm.titles.downloadSubtitle' => 'Download subtitle',
 			'assistant.confirm.titles.changePlayback' => 'Change playback',
@@ -12463,8 +12715,6 @@ extension on Translations {
 			'assistant.confirm.create' => 'Create',
 			'assistant.notes.plexManagedHomeUser' => 'Managed Plex Home user, with a share on this server.',
 			'assistant.notes.plexShare' => 'A share on this Plex server.',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.notes.plexHomeMember' => 'Member of your Plex Home. Only the share on this server changes.',
 			'assistant.notes.replacesAllAccess' => 'Replaces all existing access of this user on this server.',
 			'assistant.ends.noTools' => 'There is nothing Big P can do on your servers right now.',
@@ -12707,6 +12957,59 @@ extension on Translations {
 			'localLibrary.chooseAfterClear' => 'Keep prefetch off, or fetch your library again? Your network preference still applies.',
 			'localLibrary.keepOff' => 'Turn prefetch off',
 			'localLibrary.refill' => 'Fetch library again',
+			'settingsStudio.forYou' => 'For you',
+			'settingsStudio.connectionsAndProfiles' => 'Connections and profiles',
+			'settingsStudio.system' => 'System',
+			'settingsStudio.integrations' => 'Integrations',
+			'settingsStudio.libraryAndHome' => 'Library & Home',
+			'settingsStudio.personal' => 'Personal',
+			'settingsStudio.mainTagline' => 'Make Pleya entirely yours.',
+			'settingsStudio.tvTagline' => 'Your viewing experience, down to the detail.',
+			'settingsStudio.appearanceHeadline' => 'This is how your Pleya looks',
+			'settingsStudio.livePreview' => 'Live preview',
+			'settingsStudio.yourLibrary' => 'Your library',
+			'settingsStudio.viewPreview' => 'View preview',
+			'settingsStudio.playbackExperience' => 'Playback experience',
+			'settingsStudio.manage' => 'Manage',
+			'settingsStudio.yourWatchlist' => 'Your watchlist',
+			'settingsStudio.yourContent' => 'Your content',
+			'settingsStudio.lightMode' => 'Light mode',
+			'settingsStudio.darkMode' => 'Dark mode',
+			'settingsStudio.oledMode' => 'OLED mode',
+			'settingsStudio.systemMode' => 'System mode',
+			'settingsStudio.posterView' => 'Poster view',
+			'settingsStudio.listView' => 'List view',
+			'settingsStudio.libraries' => 'Libraries',
+			'settingsStudio.serversAndSources' => 'Servers and sources',
+			'settingsStudio.contentAndWindow' => 'Content and window',
+			'settingsStudio.quality' => 'Quality',
+			'settingsStudio.maintenance' => 'Maintenance',
+			'settingsStudio.densityValue' => ({required Object value}) => '${value} of 5',
+			'settingsStudio.existingSources' => 'Existing sources',
+			'settingsStudio.preferredAudio' => 'Preferred audio language',
+			'settingsStudio.preferredSubtitles' => 'Preferred subtitle language',
+			'settingsStudio.subtitleWhen' => 'Subtitles always / foreign language / never',
+			'settingsStudio.reorderRows' => 'Drag rows into order',
+			'settingsStudio.rowVisibility' => 'Show or hide a row',
+			'settingsStudio.addOwnRow' => 'Add your own row',
+			'settingsStudio.removeOwnRow' => 'Remove your own row',
+			'settingsStudio.chooseRowToRemove' => 'Which row?',
+			'settingsStudio.hiddenContinueWatching' => 'Manage hidden Continue Watching',
+			'settingsStudio.storage' => 'Storage',
+			'settingsStudio.managePlex' => 'Manage Plex servers',
+			'settingsStudio.manageJellyfin' => 'Manage Jellyfin sources',
+			'settingsStudio.manageEmby' => 'Manage Emby sources',
+			'settingsStudio.managePleyaServer' => 'Manage Pleya Server sources',
+			'settingsStudio.removeSource' => 'Disconnect or remove a source',
+			'settingsStudio.linkPlex' => 'Link a Plex account',
+			'settingsStudio.addJellyfin' => 'Add Jellyfin',
+			'settingsStudio.addEmby' => 'Add Emby',
+			'settingsStudio.addPleyaServer' => 'Add Pleya Server',
+			'settingsStudio.tvFooterHint' => 'Menu: back · Select: open or switch',
+			'settingsStudio.video' => 'Video',
+			'settingsStudio.controls' => 'Controls',
+			'settingsStudio.diagnostics' => 'Diagnostics',
+			'settingsStudio.activeProfile' => 'Active profile',
 			_ => null,
 		};
 	}

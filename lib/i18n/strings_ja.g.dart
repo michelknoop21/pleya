@@ -94,6 +94,7 @@ class TranslationsJa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTvNavigationJa tvNavigation = _TranslationsTvNavigationJa._(_root);
 	@override late final _TranslationsTvMyPleyaJa tvMyPleya = _TranslationsTvMyPleyaJa._(_root);
 	@override late final _TranslationsTvContextMenuJa tvContextMenu = _TranslationsTvContextMenuJa._(_root);
+	@override late final _TranslationsSettingsStudioJa settingsStudio = _TranslationsSettingsStudioJa._(_root);
 }
 
 // Path: app
@@ -1858,6 +1859,68 @@ class _TranslationsTvContextMenuJa extends TranslationsTvContextMenuEn {
 	@override String doneOnSome({required Object total, required Object done}) => '${total}件中${done}件のソースで完了しました。残りはオンラインに戻り次第再試行されます。';
 	@override String doneOnSomeNoRetry({required Object total, required Object done}) => '${total}件中${done}件のソースで完了しました。';
 	@override String get failed => 'うまくいきませんでした';
+}
+
+// Path: settingsStudio
+class _TranslationsSettingsStudioJa extends TranslationsSettingsStudioEn {
+	_TranslationsSettingsStudioJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get forYou => 'あなた向け';
+	@override String get connectionsAndProfiles => '接続とプロフィール';
+	@override String get system => 'システム';
+	@override String get integrations => '連携';
+	@override String get libraryAndHome => 'ライブラリとホーム';
+	@override String get personal => 'パーソナル';
+	@override String get mainTagline => 'Pleya をあなた好みに。';
+	@override String get tvTagline => 'あなたの視聴体験を、細部まで。';
+	@override String get appearanceHeadline => 'あなたの Pleya の見え方';
+	@override String get livePreview => 'ライブプレビュー';
+	@override String get yourLibrary => 'あなたのライブラリ';
+	@override String get viewPreview => 'プレビューを見る';
+	@override String get playbackExperience => '再生体験';
+	@override String get manage => '管理';
+	@override String get yourWatchlist => 'ウォッチリスト';
+	@override String get yourContent => 'あなたのコンテンツ';
+	@override String get lightMode => 'ライトモード';
+	@override String get darkMode => 'ダークモード';
+	@override String get oledMode => 'OLED モード';
+	@override String get systemMode => 'システムモード';
+	@override String get posterView => 'ポスター表示';
+	@override String get listView => 'リスト表示';
+	@override String get libraries => 'ライブラリ';
+	@override String get serversAndSources => 'サーバーとソース';
+	@override String get contentAndWindow => 'コンテンツとウィンドウ';
+	@override String get quality => '画質';
+	@override String get maintenance => 'メンテナンス';
+	@override String densityValue({required Object value}) => '5 段階中 ${value}';
+	@override String get existingSources => '既存のソース';
+	@override String get preferredAudio => '優先する音声言語';
+	@override String get preferredSubtitles => '優先する字幕言語';
+	@override String get subtitleWhen => '字幕：常に / 外国語 / なし';
+	@override String get reorderRows => '行を並べ替え';
+	@override String get rowVisibility => '行の表示・非表示';
+	@override String get addOwnRow => '自分の行を追加';
+	@override String get removeOwnRow => '自分の行を削除';
+	@override String get chooseRowToRemove => 'どの行？';
+	@override String get hiddenContinueWatching => '非表示の「続きを見る」を管理';
+	@override String get storage => 'ストレージ';
+	@override String get managePlex => 'Plex サーバーを管理';
+	@override String get manageJellyfin => 'Jellyfin ソースを管理';
+	@override String get manageEmby => 'Emby ソースを管理';
+	@override String get managePleyaServer => 'Pleya Server ソースを管理';
+	@override String get removeSource => 'ソースの接続解除・削除';
+	@override String get linkPlex => 'Plex アカウントをリンク';
+	@override String get addJellyfin => 'Jellyfin を追加';
+	@override String get addEmby => 'Emby を追加';
+	@override String get addPleyaServer => 'Pleya Server を追加';
+	@override String get tvFooterHint => 'メニュー: 戻る · 選択: 開く・切り替え';
+	@override String get video => 'ビデオ';
+	@override String get controls => '操作';
+	@override String get diagnostics => '診断';
+	@override String get activeProfile => '使用中のプロフィール';
 }
 
 // Path: search.filters
@@ -3737,6 +3800,59 @@ extension on TranslationsJa {
 			'tvContextMenu.doneOnSome' => ({required Object total, required Object done}) => '${total}件中${done}件のソースで完了しました。残りはオンラインに戻り次第再試行されます。',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object total, required Object done}) => '${total}件中${done}件のソースで完了しました。',
 			'tvContextMenu.failed' => 'うまくいきませんでした',
+			'settingsStudio.forYou' => 'あなた向け',
+			'settingsStudio.connectionsAndProfiles' => '接続とプロフィール',
+			'settingsStudio.system' => 'システム',
+			'settingsStudio.integrations' => '連携',
+			'settingsStudio.libraryAndHome' => 'ライブラリとホーム',
+			'settingsStudio.personal' => 'パーソナル',
+			'settingsStudio.mainTagline' => 'Pleya をあなた好みに。',
+			'settingsStudio.tvTagline' => 'あなたの視聴体験を、細部まで。',
+			'settingsStudio.appearanceHeadline' => 'あなたの Pleya の見え方',
+			'settingsStudio.livePreview' => 'ライブプレビュー',
+			'settingsStudio.yourLibrary' => 'あなたのライブラリ',
+			'settingsStudio.viewPreview' => 'プレビューを見る',
+			'settingsStudio.playbackExperience' => '再生体験',
+			'settingsStudio.manage' => '管理',
+			'settingsStudio.yourWatchlist' => 'ウォッチリスト',
+			'settingsStudio.yourContent' => 'あなたのコンテンツ',
+			'settingsStudio.lightMode' => 'ライトモード',
+			'settingsStudio.darkMode' => 'ダークモード',
+			'settingsStudio.oledMode' => 'OLED モード',
+			'settingsStudio.systemMode' => 'システムモード',
+			'settingsStudio.posterView' => 'ポスター表示',
+			'settingsStudio.listView' => 'リスト表示',
+			'settingsStudio.libraries' => 'ライブラリ',
+			'settingsStudio.serversAndSources' => 'サーバーとソース',
+			'settingsStudio.contentAndWindow' => 'コンテンツとウィンドウ',
+			'settingsStudio.quality' => '画質',
+			'settingsStudio.maintenance' => 'メンテナンス',
+			'settingsStudio.densityValue' => ({required Object value}) => '5 段階中 ${value}',
+			'settingsStudio.existingSources' => '既存のソース',
+			'settingsStudio.preferredAudio' => '優先する音声言語',
+			'settingsStudio.preferredSubtitles' => '優先する字幕言語',
+			'settingsStudio.subtitleWhen' => '字幕：常に / 外国語 / なし',
+			'settingsStudio.reorderRows' => '行を並べ替え',
+			'settingsStudio.rowVisibility' => '行の表示・非表示',
+			'settingsStudio.addOwnRow' => '自分の行を追加',
+			'settingsStudio.removeOwnRow' => '自分の行を削除',
+			'settingsStudio.chooseRowToRemove' => 'どの行？',
+			'settingsStudio.hiddenContinueWatching' => '非表示の「続きを見る」を管理',
+			'settingsStudio.storage' => 'ストレージ',
+			'settingsStudio.managePlex' => 'Plex サーバーを管理',
+			'settingsStudio.manageJellyfin' => 'Jellyfin ソースを管理',
+			'settingsStudio.manageEmby' => 'Emby ソースを管理',
+			'settingsStudio.managePleyaServer' => 'Pleya Server ソースを管理',
+			'settingsStudio.removeSource' => 'ソースの接続解除・削除',
+			'settingsStudio.linkPlex' => 'Plex アカウントをリンク',
+			'settingsStudio.addJellyfin' => 'Jellyfin を追加',
+			'settingsStudio.addEmby' => 'Emby を追加',
+			'settingsStudio.addPleyaServer' => 'Pleya Server を追加',
+			'settingsStudio.tvFooterHint' => 'メニュー: 戻る · 選択: 開く・切り替え',
+			'settingsStudio.video' => 'ビデオ',
+			'settingsStudio.controls' => '操作',
+			'settingsStudio.diagnostics' => '診断',
+			'settingsStudio.activeProfile' => '使用中のプロフィール',
 			_ => null,
 		};
 	}

@@ -1,4 +1,3 @@
-import 'local_library_settings_screen.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -12,7 +11,6 @@ import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../automation/automation_screen.dart';
 import '../../focus/focus_memory_tracker.dart';
-import '../../media/ids.dart';
 import '../../focus/focusable_text_field.dart';
 import '../../focus/input_mode_tracker.dart';
 import '../../i18n/strings.g.dart';
@@ -22,16 +20,11 @@ import '../../mixins/refreshable.dart';
 import '../../providers/hidden_libraries_provider.dart';
 import '../../providers/libraries_provider.dart';
 import '../../services/donation_service.dart';
-import '../../services/download_storage_service.dart';
 import '../../services/icloud_sync_service.dart';
 import 'icloud_sync_status_line.dart';
 import '../../services/preferences/preference_sync_coordinator.dart';
 import '../../services/settings_export_service.dart';
-import '../../providers/seerr_provider.dart';
-import '../../providers/tautulli_provider.dart';
 import '../../providers/theme_provider.dart';
-import '../../providers/trackers_provider.dart';
-import '../../providers/trakt_account_provider.dart';
 import '../../services/keyboard_shortcuts_service.dart';
 import '../../services/settings_service.dart' as settings;
 import '../../services/update_service.dart';
@@ -39,22 +32,28 @@ import '../../utils/dialogs.dart';
 import '../../utils/snackbar_helper.dart';
 import '../../utils/platform_detector.dart';
 import '../../utils/update_dialog.dart';
+import '../../utils/quality_preset_labels.dart';
+import '../../utils/tv_hig.dart';
 import '../../widgets/desktop_app_bar.dart';
 import '../../widgets/dialog_action_button.dart';
 import '../../widgets/setting_tile.dart';
 import '../../widgets/settings_builder.dart';
+import '../../widgets/settings_page.dart';
 import '../../widgets/settings/settings_studio_header.dart';
 import '../../widgets/settings_section.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../profiles/active_profile_provider.dart';
-import '../../profiles/profile.dart';
-import '../../profiles/profile_registry.dart';
 import 'about_screen.dart';
 import 'add_connection_screen.dart';
 import 'pleya_share_host_screen.dart';
 import 'appearance_settings_screen.dart';
 import 'assistant_settings_screen.dart';
 import 'downloads_settings_screen.dart';
+import 'integrations_settings_screen.dart';
+import 'library_home_rows.dart';
+import 'library_home_settings_screen.dart';
+import 'connections_section.dart';
+import 'local_library_settings_screen.dart';
 import 'keyboard_shortcuts_screen.dart';
 import 'home_layout_screen.dart';
 import 'library_visibility_screen.dart';
@@ -63,7 +62,6 @@ import 'language_settings_screen.dart';
 import 'playback_settings_screen.dart';
 import '../profile/profile_switch_screen.dart';
 import '../servers_screen.dart';
-import 'download_location_dialog.dart';
 import 'seerr_settings_screen.dart';
 import 'subtitle_styling_screen.dart';
 import 'tautulli_settings_screen.dart';
@@ -77,7 +75,10 @@ import '../tv/sections/tv_about_screen.dart';
 import '../../navigation/tv/tv_content_route_registry.dart';
 import '../../widgets/scroll_crown/scroll_crown.dart';
 
+part 'parts/settings_actions.dart';
 part 'parts/settings_phone_page.dart';
+part 'parts/settings_system_tiles.dart';
+part 'parts/settings_tiles.dart';
 part 'parts/settings_tv_page.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -87,7 +88,8 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, MountedSetStateMixin {
+class _SettingsScreenState extends State<SettingsScreen>
+    with FocusableTab, MountedSetStateMixin, _SettingsActions<SettingsScreen> {
   late final FocusMemoryTracker _focusTracker;
 
   /// The TV page's categories, which own which rows are mounted (A-24).
@@ -99,14 +101,6 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   static const _kPlayback = 'playback';
   static const _kLanguage = 'language';
   static const _kSubtitleStyling = 'subtitle_styling';
-  static const _kTrackers = 'trackers';
-  static const _kLibraryVisibility = 'library_visibility';
-  static const _kHomeLayout = 'home_layout';
-  static const _kRequests = 'requests';
-  static const _kTautulli = 'tautulli';
-  static const _kDownloadLocation = 'download_location';
-  static const _kDownloadOnWifiOnly = 'download_on_wifi_only';
-  static const _kAutoRemoveWatchedDownloads = 'auto_remove_watched_downloads';
   static const _kVideoPlayerControls = 'video_player_controls';
   static const _kVideoPlayerNavigation = 'video_player_navigation';
   static const _kCrashReporting = 'crash_reporting';
@@ -119,28 +113,27 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   static const _kAbout = 'about';
   static const _kWatchTogetherRelay = 'watch_together_relay';
   static const _kServers = 'servers';
-  static const _kExportSettings = 'export_settings';
-  static const _kImportSettings = 'import_settings';
   static const _kIcloudSync = 'icloud_sync';
+  // The main page's rows on phones and desktop (A-24b).
+  static const _kLibraryHome = 'library_home';
+  static const _kIntegrations = 'integrations';
+  static const _kProfiles = 'profiles';
+  static const _kAdvanced = 'advanced';
+  static const _kBackup = 'backup';
+  static const _kUpdates = 'updates';
 
   /// iCloud settings-sync tile is Apple-only (tvOS reports as iOS).
   static bool get _icloudSyncPlatform => Platform.isIOS || Platform.isMacOS;
-
-  /// Whether iCloud is signed in. null = not yet resolved (tile stays enabled
-  /// optimistically until the check returns).
-  bool? _icloudAvailable;
-
-  KeyboardShortcutsService? _keyboardService;
-  late final bool _keyboardShortcutsSupported = KeyboardShortcutsService.isPlatformSupported();
 
   // Settings search (desktop/mobile only; TV OSK-search is a separate track).
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool get _searchEnabled => !PlatformDetector.isTV();
 
-  // Update checking state
-  bool _isCheckingForUpdate = false;
-  Map<String, dynamic>? _updateInfo;
+  /// The TV page has an update row; the phone's main page reaches the check
+  /// only from search since A-24b moved Updates to its own page.
+  @override
+  bool get _showsUpdateTile => PlatformDetector.isTV();
 
   @override
   void initState() {
@@ -152,16 +145,6 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
       },
       debugLabelPrefix: 'settings',
     );
-    if (_keyboardShortcutsSupported) {
-      KeyboardShortcutsService.getInstance().then((s) {
-        setStateIfMounted(() => _keyboardService = s);
-      });
-    }
-    if (_icloudSyncPlatform) {
-      ICloudSyncService.instance?.isAvailable().then((available) {
-        setStateIfMounted(() => _icloudAvailable = available);
-      });
-    }
   }
 
   @override
@@ -176,7 +159,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   void focusActiveTabIfReady() {
     if (InputModeTracker.isKeyboardMode(context)) {
       final fallbackKey = DonationService.isEnabled ? _kDonate : _kAppearance;
-      if (_restoreTvFocus(fallbackKey)) return;
+      if (_restoreTvFocus()) return;
       _focusTracker.restoreFocus(fallbackKey: fallbackKey);
     }
   }
@@ -193,8 +176,6 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
     return KeyEventResult.ignored;
   }
 
-  settings.SettingsService get _settingsService => settings.SettingsService.instance;
-
   /// `setState` is `@protected`, so `_SettingsTvPage` (an extension, not a
   /// `State` subclass method) cannot call it directly — this thin wrapper is
   /// what it passes as `showDownloadLocationDialog`'s `onChanged`.
@@ -210,216 +191,17 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
     // `settings-a`. The whole page, not a wrapper around the desktop cards:
     // see `parts/settings_tv_page.dart` for what the audit measured and why
     // the rows become tiles.
-    if (PlatformDetector.isTV()) return _buildTvSettings(context);
+    //
+    // A-24b: both pages wear the Studio palette, and every page they open
+    // keeps it ([settingsStudioRoute]); nothing outside Instellingen does.
+    // Built here, not in a Builder: the tiles call `context.select` on this
+    // State's context, which is only legal while this build runs.
+    if (PlatformDetector.isTV()) return SettingsStudioTheme(child: _buildTvSettings(context));
 
     return AutomationScreen(
       id: AutomationIds.screenSettings,
       readiness: () => const AutomationReadiness.ready(),
-      child: _buildSettingsScaffold(context),
-    );
-  }
-
-  Widget _buildDonateTile() {
-    return SettingNavigationTile(
-      focusNode: _focusTracker.get(_kDonate),
-      icon: Symbols.favorite_rounded,
-      title: t.settings.supportDeveloper,
-      subtitle: t.settings.supportDeveloperDescription,
-      trailingIcon: Symbols.open_in_new_rounded,
-      onTap: _handleDonateTap,
-    );
-  }
-
-  Future<void> _handleDonateTap() async {
-    final url = Uri.parse(DonationService.donationUrl);
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  Widget _buildAppearanceTile() {
-    return Consumer<ThemeProvider>(
-      builder: (context, themeProvider, _) => SettingValueBuilder<int>(
-        pref: settings.SettingsService.libraryDensity,
-        builder: (context, libraryDensity, _) {
-          // A-24: the theme is the row's value, right-aligned; the density
-          // stays on the line under the title, so the row still says both.
-          final theme = switch (themeProvider.themeMode) {
-            settings.ThemeMode.system => t.settings.systemTheme,
-            settings.ThemeMode.light => t.settings.lightTheme,
-            settings.ThemeMode.dark => t.settings.darkTheme,
-            settings.ThemeMode.oled => t.settings.oledTheme,
-          };
-          return AutomationNode(
-            id: AutomationIds.settingsTile,
-            instance: 'appearance',
-            role: 'list.item',
-            child: SettingNavigationTile(
-              focusNode: _focusTracker.get(_kAppearance),
-              icon: Symbols.palette_rounded,
-              title: t.settings.appearance,
-              subtitle: '${t.settings.libraryDensity} $libraryDensity',
-              trailingLabel: theme,
-              destinationBuilder: (context) => const AppearanceSettingsScreen(),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildLocalLibraryTile() => AutomationNode(
-    id: AutomationIds.settingsTile,
-    instance: 'local_library',
-    role: 'list.item',
-    child: SettingNavigationTile(
-      icon: Symbols.offline_bolt_rounded,
-      title: t.localLibrary.title,
-      subtitle: t.localLibrary.enable,
-      destinationBuilder: (_) => const LocalLibrarySettingsScreen(),
-    ),
-  );
-
-  Widget _buildLibraryVisibilityTile() {
-    return SettingNavigationTile(
-      focusNode: _focusTracker.get(_kLibraryVisibility),
-      icon: Symbols.video_library_rounded,
-      title: t.settings.libraryVisibility,
-      subtitle: t.settings.libraryVisibilityDescription,
-      destinationBuilder: (context) => const LibraryVisibilityScreen(),
-    );
-  }
-
-  Widget _buildHomeLayoutTile() {
-    return AutomationNode(
-      id: AutomationIds.settingsTile,
-      instance: 'home_layout',
-      role: 'list.item',
-      child: SettingNavigationTile(
-        focusNode: _focusTracker.get(_kHomeLayout),
-        icon: Symbols.dashboard_customize_rounded,
-        title: t.settings.homeLayout,
-        subtitle: t.settings.homeLayoutDescription,
-        destinationBuilder: (context) => const HomeLayoutScreen(),
-      ),
-    );
-  }
-
-  Widget _buildPlaybackTile() {
-    return AutomationNode(
-      id: AutomationIds.settingsTile,
-      instance: 'playback',
-      role: 'list.item',
-      child: SettingNavigationTile(
-        focusNode: _focusTracker.get(_kPlayback),
-        icon: Symbols.play_circle_rounded,
-        title: t.settings.videoPlayback,
-        subtitle: t.settings.videoPlaybackDescription,
-        destinationBuilder: (context) => const PlaybackSettingsScreen(),
-      ),
-    );
-  }
-
-  /// Taal en ondertitels — the single place a language preference is managed
-  /// (DEC-109 lid 9), next to Afspelen because a viewer who wonders why a
-  /// series starts in English looks under language rather than under playback.
-  Widget _buildLanguageTile() {
-    return AutomationNode(
-      id: AutomationIds.settingsTile,
-      instance: 'language',
-      role: 'list.item',
-      child: SettingNavigationTile(
-        focusNode: _focusTracker.get(_kLanguage),
-        icon: Symbols.translate_rounded,
-        title: t.languageSettings.title,
-        subtitle: t.languageSettings.description,
-        destinationBuilder: (context) => const LanguageSettingsScreen(),
-      ),
-    );
-  }
-
-  /// Promoted out of "Video afspelen" (northstar 14): a top-level entry next
-  /// to "Taal en ondertitels" instead of nested two levels down. Same
-  /// destination and copy `PlaybackSettingsScreen` used, removed there so
-  /// there is exactly one way in.
-  Widget _buildSubtitleStylingTile() {
-    return AutomationNode(
-      id: AutomationIds.settingsTile,
-      instance: 'subtitle_styling',
-      role: 'list.item',
-      child: SettingNavigationTile(
-        focusNode: _focusTracker.get(_kSubtitleStyling),
-        icon: Symbols.subtitles_rounded,
-        title: t.settings.subtitleStyling,
-        subtitle: t.settings.subtitleStylingDescription,
-        destinationBuilder: (_) => const SubtitleStylingScreen(),
-      ),
-    );
-  }
-
-  /// Storage location, WiFi-only and auto-remove used to be three inline rows
-  /// in their own unlabelled card; northstar 14 draws "Downloads" as one row
-  /// with a summary, like every other entry in this group.
-  Widget _buildDownloadsTile() {
-    return AutomationNode(
-      id: AutomationIds.settingsTile,
-      instance: 'downloads',
-      role: 'list.item',
-      child: SettingNavigationTile(
-        focusNode: _focusTracker.get(_kDownloadLocation),
-        icon: Symbols.download_rounded,
-        title: t.settings.downloads,
-        subtitle: t.settings.downloadsDescription,
-        destinationBuilder: (_) => const DownloadsSettingsScreen(),
-      ),
-    );
-  }
-
-  Widget _buildTrackersTile() {
-    return Consumer2<TraktAccountProvider, TrackersProvider>(
-      builder: (context, trakt, trackers, _) {
-        final connectedNames = <String>[
-          if (trakt.isConnected) t.trakt.title,
-          if (trackers.isMalConnected) t.trackers.services.mal,
-          if (trackers.isAnilistConnected) t.trackers.services.anilist,
-          if (trackers.isSimklConnected) t.trackers.services.simkl,
-        ];
-        // A-24: what is connected is the row's value; the description stays.
-        final connected = connectedNames.isEmpty ? null : connectedNames.join(' · ');
-        return AutomationNode(
-          id: AutomationIds.settingsTile,
-          instance: 'trackers',
-          role: 'list.item',
-          child: SettingNavigationTile(
-            focusNode: _focusTracker.get(_kTrackers),
-            icon: Symbols.sync_rounded,
-            title: t.settings.trackers,
-            subtitle: t.settings.trackersDescription,
-            trailingLabel: connected,
-            destinationBuilder: (_) => const TrackersSettingsScreen(),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildRequestsTile() {
-    return Consumer<SeerrProvider>(
-      builder: (context, seerr, _) {
-        return AutomationNode(
-          id: AutomationIds.settingsTile,
-          instance: 'requests',
-          role: 'list.item',
-          child: SettingNavigationTile(
-            focusNode: _focusTracker.get(_kRequests),
-            icon: Symbols.playlist_add_rounded,
-            title: t.settings.requests,
-            subtitle: t.settings.requestsDescription,
-            trailingLabel: seerr.isConfigured ? (seerr.host ?? t.settings.requests) : null,
-            destinationBuilder: (_) => const SeerrSettingsScreen(),
-          ),
-        );
-      },
+      child: SettingsStudioTheme(child: _buildSettingsScaffold(context)),
     );
   }
 
@@ -428,531 +210,4 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   /// allowed to reach the Tautulli screen. A borrowed connection or a
   /// Jellyfin-only administrator does not count.
   static bool _managesAPlexServer(MultiServerProvider multiServer) => multiServer.serverManager.managesAPlexServer;
-
-  /// Tautulli reports on the whole Plex server, and its single API key opens
-  /// the entire admin surface, so the tile only appears for someone with owner
-  /// rights on a Plex server here. Everyone else never learns the integration exists, which
-  /// is the right outcome: they could not use it anyway.
-  Widget _buildTautulliTile() {
-    if (!context.select<MultiServerProvider, bool>(_managesAPlexServer)) return const SizedBox.shrink();
-
-    return Consumer<TautulliProvider>(
-      builder: (context, tautulli, _) {
-        return SettingNavigationTile(
-          focusNode: _focusTracker.get(_kTautulli),
-          icon: Symbols.insights_rounded,
-          title: t.tautulli.title,
-          subtitle: t.tautulli.subtitle,
-          trailingLabel: tautulli.isConfigured ? (tautulli.serverName ?? tautulli.host ?? t.tautulli.connected) : null,
-          destinationBuilder: (_) => const TautulliSettingsScreen(),
-        );
-      },
-    );
-  }
-
-  /// The full `ConnectionsSection` (add connection, host Pleya Share, every
-  /// server and local source with its own removable row) moved behind one
-  /// summary tile, northstar 14's single "Servers" row. [ServersScreen] is
-  /// the exact wrap My Pleya's own Servers card already uses (DEC-113) — the
-  /// same destination, reached from a second place, not a second copy of
-  /// server management.
-  Widget _buildServersSection() {
-    return Consumer<MultiServerProvider>(
-      builder: (context, servers, _) {
-        final manager = servers.serverManager;
-        final names = [for (final id in servers.serverIds) manager.serverDisplayName(ServerId(id))];
-        final serverNames = names.isEmpty ? t.tvMyPleya.noServers : names.join(', ');
-        return SettingsGroup(
-          title: t.connections.sectionTitle,
-          children: [
-            AutomationNode(
-              id: AutomationIds.settingsTile,
-              instance: 'servers',
-              role: 'list.item',
-              child: SettingNavigationTile(
-                focusNode: _focusTracker.get(_kServers),
-                icon: Symbols.dns_rounded,
-                title: t.tvMyPleya.servers,
-                trailingLabel: serverNames,
-                needsAttention: servers.hasAuthErrorServers,
-                destinationBuilder: (_) => const ServersScreen(),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildProfilesTile() {
-    return StreamBuilder<List<Profile>>(
-      stream: context.read<ProfileRegistry>().watchProfiles(),
-      builder: (context, snapshot) {
-        final count = snapshot.data?.length ?? 0;
-        // `context.select` so this StreamBuilder doesn't rebuild on every
-        // ActiveProfileProvider notification — only when the active
-        // profile's display name actually changes.
-        final activeName = context.select<ActiveProfileProvider, String?>((p) => p.active?.displayName);
-        // A-24: with several profiles the active one is the row's value and
-        // the count stays under the title; a single profile keeps its hint.
-        final subtitle = count <= 1 ? t.profiles.summarySingle : t.profiles.summaryMultiple(count: count);
-        final trailing = count <= 1 ? null : activeName;
-        return AutomationNode(
-          id: AutomationIds.settingsTile,
-          instance: 'profiles',
-          role: 'list.item',
-          child: SettingNavigationTile(
-            icon: Symbols.group_rounded,
-            title: t.profiles.sectionTitle,
-            subtitle: subtitle,
-            trailingLabel: trailing,
-            onTap: () => Navigator.of(
-              context,
-              rootNavigator: true,
-            ).push(MaterialPageRoute(builder: (_) => const ProfileSwitchScreen())),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildKeyboardShortcutsSection() {
-    if (_keyboardService == null) return const SizedBox.shrink();
-
-    return SettingsGroup(
-      title: t.settings.keyboardShortcuts,
-      children: [
-        SettingNavigationTile(
-          focusNode: _focusTracker.get(_kVideoPlayerControls),
-          icon: Symbols.keyboard_rounded,
-          title: t.settings.videoPlayerControls,
-          subtitle: t.settings.keyboardShortcutsDescription,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => KeyboardShortcutsScreen(keyboardService: _keyboardService!)),
-            );
-          },
-        ),
-        SettingSwitchTile(
-          focusNode: _focusTracker.get(_kVideoPlayerNavigation),
-          pref: settings.SettingsService.videoPlayerNavigationEnabled,
-          icon: Symbols.gamepad_rounded,
-          title: t.settings.videoPlayerNavigation,
-          subtitle: t.settings.videoPlayerNavigationDescription,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAdvancedSection() {
-    return SettingsGroup(
-      title: t.settings.advanced,
-      children: [
-        SettingNavigationTile(
-          focusNode: _focusTracker.get(_kWatchTogetherRelay),
-          icon: Symbols.dns_rounded,
-          title: t.settings.watchTogetherRelay,
-          subtitle: t.settings.watchTogetherRelayDescription,
-          onTap: () => _showRelayUrlDialog(),
-        ),
-        SettingSwitchTile(
-          focusNode: _focusTracker.get(_kCrashReporting),
-          pref: settings.SettingsService.crashReporting,
-          icon: Symbols.monitoring_rounded,
-          title: t.settings.crashReporting,
-          subtitle: t.settings.crashReportingDescription,
-        ),
-        SettingSwitchTile(
-          focusNode: _focusTracker.get(_kDebugLogging),
-          pref: settings.SettingsService.enableDebugLogging,
-          icon: Symbols.bug_report_rounded,
-          title: t.settings.debugLogging,
-          subtitle: t.settings.debugLoggingDescription,
-        ),
-        SettingNavigationTile(
-          focusNode: _focusTracker.get(_kViewLogs),
-          icon: Symbols.article_rounded,
-          title: t.settings.viewLogs,
-          subtitle: t.settings.viewLogsDescription,
-          destinationBuilder: (context) => const LogsScreen(),
-        ),
-        SettingNavigationTile(
-          focusNode: _focusTracker.get(_kClearCache),
-          icon: Symbols.cleaning_services_rounded,
-          title: t.settings.clearCache,
-          subtitle: t.settings.clearCacheDescription,
-          onTap: () => _showClearCacheDialog(),
-        ),
-        SettingNavigationTile(
-          focusNode: _focusTracker.get(_kResetSettings),
-          icon: Symbols.restore_rounded,
-          title: t.settings.resetSettings,
-          subtitle: t.settings.resetSettingsDescription,
-          onTap: () => _showResetSettingsDialog(),
-        ),
-      ],
-    );
-  }
-
-  /// Debug-only tools, shown as a separate section at the bottom of the list.
-  Widget _buildDebugSection() {
-    return SettingsGroup(
-      title: 'Debug',
-      children: [
-        SettingNavigationTile(
-          icon: Symbols.error_rounded,
-          title: 'Test Sentry',
-          subtitle: 'Send a test error',
-          onTap: () {
-            throw Exception("Example exception");
-          },
-        ),
-        SettingNavigationTile(
-          icon: Symbols.timer_rounded,
-          title: 'Test ANR',
-          subtitle: 'Block the main thread for 10 seconds',
-          onTap: () {
-            showSnackBar(context, 'Blocking main thread...');
-            final end = DateTime.now().add(const Duration(seconds: 10));
-            while (DateTime.now().isBefore(end)) {}
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBackupSection() {
-    final isTv = PlatformDetector.isTV();
-    return SettingsGroup(
-      title: t.settings.backup,
-      children: [
-        // Export and import hand a file to a file picker, which a TV has no
-        // sensible surface for. iCloud sync needs nothing but the toggle, so
-        // it is the one tile in here that an Apple TV does get.
-        if (!isTv) ...[
-          SettingNavigationTile(
-            focusNode: _focusTracker.get(_kExportSettings),
-            icon: Symbols.upload_rounded,
-            title: t.settings.exportSettings,
-            subtitle: t.settings.exportSettingsDescription,
-            onTap: _handleExportSettings,
-          ),
-          SettingNavigationTile(
-            focusNode: _focusTracker.get(_kImportSettings),
-            icon: Symbols.download_rounded,
-            title: t.settings.importSettings,
-            subtitle: t.settings.importSettingsDescription,
-            onTap: _showImportSettingsDialog,
-          ),
-        ],
-        if (_icloudSyncPlatform) _buildIcloudSyncTile(),
-      ],
-    );
-  }
-
-  Widget _buildIcloudSyncTile() {
-    final unavailable = _icloudAvailable == false;
-    final status = ICloudSyncService.instance?.status;
-    final tile = SettingSwitchTile(
-      focusNode: _focusTracker.get(_kIcloudSync),
-      pref: settings.SettingsService.icloudSyncEnabled,
-      icon: Symbols.cloud_sync_rounded,
-      title: t.settings.icloudSync,
-      subtitle: unavailable ? t.settings.icloudSyncUnavailable : t.settings.icloudSyncDescription,
-      enabled: !unavailable,
-      onAfterWrite: _handleIcloudSyncToggle,
-    );
-    if (status == null) return tile;
-
-    // One line under the toggle. It carries the mixed-version boundary too:
-    // after the v2 cutover this client neither writes the old format nor merges
-    // it, so an out-of-date Apple device keeps working but stops exchanging
-    // settings. Saying so is the difference between a known limitation and a
-    // mystery.
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        tile,
-        ICloudSyncStatusLine(status: status),
-      ],
-    );
-  }
-
-  Future<void> _handleIcloudSyncToggle(bool enabled) async {
-    final svc = ICloudSyncService.instance;
-    if (svc == null) return;
-    try {
-      if (enabled) {
-        await svc.enable();
-      } else {
-        await svc.disable();
-      }
-    } catch (_) {
-      // Revert the toggle and surface the failure — the write already landed,
-      // so undo it so the UI matches the actual (off) state.
-      await _settingsService.write(settings.SettingsService.icloudSyncEnabled, false);
-      if (mounted) showErrorSnackBar(context, t.settings.icloudSyncEnableFailed);
-    }
-  }
-
-  Widget _buildAutoCheckUpdatesOnStartupTile() => SettingSwitchTile(
-    focusNode: _focusTracker.get(_kAutoCheckUpdatesOnStartup),
-    pref: settings.SettingsService.autoCheckUpdatesOnStartup,
-    icon: Symbols.notifications_active_rounded,
-    title: t.settings.autoCheckUpdatesOnStartup,
-    subtitle: t.settings.autoCheckUpdatesOnStartupDescription,
-  );
-
-  Widget _buildUpdateSection() {
-    if (UpdateService.useNativeUpdater) {
-      return SettingsGroup(
-        title: t.settings.updates,
-        children: [
-          SettingNavigationTile(
-            focusNode: _focusTracker.get(_kCheckForUpdates),
-            icon: Symbols.system_update_rounded,
-            title: t.settings.checkForUpdates,
-            onTap: _handleCheckForUpdatesTap,
-          ),
-          _buildAutoCheckUpdatesOnStartupTile(),
-        ],
-      );
-    }
-
-    final hasUpdate = _updateInfo != null && _updateInfo!['hasUpdate'] == true;
-
-    return SettingsGroup(
-      title: t.settings.updates,
-      children: [
-        ListTile(
-          focusNode: _focusTracker.get(_kCheckForUpdates),
-          leading: AppIcon(
-            hasUpdate ? Symbols.system_update_rounded : Symbols.check_circle_rounded,
-            fill: 1,
-            color: hasUpdate ? Colors.orange : null,
-          ),
-          title: Text(hasUpdate ? t.settings.updateAvailable : t.settings.checkForUpdates),
-          subtitle: hasUpdate ? Text(t.update.versionAvailable(version: _updateInfo!['latestVersion'])) : null,
-          trailing: _isCheckingForUpdate
-              ? const LoadingIndicatorBox(size: 24)
-              : const AppIcon(Symbols.chevron_right_rounded, fill: 1),
-          onTap: _isCheckingForUpdate ? null : _handleCheckForUpdatesTap,
-        ),
-        _buildAutoCheckUpdatesOnStartupTile(),
-      ],
-    );
-  }
-
-  Future<void> _showRelayUrlDialog() async {
-    await showScopedDialog<void>(
-      context: context,
-      builder: (_) => _RelayUrlDialog(settingsService: _settingsService),
-    );
-  }
-
-  Future<void> _showClearCacheDialog() async {
-    final confirmed = await showConfirmDialog(
-      context,
-      title: t.settings.clearCache,
-      message: t.settings.clearCacheDescription,
-      confirmText: t.common.clear,
-    );
-    if (!confirmed) return;
-    await _settingsService.clearCache();
-    if (mounted) showSuccessSnackBar(context, t.settings.clearCacheSuccess);
-  }
-
-  Future<void> _showResetSettingsDialog() async {
-    final confirmed = await showConfirmDialog(
-      context,
-      title: t.settings.resetSettings,
-      message: t.settings.resetSettingsDescription,
-      confirmText: t.common.reset,
-      isDestructive: true,
-    );
-    if (!confirmed) return;
-    await _settingsService.resetAllSettings();
-    await _keyboardService?.resetToDefaults();
-    if (mounted) showSuccessSnackBar(context, t.settings.resetSettingsSuccess);
-  }
-
-  Future<void> _handleExportSettings() async {
-    try {
-      final path = await SettingsExportService.exportToFile();
-      if (!mounted) return;
-      if (path == null) return; // user cancelled
-      showSuccessSnackBar(context, t.settings.exportSettingsSuccess);
-    } on SettingsExportException {
-      if (mounted) showErrorSnackBar(context, t.settings.exportSettingsFailed);
-    } catch (_) {
-      if (mounted) showErrorSnackBar(context, t.settings.exportSettingsFailed);
-    }
-  }
-
-  Future<void> _showImportSettingsDialog() async {
-    final confirmed = await showConfirmDialog(
-      context,
-      title: t.settings.importSettings,
-      message: t.settings.importSettingsConfirm,
-      confirmText: t.settings.importSettings,
-    );
-    if (!confirmed) return;
-    await _handleImportSettings();
-  }
-
-  Future<void> _handleImportSettings() async {
-    // Capture providers before any awaits so we don't reach through `context`
-    // after the widget may have been unmounted.
-    final themeProvider = context.read<ThemeProvider>();
-    final hiddenLibrariesProvider = context.read<HiddenLibrariesProvider>();
-    final librariesProvider = context.read<LibrariesProvider>();
-
-    try {
-      final result = await SettingsExportService.importFromFile();
-      if (!mounted) return;
-      if (result == null) return; // user cancelled file picker
-
-      // Import wrote directly to SharedPreferences, bypassing `write`. Push
-      // fresh values into active listenables before providers re-read settings.
-      _settingsService.refreshListenables();
-      unawaited(LocaleSettings.setLocale(_settingsService.read(settings.SettingsService.appLocale)));
-      await Future.wait([
-        themeProvider.reload(),
-        hiddenLibrariesProvider.refresh(),
-        if (_keyboardService != null) _keyboardService!.refreshFromStorage(),
-      ]);
-      unawaited(librariesProvider.refresh());
-      // Everything else that caches a preference: home layout and per-library
-      // view state reload from the same signal a remote apply uses.
-      PreferenceRefreshBus.instance.invalidateAll();
-
-      // Import stamped every key it wrote; this reconcile makes sure each one
-      // reached the store, including a send the transport held back.
-      unawaited(ICloudSyncService.instance?.pushAllIfEnabled() ?? Future.value());
-
-      if (!mounted) return;
-      showSuccessSnackBar(context, t.settings.importSettingsSuccess);
-    } on NoUserSignedInException {
-      if (mounted) showErrorSnackBar(context, t.settings.importSettingsNoUser);
-    } on InvalidExportFileException {
-      if (mounted) showErrorSnackBar(context, t.settings.importSettingsInvalidFile);
-    } on SettingsExportException {
-      if (mounted) showErrorSnackBar(context, t.settings.importSettingsFailed);
-    } catch (_) {
-      if (mounted) showErrorSnackBar(context, t.settings.importSettingsFailed);
-    }
-  }
-
-  /// Shared dispatch for the update tile and the search entry: native check,
-  /// open the dialog when an update is already known, otherwise run a guarded
-  /// check.
-  void _handleCheckForUpdatesTap() {
-    if (UpdateService.useNativeUpdater) {
-      UpdateService.checkForUpdatesNative(inBackground: false);
-      return;
-    }
-    if (_isCheckingForUpdate) return;
-    if (_updateInfo != null && _updateInfo!['hasUpdate'] == true) {
-      _showUpdateDialog();
-    } else {
-      _checkForUpdates();
-    }
-  }
-
-  Future<void> _checkForUpdates() async {
-    setState(() => _isCheckingForUpdate = true);
-
-    try {
-      final updateInfo = await UpdateService.checkForUpdates();
-
-      if (mounted) {
-        setState(() {
-          _updateInfo = updateInfo;
-          _isCheckingForUpdate = false;
-        });
-
-        if (updateInfo == null || updateInfo['hasUpdate'] != true) {
-          showAppSnackBar(context, t.update.latestVersion);
-        } else if (_searchQuery.isNotEmpty) {
-          // The update-available tile is hidden while search results are
-          // shown, so surface the found update directly.
-          _showUpdateDialog();
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isCheckingForUpdate = false);
-        showErrorSnackBar(context, t.update.checkFailed);
-      }
-    }
-  }
-
-  void _showUpdateDialog() {
-    final updateInfo = _updateInfo;
-    if (updateInfo == null) return;
-    unawaited(
-      showUpdateAvailableDialog(context, updateInfo, title: t.settings.updateAvailable, dismissLabel: t.common.close),
-    );
-  }
-}
-
-class _RelayUrlDialog extends StatefulWidget {
-  final settings.SettingsService settingsService;
-
-  const _RelayUrlDialog({required this.settingsService});
-
-  @override
-  State<_RelayUrlDialog> createState() => _RelayUrlDialogState();
-}
-
-class _RelayUrlDialogState extends State<_RelayUrlDialog> {
-  late final TextEditingController _controller;
-  final _saveFocusNode = FocusNode(debugLabel: 'WatchTogetherRelaySave');
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(
-      text: widget.settingsService.read(settings.SettingsService.customRelayUrl) ?? '',
-    );
-  }
-
-  @override
-  void dispose() {
-    _saveFocusNode.dispose();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _reset() async {
-    _controller.clear();
-    await widget.settingsService.write(settings.SettingsService.customRelayUrl, null);
-    if (mounted) Navigator.pop(context);
-  }
-
-  Future<void> _save() async {
-    final trimmed = _controller.text.trim();
-    await widget.settingsService.write(settings.SettingsService.customRelayUrl, trimmed.isEmpty ? null : trimmed);
-    if (mounted) Navigator.pop(context);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(t.settings.watchTogetherRelay),
-      content: FocusableTextField(
-        controller: _controller,
-        decoration: InputDecoration(labelText: t.settings.urlLabel, hintText: t.settings.watchTogetherRelayHint),
-        autofocus: true,
-        textInputAction: TextInputAction.done,
-        onEditingComplete: () => _saveFocusNode.requestFocus(),
-      ),
-      actions: [
-        DialogActionButton(onPressed: _reset, label: t.settings.resetToDefault),
-        DialogActionButton(onPressed: () => Navigator.pop(context), label: t.common.cancel),
-        DialogActionButton(focusNode: _saveFocusNode, onPressed: _save, label: t.common.save),
-      ],
-    );
-  }
 }

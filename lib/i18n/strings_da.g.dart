@@ -94,6 +94,7 @@ class TranslationsDa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTvNavigationDa tvNavigation = _TranslationsTvNavigationDa._(_root);
 	@override late final _TranslationsTvMyPleyaDa tvMyPleya = _TranslationsTvMyPleyaDa._(_root);
 	@override late final _TranslationsTvContextMenuDa tvContextMenu = _TranslationsTvContextMenuDa._(_root);
+	@override late final _TranslationsSettingsStudioDa settingsStudio = _TranslationsSettingsStudioDa._(_root);
 }
 
 // Path: app
@@ -1858,6 +1859,68 @@ class _TranslationsTvContextMenuDa extends TranslationsTvContextMenuEn {
 	@override String doneOnSome({required Object done, required Object total}) => 'Udført på ${done} af ${total} kilder. Resten forsøges igen, når de er online igen.';
 	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Udført på ${done} af ${total} kilder.';
 	@override String get failed => 'Det virkede ikke';
+}
+
+// Path: settingsStudio
+class _TranslationsSettingsStudioDa extends TranslationsSettingsStudioEn {
+	_TranslationsSettingsStudioDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get forYou => 'Til dig';
+	@override String get connectionsAndProfiles => 'Forbindelser og profiler';
+	@override String get system => 'System';
+	@override String get integrations => 'Integrationer';
+	@override String get libraryAndHome => 'Bibliotek og Hjem';
+	@override String get personal => 'Personligt';
+	@override String get mainTagline => 'Gør Pleya helt til din egen.';
+	@override String get tvTagline => 'Din seeroplevelse, ned i detaljen.';
+	@override String get appearanceHeadline => 'Sådan ser din Pleya ud';
+	@override String get livePreview => 'Live-forhåndsvisning';
+	@override String get yourLibrary => 'Dit bibliotek';
+	@override String get viewPreview => 'Se forhåndsvisning';
+	@override String get playbackExperience => 'Afspilningsoplevelse';
+	@override String get manage => 'Administrer';
+	@override String get yourWatchlist => 'Din liste';
+	@override String get yourContent => 'Dit indhold';
+	@override String get lightMode => 'Lys tilstand';
+	@override String get darkMode => 'Mørk tilstand';
+	@override String get oledMode => 'OLED-tilstand';
+	@override String get systemMode => 'Systemtilstand';
+	@override String get posterView => 'Plakatvisning';
+	@override String get listView => 'Listevisning';
+	@override String get libraries => 'Biblioteker';
+	@override String get serversAndSources => 'Servere og kilder';
+	@override String get contentAndWindow => 'Indhold og vindue';
+	@override String get quality => 'Kvalitet';
+	@override String get maintenance => 'Vedligeholdelse';
+	@override String densityValue({required Object value}) => '${value} af 5';
+	@override String get existingSources => 'Eksisterende kilder';
+	@override String get preferredAudio => 'Foretrukket lydsprog';
+	@override String get preferredSubtitles => 'Foretrukket undertekstsprog';
+	@override String get subtitleWhen => 'Undertekster altid / fremmedsprog / aldrig';
+	@override String get reorderRows => 'Træk rækker i rækkefølge';
+	@override String get rowVisibility => 'Vis eller skjul en række';
+	@override String get addOwnRow => 'Tilføj egen række';
+	@override String get removeOwnRow => 'Fjern egen række';
+	@override String get chooseRowToRemove => 'Hvilken række?';
+	@override String get hiddenContinueWatching => 'Administrer skjult Fortsæt';
+	@override String get storage => 'Lager';
+	@override String get managePlex => 'Administrer Plex-servere';
+	@override String get manageJellyfin => 'Administrer Jellyfin-kilder';
+	@override String get manageEmby => 'Administrer Emby-kilder';
+	@override String get managePleyaServer => 'Administrer Pleya Server-kilder';
+	@override String get removeSource => 'Afbryd / fjern kilde';
+	@override String get linkPlex => 'Tilknyt Plex-konto';
+	@override String get addJellyfin => 'Tilføj Jellyfin';
+	@override String get addEmby => 'Tilføj Emby';
+	@override String get addPleyaServer => 'Tilføj Pleya Server';
+	@override String get tvFooterHint => 'Menu: tilbage · Vælg: åbn eller skift';
+	@override String get video => 'Video';
+	@override String get controls => 'Betjening';
+	@override String get diagnostics => 'Diagnose';
+	@override String get activeProfile => 'Aktiv profil';
 }
 
 // Path: search.filters
@@ -3737,6 +3800,59 @@ extension on TranslationsDa {
 			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Udført på ${done} af ${total} kilder. Resten forsøges igen, når de er online igen.',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Udført på ${done} af ${total} kilder.',
 			'tvContextMenu.failed' => 'Det virkede ikke',
+			'settingsStudio.forYou' => 'Til dig',
+			'settingsStudio.connectionsAndProfiles' => 'Forbindelser og profiler',
+			'settingsStudio.system' => 'System',
+			'settingsStudio.integrations' => 'Integrationer',
+			'settingsStudio.libraryAndHome' => 'Bibliotek og Hjem',
+			'settingsStudio.personal' => 'Personligt',
+			'settingsStudio.mainTagline' => 'Gør Pleya helt til din egen.',
+			'settingsStudio.tvTagline' => 'Din seeroplevelse, ned i detaljen.',
+			'settingsStudio.appearanceHeadline' => 'Sådan ser din Pleya ud',
+			'settingsStudio.livePreview' => 'Live-forhåndsvisning',
+			'settingsStudio.yourLibrary' => 'Dit bibliotek',
+			'settingsStudio.viewPreview' => 'Se forhåndsvisning',
+			'settingsStudio.playbackExperience' => 'Afspilningsoplevelse',
+			'settingsStudio.manage' => 'Administrer',
+			'settingsStudio.yourWatchlist' => 'Din liste',
+			'settingsStudio.yourContent' => 'Dit indhold',
+			'settingsStudio.lightMode' => 'Lys tilstand',
+			'settingsStudio.darkMode' => 'Mørk tilstand',
+			'settingsStudio.oledMode' => 'OLED-tilstand',
+			'settingsStudio.systemMode' => 'Systemtilstand',
+			'settingsStudio.posterView' => 'Plakatvisning',
+			'settingsStudio.listView' => 'Listevisning',
+			'settingsStudio.libraries' => 'Biblioteker',
+			'settingsStudio.serversAndSources' => 'Servere og kilder',
+			'settingsStudio.contentAndWindow' => 'Indhold og vindue',
+			'settingsStudio.quality' => 'Kvalitet',
+			'settingsStudio.maintenance' => 'Vedligeholdelse',
+			'settingsStudio.densityValue' => ({required Object value}) => '${value} af 5',
+			'settingsStudio.existingSources' => 'Eksisterende kilder',
+			'settingsStudio.preferredAudio' => 'Foretrukket lydsprog',
+			'settingsStudio.preferredSubtitles' => 'Foretrukket undertekstsprog',
+			'settingsStudio.subtitleWhen' => 'Undertekster altid / fremmedsprog / aldrig',
+			'settingsStudio.reorderRows' => 'Træk rækker i rækkefølge',
+			'settingsStudio.rowVisibility' => 'Vis eller skjul en række',
+			'settingsStudio.addOwnRow' => 'Tilføj egen række',
+			'settingsStudio.removeOwnRow' => 'Fjern egen række',
+			'settingsStudio.chooseRowToRemove' => 'Hvilken række?',
+			'settingsStudio.hiddenContinueWatching' => 'Administrer skjult Fortsæt',
+			'settingsStudio.storage' => 'Lager',
+			'settingsStudio.managePlex' => 'Administrer Plex-servere',
+			'settingsStudio.manageJellyfin' => 'Administrer Jellyfin-kilder',
+			'settingsStudio.manageEmby' => 'Administrer Emby-kilder',
+			'settingsStudio.managePleyaServer' => 'Administrer Pleya Server-kilder',
+			'settingsStudio.removeSource' => 'Afbryd / fjern kilde',
+			'settingsStudio.linkPlex' => 'Tilknyt Plex-konto',
+			'settingsStudio.addJellyfin' => 'Tilføj Jellyfin',
+			'settingsStudio.addEmby' => 'Tilføj Emby',
+			'settingsStudio.addPleyaServer' => 'Tilføj Pleya Server',
+			'settingsStudio.tvFooterHint' => 'Menu: tilbage · Vælg: åbn eller skift',
+			'settingsStudio.video' => 'Video',
+			'settingsStudio.controls' => 'Betjening',
+			'settingsStudio.diagnostics' => 'Diagnose',
+			'settingsStudio.activeProfile' => 'Aktiv profil',
 			_ => null,
 		};
 	}

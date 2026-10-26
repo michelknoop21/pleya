@@ -94,6 +94,7 @@ class TranslationsSv extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTvNavigationSv tvNavigation = _TranslationsTvNavigationSv._(_root);
 	@override late final _TranslationsTvMyPleyaSv tvMyPleya = _TranslationsTvMyPleyaSv._(_root);
 	@override late final _TranslationsTvContextMenuSv tvContextMenu = _TranslationsTvContextMenuSv._(_root);
+	@override late final _TranslationsSettingsStudioSv settingsStudio = _TranslationsSettingsStudioSv._(_root);
 }
 
 // Path: app
@@ -1858,6 +1859,68 @@ class _TranslationsTvContextMenuSv extends TranslationsTvContextMenuEn {
 	@override String doneOnSome({required Object done, required Object total}) => 'Klart på ${done} av ${total} källor. Resten försöks igen när de är online igen.';
 	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Klart på ${done} av ${total} källor.';
 	@override String get failed => 'Det gick inte';
+}
+
+// Path: settingsStudio
+class _TranslationsSettingsStudioSv extends TranslationsSettingsStudioEn {
+	_TranslationsSettingsStudioSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get forYou => 'För dig';
+	@override String get connectionsAndProfiles => 'Anslutningar och profiler';
+	@override String get system => 'System';
+	@override String get integrations => 'Integrationer';
+	@override String get libraryAndHome => 'Bibliotek och Hem';
+	@override String get personal => 'Personligt';
+	@override String get mainTagline => 'Gör Pleya helt till ditt.';
+	@override String get tvTagline => 'Din tittarupplevelse, in i minsta detalj.';
+	@override String get appearanceHeadline => 'Så här ser ditt Pleya ut';
+	@override String get livePreview => 'Liveförhandsvisning';
+	@override String get yourLibrary => 'Ditt bibliotek';
+	@override String get viewPreview => 'Visa förhandsvisning';
+	@override String get playbackExperience => 'Uppspelningsupplevelse';
+	@override String get manage => 'Hantera';
+	@override String get yourWatchlist => 'Din lista';
+	@override String get yourContent => 'Ditt innehåll';
+	@override String get lightMode => 'Ljust läge';
+	@override String get darkMode => 'Mörkt läge';
+	@override String get oledMode => 'OLED-läge';
+	@override String get systemMode => 'Systemläge';
+	@override String get posterView => 'Affischvy';
+	@override String get listView => 'Listvy';
+	@override String get libraries => 'Bibliotek';
+	@override String get serversAndSources => 'Servrar och källor';
+	@override String get contentAndWindow => 'Innehåll och fönster';
+	@override String get quality => 'Kvalitet';
+	@override String get maintenance => 'Underhåll';
+	@override String densityValue({required Object value}) => '${value} av 5';
+	@override String get existingSources => 'Befintliga källor';
+	@override String get preferredAudio => 'Föredraget ljudspråk';
+	@override String get preferredSubtitles => 'Föredraget undertextspråk';
+	@override String get subtitleWhen => 'Undertexter alltid / främmande språk / aldrig';
+	@override String get reorderRows => 'Dra rader i ordning';
+	@override String get rowVisibility => 'Visa eller dölj en rad';
+	@override String get addOwnRow => 'Lägg till egen rad';
+	@override String get removeOwnRow => 'Ta bort egen rad';
+	@override String get chooseRowToRemove => 'Vilken rad?';
+	@override String get hiddenContinueWatching => 'Hantera dolda Fortsätt titta';
+	@override String get storage => 'Lagring';
+	@override String get managePlex => 'Hantera Plex-servrar';
+	@override String get manageJellyfin => 'Hantera Jellyfin-källor';
+	@override String get manageEmby => 'Hantera Emby-källor';
+	@override String get managePleyaServer => 'Hantera Pleya Server-källor';
+	@override String get removeSource => 'Koppla från / ta bort källa';
+	@override String get linkPlex => 'Länka Plex-konto';
+	@override String get addJellyfin => 'Lägg till Jellyfin';
+	@override String get addEmby => 'Lägg till Emby';
+	@override String get addPleyaServer => 'Lägg till Pleya Server';
+	@override String get tvFooterHint => 'Meny: tillbaka · Välj: öppna eller växla';
+	@override String get video => 'Video';
+	@override String get controls => 'Styrning';
+	@override String get diagnostics => 'Diagnostik';
+	@override String get activeProfile => 'Aktiv profil';
 }
 
 // Path: search.filters
@@ -3737,6 +3800,59 @@ extension on TranslationsSv {
 			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Klart på ${done} av ${total} källor. Resten försöks igen när de är online igen.',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Klart på ${done} av ${total} källor.',
 			'tvContextMenu.failed' => 'Det gick inte',
+			'settingsStudio.forYou' => 'För dig',
+			'settingsStudio.connectionsAndProfiles' => 'Anslutningar och profiler',
+			'settingsStudio.system' => 'System',
+			'settingsStudio.integrations' => 'Integrationer',
+			'settingsStudio.libraryAndHome' => 'Bibliotek och Hem',
+			'settingsStudio.personal' => 'Personligt',
+			'settingsStudio.mainTagline' => 'Gör Pleya helt till ditt.',
+			'settingsStudio.tvTagline' => 'Din tittarupplevelse, in i minsta detalj.',
+			'settingsStudio.appearanceHeadline' => 'Så här ser ditt Pleya ut',
+			'settingsStudio.livePreview' => 'Liveförhandsvisning',
+			'settingsStudio.yourLibrary' => 'Ditt bibliotek',
+			'settingsStudio.viewPreview' => 'Visa förhandsvisning',
+			'settingsStudio.playbackExperience' => 'Uppspelningsupplevelse',
+			'settingsStudio.manage' => 'Hantera',
+			'settingsStudio.yourWatchlist' => 'Din lista',
+			'settingsStudio.yourContent' => 'Ditt innehåll',
+			'settingsStudio.lightMode' => 'Ljust läge',
+			'settingsStudio.darkMode' => 'Mörkt läge',
+			'settingsStudio.oledMode' => 'OLED-läge',
+			'settingsStudio.systemMode' => 'Systemläge',
+			'settingsStudio.posterView' => 'Affischvy',
+			'settingsStudio.listView' => 'Listvy',
+			'settingsStudio.libraries' => 'Bibliotek',
+			'settingsStudio.serversAndSources' => 'Servrar och källor',
+			'settingsStudio.contentAndWindow' => 'Innehåll och fönster',
+			'settingsStudio.quality' => 'Kvalitet',
+			'settingsStudio.maintenance' => 'Underhåll',
+			'settingsStudio.densityValue' => ({required Object value}) => '${value} av 5',
+			'settingsStudio.existingSources' => 'Befintliga källor',
+			'settingsStudio.preferredAudio' => 'Föredraget ljudspråk',
+			'settingsStudio.preferredSubtitles' => 'Föredraget undertextspråk',
+			'settingsStudio.subtitleWhen' => 'Undertexter alltid / främmande språk / aldrig',
+			'settingsStudio.reorderRows' => 'Dra rader i ordning',
+			'settingsStudio.rowVisibility' => 'Visa eller dölj en rad',
+			'settingsStudio.addOwnRow' => 'Lägg till egen rad',
+			'settingsStudio.removeOwnRow' => 'Ta bort egen rad',
+			'settingsStudio.chooseRowToRemove' => 'Vilken rad?',
+			'settingsStudio.hiddenContinueWatching' => 'Hantera dolda Fortsätt titta',
+			'settingsStudio.storage' => 'Lagring',
+			'settingsStudio.managePlex' => 'Hantera Plex-servrar',
+			'settingsStudio.manageJellyfin' => 'Hantera Jellyfin-källor',
+			'settingsStudio.manageEmby' => 'Hantera Emby-källor',
+			'settingsStudio.managePleyaServer' => 'Hantera Pleya Server-källor',
+			'settingsStudio.removeSource' => 'Koppla från / ta bort källa',
+			'settingsStudio.linkPlex' => 'Länka Plex-konto',
+			'settingsStudio.addJellyfin' => 'Lägg till Jellyfin',
+			'settingsStudio.addEmby' => 'Lägg till Emby',
+			'settingsStudio.addPleyaServer' => 'Lägg till Pleya Server',
+			'settingsStudio.tvFooterHint' => 'Meny: tillbaka · Välj: öppna eller växla',
+			'settingsStudio.video' => 'Video',
+			'settingsStudio.controls' => 'Styrning',
+			'settingsStudio.diagnostics' => 'Diagnostik',
+			'settingsStudio.activeProfile' => 'Aktiv profil',
 			_ => null,
 		};
 	}

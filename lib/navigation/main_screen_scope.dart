@@ -34,6 +34,10 @@ class MainScreenFocusScope extends InheritedModel<MainScreenScopeAspect> {
   final void Function(String libraryGlobalKey)? selectLibrary;
   final VoidCallback? openSettings;
 
+  /// Opens Bibliotheken: the tab on a phone, the Mijn Pleya section on TV.
+  /// Instellingen' live preview uses it for "Bekijk voorbeeld" (A-24b).
+  final VoidCallback? openLibraries;
+
   /// The fase-7 TV shell's single content-focus authority (P2), or null on the
   /// rail and bottom-bar shells, which have no such contract.
   ///
@@ -55,6 +59,7 @@ class MainScreenFocusScope extends InheritedModel<MainScreenScopeAspect> {
     this.viewportWidth,
     this.selectLibrary,
     this.openSettings,
+    this.openLibraries,
     this.tvContentFocus,
     required super.child,
   });

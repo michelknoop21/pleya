@@ -21,6 +21,7 @@ import 'memory_layouts.dart';
 import 'memory_list_screen.dart';
 import 'memory_screen_model.dart';
 import 'memory_tv_layout.dart';
+import '../../../widgets/settings/settings_studio_theme.dart';
 
 /// The model of the memory screen for the profile session [context] lives
 /// in: the profile's own [MemoryService], the writer of the overview and the
@@ -41,7 +42,7 @@ MemoryScreenModel memoryScreenModelForSession(BuildContext context) {
 /// Opens Instellingen > Big P > Geheugen: inside the TV shell when there is
 /// one, as an ordinary page otherwise.
 void openAssistantMemoryScreen(BuildContext context) {
-  Widget builder(BuildContext _) => const AssistantMemoryScreen();
+  final builder = settingsStudioBuilder(context, (_) => const AssistantMemoryScreen());
   if (openTvContentRoute(id: 'tvSettings_assistantMemory', builder: builder) != null) return;
   unawaited(Navigator.of(context).push(MaterialPageRoute<void>(builder: builder)));
 }
@@ -91,7 +92,7 @@ class _AssistantMemoryScreenState extends State<AssistantMemoryScreen> {
   }
 
   void _openList() {
-    Widget builder(BuildContext _) => MemoryListScreen(model: _model, speech: _speech);
+    final builder = settingsStudioBuilder(context, (_) => MemoryListScreen(model: _model, speech: _speech));
     if (openTvContentRoute(id: 'tvSettings_assistantMemoryList', builder: builder) != null) return;
     unawaited(Navigator.of(context).push(MaterialPageRoute<void>(builder: builder)));
   }

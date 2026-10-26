@@ -84,12 +84,11 @@ steps:
   - wait_until: {focused: "my_pleya.tile[watchTogether]", timeout: 8000}
 
   # --- Over ---------------------------------------------------------------
-  # DOWN keeps the column. Since the Big P tile opens the Pleya group, the
-  # tile under Samen Kijken is Logboeken, and Over sits right of it.
-  - press: down
-  - wait_until: {focused: "my_pleya.tile[logs]", timeout: 5000}
+  # A-24b (northstar 01): Right from the end of Bronnen crosses to the right
+  # column (Big P where the build carries it), and Beheer runs down it:
+  # Instellingen, Logboeken, Over Pleya, Uitloggen.
   - press: right
-  - wait_until: {focused: "my_pleya.tile[about]", timeout: 5000}
+  - walk: {direction: down, steps: 4, stopAt: "my_pleya.tile[about]", timeout: 60000, settle: 600}
   - press: select
   - wait_until: {id: "my_pleya.section.content[about]", timeout: 15000}
   - settle: 800
@@ -103,7 +102,7 @@ steps:
   # --- Logs en diagnose ---------------------------------------------------
   # `logs-a`. The reader's own body is `TvPageSurface.expanded`, so this also
   # measures the one page whose column is not the scroll.
-  - press: left
+  - press: up
   - wait_until: {focused: "my_pleya.tile[logs]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section.content[logs]", timeout: 15000}
@@ -140,7 +139,7 @@ steps:
   # `settings-a`. The audit measured three content edges on this page at once:
   # a heading at 1.67%, a group label at 9.64% and a card at 9.14% capped by a
   # desktop `maxWidth`. One edge now, and the value tiles say their state.
-  - press: left
+  - press: up
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section.content[settings]", timeout: 15000}
@@ -148,18 +147,16 @@ steps:
   - assert: {id: "my_pleya.section.content[settings]", leftInset: 75.48}
   # A-24: the category rail holds the page's left edge; the rows sit beside it.
   - assert: {id: "settings.category[0]", leftInset: 75.48}
-  - assert: {id: "my_pleya.section.tile[settings.appearance]", rightOf: "settings.category[0]"}
+  - assert: {id: "my_pleya.section.tile[setting.theme_mode]", rightOf: "settings.category[0]"}
   # "Waarde-instellingen tonen hun huidige stand op de tegel": a switch row
-  # became a tile that says its own state, so a viewer does not have to open
-  # anything to read it. On A-24 those rows live under Geavanceerd, the third
-  # category on Apple TV.
+  # says its own state, so a viewer does not have to open anything to read
+  # it. A-24b: those rows live under Geavanceerd, the last category (after
+  # Big P in a build that carries it).
   - press: left
   - wait_until: {focused: "settings.category[0]", timeout: 5000}
-  - press: down
-  - press: down
-  - wait_until: {focused: "settings.category[2]", timeout: 5000}
+  - walk: {direction: down, steps: 7, stopAt: "settings.category[7]", timeout: 105000, settle: 400}
   - press: select
-  - wait_until: {id: "settings.category[2]", state: {selected: true}, timeout: 5000}
+  - wait_until: {id: "settings.category[7]", state: {selected: true}, timeout: 5000}
   - assert: {id: "my_pleya.section.tile[settings.crash_reporting]", state: {toggled: true}}
   - assert: {id: "my_pleya.section.tile[settings.debug_logging]", state: {toggled: false}}
   - snapshot: 50-settings-aligned

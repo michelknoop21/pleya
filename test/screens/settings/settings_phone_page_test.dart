@@ -29,6 +29,7 @@ import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/settings/setting_value_label.dart';
 import 'package:pleya/widgets/settings/settings_studio_header.dart';
+import 'package:pleya/widgets/settings/settings_studio_theme.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
@@ -54,7 +55,7 @@ void main() {
   /// Points at 3x. An iPhone-sized view (812 or 568 high) reads as a phone to
   /// `PlatformDetector.isPhone`; the default 2400 high view, which builds every
   /// card at once, reads as a tablet and so shows the plain bar.
-  Future<void> pumpSettings(WidgetTester tester, {double width = 375, double height = 2400}) async {
+  Future<void> pumpSettings(WidgetTester tester, {double width = 375, double height = 2400, ThemeData? theme}) async {
     tester.view.physicalSize = Size(width * 3, height * 3);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
@@ -79,7 +80,7 @@ void main() {
             Provider<ProfileRegistry>.value(value: ProfileRegistry(db)),
             ChangeNotifierProvider<ActiveProfileProvider>(create: (_) => _FakeActiveProfile(null)),
           ],
-          child: MaterialApp(theme: monoTheme(dark: false), home: const SettingsScreen()),
+          child: MaterialApp(theme: theme ?? monoTheme(dark: false), home: const SettingsScreen()),
         ),
       ),
     );
@@ -123,20 +124,76 @@ void main() {
     variant: TargetPlatformVariant.only(TargetPlatform.android),
   );
 
-  testWidgets('values: the theme beside the Weergave title, the server line shown whole', (tester) async {
+  testWidgets('A-24b: the page wears the Studio palette, the app around it keeps monoTheme', (tester) async {
+    await pumpSettings(tester, height: 812);
+
+    final page = tester.element(find.byType(Scaffold).first);
+    expect(Theme.of(page).scaffoldBackgroundColor, kStudioLightPage);
+    expect(SettingsStudioTheme.isActive(page), isTrue);
+    final app = tester.element(find.byType(SettingsScreen));
+    expect(Theme.of(app).scaffoldBackgroundColor, const Color(0xFFF7F7F8), reason: 'only Instellingen is warm');
+    await unmount(tester);
+  }, variant: _iPhone);
+
+  testWidgets('A-24b: the three Studio groups in order, one row per page, no values or lines', (tester) async {
     await pumpSettings(tester);
 
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+    final s = t.settingsStudio;
+    expect(top(s.forYou.toUpperCase()), lessThan(top(s.connectionsAndProfiles.toUpperCase())));
+    expect(top(s.connectionsAndProfiles.toUpperCase()), lessThan(top(s.system.toUpperCase())));
+    final forYou = [
+      t.settings.appearance,
+      t.settings.videoPlayback,
+      t.languageSettings.title,
+      t.settings.subtitleStyling,
+      s.libraries,
+    ];
+    for (var i = 1; i < forYou.length; i++) {
+      expect(top(forYou[i - 1]), lessThan(top(forYou[i])), reason: '${forYou[i - 1]} before ${forYou[i]}');
+    }
+    expect(top(forYou.last), lessThan(top(s.connectionsAndProfiles.toUpperCase())));
+    expect(top(s.integrations), greaterThan(top(s.connectionsAndProfiles.toUpperCase())));
+    expect(top(s.serversAndSources), lessThan(top(s.system.toUpperCase())));
+    expect(top(t.settings.advanced), greaterThan(top(s.system.toUpperCase())));
+    expect(top(t.settings.about), greaterThan(top(t.settings.backup)));
+
+    // The anchor's main page shows no values and no explanation lines.
+    expect(find.byType(SettingValueLabel), findsNothing);
+    expect(find.text(t.settings.oledTheme), findsNothing);
+    expect(find.text(t.settings.videoPlaybackDescription), findsNothing);
+    // The old groups are gone.
+    expect(find.text(t.settings.sectionLibrary.toUpperCase()), findsNothing);
+    await unmount(tester);
+  });
+
+  // Michel, 25 October 2026: a theme changes colours, not structure or
+  // naming. Light uses the group names of dark and OLED, not those of the
+  // light anchor `03`.
+  for (final (name, theme) in [
+    ('Light', monoTheme(dark: false)),
+    ('Dark', monoTheme(dark: true)),
+    ('OLED', monoTheme(dark: true, oled: true)),
+  ]) {
+    testWidgets('A-24b: $name shows the same three group titles', (tester) async {
+      await pumpSettings(tester, theme: theme);
+      final s = t.settingsStudio;
+      for (final title in [s.forYou, s.connectionsAndProfiles, s.system]) {
+        expect(find.text(title.toUpperCase()), findsOneWidget, reason: '$name: $title');
+      }
+      expect(find.text(t.settings.sectionLibrary.toUpperCase()), findsNothing, reason: '$name: no old group');
+      await unmount(tester);
+    });
+  }
+
+  testWidgets('the explanation a row no longer shows is its VoiceOver hint', (tester) async {
+    await pumpSettings(tester);
+    final semantics = tester.ensureSemantics();
     expect(
-      find.ancestor(of: find.text(t.settings.oledTheme), matching: find.byType(SettingValueLabel)),
-      findsOneWidget,
-      reason: 'the theme (OLED by default) is the Weergave row value',
+      tester.getSemantics(find.text(t.settings.videoPlayback)),
+      containsSemantics(hint: t.settings.videoPlaybackDescription),
     );
-    // Shown whole: beside the title when it fits, under it when it does not.
-    expect(tester.renderObject<RenderParagraph>(find.text(t.tvMyPleya.noServers)).didExceedMaxLines, isFalse);
-    expect(
-      find.text('${t.settings.libraryDensity} ${SettingsService.instance.read(SettingsService.libraryDensity)}'),
-      findsOneWidget,
-    );
+    semantics.dispose();
     await unmount(tester);
   });
 
@@ -147,7 +204,7 @@ void main() {
     await tester.pump();
 
     expect(find.text(t.settings.trackers), findsOneWidget);
-    expect(find.text(t.settings.sectionLibrary.toUpperCase()), findsNothing);
+    expect(find.text(t.settingsStudio.forYou.toUpperCase()), findsNothing);
 
     await tester.enterText(find.byType(TextField), 'zzzz-geen-treffer');
     await tester.pump();

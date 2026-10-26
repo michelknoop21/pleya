@@ -31,9 +31,8 @@ steps:
   - wait_until: {id: screen.my_pleya, timeout: 15000}
 
   # The hub enters on the profile switch control; one DOWN lands on the first
-  # tile (Libraries), a second would skip to Settings. Left/right then walks
-  # the flat page order, so RIGHT is the whole traversal for the rest of this
-  # scenario.
+  # tile (Libraries). A-24b (northstar 01): RIGHT walks Bronnen and crosses
+  # to the right column at its end; Beheer then runs DOWN.
   - snapshot: 00-hub
   - press: down
   - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
@@ -71,6 +70,7 @@ steps:
 
   # --- Opties / Instellingen --------------------------------------------
   - press: right
+  - walk: {direction: down, steps: 2, stopAt: "my_pleya.tile[settings]", timeout: 30000, settle: 600}
   - press: select
   - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
   - snapshot: 40-settings-opened
@@ -79,8 +79,9 @@ steps:
   - press: menu
   - snapshot: 42-settings-back
 
-  # --- Logs en diagnose --------------------------------------------------
-  - press: right
+  # --- Logboeken ---------------------------------------------------------
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[logs]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section[logs]", timeout: 15000}
   - snapshot: 50-logs-opened
@@ -90,7 +91,8 @@ steps:
   - snapshot: 52-logs-back
 
   # --- Over --------------------------------------------------------------
-  - press: right
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[about]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section[about]", timeout: 15000}
   - snapshot: 60-about-opened

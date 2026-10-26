@@ -29,6 +29,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/screens/settings/library_home_rows.dart';
 import 'package:pleya/focus/dpad_navigator.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -224,6 +225,7 @@ void main() {
     bool barren = false,
     bool continueWatchingOnly = false,
     List<MediaHub>? hubs,
+    Widget? body,
   }) async {
     // StorageService stores a string list as one JSON string, so the fixture
     // writes exactly what an earlier session would have left in that key.
@@ -324,7 +326,7 @@ void main() {
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: monoTheme(dark: true),
-            home: InputModeTracker(child: const Scaffold(body: TvContentFeed())),
+            home: InputModeTracker(child: Scaffold(body: body ?? const TvContentFeed())),
           ),
         ),
       ),
@@ -754,6 +756,18 @@ void main() {
       isFalse,
       reason: 'one Select on Annuleren throws the whole wizard away',
     );
+  });
+
+  // A-24b review I2: Instellingen ▸ Home aanpassen ▸ Eigen rij toevoegen on a
+  // TV runs this D-pad wizard, not the phone's full-screen page.
+  testWidgets('Instellingen "Eigen rij toevoegen" opens the TV wizard on a TV', (tester) async {
+    await boot(
+      tester,
+      body: Builder(builder: (context) => ListView(children: buildHomeLayoutRows(context))),
+    );
+    await tester.tap(find.text(t.settingsStudio.addOwnRow));
+    await tester.pumpAndSettle();
+    expect(find.byKey(tvHomeRowWizardKey), findsOneWidget);
   });
 
   testWidgets('the new-row flow saves a row and Home draws it', (tester) async {

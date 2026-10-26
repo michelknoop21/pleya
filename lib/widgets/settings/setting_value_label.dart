@@ -3,9 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../theme/mono_tokens.dart';
-import '../settings_rows.dart';
-import '../settings_section.dart' show kSettingsMaxWidth;
+import '../settings_section.dart' show kSettingsMaxWidth, kSettingsStudioValueSize;
+import 'settings_icon_badge.dart';
 import 'settings_studio_style.dart';
+import 'settings_studio_theme.dart';
 
 /// Where a settings row off TV shows its current value (A-24, Apple TV+
 /// Studio on iOS).
@@ -99,8 +100,11 @@ class SettingTitleWithValue extends StatelessWidget {
   }
 }
 
-TextStyle? _valueStyle(BuildContext context) =>
-    Theme.of(context).textTheme.bodyMedium?.copyWith(color: tokens(context).textMuted);
+TextStyle? _valueStyle(BuildContext context) => Theme.of(context).textTheme.bodyMedium?.copyWith(
+  color: tokens(context).textMuted,
+  // A-24b: the Studio rows' smaller value inside Instellingen.
+  fontSize: SettingsStudioTheme.isActive(context) ? kSettingsStudioValueSize : null,
+);
 
 double _textWidth(BuildContext context, String text, TextStyle? style) {
   final painter = TextPainter(
@@ -117,14 +121,14 @@ double _textWidth(BuildContext context, String text, TextStyle? style) {
 /// The width a value may take on its row: what the title leaves, capped at
 /// [kSettingsValueMaxFraction] of the card. The card is the settings column
 /// less SettingsGroup's 16 pt margins; before the text come the row inset,
-/// the badge and the title gap ([kSettingsSeparatorIndent]).
+/// the icon slot and the title gap ([settingsRowTextInset]).
 double _valueRoom(BuildContext context, String title, SettingValuePlacement placement) {
   final card = math.min(MediaQuery.sizeOf(context).width, kSettingsMaxWidth) - 32;
   final chrome = switch (placement) {
     SettingValuePlacement.titleLine => _kChevronChrome + _kTitleValueGap,
     _ => _kChevronChrome + _kTrailingValueGap,
   };
-  final text = card - kSettingsSeparatorIndent - chrome;
+  final text = card - settingsRowTextInset(context) - chrome;
   final tileTheme = ListTileTheme.of(context);
   final base = tileTheme.titleTextStyle ?? Theme.of(context).textTheme.bodyLarge ?? const TextStyle();
   final titleStyle = base.copyWith(fontSize: (tileTheme.dense ?? false) ? 13 : null);

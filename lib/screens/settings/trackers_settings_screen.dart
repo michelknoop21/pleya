@@ -13,6 +13,7 @@ import '../../widgets/app_icon.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import 'tracker_settings_screen.dart';
 import 'trakt_settings_screen.dart';
+import '../../widgets/settings/settings_studio_theme.dart';
 
 /// Unified hub for all watch-progress trackers: Trakt, MyAnimeList, AniList,
 /// Simkl. Each row opens its service-specific settings screen.
@@ -56,7 +57,7 @@ class TrackersSettingsScreen extends StatelessWidget {
       username: account.isConnected ? account.username : null,
       onTap: () {
         if (account.isConnected) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const TraktSettingsScreen()));
+          Navigator.push(context, settingsStudioRoute<void>(context, (_) => const TraktSettingsScreen()));
         } else {
           startTraktConnection(context);
         }
@@ -73,7 +74,7 @@ class TrackersSettingsScreen extends StatelessWidget {
         if (account.isMalConnected) {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => TrackerSettingsScreen(config: TrackerConfig.mal())),
+            settingsStudioRoute<void>(context, (_) => TrackerSettingsScreen(config: TrackerConfig.mal())),
           );
         } else {
           startMalConnection(context);
@@ -91,7 +92,7 @@ class TrackersSettingsScreen extends StatelessWidget {
         if (account.isAnilistConnected) {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => TrackerSettingsScreen(config: TrackerConfig.anilist())),
+            settingsStudioRoute<void>(context, (_) => TrackerSettingsScreen(config: TrackerConfig.anilist())),
           );
         } else {
           startAnilistConnection(context);
@@ -109,7 +110,7 @@ class TrackersSettingsScreen extends StatelessWidget {
         if (account.isSimklConnected) {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => TrackerSettingsScreen(config: TrackerConfig.simkl())),
+            settingsStudioRoute<void>(context, (_) => TrackerSettingsScreen(config: TrackerConfig.simkl())),
           );
         } else {
           startSimklConnection(context);

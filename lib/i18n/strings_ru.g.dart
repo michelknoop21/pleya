@@ -94,6 +94,7 @@ class TranslationsRu extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTvNavigationRu tvNavigation = _TranslationsTvNavigationRu._(_root);
 	@override late final _TranslationsTvMyPleyaRu tvMyPleya = _TranslationsTvMyPleyaRu._(_root);
 	@override late final _TranslationsTvContextMenuRu tvContextMenu = _TranslationsTvContextMenuRu._(_root);
+	@override late final _TranslationsSettingsStudioRu settingsStudio = _TranslationsSettingsStudioRu._(_root);
 }
 
 // Path: app
@@ -1858,6 +1859,68 @@ class _TranslationsTvContextMenuRu extends TranslationsTvContextMenuEn {
 	@override String doneOnSome({required Object done, required Object total}) => 'Выполнено для ${done} из ${total} источников. Остальные будут повторены, когда снова окажутся в сети.';
 	@override String doneOnSomeNoRetry({required Object done, required Object total}) => 'Выполнено для ${done} из ${total} источников.';
 	@override String get failed => 'Не получилось';
+}
+
+// Path: settingsStudio
+class _TranslationsSettingsStudioRu extends TranslationsSettingsStudioEn {
+	_TranslationsSettingsStudioRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get forYou => 'Для вас';
+	@override String get connectionsAndProfiles => 'Подключения и профили';
+	@override String get system => 'Система';
+	@override String get integrations => 'Интеграции';
+	@override String get libraryAndHome => 'Библиотека и главная';
+	@override String get personal => 'Личное';
+	@override String get mainTagline => 'Сделайте Pleya полностью своей.';
+	@override String get tvTagline => 'Ваш просмотр, до мельчайших деталей.';
+	@override String get appearanceHeadline => 'Так выглядит ваша Pleya';
+	@override String get livePreview => 'Живой предпросмотр';
+	@override String get yourLibrary => 'Ваша библиотека';
+	@override String get viewPreview => 'Открыть предпросмотр';
+	@override String get playbackExperience => 'Воспроизведение';
+	@override String get manage => 'Управление';
+	@override String get yourWatchlist => 'Ваш список';
+	@override String get yourContent => 'Ваш контент';
+	@override String get lightMode => 'Светлая тема';
+	@override String get darkMode => 'Тёмная тема';
+	@override String get oledMode => 'Тема OLED';
+	@override String get systemMode => 'Системная тема';
+	@override String get posterView => 'Постеры';
+	@override String get listView => 'Список';
+	@override String get libraries => 'Библиотеки';
+	@override String get serversAndSources => 'Серверы и источники';
+	@override String get contentAndWindow => 'Контент и окно';
+	@override String get quality => 'Качество';
+	@override String get maintenance => 'Обслуживание';
+	@override String densityValue({required Object value}) => '${value} из 5';
+	@override String get existingSources => 'Существующие источники';
+	@override String get preferredAudio => 'Предпочитаемый язык аудио';
+	@override String get preferredSubtitles => 'Предпочитаемый язык субтитров';
+	@override String get subtitleWhen => 'Субтитры всегда / иностранный язык / никогда';
+	@override String get reorderRows => 'Порядок рядов';
+	@override String get rowVisibility => 'Показать или скрыть ряд';
+	@override String get addOwnRow => 'Добавить свой ряд';
+	@override String get removeOwnRow => 'Удалить свой ряд';
+	@override String get chooseRowToRemove => 'Какой ряд?';
+	@override String get hiddenContinueWatching => 'Скрытое в «Продолжить просмотр»';
+	@override String get storage => 'Хранилище';
+	@override String get managePlex => 'Серверы Plex';
+	@override String get manageJellyfin => 'Источники Jellyfin';
+	@override String get manageEmby => 'Источники Emby';
+	@override String get managePleyaServer => 'Источники Pleya Server';
+	@override String get removeSource => 'Отключить / удалить источник';
+	@override String get linkPlex => 'Привязать аккаунт Plex';
+	@override String get addJellyfin => 'Добавить Jellyfin';
+	@override String get addEmby => 'Добавить Emby';
+	@override String get addPleyaServer => 'Добавить Pleya Server';
+	@override String get tvFooterHint => 'Меню: назад · Выбор: открыть или переключить';
+	@override String get video => 'Видео';
+	@override String get controls => 'Управление';
+	@override String get diagnostics => 'Диагностика';
+	@override String get activeProfile => 'Активный профиль';
 }
 
 // Path: search.filters
@@ -3737,6 +3800,59 @@ extension on TranslationsRu {
 			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Выполнено для ${done} из ${total} источников. Остальные будут повторены, когда снова окажутся в сети.',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Выполнено для ${done} из ${total} источников.',
 			'tvContextMenu.failed' => 'Не получилось',
+			'settingsStudio.forYou' => 'Для вас',
+			'settingsStudio.connectionsAndProfiles' => 'Подключения и профили',
+			'settingsStudio.system' => 'Система',
+			'settingsStudio.integrations' => 'Интеграции',
+			'settingsStudio.libraryAndHome' => 'Библиотека и главная',
+			'settingsStudio.personal' => 'Личное',
+			'settingsStudio.mainTagline' => 'Сделайте Pleya полностью своей.',
+			'settingsStudio.tvTagline' => 'Ваш просмотр, до мельчайших деталей.',
+			'settingsStudio.appearanceHeadline' => 'Так выглядит ваша Pleya',
+			'settingsStudio.livePreview' => 'Живой предпросмотр',
+			'settingsStudio.yourLibrary' => 'Ваша библиотека',
+			'settingsStudio.viewPreview' => 'Открыть предпросмотр',
+			'settingsStudio.playbackExperience' => 'Воспроизведение',
+			'settingsStudio.manage' => 'Управление',
+			'settingsStudio.yourWatchlist' => 'Ваш список',
+			'settingsStudio.yourContent' => 'Ваш контент',
+			'settingsStudio.lightMode' => 'Светлая тема',
+			'settingsStudio.darkMode' => 'Тёмная тема',
+			'settingsStudio.oledMode' => 'Тема OLED',
+			'settingsStudio.systemMode' => 'Системная тема',
+			'settingsStudio.posterView' => 'Постеры',
+			'settingsStudio.listView' => 'Список',
+			'settingsStudio.libraries' => 'Библиотеки',
+			'settingsStudio.serversAndSources' => 'Серверы и источники',
+			'settingsStudio.contentAndWindow' => 'Контент и окно',
+			'settingsStudio.quality' => 'Качество',
+			'settingsStudio.maintenance' => 'Обслуживание',
+			'settingsStudio.densityValue' => ({required Object value}) => '${value} из 5',
+			'settingsStudio.existingSources' => 'Существующие источники',
+			'settingsStudio.preferredAudio' => 'Предпочитаемый язык аудио',
+			'settingsStudio.preferredSubtitles' => 'Предпочитаемый язык субтитров',
+			'settingsStudio.subtitleWhen' => 'Субтитры всегда / иностранный язык / никогда',
+			'settingsStudio.reorderRows' => 'Порядок рядов',
+			'settingsStudio.rowVisibility' => 'Показать или скрыть ряд',
+			'settingsStudio.addOwnRow' => 'Добавить свой ряд',
+			'settingsStudio.removeOwnRow' => 'Удалить свой ряд',
+			'settingsStudio.chooseRowToRemove' => 'Какой ряд?',
+			'settingsStudio.hiddenContinueWatching' => 'Скрытое в «Продолжить просмотр»',
+			'settingsStudio.storage' => 'Хранилище',
+			'settingsStudio.managePlex' => 'Серверы Plex',
+			'settingsStudio.manageJellyfin' => 'Источники Jellyfin',
+			'settingsStudio.manageEmby' => 'Источники Emby',
+			'settingsStudio.managePleyaServer' => 'Источники Pleya Server',
+			'settingsStudio.removeSource' => 'Отключить / удалить источник',
+			'settingsStudio.linkPlex' => 'Привязать аккаунт Plex',
+			'settingsStudio.addJellyfin' => 'Добавить Jellyfin',
+			'settingsStudio.addEmby' => 'Добавить Emby',
+			'settingsStudio.addPleyaServer' => 'Добавить Pleya Server',
+			'settingsStudio.tvFooterHint' => 'Меню: назад · Выбор: открыть или переключить',
+			'settingsStudio.video' => 'Видео',
+			'settingsStudio.controls' => 'Управление',
+			'settingsStudio.diagnostics' => 'Диагностика',
+			'settingsStudio.activeProfile' => 'Активный профиль',
 			_ => null,
 		};
 	}

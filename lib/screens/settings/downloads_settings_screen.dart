@@ -18,6 +18,8 @@ import '../../services/settings_service.dart' as settings;
 import '../../widgets/app_icon.dart';
 import '../../widgets/setting_tile.dart';
 import '../../widgets/settings_page.dart';
+import '../../widgets/settings_section.dart';
+import '../../utils/platform_detector.dart';
 import 'download_location_dialog.dart';
 
 class DownloadsSettingsScreen extends StatefulWidget {
@@ -36,13 +38,18 @@ class _DownloadsSettingsScreenState extends State<DownloadsSettingsScreen> {
     return SettingsPage(
       title: Text(t.settings.downloads),
       children: [
+        // Series `ios/07`: one group, Opslag.
+        SettingsSectionHeader(t.settingsStudio.storage),
         if (!Platform.isIOS)
           FutureBuilder<String>(
             future: storageService.getCurrentDownloadPathDisplay(),
             builder: (context, snapshot) {
               final currentPath = snapshot.data ?? '...';
               return ListTile(
-                leading: const AppIcon(Symbols.folder_rounded, fill: 1),
+                leading: PlatformDetector.isTV()
+                    ? const AppIcon(Symbols.folder_rounded, fill: 1)
+                    : settingsRowLeading(context, Symbols.folder_rounded),
+                contentPadding: settingRowPadding(),
                 title: Text(isCustom ? t.settings.downloadLocationCustom : t.settings.downloadLocationDefault),
                 subtitle: Text(currentPath, maxLines: 2, overflow: TextOverflow.ellipsis),
                 trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
