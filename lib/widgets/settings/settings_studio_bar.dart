@@ -14,6 +14,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../theme/glass/glass_settings.dart';
+import '../../theme/glass/glass_surface.dart';
 import '../../theme/mono_tokens.dart';
 import '../app_bar_back_button.dart' show showsVisibleBackAffordance;
 import '../app_icon.dart';
@@ -87,8 +89,8 @@ class SettingsStudioFrame extends StatelessWidget {
 
 /// The bar laid over a scrolled Studio page: absent while the header is in
 /// view (it neither paints nor takes a tap then, so the header's own chevron
-/// stays reachable), the page colour with the back chevron and the title once
-/// [collapsed]. Absent rather than transparent, so the page has one title for
+/// stays reachable), the page colour (translucent glass, solid where glass is off) with the
+/// back chevron and the title once [collapsed]. Absent rather than transparent, so the page has one title for
 /// screen readers and for finders at rest, not two.
 class SettingsStudioCompactBar extends StatelessWidget {
   const SettingsStudioCompactBar({
@@ -121,32 +123,28 @@ class SettingsStudioCompactBar extends StatelessWidget {
               duration: reduceMotion(context, tk.fast),
               child: !isCollapsed
                   ? const SizedBox.shrink(key: ValueKey(false))
-                  : DecoratedBox(
+                  : GlassSurface(
                       key: const ValueKey(true),
-                      decoration: BoxDecoration(
-                        color: tk.bg,
-                        border: Border(bottom: BorderSide(color: tk.outline.withValues(alpha: 0.5), width: 0.5)),
+                      shape: const RoundedRectangleBorder(),
+                      // The page colour at 80%: the page shows through, the
+                      // title stays readable.
+                      tokens: GlassTokens(
+                        blur: 16,
+                        saturation: 1.4,
+                        dim: 1,
+                        tint: tk.bg.withValues(alpha: 0.8),
+                        realTint: tk.bg.withValues(alpha: 0.8),
+                        edge: 0,
                       ),
-                      child: Padding(
-                        padding: EdgeInsets.only(top: top),
-                        child: Row(
-                          children: [
-                            SizedBox(width: 52, child: canGoBack ? const SettingsStudioBackButton() : null),
-                            Expanded(
-                              child: Center(
-                                child: DefaultTextStyle.merge(
-                                  style: TextStyle(color: tk.text, fontSize: 17, fontWeight: FontWeight.w600),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  child: title,
-                                ),
-                              ),
-                            ),
-                            // Keeps the title centred against the chevron.
-                            const SizedBox(width: 52),
-                          ],
+                      // Glass off (or reduced transparency): the solid bar.
+                      legacy: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: tk.bg,
+                          border: Border(bottom: BorderSide(color: tk.outline.withValues(alpha: 0.5), width: 0.5)),
                         ),
+                        child: _barRow(context, tk, top, canGoBack),
                       ),
+                      child: _barRow(context, tk, top, canGoBack),
                     ),
             ),
             if (actions != null && actions.isNotEmpty)
@@ -161,6 +159,27 @@ class SettingsStudioCompactBar extends StatelessWidget {
       ),
     );
   }
+
+  Widget _barRow(BuildContext context, MonoTokens tk, double top, bool canGoBack) => Padding(
+    padding: EdgeInsets.only(top: top),
+    child: Row(
+      children: [
+        SizedBox(width: 52, child: canGoBack ? const SettingsStudioBackButton() : null),
+        Expanded(
+          child: Center(
+            child: DefaultTextStyle.merge(
+              style: TextStyle(color: tk.text, fontSize: 17, fontWeight: FontWeight.w600),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              child: title,
+            ),
+          ),
+        ),
+        // Keeps the title centred against the chevron.
+        const SizedBox(width: 52),
+      ],
+    ),
+  );
 }
 
 /// The Studio back chevron: a 44 pt target around a plain chevron, as in the

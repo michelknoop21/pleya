@@ -24,6 +24,7 @@ import 'package:pleya/providers/discover_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/theme/glass/glass_surface.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/optimized_media_image.dart';
@@ -151,6 +152,60 @@ void main() {
       expect(find.byType(OptimizedMediaImage), findsNothing);
       expect(find.byType(PleyaLogo), findsOneWidget);
     });
+  });
+
+  group('edge-to-edge under the status bar', () {
+    Future<void> pumpPadded(WidgetTester tester, Widget child, {DiscoverProvider? discover}) async {
+      tester.view.physicalSize = const Size(375 * 3, 700 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      final app = TranslationProvider(
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: monoTheme(dark: true),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(padding: const EdgeInsets.only(top: 59)),
+            child: child!,
+          ),
+          home: child,
+        ),
+      );
+      await tester.pumpWidget(
+        discover == null ? app : ChangeNotifierProvider<DiscoverProvider>.value(value: discover, child: app),
+      );
+      await tester.pump();
+    }
+
+    testWidgets('wash and artwork start at y=0, the title stays below the notch', (tester) async {
+      await pumpPadded(
+        tester,
+        Scaffold(body: SettingsStudioHeader(title: 'Weergave')),
+        discover: _Discover(onDeckItems: [_film('met', art: '/library/metadata/7/art/1')]),
+      );
+
+      final art = find.byKey(const ValueKey('art:/library/metadata/7/art/1'));
+      expect(tester.getRect(art).top, 0, reason: 'the artwork runs under the status bar');
+      final wash = find.descendant(
+        of: find.byType(SettingsStudioHeader),
+        matching: find.byWidgetPredicate(
+          (w) => w is DecoratedBox && w.decoration is BoxDecoration && (w.decoration as BoxDecoration).gradient != null,
+        ),
+      );
+      expect(tester.getRect(wash.first).top, 0, reason: 'the wash runs under the status bar');
+      expect(tester.getRect(find.text('Weergave')).top, greaterThanOrEqualTo(59));
+      expect(find.byKey(const ValueKey('settings-studio-status-fade')), findsOneWidget);
+      expect(tester.getRect(find.byKey(const ValueKey('settings-studio-status-fade'))).height, 59 + 12);
+    });
+
+    testWidgets('the collapsed bar is a glass surface, not a solid bar', (tester) async {
+      await pumpPadded(tester, page(rows: 20));
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -300));
+      await tester.pumpAndSettle();
+
+      final bar = find.byType(SettingsStudioCompactBar);
+      expect(find.descendant(of: bar, matching: find.byType(GlassSurface)), findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.text('Weergave')), findsOneWidget);
+    }, variant: _iPhone);
   });
 
   group('settings page on an iPhone', () {

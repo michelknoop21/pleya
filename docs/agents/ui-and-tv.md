@@ -34,6 +34,16 @@ Roadmap rules) komt van een andere reviewerstoel, volgens de reviewregels in `AG
 2026-afronding op iOS en tvOS; `docs/ios-unified-implementation-register.md` is daarbij de
 iOS-werklijst, naast het bestaande `docs/tvos-redesign-register.md` voor tvOS.
 
+## Edge-to-edge op iOS en iPadOS
+
+De achtergrond, wash of artwork van een scherm loopt door onder de statusbalk en de notch of het
+Dynamic Island. Alleen inhoud (tekst, knoppen, chevron) houdt de safe area aan. Een effen balk in
+paginakleur boven de inhoud is niet toegestaan: leesbaarheid van de statusbalkglyphs komt van een
+fade of scrim over het artwork en van een `AnnotatedRegion<SystemUiOverlayStyle>`. Een vaste balk
+(bijvoorbeeld de ingeklapte Studio-balk) is alleen doorschijnend, via `GlassSurface`, en valt terug
+op effen als glas uit staat. Besluit Michel, 26 oktober 2026 (DEC-XXX). Een widgettest zet de
+safe-area-top op 59 en toetst dat de achtergrondlaag op y=0 begint.
+
 ## Pleya Verify
 
 `pleya_verify/` drijft echte scenario's tegen een echte macOS/iOS-sim/tvOS-sim-build, over een vast
