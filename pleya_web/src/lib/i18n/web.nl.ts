@@ -1,10 +1,13 @@
 import { webBackupsNl } from './webBackups.nl';
 import { webOpsNl } from './web.ops.nl';
+import { webPlayerNl } from './webPlayer.nl';
 
 import { webUsersNl } from './webUsers.nl';
 import { webSettingsNl } from './webSettings.nl';
+import { webMatchNl } from './webMatch.nl';
 import { webTranscodeNl } from './webTranscode.nl';
 import { webTokensNl } from './webTokens.nl';
+import { webSessionsNl } from './webSessions.nl';
 import type { WebKey } from './web';
 
 /**
@@ -14,6 +17,7 @@ import type { WebKey } from './web';
  */
 export const webNl = {
   ...webOpsNl,
+  ...webPlayerNl,
   'app.name': 'Pleya',
   'nav.home': 'Home',
   'nav.search': 'Zoeken',
@@ -178,6 +182,7 @@ export const webNl = {
   'admin.nav.network': 'Netwerk',
   'admin.nav.security': 'Beveiliging',
   'admin.nav.diagnostics': 'Diagnostiek',
+  'admin.nav.maintenance': 'Onderhoud',
   'admin.nav.back': 'Terug naar Pleya',
   'admin.index.manage': 'Beheer',
   'admin.index.settings': 'Instellingen',
@@ -370,5 +375,7 @@ export const webNl = {
   ...webSettingsNl,
   ...webTranscodeNl,
   ...webTokensNl,
-  ...webBackupsNl
+  ...webBackupsNl,
+  ...webSessionsNl,
+  ...webMatchNl
 } satisfies Record<WebKey, string>;

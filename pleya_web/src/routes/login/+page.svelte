@@ -5,6 +5,7 @@
   import Field from '$lib/components/Field.svelte';
   import { session } from '$lib/stores/session.svelte';
   import { ApiError, describeError } from '$lib/api/errors';
+  import { deviceFields } from '$lib/auth/device';
   import { t } from '$lib/i18n';
 
   let username = $state('');
@@ -20,7 +21,11 @@
     busy = true;
     error = null;
     try {
-      await session.client.login({ username: username.trim(), password });
+      await session.client.login({
+        username: username.trim(),
+        password,
+        ...deviceFields(session.capabilities)
+      });
       await session.afterAuth();
       await goto('/', { replaceState: true });
     } catch (err) {

@@ -56,6 +56,12 @@ const config = {
         // <img src> kan er geen zetten. De bytes komen dus via fetch binnen en
         // gaan als object-URL aan het element.
         'img-src': ['self', 'blob:', 'data:'],
+        // De speler (S13.2, S18.3). 'self' is direct play over
+        // /pleya/v1/stream; blob: is de MediaSource-URL die hls.js aan de
+        // <video> hangt, en de WebVTT-ondertitel die met de bearer binnenkomt
+        // en als object-URL aan de <track> gaat. Geen worker-src: hls.js draait
+        // met enableWorker uit, zodat er geen blob:-worker nodig is.
+        'media-src': ['self', 'blob:'],
         'connect-src': ['self'],
         'object-src': ['none'],
         'base-uri': ['none'],

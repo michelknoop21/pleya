@@ -301,6 +301,16 @@ func run() int {
 		startup.Warn("instellingen lezen mislukt, de omgeving blijft gelden", slog.String("error", err.Error()))
 	}
 
+	// Na de instellingen en niet bij de andere workers: de ronde leest de
+	// refreshlevensduur die nu geldt, en die staat pas na Reload vast (DEC-164).
+	workers.Add(1)
+	go func() {
+		defer workers.Done()
+		scheduleSessionSweep(workCtx, authStore, revocations,
+			func() time.Duration { return settingsCache.Current().RefreshTokenTTL() },
+			logging.Component(log, "housekeeping"))
+	}()
+
 	transcoder := startTranscoder(ctx, cfg, pool, logging.Component(log, "transcode"), startup)
 	if transcoder != nil {
 		defer transcoder.Close()

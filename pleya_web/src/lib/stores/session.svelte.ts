@@ -151,8 +151,13 @@ class SessionState {
     await this.load();
   }
 
-  signOut(): void {
-    this.client.signOut();
+  /**
+   * Afmelden. Op een server met `capabilities.sessions` trekt dat ook de sessie
+   * in; `local` slaat dat over voor het geval waarin de server alle sessies al
+   * heeft ingetrokken (een geroteerde ondertekensleutel).
+   */
+  async signOut(options: { local?: boolean } = {}): Promise<void> {
+    await this.client.signOut({ remote: !options.local && this.capabilities?.sessions === true });
     this.server = null;
     this.libraries = [];
     this.me = null;

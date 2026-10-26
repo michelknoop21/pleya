@@ -74,7 +74,9 @@ const SAME_ON_PURPOSE = [
   'admin.diag.health.ready',
   // S25.6: "ok" en "Status" zijn in het Nederlands hetzelfde woord.
   'admin.bak.status.ok',
-  'admin.bak.col.status'
+  'admin.bak.col.status',
+  // DEC-164: "Browser" is in het Nederlands hetzelfde woord.
+  'device.browser'
 ];
 
 function placeholders(text: string): string[] {

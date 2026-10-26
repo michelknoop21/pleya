@@ -1,5 +1,6 @@
 import { webBackups } from './webBackups';
 import { webOps } from './web.ops';
+import { webPlayer } from './webPlayer';
 
 /**
  * Teksten die alleen in de webclient bestaan. Alles wat de app ook kent komt
@@ -7,11 +8,14 @@ import { webOps } from './web.ops';
  */
 import { webUsers } from './webUsers';
 import { webSettings } from './webSettings';
+import { webMatch } from './webMatch';
 import { webTranscode } from './webTranscode';
 import { webTokens } from './webTokens';
+import { webSessions } from './webSessions';
 
 export const web = {
   ...webOps,
+  ...webPlayer,
   'app.name': 'Pleya',
   'nav.home': 'Home',
   'nav.search': 'Search',
@@ -180,6 +184,7 @@ export const web = {
   'admin.nav.network': 'Network',
   'admin.nav.security': 'Security',
   'admin.nav.diagnostics': 'Diagnostics',
+  'admin.nav.maintenance': 'Maintenance',
   'admin.nav.back': 'Back to Pleya',
   'admin.index.manage': 'Manage',
   'admin.index.settings': 'Settings',
@@ -372,7 +377,9 @@ export const web = {
   ...webSettings,
   ...webTranscode,
   ...webTokens,
-  ...webBackups
+  ...webBackups,
+  ...webSessions,
+  ...webMatch
 } as const;
 
 export type WebKey = keyof typeof web;

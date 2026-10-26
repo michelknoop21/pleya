@@ -117,3 +117,36 @@ describe('laatste contact', () => {
     expect(session.phase).toBe('ready');
   });
 });
+
+describe('afmelden (DEC-164)', () => {
+  async function started(capabilities: Record<string, boolean>) {
+    const signOut = vi.fn(async () => {});
+    const state = new SessionState(
+      fakeClient({
+        info: vi.fn(async () => ({ auth: { setup_required: false }, capabilities })),
+        signOut
+      })
+    );
+    await state.start();
+    return { state, signOut };
+  }
+
+  it('trekt de sessie op de server in als die capabilities.sessions heeft', async () => {
+    const { state, signOut } = await started({ browse: true, sessions: true });
+    await state.signOut();
+    expect(signOut).toHaveBeenCalledWith({ remote: true });
+    expect(state.phase).toBe('signed-out');
+  });
+
+  it('blijft lokaal zonder de vlag (negatieve controle)', async () => {
+    const { state, signOut } = await started({ browse: true });
+    await state.signOut();
+    expect(signOut).toHaveBeenCalledWith({ remote: false });
+  });
+
+  it('blijft lokaal na een geroteerde sleutel, ook met de vlag', async () => {
+    const { state, signOut } = await started({ browse: true, sessions: true });
+    await state.signOut({ local: true });
+    expect(signOut).toHaveBeenCalledWith({ remote: false });
+  });
+});

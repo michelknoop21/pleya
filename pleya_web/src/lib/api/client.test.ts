@@ -403,16 +403,74 @@ describe('artwork', () => {
 });
 
 describe('afmelden', () => {
-  it('doet geen aanroep, want het protocol kent geen uitlogendpoint', () => {
+  it('doet zonder remote geen aanroep, zoals op een server zonder capabilities.sessions', async () => {
     const fetchImpl = vi.fn() as unknown as FetchLike;
     const { client, tokens } = clientWith(fetchImpl, memoryStorage({ 'pleya.refresh_token': 'R1' }));
     tokens.set({ access_token: 'A1', refresh_token: 'R1', expires_in_ms: 900_000 });
 
-    client.signOut();
+    await client.signOut();
 
     expect(fetchImpl).not.toHaveBeenCalled();
     expect(tokens.accessToken).toBeNull();
     expect(tokens.refreshToken).toBeNull();
+  });
+
+  it('trekt met remote eerst de eigen sessie in, met het accesstoken, en leegt dan de opslag', async () => {
+    const seen: { url: string; method: string; auth: string | null }[] = [];
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const request = input as Request;
+      seen.push({ url: request.url, method: request.method, auth: request.headers.get('Authorization') });
+      return new Response(null, { status: 204 });
+    }) as unknown as FetchLike;
+    const { client, tokens } = clientWith(fetchImpl);
+    tokens.set({ access_token: 'A1', refresh_token: 'R1', expires_in_ms: 900_000 });
+
+    await client.signOut({ remote: true });
+
+    expect(seen).toEqual([{ url: `${BASE}/auth/logout`, method: 'POST', auth: 'Bearer A1' }]);
+    expect(tokens.accessToken).toBeNull();
+    expect(tokens.refreshToken).toBeNull();
+  });
+
+  it('meldt lokaal toch af als de server niet bereikbaar is', async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError('Failed to fetch');
+    }) as unknown as FetchLike;
+    const { client, tokens } = clientWith(fetchImpl);
+    tokens.set({ access_token: 'A1', refresh_token: 'R1', expires_in_ms: 900_000 });
+
+    await client.signOut({ remote: true });
+
+    expect(tokens.accessToken).toBeNull();
+    expect(tokens.refreshToken).toBeNull();
+  });
+});
+
+describe('toestelvelden bij inloggen (DEC-164)', () => {
+  async function loginBody(fields: Record<string, string>): Promise<Record<string, unknown>> {
+    let body: Record<string, unknown> = {};
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      body = (await (input as Request).json()) as Record<string, unknown>;
+      return json({ access_token: 'A', refresh_token: 'R', token_type: 'bearer', expires_in_ms: 900_000 });
+    }) as unknown as FetchLike;
+    const { client } = clientWith(fetchImpl);
+    await client.login({ username: 'michel', password: 'geheim', ...fields });
+    return body;
+  }
+
+  it('stuurt device_id en device_name mee als de aanroeper ze geeft', async () => {
+    const body = await loginBody({ device_id: 'web-1', device_name: 'Safari op macOS' });
+    expect(body).toEqual({
+      username: 'michel',
+      password: 'geheim',
+      device_id: 'web-1',
+      device_name: 'Safari op macOS'
+    });
+  });
+
+  it('stuurt geen enkel device-veld zonder (negatieve controle)', async () => {
+    const body = await loginBody({});
+    expect(Object.keys(body).sort()).toEqual(['password', 'username']);
   });
 });
 

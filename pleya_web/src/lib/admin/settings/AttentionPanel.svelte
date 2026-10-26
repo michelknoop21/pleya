@@ -37,7 +37,9 @@
     <ul class="list">
       {#each list.items.slice(0, SHOWN) as item (item.item_id)}
         <li class="row" data-item={item.item_id}>
-          <span class="name">{item.title}{item.year ? ` (${item.year})` : ''}</span>
+          <a class="name" href="/admin/metadata/match?item={encodeURIComponent(item.item_id)}"
+            >{item.title}{item.year ? ` (${item.year})` : ''}</a
+          >
           <span class="state">{attentionStateLabel(item.state)}</span>
         </li>
       {/each}
@@ -86,6 +88,13 @@
     min-width: 0;
     color: var(--ink);
     overflow-wrap: anywhere;
+    text-decoration: underline;
+    text-decoration-color: var(--hairline);
+    text-underline-offset: 4px;
+  }
+
+  .name:hover {
+    text-decoration-color: currentColor;
   }
 
   .state {

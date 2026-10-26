@@ -5,6 +5,7 @@
   import Field from '$lib/components/Field.svelte';
   import { session } from '$lib/stores/session.svelte';
   import { ApiError, describeError } from '$lib/api/errors';
+  import { deviceFields } from '$lib/auth/device';
   import { t } from '$lib/i18n';
 
   let setupCode = $state('');
@@ -26,7 +27,8 @@
       await session.client.setup({
         setup_code: setupCode.trim(),
         username: username.trim(),
-        password
+        password,
+        ...deviceFields(session.capabilities)
       });
       await session.afterAuth();
       await goto('/', { replaceState: true });

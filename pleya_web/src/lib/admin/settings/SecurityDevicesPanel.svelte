@@ -2,13 +2,17 @@
   Ingelogde toestellen (31, rechts): elk toestel van elke gebruiker met
   Intrekken (`DELETE /sessions/{id}`). Het toestel waarmee je nu kijkt heeft
   geen knop, want intrekken zou jezelf uitloggen. API-tokens staan hier niet.
+  Een toestel zonder naam heet "Onbekend toestel" met de dag van aanmelden.
+  Onderaan staat Oude toestellen opruimen (DEC-164).
 -->
 <script lang="ts">
   import type { User } from '../../api/types';
   import DataTable, { type Column } from '../../components/DataTable.svelte';
   import StatusPill from '../../components/StatusPill.svelte';
   import { plural, t } from '../../i18n';
-  import { formatRelative } from '../../util/format';
+  import { formatDate, formatRelative } from '../../util/format';
+  import DeviceCleanup from '../DeviceCleanup.svelte';
+  import { deviceLabel, isUnnamed } from '../sessionCleanup';
   import type { DeviceRow } from './security';
 
   interface Props {
@@ -16,9 +20,14 @@
     unreadable: User[];
     revoking: Record<string, boolean>;
     onrevoke: (row: DeviceRow) => void;
+    /** Intrekken voor het opruimen; de gewone knop vraagt eerst om bevestiging via onrevoke. */
+    cleanupRevoke: (sessionId: string) => Promise<unknown>;
+    oncleaned: () => Promise<void> | void;
   }
 
-  let { devices, unreadable, revoking, onrevoke }: Props = $props();
+  let { devices, unreadable, revoking, onrevoke, cleanupRevoke, oncleaned }: Props = $props();
+
+  const cleanupItems = $derived(devices.map((row) => ({ session: row.session, user: row.user.username })));
 
   const columns: Column[] = [
     { key: 'device', label: t('admin.sec.devices.col.device') },
@@ -43,7 +52,10 @@
   {#snippet empty()}{t('admin.sec.devices.empty')}{/snippet}
   {#snippet cell(row, column)}
     {#if column.key === 'device'}
-      {row.session.device_name}
+      {deviceLabel(row.session)}
+      {#if isUnnamed(row.session)}
+        <span class="sub">{t('admin.devices.signedInOn', { date: formatDate(row.session.created_at) ?? '' })}</span>
+      {/if}
       {#if row.session.kind === 'legacy'}<span class="sub">{t('admin.sec.devices.legacy')}</span>{/if}
     {:else if column.key === 'user'}
       {row.user.username}
@@ -58,7 +70,7 @@
           class="btn btn--secondary btn--sm"
           disabled={revoking[row.session.id]}
           aria-label={t('admin.sec.devices.revokeNamed', {
-            device: row.session.device_name,
+            device: deviceLabel(row.session, true),
             user: row.user.username
           })}
           onclick={() => onrevoke(row)}
@@ -75,6 +87,7 @@
       </p>
     {/if}
     <p class="foot">{t('admin.sec.devices.foot')}</p>
+    <DeviceCleanup items={cleanupItems} revoke={cleanupRevoke} ondone={oncleaned} />
   {/snippet}
 </DataTable>
 
@@ -88,6 +101,7 @@
     display: block;
     margin-top: 2px;
     font-size: 12px;
+    font-weight: 400;
     color: var(--ink-3);
   }
 

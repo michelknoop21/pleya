@@ -37,12 +37,24 @@ export async function loadSecurity(
   settingsApi: AdminSettingsApi,
   signal?: AbortSignal
 ): Promise<SecurityData> {
-  const [settings, users] = await Promise.all([
+  const [settings, devices] = await Promise.all([
     settingsApi.settings(signal),
-    loadUsers(api, usersApi, signal)
+    loadDevices(api, usersApi, signal)
   ]);
+  return { settings, ...devices };
+}
+
+/**
+ * Alleen de toestellen, voor na een intrekking. Een ingetypte tokenduur die nog
+ * niet is opgeslagen blijft zo staan, wat een volledige herlaadbeurt niet doet.
+ */
+export async function loadDevices(
+  api: AdminApi,
+  usersApi: AdminUsersApi,
+  signal?: AbortSignal
+): Promise<Pick<SecurityData, 'devices' | 'unreadable'>> {
+  const users = await loadUsers(api, usersApi, signal);
   return {
-    settings,
     devices: deviceRows(users.entries),
     unreadable: users.entries.filter((e) => e.sessions === null).map((e) => e.user)
   };

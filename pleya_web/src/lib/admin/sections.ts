@@ -1,6 +1,8 @@
 /**
- * De tien secties van serverbeheer, in de volgorde van de northstar
- * (`ADMIN_NAV` in docs/assets/pleya-web-northstar/src/build.mjs).
+ * De secties van serverbeheer, in de volgorde van de northstar
+ * (`ADMIN_NAV` in docs/assets/pleya-web-northstar/src/build.mjs), met Onderhoud
+ * (scherm 35) als elfde: de northstar hangt dat scherm onder Diagnostiek, maar
+ * dan vond niemand het zonder de link in de kop daar.
  *
  * Eén lijst voor de zijbalk vanaf 900 (AdminNav) en de mobiele index onder 900
  * (scherm 33), zodat die twee nooit uit elkaar lopen. Een sectie die nog geen
@@ -19,7 +21,8 @@ export type AdminSectionId =
   | 'metadata'
   | 'network'
   | 'security'
-  | 'diagnostics';
+  | 'diagnostics'
+  | 'maintenance';
 
 export type AdminIconName =
   | 'chart'
@@ -31,7 +34,8 @@ export type AdminIconName =
   | 'image'
   | 'globe'
   | 'shield'
-  | 'cpu';
+  | 'cpu'
+  | 'archive';
 
 export interface AdminSection {
   id: AdminSectionId;
@@ -54,7 +58,14 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
   { id: 'metadata', href: '/admin/metadata', label: 'admin.nav.metadata', icon: 'image', group: 'settings' },
   { id: 'network', href: '/admin/network', label: 'admin.nav.network', icon: 'globe', group: 'settings' },
   { id: 'security', href: '/admin/security', label: 'admin.nav.security', icon: 'shield', group: 'settings' },
-  { id: 'diagnostics', href: '/admin/diagnostics', label: 'admin.nav.diagnostics', icon: 'cpu', group: 'settings' }
+  { id: 'diagnostics', href: '/admin/diagnostics', label: 'admin.nav.diagnostics', icon: 'cpu', group: 'settings' },
+  {
+    id: 'maintenance',
+    href: '/admin/diagnostics/maintenance',
+    label: 'admin.nav.maintenance',
+    icon: 'archive',
+    group: 'settings'
+  }
 ];
 
 /**
@@ -72,14 +83,25 @@ export function sectionById(id: string): AdminSection | undefined {
   return ADMIN_SECTIONS.find((s) => s.id === id);
 }
 
+/**
+ * De sectie met het langste adres dat dit pad dekt. Onderhoud woont op een
+ * adres onder Diagnostiek, dus de eerste treffer is niet altijd de goede.
+ */
+function parentSection(pathname: string, includeSelf: boolean): AdminSection | undefined {
+  let best: AdminSection | undefined;
+  for (const s of ADMIN_SECTIONS) {
+    if (s.href === ADMIN_ROOT) continue;
+    const hit = pathname.startsWith(`${s.href}/`) || (includeSelf && pathname === s.href);
+    if (hit && (!best || s.href.length > best.href.length)) best = s;
+  }
+  return best;
+}
+
 /** Welke sectie bij dit pad hoort; het langste passende adres wint. */
 export function activeSectionId(pathname: string): AdminSectionId | null {
   if (!isAdminPath(pathname)) return null;
   if (pathname === ADMIN_ROOT || pathname === ADMIN_OVERVIEW_PATH) return 'overview';
-  const hit = ADMIN_SECTIONS.find(
-    (s) => s.href !== ADMIN_ROOT && (pathname === s.href || pathname.startsWith(`${s.href}/`))
-  );
-  return hit?.id ?? null;
+  return parentSection(pathname, true)?.id ?? null;
 }
 
 /**
@@ -91,8 +113,5 @@ export function activeSectionId(pathname: string): AdminSectionId | null {
 export function adminBackHref(pathname: string): string | null {
   if (!isAdminPath(pathname)) return null;
   if (pathname === ADMIN_ROOT) return '/';
-  const parent = ADMIN_SECTIONS.find(
-    (s) => s.href !== ADMIN_ROOT && pathname.startsWith(`${s.href}/`)
-  );
-  return parent?.href ?? ADMIN_ROOT;
+  return parentSection(pathname, false)?.href ?? ADMIN_ROOT;
 }

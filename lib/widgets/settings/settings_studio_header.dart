@@ -139,7 +139,7 @@ class SettingsStudioHeader extends StatelessWidget {
               children: [
                 // Wash and artwork run up to the top edge, under the status
                 // bar and the Dynamic Island; only the text below keeps to the
-                // safe area (edge-to-edge, DEC-XXX-edge).
+                // safe area (edge-to-edge, DEC-163).
                 Positioned.fill(child: _WarmWash(tokens: tk)),
                 Positioned(
                   top: 0,

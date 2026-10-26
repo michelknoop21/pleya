@@ -11,7 +11,7 @@ beforeEach(() => setLocale('nl'));
 afterEach(() => setLocale('en'));
 
 describe('de beheerzijbalk', () => {
-  it('toont de tien secties van de northstar in volgorde, plus terug naar Pleya', () => {
+  it('toont de secties van serverbeheer in volgorde, plus terug naar Pleya', () => {
     render(AdminNav, { props: { active: 'overview' } });
     const nav = screen.getByRole('navigation', { name: 'Serverbeheer' });
     const names = within(nav)
@@ -28,6 +28,7 @@ describe('de beheerzijbalk', () => {
       'Netwerk',
       'Beveiliging',
       'Diagnostiek',
+      'Onderhoud',
       'Terug naar Pleya'
     ]);
     expect(within(nav).getByRole('link', { name: 'Terug naar Pleya' })).toHaveAttribute('href', '/');
@@ -54,6 +55,9 @@ describe('welke sectie bij een pad hoort', () => {
     expect(activeSectionId('/admin/users/u1')).toBe('users');
     // Scherm 34 hangt onder Beveiliging: zelfde sectie actief, geen elfde zijbalkrij.
     expect(activeSectionId('/admin/security/agents')).toBe('security');
+    // Onderhoud woont onder Diagnostiek maar is een eigen rij: het langste adres wint.
+    expect(activeSectionId('/admin/diagnostics')).toBe('diagnostics');
+    expect(activeSectionId('/admin/diagnostics/maintenance')).toBe('maintenance');
     expect(activeSectionId('/administrator')).toBeNull();
     expect(activeSectionId('/')).toBeNull();
   });
@@ -64,6 +68,7 @@ describe('welke sectie bij een pad hoort', () => {
     expect(adminBackHref('/admin/libraries/l1')).toBe('/admin/libraries');
     expect(adminBackHref('/admin/libraries/new')).toBe('/admin/libraries');
     expect(adminBackHref('/admin/security/agents')).toBe('/admin/security');
+    expect(adminBackHref('/admin/diagnostics/maintenance')).toBe('/admin/diagnostics');
     expect(adminBackHref('/libraries')).toBeNull();
   });
 });
