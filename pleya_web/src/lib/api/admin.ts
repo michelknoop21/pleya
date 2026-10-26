@@ -30,7 +30,12 @@ export const ADMIN_PATHS = [
   '/jobs',
   '/storage/roots',
   '/stream-sessions',
-  '/transcode-sessions'
+  '/transcode-sessions',
+  // S10.5: instellingen en diagnostiek.
+  '/settings',
+  '/server/environment',
+  '/server/log',
+  '/metadata/attention'
 ] as const;
 
 export function adminApi(client: PleyaClient) {

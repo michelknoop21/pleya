@@ -5,6 +5,7 @@ import { webOps } from './web.ops';
  * uit `shared.ts` en dus uit `lib/i18n/en.i18n.json`.
  */
 import { webUsers } from './webUsers';
+import { webSettings } from './webSettings';
 
 export const web = {
   ...webOps,
@@ -363,7 +364,8 @@ export const web = {
   'error.storage.full': 'The server has no room left to write.',
   'error.client.malformed_response': 'The server sent something this client cannot read.',
   'error.client.transport': 'Cannot reach the server. Check the connection and try again.',
-  ...webUsers
+  ...webUsers,
+  ...webSettings
 } as const;
 
 export type WebKey = keyof typeof web;

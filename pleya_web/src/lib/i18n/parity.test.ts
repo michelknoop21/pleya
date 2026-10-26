@@ -46,7 +46,22 @@ const SAME_ON_PURPOSE = [
   'admin.act.history.scan',
   'admin.act.history.scanUnknown',
   'admin.users.lastActive.value',
-  'admin.users.account.title'
+  'admin.users.account.title',
+  // S10.5: leenwoorden en technische termen die in het Nederlands gelijk zijn.
+  'admin.media.transcode.software',
+  'admin.media.mode.remux',
+  'admin.media.mode.direct_stream',
+  'admin.meta.sidecars.title',
+  'admin.meta.col.genres',
+  'admin.net.conn.direct',
+  'admin.sec.tokens.title',
+  'admin.diag.versions.build',
+  'admin.diag.versions.protocol',
+  'admin.diag.versions.protocolValue',
+  'admin.diag.versions.database',
+  'admin.diag.versions.databaseValue',
+  'admin.diag.caps.title',
+  'admin.diag.health.ready'
 ];
 
 function placeholders(text: string): string[] {

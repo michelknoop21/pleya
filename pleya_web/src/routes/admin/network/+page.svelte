@@ -1,0 +1,11 @@
+<!-- `/admin/network`: scherm 30. -->
+<script lang="ts">
+  import NetworkPage from '$lib/admin/settings/NetworkPage.svelte';
+  import { t } from '$lib/i18n';
+</script>
+
+<svelte:head>
+  <title>{t('admin.nav.network')} · {t('app.name')}</title>
+</svelte:head>
+
+<NetworkPage />
