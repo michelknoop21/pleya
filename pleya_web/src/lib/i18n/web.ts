@@ -4,6 +4,8 @@ import { webOps } from './web.ops';
  * Teksten die alleen in de webclient bestaan. Alles wat de app ook kent komt
  * uit `shared.ts` en dus uit `lib/i18n/en.i18n.json`.
  */
+import { webUsers } from './webUsers';
+
 export const web = {
   ...webOps,
   'app.name': 'Pleya',
@@ -360,7 +362,8 @@ export const web = {
   'error.storage.unavailable': 'The server cannot reach its storage right now.',
   'error.storage.full': 'The server has no room left to write.',
   'error.client.malformed_response': 'The server sent something this client cannot read.',
-  'error.client.transport': 'Cannot reach the server. Check the connection and try again.'
+  'error.client.transport': 'Cannot reach the server. Check the connection and try again.',
+  ...webUsers
 } as const;
 
 export type WebKey = keyof typeof web;
