@@ -53,3 +53,14 @@ export type SortOption = (typeof SORT_OPTIONS)[number];
 export function isSortOption(value: string): value is SortOption {
   return (SORT_OPTIONS as readonly string[]).includes(value);
 }
+
+// Serverinstellingen en diagnostiek (S10.5).
+export type Settings = S['Settings'];
+export type SettingsPatch = S['SettingsPatch'];
+export type SettingSource = S['SettingSource'];
+export type ServerEnvironment = S['ServerEnvironment'];
+export type ServerLog = S['ServerLog'];
+export type LogLevel = S['LogLevel'];
+export type ConnectivityCheck = S['ConnectivityCheck'];
+export type MetadataAttentionList = S['MetadataAttentionList'];
+export type TranscodeSession = S['TranscodeSession'];

@@ -6,6 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { ADMIN_PATHS } from '../api/admin';
 import { SessionState } from '../stores/session.svelte';
 import { adminGate } from './gate';
 import { fakeServer } from './fakeServer';
@@ -56,5 +57,23 @@ describe('rolgate van /admin', () => {
     const session = new SessionState(server.client);
     await Promise.all([session.ensureStarted(), adminGate(session), session.ensureStarted()]);
     expect(server.seen.filter((p) => p === '/info')).toHaveLength(1);
+  });
+});
+
+describe('rolgate en de instellingenroutes (S10.5)', () => {
+  it('laat een lid geen enkele instellings- of diagnoseroute raken', async () => {
+    const server = fakeServer({ role: 'member' });
+    // De gate beslist vóór de pagina rendert, dus nul aanroepen op deze paden.
+    await expect(adminGate(new SessionState(server.client))).rejects.toMatchObject({ status: 404 });
+    for (const path of ['/settings', '/server/environment', '/server/log', '/metadata/attention']) {
+      expect(server.seen).not.toContain(path);
+    }
+    expect(server.adminCalls()).toEqual([]);
+  });
+
+  it('beschouwt die routes als beheerpaden, zodat de telling ze ziet', () => {
+    for (const path of ['/settings', '/server/environment', '/server/log', '/metadata/attention']) {
+      expect(ADMIN_PATHS as readonly string[]).toContain(path);
+    }
   });
 });
