@@ -556,7 +556,7 @@ basis onder de build vandaan wisselt is niet reproduceerbaar.
 | PostgreSQL | 18.6 | `postgres:18.6-bookworm@sha256:7d2695c3…` |
 | ffmpeg en ffprobe | 5.1.9 | `ffmpeg=7:5.1.9-0+deb12u1` uit bookworm |
 | pgx | v5.10.0 | via `go.sum` |
-| golang.org/x/crypto | v0.42.0 | via `go.sum`, voor Argon2id |
+| golang.org/x/crypto | v0.52.0 | via `go.sum`, voor Argon2id |
 
 Debian en geen Alpine, omdat [hoofdstuk 22](../docs/pleya-server-architecture.md#22-deployment-en-distributie)
 een gepinde ffmpeg in de image vraagt en de Intel-mediastack die de DS920+ nodig heeft op glibc een
