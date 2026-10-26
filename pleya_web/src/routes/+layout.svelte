@@ -2,23 +2,23 @@
   import { onMount, type Snippet } from 'svelte';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
-  import { dev } from '$app/environment';
+  import { dev } from '$app/env';
 
   import '../styles/tokens.css';
   import '../styles/base.css';
 
-  import TopNav from '$lib/components/TopNav.svelte';
-  import MobileHeader from '$lib/components/MobileHeader.svelte';
-  import TabBar from '$lib/components/TabBar.svelte';
-  import SkeletonPage from '$lib/components/SkeletonPage.svelte';
-  import UnreachableState from '$lib/components/UnreachableState.svelte';
-  import { activeItemId, navItems } from '$lib/components/navItems';
-  import { adminBackHref, isAdminPath } from '$lib/admin/sections';
-  import { isPlayerPath } from '$lib/player/route';
-  import { session } from '$lib/stores/session.svelte';
-  import { theme } from '$lib/stores/theme.svelte';
-  import { viewport } from '$lib/stores/viewport.svelte';
-  import { initLocale, t } from '$lib/i18n';
+  import TopNav from '#lib/components/TopNav.svelte';
+  import MobileHeader from '#lib/components/MobileHeader.svelte';
+  import TabBar from '#lib/components/TabBar.svelte';
+  import SkeletonPage from '#lib/components/SkeletonPage.svelte';
+  import UnreachableState from '#lib/components/UnreachableState.svelte';
+  import { activeItemId, navItems } from '#lib/components/navItems.js';
+  import { adminBackHref, isAdminPath } from '#lib/admin/sections.js';
+  import { isPlayerPath } from '#lib/player/route.js';
+  import { session } from '#lib/stores/session.svelte.js';
+  import { theme } from '#lib/stores/theme.svelte.js';
+  import { viewport } from '#lib/stores/viewport.svelte.js';
+  import { initLocale, t } from '#lib/i18n/index.js';
 
   // Vóór de eerste markup: `t()` is niet reactief, dus de taal moet vaststaan
   // voordat een kind rendert. In `onMount` kwam dit te laat en bleef de pagina
@@ -104,7 +104,7 @@
   $effect(() => {
     const target = expectedPath;
     if (target !== null && page.url.pathname !== target) {
-      void goto(target, { replaceState: true });
+      void goto(target, { replace: true });
     }
   });
 

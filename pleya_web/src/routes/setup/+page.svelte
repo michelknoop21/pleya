@@ -1,12 +1,12 @@
 <script lang="ts">
-  import Wordmark from '$lib/components/Wordmark.svelte';
+  import Wordmark from '#lib/components/Wordmark.svelte';
   import { goto } from '$app/navigation';
-  import Alert from '$lib/components/Alert.svelte';
-  import Field from '$lib/components/Field.svelte';
-  import { session } from '$lib/stores/session.svelte';
-  import { ApiError, describeError } from '$lib/api/errors';
-  import { deviceFields } from '$lib/auth/device';
-  import { t } from '$lib/i18n';
+  import Alert from '#lib/components/Alert.svelte';
+  import Field from '#lib/components/Field.svelte';
+  import { session } from '#lib/stores/session.svelte.js';
+  import { ApiError, describeError } from '#lib/api/errors.js';
+  import { deviceFields } from '#lib/auth/device.js';
+  import { t } from '#lib/i18n/index.js';
 
   let setupCode = $state('');
   let username = $state('');
@@ -31,7 +31,7 @@
         ...deviceFields(session.capabilities)
       });
       await session.afterAuth();
-      await goto('/', { replaceState: true });
+      await goto('/', { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.code === 'auth.rate_limited') {
         const seconds = Math.ceil((err.retryAfterMs ?? 0) / 1000);

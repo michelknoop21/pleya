@@ -11,14 +11,14 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
 
-  import Player from '$lib/player/Player.svelte';
-  import { browserPlayerDeps } from '$lib/player/browserDeps';
-  import StateView from '$lib/components/StateView.svelte';
-  import SkeletonPage from '$lib/components/SkeletonPage.svelte';
-  import { session } from '$lib/stores/session.svelte';
-  import { describeError } from '$lib/api/errors';
-  import type { Item } from '$lib/api/types';
-  import { t } from '$lib/i18n';
+  import Player from '#lib/player/Player.svelte';
+  import { browserPlayerDeps } from '#lib/player/browserDeps.js';
+  import StateView from '#lib/components/StateView.svelte';
+  import SkeletonPage from '#lib/components/SkeletonPage.svelte';
+  import { session } from '#lib/stores/session.svelte.js';
+  import { describeError } from '#lib/api/errors.js';
+  import type { Item } from '#lib/api/types.js';
+  import { t } from '#lib/i18n/index.js';
 
   const itemId = $derived(page.params['id'] ?? '');
   const versionParam = $derived(page.url.searchParams.get('version'));

@@ -11,8 +11,8 @@
   bestaat alleen in ontwikkeling.
 -->
 <script lang="ts">
-  import PageHeader from '$lib/components/PageHeader.svelte';
-  import StateView from '$lib/components/StateView.svelte';
+  import PageHeader from '#lib/components/PageHeader.svelte';
+  import StateView from '#lib/components/StateView.svelte';
   import GallerySection from './GallerySection.svelte';
 </script>
 

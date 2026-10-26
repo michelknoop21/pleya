@@ -1,21 +1,21 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte';
-  import { centralVisibleCard } from '$lib/util/visible-card';
-  import LibraryAtmosphere from '$lib/components/LibraryAtmosphere.svelte';
+  import { centralVisibleCard } from '#lib/util/visible-card.js';
+  import LibraryAtmosphere from '#lib/components/LibraryAtmosphere.svelte';
   import { page } from '$app/state';
-  import { replaceState } from '$app/navigation';
+  import { goto } from '$app/navigation';
 
-  import MediaGrid from '$lib/components/MediaGrid.svelte';
-  import PageHeader from '$lib/components/PageHeader.svelte';
-  import Select from '$lib/components/Select.svelte';
-  import StateView from '$lib/components/StateView.svelte';
-  import SkeletonPage from '$lib/components/SkeletonPage.svelte';
-  import { session } from '$lib/stores/session.svelte';
-  import { describeError } from '$lib/api/errors';
-  import { SORT_OPTIONS, isSortOption, type SortOption, type Item } from '$lib/api/types';
-  import { emptyPager, loadNext, type PagerState } from '$lib/util/paging';
-  import { formatCount } from '$lib/util/format';
-  import { plural, t } from '$lib/i18n';
+  import MediaGrid from '#lib/components/MediaGrid.svelte';
+  import PageHeader from '#lib/components/PageHeader.svelte';
+  import Select from '#lib/components/Select.svelte';
+  import StateView from '#lib/components/StateView.svelte';
+  import SkeletonPage from '#lib/components/SkeletonPage.svelte';
+  import { session } from '#lib/stores/session.svelte.js';
+  import { describeError } from '#lib/api/errors.js';
+  import { SORT_OPTIONS, isSortOption, type SortOption, type Item } from '#lib/api/types.js';
+  import { emptyPager, loadNext, type PagerState } from '#lib/util/paging.js';
+  import { formatCount } from '#lib/util/format.js';
+  import { plural, t } from '#lib/i18n/index.js';
 
   const libraryId = $derived(page.params['id'] ?? '');
   const library = $derived(session.library(libraryId));
@@ -152,9 +152,9 @@
   function changeSort(value: string): void {
     if (!isSortOption(value)) return;
     sort = value;
-    const url = new URL(page.url);
+    const url = new URL(page.url.href);
     url.searchParams.set('sort', value);
-    replaceState(url, page.state);
+    goto(url, { shallow: true, replace: true, state: page.state });
   }
 </script>
 

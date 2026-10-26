@@ -1,8 +1,8 @@
 <!-- `/admin/metadata/match`: scherm 36. In de northstar hangt Match en overrides onder Metadata en artwork. -->
 <script lang="ts">
   import { page } from '$app/state';
-  import MatchPage from '$lib/admin/match/MatchPage.svelte';
-  import { t } from '$lib/i18n';
+  import MatchPage from '#lib/admin/match/MatchPage.svelte';
+  import { t } from '#lib/i18n/index.js';
 </script>
 
 <svelte:head>

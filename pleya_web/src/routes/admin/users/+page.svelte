@@ -2,8 +2,8 @@
 <script lang="ts">
   import { page } from '$app/state';
 
-  import UsersPage from '$lib/admin/UsersPage.svelte';
-  import { t } from '$lib/i18n';
+  import UsersPage from '#lib/admin/UsersPage.svelte';
+  import { t } from '#lib/i18n/index.js';
 </script>
 
 <svelte:head>

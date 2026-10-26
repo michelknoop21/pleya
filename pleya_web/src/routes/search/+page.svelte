@@ -1,16 +1,16 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { replaceState } from '$app/navigation';
+  import { goto } from '$app/navigation';
 
-  import MediaGrid from '$lib/components/MediaGrid.svelte';
-  import Chips from '$lib/components/Chips.svelte';
-  import Field from '$lib/components/Field.svelte';
-  import PageHeader from '$lib/components/PageHeader.svelte';
-  import StateView from '$lib/components/StateView.svelte';
-  import { session } from '$lib/stores/session.svelte';
-  import { describeError } from '$lib/api/errors';
-  import type { Item, ItemKind } from '$lib/api/types';
-  import { t } from '$lib/i18n';
+  import MediaGrid from '#lib/components/MediaGrid.svelte';
+  import Chips from '#lib/components/Chips.svelte';
+  import Field from '#lib/components/Field.svelte';
+  import PageHeader from '#lib/components/PageHeader.svelte';
+  import StateView from '#lib/components/StateView.svelte';
+  import { session } from '#lib/stores/session.svelte.js';
+  import { describeError } from '#lib/api/errors.js';
+  import type { Item, ItemKind } from '#lib/api/types.js';
+  import { t } from '#lib/i18n/index.js';
 
   /*
    * Zonder `kind` levert de server films, series en afleveringen. Seizoenen
@@ -71,10 +71,10 @@
   });
 
   $effect(() => {
-    const url = new URL(page.url);
+    const url = new URL(page.url.href);
     if (query.trim()) url.searchParams.set('q', query.trim());
     else url.searchParams.delete('q');
-    if (url.href !== page.url.href) replaceState(url, page.state);
+    if (url.href !== page.url.href) goto(url, { shallow: true, replace: true, state: page.state });
   });
 </script>
 

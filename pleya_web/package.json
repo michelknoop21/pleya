@@ -20,8 +20,8 @@
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
     "@playwright/test": "1.62.1",
-    "@sveltejs/adapter-static": "3.0.10",
-    "@sveltejs/kit": "2.70.3",
+    "@sveltejs/adapter-static": "4.0.0",
+    "@sveltejs/kit": "3.0.0",
     "@sveltejs/vite-plugin-svelte": "7.3.0",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/svelte": "5.4.2",
@@ -31,14 +31,18 @@
     "axe-core": "4.13.0",
     "jsdom": "30.0.1",
     "openapi-typescript": "7.13.0",
-    "svelte": "5.56.9",
+    "svelte": "5.57.2",
     "svelte-check": "4.7.6",
-    "typescript": "5.9.3",
+    "typescript": "6.0.3",
     "vite": "8.2.4",
     "vitest": "4.1.11"
   },
   "dependencies": {
     "hls.js": "1.7.3",
     "openapi-fetch": "0.17.0"
+  },
+  "imports": {
+    "#lib": "./src/lib/index.js",
+    "#lib/*": "./src/lib/*"
   }
 }
