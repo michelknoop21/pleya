@@ -384,18 +384,9 @@ void main() {
       page.state.focusKey(bigP);
       await tester.pumpAndSettle();
 
+      // Big P is the leftmost card: DOWN starts the dock at its first tile.
       await press(tester, LogicalKeyboardKey.arrowDown);
-      final landed = page.focused!;
-      expect(
-        buildTvMyPleyaDock(
-          hasSeerr: true,
-          showDownloads: false,
-          showActivity: true,
-          showCollections: true,
-          showPlaylists: true,
-        ).map((tile) => tile.focusKey),
-        contains(landed),
-      );
+      expect(page.focused, tileKey(TvMyPleyaSection.watchTogether));
       await press(tester, LogicalKeyboardKey.arrowUp);
       expect(page.focused, bigP);
 

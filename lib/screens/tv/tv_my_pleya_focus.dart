@@ -7,7 +7,7 @@ part of 'tv_my_pleya_screen.dart';
 ///                 ▲ UP                ▲ UP
 ///   Big P ──RIGHT──▶ poster … poster ──RIGHT──▶ Bekijk alles
 ///         ◀──LEFT───                  (UP from a poster)
-///      │ DOWN (nearest tile)     │ DOWN (nearest tile)
+///      │ DOWN (first tile)       │ DOWN (nearest tile)
 ///   Snel naar: tile ── tile ── tile …   (UP: nearest of Big P and posters)
 /// ```
 ///
@@ -96,7 +96,9 @@ class _PageFocusMap {
         TraversalDirection.right => posterKeys.firstOrNull ?? seeAllKey,
         TraversalDirection.left => null,
         TraversalDirection.up => _exitUp(),
-        TraversalDirection.down => _vertical(key, dockKeys),
+        // Big P is the page's leftmost card, so DOWN starts the dock at its
+        // first tile, or returns to the tile the remote came up from.
+        TraversalDirection.down => _down(key),
       };
     }
     final poster = posterKeys.indexOf(key);
@@ -143,6 +145,12 @@ class _PageFocusMap {
   List<String> _visible(List<String> keys) {
     final shown = keys.where((key) => _rect(key) != null).toList();
     return shown.isEmpty ? keys : shown;
+  }
+
+  String? _down(String key) {
+    final target = _returnTo(key, dockKeys);
+    if (target != null) cameFrom[target] = key;
+    return target;
   }
 
   String? _returnTo(String key, List<String> candidates) {

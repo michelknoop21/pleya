@@ -2018,6 +2018,7 @@ class _MainScreenState extends State<MainScreen>
     switch (action) {
       case TvAccountAction.switchProfile:
         await _openProfilesFromShell();
+        if (mounted) _focusTvProfileChip();
         return;
       case TvAccountAction.logout:
         await AccountUiActions.logout(context);
