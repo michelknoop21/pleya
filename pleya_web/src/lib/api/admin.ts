@@ -35,7 +35,9 @@ export const ADMIN_PATHS = [
   '/settings',
   '/server/environment',
   '/server/log',
-  '/metadata/attention'
+  '/metadata/attention',
+  // S10.6: het auditlog (de tokenroutes zelf zijn klasse `authenticated`).
+  '/audit'
 ] as const;
 
 export function adminApi(client: PleyaClient) {

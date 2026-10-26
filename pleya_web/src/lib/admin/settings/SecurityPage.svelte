@@ -21,6 +21,7 @@
   import LibraryProblemAlert from '../LibraryProblemAlert.svelte';
   import type { LibraryProblem } from '../libraryErrors';
   import AdminColumns from './AdminColumns.svelte';
+  import SecurityAgentsLink from './SecurityAgentsLink.svelte';
   import SecurityDevicesPanel from './SecurityDevicesPanel.svelte';
   import SecurityTokensPanel from './SecurityTokensPanel.svelte';
   import {
@@ -134,6 +135,7 @@
   <AdminColumns>
     {#snippet left()}
       <SecurityTokensPanel settings={data!.settings} bind:draft />
+      <SecurityAgentsLink />
     {/snippet}
     {#snippet right()}
       <SecurityDevicesPanel
