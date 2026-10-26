@@ -79,6 +79,9 @@ updates:
   # groep die past. Vite, playwright en testing-library nemen ook majors mee in
   # één PR. De svelte-groep alleen minor en patch, zodat een major van kit of de
   # vite-plugin een eigen PR krijgt en de patches er niet op hoeven te wachten.
+  # Vitest zit niet in de vite-groep: een vitest-major breekt de testtypes
+  # (jest-dom-matchers) en zou de vite-patches met de security-fix blokkeren. Een
+  # vitest-major komt als eigen PR, minor en patch in dev-minor-patch.
   - package-ecosystem: bun
     directory: /pleya_web
     schedule:
@@ -97,7 +100,7 @@ updates:
         patterns: ["svelte", "svelte-check", "@sveltejs/*"]
         update-types: [minor, patch]
       vite:
-        patterns: ["vite", "vitest", "@vitejs/*"]
+        patterns: ["vite", "@vitejs/*"]
       playwright:
         patterns: ["@playwright/test", "@axe-core/playwright", "axe-core"]
       testing-library:
