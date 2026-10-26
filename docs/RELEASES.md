@@ -51,6 +51,45 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 415 · 26 October 2026 · iPhone and iPad
+
+<!-- commit: 466c2e8acee79499993fd1d3a322e4503077b1ba -->
+
+### New
+
+- **Big P can share personal memories through your own Pleya Server account.** Open Settings,
+  Big P, Memory, then Sync via Pleya Server. Choose your account and confirm which local memories
+  to share. Changes and deletions travel between connected devices; offline changes are retained.
+  Conflicting edits ask for your choice. Restored server memories need confirmation before use.
+
+### Improved
+
+- **The iPhone scroll crown stays halfway down the right edge.** Swipe up or down over
+  the wheel to turn it and scroll. Lift your finger and turn again to continue from the
+  current position. The letter beside the wheel has been removed.
+
+### Fixed
+
+- **Downloads on iPhone has a back button to My Pleya.** The Downloads tab root now returns to
+  the screen that opened it, like the other My Pleya pages.
+
+### Notes
+
+- This upload updates iPhone and iPad. The fixed crown is an iPhone change. Check its
+  scrolling speed and haptic feedback on a real iPhone; simulator checks are complete,
+  physical-device acceptance remains open.
+
+- Memory sync requires an updated Pleya Server advertising `assistant_memory`. This build includes
+  the client; it does not upgrade an existing server installation. Until the server is updated,
+  memory stays local. Household memories, children's profiles and conversations are excluded from
+  this sync. Turning memory use off stays a local choice.
+- Worth checking on iPhone: add and remove a memory, reconnect after being offline, return
+  from Downloads to My Pleya, and try longer memories and increased text size. Once a separate
+  Apple TV build includes this sync client, also test the same account across iPhone and Apple TV
+  and check Siri Remote navigation. Physical-device acceptance is still open.
+- The device-information and sharing libraries were updated on main before this build. Check
+  sharing a file and opening the system share sheet on an iPhone.
+
 ## 2.8.1 · build 414 · 26 October 2026 · Apple TV
 
 <!-- commit: 539ec1d8 -->

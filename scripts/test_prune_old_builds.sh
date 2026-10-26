@@ -42,7 +42,18 @@ kept=(home/Library/Developer/Xcode/DerivedData/Runner-vers trees/vers/build tmp/
 if run --dryrun >/dev/null 2>&1; then echo "FOUT: onbekend argument werd geaccepteerd"; exit 1; fi
 for p in "${gone[@]}"; do [[ -e "$p" ]] || { echo "FOUT: onbekend argument wiste $p"; exit 1; }; done
 
-out=$(run --dry-run)
+# Missing registered worktrees must not abort the advisory report.
+mkdir -p bin
+cat >bin/git <<'GIT'
+#!/usr/bin/env bash
+case "$*" in
+  *"worktree list --porcelain") printf 'worktree %s\nbranch refs/heads/test\n' "$PRUNE_MISSING_TREE" ;;
+  *"merge-base --is-ancestor"*) exit 0 ;;
+  *) exec /usr/bin/git "$@" ;;
+esac
+GIT
+chmod +x bin/git
+out=$(PATH="$sandbox/bin:$PATH" PRUNE_MISSING_TREE="$sandbox/missing" run --dry-run)
 for p in "${gone[@]}" "${kept[@]}"; do [[ -e "$p" ]] || { echo "FOUT: dry-run wiste $p"; exit 1; }; done
 for p in "${gone[@]}"; do grep -qF "$p" <<<"$out" || { echo "FOUT: dry-run noemt $p niet"; exit 1; }; done
 
