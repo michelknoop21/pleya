@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { csp } from '../csp.ts';
+import { kitOptions } from '../vite.config.ts';
 
 // Kit zet de stijl van #svelte-announcer inline; de CSP laat alleen die exacte
 // tekst door. Verandert een Kit-versie de tekst, dan hoort deze test als eerste
@@ -60,5 +61,21 @@ describe('CSP voor de speler', () => {
   it('hls.js draait zonder worker, anders zou worker-src blob: nodig zijn', async () => {
     const { hlsConfig } = await import('./lib/player/hlsEngine');
     expect(hlsConfig(async () => null)['enableWorker']).toBe(false);
+  });
+});
+
+// De CSP staat in csp.ts, maar de build gebruikt wat vite.config.ts aan de
+// Kit-plugin geeft. Zonder deze toets kan een configwijziging `csp` laten
+// vallen terwijl elke andere toets groen blijft en de bundel zonder policy
+// uitgaat.
+describe('CSP in de build-config', () => {
+  it('geeft precies het csp-object uit csp.ts aan de Kit-opties', () => {
+    expect(kitOptions.csp).toBe(csp);
+    expect(kitOptions.csp?.mode).toBe('hash');
+  });
+
+  it('geeft die Kit-opties aan de sveltekit-plugin', () => {
+    const source = readFileSync(join(import.meta.dirname, '../vite.config.ts'), 'utf8');
+    expect(source).toMatch(/sveltekit\(kitOptions\)/);
   });
 });

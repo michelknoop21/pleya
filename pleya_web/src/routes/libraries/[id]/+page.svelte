@@ -154,7 +154,7 @@
     sort = value;
     const url = new URL(page.url.href);
     url.searchParams.set('sort', value);
-    goto(url, { shallow: true, replace: true, state: page.state });
+    void goto(url, { shallow: true, replace: true, state: page.state });
   }
 </script>
 

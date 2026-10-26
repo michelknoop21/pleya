@@ -74,7 +74,7 @@
     const url = new URL(page.url.href);
     if (query.trim()) url.searchParams.set('q', query.trim());
     else url.searchParams.delete('q');
-    if (url.href !== page.url.href) goto(url, { shallow: true, replace: true, state: page.state });
+    if (url.href !== page.url.href) void goto(url, { shallow: true, replace: true, state: page.state });
   });
 </script>
 
