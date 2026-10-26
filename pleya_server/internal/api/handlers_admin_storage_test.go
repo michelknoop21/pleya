@@ -16,7 +16,7 @@ import (
 // root uit MediaRoots die geen bibliotheek heeft komt gewoon mee (een
 // kandidaat), en een geclaimde root draagt de bibliotheek die hem gebruikt.
 func TestStorageRootsListsCandidatesAndClaimedRoots(t *testing.T) {
-	e := newEnv(t)
+	e := newEnv(t, func(o *api.Options) { o.MediaRoots = []string{"/media", "/mnt/vrij"} })
 	e.setup(e.putSetupCode())
 
 	lib := e.createLibraryViaAPI(t, "Documentaires", "movies", []string{"/media/docs"})
@@ -48,14 +48,24 @@ func TestStorageRootsListsCandidatesAndClaimedRoots(t *testing.T) {
 		t.Errorf("Libraries[0].Title = %q, verwacht Documentaires", claimed.Libraries[0].Title)
 	}
 
-	// /media zelf staat in MediaRoots (harness_test.go) en heeft geen
-	// bibliotheek: een kandidaat, geen geclaimde root.
-	candidate, ok := byPath["/media"]
+	// /mnt/vrij staat in MediaRoots en heeft geen bibliotheek: een kandidaat.
+	candidate, ok := byPath["/mnt/vrij"]
 	if !ok {
-		t.Fatalf("/media (de kandidaat uit MediaRoots) ontbreekt: %+v", list.Roots)
+		t.Fatalf("/mnt/vrij (de kandidaat uit MediaRoots) ontbreekt: %+v", list.Roots)
 	}
 	if len(candidate.Libraries) != 0 {
-		t.Errorf("Libraries van de kandidaat /media = %+v, verwacht leeg", candidate.Libraries)
+		t.Errorf("Libraries van de kandidaat /mnt/vrij = %+v, verwacht leeg", candidate.Libraries)
+	}
+
+	// /media bevat de geclaimde /media/docs: elke bibliotheek erop botst, dus hij
+	// staat niet in de lijst. Hij blijft wel de grens voor nieuwe roots.
+	if _, listed := byPath["/media"]; listed {
+		t.Errorf("/media bevat een geclaimde root en hoort niet in de lijst: %+v", list.Roots)
+	}
+	if rec := e.do(http.MethodPost, "/pleya/v1/libraries", map[string]any{
+		"title": "Nieuw", "kind": "movies", "root_paths": []string{"/media/nieuw"},
+	}); rec.Code != http.StatusCreated {
+		t.Errorf("een nieuwe submap onder het verborgen /media gaf %d, verwacht 201: %s", rec.Code, rec.Body.String())
 	}
 }
 

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log/slog"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -48,16 +49,60 @@ func validLibraryKind(kind string) bool {
 // ergens anders naartoe wijst hier nooit doorkomt: de vergelijking is zuiver
 // tekstueel tegen een lijst die de operator zelf declareert, en resolvet nooit
 // wat de client instuurt.
-func (s *Server) rootOffered(root string) bool {
-	if root == "" || strings.ContainsRune(root, 0) || filepath.Clean(root) != root {
-		return false
+func (s *Server) rootOffered(root string) bool { return s.rootProblem(root) == "" }
+
+// Oorzaken in details.reason van storage.root_not_offered. De code blijft
+// dezelfde (het contract is bevroren); een client kiest zijn zin op de reden.
+const (
+	rootReasonInvalidPath   = "invalid_path"
+	rootReasonOutsideMounts = "outside_mounts"
+	rootReasonNoRoots       = "no_roots"
+	rootReasonInvalidField  = "invalid_field"
+)
+
+// rootProblem geeft de reden waarom root niet bruikbaar is, of "" als hij onder
+// een aangeboden mount valt.
+func (s *Server) rootProblem(root string) string {
+	if root == "" || strings.ContainsRune(root, 0) || !filepath.IsAbs(root) || filepath.Clean(root) != root {
+		return rootReasonInvalidPath
 	}
 	for _, offered := range s.opts.MediaRoots {
 		if root == offered || strings.HasPrefix(root, strings.TrimSuffix(offered, "/")+"/") {
-			return true
+			return ""
 		}
 	}
-	return false
+	return rootReasonOutsideMounts
+}
+
+// refuseRoot zegt waarom een pad niet kan, met het pad en bij een pad buiten de
+// mounts ook de mounts die wel kunnen.
+func (s *Server) refuseRoot(w http.ResponseWriter, root, reason string) {
+	details := map[string]any{"reason": reason, "root": root}
+	if reason == rootReasonOutsideMounts {
+		details["mounts"] = append([]string{}, s.opts.MediaRoots...)
+	}
+	writeError(w, s.log, CodeStorageRootNotOffered, "root_paths: "+reason, details)
+}
+
+// refuseField meldt een onbruikbare titel, soort of scaninterval.
+func refuseField(w http.ResponseWriter, log *slog.Logger, field, message string) {
+	writeError(w, log, CodeStorageRootNotOffered, message,
+		map[string]any{"reason": rootReasonInvalidField, "field": field})
+}
+
+// refuseConflict vertaalt een botsing uit de store naar een weigering met de
+// oorzaak. Zonder RootConflict (de sentinel alleen) blijft het de oude, kale tekst.
+func (s *Server) refuseConflict(w http.ResponseWriter, err error) {
+	var conflict *catalog.RootConflict
+	if !errors.As(err, &conflict) {
+		writeError(w, s.log, CodeStorageRootNotOffered, "root not offered", nil)
+		return
+	}
+	details := map[string]any{"reason": conflict.Reason, "root": conflict.Root, "with": conflict.With}
+	if conflict.Library != "" {
+		details["library"] = conflict.Library
+	}
+	writeError(w, s.log, CodeStorageRootNotOffered, "root_paths: "+conflict.Reason, details)
 }
 
 func (s *Server) handleCreateLibrary(w http.ResponseWriter, r *http.Request) {
@@ -71,18 +116,27 @@ func (s *Server) handleCreateLibrary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.Title = strings.TrimSpace(req.Title)
-	if req.Title == "" || !validLibraryKind(req.Kind) || len(req.RootPaths) == 0 {
-		writeError(w, s.log, CodeStorageRootNotOffered, "title, kind or root_paths missing or invalid", nil)
+	if req.Title == "" {
+		refuseField(w, s.log, "title", "title must not be blank")
+		return
+	}
+	if !validLibraryKind(req.Kind) {
+		refuseField(w, s.log, "kind", "unknown kind")
+		return
+	}
+	if len(req.RootPaths) == 0 {
+		writeError(w, s.log, CodeStorageRootNotOffered, "root_paths must not be empty",
+			map[string]any{"reason": rootReasonNoRoots})
 		return
 	}
 	for _, root := range req.RootPaths {
-		if !s.rootOffered(root) {
-			writeError(w, s.log, CodeStorageRootNotOffered, "root_paths must be one of GET /storage/roots", nil)
+		if reason := s.rootProblem(root); reason != "" {
+			s.refuseRoot(w, root, reason)
 			return
 		}
 	}
 	if req.ScanIntervalSeconds != nil && *req.ScanIntervalSeconds <= 0 {
-		writeError(w, s.log, CodeStorageRootNotOffered, "scan_interval_seconds must be positive", nil)
+		refuseField(w, s.log, "scan_interval_seconds", "scan_interval_seconds must be positive")
 		return
 	}
 
@@ -97,7 +151,7 @@ func (s *Server) handleCreateLibrary(w http.ResponseWriter, r *http.Request) {
 		writeError(w, s.log, CodeSlugTaken, "slug taken", nil)
 		return
 	case errors.Is(err, catalog.ErrRootNotOffered):
-		writeError(w, s.log, CodeStorageRootNotOffered, "root not offered", nil)
+		s.refuseConflict(w, err)
 		return
 	case err != nil:
 		writeInternal(w, s.log, err)
@@ -158,16 +212,16 @@ func (s *Server) handleUpdateLibrary(w http.ResponseWriter, r *http.Request) {
 	if req.Title != nil {
 		var title *string
 		if err := json.Unmarshal(req.Title, &title); err != nil {
-			writeError(w, s.log, CodeStorageRootNotOffered, "title unreadable", nil)
+			refuseField(w, s.log, "title", "title unreadable")
 			return
 		}
 		if title == nil {
-			writeError(w, s.log, CodeStorageRootNotOffered, "title must not be null", nil)
+			refuseField(w, s.log, "title", "title must not be null")
 			return
 		}
 		trimmed := strings.TrimSpace(*title)
 		if trimmed == "" {
-			writeError(w, s.log, CodeStorageRootNotOffered, "title must not be blank", nil)
+			refuseField(w, s.log, "title", "title must not be blank")
 			return
 		}
 		patch.Title = &trimmed
@@ -175,27 +229,28 @@ func (s *Server) handleUpdateLibrary(w http.ResponseWriter, r *http.Request) {
 	if req.Kind != nil {
 		var kind *string
 		if err := json.Unmarshal(req.Kind, &kind); err != nil {
-			writeError(w, s.log, CodeStorageRootNotOffered, "kind unreadable", nil)
+			refuseField(w, s.log, "kind", "kind unreadable")
 			return
 		}
 		if kind == nil {
-			writeError(w, s.log, CodeStorageRootNotOffered, "kind must not be null", nil)
+			refuseField(w, s.log, "kind", "kind must not be null")
 			return
 		}
 		if !validLibraryKind(*kind) {
-			writeError(w, s.log, CodeStorageRootNotOffered, "unknown kind", nil)
+			refuseField(w, s.log, "kind", "unknown kind")
 			return
 		}
 		patch.Kind = kind
 	}
 	if req.RootPaths != nil {
 		if len(*req.RootPaths) == 0 {
-			writeError(w, s.log, CodeStorageRootNotOffered, "root_paths must not be empty", nil)
+			writeError(w, s.log, CodeStorageRootNotOffered, "root_paths must not be empty",
+				map[string]any{"reason": rootReasonNoRoots})
 			return
 		}
 		for _, root := range *req.RootPaths {
-			if !s.rootOffered(root) {
-				writeError(w, s.log, CodeStorageRootNotOffered, "root_paths must be one of GET /storage/roots", nil)
+			if reason := s.rootProblem(root); reason != "" {
+				s.refuseRoot(w, root, reason)
 				return
 			}
 		}
@@ -204,11 +259,11 @@ func (s *Server) handleUpdateLibrary(w http.ResponseWriter, r *http.Request) {
 	if req.ScanIntervalSeconds != nil {
 		var seconds *int
 		if err := json.Unmarshal(req.ScanIntervalSeconds, &seconds); err != nil {
-			writeError(w, s.log, CodeStorageRootNotOffered, "scan_interval_seconds unreadable", nil)
+			refuseField(w, s.log, "scan_interval_seconds", "scan_interval_seconds unreadable")
 			return
 		}
 		if seconds != nil && *seconds <= 0 {
-			writeError(w, s.log, CodeStorageRootNotOffered, "scan_interval_seconds must be positive", nil)
+			refuseField(w, s.log, "scan_interval_seconds", "scan_interval_seconds must be positive")
 			return
 		}
 		patch.ScanIntervalSet = true
@@ -237,7 +292,7 @@ func (s *Server) handleUpdateLibrary(w http.ResponseWriter, r *http.Request) {
 		writeError(w, s.log, CodeNotFound, "not found", nil)
 		return
 	case errors.Is(err, catalog.ErrRootNotOffered):
-		writeError(w, s.log, CodeStorageRootNotOffered, "root not offered", nil)
+		s.refuseConflict(w, err)
 		return
 	case err != nil:
 		writeInternal(w, s.log, err)
