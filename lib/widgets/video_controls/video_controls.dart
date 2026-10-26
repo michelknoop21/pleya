@@ -280,6 +280,7 @@ class PlexVideoControls extends StatefulWidget {
   final VoidCallback? onCycleSubtitleTrack;
   final Function(AudioTrack)? onAudioTrackChanged;
   final Function(SubtitleTrack)? onSubtitleTrackChanged;
+  final ValueNotifier<bool>? subtitleVisibility;
   final Function(SubtitleTrack)? onSecondarySubtitleTrackChanged;
 
   /// Called for app-level seek requests. Plex transcodes use this to restart
@@ -401,6 +402,7 @@ class PlexVideoControls extends StatefulWidget {
     this.onCycleSubtitleTrack,
     this.onAudioTrackChanged,
     this.onSubtitleTrackChanged,
+    this.subtitleVisibility,
     this.onSecondarySubtitleTrackChanged,
     this.onSeekRequested,
     this.onPlayPauseRequested,
@@ -534,7 +536,20 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
   // Long-press 2x speed: holds the pre-press rate while boosted.
   final _rateBoost = TemporaryOverride<double>();
   // Subtitle visibility toggle state
-  bool _subtitlesVisible = true;
+  bool _localSubtitlesVisible = true;
+  bool get _subtitlesVisible => widget.subtitleVisibility?.value ?? _localSubtitlesVisible;
+  set _subtitlesVisible(bool value) {
+    if (widget.subtitleVisibility case final visibility?) {
+      visibility.value = value;
+    } else {
+      _localSubtitlesVisible = value;
+    }
+  }
+
+  void _onSubtitleVisibilityChanged() {
+    if (mounted) _setControlsState(() {});
+  }
+
   // Skip marker button focus node (for TV D-pad navigation)
   late final FocusNode _skipMarkerFocusNode;
   final ValueNotifier<bool> _fallbackHasFirstFrame = ValueNotifier<bool>(true);
@@ -560,6 +575,7 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
   @override
   void initState() {
     super.initState();
+    widget.subtitleVisibility?.addListener(_onSubtitleVisibilityChanged);
     _lastControlsVisible = widget.chromeController.controlsVisible;
     _focusNode = FocusNode(debugLabel: 'PlayerControlsRoot');
     _skipMarkerFocusNode = FocusNode(debugLabel: 'SkipMarkerButton');
@@ -690,6 +706,10 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
   @override
   void didUpdateWidget(PlexVideoControls oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.subtitleVisibility != widget.subtitleVisibility) {
+      oldWidget.subtitleVisibility?.removeListener(_onSubtitleVisibilityChanged);
+      widget.subtitleVisibility?.addListener(_onSubtitleVisibilityChanged);
+    }
     if (oldWidget.chromeController != widget.chromeController) {
       oldWidget.chromeController.removeListener(_onChromeChanged);
       _lastControlsVisible = widget.chromeController.controlsVisible;
@@ -713,6 +733,7 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
 
   @override
   void dispose() {
+    widget.subtitleVisibility?.removeListener(_onSubtitleVisibilityChanged);
     HardwareKeyboard.instance.removeHandler(_handleGlobalKeyEvent);
     widget.chromeController.removeListener(_onChromeChanged);
     widget.chromeController.setTvInfoPanelOpen(false, notify: false);

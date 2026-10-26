@@ -79,7 +79,7 @@ extension _VideoPlayerMediaControlsMethods on VideoPlayerScreenState {
 
     final playbackState = context.read<PlaybackStateProvider>();
     final canNavigateEpisodes = _currentMetadata.isEpisode || playbackState.isPlaylistActive;
-    final canSeek = !widget.isLive && (currentPlayer.state.seekable || _usesPlexVodTranscodeSeekPolicy);
+    final canSeek = _canSystemSeek;
 
     if (!mounted || currentPlayer != player || manager != _mediaControlsManager) return;
 
@@ -88,6 +88,83 @@ extension _VideoPlayerMediaControlsMethods on VideoPlayerScreenState {
       canGoPrevious: canNavigateEpisodes,
       canSeek: canSeek,
     );
+  }
+
+  bool get _canSystemSeek => !widget.isLive && (player?.state.seekable == true || _usesPlexVodTranscodeSeekPolicy);
+
+  Map<String, SubtitleTrack> _systemSubtitleTracks() => {
+    for (final track in player?.state.tracks.subtitle ?? <SubtitleTrack>[])
+      if (track.id != 'auto' && track.id != 'no') track.id: track,
+  };
+
+  void _onSystemSubtitleVisibilityChanged() => unawaited(_syncSystemSubtitles());
+
+  Future<void> _syncSystemSubtitles() async {
+    if (!mounted || !PlatformDetector.isAppleTV()) return;
+    final tracks = _systemSubtitleTracks();
+    final sourceTracks = _sourceSubtitleTracksForControls();
+    final useSource = _isTranscoding && sourceTracks.isNotEmpty && _currentMetadata.backend == MediaBackend.plex;
+    try {
+      await _mediaControlsManager?.updateSubtitleOptions(
+        [
+          if (useSource)
+            for (final track in sourceTracks)
+              {
+                'id': 'source:${track.id}',
+                'language': track.languageCode ?? 'und',
+                'title': track.displayTitle ?? track.title ?? track.languageCode ?? '${track.id}',
+              },
+          if (!useSource && _playbackSession?.result.streamEvidence.subtitle != PlaybackSubtitleDecision.burn)
+            for (final track in tracks.values)
+              {'id': track.id, 'language': track.language ?? 'und', 'title': track.title ?? track.language ?? track.id},
+        ],
+        !_systemSubtitleVisibility.value
+            ? null
+            : (useSource
+                  ? 'source:${_selectedSourceSubtitleStreamIdForControls(sourceTracks)}'
+                  : player?.state.track.subtitle?.id),
+      );
+    } catch (e) {
+      appLogger.w('Failed to publish system subtitle options', error: e);
+    }
+  }
+
+  Future<void> _selectSystemSubtitle(SubtitleOptionEvent event) async {
+    final currentPlayer = player;
+    if (!mounted || currentPlayer == null || !_canControlPlaybackFromRemote()) return;
+    final session = _playbackSession;
+    final generation = _playbackGeneration;
+    bool sameItem() =>
+        mounted &&
+        player == currentPlayer &&
+        _canControlPlaybackFromRemote() &&
+        _playbackSession?.metadata.globalKey == session?.metadata.globalKey;
+    bool isCurrent() => sameItem() && _playbackGeneration == generation;
+    final sourceTracks = _sourceSubtitleTracksForControls();
+    if (_isTranscoding && sourceTracks.isNotEmpty && _currentMetadata.backend == MediaBackend.plex) {
+      final id = event.enabled ? int.tryParse(event.id?.replaceFirst('source:', '') ?? '') : 0;
+      if (id == null || (id != 0 && !sourceTracks.any((track) => track.id == id))) return;
+      if (event.enabled) {
+        await currentPlayer.setProperty('sub-visibility', 'yes');
+        if (!isCurrent()) return;
+        _systemSubtitleVisibility.value = true;
+      }
+      await _switchPlaybackSource(newSubtitleStreamId: id, isCurrent: isCurrent, shouldContinue: sameItem);
+      await _syncSystemSubtitles();
+      return;
+    }
+    if (_playbackSession?.result.streamEvidence.subtitle == PlaybackSubtitleDecision.burn) return;
+    final track = event.enabled ? _systemSubtitleTracks()[event.id] : SubtitleTrack.off;
+    if (track == null) return;
+    if (track.id != 'no') {
+      await currentPlayer.setProperty('sub-visibility', 'yes');
+      if (!isCurrent()) return;
+      _systemSubtitleVisibility.value = true;
+    }
+    await currentPlayer.selectSubtitleTrack(track);
+    if (!isCurrent()) return;
+    await _onSubtitleTrackChanged(track, isCurrent: isCurrent);
+    await _syncSystemSubtitles();
   }
 
   Future<void> _seekBackForRewind(Player p) async {

@@ -104,7 +104,12 @@
       "windows/os_media_controls_plugin_c_api.cpp": "606aa5a3206569c02a8f05a5c6bc5099e04cb37193229e02565edb54b86eedd0"
     },
     "url": "https://github.com/edde746/media_controls/tree/f51c805ebc15bf7a2f49a74174aeb470d3c4c78e",
-    "declaration": "  os_media_controls:\n    git:\n      url: https://github.com/edde746/media_controls\n      ref: f51c805ebc15bf7a2f49a74174aeb470d3c4c78e"
+    "declaration": "  os_media_controls:\n    git:\n      url: https://github.com/edde746/media_controls\n      ref: f51c805ebc15bf7a2f49a74174aeb470d3c4c78e",
+    "local_changes": "IOS-SYSTEM-REMOTE1: public language options, explicit command intent and owned target lifecycle; original hashes retained in files.",
+    "local_files": {
+      "ios/Classes/OsMediaControlsPlugin.swift": "af7785db6ccedf75b3a7c7b3502a6a9cdbe2c3515990c75d0f0e965c0a072d4d",
+      "lib/src/media_control_event.dart": "4b042faba9e8e97f62703a47d3109971f285993a8325fca222eabd8dd6bfd5ce"
+    }
   },
   "screen_retriever_macos": {
     "source": "hosted/pub.dev/screen_retriever_macos-0.2.0",

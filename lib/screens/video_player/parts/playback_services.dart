@@ -216,6 +216,11 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
     final currentPlayer = player;
     if (currentPlayer == null) return;
 
+    if (widget.isLive) {
+      unawaited(_mediaControlsManager?.updateMetadata(metadata: metadata, client: mediaClient));
+      return;
+    }
+
     _rebindProgressTracker(
       metadata: metadata,
       mediaClient: mediaClient,
@@ -301,7 +306,7 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
     // Live TV: send timeline heartbeats to keep transcode session alive
     if (widget.isLive) {
       _startLiveTimelineUpdates();
-      return;
+      if (!PlatformDetector.isAppleTV()) return;
     }
 
     // Get a live reporting client when possible. Downloaded/local playback
@@ -333,15 +338,18 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
         return;
       }
 
-      if (PlatformDetector.isAppleTV() && _isPlaybackMediaControlEvent(event)) {
+      if (PlatformDetector.isAppleTV() && _isPlaybackMediaControlEvent(event) && !event.isSystemCommand) {
         appLogger.d('Media control: ${event.runtimeType} ignored on Apple TV; using native remote bridge');
         return;
       }
 
       if (activePlayer == null && event is! NextTrackEvent && event is! PreviousTrackEvent) return;
 
+      if (_isPlaybackMediaControlEvent(event) && !_canControlPlaybackFromRemote()) return;
+
       if (event is PlayEvent) {
-        final currentPlayer = activePlayer!;
+        if (activePlayer!.state.playing) return;
+        final currentPlayer = activePlayer;
         appLogger.d('Media control: Play event received');
         unawaited(_seekBackForRewind(currentPlayer));
         unawaited(_playWithPlaybackIntent(currentPlayer));
@@ -355,6 +363,7 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
         }
         appLogger.d('Media control: Pause event received');
         unawaited(_pauseWithPlaybackIntent(activePlayer!));
+        if (PlatformDetector.isAppleTV()) _chromeController.requestExplicitPauseChrome();
         _updateMediaControlsPlaybackState();
       } else if (event is TogglePlayPauseEvent) {
         final currentPlayer = activePlayer!;
@@ -368,9 +377,15 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
           _backgroundPauseCaptured = false;
         }
         _updateMediaControlsPlaybackState();
-      } else if (event is SeekEvent) {
-        appLogger.d('Media control: Seek event received to ${event.position}');
-        unawaited(_seekPlayback(clampSeekPosition(activePlayer!, event.position)));
+      } else if (event is SubtitleOptionEvent) {
+        unawaited(_selectSystemSubtitle(event));
+      } else if (event is SkipForwardEvent || event is SkipBackwardEvent || event is SeekEvent) {
+        final target = mediaControlSeekTarget(
+          event,
+          activePlayer!,
+          canSeek: _canSystemSeek && _canControlPlaybackFromRemote(),
+        );
+        if (target != null) unawaited(_seekPlayback(target));
       } else if (event is NextTrackEvent) {
         appLogger.d('Media control: Next track event received');
         if (_nextEpisode != null) _playNext();
@@ -396,6 +411,13 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
 
     await _syncMediaControlsAvailability();
     if (!mounted || player != currentPlayer || _mediaControlsManager != mediaControlsManager) return;
+
+    if (PlatformDetector.isAppleTV()) {
+      _mediaControlsTracksSubscription = currentPlayer.streams.tracks.listen((_) => unawaited(_syncSystemSubtitles()));
+      _mediaControlsTrackSubscription = currentPlayer.streams.track.listen((_) => unawaited(_syncSystemSubtitles()));
+      await _syncSystemSubtitles();
+      if (!mounted || player != currentPlayer || _mediaControlsManager != mediaControlsManager) return;
+    }
 
     // Listen to playing state and update media controls
     _mediaControlsPlayingSubscription = currentPlayer.streams.playing.listen((isPlaying) {

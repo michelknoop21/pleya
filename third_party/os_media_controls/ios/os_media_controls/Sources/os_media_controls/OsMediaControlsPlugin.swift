@@ -10,6 +10,8 @@ public class OsMediaControlsPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
 
     private var currentMetadata: [String: Any] = [:]
     private var handlersCleared = false
+    private var commandTargets: [(MPRemoteCommand, Any)] = []
+    private var subtitleOptions: [String: MPNowPlayingInfoLanguageOption] = [:]
 
     #if os(tvOS)
     private weak var tvPlayPauseGestureRecognizer: UITapGestureRecognizer?
@@ -53,6 +55,7 @@ public class OsMediaControlsPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
     }
 
     deinit {
+        removeCommandTargets()
         NotificationCenter.default.removeObserver(self)
         #if os(tvOS)
         if let recognizer = tvPlayPauseGestureRecognizer {
@@ -77,45 +80,73 @@ public class OsMediaControlsPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
         )
     }
 
+    private func addHandler(_ command: MPRemoteCommand, handler: @escaping (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus) {
+        commandTargets.append((command, command.addTarget(handler: handler)))
+    }
+
+    private func removeCommandTargets() {
+        for (command, target) in commandTargets { command.removeTarget(target) }
+        commandTargets.removeAll()
+    }
+
     private func setupRemoteCommandCenter() {
+        guard commandTargets.isEmpty else { return }
+        commandCenter.skipForwardCommand.preferredIntervals = [10]
+        commandCenter.skipBackwardCommand.preferredIntervals = [10]
+        commandCenter.enableLanguageOptionCommand.isEnabled = false
+        commandCenter.disableLanguageOptionCommand.isEnabled = false
+        addHandler(commandCenter.enableLanguageOptionCommand) { [weak self] event in
+            guard let self, self.eventSink != nil,
+                  let event = event as? MPChangeLanguageOptionCommandEvent,
+                  let id = event.languageOption.identifier,
+                  self.subtitleOptions[id] != nil else { return .commandFailed }
+            self.sendEvent(["type": "subtitle", "id": id, "enabled": true])
+            return .success
+        }
+        addHandler(commandCenter.disableLanguageOptionCommand) { [weak self] event in
+            guard let self, self.eventSink != nil, !self.subtitleOptions.isEmpty else { return .commandFailed }
+            self.sendEvent(["type": "subtitle", "enabled": false])
+            return .success
+        }
+
         // Play command
         commandCenter.playCommand.isEnabled = true
-        commandCenter.playCommand.addTarget { [weak self] event in
+        addHandler(commandCenter.playCommand) { [weak self] event in
             self?.sendPlaybackCommand(defaultType: "play")
             return .success
         }
 
         // Pause command
         commandCenter.pauseCommand.isEnabled = true
-        commandCenter.pauseCommand.addTarget { [weak self] event in
+        addHandler(commandCenter.pauseCommand) { [weak self] event in
             self?.sendPlaybackCommand(defaultType: "pause")
             return .success
         }
 
         // Toggle play/pause command
         commandCenter.togglePlayPauseCommand.isEnabled = true
-        commandCenter.togglePlayPauseCommand.addTarget { [weak self] event in
+        addHandler(commandCenter.togglePlayPauseCommand) { [weak self] event in
             self?.sendPlaybackCommand(defaultType: "togglePlayPause")
             return .success
         }
 
         // Next track command
         commandCenter.nextTrackCommand.isEnabled = true
-        commandCenter.nextTrackCommand.addTarget { [weak self] event in
+        addHandler(commandCenter.nextTrackCommand) { [weak self] event in
             self?.sendEvent(["type": "next"])
             return .success
         }
 
         // Previous track command
         commandCenter.previousTrackCommand.isEnabled = true
-        commandCenter.previousTrackCommand.addTarget { [weak self] event in
+        addHandler(commandCenter.previousTrackCommand) { [weak self] event in
             self?.sendEvent(["type": "previous"])
             return .success
         }
 
         // Change playback position command (seek)
         commandCenter.changePlaybackPositionCommand.isEnabled = true
-        commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
+        addHandler(commandCenter.changePlaybackPositionCommand) { [weak self] event in
             if let positionEvent = event as? MPChangePlaybackPositionCommandEvent {
                 self?.sendEvent([
                     "type": "seek",
@@ -125,38 +156,28 @@ public class OsMediaControlsPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
             return .success
         }
 
-        // Skip forward command
-        commandCenter.skipForwardCommand.isEnabled = false // Disabled by default
-        commandCenter.skipForwardCommand.addTarget { [weak self] event in
-            if let skipEvent = event as? MPSkipIntervalCommandEvent {
-                self?.sendEvent([
-                    "type": "skipForward",
-                    "interval": skipEvent.interval
-                ])
-            } else {
-                self?.sendEvent(["type": "skipForward"])
-            }
+        // Advertise intervals only when the shared player allows seeking.
+        commandCenter.skipForwardCommand.isEnabled = false
+        addHandler(commandCenter.skipForwardCommand) { [weak self] event in
+            guard let self, self.eventSink != nil, self.commandCenter.skipForwardCommand.isEnabled,
+                  let event = event as? MPSkipIntervalCommandEvent,
+                  event.interval.isFinite, event.interval > 0 else { return .commandFailed }
+            self.sendEvent(["type": "skipForward", "interval": event.interval])
             return .success
         }
-
-        // Skip backward command
-        commandCenter.skipBackwardCommand.isEnabled = false // Disabled by default
-        commandCenter.skipBackwardCommand.addTarget { [weak self] event in
-            if let skipEvent = event as? MPSkipIntervalCommandEvent {
-                self?.sendEvent([
-                    "type": "skipBackward",
-                    "interval": skipEvent.interval
-                ])
-            } else {
-                self?.sendEvent(["type": "skipBackward"])
-            }
+        commandCenter.skipBackwardCommand.isEnabled = false
+        addHandler(commandCenter.skipBackwardCommand) { [weak self] event in
+            guard let self, self.eventSink != nil, self.commandCenter.skipBackwardCommand.isEnabled,
+                  let event = event as? MPSkipIntervalCommandEvent,
+                  event.interval.isFinite, event.interval > 0 else { return .commandFailed }
+            self.sendEvent(["type": "skipBackward", "interval": event.interval])
             return .success
         }
 
         // Change playback rate command
         commandCenter.changePlaybackRateCommand.isEnabled = true
         commandCenter.changePlaybackRateCommand.supportedPlaybackRates = [0.5, 1.0, 1.5, 2.0]
-        commandCenter.changePlaybackRateCommand.addTarget { [weak self] event in
+        addHandler(commandCenter.changePlaybackRateCommand) { [weak self] event in
             if let rateEvent = event as? MPChangePlaybackRateCommandEvent {
                 self?.sendEvent([
                     "type": "setSpeed",
@@ -183,6 +204,10 @@ public class OsMediaControlsPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
 
         case "disableControls":
             disableControls(arguments: call.arguments as? [String])
+            result(nil)
+
+        case "setSubtitleOptions":
+            setSubtitleOptions(call.arguments as? [String: Any])
             result(nil)
 
         case "setSkipIntervals":
@@ -222,6 +247,10 @@ public class OsMediaControlsPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
         }
 
         var nowPlayingInfo = nowPlayingCenter.nowPlayingInfo ?? [:]
+        #if os(tvOS)
+        nowPlayingInfo[MPNowPlayingInfoPropertyMediaType] = MPNowPlayingInfoMediaType.video.rawValue
+        #endif
+
 
         if let title = args["title"] as? String {
             nowPlayingInfo[MPMediaItemPropertyTitle] = title
@@ -393,15 +422,10 @@ public class OsMediaControlsPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
 
         // Disable all command center buttons
         let commandCenter = MPRemoteCommandCenter.shared()
-        commandCenter.playCommand.removeTarget(nil)
-        commandCenter.pauseCommand.removeTarget(nil)
-        commandCenter.togglePlayPauseCommand.removeTarget(nil)
-        commandCenter.nextTrackCommand.removeTarget(nil)
-        commandCenter.previousTrackCommand.removeTarget(nil)
-        commandCenter.changePlaybackPositionCommand.removeTarget(nil)
-        commandCenter.skipForwardCommand.removeTarget(nil)
-        commandCenter.skipBackwardCommand.removeTarget(nil)
-        commandCenter.changePlaybackRateCommand.removeTarget(nil)
+        removeCommandTargets()
+        subtitleOptions.removeAll()
+        commandCenter.enableLanguageOptionCommand.isEnabled = false
+        commandCenter.disableLanguageOptionCommand.isEnabled = false
 
         commandCenter.playCommand.isEnabled = false
         commandCenter.pauseCommand.isEnabled = false
@@ -473,6 +497,29 @@ public class OsMediaControlsPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
         }
     }
 
+    private func setSubtitleOptions(_ args: [String: Any]?) {
+        ensureHandlersRegistered()
+        var options: [String: MPNowPlayingInfoLanguageOption] = [:]
+        var orderedOptions: [MPNowPlayingInfoLanguageOption] = []
+        for item in args?["options"] as? [[String: String]] ?? [] {
+            guard let id = item["id"] else { continue }
+            options[id] = MPNowPlayingInfoLanguageOption(
+                type: .legible, languageTag: item["language"] ?? "und",
+                characteristics: [], displayName: item["title"] ?? id, identifier: id)
+            if let option = options[id] { orderedOptions.append(option) }
+        }
+        subtitleOptions = options
+        let group = MPNowPlayingInfoLanguageOptionGroup(languageOptions: orderedOptions,
+                                                        defaultLanguageOption: nil, allowEmptySelection: true)
+        var info = nowPlayingCenter.nowPlayingInfo ?? [:]
+        info[MPNowPlayingInfoPropertyAvailableLanguageOptions] = options.isEmpty ? [] : [group]
+        let selected = (args?["selectedId"] as? String).flatMap { options[$0] }
+        info[MPNowPlayingInfoPropertyCurrentLanguageOptions] = selected.map { [$0] } ?? []
+        nowPlayingCenter.nowPlayingInfo = info
+        commandCenter.enableLanguageOptionCommand.isEnabled = !options.isEmpty
+        commandCenter.disableLanguageOptionCommand.isEnabled = selected != nil
+    }
+
     private func ensureHandlersRegistered() {
         guard handlersCleared else { return }
         setupRemoteCommandCenter()
@@ -480,23 +527,13 @@ public class OsMediaControlsPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
     }
 
     private func sendPlaybackCommand(defaultType: String) {
-        let eventType = playbackCommandEventType(defaultType)
+        let eventType = defaultType
         #if os(tvOS)
         if eventType == "togglePlayPause" && shouldSuppressDuplicateTvPlayPauseEvent() {
             return
         }
         #endif
-        sendEvent(["type": eventType])
-    }
-
-    private func playbackCommandEventType(_ defaultType: String) -> String {
-        #if os(tvOS)
-        // The Siri Remote has one Play/Pause button, but tvOS may surface it
-        // through playCommand or pauseCommand depending on system state. Emit a
-        // toggle so the app can decide from its authoritative player state.
-        return "togglePlayPause"
-        #endif
-        return defaultType
+        sendEvent(["type": eventType, "source": "commandCenter"])
     }
 
     #if os(tvOS)
@@ -512,7 +549,7 @@ public class OsMediaControlsPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
 
     @objc private func handleTvPlayPauseGesture(_ recognizer: UITapGestureRecognizer) {
         guard recognizer.state == .recognized else { return }
-        sendPlaybackCommand(defaultType: "togglePlayPause")
+        sendEvent(["type": "togglePlayPause"])
     }
 
     private func shouldSuppressDuplicateTvPlayPauseEvent() -> Bool {
