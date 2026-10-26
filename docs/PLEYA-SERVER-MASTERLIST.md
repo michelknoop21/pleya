@@ -544,6 +544,17 @@ Start niet automatisch. Zolang PS-12.0 open staat, is geen enkele PS-12-taak toe
 
 ---
 
+### BP-08b Persoonlijk Big P-geheugen (afzonderlijke fase, voorstel)
+
+Deze aanvulling is geen S0-S25-slice en verandert de telling hierboven niet. Michel heeft op
+26 oktober 2026 Pleya Server als syncbron gekozen. Het scoped protocolvenster en de serverfase
+blijven gesloten tot het concrete voorstel is vrijgegeven; bestaande commitgrenzen blijven gelden.
+
+| Taak | Omschrijving | Status | Bewijs / grens | Datum |
+| --- | --- | --- | --- | --- |
+| BP-08b ontwerp | Accountidentiteit, synccontract, wissen/offline en zes compatibiliteitsregels | `[~]` | [Concreet voorstel](plans/2026-10-26-big-p-geheugensync.md); productrichting akkoord; voorstel, vrijgave nog nodig | 2026-10-26 |
+| BP-08b bouw | Protocol, serveropslag, gedeelde clientintegratie en acceptatie | `[!]` | Wacht op scoped venster/fasebesluit uit het voorstel; geen API/migratie/productie-upload uitgevoerd | 2026-10-26 |
+
 ## 4. Poorten en releasevoorwaarden
 
 | # | Poort | Status | Bewijs |
