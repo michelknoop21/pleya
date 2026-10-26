@@ -57,24 +57,24 @@ Nothing user-facing since the last published build.
 
 ### Improved
 
-- **Settings on iPhone are sorted into three groups.** The main page now has For you,
-  Connections and profiles, and System, under a header with a film still. Rows are compact with
-  a line icon; the explanation that used to sit under a row is read out by VoiceOver as a hint.
-  Library & Home, Integrations, Advanced, Backup and Updates each have their own page.
-- **Settings on Apple TV have a category rail.** The categories (Appearance, Language &
-  subtitles, Libraries, Integrations, Big P, Advanced and the others) are listed on the left, and
-  the settings of the selected one appear right next to them. An on/off setting is a single focus
-  stop: Select on the row switches it.
-- **Appearance shows a Live preview.** A poster from your own library with a line naming the
-  current theme and library view, so you see what you picked. On Apple TV, View preview opens
-  your libraries.
+- **Settings on iPhone are sorted into three groups.** Under the header, the main page now has
+  For you, Connections and profiles, and System. Rows are compact with a line icon; the
+  explanation that used to sit under a row is read out by VoiceOver as a hint. Library & Home,
+  Integrations, Advanced and Backup each have their own page.
+- **The Apple TV settings rail has new categories.** Appearance, Video Playback, Language &
+  subtitles, Libraries, Home Layout, Integrations, Big P and Advanced are listed on the left, and
+  the whole settings page of the selected category opens right next to the rail.
+- **Appearance on iPhone shows a Live preview.** A poster from your own library with a line
+  naming the current theme and library view, so you see what you picked. On Apple TV the preview
+  now also sits beside Language & subtitles and Libraries, and View preview opens your libraries.
 - **App language moved to Language & subtitles.** It is the first row there, on iPhone and in the
   Apple TV category.
 - **Settings in light mode use a warm off-white.** This applies to Settings and its subpages
   only; the rest of the app keeps its light look.
 - **My Pleya on iPhone is redesigned.** Your profile and server status sit at the top, your
   watchlist is a poster rail with See all, and Your content holds Libraries, Downloads and
-  Requests. A Big P card follows, then the remaining rows down to Sign out.
+  Requests. A Big P card follows, then the remaining rows down to Sign out. With VoiceOver you
+  can open every row, the Big P card and the watchlist posters.
 - **My Pleya on Apple TV has two columns.** The left column has your watchlist rail, My content,
   and Libraries and sources; the right column has Big P and Manage (Settings, Logs, About Pleya,
   Sign out). Switching profiles and the server status are at the top. A watchlist poster keeps
@@ -85,8 +85,6 @@ Nothing user-facing since the last published build.
 - **Posters load again after switching profiles on a Pleya Server.** Closing the old connection
   removed the new connection's artwork access, so posters and backdrops stopped loading. iPhone
   already had this fix in build 409; it is new on Apple TV.
-- **VoiceOver can open the rows of My Pleya on iPhone.** The rows, the Big P card and the
-  watchlist posters had no activate action.
 
 ### Notes
 
