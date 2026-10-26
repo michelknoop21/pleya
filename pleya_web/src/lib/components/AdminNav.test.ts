@@ -52,6 +52,8 @@ describe('welke sectie bij een pad hoort', () => {
     expect(activeSectionId('/admin/overview')).toBe('overview');
     expect(activeSectionId('/admin/storage')).toBe('storage');
     expect(activeSectionId('/admin/users/u1')).toBe('users');
+    // Scherm 34 hangt onder Beveiliging: zelfde sectie actief, geen elfde zijbalkrij.
+    expect(activeSectionId('/admin/security/agents')).toBe('security');
     expect(activeSectionId('/administrator')).toBeNull();
     expect(activeSectionId('/')).toBeNull();
   });
@@ -61,6 +63,7 @@ describe('welke sectie bij een pad hoort', () => {
     expect(adminBackHref('/admin/network')).toBe('/admin');
     expect(adminBackHref('/admin/libraries/l1')).toBe('/admin/libraries');
     expect(adminBackHref('/admin/libraries/new')).toBe('/admin/libraries');
+    expect(adminBackHref('/admin/security/agents')).toBe('/admin/security');
     expect(adminBackHref('/libraries')).toBeNull();
   });
 });

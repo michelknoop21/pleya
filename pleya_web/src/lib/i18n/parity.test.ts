@@ -15,6 +15,13 @@ const nl: Record<string, string> = { ...sharedNl, ...webNl };
  * vrijwel zeker een vergeten kopie.
  */
 const SAME_ON_PURPOSE = [
+  'admin.tok.list.title',
+  'admin.tok.owner',
+  'admin.tok.mcp.title',
+  'admin.tok.mcp.tools',
+  'admin.tok.mcp.toolCount.one',
+  'admin.tok.mcp.toolCount.other',
+  'admin.tok.audit.ok',
   'app.name',
   'nav.home',
   'nav.films',

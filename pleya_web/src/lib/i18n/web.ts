@@ -7,6 +7,7 @@ import { webOps } from './web.ops';
 import { webUsers } from './webUsers';
 import { webSettings } from './webSettings';
 import { webTranscode } from './webTranscode';
+import { webTokens } from './webTokens';
 
 export const web = {
   ...webOps,
@@ -367,7 +368,8 @@ export const web = {
   'error.client.transport': 'Cannot reach the server. Check the connection and try again.',
   ...webUsers,
   ...webSettings,
-  ...webTranscode
+  ...webTranscode,
+  ...webTokens
 } as const;
 
 export type WebKey = keyof typeof web;
