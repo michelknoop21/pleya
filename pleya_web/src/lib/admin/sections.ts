@@ -84,10 +84,15 @@ export function activeSectionId(pathname: string): AdminSectionId | null {
 
 /**
  * Waar de terugpijl van de mobiele kop heen wijst: vanuit de index terug naar
- * Pleya, vanuit een sectie terug naar de index. Buiten beheer is er geen
- * terugkop en blijft het merk staan.
+ * Pleya, vanuit een sectie terug naar de index, en vanuit een scherm binnen
+ * een sectie (`/admin/libraries/{id}`) terug naar die sectie. Buiten beheer is
+ * er geen terugkop en blijft het merk staan.
  */
 export function adminBackHref(pathname: string): string | null {
   if (!isAdminPath(pathname)) return null;
-  return pathname === ADMIN_ROOT ? '/' : ADMIN_ROOT;
+  if (pathname === ADMIN_ROOT) return '/';
+  const parent = ADMIN_SECTIONS.find(
+    (s) => s.href !== ADMIN_ROOT && pathname.startsWith(`${s.href}/`)
+  );
+  return parent?.href ?? ADMIN_ROOT;
 }

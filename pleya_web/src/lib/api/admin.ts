@@ -11,11 +11,15 @@
  */
 import type { PleyaClient } from './client';
 import type {
+  CreateLibraryRequest,
   Job,
+  Library,
+  MetadataCoverage,
   Scan,
   StorageRoot,
   StreamSessionSummary,
   TranscodeSessionList,
+  UpdateLibraryRequest,
   User
 } from './types';
 
@@ -49,7 +53,60 @@ export function adminApi(client: PleyaClient) {
       (await client.request((raw) => raw.GET('/stream-sessions', { signal }))).items,
 
     transcodeSessions: (signal?: AbortSignal): Promise<TranscodeSessionList> =>
-      client.request((raw) => raw.GET('/transcode-sessions', { signal }))
+      client.request((raw) => raw.GET('/transcode-sessions', { signal })),
+
+    // --- Bibliotheken beheren (S10.2, schermen 21 tot 23) ----------------
+
+    /** De laatste scan van één bibliotheek, of null als hij nooit gescand is. */
+    lastScan: async (libraryId: string, signal?: AbortSignal): Promise<Scan | null> =>
+      (
+        await client.request((raw) =>
+          raw.GET('/scans', { params: { query: { library_id: libraryId, limit: 1 } }, signal })
+        )
+      ).items[0] ?? null,
+
+    startScan: (libraryId: string): Promise<Scan> =>
+      client.request((raw) =>
+        raw.POST('/libraries/{library_id}/scan', { params: { path: { library_id: libraryId } } })
+      ),
+
+    createLibrary: (body: CreateLibraryRequest): Promise<Library> =>
+      client.request((raw) => raw.POST('/libraries', { body })),
+
+    updateLibrary: (libraryId: string, body: UpdateLibraryRequest): Promise<Library> =>
+      client.request((raw) =>
+        raw.PATCH('/libraries/{library_id}', { params: { path: { library_id: libraryId } }, body })
+      ),
+
+    adoptLibrary: (libraryId: string): Promise<Library> =>
+      client.request((raw) =>
+        raw.POST('/libraries/{library_id}/adopt', { params: { path: { library_id: libraryId } } })
+      ),
+
+    /**
+     * `confirm` moet letterlijk de titel zijn (K rij 16); de server toetst dat
+     * zelf ook. Een 204 heeft geen lichaam, en openapi-fetch geeft dan geen
+     * `data`: zonder deze omweg zou `request` een geslaagde verwijdering als
+     * onleesbaar antwoord melden.
+     */
+    deleteLibrary: (libraryId: string, confirm: string): Promise<true> =>
+      client.request<true>(async (raw) => {
+        const result = await raw.DELETE('/libraries/{library_id}', {
+          params: { path: { library_id: libraryId } },
+          body: { confirm }
+        });
+        return result.response.ok
+          ? { data: true, response: result.response }
+          : { error: result.error, response: result.response };
+      }),
+
+    metadataCoverage: (libraryId: string, signal?: AbortSignal): Promise<MetadataCoverage> =>
+      client.request((raw) =>
+        raw.GET('/libraries/{library_id}/metadata-coverage', {
+          params: { path: { library_id: libraryId } },
+          signal
+        })
+      )
   };
 }
 

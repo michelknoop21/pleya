@@ -9,7 +9,7 @@
   import type { AdminIconName } from '../admin/sections';
 
   interface Props {
-    name: AdminIconName | 'gear' | 'back' | 'chev' | 'chevl' | 'tv';
+    name: AdminIconName | 'gear' | 'back' | 'chev' | 'chevl' | 'tv' | 'scan' | 'edit' | 'plus' | 'trash';
     size?: number;
   }
 
@@ -69,6 +69,16 @@
       <path d="m15 6-6 6 6 6" />
     {:else if name === 'tv'}
       <rect x="3" y="5" width="18" height="12" rx="2" /><path d="M8 21h8" />
+    {:else if name === 'scan'}
+      <path
+        d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3M3 12h18"
+      />
+    {:else if name === 'edit'}
+      <path d="M4 20h4l10-10-4-4L4 16zM13 7l4 4" />
+    {:else if name === 'plus'}
+      <path d="M12 5v14M5 12h14" />
+    {:else if name === 'trash'}
+      <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
     {/if}
   </svg>
 {/if}
