@@ -15,7 +15,7 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-GO_IMAGE="${GO_IMAGE:-golang:1.26.6-bookworm}"
+GO_IMAGE="${GO_IMAGE:-golang:1.26.10-bookworm}"
 MODCACHE="${PWD}/.gocache"
 mkdir -p "$MODCACHE/mod" "$MODCACHE/build"
 

@@ -14,7 +14,7 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-GO_IMAGE="${GO_IMAGE_BASE:-golang:1.26.6-bookworm}"
+GO_IMAGE="${GO_IMAGE_BASE:-golang:1.26.10-bookworm}"
 FFMPEG_VERSION="${FFMPEG_VERSION:-7:5.1.9-0+deb12u1}"
 PG_IMAGE="${PG_CLIENT_IMAGE:-postgres:18.6-bookworm@sha256:7d2695c3aa88e792e8b3b233e7e4adb296a20412c6c0ca361e3edaaacfada108}"
 TAG="${PLEYA_TEST_IMAGE:-pleya-server-test:go-ffmpeg}"
