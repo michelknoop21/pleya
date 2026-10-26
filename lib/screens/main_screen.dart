@@ -70,7 +70,9 @@ import '../providers/hidden_libraries_provider.dart';
 import '../providers/libraries_provider.dart';
 import '../providers/playback_state_provider.dart';
 import '../widgets/settings_builder.dart';
+import '../widgets/tv/tv_account_menu.dart';
 import '../widgets/tv/tv_reconnect_item.dart' show tvReconnectFocusKey;
+import '../widgets/tv/tv_top_navigation.dart' show tvNavProfileFocusKey;
 import '../widgets/tv_virtual_keyboard.dart';
 import '../services/api_cache.dart';
 import '../services/multi_server_manager.dart';
@@ -1633,13 +1635,7 @@ class _MainScreenState extends State<MainScreen>
           // own doc comment that a phone list is not a 10-foot surface.
           NavigationTabId.myPleya =>
             _isTvShell
-                ? TvMyPleyaScreen(
-                    key: _tvMyPleyaKey,
-                    onExitUp: _focusSidebar,
-                    onOpenSection: _openTvMyPleyaSection,
-                    onSwitchProfile: () => unawaited(_openProfilesFromShell()),
-                    onSignOut: () => unawaited(AccountUiActions.logout(context)),
-                  )
+                ? TvMyPleyaScreen(key: _tvMyPleyaKey, onExitUp: _focusSidebar, onOpenSection: _openTvMyPleyaSection)
                 : MyPleyaScreen(
                     key: _myPleyaKey,
                     onOpenTab: _selectTab,
@@ -2001,6 +1997,48 @@ class _MainScreenState extends State<MainScreen>
     _updateTvosMenuPassthrough();
   }
 
+  /// A-24c: the profile chip opens the account menu (Wissel profiel,
+  /// Uitloggen) instead of the picker itself.
+  ///
+  /// Same Menu bracket as [_openProfilesFromShell], for the same reason: the
+  /// chip is pressed from the state that hands Menu to tvOS, and the first Menu
+  /// press has to close the menu rather than leave the app. Each action runs
+  /// through the door it always had: the gate picker through
+  /// [_openProfilesFromShell], sign-out through [AccountUiActions.logout] with
+  /// its own confirmation. Back, or a cancelled sign-out, returns the remote
+  /// to the avatar.
+  Future<void> _openAccountMenuFromShell() async {
+    _isShowingProfileSelection = true;
+    _setTvosMenuPassthrough(false);
+    final action = await showTvAccountMenu(
+      context,
+      profileName: context.read<ActiveProfileProvider?>()?.active?.displayName,
+    );
+    if (!mounted) return;
+    switch (action) {
+      case TvAccountAction.switchProfile:
+        await _openProfilesFromShell();
+        return;
+      case TvAccountAction.logout:
+        await AccountUiActions.logout(context);
+        if (!mounted) return;
+      case null:
+        break;
+    }
+    _isShowingProfileSelection = false;
+    _updateTvosMenuPassthrough();
+    _focusTvProfileChip();
+  }
+
+  /// Puts the remote back on the avatar once the route above has gone.
+  void _focusTvProfileChip() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final node = _tvNavNodes.get(tvNavProfileFocusKey);
+      if (node.canRequestFocus) node.requestFocus();
+    });
+  }
+
   /// Suppress stray back events after a child route pops.
   /// On Android TV the platform popRoute can arrive before the key events,
   /// so BackKeySuppressorObserver misses them and they leak into _handleBackKey.
@@ -2301,8 +2339,8 @@ class _MainScreenState extends State<MainScreen>
     // Guard: ignore if tab isn't available in current mode
     if (!_getVisibleTabs(_isOffline).any((t) => t.id == tab)) return false;
 
-    // Fase 7, hoofdstuk 18.2: on TV these four live inside Mijn Pleya rather
-    // than beside Home. Every existing caller — the companion remote, a
+    // Fase 7, hoofdstuk 18.2: on TV these live inside Mijn Pleya rather than
+    // beside Home (Settings has its own destination since A-24c). Every existing caller — the companion remote, a
     // "manage servers" action, `_selectLibrary` — keeps working and simply
     // arrives at the new place.
     if (_isTvShell) {
@@ -2758,7 +2796,7 @@ class _MainScreenState extends State<MainScreen>
       onFocusDestination: _focusTvDestination,
       onFocusContent: _focusContent,
       onFocusNav: _focusSidebar,
-      onOpenProfiles: () => unawaited(_openProfilesFromShell()),
+      onOpenProfiles: () => unawaited(_openAccountMenuFromShell()),
       onOverlaySheetOpenChanged: _handleOverlaySheetOpenChanged,
       onKeyEvent: _handleTvShellKey,
       selectLibrary: _selectLibrary,
@@ -2817,6 +2855,13 @@ class _MainScreenState extends State<MainScreen>
   /// pages load costs extra work, not a wrong final state: the last focused
   /// item is the last one activated.
   void _focusTvDestination(TvDestinationId destination) {
+    // A-24c: the ring on Instellingen leaves the page alone until Select
+    // ([TvDestinationId.switchesOnFocus]).
+    if (!destination.switchesOnFocus) {
+      _tvNav.focusDestination(destination);
+      _tvContentFocus.onDestinationFocused();
+      return;
+    }
     final changed = _tvNav.activate(destination);
     // Cancels anything armed against the destination the viewer just left.
     // Content landing late for a page they have already walked past must not
@@ -2865,17 +2910,18 @@ class _MainScreenState extends State<MainScreen>
   /// The Mijn Pleya section a tab maps to on TV, or null when the tab is a
   /// destination in its own right.
   ///
-  /// Hoofdstuk 18.2 moved four of the rail's rows inside Mijn Pleya. Redirecting
-  /// here rather than leaving them as parallel root tabs is what keeps one
-  /// answer to "where am I": without it, `_selectTab(settings)` would show
-  /// Settings as root content while the bar lit up Mijn Pleya, and Back would
-  /// go to the bar instead of to the hub.
+  /// Hoofdstuk 18.2 moved the rail's personal rows inside Mijn Pleya.
+  /// Redirecting here rather than leaving them as parallel root tabs is what
+  /// keeps one answer to "where am I": without it, `_selectTab(watchlist)`
+  /// would show the kijklijst as root content while the bar lit up Mijn Pleya,
+  /// and Back would go to the bar instead of to the hub.
   static TvMyPleyaSection? _tvSectionForTab(NavigationTabId tab) => switch (tab) {
     NavigationTabId.libraries => TvMyPleyaSection.libraries,
     NavigationTabId.watchlist => TvMyPleyaSection.watchlist,
     NavigationTabId.requests => TvMyPleyaSection.requests,
     NavigationTabId.downloads => TvMyPleyaSection.downloads,
-    NavigationTabId.settings => TvMyPleyaSection.settings,
+    // Settings is a destination of its own since A-24c, not a Mijn Pleya
+    // section, so `_selectTab(settings)` selects it in the bar.
     _ => null,
   };
 

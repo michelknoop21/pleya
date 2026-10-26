@@ -1,4 +1,6 @@
-/// Mijn Pleya ▸ Servers on TV, per the approved `servers-a` layout.
+/// Instellingen ▸ Koppelingen ▸ Servers on TV, per the approved `servers-a`
+/// layout. Until A-24c this was Mijn Pleya ▸ Servers; the page moved whole,
+/// status-first dialog and all (LEESMIJ-v4, Servers parity).
 ///
 /// The section this replaces mounted `ConnectionsSection` — the desktop
 /// settings card — inside a TV page. The heading sat on the canonical inset
@@ -221,7 +223,8 @@ class _TvServersPageState extends State<TvServersPage> {
 
   Future<void> _removeSource(Connection source) => ConnectionsRemoval.removeLocalSource(context, source);
 
-  // SYS-1e: `TvServersPage` is mounted through `tvMyPleyaNestedRoute`, which
+  // SYS-1e: `TvServersPage` is mounted as a nested route of the shell (from
+  // Instellingen since A-24c, `tvMyPleyaNestedRoute` before), which
   // has no `Navigator` of its own, so a bare `Navigator.push` resolves to the
   // profile navigator above the shell and draws over the top bar entirely.
   // Same fix as SYS-1d's catalog opener: route through the shell when one is

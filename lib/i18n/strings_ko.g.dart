@@ -1826,11 +1826,9 @@ class _TranslationsTvMyPleyaKo extends TranslationsTvMyPleyaEn {
 	@override String serversOnline({required Object total, required Object online}) => '${total}개 중 ${online}개 서버 온라인';
 	@override String get noServers => '연결된 서버 없음';
 	@override String get statusOnline => '온라인';
-	@override String get statusOffline => '오프라인';
 	@override String get servers => '서버';
 	@override String get activity => '활동';
 	@override String get logs => '로그 및 진단';
-	@override String signedInAs({required Object name, required Object version}) => '${name}(으)로 로그인됨 · Pleya ${version}';
 	@override String get watchlistSubtitle => '저장한 영화 및 시리즈';
 	@override String get requestsSubtitle => '요청 및 둘러보기';
 	@override String get downloadsSubtitle => '오프라인 및 동기화 규칙';
@@ -1881,7 +1879,6 @@ class _TranslationsSettingsStudioKo extends TranslationsSettingsStudioEn {
 	@override String get yourLibrary => '내 보관함';
 	@override String get viewPreview => '미리보기 보기';
 	@override String get playbackExperience => '재생 경험';
-	@override String get manage => '관리';
 	@override String get yourWatchlist => '내 보고 싶은 목록';
 	@override String get yourContent => '내 콘텐츠';
 	@override String get lightMode => '라이트 모드';
@@ -3775,11 +3772,9 @@ extension on TranslationsKo {
 			'tvMyPleya.serversOnline' => ({required Object total, required Object online}) => '${total}개 중 ${online}개 서버 온라인',
 			'tvMyPleya.noServers' => '연결된 서버 없음',
 			'tvMyPleya.statusOnline' => '온라인',
-			'tvMyPleya.statusOffline' => '오프라인',
 			'tvMyPleya.servers' => '서버',
 			'tvMyPleya.activity' => '활동',
 			'tvMyPleya.logs' => '로그 및 진단',
-			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => '${name}(으)로 로그인됨 · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => '저장한 영화 및 시리즈',
 			'tvMyPleya.requestsSubtitle' => '요청 및 둘러보기',
 			'tvMyPleya.downloadsSubtitle' => '오프라인 및 동기화 규칙',
@@ -3813,7 +3808,6 @@ extension on TranslationsKo {
 			'settingsStudio.yourLibrary' => '내 보관함',
 			'settingsStudio.viewPreview' => '미리보기 보기',
 			'settingsStudio.playbackExperience' => '재생 경험',
-			'settingsStudio.manage' => '관리',
 			'settingsStudio.yourWatchlist' => '내 보고 싶은 목록',
 			'settingsStudio.yourContent' => '내 콘텐츠',
 			'settingsStudio.lightMode' => '라이트 모드',

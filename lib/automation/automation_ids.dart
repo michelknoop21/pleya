@@ -39,11 +39,17 @@ class AutomationIds {
   static String navTab(NavigationTabId id) => 'nav.${id.name}';
 
   /// The TV shell's profile chip, at the far left of the top bar. Not a
-  /// [NavigationTabId]: the chip opens the profile picker on the root
-  /// navigator and never becomes an active destination. It carries a `nav` id
+  /// [NavigationTabId]: the chip opens the account menu ([accountMenu], A-24c)
+  /// and never becomes an active destination. It carries a `nav` id
   /// anyway because it is a focus stop in the bar, and a walk over that bar
   /// has to be able to name where the leftmost hop lands.
   static const String navProfile = 'nav.profile';
+
+  /// A-24c: the small account menu the TV profile chip opens, and its two
+  /// actions (`account_menu.action[switch_profile]`,
+  /// `account_menu.action[logout]`).
+  static const String accountMenu = 'account_menu';
+  static const String accountMenuAction = 'account_menu.action';
 
   /// OFF-1: the TV bar's reconnect item, shown only while offline. Not a
   /// [NavigationTabId] for the same reason [navProfile] isn't — it triggers
@@ -794,6 +800,7 @@ class AutomationIds {
     mediaDetailSeasonPoster,
     discoverRail,
     discoverRailItem,
+    accountMenuAction,
     myPleyaTile,
     myPleyaSection,
     myPleyaSectionContent,
@@ -901,6 +908,8 @@ class AutomationIds {
     {'id': navigationBack, 'role': 'button', 'instanceable': false},
     for (final tab in NavigationTabId.values) {'id': navTab(tab), 'role': 'nav', 'instanceable': false},
     {'id': navProfile, 'role': 'nav', 'instanceable': false},
+    {'id': accountMenu, 'role': 'dialog', 'instanceable': false},
+    {'id': accountMenuAction, 'role': 'button', 'instanceable': true},
     {'id': navReconnect, 'role': 'nav', 'instanceable': false},
     {'id': navBar, 'role': 'nav', 'instanceable': false},
     {'id': sidebarRail, 'role': 'sidebar', 'instanceable': false},

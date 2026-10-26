@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/navigation/navigation_tabs.dart';
 import 'package:pleya/navigation/tv/tv_destination.dart';
 import 'package:pleya/utils/platform_detector.dart';
@@ -7,13 +8,15 @@ void main() {
   group('buildTvDestinations without live tv', () {
     final destinations = buildTvDestinations(const TvNavConditions(hasLiveTv: false));
 
-    test('the order is exactly search, home, series, movies, my pleya', () {
+    test('the order is exactly search, home, series, movies, my pleya, settings', () {
+      // A-24c (LEESMIJ-v4): Instellingen directly after Mijn Pleya, last.
       expect(destinations, [
         TvDestinationId.search,
         TvDestinationId.home,
         TvDestinationId.series,
         TvDestinationId.movies,
         TvDestinationId.myPleya,
+        TvDestinationId.settings,
       ]);
     });
 
@@ -41,6 +44,7 @@ void main() {
         TvDestinationId.movies,
         TvDestinationId.liveTv,
         TvDestinationId.myPleya,
+        TvDestinationId.settings,
       ]);
     });
 
@@ -75,6 +79,11 @@ void main() {
       expect(TvDestinationId.liveTv.tab, NavigationTabId.liveTv);
     });
 
+    test('settings maps to the settings tab (A-24c)', () {
+      expect(TvDestinationId.settings.tab, NavigationTabId.settings);
+      expect(TvDestinationId.settings.label, t.settings.title);
+    });
+
     test('my pleya maps to the my pleya tab', () {
       expect(TvDestinationId.myPleya.tab, NavigationTabId.myPleya);
     });
@@ -84,6 +93,15 @@ void main() {
     test('only search is drawn compact', () {
       for (final id in TvDestinationId.values) {
         expect(id.isCompact, id == TvDestinationId.search, reason: 'unexpected compact flag for $id');
+      }
+    });
+  });
+
+  group('TvDestinationId.switchesOnFocus', () {
+    test('every destination but Instellingen shows its page when the ring lands on it', () {
+      // A-24c, A13: the ring on Instellingen leaves Mijn Pleya on screen.
+      for (final destination in TvDestinationId.values) {
+        expect(destination.switchesOnFocus, destination != TvDestinationId.settings, reason: destination.name);
       }
     });
   });
@@ -122,8 +140,8 @@ void main() {
       expect(tvDestinationForTab(NavigationTabId.downloads), TvDestinationId.myPleya);
     });
 
-    test('settings lights up my pleya', () {
-      expect(tvDestinationForTab(NavigationTabId.settings), TvDestinationId.myPleya);
+    test('settings lights up its own pill (A-24c)', () {
+      expect(tvDestinationForTab(NavigationTabId.settings), TvDestinationId.settings);
     });
 
     test('my pleya lights up my pleya', () {
@@ -152,13 +170,14 @@ void main() {
   });
 
   group('buildTvDestinations offline (MOC-23a, MOC-23)', () {
-    test('search, series and movies drop out; home and my pleya stay', () {
+    test('search, series and movies drop out; home, my pleya and settings stay', () {
       // MOC-23 (PB-12): Home keeps its pill offline — the offline candidate
       // has something to show (reconnect, last-known servers) even without a
       // discovery snapshot. Search, Series and Movies still resolve to
       // `onlineOnly` tabs with nothing to render, so they still drop out.
       final destinations = buildTvDestinations(const TvNavConditions(hasLiveTv: true, isOffline: true));
-      expect(destinations, [TvDestinationId.home, TvDestinationId.myPleya]);
+      // A-24c: Instellingen stays too; its tab is not online-only.
+      expect(destinations, [TvDestinationId.home, TvDestinationId.myPleya, TvDestinationId.settings]);
     });
 
     test('live tv drops out offline even when the capability is remembered', () {
@@ -242,19 +261,20 @@ void main() {
       expect(mobile, contains(NavigationTabId.myPleya));
     });
 
-    test('Mijn Pleya stays reachable offline, because it is the only way to sign out', () {
-      expect(visibleOnTv(isOffline: true), contains(NavigationTabId.myPleya));
+    test('Mijn Pleya and Instellingen stay reachable offline', () {
+      // Mijn Pleya keeps the personal routes; Instellingen keeps Servers and
+      // Koppelingen, which is where an offline viewer goes to fix it.
+      expect(visibleOnTv(isOffline: true), containsAll([NavigationTabId.myPleya, NavigationTabId.settings]));
     });
 
     test('every Mijn Pleya section maps back to a tab the shell knows', () {
-      // The redirect in `_selectTab` sends these five tabs into Mijn Pleya, so
+      // The redirect in `_selectTab` sends these four tabs into Mijn Pleya, so
       // each has to light the Mijn Pleya pill rather than nothing.
       for (final tab in [
         NavigationTabId.libraries,
         NavigationTabId.watchlist,
         NavigationTabId.requests,
         NavigationTabId.downloads,
-        NavigationTabId.settings,
       ]) {
         expect(tvDestinationForTab(tab), TvDestinationId.myPleya);
       }

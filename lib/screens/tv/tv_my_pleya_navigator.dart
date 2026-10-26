@@ -111,8 +111,11 @@ TvNestedRoute tvMyPleyaNestedRoute(
         TvMyPleyaSection.libraries => TvLibrariesScreen(key: librariesKey),
         TvMyPleyaSection.collections => TvCollectionsOverviewScreen(key: collectionsKey),
         TvMyPleyaSection.playlists => TvPlaylistsOverviewScreen(key: playlistsKey),
-        // `servers-a`. TvServersScreen mounted the desktop settings card
-        // inside a TV page; this is the tile presentation on the shared frame.
+        // A-24c: Servers, Instellingen, Logboeken and Over Pleya have no tile
+        // on the TV page any more; they open from Instellingen (Koppelingen ▸
+        // Servers, Geavanceerd). The section enum is shared with the iPhone
+        // page, so the four keep a route here rather than a hole in this
+        // switch.
         TvMyPleyaSection.servers => const TvServersPage(),
         TvMyPleyaSection.activity => const TvNowWatchingScreen(),
         TvMyPleyaSection.watchTogether => const WatchTogetherScreen(),

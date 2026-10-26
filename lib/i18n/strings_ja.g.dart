@@ -1826,11 +1826,9 @@ class _TranslationsTvMyPleyaJa extends TranslationsTvMyPleyaEn {
 	@override String serversOnline({required Object total, required Object online}) => '${total} 台中 ${online} 台のサーバーがオンライン';
 	@override String get noServers => '接続中のサーバーはありません';
 	@override String get statusOnline => 'オンライン';
-	@override String get statusOffline => 'オフライン';
 	@override String get servers => 'サーバー';
 	@override String get activity => 'アクティビティ';
 	@override String get logs => 'ログと診断';
-	@override String signedInAs({required Object name, required Object version}) => '${name} でログイン中 · Pleya ${version}';
 	@override String get watchlistSubtitle => '保存した映画とシリーズ';
 	@override String get requestsSubtitle => 'リクエストと発見';
 	@override String get downloadsSubtitle => 'オフラインと同期ルール';
@@ -1881,7 +1879,6 @@ class _TranslationsSettingsStudioJa extends TranslationsSettingsStudioEn {
 	@override String get yourLibrary => 'あなたのライブラリ';
 	@override String get viewPreview => 'プレビューを見る';
 	@override String get playbackExperience => '再生体験';
-	@override String get manage => '管理';
 	@override String get yourWatchlist => 'ウォッチリスト';
 	@override String get yourContent => 'あなたのコンテンツ';
 	@override String get lightMode => 'ライトモード';
@@ -3775,11 +3772,9 @@ extension on TranslationsJa {
 			'tvMyPleya.serversOnline' => ({required Object total, required Object online}) => '${total} 台中 ${online} 台のサーバーがオンライン',
 			'tvMyPleya.noServers' => '接続中のサーバーはありません',
 			'tvMyPleya.statusOnline' => 'オンライン',
-			'tvMyPleya.statusOffline' => 'オフライン',
 			'tvMyPleya.servers' => 'サーバー',
 			'tvMyPleya.activity' => 'アクティビティ',
 			'tvMyPleya.logs' => 'ログと診断',
-			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => '${name} でログイン中 · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => '保存した映画とシリーズ',
 			'tvMyPleya.requestsSubtitle' => 'リクエストと発見',
 			'tvMyPleya.downloadsSubtitle' => 'オフラインと同期ルール',
@@ -3813,7 +3808,6 @@ extension on TranslationsJa {
 			'settingsStudio.yourLibrary' => 'あなたのライブラリ',
 			'settingsStudio.viewPreview' => 'プレビューを見る',
 			'settingsStudio.playbackExperience' => '再生体験',
-			'settingsStudio.manage' => '管理',
 			'settingsStudio.yourWatchlist' => 'ウォッチリスト',
 			'settingsStudio.yourContent' => 'あなたのコンテンツ',
 			'settingsStudio.lightMode' => 'ライトモード',

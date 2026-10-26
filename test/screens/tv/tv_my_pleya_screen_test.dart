@@ -1,44 +1,31 @@
-/// Mijn Pleya on TV (hoofdstuk 18, north star 08).
+/// Mijn Pleya on TV (A-24c, northstar `02-Mijn-Pleya-v4`, `pariteit-v4.csv`).
 ///
-/// Two halves, because the screen has two kinds of claim to prove. Which tiles
-/// exist is the hoofdstuk 18.2 function mapping, and that is a pure function —
-/// tested as one, so a conditional tile can be checked without a server. What
-/// the tiles then *do* is a focus and activation contract, and that is tested
-/// against the production widget.
+/// Three parts. The groups the iPhone page still reads ([buildTvMyPleyaGroups])
+/// and the TV dock ([buildTvMyPleyaDock]) are pure functions, tested as such,
+/// so a conditional tile can be checked without a server. What the page then
+/// *does* is a focus, activation and canvas contract, tested against the
+/// production page under the production shell at 1038 x 584
+/// (`tv_my_pleya_page.dart`).
 ///
 /// The load-bearing promise of the whole screen is that no tile is decorative:
-/// every one of them opens something this app already ships (hoofdstuk 18.2),
-/// so the section a tile reports is asserted rather than assumed.
+/// every one of them opens something this app already ships, so the section a
+/// tile reports is asserted rather than assumed.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pleya/focus/input_mode_tracker.dart';
+import 'package:pleya/focus/focusable_wrapper.dart';
 import 'package:pleya/i18n/strings.g.dart';
-import 'package:pleya/providers/multi_server_provider.dart';
-import 'package:pleya/providers/libraries_provider.dart';
-import 'package:pleya/providers/personal_media_provider.dart';
-import 'package:pleya/media/media_library.dart';
-import 'package:pleya/media/media_backend.dart';
-import 'package:pleya/media/media_kind.dart';
-import 'package:pleya/media/watchlist_entry.dart';
-import 'package:pleya/providers/now_watching_provider.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_screen.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_sections.dart';
-import 'package:pleya/services/data_aggregation_service.dart';
-import 'package:pleya/services/multi_server_manager.dart';
-import 'package:pleya/theme/mono_theme.dart';
-import 'package:pleya/theme/mono_tokens.dart';
-import 'package:pleya/widgets/tv/tv_catalog_card.dart';
-import 'package:pleya/utils/platform_detector.dart';
-import 'package:pleya/providers/seerr_provider.dart';
-import 'package:pleya/providers/watchlist_provider.dart';
-import 'package:provider/provider.dart';
+import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 
 import '../../test_helpers/golden.dart';
-import '../../test_helpers/tv_my_pleya_conditions.dart';
+import '../../test_helpers/prefs.dart';
+import '../../test_helpers/tv_my_pleya_page.dart';
 
 void main() {
   // ---------------------------------------------------------------------------
@@ -194,585 +181,402 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // The screen itself
+  // The TV dock (A-24c, `Snel naar`)
   // ---------------------------------------------------------------------------
 
-  group('the hub', () {
-    late MultiServerManager manager;
-    late MultiServerProvider servers;
-    late List<TvMyPleyaSection> opened;
-    late int upCalls;
-    late int switchProfileCalls;
-    late int signOutCalls;
+  group('the Snel naar dock', () {
+    List<TvMyPleyaSection?> dock({
+      bool hasSeerr = true,
+      bool showDownloads = false,
+      bool showActivity = true,
+      bool showCollections = true,
+      bool showPlaylists = true,
+    }) => buildTvMyPleyaDock(
+      hasSeerr: hasSeerr,
+      showDownloads: showDownloads,
+      showActivity: showActivity,
+      showCollections: showCollections,
+      showPlaylists: showPlaylists,
+    ).map((tile) => tile.section).toList();
 
-    setUp(() {
-      TvDetectionService.debugSetAppleTVOverride(true);
-      manager = MultiServerManager();
-      servers = MultiServerProvider(manager, DataAggregationService(manager));
-      opened = [];
-      upCalls = 0;
-      switchProfileCalls = 0;
-      signOutCalls = 0;
+    test('A10: the six tiles in the northstar order', () {
+      expect(dock(), [
+        TvMyPleyaSection.watchTogether,
+        TvMyPleyaSection.collections,
+        TvMyPleyaSection.playlists,
+        TvMyPleyaSection.requests,
+        TvMyPleyaSection.libraries,
+        TvMyPleyaSection.activity,
+      ]);
     });
 
-    tearDown(() {
-      servers.dispose();
-      TvDetectionService.debugSetAppleTVOverride(null);
+    test('A15: without Seerr and Tautulli the row closes up, no empty places', () {
+      expect(dock(hasSeerr: false, showActivity: false), [
+        TvMyPleyaSection.watchTogether,
+        TvMyPleyaSection.collections,
+        TvMyPleyaSection.playlists,
+        TvMyPleyaSection.libraries,
+      ]);
     });
 
-    Future<void> pump(
-      WidgetTester tester, {
-      bool full = false,
-      bool nowWatchingAvailable = false,
-      bool personalMediaAvailable = false,
-      bool appleTv = true,
-      Size size = const Size(1280, 720),
-      List<WatchlistEntry>? watchlistEntries,
-    }) async {
-      TvDetectionService.debugSetAppleTVOverride(appleTv);
-      tester.view.physicalSize = size;
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
+    test('every tile follows its own capability from pariteit-v4.csv', () {
+      expect(dock(showCollections: false), isNot(contains(TvMyPleyaSection.collections)));
+      expect(dock(showPlaylists: false), isNot(contains(TvMyPleyaSection.playlists)));
+      expect(dock(hasSeerr: false), isNot(contains(TvMyPleyaSection.requests)));
+      expect(dock(showActivity: false), isNot(contains(TvMyPleyaSection.activity)));
+      // Samen kijken and Bibliotheken are unconditional.
+      final bare = dock(hasSeerr: false, showActivity: false, showCollections: false, showPlaylists: false);
+      expect(bare, [TvMyPleyaSection.watchTogether, TvMyPleyaSection.libraries]);
+    });
 
-      // Hoofdstuk 18.3's conditional tiles, all switched on. Off by default so
-      // every existing test in this group keeps the short hub it was written
-      // against. `nowWatchingAvailable` is the one PB-7 needs on its own,
-      // independent of watchlist/Seerr/Plex, to test the Activiteit tile's
-      // predicate in isolation.
-      WatchlistProvider? watchlist;
-      SeerrProvider? seerr;
-      NowWatchingProvider? nowWatching;
-      if (full) {
-        manager.debugRegisterClientForTesting(OnlinePlexClientDouble('nas', 'NAS'));
-        watchlist = StockedWatchlistDouble(railEntries: watchlistEntries ?? const []);
-        addTearDown(watchlist.dispose);
-        seerr = ConfiguredSeerrDouble();
-        addTearDown(seerr.dispose);
-      } else if (watchlistEntries != null) {
-        watchlist = StockedWatchlistDouble(railEntries: watchlistEntries);
-        addTearDown(watchlist.dispose);
+    test('Downloads only where the platform has downloads, never on Apple TV', () {
+      expect(dock(), isNot(contains(TvMyPleyaSection.downloads)));
+      expect(dock(showDownloads: true), contains(TvMyPleyaSection.downloads));
+    });
+
+    test('Instellingen, Servers, Logboeken, Over and Uitloggen moved out of the page', () {
+      // Settings is a bar destination, servers/logs/about live under it, and
+      // sign-out is in the account menu (LEESMIJ-v4).
+      final all = dock(showDownloads: true);
+      for (final moved in [
+        TvMyPleyaSection.settings,
+        TvMyPleyaSection.servers,
+        TvMyPleyaSection.logs,
+        TvMyPleyaSection.about,
+      ]) {
+        expect(all, isNot(contains(moved)));
       }
-      if (full || nowWatchingAvailable) {
-        nowWatching = AvailableNowWatchingDouble();
-        addTearDown(nowWatching.dispose);
-      }
-      LibrariesProvider? libraries;
-      PersonalMediaProvider? personalMedia;
-      if (personalMediaAvailable) {
-        manager.debugRegisterClientForTesting(OnlinePlexClientDouble('personal', 'Personal'));
-        libraries = LibrariesProvider()
-          ..debugSetLibraries(const [
-            MediaLibrary(
-              id: 'movies',
-              backend: MediaBackend.plex,
-              title: 'Movies',
-              kind: MediaKind.movie,
-              serverId: 'personal',
-            ),
-          ]);
-        personalMedia = PersonalMediaProvider(multiServer: servers, libraries: libraries);
-        addTearDown(personalMedia.dispose);
-        addTearDown(libraries.dispose);
-      }
+      expect(all, everyElement(isNotNull), reason: 'no tile that acts instead of opening a section');
+    });
+  });
 
-      await tester.pumpWidget(
-        TranslationProvider(
-          child: MultiProvider(
-            providers: [
-              ChangeNotifierProvider<MultiServerProvider>.value(value: servers),
-              if (personalMedia != null) ChangeNotifierProvider<PersonalMediaProvider>.value(value: personalMedia),
-              if (watchlist != null) ChangeNotifierProvider<WatchlistProvider>.value(value: watchlist),
-              if (seerr != null) ChangeNotifierProvider<SeerrProvider>.value(value: seerr),
-              if (nowWatching != null) ChangeNotifierProvider<NowWatchingProvider>.value(value: nowWatching),
-            ],
-            child: MaterialApp(
-              debugShowCheckedModeBanner: false,
-              theme: monoTheme(dark: true),
-              home: InputModeTracker(
-                child: Scaffold(
-                  body: TvMyPleyaScreen(
-                    onOpenSection: opened.add,
-                    onSwitchProfile: () => switchProfileCalls++,
-                    onSignOut: () => signOutCalls++,
-                    onExitUp: () => upCalls++,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-    }
+  // ---------------------------------------------------------------------------
+  // The page under the shell (A10-A15)
+  // ---------------------------------------------------------------------------
 
-    TvMyPleyaScreenState state(WidgetTester tester) => tester.state<TvMyPleyaScreenState>(find.byType(TvMyPleyaScreen));
-
-    String? focusedLabel() => FocusManager.instance.primaryFocus?.debugLabel;
+  group('the page', () {
+    setUp(() async {
+      resetSharedPreferencesForTest();
+      SettingsService.resetForTesting();
+      await SettingsService.getInstance();
+    });
 
     Future<void> press(WidgetTester tester, LogicalKeyboardKey key) async {
       await tester.sendKeyEvent(key);
-      await tester.pump();
+      await tester.pumpAndSettle();
     }
 
-    testWidgets('the page names itself and shows every group heading', (tester) async {
-      await pump(tester);
+    String poster(int i) => 'tvMyPleya_poster_w$i';
+    final bigP = TvMyPleyaSection.assistant.tileFocusKey;
+    final seeAll = TvMyPleyaSection.watchlist.tileFocusKey;
+    String tileKey(TvMyPleyaSection s) => s.tileFocusKey;
 
-      expect(find.text(t.navigation.myPleya), findsOneWidget);
-      expect(find.text(t.tvMyPleya.groupSources.toUpperCase()), findsOneWidget);
-      expect(find.text(t.tvMyPleya.groupPleya.toUpperCase()), findsOneWidget);
+    testWidgets('the heading greets the profile, and no profile block, Beheer or sign-out is left', (tester) async {
+      await pumpTvMyPleyaPage(tester);
+
+      expect(find.text(t.tvMyPleya.heading(name: 'Michel')), findsOneWidget);
+      expect(find.text(t.tvMyPleya.subline), findsOneWidget);
+      expect(find.text(t.tvMyPleya.quickLinks.toUpperCase()), findsOneWidget);
+      // The old A-24b page drew these; v4 has none of them: no profile action,
+      // no Beheer column and no sign-out tile.
+      final oldTiles = find.byWidgetPredicate(
+        (w) =>
+            w is FocusableWrapper &&
+            const {'settings', 'servers', 'logs', 'about', 'logout'}.contains(w.automationInstance),
+      );
+      expect(oldTiles, findsNothing);
+      expect(find.text(t.common.logout), findsNothing);
+      expect(find.text(t.tvMyPleya.logs), findsNothing);
+      expect(find.text(t.tvMyPleya.servers), findsNothing);
     });
 
-    testWidgets('Downloads is not offered on an Apple TV', (tester) async {
-      await pump(tester);
+    testWidgets('first entry lands on Big P, one focus object', (tester) async {
+      final page = await pumpTvMyPleyaPage(tester);
 
-      // Hoofdstuk 18.3, and the same predicate `NavigationTab.getVisibleTabs`
-      // uses — the tile and the tab cannot disagree about whether the feature
-      // exists on this device.
-      expect(find.text(t.navigation.downloads), findsNothing);
+      page.state.focusActiveTabIfReady();
+      await tester.pumpAndSettle();
+
+      expect(page.focused, bigP);
+      // `Vraag Big P` is the visible action inside the card, not a second stop:
+      // the card is the only focus stop around it.
+      expect(
+        find.ancestor(of: find.text(t.tvMyPleya.bigPAction), matching: find.byType(FocusableWrapper)),
+        findsOneWidget,
+      );
+
+      await press(tester, LogicalKeyboardKey.select);
+      expect(page.opened, [TvMyPleyaSection.assistant]);
     });
 
-    // PB-7: an online Plex server is no longer sufficient on its own. Negative
-    // control for the predicate this workitem replaces — before this change
-    // `OnlinePlexClientDouble` alone was enough to show the tile, and this
-    // must be red on the pre-fix code or it proves nothing.
-    testWidgets('Activiteit stays hidden with an online Plex server but no Tautulli source', (tester) async {
-      manager.debugRegisterClientForTesting(OnlinePlexClientDouble('nas', 'NAS'));
-      await pump(tester);
+    testWidgets('Right from Big P reaches the first poster, Left from it returns to Big P', (tester) async {
+      final page = await pumpTvMyPleyaPage(tester);
+      page.state.focusKey(bigP);
+      await tester.pumpAndSettle();
 
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      expect(page.focused, poster(0));
+      await press(tester, LogicalKeyboardKey.arrowLeft);
+      expect(page.focused, bigP);
+      await press(tester, LogicalKeyboardKey.arrowLeft);
+      expect(page.focused, bigP, reason: 'no wrap at the left edge');
+    });
+
+    testWidgets('Up from the top row hands the remote to the top navigation', (tester) async {
+      final page = await pumpTvMyPleyaPage(tester);
+      page.state.focusKey(bigP);
+      await tester.pumpAndSettle();
+
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(page.upCalls, hasLength(1));
+
+      // From a poster, Up reaches Bekijk alles first, then the bar.
+      page.state.focusKey(poster(2));
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(page.focused, seeAll);
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(page.upCalls, hasLength(2));
+      // And Down from Bekijk alles goes back to the poster it came from.
+      page.state.focusKey(poster(2));
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(page.focused, poster(2));
+    });
+
+    testWidgets('Bekijk alles follows the last poster and opens the kijklijst', (tester) async {
+      final page = await pumpTvMyPleyaPage(tester, conditions: const TvMyPleyaPageConditions(watchlistCount: 3));
+      page.state.focusKey(poster(2));
+      await tester.pumpAndSettle();
+
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      expect(page.focused, seeAll);
+      await press(tester, LogicalKeyboardKey.select);
+      expect(page.opened, [TvMyPleyaSection.watchlist]);
+    });
+
+    testWidgets('a poster with nothing to play opens the full kijklijst', (tester) async {
+      final page = await pumpTvMyPleyaPage(tester);
+      page.state.focusKey(poster(0));
+      await tester.pumpAndSettle();
+
+      await press(tester, LogicalKeyboardKey.select);
+      expect(page.opened, [TvMyPleyaSection.watchlist]);
+    });
+
+    testWidgets('twelve posters stay reachable inside the panel', (tester) async {
+      final page = await pumpTvMyPleyaPage(tester, conditions: const TvMyPleyaPageConditions(watchlistCount: 12));
+      final panel = tester.getRect(find.byType(ListView).first);
+      page.state.focusKey(poster(0));
+      await tester.pumpAndSettle();
+
+      for (var i = 1; i < 12; i++) {
+        await press(tester, LogicalKeyboardKey.arrowRight);
+        expect(page.focused, poster(i));
+        final rect = FocusManager.instance.primaryFocus!.rect;
+        expect(rect.left, greaterThanOrEqualTo(panel.left - 0.5), reason: 'poster $i inside the panel');
+        expect(rect.right, lessThanOrEqualTo(panel.right + 0.5), reason: 'poster $i inside the panel');
+      }
+    });
+
+    testWidgets('Down into the dock and Up back to where the remote came from', (tester) async {
+      final page = await pumpTvMyPleyaPage(tester);
+      page.state.focusKey(bigP);
+      await tester.pumpAndSettle();
+
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      final landed = page.focused!;
+      expect(
+        buildTvMyPleyaDock(
+          hasSeerr: true,
+          showDownloads: false,
+          showActivity: true,
+          showCollections: true,
+          showPlaylists: true,
+        ).map((tile) => tile.focusKey),
+        contains(landed),
+      );
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(page.focused, bigP);
+
+      // From the last tile Up goes to the nearest content action, a poster.
+      page.state.focusKey(tileKey(TvMyPleyaSection.activity));
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(page.focused, startsWith('tvMyPleya_poster_'));
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(page.focused, tileKey(TvMyPleyaSection.activity));
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(page.focused, tileKey(TvMyPleyaSection.activity), reason: 'the dock is the last row');
+    });
+
+    testWidgets('A15: Left and Right walk only the tiles that exist, without wrapping', (tester) async {
+      final page = await pumpTvMyPleyaPage(tester, conditions: const TvMyPleyaPageConditions.withoutSeerrAndActivity());
+      page.state.focusKey(tileKey(TvMyPleyaSection.watchTogether));
+      await tester.pumpAndSettle();
+
+      final walked = <String?>[page.focused];
+      for (var i = 0; i < 4; i++) {
+        await press(tester, LogicalKeyboardKey.arrowRight);
+        walked.add(page.focused);
+      }
+      expect(walked, [
+        tileKey(TvMyPleyaSection.watchTogether),
+        tileKey(TvMyPleyaSection.collections),
+        tileKey(TvMyPleyaSection.playlists),
+        tileKey(TvMyPleyaSection.libraries),
+        tileKey(TvMyPleyaSection.libraries),
+      ]);
+      await press(tester, LogicalKeyboardKey.arrowLeft);
+      expect(page.focused, tileKey(TvMyPleyaSection.playlists));
+
+      expect(find.text(t.seerr.title), findsNothing);
       expect(find.text(t.tvMyPleya.activity), findsNothing);
+      // The four tiles share the whole row: the last one ends on the page's
+      // right inset, so there is no empty place at the row's end.
+      final last = tester.getRect(
+        find.ancestor(of: find.text(t.libraries.title), matching: find.byType(AnimatedContainer)).first,
+      );
+      final pageRight = kTvGoldenSurfaceSize.width - TvTopNavLayout.pageInset * 0.85;
+      expect(last.right, closeTo(pageRight, 4));
     });
 
-    // PB-7's other half: capability and data availability decide this, not the
-    // presence of a concrete `PlexClient`. Tautulli Now Watching is a valid
-    // source on its own.
-    testWidgets('Activiteit appears once a Tautulli source is available', (tester) async {
-      await pump(tester, nowWatchingAvailable: true);
-
-      expect(find.text(t.tvMyPleya.activity), findsOneWidget);
+    testWidgets('every dock tile opens its own section', (tester) async {
+      final page = await pumpTvMyPleyaPage(tester);
+      final sections = [
+        TvMyPleyaSection.watchTogether,
+        TvMyPleyaSection.collections,
+        TvMyPleyaSection.playlists,
+        TvMyPleyaSection.requests,
+        TvMyPleyaSection.libraries,
+        TvMyPleyaSection.activity,
+      ];
+      for (final section in sections) {
+        page.state.focusKey(tileKey(section));
+        await tester.pumpAndSettle();
+        await press(tester, LogicalKeyboardKey.select);
+      }
+      expect(page.opened, sections);
     });
 
-    testWidgets('a tile opens its own section and nothing else', (tester) async {
-      await pump(tester);
+    testWidgets('without Big P the first content action takes the first focus', (tester) async {
+      final page = await pumpTvMyPleyaPage(tester, conditions: const TvMyPleyaPageConditions(bigP: false));
+      expect(find.text(t.tvMyPleya.bigPTitle), findsNothing);
+      expect(page.state.availableSections, isNot(contains(TvMyPleyaSection.assistant)));
 
-      state(tester).focusKey(TvMyPleyaSection.settings.tileFocusKey);
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.select);
-
-      expect(opened, [TvMyPleyaSection.settings]);
-      expect(signOutCalls, 0);
+      page.state.focusActiveTabIfReady();
+      await tester.pumpAndSettle();
+      expect(page.focused, poster(0));
+      await press(tester, LogicalKeyboardKey.arrowLeft);
+      expect(page.focused, poster(0), reason: 'no Big P to return to');
     });
 
-    testWidgets('sign out signs out instead of opening a section', (tester) async {
-      await pump(tester);
-
-      state(tester).focusKey('tvMyPleya_logout');
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.select);
-
-      expect(signOutCalls, 1);
-      expect(opened, isEmpty);
-    });
-
-    testWidgets('the profile action switches profile', (tester) async {
-      await pump(tester);
-
-      state(tester).focusKey('tvMyPleya_switchProfile');
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.select);
-
-      expect(switchProfileCalls, 1);
-    });
-
-    testWidgets('TOK2: the server dot uses the shared status colour', (tester) async {
-      // A dot that is almost kSuccess but not quite is the failure mode TOK-1
-      // already had: two greens that look the same until one theme moves.
-      await pump(tester, full: true);
-
-      final dot = tester.widget<Container>(find.byKey(const ValueKey('tv.my-pleya.server-dot.nas.online')));
-      final decoration = dot.decoration! as BoxDecoration;
-      expect(decoration.color, kSuccess);
-    });
-
-    testWidgets('TOK2: two online servers each keep their own dot key', (tester) async {
-      // The bug this reopened: the key carried only online/offline, so a
-      // second online server collided with the first one's dot instead of
-      // getting a widget of its own. Two different ids, same display name on
-      // purpose, to prove the id is what makes the key unique, not the name.
-      manager.debugRegisterClientForTesting(OnlinePlexClientDouble('nas1', 'Server'));
-      manager.debugRegisterClientForTesting(OnlinePlexClientDouble('nas2', 'Server'));
-      await pump(tester);
-
-      expect(find.byKey(const ValueKey('tv.my-pleya.server-dot.nas1.online')), findsOneWidget);
-      expect(find.byKey(const ValueKey('tv.my-pleya.server-dot.nas2.online')), findsOneWidget);
-    });
-
-    testWidgets('Down from the top navigation lands on the profile action', (tester) async {
-      await pump(tester);
-
-      // Hoofdstuk 7.1: "Top navigation → page header → first content row".
-      state(tester).focusActiveTabIfReady();
-      await tester.pump();
-
-      expect(focusedLabel(), 'tvMyPleya_switchProfile');
+    testWidgets('without Big P and without a kijklijst the dock takes the first focus', (tester) async {
+      final page = await pumpTvMyPleyaPage(
+        tester,
+        conditions: const TvMyPleyaPageConditions(bigP: false, watchlist: false),
+      );
+      page.state.focusActiveTabIfReady();
+      await tester.pumpAndSettle();
+      expect(page.focused, tileKey(TvMyPleyaSection.watchTogether));
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(page.upCalls, hasLength(1));
     });
 
     testWidgets('coming back to Mijn Pleya returns to where the remote was', (tester) async {
-      await pump(tester);
-
-      state(tester).focusKey(TvMyPleyaSection.servers.tileFocusKey);
-      await tester.pump();
-
-      // Leave, then come back the way the shell does.
-      state(tester).focusActiveTabIfReady();
-      await tester.pump();
-
-      expect(focusedLabel(), TvMyPleyaSection.servers.tileFocusKey, reason: 'hoofdstuk 7.6 focus memory');
-    });
-
-    testWidgets('Up from the first row leaves for the top navigation', (tester) async {
-      await pump(tester);
-
-      state(tester).focusKey('tvMyPleya_switchProfile');
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.arrowUp);
-
-      // Hoofdstuk 7.5 step 4: the top of the content hands the focus to the bar.
-      expect(upCalls, 1);
-    });
-
-    // A-24b, northstar 01: two columns. This harness has no watchlist, no
-    // Seerr and no Big P, so the left column is Bibliotheken · Servers · Samen
-    // kijken and the right column is Beheer.
-    testWidgets('Right from the end of a row crosses to the right column, Left comes back', (tester) async {
-      await pump(tester);
-
-      state(tester).focusKey(TvMyPleyaSection.watchTogether.tileFocusKey);
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.arrowRight);
-      expect(focusedLabel(), TvMyPleyaSection.settings.tileFocusKey, reason: 'the right-column row nearest in height');
-
-      await press(tester, LogicalKeyboardKey.arrowLeft);
-      expect(focusedLabel(), TvMyPleyaSection.watchTogether.tileFocusKey, reason: 'the nearest element of the row');
-    });
-
-    testWidgets('Left and Right walk a row without wrapping into the next one', (tester) async {
-      await pump(tester);
-
-      state(tester).focusKey(TvMyPleyaSection.libraries.tileFocusKey);
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.arrowLeft);
-      expect(focusedLabel(), TvMyPleyaSection.libraries.tileFocusKey, reason: 'the first tile is the left edge');
-
-      await press(tester, LogicalKeyboardKey.arrowRight);
-      expect(focusedLabel(), TvMyPleyaSection.servers.tileFocusKey);
-    });
-
-    testWidgets('Up and Down walk the Beheer column, and Up from its top reaches the profile', (tester) async {
-      await pump(tester);
-
-      state(tester).focusKey(TvMyPleyaSection.settings.tileFocusKey);
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(focusedLabel(), TvMyPleyaSection.logs.tileFocusKey);
-      await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(focusedLabel(), TvMyPleyaSection.about.tileFocusKey);
-      await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(focusedLabel(), 'tvMyPleya_logout');
-      await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(focusedLabel(), 'tvMyPleya_logout', reason: 'the bottom stays put');
-
-      state(tester).focusKey(TvMyPleyaSection.settings.tileFocusKey);
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.arrowUp);
-      expect(focusedLabel(), 'tvMyPleya_switchProfile');
-    });
-
-    testWidgets('Down from the bottom row stays put instead of snapping to the last tile', (tester) async {
-      await pump(tester);
-
-      state(tester).focusKey(TvMyPleyaSection.servers.tileFocusKey);
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.arrowDown);
-
-      expect(focusedLabel(), TvMyPleyaSection.servers.tileFocusKey);
-    });
-
-    // Up/down between rows of different length keep the column by geometry.
-    // The full harness: an empty kijklijst (heading and Bekijk alles), Mijn
-    // content with Aanvragen alone, then four Bronnen tiles.
-    testWidgets('Up and Down between rows of different length keep the nearest column', (tester) async {
-      await pump(tester, full: true);
-
-      state(tester).focusKey(TvMyPleyaSection.requests.tileFocusKey);
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(focusedLabel(), TvMyPleyaSection.libraries.tileFocusKey, reason: 'Aanvragen sits over Bibliotheken');
-
-      state(tester).focusKey(TvMyPleyaSection.activity.tileFocusKey);
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.arrowUp);
-      expect(focusedLabel(), TvMyPleyaSection.requests.tileFocusKey, reason: 'the only tile of the row above');
-
-      await press(tester, LogicalKeyboardKey.arrowUp);
-      expect(focusedLabel(), TvMyPleyaSection.watchlist.tileFocusKey, reason: 'an empty kijklijst keeps Bekijk alles');
-      await press(tester, LogicalKeyboardKey.arrowUp);
-      expect(focusedLabel(), 'tvMyPleya_switchProfile');
-    });
-
-    testWidgets('four content tiles share one row and the remote keeps their columns', (tester) async {
-      await pump(tester, full: true, personalMediaAvailable: true, appleTv: false);
-
-      expect(tester.takeException(), isNull);
-      expect(find.text(t.collections.title), findsOneWidget);
-      expect(find.text(t.playlists.title), findsOneWidget);
-
-      state(tester).focusKey(TvMyPleyaSection.collections.tileFocusKey);
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.arrowRight);
-      expect(focusedLabel(), TvMyPleyaSection.playlists.tileFocusKey);
-      await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(focusedLabel(), TvMyPleyaSection.servers.tileFocusKey, reason: 'second column over second column');
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('both personal media tiles activate their own section', (tester) async {
-      await pump(tester, personalMediaAvailable: true);
-
-      state(tester).focusKey(TvMyPleyaSection.collections.tileFocusKey);
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.select);
-      expect(opened, [TvMyPleyaSection.collections]);
-
-      state(tester).focusKey(TvMyPleyaSection.playlists.tileFocusKey);
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.select);
-      expect(opened, [TvMyPleyaSection.collections, TvMyPleyaSection.playlists]);
-    });
-
-    // A-24b, northstars 01 and 02: the kijklijst is a poster rail under
-    // `Je kijklijst` with `Bekijk alles`, not a tile.
-    group('the kijklijst rail', () {
-      final entries = [for (var i = 0; i < 8; i++) watchlistEntryDouble('w$i', year: 2020 + i)];
-
-      testWidgets('shows posters with title and year, and no Kijklijst tile', (tester) async {
-        await pump(tester, watchlistEntries: entries);
-
-        expect(find.text(t.settingsStudio.yourWatchlist.toUpperCase()), findsOneWidget);
-        expect(find.byType(TvCatalogCard), findsWidgets);
-        expect(find.text('2020'), findsOneWidget);
-        expect(find.text('Title w0'), findsOneWidget);
-        expect(find.text(t.watchlist.title), findsNothing, reason: 'the tile became the rail');
-        expect(state(tester).availableSections, contains(TvMyPleyaSection.watchlist));
-      });
-
-      testWidgets('Down from the profile lands on the first poster, Up goes back', (tester) async {
-        await pump(tester, watchlistEntries: entries);
-
-        state(tester).focusKey('tvMyPleya_switchProfile');
-        await tester.pump();
-        await press(tester, LogicalKeyboardKey.arrowDown);
-        expect(focusedLabel(), 'tvMyPleya_poster_w0');
-
-        await press(tester, LogicalKeyboardKey.arrowRight);
-        expect(focusedLabel(), 'tvMyPleya_poster_w1');
-        await press(tester, LogicalKeyboardKey.arrowUp);
-        expect(focusedLabel(), 'tvMyPleya_switchProfile');
-      });
-
-      testWidgets('Bekijk alles follows the last poster and opens the kijklijst', (tester) async {
-        await pump(tester, watchlistEntries: entries.take(3).toList());
-
-        state(tester).focusKey('tvMyPleya_poster_w2');
-        await tester.pump();
-        await press(tester, LogicalKeyboardKey.arrowRight);
-        expect(focusedLabel(), TvMyPleyaSection.watchlist.tileFocusKey);
-
-        await press(tester, LogicalKeyboardKey.select);
-        expect(opened, [TvMyPleyaSection.watchlist]);
-      });
-
-      testWidgets('a title with nothing to play opens the full kijklijst', (tester) async {
-        await pump(tester, watchlistEntries: entries);
-
-        state(tester).focusKey('tvMyPleya_poster_w0');
-        await tester.pump();
-        await press(tester, LogicalKeyboardKey.select);
-        expect(opened, [TvMyPleyaSection.watchlist]);
-      });
-
-      // A-24b review I3 and Michel's decision of 25 October: twelve posters,
-      // more than the column shows, stay reachable with RIGHT, and a title
-      // that ellipsized on one line reads whole on the focused card without
-      // any card changing size or place.
-      testWidgets('RIGHT walks all twelve posters inside the rail, titles whole, no card moves on focus', (
-        tester,
-      ) async {
-        final twelve = [
-          for (var i = 0; i < 12; i++) watchlistEntryDouble('w$i', year: 2020, title: i == 1 ? 'Sintel Two' : null),
-        ];
-        await pump(tester, watchlistEntries: twelve);
-
-        final rail = tester.getRect(find.ancestor(of: find.text('Title w0'), matching: find.byType(ListView)).first);
-        state(tester).focusKey('tvMyPleya_poster_w0');
-        await tester.pumpAndSettle();
-        final w2Before = tester.getRect(find.text('Title w2'));
-
-        await press(tester, LogicalKeyboardKey.arrowRight);
-        await tester.pumpAndSettle();
-        expect(focusedLabel(), 'tvMyPleya_poster_w1');
-        // Too wide for one line of the card (the test font is wide), whole on two.
-        expect(tester.renderObject<RenderParagraph>(find.text('Sintel Two')).didExceedMaxLines, isFalse);
-        expect(tester.getRect(find.text('Title w2')), w2Before, reason: 'a neighbour keeps its size and place');
-
-        for (var i = 2; i < 12; i++) {
-          await press(tester, LogicalKeyboardKey.arrowRight);
-          await tester.pumpAndSettle();
-          expect(focusedLabel(), 'tvMyPleya_poster_w$i');
-          final centre = FocusManager.instance.primaryFocus!.rect.center;
-          expect(centre.dx, inInclusiveRange(rail.left, rail.right), reason: 'poster $i is on screen');
-        }
-      });
-
-      testWidgets('Down from a poster keeps the column into the tiles below', (tester) async {
-        await pump(tester, watchlistEntries: entries);
-
-        state(tester).focusKey('tvMyPleya_poster_w0');
-        await tester.pump();
-        await press(tester, LogicalKeyboardKey.arrowDown);
-        expect(focusedLabel(), TvMyPleyaSection.libraries.tileFocusKey);
-        await press(tester, LogicalKeyboardKey.arrowUp);
-        expect(focusedLabel(), 'tvMyPleya_poster_w0');
-      });
-    });
-
-    testWidgets('without Big P, Beheer sits directly under Pleya (northstar 04)', (tester) async {
-      await pump(tester);
-
-      expect(find.text(t.tvMyPleya.groupPleya.toUpperCase()), findsOneWidget);
-      expect(find.text(t.settingsStudio.manage.toUpperCase()), findsNothing);
-      expect(find.text(t.tvMyPleya.groupContent.toUpperCase()), findsNothing, reason: 'an empty group disappears');
-      final pleya = tester.getRect(find.text(t.tvMyPleya.groupPleya.toUpperCase()));
-      final settings = tester.getRect(find.text(t.settings.title));
-      expect(settings.top, greaterThan(pleya.bottom));
-      expect(settings.left, greaterThan(tester.getRect(find.text(t.myPleya.watchTogether)).right));
-    });
-
-    testWidgets('Uitloggen reads in the accent red', (tester) async {
-      await pump(tester);
-
-      final logout = tester.widget<Text>(find.text(t.common.logout));
-      expect(logout.style?.color, monoTheme(dark: true).extension<MonoTokens>()!.accent);
-    });
-
-    // Hoofdstuk 18.3 allows every conditional tile at once, and that page is
-    // taller than the frame — `tv_shell_my_pleya_full.png` pictures it running
-    // off the bottom. Every test above it runs the short hub, which fits, so
-    // nothing until now walked a hub that scrolls.
-    //
-    // The risk that introduces is hoofdstuk 32's: a function that moved out of
-    // the sidebar into Mijn Pleya has to stay reachable. A tile below the fold
-    // that the remote cannot bring into view is exactly that function going
-    // missing, and it would not show up in a picture of the first frame.
-    // VIS-0925-G (DEC-139): at the tvOS logical canvas the full hub now fits.
-    // The tiles are about 100 pt instead of 151, which is the point of the
-    // targeted densification.
-    testWidgets('on the canonical canvas the full hub fits, last tile included', (tester) async {
-      await pump(tester, full: true, size: kTvGoldenSurfaceSize);
-      final scroller = tester.state<ScrollableState>(find.byType(Scrollable).first);
-      expect(scroller.position.maxScrollExtent, 0.0);
-      expect(tester.getRect(find.text(t.common.logout)).bottom, lessThanOrEqualTo(kTvGoldenSurfaceSize.height));
-    });
-
-    // VIS-0925 review FIX 1: no tile title or subtitle is cut off on the
-    // canonical canvas.
-    for (final locale in [AppLocale.en, AppLocale.nl]) {
-      testWidgets('on the canonical canvas no tile text is ellipsized (${locale.languageCode})', (tester) async {
-        await tester.runAsync(() => LocaleSettings.setLocale(locale));
-        addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
-        // Real Inter metrics: the test font draws every glyph a full em wide.
-        await tester.runAsync(loadAppFontsForGoldens);
-        await pump(tester, full: true, size: kTvGoldenSurfaceSize);
-        final paragraphs = tester.renderObjectList<RenderParagraph>(
-          find.descendant(of: find.byType(TvMyPleyaScreen), matching: find.byType(RichText)),
-        );
-        final cut = [
-          for (final p in paragraphs)
-            if (p.didExceedMaxLines) p.text.toPlainText(),
-        ];
-        expect(cut, isEmpty);
-      });
-    }
-
-    testWidgets('on the full hub the last tile is still reachable, and scrolls into view', (tester) async {
-      // A-24b: the Editorial hub fits the tvOS canvas the way northstar 01
-      // does, so the overflow comes from larger text (an accessibility text
-      // size), and the scroll path it proves has to keep working for it.
-      // Real Inter metrics: the test font draws every glyph a full em wide.
-      await tester.runAsync(loadAppFontsForGoldens);
-      tester.platformDispatcher.textScaleFactorTestValue = 2;
-      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-      const size = Size(1038, 584);
-      // An empty kijklijst: the poster rail is the catalogue card's, whose
-      // fixed footer is the catalogue's own contract and not this test's.
-      await pump(tester, full: true, size: size);
-
-      // The page's own scroller: the first Scrollable in tree order, above
-      // the rail's horizontal one.
-      ScrollableState scroller() => tester.state<ScrollableState>(find.byType(Scrollable).first);
-
-      // The page really does overflow — otherwise this test proves nothing.
-      expect(
-        scroller().position.maxScrollExtent,
-        greaterThan(0.0),
-        reason: 'the full hub must not fit the frame, or this is not the scenario it claims to be',
-      );
-
-      // The lowest tile on the page, whichever column it is in.
-      final candidates = {
-        TvMyPleyaSection.libraries.tileFocusKey: find.text(t.libraries.title),
-        'tvMyPleya_logout': find.text(t.common.logout),
-      };
-      final lowest = candidates.entries.reduce(
-        (a, b) => tester.getRect(a.value).bottom >= tester.getRect(b.value).bottom ? a : b,
-      );
-      expect(tester.getRect(lowest.value).bottom, greaterThan(size.height), reason: 'it starts below the fold');
-
-      final before = scroller().position.pixels;
-      state(tester).focusKey(lowest.key);
+      final page = await pumpTvMyPleyaPage(tester);
+      page.state.focusKey(tileKey(TvMyPleyaSection.playlists));
+      await tester.pumpAndSettle();
+      FocusManager.instance.primaryFocus?.unfocus();
       await tester.pumpAndSettle();
 
-      expect(focusedLabel(), lowest.key);
-      expect(
-        scroller().position.pixels,
-        greaterThan(before),
-        reason: 'focusing a tile below the fold has to bring it into view',
-      );
-      // And it is genuinely on screen, not merely focused off-screen.
-      expect(tester.getRect(lowest.value).bottom, lessThanOrEqualTo(size.height));
+      page.state.focusActiveTabIfReady();
+      await tester.pumpAndSettle();
+      expect(page.focused, tileKey(TvMyPleyaSection.playlists));
     });
 
-    testWidgets('a menu tile announces its title and what it is for', (tester) async {
-      final handle = tester.ensureSemantics();
-      await pump(tester);
+    // ------------------------------------------------------------------------
+    // The canvas and the type (Michel, 26 October 2026)
+    // ------------------------------------------------------------------------
 
-      expect(
-        find.bySemanticsLabel(t.tvMyPleya.semantics.tile(title: t.tvMyPleya.servers, subtitle: t.tvMyPleya.noServers)),
-        findsOneWidget,
-      );
-      handle.dispose();
-    });
+    for (final (name, conditions) in [
+      ('A10, everything', const TvMyPleyaPageConditions(watchlistCount: 12)),
+      ('A15, no Seerr or Activiteit', const TvMyPleyaPageConditions.withoutSeerrAndActivity()),
+      ('Android TV with Downloads', const TvMyPleyaPageConditions(appleTv: false)),
+      ('without Big P', const TvMyPleyaPageConditions(bigP: false)),
+    ]) {
+      for (final locale in [AppLocale.nl, AppLocale.en]) {
+        testWidgets('$name (${locale.languageCode}): everything inside 1038 x 584, no text under 23 pt', (
+          tester,
+        ) async {
+          await tester.runAsync(() => LocaleSettings.setLocale(locale));
+          addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
+          await tester.runAsync(loadAppFontsForGoldens);
+          final page = await pumpTvMyPleyaPage(tester, conditions: conditions);
+          final canvas = Offset.zero & kTvGoldenSurfaceSize;
 
-    testWidgets('the server readout is a status line, not a row of focus stops', (tester) async {
-      await pump(tester);
+          // No scrolling needed: the page fits, the dock included.
+          final scroller = tester.state<ScrollableState>(
+            find.descendant(of: find.byType(TvMyPleyaScreen), matching: find.byType(Scrollable)).first,
+          );
+          expect(scroller.position.maxScrollExtent, 0.0);
 
-      // A remote that has to walk past three servers to reach the first tile is
-      // a remote fighting the page. The line reads under the name and again as
-      // the Servers tile's subtitle; neither is a focus stop of its own.
-      expect(find.text(t.tvMyPleya.noServers), findsNWidgets(2));
-      state(tester).focusKey('tvMyPleya_switchProfile');
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.arrowRight);
-      expect(focusedLabel(), 'tvMyPleya_switchProfile');
-    });
+          // Every focus stop, ring room included, is on the canvas. Posters
+          // past the panel's edge are clipped and scroll in on focus, so the
+          // check is for those in the panel.
+          final panel = find.byType(ListView).evaluate().isEmpty ? null : tester.getRect(find.byType(ListView).first);
+          for (final wrapper in tester.widgetList<FocusableWrapper>(
+            find.descendant(of: find.byType(TvMyPleyaScreen), matching: find.byType(FocusableWrapper)),
+          )) {
+            final node = wrapper.focusNode!;
+            final rect = node.rect;
+            if (panel != null && node.debugLabel!.startsWith('tvMyPleya_poster_') && rect.left > panel.right) continue;
+            final ring = rect.inflate(4);
+            expect(
+              canvas.contains(ring.topLeft) && canvas.contains(ring.bottomRight),
+              isTrue,
+              reason: '${node.debugLabel} at $ring is off the canvas',
+            );
+          }
+
+          // The dock is reachable and whole: walk to it with the remote.
+          page.state.focusActiveTabIfReady();
+          await tester.pumpAndSettle();
+          await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+          await tester.pumpAndSettle();
+          final dockRect = FocusManager.instance.primaryFocus!.rect;
+          expect(dockRect.bottom, lessThanOrEqualTo(kTvGoldenSurfaceSize.height));
+
+          // HIG: 23 pt on the 1080 canvas is 23 x 584 / 1080 logical here.
+          final minimum = 23 * kTvGoldenSurfaceSize.height / 1080 - 0.01;
+          final paragraphs = tester.renderObjectList<RenderParagraph>(
+            find.descendant(of: find.byType(TvMyPleyaScreen), matching: find.byType(RichText)),
+          );
+          final small = <String>[];
+          final cut = <String>[];
+          for (final p in paragraphs) {
+            if (p.text.toPlainText().trim().isEmpty) continue;
+            // Icons are glyphs, not text.
+            if (p.text.style?.fontFamily?.contains('MaterialSymbols') ?? false) continue;
+            void visit(InlineSpan span, double? inherited) {
+              final size = span.style?.fontSize ?? inherited;
+              if (span is TextSpan && (span.text?.trim().isNotEmpty ?? false) && size != null && size < minimum) {
+                small.add('${span.text} (${(size * 1080 / kTvGoldenSurfaceSize.height).toStringAsFixed(1)} pt)');
+              }
+              if (span is TextSpan) {
+                for (final child in span.children ?? const <InlineSpan>[]) {
+                  visit(child, size);
+                }
+              }
+            }
+
+            visit(p.text, null);
+            if (p.didExceedMaxLines) cut.add(p.text.toPlainText());
+          }
+          expect(small, isEmpty, reason: 'text under the tvOS minimum');
+          expect(cut, isEmpty, reason: 'text cut off');
+        });
+      }
+    }
   });
 }

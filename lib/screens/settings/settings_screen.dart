@@ -72,6 +72,7 @@ import '../../widgets/tv/tv_settings_categories.dart';
 import '../../widgets/tv/tv_settings_library_preview.dart';
 import '../../widgets/tv/tv_settings_rows.dart';
 import '../tv/sections/tv_about_screen.dart';
+import '../tv/sections/tv_servers_page.dart';
 import '../../navigation/tv/tv_content_route_registry.dart';
 import '../../widgets/scroll_crown/scroll_crown.dart';
 

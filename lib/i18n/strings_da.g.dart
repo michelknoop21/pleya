@@ -1826,11 +1826,9 @@ class _TranslationsTvMyPleyaDa extends TranslationsTvMyPleyaEn {
 	@override String serversOnline({required Object online, required Object total}) => '${online} af ${total} servere online';
 	@override String get noServers => 'Ingen servere forbundet';
 	@override String get statusOnline => 'Online';
-	@override String get statusOffline => 'Offline';
 	@override String get servers => 'Servere';
 	@override String get activity => 'Aktivitet';
 	@override String get logs => 'Logfiler og diagnostik';
-	@override String signedInAs({required Object name, required Object version}) => 'Logget ind som ${name} · Pleya ${version}';
 	@override String get watchlistSubtitle => 'Gemte film og serier';
 	@override String get requestsSubtitle => 'Anmodninger og opdagelse';
 	@override String get downloadsSubtitle => 'Offline og synkroniseringsregler';
@@ -1881,7 +1879,6 @@ class _TranslationsSettingsStudioDa extends TranslationsSettingsStudioEn {
 	@override String get yourLibrary => 'Dit bibliotek';
 	@override String get viewPreview => 'Se forhåndsvisning';
 	@override String get playbackExperience => 'Afspilningsoplevelse';
-	@override String get manage => 'Administrer';
 	@override String get yourWatchlist => 'Din liste';
 	@override String get yourContent => 'Dit indhold';
 	@override String get lightMode => 'Lys tilstand';
@@ -3775,11 +3772,9 @@ extension on TranslationsDa {
 			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} af ${total} servere online',
 			'tvMyPleya.noServers' => 'Ingen servere forbundet',
 			'tvMyPleya.statusOnline' => 'Online',
-			'tvMyPleya.statusOffline' => 'Offline',
 			'tvMyPleya.servers' => 'Servere',
 			'tvMyPleya.activity' => 'Aktivitet',
 			'tvMyPleya.logs' => 'Logfiler og diagnostik',
-			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Logget ind som ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Gemte film og serier',
 			'tvMyPleya.requestsSubtitle' => 'Anmodninger og opdagelse',
 			'tvMyPleya.downloadsSubtitle' => 'Offline og synkroniseringsregler',
@@ -3813,7 +3808,6 @@ extension on TranslationsDa {
 			'settingsStudio.yourLibrary' => 'Dit bibliotek',
 			'settingsStudio.viewPreview' => 'Se forhåndsvisning',
 			'settingsStudio.playbackExperience' => 'Afspilningsoplevelse',
-			'settingsStudio.manage' => 'Administrer',
 			'settingsStudio.yourWatchlist' => 'Din liste',
 			'settingsStudio.yourContent' => 'Dit indhold',
 			'settingsStudio.lightMode' => 'Lys tilstand',

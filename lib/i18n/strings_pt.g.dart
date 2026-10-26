@@ -1826,11 +1826,9 @@ class _TranslationsTvMyPleyaPt extends TranslationsTvMyPleyaEn {
 	@override String serversOnline({required Object online, required Object total}) => '${online} de ${total} servidores online';
 	@override String get noServers => 'Nenhum servidor ligado';
 	@override String get statusOnline => 'Online';
-	@override String get statusOffline => 'Offline';
 	@override String get servers => 'Servidores';
 	@override String get activity => 'Atividade';
 	@override String get logs => 'Registos e diagnóstico';
-	@override String signedInAs({required Object name, required Object version}) => 'Sessão iniciada como ${name} · Pleya ${version}';
 	@override String get watchlistSubtitle => 'Filmes e séries guardados';
 	@override String get requestsSubtitle => 'Pedidos e descoberta';
 	@override String get downloadsSubtitle => 'Offline e regras de sincronização';
@@ -1881,7 +1879,6 @@ class _TranslationsSettingsStudioPt extends TranslationsSettingsStudioEn {
 	@override String get yourLibrary => 'Sua biblioteca';
 	@override String get viewPreview => 'Ver pré-visualização';
 	@override String get playbackExperience => 'Experiência de reprodução';
-	@override String get manage => 'Gerenciar';
 	@override String get yourWatchlist => 'Sua lista';
 	@override String get yourContent => 'Seu conteúdo';
 	@override String get lightMode => 'Modo claro';
@@ -3775,11 +3772,9 @@ extension on TranslationsPt {
 			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} de ${total} servidores online',
 			'tvMyPleya.noServers' => 'Nenhum servidor ligado',
 			'tvMyPleya.statusOnline' => 'Online',
-			'tvMyPleya.statusOffline' => 'Offline',
 			'tvMyPleya.servers' => 'Servidores',
 			'tvMyPleya.activity' => 'Atividade',
 			'tvMyPleya.logs' => 'Registos e diagnóstico',
-			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Sessão iniciada como ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Filmes e séries guardados',
 			'tvMyPleya.requestsSubtitle' => 'Pedidos e descoberta',
 			'tvMyPleya.downloadsSubtitle' => 'Offline e regras de sincronização',
@@ -3813,7 +3808,6 @@ extension on TranslationsPt {
 			'settingsStudio.yourLibrary' => 'Sua biblioteca',
 			'settingsStudio.viewPreview' => 'Ver pré-visualização',
 			'settingsStudio.playbackExperience' => 'Experiência de reprodução',
-			'settingsStudio.manage' => 'Gerenciar',
 			'settingsStudio.yourWatchlist' => 'Sua lista',
 			'settingsStudio.yourContent' => 'Seu conteúdo',
 			'settingsStudio.lightMode' => 'Modo claro',

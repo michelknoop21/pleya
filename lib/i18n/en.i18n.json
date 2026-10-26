@@ -1192,10 +1192,7 @@
     "playlistsCount": {
       "one": "1 list",
       "other": "${n} lists"
-    },
-    "bigPTvSubtitle": "Your personal viewing assistant",
-    "openBigP": "Open Big P",
-    "switchProfile": "Switch profile"
+    }
   },
   "liveTv": {
     "serverNotAvailable": "Live TV server is not available.",
@@ -2352,11 +2349,9 @@
     "serversOnline": "${online} of ${total} servers online",
     "noServers": "No servers connected",
     "statusOnline": "Online",
-    "statusOffline": "Offline",
     "servers": "Servers",
     "activity": "Activity",
     "logs": "Logs",
-    "signedInAs": "Signed in as ${name} · Pleya ${version}",
     "watchlistSubtitle": "Saved films and series",
     "requestsSubtitle": "Requests and discovery",
     "downloadsSubtitle": "Offline and sync rules",
@@ -2375,7 +2370,24 @@
       "tile": "${title}. ${subtitle}",
       "tileWithCount": "${title}. ${subtitle}. ${count}"
     },
-    "libraryCount": "${count} libraries"
+    "libraryCount": "${count} libraries",
+    "eyebrow": "Your personal space",
+    "heading": "Your world, ${name}.",
+    "headingNoName": "Your world.",
+    "subline": "Keep what you love. Find it again without effort.",
+    "bigPEyebrow": "Big P · your assistant",
+    "bigPTitle": "What do you want to watch?",
+    "bigPSubtitle": "Ask, discover and find something good faster.",
+    "bigPAction": "Ask Big P",
+    "quickLinks": "Quick links"
+  },
+  "tvAccountMenu": {
+    "title": "Profile",
+    "signedInAs": "Signed in as ${name}",
+    "switchProfile": "Switch profile",
+    "switchProfileSubtitle": "Choose another profile",
+    "logout": "Sign out",
+    "logoutSubtitle": "Confirm before you sign out"
   },
   "tvOfflineHome": {
     "title": "No server reachable",
@@ -3241,7 +3253,6 @@
     "yourLibrary": "Your library",
     "viewPreview": "View preview",
     "playbackExperience": "Playback experience",
-    "manage": "Manage",
     "yourWatchlist": "Your watchlist",
     "yourContent": "Your content",
     "lightMode": "Light mode",

@@ -8,7 +8,7 @@
 ///
 /// ```
 /// TvRootShell
-/// ├─ TvTopNavigation      (profile · Search · Home · Series · Films · [Live TV] · Mijn Pleya)
+/// ├─ TvTopNavigation      (profile · Search · Home · Series · Films · [Live TV] · Mijn Pleya · Instellingen)
 /// └─ active destination   (the existing screens list, unchanged)
 /// ```
 ///

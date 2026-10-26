@@ -1826,11 +1826,9 @@ class _TranslationsTvMyPleyaNb extends TranslationsTvMyPleyaEn {
 	@override String serversOnline({required Object online, required Object total}) => '${online} av ${total} servere tilkoblet';
 	@override String get noServers => 'Ingen servere tilkoblet';
 	@override String get statusOnline => 'Tilkoblet';
-	@override String get statusOffline => 'Frakoblet';
 	@override String get servers => 'Servere';
 	@override String get activity => 'Aktivitet';
 	@override String get logs => 'Logger og diagnostikk';
-	@override String signedInAs({required Object name, required Object version}) => 'Logget inn som ${name} · Pleya ${version}';
 	@override String get watchlistSubtitle => 'Lagrede filmer og serier';
 	@override String get requestsSubtitle => 'Forespørsler og oppdagelse';
 	@override String get downloadsSubtitle => 'Frakoblet og synkroniseringsregler';
@@ -1881,7 +1879,6 @@ class _TranslationsSettingsStudioNb extends TranslationsSettingsStudioEn {
 	@override String get yourLibrary => 'Biblioteket ditt';
 	@override String get viewPreview => 'Se forhåndsvisning';
 	@override String get playbackExperience => 'Avspillingsopplevelse';
-	@override String get manage => 'Administrer';
 	@override String get yourWatchlist => 'Listen din';
 	@override String get yourContent => 'Innholdet ditt';
 	@override String get lightMode => 'Lys modus';
@@ -3775,11 +3772,9 @@ extension on TranslationsNb {
 			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} av ${total} servere tilkoblet',
 			'tvMyPleya.noServers' => 'Ingen servere tilkoblet',
 			'tvMyPleya.statusOnline' => 'Tilkoblet',
-			'tvMyPleya.statusOffline' => 'Frakoblet',
 			'tvMyPleya.servers' => 'Servere',
 			'tvMyPleya.activity' => 'Aktivitet',
 			'tvMyPleya.logs' => 'Logger og diagnostikk',
-			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Logget inn som ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Lagrede filmer og serier',
 			'tvMyPleya.requestsSubtitle' => 'Forespørsler og oppdagelse',
 			'tvMyPleya.downloadsSubtitle' => 'Frakoblet og synkroniseringsregler',
@@ -3813,7 +3808,6 @@ extension on TranslationsNb {
 			'settingsStudio.yourLibrary' => 'Biblioteket ditt',
 			'settingsStudio.viewPreview' => 'Se forhåndsvisning',
 			'settingsStudio.playbackExperience' => 'Avspillingsopplevelse',
-			'settingsStudio.manage' => 'Administrer',
 			'settingsStudio.yourWatchlist' => 'Listen din',
 			'settingsStudio.yourContent' => 'Innholdet ditt',
 			'settingsStudio.lightMode' => 'Lys modus',

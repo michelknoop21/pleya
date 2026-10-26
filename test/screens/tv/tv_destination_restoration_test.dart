@@ -665,7 +665,7 @@ void main() {
     expect(focusedCardGroupId(tester), isNotNull, reason: 'the remote must land on a card, not on nothing');
   });
 
-  group('I20: coming back from Settings', () {
+  group('I20: coming back from a Mijn Pleya section', () {
     testWidgets('the section rides on Mijn Pleya and Back puts the remote on its tile', (tester) async {
       tester.view.physicalSize = const Size(1280, 720);
       tester.view.devicePixelRatio = 1.0;
@@ -688,20 +688,24 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      hostKey.currentState!.openSection(TvMyPleyaSection.settings, const Center(child: Text('settings section')));
+      hostKey.currentState!.openSection(
+        TvMyPleyaSection.watchTogether,
+        const Center(child: Text('watch together section')),
+      );
       await tester.pumpAndSettle();
 
-      // Settings is *not* a root destination: the bar still says Mijn Pleya,
+      // A section is *not* a root destination: the bar still says Mijn Pleya,
       // which is what makes Back mean "close the section" rather than "go up
-      // to the bar" (hoofdstuk 7.5 step 2).
-      expect(find.text('settings section'), findsOneWidget);
+      // to the bar" (hoofdstuk 7.5 step 2). Settings was the example here
+      // until A-24c made Instellingen a destination of its own.
+      expect(find.text('watch together section'), findsOneWidget);
       expect(coordinator.active, TvDestinationId.myPleya);
       expect(coordinator.activeCanPop, isTrue);
 
       expect(hostKey.currentState!.popSection(), isTrue);
       await tester.pumpAndSettle();
 
-      expect(find.text('settings section'), findsNothing);
+      expect(find.text('watch together section'), findsNothing);
       expect(
         coordinator.active,
         TvDestinationId.myPleya,
@@ -710,7 +714,7 @@ void main() {
       expect(coordinator.activeCanPop, isFalse);
       expect(
         hostKey.currentState!.restoredFocusKeys,
-        [TvMyPleyaSection.settings.tileFocusKey],
+        [TvMyPleyaSection.watchTogether.tileFocusKey],
         reason: 'the remote lands back on the tile the section was opened from, not at the top of the hub',
       );
     });
@@ -718,10 +722,10 @@ void main() {
     testWidgets('the production route carries the tile the shell restores to', (tester) async {
       // The shell test above supplies its own route; this pins the real one so
       // the two halves cannot drift apart.
-      final route = tvMyPleyaNestedRoute(TvMyPleyaSection.settings);
+      final route = tvMyPleyaNestedRoute(TvMyPleyaSection.watchTogether);
 
-      expect(route.id, 'tvMyPleya_settings');
-      expect(route.restoreFocusKey, TvMyPleyaSection.settings.tileFocusKey);
+      expect(route.id, 'tvMyPleya_watchTogether');
+      expect(route.restoreFocusKey, TvMyPleyaSection.watchTogether.tileFocusKey);
       expect(route.screenKey, isNotNull, reason: 'without a key the shell cannot ask the section to take focus');
     });
 

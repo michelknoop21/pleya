@@ -56,6 +56,8 @@ extension _SettingsTvPage on _SettingsScreenState {
   Widget _buildTvSettings(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
     final active = context.watch<ActiveProfileProvider>().active;
+    // Read here, while this State builds, for the Servers row's status line.
+    final servers = context.watch<MultiServerProvider?>();
 
     // A settings subpage opens inside the shell. `SettingsScreen` is itself a
     // nested route already (`tvMyPleyaNestedRoute`), so pushing its own
@@ -196,6 +198,12 @@ extension _SettingsTvPage on _SettingsScreenState {
                   padding: EdgeInsets.only(top: 28 * TvHig.of(context)),
                   child: TvStudioHeading(t.settingsStudio.serversAndSources),
                 ),
+                // A-24c: the Servers page Mijn Pleya used to open, whole.
+                // `TvServersPage` shows more than the list under it (online,
+                // offline or a new sign-in, libraries, user) and asks for the
+                // status before it offers to remove anything, so the list
+                // alone is not the same page (LEESMIJ-v4, Servers parity).
+                rows([_tvServersRow(servers)]),
                 const ConnectionsSection(),
               ],
             ),
@@ -353,6 +361,26 @@ extension _SettingsTvPage on _SettingsScreenState {
       ),
     ]),
   ];
+
+  /// Instellingen ▸ Koppelingen ▸ Servers (A-24c). Opened inside the shell
+  /// like every other page from here, and without the Studio wrap: it is the
+  /// page Mijn Pleya opened before, and it keeps that page's look.
+  TvMenuItem _tvServersRow(MultiServerProvider? servers) {
+    final total = servers?.totalServerCount ?? 0;
+    return TvMenuItem(
+      key: _SettingsScreenState._kServers,
+      icon: Symbols.dns_rounded,
+      title: t.tvMyPleya.servers,
+      value: total == 0
+          ? t.tvMyPleya.noServers
+          : t.tvMyPleya.serversOnline(online: '${servers?.onlineServerCount ?? 0}', total: '$total'),
+      onSelect: () {
+        Widget page(BuildContext _) => const TvServersPage();
+        if (openTvContentRoute(id: 'tvSettings_servers', builder: page) != null) return;
+        Navigator.push(context, MaterialPageRoute<void>(builder: page));
+      },
+    );
+  }
 
   /// A-24b focus restore on the TV page: the categories remember whether the
   /// remote last stood on the rail or on a row, and return it there. False

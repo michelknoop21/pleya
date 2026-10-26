@@ -262,7 +262,7 @@ void main() {
     Widget barProviders(Widget child) =>
         ChangeNotifierProvider<MultiServerProvider>.value(value: servers, child: child);
 
-    Widget hub() => TvMyPleyaScreen(onOpenSection: (_) {}, onSwitchProfile: () {}, onSignOut: () {}, onExitUp: () {});
+    Widget hub() => TvMyPleyaScreen(onOpenSection: (_) {}, onExitUp: () {});
 
     Future<void> shoot(WidgetTester tester, String name, {Locale? locale}) async {
       setGoldenSurfaceSize(tester);
@@ -284,25 +284,24 @@ void main() {
       await precacheWordmark(tester);
       await tester.pumpAndSettle();
 
-      tester.state<TvMyPleyaScreenState>(find.byType(TvMyPleyaScreen)).focusKey(TvMyPleyaSection.settings.tileFocusKey);
+      tester
+          .state<TvMyPleyaScreenState>(find.byType(TvMyPleyaScreen))
+          .focusKey(TvMyPleyaSection.libraries.tileFocusKey);
       await tester.pumpAndSettle();
 
       // Hoofdstuk 33.8: the ring and a lighter fill, and the tile does not
-      // scale — so nothing in the grid may shift between this and the picture
-      // above it.
+      // scale — so nothing in the dock may shift between this and the picture
+      // above it (A-24c: a Snel naar tile).
       await expectMatchesGolden(find.byType(TvRootShell), 'tv_shell_my_pleya_focused');
     });
 
-    // `tvos.my-pleya.full` (hoofdstuk 29). The picture above is the hub with
-    // every conditional tile switched *off* — no watchlist, no Seerr, no
-    // Plex source, and Downloads never on an Apple TV — so it renders two
-    // groups. Hoofdstuk 18.3 says all of those can be present at once, and
-    // that is the taller page: a third group above the two, and a fourth tile
-    // in the sources row.
-    //
-    // `buildTvMyPleyaGroups` already proves *which* tiles appear per condition
-    // (`tv_my_pleya_screen_test.dart`). What only a render can answer is
-    // whether the page still fits its own frame once they all do.
+    // `tvos.my-pleya.full` (hoofdstuk 29). The picture above is the page with
+    // every conditional tile switched *off*: no watchlist, no Seerr, no
+    // Tautulli, no Big P, and Downloads never on an Apple TV, so the dock has
+    // Samen kijken and Bibliotheken only. A-24c's `pariteit-v4.csv` says all
+    // of those can be present at once; what only a render can answer is
+    // whether the page still fits its own frame once they all do
+    // (`tv_my_pleya_screen_test.dart` measures it).
     testWidgets('Mijn Pleya with every conditional tile present', (tester) async {
       await boot(hasLiveTv: false, active: TvDestinationId.myPleya);
       // A Plex source that is actually online, so hoofdstuk 18.3's Server
@@ -334,10 +333,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // The assertion the picture cannot make on its own: this really is the
-      // full hub, so a future change that silently drops a tile fails here
-      // rather than quietly redrawing the golden.
-      // A-24b: the kijklijst is the poster rail under `Je kijklijst` now, not
-      // a tile titled Kijklijst.
+      // full page, so a future change that silently drops a tile fails here
+      // rather than quietly redrawing the golden. The kijklijst is the poster
+      // panel under `Je kijklijst`, not a tile titled Kijklijst.
       expect(find.text(t.settingsStudio.yourWatchlist.toUpperCase()), findsOneWidget);
       expect(find.text(t.watchlist.title), findsNothing);
       expect(find.text(t.seerr.title), findsOneWidget);
@@ -355,16 +353,19 @@ void main() {
     // WP3 / hoofdstuk 18.4. The acceptance is what is *absent*: no red strip
     // over the content, no giant warning, no CTA competing with the page. What
     // is present is one small amber dot on the destination that leads to the
-    // fix. Compare against `tv_shell_home_active` above — same picture, same
-    // geometry, one mark.
-    testWidgets('an expired session marks Mijn Pleya and leaves the page alone', (tester) async {
+    // fix: Instellingen since A-24c. Compare against `tv_shell_home_active`
+    // above — same picture, same geometry, one mark.
+    testWidgets('an expired session marks Instellingen and leaves the page alone', (tester) async {
       await boot(hasLiveTv: false);
       manager.debugRegisterClientForTesting(_AuthErroredClient('nas', 'NAS'), online: false);
       manager.debugMarkAuthErrorForTesting(ServerId('nas'));
       await shoot(tester, 'tv_shell_auth_attention');
     });
 
-    testWidgets('and Mijn Pleya itself names the server that needs it', (tester) async {
+    // A-24c: Mijn Pleya no longer carries a server readout; the server that
+    // needs a new sign-in is named under Instellingen ▸ Koppelingen ▸ Servers.
+    // The page stays as it is, and the bar carries the one mark.
+    testWidgets('and Mijn Pleya stays a viewing page, with the mark on Instellingen', (tester) async {
       await boot(hasLiveTv: false, active: TvDestinationId.myPleya);
       manager.debugRegisterClientForTesting(_AuthErroredClient('nas', 'NAS'), online: false);
       manager.debugMarkAuthErrorForTesting(ServerId('nas'));

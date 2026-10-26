@@ -1,44 +1,35 @@
 part of 'tv_my_pleya_screen.dart';
 
-/// `JE KIJKLIJST` with `Bekijk alles`, and the posters under it (northstar 01
-/// and 02). The same titles and the same rule for what a poster opens as the
-/// iPhone rail (`my_pleya_shared.dart`); the poster itself is the kijklijst's
-/// catalogue card, so title, year and focus lift match the full kijklijst.
-class _WatchlistBlock extends StatefulWidget {
-  const _WatchlistBlock({
-    required this.entries,
-    required this.provider,
-    required this.map,
-    required this.seeAllNode,
-    required this.onOpenAll,
-  });
+/// `JE KIJKLIJST` with `Bekijk alles ›`, and the posters under it, in one
+/// quiet panel to the right of Big P (northstar A10). The kijklijst appears
+/// once on the page; the iPhone rail's rule decides which titles show and what
+/// a poster opens (`my_pleya_shared.dart`).
+///
+/// Posters only, as A10 draws them: the title is the poster's own artwork and
+/// its spoken label, and a line of text under each would cost the panel the
+/// height the dock needs.
+class _WatchlistPanel extends StatefulWidget {
+  const _WatchlistPanel({required this.entries, required this.provider, required this.map, required this.onOpenAll});
 
   final List<WatchlistEntry> entries;
   final WatchlistProvider provider;
-  final _HubFocusMap map;
-  final FocusNode seeAllNode;
+  final _PageFocusMap map;
   final VoidCallback onOpenAll;
 
-  /// Poster width and the room between two posters, in points.
-  static const double _posterPt = 153;
-  static const double _posterGapPt = 31;
-
-  /// Lines the title reserves under each poster: two, so a focused title such
-  /// as "Tears of Steel" reads whole, and every card the same height whether
-  /// it needs them or not (no card grows or shifts on focus).
-  static const int _titleLines = 2;
+  /// The panel's inner padding and the room between two posters, in points.
+  static const double _paddingPt = 32;
+  static const double _topPaddingPt = 24;
+  static const double _labelToPostersPt = 16;
+  static const double _posterGapPt = 32;
+  static const double _posterRadiusPt = 10;
 
   @override
-  State<_WatchlistBlock> createState() => _WatchlistBlockState();
+  State<_WatchlistPanel> createState() => _WatchlistPanelState();
 }
 
-class _WatchlistBlockState extends State<_WatchlistBlock> {
+class _WatchlistPanelState extends State<_WatchlistPanel> {
   final ScrollController _controller = ScrollController();
-
-  /// Card width and card plus gap, in logical pixels, from the last build.
-  double _cardWidth = 0;
-  double _pitch = 0;
-  double _margin = 0;
+  final GlobalKey _railKey = GlobalKey(debugLabel: 'tvMyPleya_rail');
 
   @override
   void dispose() {
@@ -46,21 +37,21 @@ class _WatchlistBlockState extends State<_WatchlistBlock> {
     super.dispose();
   }
 
-  /// Keeps the focused poster inside the rail. A card consumes its own arrow
-  /// keys and `FocusableWrapper` only scrolls vertical scrollables, so without
-  /// this the ring walks off the column from the eighth poster on
-  /// (`TvCatalogCardRail._reveal` is the same fix for Home's rails).
-  void _reveal(int index) {
-    if (!_controller.hasClients || _pitch <= 0) return;
+  /// Keeps the focused poster inside the panel. A poster consumes its own
+  /// arrow keys and `FocusableWrapper` only scrolls vertical scrollables, so
+  /// without this the ring walks out of the panel from the sixth poster on
+  /// (`TvCatalogCardRail._reveal` is the same fix for Home's rails). Measured
+  /// on the poster's own focus box, ring room included, against the rail.
+  void _reveal(FocusNode node) {
+    final rail = _railKey.currentContext?.findRenderObject();
+    if (!_controller.hasClients || rail is! RenderBox || !rail.hasSize) return;
+    final view = rail.localToGlobal(Offset.zero) & rail.size;
+    final poster = node.rect;
     final position = _controller.position;
-    final start = index * _pitch;
-    final end = start + _cardWidth;
-    var target = position.pixels;
-    if (end > target + position.viewportDimension - _margin) {
-      target = end - position.viewportDimension + _margin;
-    }
-    if (start < target) target = start;
-    target = target.clamp(position.minScrollExtent, position.maxScrollExtent);
+    var delta = 0.0;
+    if (poster.right > view.right) delta = poster.right - view.right;
+    if (poster.left < view.left) delta = poster.left - view.left;
+    final target = (position.pixels + delta).clamp(position.minScrollExtent, position.maxScrollExtent);
     if ((target - position.pixels).abs() < 0.5) return;
     if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
       _controller.jumpTo(target);
@@ -72,122 +63,152 @@ class _WatchlistBlockState extends State<_WatchlistBlock> {
   @override
   Widget build(BuildContext context) {
     final entries = widget.entries;
-    final provider = widget.provider;
     final map = widget.map;
-    final onOpenAll = widget.onOpenAll;
     final tk = tokens(context);
     final pt = TvHig.of(context);
     final scale = TvLayoutConstants.scaleOf(context);
-    final inset = TvCatalogLayout.cardContentInset(scale);
-    final posterWidth = _WatchlistBlock._posterPt * pt;
-    final cardWidth = posterWidth + inset * 2;
-    final cardHeight = TvCatalogLayout.cardHeight(cardWidth, scale, titleLines: _WatchlistBlock._titleLines);
-    final growth = TvCatalogGrid.focusHeadroom(cardHeight: cardHeight, focusScale: FocusTheme.fullCardFocusScale);
-    final gap = (_WatchlistBlock._posterGapPt * pt - inset * 2).clamp(0.0, double.infinity);
-    _cardWidth = cardWidth;
-    _pitch = cardWidth + gap;
-    _margin = inset;
-    void go(String key, TraversalDirection direction) => _focus(map, map.next(key, direction));
+    final ringGap = TvMyPleyaLayout.tileFocusRingGap * scale;
+    final radius = _Pt.cardRadius * pt;
+    final light = Theme.of(context).brightness == Brightness.light;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _GroupLabel(
-          t.settingsStudio.yourWatchlist,
-          trailing: _SeeAllLink(
-            node: widget.seeAllNode,
-            onSelect: onOpenAll,
-            onNavigate: (direction) => go(_seeAllKey, direction),
+    return Padding(
+      // The panel has no ring of its own; this lines its edges up with the
+      // Big P card's, which sits inside its ring gap.
+      padding: EdgeInsets.all(ringGap),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(radius),
+          color: light ? Colors.white : tk.text.withValues(alpha: TvMyPleyaLayout.tileFillAlpha),
+          border: Border.all(color: tk.outline),
+        ),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            _WatchlistPanel._paddingPt * pt,
+            _WatchlistPanel._topPaddingPt * pt,
+            _WatchlistPanel._paddingPt * pt - ringGap,
+            _WatchlistPanel._topPaddingPt * pt,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SectionLabel(
+                t.settingsStudio.yourWatchlist,
+                trailing: _SeeAllLink(
+                  node: map.nodes.get(_seeAllKey, debugLabel: _seeAllKey),
+                  onSelect: widget.onOpenAll,
+                  onNavigate: (direction) => map.move(_seeAllKey, direction),
+                ),
+              ),
+              SizedBox(height: _WatchlistPanel._labelToPostersPt * pt),
+              Expanded(
+                child: entries.isEmpty
+                    ? Text(
+                        t.watchlist.empty,
+                        style: TextStyle(
+                          color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
+                          fontSize: TvHig.caption1 * pt,
+                        ),
+                      )
+                    : LayoutBuilder(builder: (context, constraints) => _rail(context, constraints.maxHeight, pt)),
+              ),
+            ],
           ),
         ),
-        SizedBox(height: (kTvMyPleyaLabelGapPt * pt - inset).clamp(0.0, double.infinity)),
-        if (entries.isEmpty)
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: TvMyPleyaLayout.tileFocusRingGap * scale, vertical: inset),
-            child: Text(
-              t.watchlist.empty,
-              style: TextStyle(
-                color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
-                fontSize: TvHig.caption1 * pt,
-              ),
-            ),
-          )
-        else
-          // The clip is the rail's box grown by the focus lift, so a focused
-          // poster is drawn whole while a poster scrolled past the end is cut
-          // at the column instead of running under the right column.
-          ClipRect(
-            clipper: _GrownClip(growth + inset),
-            child: SizedBox(
-              height: cardHeight,
-              child: ListView.separated(
-                controller: _controller,
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                itemCount: entries.length,
-                separatorBuilder: (context, _) => SizedBox(width: gap),
-                itemBuilder: (context, index) {
-                  final entry = entries[index];
-                  final key = _posterKey(entry);
-                  final node = map.nodes.get(key, debugLabel: key);
-                  final target = myPleyaWatchlistTarget(provider, entry);
-                  return AutomationNode(
-                    id: AutomationIds.myPleyaWatchlistItem,
-                    instance: '$index',
-                    role: 'grid.item',
-                    focusNode: node,
-                    state: () => <String, Object?>{'title': entry.item.displayTitle, 'playable': target != null},
-                    // The catalogue card the kijklijst uses on TV, with the
-                    // iPhone rail's picture and its watched mark: one rule for
-                    // what a Mijn Pleya poster shows on both platforms.
-                    child: TvCatalogCard(
-                      width: cardWidth,
-                      artwork: MyPleyaWatchlistArtwork(
-                        entry: entry,
-                        match: target,
-                        width: posterWidth,
-                        height: posterWidth / TvCatalogLayout.posterAspectRatio,
-                      ),
-                      topRightMarker: target?.isWatched == true ? TvCatalogWatchedBadge(scale: scale) : null,
-                      title: entry.item.displayTitle,
-                      titleLines: _WatchlistBlock._titleLines,
-                      meta: entry.item.year == null ? '' : '${entry.item.year}',
-                      semanticLabel: tvWatchlistSemanticLabel(entry),
-                      focusNode: node,
-                      onFocusChange: (focused) {
-                        if (focused) _reveal(index);
-                      },
-                      onSelect: target == null ? onOpenAll : () => unawaited(navigateToMediaItem(context, target)),
-                      onNavigateLeft: () => go(key, TraversalDirection.left),
-                      onNavigateRight: () => go(key, TraversalDirection.right),
-                      onNavigateUp: () => go(key, TraversalDirection.up),
-                      onNavigateDown: () => go(key, TraversalDirection.down),
+      ),
+    );
+  }
+
+  Widget _rail(BuildContext context, double height, double pt) {
+    final entries = widget.entries;
+    final map = widget.map;
+    final provider = widget.provider;
+    final posterHeight = height;
+    final posterWidth = posterHeight * TvCatalogLayout.posterAspectRatio;
+    final gap = _WatchlistPanel._posterGapPt * pt;
+    final radius = _WatchlistPanel._posterRadiusPt * pt;
+
+    // Clipped to the panel sideways only, so a focused poster's ring is
+    // drawn whole above and below while a poster scrolled past the end is cut
+    // at the panel's edge.
+    return ClipRect(
+      clipper: const _SidewaysClip(),
+      child: ListView.separated(
+        key: _railKey,
+        controller: _controller,
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        itemCount: entries.length,
+        separatorBuilder: (context, _) => SizedBox(width: gap),
+        itemBuilder: (context, index) {
+          final entry = entries[index];
+          final key = _posterKey(entry);
+          final node = map.nodes.get(key, debugLabel: key);
+          final target = myPleyaWatchlistTarget(provider, entry);
+          return AutomationNode(
+            id: AutomationIds.myPleyaWatchlistItem,
+            instance: '$index',
+            role: 'grid.item',
+            focusNode: node,
+            state: () => <String, Object?>{'title': entry.item.displayTitle, 'playable': target != null},
+            child: FocusableWrapper(
+              focusNode: node,
+              onFocusChange: (focused) {
+                if (focused) _reveal(node);
+              },
+              onSelect: target == null ? widget.onOpenAll : () => unawaited(navigateToMediaItem(context, target)),
+              onNavigateLeft: () => map.move(key, TraversalDirection.left),
+              onNavigateRight: () => map.move(key, TraversalDirection.right),
+              onNavigateUp: () => map.move(key, TraversalDirection.up),
+              onNavigateDown: () => map.move(key, TraversalDirection.down),
+              borderRadius: radius,
+              disableScale: true,
+              scrollOnlyWhenHidden: true,
+              semanticLabel: tvWatchlistSemanticLabel(entry),
+              child: ExcludeSemantics(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(radius),
+                  child: SizedBox(
+                    width: posterWidth,
+                    height: posterHeight,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        MyPleyaWatchlistArtwork(entry: entry, match: target, width: posterWidth, height: posterHeight),
+                        if (target?.isWatched == true)
+                          PositionedDirectional(
+                            top: 8 * pt,
+                            end: 8 * pt,
+                            child: TvCatalogWatchedBadge(scale: TvLayoutConstants.scaleOf(context)),
+                          ),
+                      ],
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
-          ),
-      ],
+          );
+        },
+      ),
     );
   }
 }
 
-class _GrownClip extends CustomClipper<Rect> {
-  const _GrownClip(this.by);
+class _SidewaysClip extends CustomClipper<Rect> {
+  const _SidewaysClip();
 
-  final double by;
-
-  @override
-  Rect getClip(Size size) => Rect.fromLTRB(-by, -by, size.width, size.height + by);
+  /// Generous above and below: the ring and its gap, never another row.
+  static const double _bleed = 40;
 
   @override
-  bool shouldReclip(_GrownClip oldClipper) => oldClipper.by != by;
+  Rect getClip(Size size) => Rect.fromLTRB(-_bleed, -_bleed, size.width, size.height + _bleed);
+
+  @override
+  bool shouldReclip(_SidewaysClip oldClipper) => false;
 }
 
-/// `Bekijk alles ›` in the accent tint, right of the heading. It opens the
-/// full kijklijst and carries the id the Kijklijst tile had
-/// (`my_pleya.tile[watchlist]`).
+/// `Bekijk alles ›`, right of the heading: white on dark, the brand red on
+/// light (A10, A11). It opens the full kijklijst and carries the id the
+/// Kijklijst tile had (`my_pleya.tile[watchlist]`).
 class _SeeAllLink extends StatelessWidget {
   const _SeeAllLink({required this.node, required this.onSelect, required this.onNavigate});
 
@@ -199,6 +220,7 @@ class _SeeAllLink extends StatelessWidget {
   Widget build(BuildContext context) {
     final tk = tokens(context);
     final pt = TvHig.of(context);
+    final ink = Theme.of(context).brightness == Brightness.light ? tk.accent : tk.text;
     const shape = StadiumBorder();
     return FocusableWrapper(
       focusNode: node,
@@ -216,16 +238,16 @@ class _SeeAllLink extends StatelessWidget {
       automationState: () => <String, Object?>{'title': t.myPleya.seeAll},
       semanticLabel: t.myPleya.seeAll,
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 14 * pt, vertical: 4 * pt),
+        padding: EdgeInsets.symmetric(horizontal: 12 * pt, vertical: 2 * pt),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               t.myPleya.seeAll,
-              style: TextStyle(color: tk.accent, fontSize: TvHig.caption1 * pt, fontWeight: FontWeight.w600),
+              style: TextStyle(color: ink, fontSize: TvHig.caption2 * pt, fontWeight: FontWeight.w700),
             ),
-            SizedBox(width: 6 * pt),
-            Icon(Symbols.chevron_right_rounded, size: 26 * pt, color: tk.accent),
+            SizedBox(width: 4 * pt),
+            Icon(Symbols.chevron_right_rounded, size: 26 * pt, color: ink),
           ],
         ),
       ),
