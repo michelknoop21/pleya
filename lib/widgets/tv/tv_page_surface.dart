@@ -53,6 +53,7 @@ class TvPageSurface extends StatelessWidget {
     super.key,
     required this.title,
     required this.children,
+    this.subtitle,
     this.automationInstance,
     this.controller,
     this.trailing,
@@ -63,6 +64,10 @@ class TvPageSurface extends StatelessWidget {
   /// The page heading. The section's own title, so the tile that opened it and
   /// the page it opened cannot name the same place differently.
   final String title;
+
+  /// A line under the heading (A-24b settings: "Jouw kijkervaring, tot in
+  /// detail.").
+  final String? subtitle;
 
   /// The page body, laid out in a column at the canonical inset.
   final List<Widget> children;
@@ -133,6 +138,17 @@ class TvPageSurface extends StatelessWidget {
             Expanded(child: heading),
             trailing!,
           ],
+        ),
+      if (subtitle != null)
+        Padding(
+          padding: EdgeInsets.only(top: 6 * TvHig.of(context)),
+          child: Text(
+            subtitle!,
+            style: TextStyle(
+              color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
+              fontSize: TvHig.caption1 * TvHig.of(context),
+            ),
+          ),
         ),
       SizedBox(height: TvMyPleyaLayout.titleGap * scale),
       ...children,

@@ -94,6 +94,7 @@ class TranslationsKo extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTvNavigationKo tvNavigation = _TranslationsTvNavigationKo._(_root);
 	@override late final _TranslationsTvMyPleyaKo tvMyPleya = _TranslationsTvMyPleyaKo._(_root);
 	@override late final _TranslationsTvContextMenuKo tvContextMenu = _TranslationsTvContextMenuKo._(_root);
+	@override late final _TranslationsSettingsStudioKo settingsStudio = _TranslationsSettingsStudioKo._(_root);
 }
 
 // Path: app
@@ -1858,6 +1859,68 @@ class _TranslationsTvContextMenuKo extends TranslationsTvContextMenuEn {
 	@override String doneOnSome({required Object total, required Object done}) => '${total}개 중 ${done}개 소스에서 완료됨. 나머지는 다시 온라인 상태가 되면 재시도됩니다.';
 	@override String doneOnSomeNoRetry({required Object total, required Object done}) => '${total}개 중 ${done}개 소스에서 완료됨.';
 	@override String get failed => '작동하지 않았습니다';
+}
+
+// Path: settingsStudio
+class _TranslationsSettingsStudioKo extends TranslationsSettingsStudioEn {
+	_TranslationsSettingsStudioKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get forYou => '나를 위한';
+	@override String get connectionsAndProfiles => '연결 및 프로필';
+	@override String get system => '시스템';
+	@override String get integrations => '연동';
+	@override String get libraryAndHome => '보관함 및 홈';
+	@override String get personal => '개인';
+	@override String get mainTagline => 'Pleya를 온전히 나만의 것으로.';
+	@override String get tvTagline => '나의 시청 경험, 세부까지.';
+	@override String get appearanceHeadline => '나의 Pleya는 이렇게 보입니다';
+	@override String get livePreview => '실시간 미리보기';
+	@override String get yourLibrary => '내 보관함';
+	@override String get viewPreview => '미리보기 보기';
+	@override String get playbackExperience => '재생 경험';
+	@override String get manage => '관리';
+	@override String get yourWatchlist => '내 보고 싶은 목록';
+	@override String get yourContent => '내 콘텐츠';
+	@override String get lightMode => '라이트 모드';
+	@override String get darkMode => '다크 모드';
+	@override String get oledMode => 'OLED 모드';
+	@override String get systemMode => '시스템 모드';
+	@override String get posterView => '포스터 보기';
+	@override String get listView => '목록 보기';
+	@override String get libraries => '보관함';
+	@override String get serversAndSources => '서버 및 소스';
+	@override String get contentAndWindow => '콘텐츠 및 창';
+	@override String get quality => '화질';
+	@override String get maintenance => '유지 관리';
+	@override String densityValue({required Object value}) => '5단계 중 ${value}';
+	@override String get existingSources => '기존 소스';
+	@override String get preferredAudio => '선호 오디오 언어';
+	@override String get preferredSubtitles => '선호 자막 언어';
+	@override String get subtitleWhen => '자막 항상 / 외국어 / 안 함';
+	@override String get reorderRows => '행 순서 바꾸기';
+	@override String get rowVisibility => '행 표시 또는 숨기기';
+	@override String get addOwnRow => '내 행 추가';
+	@override String get removeOwnRow => '내 행 삭제';
+	@override String get chooseRowToRemove => '어느 행?';
+	@override String get hiddenContinueWatching => '숨긴 이어보기 관리';
+	@override String get storage => '저장공간';
+	@override String get managePlex => 'Plex 서버 관리';
+	@override String get manageJellyfin => 'Jellyfin 소스 관리';
+	@override String get manageEmby => 'Emby 소스 관리';
+	@override String get managePleyaServer => 'Pleya Server 소스 관리';
+	@override String get removeSource => '소스 연결 해제 / 삭제';
+	@override String get linkPlex => 'Plex 계정 연결';
+	@override String get addJellyfin => 'Jellyfin 추가';
+	@override String get addEmby => 'Emby 추가';
+	@override String get addPleyaServer => 'Pleya Server 추가';
+	@override String get tvFooterHint => '메뉴: 뒤로 · 선택: 열기 또는 전환';
+	@override String get video => '비디오';
+	@override String get controls => '조작';
+	@override String get diagnostics => '진단';
+	@override String get activeProfile => '현재 프로필';
 }
 
 // Path: search.filters
@@ -3737,6 +3800,59 @@ extension on TranslationsKo {
 			'tvContextMenu.doneOnSome' => ({required Object total, required Object done}) => '${total}개 중 ${done}개 소스에서 완료됨. 나머지는 다시 온라인 상태가 되면 재시도됩니다.',
 			'tvContextMenu.doneOnSomeNoRetry' => ({required Object total, required Object done}) => '${total}개 중 ${done}개 소스에서 완료됨.',
 			'tvContextMenu.failed' => '작동하지 않았습니다',
+			'settingsStudio.forYou' => '나를 위한',
+			'settingsStudio.connectionsAndProfiles' => '연결 및 프로필',
+			'settingsStudio.system' => '시스템',
+			'settingsStudio.integrations' => '연동',
+			'settingsStudio.libraryAndHome' => '보관함 및 홈',
+			'settingsStudio.personal' => '개인',
+			'settingsStudio.mainTagline' => 'Pleya를 온전히 나만의 것으로.',
+			'settingsStudio.tvTagline' => '나의 시청 경험, 세부까지.',
+			'settingsStudio.appearanceHeadline' => '나의 Pleya는 이렇게 보입니다',
+			'settingsStudio.livePreview' => '실시간 미리보기',
+			'settingsStudio.yourLibrary' => '내 보관함',
+			'settingsStudio.viewPreview' => '미리보기 보기',
+			'settingsStudio.playbackExperience' => '재생 경험',
+			'settingsStudio.manage' => '관리',
+			'settingsStudio.yourWatchlist' => '내 보고 싶은 목록',
+			'settingsStudio.yourContent' => '내 콘텐츠',
+			'settingsStudio.lightMode' => '라이트 모드',
+			'settingsStudio.darkMode' => '다크 모드',
+			'settingsStudio.oledMode' => 'OLED 모드',
+			'settingsStudio.systemMode' => '시스템 모드',
+			'settingsStudio.posterView' => '포스터 보기',
+			'settingsStudio.listView' => '목록 보기',
+			'settingsStudio.libraries' => '보관함',
+			'settingsStudio.serversAndSources' => '서버 및 소스',
+			'settingsStudio.contentAndWindow' => '콘텐츠 및 창',
+			'settingsStudio.quality' => '화질',
+			'settingsStudio.maintenance' => '유지 관리',
+			'settingsStudio.densityValue' => ({required Object value}) => '5단계 중 ${value}',
+			'settingsStudio.existingSources' => '기존 소스',
+			'settingsStudio.preferredAudio' => '선호 오디오 언어',
+			'settingsStudio.preferredSubtitles' => '선호 자막 언어',
+			'settingsStudio.subtitleWhen' => '자막 항상 / 외국어 / 안 함',
+			'settingsStudio.reorderRows' => '행 순서 바꾸기',
+			'settingsStudio.rowVisibility' => '행 표시 또는 숨기기',
+			'settingsStudio.addOwnRow' => '내 행 추가',
+			'settingsStudio.removeOwnRow' => '내 행 삭제',
+			'settingsStudio.chooseRowToRemove' => '어느 행?',
+			'settingsStudio.hiddenContinueWatching' => '숨긴 이어보기 관리',
+			'settingsStudio.storage' => '저장공간',
+			'settingsStudio.managePlex' => 'Plex 서버 관리',
+			'settingsStudio.manageJellyfin' => 'Jellyfin 소스 관리',
+			'settingsStudio.manageEmby' => 'Emby 소스 관리',
+			'settingsStudio.managePleyaServer' => 'Pleya Server 소스 관리',
+			'settingsStudio.removeSource' => '소스 연결 해제 / 삭제',
+			'settingsStudio.linkPlex' => 'Plex 계정 연결',
+			'settingsStudio.addJellyfin' => 'Jellyfin 추가',
+			'settingsStudio.addEmby' => 'Emby 추가',
+			'settingsStudio.addPleyaServer' => 'Pleya Server 추가',
+			'settingsStudio.tvFooterHint' => '메뉴: 뒤로 · 선택: 열기 또는 전환',
+			'settingsStudio.video' => '비디오',
+			'settingsStudio.controls' => '조작',
+			'settingsStudio.diagnostics' => '진단',
+			'settingsStudio.activeProfile' => '현재 프로필',
 			_ => null,
 		};
 	}

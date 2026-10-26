@@ -100,7 +100,7 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
   );
 
   Future<void> _addFolder() async {
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddLocalFolderScreen()));
+    await Navigator.of(context).push(settingsStudioRoute<void>(context, (_) => const AddLocalFolderScreen()));
     if (mounted) setState(() {});
   }
 

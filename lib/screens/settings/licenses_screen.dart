@@ -5,6 +5,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../../widgets/loading_indicator_box.dart';
 import '../../i18n/strings.g.dart';
+import '../../widgets/settings/settings_studio_theme.dart';
 
 class MergedLicenseEntry {
   final String packageName;
@@ -92,7 +93,7 @@ class LicensesScreen extends StatelessWidget {
   void _showLicenseDetail(BuildContext context, MergedLicenseEntry mergedLicense) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => _LicenseDetailScreen(mergedLicense: mergedLicense)),
+      settingsStudioRoute<void>(context, (context) => _LicenseDetailScreen(mergedLicense: mergedLicense)),
     );
   }
 }

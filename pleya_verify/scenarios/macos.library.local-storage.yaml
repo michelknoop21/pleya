@@ -14,8 +14,10 @@ steps:
   - wait_until: {id: screen.settings, timeout: 10000}
   - settle: 800
   - snapshot: 00-settings
-  - tap: {id: "settings.tile[local_library]"}
-  - wait_until: {id: screen.local_library, timeout: 10000}
+  # A-24b: the local library's rows sit inline on Bibliotheken (Bibliotheek &
+  # Home, series ios/03-01).
+  - tap: {id: "settings.tile[library_home]"}
+  - wait_until: {id: local_library.enable, timeout: 10000}
   - settle: 800
   - assert: {id: local_library.enable, state: {value: false}, insideViewport: true, minimumTapTarget: 44}
   - assert: {id: local_library.wifi, state: {value: true}, insideViewport: true}

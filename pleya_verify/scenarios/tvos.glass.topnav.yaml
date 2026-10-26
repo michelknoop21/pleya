@@ -8,9 +8,8 @@ target: tvos-sim
 # Then Zoeken with the query "as" (Basalt and Cascade in `catalog.mixed.v1`),
 # the pill at rest under the bar with the results below it.
 #
-# The row count from the first Uiterlijk row to Liquid Glass (five downs) is
-# the Display category on TV today: theme, language, density, view mode,
-# episode posters, Liquid Glass.
+# A-24b: Weergave's rows sit on the Instellingen page; the walk from Thema
+# stops on Liquid Glass wherever the Scherm group puts it.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
@@ -28,26 +27,19 @@ steps:
   - wait_until: {focused: nav.myPleya, timeout: 5000}
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
+  # A-24b: Down to Bibliotheken, Right across to Big P at the top of the right
+  # column, Instellingen under it.
   - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 8000}
+  - walk: {direction: right, steps: 4, stopAt: "my_pleya.tile[assistant]", timeout: 60000, settle: 600}
   - press: down
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
-  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
-  - press: select
-  - wait_until: {id: "my_pleya.section.content[appearance]", timeout: 8000}
-  - press: right
+  # A-24b: Weergave's rows sit on the Instellingen page; it opens on Thema.
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 8000}
   - settle: 400
-  - press: down
-  - settle: 300
-  - press: down
-  - settle: 300
-  - press: down
-  - settle: 300
-  - press: down
-  - settle: 300
-  - press: down
-  - wait_until: {focused: "my_pleya.section.tile[setting.liquid_glass]", timeout: 5000}
+  - walk: {direction: down, steps: 6, stopAt: "my_pleya.section.tile[setting.liquid_glass]", timeout: 90000, settle: 300}
   - assert: {id: "my_pleya.section.tile[setting.liquid_glass]", state: {value: false}}
   - press: select
   - settle: 500
@@ -55,8 +47,6 @@ steps:
   - snapshot: 01-glass-switched-on
 
   # Out to the bar, over to Home.
-  - press: menu
-  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
   - press: menu
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
   - press: menu

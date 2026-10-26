@@ -11,11 +11,16 @@ steps:
   - tap: {id: nav.myPleya}
   - wait_until: {id: screen.my_pleya, timeout: 10000}
   - settle: 800
+  # A-24b: Instellingen sits in the Pleya group below Big P now; scroll it up.
+  - drag: {startX: 187, startY: 500, endX: 187, endY: 150, durationMs: 400}
+  - settle: 1000
   - tap: {id: "my_pleya.tile[settings]"}
   - wait_until: {id: screen.settings, timeout: 10000}
   - settle: 800
-  - tap: {id: "settings.tile[local_library]"}
-  - wait_until: {id: screen.local_library, timeout: 10000}
+  # A-24b: the local library's rows sit inline on Bibliotheken (Bibliotheek &
+  # Home, series ios/03-01).
+  - tap: {id: "settings.tile[library_home]"}
+  - wait_until: {id: local_library.enable, timeout: 10000}
   - settle: 800
   - assert: {id: local_library.enable, state: {value: false}, insideViewport: true, minimumTapTarget: 44}
   - assert: {id: local_library.wifi, state: {value: true}, insideViewport: true}

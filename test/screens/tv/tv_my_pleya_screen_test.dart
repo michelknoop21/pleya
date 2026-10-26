@@ -23,12 +23,15 @@ import 'package:pleya/providers/personal_media_provider.dart';
 import 'package:pleya/media/media_library.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/watchlist_entry.dart';
 import 'package:pleya/providers/now_watching_provider.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_screen.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_sections.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/theme/mono_tokens.dart';
+import 'package:pleya/widgets/tv/tv_catalog_card.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/providers/seerr_provider.dart';
 import 'package:pleya/providers/watchlist_provider.dart';
@@ -156,6 +159,33 @@ void main() {
       expect(tiles.firstWhere((tile) => tile.section == TvMyPleyaSection.downloads).count, 4);
     });
 
+    test('counts read as subtitles, the way northstar 01 writes them', () {
+      List<TvMyPleyaTile> tiles({int? libraries, int? online, int? total}) => buildTvMyPleyaGroups(
+        hasWatchlist: false,
+        hasSeerr: false,
+        showDownloads: false,
+        showActivity: false,
+        showCollections: true,
+        showPlaylists: true,
+        collectionCount: 24,
+        playlistCount: 1,
+        libraryCount: libraries,
+        onlineServerCount: online,
+        totalServerCount: total,
+      ).expand((group) => group.tiles).toList();
+      String subtitleOf(List<TvMyPleyaTile> ts, TvMyPleyaSection s) => ts.firstWhere((t) => t.section == s).subtitle;
+
+      final counted = tiles(libraries: 1, online: 2, total: 2);
+      expect(subtitleOf(counted, TvMyPleyaSection.libraries), t.myPleya.librariesCount(n: 1));
+      expect(subtitleOf(counted, TvMyPleyaSection.servers), t.myPleya.serversOnline(count: '2'));
+      expect(subtitleOf(counted, TvMyPleyaSection.collections), t.myPleya.collectionsCount(n: 24));
+      expect(subtitleOf(counted, TvMyPleyaSection.playlists), t.myPleya.playlistsCount(n: 1));
+
+      final unknown = tiles(total: 0);
+      expect(subtitleOf(unknown, TvMyPleyaSection.libraries), t.myPleya.librariesSubtitle);
+      expect(subtitleOf(unknown, TvMyPleyaSection.servers), t.tvMyPleya.noServers);
+    });
+
     test('every tile carries a title and a subtitle, and a focus key of its own', () {
       final tiles = groups().expand((group) => group.tiles).toList();
       expect(tiles.every((tile) => tile.title.isNotEmpty && tile.subtitle.isNotEmpty), isTrue);
@@ -197,6 +227,7 @@ void main() {
       bool personalMediaAvailable = false,
       bool appleTv = true,
       Size size = const Size(1280, 720),
+      List<WatchlistEntry>? watchlistEntries,
     }) async {
       TvDetectionService.debugSetAppleTVOverride(appleTv);
       tester.view.physicalSize = size;
@@ -213,10 +244,13 @@ void main() {
       NowWatchingProvider? nowWatching;
       if (full) {
         manager.debugRegisterClientForTesting(OnlinePlexClientDouble('nas', 'NAS'));
-        watchlist = StockedWatchlistDouble();
+        watchlist = StockedWatchlistDouble(railEntries: watchlistEntries ?? const []);
         addTearDown(watchlist.dispose);
         seerr = ConfiguredSeerrDouble();
         addTearDown(seerr.dispose);
+      } else if (watchlistEntries != null) {
+        watchlist = StockedWatchlistDouble(railEntries: watchlistEntries);
+        addTearDown(watchlist.dispose);
       }
       if (full || nowWatchingAvailable) {
         nowWatching = AvailableNowWatchingDouble();
@@ -284,8 +318,8 @@ void main() {
       await pump(tester);
 
       expect(find.text(t.navigation.myPleya), findsOneWidget);
-      expect(find.text(t.tvMyPleya.groupSources), findsOneWidget);
-      expect(find.text(t.tvMyPleya.groupPleya), findsOneWidget);
+      expect(find.text(t.tvMyPleya.groupSources.toUpperCase()), findsOneWidget);
+      expect(find.text(t.tvMyPleya.groupPleya.toUpperCase()), findsOneWidget);
     });
 
     testWidgets('Downloads is not offered on an Apple TV', (tester) async {
@@ -406,90 +440,98 @@ void main() {
       expect(upCalls, 1);
     });
 
-    testWidgets('Left and Right walk the page order across a group boundary', (tester) async {
+    // A-24b, northstar 01: two columns. This harness has no watchlist, no
+    // Seerr and no Big P, so the left column is Bibliotheken · Servers · Samen
+    // kijken and the right column is Beheer.
+    testWidgets('Right from the end of a row crosses to the right column, Left comes back', (tester) async {
       await pump(tester);
 
-      // This harness has no watchlist, no Seerr, no downloads and no Plex
-      // source, so the rendered hub is exactly Bibliotheken · Servers · Watch
-      // Together, then the Pleya group — which makes Watch Together the last
-      // tile before a group boundary (fase 8 added it, see
-      // `TvMyPleyaSection.watchTogether`). The walk has to cross the boundary
-      // rather than dead-end mid-page.
       state(tester).focusKey(TvMyPleyaSection.watchTogether.tileFocusKey);
       await tester.pump();
       await press(tester, LogicalKeyboardKey.arrowRight);
-
-      expect(focusedLabel(), TvMyPleyaSection.settings.tileFocusKey);
+      expect(focusedLabel(), TvMyPleyaSection.settings.tileFocusKey, reason: 'the right-column row nearest in height');
 
       await press(tester, LogicalKeyboardKey.arrowLeft);
-      expect(focusedLabel(), TvMyPleyaSection.watchTogether.tileFocusKey);
+      expect(focusedLabel(), TvMyPleyaSection.watchTogether.tileFocusKey, reason: 'the nearest element of the row');
     });
 
-    // Up/down. Reproduced on the simulator before it was written: DOWN from
-    // Servers, the second tile of a three-tile row, landed on Over — the
-    // *third* tile of the row below. Two errors compounded in one line. The
-    // old `_verticalNeighbour` stepped `tilesPerRow` (four) places through the
-    // flat key order, which is only "one row down" when every row is full, and
-    // the flat order begins with the profile action, which is no part of the
-    // grid at all.
-    //
-    // This harness renders Bibliotheken · Servers · Watch Together as the
-    // first row and the four-tile Pleya group below it, so it is exactly the
-    // short-row case, and the column has to be preserved across it.
-    testWidgets('Down keeps the column when the row above is shorter than the grid', (tester) async {
+    testWidgets('Left and Right walk a row without wrapping into the next one', (tester) async {
+      await pump(tester);
+
+      state(tester).focusKey(TvMyPleyaSection.libraries.tileFocusKey);
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowLeft);
+      expect(focusedLabel(), TvMyPleyaSection.libraries.tileFocusKey, reason: 'the first tile is the left edge');
+
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      expect(focusedLabel(), TvMyPleyaSection.servers.tileFocusKey);
+    });
+
+    testWidgets('Up and Down walk the Beheer column, and Up from its top reaches the profile', (tester) async {
+      await pump(tester);
+
+      state(tester).focusKey(TvMyPleyaSection.settings.tileFocusKey);
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(focusedLabel(), TvMyPleyaSection.logs.tileFocusKey);
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(focusedLabel(), TvMyPleyaSection.about.tileFocusKey);
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(focusedLabel(), 'tvMyPleya_logout');
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(focusedLabel(), 'tvMyPleya_logout', reason: 'the bottom stays put');
+
+      state(tester).focusKey(TvMyPleyaSection.settings.tileFocusKey);
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(focusedLabel(), 'tvMyPleya_switchProfile');
+    });
+
+    testWidgets('Down from the bottom row stays put instead of snapping to the last tile', (tester) async {
       await pump(tester);
 
       state(tester).focusKey(TvMyPleyaSection.servers.tileFocusKey);
       await tester.pump();
       await press(tester, LogicalKeyboardKey.arrowDown);
 
-      expect(
-        focusedLabel(),
-        TvMyPleyaSection.logs.tileFocusKey,
-        reason: 'Servers is column 1; column 1 of the row below is Logs en diagnose, not Over',
-      );
+      expect(focusedLabel(), TvMyPleyaSection.servers.tileFocusKey);
+    });
+
+    // Up/down between rows of different length keep the column by geometry.
+    // The full harness: an empty kijklijst (heading and Bekijk alles), Mijn
+    // content with Aanvragen alone, then four Bronnen tiles.
+    testWidgets('Up and Down between rows of different length keep the nearest column', (tester) async {
+      await pump(tester, full: true);
+
+      state(tester).focusKey(TvMyPleyaSection.requests.tileFocusKey);
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(focusedLabel(), TvMyPleyaSection.libraries.tileFocusKey, reason: 'Aanvragen sits over Bibliotheken');
+
+      state(tester).focusKey(TvMyPleyaSection.activity.tileFocusKey);
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(focusedLabel(), TvMyPleyaSection.requests.tileFocusKey, reason: 'the only tile of the row above');
 
       await press(tester, LogicalKeyboardKey.arrowUp);
-      expect(focusedLabel(), TvMyPleyaSection.servers.tileFocusKey, reason: 'and Up is its exact inverse');
+      expect(focusedLabel(), TvMyPleyaSection.watchlist.tileFocusKey, reason: 'an empty kijklijst keeps Bekijk alles');
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(focusedLabel(), 'tvMyPleya_switchProfile');
     });
 
-    testWidgets('Down from the first column lands on the first column below, not one place off', (tester) async {
-      await pump(tester);
-
-      state(tester).focusKey(TvMyPleyaSection.libraries.tileFocusKey);
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.arrowDown);
-
-      expect(focusedLabel(), TvMyPleyaSection.settings.tileFocusKey);
-    });
-
-    testWidgets('Down from the bottom row stays put instead of snapping to the last tile', (tester) async {
-      await pump(tester);
-
-      // Logs is column 1 of the last row. Clamping to `keys.last` used to send
-      // it to Uitloggen from any column — a tile three places to the right,
-      // which reads as the grid jumping sideways.
-      state(tester).focusKey(TvMyPleyaSection.logs.tileFocusKey);
-      await tester.pump();
-      await press(tester, LogicalKeyboardKey.arrowDown);
-
-      expect(focusedLabel(), TvMyPleyaSection.logs.tileFocusKey);
-    });
-
-    testWidgets('five content tiles wrap to two rows and remote focus follows those rows', (tester) async {
+    testWidgets('four content tiles share one row and the remote keeps their columns', (tester) async {
       await pump(tester, full: true, personalMediaAvailable: true, appleTv: false);
 
       expect(tester.takeException(), isNull);
       expect(find.text(t.collections.title), findsOneWidget);
       expect(find.text(t.playlists.title), findsOneWidget);
 
-      state(tester).focusKey(TvMyPleyaSection.watchlist.tileFocusKey);
+      state(tester).focusKey(TvMyPleyaSection.collections.tileFocusKey);
       await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      expect(focusedLabel(), TvMyPleyaSection.playlists.tileFocusKey);
       await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(focusedLabel(), TvMyPleyaSection.downloads.tileFocusKey);
-
-      await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(focusedLabel(), TvMyPleyaSection.libraries.tileFocusKey);
+      expect(focusedLabel(), TvMyPleyaSection.servers.tileFocusKey, reason: 'second column over second column');
       expect(tester.takeException(), isNull);
     });
 
@@ -505,6 +547,121 @@ void main() {
       await tester.pump();
       await press(tester, LogicalKeyboardKey.select);
       expect(opened, [TvMyPleyaSection.collections, TvMyPleyaSection.playlists]);
+    });
+
+    // A-24b, northstars 01 and 02: the kijklijst is a poster rail under
+    // `Je kijklijst` with `Bekijk alles`, not a tile.
+    group('the kijklijst rail', () {
+      final entries = [for (var i = 0; i < 8; i++) watchlistEntryDouble('w$i', year: 2020 + i)];
+
+      testWidgets('shows posters with title and year, and no Kijklijst tile', (tester) async {
+        await pump(tester, watchlistEntries: entries);
+
+        expect(find.text(t.settingsStudio.yourWatchlist.toUpperCase()), findsOneWidget);
+        expect(find.byType(TvCatalogCard), findsWidgets);
+        expect(find.text('2020'), findsOneWidget);
+        expect(find.text('Title w0'), findsOneWidget);
+        expect(find.text(t.watchlist.title), findsNothing, reason: 'the tile became the rail');
+        expect(state(tester).availableSections, contains(TvMyPleyaSection.watchlist));
+      });
+
+      testWidgets('Down from the profile lands on the first poster, Up goes back', (tester) async {
+        await pump(tester, watchlistEntries: entries);
+
+        state(tester).focusKey('tvMyPleya_switchProfile');
+        await tester.pump();
+        await press(tester, LogicalKeyboardKey.arrowDown);
+        expect(focusedLabel(), 'tvMyPleya_poster_w0');
+
+        await press(tester, LogicalKeyboardKey.arrowRight);
+        expect(focusedLabel(), 'tvMyPleya_poster_w1');
+        await press(tester, LogicalKeyboardKey.arrowUp);
+        expect(focusedLabel(), 'tvMyPleya_switchProfile');
+      });
+
+      testWidgets('Bekijk alles follows the last poster and opens the kijklijst', (tester) async {
+        await pump(tester, watchlistEntries: entries.take(3).toList());
+
+        state(tester).focusKey('tvMyPleya_poster_w2');
+        await tester.pump();
+        await press(tester, LogicalKeyboardKey.arrowRight);
+        expect(focusedLabel(), TvMyPleyaSection.watchlist.tileFocusKey);
+
+        await press(tester, LogicalKeyboardKey.select);
+        expect(opened, [TvMyPleyaSection.watchlist]);
+      });
+
+      testWidgets('a title with nothing to play opens the full kijklijst', (tester) async {
+        await pump(tester, watchlistEntries: entries);
+
+        state(tester).focusKey('tvMyPleya_poster_w0');
+        await tester.pump();
+        await press(tester, LogicalKeyboardKey.select);
+        expect(opened, [TvMyPleyaSection.watchlist]);
+      });
+
+      // A-24b review I3 and Michel's decision of 25 October: twelve posters,
+      // more than the column shows, stay reachable with RIGHT, and a title
+      // that ellipsized on one line reads whole on the focused card without
+      // any card changing size or place.
+      testWidgets('RIGHT walks all twelve posters inside the rail, titles whole, no card moves on focus', (
+        tester,
+      ) async {
+        final twelve = [
+          for (var i = 0; i < 12; i++) watchlistEntryDouble('w$i', year: 2020, title: i == 1 ? 'Sintel Two' : null),
+        ];
+        await pump(tester, watchlistEntries: twelve);
+
+        final rail = tester.getRect(find.ancestor(of: find.text('Title w0'), matching: find.byType(ListView)).first);
+        state(tester).focusKey('tvMyPleya_poster_w0');
+        await tester.pumpAndSettle();
+        final w2Before = tester.getRect(find.text('Title w2'));
+
+        await press(tester, LogicalKeyboardKey.arrowRight);
+        await tester.pumpAndSettle();
+        expect(focusedLabel(), 'tvMyPleya_poster_w1');
+        // Too wide for one line of the card (the test font is wide), whole on two.
+        expect(tester.renderObject<RenderParagraph>(find.text('Sintel Two')).didExceedMaxLines, isFalse);
+        expect(tester.getRect(find.text('Title w2')), w2Before, reason: 'a neighbour keeps its size and place');
+
+        for (var i = 2; i < 12; i++) {
+          await press(tester, LogicalKeyboardKey.arrowRight);
+          await tester.pumpAndSettle();
+          expect(focusedLabel(), 'tvMyPleya_poster_w$i');
+          final centre = FocusManager.instance.primaryFocus!.rect.center;
+          expect(centre.dx, inInclusiveRange(rail.left, rail.right), reason: 'poster $i is on screen');
+        }
+      });
+
+      testWidgets('Down from a poster keeps the column into the tiles below', (tester) async {
+        await pump(tester, watchlistEntries: entries);
+
+        state(tester).focusKey('tvMyPleya_poster_w0');
+        await tester.pump();
+        await press(tester, LogicalKeyboardKey.arrowDown);
+        expect(focusedLabel(), TvMyPleyaSection.libraries.tileFocusKey);
+        await press(tester, LogicalKeyboardKey.arrowUp);
+        expect(focusedLabel(), 'tvMyPleya_poster_w0');
+      });
+    });
+
+    testWidgets('without Big P, Beheer sits directly under Pleya (northstar 04)', (tester) async {
+      await pump(tester);
+
+      expect(find.text(t.tvMyPleya.groupPleya.toUpperCase()), findsOneWidget);
+      expect(find.text(t.settingsStudio.manage.toUpperCase()), findsNothing);
+      expect(find.text(t.tvMyPleya.groupContent.toUpperCase()), findsNothing, reason: 'an empty group disappears');
+      final pleya = tester.getRect(find.text(t.tvMyPleya.groupPleya.toUpperCase()));
+      final settings = tester.getRect(find.text(t.settings.title));
+      expect(settings.top, greaterThan(pleya.bottom));
+      expect(settings.left, greaterThan(tester.getRect(find.text(t.myPleya.watchTogether)).right));
+    });
+
+    testWidgets('Uitloggen reads in the accent red', (tester) async {
+      await pump(tester);
+
+      final logout = tester.widget<Text>(find.text(t.common.logout));
+      expect(logout.style?.color, monoTheme(dark: true).extension<MonoTokens>()!.accent);
     });
 
     // Hoofdstuk 18.3 allows every conditional tile at once, and that page is
@@ -547,12 +704,20 @@ void main() {
     }
 
     testWidgets('on the full hub the last tile is still reachable, and scrolls into view', (tester) async {
-      // A frame shorter than the tvOS canvas, so the full hub still overflows:
-      // since DEC-139 it fits at 1038x584, and the scroll path it proves has to
-      // keep working for a hub that grows.
-      const size = Size(1038, 400);
+      // A-24b: the Editorial hub fits the tvOS canvas the way northstar 01
+      // does, so the overflow comes from larger text (an accessibility text
+      // size), and the scroll path it proves has to keep working for it.
+      // Real Inter metrics: the test font draws every glyph a full em wide.
+      await tester.runAsync(loadAppFontsForGoldens);
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      const size = Size(1038, 584);
+      // An empty kijklijst: the poster rail is the catalogue card's, whose
+      // fixed footer is the catalogue's own contract and not this test's.
       await pump(tester, full: true, size: size);
 
+      // The page's own scroller: the first Scrollable in tree order, above
+      // the rail's horizontal one.
       ScrollableState scroller() => tester.state<ScrollableState>(find.byType(Scrollable).first);
 
       // The page really does overflow — otherwise this test proves nothing.
@@ -562,18 +727,28 @@ void main() {
         reason: 'the full hub must not fit the frame, or this is not the scenario it claims to be',
       );
 
+      // The lowest tile on the page, whichever column it is in.
+      final candidates = {
+        TvMyPleyaSection.libraries.tileFocusKey: find.text(t.libraries.title),
+        'tvMyPleya_logout': find.text(t.common.logout),
+      };
+      final lowest = candidates.entries.reduce(
+        (a, b) => tester.getRect(a.value).bottom >= tester.getRect(b.value).bottom ? a : b,
+      );
+      expect(tester.getRect(lowest.value).bottom, greaterThan(size.height), reason: 'it starts below the fold');
+
       final before = scroller().position.pixels;
-      state(tester).focusKey('tvMyPleya_logout');
+      state(tester).focusKey(lowest.key);
       await tester.pumpAndSettle();
 
-      expect(focusedLabel(), 'tvMyPleya_logout');
+      expect(focusedLabel(), lowest.key);
       expect(
         scroller().position.pixels,
         greaterThan(before),
         reason: 'focusing a tile below the fold has to bring it into view',
       );
       // And it is genuinely on screen, not merely focused off-screen.
-      expect(tester.getRect(find.text(t.common.logout)).bottom, lessThanOrEqualTo(size.height));
+      expect(tester.getRect(lowest.value).bottom, lessThanOrEqualTo(size.height));
     });
 
     testWidgets('a menu tile announces its title and what it is for', (tester) async {
@@ -581,9 +756,7 @@ void main() {
       await pump(tester);
 
       expect(
-        find.bySemanticsLabel(
-          t.tvMyPleya.semantics.tile(title: t.tvMyPleya.servers, subtitle: t.tvMyPleya.serversSubtitle),
-        ),
+        find.bySemanticsLabel(t.tvMyPleya.semantics.tile(title: t.tvMyPleya.servers, subtitle: t.tvMyPleya.noServers)),
         findsOneWidget,
       );
       handle.dispose();
@@ -593,8 +766,13 @@ void main() {
       await pump(tester);
 
       // A remote that has to walk past three servers to reach the first tile is
-      // a remote fighting the page.
-      expect(find.text(t.tvMyPleya.noServers), findsOneWidget);
+      // a remote fighting the page. The line reads under the name and again as
+      // the Servers tile's subtitle; neither is a focus stop of its own.
+      expect(find.text(t.tvMyPleya.noServers), findsNWidgets(2));
+      state(tester).focusKey('tvMyPleya_switchProfile');
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      expect(focusedLabel(), 'tvMyPleya_switchProfile');
     });
   });
 }

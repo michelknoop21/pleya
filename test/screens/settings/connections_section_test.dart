@@ -9,12 +9,17 @@ import 'package:pleya/database/app_database.dart';
 import 'package:pleya/focus/focusable_wrapper.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/profiles/active_profile_binder.dart';
 import 'package:pleya/profiles/active_profile_provider.dart';
+import 'package:pleya/profiles/profile.dart';
+import 'package:pleya/profiles/profile_connection.dart';
 import 'package:pleya/profiles/profile_connection_registry.dart';
 import 'package:pleya/profiles/profile_registry.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/screens/settings/connection_sources_screen.dart';
 import 'package:pleya/screens/settings/connections_section.dart';
+import 'package:pleya/screens/settings/edit_jellyfin_connection_screen.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
@@ -106,7 +111,17 @@ void main() {
   /// real I/O, and `testWidgets` runs its body in a fake-async zone where real
   /// I/O never completes. That is also why the cleanup tests next door are
   /// plain `test` cases rather than widget ones.
-  Future<void> pumpSection(WidgetTester tester, {List<Connection> seed = const [], bool appleTv = false}) async {
+  Future<void> pumpSection(
+    WidgetTester tester, {
+    List<Connection> seed = const [],
+    bool appleTv = false,
+    ConnectionSourceKind? sources,
+    Profile? active,
+    ActiveProfileBinder? binder,
+  }) async {
+    tester.view.physicalSize = const Size(400, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     TvDetectionService.debugSetAppleTVOverride(appleTv ? true : null);
     addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
     await tester.runAsync(() async {
@@ -121,13 +136,19 @@ void main() {
           providers: [
             Provider<ConnectionRegistry>.value(value: registry),
             Provider<ProfileConnectionRegistry>.value(value: profileConnections),
-            ChangeNotifierProvider<ActiveProfileProvider>.value(value: activeProfile),
+            ChangeNotifierProvider<ActiveProfileProvider>.value(
+              value: active == null ? activeProfile : _FakeActiveProfile(active),
+            ),
+            Provider<ActiveProfileBinder>.value(value: binder ?? _RecordingBinder()),
             ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
             ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibraries),
           ],
           child: MaterialApp(
             theme: monoTheme(dark: true),
-            home: Scaffold(body: ListView(children: const [ConnectionsSection()])),
+            // A-24b: the section, or one of the source pages it opens.
+            home: sources == null
+                ? Scaffold(body: ListView(children: const [ConnectionsSection()]))
+                : ConnectionSourcesScreen(kind: sources),
           ),
         ),
       ),
@@ -139,44 +160,60 @@ void main() {
 
   // The reported bug in one sentence: the list filtered on local folders and
   // Pleya Share, so a Pleya Server appeared in neither and had no way out.
+  // A-24b (series `ios/12`): the section has a row per kind of source, and
+  // the rows themselves live on the page that row opens.
   group('a Pleya Server is manageable where Connections says it is', () {
-    testWidgets('it is listed with its own heading', (tester) async {
+    testWidgets('a Pleya Server gives the section its manage row and the remove row', (tester) async {
       await pumpSection(tester, seed: [_server()]);
 
-      expect(find.text(t.connections.pleyaServers), findsOneWidget);
-      expect(find.text('Zolder'), findsOneWidget);
+      expect(find.text(t.settingsStudio.existingSources.toUpperCase()), findsOneWidget);
+      expect(find.text(t.settingsStudio.managePleyaServer), findsOneWidget);
+      expect(find.text(t.settingsStudio.removeSource), findsOneWidget);
+      expect(find.text(t.settingsStudio.managePlex), findsNothing, reason: 'no Plex account on this device');
     });
 
-    testWidgets('it does not sit under "sources on this device"', (tester) async {
-      await pumpSection(tester, seed: [_server()]);
+    testWidgets('a source on this device only gives the remove row', (tester) async {
+      await pumpSection(tester, seed: [_folder()]);
 
-      expect(
-        find.text(t.connections.localSources),
-        findsNothing,
-        reason: 'a Pleya Server is an account on a server elsewhere, not a source on this device',
-      );
+      expect(find.text(t.settingsStudio.managePleyaServer), findsNothing);
+      expect(find.text(t.settingsStudio.removeSource), findsOneWidget);
     });
 
-    testWidgets('both blocks appear side by side when there is one of each', (tester) async {
-      await pumpSection(tester, seed: [_server(), _folder()]);
+    testWidgets('without any source there is no empty card, only the ways to add one', (tester) async {
+      await pumpSection(tester);
 
-      expect(find.text(t.connections.pleyaServers), findsOneWidget);
-      expect(find.text(t.connections.localSources), findsOneWidget);
-      expect(find.text('Zolder'), findsOneWidget);
-      expect(find.text('Films lokaal'), findsOneWidget);
+      expect(find.text(t.settingsStudio.existingSources.toUpperCase()), findsNothing);
+      expect(find.text(t.connections.addConnection.toUpperCase()), findsOneWidget);
+      for (final row in [
+        t.settingsStudio.linkPlex,
+        t.settingsStudio.addJellyfin,
+        t.settingsStudio.addEmby,
+        t.settingsStudio.addPleyaServer,
+        t.pleyaShare.hostTitle,
+      ]) {
+        expect(find.text(row), findsOneWidget, reason: row);
+      }
     });
 
-    testWidgets('an expired session is stated on the row, not only in the top bar', (tester) async {
+    testWidgets('its page lists it, the expired session stated on the row', (tester) async {
       manager.debugMarkAuthErrorForTesting(ServerId('srv-1'));
-      await pumpSection(tester, seed: [_server()]);
+      await pumpSection(tester, seed: [_server()], sources: ConnectionSourceKind.pleyaServer);
 
+      expect(find.text('Zolder'), findsOneWidget);
       expect(find.textContaining(t.connections.reauthRequired), findsOneWidget);
     });
 
     testWidgets('the row says nothing about signing in while the session is fine', (tester) async {
-      await pumpSection(tester, seed: [_server()]);
+      await pumpSection(tester, seed: [_server()], sources: ConnectionSourceKind.pleyaServer);
 
       expect(find.textContaining(t.connections.reauthRequired), findsNothing);
+    });
+
+    testWidgets('the remove page lists servers and sources on this device', (tester) async {
+      await pumpSection(tester, seed: [_server(), _folder()], sources: ConnectionSourceKind.removable);
+
+      expect(find.text('Zolder'), findsOneWidget);
+      expect(find.text('Films lokaal'), findsOneWidget);
     });
   });
 
@@ -184,7 +221,7 @@ void main() {
     Finder rowFor(String title) => find.ancestor(of: find.text(title), matching: find.byType(FocusableWrapper));
 
     testWidgets('the row is a focus stop and its delete asks to confirm', (tester) async {
-      await pumpSection(tester, seed: [_server()], appleTv: true);
+      await pumpSection(tester, seed: [_server()], appleTv: true, sources: ConnectionSourceKind.removable);
 
       final row = rowFor('Zolder');
       expect(row, findsOneWidget, reason: 'a delete that a D-pad cannot land on is not connection management');
@@ -207,7 +244,7 @@ void main() {
 
     testWidgets('an expired session does not disable the disconnect', (tester) async {
       manager.debugMarkAuthErrorForTesting(ServerId('srv-1'));
-      await pumpSection(tester, seed: [_server()], appleTv: true);
+      await pumpSection(tester, seed: [_server()], appleTv: true, sources: ConnectionSourceKind.removable);
 
       // The whole point: you must not have to sign in to a server in order to
       // get rid of it.
@@ -221,7 +258,7 @@ void main() {
     });
 
     testWidgets('SELECT on the focused row opens the same confirm a tap does', (tester) async {
-      await pumpSection(tester, seed: [_server()], appleTv: true);
+      await pumpSection(tester, seed: [_server()], appleTv: true, sources: ConnectionSourceKind.removable);
 
       final row = rowFor('Zolder');
       final focusNode = tester.widget<Focus>(find.descendant(of: row, matching: find.byType(Focus)).first).focusNode!;
@@ -258,32 +295,30 @@ void main() {
       return total;
     }
 
+    // The section: seven ways to add (no active profile, so no borrowing)
+    // make six lines; the sources card adds one line per row after its first.
     testWidgets('neither a server nor a source', (tester) async {
       await pumpSection(tester);
-      // Just "add connection" and "share host": one line between the two.
-      expect(totalSeparators(), 1);
+      expect(totalSeparators(), 6);
     });
 
     testWidgets('a server only', (tester) async {
       await pumpSection(tester, seed: [_server()]);
-      // add / share / servers-block: two lines, and none inside the
-      // single-row servers block.
-      expect(totalSeparators(), 2);
+      // Pleya Server and the remove row: one line.
+      expect(totalSeparators(), 7);
     });
 
     testWidgets('a source only', (tester) async {
       await pumpSection(tester, seed: [_folder()]);
-      expect(totalSeparators(), 2);
+      expect(totalSeparators(), 6);
     });
 
     testWidgets('a server and a source side by side', (tester) async {
       await pumpSection(tester, seed: [_server(), _folder()]);
-      // add / share / servers-block / sources-block: three lines, and none
-      // inside either single-row block.
-      expect(totalSeparators(), 3);
+      expect(totalSeparators(), 7);
     });
 
-    testWidgets('multiple servers and multiple sources', (tester) async {
+    testWidgets('the remove page draws one line between each two sources', (tester) async {
       await pumpSection(
         tester,
         seed: [
@@ -292,10 +327,98 @@ void main() {
           _folder(id: 'local-1', name: 'Films lokaal'),
           _folder(id: 'local-2', name: 'Series lokaal'),
         ],
+        sources: ConnectionSourceKind.removable,
       );
-      // The three outer lines, plus one inside the two-row servers block and
-      // one inside the two-row sources block.
-      expect(totalSeparators(), 5);
+      expect(totalSeparators(), 3);
     });
   });
+
+  group('each kind of source has its own page (A-24b, series ios/12)', () {
+    JellyfinConnection jellyfin({bool emby = false}) => JellyfinConnection(
+      id: emby ? 'emby/1' : 'jf/1',
+      baseUrl: 'https://media.local',
+      serverName: emby ? 'Emby' : 'Jellyfin',
+      serverMachineId: emby ? 'emby' : 'jf',
+      userId: 'u',
+      userName: 'u',
+      accessToken: 'tok',
+      deviceId: 'd',
+      isEmby: emby,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+      lastAuthenticatedAt: DateTime.fromMillisecondsSinceEpoch(0),
+    );
+
+    test('Jellyfin and Emby are told apart; servers and device sources are removable', () {
+      expect(connectionSourceMatches(ConnectionSourceKind.jellyfin, jellyfin()), isTrue);
+      expect(connectionSourceMatches(ConnectionSourceKind.jellyfin, jellyfin(emby: true)), isFalse);
+      expect(connectionSourceMatches(ConnectionSourceKind.emby, jellyfin(emby: true)), isTrue);
+      expect(connectionSourceMatches(ConnectionSourceKind.pleyaServer, _server()), isTrue);
+      expect(connectionSourceMatches(ConnectionSourceKind.removable, _folder()), isTrue);
+      expect(connectionSourceMatches(ConnectionSourceKind.removable, jellyfin()), isFalse);
+    });
+
+    // Review I1: an edit from Instellingen rebinds the active profile, as the
+    // profile page does, so a changed address reaches the session.
+    testWidgets('a saved Jellyfin edit rebinds the active profile', (tester) async {
+      final profile = Profile.local(id: 'local-a', displayName: 'A', createdAt: DateTime(2026));
+      await tester.runAsync(() async {
+        await ProfileRegistry(db).upsert(profile);
+        await connections.upsert(jellyfin());
+        await profileConnections.upsert(
+          ProfileConnection(profileId: profile.id, connectionId: 'jf/1', userIdentifier: 'u'),
+        );
+      });
+      final binder = _RecordingBinder();
+      await pumpSection(
+        tester,
+        seed: [jellyfin()],
+        sources: ConnectionSourceKind.jellyfin,
+        active: profile,
+        binder: binder,
+      );
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+      await tester.pump();
+      await tester.tap(find.byTooltip(t.common.edit));
+      await tester.pumpAndSettle();
+      expect(find.byType(EditJellyfinConnectionScreen), findsOneWidget);
+
+      Navigator.of(tester.element(find.byType(EditJellyfinConnectionScreen))).pop(true);
+      await tester.pumpAndSettle();
+      expect(binder.rebound, ['local-a']);
+      // The bindings stream is a drift `.watch()`: unmount and flush its timer.
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 1));
+    });
+
+    testWidgets('an Emby source gives the Emby row and not the Jellyfin one', (tester) async {
+      await pumpSection(tester, seed: [jellyfin(emby: true)]);
+      expect(find.text(t.settingsStudio.manageEmby), findsOneWidget);
+      expect(find.text(t.settingsStudio.manageJellyfin), findsNothing);
+    });
+  });
+}
+
+class _FakeActiveProfile extends ChangeNotifier implements ActiveProfileProvider {
+  _FakeActiveProfile(this._active);
+
+  final Profile _active;
+
+  @override
+  Profile? get active => _active;
+
+  @override
+  String? get activeId => _active.id;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _RecordingBinder implements ActiveProfileBinder {
+  final List<String> rebound = [];
+
+  @override
+  Future<void> rebindIfActive(String profileId) async => rebound.add(profileId);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

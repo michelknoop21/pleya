@@ -9,6 +9,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/widgets/setting_tile.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
@@ -117,12 +119,32 @@ void main() {
 
     await _pumpPage(tester);
 
-    expect(find.text('Audio'), findsWidgets);
+    // A-24b (series `ios/05`): the rows carry the Studio labels.
+    expect(find.text(t.settingsStudio.preferredAudio), findsOneWidget);
+    expect(find.text(t.settingsStudio.preferredSubtitles), findsOneWidget);
     expect(find.text('Original language'), findsOneWidget);
     expect(find.text('Dutch'), findsOneWidget);
-    expect(find.text('English'), findsOneWidget);
+    // The subtitle fallback, and App-taal's own value (the test runs in English).
+    expect(find.text('English'), findsNWidgets(2));
     // The two switches moved here from Instellingen ▸ Afspelen (DEC-109 lid 9).
     expect(find.byType(Switch), findsNWidgets(2));
+  });
+
+  // Michel, 25 October 2026: App-taal is the first row of Taal en ondertitels,
+  // above the audio and subtitle preferences, under its own id.
+  testWidgets('A-24b: App-taal opens the page, above the audio and subtitle preferences', (tester) async {
+    await _pumpPage(tester);
+
+    final appLanguage = find.text(t.settings.language);
+    expect(appLanguage, findsOneWidget);
+    expect(
+      tester.getTopLeft(appLanguage).dy,
+      lessThan(tester.getTopLeft(find.text(t.settingsStudio.preferredAudio)).dy),
+    );
+    expect(
+      find.byWidgetPredicate((w) => w is SettingNavigationTile && w.automationInstance == 'setting.app_locale'),
+      findsOneWidget,
+    );
   });
 
   // ────────────────────────────────────────────────────────────────
@@ -211,7 +233,7 @@ void main() {
     // terugpakt wanneer de dialoog sluit tekent zijn ink onder het eigen
     // oppervlak, waar Flutter in debug over klaagt. Control Q loopt om dezelfde
     // reden over dit pad.
-    await tester.tap(find.text('Show subtitles'));
+    await tester.tap(find.text(t.settingsStudio.subtitleWhen));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Always'));
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));

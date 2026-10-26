@@ -69,13 +69,14 @@ steps:
   - press: menu
   - wait_until: {focused: "my_pleya.tile[watchTogether]", timeout: 8000}
 
-  # The grid is two rows: Bibliotheken, Servers, Samen kijken on top,
-  # Instellingen, Logs, Over, Uitloggen below. Down from Samen kijken is Over;
-  # the walk then goes left along the bottom row. Uitloggen is not opened.
+  # A-24b (northstar 01): Bibliotheken, Servers, Samen kijken on the left;
+  # Big P and Beheer (Instellingen, Logboeken, Over, Uitloggen) on the right.
+  # Right from Samen kijken crosses over, the walk goes down to Over and then
+  # back up Beheer. Uitloggen is not opened.
 
   # --- Over --------------------------------------------------------------
-  - press: down
-  - wait_until: {focused: "my_pleya.tile[about]", timeout: 5000}
+  - press: right
+  - walk: {direction: down, steps: 4, stopAt: "my_pleya.tile[about]", timeout: 60000, settle: 600}
   - press: select
   - wait_until: {id: "my_pleya.section[about]", timeout: 15000}
   - settle: 1000
@@ -84,7 +85,7 @@ steps:
   - wait_until: {focused: "my_pleya.tile[about]", timeout: 8000}
 
   # --- Logs --------------------------------------------------------------
-  - press: left
+  - press: up
   - wait_until: {focused: "my_pleya.tile[logs]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section[logs]", timeout: 15000}
@@ -94,7 +95,7 @@ steps:
   - wait_until: {focused: "my_pleya.tile[logs]", timeout: 8000}
 
   # --- Instellingen ------------------------------------------------------
-  - press: left
+  - press: up
   - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}

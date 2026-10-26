@@ -1,0 +1,62 @@
+# A-24b review C1: adding a connection from TV Instellingen ▸ Koppelingen ends
+# back on Instellingen, inside the shell. Every add flow closes itself with
+# `Navigator.pop(true)`; opened as a TV nested route that pop took MainScreen
+# off the profile navigator. Signs in to the fixture's Pleya Server a second
+# time (same account, so the same connection is written and rebound).
+name: tvos.settings.add-pleya-server
+target: tvos-sim
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - walk: {direction: right, steps: 7, stopAt: nav.myPleya, timeout: 60000, settle: 600}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  # Down to Bibliotheken, Right across to Big P, Instellingen under it.
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 8000}
+  - walk: {direction: right, steps: 4, stopAt: "my_pleya.tile[assistant]", timeout: 60000, settle: 600}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
+  - press: select
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 8000}
+  # Koppelingen, the sixth category, then down to Pleya Server toevoegen.
+  - press: left
+  - walk: {direction: down, steps: 6, stopAt: "settings.category[5]", timeout: 75000, settle: 400}
+  - press: select
+  - wait_until: {id: "settings.category[5]", state: {selected: true}, timeout: 5000}
+  - press: right
+  - wait_until: {focused: "my_pleya.section.tile[settings.trackers]", timeout: 5000}
+  - walk: {direction: down, steps: 12, stopAt: "my_pleya.section.tile[settings.add.pleya_server]", timeout: 150000, settle: 400}
+  - snapshot: 00-add-row
+  - press: select
+  # The address field takes the focus itself.
+  - settle: 2500
+  - snapshot: 01-address
+  - type: "{{fixture}}"
+  - settle: 800
+  - press: down
+  - settle: 600
+  - press: select
+  # Probe, then the remote is on the username field.
+  - settle: 4000
+  - snapshot: 02-credentials
+  - type: "verify-owner"
+  - settle: 600
+  - press: down
+  - settle: 600
+  - type: "verify-password"
+  - settle: 600
+  - press: down
+  - settle: 600
+  - press: select
+  # pop(true): back on Instellingen, the shell and its bar still there.
+  - wait_until: {focused: "my_pleya.section.tile[settings.add.pleya_server]", timeout: 30000}
+  - settle: 2000
+  - assert: {id: "my_pleya.section[settings]"}
+  - assert: {id: nav.myPleya}
+  - snapshot: 03-back-on-instellingen

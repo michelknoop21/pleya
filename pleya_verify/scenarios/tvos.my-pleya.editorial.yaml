@@ -1,0 +1,127 @@
+# A-24b phase 5: Mijn Pleya on Apple TV in the Editorial layout
+# (docs/assets/a24b-northstars/02-Mijn-Pleya/images/01..05). Two columns: the
+# kijklijst rail with Bekijk alles, Mijn content and Bibliotheken en bronnen
+# on the left; the Big P card and Beheer on the right. OLED (the default),
+# then Dark and Light through the Thema row on Instellingen. Fixture with
+# Blender artwork and a seeded kijklijst, so the rail shows real posters.
+name: tvos.my-pleya.editorial
+target: tvos-sim
+setup:
+  - reset_app
+  - seed: catalog.studio-art.v1
+  - seed: watchlist.studio.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - walk: {direction: right, steps: 7, stopAt: nav.myPleya, timeout: 60000, settle: 600}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - wait_until: {id: "my_pleya.watchlist_item[0]", timeout: 15000}
+  # --- oled: landing (northstar 01, the ring on Profiel wisselen) ---
+  - settle: 2500
+  - snapshot: oled-landing
+  - assert: {id: "my_pleya.watchlist_item[0]", insideViewport: true}
+  - assert: {id: "my_pleya.tile[watchlist]", insideViewport: true}
+  - assert: {id: "my_pleya.tile[watchlist]", above: "my_pleya.watchlist_item[0]"}
+  - assert: {id: "my_pleya.tile[libraries]", below: "my_pleya.watchlist_item[0]"}
+  - assert: {id: "my_pleya.tile[assistant]", rightOf: "my_pleya.tile[watchlist]"}
+  - assert: {id: "my_pleya.tile[settings]", below: "my_pleya.tile[assistant]"}
+  - assert: {id: "my_pleya.tile[settings]", rightOf: "my_pleya.tile[watchTogether]"}
+  - assert: {id: "my_pleya.tile[logs]", below: "my_pleya.tile[settings]"}
+  - assert: {id: "my_pleya.tile[about]", below: "my_pleya.tile[logs]"}
+  - assert: {id: "my_pleya.tile[logout]", below: "my_pleya.tile[about]"}
+  - assert: {id: "my_pleya.tile[logout]", insideViewport: true}
+  # Poster focus (northstar 02): Down from the profile is the first poster.
+  - press: down
+  - wait_until: {focused: "my_pleya.watchlist_item[0]", timeout: 8000}
+  - press: right
+  - wait_until: {focused: "my_pleya.watchlist_item[1]", timeout: 8000}
+  - settle: 1200
+  - snapshot: oled-posterfocus
+  # Along the rail to Bekijk alles, then across to the right column.
+  - walk: {direction: right, steps: 12, stopAt: "my_pleya.tile[watchlist]", timeout: 120000, settle: 400}
+  - press: right
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
+  - settle: 1200
+  - snapshot: oled-settingsfocus
+  # Bekijk alles opens the kijklijst, Menu lands back on it.
+  - walk: {direction: up, steps: 3, stopAt: "my_pleya.tile[assistant]", timeout: 30000, settle: 400}
+  - press: left
+  - wait_until: {focused: "my_pleya.tile[watchlist]", timeout: 8000}
+  - press: select
+  - wait_until: {id: "my_pleya.section[watchlist]", timeout: 10000}
+  - settle: 1500
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[watchlist]", timeout: 8000}
+  # Instellingen, Thema from OLED to Donker, and back to the tile.
+  - press: right
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
+  - press: select
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 10000}
+  - press: select
+  - settle: 1000
+  - press: up
+  - press: up
+  - press: up
+  - press: down
+  - press: down
+  - settle: 300
+  - press: select
+  - wait_until: {id: "my_pleya.section.tile[setting.theme_mode]", state: {value: "ThemeMode.dark"}, timeout: 8000}
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
+  # --- dark ---
+  - settle: 1500
+  - snapshot: dark-settingsfocus
+  - press: up
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
+  # Up from the top of the right column is the profile line.
+  - press: up
+  - settle: 1500
+  - snapshot: dark-landing
+  # Instellingen again, Thema from Donker to Licht.
+  - press: down
+  - wait_until: {focused: "my_pleya.watchlist_item[0]", timeout: 8000}
+  - walk: {direction: right, steps: 12, stopAt: "my_pleya.tile[watchlist]", timeout: 120000, settle: 400}
+  - press: right
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
+  - press: select
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 10000}
+  - press: select
+  - settle: 1000
+  - press: up
+  - press: up
+  - press: up
+  - press: down
+  - settle: 300
+  - press: select
+  - wait_until: {id: "my_pleya.section.tile[setting.theme_mode]", state: {value: "ThemeMode.light"}, timeout: 8000}
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
+  # --- light (northstar 05: the ring on Instellingen) ---
+  - settle: 1500
+  - snapshot: light-settingsfocus
+  - walk: {direction: up, steps: 3, stopAt: "my_pleya.tile[assistant]", timeout: 30000, settle: 400}
+  - press: up
+  - settle: 1500
+  - snapshot: light-landing
+  - press: down
+  - wait_until: {focused: "my_pleya.watchlist_item[0]", timeout: 8000}
+  - press: right
+  - wait_until: {focused: "my_pleya.watchlist_item[1]", timeout: 8000}
+  - settle: 1200
+  - snapshot: light-posterfocus
+  # Menu from the hub reaches the top navigation; Down comes back to the
+  # poster the remote left (hoofdstuk 7.6).
+  - press: menu
+  - wait_until: {focused: nav.myPleya, timeout: 8000}
+  - press: down
+  - wait_until: {focused: "my_pleya.watchlist_item[1]", timeout: 8000}

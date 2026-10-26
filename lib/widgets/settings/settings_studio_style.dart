@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../../theme/mono_tokens.dart';
 import '../../utils/platform_detector.dart';
+import 'settings_studio_theme.dart';
 
 /// Corner radius of a settings card off TV (A-24, Apple TV+ Studio). TV keeps
 /// [MonoTokens.radiusMd], which its focus ring is drawn against.
@@ -28,18 +29,24 @@ const double kSettingsValueMaxFraction = 0.4;
 bool _isOledPalette(MonoTokens t) => t.bg.toARGB32() == 0xFF000000;
 
 /// Fill of a [SettingsGroup] card. TV keeps [MonoTokens.surface] unchanged.
+/// Inside [SettingsStudioTheme] the surface already is the Studio card, OLED
+/// included (A-24b).
 Color settingsCardColor(BuildContext context) {
   final t = tokens(context);
+  if (SettingsStudioTheme.isActive(context)) return t.surface;
   if (!PlatformDetector.isTV() && _isOledPalette(t)) return kSettingsOledCardColor;
   return t.surface;
 }
 
-/// Ink of a section heading and of the Studio header's eyebrow line: the warm
-/// brick in light, the muted text colour in dark and OLED, and always the
-/// muted colour on TV.
+/// Ink of a section heading and of the Studio header's eyebrow line: the
+/// muted text colour, as the Studio series draws it in both themes (A-24b);
+/// the warm brick only on a light settings surface outside the Studio
+/// palette, and always the muted colour on TV.
 Color settingsSectionInk(BuildContext context) {
   final t = tokens(context);
-  if (!PlatformDetector.isTV() && t.isLight) return kSettingsSectionInkLight;
+  if (!PlatformDetector.isTV() && t.isLight && !SettingsStudioTheme.isActive(context)) {
+    return kSettingsSectionInkLight;
+  }
   return t.textMuted;
 }
 
@@ -52,3 +59,19 @@ bool settingsStudioHeaderApplies(BuildContext context) =>
     Theme.of(context).platform == TargetPlatform.iOS &&
     !TvDetectionService.isIOSAppOnMacSync() &&
     PlatformDetector.isPhone(context);
+
+/// Ink of a destructive row's title (Cache wissen, Instellingen herstellen,
+/// a source removed): the Studio coral inside Instellingen, as the series
+/// draws it (#FF715A dark; in Light the deeper text coral #AD412E for 4.5:1),
+/// the theme's error colour elsewhere.
+Color settingsDestructiveInk(BuildContext context) {
+  if (SettingsStudioTheme.isActive(context)) return settingsStudioTextCoral(tokens(context));
+  return Theme.of(context).colorScheme.error;
+}
+
+/// Ink of an accent label inside Instellingen ("Live voorbeeld"): the same
+/// Studio coral the series uses for it, the brand accent elsewhere.
+Color settingsAccentInk(BuildContext context) {
+  if (SettingsStudioTheme.isActive(context)) return settingsStudioTextCoral(tokens(context));
+  return tokens(context).accent;
+}

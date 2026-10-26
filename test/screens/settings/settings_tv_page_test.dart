@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:pleya/automation/automation_ids.dart';
 import 'package:pleya/connection/connection.dart';
+import 'package:pleya/connection/connection_registry.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/focus/focusable_wrapper.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
@@ -37,11 +38,14 @@ import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/plex_auth_service.dart';
 import 'package:pleya/services/plex_client.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/services/settings_service.dart' as settings_service show ThemeMode, ViewMode;
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/optimized_media_image.dart';
 import 'package:pleya/widgets/tv/tv_settings_categories.dart';
 import 'package:pleya/widgets/tv/tv_settings_library_preview.dart';
+import 'package:pleya/widgets/tv/tv_panel_primitives.dart';
+import 'package:pleya/navigation/main_screen_scope.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
@@ -51,12 +55,15 @@ class _FakeActiveProfile extends ChangeNotifier implements ActiveProfileProvider
   Profile? get active => null;
 
   @override
+  bool get hasMultipleProfiles => false;
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 late AppDatabase _db;
 
-Future<void> _pumpTvSettings(WidgetTester tester, {MultiServerManager? manager}) async {
+Future<void> _pumpTvSettings(WidgetTester tester, {MultiServerManager? manager, VoidCallback? openLibraries}) async {
   tester.view.physicalSize = const Size(1920, 1080);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -77,11 +84,24 @@ Future<void> _pumpTvSettings(WidgetTester tester, {MultiServerManager? manager})
           ChangeNotifierProvider<TautulliProvider>(create: (_) => TautulliProvider()),
           ChangeNotifierProvider<MultiServerProvider>.value(value: servers),
           Provider<ProfileRegistry>.value(value: ProfileRegistry(_db)),
+          Provider<ConnectionRegistry>.value(value: ConnectionRegistry(_db)),
           ChangeNotifierProvider<ActiveProfileProvider>(create: (_) => _FakeActiveProfile()),
         ],
         // Keyboard mode, so `focusActiveTabIfReady` acts as it does on a remote.
         child: InputModeTracker(
-          child: MaterialApp(theme: monoTheme(dark: true), home: const SettingsScreen()),
+          child: MaterialApp(
+            theme: monoTheme(dark: true),
+            home: openLibraries == null
+                ? const SettingsScreen()
+                : MainScreenFocusScope(
+                    focusSidebar: () {},
+                    focusContent: () {},
+                    isSidebarFocused: false,
+                    sideNavigationWidth: 0,
+                    openLibraries: openLibraries,
+                    child: const SettingsScreen(),
+                  ),
+          ),
         ),
       ),
     ),
@@ -101,9 +121,15 @@ Finder _wrapper(String id, String instance) =>
     find.byWidgetPredicate((w) => w is FocusableWrapper && w.automationId == id && w.automationInstance == instance);
 
 Finder _row(String key) => _wrapper(AutomationIds.myPleyaSectionTile, 'settings.$key');
+
+/// An inline preference row, under the id it has on its own page.
+Finder _setting(String prefKey) => _wrapper(AutomationIds.myPleyaSectionTile, 'setting.$prefKey');
 Finder _category(int index) => _wrapper(AutomationIds.settingsCategory, '$index');
 
-FocusNode _nodeOf(WidgetTester tester, Finder finder) => tester.widget<FocusableWrapper>(finder).focusNode!;
+/// The row's own node; a list row owns one inside its wrapper.
+FocusNode _nodeOf(WidgetTester tester, Finder finder) =>
+    tester.widget<FocusableWrapper>(finder).focusNode ??
+    tester.widget<Focus>(find.descendant(of: finder, matching: find.byType(Focus)).first).focusNode!;
 
 bool _hasFocus(WidgetTester tester, Finder finder) => _nodeOf(tester, finder).hasPrimaryFocus;
 
@@ -156,45 +182,90 @@ void main() {
     });
     tearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
 
-    testWidgets('RIGHT from a category enters its first row, LEFT from a row returns to it', (tester) async {
+    testWidgets('A-24b: the rail carries the series\' categories, each with its glyph', (tester) async {
+      await tester.runAsync(() => SettingsService.getInstance());
+      await _pumpTvSettings(tester);
+      final titles = [
+        for (var i = 0; _category(i).evaluate().isNotEmpty; i++)
+          tester.widget<TvStudioCategoryPill>(
+            find.descendant(of: _category(i), matching: find.byType(TvStudioCategoryPill)),
+          ),
+      ];
+      expect(titles.map((p) => p.title), [
+        t.settings.appearance,
+        t.settings.videoPlayback,
+        t.languageSettings.title,
+        t.settingsStudio.libraries,
+        t.settings.homeLayout,
+        t.settingsStudio.integrations,
+        t.settings.advanced,
+      ]);
+      expect(titles.every((p) => p.icon != null), isTrue);
+      // Anchor 02: the tagline, Weergave's heading and the remote's key hint.
+      expect(find.text(t.settingsStudio.tvTagline), findsOneWidget);
+      expect(find.text(t.settingsStudio.appearanceHeadline), findsOneWidget);
+      expect(find.text(t.settingsStudio.tvFooterHint), findsOneWidget);
+      await _unmount(tester);
+    });
+
+    testWidgets('Weergave shows its rows in place; RIGHT enters, DOWN crosses groups, LEFT returns', (tester) async {
       await tester.runAsync(() => SettingsService.getInstance());
       await _pumpTvSettings(tester);
 
       await _focus(tester, _category(0));
       await _press(tester, LogicalKeyboardKey.arrowRight);
-      expect(_hasFocus(tester, _row('appearance')), isTrue);
+      expect(_hasFocus(tester, _setting('theme_mode')), isTrue);
 
+      // From the last row of Scherm into the first row of Home.
+      await _focus(tester, _setting('show_episode_number_on_cards'));
       await _press(tester, LogicalKeyboardKey.arrowDown);
-      await _press(tester, LogicalKeyboardKey.arrowDown);
-      expect(_hasFocus(tester, _row('home_layout')), isTrue);
+      expect(_hasFocus(tester, _setting('tv_hero_clear_logo')), isTrue);
+      await _press(tester, LogicalKeyboardKey.arrowUp);
+      expect(_hasFocus(tester, _setting('show_episode_number_on_cards')), isTrue);
       await _press(tester, LogicalKeyboardKey.arrowLeft);
       expect(_hasFocus(tester, _category(0)), isTrue);
-
-      // A later category: RIGHT lands on its own first row, LEFT goes back
-      // to it and not to the first category.
-      final advanced = _categoryIndex(tester, t.settings.advanced);
-      await _focus(tester, _category(advanced));
-      await _press(tester, LogicalKeyboardKey.arrowRight);
-      expect(_hasFocus(tester, _row('watch_together_relay')), isTrue);
-      await _press(tester, LogicalKeyboardKey.arrowDown);
-      await _press(tester, LogicalKeyboardKey.arrowLeft);
-      expect(_hasFocus(tester, _category(advanced)), isTrue);
       await _unmount(tester);
     });
 
-    testWidgets('SELECT on a preference row toggles it', (tester) async {
+    testWidgets('SELECT on a switch row flips it in place, one stop per row', (tester) async {
       await tester.runAsync(() => SettingsService.getInstance());
       await _pumpTvSettings(tester);
       final settings = SettingsService.instance;
-      final before = settings.read(SettingsService.enableDebugLogging);
+      final glow = settings.read(SettingsService.focusGlow);
 
+      await _focus(tester, _setting('focus_glow'));
+      await _press(tester, LogicalKeyboardKey.select);
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+      await tester.pump();
+      expect(settings.read(SettingsService.focusGlow), !glow);
+      expect(_hasFocus(tester, _setting('focus_glow')), isTrue);
+      // The switch inside the row is not a stop of its own.
+      final row = _nodeOf(tester, _setting('focus_glow'));
+      expect(row.traversalDescendants.where((n) => n.canRequestFocus), isEmpty);
+
+      final logging = settings.read(SettingsService.enableDebugLogging);
       await _choose(tester, t.settings.advanced);
       await _focus(tester, _row('debug_logging'));
       await _press(tester, LogicalKeyboardKey.select);
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
       await tester.pump();
-      expect(settings.read(SettingsService.enableDebugLogging), !before);
+      expect(settings.read(SettingsService.enableDebugLogging), !logging);
       expect(_hasFocus(tester, _row('debug_logging')), isTrue);
+      await _unmount(tester);
+    });
+
+    testWidgets('A-24b: RIGHT from a Weergave row reaches Bekijk voorbeeld, which opens Bibliotheken', (tester) async {
+      await tester.runAsync(() => SettingsService.getInstance());
+      var libraries = 0;
+      await _pumpTvSettings(tester, openLibraries: () => libraries++);
+      final button = find.widgetWithText(TvPanelButton, t.settingsStudio.viewPreview);
+      expect(button, findsOneWidget);
+
+      await _focus(tester, _setting('theme_mode'));
+      await _press(tester, LogicalKeyboardKey.arrowRight);
+      expect(Focus.of(tester.element(find.text(t.settingsStudio.viewPreview))).hasFocus, isTrue);
+      await _press(tester, LogicalKeyboardKey.select);
+      expect(libraries, 1);
       await _unmount(tester);
     });
 
@@ -203,16 +274,12 @@ void main() {
       await _pumpTvSettings(tester);
       final marker = find.byKey(TvStudioCategoryPill.markerKey);
 
-      // Remote in the rows: the chosen category shows its mark and no focus.
-      await _focus(tester, _row('appearance'));
-      expect(marker, findsOneWidget);
+      await _focus(tester, _setting('theme_mode'));
       expect(find.descendant(of: _category(0), matching: marker), findsOneWidget);
       expect(_nodeOf(tester, _category(0)).hasFocus, isFalse);
 
-      // Remote on another category: that one has focus but not the mark.
       await _focus(tester, _category(1));
       expect(find.descendant(of: _category(1), matching: marker), findsNothing);
-      expect(find.descendant(of: _category(0), matching: marker), findsOneWidget);
       final focusedPill = tester.widget<TvStudioCategoryPill>(
         find.descendant(of: _category(1), matching: find.byType(TvStudioCategoryPill)),
       );
@@ -221,33 +288,41 @@ void main() {
       await _unmount(tester);
     });
 
-    testWidgets('only the library category has a preview', (tester) async {
+    testWidgets('previews: Live voorbeeld on Weergave, Afspeelervaring on Afspelen, none on Geavanceerd', (
+      tester,
+    ) async {
       await tester.runAsync(() => SettingsService.getInstance());
       await _pumpTvSettings(tester);
-      expect(find.byType(TvSettingsLibraryPreview), findsOneWidget);
-      // No DiscoverProvider here: the card falls back to its summary line.
+      expect(
+        find.descendant(
+          of: find.byType(TvSettingsLibraryPreview),
+          matching: find.text('${t.settingsStudio.oledMode} · ${t.settingsStudio.posterView}'),
+        ),
+        findsOneWidget,
+      );
+      // No DiscoverProvider here: the card falls back to its text.
       expect(
         find.descendant(of: find.byType(TvSettingsLibraryPreview), matching: find.byType(OptimizedMediaImage)),
         findsNothing,
       );
-
+      await _choose(tester, t.settings.videoPlayback);
+      expect(find.byType(TvSettingsPlaybackPreview), findsOneWidget);
       await _choose(tester, t.settings.advanced);
-      expect(_row('view_logs'), findsOneWidget);
       expect(find.byType(TvSettingsLibraryPreview), findsNothing);
-      await _choose(tester, t.connections.sectionTitle);
-      expect(find.byType(TvSettingsLibraryPreview), findsNothing);
+      expect(find.byType(TvSettingsPlaybackPreview), findsNothing);
       await _unmount(tester);
     });
 
-    testWidgets('Downloads is not a category on Apple TV', (tester) async {
+    testWidgets('Downloads has no row on Apple TV', (tester) async {
       await tester.runAsync(() => SettingsService.getInstance());
       await _pumpTvSettings(tester);
-      expect(find.text(t.settings.advanced), findsOneWidget);
+      await _choose(tester, t.settingsStudio.libraries);
+      expect(find.text(t.settings.libraryVisibility), findsOneWidget);
       expect(find.text(t.settings.downloads), findsNothing);
       await _unmount(tester);
     });
 
-    testWidgets('returning from a subpage restores the row and its category', (tester) async {
+    testWidgets('returning from a subpage restores the row', (tester) async {
       await tester.runAsync(() => SettingsService.getInstance());
       await _pumpTvSettings(tester);
       await _choose(tester, t.settings.advanced);
@@ -258,60 +333,49 @@ void main() {
 
       tester.state<NavigatorState>(find.byType(Navigator).first).pop();
       await tester.pumpAndSettle();
-      expect(_row('view_logs'), findsOneWidget);
       expect(_hasFocus(tester, _row('view_logs')), isTrue);
       await _unmount(tester);
     });
 
-    // Review I-1: only the chosen category's rows are mounted, so the
-    // remembered row can sit in a category that is not built. Flutter keeps a
-    // focus request on a detached node and grants it whenever the node is
-    // attached again, which used to pull focus off the rail on a later SELECT.
-    testWidgets('a restore chooses the remembered row\'s category, and the rail keeps its SELECT', (tester) async {
-      await tester.runAsync(() => SettingsService.getInstance());
-      await _pumpTvSettings(tester);
-      final advanced = _categoryIndex(tester, t.settings.advanced);
-      final connections = _categoryIndex(tester, t.connections.sectionTitle);
-      final marker = find.byKey(TvStudioCategoryPill.markerKey);
-
-      await _focus(tester, _category(advanced));
-      await _press(tester, LogicalKeyboardKey.arrowRight);
-      await _press(tester, LogicalKeyboardKey.arrowDown);
-      await _press(tester, LogicalKeyboardKey.arrowDown);
-      expect(_hasFocus(tester, _row('debug_logging')), isTrue);
-      await _press(tester, LogicalKeyboardKey.arrowLeft);
-      await _focus(tester, _category(connections));
-      await _press(tester, LogicalKeyboardKey.select);
-      expect(_row('debug_logging'), findsNothing);
-
-      await _restore(tester);
-      expect(_hasFocus(tester, _row('debug_logging')), isTrue);
-      expect(find.descendant(of: _category(advanced), matching: marker), findsOneWidget);
-
-      // Away from the row again, then SELECT on its category: the rail keeps
-      // the remote, as a category SELECT always does.
-      await _press(tester, LogicalKeyboardKey.arrowLeft);
-      await _focus(tester, _category(connections));
-      await _press(tester, LogicalKeyboardKey.select);
-      await _focus(tester, _category(advanced));
-      await _press(tester, LogicalKeyboardKey.select);
-      await tester.pump();
-      expect(_hasFocus(tester, _category(advanced)), isTrue);
-      await _unmount(tester);
-    });
-
-    testWidgets('a restore with no remembered row lands on the fallback row, not on a detached one', (tester) async {
+    testWidgets('a restore returns to the row the remote left from', (tester) async {
       await tester.runAsync(() => SettingsService.getInstance());
       await _pumpTvSettings(tester);
       await _choose(tester, t.settings.advanced);
+      await _focus(tester, _row('debug_logging'));
 
       await _restore(tester);
-      expect(_hasFocus(tester, _row('appearance')), isTrue);
+      expect(_hasFocus(tester, _row('debug_logging')), isTrue);
+      await _unmount(tester);
+    });
 
+    // Re-review m-1: the remote left from the rail after choosing another
+    // category. The restore used to pull it back to the last row and flip the
+    // chosen category back with it.
+    testWidgets('a restore after a later rail choice returns to that category\'s pill', (tester) async {
+      await tester.runAsync(() => SettingsService.getInstance());
+      await _pumpTvSettings(tester);
       final advanced = _categoryIndex(tester, t.settings.advanced);
+      final integrations = _categoryIndex(tester, t.settingsStudio.integrations);
+      final marker = find.byKey(TvStudioCategoryPill.markerKey);
+
+      await _choose(tester, t.settings.advanced);
+      await _focus(tester, _row('debug_logging'));
+      await _press(tester, LogicalKeyboardKey.arrowLeft);
+      await _focus(tester, _category(integrations));
+      await _press(tester, LogicalKeyboardKey.select);
+
+      await _restore(tester);
+      expect(_hasFocus(tester, _category(integrations)), isTrue);
+      expect(find.descendant(of: _category(integrations), matching: marker), findsOneWidget);
+      expect(find.descendant(of: _category(advanced), matching: marker), findsNothing);
+
+      // Re-review m-2: SELECT on the category that holds the remembered row,
+      // the one whose rows a stale request could pull the remote into. The
+      // rail keeps it.
       await _focus(tester, _category(advanced));
       await _press(tester, LogicalKeyboardKey.select);
       await tester.pump();
+      expect(_row('debug_logging'), findsOneWidget);
       expect(_hasFocus(tester, _category(advanced)), isTrue);
       await _unmount(tester);
     });
@@ -319,8 +383,9 @@ void main() {
     testWidgets('Tautulli is a row only for a Plex owner', (tester) async {
       await tester.runAsync(() => SettingsService.getInstance());
       await _pumpTvSettings(tester);
-      expect(_row('appearance'), findsOneWidget);
-      expect(_row('tautulli'), findsNothing);
+      await _choose(tester, t.settingsStudio.integrations);
+      expect(find.text(t.settings.requests), findsWidgets);
+      expect(find.text(t.tautulli.title), findsNothing);
       await _unmount(tester);
 
       final manager = MultiServerManager();
@@ -360,12 +425,13 @@ void main() {
         ),
       );
       await _pumpTvSettings(tester, manager: manager);
-      expect(_row('tautulli'), findsOneWidget);
+      await _choose(tester, t.settingsStudio.integrations);
+      expect(find.text(t.tautulli.title), findsWidgets);
       await _unmount(tester);
     });
   });
 
-  testWidgets('Downloads is a category on a TV that is not an Apple TV', (tester) async {
+  testWidgets('Downloads is a row on a TV that is not an Apple TV', (tester) async {
     resetSharedPreferencesForTest();
     TvDetectionService.debugSetAppleTVOverride(false);
     TvDetectionService.debugSetTVOverride(true);
@@ -375,7 +441,8 @@ void main() {
     });
     await tester.runAsync(() => SettingsService.getInstance());
     await _pumpTvSettings(tester);
-    expect(find.text(t.settings.downloads), findsOneWidget);
+    await _choose(tester, t.settingsStudio.libraries);
+    expect(find.text(t.settings.downloads), findsWidgets);
     await _unmount(tester);
   });
 
@@ -392,7 +459,7 @@ void main() {
       expect(picked.map((i) => i.id), ['a', 'b', 'c']);
     });
 
-    Future<void> pumpCard(WidgetTester tester, List<MediaItem> items) async {
+    Future<void> pumpCard(WidgetTester tester, List<MediaItem> items, {SettingsPreviewAction? action}) async {
       tester.view.physicalSize = const Size(1920, 1080);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -402,23 +469,92 @@ void main() {
           home: Scaffold(
             body: SizedBox(
               width: 520,
-              child: TvSettingsPreviewCard(title: 'Weergave', summary: 'Donker · Dichtheid 3', items: items),
+              child: TvSettingsPreviewCard(
+                eyebrow: 'Live voorbeeld',
+                title: 'Jouw bibliotheek',
+                modeLine: 'Donkere modus · Posterweergave',
+                items: items,
+                action: action,
+              ),
             ),
           ),
         ),
       );
     }
 
-    testWidgets('shows posters when Home has items', (tester) async {
+    testWidgets('shows posters, the title and the mode line when Home has items', (tester) async {
       await pumpCard(tester, [_poster('a', thumb: '/a'), _poster('b', thumb: '/b'), _poster('c', thumb: '/c')]);
       expect(find.byType(OptimizedMediaImage), findsNWidgets(3));
-      expect(find.text('Donker · Dichtheid 3'), findsOneWidget);
+      expect(find.text('Jouw bibliotheek'), findsOneWidget);
+      expect(find.text('Donkere modus · Posterweergave'), findsOneWidget);
     });
 
-    testWidgets('falls back to the summary line without items', (tester) async {
+    testWidgets('without items it keeps its text and offers no button (the empty path)', (tester) async {
       await pumpCard(tester, const []);
       expect(find.byType(OptimizedMediaImage), findsNothing);
-      expect(find.text('Donker · Dichtheid 3'), findsOneWidget);
+      expect(find.text('Jouw bibliotheek'), findsOneWidget);
+      expect(find.text('Donkere modus · Posterweergave'), findsOneWidget);
+      expect(find.byType(TvPanelButton), findsNothing);
+    });
+
+    testWidgets('an action is a button on the card that runs on SELECT', (tester) async {
+      var opened = 0;
+      await pumpCard(tester, const [], action: (label: 'Bekijk voorbeeld', onSelect: () => opened++));
+      expect(find.widgetWithText(TvPanelButton, 'Bekijk voorbeeld'), findsOneWidget);
+      // The remote's path: focus on the button, then SELECT.
+      Focus.of(tester.element(find.text('Bekijk voorbeeld'))).requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      expect(opened, 1);
+    });
+
+    test('the mode line names the theme as a mode and the library view', () {
+      expect(
+        settingsPreviewModeLine(settings_service.ThemeMode.dark, settings_service.ViewMode.grid),
+        '${t.settingsStudio.darkMode} · ${t.settingsStudio.posterView}',
+      );
+      expect(
+        settingsPreviewModeLine(settings_service.ThemeMode.light, settings_service.ViewMode.list),
+        '${t.settingsStudio.lightMode} · ${t.settingsStudio.listView}',
+      );
+    });
+
+    testWidgets('"Bekijk voorbeeld" opens Bibliotheken through the shell, and is absent without one', (tester) async {
+      var libraries = 0;
+      SettingsPreviewAction? withShell;
+      SettingsPreviewAction? withoutShell;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Column(
+            children: [
+              MainScreenFocusScope(
+                focusSidebar: () {},
+                focusContent: () {},
+                isSidebarFocused: false,
+                sideNavigationWidth: 0,
+                openLibraries: () => libraries++,
+                child: Builder(
+                  builder: (context) {
+                    withShell = settingsViewPreviewAction(context);
+                    return const SizedBox();
+                  },
+                ),
+              ),
+              Builder(
+                builder: (context) {
+                  withoutShell = settingsViewPreviewAction(context);
+                  return const SizedBox();
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+      expect(withShell?.label, t.settingsStudio.viewPreview);
+      withShell!.onSelect();
+      expect(libraries, 1);
+      expect(withoutShell, isNull);
     });
   });
 }

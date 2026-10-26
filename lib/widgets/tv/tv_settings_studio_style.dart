@@ -8,7 +8,7 @@
 ///
 /// Every helper takes the palette's [MonoTokens], so Light, Dark and OLED each
 /// get their own values. Fills are translucent and composite on the page.
-/// The contrast test in `test/widgets/tv_appearance_categories_test.dart`
+/// The contrast test in `test/widgets/tv_settings_studio_contrast_test.dart`
 /// measures these exact functions.
 library;
 

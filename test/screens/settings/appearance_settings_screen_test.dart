@@ -8,6 +8,7 @@ import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/setting_tile.dart';
+import 'package:pleya/widgets/settings_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
@@ -21,7 +22,9 @@ class _Profiles extends ChangeNotifier implements ActiveProfileProvider {
 }
 
 void main() {
-  testWidgets('TV-categorieën behouden de bestaande voorkeuren en profielvoorwaarde', (tester) async {
+  testWidgets('A-24b: Weergave op tv, in Instellingen getoond, behoudt de voorkeuren en de profielvoorwaarde', (
+    tester,
+  ) async {
     TvDetectionService.debugSetAppleTVOverride(true);
     addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
     resetSharedPreferencesForTest();
@@ -39,7 +42,13 @@ void main() {
             ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
             ChangeNotifierProvider<ActiveProfileProvider>.value(value: profiles),
           ],
-          child: MaterialApp(theme: monoTheme(dark: true), home: const AppearanceSettingsScreen()),
+          // As the Weergave category of the TV Instellingen page mounts it.
+          child: MaterialApp(
+            theme: monoTheme(dark: true),
+            home: const Scaffold(
+              body: SingleChildScrollView(child: SettingsInlineScope(child: AppearanceSettingsScreen())),
+            ),
+          ),
         ),
       ),
     );
@@ -55,14 +64,14 @@ void main() {
     expectPref(SettingsService.tvReduceMotion);
     expectPref(SettingsService.showEpisodeNumberOnCards);
     expect(find.byWidgetPredicate((widget) => widget is SegmentedButton), findsNothing);
+    // A-24b: Dichtheid is a value row on TV now, not the slider.
+    expect(find.text(t.settings.libraryDensity), findsOneWidget);
     await tester.tap(find.text(t.settings.viewMode));
     await tester.pumpAndSettle();
     await tester.tap(find.text(t.settings.listView).last);
     await tester.pumpAndSettle();
     expect(SettingsService.instance.read(SettingsService.viewMode), ViewMode.list);
 
-    await tester.tap(find.text(t.settings.homeScreen).first);
-    await tester.pump();
     expectPref(SettingsService.tvHeroClearLogo);
     expectPref(SettingsService.tvHeroAutoAdvance);
     expectPref(SettingsService.personalizedRecommendations);
@@ -70,6 +79,7 @@ void main() {
     expectPref(SettingsService.showServerNameOnHubs);
     expect(find.byWidgetPredicate((widget) => widget is SegmentedButton), findsNothing);
     final advanceBefore = SettingsService.instance.read(SettingsService.tvHeroAutoAdvance);
+    await tester.ensureVisible(find.text(t.settings.tvHeroAutoAdvance));
     await tester.tap(find.text(t.settings.tvHeroAutoAdvance));
     await tester.pump();
     expect(SettingsService.instance.read(SettingsService.tvHeroAutoAdvance), !advanceBefore);
@@ -80,14 +90,10 @@ void main() {
       findsNothing,
     );
 
-    await tester.tap(find.text(t.settings.navigation).first);
-    await tester.pump();
     expectPref(SettingsService.alwaysKeepSidebarOpen);
     expectPref(SettingsService.groupLibrariesByServer);
     expectPref(SettingsService.showUnwatchedCount);
 
-    await tester.tap(find.text(t.settings.content).first);
-    await tester.pump();
     expectPref(SettingsService.liveTvDefaultFavorites);
     expectPref(SettingsService.hideSpoilers);
     expectPref(SettingsService.requireProfileSelectionOnOpen);

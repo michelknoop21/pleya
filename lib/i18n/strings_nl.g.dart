@@ -106,6 +106,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAssistantNl assistant = _TranslationsAssistantNl._(_root);
 	@override late final _TranslationsPlaybackHandoffNl playbackHandoff = _TranslationsPlaybackHandoffNl._(_root);
 	@override late final _TranslationsLocalLibraryNl localLibrary = _TranslationsLocalLibraryNl._(_root);
+	@override late final _TranslationsSettingsStudioNl settingsStudio = _TranslationsSettingsStudioNl._(_root);
 }
 
 // Path: states
@@ -238,7 +239,7 @@ class _TranslationsScreensNl extends TranslationsScreensEn {
 	@override String get switchProfile => 'Wissel van profiel';
 	@override String get whoIsWatching => 'Wie is er aan het kijken?';
 	@override String get manageProfiles => 'Profielen beheren';
-	@override String get subtitleStyling => 'Ondertitel opmaak';
+	@override String get subtitleStyling => 'Ondertitelstijl';
 	@override String get mpvConfig => 'mpv.conf';
 	@override String get logs => 'Logbestanden';
 }
@@ -273,11 +274,11 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get supportDeveloperDescription => 'Doneer via Liberapay om de ontwikkeling te steunen';
 	@override String get language => 'Taal';
 	@override String get theme => 'Thema';
-	@override String get appearance => 'Uiterlijk';
-	@override String get videoPlayback => 'Video afspelen';
+	@override String get appearance => 'Weergave';
+	@override String get videoPlayback => 'Afspelen';
 	@override String get videoPlaybackDescription => 'Afspeelgedrag configureren';
 	@override String get advanced => 'Geavanceerd';
-	@override String get episodePosterMode => 'Aflevering poster stijl';
+	@override String get episodePosterMode => 'Afbeelding van afleveringen';
 	@override String get seriesPoster => 'Serie poster';
 	@override String get seasonPoster => 'Seizoen poster';
 	@override String get episodeThumbnail => 'Miniatuur';
@@ -291,13 +292,13 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get lightTheme => 'Licht';
 	@override String get darkTheme => 'Donker';
 	@override String get oledTheme => 'OLED';
-	@override String get libraryDensity => 'Bibliotheek dichtheid';
+	@override String get libraryDensity => 'Dichtheid';
 	@override String get compact => 'Compact';
 	@override String get comfortable => 'Comfortabel';
-	@override String get viewMode => 'Weergavemodus';
+	@override String get viewMode => 'Raster- of lijstweergave';
 	@override String get gridView => 'Raster';
 	@override String get listView => 'Lijst';
-	@override String get showHeroSection => 'Toon hoofdsectie';
+	@override String get showHeroSection => 'Hero tonen';
 	@override String get hoverExpandCards => 'Kaarten uitklappen bij hover';
 	@override String get hoverExpandCardsDescription => 'Toon een voorbeeldkaart met snelknoppen als je over een poster zweeft';
 	@override String get continueWatchingAction => 'Actie voor Verder kijken';
@@ -306,19 +307,19 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get episodeAction => 'Afleveringsactie';
 	@override String get episodePlay => 'Afspelen';
 	@override String get episodeDetails => 'Details openen';
-	@override String get useGlobalHubs => 'Startlayout gebruiken';
+	@override String get useGlobalHubs => 'Globale hubs gebruiken';
 	@override String get useGlobalHubsDescription => 'Toon gecombineerde home-hubs. Anders bibliotheekaanbevelingen gebruiken.';
-	@override String get showServerNameOnHubs => 'Servernaam tonen bij hubs';
+	@override String get showServerNameOnHubs => 'Servernaam op rijen tonen';
 	@override String get showServerNameOnHubsDescription => 'Toon servernamen altijd in hubtitels.';
-	@override String get groupLibrariesByServer => 'Bibliotheken groeperen per server';
+	@override String get groupLibrariesByServer => 'Bibliotheken per server groeperen';
 	@override String get groupLibrariesByServerDescription => 'Groepeer zijbalkbibliotheken onder elke mediaserver.';
 	@override String get alwaysKeepSidebarOpen => 'Zijbalk altijd open houden';
 	@override String get alwaysKeepSidebarOpenDescription => 'Zijbalk blijft uitgevouwen en inhoudsgebied past zich aan';
-	@override String get showUnwatchedCount => 'Aantal ongekeken tonen';
+	@override String get showUnwatchedCount => 'Onbekeken-aantallen tonen';
 	@override String get showUnwatchedCountDescription => 'Toon aantal ongekeken afleveringen bij series en seizoenen';
-	@override String get showEpisodeNumberOnCards => 'Afleveringsnummer op kaarten tonen';
+	@override String get showEpisodeNumberOnCards => 'Afleveringsnummer op kaarten';
 	@override String get showEpisodeNumberOnCardsDescription => 'Toon seizoen- en afleveringsnummer op afleveringskaarten';
-	@override String get showSeasonPostersOnTabs => 'Toon seizoensposters op tabbladen';
+	@override String get showSeasonPostersOnTabs => 'Seizoensposters op tabbladen';
 	@override String get showSeasonPostersOnTabsDescription => 'Toon de poster van elk seizoen boven het tabblad';
 	@override String get liquidGlass => 'Liquid Glass';
 	@override String get liquidGlassDescription => 'Glazen oppervlakken op de tabbalk, de speler en knoppen.';
@@ -340,14 +341,14 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get visualEffectsFull => 'Volledig';
 	@override String get visualEffectsReduced => 'Verminderd';
 	@override String get visualEffectsReducedDescription => 'Minder animaties en artwork met een lagere resolutie';
-	@override String get hideSpoilers => 'Spoilers voor ongekeken afleveringen verbergen';
+	@override String get hideSpoilers => 'Spoilers verbergen';
 	@override String get hideSpoilersDescription => 'Vervaag miniaturen en beschrijvingen voor niet-bekeken afleveringen';
 	@override String get playerBackend => 'Speler backend';
 	@override String get exoPlayer => 'ExoPlayer (Aanbevolen)';
 	@override String get mpv => 'mpv';
-	@override String get hardwareDecoding => 'Hardware decodering';
+	@override String get hardwareDecoding => 'Hardwaredecodering';
 	@override String get hardwareDecodingDescription => 'Gebruik hardware versnelling indien beschikbaar';
-	@override String get bufferSize => 'Buffer grootte';
+	@override String get bufferSize => 'Bufferomvang';
 	@override String bufferSizeMB({required Object size}) => '${size}MB';
 	@override String get bufferSizeAuto => 'Auto (Aanbevolen)';
 	@override String bufferSizeWarning({required Object heap, required Object size}) => '${heap}MB geheugen beschikbaar. Een buffer van ${size}MB kan afspelen beïnvloeden.';
@@ -358,40 +359,40 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String displayMaxResolutionNow({required Object resolution}) => 'gedetecteerd: ${resolution}';
 	@override late final _TranslationsSettingsDisplayMaxResolutionOptionsNl displayMaxResolutionOptions = _TranslationsSettingsDisplayMaxResolutionOptionsNl._(_root);
 	@override late final _TranslationsSettingsDisplayMaxResolutionOptionDescriptionsNl displayMaxResolutionOptionDescriptions = _TranslationsSettingsDisplayMaxResolutionOptionDescriptionsNl._(_root);
-	@override String get subtitleStyling => 'Ondertitel opmaak';
+	@override String get subtitleStyling => 'Ondertitelstijl';
 	@override String get subtitleStylingDescription => 'Pas ondertitel uiterlijk aan';
-	@override String get smallSkipDuration => 'Korte skip duur';
-	@override String get largeSkipDuration => 'Lange skip duur';
+	@override String get smallSkipDuration => 'Kleine sprong vooruit / terug';
+	@override String get largeSkipDuration => 'Grote sprong vooruit / terug';
 	@override String get rewindOnResume => 'Terugspoelen bij hervatten';
 	@override String secondsUnit({required Object seconds}) => '${seconds} seconden';
-	@override String get defaultSleepTimer => 'Standaard slaap timer';
+	@override String get defaultSleepTimer => 'Standaard slaaptimer';
 	@override String minutesUnit({required Object minutes}) => 'bij ${minutes} minuten';
-	@override String get rememberTrackSelections => 'Onthoud keuzes per serie';
+	@override String get rememberTrackSelections => 'Gekozen sporen onthouden';
 	@override String get rememberTrackSelectionsDescription => 'Een taal die je tijdens een serie kiest, geldt voor de volgende afleveringen. Reist via iCloud mee naar je andere Apple-toestellen.';
-	@override String get writeSeriesLanguageToServer => 'Spiegel naar Plex';
+	@override String get writeSeriesLanguageToServer => 'Serietaal naar server schrijven';
 	@override String get writeSeriesLanguageToServerDescription => 'Schrijft de keuze ook op de serie in Plex, zodat Android, Windows en de officiële Plex-apps hem volgen. Lukt dat niet, dan blijft je Pleya-voorkeur gewoon gelden.';
-	@override String get showChapterMarkersOnTimeline => 'Hoofdstukmarkeringen op tijdlijn tonen';
+	@override String get showChapterMarkersOnTimeline => 'Hoofdstukmarkeringen in tijdlijn';
 	@override String get showChapterMarkersOnTimelineDescription => 'Verdeel de tijdlijn bij hoofdstukgrenzen';
-	@override String get clickVideoTogglesPlayback => 'Klik op de video om afspelen/pauzeren te wisselen.';
+	@override String get clickVideoTogglesPlayback => 'Klik op video om pauze te schakelen';
 	@override String get clickVideoTogglesPlaybackDescription => 'Klik op video om af te spelen/pauzeren in plaats van bediening te tonen.';
 	@override String get videoPlayerControls => 'Videospeler bediening';
 	@override String get keyboardShortcuts => 'Toetsenbord sneltoetsen';
 	@override String get keyboardShortcutsDescription => 'Pas toetsenbord sneltoetsen aan';
 	@override String get videoPlayerNavigation => 'Videospeler navigatie';
 	@override String get videoPlayerNavigationDescription => 'Gebruik pijltjestoetsen om door de videospeler bediening te navigeren';
-	@override String get watchTogetherRelay => 'Samen Kijken Relay';
+	@override String get watchTogetherRelay => 'Samen-kijken-relay';
 	@override String get watchTogetherRelayDescription => 'Stel een aangepaste relay in. Iedereen moet dezelfde server gebruiken.';
 	@override String get watchTogetherRelayHint => 'https://mijn-relay.voorbeeld.nl';
 	@override String get crashReporting => 'Crashrapportage';
 	@override String get crashReportingDescription => 'Crashrapporten verzenden om de app te verbeteren';
-	@override String get debugLogging => 'Debug logging';
+	@override String get debugLogging => 'Debuglogging';
 	@override String get debugLoggingDescription => 'Schakel gedetailleerde logging in voor probleemoplossing';
-	@override String get viewLogs => 'Bekijk logs';
+	@override String get viewLogs => 'Logboeken bekijken';
 	@override String get viewLogsDescription => 'Bekijk applicatie logs';
 	@override String get clearCache => 'Cache wissen';
 	@override String get clearCacheDescription => 'Wis gecachete afbeeldingen en gegevens. Inhoud kan langzamer laden.';
 	@override String get clearCacheSuccess => 'Cache succesvol gewist';
-	@override String get resetSettings => 'Instellingen resetten';
+	@override String get resetSettings => 'Instellingen herstellen';
 	@override String get resetSettingsDescription => 'Standaardinstellingen herstellen. Dit kan niet ongedaan worden gemaakt.';
 	@override String get resetSettingsSuccess => 'Instellingen succesvol gereset';
 	@override String get backup => 'Back-up';
@@ -406,7 +407,7 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get importSettingsFailed => 'Kon instellingen niet importeren';
 	@override String get importSettingsInvalidFile => 'Dit bestand is geen geldige Pleya-export';
 	@override String get importSettingsNoUser => 'Meld je aan voordat je instellingen importeert';
-	@override String get icloudSync => 'Instellingen synchroniseren via iCloud';
+	@override String get icloudSync => 'iCloud-synchronisatie';
 	@override String get icloudSyncDescription => 'Houd je voorkeuren gesynchroniseerd op al je Apple-apparaten';
 	@override String get icloudSyncUnavailable => 'Log in bij iCloud op dit apparaat om instellingen te synchroniseren';
 	@override String get icloudSyncEnableFailed => 'Kon iCloud-synchronisatie van instellingen niet inschakelen';
@@ -417,7 +418,7 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get icloudSyncStatusQuota => 'iCloud heeft geen ruimte meer voor instellingen, dus niet alles wordt verzonden.';
 	@override String get icloudSyncStatusOversize => 'Sommige instellingen zijn te groot om te verzenden en blijven op dit apparaat.';
 	@override String get shortcutsReset => 'Sneltoetsen gereset naar standaard';
-	@override String get about => 'Over';
+	@override String get about => 'Over Pleya';
 	@override String get aboutDescription => 'App informatie en licenties';
 	@override String get updates => 'Updates';
 	@override String get updateAvailable => 'Update beschikbaar';
@@ -428,18 +429,18 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String validationErrorDuration({required Object min, required Object max, required Object unit}) => 'Duur moet tussen ${min} en ${max} ${unit} zijn';
 	@override String shortcutAlreadyAssigned({required Object action}) => 'Sneltoets al toegewezen aan ${action}';
 	@override String shortcutUpdated({required Object action}) => 'Sneltoets bijgewerkt voor ${action}';
-	@override String get autoSkip => 'Automatisch Overslaan';
-	@override String get autoSkipIntro => 'Intro Automatisch Overslaan';
+	@override String get autoSkip => 'Automatisch overslaan';
+	@override String get autoSkipIntro => 'Intro automatisch overslaan';
 	@override String get autoSkipIntroDescription => 'Intro-markeringen in afleveringen na enkele seconden automatisch overslaan';
-	@override String get autoSkipCredits => 'Credits Automatisch Overslaan';
+	@override String get autoSkipCredits => 'Credits automatisch overslaan';
 	@override String get autoSkipCreditsDescription => 'Credits automatisch overslaan en volgende aflevering afspelen';
-	@override String get forceSkipMarkerFallback => 'Fallbackmarkeringen afdwingen';
+	@override String get forceSkipMarkerFallback => 'Fallback bij ontbrekende marker';
 	@override String get forceSkipMarkerFallbackDescription => 'Gebruik hoofdstuktitelpatronen, zelfs wanneer Plex markeringen heeft';
-	@override String get autoSkipDelay => 'Vertraging Automatisch Overslaan';
+	@override String get autoSkipDelay => 'Vertraging voor overslaan';
 	@override String autoSkipDelayDescription({required Object seconds}) => '${seconds} seconden wachten voor automatisch overslaan';
-	@override String get introPattern => 'Intromarkeringspatroon';
+	@override String get introPattern => 'Herkenningspatroon intro';
 	@override String get introPatternDescription => 'Reguliere expressie om intromarkeringen in hoofdstuktitels te herkennen';
-	@override String get creditsPattern => 'Aftitelingmarkeringspatroon';
+	@override String get creditsPattern => 'Herkenningspatroon credits';
 	@override String get creditsPatternDescription => 'Reguliere expressie om aftitelingmarkeringen in hoofdstuktitels te herkennen';
 	@override String get invalidRegex => 'Ongeldige reguliere expressie';
 	@override String get downloads => 'Downloads';
@@ -454,7 +455,7 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get downloadLocationReset => 'Downloadlocatie hersteld naar standaard';
 	@override String get downloadLocationInvalid => 'Geselecteerde map is niet beschrijfbaar';
 	@override String get downloadLocationSelectError => 'Kan map niet selecteren';
-	@override String get downloadOnWifiOnly => 'Alleen via WiFi downloaden';
+	@override String get downloadOnWifiOnly => 'Alleen via wifi downloaden';
 	@override String get downloadOnWifiOnlyDescription => 'Voorkom downloads bij gebruik van mobiele data';
 	@override String get autoRemoveWatchedDownloads => 'Bekeken downloads automatisch verwijderen';
 	@override String get autoRemoveWatchedDownloadsDescription => 'Bekeken downloads automatisch verwijderen';
@@ -470,13 +471,13 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get trackersDescription => 'Voortgang synchroniseren met Trakt, MyAnimeList, AniList en Simkl';
 	@override String get requests => 'Aanvragen';
 	@override String get requestsDescription => 'Vraag films en series aan via Jellyseerr of Overseerr';
-	@override String get libraryVisibility => 'Bibliotheekzichtbaarheid';
+	@override String get libraryVisibility => 'Zichtbaarheid per bibliotheek';
 	@override String get libraryVisibilityDescription => 'Kies welke bibliotheken in het menu verschijnen';
-	@override String get companionRemoteServer => 'Companion Remote-server';
+	@override String get companionRemoteServer => 'Companion-afstandsbediening';
 	@override String get companionRemoteServerDescription => 'Sta mobiele apparaten op je netwerk toe om deze app te bedienen';
 	@override String get pleyaFlyReceive => 'Pleya Fly ontvangen';
 	@override String get pleyaFlyReceiveDescription => 'Een Apple TV kan het afspelen hierheen sturen. Pleya moet open staan.';
-	@override String get autoPip => 'Automatische beeld-in-beeld';
+	@override String get autoPip => 'Picture-in-Picture automatisch';
 	@override String get autoPipDescription => 'Ga naar picture-in-picture bij verlaten tijdens afspelen';
 	@override String get matchContentFrameRate => 'Inhoudsframesnelheid afstemmen';
 	@override String get matchContentFrameRateDescription => 'Stem schermverversing af op videocontent';
@@ -484,7 +485,7 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get matchRefreshRateDescription => 'Stem schermverversing af in volledig scherm';
 	@override String get matchDynamicRange => 'Dynamisch bereik afstemmen';
 	@override String get matchDynamicRangeDescription => 'Schakel HDR in voor HDR-content en daarna terug naar SDR';
-	@override String get displaySwitchDelay => 'Vertraging bij schermwisseling';
+	@override String get displaySwitchDelay => 'Wachttijd voor displaywissel';
 	@override String get tunneledPlayback => 'Getunnelde weergave';
 	@override String get tunneledPlaybackDescription => 'Gebruik videotunneling. Schakel uit als HDR-afspelen zwart beeld geeft.';
 	@override String get dvConversionMode => 'Dolby Vision-conversie';
@@ -497,7 +498,7 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get dvConversionNativeDescription => 'Forceer native DV7 en onderdruk DV-conversie opnieuw proberen';
 	@override String get dvConversionDv81Description => 'Forceer inline RPU-conversie naar Dolby Vision-profiel 8.1';
 	@override String get dvConversionHevcStripDescription => 'Strip Dolby Vision RPU/EL-lagen en presenteer gewone HEVC';
-	@override String get requireProfileSelectionOnOpen => 'Vraag om profiel bij openen';
+	@override String get requireProfileSelectionOnOpen => 'Profielkeuze bij opstart';
 	@override String get requireProfileSelectionOnOpenDescription => 'Toon profielselectie telkens wanneer de app wordt geopend';
 	@override String get forceTvMode => 'TV-modus forceren';
 	@override String get forceTvModeDescription => 'Forceer TV-indeling. Voor apparaten zonder autodetectie. Herstart vereist.';
@@ -507,14 +508,14 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get exitFullscreenOnPlayerCloseDescription => 'Verlaat automatisch volledig scherm wanneer de videospeler wordt gesloten';
 	@override String get autoHidePerformanceOverlay => 'Prestatie-overlay automatisch verbergen';
 	@override String get autoHidePerformanceOverlayDescription => 'Laat de prestatie-overlay meevervagen met de afspeelknoppen';
-	@override String get showNavBarLabels => 'Navigatiebalk labels tonen';
+	@override String get showNavBarLabels => 'Navigatielabels tonen';
 	@override String get showNavBarLabelsDescription => 'Tekstlabels onder de pictogrammen van de navigatiebalk weergeven';
-	@override String get startupSection => 'Opstartsectie';
+	@override String get startupSection => 'Startpagina kiezen';
 	@override String get startupSectionDescription => 'Kies welke sectie Pleya opent bij het opstarten';
-	@override String get liveTvDefaultFavorites => 'Standaard favoriete zenders';
+	@override String get liveTvDefaultFavorites => 'Live TV: favorieten standaard';
 	@override String get liveTvDefaultFavoritesDescription => 'Toon alleen favoriete zenders bij het openen van Live TV';
-	@override String get display => 'Weergave';
-	@override String get homeScreen => 'Startscherm';
+	@override String get display => 'Scherm';
+	@override String get homeScreen => 'Home';
 	@override String get navigation => 'Navigatie';
 	@override String get window => 'Venster';
 	@override String get content => 'Inhoud';
@@ -523,11 +524,11 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get audio => 'Audio';
 	@override String get audioSyncOffsetDescription => 'Verschuif audio ten opzichte van beeld voor elke titel';
 	@override String get behavior => 'Gedrag';
-	@override String get personalizedRecommendations => 'Persoonlijke aanbevelingen';
+	@override String get personalizedRecommendations => 'Gepersonaliseerde aanbevelingen';
 	@override String get personalizedRecommendationsDescription => 'Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat.';
 	@override String get sectionLibrary => 'App en afspelen';
 	@override String get sectionIntegrations => 'Koppelingen';
-	@override String get homeLayout => 'Indeling van Home';
+	@override String get homeLayout => 'Home aanpassen';
 	@override String get homeLayoutDescription => 'Herschik of verberg de rijen op het beginscherm';
 	@override String get homeLayoutEmpty => 'Open het beginscherm één keer, dan kunnen de rijen geladen worden';
 	@override String get homeLayoutMoveUp => 'Omhoog';
@@ -908,7 +909,7 @@ class _TranslationsMpvConfigNl extends TranslationsMpvConfigEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'mpv-configuratie';
+	@override String get title => 'Geavanceerde MPV-configuratie';
 	@override String get description => 'Geavanceerde videospeler-instellingen';
 	@override String get presets => 'Voorinstellingen';
 	@override String get noPresets => 'Geen opgeslagen voorinstellingen';
@@ -1390,6 +1391,33 @@ class _TranslationsMyPleyaNl extends TranslationsMyPleyaEn {
 		one: '1 download',
 		other: '{n} downloads',
 	);
+	@override String get seeAll => 'Bekijk alles';
+	@override String get librariesSubtitle => 'Films, series en eigen bronnen';
+	@override String get downloadsSubtitle => 'Offline beschikbaar';
+	@override String get requestsSubtitle => 'Je aanvragen en status';
+	@override String get bigPSubtitle => 'Vraag, ontdek en vind sneller.';
+	@override String serversOnline({required Object count}) => '${count} online';
+	@override String get activitySubtitle => 'Wie kijkt er nu?';
+	@override String get watchTogether => 'Samen kijken';
+	@override String get watchTogetherSubtitle => 'Samen afspelen';
+	@override String get settingsSubtitle => 'Alles naar jouw voorkeur';
+	@override String get aboutSubtitle => 'Versie en informatie';
+	@override String get logsSubtitle => 'Diagnose en hulp';
+	@override String librariesCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: '1 bibliotheek',
+		other: '${n} bibliotheken',
+	);
+	@override String collectionsCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: '1 collectie',
+		other: '${n} collecties',
+	);
+	@override String playlistsCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: '1 lijst',
+		other: '${n} lijsten',
+	);
+	@override String get bigPTvSubtitle => 'Je persoonlijke kijkassistent';
+	@override String get openBigP => 'Open Big P';
+	@override String get switchProfile => 'Profiel wisselen';
 }
 
 // Path: liveTv
@@ -1743,13 +1771,13 @@ class _TranslationsVideoSettingsNl extends TranslationsVideoSettingsEn {
 	@override String get playbackSpeed => 'Afspeelsnelheid';
 	@override String get zoom => 'Zoom';
 	@override String get sleepTimer => 'Slaaptimer';
-	@override String get audioSync => 'Audio synchronisatie';
+	@override String get audioSync => 'Audiovertraging';
 	@override String get subtitleSync => 'Ondertitel synchronisatie';
 	@override String get hdr => 'HDR';
 	@override String get audioOutput => 'Audio-uitvoer';
 	@override String get performanceOverlay => 'Prestatie-overlay';
 	@override String get audioPassthrough => 'Audio-doorvoer';
-	@override String get audioOutputTitle => 'Audio-uitvoermodus';
+	@override String get audioOutputTitle => 'Audio-uitvoer';
 	@override late final _TranslationsVideoSettingsAudioOutputModesNl audioOutputModes = _TranslationsVideoSettingsAudioOutputModesNl._(_root);
 	@override late final _TranslationsVideoSettingsAudioOutputDecisionsNl audioOutputDecisions = _TranslationsVideoSettingsAudioOutputDecisionsNl._(_root);
 	@override late final _TranslationsVideoSettingsAudioOutputModeDescriptionsNl audioOutputModeDescriptions = _TranslationsVideoSettingsAudioOutputModeDescriptionsNl._(_root);
@@ -1757,11 +1785,11 @@ class _TranslationsVideoSettingsNl extends TranslationsVideoSettingsEn {
 	@override String audioOutputNow({required Object mode}) => 'nu: ${mode}';
 	@override String get audioNormalization => 'Volume normaliseren';
 	@override String get audioNormalizationSuspended => 'Dolby-doorvoer loopt, dus audioverwerking staat uit. Je receiver bepaalt het niveau.';
-	@override String get audioPriorityTitle => 'Prioriteit';
+	@override String get audioPriorityTitle => 'Prioriteit audiospoor';
 	@override late final _TranslationsVideoSettingsAudioPrioritiesNl audioPriorities = _TranslationsVideoSettingsAudioPrioritiesNl._(_root);
-	@override String get audioLevelVolume => 'Volume gelijkmaken';
+	@override String get audioLevelVolume => 'Audio normaliseren';
 	@override String get audioLevelVolumeDescription => 'Brengt elke titel op hetzelfde niveau als de rest van je tv';
-	@override String get audioReduceLoudSounds => 'Verminder harde geluiden';
+	@override String get audioReduceLoudSounds => 'Harde geluiden dempen';
 	@override String get audioReduceLoudSoundsDescription => 'Verkleint het verschil tussen dialoog en harde effecten';
 	@override String get tryLowerQuality => 'Probeer lagere kwaliteit';
 	@override String get audioPassthroughUnavailable => 'Deze uitgang accepteert geen Dolby-bitstream — overgeschakeld op gedecodeerd geluid.';
@@ -2480,7 +2508,7 @@ class _TranslationsTvMyPleyaNl extends TranslationsTvMyPleyaEn {
 	@override String get statusOffline => 'Offline';
 	@override String get servers => 'Servers';
 	@override String get activity => 'Activiteit';
-	@override String get logs => 'Logs en diagnose';
+	@override String get logs => 'Logboeken';
 	@override String signedInAs({required Object name, required Object version}) => 'Aangemeld als ${name} · Pleya ${version}';
 	@override String get watchlistSubtitle => 'Bewaarde films en series';
 	@override String get requestsSubtitle => 'Verzoeken en ontdekken';
@@ -2539,14 +2567,14 @@ class _TranslationsLanguageSettingsNl extends TranslationsLanguageSettingsEn {
 	// Translations
 	@override String get title => 'Taal en ondertitels';
 	@override String get description => 'Audio- en ondertiteltalen, en de series die hun eigen keuze houden';
-	@override String get globalHeader => 'Globale voorkeur';
+	@override String get globalHeader => 'Algemeen';
 	@override String globalOwner({required Object name}) => 'Pleya-profiel ${name} · geldt voor alle content zonder eigen serievoorkeur';
 	@override String get globalOwnerNoProfile => 'Pleya-profiel · geldt voor alle content zonder eigen serievoorkeur';
 	@override String get audio => 'Audio';
 	@override String get audioFallbackNote => 'Ontbreekt de taal, dan de standaardtrack van het bestand';
 	@override String get subtitles => 'Ondertitels';
 	@override String get subtitlesNote => 'Voorkeurstaal voor alle content';
-	@override String get subtitleFallback => 'Terugvaltaal ondertitels';
+	@override String get subtitleFallback => 'Fallback ondertitels';
 	@override String get subtitleFallbackNote => 'Ontbreekt je voorkeurstaal, dan deze. Ontbreekt die ook, dan gaan ondertitels uit';
 	@override String get subtitleDisplay => 'Ondertitels tonen';
 	@override String get subtitleDisplayNote => 'Wanneer ondertitels vanzelf aangaan';
@@ -2559,7 +2587,7 @@ class _TranslationsLanguageSettingsNl extends TranslationsLanguageSettingsEn {
 	@override String get global => 'globaal';
 	@override String get forced => 'geforceerd';
 	@override String get rememberHeader => 'Onthouden';
-	@override String get seriesHeader => 'Serievoorkeuren';
+	@override String get seriesHeader => 'Per serie';
 	@override String seriesCount({required Object count}) => '${count} series · ontstaan vanzelf als je tijdens een serie een andere taal kiest';
 	@override String get seriesEmpty => 'Serievoorkeuren ontstaan vanzelf als je tijdens een serie een andere taal kiest.';
 	@override String get seriesFootnote => 'Selecteer een serie om de voorkeur te bekijken of terug te zetten naar de globale voorkeur. Een aflevering die de taal mist, verandert hier niets aan.';
@@ -2681,9 +2709,9 @@ class _TranslationsLocalLibraryNl extends TranslationsLocalLibraryEn {
 	// Translations
 	@override String get playbackUnavailable => 'Maak verbinding met de server of download deze video om af te spelen.';
 	@override String get title => 'Lokale bibliotheek';
-	@override String get enable => 'Bibliotheek vooraf opslaan';
+	@override String get enable => 'Offline index inschakelen';
 	@override String get description => 'Bewaar metadata en posters van al je bibliotheken op dit apparaat. De eerste download kan lang duren en veel opslag gebruiken. Video’s worden niet gedownload.';
-	@override String get wifiOnly => 'Alleen via wifi';
+	@override String get wifiOnly => 'Alleen via wifi synchroniseren';
 	@override String get wifiDescription => 'Pauzeer vooraf ophalen via mobiele data. Zet uit om ook mobiele data toe te staan.';
 	@override String get status => 'Status';
 	@override String get disabled => 'Vooraf ophalen staat uit. Eerder opgeslagen inhoud blijft beschikbaar.';
@@ -2696,16 +2724,78 @@ class _TranslationsLocalLibraryNl extends TranslationsLocalLibraryEn {
 	@override String get paused => 'Gepauzeerd · hervat zodra Pleya actief is';
 	@override String get error => 'Bijwerken onvolledig · eerder opgeslagen inhoud is behouden';
 	@override String progress({required Object count}) => '${count} items verwerkt';
-	@override String get usage => 'Gebruikte opslag';
-	@override String get lastSync => 'Laatste geslaagde scan';
+	@override String get usage => 'Gebruik van opslagruimte';
+	@override String get lastSync => 'Laatste synchronisatie';
 	@override String get never => 'Nog niet voltooid';
-	@override String get syncNow => 'Nu bijwerken';
-	@override String get clear => 'Lokale bibliotheek wissen';
+	@override String get syncNow => 'Nu synchroniseren';
+	@override String get clear => 'Lokale gegevens wissen';
 	@override String get clearMessage => 'De lokaal opgeslagen bibliotheekmetadata en posters van dit profiel wissen? Inhoud op de server en gedownloade video’s blijven behouden.';
 	@override String get afterClear => 'Lokale bibliotheek gewist';
 	@override String get chooseAfterClear => 'Vooraf ophalen uitzetten of je bibliotheek opnieuw ophalen? Je netwerkvoorkeur blijft gelden.';
 	@override String get keepOff => 'Vooraf ophalen uitzetten';
 	@override String get refill => 'Bibliotheek opnieuw ophalen';
+}
+
+// Path: settingsStudio
+class _TranslationsSettingsStudioNl extends TranslationsSettingsStudioEn {
+	_TranslationsSettingsStudioNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get forYou => 'Voor jou';
+	@override String get connectionsAndProfiles => 'Verbindingen en profielen';
+	@override String get system => 'Systeem';
+	@override String get integrations => 'Koppelingen';
+	@override String get libraryAndHome => 'Bibliotheek & Home';
+	@override String get personal => 'Persoonlijk';
+	@override String get mainTagline => 'Maak Pleya helemaal van jou.';
+	@override String get tvTagline => 'Jouw kijkervaring, tot in detail.';
+	@override String get appearanceHeadline => 'Zo ziet jouw Pleya eruit';
+	@override String get livePreview => 'Live voorbeeld';
+	@override String get yourLibrary => 'Jouw bibliotheek';
+	@override String get viewPreview => 'Bekijk voorbeeld';
+	@override String get playbackExperience => 'Afspeelervaring';
+	@override String get manage => 'Beheer';
+	@override String get yourWatchlist => 'Je kijklijst';
+	@override String get yourContent => 'Jouw content';
+	@override String get lightMode => 'Lichte modus';
+	@override String get darkMode => 'Donkere modus';
+	@override String get oledMode => 'OLED-modus';
+	@override String get systemMode => 'Systeemmodus';
+	@override String get posterView => 'Posterweergave';
+	@override String get listView => 'Lijstweergave';
+	@override String get libraries => 'Bibliotheken';
+	@override String get serversAndSources => 'Servers en bronnen';
+	@override String get contentAndWindow => 'Inhoud en venster';
+	@override String get quality => 'Kwaliteit';
+	@override String get maintenance => 'Onderhoud';
+	@override String densityValue({required Object value}) => '${value} van 5';
+	@override String get existingSources => 'Bestaande bronnen';
+	@override String get preferredAudio => 'Voorkeurstaal audio';
+	@override String get preferredSubtitles => 'Voorkeurstaal ondertitels';
+	@override String get subtitleWhen => 'Ondertitels altijd / vreemde taal / nooit';
+	@override String get reorderRows => 'Rijen in volgorde slepen';
+	@override String get rowVisibility => 'Rij zichtbaar of verborgen';
+	@override String get addOwnRow => 'Eigen rij toevoegen';
+	@override String get removeOwnRow => 'Eigen rij verwijderen';
+	@override String get chooseRowToRemove => 'Welke rij?';
+	@override String get hiddenContinueWatching => 'Verborgen Verder kijken beheren';
+	@override String get storage => 'Opslag';
+	@override String get managePlex => 'Plex-servers beheren';
+	@override String get manageJellyfin => 'Jellyfin-bronnen beheren';
+	@override String get manageEmby => 'Emby-bronnen beheren';
+	@override String get managePleyaServer => 'Pleya Server-bronnen beheren';
+	@override String get removeSource => 'Bron ontkoppelen / verwijderen';
+	@override String get linkPlex => 'Plex-account koppelen';
+	@override String get addJellyfin => 'Jellyfin toevoegen';
+	@override String get addEmby => 'Emby toevoegen';
+	@override String get addPleyaServer => 'Pleya Server toevoegen';
+	@override String get tvFooterHint => 'Menu: terug · Selecteer: openen of schakelen';
+	@override String get video => 'Video';
+	@override String get controls => 'Besturing';
+	@override String get diagnostics => 'Diagnose';
+	@override String get activeProfile => 'Actief profiel';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -4463,7 +4553,7 @@ extension on TranslationsNl {
 			'screens.switchProfile' => 'Wissel van profiel',
 			'screens.whoIsWatching' => 'Wie is er aan het kijken?',
 			'screens.manageProfiles' => 'Profielen beheren',
-			'screens.subtitleStyling' => 'Ondertitel opmaak',
+			'screens.subtitleStyling' => 'Ondertitelstijl',
 			'screens.mpvConfig' => 'mpv.conf',
 			'screens.logs' => 'Logbestanden',
 			'update.available' => 'Update beschikbaar',
@@ -4480,11 +4570,11 @@ extension on TranslationsNl {
 			'settings.supportDeveloperDescription' => 'Doneer via Liberapay om de ontwikkeling te steunen',
 			'settings.language' => 'Taal',
 			'settings.theme' => 'Thema',
-			'settings.appearance' => 'Uiterlijk',
-			'settings.videoPlayback' => 'Video afspelen',
+			'settings.appearance' => 'Weergave',
+			'settings.videoPlayback' => 'Afspelen',
 			'settings.videoPlaybackDescription' => 'Afspeelgedrag configureren',
 			'settings.advanced' => 'Geavanceerd',
-			'settings.episodePosterMode' => 'Aflevering poster stijl',
+			'settings.episodePosterMode' => 'Afbeelding van afleveringen',
 			'settings.seriesPoster' => 'Serie poster',
 			'settings.seasonPoster' => 'Seizoen poster',
 			'settings.episodeThumbnail' => 'Miniatuur',
@@ -4498,13 +4588,13 @@ extension on TranslationsNl {
 			'settings.lightTheme' => 'Licht',
 			'settings.darkTheme' => 'Donker',
 			'settings.oledTheme' => 'OLED',
-			'settings.libraryDensity' => 'Bibliotheek dichtheid',
+			'settings.libraryDensity' => 'Dichtheid',
 			'settings.compact' => 'Compact',
 			'settings.comfortable' => 'Comfortabel',
-			'settings.viewMode' => 'Weergavemodus',
+			'settings.viewMode' => 'Raster- of lijstweergave',
 			'settings.gridView' => 'Raster',
 			'settings.listView' => 'Lijst',
-			'settings.showHeroSection' => 'Toon hoofdsectie',
+			'settings.showHeroSection' => 'Hero tonen',
 			'settings.hoverExpandCards' => 'Kaarten uitklappen bij hover',
 			'settings.hoverExpandCardsDescription' => 'Toon een voorbeeldkaart met snelknoppen als je over een poster zweeft',
 			'settings.continueWatchingAction' => 'Actie voor Verder kijken',
@@ -4513,19 +4603,19 @@ extension on TranslationsNl {
 			'settings.episodeAction' => 'Afleveringsactie',
 			'settings.episodePlay' => 'Afspelen',
 			'settings.episodeDetails' => 'Details openen',
-			'settings.useGlobalHubs' => 'Startlayout gebruiken',
+			'settings.useGlobalHubs' => 'Globale hubs gebruiken',
 			'settings.useGlobalHubsDescription' => 'Toon gecombineerde home-hubs. Anders bibliotheekaanbevelingen gebruiken.',
-			'settings.showServerNameOnHubs' => 'Servernaam tonen bij hubs',
+			'settings.showServerNameOnHubs' => 'Servernaam op rijen tonen',
 			'settings.showServerNameOnHubsDescription' => 'Toon servernamen altijd in hubtitels.',
-			'settings.groupLibrariesByServer' => 'Bibliotheken groeperen per server',
+			'settings.groupLibrariesByServer' => 'Bibliotheken per server groeperen',
 			'settings.groupLibrariesByServerDescription' => 'Groepeer zijbalkbibliotheken onder elke mediaserver.',
 			'settings.alwaysKeepSidebarOpen' => 'Zijbalk altijd open houden',
 			'settings.alwaysKeepSidebarOpenDescription' => 'Zijbalk blijft uitgevouwen en inhoudsgebied past zich aan',
-			'settings.showUnwatchedCount' => 'Aantal ongekeken tonen',
+			'settings.showUnwatchedCount' => 'Onbekeken-aantallen tonen',
 			'settings.showUnwatchedCountDescription' => 'Toon aantal ongekeken afleveringen bij series en seizoenen',
-			'settings.showEpisodeNumberOnCards' => 'Afleveringsnummer op kaarten tonen',
+			'settings.showEpisodeNumberOnCards' => 'Afleveringsnummer op kaarten',
 			'settings.showEpisodeNumberOnCardsDescription' => 'Toon seizoen- en afleveringsnummer op afleveringskaarten',
-			'settings.showSeasonPostersOnTabs' => 'Toon seizoensposters op tabbladen',
+			'settings.showSeasonPostersOnTabs' => 'Seizoensposters op tabbladen',
 			'settings.showSeasonPostersOnTabsDescription' => 'Toon de poster van elk seizoen boven het tabblad',
 			'settings.liquidGlass' => 'Liquid Glass',
 			'settings.liquidGlassDescription' => 'Glazen oppervlakken op de tabbalk, de speler en knoppen.',
@@ -4547,14 +4637,14 @@ extension on TranslationsNl {
 			'settings.visualEffectsFull' => 'Volledig',
 			'settings.visualEffectsReduced' => 'Verminderd',
 			'settings.visualEffectsReducedDescription' => 'Minder animaties en artwork met een lagere resolutie',
-			'settings.hideSpoilers' => 'Spoilers voor ongekeken afleveringen verbergen',
+			'settings.hideSpoilers' => 'Spoilers verbergen',
 			'settings.hideSpoilersDescription' => 'Vervaag miniaturen en beschrijvingen voor niet-bekeken afleveringen',
 			'settings.playerBackend' => 'Speler backend',
 			'settings.exoPlayer' => 'ExoPlayer (Aanbevolen)',
 			'settings.mpv' => 'mpv',
-			'settings.hardwareDecoding' => 'Hardware decodering',
+			'settings.hardwareDecoding' => 'Hardwaredecodering',
 			'settings.hardwareDecodingDescription' => 'Gebruik hardware versnelling indien beschikbaar',
-			'settings.bufferSize' => 'Buffer grootte',
+			'settings.bufferSize' => 'Bufferomvang',
 			'settings.bufferSizeMB' => ({required Object size}) => '${size}MB',
 			'settings.bufferSizeAuto' => 'Auto (Aanbevolen)',
 			'settings.bufferSizeWarning' => ({required Object heap, required Object size}) => '${heap}MB geheugen beschikbaar. Een buffer van ${size}MB kan afspelen beïnvloeden.',
@@ -4569,40 +4659,40 @@ extension on TranslationsNl {
 			'settings.displayMaxResolutionOptionDescriptions.auto' => 'Volg het scherm waar de app het kan uitlezen',
 			'settings.displayMaxResolutionOptionDescriptions.hd1080' => 'Vraag nooit meer dan 1920x1080',
 			'settings.displayMaxResolutionOptionDescriptions.uhd2160' => 'Vraag nooit meer dan 3840x2160',
-			'settings.subtitleStyling' => 'Ondertitel opmaak',
+			'settings.subtitleStyling' => 'Ondertitelstijl',
 			'settings.subtitleStylingDescription' => 'Pas ondertitel uiterlijk aan',
-			'settings.smallSkipDuration' => 'Korte skip duur',
-			'settings.largeSkipDuration' => 'Lange skip duur',
+			'settings.smallSkipDuration' => 'Kleine sprong vooruit / terug',
+			'settings.largeSkipDuration' => 'Grote sprong vooruit / terug',
 			'settings.rewindOnResume' => 'Terugspoelen bij hervatten',
 			'settings.secondsUnit' => ({required Object seconds}) => '${seconds} seconden',
-			'settings.defaultSleepTimer' => 'Standaard slaap timer',
+			'settings.defaultSleepTimer' => 'Standaard slaaptimer',
 			'settings.minutesUnit' => ({required Object minutes}) => 'bij ${minutes} minuten',
-			'settings.rememberTrackSelections' => 'Onthoud keuzes per serie',
+			'settings.rememberTrackSelections' => 'Gekozen sporen onthouden',
 			'settings.rememberTrackSelectionsDescription' => 'Een taal die je tijdens een serie kiest, geldt voor de volgende afleveringen. Reist via iCloud mee naar je andere Apple-toestellen.',
-			'settings.writeSeriesLanguageToServer' => 'Spiegel naar Plex',
+			'settings.writeSeriesLanguageToServer' => 'Serietaal naar server schrijven',
 			'settings.writeSeriesLanguageToServerDescription' => 'Schrijft de keuze ook op de serie in Plex, zodat Android, Windows en de officiële Plex-apps hem volgen. Lukt dat niet, dan blijft je Pleya-voorkeur gewoon gelden.',
-			'settings.showChapterMarkersOnTimeline' => 'Hoofdstukmarkeringen op tijdlijn tonen',
+			'settings.showChapterMarkersOnTimeline' => 'Hoofdstukmarkeringen in tijdlijn',
 			'settings.showChapterMarkersOnTimelineDescription' => 'Verdeel de tijdlijn bij hoofdstukgrenzen',
-			'settings.clickVideoTogglesPlayback' => 'Klik op de video om afspelen/pauzeren te wisselen.',
+			'settings.clickVideoTogglesPlayback' => 'Klik op video om pauze te schakelen',
 			'settings.clickVideoTogglesPlaybackDescription' => 'Klik op video om af te spelen/pauzeren in plaats van bediening te tonen.',
 			'settings.videoPlayerControls' => 'Videospeler bediening',
 			'settings.keyboardShortcuts' => 'Toetsenbord sneltoetsen',
 			'settings.keyboardShortcutsDescription' => 'Pas toetsenbord sneltoetsen aan',
 			'settings.videoPlayerNavigation' => 'Videospeler navigatie',
 			'settings.videoPlayerNavigationDescription' => 'Gebruik pijltjestoetsen om door de videospeler bediening te navigeren',
-			'settings.watchTogetherRelay' => 'Samen Kijken Relay',
+			'settings.watchTogetherRelay' => 'Samen-kijken-relay',
 			'settings.watchTogetherRelayDescription' => 'Stel een aangepaste relay in. Iedereen moet dezelfde server gebruiken.',
 			'settings.watchTogetherRelayHint' => 'https://mijn-relay.voorbeeld.nl',
 			'settings.crashReporting' => 'Crashrapportage',
 			'settings.crashReportingDescription' => 'Crashrapporten verzenden om de app te verbeteren',
-			'settings.debugLogging' => 'Debug logging',
+			'settings.debugLogging' => 'Debuglogging',
 			'settings.debugLoggingDescription' => 'Schakel gedetailleerde logging in voor probleemoplossing',
-			'settings.viewLogs' => 'Bekijk logs',
+			'settings.viewLogs' => 'Logboeken bekijken',
 			'settings.viewLogsDescription' => 'Bekijk applicatie logs',
 			'settings.clearCache' => 'Cache wissen',
 			'settings.clearCacheDescription' => 'Wis gecachete afbeeldingen en gegevens. Inhoud kan langzamer laden.',
 			'settings.clearCacheSuccess' => 'Cache succesvol gewist',
-			'settings.resetSettings' => 'Instellingen resetten',
+			'settings.resetSettings' => 'Instellingen herstellen',
 			'settings.resetSettingsDescription' => 'Standaardinstellingen herstellen. Dit kan niet ongedaan worden gemaakt.',
 			'settings.resetSettingsSuccess' => 'Instellingen succesvol gereset',
 			'settings.backup' => 'Back-up',
@@ -4617,7 +4707,7 @@ extension on TranslationsNl {
 			'settings.importSettingsFailed' => 'Kon instellingen niet importeren',
 			'settings.importSettingsInvalidFile' => 'Dit bestand is geen geldige Pleya-export',
 			'settings.importSettingsNoUser' => 'Meld je aan voordat je instellingen importeert',
-			'settings.icloudSync' => 'Instellingen synchroniseren via iCloud',
+			'settings.icloudSync' => 'iCloud-synchronisatie',
 			'settings.icloudSyncDescription' => 'Houd je voorkeuren gesynchroniseerd op al je Apple-apparaten',
 			'settings.icloudSyncUnavailable' => 'Log in bij iCloud op dit apparaat om instellingen te synchroniseren',
 			'settings.icloudSyncEnableFailed' => 'Kon iCloud-synchronisatie van instellingen niet inschakelen',
@@ -4628,7 +4718,7 @@ extension on TranslationsNl {
 			'settings.icloudSyncStatusQuota' => 'iCloud heeft geen ruimte meer voor instellingen, dus niet alles wordt verzonden.',
 			'settings.icloudSyncStatusOversize' => 'Sommige instellingen zijn te groot om te verzenden en blijven op dit apparaat.',
 			'settings.shortcutsReset' => 'Sneltoetsen gereset naar standaard',
-			'settings.about' => 'Over',
+			'settings.about' => 'Over Pleya',
 			'settings.aboutDescription' => 'App informatie en licenties',
 			'settings.updates' => 'Updates',
 			'settings.updateAvailable' => 'Update beschikbaar',
@@ -4639,18 +4729,18 @@ extension on TranslationsNl {
 			'settings.validationErrorDuration' => ({required Object min, required Object max, required Object unit}) => 'Duur moet tussen ${min} en ${max} ${unit} zijn',
 			'settings.shortcutAlreadyAssigned' => ({required Object action}) => 'Sneltoets al toegewezen aan ${action}',
 			'settings.shortcutUpdated' => ({required Object action}) => 'Sneltoets bijgewerkt voor ${action}',
-			'settings.autoSkip' => 'Automatisch Overslaan',
-			'settings.autoSkipIntro' => 'Intro Automatisch Overslaan',
+			'settings.autoSkip' => 'Automatisch overslaan',
+			'settings.autoSkipIntro' => 'Intro automatisch overslaan',
 			'settings.autoSkipIntroDescription' => 'Intro-markeringen in afleveringen na enkele seconden automatisch overslaan',
-			'settings.autoSkipCredits' => 'Credits Automatisch Overslaan',
+			'settings.autoSkipCredits' => 'Credits automatisch overslaan',
 			'settings.autoSkipCreditsDescription' => 'Credits automatisch overslaan en volgende aflevering afspelen',
-			'settings.forceSkipMarkerFallback' => 'Fallbackmarkeringen afdwingen',
+			'settings.forceSkipMarkerFallback' => 'Fallback bij ontbrekende marker',
 			'settings.forceSkipMarkerFallbackDescription' => 'Gebruik hoofdstuktitelpatronen, zelfs wanneer Plex markeringen heeft',
-			'settings.autoSkipDelay' => 'Vertraging Automatisch Overslaan',
+			'settings.autoSkipDelay' => 'Vertraging voor overslaan',
 			'settings.autoSkipDelayDescription' => ({required Object seconds}) => '${seconds} seconden wachten voor automatisch overslaan',
-			'settings.introPattern' => 'Intromarkeringspatroon',
+			'settings.introPattern' => 'Herkenningspatroon intro',
 			'settings.introPatternDescription' => 'Reguliere expressie om intromarkeringen in hoofdstuktitels te herkennen',
-			'settings.creditsPattern' => 'Aftitelingmarkeringspatroon',
+			'settings.creditsPattern' => 'Herkenningspatroon credits',
 			'settings.creditsPatternDescription' => 'Reguliere expressie om aftitelingmarkeringen in hoofdstuktitels te herkennen',
 			'settings.invalidRegex' => 'Ongeldige reguliere expressie',
 			'settings.downloads' => 'Downloads',
@@ -4665,7 +4755,7 @@ extension on TranslationsNl {
 			'settings.downloadLocationReset' => 'Downloadlocatie hersteld naar standaard',
 			'settings.downloadLocationInvalid' => 'Geselecteerde map is niet beschrijfbaar',
 			'settings.downloadLocationSelectError' => 'Kan map niet selecteren',
-			'settings.downloadOnWifiOnly' => 'Alleen via WiFi downloaden',
+			'settings.downloadOnWifiOnly' => 'Alleen via wifi downloaden',
 			'settings.downloadOnWifiOnlyDescription' => 'Voorkom downloads bij gebruik van mobiele data',
 			'settings.autoRemoveWatchedDownloads' => 'Bekeken downloads automatisch verwijderen',
 			'settings.autoRemoveWatchedDownloadsDescription' => 'Bekeken downloads automatisch verwijderen',
@@ -4681,13 +4771,13 @@ extension on TranslationsNl {
 			'settings.trackersDescription' => 'Voortgang synchroniseren met Trakt, MyAnimeList, AniList en Simkl',
 			'settings.requests' => 'Aanvragen',
 			'settings.requestsDescription' => 'Vraag films en series aan via Jellyseerr of Overseerr',
-			'settings.libraryVisibility' => 'Bibliotheekzichtbaarheid',
+			'settings.libraryVisibility' => 'Zichtbaarheid per bibliotheek',
 			'settings.libraryVisibilityDescription' => 'Kies welke bibliotheken in het menu verschijnen',
-			'settings.companionRemoteServer' => 'Companion Remote-server',
+			'settings.companionRemoteServer' => 'Companion-afstandsbediening',
 			'settings.companionRemoteServerDescription' => 'Sta mobiele apparaten op je netwerk toe om deze app te bedienen',
 			'settings.pleyaFlyReceive' => 'Pleya Fly ontvangen',
 			'settings.pleyaFlyReceiveDescription' => 'Een Apple TV kan het afspelen hierheen sturen. Pleya moet open staan.',
-			'settings.autoPip' => 'Automatische beeld-in-beeld',
+			'settings.autoPip' => 'Picture-in-Picture automatisch',
 			'settings.autoPipDescription' => 'Ga naar picture-in-picture bij verlaten tijdens afspelen',
 			'settings.matchContentFrameRate' => 'Inhoudsframesnelheid afstemmen',
 			'settings.matchContentFrameRateDescription' => 'Stem schermverversing af op videocontent',
@@ -4695,7 +4785,7 @@ extension on TranslationsNl {
 			'settings.matchRefreshRateDescription' => 'Stem schermverversing af in volledig scherm',
 			'settings.matchDynamicRange' => 'Dynamisch bereik afstemmen',
 			'settings.matchDynamicRangeDescription' => 'Schakel HDR in voor HDR-content en daarna terug naar SDR',
-			'settings.displaySwitchDelay' => 'Vertraging bij schermwisseling',
+			'settings.displaySwitchDelay' => 'Wachttijd voor displaywissel',
 			'settings.tunneledPlayback' => 'Getunnelde weergave',
 			'settings.tunneledPlaybackDescription' => 'Gebruik videotunneling. Schakel uit als HDR-afspelen zwart beeld geeft.',
 			'settings.dvConversionMode' => 'Dolby Vision-conversie',
@@ -4708,7 +4798,7 @@ extension on TranslationsNl {
 			'settings.dvConversionNativeDescription' => 'Forceer native DV7 en onderdruk DV-conversie opnieuw proberen',
 			'settings.dvConversionDv81Description' => 'Forceer inline RPU-conversie naar Dolby Vision-profiel 8.1',
 			'settings.dvConversionHevcStripDescription' => 'Strip Dolby Vision RPU/EL-lagen en presenteer gewone HEVC',
-			'settings.requireProfileSelectionOnOpen' => 'Vraag om profiel bij openen',
+			'settings.requireProfileSelectionOnOpen' => 'Profielkeuze bij opstart',
 			'settings.requireProfileSelectionOnOpenDescription' => 'Toon profielselectie telkens wanneer de app wordt geopend',
 			'settings.forceTvMode' => 'TV-modus forceren',
 			'settings.forceTvModeDescription' => 'Forceer TV-indeling. Voor apparaten zonder autodetectie. Herstart vereist.',
@@ -4718,14 +4808,14 @@ extension on TranslationsNl {
 			'settings.exitFullscreenOnPlayerCloseDescription' => 'Verlaat automatisch volledig scherm wanneer de videospeler wordt gesloten',
 			'settings.autoHidePerformanceOverlay' => 'Prestatie-overlay automatisch verbergen',
 			'settings.autoHidePerformanceOverlayDescription' => 'Laat de prestatie-overlay meevervagen met de afspeelknoppen',
-			'settings.showNavBarLabels' => 'Navigatiebalk labels tonen',
+			'settings.showNavBarLabels' => 'Navigatielabels tonen',
 			'settings.showNavBarLabelsDescription' => 'Tekstlabels onder de pictogrammen van de navigatiebalk weergeven',
-			'settings.startupSection' => 'Opstartsectie',
+			'settings.startupSection' => 'Startpagina kiezen',
 			'settings.startupSectionDescription' => 'Kies welke sectie Pleya opent bij het opstarten',
-			'settings.liveTvDefaultFavorites' => 'Standaard favoriete zenders',
+			'settings.liveTvDefaultFavorites' => 'Live TV: favorieten standaard',
 			'settings.liveTvDefaultFavoritesDescription' => 'Toon alleen favoriete zenders bij het openen van Live TV',
-			'settings.display' => 'Weergave',
-			'settings.homeScreen' => 'Startscherm',
+			'settings.display' => 'Scherm',
+			'settings.homeScreen' => 'Home',
 			'settings.navigation' => 'Navigatie',
 			'settings.window' => 'Venster',
 			'settings.content' => 'Inhoud',
@@ -4734,11 +4824,11 @@ extension on TranslationsNl {
 			'settings.audio' => 'Audio',
 			'settings.audioSyncOffsetDescription' => 'Verschuif audio ten opzichte van beeld voor elke titel',
 			'settings.behavior' => 'Gedrag',
-			'settings.personalizedRecommendations' => 'Persoonlijke aanbevelingen',
+			'settings.personalizedRecommendations' => 'Gepersonaliseerde aanbevelingen',
 			'settings.personalizedRecommendationsDescription' => 'Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat.',
 			'settings.sectionLibrary' => 'App en afspelen',
 			'settings.sectionIntegrations' => 'Koppelingen',
-			'settings.homeLayout' => 'Indeling van Home',
+			'settings.homeLayout' => 'Home aanpassen',
 			'settings.homeLayoutDescription' => 'Herschik of verberg de rijen op het beginscherm',
 			'settings.homeLayoutEmpty' => 'Open het beginscherm één keer, dan kunnen de rijen geladen worden',
 			'settings.homeLayoutMoveUp' => 'Omhoog',
@@ -5075,7 +5165,7 @@ extension on TranslationsNl {
 			'subtitlingStyling.renderResolution' => 'Renderresolutie',
 			'subtitlingStyling.renderResolutionScreen' => 'Schermresolutie',
 			'subtitlingStyling.renderResolutionVideo' => 'Videoresolutie',
-			'mpvConfig.title' => 'mpv-configuratie',
+			'mpvConfig.title' => 'Geavanceerde MPV-configuratie',
 			'mpvConfig.description' => 'Geavanceerde videospeler-instellingen',
 			'mpvConfig.presets' => 'Voorinstellingen',
 			'mpvConfig.noPresets' => 'Geen opgeslagen voorinstellingen',
@@ -5446,6 +5536,24 @@ extension on TranslationsNl {
 			'watchlist.rail.availability' => 'Beschikbaarheid',
 			'myPleya.title' => 'Mijn Pleya',
 			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 download', other: '{n} downloads', ), 
+			'myPleya.seeAll' => 'Bekijk alles',
+			'myPleya.librariesSubtitle' => 'Films, series en eigen bronnen',
+			'myPleya.downloadsSubtitle' => 'Offline beschikbaar',
+			'myPleya.requestsSubtitle' => 'Je aanvragen en status',
+			'myPleya.bigPSubtitle' => 'Vraag, ontdek en vind sneller.',
+			'myPleya.serversOnline' => ({required Object count}) => '${count} online',
+			'myPleya.activitySubtitle' => 'Wie kijkt er nu?',
+			'myPleya.watchTogether' => 'Samen kijken',
+			'myPleya.watchTogetherSubtitle' => 'Samen afspelen',
+			'myPleya.settingsSubtitle' => 'Alles naar jouw voorkeur',
+			'myPleya.aboutSubtitle' => 'Versie en informatie',
+			'myPleya.logsSubtitle' => 'Diagnose en hulp',
+			'myPleya.librariesCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 bibliotheek', other: '${n} bibliotheken', ), 
+			'myPleya.collectionsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 collectie', other: '${n} collecties', ), 
+			'myPleya.playlistsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 lijst', other: '${n} lijsten', ), 
+			'myPleya.bigPTvSubtitle' => 'Je persoonlijke kijkassistent',
+			'myPleya.openBigP' => 'Open Big P',
+			'myPleya.switchProfile' => 'Profiel wisselen',
 			'liveTv.serverNotAvailable' => 'Live TV-server is niet beschikbaar.',
 			'liveTv.serverNotConnected' => 'Live TV-server is niet verbonden.',
 			'liveTv.title' => 'Live TV',
@@ -5783,13 +5891,13 @@ extension on TranslationsNl {
 			'videoSettings.playbackSpeed' => 'Afspeelsnelheid',
 			'videoSettings.zoom' => 'Zoom',
 			'videoSettings.sleepTimer' => 'Slaaptimer',
-			'videoSettings.audioSync' => 'Audio synchronisatie',
+			'videoSettings.audioSync' => 'Audiovertraging',
 			'videoSettings.subtitleSync' => 'Ondertitel synchronisatie',
 			'videoSettings.hdr' => 'HDR',
 			'videoSettings.audioOutput' => 'Audio-uitvoer',
 			'videoSettings.performanceOverlay' => 'Prestatie-overlay',
 			'videoSettings.audioPassthrough' => 'Audio-doorvoer',
-			'videoSettings.audioOutputTitle' => 'Audio-uitvoermodus',
+			'videoSettings.audioOutputTitle' => 'Audio-uitvoer',
 			'videoSettings.audioOutputModes.auto' => 'Automatisch',
 			'videoSettings.audioOutputModes.passthrough' => 'Doorvoeren',
 			'videoSettings.audioOutputModes.pcm' => 'PCM (decoderen)',
@@ -5807,12 +5915,12 @@ extension on TranslationsNl {
 			'videoSettings.audioOutputNow' => ({required Object mode}) => 'nu: ${mode}',
 			'videoSettings.audioNormalization' => 'Volume normaliseren',
 			'videoSettings.audioNormalizationSuspended' => 'Dolby-doorvoer loopt, dus audioverwerking staat uit. Je receiver bepaalt het niveau.',
-			'videoSettings.audioPriorityTitle' => 'Prioriteit',
+			'videoSettings.audioPriorityTitle' => 'Prioriteit audiospoor',
 			'videoSettings.audioPriorities.evenVolume' => 'Gelijkmatig volume',
 			'videoSettings.audioPriorities.originalDolby' => 'Originele Dolby Atmos',
-			'videoSettings.audioLevelVolume' => 'Volume gelijkmaken',
+			'videoSettings.audioLevelVolume' => 'Audio normaliseren',
 			'videoSettings.audioLevelVolumeDescription' => 'Brengt elke titel op hetzelfde niveau als de rest van je tv',
-			'videoSettings.audioReduceLoudSounds' => 'Verminder harde geluiden',
+			'videoSettings.audioReduceLoudSounds' => 'Harde geluiden dempen',
 			'videoSettings.audioReduceLoudSoundsDescription' => 'Verkleint het verschil tussen dialoog en harde effecten',
 			'videoSettings.tryLowerQuality' => 'Probeer lagere kwaliteit',
 			'videoSettings.audioPassthroughUnavailable' => 'Deze uitgang accepteert geen Dolby-bitstream — overgeschakeld op gedecodeerd geluid.',
@@ -5898,6 +6006,8 @@ extension on TranslationsNl {
 			'metadataEdit.selectBackground' => 'Achtergrond selecteren',
 			'metadataEdit.selectLogo' => 'Logo selecteren',
 			'metadataEdit.selectSquareArt' => 'Vierkante afbeelding selecteren',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.fromUrl' => 'Vanaf URL',
 			'metadataEdit.uploadFile' => 'Bestand uploaden',
 			'metadataEdit.enterImageUrl' => 'Voer afbeeldings-URL in',
@@ -5916,8 +6026,6 @@ extension on TranslationsNl {
 			'metadataEdit.newestFirst' => 'Nieuwste eerst',
 			'metadataEdit.keep' => 'Bewaren',
 			'metadataEdit.allEpisodes' => 'Alle afleveringen',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.latestEpisodes' => ({required Object count}) => '${count} nieuwste afleveringen',
 			'metadataEdit.latestEpisode' => 'Nieuwste aflevering',
 			'metadataEdit.episodesAddedPastDays' => ({required Object count}) => 'Afleveringen toegevoegd in de afgelopen ${count} dagen',
@@ -6412,6 +6520,8 @@ extension on TranslationsNl {
 			'unifiedCatalog.states.emptyTitle' => 'Deze catalogus is leeg',
 			'unifiedCatalog.states.emptyBody' => 'Geen zichtbare bibliotheek bevat iets voor deze pagina.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Niets voldoet aan deze filters',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.states.filterEmptyBody' => 'Wis een filter om meer titels te zien.',
 			'unifiedCatalog.states.clearFilters' => 'Filters wissen',
 			'unifiedCatalog.states.errorTitle' => 'De catalogus kon niet worden geladen',
@@ -6430,8 +6540,6 @@ extension on TranslationsNl {
 			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titels',
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} van ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Alle films bekijken, opent de volledige catalogus',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Alle series bekijken, opent de volledige catalogus',
 			'unifiedCatalog.home.featured' => 'Uitgelicht',
 			'unifiedCatalog.homeRows.customize' => 'Home aanpassen',
@@ -6515,7 +6623,7 @@ extension on TranslationsNl {
 			'tvMyPleya.statusOffline' => 'Offline',
 			'tvMyPleya.servers' => 'Servers',
 			'tvMyPleya.activity' => 'Activiteit',
-			'tvMyPleya.logs' => 'Logs en diagnose',
+			'tvMyPleya.logs' => 'Logboeken',
 			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Aangemeld als ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Bewaarde films en series',
 			'tvMyPleya.requestsSubtitle' => 'Verzoeken en ontdekken',
@@ -6548,14 +6656,14 @@ extension on TranslationsNl {
 			'tvContextMenu.changeSource' => 'Bron wijzigen',
 			'languageSettings.title' => 'Taal en ondertitels',
 			'languageSettings.description' => 'Audio- en ondertiteltalen, en de series die hun eigen keuze houden',
-			'languageSettings.globalHeader' => 'Globale voorkeur',
+			'languageSettings.globalHeader' => 'Algemeen',
 			'languageSettings.globalOwner' => ({required Object name}) => 'Pleya-profiel ${name} · geldt voor alle content zonder eigen serievoorkeur',
 			'languageSettings.globalOwnerNoProfile' => 'Pleya-profiel · geldt voor alle content zonder eigen serievoorkeur',
 			'languageSettings.audio' => 'Audio',
 			'languageSettings.audioFallbackNote' => 'Ontbreekt de taal, dan de standaardtrack van het bestand',
 			'languageSettings.subtitles' => 'Ondertitels',
 			'languageSettings.subtitlesNote' => 'Voorkeurstaal voor alle content',
-			'languageSettings.subtitleFallback' => 'Terugvaltaal ondertitels',
+			'languageSettings.subtitleFallback' => 'Fallback ondertitels',
 			'languageSettings.subtitleFallbackNote' => 'Ontbreekt je voorkeurstaal, dan deze. Ontbreekt die ook, dan gaan ondertitels uit',
 			'languageSettings.subtitleDisplay' => 'Ondertitels tonen',
 			'languageSettings.subtitleDisplayNote' => 'Wanneer ondertitels vanzelf aangaan',
@@ -6568,7 +6676,7 @@ extension on TranslationsNl {
 			'languageSettings.global' => 'globaal',
 			'languageSettings.forced' => 'geforceerd',
 			'languageSettings.rememberHeader' => 'Onthouden',
-			'languageSettings.seriesHeader' => 'Serievoorkeuren',
+			'languageSettings.seriesHeader' => 'Per serie',
 			'languageSettings.seriesCount' => ({required Object count}) => '${count} series · ontstaan vanzelf als je tijdens een serie een andere taal kiest',
 			'languageSettings.seriesEmpty' => 'Serievoorkeuren ontstaan vanzelf als je tijdens een serie een andere taal kiest.',
 			'languageSettings.seriesFootnote' => 'Selecteer een serie om de voorkeur te bekijken of terug te zetten naar de globale voorkeur. Een aflevering die de taal mist, verandert hier niets aan.',
@@ -6926,6 +7034,8 @@ extension on TranslationsNl {
 			'assistant.confirm.titles.createHomeRow' => 'Rij op het beginscherm maken',
 			'assistant.confirm.titles.createCollection' => 'Collectie maken',
 			'assistant.confirm.titles.requestTitle' => 'Titel aanvragen',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.confirm.titles.downloadEpisodes' => 'Afleveringen downloaden',
 			'assistant.confirm.titles.downloadSubtitle' => 'Ondertitel downloaden',
 			'assistant.confirm.titles.changePlayback' => 'Afspelen aanpassen',
@@ -6944,8 +7054,6 @@ extension on TranslationsNl {
 			'assistant.confirm.create' => 'Aanmaken',
 			'assistant.notes.plexManagedHomeUser' => 'Beheerde Plex Home-gebruiker, met een share op deze server.',
 			'assistant.notes.plexShare' => 'Een share op deze Plex-server.',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.notes.plexHomeMember' => 'Lid van je Plex Home. Alleen de share op deze server verandert.',
 			'assistant.notes.replacesAllAccess' => 'Vervangt alle bestaande toegang van deze gebruiker op deze server.',
 			'assistant.ends.noTools' => 'Big P kan nu niets doen op je servers.',
@@ -7163,9 +7271,9 @@ extension on TranslationsNl {
 			'playbackHandoff.playingOnPhoneBody' => 'Kijk verder op je iPhone of iPad',
 			'localLibrary.playbackUnavailable' => 'Maak verbinding met de server of download deze video om af te spelen.',
 			'localLibrary.title' => 'Lokale bibliotheek',
-			'localLibrary.enable' => 'Bibliotheek vooraf opslaan',
+			'localLibrary.enable' => 'Offline index inschakelen',
 			'localLibrary.description' => 'Bewaar metadata en posters van al je bibliotheken op dit apparaat. De eerste download kan lang duren en veel opslag gebruiken. Video’s worden niet gedownload.',
-			'localLibrary.wifiOnly' => 'Alleen via wifi',
+			'localLibrary.wifiOnly' => 'Alleen via wifi synchroniseren',
 			'localLibrary.wifiDescription' => 'Pauzeer vooraf ophalen via mobiele data. Zet uit om ook mobiele data toe te staan.',
 			'localLibrary.status' => 'Status',
 			'localLibrary.disabled' => 'Vooraf ophalen staat uit. Eerder opgeslagen inhoud blijft beschikbaar.',
@@ -7178,16 +7286,69 @@ extension on TranslationsNl {
 			'localLibrary.paused' => 'Gepauzeerd · hervat zodra Pleya actief is',
 			'localLibrary.error' => 'Bijwerken onvolledig · eerder opgeslagen inhoud is behouden',
 			'localLibrary.progress' => ({required Object count}) => '${count} items verwerkt',
-			'localLibrary.usage' => 'Gebruikte opslag',
-			'localLibrary.lastSync' => 'Laatste geslaagde scan',
+			'localLibrary.usage' => 'Gebruik van opslagruimte',
+			'localLibrary.lastSync' => 'Laatste synchronisatie',
 			'localLibrary.never' => 'Nog niet voltooid',
-			'localLibrary.syncNow' => 'Nu bijwerken',
-			'localLibrary.clear' => 'Lokale bibliotheek wissen',
+			'localLibrary.syncNow' => 'Nu synchroniseren',
+			'localLibrary.clear' => 'Lokale gegevens wissen',
 			'localLibrary.clearMessage' => 'De lokaal opgeslagen bibliotheekmetadata en posters van dit profiel wissen? Inhoud op de server en gedownloade video’s blijven behouden.',
 			'localLibrary.afterClear' => 'Lokale bibliotheek gewist',
 			'localLibrary.chooseAfterClear' => 'Vooraf ophalen uitzetten of je bibliotheek opnieuw ophalen? Je netwerkvoorkeur blijft gelden.',
 			'localLibrary.keepOff' => 'Vooraf ophalen uitzetten',
 			'localLibrary.refill' => 'Bibliotheek opnieuw ophalen',
+			'settingsStudio.forYou' => 'Voor jou',
+			'settingsStudio.connectionsAndProfiles' => 'Verbindingen en profielen',
+			'settingsStudio.system' => 'Systeem',
+			'settingsStudio.integrations' => 'Koppelingen',
+			'settingsStudio.libraryAndHome' => 'Bibliotheek & Home',
+			'settingsStudio.personal' => 'Persoonlijk',
+			'settingsStudio.mainTagline' => 'Maak Pleya helemaal van jou.',
+			'settingsStudio.tvTagline' => 'Jouw kijkervaring, tot in detail.',
+			'settingsStudio.appearanceHeadline' => 'Zo ziet jouw Pleya eruit',
+			'settingsStudio.livePreview' => 'Live voorbeeld',
+			'settingsStudio.yourLibrary' => 'Jouw bibliotheek',
+			'settingsStudio.viewPreview' => 'Bekijk voorbeeld',
+			'settingsStudio.playbackExperience' => 'Afspeelervaring',
+			'settingsStudio.manage' => 'Beheer',
+			'settingsStudio.yourWatchlist' => 'Je kijklijst',
+			'settingsStudio.yourContent' => 'Jouw content',
+			'settingsStudio.lightMode' => 'Lichte modus',
+			'settingsStudio.darkMode' => 'Donkere modus',
+			'settingsStudio.oledMode' => 'OLED-modus',
+			'settingsStudio.systemMode' => 'Systeemmodus',
+			'settingsStudio.posterView' => 'Posterweergave',
+			'settingsStudio.listView' => 'Lijstweergave',
+			'settingsStudio.libraries' => 'Bibliotheken',
+			'settingsStudio.serversAndSources' => 'Servers en bronnen',
+			'settingsStudio.contentAndWindow' => 'Inhoud en venster',
+			'settingsStudio.quality' => 'Kwaliteit',
+			'settingsStudio.maintenance' => 'Onderhoud',
+			'settingsStudio.densityValue' => ({required Object value}) => '${value} van 5',
+			'settingsStudio.existingSources' => 'Bestaande bronnen',
+			'settingsStudio.preferredAudio' => 'Voorkeurstaal audio',
+			'settingsStudio.preferredSubtitles' => 'Voorkeurstaal ondertitels',
+			'settingsStudio.subtitleWhen' => 'Ondertitels altijd / vreemde taal / nooit',
+			'settingsStudio.reorderRows' => 'Rijen in volgorde slepen',
+			'settingsStudio.rowVisibility' => 'Rij zichtbaar of verborgen',
+			'settingsStudio.addOwnRow' => 'Eigen rij toevoegen',
+			'settingsStudio.removeOwnRow' => 'Eigen rij verwijderen',
+			'settingsStudio.chooseRowToRemove' => 'Welke rij?',
+			'settingsStudio.hiddenContinueWatching' => 'Verborgen Verder kijken beheren',
+			'settingsStudio.storage' => 'Opslag',
+			'settingsStudio.managePlex' => 'Plex-servers beheren',
+			'settingsStudio.manageJellyfin' => 'Jellyfin-bronnen beheren',
+			'settingsStudio.manageEmby' => 'Emby-bronnen beheren',
+			'settingsStudio.managePleyaServer' => 'Pleya Server-bronnen beheren',
+			'settingsStudio.removeSource' => 'Bron ontkoppelen / verwijderen',
+			'settingsStudio.linkPlex' => 'Plex-account koppelen',
+			'settingsStudio.addJellyfin' => 'Jellyfin toevoegen',
+			'settingsStudio.addEmby' => 'Emby toevoegen',
+			'settingsStudio.addPleyaServer' => 'Pleya Server toevoegen',
+			'settingsStudio.tvFooterHint' => 'Menu: terug · Selecteer: openen of schakelen',
+			'settingsStudio.video' => 'Video',
+			'settingsStudio.controls' => 'Besturing',
+			'settingsStudio.diagnostics' => 'Diagnose',
+			'settingsStudio.activeProfile' => 'Actief profiel',
 			_ => null,
 		};
 	}

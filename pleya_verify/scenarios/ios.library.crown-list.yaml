@@ -12,19 +12,29 @@ steps:
   - tap: {id: nav.myPleya}
   - wait_until: {id: screen.my_pleya, timeout: 10000}
   - settle: 1000
+  # A-24b: Instellingen sits in the Pleya group below Big P now; scroll it up.
+  - drag: {startX: 187, startY: 500, endX: 187, endY: 150, durationMs: 400}
+  - settle: 1000
   - tap: {id: "my_pleya.tile[settings]"}
   - wait_until: {id: screen.settings, timeout: 10000}
   - settle: 1000
   - tap: {id: "settings.tile[appearance]"}
   - settle: 1000
   - snapshot: appearance-view-mode
-  - tap: {x: 265, y: 437}
-  - settle: 300
+  # A-24b: Raster- of lijstweergave is a value row with a picker.
+  - tap: {id: "my_pleya.section.tile[setting.view_mode]"}
+  - settle: 800
+  - tap: {id: "settings.choice.option[1]"}
+  - settle: 800
   - snapshot: appearance-list-selected
-  - tap: {x: 28, y: 48}
+  - tap: {id: settings.back}
   - settle: 1000
   - tap: {id: nav.myPleya}
   - wait_until: {id: screen.my_pleya, timeout: 10000}
+  - settle: 1000
+  # Mijn Pleya is still scrolled down from the way to Instellingen, which
+  # leaves Bibliotheken above the screen; back to the top first.
+  - drag: {startX: 187, startY: 150, endX: 187, endY: 560, durationMs: 400}
   - settle: 1000
   - tap: {id: "my_pleya.tile[libraries]"}
   - wait_until: {id: screen.library_picker, timeout: 10000}

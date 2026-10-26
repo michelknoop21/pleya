@@ -159,7 +159,10 @@ class AboutScreen extends StatelessWidget {
                         title: t.about.openSourceLicenses,
                         subtitle: t.about.viewLicensesDescription,
                         onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const LicensesScreen()));
+                          Navigator.push(
+                            context,
+                            settingsStudioRoute<void>(context, (context) => const LicensesScreen()),
+                          );
                         },
                       ),
                     ],

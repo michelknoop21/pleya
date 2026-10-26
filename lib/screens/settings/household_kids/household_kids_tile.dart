@@ -10,6 +10,7 @@ import '../../../automation/automation_node.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../profiles/active_profile_provider.dart';
 import '../../../profiles/household_kids_store.dart';
+import '../../../utils/platform_detector.dart';
 import '../../../widgets/setting_tile.dart';
 import 'household_kids_screen.dart';
 
@@ -61,6 +62,11 @@ class _HouseholdKidsTileState extends State<HouseholdKidsTile> {
     if (_kidsProfile) return const SizedBox.shrink();
     final h = t.assistant.household;
     final count = _count;
+    final summary = switch (count) {
+      null || 0 => h.tileNone,
+      1 => h.tileOne,
+      _ => h.tileCount(n: count),
+    };
     return AutomationNode(
       id: AutomationIds.settingsFormButton,
       instance: 'assistant.householdKids',
@@ -68,11 +74,10 @@ class _HouseholdKidsTileState extends State<HouseholdKidsTile> {
       child: SettingNavigationTile(
         icon: Symbols.child_care_rounded,
         title: h.title,
-        subtitle: switch (count) {
-          null || 0 => h.tileNone,
-          1 => h.tileOne,
-          _ => h.tileCount(n: count),
-        },
+        // The count is the row's value: right-aligned off TV (A-24b), the
+        // line under the title on TV.
+        subtitle: PlatformDetector.isTV() ? summary : null,
+        trailingLabel: PlatformDetector.isTV() ? null : summary,
         onTap: () => unawaited(openHouseholdKidsScreen(context)),
       ),
     );

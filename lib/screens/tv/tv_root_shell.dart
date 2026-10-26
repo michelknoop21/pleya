@@ -82,6 +82,7 @@ class TvRootShell extends StatelessWidget {
     required this.onKeyEvent,
     required this.selectLibrary,
     required this.openSettings,
+    this.openLibraries,
     required this.dismissNestedRoute,
     required this.child,
     this.isOfflineMode = false,
@@ -139,6 +140,7 @@ class TvRootShell extends StatelessWidget {
 
   final void Function(String libraryGlobalKey)? selectLibrary;
   final VoidCallback? openSettings;
+  final VoidCallback? openLibraries;
 
   /// Closes the active destination's nested route, if any, and restores focus
   /// the way Back does. Handed to [TvNestedSurface] as [TvNestedRouteScope] so
@@ -246,6 +248,7 @@ class TvRootShell extends StatelessWidget {
                     viewportWidth: constraints.maxWidth,
                     selectLibrary: selectLibrary,
                     openSettings: openSettings,
+                    openLibraries: openLibraries,
                     tvContentFocus: contentFocus,
                     child: TvShellFrame(
                       nav: FocusScope(

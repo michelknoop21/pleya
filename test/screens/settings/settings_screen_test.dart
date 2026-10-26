@@ -29,6 +29,7 @@ import 'package:pleya/providers/tautulli_provider.dart';
 import 'package:pleya/providers/theme_provider.dart';
 import 'package:pleya/providers/trackers_provider.dart';
 import 'package:pleya/providers/trakt_account_provider.dart';
+import 'package:pleya/screens/settings/integrations_settings_screen.dart';
 import 'package:pleya/screens/settings/settings_screen.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/jellyfin_client.dart';
@@ -62,7 +63,13 @@ void main() {
     late AppDatabase db;
     setUpAll(() => PlexApiCache.initialize(db = AppDatabase.forTesting(NativeDatabase.memory())));
 
-    Future<void> pumpSettings(WidgetTester tester, MultiServerManager manager) async {
+    /// A-24b: the Tautulli row lives on Koppelingen; the main page's search
+    /// applies the same gate.
+    Future<void> pumpSettings(
+      WidgetTester tester,
+      MultiServerManager manager, {
+      Widget home = const IntegrationsSettingsScreen(),
+    }) async {
       tester.view.physicalSize = const Size(393, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -83,11 +90,16 @@ void main() {
               Provider<ProfileRegistry>.value(value: ProfileRegistry(db)),
               ChangeNotifierProvider<ActiveProfileProvider>(create: (_) => _FakeActiveProfile(null)),
             ],
-            child: MaterialApp(theme: monoTheme(dark: true), home: const SettingsScreen()),
+            child: MaterialApp(theme: monoTheme(dark: true), home: home),
           ),
         ),
       );
       await tester.pump();
+      await tester.pump();
+    }
+
+    Future<void> searchTautulli(WidgetTester tester) async {
+      await tester.enterText(find.byType(TextField), 'tautulli');
       await tester.pump();
     }
 
@@ -124,6 +136,9 @@ void main() {
 
       await pumpSettings(tester, manager);
       expect(find.text(t.tautulli.title), findsNothing);
+      await pumpSettings(tester, manager, home: const SettingsScreen());
+      await searchTautulli(tester);
+      expect(find.text(t.tautulli.title), findsNothing, reason: 'search is no back door to the screen');
       await unmount(tester);
     });
 
@@ -169,6 +184,9 @@ void main() {
       expect(manager.managesAPlexServer, isTrue);
 
       await pumpSettings(tester, manager);
+      expect(find.text(t.tautulli.title), findsOneWidget);
+      await pumpSettings(tester, manager, home: const SettingsScreen());
+      await searchTautulli(tester);
       expect(find.text(t.tautulli.title), findsOneWidget);
       await unmount(tester);
     });
@@ -230,17 +248,21 @@ void main() {
         expect(screen['ready'], isTrue);
 
         final declared = (AutomationRegistry.instance.snapshot()['declared'] as List).cast<Map<String, Object?>>();
+        // A-24b: one row per page; the rows that moved keep their ids on
+        // Bibliotheken (home_layout, local_library, downloads) and Koppelingen
+        // (trackers, requests, tautulli).
         const expectedTiles = [
           'appearance',
-          'home_layout',
           'playback',
           'language',
           'subtitle_styling',
-          'downloads',
-          'trackers',
-          'requests',
+          'library_home',
+          'integrations',
           'profiles',
           'servers',
+          'advanced',
+          'backup',
+          'about',
         ];
         for (final instance in expectedTiles) {
           declared.firstWhere(

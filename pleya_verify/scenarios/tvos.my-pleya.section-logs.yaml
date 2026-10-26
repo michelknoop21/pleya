@@ -34,10 +34,9 @@ steps:
   # hoofdstuk 33.8). TV8's full suite found this file still pressing past it.
   - press: down
   - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
-  - press: right
-  - press: right
-  - press: right
-  - press: right
+  # A-24b: Logboeken sits in Beheer, the right column.
+  - walk: {direction: right, steps: 4, stopAt: "my_pleya.tile[assistant]", timeout: 60000, settle: 600}
+  - walk: {direction: down, steps: 4, stopAt: "my_pleya.tile[logs]", timeout: 60000, settle: 600}
   - assert: {id: "my_pleya.tile[logs]", focused: true}
   - snapshot: 00-tile-focused
 

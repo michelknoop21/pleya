@@ -372,13 +372,17 @@ class TvCatalogLayout {
   /// grid of those cards reserves the height it actually draws. Zero everywhere
   /// else, which is every other surface: the parameter exists so the one screen
   /// that is a line taller cannot be a *different* calculation.
-  static double cardHeight(double cardWidth, double scale, {int extraMetaLines = 0}) {
+  ///
+  /// [titleLines] is the room the title reserves: two everywhere a card sits
+  /// in a grid, one on Mijn Pleya's kijklijst rail (A-24b northstar 01, title
+  /// with the year straight under it).
+  static double cardHeight(double cardWidth, double scale, {int extraMetaLines = 0, int titleLines = 2}) {
     final inset = cardContentInset(scale);
     final posterBlock = (cardWidth - inset * 2) / posterAspectRatio + inset * 2;
     final metaLine = cardFooterLineGap * scale + (cardMetaFontSize * scale * cardMetaLineHeight).ceilToDouble();
     final footer =
         cardFooterPaddingVertical * scale * 2 +
-        cardTitleFontSize * scale * cardTitleLineHeight * 2 +
+        cardTitleFontSize * scale * cardTitleLineHeight * titleLines +
         metaLine * (1 + extraMetaLines);
     return posterBlock + footer;
   }
@@ -1291,7 +1295,6 @@ class TvMyPleyaLayout {
 
   /// The profile header row (no card since VIS-0925-C).
   static const double headerPadding = 18;
-  static const double avatarSize = 46;
   static const double headerNameFontSize = 22;
   static const double headerMetaFontSize = 13;
   static const double headerGap = 16;
@@ -1305,10 +1308,8 @@ class TvMyPleyaLayout {
   static const double groupLabelFontSize = 14;
   static const double groupLabelGap = 9;
 
-  /// A menu tile. Four to a row on the reference width, and the tile keeps its
-  /// height whether or not it carries a count, so a group with one counted tile
-  /// does not sit taller than its neighbours.
-  static const int tilesPerRow = 4;
+  /// A menu tile. The tile keeps its height whether or not it carries a count,
+  /// so a group with one counted tile does not sit taller than its neighbours.
   static const double tileGap = 14;
   static const double tileRadius = 10;
   static const double tilePadding = 14;
@@ -1332,7 +1333,6 @@ class TvMyPleyaLayout {
 
   /// The footer line ("Aangemeld als … · Pleya x.y.z").
   static const double footerFontSize = 12;
-  static const double footerGap = 18;
 
   /// Ink tiers on `MonoTokens.text`.
   static const double inkPrimary = 1;

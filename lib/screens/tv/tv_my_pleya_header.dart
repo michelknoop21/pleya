@@ -40,7 +40,7 @@ class _ProfileHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           ExcludeSemantics(
-            child: ProfileAvatar(profile: profile, size: TvMyPleyaLayout.avatarSize * scale),
+            child: ProfileAvatar(profile: profile, size: kTvMyPleyaAvatarPt * TvHig.of(context)),
           ),
           SizedBox(width: TvMyPleyaLayout.headerGap * scale),
           Column(
@@ -108,9 +108,13 @@ class _SwitchProfileAction extends StatelessWidget {
       onSelect: onSelect,
       onNavigateUp: onNavigateUp,
       onNavigateDown: onNavigateDown,
+      // The server status to the right is a readout, not a focus stop, so the
+      // pill is both ends of its row.
+      onNavigateLeft: () {},
+      onNavigateRight: () {},
       focusShapeBorder: shape,
       disableScale: true,
-      semanticLabel: t.screens.switchProfile,
+      semanticLabel: t.myPleya.switchProfile,
       child: Container(
         // The ring gap as a margin rather than a Padding around this Container:
         // a Container lays out margin, then decoration, then padding, so the two
@@ -128,13 +132,13 @@ class _SwitchProfileAction extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Symbols.switch_account_rounded,
+              Symbols.swap_horiz_rounded,
               size: TvMyPleyaLayout.tileIconSize * scale,
               color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
             ),
             SizedBox(width: TvCatalogLayout.actionIconGap * scale),
             Text(
-              t.screens.switchProfile,
+              t.myPleya.switchProfile,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -165,21 +169,22 @@ class _ServerStatusList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tk = tokens(context);
-    final rows = servers.serverIds
-        .map(
-          (id) => (
-            id: id,
-            name: servers.serverManager.serverDisplayName(ServerId(id)),
-            online: servers.onlineServerIds.contains(id),
-          ),
-        )
-        .toList();
+    final rows = servers.serverIds.map((id) {
+      final backend = servers.serverManager.getClient(ServerId(id))?.backend;
+      final name = servers.serverManager.serverDisplayName(ServerId(id));
+      return (
+        id: id,
+        // Northstar 01: "Plex · Woonkamer", the kind of server before its name.
+        name: backend == null ? name : '${backendDisplayLabel(backend, serverId: id)} · $name',
+        online: servers.onlineServerIds.contains(id),
+      );
+    }).toList();
     if (rows.isEmpty) return const SizedBox.shrink();
 
     final authErrors = servers.authErrorServers;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         for (final row in rows)
@@ -206,24 +211,31 @@ class _ServerStatusList extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: TvMyPleyaLayout.serverRowGap * scale),
-                Text(
-                  row.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: tk.text,
-                    fontSize: TvMyPleyaLayout.serverRowFontSize * scale,
-                    fontWeight: FontWeight.w600,
+                // Flexible, so a long "Jellyfin · NAS op zolder" ellipsizes in
+                // the room the profile line leaves instead of overflowing it.
+                Flexible(
+                  child: Text(
+                    row.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
+                      fontSize: TvMyPleyaLayout.serverRowFontSize * scale,
+                    ),
                   ),
                 ),
-                SizedBox(width: TvMyPleyaLayout.serverRowGap * scale),
-                Text(
-                  row.online ? t.tvMyPleya.statusOnline : t.tvMyPleya.statusOffline,
-                  style: TextStyle(
-                    color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
-                    fontSize: TvMyPleyaLayout.serverRowFontSize * scale,
+                // Online is the dot alone, as in the northstar; offline is
+                // also said in words, so the state never rests on colour.
+                if (!row.online) ...[
+                  SizedBox(width: TvMyPleyaLayout.serverRowGap * scale),
+                  Text(
+                    t.tvMyPleya.statusOffline,
+                    style: TextStyle(
+                      color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
+                      fontSize: TvMyPleyaLayout.serverRowFontSize * scale,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

@@ -6,10 +6,9 @@ target: ios-sim
 # does it, on Weergave's theme row. Visual evidence for PR 1; the header's own
 # assertions also live in ios.settings.northstar.
 #
-# Coordinates are iPhone SE points (375x667). The theme segments have no
-# automation id of their own; the taps hit the segment labels of the theme
-# row, the first row of Weergave's first card (Licht at x 148, Donker at x 226,
-# y 340, read from the first run's screenshot). The back button is at (28, 48).
+# Coordinates are iPhone SE points (375x667). A-24b: Thema is a value row
+# with a picker (`setting.theme_mode`, then `settings.choice.option[n]` in the
+# order Systeem, Licht, Donker, OLED) and the back chevron is `settings.back`.
 # After a scroll the run settles 2.5 s: iOS scroll physics keep a long
 # ballistic tail, and a tap that lands in it only stops the scroll.
 # The catalog.mixed.v1 fixture serves no backdrops, so the header shows its
@@ -27,6 +26,9 @@ steps:
   - tap: {id: nav.myPleya}
   - wait_until: {id: screen.my_pleya, timeout: 10000}
   - settle: 1000
+  # A-24b: Instellingen sits in the Pleya group below Big P now; scroll it up.
+  - drag: {startX: 187, startY: 500, endX: 187, endY: 150, durationMs: 400}
+  - settle: 1000
   - tap: {id: "my_pleya.tile[settings]"}
   - wait_until: {id: screen.settings, timeout: 10000}
   - settle: 1500
@@ -41,6 +43,11 @@ steps:
   - drag: {startX: 187, startY: 520, endX: 187, endY: 320, durationMs: 700}
   - settle: 2500
   - snapshot: 02-main-scrolled-oled
+  # A-24b: the rows are 50 pt now, so the scroll carries Afspelen under the
+  # status bar; back to the top before it is asserted and opened.
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - settle: 2500
   - assert: {id: "settings.tile[playback]", insideViewport: true, minimumTapTarget: 44}
   - tap: {id: "settings.tile[playback]"}
   - wait_until: {id: settings.header, timeout: 8000}
@@ -49,13 +56,21 @@ steps:
   - drag: {startX: 187, startY: 560, endX: 187, endY: 160, durationMs: 450}
   - settle: 2500
   - snapshot: 04-afspelen-scrolled-oled
-  - tap: {x: 28, y: 48}
+  # The chevron lives in the header, so the page goes back to its top first.
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - settle: 2000
+  - tap: {id: settings.back}
   - settle: 1000
   - assert: {id: "settings.tile[language]", insideViewport: true}
   - tap: {id: "settings.tile[language]"}
   - settle: 1500
   - snapshot: 04b-taal-oled
-  - tap: {x: 28, y: 48}
+  # The chevron lives in the header, so the page goes back to its top first.
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - settle: 2000
+  - tap: {id: settings.back}
   - settle: 1000
   - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
   - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
@@ -64,7 +79,11 @@ steps:
   - wait_until: {id: settings.header, timeout: 8000}
   - settle: 1200
   - snapshot: 05-weergave-oled
-  - tap: {x: 28, y: 48}
+  # The chevron lives in the header, so the page goes back to its top first.
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - settle: 2000
+  - tap: {id: settings.back}
   - settle: 1000
   - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
   - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
@@ -72,10 +91,16 @@ steps:
   - tap: {id: "settings.tile[appearance]"}
   - wait_until: {id: settings.header, timeout: 8000}
   - settle: 1200
-  - tap: {x: 226, y: 340}
+  - tap: {id: "my_pleya.section.tile[setting.theme_mode]"}
+  - settle: 800
+  - tap: {id: "settings.choice.option[2]"}
   - settle: 1500
   - snapshot: 06-weergave-dark
-  - tap: {x: 28, y: 48}
+  # The chevron lives in the header, so the page goes back to its top first.
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - settle: 2000
+  - tap: {id: settings.back}
   - settle: 1000
   # ── dark ──
   - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
@@ -86,6 +111,11 @@ steps:
   - drag: {startX: 187, startY: 520, endX: 187, endY: 320, durationMs: 700}
   - settle: 2500
   - snapshot: 08-main-scrolled-dark
+  # A-24b: the rows are 50 pt now, so the scroll carries Afspelen under the
+  # status bar; back to the top before it is asserted and opened.
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - settle: 2500
   - assert: {id: "settings.tile[playback]", insideViewport: true, minimumTapTarget: 44}
   - tap: {id: "settings.tile[playback]"}
   - wait_until: {id: settings.header, timeout: 8000}
@@ -94,13 +124,21 @@ steps:
   - drag: {startX: 187, startY: 560, endX: 187, endY: 160, durationMs: 450}
   - settle: 2500
   - snapshot: 10-afspelen-scrolled-dark
-  - tap: {x: 28, y: 48}
+  # The chevron lives in the header, so the page goes back to its top first.
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - settle: 2000
+  - tap: {id: settings.back}
   - settle: 1000
   - assert: {id: "settings.tile[language]", insideViewport: true}
   - tap: {id: "settings.tile[language]"}
   - settle: 1500
   - snapshot: 10b-taal-dark
-  - tap: {x: 28, y: 48}
+  # The chevron lives in the header, so the page goes back to its top first.
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - settle: 2000
+  - tap: {id: settings.back}
   - settle: 1000
   - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
   - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
@@ -108,10 +146,16 @@ steps:
   - tap: {id: "settings.tile[appearance]"}
   - wait_until: {id: settings.header, timeout: 8000}
   - settle: 1200
-  - tap: {x: 148, y: 340}
+  - tap: {id: "my_pleya.section.tile[setting.theme_mode]"}
+  - settle: 800
+  - tap: {id: "settings.choice.option[1]"}
   - settle: 1500
   - snapshot: 11-weergave-light
-  - tap: {x: 28, y: 48}
+  # The chevron lives in the header, so the page goes back to its top first.
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - settle: 2000
+  - tap: {id: settings.back}
   - settle: 1000
   # ── light ──
   - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
@@ -122,6 +166,11 @@ steps:
   - drag: {startX: 187, startY: 520, endX: 187, endY: 320, durationMs: 700}
   - settle: 2500
   - snapshot: 13-main-scrolled-light
+  # A-24b: the rows are 50 pt now, so the scroll carries Afspelen under the
+  # status bar; back to the top before it is asserted and opened.
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - settle: 2500
   - assert: {id: "settings.tile[playback]", insideViewport: true, minimumTapTarget: 44}
   - tap: {id: "settings.tile[playback]"}
   - wait_until: {id: settings.header, timeout: 8000}
@@ -130,7 +179,11 @@ steps:
   - drag: {startX: 187, startY: 560, endX: 187, endY: 160, durationMs: 450}
   - settle: 2500
   - snapshot: 15-afspelen-scrolled-light
-  - tap: {x: 28, y: 48}
+  # The chevron lives in the header, so the page goes back to its top first.
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}
+  - settle: 2000
+  - tap: {id: settings.back}
   - settle: 1000
   # Taal en ondertitels in light: the value rows with the shared label.
   - drag: {startX: 187, startY: 200, endX: 187, endY: 620, durationMs: 300}

@@ -7,20 +7,24 @@ import 'package:provider/provider.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../providers/multi_server_provider.dart';
 import '../../../services/settings_service.dart';
+import '../../../utils/platform_detector.dart';
 import '../../../widgets/setting_tile.dart';
+import '../../../widgets/settings_section.dart' show SettingsIconStyleScope;
 import '../settings_utils.dart';
 
-/// The app-language row on the Appearance page.
+/// The app-language row, first in Taal en ondertitels (A-24b, Michel's
+/// decision of 25 October 2026; it used to sit in Weergave).
 ///
 /// VIS-0925-C: this was a bare `ListTile`, the one row on the page without
 /// [SettingRowFocus]. On TV it therefore had no focus treatment of its own and
 /// a second focus stop inside the tile. It is now a [SettingNavigationTile],
 /// the same row, focus, badge and chevron as every other settings row.
 class AppLanguageRow extends StatelessWidget {
-  const AppLanguageRow({super.key, required this.onRestart});
+  const AppLanguageRow({super.key, this.onRestart});
 
   /// Called after a new language is written; the app restarts to apply it.
-  final VoidCallback onRestart;
+  /// Null restarts to the root route, as Weergave did.
+  final VoidCallback? onRestart;
 
   Future<void> _pick(BuildContext context) async {
     final value = await showSelectionDialog<AppLocale>(
@@ -37,16 +41,30 @@ class AppLanguageRow extends StatelessWidget {
     if (context.mounted) {
       context.read<MultiServerProvider>().serverManager.updatePlexLanguage(value.languageCode);
     }
-    if (context.mounted) onRestart();
+    if (!context.mounted) return;
+    final restart = onRestart;
+    if (restart != null) {
+      restart();
+    } else {
+      unawaited(Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil('/', (route) => false));
+    }
   }
 
   @override
-  Widget build(BuildContext context) => SettingNavigationTile(
-    icon: Symbols.language_rounded,
-    title: t.settings.language,
-    subtitle: appLocaleDisplayName(LocaleSettings.currentLocale),
-    onTap: () => _pick(context),
-  );
+  Widget build(BuildContext context) {
+    final name = appLocaleDisplayName(LocaleSettings.currentLocale);
+    // The language is the row's value: right-aligned (A-24b), and on TV
+    // outside Instellingen' Studio rows the value line under the title.
+    final underTitle = PlatformDetector.isTV() && !SettingsIconStyleScope.hidesDescriptions(context);
+    return SettingNavigationTile(
+      icon: Symbols.language_rounded,
+      title: t.settings.language,
+      subtitle: underTitle ? name : null,
+      trailingLabel: underTitle ? null : name,
+      automationInstance: 'setting.${SettingsService.appLocale.key}',
+      onTap: () => _pick(context),
+    );
+  }
 }
 
 /// A locale's own name for itself.

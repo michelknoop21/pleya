@@ -1,6 +1,9 @@
 import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
+
 import '../../focus/focusable_text_field.dart';
 import '../../focus/input_mode_tracker.dart';
 import '../../i18n/strings.g.dart';
@@ -114,21 +117,29 @@ Future<T?> showSelectionDialog<T>({
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: .min,
-          children: options.map((option) {
-            final selected = option.value == currentValue;
-            return FocusableListTile(
-              key: ValueKey(option.value),
-              leading: Icon(
-                selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                color: selected ? Theme.of(dialogContext).colorScheme.primary : null,
+          children: [
+            for (final (index, option) in options.indexed)
+              // A-24b: the picker is how a Studio value row changes; Verify
+              // picks an option by its place in the list.
+              AutomationNode(
+                id: AutomationIds.settingsChoiceOption,
+                instance: '$index',
+                role: 'list.item',
+                state: () => {'selected': option.value == currentValue},
+                child: FocusableListTile(
+                  key: ValueKey(option.value),
+                  leading: Icon(
+                    option.value == currentValue ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                    color: option.value == currentValue ? Theme.of(dialogContext).colorScheme.primary : null,
+                  ),
+                  title: Text(option.title),
+                  subtitle: option.subtitle != null ? Text(option.subtitle!) : null,
+                  selected: option.value == currentValue,
+                  autofocus: focusFirstItem && option.value == currentValue,
+                  onTap: () => Navigator.pop(dialogContext, option.value),
+                ),
               ),
-              title: Text(option.title),
-              subtitle: option.subtitle != null ? Text(option.subtitle!) : null,
-              selected: selected,
-              autofocus: focusFirstItem && selected,
-              onTap: () => Navigator.pop(dialogContext, option.value),
-            );
-          }).toList(),
+          ],
         ),
       ),
     ),
