@@ -6,10 +6,13 @@ import (
 	"compress/gzip"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -516,14 +519,9 @@ func TestUpgradeBackupOfAnOlderSchemaRestoresAndMigrates(t *testing.T) {
 // nieuwste schema brengen.
 func TestUpgradeBackupBeforeTrigramMigrationWorks(t *testing.T) {
 	testsupport.HasPostgresClient(t)
-	pool := testsupport.Pool(t)
+	pool := privateDatabasePool(t)
 	ctx := context.Background()
 	if _, err := migrate.RunTo(ctx, pool, nil, 16); err != nil {
-		t.Fatal(err)
-	}
-	// De extensie hoort bij de database en overleeft het schema van een eerdere
-	// test; productie had haar op schema 16 niet.
-	if _, err := pool.Exec(ctx, `DROP EXTENSION IF EXISTS pg_trgm`); err != nil {
 		t.Fatal(err)
 	}
 	var has bool
@@ -555,4 +553,42 @@ func TestUpgradeBackupBeforeTrigramMigrationWorks(t *testing.T) {
 	if rec.LastTest == nil || rec.LastTest.Status != StatusOK {
 		t.Fatalf("hersteltest van de back-up zonder pg_trgm: %+v", rec.LastTest)
 	}
+}
+
+// privateDatabasePool geeft een pool op een eigen, lege database. pg_trgm hoort
+// bij de database en niet bij het schema, en de gedeelde testdatabase heeft haar
+// zodra een andere test haar nodig had; alleen een eigen database bewijst dat
+// de extensie ontbreekt.
+func privateDatabasePool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	dsn := strings.TrimSpace(os.Getenv(testsupport.EnvDatabaseURL))
+	if dsn == "" {
+		t.Skipf("%s is niet gezet", testsupport.EnvDatabaseURL)
+	}
+	ctx := context.Background()
+	admin, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := fmt.Sprintf("pleya_trgm_test_%d", time.Now().UnixNano())
+	if _, err := admin.Exec(ctx, `CREATE DATABASE `+name+` TEMPLATE template0`); err != nil {
+		admin.Close()
+		t.Fatalf("eigen database aanmaken: %v", err)
+	}
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.ConnConfig.Database = name
+	cfg.MaxConns = 4
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		pool.Close()
+		_, _ = admin.Exec(context.Background(), `DROP DATABASE IF EXISTS `+name+` WITH (FORCE)`)
+		admin.Close()
+	})
+	return pool
 }
