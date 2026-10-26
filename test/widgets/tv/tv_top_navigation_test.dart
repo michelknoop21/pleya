@@ -252,7 +252,12 @@ void main() {
         'A-24c: on the Apple TV canvas the longer bar clears the avatar and the wordmark (${locale.languageCode})',
         (tester) async {
           await tester.runAsync(loadAppFontsForGoldens);
+          // The labels come from slang, so its locale is what makes the bar
+          // German ("Einstellungen", the longest Instellingen label).
+          await tester.runAsync(() => LocaleSettings.setLocale(AppLocale.values.byName(locale.languageCode)));
+          addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
           await pump(tester, destinations: withLiveTv(), active: TvDestinationId.myPleya, locale: locale);
+          expect(find.text(t.settings.title), findsOneWidget);
           tester.view.physicalSize = kTvGoldenSurfaceSize;
           await tester.pumpAndSettle();
 
