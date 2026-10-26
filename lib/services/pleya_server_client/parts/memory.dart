@@ -59,7 +59,11 @@ class _PleyaMemoryTransport implements MemorySyncTransport {
       final expected = _client.connection.accountUserId;
       if (expected == null) throw const MemorySyncFailure('account_required');
       final me = await _request('GET', '/users/me');
-      if (!_isCurrent() || me['id'] != expected || !const {'owner', 'admin', 'member'}.contains(me['role'])) {
+      final role = me['role'];
+      if (!_isCurrent() ||
+          me['id'] != expected ||
+          role is! String ||
+          !const {'owner', 'admin', 'member'}.contains(role)) {
         throw const MemorySyncFailure('memory.not_permitted');
       }
       final json = await _request(method, path, body);

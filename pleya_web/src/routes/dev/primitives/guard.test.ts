@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 const environment = vi.hoisted(() => ({ dev: true }));
-vi.mock('$app/environment', () => environment);
+vi.mock('$app/env', () => environment);
 
 import { load } from './+page';
 

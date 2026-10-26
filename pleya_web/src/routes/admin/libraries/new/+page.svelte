@@ -1,7 +1,7 @@
 <!-- `/admin/libraries/new`: scherm 22 in de vorm toevoegen (`POST /libraries`). -->
 <script lang="ts">
-  import LibraryEditor from '$lib/admin/LibraryEditor.svelte';
-  import { t } from '$lib/i18n';
+  import LibraryEditor from '#lib/admin/LibraryEditor.svelte';
+  import { t } from '#lib/i18n/index.js';
 </script>
 
 <svelte:head>

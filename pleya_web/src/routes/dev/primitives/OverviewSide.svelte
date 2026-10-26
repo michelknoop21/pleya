@@ -6,10 +6,10 @@
   ontwikkeling.
 -->
 <script lang="ts">
-  import Field from '$lib/components/Field.svelte';
-  import Panel from '$lib/components/Panel.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
-  import Toggle from '$lib/components/Toggle.svelte';
+  import Field from '#lib/components/Field.svelte';
+  import Panel from '#lib/components/Panel.svelte';
+  import Skeleton from '#lib/components/Skeleton.svelte';
+  import Toggle from '#lib/components/Toggle.svelte';
 
   let name = $state('Films');
   let path = $state('/volume1/media/Films');

@@ -293,7 +293,7 @@ oordeel op dat er geslaagd uitziet en niets bewijst.
 
 ## Content Security Policy
 
-De CSP staat in `svelte.config.js` en komt als meta-tag in de gegenereerde HTML, niet als
+De CSP staat in `pleya_web/csp.ts` en komt als meta-tag in de gegenereerde HTML, niet als
 Go-header. SvelteKit schrijft één bootstrapscript inline en zet de hash daarvan in die meta-tag;
 een browser doorsnijdt alle policies, dus een Go-header met `script-src 'self'` zou datzelfde
 script alsnog blokkeren. De Go-laag stuurt `frame-ancestors 'none'`, de enige directive die een
@@ -302,7 +302,7 @@ meta-tag niet mag dragen, plus de headers buiten CSP.
 `style-src` is `'self'` zonder `'unsafe-inline'`, en dat vraagt dat geen enkele component een
 `style`-attribuut zet. Enige uitzondering is SvelteKit's eigen routeaankondiging
 (`#svelte-announcer`): die stijlt zichzelf inline na hydratie, buiten Kits hashmechanisme om. Daarom
-staat naast `'unsafe-hashes'` de hash van die ene stijltekst in `svelte.config.js`; elk ander
+staat naast `'unsafe-hashes'` de hash van die ene stijltekst in `pleya_web/csp.ts`; elk ander
 inline stijlattribuut blijft geblokkeerd. `src/csp.test.ts` rekent die hash uit Kits broncode na
 en faalt bij een Kit-versie die de tekst wijzigt. Browsers zonder `unsafe-hashes`-ondersteuning
 melden een schendingsregel in de console, zonder functioneel effect: `base.css` houdt het element

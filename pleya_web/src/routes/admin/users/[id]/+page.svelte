@@ -2,8 +2,8 @@
 <script lang="ts">
   import { page } from '$app/state';
 
-  import UserEditor from '$lib/admin/UserEditor.svelte';
-  import { t } from '$lib/i18n';
+  import UserEditor from '#lib/admin/UserEditor.svelte';
+  import { t } from '#lib/i18n/index.js';
 
   const id = $derived(page.params['id'] ?? '');
 </script>

@@ -1,10 +1,10 @@
 <!-- Gallerijlabels zijn hier gewone Nederlandse tekst: de route bestaat alleen in ontwikkeling. -->
 <script lang="ts">
-  import Panel from '$lib/components/Panel.svelte';
-  import StatTile from '$lib/components/StatTile.svelte';
-  import StatusPill, { type PillTone } from '$lib/components/StatusPill.svelte';
-  import Alert from '$lib/components/Alert.svelte';
-  import Chips from '$lib/components/Chips.svelte';
+  import Panel from '#lib/components/Panel.svelte';
+  import StatTile from '#lib/components/StatTile.svelte';
+  import StatusPill, { type PillTone } from '#lib/components/StatusPill.svelte';
+  import Alert from '#lib/components/Alert.svelte';
+  import Chips from '#lib/components/Chips.svelte';
   import GallerySection from './GallerySection.svelte';
 
   const tones: { tone: PillTone; label: string }[] = [

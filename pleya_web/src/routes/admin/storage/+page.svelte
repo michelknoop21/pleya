@@ -1,7 +1,7 @@
 <!-- `/admin/storage`: scherm 24. -->
 <script lang="ts">
-  import StoragePage from '$lib/admin/StoragePage.svelte';
-  import { t } from '$lib/i18n';
+  import StoragePage from '#lib/admin/StoragePage.svelte';
+  import { t } from '#lib/i18n/index.js';
 </script>
 
 <svelte:head>

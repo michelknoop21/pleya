@@ -4359,7 +4359,7 @@ class _TranslationsAssistantMemoryScreenMenuNl extends TranslationsAssistantMemo
 	@override String get use => 'Geheugen gebruiken';
 	@override String get useOn => 'Geheugen gebruiken: Aan';
 	@override String get useOff => 'Geheugen gebruiken: Uit';
-	@override String get useNote => 'Big P onthoudt wat je hem vraagt te onthouden. Alleen voor dit profiel, alleen op dit apparaat. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag, en voor het overzicht de herinneringen van dit profiel.';
+	@override String get useNote => 'Big P onthoudt wat je hem vraagt te onthouden, voor dit profiel. Herinneringen blijven op dit apparaat tenzij je ze expliciet aan je eigen Pleya Server-account koppelt. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag, en voor het overzicht de herinneringen van dit profiel.';
 	@override String get rewrite => 'Overzicht opnieuw schrijven';
 	@override String get clear => 'Alle herinneringen wissen';
 }
@@ -6871,7 +6871,7 @@ extension on TranslationsNl {
 			'assistant.memory.screen.menu.use' => 'Geheugen gebruiken',
 			'assistant.memory.screen.menu.useOn' => 'Geheugen gebruiken: Aan',
 			'assistant.memory.screen.menu.useOff' => 'Geheugen gebruiken: Uit',
-			'assistant.memory.screen.menu.useNote' => 'Big P onthoudt wat je hem vraagt te onthouden. Alleen voor dit profiel, alleen op dit apparaat. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag, en voor het overzicht de herinneringen van dit profiel.',
+			'assistant.memory.screen.menu.useNote' => 'Big P onthoudt wat je hem vraagt te onthouden, voor dit profiel. Herinneringen blijven op dit apparaat tenzij je ze expliciet aan je eigen Pleya Server-account koppelt. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag, en voor het overzicht de herinneringen van dit profiel.',
 			'assistant.memory.screen.menu.rewrite' => 'Overzicht opnieuw schrijven',
 			'assistant.memory.screen.menu.clear' => 'Alle herinneringen wissen',
 			'assistant.memory.screen.clearDialog.title' => 'Alle herinneringen wissen?',

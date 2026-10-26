@@ -9969,8 +9969,8 @@ class TranslationsAssistantMemoryScreenMenuEn {
 	/// en: 'Use memory: Off'
 	String get useOff => 'Use memory: Off';
 
-	/// en: 'Big P remembers what you ask him to remember. Only for this profile, only on this device. With a cloud model, relevant memories go along with your question, and this profile's memories for the overview.'
-	String get useNote => 'Big P remembers what you ask him to remember. Only for this profile, only on this device. With a cloud model, relevant memories go along with your question, and this profile\'s memories for the overview.';
+	/// en: 'Big P remembers what you ask him to remember, for this profile. Memories stay on this device unless you explicitly connect them to your own Pleya Server account. With a cloud model, relevant memories go along with your question, and this profile's memories for the overview.'
+	String get useNote => 'Big P remembers what you ask him to remember, for this profile. Memories stay on this device unless you explicitly connect them to your own Pleya Server account. With a cloud model, relevant memories go along with your question, and this profile\'s memories for the overview.';
 
 	/// en: 'Write overview again'
 	String get rewrite => 'Write overview again';
@@ -12596,7 +12596,7 @@ extension on Translations {
 			'assistant.memory.screen.menu.use' => 'Use memory',
 			'assistant.memory.screen.menu.useOn' => 'Use memory: On',
 			'assistant.memory.screen.menu.useOff' => 'Use memory: Off',
-			'assistant.memory.screen.menu.useNote' => 'Big P remembers what you ask him to remember. Only for this profile, only on this device. With a cloud model, relevant memories go along with your question, and this profile\'s memories for the overview.',
+			'assistant.memory.screen.menu.useNote' => 'Big P remembers what you ask him to remember, for this profile. Memories stay on this device unless you explicitly connect them to your own Pleya Server account. With a cloud model, relevant memories go along with your question, and this profile\'s memories for the overview.',
 			'assistant.memory.screen.menu.rewrite' => 'Write overview again',
 			'assistant.memory.screen.menu.clear' => 'Clear all memories',
 			'assistant.memory.screen.clearDialog.title' => 'Clear all memories?',

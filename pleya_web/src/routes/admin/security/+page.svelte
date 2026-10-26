@@ -1,7 +1,7 @@
 <!-- `/admin/security`: scherm 31. -->
 <script lang="ts">
-  import SecurityPage from '$lib/admin/settings/SecurityPage.svelte';
-  import { t } from '$lib/i18n';
+  import SecurityPage from '#lib/admin/settings/SecurityPage.svelte';
+  import { t } from '#lib/i18n/index.js';
 </script>
 
 <svelte:head>

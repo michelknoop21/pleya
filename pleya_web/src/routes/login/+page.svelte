@@ -1,12 +1,12 @@
 <script lang="ts">
-  import Wordmark from '$lib/components/Wordmark.svelte';
+  import Wordmark from '#lib/components/Wordmark.svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import Field from '$lib/components/Field.svelte';
-  import { session } from '$lib/stores/session.svelte';
-  import { ApiError, describeError } from '$lib/api/errors';
-  import { deviceFields } from '$lib/auth/device';
-  import { t } from '$lib/i18n';
+  import Field from '#lib/components/Field.svelte';
+  import { session } from '#lib/stores/session.svelte.js';
+  import { ApiError, describeError } from '#lib/api/errors.js';
+  import { deviceFields } from '#lib/auth/device.js';
+  import { t } from '#lib/i18n/index.js';
 
   let username = $state('');
   let password = $state('');
@@ -27,7 +27,7 @@
         ...deviceFields(session.capabilities)
       });
       await session.afterAuth();
-      await goto('/', { replaceState: true });
+      await goto('/', { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.code === 'auth.rate_limited') {
         // De server geeft retry_after_ms mee in details. Dat is het enige

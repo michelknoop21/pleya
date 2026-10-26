@@ -1,7 +1,7 @@
 <!-- `/admin/diagnostics/maintenance`: scherm 35. In de northstar hangt Onderhoud onder Diagnostiek. -->
 <script lang="ts">
-  import BackupsPage from '$lib/admin/backups/BackupsPage.svelte';
-  import { t } from '$lib/i18n';
+  import BackupsPage from '#lib/admin/backups/BackupsPage.svelte';
+  import { t } from '#lib/i18n/index.js';
 </script>
 
 <svelte:head>

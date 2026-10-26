@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../automation/automation_ids.dart';
 import '../../../automation/automation_node.dart';
+import '../../../automation/automation_screen.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../navigation/profile_memory_sync.dart';
 import '../../../navigation/tv/tv_nested_surface.dart';
@@ -212,30 +213,34 @@ class _MemorySyncScreenState extends State<MemorySyncScreen> {
         ],
       ];
       final tv = PlatformDetector.isTV();
-      return AutomationNode(
+      return AutomationScreen(
         id: AutomationIds.screenMemorySync,
-        role: 'screen',
-        state: () => {
-          'status': _sync.status.name,
-          'busy': _busy,
-          'preview': preview != null,
-          'conflicts': _sync.conflicts.length,
-          'eligible': widget.binding.eligible,
-        },
-        child: MemoryScale.forPlatform(
-          context,
-          MemoryPage(
-            onBack: _back,
-            child: tv
-                ? TvPageSurface(title: s.title, children: children)
-                : Column(
-                    children: [
-                      MemoryHeader(title: s.title, onBack: _back, backInstance: 'syncBack'),
-                      Expanded(
-                        child: ListView(padding: const EdgeInsets.all(20), children: children),
-                      ),
-                    ],
-                  ),
+        readiness: () => const AutomationReadiness.ready(),
+        child: AutomationNode(
+          id: AutomationIds.screenMemorySync,
+          role: 'screen',
+          state: () => {
+            'status': _sync.status.name,
+            'busy': _busy,
+            'preview': preview != null,
+            'conflicts': _sync.conflicts.length,
+            'eligible': widget.binding.eligible,
+          },
+          child: MemoryScale.forPlatform(
+            context,
+            MemoryPage(
+              onBack: _back,
+              child: tv
+                  ? TvPageSurface(title: s.title, children: children)
+                  : Column(
+                      children: [
+                        MemoryHeader(title: s.title, onBack: _back, backInstance: 'syncBack'),
+                        Expanded(
+                          child: ListView(padding: const EdgeInsets.all(20), children: children),
+                        ),
+                      ],
+                    ),
+            ),
           ),
         ),
       );

@@ -2588,7 +2588,7 @@
           "use": "Use memory",
           "useOn": "Use memory: On",
           "useOff": "Use memory: Off",
-          "useNote": "Big P remembers what you ask him to remember. Only for this profile, only on this device. With a cloud model, relevant memories go along with your question, and this profile's memories for the overview.",
+          "useNote": "Big P remembers what you ask him to remember, for this profile. Memories stay on this device unless you explicitly connect them to your own Pleya Server account. With a cloud model, relevant memories go along with your question, and this profile's memories for the overview.",
           "rewrite": "Write overview again",
           "clear": "Clear all memories"
         },

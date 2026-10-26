@@ -1,9 +1,9 @@
 <!-- Gallerijlabels zijn hier gewone Nederlandse tekst: de route bestaat alleen in ontwikkeling. -->
 <script lang="ts">
-  import DataTable, { type Column } from '$lib/components/DataTable.svelte';
-  import Steps from '$lib/components/Steps.svelte';
-  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-  import StatusPill from '$lib/components/StatusPill.svelte';
+  import DataTable, { type Column } from '#lib/components/DataTable.svelte';
+  import Steps from '#lib/components/Steps.svelte';
+  import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+  import StatusPill from '#lib/components/StatusPill.svelte';
   import GallerySection from './GallerySection.svelte';
 
   interface Row {

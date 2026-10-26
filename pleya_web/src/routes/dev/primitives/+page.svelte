@@ -13,8 +13,8 @@
 <script lang="ts">
   import { page } from '$app/state';
 
-  import SkeletonPage from '$lib/components/SkeletonPage.svelte';
-  import ThemePicker from '$lib/components/ThemePicker.svelte';
+  import SkeletonPage from '#lib/components/SkeletonPage.svelte';
+  import ThemePicker from '#lib/components/ThemePicker.svelte';
   import FormSection from './FormSection.svelte';
   import DisplaySection from './DisplaySection.svelte';
   import StructureSection from './StructureSection.svelte';
