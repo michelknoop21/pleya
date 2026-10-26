@@ -65,6 +65,20 @@ Gebruik hier geen `--delete`. De server ruimt zijn eigen map op na `PLEYA_SERVER
 
 Welke bestemming en waar de wachtzin buiten de NAS staat zijn keuzes van de beheerder; dit document legt ze niet vast.
 
+## Zo staat het op de productie-NAS
+
+Sinds 26 oktober 2026 staat de back-upmap van productie op een andere fysieke schijf dan `/config`. `PLEYA_SERVER_BACKUP_HOST=/volumeUSB3/usbshare/pleya-backups` in `/volume1/docker/pleya-server/.env` hangt die map als `/backups` in de container (ext4 op de USB3-schijf, `/volume1` is de interne pool; map met modus 700, tars met 600). De waarschuwing `same_failure_domain` komt daardoor niet meer terug.
+
+`PLEYA_SERVER_BACKUP_KEY` staat in dezelfde `.env` (modus 600, 40 tekens, op de NAS gegenereerd en nergens getoond). Sinds die sleutel er is, zitten de geheimen versleuteld in nieuwe back-ups; de scherm-rij zegt dan "geheimen erin, versleuteld" in plaats van "zonder geheimen". Eerdere back-ups zijn zonder sleutel gemaakt en blijven dat. De sleutel lees je zelf met `ssh synology "sed -n 's/^PLEYA_SERVER_BACKUP_KEY=//p' /volume1/docker/pleya-server/.env"`, in een eigen terminal en niet in een gedeelde sessie.
+
+Op dezelfde dag is de keten op productie gemeten, na een back-up van de database en `.env` vooraf: de container is opnieuw aangemaakt (zonder rebuild), `readyz` was na ongeveer 6 seconden groen, de status werd `healthy` en het log bevat geen foutregels. Een handmatige back-up gaf schema 22 met 577 titels en geheimen erin. De hersteltest op die back-up slaagde met 577 van 577 titels.
+
+Wat hier nog niet klopt:
+
+- De sleutel staat alleen op de NAS. Bewaar een kopie in een wachtwoordkluis buiten de NAS, anders is de ondertekensleutel uit een back-up verloren zodra de NAS weg is. Dat is aan de beheerder.
+- Er draait nog geen kopie buiten de NAS. De USB3-schijf beschermt tegen een kapotte interne pool, niet tegen brand, diefstal of het verlies van de hele NAS. Hyper Backup of rsync (zie hierboven) is nog niet ingesteld.
+- Is de USB-schijf niet gemount bij het opstarten, dan maakt Docker de hostmap `/volumeUSB3/usbshare/pleya-backups` niet zelf op de schijf aan en schrijft de server in een lege map op het systeemvolume. Controleer na een herstart van de NAS dat `GET /backups` de bestaande tars nog toont; staan ze op `missing`, dan is de schijf niet gemount.
+
 ## Handmatig, gepland en de hersteltest
 
 Elke dag op `PLEYA_SERVER_BACKUP_TIME` zet de server een back-up in de jobwachtrij. Is de laatste geslaagde hersteltest ouder dan zeven dagen, dan volgt er direct een hersteltest op die back-up.
