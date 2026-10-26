@@ -38,7 +38,9 @@ services:
       # Bibliotheken: slug=soort:/pad[,/pad]. De slug is de matchsleutel bij het
       # opstarten, dus een gewijzigde titel of een verplaatste root maakt geen
       # tweede bibliotheek en de ids overleven een herstart.
-      PLEYA_SERVER_LIBRARIES: ${PLEYA_SERVER_LIBRARIES:-films=movies:/media/library}
+      # Leeg als de .env hem niet noemt: een standaardbibliotheek zou anders terugkomen
+      # zodra een beheerder de variabele wegHaalt nadat de bibliotheken zijn overgenomen.
+      PLEYA_SERVER_LIBRARIES: ${PLEYA_SERVER_LIBRARIES:-}
 
       # Per root: mag de goedkope laag van de scanner op inodes bouwen. Zonder
       # vermelding beslist het bestandssysteemtype, en bij twijfel is dat nee.
