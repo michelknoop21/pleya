@@ -4,12 +4,13 @@ part of 'assistant_tools.dart';
 // server's plays with the source's own account key; see assistant_tools_insights_watch.dart
 // for how they are combined.
 
-Future<_ServerPlays> _tautulliPlays(ServerId id, TautulliClient tautulli, int days) async {
+Future<_ServerPlays> _tautulliPlays(ServerId id, TautulliClient tautulli, int days, {int? userId}) async {
   final after = _day(DateTime.now().subtract(Duration(days: days - 1)));
   final entries = <TautulliHistoryEntry>[];
   var capped = false;
   while (true) {
     final page = await tautulli.history(
+      userId: userId,
       after: after,
       length: _historyPage,
       start: entries.length,
