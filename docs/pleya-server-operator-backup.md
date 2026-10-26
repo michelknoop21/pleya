@@ -1,6 +1,6 @@
 # Pleya Server: back-ups, terugzetten en upgraden
 
-Dit document is voor wie de server beheert. Het zegt waar de back-ups staan, wat erin zit, hoe je er een terugzet en wat er bij een upgrade gebeurt. Het gedrag is getest in `pleya_server/internal/backup/backup_test.go`, `pleya_server/internal/api/backups_api_test.go` en `pleya_server/cmd/pleya-server/backupwork_test.go`. Het beheerscherm (S25.6) is nog niet gebouwd. Een kopie buiten de NAS (S25.7) doet de server niet zelf; die loopt via de voorziening die de NAS al heeft, en staat onder "Een kopie buiten de NAS".
+Dit document is voor wie de server beheert. Het zegt waar de back-ups staan, wat erin zit, hoe je er een terugzet en wat er bij een upgrade gebeurt. Het gedrag is getest in `pleya_server/internal/backup/backup_test.go`, `pleya_server/internal/api/backups_api_test.go` en `pleya_server/cmd/pleya-server/backupwork_test.go`. Het beheerscherm staat in Pleya Web onder Serverbeheer, Diagnostiek, Onderhoud (`/admin/diagnostics/maintenance`, S25.6): de lijst, de instellingen met hun variabelenaam (alleen lezen), de waarschuwingen, Nu een back-up maken, Hersteltest en Terugzetten met de bevestigingszin. Een downloadknop heeft het niet, want er is geen route. Een kopie buiten de NAS (S25.7) doet de server niet zelf; die loopt via de voorziening die de NAS al heeft, en staat onder "Een kopie buiten de NAS".
 
 ## De instellingen
 

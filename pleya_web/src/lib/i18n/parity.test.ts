@@ -71,7 +71,10 @@ const SAME_ON_PURPOSE = [
   'admin.diag.versions.database',
   'admin.diag.versions.databaseValue',
   'admin.diag.caps.title',
-  'admin.diag.health.ready'
+  'admin.diag.health.ready',
+  // S25.6: "ok" en "Status" zijn in het Nederlands hetzelfde woord.
+  'admin.bak.status.ok',
+  'admin.bak.col.status'
 ];
 
 function placeholders(text: string): string[] {

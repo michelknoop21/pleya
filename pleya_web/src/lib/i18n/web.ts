@@ -1,3 +1,4 @@
+import { webBackups } from './webBackups';
 import { webOps } from './web.ops';
 
 /**
@@ -369,7 +370,8 @@ export const web = {
   ...webUsers,
   ...webSettings,
   ...webTranscode,
-  ...webTokens
+  ...webTokens,
+  ...webBackups
 } as const;
 
 export type WebKey = keyof typeof web;
