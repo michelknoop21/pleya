@@ -261,13 +261,16 @@ laatste golf.
 
 Drie wijzigingen kwamen tussen 24 september en 3 oktober op `main` zonder regel in deze lijst. Ze zijn
 geen scope creep: X1 en X2 hebben een eigen voorstel of besluit, en X3 herstelt een NAS-start die op
-de bewerkte migraties vastliep. De lijst eist wel dat werk er staat. Ze tellen niet mee in de 156 taken.
+de bewerkte migraties vastliep. X4 (26 oktober) herstelt gebreken in de gesloten sessierijen S1.5 en
+S10.4/S10.5 die op productie zichtbaar werden. De lijst eist wel dat werk er staat. Ze tellen niet mee
+in de 156 taken.
 
 | # | Wat | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
 | X1 | Loudnessmeting per audiostroom: tabel `stream_loudness` (migratie `0011`) en `internal/loudness` | `[x]` | `docs/pleya-server-loudness-measurement-proposal.md`; merge `8d32d4a5`, migratie `064536ea`; `go test ./internal/loudness` groen | 2026-09-24 |
 | X2 | `GET /watch-history` voor beheerders, zodat Big P een periode kan optellen | `[x]` | [DEC-143](DECISIONS.md); `5520efbe`, webclient `4fedf1a1`; matrixrij 39, `watch_history_test.go` | 2026-10-03 |
 | X3 | NAS-start na de bewerkte migraties `0006` en `0007`: `earlierChecksums` en migratie `0012` | `[x]` | `efb2b6bb`, `37888009`; live op de NAS op 3 oktober | 2026-10-03 |
+| X4 | Toestelnaam vanuit Pleya Web, uitloggen op de server, opruimronde voor sessies met een dode verversketen, "Oude toestellen opruimen" in beheer | `[x]` | [DEC-164](DECISIONS.md). Server: `internal/auth/session_sweep.go` en `cmd/pleya-server/sessionwork.go`; `TestSweepRevokesOnlySessionsWhoseRefreshChainIsDead` en `TestSweepNeverGoesBelowTheFloor` op een echte database met vaste klok (dode sessie ingetrokken, recente, lopend token, API-token en al ingetrokken niet), `TestScheduleSessionSweepRunsAtStartup`, `TestLoginWithAKnownDeviceIDAddsASession`. Negatieve controles rood: soortfilter weg, `last_seen`-grens weg, lopend-tokentoets weg, ondergrens weg. Web: `lib/auth/device.ts`, `DeviceCleanup.svelte`, `UserDevices.svelte`, `sessionCleanup.ts`; negatieve controles rood: eigen toestel of API-token niet uitgesloten, bevestiging overgeslagen, rij stopt bij eerste fout, device-velden zonder capability, naam niet afgekapt. Opnamen op vijf breedtes in `docs/qa/sessions-cleanup/` (nagebootste API, schrijfaanvragen afgebroken). Niet op productie of de NAS bewezen | 2026-10-26 |
 
 ### S3 Boekencatalogus (PS-14)
 
