@@ -4,6 +4,7 @@ import { webPlayerNl } from './webPlayer.nl';
 
 import { webUsersNl } from './webUsers.nl';
 import { webSettingsNl } from './webSettings.nl';
+import { webMatchNl } from './webMatch.nl';
 import { webTranscodeNl } from './webTranscode.nl';
 import { webTokensNl } from './webTokens.nl';
 import { webSessionsNl } from './webSessions.nl';
@@ -375,5 +376,6 @@ export const webNl = {
   ...webTranscodeNl,
   ...webTokensNl,
   ...webBackupsNl,
-  ...webSessionsNl
+  ...webSessionsNl,
+  ...webMatchNl
 } satisfies Record<WebKey, string>;

@@ -81,6 +81,24 @@ describe('scherm 29, metadata en artwork', () => {
     expect(screen.getByText('En nog 5.')).toBeInTheDocument();
   });
 
+  it('linkt elke titel die aandacht vraagt en de kop naar scherm 36', async () => {
+    setup({
+      total: 1,
+      items: [
+        { item_id: 'i1', library_id: 'l1', kind: 'movie', title: 'Nosferatu', year: 2024, state: 'ambiguous', alternatives: [], updated_at: '2026-10-26T08:00:00Z' }
+      ]
+    });
+    render(MetadataPage);
+    expect(await screen.findByRole('link', { name: 'Nosferatu (2024)' })).toHaveAttribute(
+      'href',
+      '/admin/metadata/match?item=i1'
+    );
+    expect(screen.getByRole('link', { name: 'Titels beoordelen' })).toHaveAttribute(
+      'href',
+      '/admin/metadata/match'
+    );
+  });
+
   it('schrijft nooit en verzint geen providerstatus (negatieve controle)', async () => {
     const server = setup();
     render(MetadataPage);

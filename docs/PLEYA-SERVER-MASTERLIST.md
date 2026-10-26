@@ -46,7 +46,7 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **6** | **2** | **18** |
 
-Per taak, en dat is de maat die telt: **156 taken, 76 gereed, 15 bezig, 65 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **156 taken, 77 gereed, 14 bezig, 65 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -494,8 +494,8 @@ punt 3 en 4), en aan het venster-besluit.
 | S22.2 | TMDB-implementatie met rate-limit-backoff | `[~]` | M2a: `internal/metadata/tmdb.go`, vaste hosts, geen redirects, groottegrenzen, 429-backoff, sleutel nooit in een fout; tests tegen een nep-TMDB | |
 | S22.3 | Automatisch matchen met driestapsregel en ambiguïteitslijst | `[~]` | M2a: `Decide` met titel en jaar en ambiguïteit die nooit vanzelf resolvet. **M2b: stap 1, een TMDB-id uit de `.nfo`, slaat het zoeken over** (`pass 2` zet elk item één keer opnieuw aan de beurt). Meting M2a op de testinstance, 19 oktober 2026: 529 van 573 titels gematcht (92%), 23 ambigu, 21 niet gevonden, 0 mislukt; de niet-gevonden zijn mapnamen zonder officiële titel, de ambigue hebben twee treffers met gelijke titel en jaar | |
 | S22.4 | Automatisch artwork ophalen naar de cache op de ladder | `[~]` | M2a: poster en backdrop naar `CacheDir/artwork`, sidecar wint; de ladder (S4.4) ontbreekt, ruwe w780 en w1280 | |
-| S22.5 | Correcties: bevestigen, afwijzen, fix-match, artwork kiezen met pin, per-field overrides met provenance | `[~]` | M2b: aandachtslijst, handmatige keuze (`PUT`) en afwijzen (`DELETE`) met alternatieven, audit, validatie en een wake-up van de ronde. Nog niet: per-field overrides met provenance, artwork kiezen met pin, en het scherm (S22.6, in de webclient) | |
-| S22.6 | Mockup 36 goedgekeurd, scherm 29 en 36 gebouwd met provenance per veld | `[~]` | de goedkeuring van mockup 36 is binnen met poort P3 (4 september); wat deze rij openhoudt is het bouwen van scherm 29 en 36 in `pleya_web` | |
+| S22.5 | Correcties: bevestigen, afwijzen, fix-match, artwork kiezen met pin, per-field overrides met provenance | `[~]` | M2b: aandachtslijst, handmatige keuze (`PUT`) en afwijzen (`DELETE`) met alternatieven, audit, validatie en een wake-up van de ronde. Het scherm staat sinds S22.6 in de webclient voor kiezen en afwijzen. Nog niet: per-field overrides met provenance en artwork kiezen met pin; zonder die serverroutes blijft deze rij open | |
+| S22.6 | Mockup 36 goedgekeurd, scherm 29 en 36 gebouwd met provenance per veld | `[x]` | scherm 29 en 36 staan in `pleya_web` voor wat het contract en de server dragen: `/admin/metadata/match` (`pleya_web/src/lib/admin/match/`) toont de aandachtslijst met uitkomst per titel, de kandidaten van de provider, kiezen of een eigen nummer invullen (`PUT`) en afwijzen (`DELETE`), elk achter een bevestiging, met een zin met uitweg bij een weigering; scherm 29 linkt elke titel erheen. Bewijs: vitest met nepserver en negatieve controles per regel, opnamen op vijf breedten in `docs/qa/s22-metadata-match/`, nagebootst en niet tegen een echte server. **Bewust niet gebouwd, want de server draagt het niet:** velden overschrijven met herkomst (provenance), artwork kiezen met pin, score en poster per kandidaat (`MetadataAlternative` kent alleen nummer, titel en jaar) en Providerronde nu. Die komen met S22.5 | |
 | S22.7 | Attributie zichtbaar in web en app | `[ ]` | | |
 | S22.8 | Correctie overleeft drie rondes, SSRF-grens getest, venster 8 | `[ ]` | | |
 | S22.9 | PS-7 criteria 1 tot 4 op de NAS, journey 14 | `[ ]` | | |

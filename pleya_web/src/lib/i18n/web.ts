@@ -8,6 +8,7 @@ import { webPlayer } from './webPlayer';
  */
 import { webUsers } from './webUsers';
 import { webSettings } from './webSettings';
+import { webMatch } from './webMatch';
 import { webTranscode } from './webTranscode';
 import { webTokens } from './webTokens';
 import { webSessions } from './webSessions';
@@ -377,7 +378,8 @@ export const web = {
   ...webTranscode,
   ...webTokens,
   ...webBackups,
-  ...webSessions
+  ...webSessions,
+  ...webMatch
 } as const;
 
 export type WebKey = keyof typeof web;
