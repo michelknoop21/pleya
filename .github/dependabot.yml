@@ -1,0 +1,121 @@
+version: 2
+
+# Dependabot dekt versie-updates voor GitHub Actions, pleya_web (bun) en
+# pleya_server (gomod). Voor pub (Flutter) en pip in /scripts staat alleen het
+# veiligheidsspoor aan (open-pull-requests-limit 0): pub-versie-updates lopen via
+# de wekelijkse onderhoudsbaan in dependency-health.yml (scripts/deps_update.sh),
+# die de hele lockfile-diff in ringen indeelt. Zie docs/agents/dependencies.md.
+#
+# Geen entry: server/ (oude Go-map), website/, scripts/asc, android/Gemfile,
+# Dockerfiles en compose, Gradle, Podfile, Swift Package.resolved en MPVKit.
+# Voor pin-beleid zie docs/agents/dependencies.md. Open alerts in die mappen
+# krijgen alleen de standaard security-updates.
+# Er is bewust geen auto-merge: elke PR krijgt de review vóór merge uit AGENTS.md.
+
+updates:
+  # pub: limiet 0 zet versie-updates uit en laat security-updates staan. De
+  # analyzer-stack staat bewust stil (DEC-026) en de edde746-forks horen niet
+  # door pub.dev-versies vervangen te worden; de ringbaan kent die regels.
+  - package-ecosystem: pub
+    directories:
+      - /
+      - /pleya_verify/runner
+      - /pleya_verify/mcp
+      - /pleya_verify/fixture_server
+      - /plugins/pleya_aware
+      - /share_server
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Amsterdam
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: "chore(deps)"
+
+  # pip: scripts/requirements-brand.txt pint Pillow bewust op één versie, want de
+  # PNG-bytes en de tagline-rasterisatie van gen_brand_assets.py hangen eraan.
+  # Limiet 0 houdt het bij security-updates; zo'n PR vraagt daarna een
+  # regeneratie van de merkbeelden. scripts/asc heeft geen entry.
+  - package-ecosystem: pip
+    directory: /scripts
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Amsterdam
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Amsterdam
+    open-pull-requests-limit: 5
+    # github-actions kent alleen default-days, geen semver-*-days.
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]
+
+  # pleya_web gebruikt bun (bun.lock) met exacte versies in package.json.
+  # Koppels staan vóór de algemene groepen: een dependency valt in de eerste
+  # groep die past. Majors van de koppels komen als één PR, andere majors
+  # als eigen PR.
+  - package-ecosystem: bun
+    directory: /pleya_web
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Amsterdam
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 3
+      semver-major-days: 30
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      svelte:
+        patterns: ["svelte", "svelte-check", "@sveltejs/*"]
+      vite:
+        patterns: ["vite", "vitest", "@vitejs/*"]
+      playwright:
+        patterns: ["@playwright/test", "@axe-core/playwright", "axe-core"]
+      testing-library:
+        patterns: ["@testing-library/*", "jsdom"]
+      prod-minor-patch:
+        dependency-type: production
+        update-types: [minor, patch]
+      dev-minor-patch:
+        dependency-type: development
+        update-types: [minor, patch]
+    ignore:
+      # @types/node volgt de Node-runtime, niet zijn eigen latest.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: gomod
+    directory: /pleya_server
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Amsterdam
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 3
+      semver-major-days: 30
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      go-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
