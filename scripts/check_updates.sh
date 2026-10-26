@@ -365,6 +365,14 @@ pin_reachable() {
   fi
 }
 
+# `source:` van een pakket in pubspec.lock (git, hosted, path, sdk). Een pakket dat via
+# dependency_overrides naar een map in de repo wijst (third_party/) staat als `path` in
+# de lock, zonder url of resolved-ref: pub haalt daar niets op, dus er valt niets te
+# bereiken of te volgen. Leeg als het pakket ontbreekt.
+lock_source() {
+  awk -v n="  $2:" '$0==n{f=1; next} f&&/^ {2,3}[a-z]/{f=0} f&&/^ {4}source:/{print $2; exit}' "$1"
+}
+
 check_pin_reachability() {
   local lock="$ROOT/pubspec.lock"
   if [ ! -f "$lock" ]; then
@@ -372,9 +380,14 @@ check_pin_reachability() {
     return
   fi
   local entry pkg url pinned status
-  local problems=() unknown=0
+  local problems=() unknown=0 checked=0 vendored=()
   for entry in "${FORKS[@]}"; do
     IFS='|' read -r pkg _ _ _ _ <<<"$entry"
+    if [ "$(lock_source "$lock" "$pkg")" = path ]; then
+      vendored+=("$pkg")
+      continue
+    fi
+    checked=$((checked + 1))
     # De eigen url uit de lock, niet de gevolgde ref uit FORKS hierboven: dat
     # zijn voor background_downloader met opzet twee verschillende repo's
     # (DEC-147), en reachability gaat over waar pubspec.yaml daadwerkelijk
@@ -394,12 +407,13 @@ check_pin_reachability() {
     esac
   done
   if [ ${#problems[@]} -eq 0 ]; then
-    record pin-reachability 3 CURRENT "${#FORKS[@]} pins" "allemaal bereikbaar op hun eigen url" ""
+    record pin-reachability 3 CURRENT "$checked pins" "allemaal bereikbaar op hun eigen url" \
+      "${vendored[*]:+lokaal meegeleverd en daarom niet gecontroleerd: ${vendored[*]}}"
   else
     # Altijd UNKNOWN, nooit OUTDATED: een onbereikbare pin is geen "er is een
     # nieuwere versie" maar "pub get faalt hier vandaag al", en dat mag nooit
     # stilvallen achter --strict-through-ring zoals OUTDATED dat wel doet.
-    record pin-reachability 3 UNKNOWN "${#FORKS[@]} pins" "?" "$(printf '%s; ' "${problems[@]}")"
+    record pin-reachability 3 UNKNOWN "$checked pins" "?" "$(printf '%s; ' "${problems[@]}")"
     unknown=1
   fi
 }
@@ -411,10 +425,14 @@ check_forks() {
     return
   fi
   local entry pkg repo ref ring why pinned head
-  local behind_list=() unknown=0
+  local behind_list=() unknown=0 checked=0
   for entry in "${FORKS[@]}"; do
     IFS='|' read -r pkg repo ref ring why <<<"$entry"
-    pinned="$(awk -v n="  $pkg:" '$0==n{f=1} f&&/resolved-ref:/{gsub(/[",]/,"");print $2; exit}' "$lock")"
+    # Lokaal meegeleverd (path): geen gepinde ref om mee te vergelijken. Zonder deze
+    # regel las de awk hieronder door tot de resolved-ref van een volgend pakket.
+    [ "$(lock_source "$lock" "$pkg")" = path ] && continue
+    checked=$((checked + 1))
+    pinned="$(awk -v n="  $pkg:" '$0==n{f=1; next} f&&/^ {2,3}[a-z]/{f=0} f&&/resolved-ref:/{gsub(/[",]/,"");print $2; exit}' "$lock")"
     if [ -z "$pinned" ]; then
       unknown=1
       behind_list+=("$pkg: geen resolved-ref in pubspec.lock")
@@ -431,11 +449,11 @@ check_forks() {
     fi
   done
   if [ "$unknown" -eq 1 ]; then
-    record git-forks 3 UNKNOWN "${#FORKS[@]} forks" "?" "$(printf '%s; ' "${behind_list[@]}")"
+    record git-forks 3 UNKNOWN "$checked forks" "?" "$(printf '%s; ' "${behind_list[@]}")"
   elif [ ${#behind_list[@]} -eq 0 ]; then
-    record git-forks 3 CURRENT "${#FORKS[@]} forks" "gelijk aan hun gevolgde ref" ""
+    record git-forks 3 CURRENT "$checked forks" "gelijk aan hun gevolgde ref" ""
   else
-    record git-forks 3 OUTDATED "${#FORKS[@]} forks" "${#behind_list[@]} wijken af" \
+    record git-forks 3 OUTDATED "$checked forks" "${#behind_list[@]} wijken af" \
       "rapporteren, niet automatisch bumpen: $(printf '%s; ' "${behind_list[@]}")"
   fi
 }
