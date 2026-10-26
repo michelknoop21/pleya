@@ -50,6 +50,15 @@ gewone instellingenbalken (`CustomAppBar`). Pas ze aan binnen hun eigen roadmapp
 meeliftend op ander werk. Een widgettest zet de safe-area-top op 59 en toetst dat de
 achtergrondlaag op y=0 begint en het logo eronder blijft.
 
+## Instellingen op Apple TV zonder bovenbalk
+
+Instellingen en elke pagina die vanuit Instellingen in de TV-shell opent, gebruiken
+`TvTopNavPresentation.collapsible` via `kTvSettingsTopNav` of `tvSettingsTopNavFor(context)`
+(`lib/widgets/settings/settings_studio_theme.dart`). Een nieuwe opener van een instellingenpagina
+geeft die mee aan `openTvContentRoute`. De pagina neemt zelf de bovenmarge (`TvPageSurface`), UP
+vanaf de bovenste focusstop haalt de balk terug. Andere TV-routes houden hun eigen presentatie
+(DEC-XXX, besluit Michel 26 oktober 2026).
+
 ## Pleya Verify
 
 `pleya_verify/` drijft echte scenario's tegen een echte macOS/iOS-sim/tvOS-sim-build, over een vast

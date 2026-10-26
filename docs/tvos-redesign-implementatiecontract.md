@@ -40,6 +40,11 @@ standaard ingeklapt. UP vanuit de bovenste contentzone toont hem over het detail
 in. De opener kiest dit per route met `TvTopNavPresentation.collapsible`; collectie, persoon en de
 Instellingen-subpagina's houden de permanente balk.
 
+Aanscherping 26 oktober 2026 (DEC-XXX, besluit Michel): Instellingen en al zijn subpagina's
+openen voortaan ook met `TvTopNavPresentation.collapsible`. Daar is de balk weg zolang de focus
+in de pagina staat, en UP vanaf de bovenste focusstop haalt hem terug. Collectie, persoon en de
+andere Mijn Pleya-secties houden de permanente balk.
+
 Uitzonderingen: de speler in fullscreen, authenticatie, de profielselectiepoort waar de mockup
 geen shell toont, het native tvOS-toetsenbord, en echte fullscreen- of modale presentatie.
 
