@@ -131,4 +131,17 @@ void main() {
     expect(r.stdout, isNot(contains('OUTDATED')));
     expect(r.exitCode, 2);
   });
+
+  // os_media_controls staat via dependency_overrides op third_party/ en heeft in de lock
+  // `source: path` zonder url of resolved-ref. Dat was geen rotte pin maar een lokale map,
+  // en de wekelijkse run stond er permanent rood door (exit 2).
+  test('een lokaal meegeleverd pakket (source: path) telt niet als ontbrekende pin', () {
+    final r = runPins(upstream: 'pins_all_reachable', root: 'pins_vendored');
+    expect(r.stdout, contains('CURRENT'));
+    expect(r.stdout, contains('6 pins'));
+    expect(r.stdout, contains('lokaal meegeleverd'));
+    expect(r.stdout, contains('os_media_controls'));
+    expect(r.stdout, isNot(contains('UNKNOWN')));
+    expect(r.exitCode, 0);
+  });
 }
