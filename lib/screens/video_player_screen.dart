@@ -464,6 +464,8 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   StreamSubscription<Duration>? _mediaControlsPositionSubscription;
   StreamSubscription<double>? _mediaControlsRateSubscription;
   StreamSubscription<bool>? _mediaControlsSeekableSubscription;
+  StreamSubscription<Tracks>? _mediaControlsTracksSubscription;
+  StreamSubscription<TrackSelection>? _mediaControlsTrackSubscription;
   StreamSubscription<Map<String, bool>>? _serverStatusSubscription;
   bool _isHandlingBack = false;
 
@@ -568,6 +570,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
       (Platform.isAndroid && _androidAutoPipTransitionInFlight);
 
   MediaControlsManager? _mediaControlsManager;
+  final _systemSubtitleVisibility = ValueNotifier<bool>(true);
   PlaybackProgressTracker? _progressTracker;
 
   /// Local observation of whether this player may still write watch state.
@@ -685,6 +688,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   void initState() {
     super.initState();
 
+    _systemSubtitleVisibility.addListener(_onSystemSubtitleVisibilityChanged);
     _currentMetadata = widget.metadata;
     _activeId = widget.metadata.id;
     _activeMediaIndex = widget.selectedMediaIndex;
@@ -1353,6 +1357,8 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
 
   @override
   void dispose() {
+    _systemSubtitleVisibility.removeListener(_onSystemSubtitleVisibilityChanged);
+    _systemSubtitleVisibility.dispose();
     _releaseAssistantPlayback?.call();
     _releaseAssistantPlayback = null;
     _stopAssistantPlaybackRevision?.call();
@@ -1423,6 +1429,8 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     _mediaControlsPositionSubscription?.cancel();
     _mediaControlsRateSubscription?.cancel();
     _mediaControlsSeekableSubscription?.cancel();
+    _mediaControlsTracksSubscription?.cancel();
+    _mediaControlsTrackSubscription?.cancel();
     _serverStatusSubscription?.cancel();
 
     _autoPlayCountdown.cancel();

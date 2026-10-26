@@ -321,6 +321,7 @@ extension _VideoPlayerBuildMethods on VideoPlayerScreenState {
                         onCycleSubtitleTrack: _cycleSubtitleTrack,
                         onAudioTrackChanged: _onAudioTrackChanged,
                         onSubtitleTrackChanged: _onSubtitleTrackChanged,
+                        subtitleVisibility: PlatformDetector.isAppleTV() ? _systemSubtitleVisibility : null,
                         onSecondarySubtitleTrackChanged: _onSecondarySubtitleTrackChanged,
                         onSeekRequested: _seekPlayback,
                         onPlayPauseRequested: () => _playOrPauseWithPlaybackIntent(player!),

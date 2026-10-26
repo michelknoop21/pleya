@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:os_media_controls/os_media_controls.dart';
 import 'package:rate_limiter/rate_limiter.dart';
 
@@ -6,6 +7,8 @@ import '../media/media_server_client.dart';
 import '../media/media_item.dart';
 import '../media/media_item_types.dart';
 import '../utils/app_logger.dart';
+import '../utils/player_utils.dart';
+import '../mpv/mpv.dart';
 
 /// Manages OS media controls integration for video playback.
 ///
@@ -148,7 +151,11 @@ class MediaControlsManager {
         (canGoNext ? controlsToEnable : controlsToDisable).add(MediaControl.next);
       }
       if (canSeek != _lastCanSeek) {
-        (canSeek ? controlsToEnable : controlsToDisable).add(MediaControl.seek);
+        (canSeek ? controlsToEnable : controlsToDisable).addAll([
+          MediaControl.seek,
+          MediaControl.skipForward,
+          MediaControl.skipBackward,
+        ]);
       }
 
       if (controlsToEnable.isEmpty && controlsToDisable.isEmpty) return;
@@ -167,6 +174,13 @@ class MediaControlsManager {
     } catch (e) {
       appLogger.w('Failed to set media controls enabled state', error: e);
     }
+  }
+
+  Future<void> updateSubtitleOptions(List<Map<String, String>> options, String? selectedId) async {
+    if (_updatesSuspended) return;
+    await const MethodChannel(
+      'com.edde746.os_media_controls/methods',
+    ).invokeMethod<void>('setSubtitleOptions', {'options': options, 'selectedId': selectedId});
   }
 
   /// Clear all media controls
@@ -243,4 +257,17 @@ class _PlaybackStateParams {
   final double speed;
 
   const _PlaybackStateParams({required this.isPlaying, required this.position, required this.speed});
+}
+
+/// Resolve system seeks through the player's presentation timeline and bounds.
+Duration? mediaControlSeekTarget(MediaControlEvent event, Player player, {required bool canSeek}) {
+  if (!canSeek) return null;
+  if (event is SeekEvent) return clampSeekPosition(player, event.position);
+  final interval = switch (event) {
+    SkipForwardEvent() => event.interval,
+    SkipBackwardEvent() => event.interval,
+    _ => null,
+  };
+  if (interval == null || interval <= Duration.zero) return null;
+  return clampSeekPosition(player, player.state.position + (event is SkipBackwardEvent ? -interval : interval));
 }

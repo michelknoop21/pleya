@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/services/media_controls_manager.dart';
+import 'package:os_media_controls/os_media_controls.dart';
+import 'package:pleya/mpv/mpv.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -101,4 +103,74 @@ void main() {
     await publish(milliseconds: 250);
     expect(calls, hasLength(2));
   });
+  test('seek availability enables both interval commands and resets after clear', () async {
+    await manager.setControlsEnabled(canSeek: true);
+    expect(
+      (calls.firstWhere((c) => c.method == 'enableControls').arguments as List),
+      containsAll(['seek', 'skipForward', 'skipBackward']),
+    );
+    calls.clear();
+    await manager.setControlsEnabled(canSeek: true);
+    expect(calls, isEmpty);
+    await manager.setControlsEnabled();
+    expect(
+      (calls.firstWhere((c) => c.method == 'disableControls').arguments as List),
+      containsAll(['seek', 'skipForward', 'skipBackward']),
+    );
+    await manager.clear();
+    calls.clear();
+    await manager.setControlsEnabled(canSeek: true);
+    expect(calls.where((c) => c.method == 'enableControls'), hasLength(1));
+  });
+
+  test('subtitle publication includes selection, empty tracks and disabled state', () async {
+    await manager.updateSubtitleOptions([
+      {'id': '3', 'language': 'nl', 'title': 'Nederlands'},
+    ], '3');
+    expect((calls.last.arguments as Map)['selectedId'], '3');
+    await manager.updateSubtitleOptions([], null);
+    expect((calls.last.arguments as Map)['options'], isEmpty);
+    expect((calls.last.arguments as Map)['selectedId'], isNull);
+    manager.suspendUpdates();
+    final count = calls.length;
+    await manager.updateSubtitleOptions([], null);
+    expect(calls, hasLength(count));
+  });
+
+  test('system commands retain explicit intent and fractional requested intervals', () {
+    final play = MediaControlEvent.fromMap({'type': 'play', 'source': 'commandCenter'});
+    expect(play, isA<PlayEvent>());
+    expect(play.isSystemCommand, isTrue);
+    expect(MediaControlEvent.fromMap({'type': 'pause', 'source': 'commandCenter'}), isA<PauseEvent>());
+    expect(MediaControlEvent.fromMap({'type': 'togglePlayPause'}).isSystemCommand, isFalse);
+    final forward = MediaControlEvent.fromMap({'type': 'skipForward', 'interval': 7.5});
+    final player = _SystemPlayer();
+    expect(mediaControlSeekTarget(forward, player, canSeek: true), const Duration(milliseconds: 12500));
+    expect(
+      mediaControlSeekTarget(const SkipBackwardEvent(Duration(seconds: 10)), player, canSeek: true),
+      Duration.zero,
+    );
+    expect(
+      mediaControlSeekTarget(const SkipForwardEvent(Duration(seconds: 90)), player, canSeek: true),
+      const Duration(seconds: 20),
+    );
+    expect(
+      mediaControlSeekTarget(const SeekEvent(Duration(seconds: 90)), player, canSeek: true),
+      const Duration(seconds: 20),
+    );
+    expect(mediaControlSeekTarget(forward, player, canSeek: false), isNull);
+    expect(mediaControlSeekTarget(const SkipForwardEvent(Duration(seconds: -1)), player, canSeek: true), isNull);
+    expect(mediaControlSeekTarget(const SkipForwardEvent(null), player, canSeek: true), isNull);
+    final subtitle = MediaControlEvent.fromMap({'type': 'subtitle', 'id': '3', 'enabled': true}) as SubtitleOptionEvent;
+    expect(subtitle.id, '3');
+    expect(subtitle.enabled, isTrue);
+    expect((MediaControlEvent.fromMap({'type': 'subtitle', 'enabled': false}) as SubtitleOptionEvent).enabled, isFalse);
+  });
+}
+
+class _SystemPlayer implements Player {
+  @override
+  PlayerState get state => const PlayerState(position: Duration(seconds: 5), duration: Duration(seconds: 20));
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
