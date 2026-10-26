@@ -51,6 +51,32 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 412 · 26 October 2026 · iPhone and iPad
+
+<!-- commit: 9cd63fa61862df5f8dfa968e02e26480bbcda13c -->
+
+### Improved
+
+- **The Settings header on iPhone now runs up behind the status bar.** The warm background and
+  the artwork reach the top edge, behind the clock and the Dynamic Island, instead of starting
+  below a plain strip in the page colour. The title, the back chevron and the Pleya mark in the
+  artwork stay below the status bar.
+- **The bar that appears when you scroll Settings can be see-through.** With Liquid Glass on it
+  is a translucent glass bar; with Liquid Glass off, which is the default, it stays solid as
+  before.
+
+### Notes
+
+- Worth checking on an iPhone: the top of Settings at rest and after scrolling, in light, dark
+  and OLED, on a phone with a Dynamic Island and on one without a notch. The clock and battery
+  should stay readable over the artwork. This was checked in the iPhone simulator and in unit
+  tests, not on a device.
+- Worth checking: picking a file or a folder. The file picker library was upgraded to a new
+  major version in this build, so check importing or saving a backup and choosing a local
+  folder.
+- Other screens with a plain bar, such as the detail page bar and the remaining Settings pages,
+  keep their solid bar for now.
+
 ## 2.8.1 · build 411 · 26 October 2026 · Apple TV
 
 <!-- commit: 25bff4834e32fff9efd6b4b2e2bc816bdd103369 -->
