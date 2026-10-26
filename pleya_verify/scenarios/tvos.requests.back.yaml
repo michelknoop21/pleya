@@ -28,8 +28,12 @@ steps:
   - wait_until: {focused: nav.myPleya, timeout: 5000}
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
+  # A-24c: Select puts the remote on Big P; Down is the Snel naar dock, where
+  # Aanvragen follows Samen kijken.
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
   - press: down
-  - wait_until: {focused: "my_pleya.tile[requests]", timeout: 5000}
+  - wait_until: {focused: "my_pleya.tile[watchTogether]", timeout: 5000}
+  - walk: {direction: right, steps: 6, stopAt: "my_pleya.tile[requests]", timeout: 60000, settle: 400}
   - press: select
   - wait_until: {id: seerr.search.field, timeout: 15000}
   - settle: 2500

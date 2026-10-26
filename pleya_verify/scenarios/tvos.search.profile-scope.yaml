@@ -61,6 +61,9 @@ steps:
   - press: left
   - wait_until: {focused: nav.profile, timeout: 5000}
   - press: select
+  # A-24c: the avatar opens the account menu first.
+  - wait_until: {focused: "account_menu.action[switch_profile]", timeout: 8000}
+  - press: select
   - wait_until: {focused: "profile.tile[0]", timeout: 10000}
   # The picker draws the profiles side by side; DOWN is Profielen beheren.
   - press: right
@@ -84,6 +87,9 @@ steps:
   - wait_until: {focused: nav.search, timeout: 5000}
   - press: left
   - wait_until: {focused: nav.profile, timeout: 5000}
+  - press: select
+  # A-24c: the avatar opens the account menu first.
+  - wait_until: {focused: "account_menu.action[switch_profile]", timeout: 8000}
   - press: select
   - wait_until: {focused: "profile.tile[0]", timeout: 10000}
   # The active profile is drawn first, so Kind is tile 0 now.

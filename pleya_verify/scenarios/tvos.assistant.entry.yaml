@@ -33,15 +33,13 @@ steps:
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
   - settle: 600
-  - press: down
-  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
 
-  # A-24b (northstar 01): Big P is the card on top of the right column, above
-  # Instellingen; Right along Bronnen crosses to it.
+  # A-24c (northstar A10): Big P is the large card on the left, the page's
+  # first content action, so Select on the pill lands on it; the Snel naar
+  # dock sits under it.
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
   - assert: {id: "my_pleya.tile[assistant]", insideViewport: true, state: {title: Big P}}
-  - assert: {id: "my_pleya.tile[assistant]", rightOf: "my_pleya.tile[libraries]"}
-  - assert: {id: "my_pleya.tile[assistant]", above: "my_pleya.tile[settings]"}
-  - walk: {direction: right, steps: 4, stopAt: "my_pleya.tile[assistant]", timeout: 60000, settle: 600}
+  - assert: {id: "my_pleya.tile[assistant]", above: "my_pleya.tile[libraries]"}
   - settle: 800
   - snapshot: 01-hub-big-p-focused
 

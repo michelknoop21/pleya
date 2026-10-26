@@ -44,14 +44,15 @@ steps:
   - walk: {direction: left, expect: [nav.search, nav.profile], timeout: 20000, settle: 800}
   - assert: {id: nav.profile, focused: true}
 
-  # De breedte van de bar is onveranderd: zes stops, profiel niet meegerekend.
+  # De breedte van de bar is onveranderd: zes stops, profiel niet meegerekend
+  # (sinds A-24c met Instellingen als laatste).
   # Zelfde loop als tvos.nav.walk, zodat een pil die er stilzwijgend bij komt
   # hier omvalt op de hop waar hij zou landen, in plaats van in een scenario
   # dat over iets anders gaat.
   - walk:
       direction: right
-      expect: [nav.search, nav.discover, nav.series, nav.movies, nav.myPleya]
+      expect: [nav.search, nav.discover, nav.series, nav.movies, nav.myPleya, nav.settings]
       timeout: 40000
       settle: 800
-  - assert: {id: nav.myPleya, focused: true}
+  - assert: {id: nav.settings, focused: true}
   - snapshot: 01-bar-width-unchanged

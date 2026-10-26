@@ -64,11 +64,25 @@ steps:
   # the bar. This is the half a late-arriving provider used to break.
   - assert: {id: nav.myPleya, focused: true}
 
+  # --- A-24c: the one exception, Instellingen --------------------------------
+  # The ring on Instellingen leaves Mijn Pleya on screen (A13, LEESMIJ-v4);
+  # Select opens it. Every other destination follows the ring.
+  - press: right
+  - wait_until: {focused: nav.settings, timeout: 5000}
+  - settle: 400
+  - assert: {id: nav.settings, focused: true, state: {active: false}}
+  - assert: {id: nav.myPleya, state: {active: true}}
+  - assert: {id: screen.my_pleya}
+  - snapshot: 03b-settings-ring
+  - press: left
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+
   # --- DOWN is the way in ---------------------------------------------------
+  # A-24c: Big P, then the first tile of the Snel naar dock.
   - press: down
   - press: down
-  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 8000}
-  - assert: {id: "my_pleya.tile[libraries]", focused: true}
+  - wait_until: {focused: "my_pleya.tile[watchTogether]", timeout: 8000}
+  - assert: {id: "my_pleya.tile[watchTogether]", focused: true}
   - assert: {id: nav.myPleya, state: {active: true}}
   - snapshot: 04-content-focused
 

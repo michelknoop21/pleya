@@ -15,21 +15,11 @@ setup:
 steps:
   - wait_until: {id: screen.discover, timeout: 30000}
   - settle: 3500
-  - press: right
-  - press: right
-  - press: right
-  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  # A-24c: Instellingen is a destination in the top bar, right after Mijn Pleya.
+  - walk: {direction: right, steps: 8, stopAt: nav.settings, timeout: 60000, settle: 600}
   - press: select
-  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - wait_until: {id: nav.settings, state: {active: true}, timeout: 15000}
   - press: down
-  - wait_until: {focused: "my_pleya.tile[requests]", timeout: 5000}
-  - press: down
-  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
-  # A-24b: with Mijn content above it, Bronnen sits level with Instellingen,
-  # so Right from its end crosses straight onto Instellingen (the right-column
-  # row nearest in height). Big P is above it.
-  - walk: {direction: right, steps: 4, stopAt: "my_pleya.tile[settings]", timeout: 60000, settle: 600}
-  - press: select
   # A-24b: Weergave's rows sit on the Instellingen page; it opens on Thema.
   - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 8000}
   - settle: 400
@@ -49,14 +39,18 @@ steps:
   - settle: 400
   - snapshot: 01-appearance-light-category-focus
   - press: menu
-  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
+  - wait_until: {focused: nav.settings, timeout: 8000}
+  # Left onto Mijn Pleya switches the page; Down enters it on Big P.
+  - press: left
+  - wait_until: {focused: nav.myPleya, timeout: 8000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
   - settle: 800
   - snapshot: 03-hub-light
-  - press: up
-  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
-  # Left from Big P is the left-column row nearest in height: Mijn content.
-  - press: left
-  - wait_until: {focused: "my_pleya.tile[requests]", timeout: 5000}
+  # Aanvragen is on the Snel naar dock, after Samen kijken.
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[watchTogether]", timeout: 5000}
+  - walk: {direction: right, steps: 6, stopAt: "my_pleya.tile[requests]", timeout: 60000, settle: 400}
   - press: select
   - wait_until: {id: seerr.search.field, timeout: 15000}
   - settle: 2500

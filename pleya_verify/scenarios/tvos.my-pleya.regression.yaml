@@ -1,24 +1,18 @@
 name: tvos.my-pleya.regression
 target: tvos-sim
-# MYP1: the whole Mijn Pleya hub in one walk, as the regression proof for the
-# Mijn Pleya work (TV6 of the closure design).
+# MYP1, redone for A-24c: Mijn Pleya v4 in one walk, as the regression proof
+# for the page. Every way in this fixture reaches is opened, and Menu has to
+# land back on the card or tile it came from before the walk may continue.
+# One trapped surface turns the rest of the walk red on the next `wait_until`.
 #
-# The per-section scenarios (`tvos.my-pleya.section-*`) exist because the first
-# combined walk was not survivable: a section that trapped the remote also
-# swallowed the Menu meant to leave it, so everything after it audited the
-# wrong screen. Those traps are fixed, and this file is the check that they
-# stay fixed together: every section this fixture reaches is opened, and Menu
-# has to land back on the tile it came from before the walk may continue. One
-# trapped section turns the rest of the walk red on the next `wait_until`.
-#
-# Reachable on `catalog.mixed.v1`: Bibliotheken, Servers, Samen kijken,
-# Instellingen, Logs, Over. Not reachable, and not faked:
-#   - Kijklijst: the `/v1` protocol has no watchlist endpoint (WL2,
-#     ACCEPTANCE GAP), so the tile never appears on a Pleya Server sign-in.
-#   - Aanvragen: no Seerr server in the fixture.
-#   - Downloads: nothing downloaded, and Apple TV hides the destination.
-#   - Activiteit: `isOwnerOrAdmin` is false for Pleya Server; ACT1 waits on
-#     PS-9's roles model (decision of 23 September 2026).
+# Reachable on `catalog.mixed.v1`: Big P (the set-up gate, no provider in the
+# fixture), Samen kijken and Bibliotheken. Not reachable, and not faked: the
+# kijklijst (no watchlist on this catalog; `tvos.my-pleya.v4` seeds one),
+# Aanvragen (no Seerr), Activiteit (no Tautulli), Collecties and
+# Afspeellijsten (no personal media on a Pleya Server), Downloads (never on
+# Apple TV). Instellingen, Servers, Logboeken and Over moved out of the page:
+# `tvos.my-pleya.v4`, `tvos.server.status`, `tvos.settings.logs` and
+# `tvos.settings.about` cover them.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
@@ -28,85 +22,46 @@ steps:
   - wait_until: {id: screen.discover, timeout: 30000}
   # IntroGate's cold-start splash paints over an already-ready screen.
   - settle: 3500
-  - press: right
-  - press: right
-  - press: right
-  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - walk: {direction: right, steps: 7, stopAt: nav.myPleya, timeout: 60000, settle: 600}
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
-  # Select on the bar moves the ring into the hub, onto the profile switch
-  # above the grid, so one DOWN is the grid's first tile.
-  - settle: 600
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
+  - settle: 800
+  - snapshot: 00-page
+
+  # Big P
+  - press: select
+  - wait_until: {id: screen.assistant, timeout: 15000}
+  - settle: 800
+  - snapshot: 01-big-p
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
+
+  # Samen kijken
   - press: down
-  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
-  - snapshot: 00-hub
-
-  # --- Bibliotheken ------------------------------------------------------
-  - press: select
-  - wait_until: {id: "my_pleya.section[libraries]", timeout: 20000}
-  - settle: 1500
-  - snapshot: 10-libraries
-  - press: menu
-  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 8000}
-
-  # --- Servers -----------------------------------------------------------
-  - press: right
-  - wait_until: {focused: "my_pleya.tile[servers]", timeout: 5000}
-  - press: select
-  - wait_until: {id: "my_pleya.section[servers]", timeout: 15000}
-  - settle: 1000
-  - snapshot: 20-servers
-  - press: menu
-  - wait_until: {focused: "my_pleya.tile[servers]", timeout: 8000}
-
-  # --- Samen kijken ------------------------------------------------------
-  - press: right
   - wait_until: {focused: "my_pleya.tile[watchTogether]", timeout: 5000}
   - press: select
   - wait_until: {id: "my_pleya.section[watchTogether]", timeout: 15000}
-  - settle: 1000
-  - snapshot: 30-watch-together
+  - settle: 800
+  - snapshot: 02-watch-together
   - press: menu
   - wait_until: {focused: "my_pleya.tile[watchTogether]", timeout: 8000}
 
-  # A-24b (northstar 01): Bibliotheken, Servers, Samen kijken on the left;
-  # Big P and Beheer (Instellingen, Logboeken, Over, Uitloggen) on the right.
-  # Right from Samen kijken crosses over, the walk goes down to Over and then
-  # back up Beheer. Uitloggen is not opened.
-
-  # --- Over --------------------------------------------------------------
+  # Bibliotheken
   - press: right
-  - walk: {direction: down, steps: 4, stopAt: "my_pleya.tile[about]", timeout: 60000, settle: 600}
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
+  - assert: {id: "my_pleya.tile[libraries]", insideViewport: true, sameRow: "my_pleya.tile[watchTogether]"}
   - press: select
-  - wait_until: {id: "my_pleya.section[about]", timeout: 15000}
-  - settle: 1000
-  - snapshot: 40-about
+  - wait_until: {id: "my_pleya.section[libraries]", timeout: 15000}
+  - settle: 800
+  - snapshot: 03-libraries
   - press: menu
-  - wait_until: {focused: "my_pleya.tile[about]", timeout: 8000}
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 8000}
 
-  # --- Logs --------------------------------------------------------------
+  # Up from the dock returns to the nearest content action, and Menu from the
+  # page reaches the bar on Mijn Pleya.
   - press: up
-  - wait_until: {focused: "my_pleya.tile[logs]", timeout: 5000}
-  - press: select
-  - wait_until: {id: "my_pleya.section[logs]", timeout: 15000}
-  - settle: 1000
-  - snapshot: 50-logs
-  - press: menu
-  - wait_until: {focused: "my_pleya.tile[logs]", timeout: 8000}
-
-  # --- Instellingen ------------------------------------------------------
-  - press: up
-  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
-  - press: select
-  - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
-  - settle: 1000
-  - snapshot: 60-settings
-  - press: menu
-  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
-  - snapshot: 70-back-on-last-tile
-
-  # Menu on the hub itself goes up to the bar, onto the destination the hub
-  # belongs to (hoofdstuk 7.5), not out of the app.
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
   - press: menu
   - wait_until: {focused: nav.myPleya, timeout: 8000}
-  - snapshot: 80-bar
+  - snapshot: 04-back-on-nav

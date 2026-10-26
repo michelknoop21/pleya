@@ -1,0 +1,193 @@
+# A-24c: Mijn Pleya v4 on Apple TV next to its northstar
+# (docs/assets/a24c-northstars/02-Mijn-Pleya-v4/images/A10..A15), the new
+# Instellingen destination in the top bar and the account menu under the
+# avatar. Fixture with Blender artwork and a seeded kijklijst, so the panel
+# shows real posters; no Seerr and no Tautulli, so the dock is the A15 row.
+#
+# What this proves:
+#   1. Into the page from the bar lands on Big P, one focus object (LEESMIJ-v4);
+#      Right reaches the first poster, Left returns to Big P.
+#   2. The Snel naar dock is one row on screen, Bibliotheken included, and
+#      the old Beheer tiles are gone.
+#   3. The ring on Instellingen leaves Mijn Pleya active (A13); Select opens
+#      the settings page as a destination of its own.
+#   4. Instellingen > Koppelingen > Servers opens TvServersPage: status first,
+#      Sluiten the default, and Back returns to the Servers row.
+#   5. The avatar opens the account menu with its two actions; Menu closes it
+#      and the remote is on the avatar again.
+#   6. OLED (the default), Dark and Light pictures of the page.
+name: tvos.my-pleya.v4
+target: tvos-sim
+setup:
+  - reset_app
+  - seed: catalog.studio-art.v1
+  - seed: watchlist.studio.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - walk: {direction: right, steps: 7, stopAt: nav.myPleya, timeout: 60000, settle: 600}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - wait_until: {id: "my_pleya.watchlist_item[0]", timeout: 15000}
+
+  # --- 1. Big P first, one focus object ---
+  # Select on the active pill hands the remote to the page: Big P.
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
+  - settle: 2500
+  - snapshot: oled-bigp
+  - assert: {id: "my_pleya.tile[assistant]", insideViewport: true}
+  - assert: {id: "my_pleya.watchlist_item[0]", insideViewport: true, rightOf: "my_pleya.tile[assistant]"}
+  - assert: {id: "my_pleya.tile[watchlist]", above: "my_pleya.watchlist_item[0]"}
+  - assert: {id: "my_pleya.tile[watchTogether]", below: "my_pleya.tile[assistant]"}
+  - assert: {id: "my_pleya.tile[settings]", present: false}
+  - assert: {id: "my_pleya.tile[servers]", present: false}
+  - assert: {id: "my_pleya.tile[logout]", present: false}
+  - press: right
+  - wait_until: {focused: "my_pleya.watchlist_item[0]", timeout: 8000}
+  - settle: 1200
+  - snapshot: oled-posterfocus
+  - press: left
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
+
+  # --- 2. the dock, one row, the last tile reachable and whole ---
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[watchTogether]", timeout: 8000}
+  - walk: {direction: right, steps: 6, stopAt: "my_pleya.tile[libraries]", timeout: 60000, settle: 400}
+  - assert: {id: "my_pleya.tile[libraries]", insideViewport: true, sameRow: "my_pleya.tile[watchTogether]"}
+  - settle: 1200
+  - snapshot: oled-dockfocus
+
+  # --- 3. Instellingen in the bar: the ring does not swap the page ---
+  - press: menu
+  - wait_until: {focused: nav.myPleya, timeout: 8000}
+  - press: right
+  - wait_until: {focused: nav.settings, timeout: 8000}
+  - settle: 1200
+  - assert: {id: nav.myPleya, state: {active: true}}
+  - assert: {id: nav.settings, state: {active: false}}
+  - assert: {id: screen.my_pleya}
+  - snapshot: oled-settings-ring
+  - press: select
+  - wait_until: {id: nav.settings, state: {active: true}, timeout: 15000}
+  - assert: {id: nav.settings, state: {active: true}}
+
+  # --- 4. Koppelingen > Servers is the TvServersPage ---
+  - press: down
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 10000}
+  - press: left
+  - walk: {direction: down, steps: 6, stopAt: "settings.category[5]", timeout: 75000, settle: 400}
+  - press: select
+  - wait_until: {id: "settings.category[5]", state: {selected: true}, timeout: 5000}
+  - press: right
+  - wait_until: {focused: "my_pleya.section.tile[settings.trackers]", timeout: 5000}
+  - walk: {direction: down, steps: 12, stopAt: "my_pleya.section.tile[settings.servers]", timeout: 150000, settle: 400}
+  - settle: 800
+  - snapshot: settings-koppelingen-servers
+  - press: select
+  - wait_until: {id: "my_pleya.section.tile[servers.servers_add]", timeout: 15000}
+  - settle: 1200
+  - snapshot: servers-page
+  - press: down
+  - assert: {id: "my_pleya.section.tile[servers.servers_server_srv-1]", focused: true}
+  - press: select
+  - wait_until: {id: server.status, timeout: 5000}
+  - assert: {id: server.status, insideViewport: true}
+  - snapshot: servers-status-default-close
+  - press: select
+  - settle: 500
+  - assert: {id: server.status, present: false}
+  - assert: {id: "my_pleya.section.tile[servers.servers_server_srv-1]", focused: true}
+  - press: menu
+  - wait_until: {focused: "my_pleya.section.tile[settings.servers]", timeout: 8000}
+
+  # --- 5. the account menu under the avatar ---
+  - press: menu
+  - wait_until: {focused: nav.settings, timeout: 8000}
+  - walk: {direction: left, steps: 9, stopAt: nav.profile, timeout: 90000, settle: 400}
+  - press: select
+  - wait_until: {id: account_menu, timeout: 8000}
+  - wait_until: {focused: "account_menu.action[switch_profile]", timeout: 5000}
+  - assert: {id: "account_menu.action[logout]", below: "account_menu.action[switch_profile]"}
+  - settle: 1200
+  - snapshot: account-menu
+  - press: down
+  - wait_until: {focused: "account_menu.action[logout]", timeout: 5000}
+  - press: left
+  - assert: {id: "account_menu.action[logout]", focused: true}
+  - press: up
+  - wait_until: {focused: "account_menu.action[switch_profile]", timeout: 5000}
+  - press: menu
+  - settle: 800
+  - assert: {id: account_menu, present: false}
+  - wait_until: {focused: nav.profile, timeout: 5000}
+
+  # --- 6. Dark and Light, through Instellingen > Weergave > Thema ---
+  - walk: {direction: right, steps: 9, stopAt: nav.settings, timeout: 90000, settle: 400}
+  - press: select
+  - wait_until: {id: nav.settings, state: {active: true}, timeout: 15000}
+  # Instellingen remembers where the remote left it: the Servers row.
+  - press: down
+  - wait_until: {focused: "my_pleya.section.tile[settings.servers]", timeout: 10000}
+  - press: left
+  - wait_until: {focused: "settings.category[5]", timeout: 5000}
+  - walk: {direction: up, steps: 6, stopAt: "settings.category[0]", timeout: 75000, settle: 400}
+  - press: select
+  - wait_until: {id: "settings.category[0]", state: {selected: true}, timeout: 5000}
+  - press: right
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 10000}
+  - press: select
+  - settle: 1000
+  - press: up
+  - press: up
+  - press: up
+  - press: down
+  - press: down
+  - settle: 300
+  - press: select
+  - wait_until: {id: "my_pleya.section.tile[setting.theme_mode]", state: {value: "ThemeMode.dark"}, timeout: 8000}
+  - press: menu
+  - wait_until: {focused: nav.settings, timeout: 8000}
+  - press: left
+  - wait_until: {focused: nav.myPleya, timeout: 8000}
+  # Down returns to where the remote left Mijn Pleya (hoofdstuk 7.6), the
+  # dock; Up from its first tile goes back to Big P, where Down came from.
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 8000}
+  - walk: {direction: left, steps: 6, stopAt: "my_pleya.tile[watchTogether]", timeout: 60000, settle: 400}
+  - press: up
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
+  - settle: 1500
+  - snapshot: dark-bigp
+
+  - press: menu
+  - wait_until: {focused: nav.myPleya, timeout: 8000}
+  - press: right
+  - wait_until: {focused: nav.settings, timeout: 8000}
+  - press: select
+  - wait_until: {id: nav.settings, state: {active: true}, timeout: 15000}
+  - press: down
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 10000}
+  - press: select
+  - settle: 1000
+  - press: up
+  - press: up
+  - press: up
+  - press: down
+  - settle: 300
+  - press: select
+  - wait_until: {id: "my_pleya.section.tile[setting.theme_mode]", state: {value: "ThemeMode.light"}, timeout: 8000}
+  - press: menu
+  - wait_until: {focused: nav.settings, timeout: 8000}
+  - press: left
+  - wait_until: {focused: nav.myPleya, timeout: 8000}
+  # Mijn Pleya was left on Big P this time.
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
+  - settle: 1500
+  - snapshot: light-bigp
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[watchTogether]", timeout: 8000}
+  - settle: 1200
+  - snapshot: light-dockfocus
