@@ -51,6 +51,26 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 413 · 26 October 2026 · Apple TV
+
+<!-- commit: 539ec1d8 -->
+
+### Improved
+
+- **Pleya connects playback controls to the iPhone's built-in Apple TV Remote.**
+  Play and pause keep their separate meaning. Forward and backward jumps use the requested
+  interval, stay within the video and are disabled when seeking is unavailable.
+- **Subtitle selection shares the television player's tracks and settings.** Available tracks,
+  the selected track and hidden subtitles are reported through Apple's public language-option
+  APIs. Remote handlers are cleaned up when playback ends and registered once on replay.
+
+### Notes
+
+- Apple decides which controls appear on the iPhone. Their visibility and operation on a real
+  paired iPhone and Apple TV have not yet been verified. Please check play/pause, both jump
+  buttons, subtitles on/off and changing tracks from both devices, including a video without
+  subtitles and a stream that cannot seek. Physical Siri Remote compatibility remains open.
+
 ## 2.8.1 · build 412 · 26 October 2026 · iPhone and iPad
 
 <!-- commit: 9cd63fa61862df5f8dfa968e02e26480bbcda13c -->
