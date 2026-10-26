@@ -274,3 +274,29 @@ describe('streamsessies hergebruiken', () => {
     expect(api.calls.filter((c) => c.startsWith('stream-session'))).toHaveLength(2);
   });
 });
+
+describe('streamsessie-id in de tabbladopslag', () => {
+  it('overleeft een herlaadbeurt en bewaart alleen de id', async () => {
+    const store = new Map<string, string>();
+    const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) };
+    const now = () => Date.parse('2026-10-26T11:00:00Z');
+    const api = fakeApi({
+      streamSession: async () => ({ stream_session_id: 'ss-blijft', expires_at: '2026-10-26T11:30:00Z' })
+    });
+    await new PlayerSession(deps(api, { streamSessions: new StreamSessionCache(now, storage) })).start(
+      asMedia(fakeMedia()),
+      target
+    );
+    // Een nieuwe cache op dezelfde opslag is een herladen pagina.
+    const media = fakeMedia();
+    await new PlayerSession(deps(api, { streamSessions: new StreamSessionCache(now, storage) })).start(
+      asMedia(media),
+      target
+    );
+    expect(api.calls.filter((c) => c.startsWith('stream-session'))).toHaveLength(1);
+    expect(media.src).toBe('/pleya/v1/stream/v-1?ss=ss-blijft');
+    expect(JSON.parse(store.get('pleya.stream_sessions') ?? '{}')).toEqual({
+      'v-1': { id: 'ss-blijft', expiresAt: Date.parse('2026-10-26T11:30:00Z') }
+    });
+  });
+});
