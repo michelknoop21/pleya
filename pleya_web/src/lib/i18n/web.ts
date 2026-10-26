@@ -183,6 +183,7 @@ export const web = {
   'admin.nav.network': 'Network',
   'admin.nav.security': 'Security',
   'admin.nav.diagnostics': 'Diagnostics',
+  'admin.nav.maintenance': 'Maintenance',
   'admin.nav.back': 'Back to Pleya',
   'admin.index.manage': 'Manage',
   'admin.index.settings': 'Settings',

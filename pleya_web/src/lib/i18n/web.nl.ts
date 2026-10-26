@@ -181,6 +181,7 @@ export const webNl = {
   'admin.nav.network': 'Netwerk',
   'admin.nav.security': 'Beveiliging',
   'admin.nav.diagnostics': 'Diagnostiek',
+  'admin.nav.maintenance': 'Onderhoud',
   'admin.nav.back': 'Terug naar Pleya',
   'admin.index.manage': 'Beheer',
   'admin.index.settings': 'Instellingen',
