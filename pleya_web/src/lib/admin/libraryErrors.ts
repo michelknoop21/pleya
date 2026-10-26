@@ -53,8 +53,60 @@ const KNOWN: Record<string, { key: MessageKey; wayOut: WayOut }> = {
   'storage.full': { key: 'admin.lib.err.storageFull', wayOut: 'retry' }
 };
 
+const ROOT_REASONS: Record<string, MessageKey> = {
+  invalid_path: 'admin.lib.err.root.invalidPath',
+  outside_mounts: 'admin.lib.err.root.outsideMounts',
+  overlaps_library: 'admin.lib.err.root.overlapsLibrary',
+  overlaps_request: 'admin.lib.err.root.overlapsRequest',
+  no_roots: 'admin.lib.err.root.noRoots',
+  invalid_field: 'admin.lib.err.root.invalidField'
+};
+
+const FIELDS: Record<string, MessageKey> = {
+  title: 'admin.lib.err.field.title',
+  kind: 'admin.lib.err.field.kind',
+  scan_interval_seconds: 'admin.lib.err.field.interval',
+  body: 'admin.lib.err.field.body'
+};
+
+function text(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+/**
+ * `storage.root_not_offered` is één code voor zes oorzaken; `details.reason`
+ * kiest de zin. Een onbekende of ontbrekende reden valt terug op de
+ * algemene tekst, zodat een oudere server een nette melding blijft geven.
+ */
+function rootNotOffered(error: ApiError, name: string): LibraryProblem {
+  const reason = text(error.details['reason']);
+  const key = ROOT_REASONS[reason];
+  if (!key) {
+    return {
+      code: error.code,
+      message: t('admin.lib.err.rootNotOffered', { name }),
+      wayOut: 'storage'
+    };
+  }
+  const mounts = error.details['mounts'];
+  const field = FIELDS[text(error.details['field'])];
+  return {
+    code: error.code,
+    message: t(key, {
+      name,
+      root: text(error.details['root']),
+      with: text(error.details['with']),
+      library: text(error.details['library']),
+      mounts: Array.isArray(mounts) ? mounts.filter((m) => typeof m === 'string').join(', ') : '',
+      field: field ? t(field) : ''
+    }),
+    wayOut: reason === 'outside_mounts' || reason === 'overlaps_library' ? 'storage' : 'none'
+  };
+}
+
 export function libraryProblem(error: unknown, name: string): LibraryProblem {
   if (error instanceof ApiError) {
+    if (error.code === 'storage.root_not_offered') return rootNotOffered(error, name);
     const known = KNOWN[error.code];
     if (known) return { code: error.code, message: t(known.key, { name }), wayOut: known.wayOut };
     if (error.code === 'server.internal') {

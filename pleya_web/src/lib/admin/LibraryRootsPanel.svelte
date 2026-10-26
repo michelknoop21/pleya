@@ -9,12 +9,19 @@
   toets en de staat, en `accent-color` zet hem in de inkt van het thema.
 -->
 <script lang="ts">
+  import Field from '../components/Field.svelte';
   import Panel from '../components/Panel.svelte';
   import StatusPill from '../components/StatusPill.svelte';
   import type { StorageRoot } from '../api/types';
   import { t } from '../i18n';
   import { formatBytes } from '../util/format';
-  import { rootChoices } from './libraries';
+  import {
+    addedRoots,
+    newRootProblem,
+    rootChoices,
+    rootParentExample,
+    type NewRootProblem
+  } from './libraries';
 
   interface Props {
     roots: StorageRoot[];
@@ -42,6 +49,29 @@
     const parts = [root.fs_type ?? '', trustText(root)];
     if (root.mounted) parts.push(t('admin.lib.root.free', { size: formatBytes(root.free_bytes) }));
     return parts.filter(Boolean).join(' · ');
+  }
+
+  const added = $derived(addedRoots(roots, selected));
+  const parent = $derived(rootParentExample(roots));
+  let draft = $state('');
+  let problem = $state<NewRootProblem | null>(null);
+
+  const PROBLEMS = {
+    empty: 'admin.lib.new.err.empty',
+    relative: 'admin.lib.new.err.relative',
+    trailing: 'admin.lib.new.err.trailing',
+    dots: 'admin.lib.new.err.dots',
+    double: 'admin.lib.new.err.double',
+    nul: 'admin.lib.new.err.nul',
+    duplicate: 'admin.lib.new.err.duplicate'
+  } as const;
+
+  function addDraft(): void {
+    const found = newRootProblem(draft, selected);
+    problem = found;
+    if (found) return;
+    selected = [...selected, draft.trim()].sort();
+    draft = '';
   }
 
   function toggle(path: string, on: boolean): void {
@@ -89,7 +119,66 @@
         {/if}
       </li>
     {/each}
+    {#each added as path (path)}
+      {@const id = `${uid}-added-${path}`}
+      <li class="row">
+        <input
+          {id}
+          type="checkbox"
+          checked
+          disabled={readonly}
+          aria-describedby={`${id}-sub`}
+          onchange={(event) => toggle(path, event.currentTarget.checked)}
+        />
+        <label class="body" for={id}>
+          <span class="t mono">{path}</span>
+          <span class="s" id={`${id}-sub`}>{t('admin.lib.new.added')}</span>
+        </label>
+        {#if !readonly}
+          <button
+            type="button"
+            class="btn btn--ghost btn--sm"
+            aria-label={t('admin.lib.new.removeLabel', { path })}
+            onclick={() => toggle(path, false)}
+          >
+            {t('admin.lib.new.remove')}
+          </button>
+        {/if}
+      </li>
+    {/each}
   </ul>
+  {#if !readonly}
+    <div class="new">
+      <!-- Enter in het veld voegt de map toe en verstuurt het formulier niet. -->
+      <div
+        class="new__row"
+        role="presentation"
+        onkeydown={(event) => {
+          if (event.key !== 'Enter' || !(event.target instanceof HTMLInputElement)) return;
+          event.preventDefault();
+          addDraft();
+        }}
+      >
+        <div class="new__field">
+          <Field
+            label={t('admin.lib.new.label')}
+            bind:value={draft}
+            mono
+            autocomplete="off"
+            placeholder={parent ? `${parent}/…` : '/'}
+            error={problem ? t(PROBLEMS[problem]) : undefined}
+            hint={parent
+              ? t('admin.lib.new.hint', { example: `${parent}/…` })
+              : t('admin.lib.new.hintPlain')}
+            oninput={() => (problem = null)}
+          />
+        </div>
+        <button type="button" class="btn btn--secondary new__add" onclick={addDraft}>
+          {t('admin.lib.new.add')}
+        </button>
+      </div>
+    </div>
+  {/if}
 </Panel>
 
 <style>
@@ -120,6 +209,29 @@
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+
+  .new {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .new__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .new__field {
+    flex: 1 1 240px;
+    min-width: 0;
+  }
+
+  /* De knop staat op de hoogte van het vak: het label (13 px) en zijn marge zitten erboven. */
+  .new__add {
+    margin-top: 23px;
   }
 
   .row {
