@@ -1,7 +1,8 @@
 # BP-08b: Big P-geheugen via Pleya Server
 
 Roadmap: BP-08b. Productkeuze Michel, 26 oktober 2026: "Ja via pleya server is goed".
-Status: productrichting akkoord; dit concrete contract is een voorstel, geen geopend protocolvenster.
+Status: scoped venster en bijbehorende server/client-migraties vrijgegeven door Michel op
+26 oktober 2026: "En ga door tot build naarvtestglight samen met de terug knop van downloads".
 Besluit voor het venster: DEC-XXX, pas nummeren bij merge.
 
 ## 1. Afbakening en afwijking van de servervolgorde
@@ -89,7 +90,8 @@ Wirevormen (alle aanvraagobjecten gesloten, `additionalProperties: false`):
 
 Nieuwe codes in het nieuwe domein `memory`: 400 `memory.invalid`, 409 `memory.conflict`,
 409 `memory.epoch_changed`, 409 `memory.deleted`, 409 `memory.limit_reached`,
-409 `memory.duplicate`. Bestaande auth-, requestgrootte- en interne foutcodes worden hergebruikt;
+409 `memory.duplicate`. 403 `memory.not_permitted` en 413 `memory.too_large` bewaken toegang en bodylimiet;
+bestaande auth- en interne foutcodes worden hergebruikt;
 geen fout bevat feittekst, valueKey, SQL-parameters of een server-snapshot. Conflicten worden met
 GET opnieuw gelezen. Geen nieuwe claims, rollen, token-scopes of antwoordvelden op login.
 
@@ -101,7 +103,11 @@ Weggelaten bestaande ids krijgen tombstones `(user_id, fact_id, deleted_revision
 hetzelfde id mag daarna niet opnieuw worden aangemaakt. Tombstones blijven tot accountverwijdering.
 Clear roteert epoch, verhoogt revision en wist levende feiten/tombstones atomair. Oude apparaten
 worden daarmee altijd afgewezen, ook als zij een nog nooit geüpload feit in hun wachtrij hebben.
-Een clear-conflict wist niets en vereist opnieuw lezen/bevestigen; geen blind herhalen.
+Een clear-conflict wist niets op de server en vereist opnieuw lezen/bevestigen; geen blind herhalen.
+Een bevestigde lokale wisactie verwijdert ook oude conflictdrafts, quarantaine en verzendreceipts.
+De client bewaart alleen de bekende epoch/revision voor de pending serverwisactie. Wijzigde de
+server sindsdien, dan verschijnt de actuele snapshot uitsluitend ter beoordeling; de volgende
+bevestiging heet expliciet serverherinneringen wissen en activeert die feiten nooit opnieuw.
 
 Client bewaart per expliciete koppeling de laatst bevestigde basissnapshot, epoch/revision en
 lokale wijzigingen in Drift. Wijziging plus pendingstatus in dezelfde transactie; geen extra
@@ -195,9 +201,11 @@ migratie en backup/restore. Geen nieuw providerframework, geen backend-specifiek
    Remote. Geen echte herinneringen of productie-NAS als testfixture. Release apart van hardware-
    acceptatie rapporteren; venster pas sluiten na bewijs, niet na alleen upload/merge.
 
-## 7. Gevraagde vrijgave
+## 7. Vrijgave en bouwgrens
 
-Productrichting is al akkoord. Gevraagd: open het hierboven uitputtend begrensde BP-08b-venster,
-sta de bijbehorende server/client-migraties toe en laat deze fase naast de bestaande stroom bouwen.
+Productrichting en het hierboven uitputtend begrensde BP-08b-venster zijn vrijgegeven, inclusief
+de bijbehorende server/client-migraties en bouw naast de bestaande stroom. De opdracht loopt
+door tot TestFlight, samen met de Downloads-terugknop (IOS-DL-BACK1).
 Geen productie-upload, live databasedeploy of profielimport wordt door alleen dit ontwerp uitgevoerd.
-Tot die vrijgave worden openapi.yaml, productiecode en databases niet aangepast.
+Het venster blijft uitsluitend voor de genoemde capability/operaties/schema’s/foutcodes open.
+Productiedatabases en bestaande herinneringen worden nooit als testfixture gebruikt.

@@ -53,13 +53,14 @@ type InfoAuth struct {
 
 // Capabilities is wat deze server werkelijk aanbiedt, en is altijd leidend.
 type Capabilities struct {
-	Browse       bool `json:"browse"`
-	Search       bool `json:"search"`
-	Artwork      bool `json:"artwork"`
-	WatchState   bool `json:"watch_state"`
-	PlaybackPlan bool `json:"playback_plan"`
-	Transcode    bool `json:"transcode"`
-	Downloads    bool `json:"downloads"`
+	AssistantMemory bool `json:"assistant_memory"`
+	Browse          bool `json:"browse"`
+	Search          bool `json:"search"`
+	Artwork         bool `json:"artwork"`
+	WatchState      bool `json:"watch_state"`
+	PlaybackPlan    bool `json:"playback_plan"`
+	Transcode       bool `json:"transcode"`
+	Downloads       bool `json:"downloads"`
 	// Backups (venster 7, S25). Aan zodra de back-upservice en de wachtrij er
 	// zijn: GET/POST /backups, GET /backups/{id} en de hersteltest en restore
 	// eronder bestaan dan voor klasse admin.

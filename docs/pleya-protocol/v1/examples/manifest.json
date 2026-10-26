@@ -467,6 +467,21 @@
       "file": "error_server_maintenance.json",
       "schema": "ErrorEnvelope",
       "note": "S25: elke aanvraag terwijl de server een back-up terugzet"
+    },
+    {
+      "file": "memory_snapshot.json",
+      "schema": "MemorySnapshot",
+      "note": "BP-08b persoonlijk geheugen"
+    },
+    {
+      "file": "memory_replace.json",
+      "schema": "MemoryReplace",
+      "note": "BP-08b persoonlijk geheugen"
+    },
+    {
+      "file": "memory_clear.json",
+      "schema": "MemoryClear",
+      "note": "BP-08b persoonlijk geheugen"
     }
   ]
 }

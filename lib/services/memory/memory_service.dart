@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 
 import 'package:crypto/crypto.dart';
 import 'package:uuid/uuid.dart';
@@ -8,11 +11,15 @@ import '../../utils/app_logger.dart';
 import 'exclude_seen_store.dart';
 import 'memory_enabled_store.dart';
 import 'memory_models.dart';
+import 'memory_sync_models.dart';
 import 'memory_relevance.dart';
 import 'memory_store.dart';
 import 'memory_validation.dart';
 
 export 'memory_models.dart';
+export 'memory_sync_models.dart';
+
+part 'memory_sync_service.dart';
 
 /// What one profile asked the assistant to remember, and the written overview
 /// derived from it. Every change to the facts (add, update, delete, wipe)
@@ -32,7 +39,7 @@ export 'memory_models.dart';
 /// A service whose profile was deleted writes nothing any more
 /// ([MemoryCode.profileGone]). After [clearAll] it keeps working, but an
 /// overview written from the wiped facts is refused.
-class MemoryService {
+class MemoryService extends ChangeNotifier {
   MemoryService({
     required AppDatabase database,
     required String profileId,
@@ -48,6 +55,7 @@ class MemoryService {
        _newId = newId ?? const Uuid().v4,
        _now = now ?? DateTime.now;
 
+  bool _disposed = false;
   final String _profileId;
   final int _removals;
   final MemoryStore _store;
@@ -72,7 +80,9 @@ class MemoryService {
 
   bool get _hasProfile => _profileId.isNotEmpty;
   bool get _profileGone =>
-      AssistantMemoryEpochs.removing(_profileId) || AssistantMemoryEpochs.removals(_profileId) != _removals;
+      _disposed ||
+      AssistantMemoryEpochs.removing(_profileId) ||
+      AssistantMemoryEpochs.removals(_profileId) != _removals;
 
   /// Whether this profile's memory is on. Off means no tools, no context and
   /// no proposals; the stored facts and overview stay.
@@ -123,7 +133,7 @@ class MemoryService {
     final accepted = checked.value;
     if (accepted == null) return MemoryResult(checked.code);
 
-    return _guarded(_failed, () {
+    return _mutating(_failed, () {
       return _store.transaction(() async {
         final existing = await _store.byValueKey(accepted.key);
         if (existing != null) return MemoryResult(MemoryCode.exists, MemoryFact.fromRow(existing));
@@ -140,6 +150,7 @@ class MemoryService {
           at: _now().toUtc().millisecondsSinceEpoch,
         );
         await _store.deleteOverview();
+        await _store.noteSyncChange();
         return _stored(id);
       });
     });
@@ -161,7 +172,7 @@ class MemoryService {
       if (accepted == null) return MemoryResult(checked.code);
     }
 
-    return _guarded(_failed, () {
+    return _mutating(_failed, () {
       return _store.transaction(() async {
         final current = await _store.byId(id);
         if (current == null) return const MemoryResult(MemoryCode.notFound);
@@ -192,6 +203,7 @@ class MemoryService {
         if (ExcludeSeenStore.isSentence(current.value) && !ExcludeSeenStore.isSentence(nextValue)) {
           await _excludeSeenStore.clear();
         }
+        await _store.noteSyncChange();
         return _stored(id);
       });
     });
@@ -201,7 +213,7 @@ class MemoryService {
   /// removed fact comes back so the caller can name it.
   Future<MemoryResult> delete(String id) async {
     if (!_hasProfile) return const MemoryResult(MemoryCode.noProfile);
-    return _guarded(_failed, () {
+    return _mutating(_failed, () {
       return _store.transaction(() async {
         final current = await _store.byId(id);
         if (current == null) return const MemoryResult(MemoryCode.notFound);
@@ -209,6 +221,7 @@ class MemoryService {
         await _store.deleteOverview();
         // The standing preference goes with its own fact.
         if (ExcludeSeenStore.isSentence(current.value)) await _excludeSeenStore.clear();
+        await _store.noteSyncChange();
         return MemoryResult(MemoryCode.ok, MemoryFact.fromRow(current));
       });
     });
@@ -219,8 +232,11 @@ class MemoryService {
   Future<MemoryResult> clearAll() async {
     if (!_hasProfile) return const MemoryResult(MemoryCode.noProfile);
     AssistantMemoryEpochs.noteWipe(_profileId);
-    return _guarded(_failed, () async {
-      await _store.transaction(_store.deleteAll);
+    return _mutating(_failed, () async {
+      await _store.transaction(() async {
+        await _store.deleteAll();
+        await _store.noteSyncChange(clear: true);
+      });
       await _excludeSeenStore.clear();
       return const MemoryResult(MemoryCode.ok);
     });
@@ -360,6 +376,12 @@ class MemoryService {
     return row == null ? const MemoryResult(MemoryCode.notFound) : MemoryResult(MemoryCode.ok, MemoryFact.fromRow(row));
   }
 
+  Future<MemoryResult> _mutating(MemoryResult onFailure, Future<MemoryResult> Function() action) async {
+    final result = await _guarded(onFailure, action);
+    if (result.ok && !_disposed) notifyListeners();
+    return result;
+  }
+
   /// Runs [action] and turns whatever it throws into [onFailure]. Only the
   /// type of the error is logged; its message can quote a fact.
   Future<T> _guarded<T>(T onFailure, Future<T> Function() action) async {
@@ -369,5 +391,11 @@ class MemoryService {
       appLogger.w('Memory storage failed: ${e.runtimeType}');
       return onFailure;
     }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }

@@ -58,7 +58,7 @@ Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-r
 diagnostiek, tokens, audit, bibliotheken, opslag, scans, jobs en de overname van `.env`-bibliotheken.
 Protocolvensters 1 en 2 zijn gesloten ([DEC-135](DECISIONS.md), [DEC-136](DECISIONS.md),
 [DEC-137](DECISIONS.md); [DEC-138](DECISIONS.md), [DEC-146](DECISIONS.md)) en `openapi.yaml` is weer
-bevroren. De volgorde sinds [DEC-150](DECISIONS.md) en [DEC-151](DECISIONS.md) is: eerst één bewezen
+bevroren buiten het afzonderlijk vrijgegeven BP-08b-venster hieronder. De volgorde sinds [DEC-150](DECISIONS.md) en [DEC-151](DECISIONS.md) is: eerst één bewezen
 keten op de testinstance (scan, metadata en artwork, zoeken, direct play, hervatten, kijkstatus op een
 tweede toestel, transcode, download met digest), daarna de gaten die die ronde aanwijst, dan de
 beheer-GUI (S10), dan de Plex Replacement Readiness Gate (S15) en pas daarna S3. S3 is dus niet de
@@ -152,7 +152,7 @@ P5 (locator), P6 (acht protocolvensters geopend en gesloten), P7 (PS-5-hardwarer
 P8 (Plex Replacement Readiness Gate). Van de acht protocolvensters zijn er twee geopend én weer gesloten: venster 1, bij
 S1, met alle zeventien rijen erin ([DEC-135](DECISIONS.md), [DEC-136](DECISIONS.md),
 [DEC-137](DECISIONS.md)), en venster 2, bij S2, met alle tien ([DEC-138](DECISIONS.md),
-[DEC-146](DECISIONS.md)). Er staat er nu geen open. De volledige stand staat in hoofdstuk 4.
+[DEC-146](DECISIONS.md)). Van deze acht staat er nu geen open. Daarnaast is het afzonderlijke BP-08b-venster hieronder vrijgegeven. De volledige stand staat in hoofdstuk 4.
 
 ### 2.5 Twee dingen die deze planning kunnen omgooien
 
@@ -544,16 +544,18 @@ Start niet automatisch. Zolang PS-12.0 open staat, is geen enkele PS-12-taak toe
 
 ---
 
-### BP-08b Persoonlijk Big P-geheugen (afzonderlijke fase, voorstel)
+### BP-08b Persoonlijk Big P-geheugen (afzonderlijke vrijgegeven fase)
 
 Deze aanvulling is geen S0-S25-slice en verandert de telling hierboven niet. Michel heeft op
-26 oktober 2026 Pleya Server als syncbron gekozen. Het scoped protocolvenster en de serverfase
-blijven gesloten tot het concrete voorstel is vrijgegeven; bestaande commitgrenzen blijven gelden.
+26 oktober 2026 Pleya Server als syncbron gekozen. Het scoped protocolvenster, de
+serverfase en migraties zijn expliciet vrijgegeven op 26 oktober 2026, uitsluitend volgens het
+[contract](plans/2026-10-26-big-p-geheugensync.md) en [DEC-XXX](DECISIONS.md#dec-xxx-bp-08b-geheugensync-krijgt-een-scoped-protocolvenster).
+Dit opent geen andere vensters en verruimt geen bestaande commitgrenzen.
 
 | Taak | Omschrijving | Status | Bewijs / grens | Datum |
 | --- | --- | --- | --- | --- |
-| BP-08b ontwerp | Accountidentiteit, synccontract, wissen/offline en zes compatibiliteitsregels | `[~]` | [Concreet voorstel](plans/2026-10-26-big-p-geheugensync.md); productrichting akkoord; voorstel, vrijgave nog nodig | 2026-10-26 |
-| BP-08b bouw | Protocol, serveropslag, gedeelde clientintegratie en acceptatie | `[!]` | Wacht op scoped venster/fasebesluit uit het voorstel; geen API/migratie/productie-upload uitgevoerd | 2026-10-26 |
+| BP-08b ontwerp | Accountidentiteit, synccontract, wissen/offline en zes compatibiliteitsregels | `[~]` | [Concreet voorstel](plans/2026-10-26-big-p-geheugensync.md); productrichting en concrete scoped vrijgave akkoord, onafhankelijke contractreview groen | 2026-10-26 |
+| BP-08b bouw | Protocol, serveropslag, gedeelde clientintegratie en acceptatie | `[~]` | Scoped venster/fase/migraties vrijgegeven door Michel; implementatie en bewijs lopen, geen productie-upload als test | 2026-10-26 |
 
 ## 4. Poorten en releasevoorwaarden
 

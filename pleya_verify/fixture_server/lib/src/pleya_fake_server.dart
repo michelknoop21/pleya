@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'fixture_clock.dart';
+import 'memory_fake_store.dart';
 import 'fixtures/sample_media.dart';
 
 /// A Pleya Server routing kernel, good enough to browse.
@@ -63,6 +64,26 @@ class PleyaFakeServer {
   /// S20: favorites, ratings and remembered tracks. The fake keeps them per
   /// item id and records each call so a test can read what the app sent.
   bool personalCapability = false;
+
+  /// BP-08b is opt-in so existing fixtures retain their old-server behavior.
+  bool assistantMemoryCapability = false;
+  final Map<String, String> _memoryAccessUsers = {};
+  final Map<String, String> _memoryRefreshUsers = {};
+  final Map<String, String> _memoryRoles = {};
+  final Map<String, MemoryFakeStore> _memoryStores = {};
+
+  /// Test-account registration, never a production API or a profile-name link.
+  void addMemoryAccount({required String username, required String password, String role = 'member'}) {
+    _credentials[username] = password;
+    _memoryRoles[username] = role;
+  }
+
+  void setMemoryRole(String username, String role) => _memoryRoles[username] = role;
+
+  String _memoryUserId(String username) {
+    final hash = sha256.convert(utf8.encode('memory-user/$username')).toString();
+    return '${hash.substring(0, 8)}-${hash.substring(8, 12)}-4${hash.substring(13, 16)}-8${hash.substring(17, 20)}-${hash.substring(20, 32)}';
+  }
 
   /// S23: the server offers downloads. A download reads `preparing` for
   /// [downloadPrepareRounds] polls, then `ready` with [downloadSha256], or
@@ -269,6 +290,11 @@ class PleyaFakeServer {
     filtersCapability = false;
     playbackPlanCapability = false;
     personalCapability = false;
+    assistantMemoryCapability = false;
+    _memoryAccessUsers.clear();
+    _memoryRefreshUsers.clear();
+    _memoryRoles.clear();
+    _memoryStores.clear();
     downloadsCapability = false;
     downloadPrepareRounds = 0;
     downloadFails = false;
@@ -529,7 +555,7 @@ class PleyaFakeServer {
       if (username == null || _credentials[username] != password) {
         return _json(_error('auth.invalid_credentials'), status: 401);
       }
-      return _json(_mintTokenPair());
+      return _json(_mintTokenPair(username: username));
     }
     if (path == '/auth/setup') {
       if (!setupRequired) {
@@ -545,7 +571,8 @@ class PleyaFakeServer {
       final password = body['password'] as String;
       _credentials[username] = password;
       setupRequired = false;
-      return _json(_mintTokenPair());
+      _memoryRoles[username] = 'owner';
+      return _json(_mintTokenPair(username: username));
     }
     if (path == '/auth/refresh') {
       switch (refreshOutcome) {
@@ -581,10 +608,20 @@ class PleyaFakeServer {
             'error': {'code': 'auth.refresh_token_reused', 'message': 'seen before', 'retryable': false},
           }, status: 401);
       }
+      if (assistantMemoryCapability) {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        final username = _memoryRefreshUsers.remove(body['refresh_token']);
+        if (username == null) return _json(_error('auth.invalid_token'), status: 401);
+        return _json(_mintTokenPair(username: username));
+      }
       return _json(_mintTokenPair());
     }
+    final bearer = request.headers['Authorization'];
+    final memoryUsername = _memoryAccessUsers[bearer];
     final expected = rejectCurrentAccessTokens ? null : 'Bearer at-$refreshCount';
-    if (expected == null || request.headers['Authorization'] != expected) {
+    final authorized =
+        !rejectCurrentAccessTokens && (assistantMemoryCapability ? memoryUsername != null : bearer == expected);
+    if (!authorized) {
       return _json(_error('auth.invalid_token'), status: 401);
     }
     if (path == '/server') {
@@ -596,8 +633,23 @@ class PleyaFakeServer {
       if (admin != null) return admin;
     }
     if (usersCapability && path == '/users/me' && request.method == 'GET') {
-      // The one account this fixture knows is the one `/auth/setup` made.
+      if (assistantMemoryCapability && memoryUsername != null) {
+        return _json({
+          'id': _memoryUserId(memoryUsername),
+          'username': memoryUsername,
+          'role': _memoryRoles[memoryUsername] ?? 'member',
+        });
+      }
+      // The old fixtures keep their original single owner identity.
       return _json({'id': 'user-owner', 'username': _credentials.keys.firstOrNull ?? 'owner', 'role': 'owner'});
+    }
+    if (assistantMemoryCapability && (path == '/users/me/memory' || path == '/users/me/memory/clear')) {
+      if (memoryUsername == null || !{'owner', 'admin', 'member'}.contains(_memoryRoles[memoryUsername] ?? 'member')) {
+        return _json(_error('memory.not_permitted'), status: 403);
+      }
+      final subject = _memoryUserId(memoryUsername);
+      final store = _memoryStores.putIfAbsent(subject, () => MemoryFakeStore(subject, () => clock.now));
+      return store.handle(request, clear: path.endsWith('/clear'));
     }
 
     if (path == '/auth/stream-token') {
@@ -892,6 +944,7 @@ class PleyaFakeServer {
       'realtime': false,
       'users': usersCapability,
       'administration': usersCapability,
+      if (assistantMemoryCapability) 'assistant_memory': true,
       'watch_state_ownership': watchStateOwnership,
       'stream_sessions': watchState,
       if (filtersCapability) 'filters': true,
@@ -908,8 +961,12 @@ class PleyaFakeServer {
   /// Shared by `/auth/refresh`, `/auth/login` and `/auth/setup` — all three
   /// end the same way: mint a fresh pair, bump [refreshCount] (the counter
   /// `at-N`/the authenticated-route check reads).
-  Map<String, dynamic> _mintTokenPair() {
+  Map<String, dynamic> _mintTokenPair({String? username}) {
     refreshCount++;
+    if (assistantMemoryCapability && username != null) {
+      _memoryAccessUsers['Bearer at-$refreshCount'] = username;
+      _memoryRefreshUsers['rt-${refreshCount + 1}'] = username;
+    }
     return {
       'access_token': 'at-$refreshCount',
       'refresh_token': 'rt-${refreshCount + 1}',

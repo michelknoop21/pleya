@@ -8379,6 +8379,7 @@ class TranslationsAssistantMemoryEn {
 	late final TranslationsAssistantMemoryCardEn card = TranslationsAssistantMemoryCardEn.internal(_root);
 	late final TranslationsAssistantMemoryCategoriesEn categories = TranslationsAssistantMemoryCategoriesEn.internal(_root);
 	late final TranslationsAssistantMemoryScreenEn screen = TranslationsAssistantMemoryScreenEn.internal(_root);
+	late final TranslationsAssistantMemorySyncEn sync = TranslationsAssistantMemorySyncEn.internal(_root);
 }
 
 // Path: assistant.mobile
@@ -9655,6 +9656,111 @@ class TranslationsAssistantMemoryScreenEn {
 	late final TranslationsAssistantMemoryScreenSourcesEn sources = TranslationsAssistantMemoryScreenSourcesEn.internal(_root);
 	late final TranslationsAssistantMemoryScreenSheetEn sheet = TranslationsAssistantMemoryScreenSheetEn.internal(_root);
 	late final TranslationsAssistantMemoryScreenCodesEn codes = TranslationsAssistantMemoryScreenCodesEn.internal(_root);
+}
+
+// Path: assistant.memory.sync
+class TranslationsAssistantMemorySyncEn {
+	TranslationsAssistantMemorySyncEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Sync via Pleya Server'
+	String get title => 'Sync via Pleya Server';
+
+	/// en: 'Stored on this device'
+	String get local => 'Stored on this device';
+
+	/// en: 'Syncing…'
+	String get syncing => 'Syncing…';
+
+	/// en: 'Changes waiting to sync'
+	String get pending => 'Changes waiting to sync';
+
+	/// en: 'Changes confirmed by the server'
+	String get synced => 'Changes confirmed by the server';
+
+	/// en: 'Server unavailable or account not permitted'
+	String get unavailable => 'Server unavailable or account not permitted';
+
+	/// en: 'Sync failed. Your local memories are retained.'
+	String get error => 'Sync failed. Your local memories are retained.';
+
+	/// en: 'Changes need your choice'
+	String get conflict => 'Changes need your choice';
+
+	/// en: 'Server memory changed after a reset or restore. Review before using it.'
+	String get quarantine => 'Server memory changed after a reset or restore. Review before using it.';
+
+	/// en: 'Choose your own Pleya Server account'
+	String get account => 'Choose your own Pleya Server account';
+
+	/// en: 'No eligible Pleya Server account is connected. Sign in to an updated server with your own account.'
+	String get noAccount => 'No eligible Pleya Server account is connected. Sign in to an updated server with your own account.';
+
+	/// en: 'Share these memories with ${account}'
+	String preview({required Object account}) => 'Share these memories with ${account}';
+
+	/// en: 'Existing server memories are retained. Household memories stay on this device. Only selected memories will be shared.'
+	String get previewNote => 'Existing server memories are retained. Household memories stay on this device. Only selected memories will be shared.';
+
+	/// en: 'Confirm and sync'
+	String get connect => 'Confirm and sync';
+
+	/// en: 'Sync now'
+	String get refresh => 'Sync now';
+
+	/// en: 'Disconnect'
+	String get disconnect => 'Disconnect';
+
+	/// en: 'Stop syncing this profile? Memories stay on this device and on the server.'
+	String get disconnectNote => 'Stop syncing this profile? Memories stay on this device and on the server.';
+
+	/// en: 'Review restored memories'
+	String get reviewReset => 'Review restored memories';
+
+	/// en: 'Use these server memories'
+	String get acceptReset => 'Use these server memories';
+
+	/// en: 'Confirm this server snapshot as the new basis. Old pending changes will not be uploaded automatically.'
+	String get resetNote => 'Confirm this server snapshot as the new basis. Old pending changes will not be uploaded automatically.';
+
+	/// en: 'This device'
+	String get localVersion => 'This device';
+
+	/// en: 'Server'
+	String get serverVersion => 'Server';
+
+	/// en: 'Keep this version'
+	String get keepLocal => 'Keep this version';
+
+	/// en: 'Use server version'
+	String get keepServer => 'Use server version';
+
+	/// en: 'Keep both'
+	String get keepBoth => 'Keep both';
+
+	/// en: 'Removed'
+	String get deleted => 'Removed';
+
+	/// en: 'Share'
+	String get select => 'Share';
+
+	/// en: 'Last confirmed: ${time}'
+	String lastConfirmed({required Object time}) => 'Last confirmed: ${time}';
+
+	/// en: 'This would store ${count} memories on this device. The limit is 200; remove memories before connecting.'
+	String importLimit({required Object count}) => 'This would store ${count} memories on this device. The limit is 200; remove memories before connecting.';
+
+	/// en: 'The server changed after you asked to erase memory. Review these facts and confirm erasing this server snapshot.'
+	String get clearChanged => 'The server changed after you asked to erase memory. Review these facts and confirm erasing this server snapshot.';
+
+	/// en: 'Erase these server memories'
+	String get clearServer => 'Erase these server memories';
+
+	/// en: 'Erase all memories for this profile and its linked Pleya Server account? Other connected devices receive the deletion when they reconnect.'
+	String get clearEverywhere => 'Erase all memories for this profile and its linked Pleya Server account? Other connected devices receive the deletion when they reconnect.';
 }
 
 // Path: assistant.jobs.scanLibrary
@@ -12548,6 +12654,38 @@ extension on Translations {
 			'assistant.memory.screen.codes.notFound' => 'This memory no longer exists.',
 			'assistant.memory.screen.codes.profileGone' => 'This profile was switched or removed. Nothing was changed.',
 			'assistant.memory.screen.codes.storageFailed' => 'Saving did not work. Nothing was changed.',
+			'assistant.memory.sync.title' => 'Sync via Pleya Server',
+			'assistant.memory.sync.local' => 'Stored on this device',
+			'assistant.memory.sync.syncing' => 'Syncing…',
+			'assistant.memory.sync.pending' => 'Changes waiting to sync',
+			'assistant.memory.sync.synced' => 'Changes confirmed by the server',
+			'assistant.memory.sync.unavailable' => 'Server unavailable or account not permitted',
+			'assistant.memory.sync.error' => 'Sync failed. Your local memories are retained.',
+			'assistant.memory.sync.conflict' => 'Changes need your choice',
+			'assistant.memory.sync.quarantine' => 'Server memory changed after a reset or restore. Review before using it.',
+			'assistant.memory.sync.account' => 'Choose your own Pleya Server account',
+			'assistant.memory.sync.noAccount' => 'No eligible Pleya Server account is connected. Sign in to an updated server with your own account.',
+			'assistant.memory.sync.preview' => ({required Object account}) => 'Share these memories with ${account}',
+			'assistant.memory.sync.previewNote' => 'Existing server memories are retained. Household memories stay on this device. Only selected memories will be shared.',
+			'assistant.memory.sync.connect' => 'Confirm and sync',
+			'assistant.memory.sync.refresh' => 'Sync now',
+			'assistant.memory.sync.disconnect' => 'Disconnect',
+			'assistant.memory.sync.disconnectNote' => 'Stop syncing this profile? Memories stay on this device and on the server.',
+			'assistant.memory.sync.reviewReset' => 'Review restored memories',
+			'assistant.memory.sync.acceptReset' => 'Use these server memories',
+			'assistant.memory.sync.resetNote' => 'Confirm this server snapshot as the new basis. Old pending changes will not be uploaded automatically.',
+			'assistant.memory.sync.localVersion' => 'This device',
+			'assistant.memory.sync.serverVersion' => 'Server',
+			'assistant.memory.sync.keepLocal' => 'Keep this version',
+			'assistant.memory.sync.keepServer' => 'Use server version',
+			'assistant.memory.sync.keepBoth' => 'Keep both',
+			'assistant.memory.sync.deleted' => 'Removed',
+			'assistant.memory.sync.select' => 'Share',
+			'assistant.memory.sync.lastConfirmed' => ({required Object time}) => 'Last confirmed: ${time}',
+			'assistant.memory.sync.importLimit' => ({required Object count}) => 'This would store ${count} memories on this device. The limit is 200; remove memories before connecting.',
+			'assistant.memory.sync.clearChanged' => 'The server changed after you asked to erase memory. Review these facts and confirm erasing this server snapshot.',
+			'assistant.memory.sync.clearServer' => 'Erase these server memories',
+			'assistant.memory.sync.clearEverywhere' => 'Erase all memories for this profile and its linked Pleya Server account? Other connected devices receive the deletion when they reconnect.',
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI provider',
@@ -12663,6 +12801,8 @@ extension on Translations {
 			'assistant.jobs.retryJob.running' => 'Job running',
 			'assistant.jobs.retryJob.done' => 'Job finished',
 			'assistant.jobs.retryJob.failed' => 'Job failed',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.jobs.retryJob.background' => 'Job still running in the background',
 			'assistant.jobs.retryJob.unknown' => 'Job: status can no longer be determined',
 			'assistant.jobs.kinds.scan_library' => 'Library scan',
@@ -12695,8 +12835,6 @@ extension on Translations {
 			'assistant.confirm.titles.createHomeRow' => 'Create home row',
 			'assistant.confirm.titles.createCollection' => 'Create collection',
 			'assistant.confirm.titles.requestTitle' => 'Request title',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.confirm.titles.downloadEpisodes' => 'Download episodes',
 			'assistant.confirm.titles.downloadSubtitle' => 'Download subtitle',
 			'assistant.confirm.titles.changePlayback' => 'Change playback',

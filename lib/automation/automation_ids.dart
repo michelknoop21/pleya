@@ -9,6 +9,8 @@ import '../navigation/navigation_tab_id.dart';
 /// [navTab] — never a raw string literal at the call site. Enforced by
 /// test/architecture/automation_ids_test.dart.
 class AutomationIds {
+  static const navigationBack = 'navigation.back';
+
   AutomationIds._();
 
   /// The first-start authentication composition. Ready as soon as the
@@ -373,6 +375,7 @@ class AutomationIds {
   /// The list "Herinneringen" behind "Herinneringen beheren" (43 D). State
   /// carries `count` (shown) and `total`.
   static const String screenMemoryList = 'screen.memory_list';
+  static const String screenMemorySync = 'screen.memory_sync';
 
   /// A control of the memory screens: `[menu]`, `[manage]`, `[use]` (reports
   /// `selected`), `[rewrite]`, `[clear]`, `[turnOn]`, `[retry]`, `[send]`,
@@ -959,6 +962,7 @@ class AutomationIds {
     {'id': assistantMemoryLink, 'role': 'button', 'instanceable': false},
     {'id': screenMemory, 'role': 'screen', 'instanceable': false},
     {'id': screenMemoryList, 'role': 'screen', 'instanceable': false},
+    {'id': screenMemorySync, 'role': 'screen', 'instanceable': false},
     {'id': settingsMemoryAction, 'role': 'button', 'instanceable': true},
     {'id': settingsMemoryInput, 'role': 'field', 'instanceable': false},
     {'id': settingsMemoryOverview, 'role': 'region', 'instanceable': false},

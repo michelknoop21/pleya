@@ -479,6 +479,98 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /users/me/memory:
+    get:
+      tags: [users]
+      operationId: getMemory
+      summary: Persoonlijk Big P-geheugen (BP-08b).
+      description: |
+        Alleen onder capabilities.assistant_memory, eigen sessiebearer. API- en streamtokens
+        geven geen toegang. Owner/admin/member zien uitsluitend hun eigen geheugen;
+        restricted krijgt 403. Antwoorden dragen Cache-Control no-store. Geen user_id.
+        Snapshot-CAS met epoch en base_revision; wijzigingen zijn atomair. Gewiste ids
+        blijven geweigerd. Clear roteert de epoch; ondersteunde restore roteert alle epochs.
+      responses:
+        "200":
+          description: De bevestigde snapshot van deze gebruiker.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemorySnapshot" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [users]
+      operationId: replaceMemory
+      summary: Persoonlijk Big P-geheugen (BP-08b).
+      description: |
+        Alleen onder capabilities.assistant_memory, eigen sessiebearer. API- en streamtokens
+        geven geen toegang. Owner/admin/member zien uitsluitend hun eigen geheugen;
+        restricted krijgt 403. Antwoorden dragen Cache-Control no-store. Geen user_id.
+        Snapshot-CAS met epoch en base_revision; wijzigingen zijn atomair. Gewiste ids
+        blijven geweigerd. Clear roteert de epoch; ondersteunde restore roteert alle epochs.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MemoryReplace" }
+      responses:
+        "200":
+          description: De bevestigde snapshot van deze gebruiker.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemorySnapshot" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /users/me/memory/clear:
+    post:
+      tags: [users]
+      operationId: clearMemory
+      summary: Persoonlijk Big P-geheugen (BP-08b).
+      description: |
+        Alleen onder capabilities.assistant_memory, eigen sessiebearer. API- en streamtokens
+        geven geen toegang. Owner/admin/member zien uitsluitend hun eigen geheugen;
+        restricted krijgt 403. Antwoorden dragen Cache-Control no-store. Geen user_id.
+        Snapshot-CAS met epoch en base_revision; wijzigingen zijn atomair. Gewiste ids
+        blijven geweigerd. Clear roteert de epoch; ondersteunde restore roteert alle epochs.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MemoryClear" }
+      responses:
+        "200":
+          description: De bevestigde snapshot van deze gebruiker.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemorySnapshot" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /users/{id}:
     patch:
       tags: [users]
@@ -2625,7 +2717,7 @@ components:
           properties:
             code:
               type: string
-              pattern: "^(auth|library|playback|session|settings|storage|server|job)\\.[a-z0-9_]+$"
+              pattern: "^(auth|library|playback|session|settings|storage|server|job|memory)\\.[a-z0-9_]+$"
               description: |
                 Het contract. De client vertaalt codes en matcht nooit op message.
 
@@ -2651,6 +2743,64 @@ components:
             details:
               type: object
               additionalProperties: true
+
+    MemoryFactInput:
+      type: object
+      additionalProperties: false
+      required: [id, category, value, source]
+      properties:
+        id: { type: string, format: uuid }
+        category:
+          type: string
+          enum: [preference, dislike, habit, other]
+          x-unknown-safe: false
+        value:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Eén regel, geen controls of feiten waarvan bestaande profielinstellingen eigenaar zijn.
+        source:
+          type: string
+          enum: [user_explicit, assistant_confirmed, settings_manual]
+          x-unknown-safe: false
+    MemoryFact:
+      type: object
+      required: [id, category, value, source, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        category: { type: string }
+        value: { type: string, minLength: 1, maxLength: 200 }
+        source: { type: string }
+        created_at: { $ref: "#/components/schemas/Timestamp" }
+        updated_at: { $ref: "#/components/schemas/Timestamp" }
+    MemorySnapshot:
+      type: object
+      required: [epoch, revision, facts]
+      properties:
+        epoch: { type: string, format: uuid }
+        revision: { type: integer, minimum: 0, maximum: 9007199254740991 }
+        facts:
+          type: array
+          maxItems: 200
+          items: { $ref: "#/components/schemas/MemoryFact" }
+    MemoryReplace:
+      type: object
+      additionalProperties: false
+      required: [epoch, base_revision, facts]
+      properties:
+        epoch: { type: string, format: uuid }
+        base_revision: { type: integer, minimum: 0, maximum: 9007199254740991 }
+        facts:
+          type: array
+          maxItems: 200
+          items: { $ref: "#/components/schemas/MemoryFactInput" }
+    MemoryClear:
+      type: object
+      additionalProperties: false
+      required: [epoch, base_revision]
+      properties:
+        epoch: { type: string, format: uuid }
+        base_revision: { type: integer, minimum: 0, maximum: 9007199254740991 }
 
     Info:
       type: object
@@ -2712,6 +2862,10 @@ components:
       description: Altijd leidend boven feature_level.
       required: [browse, search, artwork, watch_state]
       properties:
+        assistant_memory:
+          type: boolean
+          default: false
+          description: BP-08b, de drie persoonlijke geheugenoperaties met CAS en wis-epoch.
         browse: { type: boolean }
         search: { type: boolean }
         artwork: { type: boolean }

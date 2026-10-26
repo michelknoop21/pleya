@@ -152,6 +152,7 @@ class PleyaCapabilities {
     this.favorites = false,
     this.ratings = false,
     this.trackPreferences = false,
+    this.assistantMemory = false,
     this.transcode = false,
     this.downloads = false,
     this.liveTv = false,
@@ -190,6 +191,7 @@ class PleyaCapabilities {
   final bool favorites;
   final bool ratings;
   final bool trackPreferences;
+  final bool assistantMemory;
   final bool transcode;
   final bool downloads;
   final bool liveTv;
@@ -243,6 +245,7 @@ class PleyaCapabilities {
     favorites: booleanOr(json, 'favorites', orElse: false),
     ratings: booleanOr(json, 'ratings', orElse: false),
     trackPreferences: booleanOr(json, 'track_preferences', orElse: false),
+    assistantMemory: booleanOr(json, 'assistant_memory', orElse: false),
     transcode: booleanOr(json, 'transcode', orElse: false),
     downloads: booleanOr(json, 'downloads', orElse: false),
     liveTv: booleanOr(json, 'live_tv', orElse: false),

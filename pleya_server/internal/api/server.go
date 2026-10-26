@@ -24,6 +24,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
+	"github.com/edde746/plezy/pleya_server/internal/memory"
 	"github.com/edde746/plezy/pleya_server/internal/metrics"
 	"github.com/edde746/plezy/pleya_server/internal/personal"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
@@ -38,6 +39,7 @@ type Options struct {
 	Watch     *watch.Store
 	Personal  *personal.Store
 	Downloads *downloads.Store
+	Memory    *memory.Store
 
 	// Backups maakt, controleert en herstelt back-ups (S25). Nil laat de routes
 	// onder /backups antwoorden zoals een onbekend endpoint, en

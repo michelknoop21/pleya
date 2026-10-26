@@ -146,6 +146,38 @@ void main() {
     );
     await record('ErrorEnvelope', 'GET', '/items/bestaat-niet', expect_: 404);
 
+    // BP-08b: opt-in capability, own session and the three memory operations.
+    applyNamedFixture(server, 'memory.sync.v1');
+    await record('TokenPair', 'POST', '/auth/login', body: {'username': 'eigenaar', 'password': 'hunter2'});
+    await record('Info', 'GET', '/info');
+    await record('User', 'GET', '/users/me');
+    await record('MemorySnapshot', 'GET', '/users/me/memory');
+    var memory = jsonDecode(captured.last.body) as Map<String, dynamic>;
+    await record(
+      'MemorySnapshot',
+      'PUT',
+      '/users/me/memory',
+      body: {
+        'epoch': memory['epoch'],
+        'base_revision': memory['revision'],
+        'facts': [
+          {
+            'id': '11111111-1111-4111-8111-111111111111',
+            'category': 'preference',
+            'value': 'Houdt van ruimtefilms',
+            'source': 'settings_manual',
+          },
+        ],
+      },
+    );
+    memory = jsonDecode(captured.last.body) as Map<String, dynamic>;
+    await record(
+      'MemorySnapshot',
+      'POST',
+      '/users/me/memory/clear',
+      body: {'epoch': memory['epoch'], 'base_revision': memory['revision']},
+    );
+
     expect(captured, isNotEmpty);
     // Zonder deze ondergrens zou een fake server die alles op 404 zet nog steeds
     // een geldige, lege vangst opleveren.

@@ -1,0 +1,173 @@
+name: tvos.settings.assistant-memory-sync
+target: tvos-sim
+# Roadmap BP-08b: native memory route, one locally added fact, explicit account
+# choice and import preview, server confirmation, refresh and return navigation.
+# Needs PLEYA_ASSISTANT_ENABLED=true; TV uses native idb HID only.
+# This scenario drives one client. Fixture two-session tests and shared-engine
+# two-client tests separately exercise isolation and propagation; hardware remains open.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - seed: memory.sync.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - settle: 600
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
+  # A-24b: Big P heads the right column; Right along Bronnen crosses to it.
+  - walk: {direction: right, steps: 4, stopAt: "my_pleya.tile[assistant]", timeout: 60000, settle: 600}
+  - press: select
+  - wait_until: {focused: "assistant.button[setup]", timeout: 10000}
+  - press: select
+  - wait_until: {focused: "settings.form.button[assistant.provider.ollamaServer]", timeout: 10000}
+
+  # The row "Geheugen" stands under the three providers.
+  - walk: {direction: down, steps: 5, stopAt: "settings.form.button[assistant.memory]", timeout: 40000, settle: 400}
+  - assert: {id: "settings.form.button[assistant.memory]", insideViewport: true}
+  - settle: 600
+  - snapshot: 00-row-in-big-p-settings
+  - press: select
+
+  # The screen (43 M): empty for now, the remote on "Vraag of werk bij".
+  - wait_until: {id: screen.memory, state: {view: empty, count: 0, enabled: true}, timeout: 15000}
+  - wait_until: {focused: "settings.memory.action[ask]", timeout: 8000}
+  - assert: {id: "my_pleya.section.content[assistant_memory]", insideViewport: true}
+  - assert: {id: "settings.memory.action[ask]", insideViewport: true}
+  - assert: {id: "settings.memory.action[manage]", insideViewport: true, below: "settings.memory.action[ask]"}
+  - assert: {id: "settings.memory.action[use]", insideViewport: true, state: {selected: true}, below: "settings.memory.action[manage]"}
+  - assert: {id: "settings.memory.action[clear]", insideViewport: true, below: "settings.memory.action[use]"}
+  - assert: {id: settings.memory.overview, leftOf: "settings.memory.action[ask]"}
+  - settle: 800
+  - snapshot: 01-memory-empty
+
+  # The switch: Select turns the memory off in place and on again, and the
+  # remote stays on the tile.
+  - press: down
+  - wait_until: {focused: "settings.memory.action[manage]", timeout: 5000}
+  - press: down
+  - wait_until: {focused: "settings.memory.action[use]", timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.memory, state: {view: "off", status: "off", enabled: false}, timeout: 8000}
+  - wait_until: {id: "settings.memory.action[use]", state: {selected: false}, timeout: 5000}
+  - wait_until: {focused: "settings.memory.action[use]", timeout: 5000}
+  - assert: {id: "settings.memory.action[ask]", insideViewport: true, state: {enabled: false}}
+  - settle: 800
+  - snapshot: 01b-off
+  - press: select
+  - wait_until: {id: screen.memory, state: {view: empty, enabled: true}, timeout: 8000}
+  - wait_until: {id: "settings.memory.action[use]", state: {selected: true}, timeout: 5000}
+  - wait_until: {focused: "settings.memory.action[use]", timeout: 5000}
+  - assert: {id: "settings.memory.action[ask]", state: {enabled: true}}
+
+  # To the list and back with Menu.
+  - press: up
+  - wait_until: {focused: "settings.memory.action[manage]", timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.memory_list, state: {total: 0, readable: true}, timeout: 15000}
+  - wait_until: {focused: "settings.memory.action[search]", timeout: 8000}
+  - settle: 800
+  - snapshot: 02-list-empty
+  - press: menu
+  - wait_until: {id: screen.memory, state: {view: empty}, timeout: 10000}
+  - assert: {id: screen.memory_list, present: false}
+  - assert: {id: "settings.memory.action[ask]", insideViewport: true}
+  # The remote is back on the tile it left.
+  - wait_until: {focused: "settings.memory.action[manage]", timeout: 8000}
+  - settle: 800
+  - snapshot: 03-back-with-menu
+
+  # Add a memory: the list, "Herinnering toevoegen", the system keyboard.
+  - press: select
+  - wait_until: {id: screen.memory_list, state: {total: 0}, timeout: 15000}
+  - wait_until: {focused: "settings.memory.action[search]", timeout: 8000}
+  - walk: {direction: down, steps: 4, stopAt: "settings.memory.action[add]", timeout: 30000, settle: 400}
+  - press: select
+  - wait_until: {id: settings.memory.sheet, state: {mode: add}, timeout: 10000}
+  - wait_until: {focused: settings.memory.sheet.field, timeout: 8000}
+  - settle: 800
+  - snapshot: 04-add-sheet
+  - press: select
+  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 10000}
+  - settle: 1000
+  - type: "Houdt niet van horror"
+  - press: select
+  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: false}, timeout: 10000}
+  - wait_until: {focused: settings.memory.sheet.field, timeout: 8000}
+  # Both rows of categories, one stop per press. Down from the text lands on
+  # the chosen one; Right walks all five in order, across the rows; Up and
+  # Down go a row at a time. Plain presses: a walk judges skipped focusables
+  # by geometry and counts the tiles of the page under the panel.
+  - press: down
+  - wait_until: {focused: "settings.memory.sheet.chip[preference]", timeout: 5000}
+  - assert: {id: "settings.memory.sheet.chip[preference]", state: {selected: true}}
+  - press: right
+  - wait_until: {focused: "settings.memory.sheet.chip[dislike]", timeout: 5000}
+  - press: right
+  - wait_until: {focused: "settings.memory.sheet.chip[household]", timeout: 5000}
+  - press: right
+  - wait_until: {focused: "settings.memory.sheet.chip[habit]", timeout: 5000}
+  - assert: {id: "settings.memory.sheet.chip[habit]", insideViewport: true, below: "settings.memory.sheet.chip[preference]"}
+  - press: right
+  - wait_until: {focused: "settings.memory.sheet.chip[other]", timeout: 5000}
+  - assert: {id: "settings.memory.sheet.chip[other]", insideViewport: true, sameRow: "settings.memory.sheet.chip[habit]"}
+  - press: up
+  - wait_until: {focused: "settings.memory.sheet.chip[dislike]", timeout: 5000}
+  - press: select
+  - wait_until: {id: "settings.memory.sheet.chip[dislike]", state: {selected: true}, timeout: 5000}
+  - press: down
+  - wait_until: {focused: "settings.memory.sheet.chip[other]", timeout: 5000}
+  - settle: 600
+  - snapshot: 04b-add-sheet-second-row
+  # Under the last row: Opslaan, now that there is a text to save.
+  - press: down
+  - wait_until: {focused: "settings.memory.sheet.button[save]", timeout: 8000}
+  - assert: {id: "settings.memory.sheet.button[save]", insideViewport: true, state: {enabled: true}}
+  - press: select
+  - wait_until: {id: screen.memory_list, state: {total: 1, count: 1}, timeout: 10000}
+  - wait_until: {id: "settings.memory.fact[0]", timeout: 5000}
+  # The panel needs its closing animation before it is out of the tree.
+  - settle: 1500
+  - assert: {id: settings.memory.sheet, present: false}
+  - wait_until: {focused: "settings.memory.action[add]", timeout: 8000}
+  - assert: {id: "settings.memory.fact[0]", state: {category: dislike}}
+  - snapshot: 05-list-one
+
+  # Return from the fact list and open shared sync controls with native HID.
+  - press: menu
+  - wait_until: {id: screen.memory, state: {count: 1}, timeout: 10000}
+  - wait_until: {focused: "settings.memory.action[manage]", timeout: 8000}
+  - walk: {direction: down, steps: 5, stopAt: "settings.memory.action[sync]", timeout: 30000, settle: 400}
+  - press: select
+  - wait_until: {id: screen.memory_sync, state: {status: local, eligible: true}, timeout: 10000}
+  - wait_until: {focused: "settings.memory.action[syncAccount0]", timeout: 8000}
+  - assert: {id: "settings.memory.action[syncAccount0]", insideViewport: true}
+  - settle: 800
+  - snapshot: 06-account-choice
+  - press: select
+  - wait_until: {id: screen.memory_sync, state: {preview: true, busy: false}, timeout: 10000}
+  - wait_until: {focused: "settings.memory.action[syncConfirm]", timeout: 8000}
+  - assert: {id: "settings.memory.action[syncFact0]", state: {selected: true}, insideViewport: true}
+  - assert: {id: "settings.memory.action[syncConfirm]", insideViewport: true}
+  - settle: 800
+  - snapshot: 07-import-preview
+  - press: select
+  - wait_until: {id: screen.memory_sync, state: {status: synced, preview: false, busy: false}, timeout: 15000}
+  - wait_until: {focused: "settings.memory.action[syncRefresh]", timeout: 8000}
+  - settle: 1000
+  - snapshot: 08-confirmed
+  - press: select
+  - wait_until: {id: screen.memory_sync, state: {status: synced, busy: false}, timeout: 10000}
+  - press: menu
+  - wait_until: {id: screen.memory, state: {count: 1}, timeout: 10000}
+  - wait_until: {focused: "settings.memory.action[sync]", timeout: 8000}
+  - settle: 1000
+  - snapshot: 09-returned-memory

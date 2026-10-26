@@ -81,6 +81,9 @@ ids:
   - id: local_library.action
     role: button
     instanceable: true
+  - id: navigation.back
+    role: button
+    instanceable: false
   - id: nav.discover
     role: nav
     instanceable: false
@@ -304,6 +307,9 @@ ids:
     role: button
     instanceable: false
   - id: screen.memory
+    role: screen
+    instanceable: false
+  - id: screen.memory_sync
     role: screen
     instanceable: false
   - id: screen.memory_list

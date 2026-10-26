@@ -64,6 +64,7 @@ import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
 import '../watch_together/providers/watch_together_provider.dart';
 import 'profile_navigation_scope.dart';
+import 'profile_memory_sync.dart';
 
 /// Root route for an active profile session.
 ///
@@ -481,8 +482,17 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               ),
               // What this profile asked Big P to remember. One instance per
               // profile session, shared by chat and settings.
-              Provider<MemoryService>(
+              ChangeNotifierProvider<MemoryService>(
                 create: (context) => MemoryService(database: context.read<AppDatabase>(), profileId: activeId ?? ''),
+              ),
+              ChangeNotifierProvider<ProfileMemorySync>(
+                lazy: false,
+                create: (context) => ProfileMemorySync(
+                  memory: context.read<MemoryService>(),
+                  activeProfile: context.read<ActiveProfileProvider>(),
+                  multiServer: context.read<MultiServerProvider>(),
+                  connections: context.read<ProfileConnectionRegistry>(),
+                ),
               ),
               Provider<InteractionRecorder>(
                 lazy: false,
