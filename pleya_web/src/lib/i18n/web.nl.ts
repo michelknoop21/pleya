@@ -1,5 +1,6 @@
 import { webOpsNl } from './web.ops.nl';
 
+import { webUsersNl } from './webUsers.nl';
 import type { WebKey } from './web';
 
 /**
@@ -359,5 +360,6 @@ export const webNl = {
   'error.storage.unavailable': 'De server kan nu niet bij zijn opslag.',
   'error.storage.full': 'De server heeft geen ruimte meer om te schrijven.',
   'error.client.malformed_response': 'De server stuurde iets wat deze client niet kan lezen.',
-  'error.client.transport': 'De server is niet bereikbaar. Controleer de verbinding en probeer het opnieuw.'
+  'error.client.transport': 'De server is niet bereikbaar. Controleer de verbinding en probeer het opnieuw.',
+  ...webUsersNl
 } satisfies Record<WebKey, string>;

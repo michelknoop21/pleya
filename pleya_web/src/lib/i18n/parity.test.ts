@@ -44,7 +44,9 @@ const SAME_ON_PURPOSE = [
   'admin.act.failures.open',
   'admin.act.col.status',
   'admin.act.history.scan',
-  'admin.act.history.scanUnknown'
+  'admin.act.history.scanUnknown',
+  'admin.users.lastActive.value',
+  'admin.users.account.title'
 ];
 
 function placeholders(text: string): string[] {

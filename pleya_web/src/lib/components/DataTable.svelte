@@ -59,6 +59,8 @@
     rowData?: (row: T) => Record<`data-${string}`, string>;
     title?: Snippet;
     actions?: Snippet;
+    /** Toelichting onder de tabel, binnen het paneel (27: de regel onder de rechtenmatrix). */
+    footer?: Snippet;
   }
 
   let {
@@ -71,7 +73,8 @@
     stack = false,
     rowData,
     title,
-    actions
+    actions,
+    footer
   }: Props = $props();
 
   // Zoveel cellen staan gestapeld links onder elkaar; de rechterkolom spant ze.
@@ -154,9 +157,17 @@
       </table>
     </div>
   {/if}
+  {#if footer}
+    <div class="tbl__footer">{@render footer()}</div>
+  {/if}
 </Panel>
 
 <style>
+  .tbl__footer {
+    padding: 12px 20px 16px;
+    border-top: 1px solid var(--hairline);
+  }
+
   .tbl {
     width: 100%;
     border-collapse: collapse;

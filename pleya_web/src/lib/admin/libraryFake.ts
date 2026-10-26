@@ -10,7 +10,7 @@ import type { Library, Scan, StorageRoot } from '../api/types';
 
 const BASE = 'http://server.test/pleya/v1';
 
-function memoryStorage(): TokenStorage {
+export function memoryStorage(): TokenStorage {
   const map = new Map<string, string>();
   return {
     getItem: (key) => map.get(key) ?? null,

@@ -26,6 +26,8 @@
 
   interface Props {
     legend: string;
+    /** De legend blijft voor een schermlezer; een paneelkop zegt het al. */
+    hideLegend?: boolean;
     options: ChoiceOption[];
     value?: string;
     name?: string;
@@ -43,6 +45,7 @@
 
   let {
     legend,
+    hideLegend = false,
     options,
     value = $bindable(''),
     name,
@@ -75,7 +78,7 @@
   aria-invalid={error ? 'true' : undefined}
   {disabled}
 >
-  <legend class="cho__legend">{legend}</legend>
+  <legend class="cho__legend" class:visually-hidden={hideLegend}>{legend}</legend>
 
   <div class="cho__options">
     {#each options as option, i (option.value)}
