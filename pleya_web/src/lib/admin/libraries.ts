@@ -182,6 +182,56 @@ export function rootChoices(roots: StorageRoot[], libraryId: string | null): Roo
   });
 }
 
+/** Waarom een zelf ingetypte map niet wordt toegevoegd, vóór er iets naar de server gaat. */
+export type NewRootProblem = 'empty' | 'relative' | 'trailing' | 'dots' | 'double' | 'nul' | 'duplicate';
+
+/**
+ * Dezelfde regels als de server voor `invalid_path` (genormaliseerd en
+ * absoluut), plus dubbel. De server blijft de bron van waarheid voor overlap
+ * en voor wat onder een aangeboden mount valt; dat weet de client niet.
+ */
+export function newRootProblem(raw: string, selected: string[]): NewRootProblem | null {
+  const path = raw.trim();
+  if (path === '') return 'empty';
+  if (path.includes('\0')) return 'nul';
+  if (!path.startsWith('/')) return 'relative';
+  if (path.includes('//')) return 'double';
+  if (path.split('/').some((part) => part === '..' || part === '.')) return 'dots';
+  if (path.length > 1 && path.endsWith('/')) return 'trailing';
+  if (selected.includes(path)) return 'duplicate';
+  return null;
+}
+
+/**
+ * De ouder-map waar de getoonde roots onder hangen, voor het voorbeeld in de
+ * hint. De meest voorkomende ouder wint; zonder roots is er geen voorbeeld,
+ * want een pad verzinnen is erger dan er geen noemen.
+ */
+export function rootParentExample(roots: StorageRoot[]): string | null {
+  const counts = new Map<string, number>();
+  for (const { path } of roots) {
+    const at = path.lastIndexOf('/');
+    if (at <= 0) continue;
+    const parent = path.slice(0, at);
+    counts.set(parent, (counts.get(parent) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [parent, count] of counts) {
+    if (count > bestCount) {
+      best = parent;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+/** Gekozen paden die de server niet in `roots` heeft: de zelf toegevoegde mappen. */
+export function addedRoots(roots: StorageRoot[], selected: string[]): string[] {
+  const known = new Set(roots.map((r) => r.path));
+  return selected.filter((p) => !known.has(p));
+}
+
 // --- Formulier ----------------------------------------------------------
 
 export interface LibraryForm {
