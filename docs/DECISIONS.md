@@ -5080,10 +5080,10 @@ Migratie `0019_transcode_sessions.sql` (de masterlijst noemde `0017`, dat was be
 **Consequences:** De lijst toont na de eerstvolgende start alleen sessies die nog kunnen verversen. Voor de gebruiker verandert er verder niets: een ingetrokken sessie had geen werkend credential meer. De plaatshouder `Unknown device` verschijnt in het beheer als "Onbekend toestel" met de dag van aanmelden. Bestaande rijen zonder naam houden die naam; alleen nieuwe logins vanuit Pleya Web dragen er een. Open: de auditbron `system` (punt 3) en een toestelnaam voor native clients die nog niets sturen.
 
 
-## DEC-XXX: BP-08b geheugensync krijgt een scoped protocolvenster
+## DEC-165: BP-08b geheugensync krijgt een scoped protocolvenster
 
 **Datum:** 26 oktober 2026
-**Status:** accepted (nummer bij merge)
+**Status:** accepted
 **Roadmap:** BP-08b, samen naar TestFlight met A-08 / IOS-DL-BACK1.
 **Besluit:** Michel kiest Pleya Server voor persoonlijke Big P-geheugensync en geeft daarna het
 [concrete contract](plans/2026-10-26-big-p-geheugensync.md) en bijbehorende server/client-migraties

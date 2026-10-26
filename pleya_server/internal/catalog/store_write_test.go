@@ -160,6 +160,11 @@ func TestCreateLibraryRejectsOverlappingRoots(t *testing.T) {
 	if !errors.Is(err, catalog.ErrRootNotOffered) {
 		t.Fatalf("overlappende roots in één aanvraag gaven %v, verwacht ErrRootNotOffered", err)
 	}
+	var inRequest *catalog.RootConflict
+	if !errors.As(err, &inRequest) || inRequest.Reason != catalog.RootReasonOverlapsRequest ||
+		inRequest.Root != "/media/a" || inRequest.With != "/media/a/sub" || inRequest.Library != "" {
+		t.Fatalf("botsing binnen de aanvraag gaf %+v, verwacht overlaps_request met /media/a en /media/a/sub", inRequest)
+	}
 
 	if _, err := store.CreateLibrary(ctx, "Eerst", "movies", []string{"/media/claimed"}); err != nil {
 		t.Fatalf("eerste CreateLibrary: %v", err)
@@ -167,6 +172,11 @@ func TestCreateLibraryRejectsOverlappingRoots(t *testing.T) {
 	_, err = store.CreateLibrary(ctx, "Tweede", "movies", []string{"/media/claimed"})
 	if !errors.Is(err, catalog.ErrRootNotOffered) {
 		t.Fatalf("een al geclaimde root gaf %v, verwacht ErrRootNotOffered", err)
+	}
+	var withLibrary *catalog.RootConflict
+	if !errors.As(err, &withLibrary) || withLibrary.Reason != catalog.RootReasonOverlapsLibrary ||
+		withLibrary.With != "/media/claimed" || withLibrary.Library != "Eerst" {
+		t.Fatalf("botsing met een bibliotheek gaf %+v, verwacht overlaps_library met Eerst", withLibrary)
 	}
 }
 

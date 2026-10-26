@@ -3,7 +3,7 @@
 Roadmap: BP-08b. Productkeuze Michel, 26 oktober 2026: "Ja via pleya server is goed".
 Status: scoped venster en bijbehorende server/client-migraties vrijgegeven door Michel op
 26 oktober 2026: "En ga door tot build naarvtestglight samen met de terug knop van downloads".
-Besluit voor het venster: DEC-XXX, pas nummeren bij merge.
+Besluit voor het venster: [DEC-165](../DECISIONS.md#dec-165-bp-08b-geheugensync-krijgt-een-scoped-protocolvenster).
 
 ## 1. Afbakening en afwijking van de servervolgorde
 

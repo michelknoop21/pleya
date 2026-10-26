@@ -42,6 +42,12 @@ services:
       # zodra een beheerder de variabele wegHaalt nadat de bibliotheken zijn overgenomen.
       PLEYA_SERVER_LIBRARIES: ${PLEYA_SERVER_LIBRARIES:-}
 
+      # De mounts die de beheerder als opslagroot mag kiezen, kommagescheiden. Zonder
+      # waarde volgen ze uit PLEYA_SERVER_LIBRARIES en anders is het /media/library.
+      # Zet hem zodra de bibliotheken in de database staan: de lijst bepaalt welke
+      # paden een nieuwe of aangepaste bibliotheek mag gebruiken.
+      PLEYA_SERVER_MEDIA_DIRS: ${PLEYA_SERVER_MEDIA_DIRS:-}
+
       # Per root: mag de goedkope laag van de scanner op inodes bouwen. Zonder
       # vermelding beslist het bestandssysteemtype, en bij twijfel is dat nee.
       PLEYA_SERVER_INODE_TRUST: ${PLEYA_SERVER_INODE_TRUST:-}
