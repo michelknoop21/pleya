@@ -53,7 +53,7 @@ Nothing user-facing since the last published build.
 
 ## 2.8.1 · build 411 · 26 October 2026 · Apple TV
 
-<!-- commit: 6ab0be475dcb7f14a09a92124035dd221620e808 -->
+<!-- commit: 6c6149d83bda7d3a9752396b54f2361552f944a6 -->
 
 ### Improved
 
@@ -66,7 +66,7 @@ Nothing user-facing since the last published build.
 
 ### Notes
 
-- Covers Home, Films, Series, Search, Continue Watching, Requests, detail rows and Library Recommended. Existing row heights, badges, menus and actions are retained.
+- Covers Home, Films, Series, Search, Continue Watching, the My Pleya watchlist preview and Requests, detail rows and Library Recommended. Existing row heights, badges, menus and actions are retained.
 - Worth checking on a real Apple TV: rapid remote input, moving between rows, returning from details, the last card, Reduce Motion and television overscan. Simulator and focused component tests passed; physical Siri Remote behavior has not been checked. Cast, extras, related-title rows and Library Recommended share the tested components but did not have separate populated simulator runs.
 
 ## 2.8.1 · build 410 · 26 October 2026 · iPhone, iPad and Apple TV
