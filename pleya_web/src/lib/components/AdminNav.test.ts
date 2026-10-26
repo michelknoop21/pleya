@@ -56,9 +56,11 @@ describe('welke sectie bij een pad hoort', () => {
     expect(activeSectionId('/')).toBeNull();
   });
 
-  it('laat de mobiele terugpijl vanuit de index naar Pleya en vanuit een sectie naar de index wijzen', () => {
+  it('laat de mobiele terugpijl vanuit de index naar Pleya en vanuit een sectie naar de index en daarbinnen naar de sectie wijzen', () => {
     expect(adminBackHref('/admin')).toBe('/');
     expect(adminBackHref('/admin/network')).toBe('/admin');
+    expect(adminBackHref('/admin/libraries/l1')).toBe('/admin/libraries');
+    expect(adminBackHref('/admin/libraries/new')).toBe('/admin/libraries');
     expect(adminBackHref('/libraries')).toBeNull();
   });
 });

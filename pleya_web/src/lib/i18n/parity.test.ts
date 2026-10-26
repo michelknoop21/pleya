@@ -35,7 +35,8 @@ const SAME_ON_PURPOSE = [
   'admin.server.title',
   'admin.server.database',
   'admin.server.databaseValue',
-  'admin.server.versionValue'
+  'admin.server.versionValue',
+  'admin.lib.status.sidecars'
 ];
 
 function placeholders(text: string): string[] {
