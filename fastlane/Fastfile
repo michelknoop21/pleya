@@ -534,6 +534,10 @@ end
 # Aanroep vanuit de upload-lanes. Nooit fataal: de build staat dan al op
 # TestFlight en `fastlane attach_builds` haalt het koppelen later in.
 def attach_after_upload(platform, build_number)
+  # Elke upload-lane eindigt hier, ook de previewbuild en de beta-run die het
+  # koppelen uitstelt. Het koppelen werkt met build-id's uit de API, niet met
+  # lokale bestanden, dus opruimen kan eerst.
+  prune_after_upload(platform, build_number)
   # Een previewbuild raakt het versierecord niet. Zie de `preview`-lane: dat
   # koppelen is het enige in deze hele Fastfile dat een eerdere build ergens
   # vervangt, dus het overslaan is precies wat een losse testbuild losstaand
@@ -584,6 +588,15 @@ end
 # (PLEYA_KEEP_BUILDS=1 slaat over).
 def prune_old_builds
   sh(File.join(PROJECT_ROOT, "scripts/prune_old_builds.sh"))
+end
+
+# Direct na een geslaagde upload: de ipa/pkg en de archive van díe build hebben
+# dan geen nut meer (scripts/prune_after_upload.sh). Nooit fataal, want de build
+# staat dan al bij Apple. Staat bij elke upload, dus ook buiten een sessie.
+def prune_after_upload(platform, build_number)
+  sh(File.join(PROJECT_ROOT, "scripts/prune_after_upload.sh"), platform.to_s, build_number.to_s)
+rescue => e
+  UI.important("#{platform}: opruimen na de upload van build #{build_number} faalde: #{e.message}")
 end
 
 desc "iOS → TestFlight"
