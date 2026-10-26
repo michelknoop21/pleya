@@ -38,6 +38,28 @@ constraint-holds, advisories en de ring-2/3-pins staan in één doorlopend issue
 (`scripts/deps_backlog.py`), met de oudste major of een advisory als volgende kandidaat.
 `testflight_release.sh` waarschuwt als de job `onderhoud` rood is of ouder dan acht dagen; hij blokkeert niet.
 
+**Major-baan** (zelfde workflow, job `major`, na `onderhoud`): `scripts/deps_backlog.py --next-major` kiest één
+kandidaat, `scripts/deps_major.sh` tilt hem met `flutter pub upgrade --major-versions`, resolveert de graph,
+classificeert de lockfile-diff (alleen ter rapportage) en draait `codegen.sh` en `ci_checks.sh`. Daarna staat er een
+draft-PR op `chore/deps-major-<naam>` en draait `ci.yml` op die branch. De job schrijft geen migratiecode, merget
+nooit en deployt nooit: een major gaat altijd door handmatige review, ook als alle gates groen zijn. Bij een rode
+gate of een mislukte resolutie opent hij de branch en draft-PR toch met de gate en de run-URL in de body (resolutie
+mislukt: geen branch, de job kleurt rood); die branch is het startpunt voor de migratie.
+
+- **Bundels:** `DEP_GROUPS` in `deps_backlog.py` houdt pakketten bij elkaar die dezelfde transitieve eis delen. Nu is dat
+  `plus` (`device_info_plus`, `package_info_plus`, `share_plus`, alle drie `win32 ^6`). Een bundel is één kandidaat met de
+  oudste datum van zijn leden. `pub` verschuift alleen wat al resolvet; de rest blijft achter en komt volgende run opnieuw aan bod.
+- **Runtime-hold:** er is geen vaste lijst. Blijft `resolvable` in `pub outdated` onder de major van `latest`, dan is de
+  status `wacht op flutter-sdk of graph` en wordt de kandidaat niet gekozen. De job controleert dat bovendien met
+  `deps_major.sh --probe <pakketten>` (verschuift er een constraint in `pubspec.yaml`?) en slaat een kandidaat zonder
+  verschuiving over. De Flutter-SDK zelf (ring 3, tvOS-engine) blijft handwerk.
+- **Blocked:** `DEP_BLOCKED` (nu `freezed`, DEC-026) en de BLOCKED-rijen uit `check_updates.sh` worden nooit gekozen, net
+  als een `+eol`-stub als opvolger.
+- **Volgorde en limiet:** een advisory gaat voor de oudste major. Zolang er een open PR of remote branch
+  `chore/deps-major-*` bestaat, kiest de baan niets nieuws voor die kandidaat; één open major-PR houdt de hele baan vast.
+- **Issue:** de tabel in *Dependency-onderhoud* heeft een kolom `status` (`open`, `PR #n`, `blocked: reden`,
+  `wacht op flutter-sdk of graph`).
+
 **De analyzer-stack staat bewust stil** (`analyzer`, `_fe_analyzer_shared`, `analyzer_plugin`,
 `dart_code_linter`). Een nieuwere analyzer laat `drift_dev` zonder compilefout de foreign key, de
 `ON DELETE CASCADE`, de writepropagatie en de reference managers uit `app_database.g.dart` weg.

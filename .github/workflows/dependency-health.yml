@@ -253,3 +253,181 @@ jobs:
       - name: Baan gefaald
         if: steps.lane.outputs.rc == '1' || steps.lane.outputs.rc == '2' || steps.lane.outputs.rc == '5'
         run: exit 1
+
+  # Major-baan: één kandidaat (pakket of bundel) tegelijk, nooit meer dan één
+  # open major-PR. De job opent een draft-PR met de nieuwe constraints en laat
+  # ci.yml op die SHA draaien; bij rode gates blijft de branch staan als
+  # startpunt voor de migratie. Hij schrijft geen migratiecode, merget niet en
+  # deployt niet: een major gaat altijd door handmatige review.
+  # Zie scripts/deps_major.sh, scripts/deps_backlog.py --next-major en
+  # docs/agents/dependencies.md.
+  major:
+    needs: onderhoud
+    # always(): ook als onderhoud rood is (open ring-1-PR) mag de major-baan lopen.
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE_TITLE: Dependency-onderhoud
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      # ref: main, niet de SHA van de trigger: onderhoud kan intussen gemerged hebben.
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version-file: .fvmrc
+          channel: stable
+          cache: true
+
+      - name: Kandidaat kiezen
+        id: pick
+        run: |
+          flutter pub get --enforce-lockfile
+          scripts/check_updates.sh --json > "$RUNNER_TEMP/report.json" || true
+          flutter pub outdated --json > "$RUNNER_TEMP/outdated.json" || true
+          num="$(gh issue list --state open --search "in:title \"$ISSUE_TITLE\"" --json number,title \
+            -q ".[] | select(.title == \"$ISSUE_TITLE\") | .number" | head -1)"
+          : > "$RUNNER_TEMP/prev.md"
+          [ -n "$num" ] && gh issue view "$num" --json body -q .body > "$RUNNER_TEMP/prev.md"
+          gh pr list --state open --limit 1000 --json number,headRefName > "$RUNNER_TEMP/prs.json"
+          git ls-remote --heads origin 'chore/deps-major-*' > "$RUNNER_TEMP/heads.txt"
+          : > "$RUNNER_TEMP/backlog.args"
+          # Fail-closed: haalt de lijst de limiet, dan kan een open major-PR erbuiten vallen
+          # en zou de WIP-limiet stil omzeild worden.
+          if [ "$(python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1]))))' "$RUNNER_TEMP/prs.json")" -ge 1000 ]; then
+            printf 'Geen major gestart op %s: de lijst open PR-s haalt de limiet van 1000, WIP-limiet niet te controleren.' "$(date +%F)" > "$RUNNER_TEMP/major-lane.txt"
+            echo "name=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          skip=()
+          name=""
+          pkgs=""
+          # Een kandidaat waarvan de probe geen constraint ziet verschuiven wacht op
+          # de runtime of de graph; de volgende komt aan de beurt.
+          for _ in 1 2 3 4 5 6 7 8; do
+            pick="$(scripts/deps_backlog.py --next-major --outdated "$RUNNER_TEMP/outdated.json" \
+              --report "$RUNNER_TEMP/report.json" --previous "$RUNNER_TEMP/prev.md" \
+              --majors-open "$RUNNER_TEMP/prs.json" --majors-branches "$RUNNER_TEMP/heads.txt" \
+              ${skip[@]+"${skip[@]}"})"
+            [ -z "$pick" ] && break
+            cand="${pick%% *}"
+            cand_pkgs="${pick#* }"
+            # shellcheck disable=SC2086 # cand_pkgs is bewust een woordenlijst
+            if scripts/deps_major.sh --probe $cand_pkgs; then
+              name="$cand"; pkgs="$cand_pkgs"; break
+            else
+              probe_rc=$?
+            fi
+            # Exit 3 is een echte hold; elke andere uitkomst is een solver- of netwerkfout
+            # en mag niet als "niets te doen" slagen.
+            if [ "$probe_rc" != 3 ]; then
+              echo "probe_failed=true" >> "$GITHUB_OUTPUT"
+              printf '**Faalde** op %s: probe van %s eindigde met exit %s (geen hold). Run: %s' "$(date +%F)" "$cand" "$probe_rc" "$RUN_URL" > "$RUNNER_TEMP/major-lane.txt"
+              break
+            fi
+            skip+=(--skip "$cand")
+            printf '%s\n' "--skip" "$cand" >> "$RUNNER_TEMP/backlog.args"
+          done
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "pkgs=$pkgs" >> "$GITHUB_OUTPUT"
+          if [ -z "$name" ] && [ ! -s "$RUNNER_TEMP/major-lane.txt" ]; then
+            printf 'Geen major gestart op %s: niets te kiezen, een major-PR staat open, of de resolutie laat niets toe.' "$(date +%F)" > "$RUNNER_TEMP/major-lane.txt"
+          fi
+
+      - name: Migratie-branch en draft-PR
+        id: lane
+        if: steps.pick.outputs.name != ''
+        env:
+          NAME: ${{ steps.pick.outputs.name }}
+          PKGS: ${{ steps.pick.outputs.pkgs }}
+        run: |
+          branch="chore/deps-major-$NAME"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          set +e
+          # shellcheck disable=SC2086 # PKGS is bewust een woordenlijst
+          scripts/deps_major.sh "$NAME" $PKGS 2>&1 | tee "$RUNNER_TEMP/major.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          gate="$(sed -n 's/^gate: //p' "$RUNNER_TEMP/major.log" | head -1)"
+          summary="$(grep '^summary:' "$RUNNER_TEMP/major.log" | tail -1)"
+
+          case "$rc" in
+            0|4) ;;
+            3) printf 'Major %s niet gestart op %s: de resolutie liet na de probe toch niets toe.' "$NAME" "$(date +%F)" > "$RUNNER_TEMP/major-lane.txt"; exit 0 ;;
+            *) printf '**Faalde** op %s: resolutie van major %s faalde; main niet aangeraakt. Run: %s' "$(date +%F)" "$NAME" "$RUN_URL" > "$RUNNER_TEMP/major-lane.txt"; exit 0 ;;
+          esac
+
+          # Bij rode gates ook committen: de wijziging, inclusief wat codegen
+          # veranderde, is het startpunt voor de migratie.
+          git add -A
+          git commit -qm "chore(deps): major $NAME"
+          git push origin "$branch"
+          {
+            echo "Roadmap: geen ID (CI-onderhoud)"
+            echo
+            echo "Major-baan uit dependency-health.yml voor \`$NAME\`: $PKGS."
+            echo "Lockfile-diff: ${summary:-onbekend}."
+            if [ "$rc" = 0 ]; then
+              echo "Gates (codegen zonder diff, ci_checks.sh): groen. ci.yml draait apart op deze branch."
+            else
+              echo "**Gate rood: $gate.** Deze branch is het startpunt voor de migratie, niet merge-klaar."
+              echo
+              echo "~~~"
+              tail -30 "$RUNNER_TEMP/major.log"
+              echo "~~~"
+            fi
+            echo
+            echo "Draft: de baan schrijft geen migratiecode en merget niet. Review en merge handmatig. Run: $RUN_URL"
+          } > "$RUNNER_TEMP/pr-body.md"
+          pr="$(gh pr create --draft --base main --head "$branch" --title "chore(deps): major $NAME" \
+            --body-file "$RUNNER_TEMP/pr-body.md" | sed -n 's#.*/pull/##p')" || pr=""
+          # Een push of PR met GITHUB_TOKEN start ci.yml niet; workflow_dispatch wel.
+          gh workflow run ci.yml --ref "$branch"
+          if [ "$rc" = 0 ]; then
+            printf 'Draft-PR %s voor major %s geopend op %s; gates groen, ci.yml gestart. Run: %s' "${pr:+#$pr}" "$NAME" "$(date +%F)" "$RUN_URL" > "$RUNNER_TEMP/major-lane.txt"
+          else
+            printf 'Draft-PR %s voor major %s geopend op %s met rode gate %s. Run: %s' "${pr:+#$pr}" "$NAME" "$(date +%F)" "$gate" "$RUN_URL" > "$RUNNER_TEMP/major-lane.txt"
+            printf '%s\n' "--note" "$NAME=blocked: $gate" >> "$RUNNER_TEMP/backlog.args"
+          fi
+
+      # Werkt dezelfde tabel bij als onderhoud, nu met de status per kandidaat.
+      # De ring-1-regel blijft staan zoals onderhoud hem schreef.
+      - name: Doorlopend issue
+        if: always()
+        run: |
+          gh pr list --state open --limit 1000 --json number,headRefName > "$RUNNER_TEMP/prs.json"
+          git ls-remote --heads origin 'chore/deps-major-*' > "$RUNNER_TEMP/heads.txt"
+          num="$(gh issue list --state open --search "in:title \"$ISSUE_TITLE\"" --json number,title \
+            -q ".[] | select(.title == \"$ISSUE_TITLE\") | .number" | head -1)"
+          : > "$RUNNER_TEMP/prev.md"
+          [ -n "$num" ] && gh issue view "$num" --json body -q .body > "$RUNNER_TEMP/prev.md"
+          ring1="$(awk '/^## Ring-1-baan/{f=1;next} /^## /{f=0} f' "$RUNNER_TEMP/prev.md" | sed '/^$/d')"
+          args=()
+          while IFS= read -r line; do args+=("$line"); done < "$RUNNER_TEMP/backlog.args"
+          major="$(cat "$RUNNER_TEMP/major-lane.txt" 2>/dev/null)"
+          lane="${ring1:-geen uitkomst doorgegeven}"
+          [ -n "$major" ] && lane="$lane"$'\n\n'"Major-baan: $major"
+          scripts/deps_backlog.py --outdated "$RUNNER_TEMP/outdated.json" --report "$RUNNER_TEMP/report.json" \
+            --previous "$RUNNER_TEMP/prev.md" --majors-open "$RUNNER_TEMP/prs.json" \
+            --majors-branches "$RUNNER_TEMP/heads.txt" --lane "$lane" \
+            ${args[@]+"${args[@]}"} > "$RUNNER_TEMP/body.md"
+          if [ -n "$num" ]; then gh issue edit "$num" --body-file "$RUNNER_TEMP/body.md"
+          else gh issue create --title "$ISSUE_TITLE" --body-file "$RUNNER_TEMP/body.md"
+          fi
+
+      - name: Baan gefaald
+        if: steps.lane.outputs.rc == '1' || steps.lane.outputs.rc == '2' || steps.pick.outputs.probe_failed == 'true'
+        run: exit 1
