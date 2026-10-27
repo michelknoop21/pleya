@@ -96,7 +96,9 @@ func (s Sort) keyExpression() string {
 	case SortYear, SortYearDesc:
 		return "coalesce(i.year, 0)"
 	case SortIndex:
-		return "coalesce(i.item_index, 0)"
+		// Genummerd eerst; wat geen nummer heeft staat erachter, op titel (tieExpression).
+		// Een eindwaarde en geen 0: nul zet ongenummerde afleveringen voor aflevering 1.
+		return "coalesce(i.item_index, " + indexLast + ")"
 	case SortDuration:
 		return "coalesce(" + durationMax + ", 9223372036854775807)"
 	case SortDurationDesc:
@@ -110,6 +112,23 @@ func (s Sort) keyExpression() string {
 	default:
 		return "coalesce(i.sort_title, i.title)"
 	}
+}
+
+// indexLast is de sorteerwaarde van een item zonder nummer: de grootste integer,
+// zodat het na elk echt nummer komt. Specials (nummer 0) blijven vooraan.
+const indexLast = "2147483647"
+
+// tieExpression is de tweede sorteersleutel, voor sorteringen waar de eerste
+// vaak gelijk is. Bij SortIndex hebben alle afleveringen zonder nummer dezelfde
+// sleutel, en dan bepaalt de titel de volgorde in plaats van het toeval van
+// de invoegvolgorde. Leeg als de sortering geen tweede sleutel heeft.
+//
+// Net als keyExpression nooit NULL, anders slaat de cursorvergelijking rijen over.
+func (s Sort) tieExpression() string {
+	if s == SortIndex {
+		return "coalesce(i.sort_title, i.title)"
+	}
+	return ""
 }
 
 // needsSubject zegt of de sorteersleutel van de aanvrager afhangt.
@@ -160,6 +179,9 @@ type Cursor struct {
 	// Filter is de vingerafdruk van de filterset waar deze cursor bij hoort
 	// (D1.7); leeg zonder filters.
 	Filter string `json:"f,omitempty"`
+	// Tie is de waarde van de tweede sorteersleutel (tieExpression) van het laatste
+	// item op de pagina. Nil voor sorteringen zonder tweede sleutel.
+	Tie *string `json:"t,omitempty"`
 }
 
 // Encode maakt de string die de client terugkrijgt.
@@ -199,6 +221,12 @@ func DecodeCursorFor(raw string, want Sort, filter string) (*Cursor, error) {
 	}
 	if _, err := id.Parse(c.ID); err != nil {
 		return nil, ErrCursorInvalid
+	}
+	// Een cursor van vóór de tweede sleutel mist de titel; hem hier hervatten zou
+	// het laatste item van de vorige pagina opnieuw tonen. Weigeren en opnieuw
+	// beginnen is de enige veilige reactie.
+	if (want.tieExpression() != "") != (c.Tie != nil) {
+		return nil, fmt.Errorf("%w: tweede sorteersleutel past niet bij sortering %q", ErrCursorInvalid, want)
 	}
 	if !want.keyValid(c.Key) {
 		return nil, fmt.Errorf("%w: sleutel past niet bij sortering %q", ErrCursorInvalid, want)

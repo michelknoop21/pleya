@@ -85,3 +85,39 @@ func TestParseSortAndLimits(t *testing.T) {
 		t.Fatalf("limit zonder waarde werd %d", got)
 	}
 }
+
+// TestIndexCursorCarriesItsTitle: bij SortIndex hebben alle ongenummerde
+// afleveringen dezelfde sleutel, dus de titel hoort in de cursor.
+func TestIndexCursorCarriesItsTitle(t *testing.T) {
+	itemID := id.New().String()
+	title := "Bumba op reis"
+
+	encoded := catalog.Cursor{Sort: catalog.SortIndex, Key: "2147483647", ID: itemID, Tie: &title}.Encode()
+	back, err := catalog.DecodeCursor(encoded, catalog.SortIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if back.Tie == nil || *back.Tie != title {
+		t.Fatalf("de titel kwam terug als %v", back.Tie)
+	}
+}
+
+// TestIndexCursorWithoutTitleIsRefused: een cursor van vóór de tweede sleutel
+// hervatten zou het laatste item van de vorige pagina opnieuw tonen. Weigeren
+// geeft library.cursor_invalid en de client begint opnieuw.
+func TestIndexCursorWithoutTitleIsRefused(t *testing.T) {
+	old := catalog.Cursor{Sort: catalog.SortIndex, Key: "3", ID: id.New().String()}.Encode()
+	if _, err := catalog.DecodeCursor(old, catalog.SortIndex); !errors.Is(err, catalog.ErrCursorInvalid) {
+		t.Fatalf("een index-cursor zonder titel gaf %v, verwacht ErrCursorInvalid", err)
+	}
+}
+
+// TestTitleCursorWithATieIsRefused: een sortering zonder tweede sleutel
+// accepteert er ook geen, anders mengt een client twee ordeningen.
+func TestTitleCursorWithATieIsRefused(t *testing.T) {
+	tie := "x"
+	c := catalog.Cursor{Sort: catalog.SortTitle, Key: "x", ID: id.New().String(), Tie: &tie}.Encode()
+	if _, err := catalog.DecodeCursor(c, catalog.SortTitle); !errors.Is(err, catalog.ErrCursorInvalid) {
+		t.Fatalf("een title-cursor met een tweede sleutel gaf %v, verwacht ErrCursorInvalid", err)
+	}
+}
