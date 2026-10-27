@@ -107,18 +107,32 @@ void main() {
       expect(find.byType(TvMyPleyaScreen), findsOneWidget, reason: d.name);
     }
 
+    // DOWN goes into the page on screen, and the way back up is its pill.
+    // The ring walks right to Instellingen on real key presses, so the bar
+    // scope remembers Instellingen; then down, then up.
+    h.shell.onFocusNav();
+    await h.settle();
+    for (var i = 0; i < 8 && !h.shell.navNodes.isFocused(TvDestinationId.settings.focusKey); i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await h.settle();
+    }
+    expect(h.shell.navNodes.isFocused(TvDestinationId.settings.focusKey), isTrue);
+    expect(h.shell.coordinator.active, TvDestinationId.myPleya);
+    h.shell.onFocusContent(restorePreviousFocus: true);
+    await h.settle();
+    expect(h.shell.coordinator.focusedDestination, TvDestinationId.myPleya);
+    h.shell.onFocusNav();
+    await h.settle();
+    expect(
+      h.shell.navNodes.isFocused(TvDestinationId.myPleya.focusKey),
+      isTrue,
+      reason: 'UP returns to the pill on screen',
+    );
+
     // Select changes the page.
     h.shell.onSelectDestination(TvDestinationId.home);
     await h.settle();
     expect(h.shell.coordinator.active, TvDestinationId.home);
-
-    // DOWN goes into the page on screen, and the way back up is its pill.
-    h.shell.onFocusDestination(TvDestinationId.movies);
-    await h.settle();
-    h.shell.onFocusContent(restorePreviousFocus: true);
-    await h.settle();
-    expect(h.shell.coordinator.active, TvDestinationId.home);
-    expect(h.shell.coordinator.focusedDestination, TvDestinationId.home);
 
     await h.dispose(tester);
   });
