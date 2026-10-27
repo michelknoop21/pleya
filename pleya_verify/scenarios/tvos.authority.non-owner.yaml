@@ -46,8 +46,10 @@ steps:
   - settle: 800
   - snapshot: 00-sheet-non-owner
 
-  # The sheet renders from this exact list: two rows, no owner actions.
-  - assert: {id: sheet.library_actions, insideViewport: true, state: {actions: "openInCatalog,toggleVisibility"}}
+  # The sheet renders from this exact list: no owner actions. "Vraag Big P"
+  # (askBigP, added 4 October 2026) is no owner action and is there whenever
+  # Big P is, as in this build.
+  - assert: {id: sheet.library_actions, insideViewport: true, state: {actions: "openInCatalog,toggleVisibility,askBigP"}}
 
   # Walk the sheet. The ring opens on "Sluiten" (the last control), so DOWN
   # stays put and UP climbs the rows: "Verberg bibliotheek", "Openen in Alle
@@ -65,7 +67,7 @@ steps:
   - press: up
   - settle: 400
   - snapshot: 04-up-stays-on-first-row
-  - assert: {id: sheet.library_actions, state: {actions: "openInCatalog,toggleVisibility"}}
+  - assert: {id: sheet.library_actions, state: {actions: "openInCatalog,toggleVisibility,askBigP"}}
 
   # Menu closes the sheet and returns to the row that opened it.
   - press: menu
@@ -80,7 +82,7 @@ steps:
   - press: select
   - wait_until: {id: sheet.library_actions, timeout: 8000}
   - settle: 800
-  - assert: {id: sheet.library_actions, state: {actions: "openInCatalog,toggleVisibility"}}
+  - assert: {id: sheet.library_actions, state: {actions: "openInCatalog,toggleVisibility,askBigP"}}
   - snapshot: 06-sheet-shows
   - press: menu
   - settle: 500

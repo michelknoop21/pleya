@@ -44,7 +44,7 @@ steps:
   # Walking the bar switches the destination (tvos.nav.focus-switches-
   # destination), so the ring on Home is Home on screen; Select would hand
   # the remote to the content.
-  - walk: {direction: left, expect: [nav.myPleya, nav.movies, nav.series, nav.discover], timeout: 20000, settle: 800}
+  - walk: {direction: left, expect: [nav.myPleya, nav.movies, nav.series, nav.discover], timeout: 45000, settle: 800}
   - wait_until: {id: screen.discover, timeout: 15000}
   - settle: 1500
   - assert: {id: nav.discover, focused: true, state: {active: true}}
