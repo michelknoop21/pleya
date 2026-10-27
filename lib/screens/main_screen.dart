@@ -1908,6 +1908,10 @@ class _MainScreenState extends State<MainScreen>
     // consumes it when its content finally lands (P2).
     if (_isTvShell) {
       _tvContentFocus.arm(restorePreviousFocus ? TvContentFocusIntent.restore : TvContentFocusIntent.primary);
+      // A-24c: the ring may have wandered off the active pill without
+      // changing the page. The remote goes into the page that is on screen,
+      // so the way back up is that page's pill, not the one it wandered to.
+      _tvNav.focusDestination(_tvNav.active);
     }
     _focus.focusContent(
       restorePreviousFocus: restorePreviousFocus,
@@ -2859,36 +2863,20 @@ class _MainScreenState extends State<MainScreen>
   /// first of the three paths P2 is about, and it is the one the report opened
   /// with — choosing Home dropped the remote onto the billboard's Afspelen pill
   /// before the viewer had asked for anything.
-  /// The ring moved to another item in the top bar, which on TV *is* the
-  /// navigation (hoofdstuk 7.2's remote contract, revised 2 September 2026).
+  /// The ring moved to another item in the top bar.
   ///
-  /// Select is no longer required to change destination, and this is not a
-  /// second way of doing what `_selectTvDestination` does: it deliberately
-  /// never arms a content-focus intent, so the remote stays in the bar while
-  /// the page behind it changes. Walking Home → Series → Films → Mijn Pleya is
-  /// three page changes and zero focus moves.
-  ///
-  /// No debounce. The viewer's remote and the screen have to agree at every
-  /// step, and a delay between the ring landing and the page following is
-  /// exactly the disagreement that would introduce. Each call is idempotent
-  /// per destination — `activate` returns false when nothing changed and
-  /// `_selectTab` only runs on a real change — so pressing RIGHT faster than
-  /// pages load costs extra work, not a wrong final state: the last focused
-  /// item is the last one activated.
+  /// A-24c (LEESMIJ-v4, "Over een andere bestemming focussen verandert de
+  /// actieve pagina niet"): the ring moves and the page stays, for every
+  /// destination; Select changes the page ([_selectTvDestination]). This
+  /// replaces the remote contract of 2 September 2026, in which the ring was
+  /// the navigation. The northstar needs it twice: A13 draws the ring on
+  /// Instellingen with Mijn Pleya still the active capsule, and A14 opens the
+  /// account menu over Mijn Pleya, which a walk to the avatar past Zoeken
+  /// could never show while every pill it passed swapped the page.
   void _focusTvDestination(TvDestinationId destination) {
-    // A-24c: the ring on Instellingen leaves the page alone until Select
-    // ([TvDestinationId.switchesOnFocus]).
-    if (!destination.switchesOnFocus) {
-      _tvNav.focusDestination(destination);
-      _tvContentFocus.onDestinationFocused();
-      return;
-    }
-    final changed = _tvNav.activate(destination);
-    // Cancels anything armed against the destination the viewer just left.
-    // Content landing late for a page they have already walked past must not
-    // pull the remote out of the bar.
+    _tvNav.focusDestination(destination);
+    // Cancels anything armed against the page: the viewer is in the bar.
     _tvContentFocus.onDestinationFocused();
-    if (changed) _selectTab(destination.tab);
   }
 
   void _selectTvDestination(TvDestinationId destination) {

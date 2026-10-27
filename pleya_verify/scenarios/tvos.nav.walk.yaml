@@ -49,6 +49,8 @@ steps:
       timeout: 40000
       settle: 800
   - assert: {id: nav.settings, focused: true}
-  # The ring on Instellingen leaves Mijn Pleya on screen (A13).
-  - assert: {id: nav.myPleya, state: {active: true}}
+  # The ring moves and the page stays (A-24c, LEESMIJ-v4): Home is still on
+  # screen after the whole walk.
+  - assert: {id: nav.discover, state: {active: true}}
+  - assert: {id: nav.myPleya, state: {active: false}}
   - snapshot: 02-right-end

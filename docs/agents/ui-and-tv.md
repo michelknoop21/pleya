@@ -66,8 +66,9 @@ als `onExitUp` leeg is, Logboeken gebruikt hem zodra de lezer bovenaan staat. An
 Volgorde: profielavatar, zoeken, Home, Series, Films, Live TV (alleen met de capability), Mijn
 Pleya, Instellingen. Het woordmerk rechts is geen focusstop. Instellingen is een eigen bestemming,
 geen sectie van Mijn Pleya; Servers, Logboeken en Over Pleya hangen eronder (Koppelingen >
-Servers opent `TvServersPage`). De ring wisselt de pagina bij elke bestemming behalve Instellingen:
-die opent pas op Select. De avatar opent het accountmenu met alleen Wissel profiel en Uitloggen;
+Servers opent `TvServersPage`). De ring verplaatst alleen de focus: bij elke bestemming wisselt de
+pagina pas op Select, en DOWN gaat de pagina in die op het scherm staat (LEESMIJ-v4; vervangt het
+remotecontract van 2 september 2026). De avatar opent het accountmenu met alleen Wissel profiel en Uitloggen;
 Back sluit het en zet de focus terug op de avatar. De bestemming Instellingen gebruikt dezelfde
 inklapbare balk als hierboven. Besluit Michel, 26 oktober 2026 (A-24c,
 DEC-XXX-A24C).

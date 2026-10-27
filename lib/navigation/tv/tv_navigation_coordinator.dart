@@ -128,12 +128,9 @@ class TvNavigationCoordinator extends ChangeNotifier {
 
   /// Move the focus ring without changing the page.
   ///
-  /// **Nothing on the TV shell calls this any more.** Since 2 September 2026
-  /// focus on a bar item *is* the navigation, so the bar's focus callback goes
-  /// to `MainScreen._focusTvDestination`, which activates. Kept because
-  /// "move the ring only" is still a coherent coordinator operation and the
-  /// unit tests pin its semantics — but wiring the bar back to it would
-  /// reinstate the select-to-switch behaviour that is now a regression.
+  /// The bar's focus callback (`MainScreen._focusTvDestination`) since A-24c:
+  /// LEESMIJ-v4 has the ring move while the page stays, and Select change it.
+  /// Between 2 September 2026 and A-24c the ring itself was the navigation.
   void focusDestination(TvDestinationId id) {
     if (!_destinations.contains(id) || _focused == id) return;
     _focused = id;

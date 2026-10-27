@@ -32,10 +32,13 @@ steps:
   - wait_until: {focused: nav.myPleya, timeout: 5000}
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
+  # A-24c: Select changes the page and leaves the remote on the pill;
+  # DOWN takes it in (LEESMIJ-v4, review 557-I4).
+  - press: down
   - settle: 600
 
   # A-24c (northstar A10): Big P is the large card on the left, the page's
-  # first content action, so Select on the pill lands on it; the Snel naar
+  # first content action, so Down from the pill lands on it; the Snel naar
   # dock sits under it.
   - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
   - assert: {id: "my_pleya.tile[assistant]", insideViewport: true, state: {title: Big P}}

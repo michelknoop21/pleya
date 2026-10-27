@@ -34,6 +34,8 @@ steps:
   # A-24c: Menu from the settings page is the bar, on Instellingen.
   - wait_until: {focused: nav.settings, timeout: 8000}
   - walk: {direction: left, expect: [nav.myPleya, nav.movies, nav.series, nav.discover], timeout: 45000, settle: 800}
+  # A-24c (LEESMIJ-v4): the walk leaves the page; Select puts Home on screen.
+  - press: select
   - wait_until: {id: screen.discover, timeout: 15000}
   - settle: 1500
   - press: down

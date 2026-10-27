@@ -27,6 +27,9 @@ steps:
   - wait_until: {focused: nav.myPleya, timeout: 5000}
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
+  # A-24c: Select changes the page and leaves the remote on the pill;
+  # DOWN takes it in (LEESMIJ-v4, review 557-I4).
+  - press: down
   - settle: 600
   # A-24c: Select on the Mijn Pleya pill puts the remote in the page, on Big P,
   # its first content action.

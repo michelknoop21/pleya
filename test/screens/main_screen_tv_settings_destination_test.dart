@@ -86,7 +86,7 @@ void main() {
     await h.dispose(tester);
   });
 
-  testWidgets('A13: the ring on Instellingen leaves Mijn Pleya on screen until Select', (tester) async {
+  testWidgets('A13: the ring moves and the page stays until Select, for every destination', (tester) async {
     final h = await pumpTvMainScreen(tester);
     h.shell.onSelectDestination(TvDestinationId.myPleya);
     await h.settle();
@@ -97,10 +97,28 @@ void main() {
     expect(h.shell.coordinator.focusedDestination, TvDestinationId.settings);
     expect(find.byType(TvMyPleyaScreen), findsOneWidget);
 
-    // Every other destination still follows the ring.
-    h.shell.onFocusDestination(TvDestinationId.home);
+    // Review 557-I4: LEESMIJ-v4 holds for all destinations, not only for
+    // Instellingen. The walk to the avatar passes Zoeken and Home and leaves
+    // Mijn Pleya on screen, so the account menu opens over it (A14).
+    for (final d in [TvDestinationId.home, TvDestinationId.search]) {
+      h.shell.onFocusDestination(d);
+      await h.settle();
+      expect(h.shell.coordinator.active, TvDestinationId.myPleya, reason: d.name);
+      expect(find.byType(TvMyPleyaScreen), findsOneWidget, reason: d.name);
+    }
+
+    // Select changes the page.
+    h.shell.onSelectDestination(TvDestinationId.home);
     await h.settle();
     expect(h.shell.coordinator.active, TvDestinationId.home);
+
+    // DOWN goes into the page on screen, and the way back up is its pill.
+    h.shell.onFocusDestination(TvDestinationId.movies);
+    await h.settle();
+    h.shell.onFocusContent(restorePreviousFocus: true);
+    await h.settle();
+    expect(h.shell.coordinator.active, TvDestinationId.home);
+    expect(h.shell.coordinator.focusedDestination, TvDestinationId.home);
 
     await h.dispose(tester);
   });

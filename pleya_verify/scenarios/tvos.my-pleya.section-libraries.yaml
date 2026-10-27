@@ -28,7 +28,10 @@ steps:
   - wait_until: {focused: nav.myPleya, timeout: 5000}
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
-  # A-24c: Select puts the remote on Big P; Down is the Snel naar dock, and
+  # A-24c: Select changes the page and leaves the remote on the pill;
+  # DOWN takes it in (LEESMIJ-v4, review 557-I4).
+  - press: down
+  # A-24c: the first Down puts the remote on Big P; the next is the Snel naar dock, and
   # Bibliotheken is along it.
   - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
   - press: down

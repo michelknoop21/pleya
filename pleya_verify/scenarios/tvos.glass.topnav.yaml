@@ -41,10 +41,10 @@ steps:
   - press: menu
   # A-24c: Menu from the settings page is the bar, on Instellingen.
   - wait_until: {focused: nav.settings, timeout: 8000}
-  # Walking the bar switches the destination (tvos.nav.focus-switches-
-  # destination), so the ring on Home is Home on screen; Select would hand
-  # the remote to the content.
+  # A-24c (LEESMIJ-v4): walking the bar moves the ring and leaves the page;
+  # Select on Home puts Home on screen and keeps the remote on the pill.
   - walk: {direction: left, expect: [nav.myPleya, nav.movies, nav.series, nav.discover], timeout: 45000, settle: 800}
+  - press: select
   - wait_until: {id: screen.discover, timeout: 15000}
   - settle: 1500
   - assert: {id: nav.discover, focused: true, state: {active: true}}
@@ -57,6 +57,10 @@ steps:
   - wait_until: {focused: nav.search, timeout: 5000}
   - press: select
   - settle: 2000
+  # A-24c (LEESMIJ-v4): Select put Zoeken on screen with the remote on the
+  # pill; Down takes it to the field.
+  - press: down
+  - settle: 1000
   - press: select
   - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 8000}
   - settle: 1000

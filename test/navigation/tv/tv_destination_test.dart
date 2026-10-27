@@ -97,15 +97,6 @@ void main() {
     });
   });
 
-  group('TvDestinationId.switchesOnFocus', () {
-    test('every destination but Instellingen shows its page when the ring lands on it', () {
-      // A-24c, A13: the ring on Instellingen leaves Mijn Pleya on screen.
-      for (final destination in TvDestinationId.values) {
-        expect(destination.switchesOnFocus, destination != TvDestinationId.settings, reason: destination.name);
-      }
-    });
-  });
-
   group('TvDestinationId.focusKey', () {
     test('every destination has a distinct focus key', () {
       final keys = TvDestinationId.values.map((id) => id.focusKey).toSet();

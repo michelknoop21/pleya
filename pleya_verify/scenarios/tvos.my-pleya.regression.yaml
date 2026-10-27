@@ -25,6 +25,9 @@ steps:
   - walk: {direction: right, steps: 7, stopAt: nav.myPleya, timeout: 60000, settle: 600}
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
+  # A-24c: Select changes the page and leaves the remote on the pill;
+  # DOWN takes it in (LEESMIJ-v4, review 557-I4).
+  - press: down
   - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
   - settle: 800
   - snapshot: 00-page

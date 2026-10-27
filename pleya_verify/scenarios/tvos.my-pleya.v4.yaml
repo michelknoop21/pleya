@@ -9,12 +9,13 @@
 #      Right reaches the first poster, Left returns to Big P.
 #   2. The Snel naar dock is one row on screen, Bibliotheken included, and
 #      the old Beheer tiles are gone.
-#   3. The ring on Instellingen leaves Mijn Pleya active (A13); Select opens
-#      the settings page as a destination of its own.
+#   3. The ring on Instellingen leaves Mijn Pleya active (A13), as every
+#      ring does since review 557-I4; Select opens the settings page as a
+#      destination of its own.
 #   4. Instellingen > Koppelingen > Servers opens TvServersPage: status first,
 #      Sluiten the default, and Back returns to the Servers row.
-#   5. The avatar opens the account menu with its two actions; Menu closes it
-#      and the remote is on the avatar again.
+#   5. The avatar opens the account menu with its two actions over Mijn
+#      Pleya (A14); Menu closes it and the remote is on the avatar again.
 #   6. OLED (the default), Dark and Light pictures of the page.
 name: tvos.my-pleya.v4
 target: tvos-sim
@@ -30,10 +31,13 @@ steps:
   - walk: {direction: right, steps: 7, stopAt: nav.myPleya, timeout: 60000, settle: 600}
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
+  # A-24c: Select changes the page and leaves the remote on the pill;
+  # DOWN takes it in (LEESMIJ-v4, review 557-I4).
+  - press: down
   - wait_until: {id: "my_pleya.watchlist_item[0]", timeout: 15000}
 
   # --- 1. Big P first, one focus object ---
-  # Select on the active pill hands the remote to the page: Big P.
+  # Down from the pill hands the remote to the page: Big P.
   - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
   - settle: 2500
   - snapshot: oled-bigp
@@ -102,10 +106,18 @@ steps:
   - press: menu
   - wait_until: {focused: "my_pleya.section.tile[settings.servers]", timeout: 8000}
 
-  # --- 5. the account menu under the avatar ---
+  # --- 5. the account menu under the avatar, over Mijn Pleya (A14) ---
+  # Mijn Pleya on screen first; the walk to the avatar then passes Zoeken
+  # and Home without changing the page (A-24c, LEESMIJ-v4).
   - press: menu
   - wait_until: {focused: nav.settings, timeout: 8000}
+  - press: left
+  - wait_until: {focused: nav.myPleya, timeout: 8000}
+  - press: select
+  - wait_until: {id: nav.myPleya, state: {active: true}, timeout: 15000}
   - walk: {direction: left, steps: 9, stopAt: nav.profile, timeout: 90000, settle: 400}
+  - assert: {id: nav.myPleya, state: {active: true}}
+  - assert: {id: screen.my_pleya}
   - press: select
   - wait_until: {id: account_menu, timeout: 8000}
   - wait_until: {focused: "account_menu.action[switch_profile]", timeout: 5000}
@@ -151,6 +163,8 @@ steps:
   - wait_until: {focused: nav.settings, timeout: 8000}
   - press: left
   - wait_until: {focused: nav.myPleya, timeout: 8000}
+  - press: select
+  - wait_until: {id: nav.myPleya, state: {active: true}, timeout: 15000}
   # Down returns to where the remote left Mijn Pleya (hoofdstuk 7.6), the
   # dock; Up from its first tile goes back to Big P, where Down came from.
   - press: down
@@ -182,6 +196,8 @@ steps:
   - wait_until: {focused: nav.settings, timeout: 8000}
   - press: left
   - wait_until: {focused: nav.myPleya, timeout: 8000}
+  - press: select
+  - wait_until: {id: nav.myPleya, state: {active: true}, timeout: 15000}
   # Mijn Pleya was left on Big P this time.
   - press: down
   - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}

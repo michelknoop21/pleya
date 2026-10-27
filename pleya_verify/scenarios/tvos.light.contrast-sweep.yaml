@@ -40,9 +40,12 @@ steps:
   - snapshot: 01-appearance-light-category-focus
   - press: menu
   - wait_until: {focused: nav.settings, timeout: 8000}
-  # Left onto Mijn Pleya switches the page; Down enters it on Big P.
+  # Left onto Mijn Pleya and Select switch the page (A-24c, LEESMIJ-v4);
+  # Down enters it on Big P.
   - press: left
   - wait_until: {focused: nav.myPleya, timeout: 8000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
   - press: down
   - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
   - settle: 800
@@ -70,6 +73,8 @@ steps:
   - press: menu
   - wait_until: {focused: nav.myPleya, timeout: 8000}
   - walk: {direction: left, expect: [nav.movies, nav.series], timeout: 20000, settle: 800}
+  - press: select
+  - wait_until: {id: nav.series, state: {active: true}, timeout: 10000}
   - settle: 2000
   - snapshot: 06-series-light
   - press: down

@@ -52,16 +52,6 @@ enum TvDestinationId {
     TvDestinationId.settings => NavigationTabId.settings,
   };
 
-  /// Whether the ring landing on this destination already shows its page
-  /// (hoofdstuk 7.2's remote contract, revised 2 September 2026).
-  ///
-  /// Every destination does, except Instellingen (A-24c): the northstar
-  /// draws the ring on Instellingen while Mijn Pleya keeps the capsule
-  /// (`A13-instellingen-focus.png`, LEESMIJ-v4 "Over een andere bestemming
-  /// focussen verandert de actieve pagina niet"), so walking past it does not
-  /// swap the page for the settings, and Select opens them.
-  bool get switchesOnFocus => this != TvDestinationId.settings;
-
   /// Drawn as an icon-only control rather than a labelled pill (hoofdstuk 33:
   /// "Search = compact icon/control").
   bool get isCompact => this == TvDestinationId.search;

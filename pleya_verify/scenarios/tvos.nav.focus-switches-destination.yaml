@@ -1,30 +1,21 @@
 name: tvos.nav.focus-switches-destination
 target: tvos-sim
-# The tvOS remote contract revised on 2 September 2026: focus on a top-nav item
-# IS the navigation. LEFT/RIGHT changes the page, the ring stays in the bar,
-# DOWN is the only way in, and Select is never required to switch.
+# The name is historical. From 2 September 2026 to A-24c focus on a top-nav
+# item was the navigation; LEESMIJ-v4 (A-24c, review 557-I4) reverses that for
+# every destination: "Over een andere bestemming focussen verandert de actieve
+# pagina niet". The ring moves, the page stays, Select changes the page and
+# keeps the remote on the pill, DOWN goes into the page that is on screen.
+# The file keeps its name because the Verify MCP tests and the agent guide
+# point at it.
 #
 # `active` is the pill's own white-capsule flag, published by
-# `TvTopNavigation` as automation state, so "Films is the page you are on" is
+# `TvTopNavigation` as automation state, so "Home is the page you are on" is
 # asserted separately from "Films is where the ring is". Asserting only focus
-# would pass on the old behaviour too, which is exactly the regression this
-# scenario exists to catch: before the change the ring moved and the page did
-# not follow until Select.
+# would pass on the 2 September behaviour too.
 #
-# The 400 ms settles are measurement hygiene, not a debounce in the app: a
-# `wait_until` on focus returns the frame the ring lands, which can precede the
-# bar's rebuild, and the pill's `active` flag is captured at build time. The
-# route endpoint already reports the new destination at that instant.
-#
-# Every assertion here is on a real HID press.
-#
-# The walk is done twice on purpose. The first pass waits for the ring and
-# asserts after each step, which is what proves the page follows the focus at
-# all. The last section does it again with nothing between the presses, which
-# is the case a debounce would break: pressing faster than a destination can
-# load has to end on the item last focused and not on whichever page finished
-# loading last. `activate` returning false when nothing changes, and `_selectTab`
-# running only on a real switch, is what makes that safe without a debounce.
+# Every assertion here is on a real HID press. The fast walk at the end
+# presses with nothing in between: the ring has to end on the last item and
+# the page must not have moved at all.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
@@ -37,36 +28,37 @@ steps:
   - assert: {id: nav.discover, focused: true, state: {active: true}}
   - snapshot: 00-home
 
-  # --- RIGHT walks the bar, and the page follows without a Select -----------
+  # --- RIGHT walks the ring; Home stays on screen --------------------------
   - press: right
   - wait_until: {focused: nav.series, timeout: 5000}
   - settle: 400
-  - assert: {id: nav.series, focused: true, state: {active: true}}
-  - assert: {id: nav.discover, state: {active: false}}
-  - snapshot: 01-series
+  - assert: {id: nav.series, focused: true, state: {active: false}}
+  - assert: {id: nav.discover, state: {active: true}}
+  - snapshot: 01-ring-on-series
 
   - press: right
   - wait_until: {focused: nav.movies, timeout: 5000}
   - settle: 400
-  - assert: {id: nav.movies, focused: true, state: {active: true}}
-  - assert: {id: nav.series, state: {active: false}}
-  - snapshot: 02-movies
+  - assert: {id: nav.movies, focused: true, state: {active: false}}
+  - assert: {id: nav.discover, state: {active: true}}
 
   - press: right
   - wait_until: {focused: nav.myPleya, timeout: 5000}
   - settle: 400
-  - assert: {id: nav.myPleya, focused: true, state: {active: true}}
-  - assert: {id: nav.movies, state: {active: false}}
+  - assert: {id: nav.myPleya, focused: true, state: {active: false}}
+  - assert: {id: nav.discover, state: {active: true}}
+  - assert: {id: screen.discover}
+  - snapshot: 02-ring-on-my-pleya
+
+  # --- Select changes the page and keeps the remote on the pill -------------
+  - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - settle: 400
+  - assert: {id: nav.myPleya, focused: true, state: {active: true}}
+  - assert: {id: nav.discover, state: {active: false}}
   - snapshot: 03-my-pleya
 
-  # The content behind the bar is up and addressable, and the ring is still on
-  # the bar. This is the half a late-arriving provider used to break.
-  - assert: {id: nav.myPleya, focused: true}
-
-  # --- A-24c: the one exception, Instellingen --------------------------------
-  # The ring on Instellingen leaves Mijn Pleya on screen (A13, LEESMIJ-v4);
-  # Select opens it. Every other destination follows the ring.
+  # Instellingen follows the same rule as every other pill (A13).
   - press: right
   - wait_until: {focused: nav.settings, timeout: 5000}
   - settle: 400
@@ -74,19 +66,18 @@ steps:
   - assert: {id: nav.myPleya, state: {active: true}}
   - assert: {id: screen.my_pleya}
   - snapshot: 03b-settings-ring
-  - press: left
-  - wait_until: {focused: nav.myPleya, timeout: 5000}
 
-  # --- DOWN is the way in ---------------------------------------------------
-  # A-24c: Big P, then the first tile of the Snel naar dock.
+  # --- DOWN goes into the page on screen ------------------------------------
+  # From the Instellingen ring the page is still Mijn Pleya: Big P, then the
+  # first tile of the Snel naar dock.
   - press: down
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
   - press: down
   - wait_until: {focused: "my_pleya.tile[watchTogether]", timeout: 8000}
-  - assert: {id: "my_pleya.tile[watchTogether]", focused: true}
   - assert: {id: nav.myPleya, state: {active: true}}
   - snapshot: 04-content-focused
 
-  # --- UP comes back to the active tab, and the page does not change --------
+  # --- UP comes back to the pill of the page on screen ----------------------
   - press: up
   - press: up
   - wait_until: {focused: nav.myPleya, timeout: 8000}
@@ -94,31 +85,26 @@ steps:
   - assert: {id: nav.myPleya, focused: true, state: {active: true}}
   - snapshot: 05-back-on-nav
 
-  # --- LEFT walks back, Search included ------------------------------------
-  # Search sits left of Home. Landing on it must switch the destination without
-  # the text field claiming the remote, or a viewer walking left would be
-  # stranded outside the navigation.
+  # --- LEFT walks back to Search, and Mijn Pleya stays ----------------------
+  # Landing on Search must not let the text field claim the remote.
   - press: left
   - press: left
   - press: left
   - wait_until: {focused: nav.discover, timeout: 8000}
   - settle: 400
-  - assert: {id: nav.discover, focused: true, state: {active: true}}
+  - assert: {id: nav.discover, focused: true, state: {active: false}}
   - press: left
   - wait_until: {focused: nav.search, timeout: 8000}
   - settle: 400
-  - assert: {id: nav.search, focused: true, state: {active: true}}
-  - snapshot: 06-search-focused-not-entered
+  - assert: {id: nav.search, focused: true, state: {active: false}}
+  - assert: {id: nav.myPleya, state: {active: true}}
+  - assert: {id: screen.my_pleya}
+  - snapshot: 06-search-ring-my-pleya-on-screen
 
   # --- The fast walk: three presses with nothing in between ----------------
-  # Back to Home first, so the burst starts where a viewer starts.
   - press: right
   - wait_until: {focused: nav.discover, timeout: 8000}
   - settle: 1200
-
-  # No `wait_until`, no `settle`. The presses land faster than Series and Films
-  # can build, which is exactly the race a debounce would have introduced and
-  # the one this contract has to survive without one.
   - press: right
   - press: right
   - press: right
@@ -128,7 +114,5 @@ steps:
   - assert: {id: nav.movies, state: {active: false}}
   - assert: {id: nav.series, state: {active: false}}
   - assert: {id: nav.discover, state: {active: false}}
-  # And the destination behind the bar really is the last one, not a page that
-  # won the race by finishing its load first.
-  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - assert: {id: screen.my_pleya}
   - snapshot: 07-fast-walk
