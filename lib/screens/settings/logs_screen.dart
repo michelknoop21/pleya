@@ -555,7 +555,7 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
             return KeyEventResult.handled;
           }
           if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-            // A-24 (DEC-XXX-A24): with the reader at its top, a fresh UP
+            // A-24 (DEC-166): with the reader at its top, a fresh UP
             // goes to the top bar under a collapsible one. A held UP stops
             // at the top, so scrolling up never runs on into the bar.
             final exitUp = tvExitUpToBar(context);

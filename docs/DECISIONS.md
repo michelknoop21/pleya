@@ -5100,7 +5100,7 @@ sluit pas met het voorgeschreven bewijs; een TestFlight-upload is geen hardwarea
 Er is geen opdracht voor een productie-NAS-deploy, upload van bestaande gebruikersherinneringen
 of externe/publicatie naar App Review.
 
-## DEC-XXX-A24: Instellingen op Apple TV zonder vaste bovenbalk, en de rail past in het venster
+## DEC-166: Instellingen op Apple TV zonder vaste bovenbalk, en de rail past in het venster
 
 **Date:** 2026-10-26
 **Status:** accepted (Michel, 26 oktober 2026)

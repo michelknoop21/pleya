@@ -59,7 +59,7 @@ geeft die mee aan `openTvContentRoute`. De pagina neemt zelf de bovenmarge (`TvP
 vanaf de bovenste focusstop haalt de balk terug. Een pagina zonder eigen weg omhoog krijgt die via
 `tvExitUpToBar(context)` (`lib/navigation/tv/tv_nested_surface.dart`): `TvMenuGrid` valt erop terug
 als `onExitUp` leeg is, Logboeken gebruikt hem zodra de lezer bovenaan staat. Andere TV-routes houden hun eigen presentatie
-(DEC-XXX-A24, besluit Michel 26 oktober 2026).
+(DEC-166, besluit Michel 26 oktober 2026).
 
 ## Pleya Verify
 

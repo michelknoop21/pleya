@@ -1,4 +1,4 @@
-/// A-24 (DEC-XXX-A24): Instellingen on Apple TV opens under the collapsible top
+/// A-24 (DEC-166): Instellingen on Apple TV opens under the collapsible top
 /// bar, and with the bar gone the page fits the window without shrinking any
 /// text.
 ///

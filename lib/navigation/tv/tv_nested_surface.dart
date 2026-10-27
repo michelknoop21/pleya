@@ -330,7 +330,7 @@ class TvNestedRouteScope extends InheritedWidget {
       topNav != oldWidget.topNav;
 }
 
-/// A-24 (DEC-XXX-A24): UP off the top of a page in a route that covers the
+/// A-24 (DEC-166): UP off the top of a page in a route that covers the
 /// window, for a page that has no way up of its own.
 ///
 /// Under a collapsible bar (DEC-115) the bar is not on screen while the remote

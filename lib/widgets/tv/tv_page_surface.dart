@@ -120,7 +120,7 @@ class TvPageSurface extends StatelessWidget {
       ),
     );
 
-    // A-24 (DEC-XXX-A24): a route that covers the window (DEC-115) has no bar
+    // A-24 (DEC-166): a route that covers the window (DEC-115) has no bar
     // above it to pay the top edge, and the shell says so through
     // `MediaQuery.padding.top` (`TvNestedSurface`). The page then keeps the
     // overscan band itself, the one the catalog heading keeps. Under a

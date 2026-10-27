@@ -210,7 +210,7 @@ WidgetBuilder settingsStudioBuilder(BuildContext context, WidgetBuilder builder)
 MaterialPageRoute<T> settingsStudioRoute<T>(BuildContext context, WidgetBuilder builder) =>
     MaterialPageRoute<T>(builder: settingsStudioBuilder(context, builder));
 
-/// A-24 (DEC-XXX-A24): how the TV top bar sits over Instellingen and over every
+/// A-24 (DEC-166): how the TV top bar sits over Instellingen and over every
 /// page it opens. Collapsible, as over film and series detail (DEC-115): the
 /// bar is gone while the remote is in the page, UP from the top focus stop
 /// brings it back and Menu still steps back. This replaces PB-1's persistent

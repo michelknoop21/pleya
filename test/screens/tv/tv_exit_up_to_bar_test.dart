@@ -1,4 +1,4 @@
-/// A-24 (DEC-XXX-A24), review finding 556-I1: a settings subpage under the
+/// A-24 (DEC-166), review finding 556-I1: a settings subpage under the
 /// collapsible bar has a way up to that bar.
 ///
 /// Instellingen opens Over, Logboeken and Servers under the collapsible bar,
