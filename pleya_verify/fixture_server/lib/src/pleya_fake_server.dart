@@ -239,6 +239,12 @@ class PleyaFakeServer {
   /// `POST /__verify/fail_next`.
   _QueuedFailure? _queuedFailure;
 
+  /// How many of the next requests that carry a `cursor` get a 400
+  /// `library.cursor_invalid`, as a real server answers a cursor from before an
+  /// update. A request without a cursor is never refused, so a client that
+  /// starts over from the top is let through.
+  int rejectCursorRequests = 0;
+
   /// Extra latency injected before the next [_queuedLatencyCount] responses
   /// (any path). Set by `POST /__verify/latency`.
   Duration _queuedLatency = Duration.zero;
@@ -545,6 +551,11 @@ class PleyaFakeServer {
     if (failure != null && (failure.pathPrefix == null || path.startsWith(failure.pathPrefix!))) {
       _queuedFailure = null;
       return _json(_error(failure.errorCode), status: failure.status);
+    }
+
+    if (rejectCursorRequests > 0 && query.containsKey('cursor')) {
+      rejectCursorRequests--;
+      return _json(_error('library.cursor_invalid'), status: 400);
     }
 
     if (path == '/info') return _json(_info());

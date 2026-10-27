@@ -275,6 +275,97 @@ void main() {
       expect(leaves.every((item) => item.kind == MediaKind.episode), isTrue);
     });
 
+    // A season of loose downloads can hold more than a page of children
+    // (Efteling Jokie is 112), so the client holds cursors for it. Those cursors
+    // are only good until the server is updated.
+    void addSeasonOfClips(int count) {
+      server.addItem(id: 'show-clips', kind: 'show', title: 'Clips', libraryId: 'lib-series');
+      server.addItem(id: 'season-clips', kind: 'season', title: 'Season 1', parentId: 'show-clips', index: 1);
+      for (var i = 1; i <= count; i++) {
+        server.addItem(
+          id: 'clip-${i.toString().padLeft(3, '0')}',
+          kind: 'episode',
+          title: 'Clip ${i.toString().padLeft(3, '0')}',
+          parentId: 'season-clips',
+        );
+      }
+    }
+
+    test('a stale cursor restarts the walk from the top instead of ending the list', () async {
+      addSeasonOfClips(130);
+      client = await connected(server);
+
+      final first = await client.fetchChildrenPage('season-clips', start: 0, size: 100);
+      expect(first.items, hasLength(100));
+
+      // The server was updated; the cursor the client kept for offset 100 is refused.
+      server.rejectCursorRequests = 1;
+      final second = await client.fetchChildrenPage('season-clips', start: 100, size: 100);
+
+      expect(second.items.map((i) => i.title), [
+        for (var i = 101; i <= 130; i++) 'Clip ${i.toString().padLeft(3, '0')}',
+      ]);
+    });
+
+    test('the walk restarts once and then stops, even if the server keeps refusing', () async {
+      addSeasonOfClips(130);
+      client = await connected(server);
+      await client.fetchChildrenPage('season-clips', start: 0, size: 100);
+
+      server.rejectCursorRequests = 99;
+      final before = server.requests.length;
+      final second = await client.fetchChildrenPage('season-clips', start: 100, size: 100);
+
+      final reads = server.requests.skip(before).where((r) => r.contains('/items/season-clips/children')).length;
+      expect(second.items, isEmpty, reason: 'nothing usable came back, and that is not a crash');
+      expect(reads, 3, reason: 'the refused cursor, one fresh start, and its refused cursor; no loop');
+    });
+
+    test('after a refused cursor the other stored boundaries are forgotten too', () async {
+      addSeasonOfClips(330);
+      client = await connected(server);
+      for (final start in [0, 100, 200, 300]) {
+        await client.fetchChildrenPage('season-clips', start: start, size: 100);
+      }
+
+      server.rejectCursorRequests = 1;
+      await client.fetchChildrenPage('season-clips', start: 100, size: 100);
+
+      // The boundary at 300 was issued before the refusal and is as old as the one
+      // that was refused. Reusing it would be one request; walking from the fresh
+      // boundary at 200 is two.
+      final before = server.requests.length;
+      final page = await client.fetchChildrenPage('season-clips', start: 300, size: 100);
+
+      expect(page.items.first.title, 'Clip 301');
+      expect(server.requests.length - before, 2, reason: 'the stale boundary at 300 must not be reused');
+    });
+
+    test('another failure on a stored cursor is not mistaken for a stale one', () async {
+      addSeasonOfClips(130);
+      client = await connected(server);
+      await client.fetchChildrenPage('season-clips', start: 0, size: 100);
+
+      server.queueFailure(pathPrefix: '/items/season-clips', status: 503);
+      final before = server.requests.length;
+      final second = await client.fetchChildrenPage('season-clips', start: 100, size: 100);
+
+      expect(second.items, isEmpty);
+      expect(server.requests.length - before, 1, reason: 'a 503 is not a reason to walk the whole list again');
+    });
+
+    test('an answer without a cursor problem is not retried', () async {
+      addSeasonOfClips(130);
+      client = await connected(server);
+      await client.fetchChildrenPage('season-clips', start: 0, size: 100);
+
+      final before = server.requests.length;
+      final second = await client.fetchChildrenPage('season-clips', start: 100, size: 100);
+
+      expect(second.items, hasLength(30));
+      expect(server.requests.length - before, 1, reason: 'the stored cursor is still good, so one request');
+    });
+
     test('a movie has no children and that is a list, not an error', () async {
       server.addItem(id: 'movie-solo', kind: 'movie', title: 'Solo', libraryId: 'lib-films', durationMs: 1000);
       client = await connected(server);

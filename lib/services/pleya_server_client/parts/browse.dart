@@ -548,13 +548,30 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     var cursor = position == 0 ? null : _cursors.cursorFor(ledgerKey, position);
     final collected = <PleyaItem>[];
     var walked = 0;
+    var restarted = false;
 
     while (true) {
-      final json = await _getJson(
+      final answer = await _getJsonDetailed(
         path,
         queryParameters: {'limit': '$pageSize', ...extraQuery, 'cursor': ?cursor},
         abort: abort,
       );
+      // A stored cursor the server no longer accepts (it was issued before a
+      // server update, or the catalogue moved under it) is not an empty list.
+      // Forget this listing and walk once from the top. One restart only: a
+      // server that refuses the cursors of its own fresh walk would otherwise
+      // keep this loop going.
+      if (answer.errorCode == 'library.cursor_invalid' && cursor != null && !restarted) {
+        appLogger.d('PleyaServerClient: $path refused its cursor, walking again from the start');
+        restarted = true;
+        _cursors.invalidate(ledgerKey);
+        position = 0;
+        cursor = null;
+        collected.clear();
+        walked = 0;
+        continue;
+      }
+      final json = answer.json;
       if (json == null) {
         if (strictSnapshot) throw StateError('Snapshot page was not received');
         break;
