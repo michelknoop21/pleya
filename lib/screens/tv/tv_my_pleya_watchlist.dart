@@ -31,10 +31,48 @@ class _WatchlistPanelState extends State<_WatchlistPanel> {
   final ScrollController _controller = ScrollController();
   final GlobalKey _railKey = GlobalKey(debugLabel: 'tvMyPleya_rail');
 
+  /// One poster plus the gap after it, and the poster's width, from the last
+  /// layout; [_show] scrolls by them.
+  double _pitch = 0;
+  double _posterWidth = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.map.rail.attach(show: _show, viewport: _viewport);
+  }
+
   @override
   void dispose() {
+    widget.map.rail.detach(_show);
     _controller.dispose();
     super.dispose();
+  }
+
+  Rect? _viewport() {
+    final rail = _railKey.currentContext?.findRenderObject();
+    if (rail is! RenderBox || !rail.attached || !rail.hasSize) return null;
+    return rail.localToGlobal(Offset.zero) & rail.size;
+  }
+
+  /// Scrolls poster [index] into the rail when it is not built, the least
+  /// distance that shows it whole, and calls [then] after the frame that
+  /// builds it (review 557-I1: a far scrolled rail had no first poster to
+  /// return to).
+  bool _show(int index, VoidCallback then) {
+    if (!_controller.hasClients || _pitch <= 0) return false;
+    final position = _controller.position;
+    final left = index * _pitch;
+    final right = left + _posterWidth;
+    var target = position.pixels;
+    if (left < target) target = left;
+    if (right > target + position.viewportDimension) target = right - position.viewportDimension;
+    _controller.jumpTo(target.clamp(position.minScrollExtent, position.maxScrollExtent));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) then();
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+    return true;
   }
 
   /// Keeps the focused poster inside the panel. A poster consumes its own
@@ -126,6 +164,8 @@ class _WatchlistPanelState extends State<_WatchlistPanel> {
     final posterWidth = posterHeight * TvCatalogLayout.posterAspectRatio;
     final gap = _WatchlistPanel._posterGapPt * pt;
     final radius = _WatchlistPanel._posterRadiusPt * pt;
+    _pitch = posterWidth + gap;
+    _posterWidth = posterWidth;
 
     // Clipped to the panel sideways only, so a focused poster's ring is
     // drawn whole above and below while a poster scrolled past the end is cut

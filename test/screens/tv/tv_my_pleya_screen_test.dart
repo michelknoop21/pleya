@@ -379,6 +379,68 @@ void main() {
       }
     });
 
+    // Review 557-C1: a poster that scrolled out of the rail's cache must not
+    // break UP from the dock, which measures the posters.
+    testWidgets('twelve posters: Up from the dock after the rail scrolled to its end', (tester) async {
+      final page = await pumpTvMyPleyaPage(tester, conditions: const TvMyPleyaPageConditions(watchlistCount: 12));
+      page.state.focusKey(poster(0));
+      await tester.pumpAndSettle();
+      for (var i = 1; i < 12; i++) {
+        await press(tester, LogicalKeyboardKey.arrowRight);
+      }
+      expect(page.focused, poster(11));
+
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(page.focused, startsWith('tvMyPleya_'));
+      for (var i = 0; i < 6; i++) {
+        await press(tester, LogicalKeyboardKey.arrowLeft);
+      }
+      final tile = page.focused;
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(tester.takeException(), isNull);
+      expect(page.focused, isNot(tile), reason: 'Up left the dock');
+      final landed = FocusManager.instance.primaryFocus!.rect;
+      final panel = tester.getRect(find.byType(ListView).first);
+      if (page.focused!.startsWith('tvMyPleya_poster_')) {
+        expect(landed.overlaps(panel), isTrue, reason: 'Up lands on a poster in view');
+      }
+    });
+
+    // Review 557-I1: Left and Down from Bekijk alles go back to the last
+    // poster, and Right from Big P reaches the first poster however far the
+    // rail scrolled.
+    for (final count in [12, 6]) {
+      testWidgets('$count posters: Bekijk alles returns to the last poster, Big P reaches the first', (tester) async {
+        final page = await pumpTvMyPleyaPage(tester, conditions: TvMyPleyaPageConditions(watchlistCount: count));
+        page.state.focusKey(poster(0));
+        await tester.pumpAndSettle();
+        for (var i = 1; i < count; i++) {
+          await press(tester, LogicalKeyboardKey.arrowRight);
+        }
+        await press(tester, LogicalKeyboardKey.arrowRight);
+        expect(page.focused, seeAll);
+
+        await press(tester, LogicalKeyboardKey.arrowLeft);
+        expect(page.focused, poster(count - 1));
+        await press(tester, LogicalKeyboardKey.arrowRight);
+        expect(page.focused, seeAll);
+        await press(tester, LogicalKeyboardKey.arrowDown);
+        expect(page.focused, poster(count - 1));
+
+        // Big P, with the rail still at its end: Right brings the rail back
+        // and lands on the first poster.
+        page.state.focusKey(bigP);
+        await tester.pumpAndSettle();
+        await press(tester, LogicalKeyboardKey.arrowRight);
+        expect(tester.takeException(), isNull);
+        expect(page.focused, poster(0));
+        final panel = tester.getRect(find.byType(ListView).first);
+        final rect = FocusManager.instance.primaryFocus!.rect;
+        expect(rect.left, greaterThanOrEqualTo(panel.left - 0.5));
+        expect(rect.right, lessThanOrEqualTo(panel.right + 0.5));
+      });
+    }
+
     testWidgets('Down into the dock and Up back to where the remote came from', (tester) async {
       final page = await pumpTvMyPleyaPage(tester);
       page.state.focusKey(bigP);

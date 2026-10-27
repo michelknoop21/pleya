@@ -91,6 +91,7 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
   /// server going offline must not dispose the node the remote is standing on.
   final FocusMemoryTracker nodes = FocusMemoryTracker(debugLabelPrefix: 'tvMyPleya');
   final Map<String, String> _cameFrom = {};
+  final _RailReveal _rail = _RailReveal();
 
   /// The first content action of the last build: Big P when he is offered,
   /// otherwise the first poster, `Bekijk alles` or the first tile.
@@ -174,6 +175,7 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
       dockKeys: [for (final tile in dock) tile.focusKey],
       cameFrom: _cameFrom,
       onExitUp: widget.onExitUp,
+      rail: _rail,
     );
     _firstKey = map.firstKey;
 

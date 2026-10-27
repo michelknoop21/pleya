@@ -24,6 +24,7 @@ class _PageFocusMap {
     required this.dockKeys,
     required this.cameFrom,
     required this.onExitUp,
+    required this.rail,
   });
 
   final FocusMemoryTracker nodes;
@@ -43,6 +44,10 @@ class _PageFocusMap {
   final Map<String, String> cameFrom;
   final VoidCallback onExitUp;
 
+  /// The kijklijst rail, which can scroll a poster into existence before the
+  /// focus goes there. Owned by the screen's state, attached by the panel.
+  final _RailReveal rail;
+
   /// The first content action: Big P, else the first poster, else `Bekijk
   /// alles`, else the first tile.
   String? get firstKey => bigPKey ?? posterKeys.firstOrNull ?? seeAllKey ?? dockKeys.firstOrNull;
@@ -50,10 +55,14 @@ class _PageFocusMap {
   /// What UP from the dock and DOWN to it choose between.
   List<String> get _topRow => [?bigPKey, ...posterKeys];
 
+  /// Null for a node that is not on the page now. A poster that scrolled out
+  /// of the rail's cache keeps a context whose element is gone, and asking
+  /// that for its rect throws (review 557-C1), so a mounted element is the
+  /// test, not a context.
   Rect? _rect(String key) {
-    final node = nodes.nodeFor(key);
-    if (node == null || node.context == null) return null;
-    return node.rect;
+    final context = nodes.nodeFor(key)?.context;
+    if (context == null || !context.mounted) return null;
+    return nodes.nodeFor(key)!.rect;
   }
 
   String? _nearestByX(List<String> candidates, Rect? from) {
@@ -83,11 +92,21 @@ class _PageFocusMap {
 
   /// Moves the focus from [key] in [direction]. UP out of the top row leaves
   /// for the top navigation; everything else that has nowhere to go stays.
+  ///
+  /// A poster the rail has not built (scrolled far away) cannot take the
+  /// focus, so the rail scrolls it in first and the focus follows a frame
+  /// later.
   void move(String key, TraversalDirection direction) {
-    if (_next(key, direction) case final String target) {
-      final node = nodes.get(target);
+    final target = _next(key, direction);
+    if (target == null) return;
+    final node = nodes.get(target);
+    void focus() {
       if (node.canRequestFocus) node.requestFocus();
     }
+
+    final poster = posterKeys.indexOf(target);
+    if (poster >= 0 && _rect(target) == null && rail.show(poster, then: focus)) return;
+    focus();
   }
 
   String? _next(String key, TraversalDirection direction) {
@@ -105,7 +124,7 @@ class _PageFocusMap {
     if (poster >= 0) {
       return switch (direction) {
         TraversalDirection.left => poster > 0 ? posterKeys[poster - 1] : bigPKey,
-        TraversalDirection.right => poster < posterKeys.length - 1 ? posterKeys[poster + 1] : seeAllKey,
+        TraversalDirection.right => poster < posterKeys.length - 1 ? posterKeys[poster + 1] : _toSeeAll(key),
         TraversalDirection.up => seeAllKey == null ? _exitUp() : _vertical(key, [seeAllKey!]),
         TraversalDirection.down => _vertical(key, dockKeys),
       };
@@ -114,12 +133,12 @@ class _PageFocusMap {
       return switch (direction) {
         TraversalDirection.up => _exitUp(),
         TraversalDirection.right => null,
-        // Back to the poster it was left from, else the first one (the rail
-        // scrolls it into view on focus).
+        // Back to the poster it was left from, else the last one, which is
+        // the one beside and below the link ([move] scrolls it in).
         TraversalDirection.left || TraversalDirection.down =>
           posterKeys.isEmpty
               ? (direction == TraversalDirection.left ? bigPKey : _vertical(key, dockKeys))
-              : _returnTo(key, posterKeys),
+              : _returnTo(key, posterKeys, fallback: posterKeys.last),
       };
     }
     final tile = dockKeys.indexOf(key);
@@ -140,10 +159,24 @@ class _PageFocusMap {
     return null;
   }
 
-  /// The candidates that are on screen; a poster scrolled out of the rail is
-  /// no place to land. Falls back to all of them before the first layout.
+  /// RIGHT off the last poster: `Bekijk alles`, which remembers the poster so
+  /// LEFT and DOWN return to it rather than to the start of the rail.
+  String? _toSeeAll(String poster) {
+    final target = seeAllKey;
+    if (target != null) cameFrom[target] = poster;
+    return target;
+  }
+
+  /// The candidates that are on screen; a poster scrolled out of the rail, or
+  /// built just outside it, is no place to land. Falls back to all of them
+  /// before the first layout.
   List<String> _visible(List<String> keys) {
-    final shown = keys.where((key) => _rect(key) != null).toList();
+    final viewport = rail.viewport;
+    final shown = keys.where((key) {
+      final rect = _rect(key);
+      if (rect == null) return false;
+      return viewport == null || !posterKeys.contains(key) || rect.overlaps(viewport);
+    }).toList();
     return shown.isEmpty ? keys : shown;
   }
 
@@ -153,8 +186,35 @@ class _PageFocusMap {
     return target;
   }
 
-  String? _returnTo(String key, List<String> candidates) {
+  String? _returnTo(String key, List<String> candidates, {String? fallback}) {
     final back = cameFrom[key];
-    return back != null && candidates.contains(back) ? back : candidates.firstOrNull;
+    return back != null && candidates.contains(back) ? back : fallback ?? candidates.firstOrNull;
   }
+}
+
+/// The kijklijst rail's half of [_PageFocusMap]: it knows where the rail is
+/// on screen and how to scroll a poster that is not built into view.
+/// Created once by the screen's state; the panel attaches while it is
+/// mounted.
+class _RailReveal {
+  bool Function(int index, VoidCallback then)? _show;
+  Rect? Function()? _viewport;
+
+  void attach({required bool Function(int index, VoidCallback then) show, required Rect? Function() viewport}) {
+    _show = show;
+    _viewport = viewport;
+  }
+
+  void detach(bool Function(int index, VoidCallback then) show) {
+    if (!identical(_show, show)) return;
+    _show = null;
+    _viewport = null;
+  }
+
+  /// The rail's box on screen, or null without a laid-out rail.
+  Rect? get viewport => _viewport?.call();
+
+  /// Scrolls poster [index] into the rail and calls [then] once it is built.
+  /// False when there is no rail to scroll.
+  bool show(int index, {required VoidCallback then}) => _show?.call(index, then) ?? false;
 }
