@@ -32,6 +32,8 @@
 /// presentation only; the two share layout tokens and nothing else.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../automation/automation_ids.dart';
@@ -118,10 +120,19 @@ class TvPageSurface extends StatelessWidget {
       ),
     );
 
+    // A-24 (DEC-166): a route that covers the window (DEC-115) has no bar
+    // above it to pay the top edge, and the shell says so through
+    // `MediaQuery.padding.top` (`TvNestedSurface`). The page then keeps the
+    // overscan band itself, the one the catalog heading keeps. Under a
+    // persistent bar that padding is 0 and the page starts one gap below it.
+    final shellTop = MediaQuery.paddingOf(context).top;
+    final top = shellTop > 0
+        ? math.max(TvCatalogLayout.topSafeInset * scale, shellTop)
+        : TvTopNavLayout.contentGap * scale;
     final padding = EdgeInsets.only(
       left: inset,
       right: inset,
-      top: TvTopNavLayout.contentGap * scale,
+      top: top,
       // DENS1: tvOS's safe area, 60 pt from the bottom edge (HIG, Layout).
       // `TvCatalogLayout.bottomSafeInset * scaleOf` came out at 127 pt and cut
       // the last settings row in half for nothing.
@@ -173,14 +184,23 @@ class TvPageSurface extends StatelessWidget {
     );
 
     // DENS1: every settings row on a TV page takes the HIG sizes from here.
+    // The top inset is spent above, so nothing below adds it a second time.
     if (expanded != null) {
       return TvSettingsDensity(
-        child: expandedOwnsInsets ? column : Padding(padding: padding, child: column),
+        child: MediaQuery.removePadding(
+          context: context,
+          removeTop: true,
+          child: expandedOwnsInsets ? column : Padding(padding: padding, child: column),
+        ),
       );
     }
 
     return TvSettingsDensity(
-      child: SingleChildScrollView(controller: controller, padding: padding, child: column),
+      child: MediaQuery.removePadding(
+        context: context,
+        removeTop: true,
+        child: SingleChildScrollView(controller: controller, padding: padding, child: column),
+      ),
     );
   }
 }

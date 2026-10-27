@@ -28,6 +28,7 @@ import '../../utils/layout_constants.dart';
 import '../../utils/tv_hig.dart';
 import '../../focus/focus_theme.dart';
 import '../../focus/focusable_wrapper.dart';
+import '../../navigation/tv/tv_nested_surface.dart' show tvExitUpToBar;
 import 'tv_page_surface.dart';
 import 'tv_unified_layout.dart';
 
@@ -117,7 +118,8 @@ class TvMenuGrid extends StatelessWidget {
   final String automationInstance;
 
   /// UP off the first row. The page hands this to the shell so the remote can
-  /// reach the top navigation again.
+  /// reach the top navigation again. Left null, a page under a collapsible bar
+  /// still gets the way up ([tvExitUpToBar], A-24).
   final VoidCallback? onExitUp;
   final VoidCallback? onExitDown;
 
@@ -173,6 +175,7 @@ class TvMenuGrid extends StatelessWidget {
     final gap = TvMyPleyaLayout.tileGap * scale;
     final firstKey = keys.isEmpty ? null : keys.first;
     final lastKey = keys.isEmpty ? null : keys.last;
+    final onExitUp = this.onExitUp ?? tvExitUpToBar(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

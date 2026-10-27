@@ -57,16 +57,18 @@ extension _SettingsTvPage on _SettingsScreenState {
     final themeProvider = context.watch<ThemeProvider>();
     final active = context.watch<ActiveProfileProvider>().active;
 
-    // PB-1: a settings subpage keeps the top bar. `SettingsScreen` is itself a
+    // A settings subpage opens inside the shell. `SettingsScreen` is itself a
     // nested route already (`tvMyPleyaNestedRoute`), so pushing its own
     // subpages on the profile navigator meant the child escaped a shell the
-    // parent had stayed inside. Falls back to the ordinary push when no TV
-    // shell is listening, which is every test that mounts this page on its own.
+    // parent had stayed inside. A-24 (DEC-166): under the same collapsible
+    // bar as this page ([kTvSettingsTopNav]). Falls back to the ordinary push
+    // when no TV shell is listening, which is every test that mounts this page
+    // on its own.
     void open(String id, WidgetBuilder builder) {
       // Every page opened from here is a settings page: it keeps the Studio
       // palette (A-24b). [context] is the State's, above the page's wrapper.
       Widget studio(BuildContext context) => SettingsStudioTheme(child: builder(context));
-      if (openTvContentRoute(id: 'tvSettings_$id', builder: studio) != null) return;
+      if (openTvContentRoute(id: 'tvSettings_$id', builder: studio, topNav: kTvSettingsTopNav) != null) return;
       Navigator.push(context, MaterialPageRoute<void>(builder: studio));
     }
 

@@ -38,6 +38,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../../mixins/refreshable.dart';
+import '../main_screen_scope.dart';
 import 'tv_navigation_coordinator.dart';
 import 'tv_nested_back_owner.dart';
 
@@ -213,6 +214,7 @@ class TvNestedSurfaceState extends State<TvNestedSurface> {
     child: TvNestedRouteScope(
       dismiss: widget.dismiss,
       markResult: _markResult,
+      topNav: widget.route.topNav,
       child: Focus(
         focusNode: _anchor,
         canRequestFocus: false,
@@ -296,9 +298,18 @@ class _ContentBoxMediaQuery extends StatelessWidget {
 /// does. Its absence (`of(context) == null`) is a screen's signal that it was
 /// not nested this time and should fall back to `Navigator.pop`.
 class TvNestedRouteScope extends InheritedWidget {
-  const TvNestedRouteScope({super.key, required this.dismiss, required this.markResult, required super.child});
+  const TvNestedRouteScope({
+    super.key,
+    required this.dismiss,
+    required this.markResult,
+    this.topNav = TvTopNavPresentation.persistent,
+    required super.child,
+  });
 
   final void Function([Object? result]) dismiss;
+
+  /// How the top bar sits over this route; see [tvExitUpToBar].
+  final TvTopNavPresentation topNav;
 
   /// Records what this route should complete with if it is popped by someone
   /// other than the screen itself, which Back from the top bar does.
@@ -314,5 +325,32 @@ class TvNestedRouteScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(TvNestedRouteScope oldWidget) =>
-      !identical(dismiss, oldWidget.dismiss) || !identical(markResult, oldWidget.markResult);
+      !identical(dismiss, oldWidget.dismiss) ||
+      !identical(markResult, oldWidget.markResult) ||
+      topNav != oldWidget.topNav;
+}
+
+/// A-24 (DEC-166): UP off the top of a page in a route that covers the
+/// window, for a page that has no way up of its own.
+///
+/// Under a collapsible bar (DEC-115) the bar is not on screen while the remote
+/// is in the page, so an UP that dead-ends at the top leaves no visible way to
+/// search, Home or the account menu: only Menu still works. Detail wires its
+/// own way up; a settings subpage (Over, Logboeken, Servers) used to have
+/// none. This gives every such page the same rule: the control above, if
+/// directional traversal finds one, otherwise the bar.
+///
+/// Null outside a nested route, under the persistent bar (where nothing
+/// changes), and where no shell listens (a test that mounts a page on its
+/// own), so a caller keeps whatever it did before.
+VoidCallback? tvExitUpToBar(BuildContext context) {
+  final route = TvNestedRouteScope.readOf(context);
+  if (route == null || !route.topNav.coversWindow) return null;
+  final shell = MainScreenFocusScope.of(context, listen: false);
+  if (shell == null) return null;
+  return () {
+    final focused = FocusManager.instance.primaryFocus;
+    if (focused != null && focused.focusInDirection(TraversalDirection.up)) return;
+    shell.focusSidebar();
+  };
 }

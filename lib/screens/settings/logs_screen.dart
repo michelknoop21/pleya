@@ -15,6 +15,7 @@ import '../../focus/focusable_button.dart';
 import '../../focus/key_event_utils.dart';
 import '../../i18n/strings.g.dart';
 import '../../mixins/mounted_set_state_mixin.dart';
+import '../../navigation/tv/tv_nested_surface.dart' show tvExitUpToBar;
 import '../../utils/dialogs.dart';
 import '../../utils/media_server_timeouts.dart';
 import '../../main.dart' show gitCommit;
@@ -554,6 +555,15 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
             return KeyEventResult.handled;
           }
           if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+            // A-24 (DEC-166): with the reader at its top, a fresh UP
+            // goes to the top bar under a collapsible one. A held UP stops
+            // at the top, so scrolling up never runs on into the bar.
+            final exitUp = tvExitUpToBar(context);
+            final atTop = !_scrollController.hasClients || _scrollController.offset <= 0;
+            if (atTop && exitUp != null && event is KeyDownEvent) {
+              exitUp();
+              return KeyEventResult.handled;
+            }
             _scroll(-80);
             return KeyEventResult.handled;
           }

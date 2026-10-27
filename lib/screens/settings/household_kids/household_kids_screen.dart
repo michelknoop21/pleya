@@ -33,7 +33,8 @@ Future<void> openHouseholdKidsScreen(BuildContext context) async {
   final profile = context.read<ActiveProfileProvider?>()?.active;
   if (await assistantIsKidsProfile(profile) || !context.mounted) return;
   final builder = settingsStudioBuilder(context, (_) => const HouseholdKidsScreen());
-  if (openTvContentRoute(id: 'tvSettings_householdKids', builder: builder) != null) return;
+  final topNav = tvSettingsTopNavFor(context);
+  if (openTvContentRoute(id: 'tvSettings_householdKids', builder: builder, topNav: topNav) != null) return;
   await Navigator.of(context).push(MaterialPageRoute<void>(builder: builder));
 }
 

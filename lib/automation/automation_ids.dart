@@ -537,6 +537,8 @@ class AutomationIds {
 
   /// The mobile bottom navigation bar as a whole (bounds, not per-tab). The
   /// per-tab nodes are [navTab], mounted on both the side rail and this bar.
+  /// On TV the top navigation, with `hidden`, `overlay` and `scrollAway` from
+  /// the presentation of the route under it (DEC-115, A-24).
   static const String navBar = 'nav.bar';
 
   /// The mobile Home header (lockup, and on Home the conditional actions,

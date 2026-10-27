@@ -36,6 +36,7 @@ import '../downloads/downloads_screen.dart';
 import '../seerr/seerr_discover_screen.dart';
 import '../settings/logs_screen.dart';
 import '../settings/settings_screen.dart';
+import '../../widgets/settings/settings_studio_theme.dart' show kTvSettingsTopNav;
 import '../watchlist_screen.dart';
 import 'assistant/tv_assistant_screen.dart';
 import 'tv_my_pleya_sections.dart';
@@ -82,6 +83,9 @@ TvNestedRoute tvMyPleyaNestedRoute(
     // stacked causes, and exactly what the comment above already warned
     // about.
     screenKey: screenKey,
+    // A-24 (DEC-166): Instellingen opens under the collapsible bar, as its
+    // subpages do; every other section keeps the persistent bar (PB-1).
+    topNav: section == TvMyPleyaSection.settings ? kTvSettingsTopNav : TvTopNavPresentation.persistent,
     // Addressable, and measurable. Without a node here the whole nested
     // surface was invisible to `/v1/ui_tree`: a scenario could press SELECT
     // on a tile and had no way to assert that anything opened, let alone

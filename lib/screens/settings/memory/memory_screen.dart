@@ -47,7 +47,8 @@ MemoryScreenModel memoryScreenModelForSession(BuildContext context) {
 /// one, as an ordinary page otherwise.
 void openAssistantMemoryScreen(BuildContext context) {
   final builder = settingsStudioBuilder(context, (_) => const AssistantMemoryScreen());
-  if (openTvContentRoute(id: 'tvSettings_assistantMemory', builder: builder) != null) return;
+  final topNav = tvSettingsTopNavFor(context);
+  if (openTvContentRoute(id: 'tvSettings_assistantMemory', builder: builder, topNav: topNav) != null) return;
   unawaited(Navigator.of(context).push(MaterialPageRoute<void>(builder: builder)));
 }
 
@@ -97,7 +98,8 @@ class _AssistantMemoryScreenState extends State<AssistantMemoryScreen> {
 
   void _openList() {
     final builder = settingsStudioBuilder(context, (_) => MemoryListScreen(model: _model, speech: _speech));
-    if (openTvContentRoute(id: 'tvSettings_assistantMemoryList', builder: builder) != null) return;
+    final topNav = tvSettingsTopNavFor(context);
+    if (openTvContentRoute(id: 'tvSettings_assistantMemoryList', builder: builder, topNav: topNav) != null) return;
     unawaited(Navigator.of(context).push(MaterialPageRoute<void>(builder: builder)));
   }
 
@@ -107,7 +109,11 @@ class _AssistantMemoryScreenState extends State<AssistantMemoryScreen> {
     final builder = settingsStudioBuilder(context, (_) => MemorySyncScreen(binding: binding));
     // The shell's ambient content focus does not remember this nested tile.
     final launcher = FocusManager.instance.primaryFocus;
-    final nested = openTvContentRoute(id: 'tvSettings_assistantMemorySync', builder: builder);
+    final nested = openTvContentRoute(
+      id: 'tvSettings_assistantMemorySync',
+      builder: builder,
+      topNav: tvSettingsTopNavFor(context),
+    );
     if (nested != null) {
       unawaited(
         nested.whenComplete(() {

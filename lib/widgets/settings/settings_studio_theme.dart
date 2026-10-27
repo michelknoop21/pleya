@@ -25,6 +25,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../navigation/tv/tv_content_route_registry.dart';
+import '../../navigation/tv/tv_navigation_coordinator.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/platform_detector.dart';
 import 'settings_icon_badge.dart';
@@ -209,14 +210,31 @@ WidgetBuilder settingsStudioBuilder(BuildContext context, WidgetBuilder builder)
 MaterialPageRoute<T> settingsStudioRoute<T>(BuildContext context, WidgetBuilder builder) =>
     MaterialPageRoute<T>(builder: settingsStudioBuilder(context, builder));
 
+/// A-24 (DEC-166): how the TV top bar sits over Instellingen and over every
+/// page it opens. Collapsible, as over film and series detail (DEC-115): the
+/// bar is gone while the remote is in the page, UP from the top focus stop
+/// brings it back and Menu still steps back. This replaces PB-1's persistent
+/// bar for these pages only.
+const TvTopNavPresentation kTvSettingsTopNav = TvTopNavPresentation.collapsible;
+
+/// The bar for a page opened from [context]: [kTvSettingsTopNav] from inside
+/// Instellingen (the Studio palette is the marker), the default elsewhere, so
+/// a page Mijn Pleya also opens keeps its bar there.
+TvTopNavPresentation tvSettingsTopNavFor(BuildContext context) =>
+    SettingsStudioTheme.isActive(context) ? kTvSettingsTopNav : TvTopNavPresentation.persistent;
+
 /// Opens [builder] as a settings page from a settings row. Inside the TV shell
-/// it opens there, so the top bar stays (PB-1): A-24b shows rows inline on the
-/// TV Instellingen page that used to sit one page deeper. Everywhere else it
-/// is the ordinary push of [settingsStudioRoute]. [id] keeps a second SELECT
-/// on the same row from stacking the page twice on TV.
+/// it opens there, under the bar [tvSettingsTopNavFor] picks: A-24b shows rows
+/// inline on the TV Instellingen page that used to sit one page deeper.
+/// Everywhere else it is the ordinary push of [settingsStudioRoute]. [id]
+/// keeps a second SELECT on the same row from stacking the page twice on TV.
 Future<void> pushSettingsPage(BuildContext context, WidgetBuilder builder, {String? id}) async {
   final page = settingsStudioBuilder(context, builder);
-  final inShell = openTvContentRoute(id: 'tvSettings_${id ?? identityHashCode(builder)}', builder: page);
+  final inShell = openTvContentRoute(
+    id: 'tvSettings_${id ?? identityHashCode(builder)}',
+    builder: page,
+    topNav: tvSettingsTopNavFor(context),
+  );
   if (inShell != null) {
     await inShell;
     return;

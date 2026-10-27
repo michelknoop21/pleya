@@ -93,7 +93,8 @@ class MemoryListScreenState extends State<MemoryListScreen> {
   /// The ages live with Kinderprofiel, in Big P's settings.
   void openKidsProfile() {
     final builder = settingsStudioBuilder(context, (_) => const AssistantSettingsScreen());
-    if (openTvContentRoute(id: 'tvSettings_assistant', builder: builder) != null) return;
+    final topNav = tvSettingsTopNavFor(context);
+    if (openTvContentRoute(id: 'tvSettings_assistant', builder: builder, topNav: topNav) != null) return;
     unawaited(Navigator.of(context).push(MaterialPageRoute<void>(builder: builder)));
   }
 

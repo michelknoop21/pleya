@@ -390,7 +390,8 @@ enum TvTopNavPresentation {
   /// The route gets the whole window and the bar is hidden while the focus is
   /// in the content. UP into the bar slides it back in *over* the route, so the
   /// route's box never changes and nothing underneath it jumps. Film and series
-  /// detail open this way.
+  /// detail open this way, and so do Instellingen and its subpages (A-24,
+  /// `kTvSettingsTopNav`).
   collapsible,
 
   /// A-06b: the route gets the whole window like [collapsible], but the bar
