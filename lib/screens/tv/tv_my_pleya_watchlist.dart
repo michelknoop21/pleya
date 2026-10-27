@@ -284,7 +284,7 @@ class _SeeAllLink extends StatelessWidget {
           children: [
             Text(
               t.myPleya.seeAll,
-              style: TextStyle(color: ink, fontSize: TvHig.caption2 * pt, fontWeight: FontWeight.w700),
+              style: TextStyle(color: ink, fontSize: TvHig.caption1 * pt, fontWeight: FontWeight.w700),
             ),
             SizedBox(width: 4 * pt),
             Icon(Symbols.chevron_right_rounded, size: 26 * pt, color: ink),

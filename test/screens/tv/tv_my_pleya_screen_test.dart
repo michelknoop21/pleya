@@ -21,6 +21,7 @@ import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_screen.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_sections.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/utils/tv_hig.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 
 import '../../test_helpers/golden.dart';
@@ -353,6 +354,15 @@ void main() {
       expect(page.focused, seeAll);
       await press(tester, LogicalKeyboardKey.select);
       expect(page.opened, [TvMyPleyaSection.watchlist]);
+    });
+
+    // Review 557-M1: DEC point 6, no text smaller than before. Bekijk alles
+    // was Caption 1 (25 pt) on the A-24b page.
+    testWidgets('Bekijk alles keeps Caption 1', (tester) async {
+      await pumpTvMyPleyaPage(tester);
+      final context = tester.element(find.byType(TvMyPleyaScreen));
+      final size = tester.renderObject<RenderParagraph>(find.text(t.myPleya.seeAll)).text.style!.fontSize!;
+      expect(size / TvHig.of(context), closeTo(TvHig.caption1, 0.01));
     });
 
     testWidgets('a poster with nothing to play opens the full kijklijst', (tester) async {
