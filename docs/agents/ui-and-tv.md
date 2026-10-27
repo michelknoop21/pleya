@@ -56,8 +56,10 @@ Instellingen en elke pagina die vanuit Instellingen in de TV-shell opent, gebrui
 `TvTopNavPresentation.collapsible` via `kTvSettingsTopNav` of `tvSettingsTopNavFor(context)`
 (`lib/widgets/settings/settings_studio_theme.dart`). Een nieuwe opener van een instellingenpagina
 geeft die mee aan `openTvContentRoute`. De pagina neemt zelf de bovenmarge (`TvPageSurface`), UP
-vanaf de bovenste focusstop haalt de balk terug. Andere TV-routes houden hun eigen presentatie
-(DEC-XXX, besluit Michel 26 oktober 2026).
+vanaf de bovenste focusstop haalt de balk terug. Een pagina zonder eigen weg omhoog krijgt die via
+`tvExitUpToBar(context)` (`lib/navigation/tv/tv_nested_surface.dart`): `TvMenuGrid` valt erop terug
+als `onExitUp` leeg is, Logboeken gebruikt hem zodra de lezer bovenaan staat. Andere TV-routes houden hun eigen presentatie
+(DEC-XXX-A24, besluit Michel 26 oktober 2026).
 
 ## Pleya Verify
 

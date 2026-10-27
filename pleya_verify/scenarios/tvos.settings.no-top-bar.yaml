@@ -1,9 +1,9 @@
-# A-24 (Michel, 26 Oct 2026, DEC-XXX): Instellingen on Apple TV opens under
+# A-24 (Michel, 26 Oct 2026, DEC-XXX-A24): Instellingen on Apple TV opens under
 # the collapsible top bar. While the remote is in the page the bar is gone and
 # the page takes the window: all eight rail pills sit inside it, Weergave shows
 # its heading and four rows. UP from the top pill brings the bar back, DOWN
 # returns to the page and hides it again. A subpage (Geavanceerd > Over) opens
-# under the same hidden bar, Menu returns to the row it came from, and Menu at
+# under the same hidden bar, UP from its top tile brings the bar back, Menu returns to the row it came from, and Menu at
 # the page goes back to Mijn Pleya, where the bar is on screen again.
 #
 # `nav.bar` carries `hidden` from the value the bar slides on, so the assertion
@@ -91,6 +91,19 @@ steps:
   - assert: {id: nav.bar, state: {hidden: true, overlay: true}}
   - assert: {id: "my_pleya.section.tile[about.about_source]", insideViewport: true}
   - snapshot: 03-over-no-bar
+
+  # UP from Over's top tile: the bar comes back, DOWN returns to the tile and
+  # hides it again (review finding 556-I1).
+  - wait_until: {focused: "my_pleya.section.tile[about.about_source]", timeout: 5000}
+  - press: up
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - settle: 600
+  - assert: {id: nav.bar, state: {hidden: false, overlay: true}}
+  - snapshot: 03b-over-bar-back
+  - press: down
+  - wait_until: {focused: "my_pleya.section.tile[about.about_source]", timeout: 5000}
+  - settle: 600
+  - assert: {id: nav.bar, state: {hidden: true}}
 
   # Menu: back on the row it came from, bar still away.
   - press: menu

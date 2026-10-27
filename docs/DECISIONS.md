@@ -5100,14 +5100,14 @@ sluit pas met het voorgeschreven bewijs; een TestFlight-upload is geen hardwarea
 Er is geen opdracht voor een productie-NAS-deploy, upload van bestaande gebruikersherinneringen
 of externe/publicatie naar App Review.
 
-## DEC-XXX: Instellingen op Apple TV zonder vaste bovenbalk, en de rail past in het venster
+## DEC-XXX-A24: Instellingen op Apple TV zonder vaste bovenbalk, en de rail past in het venster
 
 **Date:** 2026-10-26
 **Status:** accepted (Michel, 26 oktober 2026)
 **Roadmap:** A-24 (vervolg op A-24b).
 **Context:** De density-audit van 26 oktober 2026 mat Instellingen op een Apple TV-canvas van 1920x1080 pt: bovenbalk 144 pt, vaste kop 175 pt en hintregel 70 pt, samen 36% van de hoogte. De rail van acht categorieën liep 876 pt (pitch 108 pt) in een kolom van 691 pt, waardoor Big P en Geavanceerd deels buiten beeld vielen tot ze gekozen waren. De tekst zelf staat op de tvOS-maten (minimum 23 pt, standaard 29 pt, Apple HIG, Typography); kleiner maken was geen optie.
 **Decision:**
-1. Instellingen (`tvMyPleyaNestedRoute` voor `TvMyPleyaSection.settings`) en elke pagina die vanuit Instellingen in de shell opent, krijgen `TvTopNavPresentation.collapsible` (`kTvSettingsTopNav`, `tvSettingsTopNavFor`). Zolang de focus in de pagina staat is de balk weg; UP vanaf de bovenste pil of rij brengt hem terug, DOWN gaat de pagina weer in, Menu stapt terug zoals voorheen. Dit vervangt PB-1 alleen voor deze pagina's; de andere Mijn Pleya-secties, collectie en persoon houden de vaste balk.
+1. Instellingen (`tvMyPleyaNestedRoute` voor `TvMyPleyaSection.settings`) en elke pagina die vanuit Instellingen in de shell opent, krijgen `TvTopNavPresentation.collapsible` (`kTvSettingsTopNav`, `tvSettingsTopNavFor`). Zolang de focus in de pagina staat is de balk weg; UP vanaf de bovenste pil, rij of tegel brengt hem terug (op subpagina's zonder eigen weg omhoog via `tvExitUpToBar`), DOWN gaat de pagina weer in, Menu stapt terug zoals voorheen. Dit vervangt PB-1 alleen voor deze pagina's; de andere Mijn Pleya-secties, collectie en persoon houden de vaste balk.
 2. Een pagina op `TvPageSurface` onder een route die het venster dekt, houdt zelf de bovenste overscanband (`TvCatalogLayout.topSafeInset`). Onder een vaste balk verandert er niets.
 3. De rail krijgt een pilinzet en tussenruimte van 12 pt (was 18 en 16 uit DEC-139). De pil blijft boven de 56 pt van een tvOS-knop en het label blijft Body (29 pt). Met de balk weg passen acht pillen met ruimte over en staan de kop en vier tot vijf rijen van Weergave in beeld.
 4. Geen tekst wordt kleiner en niets komt onder 23 pt. De Studio-eyebrow (`WEERGAVE`, `LIVE VOORBEELD`) kwam uit op 22 pt en heeft nu 23 pt als ondergrens.
