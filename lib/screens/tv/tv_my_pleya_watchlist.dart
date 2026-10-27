@@ -34,17 +34,22 @@ class _WatchlistPanelState extends State<_WatchlistPanel> {
   /// One poster plus the gap after it, and the poster's width, from the last
   /// layout; [_show] scrolls by them.
   double _pitch = 0;
+
+  /// One tear-off, kept, so [_RailReveal.detach] recognises the one it was
+  /// given: two tear-offs of a method are equal but not guaranteed identical
+  /// (review 557-M8).
+  late final bool Function(int index, VoidCallback then) _showHook = _show;
   double _posterWidth = 0;
 
   @override
   void initState() {
     super.initState();
-    widget.map.rail.attach(show: _show, viewport: _viewport);
+    widget.map.rail.attach(show: _showHook, viewport: _viewport);
   }
 
   @override
   void dispose() {
-    widget.map.rail.detach(_show);
+    widget.map.rail.detach(_showHook);
     _controller.dispose();
     super.dispose();
   }

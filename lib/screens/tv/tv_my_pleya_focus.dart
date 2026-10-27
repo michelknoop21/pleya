@@ -206,7 +206,7 @@ class _RailReveal {
   }
 
   void detach(bool Function(int index, VoidCallback then) show) {
-    if (!identical(_show, show)) return;
+    if (_show != show) return;
     _show = null;
     _viewport = null;
   }
