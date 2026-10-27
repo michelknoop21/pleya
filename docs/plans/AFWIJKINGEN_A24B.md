@@ -46,7 +46,7 @@ Bladen: `05-iphone-mijn-pleya.jpg`, `iphone-mijn-pleya-gescrold.jpg`, `iphone-mi
 
 ## Mijn Pleya op Apple TV (Editorial)
 
-**Vervangen door A-24c (26 oktober 2026).** Deze tabel beschrijft de A-24b-pagina met twee kolommen, Beheer, profielregel, kijklijstrail met twee titelregels en voetregel. Die pagina bestaat niet meer: Mijn Pleya op Apple TV volgt nu [`../assets/a24c-northstars/02-Mijn-Pleya-v4/`](../assets/a24c-northstars/02-Mijn-Pleya-v4/LEESMIJ-v4.md), met de routes in `pariteit-v4.csv` en het besluit DEC-XXX (A-24c). De besluiten hieronder over de 440 pt-kolom, de twee titelregels en de voetregel vervallen daarmee. De afwijkingen van de v4-bouw staan in de volgende sectie.
+**Vervangen door A-24c (26 oktober 2026).** Deze tabel beschrijft de A-24b-pagina met twee kolommen, Beheer, profielregel, kijklijstrail met twee titelregels en voetregel. Die pagina bestaat niet meer: Mijn Pleya op Apple TV volgt nu [`../assets/a24c-northstars/02-Mijn-Pleya-v4/`](../assets/a24c-northstars/02-Mijn-Pleya-v4/LEESMIJ-v4.md), met de routes in `pariteit-v4.csv` en het besluit DEC-XXX-A24C (A-24c). De besluiten hieronder over de 440 pt-kolom, de twee titelregels en de voetregel vervallen daarmee. De afwijkingen van de v4-bouw staan in de volgende sectie.
 
 Bladen: `06-appletv-mijn-pleya.jpg`, `appletv-mijn-pleya-*.jpg`.
 

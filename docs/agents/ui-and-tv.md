@@ -70,7 +70,7 @@ Servers opent `TvServersPage`). De ring wisselt de pagina bij elke bestemming be
 die opent pas op Select. De avatar opent het accountmenu met alleen Wissel profiel en Uitloggen;
 Back sluit het en zet de focus terug op de avatar. De bestemming Instellingen gebruikt dezelfde
 inklapbare balk als hierboven. Besluit Michel, 26 oktober 2026 (A-24c,
-DEC-XXX).
+DEC-XXX-A24C).
 
 ## Pleya Verify
 

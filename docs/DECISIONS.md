@@ -5112,7 +5112,8 @@ of externe/publicatie naar App Review.
 3. De rail krijgt een pilinzet en tussenruimte van 12 pt (was 18 en 16 uit DEC-139). De pil blijft boven de 56 pt van een tvOS-knop en het label blijft Body (29 pt). Met de balk weg passen acht pillen met ruimte over en staan de kop en vier tot vijf rijen van Weergave in beeld.
 4. Geen tekst wordt kleiner en niets komt onder 23 pt. De Studio-eyebrow (`WEERGAVE`, `LIVE VOORBEELD`) kwam uit op 22 pt en heeft nu 23 pt als ondergrens.
 **Consequences:** `nav.bar` meldt op TV `hidden`, zodat Verify de afwezigheid van de balk kan toetsen (`tvos.settings.no-top-bar`). Mijn Pleya zelf, catalogus, Home en speler blijven ongewijzigd; Mijn Pleya krijgt een eigen northstar. Simulatorbewijs is geen hardware-acceptatie. Unified impact: alleen presentatie, geen backend-, bron- of rechtenpad.
-## DEC-XXX: A-24c, Mijn Pleya op Apple TV wordt de persoonlijke kijkomgeving en Instellingen krijgt een eigen ingang in het topmenu
+
+## DEC-XXX-A24C: A-24c, Mijn Pleya op Apple TV wordt de persoonlijke kijkomgeving en Instellingen krijgt een eigen ingang in het topmenu
 
 **Date:** 2026-10-26
 **Status:** accepted (Michel, eigen northstarpakket Mijn Pleya A v4.1)
