@@ -62,23 +62,34 @@ under `Notes`.
 - **Signing in registers the device, not just the account.** Each device gets its own session,
   which means signing out on a phone that was lost leaves the television logged in. The owner
   can see and end anyone's sessions; everyone else sees and ends their own.
-- **My Pleya on Apple TV is your own space.** Big P on the left, your watchlist once on the right
-  with See all, and one row of quick links underneath: Watch together, Collections, Playlists,
-  Requests, Libraries and Activity, each only when it applies to you.
-- **Settings has its own place in the Apple TV top bar,** right after My Pleya. Servers, Logs and
-  About now live under Settings; Connections, Servers opens the same server page as before.
-- **The avatar on Apple TV opens a small account menu** with Switch profile and Sign out.
-
 ### Improved
 
 - **Ending a session takes effect while a film is playing.** A revoked session stops the stream
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
+
+## 2.8.1 · build 416 · 27 October 2026 · Apple TV
+
+### New
+
+- **My Pleya on Apple TV is your own space.** Big P on the left, your watchlist once on the right
+  with See all, and one row of quick links underneath: Watch together, Collections, Playlists,
+  Requests, Libraries and Activity, each only when it applies to you.
+
+- **Settings has its own place in the Apple TV top bar,** right after My Pleya. Servers, Logs and
+  About now live under Settings; Connections, Servers opens the same server page as before.
+
+- **The avatar on Apple TV opens a small account menu** with Switch profile and Sign out.
+
+### Improved
+
 - **Settings on Apple TV uses the whole screen.** The top bar slides away while you are in the
   page and comes back when you press Up on the top row, also on About, Logs and Servers. All
   eight categories fit on screen without smaller text.
+
 - **Walking the Apple TV top bar no longer swaps the page.** The page changes when you press
   Select. Down goes into the page on screen, and Menu first brings the ring back to that page.
+
 - **A server that needs a new sign-in is named in Settings on Apple TV,** in the Servers row
   under Connections, and the Connections category carries the same amber dot as the top bar.
 
