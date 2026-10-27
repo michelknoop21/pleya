@@ -10,6 +10,7 @@ library;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/connection/connection.dart';
 import 'package:pleya/connection/connection_registry.dart';
 import 'package:pleya/database/app_database.dart';
@@ -170,9 +171,14 @@ Future<TvMainScreenHarness> pumpTvMainScreen(WidgetTester tester) async {
             ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
             ChangeNotifierProvider<ShaderProvider>(create: (_) => ShaderProvider()),
           ],
-          child: MaterialApp(
-            theme: monoTheme(dark: true),
-            home: const ProfileSessionScreen(initialPromptHandled: true),
+          // As `lib/main.dart` wraps the app: without it the settings page's
+          // `focusActiveTabIfReady` does nothing and a test sees the content
+          // scope where the remote lands on a row (review 557-M9).
+          child: InputModeTracker(
+            child: MaterialApp(
+              theme: monoTheme(dark: true),
+              home: const ProfileSessionScreen(initialPromptHandled: true),
+            ),
           ),
         ),
       ),
