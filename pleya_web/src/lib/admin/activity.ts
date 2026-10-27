@@ -27,6 +27,13 @@ export interface ActivityData {
   libraries: Library[];
   roots: StorageRoot[];
   scans: Scan[];
+  /**
+   * De laatste scan van elke bibliotheek, op id van de bibliotheek; null als hij
+   * nooit gescand is. Apart gelezen en niet uit `scans` gehaald: dat zijn de
+   * nieuwste twintig rondes van alle bibliotheken samen, en die kunnen de laatste
+   * van één bibliotheek niet meer bevatten.
+   */
+  lastScans: Record<string, Scan | null>;
   /** Cursor voor de volgende pagina scans; null als dit de laatste was. */
   next: string | null;
   jobs: Job[];
@@ -43,7 +50,9 @@ export async function loadActivity(
     api.scansPage(FIRST_PAGE, null, signal),
     api.jobs(JOB_WINDOW, signal)
   ]);
-  return { libraries, roots, scans: page.items, next: page.nextCursor, jobs };
+  const last = await Promise.all(libraries.map((l) => api.lastScan(l.id, signal)));
+  const lastScans = Object.fromEntries(libraries.map((l, i) => [l.id, last[i] ?? null]));
+  return { libraries, roots, scans: page.items, next: page.nextCursor, lastScans, jobs };
 }
 
 // --- Wat er nu loopt ------------------------------------------------------
@@ -118,10 +127,40 @@ export function startedLine(scan: Scan, now = Date.now()): string {
 
 export type FailureItem =
   | { kind: 'job'; job: Job; library: string | null }
+  | { kind: 'scan'; library: Library; scan: Scan }
   | { kind: 'root'; root: StorageRoot };
 
 /**
- * Mislukte taken, nieuwste eerst, en daarna de roots die niet gemount zijn.
+ * Bibliotheken waarvan de laatste scanronde `failed` is, nieuwste eerst.
+ *
+ * Alleen de laatste: een mislukte ronde met een nieuwere erachter (de server
+ * herstartte tijdens een scan, de volgende start deed hem over) is geen werk voor
+ * de beheerder, en een lijst met elke herstart erin zou dat zeggen. Daarom ook
+ * geen vergelijking op de tekst van `last_error`. Een bibliotheek met een
+ * mislukte scanjob staat er al als job (met Nu opnieuw) en komt hier niet nog
+ * eens bij, en een bibliotheek met een root die niet gemount is staat er al als
+ * root (met Opslag): scannen helpt dan niet en de oorzaak staat er al.
+ */
+export function failedScanItems(data: ActivityData): FailureItem[] {
+  const items: Extract<FailureItem, { kind: 'scan' }>[] = [];
+  for (const library of data.libraries) {
+    const scan = data.lastScans[library.id];
+    if (!scan || scan.state !== 'failed') continue;
+    if (data.jobs.some((j) => j.kind === SCAN_JOB_KIND && j.state === 'failed' && j.library_id === library.id))
+      continue;
+    if (rootsOf(data.roots, library.id).some((r) => !r.mounted)) continue;
+    items.push({ kind: 'scan', library, scan });
+  }
+  return items.sort(
+    (a, b) =>
+      Date.parse(b.scan.finished_at ?? b.scan.started_at) -
+      Date.parse(a.scan.finished_at ?? a.scan.started_at)
+  );
+}
+
+/**
+ * Mislukte taken, nieuwste eerst, dan bibliotheken met een mislukte laatste scan,
+ * en daarna de roots die niet gemount zijn.
  * De server kent geen "afgehandeld": een mislukte job blijft staan tot hij
  * opnieuw is geprobeerd, binnen de laatste vijftig jobs die de lijst toont.
  */
@@ -136,7 +175,17 @@ export function failureItems(data: ActivityData): FailureItem[] {
   const roots = data.roots
     .filter((r) => !r.mounted)
     .map((root) => ({ kind: 'root' as const, root }));
-  return [...jobs, ...roots];
+  return [...jobs, ...failedScanItems(data), ...roots];
+}
+
+/** Het tijdstip van een mislukte ronde: wanneer hij stopte, anders wanneer hij begon. */
+export function failedScanWhen(scan: Scan, now = Date.now()): string {
+  return formatDayClock(scan.finished_at ?? scan.started_at, now) ?? '';
+}
+
+/** Wat de server over de mislukte ronde zei, of dat hij niets zei. */
+export function failedScanDetail(scan: Scan): string {
+  return scan.last_error?.trim() || t('admin.act.failures.noMessage');
 }
 
 const JOB_FAILED: Record<string, MessageKey> = {

@@ -11,7 +11,9 @@
   - Afbreken: `POST /jobs/{id}/cancel` op de job van de scan. De server stopt
     een lopende job op het eerstvolgende veilige punt.
   - Nu opnieuw: `POST /jobs/{id}/retry`.
-  Geen van drie vraagt een bevestiging: de northstar tekent er geen, en geen
+  - Nu scannen bij een bibliotheek waarvan de laatste scan mislukte: dezelfde
+    `POST /libraries/{id}/scan` als Alles scannen, voor die ene bibliotheek.
+  Geen van vier vraagt een bevestiging: de northstar tekent er geen, en geen
   van de drie vernietigt iets dat niet terug te halen is (een afgebroken scan
   begint bij de volgende ronde opnieuw).
 -->
@@ -55,6 +57,7 @@
   let scanning = $state(false);
   let stopping = $state<Record<string, boolean>>({});
   let retrying = $state<Record<string, boolean>>({});
+  let scanningLibrary = $state<Record<string, boolean>>({});
 
   // Oudere pagina's scans, los van de eerste: een verversing leest alleen de eerste.
   let older = $state<Scan[]>([]);
@@ -179,6 +182,26 @@
     }
   }
 
+  async function scanLibrary(library: Library): Promise<void> {
+    problem = null;
+    scanningLibrary[library.id] = true;
+    try {
+      await api.startScan(library.id);
+      notice = t('admin.act.notice.scanQueued', { library: library.title });
+      tick += 1;
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'library.scan_in_progress') {
+        // Er wacht of loopt al een scan: geen fout, wel de echte stand tonen.
+        notice = t('admin.act.notice.scanAlready', { library: library.title });
+        tick += 1;
+      } else {
+        fail(err, library.title, () => void scanLibrary(library));
+      }
+    } finally {
+      scanningLibrary[library.id] = false;
+    }
+  }
+
   async function retryJob(job: Job, name: string): Promise<void> {
     problem = null;
     retrying[job.id] = true;
@@ -222,7 +245,14 @@
 {#if data}
   <div class="stack">
     <ActivityRunning items={running} {now} {stopping} onstop={(j, n) => void stop(j, n)} />
-    <ActivityFailures items={failures} {retrying} onretry={(j, n) => void retryJob(j, n)} />
+    <ActivityFailures
+      items={failures}
+      {retrying}
+      onretry={(j, n) => void retryJob(j, n)}
+      scanning={scanningLibrary}
+      onscan={(l) => void scanLibrary(l)}
+      {now}
+    />
     <ActivityHistory {rows} more={Boolean(moreCursor)} {loadingMore} onmore={() => void more()} />
   </div>
 {:else if failure}
