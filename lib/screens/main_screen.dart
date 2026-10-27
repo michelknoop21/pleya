@@ -1969,7 +1969,10 @@ class _MainScreenState extends State<MainScreen>
       isShowingProfileSelection: _isShowingProfileSelection,
       isOverlaySheetOpen: _isOverlaySheetOpen,
       isRouteCurrent: ModalRoute.of(context)?.isCurrent == true,
-      isSidebarFocused: _isSidebarFocused,
+      // A-24c: with the ring on another pill than the page on screen, Menu
+      // first brings the ring home ([_handleBackKey]); only on the page's own
+      // pill does it leave the app (review 557-M6).
+      isSidebarFocused: _isSidebarFocused && !_tvRingAwayFromPage,
       hasVisibleTabs: tabs.isNotEmpty,
       // Fase 7: a nested Mijn Pleya section is a route the app can still pop,
       // so Menu belongs to the app, not to the system, until it is closed.
@@ -2138,6 +2141,9 @@ class _MainScreenState extends State<MainScreen>
     }
 
     if (_isTvShell) {
+      if (!_tvNav.activeCanPop && _isSidebarFocused && _tvRingAwayFromPage) {
+        return handleBackKeyAction(event, _returnTvRingToPage);
+      }
       return switch (tvBackStep(hasNestedRoute: _tvNav.activeCanPop, isNavigationFocused: _isSidebarFocused)) {
         TvBackStep.popNested => handleBackKeyAction(event, _popTvNestedRoute),
         TvBackStep.focusTopNavigation => handleBackKeyAction(event, _focusSidebar),
@@ -2890,6 +2896,20 @@ class _MainScreenState extends State<MainScreen>
     _tvNav.focusDestination(destination);
     // Cancels anything armed against the page: the viewer is in the bar.
     _tvContentFocus.onDestinationFocused();
+    // Whether Menu leaves the app depends on the ring being on the page's
+    // own pill now (review 557-M6). The service parks an enable while a key
+    // is held, so a held arrow is not released twice (NAV1).
+    _updateTvosMenuPassthrough();
+  }
+
+  /// The ring stands on a pill other than the page on screen (A-24c).
+  bool get _tvRingAwayFromPage => _isTvShell && _tvNav.focusedDestination != _tvNav.active;
+
+  /// Menu with the ring away from the page's pill: the ring goes back to that
+  /// pill, nothing else changes (review 557-M6).
+  void _returnTvRingToPage() {
+    final node = _tvNavNodes.get(_tvNav.active.focusKey);
+    if (node.canRequestFocus) node.requestFocus();
   }
 
   void _selectTvDestination(TvDestinationId destination) {

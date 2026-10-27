@@ -19,6 +19,7 @@ import 'package:pleya/screens/tv/tv_offline_home_screen.dart';
 import 'package:pleya/screens/tv/tv_root_shell.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_screen.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/services/tvos_system_navigation_service.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/tv/tv_account_menu.dart';
 import 'package:pleya/widgets/tv/tv_top_navigation.dart';
@@ -241,6 +242,37 @@ void main() {
       reason: 'the remote is in Instellingen, on ${back.debugLabel}',
     );
     expect(back.debugLabel, 'servers', reason: 'Menu returns to the Servers row');
+
+    await h.dispose(tester);
+  });
+
+  // Review 557-M6: with the ring on another pill than the page on screen,
+  // Menu brings the ring back to the page's pill and does not leave the app;
+  // only on that pill is Menu the system's.
+  testWidgets('Menu with the ring away from the page returns it to the page pill', (tester) async {
+    final h = await pumpTvMainScreen(tester);
+    h.shell.onSelectDestination(TvDestinationId.home);
+    await h.settle();
+    h.shell.onFocusNav();
+    await h.settle();
+    for (var i = 0; i < 4 && !h.shell.navNodes.isFocused(TvDestinationId.home.focusKey); i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await h.settle();
+    }
+    expect(h.shell.navNodes.isFocused(TvDestinationId.home.focusKey), isTrue);
+    expect(TvosSystemNavigationService.automationState()['enabled'], isTrue, reason: 'Home pill: Menu is the system');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await h.settle();
+    expect(h.shell.coordinator.focusedDestination, TvDestinationId.series);
+    expect(TvosSystemNavigationService.automationState()['enabled'], isFalse, reason: 'ring away from the page');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await h.settle();
+    expect(h.shell.navNodes.isFocused(TvDestinationId.home.focusKey), isTrue);
+    expect(h.shell.coordinator.active, TvDestinationId.home);
+    expect(h.shell.coordinator.focusedDestination, TvDestinationId.home);
+    expect(TvosSystemNavigationService.automationState()['enabled'], isTrue);
 
     await h.dispose(tester);
   });

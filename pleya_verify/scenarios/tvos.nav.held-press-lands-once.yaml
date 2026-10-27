@@ -82,5 +82,8 @@ steps:
   - settle: 900
   - assert: {id: nav.discover, focused: true, state: {active: true}}
   - assert: {id: nav.series, state: {active: false}}
-  - assert: {id: tvos.menu_passthrough, state: {enabled: true, parked: false, parkedFlushes: 1, enablesSentWhileKeysHeld: 0}}
+  # Menu is the system's only with the ring on the page's own pill (review
+  # 557-M6), so each held landing back on Home (Select, from Series, from
+  # Search) raised a parked enable: three flushes, none sent while held.
+  - assert: {id: tvos.menu_passthrough, state: {enabled: true, parked: false, parkedFlushes: 3, enablesSentWhileKeysHeld: 0}}
   - snapshot: 03-held-right-from-search-lands-on-home
