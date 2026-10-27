@@ -187,6 +187,9 @@ extension _SettingsTvPage on _SettingsScreenState {
             id: 'integrations',
             title: t.settingsStudio.integrations,
             icon: Symbols.cloud_rounded,
+            // Review 557-M2: the dot on Instellingen in the top bar leads here,
+            // where the Servers row names the session that expired.
+            needsAttention: servers?.hasAuthErrorServers ?? false,
             // Trackers, Aanvragen and Tautulli as on the iPhone's Koppelingen
             // page, then Servers en bronnen (series `tvos/10`).
             body: Column(
@@ -366,13 +369,22 @@ extension _SettingsTvPage on _SettingsScreenState {
   /// under the collapsible bar like every other page from here (A-24), and
   /// without the Studio wrap: it is the page Mijn Pleya opened before, and it
   /// keeps that page's look.
+  ///
+  /// An expired server session is named in the row's value, as the amber line
+  /// on the A-24b Mijn Pleya page did (review 557-M2): that line is gone, and
+  /// the dot in the top bar has to lead to something that says which server.
   TvMenuItem _tvServersRow(MultiServerProvider? servers) {
     final total = servers?.totalServerCount ?? 0;
+    final authErrors = servers?.authErrorServers ?? const [];
     return TvMenuItem(
       key: _SettingsScreenState._kServers,
       icon: Symbols.dns_rounded,
       title: t.tvMyPleya.servers,
-      value: total == 0
+      value: authErrors.isNotEmpty
+          ? (authErrors.length == 1
+                ? t.connections.sessionExpiredOne(name: authErrors.first.displayName)
+                : t.connections.sessionExpiredMany(count: '${authErrors.length}'))
+          : total == 0
           ? t.tvMyPleya.noServers
           : t.tvMyPleya.serversOnline(online: '${servers?.onlineServerCount ?? 0}', total: '$total'),
       onSelect: () {

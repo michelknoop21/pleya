@@ -332,6 +332,23 @@ void main() {
       await _unmount(tester);
     });
 
+    // Review 557-M2: the dot on Instellingen in the top bar has to lead to
+    // something that names the expired session.
+    testWidgets('an expired server session marks Koppelingen and is named in the Servers row', (tester) async {
+      await tester.runAsync(() => SettingsService.getInstance());
+      final manager = _AuthErrorManager();
+      addTearDown(manager.dispose);
+      await _pumpTvSettings(tester, manager: manager);
+
+      final koppelingen = _category(_categoryIndex(tester, t.settingsStudio.integrations));
+      expect(find.descendant(of: koppelingen, matching: find.byKey(TvStudioCategoryPill.attentionKey)), findsOneWidget);
+      expect(find.byKey(TvStudioCategoryPill.attentionKey), findsOneWidget, reason: 'only Koppelingen carries it');
+
+      await _choose(tester, t.settingsStudio.integrations);
+      expect(find.text(t.connections.sessionExpiredOne(name: 'NAS op zolder')), findsOneWidget);
+      await _unmount(tester);
+    });
+
     testWidgets('Tautulli is a row only for a Plex owner', (tester) async {
       await tester.runAsync(() => SettingsService.getInstance());
       await _pumpTvSettings(tester);
@@ -509,4 +526,13 @@ void main() {
       expect(withoutShell, isNull);
     });
   });
+}
+
+/// One server whose session was rejected, nothing else.
+class _AuthErrorManager extends MultiServerManager {
+  @override
+  Set<String> get authErrorServerIds => const {'srv-nas'};
+
+  @override
+  String serverDisplayName(ServerId serverId) => 'NAS op zolder';
 }

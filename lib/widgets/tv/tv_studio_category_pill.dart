@@ -7,6 +7,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../i18n/strings.g.dart';
+import '../../theme/mono_theme.dart' show kAccentAlt;
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/tv_hig.dart';
@@ -94,16 +96,24 @@ class TvStudioCategoryPill extends StatelessWidget {
     required this.focused,
     required this.pt,
     this.icon,
+    this.needsAttention = false,
   });
 
   /// Finds the bar in a test.
   static const Key markerKey = Key('tv-studio-category-marker');
+
+  /// Finds the attention dot in a test.
+  static const Key attentionKey = Key('tv-studio-category-attention');
 
   final String title;
   final IconData? icon;
   final bool selected;
   final bool focused;
   final double pt;
+
+  /// The amber dot after the label (A-24c, review 557-M2): an expired server
+  /// session, the same mark and colour the top bar puts on Instellingen.
+  final bool needsAttention;
 
   @override
   Widget build(BuildContext context) {
@@ -138,6 +148,18 @@ class TvStudioCategoryPill extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (needsAttention) ...[
+                  SizedBox(width: 12 * pt),
+                  Semantics(
+                    label: t.tvNavigation.attentionRequired,
+                    child: Container(
+                      key: attentionKey,
+                      width: 12 * pt,
+                      height: 12 * pt,
+                      decoration: const BoxDecoration(shape: BoxShape.circle, color: kAccentAlt),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
