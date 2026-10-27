@@ -225,6 +225,82 @@ describe('scherm 25, fouten', () => {
   });
 });
 
+describe('scherm 25, laatste scan mislukt', () => {
+  it('noemt een bibliotheek waarvan de laatste scan mislukte, met de melding van de server', async () => {
+    setup({ scans: [DONE, FAILED_SCAN], jobs: [] });
+    render(ActivityPage);
+
+    const item = (await screen.findByText('Laatste scan van Boeken mislukt')).closest('li') as HTMLElement;
+    expect(item).toHaveTextContent('root niet gemount');
+    expect(item).toHaveTextContent('Gestopt');
+    expect(within(item).getByRole('button', { name: 'Scan van Boeken nu starten' })).toBeInTheDocument();
+    expect(screen.queryByText(/Geen mislukte taken/)).toBeNull();
+  });
+
+  it('start een scan van die ene bibliotheek en zegt dat hij in de wachtrij staat', async () => {
+    const server = setup({ scans: [DONE, FAILED_SCAN], jobs: [] });
+    render(ActivityPage);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Scan van Boeken nu starten' }));
+
+    await waitFor(() => expect(server.writes()).toEqual(['POST /libraries/l3/scan']));
+    expect(await screen.findByText('De scan van Boeken staat in de wachtrij.')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('telt een 409 als "wacht of loopt al" en niet als fout', async () => {
+    setup({
+      scans: [DONE, FAILED_SCAN],
+      jobs: [],
+      fail: { 'POST /libraries/l3/scan': apiError('library.scan_in_progress', 409) }
+    });
+    render(ActivityPage);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Scan van Boeken nu starten' }));
+
+    expect(await screen.findByText('Er wacht of loopt al een scan van Boeken.')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('toont een fout van de server met een nieuwe poging op dezelfde bibliotheek', async () => {
+    const server = setup({
+      scans: [DONE, FAILED_SCAN],
+      jobs: [],
+      fail: { 'POST /libraries/l3/scan': apiError('server.internal', 500) }
+    });
+    render(ActivityPage);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Scan van Boeken nu starten' }));
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(server.writes()).toEqual(['POST /libraries/l3/scan']);
+    expect(screen.getByText('Laatste scan van Boeken mislukt')).toBeInTheDocument();
+  });
+
+  it('meldt een bibliotheek met een niet-gemounte root alleen als root, zonder scanknop', async () => {
+    const server = setup({
+      scans: [DONE, FAILED_SCAN],
+      jobs: [],
+      roots: [root('/m/Films', films), root('/m/Series', series), root('/m/Boeken', boeken, { mounted: false })]
+    });
+    render(ActivityPage);
+
+    expect(await screen.findByText('Root niet bereikbaar')).toBeInTheDocument();
+    expect(screen.queryByText('Laatste scan van Boeken mislukt')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Scan van Boeken nu starten' })).toBeNull();
+    expect(server.writes()).toEqual([]);
+  });
+
+  it('laat een bibliotheek met een nieuwere scan niet meer als mislukt staan', async () => {
+    const newer = scan('l3', 'done', { id: 's-new', started_at: '2026-10-26T09:00:00Z', finished_at: '2026-10-26T09:01:00Z' });
+    setup({ scans: [newer, FAILED_SCAN], jobs: [] });
+    render(ActivityPage);
+
+    expect(await screen.findByText(/Geen mislukte taken/)).toBeInTheDocument();
+    expect(screen.queryByText('Laatste scan van Boeken mislukt')).toBeNull();
+  });
+});
+
 describe('scherm 25, alles scannen', () => {
   it('start een scan per bibliotheek zonder lopende scan en slaat de rest over', async () => {
     const server = setup({

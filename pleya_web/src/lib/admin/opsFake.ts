@@ -68,7 +68,12 @@ export function opsFake(options: OpsFakeOptions) {
         const items = state.morePages[index - 1] ?? [];
         return json({ items, next_cursor: index < state.morePages.length ? `page${index + 1}` : null });
       }
-      return json({ items: state.scans, next_cursor: state.morePages.length ? 'page1' : null });
+      // Zoals de server: `library_id` en `limit` beperken de lijst, nieuwste eerst.
+      const libraryId = url.searchParams.get('library_id');
+      const limit = Number(url.searchParams.get('limit') ?? '');
+      let items = libraryId ? state.scans.filter((s) => s.library_id === libraryId) : state.scans;
+      if (libraryId && limit > 0) items = items.slice(0, limit);
+      return json({ items, next_cursor: libraryId || !state.morePages.length ? null : 'page1' });
     }
     if (method === 'GET' && path === '/jobs') return json({ items: state.jobs, next_cursor: null });
     if (method === 'POST' && path === '/storage/roots/recheck') return new Response(null, { status: 202 });
