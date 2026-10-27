@@ -69,6 +69,19 @@ func TestParseEpisode(t *testing.T) {
 		{"Firefly/Specials/Firefly - S00E01 - Making Of.mkv", "Firefly", 0, 1, "Making Of", true},
 		{"Firefly/Firefly - 1x03 - Bushwhacked.mkv", "Firefly", 1, 3, "Bushwhacked", true},
 		{"Firefly/Season 2/aflevering.mkv", "", 0, 0, "", false},
+
+		// Nummers zonder SxxExx, zoals losse downloads ze dragen.
+		{"Pippi Langkous/Pippi Langkous 'Pippi Gaat de lucht in!' (afl 10) (HD).mkv",
+			"Pippi Langkous", 1, 10, "Pippi Langkous 'Pippi Gaat de lucht in!'", true},
+		{"Pippi Langkous/Pippi Langkous (Afl 2).mkv", "Pippi Langkous", 1, 2, "", true},
+		{"Pippi Langkous/Pippi Langkous (afl.3).mkv", "Pippi Langkous", 1, 3, "", true},
+		{"Nijntje/nijntje leert zwemmen   Nijntje's Avonturen Groot & Klein   Nieuw Seizoen   Aflevering 10.mkv",
+			"Nijntje", 1, 10, "nijntje leert zwemmen Nijntje's Avonturen Groot & Klein Nieuw Seizoen", true},
+		{"Show/Season 2/Show afl 4.mkv", "Show", 2, 4, "", true},
+		{"Show/Show Seizoen 3 afl 4.mkv", "Show", 3, 4, "Show Seizoen 3", true},
+		{"Show/S01E02 - Episode 5.mkv", "Show", 1, 2, "Episode 5", true},
+		{"Step Up/Step 2.mkv", "", 0, 0, "", false},
+		{"Pippi Langkous (afl 10).mkv", "", 0, 0, "", false},
 	}
 
 	for _, c := range cases {
@@ -204,5 +217,22 @@ func TestLanguageCodeRefusesWhatItCannotPromise(t *testing.T) {
 	}
 	if code, ok := nameparse.LanguageCode("nld"); !ok || code != "dut" {
 		t.Errorf("nld gaf %q; het protocol vraagt om de bibliografische code", code)
+	}
+}
+
+// TestParseMovieIgnoresEpisodeMarkers: het nieuwe nummerpatroon hoort bij series.
+// Een film met "Episode 4" in de titel houdt die titel.
+func TestParseMovieIgnoresEpisodeMarkers(t *testing.T) {
+	got := nameparse.ParseMovie("Star Wars Episode 4 (1977)/Star Wars Episode 4 (1977).mkv")
+	if got.Title != "Star Wars Episode 4" || got.Year != 1977 {
+		t.Fatalf("film gaf %q (%d), verwacht %q (1977)", got.Title, got.Year, "Star Wars Episode 4")
+	}
+}
+
+// TestHDStaysInAMovieTitle: "HD" is alleen ruis achter een aflevering.
+func TestHDStaysInAMovieTitle(t *testing.T) {
+	got := nameparse.ParseMovie("HD (2014)/HD (2014).mkv")
+	if got.Title != "HD" {
+		t.Fatalf("film gaf titel %q, verwacht %q", got.Title, "HD")
 	}
 }
