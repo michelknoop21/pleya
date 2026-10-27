@@ -60,7 +60,7 @@ extension _SettingsTvPage on _SettingsScreenState {
     // A settings subpage opens inside the shell. `SettingsScreen` is itself a
     // nested route already (`tvMyPleyaNestedRoute`), so pushing its own
     // subpages on the profile navigator meant the child escaped a shell the
-    // parent had stayed inside. A-24 (DEC-XXX): under the same collapsible
+    // parent had stayed inside. A-24 (DEC-XXX-A24): under the same collapsible
     // bar as this page ([kTvSettingsTopNav]). Falls back to the ordinary push
     // when no TV shell is listening, which is every test that mounts this page
     // on its own.

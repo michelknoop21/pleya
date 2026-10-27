@@ -16,7 +16,7 @@ import 'tv_unified_layout.dart';
 
 /// The pill's vertical inset, in HIG points. VIS-0925-G packed the rail to
 /// 12 pt with 8 pt between pills, which read as one stack on the 77 inch set;
-/// VIS-0926-S1 (DEC-139) made that 18 and 16. A-24 (DEC-XXX): with the top
+/// VIS-0926-S1 (DEC-139) made that 18 and 16. A-24 (DEC-XXX-A24): with the top
 /// bar gone from Instellingen, eight pills at 18 and 16 still ran 876 pt in a
 /// column of about 760, so Big P and Geavanceerd were cut off. 12 here and
 /// 12 between pills fit all eight with room to spare; the label stays Body
@@ -25,7 +25,7 @@ const double kTvCategoryPillInsetPt = 12;
 
 /// The category name over the rows, in the Studio accent ink.
 ///
-/// A-24 (DEC-XXX): never under the tvOS minimum of 23 pt (HIG, Typography).
+/// A-24 (DEC-XXX-A24): never under the tvOS minimum of 23 pt (HIG, Typography).
 /// The group-label token alone came out at 22 pt on an Apple TV.
 class TvStudioEyebrow extends StatelessWidget {
   const TvStudioEyebrow(this.label, {super.key});

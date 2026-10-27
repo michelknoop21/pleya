@@ -249,7 +249,7 @@ class TvSettingsCategoriesState extends State<TvSettingsCategories> {
   /// UP from the top of either column: the top bar. Wired here, as the shell
   /// asks of every screen with a header (`TvRootShell`), rather than left to
   /// traversal, which stops at the content scope. Under the collapsible bar
-  /// of A-24 (DEC-XXX) this press is also what brings the bar back. False
+  /// of A-24 (DEC-XXX-A24) this press is also what brings the bar back. False
   /// where no shell listens, such as a test that mounts the page on its own.
   bool _toTopBar() {
     final shell = MainScreenFocusScope.of(context, listen: false);

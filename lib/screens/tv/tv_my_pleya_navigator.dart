@@ -83,7 +83,7 @@ TvNestedRoute tvMyPleyaNestedRoute(
     // stacked causes, and exactly what the comment above already warned
     // about.
     screenKey: screenKey,
-    // A-24 (DEC-XXX): Instellingen opens under the collapsible bar, as its
+    // A-24 (DEC-XXX-A24): Instellingen opens under the collapsible bar, as its
     // subpages do; every other section keeps the persistent bar (PB-1).
     topNav: section == TvMyPleyaSection.settings ? kTvSettingsTopNav : TvTopNavPresentation.persistent,
     // Addressable, and measurable. Without a node here the whole nested
