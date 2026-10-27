@@ -60,6 +60,17 @@ done
 run >/dev/null
 for p in "${gone[@]}"; do [[ ! -e "$p" ]] || { echo "FOUT: $p staat er nog"; exit 1; }; done
 for p in "${kept[@]}"; do [[ -e "$p" ]] || { echo "FOUT: $p is gewist"; exit 1; }; done
+# Het meldgedeelte onderaan loopt over de worktrees van de repo waarin het
+# script staat. Een geregistreerde worktree zonder map (opgeruimde scratchpad)
+# mag het script niet afbreken: eigen nep-repo met zo'n worktree, exit 0.
+mkdir -p repo/scripts && cp "$(dirname "$script")/prune_old_builds.sh" "$(dirname "$script")/link_build_dirs.sh" repo/scripts/
+git -C repo init -q && git -C repo -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
+git -C repo update-ref refs/remotes/github/main HEAD
+git -C repo worktree add -q -b weg ../weg && rm -rf weg
+HOME="$sandbox/home" PLEYA_WORKTREES_DIR="$sandbox/trees" PLEYA_PRUNE_TMPDIR="$sandbox/tmp" \
+  PLEYA_BUILD_HOME="$sandbox/geen-ssd/builds" repo/scripts/prune_old_builds.sh --dry-run >/dev/null 2>&1 \
+  || { echo "FOUT: worktree zonder map brak prune_old_builds.sh af"; exit 1; }
+
 # link_build_dirs.sh in een eigen nep-worktree: een kapotte symlink (doel
 # opgeruimd, ook een doel onder een andere sleutel) wordt hersteld en wijst
 # daarna naar de doelmap van deze worktree; een heel symlink blijft ongemoeid.

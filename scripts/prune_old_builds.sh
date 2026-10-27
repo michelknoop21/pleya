@@ -162,7 +162,10 @@ if [[ -n "$main_ref" ]]; then
     | while IFS=$'\t' read -r wt branch; do
         [[ "$wt" == "$ROOT" ]] && continue
         git -C "$ROOT" merge-base --is-ancestor "$branch" "$main_ref" 2>/dev/null || continue
-        index="$(git -C "$wt" rev-parse --absolute-git-dir 2>/dev/null)/index"
+        # Een geregistreerde worktree zonder map (opgeruimde scratchpad) laat git
+        # met 128 falen; onder set -e zou dat het hele script afbreken.
+        git_dir="$(git -C "$wt" rev-parse --absolute-git-dir 2>/dev/null)" || continue
+        index="$git_dir/index"
         [[ -f "$index" ]] && (( $(stat -f %m "$index") < week_ago )) || continue
         echo "prune_old_builds: gemerged en een week stil, kan weg: $wt ($branch)"
       done
