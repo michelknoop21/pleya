@@ -2423,10 +2423,10 @@ class _MainScreenState extends State<MainScreen>
 
     // Focus search input after rebuild so IndexedStack has made it visible.
     //
-    // Not on the TV shell unless the viewer actually asked to go in. Search
-    // sits left of Home in the bar, so once focus alone switches destinations,
-    // walking LEFT past it would drop the caret into the field and strand the
-    // remote outside the navigation. Same rule as the `!_isTvShell` guard
+    // Not on the TV shell unless the viewer actually asked to go in. Select on
+    // Zoeken (and, before A-24c, the ring landing on it) switches to Search
+    // without that request, and the caret dropping into the field would
+    // strand the remote outside the navigation. Same rule as the `!_isTvShell` guard
     // above, expressed against the one authority instead of a second flag:
     // DOWN and Select arm an intent, a destination switch does not.
     if (tab == NavigationTabId.search && (!_isTvShell || _tvContentFocus.hasPendingIntent)) {

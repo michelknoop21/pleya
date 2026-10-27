@@ -228,7 +228,7 @@ void main() {
             isNavFocused: false,
             profile: null,
             onSelectDestination: (_) {},
-            onFocusDestination: coordinator.activate,
+            onFocusDestination: coordinator.focusDestination,
             onFocusContent: ({bool restorePreviousFocus = true}) {},
             onFocusNav: () {},
             onOpenProfiles: () {},

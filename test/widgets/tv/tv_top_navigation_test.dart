@@ -730,17 +730,12 @@ void main() {
     });
   });
 
-  // The tvOS remote contract revised on 2 September 2026: focus on a bar item
-  // *is* the navigation. These pin the bar's half of it — that a ring move
-  // reports a destination and that Select is not what switches.
-  //
-  // `onFocusDestination` was always the seam ("Reports the ring moving.
-  // Distinct from onSelect on purpose"), so what changed is who listens to it
-  // and what they do; the negative control lives at that listener, in
-  // `main_screen_tv_nav_test.dart`, because the old behaviour was the shell
-  // wiring this callback at `TvNavigationCoordinator.focusDestination`, which
-  // moves the ring and stops there.
-  group('focus is the destination', () {
+  // The bar's half of the remote contract: a ring move reports a destination
+  // and is not a Select. What the host does with the report changed with
+  // A-24c (DEC-167, LEESMIJ-v4): it moves the ring and leaves the page, and
+  // Select changes it; that rule is pinned on the real `MainScreen` in
+  // `main_screen_tv_settings_destination_test.dart` (A13).
+  group('a ring move is reported, not selected', () {
     testWidgets('walking RIGHT reports every item the ring lands on, and selects nothing', (tester) async {
       await pump(
         tester,
@@ -756,7 +751,7 @@ void main() {
       await press(tester, LogicalKeyboardKey.arrowRight);
 
       expect(ringMoves, [TvDestinationId.series, TvDestinationId.movies, TvDestinationId.myPleya]);
-      expect(selected, isEmpty, reason: 'Select must not be needed to change destination');
+      expect(selected, isEmpty, reason: 'a ring move is not a Select');
     });
 
     testWidgets('the last item walked to is the last one reported, however fast the walk', (tester) async {
