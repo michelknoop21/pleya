@@ -114,9 +114,20 @@ func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
 		if err != nil {
 			return Page{}, ErrCursorInvalid
 		}
-		args = append(args, cursorID)
-		where = append(where, fmt.Sprintf("(%s, i.id) %s ($%d%s, $%d::uuid)",
-			key, comparison, keyArg, q.Sort.castSuffix(), len(args)))
+		if tie := q.Sort.tieExpression(); tie != "" {
+			if q.Cursor.Tie == nil {
+				return Page{}, ErrCursorInvalid
+			}
+			args = append(args, *q.Cursor.Tie)
+			tieArg := len(args)
+			args = append(args, cursorID)
+			where = append(where, fmt.Sprintf("(%s, %s, i.id) %s ($%d%s, $%d::text, $%d::uuid)",
+				key, tie, comparison, keyArg, q.Sort.castSuffix(), tieArg, len(args)))
+		} else {
+			args = append(args, cursorID)
+			where = append(where, fmt.Sprintf("(%s, i.id) %s ($%d%s, $%d::uuid)",
+				key, comparison, keyArg, q.Sort.castSuffix(), len(args)))
+		}
 	}
 
 	args = append(args, limit+1)
@@ -125,11 +136,20 @@ func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
 		SELECT %s, %s::text
 		FROM media_items i
 		WHERE %s
-		ORDER BY %s %s, i.id %s
+		ORDER BY %s %s%s, i.id %s
 		LIMIT $%d`,
-		itemColumns, key, strings.Join(where, " AND "), key, direction, direction, len(args))
+		itemColumns, key, strings.Join(where, " AND "), key, direction, tieOrder(q.Sort, direction), direction, len(args))
 
 	return s.itemPage(ctx, sql, args, q.Sort, limit, q.Cursor, q.Filters.CursorTag(q.Sort, q.scope()))
+}
+
+// tieOrder is het ORDER BY-stuk voor de tweede sorteersleutel, met de komma
+// ervoor, of leeg als de sortering er geen heeft.
+func tieOrder(sort Sort, direction string) string {
+	if tie := sort.tieExpression(); tie != "" {
+		return ", " + tie + " " + direction
+	}
+	return ""
 }
 
 // itemColumns is de kolomlijst die scanItems verwacht, met i als alias voor
@@ -157,7 +177,13 @@ func (s *Store) itemPage(ctx context.Context, sql string, args []any, sort Sort,
 	page := Page{Items: items}
 	if len(page.Items) > limit {
 		last := page.Items[limit-1]
-		page.NextCursor = Cursor{Sort: sort, Key: keys[limit-1], ID: last.ID.String(), Filter: filter}.Encode()
+		next := Cursor{Sort: sort, Key: keys[limit-1], ID: last.ID.String(), Filter: filter}
+		if sort.tieExpression() != "" {
+			// Dezelfde uitdrukking als in itemColumns, dus de waarde staat al in het item.
+			tie := last.SortTitle
+			next.Tie = &tie
+		}
+		page.NextCursor = next.Encode()
 		page.Items = page.Items[:limit]
 	}
 
