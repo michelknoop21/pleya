@@ -18,25 +18,7 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-### New
-- A-24c Mijn Pleya v4 on tvOS, Instellingen in the top bar, account menu
-
-### Fixed
-- A-24 Instellingen on Apple TV under the collapsible top bar, rail fits the window
-- tolerate missing worktrees during cleanup
-- read personal Tautulli history by account
-- A-24 UP from the top of a settings subpage brings the collapsible bar back
-- A-24c Down from Big P starts the dock at its first tile, avatar refocus after the picker
-- A-24c Instellingen as a destination keeps the collapsible top bar of A-24
-- A-24c the kijklijst rail keeps its focus map when it scrolls far
-- A-24c Bekijk alles back on Caption 1
-- A-24c Servers beheren on TV lands in Koppelingen > Servers with the remote
-- A-24c the ring moves and the page stays for every destination
-- A-24c an expired server session is named under Instellingen
-- A-24c UP from a page returns to its pill, not to the one the ring wandered to
-- A-24c Menu after Servers beheren lands on the Servers row
-- A-24c the rail keeps one tear-off for attach and detach
-- A-24c Menu with the ring away from the page brings it back first
+Nothing user-facing since the last published build.
 <!-- END GENERATED -->
 
 ### New
@@ -101,6 +83,8 @@ under `Notes`.
   read as a list rather than one stack?
 - With the Siri Remote: walk the top bar and check that the page only changes on Select, and
   that Menu with the ring on another pill brings it back to the page you are on.
+
+<!-- commit: 229c728e040217036056991b721d3cf0455f8e89 -->
 
 ## 2.8.1 · build 415 · 26 October 2026 · iPhone and iPad
 
