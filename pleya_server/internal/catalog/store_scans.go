@@ -85,6 +85,29 @@ func (s *Store) CancelQueuedScanRun(ctx context.Context, runID id.ID) (bool, err
 	return tag.RowsAffected() > 0, nil
 }
 
+// FailAbandonedScanRuns zet rondes die nog "running" zijn op failed.
+//
+// Dit hoort alleen bij het opstarten, vóór er een scan begint. Een ronde sluit
+// zichzelf af (FinishScanRun), ook bij een nette shutdown; wat na een herstart nog
+// "running" is, is van een proces dat er niet meer is: hard gestopt, door de
+// OOM-killer geraakt of een container die opnieuw is aangemaakt. Zonder dit blijft
+// zo'n rij eeuwig lopend staan en toont de beheerder een scan die er niet is.
+// Het gaat uit van één serverinstantie, net als jobs.Runner.Requeue.
+//
+// Een "queued" rij blijft staan: die is van een job, en de job wordt na een
+// herstart opnieuw geclaimd en neemt hem dan over (BeginQueuedScanRun).
+func (s *Store) FailAbandonedScanRuns(ctx context.Context) (int64, error) {
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE scan_runs
+		SET state = 'failed', finished_at = now(), current_path = NULL,
+		    last_error = coalesce(last_error, 'server gestopt tijdens de scan')
+		WHERE state = 'running'`)
+	if err != nil {
+		return 0, fmt.Errorf("achtergebleven scanrondes afsluiten: %w", err)
+	}
+	return tag.RowsAffected(), nil
+}
+
 func (s *Store) DeleteQueuedScanRun(ctx context.Context, runID id.ID) error {
 	tag, err := s.pool.Exec(ctx, `DELETE FROM scan_runs WHERE id = $1 AND state = 'queued'`, runID)
 	if err != nil {

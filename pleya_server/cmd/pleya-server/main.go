@@ -231,11 +231,7 @@ func run() int {
 	runner.Register(backup.JobCreate, backup.CreateHandler(backups, runner))
 	runner.Register(backup.JobVerify, backup.VerifyHandler(backups))
 
-	if n, err := runner.Requeue(ctx); err != nil {
-		startup.Warn("lopende jobs terugzetten mislukt", slog.String("error", err.Error()))
-	} else if n > 0 {
-		startup.Info("lopende jobs teruggezet in de wachtrij", slog.Int64("count", n))
-	}
+	recoverInterruptedWork(ctx, runner, catalogStore, startup)
 
 	// Het intrekkingsregister uit DEC-120 wordt bij het opstarten uit de
 	// database gevuld. Zonder die stap zou een herstart elke intrekking
