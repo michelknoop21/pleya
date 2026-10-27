@@ -131,12 +131,27 @@ type Episode struct {
 	ShowYear   int
 	Season     int
 	Number     int
+	Numbered   bool // false: het pad draagt geen afleveringsnummer, Number is dan 0 en betekent niets
 	Title      string
 	Edition    string
 	VersionKey string
 	PartIndex  int
 	StackBase  string
 	OK         bool // false betekent: hier valt geen aflevering uit af te leiden
+}
+
+// GroupingKey is de sleutel van de aflevering binnen zijn seizoen.
+//
+// Een genummerde aflevering houdt de sleutel die hij altijd had, het nummer, zodat
+// bestaande rijen niet verschuiven. Een ongenummerde krijgt de genormaliseerde
+// titel met een voorvoegsel: normalizeKey levert alleen letters, cijfers en
+// spaties, dus "t:" botst nooit met een nummer. Zonder voorvoegsel hing
+// "Bumba/10.mkv" (titel "10") stil als versie aan aflevering 10.
+func (e Episode) GroupingKey() string {
+	if e.Numbered {
+		return strconv.Itoa(e.Number)
+	}
+	return "t:" + normalizeKey(e.Title)
 }
 
 // ParseEpisode leest een relatief pad binnen een shows-bibliotheek.
@@ -157,14 +172,23 @@ func ParseEpisode(relPath string) Episode {
 	if !ok {
 		// SxxExx en NxM gaan voor: een naam die beide heeft, noemt het nummer daar.
 		season, number, rest, ok = markerNumber(stack)
-		if !ok {
+		marked = ok
+	}
+	if ok {
+		e.Numbered = true
+		e.Season, e.Number, e.Title = season, number, cleanTitle(rest)
+		if marked {
+			e.Title = stripEpisodeNoise(e.Title)
+		}
+	} else {
+		// Geen nummer: de titel is de identiteit. Een bestand in een seriemap dat
+		// geen nummer draagt (een losse download) hoort toch in de catalogus, en
+		// zonder titel valt er niets te sleutelen.
+		e.Season = seasonFromName(stack)
+		e.Title = stripEpisodeNoise(cleanTitle(stack))
+		if normalizeKey(e.Title) == "" {
 			return e
 		}
-		marked = true
-	}
-	e.Season, e.Number, e.Title = season, number, cleanTitle(rest)
-	if marked {
-		e.Title = stripEpisodeNoise(e.Title)
 	}
 
 	segments := splitSegments(dir)
@@ -242,17 +266,22 @@ func markerNumber(base string) (season, number int, rest string, ok bool) {
 	if err != nil {
 		return 0, 0, "", false
 	}
-	season = 1
-	if sm := seasonNameRe.FindStringSubmatch(base); sm != nil {
-		if n, err := strconv.Atoi(sm[1]); err == nil {
-			season = n
-		}
-	}
+	season = seasonFromName(base)
 	rest = base[m[3]:]
 	if stripEpisodeNoise(cleanTitle(rest)) == "" {
 		rest = base[:m[0]]
 	}
 	return season, number, rest, true
+}
+
+// seasonFromName leest "Seizoen N" uit een bestandsnaam, anders 1.
+func seasonFromName(base string) int {
+	if sm := seasonNameRe.FindStringSubmatch(base); sm != nil {
+		if n, err := strconv.Atoi(sm[1]); err == nil {
+			return n
+		}
+	}
+	return 1
 }
 
 // episodeNoise is wat een aflevering van een videosite achter de titel zet en

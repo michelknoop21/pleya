@@ -87,20 +87,27 @@ func (s *Scanner) attach(ctx context.Context, lib catalog.Library, e Entry, res 
 			stats.ItemsCreated++
 		}
 
-		number := ep.Number
+		// Een aflevering zonder nummer heeft geen volgnummer en geen "Episode N" als
+		// terugval: de titel is wat haar onderscheidt, en de sortering zet haar
+		// achter de genummerde.
+		var episodeIndex *int
 		title := ep.Title
-		if title == "" {
-			title = fmt.Sprintf("Episode %d", number)
+		if ep.Numbered {
+			number := ep.Number
+			episodeIndex = &number
+			if title == "" {
+				title = fmt.Sprintf("Episode %d", number)
+			}
 		}
 		episodeID, created, err := s.store.ResolveItem(ctx, catalog.ItemRef{
 			LibraryID:   lib.ID,
 			ParentID:    &seasonID,
 			Kind:        "episode",
-			GroupingKey: fmt.Sprintf("%d", number),
+			GroupingKey: ep.GroupingKey(),
 			Title:       title,
 			SortTitle:   nameparse.SortTitle(title),
 			Year:        yearPtr(ep.ShowYear),
-			Index:       &number,
+			Index:       episodeIndex,
 		})
 		if err != nil {
 			return id.Nil, 0, err

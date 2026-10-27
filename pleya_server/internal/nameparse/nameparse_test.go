@@ -68,7 +68,9 @@ func TestParseEpisode(t *testing.T) {
 		{"Firefly/Season 1/S01E01 - Serenity.mkv", "Firefly", 1, 1, "Serenity", true},
 		{"Firefly/Specials/Firefly - S00E01 - Making Of.mkv", "Firefly", 0, 1, "Making Of", true},
 		{"Firefly/Firefly - 1x03 - Bushwhacked.mkv", "Firefly", 1, 3, "Bushwhacked", true},
-		{"Firefly/Season 2/aflevering.mkv", "", 0, 0, "", false},
+		// Zonder nummer maar mét seriemap is het toch een aflevering (S2.10); het
+		// nummer is dan 0 en zegt niets, de titel is de identiteit.
+		{"Firefly/Season 2/aflevering.mkv", "Firefly", 2, 0, "aflevering", true},
 
 		// Nummers zonder SxxExx, zoals losse downloads ze dragen.
 		{"Pippi Langkous/Pippi Langkous 'Pippi Gaat de lucht in!' (afl 10) (HD).mkv",
@@ -80,7 +82,7 @@ func TestParseEpisode(t *testing.T) {
 		{"Show/Season 2/Show afl 4.mkv", "Show", 2, 4, "", true},
 		{"Show/Show Seizoen 3 afl 4.mkv", "Show", 3, 4, "Show Seizoen 3", true},
 		{"Show/S01E02 - Episode 5.mkv", "Show", 1, 2, "Episode 5", true},
-		{"Step Up/Step 2.mkv", "", 0, 0, "", false},
+		{"Step Up/Step 2.mkv", "Step Up", 1, 0, "Step 2", true}, // geen nummer: "Step" is geen "ep"
 		{"Pippi Langkous (afl 10).mkv", "", 0, 0, "", false},
 	}
 
@@ -234,5 +236,63 @@ func TestHDStaysInAMovieTitle(t *testing.T) {
 	got := nameparse.ParseMovie("HD (2014)/HD (2014).mkv")
 	if got.Title != "HD" {
 		t.Fatalf("film gaf titel %q, verwacht %q", got.Title, "HD")
+	}
+}
+
+// TestParseEpisodeWithoutANumber: een losse download in een seriemap is een
+// aflevering met de titel als identiteit (S2.10). Numbered blijft onwaar, het
+// seizoen komt uit "Seizoen N" in de naam of een seizoensmap, anders is het 1.
+func TestParseEpisodeWithoutANumber(t *testing.T) {
+	cases := []struct {
+		path   string
+		show   string
+		season int
+		title  string
+	}{
+		{"Efteling Jokie/Koffer inpakken - Jokie Muziekclip 🎵 - Efteling Jokie.mkv",
+			"Efteling Jokie", 1, "Koffer inpakken - Jokie Muziekclip 🎵 - Efteling Jokie"},
+		{"Nijntje/Nijntje's fietsongeluk   nijntjes avonturen, groot en klein   nijntje   series voor kids.mkv",
+			"Nijntje", 1, "Nijntje's fietsongeluk nijntjes avonturen, groot en klein nijntje series voor kids"},
+		{"Bumba/Bumba op reis.mkv", "Bumba", 1, "Bumba op reis"},
+		{"Fien & Teun/Fien en Teun   Alle afleveringen van Seizoen 3 (190 min.).mkv",
+			"Fien & Teun", 3, "Fien en Teun Alle afleveringen van Seizoen 3 190 min"},
+		{"Show/Season 2/Los filmpje (HD).mkv", "Show", 2, "Los filmpje"},
+	}
+	for _, c := range cases {
+		got := nameparse.ParseEpisode(c.path)
+		if !got.OK || got.Numbered {
+			t.Errorf("%s: ok=%v numbered=%v, verwacht ok=true numbered=false", c.path, got.OK, got.Numbered)
+			continue
+		}
+		if got.Show != c.show || got.Season != c.season || got.Title != c.title || got.Number != 0 {
+			t.Errorf("%s: %q s%d %q (nummer %d), verwacht %q s%d %q (nummer 0)",
+				c.path, got.Show, got.Season, got.Title, got.Number, c.show, c.season, c.title)
+		}
+	}
+
+	// Zonder seriemap valt er niets te sleutelen, en een naam zonder letters of
+	// cijfers heeft geen sleutel.
+	for _, path := range []string{"Bumba op reis.mkv", "Bumba/🎵.mkv", "Season 2/Los filmpje.mkv"} {
+		if got := nameparse.ParseEpisode(path); got.OK {
+			t.Errorf("%s werd een aflevering van %q", path, got.Show)
+		}
+	}
+}
+
+// TestEpisodeGroupingKey: genummerd houdt de oude sleutel, ongenummerd krijgt
+// een voorvoegsel zodat een titel "10" nooit aflevering 10 wordt.
+func TestEpisodeGroupingKey(t *testing.T) {
+	numbered := nameparse.ParseEpisode("Show/S01E10 - Naam.mkv")
+	if numbered.GroupingKey() != "10" {
+		t.Fatalf("genummerde sleutel %q, verwacht %q", numbered.GroupingKey(), "10")
+	}
+	titled := nameparse.ParseEpisode("Show/10.mkv")
+	if titled.Numbered || titled.GroupingKey() == numbered.GroupingKey() {
+		t.Fatalf("titel \"10\" kreeg sleutel %q (numbered %v) en botst met aflevering 10", titled.GroupingKey(), titled.Numbered)
+	}
+	a := nameparse.ParseEpisode("Bumba/Bumba op reis.mkv")
+	b := nameparse.ParseEpisode("Bumba/bumba-op-reis (HD).mkv")
+	if a.GroupingKey() != b.GroupingKey() {
+		t.Fatalf("twee schrijfwijzen kregen sleutels %q en %q", a.GroupingKey(), b.GroupingKey())
 	}
 }
