@@ -89,8 +89,19 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
+/// The way the TV shell opens Instellingen > Koppelingen > Servers for
+/// "Servers beheren" (A-24c): along the viewer's own route, so Menu from the
+/// Servers page returns to the Servers row (review 557-I5).
+abstract interface class TvSettingsServersEntry {
+  void openTvServers();
+}
+
 class _SettingsScreenState extends State<SettingsScreen>
-    with FocusableTab, MountedSetStateMixin, _SettingsActions<SettingsScreen> {
+    with FocusableTab, MountedSetStateMixin, _SettingsActions<SettingsScreen>
+    implements TvSettingsServersEntry {
+  @override
+  void openTvServers() => _openTvServersFromShell();
+
   late final FocusMemoryTracker _focusTracker;
 
   /// The TV page's categories, which own which rows are mounted (A-24).

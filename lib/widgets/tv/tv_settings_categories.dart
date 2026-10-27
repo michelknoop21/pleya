@@ -159,6 +159,16 @@ class TvSettingsCategoriesState extends State<TvSettingsCategories> {
 
   void _select(int index) => setState(() => _selectedId = widget.categories[index].id);
 
+  /// Chooses the category with [id] as SELECT on its pill would, for an entry
+  /// from outside the page ("Servers beheren", A-24c). False when there is no
+  /// such category.
+  bool choose(String id) {
+    final index = widget.categories.indexWhere((c) => c.id == id);
+    if (index < 0) return false;
+    _select(index);
+    return true;
+  }
+
   /// Gives the page the remote back (a return from another destination, a
   /// page pushed on top closing): to the chosen category's pill when the
   /// remote last left from the rail, else to the row it last stood on, else

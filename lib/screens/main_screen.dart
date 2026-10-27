@@ -2667,11 +2667,20 @@ class _MainScreenState extends State<MainScreen>
   /// steps back to Instellingen. Elsewhere it is the settings tab as before.
   void _manageServers() {
     if (!_selectTab(NavigationTabId.settings) || !_isTvShell) return;
-    unawaited(
-      _pushTvContentRoute(
-        TvNestedRoute(id: 'tvSettings_servers', builder: (_) => const TvServersPage(), topNav: kTvSettingsTopNav),
-      ),
-    );
+    // After the frame that puts Instellingen on screen; review 557-I5 for why
+    // the page walks the route itself.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_settingsKey.currentState case final TvSettingsServersEntry entry) {
+        entry.openTvServers();
+        return;
+      }
+      unawaited(
+        _pushTvContentRoute(
+          TvNestedRoute(id: 'tvSettings_servers', builder: (_) => const TvServersPage(), topNav: kTvSettingsTopNav),
+        ),
+      );
+    });
   }
 
   /// Bibliotheken from anywhere below the shell; on TV `_selectTab` turns it

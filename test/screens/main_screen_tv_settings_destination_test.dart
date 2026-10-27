@@ -223,6 +223,25 @@ void main() {
       reason: 'the remote is inside the Servers page, on ${focused.debugLabel}',
     );
 
+    // Review 557-I5: Menu from there lands in Instellingen, on something
+    // that takes the remote, not on the content scope with no ring.
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await h.settle();
+    await h.settle();
+    expect(h.shell.coordinator.activeNestedRoute, isNull);
+    expect(h.shell.coordinator.active, TvDestinationId.settings);
+    final back = FocusManager.instance.primaryFocus!;
+    expect(back is FocusScopeNode, isFalse, reason: 'the remote is on ${back.debugLabel}');
+    expect(
+      find.ancestor(
+        of: find.byElementPredicate((e) => identical(e, back.context)),
+        matching: find.byType(SettingsScreen),
+      ),
+      findsOneWidget,
+      reason: 'the remote is in Instellingen, on ${back.debugLabel}',
+    );
+    expect(back.debugLabel, 'servers', reason: 'Menu returns to the Servers row');
+
     await h.dispose(tester);
   });
 }

@@ -387,12 +387,33 @@ extension _SettingsTvPage on _SettingsScreenState {
           : total == 0
           ? t.tvMyPleya.noServers
           : t.tvMyPleya.serversOnline(online: '${servers?.onlineServerCount ?? 0}', total: '$total'),
-      onSelect: () {
-        Widget page(BuildContext _) => const TvServersPage();
-        if (openTvContentRoute(id: 'tvSettings_servers', builder: page, topNav: kTvSettingsTopNav) != null) return;
-        Navigator.push(context, MaterialPageRoute<void>(builder: page));
-      },
+      onSelect: _openTvServersPage,
     );
+  }
+
+  void _openTvServersPage() {
+    Widget page(BuildContext _) => const TvServersPage();
+    if (openTvContentRoute(id: 'tvSettings_servers', builder: page, topNav: kTvSettingsTopNav) != null) return;
+    Navigator.push(context, MaterialPageRoute<void>(builder: page));
+  }
+
+  /// "Servers beheren" from the shell: Koppelingen chosen, the remote on the
+  /// Servers row, then the Servers page, as if the viewer had walked there.
+  /// The row is in the content scope's history before the page opens, so Menu
+  /// from the page lands on it; opened straight from Home the history held
+  /// only a button that is offstage now, and Menu left the remote nowhere.
+  void _openTvServersFromShell() {
+    _tvCategories.currentState?.choose('integrations');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final row = _focusTracker.get(_SettingsScreenState._kServers);
+      if (row.context != null && row.canRequestFocus) row.requestFocus();
+      // After the row's focus request is applied, so the page's own entry
+      // does not overtake it.
+      scheduleMicrotask(() {
+        if (mounted) _openTvServersPage();
+      });
+    });
   }
 
   /// A-24b focus restore on the TV page: the categories remember whether the
