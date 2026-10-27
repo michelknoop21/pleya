@@ -57,7 +57,7 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 
 ## DISCOVERY EN PERSOONLIJK
 
-Sinds A-24c (26 oktober 2026, DEC-XXX-A24C) heeft Mijn Pleya op Apple TV geen Instellingen-, Servers-, Logboeken- of Over-tegel meer: Instellingen is een bestemming in het topmenu, en de bewijsregels hieronder die "via Mijn Pleya, Instellingen" noemen beschrijven de route van toen. Huidige status van die pagina: `tvos-fysieke-correctieronde.md`, rij A24C-MYPLEYA-V4.
+Sinds A-24c (26 oktober 2026, DEC-167) heeft Mijn Pleya op Apple TV geen Instellingen-, Servers-, Logboeken- of Over-tegel meer: Instellingen is een bestemming in het topmenu, en de bewijsregels hieronder die "via Mijn Pleya, Instellingen" noemen beschrijven de route van toen. Huidige status van die pagina: `tvos-fysieke-correctieronde.md`, rij A24C-MYPLEYA-V4.
 
 | ID | Werkitem | Besluit | Status | SHA / bewijs |
 |----|----------|---------|--------|--------------|

@@ -58,7 +58,7 @@ Zeven beeldmappen onder `docs/assets/tvos-unified/`, en ze zijn niet gelijkwaard
 | `mockups-2026-09-02/` | Mijn Pleya-secties, zonder Instellingen | goedgekeurd voor die secties; de Instellingen-beelden (`settings-a`, `settings-b`, `compare/settings`, `before/40`, `42`, `02-hub-entry`) zijn verwijderd | de audits in §7 |
 | root, vier `*-reference.png` | los | **historisch**, voorloper van de northstar (`my-pleya-reference.png` is verwijderd) | alleen `home-reference` en `source-picker-reference` worden nog genoemd |
 | **Instellingen (Studio) en Mijn Pleya (Editorial), iPhone en Apple TV** | `docs/assets/a24b-northstars/` | **actief**, A-24b; vervangt de oudere Instellingen- en Mijn Pleya-beelden in de tvOS- en iOS-sets. Mijn Pleya op Apple TV is sinds A-24c historisch, zie de volgende rij | [`docs/assets/a24b-northstars/README.md`](assets/a24b-northstars/README.md) |
-| **Mijn Pleya v4 op Apple TV, Instellingen in het topmenu, accountmenu** | `docs/assets/a24c-northstars/02-Mijn-Pleya-v4/` (A10 tot en met A15) | **actief**, A-24c; vervangt de tvOS-borden 01 tot en met 05 van A-24b Mijn Pleya | [`docs/assets/a24c-northstars/README.md`](assets/a24c-northstars/README.md), routes in `pariteit-v4.csv`, besluit DEC-XXX-A24C (A-24c) |
+| **Mijn Pleya v4 op Apple TV, Instellingen in het topmenu, accountmenu** | `docs/assets/a24c-northstars/02-Mijn-Pleya-v4/` (A10 tot en met A15) | **actief**, A-24c; vervangt de tvOS-borden 01 tot en met 05 van A-24b Mijn Pleya | [`docs/assets/a24c-northstars/README.md`](assets/a24c-northstars/README.md), routes in `pariteit-v4.csv`, besluit DEC-167 (A-24c) |
 | `src/` | HTML-bron | waar de beelden uit gerenderd worden | `build.mjs` en `tv.css` |
 
 ### Statusautoriteit
