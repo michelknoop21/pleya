@@ -21,6 +21,7 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/mixins/refreshable.dart';
 import 'package:pleya/models/plex/plex_config.dart';
 import 'package:pleya/screens/settings/settings_screen.dart';
+import 'package:pleya/screens/tv/sections/tv_servers_page.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/plex_auth_service.dart';
@@ -308,6 +309,46 @@ void main() {
       await _unmount(tester);
     });
 
+    // A-24c (LEESMIJ-v4, Servers parity): Servers moved out of Mijn Pleya, and
+    // the page it opened moved whole. The bare connections list under it is
+    // not the same page, so the row opens `TvServersPage` itself, and Back
+    // returns the remote to the row.
+    testWidgets('Koppelingen ▸ Servers opens the TvServersPage, and Back returns to the row', (tester) async {
+      await tester.runAsync(() => SettingsService.getInstance());
+      await _pumpTvSettings(tester);
+      await _choose(tester, t.settingsStudio.integrations);
+      expect(_row('servers'), findsOneWidget);
+      expect(find.text(t.tvMyPleya.noServers), findsOneWidget, reason: 'the row says how the servers are doing');
+
+      await _focus(tester, _row('servers'));
+      await _press(tester, LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(find.byType(TvServersPage), findsOneWidget);
+
+      tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(TvServersPage), findsNothing);
+      expect(_hasFocus(tester, _row('servers')), isTrue);
+      await _unmount(tester);
+    });
+
+    // Review 557-M2: the dot on Instellingen in the top bar has to lead to
+    // something that names the expired session.
+    testWidgets('an expired server session marks Koppelingen and is named in the Servers row', (tester) async {
+      await tester.runAsync(() => SettingsService.getInstance());
+      final manager = _AuthErrorManager();
+      addTearDown(manager.dispose);
+      await _pumpTvSettings(tester, manager: manager);
+
+      final koppelingen = _category(_categoryIndex(tester, t.settingsStudio.integrations));
+      expect(find.descendant(of: koppelingen, matching: find.byKey(TvStudioCategoryPill.attentionKey)), findsOneWidget);
+      expect(find.byKey(TvStudioCategoryPill.attentionKey), findsOneWidget, reason: 'only Koppelingen carries it');
+
+      await _choose(tester, t.settingsStudio.integrations);
+      expect(find.text(t.connections.sessionExpiredOne(name: 'NAS op zolder')), findsOneWidget);
+      await _unmount(tester);
+    });
+
     testWidgets('Tautulli is a row only for a Plex owner', (tester) async {
       await tester.runAsync(() => SettingsService.getInstance());
       await _pumpTvSettings(tester);
@@ -485,4 +526,13 @@ void main() {
       expect(withoutShell, isNull);
     });
   });
+}
+
+/// One server whose session was rejected, nothing else.
+class _AuthErrorManager extends MultiServerManager {
+  @override
+  Set<String> get authErrorServerIds => const {'srv-nas'};
+
+  @override
+  String serverDisplayName(ServerId serverId) => 'NAS op zolder';
 }

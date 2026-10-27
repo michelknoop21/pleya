@@ -22,11 +22,8 @@ steps:
   - settle: 3500
   - snapshot: 00-home
 
-  # Walk the bar to Mijn Pleya. Five presses is one more than the distance on
-  # a fixture with no Live TV, and the bar does not wrap (hoofdstuk 7.2), so
-  # the overshoot is a no-op rather than a wrap-around into Search.
-  - press: right
-  - press: right
+  # Walk the bar to Mijn Pleya: three presses on a fixture with no Live TV.
+  # One more would land on Instellingen (A-24c), the last stop.
   - press: right
   - press: right
   - press: right

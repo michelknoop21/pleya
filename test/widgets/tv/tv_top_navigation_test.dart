@@ -19,11 +19,14 @@ import 'package:pleya/focus/focusable_wrapper.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/navigation/tv/tv_destination.dart';
+import 'package:pleya/profiles/profile_avatar.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/widgets/pleya_wordmark.dart';
 import 'package:pleya/widgets/tv/tv_top_navigation.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
+
+import '../../test_helpers/golden.dart';
 
 void main() {
   late FocusMemoryTracker nodes;
@@ -188,7 +191,7 @@ void main() {
         needsAttention: true,
         directionality: TextDirection.ltr,
       );
-      final pill = tester.getRect(find.byKey(const ValueKey('tvNav_myPleya')));
+      final pill = tester.getRect(find.byKey(const ValueKey('tvNav_settings')));
       final ltrDot = dotRect(tester);
       expect(ltrDot.center.dx, greaterThan(pill.center.dx), reason: 'LTR: trailing is the right corner');
 
@@ -199,12 +202,76 @@ void main() {
         needsAttention: true,
         directionality: TextDirection.rtl,
       );
-      final rtlPill = tester.getRect(find.byKey(const ValueKey('tvNav_myPleya')));
+      final rtlPill = tester.getRect(find.byKey(const ValueKey('tvNav_settings')));
       expect(dotRect(tester).center.dx, lessThan(rtlPill.center.dx), reason: 'RTL: trailing is the left corner');
     });
   });
 
+  group('the attention dot rides Instellingen (A-24c)', () {
+    testWidgets('Servers live under Instellingen now, so the dot is there and not on Mijn Pleya', (tester) async {
+      await pump(tester, destinations: withoutLiveTv(), active: TvDestinationId.home, needsAttention: true);
+
+      Finder dotIn(String key) => find.descendant(
+        of: find.byKey(ValueKey(key)),
+        matching: find.byWidgetPredicate((w) => w is PositionedDirectional),
+      );
+      expect(dotIn(TvDestinationId.settings.focusKey), findsOneWidget);
+      expect(dotIn(TvDestinationId.myPleya.focusKey), findsNothing);
+    });
+  });
+
   group('composition', () {
+    testWidgets('A-24c: Instellingen is the last destination, right after Mijn Pleya', (tester) async {
+      await pump(tester, destinations: withLiveTv(), active: TvDestinationId.myPleya);
+
+      final labels = tester.widgetList<Text>(find.byType(Text)).map((text) => text.data).whereType<String>().toList();
+      expect(
+        labels,
+        containsAllInOrder(<String>[
+          t.common.home,
+          t.unifiedCatalog.seriesTitle,
+          t.unifiedCatalog.moviesTitle,
+          t.navigation.liveTv,
+          t.navigation.myPleya,
+          t.settings.title,
+        ]),
+      );
+
+      // RIGHT from Mijn Pleya lands on Instellingen, and stops there: the
+      // wordmark after it is not a focus stop.
+      focus(TvDestinationId.myPleya.focusKey);
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      expect(focusedLabel(), TvDestinationId.settings.focusKey);
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      expect(focusedLabel(), TvDestinationId.settings.focusKey);
+    });
+
+    for (final locale in const [Locale('nl'), Locale('de'), Locale('en')]) {
+      testWidgets(
+        'A-24c: on the Apple TV canvas the longer bar clears the avatar and the wordmark (${locale.languageCode})',
+        (tester) async {
+          await tester.runAsync(loadAppFontsForGoldens);
+          // The labels come from slang, so its locale is what makes the bar
+          // German ("Einstellungen", the longest Instellingen label).
+          await tester.runAsync(() => LocaleSettings.setLocale(AppLocale.values.byName(locale.languageCode)));
+          addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
+          await pump(tester, destinations: withLiveTv(), active: TvDestinationId.myPleya, locale: locale);
+          expect(find.text(t.settings.title), findsOneWidget);
+          tester.view.physicalSize = kTvGoldenSurfaceSize;
+          await tester.pumpAndSettle();
+
+          final chip = tester.getRect(find.byType(ProfileAvatar));
+          final wordmark = tester.getRect(find.byType(PleyaWordmark));
+          final search = tester.getRect(find.byKey(const ValueKey('tvNav_search')));
+          final settings = tester.getRect(find.byKey(const ValueKey('tvNav_settings')));
+          expect(search.left, greaterThan(chip.right), reason: 'the cluster stays clear of the avatar');
+          expect(settings.right, lessThan(wordmark.left), reason: 'Instellingen stays clear of the wordmark');
+          expect(settings.right, lessThanOrEqualTo(kTvGoldenSurfaceSize.width));
+        },
+      );
+    }
+
     testWidgets('draws the decided destination order, with Series before Films', (tester) async {
       await pump(tester, destinations: withoutLiveTv(), active: TvDestinationId.home);
 
@@ -464,7 +531,11 @@ void main() {
     // in it fails here.
     testWidgets('sits between the profile chip and the destinations in the walk', (tester) async {
       final destinations = offlineDestinations();
-      expect(destinations, [TvDestinationId.home, TvDestinationId.myPleya], reason: 'MOC-23: Home, dan Mijn Pleya');
+      expect(destinations, [
+        TvDestinationId.home,
+        TvDestinationId.myPleya,
+        TvDestinationId.settings,
+      ], reason: 'MOC-23: Home, dan Mijn Pleya; A-24c: Instellingen blijft');
 
       await pump(
         tester,
@@ -548,7 +619,8 @@ void main() {
       final handle = tester.ensureSemantics();
       await pump(tester, destinations: withoutLiveTv(), active: TvDestinationId.home);
 
-      expect(find.bySemanticsLabel(t.screens.switchProfile), findsOneWidget);
+      // A-24c: it opens the account menu, so it is announced by that name.
+      expect(find.bySemanticsLabel(t.tvAccountMenu.title), findsOneWidget);
       handle.dispose();
     });
 
@@ -658,17 +730,12 @@ void main() {
     });
   });
 
-  // The tvOS remote contract revised on 2 September 2026: focus on a bar item
-  // *is* the navigation. These pin the bar's half of it — that a ring move
-  // reports a destination and that Select is not what switches.
-  //
-  // `onFocusDestination` was always the seam ("Reports the ring moving.
-  // Distinct from onSelect on purpose"), so what changed is who listens to it
-  // and what they do; the negative control lives at that listener, in
-  // `main_screen_tv_nav_test.dart`, because the old behaviour was the shell
-  // wiring this callback at `TvNavigationCoordinator.focusDestination`, which
-  // moves the ring and stops there.
-  group('focus is the destination', () {
+  // The bar's half of the remote contract: a ring move reports a destination
+  // and is not a Select. What the host does with the report changed with
+  // A-24c (DEC-167, LEESMIJ-v4): it moves the ring and leaves the page, and
+  // Select changes it; that rule is pinned on the real `MainScreen` in
+  // `main_screen_tv_settings_destination_test.dart` (A13).
+  group('a ring move is reported, not selected', () {
     testWidgets('walking RIGHT reports every item the ring lands on, and selects nothing', (tester) async {
       await pump(
         tester,
@@ -684,7 +751,7 @@ void main() {
       await press(tester, LogicalKeyboardKey.arrowRight);
 
       expect(ringMoves, [TvDestinationId.series, TvDestinationId.movies, TvDestinationId.myPleya]);
-      expect(selected, isEmpty, reason: 'Select must not be needed to change destination');
+      expect(selected, isEmpty, reason: 'a ring move is not a Select');
     });
 
     testWidgets('the last item walked to is the last one reported, however fast the walk', (tester) async {

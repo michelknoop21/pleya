@@ -1826,11 +1826,9 @@ class _TranslationsTvMyPleyaRu extends TranslationsTvMyPleyaEn {
 	@override String serversOnline({required Object online, required Object total}) => '${online} из ${total} серверов в сети';
 	@override String get noServers => 'Нет подключённых серверов';
 	@override String get statusOnline => 'В сети';
-	@override String get statusOffline => 'Не в сети';
 	@override String get servers => 'Серверы';
 	@override String get activity => 'Активность';
 	@override String get logs => 'Журналы и диагностика';
-	@override String signedInAs({required Object name, required Object version}) => 'Вы вошли как ${name} · Pleya ${version}';
 	@override String get watchlistSubtitle => 'Сохранённые фильмы и сериалы';
 	@override String get requestsSubtitle => 'Запросы и подборки';
 	@override String get downloadsSubtitle => 'Офлайн и правила синхронизации';
@@ -1881,7 +1879,6 @@ class _TranslationsSettingsStudioRu extends TranslationsSettingsStudioEn {
 	@override String get yourLibrary => 'Ваша библиотека';
 	@override String get viewPreview => 'Открыть предпросмотр';
 	@override String get playbackExperience => 'Воспроизведение';
-	@override String get manage => 'Управление';
 	@override String get yourWatchlist => 'Ваш список';
 	@override String get yourContent => 'Ваш контент';
 	@override String get lightMode => 'Светлая тема';
@@ -3775,11 +3772,9 @@ extension on TranslationsRu {
 			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} из ${total} серверов в сети',
 			'tvMyPleya.noServers' => 'Нет подключённых серверов',
 			'tvMyPleya.statusOnline' => 'В сети',
-			'tvMyPleya.statusOffline' => 'Не в сети',
 			'tvMyPleya.servers' => 'Серверы',
 			'tvMyPleya.activity' => 'Активность',
 			'tvMyPleya.logs' => 'Журналы и диагностика',
-			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Вы вошли как ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Сохранённые фильмы и сериалы',
 			'tvMyPleya.requestsSubtitle' => 'Запросы и подборки',
 			'tvMyPleya.downloadsSubtitle' => 'Офлайн и правила синхронизации',
@@ -3813,7 +3808,6 @@ extension on TranslationsRu {
 			'settingsStudio.yourLibrary' => 'Ваша библиотека',
 			'settingsStudio.viewPreview' => 'Открыть предпросмотр',
 			'settingsStudio.playbackExperience' => 'Воспроизведение',
-			'settingsStudio.manage' => 'Управление',
 			'settingsStudio.yourWatchlist' => 'Ваш список',
 			'settingsStudio.yourContent' => 'Ваш контент',
 			'settingsStudio.lightMode' => 'Светлая тема',

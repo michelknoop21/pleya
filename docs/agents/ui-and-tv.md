@@ -61,6 +61,18 @@ vanaf de bovenste focusstop haalt de balk terug. Een pagina zonder eigen weg omh
 als `onExitUp` leeg is, Logboeken gebruikt hem zodra de lezer bovenaan staat. Andere TV-routes houden hun eigen presentatie
 (DEC-166, besluit Michel 26 oktober 2026).
 
+## Topmenu op tvOS
+
+Volgorde: profielavatar, zoeken, Home, Series, Films, Live TV (alleen met de capability), Mijn
+Pleya, Instellingen. Het woordmerk rechts is geen focusstop. Instellingen is een eigen bestemming,
+geen sectie van Mijn Pleya; Servers, Logboeken en Over Pleya hangen eronder (Koppelingen >
+Servers opent `TvServersPage`). De ring verplaatst alleen de focus: bij elke bestemming wisselt de
+pagina pas op Select, DOWN gaat de pagina in die op het scherm staat en Menu zet de ring eerst terug
+op de pil van die pagina (afgeleid in review 557-M6) (LEESMIJ-v4; vervangt het remotecontract van 2 september 2026). De avatar opent het accountmenu met alleen Wissel profiel en Uitloggen;
+Back sluit het en zet de focus terug op de avatar. De bestemming Instellingen gebruikt dezelfde
+inklapbare balk als hierboven. Besluit Michel, 26 oktober 2026 (A-24c,
+DEC-167).
+
 ## Pleya Verify
 
 `pleya_verify/` drijft echte scenario's tegen een echte macOS/iOS-sim/tvOS-sim-build, over een vast

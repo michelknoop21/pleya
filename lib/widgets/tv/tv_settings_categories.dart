@@ -45,6 +45,7 @@ class TvSettingsCategory {
     this.icon,
     this.heading,
     this.preview,
+    this.needsAttention = false,
   });
 
   /// Stable across rebuilds, so the chosen category survives a category
@@ -63,6 +64,11 @@ class TvSettingsCategory {
   /// Shown to the right of the rows. Null gives that room to the rows; a
   /// preview is only there when it shows something the rows cannot.
   final Widget? preview;
+
+  /// Something in this category waits on the viewer, such as a server whose
+  /// session expired (Koppelingen, A-24c): the pill carries the amber dot the
+  /// top bar puts on Instellingen, so the dot leads somewhere.
+  final bool needsAttention;
 }
 
 class TvSettingsCategories extends StatefulWidget {
@@ -152,6 +158,16 @@ class TvSettingsCategoriesState extends State<TvSettingsCategories> {
   }
 
   void _select(int index) => setState(() => _selectedId = widget.categories[index].id);
+
+  /// Chooses the category with [id] as SELECT on its pill would, for an entry
+  /// from outside the page ("Servers beheren", A-24c). False when there is no
+  /// such category.
+  bool choose(String id) {
+    final index = widget.categories.indexWhere((c) => c.id == id);
+    if (index < 0) return false;
+    _select(index);
+    return true;
+  }
 
   /// Gives the page the remote back (a return from another destination, a
   /// page pushed on top closing): to the chosen category's pill when the
@@ -285,7 +301,11 @@ class TvSettingsCategoriesState extends State<TvSettingsCategories> {
                   child: FocusableWrapper(
                     automationId: widget.categoryAutomationId,
                     automationInstance: index.toString(),
-                    automationState: () => {'selected': selected == index, 'title': categories[index].title},
+                    automationState: () => {
+                      'selected': selected == index,
+                      'title': categories[index].title,
+                      'attention': categories[index].needsAttention,
+                    },
                     focusNode: _categoryNode(index),
                     autofocus: widget.autofocusFirstCategory && index == 0,
                     disableScale: true,
@@ -309,6 +329,7 @@ class TvSettingsCategoriesState extends State<TvSettingsCategories> {
                             icon: categories[index].icon,
                             selected: selected == index,
                             focused: Focus.of(context).hasFocus,
+                            needsAttention: categories[index].needsAttention,
                             pt: pt,
                           ),
                         ),

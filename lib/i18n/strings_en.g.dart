@@ -101,6 +101,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsUnifiedCatalogEn unifiedCatalog = TranslationsUnifiedCatalogEn.internal(_root);
 	late final TranslationsTvNavigationEn tvNavigation = TranslationsTvNavigationEn.internal(_root);
 	late final TranslationsTvMyPleyaEn tvMyPleya = TranslationsTvMyPleyaEn.internal(_root);
+	late final TranslationsTvAccountMenuEn tvAccountMenu = TranslationsTvAccountMenuEn.internal(_root);
 	late final TranslationsTvOfflineHomeEn tvOfflineHome = TranslationsTvOfflineHomeEn.internal(_root);
 	late final TranslationsTvContextMenuEn tvContextMenu = TranslationsTvContextMenuEn.internal(_root);
 	late final TranslationsLanguageSettingsEn languageSettings = TranslationsLanguageSettingsEn.internal(_root);
@@ -3332,15 +3333,6 @@ class TranslationsMyPleyaEn {
 		one: '1 list',
 		other: '${n} lists',
 	);
-
-	/// en: 'Your personal viewing assistant'
-	String get bigPTvSubtitle => 'Your personal viewing assistant';
-
-	/// en: 'Open Big P'
-	String get openBigP => 'Open Big P';
-
-	/// en: 'Switch profile'
-	String get switchProfile => 'Switch profile';
 }
 
 // Path: liveTv
@@ -6116,9 +6108,6 @@ class TranslationsTvMyPleyaEn {
 	/// en: 'Online'
 	String get statusOnline => 'Online';
 
-	/// en: 'Offline'
-	String get statusOffline => 'Offline';
-
 	/// en: 'Servers'
 	String get servers => 'Servers';
 
@@ -6127,9 +6116,6 @@ class TranslationsTvMyPleyaEn {
 
 	/// en: 'Logs'
 	String get logs => 'Logs';
-
-	/// en: 'Signed in as ${name} · Pleya ${version}'
-	String signedInAs({required Object name, required Object version}) => 'Signed in as ${name} · Pleya ${version}';
 
 	/// en: 'Saved films and series'
 	String get watchlistSubtitle => 'Saved films and series';
@@ -6177,6 +6163,60 @@ class TranslationsTvMyPleyaEn {
 
 	/// en: '${count} libraries'
 	String libraryCount({required Object count}) => '${count} libraries';
+
+	/// en: 'Your personal space'
+	String get eyebrow => 'Your personal space';
+
+	/// en: 'Your world, ${name}.'
+	String heading({required Object name}) => 'Your world, ${name}.';
+
+	/// en: 'Your world.'
+	String get headingNoName => 'Your world.';
+
+	/// en: 'Keep what you love. Find it again without effort.'
+	String get subline => 'Keep what you love. Find it again without effort.';
+
+	/// en: 'Big P · your assistant'
+	String get bigPEyebrow => 'Big P · your assistant';
+
+	/// en: 'What do you want to watch?'
+	String get bigPTitle => 'What do you want to watch?';
+
+	/// en: 'Ask, discover and find something good faster.'
+	String get bigPSubtitle => 'Ask, discover and find something good faster.';
+
+	/// en: 'Ask Big P'
+	String get bigPAction => 'Ask Big P';
+
+	/// en: 'Quick links'
+	String get quickLinks => 'Quick links';
+}
+
+// Path: tvAccountMenu
+class TranslationsTvAccountMenuEn {
+	TranslationsTvAccountMenuEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Profile'
+	String get title => 'Profile';
+
+	/// en: 'Signed in as ${name}'
+	String signedInAs({required Object name}) => 'Signed in as ${name}';
+
+	/// en: 'Switch profile'
+	String get switchProfile => 'Switch profile';
+
+	/// en: 'Choose another profile'
+	String get switchProfileSubtitle => 'Choose another profile';
+
+	/// en: 'Sign out'
+	String get logout => 'Sign out';
+
+	/// en: 'Confirm before you sign out'
+	String get logoutSubtitle => 'Confirm before you sign out';
 }
 
 // Path: tvOfflineHome
@@ -6696,9 +6736,6 @@ class TranslationsSettingsStudioEn {
 
 	/// en: 'Playback experience'
 	String get playbackExperience => 'Playback experience';
-
-	/// en: 'Manage'
-	String get manage => 'Manage';
 
 	/// en: 'Your watchlist'
 	String get yourWatchlist => 'Your watchlist';
@@ -11318,9 +11355,6 @@ extension on Translations {
 			'myPleya.librariesCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 library', other: '${n} libraries', ), 
 			'myPleya.collectionsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 collection', other: '${n} collections', ), 
 			'myPleya.playlistsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 list', other: '${n} lists', ), 
-			'myPleya.bigPTvSubtitle' => 'Your personal viewing assistant',
-			'myPleya.openBigP' => 'Open Big P',
-			'myPleya.switchProfile' => 'Switch profile',
 			'liveTv.serverNotAvailable' => 'Live TV server is not available.',
 			'liveTv.serverNotConnected' => 'Live TV server is not connected.',
 			'liveTv.title' => 'Live TV',
@@ -11773,11 +11807,11 @@ extension on Translations {
 			'metadataEdit.selectBackground' => 'Select Background',
 			'metadataEdit.selectLogo' => 'Select Logo',
 			'metadataEdit.selectSquareArt' => 'Select Square Art',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.fromUrl' => 'From URL',
 			'metadataEdit.uploadFile' => 'Upload File',
 			'metadataEdit.enterImageUrl' => 'Enter image URL',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.imageUrl' => 'Image URL',
 			'metadataEdit.metadataUpdated' => 'Metadata updated',
 			'metadataEdit.metadataUpdateFailed' => 'Failed to update metadata',
@@ -12287,11 +12321,11 @@ extension on Translations {
 			'unifiedCatalog.states.emptyTitle' => 'This catalog is empty',
 			'unifiedCatalog.states.emptyBody' => 'No visible library holds anything for this page.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Nothing matches these filters',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.states.filterEmptyBody' => 'Clear a filter to see more titles.',
 			'unifiedCatalog.states.clearFilters' => 'Clear filters',
 			'unifiedCatalog.states.errorTitle' => 'The catalog could not be loaded',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.states.errorBody' => 'No server answered. Check your connection and try again.',
 			'unifiedCatalog.states.partialOne' => '1 library did not answer',
 			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} libraries did not answer',
@@ -12387,11 +12421,9 @@ extension on Translations {
 			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} of ${total} servers online',
 			'tvMyPleya.noServers' => 'No servers connected',
 			'tvMyPleya.statusOnline' => 'Online',
-			'tvMyPleya.statusOffline' => 'Offline',
 			'tvMyPleya.servers' => 'Servers',
 			'tvMyPleya.activity' => 'Activity',
 			'tvMyPleya.logs' => 'Logs',
-			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Signed in as ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Saved films and series',
 			'tvMyPleya.requestsSubtitle' => 'Requests and discovery',
 			'tvMyPleya.downloadsSubtitle' => 'Offline and sync rules',
@@ -12409,6 +12441,21 @@ extension on Translations {
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
 			'tvMyPleya.libraryCount' => ({required Object count}) => '${count} libraries',
+			'tvMyPleya.eyebrow' => 'Your personal space',
+			'tvMyPleya.heading' => ({required Object name}) => 'Your world, ${name}.',
+			'tvMyPleya.headingNoName' => 'Your world.',
+			'tvMyPleya.subline' => 'Keep what you love. Find it again without effort.',
+			'tvMyPleya.bigPEyebrow' => 'Big P · your assistant',
+			'tvMyPleya.bigPTitle' => 'What do you want to watch?',
+			'tvMyPleya.bigPSubtitle' => 'Ask, discover and find something good faster.',
+			'tvMyPleya.bigPAction' => 'Ask Big P',
+			'tvMyPleya.quickLinks' => 'Quick links',
+			'tvAccountMenu.title' => 'Profile',
+			'tvAccountMenu.signedInAs' => ({required Object name}) => 'Signed in as ${name}',
+			'tvAccountMenu.switchProfile' => 'Switch profile',
+			'tvAccountMenu.switchProfileSubtitle' => 'Choose another profile',
+			'tvAccountMenu.logout' => 'Sign out',
+			'tvAccountMenu.logoutSubtitle' => 'Confirm before you sign out',
 			'tvOfflineHome.title' => 'No server reachable',
 			'tvOfflineHome.body' => 'None of your servers are answering right now. Reconnect once one is back online — My Pleya and Settings stay reachable while you wait.',
 			'tvOfflineHome.manageServers' => 'Manage servers',
@@ -12791,6 +12838,8 @@ extension on Translations {
 			'assistant.steps.findTitle' => 'Finding the title',
 			'assistant.steps.recallMemory' => 'Checking your memory',
 			'assistant.steps.rememberFact' => 'Preparing a memory',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.steps.forgetFact' => 'Preparing to forget',
 			'assistant.steps.fallback' => 'Working',
 			'assistant.jobs.scanLibrary.running' => 'Scan running',
@@ -12801,8 +12850,6 @@ extension on Translations {
 			'assistant.jobs.retryJob.running' => 'Job running',
 			'assistant.jobs.retryJob.done' => 'Job finished',
 			'assistant.jobs.retryJob.failed' => 'Job failed',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.jobs.retryJob.background' => 'Job still running in the background',
 			'assistant.jobs.retryJob.unknown' => 'Job: status can no longer be determined',
 			'assistant.jobs.kinds.scan_library' => 'Library scan',
@@ -13108,7 +13155,6 @@ extension on Translations {
 			'settingsStudio.yourLibrary' => 'Your library',
 			'settingsStudio.viewPreview' => 'View preview',
 			'settingsStudio.playbackExperience' => 'Playback experience',
-			'settingsStudio.manage' => 'Manage',
 			'settingsStudio.yourWatchlist' => 'Your watchlist',
 			'settingsStudio.yourContent' => 'Your content',
 			'settingsStudio.lightMode' => 'Light mode',

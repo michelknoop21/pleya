@@ -4,6 +4,8 @@ Dit zijn de actuele ontwerpen voor Instellingen (richting Studio) en Mijn Pleya 
 
 Roadmap: A-24 (vervolgronde A-24b).
 
+**Mijn Pleya op Apple TV is vervangen.** Sinds A-24c (26 oktober 2026) is [`../a24c-northstars/02-Mijn-Pleya-v4/`](../a24c-northstars/02-Mijn-Pleya-v4/LEESMIJ-v4.md) het doelbeeld voor tvOS Mijn Pleya: geen Beheer-kolom en geen profielblok meer, Instellingen als bestemming in het topmenu. De tvOS-borden 01 tot en met 05 in `02-Mijn-Pleya/images/` zijn vanaf dan historisch. De iPhone-borden en alle Instellingen-borden blijven gelden.
+
 ## Waar wat staat
 
 | Bestand of map | Inhoud |

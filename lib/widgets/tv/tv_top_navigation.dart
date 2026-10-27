@@ -76,20 +76,27 @@ class TvTopNavigation extends StatelessWidget {
   /// moving must not change the page.
   final ValueChanged<TvDestinationId> onFocusDestination;
 
-  /// Whether something under Mijn Pleya is waiting on the user — today, a
+  /// Whether something under Instellingen is waiting on the user — today, a
   /// server whose token was rejected.
   ///
   /// Deliberately one boolean and not a count or a list. Hoofdstuk 18.4 allows
-  /// "een klein statuspunt bij Mijn Pleya" and forbids "een permanente grote
-  /// rode melding over content"; a number on the bar would start down the road
-  /// the second half rules out, and the concrete servers already have a place
-  /// to be named — the Servers screen this destination leads to.
+  /// "een klein statuspunt" on the destination that resolves it and forbids
+  /// "een permanente grote rode melding over content"; a number on the bar
+  /// would start down the road the second half rules out, and the concrete
+  /// servers already have a place to be named — the Servers screen this
+  /// destination leads to (Instellingen ▸ Koppelingen ▸ Servers since A-24c;
+  /// before that it rode Mijn Pleya, which no longer has a Servers tile).
   final bool needsAttention;
 
   /// Down from any bar item goes into the current destination's content
   /// (hoofdstuk 7.2).
   final VoidCallback onNavigateDown;
 
+  /// Select on the profile avatar. Since A-24c that opens the small account
+  /// menu (Wissel profiel, Uitloggen; northstar `A14-profiel-acties.png`)
+  /// rather than the profile picker itself; the name stays because the shell
+  /// and two dozen harnesses already pass it, and the menu's first action is
+  /// still the profile picker.
   final VoidCallback onOpenProfiles;
 
   /// Fades the bar to [TvTopNavLayout.dimmedOpacity] while an overlay is open
@@ -167,8 +174,9 @@ class TvTopNavigation extends StatelessWidget {
             node: nodes.get(destinations[i].focusKey, debugLabel: destinations[i].focusKey),
             scale: scale,
             // Hoofdstuk 18.4: the dot rides the destination that owns
-            // the resolution route, and only that one.
-            needsAttention: destinations[i] == TvDestinationId.myPleya && needsAttention,
+            // the resolution route, and only that one: Instellingen,
+            // where Koppelingen ▸ Servers lives (A-24c).
+            needsAttention: destinations[i] == TvDestinationId.settings && needsAttention,
             onSelect: () => onSelect(destinations[i]),
             onFocused: () => onFocusDestination(destinations[i]),
             onNavigateDown: onNavigateDown,
@@ -338,7 +346,8 @@ class _ProfileChip extends StatelessWidget {
       disableScale: true,
       // The avatar is an identity, not a label, so what pressing it does is
       // said out loud — the same reasoning as the mobile My Pleya header.
-      semanticLabel: t.screens.switchProfile,
+      // A-24c: it opens the account menu, so that is what it is called.
+      semanticLabel: t.tvAccountMenu.title,
       child: Padding(
         padding: EdgeInsets.all(TvTopNavLayout.focusRingGap * scale),
         child: ExcludeSemantics(

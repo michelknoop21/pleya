@@ -14,6 +14,10 @@ steps:
   - walk: {direction: right, expect: [nav.series, nav.movies], timeout: 40000, settle: 800}
   - press: select
   - settle: 1500
+  # A-24c (LEESMIJ-v4): Select changed the page and left the remote on
+  # the pill; Down takes it to the landing.
+  - press: down
+  - settle: 1500
   - press: select
   - wait_until: {id: "tv.catalog.grid[movies]", timeout: 20000}
   - wait_until: {id: "tv.catalog.grid.item[movies.18]", timeout: 10000}

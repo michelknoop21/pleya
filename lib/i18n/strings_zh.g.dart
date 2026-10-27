@@ -1826,11 +1826,9 @@ class _TranslationsTvMyPleyaZh extends TranslationsTvMyPleyaEn {
 	@override String serversOnline({required Object total, required Object online}) => '${total} 台服务器中 ${online} 台在线';
 	@override String get noServers => '未连接服务器';
 	@override String get statusOnline => '在线';
-	@override String get statusOffline => '离线';
 	@override String get servers => '服务器';
 	@override String get activity => '活动';
 	@override String get logs => '日志与诊断';
-	@override String signedInAs({required Object name, required Object version}) => '已登录为 ${name} · Pleya ${version}';
 	@override String get watchlistSubtitle => '已保存的电影和剧集';
 	@override String get requestsSubtitle => '请求与发现';
 	@override String get downloadsSubtitle => '离线与同步规则';
@@ -1881,7 +1879,6 @@ class _TranslationsSettingsStudioZh extends TranslationsSettingsStudioEn {
 	@override String get yourLibrary => '你的媒体库';
 	@override String get viewPreview => '查看预览';
 	@override String get playbackExperience => '播放体验';
-	@override String get manage => '管理';
 	@override String get yourWatchlist => '你的片单';
 	@override String get yourContent => '你的内容';
 	@override String get lightMode => '浅色模式';
@@ -3775,11 +3772,9 @@ extension on TranslationsZh {
 			'tvMyPleya.serversOnline' => ({required Object total, required Object online}) => '${total} 台服务器中 ${online} 台在线',
 			'tvMyPleya.noServers' => '未连接服务器',
 			'tvMyPleya.statusOnline' => '在线',
-			'tvMyPleya.statusOffline' => '离线',
 			'tvMyPleya.servers' => '服务器',
 			'tvMyPleya.activity' => '活动',
 			'tvMyPleya.logs' => '日志与诊断',
-			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => '已登录为 ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => '已保存的电影和剧集',
 			'tvMyPleya.requestsSubtitle' => '请求与发现',
 			'tvMyPleya.downloadsSubtitle' => '离线与同步规则',
@@ -3813,7 +3808,6 @@ extension on TranslationsZh {
 			'settingsStudio.yourLibrary' => '你的媒体库',
 			'settingsStudio.viewPreview' => '查看预览',
 			'settingsStudio.playbackExperience' => '播放体验',
-			'settingsStudio.manage' => '管理',
 			'settingsStudio.yourWatchlist' => '你的片单',
 			'settingsStudio.yourContent' => '你的内容',
 			'settingsStudio.lightMode' => '浅色模式',

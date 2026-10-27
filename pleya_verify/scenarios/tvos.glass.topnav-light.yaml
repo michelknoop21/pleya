@@ -26,21 +26,12 @@ steps:
   - snapshot: 00-home-glass-off
 
   # Glass on through Uiterlijk.
-  - press: right
-  - press: right
-  - press: right
-  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  # A-24c: Instellingen is a destination in the top bar, right after Mijn Pleya.
+  - walk: {direction: right, steps: 8, stopAt: nav.settings, timeout: 60000, settle: 600}
   - press: select
-  - wait_until: {id: screen.my_pleya, timeout: 15000}
-  # A-24b: Down to Bibliotheken, Right across to Big P at the top of the right
-  # column, Instellingen under it.
+  - wait_until: {id: nav.settings, state: {active: true}, timeout: 15000}
+  # Select leaves the remote on the pill; Down enters the page.
   - press: down
-  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 8000}
-  - walk: {direction: right, steps: 4, stopAt: "my_pleya.tile[assistant]", timeout: 60000, settle: 600}
-  - press: down
-  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
-  - press: select
-  - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
   # A-24b: Weergave's rows sit on the Instellingen page; it opens on Thema.
   - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 8000}
   - settle: 400
@@ -64,13 +55,12 @@ steps:
 
   # Out to the bar, over to Home.
   - press: menu
-  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
-  - press: menu
-  - wait_until: {focused: nav.myPleya, timeout: 8000}
-  # Walking the bar switches the destination (tvos.nav.focus-switches-
-  # destination), so the ring on Home is Home on screen; Select would hand
-  # the remote to the content.
-  - walk: {direction: left, expect: [nav.movies, nav.series, nav.discover], timeout: 20000, settle: 800}
+  # A-24c: Menu from the settings page is the bar, on Instellingen.
+  - wait_until: {focused: nav.settings, timeout: 8000}
+  # A-24c (LEESMIJ-v4): walking the bar moves the ring and leaves the page;
+  # Select on Home puts Home on screen and keeps the remote on the pill.
+  - walk: {direction: left, expect: [nav.myPleya, nav.movies, nav.series, nav.discover], timeout: 45000, settle: 800}
+  - press: select
   - wait_until: {id: screen.discover, timeout: 15000}
   - settle: 1500
   - assert: {id: nav.discover, focused: true, state: {active: true}}
@@ -96,6 +86,10 @@ steps:
   - wait_until: {focused: nav.search, timeout: 5000}
   - press: select
   - settle: 2000
+  # A-24c (LEESMIJ-v4): Select put Zoeken on screen with the remote on the
+  # pill; Down takes it to the field.
+  - press: down
+  - settle: 1000
   - press: select
   - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 8000}
   - settle: 1000

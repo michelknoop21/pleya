@@ -144,7 +144,7 @@ void main() {
                 isNavFocused: true,
                 profile: null,
                 onSelectDestination: selected.add,
-                onFocusDestination: coordinator.activate,
+                onFocusDestination: coordinator.focusDestination,
                 // Exactly what `MainScreen._focusContent` does with it.
                 onFocusContent: ({bool restorePreviousFocus = true}) {
                   focusContentCalls++;

@@ -120,6 +120,12 @@ ids:
   - id: nav.profile
     role: nav
     instanceable: false
+  - id: account_menu
+    role: dialog
+    instanceable: false
+  - id: account_menu.action
+    role: button
+    instanceable: true
   - id: nav.reconnect
     role: nav
     instanceable: false

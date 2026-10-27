@@ -1192,10 +1192,7 @@
     "playlistsCount": {
       "one": "1 lijst",
       "other": "${n} lijsten"
-    },
-    "bigPTvSubtitle": "Je persoonlijke kijkassistent",
-    "openBigP": "Open Big P",
-    "switchProfile": "Profiel wisselen"
+    }
   },
   "liveTv": {
     "serverNotAvailable": "Live TV-server is niet beschikbaar.",
@@ -2352,11 +2349,9 @@
     "serversOnline": "${online} van ${total} servers online",
     "noServers": "Geen servers verbonden",
     "statusOnline": "Online",
-    "statusOffline": "Offline",
     "servers": "Servers",
     "activity": "Activiteit",
     "logs": "Logboeken",
-    "signedInAs": "Aangemeld als ${name} · Pleya ${version}",
     "watchlistSubtitle": "Bewaarde films en series",
     "requestsSubtitle": "Verzoeken en ontdekken",
     "downloadsSubtitle": "Offline en synchronisatieregels",
@@ -2375,7 +2370,24 @@
       "tile": "${title}. ${subtitle}",
       "tileWithCount": "${title}. ${subtitle}. ${count}"
     },
-    "libraryCount": "${count} bibliotheken"
+    "libraryCount": "${count} bibliotheken",
+    "eyebrow": "Jouw persoonlijke ruimte",
+    "heading": "Jouw wereld, ${name}.",
+    "headingNoName": "Jouw wereld.",
+    "subline": "Bewaar wat je mooi vindt. Vind het moeiteloos terug.",
+    "bigPEyebrow": "Big P · jouw assistent",
+    "bigPTitle": "Wat wil je kijken?",
+    "bigPSubtitle": "Vraag, ontdek en vind sneller iets goeds.",
+    "bigPAction": "Vraag Big P",
+    "quickLinks": "Snel naar"
+  },
+  "tvAccountMenu": {
+    "title": "Profiel",
+    "signedInAs": "Je bent ingelogd als ${name}",
+    "switchProfile": "Wissel profiel",
+    "switchProfileSubtitle": "Kies een ander profiel",
+    "logout": "Uitloggen",
+    "logoutSubtitle": "Bevestig voordat je uitlogt"
   },
   "tvOfflineHome": {
     "title": "Geen server bereikbaar",
@@ -3241,7 +3253,6 @@
     "yourLibrary": "Jouw bibliotheek",
     "viewPreview": "Bekijk voorbeeld",
     "playbackExperience": "Afspeelervaring",
-    "manage": "Beheer",
     "yourWatchlist": "Je kijklijst",
     "yourContent": "Jouw content",
     "lightMode": "Lichte modus",

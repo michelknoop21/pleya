@@ -1,0 +1,48 @@
+# A-24c: Over Pleya moved out of Mijn Pleya (it was `tvos.my-pleya.section-about`)
+# and is reached through Instellingen > Geavanceerd, the page it always also
+# had there. The contract of the old section scenario stays:
+#   1. SELECT opens the page and nothing else;
+#   2. the remote lands on a control inside it;
+#   3. Menu returns to the row it was opened from.
+name: tvos.settings.about
+target: tvos-sim
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  # Instellingen is a destination in the top bar, right after Mijn Pleya.
+  - walk: {direction: right, steps: 8, stopAt: nav.settings, timeout: 60000, settle: 600}
+  - press: select
+  - wait_until: {id: nav.settings, state: {active: true}, timeout: 15000}
+  # Select leaves the remote on the pill; Down enters the page on Thema.
+  - press: down
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 10000}
+  # Geavanceerd is the last category of the rail.
+  - press: left
+  - walk: {direction: down, steps: 8, stopAt: "settings.category[7]", timeout: 90000, settle: 400}
+  - press: select
+  - wait_until: {id: "settings.category[7]", state: {selected: true}, timeout: 5000}
+  - press: right
+  - walk: {direction: down, steps: 16, stopAt: "my_pleya.section.tile[settings.about]", timeout: 200000, settle: 400}
+  - snapshot: 00-row-focused
+
+  - press: select
+  - wait_until: {id: "my_pleya.section.content[about]", timeout: 15000}
+  - settle: 800
+  - snapshot: 01-opened
+
+  # Movement inside the page, so the record shows whether the remote can do
+  # anything once it is there.
+  - press: down
+  - snapshot: 02-after-down
+  - press: right
+  - snapshot: 03-after-right
+
+  # And out again, back onto the row it came from.
+  - press: menu
+  - wait_until: {focused: "my_pleya.section.tile[settings.about]", timeout: 8000}
+  - snapshot: 04-back-on-row

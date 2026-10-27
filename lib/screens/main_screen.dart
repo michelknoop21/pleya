@@ -21,6 +21,8 @@ import '../navigation/tv/tv_live_tv_capability.dart';
 import '../navigation/tv/tv_content_focus_authority.dart';
 import '../navigation/tv/tv_content_route_registry.dart';
 import '../navigation/tv/tv_navigation_coordinator.dart';
+import '../widgets/settings/settings_studio_theme.dart' show kTvSettingsTopNav;
+import 'tv/sections/tv_servers_page.dart';
 import '../navigation/tv/tv_nested_surface.dart';
 import 'tv/tv_movies_screen.dart';
 import 'tv/tv_series_screen.dart';
@@ -70,7 +72,9 @@ import '../providers/hidden_libraries_provider.dart';
 import '../providers/libraries_provider.dart';
 import '../providers/playback_state_provider.dart';
 import '../widgets/settings_builder.dart';
+import '../widgets/tv/tv_account_menu.dart';
 import '../widgets/tv/tv_reconnect_item.dart' show tvReconnectFocusKey;
+import '../widgets/tv/tv_top_navigation.dart' show tvNavProfileFocusKey;
 import '../widgets/tv_virtual_keyboard.dart';
 import '../services/api_cache.dart';
 import '../services/multi_server_manager.dart';
@@ -1548,11 +1552,11 @@ class _MainScreenState extends State<MainScreen>
           NavigationTabId.discover when _isTvShell && offline => TvOfflineHomeScreen(
             isReconnecting: _isReconnecting,
             onReconnect: _triggerReconnect,
-            onManageServers: () => _selectTab(NavigationTabId.settings),
+            onManageServers: _manageServers,
           ),
           NavigationTabId.discover => DiscoverScreen(
             key: _discoverKey,
-            onManageServers: () => _selectTab(NavigationTabId.settings),
+            onManageServers: _manageServers,
             onOpenSearch: _openSearch,
           ),
           // Fase 6 of docs/tvos-unified-experience.md (hoofdstuk 10.2a,
@@ -1576,12 +1580,12 @@ class _MainScreenState extends State<MainScreen>
                   ),
           NavigationTabId.movies when !_isPhone => TvMoviesLandingScreen(
             landingKey: _moviesKey,
-            onManageServers: () => _selectTab(NavigationTabId.settings),
+            onManageServers: _manageServers,
             onOpenAll: () => _openTvCompleteCatalog(TvDestinationId.movies),
           ),
           NavigationTabId.series when !_isPhone => TvSeriesLandingScreen(
             landingKey: _seriesKey,
-            onManageServers: () => _selectTab(NavigationTabId.settings),
+            onManageServers: _manageServers,
             onOpenAll: () => _openTvCompleteCatalog(TvDestinationId.series),
           ),
           // The phone gets the fase-2 landings; TV renders Films and Series
@@ -1615,7 +1619,7 @@ class _MainScreenState extends State<MainScreen>
           NavigationTabId.liveTv => LiveTvScreen(key: _liveTvKey),
           NavigationTabId.search => SearchScreen(
             key: _searchKey,
-            onManageServers: () => _selectTab(NavigationTabId.settings),
+            onManageServers: _manageServers,
             onBack: _isPhone ? _closeSearch : null,
           ),
           NavigationTabId.requests when _isPhone => SeerrDiscoverScreen(
@@ -1633,13 +1637,7 @@ class _MainScreenState extends State<MainScreen>
           // own doc comment that a phone list is not a 10-foot surface.
           NavigationTabId.myPleya =>
             _isTvShell
-                ? TvMyPleyaScreen(
-                    key: _tvMyPleyaKey,
-                    onExitUp: _focusSidebar,
-                    onOpenSection: _openTvMyPleyaSection,
-                    onSwitchProfile: () => unawaited(_openProfilesFromShell()),
-                    onSignOut: () => unawaited(AccountUiActions.logout(context)),
-                  )
+                ? TvMyPleyaScreen(key: _tvMyPleyaKey, onExitUp: _focusSidebar, onOpenSection: _openTvMyPleyaSection)
                 : MyPleyaScreen(
                     key: _myPleyaKey,
                     onOpenTab: _selectTab,
@@ -1879,13 +1877,17 @@ class _MainScreenState extends State<MainScreen>
       // bar. Under a collapsible bar (DEC-115) that reads as the bar opening and
       // snapping shut again.
       _tvNav.activeNestedRoute?.surfaceKey.currentState?.cancelPendingEntry();
+      // Read before the scope takes the focus: the scope restores the pill it
+      // last held, that pill reports itself focused, and since A-24c the ring
+      // memory follows it, so reading it after the frame would return the
+      // pill the ring wandered to rather than the one it left from.
+      final target = _tvNav.focusedDestination;
       _focus.focusSidebar(
         focusActiveItem: () {
           if (!mounted) return;
-          // The item the ring was last on, not the active destination: walking
-          // to Search, going down into content and coming back should return
-          // to Search rather than snapping to the open page.
-          final node = _tvNavNodes.get(_tvNav.focusedDestination.focusKey);
+          // The item the ring was last on before the remote went into the
+          // page; DOWN resets that to the page's own pill (`_focusContent`).
+          final node = _tvNavNodes.get(target.focusKey);
           if (node.canRequestFocus) node.requestFocus();
         },
       );
@@ -1910,6 +1912,10 @@ class _MainScreenState extends State<MainScreen>
     // consumes it when its content finally lands (P2).
     if (_isTvShell) {
       _tvContentFocus.arm(restorePreviousFocus ? TvContentFocusIntent.restore : TvContentFocusIntent.primary);
+      // A-24c: the ring may have wandered off the active pill without
+      // changing the page. The remote goes into the page that is on screen,
+      // so the way back up is that page's pill, not the one it wandered to.
+      _tvNav.focusDestination(_tvNav.active);
     }
     _focus.focusContent(
       restorePreviousFocus: restorePreviousFocus,
@@ -1963,7 +1969,10 @@ class _MainScreenState extends State<MainScreen>
       isShowingProfileSelection: _isShowingProfileSelection,
       isOverlaySheetOpen: _isOverlaySheetOpen,
       isRouteCurrent: ModalRoute.of(context)?.isCurrent == true,
-      isSidebarFocused: _isSidebarFocused,
+      // A-24c: with the ring on another pill than the page on screen, Menu
+      // first brings the ring home ([_handleBackKey]); only on the page's own
+      // pill does it leave the app (review 557-M6).
+      isSidebarFocused: _isSidebarFocused && !_tvRingAwayFromPage,
       hasVisibleTabs: tabs.isNotEmpty,
       // Fase 7: a nested Mijn Pleya section is a route the app can still pop,
       // so Menu belongs to the app, not to the system, until it is closed.
@@ -1999,6 +2008,49 @@ class _MainScreenState extends State<MainScreen>
     if (!mounted) return;
     _isShowingProfileSelection = false;
     _updateTvosMenuPassthrough();
+  }
+
+  /// A-24c: the profile chip opens the account menu (Wissel profiel,
+  /// Uitloggen) instead of the picker itself.
+  ///
+  /// Same Menu bracket as [_openProfilesFromShell], for the same reason: the
+  /// chip is pressed from the state that hands Menu to tvOS, and the first Menu
+  /// press has to close the menu rather than leave the app. Each action runs
+  /// through the door it always had: the gate picker through
+  /// [_openProfilesFromShell], sign-out through [AccountUiActions.logout] with
+  /// its own confirmation. Back, or a cancelled sign-out, returns the remote
+  /// to the avatar.
+  Future<void> _openAccountMenuFromShell() async {
+    _isShowingProfileSelection = true;
+    _setTvosMenuPassthrough(false);
+    final action = await showTvAccountMenu(
+      context,
+      profileName: context.read<ActiveProfileProvider?>()?.active?.displayName,
+    );
+    if (!mounted) return;
+    switch (action) {
+      case TvAccountAction.switchProfile:
+        await _openProfilesFromShell();
+        if (mounted) _focusTvProfileChip();
+        return;
+      case TvAccountAction.logout:
+        await AccountUiActions.logout(context);
+        if (!mounted) return;
+      case null:
+        break;
+    }
+    _isShowingProfileSelection = false;
+    _updateTvosMenuPassthrough();
+    _focusTvProfileChip();
+  }
+
+  /// Puts the remote back on the avatar once the route above has gone.
+  void _focusTvProfileChip() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final node = _tvNavNodes.get(tvNavProfileFocusKey);
+      if (node.canRequestFocus) node.requestFocus();
+    });
   }
 
   /// Suppress stray back events after a child route pops.
@@ -2089,6 +2141,9 @@ class _MainScreenState extends State<MainScreen>
     }
 
     if (_isTvShell) {
+      if (!_tvNav.activeCanPop && _isSidebarFocused && _tvRingAwayFromPage) {
+        return handleBackKeyAction(event, _returnTvRingToPage);
+      }
       return switch (tvBackStep(hasNestedRoute: _tvNav.activeCanPop, isNavigationFocused: _isSidebarFocused)) {
         TvBackStep.popNested => handleBackKeyAction(event, _popTvNestedRoute),
         TvBackStep.focusTopNavigation => handleBackKeyAction(event, _focusSidebar),
@@ -2301,8 +2356,8 @@ class _MainScreenState extends State<MainScreen>
     // Guard: ignore if tab isn't available in current mode
     if (!_getVisibleTabs(_isOffline).any((t) => t.id == tab)) return false;
 
-    // Fase 7, hoofdstuk 18.2: on TV these four live inside Mijn Pleya rather
-    // than beside Home. Every existing caller — the companion remote, a
+    // Fase 7, hoofdstuk 18.2: on TV these live inside Mijn Pleya rather than
+    // beside Home (Settings has its own destination since A-24c). Every existing caller — the companion remote, a
     // "manage servers" action, `_selectLibrary` — keeps working and simply
     // arrives at the new place.
     if (_isTvShell) {
@@ -2374,10 +2429,10 @@ class _MainScreenState extends State<MainScreen>
 
     // Focus search input after rebuild so IndexedStack has made it visible.
     //
-    // Not on the TV shell unless the viewer actually asked to go in. Search
-    // sits left of Home in the bar, so once focus alone switches destinations,
-    // walking LEFT past it would drop the caret into the field and strand the
-    // remote outside the navigation. Same rule as the `!_isTvShell` guard
+    // Not on the TV shell unless the viewer actually asked to go in. Select on
+    // Zoeken (and, before A-24c, the ring landing on it) switches to Search
+    // without that request, and the caret dropping into the field would
+    // strand the remote outside the navigation. Same rule as the `!_isTvShell` guard
     // above, expressed against the one authority instead of a second flag:
     // DOWN and Select arm an intent, a destination switch does not.
     if (tab == NavigationTabId.search && (!_isTvShell || _tvContentFocus.hasPendingIntent)) {
@@ -2498,13 +2553,13 @@ class _MainScreenState extends State<MainScreen>
         builder: (context) => destination == TvDestinationId.series
             ? TvSeriesScreen(
                 catalogKey: _tvNav.nestedRoutesFor(destination).last.screenKey,
-                onManageServers: () => _selectTab(NavigationTabId.settings),
+                onManageServers: _manageServers,
                 restoreFrom: _tvNav.contentFocusFor(destination),
                 onRemember: (place) => _tvNav.rememberContentFocus(destination, place),
               )
             : TvMoviesScreen(
                 catalogKey: _tvNav.nestedRoutesFor(destination).last.screenKey,
-                onManageServers: () => _selectTab(NavigationTabId.settings),
+                onManageServers: _manageServers,
                 restoreFrom: _tvNav.contentFocusFor(destination),
                 onRemember: (place) => _tvNav.rememberContentFocus(destination, place),
               ),
@@ -2605,6 +2660,33 @@ class _MainScreenState extends State<MainScreen>
     }
 
     Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+  }
+
+  /// "Servers beheren" from a screen with nothing reachable (hoofdstuk 14.7).
+  ///
+  /// On TV Instellingen is its own destination since A-24c, and selecting a
+  /// destination deliberately leaves the remote where it is, which here was
+  /// on a button that just went offstage: Instellingen showed with the bar
+  /// collapsed and no ring anywhere (review 557-I2). So the shell opens
+  /// Koppelingen > Servers, the page the button is about, on top of
+  /// Instellingen under its collapsible bar, and puts the remote in it. Menu
+  /// steps back to Instellingen. Elsewhere it is the settings tab as before.
+  void _manageServers() {
+    if (!_selectTab(NavigationTabId.settings) || !_isTvShell) return;
+    // After the frame that puts Instellingen on screen; review 557-I5 for why
+    // the page walks the route itself.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_settingsKey.currentState case final TvSettingsServersEntry entry) {
+        entry.openTvServers();
+        return;
+      }
+      unawaited(
+        _pushTvContentRoute(
+          TvNestedRoute(id: 'tvSettings_servers', builder: (_) => const TvServersPage(), topNav: kTvSettingsTopNav),
+        ),
+      );
+    });
   }
 
   /// Bibliotheken from anywhere below the shell; on TV `_selectTab` turns it
@@ -2758,7 +2840,7 @@ class _MainScreenState extends State<MainScreen>
       onFocusDestination: _focusTvDestination,
       onFocusContent: _focusContent,
       onFocusNav: _focusSidebar,
-      onOpenProfiles: () => unawaited(_openProfilesFromShell()),
+      onOpenProfiles: () => unawaited(_openAccountMenuFromShell()),
       onOverlaySheetOpenChanged: _handleOverlaySheetOpenChanged,
       onKeyEvent: _handleTvShellKey,
       selectLibrary: _selectLibrary,
@@ -2800,29 +2882,34 @@ class _MainScreenState extends State<MainScreen>
   /// first of the three paths P2 is about, and it is the one the report opened
   /// with — choosing Home dropped the remote onto the billboard's Afspelen pill
   /// before the viewer had asked for anything.
-  /// The ring moved to another item in the top bar, which on TV *is* the
-  /// navigation (hoofdstuk 7.2's remote contract, revised 2 September 2026).
+  /// The ring moved to another item in the top bar.
   ///
-  /// Select is no longer required to change destination, and this is not a
-  /// second way of doing what `_selectTvDestination` does: it deliberately
-  /// never arms a content-focus intent, so the remote stays in the bar while
-  /// the page behind it changes. Walking Home → Series → Films → Mijn Pleya is
-  /// three page changes and zero focus moves.
-  ///
-  /// No debounce. The viewer's remote and the screen have to agree at every
-  /// step, and a delay between the ring landing and the page following is
-  /// exactly the disagreement that would introduce. Each call is idempotent
-  /// per destination — `activate` returns false when nothing changed and
-  /// `_selectTab` only runs on a real change — so pressing RIGHT faster than
-  /// pages load costs extra work, not a wrong final state: the last focused
-  /// item is the last one activated.
+  /// A-24c (LEESMIJ-v4, "Over een andere bestemming focussen verandert de
+  /// actieve pagina niet"): the ring moves and the page stays, for every
+  /// destination; Select changes the page ([_selectTvDestination]). This
+  /// replaces the remote contract of 2 September 2026, in which the ring was
+  /// the navigation. The northstar needs it twice: A13 draws the ring on
+  /// Instellingen with Mijn Pleya still the active capsule, and A14 opens the
+  /// account menu over Mijn Pleya, which a walk to the avatar past Zoeken
+  /// could never show while every pill it passed swapped the page.
   void _focusTvDestination(TvDestinationId destination) {
-    final changed = _tvNav.activate(destination);
-    // Cancels anything armed against the destination the viewer just left.
-    // Content landing late for a page they have already walked past must not
-    // pull the remote out of the bar.
+    _tvNav.focusDestination(destination);
+    // Cancels anything armed against the page: the viewer is in the bar.
     _tvContentFocus.onDestinationFocused();
-    if (changed) _selectTab(destination.tab);
+    // Whether Menu leaves the app depends on the ring being on the page's
+    // own pill now (review 557-M6). The service parks an enable while a key
+    // is held, so a held arrow is not released twice (NAV1).
+    _updateTvosMenuPassthrough();
+  }
+
+  /// The ring stands on a pill other than the page on screen (A-24c).
+  bool get _tvRingAwayFromPage => _isTvShell && _tvNav.focusedDestination != _tvNav.active;
+
+  /// Menu with the ring away from the page's pill: the ring goes back to that
+  /// pill, nothing else changes (review 557-M6).
+  void _returnTvRingToPage() {
+    final node = _tvNavNodes.get(_tvNav.active.focusKey);
+    if (node.canRequestFocus) node.requestFocus();
   }
 
   void _selectTvDestination(TvDestinationId destination) {
@@ -2865,17 +2952,18 @@ class _MainScreenState extends State<MainScreen>
   /// The Mijn Pleya section a tab maps to on TV, or null when the tab is a
   /// destination in its own right.
   ///
-  /// Hoofdstuk 18.2 moved four of the rail's rows inside Mijn Pleya. Redirecting
-  /// here rather than leaving them as parallel root tabs is what keeps one
-  /// answer to "where am I": without it, `_selectTab(settings)` would show
-  /// Settings as root content while the bar lit up Mijn Pleya, and Back would
-  /// go to the bar instead of to the hub.
+  /// Hoofdstuk 18.2 moved the rail's personal rows inside Mijn Pleya.
+  /// Redirecting here rather than leaving them as parallel root tabs is what
+  /// keeps one answer to "where am I": without it, `_selectTab(watchlist)`
+  /// would show the kijklijst as root content while the bar lit up Mijn Pleya,
+  /// and Back would go to the bar instead of to the hub.
   static TvMyPleyaSection? _tvSectionForTab(NavigationTabId tab) => switch (tab) {
     NavigationTabId.libraries => TvMyPleyaSection.libraries,
     NavigationTabId.watchlist => TvMyPleyaSection.watchlist,
     NavigationTabId.requests => TvMyPleyaSection.requests,
     NavigationTabId.downloads => TvMyPleyaSection.downloads,
-    NavigationTabId.settings => TvMyPleyaSection.settings,
+    // Settings is a destination of its own since A-24c, not a Mijn Pleya
+    // section, so `_selectTab(settings)` selects it in the bar.
     _ => null,
   };
 

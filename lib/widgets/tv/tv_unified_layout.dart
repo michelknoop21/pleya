@@ -1281,7 +1281,10 @@ class TvTopNavLayout {
   static const Duration focusDuration = Duration(milliseconds: 160);
 }
 
-/// Mijn Pleya on TV (hoofdstuk 18.1 and north star 08).
+/// Mijn Pleya on TV (hoofdstuk 18.1), and the tiles and ink tiers other TV
+/// surfaces borrow from it. The A-24c page itself measures in HIG points
+/// (`_Pt` in `tv_my_pleya_screen.dart`); the profile header, server list and
+/// footer tokens left with the A-24b page.
 class TvMyPleyaLayout {
   const TvMyPleyaLayout._();
 
@@ -1292,17 +1295,6 @@ class TvMyPleyaLayout {
   /// Gap under the page heading, and between the groups below it.
   static const double titleGap = 16;
   static const double groupGap = 18;
-
-  /// The profile header row (no card since VIS-0925-C).
-  static const double headerPadding = 18;
-  static const double headerNameFontSize = 22;
-  static const double headerMetaFontSize = 13;
-  static const double headerGap = 16;
-
-  /// The server list on the header's right-hand side.
-  static const double serverRowFontSize = 13;
-  static const double serverRowGap = 6;
-  static const double serverDotSize = 6;
 
   /// A group heading ("Mijn content", "Bibliotheken en bronnen", "Pleya").
   static const double groupLabelFontSize = 14;
@@ -1330,9 +1322,6 @@ class TvMyPleyaLayout {
 
   /// Gap between a tile and its focus ring.
   static const double tileFocusRingGap = 3;
-
-  /// The footer line ("Aangemeld als … · Pleya x.y.z").
-  static const double footerFontSize = 12;
 
   /// Ink tiers on `MonoTokens.text`.
   static const double inkPrimary = 1;

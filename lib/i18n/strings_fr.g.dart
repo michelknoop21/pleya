@@ -1826,11 +1826,9 @@ class _TranslationsTvMyPleyaFr extends TranslationsTvMyPleyaEn {
 	@override String serversOnline({required Object online, required Object total}) => '${online} serveurs sur ${total} en ligne';
 	@override String get noServers => 'Aucun serveur connecté';
 	@override String get statusOnline => 'En ligne';
-	@override String get statusOffline => 'Hors ligne';
 	@override String get servers => 'Serveurs';
 	@override String get activity => 'Activité';
 	@override String get logs => 'Journaux et diagnostic';
-	@override String signedInAs({required Object name, required Object version}) => 'Connecté en tant que ${name} · Pleya ${version}';
 	@override String get watchlistSubtitle => 'Films et séries enregistrés';
 	@override String get requestsSubtitle => 'Demandes et découverte';
 	@override String get downloadsSubtitle => 'Hors ligne et règles de synchronisation';
@@ -1881,7 +1879,6 @@ class _TranslationsSettingsStudioFr extends TranslationsSettingsStudioEn {
 	@override String get yourLibrary => 'Votre bibliothèque';
 	@override String get viewPreview => 'Voir l’aperçu';
 	@override String get playbackExperience => 'Expérience de lecture';
-	@override String get manage => 'Gérer';
 	@override String get yourWatchlist => 'Votre liste';
 	@override String get yourContent => 'Votre contenu';
 	@override String get lightMode => 'Mode clair';
@@ -3775,11 +3772,9 @@ extension on TranslationsFr {
 			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} serveurs sur ${total} en ligne',
 			'tvMyPleya.noServers' => 'Aucun serveur connecté',
 			'tvMyPleya.statusOnline' => 'En ligne',
-			'tvMyPleya.statusOffline' => 'Hors ligne',
 			'tvMyPleya.servers' => 'Serveurs',
 			'tvMyPleya.activity' => 'Activité',
 			'tvMyPleya.logs' => 'Journaux et diagnostic',
-			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Connecté en tant que ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Films et séries enregistrés',
 			'tvMyPleya.requestsSubtitle' => 'Demandes et découverte',
 			'tvMyPleya.downloadsSubtitle' => 'Hors ligne et règles de synchronisation',
@@ -3813,7 +3808,6 @@ extension on TranslationsFr {
 			'settingsStudio.yourLibrary' => 'Votre bibliothèque',
 			'settingsStudio.viewPreview' => 'Voir l’aperçu',
 			'settingsStudio.playbackExperience' => 'Expérience de lecture',
-			'settingsStudio.manage' => 'Gérer',
 			'settingsStudio.yourWatchlist' => 'Votre liste',
 			'settingsStudio.yourContent' => 'Votre contenu',
 			'settingsStudio.lightMode' => 'Mode clair',

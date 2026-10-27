@@ -1,6 +1,7 @@
-/// Big P's entry in Mijn Pleya (mockup 38 A): first tile of the Pleya group,
-/// a portrait instead of a line icon, only when the controller shows him,
-/// and the route back that puts the remote on that tile.
+/// Big P's entry in Mijn Pleya: on the iPhone the first tile of the Pleya
+/// group (mockup 38 A), on Apple TV the large card on the left (A-24c, A10),
+/// only when the controller shows him, and the route back that puts the
+/// remote on that card.
 library;
 
 import 'package:flutter/services.dart';
@@ -11,7 +12,6 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
-import 'package:pleya/screens/my_pleya_shared.dart';
 import 'package:pleya/screens/tv/sections/tv_libraries_screen.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_navigator.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_screen.dart';
@@ -89,7 +89,7 @@ void main() {
       c,
       ChangeNotifierProvider<MultiServerProvider>.value(
         value: servers,
-        child: TvMyPleyaScreen(onOpenSection: (_) {}, onSwitchProfile: () {}, onSignOut: () {}, onExitUp: () {}),
+        child: TvMyPleyaScreen(onOpenSection: (_) {}, onExitUp: () {}),
       ),
     );
 
@@ -99,19 +99,18 @@ void main() {
       await pumpHub(tester);
 
       expect(c.refreshes, 1);
-      expect(find.text(t.assistant.tileTitle), findsOneWidget);
-      // A-24b, northstar 01: the red card on top of the right column, with
-      // Beheer under it.
-      expect(find.byType(BigPCardFace), findsOneWidget);
-      expect(find.text(t.myPleya.openBigP), findsOneWidget);
-      expect(find.text(t.settingsStudio.manage.toUpperCase()), findsOneWidget);
+      // A-24c, A10: the card asks the question, with `Vraag Big P` as its
+      // visible action.
+      expect(find.text(t.tvMyPleya.bigPTitle), findsOneWidget);
+      expect(find.text(t.tvMyPleya.bigPAction), findsOneWidget);
+      expect(hub(tester).availableSections, contains(TvMyPleyaSection.assistant));
     });
 
     testWidgets('no tile while the controller hides Big P', (tester) async {
       c.availability = AssistantAvailability.hidden;
       await pumpHub(tester);
 
-      expect(find.text(t.assistant.tileTitle), findsNothing);
+      expect(find.text(t.tvMyPleya.bigPTitle), findsNothing);
       expect(hub(tester).availableSections, isNot(contains(TvMyPleyaSection.assistant)));
     });
 
@@ -122,10 +121,10 @@ void main() {
       await tester.pump();
 
       expect(focusedLabel(), TvMyPleyaSection.assistant.tileFocusKey);
-      // Big P heads the right column; Instellingen is under it.
+      // A-24c: under Big P is the Snel naar dock, Samen kijken first.
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.pump();
-      expect(focusedLabel(), TvMyPleyaSection.settings.tileFocusKey);
+      expect(focusedLabel(), TvMyPleyaSection.watchTogether.tileFocusKey);
     });
   });
 

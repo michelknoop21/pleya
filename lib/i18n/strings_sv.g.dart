@@ -1826,11 +1826,9 @@ class _TranslationsTvMyPleyaSv extends TranslationsTvMyPleyaEn {
 	@override String serversOnline({required Object online, required Object total}) => '${online} av ${total} servrar online';
 	@override String get noServers => 'Inga servrar anslutna';
 	@override String get statusOnline => 'Online';
-	@override String get statusOffline => 'Offline';
 	@override String get servers => 'Servrar';
 	@override String get activity => 'Aktivitet';
 	@override String get logs => 'Loggar och diagnostik';
-	@override String signedInAs({required Object name, required Object version}) => 'Inloggad som ${name} · Pleya ${version}';
 	@override String get watchlistSubtitle => 'Sparade filmer och serier';
 	@override String get requestsSubtitle => 'Förfrågningar och upptäck';
 	@override String get downloadsSubtitle => 'Offline och synkroniseringsregler';
@@ -1881,7 +1879,6 @@ class _TranslationsSettingsStudioSv extends TranslationsSettingsStudioEn {
 	@override String get yourLibrary => 'Ditt bibliotek';
 	@override String get viewPreview => 'Visa förhandsvisning';
 	@override String get playbackExperience => 'Uppspelningsupplevelse';
-	@override String get manage => 'Hantera';
 	@override String get yourWatchlist => 'Din lista';
 	@override String get yourContent => 'Ditt innehåll';
 	@override String get lightMode => 'Ljust läge';
@@ -3775,11 +3772,9 @@ extension on TranslationsSv {
 			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} av ${total} servrar online',
 			'tvMyPleya.noServers' => 'Inga servrar anslutna',
 			'tvMyPleya.statusOnline' => 'Online',
-			'tvMyPleya.statusOffline' => 'Offline',
 			'tvMyPleya.servers' => 'Servrar',
 			'tvMyPleya.activity' => 'Aktivitet',
 			'tvMyPleya.logs' => 'Loggar och diagnostik',
-			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Inloggad som ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Sparade filmer och serier',
 			'tvMyPleya.requestsSubtitle' => 'Förfrågningar och upptäck',
 			'tvMyPleya.downloadsSubtitle' => 'Offline och synkroniseringsregler',
@@ -3813,7 +3808,6 @@ extension on TranslationsSv {
 			'settingsStudio.yourLibrary' => 'Ditt bibliotek',
 			'settingsStudio.viewPreview' => 'Visa förhandsvisning',
 			'settingsStudio.playbackExperience' => 'Uppspelningsupplevelse',
-			'settingsStudio.manage' => 'Hantera',
 			'settingsStudio.yourWatchlist' => 'Din lista',
 			'settingsStudio.yourContent' => 'Ditt innehåll',
 			'settingsStudio.lightMode' => 'Ljust läge',

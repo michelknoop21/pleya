@@ -5,14 +5,17 @@
 /// top navigation. The route catalogue itself does not move: a destination
 /// still resolves to a [NavigationTabId], so the screens list, the tab state
 /// and every deep link keep working. What changes is which destinations a TV
-/// shows, in which order, and that four of the rail's rows (Libraries,
-/// Watchlist, Requests, Settings) become routes *inside* Mijn Pleya instead of
-/// siblings of Home.
+/// shows, in which order, and that three of the rail's rows (Libraries,
+/// Watchlist, Requests) become routes *inside* Mijn Pleya instead of siblings
+/// of Home.
 ///
 /// The order here is the visual order and it is decided, not derived:
-/// profile · Search · Home · Series · Films · [Live TV] · Mijn Pleya · wordmark
-/// ([DEC-064], hoofdstuk 33's shared shell). Series sits before Films; the
-/// rail's historical Films-then-Series order does not carry over.
+/// profile · Search · Home · Series · Films · [Live TV] · Mijn Pleya ·
+/// Instellingen · wordmark ([DEC-064], hoofdstuk 33's shared shell, A-24c).
+/// Series sits before Films; the rail's historical Films-then-Series order does
+/// not carry over. Instellingen is the one destination A-24c added: Mijn Pleya
+/// became the personal viewing space (northstar `02-Mijn-Pleya-v4`), so
+/// settings, servers, logs and Over Pleya needed a door of their own.
 library;
 
 import '../../i18n/strings.g.dart';
@@ -31,7 +34,8 @@ enum TvDestinationId {
   series,
   movies,
   liveTv,
-  myPleya;
+  myPleya,
+  settings;
 
   /// The route this destination selects.
   ///
@@ -45,6 +49,7 @@ enum TvDestinationId {
     TvDestinationId.movies => NavigationTabId.movies,
     TvDestinationId.liveTv => NavigationTabId.liveTv,
     TvDestinationId.myPleya => NavigationTabId.myPleya,
+    TvDestinationId.settings => NavigationTabId.settings,
   };
 
   /// Drawn as an icon-only control rather than a labelled pill (hoofdstuk 33:
@@ -64,6 +69,7 @@ enum TvDestinationId {
     TvDestinationId.movies => _moviesLabel(),
     TvDestinationId.liveTv => _liveTvLabel(),
     TvDestinationId.myPleya => _myPleyaLabel(),
+    TvDestinationId.settings => _settingsLabel(),
   };
 }
 
@@ -96,8 +102,10 @@ class TvNavConditions {
 ///
 /// Pure, so the ordering and the conditional slot can be tested on their own.
 /// Mijn Pleya is unconditional (hoofdstuk 18.3: "Mijn Pleya zelf verdwijnt
-/// nooit") — it is the only route to Settings, Servers and Sign out on TV, so a
-/// condition that could hide it would be a condition that could strand someone.
+/// nooit"), and so is Instellingen (A-24c): it is the only route to Servers,
+/// Logboeken and Over Pleya on TV, so a condition that could hide it would be a
+/// condition that could strand someone. Sign out lives behind the profile
+/// avatar, which is not a destination.
 ///
 /// Offline (PB-12), Search, Series, Films and Live TV drop out: they resolve
 /// to [NavigationTab.onlineOnly] tabs ([NavigationTab.getVisibleTabs] already
@@ -105,7 +113,9 @@ class TvNavConditions {
 /// pills in the bar would draw a focusable destination whose Select does
 /// nothing. Home stays — [NavigationTab.getVisibleTabs] keeps its tab visible
 /// on TV specifically, because offline Home still has something to show: a
-/// reconnect affordance and the last-known server list.
+/// reconnect affordance and the last-known server list. Instellingen stays as
+/// well: its tab is not online-only, and before A-24c it was reachable offline
+/// through Mijn Pleya.
 List<TvDestinationId> buildTvDestinations(TvNavConditions c) => [
   if (!c.isOffline) TvDestinationId.search,
   TvDestinationId.home,
@@ -113,6 +123,7 @@ List<TvDestinationId> buildTvDestinations(TvNavConditions c) => [
   if (!c.isOffline) TvDestinationId.movies,
   if (c.hasLiveTv && !c.isOffline) TvDestinationId.liveTv,
   TvDestinationId.myPleya,
+  TvDestinationId.settings,
 ];
 
 /// The destination the root Back/Menu contract treats as home (hoofdstuk 7.5
@@ -121,10 +132,11 @@ const TvDestinationId tvRootDestination = TvDestinationId.home;
 
 /// Which destination a [NavigationTabId] shows as active.
 ///
-/// The tab can be something the top navigation has no pill for: Settings,
-/// Watchlist, Requests and Libraries are Mijn Pleya's nested routes on TV
-/// (hoofdstuk 18.2), and Downloads is reachable from there too. They light up
-/// Mijn Pleya rather than nothing, so the bar never claims you are nowhere.
+/// The tab can be something the top navigation has no pill for: Watchlist,
+/// Requests and Libraries are Mijn Pleya's nested routes on TV (hoofdstuk
+/// 18.2), and Downloads is reachable from there too. They light up Mijn Pleya
+/// rather than nothing, so the bar never claims you are nowhere. Settings has
+/// its own pill since A-24c.
 /// Returns null only for a tab no TV shell can reach.
 TvDestinationId? tvDestinationForTab(NavigationTabId tab) => switch (tab) {
   NavigationTabId.search => TvDestinationId.search,
@@ -136,8 +148,8 @@ TvDestinationId? tvDestinationForTab(NavigationTabId tab) => switch (tab) {
   NavigationTabId.libraries ||
   NavigationTabId.watchlist ||
   NavigationTabId.requests ||
-  NavigationTabId.downloads ||
-  NavigationTabId.settings => TvDestinationId.myPleya,
+  NavigationTabId.downloads => TvDestinationId.myPleya,
+  NavigationTabId.settings => TvDestinationId.settings,
 };
 
 // Label getters stay top-level so [TvDestinationId] keeps const-friendly
@@ -148,3 +160,7 @@ String _seriesLabel() => t.unifiedCatalog.seriesTitle;
 String _moviesLabel() => t.unifiedCatalog.moviesTitle;
 String _liveTvLabel() => t.navigation.liveTv;
 String _myPleyaLabel() => t.navigation.myPleya;
+// `t.settings.title`, not `t.common.settings`: the two differ in Dutch
+// ("Instellingen" against "Opties"), and the pill takes the name of the page
+// it opens, the same rule the Mijn Pleya tiles follow.
+String _settingsLabel() => t.settings.title;

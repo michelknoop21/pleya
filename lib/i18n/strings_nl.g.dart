@@ -100,6 +100,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsUnifiedCatalogNl unifiedCatalog = _TranslationsUnifiedCatalogNl._(_root);
 	@override late final _TranslationsTvNavigationNl tvNavigation = _TranslationsTvNavigationNl._(_root);
 	@override late final _TranslationsTvMyPleyaNl tvMyPleya = _TranslationsTvMyPleyaNl._(_root);
+	@override late final _TranslationsTvAccountMenuNl tvAccountMenu = _TranslationsTvAccountMenuNl._(_root);
 	@override late final _TranslationsTvOfflineHomeNl tvOfflineHome = _TranslationsTvOfflineHomeNl._(_root);
 	@override late final _TranslationsTvContextMenuNl tvContextMenu = _TranslationsTvContextMenuNl._(_root);
 	@override late final _TranslationsLanguageSettingsNl languageSettings = _TranslationsLanguageSettingsNl._(_root);
@@ -1415,9 +1416,6 @@ class _TranslationsMyPleyaNl extends TranslationsMyPleyaEn {
 		one: '1 lijst',
 		other: '${n} lijsten',
 	);
-	@override String get bigPTvSubtitle => 'Je persoonlijke kijkassistent';
-	@override String get openBigP => 'Open Big P';
-	@override String get switchProfile => 'Profiel wisselen';
 }
 
 // Path: liveTv
@@ -2505,11 +2503,9 @@ class _TranslationsTvMyPleyaNl extends TranslationsTvMyPleyaEn {
 	@override String serversOnline({required Object online, required Object total}) => '${online} van ${total} servers online';
 	@override String get noServers => 'Geen servers verbonden';
 	@override String get statusOnline => 'Online';
-	@override String get statusOffline => 'Offline';
 	@override String get servers => 'Servers';
 	@override String get activity => 'Activiteit';
 	@override String get logs => 'Logboeken';
-	@override String signedInAs({required Object name, required Object version}) => 'Aangemeld als ${name} · Pleya ${version}';
 	@override String get watchlistSubtitle => 'Bewaarde films en series';
 	@override String get requestsSubtitle => 'Verzoeken en ontdekken';
 	@override String get downloadsSubtitle => 'Offline en synchronisatieregels';
@@ -2526,6 +2522,30 @@ class _TranslationsTvMyPleyaNl extends TranslationsTvMyPleyaEn {
 	@override String get logoutSubtitle => 'Afmelden op dit apparaat';
 	@override late final _TranslationsTvMyPleyaSemanticsNl semantics = _TranslationsTvMyPleyaSemanticsNl._(_root);
 	@override String libraryCount({required Object count}) => '${count} bibliotheken';
+	@override String get eyebrow => 'Jouw persoonlijke ruimte';
+	@override String heading({required Object name}) => 'Jouw wereld, ${name}.';
+	@override String get headingNoName => 'Jouw wereld.';
+	@override String get subline => 'Bewaar wat je mooi vindt. Vind het moeiteloos terug.';
+	@override String get bigPEyebrow => 'Big P · jouw assistent';
+	@override String get bigPTitle => 'Wat wil je kijken?';
+	@override String get bigPSubtitle => 'Vraag, ontdek en vind sneller iets goeds.';
+	@override String get bigPAction => 'Vraag Big P';
+	@override String get quickLinks => 'Snel naar';
+}
+
+// Path: tvAccountMenu
+class _TranslationsTvAccountMenuNl extends TranslationsTvAccountMenuEn {
+	_TranslationsTvAccountMenuNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Profiel';
+	@override String signedInAs({required Object name}) => 'Je bent ingelogd als ${name}';
+	@override String get switchProfile => 'Wissel profiel';
+	@override String get switchProfileSubtitle => 'Kies een ander profiel';
+	@override String get logout => 'Uitloggen';
+	@override String get logoutSubtitle => 'Bevestig voordat je uitlogt';
 }
 
 // Path: tvOfflineHome
@@ -2756,7 +2776,6 @@ class _TranslationsSettingsStudioNl extends TranslationsSettingsStudioEn {
 	@override String get yourLibrary => 'Jouw bibliotheek';
 	@override String get viewPreview => 'Bekijk voorbeeld';
 	@override String get playbackExperience => 'Afspeelervaring';
-	@override String get manage => 'Beheer';
 	@override String get yourWatchlist => 'Je kijklijst';
 	@override String get yourContent => 'Jouw content';
 	@override String get lightMode => 'Lichte modus';
@@ -5593,9 +5612,6 @@ extension on TranslationsNl {
 			'myPleya.librariesCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 bibliotheek', other: '${n} bibliotheken', ), 
 			'myPleya.collectionsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 collectie', other: '${n} collecties', ), 
 			'myPleya.playlistsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 lijst', other: '${n} lijsten', ), 
-			'myPleya.bigPTvSubtitle' => 'Je persoonlijke kijkassistent',
-			'myPleya.openBigP' => 'Open Big P',
-			'myPleya.switchProfile' => 'Profiel wisselen',
 			'liveTv.serverNotAvailable' => 'Live TV-server is niet beschikbaar.',
 			'liveTv.serverNotConnected' => 'Live TV-server is niet verbonden.',
 			'liveTv.title' => 'Live TV',
@@ -6048,11 +6064,11 @@ extension on TranslationsNl {
 			'metadataEdit.selectBackground' => 'Achtergrond selecteren',
 			'metadataEdit.selectLogo' => 'Logo selecteren',
 			'metadataEdit.selectSquareArt' => 'Vierkante afbeelding selecteren',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.fromUrl' => 'Vanaf URL',
 			'metadataEdit.uploadFile' => 'Bestand uploaden',
 			'metadataEdit.enterImageUrl' => 'Voer afbeeldings-URL in',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.imageUrl' => 'Afbeeldings-URL',
 			'metadataEdit.metadataUpdated' => 'Metadata bijgewerkt',
 			'metadataEdit.metadataUpdateFailed' => 'Metadata bijwerken mislukt',
@@ -6562,11 +6578,11 @@ extension on TranslationsNl {
 			'unifiedCatalog.states.emptyTitle' => 'Deze catalogus is leeg',
 			'unifiedCatalog.states.emptyBody' => 'Geen zichtbare bibliotheek bevat iets voor deze pagina.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Niets voldoet aan deze filters',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.states.filterEmptyBody' => 'Wis een filter om meer titels te zien.',
 			'unifiedCatalog.states.clearFilters' => 'Filters wissen',
 			'unifiedCatalog.states.errorTitle' => 'De catalogus kon niet worden geladen',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.states.errorBody' => 'Geen enkele server antwoordde. Controleer je verbinding en probeer het opnieuw.',
 			'unifiedCatalog.states.partialOne' => '1 bibliotheek antwoordde niet',
 			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} bibliotheken antwoordden niet',
@@ -6662,11 +6678,9 @@ extension on TranslationsNl {
 			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} van ${total} servers online',
 			'tvMyPleya.noServers' => 'Geen servers verbonden',
 			'tvMyPleya.statusOnline' => 'Online',
-			'tvMyPleya.statusOffline' => 'Offline',
 			'tvMyPleya.servers' => 'Servers',
 			'tvMyPleya.activity' => 'Activiteit',
 			'tvMyPleya.logs' => 'Logboeken',
-			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Aangemeld als ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Bewaarde films en series',
 			'tvMyPleya.requestsSubtitle' => 'Verzoeken en ontdekken',
 			'tvMyPleya.downloadsSubtitle' => 'Offline en synchronisatieregels',
@@ -6684,6 +6698,21 @@ extension on TranslationsNl {
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
 			'tvMyPleya.libraryCount' => ({required Object count}) => '${count} bibliotheken',
+			'tvMyPleya.eyebrow' => 'Jouw persoonlijke ruimte',
+			'tvMyPleya.heading' => ({required Object name}) => 'Jouw wereld, ${name}.',
+			'tvMyPleya.headingNoName' => 'Jouw wereld.',
+			'tvMyPleya.subline' => 'Bewaar wat je mooi vindt. Vind het moeiteloos terug.',
+			'tvMyPleya.bigPEyebrow' => 'Big P · jouw assistent',
+			'tvMyPleya.bigPTitle' => 'Wat wil je kijken?',
+			'tvMyPleya.bigPSubtitle' => 'Vraag, ontdek en vind sneller iets goeds.',
+			'tvMyPleya.bigPAction' => 'Vraag Big P',
+			'tvMyPleya.quickLinks' => 'Snel naar',
+			'tvAccountMenu.title' => 'Profiel',
+			'tvAccountMenu.signedInAs' => ({required Object name}) => 'Je bent ingelogd als ${name}',
+			'tvAccountMenu.switchProfile' => 'Wissel profiel',
+			'tvAccountMenu.switchProfileSubtitle' => 'Kies een ander profiel',
+			'tvAccountMenu.logout' => 'Uitloggen',
+			'tvAccountMenu.logoutSubtitle' => 'Bevestig voordat je uitlogt',
 			'tvOfflineHome.title' => 'Geen server bereikbaar',
 			'tvOfflineHome.body' => 'Geen van je servers reageert nu. Verbind opnieuw zodra een van hen weer online is. Mijn Pleya en Instellingen blijven ondertussen bereikbaar.',
 			'tvOfflineHome.manageServers' => 'Servers beheren',
@@ -7066,6 +7095,8 @@ extension on TranslationsNl {
 			'assistant.steps.findTitle' => 'Titel op beschrijving zoeken',
 			'assistant.steps.recallMemory' => 'Geheugen raadplegen',
 			'assistant.steps.rememberFact' => 'Herinnering klaarzetten',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.steps.forgetFact' => 'Vergeten klaarzetten',
 			'assistant.steps.fallback' => 'Bezig',
 			'assistant.jobs.scanLibrary.running' => 'Scan loopt',
@@ -7076,8 +7107,6 @@ extension on TranslationsNl {
 			'assistant.jobs.retryJob.running' => 'Taak loopt',
 			'assistant.jobs.retryJob.done' => 'Taak klaar',
 			'assistant.jobs.retryJob.failed' => 'Taak mislukt',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.jobs.retryJob.background' => 'Taak loopt nog op de achtergrond',
 			'assistant.jobs.retryJob.unknown' => 'Taak: status niet meer vast te stellen',
 			'assistant.jobs.kinds.scan_library' => 'Bibliotheek scannen',
@@ -7383,7 +7412,6 @@ extension on TranslationsNl {
 			'settingsStudio.yourLibrary' => 'Jouw bibliotheek',
 			'settingsStudio.viewPreview' => 'Bekijk voorbeeld',
 			'settingsStudio.playbackExperience' => 'Afspeelervaring',
-			'settingsStudio.manage' => 'Beheer',
 			'settingsStudio.yourWatchlist' => 'Je kijklijst',
 			'settingsStudio.yourContent' => 'Jouw content',
 			'settingsStudio.lightMode' => 'Lichte modus',

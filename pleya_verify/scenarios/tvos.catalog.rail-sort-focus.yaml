@@ -36,6 +36,10 @@ steps:
   - walk: {direction: right, expect: [nav.series], timeout: 40000, settle: 800}
   - press: select
   - settle: 1500
+  # A-24c (LEESMIJ-v4): Select changed the page and left the remote on
+  # the pill; Down takes it to the landing.
+  - press: down
+  - settle: 1500
   # Series is a discovery landing, not the catalog: rails plus a "view all"
   # button, and Alle series is one Select further. The first run's focus trace
   # named the node (`TvDiscoveryViewAll`) after this press, which is how the

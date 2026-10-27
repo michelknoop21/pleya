@@ -21,6 +21,13 @@ target: tvos-sim
 # once (the pre-7786a952 code) the held LEFT from Series lands on Search, not
 # on Home, and this scenario is red. The fix parks the enable until the key is
 # up.
+#
+# A-24c (LEESMIJ-v4, review 557-I4): the ring moving no longer changes the
+# page, so landing on Home with an arrow raises nothing; the enable now comes
+# with Select on Home. A held Select is the same window as a held arrow: an
+# enable while it is down would re-tap it, and the second Select on a Home
+# that is now active would carry the remote into the page. The steps below
+# hold both the arrows and that Select.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
@@ -31,49 +38,52 @@ steps:
   - settle: 3500
   - assert: {id: nav.discover, focused: true, state: {active: true}}
 
-  # Off Home first. Leaving Home disables the passthrough, and a disable
-  # releases nothing, so a short press is enough here.
+  # Off Home first: the ring to Series and Select, which takes Home off
+  # screen and disables the passthrough (a disable releases nothing).
   - press: right
   - wait_until: {focused: nav.series, timeout: 5000}
+  - press: select
+  - wait_until: {id: nav.series, state: {active: true}, timeout: 8000}
   - settle: 600
-  - assert: {id: nav.series, focused: true, state: {active: true}}
   - snapshot: 00-series
 
-  # --- Held LEFT onto Home: one step, not two -----------------------------
+  # --- Held LEFT onto Home: one step, not two, and the page stays ---------
   - press: {key: left, holdMs: 250}
   - settle: 900
-  - assert: {id: nav.discover, focused: true, state: {active: true}}
-  - assert: {id: nav.search, state: {active: false}}
-  # The app-side contract, measurable here: the enable that this landing
-  # raises waited for the key-up (one parked flush) and nothing went to the
-  # engine while the arrow was down.
-  - assert: {id: tvos.menu_passthrough, state: {enabled: true, parked: false, parkedFlushes: 1, enablesSentWhileKeysHeld: 0}}
+  - assert: {id: nav.discover, focused: true, state: {active: false}}
+  - assert: {id: nav.series, state: {active: true}}
+  - assert: {id: tvos.menu_passthrough, state: {enabled: false, enablesSentWhileKeysHeld: 0}}
   - snapshot: 01-held-left-lands-on-home
 
-  # --- Held RIGHT off Home: the disable path, must stay a single step ------
+  # --- Held Select on Home: Home on screen, the remote stays on the pill --
+  # The enable this raises waits for the key-up (one parked flush), so the
+  # Select is not re-tapped into the page.
+  - press: {key: select, holdMs: 250}
+  - settle: 900
+  - assert: {id: nav.discover, focused: true, state: {active: true}}
+  - assert: {id: tvos.menu_passthrough, state: {enabled: true, parked: false, parkedFlushes: 1, enablesSentWhileKeysHeld: 0}}
+  - snapshot: 02-held-select-home
+
+  # --- Held RIGHT off Home: a single step ---------------------------------
   - press: {key: right, holdMs: 250}
   - settle: 900
-  - assert: {id: nav.series, focused: true, state: {active: true}}
-  - assert: {id: nav.movies, state: {active: false}}
-  - snapshot: 02-held-right-one-step
+  - assert: {id: nav.series, focused: true, state: {active: false}}
+  - assert: {id: nav.discover, state: {active: true}}
 
-  # --- Held LEFT onto Home from the other side --------------------------
-  # Search is left of Home. Landing on Home from Search raises the passthrough
-  # too, and a second step here would end on Series.
+  # --- Held LEFT twice: Home, then Search, one step each -----------------
   - press: {key: left, holdMs: 250}
   - wait_until: {focused: nav.discover, timeout: 5000}
   - settle: 600
   - press: {key: left, holdMs: 250}
   - wait_until: {focused: nav.search, timeout: 5000}
   - settle: 600
-  - assert: {id: nav.search, focused: true, state: {active: true}}
+  - assert: {id: nav.search, focused: true, state: {active: false}}
   - press: {key: right, holdMs: 250}
   - settle: 900
   - assert: {id: nav.discover, focused: true, state: {active: true}}
   - assert: {id: nav.series, state: {active: false}}
-  # Third landing on Home under a held key (Series to Home above, and now
-  # Search to Home): a parked flush per landing, still no enable while held.
-  # The disables on leaving Home go out at once and are not counted; a
-  # disable releases nothing in the engine.
+  # Menu is the system's only with the ring on the page's own pill (review
+  # 557-M6), so each held landing back on Home (Select, from Series, from
+  # Search) raised a parked enable: three flushes, none sent while held.
   - assert: {id: tvos.menu_passthrough, state: {enabled: true, parked: false, parkedFlushes: 3, enablesSentWhileKeysHeld: 0}}
   - snapshot: 03-held-right-from-search-lands-on-home

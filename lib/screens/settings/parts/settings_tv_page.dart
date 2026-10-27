@@ -56,6 +56,8 @@ extension _SettingsTvPage on _SettingsScreenState {
   Widget _buildTvSettings(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
     final active = context.watch<ActiveProfileProvider>().active;
+    // Read here, while this State builds, for the Servers row's status line.
+    final servers = context.watch<MultiServerProvider?>();
 
     // A settings subpage opens inside the shell. `SettingsScreen` is itself a
     // nested route already (`tvMyPleyaNestedRoute`), so pushing its own
@@ -185,6 +187,9 @@ extension _SettingsTvPage on _SettingsScreenState {
             id: 'integrations',
             title: t.settingsStudio.integrations,
             icon: Symbols.cloud_rounded,
+            // Review 557-M2: the dot on Instellingen in the top bar leads here,
+            // where the Servers row names the session that expired.
+            needsAttention: servers?.hasAuthErrorServers ?? false,
             // Trackers, Aanvragen and Tautulli as on the iPhone's Koppelingen
             // page, then Servers en bronnen (series `tvos/10`).
             body: Column(
@@ -196,6 +201,12 @@ extension _SettingsTvPage on _SettingsScreenState {
                   padding: EdgeInsets.only(top: 28 * TvHig.of(context)),
                   child: TvStudioHeading(t.settingsStudio.serversAndSources),
                 ),
+                // A-24c: the Servers page Mijn Pleya used to open, whole.
+                // `TvServersPage` shows more than the list under it (online,
+                // offline or a new sign-in, libraries, user) and asks for the
+                // status before it offers to remove anything, so the list
+                // alone is not the same page (LEESMIJ-v4, Servers parity).
+                rows([_tvServersRow(servers)]),
                 const ConnectionsSection(),
               ],
             ),
@@ -353,6 +364,57 @@ extension _SettingsTvPage on _SettingsScreenState {
       ),
     ]),
   ];
+
+  /// Instellingen ▸ Koppelingen ▸ Servers (A-24c). Opened inside the shell
+  /// under the collapsible bar like every other page from here (A-24), and
+  /// without the Studio wrap: it is the page Mijn Pleya opened before, and it
+  /// keeps that page's look.
+  ///
+  /// An expired server session is named in the row's value, as the amber line
+  /// on the A-24b Mijn Pleya page did (review 557-M2): that line is gone, and
+  /// the dot in the top bar has to lead to something that says which server.
+  TvMenuItem _tvServersRow(MultiServerProvider? servers) {
+    final total = servers?.totalServerCount ?? 0;
+    final authErrors = servers?.authErrorServers ?? const [];
+    return TvMenuItem(
+      key: _SettingsScreenState._kServers,
+      icon: Symbols.dns_rounded,
+      title: t.tvMyPleya.servers,
+      value: authErrors.isNotEmpty
+          ? (authErrors.length == 1
+                ? t.connections.sessionExpiredOne(name: authErrors.first.displayName)
+                : t.connections.sessionExpiredMany(count: '${authErrors.length}'))
+          : total == 0
+          ? t.tvMyPleya.noServers
+          : t.tvMyPleya.serversOnline(online: '${servers?.onlineServerCount ?? 0}', total: '$total'),
+      onSelect: _openTvServersPage,
+    );
+  }
+
+  void _openTvServersPage() {
+    Widget page(BuildContext _) => const TvServersPage();
+    if (openTvContentRoute(id: 'tvSettings_servers', builder: page, topNav: kTvSettingsTopNav) != null) return;
+    Navigator.push(context, MaterialPageRoute<void>(builder: page));
+  }
+
+  /// "Servers beheren" from the shell: Koppelingen chosen, the remote on the
+  /// Servers row, then the Servers page, as if the viewer had walked there.
+  /// The row is in the content scope's history before the page opens, so Menu
+  /// from the page lands on it; opened straight from Home the history held
+  /// only a button that is offstage now, and Menu left the remote nowhere.
+  void _openTvServersFromShell() {
+    _tvCategories.currentState?.choose('integrations');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final row = _focusTracker.get(_SettingsScreenState._kServers);
+      if (row.context != null && row.canRequestFocus) row.requestFocus();
+      // After the row's focus request is applied, so the page's own entry
+      // does not overtake it.
+      scheduleMicrotask(() {
+        if (mounted) _openTvServersPage();
+      });
+    });
+  }
 
   /// A-24b focus restore on the TV page: the categories remember whether the
   /// remote last stood on the rail or on a row, and return it there. False
