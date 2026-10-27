@@ -33,6 +33,7 @@ import '../focus/focus_theme.dart';
 import '../focus/key_event_utils.dart';
 import '../focus/input_mode_tracker.dart';
 import '../utils/detail_header_layout.dart';
+import '../utils/index_order.dart';
 import '../utils/media_server_timeouts.dart';
 import '../media/item_watcher.dart';
 import '../profiles/active_profile_provider.dart';
@@ -1908,18 +1909,18 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         serverId: _metadata.serverId,
         serverName: _metadata.serverName,
       );
-    }).toList()..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
+    }).toList()..sort(compareByIndexNullsLast);
 
     // Create focus nodes for season tabs and cache episodes per season
     final seasons = <String, MediaItem>{
       for (final season in downloadSeasons) season.id: season,
       for (final season in context.read<LocalLibraryProvider?>()?.children(_metadata) ?? <MediaItem>[])
         if (season.isSeason) season.id: season,
-    }.values.toList()..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
+    }.values.toList()..sort(compareByIndexNullsLast);
     _updateSeasonTabFocusNodes(seasons.length);
     for (final entry in seasonMap.entries) {
       final seasonRatingKey = entry.value.first.parentId ?? '';
-      final sortedEpisodes = entry.value..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
+      final sortedEpisodes = entry.value..sort(compareByIndexNullsLast);
       _seasonEpisodePager.completeFirstPage(seasonRatingKey, sortedEpisodes, sortedEpisodes.length);
     }
 
@@ -1952,7 +1953,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         if (item.serverId == _metadata.serverId) item.globalKey: item,
     }.values.toList();
     final seasonEpisodes = allEpisodes.where((ep) => ep.parentIndex == _metadata.index).toList()
-      ..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
+      ..sort(compareByIndexNullsLast);
 
     setState(() {
       _allEpisodes = _allEpisodes.completeInitialLoad(seasonEpisodes, seasonEpisodes.length);
@@ -2027,7 +2028,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         // Offline: load from downloads (already the complete set).
         final allEpisodes = _storedOfflineEpisodes();
         final seasonEpisodes = allEpisodes.where((ep) => ep.parentIndex == season.index).toList()
-          ..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
+          ..sort(compareByIndexNullsLast);
         _completeSeasonEpisodesLoad(
           seasonIndex: seasonIndex,
           seasonId: seasonId,
@@ -3604,7 +3605,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         final allEpisodes = downloadProvider.getDownloadedEpisodesForShow(_metadata.id);
         // Filter to episodes of this season
         final episodes = allEpisodes.where((ep) => ep.parentIndex == firstSeason.index).toList()
-          ..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
+          ..sort(compareByIndexNullsLast);
         firstEpisode = episodes.isEmpty ? null : episodes.first;
       } else {
         final client = getServerBoundMediaClient(context);
@@ -5589,12 +5590,11 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     if (metadata.isShow) {
       if (_onDeckEpisode != null) {
         final episode = _onDeckEpisode!;
-        final seasonNum = episode.parentIndex ?? 0;
-        final episodeNum = episode.index ?? 0;
 
         // Use the same format for both play and resume
-        // (icon will indicate the difference)
-        return t.discover.playEpisode(season: seasonNum.toString(), episode: episodeNum.toString());
+        // (icon will indicate the difference). An episode without a number
+        // gets a plain "Play" instead of a made-up S1E0.
+        return playEpisodeLabel(season: episode.parentIndex, episode: episode.index);
       } else {
         final seasonNum = defaultPlaybackSeason(_seasons)?.index ?? 1;
         return t.discover.playEpisode(season: seasonNum.toString(), episode: '1');

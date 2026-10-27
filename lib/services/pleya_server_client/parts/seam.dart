@@ -20,10 +20,13 @@ mixin _PleyaServerRequests {
   PleyaCapabilities get wireCapabilities;
 
   /// GET a protocol path and hand back its JSON object, or null.
-  Future<Map<String, dynamic>?> _getJson(
+  Future<Map<String, dynamic>?> _getJson(String path, {Map<String, dynamic>? queryParameters, Duration? timeout});
+
+  /// [_getJson] plus the protocol error code of a failed answer, or null when
+  /// there was none (offline, transport failure, or success).
+  Future<({Map<String, dynamic>? json, String? errorCode})> _getJsonDetailed(
     String path, {
     Map<String, dynamic>? queryParameters,
-    Duration? timeout,
     AbortController? abort,
   });
 

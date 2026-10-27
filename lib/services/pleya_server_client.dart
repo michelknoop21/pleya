@@ -457,20 +457,31 @@ class PleyaServerClient
     Map<String, dynamic>? queryParameters,
     Duration? timeout,
     AbortController? abort,
+  }) async => (await _getJsonDetailed(path, queryParameters: queryParameters, timeout: timeout, abort: abort)).json;
+
+  /// Like [_getJson], but also says which protocol error code a failed answer
+  /// carried. A caller that must tell "this cursor is stale" from "the network
+  /// is down" needs the code; everyone else keeps reading null as failure.
+  @override
+  Future<({Map<String, dynamic>? json, String? errorCode})> _getJsonDetailed(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    Duration? timeout,
+    AbortController? abort,
   }) async {
-    if (_offlineMode) return null;
+    if (_offlineMode) return (json: null, errorCode: null);
     try {
       final response = await _authorizedGet(path, queryParameters: queryParameters, timeout: timeout, abort: abort);
       if (response.statusCode >= 400) {
         final error = PleyaError.tryParse(response.data);
         appLogger.d('PleyaServerClient: $path -> ${response.statusCode} ${error?.code ?? ''}');
-        return null;
+        return (json: null, errorCode: error?.code);
       }
       final data = response.data;
-      return data is Map<String, dynamic> ? data : null;
+      return (json: data is Map<String, dynamic> ? data : null, errorCode: null);
     } catch (e) {
       appLogger.d('PleyaServerClient: $path failed', error: e);
-      return null;
+      return (json: null, errorCode: null);
     }
   }
 }
