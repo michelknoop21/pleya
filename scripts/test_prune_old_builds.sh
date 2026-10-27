@@ -60,4 +60,22 @@ done
 run >/dev/null
 for p in "${gone[@]}"; do [[ ! -e "$p" ]] || { echo "FOUT: $p staat er nog"; exit 1; }; done
 for p in "${kept[@]}"; do [[ -e "$p" ]] || { echo "FOUT: $p is gewist"; exit 1; }; done
+# link_build_dirs.sh in een eigen nep-worktree: een kapotte symlink (doel
+# opgeruimd, ook een doel onder een andere sleutel) wordt hersteld en wijst
+# daarna naar de doelmap van deze worktree; een heel symlink blijft ongemoeid.
+mkdir -p ssd wt/scripts && cp "$(dirname "$script")/link_build_dirs.sh" wt/scripts/
+root=$(cd wt && pwd); key="${root//\//_}"; key="${key#.}"; bh="$sandbox/ssd/builds"
+mkdir -p wt/tvos "$bh/heel"; touch "$bh/heel/f"
+ln -s "$bh/$key/build" wt/build                  # doel bestaat niet
+ln -s "$bh/andere-sleutel/tvos/build" wt/tvos/build   # doel bestaat niet, andere sleutel
+ln -s "$bh/heel" wt/.build                       # heel
+HOME="$sandbox/home" PLEYA_BUILD_HOME="$bh" wt/scripts/link_build_dirs.sh
+for rel in build tvos/build; do
+  [[ -L "wt/$rel" && -d "wt/$rel" ]] || { echo "FOUT: kapotte symlink $rel niet hersteld"; exit 1; }
+  [[ "$(readlink "wt/$rel")" == "$bh/$key/$rel" ]] || { echo "FOUT: $rel wijst naar $(readlink "wt/$rel")"; exit 1; }
+done
+[[ "$(readlink wt/.build)" == "$bh/heel" && -e "$bh/heel/f" ]] || { echo "FOUT: heel symlink .build is aangeraakt"; exit 1; }
+HOME="$sandbox/home" PLEYA_BUILD_HOME="$bh" wt/scripts/link_build_dirs.sh   # tweede run verandert niets
+[[ "$(readlink wt/build)" == "$bh/$key/build" ]] || { echo "FOUT: tweede run wijzigde build"; exit 1; }
+
 echo "test_prune_old_builds: OK"
