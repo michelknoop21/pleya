@@ -6,6 +6,7 @@
 /// `_selectTvDestination`, `_selectTab` and `_openAccountMenuFromShell`.
 library;
 
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -13,6 +14,8 @@ import 'package:pleya/navigation/tv/tv_destination.dart';
 import 'package:pleya/screens/profile/profile_switch_screen.dart';
 import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
 import 'package:pleya/screens/settings/settings_screen.dart';
+import 'package:pleya/screens/tv/sections/tv_servers_page.dart';
+import 'package:pleya/screens/tv/tv_offline_home_screen.dart';
 import 'package:pleya/screens/tv/tv_root_shell.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_screen.dart';
 import 'package:pleya/services/settings_service.dart';
@@ -154,6 +157,39 @@ void main() {
 
     expect(find.byType(TvAccountMenu), findsNothing);
     expect(h.shell.navNodes.isFocused(tvNavProfileFocusKey), isTrue);
+
+    await h.dispose(tester);
+  });
+
+  // Review 557-I2: "Servers beheren" used to select Instellingen and leave
+  // the remote on the offstage button, with the bar collapsed and no ring.
+  testWidgets('Servers beheren on the offline Home opens Koppelingen > Servers with the remote in it', (tester) async {
+    final h = await pumpTvMainScreen(tester);
+    h.offline.set(true);
+    await h.settle();
+    expect(find.byType(TvOfflineHomeScreen), findsOneWidget);
+
+    final button = find.text(t.tvOfflineHome.manageServers);
+    expect(button, findsOneWidget);
+    Focus.of(tester.element(button)).requestFocus();
+    await h.settle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await h.settle();
+    await h.settle();
+
+    expect(h.shell.coordinator.active, TvDestinationId.settings);
+    expect(h.shell.coordinator.activeNestedRoute?.id, 'tvSettings_servers');
+    expect(h.shell.coordinator.activeNestedRoute?.topNav, TvTopNavPresentation.collapsible);
+    final focused = FocusManager.instance.primaryFocus!;
+    expect(focused.context, isNotNull);
+    expect(
+      find.ancestor(
+        of: find.byElementPredicate((e) => identical(e, focused.context)),
+        matching: find.byType(TvServersPage),
+      ),
+      findsOneWidget,
+      reason: 'the remote is inside the Servers page, on ${focused.debugLabel}',
+    );
 
     await h.dispose(tester);
   });

@@ -21,6 +21,8 @@ import '../navigation/tv/tv_live_tv_capability.dart';
 import '../navigation/tv/tv_content_focus_authority.dart';
 import '../navigation/tv/tv_content_route_registry.dart';
 import '../navigation/tv/tv_navigation_coordinator.dart';
+import '../widgets/settings/settings_studio_theme.dart' show kTvSettingsTopNav;
+import 'tv/sections/tv_servers_page.dart';
 import '../navigation/tv/tv_nested_surface.dart';
 import 'tv/tv_movies_screen.dart';
 import 'tv/tv_series_screen.dart';
@@ -1550,11 +1552,11 @@ class _MainScreenState extends State<MainScreen>
           NavigationTabId.discover when _isTvShell && offline => TvOfflineHomeScreen(
             isReconnecting: _isReconnecting,
             onReconnect: _triggerReconnect,
-            onManageServers: () => _selectTab(NavigationTabId.settings),
+            onManageServers: _manageServers,
           ),
           NavigationTabId.discover => DiscoverScreen(
             key: _discoverKey,
-            onManageServers: () => _selectTab(NavigationTabId.settings),
+            onManageServers: _manageServers,
             onOpenSearch: _openSearch,
           ),
           // Fase 6 of docs/tvos-unified-experience.md (hoofdstuk 10.2a,
@@ -1578,12 +1580,12 @@ class _MainScreenState extends State<MainScreen>
                   ),
           NavigationTabId.movies when !_isPhone => TvMoviesLandingScreen(
             landingKey: _moviesKey,
-            onManageServers: () => _selectTab(NavigationTabId.settings),
+            onManageServers: _manageServers,
             onOpenAll: () => _openTvCompleteCatalog(TvDestinationId.movies),
           ),
           NavigationTabId.series when !_isPhone => TvSeriesLandingScreen(
             landingKey: _seriesKey,
-            onManageServers: () => _selectTab(NavigationTabId.settings),
+            onManageServers: _manageServers,
             onOpenAll: () => _openTvCompleteCatalog(TvDestinationId.series),
           ),
           // The phone gets the fase-2 landings; TV renders Films and Series
@@ -1617,7 +1619,7 @@ class _MainScreenState extends State<MainScreen>
           NavigationTabId.liveTv => LiveTvScreen(key: _liveTvKey),
           NavigationTabId.search => SearchScreen(
             key: _searchKey,
-            onManageServers: () => _selectTab(NavigationTabId.settings),
+            onManageServers: _manageServers,
             onBack: _isPhone ? _closeSearch : null,
           ),
           NavigationTabId.requests when _isPhone => SeerrDiscoverScreen(
@@ -2537,13 +2539,13 @@ class _MainScreenState extends State<MainScreen>
         builder: (context) => destination == TvDestinationId.series
             ? TvSeriesScreen(
                 catalogKey: _tvNav.nestedRoutesFor(destination).last.screenKey,
-                onManageServers: () => _selectTab(NavigationTabId.settings),
+                onManageServers: _manageServers,
                 restoreFrom: _tvNav.contentFocusFor(destination),
                 onRemember: (place) => _tvNav.rememberContentFocus(destination, place),
               )
             : TvMoviesScreen(
                 catalogKey: _tvNav.nestedRoutesFor(destination).last.screenKey,
-                onManageServers: () => _selectTab(NavigationTabId.settings),
+                onManageServers: _manageServers,
                 restoreFrom: _tvNav.contentFocusFor(destination),
                 onRemember: (place) => _tvNav.rememberContentFocus(destination, place),
               ),
@@ -2644,6 +2646,24 @@ class _MainScreenState extends State<MainScreen>
     }
 
     Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+  }
+
+  /// "Servers beheren" from a screen with nothing reachable (hoofdstuk 14.7).
+  ///
+  /// On TV Instellingen is its own destination since A-24c, and selecting a
+  /// destination deliberately leaves the remote where it is, which here was
+  /// on a button that just went offstage: Instellingen showed with the bar
+  /// collapsed and no ring anywhere (review 557-I2). So the shell opens
+  /// Koppelingen > Servers, the page the button is about, on top of
+  /// Instellingen under its collapsible bar, and puts the remote in it. Menu
+  /// steps back to Instellingen. Elsewhere it is the settings tab as before.
+  void _manageServers() {
+    if (!_selectTab(NavigationTabId.settings) || !_isTvShell) return;
+    unawaited(
+      _pushTvContentRoute(
+        TvNestedRoute(id: 'tvSettings_servers', builder: (_) => const TvServersPage(), topNav: kTvSettingsTopNav),
+      ),
+    );
   }
 
   /// Bibliotheken from anywhere below the shell; on TV `_selectTab` turns it
