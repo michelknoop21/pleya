@@ -1,4 +1,6 @@
-/// One destination in [TvTopNavigation]: a pill that is white when active,
+/// One destination in [TvTopNavigation]. Apple TV delegates all marking to
+/// the bar's single moving glass selector. Other TVs keep the existing
+/// pill that is white when active,
 /// quiet text when idle, with a white ring for focus.
 ///
 /// Glass on (LG-04): the pills sit on the bar's glass capsule. Idle text goes
@@ -21,6 +23,7 @@ import '../../theme/glass/glass_settings.dart';
 import '../../theme/glass/glass_text.dart';
 import '../../theme/mono_theme.dart';
 import '../../theme/mono_tokens.dart';
+import '../../utils/platform_detector.dart';
 import 'tv_unified_layout.dart';
 
 /// Idle label ink on the glass capsule (LG-04): brighter than
@@ -40,6 +43,7 @@ class TvTopNavItem extends StatelessWidget {
     super.key,
     required this.destination,
     required this.isActive,
+    this.isSelector = false,
     required this.needsAttention,
     required this.node,
     required this.scale,
@@ -52,6 +56,7 @@ class TvTopNavItem extends StatelessWidget {
 
   final TvDestinationId destination;
   final bool isActive;
+  final bool isSelector;
   final bool needsAttention;
   final FocusNode node;
   final double scale;
@@ -68,19 +73,20 @@ class TvTopNavItem extends StatelessWidget {
     final glass = glassTierFor(context) != GlassTier.off;
     // The one place the ring gives way (docs/liquid-glass-mockups-2026-09.md,
     // Contrast): glass on, white pill. The child draws focus itself.
-    final delegateFocus = glass && isActive;
+    final singleSelector = PlatformDetector.isAppleTV();
+    final delegateFocus = singleSelector || (glass && isActive);
     final idleInk = tk.text.withValues(alpha: glass ? kTvNavGlassInactiveInk : TvTopNavLayout.inactiveInk);
-    final ink = isActive ? tk.bg : idleInk;
+    final ink = singleSelector ? Colors.white : (isActive ? tk.bg : idleInk);
     // VIS-0925-D: the drop shadow keeps light ink legible on the dark plate.
     // On the Light plate the ink is dark and a dark shadow only smears it.
-    final shadows = glass && !isActive && !tk.isLight ? kGlassTextShadows : null;
+    final shadows = singleSelector || (glass && !isActive && !tk.isLight) ? kGlassTextShadows : null;
 
     Widget pill(bool activeFocused) => AnimatedContainer(
       duration: TvTopNavLayout.focusDuration,
       curve: Curves.easeOut,
       decoration: ShapeDecoration(
         shape: shape,
-        color: isActive ? tk.text : Colors.transparent,
+        color: !singleSelector && isActive ? tk.text : Colors.transparent,
         shadows: activeFocused ? const [kTvNavGlassActiveFocusShadow] : null,
       ),
       padding: EdgeInsets.symmetric(
@@ -112,7 +118,7 @@ class TvTopNavItem extends StatelessWidget {
     Widget body = Stack(
       clipBehavior: Clip.none,
       children: [
-        if (delegateFocus)
+        if (delegateFocus && !singleSelector)
           Builder(
             builder: (context) {
               final focused = CardFocusScope.maybeOf(context) ?? false;
@@ -171,7 +177,7 @@ class TvTopNavItem extends StatelessWidget {
       // the ring is" without inferring either from a screenshot.
       automationId: AutomationIds.navTab(destination.tab),
       automationRole: 'nav',
-      automationState: () => {'active': isActive},
+      automationState: () => {'active': isActive, if (singleSelector) 'selector': isSelector},
       onFocusChange: (focused) {
         if (focused) onFocused();
       },

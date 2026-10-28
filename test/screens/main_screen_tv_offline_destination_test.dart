@@ -103,6 +103,41 @@ void main() {
     });
   }
 
+  testWidgets('NAV-GLASS1 Apple TV: focus previews, Select activates, content returns to active tab', (tester) async {
+    appleTv();
+    final h = await pumpTvMainScreen(tester);
+    h.shell.onFocusNav();
+    await h.settle();
+    expect(h.shell.coordinator.active, TvDestinationId.home);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await h.settle();
+    expect(h.shell.navNodes.isFocused(TvDestinationId.series.focusKey), isTrue);
+    expect(h.shell.coordinator.active, TvDestinationId.home, reason: 'focus alone must not switch pages');
+
+    h.shell.onFocusContent();
+    await h.settle();
+    h.shell.onFocusNav();
+    await h.settle();
+    expect(h.shell.navNodes.isFocused(TvDestinationId.home.focusKey), isTrue, reason: 'return starts on active tab');
+
+    for (var i = 0; i < 6; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+    }
+    await h.settle();
+    expect(h.shell.coordinator.active, TvDestinationId.home);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await h.settle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await h.settle();
+    expect(h.shell.coordinator.active, TvDestinationId.series);
+    expect(h.shell.navNodes.isFocused(TvDestinationId.series.focusKey), isTrue);
+    await h.dispose(tester);
+  });
+
   // OFF6. A rebind of the profile that was already active (a reconnect, a
   // borrowed or removed connection) used to run the profile-switch cleanup and
   // drop the viewer on the bare hub. Same profile, same place.
