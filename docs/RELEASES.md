@@ -50,6 +50,28 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 417 · 28 October 2026 · Apple TV
+
+<!-- commit: 0e4ee15f -->
+
+### Improved
+
+- **One glass selector in the Apple TV top bar.** The capsule follows remote focus without
+  a second active-tab background or a separate focus outline. Moving across tabs keeps the
+  current page open; Select opens the focused tab. Returning from the page starts on its
+  active tab. Reduce Motion and Reduce Transparency have quiet, clear alternatives.
+
+### Fixed
+
+- **Pleya Server episodes without an episode number appear at the end** instead of being
+  shown as S1E0. Browsing also recovers when a saved server cursor has expired.
+
+### Worth checking
+
+- With the Siri Remote, move quickly left and right across the top bar, enter content and
+  return. Check Home and Series, the profile button, and the accessibility alternatives on
+  your Apple TV. Physical touch-surface and overscan acceptance remain open.
+
 ## 2.8.1 · build 416 · 27 October 2026 · Apple TV
 
 ### New

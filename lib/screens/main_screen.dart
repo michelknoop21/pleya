@@ -1877,20 +1877,28 @@ class _MainScreenState extends State<MainScreen>
       // bar. Under a collapsible bar (DEC-115) that reads as the bar opening and
       // snapping shut again.
       _tvNav.activeNestedRoute?.surfaceKey.currentState?.cancelPendingEntry();
-      // Read before the scope takes the focus: the scope restores the pill it
-      // last held, that pill reports itself focused, and since A-24c the ring
-      // memory follows it, so reading it after the frame would return the
-      // pill the ring wandered to rather than the one it left from.
-      final target = _tvNav.focusedDestination;
-      _focus.focusSidebar(
-        focusActiveItem: () {
-          if (!mounted) return;
-          // The item the ring was last on before the remote went into the
-          // page; DOWN resets that to the page's own pill (`_focusContent`).
-          final node = _tvNavNodes.get(target.focusKey);
-          if (node.canRequestFocus) node.requestFocus();
-        },
-      );
+      if (PlatformDetector.isAppleTV()) {
+        // NAV-GLASS1: fence pending content work, then focus the active item
+        // now so a deferred restore cannot overwrite the next remote step.
+        _focus.focusSidebar(focusActiveItem: () {});
+        final node = _tvNavNodes.get(_tvNav.active.focusKey);
+        if (node.canRequestFocus) node.requestFocus();
+      } else {
+        // Read before the scope takes the focus: the scope restores the pill it
+        // last held, that pill reports itself focused, and since A-24c the ring
+        // memory follows it, so reading it after the frame would return the
+        // pill the ring wandered to rather than the one it left from.
+        final target = _tvNav.focusedDestination;
+        _focus.focusSidebar(
+          focusActiveItem: () {
+            if (!mounted) return;
+            // The item the ring was last on before the remote went into the
+            // page; DOWN resets that to the page's own pill (`_focusContent`).
+            final node = _tvNavNodes.get(target.focusKey);
+            if (node.canRequestFocus) node.requestFocus();
+          },
+        );
+      }
       return;
     }
     // Capture target before requestFocus() auto-focuses a sidebar descendant

@@ -3,8 +3,8 @@ target: tvos-sim
 # The Apple TV top bar and search pill with Liquid Glass on (mockups LG-04 and
 # LG-06, Liquid Glass Tasks 8 and 9). Glass is switched on the way a viewer
 # does it: Mijn Pleya, Instellingen, Uiterlijk, the Liquid Glass row. The bar
-# follows the switch live, so no restart. Back on Home the white Home pill has
-# the focus: with glass on that is a 1.08 scale plus a shadow, not the ring.
+# follows the switch live, so no restart. NAV-GLASS1 uses one moving glass
+# selector on Home, without a separate active fill or focus ring.
 # Then Zoeken with the query "as" (Basalt and Cascade in `catalog.mixed.v1`),
 # the pill at rest under the bar with the results below it.
 #
