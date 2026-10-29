@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/track_language_choice.dart';
+import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/media/media_source_info.dart';
 import 'package:pleya/media/playback_language_intent.dart';
 import 'package:pleya/media/playback_language_notice.dart';
@@ -167,6 +169,148 @@ void main() {
   // ============================================================
   // Construction
   // ============================================================
+
+  group('server language preference wiring', () {
+    final item = MediaItem(
+      id: 'ep',
+      backend: MediaBackend.pleyaServer,
+      kind: MediaKind.episode,
+      grandparentId: 'show',
+      serverId: 'srv',
+    );
+    TrackManager manager(
+      _FakePlayer player, {
+      Future<TrackLanguageChoice?> Function(String)? read,
+      Future<void> Function(String, TrackLanguageChoice)? write,
+    }) => TrackManager(
+      player: player,
+      isActive: () => true,
+      metadata: item,
+      getProfileSettings: () => null,
+      waitForProfileSettings: () async {},
+      readServerLanguage: read,
+      persistServerLanguage: write,
+    );
+    _FakePlayer player() => _FakePlayer(
+      tracks: const Tracks(
+        audio: [
+          AudioTrack(id: '1', language: 'eng'),
+          AudioTrack(id: '2', language: 'nld'),
+        ],
+        subtitle: [
+          SubtitleTrack(id: 's1', language: 'eng'),
+          SubtitleTrack(id: 's2', language: 'nld'),
+        ],
+      ),
+    );
+
+    setUp(() async {
+      await SettingsService.getInstance();
+      PleyaProfileLanguagePreferenceStore.resetForTesting();
+      await PleyaProfileLanguagePreferenceStore.write(
+        const PleyaProfileLanguagePreferences(audioLanguage: 'eng', seeded: true),
+      );
+    });
+
+    test('server choice precedes global preferences without rewriting fallback', () async {
+      var writes = 0;
+      final p = player();
+      final m = manager(
+        p,
+        read: (_) async => const TrackLanguageChoice(audioLanguage: 'nld', subtitlesOff: true, updatedAt: 1),
+        write: (_, _) async {
+          writes++;
+        },
+      );
+      addTearDown(m.dispose);
+      await m.applyTrackSelection();
+      expect(p.selectedAudio.single.language, 'nld');
+      expect(p.selectedSubtitle.last.id, 'no');
+      expect(writes, 0);
+    });
+
+    test('a preference read from another device is available in language management', () async {
+      final m = manager(player(), read: (_) async => const TrackLanguageChoice(audioLanguage: 'nld', updatedAt: 1));
+      addTearDown(m.dispose);
+      await m.applyTrackSelection();
+      final rows = await TrackPreferenceStore.readAllForActiveScope();
+      expect(rows, hasLength(1));
+      expect(rows.single.choice.provenance?.serverId, 'srv');
+    });
+
+    test('a cached remote choice refreshes instead of becoming an explicit override', () async {
+      String? remote = 'nld';
+      final p = player();
+      final m = manager(
+        p,
+        read: (_) async => remote == null ? null : TrackLanguageChoice(audioLanguage: remote, updatedAt: 1),
+      );
+      addTearDown(m.dispose);
+      await m.applyTrackSelection();
+      expect(p.selectedAudio.last.language, 'nld');
+      final cached = (await TrackPreferenceStore.readAllForActiveScope()).single;
+      expect(cached.choice.fromServer, isTrue);
+      remote = 'eng';
+      await m.applyTrackSelection();
+      expect(p.selectedAudio.last.language, 'eng');
+      remote = null;
+      await m.applyTrackSelection();
+      expect(await TrackPreferenceStore.readAllForActiveScope(), isEmpty);
+    });
+
+    test('local explicit override precedes server choice', () async {
+      await TrackPreferenceStore.saveAudio(item, language: 'eng');
+      final p = player();
+      final m = manager(p, read: (_) async => const TrackLanguageChoice(audioLanguage: 'nld', updatedAt: 1));
+      addTearDown(m.dispose);
+      await m.applyTrackSelection();
+      expect(p.selectedAudio.single.language, 'eng');
+    });
+
+    test('manual choices persist language and subtitle-off on the series', () async {
+      final writes = <(String, TrackLanguageChoice)>[];
+      final m = manager(
+        player(),
+        write: (id, choice) async {
+          writes.add((id, choice));
+        },
+      );
+      addTearDown(m.dispose);
+      await m.onAudioTrackChanged(const AudioTrack(id: '17', language: 'nld'));
+      await m.onSubtitleTrackChanged(const SubtitleTrack(id: 'no'));
+      expect(writes, hasLength(2));
+      expect(writes.last.$1, 'show');
+      expect(writes.last.$2.audioLanguage, 'nld');
+      expect(writes.last.$2.subtitlesOff, isTrue);
+      await PleyaProfileLanguagePreferenceStore.write(
+        const PleyaProfileLanguagePreferences(rememberPerSeries: false, seeded: true),
+      );
+      await m.onAudioTrackChanged(const AudioTrack(id: '99', language: 'eng'));
+      expect(writes, hasLength(2));
+    });
+
+    test('a profile switch discards a server response before it reaches the player', () async {
+      final storage = await StorageService.getInstance();
+      await storage.setActiveProfileId('one');
+      final started = Completer<void>();
+      final answer = Completer<TrackLanguageChoice?>();
+      final p = player();
+      final m = manager(
+        p,
+        read: (_) {
+          started.complete();
+          return answer.future;
+        },
+      );
+      addTearDown(m.dispose);
+      final applying = m.applyTrackSelection();
+      await started.future.timeout(const Duration(seconds: 2));
+      await storage.setActiveProfileId('two');
+      answer.complete(const TrackLanguageChoice(audioLanguage: 'nld', updatedAt: 1));
+      await applying;
+      expect(p.selectedAudio, isEmpty);
+    });
+  });
 
   group('constructor', () {
     test('initialises mutable fields with the provided values', () {

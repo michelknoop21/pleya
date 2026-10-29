@@ -28,6 +28,7 @@ void main() {
     bool liveTv = false,
     bool realtime = false,
     bool users = false,
+    bool trackPreferences = false,
   }) => PleyaCapabilities(
     browse: browse,
     search: search,
@@ -39,7 +40,28 @@ void main() {
     liveTv: liveTv,
     realtime: realtime,
     users: users,
+    trackPreferences: trackPreferences,
   );
+
+  test('personal actions require their specific advertised feature', () {
+    final usersOnly = PleyaServerCapabilityResolver.resolve(caps(users: true, watchState: true));
+    expect(usersOnly.serverFavorites, isFalse);
+    expect(usersOnly.userRating, isFalse);
+    expect(usersOnly.trackPreferencePersistence, isFalse);
+    final favorites = PleyaServerCapabilityResolver.resolve(
+      const PleyaCapabilities(browse: true, search: true, artwork: true, watchState: false, favorites: true),
+    );
+    expect(favorites.serverFavorites, isTrue);
+    expect(favorites.userRating, isFalse);
+    final ratings = PleyaServerCapabilityResolver.resolve(
+      const PleyaCapabilities(browse: true, search: true, artwork: true, watchState: false, ratings: true),
+    );
+    expect(ratings.userRating, isTrue);
+    expect(ratings.numericUserRating, isTrue);
+    final tracks = PleyaServerCapabilityResolver.resolve(caps(trackPreferences: true));
+    expect(tracks.trackPreferencePersistence, isTrue);
+    expect(tracks.serverFavorites, isFalse);
+  });
 
   group('before /info has answered', () {
     test('the client claims nothing', () {
@@ -398,7 +420,7 @@ void main() {
         httpClientFactory: () => MockClient((_) async => json(const {})),
       );
       await expectLater(client.markWatched(_dummyItem), completes);
-      await expectLater(client.rate(_dummyItem, 8), completes);
+      await expectLater(client.rate(_dummyItem, 8), throwsUnsupportedError);
       expect(await client.deleteMediaItem(_dummyItem), isFalse);
       expect(await client.addToPlaylist(playlistId: 'p', items: const []), isFalse);
       expect(await client.createPlaylist(title: 't', items: const []), isNull);

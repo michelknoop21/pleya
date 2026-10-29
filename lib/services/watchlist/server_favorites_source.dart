@@ -9,18 +9,25 @@ import '../../media/watchlist_scope.dart';
 import '../../media/watchlist_source.dart';
 import '../../utils/external_ids.dart';
 
-/// Jellyfin favorites as a watchlist source, one per online Jellyfin server.
+/// Server favorites as a watchlist source, scoped to one backend account.
 ///
 /// Favorites are not a watchlist and the difference shows up in two places.
 /// They are server-scoped, so the same title favorited on two servers is two
 /// memberships. And the flag lives on any item at all, which is why the fetch
 /// pins movies and series: a favorited channel is not something you meant to
 /// watch later.
-class JellyfinFavoritesSource implements WatchlistSource {
-  final MediaServerClient client;
+class ServerFavoritesSource implements WatchlistSource {
+  final MediaServerClient _client;
+  final MediaServerClient Function()? resolveClient;
+  MediaServerClient get client => resolveClient?.call() ?? _client;
   final ServerId serverId;
 
-  JellyfinFavoritesSource({required this.client, required this.serverId, required this.scope});
+  ServerFavoritesSource({
+    required MediaServerClient client,
+    required this.serverId,
+    required this.scope,
+    this.resolveClient,
+  }) : _client = client;
 
   @override
   final WatchlistScopeId scope;
@@ -31,7 +38,7 @@ class JellyfinFavoritesSource implements WatchlistSource {
 
   @override
   bool accepts(MediaItem item) {
-    if (item.backend != MediaBackend.jellyfin) return false;
+    if (item.backend != scope.backend) return false;
     if (item.kind != MediaKind.movie && item.kind != MediaKind.show) return false;
     // A favorite is set on one server, so an item from another server cannot
     // be routed here.
@@ -58,12 +65,14 @@ class JellyfinFavoritesSource implements WatchlistSource {
 
   @override
   Future<WatchlistMembership> add(MediaItem item) async {
+    if (!accepts(item)) throw const WatchlistScopeUnavailable('Favorite belongs to another server');
     await client.setFavorite(item, true);
     return WatchlistMembership(scope: scope, remoteKey: item.id);
   }
 
   @override
   Future<void> remove(WatchlistMembership membership) async {
+    if (membership.scope != scope) throw const WatchlistScopeUnavailable('Favorite belongs to another account');
     await client.setFavorite(_itemForRemoval(membership.remoteKey), false);
   }
 
@@ -73,8 +82,8 @@ class JellyfinFavoritesSource implements WatchlistSource {
   WatchlistEntry? _toEntry(MediaItem item, {required int position}) {
     final externalIds = _externalIdsOf(item);
     final key = watchlistKeyForItem(item, externalIds: externalIds);
-    // No cross-server identity means the title cannot be matched anywhere
-    // else, so it has no place on a list that spans servers.
+    // Pleya keeps identity-free titles server-scoped; other sources still
+    // require a canonical identity.
     if (key == null || item.id.isEmpty) return null;
 
     return WatchlistEntry(
@@ -84,8 +93,12 @@ class JellyfinFavoritesSource implements WatchlistSource {
       guid: item.guid,
       externalIds: externalIds,
       posterRef: item.thumbPath,
-      // Jellyfin has no favorited-at field, so this is a stable order and
-      // nothing more. It never claims to be recency.
+      availability: scope.backend == MediaBackend.pleyaServer
+          ? WatchlistAvailability.available
+          : WatchlistAvailability.unknown,
+      lastKnownMatch: scope.backend == MediaBackend.pleyaServer ? item : null,
+      // Preserve source order. Pleya orders by favorite time; Jellyfin does
+      // not expose that time.
       memberships: [WatchlistMembership(scope: scope, remoteKey: item.id, sourcePosition: position)],
     );
   }
@@ -102,5 +115,5 @@ class JellyfinFavoritesSource implements WatchlistSource {
   /// removal working from a stored membership, without holding the full item
   /// alive in the snapshot just to be able to undo.
   MediaItem _itemForRemoval(String id) =>
-      MediaItem(id: id, backend: MediaBackend.jellyfin, kind: MediaKind.unknown, serverId: serverId);
+      MediaItem(id: id, backend: scope.backend, kind: MediaKind.unknown, serverId: serverId);
 }

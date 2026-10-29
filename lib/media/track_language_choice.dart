@@ -1,3 +1,5 @@
+import 'media_backend.dart';
+
 /// The last audio/subtitle choice a user made by hand for a series (or a
 /// standalone movie), stored so the next episode starts the same way.
 ///
@@ -36,6 +38,10 @@ class TrackLanguageChoice {
   /// it, and a missing field only ever costs the page a line of prose.
   final TrackChoiceProvenance? provenance;
 
+  /// A fetched preference kept for offline playback and the management list.
+  /// Online playback refreshes it instead of treating it as a local override.
+  final bool fromServer;
+
   const TrackLanguageChoice({
     this.audioLanguage,
     this.audioTitle,
@@ -44,6 +50,7 @@ class TrackLanguageChoice {
     this.subtitleForced = false,
     this.subtitlesOff = false,
     this.provenance,
+    this.fromServer = false,
     required this.updatedAt,
   });
 
@@ -123,10 +130,12 @@ class TrackLanguageChoice {
     if (subtitleForced) 'sf': true,
     if (subtitlesOff) 'so': true,
     if (provenance != null) 'p': provenance!.toJson(),
+    if (fromServer) 'sr': true,
     'u': updatedAt,
   };
 
   static TrackLanguageChoice fromJson(Map<String, dynamic> json) => TrackLanguageChoice(
+    fromServer: json['sr'] == true,
     audioLanguage: json['a'] as String?,
     audioTitle: json['at'] as String?,
     subtitleLanguage: json['s'] as String?,
@@ -163,6 +172,11 @@ class TrackChoiceProvenance {
   /// resolve [posterPath] back into an image.
   final String? serverId;
 
+  /// Identifies the remote preference when the viewer clears this entry.
+  final MediaBackend? backend;
+  final String? serverItemId;
+  final String? serverAccountId;
+
   /// Season and episode of the moment the viewer chose. Null for a movie.
   final int? seasonNumber;
   final int? episodeNumber;
@@ -174,6 +188,9 @@ class TrackChoiceProvenance {
     this.title,
     this.posterPath,
     this.serverId,
+    this.backend,
+    this.serverItemId,
+    this.serverAccountId,
     this.seasonNumber,
     this.episodeNumber,
     this.deviceName,
@@ -183,6 +200,9 @@ class TrackChoiceProvenance {
       title == null &&
       posterPath == null &&
       serverId == null &&
+      backend == null &&
+      serverItemId == null &&
+      serverAccountId == null &&
       seasonNumber == null &&
       episodeNumber == null &&
       deviceName == null;
@@ -200,6 +220,9 @@ class TrackChoiceProvenance {
     if (title != null) 't': title,
     if (posterPath != null) 'i': posterPath,
     if (serverId != null) 'sv': serverId,
+    if (backend != null) 'bk': backend!.name,
+    if (serverItemId != null) 'si': serverItemId,
+    if (serverAccountId != null) 'su': serverAccountId,
     if (seasonNumber != null) 'sn': seasonNumber,
     if (episodeNumber != null) 'en': episodeNumber,
     if (deviceName != null) 'd': deviceName,
@@ -209,6 +232,9 @@ class TrackChoiceProvenance {
     title: json['t'] as String?,
     posterPath: json['i'] as String?,
     serverId: json['sv'] as String?,
+    backend: MediaBackend.values.where((value) => value.name == json['bk']).firstOrNull,
+    serverItemId: json['si'] as String?,
+    serverAccountId: json['su'] as String?,
     seasonNumber: (json['sn'] as num?)?.toInt(),
     episodeNumber: (json['en'] as num?)?.toInt(),
     deviceName: json['d'] as String?,

@@ -157,6 +157,8 @@ class PleyaServerMappers {
       durationMs: wire.durationMs,
       viewOffsetMs: userState?.positionMs,
       viewCount: userState?.playCount,
+      userRating: wire.rating?.toDouble(),
+      raw: {'favorite': wire.favorite},
       // `updated_at` is when the state last moved, which is the closest thing
       // the contract has to "last viewed". Continue Watching sorts on it.
       lastViewedAt: userState == null ? null : userState.updatedAt.millisecondsSinceEpoch ~/ 1000,

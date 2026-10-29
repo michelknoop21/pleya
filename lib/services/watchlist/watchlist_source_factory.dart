@@ -8,7 +8,7 @@ import '../../utils/app_logger.dart';
 import '../jellyfin_client.dart';
 import '../plex_watchlist_client.dart';
 import '../pleya_server_client.dart';
-import 'jellyfin_favorites_source.dart';
+import 'server_favorites_source.dart';
 import 'plex_account_watchlist_source.dart';
 import 'verify_watchlist_source.dart';
 
@@ -69,7 +69,37 @@ class WatchlistSourceFactory {
 
     for (final entry in clientsById().entries) {
       final client = entry.value;
-      if (client is! JellyfinClient || !client.capabilities.serverFavorites) continue;
+      if (client is! JellyfinClient && client is! PleyaServerClient) continue;
+      if (!client.capabilities.serverFavorites) continue;
+      if (client is PleyaServerClient) {
+        final connection = client.connection;
+        final userId = connection.accountUserId;
+        if (connection.serverId.isEmpty || userId == null) continue;
+        sources.add(
+          ServerFavoritesSource(
+            client: client,
+            serverId: ServerId(entry.key),
+            scope: WatchlistScopeId(
+              profileId: profileId,
+              backend: MediaBackend.pleyaServer,
+              accountId: connection.serverId,
+              userId: userId,
+            ),
+            resolveClient: () {
+              final current = clientsById()[entry.key];
+              if (current is! PleyaServerClient ||
+                  current.connection.accountUserId != userId ||
+                  current.connection.serverId != connection.serverId ||
+                  !current.capabilities.serverFavorites) {
+                throw const WatchlistScopeUnavailable('Favorite account is no longer active');
+              }
+              return current;
+            },
+          ),
+        );
+        continue;
+      }
+      if (client is! JellyfinClient) continue;
 
       final connection = client.connection;
       if (connection.serverMachineId.isEmpty || connection.userId.isEmpty) {
@@ -80,7 +110,7 @@ class WatchlistSourceFactory {
       }
 
       sources.add(
-        JellyfinFavoritesSource(
+        ServerFavoritesSource(
           client: client,
           serverId: ServerId(entry.key),
           scope: WatchlistScopeId(

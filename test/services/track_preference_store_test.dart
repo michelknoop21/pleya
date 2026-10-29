@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -35,6 +36,137 @@ void main() {
       SettingsService.trackLanguagePreferences,
       const <String, TrackLanguageChoice>{},
     );
+  });
+
+  test('remote clear failure leaves the remembered choice available for retry', () async {
+    final item = _movie('m');
+    await TrackPreferenceStore.saveAudio(item, language: 'nld');
+    await expectLater(
+      TrackPreferenceStore.clearKey(
+        'm',
+        clearRemote: () async {
+          throw StateError('offline');
+        },
+      ),
+      throwsStateError,
+    );
+    expect((await TrackPreferenceStore.read(item))?.audioLanguage, 'nld');
+    await TrackPreferenceStore.clearKey('m', clearRemote: () async {});
+    expect(await TrackPreferenceStore.read(item), isNull);
+  });
+
+  test('remote clear finishing after a profile switch cannot clear the new profile', () async {
+    final storage = await StorageService.getInstance();
+    final item = _movie('m');
+    await storage.setActiveProfileId('one');
+    await TrackPreferenceStore.saveAudio(item, language: 'nld');
+    await storage.setActiveProfileId('two');
+    await TrackPreferenceStore.saveAudio(item, language: 'eng');
+    await storage.setActiveProfileId('one');
+    final started = Completer<void>();
+    final finish = Completer<void>();
+    final clearing = TrackPreferenceStore.clearKey(
+      'm',
+      clearRemote: () {
+        started.complete();
+        return finish.future;
+      },
+    );
+    await started.future.timeout(const Duration(seconds: 2));
+    await storage.setActiveProfileId('two');
+    finish.complete();
+    await clearing;
+    expect((await TrackPreferenceStore.read(item))?.audioLanguage, 'eng');
+  });
+
+  test('Pleya preference provenance carries the remote scope through storage', () async {
+    final item = MediaItem(
+      id: 'ep',
+      backend: MediaBackend.pleyaServer,
+      kind: MediaKind.episode,
+      grandparentId: 'series',
+      serverId: 'nas',
+    );
+    await TrackPreferenceStore.saveAudio(item, language: 'nld');
+    final stored = await TrackPreferenceStore.read(item);
+    expect(stored?.provenance?.toJson()['bk'], 'pleyaServer');
+    expect(stored?.provenance?.toJson()['si'], 'series');
+  });
+
+  test('choices for two accounts on one Pleya server remain independent', () async {
+    final item = MediaItem(id: 'm', backend: MediaBackend.pleyaServer, kind: MediaKind.movie, serverId: 'srv');
+    await TrackPreferenceStore.saveAudio(item, language: 'eng', serverAccountId: 'one');
+    await TrackPreferenceStore.saveAudio(item, language: 'nld', serverAccountId: 'two');
+    expect((await TrackPreferenceStore.read(item, serverAccountId: 'one'))?.audioLanguage, 'eng');
+    expect((await TrackPreferenceStore.read(item, serverAccountId: 'two'))?.audioLanguage, 'nld');
+    final rows = await TrackPreferenceStore.readAllForActiveScope();
+    expect(rows, hasLength(2));
+    final serialized = TrackLanguageChoice.fromJson(
+      rows.singleWhere((row) => row.choice.provenance?.serverAccountId == 'two').choice.toJson(),
+    );
+    expect(serialized.provenance?.serverAccountId, 'two');
+  });
+
+  test('sync never lets a newer server cache replace explicit language intent', () {
+    final explicit = jsonEncode({
+      'plex-home-plex.a1b2c3d4e5f60718-e434272903092b4e|show': {'a': 'fra', 'u': 1},
+    });
+    final cache = jsonEncode({
+      'plex-home-plex.a1b2c3d4e5f60718-e434272903092b4e|show': {'a': 'nld', 'sr': true, 'u': 2},
+    });
+    final merge = TrackPreferenceStore.mergeFamily();
+    final inbound = jsonDecode(merge.inbound(explicit, cache)! as String) as Map<String, dynamic>;
+    final outbound = jsonDecode(merge.outbound!(cache, explicit)! as String) as Map<String, dynamic>;
+    expect(inbound['plex-home-plex.a1b2c3d4e5f60718-e434272903092b4e|show']['a'], 'fra');
+    expect(outbound['plex-home-plex.a1b2c3d4e5f60718-e434272903092b4e|show']['a'], 'fra');
+  });
+
+  group('review cache boundaries', () {
+    final item = MediaItem(id: 'm', backend: MediaBackend.pleyaServer, kind: MediaKind.movie, serverId: 'srv');
+    test('a partial manual choice does not promote untouched cached fields', () async {
+      await TrackPreferenceStore.cacheServerChoice(
+        item,
+        const TrackLanguageChoice(audioLanguage: 'nld', updatedAt: 1),
+        serverAccountId: 'one',
+      );
+      await TrackPreferenceStore.saveSubtitle(item, off: true, serverAccountId: 'one');
+      final choice = await TrackPreferenceStore.read(item, serverAccountId: 'one');
+      expect(choice?.subtitlesOff, isTrue);
+      expect(choice?.audioLanguage, isNull);
+      expect(choice?.fromServer, isFalse);
+    });
+    test('a legacy explicit override survives repeated remote cache refreshes', () async {
+      await TrackPreferenceStore.saveAudio(item, language: 'eng');
+      await TrackPreferenceStore.cacheServerChoice(
+        item,
+        const TrackLanguageChoice(audioLanguage: 'nld', updatedAt: 1),
+        serverAccountId: 'one',
+      );
+      expect((await TrackPreferenceStore.read(item, serverAccountId: 'one'))?.audioLanguage, 'eng');
+    });
+    test('a partial write keeps explicit legacy intent even when an account cache exists', () async {
+      await TrackPreferenceStore.cacheServerChoice(
+        item,
+        const TrackLanguageChoice(audioLanguage: 'nld', updatedAt: 1),
+        serverAccountId: 'one',
+      );
+      await TrackPreferenceStore.saveAudio(item, language: 'eng');
+      await TrackPreferenceStore.saveSubtitle(item, off: true, serverAccountId: 'one');
+      final choice = await TrackPreferenceStore.read(item, serverAccountId: 'one');
+      expect(choice?.audioLanguage, 'eng');
+      expect(choice?.subtitlesOff, isTrue);
+    });
+    test('remote cache merge cannot modify a local-only profile', () {
+      final local = jsonEncode({
+        'local-profile|show': {'a': 'nld', 'sr': true, 'u': 1},
+      });
+      final remote = jsonEncode({
+        'local-profile|show': {'a': 'eng', 'u': 2},
+      });
+      final result =
+          jsonDecode(TrackPreferenceStore.mergeFamily().inbound(local, remote)! as String) as Map<String, dynamic>;
+      expect(result['local-profile|show']['a'], 'nld');
+    });
   });
 
   group('keying', () {

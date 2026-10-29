@@ -59,11 +59,9 @@ class PleyaServerCapabilityResolver {
     // backlog as history: it never acquires ownership and never moves a newer
     // canonical state (DEC-049, rule 6). That is what makes replaying safe.
     offlineWatchQueue: _offered(wire.watchState, implementedHere: true),
-    // Track preferences are PS-9T, because they only become true once the
-    // playback plan can resolve a stored language onto the actual streams of
-    // the version it picks. Storing a stream index instead would point at a
-    // different track after any re-encode.
-    trackPreferencePersistence: _offered(wire.watchState, implementedHere: false),
+    // PS-9T: the adapter resolves stored language/mode through the shared
+    // track manager; indexes never become remembered preferences.
+    trackPreferencePersistence: _offered(wire.trackPreferences, implementedHere: true),
 
     // PS-8 on the server, PS-6 for the client's side of the negotiation.
     // Leaving this on the wire flag alone would put quality presets in the
@@ -78,11 +76,10 @@ class PleyaServerCapabilityResolver {
     liveTv: _offered(wire.liveTv, implementedHere: false),
     liveTvDvr: false,
 
-    // PS-9 brings users, and favourites and ratings are per-user by
-    // definition. One bootstrap identity has nobody to be favourite for.
-    serverFavorites: _offered(wire.users, implementedHere: false),
-    userRating: _offered(wire.users, implementedHere: false),
-    numericUserRating: _offered(wire.users, implementedHere: false),
+    // Each personal feature has its own server flag and a public app caller.
+    serverFavorites: _offered(wire.favorites, implementedHere: true),
+    userRating: _offered(wire.ratings, implementedHere: true),
+    numericUserRating: _offered(wire.ratings, implementedHere: true),
 
     // Subtitle *search* is a marketplace call. The server serves the sidecars
     // the scanner found on disk and looks nothing up.

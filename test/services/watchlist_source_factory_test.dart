@@ -3,7 +3,7 @@ import 'package:http/testing.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/services/plex_watchlist_client.dart';
-import 'package:pleya/services/watchlist/jellyfin_favorites_source.dart';
+import 'package:pleya/services/watchlist/server_favorites_source.dart';
 import 'package:pleya/services/watchlist/plex_account_watchlist_source.dart';
 import 'package:pleya/services/watchlist/watchlist_source_factory.dart';
 
@@ -51,7 +51,7 @@ void main() {
   test('skips a client that is not a Jellyfin server', () async {
     final sources = await factoryWith(noAuth: true, clients: {'s1': FakeFavoritesClient(favorites: const [])}).build();
 
-    expect(sources.whereType<JellyfinFavoritesSource>(), isEmpty);
+    expect(sources.whereType<ServerFavoritesSource>(), isEmpty);
   });
 
   test('the Plex source comes first, so its newest-first order survives the merge', () async {

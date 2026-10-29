@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/widgets.dart';
+import 'package:provider/provider.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -69,6 +72,30 @@ class _StubSource implements WatchlistSource {
   Future<bool?> contains(MediaItem item) async => null;
 }
 
+class _PendingSource extends _StubSource {
+  _PendingSource() : super(scope: plexScope);
+  final started = Completer<void>();
+  final result = Completer<List<WatchlistEntry>>();
+  @override
+  Future<List<WatchlistEntry>> fetch() {
+    started.complete();
+    return result.future;
+  }
+}
+
+class _PendingAddSource extends _StubSource {
+  _PendingAddSource() : super(scope: plexScope);
+  final started = Completer<void>();
+  final result = Completer<WatchlistMembership>();
+  @override
+  bool accepts(MediaItem item) => true;
+  @override
+  Future<WatchlistMembership> add(MediaItem item) {
+    started.complete();
+    return result.future;
+  }
+}
+
 void main() {
   late AppDatabase db;
   late WatchlistSnapshotStore snapshots;
@@ -95,6 +122,115 @@ void main() {
       seerrConfigured: seerr,
     );
   }
+
+  test('a response from a reset profile cannot repopulate the new watchlist', () async {
+    final pending = _PendingSource();
+    final provider = providerWith(sources: [pending]);
+    addTearDown(provider.dispose);
+    final loading = provider.load();
+    await pending.started.future;
+    provider.reset();
+    provider.repository = WatchlistRepository(sources: []);
+    pending.result.complete([entry()]);
+    await loading;
+    expect(provider.entries, isEmpty);
+    expect(provider.hasLoaded, isFalse);
+  });
+
+  test('a load begun while a new profile binds cannot restore the old snapshot', () async {
+    await snapshots.write(plexScope, [entry()]);
+    final provider = providerWith(sources: [_StubSource(scope: plexScope)]);
+    addTearDown(provider.dispose);
+    final identifier = Completer<String>();
+    provider.attach(
+      profileId: 'p2',
+      resolvePlexAuth: () async => null,
+      clientIdentifier: () => identifier.future,
+      clientsById: () => {},
+      serversFor: () => [],
+      cache: PlexApiCache.instance,
+    );
+    await provider.load(offline: true);
+    final leaked = provider.entries.toList();
+    identifier.complete('device');
+    await Future<void>.delayed(Duration.zero);
+    expect(leaked, isEmpty);
+    expect(provider.hasLoaded, isFalse, reason: 'the newly bound sources must still load');
+  });
+
+  test('a late write cannot patch the next profile through the global notifier', () async {
+    final store = WatchlistStore()..bindProfile('one');
+    addTearDown(store.dispose);
+    final pending = _PendingAddSource();
+    final provider = providerWith(sources: [pending]);
+    final adding = provider.addToWatchlist(entry().item, isOffline: false);
+    await pending.started.future;
+    await Future<void>.delayed(Duration.zero);
+    store.bindProfile('two');
+    provider.dispose();
+    pending.result.complete(WatchlistMembership(scope: plexScope, remoteKey: 'abc'));
+    await adding;
+    await Future<void>.delayed(Duration.zero);
+    expect(store.isOnWatchlistByKey('plex:abc'), isNull);
+  });
+
+  test('a source rebind also clears optimistic patches in the current profile', () {
+    final store = WatchlistStore()..bindProfile('one');
+    addTearDown(store.dispose);
+    final provider = WatchlistProvider(snapshots: snapshots, onScopeChanged: store.clear);
+    addTearDown(provider.dispose);
+    store.patch('plex:abc', onList: true);
+    provider.reset();
+    expect(store.isOnWatchlistByKey('plex:abc'), isNull);
+  });
+
+  test('queued optimistic events cannot cross an immediate scope reset', () async {
+    final store = WatchlistStore()..bindProfile('one');
+    addTearDown(store.dispose);
+    final pending = _PendingAddSource();
+    final provider = WatchlistProvider(
+      snapshots: snapshots,
+      repository: WatchlistRepository(sources: [pending]),
+      onScopeChanged: store.clear,
+    );
+    addTearDown(provider.dispose);
+    final adding = provider.addToWatchlist(entry().item, isOffline: false);
+    store.bindProfile('two');
+    provider.reset();
+    pending.result.complete(WatchlistMembership(scope: plexScope, remoteKey: 'abc'));
+    await adding;
+    await Future<void>.delayed(Duration.zero);
+    expect(store.isOnWatchlistByKey('plex:abc'), isNull);
+  });
+
+  testWidgets('source-scope clearing during provider update is safe for listeners', (tester) async {
+    final store = WatchlistStore()..patch('old', onList: true);
+    final trigger = ValueNotifier<int>(0);
+    addTearDown(store.dispose);
+    addTearDown(trigger.dispose);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<WatchlistStore>.value(value: store),
+          ChangeNotifierProvider<ValueNotifier<int>>.value(value: trigger),
+          ProxyProvider<ValueNotifier<int>, Object>(
+            update: (context, value, previous) {
+              if (value.value == 1) context.read<WatchlistStore>().clear();
+              return Object();
+            },
+          ),
+        ],
+        child: Consumer2<WatchlistStore, Object>(
+          builder: (context, value, object, child) =>
+              Text('${value.debugPatches.length}', textDirection: TextDirection.ltr),
+        ),
+      ),
+    );
+    trigger.value = 1;
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(store.debugPatches, isEmpty);
+  });
 
   group('playability', () {
     test('an online server with a known match is playable', () {

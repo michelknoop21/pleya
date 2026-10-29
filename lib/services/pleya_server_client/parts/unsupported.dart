@@ -73,15 +73,6 @@ mixin _PleyaServerUnsupportedMethods {
 
   Future<ExternalIds> fetchExternalIds(String itemId) async => const ExternalIds();
 
-  // ── Per-user state: PS-9 ──
-
-  Future<void> setFavorite(MediaItem item, bool isFavorite) async {}
-
-  Future<LibraryPage<MediaItem>> fetchFavorites({MediaKind? kind, int offset = 0, int limit = 100}) async =>
-      const LibraryPage(items: [], totalCount: 0);
-
-  Future<void> rate(MediaItem item, double rating) async {}
-
   // ── Playlists and collections: G1, no phase yet ──
 
   Future<List<MediaPlaylist>> fetchPlaylists({String playlistType = 'video', bool? smart}) async => const [];

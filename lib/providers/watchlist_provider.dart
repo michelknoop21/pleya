@@ -51,6 +51,7 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
     this.isServerOnline = _noServersOnline,
     this.hasDownload = _noDownloads,
     this.seerrConfigured = false,
+    this.onScopeChanged,
   });
 
   /// Rebuilt on every profile switch, so a stale repository cannot serve the
@@ -66,6 +67,7 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
   bool Function(String globalKey) hasDownload;
 
   bool seerrConfigured;
+  final VoidCallback? onScopeChanged;
 
   static bool _noServersOnline(ServerId _) => false;
   static bool _noDownloads(String _) => false;
@@ -107,6 +109,8 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
 
   String? _attachedProfileId;
   WatchlistSourceFactory? _factory;
+  int _generation = 0;
+  Map<String, ({MediaServerClient client, bool favorites})> _sourceClients = {};
 
   /// Bind the provider to the active profile's connections.
   ///
@@ -130,19 +134,28 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
       repository = null;
       resolver = null;
       _attachedProfileId = null;
+      _sourceClients = {};
+      reset();
       return;
     }
 
-    if (_attachedProfileId != profileId) {
+    final sourceClients = {
+      for (final entry in clientsById().entries)
+        entry.key: (client: entry.value, favorites: entry.value.capabilities.serverFavorites),
+    };
+    if (_attachedProfileId != profileId || !mapEquals(_sourceClients, sourceClients)) {
       _factory?.dispose();
       _factory = null;
+      repository = null;
       reset();
     }
     _attachedProfileId = profileId;
+    _sourceClients = sourceClients;
 
     resolver ??= WatchlistAvailabilityResolver(profileId: profileId, serversFor: serversFor, cache: cache);
     if (_factory != null) return;
 
+    final generation = _generation;
     unawaited(() async {
       final factory = WatchlistSourceFactory(
         profileId: profileId,
@@ -150,12 +163,18 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
         clientIdentifier: await clientIdentifier(),
         clientsById: clientsById,
       );
-      if (_attachedProfileId != profileId) {
+      if (_generation != generation || _attachedProfileId != profileId) {
         factory.dispose();
         return;
       }
       _factory = factory;
-      repository = WatchlistRepository(sources: await factory.build());
+      final sources = await factory.build();
+      if (_generation != generation || _factory != factory) {
+        factory.dispose();
+        return;
+      }
+      repository = WatchlistRepository(sources: sources);
+      _hasLoaded = false;
       safeNotifyListeners();
     }());
   }
@@ -184,12 +203,15 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
 
   /// Load the list: snapshot first so something is on screen, then the network.
   Future<void> load({bool offline = false}) async {
+    final generation = _generation;
+    final repository = this.repository;
     _isLoading = true;
     _error = null;
     safeNotifyListeners();
 
     final scopes = repository?.sources.map((s) => s.scope).toList() ?? const <WatchlistScopeId>[];
     final restored = await _readSnapshots(scopes);
+    if (_generation != generation) return;
     if (restored != null) {
       _entries = restored;
       _hasSnapshot = true;
@@ -206,19 +228,24 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
     }
 
     try {
-      final result = await repository!.fetch();
+      final result = await repository.fetch();
+      if (_generation != generation) return;
       _entries = result.entries;
       _complete = result.complete;
       _offline = false;
-      await _writeSnapshots(result);
+      await _writeSnapshots(result, repository.sources);
+      if (_generation != generation) return;
       _hasSnapshot = true;
     } catch (e, st) {
+      if (_generation != generation) return;
       appLogger.w('Watchlist load failed', error: e, stackTrace: st);
       _error = friendlyError(e);
     } finally {
-      _isLoading = false;
-      _hasLoaded = true;
-      safeNotifyListeners();
+      if (_generation == generation) {
+        _isLoading = false;
+        _hasLoaded = true;
+        safeNotifyListeners();
+      }
     }
   }
 
@@ -321,14 +348,17 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
     final key = watchlistKeyForItem(item, externalIds: externalIds);
     if (key == null) return WatchlistOutcome.unsupported;
 
+    final generation = _generation;
     WatchlistMembership? created;
     final outcome = await WatchlistActions.add(
       repository: repository,
       item: item,
       isOffline: isOffline,
+      isCurrent: () => !isDisposed && _generation == generation,
       onAdded: (membership) => created = membership,
     );
 
+    if (isDisposed || _generation != generation) return outcome;
     final membership = created;
     if (outcome != WatchlistOutcome.added || membership == null) return outcome;
 
@@ -362,8 +392,15 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
     final repository = this.repository;
     if (repository == null) return WatchlistOutcome.unsupported;
 
-    final outcome = await WatchlistActions.remove(sources: repository.sources, entry: entry, isOffline: isOffline);
+    final generation = _generation;
+    final outcome = await WatchlistActions.remove(
+      sources: repository.sources,
+      entry: entry,
+      isOffline: isOffline,
+      isCurrent: () => !isDisposed && _generation == generation,
+    );
 
+    if (isDisposed || _generation != generation) return outcome;
     switch (outcome) {
       case WatchlistOutcome.removed:
         _entries = _entries.where((e) => e.key != entry.key).toList();
@@ -378,6 +415,10 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
 
   /// Drop everything and rebind. Called on a profile switch.
   void reset() {
+    _generation++;
+    onScopeChanged?.call();
+    _isLoading = false;
+    resolver = null;
     _entries = const [];
     _hasLoaded = false;
     _complete = true;
@@ -413,10 +454,10 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
   ///
   /// Overwriting a failed source's snapshot with nothing would delete the last
   /// good offline copy on the strength of a timeout.
-  Future<void> _writeSnapshots(WatchlistFetchResult result) async {
+  Future<void> _writeSnapshots(WatchlistFetchResult result, List<WatchlistSource> sources) async {
     final failed = result.failed.map((s) => s.scope).toSet();
     final bySource = <WatchlistScopeId, List<WatchlistEntry>>{};
-    for (final source in repository?.sources ?? const <WatchlistSource>[]) {
+    for (final source in sources) {
       if (failed.contains(source.scope)) continue;
       bySource[source.scope] = <WatchlistEntry>[];
     }

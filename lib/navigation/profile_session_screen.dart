@@ -555,13 +555,16 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               // provider carried across a switch would serve the previous
               // user's list.
               ChangeNotifierProxyProvider3<MultiServerProvider, DownloadProvider, SeerrProvider, WatchlistProvider>(
-                create: (context) =>
-                    WatchlistProvider(snapshots: WatchlistSnapshotStore(cache: ApiCache.forBackend(MediaBackend.plex))),
+                create: (context) => WatchlistProvider(
+                  snapshots: WatchlistSnapshotStore(cache: ApiCache.forBackend(MediaBackend.plex)),
+                  onScopeChanged: context.read<WatchlistStore>().clear,
+                ),
                 update: (context, multiServer, downloads, seerr, previous) {
                   final provider =
                       previous ??
                       WatchlistProvider(
                         snapshots: WatchlistSnapshotStore(cache: ApiCache.forBackend(MediaBackend.plex)),
+                        onScopeChanged: context.read<WatchlistStore>().clear,
                       );
                   provider.isServerOnline = multiServer.isServerOnline;
                   provider.hasDownload = downloads.isDownloaded;

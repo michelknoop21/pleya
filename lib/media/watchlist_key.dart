@@ -20,6 +20,8 @@ library;
 
 import '../utils/external_ids.dart';
 import 'media_item.dart';
+import 'media_backend.dart';
+import 'media_kind.dart';
 
 const String _separator = ':';
 
@@ -87,11 +89,21 @@ ExternalIds externalIdsFromLegacyAgentGuid(String? guid) {
 /// Jellyfin in a `ProviderIds` map. Pass them when available; without them the
 /// guid alone decides.
 ///
-/// A `null` result is a real answer, not a failure to try: a title with no
-/// guid and no external id cannot be matched on another server, so it does not
-/// belong on a watchlist that spans servers.
+/// Pleya titles without external identity use a server-scoped key. They
+/// remain visible without claiming a cross-server match. Other backends
+/// keep their existing canonical-identity requirement.
 String? watchlistKeyForItem(MediaItem item, {ExternalIds? externalIds}) {
-  return watchlistKeyForIdentity(guid: item.guid, externalIds: externalIds);
+  final key = watchlistKeyForIdentity(guid: item.guid, externalIds: externalIds);
+  if (key != null) return key;
+  final server = item.serverId;
+  if (item.backend == MediaBackend.pleyaServer &&
+      server != null &&
+      server.isNotEmpty &&
+      item.id.isNotEmpty &&
+      (item.kind == MediaKind.movie || item.kind == MediaKind.show)) {
+    return 'pleya:${Uri.encodeComponent(server.toString())}:${Uri.encodeComponent(item.id)}';
+  }
+  return null;
 }
 
 /// [watchlistKeyForItem] for callers that hold a raw guid and external ids

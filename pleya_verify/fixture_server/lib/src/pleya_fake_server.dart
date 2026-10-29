@@ -785,7 +785,7 @@ class PleyaFakeServer {
     if (itemMatch != null) {
       final item = items[Uri.decodeComponent(itemMatch.group(1)!)];
       if (item == null) return _json(_error('library.not_found'), status: 404);
-      return _json(item);
+      return _json(_withPersonalMarks(item));
     }
 
     final hubMatch = RegExp(r'^/hubs/([^/]+)$').firstMatch(path);
@@ -934,7 +934,7 @@ class PleyaFakeServer {
     final window = ids.skip(start).take(limit).toList();
     final next = start + window.length;
     return {
-      'items': [for (final id in window) items[id]!],
+      'items': [for (final id in window) _withPersonalMarks(items[id]!)],
       'next_cursor': next < ids.length ? base64Url.encode(utf8.encode('$next')) : null,
       'total_estimate': ids.length,
     };
@@ -1068,7 +1068,15 @@ class PleyaFakeServer {
     'error': {'code': code, 'message': code, 'retryable': false},
   };
 
+  Map<String, dynamic> _withPersonalMarks(Map<String, dynamic> item) => {
+    ...item,
+    if (personalCapability) ...{'favorite': favoriteIds.contains(item['id']), 'rating': ratingsByItem[item['id']]},
+  };
+
   http.Response? _personal(http.Request request, String path) {
+    if (path == '/favorites' && request.method == 'GET') {
+      return _json(_page(favoriteIds.where(items.containsKey).toList(), request.url.queryParameters));
+    }
     final id = path.split('/').last;
     if (path.startsWith('/favorites/')) {
       if (request.method == 'PUT') favoriteIds.add(id);

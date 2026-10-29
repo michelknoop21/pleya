@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
+import '../media/media_backend.dart';
 import '../media/track_language_choice.dart';
 import '../media/unified/identity_evidence.dart';
 import '../utils/app_logger.dart';
@@ -113,10 +114,19 @@ class TrackPreferenceStore {
   /// Every key this item may be found under, best first. Read walks the list so
   /// an entry written before LANG1 — under the server key — keeps applying
   /// until a write promotes it.
-  static List<String> _candidateKeys(MediaItem metadata) {
+  static String _accountKey(MediaItem metadata, String? account) {
+    if (metadata.backend != MediaBackend.pleyaServer || account == null) return seriesKeyFor(metadata);
+    return 'pleya:${Uri.encodeComponent(metadata.serverId ?? '')}:${Uri.encodeComponent(account)}:${Uri.encodeComponent(serverSeriesKeyFor(metadata))}';
+  }
+
+  static List<String> _candidateKeys(MediaItem metadata, {String? serverAccountId}) {
     final logical = logicalSeriesKeyFor(metadata);
     final server = serverSeriesKeyFor(metadata);
-    return logical == null ? [server] : [logical, server];
+    return {
+      if (serverAccountId != null) _accountKey(metadata, serverAccountId),
+      if (logical != null) logical,
+      server,
+    }.toList();
   }
 
   /// How a write learns the name of the device it is running on.
@@ -138,7 +148,7 @@ class TrackPreferenceStore {
   /// preference, so its poster and title are the show's, while the season and
   /// episode number describe the moment. A movie has no grandparent and falls
   /// back to its own title and poster, which is exactly what its row shows.
-  static Future<TrackChoiceProvenance> _provenanceFor(MediaItem metadata) async {
+  static Future<TrackChoiceProvenance> _provenanceFor(MediaItem metadata, {String? serverAccountId}) async {
     String? deviceName;
     try {
       deviceName = await (_deviceName ??= deviceNameProvider());
@@ -153,6 +163,9 @@ class TrackPreferenceStore {
       title: metadata.grandparentTitle ?? metadata.title,
       posterPath: metadata.grandparentThumbPath ?? metadata.thumbPath,
       serverId: metadata.serverId,
+      backend: metadata.backend,
+      serverItemId: serverSeriesKeyFor(metadata),
+      serverAccountId: serverAccountId,
       seasonNumber: isEpisode ? metadata.parentIndex : null,
       episodeNumber: isEpisode ? metadata.index : null,
       deviceName: deviceName,
@@ -167,29 +180,40 @@ class TrackPreferenceStore {
     return storage.activeUserScope() ?? '';
   }
 
-  static Future<TrackLanguageChoice?> read(MediaItem metadata) async {
+  static Future<TrackLanguageChoice?> read(MediaItem metadata, {String? serverAccountId}) async {
     try {
       final settings = await SettingsService.getInstance();
       final stored = settings.read(SettingsService.trackLanguagePreferences);
       final scope = await _scope();
-      for (final key in _candidateKeys(metadata)) {
+      TrackLanguageChoice? cached;
+      for (final key in _candidateKeys(metadata, serverAccountId: serverAccountId)) {
         final choice = stored['$scope|$key'];
-        if (choice != null && !choice.isEmpty) return choice;
+        final account = choice?.provenance?.serverAccountId;
+        if (serverAccountId != null && account != null && account != serverAccountId) continue;
+        if (choice == null || choice.isEmpty) continue;
+        if (!choice.fromServer) return choice;
+        cached ??= choice;
       }
-      return null;
+      return cached;
     } catch (e) {
       appLogger.w('Failed to read remembered track languages', error: e);
       return null;
     }
   }
 
-  static Future<void> saveAudio(MediaItem metadata, {String? language, String? title, bool Function()? isCurrent}) =>
-      _update(
-        metadata,
-        (current, now, provenance) =>
-            current.copyWithAudio(language: language, title: title, provenance: provenance, updatedAt: now),
-        isCurrent: isCurrent,
-      );
+  static Future<void> saveAudio(
+    MediaItem metadata, {
+    String? language,
+    String? title,
+    String? serverAccountId,
+    bool Function()? isCurrent,
+  }) => _update(
+    metadata,
+    (current, now, provenance) =>
+        current.copyWithAudio(language: language, title: title, provenance: provenance, updatedAt: now),
+    isCurrent: isCurrent,
+    serverAccountId: serverAccountId,
+  );
 
   static Future<void> saveSubtitle(
     MediaItem metadata, {
@@ -198,6 +222,7 @@ class TrackPreferenceStore {
     bool forced = false,
     bool off = false,
     bool Function()? isCurrent,
+    String? serverAccountId,
   }) => _update(
     metadata,
     (current, now, provenance) => current.copyWithSubtitle(
@@ -209,7 +234,60 @@ class TrackPreferenceStore {
       updatedAt: now,
     ),
     isCurrent: isCurrent,
+    serverAccountId: serverAccountId,
   );
+
+  /// Keeps the effective remote choice manageable without promoting a
+  /// fetched answer into explicit local intent or mirroring it back.
+  static Future<void> cacheServerChoice(
+    MediaItem metadata,
+    TrackLanguageChoice? choice, {
+    String? serverAccountId,
+    bool Function()? isCurrent,
+  }) => _locked(() async {
+    final settings = await SettingsService.getInstance();
+    final scope = await _scope();
+    if (!(isCurrent?.call() ?? true)) return;
+    final key = '$scope|${_accountKey(metadata, serverAccountId)}';
+    final stored = settings.read(SettingsService.trackLanguagePreferences);
+    final current = stored[key];
+    for (final candidate in _candidateKeys(metadata, serverAccountId: serverAccountId)) {
+      final explicit = stored['$scope|$candidate'];
+      if (explicit != null &&
+          !explicit.isEmpty &&
+          !explicit.fromServer &&
+          (serverAccountId == null ||
+              explicit.provenance?.serverAccountId == null ||
+              explicit.provenance?.serverAccountId == serverAccountId))
+        return;
+    }
+    final next = Map<String, TrackLanguageChoice>.from(stored);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (choice == null || choice.isEmpty) {
+      if (current?.fromServer != true) return;
+      _remove(next, key, now, fromServer: true);
+    } else {
+      final remote = choice.provenance;
+      next[key] = TrackLanguageChoice(
+        audioLanguage: choice.audioLanguage,
+        subtitleLanguage: choice.subtitleLanguage,
+        subtitlesOff: choice.subtitlesOff,
+        subtitleForced: choice.subtitleForced,
+        updatedAt: now,
+        fromServer: true,
+        provenance: TrackChoiceProvenance(
+          title: metadata.grandparentTitle ?? metadata.title,
+          posterPath: metadata.grandparentThumbPath ?? metadata.thumbPath,
+          serverId: metadata.serverId,
+          backend: metadata.backend,
+          serverItemId: remote?.serverItemId ?? serverSeriesKeyFor(metadata),
+          serverAccountId: serverAccountId ?? remote?.serverAccountId,
+        ),
+      );
+    }
+    if (!(isCurrent?.call() ?? true) || await _scope() != scope) return;
+    await settings.write(SettingsService.trackLanguagePreferences, _capped(next));
+  });
 
   /// Drop this title's series preference entirely — the "Gebruik globale
   /// voorkeur" action of mockup 31 B.
@@ -251,8 +329,11 @@ class TrackPreferenceStore {
   /// reach [clear] would make exactly those rows unremovable. Same rule as
   /// [clear] otherwise: not gated on the remember switch, because turning it
   /// off must never stop a viewer from removing an override that exists.
-  static Future<void> clearKey(String seriesKey) {
+  static Future<void> clearKey(String seriesKey, {Future<void> Function()? clearRemote}) {
     return _locked(() async {
+      final originalScope = await _scope();
+      await clearRemote?.call();
+      if (await _scope() != originalScope) return;
       try {
         final settings = await SettingsService.getInstance();
         final scope = await _scope();
@@ -295,6 +376,7 @@ class TrackPreferenceStore {
     MediaItem metadata,
     TrackLanguageChoice Function(TrackLanguageChoice current, int now, TrackChoiceProvenance provenance) apply, {
     bool Function()? isCurrent,
+    String? serverAccountId,
   }) {
     // An opened file belongs to no series or library, and its key would be
     // the file's path in a value that syncs over iCloud.
@@ -311,7 +393,7 @@ class TrackPreferenceStore {
 
         final scope = await _scope();
         if (!(isCurrent?.call() ?? true)) return;
-        final key = '$scope|${seriesKeyFor(metadata)}';
+        final key = '$scope|${_accountKey(metadata, serverAccountId)}';
         final stored = settings.read(SettingsService.trackLanguagePreferences);
         final now = DateTime.now().millisecondsSinceEpoch;
 
@@ -321,21 +403,29 @@ class TrackPreferenceStore {
         // write touches, and the old key only goes once the new value is in
         // the same map that is about to be persisted — never a delete that
         // could outlive a failed write.
-        final candidates = _candidateKeys(metadata);
+        final candidates = _candidateKeys(metadata, serverAccountId: serverAccountId);
         TrackLanguageChoice? current;
         for (final candidate in candidates) {
-          current = stored['$scope|$candidate'];
-          if (current != null && !current.isEmpty) break;
-          current = null;
+          final value = stored['$scope|$candidate'];
+          if (value == null || value.isEmpty || value.fromServer) continue;
+          final account = value.provenance?.serverAccountId;
+          if (serverAccountId != null && account != null && account != serverAccountId) continue;
+          current = value;
+          break;
         }
 
-        final provenance = await _provenanceFor(metadata);
+        final provenance = await _provenanceFor(
+          metadata,
+          serverAccountId: serverAccountId ?? current?.provenance?.serverAccountId,
+        );
         if (!(isCurrent?.call() ?? true)) return;
         final updated = apply(current ?? TrackLanguageChoice(updatedAt: now), now, provenance);
 
         final next = Map<String, TrackLanguageChoice>.from(stored);
         for (final candidate in candidates) {
-          if ('$scope|$candidate' != key) {
+          final priorAccount = stored['$scope|$candidate']?.provenance?.serverAccountId;
+          if ('$scope|$candidate' != key &&
+              (serverAccountId == null || priorAccount == null || priorAccount == serverAccountId)) {
             _remove(next, '$scope|$candidate', now);
           }
         }
@@ -360,10 +450,10 @@ class TrackPreferenceStore {
   ///
   /// Only a live entry is removed: a key that never held one, or already holds
   /// a tombstone, is left alone, so a removal is stamped once and ages out.
-  static void _remove(Map<String, TrackLanguageChoice> entries, String key, int now) {
+  static void _remove(Map<String, TrackLanguageChoice> entries, String key, int now, {bool fromServer = false}) {
     if (entries[key]?.isEmpty != false) return;
     if (PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(key))) {
-      entries[key] = TrackLanguageChoice(updatedAt: now);
+      entries[key] = TrackLanguageChoice(updatedAt: now, fromServer: fromServer);
     } else {
       entries.remove(key);
     }
@@ -389,7 +479,7 @@ class TrackPreferenceStore {
     final tombstones = <String, TrackLanguageChoice>{
       for (final e in live.skip(maxEntries))
         if (PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(e.key)))
-          e.key: TrackLanguageChoice(updatedAt: e.value.updatedAt + 1),
+          e.key: TrackLanguageChoice(updatedAt: e.value.updatedAt + 1, fromServer: e.value.fromServer),
       for (final e in entries.entries)
         if (e.value.isEmpty && e.value.updatedAt >= expiredBefore) e.key: e.value,
     }.entries.toList()..sort(_newestFirst);
@@ -417,11 +507,30 @@ class TrackPreferenceStore {
     final shared = buildProfileKeyedMapFamily();
     return PreferenceMergeFamily(
       name: PreferenceMergeFamilies.trackLanguageMap,
-      inbound: (local, remote) => _cappedRaw(shared.inbound(local, remote)),
-      outbound: (local, remote) => _cappedRaw(shared.outbound!(local, remote)),
+      inbound: (local, remote) => _mergeIntentBeforeCache(local, remote, shared.inbound),
+      outbound: (local, remote) => _mergeIntentBeforeCache(local, remote, shared.outbound!),
       removed: shared.removed,
       adoptStore: (local, remote) => _cappedRaw(shared.adoptStore!(local, remote)),
     );
+  }
+
+  // A later read is not a later user action, including cached deletions.
+  static Object? _mergeIntentBeforeCache(Object? local, Object? remote, PreferenceValueMerge merge) {
+    final mine = decodeStringMap(local);
+    final theirs = decodeStringMap(remote);
+    if (mine == null || theirs == null) return _cappedRaw(merge(local, remote));
+    for (final key in mine.keys.toList()) {
+      if (!PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(key))) continue;
+      final a = mine[key];
+      final b = theirs[key];
+      if (a is! Map || b is! Map || (a['sr'] == true) == (b['sr'] == true)) continue;
+      if (a['sr'] == true) {
+        mine[key] = b;
+      } else {
+        theirs[key] = a;
+      }
+    }
+    return _cappedRaw(merge(json.encode(mine), json.encode(theirs)));
   }
 
   /// [_capped] over a stored JSON value. A value this store cannot decode is

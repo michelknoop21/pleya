@@ -23,6 +23,7 @@ import '../media/media_file_info.dart';
 import '../media/media_hub.dart';
 import '../media/media_identity.dart';
 import '../media/media_item.dart';
+import '../media/track_language_choice.dart';
 import '../media/media_kind.dart';
 import '../media/media_library.dart';
 import '../media/media_playlist.dart';
@@ -89,8 +90,8 @@ part 'pleya_server_client/parts/admin.dart';
 ///
 /// PS-3 brought libraries, browsing, children, hubs, search and artwork. PS-4
 /// adds direct play and watch state, with the ownership model from DEC-049
-/// behind it. Downloads, playlists, collections, favourites, ratings and Live
-/// TV are later phases and answer through `_PleyaServerUnsupportedMethods`.
+/// behind it. Personal features and downloads have their own parts; playlists, collections
+/// and Live TV still answer through `_PleyaServerUnsupportedMethods`.
 /// Scans, jobs and user administration live in `_PleyaServerAdminMethods`.
 // The private fields below are assigned from named constructor parameters
 // rather than through initializing formals, because Dart has no private named

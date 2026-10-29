@@ -439,14 +439,37 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
     SubtitleTrack? preferredSubtitleTrack,
     SubtitleTrack? preferredSecondarySubtitleTrack,
   }) {
+    final sourceClient = _getMediaServerClient(context);
+    final mediaClient = _isOfflinePlayback ? null : _getOnlineMediaServerClient(context);
+    final personal =
+        mediaClient is PleyaServerClient &&
+            mediaClient.connection.accountUserId != null &&
+            mediaClient.capabilities.trackPreferencePersistence
+        ? mediaClient
+        : null;
+    bool currentPersonal() => mounted && identical(_getOnlineMediaServerClient(context), personal);
     return TrackManager(
       player: forPlayer,
+      serverAccountId: sourceClient is PleyaServerClient ? sourceClient.connection.accountUserId : null,
+      isServerLanguageCurrent: personal == null ? null : currentPersonal,
+      readServerLanguage: personal == null
+          ? null
+          : (id) async {
+              if (!currentPersonal()) return null;
+              final choice = await personal.getTrackLanguageChoice(id);
+              return currentPersonal() ? choice : null;
+            },
+      persistServerLanguage: personal == null
+          ? null
+          : (id, choice) async {
+              if (!currentPersonal()) return;
+              await personal.saveTrackLanguageChoice(id, choice);
+            },
       isActive: () => mounted && player == forPlayer,
       // Plex writes track changes immediately. Jellyfin persists selected
       // indexes through playback progress reports.
       persistTrackPreference: plexClient != null ? _plexTrackPersister(() => plexClient) : null,
-      // Plex is the only backend with a per-series language override; Jellyfin
-      // relies on the local store plus iCloud alone.
+      // Plex canonical metadata mirroring stays separate from per-user server preferences.
       persistSeriesLanguage: plexClient != null ? plexSeriesLanguagePersister(() => plexClient) : null,
       getProfileSettings: getProfileSettings,
       waitForProfileSettings: _waitForProfileSettingsIfNeeded,

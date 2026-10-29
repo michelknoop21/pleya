@@ -87,6 +87,16 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
       server.usersCapability = true;
       server.assistantMemoryCapability = true;
       return true;
+    case 'personal.app.v1':
+    case 'personal.favorites.v1':
+      server.personalCapability = true;
+      server.usersCapability = true;
+      if (name == 'personal.favorites.v1') {
+        server.favoriteIds.addAll(
+          server.items.values.where((item) => item['kind'] == 'movie').take(2).map((item) => item['id'] as String),
+        );
+      }
+      return true;
     case 'server.owner.v1':
       server.usersCapability = true;
       return true;
