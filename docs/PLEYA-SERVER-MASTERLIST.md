@@ -48,7 +48,7 @@ Bron voor de scope:
 
 De slicetelling is op 29 oktober 2026 opnieuw afgeleid uit de bestaande taakstatussen; een slice met gereed én open werk telt als bezig. Dit voegt geen runtime- of releasebewijs toe.
 
-Per taak, en dat is de maat die telt: **162 taken, 84 gereed, 19 bezig, 59 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **162 taken, 84 gereed, 20 bezig, 58 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2, en S2.9 tot en met S2.11 (afleveringsnamen zonder `SxxExx`) zijn dat ook;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -355,7 +355,7 @@ is geen bewijs van gebouwde leesvoortgang of een reader.
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
 | S8.1 | Home met zes rijen, lege rij verdwijnt | `[~]` | C-05: bestaande persoonlijke hubs capability-gated en recente titels per videobibliotheek aangesloten. Lege rijen verdwijnen, afspeelbare hero gebruikt bestaande spelerroute. Componenttests rood→groen; echte lokale API, vijf breedtes axe0/overloop0, desktop/mobiele Home-e2e groen. [Webontwikkelbewijs](qa/2026-10-29-pleya-web-consumer-report.md). Boekenrijen wachten op eigen contract/hardware; volledige Home blijft open. | 2026-10-29 |
-| S8.2 | Films- en Series-landing | `[ ]` | | |
+| S8.2 | Films- en Series-landing | `[~]` | C-05: eigen routes/navigatie, bestaande rijen per bibliotheek en filterdoorklikken aangesloten; geen Verder kijken buiten Home. Oude-serverpad zonder nieuwe aanvragen; alle bibliotheken behouden via expliciete selectie. 157 gerichte webtests en acht desktop/mobiele browserregressies groen, echte Films-genres/vijf breedtes axe0/overloop0. [Bewijs en grenzen](qa/2026-10-29-pleya-web-landings-report.md). Gevulde Series en NAS/volledige acceptatie blijven open. | 2026-10-29 |
 | S8.3 | Complete catalogus met filters en facetten | `[~]` | C-05: bestaande bibliotheekcatalogus gebruikt genre/jaar/kijkstatus/kwaliteit, tien sorteringen en bibliotheekbrede facetten via het bestaande contract. URL leidt de selectie; terug/vooruit, leeg resultaat/wissen en oude-servergedrag getest. Gedeelde dialoog ontsnapt nu aan pagina-stapellagen, zodat mobiele navigatie de knoppen niet bedekt. [Lokaal bewijs](qa/2026-10-29-pleya-web-catalog-report.md). Soortbrede catalogusingang en volledige acceptatie blijven open. | 2026-10-29 |
 | S8.4 | Zoeken gesectioneerd, lege staat met uitweg | `[ ]` | | |
 | S8.5 | Film- en seriedetail herschreven en gesplitst | `[ ]` | | |

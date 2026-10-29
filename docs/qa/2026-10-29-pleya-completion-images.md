@@ -39,3 +39,13 @@ Catalogusfilters: vijf breedtes axe0/overloop0; Annuleren via hit-test boven nav
 | web-catalog: filters@1280 | 1280×900 | `.build/pleya-completion-evidence/web-catalog/filters@1280.png` |
 | web-catalog: filters@390 | 390×900 | `.build/pleya-completion-evidence/web-catalog/filters@390.png` |
 | web-catalog: filters@320 | 320×900 | `.build/pleya-completion-evidence/web-catalog/filters@320.png` |
+
+Films-landing: echte synthetische NFO-genres, vijf breedtes axe0/overloop0; alle beelden bekeken.
+
+| Scherm | Afmeting | Bestand |
+| --- | --- | --- |
+| web-landings: films@1920 | 1920×1818 | `.build/pleya-completion-evidence/web-landings/films@1920.png` |
+| web-landings: films@1440 | 1440×1698 | `.build/pleya-completion-evidence/web-landings/films@1440.png` |
+| web-landings: films@1280 | 1280×1698 | `.build/pleya-completion-evidence/web-landings/films@1280.png` |
+| web-landings: films@390 | 390×1374 | `.build/pleya-completion-evidence/web-landings/films@390.png` |
+| web-landings: films@320 | 320×1374 | `.build/pleya-completion-evidence/web-landings/films@320.png` |

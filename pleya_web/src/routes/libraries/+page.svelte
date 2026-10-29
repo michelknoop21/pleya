@@ -1,22 +1,28 @@
 <script lang="ts">
+  import { page } from '$app/state';
   import PageHeader from '#lib/components/PageHeader.svelte';
   import StateView from '#lib/components/StateView.svelte';
   import NavIcon from '#lib/components/NavIcon.svelte';
   import { session } from '#lib/stores/session.svelte.js';
   import { formatCount } from '#lib/util/format.js';
   import { plural, t } from '#lib/i18n/index.js';
+  const kind = $derived(page.url.searchParams.get('kind'));
+  const selectedKind = $derived(kind === 'movies' || kind === 'shows' ? kind : null);
+  const libraries = $derived(selectedKind ? session.libraries.filter(library => library.kind === selectedKind) : session.libraries);
+  const title = $derived(selectedKind === 'movies' ? t('nav.films') : selectedKind === 'shows' ? t('nav.series') : t('libraries.title'));
 </script>
 
-<svelte:head><title>{t('libraries.title')} · {t('app.name')}</title></svelte:head>
+<svelte:head><title>{title} · {t('app.name')}</title></svelte:head>
 
 <div class="page">
-  <PageHeader title={t('libraries.title')} />
+  <PageHeader {title} />
+  {#if selectedKind && libraries.length > 0}<p class="selector-note">{t('catalog.chooseLibrary')}</p>{/if}
 
-  {#if session.libraries.length === 0}
+  {#if libraries.length === 0}
     <StateView title={t('libraries.emptyTitle')} message={t('libraries.emptyBody')} />
   {:else}
     <ul class="list">
-      {#each session.libraries as library (library.id)}
+      {#each libraries as library (library.id)}
         <li>
           <a class="tile" href="/libraries/{library.id}">
             <span class="tile__icon">
@@ -42,6 +48,8 @@
   .page {
     padding: 8px var(--inset) var(--space-2);
   }
+
+  .selector-note { color: var(--ink-2); margin-bottom: var(--space); }
 
   .list {
     display: grid;

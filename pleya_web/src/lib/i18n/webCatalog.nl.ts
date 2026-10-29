@@ -19,4 +19,9 @@ export const webCatalogNl = {
   'libraries.sort.-last_played_at': 'Recent afgespeeld',
   'libraries.sort.duration': 'Kortste eerst',
   'libraries.sort.-duration': 'Langste eerst',
+  'catalog.allFilms': 'Alle films',
+  'catalog.allSeries': 'Alle series',
+  'catalog.newEpisodes': 'Nieuwe afleveringen',
+  'catalog.recentlyWatched': 'Onlangs bekeken',
+  'catalog.chooseLibrary': 'Kies een bibliotheek om de volledige catalogus te bekijken.',
 };

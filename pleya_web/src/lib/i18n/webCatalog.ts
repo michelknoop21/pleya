@@ -19,4 +19,9 @@ export const webCatalog = {
   'libraries.sort.-last_played_at': 'Recently played',
   'libraries.sort.duration': 'Shortest first',
   'libraries.sort.-duration': 'Longest first',
+  'catalog.allFilms': 'All films',
+  'catalog.allSeries': 'All series',
+  'catalog.newEpisodes': 'New episodes',
+  'catalog.recentlyWatched': 'Recently watched',
+  'catalog.chooseLibrary': 'Choose a library to browse its complete catalog.',
 };
