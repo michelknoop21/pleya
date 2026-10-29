@@ -70,35 +70,47 @@ mixin _PleyaServerSearchMethods on _PleyaServerRequests {
     final title = identity.title;
     final tmdb = identity.externalIds.tmdb;
     final kind = identity.kind;
-    if (title == null || title.trim().isEmpty || !wireCapabilities.search) return const [];
+    if (title == null || title.trim().isEmpty) return const [];
+    if (!wireCapabilities.search)
+      throw StateError('PleyaServerClient: search is not available, cannot look up ${identity.title}');
     if (tmdb == null || (kind != MediaKind.movie && kind != MediaKind.show)) {
       throw StateError('PleyaServerClient: ${identity.title} cannot be proven here without a TMDB number and a kind');
     }
 
-    final answer = await _getJsonDetailed(
-      '/search',
-      queryParameters: {'q': title.trim(), 'limit': '50'},
-      timeout: MediaServerTimeouts.searchPerServer,
-    );
-    final json = answer.json;
-    if (json == null) throw StateError('PleyaServerClient: /search gave no answer');
-
-    final PleyaItemPage page;
-    try {
-      page = PleyaItemPage.fromJson(json);
-    } on PleyaWireFormatException catch (e) {
-      appLogger.w('PleyaServerClient: /search did not match the contract', error: e);
-      throw StateError('PleyaServerClient: /search did not match the contract');
+    // Asked per kind so episodes cannot crowd the page, and paged so a short
+    // common title cannot hide the wanted one past the first page. A search
+    // that is still not exhausted after a few pages is "could not check".
+    final wireKind = kind == MediaKind.movie ? PleyaItemKind.movie : PleyaItemKind.show;
+    final found = <PleyaItem>[];
+    String? cursor;
+    for (var pages = 0; ; pages++) {
+      if (pages >= 5) throw StateError('PleyaServerClient: too many results for ${identity.title} to look up');
+      final answer = await _getJsonDetailed(
+        '/search',
+        queryParameters: {'q': title.trim(), 'kind': wireKind.wire, 'limit': '100', 'cursor': ?cursor},
+        timeout: MediaServerTimeouts.searchPerServer,
+      );
+      final json = answer.json;
+      if (json == null) throw StateError('PleyaServerClient: /search gave no answer');
+      final PleyaItemPage page;
+      try {
+        page = PleyaItemPage.fromJson(json);
+      } on PleyaWireFormatException catch (e) {
+        appLogger.w('PleyaServerClient: /search did not match the contract', error: e);
+        throw StateError('PleyaServerClient: /search did not match the contract');
+      }
+      found.addAll(page.knownItems);
+      cursor = page.nextCursor;
+      if (cursor == null) break;
     }
 
-    final wireKind = kind == MediaKind.movie ? PleyaItemKind.movie : PleyaItemKind.show;
     final sameKind = [
-      for (final item in page.knownItems)
+      for (final item in found)
         if (item.kind == wireKind) item,
     ];
     // Results exist, none of them speaks the field: an older server. Reading
     // that as "no match" would cache a wrong negative for the title.
-    if (page.knownItems.isNotEmpty && page.knownItems.every((item) => !item.externalIdsReported)) {
+    if (found.isNotEmpty && found.every((item) => !item.externalIdsReported)) {
       throw StateError('PleyaServerClient: this server predates external_ids');
     }
     return [

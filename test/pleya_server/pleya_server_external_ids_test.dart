@@ -153,6 +153,19 @@ void main() {
       expect(await client.fetchExternalIds('gone'), const ExternalIds());
     });
 
+    test('a server that fails to answer (503, 429, 500) throws instead of reading as "no numbers"', () async {
+      final server = serverWith();
+      client = await connected(server);
+      for (final (status, code) in [
+        (503, 'storage.unavailable'),
+        (429, 'auth.rate_limited'),
+        (500, 'server.internal'),
+      ]) {
+        server.queueFailure(pathPrefix: '/items/', status: status, errorCode: code);
+        await expectLater(client.fetchExternalIds('dune-2021'), throwsA(isA<StateError>()), reason: '$status');
+      }
+    });
+
     test('an unreachable server throws, so an empty answer is never cached as proof of nothing', () async {
       final server = serverWith();
       client = await connected(server);
@@ -236,6 +249,31 @@ void main() {
     test('a server that predates external_ids throws instead of answering "not here"', () async {
       client = await connected(serverWith(reportsExternalIds: false));
       await expectLater(client.findAllByIdentity(dune()), throwsA(isA<StateError>()));
+    });
+
+    test('a client that never heard from /info cannot tell, and says so', () async {
+      final fresh = serverWith().client();
+      client = fresh;
+      await expectLater(fresh.findAllByIdentity(dune()), throwsA(isA<StateError>()));
+    });
+
+    test('it asks per kind and pages: the wanted title past the first page is still found', () async {
+      final server = PleyaFakeServer(pageSizeCap: 3)..addLibrary(id: 'lib-films', title: 'Films', kind: 'movies');
+      for (var i = 0; i < 8; i++) {
+        server.addItem(id: 'other-$i', kind: 'movie', title: 'Dune $i', libraryId: 'lib-films', year: 2000 + i);
+      }
+      server.addItem(
+        id: 'dune-2021',
+        kind: 'movie',
+        title: 'Dune',
+        libraryId: 'lib-films',
+        year: 2021,
+        externalIds: {'tmdb': 438631},
+      );
+      client = await connected(server);
+
+      expect((await client.findAllByIdentity(dune())).map((m) => m.id), ['dune-2021']);
+      expect(server.requests.where((r) => r.startsWith('/pleya/v1/search')), everyElement(contains('kind=movie')));
     });
 
     test('findByIdentity declines when two titles carry the number', () async {

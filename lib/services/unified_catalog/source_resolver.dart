@@ -95,9 +95,14 @@ Future<void> fanOutFindAllByIdentity({
 /// only case that survives — a missing server id no longer is one.
 List<MediaItem> visibleMatchesFromServer(List<MediaItem> matches, ServerId serverId, Set<String> hiddenLibraryKeys) {
   if (hiddenLibraryKeys.isEmpty) return matches;
+  // A Pleya Server search hit carries no library (the contract has none), so a
+  // hit cannot be shown to sit outside a hidden library. With a library of this
+  // server hidden it is dropped instead of failing open; the source still
+  // appears through the catalog pages, which do know their library.
+  final hasHiddenHere = hiddenLibraryKeys.any((key) => key.startsWith('${serverId.value}:'));
   return matches.where((item) {
     final libraryId = item.libraryId;
-    if (libraryId == null) return true;
+    if (libraryId == null) return !(hasHiddenHere && item.backend == MediaBackend.pleyaServer);
     return !hiddenLibraryKeys.contains(buildGlobalKey(serverId, libraryId));
   }).toList();
 }

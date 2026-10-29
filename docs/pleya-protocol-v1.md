@@ -786,8 +786,7 @@ bestaat. Die velden komen in PS-6 bij, wat regel 1 uit hoofdstuk 3 toestaat.
 
 ### 9.4a Providernummers: `external_ids`
 
-Een `movie` of `show` draagt `external_ids` zodra de server voor die titel een providermatch heeft
-bewezen, in elk antwoord dat een `Item` bevat (detail, bibliotheeklijst, kinderen, zoeken, hubs):
+Een `movie` of `show` draagt `external_ids` zodra de matcher van de server voor die titel een geslaagde providermatch heeft vastgelegd (nummer uit een `.nfo`, handmatige keuze of een eenduidige zoektreffer met titel en jaar), in elk antwoord dat een `Item` bevat (detail, bibliotheeklijst, kinderen, zoeken, hubs):
 
 ```json
 { "external_ids": { "tmdb": 438631 } }

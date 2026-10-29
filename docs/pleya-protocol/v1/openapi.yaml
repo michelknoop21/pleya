@@ -3708,8 +3708,8 @@ components:
             - { $ref: "#/components/schemas/ExternalIds" }
             - { type: "null" }
           description: |
-            Providernummers die de server voor dit item heeft bewezen (unified,
-            zie hoofdstuk 14b van de specificatie). Alleen films en series
+            Providernummers die de matcher van de server voor dit item heeft vastgelegd (unified,
+            zie hoofdstuk 9.4a van de specificatie). Alleen films en series
             dragen ze; een seizoen of aflevering leidt zijn identiteit af van
             de serie plus seizoen- en afleveringsnummer. `null` of afwezig
             zolang geen geslaagde match bestaat, en bij een server die het veld

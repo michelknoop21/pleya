@@ -802,6 +802,19 @@ void main() {
       );
     });
 
+    test('a Pleya Server hit has no library, so a hidden library of that server never lets it through', () {
+      MediaItem hit(MediaBackend backend) => MediaItem(id: 'x', backend: backend, kind: MediaKind.movie, title: 'x');
+      final server = ServerId('s1');
+
+      expect(visibleMatchesFromServer([hit(MediaBackend.pleyaServer)], server, {'s1:hidden'}), isEmpty);
+      expect(visibleMatchesFromServer([hit(MediaBackend.pleyaServer)], server, {'s2:hidden'}), hasLength(1));
+      expect(
+        visibleMatchesFromServer([hit(MediaBackend.plex)], server, {'s1:hidden'}),
+        hasLength(1),
+        reason: 'Plex and Jellyfin keep the behaviour they had',
+      );
+    });
+
     test('a clientless expected server has no known backend, and counts anyway', () {
       // "We do not know what it is and it never answered" has to read as a
       // gap. Reporting it as a backend that cannot carry identity would

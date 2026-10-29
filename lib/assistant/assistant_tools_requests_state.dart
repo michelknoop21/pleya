@@ -265,7 +265,10 @@ Future<_RequestLibraryEvidence> _requestLibraryCopies(
             );
           }
         }
-        final complete = identity.pickAllMatches(candidates);
+        final complete = identity.pickAllMatches(
+          candidates,
+          allowTitleFallback: client.backend != MediaBackend.pleyaServer,
+        );
         if (fourK &&
             candidates.any(
               (candidate) =>

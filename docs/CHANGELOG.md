@@ -4,6 +4,20 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-10-29] Unified: Pleya Server voegt mee op bewezen TMDB-nummers
+
+Dezelfde serie op Plex en Pleya Server stond twee keer in Series, Films, Zoeken, Home en Verder kijken,
+omdat DEC-063 Pleya Server uit elke samenvoeging hield (`_neverMergedBackends`) en de server geen
+nummers doorgaf. DEC-XXX (Roadmap A-07) vervangt dat voor Pleya Server; Pleya Share blijft apart.
+
+- Server: `Item.external_ids {tmdb}` voor een geslaagde match, anders `null`; additief optioneel
+  antwoordveld, openapi, protocol 9.4a, fixture, web-types opnieuw gegenereerd.
+- App: `fetchExternalIds`, `findByIdentity` en `findAllByIdentity` op TMDB-nummer, geen titelterugval;
+  een server die een titel niet kan bewijzen gooit en staat in de dekking als niet gecontroleerd.
+  Een paar met een Pleya-Serverbron krijgt nooit de titel-plus-jaar-terugval. Verborgen bibliotheken
+  lekken niet via een zoektreffer zonder bibliotheek.
+- Bewijs en grenzen: `docs/reports/2026-10-29-unified-pleya-server.md`.
+
 ## [2026-10-11] CI: padscoping in ci.yml, antwoordvangst in één testrun
 
 Een docs-PR wachtte op de Flutter-testsuite (p50 16 minuten) en de Go-databasejob (11,5), die er

@@ -286,14 +286,17 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   /// come back the same way, and grouping then keeps the source on its own
   /// card. A transport failure throws, like the Plex client, so a cached empty
   /// answer cannot pin a title without evidence for the rest of a catalog
-  /// merge. An answer from the server that is an error, say the item is gone,
-  /// is a real answer and comes back empty.
+  /// merge. Only a `not_found` answer, the item being gone, comes back empty.
   Future<ExternalIds> fetchExternalIds(String itemId) async {
     final answer = await _getJsonDetailed('/items/${Uri.encodeComponent(itemId)}');
     final json = answer.json;
     if (json == null) {
-      if (answer.errorCode == null) throw StateError('PleyaServerClient: no answer for /items/$itemId');
-      return const ExternalIds();
+      // Only "this item is not there" is a definitive empty. A rate limit, an
+      // unavailable database or an internal error is the server failing to
+      // answer, and must not be remembered as a title without numbers.
+      final code = answer.errorCode;
+      if (code != null && code.endsWith('not_found')) return const ExternalIds();
+      throw StateError('PleyaServerClient: no usable answer for /items/$itemId ($code)');
     }
     try {
       final item = PleyaItem.fromJson(json);
