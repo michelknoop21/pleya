@@ -263,8 +263,8 @@ class VerifyClient {
   Future<Map<String, Object?>> seedSeerr({required String baseUrl, required String apiKey}) =>
       _postJson('/v1/seerr/seed', {'base_url': baseUrl, 'api_key': apiKey});
 
-  Future<Map<String, Object?>> seedProfile({required String displayName}) =>
-      _postJson('/v1/profiles/seed', {'display_name': displayName});
+  Future<Map<String, Object?>> seedProfile({required String displayName, String? pin}) =>
+      _postJson('/v1/profiles/seed', {'display_name': displayName, 'pin': ?pin});
 
   void close() => _http.close();
 

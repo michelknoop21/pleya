@@ -18,8 +18,10 @@ class _OverlaySheetEntry {
   final WidgetBuilder builder;
   final Completer<dynamic> completer;
   final FocusNode? initialFocusNode;
+  final FocusNode? launcherFocusNode;
+  bool keepAlive = false;
 
-  _OverlaySheetEntry({required this.builder, required this.completer, this.initialFocusNode});
+  _OverlaySheetEntry({required this.builder, required this.completer, this.initialFocusNode, this.launcherFocusNode});
 }
 
 /// Provides [OverlaySheetController] to descendants via [of] / [maybeOf].
@@ -84,8 +86,8 @@ class OverlaySheetController {
 
   /// Push a sub-page within the open sheet. Returns a Future that completes
   /// when the pushed page is popped (with an optional result).
-  Future<T?> push<T>({required WidgetBuilder builder, FocusNode? initialFocusNode}) {
-    return _state._push<T>(builder: builder, initialFocusNode: initialFocusNode);
+  Future<T?> push<T>({required WidgetBuilder builder, FocusNode? initialFocusNode, bool keepPreviousAlive = false}) {
+    return _state._push<T>(builder: builder, initialFocusNode: initialFocusNode, keepPreviousAlive: keepPreviousAlive);
   }
 
   /// Pop the top sub-page, or close the sheet if on the last page.
@@ -118,6 +120,8 @@ class OverlaySheetController {
     bool showDragHandle = false,
     OverlaySheetPresentation presentation = OverlaySheetPresentation.sheet,
     bool restoreLauncherFocus = false,
+    // Opt in for drill-downs that must keep the current sheet and its result.
+    bool asSubpage = false,
   }) {
     if (restoreLauncherFocus) {
       return _withLauncherFocusRestore(
@@ -132,11 +136,15 @@ class OverlaySheetController {
           alignment: alignment,
           showDragHandle: showDragHandle,
           presentation: presentation,
+          asSubpage: asSubpage,
         ),
       );
     }
     final controller = maybeOf(context);
     if (controller != null) {
+      if (asSubpage && controller.isOpen) {
+        return controller.push<T>(builder: builder, initialFocusNode: initialFocusNode, keepPreviousAlive: true);
+      }
       return controller.show<T>(
         builder: builder,
         constraints: constraints,
@@ -419,13 +427,19 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
     return completer.future;
   }
 
-  Future<T?> _push<T>({required WidgetBuilder builder, FocusNode? initialFocusNode}) {
+  Future<T?> _push<T>({required WidgetBuilder builder, FocusNode? initialFocusNode, bool keepPreviousAlive = false}) {
     if (!_isOpen || _isClosing) {
       return Future.value(null);
     }
 
     final completer = Completer<T?>();
-    final entry = _OverlaySheetEntry(builder: builder, completer: completer, initialFocusNode: initialFocusNode);
+    _pageStack.last.keepAlive = keepPreviousAlive;
+    final entry = _OverlaySheetEntry(
+      builder: builder,
+      completer: completer,
+      initialFocusNode: initialFocusNode,
+      launcherFocusNode: keepPreviousAlive ? FocusManager.instance.primaryFocus : null,
+    );
 
     setState(() {
       _pageStack.add(entry);
@@ -449,7 +463,7 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
     }
 
     setState(() {});
-    _autoFocus();
+    _autoFocus(restoreFocusNode: removed.launcherFocusNode);
   }
 
   void _close([dynamic result]) {
@@ -507,7 +521,7 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
     return _lastPointerPosition?.dx;
   }
 
-  void _autoFocus() {
+  void _autoFocus({FocusNode? restoreFocusNode}) {
     // Op TV altijd focussen: er is geen pointer, en de mode-tracker kan bij
     // opstart nog kortstondig op pointer staan.
     if (!InputModeTracker.isKeyboardMode(context) && !PlatformDetector.isTV()) return;
@@ -525,7 +539,9 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
         // focus that instead of the first descendant.
         final topEntry = _pageStack.isNotEmpty ? _pageStack.last : null;
         final initialNode = topEntry?.initialFocusNode;
-        if (initialNode != null && initialNode.context != null) {
+        if (restoreFocusNode?.context != null && restoreFocusNode!.canRequestFocus) {
+          restoreFocusNode.requestFocus();
+        } else if (initialNode != null && initialNode.context != null) {
           initialNode.requestFocus();
         } else {
           _focusFirstDescendant();
@@ -745,7 +761,25 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
 
     final colorScheme = Theme.of(context).colorScheme;
 
-    Widget content = _pageStack.isNotEmpty ? Builder(builder: _pageStack.last.builder) : const SizedBox.shrink();
+    // Home's opted-in drill-downs keep the parent State and its FocusNodes.
+    // Hidden pages neither paint nor accept focus, and don't set the size.
+    Widget content = Stack(
+      children: [
+        for (var i = 0; i < _pageStack.length; i++)
+          if (i == _pageStack.length - 1 || _pageStack[i].keepAlive)
+            Offstage(
+              key: ObjectKey(_pageStack[i]),
+              offstage: i != _pageStack.length - 1,
+              child: TickerMode(
+                enabled: i == _pageStack.length - 1,
+                child: ExcludeFocus(
+                  excluding: i != _pageStack.length - 1,
+                  child: Builder(builder: _pageStack[i].builder),
+                ),
+              ),
+            ),
+      ],
+    );
     // Keep sheet scrollables from attaching to the route's primary controller.
     content = PrimaryScrollController.none(child: content);
     // On TV an off switch in a sheet (4K request, recording options,

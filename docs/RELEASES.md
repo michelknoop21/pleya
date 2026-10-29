@@ -50,6 +50,26 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 419 · 29 October 2026 · Apple TV
+
+<!-- commit: 7bdcccaa -->
+
+### Fixed
+
+- **Holding Select enters only one PIN digit.** Repeated key events no longer add extra
+  digits in the profile PIN keypad. Cancelling PIN entry no longer creates a switch-failure
+  notice; genuine failures still report an error.
+- **Home customization keeps the current preview and focus.** Adding or editing a row waits
+  for the preview of its current definition. A late or failed response cannot enable saving.
+  Action columns line up, nested panels preserve their parent, and a newly added row receives
+  focus after loading.
+
+### Notes
+
+- The unexpected QR re-login and Plex Home main-account switch failure reported on the
+  bedroom Apple TV have not been confirmed resolved. Physical remote and backend validation
+  remain open. Existing error notices are not automatically cleared by a successful switch.
+
 ## 2.8.1 · build 417 · 28 October 2026 · Apple TV
 
 <!-- commit: 0e4ee15f -->

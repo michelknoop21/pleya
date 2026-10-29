@@ -156,6 +156,21 @@ ids:
   - id: library.filter.sort
     role: filter
     instanceable: false
+  - id: home.customize.open
+    role: button
+    instanceable: false
+  - id: home.customize.panel
+    role: region
+    instanceable: false
+  - id: home.customize.action
+    role: button
+    instanceable: true
+  - id: home.row_wizard
+    role: region
+    instanceable: false
+  - id: home.row_wizard.action
+    role: button
+    instanceable: true
   - id: discover.hero
     role: hero
     instanceable: false
@@ -654,3 +669,6 @@ ids:
   - id: profile.tile
     role: grid.item
     instanceable: true
+  - id: profile.pin
+    role: dialog
+    instanceable: false

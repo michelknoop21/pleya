@@ -12,6 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../focus/focusable_wrapper.dart';
+import '../../focus/focus_theme.dart';
+import '../../automation/automation_ids.dart';
 import '../../focus/dpad_navigator.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/media_server_client.dart';
@@ -91,6 +93,7 @@ class TvHomeEntryRowTile extends StatelessWidget {
   const TvHomeEntryRowTile({
     super.key,
     required this.entry,
+    required this.automationRowIndex,
     required this.scale,
     required this.upNode,
     required this.downNode,
@@ -108,6 +111,7 @@ class TvHomeEntryRowTile extends StatelessWidget {
   });
 
   final TvHomeRowEntry entry;
+  final int automationRowIndex;
   final double scale;
   final FocusNode upNode;
   final FocusNode downNode;
@@ -127,6 +131,12 @@ class TvHomeEntryRowTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final mono = tokens(context);
     final custom = entry.custom;
+    final primaryWidth = _actionWidth(context, scale, [
+      t.unifiedCatalog.homeRows.show,
+      t.unifiedCatalog.homeRows.hide,
+      t.unifiedCatalog.homeRows.edit,
+    ]);
+    final removeWidth = _actionWidth(context, scale, [t.unifiedCatalog.homeRows.remove]);
     return _RowShell(
       scale: scale,
       fill: TvHomeRowsLayout.rowFill,
@@ -147,6 +157,7 @@ class TvHomeEntryRowTile extends StatelessWidget {
             semanticLabel: t.unifiedCatalog.homeRows.moveUp,
             scale: scale,
             focusNode: upNode,
+            automationInstance: '$automationRowIndex.up',
             enabled: canMoveUp,
             onPressed: onMoveUp,
             onNavigateUp: () => onNavigateUp(TvHomeRowColumn.up),
@@ -159,39 +170,79 @@ class TvHomeEntryRowTile extends StatelessWidget {
             semanticLabel: t.unifiedCatalog.homeRows.moveDown,
             scale: scale,
             focusNode: downNode,
+            automationInstance: '$automationRowIndex.down',
             enabled: canMoveDown,
             onPressed: onMoveDown,
             onNavigateUp: () => onNavigateUp(TvHomeRowColumn.down),
             onNavigateDown: () => onNavigateDown(TvHomeRowColumn.down),
           ),
           SizedBox(width: TvHomeRowsLayout.actionGap * scale),
-          TvPanelButton(
-            scale: scale,
-            primary: false,
-            focusNode: primaryNode,
-            label: custom == null
-                ? (entry.isHidden ? t.unifiedCatalog.homeRows.show : t.unifiedCatalog.homeRows.hide)
-                : t.unifiedCatalog.homeRows.edit,
-            onPressed: onPrimary,
-            onNavigateUp: () => onNavigateUp(TvHomeRowColumn.primary),
-            onNavigateDown: () => onNavigateDown(TvHomeRowColumn.primary),
-          ),
-          if (onRemove != null) ...[
-            SizedBox(width: TvHomeRowsLayout.actionGap * scale),
-            TvPanelButton(
+          SizedBox(
+            width: primaryWidth,
+            child: TvPanelButton(
               scale: scale,
               primary: false,
-              focusNode: removeNode,
-              label: t.unifiedCatalog.homeRows.remove,
-              onPressed: onRemove!,
-              onNavigateUp: () => onNavigateUp(TvHomeRowColumn.remove),
-              onNavigateDown: () => onNavigateDown(TvHomeRowColumn.remove),
-              onNavigateRight: () {},
+              focusNode: primaryNode,
+              automationId: AutomationIds.homeCustomizeAction,
+              automationInstance: '$automationRowIndex.primary',
+              onNavigateRight: custom == null ? () {} : null,
+              label: custom == null
+                  ? (entry.isHidden ? t.unifiedCatalog.homeRows.show : t.unifiedCatalog.homeRows.hide)
+                  : t.unifiedCatalog.homeRows.edit,
+              onPressed: onPrimary,
+              onNavigateUp: () => onNavigateUp(TvHomeRowColumn.primary),
+              onNavigateDown: () => onNavigateDown(TvHomeRowColumn.primary),
             ),
-          ],
+          ),
+          SizedBox(width: TvHomeRowsLayout.actionGap * scale),
+          // Reserve the fourth column without a visible or focusable control.
+          SizedBox(
+            width: removeWidth,
+            child: onRemove == null
+                ? null
+                : TvPanelButton(
+                    scale: scale,
+                    primary: false,
+                    focusNode: removeNode,
+                    automationId: AutomationIds.homeCustomizeAction,
+                    automationInstance: '$automationRowIndex.remove',
+                    label: t.unifiedCatalog.homeRows.remove,
+                    onPressed: onRemove!,
+                    onNavigateUp: () => onNavigateUp(TvHomeRowColumn.remove),
+                    onNavigateDown: () => onNavigateDown(TvHomeRowColumn.remove),
+                    onNavigateRight: () {},
+                  ),
+          ),
         ],
       ),
     );
+  }
+
+  double _actionWidth(BuildContext context, double scale, List<String> labels) {
+    var width = 0.0;
+    for (final label in labels) {
+      final painter = TextPainter(
+        text: TextSpan(
+          text: label,
+          style: DefaultTextStyle.of(context).style.merge(
+            TextStyle(
+              fontSize: TvSourcePickerLayout.buttonFontSize * scale,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.1,
+            ),
+          ),
+        ),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+      )..layout();
+      if (painter.width > width) width = painter.width;
+      painter.dispose();
+    }
+    // Match the capsule padding, outline inset and the wrapper's outer ring.
+    return width.ceilToDouble() +
+        (52 + 2 * TvSourcePickerLayout.buttonFocusRingGap) * scale +
+        2 +
+        2 * FocusTheme.focusBorderWidth;
   }
 }
 
@@ -334,6 +385,7 @@ class _ArrowButton extends StatelessWidget {
     required this.scale,
     required this.focusNode,
     required this.enabled,
+    required this.automationInstance,
     required this.onPressed,
     this.onNavigateUp,
     this.onNavigateDown,
@@ -345,6 +397,7 @@ class _ArrowButton extends StatelessWidget {
   final double scale;
   final FocusNode focusNode;
   final bool enabled;
+  final String automationInstance;
   final VoidCallback onPressed;
   final VoidCallback? onNavigateUp;
   final VoidCallback? onNavigateDown;
@@ -356,6 +409,8 @@ class _ArrowButton extends StatelessWidget {
     final size = TvHomeRowsLayout.arrowButtonSize * scale;
     return FocusableWrapper(
       focusNode: focusNode,
+      automationId: AutomationIds.homeCustomizeAction,
+      automationInstance: automationInstance,
       semanticLabel: semanticLabel,
       focusShapeBorder: const CircleBorder(),
       onNavigateUp: onNavigateUp,
@@ -406,6 +461,8 @@ class TvHomeNewRowTile extends StatelessWidget {
     final mono = tokens(context);
     return FocusableWrapper(
       focusNode: focusNode,
+      automationId: AutomationIds.homeCustomizeAction,
+      automationInstance: 'new',
       semanticLabel: t.unifiedCatalog.homeRows.newRow,
       onNavigateUp: onNavigateUp,
       onNavigateDown: () {},

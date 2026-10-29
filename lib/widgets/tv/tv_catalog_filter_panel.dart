@@ -100,6 +100,7 @@ Future<UnifiedCatalogFilterSelection?> showTvCatalogFilterPanel(
   required List<CatalogLibrary> libraries,
   required TvCatalogFilterSection initialSection,
   required MediaServerClient? Function(String serverId) clientFor,
+  bool asSubpage = false,
 }) {
   final initialFocusNode = FocusNode(debugLabel: 'TvCatalogFilterInitialFocus');
   return OverlaySheetController.showAdaptive<UnifiedCatalogFilterSelection>(
@@ -107,6 +108,7 @@ Future<UnifiedCatalogFilterSelection?> showTvCatalogFilterPanel(
     presentation: OverlaySheetPresentation.panel,
     initialFocusNode: initialFocusNode,
     restoreLauncherFocus: true,
+    asSubpage: asSubpage,
     builder: (sheetContext) => TvCatalogFilterPanel(
       selection: selection,
       capabilities: capabilities,
@@ -114,8 +116,12 @@ Future<UnifiedCatalogFilterSelection?> showTvCatalogFilterPanel(
       initialSection: initialSection,
       initialFocusNode: initialFocusNode,
       clientFor: clientFor,
-      onApply: (next) => OverlaySheetController.closeAdaptive(sheetContext, next),
-      onClose: () => OverlaySheetController.closeAdaptive(sheetContext, null),
+      onApply: (next) => asSubpage
+          ? OverlaySheetController.popAdaptive(sheetContext, next)
+          : OverlaySheetController.closeAdaptive(sheetContext, next),
+      onClose: () => asSubpage
+          ? OverlaySheetController.popAdaptive(sheetContext, null)
+          : OverlaySheetController.closeAdaptive(sheetContext, null),
     ),
   );
 }

@@ -70,13 +70,18 @@ boot() {
 # op AppleScript, en dat stuurt naar de vóórste app — dus het Simulator-venster
 # moet dan zichtbaar zijn en je verliest je focus bij elke druk.
 IDB_READY=""
+IDB_DIRECT_COMPANION=""
 bounded_idb() {
   # idb occasionally wedges while connecting to a shared simulator host.
   # Python's subprocess timeout kills and reaps that exact idb child; a shell
   # timeout around this whole script could leave it running in the background.
   local idb_path
   idb_path="$(command -v idb)" || return 127
-  python3 - "$idb_path" "$@" <<'PY'
+  local -a idb_args=("$@")
+  if [[ -n "$IDB_DIRECT_COMPANION" ]]; then
+    idb_args=(--companion "$IDB_DIRECT_COMPANION" "${idb_args[@]}")
+  fi
+  python3 - "$idb_path" "${idb_args[@]}" <<'PY'
 import os
 import subprocess
 import sys
@@ -98,8 +103,22 @@ PY
 idb_available() {
   [[ -n "$IDB_READY" ]] && return "$IDB_READY"
   IDB_READY=1
-  command -v idb >/dev/null 2>&1 || return 1
-  local attempt idb_error
+  command -v idb >/dev/null 2>&1 || { echo "idb executable not found" >&2; return 1; }
+  local attempt idb_error description
+  # idb connect <udid> first enumerates every target, which can hang even
+  # while this simulator's existing companion is healthy. Reuse that socket
+  # only after checking its actual target; input still goes through idb HID.
+  local socket="/tmp/idb/${DEVICE}_companion.sock"
+  if [[ -S "$socket" ]]; then
+    IDB_DIRECT_COMPANION="$socket"
+    if description="$(bounded_idb describe --json 2>&1)" &&
+        python3 -c 'import json,sys; sys.exit(json.loads(sys.argv[1]).get("udid") != sys.argv[2])' "$description" "$DEVICE"; then
+      IDB_READY=0
+      return 0
+    fi
+    [[ "${TVOS_SIM_REQUIRE_IDB:-}" == "1" ]] && echo "idb companion probe failed: $description" >&2
+    IDB_DIRECT_COMPANION=""
+  fi
   for attempt in 1 2; do
     if idb_error="$(bounded_idb connect "$DEVICE" 2>&1)"; then IDB_READY=0; break; fi
     [[ "${TVOS_SIM_REQUIRE_IDB:-}" == "1" ]] && echo "idb connect poging $attempt: $idb_error" >&2

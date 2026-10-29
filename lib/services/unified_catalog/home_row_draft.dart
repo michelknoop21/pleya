@@ -35,7 +35,7 @@ class HomeRowDraft extends ChangeNotifier {
       id = initial?.id ?? HomeCustomRow.newId(),
       kind = initial?.kind ?? MediaKind.movie,
       preferences = initial?.preferences ?? UnifiedCatalogPreferences.defaults {
-    name.addListener(notifyListeners);
+    name.addListener(_onNameChanged);
   }
 
   /// The row being edited, or null for a new one. An edit keeps the id, so the
@@ -51,15 +51,40 @@ class HomeRowDraft extends ChangeNotifier {
   HomeRowWizardStep step = HomeRowWizardStep.nameAndKind;
   HomeCustomRowContent? content;
   bool isPreviewing = false;
+  bool previewFailed = false;
+  HomeCustomRow? _previewFor;
   int _generation = 0;
   bool _disposed = false;
 
   HomeCustomRow get draft => HomeCustomRow(id: id, kind: kind, name: name.text.trim(), preferences: preferences);
 
   /// A preview that found something. Never an empty one (C4).
-  bool get canSave => step == HomeRowWizardStep.preview && content != null && !content!.isEmpty;
+  bool get canSave =>
+      step == HomeRowWizardStep.preview && !isPreviewing && _previewFor == draft && content?.isEmpty == false;
+
+  HomeCustomRow? takeForSave() {
+    if (!canSave) return null;
+    final row = draft;
+    _previewFor = null;
+    notifyListeners();
+    return row;
+  }
+
+  void _onNameChanged() {
+    _invalidatePreview();
+    notifyListeners();
+  }
+
+  void _invalidatePreview() {
+    _generation++;
+    content = null;
+    _previewFor = null;
+    isPreviewing = false;
+    previewFailed = false;
+  }
 
   void setKind(MediaKind next) {
+    _invalidatePreview();
     kind = next;
     // An invisible filter with no row to untick it is worse than a lost choice.
     preferences = preferences.copyWith(
@@ -69,30 +94,43 @@ class HomeRowDraft extends ChangeNotifier {
   }
 
   void setFilters(UnifiedCatalogFilterSelection filters) {
+    _invalidatePreview();
     preferences = preferences.copyWith(filters: filters);
     notifyListeners();
   }
 
   void setSort(UnifiedCatalogSort sort) {
+    _invalidatePreview();
     preferences = preferences.copyWith(sort: sort);
     notifyListeners();
   }
 
   void goTo(HomeRowWizardStep next) {
+    _invalidatePreview();
     step = next;
     notifyListeners();
     if (next == HomeRowWizardStep.preview) loadPreview();
   }
 
   Future<void> loadPreview() async {
-    final generation = ++_generation;
+    _invalidatePreview();
+    final generation = _generation;
+    final row = draft;
     isPreviewing = true;
     notifyListeners();
-    final result = await _preview(draft);
-    if (_disposed || generation != _generation) return;
-    content = result;
-    isPreviewing = false;
-    notifyListeners();
+    try {
+      final result = await _preview(row);
+      if (_disposed || generation != _generation || row != draft || step != HomeRowWizardStep.preview) return;
+      content = result;
+      _previewFor = row;
+      isPreviewing = false;
+      notifyListeners();
+    } catch (_) {
+      if (_disposed || generation != _generation) return;
+      previewFailed = true;
+      isPreviewing = false;
+      notifyListeners();
+    }
   }
 
   /// The filters step's five lines, worded once for every surface.
