@@ -23,6 +23,7 @@ import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/widgets/notice/notice_controller.dart';
+import 'package:pleya/widgets/notice/notice.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
@@ -192,6 +193,60 @@ void main() {
   });
 
   group('activateProfileWithPin reports a cancelled PIN', () {
+    Future<BuildContext> mountSwitch(WidgetTester tester) async {
+      late BuildContext context;
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<ActiveProfileProvider>.value(value: active),
+            Provider<ActiveProfileBinder>.value(value: binder),
+          ],
+          child: MaterialApp(
+            home: Builder(
+              builder: (c) {
+                context = c;
+                return const SizedBox();
+              },
+            ),
+          ),
+        ),
+      );
+      noticeController.debugReset();
+      addTearDown(noticeController.debugReset);
+      return context;
+    }
+
+    final plain = Profile.local(id: 'plain-local', displayName: 'Local', createdAt: DateTime(2026));
+
+    testWidgets('a failed UI profile switch notice expires', (tester) async {
+      final context = await mountSwitch(tester);
+      active.markBindingFinished(success: false);
+      bool? ok;
+      unawaited(switchProfileFromUi(context, plain).then((v) => ok = v));
+      await tester.pumpAndSettle();
+      expect(ok, isFalse);
+      expect(noticeController.visible.single.notice.level, NoticeLevel.error);
+      await tester.pump(const Duration(seconds: 7));
+      expect(noticeController.visible, hasLength(1));
+      await tester.pump(const Duration(seconds: 2));
+      expect(noticeController.visible, isEmpty);
+    });
+
+    testWidgets('successful UI switch clears prior switch failure and keeps unrelated errors', (tester) async {
+      final context = await mountSwitch(tester);
+      active.markBindingFinished(success: false);
+      bool? ok;
+      unawaited(switchProfileFromUi(context, plain).then((v) => ok = v));
+      await tester.pumpAndSettle();
+      expect(ok, isFalse);
+      noticeController.show(const Notice(level: NoticeLevel.error, title: 'Unrelated', groupKey: 'unrelated'));
+      active.markBindingFinished(success: true);
+      unawaited(switchProfileFromUi(context, plain).then((v) => ok = v));
+      await tester.pumpAndSettle();
+      expect(ok, isTrue);
+      expect(noticeController.visible.map((n) => n.notice.title), ['Unrelated']);
+    });
+
     testWidgets('cancelling a UI profile switch shows no failure notice', (tester) async {
       late BuildContext context;
       await tester.pumpWidget(
