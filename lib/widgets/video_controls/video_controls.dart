@@ -253,6 +253,8 @@ class PlexVideoControls extends StatefulWidget {
   final int selectedMediaIndex;
   final TranscodeQualityPreset selectedQualityPreset;
   final bool serverSupportsTranscoding;
+  final bool serverSupportsAudioSelection;
+  final bool serverSupportsSubtitleSelection;
   final bool isTranscoding;
   final bool isOfflinePlayback;
   final List<MediaAudioTrack> sourceAudioTracks;
@@ -380,6 +382,8 @@ class PlexVideoControls extends StatefulWidget {
     this.selectedMediaIndex = 0,
     this.selectedQualityPreset = TranscodeQualityPreset.original,
     this.serverSupportsTranscoding = false,
+    this.serverSupportsAudioSelection = true,
+    this.serverSupportsSubtitleSelection = false,
     this.isTranscoding = false,
     this.isOfflinePlayback = false,
     this.sourceAudioTracks = const [],

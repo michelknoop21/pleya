@@ -59,7 +59,22 @@ mixin _PleyaServerDownloadMethods on _PleyaServerRequests {
     return DownloadResolution(
       videoUrl: (container == null ? url : url.replace(queryParameters: {'container': container})).toString(),
       mediaSourceId: version.id,
-      headers: await _session.authHeaders(),
+      externalSubtitles: [
+        for (final track in PleyaServerMappers.mediaSourceInfo(version, baseUrl: connection.baseUrl).subtitleTracks)
+          if (track.external && track.key != null)
+            DownloadSubtitleSpec(
+              id: track.id,
+              sourceStreamId: track.sourceStreamId,
+              url: track.key!,
+              codec: track.codec,
+              language: track.language,
+              languageCode: track.languageCode,
+              forced: track.forced,
+              displayTitle: track.displayTitle ?? track.title,
+              headersSupplier: _downloadHeaders,
+            ),
+      ],
+      headers: await _downloadHeaders(),
       sha256: download.sha256,
     );
   }

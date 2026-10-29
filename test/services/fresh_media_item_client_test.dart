@@ -137,7 +137,11 @@ void main() {
     client.setOfflineMode(false);
     server.unreachable = true;
     expect(await freshClient.fetchFreshItem('movie_1'), isNull);
-    expect((await client.cache.getMetadata(cacheScope, 'movie_1'))?.viewOffsetMs, _cachedPosition);
+    expect(
+      (await client.cache.getMetadata(cacheScope, 'movie_1'))?.viewOffsetMs,
+      _serverPosition,
+      reason: 'the last successful live fetch is retained; failed fresh reads do not replace it',
+    );
   });
 }
 

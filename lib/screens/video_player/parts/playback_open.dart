@@ -429,6 +429,28 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
   /// Build the per-item [TrackManager] for a freshly opened source. The
   /// start and reload flows construct it identically apart from where the
   /// preferred tracks and profile settings come from.
+  Future<({int? audioStreamId, int? subtitleStreamId})> _selectSourceTracksBeforeOpen(
+    MediaSourceInfo sourceInfo, {
+    required Player forPlayer,
+    required MediaItem metadata,
+    required bool Function() isCurrent,
+  }) async {
+    final manager = _buildTrackManager(
+      forPlayer: forPlayer,
+      metadata: metadata,
+      plexClient: null,
+      getProfileSettings: () => context.read<UserProfileProvider>().profileSettings,
+      sessionIntent: _trackManager?.sessionIntent,
+      preferredAudioTrack: _preferredAudioTrack,
+      preferredSubtitleTrack: _preferredSubtitleTrack,
+    );
+    try {
+      return await manager.selectSourceTracks(sourceInfo, isCurrent: isCurrent);
+    } finally {
+      manager.dispose();
+    }
+  }
+
   TrackManager _buildTrackManager({
     required Player forPlayer,
     required MediaItem metadata,

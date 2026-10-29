@@ -142,10 +142,8 @@ class TrackControlsState {
     this.canHandoff = false,
   });
 
-  /// Source subtitles can only be selected when playback can be re-opened with
-  /// a Plex source subtitle stream id.
-  bool get canUseSourceSubtitles =>
-      isTranscoding && sourceSubtitleTracks.isNotEmpty && onSwitchSubtitleStreamId != null;
+  /// The caller supplies source tracks and a callback only after capability/rights gating.
+  bool get canUseSourceSubtitles => sourceSubtitleTracks.isNotEmpty && onSwitchSubtitleStreamId != null;
 
   /// Use the server's audio streams when playback needs a source reload, or
   /// when the native player did not expose every embedded track. The latter

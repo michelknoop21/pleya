@@ -1639,6 +1639,15 @@ paths:
         `playback.transcode_busy`, ffmpeg die niets levert `502`
         `playback.transcode_failed`.
 
+        Met `playback_quality` accepteert de server optionele `quality`-limieten
+        en voert hij die uit via transcode zonder de bron te vergroten. Met
+        `playback_audio_selection` accepteert hij `audio_stream_id` binnen de
+        expliciete `version_id`; het gekozen spoor wordt vóór codecbeoordeling
+        geselecteerd en bereikt de uitvoer. De effectieve keuzes staan in
+        `effective_quality` en `selected_audio_stream_id`. Ongeldige limieten of
+        audio zonder versie zijn `400 playback.selection_invalid`; een
+        onvindbaar spoor is `404`. Deze keuzes vallen nooit stil terug op direct play.
+
         `reason` is de hoofdreden en het eerste element van `reasons`. Een reden
         is een domeincode met parameters, geen vertaalsleutel; een client die
         een code niet kent toont een generieke tekst en logt de code.
@@ -1653,6 +1662,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PlaybackPlan" }
+        "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409":
@@ -2386,6 +2396,14 @@ paths:
       tags: [playback]
       operationId: getSubtitle
       summary: Een ondertitelbestand.
+      description: |
+        Sidecars blijven rechtstreeks beschikbaar. Met `embedded_subtitles`
+        levert dezelfde route ook een gecatalogiseerd ingebed spoor, na
+        begrensde extractie. Tekst behoudt SRT/ASS/SSA/VTT; PGS/DVDsub levert
+        één subtitle-only Matroska-resource. Identiteit en bibliotheekrechten
+        worden voor voorbereiding en opnieuw voor levering gecontroleerd;
+        de bestaande token-/sessiescope blijft gelden. Voorbereiding is
+        begrensd tot de bestaande starttimeout, één werker en 4 MiB uitvoer.
       security:
         - bearerAuth: []
         - streamToken: []
@@ -2401,8 +2419,11 @@ paths:
             application/x-subrip: { schema: { type: string } }
             text/x-ssa: { schema: { type: string } }
             text/vtt: { schema: { type: string } }
+            application/x-matroska: { schema: { type: string, format: binary } }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
   /stream/{version_id}:
@@ -2871,6 +2892,10 @@ components:
         artwork: { type: boolean }
         watch_state: { type: boolean }
         playback_plan: { type: boolean, default: false }
+        playback_quality: { type: boolean, default: false }
+        embedded_subtitles: { type: boolean, default: false }
+        playback_subtitles: { type: boolean, default: false }
+        playback_audio_selection: { type: boolean, default: false }
         transcode: { type: boolean, default: false }
         downloads: { type: boolean, default: false }
         backups:
@@ -3850,14 +3875,61 @@ components:
             is_local: { $ref: "#/components/schemas/CapabilityBool" }
             max_bitrate_kbps: { $ref: "#/components/schemas/CapabilityInt" }
 
+    PlaybackQuality:
+      type: object
+      additionalProperties: false
+      required: [max_video_bitrate_kbps, max_height]
+      properties:
+        max_video_bitrate_kbps: { type: integer, minimum: 1, maximum: 100000 }
+        max_height: { type: integer, minimum: 1, maximum: 4320 }
+
+    PlaybackSubtitleSelection:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode: { type: string, enum: ["off", external, burn], x-unknown-safe: false }
+        stream_id: { $ref: "#/components/schemas/Id" }
+      if:
+        properties: { mode: { const: "off" } }
+      then:
+        not: { required: [stream_id] }
+      else:
+        required: [stream_id]
+
+    PlaybackSubtitlePlan:
+      type: object
+      required: [action]
+      properties:
+        action: { type: string, enum: ["off", external, embed, burn], x-unknown-safe: true }
+        stream_id: { $ref: "#/components/schemas/Id" }
+        url: { type: string, description: Geautoriseerd pad op dezelfde server. }
+        format: { type: string }
+
     PlaybackPlanRequest:
       type: object
       required: [item_id]
       additionalProperties: false
+      dependentRequired:
+        audio_stream_id: [version_id]
+      if:
+        required: [subtitle]
+        properties:
+          subtitle:
+            properties: { mode: { enum: [external, burn], x-unknown-safe: false } }
+      then:
+        required: [version_id]
       properties:
+        subtitle: { $ref: "#/components/schemas/PlaybackSubtitleSelection" }
         item_id: { $ref: "#/components/schemas/Id" }
         version_id: { $ref: "#/components/schemas/Id" }
         capabilities: { $ref: "#/components/schemas/DeviceCapabilities" }
+        quality:
+          description: Alleen met playback_quality; afwezig behoudt het bestaande plannerbeleid.
+          $ref: "#/components/schemas/PlaybackQuality"
+        audio_stream_id:
+          description: Alleen met playback_audio_selection; vereist version_id. Afwezig behoudt het bestaande audiobeleid.
+          $ref: "#/components/schemas/Id"
 
     PlaybackDeliveryMode:
       type: string
@@ -3887,6 +3959,9 @@ components:
       type: object
       required: [item_id, version_id, delivery_mode, stream_url, container, video, audio, seekable, session_id, reason, reasons]
       properties:
+        subtitle: { $ref: "#/components/schemas/PlaybackSubtitlePlan" }
+        effective_quality: { $ref: "#/components/schemas/PlaybackQuality" }
+        selected_audio_stream_id: { $ref: "#/components/schemas/Id" }
         item_id: { $ref: "#/components/schemas/Id" }
         version_id: { $ref: "#/components/schemas/Id" }
         delivery_mode: { $ref: "#/components/schemas/PlaybackDeliveryMode" }

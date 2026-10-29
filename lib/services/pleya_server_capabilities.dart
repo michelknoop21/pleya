@@ -37,7 +37,12 @@ class PleyaServerCapabilityResolver {
   /// it is a server that has told us nothing. Claiming otherwise is how a
   /// screen calls an endpoint that is not there and shows a failure where a
   /// spinner belonged.
-  static const ServerCapabilities unknown = ServerCapabilities(videoTranscoding: false, alphaBar: AlphaBarMode.none);
+  static const ServerCapabilities unknown = ServerCapabilities(
+    clientDownloads: false,
+    videoTranscoding: false,
+    sourceAudioSelection: false,
+    alphaBar: AlphaBarMode.none,
+  );
 
   static ServerCapabilities resolve(PleyaCapabilities wire) => ServerCapabilities(
     // No play-queue resource in the protocol. A shared queue is server-side
@@ -66,10 +71,20 @@ class PleyaServerCapabilityResolver {
     // PS-8 on the server, PS-6 for the client's side of the negotiation.
     // Leaving this on the wire flag alone would put quality presets in the
     // player with nothing behind them the moment a server flips it.
-    videoTranscoding: _offered(wire.transcode, implementedHere: false),
+    videoTranscoding: _offered(wire.transcode && wire.playbackPlan && wire.playbackQuality, implementedHere: true),
+    sourceAudioSelection: _offered(
+      wire.transcode && wire.playbackPlan && wire.playbackAudioSelection,
+      implementedHere: true,
+    ),
+
+    sourceSubtitleSelection: _offered(
+      wire.transcode && wire.playbackPlan && wire.playbackSubtitles,
+      implementedHere: true,
+    ),
 
     // PS-10.
     serverSideSync: _offered(wire.downloads, implementedHere: false),
+    clientDownloads: _offered(wire.downloads, implementedHere: true),
 
     // No Live TV surface in v1, and a tab that opens on an empty screen is
     // exactly what criterion 4 forbids.

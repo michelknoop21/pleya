@@ -81,7 +81,11 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			WatchStateOwnership: s.opts.Watch != nil,
 			StreamSessions:      true,
 			// PlaybackPlan: S17 is gebouwd, POST /playback/plan bestaat.
-			PlaybackPlan: true,
+			PlaybackPlan:           true,
+			PlaybackQuality:        s.transcodeEnabled(),
+			EmbeddedSubtitles:      s.transcodeEnabled(),
+			PlaybackSubtitles:      s.transcodeEnabled(),
+			PlaybackAudioSelection: s.transcodeEnabled(),
 			// Transcode: aan zodra er een manager met sessies is (S18).
 			Transcode: s.transcodeEnabled(),
 			Downloads: s.opts.Downloads != nil && s.opts.Jobs != nil,

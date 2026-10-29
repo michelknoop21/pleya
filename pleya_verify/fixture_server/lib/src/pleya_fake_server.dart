@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'fixture_clock.dart';
 import 'memory_fake_store.dart';
 import 'fixtures/sample_media.dart';
+import 'fixtures/sample_hls.dart';
 
 /// A Pleya Server routing kernel, good enough to browse.
 ///
@@ -60,6 +61,10 @@ class PleyaFakeServer {
   /// [planFailureStatus] makes the route fail with that status. Every request
   /// body lands in [planRequests].
   bool playbackPlanCapability = false;
+  bool playbackQualityCapability = false;
+  bool playbackAudioSelectionCapability = false;
+  bool embeddedSubtitlesCapability = false;
+  bool playbackSubtitlesCapability = false;
 
   /// S20: favorites, ratings and remembered tracks. The fake keeps them per
   /// item id and records each call so a test can read what the app sent.
@@ -183,6 +188,7 @@ class PleyaFakeServer {
   /// version id -> playable bytes, auto-populated by [addItem] for every
   /// version it creates. `GET /stream/{version_id}` serves from here.
   final Map<String, List<int>> versionBytes = {};
+  final Map<String, String> subtitleFiles = {};
 
   /// `"<kind>/<slug>"` -> the id [applyNamedFixture] generated for it.
   ///
@@ -282,6 +288,7 @@ class PleyaFakeServer {
     searchResults.clear();
     artworkById.clear();
     versionBytes.clear();
+    subtitleFiles.clear();
     seededIds.clear();
     verifyWatchlistIds.clear();
   }
@@ -295,6 +302,10 @@ class PleyaFakeServer {
     ownedByThisSession = true;
     filtersCapability = false;
     playbackPlanCapability = false;
+    playbackQualityCapability = false;
+    playbackAudioSelectionCapability = false;
+    embeddedSubtitlesCapability = false;
+    playbackSubtitlesCapability = false;
     personalCapability = false;
     assistantMemoryCapability = false;
     _memoryAccessUsers.clear();
@@ -685,9 +696,17 @@ class PleyaFakeServer {
         'item_id': body['item_id'],
         'version_id': versionId,
         'delivery_mode': planDeliveryMode,
+        if (body['subtitle'] case final Map sub)
+          'subtitle': {
+            'action': sub['mode'],
+            if (sub['stream_id'] != null) 'stream_id': sub['stream_id'],
+            if (sub['mode'] == 'external') 'url': '/pleya/v1/subtitles/${sub['stream_id']}',
+          },
+        if (body['quality'] != null) 'effective_quality': body['quality'],
+        if (body['audio_stream_id'] != null) 'selected_audio_stream_id': body['audio_stream_id'],
         'stream_url': direct ? '/pleya/v1/stream/$versionId' : '/pleya/v1/playback/sessions/sess-1/index.m3u8',
         'container': direct ? 'original' : 'hls',
-        'video': {'action': 'copy'},
+        'video': {'action': (body['subtitle'] as Map?)?['mode'] == 'burn' ? 'transcode' : 'copy'},
         'audio': {'action': 'copy'},
         'seekable': direct,
         'session_id': direct ? null : 'sess-1',
@@ -697,6 +716,14 @@ class PleyaFakeServer {
     }
 
     if (path.startsWith('/playback/sessions/') && playbackPlanCapability) {
+      if (request.method == 'GET') {
+        final file = path.split('/').last;
+        final bytes = sampleHlsFiles[file];
+        if (bytes != null) {
+          if (!file.endsWith('.m3u8')) return _streamResponse(request, bytes);
+          return http.Response.bytes(bytes, 200, headers: {'content-type': 'application/vnd.apple.mpegurl'});
+        }
+      }
       sessionCalls.add('${request.method} $path');
       return http.Response('', 204);
     }
@@ -751,6 +778,12 @@ class PleyaFakeServer {
       return http.Response.bytes(bytes, 200, headers: {'content-type': _imageContentType(bytes)});
     }
 
+    if (path.startsWith('/subtitles/')) {
+      final text = subtitleFiles[Uri.decodeComponent(path.split('/').last)];
+      return text == null
+          ? _json(_error('library.not_found'), status: 404)
+          : http.Response(text, 200, headers: {'content-type': 'application/x-subrip'});
+    }
     final streamMatch = RegExp(r'^/stream/([^/]+)$').firstMatch(path);
     if (streamMatch != null) {
       final versionId = Uri.decodeComponent(streamMatch.group(1)!);
@@ -960,6 +993,12 @@ class PleyaFakeServer {
       'stream_sessions': watchState,
       if (filtersCapability) 'filters': true,
       if (playbackPlanCapability) 'playback_plan': true,
+      if (playbackQualityCapability) 'playback_quality': true,
+      if (playbackQualityCapability || playbackAudioSelectionCapability || playbackSubtitlesCapability)
+        'transcode': true,
+      if (playbackAudioSelectionCapability) 'playback_audio_selection': true,
+      if (embeddedSubtitlesCapability) 'embedded_subtitles': true,
+      if (playbackSubtitlesCapability) 'playback_subtitles': true,
       if (downloadsCapability) 'downloads': true,
       if (personalCapability) ...{'history': true, 'favorites': true, 'ratings': true, 'track_preferences': true},
     },

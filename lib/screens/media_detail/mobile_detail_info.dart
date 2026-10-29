@@ -80,7 +80,12 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
     final isNumericRating = _getMediaClientForMetadata(context)?.capabilities.numericUserRating ?? true;
     final trailer = _getPrimaryTrailer();
     final seerrConfigured = context.watch<SeerrProvider?>()?.isConfigured ?? false;
-    final canDownload = !metadata.isShow && !widget.isOffline && !PlatformDetector.isAppleTV();
+    final canDownload =
+        !metadata.isShow &&
+        !widget.isOffline &&
+        !PlatformDetector.isAppleTV() &&
+        (_getMediaClientForMetadata(context)?.capabilities.clientDownloads ??
+            (metadata.backend != MediaBackend.pleyaServer));
 
     void openMore() {
       final box = _contextMenuKey.currentContext?.findRenderObject() as RenderBox?;
@@ -192,6 +197,7 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
     };
     return DetailActionItem(
       key: const Key('media-detail.action.download'),
+      active: downloadProvider.isDownloaded(globalKey),
       icon: icon,
       label: t.detailActions.download,
       semanticLabel: semanticLabel,

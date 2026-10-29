@@ -261,6 +261,11 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       // otherwise get that event refused as stale and leave the viewing
       // without an owner, so its progress would never be stored.
       _watchLedger.remember(item.id, item.userState?.revision);
+      try {
+        await cache.put(ServerId(connection.id), PleyaServerApiCache.itemEndpoint(id), json);
+      } catch (e) {
+        appLogger.d('PleyaServerClient: optional metadata cache write failed', error: e);
+      }
       final ancestors = await _ancestorsOf(item);
       return PleyaServerMappers.mediaItem(
         item,

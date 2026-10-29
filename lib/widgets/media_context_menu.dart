@@ -265,7 +265,9 @@ class MediaContextMenuState extends State<MediaContextMenu> {
       // Download + sync-rule management. Video playlists and any collection
       // qualify — collections can contain movies, episodes, and shows.
       final isVideoPlaylist = isPlaylist && playlist.playlistType == 'video';
-      if ((isVideoPlaylist || isCollection) && !PlatformDetector.isAppleTV()) {
+      if ((isVideoPlaylist || isCollection) &&
+          !PlatformDetector.isAppleTV() &&
+          (mediaClient?.capabilities.clientDownloads ?? (itemBackend != MediaBackend.pleyaServer))) {
         final hasRule = Provider.of<DownloadProvider>(context, listen: false).hasSyncRule(_itemSyncRuleKey(context));
         if (hasRule) {
           menuActions.add(
@@ -472,6 +474,7 @@ class MediaContextMenuState extends State<MediaContextMenu> {
       // Download options (for episodes, movies, shows, and seasons).
       // Apple TV has no user-accessible file storage — skip entirely.
       if (!PlatformDetector.isAppleTV() &&
+          (mediaClient?.capabilities.clientDownloads ?? (itemBackend != MediaBackend.pleyaServer)) &&
           (mediaKind == MediaKind.episode ||
               mediaKind == MediaKind.movie ||
               mediaKind == MediaKind.show ||

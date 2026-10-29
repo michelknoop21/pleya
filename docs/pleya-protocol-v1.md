@@ -947,6 +947,16 @@ Klasse: **`authenticated`**, met de bibliotheekautorisatie van het item (matrixr
 `capabilities` in de vorm van `DeviceCapabilities` (de vier lagen uit het PS-5-model, met per veld
 `{value, confidence, overridden}`).
 
+Het op 29 oktober vrijgegeven selectievenster voegt optionele `quality`
+(`max_video_bitrate_kbps`, `max_height`) achter `playback_quality` en
+`audio_stream_id` achter `playback_audio_selection` toe. Audio vereist een
+expliciete `version_id` en een spoor binnen die versie. Afwezig behoudt bestaand
+beleid; onbekende vlag betekent geen nieuwe velden. Limieten zijn respectievelijk
+1–100000 en 1–4320; ongeldige selectie is `400 playback.selection_invalid`.
+De planner/ffmpeg voeren de keuze uit; het antwoord bevestigt optioneel
+`effective_quality` en `selected_audio_stream_id`. Een onuitvoerbare expliciete
+keuze geeft een fout, geen stille direct-play/defaultaudio-terugval.
+
 ```json
 {
   "item_id": "01a15486-...",

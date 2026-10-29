@@ -39,34 +39,36 @@ Bron voor de scope:
 | Blok | Slices | Gereed | Bezig | Open |
 | --- | --- | --- | --- | --- |
 | Fundament en integratie | S0 | 1 | 0 | 0 |
-| Backend basis | S1 tot S6 | 2 | 0 | 4 |
-| Web | S7 tot S13 | 1 | 2 | 4 |
-| Clients en agents | S14, S16 | 0 | 0 | 2 |
-| Uitgebreide scope | S17 tot S25 | 2 | 0 | 7 |
+| Backend basis | S1 tot S6 | 2 | 3 | 1 |
+| Web | S7 tot S13 | 1 | 3 | 3 |
+| Clients en agents | S14, S16 | 0 | 1 | 1 |
+| Uitgebreide scope | S17 tot S25 | 2 | 5 | 2 |
 | Afronding | S15 | 0 | 0 | 1 |
-| **Totaal** | **26** | **6** | **2** | **18** |
+| **Totaal** | **26** | **6** | **12** | **8** |
 
-Per taak, en dat is de maat die telt: **162 taken, 83 gereed, 14 bezig, 65 open.** S0, S1 en S2 zijn
+De slicetelling is op 29 oktober 2026 opnieuw afgeleid uit de bestaande taakstatussen; een slice met gereed én open werk telt als bezig. Dit voegt geen runtime- of releasebewijs toe.
+
+Per taak, en dat is de maat die telt: **162 taken, 84 gereed, 14 bezig, 64 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2, en S2.9 tot en met S2.11 (afleveringsnamen zonder `SxxExx`) zijn dat ook;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
 
 Gesloten vóór dit traject en niet in deze lijst: PS-0, PS-1, PS-2, PS-3, PS-3W, PS-4, PS-9.
-Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-reader (PS-15).
+Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13 en PS-16. De reader/leesvoortgang uit PS-15 is op 29 oktober 2026 vrijgegeven binnen de bestaande platformroutes (DEC-XXX).
 
 **Waar het nu op wacht.** S0, S1 en S2 zijn dicht en daarmee de beheer-backend van PS-11A: instellingen,
 diagnostiek, tokens, audit, bibliotheken, opslag, scans, jobs en de overname van `.env`-bibliotheken.
 Protocolvensters 1 en 2 zijn gesloten ([DEC-135](DECISIONS.md), [DEC-136](DECISIONS.md),
 [DEC-137](DECISIONS.md); [DEC-138](DECISIONS.md), [DEC-146](DECISIONS.md)) en `openapi.yaml` is weer
-bevroren buiten het afzonderlijk vrijgegeven BP-08b-venster hieronder. De volgorde sinds [DEC-150](DECISIONS.md) en [DEC-151](DECISIONS.md) is: eerst één bewezen
+bevroren buiten het afzonderlijk vrijgegeven BP-08b-venster en de op 29 oktober vrijgegeven playbackselectie- en ondertitelvensters (DEC-XXX, voorstellen onderaan). De volgorde sinds [DEC-150](DECISIONS.md) en [DEC-151](DECISIONS.md) is: eerst één bewezen
 keten op de testinstance (scan, metadata en artwork, zoeken, direct play, hervatten, kijkstatus op een
 tweede toestel, transcode, download met digest), daarna de gaten die die ronde aanwijst, dan de
 beheer-GUI (S10), dan de Plex Replacement Readiness Gate (S15) en pas daarna S3. S3 is dus niet de
 volgende backendslice; de uitleg hieronder blijft staan voor M7. PS-14 is op 10 oktober 2026 vrijgegeven
 ([DEC-149](DECISIONS.md)), met de voorwaarden dat het de bestaande architectuur en de Unified Library
 gebruikt, later aansluit op de Pleya-clients en de webclient, en geen nieuwe DRM-, winkel- of
-abonnementsfunctionaliteit brengt zonder afzonderlijk besluit. Dat geeft S3 vrij en S6 niet: het
-locatorbesluit P5 is nog niet genomen en PS-15 is niet vrijgegeven. Wat S3 nog nodig heeft: het
+abonnementsfunctionaliteit brengt zonder afzonderlijk besluit. DEC-149 gaf S3 vrij en S6 nog niet.
+P5 en PS-15 zijn op 29 oktober 2026 door Michel vrijgegeven (DEC-XXX); contractvenster, S3 en hardwaremeting blijven voorwaarden. Wat S3 nog nodig heeft: het
 ontwerp van het contractvenster voor S3 tot en met S6, dat gebundeld wordt gemaakt en met een eigen
 besluit opent (voorstel: `docs/pleya-server-contract-window-3.md`, status voorstel), de laag C-meting
 op hardware (DEC-128 punt 7, DEC-149 punt 4) en het validator-besluit onder de sterke validator. S7
@@ -114,7 +116,7 @@ wachten; wie ruimte heeft trekt hem naar voren.
 ### 2.2 De kritieke lijn
 
 `S3 → S5 en S6 → S14 → S17 → S18 → S23 → S15` (de afhankelijkheidsvolgorde uit deel I; de uitvoeringsvolgorde staat in 2.1), met voor S3 de laag C-meting en het venster-besluit,
-en voor S6 P5 én de vrijgave van PS-15.
+en voor S6 het afzonderlijke contractvenster na de P5-/PS-15-vrijgave van 29 oktober 2026.
 
 *Bijgesteld op 10 oktober 2026: de schakels `S7 → S10 → S11 → vrijgave PS-14` zijn als poort voor S3
 vervallen door [DEC-149](DECISIONS.md). S7, S10 en S11 blijven de web-tak, hieronder beschreven.*
@@ -138,8 +140,8 @@ van de 128 resterende in de golven; PS-12.0 is een keuze en telt daar niet mee. 
 
 | Wat | Blokkeert | Stand |
 | --- | --- | --- |
-| **P5, het locatorbesluit** (Readium Locator plus publicatie-digest, S6.1) | S6, en via S6 ook S9, S12, S14, S16, S20 en S21 | open; RB-12 is bijgesteld in deel E, het besluit zelf moet nog als DEC. S6 wacht daarnaast op de vrijgave van PS-15 |
-| **Vrijgave van PS-15** (leesvoortgangsdeel, S6) | S6 | open; DEC-149 punt 3 en 4 laten PS-15 en PS-16 ongewijzigd, niet vrijgegeven |
+| **P5, het locatorbesluit** (Readium Locator plus publicatie-digest, S6.1) | S6, en via S6 ook S9, S12, S14, S16, S20 en S21 | genomen op 29 oktober 2026 (DEC-XXX): bestaand Readium Locator/publicatiedigest-voorstel geaccepteerd; contract/hardware blijven open |
+| **Vrijgave van PS-15** (leesvoortgangsdeel, S6) | S6 | PS-15 vrijgegeven op 29 oktober 2026 (DEC-XXX); PS-16 blijft gesloten |
 | **Vrijgave van PS-14 (S3)** | S3, en via S3 S6, S9, S12, S14 | genomen op 10 oktober 2026 ([DEC-149](DECISIONS.md)); geeft S3 vrij en S6 niet. Open blijven het contractvenster voor S3 tot en met S6, dat een eigen besluit vraagt, en de laag C-meting op hardware (DEC-128 punt 7, DEC-149 punt 4) |
 | **PS-12 voor of na Plex uit (S15.9)** | S15.5 | open; zonder migratie begint het huishouden met een lege kijkstatus |
 | **Pushen naar `github`** | niets technisch | `github` is leidend; branches en PR's gaan daarheen, `origin` (Gitea) loopt achter en wordt gespiegeld |
@@ -282,7 +284,7 @@ in de 156 taken.
 Vrijgegeven op 10 oktober 2026 door [DEC-149](DECISIONS.md). Voorwaarden: bestaande architectuur en
 Unified Library, aansluiting op de Pleya-clients en de webclient, geen nieuwe DRM-, winkel- of
 abonnementsfunctionaliteit zonder afzonderlijk besluit. Protocolvenster 3 is nog niet geopend (S3.6
-sluit het); S6 blijft wachten op P5 én de vrijgave van PS-15.
+sluit het). P5 en PS-15 zijn op 29 oktober 2026 vrijgegeven (DEC-XXX); de contract- en hardwarevoorwaarden blijven staan.
 
 Afhankelijkheden vóór S3.1: de laag C-meting op hardware (DEC-128 punt 7, DEC-149 punt 4), het
 besluit dat het contractvenster opent, en voor S3.5 het validator-besluit. Voor de meting staat nog
@@ -324,12 +326,13 @@ de velden uit `.nfo`, op de coverage-gate van 80 procent per bibliotheek (S4.2).
 
 ### S6 Leesvoortgang (PS-15 server)
 
-Niet vrijgegeven. Hangt aan S3, aan het locatorbesluit P5 en aan de vrijgave van PS-15 (DEC-149
-punt 3 en 4), en aan het venster-besluit.
+P5 en PS-15 zijn op 29 oktober 2026 expliciet vrijgegeven (DEC-XXX). S6 houdt zijn S3-afhankelijkheid,
+de vereiste hardwaremeting en het afzonderlijke boeken-/leesvoortgangscontractvenster. De fasevrijgave
+is geen bewijs van gebouwde leesvoortgang of een reader.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S6.1 | DEC Readium Locator plus publicatie-digest, manifest en resources (RB-12 bijgesteld) | `[ ]` | | |
+| S6.1 | DEC Readium Locator plus publicatie-digest, manifest en resources (RB-12 bijgesteld) | `[x]` | Expliciet akkoord Michel op het bestaande [P5-voorstel](pleya-server-p5-locator-proposal.md), vastgelegd als DEC-XXX; dit sluit het besluit, niet S6.2–S6.5 | 2026-10-29 |
 | S6.2 | Migratie `0016`, `reading_states`, pure functie | `[ ]` | | |
 | S6.3 | `POST`/`GET /reading-state`, hydratie op `Publication` | `[ ]` | | |
 | S6.4 | Toestelnaam bij laatst gekeken | `[ ]` | | |
@@ -415,6 +418,8 @@ punt 3 en 4), en aan het venster-besluit.
 | S14.4 | `PleyaServerBooksSource` met mappers | `[ ]` | | |
 | S14.5 | Artworkladder in de imagecache-URL | `[ ]` | | |
 | S14.6 | Verify-scenario voor de boekenbron | `[ ]` | | |
+
+**C-05-appvervolg, 29 oktober 2026 (S14/S17/S18):** de afzonderlijk vrijgegeven kwaliteits-/audio- en ondertitelvensters zijn lokaal aangesloten van wire en publieke client tot planner/ffmpeg en bestaande speler. Echte geïsoleerde Go-server met synthetische media: iOS en tvOS simulator tonen kwaliteitskeuze, ingebed spoor en Uit; de tvOS-stoprace bij bronwisselen is eerst rood gezien en met dezelfde echte keten groen. Details en beelden: [ontwikkelbewijs](qa/2026-10-29-pleya-playback-report.md). Geen fysieke hardware- of NAS-acceptatie; lange playback over tokenverloop blijft een apart te sluiten risico. De gereedstaande serverregels worden daardoor niet heropend; S14.3/S14.5 en de volledige toestelcheck blijven hun eigen bewijs houden.
 
 ### S15 Hardening, journeys, docs, release
 
@@ -517,6 +522,8 @@ punt 3 en 4), en aan het venster-besluit.
 | S23.4 | Web toont downloads op Mijn Pleya (scherm 11b) | `[ ]` | | |
 | S23.5 | Capability `downloads`, venster 5 deel 3, journey 10 | `[x]` | M5: `capabilities.downloads` staat aan zodra de store er is, openapi `Download`, `DownloadList`, `CreateDownloadRequest` en vijf operaties (75), hoofdstuk Downloads in het protocol, fixtures `download.json` en `download_list.json`, `check_protocol.sh` groen. Journey 10 op een toestel staat open met S23.3 | 2026-10-23 |
 
+**C-05-appvervolg, 29 oktober 2026 (S23.3/S14):** offline-artworkresolver, per-client verse downloadheaders en externe sidecars met stabiel spoor-ID zijn lokaal aangesloten op de bestaande manager/opslag/cache. Offline metadata volgt het ID over gewijzigde spoorvolgorde; geforceerde ondertitels en taal blijven behouden. De client-downloadcapability staat los van `serverSideSync` en volgt voor Pleya de servervlag; detail en contextmenu verbergen een ontbrekende functie. Gerichte regressie en negatieve controles zijn vastgelegd in het ontwikkelbewijs; echte iOS-download/herstart/offlineacceptatie loopt nog. Dit sluit de fysieke journey10 niet en verandert de bestaande serverimplementatiestatus niet.
+
 ### S24 Remote hardening (PS-11)
 
 | # | Taak | Status | Bewijs | Datum |
@@ -574,7 +581,7 @@ Dit opent geen andere vensters en verruimt geen bestaande commitgrenzen.
 | P2 | Mockups 17, 18, 19, 28, 35 gereviewd en in het manifest, deel C en deel D | `[x]` 4 sep 2026 | reviewronde 3 in C.5 en C.6 (22 bevindingen, alle gecorrigeerd), manifest bijgewerkt, D.2 aangevuld, hele set opnieuw gerenderd (`f3d99e8`); akkoord Michel 4 sep 2026 |
 | P3 | Zes mockups in één ronde: 11b downloads, 36 metadata-match en overrides, 37 transcode-sessies, 38 realtime-status, 50 speler, 51 reader; daarna APPROVED met SHA256SUMS | `[x]` 4 sep 2026 | zes gebouwd en zelf gereviewd (C.7, 6 bevindingen, alle gecorrigeerd); akkoord Michel 4 sep; set op APPROVED met `SHA256SUMS` over 46 schermen, 91 beelden, de bronnen, `web.css` en `build.mjs` |
 | P4 | Branch merget schoon met `main` | `[x]` 4 sep 2026 | merge-commit `4e78b16` op `integration/pleya-server-rebaseline` vanaf `a21b43c`; veertien conflicten opgelost, codegen sluitend, geen testregressie. De twee stille mergefouten (`app_database.g.dart`, `schema.d.ts`) en de `--ours`-fout op `CLAUDE.md` en `docs/RELEASES.md` zijn apart gerepareerd en worden nu bewaakt door `scripts/check_authority_merge.sh` in CI De dagelijkse merge van dezelfde avond staat als `a1734ead` (`main` op `9b181ff5`, vier conflicten, LANG1 hernummerd naar DEC-109); hoofdstuk 7 van `merge-log.md` |
-| P5 | Locatorbesluit voor leesvoortgang | `[ ]` | |
+| P5 | Locatorbesluit voor leesvoortgang | `[x]` 29 okt 2026 | Expliciete vrijgave van het bestaande Readium Locator/publicatiedigest-voorstel door Michel, DEC-XXX; contract en hardware houden eigen poorten |
 | P6 | Protocolvensters 1 tot 8 geopend en gesloten | `[ ]` | twee van acht: venster 1 (S1.6, DEC-137) en venster 2 (S2.6, DEC-146) |
 | P7 | PS-5-hardwareronde | `[!]` OVERDUE / HARDWARE VALIDATION OPEN | DEC-118-grens (merge van `feat/pleyaserver` naar `main`) gepasseerd op 25 sep 2026 met `638e7524` (PR #94), ronde niet gedraaid; DEC-118 ongewijzigd, de grenzen voor een publieke clientrelease en voor een indiening bij App Review of Beta App Review met PS-5- of PS-9-gedrag blijven gelden. Blokkeert die clientrelease, die indiening en de eerste publieke release van Pleya Server, tot een geslaagde hardwareacceptatie (besluit Michel, 10 okt 2026). Open in `docs/qa/ps5-hardware-round.md`: Jellyfin-blokkade opnieuw meten, T1 tot en met T4, R1, R2, opstartregel op tvOS en opnieuw op macOS. macOS-opstartregel build 246: historische PASS, artefact niet teruggevonden, geen actueel hardwarebewijs |
 | P8 | Plex Replacement Readiness Gate groen (testinstance, Plex blijft draaien), migratie als keuze | `[ ]` | |
@@ -595,3 +602,15 @@ Dit opent geen andere vensters en verruimt geen bestaande commitgrenzen.
    scope creep.
 6. Deze lijst vervangt geen enkel ander document: `STATUS.md` blijft het sessielogboek,
    `docs/DECISIONS.md` de besluiten, deel I het plan. Hier staat alleen de stand.
+
+### Uitvoering 29 oktober: playbackselectie
+
+Michel heeft het afgebakende venster uit `pleya-server-playback-selection-proposal.md`
+expliciet geopend (DEC-XXX): quality/audio-selectie en effectieve antwoordvelden,
+capabilities, planner/transcoderconsumptie en compatibiliteitsbewijs. S14/S17/S18
+blijven open totdat hun bewijs compleet is; geen productie- of releasevrijgave.
+
+Michel heeft ook `pleya-server-subtitle-delivery-proposal.md` expliciet vrijgegeven
+(29 oktober, DEC-XXX): embedded levering en selectie/off/burn. Dit is resterend
+S14/S18-werk; de bestaande serverclaims worden hierdoor niet heropend en native
+platform-/hardwareacceptatie blijft afzonderlijk.

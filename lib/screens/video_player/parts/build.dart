@@ -56,7 +56,13 @@ extension _VideoPlayerBuildMethods on VideoPlayerScreenState {
     return 0;
   }
 
+  bool get _canSwitchSourceSubtitles =>
+      !_isOfflinePlayback &&
+      ((_currentMetadata.backend == MediaBackend.plex && _isTranscoding && _currentMediaInfo?.partId != null) ||
+          _serverSupportsSubtitleSelection);
+
   List<MediaSubtitleTrack> _sourceSubtitleTracksForControls() {
+    if (_serverSupportsSubtitleSelection && !_isOfflinePlayback) return _currentMediaInfo?.subtitleTracks ?? const [];
     return selectableSourceSubtitleTracks(
       _currentMediaInfo?.subtitleTracks ?? const <MediaSubtitleTrack>[],
       isTranscoding: _isTranscoding,
@@ -299,6 +305,8 @@ extension _VideoPlayerBuildMethods on VideoPlayerScreenState {
                         selectedMediaIndex: _effectiveSelectedMediaIndex,
                         selectedQualityPreset: _selectedQualityPreset,
                         serverSupportsTranscoding: _serverSupportsTranscoding,
+                        serverSupportsAudioSelection: _serverSupportsAudioSelection,
+                        serverSupportsSubtitleSelection: _serverSupportsSubtitleSelection,
                         isTranscoding: _isTranscoding,
                         isOfflinePlayback: _isOfflinePlayback,
                         sourceAudioTracks: sourceAudioTracks,

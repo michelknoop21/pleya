@@ -105,6 +105,7 @@ class TrackManager {
 
   bool waitingForExternalSubsTrackSelection = false;
   bool _externalSubtitleAddsInFlight = false;
+  final Set<String> _expectedExternalSubtitleUris = {};
   bool _isApplyingTrackSelection = false;
   bool Function()? _externalSubtitleSelectionScope;
   List<SubtitleTrack> _lastExternalSubtitles = const [];
@@ -141,6 +142,9 @@ class TrackManager {
   /// Cache external subtitles for backend fallback recovery.
   void cacheExternalSubtitles(List<SubtitleTrack> externalSubtitles) {
     _lastExternalSubtitles = externalSubtitles;
+    _expectedExternalSubtitleUris
+      ..clear()
+      ..addAll(externalSubtitles.map((s) => s.uri).whereType<String>());
   }
 
   /// Add external subtitle tracks to the player in metadata order.
@@ -158,6 +162,7 @@ class TrackManager {
     if (externalSubtitles.isEmpty || !live()) return;
 
     _externalSubtitleAddsInFlight = true;
+    _expectedExternalSubtitleUris.clear();
     try {
       if (waitUntilReady != null) {
         try {
@@ -180,6 +185,7 @@ class TrackManager {
             select: subtitleTrack.isDefault,
           );
           if (!live()) return;
+          _expectedExternalSubtitleUris.add(subtitleTrack.uri!);
           appLogger.d('Added external subtitle: ${subtitleTrack.title ?? subtitleTrack.uri}');
         } catch (e) {
           appLogger.w('Failed to add external subtitle: ${subtitleTrack.title ?? subtitleTrack.uri}', error: e);
@@ -211,7 +217,7 @@ class TrackManager {
       appLogger.w('Resume after subtitle load failed, applying track selection directly', error: e);
       waitingForExternalSubsTrackSelection = false;
       if (!live()) return;
-      unawaited(applyTrackSelection(isCurrent: isCurrent));
+      applyTrackSelectionWhenReady(isCurrent: isCurrent);
       return;
     }
 
@@ -221,7 +227,7 @@ class TrackManager {
     _subtitleFallbackTimer = Timer(const Duration(seconds: 3), () {
       if (waitingForExternalSubsTrackSelection && live()) {
         waitingForExternalSubsTrackSelection = false;
-        applyTrackSelection(isCurrent: isCurrent);
+        applyTrackSelectionWhenReady(isCurrent: isCurrent);
       }
     });
   }
@@ -259,6 +265,10 @@ class TrackManager {
   }
 
   bool _tracksReadyForSelection(Tracks tracks) {
+    // Native sub-add can finish before its track-list event; do not resolve against a partial list.
+    if (_externalSubtitleAddsInFlight ||
+        !_expectedExternalSubtitleUris.every((uri) => tracks.subtitle.any((track) => track.uri == uri)))
+      return false;
     final hasAnyTracks = tracks.audio.isNotEmpty || tracks.subtitle.isNotEmpty;
     if (!hasAnyTracks) return false;
 
@@ -273,6 +283,118 @@ class TrackManager {
     return info.subtitleTracks.isEmpty;
   }
 
+  Future<TrackSelectionService?> _selectionService(MediaSourceInfo? sourceInfo, bool Function() live) async {
+    await waitForProfileSettings();
+    if (!live()) return null;
+
+    final profileSettings = getProfileSettings();
+    if (!live()) return null;
+
+    // Re-read per item: episode navigation swaps [metadata] underneath us,
+    // and the choice may have arrived from another device via iCloud since
+    // the last item started.
+    final storedChoice = await TrackPreferenceStore.read(metadata, serverAccountId: serverAccountId);
+    final localChoice = storedChoice?.fromServer == true ? null : storedChoice;
+    TrackLanguageChoice? serverChoice = storedChoice?.fromServer == true ? storedChoice : null;
+    var answered = false;
+    if (live() && readServerLanguage != null) {
+      try {
+        serverChoice = await readServerLanguage!(metadata.id);
+        answered = true;
+      } catch (e) {
+        appLogger.w('Failed to read server language preference', error: e);
+      }
+    }
+    if (answered && live()) {
+      await TrackPreferenceStore.cacheServerChoice(
+        metadata,
+        serverChoice,
+        serverAccountId: serverAccountId,
+        isCurrent: live,
+      );
+    }
+    final stickyChoice = localChoice == null
+        ? serverChoice
+        : TrackLanguageChoice(
+            audioLanguage: localChoice.hasAudio ? localChoice.audioLanguage : serverChoice?.audioLanguage,
+            audioTitle: localChoice.audioTitle,
+            subtitleLanguage: localChoice.hasSubtitle ? localChoice.subtitleLanguage : serverChoice?.subtitleLanguage,
+            subtitleTitle: localChoice.subtitleTitle,
+            subtitleForced: localChoice.hasSubtitle
+                ? localChoice.subtitleForced
+                : (serverChoice?.subtitleForced ?? false),
+            subtitlesOff: localChoice.hasSubtitle ? localChoice.subtitlesOff : (serverChoice?.subtitlesOff ?? false),
+            updatedAt: localChoice.updatedAt,
+          );
+    if (!live()) return null;
+
+    // The global layer is the Pleya profile and applies to every backend
+    // alike — Plex, Jellyfin, Pleya Server, offline (DEC-109 lid 5). Read
+    // per item for the same reason the series preference is: it may have
+    // arrived from another device via iCloud since the last one started.
+    //
+    // The one-time initialisation runs here as well as on the settings page,
+    // because those are the two doors into this preference and a viewer may
+    // reach either first. It is guarded and idempotent.
+    await PleyaProfileLanguagePreferenceStore.ensureInitialised(profileSettings);
+    if (!live()) return null;
+    final globalPreferences = await PleyaProfileLanguagePreferenceStore.read();
+    if (!live()) return null;
+
+    return TrackSelectionService(
+      player: player,
+      profileSettings: profileSettings,
+      metadata: metadata,
+      plexMediaInfo: sourceInfo,
+      stickyChoice: stickyChoice,
+      globalPreferences: globalPreferences,
+      sessionIntent: sessionIntent,
+    );
+  }
+
+  /// Resolve source tracks before HLS removes the unselected streams. Uses the same preference owner as post-open selection.
+  Future<({int? audioStreamId, int? subtitleStreamId})> selectSourceTracks(
+    MediaSourceInfo sourceInfo, {
+    bool Function()? isCurrent,
+  }) async {
+    final live = await _languageGuard(isCurrent);
+    final service = await _selectionService(sourceInfo, live);
+    if (service == null || !live()) throw StateError('Playback selection is no longer current');
+    final audio = service.selectAudioTrack([
+      for (final track in sourceInfo.audioTracks)
+        AudioTrack(
+          id: '${track.id}',
+          language: track.languageCode,
+          title: track.title,
+          codec: track.codec,
+          channels: track.channels,
+          isDefault: track.selected,
+        ),
+    ], preferredAudioTrack)?.track;
+    final subtitle = service
+        .selectSubtitleTrack(
+          [
+            for (final track in sourceInfo.subtitleTracks)
+              SubtitleTrack(
+                id: '${track.id}',
+                language: track.languageCode,
+                title: track.title,
+                codec: track.codec,
+                isDefault: track.selected,
+                isForced: track.forced,
+                isExternal: track.isExternal,
+              ),
+          ],
+          preferredSubtitleTrack,
+          audio,
+        )
+        .track;
+    return (
+      audioStreamId: int.tryParse(audio?.id ?? ''),
+      subtitleStreamId: subtitle.id == 'no' ? 0 : int.tryParse(subtitle.id),
+    );
+  }
+
   /// Core track selection: delegates to [TrackSelectionService].
   Future<void> applyTrackSelection({bool Function()? isCurrent}) async {
     if (!isActive() || _isApplyingTrackSelection) return;
@@ -281,73 +403,10 @@ class TrackManager {
     try {
       final live = await _languageGuard(isCurrent);
       if (!live()) return;
-      await waitForProfileSettings();
-      if (!live()) return;
-
-      final profileSettings = getProfileSettings();
+      final trackService = await _selectionService(mediaInfo, live);
+      if (trackService == null || !live()) return;
       final settingsService = await SettingsService.getInstance();
       if (!live()) return;
-
-      // Re-read per item: episode navigation swaps [metadata] underneath us,
-      // and the choice may have arrived from another device via iCloud since
-      // the last item started.
-      final storedChoice = await TrackPreferenceStore.read(metadata, serverAccountId: serverAccountId);
-      final localChoice = storedChoice?.fromServer == true ? null : storedChoice;
-      TrackLanguageChoice? serverChoice = storedChoice?.fromServer == true ? storedChoice : null;
-      var answered = false;
-      if (live() && readServerLanguage != null) {
-        try {
-          serverChoice = await readServerLanguage!(metadata.id);
-          answered = true;
-        } catch (e) {
-          appLogger.w('Failed to read server language preference', error: e);
-        }
-      }
-      if (answered && live()) {
-        await TrackPreferenceStore.cacheServerChoice(
-          metadata,
-          serverChoice,
-          serverAccountId: serverAccountId,
-          isCurrent: live,
-        );
-      }
-      final stickyChoice = localChoice == null
-          ? serverChoice
-          : TrackLanguageChoice(
-              audioLanguage: localChoice.hasAudio ? localChoice.audioLanguage : serverChoice?.audioLanguage,
-              audioTitle: localChoice.audioTitle,
-              subtitleLanguage: localChoice.hasSubtitle ? localChoice.subtitleLanguage : serverChoice?.subtitleLanguage,
-              subtitleTitle: localChoice.subtitleTitle,
-              subtitleForced: localChoice.hasSubtitle
-                  ? localChoice.subtitleForced
-                  : (serverChoice?.subtitleForced ?? false),
-              subtitlesOff: localChoice.hasSubtitle ? localChoice.subtitlesOff : (serverChoice?.subtitlesOff ?? false),
-              updatedAt: localChoice.updatedAt,
-            );
-      if (!live()) return;
-
-      // The global layer is the Pleya profile and applies to every backend
-      // alike — Plex, Jellyfin, Pleya Server, offline (DEC-109 lid 5). Read
-      // per item for the same reason the series preference is: it may have
-      // arrived from another device via iCloud since the last one started.
-      //
-      // The one-time initialisation runs here as well as on the settings page,
-      // because those are the two doors into this preference and a viewer may
-      // reach either first. It is guarded and idempotent.
-      await PleyaProfileLanguagePreferenceStore.ensureInitialised(profileSettings);
-      if (!live()) return;
-      final globalPreferences = await PleyaProfileLanguagePreferenceStore.read();
-      if (!live()) return;
-
-      final trackService = TrackSelectionService(
-        player: player,
-        profileSettings: profileSettings,
-        metadata: metadata,
-        plexMediaInfo: mediaInfo,
-        stickyChoice: stickyChoice,
-        globalPreferences: globalPreferences,
-        sessionIntent: sessionIntent,
-      );
 
       await trackService.selectAndApplyTracks(
         preferredAudioTrack: preferredAudioTrack,
@@ -377,7 +436,7 @@ class TrackManager {
       waitingForExternalSubsTrackSelection = false;
       final scope = _externalSubtitleSelectionScope;
       _externalSubtitleSelectionScope = null;
-      applyTrackSelection(isCurrent: scope);
+      applyTrackSelectionWhenReady(isCurrent: scope);
     }
   }
 
@@ -806,6 +865,7 @@ class TrackManager {
 
   /// Clean up subscriptions.
   void dispose() {
+    _expectedExternalSubtitleUris.clear();
     _externalSubtitleAddsInFlight = false;
     _externalSubtitleSelectionScope = null;
     _trackLoadingSubscription?.cancel();

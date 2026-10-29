@@ -144,8 +144,6 @@ mixin _PleyaServerUnsupportedMethods {
 
   // ── Playback: PS-4 and later ──
 
-  Future<MediaFileInfo?> getFileInfo(MediaItem item) async => null;
-
   Future<PlaybackExtras> fetchPlaybackExtras(
     String itemId, {
     String? introPattern,
@@ -161,8 +159,6 @@ mixin _PleyaServerUnsupportedMethods {
     bool forceChapterFallback = false,
   }) async => null;
 
-  Future<MediaSourceInfo?> fetchCachedMediaSourceInfo(String itemId) async => null;
-
   Future<ScrubPreviewSource?> createScrubPreviewSource({
     required MediaItem item,
     required MediaSourceInfo mediaSource,
@@ -174,6 +170,4 @@ mixin _PleyaServerUnsupportedMethods {
 
   // ── Downloads ──
   // `resolveDownload` lives in downloads.dart (S23).
-
-  List<DownloadArtworkSpec> resolveDownloadArtwork(MediaItem item) => const [];
 }

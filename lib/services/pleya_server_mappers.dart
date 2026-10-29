@@ -5,6 +5,7 @@ import '../media/media_library.dart';
 import '../media/media_part.dart';
 import '../media/media_role.dart';
 import '../media/media_stream.dart';
+import '../media/media_source_info.dart';
 import '../media/media_version.dart';
 import '../models/pleya_server/pleya_wire.dart';
 import '../models/pleya_server/pleya_wire_library.dart';
@@ -47,6 +48,74 @@ class PleyaServerMappers {
     if (path == null || !path.startsWith(subtitlePathPrefix)) return null;
     final id = path.substring(subtitlePathPrefix.length);
     return id.isEmpty ? null : id;
+  }
+
+  /// Uses canonical same-server sidecar URLs; wire URLs never receive bearer credentials.
+  static MediaSourceInfo mediaSourceInfo(
+    MediaVersion version, {
+    String baseUrl = '',
+    String? videoUrl,
+    bool deliverEmbeddedText = false,
+    int? selectedSubtitleId,
+  }) {
+    final streams = version.parts.firstOrNull?.streams ?? const <MediaStream>[];
+    int subtitleId(int i) => streams[i].index == null ? -(i + 1) : streams[i].index! + 1;
+    String? sidecarUrl(MediaStream stream) {
+      final id =
+          subtitleIdFromPath(stream.sidecarPath) ??
+          (deliverEmbeddedText && {'srt', 'ass', 'ssa', 'vtt'}.contains(stream.codec) ? stream.id : null);
+      return id == null ? null : '$baseUrl/pleya/v1/subtitles/${Uri.encodeComponent(id)}';
+    }
+
+    return MediaSourceInfo(
+      videoUrl: videoUrl ?? '$baseUrl/pleya/v1/stream/${Uri.encodeComponent(version.id)}',
+      mediaSourceId: version.id,
+      defaultSubtitleStreamIndex: selectedSubtitleId == 0
+          ? -1
+          : (selectedSubtitleId == null
+                ? null
+                : streams.indexed
+                      .where((s) => s.$2.kind == MediaStreamKind.subtitle && subtitleId(s.$1) == selectedSubtitleId)
+                      .firstOrNull
+                      ?.$2
+                      .index),
+      audioTracks: [
+        for (final stream in streams)
+          if (stream.kind == MediaStreamKind.audio && stream.index != null)
+            MediaAudioTrack(
+              id: stream.index!,
+              index: stream.index,
+              codec: stream.codec,
+              language: stream.language,
+              languageCode: stream.languageCode,
+              title: stream.title,
+              displayTitle: stream.displayTitle,
+              channels: stream.channels,
+              profile: stream.profile,
+              selected: stream.selected,
+            ),
+      ],
+      subtitleTracks: [
+        for (var i = 0; i < streams.length; i++)
+          if (streams[i].kind == MediaStreamKind.subtitle)
+            MediaSubtitleTrack(
+              id: subtitleId(i),
+              sourceStreamId: streams[i].id,
+              index: streams[i].index,
+              codec: streams[i].codec,
+              language: streams[i].language,
+              languageCode: streams[i].languageCode,
+              title: streams[i].title,
+              displayTitle: streams[i].displayTitle,
+              selected: selectedSubtitleId == null ? streams[i].selected : selectedSubtitleId == subtitleId(i),
+              forced: streams[i].forced,
+              key: sidecarUrl(streams[i]),
+              external: streams[i].isExternal,
+              usesExternalDelivery: sidecarUrl(streams[i]) != null,
+            ),
+      ],
+      chapters: const [],
+    );
   }
 
   static MediaKind kindOf(PleyaItemKind kind) => switch (kind) {

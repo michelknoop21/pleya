@@ -185,6 +185,34 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     PlexClient? plexClient,
     bool Function()? isCurrent,
   }) async {
+    if (item.backend == MediaBackend.pleyaServer) {
+      final manager = _trackManager;
+      if (manager == null) return;
+      final audio = audioTracks.where((t) => t.id == audioStreamId).firstOrNull;
+      if (audio != null) {
+        await manager.onAudioTrackChanged(
+          AudioTrack(id: '${audio.id}', language: audio.languageCode, title: audio.title, codec: audio.codec),
+          isCurrent: isCurrent,
+        );
+      }
+      if (!(isCurrent?.call() ?? true)) return;
+      final subtitle = subtitleTracks.where((t) => t.id == subtitleStreamId).firstOrNull;
+      if (subtitleStreamId == 0 || subtitle != null) {
+        await manager.onSubtitleTrackChanged(
+          subtitleStreamId == 0
+              ? SubtitleTrack.off
+              : SubtitleTrack(
+                  id: '${subtitle!.id}',
+                  language: subtitle.languageCode,
+                  title: subtitle.title,
+                  codec: subtitle.codec,
+                  isForced: subtitle.forced,
+                ),
+          isCurrent: isCurrent,
+        );
+      }
+      return;
+    }
     // Never let remembering break the switch it is attached to: the user asked
     // for a different subtitle, not for a bookkeeping guarantee.
     try {
@@ -329,7 +357,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     final switchedSubtitleTracks = _sourceSubtitleTracksForControls();
     final switchedAudioTracks = _currentMediaInfo?.audioTracks ?? const <MediaAudioTrack>[];
     PlexClient? streamSelectClient;
-    if ((isSubtitleChange || (isAudioChange && isPlexBacked)) && serverId != null) {
+    if (isPlexBacked && (isSubtitleChange || isAudioChange) && serverId != null) {
       try {
         streamSelectClient = context.getPlexClientForServer(ServerId(serverId));
       } catch (_) {}
@@ -341,7 +369,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         if (!(isCurrent?.call() ?? true)) return;
       }
 
-      if (isSubtitleChange || (isAudioChange && isPlexBacked)) {
+      if (isPlexBacked && (isSubtitleChange || isAudioChange)) {
         if (!(isCurrent?.call() ?? true)) return;
         final partId = _currentMediaInfo?.partId;
         if (streamSelectClient == null || partId == null) {
@@ -369,6 +397,16 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         if (!(isCurrent?.call() ?? true)) return;
       }
 
+      if (_currentMetadata.backend == MediaBackend.pleyaServer && (isAudioChange || isSubtitleChange)) {
+        await _rememberSwitchedSourceLanguages(
+          item: switchedItem,
+          subtitleTracks: switchedSubtitleTracks,
+          audioTracks: switchedAudioTracks,
+          subtitleStreamId: isSubtitleChange ? effectiveSubtitleStreamId : null,
+          audioStreamId: isAudioChange ? effectiveAudioStreamId : null,
+          isCurrent: isCurrent,
+        );
+      }
       if (!(isCurrent?.call() ?? true)) return;
       await _reloadMediaInPlace(
         metadata: _currentMetadata.copyWith(viewOffsetMs: currentPlayer.state.position.inMilliseconds),
@@ -378,6 +416,9 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         // A version change selects a different part, and stream ids are
         // per-part — only same-part switches may carry the current id.
         selectedAudioStreamId: isVersionChange ? newAudioStreamId : effectiveAudioStreamId,
+        selectedSubtitleStreamId: _serverSupportsSubtitleSelection
+            ? (isVersionChange ? newSubtitleStreamId : effectiveSubtitleStreamId)
+            : null,
         useCurrentAudioStreamSelection: !isVersionChange,
         resumePosition: currentPlayer.state.position,
         preserveCurrentTrackSelection: false,
@@ -400,6 +441,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     String? selectedMediaSourceId,
     TranscodeQualityPreset? qualityPreset,
     int? selectedAudioStreamId,
+    int? selectedSubtitleStreamId,
     Duration? resumePosition,
     bool preserveCurrentTrackSelection = false,
     bool useCurrentAudioStreamSelection = true,
@@ -493,6 +535,11 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       // Overlap the old item's stop report with the resolve round-trip; it
       // is awaited again right before the open below.
       final stoppedProgressFuture = _sendStoppedProgressOnce();
+      // Pleya stop owns the item's held conversion; finish before binding its replacement.
+      if (metadata.backend == MediaBackend.pleyaServer) {
+        await stoppedProgressFuture;
+        if (!isCurrentReload()) return true;
+      }
 
       final playbackResolver = PlaybackSourceResolver(serverManager: serverManager, database: database);
       final playbackContext = await playbackResolver.resolve(
@@ -502,6 +549,15 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         offlineLibraryMode: _offlineLibraryMode,
         qualityPreset: targetQualityPreset,
         selectedAudioStreamId: targetAudioStreamId,
+        selectedSubtitleStreamId: selectedSubtitleStreamId,
+        selectSourceTracks: metadata.backend == MediaBackend.pleyaServer
+            ? (info) => _selectSourceTracksBeforeOpen(
+                info,
+                forPlayer: currentPlayer,
+                metadata: metadata,
+                isCurrent: isCurrentReload,
+              )
+            : null,
         sessionIdentifier: _playbackSessionIdentifier,
         transcodeSessionId: _playbackTranscodeSessionId,
       );

@@ -53,6 +53,8 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   /// reason to refuse playback, because the device report may be wrong and the
   /// player is the better judge of last resort.
   Future<PlaybackInitializationResult> getPlaybackInitialization(PlaybackInitializationOptions options) async {
+    if (_closed) throw PlaybackException('The playback connection is closed.');
+    var effectiveOptions = options;
     final versions = options.metadata.mediaVersions ?? const <MediaVersion>[];
     if (versions.isEmpty) {
       return PlaybackInitializationResult(availableVersions: const []);
@@ -62,19 +64,108 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
         ? options.selectedMediaIndex
         : 0;
 
-    final plan = await _planPlayback(options.metadata.id, versions, index);
+    final sourceId = options.selectedMediaSourceId;
+    if (sourceId != null) {
+      index = versions.indexWhere((version) => version.id == sourceId);
+      if (index < 0) throw PlaybackException('The selected media version is no longer available.');
+    }
+    await _releaseTranscodeSession(options.metadata.id);
+    var plan = await _planPlayback(
+      options.metadata.id,
+      versions,
+      index,
+      explicit: sourceId != null || index != 0,
+      options: options,
+    );
     if (plan != null) {
-      final planned = versions.indexWhere((v) => v.id == plan.versionId);
+      final planned = versions.indexWhere((v) => v.id == plan?.versionId);
       if (planned >= 0) index = planned;
       appLogger.d('PleyaServerClient: plan ${plan.deliveryMode?.wire} because ${plan.reason.code}');
     }
+    int? preferredSubtitleId;
+    final selector = options.selectSourceTracks;
+    if (selector != null &&
+        plan?.sessionId != null &&
+        plan?.deliveryMode != PleyaDeliveryMode.directPlay &&
+        (wireCapabilities.playbackAudioSelection || wireCapabilities.playbackSubtitles)) {
+      try {
+        final source = PleyaServerMappers.mediaSourceInfo(versions[index]);
+        final choice = await selector(source);
+        final audioIndex = options.selectedAudioStreamId ?? choice.audioStreamId;
+        final subtitleId = options.selectedSubtitleStreamId ?? choice.subtitleStreamId;
+        final defaultAudio = source.audioTracks.where((t) => t.selected).firstOrNull ?? source.audioTracks.firstOrNull;
+        final audioChanges =
+            options.selectedAudioStreamId == null &&
+            audioIndex != null &&
+            audioIndex != defaultAudio?.id &&
+            wireCapabilities.playbackAudioSelection;
+        final subtitle = source.subtitleTracks.where((t) => t.id == subtitleId).firstOrNull;
+        if (subtitleId != null && subtitleId != 0 && subtitle == null) {
+          throw PlaybackException('The selected subtitle stream is no longer available.');
+        }
+        final needsBurn =
+            options.selectedSubtitleStreamId == null &&
+            subtitle != null &&
+            {'pgs', 'dvdsub'}.contains(subtitle.codec) &&
+            wireCapabilities.playbackSubtitles;
+        preferredSubtitleId = subtitleId;
+        if (audioChanges || needsBurn) {
+          await _stopPlanSession(plan?.sessionId);
+          plan = null;
+          effectiveOptions = PlaybackInitializationOptions(
+            metadata: options.metadata,
+            selectedMediaIndex: index,
+            selectedMediaSourceId: versions[index].id,
+            qualityPreset: options.qualityPreset,
+            selectedAudioStreamId: audioChanges ? audioIndex : options.selectedAudioStreamId,
+            selectedSubtitleStreamId: needsBurn ? subtitleId : options.selectedSubtitleStreamId,
+            sessionIdentifier: options.sessionIdentifier,
+            transcodeSessionId: options.transcodeSessionId,
+          );
+          plan = await _planPlayback(options.metadata.id, versions, index, explicit: true, options: effectiveOptions);
+        }
+      } catch (_) {
+        await _stopPlanSession(plan?.sessionId);
+        rethrow;
+      }
+    }
     final version = versions[index];
+    final videoUrl = plan?.sessionId != null && plan?.deliveryMode != PleyaDeliveryMode.directPlay
+        ? '${connection.baseUrl}${plan!.streamUrl}'
+        : _streamUrl(version.id);
+    final mediaInfo = PleyaServerMappers.mediaSourceInfo(
+      version,
+      baseUrl: connection.baseUrl,
+      videoUrl: videoUrl,
+      selectedSubtitleId: effectiveOptions.selectedSubtitleStreamId ?? preferredSubtitleId,
+      deliverEmbeddedText:
+          wireCapabilities.embeddedSubtitles && plan != null && plan.deliveryMode != PleyaDeliveryMode.directPlay,
+    );
+    final subtitles = [
+      for (final track in mediaInfo.subtitleTracks)
+        if (plan?.subtitle?.action != 'burn' && track.isExternal && track.key != null)
+          SubtitleTrack.uri(
+            track.key!,
+            title: track.title,
+            language: track.languageCode,
+            codec: track.codec,
+            isDefault: track.selected,
+            isForced: track.forced,
+          ),
+    ];
 
     // Warm the header before the player opens the URL. The token is short
     // lived and minted per request everywhere else; here mpv holds the URL, so
     // the one thing this call has to guarantee is that the header handed to it
     // is fresh at open time.
-    await _session.authHeaders();
+    try {
+      if (_closed) throw PlaybackException('The playback connection is closed.');
+      await _session.authHeaders();
+      if (_closed) throw PlaybackException('The playback connection is closed.');
+    } catch (_) {
+      await _stopPlanSession(plan?.sessionId);
+      rethrow;
+    }
 
     // A delivery the server converts comes with a session: the player opens
     // its HLS playlist, and this client keeps the session alive until the
@@ -87,9 +178,14 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
         videoUrl: '${connection.baseUrl}${plan.streamUrl}',
         selectedMediaIndex: index,
         isTranscoding: plan.deliveryMode == PleyaDeliveryMode.transcode,
+        activeAudioStreamId: plan.selectedAudioStreamId == null ? null : effectiveOptions.selectedAudioStreamId,
         playMethod: plan.deliveryMode == PleyaDeliveryMode.transcode ? 'Transcode' : 'DirectStream',
         playSessionId: _watchLedger.sessionFor(options.metadata.id, _mintSessionId),
-        externalSubtitles: const [],
+        streamEvidence: PlaybackStreamEvidence(
+          subtitle: plan.subtitle?.action == 'burn' ? PlaybackSubtitleDecision.burn : null,
+        ),
+        mediaInfo: mediaInfo,
+        externalSubtitles: subtitles,
       );
     }
 
@@ -99,8 +195,50 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       selectedMediaIndex: index,
       playMethod: 'DirectPlay',
       playSessionId: _watchLedger.sessionFor(options.metadata.id, _mintSessionId),
-      externalSubtitles: const [],
+      mediaInfo: mediaInfo,
+      externalSubtitles: subtitles,
     );
+  }
+
+  Future<MediaSourceInfo?> fetchCachedMediaSourceInfo(String itemId) =>
+      CachedPlaybackMetadataService.fetchMediaSourceInfo(
+        backend: MediaBackend.pleyaServer,
+        cacheServerId: connection.id,
+        itemId: itemId,
+        baseUrl: connection.baseUrl,
+      );
+
+  Future<MediaFileInfo?> getFileInfo(MediaItem item) async {
+    final versions = item.mediaVersions;
+    if (versions == null || versions.isEmpty) return null;
+    final version = versions.first;
+    final source = PleyaServerMappers.mediaSourceInfo(version, baseUrl: connection.baseUrl);
+    final part = version.parts.firstOrNull;
+    final audio = source.audioTracks.firstOrNull;
+    return MediaFileInfo(
+      container: version.container,
+      videoCodec: version.videoCodec,
+      videoResolution: version.videoResolution,
+      width: version.width,
+      height: version.height,
+      bitrate: version.bitrate,
+      duration: part?.durationMs,
+      fileSize: part?.sizeBytes,
+      audioCodec: audio?.codec,
+      audioChannels: audio?.channels,
+      audioTracks: source.audioTracks,
+      subtitleTracks: source.subtitleTracks,
+    );
+  }
+
+  Future<void> _stopPlanSession(String? id) async {
+    if (id case final String sessionId) {
+      try {
+        await _adminSend('DELETE', '/playback/sessions/${Uri.encodeComponent(sessionId)}');
+      } catch (e) {
+        appLogger.d('PleyaServerClient: could not stop the unopened plan session', error: e);
+      }
+    }
   }
 
   /// The transcode sessions this client keeps alive, by item id.
@@ -111,7 +249,6 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   static const Duration _heartbeatEvery = Duration(seconds: 15);
 
   void _holdTranscodeSession(String itemId, String sessionId) {
-    unawaited(_releaseTranscodeSession(itemId));
     final timer = Timer.periodic(_heartbeatEvery, (t) async {
       try {
         await _adminSend('POST', '/playback/sessions/$sessionId/heartbeat');
@@ -147,25 +284,106 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   /// server does not offer one, the call failed, or the plan names a delivery
   /// this build does not know (an unknown mode must not change what we play).
   ///
-  /// The default selection (index 0) lets the server choose the cheapest
-  /// fitting version; any other index is the user's explicit choice and goes
-  /// out as `version_id`.
-  Future<PleyaPlaybackPlan?> _planPlayback(String itemId, List<MediaVersion> versions, int index) async {
+  /// An automatic first version lets the server choose. A stable source id
+  /// carries explicit intent, including selection of the first version.
+  Future<PleyaPlaybackPlan?> _planPlayback(
+    String itemId,
+    List<MediaVersion> versions,
+    int index, {
+    required bool explicit,
+    required PlaybackInitializationOptions options,
+  }) async {
+    final quality = options.qualityPreset;
+    final audioIndex = options.selectedAudioStreamId;
+    final subtitleIndex = options.selectedSubtitleStreamId;
+    final sourceSubtitles = PleyaServerMappers.mediaSourceInfo(versions[index]).subtitleTracks;
+    final subtitle = subtitleIndex == null || subtitleIndex == 0
+        ? null
+        : sourceSubtitles.where((s) => s.id == subtitleIndex).firstOrNull;
+    if (subtitleIndex != null && subtitleIndex != 0 && subtitle == null) {
+      throw PlaybackException('The selected subtitle stream is no longer available.');
+    }
+    final subtitleMode = subtitleIndex == null
+        ? null
+        : subtitleIndex == 0
+        ? 'off'
+        : {'pgs', 'dvdsub'}.contains(subtitle?.codec)
+        ? 'burn'
+        : 'external';
+    final requiresSession = !quality.isOriginal || audioIndex != null || subtitleMode == 'burn';
+    final selected = requiresSession || subtitleIndex != null;
+    if ((subtitleIndex != null && !wireCapabilities.playbackSubtitles) ||
+        (!quality.isOriginal && !wireCapabilities.playbackQuality) ||
+        (audioIndex != null && !wireCapabilities.playbackAudioSelection) ||
+        (selected && !wireCapabilities.playbackPlan)) {
+      throw PlaybackException('The server does not support this playback selection.');
+    }
     if (!wireCapabilities.playbackPlan) return null;
+    String? audioId;
+    if (audioIndex != null) {
+      audioId = versions[index].parts.firstOrNull?.streams
+          .where((stream) => stream.kind == MediaStreamKind.audio && stream.index == audioIndex)
+          .firstOrNull
+          ?.id;
+      if (audioId == null) throw PlaybackException('The selected audio stream is no longer available.');
+    }
+    String? receivedSessionId;
     try {
       final json = await _postJson('/playback/plan', {
         'item_id': itemId,
-        if (index != 0) 'version_id': versions[index].id,
+        if (explicit || audioId != null || subtitleIndex != null) 'version_id': versions[index].id,
+        if (audioId != null) 'audio_stream_id': audioId,
+        if (subtitleMode != null)
+          'subtitle': {'mode': subtitleMode, if (subtitle != null) 'stream_id': subtitle.sourceStreamId},
+        if (!quality.isOriginal)
+          'quality': {'max_video_bitrate_kbps': quality.videoBitrateKbps, 'max_height': quality.resolutionHeight},
         'capabilities': pleyaDeviceCapabilitiesToWire(DeviceCapabilitiesService.currentSnapshot),
       });
-      if (json == null) return null;
+      if (json == null) {
+        if (selected) throw PlaybackException('The requested playback selection could not be prepared.');
+        return null;
+      }
+      receivedSessionId = json['session_id'] is String ? json['session_id'] as String : null;
       final plan = PleyaPlaybackPlan.fromJson(json);
+      final wrongSource =
+          plan.itemId != itemId ||
+          !versions.any((v) => v.id == plan.versionId) ||
+          ((explicit || audioId != null || subtitleIndex != null) && plan.versionId != versions[index].id);
+      final wrongQuality =
+          !quality.isOriginal &&
+          (plan.deliveryMode != PleyaDeliveryMode.transcode ||
+              plan.maxVideoBitrateKbps != quality.videoBitrateKbps ||
+              plan.maxHeight != quality.resolutionHeight);
+      final wrongSubtitle =
+          subtitleMode != null &&
+          (plan.subtitle?.action != subtitleMode ||
+              (subtitle != null && plan.subtitle?.streamId != subtitle.sourceStreamId) ||
+              (subtitleMode == 'external' &&
+                  plan.subtitle?.url !=
+                      '$pleyaProtocolPrefix/subtitles/${Uri.encodeComponent(subtitle!.sourceStreamId!)}') ||
+              (subtitleMode == 'burn' && plan.deliveryMode != PleyaDeliveryMode.transcode));
+      if (wrongSource ||
+          (selected &&
+              (plan.deliveryMode == null ||
+                  wrongQuality ||
+                  wrongSubtitle ||
+                  (audioId != null && plan.selectedAudioStreamId != audioId) ||
+                  (requiresSession &&
+                      (plan.sessionId == null || plan.deliveryMode == PleyaDeliveryMode.directPlay))))) {
+        throw PlaybackException('The server did not apply the requested playback selection.');
+      }
       if (plan.deliveryMode == PleyaDeliveryMode.directPlay) return plan;
-      return plan.deliveryMode != null && plan.sessionId != null ? plan : null;
+      if (plan.deliveryMode != null && plan.sessionId != null) return plan;
+      await _stopPlanSession(receivedSessionId);
+      return null;
     } on PleyaWireFormatException catch (e) {
+      await _stopPlanSession(receivedSessionId);
+      if (selected) throw PlaybackException('The server returned an invalid playback selection.');
       appLogger.w('PleyaServerClient: playback plan did not match the contract', error: e);
       return null;
     } catch (e) {
+      await _stopPlanSession(receivedSessionId);
+      if (selected) throw PlaybackException('The requested playback selection could not be prepared.');
       appLogger.d('PleyaServerClient: no playback plan, playing directly', error: e);
       return null;
     }
@@ -179,7 +397,10 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   Future<String?> resolveExternalPlaybackUrl(MediaItem item, {int mediaIndex = 0, String? mediaSourceId}) async {
     final versions = item.mediaVersions ?? const <MediaVersion>[];
     if (versions.isEmpty) return null;
-    final index = mediaIndex >= 0 && mediaIndex < versions.length ? mediaIndex : 0;
+    final index = mediaSourceId != null
+        ? versions.indexWhere((version) => version.id == mediaSourceId)
+        : (mediaIndex >= 0 && mediaIndex < versions.length ? mediaIndex : 0);
+    if (index < 0) return null;
     final versionId = versions[index].id;
 
     // An external player URL is optional: a failed mint is "no URL", not an

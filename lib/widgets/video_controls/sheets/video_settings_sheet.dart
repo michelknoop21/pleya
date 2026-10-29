@@ -39,6 +39,8 @@ import '../../../widgets/overlay_sheet.dart';
 import '../widgets/sync_offset_control.dart';
 import '../widgets/sleep_timer_content.dart';
 import '../../../i18n/strings.g.dart';
+import '../../../automation/automation_ids.dart';
+import '../../../automation/automation_node.dart';
 import 'base_video_control_sheet.dart';
 import 'version_quality_sheet.dart';
 
@@ -537,12 +539,16 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
           ),
 
         if (_hasVersionQuality)
-          _SettingsMenuItem(
-            icon: Symbols.art_track,
-            title: _versionQualityTitle(),
-            valueText: _versionQualityValueText(),
-            allowValueOverflow: true,
-            onTap: () => _navigateTo(_SettingsView.versionQuality),
+          AutomationNode(
+            id: AutomationIds.playerSettingsQuality,
+            role: 'button',
+            child: _SettingsMenuItem(
+              icon: Symbols.art_track,
+              title: _versionQualityTitle(),
+              valueText: _versionQualityValueText(),
+              allowValueOverflow: true,
+              onTap: () => _navigateTo(_SettingsView.versionQuality),
+            ),
           ),
 
         // Sleep Timer

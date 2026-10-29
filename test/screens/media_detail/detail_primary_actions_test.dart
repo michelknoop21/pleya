@@ -5,8 +5,34 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_dark_style.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_primary_actions.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/automation/automation_node.dart';
 
 void main() {
+  testWidgets('automation selection matches the action semantic state', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: DetailPrimaryActions(
+            playLabel: 'Play',
+            actions: [
+              DetailActionItem(
+                key: const Key('media-detail.action.download'),
+                icon: Icons.download_done,
+                label: 'Download',
+                active: true,
+                onTap: () {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    final node = tester
+        .widgetList<AutomationNode>(find.byType(AutomationNode))
+        .singleWhere((node) => node.instance == 'download');
+    expect(node.state?.call(), {'selected': true});
+  });
+
   testWidgets('play-from-start only shows while there is progress', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

@@ -162,3 +162,30 @@ func TestDirectPlayStaysDirectPlayWithoutTranscoder(t *testing.T) {
 		t.Fatalf("plan %+v, %v", plan, err)
 	}
 }
+
+func TestExplicitQualityForcesTranscodeEvenWhenDeviceAndLocalNetworkFit(t *testing.T) {
+	caps := capable()
+	caps.Connection.IsLocal = playback.Known(true, playback.Detected)
+	plan, err := playback.Decide([]playback.Source{movie("mp4", "h264", "aac")}, caps, playback.Policy{
+		AllowRemux: true, AllowTranscode: true,
+		Quality: &playback.Quality{MaxVideoBitrateKbps: 2000, MaxHeight: 720},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.Mode != playback.Transcode || plan.Quality == nil || plan.Quality.MaxHeight != 720 {
+		t.Fatalf("quality not executed: %+v", plan)
+	}
+}
+
+func TestSubtitleBurnRequiresVideoTranscode(t *testing.T) {
+	plan, err := playback.Decide([]playback.Source{movie("mp4", "h264", "aac")}, capable(), playback.Policy{
+		AllowRemux: true, AllowTranscode: true, BurnSubtitles: true,
+	})
+	if err != nil || plan.Mode != playback.Transcode {
+		t.Fatalf("burn plan %+v %v", plan, err)
+	}
+	if _, err := playback.Decide([]playback.Source{movie("mp4", "h264", "aac")}, capable(), playback.Policy{BurnSubtitles: true}); err == nil {
+		t.Fatal("burn accepted without transcoder")
+	}
+}

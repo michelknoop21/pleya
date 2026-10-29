@@ -2127,16 +2127,23 @@ class DownloadManagerService {
             metadata.id,
             subtitle.id,
             extension,
+            sourceStreamId: subtitle.sourceStreamId,
           );
         } else if (metadata.isEpisode) {
           subtitlePath = await _storageService.getEpisodeSubtitlePath(
             metadata,
             subtitle.id,
             extension,
+            sourceStreamId: subtitle.sourceStreamId,
             showYear: showYear,
           );
         } else if (metadata.isMovie) {
-          subtitlePath = await _storageService.getMovieSubtitlePath(metadata, subtitle.id, extension);
+          subtitlePath = await _storageService.getMovieSubtitlePath(
+            metadata,
+            subtitle.id,
+            extension,
+            sourceStreamId: subtitle.sourceStreamId,
+          );
         } else {
           // Fallback to old structure
           subtitlePath = await _storageService.getSubtitlePath(
@@ -2144,13 +2151,14 @@ class DownloadManagerService {
             metadata.id,
             subtitle.id,
             extension,
+            sourceStreamId: subtitle.sourceStreamId,
           );
         }
 
         // Download subtitle file
         final file = File(subtitlePath);
         await file.parent.create(recursive: true);
-        await _http.downloadFile(subtitle.url, subtitlePath);
+        await _http.downloadFile(subtitle.url, subtitlePath, headers: await subtitle.headersSupplier?.call());
 
         appLogger.d('Downloaded subtitle ${subtitle.id} for $globalKey');
       }

@@ -5,6 +5,9 @@ import '../models/transcode_quality_preset.dart';
 import '../mpv/mpv.dart';
 import 'playback_stream_evidence.dart';
 
+/// Resolves existing language preferences against the version actually chosen by the server.
+typedef SourceTrackSelector = Future<({int? audioStreamId, int? subtitleStreamId})> Function(MediaSourceInfo source);
+
 /// Inputs for [MediaServerClient.getPlaybackInitialization]. Most fields
 /// are backend-specific knobs (transcode preset, audio stream, session ids).
 class PlaybackInitializationOptions {
@@ -26,6 +29,11 @@ class PlaybackInitializationOptions {
   /// server pick".
   final int? selectedAudioStreamId;
 
+  /// Shared source-subtitle id; zero means off, null preserves selection policy.
+  final int? selectedSubtitleStreamId;
+
+  final SourceTrackSelector? selectSourceTracks;
+
   /// Plex transcode `X-Plex-Session-Identifier`. Required for Plex transcode.
   final String? sessionIdentifier;
 
@@ -39,6 +47,8 @@ class PlaybackInitializationOptions {
     this.selectedMediaSourceId,
     this.qualityPreset = TranscodeQualityPreset.original,
     this.selectedAudioStreamId,
+    this.selectedSubtitleStreamId,
+    this.selectSourceTracks,
     this.sessionIdentifier,
     this.transcodeSessionId,
   });

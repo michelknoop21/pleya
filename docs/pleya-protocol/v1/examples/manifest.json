@@ -482,6 +482,16 @@
       "file": "memory_clear.json",
       "schema": "MemoryClear",
       "note": "BP-08b persoonlijk geheugen"
+    },
+    {
+      "file": "playback_plan_selection_request.json",
+      "schema": "PlaybackPlanRequest",
+      "note": "vrijgegeven expliciete kwaliteit en audiokeuze"
+    },
+    {
+      "file": "playback_plan_selection.json",
+      "schema": "PlaybackPlan",
+      "note": "vrijgegeven expliciete kwaliteit en audiokeuze"
     }
   ]
 }

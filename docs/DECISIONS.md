@@ -5132,3 +5132,34 @@ of externe/publicatie naar App Review.
 5. Servers, Logboeken en Over Pleya staan onder Instellingen. Instellingen > Koppelingen > Servers opent dezelfde `TvServersPage` als voorheen, met de status eerst, Sluiten als standaardfocus en verwijderen achter de bestaande bevestiging; de kale verbindingenlijst eronder telt niet als vervanging. Het attentiepunt voor een verlopen serversessie verhuist van Mijn Pleya naar Instellingen.
 6. Tekst op tvOS gaat niet onder 23 pt en wordt niet kleiner dan voorheen (besluit Michel, 26 oktober 2026). De kleine kapitalen die het bord op ongeveer 17 pt tekent, worden op 23 pt gebouwd en de layout schuift mee. Op het canvas van 1038 x 584 past de pagina zonder scrollen, met de laatste rij bereikbaar en heel.
 **Consequences:** Dit vervangt het TV-deel van het A-24b-besluit voor Mijn Pleya (het besluit "A-24b bouwt Instellingen en Mijn Pleya na volgens de northstars": de Editorial-indeling op Apple TV, de rechterkolom van 440 pt en de twee titelregels op een kijklijstkaart). Het iPhone-deel blijft van kracht. Instellingen is op TV geen geneste route van Mijn Pleya meer maar een eigen bestemming; de Instellingen-subpagina's blijven geneste routes binnen de shell zoals [PB-1](tvos-redesign-implementatiecontract.md#pb-1-topnav-blijft-staan-op-tv-contentroutes) ze opent, nu onder Instellingen in plaats van onder Mijn Pleya. De bestemming Instellingen en haar subpagina's houden de inklapbare balk van [DEC-166](#dec-166-instellingen-op-apple-tv-zonder-vaste-bovenbalk-en-de-rail-past-in-het-venster): de ingang staat in het topmenu, op de pagina's zelf schuift de balk weg en UP haalt hem terug. De oude Beheer-tegels, de profielregel en de voetregel verdwijnen; elke route uit die tegels heeft een ingang in `pariteit-v4.csv`. Afwijkingen van de borden staan in [`docs/plans/AFWIJKINGEN_A24B.md`](plans/AFWIJKINGEN_A24B.md) onder "Mijn Pleya op Apple TV, v4". Simulatorbewijs is geen hardware-acceptatie; de Siri Remote-controle op een toestel staat open in [`docs/tvos-fysieke-correctieronde.md`](tvos-fysieke-correctieronde.md). Unified impact: alleen tvOS-presentatie en navigatie, geen backend, protocol of datamodel.
+
+
+## DEC-XXX: P5 en PS-15 vrijgegeven voor afronding van Pleya Server en apps
+
+**Date:** 2026-10-29
+**Status:** accepted. Michel koos expliciet “P5 en PS-15 vrijgeven” tijdens de uitvoering van het gezamenlijke plan.
+
+**Decision:** Het bestaande voorstel `pleya-server-p5-locator-proposal.md` is geaccepteerd: Readium Locator plus de SHA-256-publicatiedigest, herstel-/conflictregels en validatie zoals daarin beschreven. PS-15 is vrijgegeven voor de reader en leesvoortgang uit S6/S9/S12/S14 binnen de bestaande Unified Library en goedgekeurde platformroutes. De overige voorwaarden van DEC-128/149 blijven gelden: audiovisuele tabellen niet als boekenmodel gebruiken, geen DRM/winkel/abonnement of nieuwe TV-reader, het boekencontractvenster afzonderlijk toetsen en openen, en vereiste hardwaremeting behouden. Dit besluit geeft geen productie-, merge-, migratie- of releaseautorisatie.
+
+**Consequences:** P5 en de PS-15-fasevrijgave zijn geen open productbesluiten meer. Contractcompatibiliteit, S3-afhankelijkheden, fysieke acceptatie en de overige releasepoorten blijven hun eigen bewijs vragen. Het DEC-nummer wordt bij merge toegewezen.
+
+## DEC-XXX: playbackvenster voor kwaliteit en audiokeuze vrijgegeven
+
+**Status:** geaccepteerd door Michel op 29 oktober 2026.
+
+Michel gaf expliciet het afgebakende venster uit
+`docs/pleya-server-playback-selection-proposal.md` vrij: optionele kwaliteitslimieten
+en een stabiel audiospoor-ID, aparte capabilities en effectieve antwoordvelden,
+planner-/ffmpeg-consumptie, validatie en compatibiliteitsbewijs. Alleen dit venster
+is geopend; productie, merge en release blijven afzonderlijk. Nummer volgt bij integratie.
+
+## DEC-XXX: ondertitelvenster voor HLS-levering en selectie vrijgegeven
+
+**Status:** geaccepteerd door Michel op 29 oktober 2026.
+
+Michel heeft de aanvulling `docs/pleya-server-subtitle-delivery-proposal.md` expliciet
+vrijgegeven: ingebedde levering via de bestaande ondertitelroute en optionele
+selectie/off/burn in playbackplannen, met eigen capabilities, begrensde extractie,
+cache-/rechtenbewijs en behoud van gedeelde voorkeuren. Dit opent uitsluitend het
+beschreven ondertitelvenster. Productie, merge en release blijven afzonderlijk.
+Nummer volgt bij integratie.

@@ -178,6 +178,33 @@ void main() {
       body: {'epoch': memory['epoch'], 'base_revision': memory['revision']},
     );
 
+    applyNamedFixture(server, 'playback.app.v1');
+    await record('Info', 'GET', '/info');
+    await record('Item', 'GET', '/items/item-1');
+    await record(
+      'PlaybackPlan',
+      'POST',
+      '/playback/plan',
+      body: {
+        'item_id': 'item-1',
+        'version_id': 'item-1-v1',
+        'quality': {'max_video_bitrate_kbps': 2000, 'max_height': 720},
+      },
+    );
+
+    for (final mode in ['off', 'external', 'burn']) {
+      await record(
+        'PlaybackPlan',
+        'POST',
+        '/playback/plan',
+        body: {
+          'item_id': 'item-1',
+          'version_id': 'item-1-v1',
+          'subtitle': {'mode': mode, if (mode != 'off') 'stream_id': 'item-1-v1-embedded'},
+        },
+      );
+    }
+
     expect(captured, isNotEmpty);
     // Zonder deze ondergrens zou een fake server die alles op 404 zet nog steeds
     // een geldige, lege vangst opleveren.

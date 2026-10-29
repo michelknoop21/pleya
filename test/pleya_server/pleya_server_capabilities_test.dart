@@ -43,6 +43,65 @@ void main() {
     trackPreferences: trackPreferences,
   );
 
+  test('client downloads follow the server flag independently from server-side sync', () {
+    expect(PleyaServerCapabilityResolver.unknown.clientDownloads, isFalse);
+    expect(PleyaServerCapabilityResolver.resolve(caps()).clientDownloads, isFalse);
+    final offered = PleyaServerCapabilityResolver.resolve(caps(downloads: true));
+    expect(offered.clientDownloads, isTrue);
+    expect(offered.serverSideSync, isFalse);
+    expect(ServerCapabilities.plex.clientDownloads, isTrue);
+    expect(ServerCapabilities.jellyfin.clientDownloads, isTrue);
+    expect(offered.copyWith(clientDownloads: false).clientDownloads, isFalse);
+  });
+
+  test('quality and source audio actions each require their own server flag', () {
+    final qualityOnly = PleyaServerCapabilityResolver.resolve(
+      PleyaCapabilities.fromJson({
+        'browse': true,
+        'search': true,
+        'artwork': true,
+        'watch_state': true,
+        'transcode': true,
+        'playback_plan': true,
+        'playback_quality': true,
+      }),
+    );
+    expect(qualityOnly.videoTranscoding, isTrue);
+    expect(qualityOnly.sourceAudioSelection, isFalse);
+    final audioOnly = PleyaServerCapabilityResolver.resolve(
+      PleyaCapabilities.fromJson({
+        'browse': true,
+        'search': true,
+        'artwork': true,
+        'watch_state': true,
+        'transcode': true,
+        'playback_plan': true,
+        'playback_audio_selection': true,
+      }),
+    );
+    expect(audioOnly.videoTranscoding, isFalse);
+    expect(audioOnly.sourceAudioSelection, isTrue);
+  });
+
+  test('source subtitles require their own plan and transcode capability', () {
+    for (final enabled in [false, true]) {
+      final resolved = PleyaServerCapabilityResolver.resolve(
+        PleyaCapabilities.fromJson({
+          'browse': true,
+          'search': true,
+          'artwork': true,
+          'watch_state': true,
+          'transcode': true,
+          'playback_plan': true,
+          'playback_subtitles': enabled,
+        }),
+      );
+      expect(resolved.sourceSubtitleSelection, enabled);
+      expect(resolved.copyWith().sourceSubtitleSelection, enabled);
+    }
+    expect(PleyaServerCapabilityResolver.unknown.sourceSubtitleSelection, isFalse);
+  });
+
   test('personal actions require their specific advertised feature', () {
     final usersOnly = PleyaServerCapabilityResolver.resolve(caps(users: true, watchState: true));
     expect(usersOnly.serverFavorites, isFalse);

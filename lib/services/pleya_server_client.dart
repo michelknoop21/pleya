@@ -19,6 +19,7 @@ import '../media/library_query.dart';
 import '../media/live_tv_dvr_support.dart';
 import '../media/live_tv_support.dart';
 import '../media/media_backend.dart';
+import '../mpv/models.dart' show SubtitleTrack;
 import '../media/media_file_info.dart';
 import '../media/media_hub.dart';
 import '../media/media_identity.dart';
@@ -30,6 +31,7 @@ import '../media/media_playlist.dart';
 import '../media/media_server_client.dart';
 import '../media/media_sort.dart';
 import '../media/media_source_info.dart';
+import '../media/media_stream.dart';
 import '../media/media_version.dart';
 import '../media/noop_live_tv_support.dart';
 import '../media/playback_report_metadata.dart';
@@ -44,10 +46,13 @@ import '../utils/language_codes.dart';
 import '../utils/media_server_http_client.dart';
 import '../utils/media_server_timeouts.dart';
 import 'api_cache.dart';
+import 'cached_playback_metadata_service.dart';
+import 'download_artwork_helpers.dart';
 import 'memory/memory_models.dart';
 import 'memory/memory_sync_models.dart';
 import 'device_capabilities_service.dart';
 import 'playback_initialization_types.dart';
+import 'playback_stream_evidence.dart';
 import 'pleya_server_api_cache.dart';
 import 'pleya_server_auth_service.dart';
 import 'image_cache_service.dart';
@@ -160,6 +165,7 @@ class PleyaServerClient
   final PleyaServerSession _session;
   @override
   final MediaServerHttpClient _http;
+  bool _closed = false;
 
   @override
   final PleyaServerCursorLedger _cursors = PleyaServerCursorLedger();
@@ -245,12 +251,19 @@ class PleyaServerClient
   /// it returns is openable straight away.
   @override
   Map<String, String> get streamHeaders {
+    if (_closed) return const {};
     final token = _session.cachedAccessToken;
     return token == null ? const {} : {'Authorization': 'Bearer $token'};
   }
 
   @override
   void close() {
+    if (_closed) return;
+    _closed = true;
+    for (final held in _transcodeSessions.values) {
+      held.timer.cancel();
+    }
+    _transcodeSessions.clear();
     _unregisterArtworkAuthorization();
     _http.close();
   }

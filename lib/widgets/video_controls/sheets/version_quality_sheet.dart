@@ -3,6 +3,8 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/widgets/app_icon.dart';
 
 import '../../../i18n/strings.g.dart';
+import '../../../automation/automation_ids.dart';
+import '../../../automation/automation_node.dart';
 import '../../../media/media_version.dart';
 import '../../../models/transcode_quality_preset.dart';
 import '../../../utils/quality_preset_labels.dart';
@@ -173,6 +175,8 @@ class _VersionColumnState extends State<_VersionColumn> {
               return _SelectionTile(
                 key: index == 0 ? _initialScroll.firstItemKey : null,
                 label: version.displayLabel,
+                automationInstance: 'version.${version.id}',
+                autofocus: isSelected,
                 isSelected: isSelected,
                 onTap: () => widget.onSelected(index),
               );
@@ -246,6 +250,8 @@ class _QualityColumnState extends State<_QualityColumn> {
               return _SelectionTile(
                 key: index == 0 ? _initialScroll.firstItemKey : null,
                 label: qualityPresetLabel(preset),
+                automationInstance: 'quality.${preset.name}',
+                autofocus: isSelected && !widget.showHeader,
                 trailingText: trailing,
                 isSelected: isSelected,
                 enabled: enabled,
@@ -261,6 +267,8 @@ class _QualityColumnState extends State<_QualityColumn> {
 
 class _SelectionTile extends StatelessWidget {
   final String label;
+  final String automationInstance;
+  final bool autofocus;
   final String? trailingText;
   final bool isSelected;
   final bool enabled;
@@ -269,6 +277,8 @@ class _SelectionTile extends StatelessWidget {
   const _SelectionTile({
     super.key,
     required this.label,
+    required this.automationInstance,
+    this.autofocus = false,
     this.trailingText,
     required this.isSelected,
     this.enabled = true,
@@ -295,11 +305,20 @@ class _SelectionTile extends StatelessWidget {
           )
         : null;
 
-    return FocusableListTile(
-      title: Text(label, style: TextStyle(color: titleColor)),
-      trailing: trailing,
-      enabled: enabled,
-      onTap: onTap,
+    return AutomationNode(
+      id: AutomationIds.playerSourceChoice,
+      instance: automationInstance,
+      role: 'button',
+      label: label,
+      state: () => {'selected': isSelected, 'enabled': enabled},
+      child: FocusableListTile(
+        autofocus: autofocus,
+        selected: isSelected,
+        title: Text(label, style: TextStyle(color: titleColor)),
+        trailing: trailing,
+        enabled: enabled,
+        onTap: onTap,
+      ),
     );
   }
 }

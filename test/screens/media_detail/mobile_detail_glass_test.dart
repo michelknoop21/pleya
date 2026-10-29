@@ -105,6 +105,9 @@ class _CountingWatchlistSource implements WatchlistSource {
 /// A server that only answers what the film page asks for: the film itself
 /// and one trailer among its extras.
 class _TrailerClient implements MediaServerClient {
+  _TrailerClient({this.downloads = true});
+  final bool downloads;
+
   @override
   ServerId get serverId => ServerId('server_1');
 
@@ -115,7 +118,7 @@ class _TrailerClient implements MediaServerClient {
   MediaBackend get backend => MediaBackend.jellyfin;
 
   @override
-  ServerCapabilities get capabilities => ServerCapabilities.jellyfin;
+  ServerCapabilities get capabilities => ServerCapabilities.jellyfin.copyWith(clientDownloads: downloads);
 
   @override
   Future<({MediaItem? item, MediaItem? onDeckEpisode})> fetchItemWithOnDeck(String id) async =>
@@ -244,6 +247,26 @@ void main() {
     expect(button.onPressed, isNull);
     expect(find.byKey(const Key('media-detail.action.download')), findsNothing);
     expect(find.text(t.localLibrary.playbackUnavailable), findsOneWidget);
+  });
+
+  testWidgets('download action hides when the client capability is unavailable', (tester) async {
+    await _pumpDetail(tester, glass: false, client: _TrailerClient(downloads: false));
+    expect(find.byKey(const Key('media-detail.action.download')), findsNothing);
+  });
+
+  testWidgets('unknown Pleya connection hides download action', (tester) async {
+    await _pumpDetail(
+      tester,
+      glass: false,
+      metadata: MediaItem(
+        id: 'bbb',
+        backend: MediaBackend.pleyaServer,
+        kind: MediaKind.movie,
+        serverId: 'server_1',
+        title: 'Offline',
+      ),
+    );
+    expect(find.byKey(const Key('media-detail.action.download')), findsNothing);
   });
 
   testWidgets('glas uit: posterhero zonder glas, watchlist in de actierij', (tester) async {

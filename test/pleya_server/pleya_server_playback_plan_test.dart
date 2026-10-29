@@ -4,6 +4,9 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_version.dart';
+import 'package:pleya/media/media_part.dart';
+import 'package:pleya/media/media_stream.dart';
+import 'package:pleya/models/transcode_quality_preset.dart';
 import 'package:pleya/services/playback_initialization_types.dart';
 import 'package:pleya/services/pleya_server_client.dart';
 import 'package:pleya/services/pleya_server_client/pleya_device_capabilities_wire.dart';
@@ -70,6 +73,44 @@ void main() {
       expect(result.selectedMediaIndex, 1);
     });
 
+    test('a stable id makes explicitly choosing the first version unambiguous', () async {
+      server = PleyaFakeServer()
+        ..playbackPlanCapability = true
+        ..planVersionId = 'version-2';
+      final item = twoVersions(server);
+      client = await connected(server);
+      final result = await client.getPlaybackInitialization(
+        PlaybackInitializationOptions(metadata: item, selectedMediaIndex: 0, selectedMediaSourceId: 'version-1'),
+      );
+      expect(server.planRequests.single['version_id'], 'version-1');
+      expect(result.selectedVersion?.id, 'version-1');
+    });
+
+    test('a stable version id wins over reordered metadata indexes', () async {
+      server = PleyaFakeServer()..playbackPlanCapability = true;
+      final original = twoVersions(server);
+      final item = original.copyWith(mediaVersions: original.mediaVersions!.reversed.toList());
+      client = await connected(server);
+      final result = await client.getPlaybackInitialization(
+        PlaybackInitializationOptions(metadata: item, selectedMediaIndex: 0, selectedMediaSourceId: 'version-1'),
+      );
+      expect(result.selectedMediaIndex, 1);
+      expect(server.planRequests.single['version_id'], 'version-1');
+    });
+
+    test('a missing explicit version cannot silently play a different file', () async {
+      server = PleyaFakeServer()..playbackPlanCapability = true;
+      final item = twoVersions(server);
+      client = await connected(server);
+      await expectLater(
+        client.getPlaybackInitialization(
+          PlaybackInitializationOptions(metadata: item, selectedMediaIndex: 0, selectedMediaSourceId: 'removed'),
+        ),
+        throwsA(isA<PlaybackException>()),
+      );
+      expect(server.planRequests, isEmpty);
+    });
+
     test('without the capability there is no plan call and nothing changes', () async {
       server = PleyaFakeServer(watchState: true);
       final item = twoVersions(server);
@@ -80,6 +121,100 @@ void main() {
       expect(server.requests.where((r) => r.contains('/playback/plan')), isEmpty);
       expect(result.videoUrl, endsWith('/stream/version-1'));
     });
+
+    test('quality sends explicit output limits only to a supporting server and validates the result', () async {
+      server = PleyaFakeServer()
+        ..playbackPlanCapability = true
+        ..playbackQualityCapability = true
+        ..planDeliveryMode = 'transcode';
+      final item = twoVersions(server);
+      client = await connected(server);
+      final result = await client.getPlaybackInitialization(
+        PlaybackInitializationOptions(
+          metadata: item,
+          selectedMediaIndex: 0,
+          qualityPreset: TranscodeQualityPreset.p720_2mbps,
+        ),
+      );
+      expect(server.planRequests.single['quality'], {'max_video_bitrate_kbps': 2000, 'max_height': 720});
+      expect(result.isTranscoding, isTrue);
+      expect(result.mediaInfo?.videoUrl, result.videoUrl);
+    });
+
+    test('failed explicit quality is visible rather than playing the original', () async {
+      server = PleyaFakeServer()
+        ..playbackPlanCapability = true
+        ..playbackQualityCapability = true
+        ..planFailureStatus = 415;
+      final item = twoVersions(server);
+      client = await connected(server);
+      await expectLater(
+        client.getPlaybackInitialization(
+          PlaybackInitializationOptions(
+            metadata: item,
+            selectedMediaIndex: 0,
+            qualityPreset: TranscodeQualityPreset.p720_2mbps,
+          ),
+        ),
+        throwsA(isA<PlaybackException>()),
+      );
+    });
+
+    test('an old server receives no quality request', () async {
+      server = PleyaFakeServer()..playbackPlanCapability = true;
+      final item = twoVersions(server);
+      client = await connected(server);
+      await expectLater(
+        client.getPlaybackInitialization(
+          PlaybackInitializationOptions(
+            metadata: item,
+            selectedMediaIndex: 0,
+            qualityPreset: TranscodeQualityPreset.p720_2mbps,
+          ),
+        ),
+        throwsA(isA<PlaybackException>()),
+      );
+      expect(server.planRequests, isEmpty);
+      expect(client.capabilities.videoTranscoding, isFalse);
+    });
+
+    test(
+      'audio selection translates the source index into its stable wire id and retains effective selection',
+      () async {
+        server = PleyaFakeServer()
+          ..playbackPlanCapability = true
+          ..playbackAudioSelectionCapability = true
+          ..planDeliveryMode = 'remux';
+        final item = twoVersions(server).copyWith(
+          mediaVersions: const [
+            MediaVersion(
+              id: 'version-1',
+              parts: [
+                MediaPart(
+                  id: 'part',
+                  streams: [
+                    MediaStream(
+                      id: 'audio-uuid',
+                      kind: MediaStreamKind.audio,
+                      index: 7,
+                      codec: 'aac',
+                      languageCode: 'nld',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        );
+        client = await connected(server);
+        final result = await client.getPlaybackInitialization(
+          PlaybackInitializationOptions(metadata: item, selectedMediaIndex: 0, selectedAudioStreamId: 7),
+        );
+        expect(server.planRequests.single['audio_stream_id'], 'audio-uuid');
+        expect(server.planRequests.single['version_id'], 'version-1');
+        expect(result.activeAudioStreamId, 7);
+      },
+    );
 
     test('a failed plan keeps direct play of the selected version', () async {
       server = PleyaFakeServer(watchState: true)
@@ -106,6 +241,7 @@ void main() {
 
       expect(result.videoUrl, endsWith('/stream/version-1'));
       expect(result.isTranscoding, isFalse);
+      expect(server.sessionCalls, ['DELETE /playback/sessions/sess-1']);
     });
 
     test('a transcode plan opens the HLS playlist of its session', () async {
@@ -123,6 +259,22 @@ void main() {
       expect(result.playMethod, 'Transcode');
       expect(result.selectedMediaIndex, 1);
       expect(server.sessionCalls, isEmpty, reason: 'nothing is called before the first heartbeat is due');
+    });
+
+    test('replacing a held conversion stops it before requesting its successor', () async {
+      server = PleyaFakeServer()
+        ..playbackPlanCapability = true
+        ..planDeliveryMode = 'remux';
+      final item = twoVersions(server);
+      client = await connected(server);
+      await play(item);
+      server.planDeliveryMode = 'direct_play';
+      final start = server.requests.length;
+      await play(item);
+      final calls = server.requests.skip(start).toList();
+      expect(calls, ['/pleya/v1/playback/sessions/sess-1', '/pleya/v1/playback/plan']);
+      await client.closeGracefully();
+      expect(server.sessionCalls, ['DELETE /playback/sessions/sess-1']);
     });
 
     test('reporting the playback stopped stops the session', () async {

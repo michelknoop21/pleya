@@ -87,6 +87,48 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
       server.usersCapability = true;
       server.assistantMemoryCapability = true;
       return true;
+    case 'playback.app.v1':
+      server.playbackPlanCapability = true;
+      server.playbackQualityCapability = true;
+      server.playbackAudioSelectionCapability = true;
+      server.embeddedSubtitlesCapability = true;
+      server.playbackSubtitlesCapability = true;
+      server.planDeliveryMode = 'transcode';
+      for (final item in server.items.values) {
+        for (final version in item['versions'] as List) {
+          final id = '${version['id']}-sidecar';
+          version['subtitle_streams'] = [
+            {
+              'id': id,
+              'format': 'srt',
+              'is_external': true,
+              'is_forced': false,
+              'is_hearing_impaired': false,
+              'language': 'eng',
+              'title': 'Pleya sidecar',
+              'url': '/pleya/v1/subtitles/$id',
+            },
+          ];
+          final embeddedId = '${version['id']}-embedded';
+          (version['subtitle_streams'] as List).add({
+            'id': embeddedId,
+            'index': 2,
+            'format': 'srt',
+            'is_external': false,
+            'is_forced': false,
+            'is_hearing_impaired': false,
+            'is_default': false,
+            'language': 'eng',
+            'title': 'Pleya embedded',
+          });
+          server.subtitleFiles[id] = '1\n00:00:00,000 --> 00:01:59,000\nPleya sidecar\n';
+          server.subtitleFiles[embeddedId] = '1\n00:00:00,000 --> 00:01:59,000\nPleya embedded\n';
+        }
+      }
+      server.planVersionId =
+          ((server.items.values.firstWhere((item) => item['kind'] == 'movie')['versions'] as List).first as Map)['id']
+              as String;
+      return true;
     case 'personal.app.v1':
     case 'personal.favorites.v1':
       server.personalCapability = true;

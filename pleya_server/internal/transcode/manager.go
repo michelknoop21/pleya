@@ -15,6 +15,8 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
 
@@ -92,7 +94,9 @@ type Options struct {
 
 // Manager houdt de sessies bij en bewaakt de ffmpeg-processen.
 type Manager struct {
-	o Options
+	subtitleSem chan struct{}
+	subtitleSF  singleflight.Group
+	o           Options
 
 	mu       sync.Mutex
 	sessions map[id.ID]*running
@@ -136,7 +140,7 @@ func New(o Options) (*Manager, error) {
 			return nil, fmt.Errorf("sessies terugzetten: %w", err)
 		}
 	}
-	m := &Manager{o: o, sessions: map[id.ID]*running{}, stop: make(chan struct{})}
+	m := &Manager{subtitleSem: make(chan struct{}, 1), o: o, sessions: map[id.ID]*running{}, stop: make(chan struct{})}
 	m.wg.Add(1)
 	go m.janitor()
 	return m, nil
@@ -177,7 +181,11 @@ func (m *Manager) startWith(ctx context.Context, p Params, hw HWAccel) (Session,
 		return Session{}, ErrBusy
 	}
 	sid := id.New()
-	dir := filepath.Join(m.o.Dir, sid.String())
+	dir, err := filepath.Abs(filepath.Join(m.o.Dir, sid.String()))
+	if err != nil {
+		m.mu.Unlock()
+		return Session{}, err
+	}
 	job := p.Job
 	job.OutDir = dir
 	job.HW, job.RenderNode = hw, m.o.RenderNode
@@ -191,8 +199,27 @@ func (m *Manager) startWith(ctx context.Context, p Params, hw HWAccel) (Session,
 		return Session{}, fmt.Errorf("sessiemap: %w", err)
 	}
 
+	if job.SubtitlePath != "" {
+		if err := os.Link(job.SubtitlePath, filepath.Join(dir, "subtitle")); err != nil {
+			_ = os.RemoveAll(dir)
+			m.mu.Unlock()
+			return Session{}, fmt.Errorf("ondertitel voorbereiden: %w", err)
+		}
+	}
 	runCtx, cancel := context.WithCancel(context.Background())
 	cmd := exec.CommandContext(runCtx, m.o.FFmpegPath, args...)
+	if job.SubtitlePath != "" {
+		cmd.Dir = dir
+		if !filepath.IsAbs(cmd.Path) {
+			cmd.Path, err = filepath.Abs(cmd.Path)
+		}
+		if err != nil {
+			cancel()
+			_ = os.RemoveAll(dir)
+			m.mu.Unlock()
+			return Session{}, err
+		}
+	}
 	cmd.Cancel = func() error { return cmd.Process.Signal(syscall.SIGTERM) }
 	cmd.WaitDelay = 5 * time.Second
 	var stderr tailBuffer

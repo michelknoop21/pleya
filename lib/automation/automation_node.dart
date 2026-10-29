@@ -91,6 +91,18 @@ class _AutomationNodeState extends State<AutomationNode> {
   }
 
   @override
+  void deactivate() {
+    _unregister();
+    super.deactivate();
+  }
+
+  @override
+  void activate() {
+    super.activate();
+    _register();
+  }
+
+  @override
   void dispose() {
     _unregister();
     super.dispose();

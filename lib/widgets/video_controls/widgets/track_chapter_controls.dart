@@ -285,6 +285,7 @@ class TrackChapterControls extends StatelessWidget {
             _buildTrackButton(
               buttonIndex: currentIndex,
               icon: icon,
+              automationId: AutomationIds.playerTracksButton,
               tooltip: t.videoControls.tracksButton,
               semanticLabel: t.videoControls.tracksButton,
               isMobile: isMobile,

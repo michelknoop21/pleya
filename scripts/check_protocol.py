@@ -197,6 +197,17 @@ def check_validator_bites(document: dict) -> None:
         return bool(list(validator.iter_errors(payload)))
 
     cases = [
+        ("ondertitels uit met een spoor", "PlaybackSubtitleSelection", {"mode": "off", "stream_id": "s"}),
+        ("burn zonder spoor", "PlaybackSubtitleSelection", {"mode": "burn"}),
+        ("onbekende ondertitelkeuze", "PlaybackSubtitleSelection", {"mode": "auto"}),
+        ("ondertitelkeuze zonder versie", "PlaybackPlanRequest", {"item_id": "i", "subtitle": {"mode": "burn", "stream_id": "s"}}),
+        ("audiokeuze zonder versie", "PlaybackPlanRequest", {"item_id": "i", "audio_stream_id": "a"}),
+        ("een kwaliteitscap zonder hoogte", "PlaybackPlanRequest",
+         {"item_id": "01a15486-f53b-7001-a2c0-dad3c02bbd3a", "quality": {"max_video_bitrate_kbps": 2000}}),
+        ("een onbekende kwaliteitsoptie", "PlaybackQuality",
+         {"max_video_bitrate_kbps": 2000, "max_height": 720, "preset": "fast"}),
+        ("een kwaliteitscap buiten bereik", "PlaybackQuality",
+         {"max_video_bitrate_kbps": 0, "max_height": 720}),
         (
             "een Plex-veldnaam in plaats van de neutrale",
             "UserState",

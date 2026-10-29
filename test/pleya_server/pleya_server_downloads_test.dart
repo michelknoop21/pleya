@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_part.dart';
+import 'package:pleya/media/media_stream.dart';
 import 'package:pleya/media/media_version.dart';
 import 'package:pleya/services/download_manager_service.dart' show verifyDownloadAfterRestart, verifyDownloadDigest;
 import 'package:pleya/services/pleya_server_client.dart';
@@ -45,6 +47,54 @@ void main() {
     expect(resolution.sha256, 'a' * 64);
     expect(resolution.mediaSourceId, 'version-1');
     expect(resolution.headers.keys, contains('Authorization'));
+  });
+
+  test('public artwork resolution keeps only canonical Pleya artwork', () async {
+    client = await connected(PleyaFakeServer());
+    final posterItem = item.copyWith(thumbPath: 'pleya-artwork:poster-1', artPath: 'https://foreign.test/image');
+    final specs = client.resolveDownloadArtwork(posterItem);
+    expect(specs, hasLength(1));
+    expect(specs.single.localKey, 'pleya-artwork:poster-1');
+    expect(specs.single.url, endsWith('/pleya/v1/artwork/poster-1'));
+    expect(await specs.single.headersSupplier!(), contains('Authorization'));
+    client.close();
+    await expectLater(specs.single.headersSupplier!(), throwsStateError);
+  });
+
+  test('download companions retain stable sidecar identity and originating authorization', () async {
+    client = await connected(PleyaFakeServer()..downloadsCapability = true);
+    final withSubtitles = item.copyWith(
+      mediaVersions: const [
+        MediaVersion(
+          id: 'version-1',
+          parts: [
+            MediaPart(
+              id: 'part',
+              streams: [
+                MediaStream(id: 'embedded', kind: MediaStreamKind.subtitle, index: 2, codec: 'srt'),
+                MediaStream(
+                  id: 'sidecar-uuid',
+                  kind: MediaStreamKind.subtitle,
+                  codec: 'srt',
+                  languageCode: 'eng',
+                  forced: true,
+                  sidecarPath: 'pleya-subtitle:sidecar-uuid',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+    final result = await client.resolveDownload(withSubtitles);
+    expect(result.externalSubtitles, hasLength(1));
+    final subtitle = result.externalSubtitles.single;
+    expect(subtitle.sourceStreamId, 'sidecar-uuid');
+    expect(subtitle.url, endsWith('/pleya/v1/subtitles/sidecar-uuid'));
+    expect(subtitle.forced, isTrue);
+    expect(await subtitle.headersSupplier!(), contains('Authorization'));
+    client.close();
+    await expectLater(subtitle.headersSupplier!(), throwsStateError);
   });
 
   test('a download the server could not prepare is an error, not a silent skip', () async {

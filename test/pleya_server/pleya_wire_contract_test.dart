@@ -126,6 +126,8 @@ void main() {
     // assert their closed body; the client never parses a request from the server.
     'MemoryReplace',
     'MemoryClear',
+    // Outbound map: playback_sources_test compares the actual public-client request with this fixture.
+    'PlaybackPlanRequest',
   };
 
   final parsers = <String, void Function(Map<String, dynamic>)>{
@@ -208,8 +210,8 @@ void main() {
       );
     });
 
-    test('covers the 101 fixtures the contract ships', () {
-      expect(fixtures, hasLength(101));
+    test('covers the 103 fixtures the contract ships', () {
+      expect(fixtures, hasLength(103));
     });
 
     for (final fixture in fixtures) {

@@ -144,6 +144,16 @@ void main() {
       );
     });
 
+    test('an authorized source callback also supports remux and direct subtitle plans', () {
+      final state = TrackControlsState(
+        isTranscoding: false,
+        sourceSubtitleTracks: [MediaSubtitleTrack(id: 1, selected: false, forced: false)],
+        onSwitchSubtitleStreamId: (_) {},
+      );
+      expect(state.canUseSourceSubtitles, isTrue);
+      expect(state.hasSubtitleControls(const Tracks()), isTrue);
+    });
+
     test('ignores player subtitle placeholders', () {
       const state = TrackControlsState(subtitleSearchSupported: false);
 

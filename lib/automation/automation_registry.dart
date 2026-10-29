@@ -289,7 +289,13 @@ class AutomationRegistry {
   /// reports no bounds instead.
   Rect? _boundsOf(BuildContext? context) {
     if (context == null || !context.mounted) return null;
-    final renderObject = context.findRenderObject();
+    final RenderObject? renderObject;
+    try {
+      renderObject = context.findRenderObject();
+    } on FlutterError {
+      // A deactivated Element is still mounted until the frame ends.
+      return null;
+    }
     if (renderObject is! RenderBox || !renderObject.attached || !renderObject.hasSize) return null;
     final bounds = MatrixUtils.transformRect(renderObject.getTransformTo(null), Offset.zero & renderObject.size);
     return bounds.isFinite ? bounds : null;

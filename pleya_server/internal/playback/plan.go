@@ -80,13 +80,23 @@ type VideoTrack struct {
 
 // AudioTrack is het audiospoor dat het plan meeneemt (het standaardspoor).
 type AudioTrack struct {
+	ID       string
+	Index    *int
 	Codec    string
 	Channels int // 0 is onbekend
 }
 
 // Policy zegt wat de server mag uitvoeren. Zolang er geen transcoder is
 // (S18) staan beide uit en kan een plan alleen direct play zijn.
+type Quality struct {
+	MaxVideoBitrateKbps int `json:"max_video_bitrate_kbps"`
+	MaxHeight           int `json:"max_height"`
+}
+
 type Policy struct {
+	BurnSubtitles   bool
+	Quality         *Quality
+	SelectAudio     bool
 	AllowRemux      bool
 	AllowTranscode  bool
 	MaxAudioChannel int // doelkanalen bij een downmix; 0 is 2
@@ -123,8 +133,11 @@ type Reason struct {
 
 // Plan is de beslissing voor één versie.
 type Plan struct {
-	VersionID string
-	Mode      Mode
+	SubtitlePath   string
+	SubtitleBitmap bool
+	Quality        *Quality
+	VersionID      string
+	Mode           Mode
 	// Container is original voor direct play en hls voor alles wat de server omzet.
 	Container string
 	// VideoAction en AudioAction zijn copy of transcode.
@@ -287,19 +300,28 @@ func evaluate(s Source, caps Capabilities, policy Policy) Plan {
 		netReasons = append(netReasons, Reason{ReasonBitrate, map[string]any{"bitrate_kbps": s.BitrateKbps, "max_kbps": c.Value}})
 	}
 
-	p := Plan{VersionID: s.VersionID, Container: "original", VideoAction: "copy", AudioAction: "copy", Seekable: true}
+	p := Plan{Quality: policy.Quality, VersionID: s.VersionID, Container: "original", VideoAction: "copy", AudioAction: "copy", Seekable: true}
 	switch {
-	case len(videoReasons) > 0 || len(netReasons) > 0:
+	case policy.BurnSubtitles || policy.Quality != nil || len(videoReasons) > 0 || len(netReasons) > 0:
 		p.Mode, p.Container, p.VideoAction = Transcode, "hls", "transcode"
 		if len(audioReasons) > 0 {
 			p.AudioAction, p.AudioCodec, p.AudioMaxCh = "transcode", audioTarget, targetCh
 		}
 	case len(audioReasons) > 0:
 		p.Mode, p.Container, p.AudioAction, p.AudioCodec, p.AudioMaxCh = DirectStream, "hls", "transcode", audioTarget, targetCh
-	case len(containerReasons) > 0:
+	case policy.SelectAudio || len(containerReasons) > 0:
 		p.Mode, p.Container = Remux, "hls"
 	default:
 		p.Mode = DirectPlay
+	}
+	if policy.BurnSubtitles {
+		videoReasons = append(videoReasons, Reason{Code: "subtitle.burn_requested", Params: map[string]any{}})
+	}
+	if policy.Quality != nil {
+		videoReasons = append(videoReasons, Reason{Code: "quality.requested", Params: map[string]any{"max_height": policy.Quality.MaxHeight, "max_video_bitrate_kbps": policy.Quality.MaxVideoBitrateKbps}})
+	}
+	if policy.SelectAudio {
+		audioReasons = append(audioReasons, Reason{Code: "audio.selected", Params: map[string]any{}})
 	}
 	for _, rs := range [][]Reason{containerReasons, videoReasons, audioReasons, netReasons} {
 		p.Reasons = append(p.Reasons, rs...)

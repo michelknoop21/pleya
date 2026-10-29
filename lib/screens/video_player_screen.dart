@@ -423,6 +423,8 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   SubtitleTrack? _preferredSubtitleTrack;
   SubtitleTrack? _preferredSecondarySubtitleTrack;
   bool _serverSupportsTranscoding = false;
+  bool _serverSupportsAudioSelection = false;
+  bool _serverSupportsSubtitleSelection = false;
   // Kicked off early in `_initializePlayer` for online non-live playback so
   // the metadata fetch (and transcode-decision HTTP, if non-original preset)
   // overlaps with MPV property configuration. Awaited inside `_startPlayback`
@@ -896,6 +898,8 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         // saved startup quality. Backends that cannot transcode always start at
         // Original even if the user picked a lower default quality.
         _serverSupportsTranscoding = genericClient.capabilities.videoTranscoding;
+        _serverSupportsAudioSelection = genericClient.capabilities.sourceAudioSelection;
+        _serverSupportsSubtitleSelection = genericClient.capabilities.sourceSubtitleSelection;
         final forcedPreset = _forcedQualityOverride;
         if (forcedPreset != null && _serverSupportsTranscoding) {
           // Error-recovery fallback wins over the saved default for this reload.
@@ -919,6 +923,15 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
           offlineLibraryMode: false,
           qualityPreset: _selectedQualityPreset,
           selectedAudioStreamId: _selectedAudioStreamId,
+          selectSourceTracks: genericClient.backend == MediaBackend.pleyaServer
+              ? (info) => _selectSourceTracksBeforeOpen(
+                  info,
+                  forPlayer: currentPlayer,
+                  metadata: _currentMetadata,
+                  isCurrent: () =>
+                      mounted && player == currentPlayer && identical(_getMediaServerClient(context), genericClient),
+                )
+              : null,
           sessionIdentifier: _playbackSessionIdentifier,
           transcodeSessionId: _playbackTranscodeSessionId,
         );

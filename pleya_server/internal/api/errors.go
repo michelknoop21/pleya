@@ -153,9 +153,10 @@ const (
 	// client vroeg.
 	CodeFilterInvalid = "library.filter_invalid"
 
-	CodeVersionUnavailable  = "playback.version_unavailable"
-	CodeRangeNotSatisfiable = "playback.range_not_satisfiable"
-	CodeNotPlayable         = "playback.not_playable"
+	CodeVersionUnavailable       = "playback.version_unavailable"
+	CodeRangeNotSatisfiable      = "playback.range_not_satisfiable"
+	CodePlaybackSelectionInvalid = "playback.selection_invalid"
+	CodeNotPlayable              = "playback.not_playable"
 
 	// CodeTranscodeBusy: alle omzetsessies zijn bezet (venster 5 deel 2, S18).
 	// Retryable: een sessie die stopt maakt ruimte.
@@ -299,15 +300,16 @@ var errorTable = map[string]struct {
 	CodeFilterInvalid:           {http.StatusBadRequest, false},
 	CodeJobNotCancellable:       {http.StatusConflict, false},
 
-	CodeVersionUnavailable:   {http.StatusConflict, true},
-	CodeRangeNotSatisfiable:  {http.StatusRequestedRangeNotSatisfiable, false},
-	CodeNotPlayable:          {http.StatusUnsupportedMediaType, false},
-	CodeTranscodeBusy:        {http.StatusServiceUnavailable, true},
-	CodeTranscodeFailed:      {http.StatusBadGateway, false},
-	CodePersonalInvalid:      {http.StatusBadRequest, false},
-	CodeDownloadNotPermitted: {http.StatusForbidden, false},
-	CodeDownloadNotReady:     {http.StatusConflict, true},
-	CodeDownloadChanged:      {http.StatusConflict, false},
+	CodeVersionUnavailable:       {http.StatusConflict, true},
+	CodeRangeNotSatisfiable:      {http.StatusRequestedRangeNotSatisfiable, false},
+	CodePlaybackSelectionInvalid: {http.StatusBadRequest, false},
+	CodeNotPlayable:              {http.StatusUnsupportedMediaType, false},
+	CodeTranscodeBusy:            {http.StatusServiceUnavailable, true},
+	CodeTranscodeFailed:          {http.StatusBadGateway, false},
+	CodePersonalInvalid:          {http.StatusBadRequest, false},
+	CodeDownloadNotPermitted:     {http.StatusForbidden, false},
+	CodeDownloadNotReady:         {http.StatusConflict, true},
+	CodeDownloadChanged:          {http.StatusConflict, false},
 
 	CodeStorageUnavailable:    {http.StatusServiceUnavailable, true},
 	CodeStorageFull:           {http.StatusInsufficientStorage, false},

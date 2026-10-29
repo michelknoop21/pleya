@@ -148,6 +148,10 @@ class PleyaCapabilities {
     required this.artwork,
     required this.watchState,
     this.playbackPlan = false,
+    this.playbackQuality = false,
+    this.playbackAudioSelection = false,
+    this.embeddedSubtitles = false,
+    this.playbackSubtitles = false,
     this.history = false,
     this.favorites = false,
     this.ratings = false,
@@ -184,6 +188,10 @@ class PleyaCapabilities {
   final bool artwork;
   final bool watchState;
   final bool playbackPlan;
+  final bool playbackQuality;
+  final bool playbackAudioSelection;
+  final bool embeddedSubtitles;
+  final bool playbackSubtitles;
 
   /// The personal layer of S20: play history, favorites and ratings on items,
   /// and the remembered audio and subtitle choice per title.
@@ -241,6 +249,10 @@ class PleyaCapabilities {
     artwork: boolean(json, 'artwork'),
     watchState: boolean(json, 'watch_state'),
     playbackPlan: booleanOr(json, 'playback_plan', orElse: false),
+    playbackQuality: booleanOr(json, 'playback_quality', orElse: false),
+    playbackAudioSelection: booleanOr(json, 'playback_audio_selection', orElse: false),
+    embeddedSubtitles: booleanOr(json, 'embedded_subtitles', orElse: false),
+    playbackSubtitles: booleanOr(json, 'playback_subtitles', orElse: false),
     history: booleanOr(json, 'history', orElse: false),
     favorites: booleanOr(json, 'favorites', orElse: false),
     ratings: booleanOr(json, 'ratings', orElse: false),
