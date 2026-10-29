@@ -110,6 +110,10 @@ class LocalLibrarySync {
         try {
           ids = await client.fetchExternalIds(item.id).timeout(const Duration(seconds: 20));
         } on MediaServerHttpException {
+          ids = null;
+        } on StateError {
+          // A Pleya Server that did not answer the lookup throws instead of
+          // answering empty; the same flaky call must not fail the scan.
           // Plex used to answer a failed lookup with no ids. Keep that here: one
           // flaky includeGuids call must not fail the whole library scan.
           ids = null;

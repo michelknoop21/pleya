@@ -91,6 +91,14 @@ func TestSeriesIDsStayOnTheShow(t *testing.T) {
 	if len(seasons.Items) == 0 {
 		t.Fatal("serie heeft geen seizoenen")
 	}
+	// Even a stray matched row on a season (manual correction, future provider)
+	// must not turn into a show-level number on the wire.
+	if err := e.store.SaveCandidate(ctx, catalog.MetadataCandidate{
+		ItemID: id.MustParse(seasons.Items[0].ID), Provider: catalog.ProviderTMDB, State: catalog.CandidateMatched, ExternalID: "1100",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	e.getJSON("/pleya/v1/items/"+show.ID+"/children", "", http.StatusOK, &seasons)
 	for _, season := range seasons.Items {
 		if season.ExternalIDs != nil {
 			t.Fatalf("seizoen %q erft het nummer van de serie: %+v", season.Title, season.ExternalIDs)

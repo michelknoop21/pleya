@@ -84,10 +84,10 @@ mixin _PleyaServerSearchMethods on _PleyaServerRequests {
     final found = <PleyaItem>[];
     String? cursor;
     for (var pages = 0; ; pages++) {
-      if (pages >= 5) throw StateError('PleyaServerClient: too many results for ${identity.title} to look up');
+      if (pages >= 3) throw StateError('PleyaServerClient: too many results for ${identity.title} to look up');
       final answer = await _getJsonDetailed(
         '/search',
-        queryParameters: {'q': title.trim(), 'kind': wireKind.wire, 'limit': '100', 'cursor': ?cursor},
+        queryParameters: {'q': title.trim(), 'kind': wireKind.wire, 'limit': '500', 'cursor': ?cursor},
         timeout: MediaServerTimeouts.searchPerServer,
       );
       final json = answer.json;

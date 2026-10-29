@@ -77,7 +77,7 @@ class ResolvableItem {
     this.includeGuidEvidence = true,
   });
 
-  String? get _effectiveBucketKey => bucketKeyOverride ?? identity?.bucketKey;
+  String? get _effectiveBucketKey => bucketKeyOverride ?? identity?.resolutionKey;
 }
 
 /// Resolves [IdentityEvidence] for a batch of [ResolvableItem]s, in input

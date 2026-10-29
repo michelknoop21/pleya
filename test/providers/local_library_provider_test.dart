@@ -149,6 +149,14 @@ void main() {
       await store.saveLibrary(library, [
         pleya('proven', {'tmdb': 5}),
         pleya('empty', {}),
+        MediaItem(
+          id: 'nokey',
+          backend: MediaBackend.pleyaServer,
+          kind: MediaKind.movie,
+          title: 'n',
+          serverId: 'one',
+          libraryId: 'films',
+        ),
         film('plex-empty').copyWith(raw: {'pleyaLocalExternalIds': <String, Object?>{}}),
       ], complete: true);
       provider = LocalLibraryProvider(

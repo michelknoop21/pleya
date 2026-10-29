@@ -102,6 +102,14 @@ void main() {
     expect(store.items.map((i) => i.id), ['a', 'b']);
   });
 
+  test('a Pleya Server lookup that did not answer (StateError) does not fail the scan either', () async {
+    client.idsError = StateError('no usable answer');
+
+    await LocalLibrarySync(store: store).syncLibrary(library, client);
+
+    expect(store.items.map((i) => i.id), ['a', 'b']);
+  });
+
   test('successful complete scan removes confirmed missing rows', () async {
     await store.saveLibrary(library, [film('removed')], complete: true);
     await LocalLibrarySync(store: store, pageSize: 1).syncLibrary(library, client);

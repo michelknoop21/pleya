@@ -137,6 +137,19 @@ void main() {
       expect(await client.fetchExternalIds('unmatched'), const ExternalIds());
     });
 
+    test('right after fetchItem the numbers come from that answer, not from a second request', () async {
+      final server = serverWith();
+      client = await connected(server);
+      await client.fetchItem('dune-2021');
+      server.requests.clear();
+
+      expect(await client.fetchExternalIds('dune-2021'), const ExternalIds(tmdb: 438631));
+      expect(server.requests, isEmpty);
+      // Consumed once: the next ask reads the server again, so a rematch shows.
+      await client.fetchExternalIds('dune-2021');
+      expect(server.requests, hasLength(1));
+    });
+
     test('a season and an episode answer empty, so identity comes from the show', () async {
       client = await connected(serverWith());
       expect(await client.fetchExternalIds('sev-s1'), const ExternalIds());

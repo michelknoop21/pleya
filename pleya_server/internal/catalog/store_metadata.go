@@ -423,9 +423,10 @@ const ProviderTMDB = "tmdb"
 // hoort niet als identiteit de deur uit (unified, DEC-XXX).
 func (s *Store) attachExternalIDs(ctx context.Context, ids []id.ID, byID map[id.ID]*Item) error {
 	rows, err := s.pool.Query(ctx, `
-		SELECT item_id, external_id
-		FROM metadata_candidates
-		WHERE item_id = ANY($1) AND state = $2 AND provider = $3 AND external_id IS NOT NULL`,
+		SELECT c.item_id, c.external_id
+		FROM metadata_candidates c
+		JOIN media_items i ON i.id = c.item_id AND i.kind IN ('movie', 'show')
+		WHERE c.item_id = ANY($1) AND c.state = $2 AND c.provider = $3 AND c.external_id IS NOT NULL`,
 		ids, CandidateMatched, ProviderTMDB)
 	if err != nil {
 		return fmt.Errorf("externe ids lezen: %w", err)

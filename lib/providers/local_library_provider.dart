@@ -421,6 +421,9 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
       if (!ids.hasAny && cached.backend == MediaBackend.pleyaServer) return null;
       return ids;
     }
+    // A Pleya Server snapshot without a stored answer (the lookup failed during
+    // the scan) is unknown, not empty.
+    if (cached.backend == MediaBackend.pleyaServer) return null;
     final ids = raw?['ProviderIds'];
     if (ids is Map<String, Object?>) return ExternalIds.fromJellyfinProviderIds(ids);
     final guids = raw?['Guid'];

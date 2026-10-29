@@ -121,7 +121,8 @@ bestanden niet, en RFC 9110 §8.8.1 vraagt strict revision control of een hash o
 bytes aan elkaar te plakken.
 
 **Tabellen uit latere fasen bestaan niet.** Geen `play_history`, `play_sessions`, `user_item_data`,
-`external_ids`, `metadata_candidates` of `transcode_sessions`. `watch_states` en `stream_sessions`
+of `transcode_sessions`. `metadata_candidates` bestaat sinds migratie 0013 (S22) en levert het enige
+providernummer dat `Item.external_ids` draagt (X5, DEC-XXX); een eigen `external_ids`-tabel bestaat niet. `watch_states` en `stream_sessions`
 staan er sinds PS-4; `users`, `sessions` en `library_permissions` sinds migratie 0007 (PS-9, DEC-119
 en DEC-123). De lijst in hoofdstuk 17.2 (die van het protocol; het schema staat in hoofdstuk 16 en
 17 van [de specificatie](../docs/pleya-protocol-v1.md)) beschrijft het hele v1-product en niet deze

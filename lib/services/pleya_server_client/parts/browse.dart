@@ -260,6 +260,8 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       // otherwise get that event refused as stale and leave the viewing
       // without an owner, so its progress would never be stored.
       _watchLedger.remember(item.id, item.userState?.revision);
+      if (_recentExternalIds.length > 200) _recentExternalIds.clear();
+      _recentExternalIds[item.id] = (ids: ExternalIds(tmdb: item.externalIds.tmdb), at: DateTime.now());
       final ancestors = await _ancestorsOf(item);
       return PleyaServerMappers.mediaItem(
         item,
@@ -288,6 +290,11 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   /// answer cannot pin a title without evidence for the rest of a catalog
   /// merge. Only a `not_found` answer, the item being gone, comes back empty.
   Future<ExternalIds> fetchExternalIds(String itemId) async {
+    // A caller that has just read this item (the library sync does, right
+    // before asking) gets the numbers from that very answer instead of a second
+    // request. Consumed once and short-lived, so a later rematch is never hidden.
+    final recent = _recentExternalIds.remove(itemId);
+    if (recent != null && DateTime.now().difference(recent.at) < const Duration(seconds: 30)) return recent.ids;
     final answer = await _getJsonDetailed('/items/${Uri.encodeComponent(itemId)}');
     final json = answer.json;
     if (json == null) {
@@ -721,6 +728,9 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   }
 
   final Map<String, PleyaItem> _itemCache = {};
+
+  /// The numbers of the item [fetchItem] answered last, for [fetchExternalIds].
+  final Map<String, ({ExternalIds ids, DateTime at})> _recentExternalIds = {};
 
   /// One item in wire form, memoised for the lifetime of the client.
   ///

@@ -52,6 +52,18 @@ WatchlistEntry entry({String key = 'plex:abc', String? guid = 'plex://movie/abc'
   );
 }
 
+WatchlistEntry entryWithTmdb() {
+  final base = entry();
+  return WatchlistEntry(
+    key: base.key,
+    kind: base.kind,
+    item: base.item,
+    guid: base.guid,
+    externalIds: const ExternalIds(imdb: 'tt1727587', tmdb: 4242),
+    memberships: base.memberships,
+  );
+}
+
 EligibleServer server(
   String id, {
   MediaBackend backend = MediaBackend.plex,
@@ -134,7 +146,7 @@ void main() {
 
       final result = await resolverFor([
         server('ps', backend: MediaBackend.pleyaServer, match: match),
-      ]).resolve(entry());
+      ]).resolve(entryWithTmdb());
 
       expect(result.match?.serverId, 'ps');
       expect(result.coverageComplete, isTrue);
@@ -144,17 +156,29 @@ void main() {
       final result = await resolverFor([
         server('s1'),
         server('ps', backend: MediaBackend.pleyaServer, throws: true),
-      ]).resolve(entry());
+      ]).resolve(entryWithTmdb());
 
       expect(result.match, isNull);
       expect(result.coverageComplete, isFalse);
     });
 
+    test(
+      'an entry without a TMDB number is not a question for a Pleya Server: it stays out of the denominator',
+      () async {
+        final result = await resolverFor([
+          server('s1'),
+          server('ps', backend: MediaBackend.pleyaServer, throws: true),
+        ]).resolve(entry());
+
+        expect(result.coverageComplete, isTrue);
+      },
+    );
+
     test('an offline Pleya Server counts in the denominator like any other', () async {
       final result = await resolverFor([
         server('s1'),
         server('ps', backend: MediaBackend.pleyaServer, online: false),
-      ]).resolve(entry());
+      ]).resolve(entryWithTmdb());
 
       expect(result.coverageComplete, isFalse);
     });

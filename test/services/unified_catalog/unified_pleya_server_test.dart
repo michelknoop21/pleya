@@ -664,6 +664,44 @@ void main() {
       expect(after.groups.single.sources, hasLength(2));
     });
 
+    test('the same proven TMDB number folds even when the two servers disagree on the year', () async {
+      final plex = _FakeServerClient(
+        MediaBackend.plex,
+        shows: [
+          _show('plex-sev', 'Severance', 2022, serverId: 'srv-plex', backend: MediaBackend.plex),
+          _show('plex-dune', 'Dune', 1984, serverId: 'srv-plex', backend: MediaBackend.plex),
+          _show('plex-twins', 'Twins', 2020, serverId: 'srv-plex', backend: MediaBackend.plex),
+        ],
+        ids: {
+          'plex-sev': const ExternalIds(tmdb: 95396),
+          'plex-dune': const ExternalIds(tmdb: 841),
+          'plex-twins': const ExternalIds(tmdb: 7),
+        },
+      );
+      final pleya = pleyaClient(
+        pleyaServer({
+          'ps-sev': (title: 'Severance', year: 2021, tmdb: 95396),
+          // Same title, other year, other number: a remake, not the same show.
+          'ps-dune': (title: 'Dune', year: 2021, tmdb: 438631),
+          // Same title, other year, same number but another kind on the Plex side is covered by the grouping tests.
+          'ps-twins': (title: 'Twins', year: 2019, tmdb: 8),
+        }),
+        serverId: 'srv-pleya',
+      );
+      await pleya.refreshCapabilities();
+      final service = UnifiedCatalogService(
+        query: query,
+        libraries: [library('srv-plex', MediaBackend.plex), library('srv-pleya', MediaBackend.pleyaServer)],
+        clientFor: (id) => id.value == 'srv-plex' ? plex : pleya,
+      );
+
+      final snapshot = await drain(service);
+
+      expect(titlesToSources(snapshot)['Severance'], ['srv-plex:plex-sev', 'srv-pleya:ps-sev']);
+      expect(snapshot.groups.where((g) => g.representativeSource.item.title == 'Dune'), hasLength(2));
+      expect(snapshot.groups.where((g) => g.representativeSource.item.title == 'Twins'), hasLength(2));
+    });
+
     test('a server that predates external_ids keeps its titles as their own cards', () async {
       final plex = _FakeServerClient(
         MediaBackend.plex,

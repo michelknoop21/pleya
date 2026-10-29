@@ -22,6 +22,7 @@ import '../../media/ids.dart';
 import '../../media/media_backend.dart';
 import '../../media/media_identity.dart';
 import '../../media/media_item.dart';
+import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/source_coverage_state.dart';
 import '../../utils/app_logger.dart';
@@ -122,6 +123,14 @@ bool isIdentityEligibleBackend(MediaBackend backend) => switch (backend) {
   MediaBackend.plex || MediaBackend.jellyfin || MediaBackend.pleyaServer => true,
   MediaBackend.local => false,
 };
+
+/// Whether [backend] can be asked about [identity] at all. A Pleya Server only
+/// proves a title by its TMDB number and a kind, so an identity that has only an
+/// IMDb or TVDB number is not a question it can answer. It stays out of the
+/// expected set for that title, instead of showing as a server that failed.
+bool canAskBackendAbout(MediaBackend backend, MediaIdentity identity) =>
+    backend != MediaBackend.pleyaServer ||
+    (identity.externalIds.tmdb != null && (identity.kind == MediaKind.movie || identity.kind == MediaKind.show));
 
 /// One server [SourceAllResolver] is allowed to ask, plus enough state to
 /// explain a coverage gap. [hasAuthError] is separate from [online]: an
@@ -282,7 +291,9 @@ class SourceAllResolver {
     }
 
     final servers = serversFor();
-    final eligible = servers.where((s) => isIdentityEligibleBackend(s.backend)).toList();
+    final eligible = servers
+        .where((s) => isIdentityEligibleBackend(s.backend) && canAskBackendAbout(s.backend, identity))
+        .toList();
     final expectedIds = {for (final s in eligible) s.serverId.toString()};
 
     // Read once and thread it through the whole resolve. Reading it again at

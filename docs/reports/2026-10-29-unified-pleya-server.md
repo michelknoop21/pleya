@@ -15,6 +15,15 @@ Roadmap: A-07 (serverdeel C-05 / S22, register X5). Besluit: DEC-XXX. Branch `fe
 - `scripts/ci_checks.sh --with-unused`: format, codegenvers, analyze en DCL groen; alleen "native format" faalt omdat `swift-format` hier ontbreekt (geen nativebestanden gewijzigd).
 - Onafhankelijke review: 0 kritiek, 5 belangrijk, 6 klein. Vijf belangrijke en M2 tot M4 verwerkt met tests. M1 (Plex-titel zonder TMDB geeft blijvend "niet alles gecontroleerd") en M5/M6 blijven bewust staan.
 
+## Tweede ronde (na /code-review high en opmerkingen Michel)
+- Jaar-bucket opgelost: `CanonicalMediaIdentity.resolutionKey` (titel zonder jaar voor film en serie) bepaalt nu welke items een id-lookup krijgen. Zelfde TMDB-nummer met ander jaar op de twee servers voegt samen; een ander nummer (remake) of ander soort blijft apart. Regressietest `the same proven TMDB number folds even when the two servers disagree on the year`, rood zonder de wijziging. De samenvoeging zelf blijft op identieke nummers; de jaar-gevoelige terugval gebruikt nog `bucketKey`.
+- Review-punten verwerkt: scan breekt niet meer op een mislukte Pleya-lookup en een mislukte lookup telt als onbekend in de lokale cache; geen tweede verzoek direct na `fetchItem`; lookup met limiet 500; SQL beperkt tot film en serie (test met negatieve controle); een identiteit zonder TMDB-nummer telt voor Pleya Server als niet van toepassing in plaats van mislukt; `pleya_server/CLAUDE.md` bijgewerkt.
+- Pleya Share: `MediaBackend.local` stond al in `_neverMergedBackends` en is onveranderd; geen lokaal pad is aangeraakt.
+- `local_folder_scan_cache_test.dart` is als gewone gebruiker (`tester`) opnieuw gedraaid: groen. De twee falers waren root-artefacten.
+- `swift-format` ontbreekt in deze omgeving; de native formatcontrole moet in CI draaien. Geen gate is omzeild.
+- Bewust niet opgelost: een titel die op de servers anders heet (bijv. "The Office (US)" tegenover "The Office") vindt de identiteitszoekactie niet, want het contract kent geen zoekopdracht op nummer. De catalogusgroepering (resolutionKey) heeft dat probleem ook bij verschillende titels. Dat vraagt een serverfilter op `external_id` en dus een eigen protocolbesluit.
+- De echte serverproef zet de matchrij met SQL; de automatische TMDB-keten (nfo, zoeken, `Decide`) heeft eigen Go-tests (`internal/metadata`) maar is niet tegen echt TMDB gedraaid.
+
 ## Niet bewezen
 - iPhone en Apple TV met Plex en Pleya Server tegelijk: geen toestel, simulator of toegang tot Michels Plex of NAS in deze sessie. Geen voor/na-schermopname, geen bronkeuze of afspelen op een toestel. De keten tot en met bronkeuze en afspeelplan is op code- en servernivel getest; "unified werkt" is daarmee nog niet op een toestel aangetoond.
 - Geen echte Plex of Emby; hun kant is nagebootst met de bestaande fake-clients.
