@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../connection/connection.dart';
 import '../utils/continue_watching_merge.dart';
+import '../exceptions/identity_lookup_exceptions.dart';
 import '../exceptions/media_server_exceptions.dart';
 import '../media/download_resolution.dart';
 import '../media/server_administration.dart';

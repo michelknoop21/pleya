@@ -73,6 +73,11 @@ type Capabilities struct {
 	// niets over boeken.
 	Filters bool `json:"filters"`
 
+	// ExternalIDLookup (unified). Aan zodra /libraries/{id}/items de parameter
+	// external_id kent en Item.external_ids bestaat. Een server zonder de vlag
+	// negeert de parameter stil en levert de hele bibliotheek.
+	ExternalIDLookup bool `json:"external_id_lookup"`
+
 	// History, Favorites, Ratings en TrackPreferences (venster 6 deel 2, S20).
 	// Elk is aan zodra de persoonlijke opslag er is; ze belooft niets over
 	// verzamelingen.

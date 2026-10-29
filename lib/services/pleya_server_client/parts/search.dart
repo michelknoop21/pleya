@@ -56,69 +56,85 @@ mixin _PleyaServerSearchMethods on _PleyaServerRequests {
   Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async =>
       identity.pickAllMatches(await _identityCandidates(identity), allowTitleFallback: false);
 
-  /// Search on the title, read the numbers off the results, confirm on the
-  /// client. The contract has no lookup by number, so this is the same route
-  /// the Jellyfin client takes.
+  /// Asks the server for the titles that carry the number of [identity], per
+  /// library of the right kind. The lookup is by number only: the folder name,
+  /// the translated title and the year the server holds play no part, which is
+  /// the point (a title search that comes back empty proves nothing about a
+  /// number). Library rights come for free: only libraries the user may list are
+  /// asked, and every hit is stamped with its library so hidden libraries are
+  /// filtered the same way as for any other backend.
   ///
-  /// It throws, instead of answering empty, wherever the server cannot answer
-  /// "do you have this": an identity without a TMDB number (the only number a
-  /// Pleya Server proves), an identity whose kind is unknown (a TMDB number is
-  /// per kind), and a server that predates `external_ids`. An empty answer is
-  /// a "no" the caller caches and counts as checked; these are "could not be
-  /// checked", and the caller reports them that way.
+  /// It throws instead of answering empty wherever it cannot say "not here":
+  /// [IdentityLookupUnsupported] for an identity without a TMDB number or kind
+  /// and for a server without `capabilities.external_id_lookup`,
+  /// [IdentityLookupUnavailable] for anything that stops an answer arriving.
   Future<List<({MediaItem item, ExternalIds ids})>> _identityCandidates(MediaIdentity identity) async {
-    final title = identity.title;
     final tmdb = identity.externalIds.tmdb;
     final kind = identity.kind;
-    if (title == null || title.trim().isEmpty) return const [];
-    if (!wireCapabilities.search)
-      throw StateError('PleyaServerClient: search is not available, cannot look up ${identity.title}');
     if (tmdb == null || (kind != MediaKind.movie && kind != MediaKind.show)) {
-      throw StateError('PleyaServerClient: ${identity.title} cannot be proven here without a TMDB number and a kind');
+      throw IdentityLookupUnsupported('${identity.title} has no TMDB number and kind to ask by');
+    }
+    if (!wireCapabilities.externalIdLookup) {
+      throw const IdentityLookupUnsupported('this server cannot look titles up by number');
     }
 
-    // Asked per kind so episodes cannot crowd the page, and paged so a short
-    // common title cannot hide the wanted one past the first page. A search
-    // that is still not exhausted after a few pages is "could not check".
-    final wireKind = kind == MediaKind.movie ? PleyaItemKind.movie : PleyaItemKind.show;
-    final found = <PleyaItem>[];
-    String? cursor;
-    for (var pages = 0; ; pages++) {
-      if (pages >= 3) throw StateError('PleyaServerClient: too many results for ${identity.title} to look up');
-      final answer = await _getJsonDetailed(
-        '/search',
-        queryParameters: {'q': title.trim(), 'kind': wireKind.wire, 'limit': '500', 'cursor': ?cursor},
-        timeout: MediaServerTimeouts.searchPerServer,
-      );
-      final json = answer.json;
-      if (json == null) throw StateError('PleyaServerClient: /search gave no answer');
-      final PleyaItemPage page;
-      try {
-        page = PleyaItemPage.fromJson(json);
-      } on PleyaWireFormatException catch (e) {
-        appLogger.w('PleyaServerClient: /search did not match the contract', error: e);
-        throw StateError('PleyaServerClient: /search did not match the contract');
+    final librariesAnswer = await _getJsonDetailed('/libraries', timeout: MediaServerTimeouts.searchPerServer);
+    final librariesJson = librariesAnswer.json;
+    if (librariesJson == null)
+      throw IdentityLookupUnavailable('/libraries gave no answer (${librariesAnswer.errorCode})');
+    final List<PleyaLibrary> libraries;
+    try {
+      libraries = PleyaLibrary.listFromJson(librariesJson);
+    } on PleyaWireFormatException {
+      throw const IdentityLookupUnavailable('/libraries did not match the contract');
+    }
+
+    final wantedLibraryKind = kind == MediaKind.movie ? PleyaLibraryKind.movies : PleyaLibraryKind.shows;
+    final wantedItemKind = kind == MediaKind.movie ? PleyaItemKind.movie : PleyaItemKind.show;
+    final out = <({MediaItem item, ExternalIds ids})>[];
+    for (final library in libraries.where((l) => l.kind == wantedLibraryKind)) {
+      String? cursor;
+      for (var pages = 0; ; pages++) {
+        if (pages >= 3) throw IdentityLookupUnavailable('too many results for tmdb:$tmdb in ${library.id}');
+        final answer = await _getJsonDetailed(
+          '/libraries/${Uri.encodeComponent(library.id)}/items',
+          queryParameters: {'external_id': 'tmdb:$tmdb', 'limit': '100', 'cursor': ?cursor},
+          timeout: MediaServerTimeouts.searchPerServer,
+        );
+        final json = answer.json;
+        if (json == null) {
+          // A library that vanished between the two calls has nothing to give.
+          if (answer.errorCode?.endsWith('not_found') ?? false) break;
+          throw IdentityLookupUnavailable('${library.id} gave no answer (${answer.errorCode ?? 'no response'})');
+        }
+        final PleyaItemPage page;
+        try {
+          page = PleyaItemPage.fromJson(json);
+        } on PleyaWireFormatException {
+          throw IdentityLookupUnavailable('${library.id} did not match the contract');
+        }
+        // Believe the number on the item, not the filter alone: a server that
+        // ignored the parameter returns everything, and everything is not a hit.
+        final hits = [
+          for (final item in page.knownItems)
+            if (item.kind == wantedItemKind && item.externalIds.tmdb == tmdb) item,
+        ];
+        for (final item in hits) {
+          out.add((
+            item: PleyaServerMappers.mediaItem(
+              item,
+              serverId: serverId.toString(),
+              serverName: serverName,
+              libraryId: library.id,
+              libraryTitle: library.title,
+            ),
+            ids: ExternalIds(tmdb: item.externalIds.tmdb),
+          ));
+        }
+        cursor = page.nextCursor;
+        if (cursor == null) break;
       }
-      found.addAll(page.knownItems);
-      cursor = page.nextCursor;
-      if (cursor == null) break;
     }
-
-    final sameKind = [
-      for (final item in found)
-        if (item.kind == wireKind) item,
-    ];
-    // Results exist, none of them speaks the field: an older server. Reading
-    // that as "no match" would cache a wrong negative for the title.
-    if (found.isNotEmpty && found.every((item) => !item.externalIdsReported)) {
-      throw StateError('PleyaServerClient: this server predates external_ids');
-    }
-    return [
-      for (final item in sameKind)
-        (
-          item: PleyaServerMappers.mediaItem(item, serverId: serverId.toString(), serverName: serverName),
-          ids: ExternalIds(tmdb: item.externalIds.tmdb),
-        ),
-    ];
+    return out;
   }
 }

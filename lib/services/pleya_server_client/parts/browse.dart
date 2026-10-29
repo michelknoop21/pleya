@@ -260,8 +260,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       // otherwise get that event refused as stale and leave the viewing
       // without an owner, so its progress would never be stored.
       _watchLedger.remember(item.id, item.userState?.revision);
-      if (_recentExternalIds.length > 200) _recentExternalIds.clear();
-      _recentExternalIds[item.id] = (ids: ExternalIds(tmdb: item.externalIds.tmdb), at: DateTime.now());
+      _rememberExternalIds([item]);
       final ancestors = await _ancestorsOf(item);
       return PleyaServerMappers.mediaItem(
         item,
@@ -279,39 +278,66 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   /// The provider numbers the server has proven for a movie or show, for the
   /// unified identity pipeline.
   ///
-  /// Always a fresh read: the server can match a title later, and a cached
-  /// answer would keep a title unrecognisable until the client restarts. The
-  /// caller already caches per resolution pass.
-  ///
-  /// An empty answer means "no evidence", never "no match": a server that
-  /// predates `external_ids`, an unmatched title, a season and an episode all
-  /// come back the same way, and grouping then keeps the source on its own
-  /// card. A transport failure throws, like the Plex client, so a cached empty
-  /// answer cannot pin a title without evidence for the rest of a catalog
-  /// merge. Only a `not_found` answer, the item being gone, comes back empty.
-  Future<ExternalIds> fetchExternalIds(String itemId) async {
-    // A caller that has just read this item (the library sync does, right
-    // before asking) gets the numbers from that very answer instead of a second
-    // request. Consumed once and short-lived, so a later rematch is never hidden.
-    final recent = _recentExternalIds.remove(itemId);
-    if (recent != null && DateTime.now().difference(recent.at) < const Duration(seconds: 30)) return recent.ids;
+  /// Three outcomes, and they must stay three. A list means the server answered:
+  /// possibly with no numbers, which is "no evidence" and never "no match". A
+  /// [IdentityLookupUnavailable] means it did not answer (offline, transport,
+  /// timeout, 429, 5xx, a broken body) and nothing may be remembered as final.
+  /// Only a `not_found` answer, the item being gone, is a definitive empty.
+  Future<ExternalIds> fetchExternalIds(String itemId) async => (await fetchExternalIdsDetailed(itemId)).ids;
+
+  /// [fetchExternalIds] plus whether the answer is authoritative: the server
+  /// knows the `external_ids` field, so an empty list really is "no proven
+  /// number". A server that predates the field answers empty with
+  /// `authoritative: false`, and a caller that stores the answer must not treat
+  /// it as final.
+  Future<({ExternalIds ids, bool authoritative})> fetchExternalIdsDetailed(String itemId) async {
+    // Numbers read a moment ago off a page or a detail answer need no second
+    // request. Short-lived, so a later rematch is never hidden for long.
+    final known = _recentExternalIds[itemId];
+    if (known != null && DateTime.now().difference(known.at) < _recentExternalIdsTtl) {
+      return (ids: known.ids, authoritative: known.authoritative);
+    }
     final answer = await _getJsonDetailed('/items/${Uri.encodeComponent(itemId)}');
     final json = answer.json;
     if (json == null) {
-      // Only "this item is not there" is a definitive empty. A rate limit, an
-      // unavailable database or an internal error is the server failing to
-      // answer, and must not be remembered as a title without numbers.
       final code = answer.errorCode;
-      if (code != null && code.endsWith('not_found')) return const ExternalIds();
-      throw StateError('PleyaServerClient: no usable answer for /items/$itemId ($code)');
+      if (code != null && code.endsWith('not_found')) return (ids: const ExternalIds(), authoritative: true);
+      throw IdentityLookupUnavailable('no usable answer for /items/$itemId (${code ?? 'no response'})');
     }
+    final PleyaItem item;
     try {
-      final item = PleyaItem.fromJson(json);
-      if (item.kind != PleyaItemKind.movie && item.kind != PleyaItemKind.show) return const ExternalIds();
-      return ExternalIds(tmdb: item.externalIds.tmdb);
+      item = PleyaItem.fromJson(json);
     } on PleyaWireFormatException catch (e) {
       appLogger.w('PleyaServerClient: /items/$itemId did not match the contract', error: e);
-      return const ExternalIds();
+      throw IdentityLookupUnavailable('/items/$itemId did not match the contract');
+    }
+    _rememberExternalIds([item]);
+    final isTitle = item.kind == PleyaItemKind.movie || item.kind == PleyaItemKind.show;
+    return (
+      ids: isTitle ? ExternalIds(tmdb: item.externalIds.tmdb) : const ExternalIds(),
+      authoritative: !isTitle || item.externalIdsReported,
+    );
+  }
+
+  @visibleForTesting
+  void debugForgetExternalIds() => _recentExternalIds.clear();
+
+  /// Keeps the numbers of items just read, so [fetchExternalIdsDetailed] can
+  /// answer without asking again. Movies and shows only: nothing else carries
+  /// numbers. Bounded, oldest out.
+  void _rememberExternalIds(Iterable<PleyaItem> items) {
+    final now = DateTime.now();
+    for (final item in items) {
+      if (item.kind != PleyaItemKind.movie && item.kind != PleyaItemKind.show) continue;
+      _recentExternalIds.remove(item.id);
+      _recentExternalIds[item.id] = (
+        ids: ExternalIds(tmdb: item.externalIds.tmdb),
+        authoritative: item.externalIdsReported,
+        at: now,
+      );
+    }
+    while (_recentExternalIds.length > _recentExternalIdsMax) {
+      _recentExternalIds.remove(_recentExternalIds.keys.first);
     }
   }
 
@@ -664,6 +690,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     }
 
     final window = collected.length > limit ? collected.take(limit).toList() : collected;
+    _rememberExternalIds(window);
     final items = PleyaServerMappers.items(
       window,
       serverId: serverId.toString(),
@@ -730,7 +757,9 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   final Map<String, PleyaItem> _itemCache = {};
 
   /// The numbers of the item [fetchItem] answered last, for [fetchExternalIds].
-  final Map<String, ({ExternalIds ids, DateTime at})> _recentExternalIds = {};
+  final Map<String, ({ExternalIds ids, bool authoritative, DateTime at})> _recentExternalIds = {};
+  static const Duration _recentExternalIdsTtl = Duration(seconds: 60);
+  static const int _recentExternalIdsMax = 5000;
 
   /// One item in wire form, memoised for the lifetime of the client.
   ///

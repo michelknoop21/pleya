@@ -1,6 +1,9 @@
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show VoidCallback;
 
+import 'dart:async' show TimeoutException;
+
+import '../../exceptions/identity_lookup_exceptions.dart';
 import '../../exceptions/media_server_exceptions.dart';
 import '../../media/library_query.dart';
 import '../../media/media_item.dart';
@@ -106,23 +109,41 @@ class LocalLibrarySync {
       // Preserve strong cross-server identity for offline grouping. The Plex
       // neutral mapper intentionally omits the Guid array from raw metadata.
       ExternalIds? ids;
+      // Whether the stored answer may be trusted as final. Only a Pleya Server
+      // that knows the field says so; the others keep the behaviour they had.
+      var authoritative = false;
       if ((item.kind == MediaKind.movie || item.kind == MediaKind.show) && item.raw?['pleyaLocalExternalIds'] == null) {
         try {
-          ids = await client.fetchExternalIds(item.id).timeout(const Duration(seconds: 20));
+          if (client is PleyaServerClient) {
+            final answer = await client.fetchExternalIdsDetailed(item.id).timeout(const Duration(seconds: 20));
+            ids = answer.ids;
+            authoritative = answer.authoritative;
+          } else {
+            ids = await client.fetchExternalIds(item.id).timeout(const Duration(seconds: 20));
+          }
         } on MediaServerHttpException {
-          ids = null;
-        } on StateError {
-          // A Pleya Server that did not answer the lookup throws instead of
-          // answering empty; the same flaky call must not fail the scan.
           // Plex used to answer a failed lookup with no ids. Keep that here: one
           // flaky includeGuids call must not fail the whole library scan.
+          ids = null;
+        } on IdentityLookupException {
+          // The server did not answer (offline, 429, 503, a broken body). The row
+          // is kept with no stored answer, which readers treat as unknown rather
+          // than as "no numbers", so the next scan or lookup asks again.
+          ids = null;
+        } on TimeoutException {
           ids = null;
         }
         await check();
       }
       next[item.globalKey] = ids == null
           ? item
-          : item.copyWith(raw: {...?item.raw, 'pleyaLocalExternalIds': ids.toJson()});
+          : item.copyWith(
+              raw: {
+                ...?item.raw,
+                'pleyaLocalExternalIds': ids.toJson(),
+                if (client is PleyaServerClient) 'pleyaLocalExternalIdsFinal': authoritative,
+              },
+            );
       final loader = posterLoader;
       final path = item.thumbPath;
       if (loader != null &&

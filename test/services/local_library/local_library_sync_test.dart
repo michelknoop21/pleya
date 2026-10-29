@@ -2,16 +2,20 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/exceptions/identity_lookup_exceptions.dart';
 import 'package:pleya/exceptions/media_server_exceptions.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/library_query.dart';
+import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_library.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/services/local_library/local_library_store.dart';
 import 'package:pleya/services/local_library/local_library_sync.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/external_ids.dart';
+import '../../pleya_server/pleya_fake_server.dart';
 import 'local_library_store_test.dart' show library, film;
 
 class Client implements MediaServerClient {
@@ -102,12 +106,74 @@ void main() {
     expect(store.items.map((i) => i.id), ['a', 'b']);
   });
 
-  test('a Pleya Server lookup that did not answer (StateError) does not fail the scan either', () async {
-    client.idsError = StateError('no usable answer');
+  test('a Pleya Server lookup that did not answer does not fail the scan, and stores no final answer', () async {
+    client.idsError = const IdentityLookupUnavailable('503');
 
     await LocalLibrarySync(store: store).syncLibrary(library, client);
 
     expect(store.items.map((i) => i.id), ['a', 'b']);
+  });
+
+  group('against a Pleya Server', () {
+    Future<Map<String, Map<String, Object?>?>> scan({required bool reportsExternalIds}) async {
+      final fake = PleyaFakeServer()..reportsExternalIds = reportsExternalIds;
+      fake.addLibrary(id: 'lib-series', title: 'Series', kind: 'shows');
+      fake.addItem(
+        id: 'matched',
+        kind: 'show',
+        title: 'A',
+        libraryId: 'lib-series',
+        year: 2020,
+        externalIds: {'tmdb': 5},
+      );
+      fake.addItem(id: 'unmatched', kind: 'show', title: 'B', libraryId: 'lib-series', year: 2021);
+      final pleya = fake.client();
+      addTearDown(pleya.close);
+      await pleya.refreshCapabilities();
+      const pleyaLibrary = MediaLibrary(
+        id: 'lib-series',
+        backend: MediaBackend.pleyaServer,
+        title: 'Series',
+        kind: MediaKind.show,
+        serverId: 'srv-1',
+      );
+      await LocalLibrarySync(store: store).syncLibrary(pleyaLibrary, pleya);
+      return {for (final i in store.items) i.id: i.raw};
+    }
+
+    test('a server that knows the field stores final answers, also an empty one', () async {
+      final raw = await scan(reportsExternalIds: true);
+
+      expect(raw['matched']?['pleyaLocalExternalIds'], {'tmdb': 5});
+      expect(raw['matched']?['pleyaLocalExternalIdsFinal'], isTrue);
+      expect(raw['unmatched']?['pleyaLocalExternalIds'], isEmpty);
+      expect(raw['unmatched']?['pleyaLocalExternalIdsFinal'], isTrue, reason: 'no refetch on every screen build');
+    });
+
+    test('a server that predates the field stores nothing final', () async {
+      final raw = await scan(reportsExternalIds: false);
+
+      expect(raw['unmatched']?['pleyaLocalExternalIdsFinal'], isFalse);
+    });
+  });
+
+  test('a timed out lookup does not fail the scan', () async {
+    client.idsError = TimeoutException('slow');
+
+    await LocalLibrarySync(store: store).syncLibrary(library, client);
+
+    expect(store.items.map((i) => i.id), ['a', 'b']);
+    expect(
+      store.items.every((i) => i.raw?['pleyaLocalExternalIds'] == null),
+      isTrue,
+      reason: 'nothing stored as final',
+    );
+  });
+
+  test('an unexpected StateError still fails the scan: only lookup failures are tolerated', () async {
+    client.idsError = StateError('programming error');
+
+    await expectLater(LocalLibrarySync(store: store).syncLibrary(library, client), throwsStateError);
   });
 
   test('successful complete scan removes confirmed missing rows', () async {

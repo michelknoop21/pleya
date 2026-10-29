@@ -1519,6 +1519,17 @@ paths:
           required: false
           description: Tot dit jaar, inclusief.
           schema: { type: string, pattern: "^[0-9]{4}$" }
+        - name: external_id
+          in: query
+          required: false
+          description: |
+            Alleen onder `capabilities.external_id_lookup`. Levert de titels met
+            dit providernummer, `tmdb:<getal>`, uit deze bibliotheek: een film
+            in een `movies`-bibliotheek, een serie in een `shows`-bibliotheek.
+            Geen titel of jaar nodig. Een lege lijst betekent dat deze server
+            de titel in deze bibliotheek niet heeft of niet bewezen heeft. Een
+            waarde die geen providernummer is geeft `library.filter_invalid`.
+          schema: { type: string, pattern: "^tmdb:[1-9][0-9]*$" }
         - name: watch
           in: query
           required: false
@@ -2927,6 +2938,15 @@ components:
             `GET /libraries/{id}/facets` bestaat (venster 3, pakket D1). Zonder
             de vlag stuurt een client geen filterparameters: een oudere server
             negeert ze stil en levert dan een ongefilterde lijst.
+        external_id_lookup:
+          type: boolean
+          default: false
+          description: |
+            `GET /libraries/{id}/items` kent de filterparameter `external_id`
+            (`tmdb:<getal>`) en `Item.external_ids` bestaat (unified). Zonder de
+            vlag stuurt een client de parameter niet: een oudere server negeert
+            hem stil en levert dan de hele bibliotheek. De vlag zegt niets over
+            de dekking van de matches.
         api_tokens:
           type: boolean
           default: false

@@ -702,6 +702,41 @@ void main() {
       expect(snapshot.groups.where((g) => g.representativeSource.item.title == 'Twins'), hasLength(2));
     });
 
+    test(
+      'measured on 600 + 300 titles: no detail request to the Pleya Server, one id lookup per duplicate on Plex',
+      () async {
+        String name(int i) => 'Show ${i.toString().padLeft(4, '0')}';
+        final plex = _FakeServerClient(
+          MediaBackend.plex,
+          shows: [
+            for (var i = 0; i < 600; i++)
+              _show('plex-$i', name(i), 2000, serverId: 'srv-plex', backend: MediaBackend.plex),
+          ],
+          ids: {for (var i = 0; i < 600; i++) 'plex-$i': ExternalIds(tmdb: 1000 + i)},
+        );
+        final fake = pleyaServer({
+          for (var i = 0; i < 600; i += 2) 'ps-$i': (title: name(i), year: 2000, tmdb: 1000 + i),
+        });
+        final pleya = pleyaClient(fake, serverId: 'srv-pleya');
+        await pleya.refreshCapabilities();
+        final service = UnifiedCatalogService(
+          query: query,
+          libraries: [library('srv-plex', MediaBackend.plex), library('srv-pleya', MediaBackend.pleyaServer)],
+          clientFor: (id) => id.value == 'srv-plex' ? plex : pleya,
+          pageSize: 200,
+          groupsPerPage: 700,
+          maxRawItemsPerLoadMore: 5000,
+        );
+
+        final snapshot = await drain(service);
+
+        expect(snapshot.groups, hasLength(600));
+        expect(snapshot.groups.where((g) => g.sources.length == 2), hasLength(300));
+        expect(fake.requests.where((r) => r.contains('/items/')), isEmpty, reason: 'ids came with the list pages');
+        expect(plex.externalIdFetches, hasLength(300), reason: 'only titles that exist on both servers are looked up');
+      },
+    );
+
     test('a server that predates external_ids keeps its titles as their own cards', () async {
       final plex = _FakeServerClient(
         MediaBackend.plex,
@@ -746,8 +781,8 @@ void main() {
         expect(first.groups.single.sources, hasLength(2));
         expect(
           fake.requests.where((r) => r.contains('/items/ps-sev')),
-          isNotEmpty,
-          reason: 'the first run asked for the number',
+          isEmpty,
+          reason: 'the page already carried the number: no detail request per title',
         );
 
         fake.requests.clear();

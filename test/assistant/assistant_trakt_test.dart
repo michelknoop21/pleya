@@ -4,6 +4,7 @@ import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/assistant/assistant_trakt_services.dart';
 import 'package:pleya/database/app_database.dart' show WatchedIdentity;
+import 'package:pleya/exceptions/identity_lookup_exceptions.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_hub.dart';
@@ -51,7 +52,7 @@ class _PleyaServer extends FakeServer {
 
   @override
   Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async {
-    if (identity.externalIds.tmdb == null) throw StateError('Pleya Server needs a TMDB number');
+    if (identity.externalIds.tmdb == null) throw const IdentityLookupUnsupported('Pleya Server needs a TMDB number');
     return const [];
   }
 }

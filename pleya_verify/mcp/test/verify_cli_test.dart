@@ -6,7 +6,8 @@ import 'package:test/test.dart';
 
 import 'fake_process_runner.dart';
 
-const _scenarioListJson = '["../scenarios/macos.smoke.boot.yaml", "../scenarios/tvos.nav.focus-switches-destination.yaml"]';
+const _scenarioListJson =
+    '["../scenarios/macos.smoke.boot.yaml", "../scenarios/tvos.nav.focus-switches-destination.yaml"]';
 
 void main() {
   group('listScenarios', () {

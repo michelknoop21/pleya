@@ -414,11 +414,13 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     final local = raw?['pleyaLocalExternalIds'];
     if (local is Map<String, Object?>) {
       final ids = ExternalIds.fromJson(local);
-      // A Pleya Server only recently started to prove titles. A snapshot written
-      // before that stored an empty answer, and an unmatched title still has
-      // none today. Neither may pass for "this title has no numbers": null sends
-      // the caller to the server, which knows.
-      if (!ids.hasAny && cached.backend == MediaBackend.pleyaServer) return null;
+      // A Pleya Server answer is final only when the scan marked it so: the
+      // server knew the field and said what it has, numbers or none. A snapshot
+      // from before that, or from a server that predates the field, may be empty
+      // for the wrong reason, so null sends the caller to the server. A final
+      // empty answer is kept: no network on every screen build for unmatched
+      // titles.
+      if (cached.backend == MediaBackend.pleyaServer && raw?['pleyaLocalExternalIdsFinal'] != true) return null;
       return ids;
     }
     // A Pleya Server snapshot without a stored answer (the lookup failed during

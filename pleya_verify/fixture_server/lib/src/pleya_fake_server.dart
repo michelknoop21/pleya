@@ -775,7 +775,19 @@ class PleyaFakeServer {
     if (libraryMatch != null) {
       final ids = libraryItems[Uri.decodeComponent(libraryMatch.group(1)!)];
       if (ids == null) return _json(_error('library.not_found'), status: 404);
-      final narrowed = filtersCapability ? _filtered(ids, request.url.queryParametersAll) : ids;
+      var narrowed = filtersCapability ? _filtered(ids, request.url.queryParametersAll) : ids;
+      final externalId = query['external_id'];
+      if (reportsExternalIds && externalId != null) {
+        // Like the real server: only a proven number on a movie or show.
+        final tmdb = externalId.startsWith('tmdb:') ? int.tryParse(externalId.substring(5)) : null;
+        if (tmdb == null || tmdb <= 0) {
+          return _json(_error('library.filter_invalid'), status: 400);
+        }
+        narrowed = [
+          for (final id in narrowed)
+            if ((items[id]!['external_ids'] as Map?)?['tmdb'] == tmdb) id,
+        ];
+      }
       return _json(_page(_sorted(narrowed, query['sort']), query));
     }
 
@@ -971,6 +983,7 @@ class PleyaFakeServer {
       'watch_state_ownership': watchStateOwnership,
       'stream_sessions': watchState,
       if (filtersCapability) 'filters': true,
+      if (reportsExternalIds) 'external_id_lookup': true,
       if (playbackPlanCapability) 'playback_plan': true,
       if (downloadsCapability) 'downloads': true,
       if (personalCapability) ...{'history': true, 'favorites': true, 'ratings': true, 'track_preferences': true},

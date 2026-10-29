@@ -9,6 +9,7 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/providers/local_library_provider.dart';
+import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/services/local_library/local_library_store.dart';
 import 'package:pleya/utils/deletion_notifier.dart';
 import '../services/local_library/local_library_store_test.dart' show library, film;
@@ -137,18 +138,19 @@ void main() {
       provider.dispose();
       final store = LocalLibraryStore(root);
       await store.load();
-      MediaItem pleya(String id, Map<String, Object?> ids) => MediaItem(
+      MediaItem pleya(String id, Map<String, Object?> ids, {bool final_ = true}) => MediaItem(
         id: id,
         backend: MediaBackend.pleyaServer,
         kind: MediaKind.movie,
         title: id,
         serverId: 'one',
         libraryId: 'films',
-        raw: {'pleyaLocalExternalIds': ids},
+        raw: {'pleyaLocalExternalIds': ids, 'pleyaLocalExternalIdsFinal': final_},
       );
       await store.saveLibrary(library, [
         pleya('proven', {'tmdb': 5}),
         pleya('empty', {}),
+        pleya('legacy-empty', {}, final_: false),
         MediaItem(
           id: 'nokey',
           backend: MediaBackend.pleyaServer,
@@ -173,7 +175,12 @@ void main() {
       await provider.ready;
 
       expect(provider.externalIds('one', 'proven')?.tmdb, 5);
-      expect(provider.externalIds('one', 'empty'), isNull, reason: 'not proof of nothing: ask the server');
+      expect(
+        provider.externalIds('one', 'empty'),
+        const ExternalIds(),
+        reason: 'a final empty answer is kept: no network per screen',
+      );
+      expect(provider.externalIds('one', 'legacy-empty'), isNull, reason: 'not proof of nothing: ask the server');
       expect(
         provider.externalIds('one', 'plex-empty'),
         isNotNull,

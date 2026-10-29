@@ -105,3 +105,48 @@ func TestSeriesIDsStayOnTheShow(t *testing.T) {
 		}
 	}
 }
+
+// TestExternalIDLookupFindsTheTitleWithoutTitleOrYear is the route unified uses
+// to ask "do you have this" by number: the same answer whatever the folder
+// calls the title or which year it carries, only within the library asked, and
+// never for something that is not a proven match.
+func TestExternalIDLookupFindsTheTitleWithoutTitleOrYear(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	ctx := context.Background()
+	grease := e.findMovie("Grease")
+	for _, c := range []struct{ title, state, ext string }{
+		{"Grease", catalog.CandidateMatched, "621"},
+		{"Blade Runner", catalog.CandidateAmbiguous, "621"},
+		{"The Matrix", catalog.CandidateRejected, "621"},
+	} {
+		item := e.findMovie(c.title)
+		if err := e.store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: id.MustParse(item.ID),
+			Provider: catalog.ProviderTMDB, State: c.state, ExternalID: c.ext}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	list := func(library, query string) api.ItemPage {
+		var page api.ItemPage
+		e.getJSON("/pleya/v1/libraries/"+e.libraryID(library)+"/items?"+query, "", http.StatusOK, &page)
+		return page
+	}
+
+	hit := list("movies", "external_id=tmdb:621")
+	if len(hit.Items) != 1 || hit.Items[0].ID != grease.ID {
+		t.Fatalf("verwacht alleen Grease (matched), kreeg %+v", hit.Items)
+	}
+	if len(list("movies", "external_id=tmdb:622").Items) != 0 {
+		t.Fatal("een ander nummer moet niets opleveren")
+	}
+	// Dezelfde waarde in de seriebibliotheek is een andere soort: niets.
+	if len(list("shows", "external_id=tmdb:621").Items) != 0 {
+		t.Fatal("een filmnummer kwam uit een seriebibliotheek")
+	}
+	for _, bad := range []string{"tmdb:abc", "tmdb:0", "imdb:tt1", "621", "tmdb:-3"} {
+		rec := e.do(http.MethodGet, "/pleya/v1/libraries/"+e.libraryID("movies")+"/items?external_id="+bad, nil)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("%q gaf %d, verwacht 400", bad, rec.Code)
+		}
+	}
+}

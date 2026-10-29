@@ -121,6 +121,16 @@ func parseItemFilters(q url.Values, subject string) (catalog.Filters, *filterErr
 		f.Resolutions = append(f.Resolutions, r)
 	}
 
+	if _, present := q["external_id"]; present {
+		provider, raw, ok := strings.Cut(strings.TrimSpace(q.Get("external_id")), ":")
+		n, err := strconv.Atoi(raw)
+		// Alleen tmdb bestaat, en alleen een positief geheel getal.
+		if !ok || provider != catalog.ProviderTMDB || err != nil || n <= 0 {
+			return f, &filterError{parameter: "external_id", value: q.Get("external_id")}
+		}
+		f.ExternalID = &catalog.ExternalIDFilter{Provider: provider, Value: n}
+	}
+
 	if _, present := q["watch"]; present {
 		switch w := catalog.WatchFilter(strings.ToLower(strings.TrimSpace(q.Get("watch")))); w {
 		case catalog.WatchUnwatched, catalog.WatchInProgress, catalog.WatchWatched:

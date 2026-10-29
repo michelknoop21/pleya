@@ -113,9 +113,7 @@ void main() {
     test('a GET control call that never gets a response times out', () async {
       await expectLater(
         handleAgainstDeadServer.verifyState(),
-        throwsA(
-          isA<FixtureControlTimeoutException>().having((e) => e.path, 'path', '/__verify/state'),
-        ),
+        throwsA(isA<FixtureControlTimeoutException>().having((e) => e.path, 'path', '/__verify/state')),
       );
     });
 
@@ -127,22 +125,24 @@ void main() {
     });
   });
 
-  test('start() kills the child process on a malformed boot line, rather than leaving it running', () async {
-    // A package dir with a `bin/serve.dart` that immediately prints
-    // something that is not the {port, controlToken} JSON start() expects,
-    // then hangs — exercises the same catch-and-kill path start()'s doc
-    // covers for every startup failure (timeout, early stdout close,
-    // malformed JSON, missing fields), without paying for the real 30s
-    // boot-line timeout to prove it.
-    final packageDir = Directory.systemTemp.createTempSync('pleya-verify-fixture-start-orphan-test');
-    addTearDown(() {
-      if (packageDir.existsSync()) packageDir.deleteSync(recursive: true);
-    });
-    File(
-      '${packageDir.path}/pubspec.yaml',
-    ).writeAsStringSync('name: fake_fixture_server\nenvironment:\n  sdk: ">=3.0.0 <4.0.0"\n');
-    Directory('${packageDir.path}/bin').createSync();
-    File('${packageDir.path}/bin/serve.dart').writeAsStringSync('''
+  test(
+    'start() kills the child process on a malformed boot line, rather than leaving it running',
+    () async {
+      // A package dir with a `bin/serve.dart` that immediately prints
+      // something that is not the {port, controlToken} JSON start() expects,
+      // then hangs — exercises the same catch-and-kill path start()'s doc
+      // covers for every startup failure (timeout, early stdout close,
+      // malformed JSON, missing fields), without paying for the real 30s
+      // boot-line timeout to prove it.
+      final packageDir = Directory.systemTemp.createTempSync('pleya-verify-fixture-start-orphan-test');
+      addTearDown(() {
+        if (packageDir.existsSync()) packageDir.deleteSync(recursive: true);
+      });
+      File(
+        '${packageDir.path}/pubspec.yaml',
+      ).writeAsStringSync('name: fake_fixture_server\nenvironment:\n  sdk: ">=3.0.0 <4.0.0"\n');
+      Directory('${packageDir.path}/bin').createSync();
+      File('${packageDir.path}/bin/serve.dart').writeAsStringSync('''
 import 'dart:io';
 void main() {
   // A pid file so the test can watch it, then a line start() cannot
@@ -154,12 +154,14 @@ void main() {
 }
 ''');
 
-    await expectLater(FixtureServerHandle.start(fixtureServerPackageDir: packageDir), throwsA(anything));
+      await expectLater(FixtureServerHandle.start(fixtureServerPackageDir: packageDir), throwsA(anything));
 
-    final pidFile = File('${packageDir.path}/pid');
-    expect(pidFile.existsSync(), isTrue, reason: 'the child should have started and announced its own pid');
-    final pid = pidFile.readAsStringSync().trim();
-    final aliveCheck = await Process.run('kill', ['-0', pid]);
-    expect(aliveCheck.exitCode, isNot(0), reason: 'pid $pid should not still be running after start() threw');
-  }, timeout: const Timeout(Duration(seconds: 30)));
+      final pidFile = File('${packageDir.path}/pid');
+      expect(pidFile.existsSync(), isTrue, reason: 'the child should have started and announced its own pid');
+      final pid = pidFile.readAsStringSync().trim();
+      final aliveCheck = await Process.run('kill', ['-0', pid]);
+      expect(aliveCheck.exitCode, isNot(0), reason: 'pid $pid should not still be running after start() threw');
+    },
+    timeout: const Timeout(Duration(seconds: 30)),
+  );
 }
