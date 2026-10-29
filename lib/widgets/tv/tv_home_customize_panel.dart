@@ -31,6 +31,8 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../i18n/strings.g.dart';
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_hub.dart';
@@ -94,7 +96,7 @@ class TvHomeFixedRow {
 /// There is no save step, so a move, a hide and a delete all land in the
 /// providers while the panel is up, and a snapshot taken at open would leave
 /// the viewer looking at the list they had before their first press.
-Future<void> showTvHomeCustomizePanel(
+Future<HomeCustomRow?> showTvHomeCustomizePanel(
   BuildContext context, {
   required Listenable listenable,
   required List<TvHomeFixedRow> Function() fixedRows,
@@ -103,11 +105,11 @@ Future<void> showTvHomeCustomizePanel(
   required void Function(TvHomeRowEntry entry) onToggleHidden,
   required void Function(HomeCustomRow row) onEdit,
   required void Function(HomeCustomRow row) onRemove,
-  required Future<bool> Function() onNewRow,
+  required Future<HomeCustomRow?> Function() onNewRow,
   MediaServerClient? Function(String serverId)? clientFor,
 }) {
   final initialFocusNode = FocusNode(debugLabel: 'TvHomeCustomizeInitialFocus');
-  return OverlaySheetController.showAdaptive<void>(
+  return OverlaySheetController.showAdaptive<HomeCustomRow>(
     context,
     presentation: OverlaySheetPresentation.panel,
     constraints: tvWidePanelConstraints(MediaQuery.sizeOf(context)),
@@ -126,6 +128,7 @@ Future<void> showTvHomeCustomizePanel(
         onEdit: onEdit,
         onRemove: onRemove,
         onNewRow: onNewRow,
+        onAdded: (row) => OverlaySheetController.closeAdaptive(sheetContext, row),
         onClose: () => OverlaySheetController.closeAdaptive(sheetContext, null),
       ),
     ),
@@ -143,6 +146,7 @@ class TvHomeCustomizePanel extends StatefulWidget {
     required this.onRemove,
     required this.onNewRow,
     required this.onClose,
+    required this.onAdded,
     this.initialFocusNode,
     this.clientFor,
   });
@@ -154,10 +158,11 @@ class TvHomeCustomizePanel extends StatefulWidget {
   final void Function(HomeCustomRow row) onEdit;
   final void Function(HomeCustomRow row) onRemove;
 
-  /// Runs the wizard and answers whether a row was actually added, because
+  /// Runs the wizard and returns the row that was actually added, because
   /// DEC-100 (5) closes the panel on Home only in that case — a viewer who
   /// cancelled the wizard is still in the middle of tidying their Home.
-  final Future<bool> Function() onNewRow;
+  final Future<HomeCustomRow?> Function() onNewRow;
+  final ValueChanged<HomeCustomRow> onAdded;
   final VoidCallback onClose;
   final FocusNode? initialFocusNode;
   final MediaServerClient? Function(String serverId)? clientFor;
@@ -338,45 +343,59 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
       });
     }
 
-    return DecoratedBox(
-      decoration: tvPanelDecoration(mono, radius),
-      child: Padding(
-        padding: EdgeInsets.all(TvSourcePickerLayout.panelPadding * scale),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _header(mono, scale),
-            SizedBox(height: TvSourcePickerLayout.sectionGap * scale),
-            Flexible(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (final fixed in widget.fixedRows) ...[
-                      TvHomeFixedRowTile(fixed: fixed, scale: scale, clientFor: widget.clientFor),
-                      SizedBox(height: TvHomeRowsLayout.rowGap * scale),
+    return AutomationNode(
+      id: AutomationIds.homeCustomizePanel,
+      role: 'region',
+      state: () => {
+        'rowCount': widget.entries.length,
+        'customCount': widget.entries.where((entry) => entry.isCustom).length,
+        'hiddenCount': widget.entries.where((entry) => entry.isHidden).length,
+        'rows': [
+          for (final entry in widget.entries)
+            {'id': entry.layoutIds.first, 'hidden': entry.isHidden, 'custom': entry.isCustom},
+        ],
+      },
+      child: DecoratedBox(
+        decoration: tvPanelDecoration(mono, radius),
+        child: Padding(
+          padding: EdgeInsets.all(TvSourcePickerLayout.panelPadding * scale),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _header(mono, scale),
+              SizedBox(height: TvSourcePickerLayout.sectionGap * scale),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final fixed in widget.fixedRows) ...[
+                        TvHomeFixedRowTile(fixed: fixed, scale: scale, clientFor: widget.clientFor),
+                        SizedBox(height: TvHomeRowsLayout.rowGap * scale),
+                      ],
+                      for (var i = 0; i < widget.entries.length; i++) ...[
+                        _entryRow(i, scale),
+                        SizedBox(height: TvHomeRowsLayout.rowGap * scale),
+                      ],
+                      TvHomeNewRowTile(
+                        scale: scale,
+                        focusNode: _newRow,
+                        onPressed: () async {
+                          final row = await widget.onNewRow();
+                          if (row != null && mounted) widget.onAdded(row);
+                        },
+                        onNavigateUp: () => widget.entries.isEmpty
+                            ? _done.requestFocus()
+                            : _step(widget.entries.length, TvHomeRowColumn.primary, -1),
+                      ),
                     ],
-                    for (var i = 0; i < widget.entries.length; i++) ...[
-                      _entryRow(i, scale),
-                      SizedBox(height: TvHomeRowsLayout.rowGap * scale),
-                    ],
-                    TvHomeNewRowTile(
-                      scale: scale,
-                      focusNode: _newRow,
-                      onPressed: () async {
-                        if (await widget.onNewRow() && mounted) widget.onClose();
-                      },
-                      onNavigateUp: () => widget.entries.isEmpty
-                          ? _done.requestFocus()
-                          : _step(widget.entries.length, TvHomeRowColumn.primary, -1),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -412,6 +431,8 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
       TvPanelButton(
         scale: scale,
         label: t.unifiedCatalog.homeRows.done,
+        automationId: AutomationIds.homeCustomizeAction,
+        automationInstance: 'done',
         icon: Symbols.check_rounded,
         primary: false,
         focusNode: _done,
@@ -429,7 +450,9 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
     // that does nothing.
     final canMove = homeLayoutCanMove([for (final e in widget.entries) e.row], index);
     return TvHomeEntryRowTile(
+      key: ValueKey(id),
       entry: entry,
+      automationRowIndex: index,
       scale: scale,
       clientFor: widget.clientFor,
       upNode: _nodeFor(id, TvHomeRowColumn.up),

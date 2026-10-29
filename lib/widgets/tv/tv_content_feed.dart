@@ -71,6 +71,7 @@ import '../../navigation/tv/tv_content_route_registry.dart';
 import '../../navigation/tv/tv_navigation_coordinator.dart';
 import '../../services/settings_service.dart';
 import '../../services/unified_catalog/home_custom_row_view_all.dart';
+import '../../services/unified_catalog/home_custom_row.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
@@ -123,6 +124,9 @@ class TvContentFeedState extends State<TvContentFeed>
 
   /// A1a's footer row, one DOWN below the last content row.
   final _customizeFocus = FocusNode(debugLabel: 'tvHomeCustomizeFooter');
+
+  HomeCustomRow? _pendingAddedRow;
+  FocusNode? _addedRowLauncher;
 
   bool _rowHasFocus = false;
   bool _atTop = true;
@@ -518,6 +522,9 @@ class TvContentFeedState extends State<TvContentFeed>
     // the order the keys were first created in — a Home-layout reorder or a
     // re-projection changes the former and not the latter.
     _rowStack.layOut(rows.map((row) => row.hubId));
+    if (_pendingAddedRow != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _focusAddedRow());
+    }
 
     if (rows.isEmpty && heroGroups.isEmpty && !reserveHeroSpace) {
       return _emptyOrLoading(discover, hasSavedRows: customRows?.hasSavedRows ?? false);
@@ -701,7 +708,50 @@ class TvContentFeedState extends State<TvContentFeed>
     );
   }
 
-  Future<void> _openCustomize() => openTvHomeCustomizePanel(context, clientFor: _clientFor);
+  Future<void> _openCustomize() async {
+    _pendingAddedRow = null;
+    // The context-menu entry runs after its close future, before its launcher
+    // restoration has committed. Capture the real Home launcher after it.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    final launcher = FocusManager.instance.primaryFocus;
+    final row = await openTvHomeCustomizePanel(context, clientFor: _clientFor);
+    if (!mounted || row == null) return;
+    // The overlay restores its launcher in a post-frame callback. Let that
+    // focus transaction finish before checking ownership of the new intent.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    setState(() {
+      _pendingAddedRow = row;
+      _addedRowLauncher = launcher;
+    });
+  }
+
+  void _focusAddedRow() {
+    final row = _pendingAddedRow;
+    if (!mounted || row == null) return;
+    if (!_destinationActive || _addedRowLauncher?.hasPrimaryFocus != true) {
+      _pendingAddedRow = null;
+      return;
+    }
+    final layout = context.read<HomeLayoutProvider?>();
+    final customRows = context.read<HomeCustomRowsProvider?>();
+    final exists = layout?.customRowById(row.id) != null && !layout!.isRowHidden(row.layoutRowId);
+    // Provider notifications rebuild Home when the request finishes. Keep the
+    // launcher usable meanwhile; no polling or timing assumption is needed.
+    if (exists && (customRows?.isLoading(row.id) ?? false)) return;
+    _pendingAddedRow = null;
+    if (exists && customRows?.contentFor(row.id)?.isEmpty == false) {
+      final rail = _rowStack.keyFor(UnifiedMediaHub.synthesizedHubId(row.hubSlug)).currentState;
+      if (rail?.focusColumn(0) ?? false) return;
+    }
+    // Removed, hidden, failed or empty: return to an existing Home control.
+    if (_customizeFocus.context != null && _customizeFocus.canRequestFocus) {
+      _customizeFocus.requestFocus();
+    } else {
+      if (!focusPrimary()) widget.onNavigateUp?.call();
+    }
+  }
 
   MediaServerClient? Function(String serverId) get _clientFor =>
       (serverId) => context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId));

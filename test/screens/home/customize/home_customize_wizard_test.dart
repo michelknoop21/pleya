@@ -45,12 +45,14 @@ void main() {
     List<HomeCustomRow> own = const [_own],
     HomeCustomRowContent? preview,
     HomeCustomRowContent? rowContent,
+    Future<HomeCustomRowContent> Function()? previewRequest,
     Widget? home,
   }) async {
     previewCalls.clear();
     installHomeRowEditingStub(
       preview: (draft) async {
         previewCalls.add(draft);
+        if (previewRequest != null) return previewRequest();
         return preview ?? HomeCustomRowContent.empty;
       },
     );
@@ -149,6 +151,30 @@ void main() {
       await tapText(tester, home.addRow);
       expect(h.layout.customRows.single.kind, MediaKind.show);
     });
+  });
+
+  testWidgets('failed shared preview stops loading and can retry without saving', (tester) async {
+    var attempts = 0;
+    await pumpScreen(
+      tester,
+      own: const [],
+      previewRequest: () async {
+        if (++attempts == 1) throw StateError('fixture preview failure');
+        return found();
+      },
+    );
+    await tester.tap(find.text(home.newRow));
+    await settle(tester);
+    await tapText(tester, home.next);
+    await tapText(tester, home.next);
+    expect(find.text(t.common.error), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(h.layout.customRows, isEmpty);
+    await tapText(tester, home.adjustFilters);
+    await tapText(tester, home.next);
+    await tapText(tester, home.addRow);
+    expect(h.layout.customRows, hasLength(1));
+    expect(attempts, 2);
   });
 
   group('edit and delete', () {

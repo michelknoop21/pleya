@@ -43,18 +43,27 @@ String sortLabel(UnifiedCatalogSort sort) => switch (sort) {
 /// `restoreLauncherFocus` is what returns focus to the header action that
 /// opened it — the shared mechanism fase 5A lifted out of the source picker, so
 /// there is one focus-restore contract on this platform and not three.
-Future<UnifiedCatalogSort?> showTvCatalogSortPanel(BuildContext context, {required UnifiedCatalogSort selected}) {
+Future<UnifiedCatalogSort?> showTvCatalogSortPanel(
+  BuildContext context, {
+  required UnifiedCatalogSort selected,
+  bool asSubpage = false,
+}) {
   final initialFocusNode = FocusNode(debugLabel: 'TvCatalogSortInitialFocus');
   return OverlaySheetController.showAdaptive<UnifiedCatalogSort>(
     context,
     presentation: OverlaySheetPresentation.panel,
     initialFocusNode: initialFocusNode,
     restoreLauncherFocus: true,
+    asSubpage: asSubpage,
     builder: (sheetContext) => TvCatalogSortPanel(
       selected: selected,
       initialFocusNode: initialFocusNode,
-      onSelect: (sort) => OverlaySheetController.closeAdaptive(sheetContext, sort),
-      onClose: () => OverlaySheetController.closeAdaptive(sheetContext, null),
+      onSelect: (sort) => asSubpage
+          ? OverlaySheetController.popAdaptive(sheetContext, sort)
+          : OverlaySheetController.closeAdaptive(sheetContext, sort),
+      onClose: () => asSubpage
+          ? OverlaySheetController.popAdaptive(sheetContext, null)
+          : OverlaySheetController.closeAdaptive(sheetContext, null),
     ),
   );
 }

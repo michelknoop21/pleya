@@ -346,7 +346,9 @@ class _HomeRowWizardViewState extends State<HomeRowWizardView> {
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: isEmpty ? mono.accentAlt : mono.textMuted),
         ),
         const SizedBox(height: 16),
-        if (_d.isPreviewing || content == null)
+        if (_d.previewFailed)
+          Text(t.common.error, style: TextStyle(color: mono.textMuted))
+        else if (_d.isPreviewing || content == null)
           const SizedBox(height: 150, child: Center(child: CircularProgressIndicator()))
         else if (isEmpty)
           Container(
@@ -432,7 +434,10 @@ class _HomeRowWizardViewState extends State<HomeRowWizardView> {
       );
     } else {
       primary = FilledButton.icon(
-        onPressed: () => widget.onSave(_d.draft),
+        onPressed: () {
+          final draft = _d.takeForSave();
+          if (draft != null) widget.onSave(draft);
+        },
         icon: const Icon(Symbols.add_rounded),
         label: label(widget.initial == null ? home.addRow : home.saveRow),
       );

@@ -22,6 +22,7 @@ import 'package:pleya/screens/profile/pin_entry_dialog.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/storage_service.dart';
+import 'package:pleya/widgets/notice/notice_controller.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
@@ -191,6 +192,39 @@ void main() {
   });
 
   group('activateProfileWithPin reports a cancelled PIN', () {
+    testWidgets('cancelling a UI profile switch shows no failure notice', (tester) async {
+      late BuildContext context;
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<ConnectionRegistry>.value(value: connections),
+            Provider<ProfileConnectionRegistry>.value(value: profileConnections),
+            ChangeNotifierProvider<ActiveProfileProvider>.value(value: active),
+            Provider<ActiveProfileBinder>.value(value: binder),
+          ],
+          child: MaterialApp(
+            home: Builder(
+              builder: (c) {
+                context = c;
+                return const SizedBox();
+              },
+            ),
+          ),
+        ),
+      );
+      noticeController.debugReset();
+      addTearDown(noticeController.debugReset);
+      bool? ok;
+      unawaited(switchProfileFromUi(context, _localAnna).then((v) => ok = v));
+      await tester.pumpAndSettle();
+      expect(find.byType(PinEntryDialog), findsOneWidget);
+      await tester.tap(find.text(t.common.cancel));
+      await tester.pumpAndSettle();
+      expect(ok, isFalse);
+      expect(noticeController.visible, isEmpty);
+      expect(active.activeId, isNull);
+    });
+
     testWidgets('backing out of the PIN dialog calls onPinCancelled and does not switch', (tester) async {
       late BuildContext context;
       await tester.pumpWidget(

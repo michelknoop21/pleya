@@ -183,7 +183,7 @@ Future<ScenarioRunResult> runScenario({
           final profileResult = await _requireClient(
             driver,
             'seed_profile',
-          ).seedProfile(displayName: args['name'] as String);
+          ).seedProfile(displayName: args['name'] as String, pin: args['pin'] as String?);
           if (profileResult['ok'] != true) {
             throw StateError('seed_profile failed: ${profileResult['error']} (full response: $profileResult)');
           }

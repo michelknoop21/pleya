@@ -102,13 +102,14 @@ Future<bool> activateProfileWithPin(
 
 /// Activate [profile] from a UI surface, then wait until the active profile's
 /// server/token binding has settled. Shows the standard switch failure message
-/// for both activation and binding failures.
+/// for both activation and binding failures. Cancelling the PIN stays silent.
 Future<bool> switchProfileFromUi(BuildContext context, Profile profile) async {
   final activeProvider = context.read<ActiveProfileProvider>();
-  final ok = await activateProfileWithPin(context, profile);
+  var pinCancelled = false;
+  final ok = await activateProfileWithPin(context, profile, onPinCancelled: () => pinCancelled = true);
   if (!context.mounted) return false;
   if (!ok) {
-    showErrorSnackBar(context, t.errors.failedToSwitchProfile(displayName: profile.displayName));
+    if (!pinCancelled) showErrorSnackBar(context, t.errors.failedToSwitchProfile(displayName: profile.displayName));
     return false;
   }
 

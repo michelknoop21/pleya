@@ -416,8 +416,9 @@ test/commit.
 
 ### `POST /v1/profiles/seed`
 
-Body: `{"display_name": "..."}`. Voegt een tweede lokaal profiel toe dat elke
-verbinding van het actieve profiel leent, en laat het actieve profiel actief.
+Body: `{"display_name": "...", "pin": "1234"}`. `pin` is optioneel en bestaat
+uit precies vier cijfers; alleen de hash wordt opgeslagen. Voegt een tweede
+lokaal profiel toe dat elke verbinding van het actieve profiel leent, en laat het actieve profiel actief.
 Dezelfde toestand als Profiel toevoegen plus Verbinding lenen, zonder een naam
 op het Apple TV-toetsenbord te typen. Voor scenario's die twee profielen op
 dezelfde server nodig hebben (zoekgeschiedenis per profiel).
@@ -425,7 +426,7 @@ dezelfde server nodig hebben (zoekgeschiedenis per profiel).
 Gebruikt de context van `rootNavigatorKey`; `/v1/signin` moet eerst zijn gelukt.
 
 200 `{"ok": true, "profileId": "..."}`; 400 `{"ok": false, "error": "..."}` bij
-een lege naam, geen actief profiel of een actief profiel zonder verbinding.
+een lege naam, ongeldige PIN, geen actief profiel of een actief profiel zonder verbinding.
 
 ### `POST /v1/open`
 

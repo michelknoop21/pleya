@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../focus/focusable_wrapper.dart';
+import '../../automation/automation_ids.dart';
 import '../../focus/dpad_navigator.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/media_server_client.dart';
@@ -117,6 +118,7 @@ class TvHomeWizardFilterLine extends StatelessWidget {
     required this.scale,
     required this.focusNode,
     required this.onPressed,
+    required this.automationInstance,
   });
 
   final IconData icon;
@@ -125,12 +127,15 @@ class TvHomeWizardFilterLine extends StatelessWidget {
   final double scale;
   final FocusNode focusNode;
   final VoidCallback onPressed;
+  final String automationInstance;
 
   @override
   Widget build(BuildContext context) {
     final mono = tokens(context);
     return FocusableWrapper(
       focusNode: focusNode,
+      automationId: AutomationIds.homeRowWizardAction,
+      automationInstance: automationInstance,
       semanticLabel: '$label, $value',
       onSelect: () {
         SelectKeyUpSuppressor.suppressSelectUntilKeyUp();

@@ -149,6 +149,12 @@ class AutomationIds {
   static const String tvosNativeTextEntry = 'tvos.native_text_entry';
 
   /// The Discover hero billboard as a whole.
+  static const String homeCustomizeOpen = 'home.customize.open';
+  static const String homeCustomizePanel = 'home.customize.panel';
+  static const String homeCustomizeAction = 'home.customize.action';
+  static const String homeRowWizard = 'home.row_wizard';
+  static const String homeRowWizardAction = 'home.row_wizard.action';
+
   static const String discoverHero = 'discover.hero';
 
   /// The hero's smart-play button.
@@ -541,6 +547,9 @@ class AutomationIds {
   /// (`profile.tile[0]`); `state` carries the name and whether it is active.
   static const String profileTile = 'profile.tile';
 
+  /// PIN keypad progress and cursor, without exposing entered digits.
+  static const String profilePin = 'profile.pin';
+
   /// The mobile bottom navigation bar as a whole (bounds, not per-tab). The
   /// per-tab nodes are [navTab], mounted on both the side rail and this bar.
   /// On TV the top navigation, with `hidden`, `overlay` and `scrollAway` from
@@ -801,6 +810,8 @@ class AutomationIds {
     discoverRail,
     discoverRailItem,
     accountMenuAction,
+    homeCustomizeAction,
+    homeRowWizardAction,
     myPleyaTile,
     myPleyaSection,
     myPleyaSectionContent,
@@ -871,6 +882,7 @@ class AutomationIds {
     tvCatalogHeader,
     offlineHomeAction,
     profileTile,
+    profilePin,
   };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
@@ -920,6 +932,11 @@ class AutomationIds {
     {'id': libraryFilterGrouping, 'role': 'filter', 'instanceable': false},
     {'id': libraryFilterFilters, 'role': 'filter', 'instanceable': false},
     {'id': libraryFilterSort, 'role': 'filter', 'instanceable': false},
+    {'id': homeCustomizeOpen, 'role': 'button', 'instanceable': false},
+    {'id': homeCustomizePanel, 'role': 'region', 'instanceable': false},
+    {'id': homeCustomizeAction, 'role': 'button', 'instanceable': true},
+    {'id': homeRowWizard, 'role': 'region', 'instanceable': false},
+    {'id': homeRowWizardAction, 'role': 'button', 'instanceable': true},
     {'id': discoverHero, 'role': 'hero', 'instanceable': false},
     {'id': discoverHeroPlay, 'role': 'button', 'instanceable': false},
     {'id': discoverContinueWatching, 'role': 'rail', 'instanceable': false},
@@ -1086,5 +1103,6 @@ class AutomationIds {
     {'id': playerPlayPause, 'role': 'button', 'instanceable': false},
     {'id': offlineHomeAction, 'role': 'button', 'instanceable': true},
     {'id': profileTile, 'role': 'grid.item', 'instanceable': true},
+    {'id': profilePin, 'role': 'dialog', 'instanceable': false},
   ];
 }

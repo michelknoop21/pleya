@@ -1,0 +1,70 @@
+name: tvos.profile.pin
+target: tvos-sim
+# AUTH-PIN416, Roadmap A-22: native HID Select hold must enter one digit.
+# A protected local profile exercises the shared PIN dialog without real Plex credentials.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - seed_profile: {name: Kind, pin: "1233"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - press: left
+  - press: left
+  - wait_until: {focused: nav.profile, timeout: 5000}
+  - press: select
+  - wait_until: {focused: "account_menu.action[switch_profile]", timeout: 8000}
+  - press: select
+  - wait_until: {focused: "profile.tile[0]", timeout: 10000}
+  - press: right
+  - wait_until: {focused: "profile.tile[1]", timeout: 5000}
+  - assert: {id: "profile.tile[1]", state: {name: Kind, active: false}}
+  - press: select
+  - wait_until: {focused: profile.pin, timeout: 5000}
+  - assert: {id: profile.pin, insideViewport: true, state: {filled: 0, row: 0, column: 0}}
+  - snapshot: 01-pin-empty
+  - press: {key: select, holdMs: 1200}
+  - assert: {id: profile.pin, state: {filled: 1}}
+  - snapshot: 02-held-select-one-digit
+  - press: right
+  - assert: {id: profile.pin, state: {column: 1}}
+  - press: select
+  - assert: {id: profile.pin, state: {filled: 2}}
+  - press: right
+  - assert: {id: profile.pin, state: {column: 2}}
+  - press: select
+  - assert: {id: profile.pin, state: {filled: 3}}
+  - snapshot: 03-three-presses
+  - press: menu
+  - wait_until: {focused: "profile.tile[1]", timeout: 5000}
+  # Focus returns before the reverse dialog transition has unmounted its nodes.
+  - settle: 600
+  - assert: {id: "profile.tile[0]", state: {active: true}}
+  - assert: {id: "profile.tile[1]", state: {active: false}}
+  - assert: {id: profile.pin, present: false}
+  - snapshot: 04-pin-cancelled
+  # Cancellation preserves the active profile; a fresh dialog starts empty.
+  - press: select
+  - wait_until: {focused: profile.pin, timeout: 5000}
+  - assert: {id: profile.pin, state: {filled: 0}}
+  - press: select
+  - press: right
+  - press: select
+  - press: right
+  - press: select
+  - press: select
+  - wait_until: {focused: nav.discover, timeout: 30000}
+  - assert: {id: profile.pin, present: false}
+  - settle: 3500
+  - press: left
+  - press: left
+  - wait_until: {focused: nav.profile, timeout: 5000}
+  - press: select
+  - wait_until: {focused: "account_menu.action[switch_profile]", timeout: 8000}
+  - press: select
+  - wait_until: {focused: "profile.tile[0]", timeout: 10000}
+  - assert: {id: "profile.tile[0]", state: {name: Kind, active: true}}
+  - assert: {id: "profile.tile[1]", state: {name: verify-owner, active: false}}
+  - snapshot: 05-kind-active

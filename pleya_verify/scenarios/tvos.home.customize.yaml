@@ -1,0 +1,119 @@
+name: tvos.home.customize
+target: tvos-sim
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 1500
+  - press: down
+  - press: down
+  - press: down
+  - press: down
+  - press: down
+  - press: down
+  - wait_until: {focused: home.customize.open, timeout: 10000}
+  - press: select
+  - wait_until: {id: home.customize.panel, timeout: 10000}
+  - snapshot: 01-home-customize
+  - press: down
+  - press: down
+  - press: down
+  - wait_until: {focused: "home.customize.action[new]", timeout: 5000}
+  - press: select
+  - wait_until: {id: home.row_wizard, timeout: 10000}
+  - assert: {id: home.row_wizard, state: {step: nameAndKind, kind: movie, canSave: false}}
+  - assert: {id: "home.row_wizard.action[kind.movie]", focused: true}
+  - snapshot: 02-row-wizard
+  - press: down
+  - press: down
+  - press: down
+  - press: right
+  - press: right
+  - snapshot: 03-before-next
+  - assert: {id: "home.row_wizard.action[footer.next]", focused: true}
+  - press: select
+  - assert: {id: home.row_wizard, state: {step: filters}}
+  - snapshot: 04-row-filters
+  - press: select
+  - wait_until: {id: home.row_wizard, state: {step: preview, loading: false, canSave: true}, timeout: 30000}
+  - snapshot: 05-movie-preview
+  - press: right
+  - press: right
+  - wait_until: {focused: "home.row_wizard.action[footer.save]", timeout: 5000}
+  - press: select
+  - wait_until: {focused: "discover.rail.item[1.0]", timeout: 15000}
+  - assert: {id: home.row_wizard, present: false}
+  - assert: {id: home.customize.panel, present: false}
+  - snapshot: 06-new-row-focused
+  - press: down
+  - press: down
+  - press: down
+  - press: down
+  - press: down
+  - press: down
+  - wait_until: {focused: home.customize.open, timeout: 5000}
+  - press: select
+  - wait_until: {focused: "home.customize.action[0.up]", timeout: 5000}
+  - assert: {id: home.customize.panel, state: {customCount: 1, hiddenCount: 0}}
+  - assert: {id: "home.customize.action[0.primary]", sameColumn: "home.customize.action[1.primary]"}
+  - assert: {id: "home.customize.action[1.remove]", present: false}
+  - snapshot: 07-aligned-columns
+  - press: right
+  - press: select
+  - wait_until: {focused: "home.customize.action[1.down]", timeout: 5000}
+  - snapshot: 08-moved-down
+  - press: left
+  - press: select
+  - wait_until: {focused: "home.customize.action[0.up]", timeout: 5000}
+  - press: right
+  - press: right
+  - press: select
+  - wait_until: {focused: "home.row_wizard.action[kind.movie]", timeout: 5000}
+  - press: right
+  - assert: {id: "home.row_wizard.action[kind.show]", focused: true}
+  - press: select
+  - assert: {id: home.row_wizard, state: {kind: show}}
+  - press: down
+  - press: down
+  - press: down
+  - press: right
+  - press: right
+  - press: select
+  - assert: {id: home.row_wizard, state: {step: filters}}
+  - press: select
+  - wait_until: {id: home.row_wizard, state: {step: preview, canSave: true}, timeout: 30000}
+  - press: right
+  - press: right
+  - wait_until: {focused: "home.row_wizard.action[footer.save]", timeout: 5000}
+  - press: select
+  - wait_until: {focused: "home.customize.action[0.primary]", timeout: 5000}
+  - assert: {id: home.customize.panel, state: {customCount: 1}}
+  - snapshot: 09-edit-returned
+  - press: down
+  - press: select
+  - wait_until: {id: home.customize.panel, state: {hiddenCount: 1}, timeout: 5000}
+  - snapshot: 10-hidden
+  - press: select
+  - wait_until: {id: home.customize.panel, state: {hiddenCount: 0}, timeout: 5000}
+  - press: down
+  - press: down
+  - press: down
+  - wait_until: {focused: "home.customize.action[new]", timeout: 5000}
+  - press: select
+  - wait_until: {focused: "home.row_wizard.action[kind.movie]", timeout: 5000}
+  - press: down
+  - press: down
+  - press: down
+  - snapshot: 11-before-cancel
+  - assert: {id: "home.row_wizard.action[footer.back]", focused: true}
+  - press: select
+  - wait_until: {focused: "home.customize.action[new]", timeout: 5000}
+  - assert: {id: home.customize.panel, state: {customCount: 1}}
+  - snapshot: 11-cancel-returned
+  - press: menu
+  - wait_until: {focused: home.customize.open, timeout: 5000}
+  - assert: {id: home.customize.panel, present: false}
+  - snapshot: 12-back-on-home

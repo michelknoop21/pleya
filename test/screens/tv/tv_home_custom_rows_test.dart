@@ -25,9 +25,13 @@
 library;
 
 import 'dart:convert';
+import 'dart:async';
+import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
+import 'package:pleya/widgets/tv/tv_panel_primitives.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/screens/settings/library_home_rows.dart';
 import 'package:pleya/focus/dpad_navigator.dart';
@@ -64,6 +68,9 @@ import 'package:pleya/widgets/tv/tv_home_customize_footer.dart';
 import 'package:pleya/widgets/tv/tv_home_customize_panel.dart';
 import 'package:pleya/widgets/tv/tv_home_row_tiles.dart';
 import 'package:pleya/widgets/tv/tv_home_row_wizard.dart';
+import 'package:pleya/widgets/overlay_sheet.dart';
+import 'package:pleya/widgets/tv/tv_catalog_filter_panel.dart';
+import 'package:pleya/widgets/tv/tv_catalog_sort_panel.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/golden.dart';
@@ -152,6 +159,8 @@ class _FakeClient implements MediaServerClient {
   /// Every query the merge sent, so a test can prove the saved sort and the
   /// saved genre reached the wire rather than being applied afterwards.
   final List<LibraryQuery> queries = [];
+  Completer<void>? loadGate;
+  bool failLoad = false;
 
   @override
   final ServerId serverId = ServerId('nas');
@@ -173,6 +182,8 @@ class _FakeClient implements MediaServerClient {
     AbortController? abort,
   }) async {
     queries.add(query);
+    if (loadGate != null) await loadGate!.future;
+    if (failLoad) throw StateError('controlled catalog failure');
     final genres = query.genres;
     var items = catalog.where((item) {
       if (genres != null && genres.isNotEmpty && !genres.any((g) => item.genres?.contains(g) ?? false)) return false;
@@ -226,6 +237,7 @@ void main() {
     bool continueWatchingOnly = false,
     List<MediaHub>? hubs,
     Widget? body,
+    bool overlayHost = false,
   }) async {
     // StorageService stores a string list as one JSON string, so the fixture
     // writes exactly what an earlier session would have left in that key.
@@ -326,7 +338,11 @@ void main() {
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: monoTheme(dark: true),
-            home: InputModeTracker(child: Scaffold(body: body ?? const TvContentFeed())),
+            home: InputModeTracker(
+              child: overlayHost
+                  ? const OverlaySheetHost(child: Scaffold(body: TvContentFeed()))
+                  : Scaffold(body: body ?? const TvContentFeed()),
+            ),
           ),
         ),
       ),
@@ -805,9 +821,7 @@ void main() {
     ]);
   });
 
-  testWidgets('the context menu on a Home card carries the same entry', (tester) async {
-    await boot(tester, savedRows: [savedRowJson()]);
-
+  Future<void> openPanelFromContextMenu(WidgetTester tester) async {
     final tile = tester
         .widgetList<Focus>(find.byType(Focus))
         .map((f) => f.focusNode)
@@ -843,5 +857,528 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(tvHomeCustomizePanelKey), findsOneWidget);
+  }
+
+  testWidgets('the context menu on a Home card carries the same entry', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+
+    await openPanelFromContextMenu(tester);
+  });
+  testWidgets('AUDIT column alignment between own and backend rows', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+    await openPanel(tester);
+    Rect bounds(String label) =>
+        tester.getRect(find.byWidgetPredicate((w) => w is Focus && w.focusNode == nodeLabelled(tester, label)).first);
+    final own = bounds('TvHomeCustomize.#custom:r1#down');
+    final backend = bounds('TvHomeCustomize.:pleya:home:latest-movies#down');
+    print('AUDIT down-column x: own=${own.center.dx}, backend=${backend.center.dx}');
+    expect(
+      own.center.dx,
+      closeTo(backend.center.dx, 1),
+      reason: 'the same action column must stay visually aligned across rows',
+    );
+  });
+
+  testWidgets('AUDIT new-row save focuses its first card', (tester) async {
+    await boot(tester);
+    await openPanel(tester);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.newRow);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.addRow);
+    await tester.pumpAndSettle();
+    final ownRow = tester
+        .widgetList<TvContentRow>(find.byType(TvContentRow))
+        .firstWhere((r) => r.hub.title == t.unifiedCatalog.discovery.allMovies);
+    final expected = 'tvDiscoveryTile_${ownRow.hub.groups.first.groupId}';
+    print('AUDIT after-save focus=${FocusManager.instance.primaryFocus?.debugLabel}; expected=$expected');
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      expected,
+      reason: 'DEC-100(5) returns to the first card of the new row',
+    );
+  });
+
+  testWidgets('AUDIT preview refresh does not permit saving the old answer', (tester) async {
+    await boot(tester);
+    final groups = tester
+        .widgetList<TvContentRow>(find.byType(TvContentRow))
+        .firstWhere((r) => r.hub.title == t.discover.recentlyReleased)
+        .hub
+        .groups;
+    var requests = 0;
+    HomeCustomRow? saved;
+    final pending = Completer<HomeCustomRowContent>();
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: Scaffold(
+            body: TvHomeRowWizard(
+              librariesFor: (_) => const [],
+              preview: (_) =>
+                  ++requests == 1 ? Future.value(HomeCustomRowContent(groups: groups, isExact: true)) : pending.future,
+              onSave: (row) => saved = row,
+              onCancel: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+    expect(find.text(t.unifiedCatalog.homeRows.addRow), findsOneWidget);
+    final previousSave = tester
+        .widget<TvPanelButton>(find.widgetWithText(TvPanelButton, t.unifiedCatalog.homeRows.addRow))
+        .onPressed;
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.back);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.back);
+    await activateByLabel(tester, t.unifiedCatalog.seriesTitle);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+    final next = tester.widget<TvPanelButton>(find.widgetWithText(TvPanelButton, t.unifiedCatalog.homeRows.next));
+    next.onPressed();
+    await tester.pump();
+    print(
+      'AUDIT pending preview requests=$requests; save buttons=${find.text(t.unifiedCatalog.homeRows.addRow).evaluate().length}',
+    );
+    previousSave();
+    expect(saved, isNull, reason: 'a previously built save callback must also reject stale content');
+    expect(
+      find.text(t.unifiedCatalog.homeRows.addRow),
+      findsNothing,
+      reason: 'a pending preview must not reuse the previous nonempty result as save permission',
+    );
+    pending.complete(HomeCustomRowContent.empty);
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('AUDIT remove-column round trip follows the explicit clamp contract', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+    await openPanel(tester);
+    final remove = nodeLabelled(tester, 'TvHomeCustomize.#custom:r1#remove');
+    remove.requestFocus();
+    await tester.pumpAndSettle();
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    await press(tester, LogicalKeyboardKey.arrowUp);
+    print('AUDIT down-up focus=${FocusManager.instance.primaryFocus?.debugLabel}');
+    expect(
+      nodeLabelled(tester, 'TvHomeCustomize.#custom:r1#primary').hasPrimaryFocus,
+      isTrue,
+      reason: 'current explicit contract clamps to the shorter row column',
+    );
+  });
+
+  for (final language in [AppLocale.en, AppLocale.nl]) {
+    testWidgets('AUDIT ${language.name} mixed rows keep horizontal navigation on their own row', (tester) async {
+      await boot(
+        tester,
+        savedRows: [
+          savedRowJson(),
+          savedRowJson(id: 'r2', name: 'Een tweede eigen rij'),
+        ],
+      );
+      await tester.runAsync(() => LocaleSettings.setLocale(language));
+      await tester.pumpAndSettle();
+      await openPanel(tester);
+      final down = nodeLabelled(tester, 'TvHomeCustomize.#custom:r2#down');
+      down.requestFocus();
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      expect(nodeLabelled(tester, 'TvHomeCustomize.#custom:r2#primary').hasPrimaryFocus, isTrue);
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      expect(nodeLabelled(tester, 'TvHomeCustomize.#custom:r2#remove').hasPrimaryFocus, isTrue);
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      expect(nodeLabelled(tester, 'TvHomeCustomize.#custom:r2#remove').hasPrimaryFocus, isTrue);
+      await press(tester, LogicalKeyboardKey.arrowLeft);
+      expect(nodeLabelled(tester, 'TvHomeCustomize.#custom:r2#primary').hasPrimaryFocus, isTrue);
+      await press(tester, LogicalKeyboardKey.arrowLeft);
+      expect(down.hasPrimaryFocus, isTrue);
+    });
+  }
+
+  testWidgets('AUDIT many rows scroll the last control into view', (tester) async {
+    await boot(
+      tester,
+      savedRows: [
+        for (var i = 0; i < 12; i++) savedRowJson(id: 'r$i', name: 'Een lange rijnaam nummer $i met Science Fiction'),
+      ],
+    );
+    await openPanel(tester);
+    nodeLabelled(tester, 'TvHomeCustomize.#custom:r0#primary').requestFocus();
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 13; i++) {
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+    }
+    final focus = FocusManager.instance.primaryFocus!;
+    final rect = tester.getRect(find.byWidgetPredicate((w) => w is Focus && w.focusNode == focus).first);
+    print('AUDIT last row focus=${focus.debugLabel}; rect=$rect');
+    expect(rect.top, greaterThanOrEqualTo(0));
+    expect(rect.bottom, lessThanOrEqualTo(tester.view.physicalSize.height));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('AUDIT hiding then showing restores the Home row', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+    await openPanel(tester);
+    final hide = nodeLabelled(tester, 'TvHomeCustomize.:pleya:home:latest-movies#primary');
+    hide.requestFocus();
+    await tester.pumpAndSettle();
+    SelectKeyUpSuppressor.clearSuppression();
+    await press(tester, LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+    expect(layout.hiddenRowIds, contains(':pleya:home:latest-movies'));
+    expect(hide.hasPrimaryFocus, isTrue);
+    SelectKeyUpSuppressor.clearSuppression();
+    await press(tester, LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+    expect(layout.hiddenRowIds, isNot(contains(':pleya:home:latest-movies')));
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.done);
+    expect(rowTitles(tester), contains(t.discover.recentlyReleased));
+  });
+
+  testWidgets('AUDIT moving repeatedly retains the row and the down button focus', (tester) async {
+    await boot(
+      tester,
+      savedRows: [
+        savedRowJson(),
+        savedRowJson(id: 'r2', name: 'Tweede rij'),
+      ],
+    );
+    await openPanel(tester);
+    final down = nodeLabelled(tester, 'TvHomeCustomize.#custom:r1#down');
+    down.requestFocus();
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 3; i++) {
+      SelectKeyUpSuppressor.clearSuppression();
+      await press(tester, LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(down.hasPrimaryFocus, isTrue);
+    }
+    expect(layout.order.last, '#custom:r1');
+  });
+
+  testWidgets('AUDIT cancel new row returns to the existing panel without a write', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+    await openPanel(tester);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.newRow);
+    await activateByLabel(tester, t.common.cancel);
+    expect(find.byKey(tvHomeCustomizePanelKey), findsOneWidget);
+    expect(find.byKey(tvHomeRowWizardKey), findsNothing);
+    expect(layout.customRows, hasLength(1));
+  });
+
+  testWidgets('AUDIT saving an edit keeps its row id and returns to the panel', (tester) async {
+    await boot(tester, savedRows: [savedRowJson()]);
+    await openPanel(tester);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.edit);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.saveRow);
+    expect(find.byKey(tvHomeCustomizePanelKey), findsOneWidget);
+    expect(layout.customRows.single.id, 'r1');
+    expect(nodeLabelled(tester, 'TvHomeCustomize.#custom:r1#primary').hasPrimaryFocus, isTrue);
+  });
+
+  testWidgets('AUDIT an initially empty preview cannot be saved', (tester) async {
+    await boot(tester, catalog: const []);
+    await openPanel(tester);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.newRow);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+    expect(find.text(t.unifiedCatalog.homeRows.addRow), findsNothing);
+    expect(find.text(t.unifiedCatalog.homeRows.adjustFilters), findsOneWidget);
+    expect(layout.customRows, isEmpty);
+  });
+
+  Future<void> activateDuringLoad(WidgetTester tester, String label) async {
+    final focus = Focus.maybeOf(tester.element(find.text(label).first), scopeOk: true)!;
+    focus.requestFocus();
+    await tester.pump();
+    SelectKeyUpSuppressor.clearSuppression();
+    await press(tester, LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+
+  Future<HomeCustomRowContent> controlledWizard(
+    WidgetTester tester, {
+    required Future<HomeCustomRowContent> Function(HomeCustomRow) preview,
+    required ValueChanged<HomeCustomRow> save,
+  }) async {
+    await boot(tester);
+    final groups = tester
+        .widgetList<TvContentRow>(find.byType(TvContentRow))
+        .firstWhere((r) => r.hub.title == t.discover.recentlyReleased)
+        .hub
+        .groups;
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: Scaffold(
+            body: TvHomeRowWizard(librariesFor: (_) => const [], preview: preview, onSave: save, onCancel: () {}),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    return HomeCustomRowContent(groups: groups, isExact: true);
+  }
+
+  Future<void> startPreview(WidgetTester tester) async {
+    await activateDuringLoad(tester, t.unifiedCatalog.homeRows.next);
+    await activateDuringLoad(tester, t.unifiedCatalog.homeRows.next);
+  }
+
+  Future<void> switchKindDuringPreview(WidgetTester tester, MediaKind kind) async {
+    await activateDuringLoad(tester, t.unifiedCatalog.homeRows.back);
+    await activateDuringLoad(tester, t.unifiedCatalog.homeRows.back);
+    await activateDuringLoad(
+      tester,
+      kind == MediaKind.movie ? t.unifiedCatalog.moviesTitle : t.unifiedCatalog.seriesTitle,
+    );
+    await startPreview(tester);
+  }
+
+  testWidgets('PREVIEW1 rapid kind changes reject reversed responses and stale save callbacks', (tester) async {
+    final answers = <Completer<HomeCustomRowContent>>[];
+    final kinds = <MediaKind>[];
+    final saved = <HomeCustomRow>[];
+    final nonempty = await controlledWizard(
+      tester,
+      preview: (row) {
+        kinds.add(row.kind);
+        final answer = Completer<HomeCustomRowContent>();
+        answers.add(answer);
+        return answer.future;
+      },
+      save: saved.add,
+    );
+    await startPreview(tester);
+    await switchKindDuringPreview(tester, MediaKind.show);
+    await switchKindDuringPreview(tester, MediaKind.movie);
+    expect(kinds, [MediaKind.movie, MediaKind.show, MediaKind.movie]);
+    answers[2].complete(nonempty);
+    await tester.pumpAndSettle();
+    final save = tester
+        .widget<TvPanelButton>(find.widgetWithText(TvPanelButton, t.unifiedCatalog.homeRows.addRow))
+        .onPressed;
+    answers[1].complete(HomeCustomRowContent.empty);
+    answers[0].completeError(StateError('old failed request'));
+    await tester.pumpAndSettle();
+    expect(find.text(t.common.error), findsNothing);
+    expect(find.text(t.unifiedCatalog.homeRows.addRow), findsOneWidget);
+    save();
+    expect(saved.single.kind, MediaKind.movie);
+    save();
+    expect(saved, hasLength(1), reason: 'the completed save is consumed once');
+  });
+
+  for (final fails in [false, true]) {
+    testWidgets('PREVIEW1 ${fails ? "failed" : "empty"} answer cannot save and can be retried', (tester) async {
+      var pending = Completer<HomeCustomRowContent>();
+      final saved = <HomeCustomRow>[];
+      final nonempty = await controlledWizard(tester, preview: (_) => pending.future, save: saved.add);
+      await startPreview(tester);
+      expect(find.text(t.unifiedCatalog.homeRows.addRow), findsNothing);
+      if (fails) {
+        pending.completeError(StateError('controlled preview failure'));
+      } else {
+        pending.complete(HomeCustomRowContent.empty);
+      }
+      await tester.pumpAndSettle();
+      expect(find.text(t.unifiedCatalog.homeRows.addRow), findsNothing);
+      if (fails) expect(find.text(t.common.error), findsOneWidget);
+      pending = Completer<HomeCustomRowContent>();
+      await activateDuringLoad(tester, t.unifiedCatalog.homeRows.adjustFilters);
+      await activateDuringLoad(tester, t.unifiedCatalog.homeRows.next);
+      pending.complete(nonempty);
+      await tester.pumpAndSettle();
+      await activateByLabel(tester, t.unifiedCatalog.homeRows.addRow);
+      expect(saved, hasLength(1));
+    });
+  }
+
+  testWidgets('PREVIEW1 back during loading invalidates the late answer', (tester) async {
+    final pending = Completer<HomeCustomRowContent>();
+    final nonempty = await controlledWizard(tester, preview: (_) => pending.future, save: (_) => fail('must not save'));
+    await startPreview(tester);
+    await activateDuringLoad(tester, t.unifiedCatalog.homeRows.back);
+    pending.complete(nonempty);
+    await tester.pumpAndSettle();
+    expect(find.text(t.unifiedCatalog.homeRows.sorting), findsOneWidget);
+    expect(find.text(t.unifiedCatalog.homeRows.addRow), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final locale in [AppLocale.en, AppLocale.nl]) {
+    testWidgets('COLS1 ${locale.name} all action columns align at 1038x584 without a fake remove stop', (tester) async {
+      await boot(tester, savedRows: [savedRowJson()]);
+      await tester.runAsync(() => LocaleSettings.setLocale(locale));
+      await tester.pumpAndSettle();
+      await openPanel(tester);
+      final tiles = tester.widgetList<TvHomeEntryRowTile>(find.byType(TvHomeEntryRowTile));
+      final own = tiles.firstWhere((t) => t.entry.isCustom);
+      final backend = tiles.firstWhere((t) => !t.entry.isCustom);
+      Rect bounds(FocusNode node) =>
+          tester.getRect(find.byWidgetPredicate((w) => w is Focus && w.focusNode == node).first);
+      for (final pair in [
+        (own.upNode, backend.upNode),
+        (own.downNode, backend.downNode),
+        (own.primaryNode, backend.primaryNode),
+      ]) {
+        expect(bounds(pair.$1).center.dx, closeTo(bounds(pair.$2).center.dx, 0.01));
+      }
+      for (final label in [
+        t.unifiedCatalog.homeRows.hide,
+        t.unifiedCatalog.homeRows.edit,
+        t.unifiedCatalog.homeRows.remove,
+      ]) {
+        expect(
+          tester.renderObject<RenderParagraph>(find.text(label).first).didExceedMaxLines,
+          isFalse,
+          reason: 'action labels must remain readable within their shared columns',
+        );
+      }
+      expect(backend.removeNode, isNull);
+      expect(backend.onRemove, isNull);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final outcome in ['loaded', 'removed', 'empty', 'failed', 'hidden']) {
+    testWidgets('FOCUS1 delayed new row $outcome resolves focus safely', (tester) async {
+      await boot(tester);
+      await openPanel(tester);
+      await activateByLabel(tester, t.unifiedCatalog.homeRows.newRow);
+      await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+      await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+      final gate = Completer<void>();
+      client.loadGate = gate;
+      if (outcome == 'empty') client.catalog.clear();
+      if (outcome == 'failed') client.failLoad = true;
+      await activateByLabel(tester, t.unifiedCatalog.homeRows.addRow);
+      expect(find.byKey(tvHomeCustomizePanelKey), findsNothing);
+      expect(nodeLabelled(tester, 'tvHomeCustomizeFooter').hasPrimaryFocus, isTrue);
+      final id = layout.customRows.single.id;
+      if (outcome == 'removed') await layout.removeCustomRow(id);
+      if (outcome == 'hidden') await layout.setRowHidden('#custom:$id', true);
+      gate.complete();
+      await tester.pumpAndSettle();
+      if (outcome == 'loaded') {
+        final own = tester
+            .widgetList<TvContentRow>(find.byType(TvContentRow))
+            .firstWhere((r) => r.hub.title == t.unifiedCatalog.discovery.allMovies);
+        expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvDiscoveryTile_${own.hub.groups.first.groupId}');
+      } else {
+        expect(nodeLabelled(tester, 'tvHomeCustomizeFooter').hasPrimaryFocus, isTrue);
+        await press(tester, LogicalKeyboardKey.arrowUp);
+        await tester.pumpAndSettle();
+        expect(
+          nodeLabelled(tester, 'tvHomeCustomizeFooter').hasPrimaryFocus,
+          isFalse,
+          reason: 'fallback remains navigable',
+        );
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final reopenPanel in [true, false]) {
+    testWidgets('FOCUS1 late load respects ${reopenPanel ? "a reopened panel" : "subsequent user navigation"}', (
+      tester,
+    ) async {
+      await boot(tester);
+      await openPanel(tester);
+      await activateByLabel(tester, t.unifiedCatalog.homeRows.newRow);
+      await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+      await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+      final gate = Completer<void>();
+      client.loadGate = gate;
+      await activateByLabel(tester, t.unifiedCatalog.homeRows.addRow);
+      if (reopenPanel) {
+        await openPanel(tester);
+      } else {
+        await press(tester, LogicalKeyboardKey.arrowUp);
+        await tester.pumpAndSettle();
+      }
+      final focus = FocusManager.instance.primaryFocus;
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(
+        FocusManager.instance.primaryFocus,
+        same(focus),
+        reason: 'a late row must not steal focus from the current interaction',
+      );
+    });
+  }
+
+  for (final action in ['add', 'cancel', 'edit']) {
+    testWidgets('HOST1 production overlay preserves the Home $action flow', (tester) async {
+      await boot(tester, overlayHost: true, savedRows: action == 'edit' ? [savedRowJson()] : const []);
+      await openPanel(tester);
+      await activateByLabel(
+        tester,
+        action == 'edit' ? t.unifiedCatalog.homeRows.edit : t.unifiedCatalog.homeRows.newRow,
+      );
+      if (action == 'cancel') {
+        await activateByLabel(tester, t.common.cancel);
+        expect(find.byKey(tvHomeCustomizePanelKey), findsOneWidget);
+        expect(layout.customRows, isEmpty);
+      } else {
+        await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+        await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+        await activateByLabel(
+          tester,
+          action == 'edit' ? t.unifiedCatalog.homeRows.saveRow : t.unifiedCatalog.homeRows.addRow,
+        );
+        expect(layout.customRows, hasLength(1));
+        if (action == 'edit') {
+          expect(find.byKey(tvHomeCustomizePanelKey), findsOneWidget);
+        } else {
+          final own = tester
+              .widgetList<TvContentRow>(find.byType(TvContentRow))
+              .firstWhere((r) => r.hub.title == t.unifiedCatalog.discovery.allMovies);
+          expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvDiscoveryTile_${own.hub.groups.first.groupId}');
+        }
+      }
+    });
+  }
+
+  testWidgets('HOST1 filter and sort drilldowns return to the same live wizard', (tester) async {
+    await boot(tester, overlayHost: true);
+    await openPanel(tester);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.newRow);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+    final wizard = tester.state(find.byKey(tvHomeRowWizardKey));
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.status);
+    final filters = tester.widget<TvCatalogFilterPanel>(find.byType(TvCatalogFilterPanel));
+    filters.onApply(filters.selection);
+    await tester.pumpAndSettle();
+    expect(tester.state(find.byKey(tvHomeRowWizardKey)), same(wizard));
+    expect(nodeLabelled(tester, 'TvHomeRowWizard.filter.status').hasPrimaryFocus, isTrue);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.sorting);
+    tester.widget<TvCatalogSortPanel>(find.byType(TvCatalogSortPanel)).onSelect(UnifiedCatalogSort.titleDesc);
+    await tester.pumpAndSettle();
+    expect(tester.state(find.byKey(tvHomeRowWizardKey)), same(wizard));
+    expect(nodeLabelled(tester, 'TvHomeRowWizard.filter.sort').hasPrimaryFocus, isTrue);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.addRow);
+    expect(layout.customRows.single.sort, UnifiedCatalogSort.titleDesc);
+    expect(find.byKey(tvHomeCustomizePanelKey), findsNothing);
+  });
+  testWidgets('HOST1 context-menu creation focuses the new first card', (tester) async {
+    await boot(tester, overlayHost: true);
+
+    await openPanelFromContextMenu(tester);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.newRow);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.next);
+    await activateByLabel(tester, t.unifiedCatalog.homeRows.addRow);
+    final own = tester
+        .widgetList<TvContentRow>(find.byType(TvContentRow))
+        .firstWhere((r) => r.hub.title == t.unifiedCatalog.discovery.allMovies);
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvDiscoveryTile_${own.hub.groups.first.groupId}');
   });
 }
