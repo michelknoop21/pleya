@@ -478,3 +478,45 @@ func TestPassThreeRerunsEveryoneOnceAndTheCandidatesCarryIt(t *testing.T) {
 		t.Fatalf("kandidaat op pass %d, huidige pass %d", st.candidates[a.ID].Pass, currentPass)
 	}
 }
+
+func TestSidecarOnlyWithoutProviderAppliesNFOWithoutProviderCandidates(t *testing.T) {
+	a := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Local title"}
+	b := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Without sidecar"}
+	st := newFakeStore(a, b)
+	st.art[a.ID.String()+"poster"] = catalog.ProviderArtwork{ID: id.New(), ItemID: a.ID, FileName: "missing-provider.jpg"}
+	var sources []string
+	st.onApply = func(source string) { sources = append(sources, source) }
+	side := fakeSidecar{a.ID: {Kind: "movie", Summary: "Local plot", Genres: []string{"Drama"}, IDs: map[string]string{"tmdb": "123"}}}
+	stats, err := testRunner(st, nil, t.TempDir()).WithSidecar(side).Round(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.Failed != 0 || stats.Matched != 0 || stats.Unmatched != 0 {
+		t.Fatalf("local metadata is not a provider match: %+v", stats)
+	}
+	if got := st.applied[a.ID]; got.Summary != "Local plot" || len(got.Genres) != 1 || got.Genres[0] != "Drama" {
+		t.Fatalf("NFO not applied: %+v", got)
+	}
+	if len(sources) != 1 || sources[0] != catalog.SourceNFO || len(st.candidates) != 0 {
+		t.Fatalf("source/candidates changed: %v %+v", sources, st.candidates)
+	}
+	if _, exists := st.applied[b.ID]; exists {
+		t.Fatal("missing sidecar must not clear metadata")
+	}
+	if len(st.art) != 1 {
+		t.Fatal("sidecar-only mode must not invalidate provider cache")
+	}
+}
+
+func TestSidecarOnlyFailureDoesNotWriteAProviderCandidate(t *testing.T) {
+	a := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Local"}
+	st := newFakeStore(a)
+	st.applyErr = errors.New("temporary database failure")
+	stats, err := testRunner(st, nil, t.TempDir()).WithSidecar(fakeSidecar{a.ID: {Summary: "Local"}}).Round(context.Background())
+	if err != nil || stats.Failed != 1 {
+		t.Fatalf("stats=%+v err=%v", stats, err)
+	}
+	if len(st.candidates) != 0 {
+		t.Fatalf("local error wrote a provider candidate: %+v", st.candidates)
+	}
+}

@@ -25,6 +25,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/backup"
+	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/config"
 	"github.com/edde746/plezy/pleya_server/internal/database"
 	"github.com/edde746/plezy/pleya_server/internal/diag"
@@ -252,14 +253,17 @@ func run() int {
 	auditStore := audit.NewStore(pool)
 
 	workers := &sync.WaitGroup{}
-	workers.Add(4)
+	workers.Add(5)
+	var metadataProvider metadata.Provider
+	metadataName := catalog.SourceNFO
 	if cfg.TMDBKey != "" {
-		workers.Add(1)
-		mdRunner := metadata.NewRunner(catalogStore, metadata.NewTMDB(cfg.TMDBKey, cfg.MetadataLanguage),
-			metadata.ProviderTMDB, cfg.CacheDir, logging.Component(log, "metadata")).WithSidecar(metadata.FSSidecar{})
-		go func() { defer workers.Done(); mdRunner.Run(workCtx, scanned, 6*time.Hour) }()
-		startup.Info("metadata-provider aan", slog.String("provider", metadata.ProviderTMDB), slog.String("language", cfg.MetadataLanguage))
+		metadataProvider = metadata.NewTMDB(cfg.TMDBKey, cfg.MetadataLanguage)
+		metadataName = metadata.ProviderTMDB
 	}
+	mdRunner := metadata.NewRunner(catalogStore, metadataProvider,
+		metadataName, cfg.CacheDir, logging.Component(log, "metadata")).WithSidecar(metadata.FSSidecar{})
+	go func() { defer workers.Done(); mdRunner.Run(workCtx, scanned, 6*time.Hour) }()
+	startup.Info("metadata-bron aan", slog.String("provider", metadataName), slog.String("language", cfg.MetadataLanguage))
 	go func() { defer workers.Done(); runner.Run(workCtx) }()
 	go func() {
 		defer workers.Done()

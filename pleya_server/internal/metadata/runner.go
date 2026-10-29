@@ -65,7 +65,8 @@ type Runner struct {
 	failuresLimit  int
 }
 
-// NewRunner bouwt een runner. cacheDir is CacheDir; afbeeldingen komen onder artwork/.
+// NewRunner bouwt een runner. Een nil-provider verwerkt uitsluitend lokale sidecars.
+// cacheDir is CacheDir; afbeeldingen komen onder artwork/.
 func NewRunner(store Store, provider Provider, name, cacheDir string, log *slog.Logger) *Runner {
 	return &Runner{
 		store: store, provider: provider, name: name, cacheDir: cacheDir, log: log,
@@ -85,7 +86,7 @@ func (r *Runner) WithSidecar(s Sidecar) *Runner { r.sidecar = s; return r }
 
 // RoundStats telt wat een ronde deed.
 type RoundStats struct {
-	Matched, Ambiguous, Unmatched, Failed, ArtworkSaved int
+	Matched, Ambiguous, Unmatched, Failed, ArtworkSaved, SidecarApplied int
 	// ByID telt matches die via een externe id uit de .nfo liepen, zonder zoeken.
 	ByID int
 	// Manual telt matches die een beheerder koos.
@@ -100,8 +101,10 @@ func (r *Runner) Round(ctx context.Context) (RoundStats, error) {
 	var seen []id.ID
 	consecutive := 0
 
-	if err := r.repairCache(ctx); err != nil {
-		r.log.Warn("cache nalopen mislukt", slog.String("error", err.Error()))
+	if r.provider != nil {
+		if err := r.repairCache(ctx); err != nil {
+			r.log.Warn("cache nalopen mislukt", slog.String("error", err.Error()))
+		}
 	}
 
 	for {
@@ -122,7 +125,7 @@ func (r *Runner) Round(ctx context.Context) (RoundStats, error) {
 				consecutive++
 				r.log.Warn("metadata ophalen mislukt",
 					slog.String("title", t.Title), slog.String("error", err.Error()))
-				if ctx.Err() == nil {
+				if ctx.Err() == nil && r.provider != nil {
 					r.recordFailure(ctx, t)
 				}
 				if consecutive >= r.failuresLimit {
@@ -166,6 +169,21 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 		side = r.sidecar.Read(t)
 	}
 
+	// ApplyMetadata bewaart de bronrang, ook bij een latere ronde zonder provider.
+	applySidecar := func() error {
+		if side == nil {
+			return nil
+		}
+		if err := r.store.ApplyMetadata(ctx, t.ID, catalog.SourceNFO, sidecarDetails(side)); err != nil {
+			return err
+		}
+		st.SidecarApplied++
+		return nil
+	}
+	if r.provider == nil {
+		return applySidecar()
+	}
+
 	state, chosen, how, results, err := r.decide(ctx, t, side)
 	if err != nil {
 		return err
@@ -177,16 +195,6 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 		st.ByID++
 	}
 	alternatives := alternativesOf(results)
-
-	// De .nfo vult wat de provider niet vult, en wint nergens van een
-	// providerwaarde (rang in ApplyMetadata). Hij gaat ook door bij een titel die
-	// de provider niet kent: dan is de .nfo het enige dat er is.
-	applySidecar := func() error {
-		if side == nil {
-			return nil
-		}
-		return r.store.ApplyMetadata(ctx, t.ID, catalog.SourceNFO, sidecarDetails(side))
-	}
 
 	switch state {
 	case catalog.CandidateAmbiguous:
@@ -459,7 +467,7 @@ func (r *Runner) Run(ctx context.Context, trigger <-chan struct{}, interval time
 			r.log.Info("metadata-ronde klaar", slog.String("reason", reason),
 				slog.Int("matched", st.Matched), slog.Int("ambiguous", st.Ambiguous),
 				slog.Int("unmatched", st.Unmatched), slog.Int("failed", st.Failed),
-				slog.Int("artwork", st.ArtworkSaved), slog.Int("by_id", st.ByID), slog.Int("manual", st.Manual))
+				slog.Int("artwork", st.ArtworkSaved), slog.Int("by_id", st.ByID), slog.Int("manual", st.Manual), slog.Int("sidecar_applied", st.SidecarApplied))
 		}
 	}
 	do("startup")
