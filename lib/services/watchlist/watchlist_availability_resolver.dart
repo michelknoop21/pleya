@@ -147,14 +147,14 @@ class WatchlistAvailabilityResolver {
   /// backend off the record rather than off the client matters: an offline
   /// server has no client, and it still has to count in the denominator.
   static bool _isEligible(EligibleServer server) => switch (server.backend) {
-    MediaBackend.plex || MediaBackend.jellyfin => true,
-    // A local folder and a Pleya Share have no guid and no external ids.
-    // Neither does a Pleya Server: `external_ids` is PS-7, so `findByIdentity`
-    // can only ever answer null there. Counting it in the denominator would
-    // make `coverageComplete` mean "asked a server that structurally cannot
-    // answer", which is the exact confusion this predicate exists to prevent.
-    // It becomes eligible in the phase that gives it identity, not before.
-    MediaBackend.local || MediaBackend.pleyaServer => false,
+    // A Pleya Server answers since its items carry a TMDB number
+    // (`external_ids`). When it cannot prove a title, say because the entry has
+    // no TMDB number or the server predates the field, `findByIdentity` throws
+    // and the server lands in coverage as not checked instead of "not here".
+    MediaBackend.plex || MediaBackend.jellyfin || MediaBackend.pleyaServer => true,
+    // A local folder and a Pleya Share have no guid, no external ids and no
+    // search that could answer the question.
+    MediaBackend.local => false,
   };
 
   /// Drop every cached answer, for every profile.

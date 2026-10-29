@@ -123,6 +123,42 @@ void main() {
       expect(result.coverageComplete, isTrue);
     });
 
+    test('a Pleya Server is asked, and a title it holds is found there', () async {
+      final match = MediaItem(
+        id: 'ps-1',
+        backend: MediaBackend.pleyaServer,
+        kind: MediaKind.movie,
+        title: 'Sintel',
+        serverId: 'ps',
+      );
+
+      final result = await resolverFor([
+        server('ps', backend: MediaBackend.pleyaServer, match: match),
+      ]).resolve(entry());
+
+      expect(result.match?.serverId, 'ps');
+      expect(result.coverageComplete, isTrue);
+    });
+
+    test('a Pleya Server that cannot prove the title counts as not checked, never as "not there"', () async {
+      final result = await resolverFor([
+        server('s1'),
+        server('ps', backend: MediaBackend.pleyaServer, throws: true),
+      ]).resolve(entry());
+
+      expect(result.match, isNull);
+      expect(result.coverageComplete, isFalse);
+    });
+
+    test('an offline Pleya Server counts in the denominator like any other', () async {
+      final result = await resolverFor([
+        server('s1'),
+        server('ps', backend: MediaBackend.pleyaServer, online: false),
+      ]).resolve(entry());
+
+      expect(result.coverageComplete, isFalse);
+    });
+
     test('an identity with nothing to match on costs no request', () async {
       final s1 = server('s1');
       final blank = WatchlistEntry(

@@ -105,14 +105,17 @@ List<MediaItem> visibleMatchesFromServer(List<MediaItem> matches, ServerId serve
 /// Which backends can answer a catalogue-identity lookup at all.
 ///
 /// Same rule `WatchlistAvailabilityResolver` already established (hoofdstuk
-/// 1.2): a local folder and a Pleya Share have no guid and no external ids;
-/// neither does a Pleya Server (`external_ids` is PS-7). Counting one of
-/// them as "expected" would make coverage never complete for a group that
-/// includes one of their sources — they become eligible in the phase that
-/// gives them identity, not before.
+/// 1.2): a local folder and a Pleya Share have no guid and no external ids,
+/// so counting one of them as "expected" would make coverage never complete
+/// for a group that includes one of their sources.
+///
+/// Pleya Server answers since its items carry a TMDB number (`external_ids`).
+/// A server that cannot prove a title, say one that predates the field, throws
+/// from `findAllByIdentity` instead of answering empty, so it lands in
+/// coverage as unchecked and never as a silent "not here".
 bool isIdentityEligibleBackend(MediaBackend backend) => switch (backend) {
-  MediaBackend.plex || MediaBackend.jellyfin => true,
-  MediaBackend.local || MediaBackend.pleyaServer => false,
+  MediaBackend.plex || MediaBackend.jellyfin || MediaBackend.pleyaServer => true,
+  MediaBackend.local => false,
 };
 
 /// One server [SourceAllResolver] is allowed to ask, plus enough state to

@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../media/ids.dart';
 import '../media/library_query.dart';
+import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_library.dart';
 import '../media/media_server_client.dart';
@@ -411,7 +412,15 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     if (cached == null) return null;
     final raw = cached.raw;
     final local = raw?['pleyaLocalExternalIds'];
-    if (local is Map<String, Object?>) return ExternalIds.fromJson(local);
+    if (local is Map<String, Object?>) {
+      final ids = ExternalIds.fromJson(local);
+      // A Pleya Server only recently started to prove titles. A snapshot written
+      // before that stored an empty answer, and an unmatched title still has
+      // none today. Neither may pass for "this title has no numbers": null sends
+      // the caller to the server, which knows.
+      if (!ids.hasAny && cached.backend == MediaBackend.pleyaServer) return null;
+      return ids;
+    }
     final ids = raw?['ProviderIds'];
     if (ids is Map<String, Object?>) return ExternalIds.fromJellyfinProviderIds(ids);
     final guids = raw?['Guid'];

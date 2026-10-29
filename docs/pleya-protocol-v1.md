@@ -784,6 +784,30 @@ identiteit nog nooit heeft aangeraakt draagt `user_state: null`.
 zeker hij is en waar het vandaan komt, maar de client heeft dat pas nodig wanneer de afspeelplanner
 bestaat. Die velden komen in PS-6 bij, wat regel 1 uit hoofdstuk 3 toestaat.
 
+### 9.4a Providernummers: `external_ids`
+
+Een `movie` of `show` draagt `external_ids` zodra de server voor die titel een providermatch heeft
+bewezen, in elk antwoord dat een `Item` bevat (detail, bibliotheeklijst, kinderen, zoeken, hubs):
+
+```json
+{ "external_ids": { "tmdb": 438631 } }
+```
+
+Regels:
+
+1. Het veld is een nieuw optioneel antwoordveld (regel 1, hoofdstuk 3). `null` of afwezig betekent
+   "de server heeft hier geen bewijs van", niet "deze titel heeft geen nummer" en zeker niet "deze
+   titel is anders dan een titel op een andere server".
+2. Een nummer verschijnt alleen bij een geslaagde match. Een titel die ambigu, niet gevonden,
+   mislukt of afgewezen is draagt geen nummer, ook niet als de server er intern nog een bewaart.
+3. `tmdb` is per soort. Dezelfde waarde kan een film en een serie aanwijzen; een client combineert
+   het met `kind`.
+4. Een `season` of `episode` draagt geen `external_ids`. Hun identiteit is de serie plus
+   seizoennummer plus afleveringsnummer (`index` en het `index` van het seizoen). Een client die een
+   aflevering wil herkennen vraagt de serie.
+5. Een nieuwe provider (`imdb`, `tvdb`) komt als nieuwe optionele sleutel in hetzelfde object.
+   Daarvoor is nu geen serverbron; de sleutels bestaan dus nog niet.
+
 ### 9.5 `GET /pleya/v1/items/{item_id}/children`
 
 Klasse: **`authenticated`**. Gepagineerd. Seizoenen van een serie, afleveringen van een seizoen.

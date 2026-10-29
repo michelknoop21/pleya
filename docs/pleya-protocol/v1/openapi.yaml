@@ -3703,6 +3703,18 @@ components:
           type: [integer, "null"]
           description: Backend-neutrale naam; het interne model van de client heet anders.
         watched_episode_count: { type: [integer, "null"] }
+        external_ids:
+          oneOf:
+            - { $ref: "#/components/schemas/ExternalIds" }
+            - { type: "null" }
+          description: |
+            Providernummers die de server voor dit item heeft bewezen (unified,
+            zie hoofdstuk 14b van de specificatie). Alleen films en series
+            dragen ze; een seizoen of aflevering leidt zijn identiteit af van
+            de serie plus seizoen- en afleveringsnummer. `null` of afwezig
+            zolang geen geslaagde match bestaat, en bij een server die het veld
+            nog niet kent. Een client behandelt afwezig als "geen bewijs" en
+            nooit als "geen overeenkomst".
         favorite:
           type: boolean
           description: |
@@ -3722,6 +3734,20 @@ components:
           oneOf:
             - { $ref: "#/components/schemas/UserState" }
             - { type: "null" }
+
+    ExternalIds:
+      type: object
+      description: |
+        Nummers bij externe catalogi, per provider. Elke sleutel is optioneel en
+        komt alleen voor als de server dat nummer bewijst. Een nieuwe provider
+        komt als nieuwe optionele sleutel (regel 1, hoofdstuk 3).
+      properties:
+        tmdb:
+          type: [integer, "null"]
+          minimum: 1
+          description: |
+            The Movie Database. Het nummer is per soort: dezelfde waarde kan een
+            film en een serie zijn, dus een client combineert het met `kind`.
 
     FacetValue:
       type: object

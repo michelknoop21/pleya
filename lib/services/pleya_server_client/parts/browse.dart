@@ -274,6 +274,37 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     }
   }
 
+  /// The provider numbers the server has proven for a movie or show, for the
+  /// unified identity pipeline.
+  ///
+  /// Always a fresh read: the server can match a title later, and a cached
+  /// answer would keep a title unrecognisable until the client restarts. The
+  /// caller already caches per resolution pass.
+  ///
+  /// An empty answer means "no evidence", never "no match": a server that
+  /// predates `external_ids`, an unmatched title, a season and an episode all
+  /// come back the same way, and grouping then keeps the source on its own
+  /// card. A transport failure throws, like the Plex client, so a cached empty
+  /// answer cannot pin a title without evidence for the rest of a catalog
+  /// merge. An answer from the server that is an error, say the item is gone,
+  /// is a real answer and comes back empty.
+  Future<ExternalIds> fetchExternalIds(String itemId) async {
+    final answer = await _getJsonDetailed('/items/${Uri.encodeComponent(itemId)}');
+    final json = answer.json;
+    if (json == null) {
+      if (answer.errorCode == null) throw StateError('PleyaServerClient: no answer for /items/$itemId');
+      return const ExternalIds();
+    }
+    try {
+      final item = PleyaItem.fromJson(json);
+      if (item.kind != PleyaItemKind.movie && item.kind != PleyaItemKind.show) return const ExternalIds();
+      return ExternalIds(tmdb: item.externalIds.tmdb);
+    } on PleyaWireFormatException catch (e) {
+      appLogger.w('PleyaServerClient: /items/$itemId did not match the contract', error: e);
+      return const ExternalIds();
+    }
+  }
+
   /// An item plus the episode to resume.
   ///
   /// The second half is always null until PS-4. `next_up` is a home-screen hub

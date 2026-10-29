@@ -131,6 +131,51 @@ void main() {
     expect(provider.page(library.globalKey, const LibraryQuery()), isNull);
   });
 
+  test(
+    'stored external ids: a Pleya Server snapshot with none sends the caller to the server, a proven one is used',
+    () async {
+      provider.dispose();
+      final store = LocalLibraryStore(root);
+      await store.load();
+      MediaItem pleya(String id, Map<String, Object?> ids) => MediaItem(
+        id: id,
+        backend: MediaBackend.pleyaServer,
+        kind: MediaKind.movie,
+        title: id,
+        serverId: 'one',
+        libraryId: 'films',
+        raw: {'pleyaLocalExternalIds': ids},
+      );
+      await store.saveLibrary(library, [
+        pleya('proven', {'tmdb': 5}),
+        pleya('empty', {}),
+        film('plex-empty').copyWith(raw: {'pleyaLocalExternalIds': <String, Object?>{}}),
+      ], complete: true);
+      provider = LocalLibraryProvider(
+        profileId: 'a',
+        directory: root,
+        librariesForSync: () => [],
+        clientFor: (_) => null,
+        mayReadServer: (_) => true,
+        mayReadLibrary: (_) => true,
+        networkConnected: () => false,
+        wifiConnected: () => false,
+        changes: changes,
+      );
+      await provider.ready;
+
+      expect(provider.externalIds('one', 'proven')?.tmdb, 5);
+      expect(provider.externalIds('one', 'empty'), isNull, reason: 'not proof of nothing: ask the server');
+      expect(
+        provider.externalIds('one', 'plex-empty'),
+        isNotNull,
+        reason: 'Plex and Jellyfin keep their stored answer',
+      );
+      expect(provider.externalIds('one', 'unknown'), isNull);
+      await provider.setEnabled(false);
+    },
+  );
+
   test('prefetch waits for wifi unless mobile data was explicitly enabled', () async {
     await provider.setEnabled(true);
     expect(provider.state, LocalLibraryState.wifi);

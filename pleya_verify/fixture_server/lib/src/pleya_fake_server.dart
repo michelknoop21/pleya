@@ -219,6 +219,10 @@ class PleyaFakeServer {
   /// query -> ordered result ids.
   final Map<String, List<String>> searchResults = {};
 
+  /// Whether items carry the `external_ids` key. False plays a server that
+  /// predates the field. Read by [addItem], so set it before adding items.
+  bool reportsExternalIds = true;
+
   int refreshCount = 0;
 
   /// Reject every access token from here on, the way a server that restarted
@@ -424,6 +428,10 @@ class PleyaFakeServer {
     String addedAt = '2026-06-18T21:34:02Z',
     List<String>? genres,
     String? contentRating,
+
+    /// The provider numbers the server has proven for this title, as
+    /// `{'tmdb': 1100}`. Null is a title without a proven match.
+    Map<String, dynamic>? externalIds,
   }) {
     final item = <String, dynamic>{
       'id': id,
@@ -440,6 +448,10 @@ class PleyaFakeServer {
       'child_count': childCount,
       'episode_count': episodeCount,
       'watched_episode_count': watchedEpisodeCount,
+      // A server that knows the field always sends the key, null when it has
+      // no proof; `reportsExternalIds = false` leaves it out, the way a server
+      // that predates it does. Set it before adding items.
+      if (reportsExternalIds) 'external_ids': externalIds,
       'artwork': {'poster_id': posterId, 'backdrop_id': backdropId},
       'versions': durationMs == null
           ? <Map<String, dynamic>>[]

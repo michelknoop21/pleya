@@ -404,6 +404,10 @@ type Item struct {
 	EpisodeCount        *int     `json:"episode_count"`
 	WatchedEpisodeCount *int     `json:"watched_episode_count"`
 
+	// ExternalIDs staat er alleen als de server een bewezen providermatch heeft;
+	// anders null. Een client die het veld niet kent negeert het (regel 1, §3).
+	ExternalIDs *ExternalIDs `json:"external_ids"`
+
 	// Favorite en Rating zijn de aantekeningen van de aanvrager bij dit item
 	// (S20). Ze staan los van user_state: een favoriet die nooit is gekeken heeft
 	// geen kijkstatus, en null betekent daar "nooit geopend".
@@ -412,6 +416,18 @@ type Item struct {
 	Artwork   Artwork    `json:"artwork"`
 	Versions  []Version  `json:"versions"`
 	UserState *UserState `json:"user_state"`
+}
+
+// ExternalIDs zijn de nummers bij externe catalogi. Nu alleen TMDB.
+type ExternalIDs struct {
+	TMDB *int `json:"tmdb"`
+}
+
+func mapExternalIDs(in catalog.ExternalIDs) *ExternalIDs {
+	if in.IsZero() {
+		return nil
+	}
+	return &ExternalIDs{TMDB: in.TMDB}
 }
 
 // Person is één persoon bij een item (B4).
@@ -462,6 +478,7 @@ func mapItem(it catalog.Item) Item {
 		ChildCount:          it.ChildCount,
 		EpisodeCount:        it.EpisodeCount,
 		WatchedEpisodeCount: it.WatchedEpisodeCount,
+		ExternalIDs:         mapExternalIDs(it.ExternalIDs),
 		Artwork: Artwork{
 			PosterID:   optID(it.PosterID),
 			BackdropID: optID(it.BackdropID),
