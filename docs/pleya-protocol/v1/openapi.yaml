@@ -2403,7 +2403,8 @@ paths:
         één subtitle-only Matroska-resource. Identiteit en bibliotheekrechten
         worden voor voorbereiding en opnieuw voor levering gecontroleerd;
         de bestaande token-/sessiescope blijft gelden. Voorbereiding is
-        begrensd tot de bestaande starttimeout, één werker en 4 MiB uitvoer.
+        begrensd tot de bestaande starttimeout en één werker; maximaal 4 MiB
+        tekst of 64 MiB bitmapuitvoer, binnen een afgeleide cache van 64 MiB.
       security:
         - bearerAuth: []
         - streamToken: []

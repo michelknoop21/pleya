@@ -24,12 +24,8 @@ test.describe('de verticale slice', () => {
 
   test('home toont wat er recent is toegevoegd', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Recently added' })).toBeVisible();
-    await expect(page.getByRole('list', { name: 'Recently added' }).getByRole('listitem').first()).toBeVisible();
-
-    // Kijkstatus bestaat niet in PS-2, dus die rijen horen er niet te staan.
-    await expect(page.getByText('Continue watching')).toHaveCount(0);
-    await expect(page.getByText('Next up')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: /^Recently added · / }).first()).toBeVisible();
+    await expect(page.getByRole('list', { name: /^Recently added · / }).first().getByRole('listitem').first()).toBeVisible();
 
     await expectNoAxeViolations(page, 'home');
   });

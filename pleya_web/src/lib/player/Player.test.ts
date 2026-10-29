@@ -152,3 +152,25 @@ describe('opruimen', () => {
     expect(onclose).toHaveBeenCalled();
   });
 });
+
+describe('public browser watch-state actions', () => {
+  it('reports only after actual playback, then pause, seek and pagehide', async () => {
+    const { api } = mount();
+    await screen.findByText('Direct afspelen · HEVC 4K');
+    expect(api.reportWatchState).not.toHaveBeenCalled();
+    const video = document.querySelector('video')!;
+    video.currentTime = 15;
+    await fireEvent.play(video);
+    await waitFor(() => expect(api.reportWatchState).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(api.reportWatchState).mock.calls[0]![0]).toMatchObject({ explicit_action: 'playback_started', position_ms: 15000 });
+    video.currentTime = 20;
+    await fireEvent.pause(video);
+    await waitFor(() => expect(api.reportWatchState).toHaveBeenCalledTimes(2));
+    video.currentTime = 30;
+    await fireEvent.seeked(video);
+    await waitFor(() => expect(api.reportWatchState).toHaveBeenCalledTimes(3));
+    window.dispatchEvent(new Event('pagehide'));
+    await waitFor(() => expect(api.reportWatchState).toHaveBeenCalledTimes(4));
+    expect(vi.mocked(api.reportWatchState).mock.calls[3]).toEqual([expect.objectContaining({ position_ms: 30000, explicit_action: 'none' }), true]);
+  });
+});

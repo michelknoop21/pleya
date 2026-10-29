@@ -50,6 +50,8 @@ export const web = {
   'login.rateLimited': 'Too many attempts. Try again in {seconds}s.',
 
   'home.title': 'Home',
+  'home.continueWatching': 'Continue watching',
+  'home.nextUp': 'Next episodes',
   'home.recentlyAdded': 'Recently added',
   'home.emptyTitle': 'Nothing has been added yet',
   'home.emptyBody': 'Once the server has scanned your media, new titles show up here.',

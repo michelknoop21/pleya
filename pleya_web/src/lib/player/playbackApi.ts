@@ -2,14 +2,14 @@
  * De aanvragen van het afspeelpad, allemaal over de gegenereerde paden uit
  * `schema.d.ts`. Een pad dat het contract niet kent compileert hier niet.
  *
- * Wat er bewust niet in staat: `POST /watch-state`. Kijkstatus schrijven is
- * S13.3 en volgt het eigendomsmodel uit DEC-049; deze speler leest alleen de
- * `user_state` van het item (PS-4E: lezen en tonen, niet schrijven).
+ * Kijkstatus volgt DEC-049; alleen de speler schrijft, nooit het cataloguspad.
  */
+import type { components } from '../api/schema';
 import type { PleyaClient } from '../api/client';
-import type { PlaybackPlan, PlaybackPlanRequest, StreamSession, StreamToken } from './types';
+import type { PlaybackPlan, PlaybackPlanRequest, StreamSession, StreamToken, WatchStateEvent, UserState } from './types';
 
 export interface PlaybackApi {
+  reportWatchState(body: WatchStateEvent, keepalive?: boolean): Promise<UserState>;
   plan(body: PlaybackPlanRequest, signal?: AbortSignal): Promise<PlaybackPlan>;
   streamSession(versionId: string, signal?: AbortSignal): Promise<StreamSession>;
   streamToken(versionId: string, signal?: AbortSignal): Promise<StreamToken>;
@@ -36,30 +36,55 @@ export function playbackApi(
   fetchImpl: (input: string, init: RequestInit) => Promise<Response> = (i, init) =>
     globalThis.fetch(i, init)
 ): PlaybackApi {
+  const generation = client.sessionGeneration;
+  const assertAccount = () => {
+    if (generation !== client.sessionGeneration) throw new Error('Playback account changed');
+  };
+  const owned = async <T>(request: () => Promise<T>): Promise<T> => {
+    assertAccount();
+    const result = await request();
+    assertAccount();
+    return result;
+  };
   return {
-    plan: (body, signal) => client.request((raw) => raw.POST('/playback/plan', { body, signal })),
+    reportWatchState(body, keepalive = false) {
+      try { assertAccount(); } catch (error) { return Promise.reject(error); }
+      if (!keepalive) return owned(() => client.request((raw) => raw.POST('/watch-state', { body: body as components['schemas']['WatchStateEvent'] })));
+      const access = client.tokens.accessToken;
+      if (!access) return Promise.reject(new Error('No active playback account'));
+      return fetchImpl(`${client.baseUrl}/watch-state`, {
+        method: 'POST', keepalive: true,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${access}` },
+        body: JSON.stringify(body)
+      }).then(async (response) => {
+        if (!response.ok) throw new Error(`watch-state ${response.status}`);
+        return await response.json() as UserState;
+      });
+    },
+    plan: (body, signal) => owned(() => client.request((raw) => raw.POST('/playback/plan', { body, signal }))),
 
     streamSession: (versionId, signal) =>
-      client.request((raw) =>
+      owned(() => client.request((raw) =>
         raw.POST('/auth/stream-session', { body: { version_id: versionId }, signal })
-      ),
+      )),
 
     streamToken: (versionId, signal) =>
-      client.request((raw) =>
+      owned(() => client.request((raw) =>
         raw.POST('/auth/stream-token', { body: { version_id: versionId }, signal })
-      ),
+      )),
 
     heartbeat: (sessionId) =>
-      client.request<true>(async (raw) =>
+      owned(() => client.request<true>(async (raw) =>
         ok(
           await raw.POST('/playback/sessions/{session_id}/heartbeat', {
             params: { path: { session_id: sessionId } }
           }),
           true as const
         )
-      ),
+      )),
 
     stop(sessionId, keepalive) {
+      if (generation !== client.sessionGeneration) return;
       // Synchroon gestart, zonder middleware ertussen: in `pagehide` is er
       // geen garantie dat een aanvraag na een await nog vertrekt. Is het
       // token net verlopen, dan ruimt de server de sessie na een minuut
@@ -71,11 +96,11 @@ export function playbackApi(
       void fetchImpl(url, { method: 'DELETE', headers, keepalive }).catch(() => undefined);
     },
 
-    bearer: () => client.bearer(),
+    bearer: () => owned(() => client.bearer()),
 
     async subtitleText(subtitleId, signal) {
       const headers = new Headers();
-      const access = await client.bearer();
+      const access = await owned(() => client.bearer());
       if (access) headers.set('Authorization', `Bearer ${access}`);
       const url = `${client.baseUrl}/subtitles/${encodeURIComponent(subtitleId)}`;
       const response = await fetchImpl(url, { headers, signal });

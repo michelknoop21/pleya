@@ -10,6 +10,34 @@ mixin _PleyaServerDownloadMethods on _PleyaServerRequests {
   @visibleForTesting
   Duration downloadPrepareTimeout = const Duration(minutes: 10);
 
+  List<DownloadSubtitleSpec> resolveDownloadSubtitles(MediaItem item, {int mediaIndex = 0, String? mediaSourceId}) {
+    if (!wireCapabilities.downloads) return const [];
+    final versions = item.mediaVersions ?? const <MediaVersion>[];
+    if (versions.isEmpty) return const [];
+    final index = mediaSourceId == null
+        ? (mediaIndex >= 0 && mediaIndex < versions.length ? mediaIndex : 0)
+        : versions.indexWhere((version) => version.id == mediaSourceId);
+    if (index < 0) return const [];
+    return [
+      for (final track in PleyaServerMappers.mediaSourceInfo(
+        versions[index],
+        baseUrl: connection.baseUrl,
+      ).subtitleTracks)
+        if (track.external && track.key != null)
+          DownloadSubtitleSpec(
+            id: track.id,
+            sourceStreamId: track.sourceStreamId,
+            url: track.key!,
+            codec: track.codec,
+            language: track.language,
+            languageCode: track.languageCode,
+            forced: track.forced,
+            displayTitle: track.displayTitle ?? track.title,
+            headersSupplier: _downloadHeaders,
+          ),
+    ];
+  }
+
   Future<PleyaDownload?> createDownload(String itemId, {String? versionId}) async {
     if (!wireCapabilities.downloads) return null;
     final json = await _postJson('/downloads', {'item_id': itemId, 'version_id': ?versionId});
@@ -59,21 +87,7 @@ mixin _PleyaServerDownloadMethods on _PleyaServerRequests {
     return DownloadResolution(
       videoUrl: (container == null ? url : url.replace(queryParameters: {'container': container})).toString(),
       mediaSourceId: version.id,
-      externalSubtitles: [
-        for (final track in PleyaServerMappers.mediaSourceInfo(version, baseUrl: connection.baseUrl).subtitleTracks)
-          if (track.external && track.key != null)
-            DownloadSubtitleSpec(
-              id: track.id,
-              sourceStreamId: track.sourceStreamId,
-              url: track.key!,
-              codec: track.codec,
-              language: track.language,
-              languageCode: track.languageCode,
-              forced: track.forced,
-              displayTitle: track.displayTitle ?? track.title,
-              headersSupplier: _downloadHeaders,
-            ),
-      ],
+      externalSubtitles: resolveDownloadSubtitles(item, mediaSourceId: version.id),
       headers: await _downloadHeaders(),
       sha256: download.sha256,
     );

@@ -70,3 +70,66 @@ describe('playbackApi buiten openapi-fetch', () => {
     expect(await client.bearer()).toBeNull();
   });
 });
+
+describe('watch-state transport', () => {
+  const body = { item_id: 'item', session_id: 'viewing', position_ms: 7000,
+    occurred_at: '2026-10-29T12:00:00Z', completed: false, explicit_action: 'none' as const,
+    base_revision: 3, backlog: false };
+  it('starts the pagehide POST with keepalive and a header, without query credentials', async () => {
+    const state = { position_ms: 7000, watched: false, play_count: 0, updated_at: '2026-10-29T12:00:00Z', revision: 4 };
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify(state), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    const { api } = setup(fetchImpl);
+    const pending = api.reportWatchState(body, true);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url, init] = vi.mocked(fetchImpl).mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe(`${BASE}/watch-state`);
+    expect(init).toMatchObject({ method: 'POST', keepalive: true });
+    expect(new Headers(init.headers).get('Authorization')).toBe('Bearer geheim-1');
+    expect(JSON.parse(init.body as string)).toEqual(body);
+    expect(await pending).toEqual(state);
+  });
+  it('does not send after the account has been cleared', async () => {
+    const { api, fetchImpl, tokens } = setup();
+    tokens.clear();
+    await expect(api.reportWatchState(body, true)).rejects.toThrow('No active playback account');
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
+it('a viewing API cannot write after another account logs in', async () => {
+  const pair = { access_token: 'account-B', refresh_token: 'refresh-B', expires_in_ms: 900000 };
+  const fetchImpl = vi.fn(async () => new Response(JSON.stringify(pair), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+  const { api, client } = setup(fetchImpl);
+  await client.login({ username: 'B', password: 'canned' });
+  fetchImpl.mockClear();
+  await expect(api.reportWatchState({ item_id: 'item', session_id: 'viewing-A', position_ms: 1,
+    occurred_at: '2026-10-29T12:00:00Z', completed: false, explicit_action: 'none' }, true)).rejects.toThrow();
+  expect(fetchImpl).not.toHaveBeenCalled();
+});
+
+it('a refreshed authenticated POST replays the original unconsumed body', async () => {
+  const seen: unknown[] = [];
+  const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+    const request = input as Request;
+    if (request.url.endsWith('/auth/refresh')) return new Response(JSON.stringify({ access_token: 'fresh-A', refresh_token: 'refresh-fresh-A', expires_in_ms: 900000 }), { headers: { 'Content-Type': 'application/json' } });
+    seen.push(await request.json());
+    if (seen.length === 1) return new Response(JSON.stringify({ code: 'auth.token_expired' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ position_ms: 1, watched: false, play_count: 0, updated_at: '2026-10-29T12:00:00Z', revision: 4 }), { headers: { 'Content-Type': 'application/json' } });
+  });
+  const { api } = setup(fetchImpl as never);
+  const body = { item_id: 'item', session_id: 'viewing', position_ms: 1, occurred_at: '2026-10-29T12:00:00Z', completed: false, explicit_action: 'none' as const, backlog: false };
+  await api.reportWatchState(body);
+  expect(seen).toEqual([body, body]);
+});
+
+it('all old viewing operations refuse after account replacement', async () => {
+  const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ access_token: 'B', refresh_token: 'refresh-B', expires_in_ms: 900000 }), { headers: { 'Content-Type': 'application/json' } }));
+  const { api, client } = setup(fetchImpl);
+  await client.login({ username: 'B', password: 'canned' });
+  fetchImpl.mockClear();
+  await expect(api.bearer()).rejects.toThrow('Playback account changed');
+  await expect(api.streamSession('v1')).rejects.toThrow('Playback account changed');
+  await expect(api.subtitleText('s1')).rejects.toThrow('Playback account changed');
+  api.stop('old-A', false);
+  expect(fetchImpl).not.toHaveBeenCalled();
+});

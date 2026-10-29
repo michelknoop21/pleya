@@ -120,6 +120,25 @@ func TestPlanStartsASessionAndTheFilesAreServed(t *testing.T) {
 	}
 }
 
+func TestHLSSessionCookieUsesTheConversionVersion(t *testing.T) {
+	e, _ := transcodeEnv(t, 2)
+	plan := e.transcodePlan(e.findMovie("Grease").ID)
+	other := e.transcodePlan(e.findMovie("The Matrix").ID)
+	lease, cookie := e.openStreamSession(plan.VersionID, http.StatusOK)
+	query := "?ss=" + lease.StreamSessionID
+	for _, path := range []string{plan.StreamURL, strings.TrimSuffix(plan.StreamURL, "index.m3u8") + "seg_00000.m4s"} {
+		if rec := e.do(http.MethodGet, path+query, nil, withoutAuth, withCookie(cookie)); rec.Code != http.StatusOK {
+			t.Fatalf("HLS cookie delivery status %d", rec.Code)
+		}
+	}
+	if rec := e.do(http.MethodGet, plan.StreamURL+query, nil, withoutAuth); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("missing cookie status %d", rec.Code)
+	}
+	if rec := e.do(http.MethodGet, other.StreamURL+query, nil, withoutAuth, withCookie(cookie)); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("wrong version cookie status %d", rec.Code)
+	}
+}
+
 // API refresh cannot renew a credential already captured by a native media transport.
 func TestRefreshDoesNotRenewTheHeaderAlreadyGivenToAPlayer(t *testing.T) {
 	e, _ := transcodeEnv(t, 1)

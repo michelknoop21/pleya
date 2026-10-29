@@ -528,7 +528,7 @@ class OfflineWatchSyncService extends ChangeNotifier {
   Future<String?> _clientScopeIdForItem(ServerId serverId, String itemId) async {
     // A downloaded row's clientScopeId is a cache/source hint, not an owner.
     // Offline watch actions are user-owned, so a new local action follows the
-    // currently active scoped Jellyfin client. Once queued, _clientForAction
+    // currently active account-scoped client. Once queued, _clientForAction
     // replays that exact scope even if the active user changes later.
     final client = _serverManager.getClient(serverId);
     if (client != null) {
@@ -544,14 +544,15 @@ class OfflineWatchSyncService extends ChangeNotifier {
   Future<({MediaServerClient client, String? clientScopeId})?> _clientForAction(OfflineWatchProgressItem action) async {
     final scopeId = action.clientScopeId;
     if (scopeId != null && scopeId.isNotEmpty) {
-      final scoped = _serverManager.getJellyfinClientByCompoundId(scopeId);
-      if (scoped != null) return (client: scoped, clientScopeId: scopeId);
+      final scoped = _serverManager.getClientForScope(ServerId(action.serverId), clientScopeId: scopeId);
+      return scoped == null ? null : (client: scoped, clientScopeId: scopeId);
     }
     final client = _serverManager.getClient(ServerId(action.serverId));
     if (client == null) return null;
-    if (client.backend == MediaBackend.jellyfin && client.cacheServerId != action.serverId) {
+    if ((client.backend == MediaBackend.jellyfin || client.backend == MediaBackend.pleyaServer) &&
+        client.cacheServerId != action.serverId) {
       appLogger.w(
-        'Refusing to sync unscoped Jellyfin action ${action.id} for ${action.serverId}:${action.ratingKey}; '
+        'Refusing to sync unscoped ${client.backend.name} action ${action.id} for ${action.serverId}:${action.ratingKey}; '
         'no queued client scope is available',
       );
       return null;
@@ -601,11 +602,7 @@ class OfflineWatchSyncService extends ChangeNotifier {
   }
 
   Future<MediaServerClient?> _clientForDownloadScope(ServerId serverId, String? clientScopeId) async {
-    if (clientScopeId != null && clientScopeId.isNotEmpty) {
-      final scoped = _serverManager.getJellyfinClientByCompoundId(clientScopeId);
-      if (scoped != null) return scoped;
-    }
-    return _serverManager.getClient(serverId);
+    return _serverManager.getClientForScope(serverId, clientScopeId: clientScopeId);
   }
 
   Future<T?> _withOnlineClientForDownloadScope<T>(
@@ -715,7 +712,9 @@ class OfflineWatchSyncService extends ChangeNotifier {
           final position = action.shouldMarkWatched && duration != null
               ? duration
               : Duration(milliseconds: action.viewOffset!);
-          if (!action.shouldMarkWatched || client.backend != MediaBackend.plex) {
+          // Pleya backlog must never acquire live ownership before replay.
+          if (client.backend != MediaBackend.pleyaServer &&
+              (!action.shouldMarkWatched || client.backend != MediaBackend.plex)) {
             try {
               await client.reportPlaybackStarted(itemId: action.ratingKey, position: position, duration: duration);
             } catch (e) {

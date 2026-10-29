@@ -1,0 +1,13 @@
+# C-05 — Web Home en browserkijkstatus
+
+Roadmap: C-05 / S8.1 / S13.3. Lokale ontwikkeling op `feat/pleya-server-personal-apps`; pakket5 is nog open. Productie/NAS niet gebruikt.
+
+Home gebruikt de bestaande hubs en huidige servercapabilities: Verder kijken, Volgende afleveringen en recente titels per zichtbare videobibliotheek. Lege rijen verdwijnen. De bestaande hero opent de speler uitsluitend voor afspeelbare media met een playbackplan-capability. Oude servers krijgen geen kijkstatus-hubverzoeken.
+
+De bestaande Player rapporteert pas na een werkelijke play-gebeurtenis. Eén UUID per kijkronde, revision uit het serverantwoord, updates op pauze/seek/15seconden, laatste stand bij sluiten en90% als bekeken op stop. Passieve updates nemen geen eigendom over. Langzame aanvragen worden geserialiseerd en samengevoegd. `pagehide` start een keepalive direct; een concurrerende verouderde CAS mag veilig worden geweigerd. De bestaande client bewaakt accountgeneraties: late refresh-, uitlog- en laadantwoorden wijzigen het nieuwe account niet; oude speleracties en broncookies worden niet hergebruikt. Een POST-retry na401 behoudt de originele body.
+
+**Tests.** Sveltecheck0fouten/0waarschuwingen;12bestanden161gerichte tests PASS na accountisolatiereparatie. Missing helper en publieke Player-callers eerst rood gezien; start/voortgang/serialisatie/ownerverlies/oldserver/pagehide/clear getest. Gegenereerde default maakt backlog in TypeScript verplicht terwijl YAML dit optioneel verklaart: alias blijft afgeleid en uitsluitend de API-grens cast naar het gegenereerde request; oude wire houdt ownershipvelden weg.
+
+**Browser.** Echte eigen Go-server met synthetische media. Home:1920/1440/1280/390/320, axe0, overloop0, geen kijkstatusschrijvingen; desktop- en mobiele bestaande Home-e2e PASS. Chromium decodeert320×180video met104frames in de eerste ronde, bewaart ruim4seconden canonieke voortgang en toont Hervatten in een tweede browsersessie. Herhaling wacht op uitgeanimeerde besturing. Ook na accountisolatiereparatie echte browserketen PASS; streamingrequest-body wordt in de browser op fetchniveau gelezen omdat CDP voor deze body null levert. Een fout in die bewijsobserver is gecorrigeerd zonder productverwachting te wijzigen. [Beeldenmanifest](2026-10-29-pleya-completion-images.md), bewijs in `.build/pleya-completion-evidence/web-home/` en `web-watch/`.
+
+**Open.** Home-boekenrijen en overige S8-schermen, wizard, S13.4 en herstel/upgradejourney; metadata- en managed-streamvensters wachten op besluit. Geen native hardware-, NAS-, productie-, CI- of releaseacceptatie uit deze browserproef afgeleid. Volledige branchreview volgt na alle taken.

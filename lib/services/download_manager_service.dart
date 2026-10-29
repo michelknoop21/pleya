@@ -1956,10 +1956,19 @@ class DownloadManagerService {
           }
           if (downloadSubtitles) {
             var subtitles = ctx?.subtitles;
-            if (subtitles == null && client.backend != MediaBackend.pleyaServer) {
+            if (subtitles == null) {
               try {
-                final resolution = await client.resolveDownload(metadata);
-                subtitles = resolution.externalSubtitles;
+                if (client is PleyaServerClient) {
+                  final source = await _database.getDownloadedMedia(globalKey);
+                  subtitles = client.resolveDownloadSubtitles(
+                    metadata,
+                    mediaSourceId: source?.mediaSourceId,
+                    mediaIndex: source?.mediaIndex ?? 0,
+                  );
+                } else {
+                  final resolution = await client.resolveDownload(metadata);
+                  subtitles = resolution.externalSubtitles;
+                }
               } catch (e) {
                 appLogger.w('Could not re-resolve subtitles', error: e);
               }
@@ -3134,6 +3143,7 @@ Future<void> verifyDownloadAfterRestart(
     return;
   }
   await verifyDownloadDigest(filePath, expected);
+  appLogger.i('Verified download digest after restart for $label');
 }
 
 String? downloadExtensionFromUrl(String url) {

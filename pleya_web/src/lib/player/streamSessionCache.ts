@@ -71,6 +71,8 @@ export class StreamSessionCache {
     return fresh.stream_session_id;
   }
 
+  clear(): void { this.#write({}); }
+
   /** Na een weigering van de bron: de volgende poging vraagt een nieuwe. */
   forget(versionId: string): void {
     const entries = { ...this.#read() };

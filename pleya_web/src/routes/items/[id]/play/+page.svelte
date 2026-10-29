@@ -2,7 +2,7 @@
   /items/{id}/play: de browserspeler (S13.2, S18.3). `?version=` kiest een
   versie, `?t=` een hervatpositie in seconden; die komt van de knop "Verder
   vanaf" op de detailpagina, die hem uit `user_state.position_ms` leest. De
-  speler zelf schrijft geen kijkstatus (S13.3).
+  speler rapporteert kijkstatus pas na werkelijk afspelen (S13.3).
 
   De route laadt het item voor titel, duur en sporen; het afspeelpad zelf loopt
   in Player via `POST /playback/plan`.

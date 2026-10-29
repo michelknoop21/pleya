@@ -502,6 +502,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       // history: it never acquires ownership and never moves a newer canonical
       // state. Reporting it as live would be a lie the server cannot detect.
       backlog: report.isOfflineReplay,
+      occurredAt: report.isOfflineReplay ? report.recordedAt : null,
     );
     _watchLedger.closeSession(itemId);
   }
@@ -592,6 +593,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     String? cause,
     bool completed = false,
     bool backlog = false,
+    DateTime? occurredAt,
   }) async {
     if (!wireCapabilities.watchState) return;
 
@@ -600,7 +602,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       sessionId: sessionId,
       positionMs: position.inMilliseconds,
       durationMs: duration?.inMilliseconds,
-      occurredAt: DateTime.now().toUtc(),
+      occurredAt: (occurredAt ?? DateTime.now()).toUtc(),
       completed: completed,
       action: action,
       cause: cause,

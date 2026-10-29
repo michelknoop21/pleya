@@ -514,3 +514,77 @@ describe('een herlaadbeurt', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('account replacement during pending requests', () => {
+  const pair = (name: string) => ({ access_token: name, refresh_token: 'refresh-' + name, expires_in_ms: 900000 });
+  it.each([200, 401])('a late refresh (%s) cannot replace or clear the new account', async (status) => {
+    let release!: (response: Response) => void;
+    const lost = vi.fn();
+    const tokens = new TokenStore(memoryStorage({ 'pleya.refresh_token': 'refresh-A' }), memoryStorage());
+    const client = new PleyaClient({ baseUrl: BASE, tokens, onSessionLost: lost,
+      fetch: (async (input: RequestInfo | URL) => {
+        const url = input instanceof Request ? input.url : String(input);
+        if (url.endsWith('/auth/refresh')) return await new Promise(resolve => release = resolve);
+        return json(pair('B'));
+      }) as FetchLike });
+    const pending = client.restore();
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    await client.login({ username: 'B', password: 'canned' });
+    release(status === 200 ? json(pair('A-late')) : json({ code: 'auth.token_invalid' }, 401));
+    await pending;
+    expect(tokens.accessToken).toBe('B');
+    expect(lost).not.toHaveBeenCalled();
+  });
+  it('never retries an old 401 with the newly selected account', async () => {
+    let release!: (response: Response) => void;
+    const sent: string[] = [];
+    const { client } = clientWith((async (input: RequestInfo | URL) => {
+      const request = input as Request;
+      if (request.url.endsWith('/auth/login')) return json(pair('B'));
+      if (request.url.endsWith('/auth/refresh')) return json(pair('B-refreshed'));
+      sent.push(request.headers.get('Authorization') ?? '');
+      if (sent.length > 1) return json({ items: [] });
+      return await new Promise(resolve => release = resolve);
+    }) as FetchLike);
+    client.tokens.set(pair('A'));
+    const old = client.libraries();
+    const rejected = expect(old).rejects.toBeInstanceOf(ApiError);
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    await client.login({ username: 'B', password: 'canned' });
+    release(json({ code: 'auth.token_invalid' }, 401));
+    await rejected;
+    expect(sent).toEqual(['Bearer A']);
+    expect(client.tokens.accessToken).toBe('B');
+  });
+  it('a late logout cannot clear a newer successful login', async () => {
+    let release!: (response: Response) => void;
+    const { client } = clientWith((async (input: RequestInfo | URL) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.endsWith('/auth/logout')) return await new Promise(resolve => release = resolve);
+      return json(pair('B'));
+    }) as FetchLike);
+    client.tokens.set(pair('A'));
+    const pending = client.signOut({ remote: true });
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    await client.login({ username: 'B', password: 'canned' });
+    release(new Response(null, { status: 204 }));
+    await pending;
+    expect(client.tokens.accessToken).toBe('B');
+  });
+});
+
+it('does not return an old successful response after account replacement', async () => {
+  let release!: (response: Response) => void;
+  const { client } = clientWith((async (input: RequestInfo | URL) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url.endsWith('/auth/login')) return json({ access_token: 'B', refresh_token: 'RB', expires_in_ms: 900000 });
+    return await new Promise(resolve => release = resolve);
+  }) as FetchLike);
+  client.tokens.set({ access_token: 'A', refresh_token: 'RA', expires_in_ms: 900000 });
+  const old = client.libraries();
+  const rejected = expect(old).rejects.toBeInstanceOf(TransportError);
+  await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+  await client.login({ username: 'B', password: 'canned' });
+  release(json({ items: [{ id: 'private-A', title: 'Only A', kind: 'movies', item_count: 1 }] }));
+  await rejected;
+});

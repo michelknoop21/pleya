@@ -22,7 +22,7 @@ export interface Timers {
   clearInterval(handle: unknown): void;
 }
 
-const realTimers: Timers = {
+export const realTimers: Timers = {
   setInterval: (fn, ms) => globalThis.setInterval(fn, ms),
   clearInterval: (h) => globalThis.clearInterval(h as ReturnType<typeof setInterval>)
 };

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SessionState } from './session.svelte';
+import { streamSessions } from '../player/streamSessionCache';
 import { LAST_CONTACT_KEY, readLastContact } from './lastContact';
 import type { PleyaClient } from '../api/client';
 import { TransportError } from '../api/errors';
@@ -149,4 +150,42 @@ describe('afmelden (DEC-164)', () => {
     await state.signOut({ local: true });
     expect(signOut).toHaveBeenCalledWith({ remote: false });
   });
+});
+
+it('explicit authentication clears media IDs retained from a previous account', async () => {
+  const future = new Date(Date.now() + 600000).toISOString();
+  await streamSessions.get('same-version', async () => ({ stream_session_id: 'account-A', expires_at: future }));
+  const session = new SessionState(fakeClient());
+  await session.afterAuth();
+  const fresh = vi.fn(async () => ({ stream_session_id: 'account-B', expires_at: future }));
+  expect(await streamSessions.get('same-version', fresh)).toBe('account-B');
+  expect(fresh).toHaveBeenCalledTimes(1);
+});
+
+it.each(['success', 'failure'])('a stale account load (%s) cannot replace the newer session state', async (result) => {
+  let resolve!: (value: unknown) => void;
+  let reject!: (error: Error) => void;
+  const client = fakeClient({ sessionGeneration: 0,
+    server: () => new Promise((yes, no) => { resolve = yes; reject = no; }) });
+  const session = new SessionState(client);
+  const old = session.load();
+  Object.assign(client, { sessionGeneration: 1, server: async () => ({ name: 'Server B' }) });
+  await session.load();
+  if (result === 'success') resolve({ name: 'Server A' }); else reject(new Error('Old account failed'));
+  await old;
+  expect(session.server?.name).toBe('Server B');
+  expect(session.phase).toBe('ready');
+});
+
+it('late signout completion cannot hide the newly authenticated account', async () => {
+  let release!: () => void;
+  const client = fakeClient({ sessionGeneration: 0,
+    signOut: () => { Object.assign(client, { sessionGeneration: 1 }); return new Promise<void>(resolve => release = resolve); } });
+  const session = new SessionState(client);
+  const old = session.signOut();
+  Object.assign(client, { sessionGeneration: 2, server: async () => ({ name: 'Server B' }) });
+  await session.load();
+  release(); await old;
+  expect(session.server?.name).toBe('Server B');
+  expect(session.phase).toBe('ready');
 });

@@ -22,6 +22,7 @@
   import { PlayerSession, type PlayerDeps } from './playerSession.svelte';
   import { audioOptions, cueText, defaultAudioIndex, subtitleBlobUrl, subtitleOptions } from './tracks';
   import { deliveryLabel } from './labels';
+  import { WatchProgress } from './watchProgress';
   // Globaal en niet gescoped, met `.player` als voorvoegsel: zo blijft deze
   // component onder de 400 regels.
   import './player.css';
@@ -58,6 +59,7 @@
   let revokeSubtitle: (() => void) | null = null;
   let audioIndex = $state(0);
   let caption = $state('');
+  let progress: WatchProgress | null = null;
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
   const total = $derived(
@@ -81,12 +83,35 @@
 
   function start(): void {
     if (!video) return;
+    progress?.finish(false);
+    progress = null;
     audioIndex = 0;
     void session.start(video, { itemId: item.id, versionId: version?.id ?? null, startAt });
   }
 
   $effect(() => {
     if (session.delivery) audioIndex = session.delivery.kind === 'hls' ? 0 : defaultAudioIndex(audio);
+  });
+
+  function playing(): void {
+    paused = false;
+    if (!video || session.phase !== 'ready') return;
+    progress ??= new WatchProgress({
+      report: (body, keepalive) => deps.api.reportWatchState(body, keepalive),
+      enabled: deps.server?.watch_state === true,
+      ownership: deps.server?.watch_state_ownership === true,
+      itemId: item.id, revision: item.user_state?.revision,
+      sample: () => ({ position: video?.currentTime ?? 0, duration: total }),
+      ...(deps.timers ? { timers: deps.timers } : {})
+    });
+    progress.play();
+  }
+
+  $effect(() => {
+    if (session.phase === 'error') {
+      progress?.finish(false);
+      progress = null;
+    }
   });
 
   function poke(): void {
@@ -198,7 +223,7 @@
     seekLimit = s.length ? s.end(s.length - 1) : 0;
   }
 
-  const onPageHide = () => session.dispose(true);
+  const onPageHide = () => { progress?.finish(true); progress = null; session.dispose(true); };
   const onPageShow = (e: PageTransitionEvent) => {
     if (e.persisted) start();
   };
@@ -217,6 +242,8 @@
     window.removeEventListener('pageshow', onPageShow);
     document.removeEventListener('fullscreenchange', onFullscreen);
     if (idleTimer) clearTimeout(idleTimer);
+    progress?.finish(false);
+    progress = null;
     session.dispose(false);
     revokeSubtitle?.();
   });
@@ -237,8 +264,10 @@
     class="player__video"
     bind:this={video}
     playsinline
-    onplay={() => (paused = false)}
-    onpause={() => (paused = true)}
+    onplay={playing}
+    onpause={() => { paused = true; progress?.report(); }}
+    onseeked={() => progress?.report()}
+    onended={() => { paused = true; progress?.finish(false); progress = null; }}
     ontimeupdate={syncTime}
     ondurationchange={syncTime}
     onprogress={syncTime}

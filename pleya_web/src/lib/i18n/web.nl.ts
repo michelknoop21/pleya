@@ -52,6 +52,8 @@ export const webNl = {
   'login.rateLimited': 'Te veel pogingen. Probeer het over {seconds} s opnieuw.',
 
   'home.title': 'Home',
+  'home.continueWatching': 'Verder kijken',
+  'home.nextUp': 'Volgende afleveringen',
   'home.recentlyAdded': 'Recent toegevoegd',
   'home.emptyTitle': 'Er is nog niets toegevoegd',
   'home.emptyBody': 'Zodra de server je media heeft gescand, verschijnen nieuwe titels hier.',

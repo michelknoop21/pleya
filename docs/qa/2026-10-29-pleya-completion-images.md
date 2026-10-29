@@ -1,0 +1,18 @@
+# C-05 — beeldenmanifest vervolg
+
+Native iOS-simulator en Chromium, eigen disposable testserver met synthetische media; geen hardware- of productiebeelden. Opnamen beoordeeld in de uitvoeringssessie; systeem-NowPlayingbeeld zelf niet opgenomen. Home: alle vijf breedtes axe0/overloop0. Web playback: werkelijk gedecodeerde frames; tweede sessie toont hervatten.
+
+| Scherm | Afmeting | Bestand |
+| --- | --- | --- |
+| ios-download-recovery-posters-fixed: download-in-flight | 750×1334 | `.build/pleya-completion-evidence/ios-download-recovery-posters-fixed/screenshots/download-in-flight.png` |
+| ios-download-recovery-posters-fixed: recovered-download-completed | 750×1334 | `.build/pleya-completion-evidence/ios-download-recovery-posters-fixed/screenshots/recovered-download-completed.png` |
+| ios-download-recovery-posters-fixed: recovered-local-playback | 1334×750 | `.build/pleya-completion-evidence/ios-download-recovery-posters-fixed/screenshots/recovered-local-playback.png` |
+| ios-now-playing-artwork-fixed: real-hls-embedded-selected | 1334×750 | `.build/pleya-completion-evidence/ios-now-playing-artwork-fixed/screenshots/real-hls-embedded-selected.png` |
+| ios-now-playing-artwork-fixed: real-hls-subtitles-off | 1334×750 | `.build/pleya-completion-evidence/ios-now-playing-artwork-fixed/screenshots/real-hls-subtitles-off.png` |
+| web-home: home@1920 | 1920×1716 | `.build/pleya-completion-evidence/web-home/home@1920.png` |
+| web-home: home@1440 | 1440×1450 | `.build/pleya-completion-evidence/web-home/home@1440.png` |
+| web-home: home@1280 | 1280×1382 | `.build/pleya-completion-evidence/web-home/home@1280.png` |
+| web-home: home@390 | 390×1240 | `.build/pleya-completion-evidence/web-home/home@390.png` |
+| web-home: home@320 | 320×1240 | `.build/pleya-completion-evidence/web-home/home@320.png` |
+| web-watch: actual-playback-paused | 1280×900 | `.build/pleya-completion-evidence/web-watch/actual-playback-paused.png` |
+| web-watch: second-session-resume | 390×1056 | `.build/pleya-completion-evidence/web-watch/second-session-resume.png` |

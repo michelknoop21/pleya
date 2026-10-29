@@ -40,15 +40,15 @@ Bron voor de scope:
 | --- | --- | --- | --- | --- |
 | Fundament en integratie | S0 | 1 | 0 | 0 |
 | Backend basis | S1 tot S6 | 2 | 3 | 1 |
-| Web | S7 tot S13 | 1 | 3 | 3 |
+| Web | S7 tot S13 | 1 | 4 | 2 |
 | Clients en agents | S14, S16 | 0 | 1 | 1 |
 | Uitgebreide scope | S17 tot S25 | 2 | 5 | 2 |
-| Afronding | S15 | 0 | 0 | 1 |
-| **Totaal** | **26** | **6** | **12** | **8** |
+| Afronding | S15 | 0 | 1 | 0 |
+| **Totaal** | **26** | **6** | **14** | **6** |
 
 De slicetelling is op 29 oktober 2026 opnieuw afgeleid uit de bestaande taakstatussen; een slice met gereed én open werk telt als bezig. Dit voegt geen runtime- of releasebewijs toe.
 
-Per taak, en dat is de maat die telt: **162 taken, 84 gereed, 14 bezig, 64 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **162 taken, 84 gereed, 17 bezig, 61 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2, en S2.9 tot en met S2.11 (afleveringsnamen zonder `SxxExx`) zijn dat ook;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -150,8 +150,9 @@ van de 128 resterende in de golven; PS-12.0 is een keuze en telt daar niet mee. 
 
 ### 2.4 De poorten die nog dicht staan
 
-P5 (locator), P6 (acht protocolvensters geopend en gesloten), P7 (PS-5-hardwareronde, OVERDUE),
-P8 (Plex Replacement Readiness Gate). Van de acht protocolvensters zijn er twee geopend én weer gesloten: venster 1, bij
+P5 (locator) is op 29 oktober 2026 vrijgegeven (DEC-XXX); de boekencontract- en hardwarepoorten blijven afzonderlijk.
+P6 (acht protocolvensters geopend en gesloten), P7 (PS-5-hardwareronde, OVERDUE) en
+P8 (Plex Replacement Readiness Gate) staan nog open. Van de acht protocolvensters zijn er twee geopend én weer gesloten: venster 1, bij
 S1, met alle zeventien rijen erin ([DEC-135](DECISIONS.md), [DEC-136](DECISIONS.md),
 [DEC-137](DECISIONS.md)), en venster 2, bij S2, met alle tien ([DEC-138](DECISIONS.md),
 [DEC-146](DECISIONS.md)). Van deze acht staat er nu geen open. Daarnaast is het afzonderlijke BP-08b-venster hieronder vrijgegeven. De volledige stand staat in hoofdstuk 4.
@@ -353,7 +354,7 @@ is geen bewijs van gebouwde leesvoortgang of een reader.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S8.1 | Home met zes rijen, lege rij verdwijnt | `[ ]` | | |
+| S8.1 | Home met zes rijen, lege rij verdwijnt | `[~]` | C-05: bestaande persoonlijke hubs capability-gated en recente titels per videobibliotheek aangesloten. Lege rijen verdwijnen, afspeelbare hero gebruikt bestaande spelerroute. Componenttests rood→groen; echte lokale API, vijf breedtes axe0/overloop0, desktop/mobiele Home-e2e groen. [Webontwikkelbewijs](qa/2026-10-29-pleya-web-consumer-report.md). Boekenrijen wachten op eigen contract/hardware; volledige Home blijft open. | 2026-10-29 |
 | S8.2 | Films- en Series-landing | `[ ]` | | |
 | S8.3 | Complete catalogus met filters en facetten | `[ ]` | | |
 | S8.4 | Zoeken gesectioneerd, lege staat met uitweg | `[ ]` | | |
@@ -405,7 +406,7 @@ is geen bewijs van gebouwde leesvoortgang of een reader.
 | --- | --- | --- | --- | --- |
 | S13.1 | Mockup 50 (spelerschil) goedgekeurd | `[x]` | gedekt door poort P3, op dezelfde grond als S12.1: gebouwd, gereviewd (C.7), akkoord Michel 4 september, in de APPROVED set met `SHA256SUMS` | 2026-09-04 |
 | S13.2 | Schil met `<video>` op de streamsessie | `[x]` | Route `/items/{id}/play` met de schil uit mockup 50 (`pleya_web/src/lib/player/`), knoppen Afspelen en Verder vanaf op de detailpagina (leest `user_state`, schrijft niets). Direct play loopt over `POST /auth/stream-session`: alleen de niet-geheime id als `ss` in de URL, het geheim in de HttpOnly-cookie; zonder `stream_sessions` het streamtoken als terugval. Streamsessies worden per versie hergebruikt (de niet-geheime id in `sessionStorage`), want het contract kent geen route om er een te beëindigen en begrenst op acht; live gezien dat drie herlaadbeurten één sessie kosten. Elke foutcode krijgt een zin met uitweg (`playerErrors.ts`). Vitest: 72 spelertests in zes bestanden plus 4 nieuwe CSP-tests, met negatieve controles; een mutatie die het opruimen uitzet maakt 5 tests rood. Live bewezen op 26 oktober 2026 in Google Chrome en Playwright-Chromium tegen een lokale echte stack (Go-server, Postgres en ffmpeg in Docker, poort 8853) met `scripts/player-live-check.ts`: direct play van mp4, mkv en HEVC, zoeken met de pijltjestoets, nul aanvragen met het accesstoken in de URL; `tests/e2e/player.spec.ts` 10 van 10 groen op vijf titels in de projecten chromium en mobile. Niet bewezen tegen de NAS-testinstance; daarvoor staat een checklist in de PR. Schermen op vijf breedtes, nagebootst: `docs/qa/s18-player/` | 2026-10-26 |
-| S13.3 | Kijkstatus met `session_id` en `base_revision` | `[ ]` | | |
+| S13.3 | Kijkstatus met `session_id` en `base_revision` | `[~]` | C-05: bestaande Player/PlaybackApi rapporteert werkelijke play, passieve voortgang, pause/seek/end en sluiting met vaste kijkronde-UUID en revision. Coalescing/serialisatie, ownerverlies, oude server en keepalive met header getest; geen ownershipreacquire. Echte Chromium-frame en canonieke positie plus tweede sessie Hervatten groen. [Webontwikkelbewijs](qa/2026-10-29-pleya-web-consumer-report.md). Volledige lifecycle/compatibiliteitsacceptatie en onafhankelijke review blijven open. | 2026-10-29 |
 | S13.4 | Ondertitelconversie naar WebVTT | `[ ]` | | |
 
 ### S14 Flutter-clients op het contract
@@ -427,7 +428,7 @@ is geen bewijs van gebouwde leesvoortgang of een reader.
 | --- | --- | --- | --- | --- |
 | S15.1 | Rate limit op `/auth/refresh`, opruimjob streamsessies | `[ ]` | | |
 | S15.2 | Golden journeys 1 tot 14 groen | `[ ]` | Ketenacceptatie 25 okt op de testinstance (main met #493 tot en met #496): `scripts/chain-smoke.sh` groen voor scan, metadata en artwork (99 van 100 films met poster en samenvatting), zoeken, direct play met 206, positie van toestel A zichtbaar op toestel B, transcode (plan tot eerste segment 2,0 tot 2,35 s) en download met gelijke SHA-256; webclient op de vijf breedtes in `docs/qa/chain-acceptance/` zonder overloop of consolefout na een gevonden rastermeting. 943 audiosporen zonder taal: 60 van 60 gemeten bestanden hebben de tag niet (ffprobe), de scanner laat niets vallen en de client toont onbekend. Journey 1, 9, 10 op een toestel: checklist in `docs/pleya-server-device-checklist.md`, uitkomst staat open | |
-| S15.3 | Securitymatrix K.2 volledig groen, vastgelegd in `docs/qa/` | `[ ]` | | |
+| S15.3 | Securitymatrix K.2 volledig groen, vastgelegd in `docs/qa/` | `[~]` | C-05: noodzakelijke web-accountisolatie tijdens S13.3 gerepareerd bij de bestaande client/state-eigenaar. Late refresh/401/logout/succes- en foutantwoorden wijzigen account B niet; oude speleracties en mediacache blijven achter hun sessiegrens. POST-retry bewaart de body. Gerichte tests eerst rood en daarna groen; [webontwikkelbewijs](qa/2026-10-29-pleya-web-consumer-report.md). De volledige securitymatrix, overige faalpaden en onafhankelijke adversariële review blijven open. | 2026-10-29 |
 | S15.4 | Documentatie uit deel M compleet | `[ ]` | | |
 | S15.5 | Plex Replacement Readiness Gate (`PLEX_OFFLINE_REPLACEMENT_GATE`) groen op de geïsoleerde testinstance, Plex blijft draaien (migratie als keuze) | `[ ]` | | |
 | S15.6 | PS-5-hardwareronde afgerond | `[ ]` | nog geen bewijs; OVERDUE sinds 25 sep 2026 en blokkeert de publieke clientrelease en de indiening bij App Review of Beta App Review met PS-5- of PS-9-gedrag en de eerste publieke release van Pleya Server, zie P7 | |
@@ -522,7 +523,7 @@ is geen bewijs van gebouwde leesvoortgang of een reader.
 | S23.4 | Web toont downloads op Mijn Pleya (scherm 11b) | `[ ]` | | |
 | S23.5 | Capability `downloads`, venster 5 deel 3, journey 10 | `[x]` | M5: `capabilities.downloads` staat aan zodra de store er is, openapi `Download`, `DownloadList`, `CreateDownloadRequest` en vijf operaties (75), hoofdstuk Downloads in het protocol, fixtures `download.json` en `download_list.json`, `check_protocol.sh` groen. Journey 10 op een toestel staat open met S23.3 | 2026-10-23 |
 
-**C-05-appvervolg, 29 oktober 2026 (S23.3/S14):** offline-artworkresolver, per-client verse downloadheaders en externe sidecars met stabiel spoor-ID zijn lokaal aangesloten op de bestaande manager/opslag/cache. Offline metadata volgt het ID over gewijzigde spoorvolgorde; geforceerde ondertitels en taal blijven behouden. De client-downloadcapability staat los van `serverSideSync` en volgt voor Pleya de servervlag; detail en contextmenu verbergen een ontbrekende functie. Gerichte regressie en negatieve controles zijn vastgelegd in het ontwikkelbewijs; echte iOS-download/herstart/offlineacceptatie loopt nog. Dit sluit de fysieke journey10 niet en verandert de bestaande serverimplementatiestatus niet.
+**C-05-appvervolg, 29 oktober 2026 (S23.3/S14):** offline-artworkresolver, per-client verse downloadheaders en externe sidecars met stabiel spoor-ID zijn lokaal aangesloten op de bestaande manager/opslag/cache. Offline metadata volgt het ID over gewijzigde spoorvolgorde; geforceerde ondertitels en taal blijven behouden. De client-downloadcapability staat los van `serverSideSync` en volgt voor Pleya de servervlag; detail en contextmenu verbergen een ontbrekende functie. Gerichte regressie en negatieve controles staan in het [offlineontwikkelbewijs](qa/2026-10-29-pleya-offline-report.md): echte geïsoleerde iOS-simulatorproeven voor onderbroken download, koude herstart, digest, lokale playback/sidecar/poster en offline→online replay zijn groen. Replay verwerft geen live eigendom en bewaart de nieuwere canonieke toestand. Accountscope valt nooit terug op een ander account; cache en poster gebruiken het fysieke server-ID. Systeemmediabediening hergebruikt de bestaande lokale poster/cache met beeldbytes. Dit sluit de fysieke journey10 niet en verandert de bestaande serverimplementatiestatus niet.
 
 ### S24 Remote hardening (PS-11)
 

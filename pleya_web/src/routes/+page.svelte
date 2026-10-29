@@ -8,8 +8,12 @@
   import { describeError } from '#lib/api/errors.js';
   import type { Item } from '#lib/api/types.js';
   import { t } from '#lib/i18n/index.js';
+  import { playerHref } from '#lib/player/route.js';
 
   let items = $state<Item[]>([]);
+  let continuing = $state<Item[]>([]);
+  let next = $state<Item[]>([]);
+  let recent = $state<{ id: string; title: string; items: Item[] }[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
 
@@ -17,9 +21,23 @@
     loading = true;
     error = null;
     try {
-      const page = await session.client.hub('recently_added', { limit: 24 }, signal);
+      const libraries = session.libraries.filter((library) => library.kind === 'movies' || library.kind === 'shows');
+      const watchState = session.capabilities?.watch_state === true;
+      const [page, continuePage, nextPage, libraryPages] = await Promise.all([
+        session.client.hub('recently_added', { limit: 5 }, signal),
+        watchState ? session.client.hub('continue_watching', { limit: 24 }, signal) : { items: [] },
+        watchState ? session.client.hub('next_up', { limit: 24 }, signal) : { items: [] },
+        Promise.all(libraries.map(async (library) => ({
+          id: library.id,
+          title: library.title,
+          items: (await session.client.hub('recently_added', { library_id: library.id, limit: 24 }, signal)).items
+        })))
+      ]);
       if (signal.aborted) return;
       items = page.items;
+      continuing = continuePage.items;
+      next = nextPage.items;
+      recent = libraryPages;
     } catch (err) {
       if (signal.aborted) return;
       error = describeError(err);
@@ -28,13 +46,6 @@
     }
   }
 
-  /*
-   * `continue_watching` en `next_up` worden niet opgevraagd. `capabilities`
-   * zegt vandaag `watch_state: false`, en dan levert de server per definitie
-   * lege lijsten. Ze toch ophalen zou twee aanvragen per bezoek kosten om
-   * daarna niets te tekenen; capabilities is leidend, dus dit is de plek waar
-   * die vraag beantwoord hoort te worden.
-   */
   $effect(() => {
     const controller = new AbortController();
     void load(controller.signal);
@@ -42,7 +53,7 @@
   });
 
   const hero = $derived(items[0]);
-  const rail = $derived(items);
+  const empty = $derived(items.length === 0 && continuing.length === 0 && next.length === 0 && recent.every((row) => row.items.length === 0));
 </script>
 
 <svelte:head><title>{t('home.title')} · {t('app.name')}</title></svelte:head>
@@ -67,7 +78,7 @@
       }}
     />
   </div>
-{:else if items.length === 0}
+{:else if empty}
   <div class="home-page">
     <PageHeader title={t('home.title')} />
     <!-- De uitweg is Mijn Pleya: daar staan de bibliotheken en hun scanstand. -->
@@ -79,10 +90,15 @@
   </div>
 {:else}
   {#if hero}
-    <Hero item={hero} />
+    <Hero item={hero} playHref={session.capabilities?.playback_plan === true && (hero.kind === 'movie' || hero.kind === 'episode') && (hero.versions?.length ?? 0) > 0 ? playerHref(hero.id) : undefined} />
   {/if}
   <div class="home">
-    <HubRail title={t('home.recentlyAdded')} items={rail} />
+    {#if !hero}<h1 class="sr-only">{t('home.title')}</h1>{/if}
+    <HubRail title={t('home.continueWatching')} items={continuing} />
+    <HubRail title={t('home.nextUp')} items={next} />
+    {#each recent as row (row.id)}
+      <HubRail title={`${t('home.recentlyAdded')} · ${row.title}`} items={row.items} href={`/libraries/${encodeURIComponent(row.id)}`} />
+    {/each}
   </div>
 {/if}
 

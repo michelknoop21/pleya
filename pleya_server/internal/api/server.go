@@ -515,6 +515,14 @@ func (s *Server) streamSessionScope(w http.ResponseWriter, r *http.Request, rawS
 	}
 
 	versionID, err := id.Parse(r.PathValue("version_id"))
+	if err != nil && s.opts.Transcode != nil {
+		// HLS routes carry a conversion id, not a version id (same ss scope).
+		if conversionID, parseErr := id.Parse(r.PathValue("session_id")); parseErr == nil {
+			if conversion, found := s.opts.Transcode.Get(conversionID); found {
+				versionID, err = conversion.VersionID, nil
+			}
+		}
+	}
 	if err != nil {
 		writeError(w, s.log, CodeNotFound, "not found", nil)
 		return nil, id.Nil, false

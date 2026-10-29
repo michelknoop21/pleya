@@ -198,6 +198,15 @@ class MultiServerManager {
   /// Get client for specific server.
   MediaServerClient? getClient(ServerId serverId) => _clients[serverId];
 
+  /// A queued account scope must never fall back to another active account.
+  MediaServerClient? getClientForScope(ServerId serverId, {String? clientScopeId}) {
+    final active = getClient(serverId);
+    if (clientScopeId == null || clientScopeId.isEmpty) return active;
+    final jellyfin = getJellyfinClientByCompoundId(clientScopeId);
+    if (jellyfin != null && jellyfin.serverId == serverId) return jellyfin;
+    return active?.cacheServerId == clientScopeId ? active : null;
+  }
+
   /// Server ids visible to the active profile; `null` means no restriction.
   /// Owned here rather than on `MultiServerProvider` so non-UI consumers
   /// (the download client resolver) apply the same filter the UI does —
@@ -210,16 +219,13 @@ class MultiServerManager {
 
   bool isServerVisible(ServerId serverId) => _visibleServerIds?.contains(serverId) ?? true;
 
-  /// Resolve the client for a queued download: scope-aware (Jellyfin compound
+  /// Resolve the client for a queued download: scope-aware (Jellyfin and Pleya account
   /// connection ids) and restricted to servers visible to the active profile,
   /// so background downloads never run against another profile's server
   /// during or after a profile switch.
   MediaServerClient? resolveDownloadClient(ServerId serverId, {String? clientScopeId}) {
     if (!isServerVisible(serverId)) return null;
-    if (clientScopeId != null && clientScopeId.isNotEmpty) {
-      return getJellyfinClientByCompoundId(clientScopeId) ?? getClient(serverId);
-    }
-    return getClient(serverId);
+    return getClientForScope(serverId, clientScopeId: clientScopeId);
   }
 
   /// Get the [PlexClient] for a server, or `null` if the server is Jellyfin
@@ -472,7 +478,11 @@ class MultiServerManager {
   /// Check whether the active or scoped client for [serverId] is online.
   bool isClientOnline(ServerId serverId, {String? clientScopeId}) {
     if (clientScopeId != null && clientScopeId.isNotEmpty) {
-      return _jellyfinHealthByCompoundId[clientScopeId] == HealthStatus.online;
+      final client = getClientForScope(serverId, clientScopeId: clientScopeId);
+      if (client == null) return false;
+      if (identical(_jellyfinByCompoundId[clientScopeId], client)) {
+        return _jellyfinHealthByCompoundId[clientScopeId] == HealthStatus.online;
+      }
     }
     return isServerOnline(serverId);
   }

@@ -8,6 +8,7 @@
  * uitgegrijsd.
  */
 import { PleyaClient } from '../api/client';
+import { streamSessions } from '../player/streamSessionCache';
 import type { Capabilities, Info, Library, ServerDetail, User } from '../api/types';
 import { describeError } from '../api/errors';
 import { readLastContact, writeLastContact, type LastContact } from './lastContact';
@@ -34,6 +35,7 @@ class SessionState {
       client ??
       new PleyaClient({
         onSessionLost: () => {
+          streamSessions.clear();
           this.server = null;
           this.libraries = [];
           this.me = null;
@@ -114,6 +116,7 @@ class SessionState {
 
   /** Haalt op wat achter authenticatie zit. Aanroepen na setup of login. */
   async load(): Promise<void> {
+    const generation = this.client.sessionGeneration;
     try {
       const [server, libraries, me] = await Promise.all([
         this.client.server(),
@@ -124,6 +127,7 @@ class SessionState {
           ? this.client.me().catch(() => null)
           : Promise.resolve(null)
       ]);
+      if (generation !== this.client.sessionGeneration) return;
       this.server = server;
       this.libraries = libraries;
       this.me = me;
@@ -136,6 +140,7 @@ class SessionState {
         libraries: libraries.map((l) => ({ id: l.id, kind: l.kind }))
       });
     } catch (err) {
+      if (generation !== this.client.sessionGeneration) return;
       this.error = describeError(err);
       this.phase = 'signed-out';
     }
@@ -143,6 +148,7 @@ class SessionState {
 
   /** Na een geslaagde setup of login: info opnieuw lezen en doorlopen. */
   async afterAuth(): Promise<void> {
+    streamSessions.clear();
     try {
       this.info = await this.client.info();
     } catch {
@@ -157,7 +163,11 @@ class SessionState {
    * heeft ingetrokken (een geroteerde ondertekensleutel).
    */
   async signOut(options: { local?: boolean } = {}): Promise<void> {
-    await this.client.signOut({ remote: !options.local && this.capabilities?.sessions === true });
+    streamSessions.clear();
+    const pending = this.client.signOut({ remote: !options.local && this.capabilities?.sessions === true });
+    const generation = this.client.sessionGeneration;
+    await pending;
+    if (generation !== this.client.sessionGeneration) return;
     this.server = null;
     this.libraries = [];
     this.me = null;

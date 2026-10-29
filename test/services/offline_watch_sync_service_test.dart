@@ -14,6 +14,8 @@ import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/media/playback_report_metadata.dart';
 import 'package:pleya/services/jellyfin_api_cache.dart';
+import 'package:pleya/services/pleya_server_api_cache.dart';
+import '../pleya_server/pleya_fake_server.dart';
 import 'package:pleya/services/jellyfin_client.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/offline_mode_source.dart';
@@ -152,6 +154,13 @@ class _RecordingMediaClient implements MediaServerClient {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _RecordingScopedClient extends _RecordingMediaClient implements ScopedMediaServerClient {
+  _RecordingScopedClient(this.scopedServerId)
+    : super(serverId: ServerId('pleya-machine'), backend: MediaBackend.pleyaServer);
+  @override
+  final String scopedServerId;
 }
 
 /// Build a service against an in-memory database and a bare-metal
@@ -941,6 +950,97 @@ void main() {
 
       svc.setActiveProfileId('profile-a');
       expect(await svc.getLocalWatchStatus('plex-machine:item-1'), isTrue);
+      expect(await svc.getPendingSyncCount(), 1);
+    });
+  });
+
+  group('Pleya scoped sync', () {
+    for (final position in [25000, 95000]) {
+      test('public Pleya replay at $position sends backlog without acquiring live ownership', () async {
+        final (svc: svc, db: db, mgr: mgr) = _makeService();
+        addTearDown(() async {
+          svc.dispose();
+          mgr.dispose();
+          await db.close();
+        });
+        PleyaServerApiCache.initialize(db);
+        final fake = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+        fake.addItem(id: 'movie', kind: 'movie', title: 'Offline', durationMs: 100000);
+        final client = fake.client();
+        await client.refreshCapabilities();
+        mgr.debugRegisterClientForTesting(client);
+        await svc.queueProgressUpdate(
+          serverId: client.serverId,
+          itemId: 'movie',
+          viewOffset: position,
+          duration: 100000,
+        );
+        final recorded = DateTime.utc(2026, 10, 28, 19);
+        await db.customStatement('UPDATE offline_watch_progress SET updated_at = ?', [recorded.millisecondsSinceEpoch]);
+        await svc.syncPendingItems();
+        expect(fake.watchEvents, hasLength(1));
+        expect(fake.watchEvents.single['backlog'], isTrue);
+        expect(DateTime.parse(fake.watchEvents.single['occurred_at'] as String), recorded);
+        expect(fake.watchEvents.single['explicit_action'], 'none');
+        expect(await svc.getPendingSyncCount(), 0);
+      });
+    }
+
+    test('an online Pleya account flushes its own offline progress', () async {
+      final (svc: svc, db: db, mgr: mgr) = _makeService();
+      addTearDown(() async {
+        svc.dispose();
+        mgr.dispose();
+        await db.close();
+      });
+      final a = _RecordingScopedClient('pleya-account-a');
+      mgr.debugRegisterClientForTesting(a);
+      await svc.queueProgressUpdate(serverId: a.serverId, itemId: 'movie', viewOffset: 25000, duration: 100000);
+      await svc.syncPendingItems();
+      expect(a.stopped, hasLength(1));
+      expect(a.stopped.single.report.isOfflineReplay, isTrue);
+      expect(await svc.getPendingSyncCount(), 0);
+    });
+
+    test('queued account A never falls back to active account B', () async {
+      final (svc: svc, db: db, mgr: mgr) = _makeService();
+      addTearDown(() async {
+        svc.dispose();
+        mgr.dispose();
+        await db.close();
+      });
+      final a = _RecordingScopedClient('pleya-account-a');
+      final b = _RecordingScopedClient('pleya-account-b');
+      mgr.debugRegisterClientForTesting(a);
+      await svc.queueProgressUpdate(serverId: a.serverId, itemId: 'movie', viewOffset: 25000, duration: 100000);
+      mgr.debugRegisterClientForTesting(b);
+      expect(mgr.resolveDownloadClient(a.serverId, clientScopeId: a.scopedServerId), isNull);
+      await svc.syncPendingItems();
+      expect(b.stopped, isEmpty);
+      expect(await svc.getPendingSyncCount(), 1);
+      mgr.debugRegisterClientForTesting(a);
+      await svc.syncPendingItems();
+      expect(a.stopped, hasLength(1));
+      expect(await svc.getPendingSyncCount(), 0);
+    });
+
+    test('legacy progress without account scope does not acquire an active Pleya identity', () async {
+      final (svc: svc, db: db, mgr: mgr) = _makeService();
+      addTearDown(() async {
+        svc.dispose();
+        mgr.dispose();
+        await db.close();
+      });
+      await svc.queueProgressUpdate(
+        serverId: ServerId('pleya-machine'),
+        itemId: 'movie',
+        viewOffset: 25000,
+        duration: 100000,
+      );
+      final b = _RecordingScopedClient('pleya-account-b');
+      mgr.debugRegisterClientForTesting(b);
+      await svc.syncPendingItems();
+      expect(b.stopped, isEmpty);
       expect(await svc.getPendingSyncCount(), 1);
     });
   });

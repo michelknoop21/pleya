@@ -63,6 +63,7 @@ export function fakeApi(
   } = {}
 ): FakeApi {
   const api: FakeApi = {
+    reportWatchState: vi.fn(async () => ({ position_ms: 0, watched: false, play_count: 0, updated_at: '2026-10-29T12:00:00Z', revision: 1, owned_by_this_session: true })),
     calls: [],
     stops: [],
     heartbeats: [],

@@ -63,6 +63,11 @@ export class PleyaClient {
   #raw: Client<paths>;
   #fetch: FetchLike;
   #refreshing: Promise<boolean> | null = null;
+  #refreshGeneration = -1;
+  #sessionGeneration = 0;
+  #requests = new WeakMap<Request, { generation: number; replay: Request }>();
+
+  get sessionGeneration(): number { return this.#sessionGeneration; }
   #onSessionLost: (() => void) | undefined;
 
   constructor(options: PleyaClientOptions = {}) {
@@ -82,6 +87,7 @@ export class PleyaClient {
     return {
       onRequest: ({ request }) => {
         if (isPublic(request.url, this.baseUrl)) return request;
+        this.#requests.set(request, { generation: this.#sessionGeneration, replay: request.clone() });
         const access = this.tokens.accessToken;
         if (access) request.headers.set('Authorization', `Bearer ${access}`);
         return request;
@@ -90,13 +96,16 @@ export class PleyaClient {
         if (response.status !== 401) return response;
         if (isPublic(request.url, this.baseUrl)) return response;
         if (request.headers.get('x-pleya-retry') === '1') return response;
+        const original = this.#requests.get(request);
+        if (!original || original.generation !== this.#sessionGeneration) return response;
+        const generation = original.generation;
 
         const refreshed = await this.#refreshOnce();
-        if (!refreshed) return response;
+        if (!refreshed || generation !== this.#sessionGeneration) return response;
 
         // Opnieuw sturen met het verse accesstoken. De markering voorkomt dat
         // een tweede 401 een lus wordt.
-        const retry = new Request(request, { headers: new Headers(request.headers) });
+        const retry = new Request(original.replay, { headers: new Headers(request.headers) });
         retry.headers.set('Authorization', `Bearer ${this.tokens.accessToken ?? ''}`);
         retry.headers.set('x-pleya-retry', '1');
         return await this.#fetch(retry);
@@ -114,7 +123,9 @@ export class PleyaClient {
    * mis was.
    */
   #refreshOnce(): Promise<boolean> {
-    if (this.#refreshing) return this.#refreshing;
+    const generation = this.#sessionGeneration;
+    if (this.#refreshing && this.#refreshGeneration === generation) return this.#refreshing;
+    this.#refreshGeneration = generation;
 
     const refresh = this.tokens.refreshToken;
     if (!refresh) {
@@ -127,6 +138,7 @@ export class PleyaClient {
         const { data, error, response } = await this.#raw.POST('/auth/refresh', {
           body: { refresh_token: refresh }
         });
+        if (generation !== this.#sessionGeneration) return false;
         if (error || !data) {
           this.#loseSession();
           if (error) throw toApiError(response.status, error);
@@ -140,7 +152,7 @@ export class PleyaClient {
         // zodat de volgende poging het opnieuw kan proberen.
         return false;
       } finally {
-        this.#refreshing = null;
+        if (this.#refreshGeneration === generation) this.#refreshing = null;
       }
     })();
 
@@ -148,6 +160,7 @@ export class PleyaClient {
   }
 
   #loseSession(): void {
+    this.#sessionGeneration++;
     this.tokens.clear();
     this.#onSessionLost?.();
   }
@@ -156,6 +169,7 @@ export class PleyaClient {
   async #unwrap<T>(
     call: Promise<{ data?: T; error?: unknown; response: Response }>
   ): Promise<T> {
+    const generation = this.#sessionGeneration;
     let result: { data?: T; error?: unknown; response: Response };
     try {
       result = await call;
@@ -165,6 +179,7 @@ export class PleyaClient {
     if (result.error !== undefined || result.data === undefined) {
       throw toApiError(result.response.status, result.error);
     }
+    if (generation !== this.#sessionGeneration) throw new TransportError(new Error('Account changed during request'));
     return result.data;
   }
 
@@ -185,13 +200,17 @@ export class PleyaClient {
       password: string;
     } & DeviceFields
   ): Promise<TokenPair> {
+    const generation = ++this.#sessionGeneration;
     const pair = await this.#unwrap(this.#raw.POST('/auth/setup', { body: input }));
+    if (generation !== this.#sessionGeneration) throw new Error('Account changed during setup');
     this.tokens.set(pair);
     return pair;
   }
 
   async login(input: { username: string; password: string } & DeviceFields): Promise<TokenPair> {
+    const generation = ++this.#sessionGeneration;
     const pair = await this.#unwrap(this.#raw.POST('/auth/login', { body: input }));
+    if (generation !== this.#sessionGeneration) throw new Error('Account changed during login');
     this.tokens.set(pair);
     return pair;
   }
@@ -223,6 +242,7 @@ export class PleyaClient {
    * zoals vroeger, of de opruimronde neemt hem mee.
    */
   async signOut(options: { remote?: boolean } = {}): Promise<void> {
+    const generation = ++this.#sessionGeneration;
     if (options.remote && this.tokens.accessToken) {
       try {
         await this.#raw.POST('/auth/logout', {});
@@ -230,7 +250,7 @@ export class PleyaClient {
         // Geen verbinding: alleen lokaal.
       }
     }
-    this.tokens.clear();
+    if (generation === this.#sessionGeneration) this.tokens.clear();
   }
 
   /**

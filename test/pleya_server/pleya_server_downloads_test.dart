@@ -97,6 +97,37 @@ void main() {
     await expectLater(subtitle.headersSupplier!(), throwsStateError);
   });
 
+  test('recovery resolves sidecars for the stable source without creating another download', () async {
+    final fake = PleyaFakeServer()..downloadsCapability = true;
+    client = await connected(fake);
+    final metadata = item.copyWith(
+      mediaVersions: const [
+        MediaVersion(id: 'other'),
+        MediaVersion(
+          id: 'chosen',
+          parts: [
+            MediaPart(
+              id: 'chosen',
+              streams: [
+                MediaStream(
+                  id: 'sidecar',
+                  kind: MediaStreamKind.subtitle,
+                  codec: 'srt',
+                  languageCode: 'eng',
+                  sidecarPath: 'pleya-subtitle:sidecar',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+    final subtitles = client.resolveDownloadSubtitles(metadata, mediaSourceId: 'chosen');
+    expect(subtitles.single.sourceStreamId, 'sidecar');
+    expect(fake.downloadRequests, isEmpty);
+    expect(client.resolveDownloadSubtitles(metadata, mediaSourceId: 'removed'), isEmpty);
+  });
+
   test('a download the server could not prepare is an error, not a silent skip', () async {
     final server = PleyaFakeServer()
       ..downloadsCapability = true
