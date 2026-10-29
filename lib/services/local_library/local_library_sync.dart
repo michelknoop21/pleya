@@ -112,7 +112,12 @@ class LocalLibrarySync {
       // Whether the stored answer may be trusted as final. Only a Pleya Server
       // that knows the field says so; the others keep the behaviour they had.
       var authoritative = false;
-      if ((item.kind == MediaKind.movie || item.kind == MediaKind.show) && item.raw?['pleyaLocalExternalIds'] == null) {
+      // A Pleya row whose stored answer was not final (written by an older build,
+      // or by a server that predates the field) is asked again, also when the
+      // rest of the row was retained unchanged.
+      final storedFinal = client is! PleyaServerClient || item.raw?['pleyaLocalExternalIdsFinal'] == true;
+      if ((item.kind == MediaKind.movie || item.kind == MediaKind.show) &&
+          (item.raw?['pleyaLocalExternalIds'] == null || !storedFinal)) {
         try {
           if (client is PleyaServerClient) {
             final answer = await client.fetchExternalIdsDetailed(item.id).timeout(const Duration(seconds: 20));

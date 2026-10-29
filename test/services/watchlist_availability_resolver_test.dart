@@ -1,6 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/database/app_database.dart';
+import 'package:pleya/exceptions/identity_lookup_exceptions.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_identity.dart';
@@ -18,16 +19,18 @@ import 'fake_favorites_client.dart';
 /// now dispatches per server through the shared fan-out (hoofdstuk 4.3),
 /// which calls that rather than [findByIdentity].
 class _MatchingClient extends FakeFavoritesClient {
-  _MatchingClient({this.match, this.throws = false}) : super(favorites: const []);
+  _MatchingClient({this.match, this.throws = false, this.unsupported = false}) : super(favorites: const []);
 
   final MediaItem? match;
   final bool throws;
+  final bool unsupported;
 
   int lookups = 0;
 
   @override
   Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async {
     lookups++;
+    if (unsupported) throw const IdentityLookupUnsupported('no tmdb number');
     if (throws) throw StateError('server down mid-flight');
     return match == null ? const [] : [match!];
   }
@@ -71,11 +74,12 @@ EligibleServer server(
   bool online = true,
   bool throws = false,
   bool noClient = false,
+  bool unsupported = false,
 }) {
   return (
     serverId: ServerId(id),
     backend: backend,
-    client: noClient || !online ? null : _MatchingClient(match: match, throws: throws),
+    client: noClient || !online ? null : _MatchingClient(match: match, throws: throws, unsupported: unsupported),
     online: online,
   );
 }
@@ -163,14 +167,15 @@ void main() {
     });
 
     test(
-      'an entry without a TMDB number is not a question for a Pleya Server: it stays out of the denominator',
+      'an entry without a TMDB number cannot be asked of a Pleya Server: not checked, never a complete miss',
       () async {
         final result = await resolverFor([
           server('s1'),
-          server('ps', backend: MediaBackend.pleyaServer, throws: true),
+          server('ps', backend: MediaBackend.pleyaServer, unsupported: true),
         ]).resolve(entry());
 
-        expect(result.coverageComplete, isTrue);
+        expect(result.match, isNull);
+        expect(result.coverageComplete, isFalse);
       },
     );
 

@@ -18,11 +18,11 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
+import '../../exceptions/identity_lookup_exceptions.dart';
 import '../../media/ids.dart';
 import '../../media/media_backend.dart';
 import '../../media/media_identity.dart';
 import '../../media/media_item.dart';
-import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/source_coverage_state.dart';
 import '../../utils/app_logger.dart';
@@ -40,7 +40,11 @@ typedef FanOutServer = ({ServerId serverId, MediaServerClient? client, bool onli
 /// returned, and whether the lookup itself succeeded. `ok: false` covers
 /// "offline/no client" and "the call threw" alike — both mean this server
 /// was not actually checked.
-typedef SourceLookupOutcome = ({ServerId serverId, List<MediaItem> matches, bool ok});
+///
+/// [unsupported] marks a server that cannot answer this question at all (an
+/// older Pleya Server, an identity it cannot be asked by). It is still not
+/// checked, but retrying does not help, so it is reported apart from an outage.
+typedef SourceLookupOutcome = ({ServerId serverId, List<MediaItem> matches, bool ok, bool unsupported});
 
 /// Runs `findAllByIdentity(identity)` against [servers] in
 /// [maxConcurrent]-sized batches, in list order — deterministic, so two
@@ -61,13 +65,21 @@ Future<void> fanOutFindAllByIdentity({
       batch.map((server) async {
         final client = server.client;
         if (!server.online || client == null) {
-          return (serverId: server.serverId, matches: const <MediaItem>[], ok: false);
+          return (serverId: server.serverId, matches: const <MediaItem>[], ok: false, unsupported: false);
         }
         try {
-          return (serverId: server.serverId, matches: await client.findAllByIdentity(identity), ok: true);
+          return (
+            serverId: server.serverId,
+            matches: await client.findAllByIdentity(identity),
+            ok: true,
+            unsupported: false,
+          );
+        } on IdentityLookupUnsupported catch (e) {
+          appLogger.d('findAllByIdentity unsupported on ${server.serverId}', error: e);
+          return (serverId: server.serverId, matches: const <MediaItem>[], ok: false, unsupported: true);
         } catch (e, st) {
           appLogger.d('findAllByIdentity failed on ${server.serverId}', error: e, stackTrace: st);
-          return (serverId: server.serverId, matches: const <MediaItem>[], ok: false);
+          return (serverId: server.serverId, matches: const <MediaItem>[], ok: false, unsupported: false);
         }
       }),
     );
@@ -118,14 +130,6 @@ bool isIdentityEligibleBackend(MediaBackend backend) => switch (backend) {
   MediaBackend.plex || MediaBackend.jellyfin || MediaBackend.pleyaServer => true,
   MediaBackend.local => false,
 };
-
-/// Whether [backend] can be asked about [identity] at all. A Pleya Server only
-/// proves a title by its TMDB number and a kind, so an identity that has only an
-/// IMDb or TVDB number is not a question it can answer. It stays out of the
-/// expected set for that title, instead of showing as a server that failed.
-bool canAskBackendAbout(MediaBackend backend, MediaIdentity identity) =>
-    backend != MediaBackend.pleyaServer ||
-    (identity.externalIds.tmdb != null && (identity.kind == MediaKind.movie || identity.kind == MediaKind.show));
 
 /// One server [SourceAllResolver] is allowed to ask, plus enough state to
 /// explain a coverage gap. [hasAuthError] is separate from [online]: an
@@ -286,9 +290,7 @@ class SourceAllResolver {
     }
 
     final servers = serversFor();
-    final eligible = servers
-        .where((s) => isIdentityEligibleBackend(s.backend) && canAskBackendAbout(s.backend, identity))
-        .toList();
+    final eligible = servers.where((s) => isIdentityEligibleBackend(s.backend)).toList();
     final expectedIds = {for (final s in eligible) s.serverId.toString()};
 
     // Read once and thread it through the whole resolve. Reading it again at
@@ -324,7 +326,9 @@ class SourceAllResolver {
             // warm hit for up to [positiveTtl].
             items.addAll(visibleMatchesFromServer(result.matches, result.serverId, hiddenLibraryKeys));
           } else {
-            uncheckedReasons[id] = UncheckedSourceReason.lookupFailed;
+            uncheckedReasons[id] = result.unsupported
+                ? UncheckedSourceReason.cannotBeAsked
+                : UncheckedSourceReason.lookupFailed;
           }
         }
         // Without a caller-supplied rule this never stops early: every

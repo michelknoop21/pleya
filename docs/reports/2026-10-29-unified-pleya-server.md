@@ -30,9 +30,9 @@ Roadmap: A-07 (serverdeel C-05 / S22, register X5). Besluit: DEC-XXX. Branch `fe
 - Het fixtureprotocol voor Verify heeft nog geen tweede server per scenario (zie DEC-101); er is geen Verify-scenario gemaakt.
 
 ## Bekende beperkingen
-- De bucket is titel plus jaar: dezelfde serie met een ander jaar op de twee servers wordt niet opgezocht en blijft twee kaarten.
+- De catalogus vergelijkt alleen items met gelijke genormaliseerde titel (het jaar telt niet meer mee). Een titel die per server anders heet blijft in het raster twee kaarten, terwijl de bronkeuze hem wel op nummer vindt. Dit is een open gat tegenover de wens "ook bij verschillende titels": oplossen vraagt een goedkope id-route voor Plex en Jellyfin (nu één verzoek per item) en is niet gedaan.
 - Een Pleya Server zonder match, of een oudere serverversie, blijft eigen kaarten tonen.
-- Plex-titel zonder TMDB-nummer: Pleya Server kan hem niet bewijzen en staat dan als niet gecontroleerd in de dekking.
+- Plex-titel zonder TMDB-nummer, of een oudere Pleya Server: de server staat in de dekking als `cannotBeAsked` (niet gecontroleerd, geen negatieve cache). Dekking wordt voor zo'n profiel dus nooit volledig; dat is bewust gekozen boven een onterecht "niet aanwezig".
 
 ## Derde ronde (hersteldoel na tweede review)
 - Fouten en cache: `IdentityLookupUnavailable` en `IdentityLookupUnsupported` (geen brede `StateError`-vangst). De scan tolereert alleen die twee, `MediaServerHttpException` en `TimeoutException`; een onverwachte `StateError` breekt hem nog steeds (test). Een mislukte opvraag slaat niets op; een antwoord van een server die het veld kent wordt als `pleyaLocalExternalIdsFinal` bewaard, ook als het leeg is, dus geen netwerk per schermopbouw; oude of niet-finale snapshots vragen opnieuw. Getest: 429, 500, 503, onbereikbaar, offline, timeout, herstel.
@@ -40,3 +40,7 @@ Roadmap: A-07 (serverdeel C-05 / S22, register X5). Besluit: DEC-XXX. Branch `fe
 - Kosten: nummers komen mee met lijst- en detailantwoorden (cache 60 s, max 5000). Gemeten met 600 Plex- en 300 Pleya-titels: 0 detailverzoeken naar de Pleya Server, 300 id-opvragingen op Plex (alleen titels die op beide staan). Server: geen query voor pagina's zonder film of serie (test, rood zonder guard) en kindguard in de SQL van het filter.
 - Protocol: `pleya_server/CLAUDE.md` is teruggezet op de oorspronkelijke tekst. Het venster staat als scoped venster in DEC-XXX met de zes regels getoetst; bekrachtiging door Michel staat expliciet open. De verouderde zin in CLAUDE.md over tabellen die niet bestaan (`metadata_candidates` bestaat sinds 0013) is niet aangepast en blijft een aparte docs-correctie.
 - Nog steeds open: toestel- en Verify-bewijs, en de dubbele serie van Michel op iPhone en Apple TV.
+
+## Vierde ronde (herreview van bd6b3d5)
+- Verwerkt: I2/I4 `UncheckedSourceReason.cannotBeAsked` in plaats van uitsluiting uit de noemer (de eerdere "niet van toepassing"-regel is vervallen, test omgedraaid); I1 de scan vraagt een niet-finaal Pleya-antwoord opnieuw (de retentietak is voor Pleya nu onbereikbaar omdat de mapper geen `updatedAt` zet; de guard en test zijn defensief, de negatieve controle slaat daarom niet aan); M4 de server accepteert alleen `tmdb:` met kale cijfers (test, rood zonder regex); M6 rapport rechtgezet.
+- Open en bewust: I3 lijsten buiten de bibliotheekpagina's (zoeken, hubs, Verder kijken) vullen de nummercache niet; I5 bekrachtiging van het scoped venster door Michel; I6 zie hierboven.

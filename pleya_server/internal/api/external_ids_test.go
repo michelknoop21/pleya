@@ -3,6 +3,7 @@ package api_test
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
@@ -143,8 +144,8 @@ func TestExternalIDLookupFindsTheTitleWithoutTitleOrYear(t *testing.T) {
 	if len(list("shows", "external_id=tmdb:621").Items) != 0 {
 		t.Fatal("een filmnummer kwam uit een seriebibliotheek")
 	}
-	for _, bad := range []string{"tmdb:abc", "tmdb:0", "imdb:tt1", "621", "tmdb:-3"} {
-		rec := e.do(http.MethodGet, "/pleya/v1/libraries/"+e.libraryID("movies")+"/items?external_id="+bad, nil)
+	for _, bad := range []string{"tmdb:abc", "tmdb:0", "imdb:tt1", "621", "tmdb:-3", "tmdb:+5", "tmdb:0621", "tmdb: 5"} {
+		rec := e.do(http.MethodGet, "/pleya/v1/libraries/"+e.libraryID("movies")+"/items?external_id="+url.QueryEscape(bad), nil)
 		if rec.Code != http.StatusBadRequest {
 			t.Fatalf("%q gaf %d, verwacht 400", bad, rec.Code)
 		}

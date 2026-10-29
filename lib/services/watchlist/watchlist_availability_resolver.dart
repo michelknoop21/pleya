@@ -8,7 +8,7 @@ import '../../media/media_server_client.dart';
 import '../../media/watchlist_entry.dart';
 import '../../utils/app_logger.dart';
 import '../api_cache.dart';
-import '../unified_catalog/source_resolver.dart' show canAskBackendAbout, fanOutFindAllByIdentity;
+import '../unified_catalog/source_resolver.dart' show fanOutFindAllByIdentity;
 
 /// Where a title turned out to live, and how sure we are that the answer is
 /// the whole story.
@@ -92,7 +92,7 @@ class WatchlistAvailabilityResolver {
     if (!identity.isSearchable) return (match: null, coverageComplete: true);
 
     final servers = serversFor();
-    final eligible = servers.where((s) => _isEligible(s) && canAskBackendAbout(s.backend, identity)).toList();
+    final eligible = servers.where(_isEligible).toList();
 
     final cached = await _readCache(cacheKey, eligible);
     if (cached != null) return cached;

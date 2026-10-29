@@ -150,6 +150,40 @@ void main() {
       expect(raw['unmatched']?['pleyaLocalExternalIdsFinal'], isTrue, reason: 'no refetch on every screen build');
     });
 
+    test('a retained row whose stored answer was not final is asked again, and becomes final', () async {
+      final fake = PleyaFakeServer();
+      fake.addLibrary(id: 'lib-series', title: 'Series', kind: 'shows');
+      fake.addItem(
+        id: 'matched',
+        kind: 'show',
+        title: 'A',
+        libraryId: 'lib-series',
+        year: 2020,
+        externalIds: {'tmdb': 5},
+      );
+      final pleya = fake.client();
+      addTearDown(pleya.close);
+      await pleya.refreshCapabilities();
+      const pleyaLibrary = MediaLibrary(
+        id: 'lib-series',
+        backend: MediaBackend.pleyaServer,
+        title: 'Series',
+        kind: MediaKind.show,
+        serverId: 'srv-1',
+      );
+      await LocalLibrarySync(store: store).syncLibrary(pleyaLibrary, pleya);
+      final first = store.items.single;
+      // An older build stored an empty, non-final answer for this unchanged row.
+      await store.saveLibrary(pleyaLibrary, [
+        first.copyWith(raw: {'pleyaLocalExternalIds': <String, Object?>{}, 'pleyaLocalExternalIdsFinal': false}),
+      ], complete: true);
+
+      await LocalLibrarySync(store: store).syncLibrary(pleyaLibrary, pleya);
+
+      expect(store.items.single.raw?['pleyaLocalExternalIds'], {'tmdb': 5});
+      expect(store.items.single.raw?['pleyaLocalExternalIdsFinal'], isTrue);
+    });
+
     test('a server that predates the field stores nothing final', () async {
       final raw = await scan(reportsExternalIds: false);
 
