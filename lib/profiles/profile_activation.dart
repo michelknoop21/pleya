@@ -8,12 +8,25 @@ import '../screens/profile/pin_entry_dialog.dart';
 import '../services/plex_auth_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/snackbar_helper.dart';
+import '../widgets/notice/notice_controller.dart';
 import 'active_profile_binder.dart';
 import 'active_profile_provider.dart';
 import 'plex_home_switch.dart';
 import 'profile.dart';
 import 'profile_connection.dart';
 import 'profile_connection_registry.dart';
+
+const _profileSwitchFailureGroup = 'profile-switch-failure';
+
+void _showProfileSwitchFailure(BuildContext context, Profile profile) {
+  showSnackBar(
+    context,
+    t.errors.failedToSwitchProfile(displayName: profile.displayName),
+    type: SnackBarType.error,
+    duration: const Duration(seconds: 8),
+    groupKey: _profileSwitchFailureGroup,
+  );
+}
 
 /// Activate [profile] from a UI surface, prompting for the PIN when the
 /// profile is protected. Returns `true` on successful activation, `false`
@@ -109,16 +122,17 @@ Future<bool> switchProfileFromUi(BuildContext context, Profile profile) async {
   final ok = await activateProfileWithPin(context, profile, onPinCancelled: () => pinCancelled = true);
   if (!context.mounted) return false;
   if (!ok) {
-    if (!pinCancelled) showErrorSnackBar(context, t.errors.failedToSwitchProfile(displayName: profile.displayName));
+    if (!pinCancelled) _showProfileSwitchFailure(context, profile);
     return false;
   }
 
   final bound = await activeProvider.awaitBindingSettle();
   if (!context.mounted) return false;
   if (!bound) {
-    showErrorSnackBar(context, t.errors.failedToSwitchProfile(displayName: profile.displayName));
+    _showProfileSwitchFailure(context, profile);
     return false;
   }
+  noticeController.dismissWhere((notice) => notice.groupKey == _profileSwitchFailureGroup);
   return true;
 }
 
