@@ -89,3 +89,36 @@ describe('tokenopslag', () => {
     expect(tokens.refreshToken).toBeNull();
   });
 });
+
+describe('cookie credential storage', () => {
+  it('keeps access in memory and removes persistent credentials in cookie mode', () => {
+    const persistent = store({ 'pleya.refresh_token': 'legacy-R' });
+    const session = store({ 'pleya.access_token': 'legacy-A' });
+    const tokens = new TokenStore(persistent, session);
+    tokens.setMemoryOnly(true);
+    tokens.set({ access_token: 'cookie-A', expires_in_ms: 900000 });
+    expect(tokens.accessToken).toBe('cookie-A');
+    expect(tokens.refreshToken).toBeNull();
+    expect(persistent.getItem('pleya.refresh_token')).toBeNull();
+    expect(session.getItem('pleya.access_token')).toBeNull();
+    expect(new TokenStore(persistent, session).hasSomething).toBe(false);
+  });
+  it('can use the existing legacy storage again for a server without cookies', () => {
+    const persistent = store(); const session = store();
+    const tokens = new TokenStore(persistent, session);
+    tokens.setMemoryOnly(true);
+    tokens.set({ access_token: 'cookie-A', expires_in_ms: 900000 });
+    tokens.setMemoryOnly(false);
+    tokens.set({ access_token: 'legacy-A', refresh_token: 'legacy-R', expires_in_ms: 900000 });
+    expect(persistent.getItem('pleya.refresh_token')).toBe('legacy-R');
+    expect(session.getItem('pleya.access_token')).toContain('legacy-A');
+  });
+});
+
+it('removes the legacy refresh credential even when session storage rejects removal', () => {
+  const persistent = store({ 'pleya.refresh_token': 'legacy-R' });
+  const blocked: TokenStorage = { getItem: () => null, setItem: () => { throw new Error('blocked'); }, removeItem: () => { throw new Error('blocked'); } };
+  const tokens = new TokenStore(persistent, blocked);
+  tokens.setMemoryOnly(true);
+  expect(persistent.getItem('pleya.refresh_token')).toBeNull();
+});

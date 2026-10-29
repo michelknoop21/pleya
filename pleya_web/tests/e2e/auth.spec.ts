@@ -95,3 +95,27 @@ test('de sessie overleeft een herlaadbeurt', async ({ page }) => {
   // sessie terug zonder opnieuw inloggen.
   await expectShell(page);
 });
+
+test('cookie-auth keeps credentials out of browser storage and restores after reload', async ({ page }) => {
+  const info = await page.request.get('/pleya/v1/info');
+  const details = await info.json();
+  test.skip(details.capabilities.cookie_auth !== true, 'older server uses the existing token path');
+  test.skip(details.auth.setup_required, 'setup must be completed first');
+  await page.goto('/');
+  await page.waitForURL('**/login');
+  await page.getByLabel('Username').fill(USERNAME);
+  await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expectShell(page);
+  const storageIsEmpty = () => page.evaluate(() =>
+    localStorage.getItem('pleya.refresh_token') === null && sessionStorage.getItem('pleya.access_token') === null);
+  expect(await storageIsEmpty()).toBe(true);
+  const cookie = (await page.context().cookies()).find(cookie => cookie.name === 'pleya_refresh');
+  expect(cookie !== undefined).toBe(true);
+  expect(cookie?.httpOnly).toBe(true);
+  expect(cookie?.sameSite).toBe('Strict');
+  expect(await page.evaluate(() => document.cookie.includes('pleya_refresh='))).toBe(false);
+  await page.reload();
+  await expectShell(page);
+  expect(await storageIsEmpty()).toBe(true);
+});

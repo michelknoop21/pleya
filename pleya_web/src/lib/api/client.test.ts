@@ -588,3 +588,106 @@ it('does not return an old successful response after account replacement', async
   release(json({ items: [{ id: 'private-A', title: 'Only A', kind: 'movies', item_count: 1 }] }));
   await rejected;
 });
+
+describe('existing cookie-auth contract', () => {
+  function cookieServer(supports = true) {
+    const storage = stores();
+    const seen: { path: string; body: Record<string, unknown> | null }[] = [];
+    const client = new PleyaClient({ baseUrl: BASE, tokens: storage.tokens, fetch: (async (input: RequestInfo | URL) => {
+      const request = input as Request;
+      const path = new URL(request.url).pathname.replace('/pleya/v1', '');
+      const body = request.method === 'POST' ? await request.json() : null;
+      seen.push({ path, body });
+      if (path === '/info') return json({ capabilities: { cookie_auth: supports } });
+      const cookie = body?.credential_mode === 'cookie';
+      return json({ access_token: 'new-A', expires_in_ms: 900000, ...(cookie ? {} : { refresh_token: 'new-R' }) });
+    }) as FetchLike });
+    return { client, seen, ...storage };
+  }
+  it('requests cookie login and restores without a JavaScript refresh credential', async () => {
+    const { client, seen, tokens, persistent, session } = cookieServer();
+    await client.info();
+    await client.login({ username: 'owner', password: 'canned' });
+    expect(seen.find(request => request.path === '/auth/login')?.body).toMatchObject({ credential_mode: 'cookie' });
+    expect(tokens.accessToken).toBe('new-A');
+    expect(persistent.getItem('pleya.refresh_token')).toBeNull();
+    expect(session.getItem('pleya.access_token')).toBeNull();
+    tokens.clear();
+    expect(await client.restore()).toBe(true);
+    expect(seen.find(request => request.path === '/auth/refresh')?.body).toEqual({ credential_mode: 'cookie' });
+    expect(tokens.accessToken).toBe('new-A');
+  });
+  it('does not send credential_mode to an older server', async () => {
+    const { client, seen, persistent } = cookieServer(false);
+    await client.info(); await client.login({ username: 'owner', password: 'canned' });
+    expect(seen.find(request => request.path === '/auth/login')?.body).not.toHaveProperty('credential_mode');
+    expect(persistent.getItem('pleya.refresh_token')).toBe('new-R');
+  });
+  it('retains an existing legacy session until the next explicit login', async () => {
+    const { client, seen, tokens, persistent, session } = cookieServer();
+    tokens.set({ access_token: 'expired-A', refresh_token: 'legacy-R', expires_in_ms: 0 });
+    await client.info();
+    expect(await client.restore()).toBe(true);
+    expect(seen.find(request => request.path === '/auth/refresh')?.body).toEqual({ refresh_token: 'legacy-R' });
+    expect(persistent.getItem('pleya.refresh_token')).toBe('new-R');
+    await client.login({ username: 'owner', password: 'canned' });
+    expect(persistent.getItem('pleya.refresh_token')).toBeNull();
+    expect(session.getItem('pleya.access_token')).toBeNull();
+  });
+  it('uses cookie mode during setup only behind the server flag', async () => {
+    const { client, seen, persistent } = cookieServer();
+    await client.info();
+    await client.setup({ setup_code: 'fixture', username: 'owner', password: 'canned' });
+    expect(seen.find(request => request.path === '/auth/setup')?.body).toMatchObject({ credential_mode: 'cookie' });
+    expect(persistent.getItem('pleya.refresh_token')).toBeNull();
+  });
+});
+
+it('recognizes public routes when the browser resolves a relative API base URL', async () => {
+  const NativeRequest = globalThis.Request;
+  class BrowserRequest extends NativeRequest {
+    constructor(input: RequestInfo | URL, init?: RequestInit) {
+      super(typeof input === 'string' ? new URL(input, 'http://relative.test') : input, init);
+    }
+  }
+  vi.stubGlobal('Request', BrowserRequest);
+  try {
+    let auth: string | null = null;
+    const tokens = stores().tokens;
+    tokens.set({ access_token: 'canned-A', refresh_token: 'canned-R', expires_in_ms: 900000 });
+    const client = new PleyaClient({ baseUrl: '/pleya/v1', tokens, fetch: (async (input: RequestInfo | URL) => {
+      auth = (input as Request).headers.get('Authorization');
+      return json({ capabilities: { cookie_auth: false } });
+    }) as FetchLike });
+    await client.info();
+    expect(auth).toBeNull();
+  } finally { vi.stubGlobal('Request', NativeRequest); }
+});
+
+it('a rejected cookie refresh never falls back to a JSON refresh credential', async () => {
+  const bodies: unknown[] = [];
+  const lost = vi.fn();
+  const { tokens } = stores();
+  const client = new PleyaClient({ baseUrl: BASE, tokens, onSessionLost: lost, fetch: (async (input: RequestInfo | URL) => {
+    const request = input as Request;
+    if (request.url.endsWith('/info')) return json({ capabilities: { cookie_auth: true } });
+    bodies.push(await request.json());
+    return json({ code: 'auth.token_invalid' }, 401);
+  }) as FetchLike });
+  await client.info();
+  expect(await client.restore()).toBe(false);
+  expect(bodies).toEqual([{ credential_mode: 'cookie' }]);
+  expect(lost).toHaveBeenCalledTimes(1);
+});
+
+it('a failed explicit cookie login leaves the existing legacy credential intact', async () => {
+  const { tokens, persistent } = stores('legacy-R');
+  const client = new PleyaClient({ baseUrl: BASE, tokens, fetch: (async (input: RequestInfo | URL) => {
+    const request = input as Request;
+    if (request.url.endsWith('/info')) return json({ capabilities: { cookie_auth: true } });
+    return json({ code: 'auth.invalid_credentials' }, 401);
+  }) as FetchLike });
+  await client.info();
+  await expect(client.login({ username: 'owner', password: 'wrong-canned' })).rejects.toBeInstanceOf(ApiError);
+  expect(persistent.getItem('pleya.refresh_token')).toBe('legacy-R');
+});

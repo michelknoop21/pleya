@@ -43,9 +43,11 @@ export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promis
 const PUBLIC_PATHS = new Set(['/info', '/auth/setup', '/auth/login', '/auth/refresh']);
 
 function isPublic(url: string, baseUrl: string): boolean {
-  const path = url.startsWith(baseUrl) ? url.slice(baseUrl.length) : url;
-  for (const p of PUBLIC_PATHS) if (path === p || path.startsWith(`${p}?`)) return true;
-  return false;
+  const base = new URL(baseUrl, url);
+  const target = new URL(url, base);
+  if (target.origin !== base.origin) return false;
+  const prefix = base.pathname.replace(/\/$/, '');
+  return target.pathname.startsWith(`${prefix}/`) && PUBLIC_PATHS.has(target.pathname.slice(prefix.length));
 }
 
 export interface PleyaClientOptions {
@@ -65,6 +67,8 @@ export class PleyaClient {
   #refreshing: Promise<boolean> | null = null;
   #refreshGeneration = -1;
   #sessionGeneration = 0;
+  #supportsCookieAuth = false;
+  #cookieAuth = false;
   #requests = new WeakMap<Request, { generation: number; replay: Request }>();
 
   get sessionGeneration(): number { return this.#sessionGeneration; }
@@ -128,7 +132,7 @@ export class PleyaClient {
     this.#refreshGeneration = generation;
 
     const refresh = this.tokens.refreshToken;
-    if (!refresh) {
+    if (!this.#cookieAuth && !refresh) {
       this.#loseSession();
       return Promise.resolve(false);
     }
@@ -136,7 +140,7 @@ export class PleyaClient {
     this.#refreshing = (async () => {
       try {
         const { data, error, response } = await this.#raw.POST('/auth/refresh', {
-          body: { refresh_token: refresh }
+          body: this.#cookieAuth ? { credential_mode: 'cookie' } : { refresh_token: refresh! }
         });
         if (generation !== this.#sessionGeneration) return false;
         if (error || !data) {
@@ -185,8 +189,17 @@ export class PleyaClient {
 
   // --- Ontdekken en authenticatie ---------------------------------------
 
-  info(signal?: AbortSignal): Promise<Info> {
-    return this.#unwrap(this.#raw.GET('/info', { signal }));
+  async info(signal?: AbortSignal): Promise<Info> {
+    const info = await this.#unwrap(this.#raw.GET('/info', { signal }));
+    this.#supportsCookieAuth = info.capabilities?.cookie_auth === true;
+    if (!this.#supportsCookieAuth) {
+      this.#cookieAuth = false;
+      this.tokens.setMemoryOnly(false);
+    } else if (!this.tokens.refreshToken) {
+      this.#cookieAuth = true;
+      this.tokens.setMemoryOnly(true);
+    }
+    return info;
   }
 
   /**
@@ -201,16 +214,22 @@ export class PleyaClient {
     } & DeviceFields
   ): Promise<TokenPair> {
     const generation = ++this.#sessionGeneration;
-    const pair = await this.#unwrap(this.#raw.POST('/auth/setup', { body: input }));
+    const cookie = this.#supportsCookieAuth;
+    const pair = await this.#unwrap(this.#raw.POST('/auth/setup', { body: { ...input, ...(cookie ? { credential_mode: 'cookie' as const } : {}) } }));
     if (generation !== this.#sessionGeneration) throw new Error('Account changed during setup');
+    this.#cookieAuth = cookie;
+    this.tokens.setMemoryOnly(cookie);
     this.tokens.set(pair);
     return pair;
   }
 
   async login(input: { username: string; password: string } & DeviceFields): Promise<TokenPair> {
     const generation = ++this.#sessionGeneration;
-    const pair = await this.#unwrap(this.#raw.POST('/auth/login', { body: input }));
+    const cookie = this.#supportsCookieAuth;
+    const pair = await this.#unwrap(this.#raw.POST('/auth/login', { body: { ...input, ...(cookie ? { credential_mode: 'cookie' as const } : {}) } }));
     if (generation !== this.#sessionGeneration) throw new Error('Account changed during login');
+    this.#cookieAuth = cookie;
+    this.tokens.setMemoryOnly(cookie);
     this.tokens.set(pair);
     return pair;
   }
@@ -227,7 +246,7 @@ export class PleyaClient {
     // refreshtoken roteert bij elk gebruik, en een refresh per paginaladen
     // maakt van elke herlaadbeurt een kans om er middenin te vallen.
     if (this.tokens.accessToken) return Promise.resolve(true);
-    if (!this.tokens.refreshToken) return Promise.resolve(false);
+    if (!this.#cookieAuth && !this.tokens.refreshToken) return Promise.resolve(false);
     return this.#refreshOnce();
   }
 
@@ -261,7 +280,7 @@ export class PleyaClient {
   async bearer(): Promise<string | null> {
     const access = this.tokens.accessToken;
     if (access) return access;
-    if (!this.tokens.refreshToken) return null;
+    if (!this.#cookieAuth && !this.tokens.refreshToken) return null;
     return (await this.#refreshOnce()) ? this.tokens.accessToken : null;
   }
 

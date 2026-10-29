@@ -1,30 +1,4 @@
-/**
- * Waar de twee tokens staan.
- *
- * Het refreshtoken staat in `localStorage`, en dat is een vastgelegde afweging
- * en geen eindmodel. Een strikte CSP maakt XSS moeilijker, niet onmogelijk;
- * zolang het token vanuit JavaScript bereikbaar is, is het bij een geslaagde
- * injectie te stelen. Rotatie met hergebruikdetectie aan de serverkant begrenst
- * de schade zonder hem op te heffen. Het model dat dit werkelijk oplost is een
- * door de server gezette HttpOnly-cookie, en dat is een wijziging van het
- * authcontract met een CSRF-afweging eraan vast. Zie onderdeel 4.2 van
- * docs/pleya-server-ps3w-proposal.md.
- *
- * Het accesstoken staat in `sessionStorage`, met zijn vervalmoment ernaast.
- * Dat is geen extra risico bovenop het bovenstaande — het is dezelfde
- * JS-bereikbare opslag, tabgebonden en korter houdbaar — en het lost een
- * probleem op dat "alleen in het geheugen" veroorzaakt: dan heeft elke
- * herlaadbeurt een refresh nodig, het refreshtoken roteert bij elk gebruik, en
- * een herlaadbeurt die middenin die aanvraag valt verbruikt het oude token
- * zonder het nieuwe te ontvangen. De volgende poging is dan hergebruik, de
- * server trekt de hele keten in, en de gebruiker vliegt eruit terwijl hij
- * alleen F5 indrukte. Met een bewaard accesstoken is een refresh de
- * uitzondering in plaats van de regel.
- *
- * Toen dit geschreven werd had het protocol geen uitlogendpoint (5.2 van
- * hetzelfde voorstel). Dat kwam met `capabilities.sessions`; `PleyaClient`
- * roept `POST /auth/logout` aan vóór deze opslag geleegd wordt (DEC-164).
- */
+/** Cookie-capable logins keep access in memory; legacy sessions retain their existing storage until explicit login. */
 
 const REFRESH_KEY = 'pleya.refresh_token';
 const ACCESS_KEY = 'pleya.access_token';
@@ -55,6 +29,7 @@ interface StoredAccess {
 
 export class TokenStore {
   #memoryAccess: StoredAccess | null = null;
+  #memoryOnly = false;
   #persistent: TokenStorage | null;
   #session: TokenStorage | null;
   #now: () => number;
@@ -69,7 +44,14 @@ export class TokenStore {
     this.#now = now;
   }
 
+  setMemoryOnly(value: boolean): void {
+    if (value === this.#memoryOnly) return;
+    this.clear();
+    this.#memoryOnly = value;
+  }
+
   #readAccess(): StoredAccess | null {
+    if (this.#memoryOnly) return this.#memoryAccess;
     if (this.#memoryAccess) return this.#memoryAccess;
     try {
       const raw = this.#session?.getItem(ACCESS_KEY);
@@ -92,6 +74,7 @@ export class TokenStore {
   }
 
   get refreshToken(): string | null {
+    if (this.#memoryOnly) return null;
     try {
       return this.#persistent?.getItem(REFRESH_KEY) ?? null;
     } catch {
@@ -113,6 +96,7 @@ export class TokenStore {
       token: pair.access_token,
       expiresAt: this.#now() + lifetime
     };
+    if (this.#memoryOnly) return;
     try {
       this.#session?.setItem(ACCESS_KEY, JSON.stringify(this.#memoryAccess));
       if (pair.refresh_token) {
@@ -129,6 +113,10 @@ export class TokenStore {
     this.#memoryAccess = null;
     try {
       this.#session?.removeItem(ACCESS_KEY);
+    } catch {
+      // One blocked storage must not prevent clearing the other.
+    }
+    try {
       this.#persistent?.removeItem(REFRESH_KEY);
     } catch {
       // niets te doen
