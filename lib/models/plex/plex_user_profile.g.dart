@@ -27,9 +27,7 @@ PlexUserProfile _$PlexUserProfileFromJson(
   watchedIndicator: (json['watchedIndicator'] as num?)?.toInt() ?? 1,
   mediaReviewsVisibility:
       (json['mediaReviewsVisibility'] as num?)?.toInt() ?? 0,
-  mediaReviewsLanguages: (json['mediaReviewsLanguages'] as List<dynamic>?)
-      ?.map((e) => e as String)
-      .toList(),
+  mediaReviewsLanguages: flexibleStringList(json['mediaReviewsLanguages']),
 );
 
 Map<String, dynamic> _$PlexUserProfileToJson(PlexUserProfile instance) =>
