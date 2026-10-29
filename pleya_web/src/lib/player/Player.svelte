@@ -55,6 +55,9 @@
   let menuOpen = $state(false);
   let active = $state(true);
   let subtitleId = $state<string | null>(null);
+  let subtitlePendingId = $state<string | null>(null);
+  let subtitleError = $state<string | null>(null);
+  let subtitleController: AbortController | null = null;
   let subtitleUrl = $state<string | null>(null);
   let revokeSubtitle: (() => void) | null = null;
   let audioIndex = $state(0);
@@ -67,7 +70,7 @@
   );
   const isHls = $derived(session.delivery?.kind === 'hls');
   const audio = $derived(audioOptions(version));
-  const subs = $derived(subtitleOptions(version));
+  const subs = $derived(subtitleOptions(version, deps.server?.embedded_subtitles === true));
   const audioSwitchable = $derived(
     !isHls && (video as { audioTracks?: { length: number } } | null)?.audioTracks?.length === audio.length
   );
@@ -83,6 +86,7 @@
 
   function start(): void {
     if (!video) return;
+    subtitleController?.abort();
     progress?.finish(false);
     progress = null;
     audioIndex = 0;
@@ -150,19 +154,31 @@
   }
 
   async function chooseSubtitle(id: string | null): Promise<void> {
-    subtitleId = id;
-    caption = '';
-    revokeSubtitle?.();
-    revokeSubtitle = null;
-    subtitleUrl = null;
-    if (!id) return;
+    subtitleController?.abort();
+    subtitleController = null;
+    subtitlePendingId = null;
+    subtitleError = null;
+    if (!id) {
+      subtitleId = null; caption = ''; revokeSubtitle?.();
+      revokeSubtitle = null; subtitleUrl = null;
+      return;
+    }
+    const controller = new AbortController();
+    subtitleController = controller;
+    subtitlePendingId = id;
     try {
-      const loaded = await subtitleBlobUrl(() => deps.api.subtitleText(id));
-      if (subtitleId !== id) return loaded.revoke();
-      revokeSubtitle = loaded.revoke;
-      subtitleUrl = loaded.url;
+      const format = version?.subtitle_streams?.find(stream => stream.id === id)?.format ?? 'vtt';
+      const loaded = await subtitleBlobUrl(() => deps.api.subtitleText(id, controller.signal), format);
+      if (controller.signal.aborted) return loaded.revoke();
+      revokeSubtitle?.();
+      caption = ''; subtitleId = id;
+      revokeSubtitle = loaded.revoke; subtitleUrl = loaded.url;
     } catch {
-      subtitleId = null;
+      if (!controller.signal.aborted) subtitleError = t('player.subtitleLoadFailed');
+    } finally {
+      if (subtitleController === controller) {
+        subtitleController = null; subtitlePendingId = null;
+      }
     }
   }
 
@@ -223,7 +239,7 @@
     seekLimit = s.length ? s.end(s.length - 1) : 0;
   }
 
-  const onPageHide = () => { progress?.finish(true); progress = null; session.dispose(true); };
+  const onPageHide = () => { subtitleController?.abort(); progress?.finish(true); progress = null; session.dispose(true); };
   const onPageShow = (e: PageTransitionEvent) => {
     if (e.persisted) start();
   };
@@ -245,6 +261,7 @@
     progress?.finish(false);
     progress = null;
     session.dispose(false);
+    subtitleController?.abort();
     revokeSubtitle?.();
   });
 </script>
@@ -348,7 +365,9 @@
         {audioSwitchable}
         onaudio={chooseAudio}
         subtitles={subs.usable}
-        {subtitleId}
+        subtitleId={subtitlePendingId ?? subtitleId}
+        error={subtitleError}
+        loading={subtitlePendingId !== null}
         skippedSubtitles={subs.skipped}
         onsubtitle={(id) => void chooseSubtitle(id)}
         onclose={() => (menuOpen = false)}

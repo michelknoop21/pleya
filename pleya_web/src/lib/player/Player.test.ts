@@ -108,7 +108,7 @@ describe('spelerschil', () => {
     expect(dialog).toHaveTextContent('1 ondertitel moet eerst omgezet worden');
     await fireEvent.click(screen.getByRole('radio', { name: 'Nederlands' }));
     await waitFor(() => expect(document.querySelector('track')).not.toBeNull());
-    expect(api.subtitleText).toHaveBeenCalledWith('sub-nl');
+    expect(api.subtitleText).toHaveBeenCalledWith('sub-nl', expect.any(AbortSignal));
     expect(document.querySelector('track')?.getAttribute('src')).toBe('blob:http://pleya.test/vtt');
     await fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -173,4 +173,77 @@ describe('public browser watch-state actions', () => {
     await waitFor(() => expect(api.reportWatchState).toHaveBeenCalledTimes(4));
     expect(vi.mocked(api.reportWatchState).mock.calls[3]).toEqual([expect.objectContaining({ position_ms: 30000, explicit_action: 'none' }), true]);
   });
+});
+
+describe('subtitle delivery through the public player', () => {
+  it('offers SRT and passes its format into the browser track conversion', async () => {
+    const api = fakeApi();
+    vi.mocked(api.subtitleText).mockResolvedValue('1\n00:00:00,000 --> 00:00:05,000\nHello');
+    const version = { ...item.versions![0]!, subtitle_streams: [{ id: 'srt', format: 'srt' as const,
+      is_external: true, is_default: false, is_forced: false, is_hearing_impaired: false, title: 'Sidecar SRT' }] };
+    render(Player, { props: { item, version, deps: deps(api), onclose: vi.fn(), onlogin: vi.fn() } });
+    await screen.findByText('Direct afspelen · HEVC 4K');
+    await fireEvent.click(screen.getByRole('button', { name: 'Ondertitels' }));
+    await fireEvent.click(screen.getByRole('radio', { name: 'Sidecar SRT' }));
+    await waitFor(() => expect(document.querySelector('track')).toHaveAttribute('src', 'blob:http://pleya.test/vtt'));
+    expect(api.subtitleText).toHaveBeenCalledWith('srt', expect.any(AbortSignal));
+  });
+  it('reports a failed replacement and keeps the previous subtitle selected', async () => {
+    const api = fakeApi(); mount(api);
+    await screen.findByText('Direct afspelen · HEVC 4K');
+    await fireEvent.click(screen.getByRole('button', { name: 'Ondertitels' }));
+    vi.mocked(api.subtitleText).mockRejectedValueOnce(new Error('offline'));
+    await fireEvent.click(screen.getByRole('radio', { name: 'Nederlands' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('De ondertitel kon niet worden geladen');
+    expect(screen.getByRole('radio', { name: 'Uit' })).toBeChecked();
+  });
+});
+
+it('keeps an already loaded subtitle when a replacement fails', async () => {
+  const api = fakeApi();
+  const version = { ...item.versions![0]!, subtitle_streams: [...item.versions![0]!.subtitle_streams!, {
+    id: 'replacement', format: 'srt' as const, is_external: true, is_default: false,
+    is_forced: false, is_hearing_impaired: false, title: 'Replacement'
+  }] };
+  render(Player, { props: { item, version, deps: deps(api), onclose: vi.fn(), onlogin: vi.fn() } });
+  await screen.findByText('Direct afspelen · HEVC 4K');
+  await fireEvent.click(screen.getByRole('button', { name: 'Ondertitels' }));
+  await fireEvent.click(screen.getByRole('radio', { name: 'Nederlands' }));
+  await waitFor(() => expect(document.querySelector('track')).not.toBeNull());
+  vi.mocked(api.subtitleText).mockRejectedValueOnce(new Error('offline'));
+  await fireEvent.click(screen.getByRole('radio', { name: 'Replacement' }));
+  await screen.findByRole('alert');
+  expect(screen.getByRole('radio', { name: 'Nederlands' })).toBeChecked();
+  expect(document.querySelector('track')).toHaveAttribute('src', 'blob:http://pleya.test/vtt');
+  expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+});
+
+it.each(['off', 'unmount'])('aborts pending subtitles on %s and releases a late blob', async action => {
+  const api = fakeApi();
+  let release!: (body: string) => void;
+  vi.mocked(api.subtitleText).mockImplementationOnce(() => new Promise(resolve => release = resolve));
+  const { view } = mount(api);
+  await screen.findByText('Direct afspelen · HEVC 4K');
+  await fireEvent.click(screen.getByRole('button', { name: 'Ondertitels' }));
+  await fireEvent.click(screen.getByRole('radio', { name: 'Nederlands' }));
+  const signal = vi.mocked(api.subtitleText).mock.calls.at(-1)![1]!;
+  if (action === 'off') await fireEvent.click(screen.getByRole('radio', { name: 'Uit' }));
+  else view.unmount();
+  expect(signal.aborted).toBe(true);
+  release('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nLate caption\n');
+  await waitFor(() => expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:http://pleya.test/vtt'));
+  expect(document.querySelector('track')).toBeNull();
+});
+
+it('closes the track menu with Escape from a radio and returns focus to its opener', async () => {
+  mount();
+  await screen.findByText('Direct afspelen · HEVC 4K');
+  const opener = screen.getByRole('button', { name: 'Ondertitels' });
+  opener.focus();
+  await fireEvent.click(opener);
+  await screen.findByRole('dialog');
+  expect(document.activeElement?.tagName).toBe('INPUT');
+  await fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  expect(opener).toHaveFocus();
 });

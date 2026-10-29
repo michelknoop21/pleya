@@ -21,6 +21,7 @@ export const webPlayerNl = {
   'player.speed': 'Afspeelsnelheid {speed}',
   'player.tracks': 'Audio en ondertitels',
   'player.subtitles': 'Ondertitels',
+  'player.subtitleLoadFailed': 'De ondertitel kon niet worden geladen. Je vorige keuze blijft actief.',
   'player.subtitlesOff': 'Uit',
   'player.closeMenu': 'Sluiten',
   'player.remaining': 'nog {duration}',

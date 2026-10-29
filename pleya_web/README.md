@@ -233,7 +233,7 @@ bovenaan de layout, vóór de eerste markup, en zet `<html lang>`.
 
 Een taalwissel herlaadt de pagina. `t()` leest een gewone variabele en geen `$state`, en labels die
 in een `<script>`-blok worden berekend (`ThemePicker`, `navItems`) zouden anders in de oude taal
-blijven staan. De sessie overleeft het herladen, want het refreshtoken staat in `localStorage`.
+blijven staan. De sessie wordt na herladen hersteld via de HttpOnly-cookie, of via het bestaande tokenpad op oudere servers en legacy-sessies.
 Weigert de opslag, dan gaat de taal alleen in het geheugen om.
 
 `web.nl.ts` gebruikt `satisfies Record<WebKey, string>`: een ontbrekende of overtollige sleutel is
@@ -261,18 +261,32 @@ Een pad dat het contract niet kent bestaat in `client.ts` niet, want dan compile
 
 ## Auth
 
-Het accesstoken staat alleen in het geheugen. Het refreshtoken staat in `localStorage`, en dat is
-een **vastgelegde afweging en geen eindmodel**: een strikte CSP maakt XSS moeilijker, niet
-onmogelijk, en rotatie met hergebruikdetectie aan de serverkant begrenst de schade zonder hem op te
-heffen. Het model dat dit werkelijk oplost is een door de server gezette `HttpOnly`-refreshcookie,
-en dat is een wijziging van het authcontract met een CSRF-afweging eraan vast. Zie onderdeel 4.2
-van het voorstel.
+Achter `capabilities.cookie_auth` vragen nieuwe setup/logins de bestaande cookiemodus: access
+blijft in geheugen, refresh staat in een HttpOnly/SameSiteStrict-cookie. Herladen vraagt een
+nieuwe access via die cookie. De browser-POST moet van een toegestane origin komen; er is geen
+stille terugval op een JavaScript-refreshcredential wanneer cookieherstel wordt geweigerd.
 
-Vernieuwen gebeurt hoogstens één keer tegelijk. Het refreshtoken roteert bij elk gebruik, dus twee
-gelijktijdige verzoeken zijn per definitie hergebruik, en dan trekt de server de hele keten in.
+Oude servers krijgen geen `credential_mode`. Bestaande token-sessies blijven tot een expliciete
+login hun huidige opslag gebruiken: access per tab in `sessionStorage`, refresh in `localStorage`.
+Een geslaagde nieuwe cookie-login ruimt die opslag op; een mislukt wachtwoord doet dat niet.
+Dit is geen geforceerde migratie van bestaande browsers.
 
-Er wordt niet uitgelogd bij de server: het protocol heeft geen uitlogendpoint. Afmelden gooit het
-token weg; `POST /auth/logout` hoort bij PS-9 (voorstel 5.2).
+Vernieuwen wordt per accountgeneratie samengevoegd. Late antwoorden mogen een nieuw account
+niet vervangen of een oude aanvraag met diens credential herhalen. Afmelden gebruikt het bestaande
+`POST /auth/logout` achter `capabilities.sessions` en wist daarna de eigen lokale toestand.
+
+## Browserspeler
+
+De bestaande `PlayerSession` volgt het playbackplan; `Player` rapporteert pas na werkelijk
+spelen via `WatchProgress`, met vaste kijkronde-ID, serverrevision en passieve voortgang.
+Bladeren schrijft geen kijkstatus. Sluiten verstuurt de laatste stand met keepalive; een
+concurrerende verouderde CAS mag de server veilig weigeren.
+
+Externe SRT/VTT gebruikt de bestaande geautoriseerde ondertitelroute en blob-URLs. SRT wordt
+begrensd naar WebVTT omgezet; ingebedde tekst verschijnt alleen achter de leveringscapability.
+Laden/vervangen is annuleerbaar, mislukken behoudt het actieve spoor en Uit ruimt het op.
+ASS/bitmap-burnconsumptie en andere open acceptatie staan in de servermasterlijst; deze
+tekst sluit geen fase, hardware- of releasepoort.
 
 ## Artwork
 

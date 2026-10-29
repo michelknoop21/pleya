@@ -13,13 +13,9 @@
  * omzetsessie die daarbij hoort meteen gestopt: anders blijft hij op de server
  * staan tot de time-out van een minuut.
  *
- * Bewust weggelaten, omdat het contract of deze slice het niet draagt:
- * - kijkstatus schrijven (`POST /watch-state`, S13.3);
- * - een startpositie in een omzetsessie: `PlaybackPlanRequest` kent geen
- *   positie en de server begint de omzetting bij nul, dus hervatten werkt
- *   alleen bij direct play;
- * - een ander audiospoor in een omzetsessie: het plan kent geen spoorkeuze en
- *   de omzetter neemt het eerste audiospoor.
+ * Kijkstatus volgt de werkelijke media-events in Player via WatchProgress.
+ * Browserkeuzes voor plan-audio/kwaliteit en hervatten binnen een omzetting
+ * zijn nog niet aangesloten; het huidige startAt wordt alleen direct toegepast.
  */
 import type { Capabilities } from '../api/types';
 import type { DeviceCapabilities } from './types';

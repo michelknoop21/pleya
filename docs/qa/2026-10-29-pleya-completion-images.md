@@ -16,3 +16,16 @@ Native iOS-simulator en Chromium, eigen disposable testserver met synthetische m
 | web-home: home@320 | 320×1240 | `.build/pleya-completion-evidence/web-home/home@320.png` |
 | web-watch: actual-playback-paused | 1280×900 | `.build/pleya-completion-evidence/web-watch/actual-playback-paused.png` |
 | web-watch: second-session-resume | 390×1056 | `.build/pleya-completion-evidence/web-watch/second-session-resume.png` |
+
+Browser-SRT-vervolg: alle onderstaande beelden bekeken; vijf foutstaten axe 0/overloop 0.
+
+| Scherm | Afmeting | Bestand |
+| --- | --- | --- |
+| SRT: sidecar-srt | 1280×900 | `.build/pleya-completion-evidence/web-subtitles/sidecar-srt.png` |
+| SRT: embedded-srt | 1280×900 | `.build/pleya-completion-evidence/web-subtitles/embedded-srt.png` |
+| SRT: subtitles-off | 320×900 | `.build/pleya-completion-evidence/web-subtitles/subtitles-off.png` |
+| SRT: failed-replacement-retained@1920 | 1920×1080 | `.build/pleya-completion-evidence/web-subtitles/failed-replacement-retained@1920.png` |
+| SRT: failed-replacement-retained@1440 | 1440×900 | `.build/pleya-completion-evidence/web-subtitles/failed-replacement-retained@1440.png` |
+| SRT: failed-replacement-retained@1280 | 1280×900 | `.build/pleya-completion-evidence/web-subtitles/failed-replacement-retained@1280.png` |
+| SRT: failed-replacement-retained@390 | 390×900 | `.build/pleya-completion-evidence/web-subtitles/failed-replacement-retained@390.png` |
+| SRT: failed-replacement-retained@320 | 320×900 | `.build/pleya-completion-evidence/web-subtitles/failed-replacement-retained@320.png` |

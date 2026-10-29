@@ -23,6 +23,7 @@ export const webPlayer = {
   'player.speed': 'Playback speed {speed}',
   'player.tracks': 'Audio and subtitles',
   'player.subtitles': 'Subtitles',
+  'player.subtitleLoadFailed': 'The subtitle could not be loaded. Your previous choice is still active.',
   'player.subtitlesOff': 'Off',
   'player.closeMenu': 'Close',
   'player.remaining': '{duration} left',
