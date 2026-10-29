@@ -23,7 +23,8 @@ import type {
   Library,
   LibraryList,
   ServerDetail,
-  SortOption,
+  Facets,
+  LibraryItemsQuery,
   TokenPair,
   User
 } from './types';
@@ -313,7 +314,7 @@ export class PleyaClient {
 
   libraryItems(
     libraryId: string,
-    query: { limit?: number; cursor?: string; sort?: SortOption } = {},
+    query: LibraryItemsQuery = {},
     signal?: AbortSignal
   ): Promise<ItemPage> {
     return this.#unwrap(
@@ -322,6 +323,12 @@ export class PleyaClient {
         signal
       })
     );
+  }
+
+  libraryFacets(libraryId: string, signal?: AbortSignal): Promise<Facets> {
+    return this.#unwrap(this.#raw.GET('/libraries/{library_id}/facets', {
+      params: { path: { library_id: libraryId } }, signal
+    }));
   }
 
   item(itemId: string, signal?: AbortSignal): Promise<Item> {

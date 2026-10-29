@@ -5,7 +5,7 @@
  * rechtstreeks naar `components["schemas"]` uit `schema.d.ts`, zodat een
  * contractwijziging hier een typefout geeft in plaats van een stille afwijking.
  */
-import type { components } from './schema';
+import type { components, operations } from './schema';
 
 type S = components['schemas'];
 
@@ -24,6 +24,9 @@ export type MetadataCoverage = S['MetadataCoverage'];
 export type Item = S['Item'];
 export type ItemKind = S['ItemKind'];
 export type ItemPage = S['ItemPage'];
+export type Facets = S['Facets'];
+export type FacetValue = S['FacetValue'];
+export type LibraryItemsQuery = NonNullable<operations['listLibraryItems']['parameters']['query']>;
 export type Artwork = S['Artwork'];
 export type Version = S['Version'];
 export type VideoStream = S['VideoStream'];
@@ -45,8 +48,14 @@ export const SORT_OPTIONS = [
   'added_at',
   '-added_at',
   'year',
-  '-year'
-] as const;
+  '-year',
+  'last_played_at',
+  '-last_played_at',
+  'duration',
+  '-duration'
+] as const satisfies readonly NonNullable<LibraryItemsQuery['sort']>[];
+
+export const LEGACY_SORT_OPTIONS = SORT_OPTIONS.slice(0, 6);
 
 export type SortOption = (typeof SORT_OPTIONS)[number];
 

@@ -691,3 +691,26 @@ it('a failed explicit cookie login leaves the existing legacy credential intact'
   await expect(client.login({ username: 'owner', password: 'wrong-canned' })).rejects.toBeInstanceOf(ApiError);
   expect(persistent.getItem('pleya.refresh_token')).toBe('legacy-R');
 });
+
+describe('existing catalog filter contract', () => {
+  it('sends repeated filter values and the complete server sort without inventing query fields', async () => {
+    let request: Request | undefined;
+    const { client } = clientWith((async input => { request = input as Request; return json({ items: [] }); }) as FetchLike);
+    await client.libraryItems('movies', { genre: ['Drama', 'Science fiction & fantasy'], year: ['2025'], watch: 'unwatched', resolution: ['fhd','uhd'], sort: '-last_played_at', limit: 24 });
+    const params = new URL(request!.url).searchParams;
+    expect(params.getAll('genre')).toEqual(['Drama','Science fiction & fantasy']);
+    expect(params.getAll('resolution')).toEqual(['fhd','uhd']);
+    expect(params.get('watch')).toBe('unwatched');
+    expect(params.get('sort')).toBe('-last_played_at');
+    expect(params.has('watched')).toBe(false);
+  });
+  it('loads library facets over the existing authenticated route without filter queries', async () => {
+    let request: Request | undefined;
+    const facets = { genres: [{value:'Drama',count:2}], years: [{value:'2025',count:1}], content_ratings: [], audio_languages: [], resolutions: [], watch: {unwatched:2,in_progress:0,watched:0} };
+    const { client, tokens } = clientWith((async input => { request = input as Request; return json(facets); }) as FetchLike);
+    tokens.set({access_token:'canned-A',refresh_token:'canned-R',expires_in_ms:900000});
+    expect(await client.libraryFacets('movies')).toEqual(facets);
+    expect(request!.url).toBe(`${BASE}/libraries/movies/facets`);
+    expect(request!.headers.get('Authorization')).toBe('Bearer canned-A');
+  });
+});

@@ -18,6 +18,7 @@
     id: string;
     label: string;
     count?: number;
+    disabled?: boolean;
   }
 </script>
 
@@ -55,7 +56,7 @@
 <div class="chips" role="group" aria-label={label}>
   {#each options as option (option.id)}
     {@const on = selected.includes(option.id)}
-    <button type="button" class="chips__hit" aria-pressed={on} onclick={() => press(option.id)}>
+    <button type="button" class="chips__hit" aria-pressed={on} disabled={option.disabled} onclick={() => press(option.id)}>
       <span class="chip chip--{variant}" class:chip--on={on}>
         {option.label}
         {#if option.count !== undefined}

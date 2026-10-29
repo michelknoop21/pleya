@@ -29,3 +29,13 @@ Browser-SRT-vervolg: alle onderstaande beelden bekeken; vijf foutstaten axe 0/ov
 | SRT: failed-replacement-retained@1280 | 1280×900 | `.build/pleya-completion-evidence/web-subtitles/failed-replacement-retained@1280.png` |
 | SRT: failed-replacement-retained@390 | 390×900 | `.build/pleya-completion-evidence/web-subtitles/failed-replacement-retained@390.png` |
 | SRT: failed-replacement-retained@320 | 320×900 | `.build/pleya-completion-evidence/web-subtitles/failed-replacement-retained@320.png` |
+
+Catalogusfilters: vijf breedtes axe0/overloop0; Annuleren via hit-test boven navigatie. Alle beelden bekeken, mobiele beelden na portaalfix opnieuw bekeken.
+
+| Scherm | Afmeting | Bestand |
+| --- | --- | --- |
+| web-catalog: filters@1920 | 1920×1080 | `.build/pleya-completion-evidence/web-catalog/filters@1920.png` |
+| web-catalog: filters@1440 | 1440×900 | `.build/pleya-completion-evidence/web-catalog/filters@1440.png` |
+| web-catalog: filters@1280 | 1280×900 | `.build/pleya-completion-evidence/web-catalog/filters@1280.png` |
+| web-catalog: filters@390 | 390×900 | `.build/pleya-completion-evidence/web-catalog/filters@390.png` |
+| web-catalog: filters@320 | 320×900 | `.build/pleya-completion-evidence/web-catalog/filters@320.png` |

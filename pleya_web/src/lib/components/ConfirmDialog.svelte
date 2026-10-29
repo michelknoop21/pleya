@@ -96,6 +96,12 @@
     return () => previous?.focus?.();
   });
 
+  // Page artwork creates isolated stacking contexts; dialogs must cover the shell too.
+  function portal(node: HTMLElement): { destroy: () => void } {
+    document.body.append(node);
+    return { destroy: () => node.remove() };
+  }
+
   function cancel(): void {
     if (busy) return;
     open = false;
@@ -137,6 +143,7 @@
 <svelte:document onkeydown={keydown} />
 
 {#if open}
+  <div use:portal>
   <div class="cd__scrim" aria-hidden="true" onclick={cancel}></div>
   <div
     class="cd"
@@ -193,6 +200,7 @@
         </button>
       </div>
     </form>
+  </div>
   </div>
 {/if}
 

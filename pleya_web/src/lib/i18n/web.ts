@@ -1,3 +1,4 @@
+import { webCatalog } from './webCatalog';
 import { webBackups } from './webBackups';
 import { webOps } from './web.ops';
 import { webPlayer } from './webPlayer';
@@ -14,6 +15,7 @@ import { webTokens } from './webTokens';
 import { webSessions } from './webSessions';
 
 export const web = {
+  ...webCatalog,
   ...webOps,
   ...webPlayer,
   'app.name': 'Pleya',

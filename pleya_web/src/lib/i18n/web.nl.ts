@@ -1,3 +1,4 @@
+import { webCatalogNl } from './webCatalog.nl';
 import { webBackupsNl } from './webBackups.nl';
 import { webOpsNl } from './web.ops.nl';
 import { webPlayerNl } from './webPlayer.nl';
@@ -16,6 +17,7 @@ import type { WebKey } from './web';
  * Termen volgen de northstar (docs/assets/pleya-web-northstar), je-vorm, kort.
  */
 export const webNl = {
+  ...webCatalogNl,
   ...webOpsNl,
   ...webPlayerNl,
   'app.name': 'Pleya',
