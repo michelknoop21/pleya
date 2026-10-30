@@ -15,6 +15,7 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/services/unified_catalog/catalog_service.dart';
 import 'package:pleya/services/unified_catalog/source_cursor.dart';
+import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_query.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
@@ -286,6 +287,62 @@ void main() {
         ),
       );
       expect(titles, ['X2024', 'J2020', 'X2001', 'J1999']);
+    });
+  });
+
+  group('Leeftijd, whose server order is not the comparator\'s', () {
+    MediaItem rated(String title, String rating, String server, MediaBackend backend) => MediaItem(
+      id: title,
+      backend: backend,
+      kind: MediaKind.movie,
+      title: title,
+      contentRating: rating,
+      serverId: server,
+    );
+
+    // Plex sorts the string, so 6 and 9 stand behind 16. Jellyfin sorts the age.
+    final plexLibrary = _library('p', MediaBackend.plex);
+    final jellyfinLibrary = _library('j', MediaBackend.jellyfin);
+    final lexical = [
+      rated('p12', '12', 'p', MediaBackend.plex),
+      rated('p16', '16', 'p', MediaBackend.plex),
+      rated('p6', '6', 'p', MediaBackend.plex),
+      rated('p9', '9', 'p', MediaBackend.plex),
+    ];
+    final numeric = [
+      rated('j6', '6', 'j', MediaBackend.jellyfin),
+      rated('j12', '12', 'j', MediaBackend.jellyfin),
+      rated('j18', '18', 'j', MediaBackend.jellyfin),
+    ];
+
+    UnifiedCatalogQuery queryFor(List<CatalogLibrary> libraries) => buildUnifiedCatalogQuery(
+      kind: MediaKind.movie,
+      preferences: const UnifiedCatalogPreferences(sort: UnifiedCatalogSort.contentRatingYoungest),
+      capabilities: unifiedFilterCapabilitiesFor(libraries.map((l) => l.backend), kind: MediaKind.movie),
+    );
+
+    test('two sources are not merged on it: the page reads title, never j6, j12, p12, p16, p6, p9, j18', () async {
+      final titles = await _merge({
+        plexLibrary: lexical,
+        jellyfinLibrary: numeric,
+      }, queryFor([plexLibrary, jellyfinLibrary]));
+      expect(titles, ['j6', 'j12', 'j18', 'p12', 'p16', 'p6', 'p9']);
+    });
+
+    test('nor are two libraries of one backend, which do not promise an order either', () {
+      expect(queryFor([plexLibrary, _library('q', MediaBackend.plex)]).sortField, UnifiedCatalogSortField.title);
+    });
+
+    test('one source needs no merge, so its own order stands', () async {
+      final titles = await _merge({plexLibrary: lexical}, queryFor([plexLibrary]));
+      expect(titles, ['p12', 'p16', 'p6', 'p9']);
+    });
+
+    test('the row goes as soon as a second library takes part, and only then', () {
+      const field = UnifiedCatalogSortField.contentRating;
+      expect(unifiedFilterCapabilitiesFor([MediaBackend.jellyfin]).supportsSort(field), isTrue);
+      expect(unifiedFilterCapabilitiesFor([MediaBackend.plex, MediaBackend.jellyfin]).supportsSort(field), isFalse);
+      expect(unifiedFilterCapabilitiesFor([MediaBackend.plex, MediaBackend.plex]).supportsSort(field), isFalse);
     });
   });
 

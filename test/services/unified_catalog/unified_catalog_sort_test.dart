@@ -231,8 +231,11 @@ void main() {
       expect(fields([MediaBackend.pleyaServer]), {_F.title, _F.addedAt, _F.year, _F.recentlyWatched, _F.duration});
     });
 
-    test('Plex and Jellyfin: the intersection, scores included', () {
-      expect(fields([MediaBackend.plex, MediaBackend.jellyfin]), fields([MediaBackend.jellyfin]));
+    test('Plex and Jellyfin: the intersection, scores included, Leeftijd not: it cannot be merged', () {
+      expect(
+        fields([MediaBackend.plex, MediaBackend.jellyfin]),
+        fields([MediaBackend.jellyfin]).difference({_F.contentRating}),
+      );
     });
 
     test('Plex and Pleya Server: no scores', () {

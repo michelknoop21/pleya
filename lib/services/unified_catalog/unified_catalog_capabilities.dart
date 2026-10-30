@@ -155,8 +155,12 @@ bool _listEquals<T>(List<T> a, List<T> b) =>
 ///
 /// [kind] matters for the sorts only: a Plex show has no runtime or position of
 /// its own to order by.
+///
+/// [backends] holds one entry per participating library, so its length says
+/// whether a merge is needed at all: see [_singleSourceSortFields].
 UnifiedFilterCapabilities unifiedFilterCapabilitiesFor(Iterable<MediaBackend> backends, {MediaKind? kind}) {
-  final all = backends.toSet();
+  final sources = backends.toList();
+  final all = sources.toSet();
   if (all.isEmpty) return UnifiedFilterCapabilities.none;
   return UnifiedFilterCapabilities(
     supportsMetadataFilters: all.every(_executesMetadataFilters),
@@ -164,10 +168,22 @@ UnifiedFilterCapabilities unifiedFilterCapabilitiesFor(Iterable<MediaBackend> ba
     supportsWatchedFilter: all.every(_executesWatchedFilter),
     sortFields: {
       for (final field in UnifiedCatalogSortField.values)
-        if (all.every((backend) => _sortFieldsOf(backend, kind).contains(field))) field,
+        if (all.every((backend) => _sortFieldsOf(backend, kind).contains(field)) &&
+            (sources.length == 1 || !_singleSourceSortFields.contains(field)))
+          field,
     },
   );
 }
+
+/// Sorts that cannot be merged, because the sources do not promise the order the
+/// comparator reads.
+///
+/// The k-way merge compares heads, so every cursor has to arrive in the
+/// comparator's order. An age rating is a string on the server: Plex answers 12,
+/// 16, 6, 9, while the comparator reads numbers, and the merge then gives j6, j12,
+/// p12, p16, p6, p9, j18. Sorting the cursors would mean reading whole libraries.
+/// One library needs no merge and keeps the order its server gave.
+const Set<UnifiedCatalogSortField> _singleSourceSortFields = {UnifiedCatalogSortField.contentRating};
 
 /// Sort fields of [backend], per client:
 ///
