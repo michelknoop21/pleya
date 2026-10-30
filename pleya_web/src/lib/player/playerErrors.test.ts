@@ -132,6 +132,7 @@ describe('sporen, chip en route', () => {
     expect(isPlayerPath('/items/abc')).toBe(false);
     expect(playerHref('abc', 4_001_500)).toBe('/items/abc/play?t=4001');
     expect(playerHref('abc')).toBe('/items/abc/play');
+    expect(playerHref('abc', 12000, 'version-id')).toBe('/items/abc/play?t=12&version=version-id');
   });
 });
 

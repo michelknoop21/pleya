@@ -7,8 +7,11 @@ export function isPlayerPath(pathname: string): boolean {
 }
 
 /** `/items/{id}/play`, met een hervatpositie in hele seconden als die er is. */
-export function playerHref(itemId: string, startAtMs?: number | null): string {
+export function playerHref(itemId: string, startAtMs?: number | null, versionId?: string): string {
   const base = `/items/${encodeURIComponent(itemId)}/play`;
   const seconds = startAtMs ? Math.floor(startAtMs / 1000) : 0;
-  return seconds > 0 ? `${base}?t=${seconds}` : base;
+  const query = new URLSearchParams();
+  if (seconds > 0) query.set('t', String(seconds));
+  if (versionId) query.set('version', versionId);
+  return query.size ? `${base}?${query}` : base;
 }

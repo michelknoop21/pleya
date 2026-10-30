@@ -49,3 +49,14 @@ Films-landing: echte synthetische NFO-genres, vijf breedtes axe0/overloop0; alle
 | web-landings: films@1280 | 1280×1698 | `.build/pleya-completion-evidence/web-landings/films@1280.png` |
 | web-landings: films@390 | 390×1374 | `.build/pleya-completion-evidence/web-landings/films@390.png` |
 | web-landings: films@320 | 320×1374 | `.build/pleya-completion-evidence/web-landings/films@320.png` |
+
+Detailvervolg 30 oktober: Go-embed, echte synthetische NFO-data/versies. Afgeronde animaties, vijf breedtes axe0/overloop0; desktopbackdrop ook via zichtbare pixels gecontroleerd.
+
+| Scherm | Afmeting | Bestand |
+| --- | --- | --- |
+| web-detail: movie@1920 | 1920×1080 | `.build/pleya-completion-evidence/web-detail/movie@1920.png` |
+| web-detail: movie@1440 | 1440×902 | `.build/pleya-completion-evidence/web-detail/movie@1440.png` |
+| web-detail: movie@1280 | 1280×902 | `.build/pleya-completion-evidence/web-detail/movie@1280.png` |
+| web-detail: movie@390 | 390×1140 | `.build/pleya-completion-evidence/web-detail/movie@390.png` |
+| web-detail: movie@320 | 320×1101 | `.build/pleya-completion-evidence/web-detail/movie@320.png` |
+| web-detail: season-page-two | 1280×900 | `.build/pleya-completion-evidence/web-detail/season-page-two.png` |

@@ -82,18 +82,20 @@ test.describe('de verticale slice', () => {
     await page.waitForURL(/\/libraries\/.+/);
     // Nadrukkelijk het raster en niet zomaar het eerste lijstonderdeel op de
     // pagina: de navigatie is ook een lijst, en die staat eerder in de DOM.
-    await grid(page).getByRole('listitem').first().getByRole('link').click();
+    const [response] = await Promise.all([
+      page.waitForResponse(response => /\/pleya\/v1\/items\/[^/]+$/.test(new URL(response.url()).pathname) && response.ok()),
+      grid(page).getByRole('listitem').first().getByRole('link').click()
+    ]);
+    const item = await response.json();
     await page.waitForURL(/\/items\/.+/);
 
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(item.title);
     await expect(page.getByRole('heading', { name: 'Versions' })).toBeVisible();
-
-    // Velden die het protocol vandaag niet kent horen hier niet te staan.
-    const body = (await page.locator('body').innerText()).toLowerCase();
-    for (const absent of ['summary', 'genres', 'cast', 'tagline', 'studio', 'trailer']) {
-      expect(body, absent).not.toContain(absent);
+    if (item.summary?.trim()) await expect(page.getByText(item.summary, { exact: true })).toBeVisible();
+    for (const person of item.people ?? []) {
+      if (['actor', 'director', 'writer'].includes(person.role) && person.name.trim()) await expect(page.getByText(person.name, { exact: true })).toBeVisible();
     }
-    // En geen speler: afspelen is PS-4.
+    // Afspelen opent de bestaande aparte spelerroute.
     await expect(page.locator('video')).toHaveCount(0);
 
     await expectNoAxeViolations(page, 'itemdetail');

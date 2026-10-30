@@ -50,7 +50,7 @@
   });
 
   const version = $derived(
-    item?.versions?.find((v) => v.id === versionParam) ?? item?.versions?.[0]
+    versionParam !== null ? item?.versions?.find((v) => v.id === versionParam) : item?.versions?.[0]
   );
 
   function close(): void {
@@ -71,6 +71,12 @@
   </div>
 {:else if !item}
   <SkeletonPage variant="compact" />
+{:else if versionParam !== null && !version}
+  <div class="play-state">
+    <StateView kind="error" message={t('item.versionMissing')}>
+      {#snippet actions()}<a class="btn" href={`/items/${encodeURIComponent(itemId)}`}>{t('item.title')}</a>{/snippet}
+    </StateView>
+  </div>
 {:else}
   {#key `${item.id}:${version?.id ?? ''}`}
     <Player
