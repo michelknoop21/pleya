@@ -56,11 +56,17 @@ class TvCatalogSelectionTag {
 /// [overflowAfter] caps the number of *filter* tags and replaces the rest with
 /// a single `+N`. Null means no cap, which is what the rail panel wants: it
 /// wraps, so it can show everything.
+///
+/// [omitDefaultSort] leaves the sort tag out while it is the default and no
+/// filter tag stands beside it. A dashed label that restates what nobody
+/// changed is noise on the full-bleed panel (A-06c); as soon as a filter is
+/// active the row is back to its usual shape.
 List<TvCatalogSelectionTag> tvCatalogSelectionTags({
   required UnifiedCatalogFilterSelection filters,
   required UnifiedCatalogSort sort,
   String? sourcesLabel,
   int? overflowAfter = TvCatalogLayout.tagOverflowThreshold,
+  bool omitDefaultSort = false,
 }) {
   final tags = <TvCatalogSelectionTag>[
     if (filters.watchState != UnifiedWatchFilter.all)
@@ -80,6 +86,7 @@ List<TvCatalogSelectionTag> tvCatalogSelectionTags({
       ? [...tags.take(overflowAfter), TvCatalogSelectionTag('+${tags.length - overflowAfter}')]
       : tags;
 
+  if (omitDefaultSort && capped.isEmpty && sort == UnifiedCatalogPreferences.defaults.sort) return const [];
   return [...capped, TvCatalogSelectionTag(sortLabel(sort), muted: true)];
 }
 

@@ -27,6 +27,41 @@ void main() {
     expect(tags.single.muted, isTrue, reason: 'the sort is always set, so a solid tag would claim a narrowing');
   });
 
+  group('omitDefaultSort (full-bleed panel)', () {
+    final defaultSort = UnifiedCatalogPreferences.defaults.sort;
+
+    test('drops the sort tag while the sort is the default and nothing is filtered', () {
+      expect(
+        tvCatalogSelectionTags(filters: UnifiedCatalogFilterSelection.empty, sort: defaultSort, omitDefaultSort: true),
+        isEmpty,
+      );
+    });
+
+    test('keeps a sort that is not the default', () {
+      final tags = tvCatalogSelectionTags(
+        filters: UnifiedCatalogFilterSelection.empty,
+        sort: UnifiedCatalogSort.titleDesc,
+        omitDefaultSort: true,
+      );
+      expect(labels(tags), [sortLabel(UnifiedCatalogSort.titleDesc)]);
+    });
+
+    test('keeps the filter tags, and the sort beside them', () {
+      final tags = tvCatalogSelectionTags(
+        filters: const UnifiedCatalogFilterSelection(genres: {'Drama'}),
+        sort: defaultSort,
+        omitDefaultSort: true,
+      );
+      expect(labels(tags), ['Drama', sortLabel(defaultSort)]);
+    });
+
+    test('the rail and heading keep it by default', () {
+      expect(labels(tvCatalogSelectionTags(filters: UnifiedCatalogFilterSelection.empty, sort: defaultSort)), [
+        sortLabel(defaultSort),
+      ]);
+    });
+  });
+
   test('filters come first, in a stable order, with the sort last', () {
     final tags = tvCatalogSelectionTags(
       filters: const UnifiedCatalogFilterSelection(

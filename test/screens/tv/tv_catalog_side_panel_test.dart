@@ -16,6 +16,8 @@ import 'package:pleya/services/unified_catalog/unified_catalog_query_store.dart'
 import 'package:pleya/widgets/tv/tv_catalog_empty_state.dart';
 import 'package:pleya/widgets/tv/tv_catalog_filter_panel.dart';
 import 'package:pleya/widgets/tv/tv_catalog_rail_scaffold.dart';
+import 'package:pleya/utils/home_custom_row_labels.dart';
+import 'package:pleya/widgets/tv/tv_catalog_selection_tags.dart';
 import 'package:pleya/widgets/tv/tv_catalog_side_panel.dart';
 import 'package:pleya/widgets/tv/tv_catalog_sort_fields.dart';
 import 'package:pleya/widgets/tv/tv_catalog_sort_panel.dart';
@@ -158,6 +160,30 @@ void main() {
     expect(h.posterRect(tester, 1).top, closeTo(32.44, 0.5), reason: 'at the top of the wall');
     final stored = await UnifiedCatalogQueryStore.read(h.catalog.query.kind);
     expect(stored.sort, UnifiedCatalogSort.titleDesc, reason: 'A-Z turned into Z-A');
+  });
+
+  testWidgets('the overview shows no dashed sort tag on the default sort, and filter tags and Wissen stay', (
+    tester,
+  ) async {
+    final h = await _open(tester);
+    await h.press(tester, _left);
+    expect(find.byType(TvCatalogSelectionTagStrip), findsNothing, reason: 'default sort, no filters');
+    expect(find.text('Clear filters'), findsNothing);
+
+    final f = await FullBleedHarness.create([for (var i = 0; i < 30; i++) fakeMovie(i, year: 2000)]);
+    await UnifiedCatalogQueryStore.write(
+      f.catalog.query.kind,
+      UnifiedCatalogPreferences.defaults.copyWith(
+        filters: const UnifiedCatalogFilterSelection(watchState: UnifiedWatchFilter.unwatched),
+      ),
+    );
+    await f.pump(tester, canvas: _canvas);
+    await f.open(tester);
+    await f.press(tester, _left);
+
+    expect(find.byType(TvCatalogSelectionTagStrip), findsOneWidget);
+    expect(find.text(unifiedWatchFilterLabel(UnifiedWatchFilter.unwatched)), findsOneWidget);
+    expect(find.text('Clear filters'), findsOneWidget, reason: 'Wissen stays while a filter is active');
   });
 
   group('sort page, one row per field', () {

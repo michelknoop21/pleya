@@ -1021,6 +1021,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     sort: _preferences.sort,
     sourcesLabel: _sourcesLabel(_effectiveFilters),
     overflowAfter: capped ? TvCatalogLayout.tagOverflowThreshold : null,
+    omitDefaultSort: widget.fullBleed,
   );
 
   /// Clears every filter, from the rail's Wissen row or from the
