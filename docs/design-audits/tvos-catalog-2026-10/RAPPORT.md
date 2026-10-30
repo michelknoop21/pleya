@@ -27,7 +27,7 @@ Simulator: PASS voor `panel`, `grid` en `jump`, paden in `MANIFEST.md`. Widgette
 4. Blader links tot kolom 0 en druk LEFT: het paneel opent op Bronnen, de wand verschuift niet.
 5. Ga omhoog en omlaag door het paneel, in alle vier de pagina's (Bronnen, Filters, Sorteren, Spring naar). Aan de uiteinden gebeurt niets.
 6. Kies Sorteren, Titel: de lijst draait naar Z-A en de ring staat op kaart 0. Open het paneel opnieuw en kies Titel nogmaals: terug naar A-Z.
-7. Kies elke sorteerrij die er staat: de tweede regel volgt, en titels zonder waarde staan onderaan in beide richtingen. Controleer op een Plex-server of de rijen Jaar, Duur, Voortgang en Resolutie verschijnen en echt sorteren, en of Filteren HDR, Niet gekoppeld en Dubbel toont.
+7. Kies elke sorteerrij die er staat: de tweede regel volgt, en titels zonder waarde staan onderaan in beide richtingen. Controleer op een Plex-server of de rijen Jaar, Duur, Voortgang en Resolutie verschijnen en echt sorteren, en of Filteren HDR, Niet gekoppeld en Dubbel toont. Controleer op een Jellyfin-server dat Alle series op Recent bekeken in de volgorde van de server blijft staan, want `LastPlayedDate` ontbreekt op een serie.
 8. Spring naar bij Titel A-Z en bij Z-A: de ring landt op de gekozen letter, ook diep in een grote bibliotheek.
 9. Menu op een sorteerpagina gaat naar het overzicht, Menu op het overzicht sluit het paneel, Menu op het raster verlaat de route.
 10. Controleer Alle series, een filter met Wissen, en een bibliotheek van meer dan 500 titels op soepelheid.
