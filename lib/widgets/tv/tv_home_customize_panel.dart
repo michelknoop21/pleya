@@ -30,6 +30,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../focus/focus_history.dart';
 import '../../i18n/strings.g.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
@@ -279,16 +280,16 @@ class _TvHomeCustomizePanelState extends State<TvHomeCustomizePanel> {
   void _step(int fromIndex, TvHomeRowColumn column, int delta) {
     final target = fromIndex + delta;
     if (target < 0) {
-      _done.requestFocus();
+      requestFocusOutsideTraversal(_done);
       return;
     }
     if (target >= widget.entries.length) {
-      _newRow.requestFocus();
+      requestFocusOutsideTraversal(_newRow);
       return;
     }
     final columns = _columnsOf(widget.entries[target]);
     final wanted = columns.contains(column) ? column : columns.last;
-    _nodeFor(_focusIdOf(widget.entries[target]), wanted).requestFocus();
+    requestFocusOutsideTraversal(_nodeFor(_focusIdOf(widget.entries[target]), wanted));
   }
 
   /// Where the ring goes when the row under it is about to disappear (ROW1k).

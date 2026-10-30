@@ -1,0 +1,54 @@
+name: tvos.catalog.focus-history
+target: tvos-sim
+# LEFT and RIGHT use Flutter's directional traversal, UP and DOWN move the focus
+# themselves. A traversal history left over from another row sent the next LEFT
+# back to a card rows away (Apple TV, build 421, 30 October 2026).
+setup:
+  - reset_app
+  - seed: catalog.long-grid.v2
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - walk: {direction: right, expect: [nav.series, nav.movies], timeout: 40000, settle: 800}
+  - press: select
+  - settle: 1500
+  - press: down
+  - settle: 1500
+  - press: select
+  - wait_until: {id: "tv.catalog.grid[movies]", timeout: 20000}
+  - wait_until: {id: "tv.catalog.grid.item[movies.18]", timeout: 10000}
+  - settle: 1000
+  - press: down
+  - settle: 900
+  - press: down
+  - settle: 900
+  - assert: {id: "tv.catalog.grid.item[movies.12]", focused: true, insideViewport: true}
+  - press: right
+  - settle: 500
+  - press: right
+  - settle: 500
+  - assert: {id: "tv.catalog.grid.item[movies.14]", focused: true, insideViewport: true}
+  - snapshot: 00-row2-col2
+  - press: up
+  - settle: 900
+  - press: up
+  - settle: 900
+  - assert: {id: "tv.catalog.grid.item[movies.2]", focused: true, insideViewport: true}
+  - snapshot: 01-row0-col2
+  - press: left
+  - settle: 700
+  - assert: {id: "tv.catalog.grid.item[movies.1]", focused: true, insideViewport: true}
+  - snapshot: 02-left-stays-in-row
+  - press: right
+  - settle: 500
+  - press: right
+  - settle: 500
+  - press: down
+  - settle: 900
+  - assert: {id: "tv.catalog.grid.item[movies.9]", focused: true, insideViewport: true}
+  - press: left
+  - settle: 700
+  - assert: {id: "tv.catalog.grid.item[movies.8]", focused: true, insideViewport: true}
+  - snapshot: 03-left-after-down
