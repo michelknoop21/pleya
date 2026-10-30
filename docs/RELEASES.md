@@ -50,6 +50,27 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 423 · 30 October 2026 · Apple TV
+
+<!-- commit: 43aa2871 -->
+
+### Fixed
+
+- **The selection stays where you put it.** In All Films, All Series, the watchlist, the Home and
+  landing rows and the Home customize panel, pressing left or right no longer jumps to a card you
+  left earlier, also after sorting or filtering.
+- **Right on the last card stays put.** It no longer jumps a row up from a short last row.
+
+### Notes
+
+- This test build also carries the Plex and Pleya Server card from build 421.
+
+### Worth checking
+
+- Move right, then up or down a few rows, then left: the selection stays in the new row.
+- Do the same after changing the sort or a filter, and after coming back from a title.
+- In the Home customize panel, moving a row changes the row you selected.
+
 ## 2.8.1 · build 422 · 30 October 2026 · iPhone and iPad
 
 <!-- commit: 70a1507b -->
