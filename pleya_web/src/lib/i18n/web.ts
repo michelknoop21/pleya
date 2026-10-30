@@ -12,6 +12,7 @@ import { webSettings } from './webSettings';
 import { webMatch } from './webMatch';
 import { webTranscode } from './webTranscode';
 import { webTokens } from './webTokens';
+import { webLists } from './webLists';
 import { webSessions } from './webSessions';
 
 export const web = {
@@ -485,6 +486,7 @@ export const web = {
   ...webSettings,
   ...webTranscode,
   ...webTokens,
+  ...webLists,
   ...webBackups,
   ...webSessions,
   ...webMatch

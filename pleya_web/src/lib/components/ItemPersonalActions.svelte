@@ -4,6 +4,7 @@
   import { personalApi } from '../api/personal';
   import { describeError } from '../api/errors';
   import { session } from '../stores/session.svelte.js';
+  import { addToList } from '../stores/addToList.svelte';
   import { t } from '../i18n';
   import ConfirmDialog from './ConfirmDialog.svelte';
   import Select from './Select.svelte';
@@ -16,6 +17,7 @@
   let ratingOpen = $state(false);
   let draftRating = $state('');
   const canWatch = $derived(session.capabilities?.watch_state && (item.kind === 'movie' || item.kind === 'episode'));
+  const canAdd = $derived(session.capabilities?.collections === true || session.capabilities?.playlists === true);
   const ratingOptions = $derived([
     { value: '', label: t('personal.noRating') },
     ...Array.from({ length: 10 }, (_, index) => ({ value: String(index + 1), label: `${index + 1}/10` }))
@@ -84,6 +86,9 @@
     <button class="btn btn--secondary" aria-disabled={busy} onclick={watched}>
       {t(item.user_state?.watched ? 'personal.markUnwatched' : 'personal.markWatched')}
     </button>
+  {/if}
+  {#if canAdd}
+    <button class="btn btn--secondary" aria-haspopup="dialog" onclick={() => addToList.open(item)}>{t('lists.add.title')}</button>
   {/if}
 </div>
 {#if error && !ratingOpen}<p role="alert">{error}</p>{/if}

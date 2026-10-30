@@ -325,3 +325,12 @@ it('closes the track menu with Escape from a radio and returns focus to its open
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   expect(opener).toHaveFocus();
 });
+
+it('tells the route when the title played to its end, so a playlist can go on', async () => {
+  const onfinished = vi.fn();
+  render(Player, { props: { item, version: item.versions![0]!, deps: deps(fakeApi()), onclose: vi.fn(), onlogin: vi.fn(), onfinished } });
+  const video = document.querySelector('video')!;
+  expect(onfinished).not.toHaveBeenCalled();
+  await fireEvent.ended(video);
+  expect(onfinished).toHaveBeenCalledTimes(1);
+});

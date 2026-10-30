@@ -16,6 +16,8 @@
   import StateView from '#lib/components/StateView.svelte';
   import SkeletonPage from '#lib/components/SkeletonPage.svelte';
   import { session } from '#lib/stores/session.svelte.js';
+  import { listsApi, nextInList } from '#lib/api/lists.js';
+  import { playerHref } from '#lib/player/route.js';
   import { describeError } from '#lib/api/errors.js';
   import type { Item } from '#lib/api/types.js';
   import { t } from '#lib/i18n/index.js';
@@ -57,6 +59,20 @@
     void goto(`/items/${encodeURIComponent(itemId)}`);
   }
 
+  // Binnen een afspeellijst gaat het volgende item door. Lukt het lezen niet, dan
+  // blijft de speler op het einde staan: de film is af, er is niets kapot.
+  const playlistId = $derived(page.url.searchParams.get('playlist'));
+  async function playNext(): Promise<void> {
+    const list = playlistId;
+    if (!list) return;
+    try {
+      const next = nextInList(await listsApi(session.client).allItems('playlist', list), itemId);
+      if (next) await goto(playerHref(next, undefined, undefined, list), { replaceState: true });
+    } catch {
+      // Zie boven.
+    }
+  }
+
   // De schil stuurt bij `signed-out` zelf naar /login.
   function login(): void {
     session.signOut();
@@ -86,6 +102,7 @@
       deps={browserPlayerDeps(session.client, session.capabilities)}
       onclose={close}
       onlogin={login}
+      onfinished={playlistId ? () => void playNext() : undefined}
     />
   {/key}
 {/if}

@@ -8,6 +8,7 @@ import { webSettingsNl } from './webSettings.nl';
 import { webMatchNl } from './webMatch.nl';
 import { webTranscodeNl } from './webTranscode.nl';
 import { webTokensNl } from './webTokens.nl';
+import { webListsNl } from './webLists.nl';
 import { webSessionsNl } from './webSessions.nl';
 import type { WebKey } from './web';
 
@@ -483,6 +484,7 @@ export const webNl = {
   ...webSettingsNl,
   ...webTranscodeNl,
   ...webTokensNl,
+  ...webListsNl,
   ...webBackupsNl,
   ...webSessionsNl,
   ...webMatchNl

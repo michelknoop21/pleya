@@ -37,6 +37,12 @@
     {#if session.capabilities?.favorites}
       <a class="btn btn--secondary" href="/server/favorites">{t('personal.favorites')}</a>
     {/if}
+    {#if session.capabilities?.collections}
+      <a class="btn btn--secondary" href="/server/collections">{t('lists.collections')}</a>
+    {/if}
+    {#if session.capabilities?.playlists}
+      <a class="btn btn--secondary" href="/server/playlists">{t('lists.playlists')}</a>
+    {/if}
     {#if session.capabilities?.history}
       <a class="btn btn--secondary" href="/server/history">{t('history.title')}</a>
     {/if}

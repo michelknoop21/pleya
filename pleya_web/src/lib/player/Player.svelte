@@ -35,9 +35,11 @@
     deps: PlayerDeps;
     onclose: () => void;
     onlogin: () => void;
+    /** Het item is uitgespeeld; een afspeellijst gaat dan door. */
+    onfinished?: () => void;
   }
 
-  let { item, version, startAt = 0, deps, onclose, onlogin }: Props = $props();
+  let { item, version, startAt = 0, deps, onclose, onlogin, onfinished }: Props = $props();
 
   // svelte-ignore state_referenced_locally
   const session = new PlayerSession(deps);
@@ -254,7 +256,7 @@
     onplaying={playing}
     onpause={() => { paused = true; progress?.report(); }}
     onseeked={() => progress?.report()}
-    onended={() => { paused = true; progress?.finish(false); progress = null; }}
+    onended={() => { paused = true; progress?.finish(false); progress = null; onfinished?.(); }}
     ontimeupdate={syncTime}
     ondurationchange={syncTime}
     onprogress={syncTime}
