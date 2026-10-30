@@ -1,6 +1,7 @@
 /// The one definition of what the Sort and Filter menus of a library list are
-/// called and in which order they stand (Michel, 30 October 2026). tvOS draws it
-/// now; the iPhone can draw the same lists, because nothing here knows a widget.
+/// called and in which order they stand (Michel, 30 October 2026). tvOS draws
+/// them on its panel, every other platform through `LibraryFilterSortLoader` on
+/// its sheets, because nothing here knows a widget.
 ///
 /// **A backend never decides the order or the words.** It only says whether an
 /// option can run: `UnifiedFilterCapabilities` and `LibraryMenuSupport`. An
@@ -10,6 +11,7 @@ library;
 
 import '../i18n/strings.g.dart';
 import '../services/unified_catalog/unified_catalog_query.dart';
+import 'media_backend.dart';
 import 'media_filter.dart';
 import 'media_sort.dart';
 
@@ -54,52 +56,44 @@ String plexSortKeyFor(UnifiedCatalogSortField field) => switch (field) {
   _ => field.libraryQueryField,
 };
 
-/// Keys of a backend's own sort list in the order of [librarySortMenu].
-/// `rating` stands after the critics key on purpose: it is the critic score on
-/// Plex and the community score on Jellyfin, and both then land on their row.
-const List<String> _sortKeyOrder = [
-  'title',
-  'titleSort',
-  'year',
-  'productionYear',
-  'originallyAvailableAt',
-  'premiereDate',
-  'criticRating',
-  'rating',
-  'communityRating',
-  'audienceRating',
-  'userRating',
-  'contentRating',
-  'officialRating',
-  'duration',
-  'runtime',
-  'viewOffset',
-  'viewCount',
-  'playCount',
-  'addedAt',
-  'dateCreated',
-  'lastViewedAt',
-  'datePlayed',
-  'mediaHeight',
-];
+/// The row a key of a backend's own sort list belongs on, or null when the
+/// definition has none. `rating` is the critic score on Plex and the community
+/// score on Jellyfin, so only the backend can place it.
+UnifiedCatalogSortField? _sortFieldForKey(String key, MediaBackend backend) => switch (key) {
+  'title' || 'titleSort' => UnifiedCatalogSortField.title,
+  'year' || 'productionYear' => UnifiedCatalogSortField.year,
+  'originallyAvailableAt' || 'premiereDate' => UnifiedCatalogSortField.releaseDate,
+  'criticRating' => UnifiedCatalogSortField.criticRating,
+  'rating' when backend == MediaBackend.plex => UnifiedCatalogSortField.criticRating,
+  'rating' || 'communityRating' || 'audienceRating' => UnifiedCatalogSortField.audienceRating,
+  'userRating' => UnifiedCatalogSortField.userRating,
+  'contentRating' || 'officialRating' => UnifiedCatalogSortField.contentRating,
+  'duration' || 'runtime' => UnifiedCatalogSortField.duration,
+  'viewOffset' => UnifiedCatalogSortField.progress,
+  'viewCount' || 'playCount' => UnifiedCatalogSortField.plays,
+  'addedAt' || 'dateCreated' => UnifiedCatalogSortField.addedAt,
+  'lastViewedAt' || 'datePlayed' => UnifiedCatalogSortField.recentlyWatched,
+  'mediaHeight' => UnifiedCatalogSortField.resolution,
+  _ => null,
+};
 
 /// A per-library list of sorts, as `MediaServerClient.fetchSortOptions` gives
-/// it, in the menu's order. What has no place in the definition (Willekeurig,
-/// Studio, Begindatum, Uitzendtijd) keeps its order at the bottom: it does not
-/// go away. For a list of one library only. A merged catalog cannot run those:
-/// Random has no order two sources could agree on.
-List<MediaSort> libraryMenuOrderedSorts(List<MediaSort> sorts) {
-  int rank(MediaSort sort) {
-    final index = _sortKeyOrder.indexOf(sort.key);
-    return index < 0 ? _sortKeyOrder.length : index;
-  }
+/// it, in the menu's order and the menu's words. What has no place in the
+/// definition (Willekeurig, Studio, Begindatum, Uitzendtijd) keeps its order and
+/// its own name at the bottom: it does not go away. Keys never change, so a saved
+/// sort still restores. For a list of one library only. A merged catalog cannot
+/// run those: Random has no order two sources could agree on.
+List<MediaSort> libraryMenuOrderedSorts(List<MediaSort> sorts, {required MediaBackend backend}) {
+  int rank(UnifiedCatalogSortField? field) => field == null ? librarySortMenu.length : librarySortMenu.indexOf(field);
 
-  final indexed = [for (var i = 0; i < sorts.length; i++) (i, sorts[i])];
-  indexed.sort((a, b) {
-    final cmp = rank(a.$2).compareTo(rank(b.$2));
+  final rows = [for (final (i, sort) in sorts.indexed) (i, sort, _sortFieldForKey(sort.key, backend))];
+  rows.sort((a, b) {
+    final cmp = rank(a.$3).compareTo(rank(b.$3));
     return cmp != 0 ? cmp : a.$1.compareTo(b.$1);
   });
-  return [for (final entry in indexed) entry.$2];
+  return [
+    for (final (_, sort, field) in rows) field == null ? sort : sort.copyWith(title: librarySortFieldLabel(field)),
+  ];
 }
 
 /// The quick choices at the top of Filteren op. One at a time: Alles carries
@@ -215,10 +209,14 @@ const Map<String, LibraryQuickFilter> _knownServerKeys = {
 
 /// Watch states the catalog already runs from its own watch filter, so a
 /// server listing them adds no row.
-const Set<String> _watchStateServerKeys = {'unwatched', 'inprogress', 'watched'};
+const Map<String, LibraryQuickFilter> _watchStateServerKeys = {
+  'unwatched': LibraryQuickFilter.unwatched,
+  'inprogress': LibraryQuickFilter.inProgress,
+  'watched': LibraryQuickFilter.watched,
+};
 
-/// Categories that have a row of their own under the divider.
-const Set<String> _ownCategoryServerKeys = {'genre', 'year', 'decade', 'contentrating', 'audiolanguage'};
+/// Categories that have a row of their own under the divider, top to bottom.
+const List<String> _ownCategoryServerKeys = ['genre', 'year', 'decade', 'contentrating', 'audiolanguage'];
 
 /// The known quick choice a server key stands for, case-insensitively, or null.
 LibraryQuickFilter? libraryQuickFilterForServerKey(String key) => _knownServerKeys[_normalisedServerKey(key)];
@@ -233,7 +231,7 @@ LibraryServerFilters classifyServerFilters(Iterable<MediaFilter> filters) {
     if (key.isEmpty) continue;
     final normalised = _normalisedServerKey(key);
     if (filter.filterType == 'boolean') {
-      if (_watchStateServerKeys.contains(normalised)) continue;
+      if (_watchStateServerKeys.containsKey(normalised)) continue;
       final quick = _knownServerKeys[normalised];
       if (quick != null) {
         known.putIfAbsent(quick, () => key);
@@ -246,6 +244,60 @@ LibraryServerFilters classifyServerFilters(Iterable<MediaFilter> filters) {
   }
   return LibraryServerFilters(known: known, extras: extras, categories: categories);
 }
+
+String? _ownCategoryLabel(String normalisedKey) => switch (normalisedKey) {
+  'genre' => t.unifiedCatalog.filters.genre,
+  'year' => t.unifiedCatalog.filters.year,
+  'decade' => t.unifiedCatalog.filters.decade,
+  'contentrating' => t.unifiedCatalog.filters.contentRating,
+  'audiolanguage' => t.libraries.filterCategories.audioLanguage,
+  _ => null,
+};
+
+/// A library's own filter list, as `fetchLibraryFiltersWithValues` gives it, in
+/// the menu's order and the menu's words: the quick rows, the booleans the
+/// definition does not know, its categories, then the server's other categories.
+///
+/// Unlike [classifyServerFilters] this drops nothing. The watch states and the
+/// five categories are what a library's sheet runs on, and Jellyfin's Tag and
+/// Pleya Server's Resolution are categories it has and the definition does not.
+/// The `filter` values stay as the server gave them, because a request sends those.
+List<MediaFilter> libraryMenuOrderedFilters(List<MediaFilter> filters) {
+  final server = classifyServerFilters(filters);
+  final quickKeys = {for (final entry in server.known.entries) entry.value: entry.key};
+
+  bool isToggle(MediaFilter filter) => filter.filterType == 'boolean';
+
+  LibraryQuickFilter? quickOf(MediaFilter filter) =>
+      isToggle(filter) ? quickKeys[filter.filter] ?? _watchStateServerKeys[_normalisedServerKey(filter.filter)] : null;
+
+  /// One rank per group: within a group the server's own order stands.
+  int rank(MediaFilter filter) {
+    if (quickOf(filter) case final quick?) return libraryQuickFilterMenu.indexOf(quick);
+    final unknownToggles = libraryQuickFilterMenu.length;
+    if (isToggle(filter)) return unknownToggles;
+    final own = _ownCategoryServerKeys.indexOf(_normalisedServerKey(filter.filter));
+    return unknownToggles + 1 + (own >= 0 ? own : _ownCategoryServerKeys.length);
+  }
+
+  final rows = [for (final (i, filter) in filters.indexed) (i, filter, rank(filter))];
+  rows.sort((a, b) {
+    final cmp = a.$3.compareTo(b.$3);
+    return cmp != 0 ? cmp : a.$1.compareTo(b.$1);
+  });
+  return [
+    for (final (_, filter, _) in rows)
+      if (quickOf(filter) case final quick?)
+        _titled(filter, libraryQuickFilterLabel(quick))
+      else if (isToggle(filter) ? null : _ownCategoryLabel(_normalisedServerKey(filter.filter)) case final label?)
+        _titled(filter, label)
+      else
+        filter,
+  ];
+}
+
+MediaFilter _titled(MediaFilter filter, String title) =>
+    MediaFilter(filter: filter.filter, filterType: filter.filterType, key: filter.key, title: title, type: filter.type);
 
 /// The categories under the divider of Filteren op, top to bottom: Genre, Jaar,
 /// Decennium and Leeftijd, then every other category there is, so nothing goes.

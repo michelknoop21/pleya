@@ -4,6 +4,7 @@ library;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/library_menu_definition.dart';
+import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_sort.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_query.dart';
 
@@ -70,7 +71,7 @@ void main() {
       _sort('rating'),
       _sort('titleSort'),
       _sort('startDate'),
-    ]);
+    ], backend: MediaBackend.plex);
     expect(ordered.map((s) => s.key), ['titleSort', 'rating', 'addedAt', 'random', 'studio', 'startDate']);
   });
 

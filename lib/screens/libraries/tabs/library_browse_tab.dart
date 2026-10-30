@@ -612,8 +612,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
         // `/Items/Filters` can be much slower than the paged `/Items` browse
         // request on large Jellyfin libraries. Load only the local sort list
         // before page 1, then fill filter values in the background.
-        final sorts = await client.fetchSortOptions(widget.library.id, libraryType: widget.library.kind.id);
-        loaded = LoadedFiltersAndSorts(filters: const [], sorts: sorts);
+        loaded = LoadedFiltersAndSorts(filters: const [], sorts: await loader.loadSorts(widget.library));
       } else {
         // Plex filters+sorts must resolve before items so saved-sort restoration
         // can match a saved key against the just-loaded sort list, and so the
@@ -663,8 +662,8 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   void _loadJellyfinFiltersInBackground(int generation) {
     final client = context.getMediaClientForLibrary(widget.library);
     unawaited(
-      client
-          .fetchLibraryFiltersWithValues(widget.library.id)
+      LibraryFilterSortLoader(clientFor: (_) => client)
+          .loadFilters(widget.library)
           .then((result) {
             if (generation != _contentRequestId || !mounted) return;
             setState(() {
