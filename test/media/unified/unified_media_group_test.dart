@@ -110,6 +110,20 @@ void main() {
     });
   });
 
+  group('withFreshSourceItems', () {
+    test('the session\'s own watch state reaches a group a route held on to', () {
+      final held = _item('a', viewOffsetMs: 40 * 60000, durationMs: 7200000, lastViewedAt: 1000);
+      final group = _group([held, _item('b', durationMs: 7200000)]);
+
+      final fresh = group.withFreshSourceItems(
+        (item) => item.serverId == 'a' ? item.copyWith(viewOffsetMs: 50 * 60000) : item,
+      );
+
+      expect(fresh.resumeCarriedTo('b:sintel'), const Duration(minutes: 50));
+      expect(fresh.representativeSourceKey, group.representativeSourceKey);
+    });
+  });
+
   group('resumeCarriedTo', () {
     const hour = 60 * 60 * 1000;
     UnifiedMediaGroup movie(MediaItem a, MediaItem b) {

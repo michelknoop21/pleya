@@ -54,25 +54,10 @@ class UnifiedMediaGroup {
   MediaItem itemOf(String sourceKey) => sources.firstWhere((s) => s.sourceKey == sourceKey).item;
 
   /// Where a play on the source [sourceKey] continues when the viewer's
-  /// position lives on another source of this group.
-  ///
-  /// Null when that source has a position of its own (the picker row promises
-  /// it), when nothing is in progress, or when the runtimes differ so far that
-  /// a position on one cut means nothing on the other (hoofdstuk 13.2). Only
-  /// the start of the play uses this: nothing is written back to any source
-  /// (hoofdstuk 4.6), and the position the play reports lands on [sourceKey].
-  Duration? resumeCarriedTo(String sourceKey) {
-    if (watchState.runtimesDiffer || !watchState.hasActiveProgress) return null;
-    // The watch state's own pick, not [representativeSource]: that one is the
-    // source the card shows, which need not be the one holding the position.
-    final holderKey = watchState.representativeSourceKey;
-    if (sourceKey == holderKey) return null;
-    final target = sources.where((s) => s.sourceKey == sourceKey).firstOrNull;
-    final holder = sources.where((s) => s.sourceKey == holderKey).firstOrNull;
-    if (target == null || holder == null || target.item.hasActiveProgress) return null;
-    final offset = holder.item.viewOffsetMs;
-    return offset == null || offset <= 0 ? null : Duration(milliseconds: offset);
-  }
+  /// position lives on another source of this group. See
+  /// [resumeCarriedBetween].
+  Duration? resumeCarriedTo(String sourceKey) =>
+      resumeCarriedBetween({for (final s in sources) s.sourceKey: s.item}, watchState, sourceKey);
 
   /// This group with one membership's [MediaItem] re-read, and the watch state
   /// recomputed from it.
@@ -96,6 +81,24 @@ class UnifiedMediaGroup {
       for (final source in sources)
         if (source.sourceKey == key) source.withItem(item) else source,
     ];
+    return UnifiedMediaGroup(
+      groupId: groupId,
+      identity: identity,
+      sources: updated,
+      representativeSourceKey: representativeSourceKey,
+      watchState: selectRepresentativeWatchState({
+        for (final s in updated) s.sourceKey: s.item,
+      }, preferredSourceKey: preferredSourceKey),
+    );
+  }
+
+  /// This group with every membership's [MediaItem] passed through [fresh],
+  /// and the watch state recomputed once.
+  ///
+  /// For a group a route has held on to while the viewer played something: the
+  /// session's own watch events only reach the group through this.
+  UnifiedMediaGroup withFreshSourceItems(MediaItem Function(MediaItem item) fresh, {String? preferredSourceKey}) {
+    final updated = [for (final source in sources) source.withItem(fresh(source.item))];
     return UnifiedMediaGroup(
       groupId: groupId,
       identity: identity,

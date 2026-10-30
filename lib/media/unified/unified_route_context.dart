@@ -12,6 +12,7 @@ library;
 import '../media_item.dart';
 import 'canonical_media_identity.dart';
 import 'source_coverage_state.dart';
+import 'unified_media_source.dart';
 
 /// Why activation reached a route: what the user asked for, before any
 /// per-kind setting (`episodeAction`, `continueWatchingAction`) turns a play
@@ -65,15 +66,20 @@ class UnifiedMediaRouteContext {
   /// `UnifiedMediaGroup.resumeCarriedTo`.
   final Duration? carriedResume;
 
-  /// The source a film's detail page shows. A film keeps one face whichever
-  /// source plays it, so this stays on the group's representative source while
-  /// [sourceKey] moves. Equal to [sourceKey] for everything else: the seasons
-  /// and episodes of a series only exist per source.
+  /// The source the detail page shows. A film or series keeps one face
+  /// whichever source plays it, so this stays on the group's representative
+  /// source while [sourceKey] moves. Equal to [sourceKey] when that source is
+  /// not reachable, and for an episode reached on its own.
   final String pageSourceKey;
 
   /// The item a play on this route starts, when that is not the item on the
-  /// page. Null when the page shows the chosen source itself.
+  /// page: the chosen film, or the chosen series whose episodes a play links
+  /// to. Null when the page shows the chosen source itself.
   final MediaItem? playItem;
+
+  /// Every source of this title, the chosen one first, in the order a play
+  /// falls back through them. Empty on a route built without a group.
+  final List<UnifiedMediaSource> titleSources;
 
   UnifiedMediaRouteContext({
     required this.groupId,
@@ -85,6 +91,7 @@ class UnifiedMediaRouteContext {
     this.carriedResume,
     String? pageSourceKey,
     this.playItem,
+    this.titleSources = const [],
   }) : pageSourceKey = pageSourceKey ?? sourceKey,
        availableSourceKeys = List.unmodifiable(availableSourceKeys) {
     assert(

@@ -114,7 +114,7 @@ void main() {
       expect(context.playItem, isNull);
     });
 
-    test('a series stays on its chosen source: seasons exist per source', () {
+    test('a series keeps one page too: the chosen source plays, the main source shows', () {
       final group = _group([
         UnifiedMediaSource.fromItem(
           _item('nas').copyWith(kind: MediaKind.show),
@@ -127,6 +127,38 @@ void main() {
       ]);
 
       final context = contextFor(group, 'attic:i1');
+
+      expect(context.pageSourceKey, 'nas:i1');
+      expect(context.playItem?.serverId, 'attic');
+      expect(context.titleSources.first.sourceKey, 'attic:i1', reason: 'the chosen source leads the fallback order');
+    });
+
+    test('an episode out of Verder kijken stays on its chosen source', () {
+      final group = _group([
+        UnifiedMediaSource.fromItem(
+          _item('nas').copyWith(kind: MediaKind.episode),
+          availability: SourceAvailability.online,
+        ),
+        UnifiedMediaSource.fromItem(
+          _item('attic').copyWith(kind: MediaKind.episode),
+          availability: SourceAvailability.online,
+        ),
+      ]);
+
+      expect(contextFor(group, 'attic:i1').pageSourceKey, 'attic:i1');
+    });
+
+    test('a page that could not load follows the choice', () {
+      final group = _group([_source('nas'), _source('attic')]);
+
+      final context = _coordinator.buildRouteContext(
+        group: group,
+        orderedSources: group.sources,
+        sourceKey: 'attic:i1',
+        coverage: SourceCoverageState.complete(const {'nas', 'attic'}),
+        intent: UnifiedActivationIntent.details,
+        pageFollowsChoice: true,
+      );
 
       expect(context.pageSourceKey, 'attic:i1');
       expect(context.playItem, isNull);

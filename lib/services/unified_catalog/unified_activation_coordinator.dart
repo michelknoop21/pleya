@@ -285,9 +285,11 @@ class UnifiedActivationCoordinator {
     required String sourceKey,
     required SourceCoverageState coverage,
     required UnifiedActivationIntent intent,
+    bool pageFollowsChoice = false,
   }) {
     final chosen = group.itemOf(sourceKey);
-    final page = chosen.kind != MediaKind.movie
+    final keepsOnePage = !pageFollowsChoice && (chosen.kind == MediaKind.movie || chosen.kind == MediaKind.show);
+    final page = !keepsOnePage
         ? sourceKey
         : orderedSources
               .where((s) => s.sourceKey == group.representativeSourceKey && s.availability.isUsable)
@@ -301,11 +303,17 @@ class UnifiedActivationCoordinator {
       sourceKey: sourceKey,
       pageSourceKey: pageSourceKey,
       playItem: pageSourceKey == sourceKey ? null : chosen,
+      titleSources: _chosenFirst(orderedSources, sourceKey),
       availableSourceKeys: orderedSources.map((s) => s.sourceKey).toList(),
       coverage: coverage,
       intent: intent,
     );
   }
+
+  List<UnifiedMediaSource> _chosenFirst(List<UnifiedMediaSource> sources, String sourceKey) => [
+    ...sources.where((s) => s.sourceKey == sourceKey),
+    ...sources.where((s) => s.sourceKey != sourceKey),
+  ];
 
   /// Whether to offer another source after playback initialisation failed
   /// (hoofdstuk 15). Never switches; only reports what a switch could reach.

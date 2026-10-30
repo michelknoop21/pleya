@@ -77,6 +77,26 @@ bool runtimesAreComparable(MediaItem a, MediaItem b) {
   return (da - db).abs() <= longest * runtimeCompatibilityTolerance;
 }
 
+/// Where a play on the source [targetKey] continues when the viewer's position
+/// lives on another source of the same title.
+///
+/// [sources] are that title's items per source and [state] the pick
+/// [selectRepresentativeWatchState] made over them. Null when the source has a
+/// position of its own (the picker row promises it), when nothing is in
+/// progress, or when the runtimes differ so far that a position on one cut
+/// means nothing on the other (hoofdstuk 13.2). The holder is the watch state's
+/// own pick, not the source a card shows: that one need not hold the position.
+Duration? resumeCarriedBetween(Map<String, MediaItem> sources, UnifiedWatchState state, String targetKey) {
+  if (state.runtimesDiffer || !state.hasActiveProgress) return null;
+  final holderKey = state.representativeSourceKey;
+  if (targetKey == holderKey) return null;
+  final target = sources[targetKey];
+  final holder = sources[holderKey];
+  if (target == null || holder == null || target.hasActiveProgress) return null;
+  final offset = holder.viewOffsetMs;
+  return offset == null || offset <= 0 ? null : Duration(milliseconds: offset);
+}
+
 /// Picks the representative source for a group's watch-state display
 /// (hoofdstuk 13.2). [sources] maps a stable source key to the concrete item
 /// carrying that source's watch-state; must be non-empty.
