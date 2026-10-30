@@ -420,7 +420,7 @@ const ProviderTMDB = "tmdb"
 // attachExternalIDs vult per pagina in één query het TMDB-nummer van elk item
 // dat een geslaagde match heeft. Een item zonder match, of met een match die
 // ambigu, mislukt of afgewezen is, krijgt niets: een nummer dat niet bewezen is
-// hoort niet als identiteit de deur uit (unified, DEC-XXX).
+// hoort niet als identiteit de deur uit (unified, DEC-168).
 func (s *Store) attachExternalIDs(ctx context.Context, ids []id.ID, byID map[id.ID]*Item) error {
 	// Alleen films en series kunnen een nummer dragen. Een pagina met seizoenen
 	// of afleveringen kost dus geen query.

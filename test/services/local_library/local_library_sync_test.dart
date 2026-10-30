@@ -26,6 +26,7 @@ class Client implements MediaServerClient {
   bool repeat = false;
   bool childrenFail = false;
   Object? idsError;
+  int idLookups = 0;
   @override
   Future<LibraryPage<MediaItem>> fetchChildrenPage(
     String parentId, {
@@ -43,6 +44,7 @@ class Client implements MediaServerClient {
   bool get isOfflineMode => false;
   @override
   Future<ExternalIds> fetchExternalIds(String id) async {
+    idLookups++;
     final error = idsError;
     if (error != null) throw error;
     return const ExternalIds();
@@ -141,6 +143,56 @@ void main() {
       return {for (final i in store.items) i.id: i.raw};
     }
 
+    Future<(PleyaFakeServer, Future<Map<String, Map<String, Object?>?>> Function())> live({
+      required bool reportsExternalIds,
+    }) async {
+      final fake = PleyaFakeServer()..reportsExternalIds = reportsExternalIds;
+      fake.addLibrary(id: 'lib-series', title: 'Series', kind: 'shows');
+      fake.addItem(id: 'later', kind: 'show', title: 'C', libraryId: 'lib-series', year: 2022);
+      final pleya = fake.client();
+      addTearDown(pleya.close);
+      await pleya.refreshCapabilities();
+      const pleyaLibrary = MediaLibrary(
+        id: 'lib-series',
+        backend: MediaBackend.pleyaServer,
+        title: 'Series',
+        kind: MediaKind.show,
+        serverId: 'srv-1',
+      );
+      Future<Map<String, Map<String, Object?>?>> rescan() async {
+        await pleya.refreshCapabilities();
+        pleya.debugForgetExternalIds();
+        await LocalLibrarySync(store: store).syncLibrary(pleyaLibrary, pleya);
+        return {for (final i in store.items) i.id: i.raw};
+      }
+
+      return (fake, rescan);
+    }
+
+    test('a final empty answer does not hide a match the server makes later: the next scan picks it up', () async {
+      final (fake, rescan) = await live(reportsExternalIds: true);
+      expect((await rescan())['later']?['pleyaLocalExternalIds'], isEmpty);
+
+      fake.items['later']!['external_ids'] = {'tmdb': 42};
+
+      final after = await rescan();
+      expect(after['later']?['pleyaLocalExternalIds'], {'tmdb': 42});
+      expect(after['later']?['pleyaLocalExternalIdsFinal'], isTrue);
+    });
+
+    test('a server upgrade turns a non-final answer into a final one on the next scan', () async {
+      final (fake, rescan) = await live(reportsExternalIds: false);
+      expect((await rescan())['later']?['pleyaLocalExternalIdsFinal'], isNot(isTrue));
+
+      // The upgraded server sends the key and the capability.
+      fake.reportsExternalIds = true;
+      fake.items['later']!['external_ids'] = {'tmdb': 42};
+
+      final after = await rescan();
+      expect(after['later']?['pleyaLocalExternalIds'], {'tmdb': 42});
+      expect(after['later']?['pleyaLocalExternalIdsFinal'], isTrue);
+    });
+
     test('a server that knows the field stores final answers, also an empty one', () async {
       final raw = await scan(reportsExternalIds: true);
 
@@ -192,6 +244,31 @@ void main() {
 
       expect(raw['unmatched']?['pleyaLocalExternalIdsFinal'], isFalse);
     });
+  });
+
+  test('rescan cost: a list answer that carried the numbers needs no lookup per title, one without does', () async {
+    client.rows = [
+      for (final id in ['a', 'b'])
+        film(id).copyWith(
+          raw: {
+            'Guid': [
+              {'id': 'tmdb://${id.codeUnitAt(0)}'},
+            ],
+          },
+        ),
+    ];
+    await LocalLibrarySync(store: store).syncLibrary(library, client);
+    expect(client.idLookups, 0);
+    expect(store.items.map((i) => i.raw?['pleyaLocalExternalIds']), [
+      {'tmdb': 97},
+      {'tmdb': 98},
+    ]);
+
+    client
+      ..rows = [film('a'), film('b')]
+      ..idLookups = 0;
+    await LocalLibrarySync(store: store).syncLibrary(library, client);
+    expect(client.idLookups, 2, reason: 'no carried numbers: one lookup per title, as before');
   });
 
   test('a timed out lookup does not fail the scan', () async {

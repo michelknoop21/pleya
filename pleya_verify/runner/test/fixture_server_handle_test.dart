@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:pleya_verify_runner/src/fixture/fixture_server_handle.dart';
@@ -24,6 +25,28 @@ void main() {
 
   tearDown(() async {
     await fixture.stop();
+  });
+
+  test('a second fixture answers with its own server id, so the app sees two servers', () async {
+    final second = await FixtureServerHandle.start(fixtureServerPackageDir: packageDir, serverId: 'srv-2');
+    addTearDown(second.stop);
+    final client = HttpClient();
+    addTearDown(client.close);
+    Future<String> serverIdOf(FixtureServerHandle handle) async {
+      final request = await client.getUrl(Uri.parse('${handle.baseUrl}/pleya/v1/info'));
+      final response = await request.close();
+      final body = jsonDecode(await response.transform(utf8.decoder).join()) as Map<String, dynamic>;
+      return (body['server'] as Map<String, dynamic>)['id'] as String;
+    }
+
+    expect(await serverIdOf(fixture), 'srv-1');
+    expect(await serverIdOf(second), 'srv-2');
+  });
+
+  test('the unified pair fixtures seed one series under one TMDB number on both sides', () async {
+    await fixture.seed('unified.pair.a.v1');
+    final ids = await fixture.seededIds();
+    expect(ids.keys, containsAll(['show/severance', 'show/bsg', 'season/severance-s01']));
   });
 
   test('control calls default to a 30s deadline (CI runner is slow around the simulator boot)', () {

@@ -6,8 +6,10 @@ import '../media/media_part.dart';
 import '../media/media_role.dart';
 import '../media/media_stream.dart';
 import '../media/media_version.dart';
+import '../media/unified/carried_external_ids.dart' show pleyaExternalIdsRawKey;
 import '../models/pleya_server/pleya_wire.dart';
 import '../models/pleya_server/pleya_wire_library.dart';
+import '../utils/external_ids.dart';
 import '../utils/resolution_label.dart';
 import '../utils/track_label_builder.dart';
 
@@ -169,6 +171,11 @@ class PleyaServerMappers {
       libraryTitle: libraryTitle,
       serverId: serverId,
       serverName: serverName,
+      // Only when the server sent the key: an older server leaves it out, and
+      // then nothing here may pass for "this title has no numbers".
+      raw: wire.externalIdsReported && (kind == PleyaItemKind.movie || kind == PleyaItemKind.show)
+          ? {pleyaExternalIdsRawKey: ExternalIds(tmdb: wire.externalIds.tmdb).toJson()}
+          : null,
     );
   }
 

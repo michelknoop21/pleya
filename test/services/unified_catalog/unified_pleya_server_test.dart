@@ -1,4 +1,4 @@
-/// Pleya Server as a full member of the unified library (DEC-XXX).
+/// Pleya Server as a full member of the unified library (DEC-168).
 ///
 /// Three layers, each answering a different question:
 ///

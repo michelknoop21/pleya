@@ -1,0 +1,95 @@
+name: ios.unified.two-servers
+target: ios-sim
+# Unified with two servers at once (DEC-168). Two Pleya-protocol fixture
+# servers, each with its own server id: A is signed in through the normal
+# sign-in flow, B is a connection that already exists (`connections_seed`).
+# Both hold Severance under TMDB 95396, under another title and year, and a
+# Battlestar Galactica with its own number (1978 and the 2004 remake).
+#
+# What this proves, and what it does not:
+# - one card for the series with both sources, the remakes as two cards;
+# - the source picker lists both servers, picking one opens that server's
+#   detail, and the detail can switch to the other source;
+# - B going offline leaves A usable (the card opens straight on A), and B
+#   coming back makes both selectable again;
+# - the episode of the chosen source starts in the player (the fixture serves
+#   a real short mp4; this is real playback of fixture media, not Plex);
+# Not in this scenario: library rights. The fixture models no per-user library
+# permissions, so that stays with the resolver and hidden-library tests.
+# Plex itself is not in this scenario: the fixture server speaks the Pleya
+# protocol only. Plex and Pleya Server side by side is covered by
+# `unified_carried_identity_test.dart` and the device run.
+setup:
+  - reset_app
+  - seed: unified.pair.a.v1
+  - seed_second: unified.pair.b.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - connections_seed: {base_url: "{{fixture_second}}", server_id: srv-2, server_name: "NAS B", user_name: verify-owner, refresh_token: rt-seeded}
+  - open: screen.series
+steps:
+  - wait_until: {id: screen.series, timeout: 20000}
+  - settle: 3000
+  - tap: {id: "landing.view_all[series]"}
+  - wait_until: {id: screen.catalog_series, timeout: 15000}
+  # Three cards: Battlestar Galactica 1978, Battlestar Galactica 2004, and one
+  # Severance with both sources, although the titles and years differ.
+  - wait_until: {id: "catalog.grid[series]", state: {count: 3, complete: true}, timeout: 20000}
+  - assert: {id: "catalog.grid.item[series.0]", state: {sources: 1}}
+  - assert: {id: "catalog.grid.item[series.1]", state: {sources: 1}}
+  - assert: {id: "catalog.grid.item[series.2]", state: {sources: 2}}
+  - snapshot: 01-one-card-two-sources
+
+  # Both online: the picker asks, and lists both servers.
+  - tap: {id: "catalog.grid.item[series.2]"}
+  - wait_until: {id: sheet.source_picker, timeout: 10000}
+  - assert: {id: "sheet.source_picker.row[0]", state: {usable: true}}
+  - assert: {id: "sheet.source_picker.row[1]", state: {usable: true}}
+  - snapshot: 02-picker-both-servers
+  - tap: {id: "sheet.source_picker.row[1]"}
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - wait_until: {id: media-detail.source, timeout: 10000}
+  - snapshot: 03-detail-bound-to-one-source
+
+  # Switch source from the detail page.
+  - tap: {id: media-detail.source}
+  - wait_until: {id: sheet.source_picker, timeout: 10000}
+  - tap: {id: "sheet.source_picker.row[0]"}
+  - wait_until: {id: media-detail.source, timeout: 15000}
+  - snapshot: 04-detail-after-switch
+
+  # Playback of the chosen source: the first episode starts in the player.
+  - wait_until: {id: "media-detail.episode-list.item[0]", timeout: 15000}
+  - tap: {id: "media-detail.episode-list.item[0]"}
+  - wait_until: {id: player.surface, timeout: 30000}
+  - snapshot: 05-player-from-chosen-source
+  - restart
+  - wait_until: {id: nav.series, timeout: 45000}
+  - settle: 1500
+  - tap: {id: nav.series}
+  - wait_until: {id: screen.series, timeout: 20000}
+
+  # B goes offline: the card still opens, straight on A, no dead end.
+  - fixture_mutate_second: {op: offline, enabled: true}
+  - settle: 3000
+  - tap: {id: "landing.view_all[series]"}
+  - wait_until: {id: screen.catalog_series, timeout: 15000}
+  - wait_until: {id: "catalog.grid[series]", state: {complete: true}, timeout: 20000}
+  - snapshot: 06-second-server-offline
+  - tap: {id: "catalog.grid.item[series.2]"}
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - snapshot: 07-opens-on-the-server-that-is-up
+
+  # B comes back: after a restart both sources are selectable again.
+  - fixture_mutate_second: {op: offline, enabled: false}
+  - restart
+  - wait_until: {id: nav.series, timeout: 45000}
+  - settle: 1500
+  - tap: {id: nav.series}
+  - wait_until: {id: screen.series, timeout: 20000}
+  - tap: {id: "landing.view_all[series]"}
+  - wait_until: {id: "catalog.grid.item[series.2]", state: {sources: 2}, timeout: 20000}
+  - tap: {id: "catalog.grid.item[series.2]"}
+  - wait_until: {id: sheet.source_picker, timeout: 10000}
+  - assert: {id: "sheet.source_picker.row[1]", state: {usable: true}}
+  - snapshot: 08-both-back

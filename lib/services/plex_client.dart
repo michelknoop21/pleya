@@ -919,6 +919,9 @@ class PlexClient
     bool requireTotalCount = false,
   }) async {
     final queryParams = _buildPaginationParams(start, size);
+    // The provider numbers ride along in the same answer (a few bytes per
+    // title), so unified grouping needs no detail request per title.
+    queryParams['includeGuids'] = 1;
     if (filters != null) queryParams.addAll(filters);
     final endpoint = sectionId == 'shared' ? '/library/shared/all' : '/library/sections/$sectionId/all';
     final response = await _getWithFailover(endpoint, queryParameters: queryParams, abort: abort);
@@ -1400,6 +1403,7 @@ class PlexClient
         'searchTypes': 'movies,tv',
         'includeCollections': 1,
         'includeExternalMedia': 1,
+        'includeGuids': 1,
         'X-Plex-Container-Size': limit,
       },
       // Search is interactive and cross-server: a failover attempt doubles the

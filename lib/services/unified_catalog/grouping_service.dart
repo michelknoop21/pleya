@@ -28,7 +28,7 @@ class GroupingCandidate {
 /// still allows that group to *exist*, it just never grows a second source.
 ///
 /// Pleya Server used to be on this list (DEC-063, while its external-id support
-/// was unbuilt). It merges since DEC-XXX, on the same strong-token rule as
+/// was unbuilt). It merges since DEC-168, on the same strong-token rule as
 /// Plex and Jellyfin: its items carry a proven TMDB number (`external_ids`).
 const _neverMergedBackends = {MediaBackend.local};
 
@@ -210,7 +210,7 @@ List<List<int>> _unionFind(List<GroupingCandidate> candidates, List<int> indices
 
 bool _weakFallbackAllowed(GroupingCandidate a, GroupingCandidate b) {
   // A Pleya Server is only ever recognised by a proven provider number
-  // (DEC-XXX). "Same title and year" is a guess, and a guess must not fold two
+  // (DEC-168). "Same title and year" is a guess, and a guess must not fold two
   // cards into one: without an identical strong token the sources stay apart
   // and each stays recognisable by its server.
   if (_involvesPleyaServer(a, b)) return false;

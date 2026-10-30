@@ -210,6 +210,34 @@ void main() {
       expect(server.requests, isEmpty);
     });
 
+    test(
+      'a page read again replaces remembered numbers, so a later match shows without waiting for a timeout',
+      () async {
+        final server = serverWith();
+        client = await connected(server);
+        await client.fetchLibraryPagedContent('lib-films', query: const LibraryQuery());
+        expect(await client.fetchExternalIds('unmatched'), const ExternalIds());
+
+        server.items['unmatched']!['external_ids'] = {'tmdb': 9};
+        await client.fetchLibraryPagedContent('lib-films', query: const LibraryQuery());
+
+        expect(await client.fetchExternalIds('unmatched'), const ExternalIds(tmdb: 9));
+      },
+    );
+
+    test('a new client after an account switch remembers nothing of the old one', () async {
+      final server = serverWith();
+      client = await connected(server);
+      await client.fetchLibraryPagedContent('lib-films', query: const LibraryQuery());
+      final other = await connected(server);
+      addTearDown(other.close);
+      server.requests.clear();
+
+      await other.fetchExternalIds('dune-2021');
+
+      expect(server.requests.where((r) => r.contains('/items/dune-2021')), hasLength(1));
+    });
+
     test('a large library costs no detail request per title once its pages were read', () async {
       final server = PleyaFakeServer()..addLibrary(id: 'lib-films', title: 'Films', kind: 'movies');
       for (var i = 0; i < 600; i++) {

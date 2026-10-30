@@ -28,6 +28,7 @@ class PleyaFakeServer {
     this.pageSizeCap = 100,
     this.artworkBytes = const [0x89, 0x50, 0x4e, 0x47],
     this.setupCode = 'VERIFY-SETUP-CODE',
+    this.serverId = 'srv-1',
     FixtureClock? clock,
   }) : clock = clock ?? FixtureClock(),
        _initialSetupRequired = setupRequired;
@@ -155,6 +156,10 @@ class PleyaFakeServer {
   /// this to its console on first boot; a scenario driver reads it straight
   /// off this field (or `/__verify/state`) instead.
   final String setupCode;
+
+  /// The server id `/info` answers with. A scenario with two fixture servers
+  /// gives the second its own id, or the app would take both for one server.
+  final String serverId;
 
   /// username -> password, registered by a successful `/auth/setup` and
   /// checked by `/auth/login`. Empty on a fresh server with setup required.
@@ -966,7 +971,7 @@ class PleyaFakeServer {
 
   Map<String, dynamic> _info() => {
     'protocol': {'major': 1, 'feature_level': 1, 'profile': 'full'},
-    'server': {'id': 'srv-1'},
+    'server': {'id': serverId},
     'capabilities': {
       'browse': true,
       'search': true,

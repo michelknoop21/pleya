@@ -187,6 +187,21 @@ void main() {
         reason: 'Plex and Jellyfin keep their stored answer',
       );
       expect(provider.externalIds('one', 'unknown'), isNull);
+      // Rights: a library the profile may no longer read gives nothing, also no numbers.
+      provider.dispose();
+      provider = LocalLibraryProvider(
+        profileId: 'a',
+        directory: root,
+        librariesForSync: () => [],
+        clientFor: (_) => null,
+        mayReadServer: (_) => true,
+        mayReadLibrary: (_) => false,
+        networkConnected: () => false,
+        wifiConnected: () => false,
+        changes: changes,
+      );
+      await provider.ready;
+      expect(provider.externalIds('one', 'proven'), isNull, reason: 'withdrawn library: no cached identity leaks');
       await provider.setEnabled(false);
     },
   );

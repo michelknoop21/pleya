@@ -11,6 +11,7 @@ import '../../media/media_kind.dart';
 import '../../media/media_library.dart';
 import '../../utils/external_ids.dart';
 import '../../media/media_server_client.dart';
+import '../../media/unified/carried_external_ids.dart';
 import '../jellyfin_client.dart';
 import '../plex_client.dart';
 import '../pleya_server_client.dart';
@@ -106,8 +107,10 @@ class LocalLibrarySync {
         parentId: detail.parentId ?? candidate.parentId,
         grandparentId: detail.grandparentId ?? candidate.grandparentId,
       );
-      // Preserve strong cross-server identity for offline grouping. The Plex
-      // neutral mapper intentionally omits the Guid array from raw metadata.
+      // Preserve strong cross-server identity for offline grouping. The list
+      // answer usually carried the numbers already (Plex `includeGuids`,
+      // Jellyfin `ProviderIds`, Pleya `external_ids`); only without them is
+      // the server asked per title.
       ExternalIds? ids;
       // Whether the stored answer may be trusted as final. Only a Pleya Server
       // that knows the field says so; the others keep the behaviour they had.
@@ -118,27 +121,33 @@ class LocalLibrarySync {
       final storedFinal = client is! PleyaServerClient || item.raw?['pleyaLocalExternalIdsFinal'] == true;
       if ((item.kind == MediaKind.movie || item.kind == MediaKind.show) &&
           (item.raw?['pleyaLocalExternalIds'] == null || !storedFinal)) {
-        try {
-          if (client is PleyaServerClient) {
-            final answer = await client.fetchExternalIdsDetailed(item.id).timeout(const Duration(seconds: 20));
-            ids = answer.ids;
-            authoritative = answer.authoritative;
-          } else {
-            ids = await client.fetchExternalIds(item.id).timeout(const Duration(seconds: 20));
+        final listed = externalIdsCarriedBy(candidate) ?? externalIdsCarriedBy(item);
+        if (listed != null) {
+          ids = listed;
+          authoritative = true;
+        } else {
+          try {
+            if (client is PleyaServerClient) {
+              final answer = await client.fetchExternalIdsDetailed(item.id).timeout(const Duration(seconds: 20));
+              ids = answer.ids;
+              authoritative = answer.authoritative;
+            } else {
+              ids = await client.fetchExternalIds(item.id).timeout(const Duration(seconds: 20));
+            }
+          } on MediaServerHttpException {
+            // Plex used to answer a failed lookup with no ids. Keep that here: one
+            // flaky includeGuids call must not fail the whole library scan.
+            ids = null;
+          } on IdentityLookupException {
+            // The server did not answer (offline, 429, 503, a broken body). The row
+            // is kept with no stored answer, which readers treat as unknown rather
+            // than as "no numbers", so the next scan or lookup asks again.
+            ids = null;
+          } on TimeoutException {
+            ids = null;
           }
-        } on MediaServerHttpException {
-          // Plex used to answer a failed lookup with no ids. Keep that here: one
-          // flaky includeGuids call must not fail the whole library scan.
-          ids = null;
-        } on IdentityLookupException {
-          // The server did not answer (offline, 429, 503, a broken body). The row
-          // is kept with no stored answer, which readers treat as unknown rather
-          // than as "no numbers", so the next scan or lookup asks again.
-          ids = null;
-        } on TimeoutException {
-          ids = null;
+          await check();
         }
-        await check();
       }
       next[item.globalKey] = ids == null
           ? item

@@ -671,6 +671,13 @@ class PlexMetadataDto {
   @JsonKey(fromJson: flexibleInt)
   final int? flattenSeasons;
 
+  /// The `Guid` array (`imdb://`, `tmdb://`, `tvdb://`) when the request asked
+  /// for `includeGuids=1`. Read by hand in [PlexMetadataDto.fromJsonWithImages]
+  /// so unified grouping gets the numbers from a list answer instead of one
+  /// detail request per title.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final List<Object?>? guids;
+
   const PlexMetadataDto({
     required this.ratingKey,
     this.key,
@@ -742,6 +749,7 @@ class PlexMetadataDto {
     this.backgroundSquare,
     this.skipChildren,
     this.flattenSeasons,
+    this.guids,
   });
 
   factory PlexMetadataDto.fromJson(Map<String, dynamic> rawJson) {
@@ -775,13 +783,17 @@ class PlexMetadataDto {
         }
       }
     }
+    final guidList = json['Guid'];
+    final guids = guidList is List ? List<Object?>.unmodifiable(guidList) : null;
     if (clearLogoUrl == null && backgroundSquareUrl == null) {
-      return PlexMetadataDto.fromJson(json);
+      final dto = PlexMetadataDto.fromJson(json);
+      return guids == null ? dto : dto.copyWith(guids: guids);
     }
     final enriched = Map<String, dynamic>.from(json);
     if (clearLogoUrl != null) enriched['clearLogo'] = clearLogoUrl;
     if (backgroundSquareUrl != null) enriched['backgroundSquare'] = backgroundSquareUrl;
-    return PlexMetadataDto.fromJson(enriched);
+    final dto = PlexMetadataDto.fromJson(enriched);
+    return guids == null ? dto : dto.copyWith(guids: guids);
   }
 
   static Map<String, dynamic> _obfuscateJson(Map<String, dynamic> json) {
@@ -874,6 +886,7 @@ class PlexMetadataDto {
     String? backgroundSquare,
     bool? skipChildren,
     int? flattenSeasons,
+    List<Object?>? guids,
   }) {
     return PlexMetadataDto(
       ratingKey: ratingKey ?? this.ratingKey,
@@ -946,6 +959,7 @@ class PlexMetadataDto {
       backgroundSquare: backgroundSquare ?? this.backgroundSquare,
       skipChildren: skipChildren ?? this.skipChildren,
       flattenSeasons: flattenSeasons ?? this.flattenSeasons,
+      guids: guids ?? this.guids,
     );
   }
 }
@@ -986,6 +1000,9 @@ Map<String, Object?>? _rawMetadata(PlexMetadataDto dto) {
   if (dto.key != null) raw['key'] = dto.key;
   if (dto.skipChildren != null) raw['skipChildren'] = dto.skipChildren;
   if (dto.flattenSeasons != null) raw['flattenSeasons'] = dto.flattenSeasons;
+  // Kept so [externalIdsCarriedBy] can read the numbers the list answer
+  // already had; `includeGuids=1` puts them there at no extra request.
+  if (dto.guids != null) raw['Guid'] = dto.guids;
   return raw.isEmpty ? null : raw;
 }
 

@@ -8,7 +8,7 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 
 Dezelfde serie op Plex en Pleya Server stond twee keer in Series, Films, Zoeken, Home en Verder kijken,
 omdat DEC-063 Pleya Server uit elke samenvoeging hield (`_neverMergedBackends`) en de server geen
-nummers doorgaf. DEC-XXX (Roadmap A-07) vervangt dat voor Pleya Server; Pleya Share blijft apart.
+nummers doorgaf. DEC-168 (Roadmap A-07) vervangt dat voor Pleya Server; Pleya Share blijft apart.
 
 - Server: `Item.external_ids {tmdb}` voor een geslaagde match, anders `null`; additief optioneel
   antwoordveld, openapi, protocol 9.4a, fixture, web-types opnieuw gegenereerd.
@@ -16,6 +16,7 @@ nummers doorgaf. DEC-XXX (Roadmap A-07) vervangt dat voor Pleya Server; Pleya Sh
   een server die een titel niet kan bewijzen gooit en staat in de dekking als niet gecontroleerd.
   Een paar met een Pleya-Serverbron krijgt nooit de titel-plus-jaar-terugval. Verborgen bibliotheken
   lekken niet via een zoektreffer zonder bibliotheek.
+- 30 okt: de nummers uit lijstantwoorden (Plex `includeGuids=1` ook op bibliotheekpagina's en zoeken, Jellyfin `ProviderIds` in de browsevelden, Pleya `external_ids`) beslissen de identiteit; dezelfde serie onder een andere titel of jaar is één kaart, zonder verzoek per titel. Verify kan twee fixtureservers tegelijk draaien (`seed_second`, `fixture_mutate_second`, `connections_seed`); scenario `ios.unified.two-servers`.
 - Bewijs en grenzen: `docs/reports/2026-10-29-unified-pleya-server.md`.
 
 ## [2026-10-11] CI: padscoping in ci.yml, antwoordvangst in één testrun

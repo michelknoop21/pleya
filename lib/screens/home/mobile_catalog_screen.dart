@@ -700,6 +700,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
                         id: AutomationIds.catalogGrid,
                         instance: widget.kind.automationInstance,
                         role: 'grid',
+                        state: () => {'count': snapshot.groups.length, 'complete': !snapshot.hasMore},
                         child: SliverGrid(
                           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,
@@ -719,6 +720,12 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
                               id: AutomationIds.catalogGridItem,
                               instance: '${widget.kind.automationInstance}.$index',
                               role: 'grid.item',
+                              // One card per title with every source under it
+                              // is what unified promises; Verify reads it here.
+                              state: () => {
+                                'title': group.representativeSource.item.title,
+                                'sources': group.sources.length,
+                              },
                               child: Builder(
                                 builder: (cardContext) => MobileMediaCard(
                                   group: group,

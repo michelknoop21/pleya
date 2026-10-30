@@ -489,15 +489,20 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     );
     return Padding(
       padding: const EdgeInsets.only(top: 20),
-      child: onChangeSource == null
-          ? tile
-          : FocusableWrapper(
-              borderRadius: 12,
-              disableScale: true,
-              semanticLabel: t.sourcePicker.change,
-              onSelect: () => unawaited(onChangeSource(context)),
-              child: tile,
-            ),
+      child: AutomationNode(
+        id: AutomationIds.mediaDetailSource,
+        role: 'button',
+        state: () => {'server': parts.first},
+        child: onChangeSource == null
+            ? tile
+            : FocusableWrapper(
+                borderRadius: 12,
+                disableScale: true,
+                semanticLabel: t.sourcePicker.change,
+                onSelect: () => unawaited(onChangeSource(context)),
+                child: tile,
+              ),
+      ),
     );
   }
 

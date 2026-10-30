@@ -1,6 +1,6 @@
 # Unified: Pleya Server naast Plex, Jellyfin en Emby
 
-Roadmap: A-07 (serverdeel C-05 / S22, register X5). Besluit: DEC-XXX. Branch `feat/unified-pleya-server`, basis `main` d9edacc.
+Roadmap: A-07 (serverdeel C-05 / S22, register X5). Besluit: DEC-168. Branch `feat/unified-pleya-server`, basis `main` d9edacc.
 
 ## Wat er veranderd is
 - Server: `external_ids.tmdb` op film en serie bij een geslaagde match (`store_metadata.go`, `wire.go`), protocol 9.4a, openapi, fixture, `schema.d.ts`.
@@ -38,7 +38,7 @@ Roadmap: A-07 (serverdeel C-05 / S22, register X5). Besluit: DEC-XXX. Branch `fe
 - Fouten en cache: `IdentityLookupUnavailable` en `IdentityLookupUnsupported` (geen brede `StateError`-vangst). De scan tolereert alleen die twee, `MediaServerHttpException` en `TimeoutException`; een onverwachte `StateError` breekt hem nog steeds (test). Een mislukte opvraag slaat niets op; een antwoord van een server die het veld kent wordt als `pleyaLocalExternalIdsFinal` bewaard, ook als het leeg is, dus geen netwerk per schermopbouw; oude of niet-finale snapshots vragen opnieuw. Getest: 429, 500, 503, onbereikbaar, offline, timeout, herstel.
 - Identiteit: opzoeken op `external_id=tmdb:<n>` (nieuwe optionele queryparameter plus capability `external_id_lookup`), per bibliotheek van de juiste soort, rechten en `libraryId` blijven kloppen, titel en jaar spelen geen rol. Ontbrekende capability is `Unsupported`, transport is `Unavailable`; geen van beide telt als gecontroleerde afwezigheid. De eerdere fail-closed regel voor verborgen bibliotheken is vervallen omdat treffers nu hun bibliotheek hebben.
 - Kosten: nummers komen mee met lijst- en detailantwoorden (cache 60 s, max 5000). Gemeten met 600 Plex- en 300 Pleya-titels: 0 detailverzoeken naar de Pleya Server, 300 id-opvragingen op Plex (alleen titels die op beide staan). Server: geen query voor pagina's zonder film of serie (test, rood zonder guard) en kindguard in de SQL van het filter.
-- Protocol: `pleya_server/CLAUDE.md` is teruggezet op de oorspronkelijke tekst. Het venster staat als scoped venster in DEC-XXX met de zes regels getoetst; bekrachtiging door Michel staat expliciet open. De verouderde zin in CLAUDE.md over tabellen die niet bestaan (`metadata_candidates` bestaat sinds 0013) is niet aangepast en blijft een aparte docs-correctie.
+- Protocol: `pleya_server/CLAUDE.md` is teruggezet op de oorspronkelijke tekst. Het venster staat als scoped venster in DEC-168 met de zes regels getoetst; bekrachtiging door Michel staat expliciet open. De verouderde zin in CLAUDE.md over tabellen die niet bestaan (`metadata_candidates` bestaat sinds 0013) is niet aangepast en blijft een aparte docs-correctie.
 - Nog steeds open: toestel- en Verify-bewijs, en de dubbele serie van Michel op iPhone en Apple TV.
 
 ## Vierde ronde (herreview van bd6b3d5)

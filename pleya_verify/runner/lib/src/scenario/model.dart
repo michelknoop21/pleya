@@ -18,6 +18,11 @@ const Set<String> setupVerbs = {
   'install',
   'launch',
   'fixture_mutate',
+  // A second fixture server, for a scenario with two servers at once.
+  'seed_second',
+  'fixture_mutate_second',
+  // A connection the app gets without the sign-in flow (`/v1/connections/seed`).
+  'connections_seed',
 };
 
 /// Step vocabulary — disjoint from [setupVerbs].
@@ -39,6 +44,7 @@ const Set<String> stepVerbs = {
   'snapshot',
   'settle',
   'fixture_mutate',
+  'fixture_mutate_second',
   'overlay',
   // A walk is a sequence of presses with a judgement between each pair of
   // frames, so it is shaped like `press`, not like `assert`: both existing
