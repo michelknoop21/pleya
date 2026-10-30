@@ -28,6 +28,7 @@ class LocalLibrarySync {
   LocalLibrarySync({
     required this.store,
     this.pageSize = 100,
+    this.checkpointEvery = const Duration(seconds: 30),
     this.mayContinue,
     this.posterLoader,
     this.onProgress,
@@ -35,6 +36,12 @@ class LocalLibrarySync {
   });
   final LocalLibraryStore store;
   final int pageSize;
+
+  /// A checkpoint rewrites the whole library file, so a count of rows alone
+  /// would make a scan quadratic: an unchanged library walks hundreds of rows
+  /// a second, and on a 34 MB library the scan spent 57% of its time rewriting.
+  /// A scan that stops loses at most this much progress.
+  final Duration checkpointEvery;
   final Future<bool> Function()? mayContinue;
   final LocalPosterLoader? posterLoader;
   final void Function(int done, String title)? onProgress;
@@ -50,6 +57,7 @@ class LocalLibrarySync {
     final next = <String, MediaItem>{};
     var done = 0;
     var checkpointDone = 0;
+    final sinceCheckpoint = Stopwatch()..start();
     if (client is LocalFolderClient) client.invalidateScanCache();
 
     Future<LibraryPage<MediaItem>> rootPage(MediaKind kind, int offset, int limit) {
@@ -177,7 +185,8 @@ class LocalLibrarySync {
         await check();
         await store.savePoster(item.serverId!, path, bytes, isCurrent: valid);
       }
-      onProgress?.call(++done, item.displayTitle);
+      done++;
+      onProgress?.call(done, item.displayTitle);
     }
 
     late Future<void> Function(MediaItem) scanChildren;
@@ -209,9 +218,10 @@ class LocalLibrarySync {
             await scanChildren(item);
           }
         }
-        if (done - checkpointDone >= pageSize) {
+        if (done - checkpointDone >= pageSize && sinceCheckpoint.elapsed >= checkpointEvery) {
           await store.saveLibrary(library, next.values.toList(), complete: false, isCurrent: valid);
           checkpointDone = done;
+          sinceCheckpoint.reset();
           if (valid()) onCheckpoint?.call();
         }
         offset += page.items.length;

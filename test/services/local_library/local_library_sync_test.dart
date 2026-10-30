@@ -319,6 +319,29 @@ void main() {
     expect(store.items.map((i) => i.id), ['a', 'b']);
   });
 
+  test('a checkpoint waits for its interval, however many rows have passed', () async {
+    var checkpoints = 0;
+    await LocalLibrarySync(
+      store: store,
+      pageSize: 1,
+      checkpointEvery: const Duration(hours: 1),
+      onCheckpoint: () => checkpoints++,
+    ).syncLibrary(library, client);
+
+    expect(checkpoints, 0);
+    expect(store.items.map((i) => i.id), ['a', 'b']);
+  });
+
+  test('a scan that has been running past the interval saves its rows before it fails', () async {
+    client.failOffset = 1;
+    await expectLater(
+      LocalLibrarySync(store: store, pageSize: 1, checkpointEvery: Duration.zero).syncLibrary(library, client),
+      throwsA(isA<SocketException>()),
+    );
+
+    expect(store.items.map((i) => i.id), ['a']);
+  });
+
   test('failed next page never deletes the previous snapshot', () async {
     await store.saveLibrary(library, [film('old')], complete: true);
     client.failOffset = 1;
