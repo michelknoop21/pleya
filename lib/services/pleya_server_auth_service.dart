@@ -267,8 +267,10 @@ class PleyaServerAuthService {
     if (code == 'auth.refresh_token_reused') {
       return PleyaRefreshChainRevokedException(code!);
     }
-    if (code == 'auth.rate_limited') {
-      return PleyaRateLimitedException(retryAfterMs: error?.retryAfterMs);
+    // On the status too: a proxy in front of the server throttles without
+    // Pleya's envelope, and that says nothing about the session either.
+    if (code == 'auth.rate_limited' || response.statusCode == 429) {
+      return PleyaRateLimitedException(retryAfterMs: _retryAfterMs(response) ?? error?.retryAfterMs);
     }
     if (code == 'auth.setup_already_done') {
       return const MediaServerAuthException('This server already has an owner; sign in instead', statusCode: 409);
@@ -293,6 +295,14 @@ class PleyaServerAuthService {
       message: code ?? 'HTTP ${response.statusCode}',
     );
   }
+}
+
+/// The `Retry-After` header in milliseconds. Only the seconds form: a date would
+/// mean a clock comparison, and our server does not send one.
+int? _retryAfterMs(MediaServerResponse response) {
+  final raw = response.headers['retry-after'] ?? response.headers['Retry-After'];
+  final seconds = raw == null ? null : int.tryParse(raw.trim());
+  return seconds == null || seconds < 0 ? null : seconds * 1000;
 }
 
 /// What a successful setup or login yields: where the server is, what it says

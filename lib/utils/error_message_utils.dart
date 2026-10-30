@@ -57,6 +57,11 @@ String friendlyError(Object error, {String? context}) {
   // MediaServerAuthException also covers MediaServerPinExpiredException (a
   // subtype) — both collapse to the same generic sign-in failure text; the
   // curated distinction isn't worth a second string yet.
+  // A throttled token refresh: nobody needs to sign in again, the next try works.
+  if (error is MediaServerAuthException && error.statusCode == 429) {
+    appLogger.w('Rate limited${context != null ? ' for $context' : ''}', error: error);
+    return t.errors.somethingWentWrongTryAgain;
+  }
   if (error is MediaServerAuthException) {
     appLogger.e('Authentication failed${context != null ? ' for $context' : ''}', error: error);
     return t.errors.authenticationFailed;
@@ -121,6 +126,16 @@ Notice noticeForError(Object error, {String? context, String? serverName, VoidCa
           groupKey: 'http:$scope',
         );
     }
+  }
+  if (error is MediaServerAuthException && error.statusCode == 429) {
+    return Notice(
+      level: NoticeLevel.error,
+      title: t.notices.genericErrorTitle,
+      primary: primary,
+      secondary: secondary,
+      reportCode: code,
+      groupKey: 'throttled:$scope',
+    );
   }
   if (error is MediaServerAuthException) {
     return Notice(

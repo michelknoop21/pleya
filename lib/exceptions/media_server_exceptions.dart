@@ -115,7 +115,9 @@ class MediaServerHttpException extends MediaServerException {
 ///
 /// Not retryable:
 /// - [MediaServerAuthException], and any 401/403 — the user has to sign in
-///   again, which is an action reconnecting does not perform for them.
+///   again, which is an action reconnecting does not perform for them. The one
+///   exception in that family is a 429: a throttled token refresh means the
+///   write never left, and the session is fine.
 /// - [UnsupportedError] — the backend has no such endpoint at all. Jellyfin's
 ///   `removeFromContinueWatching` throws exactly this.
 /// - Any other 4xx except 408 (request timeout) and 429 (rate limited), which
@@ -127,7 +129,7 @@ class MediaServerHttpException extends MediaServerException {
 /// one is a write the user was told had been remembered and silently was not.
 bool isRetryableServerWriteFailure(Object error) {
   if (error is UnsupportedError) return false;
-  if (error is MediaServerAuthException) return false;
+  if (error is MediaServerAuthException) return error.statusCode == 429;
   final status = error is MediaServerHttpException ? error.statusCode : null;
   if (status == null) return true;
   if (status == 408 || status == 429) return true;

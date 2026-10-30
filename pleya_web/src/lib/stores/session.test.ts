@@ -119,6 +119,29 @@ describe('laatste contact', () => {
   });
 });
 
+describe('een begrensde verversing (S15.1)', () => {
+  it('is geen uitloggen bij het opstarten', async () => {
+    const state = new SessionState(fakeClient({ restore: vi.fn(async () => false), refreshThrottled: true }));
+    await state.start();
+    expect(state.phase).toBe('unreachable');
+  });
+
+  it('is geen uitloggen bij het laden', async () => {
+    const state = new SessionState(fakeClient({
+      server: vi.fn(async () => { throw new TransportError(new Error('401')); }),
+      refreshThrottled: true
+    }));
+    await state.start();
+    expect(state.phase).toBe('unreachable');
+  });
+
+  it('laat een echte afwijzing wel uitloggen (negatieve controle)', async () => {
+    const state = new SessionState(fakeClient({ restore: vi.fn(async () => false), refreshThrottled: false }));
+    await state.start();
+    expect(state.phase).toBe('signed-out');
+  });
+});
+
 describe('afmelden (DEC-164)', () => {
   async function started(capabilities: Record<string, boolean>) {
     const signOut = vi.fn(async () => {});

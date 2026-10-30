@@ -40,6 +40,24 @@ export const DEFAULT_BASE_URL = '/pleya/v1';
  */
 export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
+/** Hoe vaak een verversing een 429 mag krijgen voor deze ronde opgeeft. */
+const REFRESH_LIMIT_ATTEMPTS = 5;
+/** Ruim boven wat de server vraagt; een proxy die langer vraagt krijgt geen hangend scherm. */
+const REFRESH_LIMIT_MAX_WAIT_MS = 30_000;
+/**
+ * Tabbladen die dezelfde 429 kregen, komen niet op hetzelfde moment terug. Twee
+ * gelijktijdige verversingen met één cookie zijn precies de race die de sessie kan
+ * laten vallen; met dit verschil ziet de tweede de cookie van de eerste.
+ */
+const REFRESH_LIMIT_JITTER_MS = 750;
+
+/** De wachttijd van een 429: `Retry-After`, anders `details.retry_after_ms`, anders een seconde. */
+function refreshRetryDelayMs(response: Response, error: unknown): number {
+  const seconds = Number(response.headers.get('Retry-After'));
+  if (Number.isFinite(seconds) && seconds > 0) return seconds * 1000;
+  return toApiError(response.status, error).retryAfterMs ?? 1000;
+}
+
 /** Endpoints van klasse `public`: ze krijgen nooit een Authorization-header. */
 const PUBLIC_PATHS = new Set(['/info', '/auth/setup', '/auth/login', '/auth/refresh']);
 
@@ -57,6 +75,8 @@ export interface PleyaClientOptions {
   fetch?: FetchLike;
   /** Wordt aangeroepen zodra de sessie onherstelbaar weg is. */
   onSessionLost?: () => void;
+  /** Wachten tussen twee pogingen; alleen tests vervangen dit. */
+  delay?: (ms: number) => Promise<void>;
 }
 
 export class PleyaClient {
@@ -67,6 +87,7 @@ export class PleyaClient {
   #fetch: FetchLike;
   #refreshing: Promise<boolean> | null = null;
   #refreshGeneration = -1;
+  #refreshThrottled = false;
   #sessionGeneration = 0;
   #epoch: string | null;
   #supportsCookieAuth = false;
@@ -74,13 +95,17 @@ export class PleyaClient {
   #requests = new WeakMap<Request, { generation: number; replay: Request }>();
 
   get sessionGeneration(): number { return this.#sessionGeneration; }
+  /** De laatste verversing gaf op bij een 429. De sessie bestaat nog; de server wil alleen even niet. */
+  get refreshThrottled(): boolean { return this.#refreshThrottled; }
   #onSessionLost: (() => void) | undefined;
+  #delay: (ms: number) => Promise<void>;
 
   constructor(options: PleyaClientOptions = {}) {
     this.baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
     this.tokens = options.tokens ?? new TokenStore();
     this.#fetch = options.fetch ?? ((...args) => globalThis.fetch(...args));
     this.#onSessionLost = options.onSessionLost;
+    this.#delay = options.delay ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.#epoch = this.tokens.epoch;
 
     this.#raw = createClient<paths>({
@@ -136,26 +161,49 @@ export class PleyaClient {
 
     // De cookie is van het hele browserprofiel: na een wissel in een ander tabblad zou deze client
     // zich als die andere gebruiker verversen en zijn aanvraag met diens credential herhalen.
-    const refresh = this.tokens.refreshToken;
     const replaced = () => this.tokens.epoch !== this.#epoch;
-    if ((!this.#cookieAuth && !refresh) || (this.#cookieAuth && this.tokens.signedOut) || replaced()) {
+    const stale = () => (!this.#cookieAuth && !this.tokens.refreshToken) || (this.#cookieAuth && this.tokens.signedOut) || replaced();
+    if (stale()) {
       this.#loseSession();
       return Promise.resolve(false);
     }
 
+    this.#refreshThrottled = false;
     this.#refreshing = (async () => {
       try {
-        const { data, error, response } = await this.#raw.POST('/auth/refresh', {
-          body: this.#cookieAuth ? { credential_mode: 'cookie' } : { refresh_token: refresh! }
-        });
-        if (generation !== this.#sessionGeneration) return false;
-        if (error || !data || replaced()) {
-          this.#loseSession();
-          if (error) throw toApiError(response.status, error);
-          return false;
+        for (let attempt = 1; ; attempt++) {
+          // Elke poging leest het token opnieuw: een ander tabblad kan het tijdens het wachten geroteerd hebben.
+          const refresh = this.tokens.refreshToken;
+          const { data, error, response } = await this.#raw.POST('/auth/refresh', {
+            body: this.#cookieAuth ? { credential_mode: 'cookie' } : { refresh_token: refresh! }
+          });
+          if (generation !== this.#sessionGeneration) return false;
+          if (response.status === 429) {
+            // Geen sessieverlies: de server heeft niets geroteerd en het token is nog goed. Tokens blijven
+            // staan, ook als deze ronde opgeeft; de aanvraag die erop wachtte faalt en de volgende probeert het.
+            const wait = refreshRetryDelayMs(response, error);
+            if (attempt >= REFRESH_LIMIT_ATTEMPTS || wait > REFRESH_LIMIT_MAX_WAIT_MS) {
+              this.#refreshThrottled = true;
+              return false;
+            }
+            await this.#delay(wait + Math.random() * REFRESH_LIMIT_JITTER_MS);
+            if (generation !== this.#sessionGeneration) return false;
+            // Een ander tabblad ververste intussen, of deze client kreeg via de bewaarde sleutel een nieuw token.
+            if (this.tokens.accessToken) return true;
+            if (stale()) {
+              this.#loseSession();
+              return false;
+            }
+            continue;
+          }
+          if (error || !data || replaced()) {
+            this.#loseSession();
+            if (error) throw toApiError(response.status, error);
+            return false;
+          }
+          this.tokens.set(data);
+          return true;
         }
-        this.tokens.set(data);
-        return true;
       } catch (err) {
         if (err instanceof ApiError) return false;
         // Een netwerkstoring is geen verlopen sessie: het token blijft staan

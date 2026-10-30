@@ -297,6 +297,26 @@ const (
 	RefreshSessionRevoked
 )
 
+// RefreshTokenSession zegt bij welke sessie een aangeboden token hoort, ook als
+// het al gebruikt of verlopen is. Alleen lezen: de limiter vraagt dit vóór de
+// rotatie (S15.1), en een geweigerde aanvraag hoort geen rij te raken. known is
+// false voor een onbekend token en voor een historische rij zonder sessie.
+func (s *Store) RefreshTokenSession(ctx context.Context, hash []byte) (sessionID id.ID, known bool, err error) {
+	var sid *id.ID
+	err = s.pool.QueryRow(ctx,
+		`SELECT session_id FROM auth_refresh_tokens WHERE token_hash = $1`, hash).Scan(&sid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return id.Nil, false, nil
+	}
+	if err != nil {
+		return id.Nil, false, fmt.Errorf("sessie van refreshtoken lezen: %w", err)
+	}
+	if sid == nil {
+		return id.Nil, false, nil
+	}
+	return *sid, true, nil
+}
+
 // RotateRefreshToken wisselt een refreshtoken in.
 //
 // Het oude vervalt onmiddellijk en het nieuwe komt ervoor in de plaats, in

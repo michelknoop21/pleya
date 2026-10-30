@@ -31,6 +31,8 @@ type limiter struct {
 	buckets   map[string]*bucket
 	now       func() time.Time
 	lastSweep time.Time
+	burst     float64
+	refill    float64 // tokens per seconde
 }
 
 type bucket struct {
@@ -46,8 +48,21 @@ const (
 	limiterRefill = 1.0 / 12.0 // tokens per seconde
 )
 
+// Dertig verversingen achter elkaar en daarna één per twee seconden, per sessie
+// (zie refreshLimiterKey). Een browser in cookiemodus ververst bij elke
+// paginalading en bij elk nieuw tabblad, en die mogen niet tegen de grens lopen;
+// een toestel dat zijn token in een lus blijft verversen wel. De wachttijd blijft
+// zo hoogstens twee seconden, ver onder het respijtvenster van de rotatie: een
+// client die zijn antwoord kwijtraakte en eerst een 429 krijgt, valt na het
+// wachten nog binnen dat venster.
+const (
+	refreshLimiterBurst  = 30.0
+	refreshLimiterRefill = 1.0 / 2.0 // tokens per seconde
+)
+
 // limiterIdleTTL is de tijd waarna een emmer, ongeacht zijn stand bij het
-// stilvallen, gegarandeerd weer vol is (limiterBurst / limiterRefill = 60s).
+// stilvallen, gegarandeerd weer vol is. Voor beide tempo's 60 seconden:
+// limiterBurst / limiterRefill en refreshLimiterBurst / refreshLimiterRefill.
 const limiterIdleTTL = time.Duration(limiterBurst/limiterRefill) * time.Second
 
 // limiterSweepInterval bepaalt hoe vaak allow() de opruiming probeert. Elke
@@ -62,7 +77,14 @@ const limiterSweepInterval = limiterIdleTTL
 const limiterMaxBuckets = 1024
 
 func newLimiter() *limiter {
-	return &limiter{buckets: map[string]*bucket{}, now: time.Now}
+	return &limiter{buckets: map[string]*bucket{}, now: time.Now, burst: limiterBurst, refill: limiterRefill}
+}
+
+// newRefreshLimiter is een eigen limiter en geen tweede sleutelruimte in de
+// bestaande: login kiest zijn sleutels zelf, en een vloed aan verzonnen
+// gebruikersnamen mag de emmers van refresh niet uit de kaart drukken.
+func newRefreshLimiter() *limiter {
+	return &limiter{buckets: map[string]*bucket{}, now: time.Now, burst: refreshLimiterBurst, refill: refreshLimiterRefill}
 }
 
 // allow neemt een token en zegt hoelang er gewacht moet worden als er geen is.
@@ -88,13 +110,13 @@ func (l *limiter) allow(key string) (bool, time.Duration) {
 			}
 			delete(l.buckets, oldestKey)
 		}
-		b = &bucket{tokens: limiterBurst, lastFill: now}
+		b = &bucket{tokens: l.burst, lastFill: now}
 		l.buckets[key] = b
 	}
 
-	b.tokens += now.Sub(b.lastFill).Seconds() * limiterRefill
-	if b.tokens > limiterBurst {
-		b.tokens = limiterBurst
+	b.tokens += now.Sub(b.lastFill).Seconds() * l.refill
+	if b.tokens > l.burst {
+		b.tokens = l.burst
 	}
 	b.lastFill = now
 
@@ -102,7 +124,7 @@ func (l *limiter) allow(key string) (bool, time.Duration) {
 		b.tokens--
 		return true, 0
 	}
-	wait := time.Duration((1 - b.tokens) / limiterRefill * float64(time.Second))
+	wait := time.Duration((1 - b.tokens) / l.refill * float64(time.Second))
 	return false, wait
 }
 

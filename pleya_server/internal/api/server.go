@@ -194,6 +194,7 @@ type Server struct {
 	opts                       Options
 	log                        *slog.Logger
 	limiter                    *limiter
+	refreshLimiter             *limiter
 	mux                        *http.ServeMux
 	now                        func() time.Time
 	missingTrustedProxyWarning sync.Once
@@ -228,11 +229,12 @@ func New(opts Options) *Server {
 		opts.Revocations = auth.NewRevocations(0)
 	}
 	s := &Server{
-		opts:    opts,
-		log:     opts.Logger,
-		limiter: newLimiter(),
-		mux:     http.NewServeMux(),
-		now:     time.Now,
+		opts:           opts,
+		log:            opts.Logger,
+		limiter:        newLimiter(),
+		refreshLimiter: newRefreshLimiter(),
+		mux:            http.NewServeMux(),
+		now:            time.Now,
 	}
 	s.routes()
 	return s

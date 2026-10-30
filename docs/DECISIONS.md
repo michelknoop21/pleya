@@ -5218,3 +5218,35 @@ want wie ze aanvroeg is nergens vastgelegd; zij en een sessie zonder naam geven 
 toont dan "Toestel onbekend". "Bekeken door" blijft klasse admin: wat een huisgenoot kijkt is privé.
 Ruimte per toestel valt buiten dit venster. Alleen dit venster is geopend; productie, merge en
 release blijven afzonderlijk. Nummer volgt bij integratie.
+
+## DEC-XXX: venster voor 429 op /auth/refresh vrijgegeven
+
+**Status:** geaccepteerd door Michel op 30 oktober 2026, het `429`-deel van besluit 5 uit `docs/qa/2026-10-30-pleya-windows-docker-report.md`.
+
+`POST /auth/refresh` kent nu `429 auth.rate_limited` met `Retry-After` in hele seconden en
+`details.retry_after_ms`. De code bestond al en is herhaalbaar, dus geen nieuwe code en geen vlag: een
+client hoeft niet vooraf te weten of de server hem stuurt. Oudere Flutter-builds zetten een 429 al om in
+`PleyaRateLimitedException` en houden hun token. Een webbundel van vóór dit besluit logt bij een 429 lokaal
+uit; in cookiemodus herstelt de volgende paginalading de sessie, en de server levert dan de nieuwe bundel mee.
+
+De grens is 30 verversingen achter elkaar en daarna één per twee seconden, per sessie. De sessie is de
+sleutel omdat zij één toestel of browserprofiel is: twee tabbladen delen hun emmer, een lus in één client
+raakt geen huisgenoot achter dezelfde NAT of tunnel, en dat hangt niet af van een juiste
+`PLEYA_SERVER_TRUSTED_PROXIES`. Het token zelf kan de sleutel niet zijn: dat roteert, dus juist een lus zou
+steeds een volle emmer krijgen. Een token zonder sessie telt op het clientadres, uit `X-Forwarded-For` alleen
+achter een vertrouwde proxy en rechts gelezen. De limiter is een eigen instantie, zodat verzonnen
+gebruikersnamen op login zijn emmers niet verdringen.
+
+De grens staat vóór `RotateRefreshToken`, die zelf niet is gewijzigd. De rotatie, het respijtvenster van
+twee minuten en de sessie-scoped intrekking uit DEC-123 blijven dus zoals ze zijn; de sessie-drop uit
+augustus zat daar en niet in een limiet. De wachttijd is hoogstens twee seconden, zodat een client die zijn
+antwoord kwijtraakte en eerst een 429 krijgt nog binnen het respijt terugkomt. Een 429 laat de cookie staan.
+
+Web en Flutter wachten volgens `Retry-After` en proberen het opnieuw met hun huidige token, de web met tot
+750 ms verschil per tabblad zodat twee tabbladen niet tegelijk terugkomen. Geven ze op, dan blijft het token
+staan: de web gaat naar de onbereikbaar-staat met zijn poging per 30 s in plaats van naar inloggen, Flutter
+geeft `PleyaRateLimitedException` zonder `isRevoked`. De bekende race van twee tabbladen die zonder 429
+tegelijk verversen (lage bevinding in het rapport) is niet opgelost en niet erger geworden.
+
+De opruimjob voor `stream_sessions` ontbrak en draait nu mee in de dagelijkse sessieronde. Alleen dit venster
+is geopend; productie, merge en release blijven afzonderlijk. Nummer volgt bij integratie.

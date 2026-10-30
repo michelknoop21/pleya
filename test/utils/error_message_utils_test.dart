@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart';
 import 'package:pleya/exceptions/media_server_exceptions.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/utils/error_message_utils.dart';
 import 'package:pleya/widgets/notice/notice.dart';
 
@@ -67,6 +68,12 @@ void main() {
       expect(friendlyError(error), isNot(contains('Invalid username or password')));
     });
 
+    test('a 429 does not tell anyone that signing in failed', () {
+      const error = MediaServerAuthException('Too many attempts', statusCode: 429);
+      expect(friendlyError(error), t.errors.somethingWentWrongTryAgain);
+      expect(friendlyError(error), isNot(t.errors.authenticationFailed));
+    });
+
     test('MediaServerPinExpiredException (a MediaServerAuthException subtype) is handled, not rethrown', () {
       expect(() => friendlyError(const MediaServerPinExpiredException()), returnsNormally);
     });
@@ -117,6 +124,11 @@ void main() {
         uri: fixtureUri,
       );
       expectNoLeak(noticeForError(error, context: 'Discover', serverName: 'my-plex-server.local'));
+    });
+
+    test('a 429 is no failed sign-in', () {
+      final notice = noticeForError(const MediaServerAuthException('Too many attempts', statusCode: 429));
+      expect(notice.title, t.notices.genericErrorTitle);
     });
 
     test('MediaServerAuthException', () {

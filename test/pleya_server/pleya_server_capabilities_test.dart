@@ -394,7 +394,7 @@ void main() {
                 'code': 'auth.rate_limited',
                 'message': 'slow down',
                 'retryable': true,
-                'details': {'retry_after_ms': 5000},
+                'details': {'retry_after_ms': 1},
               },
             }, status: 429),
           ),

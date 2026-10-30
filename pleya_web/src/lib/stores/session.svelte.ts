@@ -95,9 +95,7 @@ class SessionState {
     try {
       this.info = await this.client.info();
     } catch (err) {
-      this.error = describeError(err);
-      this.lastContact = readLastContact();
-      this.phase = 'unreachable';
+      this.#markUnreachable(err);
       return;
     }
 
@@ -108,7 +106,8 @@ class SessionState {
 
     const restored = await this.client.restore();
     if (!restored) {
-      this.phase = 'signed-out';
+      if (this.client.refreshThrottled) this.#markUnreachable();
+      else this.phase = 'signed-out';
       return;
     }
     await this.load();
@@ -141,9 +140,24 @@ class SessionState {
       });
     } catch (err) {
       if (generation !== this.client.sessionGeneration) return;
+      if (this.client.refreshThrottled) {
+        this.#markUnreachable(err);
+        return;
+      }
       this.error = describeError(err);
       this.phase = 'signed-out';
     }
+  }
+
+  /**
+   * De server antwoordt nu niet, of begrenst de verversing. Dat tweede is geen
+   * uitloggen: de sessie bestaat nog, en de poging die onbereikbaar elke 30 s
+   * doet, herstelt hem zonder dat iemand opnieuw hoeft in te loggen.
+   */
+  #markUnreachable(err?: unknown): void {
+    this.error = err === undefined ? null : describeError(err);
+    this.lastContact = readLastContact();
+    this.phase = 'unreachable';
   }
 
   /** Na een geslaagde setup of login: info opnieuw lezen en doorlopen. */

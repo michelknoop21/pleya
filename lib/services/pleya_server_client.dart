@@ -263,6 +263,7 @@ class PleyaServerClient
   void close() {
     if (_closed) return;
     _closed = true;
+    _session.close();
     for (final held in _transcodeSessions.values) {
       held.timer.cancel();
     }

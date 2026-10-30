@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/edde746/plezy/pleya_server/internal/config"
 )
 
 // TestLimiterKeysAreIsolated is de eenheidsversie van TestLoginLimiterIsPerUser
@@ -11,7 +13,8 @@ import (
 // op de limiter en zonder een draaiende server nodig te hebben.
 func TestLimiterKeysAreIsolated(t *testing.T) {
 	clock := time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC)
-	l := &limiter{buckets: map[string]*bucket{}, now: func() time.Time { return clock }}
+	l := newLimiter()
+	l.now = func() time.Time { return clock }
 
 	for i := 0; i < limiterBurst; i++ {
 		if ok, _ := l.allow("login:michel"); !ok {
@@ -33,7 +36,8 @@ func TestLimiterKeysAreIsolated(t *testing.T) {
 // allow() voor die sleutel blijft identiek, alleen de kaart krimpt.
 func TestLimiterEvictsIdleBucketsWithoutChangingBehaviour(t *testing.T) {
 	clock := time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC)
-	l := &limiter{buckets: map[string]*bucket{}, now: func() time.Time { return clock }}
+	l := newLimiter()
+	l.now = func() time.Time { return clock }
 
 	// Eén sleutel uitput, dan stilvallen: geen tweede sweep-aanroep voor de
 	// hele idle-periode, precies zoals een aanvaller die na één burst weggaat.
@@ -74,7 +78,8 @@ func TestLimiterEvictsIdleBucketsWithoutChangingBehaviour(t *testing.T) {
 // vóór hij zijn eigen sleutels toevoegt.
 func TestLimiterBucketsStayBoundedUnderUnboundedKeys(t *testing.T) {
 	clock := time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC)
-	l := &limiter{buckets: map[string]*bucket{}, now: func() time.Time { return clock }}
+	l := newLimiter()
+	l.now = func() time.Time { return clock }
 
 	const rounds = 50
 	const keysPerRound = 200
@@ -100,7 +105,8 @@ func TestLimiterBucketsStayBoundedUnderUnboundedKeys(t *testing.T) {
 // De klok gaat hier expres niet vooruit.
 func TestLimiterBucketsAreCardinalityBoundedWithinOneWindow(t *testing.T) {
 	clock := time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC)
-	l := &limiter{buckets: map[string]*bucket{}, now: func() time.Time { return clock }}
+	l := newLimiter()
+	l.now = func() time.Time { return clock }
 
 	const attempts = limiterMaxBuckets * 3
 
@@ -119,7 +125,8 @@ func TestLimiterBucketsAreCardinalityBoundedWithinOneWindow(t *testing.T) {
 // een nieuwe login moet dan de langst ongebruikte emmer vervangen.
 func TestLimiterOverflowEvictsTheOldestBucket(t *testing.T) {
 	clock := time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC)
-	l := &limiter{buckets: map[string]*bucket{}, now: func() time.Time { return clock }}
+	l := newLimiter()
+	l.now = func() time.Time { return clock }
 
 	for i := 0; i < limiterMaxBuckets; i++ {
 		l.allow(fmt.Sprintf("login:vuller-%d", i))
@@ -148,5 +155,43 @@ func TestLimiterOverflowEvictsTheOldestBucket(t *testing.T) {
 	}
 	if len(l.buckets) != limiterMaxBuckets {
 		t.Fatalf("de kaart groeide voorbij de grens: %d emmers, wil %d", len(l.buckets), limiterMaxBuckets)
+	}
+}
+
+// De wachttijd van refresh moet binnen het respijtvenster van de rotatie vallen,
+// anders verliest een client die zijn antwoord kwijtraakte en daarna een 429
+// krijgt alsnog zijn keten.
+func TestRefreshLimiterWaitStaysInsideTheGraceWindow(t *testing.T) {
+	clock := time.Date(2026, 10, 30, 12, 0, 0, 0, time.UTC)
+	l := newRefreshLimiter()
+	l.now = func() time.Time { return clock }
+
+	for i := 0; i < refreshLimiterBurst; i++ {
+		if ok, _ := l.allow("session:a"); !ok {
+			t.Fatalf("verversing %d werd al geweigerd", i)
+		}
+	}
+	for range 100 { // blijven aanbellen maakt de wachttijd niet langer
+		ok, wait := l.allow("session:a")
+		if ok {
+			t.Fatal("de lege emmer liet een verversing door")
+		}
+		if wait <= 0 || wait > 2*time.Second || wait >= config.DefaultRefreshGraceWindow {
+			t.Fatalf("wachttijd %s", wait)
+		}
+	}
+	clock = clock.Add(2 * time.Second)
+	if ok, _ := l.allow("session:a"); !ok {
+		t.Fatal("na de wachttijd was er nog geen token")
+	}
+}
+
+func TestRetryAfterRoundsUpToWholeSeconds(t *testing.T) {
+	for wait, want := range map[time.Duration]string{
+		0: "1", time.Millisecond: "1", time.Second: "1", 1001 * time.Millisecond: "2", 2 * time.Second: "2",
+	} {
+		if got := retryAfterSeconds(wait); got != want {
+			t.Errorf("wacht %s gaf %q, verwacht %q", wait, got, want)
+		}
 	}
 }

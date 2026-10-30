@@ -18,6 +18,10 @@ void main() {
       expect(isRetryableServerWriteFailure(const MediaServerPinExpiredException()), isFalse);
     });
 
+    test('a throttled token refresh is retryable: the write never left and the session is fine', () {
+      expect(isRetryableServerWriteFailure(const MediaServerAuthException('Too many', statusCode: 429)), isTrue);
+    });
+
     test('a 401 or 403 over the plain HTTP type is not retryable either', () {
       for (final status in [401, 403]) {
         expect(

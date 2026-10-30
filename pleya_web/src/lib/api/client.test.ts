@@ -208,6 +208,112 @@ describe('tokenvernieuwing', () => {
     expect(tokens.refreshToken).toBeNull();
   });
 
+  describe('een 429 op de verversing (S15.1)', () => {
+    const limited = (retryAfter: string | null = '2') => new Response(
+      JSON.stringify({ error: { code: 'auth.rate_limited', message: 'x', retryable: true, details: { retry_after_ms: 1500 } } }),
+      { status: 429, headers: { 'Content-Type': 'application/json', ...(retryAfter ? { 'Retry-After': retryAfter } : {}) } }
+    );
+    const pair = (n: number) => json({ access_token: `A${n}`, refresh_token: `R${n}`, token_type: 'bearer', expires_in_ms: 900_000 });
+    const expired = () => json({ error: { code: 'auth.token_expired', message: 'x', retryable: false } }, 401);
+
+    function setup(answers: (() => Response)[], options: { delay?: (ms: number) => Promise<void> } = {}) {
+      const bodies: unknown[] = [];
+      const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+        const req = input as Request;
+        if (req.url.endsWith('/auth/refresh')) {
+          bodies.push(await req.clone().json());
+          return answers.shift()!();
+        }
+        return req.headers.get('x-pleya-retry') === '1' ? json({ items: [] }) : expired();
+      }) as unknown as FetchLike;
+      const lost = vi.fn();
+      const delays: number[] = [];
+      const delay = options.delay ?? (async (ms: number) => void delays.push(ms));
+      const tokens = new TokenStore(memoryStorage({ 'pleya.refresh_token': 'R1' }), memoryStorage());
+      const client = new PleyaClient({ baseUrl: BASE, tokens, fetch: fetchImpl, onSessionLost: lost, delay });
+      tokens.set({ access_token: 'A1', refresh_token: 'R1', expires_in_ms: 0 });
+      return { client, tokens, lost, delays, bodies };
+    }
+
+    it('wacht volgens Retry-After, ververst en houdt de sessie', async () => {
+      const { client, tokens, lost, delays, bodies } = setup([() => limited('2'), () => pair(2)]);
+      await expect(client.libraries()).resolves.toEqual([]);
+      expect(lost).not.toHaveBeenCalled();
+      expect(delays).toHaveLength(1);
+      expect(delays[0]).toBeGreaterThanOrEqual(2000);
+      expect(delays[0]).toBeLessThan(2750);
+      expect(tokens.refreshToken).toBe('R2');
+      expect(bodies).toEqual([{ refresh_token: 'R1' }, { refresh_token: 'R1' }]);
+      expect(client.refreshThrottled).toBe(false);
+    });
+
+    it('valt terug op retry_after_ms zonder de header', async () => {
+      const { client, delays } = setup([() => limited(null), () => pair(2)]);
+      await client.libraries();
+      expect(delays[0]).toBeGreaterThanOrEqual(1500);
+      expect(delays[0]).toBeLessThan(2250);
+    });
+
+    it('geeft op zonder uit te loggen en laat de tokens staan', async () => {
+      const { client, tokens, lost, delays } = setup(Array.from({ length: 5 }, () => () => limited('1')));
+      await expect(client.libraries()).rejects.toBeInstanceOf(ApiError);
+      expect(lost).not.toHaveBeenCalled();
+      expect(tokens.refreshToken).toBe('R1');
+      expect(delays).toHaveLength(4);
+      expect(client.refreshThrottled).toBe(true);
+    });
+
+    it('wacht niet op een proxy die een uur vraagt', async () => {
+      const { client, tokens, lost, delays } = setup([() => limited('3600')]);
+      await expect(client.libraries()).rejects.toBeInstanceOf(ApiError);
+      expect(delays).toHaveLength(0);
+      expect(lost).not.toHaveBeenCalled();
+      expect(tokens.refreshToken).toBe('R1');
+    });
+
+    it('gebruikt na het wachten het token dat een ander tabblad intussen roteerde', async () => {
+      const ref: { tokens?: TokenStore } = {};
+      const persistent = memoryStorage({ 'pleya.refresh_token': 'R1' });
+      const answers = [() => limited('1'), () => pair(3)];
+      const bodies: unknown[] = [];
+      const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+        const req = input as Request;
+        if (req.url.endsWith('/auth/refresh')) {
+          bodies.push(await req.clone().json());
+          return answers.shift()!();
+        }
+        return req.headers.get('x-pleya-retry') === '1' ? json({ items: [] }) : expired();
+      }) as unknown as FetchLike;
+      const delay = async () => void persistent.setItem('pleya.refresh_token', 'R2');
+      ref.tokens = new TokenStore(persistent, memoryStorage());
+      const client = new PleyaClient({ baseUrl: BASE, tokens: ref.tokens, fetch: fetchImpl, delay });
+      ref.tokens.set({ access_token: 'A1', refresh_token: 'R1', expires_in_ms: 0 });
+      await client.libraries();
+      expect(bodies).toEqual([{ refresh_token: 'R1' }, { refresh_token: 'R2' }]);
+    });
+
+    it('stopt met wachten als de gebruiker intussen afmeldt', async () => {
+      let release = () => {};
+      const { client, tokens, lost, bodies } = setup([() => limited('1'), () => pair(2)], {
+        delay: () => new Promise<void>((resolve) => { release = resolve; })
+      });
+      const request = client.libraries().catch(() => null);
+      await vi.waitFor(() => expect(bodies).toHaveLength(1));
+      await client.signOut();
+      release();
+      await request;
+      expect(bodies).toHaveLength(1);
+      expect(lost).not.toHaveBeenCalled();
+      expect(tokens.refreshToken).toBeNull();
+    });
+
+    it('voegt gelijktijdige aanvragen ook tijdens het wachten samen', async () => {
+      const { client, bodies } = setup([() => limited('1'), () => pair(2)]);
+      await Promise.all([client.libraries(), client.libraries(), client.libraries()]);
+      expect(bodies).toHaveLength(2);
+    });
+  });
+
   it('probeert niet eindeloos opnieuw wanneer het verse token ook faalt', async () => {
     let attempts = 0;
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {

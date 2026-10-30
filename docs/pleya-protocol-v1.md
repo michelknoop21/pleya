@@ -334,6 +334,16 @@ Ook hier bestaat `credential_mode`. Draagt de aanvraag `{"credential_mode": "coo
 oude refreshcredential uit de cookie en gaat het nieuwe er weer in, en blijft `refresh_token` uit
 lichaam en antwoord. Zie 17d.
 
+**`429 auth.rate_limited` is geen sessieverlies.** De grens staat vóór de rotatie: er is niets
+geroteerd of ingetrokken, het token en de cookie blijven geldig. Het antwoord draagt `Retry-After` in
+hele seconden en `details.retry_after_ms`. Een client wacht die tijd en probeert het opnieuw met zijn
+huidige token; hij logt niet uit en toont geen inlogscherm. De grens telt per sessie, zodat een lus in
+één client geen ander toestel achter dezelfde NAT of tunnel raakt. Een token zonder sessie telt op het
+clientadres, en dat komt alleen achter een vertrouwde proxy uit `X-Forwarded-For`
+(`PLEYA_SERVER_TRUSTED_PROXIES`), rechts gelezen tot de eerste hop die geen proxy is. De wachttijd blijft
+onder het respijtvenster van de rotatie: wie zijn antwoord kwijtraakte en eerst een 429 krijgt, valt na het
+wachten nog binnen dat venster.
+
 ### 6.4 `POST /pleya/v1/auth/stream-token`
 
 Klasse: **`authenticated`**.
@@ -528,7 +538,7 @@ contract keurt ze af.
 | `auth.setup_required` | 409 | nee | er is nog geen eigenaar aangemaakt |
 | `auth.setup_already_completed` | 409 | nee | er is al een eigenaar |
 | `auth.setup_code_invalid` | 401 | nee | de setupcode klopt niet |
-| `auth.rate_limited` | 429 | ja | te veel pogingen, zie `retry_after_ms` in `details` |
+| `auth.rate_limited` | 429 | ja | te veel pogingen, zie `retry_after_ms` in `details`; `POST /auth/refresh` zet daarnaast `Retry-After`, zie 6.3 |
 | `library.not_found` | 404 | nee | bibliotheek, item of versie bestaat niet, of niet voor u |
 | `library.scan_in_progress` | 409 | ja | de gevraagde bewerking botst met een lopende scan |
 | `library.cursor_invalid` | 400 | nee | de cursor is onleesbaar of hoort bij een andere sortering |

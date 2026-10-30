@@ -140,6 +140,11 @@ paths:
         roteert bij elk gebruik en het oude vervalt onmiddellijk. Een tweede
         aanroep met hetzelfde token geeft auth.refresh_token_reused, en de
         server mag de hele keten dan ongeldig maken.
+
+        Een 429 is geen sessieverlies. De grens geldt per sessie, of per adres
+        voor een token zonder sessie, en staat vóór de rotatie: het token en
+        de cookie blijven geldig. Een client wacht `Retry-After` seconden en
+        probeert het opnieuw met zijn huidige token. Hij logt niet uit.
       security: []
       requestBody:
         required: true
@@ -156,6 +161,17 @@ paths:
         "403":
           description: |
             auth.origin_rejected. Alleen op het cookiepad; zie hoofdstuk 17d.4.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "429":
+          description: |
+            auth.rate_limited. Herhaalbaar; `details.retry_after_ms` draagt
+            dezelfde wachttijd in milliseconden.
+          headers:
+            Retry-After:
+              description: Hele seconden wachten, minstens 1.
+              schema: { type: integer, minimum: 1 }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }

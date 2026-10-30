@@ -202,3 +202,51 @@ func TestSweepNeverGoesBelowTheFloor(t *testing.T) {
 		t.Fatal("een sessie van twee dagen zonder token bleef staan, terwijl de ondergrens één dag is")
 	}
 }
+
+// Alleen wat nooit meer iets kan openen gaat weg. CreateStreamSession ruimt per
+// subject op; deze ronde is er voor wie niet meer terugkomt.
+func TestPurgeStreamSessionsLeavesLiveOnes(t *testing.T) {
+	f := newSweepFixture(t)
+	ctx := context.Background()
+	library, item, version := id.New(), id.New(), id.New()
+	if _, err := f.pool.Exec(ctx, `INSERT INTO libraries (id, slug, title, kind) VALUES ($1, 'films', 'Films', 'movies')`, library); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.pool.Exec(ctx, `
+		INSERT INTO media_items (id, library_id, kind, grouping_key, title) VALUES ($1, $2, 'movie', 'grease', 'Grease')`, item, library); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.pool.Exec(ctx, `
+		INSERT INTO media_versions (id, item_id, grouping_key, container, duration_ms) VALUES ($1, $2, 'v', 'mkv', 1000)`, version, item); err != nil {
+		t.Fatal(err)
+	}
+	insert := func(expires time.Time, revoked *time.Time) id.ID {
+		t.Helper()
+		row := id.New()
+		if _, err := f.pool.Exec(ctx, `
+			INSERT INTO stream_sessions (id, subject, version_id, secret_hash, created_at, expires_at, revoked_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)`, row, f.user, version, []byte("x"), sweepNow.Add(-time.Hour), expires, revoked); err != nil {
+			t.Fatal(err)
+		}
+		return row
+	}
+	revokedAt := sweepNow.Add(-time.Minute)
+	live := insert(sweepNow.Add(time.Hour), nil)
+	insert(sweepNow.Add(-time.Minute), nil)
+	insert(sweepNow.Add(time.Hour), &revokedAt)
+
+	purged, err := f.store.PurgeStreamSessions(ctx, sweepNow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if purged != 2 {
+		t.Fatalf("opgeruimd: %d, verwacht 2", purged)
+	}
+	var left id.ID
+	if err := f.pool.QueryRow(ctx, `SELECT id FROM stream_sessions`).Scan(&left); err != nil {
+		t.Fatal(err)
+	}
+	if left != live {
+		t.Fatal("de lopende sessie is verdwenen")
+	}
+}

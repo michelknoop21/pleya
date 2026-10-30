@@ -198,7 +198,7 @@
           <button class="btn btn--secondary" disabled={pager.loading} onclick={() => void more()}>{t('libraries.loadMore')}</button>
         {/if}
         {#if managed && (pager.items.length || serverKind)}
-          <button type="button" class="btn btn--ghost" onclick={() => { removeError = null; pending = { kind: 'all' }; }}>{t('history.clear')}</button>
+          <button type="button" class="btn btn--ghost clear" onclick={() => { removeError = null; pending = { kind: 'all' }; }}>{t('history.clear')}</button>
         {/if}
       </div>
 
@@ -262,6 +262,7 @@
   .row { display: flex; flex: 1; align-items: center; gap: 14px; min-width: 0; min-height: var(--touch-target); padding: 12px 18px; color: inherit; text-decoration: none; }
   .icon { flex: none; display: inline-flex; align-items: center; justify-content: center; width: var(--touch-target); height: var(--touch-target); margin-right: 8px; border: 0; border-radius: 50%; background: transparent; color: var(--ink-2); cursor: pointer; }
   .icon:disabled { opacity: 0.5; cursor: default; }
+  .clear { align-self: flex-start; }
   .row:focus-visible { outline-offset: -2px; }
   .row__art { flex: none; width: 40px; aspect-ratio: 2 / 3; overflow: hidden; border-radius: 6px; }
   .row__art :global(.artwork) { height: 100%; }
