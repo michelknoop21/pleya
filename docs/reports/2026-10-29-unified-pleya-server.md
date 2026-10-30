@@ -44,3 +44,23 @@ Roadmap: A-07 (serverdeel C-05 / S22, register X5). Besluit: DEC-168. Branch `fe
 ## Vierde ronde (herreview van bd6b3d5)
 - Verwerkt: I2/I4 `UncheckedSourceReason.cannotBeAsked` in plaats van uitsluiting uit de noemer (de eerdere "niet van toepassing"-regel is vervallen, test omgedraaid); I1 de scan vraagt een niet-finaal Pleya-antwoord opnieuw (de retentietak is voor Pleya nu onbereikbaar omdat de mapper geen `updatedAt` zet; de guard en test zijn defensief, de negatieve controle slaat daarom niet aan); M4 de server accepteert alleen `tmdb:` met kale cijfers (test, rood zonder regex); M6 rapport rechtgezet.
 - Open en bewust: I3 lijsten buiten de bibliotheekpagina's (zoeken, hubs, Verder kijken) vullen de nummercache niet; I5 bekrachtiging van het scoped venster door Michel; I6 zie hierboven.
+
+## Vijfde ronde (eindkandidaat cfe2e59 en verder)
+Per soort bewijs apart.
+
+**Unit- en integratietests (Linux, deze sessie)**
+- Verschillende titels: identiteit beslist. Nummers die al in het lijstantwoord zitten (Plex `includeGuids`, Jellyfin `ProviderIds`, Pleya `external_ids`) voegen samen, ook bij een andere titel en een ander jaar; de titel verzamelt alleen kandidaten voor een opvraag. Remakes en verschillende series met dezelfde titel blijven apart (`unified_carried_identity_test.dart`, 13 tests).
+- Kosten, gemeten met 600 Plex- en 300 Pleya-titels waarvan de lijst de nummers draagt: 0 id-opvragingen bij koude start, herbouw en accountwissel; een herscan met meegeleverde Guid 0, zonder 2. Zonder Guid en zonder gedeelde titel: 0 opvragingen en geen samenvoeging. De eerdere 300 Plex-opvragingen gelden alleen nog voor een Plex-server die de Guid-array niet meestuurt; dat blijft een echte kostenpost, één verzoek per titel die op beide staat.
+- Identiteitsketen zonder SQL: `TestIdentityChainFromProviderToWire` laat de echte metadata-runner een match maken en leest het nummer via de API terug.
+- Cachevernieuwing: metadatawijziging, serverupgrade (oud antwoord zonder veld, daarna met veld), rechtenwijziging en accountwissel getest, elk met een pad dat echt bereikt wordt.
+- Gewijzigde Flutter-testbestanden (12): 446 groen. Verify-runner 405 groen, fixture-server 158 groen.
+- Go-suite volledig in de gepinde testimage (`scripts/test-image.sh`: Go 1.26.10, ffmpeg 5.1.9) tegen de Docker-testdatabase uit `scripts/test-db.sh`: 29 pakketten groen, exit 0. De loudness-fout van eerder (`measured_duration_mismatch: gemeten 200 ms, probe 3000 ms`) komt alleen met de lokale ffmpeg 6.1.1 en ook op basis d9edacc; met de gepinde 5.1.9 slaagt `internal/loudness`. Reproduceren: `go test ./internal/loudness/ -run TestMeasureTracksARealLevelDifference -count=1` met systeem-ffmpeg 6.x.
+- `local_folder_scan_cache_test.dart` op cfe2e59 als niet-rootgebruiker (uid 1000): 5 groen.
+- `scripts/ci_checks.sh --with-unused` op cfe2e59 volledig groen, native formatting inbegrepen: `swift-format` uit de Swift 6.1-image (via Docker), clang-format 18 en ktlint 1.5.0. Geen gate overgeslagen.
+- GitHub CI heeft op deze branch niet gedraaid: de workflows starten op `main`, `integration/**` en pull requests, en een handmatige dispatch geeft 403 voor deze sessie. Er is geen PR aangemaakt.
+
+**Simulator**
+- Niet gedraaid: deze omgeving is Linux zonder Xcode. Het scenario `ios.unified.two-servers.yaml` valideert (alle 145 scenario's), de harness voor een tweede fixtureserver en `connections_seed` is getest in de runner, maar het scenario zelf heeft nog geen screenshots opgeleverd. Rechten per bibliotheek en Plex zitten er niet in: de fixture kent geen rechten per gebruiker en spreekt alleen het Pleya-protocol.
+
+**Fysieke toestellen**
+- Niets gedraaid. Zie de checklist hieronder.
