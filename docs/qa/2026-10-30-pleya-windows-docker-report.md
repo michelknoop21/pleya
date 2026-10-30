@@ -17,7 +17,7 @@ De Pleya Server draaide in Docker op een Windows-pc (DESKTOP-98B3AHB). De browse
 | Effectieve limieten | engine 8 CPU en 16.374.792.192 bytes (15,25 GiB); containers zonder eigen geheugen- of CPU-limiet, gebruiker 1000:1000, root-bestandssysteem read-only |
 | Browser | Chromium (Playwright, project `chromium`) op de Mac, breedtes ingesteld per test |
 
-De bundel is gebouwd uit dezelfde commit en met `pleya_web/scripts/build-into-server.sh` in de server gezet. De server is vanaf `git archive` van die commit gebouwd op Windows. De testbestanden in `docs/qa/windows-docker/` (compose-override, staatscripts) zijn na de run toegevoegd en horen niet bij de geteste server. Eén spec-wijziging (opschonen van de startstaat in `personal-matrix.spec.ts`) kwam na de bouw; die raakt alleen de test.
+De bundel is gebouwd uit dezelfde commit en met `pleya_web/scripts/build-into-server.sh` in de server gezet. De server is vanaf `git archive` van die commit gebouwd op Windows. De testbestanden in `docs/qa/windows-docker/` (compose-override, staatscripts) zijn na de run toegevoegd en horen niet bij de geteste server. Na de bouw zijn alleen de e2e-specs gewijzigd, zie "Review van de specs". De server is daarvoor opnieuw uit hetzelfde archief gebouwd (image `sha256:d508b26b6ce27fd1a3d76dce16bc0c312c518e9e1e6ef67bfb8c693539b08926`); dat de digest afwijkt van de eerste bouw is niet onderzocht.
 
 Testdata: twee fictieve films en een fictieve serie met twee afleveringen (ffmpeg-testbeeld, 1 tot 2 seconden), vier fictieve accounts (drie in de bron, een eigenaar in het lege doel). Geen productie-env, geen NAS-pad, geen Plex-data. Alle Docker-objecten van deze test dragen het label `pleya.task=windows-test`.
 
@@ -25,7 +25,7 @@ Testdata: twee fictieve films en een fictieve serie met twee afleveringen (ffmpe
 
 ### Webclient tegen de echte server
 
-14 van 14 e2e-scenario's groen op de definitieve image, ook na een bewust vervuilde startstaat.
+14 van 14 e2e-scenario's groen op een schoon account, en de staat is na de run gelijk aan ervoor. Heeft het eerste item al persoonlijke staat, dan slaan de tests over en blijft die staat staan (14 overgeslagen, `diff` leeg).
 
 | Scenario | Uitkomst |
 |---|---|
@@ -33,7 +33,7 @@ Testdata: twee fictieve films en een fictieve serie met twee afleveringen (ffmpe
 | Mislukte favorietenwrite behoudt de staat | groen |
 | Dubbele klik: één verzoek, knop vergrendeld tot het antwoord | groen |
 | Mislukte beoordelingswrite: dialoog blijft open met foutmelding, oude waarde blijft | groen |
-| Uitloggen tijdens een lopend verzoek: het antwoord verschijnt niet in de volgende sessie | groen |
+| Uitloggen tijdens een lopend verzoek: geen paginafout, geen staat in de volgende sessie. Het verzoek is gestubd, dus dit bewijst niets over de server; de late reactie zelf is in `personal.test.ts` bewezen, met negatieve controle | groen |
 | Verzoek van item A loopt nog, gebruiker gaat naar item B: B is bedienbaar en blijft ongewijzigd | groen |
 | Gezien en ongezien overleven een herlaadbeurt | groen |
 | Lege favorietenpagina toont de lege staat zonder "Meer laden" | groen |
@@ -70,9 +70,15 @@ Vijf echte defecten, alle in de webclient en alle gerepareerd. Voor 1 tot en met
 
 Bij de server zelf: een ongeldige body op `/auth/setup` komt terug als `auth.setup_code_invalid`, wat de oorzaak verbergt, en een beschadigde back-up-tar wordt pas herkend nadat de onderhoudsmodus al aanstaat (geen weigering vooraf). Beide zijn niet aangepast: het protocol is bevroren en het gedrag past binnen het contract. Ze zijn hier vastgelegd, niet opgelost.
 
+## Review van de specs
+
+De eerste versie van `personal.spec.ts` en `personal-matrix.spec.ts` wiste na elke test favoriet, beoordeling en gezien-staat van de aangeraakte films, en de matrix wiste vooraf alle favorieten van het account. De bewaking (`PLEYA_E2E_PERSONAL=1` plus host `127.0.0.1`) houdt een SSH-tunnel naar een echte server niet tegen, en die tunnel is precies wat deze test gebruikte. Op een echt account zou dat kijkstatus hebben gewist. In deze ronde liep het alleen tegen wegwerpdata, maar het effect is gemeten: de eerste versie wiste de vooraf gezaaide staat wel.
+
+`tests/e2e/personal-fixture.ts` legt nu per item de staat vast vóór de test en zet precies die terug. Een item met bestaande staat wordt overgeslagen. Open is dat een `mark_unwatched` een rij met `watched=false` achterlaat in plaats van niets; de tests behandelen dat als geen staat.
+
 ## Beelden
 
-Opgeslagen in `.build/pleya-completion-evidence/windows-docker/` (15 bestanden: `detail@`, `favorites@` en `rating-dialog@` op vijf breedtes). Bekeken zijn detail@320, rating-dialog@1920, favorites@1440 en favorites@320. De eerste versie van favorieten@1440 liet de marge-fout zien; de versie ná de fix staat in de map.
+Opgeslagen in `.build/pleya-completion-evidence/windows-docker/` (15 bestanden: `detail@`, `favorites@` en `rating-dialog@` op vijf breedtes). Bekeken zijn detail@320, rating-dialog@1920, favorites@1440 en favorites@320. De eerste versie van favorites@1440 liet de marge-fout zien; de versie ná de fix staat in de map.
 
 ## Wat dit niet bewijst
 
