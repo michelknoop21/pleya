@@ -89,13 +89,13 @@ steps:
   - wait_until: {id: media-detail.tabs, state: {open: "0"}, timeout: 5000}
   - assert: {id: "media-detail.tab[0]", focused: true}
   - assert: {id: "media-detail.section[seasons]", present: false}
-  - assert: {id: "media-detail.section[episodes]", state: {child_count: 4}}
-  - snapshot: 01-season-1
+  - assert: {id: "media-detail.section[episodes]", state: {child_count: 5}}
+  - snapshot: 04-season-tab
 
   - press: right
   - settle: 1500
   - wait_until: {id: media-detail.tabs, state: {open: "1"}, timeout: 5000}
-  - wait_until: {id: "media-detail.section[episodes]", state: {child_count: 4}, timeout: 8000}
+  - wait_until: {id: "media-detail.section[episodes]", state: {child_count: 5}, timeout: 8000}
 
   - press: left
   - settle: 500

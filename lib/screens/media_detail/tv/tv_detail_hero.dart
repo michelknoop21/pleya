@@ -157,7 +157,8 @@ extension _MediaDetailTvHero on _MediaDetailScreenState {
     final muted = tokens(context).textMuted;
     final margin = TvDetailLayout.leftMargin(size.width);
     final hasTabs = metadata.isShow;
-    final season = hasTabs && _tvDetailSeasonTabActive ? _tvDetailOpenSeason : null;
+    final onSeason = hasTabs && _tvDetailSeasonTabActive;
+    final season = onSeason ? _tvDetailOpenSeason : null;
     final description =
         _tvDetailDescription(season ?? metadata, hideSpoilers: hideSpoilers) ??
         _tvDetailItemDescription(metadata, hideSpoilers: hideSpoilers);
@@ -173,6 +174,46 @@ extension _MediaDetailTvHero on _MediaDetailScreenState {
     _tvDetailReadMoreVisible = readMoreVisible;
     final directors = metadata.directors ?? const <String>[];
     final scores = _buildTvDetailScores(metadata, ink);
+    // Beside the text rather than under it: a long synopsis is the ordinary
+    // case, and a row of its own would move everything under it off the height
+    // of the northstar.
+    final synopsis = description == null
+        ? null
+        : Row(
+            mainAxisSize: .min,
+            crossAxisAlignment: .end,
+            children: [
+              SizedBox(
+                width: synopsisWidth,
+                child: Text(
+                  description,
+                  maxLines: TvDetailLayout.synopsisLines,
+                  overflow: .ellipsis,
+                  style: synopsisStyle,
+                ),
+              ),
+              if (readMoreVisible) ...[
+                SizedBox(width: 12 * pt),
+                AutomationNode(
+                  id: AutomationIds.mediaDetailReadMore,
+                  role: 'button',
+                  focusNode: _tvDetailReadMoreFocusNode,
+                  child: TvViewAllAction(
+                    label: t.discover.readMore,
+                    semanticLabel: t.discover.readMoreSemantic,
+                    focusNode: _tvDetailReadMoreFocusNode,
+                    onSelect: () => _openTvDetailSynopsisPanel(description),
+                    onNavigateUp: _focusAboveTvDetailHero,
+                    onNavigateDown: onSeason ? _focusBelowTvDetailTabs : _focusTvDetailActionRow,
+                  ),
+                ),
+              ],
+            ],
+          );
+    final rowHeadroom = TvCatalogGrid.focusHeadroom(
+      cardHeight: TvDetailLayout.wideCardHeight * pt,
+      focusScale: FocusTheme.fullCardFocusScale,
+    );
 
     return Stack(
       // The artwork hangs on past the hero's foot, under the first row.
@@ -198,73 +239,49 @@ extension _MediaDetailTvHero on _MediaDetailScreenState {
             top: hasTabs
                 ? TvDetailLayout.tabsTop * pt
                 : (TvDetailLayout.headingTop * pt).clamp(MediaQuery.paddingOf(context).top, double.infinity),
-            bottom: TvDetailLayout.sectionGap * pt,
+            bottom: onSeason ? TvDetailLayout.seasonRowGap * pt - rowHeadroom : TvDetailLayout.sectionGap * pt,
           ),
           child: Column(
             mainAxisSize: .min,
             crossAxisAlignment: .start,
             children: [
-              if (hasTabs) ...[
+              if (hasTabs)
                 Padding(
-                  padding: EdgeInsets.only(left: 8 * pt),
+                  padding: EdgeInsets.only(left: TvDetailLayout.tabInset * pt),
                   child: _buildTvDetailTabs(),
                 ),
-                SizedBox(height: (TvDetailLayout.headingTop - TvDetailLayout.tabsTop - TvDetailLayout.tabHeight) * pt),
+              if (onSeason)
+                ..._buildTvDetailSeasonRows(
+                  metadata: metadata,
+                  season: season,
+                  synopsis: synopsis,
+                  ink: ink,
+                  muted: muted,
+                )
+              else ...[
+                if (hasTabs)
+                  SizedBox(
+                    height: (TvDetailLayout.headingTop - TvDetailLayout.tabsTop - TvDetailLayout.tabHeight) * pt,
+                  ),
+                _buildTvDetailHeading(metadata, ink),
+                SizedBox(height: TvDetailLayout.metaGap * pt),
+                _buildTvDetailMetaRow(metadata, ink),
+                if (scores != null) ...[SizedBox(height: TvDetailLayout.scoreGap * pt), scores],
+                if (synopsis != null) ...[SizedBox(height: TvDetailLayout.synopsisGap * pt), synopsis],
+                if (directors.isNotEmpty) ...[
+                  SizedBox(height: TvDetailLayout.directorGap * pt),
+                  Text(
+                    t.discover.directedBy(names: directors.join(', ')),
+                    maxLines: 1,
+                    overflow: .ellipsis,
+                    style: TextStyle(color: muted, fontSize: TvHig.caption2 * pt),
+                  ),
+                ],
+                SizedBox(height: TvDetailLayout.actionRowGap * pt),
+                _buildTvDetailActionRow(metadata),
+                _buildUnifiedSourceLine(),
+                ..._buildTvDetailActivityRow(metadata.isMovie ? _tvDetailTechLabels(metadata) : const []),
               ],
-              _buildTvDetailHeading(metadata, ink),
-              SizedBox(height: TvDetailLayout.metaGap * pt),
-              _buildTvDetailMetaRow(metadata, ink),
-              if (scores != null) ...[SizedBox(height: TvDetailLayout.scoreGap * pt), scores],
-              if (description != null) ...[
-                SizedBox(height: TvDetailLayout.synopsisGap * pt),
-                // Beside the text rather than under it: a long synopsis is the
-                // ordinary case, and a row of its own would move everything
-                // under it off the height of the northstar.
-                Row(
-                  mainAxisSize: .min,
-                  crossAxisAlignment: .end,
-                  children: [
-                    SizedBox(
-                      width: synopsisWidth,
-                      child: Text(
-                        description,
-                        maxLines: TvDetailLayout.synopsisLines,
-                        overflow: .ellipsis,
-                        style: synopsisStyle,
-                      ),
-                    ),
-                    if (readMoreVisible) ...[
-                      SizedBox(width: 12 * pt),
-                      AutomationNode(
-                        id: AutomationIds.mediaDetailReadMore,
-                        role: 'button',
-                        focusNode: _tvDetailReadMoreFocusNode,
-                        child: TvViewAllAction(
-                          label: t.discover.readMore,
-                          semanticLabel: t.discover.readMoreSemantic,
-                          focusNode: _tvDetailReadMoreFocusNode,
-                          onSelect: () => _openTvDetailSynopsisPanel(description),
-                          onNavigateUp: _focusAboveTvDetailHero,
-                          onNavigateDown: _focusTvDetailActionRow,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-              if (directors.isNotEmpty) ...[
-                SizedBox(height: TvDetailLayout.directorGap * pt),
-                Text(
-                  t.discover.directedBy(names: directors.join(', ')),
-                  maxLines: 1,
-                  overflow: .ellipsis,
-                  style: TextStyle(color: muted, fontSize: TvHig.caption2 * pt),
-                ),
-              ],
-              SizedBox(height: TvDetailLayout.actionRowGap * pt),
-              _buildTvDetailActionRow(metadata),
-              _buildUnifiedSourceLine(),
-              ..._buildTvDetailActivityRow(metadata.isMovie ? _tvDetailTechLabels(metadata) : const []),
             ],
           ),
         ),

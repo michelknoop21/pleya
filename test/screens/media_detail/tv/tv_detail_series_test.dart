@@ -18,8 +18,11 @@ import 'package:pleya/media/media_role.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/navigation/main_screen_scope.dart';
+import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
 import 'package:pleya/navigation/tv/tv_nested_surface.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/screens/media_detail/tv/tv_detail_episode_card.dart';
+import 'package:pleya/screens/media_detail/tv/tv_detail_hero_widgets.dart';
 import 'package:pleya/screens/media_detail/tv/tv_detail_layout.dart';
 import 'package:pleya/screens/media_detail/tv/tv_detail_page.dart';
 import 'package:pleya/screens/media_detail/tv/tv_detail_tab_pill.dart';
@@ -260,7 +263,6 @@ void main() {
     expect(tester.state(find.byType(MediaDetailScreen)), same(state));
     expect(find.byType(MediaDetailScreen), findsOneWidget);
     expect(pills(tester).map((pill) => pill.active), [false, true, false]);
-    expect(find.text('Episodes'), findsOneWidget);
     expect(find.text('What season 1 is about.'), findsOneWidget);
     expect(find.text('Tom Hardy'), findsNothing, reason: 'cast belongs to the Serie tab');
 
@@ -286,7 +288,6 @@ void main() {
     expect(idle.color, Colors.transparent);
     expect((idle.border! as Border).top.color, Colors.transparent);
 
-    await _press(tester, LogicalKeyboardKey.arrowUp);
     await _press(tester, LogicalKeyboardKey.arrowUp);
     expect(_focus, 'season_tab_0');
     expect(pillDecoration(tester, 'Season 1').color, Colors.white);
@@ -427,9 +428,143 @@ void main() {
     expect(find.text('What episode 3 of season 2 is about.'), findsOneWidget);
     expect(find.text('What episode 2 of season 2 is about.'), findsNothing);
 
-    await _press(tester, LogicalKeyboardKey.arrowUp);
+    await _press(tester, LogicalKeyboardKey.arrowDown);
     expect(_focus, 'play_button');
     expect(find.text('What season 2 is about.'), findsOneWidget);
+  });
+
+  group('a season tab, as 01 draws it', () {
+    const pt = 584 / 1080;
+
+    testWidgets('the tabs, then the row, then the actions, and back up the same way', (tester) async {
+      await pumpDetail(tester, _Client());
+      await _press(tester, LogicalKeyboardKey.arrowRight);
+
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+      expect(_focus, 'TvDetailCard_episodes(season_1)');
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+      expect(_focus, 'play_button');
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+      expect(_focus, 'play_button', reason: 'nothing is left under the actions');
+
+      await _press(tester, LogicalKeyboardKey.arrowUp);
+      expect(_focus, 'TvDetailCard_episodes(season_1)');
+      await _press(tester, LogicalKeyboardKey.arrowUp);
+      expect(_focus, 'season_tab_0');
+      await _press(tester, LogicalKeyboardKey.arrowUp);
+      expect(bar, 1);
+    });
+
+    testWidgets('the page stays on offset 0 and everything sits on the height of 01', (tester) async {
+      await pumpDetail(tester, _Client());
+      await _press(tester, LogicalKeyboardKey.arrowRight);
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+      final scrollable = tester.state<ScrollableState>(find.byType(Scrollable).first);
+
+      expect(scrollable.position.pixels, 0);
+      expect(tester.getTopLeft(find.byType(TvDetailEpisodeCard).first).dy / pt, closeTo(592 * 0.96, 6));
+      expect(tester.getSize(find.byType(TvDetailEpisodeCard).first).width / pt, closeTo(533 * 0.96, 1));
+      expect(find.text('What season 1 is about.'), findsOneWidget);
+
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+      expect(scrollable.position.pixels, 0);
+      final actions = tester.getCenter(find.byType(TvDetailRoundButton).first);
+      expect(actions.dy / pt, closeTo(968 * 0.96, 8));
+      expect(actions.dx, lessThan(_panel.width / 3));
+    });
+
+    testWidgets('the row keeps its height when the summary changes length', (tester) async {
+      await pumpDetail(tester, _Client());
+      await _press(tester, LogicalKeyboardKey.arrowRight);
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+      final before = tester.getTopLeft(find.byType(TvDetailEpisodeCard).first).dy;
+
+      await _press(tester, LogicalKeyboardKey.arrowRight);
+
+      expect(tester.getTopLeft(find.byType(TvDetailEpisodeCard).first).dy, before);
+    });
+
+    testWidgets('the cards carry A1, a tick, and the name of the season in front', (tester) async {
+      await pumpDetail(
+        tester,
+        _Client(
+          episodes: {
+            'season_1': [_episode(1, 1).copyWith(viewCount: 1), _episode(1, 2)],
+            'season_2': const [],
+          },
+        ),
+      );
+      await _press(tester, LogicalKeyboardKey.arrowRight);
+
+      final cards = tester.widgetList<TvDetailEpisodeCard>(find.byType(TvDetailEpisodeCard)).toList();
+      expect(cards.map((card) => card.badge), ['Season 1', 'E1', 'E2']);
+      expect(cards.map((card) => card.watched), [false, true, false]);
+    });
+
+    testWidgets('the name line says which episode the ring is on', (tester) async {
+      await pumpDetail(tester, _Client(), episode: 'e2-2', season: 2, seasonId: 'season_2');
+
+      expect(find.text('Season 2 • E2 • Episode 2'), findsOneWidget);
+    });
+
+    testWidgets('Select on the season card plays its next episode', (tester) async {
+      final played = <String>[];
+      MediaDetailScreen.debugOnPlayEpisode = (episode) => played.add(episode.id);
+      await pumpDetail(
+        tester,
+        _Client(
+          episodes: {
+            'season_1': [_episode(1, 1).copyWith(viewCount: 1), _episode(1, 2)],
+            'season_2': const [],
+          },
+        ),
+      );
+      await _press(tester, LogicalKeyboardKey.arrowRight);
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+
+      await _press(tester, LogicalKeyboardKey.enter);
+
+      expect(played, ['e1-2']);
+    });
+
+    testWidgets('the ring on the play button reads the episode it resumes', (tester) async {
+      await pumpDetail(
+        tester,
+        _Client(
+          episodes: {
+            'season_1': [_episode(1, 1, offset: 1500000)],
+            'season_2': const [],
+          },
+        ),
+      );
+      await _press(tester, LogicalKeyboardKey.arrowRight);
+
+      final ring = tester.widget<TvDetailProgressRing>(find.byType(TvDetailProgressRing));
+      expect(ring.value, closeTo(0.5, 0.001));
+    });
+
+    testWidgets('Menu on the actions of a walked-in season goes back to the Serie tab', (tester) async {
+      await pumpDetail(tester, _Client());
+      await _press(tester, LogicalKeyboardKey.arrowRight);
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+
+      await _press(tester, LogicalKeyboardKey.escape);
+
+      expect(dismissed, 0);
+      expect(pills(tester).map((pill) => pill.active), [true, false, false]);
+      expect(_focus, 'TvDetailCard_seasons(season_1)');
+    });
+
+    testWidgets('a popped route gets its episode back through the restore host', (tester) async {
+      await pumpDetail(tester, _Client(), episode: 'e2-1', season: 2, seasonId: 'season_2');
+
+      final host = tester.state(find.byType(MediaDetailScreen)) as TvFocusRestoreHost;
+      expect(host.restoreTvFocus(const TvFocusRestoreTarget(itemId: 'e2-3', containerId: 'episodes')), isTrue);
+      await tester.pumpAndSettle();
+
+      expect(_focus, 'TvDetailCard_episodes(e2-3)');
+    });
   });
 
   testWidgets('a tab stepped back to reads its pager: no second first page', (tester) async {
@@ -444,7 +579,7 @@ void main() {
     expect(client.pageCalls.where((id) => id == 'season_1'), hasLength(1));
     expect(client.pageCalls.where((id) => id == 'season_2'), hasLength(1));
     final page = tester.widget<TvDetailPage>(find.byType(TvDetailPage));
-    expect(page.sections.single.itemIds, ['e2-1', 'e2-2', 'e2-3']);
+    expect(page.sections.single.itemIds, ['season_2', 'e2-1', 'e2-2', 'e2-3']);
   });
 
   testWidgets('a series without seasons of its own gets one Episodes tab', (tester) async {

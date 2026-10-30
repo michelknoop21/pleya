@@ -28,6 +28,8 @@ class TvDetailSection {
     this.hasMore = false,
     this.isLoadingMore = false,
     this.onLoadMore,
+    this.heldAtTop = false,
+    this.gapBelow,
   });
 
   /// Stable across rebuilds: it keys the row's focus memory and the way back
@@ -50,6 +52,14 @@ class TvDetailSection {
   final bool hasMore;
   final bool isLoadingMore;
   final VoidCallback? onLoadMore;
+
+  /// The page stays on offset 0 while this row has the focus, as on a season
+  /// tab, where everything is on the first screen. Otherwise its heading goes to
+  /// [TvDetailLayout.focusHeadingCentre].
+  final bool heldAtTop;
+
+  /// In points, instead of [TvDetailLayout.sectionGap].
+  final double? gapBelow;
 }
 
 /// The film detail page: one vertical scroll over a backdrop that stays put.
@@ -74,6 +84,9 @@ class TvDetailPage extends StatefulWidget {
     this.contentGate,
     this.hasPendingSections = false,
     this.onApproachEnd,
+    this.footer,
+    this.onExitBottom,
+    this.bottomPadding = TvDetailLayout.bottomPadding,
   });
 
   final Widget background;
@@ -88,6 +101,15 @@ class TvDetailPage extends StatefulWidget {
 
   final bool hasPendingSections;
   final VoidCallback? onApproachEnd;
+
+  /// Under the last section, for what is not a row: a season's actions.
+  final Widget? footer;
+
+  /// DOWN out of the last section.
+  final VoidCallback? onExitBottom;
+
+  /// In points, under everything else.
+  final double bottomPadding;
 
   @override
   State<TvDetailPage> createState() => TvDetailPageState();
@@ -174,7 +196,11 @@ class TvDetailPageState extends State<TvDetailPage> {
     for (var i = sections.indexWhere((s) => s.id == from.id) + delta; i >= 0 && i < sections.length; i += delta) {
       if (_focusSection(sections, i, dx)) return;
     }
-    if (delta < 0) widget.onFocusHero();
+    if (delta < 0) {
+      widget.onFocusHero();
+    } else {
+      widget.onExitBottom?.call();
+    }
   }
 
   /// LEFT off a row's first card goes nowhere. The rail also calls this when its
@@ -186,6 +212,10 @@ class TvDetailPageState extends State<TvDetailPage> {
   void _onSectionFocus(TvDetailSection section, bool hasFocus) {
     if (!hasFocus) return;
     _focusedSectionId = section.id;
+    if (section.heldAtTop) {
+      if (_scroll.hasClients) _scrollTo(0);
+      return;
+    }
     final sectionContext = _sectionKeys[section.id]?.currentContext;
     if (sectionContext == null || !_scroll.hasClients) return;
     final box = sectionContext.findRenderObject() as RenderBox;
@@ -197,6 +227,13 @@ class TvDetailPageState extends State<TvDetailPage> {
     if (!hasFocus) return;
     _focusedSectionId = null;
     if (_scroll.hasClients) _scrollTo(0);
+  }
+
+  /// A footer taller than what is left of the page brings the rest in.
+  void _onFooterFocus(bool hasFocus) {
+    if (!hasFocus) return;
+    _focusedSectionId = null;
+    if (_scroll.hasClients) _scrollTo(_scroll.position.maxScrollExtent);
   }
 
   void _scrollTo(double offset) {
@@ -222,12 +259,14 @@ class TvDetailPageState extends State<TvDetailPage> {
       child: Focus(
         focusNode: _pageFocus,
         child: Padding(
-          padding: EdgeInsets.only(bottom: TvDetailLayout.bottomPadding * pt),
+          padding: EdgeInsets.only(bottom: widget.bottomPadding * pt),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Focus(canRequestFocus: false, skipTraversal: true, onFocusChange: _onHeroFocus, child: widget.hero),
               for (final section in sections) _buildSection(section, pt),
+              if (widget.footer case final footer?)
+                Focus(canRequestFocus: false, skipTraversal: true, onFocusChange: _onFooterFocus, child: footer),
             ],
           ),
         ),
@@ -262,24 +301,25 @@ class TvDetailPageState extends State<TvDetailPage> {
           key: _sectionKeys.putIfAbsent(section.id, GlobalKey.new),
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: EdgeInsets.only(
-                left: TvDetailLayout.leftMargin(width),
-                right: TvDetailLayout.rightMargin * pt,
-                bottom: (TvDetailLayout.sectionHeadingGap * pt - headroom).clamp(0, double.infinity).toDouble(),
-              ),
-              child: Text(
-                section.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: tk.text,
-                  fontSize: TvDetailLayout.headingSize() * pt,
-                  height: TvDetailLayout.headingLineHeight,
-                  fontWeight: FontWeight.w700,
+            if (section.title.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.only(
+                  left: TvDetailLayout.leftMargin(width),
+                  right: TvDetailLayout.rightMargin * pt,
+                  bottom: (TvDetailLayout.sectionHeadingGap * pt - headroom).clamp(0, double.infinity).toDouble(),
+                ),
+                child: Text(
+                  section.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: tk.text,
+                    fontSize: TvDetailLayout.headingSize() * pt,
+                    height: TvDetailLayout.headingLineHeight,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
             TvCatalogCardRail(
               key: _railKey(section.id),
               itemIds: section.itemIds,
@@ -300,7 +340,11 @@ class TvDetailPageState extends State<TvDetailPage> {
               ),
               nodeDebugLabel: 'TvDetailCard_${section.id}',
             ),
-            SizedBox(height: (TvDetailLayout.sectionGap * pt - headroom).clamp(0, double.infinity).toDouble()),
+            SizedBox(
+              height: ((section.gapBelow ?? TvDetailLayout.sectionGap) * pt - headroom)
+                  .clamp(0, double.infinity)
+                  .toDouble(),
+            ),
           ],
         ),
       ),

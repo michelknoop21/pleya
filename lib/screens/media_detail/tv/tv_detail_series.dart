@@ -110,24 +110,32 @@ extension _MediaDetailTvSeries on _MediaDetailScreenState {
     }
   }
 
-  /// The episodes of the open season, or of the series when it has no seasons.
-  TvDetailSection _tvDetailEpisodesSection() {
+  /// The season's card and its episodes, or the episodes of a series without
+  /// seasons. The first page can still be on its way: the season's own card is
+  /// there at once, so a Select on its poster always has somewhere to land.
+  TvDetailSection _tvDetailEpisodesSection(MediaItem metadata) {
     final pt = TvHig.of(context);
     final hideSpoilers = SettingsService.instance.read(SettingsService.hideSpoilers);
     final episodes = _freshAll(_episodes);
     final failed = _episodeListPageError || _seasonEpisodesFirstPageError;
     final client = _getArtworkMediaClient(context);
+    final season = _tvDetailOpenSeason;
+    final lead = season == null ? 0 : 1;
     return TvDetailSection(
       id: _tvDetailEpisodesSectionId,
-      title: t.libraries.groupings.episodes,
-      itemIds: [for (final episode in episodes) episode.id, if (failed) 'retry'],
+      title: '',
+      heldAtTop: true,
+      gapBelow: TvDetailLayout.seasonFooterGap,
+      itemIds: [?season?.id, for (final episode in episodes) episode.id, if (failed) 'retry'],
       cardWidth: TvDetailLayout.wideCardWidth * pt,
       cardHeight: TvDetailLayout.wideCardHeight * pt,
       hasMore: _episodeListHasMore && !failed,
       isLoadingMore: _episodeListLoadingMore,
       onLoadMore: () => unawaited(_loadMoreEpisodeList()),
       itemBuilder: (context, cell) {
-        if (cell.index >= episodes.length) {
+        if (season != null && cell.index == 0) return _buildTvDetailSeasonCard(metadata, season, cell);
+        final position = cell.index - lead;
+        if (position >= episodes.length) {
           return TvDetailViewAllCard(
             cell: cell,
             label: t.common.retry,
@@ -135,7 +143,7 @@ extension _MediaDetailTvSeries on _MediaDetailScreenState {
             onSelect: () => unawaited(_fetchSeasonEpisodes(_selectedSeasonIndex)),
           );
         }
-        final episode = episodes[cell.index];
+        final episode = episodes[position];
         final menuKey = _tvDetailMenuKey('$_tvDetailEpisodesSectionId/${episode.id}');
         return AutomationNode(
           id: AutomationIds.mediaDetailSectionItem,
@@ -150,11 +158,11 @@ extension _MediaDetailTvSeries on _MediaDetailScreenState {
               cell: cell,
               imagePath: episode.thumbPath,
               client: client,
-              badge: t.discover.episodeBadge(number: episode.index ?? cell.index + 1),
+              badge: t.discover.episodeBadge(number: episode.index ?? position + 1),
               watched: episode.isWatched,
               progress: _tvDetailEpisodeProgress(episode),
               blurred: hideSpoilers && episode.shouldHideSpoiler,
-              semanticLabel: episode.displayTitle,
+              semanticLabel: episode.title ?? episode.displayTitle,
               onSelect: () => _tvDetailPlayEpisode(episode),
               onContextMenu: () => menuKey.currentState?.showContextMenu(context),
               onFocused: () => _tvDetailOnEpisodeFocused(episode),

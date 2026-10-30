@@ -146,6 +146,7 @@ import 'media_detail/mobile/detail_seasons_rail.dart';
 import 'media_detail/mobile/detail_tech_table.dart';
 import 'media_detail/mobile/mobile_poster_hero.dart';
 import 'media_detail/mobile_detail_hero.dart';
+import '../widgets/tv/tv_catalog_card_grid.dart';
 import 'media_detail/tv/tv_detail_backdrop.dart';
 import 'media_detail/tv/tv_detail_cards.dart';
 import 'media_detail/tv/tv_detail_episode_card.dart';
@@ -186,6 +187,7 @@ part 'media_detail/tv/tv_detail_rail.dart';
 part 'media_detail/tv/tv_detail_reveal.dart';
 part 'media_detail/tv/tv_detail_screen.dart';
 part 'media_detail/tv/tv_detail_sections.dart';
+part 'media_detail/tv/tv_detail_season.dart';
 part 'media_detail/tv/tv_detail_series.dart';
 part 'media_detail/tv/tv_detail_tabs.dart';
 
@@ -2462,7 +2464,9 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       // DEC-109: only a stop here when the synopsis actually overflows.
       // Otherwise this stays a no-op, same as before that action existed —
       // no empty focus position appears in its place.
-      if (_tvDetailReadMoreVisible) {
+      if (_tvDetailShowsSeasonTab) {
+        _tvDetailPageKey.currentState?.focusFirstSection();
+      } else if (_tvDetailReadMoreVisible) {
         _tvDetailReadMoreFocusNode.requestFocus();
       } else {
         _focusAboveTvDetailHero();
@@ -2477,6 +2481,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     final metadata = _fullMetadata ?? _metadata;
 
     if (PlatformDetector.isTV()) {
+      // The actions close a season tab: nothing is left under them.
+      if (_tvDetailShowsSeasonTab) return;
       if (_tvDetailUsesPage(metadata)) {
         _tvDetailPageKey.currentState?.focusFirstSection();
         return;

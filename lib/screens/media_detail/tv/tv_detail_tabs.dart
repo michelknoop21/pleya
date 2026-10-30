@@ -27,6 +27,9 @@ const String _tvDetailEpisodesSectionId = 'episodes';
 extension _MediaDetailTvTabs on _MediaDetailScreenState {
   bool get _tvDetailSeasonTabActive => !_tvDetailSeriesTabActive;
 
+  /// What the page shows right now, which only a series can make a season.
+  bool get _tvDetailShowsSeasonTab => _fullOrPassedShow && _tvDetailSeasonTabActive;
+
   bool get _tvDetailHasSeasonTabs => !_showEpisodesDirectly && _seasons.isNotEmpty;
 
   MediaItem? get _tvDetailOpenSeason {
@@ -126,7 +129,7 @@ extension _MediaDetailTvTabs on _MediaDetailScreenState {
   /// poster when there is one to land on. A page opened on the season has no
   /// overview behind it, so Menu closes that one.
   bool get _tvDetailMenuLeavesSeason =>
-      PlatformDetector.isTV() && _fullOrPassedShow && _tvDetailSeasonTabActive && !_hasInitialDetailFocusTarget;
+      PlatformDetector.isTV() && _tvDetailShowsSeasonTab && !_hasInitialDetailFocusTarget;
 
   bool get _fullOrPassedShow => (_fullMetadata ?? _metadata).isShow;
 

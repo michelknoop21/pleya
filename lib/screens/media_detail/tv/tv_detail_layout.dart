@@ -14,6 +14,7 @@ abstract final class TvDetailLayout {
   /// The tab row of a series, above the slot.
   static const double tabsTop = 41;
   static const double tabHeight = 48;
+  static const double tabInset = 8;
   static const double tabPadding = 16;
   static const double tabGap = 16;
 
@@ -34,6 +35,17 @@ abstract final class TvDetailLayout {
   static const double directorGap = 14;
   static const double actionRowGap = 18;
   static const double activityGap = 28;
+
+  // A season tab (01). Its row stays on one height whatever the text does.
+  static const double seasonLogoTop = 128;
+  static const double seasonLogoHeight = 100;
+  static const double seasonLogoWidth = 526;
+  static const double seasonNameGap = 8;
+  static const double seasonNameHeight = 38;
+  static const double seasonSynopsisGap = 118;
+  static const double seasonRowGap = 80;
+  static const double seasonFooterGap = 40;
+  static const double seasonFooterBottom = 24;
 
   static const double synopsisWidth = 818;
   static const int synopsisLines = 3;
