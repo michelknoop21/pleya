@@ -67,12 +67,12 @@
 
 <div class="personal-actions">
   {#if session.capabilities?.favorites}
-    <button class="btn btn--secondary" disabled={busy} aria-pressed={!!item.favorite} onclick={favorite}>
+    <button class="btn btn--secondary" aria-disabled={busy} aria-pressed={!!item.favorite} onclick={favorite}>
       {t(item.favorite ? 'personal.removeFavorite' : 'personal.addFavorite')}
     </button>
   {/if}
   {#if session.capabilities?.ratings}
-    <button class="btn btn--secondary" disabled={busy} onclick={() => { draftRating = item.rating == null ? '' : String(item.rating); error = null; ratingOpen = true; }}>
+    <button class="btn btn--secondary" aria-disabled={busy} onclick={() => { if (busy) return; draftRating = item.rating == null ? '' : String(item.rating); error = null; ratingOpen = true; }}>
       {item.rating == null ? t('personal.rate') : t('personal.rated', { rating: item.rating })}
     </button>
     <ConfirmDialog bind:open={ratingOpen} title={t('personal.yourRating')} confirmLabel={t('personal.save')} danger={false} {busy} onconfirm={rate}>
@@ -81,7 +81,7 @@
     </ConfirmDialog>
   {/if}
   {#if canWatch}
-    <button class="btn btn--secondary" disabled={busy} onclick={watched}>
+    <button class="btn btn--secondary" aria-disabled={busy} onclick={watched}>
       {t(item.user_state?.watched ? 'personal.markUnwatched' : 'personal.markWatched')}
     </button>
   {/if}
@@ -91,4 +91,6 @@
 <style>
   .personal-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .personal-actions:empty { display: none; }
+  /* aria-disabled, not disabled: a disabled button drops keyboard focus while the request runs. */
+  .personal-actions .btn[aria-disabled='true'] { opacity: 0.5; cursor: progress; }
 </style>

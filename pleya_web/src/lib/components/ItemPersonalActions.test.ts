@@ -14,7 +14,7 @@ describe('public personal item controls',()=>{
   const onchange=vi.fn();render(ItemPersonalActions,{props:{item,onchange}});
   const favorite=screen.getByRole('button',{name:'Add to favorites'});
   await fireEvent.click(favorite);await fireEvent.click(favorite);
-  expect(h.favorite).toHaveBeenCalledTimes(1);expect(onchange).not.toHaveBeenCalled();expect(favorite).toBeDisabled();
+  expect(h.favorite).toHaveBeenCalledTimes(1);expect(onchange).not.toHaveBeenCalled();expect(favorite).toHaveAttribute('aria-disabled','true');expect(favorite).not.toBeDisabled();
   resolve();await waitFor(()=>expect(onchange).toHaveBeenCalledWith(expect.objectContaining({id:'movie',favorite:true})));
  });
  it('retains the current state and reports a rejected favorite',async()=>{
@@ -61,7 +61,7 @@ describe('public personal item controls',()=>{
   const onchange=vi.fn();const {rerender}=render(ItemPersonalActions,{props:{item,onchange}});
   await fireEvent.click(screen.getByRole('button',{name:'Add to favorites'}));
   await rerender({item:{...item,id:'other',title:'Other'},onchange});
-  await waitFor(()=>expect(screen.getByRole('button',{name:'Add to favorites'})).toBeEnabled());
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Add to favorites'})).toHaveAttribute('aria-disabled','false'));
   resolve();await Promise.resolve();await Promise.resolve();expect(onchange).not.toHaveBeenCalled();
   await fireEvent.click(screen.getByRole('button',{name:'Add to favorites'}));
   await waitFor(()=>expect(onchange).toHaveBeenCalledWith(expect.objectContaining({id:'other',favorite:true})));

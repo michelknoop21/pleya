@@ -60,7 +60,7 @@ test('a double click sends one favorite request and the button stays locked unti
   await openFirstMovie(page);let puts=0;
   await page.route('**/pleya/v1/favorites/*',async route=>{if(route.request().method()==='PUT'){puts++;await new Promise(r=>setTimeout(r,800));}await route.continue();});
   const button=page.getByRole('button',{name:'Add to favorites',exact:true});
-  await button.dblclick();await expect(button).toBeDisabled();
+  await button.dblclick();await expect(button).toHaveAttribute('aria-disabled','true');await expect(button).not.toBeDisabled();
   await expect(page.getByRole('button',{name:'Remove from favorites',exact:true})).toBeEnabled();
   expect(puts).toBe(1);
 });
