@@ -120,10 +120,10 @@ bestanden niet, en RFC 9110 §8.8.1 vraagt strict revision control of een hash o
 `If-Range` levert daarom altijd `200`. Schrijf nergens code die op een gelijke validator vertrouwt om
 bytes aan elkaar te plakken.
 
-**Tabellen uit latere fasen bestaan niet.** Geen `play_sessions`, `user_item_data`, `external_ids` of
-`metadata_candidates`. `watch_states` en `stream_sessions` staan er sinds PS-4; `users`, `sessions`
-en `library_permissions` sinds migratie 0007 (PS-9, DEC-119 en DEC-123); `transcode_sessions` sinds
-0019 en `play_history` sinds 0020. De lijst in hoofdstuk 17.2 (die van het protocol; het schema staat in hoofdstuk 16 en
+**Tabellen uit latere fasen bestaan niet.** Geen `play_sessions`, `user_item_data` of `external_ids`.
+`watch_states` en `stream_sessions` staan er sinds PS-4; `users`, `sessions` en `library_permissions`
+sinds migratie 0007 (PS-9, DEC-119 en DEC-123); `metadata_candidates` sinds 0013, `transcode_sessions`
+sinds 0019 en `play_history` sinds 0020. De lijst in hoofdstuk 17.2 (die van het protocol; het schema staat in hoofdstuk 16 en
 17 van [de specificatie](../docs/pleya-protocol-v1.md)) beschrijft het hele v1-product en niet deze
 fase; `verify-local.sh` en `internal/migrate/migrate_test.go` controleren allebei welke tabellen er
 staan.
