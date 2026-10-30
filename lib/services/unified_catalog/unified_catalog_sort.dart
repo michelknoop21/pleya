@@ -33,8 +33,10 @@ enum UnifiedCatalogSort {
   contentRatingOldest(UnifiedCatalogSortField.contentRating, LibrarySortDirection.descending),
   longest(UnifiedCatalogSortField.duration, LibrarySortDirection.descending),
   shortest(UnifiedCatalogSortField.duration, LibrarySortDirection.ascending),
+  // One way only. Most titles have no position, a server sends those first when
+  // sorting upwards, and no backend has a documented way to put them last: the
+  // first card would stand behind everything nobody began.
   mostProgress(UnifiedCatalogSortField.progress, LibrarySortDirection.descending),
-  leastProgress(UnifiedCatalogSortField.progress, LibrarySortDirection.ascending),
   mostPlayed(UnifiedCatalogSortField.plays, LibrarySortDirection.descending),
   leastPlayed(UnifiedCatalogSortField.plays, LibrarySortDirection.ascending),
   highestResolution(UnifiedCatalogSortField.resolution, LibrarySortDirection.descending),

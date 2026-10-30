@@ -51,6 +51,14 @@ Finder _panelScroll() => find.descendant(of: find.byType(TvCatalogSidePanel), ma
 void main() {
   FullBleedHarness.setUpAllTv();
 
+  test('choosing Voortgang again keeps it, and it draws no arrow it cannot honour', () {
+    expect(
+      tvCatalogSortAfterChoosing(UnifiedCatalogSort.mostProgress, UnifiedCatalogSortField.progress),
+      UnifiedCatalogSort.mostProgress,
+    );
+    expect(tvCatalogDirectionIcon(UnifiedCatalogSort.mostProgress), isNull);
+  });
+
   group('RIGHT and straight back with LEFT, while the panel is still sliding out', () {
     // Not `h.press`: that settles, and the whole point is the 240 ms it would
     // wait out.
@@ -366,7 +374,10 @@ void main() {
       for (final sort in UnifiedCatalogSort.values) {
         final other = UnifiedCatalogSortField.values.firstWhere((f) => f != sort.field);
         expect(tvCatalogSortAfterChoosing(sort, other).field, other);
-        expect(tvCatalogCanReverse(sort), sort != UnifiedCatalogSort.recentlyWatched);
+        expect(
+          tvCatalogCanReverse(sort),
+          sort != UnifiedCatalogSort.recentlyWatched && sort != UnifiedCatalogSort.mostProgress,
+        );
       }
       expect(
         tvCatalogSortAfterChoosing(UnifiedCatalogSort.titleAsc, UnifiedCatalogSortField.title),

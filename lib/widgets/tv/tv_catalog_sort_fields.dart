@@ -5,7 +5,8 @@
 /// Choosing the field in force turns its direction over. Choosing another
 /// field takes that field's own default direction: titles run A to Z, the
 /// dates and the scores start with the highest. A field with a single direction
-/// (Recent bekeken) has nothing to turn over, so choosing it again keeps it.
+/// (Recent bekeken, Voortgang) has nothing to turn over, so choosing it again
+/// keeps it.
 library;
 
 import 'package:flutter/widgets.dart' show IconData;

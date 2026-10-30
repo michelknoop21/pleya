@@ -125,10 +125,12 @@ class UnifiedSourceCursor {
   /// Takes one page. [hasSortValue] is null when nothing can be held back.
   ///
   /// [maxHeldBack] bounds the walk: a library whose list carries no value at all
-  /// would otherwise have to be read to its end before a first card appears.
-  /// Past it the items pass in the server's order, which breaks the rule above
-  /// only on more than that many leading titles without a value.
-  void accept(List<MediaItem> items, {bool Function(MediaItem)? hasSortValue, int maxHeldBack = 3000}) {
+  /// would otherwise have to be read to its end before a first card appears. The
+  /// service passes its own budget for one round, so the first card costs no more
+  /// pages than any other. Past it the items pass in the server's order, which
+  /// breaks the rule above only on more than that many leading titles without a
+  /// value.
+  void accept(List<MediaItem> items, {bool Function(MediaItem)? hasSortValue, required int maxHeldBack}) {
     for (final item in items) {
       if (hasSortValue == null || _sawSortValue) {
         buffer.add(item);

@@ -511,6 +511,7 @@ class UnifiedCatalogService {
         hasSortValue: unifiedCatalogKeyProvesNoValue(sortField, _query.kind, cursor.library.backend)
             ? (item) => unifiedCatalogHasSortValue(item, sortField)
             : null,
+        maxHeldBack: maxRawItemsPerLoadMore,
       );
       cursor.offset += page.items.length;
       cursor.sourceTotal = page.totalCount;

@@ -325,11 +325,17 @@ void main() {
       expect(UnifiedCatalogPreferences.fromJson({'sort': 'gone'}).sort, UnifiedCatalogSort.titleAsc);
     });
 
-    test('every field except Bekeken has both directions', () {
-      for (final field in _F.values.where((f) => f != _F.recentlyWatched)) {
+    test('every field except Bekeken and Voortgang has both directions', () {
+      for (final field in _F.values.where((f) => f != _F.recentlyWatched && f != _F.progress)) {
         final directions = UnifiedCatalogSort.values.where((s) => s.field == field).map((s) => s.direction).toSet();
         expect(directions, hasLength(2), reason: field.name);
       }
+    });
+
+    test('Voortgang runs one way: upwards it would start on every title nobody began', () {
+      expect(UnifiedCatalogSort.values.where((s) => s.field == _F.progress), [UnifiedCatalogSort.mostProgress]);
+      expect(UnifiedCatalogSort.byName('leastProgress'), isNull);
+      expect(UnifiedCatalogPreferences.fromJson({'sort': 'leastProgress'}).sort, UnifiedCatalogSort.titleAsc);
     });
   });
 

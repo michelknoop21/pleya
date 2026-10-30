@@ -138,6 +138,48 @@ void main() {
     });
   });
 
+  group('the first card is not paid for with a whole library', () {
+    test('5000 leading titles without a value cost the normal budget, not sixty requests', () async {
+      final items = [for (var i = 0; i < 5000; i++) _plex('None$i', null), _plex('Low', 2), _plex('High', 9)];
+      final server = _Server(items);
+      final service = UnifiedCatalogService(
+        query: _criticUp,
+        libraries: [_library('p', MediaBackend.plex)],
+        clientFor: (_) => server,
+        pageSize: 50,
+        groupsPerPage: 20,
+      );
+      await service.loadMore();
+      expect(service.snapshot.groups, isNotEmpty);
+      expect(server.calls, lessThanOrEqualTo(service.maxRawItemsPerLoadMore ~/ service.pageSize));
+    });
+
+    test('a short run of them still ends up behind the values', () async {
+      final titles = await _merge(
+        {
+          _library('p', MediaBackend.plex): [for (var i = 0; i < 80; i++) _plex('None$i', null), _plex('Low', 2)],
+        },
+        _criticUp,
+        pageSize: 50,
+        groupsPerPage: 100,
+      );
+      expect(titles.first, 'Low');
+    });
+
+    test('the bound counts per library, so a second one does not starve', () async {
+      final titles = await _merge(
+        {
+          _library('p', MediaBackend.plex): [for (var i = 0; i < 700; i++) _plex('None$i', null)],
+          _library('j', MediaBackend.jellyfin): [_jellyfin('J10', 10)],
+        },
+        _criticUp,
+        pageSize: 50,
+        groupsPerPage: 20,
+      );
+      expect(titles.first, 'J10');
+    });
+  });
+
   group('a key that does not know what the server sorted on', () {
     const recentSeries = UnifiedCatalogQuery(
       kind: MediaKind.show,
