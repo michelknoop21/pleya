@@ -86,6 +86,10 @@ import '../../../widgets/library_header_bar.dart';
 /// been hidden since — clearing every filter removes the Filters chip.
 enum _LibraryHeaderAction { grouping, filters, sort }
 
+/// The sort a library is shown in: the chosen one, else the server's own order,
+/// which is the first entry of its sort list.
+MediaSort? effectiveLibrarySort(MediaSort? selected, List<MediaSort> options) => selected ?? options.firstOrNull;
+
 class LibraryBrowseTab extends BaseLibraryTab<MediaItem> {
   /// Invoked whenever the tab resets its inner scroll position to the top
   /// (filter/sort change, library reload, etc.). Lets the parent resync the
@@ -1067,7 +1071,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     open(
       (context) => SortBottomSheet(
         sortOptions: _sortOptions,
-        selectedSort: _selectedSort,
+        selectedSort: _phoneLook ? _effectiveSort : _selectedSort,
         isSortDescending: _isSortDescending,
         phoneStyle: _phoneLook,
         onBack: onBack,
@@ -1214,6 +1218,10 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   bool _isPhone(BuildContext context) => PlatformDetector.isPhone(context);
 
   bool get _phoneLook => LibraryPhoneLook.of(context);
+
+  /// The sort in force. Nothing chosen means the server's own order, which is
+  /// the first entry of its list (Title); the pill and the sheet name it.
+  MediaSort? get _effectiveSort => effectiveLibrarySort(_selectedSort, _sortOptions);
 
   /// The sheets of the iPhone library look sit on the page ground. Null keeps
   /// the host's own surface.
@@ -1772,7 +1780,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
         LibraryHeaderAction(
           label: t.libraries.sort,
           automationId: AutomationIds.libraryFilterSort,
-          value: _selectedSort?.title,
+          value: _effectiveSort?.title,
           sortDescending: _isSortDescending,
           focusNode: _sortChipFocusNode,
           onPressed: () {
