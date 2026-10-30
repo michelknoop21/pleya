@@ -134,7 +134,7 @@ Future<void> _routeMobileSource(
   if (!playDirectly) {
     await navigateToMediaItemDetails(
       context,
-      source.item,
+      group.itemOf(routeContext.pageSourceKey),
       isOffline: isOffline,
       onRefresh: onRefresh,
       unifiedRouteContext: routeContext,
@@ -146,7 +146,7 @@ Future<void> _routeMobileSource(
   var playbackInitFailed = false;
   await navigateToMediaItem(
     context,
-    source.item,
+    group.itemOf(routeContext.pageSourceKey),
     onRefresh: onRefresh,
     isOffline: isOffline,
     playDirectly: true,

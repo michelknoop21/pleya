@@ -47,15 +47,36 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
   /// Starts [item] with the tracks picked on this page (inert when the tech
   /// table describes another item) and refreshes the page afterwards.
   Future<void> _playWithDetailPick(MediaItem item) async {
-    final pick = _detailTrackPickFor(item);
+    final played = _playedItem(item);
+    final pick = _detailTrackPickFor(played);
+    final startPosition = _carriedResumeFor(played);
+    _carriedResumeSpent = true;
     await navigateToVideoPlayerWithRefresh(
       context,
-      metadata: item,
+      metadata: played,
       preferredAudioTrack: pick.audio,
       preferredSubtitleTrack: pick.subtitle,
       isOffline: widget.isOffline,
+      startPosition: startPosition,
       onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: item.id)),
     );
+  }
+
+  /// What a play of the page's own item starts: the chosen source, which a
+  /// film's page need not show. Episodes listed on the page play themselves.
+  MediaItem _playedItem(MediaItem item) {
+    final context = widget.unifiedRouteContext;
+    final page = context == null ? null : parseGlobalKey(context.pageSourceKey)?.ratingKey;
+    return page == item.id ? context?.playItem ?? item : item;
+  }
+
+  /// The position [item] continues from when it lives on another source of
+  /// this title. The context belongs to the page's own item and to the first
+  /// play: from then on the source holds a position of its own.
+  Duration? _carriedResumeFor(MediaItem item) {
+    final context = widget.unifiedRouteContext;
+    if (_carriedResumeSpent || context == null || parseGlobalKey(context.sourceKey)?.ratingKey != item.id) return null;
+    return (item.viewOffsetMs ?? 0) > 0 ? null : context.carriedResume;
   }
 
   Widget _buildActionButtons(MediaItem metadata) {
@@ -405,9 +426,10 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     final isTv = PlatformDetector.isTV();
     final tvScale = TvLayoutConstants.scaleOf(context);
     final mono = tokens(context);
+    final shown = routeContext.playItem ?? _metadata;
     final parts = [
-      _metadata.serverName ?? routeContext.sourceKey.split(':').first,
-      if ((_metadata.libraryTitle ?? '').trim().isNotEmpty) _metadata.libraryTitle!.trim(),
+      shown.serverName ?? routeContext.sourceKey.split(':').first,
+      if ((shown.libraryTitle ?? '').trim().isNotEmpty) shown.libraryTitle!.trim(),
     ];
     final label = t.sourcePicker.sourceLabel(source: parts.join(' • '));
     // DENS1: HIG Caption 2 (23 pt), the tvOS minimum; `13 * scaleOf` was 20.
@@ -459,9 +481,10 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
 
   Widget _buildUnifiedSourceCard(BuildContext context, UnifiedMediaRouteContext routeContext) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
+    final shown = routeContext.playItem ?? _metadata;
     final parts = [
-      _metadata.serverName ?? routeContext.sourceKey.split(':').first,
-      if ((_metadata.libraryTitle ?? '').trim().isNotEmpty) _metadata.libraryTitle!.trim(),
+      shown.serverName ?? routeContext.sourceKey.split(':').first,
+      if ((shown.libraryTitle ?? '').trim().isNotEmpty) shown.libraryTitle!.trim(),
     ];
     final onChangeSource = widget.onChangeSource;
     final tile = Container(

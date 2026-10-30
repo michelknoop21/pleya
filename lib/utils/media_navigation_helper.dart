@@ -374,6 +374,7 @@ Future<MediaNavigationResult> navigateToMediaItem(
         metadata: restartFromBeginning ? mi.copyWith(viewOffsetMs: 0) : mi,
         isOffline: isOffline,
         resolveWatchState: !restartFromBeginning,
+        startPosition: restartFromBeginning ? null : unifiedRouteContext?.carriedResume,
         onPlaybackInitFailed: unifiedRouteContext == null ? null : onPlaybackInitFailed,
       );
       if (context.mounted) {
@@ -384,16 +385,18 @@ Future<MediaNavigationResult> navigateToMediaItem(
     case MediaKind.movie:
       if (playDirectly && !shouldOpenContinueWatchingDetails) {
         recorder.close(traceId, SelectTraceOutcome.player);
+        final played = unifiedRouteContext?.playItem ?? mi;
         final result = await navigateToVideoPlayer(
           context,
-          metadata: restartFromBeginning ? mi.copyWith(viewOffsetMs: 0) : mi,
+          metadata: restartFromBeginning ? played.copyWith(viewOffsetMs: 0) : played,
           isOffline: isOffline,
           resolveWatchState: !restartFromBeginning,
+          startPosition: restartFromBeginning ? null : unifiedRouteContext?.carriedResume,
           onPlaybackInitFailed: unifiedRouteContext == null ? null : onPlaybackInitFailed,
         );
         if (context.mounted) {
           handlePlaybackReturn(
-            mi,
+            played,
             playerPopResult: result,
             onRefresh: onRefresh,
             onPlaybackReturned: onPlaybackReturned,

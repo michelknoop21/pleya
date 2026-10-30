@@ -316,7 +316,7 @@ Future<UnifiedActivationOutcome> _routeToSource(
 
   await navigateToMediaItem(
     context,
-    source.item,
+    group.itemOf(routeContext.pageSourceKey),
     onRefresh: onRefresh,
     isOffline: isOffline,
     playDirectly: playDirectly,

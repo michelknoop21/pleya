@@ -109,4 +109,76 @@ void main() {
       expect(updated.watchState.representativeSourceKey, 'b:sintel');
     });
   });
+
+  group('resumeCarriedTo', () {
+    const hour = 60 * 60 * 1000;
+    UnifiedMediaGroup movie(MediaItem a, MediaItem b) {
+      final state = selectRepresentativeWatchState({'a:sintel': a, 'b:sintel': b});
+      return UnifiedMediaGroup(
+        groupId: 'g',
+        identity: CanonicalMediaIdentity.movie(title: 'Sintel', year: 2010),
+        sources: [UnifiedMediaSource.fromItem(a), UnifiedMediaSource.fromItem(b)],
+        representativeSourceKey: state.representativeSourceKey,
+        watchState: state,
+      );
+    }
+
+    test('a source without a position continues where the other one stands', () {
+      final group = movie(
+        _item('a', viewOffsetMs: 3041059, durationMs: 2 * hour, lastViewedAt: 2000),
+        _item('b', durationMs: 2 * hour),
+      );
+
+      expect(group.resumeCarriedTo('b:sintel'), const Duration(milliseconds: 3041059));
+    });
+
+    test('the source that holds the position needs nothing carried', () {
+      final group = movie(
+        _item('a', viewOffsetMs: 3041059, durationMs: 2 * hour, lastViewedAt: 2000),
+        _item('b', durationMs: 2 * hour),
+      );
+
+      expect(group.resumeCarriedTo('a:sintel'), isNull);
+    });
+
+    test('a position of its own wins, as the source picker promises', () {
+      final group = movie(
+        _item('a', viewOffsetMs: 3041059, durationMs: 2 * hour, lastViewedAt: 2000),
+        _item('b', viewOffsetMs: 600000, durationMs: 2 * hour, lastViewedAt: 1000),
+      );
+
+      expect(group.resumeCarriedTo('b:sintel'), isNull);
+    });
+
+    test('a position does not cross to a cut of a very different length', () {
+      final group = movie(
+        _item('a', viewOffsetMs: 3041059, durationMs: 2 * hour, lastViewedAt: 2000),
+        _item('b', durationMs: 3 * hour),
+      );
+
+      expect(group.watchState.runtimesDiffer, isTrue);
+      expect(group.resumeCarriedTo('b:sintel'), isNull);
+    });
+
+    test('the holder is the source with the position, not the source the card shows', () {
+      final held = _item('a', viewOffsetMs: 3041059, durationMs: 2 * hour, lastViewedAt: 2000);
+      final other = _item('b', durationMs: 2 * hour);
+      final group = UnifiedMediaGroup(
+        groupId: 'g',
+        identity: CanonicalMediaIdentity.movie(title: 'Sintel', year: 2010),
+        sources: [UnifiedMediaSource.fromItem(held), UnifiedMediaSource.fromItem(other)],
+        representativeSourceKey: 'b:sintel',
+        watchState: selectRepresentativeWatchState({'a:sintel': held, 'b:sintel': other}),
+      );
+
+      expect(group.resumeCarriedTo('b:sintel'), const Duration(milliseconds: 3041059));
+      expect(group.resumeCarriedTo('a:sintel'), isNull);
+    });
+
+    test('nothing in progress carries nothing', () {
+      final group = movie(_item('a', durationMs: 2 * hour), _item('b', durationMs: 2 * hour));
+
+      expect(group.resumeCarriedTo('b:sintel'), isNull);
+    });
+  });
 }

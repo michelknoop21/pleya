@@ -1038,6 +1038,11 @@ Bij afwijkende runtimes: percentage wordt alleen vergeleken binnen runtimecompat
 editions met een groot runtimeverschil blijft progress brongebonden; de source picker toont iedere
 bron apart.
 
+Start een bron zonder eigen positie terwijl een andere bron van dezelfde titel er wel een heeft, dan
+begint hij op die positie, zolang de runtimes vergelijkbaar zijn. Dat geldt alleen voor de start:
+er wordt niets naar de andere bron geschreven, en wat de speler daarna meldt landt op de bron die
+speelt. Een bron met een eigen positie houdt die, want de picker belooft hem op de rij.
+
 ### 13.3 Verder kijken
 
 Een kaart wordt gesorteerd op de nieuwste geldige bronrecency. Bij openen: één bron met progress →
@@ -1286,6 +1291,11 @@ Profiel verwijderen wist ook deze voorkeur (hoofdstuk 22).
 ---
 
 ## 15. Detailpagina en source switching
+
+Een film houdt één pagina: de pagina toont altijd de representatieve bron, en een andere bron
+kiezen verandert alleen wat Afspelen start (besluit van Michel, 30 oktober 2026). Is die bron niet
+bereikbaar, dan toont de pagina de gekozen bron. Series blijven hieronder vallen, omdat seizoenen
+en afleveringen per bron bestaan.
 
 De detailpagina blijft brongebonden, maar ontvangt optioneel een `UnifiedMediaRouteContext`. Wanneer
 meer dan één bron bestaat:

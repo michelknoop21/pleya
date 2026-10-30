@@ -430,11 +430,13 @@ Future<bool?> navigateToVideoPlayerWithRefresh(
   int? selectedMediaIndex,
   String? selectedMediaSourceId,
   bool usePushReplacement = false,
+  Duration? startPosition,
 }) async {
   final result = await navigateToVideoPlayer(
     context,
     metadata: metadata,
     isOffline: isOffline,
+    startPosition: startPosition,
     preferredAudioTrack: preferredAudioTrack,
     preferredSubtitleTrack: preferredSubtitleTrack,
     preferredSecondarySubtitleTrack: preferredSecondarySubtitleTrack,

@@ -342,6 +342,9 @@ PageRoute<bool> mediaDetailRoute({
 class _MediaDetailScreenState extends State<MediaDetailScreen>
     with WatchStateAware, DeletionAware, MountedSetStateMixin, ServerBoundMediaMixin, RouteAware, WidgetsBindingObserver
     implements MediaDetailPlaybackRefresh {
+  /// Whether this page has started a play, see `_carriedResumeFor`.
+  bool _carriedResumeSpent = false;
+
   /// Public input alias — used as the live source of truth until the detail
   /// fetch returns. Holds backend-neutral [MediaItem] data.
   MediaItem get _metadata => _fullMetadata ?? widget.metadata;
@@ -1316,12 +1319,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   RatingMirror? _buildRatingMirror(MediaItem metadata) {
     final routeContext = widget.unifiedRouteContext;
     if (routeContext == null || !routeContext.hasAlternativeSources) return null;
-    if (parseGlobalKey(routeContext.sourceKey)?.ratingKey != metadata.id) return null;
+    if (parseGlobalKey(routeContext.pageSourceKey)?.ratingKey != metadata.id) return null;
 
     final mirror = RatingMirror.fromSourceKeys(
       context,
       sourceKeys: routeContext.availableSourceKeys,
-      originSourceKey: routeContext.sourceKey,
+      originSourceKey: routeContext.pageSourceKey,
     );
     return mirror.intendedTargetCount > 1 ? mirror : null;
   }
@@ -5617,7 +5620,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       }
     } else {
       // For movies or episodes
-      if (metadata.viewOffsetMs != null && metadata.viewOffsetMs! > 0) {
+      final played = _playedItem(metadata);
+      if ((played.viewOffsetMs ?? 0) > 0 || _carriedResumeFor(played) != null) {
         return Symbols.resume_rounded; // Resume icon
       }
     }

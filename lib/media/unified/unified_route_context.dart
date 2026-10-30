@@ -9,6 +9,7 @@
 /// the same picker — a route that ignores it behaves exactly as it does today.
 library;
 
+import '../media_item.dart';
 import 'canonical_media_identity.dart';
 import 'source_coverage_state.dart';
 
@@ -59,6 +60,21 @@ class UnifiedMediaRouteContext {
   /// from a detail page keeps the right copy.
   final UnifiedActivationIntent intent;
 
+  /// The position this route's source continues from, when the viewer's
+  /// progress lives on another source. See
+  /// `UnifiedMediaGroup.resumeCarriedTo`.
+  final Duration? carriedResume;
+
+  /// The source a film's detail page shows. A film keeps one face whichever
+  /// source plays it, so this stays on the group's representative source while
+  /// [sourceKey] moves. Equal to [sourceKey] for everything else: the seasons
+  /// and episodes of a series only exist per source.
+  final String pageSourceKey;
+
+  /// The item a play on this route starts, when that is not the item on the
+  /// page. Null when the page shows the chosen source itself.
+  final MediaItem? playItem;
+
   UnifiedMediaRouteContext({
     required this.groupId,
     required this.identity,
@@ -66,7 +82,11 @@ class UnifiedMediaRouteContext {
     required List<String> availableSourceKeys,
     required this.coverage,
     required this.intent,
-  }) : availableSourceKeys = List.unmodifiable(availableSourceKeys) {
+    this.carriedResume,
+    String? pageSourceKey,
+    this.playItem,
+  }) : pageSourceKey = pageSourceKey ?? sourceKey,
+       availableSourceKeys = List.unmodifiable(availableSourceKeys) {
     assert(
       this.availableSourceKeys.contains(sourceKey),
       'UnifiedMediaRouteContext.sourceKey must name one of availableSourceKeys',
