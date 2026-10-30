@@ -76,7 +76,7 @@ Twee onafhankelijke reviewers (server/protocol/Verify en client): 0 kritiek, 6 b
 - Server M4: de cursorvingerafdruk van een filterset zonder `external_id` is weer gelijk aan die van voor de upgrade; Go-test rood zonder.
 - Client M1: een `external_ids` die niet aan het contract voldoet telt als niet gestuurd, dus als onbekend en niet als definitief "geen nummers".
 - Client M2: nummers uit het verse lijstantwoord winnen ook bij een ongewijzigd bewaarde rij (Plex-rij met dezelfde `updatedAt`); test rood zonder.
-- Client M3: een oudere Pleya Server zonder `external_id_lookup` maakt het assistentantwoord niet meer "onbekend" als die server geen rij met die titel heeft; staat er wel een rij met die titel, dan blijft het eerlijk onbekend.
+- Client M3: een oudere Pleya Server zonder `external_id_lookup` maakt het assistentantwoord niet meer "onbekend" als een andere server de titel bewijst. Bewijst geen enkele server hem, dan blijft het antwoord onbekend en gaat er geen verzoek naar Seerr: die NAS kan hem onder een andere titel hebben, en een titelpagina vervangt het nummer niet (besluit 4). Een eerste versie van dit herstel liet de titelpagina beslissen; de herreview ving dat af, met een test die rood was op die versie.
 - Client M4 (meer Plex-opvragingen door de titelemmer zonder jaar) verdwijnt grotendeels met client I1 en is niet apart aangepakt.
 - Herhaalde gates na het herstel: `scripts/ci_checks.sh --with-unused` groen (native incluis); Go-suite in de gepinde image 29 pakketten groen, geen SKIP; gewijzigde Flutter-tests (14 bestanden) 545 groen; Verify-runner 405 en fixture-server 160 groen; scenario valideert; `check_protocol.py` groen.
 
@@ -93,3 +93,9 @@ Client I2: een Pleya Server zonder `external_id_lookup`, of een titel zonder TMD
 4. Zoeken, Home en Verder kijken tonen de titel ook één keer.
 5. Een titel zonder match op de Pleya Server blijft twee kaarten; dat is gewenst.
 Een fout is: twee kaarten bij een bewezen match, één kaart bij een remake, of een bron die niet afspeelt.
+
+## Herreview van het herstel (5f0632d)
+Nieuwe reviewer, niet de hersteller: 0 kritiek, 2 belangrijk, 1 klein, alle drie verwerkt.
+- I-1: de offline-stap wachtte op `complete: true`, maar een cursor waarvan het ophalen mislukt raakt nooit uitgeput. De stap wacht nu op twee kaarten.
+- I-2: zie client M3 hierboven (regressie in de eerste versie van dat herstel, nu met test).
+- M-1: verwijzingen in ROADMAP, CHANGELOG en masterlist heten nu "DEC-XXX (Pleya Server in unified)", zodat het nummer bij de merge niet op een ander DEC-XXX-besluit terechtkomt.

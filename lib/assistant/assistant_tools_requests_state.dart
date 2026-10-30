@@ -197,6 +197,7 @@ Future<_RequestLibraryEvidence> _requestLibraryCopies(
   var qualityUncertain = false;
   final targets = <AssistantTitleTarget>[];
   final checkedClients = <ServerId, MediaServerClient>{};
+  var cannotBeAsked = false;
   final knownLibraries = <String>{};
   for (final id in ctx.userServers) {
     if (!loader.librariesFor(kind).any((l) => l.serverId == id)) continue;
@@ -204,17 +205,23 @@ Future<_RequestLibraryEvidence> _requestLibraryCopies(
     if (client == null) throw const AssistantToolError('library_availability_unknown');
     checkedClients[id] = client;
     try {
-      var hits = await _requestRead(ctx, seerr, () async {
+      final List<MediaItem>? found = await _requestRead(ctx, seerr, () async {
         if (!isIdentityEligibleBackend(client.backend)) return <MediaItem>[];
         try {
           return await client.findAllByIdentity(identity);
         } on IdentityLookupUnsupported {
-          // A server that cannot be asked by number (an older Pleya Server)
-          // proves nothing either way; the title page below decides, and a
-          // same-title row there still makes the answer unknown.
-          return <MediaItem>[];
+          return null;
         }
       });
+      if (found == null) {
+        // A server that cannot be asked by number (an older Pleya Server)
+        // proves nothing either way, and a title page cannot stand in for the
+        // number. It adds no copies; if no other server proves one, the answer
+        // stays unknown below.
+        cannotBeAsked = true;
+        continue;
+      }
+      var hits = found;
       if (ctx.userClient(id) != client) throw const AssistantToolError('not_allowed');
       final all = await _requestRead(ctx, seerr, client.fetchLibraries);
       if (ctx.userClient(id) != client) throw const AssistantToolError('not_allowed');
@@ -301,6 +308,7 @@ Future<_RequestLibraryEvidence> _requestLibraryCopies(
       throw const AssistantToolError('library_availability_unknown');
     }
   }
+  if (cannotBeAsked && targets.isEmpty) throw const AssistantToolError('library_availability_unknown');
   final evidence = (
     targets: targets,
     knownLibraries: knownLibraries,

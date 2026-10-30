@@ -851,6 +851,36 @@ void main() {
     expect(seerr.posts, isEmpty);
   });
 
+  test(
+    'an older Pleya Server that may hold the title under another name keeps the answer unknown, so nothing is posted',
+    () async {
+      final seerr = _Seerr();
+      final plex = _LibraryServer('s', libraries: {'films': []});
+      // The NAS stores it under its Dutch title: a title page finds nothing, and
+      // without `external_id_lookup` the number cannot be asked. That is not a
+      // checked absence.
+      final nas = _OldPleyaServer(
+        'ps',
+        libraries: {
+          'films': [find.fakeItem('n', 'De Matrix', year: 1999)],
+        },
+      );
+      final context = find.findCtx([plex, nas], libraries: [find.fakeLib('s', 'films'), find.fakeLib('ps', 'films')]);
+      final ctx = AssistantToolContext(
+        servers: context.servers,
+        catalog: context.catalog,
+        requests: AssistantRequestServices(client: () => seerr.client),
+      );
+      final (_, model) = await run([
+        _find('matrix'),
+        _request({'seerr_id': 'movie:603'}),
+        _say('x'),
+      ], context: ctx);
+      expect(model.toolResults.last, {'error': 'library_availability_unknown'});
+      expect(seerr.posts, isEmpty);
+    },
+  );
+
   test('a library copy arriving during confirmation prevents the POST', () async {
     final seerr = _Seerr();
     final server = _LibraryServer('s', libraries: {'films': []});

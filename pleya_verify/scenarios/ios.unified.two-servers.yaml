@@ -75,8 +75,10 @@ steps:
   - tap: {id: "landing.view_all[series]"}
   - wait_until: {id: screen.catalog_series, timeout: 15000}
   # B's library cannot be fetched, so its Battlestar Galactica 2004 drops out
-  # and Severance moves up to index 1 with only A as its source.
-  - wait_until: {id: "catalog.grid[series]", state: {count: 2, complete: true}, timeout: 20000}
+  # and Severance moves up to index 1 with only A as its source. No
+  # `complete: true` here: a cursor whose fetch fails is never exhausted, so
+  # the grid honestly stays "more may come" while B is down.
+  - wait_until: {id: "catalog.grid[series]", state: {count: 2}, timeout: 20000}
   - assert: {id: "catalog.grid.item[series.1]", state: {title: Severance, sources: 1}}
   - snapshot: 06-second-server-offline
   - tap: {id: "catalog.grid.item[series.1]"}
