@@ -646,7 +646,7 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	@override String get goToSeries => 'Ga naar serie';
 	@override String get shufflePlay => 'Willekeurig afspelen';
 	@override String get shuffleNotAvailableOffline => 'Shuffle is offline niet beschikbaar';
-	@override String get fileInfo => 'Bestand info';
+	@override String get fileInfo => 'Bestandsinformatie';
 	@override String get deleteFromServer => 'Verwijderen van server';
 	@override String get confirmDelete => 'Deze media en bestanden van je server verwijderen?';
 	@override String get deleteMultipleWarning => 'Dit omvat alle afleveringen en hun bestanden.';
@@ -1036,6 +1036,10 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get moreActions => 'Meer acties';
+	@override String get audioStream => 'Audiostream';
+	@override String get subtitlesRow => 'Ondertitels';
+	@override String get manageTitle => 'Beheren';
 	@override String get title => 'Ontdekken';
 	@override String get forYou => 'Voor jou';
 	@override String get switchProfile => 'Wissel van profiel';
@@ -4997,7 +5001,7 @@ extension on TranslationsNl {
 			'mediaMenu.goToSeries' => 'Ga naar serie',
 			'mediaMenu.shufflePlay' => 'Willekeurig afspelen',
 			'mediaMenu.shuffleNotAvailableOffline' => 'Shuffle is offline niet beschikbaar',
-			'mediaMenu.fileInfo' => 'Bestand info',
+			'mediaMenu.fileInfo' => 'Bestandsinformatie',
 			'mediaMenu.deleteFromServer' => 'Verwijderen van server',
 			'mediaMenu.confirmDelete' => 'Deze media en bestanden van je server verwijderen?',
 			'mediaMenu.deleteMultipleWarning' => 'Dit omvat alle afleveringen en hun bestanden.',
@@ -5323,6 +5327,10 @@ extension on TranslationsNl {
 			'connections.disconnectServer' => 'Verbinding verbreken',
 			'connections.disconnectServerConfirm' => ({required Object name}) => 'Verbinding met "${name}" verbreken? De aanmelding voor deze server wordt van dit apparaat verwijderd. Gedownloade items blijven staan.',
 			'connections.reauthRequired' => 'Opnieuw aanmelden vereist',
+			'discover.moreActions' => 'Meer acties',
+			'discover.audioStream' => 'Audiostream',
+			'discover.subtitlesRow' => 'Ondertitels',
+			'discover.manageTitle' => 'Beheren',
 			'discover.title' => 'Ontdekken',
 			'discover.forYou' => 'Voor jou',
 			'discover.switchProfile' => 'Wissel van profiel',
@@ -5556,12 +5564,12 @@ extension on TranslationsNl {
 			'serverSelection.networkErrorTitle' => 'Kan de server niet bereiken',
 			'serverSelection.networkErrorDescription' => 'Pleya kon geen verbinding maken met internet. Controleer je netwerk en probeer opnieuw.',
 			'hubDetail.title' => 'Titel',
+			_ => null,
+		} ?? switch (path) {
 			'hubDetail.releaseYear' => 'Uitgavejaar',
 			'hubDetail.dateAdded' => 'Datum toegevoegd',
 			'hubDetail.rating' => 'Beoordeling',
 			'hubDetail.noItemsFound' => 'Geen items gevonden',
-			_ => null,
-		} ?? switch (path) {
 			'logs.clearLogs' => 'Wis logs',
 			'logs.copyLogs' => 'Kopieer logs',
 			'logs.uploadLogs' => 'Logs uploaden',
@@ -6070,12 +6078,12 @@ extension on TranslationsNl {
 			'metadataEdit.studio' => 'Studio',
 			'metadataEdit.tagline' => 'Tagline',
 			'metadataEdit.summary' => 'Samenvatting',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.poster' => 'Poster',
 			'metadataEdit.background' => 'Achtergrond',
 			'metadataEdit.logo' => 'Logo',
 			'metadataEdit.squareArt' => 'Vierkante afbeelding',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.selectPoster' => 'Poster selecteren',
 			'metadataEdit.selectBackground' => 'Achtergrond selecteren',
 			'metadataEdit.selectLogo' => 'Logo selecteren',
@@ -6584,12 +6592,12 @@ extension on TranslationsNl {
 			'unifiedCatalog.filters.all' => 'Alle',
 			'unifiedCatalog.filters.unwatched' => 'Niet bekeken',
 			'unifiedCatalog.filters.inProgress' => 'Actief bezig',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.filters.watched' => 'Bekeken',
 			'unifiedCatalog.filters.unsupported' => 'Niet beschikbaar voor de huidige bronnen',
 			'unifiedCatalog.filters.someUnavailable' => 'Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen',
 			'unifiedCatalog.filters.noValues' => 'Niets om uit te kiezen',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count} actief',
 			'unifiedCatalog.states.emptyTitle' => 'Deze catalogus is leeg',
 			'unifiedCatalog.states.emptyBody' => 'Geen zichtbare bibliotheek bevat iets voor deze pagina.',
@@ -7098,12 +7106,12 @@ extension on TranslationsNl {
 			'assistant.steps.diagnosePlayback' => 'Afspelen onderzoeken',
 			'assistant.steps.changePlayback' => 'Afspelen aanpassen',
 			'assistant.steps.diagnoseLibrary' => 'Bibliotheek onderzoeken',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.steps.trendingTitles' => 'Kijken wat nu populair is',
 			'assistant.steps.similarTitles' => 'Vergelijkbare titels zoeken',
 			'assistant.steps.downloadNext' => 'Volgende afleveringen downloaden',
 			'assistant.steps.findSubtitles' => 'Ondertitels zoeken',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.steps.downloadSubtitle' => 'Ondertitel downloaden',
 			'assistant.steps.findRequestTitle' => 'Seerr doorzoeken',
 			'assistant.steps.discoverRequestTitles' => 'Passende titels zoeken',

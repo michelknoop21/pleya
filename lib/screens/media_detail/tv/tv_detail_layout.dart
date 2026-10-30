@@ -83,6 +83,17 @@ abstract final class TvDetailLayout {
   /// The page's end, under the last row.
   static const double bottomPadding = 96;
 
+  // Meer acties (12).
+  static const double panelPadding = 65;
+  static const double panelTitleTop = 66;
+  static const double panelTitleHeight = 36;
+  static const double panelRowsTop = 74;
+  static const double panelRowHeight = 63;
+  static const double panelRowGap = 13;
+  static const double panelIconCentre = 32;
+  static const double panelLabelInset = 71;
+  static const double panelValueInset = 24;
+
   /// In logical pixels. Heavy enough that no shape of the artwork survives, only
   /// its colours: at 34 a dark edge in the picture still read as an edge.
   static const double backdropBlur = 110;

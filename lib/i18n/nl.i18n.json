@@ -493,7 +493,7 @@
     "goToSeries": "Ga naar serie",
     "shufflePlay": "Willekeurig afspelen",
     "shuffleNotAvailableOffline": "Shuffle is offline niet beschikbaar",
-    "fileInfo": "Bestand info",
+    "fileInfo": "Bestandsinformatie",
     "deleteFromServer": "Verwijderen van server",
     "confirmDelete": "Deze media en bestanden van je server verwijderen?",
     "deleteMultipleWarning": "Dit omvat alle afleveringen en hun bestanden.",
@@ -845,6 +845,10 @@
     "reauthRequired": "Opnieuw aanmelden vereist"
   },
   "discover": {
+    "moreActions": "Meer acties",
+    "audioStream": "Audiostream",
+    "subtitlesRow": "Ondertitels",
+    "manageTitle": "Beheren",
     "title": "Ontdekken",
     "forYou": "Voor jou",
     "switchProfile": "Wissel van profiel",

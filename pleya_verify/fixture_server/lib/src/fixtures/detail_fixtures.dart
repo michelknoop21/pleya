@@ -108,6 +108,11 @@ void _applyCatalogDetailMovieV1(PleyaFakeServer server) {
       'video_profile': 'Main 10',
       'audio': [
         {'id': 0, 'codec': 'eac3', 'language': 'English', 'language_code': 'eng', 'channels': 6, 'profile': 'Atmos'},
+        {'id': 1, 'codec': 'aac', 'language': 'Dutch', 'language_code': 'nld', 'channels': 2},
+      ],
+      'subtitles': [
+        {'id': 10, 'language': 'Dutch', 'language_code': 'nld'},
+        {'id': 11, 'language': 'English', 'language_code': 'eng'},
       ],
     },
   };

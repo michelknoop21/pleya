@@ -147,6 +147,7 @@ import 'media_detail/mobile/detail_tech_table.dart';
 import 'media_detail/mobile/mobile_poster_hero.dart';
 import 'media_detail/mobile_detail_hero.dart';
 import '../widgets/tv/tv_catalog_card_grid.dart';
+import 'media_detail/tv/tv_detail_action_panel.dart';
 import 'media_detail/tv/tv_detail_backdrop.dart';
 import 'media_detail/tv/tv_detail_cards.dart';
 import 'media_detail/tv/tv_detail_episode_card.dart';
@@ -183,6 +184,7 @@ part 'media_detail/tv/tv_detail_actions.dart';
 part 'media_detail/tv/tv_detail_foreground.dart';
 part 'media_detail/tv/tv_detail_foreground_metrics.dart';
 part 'media_detail/tv/tv_detail_hero.dart';
+part 'media_detail/tv/tv_detail_more_actions.dart';
 part 'media_detail/tv/tv_detail_rail.dart';
 part 'media_detail/tv/tv_detail_reveal.dart';
 part 'media_detail/tv/tv_detail_screen.dart';
@@ -361,7 +363,14 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   int? _selectedDetailAudioTrackId, _selectedDetailSubtitleTrackId, _detailAudioPickId, _detailSubtitlePickId;
   bool _detailAudioLoadInFlight = false, _detailSubtitlePicked = false, _detailPickRemembered = true;
 
-  void _updateDetailAudioState(VoidCallback update) => setState(update);
+  void _updateDetailAudioState(VoidCallback update) {
+    setState(update);
+    _tvDetailPanelRevision.value++;
+  }
+
+  /// Meer acties stands in the sheet host, out of reach of this page's rebuild,
+  /// and reads what has changed through this.
+  final ValueNotifier<int> _tvDetailPanelRevision = ValueNotifier<int>(0);
 
   /// F19/A14: the metadata fetch itself threw (network/server error), as
   /// distinct from succeeding with a fallback. [_loadFullMetadata]'s "no
@@ -983,6 +992,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     _extrasFocusNode.dispose();
     _playButtonFocusNode.dispose();
     _tvDetailReadMoreFocusNode.dispose();
+    _tvDetailPanelRevision.dispose();
     _tvDetailSeriesTabFocusNode.dispose();
     _tvDetailEpisodesTabFocusNode.dispose();
     _ratingChipFocusNode.dispose();

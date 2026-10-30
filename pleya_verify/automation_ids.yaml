@@ -228,6 +228,12 @@ ids:
   - id: media-detail.read-more
     role: button
     instanceable: false
+  - id: media-detail.action-panel
+    role: region
+    instanceable: false
+  - id: media-detail.action-panel.row
+    role: list.item
+    instanceable: true
   - id: media-detail.source-change
     role: button
     instanceable: false

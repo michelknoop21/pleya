@@ -300,6 +300,12 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     );
   }
 
+  /// The server and library of the source this page shows.
+  List<String> _unifiedSourceParts(UnifiedMediaRouteContext routeContext) => [
+    _metadata.serverName ?? routeContext.sourceKey.split(':').first,
+    if ((_metadata.libraryTitle ?? '').trim().isNotEmpty) _metadata.libraryTitle!.trim(),
+  ];
+
   /// Hoofdstuk 15's `Bron: NAS • Films 4K   [ Wijzigen ]`.
   ///
   /// Rendered only when the page was reached through a unified group that
@@ -320,11 +326,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     final isTv = PlatformDetector.isTV();
     final tvScale = TvLayoutConstants.scaleOf(context);
     final mono = tokens(context);
-    final parts = [
-      _metadata.serverName ?? routeContext.sourceKey.split(':').first,
-      if ((_metadata.libraryTitle ?? '').trim().isNotEmpty) _metadata.libraryTitle!.trim(),
-    ];
-    final label = t.sourcePicker.sourceLabel(source: parts.join(' • '));
+    final label = t.sourcePicker.sourceLabel(source: _unifiedSourceParts(routeContext).join(' • '));
     // DENS1: HIG Caption 2 (23 pt), the tvOS minimum; `13 * scaleOf` was 20.
     final fontSize = isTv ? TvHig.caption2 * TvHig.of(context) : 13.0;
     final onChangeSource = widget.onChangeSource;
@@ -374,10 +376,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
 
   Widget _buildUnifiedSourceCard(BuildContext context, UnifiedMediaRouteContext routeContext) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final parts = [
-      _metadata.serverName ?? routeContext.sourceKey.split(':').first,
-      if ((_metadata.libraryTitle ?? '').trim().isNotEmpty) _metadata.libraryTitle!.trim(),
-    ];
+    final parts = _unifiedSourceParts(routeContext);
     final onChangeSource = widget.onChangeSource;
     final tile = Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),

@@ -110,7 +110,9 @@ extension _MediaDetailActionModel on _MediaDetailScreenState {
         if (!widget.isOffline)
           _DetailAction(
             _DetailActionKind.more,
-            onPressed: () => _contextMenuKey.currentState?.showContextMenu(context),
+            onPressed: PlatformDetector.isTV()
+                ? _tvDetailOpenMoreActions
+                : () => _contextMenuKey.currentState?.showContextMenu(context),
           ),
       ],
     );

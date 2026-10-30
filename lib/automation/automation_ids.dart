@@ -242,6 +242,13 @@ class AutomationIds {
   /// The "Meer lezen" action under a truncated TV synopsis.
   static const String mediaDetailReadMore = 'media-detail.read-more';
 
+  /// The panel the TV detail page's ⋮ opens, and any page pushed inside it.
+  static const String mediaDetailActionPanel = 'media-detail.action-panel';
+
+  /// One row of [mediaDetailActionPanel]. Instanceable: suffixed `[<row id>]`,
+  /// e.g. `[audio]`, `[watch]`, `[manage]`.
+  static const String mediaDetailActionPanelRow = 'media-detail.action-panel.row';
+
   /// "Wijzigen" on the source line of a unified title.
   static const String mediaDetailSourceChange = 'media-detail.source-change';
 
@@ -823,6 +830,7 @@ class AutomationIds {
     mediaDetailSeasonPoster,
     mediaDetailSection,
     mediaDetailSectionItem,
+    mediaDetailActionPanelRow,
     discoverRail,
     discoverRailItem,
     accountMenuAction,
@@ -972,6 +980,8 @@ class AutomationIds {
     {'id': mediaDetailSection, 'role': 'region', 'instanceable': true},
     {'id': mediaDetailSectionItem, 'role': 'list.item', 'instanceable': true},
     {'id': mediaDetailReadMore, 'role': 'button', 'instanceable': false},
+    {'id': mediaDetailActionPanel, 'role': 'region', 'instanceable': false},
+    {'id': mediaDetailActionPanelRow, 'role': 'list.item', 'instanceable': true},
     {'id': mediaDetailSourceChange, 'role': 'button', 'instanceable': false},
     {'id': tvSearchPill, 'role': 'field', 'instanceable': false},
     {'id': seerrSearchField, 'role': 'field', 'instanceable': false},

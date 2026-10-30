@@ -2455,6 +2455,18 @@ class TranslationsDiscoverEn {
 
 	// Translations
 
+	/// en: 'More actions'
+	String get moreActions => 'More actions';
+
+	/// en: 'Audio stream'
+	String get audioStream => 'Audio stream';
+
+	/// en: 'Subtitles'
+	String get subtitlesRow => 'Subtitles';
+
+	/// en: 'Manage'
+	String get manageTitle => 'Manage';
+
 	/// en: 'Discover'
 	String get title => 'Discover';
 
@@ -11080,6 +11092,10 @@ extension on Translations {
 			'connections.disconnectServer' => 'Disconnect',
 			'connections.disconnectServerConfirm' => ({required Object name}) => 'Disconnect from "${name}"? The sign-in for this server is removed from this device. Downloaded items are kept.',
 			'connections.reauthRequired' => 'Sign-in required',
+			'discover.moreActions' => 'More actions',
+			'discover.audioStream' => 'Audio stream',
+			'discover.subtitlesRow' => 'Subtitles',
+			'discover.manageTitle' => 'Manage',
 			'discover.title' => 'Discover',
 			'discover.forYou' => 'For you',
 			'discover.switchProfile' => 'Switch Profile',
@@ -11313,12 +11329,12 @@ extension on Translations {
 			'serverSelection.networkErrorTitle' => 'Can\'t reach the server',
 			'serverSelection.networkErrorDescription' => 'Pleya couldn\'t connect to the internet. Check your network and try again.',
 			'hubDetail.title' => 'Title',
+			_ => null,
+		} ?? switch (path) {
 			'hubDetail.releaseYear' => 'Release Year',
 			'hubDetail.dateAdded' => 'Date Added',
 			'hubDetail.rating' => 'Rating',
 			'hubDetail.noItemsFound' => 'No items found',
-			_ => null,
-		} ?? switch (path) {
 			'logs.clearLogs' => 'Clear Logs',
 			'logs.copyLogs' => 'Copy Logs',
 			'logs.uploadLogs' => 'Upload Logs',
@@ -11827,12 +11843,12 @@ extension on Translations {
 			'metadataEdit.studio' => 'Studio',
 			'metadataEdit.tagline' => 'Tagline',
 			'metadataEdit.summary' => 'Summary',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.poster' => 'Poster',
 			'metadataEdit.background' => 'Background',
 			'metadataEdit.logo' => 'Logo',
 			'metadataEdit.squareArt' => 'Square Art',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.selectPoster' => 'Select Poster',
 			'metadataEdit.selectBackground' => 'Select Background',
 			'metadataEdit.selectLogo' => 'Select Logo',
@@ -12341,12 +12357,12 @@ extension on Translations {
 			'unifiedCatalog.filters.clearAll' => 'Clear all',
 			'unifiedCatalog.filters.all' => 'All',
 			'unifiedCatalog.filters.unwatched' => 'Unwatched',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.filters.inProgress' => 'In progress',
 			'unifiedCatalog.filters.watched' => 'Watched',
 			'unifiedCatalog.filters.unsupported' => 'Not available for the current sources',
 			'unifiedCatalog.filters.someUnavailable' => 'Some filters are unavailable for the selected sources',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.filters.noValues' => 'Nothing to choose from',
 			'unifiedCatalog.states.emptyTitle' => 'This catalog is empty',
 			'unifiedCatalog.states.emptyBody' => 'No visible library holds anything for this page.',
@@ -12855,12 +12871,12 @@ extension on Translations {
 			'assistant.steps.diagnosePlayback' => 'Diagnosing playback',
 			'assistant.steps.changePlayback' => 'Changing playback',
 			'assistant.steps.diagnoseLibrary' => 'Diagnosing the library',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.steps.trendingTitles' => 'Checking what is trending',
 			'assistant.steps.similarTitles' => 'Finding similar titles',
 			'assistant.steps.downloadNext' => 'Downloading next episodes',
 			'assistant.steps.findSubtitles' => 'Finding subtitles',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.steps.downloadSubtitle' => 'Downloading subtitle',
 			'assistant.steps.findRequestTitle' => 'Searching Seerr',
 			'assistant.steps.discoverRequestTitles' => 'Finding matching titles',

@@ -112,7 +112,18 @@ mixin _PleyaVerifyDetailMethods on _PleyaServerRequests, _PleyaServerBrowseMetho
             displayTitle: track['language'] as String?,
             channels: track['channels'] as int?,
             profile: track['profile'] as String?,
-            selected: true,
+            selected: track['id'] == 0,
+          ),
+      ],
+      subtitleTracks: [
+        for (final track in _verifyList(json['subtitles']))
+          MediaSubtitleTrack(
+            id: track['id'] as int,
+            language: track['language'] as String?,
+            languageCode: track['language_code'] as String?,
+            displayTitle: track['language'] as String?,
+            selected: false,
+            forced: false,
           ),
       ],
     );

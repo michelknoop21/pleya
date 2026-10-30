@@ -845,6 +845,10 @@
     "reauthRequired": "Sign-in required"
   },
   "discover": {
+    "moreActions": "More actions",
+    "audioStream": "Audio stream",
+    "subtitlesRow": "Subtitles",
+    "manageTitle": "Manage",
     "title": "Discover",
     "forYou": "For you",
     "switchProfile": "Switch Profile",
