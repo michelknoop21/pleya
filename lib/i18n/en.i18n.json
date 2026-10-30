@@ -2207,7 +2207,13 @@
       "oldestAdded": "Oldest added",
       "newestRelease": "Newest release",
       "oldestRelease": "Oldest release",
-      "recentlyWatched": "Recently watched"
+      "recentlyWatched": "Recently watched",
+      "fields": {
+        "title": "Title",
+        "addedAt": "Added",
+        "releaseDate": "Release",
+        "recentlyWatched": "Watched"
+      }
     },
     "rail": {
       "sources": "Sources",

@@ -7,14 +7,17 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/library_query.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
+import 'package:pleya/services/unified_catalog/unified_catalog_query.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_query_store.dart';
 import 'package:pleya/widgets/tv/tv_catalog_empty_state.dart';
 import 'package:pleya/widgets/tv/tv_catalog_filter_panel.dart';
 import 'package:pleya/widgets/tv/tv_catalog_rail_scaffold.dart';
 import 'package:pleya/widgets/tv/tv_catalog_side_panel.dart';
+import 'package:pleya/widgets/tv/tv_catalog_sort_fields.dart';
 import 'package:pleya/widgets/tv/tv_catalog_sort_panel.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 
@@ -69,7 +72,11 @@ void main() {
     await h.press(tester, _down);
     await h.press(tester, _down);
     await h.press(tester, _select);
-    expect(find.text(sortLabel(UnifiedCatalogSort.oldestAdded)), findsOneWidget, reason: 'on the sort page');
+    expect(
+      find.text(tvCatalogSortFieldLabel(UnifiedCatalogSortField.addedAt)),
+      findsOneWidget,
+      reason: 'on the sort page',
+    );
 
     await h.press(tester, _right);
 
@@ -89,7 +96,7 @@ void main() {
     await h.press(tester, _menu);
     expect(find.byType(TvCatalogSidePanel), findsOneWidget, reason: 'back on the overview');
     expect(_focusedRow(), contains('TvCatalogRailSubviewOption2'), reason: 'on the row that opened the page');
-    expect(find.text(sortLabel(UnifiedCatalogSort.oldestAdded)), findsNothing);
+    expect(find.text(tvCatalogSortFieldLabel(UnifiedCatalogSortField.addedAt)), findsNothing);
 
     await h.press(tester, _menu);
     expect(find.byType(TvCatalogSidePanel), findsNothing);
@@ -115,7 +122,9 @@ void main() {
     expect(h.isNavFocused, isFalse);
   });
 
-  testWidgets('sorting happens in the panel, closes it and lands on card 0', (tester) async {
+  testWidgets('another field is chosen in its own default direction, in the panel, and lands on card 0', (
+    tester,
+  ) async {
     final h = await _open(tester);
     await h.press(tester, _down);
     await h.press(tester, _left);
@@ -131,10 +140,10 @@ void main() {
     expect(h.focused, h.cardLabel(0));
     expect(h.client.queries.last.sort?.direction, LibrarySortDirection.descending);
     final stored = await UnifiedCatalogQueryStore.read(h.catalog.query.kind);
-    expect(stored.sort, UnifiedCatalogSort.titleDesc);
+    expect(stored.sort, UnifiedCatalogSort.recentlyAdded, reason: 'dates start with the newest');
   });
 
-  testWidgets('choosing the sort in force still closes and goes to the first card', (tester) async {
+  testWidgets('choosing the field in force turns its direction, closes and goes to the first card', (tester) async {
     final h = await _open(tester);
     await h.press(tester, _down);
     await h.press(tester, _down);
@@ -147,6 +156,106 @@ void main() {
     expect(find.byType(TvCatalogSidePanel), findsNothing);
     expect(h.focused, h.cardLabel(0));
     expect(h.posterRect(tester, 1).top, closeTo(32.44, 0.5), reason: 'at the top of the wall');
+    final stored = await UnifiedCatalogQueryStore.read(h.catalog.query.kind);
+    expect(stored.sort, UnifiedCatalogSort.titleDesc, reason: 'A-Z turned into Z-A');
+  });
+
+  group('sort page, one row per field', () {
+    Future<FullBleedHarness> openSortPage(WidgetTester tester, {UnifiedCatalogSort? sort}) async {
+      final h = await FullBleedHarness.create([for (var i = 0; i < 30; i++) fakeMovie(i, year: 2000)]);
+      if (sort != null) {
+        await UnifiedCatalogQueryStore.write(
+          h.catalog.query.kind,
+          UnifiedCatalogPreferences.defaults.copyWith(sort: sort),
+        );
+      }
+      await h.pump(tester, canvas: _canvas);
+      await h.open(tester);
+      await h.press(tester, _left);
+      await h.press(tester, _down);
+      await h.press(tester, _down);
+      await h.press(tester, _select);
+      return h;
+    }
+
+    testWidgets('shows a row per field, the direction arrow on the active one only', (tester) async {
+      await openSortPage(tester);
+
+      for (final field in UnifiedCatalogSortField.values) {
+        expect(find.text(tvCatalogSortFieldLabel(field)), findsOneWidget);
+      }
+      expect(find.text(sortLabel(UnifiedCatalogSort.titleAsc)), findsNothing, reason: 'no row per direction');
+      expect(find.byIcon(Symbols.arrow_downward_rounded), findsOneWidget);
+      expect(find.byIcon(Symbols.arrow_upward_rounded), findsNothing);
+      expect(find.byIcon(Symbols.check_rounded), findsNothing, reason: 'the arrow stands in for the tick');
+      expect(_focusedRow(), contains('TvCatalogRailSubviewOption0'), reason: 'opens on the active row');
+    });
+
+    testWidgets('the same row again turns the direction over, and the way back stays open', (tester) async {
+      final h = await openSortPage(tester);
+      await h.press(tester, _select);
+      expect(find.byType(TvCatalogSidePanel), findsNothing);
+      expect((await UnifiedCatalogQueryStore.read(h.catalog.query.kind)).sort, UnifiedCatalogSort.titleDesc);
+
+      // Reopen: Menu is not needed to reach it, LEFT and the sort row are.
+      await h.press(tester, _left);
+      await h.press(tester, _down);
+      await h.press(tester, _down);
+      await h.press(tester, _select);
+      expect(find.byIcon(Symbols.arrow_upward_rounded), findsOneWidget, reason: 'Z-A reads upward');
+      await h.press(tester, _select);
+      expect((await UnifiedCatalogQueryStore.read(h.catalog.query.kind)).sort, UnifiedCatalogSort.titleAsc);
+    });
+
+    testWidgets('Menu on the page goes back to the overview and changes nothing', (tester) async {
+      final h = await openSortPage(tester);
+      await h.press(tester, _menu);
+      expect(find.byType(TvCatalogSidePanel), findsOneWidget);
+      expect(_focusedRow(), contains('TvCatalogRailSubviewOption2'));
+      expect((await UnifiedCatalogQueryStore.read(h.catalog.query.kind)).sort, UnifiedCatalogSort.titleAsc);
+    });
+
+    testWidgets('a field with one direction has no arrow and keeps its sort when chosen again', (tester) async {
+      final h = await openSortPage(tester, sort: UnifiedCatalogSort.recentlyWatched);
+      expect(find.byIcon(Symbols.arrow_downward_rounded), findsNothing);
+      expect(find.byIcon(Symbols.arrow_upward_rounded), findsNothing);
+      expect(find.byIcon(Symbols.check_rounded), findsOneWidget, reason: 'the tick marks the field instead');
+      expect(
+        _focusedRow(),
+        contains(
+          'TvCatalogRailSubviewOption${UnifiedCatalogSortField.values.indexOf(UnifiedCatalogSortField.recentlyWatched)}',
+        ),
+      );
+
+      await h.press(tester, _select);
+
+      expect(find.byType(TvCatalogSidePanel), findsNothing);
+      expect((await UnifiedCatalogQueryStore.read(h.catalog.query.kind)).sort, UnifiedCatalogSort.recentlyWatched);
+    });
+
+    test('every sort is reachable from its field, and only reversible fields turn over', () {
+      for (final sort in UnifiedCatalogSort.values) {
+        final other = UnifiedCatalogSortField.values.firstWhere((f) => f != sort.field);
+        expect(tvCatalogSortAfterChoosing(sort, other).field, other);
+        expect(tvCatalogCanReverse(sort), sort != UnifiedCatalogSort.recentlyWatched);
+      }
+      expect(
+        tvCatalogSortAfterChoosing(UnifiedCatalogSort.titleAsc, UnifiedCatalogSortField.title),
+        UnifiedCatalogSort.titleDesc,
+      );
+      expect(
+        tvCatalogSortAfterChoosing(UnifiedCatalogSort.titleDesc, UnifiedCatalogSortField.addedAt),
+        UnifiedCatalogSort.recentlyAdded,
+      );
+      expect(
+        tvCatalogSortAfterChoosing(UnifiedCatalogSort.titleAsc, UnifiedCatalogSortField.releaseDate),
+        UnifiedCatalogSort.newestRelease,
+      );
+      expect(
+        tvCatalogSortAfterChoosing(UnifiedCatalogSort.oldestRelease, UnifiedCatalogSortField.title),
+        UnifiedCatalogSort.titleAsc,
+      );
+    });
   });
 
   testWidgets('filters batch behind Apply, in the panel', (tester) async {
@@ -283,6 +392,25 @@ void main() {
       await tester.pumpAndSettle();
       expect(h.catalog.snapshot.groups.length, greaterThan(loadedBefore));
       expect(h.focused, h.cardLabel(1), reason: 'late content does not take the remote back');
+    });
+
+    testWidgets('is offered on Z-A too, and lands on the first K from the other end', (tester) async {
+      final h = await FullBleedHarness.create([
+        for (var i = 0; i < 130; i++) fakeMovie(i, title: '${String.fromCharCode(65 + i ~/ 5)} ${i % 5}'),
+      ]);
+      await UnifiedCatalogQueryStore.write(
+        h.catalog.query.kind,
+        UnifiedCatalogPreferences.defaults.copyWith(sort: UnifiedCatalogSort.titleDesc),
+      );
+      await h.pump(tester, canvas: _canvas);
+      await h.open(tester);
+      await h.press(tester, _left);
+      for (var i = 0; i < 3; i++) {
+        await h.press(tester, _down);
+      }
+      expect(_focusedRow(), contains('TvCatalogRailSubviewOption3'));
+      await h.press(tester, _select);
+      expect(find.text('Jump to'), findsOneWidget, reason: 'the page title, so the row was there');
     });
 
     testWidgets('is not offered on a page sorted on anything else', (tester) async {

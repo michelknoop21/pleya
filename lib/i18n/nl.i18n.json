@@ -2207,7 +2207,13 @@
       "oldestAdded": "Oudst toegevoegd",
       "newestRelease": "Nieuwste release",
       "oldestRelease": "Oudste release",
-      "recentlyWatched": "Recent bekeken"
+      "recentlyWatched": "Recent bekeken",
+      "fields": {
+        "title": "Titel",
+        "addedAt": "Toegevoegd",
+        "releaseDate": "Release",
+        "recentlyWatched": "Bekeken"
+      }
     },
     "rail": {
       "sources": "Bronnen",

@@ -33,6 +33,7 @@ import 'tv_catalog_filter_model.dart';
 import 'tv_catalog_filter_rail.dart';
 import 'tv_catalog_jump_index.dart';
 import 'tv_catalog_selection_tags.dart';
+import 'tv_catalog_sort_fields.dart';
 import 'tv_catalog_sort_panel.dart';
 import 'tv_panel_primitives.dart';
 import 'tv_unified_layout.dart';
@@ -221,13 +222,16 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
       ),
   ];
 
+  /// One row per field, the arrow on the one in force. See
+  /// [tvCatalogSortAfterChoosing] for what choosing a row does.
   List<TvCatalogRailOption> _sortOptions() => [
-    for (final sort in UnifiedCatalogSort.values)
+    for (final field in tvCatalogSortFields)
       TvCatalogRailOption(
-        label: sortLabel(sort),
-        isSelected: sort == widget.sort,
-        automationInstance: _instance('sort.${sort.name}'),
-        onPressed: () => widget.onChooseSort(sort),
+        label: tvCatalogSortFieldLabel(field),
+        isSelected: field == widget.sort.field,
+        trailingIcon: field == widget.sort.field ? tvCatalogDirectionIcon(widget.sort) : null,
+        automationInstance: _instance('sort.${field.name}'),
+        onPressed: () => widget.onChooseSort(tvCatalogSortAfterChoosing(widget.sort, field)),
       ),
   ];
 

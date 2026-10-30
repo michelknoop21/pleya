@@ -7795,6 +7795,8 @@ class TranslationsUnifiedCatalogSortEn {
 
 	/// en: 'Recently watched'
 	String get recentlyWatched => 'Recently watched';
+
+	late final TranslationsUnifiedCatalogSortFieldsEn fields = TranslationsUnifiedCatalogSortFieldsEn.internal(_root);
 }
 
 // Path: unifiedCatalog.rail
@@ -9532,6 +9534,27 @@ class TranslationsAssistantMatchEn {
 
 	/// en: 'Score ${score}'
 	String score({required Object score}) => 'Score ${score}';
+}
+
+// Path: unifiedCatalog.sort.fields
+class TranslationsUnifiedCatalogSortFieldsEn {
+	TranslationsUnifiedCatalogSortFieldsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Title'
+	String get title => 'Title';
+
+	/// en: 'Added'
+	String get addedAt => 'Added';
+
+	/// en: 'Release'
+	String get releaseDate => 'Release';
+
+	/// en: 'Watched'
+	String get recentlyWatched => 'Watched';
 }
 
 // Path: unifiedCatalog.discovery.semantics
@@ -12302,6 +12325,10 @@ extension on Translations {
 			'unifiedCatalog.sort.newestRelease' => 'Newest release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oldest release',
 			'unifiedCatalog.sort.recentlyWatched' => 'Recently watched',
+			'unifiedCatalog.sort.fields.title' => 'Title',
+			'unifiedCatalog.sort.fields.addedAt' => 'Added',
+			'unifiedCatalog.sort.fields.releaseDate' => 'Release',
+			'unifiedCatalog.sort.fields.recentlyWatched' => 'Watched',
 			'unifiedCatalog.rail.sources' => 'Sources',
 			'unifiedCatalog.rail.noFilters' => 'None',
 			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} active',
@@ -12323,12 +12350,12 @@ extension on Translations {
 			'unifiedCatalog.filters.someUnavailable' => 'Some filters are unavailable for the selected sources',
 			'unifiedCatalog.filters.noValues' => 'Nothing to choose from',
 			'unifiedCatalog.states.emptyTitle' => 'This catalog is empty',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.states.emptyBody' => 'No visible library holds anything for this page.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Nothing matches these filters',
 			'unifiedCatalog.states.filterEmptyBody' => 'Clear a filter to see more titles.',
 			'unifiedCatalog.states.clearFilters' => 'Clear filters',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.states.errorTitle' => 'The catalog could not be loaded',
 			'unifiedCatalog.states.errorBody' => 'No server answered. Check your connection and try again.',
 			'unifiedCatalog.states.partialOne' => '1 library did not answer',
@@ -12837,12 +12864,12 @@ extension on Translations {
 			'assistant.steps.findSubtitles' => 'Finding subtitles',
 			'assistant.steps.downloadSubtitle' => 'Downloading subtitle',
 			'assistant.steps.findRequestTitle' => 'Searching Seerr',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.steps.discoverRequestTitles' => 'Finding matching titles',
 			'assistant.steps.requestTitle' => 'Requesting title',
 			'assistant.steps.findTitle' => 'Finding the title',
 			'assistant.steps.recallMemory' => 'Checking your memory',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.steps.rememberFact' => 'Preparing a memory',
 			'assistant.steps.forgetFact' => 'Preparing to forget',
 			'assistant.steps.fallback' => 'Working',

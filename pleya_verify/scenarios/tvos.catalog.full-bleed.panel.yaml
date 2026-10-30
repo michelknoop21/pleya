@@ -2,7 +2,8 @@ name: tvos.catalog.full-bleed.panel
 target: tvos-sim
 # A-06c: the controls are one panel over the page. Sorting happens in it, Menu
 # goes back a page and then closes, RIGHT closes from anywhere, and a choice
-# lands on card 0. `catalog.long-grid.v2`: nineteen films, longgrid-01 to -19.
+# lands on card 0. The sort page has one row per field, the arrow on the active
+# one: choosing it again turns the direction over. `catalog.long-grid.v2`: nineteen films, longgrid-01 to -19.
 setup:
   - reset_app
   - seed: catalog.long-grid.v2
@@ -51,23 +52,37 @@ steps:
   - assert: {id: "tv.catalog.rail.row[movies.sort]", focused: true}
   - press: select
   - settle: 800
-  - assert: {id: "tv.catalog.rail.row[movies.sort.titleAsc]", focused: true}
+  - assert: {id: "tv.catalog.rail.row[movies.sort.title]", focused: true}
   - snapshot: 01-sort-page
   - press: menu
   - settle: 800
   - assert: {id: "tv.catalog.rail.row[movies.sort]", focused: true}
 
-  # Choosing closes the panel and lands on card 0 in the new order.
+  # Choosing the field in force turns A-Z into Z-A, closes the panel and lands
+  # on card 0 in the new order.
   - press: select
   - settle: 800
-  - press: down
-  - settle: 500
-  - assert: {id: "tv.catalog.rail.row[movies.sort.titleDesc]", focused: true}
+  - assert: {id: "tv.catalog.rail.row[movies.sort.title]", focused: true}
   - press: select
   - settle: 3000
   - assert: {id: "tv.catalog.rail[movies]", present: false}
   - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true, state: {title: longgrid-19}}
   - snapshot: 02-after-sort
+
+  # The way back to the other direction stays one choice away: LEFT, the Sort
+  # row, Select, and the same row again.
+  - press: left
+  - settle: 800
+  - press: down
+  - settle: 500
+  - press: down
+  - settle: 500
+  - press: select
+  - settle: 800
+  - snapshot: 03-sort-page-reversed
+  - press: select
+  - settle: 3000
+  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true, state: {title: longgrid-01}}
 
   # Menu with the panel closed leaves the route.
   - press: menu

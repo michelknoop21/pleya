@@ -22,7 +22,12 @@ class TvCatalogRailOption {
     this.countUnavailable = false,
     this.automationInstance,
     this.value,
+    this.trailingIcon,
   });
+
+  /// Drawn at the right end of a side-panel row, in place of the tick. The
+  /// sort page uses it for the direction arrow of the active field.
+  final IconData? trailingIcon;
 
   /// What the row is set to, right-aligned: "All sources", "Title A-Z". Only
   /// the side panel's rows draw it.
@@ -340,9 +345,13 @@ class _RailSheetRowState extends State<TvCatalogRailSheetRow> {
                 ),
               ),
             ],
-            if (option.isSelected) ...[
+            if (option.trailingIcon != null || option.isSelected) ...[
               SizedBox(width: TvCatalogLayout.railIconGap * scale),
-              Icon(Symbols.check_rounded, size: TvCatalogLayout.railOptionCheckSize * scale, color: ink),
+              Icon(
+                option.trailingIcon ?? Symbols.check_rounded,
+                size: TvCatalogLayout.railOptionCheckSize * scale,
+                color: ink,
+              ),
             ],
           ],
         ),

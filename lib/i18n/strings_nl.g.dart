@@ -3285,6 +3285,7 @@ class _TranslationsUnifiedCatalogSortNl extends TranslationsUnifiedCatalogSortEn
 	@override String get newestRelease => 'Nieuwste release';
 	@override String get oldestRelease => 'Oudste release';
 	@override String get recentlyWatched => 'Recent bekeken';
+	@override late final _TranslationsUnifiedCatalogSortFieldsNl fields = _TranslationsUnifiedCatalogSortFieldsNl._(_root);
 }
 
 // Path: unifiedCatalog.rail
@@ -4141,6 +4142,19 @@ class _TranslationsAssistantMatchNl extends TranslationsAssistantMatchEn {
 	@override String more({required Object count}) => '+${count}';
 	@override String get allAges => 'AL';
 	@override String score({required Object score}) => 'Score ${score}';
+}
+
+// Path: unifiedCatalog.sort.fields
+class _TranslationsUnifiedCatalogSortFieldsNl extends TranslationsUnifiedCatalogSortFieldsEn {
+	_TranslationsUnifiedCatalogSortFieldsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Titel';
+	@override String get addedAt => 'Toegevoegd';
+	@override String get releaseDate => 'Release';
+	@override String get recentlyWatched => 'Bekeken';
 }
 
 // Path: unifiedCatalog.discovery.semantics
@@ -6557,6 +6571,10 @@ extension on TranslationsNl {
 			'unifiedCatalog.sort.newestRelease' => 'Nieuwste release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oudste release',
 			'unifiedCatalog.sort.recentlyWatched' => 'Recent bekeken',
+			'unifiedCatalog.sort.fields.title' => 'Titel',
+			'unifiedCatalog.sort.fields.addedAt' => 'Toegevoegd',
+			'unifiedCatalog.sort.fields.releaseDate' => 'Release',
+			'unifiedCatalog.sort.fields.recentlyWatched' => 'Bekeken',
 			'unifiedCatalog.rail.sources' => 'Bronnen',
 			'unifiedCatalog.rail.noFilters' => 'Geen',
 			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} actief',
@@ -6578,12 +6596,12 @@ extension on TranslationsNl {
 			'unifiedCatalog.filters.noValues' => 'Niets om uit te kiezen',
 			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count} actief',
 			'unifiedCatalog.states.emptyTitle' => 'Deze catalogus is leeg',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.states.emptyBody' => 'Geen zichtbare bibliotheek bevat iets voor deze pagina.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Niets voldoet aan deze filters',
 			'unifiedCatalog.states.filterEmptyBody' => 'Wis een filter om meer titels te zien.',
 			'unifiedCatalog.states.clearFilters' => 'Filters wissen',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.states.errorTitle' => 'De catalogus kon niet worden geladen',
 			'unifiedCatalog.states.errorBody' => 'Geen enkele server antwoordde. Controleer je verbinding en probeer het opnieuw.',
 			'unifiedCatalog.states.partialOne' => '1 bibliotheek antwoordde niet',
@@ -7092,12 +7110,12 @@ extension on TranslationsNl {
 			'assistant.steps.findSubtitles' => 'Ondertitels zoeken',
 			'assistant.steps.downloadSubtitle' => 'Ondertitel downloaden',
 			'assistant.steps.findRequestTitle' => 'Seerr doorzoeken',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.steps.discoverRequestTitles' => 'Passende titels zoeken',
 			'assistant.steps.requestTitle' => 'Titel aanvragen',
 			'assistant.steps.findTitle' => 'Titel op beschrijving zoeken',
 			'assistant.steps.recallMemory' => 'Geheugen raadplegen',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.steps.rememberFact' => 'Herinnering klaarzetten',
 			'assistant.steps.forgetFact' => 'Vergeten klaarzetten',
 			'assistant.steps.fallback' => 'Bezig',
