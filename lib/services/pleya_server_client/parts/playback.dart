@@ -85,6 +85,14 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     int? preferredSubtitleId;
     final selector = options.selectSourceTracks;
     if (selector != null &&
+        (plan?.sessionId == null || plan?.deliveryMode == PleyaDeliveryMode.directPlay) &&
+        options.selectedSubtitleStreamId == null &&
+        wireCapabilities.transcode &&
+        wireCapabilities.playbackPlan &&
+        wireCapabilities.playbackSubtitles) {
+      preferredSubtitleId = await _directPlaySubtitle(selector, versions[index]);
+    }
+    if (selector != null &&
         plan?.sessionId != null &&
         plan?.deliveryMode != PleyaDeliveryMode.directPlay &&
         (wireCapabilities.playbackAudioSelection || wireCapabilities.playbackSubtitles)) {
@@ -229,6 +237,22 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       audioTracks: source.audioTracks,
       subtitleTracks: source.subtitleTracks,
     );
+  }
+
+  /// The subtitle the player will select after opening [version] directly.
+  ///
+  /// The file carries every track, so nothing needs planning; the source
+  /// controls just have to show what mpv is about to do. A preference that
+  /// cannot be resolved here is no reason to refuse the playback.
+  Future<int?> _directPlaySubtitle(SourceTrackSelector selector, MediaVersion version) async {
+    try {
+      final source = PleyaServerMappers.mediaSourceInfo(version);
+      final subtitleId = (await selector(source)).subtitleStreamId;
+      return subtitleId == 0 || source.subtitleTracks.any((t) => t.id == subtitleId) ? subtitleId : null;
+    } catch (e) {
+      appLogger.d('PleyaServerClient: no subtitle preference for direct play', error: e);
+      return null;
+    }
   }
 
   Future<void> _stopPlanSession(String? id) async {

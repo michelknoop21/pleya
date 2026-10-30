@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../media/ids.dart';
+import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_server_client.dart';
 import '../services/api_cache.dart';
@@ -110,6 +111,9 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
   String? _attachedProfileId;
   WatchlistSourceFactory? _factory;
   int _generation = 0;
+  Object? _pendingBinding;
+  Object? _plexScopeCheck;
+  Map<String, MediaServerClient> _clients = {};
   Map<String, ({MediaServerClient client, bool favorites})> _sourceClients = {};
 
   /// Bind the provider to the active profile's connections.
@@ -120,6 +124,17 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
   /// scope checks) hangs off the profile, so serving one user's list from a
   /// repository built for another would be the exact failure this design is
   /// shaped to prevent.
+  ///
+  /// Within a profile only the clients that contribute a source count. A
+  /// change there builds a new repository next to the old one and swaps it in
+  /// when it is ready: nulling it first makes [hasWatchlist] false for that
+  /// window, and the main screen then moves the viewer off the Kijklijst tab.
+  ///
+  /// The Plex source hangs off the account, not off a client, so it is the one
+  /// source no client comparison can see arrive. Any other client change
+  /// re-reads its scope and rebuilds only when that differs from what is bound:
+  /// a Plex account added mid-session, or a Home binder finishing after the
+  /// first build. A server merely going offline leaves the same scope.
   void attach({
     required String? profileId,
     required PlexAccountAuthResolver resolvePlexAuth,
@@ -134,49 +149,84 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
       repository = null;
       resolver = null;
       _attachedProfileId = null;
+      _clients = {};
       _sourceClients = {};
       reset();
       return;
     }
 
+    final clients = clientsById();
     final sourceClients = {
-      for (final entry in clientsById().entries)
-        entry.key: (client: entry.value, favorites: entry.value.capabilities.serverFavorites),
+      for (final entry in clients.entries)
+        if (WatchlistSourceFactory.contributesSource(entry.value))
+          entry.key: (client: entry.value, favorites: entry.value.capabilities.serverFavorites),
     };
-    if (_attachedProfileId != profileId || !mapEquals(_sourceClients, sourceClients)) {
+    final clientsChanged = !mapEquals(_clients, clients);
+    final sourcesChanged = !mapEquals(_sourceClients, sourceClients);
+    if (_attachedProfileId != profileId) {
       _factory?.dispose();
       _factory = null;
       repository = null;
       reset();
     }
     _attachedProfileId = profileId;
+    _clients = clients;
     _sourceClients = sourceClients;
 
     resolver ??= WatchlistAvailabilityResolver(profileId: profileId, serversFor: serversFor, cache: cache);
-    if (_factory != null) return;
 
-    final generation = _generation;
-    unawaited(() async {
-      final factory = WatchlistSourceFactory(
-        profileId: profileId,
-        resolvePlexAuth: resolvePlexAuth,
-        clientIdentifier: await clientIdentifier(),
-        clientsById: clientsById,
-      );
-      if (_generation != generation || _attachedProfileId != profileId) {
-        factory.dispose();
-        return;
-      }
-      _factory = factory;
-      final sources = await factory.build();
-      if (_generation != generation || _factory != factory) {
-        factory.dispose();
-        return;
-      }
-      repository = WatchlistRepository(sources: sources);
-      _hasLoaded = false;
-      safeNotifyListeners();
-    }());
+    void rebuild() {
+      final generation = _generation;
+      final binding = _pendingBinding = Object();
+      _plexScopeCheck = null;
+      bool superseded() =>
+          _generation != generation || !identical(_pendingBinding, binding) || _attachedProfileId != profileId;
+      unawaited(() async {
+        final factory = WatchlistSourceFactory(
+          profileId: profileId,
+          resolvePlexAuth: resolvePlexAuth,
+          clientIdentifier: await clientIdentifier(),
+          clientsById: clientsById,
+        );
+        if (superseded()) {
+          factory.dispose();
+          return;
+        }
+        final sources = await factory.build();
+        if (superseded()) {
+          factory.dispose();
+          return;
+        }
+        final retired = _factory;
+        _pendingBinding = null;
+        _factory = factory;
+        repository = WatchlistRepository(sources: sources);
+        retired?.dispose();
+        // Held through the rebuild, but a title no remaining source vouches for
+        // must not outlive it: the replaced source may have been another user's.
+        final scopes = sources.map((s) => s.scope).toSet();
+        _entries = _entries.where((e) => e.memberships.any((m) => scopes.contains(m.scope))).toList();
+        _isLoading = false;
+        _hasLoaded = false;
+        safeNotifyListeners();
+      }());
+    }
+
+    final building = _pendingBinding != null;
+    if (sourcesChanged || (_factory == null && !building) || (building && clientsChanged)) {
+      rebuild();
+    } else if (clientsChanged) {
+      final check = _plexScopeCheck = Object();
+      unawaited(() async {
+        final scope = await PlexAccountWatchlistSource.resolveScope(resolveAuth: resolvePlexAuth, profileId: profileId);
+        if (identical(_plexScopeCheck, check) && scope != _boundPlexScope) rebuild();
+      }());
+    }
+  }
+
+  WatchlistScopeId? get _boundPlexScope {
+    final sources = repository?.sources ?? const <WatchlistSource>[];
+    return sources.map((s) => s.scope).where((scope) => scope.backend == MediaBackend.plex).firstOrNull;
   }
 
   /// Priority per source, derived from the repository's own order. The
@@ -205,13 +255,15 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
   Future<void> load({bool offline = false}) async {
     final generation = _generation;
     final repository = this.repository;
+    // A rebind within the profile swaps the repository without a reset.
+    bool isCurrent() => _generation == generation && identical(this.repository, repository);
     _isLoading = true;
     _error = null;
     safeNotifyListeners();
 
     final scopes = repository?.sources.map((s) => s.scope).toList() ?? const <WatchlistScopeId>[];
     final restored = await _readSnapshots(scopes);
-    if (_generation != generation) return;
+    if (!isCurrent()) return;
     if (restored != null) {
       _entries = restored;
       _hasSnapshot = true;
@@ -229,19 +281,19 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
 
     try {
       final result = await repository.fetch();
-      if (_generation != generation) return;
+      if (!isCurrent()) return;
       _entries = result.entries;
       _complete = result.complete;
       _offline = false;
       await _writeSnapshots(result, repository.sources);
-      if (_generation != generation) return;
+      if (!isCurrent()) return;
       _hasSnapshot = true;
     } catch (e, st) {
-      if (_generation != generation) return;
+      if (!isCurrent()) return;
       appLogger.w('Watchlist load failed', error: e, stackTrace: st);
       _error = friendlyError(e);
     } finally {
-      if (_generation == generation) {
+      if (isCurrent()) {
         _isLoading = false;
         _hasLoaded = true;
         safeNotifyListeners();
@@ -416,6 +468,8 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
   /// Drop everything and rebind. Called on a profile switch.
   void reset() {
     _generation++;
+    _pendingBinding = null;
+    _plexScopeCheck = null;
     onScopeChanged?.call();
     _isLoading = false;
     resolver = null;

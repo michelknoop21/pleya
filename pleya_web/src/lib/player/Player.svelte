@@ -63,6 +63,7 @@
   let audioIndex = $state(0);
   let caption = $state('');
   let progress: WatchProgress | null = null;
+  let lastPosition = 0;
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
   const total = $derived(
@@ -89,6 +90,7 @@
     subtitleController?.abort();
     progress?.finish(false);
     progress = null;
+    lastPosition = 0;
     audioIndex = 0;
     void session.start(video, { itemId: item.id, versionId: version?.id ?? null, startAt });
   }
@@ -97,15 +99,22 @@
     if (session.delivery) audioIndex = session.delivery.kind === 'hls' ? 0 : defaultAudioIndex(audio);
   });
 
+  // Teardown empties the element, so a report after an error reads the last position that played.
+  function samplePosition(): number {
+    if (video && session.phase === 'ready') lastPosition = video.currentTime;
+    return lastPosition;
+  }
+
+  // On `playing`, not `play`: `play` fires before a resume seek lands and would report position 0.
   function playing(): void {
-    paused = false;
     if (!video || session.phase !== 'ready') return;
     progress ??= new WatchProgress({
       report: (body, keepalive) => deps.api.reportWatchState(body, keepalive),
-      enabled: deps.server?.watch_state === true,
+      // hls.js starts at 0 regardless of startAt (playerSession), and reporting that would erase the resume point.
+      enabled: deps.server?.watch_state === true && !(session.delivery?.kind === 'hls' && startAt > 0),
       ownership: deps.server?.watch_state_ownership === true,
       itemId: item.id, revision: item.user_state?.revision,
-      sample: () => ({ position: video?.currentTime ?? 0, duration: total }),
+      sample: () => ({ position: samplePosition(), duration: total }),
       ...(deps.timers ? { timers: deps.timers } : {})
     });
     progress.play();
@@ -231,6 +240,7 @@
 
   function syncTime(): void {
     if (!video) return;
+    samplePosition();
     current = video.currentTime;
     mediaDuration = video.duration;
     const b = video.buffered;
@@ -281,7 +291,8 @@
     class="player__video"
     bind:this={video}
     playsinline
-    onplay={playing}
+    onplay={() => (paused = false)}
+    onplaying={playing}
     onpause={() => { paused = true; progress?.report(); }}
     onseeked={() => progress?.report()}
     onended={() => { paused = true; progress?.finish(false); progress = null; }}

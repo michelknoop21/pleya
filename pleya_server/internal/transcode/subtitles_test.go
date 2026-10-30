@@ -203,7 +203,7 @@ func TestBitmapSubtitleBudgetUsesTheCacheBudgetRatherThanTheTextBudget(t *testin
 }
 
 // Own synthetic white rectangle; packet layout follows FFmpeg's supdec/pgssubdec, no third-party media.
-func pgsFixture(t *testing.T) string {
+func pgsFixture(t *testing.T, startSeconds, endSeconds uint32) string {
 	t.Helper()
 	var data []byte
 	packet := func(pts uint32, kind byte, payload []byte) {
@@ -215,8 +215,8 @@ func pgsFixture(t *testing.T) string {
 		data = append(data, payload...)
 	}
 	presentation := []byte{2, 128, 1, 104, 0x10, 0, 0, 0x80, 0, 0, 1, 0, 0, 0, 0, 0, 80, 0, 80}
-	packet(45000, 0x16, presentation)
-	packet(45000, 0x14, []byte{0, 0, 1, 235, 128, 128, 255})
+	packet(startSeconds*90000, 0x16, presentation)
+	packet(startSeconds*90000, 0x14, []byte{0, 0, 1, 235, 128, 128, 255})
 	var rle []byte
 	for range 10 {
 		for range 80 {
@@ -226,12 +226,12 @@ func pgsFixture(t *testing.T) string {
 	}
 	n := len(rle) + 4
 	object := []byte{0, 0, 0, 0xc0, byte(n >> 16), byte(n >> 8), byte(n), 0, 80, 0, 10}
-	packet(45000, 0x15, append(object, rle...))
-	packet(45000, 0x80, nil)
+	packet(startSeconds*90000, 0x15, append(object, rle...))
+	packet(startSeconds*90000, 0x80, nil)
 	clear := append([]byte(nil), presentation[:11]...)
 	clear[7], clear[10] = 0, 0
-	packet(225000, 0x16, clear)
-	packet(225000, 0x80, nil)
+	packet(endSeconds*90000, 0x16, clear)
+	packet(endSeconds*90000, 0x80, nil)
 	path := filepath.Join(t.TempDir(), "rectangle.sup")
 	if err := os.WriteFile(path, data, 0600); err != nil {
 		t.Fatal(err)
@@ -243,8 +243,10 @@ func TestBitmapSubtitleExtractionAndBurnRendersAndClearsPixels(t *testing.T) {
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
 		t.Skip("ffmpeg ontbreekt")
 	}
-	input := filepath.Join(t.TempDir(), "black.mp4")
-	if out, err := exec.Command("ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=black:size=640x360:rate=25:duration=4", "-c:v", "libx264", "-pix_fmt", "yuv420p", input).CombinedOutput(); err != nil {
+	// A first cue at 4 s: a burn that shifts the subtitle track to zero shows it at the start instead.
+	// -itsoffset because the muxing below would otherwise apply that same shift to the fixture.
+	input := filepath.Join(t.TempDir(), "black.mkv")
+	if out, err := exec.Command("ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=black:size=640x360:rate=25:duration=8", "-itsoffset", "4", "-i", pgsFixture(t, 4, 6), "-map", "0:v", "-map", "1:s", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:s", "copy", input).CombinedOutput(); err != nil {
 		t.Fatalf("fixture: %v %s", err, out)
 	}
 	m, err := transcode.New(transcode.Options{FFmpegPath: "ffmpeg", Dir: t.TempDir(), Max: 1})
@@ -252,15 +254,11 @@ func TestBitmapSubtitleExtractionAndBurnRendersAndClearsPixels(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(m.Close)
-	caption, err := m.ExtractSubtitle(context.Background(), transcode.SubtitleParams{InputPath: pgsFixture(t), StreamIndex: 0, Format: "pgs"})
+	session, err := m.Start(context.Background(), transcode.Params{UserID: id.New(), VersionID: id.New(), Job: transcode.Job{InputPath: input, Mode: transcode.ModeTranscode, SubtitleBitmap: true, SubtitleStreamIndex: 1, MaxVideoBitrateKbps: 500, MaxHeight: 180}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := m.Start(context.Background(), transcode.Params{UserID: id.New(), VersionID: id.New(), Job: transcode.Job{InputPath: input, Mode: transcode.ModeTranscode, SubtitlePath: caption, SubtitleBitmap: true, MaxVideoBitrateKbps: 500, MaxHeight: 180}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, at := range []string{"1", "3"} {
+	for _, at := range []string{"1", "5", "7"} {
 		frame, err := exec.Command("ffmpeg", "-v", "error", "-i", filepath.Join(session.Dir, transcode.PlaylistName), "-ss", at, "-frames:v", "1", "-pix_fmt", "gray", "-f", "rawvideo", "pipe:1").Output()
 		if err != nil {
 			t.Fatal(err)
@@ -274,7 +272,7 @@ func TestBitmapSubtitleExtractionAndBurnRendersAndClearsPixels(t *testing.T) {
 				bright++
 			}
 		}
-		if at == "1" && bright < 100 || at == "3" && bright > 0 {
+		if at == "5" && bright < 100 || at != "5" && bright > 0 {
 			t.Fatalf("at %s: incorrect subtitle pixels: %d", at, bright)
 		}
 	}

@@ -44,11 +44,11 @@ beforeEach(() => {
 });
 afterEach(() => setLocale('en'));
 
-function mount(api = fakeApi(), extra: { onclose?: () => void; onlogin?: () => void } = {}) {
+function mount(api = fakeApi(), extra: { onclose?: () => void; onlogin?: () => void; startAt?: number } = {}) {
   const onclose = extra.onclose ?? vi.fn();
   const onlogin = extra.onlogin ?? vi.fn();
   const view = render(Player, {
-    props: { item, version: item.versions![0], deps: deps(api), onclose, onlogin }
+    props: { item, version: item.versions![0], deps: deps(api), onclose, onlogin, ...(extra.startAt ? { startAt: extra.startAt } : {}) }
   });
   return { api, view, onclose, onlogin };
 }
@@ -159,8 +159,10 @@ describe('public browser watch-state actions', () => {
     await screen.findByText('Direct afspelen · HEVC 4K');
     expect(api.reportWatchState).not.toHaveBeenCalled();
     const video = document.querySelector('video')!;
-    video.currentTime = 15;
     await fireEvent.play(video);
+    expect(api.reportWatchState).not.toHaveBeenCalled();
+    video.currentTime = 15;
+    await fireEvent.playing(video);
     await waitFor(() => expect(api.reportWatchState).toHaveBeenCalledTimes(1));
     expect(vi.mocked(api.reportWatchState).mock.calls[0]![0]).toMatchObject({ explicit_action: 'playback_started', position_ms: 15000 });
     video.currentTime = 20;
@@ -172,6 +174,32 @@ describe('public browser watch-state actions', () => {
     window.dispatchEvent(new Event('pagehide'));
     await waitFor(() => expect(api.reportWatchState).toHaveBeenCalledTimes(4));
     expect(vi.mocked(api.reportWatchState).mock.calls[3]).toEqual([expect.objectContaining({ position_ms: 30000, explicit_action: 'none' }), true]);
+  });
+
+  it('a media error after minute 50 reports the last position, not the emptied element', async () => {
+    const { api } = mount();
+    await screen.findByText('Direct afspelen · HEVC 4K');
+    const video = document.querySelector('video')!;
+    video.currentTime = 3000;
+    await fireEvent.playing(video);
+    await fireEvent.timeUpdate(video);
+    await waitFor(() => expect(api.reportWatchState).toHaveBeenCalledTimes(1));
+    // Teardown resets the element before the error effect samples it.
+    vi.mocked(HTMLMediaElement.prototype.load).mockImplementation(function (this: HTMLMediaElement) { this.currentTime = 0; });
+    Object.defineProperty(video, 'error', { value: { code: 4 }, configurable: true });
+    await fireEvent.error(video);
+    await waitFor(() => expect(api.reportWatchState).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(api.reportWatchState).mock.calls[1]![0]).toMatchObject({ position_ms: 3000000, explicit_action: 'none' });
+  });
+
+  it('a transcoded stream that ignores the resume position reports nothing', async () => {
+    const api = fakeApi({ plan: async () => transcodePlan() });
+    mount(api, { startAt: 3000 });
+    await waitFor(() => expect(document.querySelector('video')).not.toBeNull());
+    await screen.findByRole('button', { name: '10 seconden vooruit' });
+    await fireEvent.playing(document.querySelector('video')!);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(api.reportWatchState).not.toHaveBeenCalled();
   });
 });
 

@@ -1,3 +1,4 @@
+import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_server_client.dart';
 import '../media/media_source_info.dart';
@@ -63,6 +64,14 @@ class PlaybackSession {
   String? get playSessionId => result.playSessionId;
 
   String? get playMethod => result.playMethod;
+
+  /// Whether the stream only exists as a conversion the server holds for this
+  /// playback. The stop report ends it, so after a stop the buffer in the
+  /// player is all that is left of it.
+  bool get holdsServerConversion =>
+      metadata.backend == MediaBackend.pleyaServer &&
+      !isOffline &&
+      (playMethod == 'Transcode' || playMethod == 'DirectStream');
 
   int? get audioStreamId => result.activeAudioStreamId;
 

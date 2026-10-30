@@ -29,13 +29,36 @@ describe('browser watch-state ownership', () => {
     expect(new Set(bodies.map(body => body.session_id)).size).toBe(1);
     expect(bodies[1]).toMatchObject({ position_ms: 12000, duration_ms: 100000, base_revision: 8, backlog: false });
   });
+  it('a press on play claims the viewing with cause user_started, and only under ownership', async () => {
+    const owned = setup();
+    owned.progress.play(); await settle();
+    owned.setPosition(5); owned.progress.report(); await settle();
+    expect(owned.report.mock.calls[0]![0]).toMatchObject({ explicit_action: 'playback_started', cause: 'user_started' });
+    expect(owned.report.mock.calls[1]![0]).not.toHaveProperty('cause');
+    const legacy = setup(true, false);
+    legacy.progress.play(); await settle();
+    expect(legacy.report.mock.calls[0]![0]).not.toHaveProperty('cause');
+  });
+  it('a start refused on a stale revision is sent once more with the revision the server returned', async () => {
+    const { progress, report, timers } = setup();
+    report.mockResolvedValueOnce(state(10, false));
+    report.mockResolvedValue(state(11));
+    progress.play(); await settle();
+    timers.tick(); await settle();
+    const bodies = report.mock.calls.map(([body]) => body);
+    expect(bodies.map(body => body.explicit_action)).toEqual(['playback_started', 'playback_started', 'none']);
+    expect(bodies[1]).toMatchObject({ base_revision: 10, cause: 'user_started' });
+    expect(bodies[2]).toMatchObject({ base_revision: 11 });
+  });
   it('never reacquires ownership when another device owns the response', async () => {
     const { progress, report, timers } = setup();
     report.mockResolvedValue(state(10, false));
     progress.play(); await settle();
     timers.tick(); await settle();
     progress.finish(false); await settle();
-    expect(report.mock.calls.slice(1).every(([body]) => body.explicit_action === 'none' && body.base_revision === 10)).toBe(true);
+    // One retry of the start itself; passive events never acquire.
+    expect(report.mock.calls.slice(0, 2).every(([body]) => body.explicit_action === 'playback_started')).toBe(true);
+    expect(report.mock.calls.slice(2).every(([body]) => body.explicit_action === 'none' && body.base_revision === 10)).toBe(true);
   });
   it('coalesces slow progress and sends the latest snapshot with the received revision', async () => {
     const { progress, report, setPosition } = setup();

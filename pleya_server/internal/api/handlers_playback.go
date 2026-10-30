@@ -219,18 +219,24 @@ func (s *Server) handlePlaybackPlan(w http.ResponseWriter, r *http.Request) {
 					s.writeStoreError(w, fileErr)
 					return
 				}
-				path, extractErr := s.opts.Transcode.ExtractSubtitle(r.Context(), transcode.SubtitleParams{
-					InputPath: file.AbsPath, StreamIndex: index, Format: file.Format, Generation: file.Generation,
-				})
-				if extractErr != nil {
-					if errors.Is(extractErr, transcode.ErrBusy) {
-						writeError(w, s.log, CodeTranscodeBusy, "subtitle worker is busy", nil)
-					} else {
-						writeError(w, s.log, CodeTranscodeFailed, "the subtitle could not be prepared", nil)
+				if format == "pgs" || format == "dvdsub" {
+					// Burned straight from the source: an extraction reads the whole file for what ffmpeg
+					// demuxes anyway, and a separate input would lose the cue times.
+					plan.SubtitleBitmap, plan.SubtitleStream = true, index
+				} else {
+					path, extractErr := s.opts.Transcode.ExtractSubtitle(r.Context(), transcode.SubtitleParams{
+						InputPath: file.AbsPath, StreamIndex: index, Format: file.Format, Generation: file.Generation,
+					})
+					if extractErr != nil {
+						if errors.Is(extractErr, transcode.ErrBusy) {
+							writeError(w, s.log, CodeTranscodeBusy, "subtitle worker is busy", nil)
+						} else {
+							writeError(w, s.log, CodeTranscodeFailed, "the subtitle could not be prepared", nil)
+						}
+						return
 					}
-					return
+					plan.SubtitlePath = path
 				}
-				plan.SubtitlePath, plan.SubtitleBitmap = path, format == "pgs" || format == "dvdsub"
 			}
 		}
 	}

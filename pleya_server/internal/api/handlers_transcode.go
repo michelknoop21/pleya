@@ -59,12 +59,13 @@ func (s *Server) startTranscode(w http.ResponseWriter, r *http.Request, plan pla
 	}
 
 	job := transcode.Job{
-		InputPath:      file.AbsPath,
-		SubtitlePath:   plan.SubtitlePath,
-		SubtitleBitmap: plan.SubtitleBitmap,
-		Mode:           transcode.Mode(plan.Mode),
-		AudioCodec:     plan.AudioCodec,
-		AudioChannels:  plan.AudioMaxCh,
+		InputPath:           file.AbsPath,
+		SubtitlePath:        plan.SubtitlePath,
+		SubtitleBitmap:      plan.SubtitleBitmap,
+		SubtitleStreamIndex: plan.SubtitleStream,
+		Mode:                transcode.Mode(plan.Mode),
+		AudioCodec:          plan.AudioCodec,
+		AudioChannels:       plan.AudioMaxCh,
 	}
 	if plan.Quality != nil {
 		job.MaxVideoBitrateKbps, job.MaxHeight = plan.Quality.MaxVideoBitrateKbps, plan.Quality.MaxHeight

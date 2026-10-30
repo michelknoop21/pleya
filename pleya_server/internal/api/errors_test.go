@@ -81,6 +81,7 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"server.backup_busy":             {409, true},
 		"server.backup_not_restorable":   {409, false},
 		"playback.file_corrupt":          {422, false},
+		"playback.selection_invalid":     {400, false},
 	}
 
 	// Deze tabel spiegelt hoofdstuk 7.1 voor zover deze server hem draait.

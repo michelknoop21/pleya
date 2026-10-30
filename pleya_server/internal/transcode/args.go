@@ -35,6 +35,7 @@ const (
 type Job struct {
 	SubtitlePath        string
 	SubtitleBitmap      bool
+	SubtitleStreamIndex int
 	MaxVideoBitrateKbps int
 	MaxHeight           int
 	AudioStreamIndex    *int
@@ -85,7 +86,7 @@ func BuildArgs(j Job) ([]string, error) {
 		}
 		audioMap = "0:" + strconv.Itoa(*j.AudioStreamIndex)
 	}
-	if j.SubtitleBitmap && j.SubtitlePath == "" || j.SubtitlePath != "" && j.Mode != ModeTranscode {
+	if (j.SubtitleBitmap || j.SubtitlePath != "") && j.Mode != ModeTranscode || j.SubtitleBitmap && (j.SubtitlePath != "" || j.SubtitleStreamIndex < 0) {
 		return nil, fmt.Errorf("ongeldig ondertitelplan")
 	}
 	seg := j.SegmentSeconds
@@ -113,7 +114,6 @@ func BuildArgs(j Job) ([]string, error) {
 	a = append(a, "-fflags", "+genpts", "-i", j.InputPath)
 	videoMap := "0:v:0"
 	if j.SubtitleBitmap {
-		a = append(a, "-i", "subtitle")
 		videoMap = "[subbed]"
 	}
 	a = append(a, "-map", videoMap, "-map", audioMap, "-sn", "-dn")
@@ -143,7 +143,9 @@ func BuildArgs(j Job) ([]string, error) {
 			if len(filters) > 0 {
 				prefix += strings.Join(filters, ",") + "[base];[base]"
 			}
-			filters = []string{prefix + "[1:s:0]overlay=eof_action=pass:repeatlast=0"}
+			// The source itself, not an extracted copy: ffmpeg shifts a second input to start at zero, which
+			// would move every cue forward by the time of the first one. Bitmap tracks are always embedded.
+			filters = []string{prefix + "[0:" + strconv.Itoa(j.SubtitleStreamIndex) + "]overlay=eof_action=pass:repeatlast=0"}
 		}
 		if j.MaxHeight > 0 {
 			filters = append(filters, fmt.Sprintf("scale=-2:'trunc(min(ih,%d)/2)*2'", j.MaxHeight))

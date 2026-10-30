@@ -277,6 +277,31 @@ void main() {
       expect(server.sessionCalls, ['DELETE /playback/sessions/sess-1']);
     });
 
+    test('a refused replacement leaves nothing held, and reopening the old selection holds a new session', () async {
+      server = PleyaFakeServer(watchState: true)
+        ..playbackPlanCapability = true
+        ..playbackQualityCapability = true
+        ..planDeliveryMode = 'transcode';
+      final item = twoVersions(server);
+      client = await connected(server);
+      Future<PlaybackInitializationResult> withQuality(TranscodeQualityPreset preset) =>
+          client.getPlaybackInitialization(
+            PlaybackInitializationOptions(metadata: item, selectedMediaIndex: 0, qualityPreset: preset),
+          );
+
+      await withQuality(TranscodeQualityPreset.p720_2mbps);
+      server.planFailureStatus = 503;
+      await expectLater(withQuality(TranscodeQualityPreset.p1080_8mbps), throwsA(isA<PlaybackException>()));
+      expect(server.sessionCalls, ['DELETE /playback/sessions/sess-1'], reason: 'the stream on screen is already gone');
+
+      server.planFailureStatus = null;
+      final reopened = await withQuality(TranscodeQualityPreset.p720_2mbps);
+      expect(reopened.videoUrl, contains('/playback/sessions/sess-1/'));
+
+      await client.reportPlaybackStopped(itemId: 'movie-1', position: const Duration(minutes: 3));
+      expect(server.sessionCalls, hasLength(2), reason: 'held again, so it has a heartbeat and a stop');
+    });
+
     test('reporting the playback stopped stops the session', () async {
       server = PleyaFakeServer(watchState: true)
         ..playbackPlanCapability = true

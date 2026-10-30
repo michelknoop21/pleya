@@ -135,6 +135,7 @@ type Reason struct {
 type Plan struct {
 	SubtitlePath   string
 	SubtitleBitmap bool
+	SubtitleStream int
 	Quality        *Quality
 	VersionID      string
 	Mode           Mode

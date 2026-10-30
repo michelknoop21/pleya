@@ -286,6 +286,197 @@ void main() {
     expect(server.sessionCalls, ['DELETE /playback/sessions/sess-1']);
   });
 
+  group('direct play with a remembered subtitle', () {
+    Future<PleyaServerClient> directClient(PleyaFakeServer server) async {
+      client = server.client();
+      await client.refreshCapabilities();
+      return client;
+    }
+
+    PleyaFakeServer directServer() => PleyaFakeServer()
+      ..playbackPlanCapability = true
+      ..playbackSubtitlesCapability = true
+      ..planVersionId = 'v'
+      ..planDeliveryMode = 'direct_play';
+
+    test('the source tracks say what the player will select, without a second plan', () async {
+      final server = directServer();
+      final MediaServerClient public = await directClient(server);
+
+      final result = await public.getPlaybackInitialization(
+        PlaybackInitializationOptions(
+          metadata: item,
+          selectedMediaIndex: 0,
+          selectSourceTracks: (_) async => (audioStreamId: null, subtitleStreamId: 3),
+        ),
+      );
+
+      expect(result.playMethod, 'DirectPlay');
+      expect(result.mediaInfo!.subtitleTracks.where((t) => t.selected).map((t) => t.id), [3]);
+      expect(server.planRequests, hasLength(1));
+      expect(server.planRequests.single.containsKey('subtitle'), isFalse);
+      expect(server.sessionCalls, isEmpty);
+    });
+
+    test('a remembered off overrules the default flag of the source', () async {
+      final server = directServer();
+      final MediaServerClient public = await directClient(server);
+      final flagged = item.copyWith(
+        mediaVersions: const [
+          MediaVersion(
+            id: 'v',
+            parts: [
+              MediaPart(
+                id: 'v',
+                streams: [MediaStream(id: 's', kind: MediaStreamKind.subtitle, index: 2, codec: 'srt', selected: true)],
+              ),
+            ],
+          ),
+        ],
+      );
+
+      final result = await public.getPlaybackInitialization(
+        PlaybackInitializationOptions(
+          metadata: flagged,
+          selectedMediaIndex: 0,
+          selectSourceTracks: (_) async => (audioStreamId: null, subtitleStreamId: 0),
+        ),
+      );
+
+      expect(result.mediaInfo!.subtitleTracks.where((t) => t.selected), isEmpty);
+    });
+
+    test('a remembered bitmap survives the quality switch that follows', () async {
+      final server = directServer()
+        ..playbackQualityCapability = true
+        ..playbackAudioSelectionCapability = true;
+      final MediaServerClient public = await directClient(server);
+      final bitmap = item.copyWith(
+        mediaVersions: const [
+          MediaVersion(
+            id: 'v',
+            parts: [
+              MediaPart(
+                id: 'v',
+                streams: [
+                  MediaStream(
+                    id: 'bitmap',
+                    kind: MediaStreamKind.subtitle,
+                    index: 2,
+                    codec: 'pgs',
+                    languageCode: 'eng',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      );
+      final direct = await public.getPlaybackInitialization(
+        PlaybackInitializationOptions(
+          metadata: bitmap,
+          selectedMediaIndex: 0,
+          selectSourceTracks: (_) async => (audioStreamId: null, subtitleStreamId: 3),
+        ),
+      );
+      // The controls derive the running selection the same way.
+      final running = direct.mediaInfo!.subtitleTracks.where((t) => t.selected).firstOrNull?.id ?? 0;
+
+      server.planDeliveryMode = 'transcode';
+      await public.getPlaybackInitialization(
+        PlaybackInitializationOptions(
+          metadata: bitmap,
+          selectedMediaIndex: 0,
+          selectedMediaSourceId: 'v',
+          qualityPreset: TranscodeQualityPreset.p720_2mbps,
+          selectedSubtitleStreamId: running,
+        ),
+      );
+
+      expect(server.planRequests.last['subtitle'], {'mode': 'burn', 'stream_id': 'bitmap'});
+    });
+
+    test('an explicit subtitle does not ask the selector', () async {
+      final server = directServer();
+      final MediaServerClient public = await directClient(server);
+      var asked = false;
+
+      final result = await public.getPlaybackInitialization(
+        PlaybackInitializationOptions(
+          metadata: item,
+          selectedMediaIndex: 0,
+          selectedSubtitleStreamId: 0,
+          selectSourceTracks: (_) async {
+            asked = true;
+            return (audioStreamId: null, subtitleStreamId: 3);
+          },
+        ),
+      );
+
+      expect(asked, isFalse);
+      expect(result.mediaInfo!.subtitleTracks.where((t) => t.selected), isEmpty);
+    });
+
+    test('a preference that cannot be shown never costs the playback', () async {
+      final server = directServer();
+      final MediaServerClient public = await directClient(server);
+
+      final stale = await public.getPlaybackInitialization(
+        PlaybackInitializationOptions(
+          metadata: item,
+          selectedMediaIndex: 0,
+          selectSourceTracks: (_) async => (audioStreamId: null, subtitleStreamId: 999),
+        ),
+      );
+      final failing = await public.getPlaybackInitialization(
+        PlaybackInitializationOptions(
+          metadata: item,
+          selectedMediaIndex: 0,
+          selectSourceTracks: (_) async => throw StateError('no longer current'),
+        ),
+      );
+
+      expect(stale.playMethod, 'DirectPlay');
+      expect(failing.playMethod, 'DirectPlay');
+    });
+
+    test('a failed unselected plan still reports the remembered subtitle', () async {
+      final server = directServer()..planFailureStatus = 503;
+      final MediaServerClient public = await directClient(server);
+
+      final result = await public.getPlaybackInitialization(
+        PlaybackInitializationOptions(
+          metadata: item,
+          selectedMediaIndex: 0,
+          selectSourceTracks: (_) async => (audioStreamId: null, subtitleStreamId: 3),
+        ),
+      );
+
+      expect(result.playMethod, 'DirectPlay');
+      expect(result.mediaInfo!.subtitleTracks.where((t) => t.selected).map((t) => t.id), [3]);
+    });
+
+    test('a server without source subtitle selection is not asked', () async {
+      final server = directServer()..playbackSubtitlesCapability = false;
+      final MediaServerClient public = await directClient(server);
+      var asked = false;
+
+      final result = await public.getPlaybackInitialization(
+        PlaybackInitializationOptions(
+          metadata: item,
+          selectedMediaIndex: 0,
+          selectSourceTracks: (_) async {
+            asked = true;
+            return (audioStreamId: null, subtitleStreamId: 3);
+          },
+        ),
+      );
+
+      expect(asked, isFalse);
+      expect(result.mediaInfo!.subtitleTracks.where((t) => t.selected), isEmpty);
+    });
+  });
+
   test('a burned bitmap keeps source controls but never adds a second text overlay', () async {
     final server = PleyaFakeServer()
       ..playbackPlanCapability = true

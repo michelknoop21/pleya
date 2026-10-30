@@ -6,6 +6,41 @@ import { expectNoAxeViolations, expectShell, PASSWORD, SETUP_CODE, USERNAME } fr
  * Setup en inloggen tegen de echte auth-endpoints. Welke van de twee schermen
  * er komt zegt `GET /info`; de test raadt dat niet.
  */
+test('eerste setup eindigt in een cookiesessie zonder leesbaar refreshtoken en zonder tweede sessie', async ({ page, context }) => {
+  await page.goto('/');
+  const info = await (await page.request.get('/pleya/v1/info')).json();
+  test.skip(!info.auth.setup_required || !info.capabilities.cookie_auth, 'alleen op een verse server met cookie_auth');
+
+  await page.waitForURL('**/setup');
+  await page.getByLabel('Setup code').fill(SETUP_CODE);
+  await page.getByLabel('Username').fill(USERNAME);
+  await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
+  await page.getByRole('button', { name: 'Create owner' }).click();
+  await expectShell(page);
+
+  const readable = () => page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage }, cookie: document.cookie }));
+  const assertNothingReadable = async () => {
+    const seen = await readable();
+    expect(Object.keys(seen.local).filter((key) => /token/i.test(key))).toEqual([]);
+    expect(Object.keys(seen.session).filter((key) => /token/i.test(key))).toEqual([]);
+    expect(seen.cookie).not.toContain('pleya_refresh');
+  };
+  await assertNothingReadable();
+  const cookie = (await context.cookies()).find((entry) => entry.name === 'pleya_refresh');
+  expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'Strict', path: '/pleya/v1/auth/refresh' });
+
+  await page.reload();
+  await expectShell(page);
+  await assertNothingReadable();
+
+  const login = await page.request.post('/pleya/v1/auth/login', { data: { username: USERNAME, password: PASSWORD } });
+  const headers = { Authorization: `Bearer ${(await login.json()).access_token}` };
+  const sessions = (await (await page.request.get('/pleya/v1/sessions', { headers })).json()).items as unknown[];
+  // De cookiesessie van de browser en deze controlelogin; de setupsessie is ingetrokken.
+  expect(sessions).toHaveLength(2);
+  await page.request.post('/pleya/v1/auth/logout', { headers });
+});
+
 test('setup of inloggen brengt de gebruiker in de app', async ({ page }) => {
   await page.goto('/');
 

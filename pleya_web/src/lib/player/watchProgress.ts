@@ -18,6 +18,7 @@ export class WatchProgress {
   #sessionId = crypto.randomUUID();
   #revision: number | undefined;
   #started = false;
+  #startRetried = false;
   #closed = false;
   #timer: unknown = null;
   #sending = false;
@@ -61,7 +62,8 @@ export class WatchProgress {
         occurred_at: new Date().toISOString(),
         completed: final && duration > 0 && position >= 0.9 * duration,
         explicit_action: action,
-        ...(this.#options.ownership ? { backlog: false } : {})
+        ...(this.#options.ownership ? { backlog: false } : {}),
+        ...(this.#options.ownership && action === 'playback_started' ? { cause: 'user_started' as const } : {})
       }, keepalive
     };
     if (keepalive && this.#sending) {
@@ -89,6 +91,12 @@ export class WatchProgress {
         try {
           const state = await this.#options.report(body, pending.keepalive);
           if (Number.isSafeInteger(state.revision) && state.revision! >= (this.#revision ?? 0)) this.#revision = state.revision;
+          // user_started overrules any lease, so a refused start means a stale revision: the page was loaded
+          // before this title's last write. The answer carries the current one; one retry is enough.
+          if (pending.body.explicit_action === 'playback_started' && state.owned_by_this_session === false && !this.#startRetried && !this.#closed) {
+            this.#startRetried = true;
+            this.#pending = { body: pending.body, keepalive: false };
+          }
         } catch {
           // A later passive tick may retry; failure never grants ownership.
         }

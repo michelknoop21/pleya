@@ -52,6 +52,15 @@ class WatchlistSourceFactory {
 
   PlexWatchlistClient? _plexClient;
 
+  /// Whether [client] can contribute a source to [build].
+  ///
+  /// The Plex source hangs off the account, so a Plex server going offline
+  /// changes nothing here. A Pleya Verify build also reads the fixture
+  /// kijklijst from Pleya Servers without the favorites capability.
+  static bool contributesSource(MediaServerClient client, {bool verifyWatchlist = kPleyaVerify}) =>
+      ((client is JellyfinClient || client is PleyaServerClient) && client.capabilities.serverFavorites) ||
+      (verifyWatchlist && client is PleyaServerClient);
+
   /// The sources this profile can actually use right now.
   ///
   /// No Plex source is a normal outcome rather than an error: a Jellyfin-only

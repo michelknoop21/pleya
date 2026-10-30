@@ -2,6 +2,8 @@
 
 Status: lokaal bewijs op een tijdelijke stack. Geen push, merge, deployment of echte migratie. De NAS, productie en Plex zijn niet aangeraakt.
 
+De eindstand staat onder "Review van de volledige branch". De tabellen daarvoor beschrijven de eerste ronde op `84174b1bb`, voor zover daar niet anders staat.
+
 ## Wat er getest is
 
 De Pleya Server draaide in Docker op een Windows-pc (DESKTOP-98B3AHB). De browser draaide op de Mac en bereikte de server via een SSH-tunnel naar de loopback van die pc. De poort stond alleen op `127.0.0.1`, dus er ging niets open op het netwerk. Server op Windows Docker, Chromium op de Mac: zo moet dit rapport gelezen worden.
@@ -25,7 +27,7 @@ Testdata: twee fictieve films en een fictieve serie met twee afleveringen (ffmpe
 
 ### Webclient tegen de echte server
 
-14 van 14 e2e-scenario's groen op een schoon account, en de staat is na de run gelijk aan ervoor. Heeft het eerste item al persoonlijke staat, dan slaan de tests over en blijft die staat staan (14 overgeslagen, `diff` leeg).
+Eerste ronde: 14 van 14 e2e-scenario's groen. De eindronde onder "Review van de volledige branch" draaide 18 van 18 op tijdelijke accounts.
 
 | Scenario | Uitkomst |
 |---|---|
@@ -74,7 +76,51 @@ Bij de server zelf: een ongeldige body op `/auth/setup` komt terug als `auth.set
 
 De eerste versie van `personal.spec.ts` en `personal-matrix.spec.ts` wiste na elke test favoriet, beoordeling en gezien-staat van de aangeraakte films, en de matrix wiste vooraf alle favorieten van het account. De bewaking (`PLEYA_E2E_PERSONAL=1` plus host `127.0.0.1`) houdt een SSH-tunnel naar een echte server niet tegen, en die tunnel is precies wat deze test gebruikte. Op een echt account zou dat kijkstatus hebben gewist. In deze ronde liep het alleen tegen wegwerpdata, maar het effect is gemeten: de eerste versie wiste de vooraf gezaaide staat wel.
 
-`tests/e2e/personal-fixture.ts` legt nu per item de staat vast vóór de test en zet precies die terug. Een item met bestaande staat wordt overgeslagen. Open is dat een `mark_unwatched` een rij met `watched=false` achterlaat in plaats van niets; de tests behandelen dat als geen staat.
+De tussenversie zette de staat per item terug. Dat bleek niet exact te kunnen: geen route haalt een `watch_states`-rij weg, dus `watched=false` en `play_count` bleven staan. De huidige `tests/e2e/personal-fixture.ts` maakt daarom per test een eigen `member`-account en verwijdert dat erna. Verwijderen ruimt favorieten, beoordelingen en kijkstatus op via `ON DELETE CASCADE` (`0020_personal.sql`, `0007_users_sessions.sql`). Elke rij, ook `watched=false` met `play_count`, telt als bestaande staat en leidt tot overslaan. `PLEYA_E2E_SERVER_ID` moet gelijk zijn aan `server.id` uit `GET /info`, want `127.0.0.1` kan een tunnel naar een echte server zijn; `scripts/e2e-stack.sh` geeft die waarde mee. `player.spec.ts` schreef wel kijkstatus naar het inlogaccount en blokkeert `watch-state` nu met een route.
+
+## Review van de volledige branch
+
+Kandidaat: de commit die dit rapport bijwerkt, bovenop `9d4b5ba42`, 4 commits achter `origin/main` (`d9edacc88`) en niet gemerged. De exacte SHA staat in de overdracht. Image van de eindronde: `sha256:04fd13bf3c444e4baacf45cc253f9cd3b48051a93ff49f9c5602bcc4b275eb90`. Die image is gebouwd vóór drie latere wijzigingen zonder gedragseffect: uitlijning in `handlers_transcode.go`, de testfixture en de spiegel in `errors_test.go`.
+
+Drie onafhankelijke reviews lazen de hele diff (Dart, Go met gates, web). Een vierde ronde las alleen de correcties. Elke correctie hieronder is eerst nagelopen tegen code en contract.
+
+| Bevinding | Ernst | Herstel | Bewijs |
+|---|---|---|---|
+| Bitmap-inbranden via een losse invoer schoof elke cue naar nul | blocker | `[0:<index>]overlay` uit de bron, geen extractie meer voor inbranden | ffmpeg 5.1.9, cue op 4 tot 6 s: oud 800 heldere pixels op 1 s en 0 op 5 s, nieuw 0 op 1 s en 800 op 5 s |
+| `playback_started` zonder `cause` viel terug op `reclaim`: bij een lease van een andere sessie ging de kijkbeurt verloren | blocker | `cause: user_started` onder `watch_state_ownership` | rode unittest, plus e2e op de echte server: `play_count` gaat van 1 naar 2 |
+| Een nieuwe kijkbeurt met een oude revisie werd geweigerd | major | één herhaling van de start met de revisie uit het antwoord | rode unittest |
+| Positie 0 geschreven na een mediafout en bij hervatten | major | laatste positie bewaren, starten op `playing`, geen rapport bij HLS met een hervatpunt | rode tests, negatieve controle op beide bewakingen |
+| Uitloggen zonder accesstoken liet in cookiemodus de sessie leven | major | eerst de cookie verzilveren, dan `POST /auth/logout` | rode unittest |
+| Refreshtoken na setup in `localStorage`; opnieuw inloggen zou een tweede sessie achterlaten | major | setupsessie intrekken, daarna cookielogin; bij mislukte login geen tokens | zie onder |
+| Kijklijst verdween bij elke online/offline-wissel | major | rebind alleen bij bronwijziging of andere Plex-scope | 11 rode tests, nu groen |
+| Mislukte bronwissel tijdens HLS hervatte een verwijderde sessie | major | rollback opent eenmalig een nieuw plan | beslissing en brontekst getest; `_reloadMediaInPlace` zelf niet gedraaid |
+| Ondertitelmenu liep uit de pas bij direct play | major | `preferredSubtitleId` ook bij direct play | 4 rode tests, nu groen |
+| Persoonlijke e2e kon echte accountdata raken | major | tijdelijke accounts per test | zie onder |
+| `playback.selection_invalid` ontbrak in de foutentabel, `go test` was daardoor rood | major | regel in hoofdstuk 7.1 en de spiegel in `errors_test.go`; de code stond al in `openapi.yaml` | `internal/api` groen |
+
+**Setup en cookie.** Op een verse stack maakte de echte setuppagina de eigenaar aan. Daarna was `localStorage` en `sessionStorage` vrij van tokens, stond `pleya_refresh` niet in `document.cookie`, was de cookie `HttpOnly` en `SameSite=Strict`, overleefde de sessie een herlaadbeurt, en toonde `GET /sessions` twee rijen: de browser en de controlelogin. Blind opnieuw inloggen had een derde rij achtergelaten. Setup blijft een token in het antwoordlichaam krijgen, want `SetupRequest` is gesloten; dat token leeft alleen in een lokale variabele tot de logout. `auth.spec.ts` bevat deze test en slaat hem over zodra een andere spec de setup al deed, dus hij moet als eerste op een verse stack draaien.
+
+**E2E.** `personal.spec.ts`, `personal-matrix.spec.ts` en `player.spec.ts`: 18 van 18 in Chromium. Het eigenaarsaccount kreeg vooraf een favoriet en een beoordeling; `diff` van de staat vóór en na de run is leeg, en na de run staat alleen de eigenaar in `GET /users`. Met een verkeerde `PLEYA_E2E_SERVER_ID` faalt de test voordat er een account ontstaat.
+
+**A-B-A.** Geen codewijziging. Favoriet en beoordeling zijn idempotente `PUT`s. Een tweede `mark_watched` verhoogt `play_count` niet (`watch.go:252`) en schrijft geen geschiedenisrij (`watch.go:103`); de e2e bevestigt `play_count` 1 na twee keer markeren. Een andere beoordeling in de tweede klik is een nieuwe keuze van de gebruiker.
+
+**Tests.** Web: `bun run check` 0 fouten, vitest 1018 van 1018. Dart: gewijzigde bestanden `flutter analyze` schoon en `dart format` zonder wijziging, gerichte tests groen; de volledige Flutter-suite is niet gedraaid. Go: `gofmt -l` leeg, `go vet ./...` schoon, 29 van 29 pakketten groen met `scripts/test-image.sh`, `scripts/go-tool.sh` en `scripts/test-db.sh`, dus met ffmpeg en een echte Postgres. Die suite draaide op de Mac, omdat Docker Desktop op Windows tijdens de laatste run wegviel; de eerdere Windows-run bevestigde `transcode` op ffmpeg 5.1.9, maar haalde `scanner` niet (time-out van 600 s, op de Mac 47 s groen). `scripts/check_protocol.sh`: contract en fixtures in orde.
+
+### Open punten
+
+Eén punt vraagt een besluit. `ExtractSubtitle` leest het hele bronbestand en het contract begrenst dat tot de starttimeout van 30 s (`openapi.yaml`, `getSubtitle`). Op een groot bestand faalt een ingebed tekstspoor daardoor met 502, ook bij inbranden; hetzelfde geldt voor `GET` van een bitmapspoor. Inbranden van bitmaps heeft dit probleem niet meer. Een ruimere grens vraagt een geopend protocolvenster.
+
+Informatief, niet aangepakt:
+
+- `tracks.ts:93`: één ongeldig blok verwerpt de hele SRT.
+- `+layout.svelte:171`: "still signed in" verdwijnt in cookiemodus.
+- `watchProgress.ts:36`: de interval loopt door tijdens pauze en verlengt de lease.
+- HLS past `startAt` nog steeds niet toe; de speler rapporteert in dat geval niets, dus de hervatpositie blijft staan maar de kijkbeurt telt niet mee.
+- `detail_track_preview.dart:49`, `language_settings_screen.dart:202`, `track_manager.dart:297`: drie kleine punten rond taalvoorkeuren.
+- Go: `subtitles.go:64` (busy vóór cache), `subtitles.go:99` (context van de eerste aanvrager), `handlers_playback.go:99` (404 in plaats van 400), `server.go:517` (cookiepad op HLS).
+- Niet geverifieerd: de rollback op echte hardware, en of de echte Plex Home-binder de clientmap wijzigt.
+
+De image-digest van de eerdere herbouw (`d508b26b…`) week af van de eerste bouw uit dezelfde bron. Dat is genoteerd en niet onderzocht; er is geen aanwijzing dat het gedrag raakt.
 
 ## Beelden
 
@@ -90,7 +136,7 @@ Opgeslagen in `.build/pleya-completion-evidence/windows-docker/` (15 bestanden: 
 | Server op Linux/amd64 in Docker Desktop | ja | NAS-kernel en rechten (daar draait uid 1026:100), `fuseblk`-USB-schijf |
 | Client op iPhone, iPad, Apple TV, macOS, Android | nee | echte hardware; de app-clients zijn in deze ronde niet gebouwd of aangeraakt |
 | Kijkgeschiedenis uit Plex migreren | nee, alleen voorstel en synthetische droogloop | PS-12 is dicht; zie het voorstel |
-| Transcodering, HLS-speler, subtitels | nee, niet in scope | aparte fasen |
+| Transcodering, HLS-speler, subtitels | deels: inbranden van bitmapondertitels met ffmpeg 5.1.9 in Docker, rest niet | aparte fasen |
 
 Beperkingen van de run zelf:
 
@@ -105,7 +151,9 @@ In de logs staat geen hook-time-out. De commit van het checkpoint liep door de e
 
 ## Opruimen en toegang
 
-Alle Docker-objecten van de test (twee projecten, vier containers en tien volumes) zijn te selecteren op het label `pleya.task=windows-test`. Opruimen gebeurt alleen op dat label.
+Stand op 30 oktober, einde sessie: Docker Desktop op de Windows-pc stopte tijdens de laatste testronde. De oorzaak is niet vastgesteld. Daarmee lagen ook `Gomberttunnel` en `n8n-2025` stil. Over SSH is er niets herstart: dat is de gedeelde sessie van Michel. Het project `pleya-win-test`, de hulpcontainer `pleya-win-gobox`, hun volumes en `C:\pleya-test\win-test` staan er nog en moeten na de herstart op label worden opgeruimd.
+
+Alle Docker-objecten van de test zijn te selecteren op het label `pleya.task=windows-test`. Opruimen gebeurt alleen op dat label.
 
 De SSH-toegang die hiervoor is geopend (OpenSSH op poort 2222, gebruiker `developer`, firewallregel "Pleya test SSH", map `C:\pleya-test`) staat nog open. Docker-toegang voor `developer` komt in de praktijk neer op toegang tot de C-schijf via mounts. Michel kan die toegang weer sluiten met de opdrachten onderaan het Poort W-bericht van deze sessie.
 

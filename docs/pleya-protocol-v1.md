@@ -537,6 +537,7 @@ contract keurt ze af.
 | `playback.version_unavailable` | 409 | ja | het bestand is er wel maar nu niet te lezen |
 | `playback.range_not_satisfiable` | 416 | nee | de gevraagde range valt buiten het bestand |
 | `playback.not_playable` | 415 | nee | deze versie is niet zonder bewerking te leveren |
+| `playback.selection_invalid` | 400 | nee | de gevraagde kwaliteit, audio of ondertitel past niet bij deze versie |
 | `playback.transcode_busy` | 503 | ja | alle omzetsessies zijn bezet |
 | `playback.transcode_failed` | 502 | nee | de omzetting leverde geen speelbare uitvoer |
 | `memory.invalid` | 400 | nee | ongeldige geheugensnapshot, geen inhoud in foutbody |

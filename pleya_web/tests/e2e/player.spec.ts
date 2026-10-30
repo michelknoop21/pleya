@@ -43,6 +43,8 @@ test.describe('de speler', () => {
       const bearer = request.headers()['authorization'];
       if (url.origin === new URL(page.url()).origin && url.pathname.startsWith('/pleya/v1/') && bearer?.startsWith('Bearer ')) apiBearers.set(page, bearer.slice(7));
     });
+    // Deze spec draait ook tegen een echte server: afspelen mag geen kijkstatus van dat account schrijven.
+    await page.route('**/pleya/v1/watch-state', (route) => route.abort());
     await signIn(page);
   });
 

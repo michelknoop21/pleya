@@ -447,6 +447,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     bool useCurrentAudioStreamSelection = true,
     String reason = 'media reload',
     bool Function()? shouldContinue,
+    bool reopeningFailedReload = false,
   }) async {
     if (!(shouldContinue?.call() ?? true)) return false;
     if (widget.isLive) {
@@ -480,6 +481,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         : null;
     final wasPlayingBeforeReload = _playbackIntentShouldPlay;
     var didOpenReplacement = false;
+    Duration? reopenAt;
 
     // Capture context-dependent values before async gaps. The neutral
     // [PlaybackInitializationService] consumes [mediaClient] regardless of
@@ -775,11 +777,18 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         VideoPlayerScreenState._activeId = previousMetadata.id;
         VideoPlayerScreenState._activeMediaIndex = previousMediaIndex;
         _hasFirstFrame.value = previousHasFirstFrame;
-        // If the stop report already went out, un-latch the tracker so the
-        // resumed session keeps reporting (and its eventual real stop sends).
-        _progressTracker?.resumeAfterStoppedReport();
-        if (wasPlayingBeforeReload && mounted && player == currentPlayer) {
-          unawaited(_playWithPlaybackIntent(currentPlayer));
+        if ((_playbackSession?.holdsServerConversion ?? false) && !reopeningFailedReload) {
+          // The stop that preceded the failed plan ended this conversion, so
+          // resuming would play out the buffer and stop. It has to come first:
+          // with every slot taken a new plan is refused while the old one runs.
+          reopenAt = currentPlayer.state.position;
+        } else {
+          // If the stop report already went out, un-latch the tracker so the
+          // resumed session keeps reporting (and its eventual real stop sends).
+          _progressTracker?.resumeAfterStoppedReport();
+          if (wasPlayingBeforeReload && mounted && player == currentPlayer) {
+            unawaited(_playWithPlaybackIntent(currentPlayer));
+          }
         }
       } else if (_progressTracker == null && player == currentPlayer) {
         // The new file is playing and its session is committed — keep the
@@ -807,7 +816,6 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       if (mounted) {
         showErrorSnackBar(context, friendlyError(e));
       }
-      return true;
     } finally {
       // Release the reload transition unless a newer flow already took
       // ownership (a non-reload attempt force-idles it; a newer reload can
@@ -846,5 +854,24 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         );
       }
     }
+
+    // Past the finally, so this reload can claim the transition for itself.
+    if (reopenAt != null) {
+      await _reloadMediaInPlace(
+        metadata: previousMetadata.copyWith(viewOffsetMs: reopenAt.inMilliseconds),
+        selectedMediaIndex: previousMediaIndex,
+        selectedMediaSourceId: _requestedMediaSourceId,
+        qualityPreset: _selectedQualityPreset,
+        selectedAudioStreamId: _selectedAudioStreamId,
+        selectedSubtitleStreamId: _serverSupportsSubtitleSelection
+            ? _selectedSourceSubtitleStreamIdForControls(_sourceSubtitleTracksForControls())
+            : null,
+        resumePosition: reopenAt,
+        reason: 'reopen after a failed reload',
+        shouldContinue: shouldContinue,
+        reopeningFailedReload: true,
+      );
+    }
+    return true;
   }
 }

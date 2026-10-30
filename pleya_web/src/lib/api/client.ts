@@ -213,17 +213,28 @@ export class PleyaClient {
       username: string;
       password: string;
     } & DeviceFields
-  ): Promise<TokenPair> {
+  ): Promise<void> {
     const generation = ++this.#sessionGeneration;
-    // SetupRequest is closed in the contract: credential_mode belongs to login and refresh only, and the
-    // server answers it with a 401 that reads as a bad setup code. Setup therefore runs in token mode;
-    // the next explicit login moves the session to the cookie.
-    const pair = await this.#unwrap(this.#raw.POST('/auth/setup', { body: input }));
+    const { setup_code, ...credentials } = input;
+    // SetupRequest is gesloten: credential_mode hoort bij login en refresh, en de server antwoordt erop
+    // met een 401 die leest als een verkeerde setupcode. Setup levert dus altijd een refreshtoken in het
+    // lichaam. Op een server met cookie_auth wordt dat nergens bewaard: de setupsessie gaat eerst dicht,
+    // anders blijft hij als tweede rij in de toestellenlijst staan, en daarna volgt de cookielogin.
+    const pair = await this.#unwrap(this.#raw.POST('/auth/setup', { body: { setup_code, ...credentials } }));
     if (generation !== this.#sessionGeneration) throw new Error('Account changed during setup');
-    this.#cookieAuth = false;
-    this.tokens.setMemoryOnly(false);
-    this.tokens.set(pair);
-    return pair;
+    if (!this.#supportsCookieAuth) {
+      this.#cookieAuth = false;
+      this.tokens.setMemoryOnly(false);
+      this.tokens.set(pair);
+      return;
+    }
+    await this.#raw
+      .POST('/auth/logout', { headers: { Authorization: `Bearer ${pair.access_token}` } })
+      .catch(() => undefined);
+    if (generation !== this.#sessionGeneration) throw new Error('Account changed during setup');
+    // De setupcode is nu verbruikt, dus een fout hier is geen mislukte setup: de eigenaar bestaat en de
+    // router stuurt hem zonder sessie naar het inlogscherm.
+    await this.login(credentials).catch(() => undefined);
   }
 
   async login(input: { username: string; password: string } & DeviceFields): Promise<TokenPair> {
@@ -265,6 +276,9 @@ export class PleyaClient {
    */
   async signOut(options: { remote?: boolean } = {}): Promise<void> {
     const generation = ++this.#sessionGeneration;
+    // In cookiemodus is een verlopen accesstoken geen reden om de sessie te laten leven: de cookie is
+    // voor JavaScript niet te wissen, en de volgende herlaadbeurt zou er weer mee inloggen.
+    if (options.remote && this.#cookieAuth && !this.tokens.accessToken) await this.bearer();
     if (options.remote && this.tokens.accessToken) {
       try {
         await this.#raw.POST('/auth/logout', {});

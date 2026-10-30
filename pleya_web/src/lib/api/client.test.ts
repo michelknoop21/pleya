@@ -432,6 +432,25 @@ describe('afmelden', () => {
     expect(tokens.refreshToken).toBeNull();
   });
 
+  it('verzilvert in cookiemodus eerst de cookie als het accesstoken verlopen is, anders blijft de sessie leven', async () => {
+    const seen: { path: string; auth: string | null }[] = [];
+    const tokens = new TokenStore(memoryStorage(), memoryStorage());
+    const client = new PleyaClient({ baseUrl: BASE, tokens, fetch: (async (input: RequestInfo | URL) => {
+      const request = input as Request;
+      const path = new URL(request.url).pathname.replace('/pleya/v1', '');
+      seen.push({ path, auth: request.headers.get('Authorization') });
+      if (path === '/info') return json({ capabilities: { cookie_auth: true } });
+      if (path === '/auth/refresh') return json({ access_token: 'fresh-A', expires_in_ms: 900_000 });
+      return new Response(null, { status: 204 });
+    }) as FetchLike });
+    await client.info();
+
+    await client.signOut({ remote: true });
+
+    expect(seen.slice(1)).toEqual([{ path: '/auth/refresh', auth: null }, { path: '/auth/logout', auth: 'Bearer fresh-A' }]);
+    expect(tokens.accessToken).toBeNull();
+  });
+
   it('meldt lokaal toch af als de server niet bereikbaar is', async () => {
     const fetchImpl = vi.fn(async () => {
       throw new TypeError('Failed to fetch');
@@ -590,15 +609,19 @@ it('does not return an old successful response after account replacement', async
 });
 
 describe('existing cookie-auth contract', () => {
-  function cookieServer(supports = true) {
+  function cookieServer(supports = true, failing?: string) {
     const storage = stores();
-    const seen: { path: string; body: Record<string, unknown> | null }[] = [];
+    const seen: { path: string; body: Record<string, unknown> | null; auth: string | null }[] = [];
     const client = new PleyaClient({ baseUrl: BASE, tokens: storage.tokens, fetch: (async (input: RequestInfo | URL) => {
       const request = input as Request;
       const path = new URL(request.url).pathname.replace('/pleya/v1', '');
-      const body = request.method === 'POST' ? await request.json() : null;
-      seen.push({ path, body });
+      const raw = request.method === 'POST' ? await request.text() : '';
+      const body = raw ? JSON.parse(raw) : null;
+      seen.push({ path, body, auth: request.headers.get('Authorization') });
+      if (path === failing) return json({ error: { code: 'server.unavailable', message: 'canned' } }, 503);
       if (path === '/info') return json({ capabilities: { cookie_auth: supports } });
+      if (path === '/auth/logout') return new Response(null, { status: 204 });
+      if (path === '/auth/setup') return json({ access_token: 'setup-A', refresh_token: 'setup-R', expires_in_ms: 900000 });
       const cookie = body?.credential_mode === 'cookie';
       return json({ access_token: 'new-A', expires_in_ms: 900000, ...(cookie ? {} : { refresh_token: 'new-R' }) });
     }) as FetchLike });
@@ -634,15 +657,42 @@ describe('existing cookie-auth contract', () => {
     expect(persistent.getItem('pleya.refresh_token')).toBeNull();
     expect(session.getItem('pleya.access_token')).toBeNull();
   });
-  it('never sends credential_mode on setup: the contract closes SetupRequest, so it is token mode until the next login', async () => {
-    const { client, seen, persistent } = cookieServer();
+  it('moves setup to a cookie session and retires the setup session first', async () => {
+    const { client, seen, tokens, persistent, session } = cookieServer();
+    await client.info();
+    await client.setup({ setup_code: 'fixture', username: 'owner', password: 'canned', device_id: 'browser' });
+    expect(seen.map(request => request.path)).toEqual(['/info', '/auth/setup', '/auth/logout', '/auth/login']);
+    expect(seen[1]?.body).not.toHaveProperty('credential_mode');
+    expect(seen[2]?.auth).toBe('Bearer setup-A');
+    expect(seen[3]?.body).toEqual({ username: 'owner', password: 'canned', device_id: 'browser', credential_mode: 'cookie' });
+    expect(tokens.accessToken).toBe('new-A');
+    expect(tokens.refreshToken).toBeNull();
+    expect(persistent.getItem('pleya.refresh_token')).toBeNull();
+    expect(session.getItem('pleya.access_token')).toBeNull();
+  });
+  it('leaves no token behind when the cookie login after setup fails', async () => {
+    const { client, tokens, persistent, session } = cookieServer(true, '/auth/login');
     await client.info();
     await client.setup({ setup_code: 'fixture', username: 'owner', password: 'canned' });
-    expect(seen.find(request => request.path === '/auth/setup')?.body).not.toHaveProperty('credential_mode');
-    expect(persistent.getItem('pleya.refresh_token')).toBe('new-R');
-    await client.login({ username: 'owner', password: 'canned' });
-    expect(seen.find(request => request.path === '/auth/login')?.body).toMatchObject({ credential_mode: 'cookie' });
+    expect(tokens.accessToken).toBeNull();
+    expect(tokens.refreshToken).toBeNull();
     expect(persistent.getItem('pleya.refresh_token')).toBeNull();
+    expect(session.getItem('pleya.access_token')).toBeNull();
+  });
+  it('still moves to the cookie when retiring the setup session fails', async () => {
+    const { client, seen, tokens, persistent } = cookieServer(true, '/auth/logout');
+    await client.info();
+    await client.setup({ setup_code: 'fixture', username: 'owner', password: 'canned' });
+    expect(seen.at(-1)?.path).toBe('/auth/login');
+    expect(tokens.accessToken).toBe('new-A');
+    expect(persistent.getItem('pleya.refresh_token')).toBeNull();
+  });
+  it('keeps the token pair of setup on a server without cookie_auth', async () => {
+    const { client, seen, persistent } = cookieServer(false);
+    await client.info();
+    await client.setup({ setup_code: 'fixture', username: 'owner', password: 'canned' });
+    expect(seen.map(request => request.path)).toEqual(['/info', '/auth/setup']);
+    expect(persistent.getItem('pleya.refresh_token')).toBe('setup-R');
   });
 });
 

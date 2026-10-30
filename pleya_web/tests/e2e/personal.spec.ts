@@ -1,29 +1,40 @@
 import {expect,test,type APIRequestContext,type Page} from '@playwright/test';
-import {expectNoAxeViolations,expectNoHorizontalOverflow,grid,openLibraryOfKind,signIn} from './helpers';
-import {restoreItem,snapshot,type ItemBaseline} from './personal-fixture';
+import {expectNoAxeViolations,expectNoHorizontalOverflow,grid,label,openLibraryOfKind} from './helpers';
+import {createTemporaryAccount,deleteTemporaryAccount,itemState,markWatched,signInAs,type TemporaryAccount} from './personal-fixture';
 
-const touched=new Map<string,ItemBaseline>();
+let account:TemporaryAccount;
 async function openFirstMovie(page:Page,request:APIRequestContext,baseURL:string):Promise<string>{
   await openLibraryOfKind(page,'movies');await grid(page).getByRole('listitem').first().getByRole('link').click();
   await page.waitForURL(/\/items\/[^/]+$/);const id=new URL(page.url()).pathname.split('/').pop()!;
   await track(request,baseURL,id);return id;
 }
 async function track(request:APIRequestContext,baseURL:string,id:string):Promise<void>{
-  const baseline=await snapshot(request,baseURL,id);
-  test.skip(!baseline||baseline.hadState,'item already has personal state; the suite does not overwrite it');
-  touched.set(id,baseline!);
+  const state=await itemState(request,baseURL,account,id);
+  test.skip(!state||state.hadState,'item already has personal state; the suite does not overwrite it');
 }
-test.beforeEach(async({page,baseURL})=>{
+test.beforeEach(async({page,request,baseURL})=>{
   test.skip(process.env['PLEYA_E2E_PERSONAL']!=='1','personal mutations require the disposable-fixture opt-in');
   expect(new URL(baseURL!).hostname).toBe('127.0.0.1');
-  await signIn(page);
+  account=await createTemporaryAccount(request,baseURL!);await signInAs(page,account);
 });
 test.afterEach(async({page,request,baseURL})=>{
   await page.unrouteAll({behavior:'ignoreErrors'});
-  if(!page.url().includes('/login')&&await page.getByRole('navigation').count()){
-    await page.goto('/server');await page.getByRole('button',{name:'Logout',exact:true}).click();await page.waitForURL('**/login');
-  }
-  for(const [id,baseline] of touched)await restoreItem(request,baseURL!,id,baseline);touched.clear();
+  if(account)await deleteTemporaryAccount(request,baseURL!,account);
+});
+test('a row left by mark_unwatched and its play_count count as existing state',async({page,request,baseURL})=>{
+  const id=await openFirstMovie(page,request,baseURL!);
+  await markWatched(request,baseURL!,account,id,true);await markWatched(request,baseURL!,account,id,true);
+  expect(await itemState(request,baseURL!,account,id)).toMatchObject({watched:true,playCount:1,hadState:true});
+  await markWatched(request,baseURL!,account,id,false);
+  expect(await itemState(request,baseURL!,account,id)).toMatchObject({watched:false,playCount:1,hadState:true});
+});
+test('playing takes the viewing over from another session and records it on the real server',async({page,request,baseURL})=>{
+  test.setTimeout(90_000);
+  const id=await openFirstMovie(page,request,baseURL!);
+  await markWatched(request,baseURL!,account,id,true);await markWatched(request,baseURL!,account,id,false);
+  await page.reload();
+  await page.getByRole('link',{name:label('en','player.playFromStart'),exact:true}).or(page.getByRole('link',{name:label('en','player.play'),exact:true})).first().click();
+  await expect.poll(async()=>(await itemState(request,baseURL!,account,id))?.playCount,{timeout:60_000}).toBe(2);
 });
 test('detail personal actions survive refresh and are reachable from My Pleya',async({page,request,baseURL})=>{
   await openFirstMovie(page,request,baseURL!);
@@ -76,7 +87,7 @@ test('logging out while a favorite is pending raises no page error and leaves no
   await page.getByRole('button',{name:'Add to favorites',exact:true}).click();
   await page.goto('/server');await page.getByRole('button',{name:'Logout',exact:true}).click();await page.waitForURL('**/login');
   await page.waitForTimeout(1200);
-  await page.unrouteAll({behavior:'ignoreErrors'});await signIn(page);
+  await page.unrouteAll({behavior:'ignoreErrors'});await signInAs(page,account);
   await page.goto('/server');await page.getByRole('link',{name:'Favorites',exact:true}).click();
   await expect(page.getByRole('list',{name:'Favorites',exact:true}).getByRole('listitem')).toHaveCount(0);
   expect(errors).toEqual([]);
