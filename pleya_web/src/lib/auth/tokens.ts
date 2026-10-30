@@ -2,6 +2,9 @@
 
 const REFRESH_KEY = 'pleya.refresh_token';
 const ACCESS_KEY = 'pleya.access_token';
+// Gedeeld tussen tabbladen: de HttpOnly-cookie is dat ook, en die is voor JavaScript niet te wissen.
+const EPOCH_KEY = 'pleya.session_epoch';
+const SIGNED_OUT_KEY = 'pleya.signed_out';
 
 /** Marge op het vervalmoment, zodat een token niet onderweg verloopt. */
 const EXPIRY_SKEW_MS = 30_000;
@@ -118,6 +121,42 @@ export class TokenStore {
     }
     try {
       this.#persistent?.removeItem(REFRESH_KEY);
+    } catch {
+      // niets te doen
+    }
+  }
+
+  #read(key: string): string | null {
+    try {
+      return this.#persistent?.getItem(key) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Verandert bij elke in- en uitlog in dit browserprofiel, ook in een ander tabblad. */
+  get epoch(): string | null {
+    return this.#read(EPOCH_KEY);
+  }
+
+  rotateEpoch(): string | null {
+    try {
+      this.#persistent?.setItem(EPOCH_KEY, `${Date.now()}-${Math.random()}`);
+    } catch {
+      // Opslag geweigerd: dan is er ook geen ander tabblad om mee te vergelijken.
+    }
+    return this.epoch;
+  }
+
+  /** Waar als een uitlog de cookiesessie niet op de server kon sluiten. */
+  get signedOut(): boolean {
+    return this.#read(SIGNED_OUT_KEY) !== null;
+  }
+
+  setSignedOut(value: boolean): void {
+    try {
+      if (value) this.#persistent?.setItem(SIGNED_OUT_KEY, '1');
+      else this.#persistent?.removeItem(SIGNED_OUT_KEY);
     } catch {
       // niets te doen
     }

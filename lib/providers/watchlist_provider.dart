@@ -401,16 +401,17 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
     if (key == null) return WatchlistOutcome.unsupported;
 
     final generation = _generation;
+    bool isCurrent() => !isDisposed && _generation == generation && identical(this.repository, repository);
     WatchlistMembership? created;
     final outcome = await WatchlistActions.add(
       repository: repository,
       item: item,
       isOffline: isOffline,
-      isCurrent: () => !isDisposed && _generation == generation,
+      isCurrent: isCurrent,
       onAdded: (membership) => created = membership,
     );
 
-    if (isDisposed || _generation != generation) return outcome;
+    if (!isCurrent()) return outcome;
     final membership = created;
     if (outcome != WatchlistOutcome.added || membership == null) return outcome;
 
@@ -445,14 +446,15 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
     if (repository == null) return WatchlistOutcome.unsupported;
 
     final generation = _generation;
+    bool isCurrent() => !isDisposed && _generation == generation && identical(this.repository, repository);
     final outcome = await WatchlistActions.remove(
       sources: repository.sources,
       entry: entry,
       isOffline: isOffline,
-      isCurrent: () => !isDisposed && _generation == generation,
+      isCurrent: isCurrent,
     );
 
-    if (isDisposed || _generation != generation) return outcome;
+    if (!isCurrent()) return outcome;
     switch (outcome) {
       case WatchlistOutcome.removed:
         _entries = _entries.where((e) => e.key != entry.key).toList();

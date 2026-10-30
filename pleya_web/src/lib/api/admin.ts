@@ -20,7 +20,8 @@ import type {
   StreamSessionSummary,
   TranscodeSessionList,
   UpdateLibraryRequest,
-  User
+  User,
+  WatchHistory
 } from './types';
 
 /** De paden hieronder, voor de test die bewijst dat een lid ze nooit raakt. */
@@ -39,11 +40,16 @@ export const ADMIN_PATHS = [
   // S10.6: het auditlog (de tokenroutes zelf zijn klasse `authenticated`).
   '/audit',
   // S25.6: back-ups en terugzetten.
-  '/backups'
+  '/backups',
+  // S20.4: "Bekeken door" op het detailscherm.
+  '/watch-history'
 ] as const;
 
 export function adminApi(client: PleyaClient) {
   return {
+    watchHistory: async (days: number, signal?: AbortSignal): Promise<WatchHistory> =>
+      client.request((raw) => raw.GET('/watch-history', { params: { query: { days } }, signal })),
+
     users: async (signal?: AbortSignal): Promise<User[]> =>
       (await client.request((raw) => raw.GET('/users', { signal }))).items,
 

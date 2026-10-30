@@ -291,6 +291,16 @@ func withSessionID(ctx context.Context, sessionID id.ID) context.Context {
 	return context.WithValue(ctx, sessionContextKey{}, sessionID)
 }
 
+// withClaimsAndSession zet ook de sid in de context, zodat copyRange op een
+// `authenticated`-route (zoals een download) stopt bij een ingetrokken sessie.
+func withClaimsAndSession(ctx context.Context, claims auth.Claims) context.Context {
+	ctx = withClaims(ctx, claims)
+	if sessionID, err := id.Parse(claims.Sid); err == nil {
+		ctx = withSessionID(ctx, sessionID)
+	}
+	return ctx
+}
+
 // sessionIDFromContext geeft de sid van deze aanvraag, of id.Nil. Gebruikt door
 // copyRange om per blok het intrekkingsregister te raadplegen (DEC-120).
 func sessionIDFromContext(ctx context.Context) id.ID {
@@ -345,7 +355,7 @@ func (s *Server) authenticated(next http.HandlerFunc) http.Handler {
 		if !s.sessionLives(w, claims) {
 			return
 		}
-		next(w, r.WithContext(withClaims(r.Context(), claims)))
+		next(w, r.WithContext(withClaimsAndSession(r.Context(), claims)))
 	})
 }
 
@@ -391,7 +401,7 @@ func (s *Server) authenticatedByAPIToken(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	ctx := withAPIScope(withClaims(r.Context(), claims), identity.Scope)
+	ctx := withAPIScope(withClaimsAndSession(r.Context(), claims), identity.Scope)
 	next(w, r.WithContext(ctx))
 }
 

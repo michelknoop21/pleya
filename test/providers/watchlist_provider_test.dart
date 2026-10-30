@@ -196,6 +196,17 @@ void main() {
     expect(store.isOnWatchlistByKey('plex:abc'), isNull);
   });
 
+  test('a late add cannot land in the list of a repository that replaced it', () async {
+    final pending = _PendingAddSource();
+    final provider = providerWith(sources: [pending]);
+    final adding = provider.addToWatchlist(entry().item, isOffline: false);
+    await pending.started.future;
+    provider.repository = WatchlistRepository(sources: []);
+    pending.result.complete(WatchlistMembership(scope: plexScope, remoteKey: 'abc'));
+    await adding;
+    expect(provider.entries, isEmpty);
+  });
+
   test('a source rebind also clears optimistic patches in the current profile', () {
     final store = WatchlistStore()..bindProfile('one');
     addTearDown(store.dispose);

@@ -1,5 +1,6 @@
 import type { UserState, WatchStateEvent } from './types';
 import { realTimers, type Timers } from './transcodeHold';
+import { randomId } from '../auth/device';
 
 interface Options {
   report: (body: WatchStateEvent, keepalive: boolean) => Promise<UserState>;
@@ -15,7 +16,7 @@ interface Options {
 export class WatchProgress {
   #options: Options;
   #timers: Timers;
-  #sessionId = crypto.randomUUID();
+  #sessionId = randomId();
   #revision: number | undefined;
   #started = false;
   #startRetried = false;

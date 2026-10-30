@@ -39,7 +39,7 @@ function defaultStorage(): DeviceStorage | null {
 }
 
 /** Een UUID v4 uit getRandomValues: randomUUID bestaat alleen in een secure context, en http://nas:8832 is dat niet. */
-function randomId(): string {
+export function randomId(): string {
   const bytes = new Uint8Array(16);
   try {
     crypto.getRandomValues(bytes);

@@ -163,16 +163,60 @@ Zonder venster blijft het zoals het is: een groot MKV met alleen een ingebed spo
 
 | Pakket | Klaar | Ontbreekt | Wat nodig is |
 |---|---|---|---|
-| 5, webgebruik en installatie | Persoonlijke acties, setup met cookie, kijkstatus, SRT in de speler, Home, Films, Series, detail en favorieten als `[~]` met bewijs | S8.4 zoeken, S20.4 scherm 19 en "Bekeken door", S23.4 downloads op Mijn Pleya, S8.7, resten van S8.1 tot en met S8.6, S13.3, S13.4, S25.6-journey 13 | Bouwen, geen besluit nodig. Bewust niet in deze kandidaat: drie nieuwe schermen openen de nagekeken bron weer |
+| 5, webgebruik en installatie | Zie "Pakket 5 afgebouwd": S8.4 gereed; S20.4, S23.4 en S8.7 werkend binnen het bevroren contract | Contractdelen van S20.4 en S23.4, criterium 4 van S8.7, resten van S8.1 tot en met S8.6, S13.3, S13.4, S25.6-journey 13 | Besluiten 2 en 3 hieronder, visuele beoordeling, hardware |
 | 6, collecties en realtime | Niets | S19, S21 en S16 | Contractvenster per onderdeel |
 | 7, beveiliging en herstel | Lokale back-up en herstelproef, PS-12-voorstel | S15.1 tot en met S15.9, S25.7 off-site, PS-5-hardwareronde | `/auth/refresh` kent in het contract geen 429, dus S15.1 vraagt een venster; off-site bestemming en sleutelplaats; S15.9; hardware |
 | 8, overige scope | PS-15 is vrijgegeven, verder niets gebouwd op deze branch | S16, C-04-consumptie, boeken S3 tot en met S14, matrixgaps | Eigen vensters en vrijgaven |
 
-Mijlpaal B en C zijn niet gehaald, en de adversariële review op auth, rechten en migraties staat nog open.
+Mijlpaal B en C zijn niet gehaald. De adversariële review op auth, rechten en migraties is gedaan, zie hieronder.
+
+### Pakket 5 afgebouwd
+
+Gebouwd op `7e5d8e588`, zonder contractwijziging. De routes volgen de bestaande indeling onder `/server` en niet het pad `/my` uit de specificatie: Mijn Pleya en de favorieten staan daar al.
+
+| Taak | Wat werkt | Wat niet kan binnen het contract |
+|---|---|---|
+| S8.4 zoeken | Secties per soort met telling, cursor via "Meer laden", wisknop, lege staat met "Bedoelde je" (de laatste term met treffers) en een uitweg naar de catalogus | De chip Boeken: `GET /ebooks` bestaat niet op deze branch en `ItemKind` kent geen boek. Hij hoort bij PS-14 |
+| S20.4 scherm 19 | `/server/history`: regels per dag met voortgang, tijd en toestel, filter Films en Afleveringen over de geladen pagina's, paneel Favorieten, paneel met gewaardeerde titels | Geschiedenis wissen (`DELETE /history` ontbreekt), een volledige waarderingenlijst (`GET /ratings` ontbreekt), boeken in de geschiedenis |
+| S20.4 Bekeken door | Op film, serie en aflevering voor eigenaar en beheerder, venster 31 dagen | Een lid ziet de rij niet: `GET /watch-history` is klasse `admin`. Halfgekeken titels staan er niet in, dat is de definitie van die route |
+| S23.4 downloads | `/server/downloads`: titel, origineel, container, omvang, SHA-256, status, intrekken met bevestiging, automatisch verversen tijdens `preparing`, een titel buiten zicht blijft intrekbaar | Toestelnaam, recht per bibliotheek en ruimte per toestel staan niet in `Download` of `Library`; downloaden in de browser kan niet, want er zijn geen boeken |
+| S8.7 | Criterium 1 uit de bestaande Home-tests. Criterium 2: titel half gekeken via `POST /watch-state` staat met de juiste balk in Verder kijken en met 40% in de geschiedenis. Criterium 5: toetsenbord en axe op elke route, ook de drie nieuwe, in twee talen | Criterium 4: de vergelijking met de appbeelden is een oordeel. Zoeken, scherm 19 en 11b zijn naast de northstar gelegd; de fixture heeft geen artwork, dus een volledige vergelijking van 01 tot en met 09, 11 en 13 tot en met 15 staat open |
+
+**Een bevriezing op `main` gevonden.** Na de overstap op SvelteKit 3 (`a69dd7393`) las de zoekpagina `page.url` en `page.state` in een effect dat `goto` met `shallow` aanroept. `page.url` blijft daarbij staan en `page.state` wordt een nieuw object, dus elke toetsaanslag startte een oneindige lus en bevroor het tabblad vóór er een aanvraag uitging. `flow.spec.ts` dekte dit, maar die spec draaide in de eerdere rondes niet mee. De regel staat ongewijzigd op `origin/main`. Hersteld in `routes/search/+page.svelte`. `flow.spec.ts` had daarnaast vier verouderde verwachtingen sinds de Films- en Series-landings en de vlag `backups`; die zijn bijgewerkt.
+
+### Adversariële review op auth, rechten en migraties
+
+Onafhankelijk uitgevoerd op de exacte diff, geen hoge bevindingen. Geen `.sql` in de diff en geen nummerbotsing met `origin/main`.
+
+| Ernst | Bevinding | Afhandeling |
+|---|---|---|
+| Midden | Mislukte uitlog in cookiemodus: de cookie leeft door en de volgende paginalading logt stil weer in, ook met beheerrol | Hersteld: marker `pleya.signed_out` houdt herstel tegen tot de volgende login. Test eerst rood |
+| Midden | Tweede tabblad wisselt van A naar B; tabblad 1 ververst met de cookie van B en herhaalt een schrijfactie van A als B | Hersteld: `pleya.session_epoch` wordt vóór en na de refresh vergeleken. Twee tests eerst rood |
+| Midden | Webinloggen geeft `403 auth.origin_rejected` achter een tunnel zonder juiste `TRUSTED_PROXIES` of `WEB_ORIGIN` | Geen code. Uitrolcontrole: instellingen nakijken en één cookielogin op de testinstance. De NAS-`.env` is niet gelezen |
+| Laag | Gelijktijdige refresh in twee tabbladen kan de sessie laten vallen | Niet hersteld. Vraagt een Web Lock die op `http://nas:8832` niet bestaat; zeldzaam, alleen beschikbaarheid |
+| Laag | Een late `add` of `remove` overleeft een herbinding binnen een profiel | Hersteld met dezelfde repositorycontrole als `load`, test toegevoegd. Patches in `WatchlistStore` blijven bewust staan: twee bestaande tests leggen dat vast, en een patch stuurt geen schrijfactie |
+| Buiten de diff | `GET /downloads/{id}/file` en andere `authenticated`-routes zetten geen sid, dus een ingetrokken sessie stopt een lopende overdracht niet | Hersteld met `withClaimsAndSession` in beide authpaden, test toegevoegd; `internal/api` groen |
+
+De nieuwe code van deze ronde is niet opnieuw door dezelfde reviewer gelezen; de reparaties zijn gedekt door de tests hierboven. Eén eigen vondst daarnaast: `crypto.randomUUID` bestaat niet op `http://nas:8832`, wat `setWatched` en de start van de speler daar liet falen. `personal.ts` en `watchProgress.ts` gebruiken nu `randomId` uit `auth/device.ts`. Niet op `http` over het netwerk gemeten: 127.0.0.1 telt als veilige context.
+
+### Besluiten
+
+1. **Ondertitelvenster: open het, mijn advies.** Zonder venster blijft een groot MKV met alleen een ingebed spoor op `502` staan. Grens 10 minuten, één werker, zoals in het voorstel hierboven.
+   - Server: de extractie koppelt los van de aanvraag, loopt door en belandt in de cache. De aanvraag blijft binnen 30 s en geeft `200` of `503 playback.transcode_busy` met `Retry-After: 5`. Een herhaling sluit aan op de lopende extractie.
+   - Web: de speler herhaalt het ophalen in `subtitleText` volgens `Retry-After`. Flutter: de speler krijgt nu de URL zelf en mpv herhaalt niets, dus Flutter haalt de ondertitel eerst op met herhaling en geeft daarna een lokaal bestand door.
+   - Wat de kijker ziet: de film speelt door. Op de ondertitelknop staat "Ondertitels voorbereiden" tot ze er zijn, daarna verschijnen ze zonder actie.
+   - Herhalen stopt bij `200`, bij `401`, `404` of `502`, na 11 minuten, en zodra de kijker een ander spoor kiest, de speler verlaat of van account wisselt. Mislukken toont "Ondertitels konden niet worden voorbereid" met "Opnieuw"; de film blijft doorspelen.
+   - Tweede film: de werker is bezet, die film krijgt dezelfde melding en begint pas als de eerste klaar is. Dat duurt hoogstens 10 minuten. De eerste extractie loopt door als de kijker wegklikt, want het resultaat blijft in de cache.
+   - Gevolg voor de hardware: Flutter-gedrag vraagt een toestelproef, en een MKV groter dan de NAS in 10 minuten leest blijft `502`. De NAS-leessnelheid is niet gemeten.
+2. **Venster voor persoonlijke gegevens: voorkeur ja, klein.** `DELETE /history` en `DELETE /history/{id}` (vraag 31), `GET /ratings`, `kind` op `GET /history`.
+3. **Velden voor downloads en Bekeken door: voorkeur toestelnaam op `Download` en het eigen recht per bibliotheek op `Library`.** "Bekeken door" voor leden houd ik bij admin: wat een huisgenoot kijkt is privé, tenzij Michel dat anders wil.
+4. **Pakket 6: één venster per onderdeel, S19 eerst.** Dat is de kleinste stap met zichtbare waarde; S21 en S16 daarna.
+5. **Pakket 7: bestemming en sleutelplaats voor off-site, plus een venster voor `429` op `/auth/refresh`.** Voorkeur: off-site op een aparte schijf buiten de NAS, sleutel alleen in de wachtwoordkluis.
+6. **Pakket 8: boeken blijven achter PS-14.** Geen vrijgave nodig om pakket 5 te gebruiken.
 
 ### Niet uitgevoerd
 
-De hardwareproef is niet gedaan: geen iPhone, iPad, Apple TV, macOS-app of Android, en geen NAS. De rollback in `_reloadMediaInPlace` en de echte Plex Home-binder zijn dus niet live gezien. De volledige Flutter-suite is niet gedraaid. Er is geen digestonderzoek gedaan.
+De hardwareproef is niet gedaan: geen iPhone, iPad, Apple TV, macOS-app of Android, en geen NAS. De rollback in `_reloadMediaInPlace` en de echte Plex Home-binder zijn dus niet live gezien. De volledige Flutter-suite is niet gedraaid. Er is geen digestonderzoek gedaan. Imageproeven draaiden onder x86_64-emulatie op de Mac, niet op een amd64-host. Plex Home en de herbinding zijn niet samen getest op een stand met de vier main-commits: dat kan pas na integratie.
 
 ## Beelden
 

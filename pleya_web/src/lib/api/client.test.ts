@@ -609,8 +609,8 @@ it('does not return an old successful response after account replacement', async
 });
 
 describe('existing cookie-auth contract', () => {
-  function cookieServer(supports = true, failing?: string) {
-    const storage = stores();
+  function cookieServer(supports = true, failing?: string, shared?: ReturnType<typeof stores>, onRefresh?: () => void) {
+    const storage = shared ?? stores();
     const seen: { path: string; body: Record<string, unknown> | null; auth: string | null }[] = [];
     const client = new PleyaClient({ baseUrl: BASE, tokens: storage.tokens, fetch: (async (input: RequestInfo | URL) => {
       const request = input as Request;
@@ -621,12 +621,46 @@ describe('existing cookie-auth contract', () => {
       if (path === failing) return json({ error: { code: 'server.unavailable', message: 'canned' } }, 503);
       if (path === '/info') return json({ capabilities: { cookie_auth: supports } });
       if (path === '/auth/logout') return new Response(null, { status: 204 });
+      if (path === '/auth/refresh') onRefresh?.();
       if (path === '/auth/setup') return json({ access_token: 'setup-A', refresh_token: 'setup-R', expires_in_ms: 900000 });
       const cookie = body?.credential_mode === 'cookie';
       return json({ access_token: 'new-A', expires_in_ms: 900000, ...(cookie ? {} : { refresh_token: 'new-R' }) });
     }) as FetchLike });
     return { client, seen, ...storage };
   }
+  it('does not sign back in with the cookie after a logout that failed', async () => {
+    const { client, seen, tokens } = cookieServer(true, '/auth/logout');
+    await client.info();
+    await client.login({ username: 'owner', password: 'canned' });
+    await client.signOut({ remote: true });
+    expect(await client.restore()).toBe(false);
+    expect(seen.some(request => request.path === '/auth/refresh')).toBe(false);
+    await client.login({ username: 'owner', password: 'canned' });
+    tokens.clear();
+    expect(await client.restore()).toBe(true);
+  });
+  it('a tab whose account was replaced elsewhere stops instead of refreshing as the new account', async () => {
+    const shared = stores();
+    const tab = cookieServer(true, undefined, shared);
+    await tab.client.info();
+    await tab.client.login({ username: 'A', password: 'canned' });
+    const other = cookieServer(true, undefined, { ...shared, tokens: new TokenStore(shared.persistent, memoryStorage()) });
+    await other.client.info();
+    await other.client.login({ username: 'B', password: 'canned' });
+    tab.tokens.clear();
+    expect(await tab.client.restore()).toBe(false);
+    expect(tab.seen.some(request => request.path === '/auth/refresh')).toBe(false);
+  });
+  it('discards a refresh when the account changed while it was in flight', async () => {
+    const shared = stores();
+    const otherTab = new TokenStore(shared.persistent, memoryStorage());
+    const tab = cookieServer(true, undefined, shared, () => otherTab.rotateEpoch());
+    await tab.client.info();
+    await tab.client.login({ username: 'A', password: 'canned' });
+    tab.tokens.clear();
+    expect(await tab.client.restore()).toBe(false);
+    expect(tab.tokens.accessToken).toBeNull();
+  });
   it('requests cookie login and restores without a JavaScript refresh credential', async () => {
     const { client, seen, tokens, persistent, session } = cookieServer();
     await client.info();

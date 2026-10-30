@@ -162,7 +162,7 @@ test.describe('de verticale slice', () => {
 
     // Er is geen endpoint voor scannen, jobs of opslag, dus er is ook geen knop.
     const body = (await page.locator('body').innerText()).toLowerCase();
-    for (const absent of ['start scan', 'jobs', 'storage', 'backup', 'add library']) {
+    for (const absent of ['start scan', 'jobs', 'storage', 'add library']) {
       expect(body, absent).not.toContain(absent);
     }
 
@@ -214,21 +214,11 @@ test.describe('toetsenbord', () => {
     await expect(page.locator('a.skip-link')).toBeFocused();
 
     // Merklink, dan elk slot in DOM-volgorde (Home, Series, Films, Mijn
-    // Pleya), dan de zoekactie. Bibliotheek-ids zijn per stack anders, dus de
-    // slots voor Series en Films worden op hun pad-voorvoegsel getoetst.
-    const expected: (string | RegExp)[] = [
-      '/',
-      '/',
-      /^\/libraries\/[0-9a-f-]+$/,
-      /^\/libraries\/[0-9a-f-]+$/,
-      '/server',
-      '/search'
-    ];
-    for (const href of expected) {
+    // Pleya), dan de zoekactie. Series en Films openen hun eigen landing.
+    for (const href of ['/', '/', '/series', '/films', '/server', '/search']) {
       await page.keyboard.press('Tab');
       const actual = await page.evaluate(() => document.activeElement?.getAttribute('href'));
-      if (typeof href === 'string') expect(actual).toBe(href);
-      else expect(actual).toMatch(href);
+      expect(actual).toBe(href);
     }
   });
 
@@ -241,8 +231,8 @@ test.describe('toetsenbord', () => {
     const hrefs = await links.evaluateAll((els) => els.map((el) => el.getAttribute('href')));
     expect(hrefs).toHaveLength(4);
     expect(hrefs[0]).toBe('/');
-    expect(hrefs[1]).toMatch(/^\/libraries\//);
-    expect(hrefs[2]).toMatch(/^\/libraries\//);
+    expect(hrefs[1]).toBe('/series');
+    expect(hrefs[2]).toBe('/films');
     expect(hrefs[3]).toBe('/server');
 
     // Elke link in de balk is een echte tabstop.

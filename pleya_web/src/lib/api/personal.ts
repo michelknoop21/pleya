@@ -1,5 +1,6 @@
 import type { operations } from './schema';
 import type { PleyaClient } from './client';
+import { randomId } from '../auth/device';
 import { playbackApi } from '../player/playbackApi';
 
 // These mutations return 204; the shared client unwraps a value or an error.
@@ -8,6 +9,7 @@ const noContent = (result: { response: Response; error?: unknown }) => result.re
   : { error: result.error, response: result.response };
 
 type FavoritesQuery = NonNullable<operations['listFavorites']['parameters']['query']>;
+type HistoryQuery = NonNullable<operations['getHistory']['parameters']['query']>;
 
 export function personalApi(client: PleyaClient) {
   const generation = client.sessionGeneration;
@@ -21,6 +23,23 @@ export function personalApi(client: PleyaClient) {
       const page = await client.request(raw => raw.GET('/favorites', { params: { query }, signal }));
       assertAccount();
       return page;
+    },
+    async history(query: HistoryQuery = {}, signal?: AbortSignal) {
+      assertAccount();
+      const page = await client.request(raw => raw.GET('/history', { params: { query }, signal }));
+      assertAccount();
+      return page;
+    },
+    async downloads(signal?: AbortSignal) {
+      assertAccount();
+      const list = await client.request(raw => raw.GET('/downloads', { signal }));
+      assertAccount();
+      return list.items;
+    },
+    async deleteDownload(downloadId: string): Promise<void> {
+      assertAccount();
+      await client.request(async raw => noContent(await raw.DELETE('/downloads/{download_id}', { params: { path: { download_id: downloadId } } })));
+      assertAccount();
     },
     async setFavorite(itemId: string, favorite: boolean): Promise<void> {
       assertAccount();
@@ -39,7 +58,7 @@ export function personalApi(client: PleyaClient) {
       assertAccount();
       if (durationMs !== undefined && (!Number.isSafeInteger(durationMs) || durationMs < 0)) throw new RangeError('Invalid duration');
       return watch.reportWatchState({
-        item_id: itemId, session_id: crypto.randomUUID(),
+        item_id: itemId, session_id: randomId(),
         position_ms: watched ? durationMs ?? 0 : 0,
         ...(durationMs !== undefined ? { duration_ms: durationMs } : {}),
         occurred_at: new Date().toISOString(), completed: watched,

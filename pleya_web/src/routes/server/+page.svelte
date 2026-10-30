@@ -37,6 +37,12 @@
     {#if session.capabilities?.favorites}
       <a class="btn btn--secondary" href="/server/favorites">{t('personal.favorites')}</a>
     {/if}
+    {#if session.capabilities?.history}
+      <a class="btn btn--secondary" href="/server/history">{t('history.title')}</a>
+    {/if}
+    {#if session.capabilities?.downloads}
+      <a class="btn btn--secondary" href="/server/downloads">{t('downloads.title')}</a>
+    {/if}
     <!-- Mijn Pleya is de plek voor thema en taal: de topbalk heeft er geen ruimte voor. -->
     <Panel level={2}>
       {#snippet title()}<span id="server-theme">{t('settings.theme')}</span>{/snippet}

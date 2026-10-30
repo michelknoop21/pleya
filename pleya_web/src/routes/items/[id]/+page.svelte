@@ -11,6 +11,7 @@
   import Select from '#lib/components/Select.svelte';
   import ItemPersonalActions from '#lib/components/ItemPersonalActions.svelte';
   import VersionPanel from '#lib/components/VersionPanel.svelte';
+  import WatchedBy from '#lib/components/WatchedBy.svelte';
   import { session } from '#lib/stores/session.svelte.js';
   import { describeError } from '#lib/api/errors.js';
   import type { Item } from '#lib/api/types.js';
@@ -208,6 +209,8 @@
     {#if version}
       <VersionPanel {version} />
     {/if}
+
+    {#if session.capabilities?.watch_state}<WatchedBy {item} />{/if}
 
     {#if item.kind === 'show' || item.kind === 'season'}
       <section class="section">

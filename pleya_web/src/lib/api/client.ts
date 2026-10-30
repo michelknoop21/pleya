@@ -68,6 +68,7 @@ export class PleyaClient {
   #refreshing: Promise<boolean> | null = null;
   #refreshGeneration = -1;
   #sessionGeneration = 0;
+  #epoch: string | null;
   #supportsCookieAuth = false;
   #cookieAuth = false;
   #requests = new WeakMap<Request, { generation: number; replay: Request }>();
@@ -80,6 +81,7 @@ export class PleyaClient {
     this.tokens = options.tokens ?? new TokenStore();
     this.#fetch = options.fetch ?? ((...args) => globalThis.fetch(...args));
     this.#onSessionLost = options.onSessionLost;
+    this.#epoch = this.tokens.epoch;
 
     this.#raw = createClient<paths>({
       baseUrl: this.baseUrl,
@@ -132,8 +134,11 @@ export class PleyaClient {
     if (this.#refreshing && this.#refreshGeneration === generation) return this.#refreshing;
     this.#refreshGeneration = generation;
 
+    // De cookie is van het hele browserprofiel: na een wissel in een ander tabblad zou deze client
+    // zich als die andere gebruiker verversen en zijn aanvraag met diens credential herhalen.
     const refresh = this.tokens.refreshToken;
-    if (!this.#cookieAuth && !refresh) {
+    const replaced = () => this.tokens.epoch !== this.#epoch;
+    if ((!this.#cookieAuth && !refresh) || (this.#cookieAuth && this.tokens.signedOut) || replaced()) {
       this.#loseSession();
       return Promise.resolve(false);
     }
@@ -144,7 +149,7 @@ export class PleyaClient {
           body: this.#cookieAuth ? { credential_mode: 'cookie' } : { refresh_token: refresh! }
         });
         if (generation !== this.#sessionGeneration) return false;
-        if (error || !data) {
+        if (error || !data || replaced()) {
           this.#loseSession();
           if (error) throw toApiError(response.status, error);
           return false;
@@ -226,6 +231,7 @@ export class PleyaClient {
       this.#cookieAuth = false;
       this.tokens.setMemoryOnly(false);
       this.tokens.set(pair);
+      this.#markSignedIn();
       return;
     }
     await this.#raw
@@ -245,7 +251,13 @@ export class PleyaClient {
     this.#cookieAuth = cookie;
     this.tokens.setMemoryOnly(cookie);
     this.tokens.set(pair);
+    this.#markSignedIn();
     return pair;
+  }
+
+  #markSignedIn(): void {
+    this.tokens.setSignedOut(false);
+    this.#epoch = this.tokens.rotateEpoch();
   }
 
   /**
@@ -261,6 +273,7 @@ export class PleyaClient {
     // maakt van elke herlaadbeurt een kans om er middenin te vallen.
     if (this.tokens.accessToken) return Promise.resolve(true);
     if (!this.#cookieAuth && !this.tokens.refreshToken) return Promise.resolve(false);
+    if (this.#cookieAuth && this.tokens.signedOut) return Promise.resolve(false);
     return this.#refreshOnce();
   }
 
@@ -272,21 +285,28 @@ export class PleyaClient {
    *
    * Lukt de aanroep niet, dan meldt de browser toch af: lokaal uitloggen hoort
    * niet te hangen aan een server die er even niet is. De sessie verloopt dan
-   * zoals vroeger, of de opruimronde neemt hem mee.
+   * zoals vroeger, of de opruimronde neemt hem mee. In cookiemodus leeft de
+   * cookie zo lang door, dus een marker houdt `restore()` tegen tot de volgende
+   * login; anders is de gebruiker na een herlaadbeurt weer stilletjes binnen.
    */
   async signOut(options: { remote?: boolean } = {}): Promise<void> {
     const generation = ++this.#sessionGeneration;
     // In cookiemodus is een verlopen accesstoken geen reden om de sessie te laten leven: de cookie is
     // voor JavaScript niet te wissen, en de volgende herlaadbeurt zou er weer mee inloggen.
     if (options.remote && this.#cookieAuth && !this.tokens.accessToken) await this.bearer();
+    let closed = !this.#cookieAuth;
     if (options.remote && this.tokens.accessToken) {
       try {
-        await this.#raw.POST('/auth/logout', {});
+        const { response } = await this.#raw.POST('/auth/logout', {});
+        closed = closed || response.ok;
       } catch {
         // Geen verbinding: alleen lokaal.
       }
     }
-    if (generation === this.#sessionGeneration) this.tokens.clear();
+    if (generation !== this.#sessionGeneration) return;
+    this.tokens.clear();
+    this.tokens.setSignedOut(!closed);
+    this.#epoch = this.tokens.rotateEpoch();
   }
 
   /**
