@@ -126,7 +126,7 @@ Een gesloten enum in een antwoord is een belofte: de client kent elke waarde die
 mag er een keuze op bouwen zonder restgeval. Die belofte is bruikbaar, en daarom kost hij ook iets.
 Een waarde toevoegen aan een gesloten enum breekt precies de clients die de belofte serieus namen.
 
-Deze zes velden zijn **unknown-safe**. Daar mag binnen v1 een waarde bij komen, en een client die
+Deze zeven velden zijn **unknown-safe**. Daar mag binnen v1 een waarde bij komen, en een client die
 de waarde niet kent doet wat in de derde kolom staat in plaats van te falen.
 
 | Veld | Waar | Bij een onbekende waarde |
@@ -137,6 +137,7 @@ de waarde niet kent doet wat in de derde kolom staat in plaats van te falen.
 | `SubtitleStream.format` | itemdetail | het spoor niet aanbieden |
 | `Scan.state` | scanlijst en scandetail (venster 2, DEC-138) | de scan tonen als "onbekend" |
 | `Job.state` | joblijst (venster 2, DEC-138) | de job tonen als "onbekend" |
+| `Collection.visibility` | verzamelingen (venster 6 deel 1, S19) | de verzameling tonen als gedeeld, de waarde nooit terugsturen en de zichtbaarheid bij bewerken ongemoeid laten |
 
 In `openapi.yaml` draagt elk enum-veld `x-unknown-safe`, met `true` of `false`, en
 `scripts/check_protocol.sh` weigert een enum zonder die markering. Een nieuw enum-veld dwingt zo een
@@ -559,6 +560,8 @@ contract keurt ze af.
 | `memory.limit_reached` | 409 | nee | meer dan 200 feiten |
 | `memory.duplicate` | 409 | nee | dubbele id of valueKey in de snapshot |
 | `library.personal_invalid` | 400 | nee | een waardering of spoorvoorkeur die niet te bewaren is, zie `details.field` |
+| `library.list_invalid` | 400 | nee | een verzameling, afspeellijst of itemlijst die niet te bewaren is, zie `details.field` |
+| `library.list_not_owner` | 403 | nee | de lijst is zichtbaar, maar alleen de eigenaar mag hem wijzigen |
 | `library.download_not_permitted` | 403 | nee | de bibliotheek is zichtbaar maar het recht `download` ontbreekt |
 | `library.download_not_ready` | 409 | ja | de download is nog `preparing`, probeer het zo opnieuw |
 | `library.download_changed` | 409 | nee | het bestand veranderde na het uitrekenen van de SHA-256, vraag een nieuwe download |
@@ -1200,6 +1203,42 @@ een sessie zonder naam.
 Een versie van meer dan één bestand is `409` met `library.version_multifile`. De ladder (omgezette
 versies als downloadbron) en sidecar-ondertitels horen er niet bij.
 
+## 14b. Verzamelingen en afspeellijsten
+
+Een verzameling heeft een eigenaar en een zichtbaarheid; een afspeellijst is van één gebruiker en speelt
+op volgorde (venster 6 deel 1, S19, matrixregel 77 tot en met 94). Elke operatie is klasse
+**`authenticated`**. De twee resources hebben elk hun vlag, `capabilities.collections` en
+`capabilities.playlists`, en dezelfde negen operaties. Beide reizen met het account mee; een rol opent
+niets, dus ook `owner` en `admin` zien een privélijst van een ander niet.
+
+**Zichtbaarheid.** `private` is alleen de eigenaar, `everyone` is elke gebruiker van de server, `users` is
+de eigenaar plus `shared_with`. Dat laatste veld staat alleen in het antwoord aan de eigenaar. Een lijst
+buiten zicht is `404`, byte-gelijk aan een id dat niet bestaat, ook op elke schrijfroute. Een lijst die
+zichtbaar is maar van een ander geeft bij schrijven `403` met `library.list_not_owner`. De waarde is
+unknown-safe (3.2). Geen enkele route noemt andere gebruikers aan een lid: `GET /users` blijft regel 14,
+dus alleen `owner` en `admin` hebben een bron om `shared_with` uit te vullen.
+
+**Per kijker.** Een lijst kan titels bevatten uit een bibliotheek die de kijker niet mag zien. Die titels
+bestaan voor hem niet: `item_count`, `duration_ms`, `artwork`, `total_estimate` en de inhoud zijn alleen
+over items die hij mag zien berekend. `artwork` is het vierluik: de posters van de eerste items met een
+poster. `duration_ms` is de som van de rijen die hij ziet, dus een client hoeft na herordenen niets bij
+te werken.
+
+**Inhoud.** `PUT .../items` zet de volledige lijst in één transactie: de aanvraag lukt of er verandert
+niets. De volgorde in de aanvraag is de volgorde in de lijst, en één verplaatsing schrijft één rij. Een
+dubbel id is `400` met `library.list_invalid`, een item dat niet bestaat of buiten zicht valt is `404`.
+De lijst is de lijst zoals de eigenaar hem ziet. Rijen uit een bibliotheek die hij niet meer mag zien
+ontbreken daarin en blijven op hun plek staan, want een ingetrokken recht wist niets: komt het recht
+terug, dan staan ze er weer. `POST .../items` zet items achteraan, en wat er al in staat blijft staan;
+`DELETE .../items/{item_id}` haalt er één uit. Die twee bestaan naast `PUT` omdat "Toevoegen aan" op een
+kaart anders de hele lijst moet lezen en een gelijktijdige toevoeging kan overschrijven. Een lijst telt
+hoogstens 5000 rijen. Een afspeellijst neemt alleen `movie` en `episode` aan: een client die een serie
+toevoegt zet de afleveringen erin. Een verzameling neemt elke soort aan.
+
+**Catalogus.** Een item dat uit de catalogus verdwijnt verdwijnt uit elke lijst, zonder gat dat een client
+merkt. Een hernoemd of verplaatst bestand houdt zijn item-id en dus zijn plek. Een gebruiker die wordt
+verwijderd neemt zijn lijsten mee, ook wat hij met anderen deelde.
+
 ## 15. Home-bouwstenen
 
 ### `GET /pleya/v1/hubs/{hub_id}`
@@ -1436,6 +1475,24 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 74 | `DELETE /history` | de eigen geschiedenis wissen | klasse `authenticated`, alleen de eigen regels; de kijkstatus blijft (S20.4) |
 | 75 | `DELETE /history/{id}` | één eigen geschiedenisregel wissen | als regel 74, `404` voor een regel van een ander of die niet bestaat |
 | 76 | `GET /ratings` | de gewaardeerde titels van de aanvrager | als regel 52 |
+| 77 | `GET /collections` | lijst van lijsten | alleen wat de aanvrager mag zien; aantallen en artwork per kijker |
+| 78 | `POST /collections` | geen | klasse `authenticated`, de aanvrager wordt eigenaar |
+| 79 | `GET /collections/{id}` | direct id | buiten zicht `404`, ook voor `owner` en `admin` |
+| 80 | `PATCH /collections/{id}` | direct id | als regel 79; zichtbaar en van een ander `403` |
+| 81 | `DELETE /collections/{id}` | direct id | als regel 80 |
+| 82 | `GET /collections/{id}/items` | inhoud | als regel 79; een item buiten de bibliotheken van de kijker ontbreekt |
+| 83 | `PUT /collections/{id}/items` | item-ids in de body | als regel 80; een item buiten zicht is `404` |
+| 84 | `POST /collections/{id}/items` | item-ids in de body | als regel 83 |
+| 85 | `DELETE /collections/{id}/items/{item_id}` | direct id | als regel 83 |
+| 86 | `GET /playlists` | lijst van lijsten | alleen wat de aanvrager mag zien; aantallen en artwork per kijker |
+| 87 | `POST /playlists` | geen | klasse `authenticated`, de aanvrager wordt eigenaar |
+| 88 | `GET /playlists/{id}` | direct id | buiten zicht `404`, ook voor `owner` en `admin` |
+| 89 | `PATCH /playlists/{id}` | direct id | als regel 88; zichtbaar en van een ander `403` |
+| 90 | `DELETE /playlists/{id}` | direct id | als regel 89 |
+| 91 | `GET /playlists/{id}/items` | inhoud | als regel 88; een item buiten de bibliotheken van de kijker ontbreekt |
+| 92 | `PUT /playlists/{id}/items` | item-ids in de body | als regel 89; een item buiten zicht is `404` |
+| 93 | `POST /playlists/{id}/items` | item-ids in de body | als regel 92 |
+| 94 | `DELETE /playlists/{id}/items/{item_id}` | direct id | als regel 92 |
 
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
@@ -2253,8 +2310,26 @@ van de bron beslist welke het is.
 | `GET /pleya/v1/backups/{id}` | `admin` | nee |
 | `POST /pleya/v1/backups/{id}/verify` | `admin` | nee |
 | `POST /pleya/v1/backups/{id}/restore` | `admin` | nee |
+| `GET /pleya/v1/collections` | `authenticated` | ja |
+| `POST /pleya/v1/collections` | `authenticated` | nee |
+| `GET /pleya/v1/collections/{id}` | `authenticated` | nee |
+| `PATCH /pleya/v1/collections/{id}` | `authenticated` | nee |
+| `DELETE /pleya/v1/collections/{id}` | `authenticated` | nee |
+| `GET /pleya/v1/collections/{id}/items` | `authenticated` | ja |
+| `PUT /pleya/v1/collections/{id}/items` | `authenticated` | nee |
+| `POST /pleya/v1/collections/{id}/items` | `authenticated` | nee |
+| `DELETE /pleya/v1/collections/{id}/items/{item_id}` | `authenticated` | nee |
+| `GET /pleya/v1/playlists` | `authenticated` | ja |
+| `POST /pleya/v1/playlists` | `authenticated` | nee |
+| `GET /pleya/v1/playlists/{id}` | `authenticated` | nee |
+| `PATCH /pleya/v1/playlists/{id}` | `authenticated` | nee |
+| `DELETE /pleya/v1/playlists/{id}` | `authenticated` | nee |
+| `GET /pleya/v1/playlists/{id}/items` | `authenticated` | ja |
+| `PUT /pleya/v1/playlists/{id}/items` | `authenticated` | nee |
+| `POST /pleya/v1/playlists/{id}/items` | `authenticated` | nee |
+| `DELETE /pleya/v1/playlists/{id}/items/{item_id}` | `authenticated` | nee |
 
-Tachtig operaties. De vijf laatste zijn back-up en restore uit hoofdstuk 17g (venster 7, S25). De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Honderdeen operaties. De achttien laatste zijn verzamelingen en afspeellijsten uit hoofdstuk 14b (venster 6 deel 1, S19), de vijf daarvoor back-up en restore uit hoofdstuk 17g (venster 7, S25). De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit

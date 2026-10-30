@@ -187,16 +187,16 @@ waaraan je ziet dat hij klaar is.
 
 ### 5.5 Verzamelingen en afspeellijsten
 
-Dit hele domein komt in geen enkele fase voor, terwijl de client er vandaag volledige lees- en
-schrijfondersteuning voor heeft.
+Dit domein is PS-9C (S19). Server, contract en web staan, de app volgt met S19.4; de client heeft er
+vandaag volledige lees- en schrijfondersteuning voor bij Plex en Jellyfin.
 
 | Capability | Vandaag bij Plex | Pleya Server-doel | Fase | Status | Blocker | Bewijs |
 | --- | --- | --- | --- | --- | --- | --- |
-| Verzamelingen lezen en doorbladeren | `GET /library/sections/{id}/collections`, `/library/collections/{id}/children` | (A) eigen resource | geen | **Roadmap gap** | ja | het tabblad Verzamelingen is gevuld |
-| Verzameling maken, vullen, opschonen, verwijderen | `POST`, `PUT`, `DELETE /library/collections` | (A) eigen schrijfoppervlak | geen | **Roadmap gap** | ja | een verzameling overleeft een herstart |
-| Afspeellijsten lezen | `GET /playlists`, `/playlists/{id}/items` | (A) eigen resource | geen | **Roadmap gap** | ja | het tabblad Afspeellijsten is gevuld |
-| Afspeellijst maken, vullen, verwijderen | `POST /playlists`, `PUT /playlists/{id}/items` | (A) eigen schrijfoppervlak | geen | **Roadmap gap** | ja | een afspeellijst overleeft een herstart |
-| Afspeellijst herordenen | `PUT /playlists/{id}/items/{itemId}/move?after=` | (A) stabiele positie per item | geen | **Roadmap gap** | nee | slepen bewaart de volgorde |
+| Verzamelingen lezen en doorbladeren | `GET /library/sections/{id}/collections`, `/library/collections/{id}/children` | (A) eigen resource | PS-9C | Server en web gebouwd, app open (S19.4) | ja | het tabblad Verzamelingen is gevuld |
+| Verzameling maken, vullen, opschonen, verwijderen | `POST`, `PUT`, `DELETE /library/collections` | (A) eigen schrijfoppervlak | PS-9C | Server en web gebouwd, app open (S19.4) | ja | een verzameling overleeft een herstart |
+| Afspeellijsten lezen | `GET /playlists`, `/playlists/{id}/items` | (A) eigen resource | PS-9C | Server en web gebouwd, app open (S19.4) | ja | het tabblad Afspeellijsten is gevuld |
+| Afspeellijst maken, vullen, verwijderen | `POST /playlists`, `PUT /playlists/{id}/items` | (A) eigen schrijfoppervlak | PS-9C | Server en web gebouwd, app open (S19.4) | ja | een afspeellijst overleeft een herstart |
+| Afspeellijst herordenen | `PUT /playlists/{id}/items/{itemId}/move?after=` | (A) stabiele positie per item | PS-9C | Server en web gebouwd, app open (S19.4) | nee | slepen bewaart de volgorde |
 | Slimme afspeellijsten en slimme verzamelingen | Plex `smart=1`, alleen lezen in de client | Productbesluit nodig | geen | **Productbesluit nodig** | nee | zie [8](#8-open-productbesluiten) |
 | Serverzijdige afspeelwachtrij | `POST /playQueues` | (B) client-side wachtrij zoals bij Jellyfin, want de wachtrij hoort bij een kijksessie en niet bij de catalogus | PS-4 | Ontworpen | nee | volgende aflevering en wachtrijsheet werken zonder serverresource |
 

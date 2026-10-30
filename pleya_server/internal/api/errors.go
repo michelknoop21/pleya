@@ -169,6 +169,12 @@ const (
 	// kan bewaren (S20). details.field noemt het veld.
 	CodePersonalInvalid = "library.personal_invalid"
 
+	// Verzamelingen en afspeellijsten (S19). Invalid is een lijst of aanvraag die
+	// niet te bewaren is, details.field noemt het veld. NotOwner is een 403 omdat
+	// de lijst wel zichtbaar is; buiten zicht blijft het library.not_found.
+	CodeListInvalid  = "library.list_invalid"
+	CodeListNotOwner = "library.list_not_owner"
+
 	// Downloads (S23). Niet toegestaan is een 403 omdat de bibliotheek wel
 	// zichtbaar is; niet klaar en veranderd zijn 409's: de eerste gaat vanzelf
 	// over (retryable), de tweede vraagt een nieuwe download.
@@ -307,6 +313,8 @@ var errorTable = map[string]struct {
 	CodeTranscodeBusy:            {http.StatusServiceUnavailable, true},
 	CodeTranscodeFailed:          {http.StatusBadGateway, false},
 	CodePersonalInvalid:          {http.StatusBadRequest, false},
+	CodeListInvalid:              {http.StatusBadRequest, false},
+	CodeListNotOwner:             {http.StatusForbidden, false},
 	CodeDownloadNotPermitted:     {http.StatusForbidden, false},
 	CodeDownloadNotReady:         {http.StatusConflict, true},
 	CodeDownloadChanged:          {http.StatusConflict, false},

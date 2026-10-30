@@ -147,6 +147,27 @@ func (s *Server) routeTable() []route {
 		{"PUT " + p + "/track-preferences/{item_id}", s.authenticated(s.handleSetTrackPreference)},
 		{"DELETE " + p + "/track-preferences/{item_id}", s.authenticated(s.handleClearTrackPreference)},
 
+		// Verzamelingen en afspeellijsten (venster 6 deel 1, S19, matrixregels 77 tot en
+		// met 94). Klasse authenticated; zicht en eigendom beslist de store.
+		{"GET " + p + "/collections", s.authenticated(s.handleLists(collectionCodec))},
+		{"POST " + p + "/collections", s.authenticated(s.handleCreateList(collectionCodec))},
+		{"GET " + p + "/collections/{collection_id}", s.authenticated(s.handleGetList(collectionCodec))},
+		{"PATCH " + p + "/collections/{collection_id}", s.authenticated(s.handleUpdateList(collectionCodec))},
+		{"DELETE " + p + "/collections/{collection_id}", s.authenticated(s.handleDeleteList(collectionCodec))},
+		{"GET " + p + "/collections/{collection_id}/items", s.authenticated(s.handleListItems(collectionCodec))},
+		{"PUT " + p + "/collections/{collection_id}/items", s.authenticated(s.handleReplaceListItems(collectionCodec))},
+		{"POST " + p + "/collections/{collection_id}/items", s.authenticated(s.handleAddListItems(collectionCodec))},
+		{"DELETE " + p + "/collections/{collection_id}/items/{item_id}", s.authenticated(s.handleRemoveListItem(collectionCodec))},
+		{"GET " + p + "/playlists", s.authenticated(s.handleLists(playlistCodec))},
+		{"POST " + p + "/playlists", s.authenticated(s.handleCreateList(playlistCodec))},
+		{"GET " + p + "/playlists/{playlist_id}", s.authenticated(s.handleGetList(playlistCodec))},
+		{"PATCH " + p + "/playlists/{playlist_id}", s.authenticated(s.handleUpdateList(playlistCodec))},
+		{"DELETE " + p + "/playlists/{playlist_id}", s.authenticated(s.handleDeleteList(playlistCodec))},
+		{"GET " + p + "/playlists/{playlist_id}/items", s.authenticated(s.handleListItems(playlistCodec))},
+		{"PUT " + p + "/playlists/{playlist_id}/items", s.authenticated(s.handleReplaceListItems(playlistCodec))},
+		{"POST " + p + "/playlists/{playlist_id}/items", s.authenticated(s.handleAddListItems(playlistCodec))},
+		{"DELETE " + p + "/playlists/{playlist_id}/items/{item_id}", s.authenticated(s.handleRemoveListItem(playlistCodec))},
+
 		// Downloads voor offline kijken (venster 5 deel 3, S23, matrixregel 61 tot en
 		// met 65). Alles klasse authenticated en van de eigenaar; de trede download
 		// op de bibliotheek wordt bij het aanmaken en bij elke byte-aanvraag getoetst.

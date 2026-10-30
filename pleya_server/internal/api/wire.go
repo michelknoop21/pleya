@@ -85,6 +85,13 @@ type Capabilities struct {
 	Ratings          bool `json:"ratings"`
 	TrackPreferences bool `json:"track_preferences"`
 
+	// Collections en Playlists (venster 6 deel 1, S19, DEC-XXX). Aan zodra de
+	// routes er zijn; de tabellen komen met de migraties mee, dus er is geen
+	// toestand waarin de server ze niet heeft. Twee vlaggen omdat het twee
+	// resources zijn en een client ze los toont.
+	Collections bool `json:"collections"`
+	Playlists   bool `json:"playlists"`
+
 	// PersonalData (DEC-XXX, S20.4). Aan zodra de persoonlijke opslag er is:
 	// DELETE /history, DELETE /history/{id}, kind op GET /history en GET /ratings
 	// bestaan. Eén vlag, omdat een client ze niet los hoeft te onderhandelen. Een

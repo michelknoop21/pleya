@@ -2188,6 +2188,412 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /collections:
+    get:
+      tags: [library]
+      operationId: listCollections
+      summary: De verzamelingen die de aanvrager mag zien.
+      description: |
+        Klasse `authenticated`, alleen onder `capabilities.collections`. `item_count`
+        en `artwork` tellen per kijker alleen items die hij mag zien.
+      parameters:
+        - name: sort
+          in: query
+          required: false
+          description: De laatst gewijzigde eerst is de default.
+          schema:
+            type: string
+            enum: ["-updated_at", title]
+            x-unknown-safe: false
+        - name: owned
+          in: query
+          required: false
+          description: Alleen de eigen verzamelingen, voor "Toevoegen aan".
+          schema: { type: boolean, default: false }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Een pagina verzamelingen.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CollectionPage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [library]
+      operationId: createCollection
+      summary: Maak een verzameling met de aanvrager als eigenaar.
+      description: Een ongeldige titel of waarde is `400` met `library.list_invalid` en `details.field`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateCollectionRequest" }
+      responses:
+        "201":
+          description: De nieuwe verzameling.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Collection" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /collections/{collection_id}:
+    get:
+      tags: [library]
+      operationId: getCollection
+      summary: Eén verzameling.
+      description: Buiten zicht is `404`, hetzelfde antwoord als een id dat niet bestaat.
+      parameters:
+        - $ref: "#/components/parameters/CollectionId"
+      responses:
+        "200":
+          description: De verzameling.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Collection" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    patch:
+      tags: [library]
+      operationId: updateCollection
+      summary: Wijzig een verzameling.
+      description: Alleen de eigenaar. Buiten zicht is `404`, zichtbaar en van een ander is `403` met `library.list_not_owner`.
+      parameters:
+        - $ref: "#/components/parameters/CollectionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateCollectionRequest" }
+      responses:
+        "200":
+          description: De gewijzigde verzameling.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Collection" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [library]
+      operationId: deleteCollection
+      summary: Verwijder een verzameling.
+      description: Alleen de eigenaar. De titels zelf blijven in de catalogus.
+      parameters:
+        - $ref: "#/components/parameters/CollectionId"
+      responses:
+        "204": { description: De verzameling is weg. }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /collections/{collection_id}/items:
+    get:
+      tags: [library]
+      operationId: listCollectionItems
+      summary: De inhoud van een verzameling, in lijstvolgorde.
+      description: |
+        Een item buiten de bibliotheken van de aanvrager staat er niet in en telt
+        niet mee in `total_estimate`.
+      parameters:
+        - $ref: "#/components/parameters/CollectionId"
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Een pagina items.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemPage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [library]
+      operationId: replaceCollectionItems
+      summary: Vervang de inhoud in één keer, en zet zo ook de volgorde.
+      description: |
+        Alleen de eigenaar. `item_ids` is de volledige lijst zoals hij hem ziet; de
+        aanvraag lukt helemaal of verandert niets. Een dubbel id is `400` met
+        `library.list_invalid`, een item dat niet bestaat of buiten zicht valt is
+        `404`. Rijen die de eigenaar niet meer mag zien blijven op hun plek.
+      parameters:
+        - $ref: "#/components/parameters/CollectionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListItemsRequest" }
+      responses:
+        "204": { description: De lijst is vervangen. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [library]
+      operationId: addCollectionItems
+      summary: Zet items achteraan in de lijst.
+      description: |
+        Alleen de eigenaar. Wat er al in staat blijft op zijn plek, dus herhalen is
+        onschadelijk. Zelfde fouten als `PUT`. De route voor "Toevoegen aan": hij
+        vraagt niet om de hele lijst en verliest dus geen gelijktijdige toevoeging.
+      parameters:
+        - $ref: "#/components/parameters/CollectionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListItemsRequest" }
+      responses:
+        "204": { description: De items staan in de lijst. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /collections/{collection_id}/items/{item_id}:
+    delete:
+      tags: [library]
+      operationId: removeCollectionItem
+      summary: Haal één item uit de lijst.
+      description: Alleen de eigenaar. Een item buiten zicht is `404`, een zichtbaar item dat er niet in staat is geen fout.
+      parameters:
+        - $ref: "#/components/parameters/CollectionId"
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "204": { description: Het item staat niet meer in de lijst. }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /playlists:
+    get:
+      tags: [library]
+      operationId: listPlaylists
+      summary: De afspeellijsten die de aanvrager mag zien.
+      description: |
+        Klasse `authenticated`, alleen onder `capabilities.playlists`. `item_count`
+        en `artwork` tellen per kijker alleen items die hij mag zien.
+      parameters:
+        - name: sort
+          in: query
+          required: false
+          description: De laatst gewijzigde eerst is de default.
+          schema:
+            type: string
+            enum: ["-updated_at", title]
+            x-unknown-safe: false
+        - name: owned
+          in: query
+          required: false
+          description: Alleen de eigen afspeellijsten, voor "Toevoegen aan".
+          schema: { type: boolean, default: false }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Een pagina afspeellijsten.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlaylistPage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [library]
+      operationId: createPlaylist
+      summary: Maak een afspeellijst met de aanvrager als eigenaar.
+      description: Een ongeldige titel of waarde is `400` met `library.list_invalid` en `details.field`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreatePlaylistRequest" }
+      responses:
+        "201":
+          description: De nieuwe afspeellijst.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Playlist" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /playlists/{playlist_id}:
+    get:
+      tags: [library]
+      operationId: getPlaylist
+      summary: Eén afspeellijst.
+      description: Buiten zicht is `404`, hetzelfde antwoord als een id dat niet bestaat.
+      parameters:
+        - $ref: "#/components/parameters/PlaylistId"
+      responses:
+        "200":
+          description: De afspeellijst.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Playlist" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    patch:
+      tags: [library]
+      operationId: updatePlaylist
+      summary: Wijzig een afspeellijst.
+      description: Alleen de eigenaar. Buiten zicht is `404`, zichtbaar en van een ander is `403` met `library.list_not_owner`.
+      parameters:
+        - $ref: "#/components/parameters/PlaylistId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdatePlaylistRequest" }
+      responses:
+        "200":
+          description: De gewijzigde afspeellijst.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Playlist" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [library]
+      operationId: deletePlaylist
+      summary: Verwijder een afspeellijst.
+      description: Alleen de eigenaar. De titels zelf blijven in de catalogus.
+      parameters:
+        - $ref: "#/components/parameters/PlaylistId"
+      responses:
+        "204": { description: De afspeellijst is weg. }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /playlists/{playlist_id}/items:
+    get:
+      tags: [library]
+      operationId: listPlaylistItems
+      summary: De inhoud van een afspeellijst, in lijstvolgorde.
+      description: |
+        Een item buiten de bibliotheken van de aanvrager staat er niet in en telt
+        niet mee in `total_estimate`.
+      parameters:
+        - $ref: "#/components/parameters/PlaylistId"
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Een pagina items.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemPage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [library]
+      operationId: replacePlaylistItems
+      summary: Vervang de inhoud in één keer, en zet zo ook de volgorde.
+      description: |
+        Alleen de eigenaar. `item_ids` is de volledige lijst zoals hij hem ziet; de
+        aanvraag lukt helemaal of verandert niets. Een dubbel id is `400` met
+        `library.list_invalid`, een item dat niet bestaat of buiten zicht valt is
+        `404`. Rijen die de eigenaar niet meer mag zien blijven op hun plek.
+      parameters:
+        - $ref: "#/components/parameters/PlaylistId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListItemsRequest" }
+      responses:
+        "204": { description: De lijst is vervangen. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [library]
+      operationId: addPlaylistItems
+      summary: Zet items achteraan in de lijst.
+      description: |
+        Alleen de eigenaar. Wat er al in staat blijft op zijn plek, dus herhalen is
+        onschadelijk. Zelfde fouten als `PUT`. De route voor "Toevoegen aan": hij
+        vraagt niet om de hele lijst en verliest dus geen gelijktijdige toevoeging.
+      parameters:
+        - $ref: "#/components/parameters/PlaylistId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListItemsRequest" }
+      responses:
+        "204": { description: De items staan in de lijst. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /playlists/{playlist_id}/items/{item_id}:
+    delete:
+      tags: [library]
+      operationId: removePlaylistItem
+      summary: Haal één item uit de lijst.
+      description: Alleen de eigenaar. Een item buiten zicht is `404`, een zichtbaar item dat er niet in staat is geen fout.
+      parameters:
+        - $ref: "#/components/parameters/PlaylistId"
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "204": { description: Het item staat niet meer in de lijst. }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /ratings:
     get:
       tags: [library]
@@ -2750,6 +3156,16 @@ components:
       in: path
       required: true
       schema: { $ref: "#/components/schemas/Id" }
+    CollectionId:
+      name: collection_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    PlaylistId:
+      name: playlist_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
     ItemId:
       name: item_id
       in: path
@@ -3003,6 +3419,16 @@ components:
         favorites: { type: boolean, default: false }
         ratings: { type: boolean, default: false }
         track_preferences: { type: boolean, default: false }
+        collections:
+          type: boolean
+          default: false
+          description: |
+            Venster 6 deel 1, S19. De server kent `/collections` en alles eronder.
+        playlists:
+          type: boolean
+          default: false
+          description: |
+            Venster 6 deel 1, S19. De server kent `/playlists` en alles eronder.
         personal_data:
           type: boolean
           default: false
@@ -4399,6 +4825,143 @@ components:
           description: |
             Expliciet een schatting, zodat een UI een scrollbar kan tekenen
             zonder dat de server per pagina telt. Nooit als exact aantal tonen.
+
+    ListUser:
+      type: object
+      required: [id, username]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        username: { type: string }
+
+    CollectionVisibility:
+      type: string
+      enum: [private, everyone, users]
+      x-unknown-safe: true
+      description: |
+        Wie een verzameling ziet: alleen de eigenaar, elke gebruiker van de server,
+        of de eigenaar plus `shared_with`. Er mag binnen v1 een waarde bij komen. Een
+        client die de waarde niet kent toont de verzameling als gedeeld, stuurt de
+        waarde nooit terug en laat de zichtbaarheid bij het bewerken ongemoeid.
+
+    Collection:
+      type: object
+      required: [id, title, owner, is_owner, visibility, item_count, artwork, created_at, updated_at]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        owner: { $ref: "#/components/schemas/ListUser" }
+        is_owner:
+          type: boolean
+          description: De aanvrager is de eigenaar en mag dus schrijven.
+        visibility: { $ref: "#/components/schemas/CollectionVisibility" }
+        shared_with:
+          type: array
+          description: Alleen voor de eigenaar en alleen bij `visibility` `users`.
+          items: { $ref: "#/components/schemas/ListUser" }
+        item_count:
+          type: integer
+          minimum: 0
+          description: Telt per kijker alleen items die hij mag zien.
+        artwork:
+          type: array
+          maxItems: 4
+          description: Posters van de eerste items die de kijker mag zien, voor het vierluik.
+          items: { $ref: "#/components/schemas/Id" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CollectionPage:
+      allOf:
+        - { $ref: "#/components/schemas/Page" }
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Collection" }
+
+    CreateCollectionRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        visibility:
+          allOf: [{ $ref: "#/components/schemas/CollectionVisibility" }]
+          description: Zonder dit veld `private`.
+        shared_with:
+          type: array
+          description: Gebruiker-ids, alleen bij `visibility` `users`. Een onbekend id is `400`.
+          items: { $ref: "#/components/schemas/Id" }
+
+    UpdateCollectionRequest:
+      type: object
+      additionalProperties: false
+      description: Een veld dat ontbreekt blijft zoals het is. Een andere zichtbaarheid dan `users` wist `shared_with`.
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        visibility: { $ref: "#/components/schemas/CollectionVisibility" }
+        shared_with:
+          type: array
+          items: { $ref: "#/components/schemas/Id" }
+
+    Playlist:
+      type: object
+      required: [id, title, item_count, duration_ms, artwork, created_at, updated_at]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        item_count:
+          type: integer
+          minimum: 0
+          description: Telt alleen items die de eigenaar nu mag zien.
+        duration_ms:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Som van `duration_ms` over diezelfde rijen.
+        artwork:
+          type: array
+          maxItems: 4
+          items: { $ref: "#/components/schemas/Id" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    PlaylistPage:
+      allOf:
+        - { $ref: "#/components/schemas/Page" }
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Playlist" }
+
+    CreatePlaylistRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+
+    UpdatePlaylistRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+
+    ListItemsRequest:
+      type: object
+      additionalProperties: false
+      required: [item_ids]
+      properties:
+        item_ids:
+          type: array
+          maxItems: 5000
+          description: |
+            In de gewenste volgorde, zonder dubbele ids. Een afspeellijst neemt alleen
+            `movie` en `episode` aan; een client zet van een serie de afleveringen erin.
+          items: { $ref: "#/components/schemas/Id" }
 
     ItemPage:
       allOf:

@@ -122,6 +122,18 @@ void main() {
     // client has no business restoring a server.
     'Backup',
     'BackupList',
+    // S19 adds collections and playlists (protocol window 6, part 1). The server
+    // and the web client read them today; S19.4 gives the app its wire types and
+    // removes these lines.
+    'Collection',
+    'CollectionPage',
+    'CreateCollectionRequest',
+    'UpdateCollectionRequest',
+    'Playlist',
+    'PlaylistPage',
+    'CreatePlaylistRequest',
+    'UpdatePlaylistRequest',
+    'ListItemsRequest',
     // Write-only memory requests are constructed by the transport, whose tests
     // assert their closed body; the client never parses a request from the server.
     'MemoryReplace',
@@ -210,8 +222,8 @@ void main() {
       );
     });
 
-    test('covers the 104 fixtures the contract ships', () {
-      expect(fixtures, hasLength(104));
+    test('covers the 115 fixtures the contract ships', () {
+      expect(fixtures, hasLength(115));
     });
 
     for (final fixture in fixtures) {

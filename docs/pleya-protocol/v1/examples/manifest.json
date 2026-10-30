@@ -497,6 +497,61 @@
       "file": "playback_plan_selection.json",
       "schema": "PlaybackPlan",
       "note": "vrijgegeven expliciete kwaliteit en audiokeuze"
+    },
+    {
+      "file": "collection.json",
+      "schema": "Collection",
+      "note": "S19: de eigenaar ziet shared_with; item_count en artwork zijn per kijker"
+    },
+    {
+      "file": "collection_page.json",
+      "schema": "CollectionPage",
+      "note": "S19: GET /collections: een eigen en een gedeelde verzameling"
+    },
+    {
+      "file": "collection_create_request.json",
+      "schema": "CreateCollectionRequest",
+      "note": "S19: POST /collections met zichtbaarheid per gebruiker"
+    },
+    {
+      "file": "collection_update_request.json",
+      "schema": "UpdateCollectionRequest",
+      "note": "S19: PATCH /collections/{id}: wat ontbreekt blijft staan"
+    },
+    {
+      "file": "playlist.json",
+      "schema": "Playlist",
+      "note": "S19: duration_ms is de som van de rijen die de eigenaar ziet"
+    },
+    {
+      "file": "playlist_page.json",
+      "schema": "PlaylistPage",
+      "note": "S19: GET /playlists: alleen de eigen lijsten"
+    },
+    {
+      "file": "playlist_create_request.json",
+      "schema": "CreatePlaylistRequest",
+      "note": "S19: POST /playlists"
+    },
+    {
+      "file": "playlist_update_request.json",
+      "schema": "UpdatePlaylistRequest",
+      "note": "S19: PATCH /playlists/{id}"
+    },
+    {
+      "file": "list_items_request.json",
+      "schema": "ListItemsRequest",
+      "note": "S19: PUT en POST op .../items, in de gewenste volgorde"
+    },
+    {
+      "file": "error_list_invalid.json",
+      "schema": "ErrorEnvelope",
+      "note": "S19: een dubbel item in PUT .../items"
+    },
+    {
+      "file": "error_list_not_owner.json",
+      "schema": "ErrorEnvelope",
+      "note": "S19: de lijst is zichtbaar maar van een ander"
     }
   ]
 }

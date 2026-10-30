@@ -5250,3 +5250,37 @@ tegelijk verversen (lage bevinding in het rapport) is niet opgelost en niet erge
 
 De opruimjob voor `stream_sessions` ontbrak en draait nu mee in de dagelijkse sessieronde. Alleen dit venster
 is geopend; productie, merge en release blijven afzonderlijk. Nummer volgt bij integratie.
+
+## DEC-XXX: venster voor verzamelingen en afspeellijsten vrijgegeven
+
+**Status:** geaccepteerd door Michel op 30 oktober 2026, besluit 4 uit `docs/qa/2026-10-30-pleya-windows-docker-report.md`: één venster per onderdeel en S19 eerst. S21 en S16 blijven dicht.
+
+Het contract krijgt twee resources, `/collections` en `/playlists`, met elk negen operaties (regel 77 tot en
+met 94 van de matrix, hoofdstuk 14b), twee vlaggen en twee foutcodes: `library.list_invalid` en
+`library.list_not_owner`. Alles is nieuw, dus regel 1 van hoofdstuk 3 dekt de antwoorden en de vlaggen de
+routes. `Collection.visibility` is een nieuw enum-veld en staat als zevende in 3.2: er mag later een waarde
+bij, en een client die hem niet kent toont de verzameling als gedeeld, stuurt de waarde nooit terug en laat
+de zichtbaarheid bij bewerken ongemoeid. Geen veld hernoemd, geen bestaande enum uitgebreid, geen verplicht
+aanvraagveld op een bestaande route.
+
+Twee operaties staan niet in J.5b: `POST .../items` en `DELETE .../items/{item_id}`. Met alleen `PUT` moet
+"Toevoegen aan" op een kaart eerst de hele lijst lezen, en dan verliest een tweede tabblad zijn toevoeging
+aan de eerste. De app-members `addToPlaylist` en `removeFromPlaylist` vragen hetzelfde. `PUT` blijft de enige
+route die herordent, en zij doet dat atomair.
+
+Zichtbaarheid is per rij: privé, iedereen of per gebruiker, en een afspeellijst alleen de eigenaar (vraag
+30). Geen rol opent een privélijst, ook `owner` en `admin` niet. Buiten zicht is `404`, ook bij schrijven;
+zichtbaar en van een ander is `403`, dezelfde vorm als `library.download_not_permitted`. Een item dat de
+kijker niet mag zien telt nergens mee, en de eigenaar die een bibliotheekrecht kwijtraakt verliest niets:
+zijn `PUT` laat die rijen op hun plek staan, naar het voorbeeld van favorieten die onzichtbaar worden zonder
+gewist te zijn.
+
+`position` is een sleutel met gaten. De server berekent uit de volledige lijst de langste reeks die al goed
+staat en schrijft alleen de rest, zodat criterium 2 van PS-9C geldt zonder het contract op een
+verplaats-operatie te bouwen. Een afspeellijst neemt alleen `movie` en `episode` aan; uitklappen van een
+serie gebeurt in de client, omdat een rij die zelf niet speelt "Alles afspelen" en de speelduur breekt.
+
+`shared_with` vullen kan vanaf deze commit alleen wie `GET /users` volledig ziet: `owner` en `admin`. Regel 14
+zegt dat een lid alleen zichzelf ziet, en een gebruikerslijst voor leden is een eigen privacybesluit dat dit
+venster niet neemt. De app-implementatie (S19.4) en journey 11 volgen in een eigen ronde. Alleen dit venster
+is geopend; productie, merge en release blijven afzonderlijk. Nummer volgt bij integratie.

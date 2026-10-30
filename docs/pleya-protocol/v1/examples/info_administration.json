@@ -19,6 +19,8 @@
     "history": true,
     "ratings": true,
     "personal_data": true,
+    "collections": true,
+    "playlists": true,
     "administration": true,
     "mcp": false,
     "playback_plan": true,

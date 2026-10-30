@@ -74,6 +74,9 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			Ratings:          s.opts.Personal != nil,
 			TrackPreferences: s.opts.Personal != nil,
 			PersonalData:     s.opts.Personal != nil,
+			// S19: de routes bestaan altijd, de catalogus levert ze.
+			Collections: true,
+			Playlists:   true,
 			// Vanaf PS-4 staat kijkstatus aan, en met het eigendomsmodel eronder.
 			// De vlaggen hangen aan de aanwezigheid van de opslag: een server die
 			// zonder watch-store draait zegt dat eerlijk in plaats van een

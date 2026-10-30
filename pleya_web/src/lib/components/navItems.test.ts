@@ -21,6 +21,8 @@ const all: Capabilities = {
   ratings: false,
   track_preferences: false,
   personal_data: false,
+  collections: false,
+  playlists: false,
   transcode: false,
   downloads: false,
   backups: false,

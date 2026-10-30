@@ -52,6 +52,8 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"library.download_changed":       {409, false},
 		"playback.transcode_failed":      {502, false},
 		"library.personal_invalid":       {400, false},
+		"library.list_invalid":           {400, false},
+		"library.list_not_owner":         {403, false},
 		"memory.invalid":                 {400, false},
 		"memory.not_permitted":           {403, false},
 		"memory.too_large":               {413, false},
