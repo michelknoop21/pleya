@@ -96,7 +96,7 @@ Drie onafhankelijke reviews lazen de hele diff (Dart, Go met gates, web). Een vi
 | Mislukte bronwissel tijdens HLS hervatte een verwijderde sessie | major | rollback opent eenmalig een nieuw plan | beslissing en brontekst getest; `_reloadMediaInPlace` zelf niet gedraaid |
 | Ondertitelmenu liep uit de pas bij direct play | major | `preferredSubtitleId` ook bij direct play | 4 rode tests, nu groen |
 | Persoonlijke e2e kon echte accountdata raken | major | tijdelijke accounts per test | zie onder |
-| `playback.selection_invalid` ontbrak in de foutentabel, `go test` was daardoor rood | major | regel in hoofdstuk 7.1 en de spiegel in `errors_test.go`; de code stond al in `openapi.yaml` | `internal/api` groen |
+| `playback.selection_invalid` ontbrak in de foutentabel, `go test` was daardoor rood | major | regel in hoofdstuk 7.1 en de spiegel in `errors_test.go`; de code is op deze branch toegevoegd binnen het venster uit `docs/pleya-server-playback-selection-proposal.md` (besluit in `DECISIONS.md` als `DEC-XXX`, nummer volgt bij integratie) | `internal/api` groen |
 
 **Setup en cookie.** Op een verse stack maakte de echte setuppagina de eigenaar aan. Daarna was `localStorage` en `sessionStorage` vrij van tokens, stond `pleya_refresh` niet in `document.cookie`, was de cookie `HttpOnly` en `SameSite=Strict`, overleefde de sessie een herlaadbeurt, en toonde `GET /sessions` twee rijen: de browser en de controlelogin. Blind opnieuw inloggen had een derde rij achtergelaten. Setup blijft een token in het antwoordlichaam krijgen, want `SetupRequest` is gesloten; dat token leeft alleen in een lokale variabele tot de logout. `auth.spec.ts` bevat deze test en slaat hem over zodra een andere spec de setup al deed, dus hij moet als eerste op een verse stack draaien.
 
@@ -108,7 +108,7 @@ Drie onafhankelijke reviews lazen de hele diff (Dart, Go met gates, web). Een vi
 
 ### Open punten
 
-Eén punt vraagt een besluit. `ExtractSubtitle` leest het hele bronbestand en het contract begrenst dat tot de starttimeout van 30 s (`openapi.yaml`, `getSubtitle`). Op een groot bestand faalt een ingebed tekstspoor daardoor met 502, ook bij inbranden; hetzelfde geldt voor `GET` van een bitmapspoor. Inbranden van bitmaps heeft dit probleem niet meer. Een ruimere grens vraagt een geopend protocolvenster.
+De grens van 30 s voor ingebedde ondertitels vraagt een besluit: zie "Ondertitels op grote bestanden" onder "Eindkandidaat".
 
 Informatief, niet aangepakt:
 
@@ -121,6 +121,58 @@ Informatief, niet aangepakt:
 - Niet geverifieerd: de rollback op echte hardware, en of de echte Plex Home-binder de clientmap wijzigt.
 
 De image-digest van de eerdere herbouw (`d508b26b…`) week af van de eerste bouw uit dezelfde bron. Dat is genoteerd en niet onderzocht; er is geen aanwijzing dat het gedrag raakt.
+
+## Eindkandidaat
+
+De exacte commit, de image en de digest staan in de overdracht `pleya-server-personal-c8be0341` en in de gepubliceerde versie van dit rapport: een document in een commit kan de digest van zijn eigen commit niet dragen. De oude image `04fd13bf…` telt niet als bewijs voor deze kandidaat.
+
+### Sinds `5e64a1dab`
+
+De gerichte nakijkronde over de Plex-kijklijst en `playback.selection_invalid` leverde één echte fout op. Een al geopend kijklijstscherm laadde na een herbinding niet opnieuw, omdat `_requestedLoad` maar één keer toeliet: wie het scherm open had terwijl de Plex Home-binder klaarkwam, bleef op een oude of lege lijst staan tot handmatig verversen. `lib/screens/watchlist_screen.dart` laadt nu opnieuw zodra de nieuwe bron klaar is. Een nieuwe widgettest was eerst rood; `watchlist_screen_test.dart` en `watchlist_provider_test.dart` samen staan op 100 van 100 groen. De test zet de provider terug met `reset()`; de echte Home-binder is niet gedraaid. Geen Plex-verlies en geen lek tussen profielen gevonden.
+
+Voor de foutcode klopten status 400, de tabel en de testspiegel. De code is nieuw op deze branch, en de rapportzin die het tegendeel zei is hersteld. Het venster staat vastgelegd in `docs/DECISIONS.md`. Eén bevinding blijft staan zonder wijziging, met laag risico: bij een tijdelijke `null` uit `resolveAuth` valt de Plex-bron tot de volgende clientwijziging weg uit beeld; de opgeslagen snapshots blijven intact en het gedrag is gelijk aan de oude code.
+
+Pleya Server en Pleya Web zijn niet gewijzigd sinds `5e64a1dab`, dus de Go- en webgates van die commit gelden nog. Alleen het Dart-scherm en zijn test zijn nieuw.
+
+### Main
+
+`origin/main` (`d9edacc88`) staat vier commits voor. Ze raken Plex Home-profielen, `notice.dart`, `pubspec.yaml`, de releasenotes en `docs/tvos-fysieke-correctieronde.md`. Geen enkel bestand overlapt met deze branch, en `git merge-tree` geeft geen conflict. Er is niet gerebased of gemerged. Na integratie moet het Plex Home-pad wel samen getest worden: main wijzigt daar de wisselfout en deze branch de kijklijstbinding.
+
+### Ondertitels op grote bestanden
+
+Gemeten met ffmpeg 5.1.9 in de testimage, op een MKV en een MP4 van 11,9 GB met een cue op 50 minuten, bestanden al in de paginacache:
+
+| Variant | Gelezen | Duur | Uitvoer |
+|---|---|---|---|
+| MKV, huidige opdracht | 11.281 tot 11.312 MiB | 6,6 en 9,7 s | 77 bytes |
+| MKV met `-probesize 1M -analyzeduration 0` | 11.306 MiB | 5,9 s | 77 bytes |
+| MKV met `-discard:v all -discard:a all` | 11.260 MiB | 6,1 s | 77 bytes |
+| MP4, `mov_text` | 1 MiB | 0,1 s | 77 bytes |
+
+De tijd zit dus in het lezen, niet in rekenwerk. Matroska heeft geen tabel die naar ondertitelblokken wijst, dus ffmpeg leest elk cluster; MP4 springt via zijn index. De opties maakten geen verschil dat boven de ruis van deze belaste Mac uitkomt. De grens volgt uit de leessnelheid: bij 110 MB/s past 3,3 GB in 30 s, bij 250 MB/s 7,5 GB. Dat is een rekenvoorbeeld; op de NAS en met koude cache is niet gemeten.
+
+Binnen het contract is geen oplossing die de grens wegneemt. Een eigen Matroska-parser moet per blok een kop lezen, en dat zijn bij een film van twee uur honderdduizenden kleine sprongen, wat op een harde schijf trager is dan doorlezen. Extractie tijdens de scan leest elk bestand helemaal en past niet in de cache van 64 MiB. Hervatten over meerdere aanvragen levert de kijker eerst een reeks fouten op. Sidecars, MP4 en het inbranden van bitmaps hebben dit probleem niet.
+
+**Voorstel, wacht op een besluit.** Open een venster voor alleen `getSubtitle` en de ondertitelvoorbereiding in het playbackplan. Voorbereiding van een ingebed spoor loopt dan door na de eerste aanvraag, met een grens van 10 minuten en nog steeds één werker. De aanvraag antwoordt binnen 30 s: `200` als het spoor klaar is, anders `503 playback.transcode_busy` met `Retry-After: 5`. Web en Flutter herhalen zolang de kijker dat spoor gekozen houdt.
+
+Dit past binnen de zes regels van hoofdstuk 3: geen nieuw veld, geen nieuwe enum, de code staat al in het contract en is herhaalbaar. Alleen de zin over de begrenzing wijzigt. Een oude client krijgt 503 in plaats van 502 op hetzelfde moment en faalt zoals nu. De keerzijde: de NAS leest een groot bestand helemaal, per spoor opnieuw zodra het uit de cache valt, en de ene werker kan 10 minuten bezet zijn, zodat een tweede film met een ingebed spoor zo lang 503 krijgt. Een ruimere synchrone grens valt af: de aanvraag loopt door de tunnel van `web.pleya.app`, en een proxy breekt een stille aanvraag af (Cloudflare standaard na 100 s).
+
+Zonder venster blijft het zoals het is: een groot MKV met alleen een ingebed spoor geeft 502. Er is niets aan de timeout of het contract veranderd.
+
+### Pakket 5 tot en met 8
+
+| Pakket | Klaar | Ontbreekt | Wat nodig is |
+|---|---|---|---|
+| 5, webgebruik en installatie | Persoonlijke acties, setup met cookie, kijkstatus, SRT in de speler, Home, Films, Series, detail en favorieten als `[~]` met bewijs | S8.4 zoeken, S20.4 scherm 19 en "Bekeken door", S23.4 downloads op Mijn Pleya, S8.7, resten van S8.1 tot en met S8.6, S13.3, S13.4, S25.6-journey 13 | Bouwen, geen besluit nodig. Bewust niet in deze kandidaat: drie nieuwe schermen openen de nagekeken bron weer |
+| 6, collecties en realtime | Niets | S19, S21 en S16 | Contractvenster per onderdeel |
+| 7, beveiliging en herstel | Lokale back-up en herstelproef, PS-12-voorstel | S15.1 tot en met S15.9, S25.7 off-site, PS-5-hardwareronde | `/auth/refresh` kent in het contract geen 429, dus S15.1 vraagt een venster; off-site bestemming en sleutelplaats; S15.9; hardware |
+| 8, overige scope | PS-15 is vrijgegeven, verder niets gebouwd op deze branch | S16, C-04-consumptie, boeken S3 tot en met S14, matrixgaps | Eigen vensters en vrijgaven |
+
+Mijlpaal B en C zijn niet gehaald, en de adversariële review op auth, rechten en migraties staat nog open.
+
+### Niet uitgevoerd
+
+De hardwareproef is niet gedaan: geen iPhone, iPad, Apple TV, macOS-app of Android, en geen NAS. De rollback in `_reloadMediaInPlace` en de echte Plex Home-binder zijn dus niet live gezien. De volledige Flutter-suite is niet gedraaid. Er is geen digestonderzoek gedaan.
 
 ## Beelden
 
@@ -151,7 +203,11 @@ In de logs staat geen hook-time-out. De commit van het checkpoint liep door de e
 
 ## Opruimen en toegang
 
-Stand op 30 oktober, einde sessie: Docker Desktop op de Windows-pc stopte tijdens de laatste testronde. De oorzaak is niet vastgesteld. Daarmee lagen ook `Gomberttunnel` en `n8n-2025` stil. Over SSH is er niets herstart: dat is de gedeelde sessie van Michel. Het project `pleya-win-test`, de hulpcontainer `pleya-win-gobox`, hun volumes en `C:\pleya-test\win-test` staan er nog en moeten na de herstart op label worden opgeruimd.
+Stand op 30 oktober, einde van de eindronde: Docker Desktop op de Windows-pc staat uit, zoals Michel in deze ronde bevestigde. Daardoor draaien ook `Gomberttunnel` en `n8n-2025` niet; ik heb die pc niet herstart en niets aan die diensten veranderd.
+
+Opgeruimd over SSH, op naam: `C:\pleya-test\win-test`, `dburl` en de elf overige eigen bestanden. `C:\pleya-test` bevat daarna alleen nog `rm20-77afb208-w20261030a`, en dat is werk van een andere sessie. Het wachtwoord is daarbij niet gelezen of getoond.
+
+Nog over op de Windows-pc, omdat dit een draaiende Docker vraagt: de containers `pleya-win-test`, `pleya-server-db` en `pleya-win-gobox`, hun volumes en de images `pleya-win-gotest`. Het volume van `pleya-server-db` bevat het wegwerpwachtwoord van de teststack. Zodra Docker weer draait: eerst `Gomberttunnel` en `n8n-2025` controleren, dan alleen deze objecten op label verwijderen.
 
 Alle Docker-objecten van de test zijn te selecteren op het label `pleya.task=windows-test`. Opruimen gebeurt alleen op dat label.
 
