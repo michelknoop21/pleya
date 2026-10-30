@@ -634,11 +634,14 @@ describe('existing cookie-auth contract', () => {
     expect(persistent.getItem('pleya.refresh_token')).toBeNull();
     expect(session.getItem('pleya.access_token')).toBeNull();
   });
-  it('uses cookie mode during setup only behind the server flag', async () => {
+  it('never sends credential_mode on setup: the contract closes SetupRequest, so it is token mode until the next login', async () => {
     const { client, seen, persistent } = cookieServer();
     await client.info();
     await client.setup({ setup_code: 'fixture', username: 'owner', password: 'canned' });
-    expect(seen.find(request => request.path === '/auth/setup')?.body).toMatchObject({ credential_mode: 'cookie' });
+    expect(seen.find(request => request.path === '/auth/setup')?.body).not.toHaveProperty('credential_mode');
+    expect(persistent.getItem('pleya.refresh_token')).toBe('new-R');
+    await client.login({ username: 'owner', password: 'canned' });
+    expect(seen.find(request => request.path === '/auth/login')?.body).toMatchObject({ credential_mode: 'cookie' });
     expect(persistent.getItem('pleya.refresh_token')).toBeNull();
   });
 });

@@ -215,11 +215,13 @@ export class PleyaClient {
     } & DeviceFields
   ): Promise<TokenPair> {
     const generation = ++this.#sessionGeneration;
-    const cookie = this.#supportsCookieAuth;
-    const pair = await this.#unwrap(this.#raw.POST('/auth/setup', { body: { ...input, ...(cookie ? { credential_mode: 'cookie' as const } : {}) } }));
+    // SetupRequest is closed in the contract: credential_mode belongs to login and refresh only, and the
+    // server answers it with a 401 that reads as a bad setup code. Setup therefore runs in token mode;
+    // the next explicit login moves the session to the cookie.
+    const pair = await this.#unwrap(this.#raw.POST('/auth/setup', { body: input }));
     if (generation !== this.#sessionGeneration) throw new Error('Account changed during setup');
-    this.#cookieAuth = cookie;
-    this.tokens.setMemoryOnly(cookie);
+    this.#cookieAuth = false;
+    this.tokens.setMemoryOnly(false);
     this.tokens.set(pair);
     return pair;
   }
