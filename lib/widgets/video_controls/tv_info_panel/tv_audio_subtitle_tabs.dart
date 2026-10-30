@@ -15,6 +15,7 @@ import '../../../utils/player_subtitle_labeling.dart';
 import '../../../utils/track_label_builder.dart';
 import '../helpers/track_filter_helper.dart';
 import '../models/track_controls_state.dart';
+import '../widgets/deferred_subtitle_status.dart';
 import 'tv_panel_widgets.dart';
 
 /// Volume boost steps: the ceiling and the level move together (AUD1).
@@ -505,6 +506,7 @@ class TvSubtitlesTab extends StatelessWidget {
                   ),
                 );
               }
+              if (state.deferredSubtitles case final loader?) rows.add(TvDeferredSubtitleRow(loader: loader));
             } else {
               final selectedSub = selSnapshot.data?.subtitle;
               final isOff = selectedSub == null || selectedSub.id == 'no';

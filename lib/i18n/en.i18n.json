@@ -539,6 +539,9 @@
   "videoControls": {
     "audioLabel": "Audio",
     "subtitlesLabel": "Subtitles",
+    "subtitlesPreparing": "Preparing subtitles",
+    "subtitlesPrepareFailed": "Subtitles could not be prepared",
+    "subtitlesPrepareRetry": "Retry",
     "resetToZero": "Reset to 0ms",
     "addTime": "+${amount}${unit}",
     "minusTime": "-${amount}${unit}",

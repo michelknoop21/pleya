@@ -18,6 +18,7 @@ import 'base_video_control_sheet.dart';
 import 'sheet_column_header.dart';
 import 'subtitle_search_sheet.dart';
 import '../models/track_controls_state.dart';
+import '../widgets/deferred_subtitle_status.dart';
 import '../helpers/track_filter_helper.dart';
 import '../helpers/track_selection_helper.dart';
 
@@ -229,6 +230,7 @@ class _SourceSubtitleColumnState extends State<_SourceSubtitleColumn> {
     return Column(
       children: [
         if (widget.showHeader) SheetColumnHeader(label: t.videoControls.subtitlesLabel),
+        if (widget.trackControlsState.deferredSubtitles case final loader?) DeferredSubtitleNote(loader: loader),
         Expanded(
           child: ListView.builder(
             controller: _initialScroll.controller,

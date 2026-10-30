@@ -47,11 +47,21 @@ class _FrameRateStartupPlan {
 }
 
 class _ExternalSubtitleOpenPlan {
-  const _ExternalSubtitleOpenPlan({required this.externalSubtitles, required this.attachesAtOpen, this.readyAfterOpen});
+  const _ExternalSubtitleOpenPlan({
+    required this.externalSubtitles,
+    required this.attachesAtOpen,
+    this.readyAfterOpen,
+    this.deferredSubtitle,
+    this.deferredReady,
+  });
 
   final List<SubtitleTrack> externalSubtitles;
   final bool attachesAtOpen;
   final Future<void>? readyAfterOpen;
+  final DeferredSubtitle? deferredSubtitle;
+
+  /// Subscribed before open: the file-loaded event may fire before the track is ready.
+  final Future<void>? deferredReady;
 
   bool get hasExternalSubtitles => externalSubtitles.isNotEmpty;
   bool get requiresPostOpenAdd => !attachesAtOpen && hasExternalSubtitles;
@@ -407,6 +417,7 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
   _ExternalSubtitleOpenPlan _prepareExternalSubtitleOpenPlan({
     required Player player,
     required List<SubtitleTrack> externalSubtitles,
+    DeferredSubtitle? deferredSubtitle,
     bool waitForFileLoaded = true,
   }) {
     final attachesAtOpen = player.attachesExternalSubtitlesAtOpen;
@@ -423,6 +434,15 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
               },
             )
           : null,
+      deferredSubtitle: deferredSubtitle,
+      deferredReady: deferredSubtitle == null
+          ? null
+          : player.streams.fileLoaded.first
+                .timeout(
+                  const Duration(seconds: 30),
+                  onTimeout: () => appLogger.w('Timed out waiting for file-loaded before adding a deferred subtitle'),
+                )
+                .catchError((Object e) => appLogger.d('The player closed before a deferred subtitle', error: e)),
     );
   }
 
@@ -524,6 +544,11 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
     bool Function()? isCurrent,
   }) async {
     if (!(isCurrent?.call() ?? true)) return;
+    trackManager.subtitleArrivesLater = externalSubtitlePlan.deferredSubtitle != null;
+    // Not awaited: the film starts now, and the track joins it when the server has it.
+    unawaited(
+      _deferredSubtitles.start(externalSubtitlePlan.deferredSubtitle, ready: externalSubtitlePlan.deferredReady),
+    );
     if (externalSubtitlePlan.requiresPostOpenAdd) {
       trackManager.waitingForExternalSubsTrackSelection = true;
       try {

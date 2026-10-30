@@ -5169,3 +5169,18 @@ Nummer volgt bij integratie.
 **Status:** geaccepteerd door Michel tijdens de gezamenlijke uitvoering, vastgelegd op 30 oktober 2026.
 
 Michel koos “Migratie eerst afbakenen”. Werk eerst de noodzakelijke scope, identiteit-/accountkoppeling, conflictregels, proefimport, herstelbaarheid en volgorde ten opzichte van S15.5 uit in een afzonderlijk voorstel. Dit is geen keuze om leeg te beginnen en geen vrijgave van PS-12 of een import. S15.9 blijft open totdat het voorstel en het definitieve besluit over de kijkgeschiedenis vaststaan. De bestaande PS-12-vrijgave na S15 moet vóór uitvoering expliciet met de S15.5-gate worden uitgelijnd; dit besluit verplaatst die vrijgave niet stilzwijgend. Productie, merge en release blijven afzonderlijk. Nummer volgt bij integratie.
+
+## DEC-XXX: ondertitelvenster voor doorlopende voorbereiding van ingebedde sporen vrijgegeven
+
+**Status:** geaccepteerd door Michel op 30 oktober 2026, besluit 1 uit `docs/qa/2026-10-30-pleya-windows-docker-report.md`.
+
+Michel gaf het venster voor alleen `getSubtitle` en de ondertitelvoorbereiding in het
+playbackplan vrij. Extractie van een ingebed spoor loopt los van de aanvraag door, met een
+grens van 10 minuten en één werker. De aanvraag antwoordt binnen 30 s met `200` of met
+`503 playback.transcode_busy` en `Retry-After: 5`; een herhaling sluit aan op de lopende
+extractie. Geen nieuw veld, geen nieuwe enum en geen nieuwe code: alleen de begrenzingszin in
+het contract wijzigt, en dat past binnen de zes regels van hoofdstuk 3. Een oude client krijgt
+op hetzelfde moment `503` in plaats van `502` en faalt zoals nu. Web en Flutter herhalen zolang
+de kijker dat spoor gekozen houdt; Flutter geeft mpv daarvoor een lokaal tijdelijk bestand in
+plaats van de URL. Alleen dit venster is geopend; productie, merge en release blijven
+afzonderlijk. Nummer volgt bij integratie.

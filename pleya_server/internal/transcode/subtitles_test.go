@@ -8,7 +8,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -275,5 +277,227 @@ func TestBitmapSubtitleExtractionAndBurnRendersAndClearsPixels(t *testing.T) {
 		if at == "5" && bright < 100 || at != "5" && bright > 0 {
 			t.Fatalf("at %s: incorrect subtitle pixels: %d", at, bright)
 		}
+	}
+}
+
+// slowSubtitleTool is a fake ffmpeg: it counts its runs per stream, records its pid, waits
+// for the proceed file and then writes a complete subtitle.
+func slowSubtitleTool(t *testing.T, dir string) (tool, runs, pid, proceed string) {
+	t.Helper()
+	tool, runs, pid, proceed = filepath.Join(dir, "ffmpeg"), filepath.Join(dir, "runs"), filepath.Join(dir, "pid"), filepath.Join(dir, "proceed")
+	script := "#!/bin/sh\nprintf x >> '" + runs + "'\nprintf $$ > '" + pid + "'\n" +
+		"while [ ! -f '" + proceed + "' ]; do sleep 0.01; done\nprintf '1\\n00:00:00,000 --> 00:00:01,000\\nSlow caption\\n'\n"
+	if err := os.WriteFile(tool, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	return
+}
+
+func subtitleSource(t *testing.T, dir string) string {
+	t.Helper()
+	input := filepath.Join(dir, "source")
+	if err := os.WriteFile(input, []byte("fixture"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	return input
+}
+
+func waitForFile(t *testing.T, path string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if info, err := os.Stat(path); err == nil && info.Size() > 0 {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("%s never appeared", path)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+func subtitleRuns(t *testing.T, path string) int {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return len(data)
+}
+
+func TestSubtitleExtractionOutlivesItsRequestAndARepeatJoinsIt(t *testing.T) {
+	dir := t.TempDir()
+	tool, runs, _, proceed := slowSubtitleTool(t, dir)
+	m, err := transcode.New(transcode.Options{FFmpegPath: tool, Dir: filepath.Join(dir, "work"), Max: 1, SubtitleWait: 40 * time.Millisecond})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(m.Close)
+	p := transcode.SubtitleParams{InputPath: subtitleSource(t, dir), StreamIndex: 2, Format: "srt", Generation: 1}
+	// The cancel stands in for a proxy that gives up on a silent request.
+	ctx, cancel := context.WithCancel(context.Background())
+	first := make(chan error, 1)
+	go func() { _, err := m.ExtractSubtitle(ctx, p); first <- err }()
+	waitForFile(t, runs)
+	cancel()
+	if err := <-first; err == nil {
+		t.Fatal("unfinished extraction answered with a file")
+	}
+	began := time.Now()
+	if _, err := m.ExtractSubtitle(context.Background(), p); !errors.Is(err, transcode.ErrBusy) {
+		t.Fatalf("repeat during extraction: %v", err)
+	}
+	if waited := time.Since(began); waited < 30*time.Millisecond || waited > 2*time.Second {
+		t.Fatalf("repeat did not wait the bounded request time: %s", waited)
+	}
+	if err := os.WriteFile(proceed, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		path, err := m.ExtractSubtitle(context.Background(), p)
+		if err == nil {
+			data, readErr := os.ReadFile(path)
+			if readErr != nil || !strings.Contains(string(data), "Slow caption") {
+				t.Fatalf("cached result: %v %s", readErr, data)
+			}
+			break
+		}
+		if !errors.Is(err, transcode.ErrBusy) || time.Now().After(deadline) {
+			t.Fatalf("repeat after extraction: %v", err)
+		}
+	}
+	if got := subtitleRuns(t, runs); got != 1 {
+		t.Fatalf("a repeat started %d extractions instead of joining one", got)
+	}
+}
+
+func TestSecondSubtitleTrackWaitsForTheWorkerWhileAFinishedTrackStaysReadable(t *testing.T) {
+	dir := t.TempDir()
+	tool, runs, _, proceed := slowSubtitleTool(t, dir)
+	m, err := transcode.New(transcode.Options{FFmpegPath: tool, Dir: filepath.Join(dir, "work"), Max: 1, SubtitleWait: 20 * time.Millisecond})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(m.Close)
+	input := subtitleSource(t, dir)
+	done := transcode.SubtitleParams{InputPath: input, StreamIndex: 1, Format: "srt", Generation: 1}
+	running := transcode.SubtitleParams{InputPath: input, StreamIndex: 2, Format: "srt", Generation: 1}
+	second := transcode.SubtitleParams{InputPath: input, StreamIndex: 3, Format: "srt", Generation: 1}
+	if err := os.WriteFile(proceed, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	finished, err := m.ExtractSubtitle(context.Background(), done)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(proceed); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(runs); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.ExtractSubtitle(context.Background(), running); !errors.Is(err, transcode.ErrBusy) {
+		t.Fatalf("running track: %v", err)
+	}
+	waitForFile(t, runs)
+	if _, err := m.ExtractSubtitle(context.Background(), second); !errors.Is(err, transcode.ErrBusy) {
+		t.Fatalf("second track while the worker is occupied: %v", err)
+	}
+	if path, err := m.ExtractSubtitle(context.Background(), done); err != nil || path != finished {
+		t.Fatalf("finished track waited behind the worker: %s %v", path, err)
+	}
+	if got := subtitleRuns(t, runs); got != 1 {
+		t.Fatalf("two workers ran: %d", got)
+	}
+	if err := os.WriteFile(proceed, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := m.ExtractSubtitle(context.Background(), second); err == nil {
+			break
+		} else if !errors.Is(err, transcode.ErrBusy) || time.Now().After(deadline) {
+			t.Fatalf("second track after the worker came free: %v", err)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if got := subtitleRuns(t, runs); got != 2 {
+		t.Fatalf("second track was not extracted by the free worker: %d", got)
+	}
+}
+
+func TestClosingStopsTheExtractionWithoutLeavingAProcessOrAPartialFile(t *testing.T) {
+	dir := t.TempDir()
+	tool, pid := filepath.Join(dir, "ffmpeg"), filepath.Join(dir, "pid")
+	script := "#!/bin/sh\nprintf $$ > '" + pid + "'\nprintf 'half a subtitle'\nexec sleep 60\n"
+	if err := os.WriteFile(tool, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	m, err := transcode.New(transcode.Options{FFmpegPath: tool, Dir: filepath.Join(dir, "work"), Max: 1, SubtitleWait: 20 * time.Millisecond})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(m.Close)
+	p := transcode.SubtitleParams{InputPath: subtitleSource(t, dir), StreamIndex: 2, Format: "srt", Generation: 1}
+	if _, err := m.ExtractSubtitle(context.Background(), p); !errors.Is(err, transcode.ErrBusy) {
+		t.Fatalf("detached extraction: %v", err)
+	}
+	waitForFile(t, pid)
+	raw, err := os.ReadFile(pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	process, err := strconv.Atoi(string(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	stopped := make(chan struct{})
+	go func() { m.Close(); close(stopped) }()
+	select {
+	case <-stopped:
+	case <-time.After(5 * time.Second):
+		t.Fatal("close waited for the extraction instead of stopping it")
+	}
+	if err := syscall.Kill(process, 0); !errors.Is(err, syscall.ESRCH) {
+		t.Fatalf("ffmpeg outlived close: %v", err)
+	}
+	files, err := os.ReadDir(filepath.Join(dir, "work", "subtitles"))
+	if err != nil || len(files) != 0 {
+		t.Fatalf("partial files survived: %v %v", files, err)
+	}
+}
+
+func TestSubtitleExtractionTimeoutFailsAndTheRepeatHearsIt(t *testing.T) {
+	dir := t.TempDir()
+	tool, runs := filepath.Join(dir, "ffmpeg"), filepath.Join(dir, "runs")
+	script := "#!/bin/sh\nprintf x >> '" + runs + "'\nprintf 'half a subtitle'\nexec sleep 60\n"
+	if err := os.WriteFile(tool, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	m, err := transcode.New(transcode.Options{
+		FFmpegPath: tool, Dir: filepath.Join(dir, "work"), Max: 1,
+		SubtitleWait: 10 * time.Millisecond, SubtitleTimeout: 150 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(m.Close)
+	p := transcode.SubtitleParams{InputPath: subtitleSource(t, dir), StreamIndex: 2, Format: "srt", Generation: 1}
+	if _, err := m.ExtractSubtitle(context.Background(), p); !errors.Is(err, transcode.ErrBusy) {
+		t.Fatalf("detached extraction: %v", err)
+	}
+	waitForFile(t, runs)
+	// Past the limit, between two polls: nobody is waiting when the job fails.
+	time.Sleep(400 * time.Millisecond)
+	if _, err := m.ExtractSubtitle(context.Background(), p); !errors.Is(err, transcode.ErrFailed) {
+		t.Fatalf("a failure between two polls got lost: %v", err)
+	}
+	if got := subtitleRuns(t, runs); got != 1 {
+		t.Fatalf("failed extraction was started again: %d", got)
+	}
+	files, err := os.ReadDir(filepath.Join(dir, "work", "subtitles"))
+	if err != nil || len(files) != 0 {
+		t.Fatalf("partial files survived: %v %v", files, err)
 	}
 }

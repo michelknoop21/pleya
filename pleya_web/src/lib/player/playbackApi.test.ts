@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PleyaClient, type FetchLike } from '../api/client';
 import { TokenStore, type TokenStorage } from '../auth/tokens';
 import { playbackApi } from './playbackApi';
+import { SubtitleNotReadyError } from './subtitleRetry';
 
 function memory(initial: Record<string, string> = {}): TokenStorage {
   const map = new Map(Object.entries(initial));
@@ -46,6 +47,21 @@ describe('playbackApi buiten openapi-fetch', () => {
     const [url, init] = fetchImpl.mock.calls[0]!;
     expect(url).toBe(`${BASE}/subtitles/sub-1`);
     expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer geheim-1');
+  });
+
+  it('maakt van 503 een herhaalbare fout met de Retry-After van de server', async () => {
+    const fetchImpl = vi.fn(async () => new Response('{}', { status: 503, headers: { 'Retry-After': '7' } }));
+    const { api } = setup(fetchImpl);
+    const error = await api.subtitleText('sub-1').catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(SubtitleNotReadyError);
+    expect((error as SubtitleNotReadyError).retryAfterMs).toBe(7000);
+  });
+
+  it.each([401, 404, 502])('herhaalt %i niet', async (status) => {
+    const { api } = setup(vi.fn(async () => new Response('{}', { status })));
+    const error = await api.subtitleText('sub-1').catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(Error);
+    expect(error).not.toBeInstanceOf(SubtitleNotReadyError);
   });
 
   it('ververst een verlopen accesstoken voor hls.js', async () => {
@@ -120,6 +136,19 @@ it('a refreshed authenticated POST replays the original unconsumed body', async 
   const body = { item_id: 'item', session_id: 'viewing', position_ms: 1, occurred_at: '2026-10-29T12:00:00Z', completed: false, explicit_action: 'none' as const, backlog: false };
   await api.reportWatchState(body);
   expect(seen).toEqual([body, body]);
+});
+
+it('drops a subtitle that arrives after the account changed', async () => {
+  const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    if (url.endsWith('/subtitles/s1')) {
+      await client.login({ username: 'B', password: 'canned' });
+      return new Response('WEBVTT\n');
+    }
+    return new Response(JSON.stringify({ access_token: 'B', refresh_token: 'refresh-B', expires_in_ms: 900000 }), { headers: { 'Content-Type': 'application/json' } });
+  });
+  const { api, client } = setup(fetchImpl);
+  await expect(api.subtitleText('s1')).rejects.toThrow('Playback account changed');
 });
 
 it('all old viewing operations refuse after account replacement', async () => {

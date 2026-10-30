@@ -21,6 +21,8 @@ mixin _PleyaServerRequests {
   /// round-trip, and the answer would be a 404 the UI has to interpret.
   PleyaCapabilities get wireCapabilities;
 
+  Future<MediaServerResponse> _getSubtitle(String subtitleId, AbortController abort);
+
   Future<Map<String, String>> _downloadHeaders() async {
     if (_closed) throw StateError('The download connection is closed.');
     final headers = await _session.authHeaders();

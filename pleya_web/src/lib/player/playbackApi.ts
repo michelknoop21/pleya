@@ -6,6 +6,7 @@
  */
 import type { components } from '../api/schema';
 import type { PleyaClient } from '../api/client';
+import { retryAfterMs, SubtitleNotReadyError } from './subtitleRetry';
 import type { PlaybackPlan, PlaybackPlanRequest, StreamSession, StreamToken, WatchStateEvent, UserState } from './types';
 
 export interface PlaybackApi {
@@ -22,7 +23,10 @@ export interface PlaybackApi {
   stop(sessionId: string, keepalive: boolean): void;
   /** Een geldig accesstoken voor hls.js, zo nodig eerst ververst. */
   bearer(): Promise<string | null>;
-  /** De bytes van een ondertitelbestand, met de bearer in de header. */
+  /**
+   * De bytes van een ondertitelbestand, met de bearer in de header. `503` wordt
+   * `SubtitleNotReadyError`: het spoor is nog niet klaar, of de werker is bezet.
+   */
   subtitleText(subtitleId: string, signal?: AbortSignal): Promise<string>;
 }
 
@@ -104,6 +108,8 @@ export function playbackApi(
       if (access) headers.set('Authorization', `Bearer ${access}`);
       const url = `${client.baseUrl}/subtitles/${encodeURIComponent(subtitleId)}`;
       const response = await fetchImpl(url, { headers, signal });
+      assertAccount();
+      if (response.status === 503) throw new SubtitleNotReadyError(retryAfterMs(response.headers.get('Retry-After')));
       if (!response.ok) throw new Error(`subtitle ${response.status}`);
       return await response.text();
     }

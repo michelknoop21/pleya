@@ -228,11 +228,7 @@ func (s *Server) handlePlaybackPlan(w http.ResponseWriter, r *http.Request) {
 						InputPath: file.AbsPath, StreamIndex: index, Format: file.Format, Generation: file.Generation,
 					})
 					if extractErr != nil {
-						if errors.Is(extractErr, transcode.ErrBusy) {
-							writeError(w, s.log, CodeTranscodeBusy, "subtitle worker is busy", nil)
-						} else {
-							writeError(w, s.log, CodeTranscodeFailed, "the subtitle could not be prepared", nil)
-						}
+						s.writeSubtitlePreparationError(w, r, subtitleStream.ID, extractErr)
 						return
 					}
 					plan.SubtitlePath = path

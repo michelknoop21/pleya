@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Directory;
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
 import '../connection/connection.dart';
+import '../media/deferred_subtitle.dart';
 import '../utils/continue_watching_merge.dart';
 import '../exceptions/media_server_exceptions.dart';
 import '../media/download_resolution.dart';
@@ -45,6 +47,7 @@ import '../utils/external_ids.dart';
 import '../utils/language_codes.dart';
 import '../utils/media_server_http_client.dart';
 import '../utils/media_server_timeouts.dart';
+import 'pleya_subtitle_fetcher.dart';
 import 'api_cache.dart';
 import 'cached_playback_metadata_service.dart';
 import 'download_artwork_helpers.dart';
@@ -415,6 +418,15 @@ class PleyaServerClient
       abort: abort,
     );
   }
+
+  /// One attempt at a subtitle. The limit sits above the server's 30 s answer,
+  /// so a slow track ends in a repeat and not in a timeout on this side.
+  @override
+  Future<MediaServerResponse> _getSubtitle(String subtitleId, AbortController abort) => _authorizedGet(
+    '/subtitles/${Uri.encodeComponent(subtitleId)}',
+    timeout: const Duration(seconds: 40),
+    abort: abort,
+  );
 
   /// POST a protocol path with a JSON body and hand back its JSON object.
   ///

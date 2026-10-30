@@ -35,6 +35,10 @@ part of '../../pleya_server_client.dart';
 /// can, and a credential that never enters a URL never enters a log, a referrer
 /// or a shell history either. [PleyaServerClient.streamHeaders] carries it.
 mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
+  /// Where deferred subtitles are written; the app's temporary directory unless a test says otherwise.
+  @visibleForTesting
+  Directory? subtitleTempDirectory;
+
   /// The watched fraction the server uses when a report carries no `completed`.
   /// Kept in step with `watch.WatchedFraction` on the server side.
   static const double _watchedFraction = 0.9;
@@ -151,7 +155,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     );
     final subtitles = [
       for (final track in mediaInfo.subtitleTracks)
-        if (plan?.subtitle?.action != 'burn' && track.isExternal && track.key != null)
+        if (plan?.subtitle?.action != 'burn' && track.isExternalFile && track.key != null)
           SubtitleTrack.uri(
             track.key!,
             title: track.title,
@@ -161,6 +165,8 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
             isForced: track.forced,
           ),
     ];
+
+    final deferredSubtitle = plan?.subtitle?.action == 'burn' ? null : _deferredEmbeddedSubtitle(mediaInfo);
 
     // Warm the header before the player opens the URL. The token is short
     // lived and minted per request everywhere else; here mpv holds the URL, so
@@ -194,6 +200,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
         ),
         mediaInfo: mediaInfo,
         externalSubtitles: subtitles,
+        deferredSubtitle: deferredSubtitle,
       );
     }
 
@@ -205,6 +212,32 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       playSessionId: _watchLedger.sessionFor(options.metadata.id, _mintSessionId),
       mediaInfo: mediaInfo,
       externalSubtitles: subtitles,
+      deferredSubtitle: deferredSubtitle,
+    );
+  }
+
+  /// The selected embedded track of an HLS delivery, which drops the track from
+  /// the stream. It stays out of [PlaybackInitializationResult.externalSubtitles]:
+  /// mpv loads those during open and does not repeat, so a track the server is
+  /// still reading would hold the film back and then fail. Unselected tracks
+  /// stay in the source controls and cost the server nothing until chosen.
+  DeferredSubtitle? _deferredEmbeddedSubtitle(MediaSourceInfo info) {
+    final track = info.subtitleTracks.where((t) => t.selected && !t.isExternalFile && t.key != null).firstOrNull;
+    final id = track?.sourceStreamId;
+    if (track == null || id == null) return null;
+    return DeferredSubtitle(
+      title: track.displayTitle ?? track.title,
+      language: track.languageCode,
+      load: (abort) async {
+        final text = await fetchPleyaSubtitleWhenReady(
+          abort: abort,
+          get: (attempt) {
+            if (_closed) throw const PleyaSubtitleUnavailable(null);
+            return _getSubtitle(id, attempt);
+          },
+        );
+        return writePleyaSubtitleFile(text, track.codec ?? 'srt', directory: subtitleTempDirectory);
+      },
     );
   }
 

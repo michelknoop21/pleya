@@ -539,6 +539,9 @@
   "videoControls": {
     "audioLabel": "Audio",
     "subtitlesLabel": "Ondertitels",
+    "subtitlesPreparing": "Ondertitels voorbereiden",
+    "subtitlesPrepareFailed": "Ondertitels konden niet worden voorbereid",
+    "subtitlesPrepareRetry": "Opnieuw",
     "resetToZero": "Reset naar 0ms",
     "addTime": "+${amount}${unit}",
     "minusTime": "-${amount}${unit}",

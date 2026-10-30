@@ -314,6 +314,7 @@ extension _VideoPlayerBuildMethods on VideoPlayerScreenState {
                         sourceSubtitleTracks: sourceSubtitleTracks,
                         sourceSubtitleMetadata: _currentMediaInfo?.subtitleTracks ?? const <MediaSubtitleTrack>[],
                         selectedSubtitleStreamId: _selectedSourceSubtitleStreamIdForControls(sourceSubtitleTracks),
+                        deferredSubtitles: _deferredSubtitles,
                         sourcePartId: _currentMediaInfo?.partId,
                         onPlaybackSourceChanged: _switchPlaybackSource,
                         onTogglePIPMode: _togglePIPMode,

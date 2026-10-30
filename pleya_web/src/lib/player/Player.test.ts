@@ -11,6 +11,7 @@ import type { Item } from '../api/types';
 import { setLocale } from '../i18n';
 import Player from './Player.svelte';
 import { apiError, deps, fakeApi, transcodePlan } from './playerFake';
+import { SubtitleNotReadyError } from './subtitleRetry';
 
 const item: Item = {
   id: 'item-1',
@@ -224,6 +225,55 @@ describe('subtitle delivery through the public player', () => {
     await fireEvent.click(screen.getByRole('radio', { name: 'Nederlands' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('De ondertitel kon niet worden geladen');
     expect(screen.getByRole('radio', { name: 'Uit' })).toBeChecked();
+  });
+});
+
+describe('embedded subtitle the server is still preparing', () => {
+  const embedded = {
+    ...item.versions![0]!,
+    subtitle_streams: [{
+      id: 'embedded', format: 'srt' as const, is_external: false, is_default: false,
+      is_forced: false, is_hearing_impaired: false, title: 'Ingebed', index: 2
+    }]
+  };
+  const open = async (api: ReturnType<typeof fakeApi>) => {
+    const base = deps(api);
+    render(Player, { props: { item, version: embedded, deps: { ...base, server: { ...base.server!, embedded_subtitles: true } }, onclose: vi.fn(), onlogin: vi.fn() } });
+    await screen.findByText('Direct afspelen · HEVC 4K');
+    await fireEvent.click(screen.getByRole('button', { name: 'Ondertitels' }));
+    await fireEvent.click(screen.getByRole('radio', { name: 'Ingebed' }));
+  };
+
+  it('names the wait on the subtitle button and shows the track without an action', async () => {
+    const api = fakeApi();
+    let finish!: (body: string) => void;
+    vi.mocked(api.subtitleText)
+      .mockRejectedValueOnce(new SubtitleNotReadyError(1))
+      .mockImplementationOnce(() => new Promise(resolve => finish = resolve));
+    await open(api);
+    await fireEvent.click(screen.getByRole('button', { name: 'Sluiten' }));
+    expect(screen.getByRole('status')).toHaveTextContent('Ondertitels voorbereiden');
+    expect(screen.getByRole('button', { name: 'Ondertitels voorbereiden' })).toBeInTheDocument();
+    await waitFor(() => expect(api.subtitleText).toHaveBeenCalledTimes(2));
+    finish('1\n00:00:00,000 --> 00:00:05,000\nHallo');
+    await waitFor(() => expect(document.querySelector('track')).not.toBeNull());
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Ondertitels' })).toBeInTheDocument();
+  });
+
+  it('offers Opnieuw after a failure while the film keeps playing', async () => {
+    const api = fakeApi();
+    vi.mocked(api.subtitleText).mockRejectedValueOnce(new Error('subtitle 502'));
+    await open(api);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Ondertitels konden niet worden voorbereid');
+    expect(document.querySelector('video')?.getAttribute('src')).toBe('/pleya/v1/stream/v-1?ss=ss-1');
+    await fireEvent.click(screen.getByRole('button', { name: 'Sluiten' }));
+    expect(screen.getByRole('status')).toHaveTextContent('Ondertitels konden niet worden voorbereid');
+    vi.mocked(api.subtitleText).mockResolvedValueOnce('1\n00:00:00,000 --> 00:00:05,000\nHallo');
+    await fireEvent.click(screen.getByRole('button', { name: 'Opnieuw' }));
+    await waitFor(() => expect(document.querySelector('track')).not.toBeNull());
+    expect(api.subtitleText).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('status')).toBeNull();
   });
 });
 

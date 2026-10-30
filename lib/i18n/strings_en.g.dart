@@ -1653,6 +1653,15 @@ class TranslationsVideoControlsEn {
 	/// en: 'Subtitles'
 	String get subtitlesLabel => 'Subtitles';
 
+	/// en: 'Preparing subtitles'
+	String get subtitlesPreparing => 'Preparing subtitles';
+
+	/// en: 'Subtitles could not be prepared'
+	String get subtitlesPrepareFailed => 'Subtitles could not be prepared';
+
+	/// en: 'Retry'
+	String get subtitlesPrepareRetry => 'Retry';
+
 	/// en: 'Reset to 0ms'
 	String get resetToZero => 'Reset to 0ms';
 
@@ -10771,6 +10780,9 @@ extension on Translations {
 			'tooltips.markAsUnwatched' => 'Mark as unwatched',
 			'videoControls.audioLabel' => 'Audio',
 			'videoControls.subtitlesLabel' => 'Subtitles',
+			'videoControls.subtitlesPreparing' => 'Preparing subtitles',
+			'videoControls.subtitlesPrepareFailed' => 'Subtitles could not be prepared',
+			'videoControls.subtitlesPrepareRetry' => 'Retry',
 			'videoControls.resetToZero' => 'Reset to 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -10779,11 +10791,11 @@ extension on Translations {
 			'videoControls.noOffset' => 'No offset',
 			'videoControls.letterbox' => 'Letterbox',
 			'videoControls.fillScreen' => 'Fill screen',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.stretch' => 'Stretch',
 			'videoControls.lockRotation' => 'Lock rotation',
 			'videoControls.unlockRotation' => 'Unlock rotation',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.timerActive' => 'Timer Active',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Playback will pause in ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'End of current video',
@@ -11293,11 +11305,11 @@ extension on Translations {
 			'logs.copyLogs' => 'Copy Logs',
 			'logs.uploadLogs' => 'Upload Logs',
 			'logs.refreshLogs' => 'Refresh',
+			_ => null,
+		} ?? switch (path) {
 			'logs.levelFilter' => 'Level',
 			'logs.levelAll' => 'All',
 			'logs.levelWarnings' => 'Warnings',
-			_ => null,
-		} ?? switch (path) {
 			'logs.levelErrors' => 'Errors',
 			'logs.noMatchingLogs' => 'No lines at this level',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} of ${total} lines',
@@ -11807,11 +11819,11 @@ extension on Translations {
 			'metadataEdit.selectBackground' => 'Select Background',
 			'metadataEdit.selectLogo' => 'Select Logo',
 			'metadataEdit.selectSquareArt' => 'Select Square Art',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.fromUrl' => 'From URL',
 			'metadataEdit.uploadFile' => 'Upload File',
 			'metadataEdit.enterImageUrl' => 'Enter image URL',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.imageUrl' => 'Image URL',
 			'metadataEdit.metadataUpdated' => 'Metadata updated',
 			'metadataEdit.metadataUpdateFailed' => 'Failed to update metadata',
@@ -12321,11 +12333,11 @@ extension on Translations {
 			'unifiedCatalog.states.emptyTitle' => 'This catalog is empty',
 			'unifiedCatalog.states.emptyBody' => 'No visible library holds anything for this page.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Nothing matches these filters',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.states.filterEmptyBody' => 'Clear a filter to see more titles.',
 			'unifiedCatalog.states.clearFilters' => 'Clear filters',
 			'unifiedCatalog.states.errorTitle' => 'The catalog could not be loaded',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.states.errorBody' => 'No server answered. Check your connection and try again.',
 			'unifiedCatalog.states.partialOne' => '1 library did not answer',
 			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} libraries did not answer',
@@ -12835,11 +12847,11 @@ extension on Translations {
 			'assistant.steps.findRequestTitle' => 'Searching Seerr',
 			'assistant.steps.discoverRequestTitles' => 'Finding matching titles',
 			'assistant.steps.requestTitle' => 'Requesting title',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.steps.findTitle' => 'Finding the title',
 			'assistant.steps.recallMemory' => 'Checking your memory',
 			'assistant.steps.rememberFact' => 'Preparing a memory',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.steps.forgetFact' => 'Preparing to forget',
 			'assistant.steps.fallback' => 'Working',
 			'assistant.jobs.scanLibrary.running' => 'Scan running',

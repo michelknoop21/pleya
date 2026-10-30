@@ -2402,8 +2402,12 @@ paths:
         begrensde extractie. Tekst behoudt SRT/ASS/SSA/VTT; PGS/DVDsub levert
         één subtitle-only Matroska-resource. Identiteit en bibliotheekrechten
         worden voor voorbereiding en opnieuw voor levering gecontroleerd;
-        de bestaande token-/sessiescope blijft gelden. Voorbereiding is
-        begrensd tot de bestaande starttimeout en één werker; maximaal 4 MiB
+        de bestaande token-/sessiescope blijft gelden. Voorbereiding loopt los
+        van de aanvraag door, is begrensd tot 10 minuten en één werker, en
+        antwoordt binnen 30 s: `200`, of `503 playback.transcode_busy` met
+        `Retry-After: 5` zolang het spoor niet klaar of de werker bezet is. Een
+        herhaling sluit aan op de lopende voorbereiding. Hetzelfde geldt voor
+        de ondertitelvoorbereiding in `POST /playback/plan`. Maximaal 4 MiB
         tekst of 64 MiB bitmapuitvoer, binnen een afgeleide cache van 64 MiB.
       security:
         - bearerAuth: []

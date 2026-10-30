@@ -109,6 +109,9 @@ func (s *Server) handleArtwork(w http.ResponseWriter, r *http.Request) {
 	s.serveFile(w, r, served, contentType)
 }
 
+// subtitleRetryAfterSeconds is what a client waits before it asks for a track that is not ready.
+const subtitleRetryAfterSeconds = "5"
+
 // subtitleContentTypes volgen hoofdstuk 12 van de specificatie.
 var subtitleContentTypes = map[string]string{
 	"srt": "application/x-subrip",
@@ -148,12 +151,7 @@ func (s *Server) handleSubtitle(w http.ResponseWriter, r *http.Request, versionS
 			InputPath: file.AbsPath, StreamIndex: index, Format: file.Format, Generation: file.Generation,
 		})
 		if extractErr != nil {
-			if errors.Is(extractErr, transcode.ErrBusy) {
-				writeError(w, s.log, CodeTranscodeBusy, "subtitle worker is busy", nil)
-			} else {
-				s.log.Warn("subtitle extraction failed", "stream", streamID.String(), "error", extractErr.Error())
-				writeError(w, s.log, CodeTranscodeFailed, "the subtitle could not be prepared", nil)
-			}
+			s.writeSubtitlePreparationError(w, r, streamID, extractErr)
 			return
 		}
 		file.AbsPath = path
@@ -176,6 +174,21 @@ func (s *Server) handleSubtitle(w http.ResponseWriter, r *http.Request, versionS
 		return
 	}
 	s.serveFile(w, r, file, contentType)
+}
+
+// writeSubtitlePreparationError answers a preparation that is not finished. Busy means the
+// extraction runs on: the client repeats after Retry-After and joins it. A server going down
+// is no failure of this track, so the repeat is also the right answer there.
+func (s *Server) writeSubtitlePreparationError(w http.ResponseWriter, r *http.Request, streamID id.ID, err error) {
+	if errors.Is(err, transcode.ErrBusy) || errors.Is(err, transcode.ErrStopped) {
+		w.Header().Set("Retry-After", subtitleRetryAfterSeconds)
+		writeError(w, s.log, CodeTranscodeBusy, "the subtitle is still being prepared", nil)
+		return
+	}
+	if r.Context().Err() == nil {
+		s.log.Warn("subtitle extraction failed", "stream", streamID.String(), "error", err.Error())
+	}
+	writeError(w, s.log, CodeTranscodeFailed, "the subtitle could not be prepared", nil)
 }
 
 func (s *Server) canReadSubtitle(w http.ResponseWriter, r *http.Request, versionScope *id.ID, versionID, libraryID id.ID) bool {

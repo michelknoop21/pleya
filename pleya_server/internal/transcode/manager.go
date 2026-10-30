@@ -84,7 +84,11 @@ type Options struct {
 	IdleTimeout time.Duration
 	// StartTimeout is hoe lang Start op het eerste segment wacht.
 	StartTimeout time.Duration
-	HW           HWAccel
+	// SubtitleWait is hoe lang een aanvraag op een ingebed spoor wacht (standaard 30 s).
+	SubtitleWait time.Duration
+	// SubtitleTimeout begrenst de extractie zelf, los van de aanvraag (standaard 10 minuten).
+	SubtitleTimeout time.Duration
+	HW              HWAccel
 	RenderNode   string
 	// HWReason zegt waarom er geen hardwareversnelling is, voor beheer.
 	HWReason string
@@ -98,11 +102,12 @@ type Manager struct {
 	subtitleSF  singleflight.Group
 	o           Options
 
-	mu       sync.Mutex
-	sessions map[id.ID]*running
-	closed   bool
-	stop     chan struct{}
-	wg       sync.WaitGroup
+	mu             sync.Mutex
+	sessions       map[id.ID]*running
+	subtitleFailed map[string]time.Time
+	closed         bool
+	stop           chan struct{}
+	wg             sync.WaitGroup
 }
 
 type running struct {
@@ -123,6 +128,12 @@ func New(o Options) (*Manager, error) {
 	if o.StartTimeout <= 0 {
 		o.StartTimeout = 30 * time.Second
 	}
+	if o.SubtitleWait <= 0 {
+		o.SubtitleWait = 30 * time.Second
+	}
+	if o.SubtitleTimeout <= 0 {
+		o.SubtitleTimeout = 10 * time.Minute
+	}
 	if o.FFmpegPath == "" {
 		o.FFmpegPath = "ffmpeg"
 	}
@@ -140,7 +151,7 @@ func New(o Options) (*Manager, error) {
 			return nil, fmt.Errorf("sessies terugzetten: %w", err)
 		}
 	}
-	m := &Manager{subtitleSem: make(chan struct{}, 1), o: o, sessions: map[id.ID]*running{}, stop: make(chan struct{})}
+	m := &Manager{subtitleSem: make(chan struct{}, 1), subtitleFailed: map[string]time.Time{}, o: o, sessions: map[id.ID]*running{}, stop: make(chan struct{})}
 	m.wg.Add(1)
 	go m.janitor()
 	return m, nil

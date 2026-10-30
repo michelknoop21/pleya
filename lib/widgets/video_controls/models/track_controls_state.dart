@@ -5,6 +5,7 @@ import '../../../media/media_version.dart';
 import '../../../media/media_source_info.dart';
 import '../../../models/transcode_quality_preset.dart';
 import '../../../mpv/mpv.dart';
+import '../../../services/deferred_subtitle_loader.dart';
 import '../../../services/shader_service.dart';
 import '../helpers/track_filter_helper.dart';
 
@@ -24,6 +25,9 @@ class TrackControlsState {
   /// alone often lack a language.
   final List<MediaSubtitleTrack> sourceSubtitleMetadata;
   final int? selectedSubtitleStreamId;
+
+  /// The track the server is still preparing, for the button and the track lists.
+  final DeferredSubtitleLoader? deferredSubtitles;
   final int? sourcePartId;
 
   /// Total media duration in milliseconds. Used by the version/quality sheet
@@ -95,6 +99,7 @@ class TrackControlsState {
     this.sourceSubtitleTracks = const [],
     this.sourceSubtitleMetadata = const [],
     this.selectedSubtitleStreamId,
+    this.deferredSubtitles,
     this.sourcePartId,
     this.sourceDurationMs,
     this.boxFitMode = 0,

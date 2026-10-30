@@ -1,8 +1,13 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/media/deferred_subtitle.dart';
 import 'package:pleya/media/media_source_info.dart';
 import 'package:pleya/mpv/mpv.dart';
+import 'package:pleya/services/deferred_subtitle_loader.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/widgets/video_controls/models/track_controls_state.dart';
 import 'package:pleya/widgets/video_controls/sheets/track_sheet.dart';
@@ -86,6 +91,54 @@ void main() {
       );
 
       expect(find.text('Search Subtitles'), findsNothing);
+    });
+  });
+
+  group('TrackSheet deferred subtitle', () {
+    final sourceTrack = MediaSubtitleTrack(id: 3, selected: true, forced: false, languageCode: 'eng');
+
+    Future<DeferredSubtitleLoader> pump(WidgetTester tester, Future<File> Function() load) async {
+      final loader = DeferredSubtitleLoader(attach: (_, _) async {});
+      addTearDown(loader.dispose);
+      unawaited(loader.start(DeferredSubtitle(load: (_) => load())));
+      await _pumpTrackSheet(
+        tester,
+        player: _FakeTrackSheetPlayer(
+          tracks: const Tracks(audio: [AudioTrack(id: 'a1')]),
+          track: const TrackSelection(
+            audio: AudioTrack(id: 'a1'),
+            subtitle: SubtitleTrack.off,
+          ),
+        ),
+        trackControlsState: TrackControlsState(
+          sourceSubtitleTracks: [sourceTrack],
+          onSwitchSubtitleStreamId: (_) {},
+          deferredSubtitles: loader,
+        ),
+      );
+      return loader;
+    }
+
+    testWidgets('names the wait above the tracks', (tester) async {
+      final gate = Completer<File>();
+      await pump(tester, () => gate.future);
+      expect(find.text('Preparing subtitles'), findsOneWidget);
+      expect(find.text('Retry'), findsNothing);
+    });
+
+    testWidgets('offers a retry after a failure', (tester) async {
+      var calls = 0;
+      final gate = Completer<File>();
+      await pump(tester, () {
+        calls++;
+        return calls == 1 ? Future<File>.error(StateError('502')) : gate.future;
+      });
+      await tester.pump();
+      expect(find.text('Subtitles could not be prepared'), findsOneWidget);
+      await tester.tap(find.text('Retry'));
+      await tester.pump();
+      expect(calls, 2);
+      expect(find.text('Preparing subtitles'), findsOneWidget);
     });
   });
 

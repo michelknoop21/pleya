@@ -720,6 +720,9 @@ class _TranslationsVideoControlsNl extends TranslationsVideoControlsEn {
 	// Translations
 	@override String get audioLabel => 'Audio';
 	@override String get subtitlesLabel => 'Ondertitels';
+	@override String get subtitlesPreparing => 'Ondertitels voorbereiden';
+	@override String get subtitlesPrepareFailed => 'Ondertitels konden niet worden voorbereid';
+	@override String get subtitlesPrepareRetry => 'Opnieuw';
 	@override String get resetToZero => 'Reset naar 0ms';
 	@override String addTime({required Object amount, required Object unit}) => '+${amount}${unit}';
 	@override String minusTime({required Object amount, required Object unit}) => '-${amount}${unit}';
@@ -5028,6 +5031,9 @@ extension on TranslationsNl {
 			'tooltips.markAsUnwatched' => 'Markeer als ongekeken',
 			'videoControls.audioLabel' => 'Audio',
 			'videoControls.subtitlesLabel' => 'Ondertitels',
+			'videoControls.subtitlesPreparing' => 'Ondertitels voorbereiden',
+			'videoControls.subtitlesPrepareFailed' => 'Ondertitels konden niet worden voorbereid',
+			'videoControls.subtitlesPrepareRetry' => 'Opnieuw',
 			'videoControls.resetToZero' => 'Reset naar 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -5036,11 +5042,11 @@ extension on TranslationsNl {
 			'videoControls.noOffset' => 'Geen offset',
 			'videoControls.letterbox' => 'Letterbox',
 			'videoControls.fillScreen' => 'Vul scherm',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.stretch' => 'Uitrekken',
 			'videoControls.lockRotation' => 'Vergrendel rotatie',
 			'videoControls.unlockRotation' => 'Ontgrendel rotatie',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.timerActive' => 'Timer actief',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Afspelen wordt gepauzeerd over ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'Einde van huidige video',
@@ -5550,11 +5556,11 @@ extension on TranslationsNl {
 			'logs.copyLogs' => 'Kopieer logs',
 			'logs.uploadLogs' => 'Logs uploaden',
 			'logs.refreshLogs' => 'Verversen',
+			_ => null,
+		} ?? switch (path) {
 			'logs.levelFilter' => 'Niveau',
 			'logs.levelAll' => 'Alles',
 			'logs.levelWarnings' => 'Waarschuwingen',
-			_ => null,
-		} ?? switch (path) {
 			'logs.levelErrors' => 'Fouten',
 			'logs.noMatchingLogs' => 'Geen regels op dit niveau',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} van ${total} regels',
@@ -6064,11 +6070,11 @@ extension on TranslationsNl {
 			'metadataEdit.selectBackground' => 'Achtergrond selecteren',
 			'metadataEdit.selectLogo' => 'Logo selecteren',
 			'metadataEdit.selectSquareArt' => 'Vierkante afbeelding selecteren',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.fromUrl' => 'Vanaf URL',
 			'metadataEdit.uploadFile' => 'Bestand uploaden',
 			'metadataEdit.enterImageUrl' => 'Voer afbeeldings-URL in',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.imageUrl' => 'Afbeeldings-URL',
 			'metadataEdit.metadataUpdated' => 'Metadata bijgewerkt',
 			'metadataEdit.metadataUpdateFailed' => 'Metadata bijwerken mislukt',
@@ -6578,11 +6584,11 @@ extension on TranslationsNl {
 			'unifiedCatalog.states.emptyTitle' => 'Deze catalogus is leeg',
 			'unifiedCatalog.states.emptyBody' => 'Geen zichtbare bibliotheek bevat iets voor deze pagina.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Niets voldoet aan deze filters',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.states.filterEmptyBody' => 'Wis een filter om meer titels te zien.',
 			'unifiedCatalog.states.clearFilters' => 'Filters wissen',
 			'unifiedCatalog.states.errorTitle' => 'De catalogus kon niet worden geladen',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.states.errorBody' => 'Geen enkele server antwoordde. Controleer je verbinding en probeer het opnieuw.',
 			'unifiedCatalog.states.partialOne' => '1 bibliotheek antwoordde niet',
 			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} bibliotheken antwoordden niet',
@@ -7092,11 +7098,11 @@ extension on TranslationsNl {
 			'assistant.steps.findRequestTitle' => 'Seerr doorzoeken',
 			'assistant.steps.discoverRequestTitles' => 'Passende titels zoeken',
 			'assistant.steps.requestTitle' => 'Titel aanvragen',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.steps.findTitle' => 'Titel op beschrijving zoeken',
 			'assistant.steps.recallMemory' => 'Geheugen raadplegen',
 			'assistant.steps.rememberFact' => 'Herinnering klaarzetten',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.steps.forgetFact' => 'Vergeten klaarzetten',
 			'assistant.steps.fallback' => 'Bezig',
 			'assistant.jobs.scanLibrary.running' => 'Scan loopt',

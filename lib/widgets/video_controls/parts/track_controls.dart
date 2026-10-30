@@ -105,6 +105,7 @@ extension _PlexVideoControlsTrackMethods on _PlexVideoControlsState {
           ? versionQuality.sourceSubtitleTracks
           : const <MediaSubtitleTrack>[],
       selectedSubtitleStreamId: canSwitchSourceSubtitles ? versionQuality.selectedSubtitleStreamId : null,
+      deferredSubtitles: widget.deferredSubtitles,
       sourcePartId: canSwitchSourceSubtitles ? widget.sourcePartId : null,
       sourceDurationMs: widget.metadata.durationMs,
       boxFitMode: widget.boxFitMode,

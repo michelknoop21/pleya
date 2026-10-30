@@ -1,3 +1,5 @@
+import '../media/deferred_subtitle.dart';
+import '../services/deferred_subtitle_loader.dart';
 import '../media/media_kind.dart';
 import 'dart:async';
 import '../media/ids.dart';
@@ -125,6 +127,7 @@ import '../utils/language_codes.dart';
 part 'video_player/parts/companion_remote.dart';
 part 'video_player/parts/display_matching.dart';
 part 'video_player/parts/episode_navigation.dart';
+part 'video_player/parts/deferred_subtitles.dart';
 part 'video_player/parts/episode_queue.dart';
 part 'video_player/parts/errors.dart';
 part 'video_player/parts/language_toasts.dart';
@@ -527,6 +530,9 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
 
   // VLC-style in-player toast controller (rate changes, backend switch, etc.).
   final PlayerToastController _toastController = PlayerToastController();
+  late final DeferredSubtitleLoader _deferredSubtitles = DeferredSubtitleLoader(attach: _attachDeferredSubtitle)
+    ..addListener(_onDeferredSubtitleStatus);
+  Timer? _deferredSubtitleNotice;
   bool _reclaimingFocus = false;
 
   // Cached setting: when false on Windows/Linux, ESC should not exit the player
@@ -1397,6 +1403,8 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     _hasFirstFrame.dispose();
     _isExiting.dispose();
     _chromeController.dispose();
+    _deferredSubtitleNotice?.cancel();
+    _deferredSubtitles.dispose();
     _toastController.dispose();
 
     // Stop progress tracking and send final state. Normal back navigation

@@ -1,3 +1,4 @@
+import '../media/deferred_subtitle.dart';
 import '../media/media_item.dart';
 import '../media/media_source_info.dart';
 import '../media/media_version.dart';
@@ -69,6 +70,10 @@ class PlaybackInitializationResult {
   final String? videoUrl;
   final MediaSourceInfo? mediaInfo;
   final List<SubtitleTrack> externalSubtitles;
+
+  /// The selected track when the backend has to prepare it first; the player
+  /// adds it after opening, while the film plays.
+  final DeferredSubtitle? deferredSubtitle;
   final bool isOffline;
 
   /// `true` when [videoUrl] points at a backend transcoding stream.
@@ -107,6 +112,7 @@ class PlaybackInitializationResult {
     this.videoUrl,
     this.mediaInfo,
     this.externalSubtitles = const [],
+    this.deferredSubtitle,
     this.isOffline = false,
     this.isTranscoding = false,
     this.streamEvidence = const PlaybackStreamEvidence(),

@@ -109,6 +109,9 @@ class TrackManager {
   bool _isApplyingTrackSelection = false;
   bool Function()? _externalSubtitleSelectionScope;
   List<SubtitleTrack> _lastExternalSubtitles = const [];
+
+  /// The selected subtitle is a deferred track, so post-open selection leaves subtitles alone.
+  bool subtitleArrivesLater = false;
   StreamSubscription<Tracks>? _trackLoadingSubscription;
   Timer? _subtitleFallbackTimer;
   Timer? _trackSelectionFallbackTimer;
@@ -414,6 +417,7 @@ class TrackManager {
         preferredSecondarySubtitleTrack: preferredSecondarySubtitleTrack,
         defaultPlaybackSpeed: settingsService.read(SettingsService.defaultPlaybackSpeed),
         isCurrent: live,
+        skipSubtitles: subtitleArrivesLater,
         onAudioTrackChanged: (track, {required userInitiated}) =>
             onAudioTrackChanged(track, userInitiated: userInitiated, isCurrent: live),
         onSubtitleTrackChanged: (track, {required userInitiated}) =>

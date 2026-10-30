@@ -328,6 +328,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     if (!(isCurrent?.call() ?? true)) return;
     final currentPlayer = player;
     if (!mounted || currentPlayer == null || _playbackTransition != _PlaybackTransition.idle) return;
+    if (newSubtitleStreamId != null) _deferredSubtitles.abortPending();
 
     final effectiveMediaIndex = newMediaIndex ?? _effectiveSelectedMediaIndex;
     final effectivePreset = newPreset ?? _selectedQualityPreset;
@@ -643,6 +644,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       final externalSubtitlePlan = _prepareExternalSubtitleOpenPlan(
         player: currentPlayer,
         externalSubtitles: result.externalSubtitles,
+        deferredSubtitle: result.deferredSubtitle,
       );
       final didOpen = await _openMediaOnPlayer(
         player: currentPlayer,

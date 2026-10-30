@@ -7,6 +7,8 @@ import 'package:pleya/media/ids.dart';
 import 'package:pleya/services/pleya_server_api_cache.dart';
 import 'package:pleya/services/cached_playback_metadata_service.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
@@ -18,6 +20,8 @@ import 'package:pleya/models/transcode_quality_preset.dart';
 import 'package:pleya/services/playback_initialization_types.dart';
 import 'package:pleya/services/playback_stream_evidence.dart';
 import 'package:pleya/services/pleya_server_client.dart';
+import 'package:pleya/services/pleya_subtitle_fetcher.dart';
+import 'package:pleya/utils/media_server_http_client.dart' show AbortController;
 import 'pleya_fake_server.dart';
 
 void main() {
@@ -132,13 +136,79 @@ void main() {
     final result = await public.getPlaybackInitialization(
       PlaybackInitializationOptions(metadata: item, selectedMediaIndex: 0),
     );
-    expect(result.externalSubtitles.map((s) => s.uri), [
-      'http://nas.lan:8832/pleya/v1/subtitles/embedded',
-      'http://nas.lan:8832/pleya/v1/subtitles/sidecar',
-    ]);
+    // Only the sidecar goes to mpv as a URL: it loads those during open and does not repeat.
+    expect(result.externalSubtitles.map((s) => s.uri), ['http://nas.lan:8832/pleya/v1/subtitles/sidecar']);
     expect(result.mediaInfo!.subtitleTracks.first.usesExternalDelivery, isTrue);
     expect(result.mediaInfo!.subtitleTracks.first.isExternalFile, isFalse);
     expect(public.streamHeaders['Authorization'], startsWith('Bearer '));
+  });
+
+  group('selected embedded track on an HLS delivery', () {
+    late Directory temp;
+    late List<http.Response> answers;
+    late List<Uri> subtitleRequests;
+
+    setUp(() {
+      temp = Directory.systemTemp.createTempSync('pleya-embedded-');
+      answers = [];
+      subtitleRequests = [];
+    });
+
+    tearDown(() => temp.deleteSync(recursive: true));
+
+    Future<PlaybackInitializationResult> open({String deliveryMode = 'remux', int subtitle = 3}) async {
+      final server = PleyaFakeServer()
+        ..playbackPlanCapability = true
+        ..playbackSubtitlesCapability = true
+        ..embeddedSubtitlesCapability = true
+        ..planVersionId = 'v'
+        ..planDeliveryMode = deliveryMode;
+      client = PleyaServerClient.create(
+        server.connection(),
+        httpClientFactory: () => MockClient((request) async {
+          if (!request.url.path.contains('/subtitles/')) return server.handle(request);
+          subtitleRequests.add(request.url);
+          return answers.removeAt(0);
+        }),
+      );
+      client.subtitleTempDirectory = temp;
+      await client.refreshCapabilities();
+      return (client as MediaServerClient).getPlaybackInitialization(
+        PlaybackInitializationOptions(metadata: item, selectedMediaIndex: 0, selectedSubtitleStreamId: subtitle),
+      );
+    }
+
+    test('waits through 503 and ends as a local file', () async {
+      final result = await open();
+      final deferred = result.deferredSubtitle!;
+      expect(deferred.language, 'eng');
+      expect(result.externalSubtitles.map((s) => s.uri), isNot(contains(endsWith('/embedded'))));
+      answers = [
+        http.Response('{}', 503, headers: {'retry-after': '1'}),
+        http.Response('1\n00:00:00,000 --> 00:00:01,000\nCaption\n', 200),
+      ];
+      final file = await deferred.load(AbortController());
+      expect(subtitleRequests.map((u) => u.path).toSet(), {'/pleya/v1/subtitles/embedded'});
+      expect(subtitleRequests, hasLength(2));
+      expect(file.path, startsWith(temp.path));
+      expect(file.path, endsWith('.srt'));
+      expect(file.readAsStringSync(), contains('Caption'));
+    });
+
+    test('a closed client stops the wait, which is what an account switch does', () async {
+      final deferred = (await open()).deferredSubtitle!;
+      client.close();
+      await expectLater(deferred.load(AbortController()), throwsA(isA<PleyaSubtitleUnavailable>()));
+      expect(subtitleRequests, isEmpty);
+    });
+
+    test('subtitles off prepares nothing', () async {
+      expect((await open(subtitle: 0)).deferredSubtitle, isNull);
+    });
+
+    test('direct play keeps the track inside the file', () async {
+      expect((await open(deliveryMode: 'direct_play')).deferredSubtitle, isNull);
+    });
   });
 
   for (final choice in [0, 3]) {

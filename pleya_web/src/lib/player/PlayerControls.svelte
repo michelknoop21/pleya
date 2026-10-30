@@ -23,6 +23,10 @@
     rate: number;
     fullscreen: boolean;
     subtitlesOn: boolean;
+    subtitlePreparing?: boolean;
+    /** "Ondertitels voorbereiden" of de mislukking; de film speelt intussen door. */
+    subtitleNote?: string | null;
+    onsubtitleretry?: (() => void) | null;
     menuOpen: boolean;
     ontoggle: () => void;
     onseek: (seconds: number) => void;
@@ -78,16 +82,28 @@
         aria-label={t('player.volume')}
         oninput={(e) => p.onvolume(Number(e.currentTarget.value))}
       />
-      <button
-        class="icon"
-        class:icon--on={p.subtitlesOn}
-        type="button"
-        aria-label={t('player.subtitles')}
-        aria-expanded={p.menuOpen}
-        onclick={p.onmenu}
-      >
-        <PlayerIcon name="cc" />
-      </button>
+      <span class="cc">
+        <button
+          class="icon"
+          class:icon--on={p.subtitlesOn}
+          class:icon--preparing={p.subtitlePreparing}
+          type="button"
+          aria-label={p.subtitleNote ?? t('player.subtitles')}
+          aria-expanded={p.menuOpen}
+          title={p.subtitleNote ?? undefined}
+          onclick={p.onmenu}
+        >
+          <PlayerIcon name="cc" />
+        </button>
+        {#if p.subtitleNote && !p.menuOpen}
+          <span class="cc__note" class:cc__note--wait={p.subtitlePreparing} role="status">
+            {p.subtitleNote}
+            {#if p.onsubtitleretry}
+              <button class="cc__retry" type="button" onclick={p.onsubtitleretry}>{t('player.subtitleRetry')}</button>
+            {/if}
+          </span>
+        {/if}
+      </span>
       <button
         class="pill speed"
         type="button"
@@ -167,6 +183,66 @@
 
   .icon--on {
     color: var(--accent);
+  }
+
+  .icon--preparing {
+    animation: cc-wait 1.4s ease-in-out infinite;
+  }
+
+  .cc {
+    position: relative;
+    display: inline-flex;
+    flex: none;
+  }
+
+  /* Boven de zoekbalk en verankerd aan de knop: 24 px balk plus de rij eronder. */
+  .cc__note {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 28px);
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: min(240px, 70vw);
+    padding: var(--space-half) var(--space);
+    border-radius: var(--radius-card);
+    background: rgba(20, 20, 20, 0.94);
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.35;
+    text-align: center;
+  }
+
+  /* Een sidecar of een MP4 is er meteen; die mag niet eerst knipperen. */
+  .cc__note--wait {
+    animation: cc-note-in 0.2s ease-out 0.4s backwards;
+  }
+
+  .cc__retry {
+    display: block;
+    width: 100%;
+    min-height: var(--touch-target);
+    color: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+  }
+
+  @keyframes cc-wait {
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  @keyframes cc-note-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .icon--preparing,
+    .cc__note--wait {
+      animation: none;
+    }
   }
 
   .pill {

@@ -21,7 +21,12 @@ func embeddedSubtitleEnv(t *testing.T, tools ...string) (*env, string, string) {
 	if len(tools) > 0 {
 		tool = tools[0]
 	}
-	m, err := transcode.New(transcode.Options{FFmpegPath: tool, Dir: t.TempDir(), Max: 1})
+	return embeddedSubtitleEnvWith(t, transcode.Options{FFmpegPath: tool, Dir: t.TempDir(), Max: 1})
+}
+
+func embeddedSubtitleEnvWith(t *testing.T, options transcode.Options) (*env, string, string) {
+	t.Helper()
+	m, err := transcode.New(options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,6 +135,53 @@ func TestEmbeddedSubtitleRechecksPermissionAfterPreparation(t *testing.T) {
 				}
 			case <-time.After(3 * time.Second):
 				t.Fatal("preparation did not finish")
+			}
+		})
+	}
+}
+
+func TestSlowEmbeddedSubtitleAnswersBusyThenTheRepeatGetsTheFile(t *testing.T) {
+	for _, action := range []string{"delivery", "burn_plan"} {
+		t.Run(action, func(t *testing.T) {
+			dir := t.TempDir()
+			tool, proceed := filepath.Join(dir, "ffmpeg"), filepath.Join(dir, "proceed")
+			script := "#!/bin/sh\nwhile [ ! -f '" + proceed + "' ]; do sleep 0.01; done\nprintf '1\\n00:00:00,000 --> 00:00:01,000\\nSlow caption\\n'\n"
+			if err := os.WriteFile(tool, []byte(script), 0700); err != nil {
+				t.Fatal(err)
+			}
+			e, streamID, versionID := embeddedSubtitleEnvWith(t, transcode.Options{
+				FFmpegPath: tool, Dir: t.TempDir(), Max: 1, SubtitleWait: 50 * time.Millisecond,
+			})
+			path := "/pleya/v1/subtitles/" + streamID
+			request := func() *httptest.ResponseRecorder {
+				if action == "delivery" {
+					return e.do(http.MethodGet, path, nil)
+				}
+				return e.do(http.MethodPost, "/pleya/v1/playback/plan", map[string]any{
+					"item_id": e.findMovie("Grease").ID, "version_id": versionID,
+					"subtitle": map[string]any{"mode": "burn", "stream_id": streamID},
+				})
+			}
+			busy := request()
+			if busy.Code != http.StatusServiceUnavailable || busy.Header().Get("Retry-After") != "5" ||
+				!strings.Contains(busy.Body.String(), "playback.transcode_busy") {
+				t.Fatalf("unfinished preparation: %d %q %s", busy.Code, busy.Header().Get("Retry-After"), busy.Body.String())
+			}
+			if err := os.WriteFile(proceed, nil, 0600); err != nil {
+				t.Fatal(err)
+			}
+			deadline := time.Now().Add(5 * time.Second)
+			for {
+				rec := e.do(http.MethodGet, path, nil)
+				if rec.Code == http.StatusOK {
+					if !strings.Contains(rec.Body.String(), "Slow caption") {
+						t.Fatalf("delivered: %s", rec.Body.String())
+					}
+					return
+				}
+				if rec.Code != http.StatusServiceUnavailable || time.Now().After(deadline) {
+					t.Fatalf("repeat: %d %s", rec.Code, rec.Body.String())
+				}
 			}
 		})
 	}

@@ -229,6 +229,15 @@ void main() {
       expect(writes, 0);
     });
 
+    test('a subtitle that arrives later stays out of the post-open selection', () async {
+      final p = player();
+      final m = manager(p, read: (_) async => null, write: (_, _) async {})..subtitleArrivesLater = true;
+      addTearDown(m.dispose);
+      await m.applyTrackSelection();
+      expect(p.selectedAudio, isNotEmpty);
+      expect(p.selectedSubtitle, isEmpty);
+    });
+
     test('source preflight uses the same server preference without touching player or writing fallback', () async {
       var writes = 0;
       final p = player();
