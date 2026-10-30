@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../focus/dpad_navigator.dart';
 import '../../focus/focusable_button.dart';
 import '../../focus/input_mode_tracker.dart';
@@ -10,7 +12,10 @@ import '../../media/media_sort.dart';
 import '../../utils/scroll_utils.dart';
 import '../../widgets/bottom_sheet_header.dart';
 import '../../widgets/focusable_list_tile.dart';
+import '../../widgets/mobile/library_phone_look.dart';
+import '../../widgets/mobile/library_sort_glyph.dart';
 import '../../widgets/overlay_sheet.dart';
+import '../../theme/mono_tokens.dart';
 import '../../i18n/strings.g.dart';
 
 class SortBottomSheet extends StatefulWidget {
@@ -21,6 +26,10 @@ class SortBottomSheet extends StatefulWidget {
   final VoidCallback? onClear;
   final VoidCallback? onBack;
 
+  /// The iPhone library look: centred heading, plain rows, and the chosen row's
+  /// direction as an accent glyph you flip by tapping the row again.
+  final bool phoneStyle;
+
   const SortBottomSheet({
     super.key,
     required this.sortOptions,
@@ -29,6 +38,7 @@ class SortBottomSheet extends StatefulWidget {
     required this.onSortChanged,
     this.onClear,
     this.onBack,
+    this.phoneStyle = false,
   });
 
   @override
@@ -82,6 +92,10 @@ class _SortBottomSheetState extends State<SortBottomSheet> {
   }
 
   void _handleSortSelect(MediaSort sort) {
+    if (widget.phoneStyle && _currentSort?.key == sort.key) {
+      _handleDirectionChange(sort, !_currentDescending);
+      return;
+    }
     final descending = (_currentSort?.key == sort.key) ? _currentDescending : sort.isDefaultDescending;
     setState(() {
       _currentSort = sort;
@@ -102,19 +116,19 @@ class _SortBottomSheetState extends State<SortBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final clearAction = widget.onClear != null
+        ? FocusableButton(
+            onPressed: _handleClear,
+            child: TextButton(onPressed: _handleClear, child: Text(t.common.clear)),
+          )
+        : null;
     return Column(
       mainAxisSize: .min,
       children: [
-        BottomSheetHeader(
-          title: t.libraries.sortBy,
-          onBack: widget.onBack,
-          action: widget.onClear != null
-              ? FocusableButton(
-                  onPressed: _handleClear,
-                  child: TextButton(onPressed: _handleClear, child: Text(t.common.clear)),
-                )
-              : null,
-        ),
+        if (widget.phoneStyle)
+          _PhoneSortHeading(clearAction: clearAction)
+        else
+          BottomSheetHeader(title: t.libraries.sortBy, onBack: widget.onBack, action: clearAction),
         Flexible(
           child: ListView.builder(
             controller: _scrollController,
@@ -147,35 +161,45 @@ class _SortBottomSheetState extends State<SortBottomSheet> {
                   focusNode: (widget.selectedSort?.key == sort.key || (widget.selectedSort == null && index == 0))
                       ? _initialFocusNode
                       : null,
-                  leading: AppIcon(
-                    isSelected ? Symbols.radio_button_checked_rounded : Symbols.radio_button_unchecked_rounded,
-                    fill: 1,
+                  contentPadding: widget.phoneStyle
+                      ? const EdgeInsets.symmetric(horizontal: LibraryPhoneMetrics.sortRowInset)
+                      : null,
+                  leading: widget.phoneStyle
+                      ? null
+                      : AppIcon(
+                          isSelected ? Symbols.radio_button_checked_rounded : Symbols.radio_button_unchecked_rounded,
+                          fill: 1,
+                        ),
+                  title: Text(
+                    sort.title,
+                    style: widget.phoneStyle ? const TextStyle(fontSize: LibraryPhoneMetrics.sortRowFontSize) : null,
                   ),
-                  title: Text(sort.title),
-                  trailing: Visibility(
-                    visible: isSelected,
-                    maintainAnimation: true,
-                    maintainSize: true,
-                    maintainState: true,
-                    child: SegmentedButton<bool>(
-                      // Match FocusableListTile's dense visualDensity so the segment's min
-                      // tap-target height equals ListTile's trailing-height cap. Without this
-                      // the ~48dp button overflows the ~36dp cap from the top and the arrows
-                      // render bottom-aligned instead of centered.
-                      style: SegmentedButton.styleFrom(visualDensity: const VisualDensity(vertical: -3)),
-                      showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(value: false, label: _SortDirectionIcon(upward: true)),
-                        ButtonSegment(value: true, label: _SortDirectionIcon(upward: false)),
-                      ],
-                      selected: {_currentDescending},
-                      onSelectionChanged: isSelected
-                          ? (Set<bool> newSelection) {
-                              _handleDirectionChange(sort, newSelection.first);
-                            }
-                          : null,
-                    ),
-                  ),
+                  trailing: widget.phoneStyle
+                      ? _phoneTrailing(isSelected)
+                      : Visibility(
+                          visible: isSelected,
+                          maintainAnimation: true,
+                          maintainSize: true,
+                          maintainState: true,
+                          child: SegmentedButton<bool>(
+                            // Match FocusableListTile's dense visualDensity so the segment's min
+                            // tap-target height equals ListTile's trailing-height cap. Without this
+                            // the ~48dp button overflows the ~36dp cap from the top and the arrows
+                            // render bottom-aligned instead of centered.
+                            style: SegmentedButton.styleFrom(visualDensity: const VisualDensity(vertical: -3)),
+                            showSelectedIcon: false,
+                            segments: const [
+                              ButtonSegment(value: false, label: _SortDirectionIcon(upward: true)),
+                              ButtonSegment(value: true, label: _SortDirectionIcon(upward: false)),
+                            ],
+                            selected: {_currentDescending},
+                            onSelectionChanged: isSelected
+                                ? (Set<bool> newSelection) {
+                                    _handleDirectionChange(sort, newSelection.first);
+                                  }
+                                : null,
+                          ),
+                        ),
                   onTap: () => _handleSortSelect(sort),
                 ),
               );
@@ -183,6 +207,44 @@ class _SortBottomSheetState extends State<SortBottomSheet> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget? _phoneTrailing(bool isSelected) => isSelected
+      ? LibrarySortGlyph(
+          descending: _currentDescending,
+          color: tokens(context).accent,
+          size: LibraryPhoneMetrics.sortGlyphSize,
+        )
+      : null;
+}
+
+/// Centred heading without a rule. The sheet closes with the drag handle or a
+/// tap outside it; clearing the sort stays available on the right.
+class _PhoneSortHeading extends StatelessWidget {
+  final Widget? clearAction;
+
+  const _PhoneSortHeading({required this.clearAction});
+
+  @override
+  Widget build(BuildContext context) {
+    final action = clearAction;
+    return AutomationNode(
+      id: AutomationIds.sheetLibrarySort,
+      role: 'sheet',
+      child: SizedBox(
+        // Full width: the sheet's Column is centred, so without it the Stack
+        // shrinks to the heading and the action lands on top of it.
+        width: double.infinity,
+        height: kMinInteractiveDimension,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Text(t.libraries.sortBy, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            if (action != null) PositionedDirectional(end: 8, child: action),
+          ],
+        ),
+      ),
     );
   }
 }

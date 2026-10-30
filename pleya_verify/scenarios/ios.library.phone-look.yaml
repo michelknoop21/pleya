@@ -1,0 +1,50 @@
+name: ios.library.phone-look
+target: ios-sim
+setup:
+  - reset_app
+  - seed: catalog.long-grid.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - wait_until: {id: "home.rail.item[0.0]", timeout: 15000}
+  - settle: 4000
+  - tap: {id: nav.myPleya}
+  - wait_until: {id: screen.my_pleya, timeout: 10000}
+  - settle: 1000
+  - tap: {id: "my_pleya.tile[libraries]"}
+  - wait_until: {id: screen.library_picker, timeout: 10000}
+  - settle: 1000
+  - snapshot: picker-unchanged
+  - tap: {id: "library.picker.card[0]"}
+  - wait_until: {id: screen.libraries, timeout: 15000}
+  - settle: 4000
+  - assert: {id: library.header, state: {library: Movies}}
+  - assert: {id: library.header.avatar, insideViewport: true}
+  - assert: {id: library.header.search, insideViewport: true}
+  - assert: {id: library.filter.more, insideViewport: true}
+  - snapshot: tab-recommended
+  - tap: {x: 190, y: 140}
+  - wait_until: {id: library.grid, timeout: 10000}
+  - settle: 1500
+  - assert: {id: library.grid, state: {view_mode: grid}}
+  - assert: {id: library.filter.sort, insideViewport: true}
+  - assert: {id: library.filter.count, insideViewport: true}
+  - wait_until: {id: overlay.scroll_crown, timeout: 5000}
+  - snapshot: tab-browse
+  - tap: {id: library.filter.sort}
+  - settle: 1500
+  - snapshot: sort-sheet
+  - assert: {id: sheet.library_sort, insideViewport: true}
+  - tap: {x: 200, y: 60}
+  - settle: 800
+  - assert: {id: sheet.library_sort, present: false}
+  - tap: {id: library.filter.more}
+  - settle: 1000
+  - snapshot: more-menu
+  - tap: {x: 200, y: 700}
+  - settle: 800
+  - drag: {startX: 150, startY: 600, endX: 150, endY: 250, durationMs: 400}
+  - settle: 1500
+  - assert: {id: library.header, insideViewport: true}
+  - snapshot: browse-scrolled

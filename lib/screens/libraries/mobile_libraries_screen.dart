@@ -50,10 +50,12 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/content_utils.dart';
 import '../../utils/library_grouping.dart';
+import '../../utils/platform_detector.dart';
 import '../../utils/provider_extensions.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/mobile/mobile_dense_title_row.dart';
 import '../../widgets/mobile/mobile_media_rail.dart';
+import '../../widgets/overlay_sheet.dart';
 import '../../widgets/settings_section.dart' show settingsOutlineColor;
 import '../big_p/big_p_ask_row.dart' show summonableBigP;
 import '../settings/library_visibility_screen.dart';
@@ -67,13 +69,17 @@ import 'state_messages.dart';
 bool _isCatalogable(MediaLibrary library) => library.kind == MediaKind.movie || library.kind == MediaKind.show;
 
 class MobileLibrariesScreen extends StatefulWidget {
-  const MobileLibrariesScreen({super.key, required this.onBack});
+  const MobileLibrariesScreen({super.key, required this.onBack, this.onOpenSearch, this.onOpenWatchlist});
 
   /// Returns to My Pleya. The phone's bottom bar has no slot of its own for
   /// this tab (DEC-104) — it always lights My Pleya instead — so an explicit
   /// back affordance is the only way out, the same reasoning `_closeSearch`
   /// documents for Zoeken.
   final VoidCallback onBack;
+
+  /// Handed to the library page, whose header reaches both.
+  final VoidCallback? onOpenSearch;
+  final VoidCallback? onOpenWatchlist;
 
   @override
   State<MobileLibrariesScreen> createState() => _MobileLibrariesScreenState();
@@ -121,7 +127,26 @@ class _MobileLibrariesScreenState extends State<MobileLibrariesScreen> {
     final storage = await StorageService.getInstance();
     await storage.saveSelectedLibraryKey(library.globalKey);
     if (!mounted) return;
-    await Navigator.push(context, MaterialPageRoute(builder: (_) => const LibrariesScreen()));
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        // `MainScreen` installs the sheet host and this route is pushed beside
+        // it, so the library page needs its own or every sheet in it is dead:
+        // same defect, same fix as `MobileCatalogScreen` (CAT9).
+        builder: (routeContext) => OverlaySheetHost(
+          canPop: PlatformDetector.isHandheldIOS(routeContext),
+          onSystemBack: () {
+            final navigator = Navigator.of(routeContext);
+            if (navigator.canPop()) navigator.pop();
+          },
+          child: LibrariesScreen(
+            phoneLook: true,
+            onOpenSearch: widget.onOpenSearch,
+            onOpenWatchlist: widget.onOpenWatchlist,
+          ),
+        ),
+      ),
+    );
   }
 
   void _manageLibraries() {

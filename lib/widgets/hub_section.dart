@@ -27,6 +27,7 @@ import 'focus_builders.dart';
 import 'hub_activation.dart';
 import 'media_card.dart';
 import 'media_card_grid_layout.dart';
+import 'mobile/library_phone_look.dart';
 import '../utils/scroll_utils.dart';
 import 'horizontal_scroll_with_arrows.dart';
 import '../i18n/strings.g.dart';
@@ -725,8 +726,10 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
                     child: Row(
                       mainAxisSize: .min,
                       children: [
-                        AppIcon(widget.icon, fill: 1, size: isTv ? 28 : null),
-                        SizedBox(width: isTv ? 12 : 8),
+                        if (!LibraryPhoneLook.of(context)) ...[
+                          AppIcon(widget.icon, fill: 1, size: isTv ? 28 : null),
+                          SizedBox(width: isTv ? 12 : 8),
+                        ],
                         Flexible(
                           child: Text(widget.hub.title, style: titleStyle, overflow: .ellipsis, maxLines: 1),
                         ),

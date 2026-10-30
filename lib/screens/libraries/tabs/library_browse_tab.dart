@@ -44,11 +44,13 @@ import '../../../widgets/focusable_media_card.dart';
 import '../../../widgets/listenable_selector.dart';
 import '../../../widgets/loading_indicator_box.dart';
 import '../../../widgets/media_grid_delegate.dart';
+import '../../../widgets/mobile/library_phone_look.dart';
 import '../../../widgets/sliver_cross_axis_layout_builder.dart';
 import '../../../widgets/media_card_list_layout.dart';
 import '../../../widgets/bottom_sheet_page_scaffold.dart';
 import '../../../widgets/overlay_sheet.dart';
 import '../../../widgets/overlay_sheet_geometry.dart';
+import '../../../theme/mono_tokens.dart';
 import '../../../mixins/library_tab_focus_mixin.dart';
 import '../folder_tree_view.dart';
 import '../filters_bottom_sheet.dart';
@@ -93,7 +95,8 @@ class LibraryBrowseTab extends BaseLibraryTab<MediaItem> {
   /// Where this tab publishes its item count and its grouping/filter/sort
   /// actions, so the libraries screen can draw them on the header line next to
   /// the tabs instead of this tab opening a second band of buttons below it.
-  /// Null on layouts that keep the options behind a sheet (phones).
+  /// Stays empty on layouts that keep the options behind a sheet (iPad); the
+  /// iPhone library look draws them as a filter row.
   final ValueNotifier<LibraryHeaderInfo>? headerInfo;
 
   const LibraryBrowseTab({
@@ -919,6 +922,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
         .show<String>(
           showDragHandle: true,
           presentation: OverlaySheetPresentation.panel,
+          backgroundColor: _phoneSheetBackground,
           builder: (sheetContext) => Column(
             mainAxisSize: .min,
             children: [
@@ -998,9 +1002,11 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
 
   void _showFiltersBottomSheet() {
     SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
-    OverlaySheetController.of(
-      context,
-    ).show(presentation: OverlaySheetPresentation.panel, builder: (_) => _buildFiltersBottomSheet());
+    OverlaySheetController.of(context).show(
+      presentation: OverlaySheetPresentation.panel,
+      backgroundColor: _phoneSheetBackground,
+      builder: (_) => _buildFiltersBottomSheet(),
+    );
   }
 
   void _showFiltersOptionsPage(OverlaySheetController controller) {
@@ -1037,7 +1043,14 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
 
   void _showSortBottomSheet() {
     final controller = OverlaySheetController.of(context);
-    _openSortBottomSheet((builder) => controller.show(presentation: OverlaySheetPresentation.panel, builder: builder));
+    _openSortBottomSheet(
+      (builder) => controller.show(
+        presentation: OverlaySheetPresentation.panel,
+        backgroundColor: _phoneSheetBackground,
+        showDragHandle: _phoneLook,
+        builder: builder,
+      ),
+    );
   }
 
   void _showSortOptionsPage(OverlaySheetController controller) {
@@ -1056,6 +1069,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
         sortOptions: _sortOptions,
         selectedSort: _selectedSort,
         isSortDescending: _isSortDescending,
+        phoneStyle: _phoneLook,
         onBack: onBack,
         onSortChanged: (sort, descending) {
           pendingSort = sort;
@@ -1199,8 +1213,15 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   /// Whether the device is a phone (not tablet/desktop/TV).
   bool _isPhone(BuildContext context) => PlatformDetector.isPhone(context);
 
-  /// Mobile uses a top-bar options action instead of inline browse chips.
-  bool get _usesMobileBrowseOptions => PlatformDetector.isMobile(context);
+  bool get _phoneLook => LibraryPhoneLook.of(context);
+
+  /// The sheets of the iPhone library look sit on the page ground. Null keeps
+  /// the host's own surface.
+  Color? get _phoneSheetBackground => _phoneLook ? tokens(context).bg : null;
+
+  /// iPad uses a top-bar options action instead of inline browse chips. The
+  /// iPhone library look draws the chips as its filter row.
+  bool get _usesMobileBrowseOptions => PlatformDetector.isMobile(context) && !_phoneLook;
 
   /// The letter currently visible at the top of the grid, determined by
   /// how many items we've scrolled past relative to the API's cumulative
@@ -1534,6 +1555,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
                 },
               ),
             ),
+            if (_phoneLook) SliverOverlapInjector(handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context)),
             ..._buildContentSlivers(),
           ],
         ),
@@ -1726,6 +1748,10 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
           // No value while nothing is selected: next to "Grouping All" a second
           // "All" reads as if the two belong together.
           value: _selectedFilters.isEmpty ? null : '${_selectedFilters.length}',
+          pillLabel: _selectedFilters.isEmpty
+              ? t.libraries.all
+              : t.libraries.filtersWithCount(count: _selectedFilters.length),
+          icon: Symbols.filter_list_rounded,
           isActive: _selectedFilters.isNotEmpty,
           focusNode: _filtersChipFocusNode,
           onPressed: () {
@@ -1747,6 +1773,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
           label: t.libraries.sort,
           automationId: AutomationIds.libraryFilterSort,
           value: _selectedSort?.title,
+          sortDescending: _isSortDescending,
           focusNode: _sortChipFocusNode,
           onPressed: () {
             _lastUsedHeaderAction = _LibraryHeaderAction.sort;
@@ -1775,7 +1802,11 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     if (notifier == null) return;
 
     final next = (widget.isActive && !_usesMobileBrowseOptions)
-        ? LibraryHeaderInfo(countLabel: _itemCountLabel(), actions: _headerActions())
+        ? LibraryHeaderInfo(
+            countLabel: _itemCountLabel(),
+            itemCount: totalSize > 0 ? totalSize : null,
+            actions: _headerActions(),
+          )
         : LibraryHeaderInfo.empty;
     if (notifier.value == next) return;
 
@@ -1905,8 +1936,15 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     final fullCardLayout = PlatformDetector.isTV() && svc.read(SettingsService.tvFullCardLayout);
     final itemCount = totalSize;
     final isPhone = _isPhone(context);
-    final topPadding = isPhone ? _gridTopPaddingPhone : _gridTopPadding(context);
-    _effectiveTopPadding = topPadding;
+    final phoneLook = _phoneLook;
+    final topPadding = phoneLook
+        ? LibraryPhoneMetrics.gridInsetTop
+        : isPhone
+        ? _gridTopPaddingPhone
+        : _gridTopPadding(context);
+    // The crown and the alphabet measure from the top of the scroll view, and
+    // in the phone look that starts with the injected header overlap.
+    _effectiveTopPadding = phoneLook ? topPadding + LibraryPhoneMetrics.pinnedHeaderExtentOf(context) : topPadding;
     // On the phone the scrubber rail (44 px) overlaps the last column; 24 px
     // keeps the posters clear of the idle hint line, as in the CN09 prototype.
     final rightPadding = !_shouldShowAlphaJumpBar
@@ -1916,12 +1954,15 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
         : _alphaJumpBarWidth;
 
     final useWideRatio = _selectedGrouping == 'episodes' && episodePosterMode == EpisodePosterMode.episodeThumbnail;
+    final EdgeInsets sliverPadding = phoneLook
+        ? LibraryPhoneMetrics.gridPaddingOf(context)
+        : .fromLTRB(8, topPadding, rightPadding, 8);
 
     if (viewMode == ViewMode.list) {
       // In list view, all items are in a single column (first column)
       _setListScrollMetrics(density: libraryDensity, usesWideAspectRatio: useWideRatio);
       return SliverPadding(
-        padding: .fromLTRB(8, topPadding, rightPadding, 8),
+        padding: sliverPadding,
         sliver: SliverList.builder(
           itemCount: itemCount,
           itemBuilder: (context, index) {
@@ -1943,25 +1984,33 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
       // Use 16:9 aspect ratio when browsing episodes with episode thumbnail mode
       final hasAlphaBarReservation = rightPadding > 8.0;
       return SliverPadding(
-        padding: .fromLTRB(8, topPadding, rightPadding, 8),
+        padding: sliverPadding,
         sliver: SliverCrossAxisLayoutBuilder(
           builder: (context, crossAxisExtent) {
-            final geometry = MediaGridGeometry.resolve(
-              context: context,
-              crossAxisExtent: crossAxisExtent,
-              // Compute column count from the width the grid would have without
-              // the alpha bar's reservation, so toggling the bar doesn't repack
-              // the grid into one fewer column and blow up poster size.
-              crossAxisExtentForColumnCount: hasAlphaBarReservation ? crossAxisExtent + (rightPadding - 8.0) : null,
-              density: libraryDensity,
-              useWideAspectRatio: useWideRatio,
-              fullBleedImage: fullCardLayout,
-            );
+            final geometry = phoneLook
+                ? MediaGridGeometry.phoneLibrary(
+                    context: context,
+                    crossAxisExtent: crossAxisExtent,
+                    useWideAspectRatio: useWideRatio,
+                  )
+                : MediaGridGeometry.resolve(
+                    context: context,
+                    crossAxisExtent: crossAxisExtent,
+                    // Compute column count from the width the grid would have without
+                    // the alpha bar's reservation, so toggling the bar doesn't repack
+                    // the grid into one fewer column and blow up poster size.
+                    crossAxisExtentForColumnCount: hasAlphaBarReservation
+                        ? crossAxisExtent + (rightPadding - 8.0)
+                        : null,
+                    density: libraryDensity,
+                    useWideAspectRatio: useWideRatio,
+                    fullBleedImage: fullCardLayout,
+                  );
             final columnCount = geometry.columnCount;
             // Cache grid metrics for alpha jump bar scroll calculations
             _scrollMetrics = LibraryAlphaScrollMetrics(
               columnCount: columnCount,
-              rowHeight: geometry.itemHeight + geometry.spacing,
+              rowHeight: geometry.itemHeight + geometry.mainAxisSpacing,
               itemWidth: geometry.itemWidth,
               itemHeight: geometry.itemHeight,
             );
