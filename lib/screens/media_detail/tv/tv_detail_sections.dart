@@ -99,7 +99,6 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
       itemIds: [for (final item in fresh) item.id, if (hasViewAll) _tvDetailViewAllId],
       cardWidth: width,
       cardHeight: height,
-      footerHeight: TvDetailLayout.cardFooterHeight(width, scale),
       artworkInset: inset,
       itemBuilder: (context, cell) {
         if (cell.index >= fresh.length) {
@@ -157,7 +156,6 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
       itemIds: [for (var i = 0; i < roles.length; i++) (roles[i].id ?? '').isEmpty ? 'role-$i' : roles[i].id!],
       cardWidth: TvDetailLayout.portraitSize * pt,
       cardHeight: TvDetailCastCard.height(pt),
-      footerHeight: TvDetailCastCard.height(pt) - TvDetailLayout.portraitSize * pt,
       itemBuilder: (context, cell) {
         final role = roles[cell.index];
         return AutomationNode(
@@ -224,7 +222,6 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
       itemIds: [for (final extra in extras) extra.id],
       cardWidth: width,
       cardHeight: TvDetailLayout.cardHeight(width, scale, aspectRatio: 16 / 9),
-      footerHeight: TvDetailLayout.cardFooterHeight(width, scale),
       artworkInset: inset,
       itemBuilder: (context, cell) {
         final extra = extras[cell.index];

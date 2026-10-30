@@ -13,10 +13,10 @@ import 'tv_detail_layout.dart';
 /// The fixed colour layer behind the film detail page.
 ///
 /// The colour comes from the artwork itself: nothing in the app computes a
-/// palette, and a blur this heavy leaves nothing of a backdrop but its colours.
-/// Same recipe as `tv_hero_artwork.dart`'s poster fill. The reduced tier draws
-/// the theme background: a full-screen blur is what an old Apple TV cannot
-/// afford.
+/// palette, and a blur this heavy leaves nothing of a backdrop but its colours:
+/// a soft gradient that runs on behind every row and never moves. The reduced
+/// tier draws the theme background: a full-screen blur is what an old Apple TV
+/// cannot afford.
 class TvDetailBackdrop extends StatelessWidget {
   const TvDetailBackdrop({super.key, required this.item, required this.client, this.localPath});
 
@@ -39,13 +39,18 @@ class TvDetailBackdrop extends StatelessWidget {
       children: [
         ColoredBox(color: tk.bg),
         ImageFiltered(
-          imageFilter: ImageFilter.blur(sigmaX: 34, sigmaY: 34, tileMode: TileMode.mirror),
+          imageFilter: ImageFilter.blur(
+            sigmaX: TvDetailLayout.backdropBlur,
+            sigmaY: TvDetailLayout.backdropBlur,
+            tileMode: TileMode.mirror,
+          ),
           child: OptimizedMediaImage(
             client: client,
             imagePath: path,
             localFilePath: localPath?.call(path),
             width: size.width,
             height: size.height,
+            requestSize: TvDetailLayout.backdropDecodeSize,
             fit: BoxFit.cover,
             imageType: ImageType.art,
             fadeInDuration: Duration.zero,
@@ -57,8 +62,31 @@ class TvDetailBackdrop extends StatelessWidget {
   }
 }
 
-/// The sharp artwork in the top right of the first screen. It scrolls with the
-/// hero and fades into the backdrop towards the text.
+/// A fade along [begin] to [end], from opaque to clear or back, without the
+/// corner a straight ramp has at each end: on dark artwork that corner reads as
+/// an edge, and a band where the picture stops.
+LinearGradient _softFade({
+  required Alignment begin,
+  required Alignment end,
+  required double from,
+  required double to,
+  required bool rising,
+}) {
+  const steps = 8;
+  final stops = <double>[];
+  final colors = <Color>[];
+  for (var i = 0; i <= steps; i++) {
+    final t = i / steps;
+    final eased = t * t * (3 - 2 * t);
+    stops.add(from + (to - from) * t);
+    colors.add(const Color(0xFF000000).withValues(alpha: rising ? eased : 1 - eased));
+  }
+  return LinearGradient(begin: begin, end: end, colors: colors, stops: stops);
+}
+
+/// The sharp artwork of the first screen: the whole width, so the picture has
+/// no left edge of its own, gone towards the text and towards the rows. It
+/// scrolls with the hero and leaves only the [TvDetailBackdrop] behind.
 class TvDetailHeroArt extends StatelessWidget {
   const TvDetailHeroArt({super.key, required this.item, required this.client, this.localPath});
 
@@ -71,24 +99,24 @@ class TvDetailHeroArt extends StatelessWidget {
     final size = MediaQuery.sizeOf(context);
     final paths = item.heroArtCandidates(containerAspectRatio: size.width / size.height);
     if (paths.isEmpty) return const SizedBox.shrink();
-    // Two fades, because the art ends on two sides: towards the text and at the
-    // foot of the hero, where a single diagonal left a hard edge.
     return RepaintBoundary(
       child: ShaderMask(
         blendMode: BlendMode.dstIn,
-        shaderCallback: (bounds) => const LinearGradient(
+        shaderCallback: (bounds) => _softFade(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
-          colors: [Color(0x00000000), Color(0xFF000000)],
-          stops: [0, 0.5],
+          from: 0.3,
+          to: 0.72,
+          rising: true,
         ).createShader(bounds),
         child: ShaderMask(
           blendMode: BlendMode.dstIn,
-          shaderCallback: (bounds) => const LinearGradient(
+          shaderCallback: (bounds) => _softFade(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF000000), Color(0x00000000)],
-            stops: [0.45, 1],
+            from: 0.4,
+            to: 0.8,
+            rising: false,
           ).createShader(bounds),
           child: OptimizedMediaImage(
             client: client,

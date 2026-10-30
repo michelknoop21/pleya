@@ -75,6 +75,81 @@ extension _MediaDetailTvHero on _MediaDetailScreenState {
     ];
   }
 
+  /// The logo or the title, standing on the bottom of its slot so the metadata
+  /// line follows at the same height for both.
+  Widget _buildTvDetailHeading(MediaItem metadata, Color ink) {
+    final pt = TvHig.of(context);
+    return _buildDetailLogoOrTitle(
+      context,
+      metadata,
+      width: (metadata.clearLogoPath == null ? TvDetailLayout.titleWidth : TvDetailLayout.logoWidth) * pt,
+      height: TvDetailLayout.headingHeight * pt,
+      alignment: Alignment.bottomLeft,
+      // Two lines of type need more than a mark does, and they grow upwards:
+      // what stands under the title stays where it is.
+      titleBuilder: (context, title) => OverflowBox(
+        maxHeight: TvDetailLayout.titleHeight * pt,
+        alignment: Alignment.bottomLeft,
+        child: _buildDetailTitle(
+          context,
+          title,
+          fontSize: TvHig.title1 * pt,
+          fontWeight: .w800,
+          shadowBlur: 12,
+          color: ink,
+          shadowColor: _tvDetailTitleShadowColor(context),
+          alignment: Alignment.bottomLeft,
+        ),
+      ),
+    );
+  }
+
+  /// Who else is watching on the left, what the file is on the right. Nothing
+  /// at all when neither has anything to say, so the first section moves up
+  /// instead of leaving a hole.
+  List<Widget> _buildTvDetailActivityRow(List<({IconData? icon, String text})> techLabels) {
+    final pt = TvHig.of(context);
+    final serverId = serverIdOrNull(_metadata.serverId);
+    final watchers = _watchers;
+    final stats = _watchStats;
+    final hasWatchers = watchers?.watchers.isNotEmpty ?? false;
+    final hasStats = stats?.isNotEmpty ?? false;
+    final hasActivity = hasWatchers || hasStats || NowWatchingLine.sessionFor(context, _metadata.id, serverId) != null;
+    if (!hasActivity && techLabels.isEmpty) return const [];
+    return [
+      SizedBox(height: TvDetailLayout.activityGap * pt),
+      // Nothing here is clipped: the hero grows with its rows, where the old
+      // band cut off whatever came after the source line.
+      Row(
+        crossAxisAlignment: .center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: .start,
+              mainAxisSize: .min,
+              children: [
+                NowWatchingLine(ratingKey: _metadata.id, serverId: serverId),
+                if (hasWatchers) ...[
+                  SizedBox(height: 8 * pt),
+                  WatchedByRow(
+                    watchers: watchers!.watchers,
+                    scope: watchers.scope,
+                    avatarSize: TvDetailLayout.actionSize * pt * 0.75,
+                  ),
+                ],
+                if (hasStats) ...[SizedBox(height: 8 * pt), WatchStatsRow(stats: stats!)],
+              ],
+            ),
+          ),
+          if (techLabels.isNotEmpty) ...[
+            SizedBox(width: 24 * pt),
+            Expanded(flex: 2, child: TvDetailTechLabels(labels: techLabels)),
+          ],
+        ],
+      ),
+    ];
+  }
+
   Widget _buildTvDetailHero(BuildContext context, MediaItem metadata, Size size, {required bool hideSpoilers}) {
     _scheduleDetailAudioTracksLoad(metadata);
     final pt = TvHig.of(context);
@@ -94,131 +169,91 @@ extension _MediaDetailTvHero on _MediaDetailScreenState {
     _tvDetailReadMoreVisible = readMoreVisible;
     final directors = metadata.directors ?? const <String>[];
     final scores = _buildTvDetailScores(metadata, ink);
-    final techLabels = _tvDetailTechLabels(metadata);
 
-    return ConstrainedBox(
-      constraints: BoxConstraints(minHeight: size.height * TvDetailLayout.heroHeightFraction),
-      child: Stack(
-        alignment: .bottomLeft,
-        children: [
-          Positioned(
-            top: 0,
-            right: 0,
-            bottom: 0,
-            width: size.width * 0.62,
-            child: TvDetailHeroArt(
-              item: metadata,
-              client: _getArtworkMediaClient(context),
-              localPath: widget.isOffline ? (path) => _offlineArtworkLocalPath(context, path) : null,
-            ),
+    return Stack(
+      // The artwork hangs on past the hero's foot, under the first row.
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: size.height,
+          child: TvDetailHeroArt(
+            item: metadata,
+            client: _getArtworkMediaClient(context),
+            localPath: widget.isOffline ? (path) => _offlineArtworkLocalPath(context, path) : null,
           ),
-          Padding(
-            padding: EdgeInsets.only(
-              left: margin,
-              right: TvDetailLayout.rightMargin * pt,
-              top: MediaQuery.paddingOf(context).top,
-            ),
-            child: Column(
-              mainAxisSize: .min,
-              crossAxisAlignment: .start,
-              children: [
-                _buildDetailLogoOrTitle(
-                  context,
-                  metadata,
-                  width: (metadata.clearLogoPath == null ? TvDetailLayout.titleWidth : TvDetailLayout.logoWidth) * pt,
-                  height:
-                      (metadata.clearLogoPath == null ? TvDetailLayout.titleHeight : TvDetailLayout.logoHeight) * pt,
-                  titleBuilder: (context, title) => _buildDetailTitle(
-                    context,
-                    title,
-                    fontSize: TvHig.title1 * pt,
-                    fontWeight: .w800,
-                    shadowBlur: 12,
-                    color: ink,
-                    shadowColor: _tvDetailTitleShadowColor(context),
-                  ),
-                ),
-                SizedBox(height: 8 * pt),
-                _buildTvDetailMetaRow(metadata, ink),
-                if (scores != null) ...[SizedBox(height: 14 * pt), scores],
-                if (description != null) ...[
-                  SizedBox(height: 24 * pt),
-                  SizedBox(
-                    width: synopsisWidth,
-                    child: Text(
-                      description,
-                      maxLines: TvDetailLayout.synopsisLines,
-                      overflow: .ellipsis,
-                      style: synopsisStyle,
-                    ),
-                  ),
-                ],
-                if (readMoreVisible) ...[
-                  SizedBox(height: 6 * pt),
-                  AutomationNode(
-                    id: AutomationIds.mediaDetailReadMore,
-                    role: 'button',
-                    focusNode: _tvDetailReadMoreFocusNode,
-                    child: TvViewAllAction(
-                      label: t.discover.readMore,
-                      semanticLabel: t.discover.readMoreSemantic,
-                      focusNode: _tvDetailReadMoreFocusNode,
-                      onSelect: () => _openTvDetailSynopsisPanel(description),
-                      onNavigateUp: _focusTopNavigationFromDetail,
-                      onNavigateDown: _focusTvDetailActionRow,
-                    ),
-                  ),
-                ],
-                if (directors.isNotEmpty) ...[
-                  SizedBox(height: 14 * pt),
-                  Text(
-                    t.discover.directedBy(names: directors.join(', ')),
-                    maxLines: 1,
-                    overflow: .ellipsis,
-                    style: TextStyle(color: muted, fontSize: TvHig.caption2 * pt),
-                  ),
-                ],
-                SizedBox(height: 24 * pt),
-                _buildTvDetailActionRow(metadata),
-                _buildUnifiedSourceLine(),
-                SizedBox(height: 28 * pt),
-                // Nothing here is clipped: the hero grows with its rows, where
-                // the old band cut off whatever came after the source line.
+        ),
+        Padding(
+          padding: EdgeInsets.only(
+            left: margin,
+            right: TvDetailLayout.rightMargin * pt,
+            top: (TvDetailLayout.headingTop * pt).clamp(MediaQuery.paddingOf(context).top, double.infinity),
+            bottom: TvDetailLayout.sectionGap * pt,
+          ),
+          child: Column(
+            mainAxisSize: .min,
+            crossAxisAlignment: .start,
+            children: [
+              _buildTvDetailHeading(metadata, ink),
+              SizedBox(height: TvDetailLayout.metaGap * pt),
+              _buildTvDetailMetaRow(metadata, ink),
+              if (scores != null) ...[SizedBox(height: TvDetailLayout.scoreGap * pt), scores],
+              if (description != null) ...[
+                SizedBox(height: TvDetailLayout.synopsisGap * pt),
+                // Beside the text rather than under it: a long synopsis is the
+                // ordinary case, and a row of its own would move everything
+                // under it off the height of the northstar.
                 Row(
-                  crossAxisAlignment: .center,
+                  mainAxisSize: .min,
+                  crossAxisAlignment: .end,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: .start,
-                        mainAxisSize: .min,
-                        children: [
-                          NowWatchingLine(ratingKey: _metadata.id, serverId: serverIdOrNull(_metadata.serverId)),
-                          if (_watchers?.watchers.isNotEmpty ?? false) ...[
-                            SizedBox(height: 8 * pt),
-                            WatchedByRow(
-                              watchers: _watchers!.watchers,
-                              scope: _watchers!.scope,
-                              avatarSize: TvDetailLayout.actionSize * pt * 0.75,
-                            ),
-                          ],
-                          if (_watchStats?.isNotEmpty ?? false) ...[
-                            SizedBox(height: 8 * pt),
-                            WatchStatsRow(stats: _watchStats!),
-                          ],
-                        ],
+                    SizedBox(
+                      width: synopsisWidth,
+                      child: Text(
+                        description,
+                        maxLines: TvDetailLayout.synopsisLines,
+                        overflow: .ellipsis,
+                        style: synopsisStyle,
                       ),
                     ),
-                    if (techLabels.isNotEmpty) ...[
-                      SizedBox(width: 24 * pt),
-                      Flexible(flex: 2, child: TvDetailTechLabels(labels: techLabels)),
+                    if (readMoreVisible) ...[
+                      SizedBox(width: 12 * pt),
+                      AutomationNode(
+                        id: AutomationIds.mediaDetailReadMore,
+                        role: 'button',
+                        focusNode: _tvDetailReadMoreFocusNode,
+                        child: TvViewAllAction(
+                          label: t.discover.readMore,
+                          semanticLabel: t.discover.readMoreSemantic,
+                          focusNode: _tvDetailReadMoreFocusNode,
+                          onSelect: () => _openTvDetailSynopsisPanel(description),
+                          onNavigateUp: _focusTopNavigationFromDetail,
+                          onNavigateDown: _focusTvDetailActionRow,
+                        ),
+                      ),
                     ],
                   ],
                 ),
               ],
-            ),
+              if (directors.isNotEmpty) ...[
+                SizedBox(height: TvDetailLayout.directorGap * pt),
+                Text(
+                  t.discover.directedBy(names: directors.join(', ')),
+                  maxLines: 1,
+                  overflow: .ellipsis,
+                  style: TextStyle(color: muted, fontSize: TvHig.caption2 * pt),
+                ),
+              ],
+              SizedBox(height: TvDetailLayout.actionRowGap * pt),
+              _buildTvDetailActionRow(metadata),
+              _buildUnifiedSourceLine(),
+              ..._buildTvDetailActivityRow(_tvDetailTechLabels(metadata)),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

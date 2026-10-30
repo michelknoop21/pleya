@@ -24,6 +24,9 @@ const _pinned = {
   'coffeerun-backdrop.jpg': '572ad3f84d41dbe4dde6195444015ed6820564b1f44493f9d2ec82706c5663bd',
 };
 
+/// Read by `catalog.detail-series.v1`, not by the film list.
+const _logoSha256 = '95220e08a462a484bf1d069ce2bf0bc5105c932b97dfc322e0b3c981b2fc59c9';
+
 /// An authorized GET, as the app sends it (`at-0` is the fake's first token).
 Future<http.Response> _get(PleyaFakeServer server, String path) {
   final request = http.Request('GET', Uri.parse('http://fixture/pleya/v1$path'));
@@ -50,6 +53,10 @@ void main() {
         expect(sha256.convert(backdrop.bodyBytes).toString(), _pinned[film.backdrop], reason: film.backdrop);
         expect(poster.headers['content-type'], 'image/jpeg');
       }
+    });
+
+    test('the logo of the series fixture is pinned too', () {
+      expect(sha256.convert(studioArtBytes('charge-logo.png')).toString(), _logoSha256);
     });
 
     test('two seeds serve byte-identical artwork', () async {

@@ -20,12 +20,14 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_review.dart';
 import 'package:pleya/media/media_role.dart';
 import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/media_source_info.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/navigation/main_screen_scope.dart';
 import 'package:pleya/navigation/tv/tv_nested_surface.dart';
 import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/screens/media_detail/now_watching_line.dart';
+import 'package:pleya/screens/media_detail/tv/tv_detail_backdrop.dart';
 import 'package:pleya/screens/media_detail/tv/tv_detail_hero_widgets.dart';
 import 'package:pleya/screens/media_detail/tv/tv_detail_layout.dart';
 import 'package:pleya/screens/media_detail/tv/tv_detail_page.dart';
@@ -38,6 +40,7 @@ import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/media_context_menu.dart';
+import 'package:pleya/widgets/optimized_media_image.dart';
 import 'package:pleya/widgets/tv_browse_rail.dart';
 import 'package:provider/provider.dart';
 
@@ -80,12 +83,13 @@ MediaItem _other(String id, String title) => MediaItem(
 );
 
 class _Client implements MediaServerClient {
-  _Client(this.movie, {this.extras = const [], this.hubs, this.people = const {}});
+  _Client(this.movie, {this.extras = const [], this.hubs, this.people = const {}, this.fileInfo});
 
   final MediaItem movie;
   final List<MediaItem> extras;
   final Future<List<MediaHub>>? hubs;
   final Map<String, List<MediaItem>> people;
+  final MediaFileInfo? fileInfo;
   final personCalls = <String>[];
   var hubCalls = 0;
 
@@ -103,7 +107,7 @@ class _Client implements MediaServerClient {
   @override
   Future<List<MediaItem>> fetchExtras(String id) async => extras;
   @override
-  Future<MediaFileInfo?> getFileInfo(MediaItem item) async => null;
+  Future<MediaFileInfo?> getFileInfo(MediaItem item) async => fileInfo;
   @override
   Future<List<MediaHub>> fetchRelatedHubs(String id, {int count = 10}) {
     hubCalls++;
@@ -336,6 +340,85 @@ void main() {
   testWidgets('a person without a photo gets initials', (tester) async {
     await pumpDetail(tester, _Client(_movie()));
     expect(find.text('AB'), findsOneWidget);
+  });
+
+  group('the first screen hangs from the top, as 06 does', () {
+    const pt = 584 / 1080;
+    const threeLines =
+        'When a cat discovers that his passion for adventure has taken its toll and he has burned through eight of '
+        'his nine lives, he launches an epic journey to restore them by finding the mythical Last Wish that grants '
+        'whoever finds it one single and final request.';
+    final files = MediaFileInfo(
+      videoResolution: '4k',
+      videoCodec: 'hevc',
+      audioTracks: [MediaAudioTrack(id: 1, language: 'English', codec: 'eac3', channels: 6, selected: true)],
+    );
+
+    testWidgets('the rows follow the slot: the pill on 620 and Cast & Crew on 821 of 2000', (tester) async {
+      await pumpDetail(tester, _Client(_movie().copyWith(summary: threeLines), fileInfo: files));
+      await tester.pumpAndSettle();
+
+      // Wider than a pixel: the test font is taller than the panel's.
+      expect(tester.getCenter(find.byType(TvDetailPlayPill)).dy / pt, closeTo(620 * 0.96, 24));
+      expect(tester.getCenter(find.text('Cast & Crew')).dy / pt, closeTo(821 * 0.96, 32));
+    });
+
+    testWidgets('without the activity row the first section moves up, with no hole above it', (tester) async {
+      await pumpDetail(tester, _Client(_movie().copyWith(summary: threeLines, mediaVersions: const [])));
+      await tester.pumpAndSettle();
+
+      final pill = tester.getRect(find.byType(TvDetailPlayPill));
+      final heading = tester.getRect(find.text('Cast & Crew'));
+      expect((heading.top - pill.bottom) / pt, lessThan(TvDetailLayout.sectionGap + 8));
+    });
+
+    testWidgets('a text title stands on the metadata line, without the gap of the old slot', (tester) async {
+      await pumpDetail(tester, _Client(_movie()));
+
+      final title = tester.getRect(find.text('Puss in Boots'));
+      final meta = tester.getRect(find.text('2022'));
+      expect((meta.top - title.bottom) / pt, lessThan(TvDetailLayout.metaGap + 8));
+      expect(title.bottom, lessThanOrEqualTo(meta.top));
+    });
+
+    testWidgets('the metadata line sits at one height whether a title or a logo fills the slot', (tester) async {
+      await pumpDetail(tester, _Client(_movie()));
+      final withTitle = tester.getTopLeft(find.text('2022')).dy;
+      expect(
+        withTitle / pt,
+        closeTo(TvDetailLayout.headingTop + TvDetailLayout.headingHeight + TvDetailLayout.metaGap, 2),
+      );
+    });
+
+    testWidgets('running text, metadata and director are set solid', (tester) async {
+      await pumpDetail(tester, _Client(_movie()));
+
+      for (final text in ['2022', 'Directed by Joel Crawford', 'A cat with one life left goes looking for a wish.']) {
+        final span = tester.widget<RichText>(find.descendant(of: find.text(text), matching: find.byType(RichText)));
+        expect(span.text.style?.letterSpacing, 0, reason: text);
+      }
+    });
+
+    testWidgets('the sharp artwork spans the page, so it brings no left edge of its own', (tester) async {
+      OptimizedMediaImage.debugImageBuilder = (_, _) => const SizedBox.expand();
+      addTearDown(() => OptimizedMediaImage.debugImageBuilder = null);
+      await pumpDetail(tester, _Client(_movie().copyWith(artPath: '/art')));
+
+      expect(tester.getRect(find.byType(TvDetailHeroArt)), const Rect.fromLTWH(0, 0, 1038, 584));
+    });
+
+    testWidgets('DOWN scrolls the hero away, UP puts the page back on 0', (tester) async {
+      await pumpDetail(tester, _Client(_movie()));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      final scrollable = tester.state<ScrollableState>(find.byType(Scrollable).first);
+      expect(scrollable.position.pixels, greaterThan(0));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+      expect(scrollable.position.pixels, 0);
+    });
   });
 
   test('the page margin is the one Michel set, for the artwork and not the card around it', () {

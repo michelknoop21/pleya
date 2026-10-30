@@ -11,21 +11,36 @@ abstract final class TvDetailLayout {
   static const double leftMarginFraction = 107 / 1600;
   static const double rightMargin = 96;
 
-  /// Where the first section's heading starts, as a fraction of the page: the
-  /// rest of the first screen is the row peeking in under the hero.
-  static const double heroHeightFraction = 773 / 1080;
+  /// The top of the logo or title slot. The hero hangs from here: its rows
+  /// follow one another down, nothing is anchored to the bottom of the screen.
+  static const double headingTop = 125;
 
-  /// Where a focused row's artwork is centred, as a fraction of the page.
-  static const double focusBandCentre = 576 / 1080;
-
-  static const double logoWidth = 653;
-  static const double logoHeight = 168;
-
-  /// A title without a logo: type needs more room than a mark does.
+  /// The slot a logo or a title stands in. Whatever fills it stands on the
+  /// bottom edge, so the metadata line sits at one height for both.
+  static const double headingHeight = 168;
+  static const double logoWidth = 720;
   static const double titleWidth = 790;
-  static const double titleHeight = 220;
+  static const double titleHeight = 200;
+
+  static const double metaGap = 7;
+  static const double scoreGap = 8;
+  static const double synopsisGap = 24;
+  static const double directorGap = 14;
+  static const double actionRowGap = 18;
+  static const double activityGap = 28;
+
   static const double synopsisWidth = 818;
   static const int synopsisLines = 3;
+
+  /// Where a focused section's heading is centred, on the page and in points
+  /// (420 in the 2000-wide reading of 04, 05, 07 and 09). What was above it
+  /// has left the screen, the hero included.
+  static const double focusHeadingCentre = 403;
+  static const double headingLineHeight = 1.2;
+
+  /// How far a section's top sits from the page's top once its heading is on
+  /// [focusHeadingCentre].
+  static double focusedSectionTop(double pt) => (focusHeadingCentre - headingSize() * headingLineHeight / 2) * pt;
 
   static const double actionSize = 64;
   static const double actionGap = 32;
@@ -48,6 +63,14 @@ abstract final class TvDetailLayout {
 
   /// The page's end, under the last row.
   static const double bottomPadding = 96;
+
+  /// In logical pixels. Heavy enough that no shape of the artwork survives, only
+  /// its colours: at 34 a dark edge in the picture still read as an edge.
+  static const double backdropBlur = 110;
+
+  /// The artwork is decoded this small before the blur: there is nothing left
+  /// to see of the rest, and it keeps a full 4K still out of memory.
+  static const Size backdropDecodeSize = Size(96, 54);
 
   /// Scrim over the blurred artwork. The smallest alpha at which body ink holds
   /// 4.5:1 over the worst artwork a title can bring, in either theme: see
@@ -91,12 +114,6 @@ abstract final class TvDetailLayout {
         artworkWidth / TvCatalogLayout.posterAspectRatio +
         artworkWidth / aspectRatio;
   }
-
-  /// The two lines under a card, for the row's scroll anchor.
-  static double cardFooterHeight(double width, double scale) =>
-      cardHeight(width, scale, aspectRatio: TvCatalogLayout.posterAspectRatio) -
-      (width - TvCatalogLayout.cardContentInset(scale) * 2) / TvCatalogLayout.posterAspectRatio -
-      TvCatalogLayout.cardContentInset(scale) * 2;
 
   static double headingSize() => TvHig.callout;
 }

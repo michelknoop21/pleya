@@ -990,6 +990,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     double shadowBlur = 8,
     Color? color,
     Color? shadowColor,
+    AlignmentGeometry alignment = Alignment.centerLeft,
   }) {
     final baseStyle = (Theme.of(context).textTheme.displaySmall ?? const TextStyle()).copyWith(
       color: color ?? Colors.white,
@@ -998,7 +999,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       shadows: [Shadow(color: shadowColor ?? Colors.black.withValues(alpha: 0.5), blurRadius: shadowBlur)],
     );
 
-    return FittingTitleText(title, style: baseStyle);
+    return FittingTitleText(title, style: baseStyle, alignment: alignment);
   }
 
   /// Build radial progress indicator for download button

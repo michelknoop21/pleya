@@ -23,7 +23,6 @@ class TvDetailSection {
     required this.cardWidth,
     required this.cardHeight,
     required this.itemBuilder,
-    this.footerHeight = 0,
     this.artworkInset = 0,
     this.focusScale = FocusTheme.fullCardFocusScale,
   });
@@ -37,10 +36,6 @@ class TvDetailSection {
   /// In logical pixels.
   final double cardWidth;
   final double cardHeight;
-
-  /// The text under the artwork. A row is anchored on its artwork, so a row
-  /// with a caption sits at the height of one without.
-  final double footerHeight;
 
   /// See [TvDetailLayout.rowGrid].
   final double artworkInset;
@@ -94,6 +89,7 @@ class TvDetailPageState extends State<TvDetailPage> {
   final _scroll = ScrollController();
   final _pageFocus = FocusNode(debugLabel: 'tvDetailPage', canRequestFocus: false, skipTraversal: true);
   final _rails = <String, GlobalKey<TvCatalogCardRailState>>{};
+  final _sectionKeys = <String, GlobalKey>{};
   String? _focusedSectionId;
 
   List<TvDetailSection> get _visible => [
@@ -178,13 +174,11 @@ class TvDetailPageState extends State<TvDetailPage> {
   void _onSectionFocus(TvDetailSection section, bool hasFocus) {
     if (!hasFocus) return;
     _focusedSectionId = section.id;
-    final railContext = _rails[section.id]?.currentContext;
-    if (railContext == null || !_scroll.hasClients) return;
-    final box = railContext.findRenderObject() as RenderBox;
-    final viewport = _scroll.position.viewportDimension;
-    final artworkCentre = (box.size.height - section.footerHeight) / 2;
+    final sectionContext = _sectionKeys[section.id]?.currentContext;
+    if (sectionContext == null || !_scroll.hasClients) return;
+    final box = sectionContext.findRenderObject() as RenderBox;
     final top = RenderAbstractViewport.of(box).getOffsetToReveal(box, 0).offset;
-    _scrollTo(top + artworkCentre - TvDetailLayout.focusBandCentre * viewport);
+    _scrollTo(top - TvDetailLayout.focusedSectionTop(TvHig.of(context)));
   }
 
   void _onHeroFocus(bool hasFocus) {
@@ -227,11 +221,13 @@ class TvDetailPageState extends State<TvDetailPage> {
         ),
       ),
     );
+    // The theme tracks its body text out; this page is set solid, as 06 is.
+    final solid = DefaultTextStyle.merge(style: const TextStyle(letterSpacing: 0), child: content);
     return Stack(
       fit: StackFit.expand,
       children: [
         RepaintBoundary(child: widget.background),
-        widget.contentGate?.call(content) ?? content,
+        widget.contentGate?.call(solid) ?? solid,
       ],
     );
   }
@@ -251,6 +247,7 @@ class TvDetailPageState extends State<TvDetailPage> {
         role: 'region',
         state: () => {'child_count': section.itemIds.length},
         child: Column(
+          key: _sectionKeys.putIfAbsent(section.id, GlobalKey.new),
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
@@ -266,6 +263,7 @@ class TvDetailPageState extends State<TvDetailPage> {
                 style: TextStyle(
                   color: tk.text,
                   fontSize: TvDetailLayout.headingSize() * pt,
+                  height: TvDetailLayout.headingLineHeight,
                   fontWeight: FontWeight.w700,
                 ),
               ),

@@ -222,6 +222,7 @@ extension _MediaDetailTvForeground on _MediaDetailScreenState {
     required double width,
     required double height,
     required Widget Function(BuildContext context, String title) titleBuilder,
+    Alignment alignment = Alignment.centerLeft,
   }) {
     Widget titleFallback(BuildContext context) => titleBuilder(context, metadata.displayTitle);
 
@@ -238,7 +239,7 @@ extension _MediaDetailTvForeground on _MediaDetailScreenState {
             context,
             artworkPaths: [metadata.clearLogoPath],
             fit: BoxFit.contain,
-            alignment: .centerLeft,
+            alignment: alignment,
             imageType: ImageType.logo,
             errorWidget: (context, url, error) => titleFallback(context),
           );
@@ -263,7 +264,7 @@ extension _MediaDetailTvForeground on _MediaDetailScreenState {
               cacheManager: PlexImageCacheManager.instance,
               filterQuality: FilterQuality.medium,
               fit: BoxFit.contain,
-              alignment: .centerLeft,
+              alignment: alignment,
               memCacheWidth: (width * dpr).clamp(200, 1000).round(),
               placeholder: (context, url) => const SizedBox.shrink(),
               errorBuilder: (context, error, stackTrace) => titleFallback(context),

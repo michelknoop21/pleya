@@ -189,6 +189,13 @@ class PleyaFakeServer {
   /// fixed bytes from [artworkById].
   final Map<String, List<int> Function(int width)> resizableArtwork = {};
 
+  /// What a real server cannot say over the protocol yet, per item or person
+  /// id: scores, reviews, portraits, a logo, extras, rows and tracks. Served at
+  /// `GET /verify/detail/{id}`, a route only a Verify build of the app asks for
+  /// (`lib/services/pleya_server_client/parts/verify_detail.dart`). It stays out
+  /// of the item itself so every item answer remains what the contract says.
+  final Map<String, Map<String, dynamic>> verifyDetail = {};
+
   /// version id -> playable bytes, auto-populated by [addItem] for every
   /// version it creates. `GET /stream/{version_id}` serves from here.
   final Map<String, List<int>> versionBytes = {};
@@ -293,6 +300,7 @@ class PleyaFakeServer {
     versionBytes.clear();
     seededIds.clear();
     verifyWatchlistIds.clear();
+    verifyDetail.clear();
   }
 
   /// Clears every mutable field back to a fresh instance's state. Used by
@@ -757,6 +765,10 @@ class PleyaFakeServer {
       });
     }
     if (path == '/verify/watchlist') return _json({'item_ids': verifyWatchlistIds});
+    if (path.startsWith('/verify/detail/')) {
+      final detail = verifyDetail[Uri.decodeComponent(path.substring('/verify/detail/'.length))];
+      return detail == null ? _json(_error('library.not_found'), status: 404) : _json(detail);
+    }
     if (path.startsWith('/artwork/')) {
       final id = Uri.decodeComponent(path.substring('/artwork/'.length));
       // A resizable artwork honours `?width=`, the way a real server does.

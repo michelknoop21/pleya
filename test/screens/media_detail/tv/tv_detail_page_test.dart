@@ -23,7 +23,6 @@ TvDetailSection _section(String id, {int count = 8, double width = 130, Map<Stri
     itemIds: [for (var i = 0; i < count; i++) '$id$i'],
     cardWidth: width,
     cardHeight: TvDetailLayout.cardHeight(width, 0.85, aspectRatio: 16 / 9),
-    footerHeight: TvDetailLayout.cardFooterHeight(width, 0.85),
     itemBuilder: (context, cell) {
       final key = '$id${cell.index}';
       nodes?[key] = cell.focusNode;
@@ -126,16 +125,45 @@ void main() {
     expect(find.text('Row empty'), findsNothing);
   });
 
-  testWidgets('a focused row lands with its artwork on the band of the northstar', (tester) async {
+  testWidgets('a focused section lands with its heading on the height of 04, 05, 07 and 09', (tester) async {
     final nodes = <String, FocusNode>{};
     await _pump(tester, [_section('a', nodes: nodes), _section('b', nodes: nodes), _section('c', nodes: nodes)]);
 
     nodes['b0']!.requestFocus();
     await tester.pumpAndSettle();
 
-    final rail = tester.getRect(find.byType(ListView).at(1));
-    final footer = TvDetailLayout.cardFooterHeight(130, 0.85);
-    expect(rail.center.dy - footer / 2, closeTo(_canvas.height * TvDetailLayout.focusBandCentre, 1));
+    final pt = _canvas.height / 1080;
+    expect(tester.getCenter(find.text('Row b')).dy, closeTo(420 * 0.96 * pt, 1.5));
+  });
+
+  testWidgets('the hero focused puts the page back on offset 0', (tester) async {
+    final nodes = <String, FocusNode>{};
+    final hero = FocusNode();
+    addTearDown(hero.dispose);
+    await _pump(tester, [_section('a', nodes: nodes), _section('b', nodes: nodes)], heroNode: hero);
+
+    nodes['b0']!.requestFocus();
+    await tester.pumpAndSettle();
+    final scrollable = tester.state<ScrollableState>(find.byType(Scrollable).first);
+    expect(scrollable.position.pixels, greaterThan(0));
+
+    hero.requestFocus();
+    await tester.pumpAndSettle();
+    expect(scrollable.position.pixels, 0);
+  });
+
+  testWidgets('the page is set solid, whatever the theme tracks its body text to', (tester) async {
+    final nodes = <String, FocusNode>{};
+    await _pump(tester, [_section('a', nodes: nodes)]);
+
+    expect(
+      tester
+          .widget<RichText>(find.descendant(of: find.byType(TvDetailPage), matching: find.byType(RichText)).first)
+          .text
+          .style
+          ?.letterSpacing,
+      0,
+    );
   });
 
   testWidgets('UP and DOWN walk the sections and stop at both ends', (tester) async {

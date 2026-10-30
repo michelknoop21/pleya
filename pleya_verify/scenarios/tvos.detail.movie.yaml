@@ -4,16 +4,17 @@ target: tvos-sim
 # viewer takes: a card on Home, Select, the page, down the rows, Menu back.
 #
 # What this proves:
-#   1. the page opens with the ring on the pill, inside the viewport;
+#   1. the page opens with the ring on the pill, on scroll offset 0;
 #   2. every round action has its own node, and the first screen shows the
-#      Cast & Crew heading (06);
-#   3. DOWN scrolls the first row onto the band of 07;
-#   4. the empty sections are absent: the Pleya wire has no reviews, extras or
-#      related rows, so Cast & Crew is the only one;
+#      scores, the technical labels and the Cast & Crew heading (06);
+#   3. every DOWN brings the next section's heading to the height of 07 and 09;
+#   4. the sections arrive on approach: the rows under Cast & Crew exist only
+#      after the page got near them;
 #   5. back is Menu, not a drawn arrow: the ring lands on the card that opened
 #      the page.
-# 08 to 10 need rows only Plex and Jellyfin fill in, so they stay widget-test
-# territory (test/screens/media_detail/tv/).
+# The scores, reviews, portraits, extras and rows the Pleya wire has no field
+# for come from the fixture's /verify/detail route, which only a Verify build
+# asks (lib/services/pleya_server_client/parts/verify_detail.dart).
 setup:
   - reset_app
   - seed: catalog.detail-movie.v1
@@ -38,21 +39,47 @@ steps:
   - assert: {id: media-detail.play, insideViewport: true}
   - assert: {id: "media-detail.action[watched]", insideViewport: true}
   - assert: {id: "media-detail.action[more]", insideViewport: true}
-  - assert: {id: "media-detail.section[cast]", state: {child_count: 7}}
+  - assert: {id: "media-detail.section[cast]", state: {child_count: 8}}
   - snapshot: 06-hero
 
   - press: down
   - settle: 1200
   - assert: {id: "media-detail.section.item[cast.0]", focused: true}
   - assert: {id: "media-detail.section.item[cast.0]", insideViewport: true}
-  - assert: {id: "media-detail.section[reviews]", present: false}
-  - assert: {id: "media-detail.section[extras]", present: false}
-  - snapshot: 07-cast
+  - snapshot: 06-cast
 
   - press: right
   - settle: 500
   - assert: {id: "media-detail.section.item[cast.1]", focused: true}
 
+  - press: down
+  - settle: 1200
+  - assert: {id: "media-detail.section[reviews]", state: {child_count: 4}}
+  - snapshot: 07-reviews
+
+  - press: down
+  - settle: 1200
+  - wait_until: {id: "media-detail.section[extras]", state: {child_count: 2}, timeout: 4000}
+  - snapshot: 08-extras
+
+  - press: down
+  - settle: 1500
+  - wait_until: {id: "media-detail.section[hub:collection]", state: {child_count: 5}, timeout: 6000}
+  - snapshot: 08-collection
+
+  - press: down
+  - settle: 1500
+  - wait_until: {id: "media-detail.section[person:person-0]", state: {child_count: 4}, timeout: 6000}
+  - snapshot: 09-person
+
+  - press: up
+  - settle: 800
+  - press: up
+  - settle: 800
+  - press: up
+  - settle: 800
+  - press: up
+  - settle: 1200
   - press: up
   - settle: 1200
   - wait_until: {focused: media-detail.play, timeout: 4000}
