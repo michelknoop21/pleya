@@ -1,8 +1,8 @@
 /// The sort panel of hoofdstuk 10.5, in the fase-4 panel language.
 ///
 /// A single column of the named sorts, one focus stop each, with the current one
-/// marked. Choosing applies immediately and closes —
-/// unlike the filter panel, which batches behind Apply.
+/// marked. Choosing applies immediately and closes, unlike the filter panel,
+/// which batches behind Apply.
 ///
 /// The asymmetry is deliberate and comes from hoofdstuk 10.6's own reason for
 /// batching filters: "zodat de grid niet na elke remote-klik herlaadt en focus
