@@ -73,14 +73,19 @@ class LibraryPhoneMetrics {
   static const double sortRowFontSize = 16;
   static const double sortGlyphSize = 22;
 
+  /// The reference sets every text of the look with no tracking, where the
+  /// theme's text styles add some.
+  static const double letterSpacing = 0;
+
   static const TextStyle captionTitleStyle = TextStyle(
     fontWeight: FontWeight.w400,
+    letterSpacing: letterSpacing,
     fontSize: captionTitleSize,
     height: captionLineHeight,
   );
 
   static TextStyle captionSubtitleStyle({required Color color}) =>
-      TextStyle(color: color, fontSize: captionSubtitleSize, height: captionLineHeight);
+      TextStyle(color: color, fontSize: captionSubtitleSize, height: captionLineHeight, letterSpacing: letterSpacing);
 
   /// What stays on screen once the header has collapsed: the status bar and the
   /// title row. Every tab keeps its content below this.

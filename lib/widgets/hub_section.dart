@@ -692,9 +692,11 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
     final isKeyboardMode = InputModeTracker.isKeyboardMode(context);
     final isTv = PlatformDetector.isTV();
     final leadingPadding = _leadingPaddingFor(isTv);
-    final titleStyle = Theme.of(
-      context,
-    ).textTheme.titleLarge?.copyWith(fontSize: isTv ? 26 : null, fontWeight: isTv ? FontWeight.w700 : null);
+    final titleStyle = Theme.of(context).textTheme.titleLarge?.copyWith(
+      fontSize: isTv ? 26 : null,
+      fontWeight: isTv ? FontWeight.w700 : null,
+      letterSpacing: LibraryPhoneLook.of(context) ? LibraryPhoneMetrics.letterSpacing : null,
+    );
 
     return Padding(
       padding: .only(bottom: isTv && !widget.inset ? TvLayoutConstants.shelfVerticalGap : 0),

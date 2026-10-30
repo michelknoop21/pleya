@@ -117,6 +117,13 @@ void main() {
     expect(title.dx, lessThan(search.dx));
   });
 
+  testWidgets('the library name and the server line carry no tracking', (tester) async {
+    await pump(tester, LibrariesScreen(phoneLook: true, onOpenSearch: () {}, onOpenWatchlist: () {}));
+
+    expect(tester.widget<Text>(find.text('Films')).style!.letterSpacing, 0);
+    expect(tester.widget<Text>(find.text('Pleya')).style!.letterSpacing, 0);
+  });
+
   testWidgets('the title row stays clear of the status bar while its background runs under it', (tester) async {
     await pump(tester, const LibrariesScreen(phoneLook: true));
 

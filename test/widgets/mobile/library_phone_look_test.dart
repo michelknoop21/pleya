@@ -131,6 +131,11 @@ void main() {
   });
 
   group('caption block', () {
+    test('title and year are set with no tracking, as in the reference', () {
+      expect(LibraryPhoneMetrics.captionTitleStyle.letterSpacing, 0);
+      expect(LibraryPhoneMetrics.captionSubtitleStyle(color: const Color(0xFF888888)).letterSpacing, 0);
+    });
+
     testWidgets('the shared layout follows the scope, and only inside it', (tester) async {
       late double inside;
       late double outside;
