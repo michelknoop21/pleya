@@ -50,6 +50,32 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 422 · 30 October 2026 · iPhone and iPad
+
+<!-- commit: 70a1507b -->
+
+### New
+
+- **A title on both Plex and Pleya Server shows up once.** When both servers carry the same TMDB
+  number, Series, Films, Search, Home and Continue Watching show one card with both sources.
+  You still pick which server plays it. A title without a proven match stays as two cards.
+
+### Fixed
+
+- **Choosing a source works on iPhone.** A card with two sources opens the source choice, and the
+  source row on the detail page responds to a tap.
+
+### Notes
+
+- This is a test build for the two-server check. It needs a Pleya Server updated on 30 October.
+
+### Worth checking
+
+- Severance shows one card with Plex and Pleya Server as sources, and both play, with the right
+  seasons and episodes per source.
+- Tapping the source row on a detail page changes the source.
+- Search, Home and Continue Watching show the title once.
+
 ## 2.8.1 · build 421 · 30 October 2026 · Apple TV
 
 <!-- commit: 257e11a8 -->
