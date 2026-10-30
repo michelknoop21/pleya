@@ -133,7 +133,100 @@ void main() {
       final titles = await _merge({
         _library('p', MediaBackend.plex): [_plex('B', null), _plex('A', null), _plex('C', null)],
       }, _criticDown);
-      expect(titles, ['A', 'B', 'C']);
+      expect(titles, ['B', 'A', 'C']);
+    });
+  });
+
+  group('a key that does not know what the server sorted on', () {
+    const recentSeries = UnifiedCatalogQuery(
+      kind: MediaKind.show,
+      sortField: UnifiedCatalogSortField.recentlyWatched,
+      sortDirection: LibrarySortDirection.descending,
+    );
+
+    MediaItem jellyfinSeries(String title, {int? lastViewedAt, String server = 'j'}) =>
+        JellyfinMediaItem(id: title, kind: MediaKind.show, title: title, lastViewedAt: lastViewedAt, serverId: server);
+
+    test('Jellyfin series without LastPlayedDate stay in SeriesDatePlayed order', () async {
+      final titles = await _merge({
+        _library('j', MediaBackend.jellyfin): [
+          jellyfinSeries('Zebra'),
+          jellyfinSeries('Monk'),
+          jellyfinSeries('Alias'),
+        ],
+      }, recentSeries);
+      expect(titles, ['Zebra', 'Monk', 'Alias']);
+    });
+
+    test('the first page is the server\'s first page, from one request', () async {
+      final server = _Server([for (var i = 0; i < 60; i++) jellyfinSeries('S${99 - i}')]);
+      final service = UnifiedCatalogService(
+        query: recentSeries,
+        libraries: [_library('j', MediaBackend.jellyfin)],
+        clientFor: (_) => server,
+        pageSize: 50,
+        groupsPerPage: 20,
+      );
+      await service.loadMore();
+      expect(service.snapshot.groups.first.representativeSource.item.title, 'S99');
+      expect(service.snapshot.groups, hasLength(20));
+      expect(server.calls, 1);
+    });
+
+    test('one series that does carry a date moves nothing', () async {
+      final titles = await _merge({
+        _library('j', MediaBackend.jellyfin): [
+          jellyfinSeries('Zebra'),
+          jellyfinSeries('Monk'),
+          jellyfinSeries('Marked', lastViewedAt: 5),
+          jellyfinSeries('Alias'),
+        ],
+      }, recentSeries);
+      expect(titles, ['Zebra', 'Monk', 'Marked', 'Alias']);
+    });
+
+    test('in a merge each server keeps its own order', () async {
+      MediaItem plex(String title, int? at) =>
+          PlexMediaItem(id: title, kind: MediaKind.show, title: title, lastViewedAt: at, serverId: 'p');
+      final titles = await _merge({
+        _library('p', MediaBackend.plex): [plex('P9', 9), plex('P5', 5), plex('PNone', null)],
+        _library('j', MediaBackend.jellyfin): [jellyfinSeries('Zebra'), jellyfinSeries('Monk')],
+      }, recentSeries);
+      expect(titles.where((t) => t!.startsWith('P')), ['P9', 'P5', 'PNone']);
+      expect(titles.where((t) => !t!.startsWith('P')), ['Zebra', 'Monk']);
+      expect(titles.take(2), ['P9', 'P5']);
+    });
+
+    test('Pleya Server series run on episodes the show state does not carry', () async {
+      MediaItem pleya(String title) =>
+          MediaItem(id: title, backend: MediaBackend.pleyaServer, kind: MediaKind.show, title: title, serverId: 'x');
+      final titles = await _merge({
+        _library('x', MediaBackend.pleyaServer): [pleya('Zebra'), pleya('Monk'), pleya('Alias')],
+      }, recentSeries);
+      expect(titles, ['Zebra', 'Monk', 'Alias']);
+    });
+
+    test('Jellyfin films carry the date, so a leading gap is still held back', () async {
+      MediaItem film(String title, int? at) =>
+          JellyfinMediaItem(id: title, kind: MediaKind.movie, title: title, lastViewedAt: at, serverId: 'j');
+      final titles = await _merge(
+        {
+          _library('j', MediaBackend.jellyfin): [film('None', null), film('Seen', 5)],
+        },
+        const UnifiedCatalogQuery(
+          kind: MediaKind.movie,
+          sortField: UnifiedCatalogSortField.recentlyWatched,
+          sortDirection: LibrarySortDirection.descending,
+        ),
+      );
+      expect(titles, ['Seen', 'None']);
+    });
+
+    test('a library with no value at all keeps the order it was sent in, whatever the field', () async {
+      final titles = await _merge({
+        _library('p', MediaBackend.plex): [_plex('Zebra', null), _plex('Monk', null), _plex('Alias', null)],
+      }, _criticDown);
+      expect(titles, ['Zebra', 'Monk', 'Alias']);
     });
   });
 

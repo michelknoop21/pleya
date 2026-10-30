@@ -9,6 +9,7 @@ library;
 
 import '../../media/catalog_score.dart';
 import '../../media/library_query.dart';
+import '../../media/media_backend.dart';
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_version.dart';
@@ -212,9 +213,30 @@ int? _tallestVersion(MediaItem item) {
   return tallest;
 }
 
-/// Whether [item] has anything to sort on under [field]. Title never holds an
-/// item back: an untitled row is rare, and the comparator sinks it anyway.
+/// Whether [item] has anything to sort on under [field].
 bool unifiedCatalogHasSortValue(MediaItem item, UnifiedCatalogSortField field) => _sortKey(item, field) != null;
+
+/// Whether an item without a key under [field] truly has no value on [backend],
+/// so that a server sending it first can be corrected.
+///
+/// False where the server sorts on something the mapped item does not carry:
+///
+/// * Jellyfin orders series on `SeriesDatePlayed`, worked out from the episodes,
+///   while the item's own `UserData.LastPlayedDate` stays empty on a series.
+/// * Pleya Server orders a show's last played date and duration on its episodes
+///   (`keyExpression`, `subjectKey` in `catalog/cursor.go`). Those two also carry
+///   a sentinel that puts titles without a value last, in both directions.
+///
+/// Moving such an item would break an order only the server can know. Never for
+/// title, which holds nothing back: an untitled row is rare, and the comparator
+/// sinks it anyway.
+bool unifiedCatalogKeyProvesNoValue(UnifiedCatalogSortField field, MediaKind kind, MediaBackend backend) =>
+    switch ((field, backend)) {
+      (UnifiedCatalogSortField.title, _) => false,
+      (UnifiedCatalogSortField.recentlyWatched, MediaBackend.jellyfin) => kind != MediaKind.show,
+      (UnifiedCatalogSortField.recentlyWatched || UnifiedCatalogSortField.duration, MediaBackend.pleyaServer) => false,
+      _ => true,
+    };
 
 /// The per-item comparator for one sort — the k-way merge's head-to-head
 /// comparison (hoofdstuk 12.2). Applied to raw items *before* grouping, so it

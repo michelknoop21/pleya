@@ -508,9 +508,9 @@ class UnifiedCatalogService {
       final sortField = _query.sortField;
       cursor.accept(
         page.items,
-        hasSortValue: sortField == UnifiedCatalogSortField.title
-            ? null
-            : (item) => unifiedCatalogHasSortValue(item, sortField),
+        hasSortValue: unifiedCatalogKeyProvesNoValue(sortField, _query.kind, cursor.library.backend)
+            ? (item) => unifiedCatalogHasSortValue(item, sortField)
+            : null,
       );
       cursor.offset += page.items.length;
       cursor.sourceTotal = page.totalCount;

@@ -113,6 +113,12 @@ class UnifiedSourceCursor {
   /// answered completely. Anything after a value passes in stream order: past
   /// that point the server has shown which end it keeps them at, and holding
   /// those back would walk a whole library for one page of a sort on Voortgang.
+  ///
+  /// This only works where a missing key proves the server has no value either,
+  /// and [UnifiedCatalogService] does not ask otherwise: see
+  /// `unifiedCatalogKeyProvesNoValue`. A library that never showed a single value
+  /// is the same doubt without a table to look it up in, so it keeps the order
+  /// it was sent in: see [releaseHeldBack].
   final List<MediaItem> heldBack = [];
   bool _sawSortValue = false;
 
@@ -140,11 +146,16 @@ class UnifiedSourceCursor {
     }
   }
 
-  /// Puts what was held back behind everything else, in [compare]'s order.
-  /// Called once, when the library has reported all it has.
+  /// Puts what was held back behind everything else. Called once, when the
+  /// library has reported all it has.
+  ///
+  /// In [compare]'s order once a value has proved the key works. Without one the
+  /// comparator has nothing but titles, and the server may well know what this
+  /// client cannot read, so sorting would replace its order with A to Z.
   void releaseHeldBack(int Function(MediaItem a, MediaItem b) compare) {
     if (heldBack.isEmpty) return;
-    buffer.addAll(heldBack..sort(compare));
+    if (_sawSortValue) heldBack.sort(compare);
+    buffer.addAll(heldBack);
     heldBack.clear();
   }
 
