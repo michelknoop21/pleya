@@ -491,7 +491,19 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     final target = (index + direction * columns).clamp(0, ids.length - 1);
     if (target == index) return;
     final node = _nodes[ids[target]];
-    if (node != null && node.canRequestFocus) node.requestFocus();
+    if (node != null && node.canRequestFocus) _focusCard(node);
+  }
+
+  /// Moves the focus to [node] from outside the directional traversal.
+  ///
+  /// LEFT and RIGHT go through that traversal, which keeps a history and answers
+  /// the opposite direction by popping it. The history belongs to the row just
+  /// left: kept, it sends the next LEFT back to a card rows away.
+  void _focusCard(FocusNode node) {
+    final context = node.context;
+    final scope = node.nearestScope;
+    if (context != null && scope != null) FocusTraversalGroup.maybeOf(context)?.invalidateScopeData(scope);
+    node.requestFocus();
   }
 
   /// Asks for the next page once the focus is within
@@ -525,7 +537,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
   void focusGrid() {
     final remembered = _focusedId ?? _restoredId();
     final node = (remembered != null ? _nodes[remembered] : null) ?? _nodes[widget.itemIds.firstOrNull];
-    if (node != null && node.canRequestFocus) node.requestFocus();
+    if (node != null && node.canRequestFocus) _focusCard(node);
   }
 
   /// Puts the focus on one named card, or reports that it could not — same
@@ -536,7 +548,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     final node = _nodes[id];
     if (node == null || !node.canRequestFocus) return false;
     _focusedId = id;
-    node.requestFocus();
+    _focusCard(node);
     return true;
   }
 
@@ -603,7 +615,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
       if (!mounted || _focusedId != replacement) return;
       final node = replacement == null ? null : _nodes[replacement];
       if (node != null && node.canRequestFocus) {
-        node.requestFocus();
+        _focusCard(node);
       } else {
         // Nothing survived — an empty result after a filter change. Focus goes
         // back up to the controls, which is the only thing left to operate.
