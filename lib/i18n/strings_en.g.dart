@@ -464,6 +464,12 @@ class TranslationsSettingsEn {
 
 	// Translations
 
+	/// en: 'Privacy'
+	String get privacy => 'Privacy';
+
+	/// en: 'Show discussions from Trakt'
+	String get showTraktDiscussions => 'Show discussions from Trakt';
+
 	/// en: 'Search settings'
 	String get searchHint => 'Search settings';
 
@@ -2454,6 +2460,18 @@ class TranslationsDiscoverEn {
 	final Translations _root; // ignore: unused_field
 
 	// Translations
+
+	/// en: 'Discussions'
+	String get discussions => 'Discussions';
+
+	/// en: 'S${number}'
+	String seasonBadge({required Object number}) => 'S${number}';
+
+	/// en: '(one) {${n} like} (other) {${n} likes}'
+	String commentLikes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '${n} like',
+		other: '${n} likes',
+	);
 
 	/// en: 'More actions'
 	String get moreActions => 'More actions';
@@ -10400,6 +10418,8 @@ extension on Translations {
 			'update.viewRelease' => 'View Release',
 			'update.latestVersion' => 'You are on the latest version',
 			'update.checkFailed' => 'Failed to check for updates',
+			'settings.privacy' => 'Privacy',
+			'settings.showTraktDiscussions' => 'Show discussions from Trakt',
 			'settings.searchHint' => 'Search settings',
 			'settings.urlLabel' => 'URL',
 			'settings.title' => 'Settings',
@@ -10813,10 +10833,10 @@ extension on Translations {
 			'videoControls.letterbox' => 'Letterbox',
 			'videoControls.fillScreen' => 'Fill screen',
 			'videoControls.stretch' => 'Stretch',
-			'videoControls.lockRotation' => 'Lock rotation',
-			'videoControls.unlockRotation' => 'Unlock rotation',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.lockRotation' => 'Lock rotation',
+			'videoControls.unlockRotation' => 'Unlock rotation',
 			'videoControls.timerActive' => 'Timer Active',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Playback will pause in ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'End of current video',
@@ -11092,6 +11112,9 @@ extension on Translations {
 			'connections.disconnectServer' => 'Disconnect',
 			'connections.disconnectServerConfirm' => ({required Object name}) => 'Disconnect from "${name}"? The sign-in for this server is removed from this device. Downloaded items are kept.',
 			'connections.reauthRequired' => 'Sign-in required',
+			'discover.discussions' => 'Discussions',
+			'discover.seasonBadge' => ({required Object number}) => 'S${number}',
+			'discover.commentLikes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} like', other: '${n} likes', ), 
 			'discover.moreActions' => 'More actions',
 			'discover.audioStream' => 'Audio stream',
 			'discover.subtitlesRow' => 'Subtitles',
@@ -11324,13 +11347,13 @@ extension on Translations {
 			'serverSelection.noServersFoundDescription' => 'Your Plex account doesn\'t have access to any servers yet. Ask the server owner to share their library with you, or connect a Jellyfin server instead.',
 			'serverSelection.noServersFoundTryJellyfin' => 'Connect a Jellyfin server',
 			'serverSelection.noServersFoundRetryPlex' => 'Try a different Plex account',
+			_ => null,
+		} ?? switch (path) {
 			'serverSelection.failedToLoadServers' => 'Failed to load servers',
 			'serverSelection.failedToLoadServersDescription' => 'Something went wrong while loading your servers. Check your internet connection and try again.',
 			'serverSelection.networkErrorTitle' => 'Can\'t reach the server',
 			'serverSelection.networkErrorDescription' => 'Pleya couldn\'t connect to the internet. Check your network and try again.',
 			'hubDetail.title' => 'Title',
-			_ => null,
-		} ?? switch (path) {
 			'hubDetail.releaseYear' => 'Release Year',
 			'hubDetail.dateAdded' => 'Date Added',
 			'hubDetail.rating' => 'Rating',
@@ -11838,13 +11861,13 @@ extension on Translations {
 			'metadataEdit.title' => 'Title',
 			'metadataEdit.sortTitle' => 'Sort Title',
 			'metadataEdit.originalTitle' => 'Original Title',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.releaseDate' => 'Release Date',
 			'metadataEdit.contentRating' => 'Content Rating',
 			'metadataEdit.studio' => 'Studio',
 			'metadataEdit.tagline' => 'Tagline',
 			'metadataEdit.summary' => 'Summary',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.poster' => 'Poster',
 			'metadataEdit.background' => 'Background',
 			'metadataEdit.logo' => 'Logo',
@@ -12352,13 +12375,13 @@ extension on Translations {
 			'unifiedCatalog.filters.year' => 'Year',
 			'unifiedCatalog.filters.contentRating' => 'Age rating',
 			'unifiedCatalog.filters.servers' => 'Servers',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.filters.libraries' => 'Libraries',
 			'unifiedCatalog.filters.apply' => 'Apply',
 			'unifiedCatalog.filters.clearAll' => 'Clear all',
 			'unifiedCatalog.filters.all' => 'All',
 			'unifiedCatalog.filters.unwatched' => 'Unwatched',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.filters.inProgress' => 'In progress',
 			'unifiedCatalog.filters.watched' => 'Watched',
 			'unifiedCatalog.filters.unsupported' => 'Not available for the current sources',
@@ -12866,13 +12889,13 @@ extension on Translations {
 			'assistant.steps.watchStats' => 'Fetching watch statistics',
 			'assistant.steps.myWatching' => 'Checking what you watched',
 			'assistant.steps.traktWatchlist' => 'Checking your Trakt watchlist',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.steps.recommendTogether' => 'Matching what you both like',
 			'assistant.steps.requestStatus' => 'Checking request status',
 			'assistant.steps.diagnosePlayback' => 'Diagnosing playback',
 			'assistant.steps.changePlayback' => 'Changing playback',
 			'assistant.steps.diagnoseLibrary' => 'Diagnosing the library',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.steps.trendingTitles' => 'Checking what is trending',
 			'assistant.steps.similarTitles' => 'Finding similar titles',
 			'assistant.steps.downloadNext' => 'Downloading next episodes',

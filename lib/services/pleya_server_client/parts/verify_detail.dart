@@ -8,7 +8,20 @@ part of '../../pleya_server_client.dart';
 /// compile-time constant: everywhere else every override below is the one
 /// `super` call, and the protocol stays what `openapi.yaml` says it is.
 mixin _PleyaVerifyDetailMethods on _PleyaServerRequests, _PleyaServerBrowseMethods, _PleyaServerUnsupportedMethods {
+  PleyaServerConnection get connection;
+
   Future<Map<String, dynamic>?> _verifyDetail(String id) => _getJson('/verify/detail/${Uri.encodeComponent(id)}');
+
+  /// Where a Verify build reads Trakt's routes instead of api.trakt.tv: this
+  /// fixture's, without a token, as Trakt is read without one.
+  String get verifyTraktBase => '${connection.baseUrl}$pleyaProtocolPrefix/verify/trakt';
+
+  @override
+  Future<ExternalIds> fetchExternalIds(String itemId) async {
+    if (!kPleyaVerify) return super.fetchExternalIds(itemId);
+    final ids = (await _verifyDetail(itemId))?['external_ids'];
+    return ids is Map<String, dynamic> ? ExternalIds.fromJson(ids) : const ExternalIds();
+  }
 
   List<Map<String, dynamic>> _verifyList(Object? raw) => [
     for (final entry in raw is List ? raw : const [])

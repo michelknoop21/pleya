@@ -5,9 +5,9 @@ import 'package:pleya_verify_fixture_server/named_fixtures.dart';
 import 'package:pleya_verify_fixture_server/pleya_fake_server.dart';
 import 'package:test/test.dart';
 
-Future<http.Response> _get(PleyaFakeServer server, String path) {
+Future<http.Response> _get(PleyaFakeServer server, String path, {String? token = 'Bearer at-0'}) {
   final request = http.Request('GET', Uri.parse('http://fixture/pleya/v1$path'));
-  request.headers['Authorization'] = 'Bearer at-0';
+  if (token != null) request.headers['Authorization'] = token;
   return server.handle(request);
 }
 
@@ -46,6 +46,22 @@ void main() {
 
       applyNamedFixture(server, 'catalog.empty.v1');
       expect(server.verifyDetail, isEmpty);
+      expect(server.verifyTrakt, isEmpty);
+    });
+
+    test('Trakt answers without a token, and refuses one', () async {
+      final server = PleyaFakeServer();
+      applyNamedFixture(server, 'catalog.detail-movie.v1');
+      final path = '/verify/trakt/movies/tt1727587/comments/likes';
+
+      final answer = await _get(server, path, token: null);
+      expect(answer.statusCode, 200);
+      final comments = jsonDecode(answer.body) as List;
+      expect(comments.where((comment) => comment['spoiler'] == true), hasLength(1));
+      expect(comments.where((comment) => '${comment['comment']}'.contains('[spoiler]')), hasLength(1));
+
+      expect((await _get(server, path)).statusCode, 401);
+      expect((await _get(server, '/verify/trakt/movies/unknown/comments/likes', token: null)).statusCode, 404);
     });
   });
 

@@ -87,6 +87,7 @@ removes it from this device even while the server is offline or its sign-in has 
 - **Keyboard shortcuts**, on desktop, all of them rebindable
 - **mpv configuration**, for people who know what they want from mpv
 - **Logs**, and the button that uploads one when you are reporting a problem
+- **Show discussions from Trakt**, on TV, under Privacy: public reactions on a title's page, on by default
 - **About**, with version information and licences
 
 Settings also sync through iCloud on Apple devices, so a new device starts configured. A

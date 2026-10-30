@@ -109,6 +109,8 @@
     "checkFailed": "Kon niet controleren op updates"
   },
   "settings": {
+    "privacy": "Privacy",
+    "showTraktDiscussions": "Discussies van Trakt tonen",
     "searchHint": "Zoek in instellingen",
     "urlLabel": "URL",
     "title": "Instellingen",
@@ -845,6 +847,12 @@
     "reauthRequired": "Opnieuw aanmelden vereist"
   },
   "discover": {
+    "discussions": "Discussies",
+    "seasonBadge": "S${number}",
+    "commentLikes": {
+      "one": "${n} like",
+      "other": "${n} likes"
+    },
     "moreActions": "Meer acties",
     "audioStream": "Audiostream",
     "subtitlesRow": "Ondertitels",

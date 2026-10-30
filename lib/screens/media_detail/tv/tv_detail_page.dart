@@ -156,6 +156,13 @@ class TvDetailPageState extends State<TvDetailPage> {
     super.dispose();
   }
 
+  /// Whether the viewer has come down from the hero. Before that a page is
+  /// short because its sections are on their way, not because the end is near.
+  bool get hasLeftHero => _focusedSectionId != null || (_scroll.hasClients && _scroll.position.pixels > 0);
+
+  /// Nothing under the hero to walk to.
+  bool get hasNoSections => _visible.isEmpty;
+
   void _maybeApproachEnd() {
     final onApproachEnd = widget.onApproachEnd;
     if (!widget.hasPendingSections || onApproachEnd == null || !_scroll.hasClients) return;
@@ -212,6 +219,7 @@ class TvDetailPageState extends State<TvDetailPage> {
   void _onSectionFocus(TvDetailSection section, bool hasFocus) {
     if (!hasFocus) return;
     _focusedSectionId = section.id;
+    _maybeApproachEnd();
     if (section.heldAtTop) {
       if (_scroll.hasClients) _scrollTo(0);
       return;

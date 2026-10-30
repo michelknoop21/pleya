@@ -109,6 +109,8 @@
     "checkFailed": "Failed to check for updates"
   },
   "settings": {
+    "privacy": "Privacy",
+    "showTraktDiscussions": "Show discussions from Trakt",
     "searchHint": "Search settings",
     "urlLabel": "URL",
     "title": "Settings",
@@ -845,6 +847,12 @@
     "reauthRequired": "Sign-in required"
   },
   "discover": {
+    "discussions": "Discussions",
+    "seasonBadge": "S${number}",
+    "commentLikes": {
+      "one": "${n} like",
+      "other": "${n} likes"
+    },
     "moreActions": "More actions",
     "audioStream": "Audio stream",
     "subtitlesRow": "Subtitles",

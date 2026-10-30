@@ -76,6 +76,9 @@ import '../utils/media_image_helper.dart';
 import '../utils/media_quality_labels.dart';
 import '../services/plex_client.dart';
 import '../media/media_server_client.dart';
+import '../providers/trakt_account_provider.dart';
+import '../services/pleya_server_client.dart';
+import '../services/trakt/trakt_comments_client.dart';
 import '../services/media_list_playback_launcher.dart';
 import '../utils/content_utils.dart';
 import '../utils/rating_utils.dart';
@@ -150,6 +153,7 @@ import '../widgets/tv/tv_catalog_card_grid.dart';
 import 'media_detail/tv/tv_detail_action_panel.dart';
 import 'media_detail/tv/tv_detail_backdrop.dart';
 import 'media_detail/tv/tv_detail_cards.dart';
+import 'media_detail/tv/tv_detail_discussion_card.dart';
 import 'media_detail/tv/tv_detail_episode_card.dart';
 import 'media_detail/tv/tv_detail_hero_widgets.dart';
 import 'media_detail/tv/tv_detail_layout.dart';
@@ -181,6 +185,7 @@ part 'media_detail/mobile_detail_view.dart';
 part 'media_detail/mobile_episodes_section.dart';
 part 'media_detail/synopsis_panel.dart';
 part 'media_detail/tv/tv_detail_actions.dart';
+part 'media_detail/tv/tv_detail_discussions.dart';
 part 'media_detail/tv/tv_detail_foreground.dart';
 part 'media_detail/tv/tv_detail_foreground_metrics.dart';
 part 'media_detail/tv/tv_detail_hero.dart';
@@ -392,6 +397,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   final Map<String, String> _tvDetailSeasonFocus = {};
   bool _tvDetailRelatedRequested = false;
   bool _tvDetailSectionLoading = false;
+  List<TraktComment> _tvDetailDiscussions = const [];
+  bool _tvDetailDiscussionsRequested = false;
 
   /// HERO7: back from a route a section's card opened.
   @override

@@ -66,6 +66,8 @@ import 'seerr_settings_screen.dart';
 import 'subtitle_styling_screen.dart';
 import 'tautulli_settings_screen.dart';
 import 'trackers_settings_screen.dart';
+import '../../providers/trakt_account_provider.dart';
+import '../../services/trakt/trakt_comments_client.dart';
 import '../../widgets/loading_indicator_box.dart';
 import '../../widgets/tv/tv_menu_grid.dart';
 import '../../widgets/tv/tv_settings_categories.dart';
@@ -116,6 +118,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   static const _kVideoPlayerControls = 'video_player_controls';
   static const _kVideoPlayerNavigation = 'video_player_navigation';
   static const _kCrashReporting = 'crash_reporting';
+  static const _kTraktDiscussions = 'trakt_discussions';
   static const _kDebugLogging = 'debug_logging';
   static const _kViewLogs = 'view_logs';
   static const _kClearCache = 'clear_cache';

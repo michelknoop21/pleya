@@ -83,6 +83,12 @@ abstract final class TvDetailLayout {
   /// The page's end, under the last row.
   static const double bottomPadding = 96;
 
+  // Discussies (04 and 07): the size of a review card, read at a lower text.
+  static const double discussionAvatar = 56;
+  static const double discussionPadding = 16;
+  static const double discussionTop = 24;
+  static const double discussionTextGap = 40;
+
   // Meer acties (12).
   static const double panelPadding = 65;
   static const double panelTitleTop = 66;

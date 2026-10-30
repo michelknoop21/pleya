@@ -23,6 +23,33 @@ List<Map<String, dynamic>> _detailReviews(String title) => [
     {'author': author, 'text': text, 'source': source, 'imageUri': 'rottentomatoes://image.review.fresh'},
 ];
 
+/// What Trakt holds on a title, in the shape of its comments route: reactions a
+/// card shows, and two that must never reach one.
+Map<String, Object?> _traktComment(int id, String user, String text, {int likes = 0, bool spoiler = false}) => {
+  'id': id,
+  'parent_id': 0,
+  'comment': text,
+  'spoiler': spoiler,
+  'review': false,
+  'replies': 0,
+  'likes': likes,
+  'created_at': '2026-10-${(id % 20 + 1).toString().padLeft(2, '0')}T12:00:00.000Z',
+  'user': {'username': user, 'private': false, 'name': null, 'vip': false},
+};
+
+const String _longReaction =
+    'Was so excited for this one, and it delivers. The second half takes its time, but every scene earns it, '
+    'and the ending made me go back and watch the first act again. Nothing else this year looks like it, and '
+    'the score alone is worth a second evening on the sofa.';
+
+List<Map<String, Object?>> _traktReactions(String title) => [
+  _traktComment(1, 'marshal', _longReaction, likes: 12),
+  _traktComment(2, 'antoniomax', 'Best thing I watched this year.', likes: 4),
+  _traktComment(3, 'skap58', '$title is gorgeous from the first frame.'),
+  _traktComment(4, 'spoilsport', 'The dragon dies at the end.', likes: 90, spoiler: true),
+  _traktComment(5, 'tagged', 'Good film. [spoiler]She loses her memory.[/spoiler]', likes: 80),
+];
+
 /// Eight people, seven with a portrait. The poster of a studio film stands in
 /// for the photo; the last one has none, so the initials stay on the path.
 List<Map<String, dynamic>> _detailCast(PleyaFakeServer server, List<(String, String)> people) {
@@ -115,7 +142,9 @@ void _applyCatalogDetailMovieV1(PleyaFakeServer server) {
         {'id': 11, 'language': 'English', 'language_code': 'eng'},
       ],
     },
+    'external_ids': {'imdb': 'tt1727587'},
   };
+  server.verifyTrakt['movies/tt1727587/comments/likes'] = _traktReactions('Sintel');
   server.verifyDetail['person-0'] = {
     'item_ids': [films['spring'], films['charge'], films['coffee-run'], films['big-buck-bunny']],
   };
@@ -191,7 +220,23 @@ void _applyCatalogDetailSeriesV1(PleyaFakeServer server) {
         ],
       },
     ],
+    // No IMDb id: this title goes through Trakt's TMDB lookup.
+    'external_ids': {'tmdb': 9000},
   };
+  server.verifyTrakt['search/tmdb/9000'] = [
+    {
+      'type': 'show',
+      'score': 1000,
+      'show': {
+        'title': 'Charge',
+        'ids': {'trakt': 555, 'slug': 'charge'},
+      },
+    },
+  ];
+  server.verifyTrakt['shows/555/comments/likes'] = _traktReactions('Charge');
+  server.verifyTrakt['shows/555/seasons/2/comments/likes'] = [
+    _traktComment(6, 'seasonfan', 'The second season finds its feet.', likes: 7),
+  ];
   server.verifyDetail['person-0'] = {
     'item_ids': [films['spring'], films['sintel'], films['coffee-run']],
   };

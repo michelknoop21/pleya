@@ -196,6 +196,10 @@ class PleyaFakeServer {
   /// of the item itself so every item answer remains what the contract says.
   final Map<String, Map<String, dynamic>> verifyDetail = {};
 
+  /// Trakt's answers, by path: `movies/{id}/comments/likes`, `search/tmdb/{id}`.
+  /// Served at `GET /verify/trakt/{path}`, where a Verify build reads them.
+  final Map<String, Object> verifyTrakt = {};
+
   /// version id -> playable bytes, auto-populated by [addItem] for every
   /// version it creates. `GET /stream/{version_id}` serves from here.
   final Map<String, List<int>> versionBytes = {};
@@ -301,6 +305,7 @@ class PleyaFakeServer {
     seededIds.clear();
     verifyWatchlistIds.clear();
     verifyDetail.clear();
+    verifyTrakt.clear();
   }
 
   /// Clears every mutable field back to a fresh instance's state. Used by
@@ -647,6 +652,13 @@ class PleyaFakeServer {
         return _json(_mintTokenPair(username: username));
       }
       return _json(_mintTokenPair());
+    }
+    // Trakt is read with an app key and no account, so these answer without a
+    // token: a client that sends one is the bug the scenario would miss.
+    if (path.startsWith('/verify/trakt/')) {
+      if (request.headers.containsKey('Authorization')) return _json(_error('auth.invalid_token'), status: 401);
+      final body = verifyTrakt[path.substring('/verify/trakt/'.length)];
+      return body == null ? _json(_error('library.not_found'), status: 404) : _json(body);
     }
     final bearer = request.headers['Authorization'];
     final memoryUsername = _memoryAccessUsers[bearer];

@@ -268,6 +268,8 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get privacy => 'Privacy';
+	@override String get showTraktDiscussions => 'Discussies van Trakt tonen';
 	@override String get searchHint => 'Zoek in instellingen';
 	@override String get urlLabel => 'URL';
 	@override String get title => 'Instellingen';
@@ -1036,6 +1038,12 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get discussions => 'Discussies';
+	@override String seasonBadge({required Object number}) => 'S${number}';
+	@override String commentLikes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: '${n} like',
+		other: '${n} likes',
+	);
 	@override String get moreActions => 'Meer acties';
 	@override String get audioStream => 'Audiostream';
 	@override String get subtitlesRow => 'Ondertitels';
@@ -4635,6 +4643,8 @@ extension on TranslationsNl {
 			'update.viewRelease' => 'Bekijk release',
 			'update.latestVersion' => 'Je hebt de nieuwste versie',
 			'update.checkFailed' => 'Kon niet controleren op updates',
+			'settings.privacy' => 'Privacy',
+			'settings.showTraktDiscussions' => 'Discussies van Trakt tonen',
 			'settings.searchHint' => 'Zoek in instellingen',
 			'settings.urlLabel' => 'URL',
 			'settings.title' => 'Instellingen',
@@ -5048,10 +5058,10 @@ extension on TranslationsNl {
 			'videoControls.letterbox' => 'Letterbox',
 			'videoControls.fillScreen' => 'Vul scherm',
 			'videoControls.stretch' => 'Uitrekken',
-			'videoControls.lockRotation' => 'Vergrendel rotatie',
-			'videoControls.unlockRotation' => 'Ontgrendel rotatie',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.lockRotation' => 'Vergrendel rotatie',
+			'videoControls.unlockRotation' => 'Ontgrendel rotatie',
 			'videoControls.timerActive' => 'Timer actief',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Afspelen wordt gepauzeerd over ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'Einde van huidige video',
@@ -5327,6 +5337,9 @@ extension on TranslationsNl {
 			'connections.disconnectServer' => 'Verbinding verbreken',
 			'connections.disconnectServerConfirm' => ({required Object name}) => 'Verbinding met "${name}" verbreken? De aanmelding voor deze server wordt van dit apparaat verwijderd. Gedownloade items blijven staan.',
 			'connections.reauthRequired' => 'Opnieuw aanmelden vereist',
+			'discover.discussions' => 'Discussies',
+			'discover.seasonBadge' => ({required Object number}) => 'S${number}',
+			'discover.commentLikes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '${n} like', other: '${n} likes', ), 
 			'discover.moreActions' => 'Meer acties',
 			'discover.audioStream' => 'Audiostream',
 			'discover.subtitlesRow' => 'Ondertitels',
@@ -5559,13 +5572,13 @@ extension on TranslationsNl {
 			'serverSelection.noServersFoundDescription' => 'Je Plex-account heeft nog geen toegang tot servers. Vraag de server-eigenaar om zijn bibliotheek met je te delen, of verbind in plaats daarvan een Jellyfin-server.',
 			'serverSelection.noServersFoundTryJellyfin' => 'Verbind een Jellyfin-server',
 			'serverSelection.noServersFoundRetryPlex' => 'Probeer een ander Plex-account',
+			_ => null,
+		} ?? switch (path) {
 			'serverSelection.failedToLoadServers' => 'Kon servers niet laden',
 			'serverSelection.failedToLoadServersDescription' => 'Er ging iets mis bij het laden van je servers. Controleer je internetverbinding en probeer opnieuw.',
 			'serverSelection.networkErrorTitle' => 'Kan de server niet bereiken',
 			'serverSelection.networkErrorDescription' => 'Pleya kon geen verbinding maken met internet. Controleer je netwerk en probeer opnieuw.',
 			'hubDetail.title' => 'Titel',
-			_ => null,
-		} ?? switch (path) {
 			'hubDetail.releaseYear' => 'Uitgavejaar',
 			'hubDetail.dateAdded' => 'Datum toegevoegd',
 			'hubDetail.rating' => 'Beoordeling',
@@ -6073,13 +6086,13 @@ extension on TranslationsNl {
 			'metadataEdit.title' => 'Titel',
 			'metadataEdit.sortTitle' => 'Sorteertitel',
 			'metadataEdit.originalTitle' => 'Oorspronkelijke titel',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.releaseDate' => 'Releasedatum',
 			'metadataEdit.contentRating' => 'Leeftijdsclassificatie',
 			'metadataEdit.studio' => 'Studio',
 			'metadataEdit.tagline' => 'Tagline',
 			'metadataEdit.summary' => 'Samenvatting',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.poster' => 'Poster',
 			'metadataEdit.background' => 'Achtergrond',
 			'metadataEdit.logo' => 'Logo',
@@ -6587,13 +6600,13 @@ extension on TranslationsNl {
 			'unifiedCatalog.filters.contentRating' => 'Leeftijd',
 			'unifiedCatalog.filters.servers' => 'Servers',
 			'unifiedCatalog.filters.libraries' => 'Bibliotheken',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.filters.apply' => 'Toepassen',
 			'unifiedCatalog.filters.clearAll' => 'Alles wissen',
 			'unifiedCatalog.filters.all' => 'Alle',
 			'unifiedCatalog.filters.unwatched' => 'Niet bekeken',
 			'unifiedCatalog.filters.inProgress' => 'Actief bezig',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.filters.watched' => 'Bekeken',
 			'unifiedCatalog.filters.unsupported' => 'Niet beschikbaar voor de huidige bronnen',
 			'unifiedCatalog.filters.someUnavailable' => 'Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen',
@@ -7101,13 +7114,13 @@ extension on TranslationsNl {
 			'assistant.steps.watchStats' => 'Kijkcijfers ophalen',
 			'assistant.steps.myWatching' => 'Jouw kijkgeschiedenis bekijken',
 			'assistant.steps.traktWatchlist' => 'Jouw Trakt-watchlist bekijken',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.steps.recommendTogether' => 'Zoeken wat jullie allebei leuk vinden',
 			'assistant.steps.requestStatus' => 'Status van aanvragen bekijken',
 			'assistant.steps.diagnosePlayback' => 'Afspelen onderzoeken',
 			'assistant.steps.changePlayback' => 'Afspelen aanpassen',
 			'assistant.steps.diagnoseLibrary' => 'Bibliotheek onderzoeken',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.steps.trendingTitles' => 'Kijken wat nu populair is',
 			'assistant.steps.similarTitles' => 'Vergelijkbare titels zoeken',
 			'assistant.steps.downloadNext' => 'Volgende afleveringen downloaden',

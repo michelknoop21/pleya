@@ -24,9 +24,13 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
 
   bool _tvDetailHasPendingSections(MediaItem metadata) {
     if (widget.isOffline) return false;
-    if (!_tvDetailRelatedRequested) return true;
-    return _tvDetailPersonRoles(metadata).any((role) => !_tvDetailPersonMedia.containsKey(role.id));
+    if (_tvDetailDiscussionsWanted && !_tvDetailDiscussionsRequested) return true;
+    return _tvDetailHasPendingRows(metadata);
   }
+
+  bool _tvDetailHasPendingRows(MediaItem metadata) =>
+      !_tvDetailRelatedRequested ||
+      _tvDetailPersonRoles(metadata).any((role) => !_tvDetailPersonMedia.containsKey(role.id));
 
   /// One step at a time, in page order: each result moves the end of the page,
   /// and that decides whether the next one is near yet.
@@ -34,11 +38,17 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
     if (_tvDetailSectionLoading) return;
     _tvDetailSectionLoading = true;
     try {
+      if (_tvDetailDiscussionsDue(metadata)) {
+        _tvDetailDiscussionsRequested = true;
+        await _loadTvDetailDiscussions(metadata);
+        return;
+      }
       if (!_tvDetailRelatedRequested) {
         _tvDetailRelatedRequested = true;
         await _loadRelatedHubs();
         return;
       }
+      if (!_tvDetailHasPendingRows(metadata)) return;
       final client = context.tryGetMediaClientForServer(serverIdOrNull(_metadata.serverId));
       for (final role in _tvDetailPersonRoles(metadata)) {
         final id = role.id!;
@@ -275,7 +285,10 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
           _TvDetailSlot.seasons => [if (metadata.isShow) ?_tvDetailSeasonsSection()],
           _TvDetailSlot.cast => [if (roles.isNotEmpty) _tvDetailCastSection(metadata, roles)],
           _TvDetailSlot.reviews => [if (metadata.reviews.isNotEmpty) _tvDetailReviewSection(metadata.reviews)],
-          _TvDetailSlot.discussions => const <TvDetailSection>[],
+          _TvDetailSlot.discussions => [
+            if (_tvDetailDiscussionsWanted && _tvDetailDiscussions.isNotEmpty)
+              _tvDetailDiscussionsSection(metadata, _tvDetailDiscussions),
+          ],
           _TvDetailSlot.extras => [if (_extras?.isNotEmpty ?? false) _tvDetailExtrasSection(_extras!)],
           _TvDetailSlot.collections => hubs.where(_isTvDetailCollectionHub).map(hubSection),
           _TvDetailSlot.people => [

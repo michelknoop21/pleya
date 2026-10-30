@@ -50,6 +50,14 @@ steps:
   - assert: {id: "media-detail.section.item[cast.0]", focused: true}
   - snapshot: 04-cast
 
+  # Through Trakt's TMDB lookup: the series' three clean reactions and the one on
+  # season 2.
+  - press: down
+  - settle: 1500
+  - wait_until: {id: "media-detail.section[discussions]", state: {child_count: 4}, timeout: 6000}
+  - assert: {id: "media-detail.section.item[discussions.0]", focused: true}
+  - snapshot: 04-discussions
+
   - press: down
   - settle: 1500
   - wait_until: {id: "media-detail.section[extras]", state: {child_count: 1}, timeout: 6000}
@@ -60,6 +68,8 @@ steps:
   - wait_until: {id: "media-detail.section[hub:collection]", state: {child_count: 5}, timeout: 6000}
   - snapshot: 05-collection
 
+  - press: up
+  - settle: 800
   - press: up
   - settle: 800
   - press: up
