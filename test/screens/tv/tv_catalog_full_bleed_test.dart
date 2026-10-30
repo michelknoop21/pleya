@@ -50,8 +50,7 @@ void main() {
     final first = h.posterRect(tester, 1);
     final next = h.posterRect(tester, 2);
     final below = h.posterRect(tester, 7);
-    // ignore: avoid_print
-    print(
+    debugPrint(
       'A-06c poster on 1038x584: ${first.width.toStringAsFixed(2)} x ${first.height.toStringAsFixed(2)} logical, '
       '${(first.width * 1.85).toStringAsFixed(1)} x ${(first.height * 1.85).toStringAsFixed(1)} pt; '
       'column pitch ${(next.left - first.left).toStringAsFixed(2)}, '
@@ -112,8 +111,7 @@ void main() {
     expect(grid.height, closeTo(h.windowHeight, 0.01));
     expect(first.top, closeTo(h.windowHeight * 60 / 1080, 0.01));
     expect(h.posterRect(tester, 7).bottom + 37, lessThanOrEqualTo(h.windowHeight));
-    // ignore: avoid_print
-    print(
+    debugPrint(
       'A-06c poster on the Apple TV canvas: ${first.width.toStringAsFixed(2)} x ${first.height.toStringAsFixed(2)}',
     );
   });

@@ -6051,6 +6051,9 @@ class TranslationsUnifiedCatalogEn {
 	/// en: '${count} titles loaded'
 	String titlesLoaded({required Object count}) => '${count} titles loaded';
 
+	/// en: 'Jump to'
+	String get jumpTo => 'Jump to';
+
 	/// en: 'Load more'
 	String get loadMore => 'Load more';
 
@@ -12288,6 +12291,7 @@ extension on Translations {
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titles',
 			'unifiedCatalog.oneTitle' => '1 title',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titles loaded',
+			'unifiedCatalog.jumpTo' => 'Jump to',
 			'unifiedCatalog.loadMore' => 'Load more',
 			'unifiedCatalog.loadingMore' => 'Loading more…',
 			'unifiedCatalog.sort.title' => 'Sort',
@@ -12323,9 +12327,9 @@ extension on Translations {
 			'unifiedCatalog.states.filterEmptyTitle' => 'Nothing matches these filters',
 			'unifiedCatalog.states.filterEmptyBody' => 'Clear a filter to see more titles.',
 			'unifiedCatalog.states.clearFilters' => 'Clear filters',
-			'unifiedCatalog.states.errorTitle' => 'The catalog could not be loaded',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.states.errorTitle' => 'The catalog could not be loaded',
 			'unifiedCatalog.states.errorBody' => 'No server answered. Check your connection and try again.',
 			'unifiedCatalog.states.partialOne' => '1 library did not answer',
 			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} libraries did not answer',
@@ -12837,9 +12841,9 @@ extension on Translations {
 			'assistant.steps.requestTitle' => 'Requesting title',
 			'assistant.steps.findTitle' => 'Finding the title',
 			'assistant.steps.recallMemory' => 'Checking your memory',
-			'assistant.steps.rememberFact' => 'Preparing a memory',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.steps.rememberFact' => 'Preparing a memory',
 			'assistant.steps.forgetFact' => 'Preparing to forget',
 			'assistant.steps.fallback' => 'Working',
 			'assistant.jobs.scanLibrary.running' => 'Scan running',

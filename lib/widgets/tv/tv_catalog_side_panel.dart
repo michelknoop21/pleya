@@ -31,12 +31,13 @@ import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../theme/mono_tokens.dart';
 import 'tv_catalog_filter_model.dart';
 import 'tv_catalog_filter_rail.dart';
+import 'tv_catalog_jump_index.dart';
 import 'tv_catalog_selection_tags.dart';
 import 'tv_catalog_sort_panel.dart';
 import 'tv_panel_primitives.dart';
 import 'tv_unified_layout.dart';
 
-enum _Page { overview, sort, categories, category }
+enum _Page { overview, sort, categories, category, jump }
 
 class TvCatalogSidePanel extends StatefulWidget {
   const TvCatalogSidePanel({
@@ -54,6 +55,7 @@ class TvCatalogSidePanel extends StatefulWidget {
     required this.onChooseSort,
     required this.onApplyFilters,
     required this.onClose,
+    this.onJump,
   });
 
   final double scale;
@@ -80,6 +82,10 @@ class TvCatalogSidePanel extends StatefulWidget {
 
   /// RIGHT, or Menu on the overview.
   final VoidCallback onClose;
+
+  /// Spring naar: the chosen letter. Null leaves the row out, which is what a
+  /// page does that is not sorted on title: a letter means nothing there.
+  final ValueChanged<String>? onJump;
 
   @override
   State<TvCatalogSidePanel> createState() => TvCatalogSidePanelState();
@@ -154,6 +160,7 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
         _show(_Page.categories, initialIndex: dirty ? sections.length + 1 : sections.indexOf(_section));
       case _Page.sort:
       case _Page.categories:
+      case _Page.jump:
         _show(_Page.overview, initialIndex: _overviewRow);
     }
   }
@@ -185,12 +192,32 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
         _show(_Page.sort);
       },
     ),
+    if (widget.onJump != null)
+      TvCatalogRailOption(
+        label: t.unifiedCatalog.jumpTo,
+        isSelected: false,
+        automationInstance: _instance('jump'),
+        onPressed: () {
+          _overviewRow = 3;
+          _show(_Page.jump, initialIndex: 0);
+        },
+      ),
     if (!widget.selection.isEmpty)
       TvCatalogRailOption(
         label: t.unifiedCatalog.states.clearFilters,
         isSelected: false,
         automationInstance: _instance('clear'),
         onPressed: () => widget.onApplyFilters(UnifiedCatalogFilterSelection.empty),
+      ),
+  ];
+
+  List<TvCatalogRailOption> _jumpOptions() => [
+    for (final letter in tvCatalogJumpLetters)
+      TvCatalogRailOption(
+        label: letter,
+        isSelected: false,
+        automationInstance: _instance('jump.$letter'),
+        onPressed: () => widget.onJump?.call(letter),
       ),
   ];
 
@@ -250,12 +277,14 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
       _Page.sort => t.unifiedCatalog.sort.title,
       _Page.categories => t.unifiedCatalog.filters.title,
       _Page.category => tvCatalogFilterSectionLabel(_section),
+      _Page.jump => t.unifiedCatalog.jumpTo,
     };
     final options = switch (_page) {
       _Page.overview => _overviewOptions(),
       _Page.sort => _sortOptions(),
       _Page.categories => _categoryOptions(),
       _Page.category => _rowOptions(),
+      _Page.jump => _jumpOptions(),
     };
     final String? note = switch (_page) {
       _Page.categories when _model.hasUnsupportedSections => t.unifiedCatalog.filters.someUnavailable,

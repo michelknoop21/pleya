@@ -2467,6 +2467,7 @@ class _TranslationsUnifiedCatalogNl extends TranslationsUnifiedCatalogEn {
 	@override String titleCount({required Object count}) => '${count} titels';
 	@override String get oneTitle => '1 titel';
 	@override String titlesLoaded({required Object count}) => '${count} titels geladen';
+	@override String get jumpTo => 'Spring naar';
 	@override String get loadMore => 'Meer laden';
 	@override String get loadingMore => 'Meer laden…';
 	@override late final _TranslationsUnifiedCatalogSortNl sort = _TranslationsUnifiedCatalogSortNl._(_root);
@@ -6545,6 +6546,7 @@ extension on TranslationsNl {
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titels',
 			'unifiedCatalog.oneTitle' => '1 titel',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titels geladen',
+			'unifiedCatalog.jumpTo' => 'Spring naar',
 			'unifiedCatalog.loadMore' => 'Meer laden',
 			'unifiedCatalog.loadingMore' => 'Meer laden…',
 			'unifiedCatalog.sort.title' => 'Sorteren',
@@ -6580,9 +6582,9 @@ extension on TranslationsNl {
 			'unifiedCatalog.states.filterEmptyTitle' => 'Niets voldoet aan deze filters',
 			'unifiedCatalog.states.filterEmptyBody' => 'Wis een filter om meer titels te zien.',
 			'unifiedCatalog.states.clearFilters' => 'Filters wissen',
-			'unifiedCatalog.states.errorTitle' => 'De catalogus kon niet worden geladen',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.states.errorTitle' => 'De catalogus kon niet worden geladen',
 			'unifiedCatalog.states.errorBody' => 'Geen enkele server antwoordde. Controleer je verbinding en probeer het opnieuw.',
 			'unifiedCatalog.states.partialOne' => '1 bibliotheek antwoordde niet',
 			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} bibliotheken antwoordden niet',
@@ -7094,9 +7096,9 @@ extension on TranslationsNl {
 			'assistant.steps.requestTitle' => 'Titel aanvragen',
 			'assistant.steps.findTitle' => 'Titel op beschrijving zoeken',
 			'assistant.steps.recallMemory' => 'Geheugen raadplegen',
-			'assistant.steps.rememberFact' => 'Herinnering klaarzetten',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.steps.rememberFact' => 'Herinnering klaarzetten',
 			'assistant.steps.forgetFact' => 'Vergeten klaarzetten',
 			'assistant.steps.fallback' => 'Bezig',
 			'assistant.jobs.scanLibrary.running' => 'Scan loopt',

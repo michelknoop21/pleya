@@ -63,6 +63,7 @@ import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
+import '../../media/library_query.dart';
 import '../../media/media_backend.dart';
 import '../../media/media_kind.dart';
 import '../../media/unified/unified_media_group.dart';
@@ -81,6 +82,7 @@ import '../../services/api_cache.dart';
 import '../../services/settings_service.dart';
 import '../../services/unified_catalog/source_resolver.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
+import '../../services/unified_catalog/unified_catalog_query.dart';
 import '../../services/unified_catalog/unified_catalog_query_store.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/formatters.dart';
@@ -90,6 +92,7 @@ import '../../widgets/tv/tv_catalog_empty_state.dart';
 import '../../widgets/tv/tv_catalog_filter_panel.dart';
 import '../../widgets/tv/tv_catalog_filter_rail.dart';
 import '../../widgets/tv/tv_catalog_header_bar.dart';
+import '../../widgets/tv/tv_catalog_jump_index.dart';
 import '../../widgets/tv/tv_catalog_row_alignment.dart';
 import '../../widgets/tv/tv_catalog_rail_scaffold.dart';
 import '../../widgets/tv/tv_catalog_selection_tags.dart';
@@ -974,7 +977,25 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       onChooseSort: (sort) => _chooseFromPanel(_preferences.copyWith(sort: sort)),
       onApplyFilters: (filters) => _chooseFromPanel(_preferences.copyWith(filters: filters)),
       onClose: _closeRail,
+      onJump: _preferences.sort.field == UnifiedCatalogSortField.title ? _jumpToLetter : null,
     );
+  }
+
+  /// Spring naar. The panel closes and the ring stays on its card until the
+  /// letter is found, which on a big catalog can mean loading further: moving
+  /// on in the meantime wins, because late content may not take the remote back.
+  Future<void> _jumpToLetter(String letter) async {
+    _closeRail();
+    final startedOn = _focusedGroupId;
+    final target = await tvCatalogJumpTarget(
+      widget.catalog,
+      letter,
+      descending: _preferences.sort.direction == LibrarySortDirection.descending,
+    );
+    if (!mounted || target == null) return;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted || _focusedGroupId != startedOn) return;
+    if (_gridKey.currentState?.focusItem(target) ?? false) _focusedGroupId = target;
   }
 
   /// A choice in the side panel: the panel closes and the ring goes to the

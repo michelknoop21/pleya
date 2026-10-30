@@ -2196,6 +2196,7 @@
     "titleCount": "${count} titles",
     "oneTitle": "1 title",
     "titlesLoaded": "${count} titles loaded",
+    "jumpTo": "Jump to",
     "loadMore": "Load more",
     "loadingMore": "Loading more…",
     "sort": {

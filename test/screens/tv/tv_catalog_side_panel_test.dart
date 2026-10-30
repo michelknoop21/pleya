@@ -3,6 +3,8 @@
 /// has a way back from each page of it.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -109,7 +111,7 @@ void main() {
     for (var i = 0; i < 5; i++) {
       await h.press(tester, _down);
     }
-    expect(_focusedRow(), contains('TvCatalogRailSubviewOption2'), reason: 'three rows with nothing to clear');
+    expect(_focusedRow(), contains('TvCatalogRailSubviewOption3'), reason: 'four rows with nothing to clear');
     expect(h.isNavFocused, isFalse);
   });
 
@@ -201,6 +203,103 @@ void main() {
     expect(h.isNavFocused, isFalse);
     await h.press(tester, _left);
     expect(find.byType(TvCatalogSidePanel), findsOneWidget, reason: 'the one action opens the panel');
+  });
+
+  group('Spring naar', () {
+    Future<FullBleedHarness> byLetter(WidgetTester tester, {Future<void>? laterPages}) async {
+      final h = await FullBleedHarness.create([
+        for (var i = 0; i < 130; i++) fakeMovie(i, title: '${String.fromCharCode(65 + i ~/ 5)} ${i % 5}'),
+      ]);
+      if (laterPages != null) h.client.pageGate = (query) async => query.offset > 0 ? laterPages : null;
+      await h.pump(tester, canvas: _canvas);
+      await h.open(tester);
+      return h;
+    }
+
+    testWidgets('sits under Sort on a page sorted on title, and picks a letter in the panel', (tester) async {
+      final h = await byLetter(tester);
+      await h.press(tester, _left);
+      for (var i = 0; i < 3; i++) {
+        await h.press(tester, _down);
+      }
+      expect(_focusedRow(), contains('TvCatalogRailSubviewOption3'));
+      await h.press(tester, _select);
+      expect(find.text('Jump to'), findsOneWidget, reason: 'the page title');
+      expect(find.text('A'), findsOneWidget);
+
+      // Down the list to K: # A B C D E F G H I J K.
+      for (var i = 0; i < 11; i++) {
+        await h.press(tester, _down);
+      }
+      final row = tester.getRect(find.text('K'));
+      final panel = tester.getRect(find.byType(TvCatalogSidePanel));
+      expect(row.bottom, lessThanOrEqualTo(panel.bottom), reason: 'the list follows the focus');
+
+      await h.press(tester, _select);
+
+      expect(find.byType(TvCatalogSidePanel), findsNothing);
+      expect(h.focused, h.cardLabel(10 * 5), reason: 'the first K');
+      final top = tester.getRect(find.text('K 0'));
+      expect(top.bottom, lessThanOrEqualTo(_canvas.height), reason: 'and it is on screen');
+    });
+
+    testWidgets('Menu on the letters goes back to the overview, on the row it came from', (tester) async {
+      final h = await byLetter(tester);
+      await h.press(tester, _left);
+      for (var i = 0; i < 3; i++) {
+        await h.press(tester, _down);
+      }
+      await h.press(tester, _select);
+      await h.press(tester, _menu);
+      expect(find.byType(TvCatalogSidePanel), findsOneWidget);
+      expect(_focusedRow(), contains('TvCatalogRailSubviewOption3'));
+      expect(h.isNavFocused, isFalse);
+    });
+
+    testWidgets('moving on while it looks leaves the ring where the viewer put it', (tester) async {
+      final gate = Completer<void>();
+      // Everything past page one waits, so Z is not known yet.
+      final h = await byLetter(tester, laterPages: gate.future);
+      await h.press(tester, _left);
+      for (var i = 0; i < 3; i++) {
+        await h.press(tester, _down);
+      }
+      await h.press(tester, _select);
+      for (var i = 0; i < 26; i++) {
+        await h.press(tester, _down);
+      }
+      final loadedBefore = h.catalog.snapshot.groups.length;
+      expect(loadedBefore, lessThan(130));
+
+      await h.press(tester, _select);
+      expect(find.byType(TvCatalogSidePanel), findsNothing);
+      expect(h.focused, h.cardLabel(0), reason: 'the ring waits on its card');
+      await h.press(tester, _right);
+      expect(h.focused, h.cardLabel(1));
+
+      gate.complete();
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+      expect(h.catalog.snapshot.groups.length, greaterThan(loadedBefore));
+      expect(h.focused, h.cardLabel(1), reason: 'late content does not take the remote back');
+    });
+
+    testWidgets('is not offered on a page sorted on anything else', (tester) async {
+      final h = await FullBleedHarness.create([for (var i = 0; i < 12; i++) fakeMovie(i, year: 2000)]);
+      await UnifiedCatalogQueryStore.write(
+        h.catalog.query.kind,
+        UnifiedCatalogPreferences.defaults.copyWith(sort: UnifiedCatalogSort.recentlyAdded),
+      );
+      await h.pump(tester, canvas: _canvas);
+      await h.open(tester);
+      await h.press(tester, _left);
+      expect(find.text('Jump to'), findsNothing);
+      for (var i = 0; i < 5; i++) {
+        await h.press(tester, _down);
+      }
+      expect(_focusedRow(), contains('TvCatalogRailSubviewOption2'), reason: 'Sort is the last row');
+    });
   });
 
   testWidgets('a filter that leaves nothing lands on the state, and LEFT reaches the panel again', (tester) async {
