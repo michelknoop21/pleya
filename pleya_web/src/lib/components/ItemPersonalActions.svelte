@@ -9,7 +9,6 @@
   import Select from './Select.svelte';
 
   let { item, onchange }: { item: Item; onchange: (next: Item) => void } = $props();
-  const api = personalApi(session.client);
   let active = true;
   onDestroy(() => { active = false; });
   let busy = $state(false);
@@ -22,13 +21,22 @@
     ...Array.from({ length: 10 }, (_, index) => ({ value: String(index + 1), label: `${index + 1}/10` }))
   ]);
 
-  async function change(operation: (id: string) => Promise<Partial<Item>>): Promise<void> {
+  // Another item means another subject: a pending request or error of the previous one is not shown here.
+  $effect(() => {
+    void item.id;
+    busy = false;
+    error = null;
+    ratingOpen = false;
+  });
+
+  async function change(operation: (api: ReturnType<typeof personalApi>, id: string) => Promise<Partial<Item>>): Promise<void> {
     if (busy) return;
     const id = item.id;
     busy = true;
     error = null;
     try {
-      const patch = await operation(id);
+      // Per action: the client carries the account generation, so one built at mount would refuse after a switch.
+      const patch = await operation(personalApi(session.client), id);
       if (active && item.id === id) {
         onchange({ ...item, ...patch });
         ratingOpen = false;
@@ -42,18 +50,18 @@
   function favorite(): void {
     if (!session.capabilities?.favorites) return;
     const next = !item.favorite;
-    void change(async id => { await api.setFavorite(id, next); return { favorite: next }; });
+    void change(async (api, id) => { await api.setFavorite(id, next); return { favorite: next }; });
   }
   function rate(): void {
     if (!session.capabilities?.ratings) return;
     const rating = draftRating === '' ? null : Number(draftRating);
-    void change(async id => { await api.setRating(id, rating); return { rating }; });
+    void change(async (api, id) => { await api.setRating(id, rating); return { rating }; });
   }
   function watched(): void {
     if (!canWatch) return;
     const next = !item.user_state?.watched;
     const duration = item.duration_ms ?? undefined;
-    void change(async id => ({ user_state: await api.setWatched(id, next, duration) }));
+    void change(async (api, id) => ({ user_state: await api.setWatched(id, next, duration) }));
   }
 </script>
 

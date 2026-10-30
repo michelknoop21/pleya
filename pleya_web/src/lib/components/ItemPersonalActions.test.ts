@@ -1,12 +1,13 @@
 import { fireEvent,render,screen,waitFor,within } from '@testing-library/svelte';
 import { beforeEach,describe,expect,it,vi } from 'vitest';
 import type { Item } from '../api/types';
-const h=vi.hoisted(()=>({favorite:vi.fn(),rating:vi.fn(),watched:vi.fn(),caps:{favorites:true,ratings:true,watch_state:true}}));
-vi.mock('../stores/session.svelte.js',()=>({session:{client:{},get capabilities(){return h.caps;}}}));
-vi.mock('../api/personal',()=>({personalApi:()=>({setFavorite:h.favorite,setRating:h.rating,setWatched:h.watched})}));
+const h=vi.hoisted(()=>({favorite:vi.fn(),rating:vi.fn(),watched:vi.fn(),factory:vi.fn(),caps:{favorites:true,ratings:true,watch_state:true}}));
+const sess=vi.hoisted(()=>({client:{id:'a'} as unknown}));
+vi.mock('../stores/session.svelte.js',()=>({session:{get client(){return sess.client;},get capabilities(){return h.caps;}}}));
+vi.mock('../api/personal',()=>({personalApi:(client:unknown)=>{h.factory(client);return {setFavorite:h.favorite,setRating:h.rating,setWatched:h.watched};}}));
 import ItemPersonalActions from './ItemPersonalActions.svelte';
 const item:Item={id:'movie',kind:'movie',title:'Movie',added_at:'2026-10-30T00:00:00Z',duration_ms:60000,favorite:false,rating:null};
-beforeEach(()=>{h.caps={favorites:true,ratings:true,watch_state:true};h.favorite.mockReset().mockResolvedValue(undefined);h.rating.mockReset().mockResolvedValue(undefined);h.watched.mockReset().mockResolvedValue({position_ms:0,watched:true,play_count:1,updated_at:'2026-10-30T00:00:00Z'});});
+beforeEach(()=>{sess.client={id:'a'};h.factory.mockReset();h.caps={favorites:true,ratings:true,watch_state:true};h.favorite.mockReset().mockResolvedValue(undefined);h.rating.mockReset().mockResolvedValue(undefined);h.watched.mockReset().mockResolvedValue({position_ms:0,watched:true,play_count:1,updated_at:'2026-10-30T00:00:00Z'});});
 describe('public personal item controls',()=>{
  it('updates a favorite only after the server accepts it and ignores duplicate clicks',async()=>{
   let resolve!:()=>void;h.favorite.mockImplementationOnce(()=>new Promise<void>(done=>resolve=done));
@@ -47,5 +48,29 @@ describe('public personal item controls',()=>{
  it('does not publish a late result after this route is left',async()=>{
   let resolve!:()=>void;h.favorite.mockImplementationOnce(()=>new Promise<void>(done=>resolve=done));const onchange=vi.fn();const {unmount}=render(ItemPersonalActions,{props:{item,onchange}});
   await fireEvent.click(screen.getByRole('button',{name:'Add to favorites'}));unmount();resolve();await Promise.resolve();await Promise.resolve();expect(onchange).not.toHaveBeenCalled();
+ });
+ it('uses the client of the current account for every action, not the one from mount',async()=>{
+  const onchange=vi.fn();render(ItemPersonalActions,{props:{item,onchange}});
+  sess.client={id:'b'};
+  await fireEvent.click(screen.getByRole('button',{name:'Add to favorites'}));
+  await waitFor(()=>expect(onchange).toHaveBeenCalled());
+  expect(h.factory).toHaveBeenLastCalledWith({id:'b'});
+ });
+ it('frees the buttons for item B while the request for item A is still pending, and drops A\'s late result',async()=>{
+  let resolve!:()=>void;h.favorite.mockImplementationOnce(()=>new Promise<void>(done=>resolve=done));
+  const onchange=vi.fn();const {rerender}=render(ItemPersonalActions,{props:{item,onchange}});
+  await fireEvent.click(screen.getByRole('button',{name:'Add to favorites'}));
+  await rerender({item:{...item,id:'other',title:'Other'},onchange});
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Add to favorites'})).toBeEnabled());
+  resolve();await Promise.resolve();await Promise.resolve();expect(onchange).not.toHaveBeenCalled();
+  await fireEvent.click(screen.getByRole('button',{name:'Add to favorites'}));
+  await waitFor(()=>expect(onchange).toHaveBeenCalledWith(expect.objectContaining({id:'other',favorite:true})));
+ });
+ it('does not show the error of item A on item B',async()=>{
+  let reject!:(e:Error)=>void;h.favorite.mockImplementationOnce(()=>new Promise<void>((_,no)=>reject=no));
+  const onchange=vi.fn();const {rerender}=render(ItemPersonalActions,{props:{item,onchange}});
+  await fireEvent.click(screen.getByRole('button',{name:'Add to favorites'}));
+  await rerender({item:{...item,id:'other'},onchange});reject(new Error('offline'));await Promise.resolve();await Promise.resolve();
+  expect(screen.queryByRole('alert')).toBeNull();
  });
 });

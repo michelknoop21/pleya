@@ -58,5 +58,19 @@ describe('personal API uses the existing authenticated public client',()=>{
   await vi.waitFor(()=>expect(fetch).toHaveBeenCalledTimes(1));
   await client.login({username:'B',password:'test-only'});finish(new Response(null,{status:204}));await rejected;
  });
-
+ it('does not publish a mutation result after sign-out while the request is pending',async()=>{
+  const {api,client,fetch}=setup();let finish!:(response:Response)=>void;
+  fetch.mockImplementationOnce(()=>new Promise<Response>(resolve=>finish=resolve));
+  const action=api.setFavorite('item',true);const rejected=expect(action).rejects.toThrow();
+  await vi.waitFor(()=>expect(fetch).toHaveBeenCalledTimes(1));
+  await client.signOut({remote:false});finish(new Response(null,{status:204}));await rejected;
+ });
+ it('does not publish a late watch-state result after login B',async()=>{
+  const {api,client,fetch}=setup();let finish!:(response:Response)=>void;
+  fetch.mockImplementationOnce(()=>new Promise<Response>(resolve=>finish=resolve));
+  const action=api.setWatched('item',true,1000);const rejected=expect(action).rejects.toThrow();
+  await vi.waitFor(()=>expect(fetch).toHaveBeenCalledTimes(1));
+  await client.login({username:'B',password:'test-only'});
+  finish(json({position_ms:1000,watched:true,play_count:1,updated_at:'2026-10-30T00:00:00Z'}));await rejected;
+ });
 });

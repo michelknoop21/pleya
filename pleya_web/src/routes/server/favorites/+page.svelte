@@ -47,7 +47,7 @@
     {#if pager.loading && !pager.items.length}<SkeletonPage variant="grid" />
     {:else if pager.error}<StateView kind="error" message={describeError(pager.error)} onRetry={() => void more()} />
     {:else if pager.done && !pager.items.length}<StateView title={t('personal.emptyFavorites')} message={t('personal.emptyFavoritesBody')} />{/if}
-    {#if !pager.done && !pager.error}
+    {#if pager.items.length && !pager.done && !pager.error}
       <button class="btn btn--secondary" disabled={pager.loading} onclick={() => void more()}>{t('libraries.loadMore')}</button>
     {/if}
   {:else}
