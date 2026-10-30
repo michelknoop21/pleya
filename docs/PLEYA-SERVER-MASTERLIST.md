@@ -472,7 +472,7 @@ is geen bewijs van gebouwde leesvoortgang of een reader.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S19.1 | Migratie `0018`, tabellen en zichtbaarheid | `[ ]` | | |
+| S19.1 | Migratie `0018`, tabellen en zichtbaarheid | `[x]` | Migratie `0025_collections_playlists.sql`: `0018` tot en met `0024` waren bezet, `origin/main` staat op `0023`. Vijf tabellen: de vier uit PS-9C plus `collection_users` voor zichtbaarheid per gebruiker. `position` is een sleutel met gaten en `UNIQUE ... DEFERRABLE`, cascade op `media_items` en `users`. `lists_schema_test.go`: item weg laat de lijst staan, gebruiker weg neemt zijn lijsten mee, onbekende zichtbaarheid geweigerd; groen tegen de wegwerp-Postgres samen met `internal/migrate` | 2026-10-30 |
 | S19.2 | Endpoints inclusief herordenen | `[ ]` | | |
 | S19.3 | Web: schermen 17 en 18, "Toevoegen aan" op de kaart | `[ ]` | | |
 | S19.4 | App: bestaande members geïmplementeerd | `[ ]` | | |
