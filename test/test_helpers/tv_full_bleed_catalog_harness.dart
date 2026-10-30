@@ -33,6 +33,7 @@ import 'package:pleya/screens/tv/tv_unified_catalog_screen.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/services/unified_catalog/unified_catalog_query_store.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
@@ -234,6 +235,7 @@ class FullBleedHarness {
     await SettingsService.getInstance();
     LocaleSettings.setLocaleSync(AppLocale.en);
     SelectKeyUpSuppressor.clearSuppression();
+    UnifiedCatalogQueryStore.resetForTesting();
 
     final coordinator = TvNavigationCoordinator()..updateConditions(const TvNavConditions(hasLiveTv: false));
     final client = FakeLibraryClient(items);

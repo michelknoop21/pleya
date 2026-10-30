@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:pleya/focus/focus_theme.dart';
+import 'package:pleya/focus/input_mode_tracker.dart';
+import 'package:pleya/navigation/tv/tv_destination.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_query_store.dart';
@@ -259,6 +261,70 @@ void main() {
         expect(grid.topInset, greaterThan(full.topInset!));
       }
     }
+  });
+
+  testWidgets('going offline on this route removes it with its destination', (tester) async {
+    final h = await _harness();
+    await h.pump(tester, canvas: _canvas);
+    h.coordinator.activate(TvDestinationId.movies);
+    await tester.pumpAndSettle();
+    await h.open(tester);
+    expect(find.byType(TvCatalogCardGrid), findsOneWidget);
+
+    final displaced = h.coordinator.updateConditions(const TvNavConditions(hasLiveTv: false, isOffline: true));
+    await tester.pumpAndSettle();
+
+    expect(displaced, isNotNull, reason: 'Films is not in the offline bar');
+    expect(h.coordinator.activeCanPop, isFalse);
+    expect(find.byType(TvCatalogCardGrid), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('when the card with the ring leaves and none survive, onEmptied gets the remote', (tester) async {
+    tester.view.physicalSize = _canvas;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    var emptied = 0;
+    var exitedTop = 0;
+    FocusNode? first;
+
+    Widget grid(List<String> ids) => MaterialApp(
+      theme: monoTheme(dark: true),
+      home: InputModeTracker(
+        child: Material(
+          child: TvCatalogCardGrid(
+            itemIds: ids,
+            cardHeight: (width) => TvCatalogFullBleedLayout.cardHeight(width, 0.85),
+            hasMore: false,
+            isLoadingMore: false,
+            onLoadMore: () {},
+            onExitTop: () => exitedTop++,
+            onEmptied: () => emptied++,
+            itemBuilder: (context, cell) {
+              first ??= cell.focusNode;
+              return TvCatalogCompactCard(
+                width: cell.width,
+                artwork: const SizedBox(),
+                title: ids[cell.index],
+                meta: '',
+                focusNode: cell.focusNode,
+                onFocusChange: cell.onFocusChange,
+                onSelect: () {},
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(grid(const ['a']));
+    first!.requestFocus();
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(grid(const []));
+    await tester.pumpAndSettle();
+
+    expect(emptied, 1);
+    expect(exitedTop, 0);
   });
 
   testWidgets('without fullBleed the route keeps the heading and the wrapped card', (tester) async {

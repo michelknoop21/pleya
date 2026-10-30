@@ -62,6 +62,25 @@ class TvCatalogFullBleedLayout {
   static const double cornerTabGap = 4;
   static const double cornerCountFontSize = 13;
 
+  /// The side panel, mirrored from `2026-10-30-set2/02.png`: a third of the
+  /// window, standing clear of the edges, over a page dimmed to a third. The
+  /// fractions are of the window, the type in base units.
+  static const double sheetWidthFraction = 667 / 2000;
+  static const double sheetMarginFraction = 33 / 2000;
+  static const double sheetRadius = 14;
+  static const double sheetPaddingHorizontal = 24;
+  static const double sheetPaddingVertical = 30;
+  static const double sheetTitleFontSize = 20;
+  static const double sheetTitleGap = 18;
+  static const double sheetRowHeight = 40;
+  static const double sheetRowGap = 5;
+  static const double sheetRowFontSize = 16;
+  static const double sheetValueFontSize = 14;
+  static const double sheetValueMaxWidth = 150;
+  static const double sheetTagsTopGap = 12;
+  static const double sheetDimAlpha = 0.66;
+  static const Duration sheetSlideDuration = Duration(milliseconds: 240);
+
   /// How long the footer takes to make way, and how far past the ring it goes.
   static const Duration footerFocusDuration = Duration(milliseconds: 160);
   static const double _focusFooterClearance = 1.75;

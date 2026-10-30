@@ -93,6 +93,7 @@ import '../../widgets/tv/tv_catalog_header_bar.dart';
 import '../../widgets/tv/tv_catalog_row_alignment.dart';
 import '../../widgets/tv/tv_catalog_rail_scaffold.dart';
 import '../../widgets/tv/tv_catalog_selection_tags.dart';
+import '../../widgets/tv/tv_catalog_side_panel.dart';
 import '../../widgets/tv/tv_catalog_skeleton_grid.dart';
 import '../../widgets/tv/tv_catalog_sort_panel.dart';
 import '../../widgets/tv/tv_scroll_away_page.dart';
@@ -203,6 +204,12 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// Set while the screen still owes someone an entry focus: DOWN out of the
   /// topnav on a catalog whose grid has not been built yet. See [_tryEntryFocus].
   bool _wantsEntryFocus = false;
+
+  /// A choice in the full-bleed panel changed the wall, so the entry focus above
+  /// goes to the first card and not to the one the viewer left.
+  bool _entryOnFirstCard = false;
+
+  final _sidePanelKey = GlobalKey<TvCatalogSidePanelState>();
 
   /// The card the remote is on, by stable `groupId` — mirrored out of the grid
   /// so it can be handed on after the grid itself is gone.
@@ -648,17 +655,25 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// already, which is what makes that safe here and not on the opening path.
   void _openRail() {
     if (_railExpanded) {
-      if (_sourcesFocus.canRequestFocus) _sourcesFocus.requestFocus();
+      _focusRailEntry();
       return;
     }
     setState(() => _railExpanded = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_railExpanded) return;
-      // Always Bronnen, per DEC-093, not the row last used. The rail is a
-      // short list the eye reads top to bottom, and opening it halfway down
-      // costs more than the press it saves.
-      if (_sourcesFocus.canRequestFocus) _sourcesFocus.requestFocus();
+      _focusRailEntry();
     });
+  }
+
+  /// Always Bronnen, per DEC-093, not the row last used. The rail is a short
+  /// list the eye reads top to bottom, and opening it halfway down costs more
+  /// than the press it saves.
+  void _focusRailEntry() {
+    if (widget.fullBleed) {
+      _sidePanelKey.currentState?.focusEntry();
+    } else if (_sourcesFocus.canRequestFocus) {
+      _sourcesFocus.requestFocus();
+    }
   }
 
   /// RIGHT or Menu out of the rail: back to the card it was opened from.
@@ -749,19 +764,32 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   void _tryEntryFocus() {
     if (!mounted || !_wantsEntryFocus) return;
     if (_railExpanded) {
-      if (_sourcesFocus.canRequestFocus) {
+      if (widget.fullBleed || _sourcesFocus.canRequestFocus) {
         _wantsEntryFocus = false;
-        _sourcesFocus.requestFocus();
+        _focusRailEntry();
       }
       return;
     }
     final grid = _gridKey.currentState;
     if (grid != null && grid.hasFocusableCard) {
       _wantsEntryFocus = false;
-      grid.focusGrid();
+      if (_entryOnFirstCard) {
+        _entryOnFirstCard = false;
+        grid.focusFirstCard();
+      } else {
+        grid.focusGrid();
+      }
       return;
     }
-    if (_preferencesLoaded && !widget.catalog.isInitialLoading) _wantsEntryFocus = false;
+    if (!_preferencesLoaded || widget.catalog.isInitialLoading) return;
+    _wantsEntryFocus = false;
+    // A choice in the panel that left no grid. The state's own autofocus does
+    // not fire here: the row that was chosen on still held the focus when the
+    // state was mounted, so nothing would be left holding it.
+    if (_entryOnFirstCard) {
+      _entryOnFirstCard = false;
+      if (_stateActionFocus.canRequestFocus) _stateActionFocus.requestFocus();
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -893,33 +921,75 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   }
 
   /// The grid, with the rail standing beside it — the shared placement of
-  /// [TvCatalogRailScaffold], which this screen used to own outright.
+  /// [TvCatalogRailScaffold], which this screen used to own outright. On a
+  /// full-bleed page the controls are a panel over the grid instead.
   Widget _buildContentArea() {
     final scale = TvLayoutConstants.scaleOf(context);
     return TvCatalogRailScaffold(
+      overlay: widget.fullBleed,
       cardHeight: (cardWidth) => TvCatalogLayout.cardHeight(cardWidth, scale),
       rail: _railExpanded
           ? AutomationNode(
               id: AutomationIds.tvCatalogRail,
               instance: _surface,
               role: 'region',
-              child: TvCatalogFilterRailPanel(
-                key: tvCatalogFilterRailKey,
-                scale: scale,
-                rows: _railRows(),
-                tags: _selectionTags(capped: false),
-                onClear: _preferences.filters.isEmpty ? null : _clearFilters,
-                clearFocusNode: _clearFocus,
-                onClearNavigateUp: () => _sortFocus.requestFocus(),
-                onClearNavigateDown: _railEdge,
-                onClearNavigateLeft: _railEdge,
-                onClearNavigateRight: _closeRail,
-                onClearBack: _closeRail,
-              ),
+              child: widget.fullBleed
+                  ? _buildSidePanel(scale)
+                  : TvCatalogFilterRailPanel(
+                      key: tvCatalogFilterRailKey,
+                      scale: scale,
+                      rows: _railRows(),
+                      tags: _selectionTags(capped: false),
+                      onClear: _preferences.filters.isEmpty ? null : _clearFilters,
+                      clearFocusNode: _clearFocus,
+                      onClearNavigateUp: () => _sortFocus.requestFocus(),
+                      onClearNavigateDown: _railEdge,
+                      onClearNavigateLeft: _railEdge,
+                      onClearNavigateRight: _closeRail,
+                      onClearBack: _closeRail,
+                    ),
             )
           : null,
       body: _buildBody(),
     );
+  }
+
+  Widget _buildSidePanel(double scale) {
+    final filters = _effectiveFilters;
+    final itemFilters = filters.itemFilterCount;
+    return TvCatalogSidePanel(
+      key: _sidePanelKey,
+      scale: scale,
+      surface: _surface,
+      selection: _preferences.filters,
+      capabilities: _capabilities,
+      libraries: widget.catalog.eligibleLibraries,
+      clientFor: (serverId) => context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId)),
+      sort: _preferences.sort,
+      sourcesValue: _sourcesLabel(filters) ?? t.unifiedCatalog.allSources,
+      filtersValue: itemFilters == 0
+          ? t.unifiedCatalog.rail.noFilters
+          : t.unifiedCatalog.rail.filtersActive(count: itemFilters),
+      tags: _selectionTags(capped: false),
+      onChooseSort: (sort) => _chooseFromPanel(_preferences.copyWith(sort: sort)),
+      onApplyFilters: (filters) => _chooseFromPanel(_preferences.copyWith(filters: filters)),
+      onClose: _closeRail,
+    );
+  }
+
+  /// A choice in the side panel: the panel closes and the ring goes to the
+  /// first card. Asked for through the entry focus, because a change of sort or
+  /// filter replaces the grid and the first card only exists once the new page
+  /// has landed. An unchanged choice leaves the same grid standing, so that one
+  /// is sent to its top here.
+  Future<void> _chooseFromPanel(UnifiedCatalogPreferences next) async {
+    setState(() => _railExpanded = false);
+    _focusedGroupId = null;
+    _entryOnFirstCard = true;
+    _wantsEntryFocus = true;
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+    await _updatePreferences(next);
+    if (mounted) WidgetsBinding.instance.addPostFrameCallback((_) => _tryEntryFocus());
   }
 
   double _railLeading(double width) =>

@@ -578,6 +578,13 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     if (node != null && node.canRequestFocus) _focusCard(node);
   }
 
+  /// Focuses the very first card, whatever was remembered, for a choice that
+  /// replaced the wall.
+  void focusFirstCard() {
+    final first = widget.itemIds.firstOrNull;
+    if (first != null) focusItem(first);
+  }
+
   /// Puts the focus on one named card, or reports that it could not — same
   /// contract as [TvDiscoveryRailState.focusGroup]: a card scrolled out of a
   /// virtualized range has no node yet, and the caller decides what a false
