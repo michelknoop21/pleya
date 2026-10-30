@@ -80,12 +80,32 @@ Twee onafhankelijke reviewers (server/protocol/Verify en client): 0 kritiek, 6 b
 - Client M4 (meer Plex-opvragingen door de titelemmer zonder jaar) verdwijnt grotendeels met client I1 en is niet apart aangepakt.
 - Herhaalde gates na het herstel: `scripts/ci_checks.sh --with-unused` groen (native incluis); Go-suite in de gepinde image 29 pakketten groen, geen SKIP; gewijzigde Flutter-tests (14 bestanden) 545 groen; Verify-runner 405 en fixture-server 160 groen; scenario valideert; `check_protocol.py` groen.
 
+## Toestelproef, voorbereiding (30 oktober 2026)
+Stand: alles tot aan de handmatige checklist is gedaan. De checklist zelf staat nog open bij Michel. Bouwcommit `eeb9d0ce` op `feat/unified-pleya-server`, drie correcties boven `316ee60`.
+
+- NAS: productie draait de server van `4755ead6` (image `8bc78e12d320`, gestart 30 oktober 16:37 Amsterdamse tijd), schema 23, geen migratie. `/readyz` groen, capability `external_id_lookup` true, lokaal en via web.pleya.app. `pleya-tunnel` hangt aan `pleya-server_default`. Terugval: image-tag `pre-unified`, bronnen in `pleya-server-prebackup-20261030-163102`. De laatste commits raken alleen app, scenario en docs, dus de server blijft gelijk.
+- API op productie: `external_id=tmdb:95396` geeft Severance met `{tmdb: 95396}`. De Eetclub (325755), Love & Anarchy (111743) en These Woods are Haunted (80701) komen ook op hun nummer terug.
+- Build 421: Apple TV op TestFlight via `fastlane tvos_beta`, notities gezet (595 tekens). De groep Pleya bevat alleen Michel; Guido en Pap zitten in groepen zonder automatische toegang. iPhone 18 Pro: Release, development-gesigneerd, geinstalleerd met `devicectl` (2.8.1, 421). Deze build mist de Trakt-define van de lane en de iPhone is daarvoor als toestel geregistreerd in het ontwikkelprofiel.
+- Simulator: `ios.unified.two-servers` op iPhone 17 Pro met 68 stappen PASS en 0 FAIL, acht screenshots bekeken. Een kaart met twee bronnen, de remakes apart, picker met beide servers, wissel van Zolder naar NAS B, stream via NAS B, NAS B offline opent op Zolder, NAS B terug geeft weer twee bronnen. Plex zit hier niet in: de fixture spreekt alleen het Pleya-protocol.
+
+Gevonden tijdens de eerste echte run, en opgelost:
+- De deploy stopte op `schema.d.ts`: dat liep sinds `bd6b3d5` achter op `openapi.yaml`, en twee testfixtures misten de nieuwe vlag. Web daarna: `svelte-check` 0 fouten, 905 tests groen.
+- iPhone, Alle series: een tik op een kaart met twee bronnen deed niets. `MobileCatalogScreen` opende de picker vanuit een context boven zijn eigen `OverlaySheetHost`. Test `a card with two sources opens the picker` was rood zonder de fix.
+- iPhone, detailpagina: Wijzigen reageerde niet op een tik, want `FocusableWrapper` verwerkt alleen toetsen. Test `a tap on the source row opens the source change` was rood zonder de fix.
+- Scenario: stappen die niet bij de iPhone pasten (afleveringslijst, tikken tijdens een overgang) zijn gecorrigeerd. De oude wisselstap koos de huidige bron opnieuw en bewees daardoor niets; hij wisselt nu echt en controleert de servernaam.
+
+Open:
+- De checklist hieronder op iPhone en Apple TV. Bij het punt Pleya Server uit gaat ook web.pleya.app even weg.
+- De drie correcties hebben nog geen onafhankelijke review; die hoort voor de merge.
+- GitHub CI draaide niet: de branch heeft geen PR en `gh run list` toont geen runs. Lokaal is alleen de gate van de pre-commit gedraaid. `FocusableWrapper` in de niet-kaartvariant van de bronregel (desktop) is niet aangepast en niet getest.
+- Xcode 27 vraagt voor de simulatorbuild nog steeds de lokale `ARCHS`-regel in `ios/Flutter/Debug.xcconfig`; die is niet gecommit.
+
 ## Ter beslissing (Michel), los van het protocolbesluit
 Client I2: een Pleya Server zonder `external_id_lookup`, of een titel zonder TMDB-nummer, staat in de dekking als `cannotBeAsked`. Daardoor wordt een negatief antwoord niet gecachet en vraagt elke opbouw van de kijklijstbeschikbaarheid alle servers opnieuw (zoeken plus id-opvragingen per titel). Dat is eerlijk ("niet gecontroleerd"), maar kost bij een grote kijklijst honderden verzoeken per bezoek tot de NAS is bijgewerkt. Opties: (a) zo laten, want de NAS krijgt de nieuwe server tegelijk met de app; (b) het negatieve antwoord van de wél gevraagde servers cachen samen met de structurele `cannotBeAsked`, met de capability in de cachesleutel; (c) een server zonder capability niet meetellen als geschikt. Niet gebouwd zonder keuze.
 
 ## Toestelchecklist (pas na de autonome ketentests hierboven)
-**Build.** De eindcommit van `feat/unified-pleya-server` (de SHA staat in het bericht bij deze ronde). Apple TV via `/pleya-tvbuild` op die SHA, met eerst `scripts/bump_build_number.sh`. iPhone als development-build vanuit Xcode op dezelfde SHA en hetzelfde buildnummer, niet via TestFlight (de interne groep stuurt elke upload door). Beide moeten Release zijn (zie de controle in de skill).
-**Nodig.** Plex blijft draaien. Een Pleya Server op de NAS met deze branch, want zonder `external_ids` en `external_id_lookup` blijft alles apart; de serverupdate is een deployment en wacht op jouw akkoord. Welke dubbele serie je zag, met titel en jaar zoals hij op Plex en op de Pleya Server staat, en of de Pleya Server hem als TMDB-match heeft.
+**Build.** De eindcommit van `feat/unified-pleya-server` (de SHA staat in het bericht bij deze ronde). Commit `eeb9d0ce`, build 421. Apple TV via TestFlight, iPhone 18 Pro als development-build, allebei Release; zie de voorbereiding hierboven.
+**Nodig.** Plex blijft draaien. Een Pleya Server op de NAS met deze branch, want zonder `external_ids` en `external_id_lookup` blijft alles apart; die staat er sinds 30 oktober. Proefserie: Severance (TMDB 95396 op beide). Andere titel, zelfde nummer: De Eetclub / The Perfect Lie en Kärlek & anarki / Love & Anarchy. Blijven apart: These Woods are Haunted (verschillend nummer) en Star Wars: The Force Awakens (Plex zonder nummer).
 **Wat telt als resultaat.**
 1. Series: die serie staat één keer, met twee bronnen. Een remake met dezelfde naam staat apart.
 2. Bronkeuze: beide servers staan erin; kies Plex, speel een aflevering, kies dan Pleya Server, speel dezelfde aflevering. Seizoenen en afleveringen kloppen per bron.
