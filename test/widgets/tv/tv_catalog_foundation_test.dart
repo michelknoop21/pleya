@@ -413,7 +413,11 @@ void main() {
       ];
       // The fixture has to actually produce the full rail, otherwise this test
       // passes by having nothing to clip.
-      expect(labels.length, TvCatalogFilterSection.values.length - 1, reason: 'Decennium lives in the side panel');
+      expect(
+        labels.length,
+        TvCatalogFilterSection.values.length - 2,
+        reason: 'Decennium and the server categories live in the side panel',
+      );
       for (final label in labels) {
         expect(find.text(label), findsOneWidget, reason: 'category "$label" missing from the rail');
       }
