@@ -210,12 +210,13 @@ mixin _PleyaServerListMethods on _PleyaServerRequests, _PleyaServerBrowseMethods
 
   Future<MediaPlaylist?> createPlaylist({required String title, required List<MediaItem> items}) async {
     if (!_canWritePlaylists) return null;
+    // Before the list exists: a show that cannot be expanded leaves nothing behind.
+    final ids = await _playableIds(items);
     final json = await _adminSend('POST', '/playlists', body: PleyaPlaylistTitleRequest(title: title).toJson());
     if (json == null) return null;
     final created = PleyaPlaylist.fromJson(json);
-    if (items.isEmpty) return _mapPlaylist(created);
-    final path = _playlistPath(created.id);
-    await _seed(path, await _playableIds(items));
+    if (ids.isEmpty) return _mapPlaylist(created);
+    await _seed(_playlistPath(created.id), ids);
     return await fetchPlaylistMetadata(created.id) ?? _mapPlaylist(created);
   }
 
