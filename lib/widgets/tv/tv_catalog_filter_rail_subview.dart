@@ -267,7 +267,22 @@ class TvCatalogFilterRailSubviewState extends State<TvCatalogFilterRailSubview> 
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [for (var i = 0; i < options.length; i++) _option(i), ?_noteText(tk), ?widget.footer],
+              children: [
+                for (var i = 0; i < options.length; i++) ...[
+                  if (options[i].dividerAbove)
+                    Container(
+                      margin: EdgeInsets.symmetric(
+                        horizontal: TvCatalogLayout.railDividerInset * scale,
+                        vertical: TvCatalogLayout.railDividerGap * scale,
+                      ),
+                      height: 1,
+                      color: tk.outline,
+                    ),
+                  _option(i),
+                ],
+                ?_noteText(tk),
+                ?widget.footer,
+              ],
             ),
           ),
         ),

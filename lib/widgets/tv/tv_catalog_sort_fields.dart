@@ -4,36 +4,39 @@
 ///
 /// Choosing the field in force turns its direction over. Choosing another
 /// field takes that field's own default direction: titles run A to Z, the
-/// dates start with the newest. A field with a single direction
+/// dates and the scores start with the highest. A field with a single direction
 /// (Recent bekeken) has nothing to turn over, so choosing it again keeps it.
 library;
 
 import 'package:flutter/widgets.dart' show IconData;
 import 'package:material_symbols_icons/symbols.dart';
 
-import '../../i18n/strings.g.dart';
+import '../../media/library_menu_definition.dart';
 import '../../media/library_query.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../services/unified_catalog/unified_catalog_query.dart';
 
-/// The rows of the page: every field the enum has, in its order. Nothing here
-/// counts fields, so a new [UnifiedCatalogSortField] is a new row once its label
-/// and default direction are named below.
-const List<UnifiedCatalogSortField> tvCatalogSortFields = UnifiedCatalogSortField.values;
+/// The rows of the page, from the shared menu definition. Nothing here counts
+/// fields, so a new [UnifiedCatalogSortField] is a new row once the definition
+/// and its default direction name it.
+const List<UnifiedCatalogSortField> tvCatalogSortFields = librarySortMenu;
 
-String tvCatalogSortFieldLabel(UnifiedCatalogSortField field) => switch (field) {
-  UnifiedCatalogSortField.title => t.unifiedCatalog.sort.fields.title,
-  UnifiedCatalogSortField.addedAt => t.unifiedCatalog.sort.fields.addedAt,
-  UnifiedCatalogSortField.releaseDate => t.unifiedCatalog.sort.fields.releaseDate,
-  UnifiedCatalogSortField.recentlyWatched => t.unifiedCatalog.sort.fields.recentlyWatched,
-};
+String tvCatalogSortFieldLabel(UnifiedCatalogSortField field) => librarySortFieldLabel(field);
 
 /// The direction a field starts in when it is chosen from another one.
 LibrarySortDirection tvCatalogDefaultDirection(UnifiedCatalogSortField field) => switch (field) {
-  UnifiedCatalogSortField.title => LibrarySortDirection.ascending,
-  UnifiedCatalogSortField.addedAt ||
+  UnifiedCatalogSortField.title || UnifiedCatalogSortField.contentRating => LibrarySortDirection.ascending,
+  UnifiedCatalogSortField.year ||
   UnifiedCatalogSortField.releaseDate ||
-  UnifiedCatalogSortField.recentlyWatched => LibrarySortDirection.descending,
+  UnifiedCatalogSortField.criticRating ||
+  UnifiedCatalogSortField.audienceRating ||
+  UnifiedCatalogSortField.userRating ||
+  UnifiedCatalogSortField.duration ||
+  UnifiedCatalogSortField.progress ||
+  UnifiedCatalogSortField.plays ||
+  UnifiedCatalogSortField.addedAt ||
+  UnifiedCatalogSortField.recentlyWatched ||
+  UnifiedCatalogSortField.resolution => LibrarySortDirection.descending,
 };
 
 UnifiedCatalogSort? _of(UnifiedCatalogSortField field, LibrarySortDirection direction) {

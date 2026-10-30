@@ -7,22 +7,39 @@
 /// concrete per-library page request gets built from it.
 library;
 
+import '../../media/catalog_score.dart';
 import '../../media/library_query.dart';
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
+import '../../media/media_version.dart';
 import '../../utils/title_normalizer.dart';
+import 'content_rating_labels.dart';
 
-/// hoofdstuk 12.4's four documented group-sort-key cases, plus the
+/// Every order a unified catalog can stand in, plus the neutral
 /// [LibraryQuery.sort] field name each maps to. [UnifiedCatalogQuery.sortField]
 /// must name one of these — the unified k-way merge needs every
 /// participating library to produce items in one *globally* comparable
 /// order, which "random" (a valid single-library [LibrarySort.field]) can
 /// never give.
+///
+/// `librarySortMenu` in `media/library_menu_definition.dart` holds the order of
+/// the sort page. Which backends can run a field is
+/// [UnifiedFilterCapabilities.supportsSort]; the two translators in
+/// `library_query_translator.dart` spell the field per backend.
 enum UnifiedCatalogSortField {
   title('title'),
-  addedAt('addedAt'),
+  year('year'),
   releaseDate('originallyAvailableAt'),
-  recentlyWatched('lastViewedAt');
+  criticRating('criticRating'),
+  audienceRating('audienceRating'),
+  userRating('userRating'),
+  contentRating('contentRating'),
+  duration('duration'),
+  progress('viewOffset'),
+  plays('viewCount'),
+  addedAt('addedAt'),
+  recentlyWatched('lastViewedAt'),
+  resolution('mediaHeight');
 
   const UnifiedCatalogSortField(this.libraryQueryField);
 
@@ -149,59 +166,98 @@ bool _listEquals<T>(List<T>? a, List<T>? b) {
   return true;
 }
 
-/// The per-item comparator for one [UnifiedCatalogQuery]'s sort — the k-way
-/// merge's head-to-head comparison (hoofdstuk 12.2). Applied to raw items
-/// *before* grouping, so it necessarily reads each item's own value: a
-/// group's true key (hoofdstuk 12.4 — e.g. the *highest* addedAt across every
-/// member) can only be known once every source has been seen, which is
-/// exactly why a late duplicate with a materially different value surfaces
-/// many pages later instead of merging on sight (hoofdstuk 12.5).
+/// What [field] orders [item] on, or null when the item has no value for it.
+///
+/// One function for the comparator and for the merge's question of which items
+/// have nothing to sort on, so the two cannot disagree. The numeric fields treat
+/// zero as absent: Plex leaves `viewCount` out where Jellyfin sends 0, and a
+/// title nobody has played has no play count to order by on either.
+Object? _sortKey(MediaItem item, UnifiedCatalogSortField field) {
+  int? positive(int? value) => value != null && value > 0 ? value : null;
+
+  return switch (field) {
+    UnifiedCatalogSortField.title => switch (normalizeTitleForMatching(item.titleSort ?? item.title)) {
+      '' => null,
+      final title => title,
+    },
+    UnifiedCatalogSortField.year => positive(item.year),
+    // The server-side sort is the full `originallyAvailableAt` date, so the
+    // merge compares at that granularity: comparing only MediaItem.year would
+    // tie two same-year, different-month items from different libraries and
+    // let the server tie-break decide instead of the date.
+    UnifiedCatalogSortField.releaseDate => DateTime.tryParse(item.originallyAvailableAt ?? ''),
+    UnifiedCatalogSortField.criticRating => catalogCriticScore(item)?.percent,
+    UnifiedCatalogSortField.audienceRating => catalogAudienceScore(item)?.percent,
+    UnifiedCatalogSortField.userRating => catalogUserScore(item)?.percent,
+    UnifiedCatalogSortField.contentRating => switch (item.contentRating) {
+      null || '' => null,
+      final rating => contentRatingLabel(rating),
+    },
+    UnifiedCatalogSortField.duration => positive(item.durationMs),
+    UnifiedCatalogSortField.progress => positive(item.viewOffsetMs),
+    UnifiedCatalogSortField.plays => positive(item.viewCount),
+    UnifiedCatalogSortField.addedAt => item.addedAt,
+    UnifiedCatalogSortField.recentlyWatched => item.lastViewedAt,
+    UnifiedCatalogSortField.resolution => _tallestVersion(item),
+  };
+}
+
+/// The best version's height, which is the resolution a title can be seen in.
+int? _tallestVersion(MediaItem item) {
+  int? tallest;
+  for (final version in item.mediaVersions ?? const <MediaVersion>[]) {
+    final height = version.height;
+    if (height != null && height > 0 && (tallest == null || height > tallest)) tallest = height;
+  }
+  return tallest;
+}
+
+/// Whether [item] has anything to sort on under [field]. Title never holds an
+/// item back: an untitled row is rare, and the comparator sinks it anyway.
+bool unifiedCatalogHasSortValue(MediaItem item, UnifiedCatalogSortField field) => _sortKey(item, field) != null;
+
+/// The per-item comparator for one sort — the k-way merge's head-to-head
+/// comparison (hoofdstuk 12.2). Applied to raw items *before* grouping, so it
+/// necessarily reads each item's own value: a group's true key (hoofdstuk 12.4
+/// — e.g. the *highest* addedAt across every member) can only be known once
+/// every source has been seen, which is exactly why a late duplicate with a
+/// materially different value surfaces many pages later instead of merging on
+/// sight (hoofdstuk 12.5).
 ///
 /// A missing value on the requested field always sinks to the end regardless
 /// of direction — pinning a "dateless" item to the top of a descending
 /// "recently added" list would be actively misleading, matching the
 /// sink-to-bottom convention `getLatestMoviesFromAllServers` already uses for
 /// the same reason.
-int Function(MediaItem a, MediaItem b) unifiedCatalogItemComparator(UnifiedCatalogQuery query) {
-  final ascending = query.sortDirection == LibrarySortDirection.ascending;
-  int direction(int cmp) => ascending ? cmp : -cmp;
+///
+/// Equal values read in title order, whichever way the field runs (`04.png`:
+/// Year descending, the 2026 films from A). That is what makes the sources of a
+/// merge interleave, and what orders the titles without a value among themselves.
+int Function(MediaItem a, MediaItem b) unifiedCatalogSortComparator(
+  UnifiedCatalogSortField field,
+  LibrarySortDirection sortDirection,
+) {
+  final sign = sortDirection == LibrarySortDirection.ascending ? 1 : -1;
 
-  int compareNullableInt(int? a, int? b) {
-    if (a == null && b == null) return 0;
-    if (a == null) return 1;
-    if (b == null) return -1;
-    return direction(a.compareTo(b));
+  int compareOn(UnifiedCatalogSortField on, int direction, MediaItem a, MediaItem b) {
+    final ka = _sortKey(a, on);
+    final kb = _sortKey(b, on);
+    if (ka == null && kb == null) return 0;
+    if (ka == null) return 1;
+    if (kb == null) return -1;
+    final cmp = on == UnifiedCatalogSortField.contentRating
+        ? compareContentRatingLabels(ka as String, kb as String)
+        : (ka as Comparable<Object>).compareTo(kb);
+    return direction * cmp;
   }
 
-  int compareTitle(MediaItem a, MediaItem b) {
-    final ta = normalizeTitleForMatching(a.titleSort ?? a.title);
-    final tb = normalizeTitleForMatching(b.titleSort ?? b.title);
-    if (ta.isEmpty && tb.isEmpty) return 0;
-    if (ta.isEmpty) return 1;
-    if (tb.isEmpty) return -1;
-    return direction(ta.compareTo(tb));
-  }
-
-  // The server-side sort this field requests is the full
-  // `originallyAvailableAt` date (see UnifiedCatalogSortField.releaseDate's
-  // libraryQueryField), so the client-side merge comparator must compare at
-  // that same granularity — comparing only MediaItem.year would tie two
-  // same-year, different-month items from different libraries and let an
-  // arbitrary server/library tie-break decide their order instead of the
-  // date the server actually sorted by.
-  int compareReleaseDate(MediaItem a, MediaItem b) {
-    final da = DateTime.tryParse(a.originallyAvailableAt ?? '');
-    final db = DateTime.tryParse(b.originallyAvailableAt ?? '');
-    if (da == null && db == null) return 0;
-    if (da == null) return 1;
-    if (db == null) return -1;
-    return direction(da.compareTo(db));
-  }
-
-  return (a, b) => switch (query.sortField) {
-    UnifiedCatalogSortField.title => compareTitle(a, b),
-    UnifiedCatalogSortField.addedAt => compareNullableInt(a.addedAt, b.addedAt),
-    UnifiedCatalogSortField.releaseDate => compareReleaseDate(a, b),
-    UnifiedCatalogSortField.recentlyWatched => compareNullableInt(a.lastViewedAt, b.lastViewedAt),
+  return (a, b) {
+    final cmp = compareOn(field, sign, a, b);
+    if (cmp != 0 || field == UnifiedCatalogSortField.title) return cmp;
+    return compareOn(UnifiedCatalogSortField.title, 1, a, b);
   };
 }
+
+/// [unifiedCatalogSortComparator] for one [UnifiedCatalogQuery].
+int Function(MediaItem a, MediaItem b) unifiedCatalogItemComparator(UnifiedCatalogQuery query) =>
+    unifiedCatalogSortComparator(query.sortField, query.sortDirection);

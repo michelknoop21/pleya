@@ -170,6 +170,7 @@ class TvUnifiedMediaCard extends StatelessWidget {
     );
 
     if (compact) {
+      final sortValue = tvCatalogSortValueItem(group, activeSort);
       return TvCatalogCompactCard(
         width: width,
         artwork: artwork,
@@ -182,7 +183,8 @@ class TvUnifiedMediaCard extends StatelessWidget {
         topRightMarker: _cornerTab(item, scale),
         progressFraction: resumeFractionFor(group),
         title: item.displayTitle,
-        meta: tvCatalogSortedMetaLine(item, sort: activeSort, lastViewedAt: group.watchState.lastViewedAt),
+        meta: tvCatalogSortedMetaLine(sortValue, sort: activeSort, lastViewedAt: group.watchState.lastViewedAt),
+        score: tvCatalogSortScore(sortValue, activeSort),
         onSelect: onSelect,
         onContextMenu: onContextMenu,
         focusNode: focusNode,

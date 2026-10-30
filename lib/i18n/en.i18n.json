@@ -2210,10 +2210,20 @@
       "recentlyWatched": "Recently watched",
       "fields": {
         "title": "Title",
+        "year": "Year",
+        "releaseDate": "Release date",
+        "criticRating": "Critics",
+        "audienceRating": "Audience",
+        "userRating": "Rating",
+        "contentRating": "Age rating",
+        "duration": "Duration",
+        "progress": "Progress",
+        "plays": "Plays",
         "addedAt": "Added",
-        "releaseDate": "Release",
-        "recentlyWatched": "Watched"
-      }
+        "recentlyWatched": "Watched",
+        "resolution": "Resolution"
+      },
+      "pageTitle": "Sort by"
     },
     "rail": {
       "sources": "Sources",
@@ -2237,7 +2247,21 @@
       "watched": "Watched",
       "unsupported": "Not available for the current sources",
       "someUnavailable": "Some filters are unavailable for the selected sources",
-      "noValues": "Nothing to choose from"
+      "noValues": "Nothing to choose from",
+      "decade": "Decade",
+      "quick": {
+        "all": "All",
+        "hdr": "HDR",
+        "dolbyVision": "Dolby Vision",
+        "hdr10Plus": "HDR10+",
+        "atmos": "Atmos",
+        "unwatched": "Unwatched",
+        "inProgress": "In progress",
+        "unmatched": "Unmatched",
+        "duplicates": "Duplicates",
+        "watched": "Watched"
+      },
+      "pageTitle": "Filter by"
     },
     "states": {
       "emptyTitle": "This catalog is empty",
@@ -2343,7 +2367,9 @@
       "close": "Close",
       "editRowTitle": "Edit ${name}",
       "pickRowToEdit": "Tap one of your own rows to edit it, or make a new one."
-    }
+    },
+    "onePlay": "1 play",
+    "plays": "${count} plays"
   },
   "tvNavigation": {
     "activeDestination": "current section",

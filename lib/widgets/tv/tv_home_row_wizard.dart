@@ -178,8 +178,10 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
   /// way back to it.
   List<CatalogLibrary> get _libraries => widget.librariesFor(_kind);
 
-  UnifiedFilterCapabilities get _capabilities =>
-      unifiedFilterCapabilitiesFor(_libraries.where(_preferences.filters.selects).map((library) => library.backend));
+  UnifiedFilterCapabilities get _capabilities => unifiedFilterCapabilitiesFor(
+    _libraries.where(_preferences.filters.selects).map((library) => library.backend),
+    kind: _kind,
+  );
 
   void _goTo(_Step step) => _d.goTo(step);
 
@@ -206,7 +208,12 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
   }
 
   Future<void> _openSort() async {
-    final next = await showTvCatalogSortPanel(context, selected: _preferences.sort, asSubpage: true);
+    final next = await showTvCatalogSortPanel(
+      context,
+      selected: _preferences.sort,
+      capabilities: _capabilities,
+      asSubpage: true,
+    );
     if (next == null || !mounted) return;
     _d.setSort(next);
   }

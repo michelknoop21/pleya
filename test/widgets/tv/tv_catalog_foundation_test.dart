@@ -228,7 +228,11 @@ void main() {
     testWidgets('closing the sort panel hands focus back to the launcher', (tester) async {
       await pumpLauncher(
         tester,
-        open: (context) => showTvCatalogSortPanel(context, selected: UnifiedCatalogSort.titleAsc),
+        open: (context) => showTvCatalogSortPanel(
+          context,
+          selected: UnifiedCatalogSort.titleAsc,
+          capabilities: unifiedFilterCapabilitiesFor(const [MediaBackend.plex]),
+        ),
       );
 
       await tester.tap(find.text('open'));
@@ -247,7 +251,11 @@ void main() {
       UnifiedCatalogSort? chosen;
       await pumpLauncher(
         tester,
-        open: (context) async => chosen = await showTvCatalogSortPanel(context, selected: UnifiedCatalogSort.titleAsc),
+        open: (context) async => chosen = await showTvCatalogSortPanel(
+          context,
+          selected: UnifiedCatalogSort.titleAsc,
+          capabilities: unifiedFilterCapabilitiesFor(const [MediaBackend.plex]),
+        ),
       );
 
       await tester.tap(find.text('open'));
@@ -275,7 +283,11 @@ void main() {
                       ? ElevatedButton(
                           autofocus: true,
                           focusNode: launcher,
-                          onPressed: () => showTvCatalogSortPanel(context, selected: UnifiedCatalogSort.titleAsc),
+                          onPressed: () => showTvCatalogSortPanel(
+                            context,
+                            selected: UnifiedCatalogSort.titleAsc,
+                            capabilities: unifiedFilterCapabilitiesFor(const [MediaBackend.plex]),
+                          ),
                           child: const Text('open'),
                         )
                       : const Text('gone'),
@@ -401,7 +413,7 @@ void main() {
       ];
       // The fixture has to actually produce the full rail, otherwise this test
       // passes by having nothing to clip.
-      expect(labels.length, TvCatalogFilterSection.values.length);
+      expect(labels.length, TvCatalogFilterSection.values.length - 1, reason: 'Decennium lives in the side panel');
       for (final label in labels) {
         expect(find.text(label), findsOneWidget, reason: 'category "$label" missing from the rail');
       }
@@ -667,9 +679,9 @@ void main() {
 
   group('sort labels', () {
     test('every sort has its own translated label', () {
-      final labels = {for (final sort in UnifiedCatalogSort.values) sortLabel(sort)};
-      expect(labels, hasLength(UnifiedCatalogSort.values.length), reason: 'no two sorts may read the same');
-      expect(labels.any((l) => l.trim().isEmpty), isFalse);
+      final labels = {for (final sort in UnifiedCatalogSort.named) sortLabel(sort)};
+      expect(labels, hasLength(UnifiedCatalogSort.named.length), reason: 'no two sorts in a list may read the same');
+      expect(UnifiedCatalogSort.values.map(sortLabel).any((l) => l.trim().isEmpty), isFalse);
     });
   });
 
@@ -702,7 +714,11 @@ void main() {
         _shell(
           (context) => ElevatedButton(
             autofocus: true,
-            onPressed: () => showTvCatalogSortPanel(context, selected: UnifiedCatalogSort.titleAsc),
+            onPressed: () => showTvCatalogSortPanel(
+              context,
+              selected: UnifiedCatalogSort.titleAsc,
+              capabilities: unifiedFilterCapabilitiesFor(const [MediaBackend.plex]),
+            ),
             child: const Text('open'),
           ),
         ),

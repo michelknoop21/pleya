@@ -210,14 +210,14 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   }
 
   UnifiedFilterCapabilities get _capabilities =>
-      unifiedFilterCapabilitiesFor(_catalog.participatingLibraries.map((l) => l.backend));
+      unifiedFilterCapabilitiesFor(_catalog.participatingLibraries.map((l) => l.backend), kind: widget.kind.mediaKind);
 
   UnifiedCatalogFilterSelection get _effectiveFilters => _preferences.filters.constrainedTo(_capabilities);
 
   Future<void> _applyQuery({bool startIfNeeded = false}) {
     final selection = _preferences.filters;
     final participating = _catalog.eligibleLibraries.where(selection.selects);
-    final capabilities = unifiedFilterCapabilitiesFor(participating.map((l) => l.backend));
+    final capabilities = unifiedFilterCapabilitiesFor(participating.map((l) => l.backend), kind: widget.kind.mediaKind);
     final query = buildUnifiedCatalogQuery(
       kind: widget.kind.mediaKind,
       preferences: _preferences,
@@ -255,7 +255,11 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   /// `OverlaySheetController.of`, which only looks upward. See the note on the
   /// host in [build] (CAT9).
   Future<void> _openSort(BuildContext sheetContext) async {
-    final result = await showMobileCatalogSortSheet(sheetContext, current: _preferences.sort);
+    final result = await showMobileCatalogSortSheet(
+      sheetContext,
+      current: _preferences.effectiveSort(_capabilities),
+      capabilities: _capabilities,
+    );
     if (result == null || !mounted) return;
     await _updatePreferences(_preferences.copyWith(sort: result));
   }
@@ -600,7 +604,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
             child: FocusableFilterChip(
               variant: FilterChipVariant.toolbar,
               icon: Symbols.swap_vert_rounded,
-              label: mobileCatalogSortLabel(_preferences.sort),
+              label: mobileCatalogSortLabel(_preferences.effectiveSort(_capabilities)),
               onPressed: () => _openSort(sheetContext),
             ),
           ),

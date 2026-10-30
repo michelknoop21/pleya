@@ -90,7 +90,15 @@ class _HomeRowWizardViewState extends State<HomeRowWizardView> {
   }
 
   Future<void> _openSort() async {
-    final next = await showMobileCatalogSortSheet(context, current: _d.preferences.sort);
+    final capabilities = unifiedFilterCapabilitiesFor(
+      _libraries.where(_d.preferences.filters.selects).map((library) => library.backend),
+      kind: _d.kind,
+    );
+    final next = await showMobileCatalogSortSheet(
+      context,
+      current: _d.preferences.withYearForRelease(capabilities).effectiveSort(capabilities),
+      capabilities: capabilities,
+    );
     if (next != null && mounted) _d.setSort(next);
   }
 

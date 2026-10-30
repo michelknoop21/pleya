@@ -14,6 +14,7 @@ library;
 import 'package:flutter/foundation.dart';
 
 import '../../i18n/strings.g.dart';
+import '../../media/library_menu_definition.dart';
 import '../../media/media_server_client.dart';
 import '../../services/unified_catalog/source_cursor.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
@@ -23,7 +24,7 @@ import '../../utils/home_custom_row_labels.dart';
 
 /// Which category the panel opens on, and — since every category is one of
 /// these — what the rail is a list of.
-enum TvCatalogFilterSection { status, genre, audioLanguage, year, contentRating, servers, libraries }
+enum TvCatalogFilterSection { status, genre, audioLanguage, year, decade, contentRating, servers, libraries }
 
 /// Rail order, which is hoofdstuk 10.6's listing verbatim: "Status; Genre;
 /// Jaar; Servers; Bibliotheken".
@@ -48,6 +49,18 @@ const List<TvCatalogFilterSection> _railOrder = [
   TvCatalogFilterSection.libraries,
 ];
 
+/// The side panel's categories, from the shared menu definition. Status is not
+/// among them: there it is the quick choices above the divider.
+TvCatalogFilterSection _sectionOf(LibraryFilterCategory category) => switch (category) {
+  LibraryFilterCategory.genre => TvCatalogFilterSection.genre,
+  LibraryFilterCategory.year => TvCatalogFilterSection.year,
+  LibraryFilterCategory.decade => TvCatalogFilterSection.decade,
+  LibraryFilterCategory.contentRating => TvCatalogFilterSection.contentRating,
+  LibraryFilterCategory.audioLanguage => TvCatalogFilterSection.audioLanguage,
+  LibraryFilterCategory.servers => TvCatalogFilterSection.servers,
+  LibraryFilterCategory.libraries => TvCatalogFilterSection.libraries,
+};
+
 /// One row's data, so a category's rows are described once and rendered once.
 class TvCatalogFilterRowSpec {
   const TvCatalogFilterRowSpec({
@@ -68,6 +81,7 @@ String tvCatalogFilterSectionLabel(TvCatalogFilterSection section) => switch (se
   TvCatalogFilterSection.genre => t.unifiedCatalog.filters.genre,
   TvCatalogFilterSection.audioLanguage => t.libraries.filterCategories.audioLanguage,
   TvCatalogFilterSection.year => t.unifiedCatalog.filters.year,
+  TvCatalogFilterSection.decade => t.unifiedCatalog.filters.decade,
   TvCatalogFilterSection.contentRating => t.unifiedCatalog.filters.contentRating,
   TvCatalogFilterSection.servers => t.unifiedCatalog.filters.servers,
   TvCatalogFilterSection.libraries => t.unifiedCatalog.filters.libraries,
@@ -133,6 +147,19 @@ class TvCatalogFilterModel extends ChangeNotifier {
   /// back to.
   List<TvCatalogFilterSection> get availableSections => _sections(placeholders: _isLoadingOptions);
 
+  /// The categories of the side panel, in the order of the menu definition.
+  List<TvCatalogFilterSection> get menuSections => [
+    for (final category in libraryFilterCategoryMenu)
+      if (_supports(_sectionOf(category)) && (_isLoadingOptions || _hasChoices(_sectionOf(category))))
+        _sectionOf(category),
+  ];
+
+  /// The quick choices this source set can run, in the menu's order.
+  List<LibraryQuickFilter> get quickFilters => [
+    for (final filter in libraryQuickFilterMenu)
+      if (capabilities.supportsQuickFilter(filter)) filter,
+  ];
+
   List<TvCatalogFilterSection> _sections({required bool placeholders}) => [
     for (final section in _railOrder)
       if (_supports(section) && (placeholders || _hasChoices(section))) section,
@@ -161,6 +188,7 @@ class TvCatalogFilterModel extends ChangeNotifier {
     TvCatalogFilterSection.genre ||
     TvCatalogFilterSection.audioLanguage ||
     TvCatalogFilterSection.year ||
+    TvCatalogFilterSection.decade ||
     TvCatalogFilterSection.contentRating => capabilities.supportsMetadataFilters,
     TvCatalogFilterSection.servers || TvCatalogFilterSection.libraries => true,
   };
@@ -204,6 +232,11 @@ class TvCatalogFilterModel extends ChangeNotifier {
   );
 
   void _toggleYear(int year) => _setDraft(_draft.copyWith(years: _toggled(_draft.years, year)));
+
+  void _toggleDecade(int decade) => _setDraft(_draft.copyWith(decades: _toggled(_draft.decades, decade)));
+
+  /// The decades the servers' years fall in, newest first.
+  List<int> get _decades => ({for (final year in _options.years) year - year % 10}.toList()..sort()).reversed.toList();
 
   void _toggleServer(String serverId) => _setDraft(_draft.copyWith(serverIds: _toggled(_draft.serverIds, serverId)));
 
@@ -269,6 +302,14 @@ class TvCatalogFilterModel extends ChangeNotifier {
           onPressed: () => _toggleYear(year),
         ),
     ],
+    TvCatalogFilterSection.decade => [
+      for (final decade in _decades)
+        TvCatalogFilterRowSpec(
+          label: '$decade',
+          isSelected: _draft.decades.contains(decade),
+          onPressed: () => _toggleDecade(decade),
+        ),
+    ],
     TvCatalogFilterSection.contentRating => [
       for (final rating in _options.contentRatings)
         TvCatalogFilterRowSpec(
@@ -308,6 +349,7 @@ class TvCatalogFilterModel extends ChangeNotifier {
     TvCatalogFilterSection.genre => _draft.genres.length,
     TvCatalogFilterSection.audioLanguage => _draft.audioLanguages.length,
     TvCatalogFilterSection.year => _draft.years.length,
+    TvCatalogFilterSection.decade => _draft.decades.length,
     TvCatalogFilterSection.contentRating => contentRatingLabels(_draft.officialRatings).length,
     TvCatalogFilterSection.servers => _draft.serverIds.length,
     TvCatalogFilterSection.libraries => _draft.libraryKeys.length,

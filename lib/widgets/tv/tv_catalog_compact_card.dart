@@ -16,11 +16,16 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:material_symbols_icons/symbols.dart';
+
 import '../../focus/focus_theme.dart';
 import '../../focus/focusable_wrapper.dart';
+import '../../media/catalog_score.dart';
 import '../../services/settings_service.dart';
 import '../../theme/mono_tokens.dart';
+import '../../utils/formatters.dart';
 import '../../utils/layout_constants.dart';
+import '../media_rating_badge.dart';
 import 'tv_catalog_card.dart';
 import 'tv_unified_layout.dart';
 
@@ -32,6 +37,7 @@ class TvCatalogCompactCard extends StatefulWidget {
     required this.title,
     required this.meta,
     required this.onSelect,
+    this.score,
     this.topLeftMarker,
     this.topRightMarker,
     this.progressFraction,
@@ -51,6 +57,9 @@ class TvCatalogCompactCard extends StatefulWidget {
   final Widget artwork;
   final String title;
   final String meta;
+
+  /// Drawn in place of [meta], on the same line, with its source icon.
+  final CatalogScore? score;
   final VoidCallback onSelect;
   final Widget? topLeftMarker;
   final Widget? topRightMarker;
@@ -127,7 +136,7 @@ class _TvCatalogCompactCardState extends State<TvCatalogCompactCard> {
                 offset: Offset(0, isFocused ? footerShift / (TvCatalogFullBleedLayout.footerHeight * scale) : 0),
                 duration: duration,
                 curve: Curves.easeOut,
-                child: _Footer(title: widget.title, meta: widget.meta, scale: scale, tk: tk),
+                child: _Footer(title: widget.title, meta: widget.meta, score: widget.score, scale: scale, tk: tk),
               ),
             ],
           ),
@@ -207,6 +216,27 @@ class _Poster extends StatelessWidget {
   }
 }
 
+/// A score with its source: the tomato and the percentage of `03.png`.
+class _ScoreBadge extends StatelessWidget {
+  const _ScoreBadge({required this.score, required this.style});
+
+  final CatalogScore score;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final isUser = score.kind == CatalogScoreKind.user;
+    return MediaRatingBadge.inline(
+      imageUri: score.imageUri,
+      value: score.tenPointValue,
+      fallbackIcon: score.kind == CatalogScoreKind.audience ? Symbols.people_rounded : Symbols.star_rounded,
+      fallbackText: isUser ? formatRating(score.tenPointValue) : '${score.percent.round()}%',
+      textStyle: style,
+      iconSize: style.fontSize,
+    );
+  }
+}
+
 /// The title and the line under it, centred under the poster.
 ///
 /// The height never depends on the text: a fixed box is what makes
@@ -214,16 +244,22 @@ class _Poster extends StatelessWidget {
 /// the row alignment measures on it. With titles switched off (PB-10) the meta
 /// line moves up and the box stays.
 class _Footer extends StatelessWidget {
-  const _Footer({required this.title, required this.meta, required this.scale, required this.tk});
+  const _Footer({required this.title, required this.meta, required this.score, required this.scale, required this.tk});
 
   final String title;
   final String meta;
+  final CatalogScore? score;
   final double scale;
   final MonoTokens tk;
 
   @override
   Widget build(BuildContext context) {
     final showTitle = SettingsService.instanceOrNull?.read(SettingsService.tvShowTitlesUnderPosters) ?? true;
+    final metaStyle = TextStyle(
+      fontSize: TvCatalogLayout.cardMetaFontSize * scale,
+      color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
+      height: TvCatalogFullBleedLayout.metaLineHeight,
+    );
     return SizedBox(
       height: TvCatalogFullBleedLayout.footerHeight * scale,
       child: Padding(
@@ -244,15 +280,20 @@ class _Footer extends StatelessWidget {
                   height: TvCatalogFullBleedLayout.titleLineHeight,
                 ),
               ),
-            Text(
-              meta,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: TvCatalogLayout.cardMetaFontSize * scale,
-                color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
-                height: TvCatalogFullBleedLayout.metaLineHeight,
+            // A fixed line, so a card with a badge, with text and with neither
+            // keep their baseline in one row.
+            SizedBox(
+              height: TvCatalogLayout.cardMetaFontSize * scale * TvCatalogFullBleedLayout.metaLineHeight,
+              child: Center(
+                child: score != null
+                    ? _ScoreBadge(score: score!, style: metaStyle)
+                    : Text(
+                        meta,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: metaStyle,
+                      ),
               ),
             ),
           ],

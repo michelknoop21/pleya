@@ -21,6 +21,7 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../overlay_sheet.dart';
 import '../overlay_sheet_geometry.dart';
+import 'tv_catalog_sort_fields.dart';
 import 'tv_panel_primitives.dart';
 import 'tv_unified_layout.dart';
 
@@ -36,6 +37,9 @@ String sortLabel(UnifiedCatalogSort sort) => switch (sort) {
   UnifiedCatalogSort.newestRelease => t.unifiedCatalog.sort.newestRelease,
   UnifiedCatalogSort.oldestRelease => t.unifiedCatalog.sort.oldestRelease,
   UnifiedCatalogSort.recentlyWatched => t.unifiedCatalog.sort.recentlyWatched,
+  // The fields added with the sort page read as the row they are on; the arrow
+  // says which way they run.
+  _ => tvCatalogSortFieldLabel(sort.field),
 };
 
 /// Opens the panel and returns the chosen sort, or null on Menu/Back/Close.
@@ -46,6 +50,7 @@ String sortLabel(UnifiedCatalogSort sort) => switch (sort) {
 Future<UnifiedCatalogSort?> showTvCatalogSortPanel(
   BuildContext context, {
   required UnifiedCatalogSort selected,
+  required UnifiedFilterCapabilities capabilities,
   bool asSubpage = false,
 }) {
   final initialFocusNode = FocusNode(debugLabel: 'TvCatalogSortInitialFocus');
@@ -57,6 +62,7 @@ Future<UnifiedCatalogSort?> showTvCatalogSortPanel(
     asSubpage: asSubpage,
     builder: (sheetContext) => TvCatalogSortPanel(
       selected: selected,
+      capabilities: capabilities,
       initialFocusNode: initialFocusNode,
       onSelect: (sort) => asSubpage
           ? OverlaySheetController.popAdaptive(sheetContext, sort)
@@ -72,12 +78,16 @@ class TvCatalogSortPanel extends StatefulWidget {
   const TvCatalogSortPanel({
     super.key,
     required this.selected,
+    required this.capabilities,
     required this.onSelect,
     required this.onClose,
     this.initialFocusNode,
   });
 
   final UnifiedCatalogSort selected;
+
+  /// What every source taking part can run. The rest is not offered.
+  final UnifiedFilterCapabilities capabilities;
   final ValueChanged<UnifiedCatalogSort> onSelect;
   final VoidCallback onClose;
 
@@ -91,6 +101,9 @@ class TvCatalogSortPanel extends StatefulWidget {
 }
 
 class _TvCatalogSortPanelState extends State<TvCatalogSortPanel> {
+  List<UnifiedCatalogSort> get _options =>
+      UnifiedCatalogSort.named.where((sort) => widget.capabilities.supportsSort(sort.field)).toList();
+
   @override
   void dispose() {
     widget.initialFocusNode?.dispose();
@@ -126,14 +139,14 @@ class _TvCatalogSortPanelState extends State<TvCatalogSortPanel> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (var i = 0; i < UnifiedCatalogSort.values.length; i++) ...[
+                    for (final (i, sort) in _options.indexed) ...[
                       if (i > 0) SizedBox(height: TvCatalogLayout.optionRowGap * scale),
                       TvCatalogOptionRow(
-                        label: sortLabel(UnifiedCatalogSort.values[i]),
-                        isSelected: UnifiedCatalogSort.values[i] == widget.selected,
+                        label: sortLabel(sort),
+                        isSelected: sort == widget.selected,
                         scale: scale,
-                        focusNode: UnifiedCatalogSort.values[i] == widget.selected ? widget.initialFocusNode : null,
-                        onPressed: () => widget.onSelect(UnifiedCatalogSort.values[i]),
+                        focusNode: sort == widget.selected ? widget.initialFocusNode : null,
+                        onPressed: () => widget.onSelect(sort),
                       ),
                     ],
                   ],

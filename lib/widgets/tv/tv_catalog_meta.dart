@@ -11,8 +11,10 @@
 library;
 
 import '../../i18n/strings.g.dart';
+import '../../media/catalog_score.dart';
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
+import '../../media/unified/unified_media_group.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../services/unified_catalog/unified_catalog_query.dart';
 import '../../utils/formatters.dart';
@@ -30,20 +32,66 @@ String tvCatalogMetaLine(MediaItem item) {
   return parts.join('  ·  ');
 }
 
+/// The source whose value put [group] where it stands.
+///
+/// A group sits at its first candidate (hoofdstuk 11.9), which is the source
+/// that sorts first. A card showing another source's score would read out of
+/// order between its neighbours.
+MediaItem tvCatalogSortValueItem(UnifiedMediaGroup group, UnifiedCatalogSort sort) {
+  final compare = unifiedCatalogSortComparator(sort.field, sort.direction);
+  var best = group.representativeSource.item;
+  for (final source in group.sources) {
+    if (compare(source.item, best) < 0) best = source.item;
+  }
+  return best;
+}
+
+/// The score the compact card draws as a badge, when the sort is on one.
+CatalogScore? tvCatalogSortScore(MediaItem item, UnifiedCatalogSort sort) => switch (sort.field) {
+  UnifiedCatalogSortField.criticRating => catalogCriticScore(item),
+  UnifiedCatalogSortField.audienceRating => catalogAudienceScore(item),
+  UnifiedCatalogSortField.userRating => catalogUserScore(item),
+  _ => null,
+};
+
 /// The compact card's line (A-06c): the fact the page is sorted on, so a viewer
-/// can read the order off the wall. Title and release draw the year, the two
-/// date sorts the date. Without a date the year stands in, and without a year
-/// the line stays empty and keeps its height.
+/// can read the order off the wall. A title without that fact gets an empty line
+/// of the same height: a year in its place would read as the value.
+///
+/// Scores come back empty here and go through [tvCatalogSortScore]. Progress is
+/// the position rather than a percentage, because the position is what the
+/// servers order by.
 ///
 /// [lastViewedAt] comes from the group, which folds its sources; the item only
 /// knows its own server.
 String tvCatalogSortedMetaLine(MediaItem item, {required UnifiedCatalogSort sort, int? lastViewedAt}) {
-  final date = switch (sort.field) {
-    UnifiedCatalogSortField.title || UnifiedCatalogSortField.releaseDate => null,
+  String? positive(int? ms) => ms != null && ms > 0 ? formatDurationTextual(ms) : null;
+  final line = switch (sort.field) {
+    UnifiedCatalogSortField.title || UnifiedCatalogSortField.year => item.year?.toString(),
+    UnifiedCatalogSortField.releaseDate => switch (item.originallyAvailableAt) {
+      null || '' => null,
+      final date => formatAbbreviatedDate(date),
+    },
     UnifiedCatalogSortField.addedAt => _formatEpoch(item.addedAt),
     UnifiedCatalogSortField.recentlyWatched => _formatEpoch(lastViewedAt ?? item.lastViewedAt),
+    UnifiedCatalogSortField.duration => positive(item.durationMs),
+    UnifiedCatalogSortField.progress => positive(item.viewOffsetMs),
+    UnifiedCatalogSortField.plays => _playCount(item.viewCount),
+    UnifiedCatalogSortField.contentRating => switch (item.contentRating) {
+      null || '' => null,
+      final rating => contentRatingLabel(rating),
+    },
+    UnifiedCatalogSortField.resolution => item.mediaVersions?.firstOrNull?.videoResolutionLabel,
+    UnifiedCatalogSortField.criticRating ||
+    UnifiedCatalogSortField.audienceRating ||
+    UnifiedCatalogSortField.userRating => null,
   };
-  return date ?? (item.year == null ? '' : '${item.year}');
+  return line ?? '';
+}
+
+String? _playCount(int? count) {
+  if (count == null || count <= 0) return null;
+  return count == 1 ? t.unifiedCatalog.onePlay : t.unifiedCatalog.plays(count: count);
 }
 
 /// Servers report epoch seconds; the same guard against milliseconds as

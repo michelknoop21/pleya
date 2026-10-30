@@ -15,24 +15,36 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
+import '../../media/library_menu_definition.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../app_icon.dart';
 import '../bottom_sheet_header.dart';
 import '../focusable_list_tile.dart';
 import '../overlay_sheet.dart';
 
-Future<UnifiedCatalogSort?> showMobileCatalogSortSheet(BuildContext context, {required UnifiedCatalogSort current}) {
+Future<UnifiedCatalogSort?> showMobileCatalogSortSheet(
+  BuildContext context, {
+  required UnifiedCatalogSort current,
+  required UnifiedFilterCapabilities capabilities,
+}) {
   return OverlaySheetController.of(context).show<UnifiedCatalogSort>(
     showDragHandle: true,
-    builder: (sheetContext) =>
-        MobileCatalogSortSheet(current: current, onChosen: (sort) => OverlaySheetController.of(sheetContext).pop(sort)),
+    builder: (sheetContext) => MobileCatalogSortSheet(
+      current: current,
+      capabilities: capabilities,
+      onChosen: (sort) => OverlaySheetController.of(sheetContext).pop(sort),
+    ),
   );
 }
 
 class MobileCatalogSortSheet extends StatelessWidget {
-  const MobileCatalogSortSheet({super.key, required this.current, required this.onChosen});
+  const MobileCatalogSortSheet({super.key, required this.current, required this.capabilities, required this.onChosen});
 
   final UnifiedCatalogSort current;
+
+  /// Leaves out what a source taking part cannot run: choosing it would land on
+  /// Title A-Z anyway.
+  final UnifiedFilterCapabilities capabilities;
   final ValueChanged<UnifiedCatalogSort> onChosen;
 
   @override
@@ -45,7 +57,7 @@ class MobileCatalogSortSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             BottomSheetHeader(title: t.unifiedCatalog.sort.title),
-            for (final option in UnifiedCatalogSort.values)
+            for (final option in UnifiedCatalogSort.named.where((sort) => capabilities.supportsSort(sort.field)))
               AutomationNode(
                 id: AutomationIds.sheetCatalogSortOption,
                 instance: option.name,
@@ -77,4 +89,5 @@ String mobileCatalogSortLabel(UnifiedCatalogSort sort) => switch (sort) {
   UnifiedCatalogSort.newestRelease => t.unifiedCatalog.sort.newestRelease,
   UnifiedCatalogSort.oldestRelease => t.unifiedCatalog.sort.oldestRelease,
   UnifiedCatalogSort.recentlyWatched => t.unifiedCatalog.sort.recentlyWatched,
+  _ => librarySortFieldLabel(sort.field),
 };

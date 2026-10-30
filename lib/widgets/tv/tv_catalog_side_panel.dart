@@ -25,6 +25,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../i18n/strings.g.dart';
+import '../../media/library_menu_definition.dart';
 import '../../media/media_server_client.dart';
 import '../../services/unified_catalog/source_cursor.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
@@ -122,6 +123,13 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
     super.dispose();
   }
 
+  /// The live servers can answer after the panel opened.
+  @override
+  void didUpdateWidget(TvCatalogSidePanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _model.capabilities = widget.capabilities;
+  }
+
   void _onModelChanged() {
     if (mounted) setState(() {});
   }
@@ -145,8 +153,14 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
       _optionsRequested = true;
       unawaited(_model.loadOptions());
     }
-    final resolved = _model.resolveInitialSection(wanted);
-    _show(_Page.categories, initialIndex: _model.availableSections.indexOf(resolved));
+    final quick = _model.quickFilters;
+    final section = _model.menuSections.indexOf(wanted);
+    _show(
+      _Page.categories,
+      initialIndex: section >= 0
+          ? quick.length + section
+          : quick.indexOf(_model.draft.quickFilter).clamp(0, quick.length),
+    );
   }
 
   /// Menu and LEFT: one page up, and off the overview only with Menu.
@@ -156,9 +170,10 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
         widget.onClose();
       case _Page.category:
         // With something to apply the ring lands on Apply, one press from done.
-        final sections = _model.availableSections;
+        final sections = _model.menuSections;
+        final quick = _model.quickFilters.length;
         final dirty = _model.draft != widget.selection;
-        _show(_Page.categories, initialIndex: dirty ? sections.length + 1 : sections.indexOf(_section));
+        _show(_Page.categories, initialIndex: quick + (dirty ? sections.length + 1 : sections.indexOf(_section)));
       case _Page.sort:
       case _Page.categories:
       case _Page.jump:
@@ -222,10 +237,11 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
       ),
   ];
 
-  /// One row per field, the arrow on the one in force. See
+  /// One row per field the sources can all run, in the order of the menu
+  /// definition, the arrow on the one in force. See
   /// [tvCatalogSortAfterChoosing] for what choosing a row does.
   List<TvCatalogRailOption> _sortOptions() => [
-    for (final field in tvCatalogSortFields)
+    for (final field in tvCatalogSortFields.where(widget.capabilities.supportsSort))
       TvCatalogRailOption(
         label: tvCatalogSortFieldLabel(field),
         isSelected: field == widget.sort.field,
@@ -235,12 +251,24 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
       ),
   ];
 
+  /// The page of `library_menu_definition.dart`: the quick choices, a line, the
+  /// categories. One level per list. A quick choice is an answer, like a sort:
+  /// it applies, with whatever the categories hold, and closes. The categories
+  /// keep batching behind Apply.
   List<TvCatalogRailOption> _categoryOptions() => [
-    for (final section in _model.availableSections)
+    for (final filter in _model.quickFilters)
+      TvCatalogRailOption(
+        label: libraryQuickFilterLabel(filter),
+        isSelected: _model.draft.quickFilter == filter,
+        automationInstance: _instance('quick.${filter.name}'),
+        onPressed: () => widget.onApplyFilters(_model.draft.withQuickFilter(filter)),
+      ),
+    for (final (i, section) in _model.menuSections.indexed)
       TvCatalogRailOption(
         label: tvCatalogFilterSectionLabel(section),
         count: _model.activeCountFor(section),
         isSelected: false,
+        dividerAbove: i == 0,
         automationInstance: _instance('filter.${section.name}'),
         onPressed: () => _show(_Page.category, section: section),
       ),
@@ -278,8 +306,8 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
     final scale = widget.scale;
     final title = switch (_page) {
       _Page.overview => t.unifiedCatalog.filters.title,
-      _Page.sort => t.unifiedCatalog.sort.title,
-      _Page.categories => t.unifiedCatalog.filters.title,
+      _Page.sort => t.unifiedCatalog.sort.pageTitle,
+      _Page.categories => t.unifiedCatalog.filters.pageTitle,
       _Page.category => tvCatalogFilterSectionLabel(_section),
       _Page.jump => t.unifiedCatalog.jumpTo,
     };

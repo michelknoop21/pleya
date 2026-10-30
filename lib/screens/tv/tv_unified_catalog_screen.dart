@@ -98,6 +98,8 @@ import '../../widgets/tv/tv_catalog_rail_scaffold.dart';
 import '../../widgets/tv/tv_catalog_selection_tags.dart';
 import '../../widgets/tv/tv_catalog_side_panel.dart';
 import '../../widgets/tv/tv_catalog_skeleton_grid.dart';
+import '../../services/unified_catalog/library_menu_support.dart';
+import '../../services/unified_catalog/source_cursor.dart' show CatalogLibrary;
 import '../../widgets/tv/tv_catalog_sort_panel.dart';
 import '../../widgets/tv/tv_scroll_away_page.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
@@ -397,8 +399,18 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// Read off `participatingLibraries` — after the source restriction — so
   /// excluding the one backend that cannot filter is enough to get genre and
   /// year back, rather than its mere existence disabling them for good.
-  UnifiedFilterCapabilities get _capabilities =>
-      unifiedFilterCapabilitiesFor(widget.catalog.participatingLibraries.map((l) => l.backend));
+  UnifiedFilterCapabilities get _capabilities => unifiedFilterCapabilitiesFor(
+    widget.catalog.participatingLibraries.map((l) => l.backend),
+    kind: widget.catalog.query.kind,
+  ).narrowedTo(_menuSupport);
+
+  /// What the Plex libraries behind this page listed, and for which set. Null
+  /// until they answered, and when there are none to ask.
+  LibraryMenuSupport? _menuSupport;
+  String? _menuSupportFor;
+
+  /// The sort in force: see [UnifiedCatalogPreferences.effectiveSort].
+  UnifiedCatalogSort get _activeSort => _preferences.effectiveSort(_capabilities);
 
   /// The capability-derived view of the stored selection: what is actually
   /// applied, what the panel shows as active, and what the badge counts.
@@ -413,7 +425,11 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   Future<void> _applyQuery({bool startIfNeeded = false}) {
     final selection = _preferences.filters;
     final participating = widget.catalog.eligibleLibraries.where(selection.selects);
-    final capabilities = unifiedFilterCapabilitiesFor(participating.map((l) => l.backend));
+    final capabilities = unifiedFilterCapabilitiesFor(
+      participating.map((l) => l.backend),
+      kind: widget.catalog.query.kind,
+    ).narrowedTo(_menuSupport);
+    unawaited(_refreshMenuSupport(participating.toList()));
     final query = buildUnifiedCatalogQuery(
       kind: widget.catalog.query.kind,
       preferences: _preferences,
@@ -430,6 +446,24 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       return Future<void>.value();
     }
     return widget.catalog.setQuery(query, librarySelector: selection.restrictsSources ? selection.selects : null);
+  }
+
+  /// Asks the Plex libraries what they list, once per set of libraries, and
+  /// applies the answer: a stored Dubbel only runs once the server has named it,
+  /// and a sort it does not name has to fall back to title.
+  Future<void> _refreshMenuSupport(List<CatalogLibrary> libraries) async {
+    final key = ([for (final l in libraries) buildGlobalKey(l.serverId, l.libraryId)]..sort()).join('|');
+    if (key == _menuSupportFor) return;
+    _menuSupportFor = key;
+    final manager = context.read<MultiServerProvider>().serverManager;
+    final support = await loadLibraryMenuSupport(
+      libraries: libraries,
+      kind: widget.catalog.query.kind,
+      clientFor: manager.getClient,
+    );
+    if (!mounted || key != _menuSupportFor) return;
+    setState(() => _menuSupport = support);
+    await _applyQuery();
   }
 
   /// Whether the participating library set would change, which a query
@@ -616,7 +650,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   }
 
   Future<void> _openSort() async {
-    final result = await showTvCatalogSortPanel(context, selected: _preferences.sort);
+    final result = await showTvCatalogSortPanel(context, selected: _activeSort, capabilities: _capabilities);
     if (result == null || !mounted) return;
     await _updatePreferences(_preferences.copyWith(sort: result));
   }
@@ -968,7 +1002,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       capabilities: _capabilities,
       libraries: widget.catalog.eligibleLibraries,
       clientFor: (serverId) => context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId)),
-      sort: _preferences.sort,
+      sort: _activeSort,
       sourcesValue: _sourcesLabel(filters) ?? t.unifiedCatalog.allSources,
       filtersValue: itemFilters == 0
           ? t.unifiedCatalog.rail.noFilters
@@ -977,7 +1011,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       onChooseSort: (sort) => _chooseFromPanel(_preferences.copyWith(sort: sort)),
       onApplyFilters: (filters) => _chooseFromPanel(_preferences.copyWith(filters: filters)),
       onClose: _closeRail,
-      onJump: _preferences.sort.field == UnifiedCatalogSortField.title ? _jumpToLetter : null,
+      onJump: _activeSort.field == UnifiedCatalogSortField.title ? _jumpToLetter : null,
     );
   }
 
@@ -990,7 +1024,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     final target = await tvCatalogJumpTarget(
       widget.catalog,
       letter,
-      descending: _preferences.sort.direction == LibrarySortDirection.descending,
+      descending: _activeSort.direction == LibrarySortDirection.descending,
     );
     if (!mounted || target == null) return;
     await WidgetsBinding.instance.endOfFrame;
@@ -1018,7 +1052,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
 
   List<TvCatalogSelectionTag> _selectionTags({bool capped = true}) => tvCatalogSelectionTags(
     filters: _effectiveFilters,
-    sort: _preferences.sort,
+    sort: _activeSort,
     sourcesLabel: _sourcesLabel(_effectiveFilters),
     overflowAfter: capped ? TvCatalogLayout.tagOverflowThreshold : null,
     omitDefaultSort: widget.fullBleed,
@@ -1076,7 +1110,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         icon: Symbols.swap_vert_rounded,
         label: t.unifiedCatalog.sort.title,
         automationInstance: '$_surface.sort',
-        value: sortLabel(_preferences.sort),
+        value: sortLabel(_activeSort),
         focusNode: _sortFocus,
         onPressed: _openSort,
         onNavigateUp: () => _filtersFocus.requestFocus(),
@@ -1186,7 +1220,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         fitScale: _densityScale,
         fullBleed: widget.fullBleed,
         densityScale: _densityScale,
-        activeSort: _preferences.sort,
+        activeSort: _activeSort,
         groups: snapshot.groups,
         hasMore: snapshot.hasMore,
         isLoadingMore: catalog.isLoadingMore,

@@ -13,6 +13,10 @@ import 'package:pleya/focus/focus_memory_tracker.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/media/library_filter_result.dart';
+import 'package:pleya/media/library_menu_definition.dart';
+import 'package:pleya/media/media_filter.dart';
+import 'package:pleya/media/media_sort.dart';
 import 'package:pleya/media/library_query.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
@@ -33,6 +37,7 @@ import 'package:pleya/screens/tv/tv_unified_catalog_screen.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/services/unified_catalog/unified_catalog_query.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_query_store.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
@@ -82,6 +87,27 @@ class FakeLibraryClient implements MediaServerClient {
       offset: query.offset,
     );
   }
+
+  /// What `/library/sections/{id}/sorts` lists: every key, unless a test says
+  /// otherwise.
+  List<String> sortKeys = [for (final field in UnifiedCatalogSortField.values) plexSortKeyFor(field)];
+
+  /// What `/library/sections/{id}/filters` lists.
+  List<String> filterKeys = const [];
+
+  @override
+  Future<List<MediaSort>> fetchSortOptions(String libraryId, {String? libraryType}) async => [
+    for (final key in sortKeys) MediaSort(key: key, title: key),
+  ];
+
+  @override
+  Future<LibraryFilterResult> fetchLibraryFiltersWithValues(String libraryId) async => LibraryFilterResult(
+    filters: [
+      for (final key in filterKeys)
+        MediaFilter(filter: key, filterType: 'boolean', key: '', title: key, type: 'filter'),
+    ],
+    cachedValues: const {},
+  );
 
   @override
   Future<ExternalIds> fetchExternalIds(String itemId) async => const ExternalIds();

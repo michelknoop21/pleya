@@ -31,6 +31,7 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import 'tv_catalog_card_grid.dart';
 import 'tv_unified_layout.dart';
+import 'tv_catalog_meta.dart';
 import 'tv_unified_media_card.dart';
 
 class TvUnifiedMediaGrid extends StatefulWidget {
@@ -283,7 +284,15 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
           id: AutomationIds.tvCatalogGridItem,
           instance: '$surface.${cell.index}',
           role: 'grid.item',
-          state: () => {'title': group.representativeSource.item.displayTitle},
+          state: () {
+            final sortValue = tvCatalogSortValueItem(group, widget.activeSort);
+            return {
+              'title': group.representativeSource.item.displayTitle,
+              'meta':
+                  tvCatalogSortScore(sortValue, widget.activeSort)?.percent.round().toString() ??
+                  tvCatalogSortedMetaLine(sortValue, sort: widget.activeSort),
+            };
+          },
           focusNode: cell.focusNode,
           child: card,
         );

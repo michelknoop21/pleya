@@ -57,7 +57,7 @@ class PlexLibraryQueryTranslator implements LibraryQueryTranslator {
     final sort = query.sort;
     if (sort != null) {
       final dir = sort.direction == LibrarySortDirection.descending ? ':desc' : ':asc';
-      filters['sort'] = '${sort.field}$dir';
+      filters['sort'] = '${_plexSortField(sort.field)}$dir';
     }
     if (query.search != null && query.search!.isNotEmpty) {
       filters['title'] = query.search!;
@@ -98,6 +98,11 @@ class PlexLibraryQueryTranslator implements LibraryQueryTranslator {
     }
     return filters;
   }
+
+  /// The neutral names are Plex's own, except the critic score: Plex calls that
+  /// `rating`, and on Jellyfin `rating` means the community score (saved browse
+  /// preferences depend on that), so the unified catalog asks for it by name.
+  static String _plexSortField(String neutral) => neutral == 'criticRating' ? 'rating' : neutral;
 
   static int? _plexTypeNumberFor(MediaKind? kind) {
     if (kind == null) return null;
@@ -314,9 +319,10 @@ class JellyfinLibraryQueryTranslator implements LibraryQueryTranslator {
       'name' => 'SortName',
       'rating' || 'communityRating' => 'CommunityRating',
       'viewCount' || 'playCount' => 'PlayCount',
-      'productionYear' => 'ProductionYear',
-      'runtime' => 'Runtime',
-      'officialRating' => 'OfficialRating',
+      'productionYear' || 'year' => 'ProductionYear',
+      'runtime' || 'duration' => 'Runtime',
+      'officialRating' || 'contentRating' => 'OfficialRating',
+      'audienceRating' => 'CommunityRating',
       'criticRating' => 'CriticRating',
       'startDate' => 'StartDate',
       'airTime' => 'AirTime',

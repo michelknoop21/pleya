@@ -23,7 +23,11 @@ class TvCatalogRailOption {
     this.automationInstance,
     this.value,
     this.trailingIcon,
+    this.dividerAbove = false,
   });
+
+  /// Draws the line between the quick choices and the categories.
+  final bool dividerAbove;
 
   /// Drawn at the right end of a side-panel row, in place of the tick. The
   /// sort page uses it for the direction arrow of the active field.
@@ -350,7 +354,8 @@ class _RailSheetRowState extends State<TvCatalogRailSheetRow> {
               Icon(
                 option.trailingIcon ?? Symbols.check_rounded,
                 size: TvCatalogLayout.railOptionCheckSize * scale,
-                color: ink,
+                // The direction arrow is the one accent on the page.
+                color: option.trailingIcon != null ? tokens(context).accent : ink,
               ),
             ],
           ],

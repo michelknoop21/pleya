@@ -41,11 +41,14 @@ List<Map<String, dynamic>> _itemsArray(Object? data) {
 ///  - `PremiereDate` for sort-by-release-date and episode metadata
 ///  - `OriginalTitle`/`SortName` for sort + alphabetised display
 ///  - `Overview` so list rows can show their description
+///  - `DateCreated`, which the server leaves out unless asked: without it a
+///    catalog sorted on date added cannot place a Jellyfin title against a Plex
+///    one, and has no date to show under the poster
 ///
 /// Heavier fields (`MediaSources`, `People`, `Genres`, `Tags`, `Studios`,
 /// `Taglines`, `ProviderIds`, `Chapters`) stay in [_detailFields] — together
 /// they added seconds to large-library pages on small home servers.
-const _browseFields = 'RecursiveItemCount,ChildCount,UserData,PremiereDate,OriginalTitle,SortName,Overview';
+const _browseFields = 'RecursiveItemCount,ChildCount,UserData,PremiereDate,DateCreated,OriginalTitle,SortName,Overview';
 
 /// Existing episode-row requests can show Plex-style quality labels when the
 /// response includes `MediaSources`. Keep this off broad library/search/latest

@@ -10,15 +10,18 @@ import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/library_query.dart';
+import 'package:pleya/media/library_menu_definition.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_query.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_query_store.dart';
+import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/widgets/tv/tv_catalog_empty_state.dart';
 import 'package:pleya/widgets/tv/tv_catalog_filter_panel.dart';
 import 'package:pleya/widgets/tv/tv_catalog_rail_scaffold.dart';
 import 'package:pleya/utils/home_custom_row_labels.dart';
 import 'package:pleya/widgets/tv/tv_catalog_selection_tags.dart';
 import 'package:pleya/widgets/tv/tv_catalog_side_panel.dart';
+import 'package:pleya/widgets/tv/tv_catalog_filter_rail_rows.dart';
 import 'package:pleya/widgets/tv/tv_catalog_sort_fields.dart';
 import 'package:pleya/widgets/tv/tv_catalog_sort_panel.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
@@ -42,6 +45,8 @@ Future<FullBleedHarness> _open(WidgetTester tester, {int titles = 30, bool reduc
 
 /// Which label the white pill is on.
 String? _focusedRow() => FocusManager.instance.primaryFocus?.debugLabel;
+
+Finder _panelScroll() => find.descendant(of: find.byType(TvCatalogSidePanel), matching: find.byType(Scrollable));
 
 void main() {
   FullBleedHarness.setUpAllTv();
@@ -135,7 +140,9 @@ void main() {
     await h.press(tester, _select);
     expect(find.byType(TvCatalogSortPanel), findsNothing, reason: 'no centred modal');
 
-    await h.press(tester, _down);
+    for (var i = 0; i < librarySortMenu.indexOf(UnifiedCatalogSortField.addedAt); i++) {
+      await h.press(tester, _down);
+    }
     await h.press(tester, _select);
 
     expect(find.byType(TvCatalogSidePanel), findsNothing);
@@ -208,13 +215,53 @@ void main() {
       await openSortPage(tester);
 
       for (final field in UnifiedCatalogSortField.values) {
-        expect(find.text(tvCatalogSortFieldLabel(field)), findsOneWidget);
+        await tester.scrollUntilVisible(find.text(tvCatalogSortFieldLabel(field)), 40, scrollable: _panelScroll());
+        expect(find.text(tvCatalogSortFieldLabel(field)), findsOneWidget, reason: field.name);
       }
       expect(find.text(sortLabel(UnifiedCatalogSort.titleAsc)), findsNothing, reason: 'no row per direction');
       expect(find.byIcon(Symbols.arrow_downward_rounded), findsOneWidget);
       expect(find.byIcon(Symbols.arrow_upward_rounded), findsNothing);
       expect(find.byIcon(Symbols.check_rounded), findsNothing, reason: 'the arrow stands in for the tick');
       expect(_focusedRow(), contains('TvCatalogRailSubviewOption0'), reason: 'opens on the active row');
+    });
+
+    testWidgets('a source that cannot run a field leaves its row out, and the active arrow is the accent', (
+      tester,
+    ) async {
+      final h = await FullBleedHarness.create([for (var i = 0; i < 30; i++) fakeMovie(i, year: 2000)]);
+      h.client.sortKeys = const ['titleSort', 'rating'];
+      await h.pump(tester, canvas: _canvas);
+      await h.open(tester);
+      await h.press(tester, _left);
+      await h.press(tester, _down);
+      await h.press(tester, _down);
+      await h.press(tester, _select);
+
+      final labels = [
+        for (final row in tester.widgetList<TvCatalogRailSheetRow>(find.byType(TvCatalogRailSheetRow)))
+          row.option.label,
+      ];
+      expect(labels, ['Title', 'Release date', 'Critics', 'Added', 'Watched']);
+      final arrow = tester.widget<Icon>(find.byIcon(Symbols.arrow_downward_rounded));
+      expect(arrow.color, tokens(tester.element(find.byType(TvCatalogSidePanel))).accent);
+    });
+
+    testWidgets('a sort the sources cannot run reads title, and comes back with them', (tester) async {
+      final h = await FullBleedHarness.create([for (var i = 0; i < 12; i++) fakeMovie(i, year: 2000)]);
+      await UnifiedCatalogQueryStore.write(
+        h.catalog.query.kind,
+        UnifiedCatalogPreferences.defaults.copyWith(sort: UnifiedCatalogSort.mostProgress),
+      );
+      h.client.sortKeys = const ['titleSort'];
+      await h.pump(tester, canvas: _canvas);
+      await h.open(tester);
+
+      expect(h.catalog.query.sortField, UnifiedCatalogSortField.title);
+      await h.press(tester, _left);
+      await h.press(tester, _down);
+      await h.press(tester, _down);
+      expect(find.text(sortLabel(UnifiedCatalogSort.titleAsc)), findsOneWidget, reason: 'the row says what runs');
+      expect((await UnifiedCatalogQueryStore.read(h.catalog.query.kind)).sort, UnifiedCatalogSort.mostProgress);
     });
 
     testWidgets('the same row again turns the direction over, and the way back stays open', (tester) async {
@@ -248,9 +295,7 @@ void main() {
       expect(find.byIcon(Symbols.check_rounded), findsOneWidget, reason: 'the tick marks the field instead');
       expect(
         _focusedRow(),
-        contains(
-          'TvCatalogRailSubviewOption${UnifiedCatalogSortField.values.indexOf(UnifiedCatalogSortField.recentlyWatched)}',
-        ),
+        contains('TvCatalogRailSubviewOption${librarySortMenu.indexOf(UnifiedCatalogSortField.recentlyWatched)}'),
       );
 
       await h.press(tester, _select);
@@ -284,40 +329,66 @@ void main() {
     });
   });
 
-  testWidgets('filters batch behind Apply, in the panel', (tester) async {
+  testWidgets('a quick choice applies at once and lands on card 0', (tester) async {
     final h = await _open(tester);
     await h.press(tester, _left);
     await h.press(tester, _down);
     await h.press(tester, _select);
     expect(find.byType(TvCatalogFilterPanel), findsNothing, reason: 'no centred modal');
+    expect(_focusedRow(), contains('TvCatalogRailSubviewOption0'), reason: 'on Alles');
 
-    // Status, Unwatched.
-    await h.press(tester, _select);
+    // Alles, Ongekeken: Plex listed no media filter here.
     await h.press(tester, _down);
-    await h.press(tester, _select);
-    expect(UnifiedWatchFilter.values, contains(UnifiedWatchFilter.unwatched));
-    expect(h.client.queries.last.filters, isNot(contains('unwatched')), reason: 'nothing applied yet');
-    final queriesBefore = h.client.queries.length;
-
-    await h.press(tester, _menu);
-    expect(_focusedRow(), isNotNull);
     await h.press(tester, _select);
 
     expect(find.byType(TvCatalogSidePanel), findsNothing);
-    expect(h.client.queries.length, greaterThan(queriesBefore));
     expect(h.focused, h.cardLabel(0));
     final stored = await UnifiedCatalogQueryStore.read(h.catalog.query.kind);
     expect(stored.filters.watchState, UnifiedWatchFilter.unwatched);
   });
 
-  testWidgets('RIGHT out of a filter session throws the draft away', (tester) async {
+  testWidgets('the filter page is the definition: quick choices, a line, the categories', (tester) async {
+    final h = await FullBleedHarness.create([for (var i = 0; i < 30; i++) fakeMovie(i, year: 2000)]);
+    h.client.filterKeys = const ['hdr', 'duplicate'];
+    await h.pump(tester, canvas: _canvas);
+    await h.open(tester);
+    await h.press(tester, _left);
+    await h.press(tester, _down);
+    await h.press(tester, _select);
+
+    final labels = [
+      for (final row in tester.widgetList<TvCatalogRailSheetRow>(find.byType(TvCatalogRailSheetRow))) row.option.label,
+    ];
+    expect(labels.take(6), ['All', 'HDR', 'Unwatched', 'In progress', 'Duplicates', 'Genre']);
+    expect(labels, containsAllInOrder(['Genre', 'Year', 'Decade']));
+    expect(
+      tester.widgetList<TvCatalogRailSheetRow>(find.byType(TvCatalogRailSheetRow)).where((r) => r.option.dividerAbove),
+      hasLength(1),
+    );
+  });
+
+  testWidgets('a media quick choice runs as the boolean Plex listed', (tester) async {
+    final h = await FullBleedHarness.create([for (var i = 0; i < 30; i++) fakeMovie(i, year: 2000)]);
+    h.client.filterKeys = const ['hdr'];
+    await h.pump(tester, canvas: _canvas);
+    await h.open(tester);
+    await h.press(tester, _left);
+    await h.press(tester, _down);
+    await h.press(tester, _select);
+    await h.press(tester, _down);
+    await h.press(tester, _select);
+
+    final stored = await UnifiedCatalogQueryStore.read(h.catalog.query.kind);
+    expect(stored.filters.mediaFilter, LibraryQuickFilter.hdr);
+    expect(h.catalog.query.filters.single.field, 'hdr');
+  });
+
+  testWidgets('RIGHT out of a filter session changes nothing', (tester) async {
     final h = await _open(tester);
     await h.press(tester, _left);
     await h.press(tester, _down);
     await h.press(tester, _select);
-    await h.press(tester, _select);
     await h.press(tester, _down);
-    await h.press(tester, _select);
     final queries = h.client.queries.length;
 
     await h.press(tester, _right);
@@ -461,11 +532,8 @@ void main() {
     await h.press(tester, _left);
     await h.press(tester, _down);
     await h.press(tester, _select);
-    await h.press(tester, _select);
     await h.press(tester, _down);
-    await h.press(tester, _select);
     h.client.items = const [];
-    await h.press(tester, _menu);
     await h.press(tester, _select);
 
     expect(find.byType(TvCatalogSidePanel), findsNothing);

@@ -2210,10 +2210,20 @@
       "recentlyWatched": "Recent bekeken",
       "fields": {
         "title": "Titel",
+        "year": "Jaar",
+        "releaseDate": "Releasedatum",
+        "criticRating": "Critici",
+        "audienceRating": "Publiek",
+        "userRating": "Waardering",
+        "contentRating": "Leeftijd",
+        "duration": "Duur",
+        "progress": "Voortgang",
+        "plays": "Afgespeeld",
         "addedAt": "Toegevoegd",
-        "releaseDate": "Release",
-        "recentlyWatched": "Bekeken"
-      }
+        "recentlyWatched": "Bekeken",
+        "resolution": "Resolutie"
+      },
+      "pageTitle": "Sorteren op"
     },
     "rail": {
       "sources": "Bronnen",
@@ -2237,7 +2247,21 @@
       "unsupported": "Niet beschikbaar voor de huidige bronnen",
       "someUnavailable": "Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen",
       "noValues": "Niets om uit te kiezen",
-      "activeCount": "${count} actief"
+      "activeCount": "${count} actief",
+      "decade": "Decennium",
+      "quick": {
+        "all": "Alles",
+        "hdr": "HDR",
+        "dolbyVision": "Dolby Vision",
+        "hdr10Plus": "HDR10+",
+        "atmos": "Atmos",
+        "unwatched": "Ongekeken",
+        "inProgress": "Bezig",
+        "unmatched": "Niet gekoppeld",
+        "duplicates": "Dubbel",
+        "watched": "Bekeken"
+      },
+      "pageTitle": "Filteren op"
     },
     "states": {
       "emptyTitle": "Deze catalogus is leeg",
@@ -2343,7 +2367,9 @@
       "close": "Sluiten",
       "editRowTitle": "${name} bewerken",
       "pickRowToEdit": "Tik op een eigen rij om hem te bewerken, of maak een nieuwe."
-    }
+    },
+    "onePlay": "1 keer",
+    "plays": "${count} keer"
   },
   "tvNavigation": {
     "activeDestination": "huidige sectie",
