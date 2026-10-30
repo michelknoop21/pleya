@@ -1,0 +1,27 @@
+# Alleen voor de Windows-testprojecten pleya-win-test en pleya-win-restore.
+# Eigen volumes in plaats van bindmounts (Windows-bindmounts houden uid 1000 niet vast),
+# een label om op op te ruimen, en geen vaste netwerknaam die met een ander project botst.
+services:
+  pleya-server:
+    labels:
+      pleya.task: windows-test
+    volumes: !override
+      - cfg:/config
+      - cache:/cache
+      - transcode:/transcode
+      - backups:/backups
+      - ./testdata/media:/media/library:ro
+      - ./testdata/media:/media/library2:ro
+  postgres:
+    labels:
+      pleya.task: windows-test
+volumes:
+  cfg: { labels: { pleya.task: windows-test } }
+  cache: { labels: { pleya.task: windows-test } }
+  transcode: { labels: { pleya.task: windows-test } }
+  backups: { labels: { pleya.task: windows-test } }
+  pleya_pgdata: { labels: { pleya.task: windows-test } }
+networks:
+  default:
+    labels:
+      pleya.task: windows-test

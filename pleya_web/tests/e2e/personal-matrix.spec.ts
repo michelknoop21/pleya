@@ -8,9 +8,15 @@ const OUT=process.env['PLEYA_E2E_SHOTS']??'../.build/pleya-completion-evidence/w
 const USER_B=process.env['PLEYA_E2E_USER_B'];const PASS_B=process.env['PLEYA_E2E_PASS_B']??PASSWORD;
 const WIDTHS=[[1920,1080],[1440,900],[1280,800],[390,844],[320,700]] as const;
 let touched=new Set<string>();
-test.beforeEach(async({page,baseURL})=>{
+test.beforeEach(async({page,request,baseURL})=>{
   test.skip(process.env['PLEYA_E2E_PERSONAL']!=='1','personal mutations require the disposable-fixture opt-in');
-  expect(new URL(baseURL!).hostname).toBe('127.0.0.1');mkdirSync(OUT,{recursive:true});touched=new Set();await signIn(page);
+  expect(new URL(baseURL!).hostname).toBe('127.0.0.1');mkdirSync(OUT,{recursive:true});touched=new Set();
+  // Clean start: a favorite left by an earlier run would turn "Add to favorites" into "Remove".
+  const api=new URL('/pleya/v1/',baseURL!).toString();const login=await request.post(`${api}auth/login`,{data:{username:USERNAME,password:PASSWORD}});
+  if(login.ok()){const headers={Authorization:`Bearer ${(await login.json()).access_token}`};
+    const list=await request.get(`${api}favorites?limit=100`,{headers});
+    if(list.ok())for(const item of (await list.json()).items??[])await request.delete(`${api}favorites/${item.id}`,{headers});}
+  await signIn(page);
 });
 test.afterEach(async({page,request,baseURL})=>{
   await page.unrouteAll({behavior:'ignoreErrors'});
