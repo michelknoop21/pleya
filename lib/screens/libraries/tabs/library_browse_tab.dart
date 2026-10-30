@@ -45,6 +45,7 @@ import '../../../widgets/listenable_selector.dart';
 import '../../../widgets/loading_indicator_box.dart';
 import '../../../widgets/media_grid_delegate.dart';
 import '../../../widgets/mobile/library_phone_look.dart';
+import '../../../widgets/mobile/library_phone_sheet.dart';
 import '../../../widgets/sliver_cross_axis_layout_builder.dart';
 import '../../../widgets/media_card_list_layout.dart';
 import '../../../widgets/bottom_sheet_page_scaffold.dart';
@@ -925,29 +926,63 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     controller
         .show<String>(
           showDragHandle: true,
-          presentation: OverlaySheetPresentation.panel,
+          presentation: _sheetPresentation,
           backgroundColor: _phoneSheetBackground,
-          builder: (sheetContext) => Column(
-            mainAxisSize: .min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: Text(
-                  t.libraries.groupings.title,
-                  style: Theme.of(sheetContext).textTheme.titleMedium,
-                  maxLines: 1,
-                  overflow: .ellipsis,
+          builder: (sheetContext) => _phoneLook
+              ? _buildPhoneGroupingSheet((value) => controller.close(value))
+              : Column(
+                  mainAxisSize: .min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                      child: Text(
+                        t.libraries.groupings.title,
+                        style: Theme.of(sheetContext).textTheme.titleMedium,
+                        maxLines: 1,
+                        overflow: .ellipsis,
+                      ),
+                    ),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: .min,
+                          children: _buildGroupingTiles((value) => controller.close(value)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(mainAxisSize: .min, children: _buildGroupingTiles((value) => controller.close(value))),
-                ),
-              ),
-            ],
-          ),
         )
         .then(_handleGroupingSelection);
+  }
+
+  /// The grouping choices (Movies, Folders, ...) in the floating sheet. The
+  /// options are the ones [_getGroupingOptions] already limits to what the
+  /// backend can do, so Folders is not offered where it cannot work.
+  Widget _buildPhoneGroupingSheet(ValueChanged<String> onSelected) {
+    return Column(
+      mainAxisSize: .min,
+      children: [
+        LibraryPhoneSheetHeading(title: t.libraries.groupings.title),
+        Flexible(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(top: 8, bottom: 16),
+            child: Column(
+              mainAxisSize: .min,
+              children: [
+                for (final grouping in _getGroupingOptions())
+                  LibraryPhoneSheetRow(
+                    key: ValueKey(grouping),
+                    title: _getGroupingLabel(grouping),
+                    selected: _selectedGrouping == grouping,
+                    onTap: () => onSelected(grouping),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   void _showGroupingOptionsPage(OverlaySheetController controller) {
@@ -1007,8 +1042,9 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   void _showFiltersBottomSheet() {
     SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
     OverlaySheetController.of(context).show(
-      presentation: OverlaySheetPresentation.panel,
+      presentation: _sheetPresentation,
       backgroundColor: _phoneSheetBackground,
+      showDragHandle: _phoneLook,
       builder: (_) => _buildFiltersBottomSheet(),
     );
   }
@@ -1049,7 +1085,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     final controller = OverlaySheetController.of(context);
     _openSortBottomSheet(
       (builder) => controller.show(
-        presentation: OverlaySheetPresentation.panel,
+        presentation: _sheetPresentation,
         backgroundColor: _phoneSheetBackground,
         showDragHandle: _phoneLook,
         builder: builder,
@@ -1222,6 +1258,10 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   /// The sort in force. Nothing chosen means the server's own order, which is
   /// the first entry of its list (Title); the pill and the sheet name it.
   MediaSort? get _effectiveSort => effectiveLibrarySort(_selectedSort, _sortOptions);
+
+  /// The sheets of the iPhone library look float clear of the screen edges.
+  OverlaySheetPresentation get _sheetPresentation =>
+      _phoneLook ? OverlaySheetPresentation.floating : OverlaySheetPresentation.panel;
 
   /// The sheets of the iPhone library look sit on the page ground. Null keeps
   /// the host's own surface.

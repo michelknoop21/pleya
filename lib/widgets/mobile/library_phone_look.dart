@@ -69,7 +69,9 @@ class LibraryPhoneMetrics {
   /// a plate on artwork stays dark in both themes.
   static const double watchedPlateAlpha = 0.72;
 
-  static const double sortRowInset = 24;
+  /// Rows of the floating sheets: 46 pt apart, text 16 pt from the sheet edge.
+  static const double sheetRowHeight = 46;
+  static const double sortRowInset = 16;
   static const double sortRowFontSize = 16;
   static const double sortGlyphSize = 22;
 

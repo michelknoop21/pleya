@@ -134,13 +134,13 @@ class _SortBottomSheetState extends State<SortBottomSheet> {
             controller: _scrollController,
             primary: false,
             shrinkWrap: true,
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: EdgeInsets.only(top: 8, bottom: widget.phoneStyle ? 16 : 8),
             itemCount: widget.sortOptions.length,
             itemBuilder: (context, index) {
               final sort = widget.sortOptions[index];
               final isSelected = _currentSort?.key == sort.key;
 
-              return Focus(
+              final row = Focus(
                 key: index == 0 ? _firstItemKey : null,
                 canRequestFocus: false,
                 skipTraversal: true,
@@ -158,6 +158,8 @@ class _SortBottomSheetState extends State<SortBottomSheet> {
                   return KeyEventResult.ignored;
                 },
                 child: FocusableListTile(
+                  dense: !widget.phoneStyle,
+                  visualDensity: widget.phoneStyle ? VisualDensity.standard : const VisualDensity(vertical: -3),
                   focusNode: (widget.selectedSort?.key == sort.key || (widget.selectedSort == null && index == 0))
                       ? _initialFocusNode
                       : null,
@@ -172,7 +174,12 @@ class _SortBottomSheetState extends State<SortBottomSheet> {
                         ),
                   title: Text(
                     sort.title,
-                    style: widget.phoneStyle ? const TextStyle(fontSize: LibraryPhoneMetrics.sortRowFontSize) : null,
+                    style: widget.phoneStyle
+                        ? const TextStyle(
+                            fontSize: LibraryPhoneMetrics.sortRowFontSize,
+                            letterSpacing: LibraryPhoneMetrics.letterSpacing,
+                          )
+                        : null,
                   ),
                   trailing: widget.phoneStyle
                       ? _phoneTrailing(isSelected)
@@ -203,6 +210,7 @@ class _SortBottomSheetState extends State<SortBottomSheet> {
                   onTap: () => _handleSortSelect(sort),
                 ),
               );
+              return widget.phoneStyle ? SizedBox(height: LibraryPhoneMetrics.sheetRowHeight, child: row) : row;
             },
           ),
         ),
