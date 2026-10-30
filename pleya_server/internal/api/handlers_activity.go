@@ -11,7 +11,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/personal"
 )
 
-// Activiteit van het huishouden (DEC-XXX, matrixregels 74 tot en met 76).
+// Activiteit van het huishouden (DEC-169, matrixregels 74 tot en met 76).
 //
 // GET /items/{id}/activity is klasse authenticated en de enige route die een lid
 // iets over een andere gebruiker laat lezen. GET /watch-history blijft de
@@ -41,7 +41,8 @@ type ActivitySharingWire struct {
 
 // ActivitySharingRequest is de body van PUT /users/me/activity-sharing. Een
 // pointer, want een ontbrekend veld is iets anders dan false: op dit veld zou
-// die verwarring iemand stilzwijgend afmelden.
+// die verwarring iemand stilzwijgend afmelden, en true is voor een restricted
+// gebruiker de enige weg naar zichtbaar zijn.
 type ActivitySharingRequest struct {
 	ShareActivity *bool `json:"share_activity"`
 }

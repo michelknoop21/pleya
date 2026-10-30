@@ -11,7 +11,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
 
-// GET /items/{id}/activity en de opt-out (DEC-XXX, matrixregels 74 tot en met
+// GET /items/{id}/activity en de opt-out (DEC-169, matrixregels 74 tot en met
 // 76). De vier rollen op de route zelf staan in authorize_matrix_test.go; hier
 // staat wat er in het antwoord zit, en vooral wat er niet in zit.
 
@@ -246,7 +246,7 @@ func TestItemActivityFollowsLibraryRights(t *testing.T) {
 	}
 }
 
-// De opt-out verbergt iemand voor iedereen behalve hemzelf, ook voor een
+// De keuze verbergt iemand voor iedereen behalve hemzelf, ook voor een
 // beheerder en ook in de optelling van een serie, en hij geldt meteen.
 func TestItemActivityOptOutHidesFromOthersOnly(t *testing.T) {
 	e := newEnv(t)
@@ -334,8 +334,7 @@ func TestActivitySharingRejectsABadBody(t *testing.T) {
 	}
 }
 
-// Restricted ziet alleen zichzelf (hoofdstuk 16.1), en dat begrenst wat hij
-// ziet, niet of anderen hem zien: daarvoor is de opt-out.
+// Een restricted aanvrager ziet alleen zichzelf (hoofdstuk 16.1).
 func TestItemActivityRestrictedSeesOnlyItself(t *testing.T) {
 	e := newEnv(t)
 	e.setup(e.putSetupCode())
@@ -357,12 +356,104 @@ func TestItemActivityRestrictedSeesOnlyItself(t *testing.T) {
 	if got := e.activity(other, rita); len(got.Items) != 0 {
 		t.Fatalf("restricted ziet op een item zonder eigen sessie %v", usernames(got))
 	}
-	if got := e.activity(movie, sam); len(got.Items) != 3 {
-		t.Fatalf("een lid ziet %v", usernames(got))
+
+	// Ook wie zelf deelt ziet daardoor niet meer.
+	e.shareActivity(rita, true)
+	if got := e.activity(movie, rita); len(got.Items) != 1 {
+		t.Fatalf("restricted met delen aan ziet %v", usernames(got))
 	}
+}
+
+// Restricted is opt-in: zonder eigen keuze ziet niemand hem, ook een beheerder
+// niet, en een rij zonder keuze is precies wat een bestaand account na de
+// migratie heeft. Andersom verandert er voor een gewone gebruiker niets.
+func TestItemActivityRestrictedIsOptIn(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	movie := e.findMovie("Grease").ID
+	owner := e.access
+	_, sam := e.member("member", "sam", "movies")
+	ritaID, rita := e.member("restricted", "rita", "movies")
+
+	e.playAs(rita, movie, "kinderkamer", true)
+
+	var stored *bool
+	if err := e.pool.QueryRow(context.Background(),
+		`SELECT share_activity FROM users WHERE id = $1`, ritaID).Scan(&stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored != nil {
+		t.Fatalf("een account zonder keuze hoort NULL te dragen, niet %v", *stored)
+	}
+	if e.sharesActivity(rita) {
+		t.Fatal("restricted deelt zonder het zelf aan te zetten")
+	}
+	if !e.sharesActivity(sam) {
+		t.Fatal("een lid hoort zonder keuze te delen")
+	}
+	for name, token := range map[string]string{"owner": owner, "lid": sam} {
+		if got := e.activity(movie, token); len(got.Items) != 0 {
+			t.Fatalf("%s ziet zonder opt-in %v", name, usernames(got))
+		}
+	}
+
+	e.shareActivity(rita, true)
+	if !e.sharesActivity(rita) {
+		t.Fatal("de opt-in is niet bewaard")
+	}
+	if got := e.activity(movie, sam); len(got.Items) != 1 || got.Items[0].Username != "rita" {
+		t.Fatalf("na de opt-in ziet een lid %v", usernames(got))
+	}
+
 	e.shareActivity(rita, false)
-	if got := e.activity(movie, sam); len(got.Items) != 2 {
-		t.Fatalf("na de opt-out van rita ziet een lid %v", usernames(got))
+	if got := e.activity(movie, owner); len(got.Items) != 0 {
+		t.Fatalf("na uitzetten ziet de owner %v", usernames(got))
+	}
+}
+
+// Een keuze uit een vorige rol telt niet als opt-in: wie restricted wordt moet
+// het opnieuw zelf aanzetten. De andere kant op geldt de rol meteen.
+func TestItemActivityRoleChangeFollowsTheOptIn(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	movie := e.findMovie("Grease").ID
+	owner := e.access
+	samID, sam := e.member("member", "sam", "movies")
+	ritaID, rita := e.member("restricted", "rita", "movies")
+
+	e.playAs(sam, movie, "ipad", true)
+	e.playAs(rita, movie, "kinderkamer", true)
+	e.shareActivity(sam, true)
+
+	setRole := func(user id.ID, role string) {
+		t.Helper()
+		rec := e.do(http.MethodPatch, "/pleya/v1/users/"+user.String(), map[string]string{"role": role})
+		if rec.Code != http.StatusOK {
+			t.Fatalf("rol %s zetten gaf %d: %s", role, rec.Code, rec.Body.String())
+		}
+	}
+
+	setRole(samID, "restricted")
+	if e.sharesActivity(sam) {
+		t.Fatal("de opt-in van vóór de degradatie geldt nog")
+	}
+	if got := e.activity(movie, owner); len(got.Items) != 0 {
+		t.Fatalf("na degraderen ziet de owner %v", usernames(got))
+	}
+
+	// Een rol opnieuw zetten is geen degradatie: een gemaakte keuze blijft staan.
+	e.shareActivity(sam, true)
+	setRole(samID, "restricted")
+	if !e.sharesActivity(sam) {
+		t.Fatal("restricted op restricted wiste de keuze")
+	}
+
+	setRole(ritaID, "member")
+	if !e.sharesActivity(rita) {
+		t.Fatal("een lid zonder keuze hoort te delen")
+	}
+	if got := e.activity(movie, owner); len(got.Items) != 2 {
+		t.Fatalf("na promoveren ziet de owner %v", usernames(got))
 	}
 }
 

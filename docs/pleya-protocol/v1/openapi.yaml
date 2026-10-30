@@ -603,8 +603,11 @@ paths:
       description: |
         Klasse `authenticated`, elke rol, altijd over de aanvrager zelf. Geldt
         meteen en voor alles wat al in de geschiedenis staat. Uit haalt de
-        gebruiker weg bij `GET /items/{item_id}/activity` van anderen; zijn eigen
-        regel blijft, en `GET /watch-history` (klasse `admin`) verandert niet.
+        gebruiker weg bij `GET /items/{item_id}/activity` van anderen, aan zet
+        hem erbij; zijn eigen regel blijft altijd, en `GET /watch-history`
+        (klasse `admin`) verandert niet. Voor een `restricted` gebruiker is aan
+        de enige weg naar zichtbaar zijn; wie restricted wordt verliest een
+        eerdere keuze en zet het opnieuw zelf aan.
       requestBody:
         required: true
         content:
@@ -2322,8 +2325,9 @@ paths:
         aflevering telt zichzelf, een seizoen en een serie alles eronder.
 
         De aanvrager ziet altijd zijn eigen regel. Een andere gebruiker staat
-        erbij wanneer hij delen niet heeft uitgezet en de bibliotheek nu nog mag
-        zien. Een `restricted` aanvrager ziet alleen zichzelf.
+        erbij wanneer hij deelt en de bibliotheek nu nog mag zien. Delen staat
+        standaard aan, behalve voor een `restricted` gebruiker: die deelt pas als
+        hij het zelf aanzet. Een `restricted` aanvrager ziet alleen zichzelf.
       parameters:
         - $ref: "#/components/parameters/ItemId"
       responses:
@@ -4222,7 +4226,9 @@ components:
       properties:
         share_activity:
           type: boolean
-          description: Standaard waar. Onwaar verbergt de gebruiker voor anderen.
+          description: |
+            Of deze gebruiker nu met anderen deelt. Zonder eigen keuze waar, en
+            onwaar voor een `restricted` gebruiker: die is opt-in.
 
     ActivitySharingRequest:
       type: object

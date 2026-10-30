@@ -269,7 +269,7 @@ func TestScopeBoundaryAfterPS4(t *testing.T) {
 		"/pleya/v1/collections",       // PS-9C
 		"/pleya/v1/play-history",      // PS-9P
 		"/pleya/v1/admin/libraries",   // PS-11A
-		// DEC-XXX, activiteit van het huishouden: per item en achter de opt-out.
+		// DEC-169, activiteit van het huishouden: per item en achter de opt-out.
 		// Een activiteitenfeed van het hele huishouden is een ander besluit, en de
 		// keuze van een ander is voor niemand leesbaar.
 		"/pleya/v1/activity",

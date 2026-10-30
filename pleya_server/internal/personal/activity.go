@@ -26,7 +26,13 @@ type ActivityEntry struct {
 	CompletedItems int
 }
 
-// itemActivitySQL is de hele regel uit DEC-XXX (activiteit van het huishouden)
+// sharesActivitySQL is de keuze van de gebruiker, met zijn rol als terugval:
+// een restricted gebruiker deelt pas als hij het zelf aanzet, de rest tot hij
+// het uitzet. Eén uitdrukking, zodat de opt-out-route en de activiteit nooit
+// verschillend antwoorden.
+const sharesActivitySQL = `coalesce(u.share_activity, u.role <> 'restricted')`
+
+// itemActivitySQL is de hele regel uit DEC-169 (activiteit van het huishouden)
 // in één vraag, zodat er geen pad is waarop een rij eerst wordt gelezen en pas
 // daarna gefilterd.
 //
@@ -35,9 +41,9 @@ type ActivityEntry struct {
 // net zo goed mee. Een film heeft geen kinderen en levert alleen zichzelf op.
 //
 // Een andere gebruiker telt alleen mee wanneer de aanvrager anderen mag zien,
-// de gebruiker niet heeft afgemeld, en hij de bibliotheek nu nog mag zien. Dat
-// laatste is matrixregel 13 aan de andere kant: een rij blijft bestaan nadat
-// een recht is ingetrokken, en wordt dan niet meer getoond.
+// de gebruiker deelt, en hij de bibliotheek nu nog mag zien. Delen staat in
+// sharesActivitySQL. Het recht is matrixregel 13 aan de andere kant: een rij
+// blijft bestaan nadat een recht is ingetrokken, en wordt dan niet meer getoond.
 const itemActivitySQL = `
 	WITH RECURSIVE scope AS (
 		SELECT id, library_id FROM media_items WHERE id = $1
@@ -51,7 +57,7 @@ const itemActivitySQL = `
 	JOIN scope ON scope.id = h.item_id
 	JOIN users u ON u.id = h.user_id
 	WHERE h.user_id = $2
-	   OR ($3 AND u.share_activity AND (
+	   OR ($3 AND ` + sharesActivitySQL + ` AND (
 	           u.role IN ('owner', 'admin')
 	           OR EXISTS (SELECT 1 FROM library_permissions p
 	                      WHERE p.user_id = u.id AND p.library_id = scope.library_id)))
@@ -80,10 +86,12 @@ func (s *Store) ItemActivity(ctx context.Context, item, viewer id.ID, includeOth
 	return entries, rows.Err()
 }
 
-// ShareActivity zegt of deze gebruiker zijn activiteit met anderen deelt.
+// ShareActivity zegt of deze gebruiker zijn activiteit nu met anderen deelt: zijn
+// keuze, of zonder keuze wat zijn rol meebrengt.
 func (s *Store) ShareActivity(ctx context.Context, user id.ID) (bool, error) {
 	var share bool
-	err := s.pool.QueryRow(ctx, `SELECT share_activity FROM users WHERE id = $1`, user).Scan(&share)
+	err := s.pool.QueryRow(ctx,
+		`SELECT `+sharesActivitySQL+` FROM users u WHERE u.id = $1`, user).Scan(&share)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, ErrUserNotFound
 	}

@@ -209,6 +209,16 @@ func (s *Store) UpdateUser(
 				WHERE user_id = $1 AND permission = 'manage'`, userID); err != nil {
 				return User{}, fmt.Errorf("manage terugzetten na degradatie: %w", err)
 			}
+			// Restricted is opt-in (DEC-169): een keuze uit een vorige rol telt
+			// niet als die opt-in. Zonder deze regel blijft wie degradeert
+			// zichtbaar voor het huishouden zonder dat hij het als restricted
+			// zelf heeft aangezet.
+			if current != RoleRestricted {
+				if _, err := tx.Exec(ctx,
+					`UPDATE users SET share_activity = NULL WHERE id = $1`, userID); err != nil {
+					return User{}, fmt.Errorf("activiteitskeuze wissen na degradatie: %w", err)
+				}
+			}
 		}
 	}
 

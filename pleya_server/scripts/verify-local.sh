@@ -353,7 +353,7 @@ else
   fail "een member ziet meer gebruikers dan zichzelf"
 fi
 
-# Activiteit van het huishouden (DEC-XXX): de owner keek hierboven $ITEM, zij
+# Activiteit van het huishouden (DEC-169): de owner keek hierboven $ITEM, zij
 # mag die film zien en krijgt zijn regel, tot de owner delen uitzet.
 if [ "$(api "/items/$ITEM/activity" "${SANNE_AUTH[@]}" | jq_field '[i["username"] for i in d["items"]]')" = "['verify']" ]; then
   ok "een huisgenoot ziet wie een film keek"

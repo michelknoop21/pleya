@@ -215,7 +215,7 @@ Precies daarom staat er zo weinig in.
 
 `capabilities.item_activity` staat aan zodra `GET /items/{item_id}/activity` en de opt-out onder
 `/users/me/activity-sharing` bestaan (14b). De twee komen samen onder één vlag: een server die
-activiteit toont zonder dat iemand hem kan uitzetten is geen geldige toestand.
+activiteit toont zonder dat iemand zijn eigen deel kan regelen is geen geldige toestand.
 
 `capabilities.users` staat aan zodra de server echte gebruikers kent (hoofdstuk 16);
 `capabilities.sessions` staat aan zodra hij device-scoped sessies kent (hoofdstuk 17) en dus
@@ -1170,7 +1170,7 @@ versies als downloadbron) en sidecar-ondertitels horen er niet bij.
 ## 14b. Activiteit van het huishouden
 
 Hoofdstuk 14a gaat over de aanvrager zelf. Dit hoofdstuk is de uitzondering: het laat een gebruiker
-lezen wat een ander keek. Alles staat onder `capabilities.item_activity` (DEC-XXX, activiteit van het
+lezen wat een ander keek. Alles staat onder `capabilities.item_activity` (DEC-169, activiteit van het
 huishouden). De regel "Bekeken door" op een detailpagina is er de lezer van.
 
 **`GET /pleya/v1/items/{item_id}/activity`** is klasse `authenticated`. Een item buiten de bibliotheken
@@ -1195,22 +1195,28 @@ Wie er in het antwoord staat volgt uit vier regels, in deze volgorde:
 
 1. De aanvrager ziet altijd zijn eigen regel, ook met delen uit.
 2. Een aanvrager met de rol `restricted` ziet verder niemand (16.1).
-3. Een andere gebruiker met `share_activity` op onwaar staat er niet in, ook niet voor een beheerder.
+3. Een andere gebruiker die niet deelt staat er niet in, ook niet voor een beheerder. Delen staat
+   standaard aan en gaat uit met de opt-out. Een `restricted` gebruiker is het omgekeerde: hij deelt
+   pas als hij het zelf aanzet, ook op een bestaand account.
 4. Een andere gebruiker die de bibliotheek nu niet mag zien staat er niet in. Dat is regel 13 van de
    matrix aan de andere kant: zijn rijen blijven bestaan, en komen terug zodra het recht terugkomt.
 
-Regel 2 begrenst wat een `restricted` gebruiker ziet, niet of anderen hem zien. Daarvoor is de opt-out.
+Regel 2 gaat over wat een `restricted` gebruiker ziet en regel 3 over wie hem ziet; zijn eigen keuze om
+te delen verandert niets aan regel 2.
 
 Geen toestel, geen positie en geen sessie-id, en ook geen titel van iets anders: het antwoord zegt wie
 dit item keek en wanneer. Dit is ook de enige route waarop een `member` de naam van een andere
 gebruiker leest; `GET /users` blijft voor hem alleen zichzelf.
 
-**`GET` en `PUT /pleya/v1/users/me/activity-sharing`** lezen en zetten de opt-out, voor elke rol en
+**`GET` en `PUT /pleya/v1/users/me/activity-sharing`** lezen en zetten die keuze, voor elke rol en
 altijd voor de aanvrager zelf. Het zijn eigen routes en geen veld op `User`, want dat schema staat ook
 in `GET /users` en in elke beheerhandeling. `PUT` neemt `{ "share_activity": false }` en antwoordt met
-dezelfde vorm; een ontbrekend of ander veld is `400` met `library.personal_invalid`. De keuze staat
-standaard aan, geldt meteen en werkt terug op wat er al in de geschiedenis staat. Ze raakt
-`GET /watch-history` niet: die route is klasse `admin` (17b.7) en beantwoordt een andere vraag.
+dezelfde vorm; een ontbrekend of ander veld is `400` met `library.personal_invalid`. `GET` geeft wat nu
+geldt: de eigen keuze, of zonder keuze waar, en onwaar voor een `restricted` gebruiker. De keuze geldt
+meteen en werkt terug op wat er al in de geschiedenis staat. Wie restricted wordt verliest een eerdere
+keuze en zet delen opnieuw zelf aan; een rol die de andere kant op gaat houdt de keuze, en zonder keuze
+volgt de nieuwe rol. De keuze raakt `GET /watch-history` niet: die route is klasse `admin` (17b.7) en
+beantwoordt een andere vraag.
 
 ## 15. Home-bouwstenen
 
@@ -1446,9 +1452,9 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 71 | `GET /users/me/memory` | eigen Big P-geheugen | eigen sessiebearer, owner/admin/member; restricted en elk API-token 403 `memory.not_permitted` |
 | 72 | `PUT /users/me/memory` | volledige eigen geheugensnapshot met CAS | als regel 71, geen user-id in de body |
 | 73 | `POST /users/me/memory/clear` | eigen geheugen wissen en epoch roteren | als regel 71, geldige epoch en base_revision |
-| 74 | `GET /items/{item_id}/activity` | wie in het huishouden een item keek, met gebruikersnamen | elke rol antwoordt; item buiten bereik `404` zoals regel 3; `restricted` ziet alleen zichzelf; anderen alleen met delen aan en met recht op de bibliotheek (14b) |
-| 75 | `GET /users/me/activity-sharing` | de eigen opt-out | klasse `authenticated`, geen id in het pad, dus er valt niets te raden |
-| 76 | `PUT /users/me/activity-sharing` | de eigen opt-out zetten | als regel 75 |
+| 74 | `GET /items/{item_id}/activity` | wie in het huishouden een item keek, met gebruikersnamen | elke rol antwoordt; item buiten bereik `404` zoals regel 3; `restricted` ziet alleen zichzelf; anderen alleen als ze delen (`restricted` is opt-in, de rest opt-out) en recht op de bibliotheek hebben (14b) |
+| 75 | `GET /users/me/activity-sharing` | de eigen keuze om te delen | klasse `authenticated`, geen id in het pad, dus er valt niets te raden |
+| 76 | `PUT /users/me/activity-sharing` | de eigen keuze zetten | als regel 75 |
 
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
@@ -2268,7 +2274,7 @@ van de bron beslist welke het is.
 | `PUT /pleya/v1/users/me/activity-sharing` | `authenticated` | nee |
 
 Drieëntachtig operaties. De drie laatste zijn de activiteit van het huishouden uit hoofdstuk 14b
-(DEC-XXX). De vijf daarvoor zijn back-up en restore uit hoofdstuk 17g (venster 7, S25). De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+(DEC-169). De vijf daarvoor zijn back-up en restore uit hoofdstuk 17g (venster 7, S25). De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit
