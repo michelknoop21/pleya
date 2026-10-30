@@ -54,3 +54,10 @@
     <StateView message={t('personal.unavailable')} />
   {/if}
 </div>
+
+<style>
+  /* web.css .page: de inzet van de pagina, 8 boven de kop. */
+  .page {
+    padding: var(--page-top) var(--inset) var(--space-2);
+  }
+</style>

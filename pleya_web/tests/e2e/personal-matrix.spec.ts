@@ -41,7 +41,7 @@ for(const [width,height] of WIDTHS){
     await expectNoAxeViolations(page,`rating dialog ${width}`);await expectNoHorizontalOverflow(page);
     await page.screenshot({path:`${OUT}/rating-dialog@${width}.png`});
     await page.keyboard.press('Escape');await expect(dialog).toBeHidden();await expect(rate).toBeFocused();
-    await page.getByRole('button',{name:'Rate',exact:true}).click();await page.getByRole('button',{name:'Save',exact:true}).click();
+    await page.getByRole('button',{name:'Rate',exact:true}).click();await page.getByRole('combobox',{name:'Rating',exact:true}).selectOption('8');await page.getByRole('button',{name:'Save',exact:true}).click();
     await expect(page.getByRole('button',{name:'Your rating: 8/10',exact:true})).toBeVisible();
     await expectNoAxeViolations(page,`detail ${width}`);await expectNoHorizontalOverflow(page);
     await page.screenshot({path:`${OUT}/detail@${width}.png`});
