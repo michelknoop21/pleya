@@ -10,10 +10,10 @@ Stand van commit `61dac7291` op `feat/tvos-catalog-fullbleed`. Route: `_openTvCo
 | Paginakop met titel en tags | boven het raster | weg |
 | Topnavigatie | scroll-away | `collapsible`: weg zolang de focus in de pagina staat, UP vanaf rij 0 doet niets |
 | Rail met Bronnen, Filters, Sorteren | links van het raster | één paneel over een gedimde pagina, LEFT vanaf kolom 0 |
-| Sorteerkiezer | gecentreerde modal, zeven rijen | pagina in het paneel, één rij per sorteerveld met richtingpijl |
-| Filterkiezers | gecentreerde modal | pagina's in het paneel, nog steeds gebundeld achter Apply |
+| Sorteerkiezer | gecentreerde modal, zeven rijen | pagina in het paneel, één rij per sorteerveld dat alle bronnen kunnen, met richtingpijl in accentkleur |
+| Filterkiezers | gecentreerde modal | pagina in het paneel: snelle keuzes (direct toegepast), scheidingslijn, categorieën (achter Apply) |
 | Spring naar | bestond niet | rij in het paneel bij sorteren op titel, `#` en A-Z |
-| Tweede regel onder de titel | jaar | jaar, datum toegevoegd of datum bekeken, naar de sortering |
+| Tweede regel onder de titel | jaar | volgt de sortering; score met bronicoon, jaar, datum, duur, positie, afgespeeld, leeftijd of resolutie; leeg zonder waarde |
 | Ongekeken-aantal | niet op de TV-kaart | rechtsboven op de kaart |
 | Gestippeld sorteerlabel | altijd zichtbaar | alleen bij een andere sortering dan de standaard of naast filtertags |
 | Wissen | in de rail | rij in het paneel zolang een filter actief is |
