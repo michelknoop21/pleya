@@ -326,6 +326,31 @@ func TestItemActivityCountsEpisodeDirectlyUnderSeries(t *testing.T) {
 	}
 }
 
+// Het recht telt per bibliotheek van het item: wie een andere bibliotheek nog
+// wel mag zien, staat er niet in zodra hij die van het item kwijt is.
+func TestItemActivityNeedsRightOnTheItemsOwnLibrary(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	owner := e.access
+	samID, sam := e.member("member", "sam", "movies", "shows")
+	episode := e.episodesInOrder()[0].ID
+	movie := e.findMovie("Grease").ID
+
+	e.playAs(sam, episode, "ipad", true)
+	e.playAs(sam, movie, "ipad", true)
+	if got := e.activity(episode, owner); len(got.Items) != 1 {
+		t.Fatalf("voor het intrekken: %v", usernames(got))
+	}
+
+	e.revokeLibrary(samID, id.MustParse(e.libraryID("shows")))
+	if got := e.activity(episode, owner); len(got.Items) != 0 {
+		t.Fatalf("sam heeft nog movies maar niet shows, en staat bij een aflevering: %v", usernames(got))
+	}
+	if got := e.activity(movie, owner); len(got.Items) != 1 {
+		t.Fatalf("op een film uit movies hoort sam er nog te staan: %v", usernames(got))
+	}
+}
+
 // De keuze verbergt iemand voor iedereen behalve hemzelf, ook voor een
 // beheerder en ook in de optelling van een serie, en hij geldt meteen.
 func TestItemActivityOptOutHidesFromOthersOnly(t *testing.T) {

@@ -607,7 +607,8 @@ paths:
         hem erbij; zijn eigen regel blijft altijd, en `GET /watch-history`
         (klasse `admin`) verandert niet. Voor een `restricted` gebruiker is aan
         de enige weg naar zichtbaar zijn; wie restricted wordt verliest een
-        eerdere keuze en zet het opnieuw zelf aan.
+        eerdere opt-in (`true`) en zet het opnieuw zelf aan; een eerdere
+        opt-out (`false`) blijft staan.
       requestBody:
         required: true
         content:
