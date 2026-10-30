@@ -40,6 +40,9 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
     case 'catalog.long-grid.v2':
       _applyCatalogLongGrid(server, fixture: 'catalog.long-grid.v2', count: 19);
       return true;
+    case 'catalog.alphabet-500.v1':
+      _applyCatalogAlphabet500V1(server);
+      return true;
     case 'catalog.seasons.v1':
       _applyCatalogSeasonsV1(server);
       return true;
@@ -480,6 +483,39 @@ void _applyCatalogLongGrid(PleyaFakeServer server, {required String fixture, req
   }
 
   server.hubs['recently_added']!.addAll(ids);
+}
+
+/// Five hundred films for the full-bleed catalog (A-06c): enough pages that
+/// Spring naar has to load on, and enough cards to measure a press on. Twenty
+/// titles per letter from A to Y, so the letters are evenly spread and Z has no
+/// title at all: that is the letter that lands on what comes past it.
+void _applyCatalogAlphabet500V1(PleyaFakeServer server) {
+  const fixture = 'catalog.alphabet-500.v1';
+  const count = 500;
+  const perLetter = 20;
+  server.resetCatalog();
+
+  final libraryId = _mintId(server, fixture, 'library', 'movies');
+  server.addLibrary(id: libraryId, title: 'Movies', kind: 'movies', itemCount: count);
+
+  final ids = <String>[];
+  for (var i = 0; i < count; i++) {
+    final letter = String.fromCharCode(0x41 + i ~/ perLetter);
+    final slug = '$letter ${(i % perLetter + 1).toString().padLeft(2, '0')}';
+    final movieId = _mintId(server, fixture, 'movie', slug);
+    ids.add(movieId);
+    server.addItem(
+      id: movieId,
+      kind: 'movie',
+      title: slug,
+      libraryId: libraryId,
+      year: 1950 + i % 75,
+      durationMs: 5400000,
+      posterId: _registerArtwork(server, movieId),
+    );
+  }
+
+  server.hubs['recently_added']!.addAll(ids.take(20));
 }
 
 /// One show with four seasons of three episodes each, for the TV series

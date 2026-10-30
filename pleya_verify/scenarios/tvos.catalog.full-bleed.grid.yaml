@@ -1,0 +1,68 @@
+name: tvos.catalog.full-bleed.grid
+target: tvos-sim
+# A-06c (Michel, 30 Oct 2026): Alle films fills the window, six by two, with no
+# heading and no bar. `catalog.long-grid.v2` seeds 19 films: three full rows
+# and a short fourth.
+setup:
+  - reset_app
+  - seed: catalog.long-grid.v2
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - walk: {direction: right, expect: [nav.series, nav.movies], timeout: 40000, settle: 800}
+  - press: select
+  - settle: 1500
+  # A-24c (LEESMIJ-v4): Select changed the page and left the remote on
+  # the pill; Down takes it to the landing.
+  - press: down
+  - settle: 1500
+  - press: select
+  - wait_until: {id: "tv.catalog.grid[movies]", timeout: 20000}
+  - wait_until: {id: "tv.catalog.grid.item[movies.18]", timeout: 10000}
+  - settle: 1000
+  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true, insideViewport: true}
+  - assert: {id: "tv.catalog.grid.item[movies.5]", insideViewport: true, sameRow: "tv.catalog.grid.item[movies.0]"}
+  - assert: {id: "tv.catalog.grid.item[movies.6]", insideViewport: true, below: "tv.catalog.grid.item[movies.0]"}
+  - assert: {id: "tv.catalog.grid.item[movies.11]", insideViewport: true, sameRow: "tv.catalog.grid.item[movies.6]"}
+  - assert: {id: "tv.catalog.grid.item[movies.12]", below: "tv.catalog.grid.item[movies.6]"}
+  - assert: {id: nav.bar, state: {hidden: true, overlay: true}}
+  - assert: {id: "tv.catalog.header[movies]", present: false}
+  - snapshot: 00-rest
+
+  # UP from the first row goes nowhere: the bar stays away.
+  - press: up
+  - settle: 700
+  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true}
+  - assert: {id: nav.bar, state: {hidden: true}}
+
+  # DOWN keeps two whole rows, one row at a time.
+  - press: down
+  - settle: 700
+  - assert: {id: "tv.catalog.grid.item[movies.6]", focused: true, insideViewport: true}
+  - press: down
+  - settle: 900
+  - assert: {id: "tv.catalog.grid.item[movies.12]", focused: true, insideViewport: true}
+  - assert: {id: "tv.catalog.grid.item[movies.6]", insideViewport: true}
+  - snapshot: 01-row2
+
+  # A row change followed by LEFT and RIGHT stays in the new row.
+  - press: right
+  - settle: 500
+  - press: up
+  - settle: 700
+  - assert: {id: "tv.catalog.grid.item[movies.7]", focused: true}
+  - press: left
+  - settle: 500
+  - assert: {id: "tv.catalog.grid.item[movies.6]", focused: true}
+  - press: right
+  - settle: 500
+  - assert: {id: "tv.catalog.grid.item[movies.7]", focused: true}
+
+  # Menu leaves for the landing.
+  - press: menu
+  - settle: 1200
+  - assert: {id: "tv.catalog.grid[movies]", present: false}
+  - assert: {id: nav.bar, state: {hidden: false}}
+  - snapshot: 02-landing

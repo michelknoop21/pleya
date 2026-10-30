@@ -338,6 +338,20 @@ void main() {
     });
   });
 
+  group('catalog.alphabet-500.v1', () {
+    test('five hundred movies, twenty per letter from A to Y and none under Z', () {
+      final server = PleyaFakeServer();
+      final applied = applyNamedFixture(server, 'catalog.alphabet-500.v1');
+
+      expect(applied, isTrue);
+      expect(server.libraries, hasLength(1));
+      final titles = server.items.values.where((i) => i['kind'] == 'movie').map((i) => i['title'] as String);
+      expect(titles, hasLength(500));
+      expect(titles.where((title) => title.startsWith('M ')), hasLength(20));
+      expect(titles.where((title) => title.startsWith('Z ')), isEmpty);
+    });
+  });
+
   group('catalog.seasons.v1', () {
     test('one show with four seasons of two to five episodes, on the first rail', () {
       final server = PleyaFakeServer();

@@ -1,0 +1,75 @@
+name: tvos.catalog.full-bleed.panel
+target: tvos-sim
+# A-06c: the controls are one panel over the page. Sorting happens in it, Menu
+# goes back a page and then closes, RIGHT closes from anywhere, and a choice
+# lands on card 0. `catalog.long-grid.v2`: nineteen films, longgrid-01 to -19.
+setup:
+  - reset_app
+  - seed: catalog.long-grid.v2
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - walk: {direction: right, expect: [nav.series, nav.movies], timeout: 40000, settle: 800}
+  - press: select
+  - settle: 1500
+  # A-24c (LEESMIJ-v4): Select changed the page and left the remote on
+  # the pill; Down takes it to the landing.
+  - press: down
+  - settle: 1500
+  - press: select
+  - wait_until: {id: "tv.catalog.grid[movies]", timeout: 20000}
+  - wait_until: {id: "tv.catalog.grid.item[movies.18]", timeout: 10000}
+  - settle: 1000
+  - assert: {id: "tv.catalog.grid.item[movies.0]", state: {title: longgrid-01}}
+
+  # Stand on row 1, open the panel: the grid stays where it is.
+  - press: down
+  - settle: 700
+  - assert: {id: "tv.catalog.grid.item[movies.6]", focused: true}
+  - press: left
+  - settle: 800
+  - assert: {id: "tv.catalog.rail[movies]", insideViewport: true}
+  - assert: {id: "tv.catalog.rail.row[movies.sources]", focused: true}
+  - assert: {id: "tv.catalog.grid.item[movies.5]", insideViewport: true}
+  - snapshot: 00-panel-open
+
+  # RIGHT closes and returns the ring to the card.
+  - press: right
+  - settle: 800
+  - assert: {id: "tv.catalog.rail[movies]", present: false}
+  - assert: {id: "tv.catalog.grid.item[movies.6]", focused: true}
+
+  # Into the sort page, Menu back to the overview on the Sort row.
+  - press: left
+  - settle: 800
+  - press: down
+  - settle: 500
+  - press: down
+  - settle: 500
+  - assert: {id: "tv.catalog.rail.row[movies.sort]", focused: true}
+  - press: select
+  - settle: 800
+  - assert: {id: "tv.catalog.rail.row[movies.sort.titleAsc]", focused: true}
+  - snapshot: 01-sort-page
+  - press: menu
+  - settle: 800
+  - assert: {id: "tv.catalog.rail.row[movies.sort]", focused: true}
+
+  # Choosing closes the panel and lands on card 0 in the new order.
+  - press: select
+  - settle: 800
+  - press: down
+  - settle: 500
+  - assert: {id: "tv.catalog.rail.row[movies.sort.titleDesc]", focused: true}
+  - press: select
+  - settle: 3000
+  - assert: {id: "tv.catalog.rail[movies]", present: false}
+  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true, state: {title: longgrid-19}}
+  - snapshot: 02-after-sort
+
+  # Menu with the panel closed leaves the route.
+  - press: menu
+  - settle: 1200
+  - assert: {id: "tv.catalog.grid[movies]", present: false}

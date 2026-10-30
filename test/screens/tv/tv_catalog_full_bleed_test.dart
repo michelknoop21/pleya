@@ -261,6 +261,41 @@ void main() {
     }
   });
 
+  testWidgets('a press on a wall of 500 cards', (tester) async {
+    final h = await _harness(500);
+    await h.pump(tester, canvas: _canvas);
+    await h.open(tester);
+    expect(find.byType(TvCatalogCompactCard), findsNWidgets(500), reason: 'eager loading mounted every card');
+
+    final samples = <int>[];
+    final watch = Stopwatch();
+    Future<void> sample(LogicalKeyboardKey key) async {
+      watch
+        ..reset()
+        ..start();
+      await tester.sendKeyEvent(key);
+      await tester.pump();
+      watch.stop();
+      samples.add(watch.elapsedMicroseconds);
+      await tester.pumpAndSettle();
+    }
+
+    for (var i = 0; i < 12; i++) {
+      await sample(i.isEven ? LogicalKeyboardKey.arrowDown : LogicalKeyboardKey.arrowRight);
+    }
+    for (var i = 0; i < 12; i++) {
+      await sample(i.isEven ? LogicalKeyboardKey.arrowUp : LogicalKeyboardKey.arrowLeft);
+    }
+    samples.sort();
+    final median = samples[samples.length ~/ 2] / 1000;
+    final worst = samples.last / 1000;
+    debugPrint(
+      'A-06c press on 500 cards, debug test binding: '
+      'median ${median.toStringAsFixed(1)} ms, worst ${worst.toStringAsFixed(1)} ms, ${samples.length} presses',
+    );
+    expect(worst, lessThan(500), reason: 'a coarse ceiling: debug mode on a test canvas, not a device number');
+  });
+
   testWidgets('going offline on this route removes it with its destination', (tester) async {
     final h = await _harness();
     await h.pump(tester, canvas: _canvas);
