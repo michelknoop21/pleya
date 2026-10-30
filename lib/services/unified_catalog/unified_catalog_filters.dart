@@ -41,11 +41,15 @@
 library;
 
 import '../../media/library_query.dart';
-import '../../media/media_backend.dart';
 import '../../media/media_kind.dart';
 import '../../utils/global_key_utils.dart';
+import 'content_rating_labels.dart';
 import 'source_cursor.dart';
+import 'unified_catalog_capabilities.dart';
 import 'unified_catalog_query.dart';
+
+export 'content_rating_labels.dart';
+export 'unified_catalog_capabilities.dart';
 
 /// One entry in hoofdstuk 10.5's "eerste betrouwbare set" of sorts.
 ///
@@ -78,112 +82,6 @@ enum UnifiedCatalogSort {
     return null;
   }
 }
-
-/// Hoofdstuk 10.4's watch-state filter, reduced to what a backend can answer.
-///
-/// Every state is a field on the neutral query, so the backend applies it
-/// before the merge and paging keeps its meaning (see this library's doc):
-///
-/// - [unwatched]: `includeWatched: false`, Plex `unwatched=1`, Jellyfin
-///   `Filters=IsUnplayed`.
-/// - [inProgress]: `inProgressOnly`, Plex `inProgress=1` (a documented
-///   boolean section filter), Jellyfin `Filters=IsResumable`.
-/// - [watched]: `watchedOnly`, Jellyfin `Filters=IsPlayed`. Plex has no
-///   documented "watched only" filter (`unwatched=0` is unmeasured), so this
-///   state is gated by [UnifiedFilterCapabilities.supportsWatchedFilter] and
-///   absent whenever a Plex library takes part.
-enum UnifiedWatchFilter {
-  all,
-  unwatched,
-  inProgress,
-  watched;
-
-  static UnifiedWatchFilter byName(Object? name) {
-    for (final value in values) {
-      if (value.name == name) return value;
-    }
-    return all;
-  }
-}
-
-/// Which filters the participating backends can execute correctly.
-class UnifiedFilterCapabilities {
-  /// Genre and year, both of which ride on the neutral query's typed fields.
-  final bool supportsMetadataFilters;
-
-  /// `includeWatched: false` and `inProgressOnly`.
-  final bool supportsWatchFilter;
-
-  /// `watchedOnly`, which only Jellyfin executes.
-  final bool supportsWatchedFilter;
-
-  const UnifiedFilterCapabilities({
-    required this.supportsMetadataFilters,
-    required this.supportsWatchFilter,
-    this.supportsWatchedFilter = false,
-  });
-
-  /// The answer for an empty catalog: nothing participates, so nothing is
-  /// promised. Rendering a filter panel here would offer choices over no data.
-  static const none = UnifiedFilterCapabilities(supportsMetadataFilters: false, supportsWatchFilter: false);
-
-  /// Whether [state] can be executed by every participating backend.
-  bool supportsWatchState(UnifiedWatchFilter state) => switch (state) {
-    UnifiedWatchFilter.all => true,
-    UnifiedWatchFilter.unwatched || UnifiedWatchFilter.inProgress => supportsWatchFilter,
-    UnifiedWatchFilter.watched => supportsWatchFilter && supportsWatchedFilter,
-  };
-
-  @override
-  bool operator ==(Object other) =>
-      other is UnifiedFilterCapabilities &&
-      other.supportsMetadataFilters == supportsMetadataFilters &&
-      other.supportsWatchFilter == supportsWatchFilter &&
-      other.supportsWatchedFilter == supportsWatchedFilter;
-
-  @override
-  int get hashCode => Object.hash(supportsMetadataFilters, supportsWatchFilter, supportsWatchedFilter);
-}
-
-/// What [backends] can all honour.
-///
-/// Deliberately the intersection, not the union: a filter is a promise about
-/// the whole result list, and one backend ignoring it makes the promise false
-/// for every row that backend contributed. An empty set yields
-/// [UnifiedFilterCapabilities.none] rather than "everything is supported",
-/// because a vacuous truth here would light up a filter panel on a catalog with
-/// no libraries in it.
-UnifiedFilterCapabilities unifiedFilterCapabilitiesFor(Iterable<MediaBackend> backends) {
-  final all = backends.toSet();
-  if (all.isEmpty) return UnifiedFilterCapabilities.none;
-  return UnifiedFilterCapabilities(
-    supportsMetadataFilters: all.every(_executesMetadataFilters),
-    supportsWatchFilter: all.every(_executesWatchFilter),
-    supportsWatchedFilter: all.every(_executesWatchedFilter),
-  );
-}
-
-/// Whether [backend]'s client translates `genres`/`years` into its own request.
-///
-/// Verified against `library_query_translator.dart`, which is the one place
-/// either backend turns a [LibraryQuery] into wire parameters — Plex at
-/// `genre`/`year`, Jellyfin at `Genres`/`Years`. The Pleya Server client
-/// (`pleya_server_client/parts/browse.dart`) sends them as repeated protocol
-/// parameters, and the local folder client browses a filesystem with no such
-/// index.
-bool _executesMetadataFilters(MediaBackend backend) =>
-    backend == MediaBackend.plex || backend == MediaBackend.jellyfin || backend == MediaBackend.pleyaServer;
-
-/// Whether [backend]'s client translates `includeWatched: false` and
-/// `inProgressOnly`.
-bool _executesWatchFilter(MediaBackend backend) =>
-    backend == MediaBackend.plex || backend == MediaBackend.jellyfin || backend == MediaBackend.pleyaServer;
-
-/// Whether [backend]'s client translates `watchedOnly`. Jellyfin and Pleya
-/// Server (`watch=watched`): the Plex translator ignores it until a live server
-/// proves what `unwatched=0` returns.
-bool _executesWatchedFilter(MediaBackend backend) =>
-    backend == MediaBackend.jellyfin || backend == MediaBackend.pleyaServer;
 
 /// One catalog's current narrowing, as the user set it.
 ///
@@ -465,51 +363,6 @@ UnifiedCatalogQuery buildUnifiedCatalogQuery({
     years: filters.years.isEmpty ? null : (filters.years.toList()..sort()),
   );
 }
-
-/// One Leeftijd choice can stand for several raw ratings: Plex `gb/12` and
-/// Jellyfin `12` are both "12", and each only matches on its own server. The
-/// choice stores them joined by this, and [buildUnifiedCatalogQuery] sends
-/// all of them to every library.
-const String contentRatingValueSeparator = '|';
-
-/// What a stored Leeftijd value reads as: the rating without its country
-/// prefix, so `gb/12` and `12` are the same "12" in the panel, the rail tags
-/// and a Home row's name.
-String contentRatingLabel(String value) {
-  final first = value.split(contentRatingValueSeparator).first;
-  return first.substring(first.lastIndexOf('/') + 1);
-}
-
-/// Numeric ages in age order ("6" before "12"), named ratings after them.
-int compareContentRatingLabels(String a, String b) {
-  final ageA = int.tryParse(a);
-  final ageB = int.tryParse(b);
-  if (ageA != null && ageB != null) return ageA.compareTo(ageB);
-  if (ageA != null || ageB != null) return ageA != null ? -1 : 1;
-  return a.toLowerCase().compareTo(b.toLowerCase());
-}
-
-/// Whether the Leeftijd choice [label] is on. Compared by label, not by the
-/// stored value: which raw ratings a choice joins depends on which servers were
-/// online when it was ticked, so a stored `12|gb/12` is still the "12" a panel
-/// offers as plain `12` while the Plex server is offline.
-bool isContentRatingSelected(Set<String> stored, String label) =>
-    stored.any((value) => contentRatingLabel(value) == label);
-
-/// [stored] with the Leeftijd choice [label] switched: off removes every stored
-/// value that reads as [label], on adds [value] (the raw ratings the reachable
-/// servers name for it right now).
-Set<String> toggleContentRating(Set<String> stored, {required String label, required String value}) =>
-    isContentRatingSelected(stored, label)
-    ? {
-        for (final v in stored)
-          if (contentRatingLabel(v) != label) v,
-      }
-    : {...stored, value};
-
-/// The labels of [ratings], each once, in display order.
-List<String> contentRatingLabels(Iterable<String> ratings) =>
-    {for (final rating in ratings) contentRatingLabel(rating)}.toList()..sort(compareContentRatingLabels);
 
 /// A screen's `_restorePreferences` step, factored out so the TV and mobile
 /// catalog screens share one answer instead of two (CAT20).
