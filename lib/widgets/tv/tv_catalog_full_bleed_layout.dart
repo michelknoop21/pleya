@@ -55,6 +55,13 @@ class TvCatalogFullBleedLayout {
   /// Clear space between poster and ring, in base units.
   static const double ringGap = 2;
 
+  /// The tab in the poster's top right corner, flush with its edges: tick,
+  /// unwatched count and NEW dot share it, so they cannot collide. Base units.
+  static const double cornerTabPadding = 5;
+  static const double cornerTabRadius = 9;
+  static const double cornerTabGap = 4;
+  static const double cornerCountFontSize = 13;
+
   /// How long the footer takes to make way, and how far past the ring it goes.
   static const Duration footerFocusDuration = Duration(milliseconds: 160);
   static const double _focusFooterClearance = 1.75;

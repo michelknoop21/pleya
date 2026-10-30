@@ -200,6 +200,7 @@ class _Poster extends StatelessWidget {
           progressFraction: progressFraction,
           aspectRatio: TvCatalogLayout.posterAspectRatio,
           overlay: null,
+          topRightFlush: true,
         ),
       ),
     );

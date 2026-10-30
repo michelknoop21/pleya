@@ -26,6 +26,7 @@ import '../../i18n/strings.g.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../services/unified_catalog/unified_artwork_prefetcher.dart';
+import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import 'tv_catalog_card_grid.dart';
@@ -59,6 +60,7 @@ class TvUnifiedMediaGrid extends StatefulWidget {
     this.fullBleed = false,
     this.densityScale = 1,
     this.onEmptied,
+    this.activeSort = UnifiedCatalogSort.titleAsc,
   });
 
   final List<UnifiedMediaGroup> groups;
@@ -143,6 +145,9 @@ class TvUnifiedMediaGrid extends StatefulWidget {
 
   /// See [TvCatalogCardGrid.onEmptied].
   final VoidCallback? onEmptied;
+
+  /// See [TvUnifiedMediaCard.activeSort].
+  final UnifiedCatalogSort activeSort;
 
   @override
   State<TvUnifiedMediaGrid> createState() => TvUnifiedMediaGridState();
@@ -267,6 +272,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
           onNavigateRight: cell.onNavigateRight,
           onBack: cell.onBack,
           compact: widget.fullBleed,
+          activeSort: widget.activeSort,
         );
         final surface = widget.automationSurface;
         if (surface == null) return card;

@@ -13,6 +13,9 @@ library;
 import '../../i18n/strings.g.dart';
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
+import '../../services/unified_catalog/unified_catalog_filters.dart';
+import '../../services/unified_catalog/unified_catalog_query.dart';
+import '../../utils/formatters.dart';
 
 /// Year and first genre, as the mockups show and hoofdstuk 10.2 allows
 /// ("Jaar optioneel onder titel").
@@ -25,6 +28,30 @@ import '../../media/media_kind.dart';
 String tvCatalogMetaLine(MediaItem item) {
   final parts = <String>[if (item.year != null) '${item.year}', ?_seasonsOrGenre(item)];
   return parts.join('  ·  ');
+}
+
+/// The compact card's line (A-06c): the fact the page is sorted on, so a viewer
+/// can read the order off the wall. Title and release draw the year, the two
+/// date sorts the date. Without a date the year stands in, and without a year
+/// the line stays empty and keeps its height.
+///
+/// [lastViewedAt] comes from the group, which folds its sources; the item only
+/// knows its own server.
+String tvCatalogSortedMetaLine(MediaItem item, {required UnifiedCatalogSort sort, int? lastViewedAt}) {
+  final date = switch (sort.field) {
+    UnifiedCatalogSortField.title || UnifiedCatalogSortField.releaseDate => null,
+    UnifiedCatalogSortField.addedAt => _formatEpoch(item.addedAt),
+    UnifiedCatalogSortField.recentlyWatched => _formatEpoch(lastViewedAt ?? item.lastViewedAt),
+  };
+  return date ?? (item.year == null ? '' : '${item.year}');
+}
+
+/// Servers report epoch seconds; the same guard against milliseconds as
+/// `newBadgeLabel`.
+String? _formatEpoch(int? epoch) {
+  if (epoch == null || epoch <= 0) return null;
+  final ms = epoch > 1000000000000 ? epoch : epoch * 1000;
+  return formatAbbreviatedDate(DateTime.fromMillisecondsSinceEpoch(ms).toIso8601String());
 }
 
 /// The half of the line where a show is allowed to look unlike a film.

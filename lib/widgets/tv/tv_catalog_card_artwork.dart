@@ -24,7 +24,12 @@ class TvCatalogArtworkBox extends StatelessWidget {
     required this.progressFraction,
     required this.aspectRatio,
     required this.overlay,
+    this.topRightFlush = false,
   });
+
+  /// Puts [topRightMarker] in the very corner, for a marker that is a corner
+  /// tab of its own (A-06c).
+  final bool topRightFlush;
 
   final double aspectRatio;
   final Widget? overlay;
@@ -59,8 +64,32 @@ class TvCatalogArtworkBox extends StatelessWidget {
             child: ColoredBox(color: Colors.white.withValues(alpha: TvCatalogLayout.cardFocusArtworkLift)),
           ),
           if (overlay != null) Positioned(left: 0, right: 0, bottom: 0, child: overlay!),
-          if (topLeftMarker != null) Positioned(top: inset, left: inset, child: topLeftMarker!),
-          if (topRightMarker != null) Positioned(top: inset, right: inset, child: topRightMarker!),
+          if (topRightFlush)
+            // One row, so a long label gives way to the tab instead of running
+            // under it.
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (topLeftMarker != null)
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(inset, inset, inset, 0),
+                        child: Align(alignment: Alignment.topLeft, child: topLeftMarker),
+                      ),
+                    ),
+                  ?topRightMarker,
+                ],
+              ),
+            )
+          else ...[
+            if (topLeftMarker != null) Positioned(top: inset, left: inset, child: topLeftMarker!),
+            if (topRightMarker != null) Positioned(top: inset, right: inset, child: topRightMarker!),
+          ],
           if (bottomLeftMarker != null) Positioned(bottom: inset, left: inset, child: bottomLeftMarker!),
           if (fraction != null)
             Positioned(
@@ -153,18 +182,20 @@ class TvCatalogArtworkBadge extends StatelessWidget {
               ),
               SizedBox(width: TvCatalogLayout.badgeDotGap * scale),
             ],
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: TvCatalogLayout.badgeFontSize * scale,
-                fontWeight: FontWeight.w600,
-                // White rather than the theme ink: this capsule sits on artwork,
-                // and in the light theme the theme ink is near-black over a
-                // black capsule.
-                color: ink,
-                height: 1.1,
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: TvCatalogLayout.badgeFontSize * scale,
+                  fontWeight: FontWeight.w600,
+                  // White rather than the theme ink: this capsule sits on
+                  // artwork, and in the light theme the theme ink is near-black
+                  // over a black capsule.
+                  color: ink,
+                  height: 1.1,
+                ),
               ),
             ),
           ],
@@ -199,6 +230,63 @@ class TvCatalogWatchedBadge extends StatelessWidget {
           // White, like the badge beside it: both sit on artwork, where the
           // theme's ink is the wrong colour in light mode.
           color: Colors.white,
+        ),
+      ),
+    );
+  }
+}
+
+/// A dark tab in the top right corner of the compact card's poster, holding the
+/// watched tick, the unwatched count and the NEW dot (A-06c).
+///
+/// One tab because those three share a corner: as separate marks a new series
+/// with unwatched episodes would stack a dot on a count. Null without any of
+/// them, so a plain poster carries no empty tab.
+class TvCatalogCornerTab extends StatelessWidget {
+  const TvCatalogCornerTab({super.key, required this.scale, this.watched = false, this.unwatchedCount, this.newDot});
+
+  final double scale;
+  final bool watched;
+  final int? unwatchedCount;
+
+  /// The NEW dot, which draws itself: it decides whether it shows.
+  final Widget? newDot;
+
+  /// Whether a tab has anything to hold.
+  static bool holdsAnything({required bool watched, int? unwatchedCount, required bool isNew}) =>
+      watched || isNew || (unwatchedCount ?? 0) > 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = unwatchedCount ?? 0;
+    final dot = newDot;
+    final padding = TvCatalogFullBleedLayout.cornerTabPadding * scale;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: TvCatalogLayout.badgeFill),
+        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(TvCatalogFullBleedLayout.cornerTabRadius * scale)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(padding),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ?dot,
+            if (dot != null && count > 0) SizedBox(width: TvCatalogFullBleedLayout.cornerTabGap * scale),
+            if (watched)
+              Icon(Symbols.check_rounded, size: TvCatalogLayout.watchedIconSize * scale, color: Colors.white)
+            else if (count > 0)
+              Text(
+                count > 999 ? '999+' : '$count',
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: TvCatalogFullBleedLayout.cornerCountFontSize * scale,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  height: 1.1,
+                ),
+              ),
+          ],
         ),
       ),
     );

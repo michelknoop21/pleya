@@ -46,8 +46,11 @@ import 'package:provider/provider.dart';
 import '../../providers/local_library_provider.dart';
 
 import '../../i18n/strings.g.dart';
+import '../../media/media_item.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
+import '../../services/settings_service.dart';
+import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../utils/layout_constants.dart';
 import '../new_content_badge.dart';
 import '../optimized_media_image.dart';
@@ -63,6 +66,9 @@ export 'tv_catalog_card.dart' show tvCatalogPosterKey;
 /// `t.unifiedCatalog.sources(count: ...)` and breaks the first time a
 /// translation changes its wording.
 const Key tvUnifiedMediaCardSourceBadgeKey = ValueKey('tvUnifiedMediaCardSourceBadge');
+
+/// The compact card's corner tab, for the same reason.
+const Key tvUnifiedMediaCardCornerTabKey = ValueKey('tvUnifiedMediaCardCornerTab');
 
 class TvUnifiedMediaCard extends StatelessWidget {
   const TvUnifiedMediaCard({
@@ -81,6 +87,7 @@ class TvUnifiedMediaCard extends StatelessWidget {
     this.onBack,
     this.onFocusChange,
     this.compact = false,
+    this.activeSort = UnifiedCatalogSort.titleAsc,
   });
 
   final UnifiedMediaGroup group;
@@ -122,6 +129,29 @@ class TvUnifiedMediaCard extends StatelessWidget {
   /// series. Every other surface keeps the card it had.
   final bool compact;
 
+  /// What the page is sorted on, which the compact card's second line follows.
+  final UnifiedCatalogSort activeSort;
+
+  /// The compact card's corner: tick, or how many episodes are left, and NEW.
+  ///
+  /// Mutually exclusive by the same reasoning as the wrapped card's corner: a
+  /// title with nothing left to watch is not new. The count honours the same
+  /// preference as the phone card.
+  Widget? _cornerTab(MediaItem item, double scale) {
+    final watched = group.watchState.isWatched;
+    final showCount = SettingsService.instanceOrNull?.read(SettingsService.showUnwatchedCount) ?? true;
+    final count = !watched && showCount ? item.unwatchedCount : null;
+    final isNew = !watched && newBadgeLabel(item) != null;
+    if (!TvCatalogCornerTab.holdsAnything(watched: watched, unwatchedCount: count, isNew: isNew)) return null;
+    return TvCatalogCornerTab(
+      key: tvUnifiedMediaCardCornerTabKey,
+      scale: scale,
+      watched: watched,
+      unwatchedCount: count,
+      newDot: isNew ? NewContentDot(item: item, scale: scale) : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scale = TvLayoutConstants.scaleOf(context);
@@ -149,12 +179,10 @@ class TvUnifiedMediaCard extends StatelessWidget {
                 label: t.unifiedCatalog.sources(count: group.sources.length),
               )
             : null,
-        topRightMarker: group.watchState.isWatched
-            ? TvCatalogWatchedBadge(scale: scale)
-            : NewContentDot(item: item, scale: scale),
+        topRightMarker: _cornerTab(item, scale),
         progressFraction: resumeFractionFor(group),
         title: item.displayTitle,
-        meta: tvCatalogMetaLine(item),
+        meta: tvCatalogSortedMetaLine(item, sort: activeSort, lastViewedAt: group.watchState.lastViewedAt),
         onSelect: onSelect,
         onContextMenu: onContextMenu,
         focusNode: focusNode,

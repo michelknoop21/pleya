@@ -1094,6 +1094,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         fitScale: _densityScale,
         fullBleed: widget.fullBleed,
         densityScale: _densityScale,
+        activeSort: _preferences.sort,
         groups: snapshot.groups,
         hasMore: snapshot.hasMore,
         isLoadingMore: catalog.isLoadingMore,

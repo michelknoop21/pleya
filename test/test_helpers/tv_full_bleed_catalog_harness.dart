@@ -102,6 +102,19 @@ MediaItem fakeMovie(int i, {String? title, int? year, int? addedAt, int? lastVie
   viewCount: viewCount,
 );
 
+MediaItem fakeShow(int i, {required int leaves, required int viewed, int? addedAt}) => MediaItem(
+  id: 's$i',
+  backend: MediaBackend.plex,
+  kind: MediaKind.show,
+  title: 'S${i.toString().padLeft(3, '0')}',
+  serverId: 'nas',
+  serverName: 'nas',
+  year: 2020,
+  leafCount: leaves,
+  viewedLeafCount: viewed,
+  addedAt: addedAt,
+);
+
 class _Host extends StatefulWidget {
   const _Host({super.key, required this.coordinator});
 

@@ -5,8 +5,11 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:pleya/focus/focus_theme.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
+import 'package:pleya/services/unified_catalog/unified_catalog_query_store.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/widgets/tv/tv_catalog_card.dart';
@@ -34,6 +37,7 @@ Future<FullBleedHarness> _harness([int titles = 30]) =>
 
 void main() {
   FullBleedHarness.setUpAllTv();
+  setUpAll(() => initializeDateFormatting('en'));
 
   testWidgets('six by two whole cards on 1038 by 584, with the poster it measures', (tester) async {
     final h = await _harness();
@@ -264,6 +268,19 @@ void main() {
     expect(find.byType(TvCatalogHeaderBar), findsOneWidget);
     expect(find.byType(TvCatalogCompactCard), findsNothing);
     expect(find.byType(TvCatalogCard), findsWidgets);
+  });
+
+  testWidgets('the second line follows the sort the page runs on', (tester) async {
+    final added = DateTime.utc(2024, 3, 9, 12).millisecondsSinceEpoch ~/ 1000;
+    final h = await FullBleedHarness.create([for (var i = 0; i < 12; i++) fakeMovie(i, year: 2011, addedAt: added)]);
+    await UnifiedCatalogQueryStore.write(
+      h.catalog.query.kind,
+      UnifiedCatalogPreferences.defaults.copyWith(sort: UnifiedCatalogSort.recentlyAdded),
+    );
+    await h.pump(tester, canvas: _canvas);
+    await h.open(tester);
+    expect(find.text('Mar 9, 2024'), findsWidgets);
+    expect(find.text('2011'), findsNothing);
   });
 
   testWidgets('titles switched off keep the footer height', (tester) async {
