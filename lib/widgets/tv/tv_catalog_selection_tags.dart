@@ -18,6 +18,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../media/library_menu_definition.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../utils/home_custom_row_labels.dart';
 import '../../utils/language_codes.dart';
@@ -49,6 +50,10 @@ class TvCatalogSelectionTag {
 
 /// The selection as tags, filters first and the sort last.
 ///
+/// Every narrowing [UnifiedCatalogFilterSelection.itemFilterCount] counts has a
+/// tag here: a rail that says "3 active" over two tags reads as a bug.
+/// [capabilities] holds the names the servers gave their own filters.
+///
 /// [sourcesLabel] is the page's own phrasing of a source restriction ("3
 /// sources"), or null when every source takes part; the screen owns that string
 /// because only it knows how many libraries actually participated.
@@ -65,12 +70,15 @@ List<TvCatalogSelectionTag> tvCatalogSelectionTags({
   required UnifiedCatalogFilterSelection filters,
   required UnifiedCatalogSort sort,
   String? sourcesLabel,
+  UnifiedFilterCapabilities capabilities = UnifiedFilterCapabilities.none,
   int? overflowAfter = TvCatalogLayout.tagOverflowThreshold,
   bool omitDefaultSort = false,
 }) {
   final tags = <TvCatalogSelectionTag>[
     if (filters.watchState != UnifiedWatchFilter.all)
       TvCatalogSelectionTag(unifiedWatchFilterLabel(filters.watchState)),
+    if (filters.mediaFilter case final media?) TvCatalogSelectionTag(libraryQuickFilterLabel(media)),
+    if (filters.extraFilter case final key?) TvCatalogSelectionTag(_serverFilterLabel(capabilities.extraFilters, key)),
     // Sorted, so the same selection always produces the same row: the sets
     // behind these are unordered, and an order that changed between builds
     // would make a golden and a screenshot disagree for no reason.
@@ -78,7 +86,12 @@ List<TvCatalogSelectionTag> tvCatalogSelectionTags({
     for (final language in filters.audioLanguages.toList()..sort())
       TvCatalogSelectionTag(languageDisplayName(language) ?? language),
     for (final year in filters.years.toList()..sort()) TvCatalogSelectionTag('$year'),
+    for (final decade in filters.decades.toList()..sort()) TvCatalogSelectionTag('${decade}s'),
     for (final rating in contentRatingLabels(filters.officialRatings)) TvCatalogSelectionTag(rating),
+    // One per category, as the count has it. The category's name and not its
+    // values: on Plex those are ids.
+    for (final key in filters.serverFilters.keys.toList()..sort())
+      TvCatalogSelectionTag(_serverFilterLabel(capabilities.serverCategories, key)),
     if (sourcesLabel != null) TvCatalogSelectionTag(sourcesLabel),
   ];
 
@@ -89,6 +102,10 @@ List<TvCatalogSelectionTag> tvCatalogSelectionTags({
   if (omitDefaultSort && capped.isEmpty && sort == UnifiedCatalogPreferences.defaults.sort) return const [];
   return [...capped, TvCatalogSelectionTag(sortLabel(sort), muted: true)];
 }
+
+/// The name a server lists [key] under, or the key where it lists none.
+String _serverFilterLabel(List<LibraryServerFilter> listed, String key) =>
+    listed.where((filter) => filter.key == key).firstOrNull?.label ?? key;
 
 /// Draws [tags] on one line, or wrapped over several.
 class TvCatalogSelectionTagStrip extends StatelessWidget {

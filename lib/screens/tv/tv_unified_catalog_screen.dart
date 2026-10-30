@@ -1060,6 +1060,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     filters: _effectiveFilters,
     sort: _activeSort,
     sourcesLabel: _sourcesLabel(_effectiveFilters),
+    capabilities: _capabilities,
     overflowAfter: capped ? TvCatalogLayout.tagOverflowThreshold : null,
     omitDefaultSort: widget.fullBleed,
   );
