@@ -168,10 +168,9 @@ if [ "${tables:-0}" -ge 14 ]; then ok "schema gemigreerd ($tables tabellen)"; el
 #
 # watch_states en stream_sessions staan sinds PS-4 in het schema (DEC-049 en
 # DEC-051); users, sessions en library_permissions sinds PS-9, migratie 0007
-# (DEC-119, DEC-123). Alle vijf zijn daarom uit deze lijst gehaald. play_history
-# en play_sessions staan er nadrukkelijk nog wel in: die horen bij PS-9P, en
-# PS-9 mag daar niet van afhangen.
-forbidden="$($COMPOSE exec -T postgres psql -U pleya -d pleya -tAc "SELECT coalesce(string_agg(table_name, ','), '') FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('play_history','play_sessions','user_item_data','transcode_sessions','external_ids','metadata_candidates')" 2>/dev/null | tr -d '\r')"
+# (DEC-119, DEC-123); transcode_sessions sinds 0019 en play_history sinds 0020.
+# Alle zeven zijn daarom uit deze lijst gehaald.
+forbidden="$($COMPOSE exec -T postgres psql -U pleya -d pleya -tAc "SELECT coalesce(string_agg(table_name, ','), '') FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('play_sessions','user_item_data','external_ids','metadata_candidates')" 2>/dev/null | tr -d '\r')"
 if [ -z "$forbidden" ]; then ok "geen tabel uit een latere fase"; else fail "tabellen uit een latere fase: $forbidden"; fi
 
 setup_required="$(api /info | jq_field 'd["auth"]["setup_required"]')"
@@ -352,6 +351,26 @@ if [ "$(api /users "${SANNE_AUTH[@]}" | jq_field 'len(d["items"])')" = "1" ]; th
   ok "een member ziet in GET /users alleen zichzelf"
 else
   fail "een member ziet meer gebruikers dan zichzelf"
+fi
+
+# Activiteit van het huishouden (DEC-XXX): de owner keek hierboven $ITEM, zij
+# mag die film zien en krijgt zijn regel, tot de owner delen uitzet.
+if [ "$(api "/items/$ITEM/activity" "${SANNE_AUTH[@]}" | jq_field '[i["username"] for i in d["items"]]')" = "['verify']" ]; then
+  ok "een huisgenoot ziet wie een film keek"
+else
+  fail "de activiteit van de owner is niet zichtbaar voor een huisgenoot"
+fi
+if [ "$(api /users/me/activity-sharing "${AUTH[@]}" -X PUT -H 'Content-Type: application/json' \
+    -d '{"share_activity":false}' | jq_field 'd["share_activity"]')" = "False" ] && \
+   [ "$(api "/items/$ITEM/activity" "${SANNE_AUTH[@]}" | jq_field 'len(d["items"])')" = "0" ]; then
+  ok "de opt-out verbergt de owner voor een huisgenoot"
+else
+  fail "de opt-out werkte niet"
+fi
+if [ "$(api "/items/$ITEM/activity" "${AUTH[@]}" | jq_field 'd["items"][0]["is_self"]')" = "True" ]; then
+  ok "wie delen uitzet ziet zijn eigen regel nog"
+else
+  fail "de opt-out verbergt iemand voor zichzelf"
 fi
 
 # Haar sessie intrekken maakt haar token onmiddellijk ongeldig, en raakt de

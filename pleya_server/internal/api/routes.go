@@ -131,6 +131,11 @@ func (s *Server) routeTable() []route {
 		{"PUT " + p + "/users/me/memory", s.authenticated(s.handlePutMemory)},
 		{"POST " + p + "/users/me/memory/clear", s.authenticated(s.handleClearMemory)},
 
+		// De eigen opt-out op de activiteit van het huishouden (matrixregels 75 en
+		// 76). Elke rol, en altijd over de aanvrager: er staat geen id in het pad.
+		{"GET " + p + "/users/me/activity-sharing", s.authenticated(s.handleGetActivitySharing)},
+		{"PUT " + p + "/users/me/activity-sharing", s.authenticated(s.handleSetActivitySharing)},
+
 		// De persoonlijke laag (venster 6 deel 2, S20, matrixregels 52 tot en met 60).
 		// Alles klasse authenticated, over de aanvrager zelf; een item buiten de
 		// bibliotheken van de aanvrager is een 404.
@@ -166,6 +171,8 @@ func (s *Server) routeTable() []route {
 		{"DELETE " + p + "/transcode-sessions/{session_id}", s.authenticated(s.handleStopTranscodeSession)},
 		{"GET " + p + "/items/{item_id}", s.authenticated(s.handleItem)},
 		{"GET " + p + "/items/{item_id}/children", s.authenticated(s.handleChildren)},
+		// Wie in het huishouden dit item keek (matrixregel 74).
+		{"GET " + p + "/items/{item_id}/activity", s.authenticated(s.handleItemActivity)},
 		{"GET " + p + "/search", s.authenticated(s.handleSearch)},
 		{"GET " + p + "/hubs/{hub_id}", s.authenticated(s.handleHub)},
 		{"GET " + p + "/artwork/{artwork_id}", s.authenticated(s.handleArtwork)},

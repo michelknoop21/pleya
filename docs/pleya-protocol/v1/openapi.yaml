@@ -571,6 +571,66 @@ paths:
         "413": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /users/me/activity-sharing:
+    get:
+      tags: [users]
+      operationId: getActivitySharing
+      summary: Of de aanvrager zijn kijkactiviteit met het huishouden deelt.
+      description: |
+        Klasse `authenticated`, elke rol, altijd over de aanvrager zelf. Alleen
+        onder `capabilities.item_activity`. Staat naast `User` en niet erin: dit
+        schema gaat over de aanvrager, en `User` komt ook terug in `GET /users`
+        en bij elke beheerhandeling.
+      responses:
+        "200":
+          description: De eigen keuze.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ActivitySharing" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: |
+            `auth.user_not_found` als de gebruiker achter dit token niet meer
+            bestaat; `library.not_found` op een server zonder de vlag.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [users]
+      operationId: setActivitySharing
+      summary: Zet het delen van de eigen kijkactiviteit aan of uit.
+      description: |
+        Klasse `authenticated`, elke rol, altijd over de aanvrager zelf. Geldt
+        meteen en voor alles wat al in de geschiedenis staat. Uit haalt de
+        gebruiker weg bij `GET /items/{item_id}/activity` van anderen; zijn eigen
+        regel blijft, en `GET /watch-history` (klasse `admin`) verandert niet.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ActivitySharingRequest" }
+      responses:
+        "200":
+          description: De keuze zoals hij nu geldt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ActivitySharing" }
+        "400":
+          description: library.personal_invalid, met `details.field` als het veld ontbreekt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: |
+            `auth.user_not_found` als de gebruiker achter dit token niet meer
+            bestaat; `library.not_found` op een server zonder de vlag.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /users/{id}:
     patch:
       tags: [users]
@@ -2247,6 +2307,35 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /items/{item_id}/activity:
+    get:
+      tags: [library]
+      operationId: getItemActivity
+      summary: Wie in het huishouden dit item keek.
+      description: |
+        Klasse `authenticated`, alleen onder `capabilities.item_activity`. Een
+        item buiten de bibliotheken van de aanvrager is `404`, hetzelfde antwoord
+        als een item dat niet bestaat.
+
+        Eén regel per gebruiker, de laatste kijker eerst, uit `play_history`: een
+        afspeelsessie telt, alleen markeren als gezien niet. Een film of
+        aflevering telt zichzelf, een seizoen en een serie alles eronder.
+
+        De aanvrager ziet altijd zijn eigen regel. Een andere gebruiker staat
+        erbij wanneer hij delen niet heeft uitgezet en de bibliotheek nu nog mag
+        zien. Een `restricted` aanvrager ziet alleen zichzelf.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "200":
+          description: De activiteit, zonder sessies een lege lijst.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemActivity" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /search:
     get:
       tags: [library]
@@ -2886,6 +2975,13 @@ components:
         favorites: { type: boolean, default: false }
         ratings: { type: boolean, default: false }
         track_preferences: { type: boolean, default: false }
+        item_activity:
+          type: boolean
+          default: false
+          description: |
+            De server kent `GET /items/{item_id}/activity` en de opt-out onder
+            `/users/me/activity-sharing`. `ActivitySharingRequest` is gesloten,
+            dus een client stuurt die aanvraag pas wanneer deze vlag waar is.
         watch_state_ownership:
           type: boolean
           default: false
@@ -4075,6 +4171,65 @@ components:
       properties:
         items: { type: array, items: { $ref: "#/components/schemas/HistoryEntry" } }
         next_cursor: { type: [string, "null"] }
+
+    ItemActivityEntry:
+      type: object
+      required: [user_id, username, initials, is_self, last_watched_at, play_count, completed_items]
+      description: |
+        Eén gebruiker bij een item. Geen toestel, geen positie en geen
+        sessie-id: dit schema zegt wie iets keek en wanneer, en meer gaat een
+        huisgenoot niet aan.
+      properties:
+        user_id: { $ref: "#/components/schemas/Id" }
+        username: { type: string }
+        initials:
+          type: string
+          minLength: 1
+          maxLength: 2
+          description: Van de server, want het protocol kent geen avatar.
+        is_self:
+          type: boolean
+          description: True op de regel van de aanvrager.
+        last_watched_at:
+          $ref: "#/components/schemas/Timestamp"
+        play_count:
+          type: integer
+          minimum: 1
+          description: Aantal afspeelsessies, bij een serie of seizoen opgeteld.
+        completed_items:
+          type: integer
+          minimum: 0
+          description: |
+            Verschillende films of afleveringen die deze gebruiker heeft
+            uitgekeken, volgens `completed` uit de geschiedenis. Bij een film of
+            aflevering 0 of 1. Wie alleen wil zeggen wie iets heeft afgekeken
+            filtert hierop: een regel met 0 is begonnen en niet uitgekeken.
+
+    ItemActivity:
+      type: object
+      required: [items]
+      description: |
+        Ongepagineerd: het aantal regels is begrensd door het aantal gebruikers
+        van de server, net als bij `UserList`.
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ItemActivityEntry" }
+
+    ActivitySharing:
+      type: object
+      required: [share_activity]
+      properties:
+        share_activity:
+          type: boolean
+          description: Standaard waar. Onwaar verbergt de gebruiker voor anderen.
+
+    ActivitySharingRequest:
+      type: object
+      required: [share_activity]
+      additionalProperties: false
+      properties:
+        share_activity: { type: boolean }
 
     MetadataAttentionState:
       type: string
