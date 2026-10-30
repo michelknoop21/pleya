@@ -126,6 +126,7 @@ class TvUnifiedCatalogScreen extends StatefulWidget {
     this.restoreFrom = TvDestinationFocusMemory.empty,
     this.onRemember,
     this.initialFilterOverride,
+    this.fullBleed = false,
   });
 
   /// Built and owned by `UnifiedCatalogs` in the profile subtree, never here:
@@ -165,6 +166,13 @@ class TvUnifiedCatalogScreen extends StatefulWidget {
   /// 2026). A deliberate edit made *while* viewing the override still saves
   /// normally, the same as any other visit: only the initial seed is transient.
   final UnifiedCatalogPreferences? initialFilterOverride;
+
+  /// A-06c: the page is the grid, six by two on the whole window with the
+  /// compact card ([TvCatalogFullBleedLayout]). No heading, and UP from the
+  /// first row goes nowhere: the route opens under the collapsible bar and is
+  /// left with Menu. Set by the shell's Alle films and Alle series route and by
+  /// nothing else, so the screens that reuse this one keep their layout.
+  final bool fullBleed;
 
   @override
   State<TvUnifiedCatalogScreen> createState() => _TvUnifiedCatalogScreenState();
@@ -693,6 +701,9 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// one state [_leaveRailUpwards] exists to prevent for UP.
   void _railEdge() {}
 
+  /// UP off the first row of a full-bleed page: nothing is above it.
+  void _noExit() {}
+
   void _leaveRailUpwards() {
     if (_railExpanded) setState(() => _railExpanded = false);
     _focusSidebar();
@@ -830,6 +841,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   }
 
   Widget _buildPage() {
+    if (widget.fullBleed) return _buildContentArea();
     final pageScrolled = _pageScrolled;
     // Folded away while the remote is past the first row, and back as soon as
     // it enters the top navigation: the shell shows the bar then, and the
@@ -910,7 +922,8 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     );
   }
 
-  double _railLeading(double width) => TvCatalogRailScaffold.leadingFor(width, expanded: _railExpanded);
+  double _railLeading(double width) =>
+      widget.fullBleed ? 0 : TvCatalogRailScaffold.leadingFor(width, expanded: _railExpanded);
 
   List<TvCatalogSelectionTag> _selectionTags({bool capped = true}) => tvCatalogSelectionTags(
     filters: _effectiveFilters,
@@ -1009,6 +1022,8 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       return TvCatalogSkeletonGrid(
         key: tvCatalogSkeletonKey,
         reservedLeading: _railLeading(MediaQuery.sizeOf(context).width),
+        fullBleed: widget.fullBleed,
+        densityScale: _densityScale,
       );
     }
 
@@ -1075,15 +1090,20 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         onFocusedGroupChanged: (groupId) => _focusedGroupId = groupId,
         onFocusedRow: _pageScrolled == null ? null : _onFocusedRow,
         // Keep the active row whole while the next row peeks into view.
-        rowAligned: _pageScrolled != null,
+        rowAligned: widget.fullBleed || _pageScrolled != null,
         fitScale: _densityScale,
+        fullBleed: widget.fullBleed,
+        densityScale: _densityScale,
         groups: snapshot.groups,
         hasMore: snapshot.hasMore,
         isLoadingMore: catalog.isLoadingMore,
         onLoadMore: catalog.loadMore,
         onActivate: _activate,
         onContextMenu: _openContextMenu,
-        onExitTop: _focusSidebar,
+        // Explicit, not null: a card without a handler falls through to
+        // directional traversal, which would find the bar.
+        onExitTop: widget.fullBleed ? _noExit : _focusSidebar,
+        onEmptied: widget.fullBleed ? _openRail : null,
         onExitLeft: _openRail,
         // Menu on a card, but only while the rail is standing open: an open
         // surface answers Back before the shell's own chain does, the rule the

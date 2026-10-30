@@ -52,6 +52,7 @@ import '../../utils/layout_constants.dart';
 import '../new_content_badge.dart';
 import '../optimized_media_image.dart';
 import 'tv_catalog_card.dart';
+import 'tv_catalog_compact_card.dart';
 import 'tv_catalog_meta.dart';
 
 export 'tv_catalog_card.dart' show tvCatalogPosterKey;
@@ -79,6 +80,7 @@ class TvUnifiedMediaCard extends StatelessWidget {
     this.onNavigateRight,
     this.onBack,
     this.onFocusChange,
+    this.compact = false,
   });
 
   final UnifiedMediaGroup group;
@@ -116,25 +118,60 @@ class TvUnifiedMediaCard extends StatelessWidget {
 
   final ValueChanged<bool>? onFocusChange;
 
+  /// A-06c: draw [TvCatalogCompactCard], for the full-bleed Alle films and Alle
+  /// series. Every other surface keeps the card it had.
+  final bool compact;
+
   @override
   Widget build(BuildContext context) {
     final scale = TvLayoutConstants.scaleOf(context);
     final item = group.representativeSource.item;
     final serverId = group.representativeSource.serverId.value;
+    final artwork = TvCatalogArtworkFill(
+      child: OptimizedMediaImage(
+        client: clientFor?.call(serverId),
+        imagePath: item.thumbPath,
+        localFilePath: context.select<LocalLibraryProvider?, String?>(
+          (p) => p?.posterPath(item.serverId, item.thumbPath),
+        ),
+        fit: BoxFit.cover,
+        fallbackIcon: Symbols.movie_rounded,
+      ),
+    );
+
+    if (compact) {
+      return TvCatalogCompactCard(
+        width: width,
+        artwork: artwork,
+        topLeftMarker: group.hasMultipleSources
+            ? TvCatalogArtworkBadge(
+                key: tvUnifiedMediaCardSourceBadgeKey,
+                label: t.unifiedCatalog.sources(count: group.sources.length),
+              )
+            : null,
+        topRightMarker: group.watchState.isWatched
+            ? TvCatalogWatchedBadge(scale: scale)
+            : NewContentDot(item: item, scale: scale),
+        progressFraction: resumeFractionFor(group),
+        title: item.displayTitle,
+        meta: tvCatalogMetaLine(item),
+        onSelect: onSelect,
+        onContextMenu: onContextMenu,
+        focusNode: focusNode,
+        autofocus: autofocus,
+        onNavigateUp: onNavigateUp,
+        onNavigateDown: onNavigateDown,
+        onNavigateLeft: onNavigateLeft,
+        onNavigateRight: onNavigateRight,
+        onBack: onBack,
+        onFocusChange: onFocusChange,
+        semanticLabel: semanticLabelFor(group),
+      );
+    }
 
     return TvCatalogCard(
       width: width,
-      artwork: TvCatalogArtworkFill(
-        child: OptimizedMediaImage(
-          client: clientFor?.call(serverId),
-          imagePath: item.thumbPath,
-          localFilePath: context.select<LocalLibraryProvider?, String?>(
-            (p) => p?.posterPath(item.serverId, item.thumbPath),
-          ),
-          fit: BoxFit.cover,
-          fallbackIcon: Symbols.movie_rounded,
-        ),
-      ),
+      artwork: artwork,
       // Hoofdstuk 10.3: only above one known source, and never a server
       // name or logo.
       topLeftMarker: group.hasMultipleSources

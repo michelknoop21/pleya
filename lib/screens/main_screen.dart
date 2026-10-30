@@ -2536,21 +2536,19 @@ class _MainScreenState extends State<MainScreen>
 
   /// "Alles bekijken" from a Films or Series landing (DEC-064, DEC-068).
   ///
-  /// A nested route rather than a push on the profile navigator, because
-  /// hoofdstuk 33.5 and 33.6 draw the complete catalog with the top navigation
-  /// above it and the destination still lit — the shared shell is binding on
-  /// all eight references. The landing underneath stays mounted, so Back
-  /// returns to the row and the tile it was left on rather than reloading a
-  /// projection.
+  /// A nested route rather than a push on the profile navigator: the landing
+  /// underneath stays mounted, so Back returns to the row and the tile it was
+  /// left on rather than reloading a projection. A-06c replaced the persistent
+  /// bar of hoofdstuk 33.5 and 33.6 on this route with the collapsible one.
   void _openTvCompleteCatalog(TvDestinationId destination) {
     _openTvNestedRoute(
       destination,
       TvNestedRoute(
         id: 'tvCatalog_${destination.name}',
         screenKey: GlobalKey(debugLabel: 'tvCatalog_${destination.name}'),
-        // A-06b: the heading and the bar glide away once the remote is past
-        // the first row, and come back on the first row or in the bar.
-        topNav: TvTopNavPresentation.scrollAway,
+        // A-06c: the grid takes the whole window, so the bar is only there
+        // while it holds the focus. The route is left with Menu.
+        topNav: TvTopNavPresentation.collapsible,
         // Hoofdstuk 7.6, register I22/I23. The catalog is the one TV surface
         // that is torn down and rebuilt on a destination switch — every
         // destination *root* stays mounted in the `IndexedStack` and keeps its
@@ -2564,12 +2562,14 @@ class _MainScreenState extends State<MainScreen>
                 onManageServers: _manageServers,
                 restoreFrom: _tvNav.contentFocusFor(destination),
                 onRemember: (place) => _tvNav.rememberContentFocus(destination, place),
+                fullBleed: true,
               )
             : TvMoviesScreen(
                 catalogKey: _tvNav.nestedRoutesFor(destination).last.screenKey,
                 onManageServers: _manageServers,
                 restoreFrom: _tvNav.contentFocusFor(destination),
                 onRemember: (place) => _tvNav.rememberContentFocus(destination, place),
+                fullBleed: true,
               ),
       ),
     );

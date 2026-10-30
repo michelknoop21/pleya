@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
+import '../../focus/focus_theme.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
@@ -55,6 +56,9 @@ class TvUnifiedMediaGrid extends StatefulWidget {
     this.precache,
     this.reservedLeading = 0,
     this.automationSurface,
+    this.fullBleed = false,
+    this.densityScale = 1,
+    this.onEmptied,
   });
 
   final List<UnifiedMediaGroup> groups;
@@ -130,6 +134,15 @@ class TvUnifiedMediaGrid extends StatefulWidget {
   /// with its title as state, so a Verify scenario can read the order a sort
   /// produced. Null keeps the cards out of the automation tree.
   final String? automationSurface;
+
+  /// A-06c: six by two with the compact card, on [TvCatalogFullBleedLayout].
+  final bool fullBleed;
+
+  /// The density of a [fullBleed] grid, see [tvCatalogDensityScale].
+  final double densityScale;
+
+  /// See [TvCatalogCardGrid.onEmptied].
+  final VoidCallback? onEmptied;
 
   @override
   State<TvUnifiedMediaGrid> createState() => TvUnifiedMediaGridState();
@@ -208,7 +221,15 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       key: _gridKey,
       successorOf: _successorOf,
       itemIds: [for (final group in widget.groups) group.groupId],
-      cardHeight: (cardWidth) => TvCatalogLayout.cardHeight(cardWidth, scale),
+      cardHeight: (cardWidth) => widget.fullBleed
+          ? TvCatalogFullBleedLayout.cardHeight(cardWidth, scale)
+          : TvCatalogLayout.cardHeight(cardWidth, scale),
+      gridResolver: widget.fullBleed
+          ? (width, height) =>
+                TvCatalogFullBleedLayout.grid(width: width, height: height, scale: scale, density: widget.densityScale)
+          : null,
+      onEmptied: widget.onEmptied,
+      focusScale: widget.fullBleed ? TvCatalogFullBleedLayout.posterFocusScale : FocusTheme.fullCardFocusScale,
       controller: widget.controller,
       initialFocusedId: widget.initialFocusedGroupId,
       onFocusedIdChanged: widget.onFocusedGroupChanged,
@@ -245,6 +266,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
           onNavigateLeft: cell.onNavigateLeft,
           onNavigateRight: cell.onNavigateRight,
           onBack: cell.onBack,
+          compact: widget.fullBleed,
         );
         final surface = widget.automationSurface;
         if (surface == null) return card;
