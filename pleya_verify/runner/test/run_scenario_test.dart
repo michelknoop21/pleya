@@ -754,6 +754,9 @@ void main() {
       final manifest = File('${result.bundleDir.path}/manifest.json').readAsStringSync();
       expect(manifest, contains(RegExp(r'"offline": ?true')));
       expect(manifest, contains(RegExp(r'"offline": ?false')));
+      // What the app asked the second server is evidence too: without it a
+      // failing two-server run cannot show whether B was ever reached.
+      expect(File('${result.bundleDir.path}/fixture/requests-second.jsonl').existsSync(), isTrue);
     },
     timeout: const Timeout(Duration(seconds: 60)),
   );

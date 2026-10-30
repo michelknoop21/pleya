@@ -119,9 +119,15 @@ class LocalLibrarySync {
       // or by a server that predates the field) is asked again, also when the
       // rest of the row was retained unchanged.
       final storedFinal = client is! PleyaServerClient || item.raw?['pleyaLocalExternalIdsFinal'] == true;
-      if ((item.kind == MediaKind.movie || item.kind == MediaKind.show) &&
+      // Numbers the fresh list answer carries always win: a retained row keeps
+      // its old stored answer, which predates a match the server made since.
+      final fresh = externalIdsCarriedBy(candidate);
+      if (fresh != null) {
+        ids = fresh;
+        authoritative = true;
+      } else if ((item.kind == MediaKind.movie || item.kind == MediaKind.show) &&
           (item.raw?['pleyaLocalExternalIds'] == null || !storedFinal)) {
-        final listed = externalIdsCarriedBy(candidate) ?? externalIdsCarriedBy(item);
+        final listed = externalIdsCarriedBy(item);
         if (listed != null) {
           ids = listed;
           authoritative = true;

@@ -683,7 +683,8 @@ class PlexClient
   }
 
   @override
-  PlexMetadataDto _createTaggedMetadata(Map<String, dynamic> json) => _tagMetadata(PlexMetadataDto.fromJson(json));
+  PlexMetadataDto _createTaggedMetadata(Map<String, dynamic> json) =>
+      _tagMetadata(PlexMetadataDto.fromJsonWithGuids(json));
 
   PlexMetadataDto _createTaggedMetadataWithLibrary(
     Map<String, dynamic> json, {
@@ -691,7 +692,7 @@ class PlexClient
     String? librarySectionTitle,
   }) {
     return _tagMetadataWithLibrary(
-      PlexMetadataDto.fromJson(json),
+      PlexMetadataDto.fromJsonWithGuids(json),
       librarySectionID: _librarySectionIdFromJson(json) ?? librarySectionID,
       librarySectionTitle: _librarySectionTitleFromJson(json) ?? librarySectionTitle,
     );

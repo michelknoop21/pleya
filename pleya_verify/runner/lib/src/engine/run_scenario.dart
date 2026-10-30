@@ -34,16 +34,17 @@ bool _needsFixture(Scenario scenario) =>
     [...scenario.setup, ...scenario.steps].any((s) => _fixtureVerbs.contains(s.verb));
 
 /// A second fixture server, for a scenario with two servers at once (unified,
-/// DEC-168). Started only when a scenario names it, with its own server id so
+/// DEC-XXX). Started only when a scenario names it, with its own server id so
 /// the app sees two servers and not one twice.
 const Set<String> _secondFixtureVerbs = {'seed_second', 'fixture_mutate_second'};
 
 /// The server id the second fixture answers `/info` with.
 const String secondFixtureServerId = 'srv-2';
 
-bool _needsSecondFixture(Scenario scenario) => [...scenario.setup, ...scenario.steps].any(
-  (s) => _secondFixtureVerbs.contains(s.verb) || jsonEncode(s.args).contains('{{fixture_second'),
-);
+bool _needsSecondFixture(Scenario scenario) => [
+  ...scenario.setup,
+  ...scenario.steps,
+].any((s) => _secondFixtureVerbs.contains(s.verb) || jsonEncode(s.args).contains('{{fixture_second'));
 
 /// Runs a validated [Scenario] against [driver] end to end, dispatching
 /// `setup` then `steps` verbs in file order — there is no engine-injected
@@ -482,6 +483,11 @@ Future<ScenarioRunResult> runScenario({
       }
     }
     if (fixtureSecond != null) {
+      try {
+        bundle.writeFixtureRequests(await fixtureSecond.requestsSince(0), name: 'requests-second');
+      } catch (_) {
+        bundle.writeFixtureRequests(const [], name: 'requests-second');
+      }
       await fixtureSecond.stop();
     }
     if (fixture != null) {

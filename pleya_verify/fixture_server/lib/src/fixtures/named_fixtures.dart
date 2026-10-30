@@ -703,7 +703,7 @@ void _applyActivityActiveSessionV1(TautulliFakeServer tautulli) {
   );
 }
 
-/// One half of a two-server unified scenario (DEC-168). Side `a` and side `b`
+/// One half of a two-server unified scenario (DEC-XXX). Side `a` and side `b`
 /// both hold Severance under the same TMDB number, but with another title and
 /// year, so only identity can fold them into one card; each side also holds a
 /// Battlestar Galactica with its own number (the 1978 series and the 2004
@@ -711,14 +711,15 @@ void _applyActivityActiveSessionV1(TautulliFakeServer tautulli) {
 void _applyUnifiedPair(PleyaFakeServer server, {required String side}) {
   final fixture = 'unified.pair.$side.v1';
   server.resetCatalog();
+  // Side B is attached with `connections_seed`, never through /auth/setup. A
+  // server that still offers setup reads as signed out to the app, so B is a
+  // server whose owner already exists.
+  if (side == 'b') server.setupRequired = false;
 
   final libraryId = _mintId(server, fixture, 'library', 'shows');
   server.addLibrary(id: libraryId, title: side == 'a' ? 'Series' : 'Series NAS', kind: 'shows', itemCount: 2);
 
-  final severance = (
-    title: side == 'a' ? 'Severance' : 'Severance (Ontslagen)',
-    year: side == 'a' ? 2022 : 2021,
-  );
+  final severance = (title: side == 'a' ? 'Severance' : 'Severance (Ontslagen)', year: side == 'a' ? 2022 : 2021);
   final bsg = (year: side == 'a' ? 1978 : 2004, tmdb: side == 'a' ? 1 : 71);
 
   final showId = _mintId(server, fixture, 'show', 'severance');
@@ -760,4 +761,3 @@ void _applyUnifiedPair(PleyaFakeServer server, {required String side}) {
     externalIds: {'tmdb': bsg.tmdb},
   );
 }
-

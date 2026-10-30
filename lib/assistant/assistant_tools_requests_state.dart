@@ -205,9 +205,15 @@ Future<_RequestLibraryEvidence> _requestLibraryCopies(
     checkedClients[id] = client;
     try {
       var hits = await _requestRead(ctx, seerr, () async {
-        return isIdentityEligibleBackend(client.backend)
-            ? client.findAllByIdentity(identity)
-            : Future.value(<MediaItem>[]);
+        if (!isIdentityEligibleBackend(client.backend)) return <MediaItem>[];
+        try {
+          return await client.findAllByIdentity(identity);
+        } on IdentityLookupUnsupported {
+          // A server that cannot be asked by number (an older Pleya Server)
+          // proves nothing either way; the title page below decides, and a
+          // same-title row there still makes the answer unknown.
+          return <MediaItem>[];
+        }
       });
       if (ctx.userClient(id) != client) throw const AssistantToolError('not_allowed');
       final all = await _requestRead(ctx, seerr, client.fetchLibraries);

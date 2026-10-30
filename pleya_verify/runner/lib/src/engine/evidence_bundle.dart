@@ -55,8 +55,8 @@ class EvidenceBundle {
   /// Empty when the scenario never talked to a fixture server — still
   /// created, per the plan's "volledige bundel" requirement, rather than
   /// silently absent.
-  void writeFixtureRequests(List<Map<String, Object?>> requests) =>
-      File('${dir.path}/fixture/requests.jsonl').writeAsStringSync(_redactedJsonLines(requests));
+  void writeFixtureRequests(List<Map<String, Object?>> requests, {String name = 'requests'}) =>
+      File('${dir.path}/fixture/$name.jsonl').writeAsStringSync(_redactedJsonLines(requests));
 
   /// Redacts the decoded entry and *then* encodes it — never the encoded
   /// text. See [redactJson]: running the plain-text rules over JSON both

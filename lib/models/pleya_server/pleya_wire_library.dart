@@ -307,6 +307,16 @@ class PleyaExternalIds {
 
   bool get isEmpty => tmdb == null;
 
+  /// Whether [value] is what the contract allows: null, or an object whose
+  /// `tmdb` is absent, null or an integer of at least 1. A broken answer is not
+  /// reported, so it reads as unknown instead of as a final "no numbers".
+  static bool isWellFormed(Object? value) {
+    if (value == null) return true;
+    if (value is! Map<String, dynamic>) return false;
+    final tmdb = value['tmdb'];
+    return tmdb == null || (tmdb is int && tmdb > 0);
+  }
+
   factory PleyaExternalIds.fromJson(Map<String, dynamic> json) {
     // A number that is not a positive integer is not evidence. Dropping it is
     // safer than parsing it into a token that could collide with another one.
@@ -408,7 +418,7 @@ class PleyaItem {
       episodeCount: integerOrNull(json, 'episode_count'),
       watchedEpisodeCount: integerOrNull(json, 'watched_episode_count'),
       externalIds: externalIds is Map<String, dynamic> ? PleyaExternalIds.fromJson(externalIds) : PleyaExternalIds.none,
-      externalIdsReported: json.containsKey('external_ids'),
+      externalIdsReported: json.containsKey('external_ids') && PleyaExternalIds.isWellFormed(externalIds),
       artwork: artwork is Map<String, dynamic> ? PleyaArtwork.fromJson(artwork) : PleyaArtwork.none,
       versions: [for (final v in objectList(json['versions'], 'versions')) PleyaVersion.fromJson(v)],
       userState: userState is Map<String, dynamic> ? PleyaUserState.fromJson(userState) : null,

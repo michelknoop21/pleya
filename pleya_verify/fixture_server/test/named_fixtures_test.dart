@@ -88,6 +88,33 @@ void main() {
     expect(server.libraries, isEmpty);
   });
 
+  group('unified.pair.b.v1', () {
+    // Side B is attached with `connections_seed`, which never calls
+    // /auth/setup. A server that still offers setup reads as signed out to
+    // the app (`checkHealth` returns authError), so B must look set up.
+    test('reads as a server that is already set up, and refreshes the seeded token', () async {
+      final server = PleyaFakeServer(setupRequired: true, serverId: 'srv-2');
+      expect(applyNamedFixture(server, 'unified.pair.b.v1'), isTrue);
+      final info = await server.handle(http.Request('GET', Uri.parse('http://fixture/pleya/v1/info')));
+      expect(
+        ((jsonDecode(info.body) as Map<String, dynamic>)['auth'] as Map<String, dynamic>)['setup_required'],
+        isFalse,
+      );
+      final refreshed = await _post(server, '/pleya/v1/auth/refresh', {'refresh_token': 'rt-seeded'});
+      expect(refreshed.statusCode, 200);
+    });
+
+    test('side A still offers setup, for the normal sign-in flow', () async {
+      final server = PleyaFakeServer(setupRequired: true);
+      expect(applyNamedFixture(server, 'unified.pair.a.v1'), isTrue);
+      final info = await server.handle(http.Request('GET', Uri.parse('http://fixture/pleya/v1/info')));
+      expect(
+        ((jsonDecode(info.body) as Map<String, dynamic>)['auth'] as Map<String, dynamic>)['setup_required'],
+        isTrue,
+      );
+    });
+  });
+
   group('fixtureItemId', () {
     test('the same (fixture, kind, slug) always yields the same id', () {
       expect(fixtureItemId('f', 'k', 's'), fixtureItemId('f', 'k', 's'));

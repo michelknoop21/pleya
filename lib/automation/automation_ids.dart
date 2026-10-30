@@ -215,7 +215,7 @@ class AutomationIds {
 
   /// The "Bron" card on the iPhone detail of a title with more than one
   /// source; its state names the server the page is bound to, and a tap opens
-  /// the source picker to switch (unified, DEC-168).
+  /// the source picker to switch (unified, DEC-XXX).
   static const String mediaDetailSource = 'media-detail.source';
 
   /// Visible preparation feedback; each concurrent notice has its own instance.

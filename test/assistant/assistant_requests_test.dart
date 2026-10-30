@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/exceptions/identity_lookup_exceptions.dart';
+import 'package:pleya/media/media_backend.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:pleya/assistant/assistant_entitlement.dart';
@@ -327,6 +329,17 @@ class _LibraryServer extends find.FakeServer {
   @override
   Future<MediaItem?> fetchItem(String id) async =>
       libraries.values.expand((items) => items).where((item) => item.id == id).firstOrNull;
+}
+
+/// A Pleya Server that predates `external_id_lookup`: it cannot be asked by
+/// number, and says so by throwing, as the real client does.
+class _OldPleyaServer extends _LibraryServer {
+  _OldPleyaServer(super.id, {required super.libraries});
+  @override
+  MediaBackend get backend => MediaBackend.pleyaServer;
+  @override
+  Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async =>
+      throw const IdentityLookupUnsupported('no external_id_lookup');
 }
 
 /// Same capped-title/client-side matching contract as Plex and Jellyfin.
@@ -810,6 +823,33 @@ void main() {
       requests: AssistantRequestServices(client: () => seerr.client),
     );
   }
+
+  test('an older Pleya Server that cannot be asked by number does not hide the copy another server proved', () async {
+    final seerr = _Seerr();
+    final plex = _LibraryServer(
+      's',
+      libraries: {
+        'films': [find.fakeItem('m', 'The Matrix', year: 1999)],
+      },
+      ids: {'m': const ExternalIds(tmdb: 603)},
+    );
+    // No `external_id_lookup`: the real client throws Unsupported. The NAS has
+    // no row with this title, so its title page proves the absence anyway.
+    final nas = _OldPleyaServer('ps', libraries: {'films': []});
+    final context = find.findCtx([plex, nas], libraries: [find.fakeLib('s', 'films'), find.fakeLib('ps', 'films')]);
+    final ctx = AssistantToolContext(
+      servers: context.servers,
+      catalog: context.catalog,
+      requests: AssistantRequestServices(client: () => seerr.client),
+    );
+    final (_, model) = await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], context: ctx);
+    expect(model.toolResults.last, containsPair('status', 'already_available'));
+    expect(seerr.posts, isEmpty);
+  });
 
   test('a library copy arriving during confirmation prevents the POST', () async {
     final seerr = _Seerr();

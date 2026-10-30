@@ -271,6 +271,29 @@ void main() {
     expect(client.idLookups, 2, reason: 'no carried numbers: one lookup per title, as before');
   });
 
+  test('a retained row takes the numbers the fresh list answer carries, instead of its old stored answer', () async {
+    // A Plex row with the same updatedAt is kept as it was. When the server
+    // has matched the title since, the list answer carries the number; the
+    // old stored "no numbers" must not win over it.
+    const stamp = 1759276800;
+    client.rows = [film('a').copyWith(updatedAt: stamp)];
+    await LocalLibrarySync(store: store).syncLibrary(library, client);
+    expect(store.items.single.raw?['pleyaLocalExternalIds'], isNot(containsPair('tmdb', anything)));
+
+    client.rows = [
+      film('a').copyWith(
+        updatedAt: stamp,
+        raw: {
+          'Guid': [
+            {'id': 'tmdb://603'},
+          ],
+        },
+      ),
+    ];
+    await LocalLibrarySync(store: store).syncLibrary(library, client);
+    expect(store.items.single.raw?['pleyaLocalExternalIds'], containsPair('tmdb', 603));
+  });
+
   test('a timed out lookup does not fail the scan', () async {
     client.idsError = TimeoutException('slow');
 

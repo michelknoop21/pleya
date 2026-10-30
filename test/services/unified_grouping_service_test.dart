@@ -1,6 +1,6 @@
 /// Covers docs/qa/tvos-unified-edge-cases.md register C (C1-C24) at the
 /// grouping-outcome level — which sources actually end up merged — plus
-/// DEC-063's local-folder isolation (Pleya Server merges since DEC-168) and hoofdstuk 4.7/11.5/11.9's
+/// DEC-063's local-folder isolation (Pleya Server merges since DEC-XXX) and hoofdstuk 4.7/11.5/11.9's
 /// representative-selection and group-id contracts. Pure identity-primitive
 /// coverage (bucketing, tokens) lives in
 /// test/media/canonical_media_identity_test.dart.
@@ -136,7 +136,7 @@ void main() {
       expect(groups.single.sources, hasLength(2));
     });
 
-    test('AGG1/DEC-168: a Pleya Server source merges with a Plex source on the same TMDB number', () {
+    test('AGG1/DEC-XXX: a Pleya Server source merges with a Plex source on the same TMDB number', () {
       final duneA = serverACandidates().firstWhere((c) => c.item.id == 'a-dune-2021');
       final duneC = serverCCandidates().firstWhere((c) => c.item.id == 'c-dune-2021');
 
@@ -146,7 +146,7 @@ void main() {
       expect(groups.single.sources.map((s) => s.backend), containsAll([MediaBackend.plex, MediaBackend.pleyaServer]));
     });
 
-    test('DEC-168: two Pleya Server sources merge with each other on the same TMDB number', () {
+    test('DEC-XXX: two Pleya Server sources merge with each other on the same TMDB number', () {
       final item1 = MediaItem(
         id: 'ps-1',
         backend: MediaBackend.pleyaServer,

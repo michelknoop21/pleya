@@ -1,6 +1,6 @@
 name: ios.unified.two-servers
 target: ios-sim
-# Unified with two servers at once (DEC-168). Two Pleya-protocol fixture
+# Unified with two servers at once (DEC-XXX). Two Pleya-protocol fixture
 # servers, each with its own server id: A is signed in through the normal
 # sign-in flow, B is a connection that already exists (`connections_seed`).
 # Both hold Severance under TMDB 95396, under another title and year, and a
@@ -74,9 +74,12 @@ steps:
   - settle: 3000
   - tap: {id: "landing.view_all[series]"}
   - wait_until: {id: screen.catalog_series, timeout: 15000}
-  - wait_until: {id: "catalog.grid[series]", state: {complete: true}, timeout: 20000}
+  # B's library cannot be fetched, so its Battlestar Galactica 2004 drops out
+  # and Severance moves up to index 1 with only A as its source.
+  - wait_until: {id: "catalog.grid[series]", state: {count: 2, complete: true}, timeout: 20000}
+  - assert: {id: "catalog.grid.item[series.1]", state: {title: Severance, sources: 1}}
   - snapshot: 06-second-server-offline
-  - tap: {id: "catalog.grid.item[series.2]"}
+  - tap: {id: "catalog.grid.item[series.1]"}
   - wait_until: {id: screen.media_detail, timeout: 15000}
   - snapshot: 07-opens-on-the-server-that-is-up
 

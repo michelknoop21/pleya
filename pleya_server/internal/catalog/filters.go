@@ -86,15 +86,16 @@ func (f Filters) Fingerprint() string {
 	if f.YearTo != nil {
 		to = fmt.Sprint(*f.YearTo)
 	}
-	var external string
-	if f.ExternalID != nil {
-		external = fmt.Sprintf("%s:%d", f.ExternalID.Provider, f.ExternalID.Value)
-	}
-	sum := sha256.Sum256([]byte(strings.Join([]string{
-		external,
+	parts := []string{
 		norm(f.Genres), norm(years), from, to, string(f.Watch),
 		norm(f.ContentRatings), norm(f.AudioLanguages), norm(f.Resolutions),
-	}, "\x1e")))
+	}
+	// Alleen een filterset mét external_id krijgt er een deel bij, zodat een
+	// cursor van voor de upgrade geldig blijft.
+	if f.ExternalID != nil {
+		parts = append([]string{fmt.Sprintf("%s:%d", f.ExternalID.Provider, f.ExternalID.Value)}, parts...)
+	}
+	sum := sha256.Sum256([]byte(strings.Join(parts, "\x1e")))
 	return hex.EncodeToString(sum[:6])
 }
 

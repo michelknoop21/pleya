@@ -783,17 +783,20 @@ class PlexMetadataDto {
         }
       }
     }
-    final guidList = json['Guid'];
-    final guids = guidList is List ? List<Object?>.unmodifiable(guidList) : null;
-    if (clearLogoUrl == null && backgroundSquareUrl == null) {
-      final dto = PlexMetadataDto.fromJson(json);
-      return guids == null ? dto : dto.copyWith(guids: guids);
-    }
+    if (clearLogoUrl == null && backgroundSquareUrl == null) return PlexMetadataDto.fromJsonWithGuids(json);
     final enriched = Map<String, dynamic>.from(json);
     if (clearLogoUrl != null) enriched['clearLogo'] = clearLogoUrl;
     if (backgroundSquareUrl != null) enriched['backgroundSquare'] = backgroundSquareUrl;
-    final dto = PlexMetadataDto.fromJson(enriched);
-    return guids == null ? dto : dto.copyWith(guids: guids);
+    return PlexMetadataDto.fromJsonWithGuids(enriched);
+  }
+
+  /// [PlexMetadataDto.fromJson] plus the `Guid` array of an `includeGuids=1`
+  /// answer, which the generated parser does not read. Every list path (library
+  /// pages, search) goes through here, so their items carry their numbers.
+  factory PlexMetadataDto.fromJsonWithGuids(Map<String, dynamic> json) {
+    final dto = PlexMetadataDto.fromJson(json);
+    final guidList = json['Guid'];
+    return guidList is List ? dto.copyWith(guids: List<Object?>.unmodifiable(guidList)) : dto;
   }
 
   static Map<String, dynamic> _obfuscateJson(Map<String, dynamic> json) {

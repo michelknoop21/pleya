@@ -8,7 +8,7 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 
 Dezelfde serie op Plex en Pleya Server stond twee keer in Series, Films, Zoeken, Home en Verder kijken,
 omdat DEC-063 Pleya Server uit elke samenvoeging hield (`_neverMergedBackends`) en de server geen
-nummers doorgaf. DEC-168 (Roadmap A-07) vervangt dat voor Pleya Server; Pleya Share blijft apart.
+nummers doorgaf. DEC-XXX (Roadmap A-07) vervangt dat voor Pleya Server; Pleya Share blijft apart.
 
 - Server: `Item.external_ids {tmdb}` voor een geslaagde match, anders `null`; additief optioneel
   antwoordveld, openapi, protocol 9.4a, fixture, web-types opnieuw gegenereerd.

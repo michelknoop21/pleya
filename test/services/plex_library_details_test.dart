@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:pleya/database/app_database.dart';
+import 'package:pleya/media/unified/carried_external_ids.dart';
 import 'package:pleya/media/library_query.dart';
 import 'package:pleya/models/plex/plex_config.dart';
 import 'package:pleya/services/plex_api_cache.dart';
@@ -36,6 +37,60 @@ void main() {
       httpClient: MockClient(handler),
     );
   }
+
+  group('includeGuids answers keep their numbers through the real client', () {
+    // The library page and search map through `_createTaggedMetadata*`, not
+    // through `fromJsonWithImages`. Without the Guid array on those paths no
+    // Plex list item carries an id, and every title is looked up one by one.
+    final show = {
+      'ratingKey': '42',
+      'key': '/library/metadata/42/children',
+      'type': 'show',
+      'title': 'The Office (US)',
+      'year': 2005,
+      'Guid': [
+        {'id': 'tmdb://2316'},
+        {'id': 'imdb://tt0386676'},
+      ],
+    };
+
+    test('a library page', () async {
+      final client = makeClient(
+        (request) async => http.Response(
+          jsonEncode({
+            'MediaContainer': {
+              'totalSize': 1,
+              'Metadata': [show],
+            },
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        ),
+      );
+      addTearDown(client.close);
+      final page = await client.fetchLibraryContent('1', const LibraryQuery(limit: 100), requireTotalCount: true);
+      expect(externalIdsCarriedBy(page.items.single)?.tmdb, 2316);
+    });
+
+    test('a search answer', () async {
+      final client = makeClient(
+        (request) async => http.Response(
+          jsonEncode({
+            'MediaContainer': {
+              'SearchResult': [
+                {'score': 1.0, 'Metadata': show},
+              ],
+            },
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        ),
+      );
+      addTearDown(client.close);
+      final hits = await client.searchItems('office');
+      expect(externalIdsCarriedBy(hits.single)?.tmdb, 2316);
+    });
+  });
 
   for (final count in [null, 'broken', -1]) {
     test('strict request title page rejects unverified Plex total $count', () async {

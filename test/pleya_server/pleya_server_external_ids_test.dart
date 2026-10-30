@@ -113,6 +113,36 @@ void main() {
       }
     });
 
+    test('a broken value is not a final "no numbers": it reads as not reported, so it is asked again', () {
+      // The contract says `tmdb` is an integer of at least 1 and the object is
+      // an object or null. Anything else is a broken answer, and a broken answer
+      // stored as final would hide a later match for good.
+      for (final bad in <Object?>[
+        {'tmdb': 0},
+        {'tmdb': '438631'},
+        {'tmdb': 4.5},
+        'tmdb:438631',
+        [438631],
+      ]) {
+        final item = PleyaItem.fromJson({
+          'id': 'a',
+          'kind': 'movie',
+          'title': 'Dune',
+          'added_at': '2026-06-18T21:34:02Z',
+          'external_ids': bad,
+        });
+        expect(item.externalIdsReported, isFalse, reason: '$bad');
+      }
+      final noNumber = PleyaItem.fromJson({
+        'id': 'a',
+        'kind': 'movie',
+        'title': 'Dune',
+        'added_at': '2026-06-18T21:34:02Z',
+        'external_ids': {'tmdb': null},
+      });
+      expect(noNumber.externalIdsReported, isTrue, reason: 'a null number is the server saying it has none');
+    });
+
     test('an unknown provider key is ignored', () {
       final item = PleyaItem.fromJson({
         'id': 'a',
