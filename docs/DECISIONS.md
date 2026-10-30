@@ -5163,3 +5163,9 @@ selectie/off/burn in playbackplannen, met eigen capabilities, begrensde extracti
 cache-/rechtenbewijs en behoud van gedeelde voorkeuren. Dit opent uitsluitend het
 beschreven ondertitelvenster. Productie, merge en release blijven afzonderlijk.
 Nummer volgt bij integratie.
+
+## DEC-168: S15.9 eerst een afzonderlijk Plex-migratievoorstel afbakenen
+
+**Status:** geaccepteerd door Michel tijdens de gezamenlijke uitvoering, vastgelegd op 30 oktober 2026.
+
+Michel koos “Migratie eerst afbakenen”. Werk eerst de noodzakelijke scope, identiteit-/accountkoppeling, conflictregels, proefimport, herstelbaarheid en volgorde ten opzichte van S15.5 uit in een afzonderlijk voorstel. Dit is geen keuze om leeg te beginnen en geen vrijgave van PS-12 of een import. S15.9 blijft open totdat het voorstel en het definitieve besluit over de kijkgeschiedenis vaststaan. De bestaande PS-12-vrijgave na S15 moet vóór uitvoering expliciet met de S15.5-gate worden uitgelijnd; dit besluit verplaatst die vrijgave niet stilzwijgend. Productie, merge en release blijven afzonderlijk. Nummer volgt bij integratie.

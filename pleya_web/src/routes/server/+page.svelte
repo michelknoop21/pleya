@@ -1,14 +1,4 @@
 <script lang="ts">
-  /*
-   * Mijn Pleya, het serveroverzicht.
-   *
-   * Uitsluitend wat `GET /server` en `GET /info` dragen. Scans starten, jobs
-   * bekijken, opslag beheren en bibliotheken toevoegen hebben geen endpoint in
-   * dit protocol; dat zijn G6 en G7 en die hebben eerst een fase nodig. Er
-   * staat daarom ook geen knop die niets doet: DEC-046 zegt dat wat hier
-   * zichtbaar is via /pleya/v1 gaat, en wat er niet is wordt niet getekend.
-   * De indeling van beeld 11 (account, content, toestellen) is S8.6.
-   */
   import DataTable, { type Column } from '#lib/components/DataTable.svelte';
   import LanguagePicker from '#lib/components/LanguagePicker.svelte';
   import PageHeader from '#lib/components/PageHeader.svelte';
@@ -44,6 +34,9 @@
   <PageHeader title={t('server.title')} />
 
   <div class="stack">
+    {#if session.capabilities?.favorites}
+      <a class="btn btn--secondary" href="/server/favorites">{t('personal.favorites')}</a>
+    {/if}
     <!-- Mijn Pleya is de plek voor thema en taal: de topbalk heeft er geen ruimte voor. -->
     <Panel level={2}>
       {#snippet title()}<span id="server-theme">{t('settings.theme')}</span>{/snippet}

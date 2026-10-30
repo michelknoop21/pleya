@@ -60,3 +60,13 @@ Detailvervolg 30 oktober: Go-embed, echte synthetische NFO-data/versies. Afgeron
 | web-detail: movie@390 | 390×1140 | `.build/pleya-completion-evidence/web-detail/movie@390.png` |
 | web-detail: movie@320 | 320×1101 | `.build/pleya-completion-evidence/web-detail/movie@320.png` |
 | web-detail: season-page-two | 1280×900 | `.build/pleya-completion-evidence/web-detail/season-page-two.png` |
+
+Persoonlijke webacties 30 oktober: echte disposable Go-embedserver, vijf breedtes axe0/overloop0, beoordelingsdialoog en focus.
+
+| Scherm | Breedte | Bestand |
+| --- | --- | --- |
+| web-personal: rating@1920 | 1920 | `.build/pleya-completion-evidence/web-personal/rating@1920.png` |
+| web-personal: rating@1440 | 1440 | `.build/pleya-completion-evidence/web-personal/rating@1440.png` |
+| web-personal: rating@1280 | 1280 | `.build/pleya-completion-evidence/web-personal/rating@1280.png` |
+| web-personal: rating@390 | 390 | `.build/pleya-completion-evidence/web-personal/rating@390.png` |
+| web-personal: rating@320 | 320 | `.build/pleya-completion-evidence/web-personal/rating@320.png` |

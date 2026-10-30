@@ -48,7 +48,7 @@ Bron voor de scope:
 
 De slicetelling is op 29 oktober 2026 opnieuw afgeleid uit de bestaande taakstatussen; een slice met gereed én open werk telt als bezig. Dit voegt geen runtime- of releasebewijs toe.
 
-Per taak, en dat is de maat die telt: **162 taken, 84 gereed, 21 bezig, 57 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **162 taken, 84 gereed, 22 bezig, 56 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2, en S2.9 tot en met S2.11 (afleveringsnamen zonder `SxxExx`) zijn dat ook;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -358,8 +358,8 @@ is geen bewijs van gebouwde leesvoortgang of een reader.
 | S8.2 | Films- en Series-landing | `[~]` | C-05: eigen routes/navigatie, bestaande rijen per bibliotheek en filterdoorklikken aangesloten; geen Verder kijken buiten Home. Oude-serverpad zonder nieuwe aanvragen; alle bibliotheken behouden via expliciete selectie. 157 gerichte webtests en acht desktop/mobiele browserregressies groen, echte Films-genres/vijf breedtes axe0/overloop0. [Bewijs en grenzen](qa/2026-10-29-pleya-web-landings-report.md). Gevulde Series en NAS/volledige acceptatie blijven open. | 2026-10-29 |
 | S8.3 | Complete catalogus met filters en facetten | `[~]` | C-05: bestaande bibliotheekcatalogus gebruikt genre/jaar/kijkstatus/kwaliteit, tien sorteringen en bibliotheekbrede facetten via het bestaande contract. URL leidt de selectie; terug/vooruit, leeg resultaat/wissen en oude-servergedrag getest. Gedeelde dialoog ontsnapt nu aan pagina-stapellagen, zodat mobiele navigatie de knoppen niet bedekt. [Lokaal bewijs](qa/2026-10-29-pleya-web-catalog-report.md). Soortbrede catalogusingang en volledige acceptatie blijven open. | 2026-10-29 |
 | S8.4 | Zoeken gesectioneerd, lege staat met uitweg | `[ ]` | | |
-| S8.5 | Film- en seriedetail herschreven en gesplitst | `[~]` | C-05: bestaande metadata/credits, brede backdrop en smalle voorvertoning aangesloten; stabiele versiekeuze tot effectief playbackplan, onbekende/lege selectie geweigerd. Bestaande cursor houdt lange seizoenen bereikbaar; sectiefout bewaart metadata. 142 gerichte webtests en twaalf browserregressies tegen Go-embed groen; echte twee-versies-/102-afleveringenfixture. [Bewijs en resterende scope](qa/2026-10-30-pleya-web-detail-report.md). Persoonlijke acties, serie-hervatten en volledige acceptatie blijven open. | 2026-10-30 |
-| S8.6 | Mijn Pleya en staten | `[ ]` | | |
+| S8.5 | Film- en seriedetail herschreven en gesplitst | `[~]` | C-05: bestaande metadata/credits, brede backdrop en smalle voorvertoning aangesloten; stabiele versiekeuze tot effectief playbackplan, onbekende/lege selectie geweigerd. Bestaande cursor houdt lange seizoenen bereikbaar; sectiefout bewaart metadata. 142 gerichte webtests en twaalf browserregressies tegen Go-embed groen; echte twee-versies-/102-afleveringenfixture. [Bewijs en resterende scope](qa/2026-10-30-pleya-web-detail-report.md). Persoonlijke detailacties lokaal aangesloten, zie S8.6; serie-hervatten en volledige acceptatie blijven open. | 2026-10-30 |
+| S8.6 | Mijn Pleya en staten | `[~]` | C-05: favorieten vanuit Mijn Pleya via bestaande persoonlijke API, cursor/lege staat/fout/herhalen en accountisolatie. Persoonlijke detailacties onder servervlaggen; geen verzoeken op oudere server. [Bewijs](qa/2026-10-30-pleya-web-personal-report.md). Volledige Mijn Pleya-/geschiedenis-/downloadscope en acceptatie open. | 2026-10-30 |
 | S8.7 | PS-4E criteria 1, 2, 4, 5 gehaald | `[ ]` | | |
 
 ### S9 Web Boeken
@@ -434,7 +434,7 @@ is geen bewijs van gebouwde leesvoortgang of een reader.
 | S15.6 | PS-5-hardwareronde afgerond | `[ ]` | nog geen bewijs; OVERDUE sinds 25 sep 2026 en blokkeert de publieke clientrelease en de indiening bij App Review of Beta App Review met PS-5- of PS-9-gedrag en de eerste publieke release van Pleya Server, zie P7 | |
 | S15.7 | Merge naar `main`, NAS uitgerold | `[ ]` | | |
 | S15.8 | Tweede TestFlight-gate tegen de releasecandidate (vraag 62) | `[ ]` | | |
-| S15.9 | Besluit van Michel over PS-12 vóór S15.5: de kijkgeschiedenis van het huishouden migreren, of met een lege staat beginnen. Zonder PS-12 verliest de vervangingsgate de bestaande kijkstatus | `[ ]` | | |
+| S15.9 | Besluit van Michel over PS-12 vóór S15.5: de kijkgeschiedenis van het huishouden migreren, of met een lege staat beginnen. Zonder PS-12 verliest de vervangingsgate de bestaande kijkstatus | `[ ]` | Michel koos eerst een afzonderlijk [migratievoorstel afbakenen](pleya-server-plex-migration-proposal.md) ([DEC-168](DECISIONS.md)). Geen importvrijgave en geen keuze voor leeg beginnen; scope en volgorde met PS-12.0 vóór uitvoering expliciet uitlijnen. | 2026-10-30 |
 
 ### S16 MCP-beheerlaag
 

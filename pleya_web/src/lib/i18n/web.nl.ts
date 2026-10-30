@@ -18,6 +18,21 @@ import type { WebKey } from './web';
  */
 export const webNl = {
   ...webCatalogNl,
+  'personal.favorites': 'Favorieten',
+  'personal.emptyFavorites': 'Nog geen favorieten',
+  'personal.emptyFavoritesBody': 'Voeg een titel toe aan je favorieten op de detailpagina.',
+  'personal.unavailable': 'Deze server ondersteunt geen favorieten.',
+  'personal.addFavorite': 'Toevoegen aan favorieten',
+  'personal.removeFavorite': 'Verwijderen uit favorieten',
+  'personal.rate': 'Beoordelen',
+  'personal.rated': 'Jouw beoordeling: {rating}/10',
+  'personal.yourRating': 'Jouw beoordeling',
+  'personal.rating': 'Beoordeling',
+  'personal.noRating': 'Geen beoordeling',
+  'personal.save': 'Opslaan',
+  'personal.markWatched': 'Markeren als bekeken',
+  'personal.markUnwatched': 'Markeren als onbekeken',
+
   ...webOpsNl,
   ...webPlayerNl,
   'app.name': 'Pleya',

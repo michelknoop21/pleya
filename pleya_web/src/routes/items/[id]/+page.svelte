@@ -9,6 +9,7 @@
   import StateView from '#lib/components/StateView.svelte';
   import SkeletonPage from '#lib/components/SkeletonPage.svelte';
   import Select from '#lib/components/Select.svelte';
+  import ItemPersonalActions from '#lib/components/ItemPersonalActions.svelte';
   import VersionPanel from '#lib/components/VersionPanel.svelte';
   import { session } from '#lib/stores/session.svelte.js';
   import { describeError } from '#lib/api/errors.js';
@@ -171,6 +172,12 @@
               <a class="btn" href={playerHref(item.id, undefined, version?.id)}>{t('player.play')}</a>
             {/if}
           </div>
+        {/if}
+
+        {#if session.capabilities?.favorites || session.capabilities?.ratings || session.capabilities?.watch_state}
+          {#key item.id}
+            <ItemPersonalActions {item} onchange={updated => { if (item?.id === updated.id) item = updated; }} />
+          {/key}
         {/if}
 
         {#if versionOptions.length > 1}
