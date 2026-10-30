@@ -41,6 +41,7 @@ import '../media/server_capabilities.dart';
 import '../i18n/strings.g.dart';
 import '../models/pleya_server/pleya_wire.dart';
 import '../models/pleya_server/pleya_wire_library.dart';
+import '../models/pleya_server/pleya_wire_lists.dart';
 import '../models/pleya_server/pleya_wire_playback.dart';
 import '../utils/app_logger.dart';
 import '../utils/external_ids.dart';
@@ -73,6 +74,7 @@ part 'pleya_server_client/parts/browse.dart';
 part 'pleya_server_client/parts/search.dart';
 part 'pleya_server_client/parts/playback.dart';
 part 'pleya_server_client/parts/personal.dart';
+part 'pleya_server_client/parts/lists.dart';
 part 'pleya_server_client/parts/memory.dart';
 part 'pleya_server_client/parts/downloads.dart';
 part 'pleya_server_client/parts/unsupported.dart';
@@ -98,8 +100,8 @@ part 'pleya_server_client/parts/admin.dart';
 ///
 /// PS-3 brought libraries, browsing, children, hubs, search and artwork. PS-4
 /// adds direct play and watch state, with the ownership model from DEC-049
-/// behind it. Personal features and downloads have their own parts; playlists, collections
-/// and Live TV still answer through `_PleyaServerUnsupportedMethods`.
+/// behind it. Personal features, downloads, collections and playlists have
+/// their own parts; Live TV still answers through `_PleyaServerUnsupportedMethods`.
 /// Scans, jobs and user administration live in `_PleyaServerAdminMethods`.
 // The private fields below are assigned from named constructor parameters
 // rather than through initializing formals, because Dart has no private named
@@ -114,6 +116,7 @@ class PleyaServerClient
         _PleyaServerArtworkMethods,
         _PleyaServerPlaybackMethods,
         _PleyaServerPersonalMethods,
+        _PleyaServerListMethods,
         _PleyaServerDownloadMethods,
         _PleyaServerUnsupportedMethods,
         _PleyaServerAdminMethods,
@@ -339,17 +342,25 @@ class PleyaServerClient
   /// Re-read the signed-in user's role, so a promotion or demotion on the
   /// server reaches the client's authority checks without a re-login. Best
   /// effort: a failed read keeps the last known role, and the server checks
-  /// the role on every admin request anyway.
-  Future<void> _refreshRole() async {
+  /// the role on every admin request anyway. True when the role now held
+  /// is what the server just said, so a write that needs the current role
+  /// can refuse on false.
+  @override
+  Future<bool> _refreshRole() async {
     try {
       final response = await _authorizedGet('/users/me', timeout: MediaServerTimeouts.jellyfinProbe);
-      // The account is gone: whatever role it had no longer applies.
-      if (response.statusCode == 404) return _session.adoptRole('');
+      if (response.statusCode == 404) {
+        // The account is gone: whatever role it had no longer applies.
+        await _session.adoptRole('');
+        return true;
+      }
       final data = response.data;
-      if (response.statusCode != 200 || data is! Map<String, dynamic>) return;
+      if (response.statusCode != 200 || data is! Map<String, dynamic>) return false;
       await _session.adoptRole(PleyaUser.fromJson(data).role);
+      return true;
     } catch (e) {
       appLogger.d('PleyaServerClient: /users/me unavailable', error: e);
+      return false;
     }
   }
 

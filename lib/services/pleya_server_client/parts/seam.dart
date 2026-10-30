@@ -21,6 +21,11 @@ mixin _PleyaServerRequests {
   /// round-trip, and the answer would be a 404 the UI has to interpret.
   PleyaCapabilities get wireCapabilities;
 
+  bool get isOfflineMode;
+
+  /// Re-read the signed-in role from the server. True when that worked.
+  Future<bool> _refreshRole();
+
   Future<MediaServerResponse> _getSubtitle(String subtitleId, AbortController abort);
 
   Future<Map<String, String>> _downloadHeaders() async {

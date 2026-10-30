@@ -49,9 +49,9 @@ class PleyaServerCapabilityResolver {
     // state Pleya Server does not keep.
     serverSidePlayQueue: false,
 
-    // No playlist or collection endpoints. G1 in the replacement matrix: it
-    // needs a phase before it needs a flag.
-    serverSidePlaylists: false,
+    // S19: each list resource has its own flag and a real part behind it.
+    serverSidePlaylists: _offered(wire.playlists, implementedHere: true),
+    serverSideCollections: _offered(wire.collections, implementedHere: true),
 
     // PS-4 brought watch state, so these two have somewhere to write to.
     //

@@ -3,12 +3,14 @@ import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../media/media_library.dart';
 import '../media/media_part.dart';
+import '../media/media_playlist.dart';
 import '../media/media_role.dart';
 import '../media/media_stream.dart';
 import '../media/media_source_info.dart';
 import '../media/media_version.dart';
 import '../models/pleya_server/pleya_wire.dart';
 import '../models/pleya_server/pleya_wire_library.dart';
+import '../models/pleya_server/pleya_wire_lists.dart';
 import '../utils/resolution_label.dart';
 import '../utils/track_label_builder.dart';
 
@@ -181,6 +183,43 @@ class PleyaServerMappers {
   /// rows read. The contract carries only `parent_id`, so a caller that has the
   /// ancestors in hand passes them; one that has not leaves them null and the
   /// row renders with the ids alone rather than with a wrong title.
+  /// A collection as the app's list screens read it. `raw['is_owner']` carries
+  /// the server's per-collection write permission; see `isOwnCollection`.
+  static MediaItem collection(
+    PleyaCollection wire, {
+    required String serverId,
+    String? serverName,
+    String? libraryId,
+    String? libraryTitle,
+  }) => MediaItem(
+    id: wire.id,
+    backend: MediaBackend.pleyaServer,
+    kind: MediaKind.collection,
+    title: wire.title,
+    thumbPath: wire.artwork.isEmpty ? null : artworkPath(wire.artwork.first),
+    childCount: wire.itemCount,
+    addedAt: wire.createdAt.millisecondsSinceEpoch ~/ 1000,
+    raw: {'is_owner': wire.isOwner},
+    libraryId: libraryId,
+    libraryTitle: libraryTitle,
+    serverId: serverId,
+    serverName: serverName,
+  );
+
+  static MediaPlaylist playlist(PleyaPlaylist wire, {required String serverId, String? serverName}) => MediaPlaylist(
+    id: wire.id,
+    backend: MediaBackend.pleyaServer,
+    title: wire.title,
+    playlistType: 'video',
+    durationMs: wire.durationMs,
+    leafCount: wire.itemCount,
+    addedAt: wire.createdAt.millisecondsSinceEpoch ~/ 1000,
+    updatedAt: wire.updatedAt.millisecondsSinceEpoch ~/ 1000,
+    thumbPath: wire.artwork.isEmpty ? null : artworkPath(wire.artwork.first),
+    serverId: serverId,
+    serverName: serverName,
+  );
+
   static MediaItem mediaItem(
     PleyaItem wire, {
     required String serverId,

@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import 'fake_lists.dart';
 import 'fixture_clock.dart';
 import 'memory_fake_store.dart';
 import 'fixtures/sample_media.dart';
@@ -65,6 +66,23 @@ class PleyaFakeServer {
   bool playbackAudioSelectionCapability = false;
   bool embeddedSubtitlesCapability = false;
   bool playbackSubtitlesCapability = false;
+
+  /// S19: the collection and playlist routes of chapter 14b.
+  bool listsCapability = false;
+
+  /// What the routes of [listsCapability] hold.
+  late final FakeLists lists = FakeLists(
+    itemKind: (id) => items[id]?['kind'] as String?,
+    page: _page,
+    posterOf: (id) => (items[id]?['artwork'] as Map?)?['poster_id'] as String?,
+  );
+
+  /// The role `/users/me` answers for the single fixture identity. A test moves
+  /// it to play a demotion on the server.
+  String usersMeRole = 'owner';
+
+  /// A status `/users/me` answers instead, for a role that cannot be read.
+  int? usersMeFailureStatus;
 
   /// S20: favorites, ratings and remembered tracks. The fake keeps them per
   /// item id and records each call so a test can read what the app sent.
@@ -307,6 +325,10 @@ class PleyaFakeServer {
     embeddedSubtitlesCapability = false;
     playbackSubtitlesCapability = false;
     personalCapability = false;
+    listsCapability = false;
+    lists.clear();
+    usersMeRole = 'owner';
+    usersMeFailureStatus = null;
     assistantMemoryCapability = false;
     _memoryAccessUsers.clear();
     _memoryRefreshUsers.clear();
@@ -662,8 +684,9 @@ class PleyaFakeServer {
           'role': _memoryRoles[memoryUsername] ?? 'member',
         });
       }
+      if (usersMeFailureStatus case final status?) return _json(_error('server.internal'), status: status);
       // The old fixtures keep their original single owner identity.
-      return _json({'id': 'user-owner', 'username': _credentials.keys.firstOrNull ?? 'owner', 'role': 'owner'});
+      return _json({'id': 'user-owner', 'username': _credentials.keys.firstOrNull ?? 'owner', 'role': usersMeRole});
     }
     if (assistantMemoryCapability && (path == '/users/me/memory' || path == '/users/me/memory/clear')) {
       if (memoryUsername == null || !{'owner', 'admin', 'member'}.contains(_memoryRoles[memoryUsername] ?? 'member')) {
@@ -728,6 +751,10 @@ class PleyaFakeServer {
       return http.Response('', 204);
     }
 
+    if (listsCapability) {
+      final answer = lists.handle(request, path);
+      if (answer != null) return answer;
+    }
     if (personalCapability) {
       final personal = _personal(request, path);
       if (personal != null) return personal;
@@ -1001,6 +1028,7 @@ class PleyaFakeServer {
       if (playbackSubtitlesCapability) 'playback_subtitles': true,
       if (downloadsCapability) 'downloads': true,
       if (personalCapability) ...{'history': true, 'favorites': true, 'ratings': true, 'track_preferences': true},
+      if (listsCapability) ...{'collections': true, 'playlists': true},
     },
     'auth': {
       'methods': ['password'],

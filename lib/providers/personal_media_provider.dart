@@ -167,14 +167,17 @@ class PersonalMediaProvider extends ChangeNotifier with DisposableChangeNotifier
   }
 
   List<MediaLibrary> _collectionScopes() {
-    final seenJellyfinServers = <String>{};
+    final seenServerWide = <String>{};
     final scopes = <MediaLibrary>[];
     for (final library in _libraries.libraries) {
       final serverId = library.serverId;
       if (library.isShared || serverId == null) continue;
-      if (library.backend != MediaBackend.plex && library.backend != MediaBackend.jellyfin) continue;
-      if (_multiServer.getClientForServer(ServerId(serverId)) == null) continue;
-      if (library.backend == MediaBackend.jellyfin && !seenJellyfinServers.add(serverId)) continue;
+      final serverWide = library.backend == MediaBackend.jellyfin || library.backend == MediaBackend.pleyaServer;
+      if (library.backend != MediaBackend.plex && !serverWide) continue;
+      final client = _multiServer.getClientForServer(ServerId(serverId));
+      if (client == null) continue;
+      if (library.backend == MediaBackend.pleyaServer && !client.capabilities.serverSideCollections) continue;
+      if (serverWide && !seenServerWide.add(serverId)) continue;
       scopes.add(library);
     }
     return scopes;

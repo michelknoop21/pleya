@@ -28,6 +28,7 @@ import 'package:pleya/providers/watchlist_store.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/jellyfin_client.dart';
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/pleya_server_client.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/plex_client.dart';
 import 'package:pleya/services/watchlist/watchlist_repository.dart';
@@ -37,6 +38,8 @@ import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/media_context_menu.dart';
 import 'package:pleya/widgets/notice/notice_controller.dart';
 import 'package:provider/provider.dart';
+
+import '../pleya_server/pleya_fake_server.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -291,6 +294,78 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(t.collections.collection), findsOneWidget);
       expect(find.text(t.playlists.playlist), findsOneWidget);
+    });
+
+    group('on a Pleya Server (S19.4)', () {
+      Future<void> connect(WidgetTester tester, String role, {bool lists = true}) async {
+        await tester.runAsync(() async {
+          final server = PleyaFakeServer()
+            ..listsCapability = lists
+            ..usersCapability = true
+            ..usersMeRole = role;
+          final client = PleyaServerClient.create(
+            server.connection().copyWith(role: role),
+            httpClientFactory: server.asHttpClient,
+          );
+          await client.refreshCapabilities();
+          manager.debugRegisterClientForTesting(client);
+        });
+      }
+
+      final pleyaMovie = MediaItem(
+        id: 'movie-1',
+        backend: MediaBackend.pleyaServer,
+        kind: MediaKind.movie,
+        title: 'Sintel',
+        serverId: 'srv-1',
+      );
+      MediaItem pleyaCollection({required bool mine}) => MediaItem(
+        id: 'col-1',
+        backend: MediaBackend.pleyaServer,
+        kind: MediaKind.collection,
+        title: 'Klassiek',
+        serverId: 'srv-1',
+        raw: {'is_owner': mine},
+      );
+
+      testWidgets('the owner gets Add to with both, and deletes his collection', (tester) async {
+        await connect(tester, 'owner');
+        await openMenu(tester, pleyaCollection(mine: true));
+        expect(find.text(t.common.delete), findsOneWidget);
+        await tester.tapAt(Offset.zero);
+        await tester.pumpAndSettle();
+
+        await openMenu(tester, pleyaMovie);
+        await tester.tap(find.text(t.common.addTo));
+        await tester.pumpAndSettle();
+        expect(find.text(t.collections.collection), findsOneWidget);
+        expect(find.text(t.playlists.playlist), findsOneWidget);
+      });
+
+      testWidgets('an admin keeps playlists and gets no collection action', (tester) async {
+        await connect(tester, 'admin');
+        await openMenu(tester, pleyaCollection(mine: true));
+        expect(find.text(t.common.delete), findsNothing);
+        await tester.tapAt(Offset.zero);
+        await tester.pumpAndSettle();
+
+        await openMenu(tester, pleyaMovie);
+        await tester.tap(find.text(t.common.addTo));
+        await tester.pumpAndSettle();
+        expect(find.text(t.collections.collection), findsNothing);
+      });
+
+      testWidgets('the owner sees no delete on a collection of someone else', (tester) async {
+        await connect(tester, 'owner');
+        await openMenu(tester, pleyaCollection(mine: false));
+        expect(find.text(t.common.delete), findsNothing);
+      });
+
+      testWidgets('without the flag there is no Add to', (tester) async {
+        await connect(tester, 'owner', lists: false);
+        await openMenu(tester, pleyaMovie);
+        expect(find.text(t.common.addTo), findsNothing);
+      });
     });
   });
 

@@ -7,6 +7,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/watch_state_store.dart';
+import '../media/collection_ownership.dart';
 import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_item_types.dart';
@@ -251,6 +252,14 @@ class MediaContextMenuState extends State<MediaContextMenu> {
     final canTranscode = mediaClient?.capabilities.videoTranscoding ?? false;
     final canRemoveFromContinueWatching = mediaClient?.capabilities.continueWatchingRemoval ?? false;
     final canEditMetadata = isAdmin && supportsMetadataEdit(mediaClient, mediaKind);
+    // Collections have their own rule: a Pleya Server admin passes `isAdmin`'s
+    // neighbours but not this one, and another user's collection stays his.
+    final canManageCollections =
+        _itemServerId != null &&
+        multiServerProvider.serverManager.canManageCollections(ServerId(_itemServerId!)) &&
+        (mediaItem?.isOwnCollection ?? true);
+    final isPleyaWithLists =
+        itemBackend == MediaBackend.pleyaServer && (mediaClient?.capabilities.serverSidePlaylists ?? false);
 
     final isOfflineNow = context.read<OfflineModeProvider?>()?.isOffline ?? false;
     final watchlistProvider = context.read<WatchlistProvider?>();
@@ -288,7 +297,7 @@ class MediaContextMenuState extends State<MediaContextMenu> {
       }
 
       // A playlist is the user's own; a collection is canonical server data.
-      if (isPlaylist || isAdmin) {
+      if (isPlaylist || canManageCollections) {
         menuActions.add(
           _MenuAction(value: 'delete', icon: Symbols.delete_rounded, label: t.common.delete, destructive: true),
         );
@@ -402,9 +411,9 @@ class MediaContextMenuState extends State<MediaContextMenu> {
       }
 
       // Remove from Collection (only when viewing items within a collection).
-      // Plex-only — uses `removeFromCollection` API; Jellyfin's collection
-      // membership API isn't wired here yet.
-      if (isPlex && isAdmin && widget.collectionId != null) {
+      // Plex and Pleya Server: Jellyfin's collection membership API isn't
+      // wired here yet.
+      if ((isPlex || isPleyaWithLists) && canManageCollections && widget.collectionId != null) {
         menuActions.add(
           _MenuAction(
             value: 'remove_from_collection',
@@ -517,10 +526,9 @@ class MediaContextMenuState extends State<MediaContextMenu> {
         }
       }
 
-      // Add to... (for episodes, movies, shows, and seasons). Plex-only —
-      // uses `buildMetadataUri` + `addToPlaylist` / `addToCollection`. The
-      // Jellyfin item-add API is different and not wired here yet.
-      if (isPlex &&
+      // Add to... (for episodes, movies, shows, and seasons). Plex and Pleya
+      // Server: the Jellyfin item-add API is different and not wired here yet.
+      if ((isPlex || isPleyaWithLists) &&
           (mediaKind == MediaKind.episode ||
               mediaKind == MediaKind.movie ||
               mediaKind == MediaKind.show ||
@@ -734,7 +742,7 @@ class MediaContextMenuState extends State<MediaContextMenu> {
           break;
 
         case 'add_to':
-          await _showAddToSubmenu(context, canManageCollections: isAdmin);
+          await _showAddToSubmenu(context, canManageCollections: canManageCollections);
           break;
 
         case 'shuffle_play':
@@ -1101,13 +1109,14 @@ class MediaContextMenuState extends State<MediaContextMenu> {
         }
       }
 
-      if (libraryId == null || libraryId.isEmpty) {
+      // A Pleya Server collection spans the server, so it has no section to find.
+      if (client.backend != MediaBackend.pleyaServer && (libraryId == null || libraryId.isEmpty)) {
         if (context.mounted) {
           showErrorSnackBar(context, t.messages.unableToDetermineLibrarySection);
         }
         return;
       }
-      final resolvedLibraryId = libraryId;
+      final resolvedLibraryId = libraryId ?? '';
       if (!context.mounted) return;
 
       final result = await showScopedDialog<String>(
@@ -1758,7 +1767,8 @@ class _CollectionSelectionDialogState extends State<_CollectionSelectionDialog> 
   String? _errorMessage;
   int? _totalCount;
 
-  bool get _hasMore => _totalCount == null || _collections.length < _totalCount!;
+  int _fetchedCount = 0;
+  bool get _hasMore => _totalCount == null || _fetchedCount < _totalCount!;
 
   @override
   void initState() {
@@ -1794,17 +1804,20 @@ class _CollectionSelectionDialogState extends State<_CollectionSelectionDialog> 
       while (mounted && _hasMore) {
         final page = await widget.client.fetchCollectionsPage(
           widget.libraryId,
-          start: _collections.length,
+          start: _fetchedCount,
           size: _pageSize,
           abort: _abortController,
         );
         if (!mounted) return;
+        // Offer only collections a write can land on.
+        final own = page.items.where((collection) => collection.isOwnCollection).toList();
         setState(() {
-          _collections.addAll(page.items);
+          _collections.addAll(own);
+          _fetchedCount += page.items.length;
           _totalCount = page.totalCount;
           _applyFilter(_filterController.text);
         });
-        if (_filterController.text.isEmpty || page.items.isEmpty) break;
+        if (page.items.isEmpty || (_filterController.text.isEmpty && own.isNotEmpty)) break;
       }
       if (!mounted) return;
       setState(() {

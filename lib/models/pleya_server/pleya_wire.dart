@@ -156,6 +156,8 @@ class PleyaCapabilities {
     this.favorites = false,
     this.ratings = false,
     this.trackPreferences = false,
+    this.collections = false,
+    this.playlists = false,
     this.assistantMemory = false,
     this.transcode = false,
     this.downloads = false,
@@ -199,6 +201,13 @@ class PleyaCapabilities {
   final bool favorites;
   final bool ratings;
   final bool trackPreferences;
+
+  /// S19, chapter 14b: the `/collections` resource.
+  final bool collections;
+
+  /// S19, chapter 14b: the `/playlists` resource.
+  final bool playlists;
+
   final bool assistantMemory;
   final bool transcode;
   final bool downloads;
@@ -257,6 +266,8 @@ class PleyaCapabilities {
     favorites: booleanOr(json, 'favorites', orElse: false),
     ratings: booleanOr(json, 'ratings', orElse: false),
     trackPreferences: booleanOr(json, 'track_preferences', orElse: false),
+    collections: booleanOr(json, 'collections', orElse: false),
+    playlists: booleanOr(json, 'playlists', orElse: false),
     assistantMemory: booleanOr(json, 'assistant_memory', orElse: false),
     transcode: booleanOr(json, 'transcode', orElse: false),
     downloads: booleanOr(json, 'downloads', orElse: false),

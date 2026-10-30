@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../media/collection_ownership.dart';
 import '../media/ids.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
@@ -219,9 +220,11 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
   /// delete one or change its membership, and nobody else sees the actions.
   /// Read during build and subscribed, so a role change (rebind or health
   /// probe) shows or hides the actions without leaving the screen.
-  bool get _canManageCollection => context.select<MultiServerProvider, bool>(
-    (p) => p.serverManager.canManageServerMetadata(ServerId(widget.collection.serverId ?? mediaClient.serverId)),
-  );
+  bool get _canManageCollection =>
+      widget.collection.isOwnCollection &&
+      context.select<MultiServerProvider, bool>(
+        (p) => p.serverManager.canManageCollections(ServerId(widget.collection.serverId ?? mediaClient.serverId)),
+      );
 
   Future<void> _deleteCollection() async {
     final confirmed = await showDeleteConfirmation(

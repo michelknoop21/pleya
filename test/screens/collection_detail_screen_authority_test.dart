@@ -77,7 +77,7 @@ void main() {
     manager.dispose();
   });
 
-  Future<TvCollectionScreen> pumpScreen(WidgetTester tester) async {
+  Future<TvCollectionScreen> pumpScreen(WidgetTester tester, {Map<String, dynamic>? raw}) async {
     await tester.pumpWidget(
       TranslationProvider(
         child: ChangeNotifierProvider<MultiServerProvider>.value(
@@ -91,6 +91,7 @@ void main() {
                 kind: MediaKind.collection,
                 title: 'Blender',
                 serverId: 'nas',
+                raw: raw,
               ),
             ),
           ),
@@ -107,6 +108,13 @@ void main() {
     expect(screen.onDelete, isNull);
     expect(screen.onRemoveItem, isNull);
     expect(find.text(t.common.delete), findsNothing);
+  });
+
+  testWidgets('owner gets no action on a collection the server says is someone else\'s', (tester) async {
+    manager.canManage = true;
+    final screen = await pumpScreen(tester, raw: const {'is_owner': false});
+    expect(screen.onDelete, isNull);
+    expect(screen.onRemoveItem, isNull);
   });
 
   testWidgets('owner gets delete and remove-from-collection', (tester) async {

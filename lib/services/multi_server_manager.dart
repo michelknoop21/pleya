@@ -253,6 +253,7 @@ class MultiServerManager {
   /// server) is refused.
   void _wireServerAuthority(ServerAuthorityGuard client, ServerId serverId) {
     client.canManageServerMetadata = () => identical(_clients[serverId], client) && canManageServerMetadata(serverId);
+    client.canManageCollections = () => identical(_clients[serverId], client) && canManageCollections(serverId);
     client.canAdministerServer = () => identical(_clients[serverId], client) && canAdministerServer(serverId);
   }
 
@@ -377,8 +378,8 @@ class MultiServerManager {
   ///     holds metadata rights server-side, so every admin counts as owner
   ///     (owner decision, 25 Sep 2026). A borrowed row never inherits it.
   ///   - Pleya Server: `false`. The client has no canonical metadata write
-  ///     path there; server administration (scans, jobs, users) goes
-  ///     through [canAdministerServer] instead.
+  ///     path there; collections go through [canManageCollections], server
+  ///     administration (scans, jobs, users) through [canAdministerServer].
   ///   - A borrowed connection (any backend): `false`.
   ///   - Unknown server: `false`.
   bool canManageServerMetadata(ServerId serverId) {
@@ -392,6 +393,25 @@ class MultiServerManager {
       return client.connection.isAdministrator;
     }
     return false;
+  }
+
+  /// May the active profile manage canonical collections on [serverId]:
+  /// create one, change its membership, delete it?
+  ///
+  ///   - Plex, Jellyfin, Emby: exactly [canManageServerMetadata].
+  ///   - Pleya Server: the signed-in role is `owner`. An admin passes
+  ///     [canAdministerServer] and not this one, and a member keeps his own
+  ///     personal playlists, which are not canonical and have no such check.
+  ///   - A borrowed connection (any backend): `false`.
+  ///   - Unknown server: `false`.
+  ///
+  /// Reads the last known role. The client re-reads the role right before a
+  /// Pleya Server write.
+  bool canManageCollections(ServerId serverId) {
+    if (_restrictedServerIds.contains(serverId)) return false;
+    final client = _clients[serverId];
+    if (client is PleyaServerClient) return client.connection.isServerOwner;
+    return canManageServerMetadata(serverId);
   }
 
   /// May the active profile administer [serverId]: scans, jobs, users and

@@ -29,6 +29,8 @@ void main() {
     bool realtime = false,
     bool users = false,
     bool trackPreferences = false,
+    bool collections = false,
+    bool playlists = false,
   }) => PleyaCapabilities(
     browse: browse,
     search: search,
@@ -41,6 +43,8 @@ void main() {
     realtime: realtime,
     users: users,
     trackPreferences: trackPreferences,
+    collections: collections,
+    playlists: playlists,
   );
 
   test('client downloads follow the server flag independently from server-side sync', () {
@@ -122,12 +126,22 @@ void main() {
     expect(tracks.serverFavorites, isFalse);
   });
 
+  test('each list resource follows its own flag', () {
+    final collections = PleyaServerCapabilityResolver.resolve(caps(collections: true));
+    expect(collections.serverSideCollections, isTrue);
+    expect(collections.serverSidePlaylists, isFalse);
+    final playlists = PleyaServerCapabilityResolver.resolve(caps(playlists: true));
+    expect(playlists.serverSidePlaylists, isTrue);
+    expect(playlists.serverSideCollections, isFalse);
+  });
+
   group('before /info has answered', () {
     test('the client claims nothing', () {
       const unknown = PleyaServerCapabilityResolver.unknown;
       expect(unknown.videoTranscoding, isFalse, reason: 'the ServerCapabilities default is true and would be a lie');
       expect(unknown.liveTv, isFalse);
       expect(unknown.serverSidePlaylists, isFalse);
+      expect(unknown.serverSideCollections, isFalse);
       expect(unknown.serverFavorites, isFalse);
       expect(unknown.richMetadataEdit, isFalse);
       expect(unknown.alphaBar, AlphaBarMode.none);
@@ -142,6 +156,7 @@ void main() {
       expect(resolved.videoTranscoding, isFalse);
       expect(resolved.serverSidePlayQueue, isFalse);
       expect(resolved.serverSidePlaylists, isFalse);
+      expect(resolved.serverSideCollections, isFalse);
       expect(resolved.liveTv, isFalse);
       expect(resolved.liveTvDvr, isFalse);
       expect(resolved.serverSideSync, isFalse);

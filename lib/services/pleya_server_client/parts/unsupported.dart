@@ -14,8 +14,8 @@ part of '../../pleya_server_client.dart';
 ///   * a write that cannot apply returns `false` or does nothing, because
 ///     "operation impossible" is explicitly not the same as "server error".
 ///
-/// The canonical writes below (library refresh, collections, media delete)
-/// are no-ops, so they skip [ServerAuthorityGuard]. The day one of them lifts
+/// The canonical write below (media delete) is a no-op, so it skips
+/// [ServerAuthorityGuard]. The day one lifts
 /// out of here into a real part file, it asserts the guard before its first
 /// request, like the admin part does: `assertCanManageServerMetadata()` for
 /// metadata (owner only), `assertCanAdministerServer()` for administration,
@@ -72,71 +72,6 @@ mixin _PleyaServerUnsupportedMethods {
   Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async => const [];
 
   Future<ExternalIds> fetchExternalIds(String itemId) async => const ExternalIds();
-
-  // ── Playlists and collections: G1, no phase yet ──
-
-  Future<List<MediaPlaylist>> fetchPlaylists({String playlistType = 'video', bool? smart}) async => const [];
-
-  Future<LibraryPage<MediaPlaylist>> fetchPlaylistsPage({
-    String playlistType = 'video',
-    bool? smart,
-    int? start,
-    int? size,
-    AbortController? abort,
-  }) async => const LibraryPage(items: [], totalCount: 0);
-
-  Future<MediaPlaylist?> fetchPlaylistMetadata(String id) async => null;
-
-  Future<List<MediaItem>> fetchPlaylistItems(String id, {int offset = 0, int limit = 100}) async => const [];
-
-  Future<LibraryPage<MediaItem>> fetchPlaylistPage(String id, {int? start, int? size, AbortController? abort}) async =>
-      const LibraryPage(items: [], totalCount: 0);
-
-  Future<MediaPlaylist?> createPlaylist({required String title, required List<MediaItem> items}) async => null;
-
-  Future<bool> addToPlaylist({required String playlistId, required List<MediaItem> items}) async => false;
-
-  Future<bool> deletePlaylist(MediaPlaylist playlist) async => false;
-
-  Future<bool> movePlaylistItem({
-    required String playlistId,
-    required MediaItem item,
-    required int newIndex,
-    required MediaItem? afterItem,
-  }) async => false;
-
-  Future<bool> removeFromPlaylist({required String playlistId, required MediaItem item}) async => false;
-
-  Future<List<MediaItem>> fetchCollections(String libraryId) async => const [];
-
-  Future<LibraryPage<MediaItem>> fetchCollectionsPage(
-    String libraryId, {
-    int? start,
-    int? size,
-    AbortController? abort,
-  }) async => const LibraryPage(items: [], totalCount: 0);
-
-  Future<LibraryPage<MediaItem>> fetchCollectionPage(
-    String collectionId, {
-    int? start,
-    int? size,
-    String? libraryId,
-    String? libraryTitle,
-    AbortController? abort,
-  }) async => const LibraryPage(items: [], totalCount: 0);
-
-  Future<String?> createCollection({
-    required String libraryId,
-    required String title,
-    required List<MediaItem> items,
-    MediaKind? itemKind,
-  }) async => null;
-
-  Future<bool> addToCollection({required String collectionId, required List<MediaItem> items}) async => false;
-
-  Future<bool> removeFromCollection({required String collectionId, required MediaItem item}) async => false;
-
-  Future<bool> deleteCollection(MediaItem collection) async => false;
 
   /// Media mounts are read-only from v1 on, by design and by threat model.
   /// This is not a missing phase; it is a decision.
