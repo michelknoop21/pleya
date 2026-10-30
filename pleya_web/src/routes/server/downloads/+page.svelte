@@ -8,7 +8,7 @@
   import StatusPill, { type PillTone } from '#lib/components/StatusPill.svelte';
   import { personalApi } from '#lib/api/personal.js';
   import { describeError } from '#lib/api/errors.js';
-  import type { Download, Item } from '#lib/api/types.js';
+  import type { Download, Item, Library } from '#lib/api/types.js';
   import { session } from '#lib/stores/session.svelte.js';
   import { formatBytes, formatDate } from '#lib/util/format.js';
   import { t } from '#lib/i18n/index.js';
@@ -23,7 +23,14 @@
     failed: { label: () => t('downloads.failed'), tone: 'err' }
   };
 
+  const RIGHTS: Record<string, { label: () => string; tone: PillTone }> = {
+    view: { label: () => t('downloads.rightView'), tone: 'idle' },
+    download: { label: () => t('downloads.rightDownload'), tone: 'ok' },
+    manage: { label: () => t('downloads.rightManage'), tone: 'ok' }
+  };
+
   let downloads = $state<Download[]>([]);
+  let libraries = $state<Library[]>([]);
   let items = $state<Record<string, Item | null>>({});
   let loading = $state(true);
   let error = $state<string | null>(null);
@@ -34,6 +41,7 @@
   let api: ReturnType<typeof personalApi>;
 
   const ready = $derived(downloads.filter((download) => download.sha256));
+  const rights = $derived(libraries.filter((library) => library.permission && RIGHTS[library.permission]));
   const totalBytes = $derived(downloads.reduce((sum, download) => sum + (download.size_bytes ?? 0), 0));
 
   const titleOf = (download: Download): string => items[download.item_id]?.title ?? t('downloads.unknownTitle');
@@ -44,7 +52,8 @@
     return [
       t('downloads.original'), version?.container.toUpperCase(),
       download.size_bytes === null ? null : formatBytes(download.size_bytes),
-      formatDate(download.created_at)
+      formatDate(download.created_at),
+      download.device_name?.trim() || t('downloads.unknownDevice')
     ].filter(Boolean).join(' · ');
   }
 
@@ -63,6 +72,16 @@
     if (signal.aborted) return;
     await fetchItems(list, signal);
     if (!signal.aborted) downloads = list;
+  }
+
+  // Een aanvulling op de lijst: een fout hier laat de regels staan en het paneel weg.
+  async function loadRights(signal: AbortSignal): Promise<void> {
+    try {
+      const list = await session.client.libraries(signal);
+      if (!signal.aborted) libraries = list;
+    } catch {
+      if (!signal.aborted) libraries = [];
+    }
   }
 
   async function withdraw(): Promise<void> {
@@ -86,6 +105,7 @@
     void session.client.sessionGeneration;
     void retry;
     downloads = [];
+    libraries = [];
     items = {};
     pending = null;
     error = null;
@@ -108,6 +128,7 @@
       }
     };
     void tick();
+    void loadRights(signal);
     return () => {
       clearTimeout(timer);
       controller.abort();
@@ -161,6 +182,17 @@
           {#snippet title()}{t('downloads.space')}{/snippet}
           <dl class="space"><dt>{t('downloads.spaceTotal')}</dt><dd>{formatBytes(totalBytes)}</dd></dl>
         </Panel>
+        {#if rights.length}
+          <Panel level={2}>
+            {#snippet title()}{t('downloads.rights')}{/snippet}
+            <ul class="rights">
+              {#each rights as library (library.id)}
+                {@const right = RIGHTS[library.permission ?? '']}
+                <li><span class="rights__title">{library.title}</span><StatusPill tone={right?.tone} label={right?.label() ?? ''} /></li>
+              {/each}
+            </ul>
+          </Panel>
+        {/if}
       </aside>
     </div>
   {/if}
@@ -197,6 +229,9 @@
   .space { display: flex; justify-content: space-between; gap: 12px; margin: 0; font-size: 14px; }
   .space dt { color: var(--ink-2); }
   .space dd { margin: 0; color: var(--ink); }
+  .rights { display: flex; flex-direction: column; gap: 8px; list-style: none; margin: 0; padding: 0; }
+  .rights li { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
+  .rights__title { min-width: 0; overflow-wrap: anywhere; color: var(--ink); }
   @media (min-width: 900px) {
     .layout { grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); align-items: start; }
   }

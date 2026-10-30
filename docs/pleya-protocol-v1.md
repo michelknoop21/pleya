@@ -656,11 +656,16 @@ Klasse: **`authenticated`**. Niet gepagineerd; een huishouden heeft er een handv
 ```json
 {
   "items": [
-    { "id": "0198f2a1-...", "title": "Films", "kind": "movies", "item_count": 14 },
-    { "id": "0198f2a2-...", "title": "Series", "kind": "shows", "item_count": 112 }
+    { "id": "0198f2a1-...", "title": "Films", "kind": "movies", "item_count": 14, "permission": "download" },
+    { "id": "0198f2a2-...", "title": "Series", "kind": "shows", "item_count": 112, "permission": "view" }
   ]
 }
 ```
+
+`permission` is het eigen recht van de aanvrager, een waarde uit de gesloten ladder `view`, `download`,
+`manage`; owner en admin krijgen `manage`. Een optioneel veld: een oudere server laat het weg, en dan
+zegt de afwezigheid niets over het recht. Een client gebruikt het om een knop weg te laten, de server
+toetst het recht bij elke aanvraag zelf.
 
 ### 9.3 `GET /pleya/v1/libraries/{library_id}/items`
 
@@ -1179,6 +1184,9 @@ SHA-256 in `Digest` en `Repr-Digest`. Hervatten werkt met `Range` en `If-Range` 
 een `If-Range` die niet klopt geeft het hele bestand, nooit een stuk van een ander bestand. Veranderde het
 bestand na het uitrekenen (grootte of wijzigingstijd), dan is het `409` met `library.download_changed` en vraagt
 de client een nieuwe download. `DELETE /downloads/{id}` haalt de download weg en laat het mediabestand staan.
+`device_name` op een `Download` is de naam van de inlogsessie die hem aanvroeg, dezelfde bron als bij een
+geschiedenisregel. Het is `null` als die onbekend is: een download van vóór dit veld, een sessie die weg is of
+een sessie zonder naam.
 Een versie van meer dan één bestand is `409` met `library.version_multifile`. De ladder (omgezette
 versies als downloadbron) en sidecar-ondertitels horen er niet bij.
 

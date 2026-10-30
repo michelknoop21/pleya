@@ -35,19 +35,35 @@ func (s *Server) handleLibraries(w http.ResponseWriter, r *http.Request) {
 	}
 	libs = filterLibraries(libs, allowed)
 
+	user, err := s.subjectID(r)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+	permissions, err := s.opts.Catalog.LibraryPermissions(r.Context(), user)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+
 	// Een lege lijst is [] en nooit null.
 	out := LibraryList{Items: make([]Library, 0, len(libs))}
 	for _, l := range libs {
+		var wire Library
 		if req.canAdminister() {
-			out.Items = append(out.Items, adminLibraryWire(l))
-			continue
+			wire = adminLibraryWire(l)
+		} else {
+			wire = Library{ID: l.ID.String(), Title: l.Title, Kind: l.Kind, ItemCount: l.ItemCount}
 		}
-		out.Items = append(out.Items, Library{
-			ID:        l.ID.String(),
-			Title:     l.Title,
-			Kind:      l.Kind,
-			ItemCount: l.ItemCount,
-		})
+		permission := catalog.PermissionManage
+		if permissions != nil {
+			permission = permissions[l.ID]
+		}
+		if permission != "" {
+			value := string(permission)
+			wire.Permission = &value
+		}
+		out.Items = append(out.Items, wire)
 	}
 	writeJSON(w, http.StatusOK, out)
 }

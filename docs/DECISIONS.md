@@ -5202,3 +5202,19 @@ optionele parameter toe, 3.1 eist de vlag, en `filters` loste hetzelfde geval zo
 los hoeft te onderhandelen. Geen veld hernoemd, geen enum uitgebreid, geen verplicht aanvraagveld.
 Regel 74, 75 en 76 staan in de matrix van hoofdstuk 16.4. Alleen dit venster is geopend; productie,
 merge en release blijven afzonderlijk. Nummer volgt bij integratie.
+
+## DEC-XXX: venster voor de velden van downloads en bibliotheken vrijgegeven
+
+**Status:** geaccepteerd door Michel op 30 oktober 2026, besluit 3 uit `docs/qa/2026-10-30-pleya-windows-docker-report.md`.
+
+Michel gaf twee optionele antwoordvelden vrij: `device_name` op `Download` en `permission` op
+`Library`, zichtbaar op `/server/downloads`. Regel 1 van hoofdstuk 3 dekt allebei en er is geen vlag
+nodig: een client die het veld mist toont zijn terugval. `permission` hergebruikt de gesloten enum
+`Permission` zonder waarde erbij, en staat alleen op `GET /libraries`.
+
+De toestelnaam volgt het patroon van `play_history`: migratie 0024 zet `auth_session_id` op
+`downloads` en de naam komt bij het lezen uit `sessions`. Bestaande rijen krijgen geen backfill,
+want wie ze aanvroeg is nergens vastgelegd; zij en een sessie zonder naam geven `null`, en de web
+toont dan "Toestel onbekend". "Bekeken door" blijft klasse admin: wat een huisgenoot kijkt is privé.
+Ruimte per toestel valt buiten dit venster. Alleen dit venster is geopend; productie, merge en
+release blijven afzonderlijk. Nummer volgt bij integratie.

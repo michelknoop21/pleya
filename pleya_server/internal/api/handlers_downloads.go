@@ -31,6 +31,8 @@ type DownloadWire struct {
 	SHA256    *string   `json:"sha256"`
 	FileURL   string    `json:"file_url"`
 	CreatedAt time.Time `json:"created_at"`
+	// DeviceName is null als het toestel niet bekend is.
+	DeviceName *string `json:"device_name"`
 }
 
 // DownloadList is GET /downloads.
@@ -57,6 +59,11 @@ func downloadWire(d downloads.Download) DownloadWire {
 	if d.SHA256 != "" {
 		sum := d.SHA256
 		w.SHA256 = &sum
+	}
+	// De plaatshouder is geen toestelnaam: de client toont zijn eigen terugval, in
+	// de taal van de kijker.
+	if name := d.DeviceName; name != "" && name != unknownDeviceName {
+		w.DeviceName = &name
 	}
 	return w
 }
@@ -149,7 +156,14 @@ func (s *Server) handleCreateDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dl, err := store.Create(r.Context(), user, itemID, version.ID)
+	// De inlogsessie geeft de download de naam van het toestel.
+	var session *id.ID
+	if claims, ok := claimsFromContext(r.Context()); ok {
+		if sid, err := id.Parse(claims.Sid); err == nil {
+			session = &sid
+		}
+	}
+	dl, err := store.Create(r.Context(), user, itemID, version.ID, session)
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return

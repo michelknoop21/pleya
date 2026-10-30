@@ -3496,6 +3496,12 @@ components:
         title: { type: string }
         kind: { $ref: "#/components/schemas/LibraryKind" }
         item_count: { type: integer, minimum: 0 }
+        permission:
+          allOf: [{ $ref: "#/components/schemas/Permission" }]
+          description: |
+            Het eigen recht van de aanvrager op deze bibliotheek. Alleen op
+            `GET /libraries`; owner en admin krijgen `manage`. Een oudere server
+            laat het veld weg, en dan zegt zijn afwezigheid niets over het recht.
         managed:
           allOf: [{ $ref: "#/components/schemas/LibraryManaged" }]
           description: Alleen voor klasse admin (S2.2, J.3).
@@ -4170,6 +4176,12 @@ components:
         sha256: { type: [string, "null"], description: Hexadecimale SHA-256, null zolang de download preparing is. }
         file_url: { type: string, description: Pad naar de bytes, relatief aan de serverroot. }
         created_at: { type: string, format: date-time }
+        device_name:
+          type: [string, "null"]
+          description: |
+            Het toestel dat de download aanvroeg. Null als dat niet bekend is: een
+            download van vóór dit veld, een sessie die weg is, of een sessie zonder
+            naam. Een oudere server laat het veld weg.
 
     DownloadList:
       type: object

@@ -117,6 +117,35 @@ func (s *Store) VisibleLibraries(ctx context.Context, userID id.ID) ([]id.ID, er
 	return ids, rows.Err()
 }
 
+// LibraryPermissions geeft het eigen recht van userID per bibliotheek. nil
+// betekent dat de rol elke bibliotheek beheert (owner en admin, zie
+// roleBypassesPermissions); een bibliotheek zonder rij staat niet in de kaart.
+func (s *Store) LibraryPermissions(ctx context.Context, userID id.ID) (map[id.ID]Permission, error) {
+	role, err := s.userRole(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if roleBypassesPermissions(role) {
+		return nil, nil
+	}
+	rows, err := s.pool.Query(ctx,
+		`SELECT library_id, permission FROM library_permissions WHERE user_id = $1`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("bibliotheekrechten lezen: %w", err)
+	}
+	defer rows.Close()
+	out := map[id.ID]Permission{}
+	for rows.Next() {
+		var libraryID id.ID
+		var permission string
+		if err := rows.Scan(&libraryID, &permission); err != nil {
+			return nil, err
+		}
+		out[libraryID] = Permission(permission)
+	}
+	return out, rows.Err()
+}
+
 // ItemLibrary geeft de bibliotheek waar een item toe hoort, voor autorisatie
 // vóór een kijkstatusevent wordt toegepast (AC2, PS-9, DEC-126 regel 12) —
 // lichter dan Item(), die ook versies, artwork en aantallen ophaalt.

@@ -227,6 +227,10 @@ type Library struct {
 	Kind      string `json:"kind"`
 	ItemCount int    `json:"item_count"`
 
+	// Permission is het eigen recht van de aanvrager (S23.4): view, download of
+	// manage. Alleen op GET /libraries.
+	Permission *string `json:"permission,omitempty"`
+
 	Managed             *string `json:"managed,omitempty"`
 	ScanIntervalSeconds **int   `json:"scan_interval_seconds,omitempty"`
 	ScanOnStart         *bool   `json:"scan_on_start,omitempty"`
