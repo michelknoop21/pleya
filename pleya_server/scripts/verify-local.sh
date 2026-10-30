@@ -532,9 +532,13 @@ if [ "$code" = "0" ]; then ok "het Go-proces sloot met exitcode 0 op SIGTERM"; e
 # zodra het proces weg is, en het doorgeven van de laatste bytes naar de
 # logdriver loopt daar soms een tel achteraan. Vijf korte pogingen in plaats van
 # één, want een race hier meet de logdriver en niet de afsluiting.
+#
+# Geen grep -q: die stopt bij de eerste treffer, en de herstarts uit sectie 10 en
+# 11 hebben de regel dan al vroeg in de log gezet. compose logs krijgt daarna een
+# SIGPIPE, en onder pipefail telt de pijp als mislukt terwijl de regel er staat.
 shutdown_logged=""
 for _ in 1 2 3 4 5; do
-  if $COMPOSE logs pleya-server 2>/dev/null | grep -q "afsluiten voltooid"; then
+  if $COMPOSE logs pleya-server 2>/dev/null | grep "afsluiten voltooid" >/dev/null; then
     shutdown_logged=yes
     break
   fi
