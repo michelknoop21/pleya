@@ -51,6 +51,64 @@ Finder _panelScroll() => find.descendant(of: find.byType(TvCatalogSidePanel), ma
 void main() {
   FullBleedHarness.setUpAllTv();
 
+  group('RIGHT and straight back with LEFT, while the panel is still sliding out', () {
+    // Not `h.press`: that settles, and the whole point is the 240 ms it would
+    // wait out.
+    Future<void> tap(WidgetTester tester, LogicalKeyboardKey key, {int ms = 80}) async {
+      await tester.sendKeyEvent(key);
+      await tester.pump();
+      await tester.pump(Duration(milliseconds: ms));
+    }
+
+    Future<FullBleedHarness> openPanel(WidgetTester tester) async {
+      final h = await _open(tester);
+      await h.press(tester, _right);
+      await h.press(tester, _left);
+      await h.press(tester, _left);
+      expect(find.byType(TvCatalogSidePanel), findsOneWidget);
+      return h;
+    }
+
+    testWidgets('no duplicate key, one panel left, and the remote is in it', (tester) async {
+      await openPanel(tester);
+
+      await tap(tester, _right);
+      expect(find.byType(TvCatalogSidePanel), findsOneWidget, reason: 'the outgoing panel is still on its way out');
+      await tap(tester, _left);
+      expect(tester.takeException(), isNull);
+      expect(find.byType(TvCatalogSidePanel), findsNWidgets(2), reason: 'one going, one coming');
+
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byType(TvCatalogSidePanel), findsOneWidget);
+      expect(_focusedRow(), contains('TvCatalogRailSubviewOption0'), reason: 'on Bronnen, of the new panel');
+    });
+
+    testWidgets('the reopened panel works: Menu closes it and the ring is back on a card', (tester) async {
+      final h = await openPanel(tester);
+      await tap(tester, _right);
+      await tap(tester, _left);
+      await tester.pumpAndSettle();
+
+      await h.press(tester, _menu);
+      expect(find.byType(TvCatalogSidePanel), findsNothing);
+      expect(tester.takeException(), isNull);
+      expect(_focusedRow(), isNot(contains('TvCatalogRailSubviewOption')));
+    });
+
+    testWidgets('back and forth several times leaves nothing behind', (tester) async {
+      await openPanel(tester);
+      for (var i = 0; i < 3; i++) {
+        await tap(tester, _right);
+        await tap(tester, _left);
+        expect(tester.takeException(), isNull);
+      }
+      await tester.pumpAndSettle();
+      expect(find.byType(TvCatalogSidePanel), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   testWidgets('LEFT off column 0 opens the panel over the page, and the wall does not move', (tester) async {
     final h = await _open(tester);
     await h.press(tester, _right);

@@ -214,7 +214,10 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// goes to the first card and not to the one the viewer left.
   bool _entryOnFirstCard = false;
 
-  final _sidePanelKey = GlobalKey<TvCatalogSidePanelState>();
+  /// One per opening. A closing panel stays in the tree while it slides out, so
+  /// reopening within those 240 ms puts two panels side by side, and a shared
+  /// key throws Duplicate GlobalKey.
+  var _sidePanelKey = GlobalKey<TvCatalogSidePanelState>();
 
   /// The card the remote is on, by stable `groupId` — mirrored out of the grid
   /// so it can be handed on after the grid itself is gone.
@@ -695,7 +698,10 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       _focusRailEntry();
       return;
     }
-    setState(() => _railExpanded = true);
+    setState(() {
+      _sidePanelKey = GlobalKey<TvCatalogSidePanelState>();
+      _railExpanded = true;
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_railExpanded) return;
       _focusRailEntry();
