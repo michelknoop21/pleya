@@ -3,8 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SessionState } from './session.svelte';
 import { streamSessions } from '../player/streamSessionCache';
 import { LAST_CONTACT_KEY, readLastContact } from './lastContact';
-import type { PleyaClient } from '../api/client';
+import { PleyaClient, type FetchLike } from '../api/client';
 import { TransportError } from '../api/errors';
+import { TokenStore } from '../auth/tokens';
 
 /** Alleen wat `start()` en `load()` aanraken; de rest van de client doet hier niet mee. */
 function fakeClient(overrides: Partial<Record<string, unknown>> = {}): PleyaClient {
@@ -121,7 +122,7 @@ describe('laatste contact', () => {
 
 describe('een begrensde verversing (S15.1)', () => {
   it('is geen uitloggen bij het opstarten', async () => {
-    const state = new SessionState(fakeClient({ restore: vi.fn(async () => false), refreshThrottled: true }));
+    const state = new SessionState(fakeClient({ restore: vi.fn(async () => false), refreshUnavailable: true }));
     await state.start();
     expect(state.phase).toBe('unreachable');
   });
@@ -129,16 +130,57 @@ describe('een begrensde verversing (S15.1)', () => {
   it('is geen uitloggen bij het laden', async () => {
     const state = new SessionState(fakeClient({
       server: vi.fn(async () => { throw new TransportError(new Error('401')); }),
-      refreshThrottled: true
+      refreshUnavailable: true
     }));
     await state.start();
     expect(state.phase).toBe('unreachable');
   });
 
   it('laat een echte afwijzing wel uitloggen (negatieve controle)', async () => {
-    const state = new SessionState(fakeClient({ restore: vi.fn(async () => false), refreshThrottled: false }));
+    const state = new SessionState(fakeClient({ restore: vi.fn(async () => false), refreshUnavailable: false }));
     await state.start();
     expect(state.phase).toBe('signed-out');
+  });
+});
+
+describe('een storing op de verversing, met de echte client', () => {
+  function clientWith(answer: () => Response) {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = (input as Request).url;
+      if (url.endsWith('/info')) {
+        return new Response(JSON.stringify({ auth: { setup_required: false }, capabilities: { browse: true } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      return answer();
+    }) as unknown as FetchLike;
+    const stored = memoryStorage();
+    stored.setItem('pleya.refresh_token', 'R1');
+    return new PleyaClient({ baseUrl: 'http://server.test/pleya/v1', tokens: new TokenStore(stored, memoryStorage()), fetch: fetchImpl });
+  }
+
+  it.each([
+    ['een 503', () => new Response(null, { status: 503 })],
+    ['een netwerkfout', () => { throw new TypeError('failed to fetch'); }]
+  ])('%s bij het opstarten is onbereikbaar en geen inlogscherm', async (_name, answer) => {
+    const client = clientWith(answer);
+    const state = new SessionState(client);
+    await state.start();
+    expect(state.phase).toBe('unreachable');
+    expect(client.tokens.refreshToken).toBe('R1');
+  });
+
+  it('een afgewezen token geeft wel het inlogscherm (negatieve controle)', async () => {
+    const rejected = new Response(JSON.stringify({ error: { code: 'auth.token_invalid', message: 'x', retryable: false } }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const client = clientWith(() => rejected);
+    const state = new SessionState(client);
+    await state.start();
+    expect(state.phase).toBe('signed-out');
+    expect(client.tokens.refreshToken).toBeNull();
   });
 });
 

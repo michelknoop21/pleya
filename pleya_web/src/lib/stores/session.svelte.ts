@@ -106,7 +106,7 @@ class SessionState {
 
     const restored = await this.client.restore();
     if (!restored) {
-      if (this.client.refreshThrottled) this.#markUnreachable();
+      if (this.client.refreshUnavailable) this.#markUnreachable();
       else this.phase = 'signed-out';
       return;
     }
@@ -140,7 +140,7 @@ class SessionState {
       });
     } catch (err) {
       if (generation !== this.client.sessionGeneration) return;
-      if (this.client.refreshThrottled) {
+      if (this.client.refreshUnavailable) {
         this.#markUnreachable(err);
         return;
       }
@@ -150,9 +150,10 @@ class SessionState {
   }
 
   /**
-   * De server antwoordt nu niet, of begrenst de verversing. Dat tweede is geen
-   * uitloggen: de sessie bestaat nog, en de poging die onbereikbaar elke 30 s
-   * doet, herstelt hem zonder dat iemand opnieuw hoeft in te loggen.
+   * De server antwoordt nu niet, of de verversing lukte niet zonder dat het token
+   * is afgewezen (429, 5xx, geen verbinding). Dat tweede is geen uitloggen: de
+   * sessie bestaat nog, en de poging die onbereikbaar elke 30 s doet, herstelt
+   * hem zonder dat iemand opnieuw hoeft in te loggen.
    */
   #markUnreachable(err?: unknown): void {
     this.error = err === undefined ? null : describeError(err);

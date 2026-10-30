@@ -208,6 +208,53 @@ describe('tokenvernieuwing', () => {
     expect(tokens.refreshToken).toBeNull();
   });
 
+  describe('een storing op de verversing', () => {
+    const envelope = (status: number, code: string) =>
+      json({ error: { code, message: 'x', retryable: status >= 500 } }, status);
+    const expired = () => json({ error: { code: 'auth.token_expired', message: 'x', retryable: false } }, 401);
+
+    function setup(answer: () => Response | Promise<Response>) {
+      const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+        const req = input as Request;
+        return req.url.endsWith('/auth/refresh') ? await answer() : expired();
+      }) as unknown as FetchLike;
+      const lost = vi.fn();
+      const tokens = new TokenStore(memoryStorage({ 'pleya.refresh_token': 'R1' }), memoryStorage());
+      const client = new PleyaClient({ baseUrl: BASE, tokens, fetch: fetchImpl, onSessionLost: lost });
+      tokens.set({ access_token: 'A1', refresh_token: 'R1', expires_in_ms: 0 });
+      return { client, tokens, lost };
+    }
+
+    it.each([
+      ['500 met envelop', () => envelope(500, 'server.internal')],
+      ['503 met envelop', () => envelope(503, 'storage.unavailable')],
+      ['502 van een proxy zonder envelop', () => new Response('<html>Bad Gateway</html>', { status: 502 })],
+      ['503 zonder inhoud', () => new Response(null, { status: 503 })],
+      ['403 auth.origin_rejected', () => envelope(403, 'auth.origin_rejected')],
+      ['204 zonder inhoud', () => new Response(null, { status: 204 })],
+      ['een netwerkfout', () => { throw new TypeError('failed to fetch'); }]
+    ])('logt niet uit bij %s en laat het token staan', async (_name, answer) => {
+      const { client, tokens, lost } = setup(answer);
+      await expect(client.libraries()).rejects.toBeInstanceOf(ApiError);
+      expect(lost).not.toHaveBeenCalled();
+      expect(tokens.refreshToken).toBe('R1');
+      expect(client.refreshUnavailable).toBe(true);
+    });
+
+    it.each([
+      ['401 zonder bekende code', 401, 'auth.something_new'],
+      ['auth.token_invalid', 401, 'auth.token_invalid'],
+      ['auth.token_expired', 401, 'auth.token_expired'],
+      ['auth.refresh_token_reused', 401, 'auth.refresh_token_reused']
+    ])('logt wel uit bij %s (negatieve controle)', async (_name, status, code) => {
+      const { client, tokens, lost } = setup(() => envelope(status, code));
+      await expect(client.libraries()).rejects.toBeInstanceOf(ApiError);
+      expect(lost).toHaveBeenCalledOnce();
+      expect(tokens.refreshToken).toBeNull();
+      expect(client.refreshUnavailable).toBe(false);
+    });
+  });
+
   describe('een 429 op de verversing (S15.1)', () => {
     const limited = (retryAfter: string | null = '2') => new Response(
       JSON.stringify({ error: { code: 'auth.rate_limited', message: 'x', retryable: true, details: { retry_after_ms: 1500 } } }),
@@ -244,7 +291,7 @@ describe('tokenvernieuwing', () => {
       expect(delays[0]).toBeLessThan(2750);
       expect(tokens.refreshToken).toBe('R2');
       expect(bodies).toEqual([{ refresh_token: 'R1' }, { refresh_token: 'R1' }]);
-      expect(client.refreshThrottled).toBe(false);
+      expect(client.refreshUnavailable).toBe(false);
     });
 
     it('valt terug op retry_after_ms zonder de header', async () => {
@@ -260,7 +307,7 @@ describe('tokenvernieuwing', () => {
       expect(lost).not.toHaveBeenCalled();
       expect(tokens.refreshToken).toBe('R1');
       expect(delays).toHaveLength(4);
-      expect(client.refreshThrottled).toBe(true);
+      expect(client.refreshUnavailable).toBe(true);
     });
 
     it('wacht niet op een proxy die een uur vraagt', async () => {

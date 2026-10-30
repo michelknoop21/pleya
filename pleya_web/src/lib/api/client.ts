@@ -12,7 +12,7 @@
 import createClient, { type Client, type Middleware } from 'openapi-fetch';
 
 import type { paths } from './schema';
-import { ApiError, TransportError, toApiError } from './errors';
+import { TransportError, isSessionRejected, toApiError } from './errors';
 import { TokenStore } from '../auth/tokens';
 import type { DeviceFields } from '../auth/device';
 import type {
@@ -87,7 +87,7 @@ export class PleyaClient {
   #fetch: FetchLike;
   #refreshing: Promise<boolean> | null = null;
   #refreshGeneration = -1;
-  #refreshThrottled = false;
+  #refreshUnavailable = false;
   #sessionGeneration = 0;
   #epoch: string | null;
   #supportsCookieAuth = false;
@@ -95,8 +95,8 @@ export class PleyaClient {
   #requests = new WeakMap<Request, { generation: number; replay: Request }>();
 
   get sessionGeneration(): number { return this.#sessionGeneration; }
-  /** De laatste verversing gaf op bij een 429. De sessie bestaat nog; de server wil alleen even niet. */
-  get refreshThrottled(): boolean { return this.#refreshThrottled; }
+  /** De laatste verversing gaf op zonder oordeel over het token (429, 5xx, geen verbinding). De sessie bestaat nog. */
+  get refreshUnavailable(): boolean { return this.#refreshUnavailable; }
   #onSessionLost: (() => void) | undefined;
   #delay: (ms: number) => Promise<void>;
 
@@ -168,7 +168,7 @@ export class PleyaClient {
       return Promise.resolve(false);
     }
 
-    this.#refreshThrottled = false;
+    this.#refreshUnavailable = false;
     this.#refreshing = (async () => {
       try {
         for (let attempt = 1; ; attempt++) {
@@ -183,7 +183,7 @@ export class PleyaClient {
             // staan, ook als deze ronde opgeeft; de aanvraag die erop wachtte faalt en de volgende probeert het.
             const wait = refreshRetryDelayMs(response, error);
             if (attempt >= REFRESH_LIMIT_ATTEMPTS || wait > REFRESH_LIMIT_MAX_WAIT_MS) {
-              this.#refreshThrottled = true;
+              this.#refreshUnavailable = true;
               return false;
             }
             await this.#delay(wait + Math.random() * REFRESH_LIMIT_JITTER_MS);
@@ -196,18 +196,23 @@ export class PleyaClient {
             }
             continue;
           }
-          if (error || !data || replaced()) {
+          if (replaced() || (error !== undefined && isSessionRejected(toApiError(response.status, error)))) {
             this.#loseSession();
-            if (error) throw toApiError(response.status, error);
+            return false;
+          }
+          if (error !== undefined || !data) {
+            // Alleen een afwijzing van het token beëindigt de sessie. Een 5xx of een proxyfout zegt
+            // daar niets over; het token blijft staan en de volgende poging probeert het opnieuw.
+            this.#refreshUnavailable = true;
             return false;
           }
           this.tokens.set(data);
           return true;
         }
-      } catch (err) {
-        if (err instanceof ApiError) return false;
+      } catch {
         // Een netwerkstoring is geen verlopen sessie: het token blijft staan
         // zodat de volgende poging het opnieuw kan proberen.
+        if (generation === this.#sessionGeneration) this.#refreshUnavailable = true;
         return false;
       } finally {
         if (this.#refreshGeneration === generation) this.#refreshing = null;
