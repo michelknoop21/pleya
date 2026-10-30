@@ -78,8 +78,14 @@ void main() {
     expect(plexSortKeyFor(UnifiedCatalogSortField.criticRating), 'rating');
     expect(plexSortKeyFor(UnifiedCatalogSortField.title), 'titleSort');
     expect(plexSortKeyFor(UnifiedCatalogSortField.resolution), 'mediaHeight');
-    expect(plexFilterKeyFor(LibraryQuickFilter.dolbyVision), isNull);
-    expect(plexFilterKeyFor(LibraryQuickFilter.hdr10Plus), isNull);
-    expect(plexFilterKeyFor(LibraryQuickFilter.atmos), isNull);
+  });
+
+  test('server keys are recognised case-insensitively on a small alias list', () {
+    expect(libraryQuickFilterForServerKey('hdr10Plus'), LibraryQuickFilter.hdr10Plus);
+    expect(libraryQuickFilterForServerKey('HDR10+'), LibraryQuickFilter.hdr10Plus);
+    expect(libraryQuickFilterForServerKey('dolbyVision'), LibraryQuickFilter.dolbyVision);
+    expect(libraryQuickFilterForServerKey('DoVi'), LibraryQuickFilter.dolbyVision);
+    expect(libraryQuickFilterForServerKey('Duplicate'), LibraryQuickFilter.duplicates);
+    expect(libraryQuickFilterForServerKey('hasSubtitles'), isNull);
   });
 }

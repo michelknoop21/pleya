@@ -245,3 +245,46 @@ void _addYears(List<MediaFilterValue>? values, Set<int> into) {
     if (parsed != null && parsed > 1800 && parsed < 2200) into.add(parsed);
   }
 }
+
+/// The values of one server-listed category (`studio`, `country`, ...), unioned
+/// over [libraries] and ordered by label. Asked when the category is opened,
+/// not with the panel: a category like actors can hold thousands of values and
+/// most panels never open it.
+///
+/// The value is what a request filters on: the plain key, or the part of a path
+/// key that carries it, taken the way Leeftijd takes it.
+Future<List<UnifiedFilterValue>> loadServerCategoryValues({
+  required List<CatalogLibrary> libraries,
+  required MediaServerClient? Function(ServerId serverId) clientFor,
+  required String filterKey,
+}) async {
+  final byValue = <String, String>{};
+  await Future.wait([
+    for (final library in libraries)
+      () async {
+        final client = clientFor(library.serverId);
+        if (client is! PlexClient) return;
+        try {
+          final result = await client.fetchLibraryFiltersWithValues(library.libraryId);
+          final listed = result.filters.where((f) => f.filter == filterKey);
+          if (listed.isEmpty) return;
+          final values = await client.getFilterValues(listed.first.key);
+          for (final value in values) {
+            final key = value.key.trim();
+            final raw = key.contains('?')
+                ? (Uri.splitQueryString(key.substring(key.indexOf('?') + 1))[filterKey] ?? '')
+                : key.startsWith('/')
+                ? _decodeOrRaw(key.split('/').last)
+                : key;
+            final filterValue = raw.isNotEmpty ? raw : value.title.trim();
+            if (filterValue.isEmpty) continue;
+            byValue.putIfAbsent(filterValue, () => value.title.isEmpty ? filterValue : value.title);
+          }
+        } catch (e) {
+          appLogger.d('Server category values failed for $filterKey on ${library.libraryTitle}: $e');
+        }
+      }(),
+  ]);
+  return [for (final entry in byValue.entries) UnifiedFilterValue(value: entry.key, label: entry.value)]
+    ..sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
+}

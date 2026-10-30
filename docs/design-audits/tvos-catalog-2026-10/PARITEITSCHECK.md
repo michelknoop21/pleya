@@ -18,6 +18,7 @@ Referenties staan buiten de repo in `/Volumes/SSD/Projects/PlexFlixNetwork/pleya
 | Titels zonder waarde | gehaald | altijd achteraan, lege tweede regel met gelijke hoogte. Beeld `03-critics-up.png` |
 | Posterbreedte 152 logisch (235 van 1600) | afwijking | 145 x 217,5 logisch (268 x 402 pt): twee rijen op 584 hoog laten niet meer toe |
 | Bovenste focusring binnen de band van 8.1 | afwijking | voet van rij twee zakt onder focus 5 px de band in |
+| Dolby Vision, HDR10+, Atmos en de overige filters van de server in Filteren op | gehaald in code, nog niet tegen een echte server bewezen | zichtbaar zodra de server het filter noemt in `/library/sections/{id}/filters`. Elk boolean-filter komt in de snelle lijst: bekende sleutels (ook `dolbyVision`, `hdr10Plus`, `dovi`) op hun plek met Pleya-label, een onbekend boolean onderaan met het label van de server. Niet-booleans komen als categorie na de scheidingslijn, in serverlabel. Het verzoek gebruikt de `filter`-waarde van de server. Fixture-tests bewijzen de classificatie en het verzoek; een live Plex-server is niet bevraagd. Alleen Plex noemt deze lijst: in een unified catalogus met een andere backend verdwijnen ze, Jellyfin, Emby en Pleya Server blijven zoals de capabilities zeggen |
 | Nederlandse labels | afwijking | de referentie is Engels, de app volgt de taalkeuze |
 
 Beelden die dit onderbouwen: zie `MANIFEST.md`.

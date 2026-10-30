@@ -6,7 +6,7 @@ De catalogus op Apple TV toont zes kolommen bij twee hele rijen, zonder kop en z
 
 1. Het paneel komt van links in plaats van rechts. De topnavigatie blijft bestaan en LEFT vanaf kolom 0 is de enige ingang.
 2. Geen zijbalk. Michel koos de inklapbare topnavigatie.
-3. Het aantal sorteerrijen volgt de bronnen: dertien op Plex-films, tien op Jellyfin, vijf op Pleya Server. Dolby Vision, HDR10+ en Atmos verschijnen voorlopig nergens: geen enkele backend documenteert een filter ervoor.
+3. Het aantal sorteerrijen volgt de bronnen: dertien op Plex-films, tien op Jellyfin, vijf op Pleya Server. Dolby Vision, HDR10+ en Atmos verschijnen zodra de Plex-server het filter noemt in zijn filterlijst; dat is in code en fixtures bewezen, nog niet tegen een echte server.
 4. De poster is 145 x 217,5 logisch, onder de 152 uit het plan. Twee rijen op 584 hoog laten niet meer toe.
 5. De voet van rij twee zakt onder focus 5 px in de band van hoofdstuk 8.1.
 6. Geen tabbladen, klok en filterchips boven het raster, en geen permanente A-Z-strip rechts: de beelden tonen die, de opdracht vraagt een raster zonder balken en Spring naar zit in het paneel.

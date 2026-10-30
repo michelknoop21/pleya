@@ -24,7 +24,17 @@ import '../../utils/home_custom_row_labels.dart';
 
 /// Which category the panel opens on, and — since every category is one of
 /// these — what the rail is a list of.
-enum TvCatalogFilterSection { status, genre, audioLanguage, year, decade, contentRating, servers, libraries }
+enum TvCatalogFilterSection {
+  status,
+  genre,
+  audioLanguage,
+  year,
+  decade,
+  contentRating,
+  servers,
+  libraries,
+  serverCategory,
+}
 
 /// Rail order, which is hoofdstuk 10.6's listing verbatim: "Status; Genre;
 /// Jaar; Servers; Bibliotheken".
@@ -85,6 +95,8 @@ String tvCatalogFilterSectionLabel(TvCatalogFilterSection section) => switch (se
   TvCatalogFilterSection.contentRating => t.unifiedCatalog.filters.contentRating,
   TvCatalogFilterSection.servers => t.unifiedCatalog.filters.servers,
   TvCatalogFilterSection.libraries => t.unifiedCatalog.filters.libraries,
+  // Named by the server: see TvCatalogFilterModel.serverCategories.
+  TvCatalogFilterSection.serverCategory => '',
 };
 
 class TvCatalogFilterModel extends ChangeNotifier {
@@ -160,6 +172,57 @@ class TvCatalogFilterModel extends ChangeNotifier {
       if (capabilities.supportsQuickFilter(filter)) filter,
   ];
 
+  /// The booleans the servers list that the definition has no row for, at the
+  /// bottom of the quick choices with the label the server gives them.
+  List<LibraryServerFilter> get extraQuickFilters => capabilities.extraFilters;
+
+  /// The non-boolean categories the servers list beyond Genre, Jaar, Decennium,
+  /// Leeftijd and Audiotaal, after the categories of the definition.
+  List<LibraryServerFilter> get serverCategories => capabilities.serverCategories;
+
+  final Map<String, List<UnifiedFilterValue>> _serverValues = {};
+  final Set<String> _serverValuesRequested = {};
+
+  /// The rows of the server category [key]: empty until [loadServerCategory].
+  List<TvCatalogFilterRowSpec> rowsForServerCategory(String key) => [
+    for (final value in _serverValues[key] ?? const <UnifiedFilterValue>[])
+      TvCatalogFilterRowSpec(
+        label: value.label,
+        isSelected: _draft.serverFilters[key]?.contains(value.value) ?? false,
+        onPressed: () => _toggleServerValue(key, value.value),
+      ),
+  ];
+
+  int activeCountForServerCategory(String key) => _draft.serverFilters[key]?.length ?? 0;
+
+  bool isLoadingServerCategory(String key) => _serverValuesRequested.contains(key) && !_serverValues.containsKey(key);
+
+  /// Fetches the values of [key] once, when the category is opened.
+  Future<void> loadServerCategory(String key) async {
+    final clientFor = this.clientFor;
+    if (clientFor == null || !_serverValuesRequested.add(key)) return;
+    notifyListeners();
+    final values = await loadServerCategoryValues(
+      libraries: libraries,
+      clientFor: (serverId) => clientFor(serverId.value),
+      filterKey: key,
+    );
+    if (_disposed) return;
+    _serverValues[key] = values;
+    notifyListeners();
+  }
+
+  void _toggleServerValue(String key, String value) {
+    final current = {..._draft.serverFilters};
+    final values = _toggled(current[key] ?? const <String>{}, value);
+    if (values.isEmpty) {
+      current.remove(key);
+    } else {
+      current[key] = values;
+    }
+    _setDraft(_draft.copyWith(serverFilters: current));
+  }
+
   List<TvCatalogFilterSection> _sections({required bool placeholders}) => [
     for (final section in _railOrder)
       if (_supports(section) && (placeholders || _hasChoices(section))) section,
@@ -190,7 +253,7 @@ class TvCatalogFilterModel extends ChangeNotifier {
     TvCatalogFilterSection.year ||
     TvCatalogFilterSection.decade ||
     TvCatalogFilterSection.contentRating => capabilities.supportsMetadataFilters,
-    TvCatalogFilterSection.servers || TvCatalogFilterSection.libraries => true,
+    TvCatalogFilterSection.servers || TvCatalogFilterSection.libraries || TvCatalogFilterSection.serverCategory => true,
   };
 
   /// Genre and year values, fetched behind an already-open panel.
@@ -337,6 +400,7 @@ class TvCatalogFilterModel extends ChangeNotifier {
           onPressed: () => _toggleLibrary(buildGlobalKey(library.serverId, library.libraryId)),
         ),
     ],
+    TvCatalogFilterSection.serverCategory => const [],
   };
 
   /// How many choices a category currently carries, for its count chip.
@@ -353,5 +417,6 @@ class TvCatalogFilterModel extends ChangeNotifier {
     TvCatalogFilterSection.contentRating => contentRatingLabels(_draft.officialRatings).length,
     TvCatalogFilterSection.servers => _draft.serverIds.length,
     TvCatalogFilterSection.libraries => _draft.libraryKeys.length,
+    TvCatalogFilterSection.serverCategory => 0,
   };
 }

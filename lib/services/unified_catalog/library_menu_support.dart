@@ -29,14 +29,30 @@ const Set<UnifiedCatalogSortField> _unconditionalPlexSorts = {
 };
 
 class LibraryMenuSupport {
-  const LibraryMenuSupport({required this.sortFields, required this.mediaFilters});
+  const LibraryMenuSupport({
+    required this.sortFields,
+    this.mediaFilterKeys = const {},
+    this.extraFilters = const [],
+    this.serverCategories = const [],
+  });
 
   /// The sort fields every Plex library listed.
   final Set<UnifiedCatalogSortField> sortFields;
 
-  /// The media quick filters every library listed. Empty as soon as a non-Plex
+  /// The known media quick filters every library listed, with the `filter`
+  /// value they are listed under. A filter the libraries spell differently is
+  /// absent: one query cannot ask two spellings. Empty as soon as a non-Plex
   /// library takes part, since none of them runs on another backend.
-  final Set<LibraryQuickFilter> mediaFilters;
+  final Map<LibraryQuickFilter, String> mediaFilterKeys;
+
+  /// Booleans every library listed that the definition has no row for.
+  final List<LibraryServerFilter> extraFilters;
+
+  /// Non-boolean categories every library listed, beyond the five of the
+  /// definition.
+  final List<LibraryServerFilter> serverCategories;
+
+  Set<LibraryQuickFilter> get mediaFilters => mediaFilterKeys.keys.toSet();
 }
 
 /// Asks every Plex library in [libraries]. Null when there is none, which
@@ -51,14 +67,30 @@ Future<LibraryMenuSupport?> loadLibraryMenuSupport({
   final answers = await Future.wait([for (final library in plex) _ask(library, kind, clientFor)]);
 
   var sortFields = UnifiedCatalogSortField.values.toSet();
-  var mediaFilters = libraryMediaQuickFilters;
+  var keys = answers.first.mediaFilterKeys;
+  var extras = answers.first.extraFilters;
+  var categories = answers.first.serverCategories;
   for (final answer in answers) {
     sortFields = sortFields.intersection(answer.sortFields);
-    mediaFilters = mediaFilters.intersection(answer.mediaFilters);
+    keys = {
+      for (final entry in keys.entries)
+        if (answer.mediaFilterKeys[entry.key] == entry.value) entry.key: entry.value,
+    };
+    extras = [
+      for (final extra in extras)
+        if (answer.extraFilters.any((e) => e.key == extra.key)) extra,
+    ];
+    categories = [
+      for (final category in categories)
+        if (answer.serverCategories.any((c) => c.key == category.key)) category,
+    ];
   }
+  final allPlex = plex.length == libraries.length;
   return LibraryMenuSupport(
     sortFields: sortFields,
-    mediaFilters: plex.length == libraries.length ? mediaFilters : const {},
+    mediaFilterKeys: allPlex ? keys : const {},
+    extraFilters: allPlex ? extras : const [],
+    serverCategories: allPlex ? categories : const [],
   );
 }
 
@@ -69,7 +101,7 @@ Future<LibraryMenuSupport> _ask(
 ) async {
   final client = clientFor(library.serverId);
   var sortKeys = const <String>{};
-  var filterKeys = const <String>{};
+  var server = const LibraryServerFilters();
   if (client != null) {
     try {
       final (sorts, filters) = await (
@@ -77,7 +109,7 @@ Future<LibraryMenuSupport> _ask(
         client.fetchLibraryFiltersWithValues(library.libraryId),
       ).wait;
       sortKeys = {for (final sort in sorts) sort.key};
-      filterKeys = {for (final filter in filters.filters) filter.filter};
+      server = classifyServerFilters(filters.filters);
     } catch (e) {
       appLogger.d('Library menu support failed for ${library.libraryTitle}: $e');
     }
@@ -87,9 +119,8 @@ Future<LibraryMenuSupport> _ask(
       for (final field in UnifiedCatalogSortField.values)
         if (_unconditionalPlexSorts.contains(field) || sortKeys.contains(plexSortKeyFor(field))) field,
     },
-    mediaFilters: {
-      for (final filter in libraryMediaQuickFilters)
-        if (filterKeys.contains(plexFilterKeyFor(filter))) filter,
-    },
+    mediaFilterKeys: server.known,
+    extraFilters: server.extras,
+    serverCategories: server.categories,
   );
 }

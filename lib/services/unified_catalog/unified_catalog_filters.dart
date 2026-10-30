@@ -80,6 +80,15 @@ class UnifiedCatalogFilterSelection {
   /// time, so choosing one clears [watchState] and the other way around.
   final LibraryQuickFilter? mediaFilter;
 
+  /// The `filter` value of a boolean the servers list and the definition has no
+  /// row for, or null. Takes the same single slot as [mediaFilter]: choosing
+  /// one clears the other.
+  final String? extraFilter;
+
+  /// Choices in the non-boolean categories the servers list beyond the five of
+  /// the definition: `filter` value to the chosen values.
+  final Map<String, Set<String>> serverFilters;
+
   /// Stable server ids. Empty means every visible server, which is not the same
   /// as "all of them explicitly selected": a server that appears later is
   /// included by an empty set and excluded by an exhaustive one, and the first
@@ -97,6 +106,8 @@ class UnifiedCatalogFilterSelection {
     this.decades = const {},
     this.watchState = UnifiedWatchFilter.all,
     this.mediaFilter,
+    this.extraFilter,
+    this.serverFilters = const {},
     this.serverIds = const {},
     this.libraryKeys = const {},
   });
@@ -115,7 +126,8 @@ class UnifiedCatalogFilterSelection {
       (years.isEmpty ? 0 : 1) +
       (decades.isEmpty ? 0 : 1) +
       (watchState == UnifiedWatchFilter.all ? 0 : 1) +
-      (mediaFilter == null ? 0 : 1) +
+      (mediaFilter == null && extraFilter == null ? 0 : 1) +
+      serverFilters.length +
       (serverIds.isEmpty ? 0 : 1) +
       (libraryKeys.isEmpty ? 0 : 1);
 
@@ -137,7 +149,8 @@ class UnifiedCatalogFilterSelection {
       (years.isEmpty ? 0 : 1) +
       (decades.isEmpty ? 0 : 1) +
       (watchState == UnifiedWatchFilter.all ? 0 : 1) +
-      (mediaFilter == null ? 0 : 1);
+      (mediaFilter == null && extraFilter == null ? 0 : 1) +
+      serverFilters.length;
 
   /// Whether anything here narrows *which sources take part*, as opposed to
   /// which items they return. Drives the "Alle bronnen" action's own label.
@@ -167,6 +180,20 @@ class UnifiedCatalogFilterSelection {
       _ => UnifiedWatchFilter.all,
     },
     mediaFilter: libraryMediaQuickFilters.contains(filter) ? filter : null,
+    serverFilters: serverFilters,
+    serverIds: serverIds,
+    libraryKeys: libraryKeys,
+  );
+
+  /// This selection with the boolean [key] the servers list as the quick choice.
+  UnifiedCatalogFilterSelection withExtraFilter(String key) => UnifiedCatalogFilterSelection(
+    genres: genres,
+    audioLanguages: audioLanguages,
+    officialRatings: officialRatings,
+    years: years,
+    decades: decades,
+    extraFilter: key,
+    serverFilters: serverFilters,
     serverIds: serverIds,
     libraryKeys: libraryKeys,
   );
@@ -178,6 +205,7 @@ class UnifiedCatalogFilterSelection {
     Set<int>? years,
     Set<int>? decades,
     UnifiedWatchFilter? watchState,
+    Map<String, Set<String>>? serverFilters,
     Set<String>? serverIds,
     Set<String>? libraryKeys,
   }) => UnifiedCatalogFilterSelection(
@@ -188,6 +216,8 @@ class UnifiedCatalogFilterSelection {
     decades: decades ?? this.decades,
     watchState: watchState ?? this.watchState,
     mediaFilter: mediaFilter,
+    extraFilter: extraFilter,
+    serverFilters: serverFilters ?? this.serverFilters,
     serverIds: serverIds ?? this.serverIds,
     libraryKeys: libraryKeys ?? this.libraryKeys,
   );
@@ -217,6 +247,11 @@ class UnifiedCatalogFilterSelection {
     decades: capabilities.supportsMetadataFilters ? decades : const {},
     watchState: capabilities.supportsWatchState(watchState) ? watchState : UnifiedWatchFilter.all,
     mediaFilter: mediaFilter != null && capabilities.supportsQuickFilter(mediaFilter!) ? mediaFilter : null,
+    extraFilter: extraFilter != null && capabilities.supportsExtraFilter(extraFilter!) ? extraFilter : null,
+    serverFilters: {
+      for (final entry in serverFilters.entries)
+        if (capabilities.supportsServerCategory(entry.key)) entry.key: entry.value,
+    },
     serverIds: serverIds,
     libraryKeys: libraryKeys,
   );
@@ -262,6 +297,8 @@ class UnifiedCatalogFilterSelection {
           _setEquals(other.decades, decades) &&
           other.watchState == watchState &&
           other.mediaFilter == mediaFilter &&
+          other.extraFilter == extraFilter &&
+          _mapOfSetsEqual(other.serverFilters, serverFilters) &&
           _setEquals(other.serverIds, serverIds) &&
           _setEquals(other.libraryKeys, libraryKeys);
 
@@ -274,6 +311,10 @@ class UnifiedCatalogFilterSelection {
     Object.hashAllUnordered(decades),
     watchState,
     mediaFilter,
+    extraFilter,
+    Object.hashAll(
+      ([...serverFilters.keys]..sort()).map((k) => Object.hash(k, Object.hashAllUnordered(serverFilters[k]!))),
+    ),
     Object.hashAllUnordered(serverIds),
     Object.hashAllUnordered(libraryKeys),
   );
@@ -281,6 +322,9 @@ class UnifiedCatalogFilterSelection {
   @override
   String toString() => 'UnifiedCatalogFilterSelection($activeCount active)';
 }
+
+bool _mapOfSetsEqual(Map<String, Set<String>> a, Map<String, Set<String>> b) =>
+    a.length == b.length && a.entries.every((e) => b[e.key] != null && _setEquals(b[e.key]!, e.value));
 
 bool _setEquals<T>(Set<T> a, Set<T> b) => a.length == b.length && a.containsAll(b);
 
@@ -352,6 +396,9 @@ class UnifiedCatalogPreferences {
     if (filters.decades.isNotEmpty) 'decades': filters.decades.toList()..sort(),
     if (filters.watchState != UnifiedWatchFilter.all) 'watch': filters.watchState.name,
     if (filters.mediaFilter != null) 'media': filters.mediaFilter!.name,
+    if (filters.extraFilter != null) 'extra': filters.extraFilter,
+    if (filters.serverFilters.isNotEmpty)
+      'serverFilters': {for (final e in filters.serverFilters.entries) e.key: e.value.toList()..sort()},
     if (filters.serverIds.isNotEmpty) 'servers': filters.serverIds.toList()..sort(),
     if (filters.libraryKeys.isNotEmpty) 'libraries': filters.libraryKeys.toList()..sort(),
   };
@@ -373,6 +420,8 @@ class UnifiedCatalogPreferences {
       decades: _intSet(json['decades']),
       watchState: UnifiedWatchFilter.byName(json['watch']),
       mediaFilter: _mediaFilter(json['media']),
+      extraFilter: json['extra'] is String && (json['extra'] as String).isNotEmpty ? json['extra'] as String : null,
+      serverFilters: _serverFilters(json['serverFilters']),
       serverIds: _stringSet(json['servers']),
       libraryKeys: _stringSet(json['libraries']),
     ),
@@ -384,6 +433,16 @@ class UnifiedCatalogPreferences {
 
   @override
   int get hashCode => Object.hash(sort, filters);
+}
+
+Map<String, Set<String>> _serverFilters(Object? raw) {
+  if (raw is! Map) return const {};
+  final result = <String, Set<String>>{};
+  for (final entry in raw.entries) {
+    final values = _stringSet(entry.value);
+    if (entry.key is String && values.isNotEmpty) result[entry.key as String] = values;
+  }
+  return result;
 }
 
 LibraryQuickFilter? _mediaFilter(Object? name) {
@@ -437,9 +496,13 @@ UnifiedCatalogQuery buildUnifiedCatalogQuery({
         ? null
         : ({for (final value in filters.officialRatings) ...value.split(contentRatingValueSeparator)}.toList()..sort()),
     years: _queryYears(filters),
+    // The `field` is the `filter` value the server listed, never a key of ours.
     filters: [
-      if (plexFilterKeyFor(filters.mediaFilter ?? LibraryQuickFilter.all) case final key?)
+      if (capabilities.mediaFilterKeys[filters.mediaFilter] case final key?)
         LibraryFilter(field: key, values: const ['1']),
+      if (filters.extraFilter case final key?) LibraryFilter(field: key, values: const ['1']),
+      for (final entry in filters.serverFilters.entries)
+        LibraryFilter(field: entry.key, values: entry.value.toList()..sort()),
     ],
   );
 }

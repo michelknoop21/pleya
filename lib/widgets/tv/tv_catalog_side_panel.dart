@@ -104,6 +104,10 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
   _Page _page = _Page.overview;
   TvCatalogFilterSection _section = TvCatalogFilterSection.status;
 
+  /// The server category open on the category page, when [_section] is
+  /// [TvCatalogFilterSection.serverCategory].
+  LibraryServerFilter? _serverCategory;
+
   /// Where a page opens, by row. Set on the way back up a layer.
   int? _initialIndex = 0;
 
@@ -154,12 +158,11 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
       unawaited(_model.loadOptions());
     }
     final quick = _model.quickFilters;
+    final quickCount = quick.length + _model.extraQuickFilters.length;
     final section = _model.menuSections.indexOf(wanted);
     _show(
       _Page.categories,
-      initialIndex: section >= 0
-          ? quick.length + section
-          : quick.indexOf(_model.draft.quickFilter).clamp(0, quick.length),
+      initialIndex: section >= 0 ? quickCount + section : quick.indexOf(_model.draft.quickFilter).clamp(0, quickCount),
     );
   }
 
@@ -171,9 +174,13 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
       case _Page.category:
         // With something to apply the ring lands on Apply, one press from done.
         final sections = _model.menuSections;
-        final quick = _model.quickFilters.length;
+        final quick = _model.quickFilters.length + _model.extraQuickFilters.length;
+        final categories = sections.length + _model.serverCategories.length;
         final dirty = _model.draft != widget.selection;
-        _show(_Page.categories, initialIndex: quick + (dirty ? sections.length + 1 : sections.indexOf(_section)));
+        final here = _section == TvCatalogFilterSection.serverCategory
+            ? sections.length + _model.serverCategories.indexWhere((c) => c.key == _serverCategory?.key)
+            : sections.indexOf(_section);
+        _show(_Page.categories, initialIndex: quick + (dirty ? categories + 1 : here));
       case _Page.sort:
       case _Page.categories:
       case _Page.jump:
@@ -259,9 +266,16 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
     for (final filter in _model.quickFilters)
       TvCatalogRailOption(
         label: libraryQuickFilterLabel(filter),
-        isSelected: _model.draft.quickFilter == filter,
+        isSelected: _model.draft.extraFilter == null && _model.draft.quickFilter == filter,
         automationInstance: _instance('quick.${filter.name}'),
         onPressed: () => widget.onApplyFilters(_model.draft.withQuickFilter(filter)),
+      ),
+    for (final extra in _model.extraQuickFilters)
+      TvCatalogRailOption(
+        label: extra.label,
+        isSelected: _model.draft.extraFilter == extra.key,
+        automationInstance: _instance('quick.server.${extra.key}'),
+        onPressed: () => widget.onApplyFilters(_model.draft.withExtraFilter(extra.key)),
       ),
     for (final (i, section) in _model.menuSections.indexed)
       TvCatalogRailOption(
@@ -271,6 +285,19 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
         dividerAbove: i == 0,
         automationInstance: _instance('filter.${section.name}'),
         onPressed: () => _show(_Page.category, section: section),
+      ),
+    for (final (i, category) in _model.serverCategories.indexed)
+      TvCatalogRailOption(
+        label: category.label,
+        count: _model.activeCountForServerCategory(category.key),
+        isSelected: false,
+        dividerAbove: i == 0 && _model.menuSections.isEmpty,
+        automationInstance: _instance('filter.server.${category.key}'),
+        onPressed: () {
+          _serverCategory = category;
+          unawaited(_model.loadServerCategory(category.key));
+          _show(_Page.category, section: TvCatalogFilterSection.serverCategory);
+        },
       ),
     TvCatalogRailOption(
       label: t.unifiedCatalog.filters.clearAll,
@@ -287,14 +314,19 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
   ];
 
   List<TvCatalogRailOption> _rowOptions() {
-    final rows = _model.rowsFor(_section);
+    final category = _serverCategory;
+    final rows = _section == TvCatalogFilterSection.serverCategory && category != null
+        ? _model.rowsForServerCategory(category.key)
+        : _model.rowsFor(_section);
     return [
       for (var i = 0; i < rows.length; i++)
         TvCatalogRailOption(
           label: rows[i].label,
           value: rows[i].secondary,
           isSelected: rows[i].isSelected,
-          automationInstance: _instance('filter.${_section.name}.$i'),
+          automationInstance: _instance(
+            'filter.${_serverCategory != null && _section == TvCatalogFilterSection.serverCategory ? 'server.${_serverCategory!.key}' : _section.name}.$i',
+          ),
           onPressed: rows[i].onPressed,
         ),
     ];
@@ -308,6 +340,7 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
       _Page.overview => t.unifiedCatalog.filters.title,
       _Page.sort => t.unifiedCatalog.sort.pageTitle,
       _Page.categories => t.unifiedCatalog.filters.pageTitle,
+      _Page.category when _section == TvCatalogFilterSection.serverCategory => _serverCategory?.label ?? '',
       _Page.category => tvCatalogFilterSectionLabel(_section),
       _Page.jump => t.unifiedCatalog.jumpTo,
     };
@@ -321,7 +354,12 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
     final String? note = switch (_page) {
       _Page.categories when _model.hasUnsupportedSections => t.unifiedCatalog.filters.someUnavailable,
       _Page.category when options.isEmpty =>
-        _model.isLoadingOptions ? t.common.loading : t.unifiedCatalog.filters.noValues,
+        _model.isLoadingOptions ||
+                (_serverCategory != null &&
+                    _section == TvCatalogFilterSection.serverCategory &&
+                    _model.isLoadingServerCategory(_serverCategory!.key))
+            ? t.common.loading
+            : t.unifiedCatalog.filters.noValues,
       _ => null,
     };
 
@@ -363,7 +401,7 @@ class TvCatalogSidePanelState extends State<TvCatalogSidePanel> {
   /// A page is a new question: new rows, opened on its own row. So each page
   /// gets a key of its own, and [focusEntry] reaches the one on screen.
   GlobalKey<TvCatalogFilterRailSubviewState> _keyFor(_Page page, TvCatalogFilterSection section) {
-    final name = page == _Page.category ? '${page.name}.${section.name}' : page.name;
+    final name = page == _Page.category ? '${page.name}.${section.name}.${_serverCategory?.key ?? ''}' : page.name;
     if (_pageName != name) {
       _pageName = name;
       _pageKey = GlobalKey();

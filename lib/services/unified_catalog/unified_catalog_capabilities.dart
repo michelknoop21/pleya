@@ -49,16 +49,26 @@ class UnifiedFilterCapabilities {
   /// The sort fields every participating backend can run.
   final Set<UnifiedCatalogSortField> sortFields;
 
-  /// The media quick filters every library has listed: only a live answer can
-  /// add one, see [narrowedTo].
-  final Set<LibraryQuickFilter> mediaFilters;
+  /// The media quick filters every library has listed, with the `filter` value
+  /// they are listed under: only a live answer can add one, see [narrowedTo].
+  final Map<LibraryQuickFilter, String> mediaFilterKeys;
+
+  /// Booleans the servers list that the definition has no row for.
+  final List<LibraryServerFilter> extraFilters;
+
+  /// Non-boolean categories the servers list beyond the five of the definition.
+  final List<LibraryServerFilter> serverCategories;
+
+  Set<LibraryQuickFilter> get mediaFilters => mediaFilterKeys.keys.toSet();
 
   const UnifiedFilterCapabilities({
     required this.supportsMetadataFilters,
     required this.supportsWatchFilter,
     this.supportsWatchedFilter = false,
     this.sortFields = const {UnifiedCatalogSortField.title},
-    this.mediaFilters = const {},
+    this.mediaFilterKeys = const {},
+    this.extraFilters = const [],
+    this.serverCategories = const [],
   });
 
   /// This table corrected by what the live servers said. Null changes nothing.
@@ -69,7 +79,9 @@ class UnifiedFilterCapabilities {
           supportsWatchFilter: supportsWatchFilter,
           supportsWatchedFilter: supportsWatchedFilter,
           sortFields: sortFields.intersection(support.sortFields),
-          mediaFilters: support.mediaFilters,
+          mediaFilterKeys: support.mediaFilterKeys,
+          extraFilters: support.extraFilters,
+          serverCategories: support.serverCategories,
         );
 
   /// The answer for an empty catalog: nothing participates, so nothing is
@@ -86,8 +98,14 @@ class UnifiedFilterCapabilities {
     LibraryQuickFilter.all => true,
     LibraryQuickFilter.unwatched || LibraryQuickFilter.inProgress => supportsWatchFilter,
     LibraryQuickFilter.watched => supportsWatchFilter && supportsWatchedFilter,
-    _ => mediaFilters.contains(filter),
+    _ => mediaFilterKeys.containsKey(filter),
   };
+
+  /// Whether every library lists the boolean [key] that has no row of its own.
+  bool supportsExtraFilter(String key) => extraFilters.any((e) => e.key == key);
+
+  /// Whether every library lists the non-boolean category [key].
+  bool supportsServerCategory(String key) => serverCategories.any((c) => c.key == key);
 
   /// Whether [state] can be executed by every participating backend.
   bool supportsWatchState(UnifiedWatchFilter state) => switch (state) {
@@ -104,8 +122,9 @@ class UnifiedFilterCapabilities {
       other.supportsWatchedFilter == supportsWatchedFilter &&
       other.sortFields.length == sortFields.length &&
       other.sortFields.containsAll(sortFields) &&
-      other.mediaFilters.length == mediaFilters.length &&
-      other.mediaFilters.containsAll(mediaFilters);
+      _mapEquals(other.mediaFilterKeys, mediaFilterKeys) &&
+      _listEquals(other.extraFilters, extraFilters) &&
+      _listEquals(other.serverCategories, serverCategories);
 
   @override
   int get hashCode => Object.hash(
@@ -113,9 +132,17 @@ class UnifiedFilterCapabilities {
     supportsWatchFilter,
     supportsWatchedFilter,
     Object.hashAllUnordered(sortFields),
-    Object.hashAllUnordered(mediaFilters),
+    Object.hashAll(mediaFilterKeys.entries.map((e) => Object.hash(e.key, e.value))),
+    Object.hashAll(extraFilters),
+    Object.hashAll(serverCategories),
   );
 }
+
+bool _mapEquals<K, V>(Map<K, V> a, Map<K, V> b) =>
+    a.length == b.length && a.entries.every((e) => b.containsKey(e.key) && b[e.key] == e.value);
+
+bool _listEquals<T>(List<T> a, List<T> b) =>
+    a.length == b.length && Iterable<int>.generate(a.length).every((i) => a[i] == b[i]);
 
 /// What [backends] can all honour.
 ///

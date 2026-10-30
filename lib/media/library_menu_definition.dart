@@ -10,6 +10,7 @@ library;
 
 import '../i18n/strings.g.dart';
 import '../services/unified_catalog/unified_catalog_query.dart';
+import 'media_filter.dart';
 import 'media_sort.dart';
 
 /// The rows of Sorteren op, top to bottom.
@@ -155,19 +156,96 @@ const Set<LibraryQuickFilter> libraryMediaQuickFilters = {
   LibraryQuickFilter.duplicates,
 };
 
-/// The boolean filter a Plex section lists [filter] under in
-/// `/library/sections/{id}/filters`, or null when no key is known.
+/// What a server's own `/filters` list says about one library: which known
+/// quick choices it can run and under which spelling, which booleans the
+/// definition has no row for, and which non-boolean categories there are.
 ///
-/// A key only offers the row when the live server lists it. The Plex API
-/// documentation names no filter for Dolby Vision, HDR10+ or Atmos, and neither
-/// does this repository, so those stay null and do not appear. Jellyfin's
-/// `/Items` documents no parameter for any of these six.
-String? plexFilterKeyFor(LibraryQuickFilter filter) => switch (filter) {
-  LibraryQuickFilter.hdr => 'hdr',
-  LibraryQuickFilter.unmatched => 'unmatched',
-  LibraryQuickFilter.duplicates => 'duplicate',
-  _ => null,
+/// The server is the source for what exists, the definition only for order and
+/// label. Nothing here assumes a key: a Plex key for Dolby Vision, HDR10+ or
+/// Atmos cannot be proven from the documentation, so a row shows only when the
+/// server names a filter that [libraryQuickFilterForServerKey] recognises.
+class LibraryServerFilters {
+  const LibraryServerFilters({this.known = const {}, this.extras = const [], this.categories = const []});
+
+  /// The known quick choice and the `filter` value the server asked for it
+  /// under, which is what a request must send (`hdr10Plus`, not `hdr10plus`).
+  final Map<LibraryQuickFilter, String> known;
+
+  /// Booleans the definition has no row for, at the bottom of the quick list.
+  final List<LibraryServerFilter> extras;
+
+  /// Non-boolean categories beyond Genre, Jaar, Decennium, Leeftijd and
+  /// Audiotaal, in serverlabel.
+  final List<LibraryServerFilter> categories;
+}
+
+/// One filter as a server lists it: the `filter` value a request uses and the
+/// `title` the server gives it.
+class LibraryServerFilter {
+  const LibraryServerFilter({required this.key, required this.label});
+
+  final String key;
+  final String label;
+
+  @override
+  bool operator ==(Object other) => other is LibraryServerFilter && other.key == key && other.label == label;
+
+  @override
+  int get hashCode => Object.hash(key, label);
+}
+
+/// The spelling of a server key reduced to what it means: lower case, `+` read
+/// as "plus", every other non-alphanumeric removed.
+String _normalisedServerKey(String key) =>
+    key.toLowerCase().replaceAll('+', 'plus').replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+/// Short aliases for the keys the definition has a row for. Short on purpose:
+/// a spelling that is not here is shown as an unknown boolean, never lost.
+const Map<String, LibraryQuickFilter> _knownServerKeys = {
+  'hdr': LibraryQuickFilter.hdr,
+  'dovi': LibraryQuickFilter.dolbyVision,
+  'dolbyvision': LibraryQuickFilter.dolbyVision,
+  'hdr10plus': LibraryQuickFilter.hdr10Plus,
+  'atmos': LibraryQuickFilter.atmos,
+  'dolbyatmos': LibraryQuickFilter.atmos,
+  'unmatched': LibraryQuickFilter.unmatched,
+  'duplicate': LibraryQuickFilter.duplicates,
+  'duplicates': LibraryQuickFilter.duplicates,
 };
+
+/// Watch states the catalog already runs from its own watch filter, so a
+/// server listing them adds no row.
+const Set<String> _watchStateServerKeys = {'unwatched', 'inprogress', 'watched'};
+
+/// Categories that have a row of their own under the divider.
+const Set<String> _ownCategoryServerKeys = {'genre', 'year', 'decade', 'contentrating', 'audiolanguage'};
+
+/// The known quick choice a server key stands for, case-insensitively, or null.
+LibraryQuickFilter? libraryQuickFilterForServerKey(String key) => _knownServerKeys[_normalisedServerKey(key)];
+
+/// Sorts a library's filter list into what the menus draw.
+LibraryServerFilters classifyServerFilters(Iterable<MediaFilter> filters) {
+  final known = <LibraryQuickFilter, String>{};
+  final extras = <LibraryServerFilter>[];
+  final categories = <LibraryServerFilter>[];
+  for (final filter in filters) {
+    final key = filter.filter;
+    if (key.isEmpty) continue;
+    final normalised = _normalisedServerKey(key);
+    if (filter.filterType == 'boolean') {
+      if (_watchStateServerKeys.contains(normalised)) continue;
+      final quick = _knownServerKeys[normalised];
+      if (quick != null) {
+        known.putIfAbsent(quick, () => key);
+      } else if (!extras.any((e) => e.key == key)) {
+        extras.add(LibraryServerFilter(key: key, label: filter.title.isEmpty ? key : filter.title));
+      }
+    } else if (!_ownCategoryServerKeys.contains(normalised) && !categories.any((c) => c.key == key)) {
+      categories.add(LibraryServerFilter(key: key, label: filter.title.isEmpty ? key : filter.title));
+    }
+  }
+  return LibraryServerFilters(known: known, extras: extras, categories: categories);
+}
 
 /// The categories under the divider of Filteren op, top to bottom: Genre, Jaar,
 /// Decennium and Leeftijd, then every other category there is, so nothing goes.

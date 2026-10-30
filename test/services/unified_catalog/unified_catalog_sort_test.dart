@@ -303,7 +303,10 @@ void main() {
     test('narrows the table and is the only way to a media filter', () {
       expect(plex.supportsQuickFilter(LibraryQuickFilter.hdr), isFalse);
       final narrowed = plex.narrowedTo(
-        const LibraryMenuSupport(sortFields: {_F.title, _F.criticRating}, mediaFilters: {LibraryQuickFilter.hdr}),
+        const LibraryMenuSupport(
+          sortFields: {_F.title, _F.criticRating},
+          mediaFilterKeys: {LibraryQuickFilter.hdr: 'hdr'},
+        ),
       );
       expect(narrowed.sortFields, {_F.title, _F.criticRating});
       expect(narrowed.supportsQuickFilter(LibraryQuickFilter.hdr), isTrue);
@@ -312,7 +315,10 @@ void main() {
 
     test('a quick choice reaches Plex as its boolean filter, and only there', () {
       final narrowed = plex.narrowedTo(
-        LibraryMenuSupport(sortFields: _F.values.toSet(), mediaFilters: const {LibraryQuickFilter.duplicates}),
+        LibraryMenuSupport(
+          sortFields: _F.values.toSet(),
+          mediaFilterKeys: const {LibraryQuickFilter.duplicates: 'duplicate'},
+        ),
       );
       const preferences = UnifiedCatalogPreferences(
         filters: UnifiedCatalogFilterSelection(mediaFilter: LibraryQuickFilter.duplicates),
