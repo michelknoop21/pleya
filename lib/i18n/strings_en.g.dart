@@ -7799,6 +7799,12 @@ class TranslationsUnifiedCatalogSortEn {
 	/// en: 'Oldest release'
 	String get oldestRelease => 'Oldest release';
 
+	/// en: 'Newest year'
+	String get yearNewest => 'Newest year';
+
+	/// en: 'Oldest year'
+	String get yearOldest => 'Oldest year';
+
 	/// en: 'Recently watched'
 	String get recentlyWatched => 'Recently watched';
 
@@ -12407,6 +12413,8 @@ extension on Translations {
 			'unifiedCatalog.sort.oldestAdded' => 'Oldest added',
 			'unifiedCatalog.sort.newestRelease' => 'Newest release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oldest release',
+			'unifiedCatalog.sort.yearNewest' => 'Newest year',
+			'unifiedCatalog.sort.yearOldest' => 'Oldest year',
 			'unifiedCatalog.sort.recentlyWatched' => 'Recently watched',
 			'unifiedCatalog.sort.fields.title' => 'Title',
 			'unifiedCatalog.sort.fields.year' => 'Year',
@@ -12431,10 +12439,10 @@ extension on Translations {
 			'unifiedCatalog.filters.genre' => 'Genre',
 			'unifiedCatalog.filters.year' => 'Year',
 			'unifiedCatalog.filters.contentRating' => 'Age rating',
-			'unifiedCatalog.filters.servers' => 'Servers',
-			'unifiedCatalog.filters.libraries' => 'Libraries',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.filters.servers' => 'Servers',
+			'unifiedCatalog.filters.libraries' => 'Libraries',
 			'unifiedCatalog.filters.apply' => 'Apply',
 			'unifiedCatalog.filters.clearAll' => 'Clear all',
 			'unifiedCatalog.filters.all' => 'All',
@@ -12945,10 +12953,10 @@ extension on Translations {
 			'assistant.steps.listLibraries' => 'Fetching libraries',
 			'assistant.steps.findMedia' => 'Finding the title',
 			'assistant.steps.listJobs' => 'Fetching jobs',
-			'assistant.steps.listUsers' => 'Fetching users',
-			'assistant.steps.scanLibrary' => 'Scanning library',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.steps.listUsers' => 'Fetching users',
+			'assistant.steps.scanLibrary' => 'Scanning library',
 			'assistant.steps.refreshMetadata' => 'Refreshing metadata',
 			'assistant.steps.cancelJob' => 'Cancelling job',
 			'assistant.steps.retryJob' => 'Retrying job',

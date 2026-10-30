@@ -128,11 +128,7 @@ class CatalogHomeCustomRowLoader implements HomeCustomRowLoader {
     // Plex and Jellyfin libraries keeps its genre filter even while a Pleya
     // Server library exists elsewhere in the catalog.
     final capabilities = unifiedFilterCapabilitiesFor(participating.map((library) => library.backend), kind: row.kind);
-    final query = buildUnifiedCatalogQuery(
-      kind: row.kind,
-      preferences: row.preferences.withYearForRelease(capabilities),
-      capabilities: capabilities,
-    );
+    final query = buildUnifiedCatalogQuery(kind: row.kind, preferences: row.preferences, capabilities: capabilities);
     final service = UnifiedCatalogService(
       query: query,
       libraries: participating,

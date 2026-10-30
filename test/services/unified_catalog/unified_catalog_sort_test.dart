@@ -280,11 +280,42 @@ void main() {
       expect(stored.effectiveSort(jellyfin), UnifiedCatalogSort.criticHighest);
     });
 
-    test('a saved Newest release row stays newest on Pleya Server', () {
-      const row = UnifiedCatalogPreferences(sort: UnifiedCatalogSort.newestRelease);
+    group('Pleya Server has no date, only a year', () {
       final pleya = unifiedFilterCapabilitiesFor([MediaBackend.pleyaServer]);
-      expect(row.withYearForRelease(pleya).sort, UnifiedCatalogSort.yearNewest);
-      expect(row.withYearForRelease(jellyfin).sort, UnifiedCatalogSort.newestRelease);
+
+      test('a stored release sort runs on the year, both ways round', () {
+        const newest = UnifiedCatalogPreferences(sort: UnifiedCatalogSort.newestRelease);
+        const oldest = UnifiedCatalogPreferences(sort: UnifiedCatalogSort.oldestRelease);
+        expect(newest.effectiveSort(pleya), UnifiedCatalogSort.yearNewest);
+        expect(oldest.effectiveSort(pleya), UnifiedCatalogSort.yearOldest);
+      });
+
+      test('the query asks for the year, so it never reads A to Z', () {
+        final query = buildUnifiedCatalogQuery(
+          kind: MediaKind.movie,
+          preferences: const UnifiedCatalogPreferences(sort: UnifiedCatalogSort.newestRelease),
+          capabilities: pleya,
+        );
+        expect(query.sortField, _F.year);
+        expect(query.sortDirection, LibrarySortDirection.descending);
+      });
+
+      test('a backend with the date keeps the date, and the stored sort is never rewritten', () {
+        const newest = UnifiedCatalogPreferences(sort: UnifiedCatalogSort.newestRelease);
+        expect(newest.effectiveSort(jellyfin), UnifiedCatalogSort.newestRelease);
+        newest.effectiveSort(pleya);
+        expect(newest.sort, UnifiedCatalogSort.newestRelease);
+      });
+
+      test('without a year either it is title', () {
+        const newest = UnifiedCatalogPreferences(sort: UnifiedCatalogSort.newestRelease);
+        expect(newest.effectiveSort(UnifiedFilterCapabilities.none), UnifiedCatalogSort.titleAsc);
+      });
+
+      test('the named list keeps a date sort on it, so the phone and the TV rail have one', () {
+        final offered = UnifiedCatalogSort.named.where((sort) => pleya.supportsSort(sort.field));
+        expect(offered, containsAll([UnifiedCatalogSort.yearNewest, UnifiedCatalogSort.yearOldest]));
+      });
     });
 
     test('a stored name from this list round-trips, an unknown one falls to title', () {

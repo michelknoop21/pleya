@@ -3286,6 +3286,8 @@ class _TranslationsUnifiedCatalogSortNl extends TranslationsUnifiedCatalogSortEn
 	@override String get oldestAdded => 'Oudst toegevoegd';
 	@override String get newestRelease => 'Nieuwste release';
 	@override String get oldestRelease => 'Oudste release';
+	@override String get yearNewest => 'Nieuwste jaar';
+	@override String get yearOldest => 'Oudste jaar';
 	@override String get recentlyWatched => 'Recent bekeken';
 	@override late final _TranslationsUnifiedCatalogSortFieldsNl fields = _TranslationsUnifiedCatalogSortFieldsNl._(_root);
 	@override String get pageTitle => 'Sorteren op';
@@ -6604,6 +6606,8 @@ extension on TranslationsNl {
 			'unifiedCatalog.sort.oldestAdded' => 'Oudst toegevoegd',
 			'unifiedCatalog.sort.newestRelease' => 'Nieuwste release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oudste release',
+			'unifiedCatalog.sort.yearNewest' => 'Nieuwste jaar',
+			'unifiedCatalog.sort.yearOldest' => 'Oudste jaar',
 			'unifiedCatalog.sort.recentlyWatched' => 'Recent bekeken',
 			'unifiedCatalog.sort.fields.title' => 'Titel',
 			'unifiedCatalog.sort.fields.year' => 'Jaar',
@@ -6628,10 +6632,10 @@ extension on TranslationsNl {
 			'unifiedCatalog.filters.year' => 'Jaar',
 			'unifiedCatalog.filters.contentRating' => 'Leeftijd',
 			'unifiedCatalog.filters.servers' => 'Servers',
-			'unifiedCatalog.filters.libraries' => 'Bibliotheken',
-			'unifiedCatalog.filters.apply' => 'Toepassen',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.filters.libraries' => 'Bibliotheken',
+			'unifiedCatalog.filters.apply' => 'Toepassen',
 			'unifiedCatalog.filters.clearAll' => 'Alles wissen',
 			'unifiedCatalog.filters.all' => 'Alle',
 			'unifiedCatalog.filters.unwatched' => 'Niet bekeken',
@@ -7142,10 +7146,10 @@ extension on TranslationsNl {
 			'assistant.steps.listLibraries' => 'Bibliotheken ophalen',
 			'assistant.steps.findMedia' => 'Titel zoeken',
 			'assistant.steps.listJobs' => 'Taken ophalen',
-			'assistant.steps.listUsers' => 'Gebruikers ophalen',
-			'assistant.steps.scanLibrary' => 'Bibliotheek scannen',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.steps.listUsers' => 'Gebruikers ophalen',
+			'assistant.steps.scanLibrary' => 'Bibliotheek scannen',
 			'assistant.steps.refreshMetadata' => 'Metadata vernieuwen',
 			'assistant.steps.cancelJob' => 'Taak stoppen',
 			'assistant.steps.retryJob' => 'Taak opnieuw starten',

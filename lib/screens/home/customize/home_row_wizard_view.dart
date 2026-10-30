@@ -96,7 +96,7 @@ class _HomeRowWizardViewState extends State<HomeRowWizardView> {
     );
     final next = await showMobileCatalogSortSheet(
       context,
-      current: _d.preferences.withYearForRelease(capabilities).effectiveSort(capabilities),
+      current: _d.preferences.effectiveSort(capabilities),
       capabilities: capabilities,
     );
     if (next != null && mounted) _d.setSort(next);

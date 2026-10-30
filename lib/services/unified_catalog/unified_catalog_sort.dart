@@ -55,6 +55,8 @@ enum UnifiedCatalogSort {
     oldestAdded,
     newestRelease,
     oldestRelease,
+    yearNewest,
+    yearOldest,
     recentlyWatched,
   ];
 

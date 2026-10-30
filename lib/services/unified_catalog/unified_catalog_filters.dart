@@ -360,31 +360,25 @@ class UnifiedCatalogPreferences {
   UnifiedCatalogPreferences copyWith({UnifiedCatalogSort? sort, UnifiedCatalogFilterSelection? filters}) =>
       UnifiedCatalogPreferences(sort: sort ?? this.sort, filters: filters ?? this.filters);
 
-  /// The sort in force: the stored one, or title when a backend taking part
-  /// cannot run it.
+  /// The sort in force: the stored one, the year where a backend taking part has
+  /// no date (a stored Nieuwste release must not read A to Z on Pleya Server,
+  /// whose release sort has always run on the year), or else title.
+  ///
+  /// Every reader takes it from here, so the query, the label and the tick of a
+  /// sheet cannot disagree.
   ///
   /// **Never write the result back**, for the reason on
   /// [UnifiedCatalogFilterSelection.constrainedTo]: the set of backends is
   /// itself something the user changes, and lifting the source restriction has
   /// to bring the score sort back.
-  UnifiedCatalogSort effectiveSort(UnifiedFilterCapabilities capabilities) =>
-      capabilities.supportsSort(sort.field) ? sort : UnifiedCatalogSort.titleAsc;
-
-  /// For a saved list that promises an order rather than a page a viewer sorts
-  /// by hand: Home rows and the assistant. Nieuwste release is what those were
-  /// saved as before Jaar existed, and Pleya Server has always run it on the
-  /// year. Falling back to title would make a row called newest read A to Z.
-  UnifiedCatalogPreferences withYearForRelease(UnifiedFilterCapabilities capabilities) {
-    if (sort.field != UnifiedCatalogSortField.releaseDate ||
-        capabilities.supportsSort(sort.field) ||
-        !capabilities.supportsSort(UnifiedCatalogSortField.year)) {
-      return this;
-    }
-    return copyWith(
-      sort: sort.direction == LibrarySortDirection.descending
+  UnifiedCatalogSort effectiveSort(UnifiedFilterCapabilities capabilities) {
+    if (capabilities.supportsSort(sort.field)) return sort;
+    if (sort.field == UnifiedCatalogSortField.releaseDate && capabilities.supportsSort(UnifiedCatalogSortField.year)) {
+      return sort.direction == LibrarySortDirection.descending
           ? UnifiedCatalogSort.yearNewest
-          : UnifiedCatalogSort.yearOldest,
-    );
+          : UnifiedCatalogSort.yearOldest;
+    }
+    return UnifiedCatalogSort.titleAsc;
   }
 
   Map<String, dynamic> toJson() => {

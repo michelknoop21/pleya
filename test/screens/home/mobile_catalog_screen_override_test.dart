@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/media/library_query.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
@@ -21,6 +22,7 @@ import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/services/unified_catalog/unified_artwork_prefetcher.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
+import 'package:pleya/services/unified_catalog/unified_catalog_query.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_query_store.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/focusable_filter_chip.dart';
@@ -37,7 +39,11 @@ void main() {
     sort: UnifiedCatalogSort.newestRelease,
   );
 
-  Future<void> open(WidgetTester tester, {UnifiedCatalogPreferences? override}) async {
+  Future<UnifiedCatalogs> open(
+    WidgetTester tester, {
+    UnifiedCatalogPreferences? override,
+    MediaBackend backend = MediaBackend.plex,
+  }) async {
     resetSharedPreferencesForTest();
     SettingsService.resetForTesting();
     await SettingsService.getInstance();
@@ -51,14 +57,7 @@ void main() {
     await hiddenLibraries.ensureInitialized();
     final libraries = LibrariesProvider()
       ..debugSetLibraries([
-        MediaLibrary(
-          id: 'A',
-          backend: MediaBackend.plex,
-          title: 'A',
-          kind: MediaKind.movie,
-          serverId: 's1',
-          serverName: 's1',
-        ),
+        MediaLibrary(id: 'A', backend: backend, title: 'A', kind: MediaKind.movie, serverId: 's1', serverName: 's1'),
       ]);
     final catalogs = UnifiedCatalogs(multiServer: multiServer, libraries: libraries, hiddenLibraries: hiddenLibraries);
     addTearDown(catalogs.dispose);
@@ -89,6 +88,7 @@ void main() {
     );
     await tester.pump();
     await tester.pump();
+    return catalogs;
   }
 
   int filterBadge(WidgetTester tester) => tester
@@ -100,6 +100,18 @@ void main() {
     expect(filterBadge(tester), 1, reason: 'the genre of the row is applied');
     final stored = await UnifiedCatalogQueryStore.read(MediaKind.movie);
     expect(stored, UnifiedCatalogPreferences.defaults, reason: 'a visit is not a saved filter');
+  });
+
+  testWidgets('a stored Newest release on Pleya Server asks for the year and says so', (tester) async {
+    final catalogs = await open(
+      tester,
+      backend: MediaBackend.pleyaServer,
+      override: const UnifiedCatalogPreferences(sort: UnifiedCatalogSort.newestRelease),
+    );
+    final query = catalogs.forKind(MediaKind.movie).query;
+    expect(query.sortField, UnifiedCatalogSortField.year);
+    expect(query.sortDirection, LibrarySortDirection.descending);
+    expect(find.text(t.unifiedCatalog.sort.yearNewest), findsOneWidget);
   });
 
   testWidgets('NEGATIVE CONTROL: without an override the catalog opens on the stored filter', (tester) async {

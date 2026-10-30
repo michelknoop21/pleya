@@ -2207,6 +2207,8 @@
       "oldestAdded": "Oudst toegevoegd",
       "newestRelease": "Nieuwste release",
       "oldestRelease": "Oudste release",
+      "yearNewest": "Nieuwste jaar",
+      "yearOldest": "Oudste jaar",
       "recentlyWatched": "Recent bekeken",
       "fields": {
         "title": "Titel",

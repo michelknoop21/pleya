@@ -103,7 +103,7 @@ class _Built {
   final MultiServerProvider multiServer;
 }
 
-Future<_Built> _buildCatalog() async {
+Future<_Built> _buildCatalog({MediaBackend backend = MediaBackend.plex}) async {
   final client = _FakeLibraryClient([_movie('m1', title: 'Alpha'), _movie('m2', title: 'Bravo')]);
   final manager = MultiServerManager()..debugRegisterClientForTesting(client);
   final multiServer = MultiServerProvider(manager, DataAggregationService(manager));
@@ -111,7 +111,7 @@ Future<_Built> _buildCatalog() async {
     ..debugSetLibraries([
       MediaLibrary(
         id: '1',
-        backend: MediaBackend.plex,
+        backend: backend,
         title: 'Films',
         kind: MediaKind.movie,
         serverId: 'nas',
@@ -178,6 +178,37 @@ void main() {
       UnifiedCatalogSort.titleAsc,
       reason: 'leaving the screen must not have overwritten what an ordinary visit already had stored',
     );
+  });
+
+  testWidgets('a stored Newest release on Pleya Server asks for the year', (tester) async {
+    resetSharedPreferencesForTest();
+    SettingsService.resetForTesting();
+    await SettingsService.getInstance();
+    LocaleSettings.setLocaleSync(AppLocale.en);
+
+    final built = await _buildCatalog(backend: MediaBackend.pleyaServer);
+    addTearDown(built.catalog.dispose);
+    addTearDown(built.multiServer.dispose);
+
+    setGoldenSurfaceSize(tester);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<MultiServerProvider>.value(
+        value: built.multiServer,
+        child: _shell(
+          TvUnifiedCatalogScreen(
+            catalog: built.catalog,
+            title: t.unifiedCatalog.moviesTitle,
+            // The route `_restorePreferences` takes for a stored value, without
+            // the store read that does not finish inside testWidgets.
+            initialFilterOverride: const UnifiedCatalogPreferences(sort: UnifiedCatalogSort.newestRelease),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(built.catalog.query.sortField, UnifiedCatalogSortField.year);
+    expect(built.catalog.query.sortDirection, LibrarySortDirection.descending);
   });
 
   // A deliberate sort change made while viewing an override is not this

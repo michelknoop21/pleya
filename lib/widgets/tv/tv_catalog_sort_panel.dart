@@ -1,12 +1,12 @@
 /// The sort panel of hoofdstuk 10.5, in the fase-4 panel language.
 ///
-/// A single column of the seven sorts that set is fixed at, one focus stop
-/// each, with the current one marked. Choosing applies immediately and closes —
+/// A single column of the named sorts, one focus stop each, with the current one
+/// marked. Choosing applies immediately and closes —
 /// unlike the filter panel, which batches behind Apply.
 ///
 /// The asymmetry is deliberate and comes from hoofdstuk 10.6's own reason for
 /// batching filters: "zodat de grid niet na elke remote-klik herlaadt en focus
-/// steelt". A sort is one choice out of seven, so there is no second click to
+/// steelt". A sort is one choice out of a short list, so there is no second click to
 /// protect against; making the user press Apply after picking one radio option
 /// would add a step to the most common adjustment on the page.
 library;
@@ -36,6 +36,8 @@ String sortLabel(UnifiedCatalogSort sort) => switch (sort) {
   UnifiedCatalogSort.oldestAdded => t.unifiedCatalog.sort.oldestAdded,
   UnifiedCatalogSort.newestRelease => t.unifiedCatalog.sort.newestRelease,
   UnifiedCatalogSort.oldestRelease => t.unifiedCatalog.sort.oldestRelease,
+  UnifiedCatalogSort.yearNewest => t.unifiedCatalog.sort.yearNewest,
+  UnifiedCatalogSort.yearOldest => t.unifiedCatalog.sort.yearOldest,
   UnifiedCatalogSort.recentlyWatched => t.unifiedCatalog.sort.recentlyWatched,
   // The fields added with the sort page read as the row they are on; the arrow
   // says which way they run.
