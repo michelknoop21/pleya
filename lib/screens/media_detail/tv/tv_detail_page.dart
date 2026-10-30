@@ -25,6 +25,9 @@ class TvDetailSection {
     required this.itemBuilder,
     this.artworkInset = 0,
     this.focusScale = FocusTheme.fullCardFocusScale,
+    this.hasMore = false,
+    this.isLoadingMore = false,
+    this.onLoadMore,
   });
 
   /// Stable across rebuilds: it keys the row's focus memory and the way back
@@ -42,6 +45,11 @@ class TvDetailSection {
 
   final double focusScale;
   final Widget Function(BuildContext context, TvCatalogGridCell cell) itemBuilder;
+
+  /// A row that pages in as the focus nears its end.
+  final bool hasMore;
+  final bool isLoadingMore;
+  final VoidCallback? onLoadMore;
 }
 
 /// The film detail page: one vertical scroll over a backdrop that stays put.
@@ -133,6 +141,10 @@ class TvDetailPageState extends State<TvDetailPage> {
     if (!position.hasContentDimensions) return;
     if (position.extentAfter <= position.viewportDimension) onApproachEnd();
   }
+
+  /// The section under the remote is about to go, on purpose: the caller says
+  /// where the focus lands, so the rescue in [didUpdateWidget] stays out of it.
+  void forgetFocusedSection() => _focusedSectionId = null;
 
   /// DOWN out of the hero, or nothing to go to.
   bool focusFirstSection() {
@@ -274,9 +286,9 @@ class TvDetailPageState extends State<TvDetailPage> {
               itemBuilder: section.itemBuilder,
               cardHeight: (_) => section.cardHeight,
               focusScale: section.focusScale,
-              hasMore: false,
-              isLoadingMore: false,
-              onLoadMore: () {},
+              hasMore: section.hasMore,
+              isLoadingMore: section.isLoadingMore,
+              onLoadMore: section.onLoadMore ?? () {},
               onExitUp: (_) => _step(section, -1),
               onExitDown: (_) => _step(section, 1),
               onExitLeft: _exitLeft,

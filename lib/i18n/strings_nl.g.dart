@@ -1115,6 +1115,8 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get scoreCommunity => 'Communityscore';
 	@override String get castAndCrew => 'Cast & Crew';
 	@override String get ratingsAndReviews => 'Ratings & Reviews';
+	@override String get seriesTab => 'Serie';
+	@override String episodeBadge({required Object number}) => 'A${number}';
 	@override String directedBy({required Object names}) => 'Geregisseerd door ${names}';
 	@override String get trailer => 'Trailer';
 	@override String get extra => 'Extra';
@@ -5398,6 +5400,8 @@ extension on TranslationsNl {
 			'discover.scoreCommunity' => 'Communityscore',
 			'discover.castAndCrew' => 'Cast & Crew',
 			'discover.ratingsAndReviews' => 'Ratings & Reviews',
+			'discover.seriesTab' => 'Serie',
+			'discover.episodeBadge' => ({required Object number}) => 'A${number}',
 			'discover.directedBy' => ({required Object names}) => 'Geregisseerd door ${names}',
 			'discover.trailer' => 'Trailer',
 			'discover.extra' => 'Extra',
@@ -5556,10 +5560,10 @@ extension on TranslationsNl {
 			'hubDetail.dateAdded' => 'Datum toegevoegd',
 			'hubDetail.rating' => 'Beoordeling',
 			'hubDetail.noItemsFound' => 'Geen items gevonden',
-			'logs.clearLogs' => 'Wis logs',
-			'logs.copyLogs' => 'Kopieer logs',
 			_ => null,
 		} ?? switch (path) {
+			'logs.clearLogs' => 'Wis logs',
+			'logs.copyLogs' => 'Kopieer logs',
 			'logs.uploadLogs' => 'Logs uploaden',
 			'logs.refreshLogs' => 'Verversen',
 			'logs.levelFilter' => 'Niveau',
@@ -6070,10 +6074,10 @@ extension on TranslationsNl {
 			'metadataEdit.background' => 'Achtergrond',
 			'metadataEdit.logo' => 'Logo',
 			'metadataEdit.squareArt' => 'Vierkante afbeelding',
-			'metadataEdit.selectPoster' => 'Poster selecteren',
-			'metadataEdit.selectBackground' => 'Achtergrond selecteren',
 			_ => null,
 		} ?? switch (path) {
+			'metadataEdit.selectPoster' => 'Poster selecteren',
+			'metadataEdit.selectBackground' => 'Achtergrond selecteren',
 			'metadataEdit.selectLogo' => 'Logo selecteren',
 			'metadataEdit.selectSquareArt' => 'Vierkante afbeelding selecteren',
 			'metadataEdit.fromUrl' => 'Vanaf URL',
@@ -6584,10 +6588,10 @@ extension on TranslationsNl {
 			'unifiedCatalog.filters.unsupported' => 'Niet beschikbaar voor de huidige bronnen',
 			'unifiedCatalog.filters.someUnavailable' => 'Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen',
 			'unifiedCatalog.filters.noValues' => 'Niets om uit te kiezen',
-			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count} actief',
-			'unifiedCatalog.states.emptyTitle' => 'Deze catalogus is leeg',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count} actief',
+			'unifiedCatalog.states.emptyTitle' => 'Deze catalogus is leeg',
 			'unifiedCatalog.states.emptyBody' => 'Geen zichtbare bibliotheek bevat iets voor deze pagina.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Niets voldoet aan deze filters',
 			'unifiedCatalog.states.filterEmptyBody' => 'Wis een filter om meer titels te zien.',
@@ -7098,10 +7102,10 @@ extension on TranslationsNl {
 			'assistant.steps.similarTitles' => 'Vergelijkbare titels zoeken',
 			'assistant.steps.downloadNext' => 'Volgende afleveringen downloaden',
 			'assistant.steps.findSubtitles' => 'Ondertitels zoeken',
-			'assistant.steps.downloadSubtitle' => 'Ondertitel downloaden',
-			'assistant.steps.findRequestTitle' => 'Seerr doorzoeken',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.steps.downloadSubtitle' => 'Ondertitel downloaden',
+			'assistant.steps.findRequestTitle' => 'Seerr doorzoeken',
 			'assistant.steps.discoverRequestTitles' => 'Passende titels zoeken',
 			'assistant.steps.requestTitle' => 'Titel aanvragen',
 			'assistant.steps.findTitle' => 'Titel op beschrijving zoeken',

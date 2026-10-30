@@ -303,16 +303,28 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
     // this, LAND4 would hold only for the part of a rail that happens to be on
     // screen, which is the half of the bug that is hardest to see.
     if (!_controller.hasClients || _pitch <= 0) return false;
+    _jumpToColumn(target, attemptsLeft: 3);
+    return true;
+  }
+
+  /// A lazy list only estimates its extent from what it has built, so on a long
+  /// row the first jump can fall short of a far card: it is clamped to a maximum
+  /// that grows as the row gets built. Each frame then knows more.
+  void _jumpToColumn(int target, {required int attemptsLeft}) {
     final position = _controller.position;
     // At the row's inset, where [_reveal] keeps a card: no slide after the jump.
     final wanted = (target * _pitch).clamp(position.minScrollExtent, position.maxScrollExtent);
     _controller.jumpTo(wanted);
+    WidgetsBinding.instance.scheduleFrame();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      if (!mounted || !_controller.hasClients || target >= widget.itemIds.length) return;
       final built = _nodes[widget.itemIds[target]];
-      if (built != null && built.parent != null && built.canRequestFocus) built.requestFocus();
+      if (built != null && built.parent != null && built.canRequestFocus) {
+        built.requestFocus();
+      } else if (attemptsLeft > 0) {
+        _jumpToColumn(target, attemptsLeft: attemptsLeft - 1);
+      }
     });
-    return true;
   }
 
   void _focusIndex(int index) {

@@ -31,9 +31,10 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
         await _playFirstEpisode();
       }
     } else if (metadata.isSeason) {
-      // For seasons, play the first episode
-      if (_episodes.isNotEmpty) {
-        await _playWithDetailPick(_episodes.first);
+      // A season plays its next episode, not its first (DEC-140).
+      final next = _seasonNextEpisode;
+      if (next != null) {
+        await _playWithDetailPick(next);
       } else {
         await _playFirstEpisode();
       }

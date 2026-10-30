@@ -2679,6 +2679,12 @@ class TranslationsDiscoverEn {
 	/// en: 'Ratings & Reviews'
 	String get ratingsAndReviews => 'Ratings & Reviews';
 
+	/// en: 'Series'
+	String get seriesTab => 'Series';
+
+	/// en: 'E${number}'
+	String episodeBadge({required Object number}) => 'E${number}';
+
 	/// en: 'Directed by ${names}'
 	String directedBy({required Object names}) => 'Directed by ${names}';
 
@@ -11151,6 +11157,8 @@ extension on Translations {
 			'discover.scoreCommunity' => 'Community score',
 			'discover.castAndCrew' => 'Cast & Crew',
 			'discover.ratingsAndReviews' => 'Ratings & Reviews',
+			'discover.seriesTab' => 'Series',
+			'discover.episodeBadge' => ({required Object number}) => 'E${number}',
 			'discover.directedBy' => ({required Object names}) => 'Directed by ${names}',
 			'discover.trailer' => 'Trailer',
 			'discover.extra' => 'Extra',
@@ -11309,10 +11317,10 @@ extension on Translations {
 			'hubDetail.dateAdded' => 'Date Added',
 			'hubDetail.rating' => 'Rating',
 			'hubDetail.noItemsFound' => 'No items found',
-			'logs.clearLogs' => 'Clear Logs',
-			'logs.copyLogs' => 'Copy Logs',
 			_ => null,
 		} ?? switch (path) {
+			'logs.clearLogs' => 'Clear Logs',
+			'logs.copyLogs' => 'Copy Logs',
 			'logs.uploadLogs' => 'Upload Logs',
 			'logs.refreshLogs' => 'Refresh',
 			'logs.levelFilter' => 'Level',
@@ -11823,10 +11831,10 @@ extension on Translations {
 			'metadataEdit.background' => 'Background',
 			'metadataEdit.logo' => 'Logo',
 			'metadataEdit.squareArt' => 'Square Art',
-			'metadataEdit.selectPoster' => 'Select Poster',
-			'metadataEdit.selectBackground' => 'Select Background',
 			_ => null,
 		} ?? switch (path) {
+			'metadataEdit.selectPoster' => 'Select Poster',
+			'metadataEdit.selectBackground' => 'Select Background',
 			'metadataEdit.selectLogo' => 'Select Logo',
 			'metadataEdit.selectSquareArt' => 'Select Square Art',
 			'metadataEdit.fromUrl' => 'From URL',
@@ -12337,10 +12345,10 @@ extension on Translations {
 			'unifiedCatalog.filters.watched' => 'Watched',
 			'unifiedCatalog.filters.unsupported' => 'Not available for the current sources',
 			'unifiedCatalog.filters.someUnavailable' => 'Some filters are unavailable for the selected sources',
-			'unifiedCatalog.filters.noValues' => 'Nothing to choose from',
-			'unifiedCatalog.states.emptyTitle' => 'This catalog is empty',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.filters.noValues' => 'Nothing to choose from',
+			'unifiedCatalog.states.emptyTitle' => 'This catalog is empty',
 			'unifiedCatalog.states.emptyBody' => 'No visible library holds anything for this page.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Nothing matches these filters',
 			'unifiedCatalog.states.filterEmptyBody' => 'Clear a filter to see more titles.',
@@ -12851,10 +12859,10 @@ extension on Translations {
 			'assistant.steps.similarTitles' => 'Finding similar titles',
 			'assistant.steps.downloadNext' => 'Downloading next episodes',
 			'assistant.steps.findSubtitles' => 'Finding subtitles',
-			'assistant.steps.downloadSubtitle' => 'Downloading subtitle',
-			'assistant.steps.findRequestTitle' => 'Searching Seerr',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.steps.downloadSubtitle' => 'Downloading subtitle',
+			'assistant.steps.findRequestTitle' => 'Searching Seerr',
 			'assistant.steps.discoverRequestTitles' => 'Finding matching titles',
 			'assistant.steps.requestTitle' => 'Requesting title',
 			'assistant.steps.findTitle' => 'Finding the title',

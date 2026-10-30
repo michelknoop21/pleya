@@ -148,9 +148,11 @@ import 'media_detail/mobile/mobile_poster_hero.dart';
 import 'media_detail/mobile_detail_hero.dart';
 import 'media_detail/tv/tv_detail_backdrop.dart';
 import 'media_detail/tv/tv_detail_cards.dart';
+import 'media_detail/tv/tv_detail_episode_card.dart';
 import 'media_detail/tv/tv_detail_hero_widgets.dart';
 import 'media_detail/tv/tv_detail_layout.dart';
 import 'media_detail/tv/tv_detail_page.dart';
+import 'media_detail/tv/tv_detail_tab_pill.dart';
 import '../widgets/focusable_tab_chip.dart';
 import '../widgets/hub_section.dart';
 import '../widgets/ios_status_bar_tap_scroll_to_top.dart';
@@ -184,7 +186,8 @@ part 'media_detail/tv/tv_detail_rail.dart';
 part 'media_detail/tv/tv_detail_reveal.dart';
 part 'media_detail/tv/tv_detail_screen.dart';
 part 'media_detail/tv/tv_detail_sections.dart';
-part 'media_detail/tv_season_chips.dart';
+part 'media_detail/tv/tv_detail_series.dart';
+part 'media_detail/tv/tv_detail_tabs.dart';
 
 enum _SyncRuleAction { edit, remove, delete }
 
@@ -206,6 +209,11 @@ class MediaDetailScreen extends StatefulWidget {
   final int? initialSeasonIndex;
   final String? initialSeasonId;
   final String? initialEpisodeId;
+
+  /// Test seam: what Select on an episode of the open series does on TV, in
+  /// place of starting the player.
+  @visibleForTesting
+  static ValueChanged<MediaItem>? debugOnPlayEpisode;
 
   /// Hero tag flown from the tapped poster (pointer platforms only). Null on TV
   /// and from entry points without a source poster (deep links, context menu).
@@ -414,12 +422,14 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   MediaItem? _tvDetailFocusedEpisode;
   bool _tvDetailActionRowHasFocus = false;
 
+  /// Serie is the tab a series opens on, unless a deep link names a season or
+  /// an episode.
+  late bool _tvDetailSeriesTabActive = !_hasInitialDetailFocusTarget;
+  bool _tvDetailInitialFocusPending = false;
+
   // Inline season tabs
   int _selectedSeasonIndex = 0;
 
-  /// Whether the season rail is the rail's active hub; the chip row on its
-  /// header line only shows while it is (VIS2).
-  bool _tvDetailSeasonHubActive = true;
   final _seasonEpisodePager = SeasonEpisodePager();
   List<FocusNode> _seasonTabFocusNodes = [];
   bool _flattenEpisodesRevalidationInFlight = false;
@@ -471,6 +481,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   // DEC-109: the "Meer lezen" action, only ever attached to a widget when the
   // synopsis actually overflows. Unattached, `requestFocus` on it is a no-op.
   late final FocusNode _tvDetailReadMoreFocusNode;
+  late final FocusNode _tvDetailSeriesTabFocusNode;
+  late final FocusNode _tvDetailEpisodesTabFocusNode;
   bool _tvDetailReadMoreVisible = false;
   Timer? _selectKeyTimer;
   bool _isSelectKeyDown = false;
@@ -799,6 +811,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     _extrasFocusNode.addListener(_handleExtrasFocusChange);
     _playButtonFocusNode = FocusNode(debugLabel: 'play_button');
     _tvDetailReadMoreFocusNode = FocusNode(debugLabel: 'detail_read_more');
+    _tvDetailSeriesTabFocusNode = FocusNode(debugLabel: 'detail_tab_series');
+    _tvDetailEpisodesTabFocusNode = FocusNode(debugLabel: 'detail_tab_episodes');
     _ratingChipFocusNode = FocusNode(debugLabel: 'rating_chip');
     _overviewFocusNode = FocusNode(debugLabel: 'overview');
     _castFocusNode = FocusNode(debugLabel: 'cast_row');
@@ -889,6 +903,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   KeyEventResult _handleMediaDetailBackKey(FocusNode _, KeyEvent event) {
     if (_consumeBackAfterChildPop(event)) return KeyEventResult.handled;
+    if (_tvDetailMenuLeavesSeason) return handleBackKeyAction(event, _tvDetailLeaveSeasonTab);
     // Nested (PB-1): there is no local route to pop, so `handleBackKeyNavigation`'s
     // own `Navigator.canPop` guard would answer false and this handler would
     // stand down for no reason — Back on a nested detail screen is a real
@@ -963,6 +978,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     _extrasFocusNode.dispose();
     _playButtonFocusNode.dispose();
     _tvDetailReadMoreFocusNode.dispose();
+    _tvDetailSeriesTabFocusNode.dispose();
+    _tvDetailEpisodesTabFocusNode.dispose();
     _ratingChipFocusNode.dispose();
     _overviewFocusNode.dispose();
     _castFocusNode.dispose();
@@ -2448,7 +2465,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       if (_tvDetailReadMoreVisible) {
         _tvDetailReadMoreFocusNode.requestFocus();
       } else {
-        _focusTopNavigationFromDetail();
+        _focusAboveTvDetailHero();
       }
       return;
     }
@@ -2462,13 +2479,6 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     if (PlatformDetector.isTV()) {
       if (_tvDetailUsesPage(metadata)) {
         _tvDetailPageKey.currentState?.focusFirstSection();
-        return;
-      }
-      // PB-4: the active season chip first, when there is a chip row — the
-      // rail is one more DOWN from there. Otherwise straight to the rail, as
-      // before chips existed.
-      if (_tvDetailShowsSeasonChips(metadata)) {
-        _focusSelectedSeasonTab();
         return;
       }
       _tvDetailRailKey.currentState?.requestFocus();

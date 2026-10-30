@@ -930,6 +930,8 @@
     "scoreCommunity": "Communityscore",
     "castAndCrew": "Cast & Crew",
     "ratingsAndReviews": "Ratings & Reviews",
+    "seriesTab": "Serie",
+    "episodeBadge": "A${number}",
     "directedBy": "Geregisseerd door ${names}",
     "trailer": "Trailer",
     "extra": "Extra",

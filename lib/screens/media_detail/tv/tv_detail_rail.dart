@@ -27,7 +27,6 @@ extension _MediaDetailTvRail on _MediaDetailScreenState {
   double _estimateTvDetailRailHeight(
     Size size,
     List<MediaHub> hubs, {
-    required bool showSeasonChips,
     bool includeNextHubPeek = true,
     double tallPosterScale = _tvDetailTallPosterScale,
     double widePosterScaleMultiplier = 1.0,
@@ -39,11 +38,7 @@ extension _MediaDetailTvRail on _MediaDetailScreenState {
       tallPosterScale: tallPosterScale,
       widePosterScaleMultiplier: widePosterScaleMultiplier,
     );
-    final railHeight = hubRailHeight > 0 ? hubRailHeight : _estimateTvDetailEmptyRailReserveHeight(size);
-    if (!showSeasonChips) return railHeight;
-    // PB-4/VIS2: the chip row sits on the rail's header strip and only needs
-    // what sticks out above it, at the panel scale the row renders at (SYS-3e).
-    return railHeight + _tvDetailSeasonChipOverhang(TvLayoutConstants.scaleOf(context));
+    return hubRailHeight > 0 ? hubRailHeight : _estimateTvDetailEmptyRailReserveHeight(size);
   }
 
   double _estimateTvDetailEmptyRailReserveHeight(Size size) {
@@ -73,14 +68,9 @@ extension _MediaDetailTvRail on _MediaDetailScreenState {
         TvBrowseRailLayout.railBottomPaddingForScale(scale);
   }
 
-  bool _isTvDetailEpisodeHub(MediaHub hub) {
-    return hub.id.startsWith(_tvDetailSeasonHubIdPrefix) || hub.id == 'detail_episodes';
-  }
+  bool _isTvDetailEpisodeHub(MediaHub hub) => hub.id == 'detail_episodes';
 
-  /// The episode rail gets the shared [AutomationIds.mediaDetailEpisodeList]
-  /// id, whether it is the flattened `'detail_episodes'` hub or the selected
-  /// season's hub. Since PB-4 `_tvDetailHubs()` mounts one season hub at a
-  /// time, so the id is never registered twice.
+  /// The episode rail gets the shared [AutomationIds.mediaDetailEpisodeList] id.
   String? _tvDetailAutomationIdForHub(MediaHub hub, int hubIndex) {
     return _isTvDetailEpisodeHub(hub) ? AutomationIds.mediaDetailEpisodeList : null;
   }
@@ -96,38 +86,7 @@ extension _MediaDetailTvRail on _MediaDetailScreenState {
 
   List<MediaHub> _tvDetailHubs(MediaItem metadata) {
     final hubs = <MediaHub>[];
-    if (metadata.isShow && !_showEpisodesDirectly && _seasonsLoadFailed) {
-      hubs.add(
-        MediaHub(
-          id: _tvDetailSeasonsErrorHubId,
-          title: t.libraries.groupings.seasons,
-          type: 'episode',
-          items: const [],
-          size: 0,
-        ),
-      );
-    } else if (metadata.isShow && !_showEpisodesDirectly && _seasons.isNotEmpty) {
-      // PB-4/DEC-109: one active rail for the selected season, not a hub per
-      // season stacked vertically. The season-chips row (`_buildTvDetailSeasonChips`)
-      // owns the choice; `_selectedSeasonIndex` is the same field the pre-chips
-      // hub-per-season design already used, so this hub's id is stable across a
-      // season switch back and forth and `TvBrowseRail`'s own `HubFocusMemory`
-      // restores the episode that had focus there.
-      final i = _selectedSeasonIndex.clamp(0, _seasons.length - 1);
-      final season = _seasons[i];
-      final state = _seasonEpisodePager.stateFor(season.id);
-      final total = state.totalCount > _episodes.length ? state.totalCount : (season.leafCount ?? _episodes.length);
-      // With chips the chip row is this rail's header line (VIS2/37 C): it
-      // draws "Afleveringen" itself, so the strip under it stays empty.
-      // Without chips (single season) there is nothing else naming it, so the
-      // rail keeps the season's own title exactly as it did before PB-4.
-      final title = _tvDetailShowsSeasonChips(metadata)
-          ? ''
-          : (season.title?.isNotEmpty == true ? season.title! : (season.displaySubtitle ?? season.displayTitle));
-      hubs.add(
-        MediaHub(id: '$_tvDetailSeasonHubIdPrefix$i', title: title, type: 'episode', items: _episodes, size: total),
-      );
-    } else if (_episodes.isNotEmpty) {
+    if (_episodes.isNotEmpty) {
       final total = _allEpisodesTotal > _episodes.length ? _allEpisodesTotal : _episodes.length;
       hubs.add(
         MediaHub(
@@ -138,7 +97,7 @@ extension _MediaDetailTvRail on _MediaDetailScreenState {
           size: total,
         ),
       );
-    } else if ((metadata.isShow && _showEpisodesDirectly) || metadata.isSeason) {
+    } else if (metadata.isSeason) {
       if (_allEpisodesPageError || _isLoadingEpisodes) {
         hubs.add(
           MediaHub(
@@ -172,21 +131,9 @@ extension _MediaDetailTvRail on _MediaDetailScreenState {
     return hubs;
   }
 
-  String? _tvDetailInitialHubId(MediaItem metadata) {
-    if (metadata.isShow && !_showEpisodesDirectly && _seasons.isNotEmpty) {
-      return '$_tvDetailSeasonHubIdPrefix$_selectedSeasonIndex';
-    }
-    if ((metadata.isShow && _showEpisodesDirectly) || metadata.isSeason) {
-      return 'detail_episodes';
-    }
-    return null;
-  }
+  String? _tvDetailInitialHubId(MediaItem metadata) => metadata.isSeason ? 'detail_episodes' : null;
 
-  String? _tvDetailInitialItemId(MediaItem metadata) {
-    if (widget.initialEpisodeId != null) return widget.initialEpisodeId;
-    if (!metadata.isShow) return null;
-    return _onDeckEpisode?.id;
-  }
+  String? _tvDetailInitialItemId(MediaItem metadata) => widget.initialEpisodeId;
 
   List<MediaItem> _tvDetailActorItems(MediaItem metadata) {
     final roles = metadata.roles;
@@ -255,104 +202,30 @@ extension _MediaDetailTvRail on _MediaDetailScreenState {
     setStateIfMounted(() {
       _tvDetailFocusedEpisode = item;
     });
-    if (hub.id == 'detail_episodes') {
-      if (!_allEpisodesPageError && _episodes.isNotEmpty && item.id == _episodes.last.id) {
-        unawaited(_loadMoreAllEpisodes());
-      }
-      return;
-    }
-    if (hub.id == '$_tvDetailSeasonHubIdPrefix$_selectedSeasonIndex' &&
-        !_seasonEpisodesPageError &&
-        _episodes.isNotEmpty &&
-        item.id == _episodes.last.id) {
-      unawaited(_loadMoreSeasonEpisodes());
+    if (!_allEpisodesPageError && _episodes.isNotEmpty && item.id == _episodes.last.id) {
+      unawaited(_loadMoreAllEpisodes());
     }
   }
 
   void _handleTvDetailHubChanged(MediaHub hub, int index) {
-    final seasonHubActive = hub.id.startsWith(_tvDetailSeasonHubIdPrefix);
-    if (seasonHubActive != _tvDetailSeasonHubActive) {
-      setStateIfMounted(() => _tvDetailSeasonHubActive = seasonHubActive);
-    }
-    if (!_isTvDetailEpisodeHub(hub)) {
-      _clearTvDetailFocusedEpisode();
-      return;
-    }
-    if (hub.items.isEmpty) _clearTvDetailFocusedEpisode();
-    if (!hub.id.startsWith(_tvDetailSeasonHubIdPrefix)) return;
-    final seasonIndex = int.tryParse(hub.id.substring(_tvDetailSeasonHubIdPrefix.length));
-    if (seasonIndex == null || seasonIndex < 0 || seasonIndex >= _seasons.length) return;
-    final season = _seasons[seasonIndex];
-    final state = _seasonEpisodePager.stateFor(season.id);
-    final hasLoadedState =
-        _seasonEpisodePager.hasState(season.id) && !state.isInitialLoading && !state.initialLoadFailed;
-    if (_selectedSeasonIndex == seasonIndex &&
-        (hasLoadedState || _episodes.isNotEmpty || _isLoadingSeasonEpisodes || _seasonEpisodesFirstPageError)) {
-      return;
-    }
-
-    if (hasLoadedState) {
-      _seasonEpisodePager.completeFirstPage(season.id, state.items, state.totalCount);
-      setStateIfMounted(() {
-        _selectedSeasonIndex = seasonIndex;
-        _episodes = List.of(_seasonEpisodePager.stateFor(season.id).items);
-      });
-      unawaited(_prefetchAdjacentSeasonEpisodePages(seasonIndex));
-      return;
-    }
-
-    setStateIfMounted(() {
-      _selectedSeasonIndex = seasonIndex;
-      _episodes = const <MediaItem>[];
-      _seasonEpisodePager.markFirstPageLoading(season.id);
-    });
-    unawaited(_fetchSeasonEpisodes(seasonIndex));
-    unawaited(_prefetchAdjacentSeasonEpisodePages(seasonIndex));
+    if (!_isTvDetailEpisodeHub(hub) || hub.items.isEmpty) _clearTvDetailFocusedEpisode();
   }
 
   /// What the rail should show in a hub's trailing slot: a spinner while the
-  /// selected season page loads or a retry tile if it failed. Episode hubs do
-  /// not use the legacy "View All" slot; they page in-place on focus.
+  /// episodes page in or a retry tile if that failed. Episode hubs do not use
+  /// the legacy "View All" slot; they page in-place on focus.
   TvRailTrailing _tvDetailTrailingState(MediaHub hub) {
-    if (hub.id == _tvDetailSeasonsErrorHubId) return TvRailTrailing.error;
-    final isFlatten = hub.id == 'detail_episodes';
-    final isSeason = hub.id.startsWith(_tvDetailSeasonHubIdPrefix);
-    if (!isFlatten && !isSeason) return hub.more ? TvRailTrailing.viewAll : TvRailTrailing.none;
-    if (isFlatten) {
-      if (_allEpisodesPageError) return TvRailTrailing.error;
-      if (_isLoadingEpisodes || _isLoadingAllEpisodes) return TvRailTrailing.loading;
-      return TvRailTrailing.none;
-    }
-    final isSelectedSeason = hub.id == '$_tvDetailSeasonHubIdPrefix$_selectedSeasonIndex';
-    if (isSelectedSeason) {
-      if (_seasonEpisodesFirstPageError || _seasonEpisodesPageError) return TvRailTrailing.error;
-      if (_isLoadingSeasonEpisodes || _isLoadingMoreSeasonEpisodes) return TvRailTrailing.loading;
-    }
+    if (hub.id != 'detail_episodes') return hub.more ? TvRailTrailing.viewAll : TvRailTrailing.none;
+    if (_allEpisodesPageError) return TvRailTrailing.error;
+    if (_isLoadingEpisodes || _isLoadingAllEpisodes) return TvRailTrailing.loading;
     return TvRailTrailing.none;
   }
 
   void _retryTvDetailHub(MediaHub hub) {
-    if (hub.id == _tvDetailSeasonsErrorHubId) {
-      unawaited(_loadSeasons());
-      return;
-    }
-    if (hub.id == 'detail_episodes') {
-      unawaited(_episodes.isEmpty ? _fetchAllEpisodes() : _loadMoreAllEpisodes());
-      return;
-    }
-    if (hub.id.startsWith(_tvDetailSeasonHubIdPrefix)) {
-      final seasonIndex = int.tryParse(hub.id.substring(_tvDetailSeasonHubIdPrefix.length));
-      if (seasonIndex != null && seasonIndex >= 0 && seasonIndex < _seasons.length) {
-        final state = _seasonEpisodePager.stateFor(_seasons[seasonIndex].id);
-        unawaited(state.items.isNotEmpty ? _loadMoreSeasonEpisodes() : _fetchSeasonEpisodes(seasonIndex));
-      }
-    }
+    if (hub.id == 'detail_episodes') unawaited(_episodes.isEmpty ? _fetchAllEpisodes() : _loadMoreAllEpisodes());
   }
 
   IconData? _getTvDetailHubIcon(MediaHub hub, int index) {
-    if (hub.id == _tvDetailSeasonsErrorHubId) return Symbols.error_outline_rounded;
-    // An empty title is the chip row's header line; an icon alone would float.
-    if (hub.id.startsWith(_tvDetailSeasonHubIdPrefix)) return hub.title.isEmpty ? null : Symbols.tv_rounded;
     if (hub.id == 'detail_episodes') return Symbols.tv_rounded;
     if (hub.id == _tvDetailExtrasHubId) return Symbols.theaters_rounded;
     if (hub.id == _tvDetailActorsHubId) return Symbols.group_rounded;

@@ -156,7 +156,11 @@ extension _MediaDetailTvHero on _MediaDetailScreenState {
     final ink = _tvDetailForegroundColor(context);
     final muted = tokens(context).textMuted;
     final margin = TvDetailLayout.leftMargin(size.width);
-    final description = _tvDetailItemDescription(metadata, hideSpoilers: hideSpoilers);
+    final hasTabs = metadata.isShow;
+    final season = hasTabs && _tvDetailSeasonTabActive ? _tvDetailOpenSeason : null;
+    final description =
+        _tvDetailDescription(season ?? metadata, hideSpoilers: hideSpoilers) ??
+        _tvDetailItemDescription(metadata, hideSpoilers: hideSpoilers);
     final synopsisWidth = TvDetailLayout.synopsisWidth * pt;
     final synopsisStyle = TextStyle(
       color: ink,
@@ -189,13 +193,24 @@ extension _MediaDetailTvHero on _MediaDetailScreenState {
           padding: EdgeInsets.only(
             left: margin,
             right: TvDetailLayout.rightMargin * pt,
-            top: (TvDetailLayout.headingTop * pt).clamp(MediaQuery.paddingOf(context).top, double.infinity),
+            // The tabs sit in the band the collapsed bar leaves free: the shell's
+            // inset is there to keep clear of a bar that is not on screen here.
+            top: hasTabs
+                ? TvDetailLayout.tabsTop * pt
+                : (TvDetailLayout.headingTop * pt).clamp(MediaQuery.paddingOf(context).top, double.infinity),
             bottom: TvDetailLayout.sectionGap * pt,
           ),
           child: Column(
             mainAxisSize: .min,
             crossAxisAlignment: .start,
             children: [
+              if (hasTabs) ...[
+                Padding(
+                  padding: EdgeInsets.only(left: 8 * pt),
+                  child: _buildTvDetailTabs(),
+                ),
+                SizedBox(height: (TvDetailLayout.headingTop - TvDetailLayout.tabsTop - TvDetailLayout.tabHeight) * pt),
+              ],
               _buildTvDetailHeading(metadata, ink),
               SizedBox(height: TvDetailLayout.metaGap * pt),
               _buildTvDetailMetaRow(metadata, ink),
@@ -229,7 +244,7 @@ extension _MediaDetailTvHero on _MediaDetailScreenState {
                           semanticLabel: t.discover.readMoreSemantic,
                           focusNode: _tvDetailReadMoreFocusNode,
                           onSelect: () => _openTvDetailSynopsisPanel(description),
-                          onNavigateUp: _focusTopNavigationFromDetail,
+                          onNavigateUp: _focusAboveTvDetailHero,
                           onNavigateDown: _focusTvDetailActionRow,
                         ),
                       ),
@@ -249,7 +264,7 @@ extension _MediaDetailTvHero on _MediaDetailScreenState {
               SizedBox(height: TvDetailLayout.actionRowGap * pt),
               _buildTvDetailActionRow(metadata),
               _buildUnifiedSourceLine(),
-              ..._buildTvDetailActivityRow(_tvDetailTechLabels(metadata)),
+              ..._buildTvDetailActivityRow(metadata.isMovie ? _tvDetailTechLabels(metadata) : const []),
             ],
           ),
         ),

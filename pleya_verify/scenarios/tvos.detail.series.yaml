@@ -1,24 +1,19 @@
 name: tvos.detail.series
 target: tvos-sim
-# MOC-10 (series detail with season chips) and DET4 (the chip labels render
-# once, without a shifted second glyph row), over a show with four seasons.
+# Series detail on TvDetailPage (northstars 03, 04, 05 of 2026-10-30), one show
+# with two seasons, on the path a viewer takes.
 #
 # What this proves:
-#   1. the chip row lists every season and starts on the first;
-#   (`catalog.seasons.v1` gives season n n + 1 episodes, so each
-#   `child_count` below also proves the rail really swapped seasons.)
-#   2. the page opens with the ring on the episode rail (a movie opens on
-#      Play, a show on its episodes: `focusPrimaryAction: metadata.isMovie`),
-#      and UP from the rail lands on the selected chip;
-#   3. RIGHT walks the ring over three chips, each step selecting that season
-#      and swapping the one episode rail below it (PB-4: one active rail);
-#   4. UP from the chips reaches Play.
-# DET4 itself is a glyph artifact: the widget measurement in its own row is
-# the proof, the screenshots per chip here are the visual evidence on a real
-# render.
+#   1. the page opens on the Serie tab with the white pill, offset 0 (03);
+#   2. DOWN walks tab, actions, the row of seasons, Cast & Crew, Trailers &
+#      Extras and the collection, each heading on the height of 04 and 05;
+#   3. UP walks back to the tab, and one more reaches the top bar;
+#   4. RIGHT opens a season in this same screen and swaps what is under the tabs;
+#   5. Select on a poster opens that season; Menu comes back to the poster and
+#      a second Menu closes the page, onto the card that opened it.
 setup:
   - reset_app
-  - seed: catalog.seasons.v1
+  - seed: catalog.detail-series.v1
   - launch
   - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
 steps:
@@ -33,41 +28,101 @@ steps:
 
   - press: select
   - wait_until: {id: screen.media_detail, timeout: 15000}
-  - wait_until: {id: media-detail.season-chips, state: {child_count: 4}, timeout: 10000}
-  - assert: {id: media-detail.season-chips, state: {selected_index: 0}}
-  - wait_until: {id: media-detail.episode-list, state: {child_count: 2}, timeout: 10000}
-  - wait_until: {focused: media-detail.episode-list, timeout: 5000}
+  - wait_until: {id: media-detail.tabs, state: {child_count: 3, open: series}, timeout: 10000}
+  - wait_until: {focused: "media-detail.tab[series]", timeout: 8000}
+  - settle: 2500
+  - assert: {id: media-detail.play, insideViewport: true}
+  - assert: {id: "media-detail.section[seasons]", state: {child_count: 2}}
+  - snapshot: 03-serie
+
+  - press: down
+  - settle: 800
+  - assert: {id: media-detail.play, focused: true}
+  - snapshot: 03-actions
+
+  - press: down
+  - settle: 1200
+  - assert: {id: "media-detail.section.item[seasons.0]", focused: true}
+  - snapshot: 03-seasons
+
+  - press: down
+  - settle: 1200
+  - assert: {id: "media-detail.section.item[cast.0]", focused: true}
+  - snapshot: 04-cast
+
+  - press: down
+  - settle: 1500
+  - wait_until: {id: "media-detail.section[extras]", state: {child_count: 1}, timeout: 6000}
+  - snapshot: 05-trailers
+
+  - press: down
+  - settle: 1500
+  - wait_until: {id: "media-detail.section[hub:collection]", state: {child_count: 5}, timeout: 6000}
+  - snapshot: 05-collection
+
+  - press: up
+  - settle: 800
+  - press: up
+  - settle: 800
+  - press: up
+  - settle: 800
+  - press: up
+  - settle: 1200
+  - wait_until: {focused: media-detail.play, timeout: 4000}
+  - press: up
+  - settle: 800
+  - assert: {id: media-detail.read-more, focused: true}
+  - press: up
+  - settle: 800
+  - assert: {id: "media-detail.tab[series]", focused: true}
+
+  - press: up
   - settle: 1000
-  - snapshot: 00-detail
-
-  - press: up
-  - wait_until: {focused: "media-detail.season-chip[0]", timeout: 5000}
-  - settle: 600
-  - snapshot: 01-chip-0
-
-  - press: right
-  - wait_until: {focused: "media-detail.season-chip[1]", timeout: 5000}
-  - assert: {id: media-detail.season-chips, state: {selected_index: 1}}
-  - wait_until: {id: media-detail.episode-list, state: {child_count: 3}, timeout: 10000}
-  - settle: 600
-  - snapshot: 02-chip-1
+  - wait_until: {focused: nav.discover, timeout: 4000}
+  - snapshot: 03-topbar
+  - press: down
+  - settle: 1000
+  - wait_until: {focused: "media-detail.tab[series]", timeout: 4000}
 
   - press: right
-  - wait_until: {focused: "media-detail.season-chip[2]", timeout: 5000}
-  - assert: {id: media-detail.season-chips, state: {selected_index: 2}}
-  - wait_until: {id: media-detail.episode-list, state: {child_count: 4}, timeout: 10000}
-  - settle: 600
-  - snapshot: 03-chip-2
+  - settle: 1500
+  - wait_until: {id: media-detail.tabs, state: {open: "0"}, timeout: 5000}
+  - assert: {id: "media-detail.tab[0]", focused: true}
+  - assert: {id: "media-detail.section[seasons]", present: false}
+  - assert: {id: "media-detail.section[episodes]", state: {child_count: 4}}
+  - snapshot: 01-season-1
 
   - press: right
-  - wait_until: {focused: "media-detail.season-chip[3]", timeout: 5000}
-  - assert: {id: media-detail.season-chips, state: {selected_index: 3}}
-  - wait_until: {id: media-detail.episode-list, state: {child_count: 5}, timeout: 10000}
-  - assert: {id: "media-detail.season-chip[3]", insideViewport: true}
-  - settle: 600
-  - snapshot: 04-chip-3
+  - settle: 1500
+  - wait_until: {id: media-detail.tabs, state: {open: "1"}, timeout: 5000}
+  - wait_until: {id: "media-detail.section[episodes]", state: {child_count: 4}, timeout: 8000}
 
-  - press: up
-  - wait_until: {focused: media-detail.play, timeout: 5000}
+  - press: left
+  - settle: 500
+  - press: left
+  - settle: 1000
+  - wait_until: {id: media-detail.tabs, state: {open: series}, timeout: 5000}
+  - assert: {id: "media-detail.tab[series]", focused: true}
+
+  - press: down
+  - settle: 800
+  - press: down
+  - settle: 1200
+  - press: right
   - settle: 600
-  - snapshot: 05-back-on-play
+  - assert: {id: "media-detail.section.item[seasons.1]", focused: true}
+  - snapshot: 03-poster
+  - press: select
+  - settle: 1500
+  - wait_until: {id: media-detail.tabs, state: {open: "1"}, timeout: 5000}
+  - wait_until: {focused: "media-detail.section.item[episodes.0]", timeout: 5000}
+
+  - press: menu
+  - settle: 1500
+  - wait_until: {focused: "media-detail.section.item[seasons.1]", timeout: 5000}
+  - wait_until: {id: media-detail.tabs, state: {open: series}, timeout: 5000}
+
+  - press: menu
+  - wait_until: {focused: "discover.rail.item[0.0]", timeout: 8000}
+  - settle: 800
+  - snapshot: 01-back-on-card

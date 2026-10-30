@@ -29,8 +29,6 @@ const double _tvDetailEpsilon = 0.01;
 // branching would have to be mirrored exactly for a closed-form inverse to
 // stay correct.
 const List<double> _tvDetailRailShrinkFractions = [0.9, 0.8, 0.7, 0.6];
-const String _tvDetailSeasonsErrorHubId = 'detail_seasons_error';
-const String _tvDetailSeasonHubIdPrefix = 'detail_season_';
 const String _tvDetailExtrasHubId = 'detail_extras';
 const String _tvDetailActorsHubId = 'detail_actors';
 const String _tvDetailActorPersonIdRawKey = 'tvDetailActorPersonId';
@@ -82,10 +80,9 @@ extension _MediaDetailTvScreen on _MediaDetailScreenState {
         // it, computed here too so the genre-line measurement in the
         // reservation metrics agrees with what that widget actually renders.
         final foregroundWidth = size.width - spotlightLeft - (size.width * 0.43);
-        final showSeasonChips = _tvDetailShowsSeasonChips(metadata);
-        final rawRailHeight = _estimateTvDetailRailHeight(size, detailHubs, showSeasonChips: showSeasonChips);
+        final rawRailHeight = _estimateTvDetailRailHeight(size, detailHubs);
         if (!_tvDetailRevealed && _isTvDetailReadyToReveal(metadata)) {
-          _scheduleTvDetailReveal(rawRailHeight, focusPrimaryAction: metadata.isMovie);
+          _scheduleTvDetailReveal(rawRailHeight, onRevealed: () => _tvDetailRailKey.currentState?.requestFocus());
         }
         final stableRailHeight = _tvDetailStableRailHeight;
         var railHeight = stableRailHeight == null || rawRailHeight > stableRailHeight
@@ -129,12 +126,7 @@ extension _MediaDetailTvScreen on _MediaDetailScreenState {
               .toDouble();
           if (bottom > maxBottom && detailHubs.length > 1) {
             peek = false;
-            final railHeightNoPeek = _estimateTvDetailRailHeight(
-              size,
-              detailHubs,
-              showSeasonChips: showSeasonChips,
-              includeNextHubPeek: false,
-            );
+            final railHeightNoPeek = _estimateTvDetailRailHeight(size, detailHubs, includeNextHubPeek: false);
             final peekGiveback = (rail - railHeightNoPeek).clamp(0.0, double.infinity).toDouble();
             rail -= peekGiveback;
             bottom -= peekGiveback;
@@ -158,7 +150,6 @@ extension _MediaDetailTvScreen on _MediaDetailScreenState {
             final shrunkRailHeight = _estimateTvDetailRailHeight(
               size,
               detailHubs,
-              showSeasonChips: showSeasonChips,
               includeNextHubPeek: false,
               tallPosterScale: _tvDetailTallPosterScale * fraction,
               widePosterScaleMultiplier: fraction,
@@ -221,55 +212,27 @@ extension _MediaDetailTvScreen on _MediaDetailScreenState {
                 left: 0,
                 right: 0,
                 bottom: -railBottomPadding,
-                child: Column(
-                  mainAxisSize: .min,
-                  crossAxisAlignment: .stretch,
-                  children: [
-                    if (showSeasonChips) SizedBox(height: _tvDetailSeasonChipOverhang(detailScale)),
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        TvBrowseRail(
-                          key: _tvDetailRailKey,
-                          hubs: detailHubs,
-                          iconForHub: _getTvDetailHubIcon,
-                          onFocusedHubItemChanged: _handleTvDetailFocusedRailItemChanged,
-                          onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
-                          onPlaybackReturned: (item) => unawaited(refreshAfterPlayback(playedItemId: item.id)),
-                          onActiveHubChanged: _handleTvDetailHubChanged,
-                          onActivateItem: _handleTvDetailRailItemActivated,
-                          trailingForHub: _tvDetailTrailingState,
-                          onRetryHub: _retryTvDetailHub,
-                          onNavigateUp: () => _focusAboveTvDetailRail(metadata),
-                          onBack: _popMediaDetailIfBackNotSuppressed,
-                          tallPosterScale: railTallPosterScale,
-                          widePosterScaleForHub: (hub) =>
-                              _tvDetailWidePosterScaleForHub(hub) * railWidePosterScaleMultiplier,
-                          initialHubId: _tvDetailInitialHubId(metadata),
-                          initialItemId: _tvDetailInitialItemId(metadata),
-                          episodePosterModeForHub: _tvDetailEpisodePosterModeForHub,
-                          automationIdForHub: _tvDetailAutomationIdForHub,
-                          showNextHubPeek: showNextHubPeek,
-                          focusMemoryScope: metadata.globalKey,
-                        ),
-                        // VIS2/37 C: the chips sit on the season rail's header
-                        // line. The rail scrolls its active hub to the top, so
-                        // once cast or extras is active that line belongs to
-                        // another hub and the row steps aside.
-                        if (showSeasonChips)
-                          Positioned(
-                            left: TvBrowseRailLayout.horizontalInsetForScale(detailScale),
-                            right: 0,
-                            top: _tvDetailSeasonChipRowTop(detailScale),
-                            child: Visibility(
-                              visible: _tvDetailSeasonHubActive,
-                              maintainState: true,
-                              child: _buildTvDetailSeasonChips(metadata, detailScale),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
+                child: TvBrowseRail(
+                  key: _tvDetailRailKey,
+                  hubs: detailHubs,
+                  iconForHub: _getTvDetailHubIcon,
+                  onFocusedHubItemChanged: _handleTvDetailFocusedRailItemChanged,
+                  onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
+                  onPlaybackReturned: (item) => unawaited(refreshAfterPlayback(playedItemId: item.id)),
+                  onActiveHubChanged: _handleTvDetailHubChanged,
+                  onActivateItem: _handleTvDetailRailItemActivated,
+                  trailingForHub: _tvDetailTrailingState,
+                  onRetryHub: _retryTvDetailHub,
+                  onNavigateUp: _focusTvDetailActionRow,
+                  onBack: _popMediaDetailIfBackNotSuppressed,
+                  tallPosterScale: railTallPosterScale,
+                  widePosterScaleForHub: (hub) => _tvDetailWidePosterScaleForHub(hub) * railWidePosterScaleMultiplier,
+                  initialHubId: _tvDetailInitialHubId(metadata),
+                  initialItemId: _tvDetailInitialItemId(metadata),
+                  episodePosterModeForHub: _tvDetailEpisodePosterModeForHub,
+                  automationIdForHub: _tvDetailAutomationIdForHub,
+                  showNextHubPeek: showNextHubPeek,
+                  focusMemoryScope: metadata.globalKey,
                 ),
               ),
           ],

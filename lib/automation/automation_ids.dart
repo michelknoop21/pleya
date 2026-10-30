@@ -202,12 +202,12 @@ class AutomationIds {
   /// One row in [mediaDetailEpisodeList]. Instanceable: suffixed `[<index>]`.
   static const String mediaDetailEpisodeListItem = 'media-detail.episode-list.item';
 
-  /// The horizontal seizoenchips row on TV series detail (PB-4, DEC-109), the
-  /// only focus row that changes which season [mediaDetailEpisodeList] shows.
-  static const String mediaDetailSeasonChips = 'media-detail.season-chips';
+  /// The tabs above a series page on TV (Serie, Season 1, ...).
+  static const String mediaDetailTabs = 'media-detail.tabs';
 
-  /// One chip in [mediaDetailSeasonChips]. Instanceable: suffixed `[<index>]`.
-  static const String mediaDetailSeasonChip = 'media-detail.season-chip';
+  /// One tab in [mediaDetailTabs]. Instanceable: suffixed `[series]`,
+  /// `[episodes]` or `[<season index>]`.
+  static const String mediaDetailTab = 'media-detail.tab';
 
   /// The play button in the media-detail action row. On TV the page opens
   /// with the ring here, and Menu from the detail rail comes back to it.
@@ -818,7 +818,7 @@ class AutomationIds {
     settingsTile,
     settingsCategory,
     mediaDetailEpisodeListItem,
-    mediaDetailSeasonChip,
+    mediaDetailTab,
     mediaDetailAction,
     mediaDetailSeasonPoster,
     mediaDetailSection,
@@ -961,8 +961,8 @@ class AutomationIds {
     {'id': discoverSafeArea, 'role': 'region', 'instanceable': false},
     {'id': mediaDetailEpisodeList, 'role': 'list', 'instanceable': false},
     {'id': mediaDetailEpisodeListItem, 'role': 'list.item', 'instanceable': true},
-    {'id': mediaDetailSeasonChips, 'role': 'list', 'instanceable': false},
-    {'id': mediaDetailSeasonChip, 'role': 'chip', 'instanceable': true},
+    {'id': mediaDetailTabs, 'role': 'list', 'instanceable': false},
+    {'id': mediaDetailTab, 'role': 'chip', 'instanceable': true},
     {'id': mediaDetailPlay, 'role': 'button', 'instanceable': false},
     {'id': noticeBusy, 'role': 'status', 'instanceable': true},
     {'id': serverStatus, 'role': 'dialog', 'instanceable': false},

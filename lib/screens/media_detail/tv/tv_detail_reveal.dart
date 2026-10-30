@@ -31,7 +31,7 @@ extension _MediaDetailTvReveal on _MediaDetailScreenState {
     return _hasLoadedExtras && _hasLoadedRelatedHubs;
   }
 
-  void _scheduleTvDetailReveal(double railHeight, {required bool focusPrimaryAction}) {
+  void _scheduleTvDetailReveal(double railHeight, {required VoidCallback onRevealed}) {
     final pendingRailHeight = _tvDetailPendingRailHeight;
     if (pendingRailHeight == null || railHeight > pendingRailHeight) {
       _tvDetailPendingRailHeight = railHeight;
@@ -47,13 +47,39 @@ extension _MediaDetailTvReveal on _MediaDetailScreenState {
         _tvDetailRevealed = true;
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        if (focusPrimaryAction) {
-          _playButtonFocusNode.requestFocus();
-        } else {
-          _tvDetailRailKey.currentState?.requestFocus();
-        }
+        if (mounted) onRevealed();
       });
+    });
+  }
+
+  /// Where the page opens: on the pill for a film, as 03 draws it on the Serie
+  /// tab, and on the episode or the season a deep link came in on.
+  void _focusTvDetailOpening(MediaItem metadata) {
+    if (!metadata.isShow) {
+      _playButtonFocusNode.requestFocus();
+    } else if (_tvDetailSeriesTabActive) {
+      _tvDetailSeriesTabFocusNode.requestFocus();
+    } else {
+      // The tab holds the focus until the target has loaded.
+      _focusTvDetailOpenTab();
+      _tvDetailInitialFocusPending = true;
+      _tvDetailFinishInitialFocus();
+    }
+  }
+
+  /// A deep-linked episode can sit pages further than what has loaded: the build
+  /// that sees it arrive, or sees the paging give up, places the focus.
+  void _tvDetailFinishInitialFocus() {
+    if (!_tvDetailInitialFocusPending) return;
+    final target = widget.initialEpisodeId;
+    if (target != null && !_episodesContainInitialTarget && !_initialEpisodePagingDone) return;
+    _tvDetailInitialFocusPending = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final page = _tvDetailPageKey.currentState;
+      final onTarget =
+          target != null && (page?.restoreFocus(sectionId: _tvDetailEpisodesSectionId, itemId: target) ?? false);
+      if (!onTarget && !(page?.focusFirstSection() ?? false)) _focusTvDetailOpenTab();
     });
   }
 

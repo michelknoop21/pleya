@@ -73,6 +73,29 @@ class TvDetailPlayPill extends StatelessWidget {
   }
 }
 
+/// How far through a title, in place of the play glyph on a round button. Its
+/// ink follows the button: white at rest, dark under the focus.
+class TvDetailProgressRing extends StatelessWidget {
+  const TvDetailProgressRing({super.key, required this.value});
+
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    final pt = TvHig.of(context);
+    final ink = IconTheme.of(context).color ?? Colors.white;
+    return SizedBox.square(
+      dimension: TvDetailLayout.progressRingSize * pt,
+      child: CircularProgressIndicator(
+        value: value,
+        strokeWidth: 4 * pt,
+        color: ink,
+        backgroundColor: ink.withValues(alpha: 0.18),
+      ),
+    );
+  }
+}
+
 /// A round action beside the pill. Tonal at rest and inverted under focus,
 /// which is what the page's other tonal buttons do too.
 class TvDetailRoundButton extends StatelessWidget {

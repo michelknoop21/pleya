@@ -3,7 +3,7 @@ part of '../../media_detail_screen.dart';
 /// The order of the sections under the hero. Every section has its place here
 /// even while it has nothing to show, so a section that comes later has a slot
 /// to land in rather than a position to argue about.
-enum _TvDetailSlot { cast, reviews, discussions, extras, collections, people, related }
+enum _TvDetailSlot { seasons, cast, reviews, discussions, extras, collections, people, related }
 
 const String _tvDetailViewAllId = '__view_all';
 
@@ -13,9 +13,9 @@ const int _tvDetailPersonRowSize = 20;
 
 /// The film page's sections and the data they load on approach.
 extension _MediaDetailTvSections on _MediaDetailScreenState {
-  /// The film detail lives on [TvDetailPage]. A series and a season still have
-  /// the rail page: their tabs arrive in a later round.
-  bool _tvDetailUsesPage(MediaItem metadata) => metadata.isMovie;
+  /// Film and series live on [TvDetailPage]. What is left on the rail page is a
+  /// season or an episode that was opened without a series to hang under.
+  bool _tvDetailUsesPage(MediaItem metadata) => metadata.isMovie || metadata.isShow;
 
   List<MediaRole> _tvDetailPersonRoles(MediaItem metadata) => [
     for (final role in metadata.roles ?? const <MediaRole>[])
@@ -66,6 +66,9 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
 
   Future<void> _openTvDetailItem(MediaItem item, String sectionId) async {
     SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
+    // An episode of this very series, on a row of its own page: the page opens
+    // the tab it belongs to, a route on top would be this page a second time.
+    if (item.isEpisode && item.grandparentId == _metadata.id && _tvDetailOpenEpisode(item)) return;
     await navigateToMediaItem(
       context,
       item,
@@ -268,6 +271,7 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
     return [
       for (final slot in _TvDetailSlot.values)
         ...switch (slot) {
+          _TvDetailSlot.seasons => [if (metadata.isShow) ?_tvDetailSeasonsSection()],
           _TvDetailSlot.cast => [if (roles.isNotEmpty) _tvDetailCastSection(metadata, roles)],
           _TvDetailSlot.reviews => [if (metadata.reviews.isNotEmpty) _tvDetailReviewSection(metadata.reviews)],
           _TvDetailSlot.discussions => const <TvDetailSection>[],
@@ -296,10 +300,13 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        if (widget.initialEpisodeId != null && !_initialEpisodePagingDone) _maybeLoadMoreForInitialEpisode();
         if (!_tvDetailRevealed && _isTvDetailReadyToReveal(metadata)) {
-          _scheduleTvDetailReveal(0, focusPrimaryAction: true);
+          _scheduleTvDetailReveal(0, onRevealed: () => _focusTvDetailOpening(metadata));
         }
+        _tvDetailFinishInitialFocus();
         final hideSpoilers = SettingsService.instance.read(SettingsService.hideSpoilers);
+        final onSeason = metadata.isShow && _tvDetailSeasonTabActive;
         return _wrapTvDetailBody(
           context,
           handleBack,
@@ -313,10 +320,10 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
                 localPath: widget.isOffline ? (path) => _offlineArtworkLocalPath(context, path) : null,
               ),
               hero: _buildTvDetailHero(context, metadata, constraints.biggest, hideSpoilers: hideSpoilers),
-              sections: _tvDetailSections(metadata),
+              sections: onSeason ? [_tvDetailEpisodesSection()] : _tvDetailSections(metadata),
               onFocusHero: _focusTvDetailActionRow,
               contentGate: (content) => _buildTvDetailRevealGate(content, handleBack),
-              hasPendingSections: _tvDetailHasPendingSections(metadata),
+              hasPendingSections: !onSeason && _tvDetailHasPendingSections(metadata),
               onApproachEnd: () => unawaited(_loadNextTvDetailSection(metadata)),
             ),
           ),

@@ -24,6 +24,15 @@ extension _MediaDetailSynopsisPanel on _MediaDetailScreenState {
   /// own header action.
   void _focusTopNavigationFromDetail() => MainScreenFocusScope.of(context, listen: false)?.focusSidebar();
 
+  /// UP from the top of the hero: the tabs of a series, the bar otherwise.
+  void _focusAboveTvDetailHero() {
+    if ((_fullMetadata ?? _metadata).isShow) {
+      _focusTvDetailOpenTab();
+    } else {
+      _focusTopNavigationFromDetail();
+    }
+  }
+
   void _openTvDetailSynopsisPanel(String description, {String? title}) {
     unawaited(
       OverlaySheetController.showAdaptive<void>(

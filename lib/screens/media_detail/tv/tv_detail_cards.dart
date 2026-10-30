@@ -17,14 +17,17 @@ import 'tv_detail_layout.dart';
 
 /// Focus, ring and activation for a card that is not a catalog card. The ring
 /// goes round [artwork] alone, as on [TvCatalogCard]; [below] stays outside it.
-class _TvDetailFocusCard extends StatefulWidget {
-  const _TvDetailFocusCard({
+class TvDetailFocusCard extends StatefulWidget {
+  const TvDetailFocusCard({
+    super.key,
     required this.cell,
     required this.semanticLabel,
     required this.onSelect,
     required this.radius,
     required this.artwork,
     this.below,
+    this.onContextMenu,
+    this.onFocused,
   });
 
   final TvCatalogGridCell cell;
@@ -33,12 +36,16 @@ class _TvDetailFocusCard extends StatefulWidget {
   final double radius;
   final Widget artwork;
   final Widget? below;
+  final VoidCallback? onContextMenu;
+
+  /// The focus arrived, on top of what [TvCatalogGridCell.onFocusChange] does.
+  final VoidCallback? onFocused;
 
   @override
-  State<_TvDetailFocusCard> createState() => _TvDetailFocusCardState();
+  State<TvDetailFocusCard> createState() => _TvDetailFocusCardState();
 }
 
-class _TvDetailFocusCardState extends State<_TvDetailFocusCard> {
+class _TvDetailFocusCardState extends State<TvDetailFocusCard> {
   bool _focused = false;
 
   @override
@@ -49,9 +56,11 @@ class _TvDetailFocusCardState extends State<_TvDetailFocusCard> {
       child: FocusableWrapper(
         focusNode: cell.focusNode,
         onSelect: widget.onSelect,
+        onLongPress: widget.onContextMenu,
         onFocusChange: (focused) {
           setState(() => _focused = focused);
           cell.onFocusChange(focused);
+          if (focused) widget.onFocused?.call();
         },
         onNavigateUp: cell.onNavigateUp,
         onNavigateDown: cell.onNavigateDown,
@@ -125,7 +134,7 @@ class TvDetailCastCard extends StatelessWidget {
         style: TextStyle(color: tk.text, fontSize: TvHig.title2 * pt, fontWeight: FontWeight.w500),
       ),
     );
-    return _TvDetailFocusCard(
+    return TvDetailFocusCard(
       cell: cell,
       semanticLabel: [role.tag, ?character].join(', '),
       onSelect: onSelect,
@@ -190,7 +199,7 @@ class TvDetailReviewCard extends StatelessWidget {
     final icon = detailReviewIconAsset(review.imageUri);
     final source = review.source;
     final hasSource = source != null && source.isNotEmpty;
-    return _TvDetailFocusCard(
+    return TvDetailFocusCard(
       cell: cell,
       semanticLabel: [?source, review.author, review.text].join(', '),
       onSelect: onSelect,
@@ -249,22 +258,25 @@ class TvDetailReviewCard extends StatelessWidget {
   }
 }
 
-/// "Alle bekijken" at the end of a row whose hub holds more than it sent.
+/// "Alle bekijken" at the end of a row whose hub holds more than it sent, or
+/// the same card with another [label].
 class TvDetailViewAllCard extends StatelessWidget {
-  const TvDetailViewAllCard({super.key, required this.cell, required this.height, required this.onSelect});
+  const TvDetailViewAllCard({super.key, required this.cell, required this.height, required this.onSelect, this.label});
 
   final TvCatalogGridCell cell;
   final double height;
   final VoidCallback onSelect;
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
     final tk = tokens(context);
     final pt = TvHig.of(context);
     final radius = TvDetailLayout.reviewCardRadius * pt;
-    return _TvDetailFocusCard(
+    final text = label ?? t.common.viewAll;
+    return TvDetailFocusCard(
       cell: cell,
-      semanticLabel: t.common.viewAll,
+      semanticLabel: text,
       onSelect: onSelect,
       radius: radius,
       artwork: Container(
@@ -272,7 +284,7 @@ class TvDetailViewAllCard extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(color: tk.text.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(radius)),
         child: Text(
-          t.common.viewAll,
+          text,
           style: TextStyle(color: tk.text, fontSize: TvHig.caption1 * pt, fontWeight: FontWeight.w600),
         ),
       ),

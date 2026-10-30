@@ -195,10 +195,10 @@ ids:
   - id: media-detail.episode-list.item
     role: list.item
     instanceable: true
-  - id: media-detail.season-chips
+  - id: media-detail.tabs
     role: list
     instanceable: false
-  - id: media-detail.season-chip
+  - id: media-detail.tab
     role: chip
     instanceable: true
   - id: media-detail.play

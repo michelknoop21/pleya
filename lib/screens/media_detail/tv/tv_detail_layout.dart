@@ -11,6 +11,12 @@ abstract final class TvDetailLayout {
   static const double leftMarginFraction = 107 / 1600;
   static const double rightMargin = 96;
 
+  /// The tab row of a series, above the slot.
+  static const double tabsTop = 41;
+  static const double tabHeight = 48;
+  static const double tabPadding = 16;
+  static const double tabGap = 16;
+
   /// The top of the logo or title slot. The hero hangs from here: its rows
   /// follow one another down, nothing is anchored to the bottom of the screen.
   static const double headingTop = 125;
@@ -56,6 +62,7 @@ abstract final class TvDetailLayout {
   static const double portraitSize = 240;
   static const double posterWidth = 240;
   static const double wideCardWidth = 512;
+  static const double wideCardHeight = 288;
   static const double reviewCardHeight = 256;
   static const double reviewCardRadius = 16;
   static const double reviewIconSize = 40;

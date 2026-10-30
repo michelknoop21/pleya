@@ -36,12 +36,14 @@ extension _MediaDetailTvActionRow on _MediaDetailScreenState {
     final pt = TvHig.of(context);
     final iconSize = TvHig.body * pt;
     final play = model.of(_DetailActionKind.play)!;
-    final resumable = (metadata.viewOffsetMs ?? 0) > 0;
-    final progress = resumable && (metadata.durationMs ?? 0) > 0
-        ? (metadata.viewOffsetMs! / metadata.durationMs!).clamp(0.0, 1.0).toDouble()
+    // A series resumes into an episode, so that is what the ring reads.
+    final target = _tvDetailResumeTarget(metadata);
+    final resumable = (target?.viewOffsetMs ?? 0) > 0;
+    final progress = resumable && (target?.durationMs ?? 0) > 0
+        ? (target!.viewOffsetMs! / target.durationMs!).clamp(0.0, 1.0).toDouble()
         : null;
-    final left = resumable && metadata.durationMs != null
-        ? formatDurationSpaced(metadata.durationMs! - metadata.viewOffsetMs!)
+    final left = resumable && target?.durationMs != null
+        ? formatDurationSpaced(target!.durationMs! - target.viewOffsetMs!)
         : null;
     final label = !resumable
         ? t.common.play
@@ -60,7 +62,7 @@ extension _MediaDetailTvActionRow on _MediaDetailScreenState {
     final watched = model.of(_DetailActionKind.watched)!;
     final more = model.of(_DetailActionKind.more);
     final request = model.of(_DetailActionKind.request);
-    void onRestart() => unawaited(_handlePlayFromStart(metadata));
+    void onRestart() => unawaited(_handlePlayFromStart(target ?? metadata));
     void onRate() => unawaited(_showRatingDialog(context, metadata));
 
     return FocusableActionBar(
@@ -80,13 +82,24 @@ extension _MediaDetailTvActionRow on _MediaDetailScreenState {
             focusNode: _playButtonFocusNode,
             child: Pressable(
               onTap: play.onPressed,
-              child: TvDetailPlayPill(
-                label: label,
-                icon: _getPlayButtonIcon(metadata),
-                progress: progress,
-                focused: state.showFocus,
-                enabled: play.onPressed != null,
-              ),
+              child: metadata.isMovie
+                  ? TvDetailPlayPill(
+                      label: label,
+                      icon: _getPlayButtonIcon(metadata),
+                      progress: progress,
+                      focused: state.showFocus,
+                      enabled: play.onPressed != null,
+                    )
+                  : Semantics(
+                      button: true,
+                      label: label,
+                      child: TvDetailRoundButton(
+                        focused: state.showFocus,
+                        child: progress == null
+                            ? AppIcon(Symbols.play_arrow_rounded, fill: 1, size: iconSize)
+                            : TvDetailProgressRing(value: progress),
+                      ),
+                    ),
             ),
           ),
         ),
@@ -148,6 +161,17 @@ extension _MediaDetailTvActionRow on _MediaDetailScreenState {
           ),
       ],
     );
+  }
+
+  /// What Play starts, for the ring and the restart button.
+  MediaItem? _tvDetailResumeTarget(MediaItem metadata) {
+    if (metadata.isMovie) return metadata;
+    if (metadata.isShow) {
+      final onDeck = _onDeckEpisode;
+      return onDeck == null ? null : _fresh(onDeck);
+    }
+    final next = _seasonNextEpisode;
+    return next == null ? null : _fresh(next);
   }
 
   Future<void> _handlePlayFromStart(MediaItem metadata) async {
