@@ -378,6 +378,9 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   final _tvDetailPageKey = GlobalKey<TvDetailPageState>();
   final Map<String, GlobalKey<MediaContextMenuState>> _tvDetailMenuKeys = {};
   final Map<String, List<MediaItem>> _tvDetailPersonMedia = {};
+
+  /// The card each season tab was left on, by season.
+  final Map<String, String> _tvDetailSeasonFocus = {};
   bool _tvDetailRelatedRequested = false;
   bool _tvDetailSectionLoading = false;
 

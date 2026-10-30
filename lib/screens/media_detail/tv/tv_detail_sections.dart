@@ -66,9 +66,10 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
 
   Future<void> _openTvDetailItem(MediaItem item, String sectionId) async {
     SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
-    // An episode of this very series, on a row of its own page: the page opens
-    // the tab it belongs to, a route on top would be this page a second time.
-    if (item.isEpisode && item.grandparentId == _metadata.id && _tvDetailOpenEpisode(item)) return;
+    if (item.isEpisode && item.grandparentId == _metadata.id) {
+      _tvDetailActivateEpisode(item, sectionId);
+      return;
+    }
     await navigateToMediaItem(
       context,
       item,

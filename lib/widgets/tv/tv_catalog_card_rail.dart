@@ -160,7 +160,11 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
     if (removed.isEmpty) return;
 
     final focusedId = _focusedId;
-    final losesFocus = focusedId != null && removed.contains(focusedId);
+    // [_focusedId] is also the memory of a rail the focus has left: a card that
+    // goes away from under a rail the remote is not on takes nothing with it,
+    // and rescuing it would pull the focus into this rail.
+    final losesFocus = focusedId != null && removed.contains(focusedId) && _nodes[focusedId]!.hasFocus;
+    if (focusedId != null && removed.contains(focusedId) && !losesFocus) _focusedId = null;
     // Measured against the *old* list: the neighbour a viewer expects is the
     // card that was next to theirs before the update, and the new list no
     // longer contains the position to measure from.

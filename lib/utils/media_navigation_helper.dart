@@ -59,11 +59,18 @@ class MediaDetailNavigationTarget {
 
 /// [openSeasonItself] keeps a season as its own page (the iPhone, DEC-140);
 /// everywhere else a season opens its series at that season.
+///
+/// [openEpisodeItself] keeps an episode as its own page, for a caller that is
+/// on that episode's series already: the series at this episode would be the
+/// same page a second time.
 MediaDetailNavigationTarget mediaDetailNavigationTargetFor(
   MediaItem item, {
   MediaItem? metadataOverride,
   bool openSeasonItself = false,
+  bool openEpisodeItself = false,
 }) {
+  if (openEpisodeItself && item.isEpisode) return MediaDetailNavigationTarget(metadata: metadataOverride ?? item);
+
   if (item.isEpisode && item.grandparentId != null) {
     return MediaDetailNavigationTarget(
       metadata:
@@ -138,10 +145,12 @@ MediaDetailNavigationTarget mediaDetailNavigationTargetIn(
   BuildContext context,
   MediaItem item, {
   MediaItem? metadataOverride,
+  bool openEpisodeItself = false,
 }) => mediaDetailNavigationTargetFor(
   item,
   metadataOverride: metadataOverride,
   openSeasonItself: PlatformDetector.isPhone(context),
+  openEpisodeItself: openEpisodeItself,
 );
 
 bool shouldOpenEpisodeDetailsForActivation({
@@ -471,8 +480,14 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
   UnifiedMediaRouteContext? unifiedRouteContext,
   UnifiedSourceChangeCallback? onChangeSource,
   TvFocusRestoreTarget? restoreTarget,
+  bool openEpisodeItself = false,
 }) async {
-  final target = mediaDetailNavigationTargetIn(context, mi, metadataOverride: metadataOverride);
+  final target = mediaDetailNavigationTargetIn(
+    context,
+    mi,
+    metadataOverride: metadataOverride,
+    openEpisodeItself: openEpisodeItself,
+  );
   // The route boundary, not the activation site: comparing this against the
   // expected target recorded back at the row is what catches a swap in between.
   SelectTraceRecorder.instance.link(

@@ -16,8 +16,15 @@ const Size _canvas = Size(1038, 584);
 const _backgroundKey = ValueKey('background');
 const _heroButton = ValueKey('hero-button');
 
-TvDetailSection _section(String id, {int count = 8, double width = 130, Map<String, FocusNode>? nodes}) {
+TvDetailSection _section(
+  String id, {
+  int count = 8,
+  double width = 130,
+  Map<String, FocusNode>? nodes,
+  bool heldAtTop = false,
+}) {
   return TvDetailSection(
+    heldAtTop: heldAtTop,
     id: id,
     title: 'Row $id',
     itemIds: [for (var i = 0; i < count; i++) '$id$i'],
@@ -134,6 +141,30 @@ void main() {
 
     final pt = _canvas.height / 1080;
     expect(tester.getCenter(find.text('Row b')).dy, closeTo(420 * 0.96 * pt, 1.5));
+  });
+
+  testWidgets('a section held at the top keeps the page on 0, also coming back from further down', (tester) async {
+    final nodes = <String, FocusNode>{};
+    await _pump(tester, [
+      _section('a', nodes: nodes, heldAtTop: true),
+      _section('b', nodes: nodes),
+      _section('c', nodes: nodes),
+    ]);
+    final scrollable = tester.state<ScrollableState>(find.byType(Scrollable).first);
+    expect(scrollable.position.maxScrollExtent, greaterThan(0));
+
+    nodes['a0']!.requestFocus();
+    await tester.pumpAndSettle();
+    expect(scrollable.position.pixels, 0, reason: 'unheld, this row would go to the height of 04');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(scrollable.position.pixels, greaterThan(0));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pumpAndSettle();
+    expect(nodes['a0']!.hasFocus, isTrue);
+    expect(scrollable.position.pixels, 0);
   });
 
   testWidgets('the hero focused puts the page back on offset 0', (tester) async {

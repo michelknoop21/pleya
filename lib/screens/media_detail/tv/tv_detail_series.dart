@@ -91,14 +91,39 @@ extension _MediaDetailTvSeries on _MediaDetailScreenState {
   }
 
   void _tvDetailOnEpisodeFocused(MediaItem? episode) {
+    final seasonKey = _tvDetailOpenSeasonKey;
+    if (episode == null) {
+      _tvDetailSeasonFocus.remove(seasonKey);
+    } else {
+      _tvDetailSeasonFocus[seasonKey] = episode.id;
+    }
     if (_tvDetailFocusedEpisode?.id == episode?.id) return;
     setStateIfMounted(() => _tvDetailFocusedEpisode = episode);
   }
 
-  /// Select on an episode of the page you are on. Always plays: Episode Action
-  /// "details" asks to see an episode before playing it, and this page is where
-  /// it is seen. Handing it to [navigateToMediaItem] opened a second page of
-  /// this same series on top of the first.
+  /// Select on an episode of this very series, wherever on the page it stands.
+  /// Episode Action decides, as on every other card. "Details" is the episode's
+  /// own page and never [navigateToMediaItem]: that opens the series at this
+  /// episode, which is this page a second time (`tvDetailRouteId` tells the two
+  /// apart by the episode in the id, so nothing discards the duplicate).
+  void _tvDetailActivateEpisode(MediaItem episode, String sectionId) {
+    SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
+    if (SettingsService.instance.read(SettingsService.episodeAction) != EpisodeAction.details) {
+      _tvDetailPlayEpisode(episode);
+      return;
+    }
+    unawaited(
+      navigateToMediaItemDetails(
+        context,
+        episode,
+        isOffline: widget.isOffline,
+        openEpisodeItself: true,
+        onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
+        restoreTarget: TvFocusRestoreTarget(itemId: episode.id, containerId: sectionId),
+      ),
+    );
+  }
+
   void _tvDetailPlayEpisode(MediaItem episode) {
     SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
     if (MediaDetailScreen.debugOnPlayEpisode case final hook?) {
@@ -163,7 +188,7 @@ extension _MediaDetailTvSeries on _MediaDetailScreenState {
               progress: _tvDetailEpisodeProgress(episode),
               blurred: hideSpoilers && episode.shouldHideSpoiler,
               semanticLabel: episode.title ?? episode.displayTitle,
-              onSelect: () => _tvDetailPlayEpisode(episode),
+              onSelect: () => _tvDetailActivateEpisode(episode, _tvDetailEpisodesSectionId),
               onContextMenu: () => menuKey.currentState?.showContextMenu(context),
               onFocused: () => _tvDetailOnEpisodeFocused(episode),
             ),

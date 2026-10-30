@@ -5,6 +5,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
@@ -32,6 +34,7 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/layout_constants.dart';
+import 'package:pleya/utils/media_navigation_helper.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/tv_browse_rail.dart';
@@ -87,18 +90,25 @@ MediaItem _episode(int season, int n, {int? offset}) => MediaItem(
 );
 
 class _Client implements MediaServerClient {
-  _Client({List<MediaItem>? seasons, Map<String, List<MediaItem>>? episodes, this.seasonsFail = false})
-    : seasons = seasons ?? [_season(1, watched: 3), _season(2)],
-      episodes =
-          episodes ??
-          {
-            'season_1': [for (var i = 1; i <= 3; i++) _episode(1, i)],
-            'season_2': [for (var i = 1; i <= 3; i++) _episode(2, i)],
-          };
+  _Client({
+    List<MediaItem>? seasons,
+    Map<String, List<MediaItem>>? episodes,
+    this.seasonsFail = false,
+    this.hubs = const [],
+    this.show,
+  }) : seasons = seasons ?? [_season(1, watched: 3), _season(2)],
+       episodes =
+           episodes ??
+           {
+             'season_1': [for (var i = 1; i <= 3; i++) _episode(1, i)],
+             'season_2': [for (var i = 1; i <= 3; i++) _episode(2, i)],
+           };
 
   final List<MediaItem> seasons;
   final Map<String, List<MediaItem>> episodes;
   final bool seasonsFail;
+  final List<MediaHub> hubs;
+  final MediaItem? show;
   final pageCalls = <String>[];
 
   @override
@@ -110,8 +120,10 @@ class _Client implements MediaServerClient {
   @override
   ServerCapabilities get capabilities => ServerCapabilities.jellyfin;
   @override
-  Future<({MediaItem? item, MediaItem? onDeckEpisode})> fetchItemWithOnDeck(String id) async =>
-      (item: _show(), onDeckEpisode: null);
+  Future<({MediaItem? item, MediaItem? onDeckEpisode})> fetchItemWithOnDeck(String id) async => (
+    item: episodes.values.expand((list) => list).where((episode) => episode.id == id).firstOrNull ?? show ?? _show(),
+    onDeckEpisode: null,
+  );
   @override
   Future<List<MediaItem>> fetchChildren(String parentId) async {
     if (seasonsFail) throw StateError('seasons did not load');
@@ -141,7 +153,7 @@ class _Client implements MediaServerClient {
   @override
   Future<MediaFileInfo?> getFileInfo(MediaItem item) async => null;
   @override
-  Future<List<MediaHub>> fetchRelatedHubs(String id, {int count = 10}) async => const [];
+  Future<List<MediaHub>> fetchRelatedHubs(String id, {int count = 10}) async => hubs;
   @override
   Future<LibraryPage<MediaItem>> fetchPersonMediaPage(
     String personId, {
@@ -182,8 +194,16 @@ void main() {
     MediaDetailScreen.debugOnPlayEpisode = null;
   });
 
-  Future<void> pumpDetail(WidgetTester tester, _Client client, {String? episode, int? season, String? seasonId}) async {
-    tester.view.physicalSize = _panel;
+  Future<void> pumpDetail(
+    WidgetTester tester,
+    _Client client, {
+    String? episode,
+    int? season,
+    String? seasonId,
+    Size window = _panel,
+    MediaItem? show,
+  }) async {
+    tester.view.physicalSize = window;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await SettingsService.getInstance();
@@ -196,29 +216,28 @@ void main() {
         child: ChangeNotifierProvider<MultiServerProvider>.value(
           value: provider,
           child: MaterialApp(
-            builder: withNoticeLayer(),
-            theme: monoTheme(dark: true),
-            home: withProfileNavigationScope(
+            // Above the Navigator: an episode opened from this page is a route
+            // of its own and needs the same scopes.
+            builder: (context, child) => withProfileNavigationScope(
               child: InputModeTracker(
                 child: MainScreenFocusScope(
                   focusSidebar: () => bar++,
                   focusContent: () {},
                   isSidebarFocused: false,
                   sideNavigationWidth: 0,
-                  child: TvDisplayMetrics(
-                    size: _panel,
-                    child: TvNestedRouteScope(
-                      dismiss: ([_]) => dismissed++,
-                      markResult: (_) {},
-                      child: MediaDetailScreen(
-                        metadata: _show(),
-                        initialEpisodeId: episode,
-                        initialSeasonIndex: season,
-                        initialSeasonId: seasonId,
-                      ),
-                    ),
-                  ),
+                  child: TvDisplayMetrics(size: _panel, child: withNoticeLayer()(context, child)),
                 ),
+              ),
+            ),
+            theme: monoTheme(dark: true),
+            home: TvNestedRouteScope(
+              dismiss: ([_]) => dismissed++,
+              markResult: (_) {},
+              child: MediaDetailScreen(
+                metadata: show ?? _show(),
+                initialEpisodeId: episode,
+                initialSeasonIndex: season,
+                initialSeasonId: seasonId,
               ),
             ),
           ),
@@ -407,17 +426,80 @@ void main() {
     expect(_focus, contains('TvDetailCard_episodes'));
   });
 
-  testWidgets('Select on an episode with Episode Action details stays on this one page', (tester) async {
-    final played = <String>[];
-    MediaDetailScreen.debugOnPlayEpisode = (episode) => played.add(episode.id);
-    await SettingsService.getInstance();
-    await SettingsService.instance.write(SettingsService.episodeAction, EpisodeAction.details);
-    await pumpDetail(tester, _Client(), episode: 'e2-2', season: 2, seasonId: 'season_2');
+  group('Select on an episode follows Episode Action', () {
+    late List<String> played;
 
-    await _press(tester, LogicalKeyboardKey.enter);
+    Iterable<MediaDetailScreen> pages(WidgetTester tester) =>
+        tester.widgetList<MediaDetailScreen>(find.byType(MediaDetailScreen, skipOffstage: false));
 
-    expect(find.byType(MediaDetailScreen, skipOffstage: false), findsOneWidget);
-    expect(played, ['e2-2']);
+    Future<void> setAction(EpisodeAction action) async {
+      played = [];
+      MediaDetailScreen.debugOnPlayEpisode = (episode) => played.add(episode.id);
+      await SettingsService.getInstance();
+      await SettingsService.instance.write(SettingsService.episodeAction, action);
+    }
+
+    testWidgets('play starts the episode and opens nothing', (tester) async {
+      await setAction(EpisodeAction.play);
+      await pumpDetail(tester, _Client(), episode: 'e2-2', season: 2, seasonId: 'season_2');
+
+      await _press(tester, LogicalKeyboardKey.enter);
+
+      expect(played, ['e2-2']);
+      expect(pages(tester), hasLength(1));
+    });
+
+    testWidgets('details opens the episode itself, not this series a second time', (tester) async {
+      await setAction(EpisodeAction.details);
+      await pumpDetail(tester, _Client(), episode: 'e2-2', season: 2, seasonId: 'season_2');
+
+      await _press(tester, LogicalKeyboardKey.enter);
+
+      expect(played, isEmpty);
+      expect(pages(tester).map((page) => page.metadata.id), ['show', 'e2-2']);
+      expect(pages(tester).last.initialEpisodeId, isNull);
+      expect(
+        find.descendant(
+          of: find.byType(MediaDetailScreen).last,
+          matching: find.text('What episode 2 of season 2 is about.'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('an episode of this series on a row of the page follows the same setting', (tester) async {
+      await setAction(EpisodeAction.play);
+      final hubs = [
+        MediaHub(id: 'ondeck', title: 'On deck', type: 'episode', items: [_episode(1, 2)]),
+      ];
+      await pumpDetail(tester, _Client(hubs: hubs));
+      for (var i = 0; i < 4; i++) {
+        await _press(tester, LogicalKeyboardKey.arrowDown);
+      }
+      expect(_focus, contains('hub:ondeck'));
+
+      await _press(tester, LogicalKeyboardKey.enter);
+      expect(played, ['e1-2']);
+      expect(pages(tester), hasLength(1));
+
+      await SettingsService.instance.write(SettingsService.episodeAction, EpisodeAction.details);
+      await _press(tester, LogicalKeyboardKey.enter);
+      expect(played, ['e1-2']);
+      expect(pages(tester).map((page) => page.metadata.id), ['show', 'e1-2']);
+    });
+
+    test('the target of an episode opened on its own series is the episode, and only then', () {
+      final episode = _episode(1, 2);
+
+      final own = mediaDetailNavigationTargetFor(episode, openEpisodeItself: true);
+      expect(own.metadata.id, 'e1-2');
+      expect(own.initialEpisodeId, isNull);
+      expect(tvDetailRouteId(own), isNot(contains('_e')));
+
+      final series = mediaDetailNavigationTargetFor(episode);
+      expect(series.metadata.id, 'show');
+      expect(series.initialEpisodeId, 'e1-2');
+    });
   });
 
   testWidgets('focus on an episode puts its summary in the hero, the actions give it back', (tester) async {
@@ -431,6 +513,37 @@ void main() {
     await _press(tester, LogicalKeyboardKey.arrowDown);
     expect(_focus, 'play_button');
     expect(find.text('What season 2 is about.'), findsOneWidget);
+  });
+
+  testWidgets('the tab above the row is still the episode: only the actions give the summary back', (tester) async {
+    await pumpDetail(tester, _Client(), episode: 'e2-2', season: 2, seasonId: 'season_2');
+
+    await _press(tester, LogicalKeyboardKey.arrowUp);
+
+    expect(_focus, 'season_tab_1');
+    expect(find.text('What episode 2 of season 2 is about.'), findsOneWidget);
+    expect(find.text('What season 2 is about.'), findsNothing);
+  });
+
+  testWidgets('a season gets back the card it was left on, per season', (tester) async {
+    await pumpDetail(tester, _Client());
+    await _press(tester, LogicalKeyboardKey.arrowRight);
+    await _press(tester, LogicalKeyboardKey.arrowDown);
+    await _press(tester, LogicalKeyboardKey.arrowRight);
+    await _press(tester, LogicalKeyboardKey.arrowRight);
+    await _press(tester, LogicalKeyboardKey.arrowRight);
+    expect(_focus, 'TvDetailCard_episodes(e1-3)');
+
+    await _press(tester, LogicalKeyboardKey.arrowUp);
+    await _press(tester, LogicalKeyboardKey.arrowRight);
+    expect(_focus, 'season_tab_1', reason: 'the row that emptied under the tab must not take the focus');
+    await _press(tester, LogicalKeyboardKey.arrowDown);
+    expect(_focus, 'TvDetailCard_episodes(e2-1)', reason: 'season 2 was never walked: under the tab, not on e2-3');
+
+    await _press(tester, LogicalKeyboardKey.arrowUp);
+    await _press(tester, LogicalKeyboardKey.arrowLeft);
+    await _press(tester, LogicalKeyboardKey.arrowDown);
+    expect(_focus, 'TvDetailCard_episodes(e1-3)');
   });
 
   group('a season tab, as 01 draws it', () {
@@ -471,6 +584,26 @@ void main() {
       final actions = tester.getCenter(find.byType(TvDetailRoundButton).first);
       expect(actions.dy / pt, closeTo(968 * 0.96, 8));
       expect(actions.dx, lessThan(_panel.width / 3));
+    });
+
+    testWidgets('a page too tall for its box stays on 0 under the row, and the actions bring in the rest', (
+      tester,
+    ) async {
+      await pumpDetail(tester, _Client(), window: const Size(1038, 480));
+      await _press(tester, LogicalKeyboardKey.arrowRight);
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+      final scrollable = tester.state<ScrollableState>(find.byType(Scrollable).first);
+      expect(scrollable.position.maxScrollExtent, greaterThan(0), reason: 'this test needs a page that can scroll');
+
+      expect(_focus, 'TvDetailCard_episodes(season_1)');
+      expect(scrollable.position.pixels, 0);
+
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+      expect(scrollable.position.pixels, scrollable.position.maxScrollExtent);
+
+      await _press(tester, LogicalKeyboardKey.arrowUp);
+      expect(_focus, 'TvDetailCard_episodes(season_1)');
+      expect(scrollable.position.pixels, 0);
     });
 
     testWidgets('the row keeps its height when the summary changes length', (tester) async {
@@ -574,6 +707,12 @@ void main() {
     await _press(tester, LogicalKeyboardKey.arrowRight);
     await _press(tester, LogicalKeyboardKey.arrowRight);
     await _press(tester, LogicalKeyboardKey.arrowLeft);
+    expect(tester.widget<TvDetailPage>(find.byType(TvDetailPage)).sections.single.itemIds, [
+      'season_1',
+      'e1-1',
+      'e1-2',
+      'e1-3',
+    ]);
     await _press(tester, LogicalKeyboardKey.arrowRight);
 
     expect(client.pageCalls.where((id) => id == 'season_1'), hasLength(1));
@@ -615,6 +754,51 @@ void main() {
     expect(_focus, 'detail_tab_series');
     expect(tester.takeException(), isNull);
     expect(find.text('Power is up for grabs.'), findsOneWidget);
+  });
+
+  group('the tabs and the actions keep their place (DET2, DET4)', () {
+    final longSummary = List.filled(40, 'A sentence that keeps the synopsis running.').join(' ');
+    MediaItem longShow() => _show().copyWith(
+      title: 'A Very Long Series Title For Overflow Testing',
+      summary: longSummary,
+      genres: const ['Drama', 'Mystery', 'Crime', 'Thriller'],
+      roles: [for (var i = 0; i < 8; i++) MediaRole(id: 'p$i', tag: 'Person $i', role: 'Role $i')],
+    );
+
+    for (final (name, window) in [('full window', _panel), ('box under a bar', const Size(1038, 480))]) {
+      testWidgets('$name: title, synopsis and the actions stay on the first screen', (tester) async {
+        final show = longShow();
+        await pumpDetail(
+          tester,
+          _Client(show: show),
+          window: window,
+          show: show,
+        );
+
+        expect(tester.takeException(), isNull);
+        expect(find.text(show.title!), findsWidgets);
+        final synopsis = tester.widget<Text>(find.text(longSummary));
+        expect(synopsis.maxLines, greaterThanOrEqualTo(1));
+        expect(tester.getBottomLeft(find.text(longSummary)).dy, lessThan(window.height));
+        final actions = tester.getRect(find.byType(TvDetailRoundButton).first);
+        expect(actions.bottom, lessThanOrEqualTo(window.height));
+      });
+    }
+
+    testWidgets('a tab wants no more height than the row reserves for it', (tester) async {
+      await pumpDetail(tester, _Client());
+
+      final band = find.byWidgetPredicate((w) => w is AutomationNode && w.id == AutomationIds.mediaDetailTabs);
+      final pill = find.byType(TvDetailTabPill).first;
+      final wanted = tester.renderObject<RenderBox>(pill).getMaxIntrinsicHeight(double.infinity);
+
+      expect(wanted, lessThanOrEqualTo(tester.getSize(band).height));
+      expect(
+        wanted,
+        closeTo(tester.getSize(band).height, 0.5),
+        reason: 'the pill is the row: nothing is clipped off it',
+      );
+    });
   });
 
   test('the tab row reads the height of 03', () {

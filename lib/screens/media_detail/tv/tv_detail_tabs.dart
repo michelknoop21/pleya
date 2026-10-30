@@ -89,9 +89,18 @@ extension _MediaDetailTvTabs on _MediaDetailScreenState {
     requestFocusClearingDirectionalHistory(tab.focusNode);
   }
 
-  /// Down from the tabs: the page under the one that is open.
+  /// Which season [_tvDetailSeasonFocus] files the card under.
+  String get _tvDetailOpenSeasonKey => _tvDetailOpenSeason?.id ?? _tvDetailEpisodesTabId;
+
+  /// Down from the tabs: the page under the one that is open, on the card this
+  /// season was left on.
   void _focusBelowTvDetailTabs() {
-    if (_tvDetailSeasonTabActive && (_tvDetailPageKey.currentState?.focusFirstSection() ?? false)) return;
+    if (_tvDetailSeasonTabActive) {
+      final page = _tvDetailPageKey.currentState;
+      final left = _tvDetailSeasonFocus[_tvDetailOpenSeasonKey];
+      if (left != null && (page?.restoreFocus(sectionId: _tvDetailEpisodesSectionId, itemId: left) ?? false)) return;
+      if (page?.focusFirstSection() ?? false) return;
+    }
     _focusTvDetailActionRow();
   }
 
@@ -105,24 +114,6 @@ extension _MediaDetailTvTabs on _MediaDetailScreenState {
       if (!mounted) return;
       if (!(_tvDetailPageKey.currentState?.focusFirstSection() ?? false)) tab.focusNode.requestFocus();
     });
-  }
-
-  /// An episode of this series that was activated elsewhere on the page: its
-  /// season's tab, on that episode. False when no tab holds it.
-  bool _tvDetailOpenEpisode(MediaItem episode) {
-    final tab = _tvDetailTabs().where((tab) {
-      final seasonIndex = tab.seasonIndex;
-      return seasonIndex == null ? tab.id == _tvDetailEpisodesTabId : _seasons[seasonIndex].id == episode.parentId;
-    }).firstOrNull;
-    if (tab == null) return false;
-    _tvDetailOpenTab(tab);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final page = _tvDetailPageKey.currentState;
-      final onEpisode = page?.restoreFocus(sectionId: _tvDetailEpisodesSectionId, itemId: episode.id) ?? false;
-      if (!onEpisode && !(page?.focusFirstSection() ?? false)) tab.focusNode.requestFocus();
-    });
-    return true;
   }
 
   /// Menu on a season the viewer walked into: back to the Serie tab, onto the
