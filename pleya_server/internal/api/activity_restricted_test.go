@@ -133,3 +133,47 @@ func TestItemActivityRoleChangeFollowsTheOptIn(t *testing.T) {
 		t.Fatalf("na promoveren ziet de owner %v", usernames(got))
 	}
 }
+
+// Een opt-out is een eigen keuze en overleeft de hele rondgang member,
+// restricted, member: alleen een true uit een vorige rol wordt gewist, een
+// false niet. Wordt ook false gewist, dan geeft coalesce na herstel weer true
+// en staat de geschiedenis zonder actie weer open voor het huishouden.
+func TestItemActivityOptOutSurvivesRestrictedRoundTrip(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	movie := e.findMovie("Grease").ID
+	owner := e.access
+	samID, sam := e.member("member", "sam", "movies")
+
+	e.playAs(sam, movie, "ipad", true)
+	e.shareActivity(sam, false)
+
+	setRole := func(role string) {
+		t.Helper()
+		rec := e.do(http.MethodPatch, "/pleya/v1/users/"+samID.String(), map[string]string{"role": role})
+		if rec.Code != http.StatusOK {
+			t.Fatalf("rol %s zetten gaf %d: %s", role, rec.Code, rec.Body.String())
+		}
+	}
+	hidden := func(stage string) {
+		t.Helper()
+		if e.sharesActivity(sam) {
+			t.Fatalf("%s: sam deelt terwijl hij zich had uitgezet", stage)
+		}
+		if got := e.activity(movie, owner); len(got.Items) != 0 {
+			t.Fatalf("%s: de owner ziet %v", stage, usernames(got))
+		}
+	}
+
+	hidden("voor de rondgang")
+	setRole("restricted")
+	hidden("als restricted")
+	setRole("member")
+	hidden("na herstel naar member")
+
+	// Het gewone pad blijft werken: wie zich weer aanzet is meteen zichtbaar.
+	e.shareActivity(sam, true)
+	if got := e.activity(movie, owner); len(got.Items) != 1 {
+		t.Fatalf("na weer aanzetten ziet de owner %v", usernames(got))
+	}
+}

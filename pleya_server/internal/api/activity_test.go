@@ -246,6 +246,86 @@ func TestItemActivityFollowsLibraryRights(t *testing.T) {
 	}
 }
 
+// Intrekken telt ook voor een serie en een seizoen: de bibliotheek wordt per
+// afspeelrij uit het bereik gelezen, dus een ingetrokken kijker verdwijnt uit
+// de optelling op elk niveau en komt terug met het recht.
+func TestItemActivityRevokedLibraryDropsFromSeriesAndSeason(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	owner := e.access
+	samID, sam := e.member("member", "sam", "shows")
+
+	var shows api.ItemPage
+	e.getJSON("/pleya/v1/libraries/"+e.libraryID("shows")+"/items", "", http.StatusOK, &shows)
+	series := shows.Items[0].ID
+	var seasons api.ItemPage
+	e.getJSON("/pleya/v1/items/"+series+"/children", "", http.StatusOK, &seasons)
+	season := seasons.Items[0].ID
+	episode := e.episodesInOrder()[0].ID
+
+	e.playAs(sam, episode, "ipad", true)
+	e.playAs(owner, episode, "tv", true)
+
+	for name, item := range map[string]string{"serie": series, "seizoen": season, "aflevering": episode} {
+		if got := e.activity(item, owner); len(got.Items) != 2 {
+			t.Fatalf("%s voor het intrekken: %v", name, usernames(got))
+		}
+	}
+
+	showsLib := id.MustParse(e.libraryID("shows"))
+	e.revokeLibrary(samID, showsLib)
+	for name, item := range map[string]string{"serie": series, "seizoen": season, "aflevering": episode} {
+		got := e.activity(item, owner)
+		if len(got.Items) != 1 || got.Items[0].Username != "michel" {
+			t.Fatalf("%s na het intrekken: %v", name, usernames(got))
+		}
+	}
+
+	e.grantLibrary(samID, showsLib, "view")
+	for name, item := range map[string]string{"serie": series, "seizoen": season, "aflevering": episode} {
+		if got := e.activity(item, owner); len(got.Items) != 2 {
+			t.Fatalf("%s na het terugzetten: %v", name, usernames(got))
+		}
+	}
+}
+
+// Het schema staat een aflevering direct onder een serie toe, zonder seizoen
+// ertussen. De recursie loopt over parent_id, dus die telt mee op de serie en
+// is zelf bereikbaar als aflevering.
+func TestItemActivityCountsEpisodeDirectlyUnderSeries(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	owner := e.access
+	_, sam := e.member("member", "sam", "shows")
+
+	var shows api.ItemPage
+	e.getJSON("/pleya/v1/libraries/"+e.libraryID("shows")+"/items", "", http.StatusOK, &shows)
+	series := shows.Items[0].ID
+
+	special := id.New()
+	if _, err := e.pool.Exec(context.Background(), `
+		INSERT INTO media_items (id, library_id, parent_id, kind, grouping_key, title)
+		VALUES ($1, $2, $3, 'episode', 'special-onder-serie', 'Special')`,
+		special, e.libraryID("shows"), series); err != nil {
+		t.Fatal(err)
+	}
+
+	before := e.activity(series, owner)
+	e.playAs(sam, special.String(), "ipad", true)
+
+	direct := e.activity(special.String(), owner)
+	if len(direct.Items) != 1 || direct.Items[0].Username != "sam" || direct.Items[0].CompletedItems != 1 {
+		t.Fatalf("aflevering onder de serie: %+v", direct.Items)
+	}
+	whole := e.activity(series, owner)
+	if len(whole.Items) != len(before.Items)+1 {
+		t.Fatalf("serie telt de losse aflevering niet mee: %v naar %v", usernames(before), usernames(whole))
+	}
+	if got := entryOf(t, whole, "sam"); got.PlayCount != 1 || got.CompletedItems != 1 {
+		t.Errorf("serie, sam: %+v", got)
+	}
+}
+
 // De keuze verbergt iemand voor iedereen behalve hemzelf, ook voor een
 // beheerder en ook in de optelling van een serie, en hij geldt meteen.
 func TestItemActivityOptOutHidesFromOthersOnly(t *testing.T) {

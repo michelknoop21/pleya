@@ -1214,7 +1214,8 @@ in `GET /users` en in elke beheerhandeling. `PUT` neemt `{ "share_activity": fal
 dezelfde vorm; een ontbrekend of ander veld is `400` met `library.personal_invalid`. `GET` geeft wat nu
 geldt: de eigen keuze, of zonder keuze waar, en onwaar voor een `restricted` gebruiker. De keuze geldt
 meteen en werkt terug op wat er al in de geschiedenis staat. Wie restricted wordt verliest een eerdere
-keuze en zet delen opnieuw zelf aan; een rol die de andere kant op gaat houdt de keuze, en zonder keuze
+opt-in (`true`) en zet delen opnieuw zelf aan; een eerdere opt-out (`false`) blijft staan, ook na
+herstel naar een andere rol. Een rol die de andere kant op gaat houdt de keuze, en zonder keuze
 volgt de nieuwe rol. De keuze raakt `GET /watch-history` niet: die route is klasse `admin` (17b.7) en
 beantwoordt een andere vraag.
 
