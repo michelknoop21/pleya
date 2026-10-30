@@ -7,20 +7,55 @@ enum _TvDetailSlot { cast, reviews, discussions, extras, collections, people, re
 
 const String _tvDetailViewAllId = '__view_all';
 
+/// How many actors get a "Meer met" row of their own, as in 09 and 10.
+const int _tvDetailPersonRows = 2;
+const int _tvDetailPersonRowSize = 20;
+
 /// The film page's sections and the data they load on approach.
 extension _MediaDetailTvSections on _MediaDetailScreenState {
   /// The film detail lives on [TvDetailPage]. A series and a season still have
   /// the rail page: their tabs arrive in a later round.
   bool _tvDetailUsesPage(MediaItem metadata) => metadata.isMovie;
 
-  bool _tvDetailHasPendingSections(MediaItem metadata) => !widget.isOffline && !_tvDetailRelatedRequested;
+  List<MediaRole> _tvDetailPersonRoles(MediaItem metadata) => [
+    for (final role in metadata.roles ?? const <MediaRole>[])
+      if ((role.id ?? '').trim().isNotEmpty) role,
+  ].take(_tvDetailPersonRows).toList();
 
+  bool _tvDetailHasPendingSections(MediaItem metadata) {
+    if (widget.isOffline) return false;
+    if (!_tvDetailRelatedRequested) return true;
+    return _tvDetailPersonRoles(metadata).any((role) => !_tvDetailPersonMedia.containsKey(role.id));
+  }
+
+  /// One step at a time, in page order: each result moves the end of the page,
+  /// and that decides whether the next one is near yet.
   Future<void> _loadNextTvDetailSection(MediaItem metadata) async {
-    if (_tvDetailSectionLoading || _tvDetailRelatedRequested) return;
+    if (_tvDetailSectionLoading) return;
     _tvDetailSectionLoading = true;
-    _tvDetailRelatedRequested = true;
     try {
-      await _loadRelatedHubs();
+      if (!_tvDetailRelatedRequested) {
+        _tvDetailRelatedRequested = true;
+        await _loadRelatedHubs();
+        return;
+      }
+      final client = context.tryGetMediaClientForServer(serverIdOrNull(_metadata.serverId));
+      for (final role in _tvDetailPersonRoles(metadata)) {
+        final id = role.id!;
+        if (_tvDetailPersonMedia.containsKey(id)) continue;
+        var items = const <MediaItem>[];
+        try {
+          final page = await client?.fetchPersonMediaPage(id, start: 0, size: _tvDetailPersonRowSize);
+          items = [
+            for (final item in page?.items ?? const <MediaItem>[])
+              if (item.id != metadata.id) item.copyWith(serverId: _metadata.serverId, serverName: _metadata.serverName),
+          ];
+        } catch (e) {
+          appLogger.d('Person media for the detail page failed', error: e);
+        }
+        setStateIfMounted(() => _tvDetailPersonMedia[id] = items);
+        return;
+      }
     } finally {
       _tvDetailSectionLoading = false;
     }
@@ -52,7 +87,8 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
   }) {
     final pt = TvHig.of(context);
     final scale = TvLayoutConstants.scaleOf(context);
-    final width = TvDetailLayout.posterWidth * pt;
+    final inset = TvCatalogLayout.cardContentInset(scale);
+    final width = TvDetailLayout.posterWidth * pt + inset * 2;
     final height = TvCatalogLayout.cardHeight(width, scale, titleLines: 1);
     final fresh = _freshAll(items);
     final client = _getArtworkMediaClient(context);
@@ -64,6 +100,7 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
       cardWidth: width,
       cardHeight: height,
       footerHeight: TvDetailLayout.cardFooterHeight(width, scale),
+      artworkInset: inset,
       itemBuilder: (context, cell) {
         if (cell.index >= fresh.length) {
           return TvDetailViewAllCard(
@@ -90,6 +127,7 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
               focusNode: cell.focusNode,
               titleLines: 1,
               autoScroll: false,
+              centerFooter: true,
               onSelect: () => unawaited(_openTvDetailItem(item, id)),
               onContextMenu: () => menuKey.currentState?.showContextMenu(context),
               onNavigateUp: cell.onNavigateUp,
@@ -115,7 +153,7 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
     const id = 'cast';
     return TvDetailSection(
       id: id,
-      title: t.discover.cast,
+      title: t.discover.castAndCrew,
       itemIds: [for (var i = 0; i < roles.length; i++) (roles[i].id ?? '').isEmpty ? 'role-$i' : roles[i].id!],
       cardWidth: TvDetailLayout.portraitSize * pt,
       cardHeight: TvDetailCastCard.height(pt),
@@ -144,10 +182,40 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
     );
   }
 
+  TvDetailSection _tvDetailReviewSection(List<MediaReview> reviews) {
+    final pt = TvHig.of(context);
+    const id = 'reviews';
+    return TvDetailSection(
+      id: id,
+      title: t.discover.ratingsAndReviews,
+      itemIds: [for (var i = 0; i < reviews.length; i++) '$i'],
+      cardWidth: TvDetailLayout.wideCardWidth * pt,
+      cardHeight: TvDetailLayout.reviewCardHeight * pt,
+      itemBuilder: (context, cell) {
+        final review = reviews[cell.index];
+        return AutomationNode(
+          id: AutomationIds.mediaDetailSectionItem,
+          instance: '$id.${cell.index}',
+          role: 'list.item',
+          focusNode: cell.focusNode,
+          child: TvDetailReviewCard(
+            cell: cell,
+            review: review,
+            onSelect: () {
+              SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
+              _openTvDetailSynopsisPanel(review.text, title: review.source ?? review.author);
+            },
+          ),
+        );
+      },
+    );
+  }
+
   TvDetailSection _tvDetailExtrasSection(List<MediaItem> extras) {
     final pt = TvHig.of(context);
     final scale = TvLayoutConstants.scaleOf(context);
-    final width = TvDetailLayout.wideCardWidth * pt;
+    final inset = TvCatalogLayout.cardContentInset(scale);
+    final width = TvDetailLayout.wideCardWidth * pt + inset * 2;
     final client = getServerBoundMediaClient(context);
     const id = 'extras';
     return TvDetailSection(
@@ -157,6 +225,7 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
       cardWidth: width,
       cardHeight: TvDetailLayout.cardHeight(width, scale, aspectRatio: 16 / 9),
       footerHeight: TvDetailLayout.cardFooterHeight(width, scale),
+      artworkInset: inset,
       itemBuilder: (context, cell) {
         final extra = extras[cell.index];
         return AutomationNode(
@@ -169,6 +238,7 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
             aspectRatio: 16 / 9,
             titleLines: 1,
             autoScroll: false,
+            centerFooter: true,
             artwork: TvCatalogArtworkFill(
               child: OptimizedMediaImage(
                 client: client,
@@ -178,7 +248,7 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
               ),
             ),
             title: extra.displayTitle,
-            meta: tvCatalogMetaLine(extra),
+            meta: _isTrailerExtra(extra) ? t.discover.trailer : t.discover.extra,
             onSelect: () => unawaited(_openTvDetailItem(extra, id)),
             focusNode: cell.focusNode,
             onNavigateUp: cell.onNavigateUp,
@@ -202,11 +272,21 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
       for (final slot in _TvDetailSlot.values)
         ...switch (slot) {
           _TvDetailSlot.cast => [if (roles.isNotEmpty) _tvDetailCastSection(metadata, roles)],
-          _TvDetailSlot.reviews => const <TvDetailSection>[],
+          _TvDetailSlot.reviews => [if (metadata.reviews.isNotEmpty) _tvDetailReviewSection(metadata.reviews)],
           _TvDetailSlot.discussions => const <TvDetailSection>[],
           _TvDetailSlot.extras => [if (_extras?.isNotEmpty ?? false) _tvDetailExtrasSection(_extras!)],
           _TvDetailSlot.collections => hubs.where(_isTvDetailCollectionHub).map(hubSection),
-          _TvDetailSlot.people => const <TvDetailSection>[],
+          _TvDetailSlot.people => [
+            for (final role in _tvDetailPersonRoles(metadata))
+              // A related hub can already be that actor's row (Plex's "More
+              // with …"), and two of those would read as a bug.
+              if (!hubs.any((hub) => hub.title.toLowerCase().contains(role.tag.toLowerCase())))
+                _tvDetailPosterSection(
+                  id: 'person:${role.id}',
+                  title: t.discover.moreWithActor(name: role.tag),
+                  items: _tvDetailPersonMedia[role.id] ?? const [],
+                ),
+          ],
           _TvDetailSlot.related => hubs.where((hub) => !_isTvDetailCollectionHub(hub)).map(hubSection),
         },
     ];

@@ -57,11 +57,20 @@ abstract final class TvDetailLayout {
   static double leftMargin(double width) => width * leftMarginFraction;
 
   /// A row in this page's own geometry rather than the catalog's column.
-  static TvCatalogGrid rowGrid({required double width, required double cardWidth, required double pt}) => TvCatalogGrid(
+  ///
+  /// [artworkInset] is what a catalog card keeps around its artwork for the
+  /// ring. The row gives it back at both ends of the pitch, so the artwork, not
+  /// the card, starts on the margin under the heading.
+  static TvCatalogGrid rowGrid({
+    required double width,
+    required double cardWidth,
+    required double pt,
+    double artworkInset = 0,
+  }) => TvCatalogGrid(
     columns: 1,
     cardWidth: cardWidth,
-    gutter: cardGutter * pt,
-    inset: leftMargin(width),
+    gutter: cardGutter * pt - artworkInset * 2,
+    inset: leftMargin(width) - artworkInset,
     bottomSafeMargin: 0,
   );
 

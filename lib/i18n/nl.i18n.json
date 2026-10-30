@@ -928,6 +928,11 @@
     "scoreRtCritics": "Rotten Tomatoes, critici",
     "scoreRtAudience": "Rotten Tomatoes, publiek",
     "scoreCommunity": "Communityscore",
+    "castAndCrew": "Cast & Crew",
+    "ratingsAndReviews": "Ratings & Reviews",
+    "directedBy": "Geregisseerd door ${names}",
+    "trailer": "Trailer",
+    "extra": "Extra",
     "reviews": "Recensies",
     "reviewOpenSource": "Lees bij de bron"
   },

@@ -17,7 +17,7 @@ const double _tvDetailActionRailGap = 4;
 // real shortfall would produce.
 const double _tvDetailEpsilon = 0.01;
 // DET6 (Michel, 13 september, hardware): the active rail (Acteurs, or
-// whichever hub `TvBrowseRailLayout.maxActiveRailHeight` reserves against —
+// whichever hub `TvBrowseRailLayout.maxActiveRailHeight` reserves against,
 // DET2 already established that a taller *inactive* hub, like Trailers &
 // Extra's, can be the one actually driving the reservation) could still cost
 // the ideal two-line synopsis its second line on an adversarial hub
@@ -48,8 +48,8 @@ extension _MediaDetailTvScreen on _MediaDetailScreenState {
     // INV-1 (docs/tvos-redesign-implementatiecontract.md): this route can be
     // nested inside the TV shell, under the top navigation (PB-1), where the
     // box Flutter actually lays this screen out in is shorter than the
-    // physical window. `MediaQuery.sizeOf` would not notice that — a smaller
-    // layout box does not re-scope MediaQuery — so it would keep reporting the
+    // physical window. `MediaQuery.sizeOf` would not notice that, a smaller
+    // layout box does not re-scope MediaQuery, so it would keep reporting the
     // full window and every measurement below would overshoot the box this
     // widget was actually given. `constraints`, from the `LayoutBuilder` this
     // whole screen now builds inside, is that box; `TvCatalogSkeletonGrid` in
@@ -102,15 +102,15 @@ extension _MediaDetailTvScreen on _MediaDetailScreenState {
         final initialRailHeight = railHeight;
         // DET2: on a small panel with a tall active hub (a person rail, full-
         // width extras cards), the reservation above can eat the whole
-        // foreground and overflow `_buildTvDetailForeground`'s Column — the
+        // foreground and overflow `_buildTvDetailForeground`'s Column, the
         // metadata line, genres, the action row and the source line are drawn
         // unconditionally there, and the title never degrades to zero either
         // (see `_tvDetailMandatoryForegroundHeight`). Give space back by
         // dropping the rail's "next hub" peek hint (`showNextHubPeek` below):
         // it is decorative; the info band is not.
         //
-        // Try clearing `_tvDetailIdealForegroundHeight` first — the mockup 37 A
-        // target of title + two synopsis lines + action row — then
+        // Try clearing `_tvDetailIdealForegroundHeight` first, the mockup 37 A
+        // target of title + two synopsis lines + action row, then
         // `_tvDetailMinimalForegroundHeight` (one line) before giving up on the
         // synopsis entirely at the bare `_tvDetailMandatoryForegroundHeight`
         // floor (DET2/H2, then the follow-up that added the minimal tier: a
@@ -309,7 +309,7 @@ extension _MediaDetailTvScreen on _MediaDetailScreenState {
     // shell has one at its root, above the top bar; a second one here
     // would host this screen's sheets inside the content box, under the
     // bar and at the wrong size, and the shell's own
-    // `onOverlaySheetOpenChanged` would never fire — so step 1 of the back
+    // `onOverlaySheetOpenChanged` would never fire, so step 1 of the back
     // chain in hoofdstuk 7.5 would not know a sheet was open. Sheets are
     // found with `OverlaySheetHost.maybeOf`, which walks up, so dropping
     // this one hands them to the shell's rather than to nothing.

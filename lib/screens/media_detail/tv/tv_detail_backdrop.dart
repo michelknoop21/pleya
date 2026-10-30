@@ -71,22 +71,33 @@ class TvDetailHeroArt extends StatelessWidget {
     final size = MediaQuery.sizeOf(context);
     final paths = item.heroArtCandidates(containerAspectRatio: size.width / size.height);
     if (paths.isEmpty) return const SizedBox.shrink();
+    // Two fades, because the art ends on two sides: towards the text and at the
+    // foot of the hero, where a single diagonal left a hard edge.
     return RepaintBoundary(
       child: ShaderMask(
         blendMode: BlendMode.dstIn,
         shaderCallback: (bounds) => const LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [Color(0xFF000000), Color(0xFF000000), Color(0x00000000)],
-          stops: [0, 0.42, 0.82],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [Color(0x00000000), Color(0xFF000000)],
+          stops: [0, 0.5],
         ).createShader(bounds),
-        child: OptimizedMediaImage(
-          client: client,
-          imagePath: paths.first,
-          localFilePath: localPath?.call(paths.first),
-          fit: BoxFit.cover,
-          alignment: Alignment.topRight,
-          imageType: ImageType.art,
+        child: ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (bounds) => const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF000000), Color(0x00000000)],
+            stops: [0.45, 1],
+          ).createShader(bounds),
+          child: OptimizedMediaImage(
+            client: client,
+            imagePath: paths.first,
+            localFilePath: localPath?.call(paths.first),
+            fit: BoxFit.cover,
+            alignment: Alignment.topRight,
+            imageType: ImageType.art,
+          ),
         ),
       ),
     );

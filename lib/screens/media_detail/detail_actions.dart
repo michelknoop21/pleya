@@ -63,7 +63,7 @@ extension _MediaDetailActionModel on _MediaDetailScreenState {
       });
     }
 
-    // Request via Jellyseerr/Overseerr — only when a server is configured, the
+    // Request via Jellyseerr/Overseerr, only when a server is configured, the
     // item is a movie/show, and we're online (needs a TMDB-id lookup).
     final seerrConfigured = context.watch<SeerrProvider?>()?.isConfigured ?? false;
 

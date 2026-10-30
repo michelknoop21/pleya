@@ -24,6 +24,7 @@ class TvDetailSection {
     required this.cardHeight,
     required this.itemBuilder,
     this.footerHeight = 0,
+    this.artworkInset = 0,
     this.focusScale = FocusTheme.fullCardFocusScale,
   });
 
@@ -40,6 +41,9 @@ class TvDetailSection {
   /// The text under the artwork. A row is anchored on its artwork, so a row
   /// with a caption sits at the height of one without.
   final double footerHeight;
+
+  /// See [TvDetailLayout.rowGrid].
+  final double artworkInset;
 
   final double focusScale;
   final Widget Function(BuildContext context, TvCatalogGridCell cell) itemBuilder;
@@ -278,7 +282,12 @@ class TvDetailPageState extends State<TvDetailPage> {
               onExitUp: (_) => _step(section, -1),
               onExitDown: (_) => _step(section, 1),
               onExitLeft: _exitLeft,
-              grid: TvDetailLayout.rowGrid(width: width, cardWidth: section.cardWidth, pt: pt),
+              grid: TvDetailLayout.rowGrid(
+                width: width,
+                cardWidth: section.cardWidth,
+                pt: pt,
+                artworkInset: section.artworkInset,
+              ),
               nodeDebugLabel: 'TvDetailCard_${section.id}',
             ),
             SizedBox(height: (TvDetailLayout.sectionGap * pt - headroom).clamp(0, double.infinity).toDouble()),

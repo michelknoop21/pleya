@@ -12,7 +12,7 @@ extension _MediaDetailTvForeground on _MediaDetailScreenState {
     final description = _tvDetailDescription(metadata, hideSpoilers: hideSpoilers);
     final foregroundColor = _tvDetailForegroundColor(context);
     // This block sits on the fullscreen spotlight artwork. Dimmed ink reads as
-    // secondary white-on-dark, but as washed-out black over bright artwork —
+    // secondary white-on-dark, but as washed-out black over bright artwork,
     // light mode keeps more of it.
     final mutedForegroundColor = foregroundColor.withValues(alpha: theme.brightness == Brightness.light ? 0.94 : 0.78);
 
@@ -53,7 +53,7 @@ extension _MediaDetailTvForeground on _MediaDetailScreenState {
         final genreBlockHeight = metrics.genreBlockHeight;
         // DEC-109: `TvViewAllAction`'s real rendered height, reserved only for
         // the lines where the synopsis actually truncates. Measured, not
-        // guessed — a guessed line-height multiplier and the real render can
+        // guessed, a guessed line-height multiplier and the real render can
         // only drift apart (see `_unifiedSourceLineHeight` on the same point).
         final readMoreGap = metrics.summaryGap;
         final readMoreHeight = _tvDetailReadMoreHeight(context, scale);
@@ -78,13 +78,13 @@ extension _MediaDetailTvForeground on _MediaDetailScreenState {
           final remainingForLogo = availableHeight - reservedHeight;
           // DET6 (Michel, 13 september, hardware): `_tvDetailIdealForegroundHeight`
           // is built from exactly these same terms, so at its own target this
-          // comparison is an equality by construction — `remainingForLogo` and
+          // comparison is an equality by construction, `remainingForLogo` and
           // `minLogoHeight` are the same real number computed two different
           // ways. Floating-point addition is not associative, so one of the
           // two came out a few ULPs below the other (observed: 50.99999999999997
           // vs 51.0) and tipped an exact-fit case into the one-line tier below
           // it. `_tvDetailEpsilon` absorbs that noise without hiding a real
-          // shortfall — a genuine deficit is orders of magnitude bigger.
+          // shortfall, a genuine deficit is orders of magnitude bigger.
           if (remainingForLogo >= minLogoHeight - _tvDetailEpsilon || lines == 0) {
             summaryMaxLines = lines;
             readMoreVisible = overflowsAtLines;

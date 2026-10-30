@@ -49,6 +49,9 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
     case 'catalog.studio-art.v1':
       _applyCatalogStudioArtV1(server);
       return true;
+    case 'catalog.detail-movie.v1':
+      _applyCatalogDetailMovieV1(server);
+      return true;
     case 'watchlist.studio.v1':
       return _applyWatchlistStudioV1(server);
     case 'seerr.requests.v1':
@@ -400,6 +403,34 @@ void _applyCatalogStudioArtV1(PleyaFakeServer server) {
 
   server.hubs['recently_added']!.addAll(ids);
   server.hubs['continue_watching']!.addAll(ids.take(2));
+}
+
+/// `catalog.studio-art.v1` with one film filled in the way a server fills a
+/// detail page: Sintel, half watched, with a synopsis, a director and a cast.
+/// What the Pleya wire does not carry (scores, reviews, extras, collections,
+/// credits per person) cannot be seeded here, so the film page's sections below
+/// Cast & Crew are widget-test territory.
+void _applyCatalogDetailMovieV1(PleyaFakeServer server) {
+  _applyCatalogStudioArtV1(server);
+  final film = server.items[server.seededIds['movie/sintel']]!;
+  film
+    ..['summary'] =
+        'A lone young woman searches a hostile world for the dragon she raised, '
+        'and the search costs her more than the years she spends on it.'
+    ..['genres'] = const ['Animation', 'Fantasy']
+    ..['content_rating'] = '12'
+    ..['duration_ms'] = 5400000
+    ..['user_state'] = {'position_ms': 2700000, 'watched': false, 'play_count': 0, 'updated_at': '2026-08-21T20:00:00Z'}
+    ..['people'] = const [
+      {'name': 'Colin Levy', 'role': 'director'},
+      {'name': 'Halina Reijn', 'role': 'actor', 'character': 'Sintel'},
+      {'name': 'Thom Hoffman', 'role': 'actor', 'character': 'Shaman'},
+      {'name': 'Ton Roosendaal', 'role': 'actor', 'character': 'Elder'},
+      {'name': 'Ivo Janssen', 'role': 'actor', 'character': 'Guard'},
+      {'name': 'Marieke Heebink', 'role': 'actor', 'character': 'Mother'},
+      {'name': 'Pierre Bokma', 'role': 'actor', 'character': 'Trader'},
+      {'name': 'Jeroen Krabbe', 'role': 'actor', 'character': 'Narrator'},
+    ];
 }
 
 /// The kijklijst for `catalog.studio-art.v1`: four of its films, newest

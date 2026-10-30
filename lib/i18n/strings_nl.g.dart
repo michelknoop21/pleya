@@ -1113,6 +1113,11 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get scoreRtCritics => 'Rotten Tomatoes, critici';
 	@override String get scoreRtAudience => 'Rotten Tomatoes, publiek';
 	@override String get scoreCommunity => 'Communityscore';
+	@override String get castAndCrew => 'Cast & Crew';
+	@override String get ratingsAndReviews => 'Ratings & Reviews';
+	@override String directedBy({required Object names}) => 'Geregisseerd door ${names}';
+	@override String get trailer => 'Trailer';
+	@override String get extra => 'Extra';
 	@override String get reviews => 'Recensies';
 	@override String get reviewOpenSource => 'Lees bij de bron';
 }
@@ -5391,6 +5396,11 @@ extension on TranslationsNl {
 			'discover.scoreRtCritics' => 'Rotten Tomatoes, critici',
 			'discover.scoreRtAudience' => 'Rotten Tomatoes, publiek',
 			'discover.scoreCommunity' => 'Communityscore',
+			'discover.castAndCrew' => 'Cast & Crew',
+			'discover.ratingsAndReviews' => 'Ratings & Reviews',
+			'discover.directedBy' => ({required Object names}) => 'Geregisseerd door ${names}',
+			'discover.trailer' => 'Trailer',
+			'discover.extra' => 'Extra',
 			'discover.reviews' => 'Recensies',
 			'discover.reviewOpenSource' => 'Lees bij de bron',
 			'mobileDetail.similarTab' => 'Vergelijkbaar',
@@ -5548,13 +5558,13 @@ extension on TranslationsNl {
 			'hubDetail.noItemsFound' => 'Geen items gevonden',
 			'logs.clearLogs' => 'Wis logs',
 			'logs.copyLogs' => 'Kopieer logs',
+			_ => null,
+		} ?? switch (path) {
 			'logs.uploadLogs' => 'Logs uploaden',
 			'logs.refreshLogs' => 'Verversen',
 			'logs.levelFilter' => 'Niveau',
 			'logs.levelAll' => 'Alles',
 			'logs.levelWarnings' => 'Waarschuwingen',
-			_ => null,
-		} ?? switch (path) {
 			'logs.levelErrors' => 'Fouten',
 			'logs.noMatchingLogs' => 'Geen regels op dit niveau',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} van ${total} regels',
@@ -6062,13 +6072,13 @@ extension on TranslationsNl {
 			'metadataEdit.squareArt' => 'Vierkante afbeelding',
 			'metadataEdit.selectPoster' => 'Poster selecteren',
 			'metadataEdit.selectBackground' => 'Achtergrond selecteren',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.selectLogo' => 'Logo selecteren',
 			'metadataEdit.selectSquareArt' => 'Vierkante afbeelding selecteren',
 			'metadataEdit.fromUrl' => 'Vanaf URL',
 			'metadataEdit.uploadFile' => 'Bestand uploaden',
 			'metadataEdit.enterImageUrl' => 'Voer afbeeldings-URL in',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.imageUrl' => 'Afbeeldings-URL',
 			'metadataEdit.metadataUpdated' => 'Metadata bijgewerkt',
 			'metadataEdit.metadataUpdateFailed' => 'Metadata bijwerken mislukt',
@@ -6576,13 +6586,13 @@ extension on TranslationsNl {
 			'unifiedCatalog.filters.noValues' => 'Niets om uit te kiezen',
 			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count} actief',
 			'unifiedCatalog.states.emptyTitle' => 'Deze catalogus is leeg',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.states.emptyBody' => 'Geen zichtbare bibliotheek bevat iets voor deze pagina.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Niets voldoet aan deze filters',
 			'unifiedCatalog.states.filterEmptyBody' => 'Wis een filter om meer titels te zien.',
 			'unifiedCatalog.states.clearFilters' => 'Filters wissen',
 			'unifiedCatalog.states.errorTitle' => 'De catalogus kon niet worden geladen',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.states.errorBody' => 'Geen enkele server antwoordde. Controleer je verbinding en probeer het opnieuw.',
 			'unifiedCatalog.states.partialOne' => '1 bibliotheek antwoordde niet',
 			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} bibliotheken antwoordden niet',
@@ -7090,13 +7100,13 @@ extension on TranslationsNl {
 			'assistant.steps.findSubtitles' => 'Ondertitels zoeken',
 			'assistant.steps.downloadSubtitle' => 'Ondertitel downloaden',
 			'assistant.steps.findRequestTitle' => 'Seerr doorzoeken',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.steps.discoverRequestTitles' => 'Passende titels zoeken',
 			'assistant.steps.requestTitle' => 'Titel aanvragen',
 			'assistant.steps.findTitle' => 'Titel op beschrijving zoeken',
 			'assistant.steps.recallMemory' => 'Geheugen raadplegen',
 			'assistant.steps.rememberFact' => 'Herinnering klaarzetten',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.steps.forgetFact' => 'Vergeten klaarzetten',
 			'assistant.steps.fallback' => 'Bezig',
 			'assistant.jobs.scanLibrary.running' => 'Scan loopt',

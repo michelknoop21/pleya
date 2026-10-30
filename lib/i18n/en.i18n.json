@@ -928,6 +928,11 @@
     "scoreRtCritics": "Rotten Tomatoes critics",
     "scoreRtAudience": "Rotten Tomatoes audience",
     "scoreCommunity": "Community score",
+    "castAndCrew": "Cast & Crew",
+    "ratingsAndReviews": "Ratings & Reviews",
+    "directedBy": "Directed by ${names}",
+    "trailer": "Trailer",
+    "extra": "Extra",
     "reviews": "Reviews",
     "reviewOpenSource": "Read at source"
   },

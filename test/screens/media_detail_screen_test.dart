@@ -3729,7 +3729,7 @@ void main() {
 
       expect(tester.takeException(), isNull);
 
-      final genreFinder = find.text(movie.genres!.join('  •  '));
+      final genreFinder = find.text(movie.genres!.join(', '));
       expect(genreFinder, findsOneWidget, reason: 'the full genre list should still render as one string, wrapped');
       final genreText = tester.widget<Text>(genreFinder);
       expect(

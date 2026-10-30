@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../focus/focus_theme.dart';
 import '../../../focus/focusable_wrapper.dart';
 import '../../../i18n/strings.g.dart';
+import '../../../media/media_review.dart';
 import '../../../media/media_role.dart';
 import '../../../media/media_server_client.dart';
 import '../../../theme/mono_tokens.dart';
@@ -10,6 +12,7 @@ import '../../../utils/media_image_helper.dart';
 import '../../../utils/tv_hig.dart';
 import '../../../widgets/optimized_media_image.dart';
 import '../../../widgets/tv/tv_catalog_card_grid.dart';
+import '../mobile/detail_reviews_section.dart';
 import 'tv_detail_layout.dart';
 
 /// Focus, ring and activation for a card that is not a catalog card. The ring
@@ -169,6 +172,81 @@ class TvDetailCastCard extends StatelessWidget {
       style: TextStyle(color: color, fontSize: size),
     ),
   );
+}
+
+/// One critic review: source, author, an excerpt. Select opens the full text.
+class TvDetailReviewCard extends StatelessWidget {
+  const TvDetailReviewCard({super.key, required this.cell, required this.review, required this.onSelect});
+
+  final TvCatalogGridCell cell;
+  final MediaReview review;
+  final VoidCallback onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final tk = tokens(context);
+    final pt = TvHig.of(context);
+    final radius = TvDetailLayout.reviewCardRadius * pt;
+    final icon = detailReviewIconAsset(review.imageUri);
+    final source = review.source;
+    final hasSource = source != null && source.isNotEmpty;
+    return _TvDetailFocusCard(
+      cell: cell,
+      semanticLabel: [?source, review.author, review.text].join(', '),
+      onSelect: onSelect,
+      radius: radius,
+      artwork: Container(
+        height: TvDetailLayout.reviewCardHeight * pt,
+        padding: EdgeInsets.all(TvDetailLayout.reviewPadding * pt),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.34),
+          borderRadius: BorderRadius.circular(radius),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (icon != null) ...[
+                  SvgPicture.asset(icon, height: TvDetailLayout.reviewIconSize * pt),
+                  SizedBox(width: 20 * pt),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        hasSource ? source : review.author,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: tk.text, fontSize: TvHig.caption1 * pt),
+                      ),
+                      if (hasSource)
+                        Text(
+                          review.author,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: tk.textMuted, fontSize: TvHig.caption2 * pt),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16 * pt),
+            Expanded(
+              child: Text(
+                review.text,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: tk.text, fontSize: TvHig.caption2 * pt, height: 1.22),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// "Alle bekijken" at the end of a row whose hub holds more than it sent.

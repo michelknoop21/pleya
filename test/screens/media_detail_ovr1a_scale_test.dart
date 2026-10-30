@@ -11,6 +11,7 @@ import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/navigation/tv/tv_nested_surface.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/screens/media_detail/tv/tv_detail_hero_widgets.dart';
 import 'package:pleya/screens/media_detail_screen.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
@@ -117,9 +118,9 @@ void main() {
     // DENS1: the title is HIG Title 1 (76 pt) on the panel's point grid; the
     // nested box would give 76 * 900 / 1080.
     expect(titleText.style!.fontSize, closeTo(TvHig.title1 * panelSize.height / 1080, 0.05));
-    // DENS1: the action row is 60 pt, above tvOS's 56 pt button minimum; the
-    // old `46 * scaleOf` made it 72 pt on an Apple TV.
-    expect(tester.getSize(find.byType(FilledButton).first).height, closeTo(60 * panelSize.height / 1080, 0.05));
+    // The pill is 64 pt, above tvOS's 56 pt button minimum; the old
+    // `46 * scaleOf` made the row 72 pt on an Apple TV.
+    expect(tester.getSize(find.byType(TvDetailPlayPill)).height, closeTo(64 * panelSize.height / 1080, 0.05));
   });
 
   testWidgets('SYS-3c/SYS-3e: the detail rail and its reservation read the scale the detail screen does', (

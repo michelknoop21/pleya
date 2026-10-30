@@ -47,9 +47,20 @@ TvDetailSection _section(String id, {int count = 8, double width = 130, Map<Stri
   );
 }
 
+class _CountingPolicy extends ReadingOrderTraversalPolicy {
+  final invalidated = <FocusScopeNode>[];
+
+  @override
+  void invalidateScopeData(FocusScopeNode node) {
+    invalidated.add(node);
+    super.invalidateScopeData(node);
+  }
+}
+
 Future<void> _pump(
   WidgetTester tester,
   List<TvDetailSection> sections, {
+  FocusTraversalPolicy? policy,
   GlobalKey<TvDetailPageState>? key,
   FocusNode? heroNode,
   VoidCallback? onFocusHero,
@@ -65,7 +76,8 @@ Future<void> _pump(
       home: InputModeTracker(
         child: TvDisplayMetrics(
           size: _canvas,
-          child: Material(
+          child: FocusTraversalGroup(
+            policy: policy,
             child: TvDetailPage(
               key: key,
               background: const ColoredBox(key: _backgroundKey, color: Colors.teal),
@@ -175,26 +187,23 @@ void main() {
     expect(nodes['b4']!.hasPrimaryFocus, isFalse, reason: 'same index is a different place on this row');
   });
 
-  testWidgets('a section step wipes the directional history of the row it left', (tester) async {
+  // Flutter drops history across two Scrollables on its own (popOrInvalidate in
+  // focus_traversal.dart), so on this page a kept history cannot be seen in the
+  // ring. What the helper adds is the wipe itself, and that is what this counts.
+  testWidgets('a section step wipes the directional history through the shared helper', (tester) async {
     final nodes = <String, FocusNode>{};
-    await _pump(tester, [_section('a', nodes: nodes), _section('b', nodes: nodes)]);
+    final policy = _CountingPolicy();
+    await _pump(tester, [_section('a', nodes: nodes), _section('b', nodes: nodes)], policy: policy);
 
     nodes['a0']!.requestFocus();
     await tester.pumpAndSettle();
-    // A traversal step, the one thing that writes history.
-    FocusManager.instance.primaryFocus!.focusInDirection(TraversalDirection.right);
-    await tester.pumpAndSettle();
-    expect(nodes['a1']!.hasPrimaryFocus, isTrue);
+    policy.invalidated.clear();
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pumpAndSettle();
-    final landed = FocusManager.instance.primaryFocus!;
 
-    // Kept, the history answers LEFT with the row above.
-    landed.focusInDirection(TraversalDirection.left);
-    await tester.pumpAndSettle();
-    expect(nodes['a0']!.hasFocus, isFalse);
-    expect(nodes['a1']!.hasFocus, isFalse);
+    expect(nodes['b0']!.hasPrimaryFocus, isTrue);
+    expect(policy.invalidated, hasLength(1));
   });
 
   testWidgets('the next section is asked for near the end, until the content runs on', (tester) async {

@@ -38,6 +38,7 @@ class TvPersonCreditCard extends StatelessWidget {
     this.onContextMenu,
     this.titleLines = 2,
     this.autoScroll = true,
+    this.centerFooter = false,
   });
 
   final MediaItem item;
@@ -55,6 +56,7 @@ class TvPersonCreditCard extends StatelessWidget {
   final VoidCallback? onContextMenu;
   final int titleLines;
   final bool autoScroll;
+  final bool centerFooter;
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +78,7 @@ class TvPersonCreditCard extends StatelessWidget {
       meta: tvCatalogMetaLine(item),
       titleLines: titleLines,
       autoScroll: autoScroll,
+      centerFooter: centerFooter,
       onSelect: onSelect,
       onContextMenu: onContextMenu,
       focusNode: focusNode,

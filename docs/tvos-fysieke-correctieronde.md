@@ -4795,3 +4795,15 @@ Roadmap: A-06b. Functieverzoek van Michel, de tvOS-tegenhanger van de iPhone-kop
 | ID | Bevinding | Status | SHA | Notitie |
 |----|-----------|--------|-----|---------|
 | A24C-MYPLEYA-V4 | Michel 26 okt, eigen northstarpakket A v4.1 ([`assets/a24c-northstars/02-Mijn-Pleya-v4/`](assets/a24c-northstars/02-Mijn-Pleya-v4/LEESMIJ-v4.md)): Mijn Pleya op Apple TV als persoonlijke kijkomgeving, Instellingen als bestemming na Mijn Pleya, accountmenu onder de avatar, Servers onder Instellingen > Koppelingen. | IN REVIEW · HARDWARE ONLY open | deze PR (branch `feat/a24c-mijn-pleya-v4`) | Roadmap A-24 (A-24c), besluit DEC-167. Widgettests op het canvas van 1038 x 584 (niets buiten beeld, geen tekst onder 23 pt) en Verify `tvos.my-pleya.v4` op de simulator; dat is geen hardwarebewijs. Op een toestel met de Siri Remote na te lopen: Omlaag uit het topmenu landt op Big P, Rechts naar de eerste poster en Links terug, de ring wisselt bij geen enkele bestemming de pagina (pas Select doet dat, ook bij Home, Series, Films en Zoeken), het accountmenu opent boven Mijn Pleya, Menu sluit het accountmenu en de focus staat weer op de avatar, en Koppelingen > Servers opent de statuspagina met Sluiten als standaard. Unified impact: alleen tvOS-presentatie en navigatie. |
+
+## A-25: filmdetail naar de northstars, 30 oktober 2026
+
+Referentie: `pleya-northstar-refs/2026-10-30/06-10.png`. Plan goedgekeurd door Michel op 30 oktober. Serie, seizoen, paneel Meer acties, discussies en activiteit zijn latere rondes van hetzelfde plan.
+
+| ID | Bevinding | Status | SHA | Notitie |
+|----|-----------|--------|-----|---------|
+| A25-MOVIE-PAGE | Filmdetail als verticale pagina met vaste achtergrond, secties die bij naderen laden, witte pil met ring en resterende tijd, ronde acties, technische labels. | SIMULATOR DEELS · HARDWARE OPEN | deze commit | Series en seizoenen blijven op de railpagina. Trailer en aanvraag staan in het ⋮-menu. Scores, reviews, extras en Meer met acteur levert de Pleya-fixture niet, dus die secties zijn alleen met widgettests gedekt. |
+| A25-HUBFOCUS-LEK | Focus op een detailhub lekte tussen titels: `_hubKey` kende geen titel, dus de volgende film opende op de kaart van de vorige. | GEFIXT, HARDWARE OPEN | bd592e179 | `focusMemoryScope` op `TvBrowseRail`. |
+| A25-CLIP | Now Watching en Stats vielen buiten de vaste infoband en werden weggeklipt. | GEFIXT OP FILM, SERIE OPEN | deze commit | De filmhero groeit mee. De railpagina van series houdt de band tot de serieronde. |
+| A25-UP-TOPBAR | UP vanaf de actierij bereikte de topbalk niet. | GEFIXT, HARDWARE OPEN | bd592e179 | Geldt voor film en serie. |
+
