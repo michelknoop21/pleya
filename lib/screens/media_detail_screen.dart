@@ -13,6 +13,7 @@ import '../automation/automation_screen.dart';
 import '../automation/pleya_verify.dart';
 import '../navigation/profile_navigation_scope.dart';
 import '../navigation/tv/tv_content_route_registry.dart';
+import '../navigation/tv/tv_navigation_coordinator.dart';
 import '../navigation/tv/tv_nested_surface.dart';
 import 'tv/tv_root_shell.dart';
 import '../services/device_performance.dart';
@@ -25,6 +26,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../widgets/collapsible_text.dart';
 import '../widgets/rating_bottom_sheet.dart';
+import '../focus/directional_focus_history.dart';
 import '../focus/dpad_navigator.dart';
 import '../focus/focusable_action_bar.dart';
 import '../focus/focusable_button.dart';
@@ -129,6 +131,7 @@ import '../widgets/episode_card.dart';
 import '../widgets/fitting_title_text.dart';
 import 'big_p/big_p_detail_peek.dart';
 import 'actor_media_screen.dart';
+import 'hub_detail_screen.dart';
 import 'media_detail/cast_section.dart';
 import 'media_detail/detail_track_preview.dart';
 import 'media_detail/extras_section.dart';
@@ -142,14 +145,21 @@ import 'media_detail/mobile/detail_seasons_rail.dart';
 import 'media_detail/mobile/detail_tech_table.dart';
 import 'media_detail/mobile/mobile_poster_hero.dart';
 import 'media_detail/mobile_detail_hero.dart';
+import 'media_detail/tv/tv_detail_backdrop.dart';
+import 'media_detail/tv/tv_detail_cards.dart';
+import 'media_detail/tv/tv_detail_layout.dart';
+import 'media_detail/tv/tv_detail_page.dart';
 import '../widgets/focusable_tab_chip.dart';
 import '../widgets/hub_section.dart';
 import '../widgets/ios_status_bar_tap_scroll_to_top.dart';
 import '../widgets/loading_indicator_box.dart';
 import '../widgets/mobile/mobile_audio_track_picker_sheet.dart';
 import '../widgets/mobile/mobile_subtitle_track_picker_sheet.dart';
+import '../widgets/tv/tv_catalog_card.dart';
+import '../widgets/tv/tv_catalog_meta.dart';
 import '../widgets/tv/tv_media_source_picker.dart';
 import '../widgets/tv/tv_panel_primitives.dart';
+import '../widgets/tv/tv_person_credit_card.dart';
 import '../widgets/tv/tv_unified_layout.dart';
 import '../widgets/tv/tv_view_all_action.dart';
 import '../widgets/tv_browse_rail.dart';
@@ -167,9 +177,11 @@ part 'media_detail/mobile_episodes_section.dart';
 part 'media_detail/synopsis_panel.dart';
 part 'media_detail/tv/tv_detail_foreground.dart';
 part 'media_detail/tv/tv_detail_foreground_metrics.dart';
+part 'media_detail/tv/tv_detail_hero.dart';
 part 'media_detail/tv/tv_detail_rail.dart';
 part 'media_detail/tv/tv_detail_reveal.dart';
 part 'media_detail/tv/tv_detail_screen.dart';
+part 'media_detail/tv/tv_detail_sections.dart';
 part 'media_detail/tv_season_chips.dart';
 
 enum _SyncRuleAction { edit, remove, delete }
@@ -241,6 +253,7 @@ class MediaDetailScreen extends StatefulWidget {
 /// argument list at the nested call site is a second thing to forget when this
 /// one grows a parameter.
 MediaDetailScreen mediaDetailPage({
+  Key? key,
   required MediaItem metadata,
   bool isOffline = false,
   int? initialSeasonIndex,
@@ -251,6 +264,7 @@ MediaDetailScreen mediaDetailPage({
   UnifiedMediaRouteContext? unifiedRouteContext,
   UnifiedSourceChangeCallback? onChangeSource,
 }) => MediaDetailScreen(
+  key: key,
   metadata: metadata,
   isOffline: isOffline,
   initialSeasonIndex: initialSeasonIndex,
@@ -312,7 +326,7 @@ PageRoute<bool> mediaDetailRoute({
 
 class _MediaDetailScreenState extends State<MediaDetailScreen>
     with WatchStateAware, DeletionAware, MountedSetStateMixin, ServerBoundMediaMixin, RouteAware, WidgetsBindingObserver
-    implements MediaDetailPlaybackRefresh {
+    implements MediaDetailPlaybackRefresh, TvFocusRestoreHost {
   /// Public input alias — used as the live source of truth until the detail
   /// fetch returns. Holds backend-neutral [MediaItem] data.
   MediaItem get _metadata => _fullMetadata ?? widget.metadata;
@@ -349,6 +363,15 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   bool _hasLoadedExtras = false;
   bool _hasLoadedRelatedHubs = false;
   final _tvDetailRailKey = GlobalKey<TvBrowseRailState>();
+  final _tvDetailPageKey = GlobalKey<TvDetailPageState>();
+  final Map<String, GlobalKey<MediaContextMenuState>> _tvDetailMenuKeys = {};
+  bool _tvDetailRelatedRequested = false;
+  bool _tvDetailSectionLoading = false;
+
+  /// HERO7: back from a route a section's card opened.
+  @override
+  bool restoreTvFocus(TvFocusRestoreTarget target) =>
+      _tvDetailPageKey.currentState?.restoreFocus(sectionId: target.containerId, itemId: target.itemId) ?? false;
   PageRoute<dynamic>? _route;
   RouteObserver<PageRoute<dynamic>>? _routeObserver;
   late final ScrollController _scrollController;
@@ -1374,7 +1397,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     return downloadProvider.syncRuleKeyForClient(client, metadata.id, serverId: ServerId(serverId));
   }
 
-  void _navigateToActorMedia(MediaRole actor) {
+  void _navigateToActorMedia(MediaRole actor, {TvFocusRestoreTarget? restoreTarget}) {
     final personId = actor.id;
     if (personId == null || _metadata.serverId == null) return;
 
@@ -1393,7 +1416,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     // opens inside the shell. The id is the person on their server and not the
     // title they were reached through — the same actor opened twice from the
     // same page is one screen, and a re-push of it needs one Back.
-    if (openTvContentRoute(id: 'tvPerson_${serverId}_$personId', builder: buildPerson) != null) return;
+    final nested = openTvContentRoute(
+      id: 'tvPerson_${serverId}_$personId',
+      builder: buildPerson,
+      restoreTarget: restoreTarget,
+    );
+    if (nested != null) return;
 
     Navigator.push(context, MaterialPageRoute(builder: buildPerson));
   }
@@ -1584,8 +1612,10 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
       // [_loadExtras] and [_loadRelatedHubs] short-circuit for non-Plex
       // backends; safe to call unconditionally.
+      // The film page's related rows load on approach. Extras stay here: the ⋮
+      // menu needs the primary trailer from the first frame on.
       unawaited(_loadExtras());
-      unawaited(_loadRelatedHubs());
+      if (!PlatformDetector.isTV() || !_tvDetailUsesPage(base)) unawaited(_loadRelatedHubs());
       unawaited(_loadWatchers());
     } catch (e) {
       // Fallback to passed metadata on error
@@ -2411,7 +2441,11 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       // DEC-109: only a stop here when the synopsis actually overflows.
       // Otherwise this stays a no-op, same as before that action existed —
       // no empty focus position appears in its place.
-      if (_tvDetailReadMoreVisible) _tvDetailReadMoreFocusNode.requestFocus();
+      if (_tvDetailReadMoreVisible) {
+        _tvDetailReadMoreFocusNode.requestFocus();
+      } else {
+        _focusTopNavigationFromDetail();
+      }
       return;
     }
     if (!widget.isOffline) _ratingChipFocusNode.requestFocus();
@@ -2422,6 +2456,10 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     final metadata = _fullMetadata ?? _metadata;
 
     if (PlatformDetector.isTV()) {
+      if (_tvDetailUsesPage(metadata)) {
+        _tvDetailPageKey.currentState?.focusFirstSection();
+        return;
+      }
       // PB-4: the active season chip first, when there is a chip row — the
       // rail is one more DOWN from there. Otherwise straight to the rail, as
       // before chips existed.

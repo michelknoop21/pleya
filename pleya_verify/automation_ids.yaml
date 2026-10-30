@@ -219,6 +219,18 @@ ids:
   - id: media-detail.season-poster
     role: grid.item
     instanceable: true
+  - id: media-detail.section
+    role: region
+    instanceable: true
+  - id: media-detail.section.item
+    role: list.item
+    instanceable: true
+  - id: media-detail.read-more
+    role: button
+    instanceable: false
+  - id: media-detail.source-change
+    role: button
+    instanceable: false
   - id: tv.search.pill
     role: field
     instanceable: false

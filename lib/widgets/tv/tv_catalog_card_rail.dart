@@ -23,6 +23,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../focus/directional_focus_history.dart';
 import '../../focus/focus_theme.dart';
 import '../../utils/layout_constants.dart';
 import 'tv_catalog_card_grid.dart';
@@ -46,6 +47,7 @@ class TvCatalogCardRail extends StatefulWidget {
     this.onBack,
     this.nodeDebugLabel = 'TvCatalogRailCard',
     this.cardWidthFactor = 1,
+    this.grid,
   });
 
   /// One stable id per card, in display order.
@@ -95,6 +97,11 @@ class TvCatalogCardRail extends StatefulWidget {
   /// Widens the cards beyond the poster grid's column width: a 16:9 card in a
   /// poster-wide slot is too small to read at three metres.
   final double cardWidthFactor;
+
+  /// A row with a card of its own instead of the catalog's poster column: film
+  /// detail runs portraits, review cards and trailers on one page. Null resolves
+  /// [TvCatalogGrid.forWidth], as every catalog surface does.
+  final TvCatalogGrid? grid;
 
   /// How close to the end the focus has to get before the next page is asked
   /// for, in cards.
@@ -235,6 +242,33 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
     return true;
   }
 
+  /// Puts the remote on the card [id], or reports that this rail does not have
+  /// it. The way back from a route that card opened (HERO7).
+  bool focusItem(String id) {
+    final index = widget.itemIds.indexOf(id);
+    return index >= 0 && focusColumn(index);
+  }
+
+  /// The built card nearest to [dx], a global x position, for a vertical step
+  /// between rows that do not share a column pitch. "Same index" is LAND4's
+  /// geometry rule only on one pitch: the second portrait sits under nothing
+  /// like the second review card.
+  bool focusNearest(double dx) {
+    FocusNode? nearest;
+    var best = double.infinity;
+    for (final node in _nodes.values) {
+      if (node.parent == null || !node.canRequestFocus) continue;
+      final distance = (node.rect.center.dx - dx).abs();
+      if (distance < best) {
+        best = distance;
+        nearest = node;
+      }
+    }
+    if (nearest == null) return false;
+    requestFocusClearingDirectionalHistory(nearest);
+    return true;
+  }
+
   bool get hasFocusableCard => _nodes.values.any((node) => node.canRequestFocus);
 
   /// LAND4's destination for a vertical step that left column [column].
@@ -328,7 +362,7 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
   Widget build(BuildContext context) {
     final scale = TvLayoutConstants.scaleOf(context);
     final width = MediaQuery.sizeOf(context).width;
-    final grid = TvCatalogGrid.forWidth(width, scale: scale, reservedLeading: widget.reservedLeading);
+    final grid = widget.grid ?? TvCatalogGrid.forWidth(width, scale: scale, reservedLeading: widget.reservedLeading);
     final cardWidth = grid.cardWidth * widget.cardWidthFactor;
     final cardHeight = widget.cardHeight(cardWidth);
     // The same reservation the grid pays above its first row, on both sides:

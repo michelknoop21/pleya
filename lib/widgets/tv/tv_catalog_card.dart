@@ -66,6 +66,7 @@ class TvCatalogCard extends StatefulWidget {
     this.aspectRatio = TvCatalogLayout.posterAspectRatio,
     this.titleLines = 2,
     this.overlay,
+    this.autoScroll = true,
   });
 
   /// Resolved by the grid from the viewport, never assumed: see
@@ -149,6 +150,11 @@ class TvCatalogCard extends StatefulWidget {
   /// ([TvCatalogLayout.wideCardHeight]).
   final Widget? overlay;
 
+  /// Whether the focus scrolls the page to this card. Off where the page anchors
+  /// its rows itself: two owners of one scroll offset end wherever the last one
+  /// happened to land.
+  final bool autoScroll;
+
   @override
   State<TvCatalogCard> createState() => _TvCatalogCardState();
 }
@@ -179,6 +185,7 @@ class _TvCatalogCardState extends State<TvCatalogCard> {
         onSelect: widget.onSelect,
         onLongPress: widget.onContextMenu,
         enableLongPress: widget.onContextMenu != null,
+        autoScroll: widget.autoScroll,
         onFocusChange: (focused) {
           setState(() => _isFocused = focused);
           widget.onFocusChange?.call(focused);

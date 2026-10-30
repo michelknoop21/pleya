@@ -24,14 +24,14 @@ extension _MediaDetailSynopsisPanel on _MediaDetailScreenState {
   /// own header action.
   void _focusTopNavigationFromDetail() => MainScreenFocusScope.of(context, listen: false)?.focusSidebar();
 
-  void _openTvDetailSynopsisPanel(String description) {
+  void _openTvDetailSynopsisPanel(String description, {String? title}) {
     unawaited(
       OverlaySheetController.showAdaptive<void>(
         context,
         presentation: OverlaySheetPresentation.panel,
         restoreLauncherFocus: true,
         builder: (sheetContext) => _TvSynopsisPanel(
-          title: t.discover.overview,
+          title: title ?? t.discover.overview,
           body: description,
           onClose: () => OverlaySheetController.closeAdaptive(sheetContext, null),
         ),

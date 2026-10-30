@@ -35,6 +35,9 @@ class TvPersonCreditCard extends StatelessWidget {
     this.onNavigateLeft,
     this.onNavigateRight,
     this.onFocusChange,
+    this.onContextMenu,
+    this.titleLines = 2,
+    this.autoScroll = true,
   });
 
   final MediaItem item;
@@ -49,6 +52,9 @@ class TvPersonCreditCard extends StatelessWidget {
   final VoidCallback? onNavigateLeft;
   final VoidCallback? onNavigateRight;
   final ValueChanged<bool>? onFocusChange;
+  final VoidCallback? onContextMenu;
+  final int titleLines;
+  final bool autoScroll;
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +74,10 @@ class TvPersonCreditCard extends StatelessWidget {
       progressFraction: _progressFraction(item),
       title: item.displayTitle,
       meta: tvCatalogMetaLine(item),
+      titleLines: titleLines,
+      autoScroll: autoScroll,
       onSelect: onSelect,
+      onContextMenu: onContextMenu,
       focusNode: focusNode,
       autofocus: autofocus,
       onNavigateUp: onNavigateUp,

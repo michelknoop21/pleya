@@ -22,7 +22,11 @@ extension _MediaDetailTvReveal on _MediaDetailScreenState {
     return true;
   }
 
+  /// The rail page lays its height out from what its hubs hold, so it waits for
+  /// them. [TvDetailPage] loads its sections on approach and can only ever open
+  /// without them: waiting here would keep it shut for good.
   bool _hasLoadedTvDetailSupplementalSections(MediaItem metadata) {
+    if (_tvDetailUsesPage(metadata)) return true;
     if (widget.isOffline || (!metadata.isMovie && !metadata.isShow)) return true;
     return _hasLoadedExtras && _hasLoadedRelatedHubs;
   }

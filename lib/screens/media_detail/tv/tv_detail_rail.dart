@@ -239,7 +239,7 @@ extension _MediaDetailTvRail on _MediaDetailScreenState {
   void _focusTvDetailActionRow() {
     _tvDetailActionRowHasFocus = true;
     _clearTvDetailFocusedEpisode();
-    _playButtonFocusNode.requestFocus();
+    requestFocusClearingDirectionalHistory(_playButtonFocusNode);
   }
 
   void _handleTvDetailFocusedRailItemChanged(MediaHub hub, MediaItem item) {

@@ -3403,7 +3403,7 @@ void main() {
       final movie = MediaItem(
         id: 'movie_det3',
         backend: MediaBackend.jellyfin,
-        kind: MediaKind.movie,
+        kind: MediaKind.show,
         title: 'A Moderate Motion Picture Title',
         summary: longSummary,
         genres: const ['Drama'],
@@ -3499,7 +3499,7 @@ void main() {
       final movie = MediaItem(
         id: 'movie_det7_light',
         backend: MediaBackend.jellyfin,
-        kind: MediaKind.movie,
+        kind: MediaKind.show,
         title: 'A Moderate Motion Picture Title',
         summary: longSummary,
         genres: const ['Drama'],

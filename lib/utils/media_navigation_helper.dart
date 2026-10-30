@@ -494,11 +494,14 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
   //
   // DEC-115: film and series detail open with the bar tucked away, so the
   // synopsis gets the height the bar used to take.
+  final screenKey = GlobalKey();
   final nested = openTvContentRoute(
     id: tvDetailRouteId(target),
     topNav: TvTopNavPresentation.collapsible,
     restoreTarget: restoreTarget,
+    screenKey: screenKey,
     builder: (_) => mediaDetailPage(
+      key: screenKey,
       metadata: target.metadata,
       isOffline: isOffline,
       initialSeasonIndex: target.initialSeasonIndex,

@@ -43,6 +43,8 @@ extension _MediaDetailTvScreen on _MediaDetailScreenState {
     MediaItem metadata,
     KeyEventResult Function(FocusNode, KeyEvent) handleBack,
   ) {
+    if (_tvDetailUsesPage(metadata)) return _buildTvDetailPage(context, metadata, handleBack);
+
     // INV-1 (docs/tvos-redesign-implementatiecontract.md): this route can be
     // nested inside the TV shell, under the top navigation (PB-1), where the
     // box Flutter actually lays this screen out in is shorter than the
@@ -248,6 +250,7 @@ extension _MediaDetailTvScreen on _MediaDetailScreenState {
                           episodePosterModeForHub: _tvDetailEpisodePosterModeForHub,
                           automationIdForHub: _tvDetailAutomationIdForHub,
                           showNextHubPeek: showNextHubPeek,
+                          focusMemoryScope: metadata.globalKey,
                         ),
                         // VIS2/37 C: the chips sit on the season rail's header
                         // line. The rail scrolls its active hub to the top, so
@@ -272,9 +275,10 @@ extension _MediaDetailTvScreen on _MediaDetailScreenState {
           ],
         );
 
-        final body = Focus(
-          onKeyEvent: handleBack,
-          child: Scaffold(
+        return _wrapTvDetailBody(
+          context,
+          handleBack,
+          Scaffold(
             body: Stack(
               children: [
                 TvSpotlightBackground(
@@ -288,30 +292,39 @@ extension _MediaDetailTvScreen on _MediaDetailScreenState {
             ),
           ),
         );
-
-        // INV-1: nested inside the shell this screen claims no second
-        // shell-like layer, and `OverlaySheetHost` is named in that list. The
-        // shell has one at its root, above the top bar; a second one here
-        // would host this screen's sheets inside the content box, under the
-        // bar and at the wrong size, and the shell's own
-        // `onOverlaySheetOpenChanged` would never fire — so step 1 of the back
-        // chain in hoofdstuk 7.5 would not know a sheet was open. Sheets are
-        // found with `OverlaySheetHost.maybeOf`, which walks up, so dropping
-        // this one hands them to the shell's rather than to nothing.
-        //
-        // Its `PopScope` goes with it for the reason
-        // `FocusableDetailScreenMixin.buildDetailScaffold` documents: the route
-        // it would guard is the shell's own.
-        if (TvNestedRouteScope.of(context) != null) return body;
-
-        final blockSystemBack = InputModeTracker.shouldBlockSystemBack(context);
-        return OverlaySheetHost(
-          // blockSystemBack keeps the route from double-popping on Android keyboard/
-          // TV (the key handler owns dpad back); the host also closes an open sheet.
-          canPop: !blockSystemBack,
-          child: body,
-        );
       },
+    );
+  }
+
+  /// Back on the page, and the sheet host a standalone page needs.
+  Widget _wrapTvDetailBody(
+    BuildContext context,
+    KeyEventResult Function(FocusNode, KeyEvent) handleBack,
+    Widget scaffold,
+  ) {
+    final body = Focus(onKeyEvent: handleBack, child: scaffold);
+
+    // INV-1: nested inside the shell this screen claims no second
+    // shell-like layer, and `OverlaySheetHost` is named in that list. The
+    // shell has one at its root, above the top bar; a second one here
+    // would host this screen's sheets inside the content box, under the
+    // bar and at the wrong size, and the shell's own
+    // `onOverlaySheetOpenChanged` would never fire — so step 1 of the back
+    // chain in hoofdstuk 7.5 would not know a sheet was open. Sheets are
+    // found with `OverlaySheetHost.maybeOf`, which walks up, so dropping
+    // this one hands them to the shell's rather than to nothing.
+    //
+    // Its `PopScope` goes with it for the reason
+    // `FocusableDetailScreenMixin.buildDetailScaffold` documents: the route
+    // it would guard is the shell's own.
+    if (TvNestedRouteScope.of(context) != null) return body;
+
+    final blockSystemBack = InputModeTracker.shouldBlockSystemBack(context);
+    return OverlaySheetHost(
+      // blockSystemBack keeps the route from double-popping on Android keyboard/
+      // TV (the key handler owns dpad back); the host also closes an open sheet.
+      canPop: !blockSystemBack,
+      child: body,
     );
   }
 }

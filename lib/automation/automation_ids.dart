@@ -231,6 +231,20 @@ class AutomationIds {
   /// `[<index>]`.
   static const String mediaDetailSeasonPoster = 'media-detail.season-poster';
 
+  /// One section under the TV detail hero. Instanceable: suffixed
+  /// `[<section id>]`, e.g. `[cast]`, `[reviews]`, `[extras]`.
+  static const String mediaDetailSection = 'media-detail.section';
+
+  /// One card in a [mediaDetailSection]. Instanceable: suffixed
+  /// `[<section id>.<index>]`.
+  static const String mediaDetailSectionItem = 'media-detail.section.item';
+
+  /// The "Meer lezen" action under a truncated TV synopsis.
+  static const String mediaDetailReadMore = 'media-detail.read-more';
+
+  /// "Wijzigen" on the source line of a unified title.
+  static const String mediaDetailSourceChange = 'media-detail.source-change';
+
   /// The Mijn Pleya hub as a screen. Its own `AutomationScreen`, because
   /// `screen.main` is mounted for the whole session and says nothing about
   /// which destination is on show.
@@ -807,6 +821,8 @@ class AutomationIds {
     mediaDetailSeasonChip,
     mediaDetailAction,
     mediaDetailSeasonPoster,
+    mediaDetailSection,
+    mediaDetailSectionItem,
     discoverRail,
     discoverRailItem,
     accountMenuAction,
@@ -953,6 +969,10 @@ class AutomationIds {
     {'id': mediaDetailPlayFromStart, 'role': 'button', 'instanceable': false},
     {'id': mediaDetailAction, 'role': 'button', 'instanceable': true},
     {'id': mediaDetailSeasonPoster, 'role': 'grid.item', 'instanceable': true},
+    {'id': mediaDetailSection, 'role': 'region', 'instanceable': true},
+    {'id': mediaDetailSectionItem, 'role': 'list.item', 'instanceable': true},
+    {'id': mediaDetailReadMore, 'role': 'button', 'instanceable': false},
+    {'id': mediaDetailSourceChange, 'role': 'button', 'instanceable': false},
     {'id': tvSearchPill, 'role': 'field', 'instanceable': false},
     {'id': seerrSearchField, 'role': 'field', 'instanceable': false},
     {'id': seerrSearchInbox, 'role': 'button', 'instanceable': false},
