@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
+import '../jellyfin_fake_server.dart';
 import '../pleya_fake_server.dart';
 import '../seerr_fake_server.dart';
 import '../tautulli_fake_server.dart';
@@ -20,7 +21,13 @@ import 'studio_art.dart';
 /// [tautulli] instead, and never touches [server] — a scenario that needs
 /// more than one issues one `seed:` step per fixture name, and [seerr]/
 /// [tautulli] are `null` for a run that never needs them.
-bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? seerr, TautulliFakeServer? tautulli}) {
+bool applyNamedFixture(
+  PleyaFakeServer server,
+  String name, {
+  SeerrFakeServer? seerr,
+  TautulliFakeServer? tautulli,
+  JellyfinFakeServer? jellyfin,
+}) {
   switch (name) {
     case 'catalog.shows.v1':
       _applyCatalogShowsV1(server);
@@ -42,6 +49,10 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
       return true;
     case 'catalog.alphabet-500.v1':
       _applyCatalogAlphabet500V1(server);
+      return true;
+    case 'catalog.scores.v1':
+      server.resetCatalog();
+      if (jellyfin != null) _applyCatalogScoresV1(jellyfin);
       return true;
     case 'catalog.seasons.v1':
       _applyCatalogSeasonsV1(server);
@@ -516,6 +527,45 @@ void _applyCatalogAlphabet500V1(PleyaFakeServer server) {
   }
 
   server.hubs['recently_added']!.addAll(ids.take(20));
+}
+
+/// A Jellyfin library for the score sorts (A-06c): the top of `03.png`, then
+/// titles without a score, so a scenario sees them sink in both directions.
+void _applyCatalogScoresV1(JellyfinFakeServer jellyfin) {
+  jellyfin.movies
+    ..clear()
+    ..addAll(const [
+      JellyfinFakeMovie(
+        id: 'sc-01',
+        title: 'The Alabama Solution',
+        year: 2025,
+        criticRating: 100,
+        communityRating: 8.1,
+      ),
+      JellyfinFakeMovie(id: 'sc-02', title: 'Wasteman', year: 2025, criticRating: 100, communityRating: 7.4),
+      JellyfinFakeMovie(
+        id: 'sc-03',
+        title: 'How to Train Your Dragon',
+        year: 2010,
+        criticRating: 99,
+        communityRating: 8.1,
+      ),
+      JellyfinFakeMovie(id: 'sc-04', title: 'Inside Out', year: 2015, criticRating: 98, communityRating: 8.1),
+      JellyfinFakeMovie(
+        id: 'sc-05',
+        title: 'Mission: Impossible - Fallout',
+        year: 2018,
+        criticRating: 98,
+        communityRating: 7.7,
+      ),
+      JellyfinFakeMovie(id: 'sc-06', title: 'Catch Me If You Can', year: 2002, criticRating: 96, communityRating: 8.1),
+      JellyfinFakeMovie(id: 'sc-07', title: 'Ratatouille', year: 2007, criticRating: 96, communityRating: 7.8),
+      JellyfinFakeMovie(id: 'sc-08', title: 'Top Gun: Maverick', year: 2022, criticRating: 96, communityRating: 8.2),
+      JellyfinFakeMovie(id: 'sc-09', title: 'Project Hail Mary', year: 2026, criticRating: 95, communityRating: 8.4),
+      JellyfinFakeMovie(id: 'sc-10', title: 'The Invite', year: 2026, criticRating: 58, communityRating: 6.2),
+      JellyfinFakeMovie(id: 'sc-11', title: 'A Film Without Critics', year: 2024, communityRating: 5.5),
+      JellyfinFakeMovie(id: 'sc-12', title: 'B Film Without Scores', year: 2024),
+    ]);
 }
 
 /// One show with four seasons of three episodes each, for the TV series
