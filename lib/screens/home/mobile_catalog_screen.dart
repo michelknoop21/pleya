@@ -140,6 +140,11 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   double _headerScrollTravel = 0;
   final _panelKey = GlobalKey();
 
+  /// Below this screen's [OverlaySheetHost], which [context] is not; a pushed
+  /// route has no host above it. Stable, unlike a card's context, which the
+  /// grid replaces when a refresh arrives.
+  BuildContext? _sheetContext;
+
   /// Height of the translucent top panel (status bar inset, title row, chips
   /// and count line), measured after layout. The grid scrolls under the panel
   /// and carries this much padding on top, so at offset 0 the first row starts
@@ -291,6 +296,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     group: group,
     intent: UnifiedActivationIntent.details,
     availabilityFor: _availabilityFor,
+    pickerContext: _sheetContext,
     coverage: SourceCoverageState.complete({for (final s in group.sources) s.serverId.value}),
   );
 
@@ -439,6 +445,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
         child: Builder(
           // Below the host, so the chips can reach it.
           builder: (sheetContext) {
+            _sheetContext = sheetContext;
             _schedulePanelMeasure();
             final safe = MediaQuery.paddingOf(context);
             final background = Theme.of(context).scaffoldBackgroundColor;

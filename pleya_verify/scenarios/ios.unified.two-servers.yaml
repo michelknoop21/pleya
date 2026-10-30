@@ -48,20 +48,27 @@ steps:
   - snapshot: 02-picker-both-servers
   - tap: {id: "sheet.source_picker.row[1]"}
   - wait_until: {id: screen.media_detail, timeout: 15000}
-  - wait_until: {id: media-detail.source, timeout: 10000}
+  - wait_until: {id: media-detail.source, state: {server: Zolder}, timeout: 10000}
+  - settle: 1000
   - snapshot: 03-detail-bound-to-one-source
 
   # Switch source from the detail page.
+  # The current source ranks first in this picker, so the other one is row 1.
   - tap: {id: media-detail.source}
   - wait_until: {id: sheet.source_picker, timeout: 10000}
-  - tap: {id: "sheet.source_picker.row[0]"}
-  - wait_until: {id: media-detail.source, timeout: 15000}
+  - settle: 1000
+  - tap: {id: "sheet.source_picker.row[1]"}
+  - wait_until: {id: media-detail.source, state: {server: "NAS B"}, timeout: 15000}
+  - settle: 1000
   - snapshot: 04-detail-after-switch
 
-  # Playback of the chosen source: the first episode starts in the player.
-  - wait_until: {id: "media-detail.episode-list.item[0]", timeout: 15000}
-  - tap: {id: "media-detail.episode-list.item[0]"}
+  # Playback of the chosen source: Afspelen starts S1E1 in the player. The
+  # iPhone page has season posters, not the episode list TV has.
+  - wait_until: {id: media-detail.play, timeout: 15000}
+  - tap: {id: media-detail.play}
   - wait_until: {id: player.surface, timeout: 30000}
+  # The player rotates to landscape first; ui_tree answers 500 mid-rotation.
+  - settle: 3000
   - snapshot: 05-player-from-chosen-source
   - restart
   - wait_until: {id: nav.series, timeout: 45000}
@@ -92,8 +99,13 @@ steps:
   - settle: 1500
   - tap: {id: nav.series}
   - wait_until: {id: screen.series, timeout: 20000}
+  - settle: 3000
   - tap: {id: "landing.view_all[series]"}
+  - wait_until: {id: screen.catalog_series, timeout: 15000}
   - wait_until: {id: "catalog.grid.item[series.2]", state: {sources: 2}, timeout: 20000}
+  # The grid comes from cache here, so it stands before the push has finished,
+  # and a route in transition ignores pointers.
+  - settle: 1500
   - tap: {id: "catalog.grid.item[series.2]"}
   - wait_until: {id: sheet.source_picker, timeout: 10000}
   - assert: {id: "sheet.source_picker.row[1]", state: {usable: true}}

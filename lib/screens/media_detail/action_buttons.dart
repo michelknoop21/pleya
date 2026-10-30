@@ -500,7 +500,8 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
                 disableScale: true,
                 semanticLabel: t.sourcePicker.change,
                 onSelect: () => unawaited(onChangeSource(context)),
-                child: tile,
+                // FocusableWrapper only takes keys; this row is the phone's.
+                child: GestureDetector(behavior: .opaque, onTap: () => unawaited(onChangeSource(context)), child: tile),
               ),
       ),
     );
