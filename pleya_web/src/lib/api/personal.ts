@@ -10,6 +10,7 @@ const noContent = (result: { response: Response; error?: unknown }) => result.re
 
 type FavoritesQuery = NonNullable<operations['listFavorites']['parameters']['query']>;
 type HistoryQuery = NonNullable<operations['getHistory']['parameters']['query']>;
+type RatingsQuery = NonNullable<operations['listRatings']['parameters']['query']>;
 
 export function personalApi(client: PleyaClient) {
   const generation = client.sessionGeneration;
@@ -27,6 +28,22 @@ export function personalApi(client: PleyaClient) {
     async history(query: HistoryQuery = {}, signal?: AbortSignal) {
       assertAccount();
       const page = await client.request(raw => raw.GET('/history', { params: { query }, signal }));
+      assertAccount();
+      return page;
+    },
+    async deleteHistoryEntry(entryId: string): Promise<void> {
+      assertAccount();
+      await client.request(async raw => noContent(await raw.DELETE('/history/{history_id}', { params: { path: { history_id: entryId } } })));
+      assertAccount();
+    },
+    async clearHistory(): Promise<void> {
+      assertAccount();
+      await client.request(async raw => noContent(await raw.DELETE('/history')));
+      assertAccount();
+    },
+    async ratings(query: RatingsQuery = {}, signal?: AbortSignal) {
+      assertAccount();
+      const page = await client.request(raw => raw.GET('/ratings', { params: { query }, signal }));
       assertAccount();
       return page;
     },

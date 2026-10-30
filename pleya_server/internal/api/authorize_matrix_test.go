@@ -143,6 +143,9 @@ type matrixFixture struct {
 	readyDownload func() string
 	freshDownload func() string
 
+	// S20.4: een nieuwe geschiedenisregel van de owner, voor regel 75.
+	freshHistoryEntry func() string
+
 	// S2.4: de laatste scan van libraryID, een afgeronde job (cancel geeft 409)
 	// en een pending scanjob met dedupe scan:<libraryID> (POST /scan geeft
 	// herhaalbaar 409, retry laat hem ongemoeid en geeft 200).
@@ -395,6 +398,14 @@ func matrixProbes() []matrixProbe {
 		// mag zien. Member en restricted hebben leesrecht op de fixturebibliotheek.
 		{row: 52, name: "GET /history", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/history"), body: noBody, ok: http.StatusOK, expect: everyRole()},
+		{row: 74, name: "DELETE /history", method: http.MethodDelete,
+			path: fixedPath("/pleya/v1/history"), body: noBody, ok: http.StatusNoContent, expect: everyRole()},
+		{row: 75, name: "DELETE /history/{id}", method: http.MethodDelete,
+			path: func(f *matrixFixture) string { return "/pleya/v1/history/" + f.freshHistoryEntry() },
+			body: noBody, ok: http.StatusNoContent, expect: ownerOnly(),
+			missing: func(*matrixFixture) string { return "/pleya/v1/history/" + id.New().String() }},
+		{row: 76, name: "GET /ratings", method: http.MethodGet,
+			path: fixedPath("/pleya/v1/ratings"), body: noBody, ok: http.StatusOK, expect: everyRole()},
 		{row: 53, name: "GET /favorites", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/favorites"), body: noBody, ok: http.StatusOK, expect: everyRole()},
 		{row: 54, name: "PUT /favorites/{id}", method: http.MethodPut,
@@ -556,6 +567,15 @@ func newMatrixFixture(e *env) *matrixFixture {
 			return *plan.SessionID
 		}
 		f.playbackSessionID = f.freshSession()
+	}
+	f.freshHistoryEntry = func() string {
+		entry := id.New()
+		if _, err := e.pool.Exec(ctx, `
+			INSERT INTO play_history (id, user_id, item_id, session_id, started_at, last_event_at, start_position_ms, end_position_ms)
+			SELECT $1, id, $2, $3, now(), now(), 0, 1000 FROM users WHERE role = 'owner'`, entry, f.itemID, entry.String()); err != nil {
+			e.t.Fatal(err)
+		}
+		return entry.String()
 	}
 	f.doneJobID = id.New().String()
 	if _, err := e.pool.Exec(ctx, `INSERT INTO jobs (id, kind, state, finished_at) VALUES ($1, 'storage_recheck_roots', 'succeeded', now())`, f.doneJobID); err != nil {

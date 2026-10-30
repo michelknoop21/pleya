@@ -2070,6 +2070,16 @@ paths:
           in: query
           required: false
           schema: { type: string }
+        - name: kind
+          in: query
+          required: false
+          description: |
+            Alleen onder `capabilities.personal_data`. Beperkt de regels tot items
+            van deze soort. Zonder `kind` komt elke soort terug, en dat is het
+            oude gedrag. Een oudere server negeert de parameter stil, dus een
+            client stuurt hem pas wanneer de vlag waar is. Een cursor hoort bij
+            de `kind` waarmee hij is uitgegeven.
+          schema: { $ref: "#/components/schemas/ItemKind" }
       responses:
         "200":
           description: Een pagina geschiedenis.
@@ -2078,6 +2088,37 @@ paths:
               schema: { $ref: "#/components/schemas/HistoryPage" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [library]
+      operationId: clearHistory
+      summary: Wis de hele eigen geschiedenis.
+      description: |
+        Klasse `authenticated`, alleen onder `capabilities.personal_data`. Wist
+        alle regels van de aanvrager, ook die uit een bibliotheek die hij niet
+        meer mag zien. Alleen de geschiedenis gaat weg: positie, gezien en
+        Verder kijken staan in de kijkstatus en blijven. Herhalen is onschadelijk.
+      responses:
+        "204": { description: De geschiedenis is leeg. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /history/{history_id}:
+    delete:
+      tags: [library]
+      operationId: deleteHistoryEntry
+      summary: Wis één regel uit de eigen geschiedenis.
+      description: |
+        Klasse `authenticated`, alleen onder `capabilities.personal_data`. Een
+        regel van een ander is `404`, net als een regel die niet bestaat. De
+        kijkstatus blijft, zie `DELETE /history`.
+      parameters:
+        - $ref: "#/components/parameters/HistoryId"
+      responses:
+        "204": { description: De regel is weg. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
   /favorites:
@@ -2129,6 +2170,31 @@ paths:
         "204": { description: Het item is geen favoriet meer. }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /ratings:
+    get:
+      tags: [library]
+      operationId: listRatings
+      summary: De gewaardeerde titels van de aanvrager, de laatst gewaardeerde eerst.
+      description: Klasse `authenticated`, alleen onder `capabilities.personal_data`. Beperkt tot de bibliotheken die de aanvrager mag zien. Elk item draagt `rating`.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Een pagina items.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemPage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
   /ratings/{item_id}:
@@ -2663,6 +2729,11 @@ components:
       in: path
       required: true
       schema: { $ref: "#/components/schemas/Id" }
+    HistoryId:
+      name: history_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
     ItemId:
       name: item_id
       in: path
@@ -2916,6 +2987,14 @@ components:
         favorites: { type: boolean, default: false }
         ratings: { type: boolean, default: false }
         track_preferences: { type: boolean, default: false }
+        personal_data:
+          type: boolean
+          default: false
+          description: |
+            De server kent `DELETE /history`, `DELETE /history/{id}`, `kind` op
+            `GET /history` en `GET /ratings`. Eén vlag voor de vier, naast
+            `history` en `ratings`: een server van vóór dit venster zet die twee
+            ook op waar, negeert `kind` stil en kent de andere routes niet.
         watch_state_ownership:
           type: boolean
           default: false

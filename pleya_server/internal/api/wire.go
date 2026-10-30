@@ -85,6 +85,13 @@ type Capabilities struct {
 	Ratings          bool `json:"ratings"`
 	TrackPreferences bool `json:"track_preferences"`
 
+	// PersonalData (DEC-XXX, S20.4). Aan zodra de persoonlijke opslag er is:
+	// DELETE /history, DELETE /history/{id}, kind op GET /history en GET /ratings
+	// bestaan. Eén vlag, omdat een client ze niet los hoeft te onderhandelen. Een
+	// eigen vlag naast history en ratings, omdat een oudere server met die twee
+	// vlaggen op waar kind stil negeert en de andere routes niet kent.
+	PersonalData bool `json:"personal_data"`
+
 	// ArtworkSizes (venster 3, C1). Aan zodra /artwork/{id} afgeleide maten van de
 	// ladder kan maken. Belooft niets over andere routes.
 	ArtworkSizes bool `json:"artwork_sizes"`

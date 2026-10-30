@@ -5184,3 +5184,21 @@ op hetzelfde moment `503` in plaats van `502` en faalt zoals nu. Web en Flutter 
 de kijker dat spoor gekozen houdt; Flutter geeft mpv daarvoor een lokaal tijdelijk bestand in
 plaats van de URL. Alleen dit venster is geopend; productie, merge en release blijven
 afzonderlijk. Nummer volgt bij integratie.
+
+## DEC-XXX: venster voor persoonlijke gegevens vrijgegeven
+
+**Status:** geaccepteerd door Michel op 30 oktober 2026, besluit 2 uit `docs/qa/2026-10-30-pleya-windows-docker-report.md`.
+
+Michel gaf vier toevoegingen vrij: `DELETE /history`, `DELETE /history/{id}`, `kind` op
+`GET /history` en `GET /ratings`, plus de nieuwe vlag `capabilities.personal_data` die ze samen
+aankondigt. Vraag 31 uit de vragenlijst wordt zo uitgevoerd: volledig of selectief wisbaar, alleen
+eigen regels, een regel van een ander is `404`. Wissen raakt `play_history` en niets anders;
+positie, gezien en Verder kijken staan in `watch_states` en blijven. `DELETE /history` wist ook
+regels uit een bibliotheek die de aanvrager niet meer mag zien, want het zijn zijn eigen gegevens.
+
+Een eigen vlag en niet `history` of `ratings`: een server van vóór dit venster zet die twee ook op
+waar, negeert `kind` stil en levert dan een ongefilterde lijst. Regel 4 van hoofdstuk 3 staat de
+optionele parameter toe, 3.1 eist de vlag, en `filters` loste hetzelfde geval zo op. Eén vlag voor de vier, omdat ze in één venster komen en een client ze nooit
+los hoeft te onderhandelen. Geen veld hernoemd, geen enum uitgebreid, geen verplicht aanvraagveld.
+Regel 74, 75 en 76 staan in de matrix van hoofdstuk 16.4. Alleen dit venster is geopend; productie,
+merge en release blijven afzonderlijk. Nummer volgt bij integratie.

@@ -135,9 +135,12 @@ func (s *Server) routeTable() []route {
 		// Alles klasse authenticated, over de aanvrager zelf; een item buiten de
 		// bibliotheken van de aanvrager is een 404.
 		{"GET " + p + "/history", s.authenticated(s.handleHistory)},
+		{"DELETE " + p + "/history", s.authenticated(s.handleClearHistory)},
+		{"DELETE " + p + "/history/{history_id}", s.authenticated(s.handleDeleteHistoryEntry)},
 		{"GET " + p + "/favorites", s.authenticated(s.handleListFavorites)},
 		{"PUT " + p + "/favorites/{item_id}", s.authenticated(s.handleSetFavorite)},
 		{"DELETE " + p + "/favorites/{item_id}", s.authenticated(s.handleClearFavorite)},
+		{"GET " + p + "/ratings", s.authenticated(s.handleListRatings)},
 		{"PUT " + p + "/ratings/{item_id}", s.authenticated(s.handleSetRating)},
 		{"DELETE " + p + "/ratings/{item_id}", s.authenticated(s.handleClearRating)},
 		{"GET " + p + "/track-preferences/{item_id}", s.authenticated(s.handleGetTrackPreference)},

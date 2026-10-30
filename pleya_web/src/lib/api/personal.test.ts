@@ -9,7 +9,7 @@ function setup() {
  const fetch=vi.fn(async(input:RequestInfo|URL)=>{
   const request=input instanceof Request?input:new Request(input);requests.push(request);
   if(request.url.endsWith('/auth/login'))return json({access_token:'test-account-B',refresh_token:'test-refresh-B',expires_in_ms:600000});
-  if(request.url.includes('/favorites?'))return json({items:[],next_cursor:null});
+  if(request.url.includes('/favorites?')||request.url.includes('/ratings?'))return json({items:[],next_cursor:null});
   if(request.url.endsWith('/watch-state'))return json({position_ms:0,watched:true,play_count:1,updated_at:'2026-10-30T00:00:00Z'});
   return new Response(null,{status:204});
  });
@@ -24,6 +24,13 @@ describe('personal API uses the existing authenticated public client',()=>{
   expect(requests.map(request=>[request.method,new URL(request.url).pathname])).toEqual([['PUT','/pleya/v1/favorites/item'],['DELETE','/pleya/v1/favorites/item'],['GET','/pleya/v1/favorites']]);
   expect(requests.every(request=>request.headers.get('Authorization')==='Bearer test-account-A')).toBe(true);
   expect(new URL(requests[2]!.url).searchParams.get('cursor')).toBe('opaque');
+ });
+ it('erases history and lists ratings over the contract routes',async()=>{
+  const {api,requests}=setup();
+  await api.deleteHistoryEntry('line');await api.clearHistory();
+  await api.ratings({limit:6});
+  expect(requests.map(request=>[request.method,new URL(request.url).pathname])).toEqual([['DELETE','/pleya/v1/history/line'],['DELETE','/pleya/v1/history'],['GET','/pleya/v1/ratings']]);
+  expect(new URL(requests[2]!.url).searchParams.get('limit')).toBe('6');
  });
  it('preserves the integer 1..10 rating scale and clears with DELETE',async()=>{
   const {api,requests}=setup();await api.setRating('item',1);await api.setRating('item',10);await api.setRating('item',null);

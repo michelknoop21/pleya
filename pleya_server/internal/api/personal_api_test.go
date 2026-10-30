@@ -210,3 +210,183 @@ func TestPersonalLayerFollowsLibraryAuthorization(t *testing.T) {
 		t.Fatalf("lijsten van een buitenstaander: %d en %d", len(fav.Items), len(hist.Items))
 	}
 }
+
+func (e *env) historyIDs(opts ...func(*http.Request)) []string {
+	e.t.Helper()
+	rec := e.do(http.MethodGet, "/pleya/v1/history", nil, opts...)
+	if rec.Code != http.StatusOK {
+		e.t.Fatalf("geschiedenis lezen gaf %d", rec.Code)
+	}
+	var page api.HistoryPage
+	e.decodeInto(rec, &page)
+	ids := make([]string, 0, len(page.Items))
+	for _, entry := range page.Items {
+		ids = append(ids, entry.ID)
+	}
+	return ids
+}
+
+// Vraag 31: de geschiedenis is volledig of selectief wisbaar, en wissen raakt de
+// kijkstatus niet.
+func TestHistoryIsErasableAndTheWatchStateStays(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	grease := e.findMovie("Grease")
+	blade := e.findMovie("Blade Runner")
+	e.startAndProgress(grease.ID, "tv", 600_000, 6_720_000)
+	e.startAndProgress(blade.ID, "tv", 300_000, 7_000_000)
+
+	var info api.Info
+	e.getJSON("/pleya/v1/info", "", http.StatusOK, &info)
+	if !info.Capabilities.PersonalData {
+		t.Fatal("capabilities.personal_data staat uit")
+	}
+
+	continueWatching := func() int {
+		var page api.ItemPage
+		e.getJSON("/pleya/v1/hubs/continue_watching", "", http.StatusOK, &page)
+		return len(page.Items)
+	}
+	assertWatchStateStays := func() {
+		t.Helper()
+		if got := continueWatching(); got != 2 {
+			t.Fatalf("Verder kijken heeft %d titels, verwacht 2", got)
+		}
+		state := e.itemDetail(grease.ID).UserState
+		if state == nil || state.PositionMs != 600_000 {
+			t.Fatalf("kijkstatus veranderde: %+v", state)
+		}
+	}
+
+	ids := e.historyIDs()
+	if len(ids) != 2 {
+		t.Fatalf("geschiedenis %v", ids)
+	}
+	if rec := e.do(http.MethodDelete, "/pleya/v1/history/"+ids[0], nil); rec.Code != http.StatusNoContent {
+		t.Fatalf("regel wissen gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	if got := e.historyIDs(); len(got) != 1 || got[0] != ids[1] {
+		t.Fatalf("na een regel wissen: %v", got)
+	}
+	assertWatchStateStays()
+
+	rec := e.do(http.MethodDelete, "/pleya/v1/history/"+ids[0], nil)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("dezelfde regel nogmaals wissen gaf %d", rec.Code)
+	}
+	e.expectCode(rec, api.CodeNotFound)
+
+	for range 2 { // herhalen is onschadelijk
+		if rec := e.do(http.MethodDelete, "/pleya/v1/history", nil); rec.Code != http.StatusNoContent {
+			t.Fatalf("alles wissen gaf %d: %s", rec.Code, rec.Body.String())
+		}
+	}
+	if got := e.historyIDs(); len(got) != 0 {
+		t.Fatalf("na alles wissen: %v", got)
+	}
+	assertWatchStateStays()
+}
+
+func TestHistoryOfAnotherUserCannotBeErased(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	movie := e.findMovie("Grease")
+	e.startAndProgress(movie.ID, "tv", 600_000, 6_720_000)
+	ids := e.historyIDs()
+	if len(ids) != 1 {
+		t.Fatalf("geschiedenis %v", ids)
+	}
+
+	housemate := e.createUser("member", "huisgenoot")
+	e.grantLibrary(housemate, e.libraryByKind("movies").ID, "view")
+	other := e.tokenFor(housemate)
+
+	rec := e.do(http.MethodDelete, "/pleya/v1/history/"+ids[0], nil, asUser(other))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("regel van een ander wissen gaf %d", rec.Code)
+	}
+	e.expectCode(rec, api.CodeNotFound)
+	if rec := e.do(http.MethodDelete, "/pleya/v1/history", nil, asUser(other)); rec.Code != http.StatusNoContent {
+		t.Fatalf("eigen geschiedenis wissen gaf %d", rec.Code)
+	}
+	if got := e.historyIDs(); len(got) != 1 || got[0] != ids[0] {
+		t.Fatalf("een ander raakte deze geschiedenis: %v", got)
+	}
+}
+
+func TestHistoryKindFiltersInTheQuery(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	movie := e.findMovie("Grease")
+	e.startAndProgress(movie.ID, "tv", 600_000, 6_720_000)
+
+	count := func(path string) int {
+		var page api.HistoryPage
+		e.getJSON(path, "HistoryPage", http.StatusOK, &page)
+		return len(page.Items)
+	}
+	if got := count("/pleya/v1/history?kind=movie"); got != 1 {
+		t.Fatalf("kind=movie gaf %d regels", got)
+	}
+	if got := count("/pleya/v1/history?kind=episode"); got != 0 {
+		t.Fatalf("kind=episode gaf %d regels", got)
+	}
+	if got := count("/pleya/v1/history?kind=onzin"); got != 0 {
+		t.Fatalf("een onbekende soort gaf %d regels", got)
+	}
+}
+
+func TestRatingsListIsOwnPagedAndFollowsVisibility(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	grease := e.findMovie("Grease")
+	blade := e.findMovie("Blade Runner")
+	for _, rated := range []struct {
+		id     string
+		rating int
+	}{{grease.ID, 7}, {blade.ID, 9}} {
+		if rec := e.do(http.MethodPut, "/pleya/v1/ratings/"+rated.id, map[string]any{"rating": rated.rating}); rec.Code != http.StatusNoContent {
+			t.Fatalf("waarderen gaf %d", rec.Code)
+		}
+	}
+
+	var one api.ItemPage
+	e.getJSON("/pleya/v1/ratings?limit=1", "ItemPage", http.StatusOK, &one)
+	if len(one.Items) != 1 || one.Items[0].ID != blade.ID || one.Items[0].Rating == nil || *one.Items[0].Rating != 9 || one.NextCursor == nil {
+		t.Fatalf("eerste pagina %+v", one)
+	}
+	var two api.ItemPage
+	e.getJSON("/pleya/v1/ratings?limit=1&cursor="+*one.NextCursor, "ItemPage", http.StatusOK, &two)
+	if len(two.Items) != 1 || two.Items[0].ID != grease.ID || two.NextCursor != nil {
+		t.Fatalf("tweede pagina %+v", two)
+	}
+	if rec := e.do(http.MethodGet, "/pleya/v1/ratings?cursor=onzin", nil); rec.Code != http.StatusBadRequest {
+		t.Fatalf("slechte cursor gaf %d", rec.Code)
+	}
+
+	// Wie de bibliotheek ziet maar niets waardeerde, en wie de bibliotheek niet ziet.
+	seer := e.createUser("member", "ziet")
+	e.grantLibrary(seer, e.libraryByKind("movies").ID, "view")
+	outsider := e.createUser("member", "buiten")
+	if rec := e.do(http.MethodPut, "/pleya/v1/ratings/"+grease.ID, map[string]any{"rating": 3}, asUser(e.tokenFor(seer))); rec.Code != http.StatusNoContent {
+		t.Fatalf("waarderen door een huisgenoot gaf %d", rec.Code)
+	}
+	var theirs api.ItemPage
+	e.decodeInto(e.do(http.MethodGet, "/pleya/v1/ratings", nil, asUser(e.tokenFor(seer))), &theirs)
+	if len(theirs.Items) != 1 || *theirs.Items[0].Rating != 3 {
+		t.Fatalf("lijst van de huisgenoot %+v", theirs.Items)
+	}
+	var none api.ItemPage
+	e.decodeInto(e.do(http.MethodGet, "/pleya/v1/ratings", nil, asUser(e.tokenFor(outsider))), &none)
+	if len(none.Items) != 0 {
+		t.Fatalf("lijst van een buitenstaander %+v", none.Items)
+	}
+
+	// Een ingetrokken recht verbergt de waardering, wist hem niet.
+	e.revokeLibrary(seer, e.libraryByKind("movies").ID)
+	var hidden api.ItemPage
+	e.decodeInto(e.do(http.MethodGet, "/pleya/v1/ratings", nil, asUser(e.tokenFor(seer))), &hidden)
+	if len(hidden.Items) != 0 {
+		t.Fatalf("na intrekken nog zichtbaar: %+v", hidden.Items)
+	}
+}

@@ -53,6 +53,9 @@ const (
 	// SortFavoritedDesc ordent favorieten op wanneer ze zijn toegevoegd,
 	// aflopend (S20). Ook geen aanvraagwaarde.
 	SortFavoritedDesc Sort = "-favorited_at"
+	// SortRatedDesc ordent waarderingen op wanneer ze zijn gegeven, aflopend.
+	// Ook geen aanvraagwaarde.
+	SortRatedDesc Sort = "-rated_at"
 )
 
 // ParseSort leest de sort-parameter. Leeg levert de default.
@@ -109,6 +112,8 @@ func (s Sort) keyExpression() string {
 		return "a.activity_at"
 	case SortFavoritedDesc:
 		return "f.created_at"
+	case SortRatedDesc:
+		return "r.updated_at"
 	default:
 		return "coalesce(i.sort_title, i.title)"
 	}
@@ -158,7 +163,7 @@ func (s Sort) castSuffix() string {
 		return "::timestamptz"
 	case SortDuration, SortDurationDesc:
 		return "::bigint"
-	case SortAddedAt, SortAddedAtDesc, SortWatchUpdatedDesc, SortNextUpDesc, SortFavoritedDesc:
+	case SortAddedAt, SortAddedAtDesc, SortWatchUpdatedDesc, SortNextUpDesc, SortFavoritedDesc, SortRatedDesc:
 		return "::timestamptz"
 	case SortYear, SortYearDesc, SortIndex:
 		return "::integer"

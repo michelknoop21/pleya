@@ -23,6 +23,9 @@ import (
 // ErrCursorInvalid betekent dat een cursor niet te lezen is.
 var ErrCursorInvalid = errors.New("personal: cursor ongeldig")
 
+// ErrNotFound betekent dat een regel niet bestaat, of van een ander is.
+var ErrNotFound = errors.New("personal: onbekend")
+
 // Store is de opslag van de persoonlijke laag.
 type Store struct{ pool *pgxpool.Pool }
 
@@ -202,13 +205,17 @@ type historyCursor struct {
 // History geeft de afspeelgeschiedenis van een gebruiker, de laatste sessie
 // eerst, beperkt tot de bibliotheken die hij mag zien. De beperking staat in de
 // query en niet als naloop, anders zou een pagina met verborgen rijen te kort
-// zijn en de cursor gaten krijgen.
-func (s *Store) History(ctx context.Context, user id.ID, visible []id.ID, limit int, rawCursor string) (HistoryPage, error) {
+// zijn en de cursor gaten krijgen. Een lege kind laat elke soort door.
+func (s *Store) History(ctx context.Context, user id.ID, visible []id.ID, kind string, limit int, rawCursor string) (HistoryPage, error) {
 	args := []any{user}
 	where := "h.user_id = $1"
 	if visible != nil {
 		args = append(args, visible)
 		where += fmt.Sprintf(" AND i.library_id = ANY($%d)", len(args))
+	}
+	if kind != "" {
+		args = append(args, kind)
+		where += fmt.Sprintf(" AND i.kind = $%d", len(args))
 	}
 	if rawCursor != "" {
 		raw, err := base64.RawURLEncoding.Strict().DecodeString(rawCursor)
@@ -263,4 +270,30 @@ func (s *Store) History(ctx context.Context, user id.ID, visible []id.ID, limit 
 		page.Entries = page.Entries[:limit]
 	}
 	return page, nil
+}
+
+// DeleteHistoryEntry wist één regel van deze gebruiker. Een regel van een ander
+// is ErrNotFound, net als een regel die niet bestaat.
+//
+// Alleen de geschiedenis: positie, gezien en Verder kijken staan in
+// watch_states en blijven.
+func (s *Store) DeleteHistoryEntry(ctx context.Context, user, entry id.ID) error {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM play_history WHERE id = $1 AND user_id = $2`, entry, user)
+	if err != nil {
+		return fmt.Errorf("geschiedenisregel wissen: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// ClearHistory wist de hele geschiedenis van deze gebruiker, ook regels uit een
+// bibliotheek die hij niet meer mag zien: het zijn zijn eigen gegevens. De
+// kijkstatus blijft, zie DeleteHistoryEntry.
+func (s *Store) ClearHistory(ctx context.Context, user id.ID) error {
+	if _, err := s.pool.Exec(ctx, `DELETE FROM play_history WHERE user_id = $1`, user); err != nil {
+		return fmt.Errorf("geschiedenis wissen: %w", err)
+	}
+	return nil
 }

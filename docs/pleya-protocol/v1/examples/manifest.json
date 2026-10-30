@@ -479,6 +479,11 @@
       "note": "BP-08b persoonlijk geheugen"
     },
     {
+      "file": "ratings_page.json",
+      "schema": "ItemPage",
+      "note": "GET /ratings, de laatst gewaardeerde eerst, elk item draagt rating"
+    },
+    {
       "file": "memory_clear.json",
       "schema": "MemoryClear",
       "note": "BP-08b persoonlijk geheugen"

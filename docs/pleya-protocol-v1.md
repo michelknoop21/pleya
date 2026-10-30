@@ -1141,10 +1141,19 @@ niet en komt er ook niet in; een offline backlog doet dat wel, want dat is preci
 moet bewaren. Elke regel draagt het volledige `Item`, de naam van het toestel (`null` als de inlogsessie
 al weg is) en is beperkt tot de bibliotheken die de aanvrager mag zien.
 
+Onder `capabilities.personal_data` is de geschiedenis ook te beperken en te wissen. `kind` op
+`GET /history` levert alleen regels van die soort; een oudere server negeert de parameter stil, dus een
+client stuurt hem pas als de vlag waar is. `DELETE /history` wist alle eigen regels, ook die uit een
+bibliotheek die de aanvrager niet meer mag zien, en `DELETE /history/{history_id}` wist er één; een regel
+van een ander is `404`, net als een regel die niet bestaat. Wissen raakt alleen de geschiedenis: positie,
+gezien en Verder kijken staan in de kijkstatus en blijven. Speelt een sessie na het wissen door, dan maakt
+haar volgende melding een nieuwe regel.
+
 **Favorieten** zijn `GET /favorites` (een `ItemPage`, de laatst toegevoegde eerst), `PUT` en `DELETE
 /favorites/{item_id}`. Herhalen is onschadelijk. **Waarderingen** zijn `PUT /ratings/{item_id}` met een
 geheel cijfer van 1 tot en met 10 en `DELETE`; een cijfer erbuiten is `400` met `library.personal_invalid`
-en `details.field`. Beide staan ook op het `Item` zelf (`favorite`, `rating`), naast en niet in
+en `details.field`. `GET /ratings` (onder `capabilities.personal_data`) is een `ItemPage`, de laatst
+gewaardeerde eerst, met dezelfde begrenzing tot zichtbare bibliotheken. Beide staan ook op het `Item` zelf (`favorite`, `rating`), naast en niet in
 `user_state`, want een favoriet die nooit is gekeken heeft geen kijkstatus en `user_state: null` blijft
 "nooit geopend" betekenen.
 
@@ -1406,6 +1415,9 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 71 | `GET /users/me/memory` | eigen Big P-geheugen | eigen sessiebearer, owner/admin/member; restricted en elk API-token 403 `memory.not_permitted` |
 | 72 | `PUT /users/me/memory` | volledige eigen geheugensnapshot met CAS | als regel 71, geen user-id in de body |
 | 73 | `POST /users/me/memory/clear` | eigen geheugen wissen en epoch roteren | als regel 71, geldige epoch en base_revision |
+| 74 | `DELETE /history` | de eigen geschiedenis wissen | klasse `authenticated`, alleen de eigen regels; de kijkstatus blijft (S20.4) |
+| 75 | `DELETE /history/{id}` | één eigen geschiedenisregel wissen | als regel 74, `404` voor een regel van een ander of die niet bestaat |
+| 76 | `GET /ratings` | de gewaardeerde titels van de aanvrager | als regel 52 |
 
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
@@ -2202,6 +2214,9 @@ van de bron beslist welke het is.
 | `GET /pleya/v1/transcode-sessions` | `admin` | nee |
 | `DELETE /pleya/v1/transcode-sessions/{id}` | `admin` | ja |
 | `GET /pleya/v1/history` | `authenticated` | nee |
+| `DELETE /pleya/v1/history` | `authenticated` | nee |
+| `DELETE /pleya/v1/history/{id}` | `authenticated` | nee |
+| `GET /pleya/v1/ratings` | `authenticated` | nee |
 | `GET /pleya/v1/favorites` | `authenticated` | nee |
 | `PUT /pleya/v1/favorites/{id}` | `authenticated` | nee |
 | `DELETE /pleya/v1/favorites/{id}` | `authenticated` | nee |
