@@ -24,8 +24,10 @@ String _plex(_F field) =>
     const PlexLibraryQueryTranslator().toQueryParameters(_queryFor(field))['sort']!.split(':').first;
 
 String _jellyfin(_F field) =>
-    const JellyfinLibraryQueryTranslator(userId: 'u', fields: 'f').toQueryParameters(_queryFor(field))['SortBy']
-        as String;
+    (const JellyfinLibraryQueryTranslator(userId: 'u', fields: 'f').toQueryParameters(_queryFor(field))['SortBy']
+            as String)
+        .split(',')
+        .first;
 
 MediaItem _plexItem(String title, {double? rating, double? audience, double? user, int? year}) => PlexMediaItem(
   id: title,
@@ -130,7 +132,7 @@ void main() {
           sort: LibrarySort(field: 'rating', direction: LibrarySortDirection.descending),
         ),
       );
-      expect(params['SortBy'], 'CommunityRating');
+      expect(params['SortBy'], 'CommunityRating,SortName');
     });
   });
 

@@ -17,7 +17,7 @@ void main() {
   group('catalog.scores.v1', () {
     Future<Map<String, dynamic>> items(JellyfinFakeServer jellyfin, String sortOrder) async {
       final url = Uri.parse(
-        'http://fixture/jellyfin/Items?ParentId=${JellyfinFakeServer.libraryId}&SortBy=CriticRating&SortOrder=$sortOrder&StartIndex=0&Limit=50',
+        'http://fixture/jellyfin/Items?ParentId=${JellyfinFakeServer.libraryId}&SortBy=CriticRating,SortName&SortOrder=$sortOrder&StartIndex=0&Limit=50',
       );
       final response = await jellyfin.handle(http.Request('GET', url));
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -33,7 +33,7 @@ void main() {
     test('sends titles without a value last descending and first ascending', () async {
       final jellyfin = JellyfinFakeServer();
       applyNamedFixture(PleyaFakeServer(), 'catalog.scores.v1', jellyfin: jellyfin);
-      final down = (await items(jellyfin, 'Descending'))['Items'] as List;
+      final down = (await items(jellyfin, 'Descending,Ascending'))['Items'] as List;
       final up = (await items(jellyfin, 'Ascending'))['Items'] as List;
       expect((down.first as Map)['CriticRating'], 100);
       expect((down.last as Map).containsKey('CriticRating'), isFalse);

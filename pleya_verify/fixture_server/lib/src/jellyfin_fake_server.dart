@@ -104,8 +104,9 @@ class JellyfinFakeServer {
 
   http.Response _items(Map<String, String> query) {
     itemQueries.add(query);
-    final descending = query['SortOrder'] == 'Descending';
-    Comparable<Object>? key(JellyfinFakeMovie movie) => switch (query['SortBy']) {
+    // Both are lists with the tie-break on SortName behind the field.
+    final descending = query['SortOrder']?.split(',').first == 'Descending';
+    Comparable<Object>? key(JellyfinFakeMovie movie) => switch (query['SortBy']?.split(',').first) {
       'CriticRating' => movie.criticRating,
       'CommunityRating' => movie.communityRating,
       'ProductionYear' => movie.year,
