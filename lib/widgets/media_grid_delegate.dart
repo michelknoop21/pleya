@@ -134,15 +134,16 @@ class MediaGridGeometry {
   /// The grid of the iPhone library look: three 2:3 posters across, the card
   /// flush with its cell because a phone has no focus ring to make room for.
   ///
-  /// Deliberately not [resolve]: the column count does not follow the library
-  /// density setting (besluit Michel, 30 oktober 2026).
+  /// Not [resolve]: the poster width and the gaps are the phone look's own, but
+  /// the column count follows the library density setting.
   factory MediaGridGeometry.phoneLibrary({
     required BuildContext context,
     required double crossAxisExtent,
+    required int density,
     bool useWideAspectRatio = false,
   }) {
     const spacing = LibraryPhoneMetrics.gridColumnGap;
-    final columnCount = LibraryPhoneMetrics.columnsFor(crossAxisExtent, wide: useWideAspectRatio);
+    final columnCount = LibraryPhoneMetrics.columnsFor(crossAxisExtent, wide: useWideAspectRatio, density: density);
     final itemWidth = GridSizeCalculator.getCellWidthForColumnCount(
       crossAxisExtent,
       columnCount,

@@ -159,7 +159,7 @@ class _LibraryCollectionsTabState extends BaseLibraryTabState<MediaItem, Library
       sliver: SliverCrossAxisLayoutBuilder(
         builder: (context, crossAxisExtent) {
           final geometry = LibraryPhoneLook.of(context)
-              ? MediaGridGeometry.phoneLibrary(context: context, crossAxisExtent: crossAxisExtent)
+              ? MediaGridGeometry.phoneLibrary(context: context, crossAxisExtent: crossAxisExtent, density: density)
               : MediaGridGeometry.resolve(
                   context: context,
                   crossAxisExtent: crossAxisExtent,

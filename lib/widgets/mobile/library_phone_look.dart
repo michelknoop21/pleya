@@ -9,6 +9,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../services/settings_service.dart';
+
 /// Marks a subtree as drawn in the iPhone library look.
 class LibraryPhoneLook extends InheritedWidget {
   const LibraryPhoneLook({super.key, required super.child});
@@ -93,12 +95,22 @@ class LibraryPhoneMetrics {
     return (title + subtitle).ceilToDouble();
   }
 
-  /// Three across on a phone held upright; more only when the width allows it.
-  static int columnsFor(double crossAxisExtent, {required bool wide}) {
+  /// Three across on a phone held upright at the default density. The setting
+  /// moves it the way it does in the other grids: a lower value (compact) packs
+  /// more columns, a higher one (comfortable) fewer. Every step is one column
+  /// apart, so each is visible on a phone, where a width bound alone would
+  /// leave two neighbours identical.
+  static int columnsFor(double crossAxisExtent, {required bool wide, int density = LibraryDensity.defaultValue}) {
     final minimum = wide ? wideColumns : posterColumns;
     final maxWidth = wide ? maxPosterWidth * 2 : maxPosterWidth;
     final fit = ((crossAxisExtent + gridColumnGap) / (maxWidth + gridColumnGap)).floor();
-    return fit > minimum ? fit : minimum;
+    final atDefault = fit > minimum ? fit : minimum;
+    final step = LibraryDensity.defaultValue - density.clamp(LibraryDensity.min, LibraryDensity.max);
+    // 16:9 stills are already wide: they only get a third column at the densest step.
+    final shift = wide ? (step >= 2 ? 1 : 0) : step;
+    final floor = wide ? wideColumns : posterColumns - 1;
+    final shifted = atDefault + shift;
+    return shifted > floor ? shifted : floor;
   }
 
   /// Insets of a grid or list inside a tab. The bottom clears the home

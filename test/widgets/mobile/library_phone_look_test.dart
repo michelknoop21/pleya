@@ -32,6 +32,7 @@ Future<MediaGridGeometry> _geometry(
   required double extent,
   bool wide = false,
   double textScale = 1,
+  int density = LibraryDensity.defaultValue,
 }) async {
   late MediaGridGeometry geometry;
   await tester.pumpWidget(
@@ -42,6 +43,7 @@ Future<MediaGridGeometry> _geometry(
           geometry = MediaGridGeometry.phoneLibrary(
             context: context,
             crossAxisExtent: extent,
+            density: density,
             useWideAspectRatio: wide,
           );
           return const SizedBox();
@@ -65,6 +67,19 @@ void main() {
         final geometry = await _geometry(tester, extent: extent);
         expect(geometry.columnCount, 3, reason: 'width $screen');
       }
+    });
+
+    testWidgets('the density setting moves the column count, and the default keeps three', (tester) async {
+      final columns = <int>[
+        for (var d = LibraryDensity.min; d <= LibraryDensity.max; d++)
+          (await _geometry(tester, extent: 365, density: d)).columnCount,
+      ];
+      expect(columns, [5, 4, 3, 2, 2]);
+      final wide = <int>[
+        for (var d = LibraryDensity.min; d <= LibraryDensity.max; d++)
+          (await _geometry(tester, extent: 365, wide: true, density: d)).columnCount,
+      ];
+      expect(wide, [3, 2, 2, 2, 2]);
     });
 
     testWidgets('the grid delegate lays out exactly the columns the geometry reports', (tester) async {

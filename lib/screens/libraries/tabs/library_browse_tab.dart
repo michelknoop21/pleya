@@ -1991,6 +1991,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
                 ? MediaGridGeometry.phoneLibrary(
                     context: context,
                     crossAxisExtent: crossAxisExtent,
+                    density: libraryDensity,
                     useWideAspectRatio: useWideRatio,
                   )
                 : MediaGridGeometry.resolve(
