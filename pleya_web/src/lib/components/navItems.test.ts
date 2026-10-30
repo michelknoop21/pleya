@@ -4,6 +4,7 @@ import { activeItemId, navItems } from './navItems';
 import type { Capabilities } from '../api/types';
 
 const all: Capabilities = {
+  external_id_lookup: false,
   assistant_memory: false,
   browse: true,
   search: true,
