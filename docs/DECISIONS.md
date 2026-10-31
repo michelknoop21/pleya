@@ -5380,7 +5380,8 @@ server dus bestaat die het afwijst, regel 2 en 3 omdat `ListItemsRequest` voor `
 eigen schema krijgt, en regel 6 is niet van toepassing. Dit valt binnen het S19-venster: de resource is nog niet
 uitgebracht. `revision` loopt alleen op bij schrijven op de rijen, niet bij hernoemen, zodat een nieuwe titel geen
 herordening weggooit. Een item dat de catalogus verlaat telt niet mee; dat vangen `PUT` (`404`) en het opnieuw lezen vlak
-vóór het schrijven op.
+vóór het schrijven op. `openapi.yaml` en hoofdstuk 14c noemen die uitzondering sinds de review van `19720e15a`; alleen de
+beschrijving wijzigde, dus de regels van hoofdstuk 3 worden niet geraakt.
 
 ## DEC-169: Activiteit van het huishouden krijgt een eigen protocolvenster, en `play_history` wordt leesbaar voor huisgenoten met een opt-out, en opt-in voor restricted
 

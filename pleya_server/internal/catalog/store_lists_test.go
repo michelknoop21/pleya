@@ -404,6 +404,46 @@ func TestItemRemovedDuringAReplaceIsNotFound(t *testing.T) {
 	}
 }
 
+// TestACatalogRemovalLeavesTheRevisionAlone legt de uitzondering in het contract vast:
+// een item dat de catalogus verlaat is geen schrijfactie op de lijst, en er gaat niets
+// stil verloren, want wie het id nog meestuurt krijgt 404 en de rest van de lijst staat.
+func TestACatalogRemovalLeavesTheRevisionAlone(t *testing.T) {
+	f := newListFixture(t)
+	store := f.store()
+	me := f.viewer(f.alice, f.library)
+	a, b := f.addItem(t, f.library, "movie", "A"), f.addItem(t, f.library, "movie", "B")
+	list, err := store.CreateList(f.ctx, catalog.ListPlaylist, me, listTitle("Avond"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.ReplaceListItems(f.ctx, catalog.ListPlaylist, me, list.ID, []id.ID{a, b}); err != nil {
+		t.Fatal(err)
+	}
+	read, err := store.List(f.ctx, catalog.ListPlaylist, me, list.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := read.Revision
+
+	f.exec(t, `DELETE FROM media_items WHERE id = $1`, b)
+
+	read, err = store.List(f.ctx, catalog.ListPlaylist, me, list.ID)
+	if err != nil || read.Revision != seen {
+		t.Fatalf("de catalogus raakte de revisie: %d, verwacht %d, %v", read.Revision, seen, err)
+	}
+	if err := store.ReplaceListItemsAt(f.ctx, catalog.ListPlaylist, me, list.ID, []id.ID{a, b}, &seen); !errors.Is(err, catalog.ErrNotFound) {
+		t.Fatalf("kreeg %v, verwacht ErrNotFound", err)
+	}
+	page, err := store.ListItems(f.ctx, catalog.ListPlaylist, me, list.ID, nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	equalIDs(t, itemIDs(page), []id.ID{a})
+	if err := store.ReplaceListItemsAt(f.ctx, catalog.ListPlaylist, me, list.ID, []id.ID{a}, &seen); err != nil {
+		t.Fatalf("de lijst zonder het item hoort door te gaan: %v", err)
+	}
+}
+
 // TestReplaceUnderARevisionLosesNothing: wie een oude lijst terugstuurt krijgt een
 // conflict in plaats van andermans wijziging ongedaan te maken.
 func TestReplaceUnderARevisionLosesNothing(t *testing.T) {

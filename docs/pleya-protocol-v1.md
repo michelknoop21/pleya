@@ -1320,8 +1320,8 @@ ontbreken daarin en blijven op hun plek staan, want een ingetrokken recht wist n
 terug, dan staan ze er weer. `PUT` is onvoorwaardelijk, tenzij de aanvraag `base_revision` draagt: dan
 geldt ze alleen als `revision` op de lijst nog die waarde heeft, en anders is het `409` met
 `library.list_conflict` en de huidige revisie in `details.revision`, en verandert er niets. `revision` loopt
-op bij elke schrijfactie op de rijen, niet bij een nieuwe titel, en `updated_at` kan dit werk niet doen: die
-staat in hele seconden op de lijn. Een client leest `revision` vóór hij de rijen leest, zodat een wijziging
+op bij elke schrijfactie van een client op de rijen, niet bij een nieuwe titel, en `updated_at` kan dit werk
+niet doen: die staat in hele seconden op de lijn. Een client leest `revision` vóór hij de rijen leest, zodat een wijziging
 daartussen op de veilige kant valt. `POST .../items` zet items achteraan, en wat er al in staat blijft staan;
 `DELETE .../items/{item_id}` haalt er één uit. Die twee bestaan naast `PUT` omdat "Toevoegen aan" op een
 kaart anders de hele lijst moet lezen en een gelijktijdige toevoeging kan overschrijven. Een lijst telt
@@ -1329,7 +1329,8 @@ hoogstens 5000 rijen. Een afspeellijst neemt alleen `movie` en `episode` aan: ee
 toevoegt zet de afleveringen erin. Een verzameling neemt elke soort aan.
 
 **Catalogus.** Een item dat uit de catalogus verdwijnt verdwijnt uit elke lijst, zonder gat dat een client
-merkt. Een hernoemd of verplaatst bestand houdt zijn item-id en dus zijn plek. Een gebruiker die wordt
+merkt. `revision` blijft daarbij staan: er is geen client die een ander overschrijft, en een `PUT` met dat id
+geeft `404`. Een hernoemd of verplaatst bestand houdt zijn item-id en dus zijn plek. Een gebruiker die wordt
 verwijderd neemt zijn lijsten mee, ook wat hij met anderen deelde.
 
 ## 15. Home-bouwstenen
