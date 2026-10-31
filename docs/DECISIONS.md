@@ -5389,6 +5389,17 @@ die wijkt, en die uitzondering is precies wat de dief gebruikte. De subtest `eer
 vast. Verloren antwoorden binnen 2 minuten, zes aanvragen tegelijk, een ander toestel en de app raken dit niet: de app
 biedt zelf geen vervangen token aan.
 
+Die uitkomst gold alleen voor een aanvraag die de opslag bereikte. De limiter staat vóór de rotatie en telde per sessie,
+ook voor een al gebruikt token, en wie de kop houdt kan die emmer onbeperkt leeg houden. In de review haalde het
+slachtoffer in 90 seconden met 31 pogingen nul keer de opslag. Een ingetrokken token telt daarom op een eigen emmer per
+token, en alleen de kop op die van de sessie. De dief kan die emmer niet leegmaken: buiten het respijt sluit de eerste
+aanbieding die erdoor komt de sessie, en binnen het respijt duurt het hooguit 2 minuten. De prijs is een zwakkere grens
+voor een houder die het erop aanlegt: om en om de kop roteren en het net gebruikte token herhalen levert per rotatie 30
+extra aanbiedingen op. Gemeten via de handler: 1209 antwoorden `200` in 20 seconden, de eerste 930 uit de twee bursts en
+daarna 15,5 per seconde in plaats van een halve. Dat vraagt een geldig token en is niet meer dan een ingelogde client
+elders mag; een lus op één token blijft op 30 plus een halve per seconde. De kaart blijft op zijn 1024 emmers, gemeten
+132 kB, en een verdrongen emmer begint weer vol.
+
 De kolomcomment in migratie 0028 zegt nog "Leeg na de eerste aanbieding". Die migratie is niet gewijzigd; de betekenis
 staat op `RotateRefreshToken`.
 

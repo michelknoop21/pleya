@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/hex"
 	"math"
 	"net"
 	"net/http"
@@ -171,20 +172,38 @@ func (s *Server) allowRefresh(w http.ResponseWriter, r *http.Request, presentedH
 // De sleutel is niet het token zelf: dat roteert bij elk gebruik, dus juist een
 // client in een lus zou dan steeds een volle emmer krijgen.
 //
+// Een token dat al ingetrokken is, is daarop de uitzondering. Wie de kop van de
+// keten houdt, kan de emmer van de sessie onbeperkt leeg houden, en het dode token
+// van de andere houder is de enige aanvraag die de sessie kan sluiten (DEC-123).
+// Een dood token telt daarom op een eigen emmer. Die kan de kop niet leegmaken, en
+// een aanbieding die erdoorheen komt is hergebruik of een herhaling binnen het
+// respijt, dus een lus met zo'n token blijft even hard begrensd. Dat dode tokens
+// elk een emmer krijgen vraagt geen eigen grens: de kaart van de limiter is
+// begrensd op limiterMaxBuckets, en een verdrongen emmer begint weer vol.
+//
 // Een token zonder sessie is verzonnen of opgeruimd, en dat kan geen rechtmatige
 // client helpen. Die aanvragen tellen op het adres, zodat ze geen enkele sessie
 // kunnen blokkeren. Deze keuze begrenst de rotatie en niet de lookup: de query
 // hierboven levert de sleutel en draait dus vóór de limiter, ook na een 429. De
 // prijs is één geïndexeerde lookup per aanvraag.
 func (s *Server) refreshLimiterKey(ctx context.Context, r *http.Request, presentedHash []byte) (string, error) {
-	sessionID, known, err := s.opts.Auth.RefreshTokenSession(ctx, presentedHash)
+	sessionID, used, known, err := s.opts.Auth.RefreshTokenSession(ctx, presentedHash)
 	if err != nil {
 		return "", err
 	}
-	if known {
-		return "session:" + sessionID.String(), nil
+	if !known {
+		return "address:" + s.clientAddress(r), nil
 	}
-	return "address:" + s.clientAddress(r), nil
+	if used {
+		return usedTokenBucket(presentedHash), nil
+	}
+	return "session:" + sessionID.String(), nil
+}
+
+// usedTokenBucket is de emmer van één al ingetrokken token. De sleutel draagt de
+// hash, nooit het token.
+func usedTokenBucket(presentedHash []byte) string {
+	return "used:" + hex.EncodeToString(presentedHash)
 }
 
 // clientAddress geeft het adres van de client.

@@ -49,7 +49,7 @@ const (
 )
 
 // Dertig verversingen achter elkaar en daarna één per twee seconden, per sessie
-// (zie refreshLimiterKey). Een browser in cookiemodus ververst bij elke
+// en voor een al ingetrokken token per token (zie refreshLimiterKey). Een browser in cookiemodus ververst bij elke
 // paginalading en bij elk nieuw tabblad, en die mogen niet tegen de grens lopen;
 // een toestel dat zijn token in een lus blijft verversen wel. De wachttijd blijft
 // zo hoogstens twee seconden, ver onder het respijtvenster van de rotatie: een

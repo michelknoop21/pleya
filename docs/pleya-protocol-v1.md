@@ -360,7 +360,9 @@ in. Zie 17d.
 geroteerd of ingetrokken, het token en de cookie blijven geldig. Het antwoord draagt `Retry-After` in
 hele seconden en `details.retry_after_ms`. Een client wacht die tijd en probeert het opnieuw met zijn
 huidige token; hij logt niet uit en toont geen inlogscherm. De grens telt per sessie, zodat een lus in
-één client geen ander toestel achter dezelfde NAT of tunnel raakt. Een token zonder sessie telt op het
+één client geen ander toestel achter dezelfde NAT of tunnel raakt. Een al ingetrokken token telt per
+token, want wie de kop van de keten houdt kan de emmer van de sessie leeg houden, en een dood token moet
+`auth.refresh_token_reused` kunnen bereiken. Een token zonder sessie telt op het
 clientadres, en dat komt alleen achter een vertrouwde proxy uit `X-Forwarded-For`
 (`PLEYA_SERVER_TRUSTED_PROXIES`), rechts gelezen tot de eerste hop die geen proxy is. De wachttijd blijft
 onder het respijtvenster van de rotatie: wie zijn antwoord kwijtraakte en eerst een 429 krijgt, valt na het

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"testing"
 	"time"
@@ -117,6 +118,37 @@ func TestLimiterBucketsAreCardinalityBoundedWithinOneWindow(t *testing.T) {
 	if len(l.buckets) != limiterMaxBuckets {
 		t.Fatalf("er staan %d emmers na %d pogingen zonder tijdsverloop, wil precies %d (limiterMaxBuckets)",
 			len(l.buckets), attempts, limiterMaxBuckets)
+	}
+}
+
+// Elk dood refreshtoken krijgt een eigen emmer, en wie veel gebruikte tokens bewaart
+// kiest dus zijn eigen sleutels. De kaart blijft ook dan op zijn grens, en de
+// verdrongen emmer begint weer vol: de limiter wordt ruimer, niemand wordt buitengesloten.
+func TestRefreshLimiterStaysBoundedUnderDeadTokens(t *testing.T) {
+	clock := time.Date(2026, 10, 31, 12, 0, 0, 0, time.UTC)
+	l := newRefreshLimiter()
+	l.now = func() time.Time { return clock }
+
+	const session = "session:lege-emmer"
+	for range int(refreshLimiterBurst) {
+		l.allow(session)
+	}
+	if ok, _ := l.allow(session); ok {
+		t.Fatal("de emmer van de sessie is niet leeg")
+	}
+
+	for i := range limiterMaxBuckets * 3 {
+		clock = clock.Add(time.Microsecond)
+		hash := sha256.Sum256([]byte(fmt.Sprint("dood-", i)))
+		if ok, _ := l.allow(usedTokenBucket(hash[:])); !ok {
+			t.Fatalf("een nieuw dood token kreeg een volle emmer niet: poging %d", i)
+		}
+		if len(l.buckets) > limiterMaxBuckets {
+			t.Fatalf("de kaart groeide voorbij de grens: %d emmers", len(l.buckets))
+		}
+	}
+	if ok, _ := l.allow(session); !ok {
+		t.Fatal("een verdrongen emmer hoort weer vol te beginnen")
 	}
 }
 
