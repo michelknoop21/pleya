@@ -5426,6 +5426,11 @@ sessie, `FOR NO KEY UPDATE`, zoals `UPDATE sessions` zelf ook doet. Daarmee geld
 één sessie achter elkaar. Opnieuw proberen na `40P01` was het alternatief; dat laat de seconde wachten staan en lost de
 afmelding niet op.
 
+`PurgeExpiredRefreshTokens` week daar nog van af: één DELETE over de hele tabel, zonder sessieslot. Met een
+hulptransactie die de volgorde vastzet gaf dat een echte `40P01` op twee manieren: een herhaling binnen het respijt van
+een verlopen token, en via de wijzer in `replaced_by` als de opvolger eerder verloopt dan zijn voorganger. Op het toeval
+kwam hij in 400 runs niet. De opruiming werkt nu per sessie, met de sessie eerst, in een eigen transactie.
+
 De kolomcomment in migratie 0028 zegt nog "Leeg na de eerste aanbieding". Die migratie is niet gewijzigd; de betekenis
 staat op `RotateRefreshToken`.
 

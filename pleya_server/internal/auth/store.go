@@ -273,13 +273,56 @@ func (s *Store) CreateSession(ctx context.Context, userID id.ID, deviceID *strin
 // PurgeExpiredRefreshTokens ruimt op wat niemand meer kan gebruiken. Verlopen
 // rijen laten staan levert een tabel op die alleen maar groeit en die de
 // hergebruikdetectie niets extra's oplevert.
+//
+// Per sessie, met de sessie eerst, zoals elke andere schrijver van tokenrijen
+// (lockSessionOfRefreshToken). Een rotatie houdt meerdere tokenrijen vast, en een
+// herhaling binnen het respijt kijkt niet naar expires_at, dus één DELETE over de
+// hele tabel kon ze in de omgekeerde volgorde nemen, ook via de wijzer in replaced_by.
+// Een eigen transactie per sessie houdt bovendien niemands sessie langer vast dan
+// het opruimen van die sessie duurt. Rijen zonder sessie heeft niemand op slot.
 func (s *Store) PurgeExpiredRefreshTokens(ctx context.Context, before time.Time) (int64, error) {
-	tag, err := s.pool.Exec(ctx,
-		`DELETE FROM auth_refresh_tokens WHERE expires_at < $1`, before)
+	rows, err := s.pool.Query(ctx,
+		`SELECT DISTINCT session_id FROM auth_refresh_tokens WHERE expires_at < $1 AND session_id IS NOT NULL`, before)
 	if err != nil {
 		return 0, err
 	}
-	return tag.RowsAffected(), nil
+	sessions, err := pgx.CollectRows(rows, pgx.RowTo[id.ID])
+	if err != nil {
+		return 0, err
+	}
+
+	var purged int64
+	for _, sessionID := range sessions {
+		n, err := s.purgeExpiredOfSession(ctx, sessionID, before)
+		if err != nil {
+			return purged, err
+		}
+		purged += n
+	}
+	tag, err := s.pool.Exec(ctx,
+		`DELETE FROM auth_refresh_tokens WHERE expires_at < $1 AND session_id IS NULL`, before)
+	if err != nil {
+		return purged, err
+	}
+	return purged + tag.RowsAffected(), nil
+}
+
+func (s *Store) purgeExpiredOfSession(ctx context.Context, sessionID id.ID, before time.Time) (int64, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx, `SELECT 1 FROM sessions WHERE id = $1 FOR NO KEY UPDATE`, sessionID); err != nil {
+		return 0, fmt.Errorf("sessie vergrendelen voor opruimen: %w", err)
+	}
+	tag, err := tx.Exec(ctx,
+		`DELETE FROM auth_refresh_tokens WHERE session_id = $1 AND expires_at < $2`, sessionID, before)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), tx.Commit(ctx)
 }
 
 // ServerID leest de serveridentiteit en maakt hem aan bij de eerste start.
