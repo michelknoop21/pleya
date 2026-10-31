@@ -3579,6 +3579,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     setStateIfMounted(() {
       _onDeckEpisode = next;
     });
+    // The read that started with no episode in hand stops at this change.
+    unawaited(_syncUnifiedOnDeck());
   }
 
   Future<void> _playFirstEpisode() async {

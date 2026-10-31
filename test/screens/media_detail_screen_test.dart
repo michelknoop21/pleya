@@ -1702,6 +1702,89 @@ void main() {
           expect(player.screens.single.startPosition, const Duration(milliseconds: 600000));
         });
 
+        testWidgets('a series whose server names no next episode still moves on across its sources', (tester) async {
+          MediaItem show(String server) => MediaItem(
+            id: 'show_$server',
+            backend: MediaBackend.jellyfin,
+            kind: MediaKind.show,
+            title: 'Severance',
+            serverId: server,
+            serverName: server,
+          );
+          MediaItem episode(String server, int index, {int? viewCount}) => MediaItem(
+            id: 'e${index}_$server',
+            backend: MediaBackend.jellyfin,
+            kind: MediaKind.episode,
+            title: 'Episode $index',
+            parentId: 'season_$server',
+            grandparentId: 'show_$server',
+            parentIndex: 1,
+            index: index,
+            durationMs: 3000000,
+            viewCount: viewCount,
+            serverId: server,
+          );
+          final main = show('server_1');
+          final other = show('server_2');
+          final season = MediaItem(
+            id: 'season_server_1',
+            backend: MediaBackend.jellyfin,
+            kind: MediaKind.season,
+            title: 'Season 1',
+            index: 1,
+            parentId: 'show_server_1',
+            serverId: 'server_1',
+          );
+          final pageEpisodes = [episode('server_1', 1), episode('server_1', 2)];
+          final client = _FakeMediaServerClient(
+            show: main,
+            childrenByParent: {
+              'show_server_1': [season],
+              'season_server_1': pageEpisodes,
+            },
+            episodes: pageEpisodes,
+          );
+          // Held open so the page's own fallback lands first, as it does when
+          // the other server answers later than the page's season list.
+          final otherList = Completer<List<MediaItem>>();
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+            playableFuture: otherList.future,
+          );
+          final player = _PlayerRouteSpy();
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            navigatorObservers: [player],
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_2'),
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+
+          otherList.complete([episode('server_2', 1, viewCount: 1), episode('server_2', 2)]);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+
+          final play = find.byKey(const Key('media-detail.play'));
+          await tester.ensureVisible(play);
+          await tester.pumpAndSettle();
+          await tester.tap(play);
+          for (var i = 0; i < 10 && player.screens.isEmpty; i++) {
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+            await tester.pump();
+          }
+
+          expect(player.screens.single.metadata.globalKey, 'server_2:e2_server_2');
+        });
+
         testWidgets('the watched button on the page reaches the other source too', (tester) async {
           final main = film('server_1');
           final other = film('server_2');
@@ -4060,6 +4143,7 @@ class _FakeMediaServerClient implements MediaServerClient {
     this.fileInfoFuture,
     this.onDeck,
     this.episodes = const [],
+    this.playableFuture,
     this.id = 'server_1',
     this.name = 'Server',
   });
@@ -4074,8 +4158,11 @@ class _FakeMediaServerClient implements MediaServerClient {
   final MediaItem? onDeck;
   final List<MediaItem> episodes;
 
+  /// Held open by a test in which this server answers later than the page.
+  final Future<List<MediaItem>>? playableFuture;
+
   @override
-  Future<List<MediaItem>> fetchPlayableDescendants(String parentId) async => episodes;
+  Future<List<MediaItem>> fetchPlayableDescendants(String parentId) async => playableFuture ?? episodes;
 
   @override
   Future<List<MediaItem>> fetchExtras(String id) async => extras;
