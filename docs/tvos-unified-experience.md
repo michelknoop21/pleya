@@ -1355,8 +1355,9 @@ en die de volgende aflevering heeft. Ontbreekt die, of speelt een geleende aflev
 de samengevoegde volgorde van alle bronnen wat volgt, ook voor Vorige, en de speler keert terug naar
 de gekozen server zodra die de aflevering heeft. Een wachtrij spreekt alleen voor zijn eigen server:
 tijdens een geleende aflevering staat hij nog op de laatste eigen aflevering en telt zijn antwoord
-niet. De volgorde gaat op seizoen en nummer, niet op uitzenddatum: servers verschillen daarin en een
-aflevering kan eerder zijn uitgezonden dan de vorige. Specials van een andere server tellen niet als gat. Shuffle, een
+niet. De samengevoegde volgorde gaat op seizoen en nummer, niet op uitzenddatum: servers verschillen
+daarin en een aflevering kan eerder zijn uitgezonden dan de vorige. De wachtrij van een server houdt
+zijn eigen volgorde, op nummer bij Plex en op uitzenddatum bij Jellyfin en Emby. Specials van een andere server tellen niet als gat. Shuffle, een
 afspeellijst en Samen kijken houden hun eigen volgorde.
 
 **Rechten.** Elke bron wordt per beslissing getoetst (`UnifiedSourceGate`): een verborgen server, een

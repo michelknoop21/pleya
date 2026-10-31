@@ -6,6 +6,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/media/episode_collection.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
@@ -638,6 +639,54 @@ void main() {
         (await title.neighbourOf(on('chosen', 1, 2), forward: true, queued: special))?.globalKey,
         special.globalKey,
       );
+    });
+
+    test('a queue in air-date order plays every episode, also one dated before its predecessor', () async {
+      List<MediaItem> episodes(String server) => [
+        for (final (number, date) in const [
+          (1, '2020-01-01'),
+          (2, '2020-01-08'),
+          (3, '2020-01-29'),
+          (4, '2020-01-22'),
+          (5, '2020-02-05'),
+        ])
+          on(server, 1, number).copyWith(originallyAvailableAt: date),
+      ];
+      final title = _title(
+        [_show('page'), _show('chosen')],
+        chosen: 'chosen',
+        page: 'page',
+        clients: {'page': _Client(episodes('page')), 'chosen': _Client(episodes('chosen'))},
+      );
+      final queue = episodes('chosen')..sort(compareEpisodesByWatchOrder);
+
+      final walked = <int?>[queue.first.index];
+      var current = queue.first;
+      for (var i = 0; i < queue.length - 1; i++) {
+        final at = queue.indexWhere((e) => e.id == current.id);
+        final next = await title.neighbourOf(current, forward: true, queued: queue[at + 1]);
+        walked.add(next?.index);
+        current = next!;
+      }
+
+      expect(walked, [1, 2, 4, 3, 5]);
+    });
+
+    test('two rows with one number follow the queue both ways', () async {
+      final first = on('chosen', 1, 2);
+      final second = first.copyWith(id: 'ep-chosen-1-2-b');
+      final title = _title(
+        [_show('page'), _show('chosen')],
+        chosen: 'chosen',
+        page: 'page',
+        clients: {
+          'page': _Client([_episode('page', 1, 1), _episode('page', 1, 3)]),
+          'chosen': _Client([_episode('chosen', 1, 1), first, second, _episode('chosen', 1, 3)]),
+        },
+      );
+
+      expect((await title.neighbourOf(first, forward: true, queued: second))?.id, second.id);
+      expect((await title.neighbourOf(second, forward: false, queued: first))?.id, first.id);
     });
 
     test('a queue pointing the wrong way is not followed', () async {

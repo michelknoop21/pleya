@@ -247,6 +247,8 @@ class _CopyWriter {
         if (!isRetryableServerWriteFailure(e)) return WatchMarkOutcome.skipped;
       }
     }
+    // The failed write took time: a row belongs to the profile that marked.
+    if (_profiles?.activeId != _profileId) return WatchMarkOutcome.skipped;
     try {
       await _queue?.markCopy(serverId: id, itemId: copy.id, watched: watched);
     } catch (e, st) {

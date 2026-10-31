@@ -226,12 +226,15 @@ class UnifiedTitlePlayback {
     if (from == null || to == null || isSpecialSeasonNumber(from.season) || isSpecialSeasonNumber(to.season)) {
       return queued;
     }
-    final order = _compareNumbers(to, from);
-    return (forward ? order > 0 : order < 0) ? queued : null;
+    // Plex queues by number, Jellyfin and Emby by air date: either way forward
+    // is a real step. The air date compare also breaks a tie on one number.
+    final byNumber = _compareNumbers(to, from);
+    final byWatchOrder = compareEpisodesByWatchOrder(queued, current);
+    final follows = forward ? byNumber > 0 || byWatchOrder > 0 : byNumber < 0 || byWatchOrder < 0;
+    return follows ? queued : null;
   }
 
-  /// Season, then episode. Not the air date: a queue follows the numbering, and
-  /// two servers can disagree on a date.
+  /// Season, then episode. Not the air date: two servers can disagree on one.
   static int _compareNumbers(EpisodeCoordinate a, EpisodeCoordinate b) =>
       a.season != b.season ? a.season.compareTo(b.season) : a.episode.compareTo(b.episode);
 

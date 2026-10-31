@@ -45,8 +45,9 @@ class UnifiedTitleDiscovery {
   final Duration timeout;
   final Duration serverWait;
 
-  /// Null with fewer than two servers to ask: then there is nothing to find,
-  /// and a single-server viewer never pays for this. [serverWait] is what one
+  /// Null for a single-server viewer, who never pays for this, or when no server
+  /// can answer. The playing server can be the one that is down, so a second
+  /// reachable server is not required here. [serverWait] is what one
   /// server gets: a slow one must not cost the others their write.
   static UnifiedTitleDiscovery? of(BuildContext context, {Duration serverWait = const Duration(seconds: 8)}) {
     final multiServer = context.read<MultiServerProvider?>();
@@ -61,7 +62,7 @@ class UnifiedTitleDiscovery {
       isOnline: manager.isServerOnline,
       authErrorServerIds: manager.authErrorServerIds,
     ).where((s) => isIdentityEligibleBackend(s.backend) && s.online && !s.hasAuthError && s.client != null).toList();
-    if (servers.length < 2) return null;
+    if (multiServer.expectedServerIds.length < 2 || servers.isEmpty) return null;
 
     Future<List<MediaItem>> ask(EligibleSourceServer server, MediaIdentity identity) async {
       final found = <MediaItem>[];
@@ -126,12 +127,19 @@ class UnifiedTitleDiscovery {
     );
 
     final found = await findSources(identity, serverId);
+    // Side by side: one after the other, a few slow servers use up [timeout]
+    // and the fast ones lose their write with them.
+    final candidates = await Future.wait([
+      for (final match in found)
+        if (serverIdOrNull(match.serverId) case final answering? when gate.clientFor(answering) != null)
+          _idsOf(
+            gate.clientFor(answering)!,
+            match.id,
+          ).then((ids) => (server: answering.value, candidate: MediaIdentity.candidate(match, ids))),
+    ]);
     final byServer = <String, List<({MediaItem item, ExternalIds ids})>>{};
-    for (final match in found) {
-      final answering = serverIdOrNull(match.serverId);
-      final other = answering == null ? null : gate.clientFor(answering);
-      if (other == null) continue;
-      (byServer[answering!.value] ??= []).add(MediaIdentity.candidate(match, await _idsOf(other, match.id)));
+    for (final (:server, :candidate) in candidates) {
+      (byServer[server] ??= []).add(candidate);
     }
     // Per server: a guid match on one must not end the search by number on the
     // next, and one film can hold a guid on Plex and a number on Pleya Server.

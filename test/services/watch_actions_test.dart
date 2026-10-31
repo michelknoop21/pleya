@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -145,6 +146,18 @@ class _Profiles extends ChangeNotifier implements ActiveProfileProvider {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _SwitchesThenFails extends _HealthyClient {
+  _SwitchesThenFails(super.id, this.onWrite);
+
+  final VoidCallback onWrite;
+
+  @override
+  Future<void> markWatched(MediaItem item) async {
+    onWrite();
+    throw const SocketException('server went away');
+  }
 }
 
 /// Hands out the real answers, after something changed meanwhile.
@@ -397,6 +410,43 @@ void main() {
       await tester.runAsync(() => WatchActions.setWatched(ctx, _itemOn('a', 'dune'), watched: true));
 
       expect(other.writes, isEmpty);
+    });
+
+    testWidgets('a write that fails after a profile switch leaves no row for the new profile', (tester) async {
+      final profiles = _Profiles('adult');
+      serverManager
+        ..debugRegisterClientForTesting(_HealthyClient('a'))
+        ..debugRegisterClientForTesting(_SwitchesThenFails('b', () => profiles.id = 'kid'));
+      await pumpTree(tester);
+      late BuildContext ctx;
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
+            ChangeNotifierProvider<OfflineModeProvider>.value(value: offlineMode),
+            ChangeNotifierProvider<OfflineWatchProvider>.value(value: offlineWatch),
+            ChangeNotifierProvider<ActiveProfileProvider>.value(value: profiles),
+          ],
+          child: MaterialApp(
+            home: UnifiedTitleScope(
+              title: titleOf([_itemOn('a', 'dune'), _itemOn('b', 'dune')]),
+              child: Builder(
+                builder: (context) {
+                  ctx = context;
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.runAsync(() async {
+        await WatchActions.setWatched(ctx, _itemOn('a', 'dune'), watched: true);
+        await pumpEventQueue();
+      });
+
+      expect(await tester.runAsync(() => db.getLatestWatchAction('b:dune')), isNull);
     });
 
     testWidgets('one mark is one viewing: only the first source reports it', (tester) async {

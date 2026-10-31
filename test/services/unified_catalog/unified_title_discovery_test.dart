@@ -40,6 +40,7 @@ class _Client implements MediaServerClient {
     this.episodes = const [],
     this.matches = const [],
     this.failsIds = false,
+    this.idsDelay = Duration.zero,
     this.hangsLookup = false,
   });
 
@@ -48,6 +49,7 @@ class _Client implements MediaServerClient {
   final List<MediaItem> episodes;
   final List<MediaItem> matches;
   final bool failsIds;
+  final Duration idsDelay;
   final bool hangsLookup;
   final stopped = <String>[];
 
@@ -66,6 +68,7 @@ class _Client implements MediaServerClient {
   @override
   Future<ExternalIds> fetchExternalIds(String itemId) async {
     if (failsIds) throw StateError('server down');
+    await Future<void>.delayed(idsDelay);
     return ids[itemId] ?? const ExternalIds();
   }
 
@@ -186,6 +189,22 @@ void main() {
     ).write(const Duration(minutes: 50), const Duration(hours: 2), watched: false);
 
     expect(other.stopped, ['film-b']);
+  });
+
+  test('the proof of every candidate comes in side by side, inside the overall limit', () async {
+    const wait = Duration(milliseconds: 100);
+    manager
+      ..debugRegisterClientForTesting(_Client('playing', ids: {'film-a': shared}, idsDelay: wait))
+      ..debugRegisterClientForTesting(_Client('b', ids: {'film-b': shared}, idsDelay: wait))
+      ..debugRegisterClientForTesting(_Client('c', ids: {'film-c': shared}, idsDelay: wait));
+    final discovery = discoveryOf([
+      _film('b', 'film-b'),
+      _film('c', 'film-c'),
+    ], timeout: const Duration(milliseconds: 260));
+
+    final title = await discovery.titleOf(_film('playing', 'film-a'));
+
+    expect(title?.sources.map((s) => s.serverId.value), containsAll(['b', 'c']));
   });
 
   test('a same-named title without a shared number is not a copy', () async {
