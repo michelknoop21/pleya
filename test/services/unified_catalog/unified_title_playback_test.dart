@@ -362,6 +362,26 @@ void main() {
       expect(next, isNull);
     });
 
+    test('a children\'s profile does not reach a third server through a group item either', () async {
+      final copy = _episode('third', 1, 1).copyWith(serverId: 'third');
+      final title = _title(
+        [
+          _episode('page', 1, 1).copyWith(serverId: 'page'),
+          _episode('chosen', 1, 1).copyWith(serverId: 'chosen'),
+          copy,
+        ],
+        chosen: 'chosen',
+        page: 'chosen',
+        offline: {'chosen'},
+        restricted: true,
+        clients: {'page': _Client(const []), 'chosen': _Client(const []), 'third': _Client(const [])},
+      );
+
+      final target = await title.targetFor(_episode('page', 1, 1).copyWith(serverId: 'page'));
+
+      expect(target.item.serverId, 'page', reason: 'the third server is out, whatever the group holds');
+    });
+
     test('a restriction that cannot be read counts as a restriction', () async {
       final third = _Client(const []);
       final route = _route([_show('page'), _show('chosen'), _show('third')], chosen: 'chosen', page: 'page');
@@ -535,6 +555,38 @@ void main() {
       expect(next?.globalKey, queued.globalKey);
     });
 
+    test('a queue that stopped on another server does not answer for a borrowed episode', () async {
+      final title = _title(
+        [_show('page'), _show('chosen')],
+        chosen: 'chosen',
+        page: 'page',
+        clients: {
+          'page': _Client([_episode('page', 1, 4), _episode('page', 1, 5)]),
+          'chosen': _Client([_episode('chosen', 1, 4)]),
+        },
+      );
+
+      final next = await title.neighbourOf(on('page', 1, 5), forward: true, queued: on('chosen', 1, 4));
+
+      expect(next, isNull, reason: 'E5 is the last one anywhere, and the queue stands behind it');
+    });
+
+    test('a queue pointing the wrong way is not followed', () async {
+      final title = _title(
+        [_show('page'), _show('chosen')],
+        chosen: 'chosen',
+        page: 'page',
+        clients: {
+          'page': _Client([_episode('page', 1, 1), _episode('page', 1, 2), _episode('page', 1, 3)]),
+          'chosen': _Client([_episode('chosen', 1, 1), _episode('chosen', 1, 2), _episode('chosen', 1, 3)]),
+        },
+      );
+
+      final previous = await title.neighbourOf(on('chosen', 1, 2), forward: false, queued: on('chosen', 1, 3));
+
+      expect(previous?.index, 1);
+    });
+
     test('the previous episode comes from the merged order too', () async {
       final title = _title(
         [_show('page'), _show('chosen')],
@@ -586,6 +638,63 @@ void main() {
       final onDeck = await title.onDeckAcross(null);
 
       expect(onDeck?.globalKey, 'page:ep-page-1-3');
+    });
+
+    test('an episode in progress on the page\'s own source stays: the viewer may be rewatching', () async {
+      final watched = [for (var e = 2; e <= 10; e++) _episode('page', 1, e, viewCount: 1, lastViewedAt: 1000)];
+      final rewatch = _episode('page', 1, 1, viewOffsetMs: 600000, lastViewedAt: 5000, viewCount: 1);
+      final title = _title(
+        [_show('page'), _show('chosen')],
+        chosen: 'chosen',
+        page: 'page',
+        clients: {
+          'page': _Client([rewatch, ...watched, _episode('page', 1, 11)]),
+          'chosen': _Client([_episode('chosen', 1, 1)]),
+        },
+      );
+      final own = rewatch.copyWith(serverId: 'page');
+
+      expect(await title.onDeckAcross(own), same(own));
+    });
+
+    test('another source that is provably newer moves past an episode in progress', () async {
+      final title = _title(
+        [_show('page'), _show('chosen')],
+        chosen: 'chosen',
+        page: 'page',
+        clients: {
+          'page': _Client([
+            _episode('page', 1, 1, viewOffsetMs: 600000, lastViewedAt: 1000),
+            _episode('page', 1, 2),
+            _episode('page', 1, 3),
+          ]),
+          'chosen': _Client([_episode('chosen', 1, 2, viewCount: 1, lastViewedAt: 1000 + 3600)]),
+        },
+      );
+      final own = _episode('page', 1, 1, viewOffsetMs: 600000, lastViewedAt: 1000).copyWith(serverId: 'page');
+
+      final onDeck = await title.onDeckAcross(own);
+
+      expect(onDeck?.globalKey, 'page:ep-page-1-3');
+    });
+
+    test('a position inside the clock margin proves nothing', () async {
+      final title = _title(
+        [_show('page'), _show('chosen')],
+        chosen: 'chosen',
+        page: 'page',
+        clients: {
+          'page': _Client([
+            _episode('page', 1, 1, viewOffsetMs: 600000, lastViewedAt: 1000),
+            _episode('page', 1, 2),
+            _episode('page', 1, 3),
+          ]),
+          'chosen': _Client([_episode('chosen', 1, 2, viewCount: 1, lastViewedAt: 1010)]),
+        },
+      );
+      final own = _episode('page', 1, 1, viewOffsetMs: 600000, lastViewedAt: 1000).copyWith(serverId: 'page');
+
+      expect(await title.onDeckAcross(own), same(own));
     });
 
     test('the page\'s own answer stands when it is further', () async {

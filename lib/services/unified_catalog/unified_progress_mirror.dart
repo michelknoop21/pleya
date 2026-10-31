@@ -22,13 +22,22 @@ import 'unified_title_playback.dart';
 /// waits on it or reaches it. Copies whose runtime differs too much keep their
 /// own state (G7): a position on one cut means nothing on another.
 class UnifiedProgressMirror {
-  UnifiedProgressMirror({required this.title, required this.playing, required this.queue, WatchStateNotifier? notifier})
-    : _notifier = notifier ?? WatchStateNotifier();
+  UnifiedProgressMirror({
+    required UnifiedTitlePlayback title,
+    required MediaItem playing,
+    required OfflineWatchSyncService queue,
+  }) : this.discovering(find: () async => title, playing: playing, queue: queue);
 
-  final UnifiedTitlePlayback title;
+  /// For a play that came without its other sources. [find] runs when the play
+  /// settles and answers once; null leaves the state on the source that plays.
+  UnifiedProgressMirror.discovering({required this.find, required this.playing, required this.queue})
+    : _notifier = WatchStateNotifier();
+
+  final Future<UnifiedTitlePlayback?> Function() find;
   final MediaItem playing;
   final OfflineWatchSyncService queue;
   final WatchStateNotifier _notifier;
+  Future<UnifiedTitlePlayback?>? _found;
 
   /// A [PlaybackSettledCallback]. Never throws and never blocks.
   void report(Duration position, Duration duration, {required bool watched}) {
@@ -40,6 +49,8 @@ class UnifiedProgressMirror {
   }
 
   Future<void> write(Duration position, Duration duration, {required bool watched}) async {
+    final title = await (_found ??= find());
+    if (title == null) return;
     final copies = await title.copiesOf(playing);
     final played = playing.copyWith(durationMs: duration.inMilliseconds);
     var written = 0;

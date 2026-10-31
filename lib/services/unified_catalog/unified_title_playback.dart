@@ -19,6 +19,7 @@ import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_source.dart';
 import '../../media/unified/unified_route_context.dart';
 import '../../media/unified/unified_watch_state.dart';
+import '../../media/watch_progress.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/global_key_utils.dart';
 import 'source_episode_index.dart';
@@ -131,7 +132,7 @@ class UnifiedTitlePlayback {
   /// Reads every source's episode list ahead of a play, so a source that goes
   /// away during it can still be addressed by the queue.
   Future<void> prime() async {
-    if (sources.any((s) => seriesIdOf(s) != null)) await _episodeLists();
+    if (sources.any((s) => seriesIdOf(s) != null)) await _episodeLists(await _sourcesFor(null));
   }
 
   /// Forgets the episode lists: a play changed their watch state.
@@ -158,7 +159,8 @@ class UnifiedTitlePlayback {
     final coordinate = episodeCoordinateOf(requested);
     if (coordinate == null || !holds(requested)) return UnifiedPlayTarget(requested);
 
-    final copies = _copiesAt(coordinate, await _episodeLists(requested: requested));
+    final allowed = await _sourcesFor(requested);
+    final copies = _copiesAt(coordinate, allowed, await _episodeLists(allowed));
     // The item on the page is a copy too, also when its list did not answer.
     if (_mayPlayFrom(requested)) copies.putIfAbsent(requested.globalKey, () => gate.freshen(requested));
     final target = copies.values.firstOrNull ?? requested;
@@ -169,18 +171,24 @@ class UnifiedTitlePlayback {
   /// decides ([queued] is its answer), unless that server is not the chosen
   /// one or lacks the next coordinate: then the merged order of all sources
   /// does, and a play falls back to the chosen source as soon as it can.
+  ///
+  /// A queue only speaks for its own server, and from the item it stands on.
+  /// A borrowed episode is not in the chosen server's queue, so that queue
+  /// still answers from its last own episode: that answer is dropped.
   Future<MediaItem?> neighbourOf(MediaItem current, {required bool forward, MediaItem? queued}) async {
     final coordinate = episodeCoordinateOf(current);
-    if (coordinate == null || !holds(current)) return queued;
+    final own = _queuedFor(current, queued, forward: forward);
+    if (coordinate == null || !holds(current)) return own;
 
-    final lists = await _episodeLists(requested: current);
+    final allowed = await _sourcesFor(current);
+    final lists = await _episodeLists(allowed);
     final merged = <EpisodeCoordinate, MediaItem>{};
     for (final list in lists.values) {
       for (final episode in list.all) {
         merged.putIfAbsent(episodeCoordinateOf(episode)!, () => episode);
       }
     }
-    if (!merged.containsKey(coordinate)) return queued;
+    if (!merged.containsKey(coordinate)) return own;
 
     // A Special only follows a Special: which ones a queue interleaves is the
     // server's own order, and another server's Special is not a gap.
@@ -199,21 +207,35 @@ class UnifiedTitlePlayback {
     final playsChosen = current.serverId == chosen?.serverId.value;
     final chosenList = lists[chosenSourceKey];
     final gap = neighbour != null && chosenList != null && chosenList.at(episodeCoordinateOf(neighbour)!) == null;
-    final pick = queued != null && playsChosen && !gap ? queued : neighbour ?? queued;
+    final pick = own != null && playsChosen && !gap ? own : neighbour ?? own;
     if (pick == null) return null;
 
     final pickAt = episodeCoordinateOf(pick);
     if (pickAt == null) return pick;
-    final carried = _carried(_copiesAt(pickAt, lists), pick);
+    final carried = _carried(_copiesAt(pickAt, allowed, lists), pick);
     return carried == null ? pick : pick.copyWith(viewOffsetMs: carried.inMilliseconds);
   }
 
+  MediaItem? _queuedFor(MediaItem current, MediaItem? queued, {required bool forward}) {
+    if (queued == null) return null;
+    final server = queued.serverId;
+    if (server != null && server != current.serverId) return null;
+    final order = compareEpisodesByWatchOrder(queued, current);
+    return (forward ? order > 0 : order < 0) ? queued : null;
+  }
+
+  /// Whether [key], a queue's context, is this series on one of its sources.
+  /// Series ids differ per server, so the id of the playing item says nothing.
+  bool isSeriesKey(String key) => sources.any((s) => seriesIdOf(s) == key);
+
   /// The episode this series continues at across its sources, given the one
   /// the page's own source reports. A source further along wins: watching on
-  /// one server moves the series on all of them. Returns the page's own copy
-  /// when it has one, so the page keeps talking about its own source.
+  /// one server moves the series on all of them. An episode in progress on the
+  /// page's own source stays, the viewer may be rewatching, unless another
+  /// source proves it is newer. Returns the page's own copy when it has one,
+  /// so the page keeps talking about its own source.
   Future<MediaItem?> onDeckAcross(MediaItem? onDeck) async {
-    final lists = await _episodeLists();
+    final lists = await _episodeLists(await _sourcesFor(null));
     if (lists.isEmpty) return onDeck;
 
     final byCoordinate = <EpisodeCoordinate, Map<String, MediaItem>>{};
@@ -229,16 +251,31 @@ class UnifiedTitlePlayback {
     final lastDone = states.lastIndexWhere((s) => s.isWatched && !s.hasActiveProgress);
 
     final int acrossAt;
+    final int provenAt;
     if (lastStarted > lastDone) {
-      acrossAt = lastStarted;
+      acrossAt = provenAt = lastStarted;
     } else if (lastDone == -1 || lastDone + 1 >= rows.length) {
       return onDeck;
     } else {
       acrossAt = lastDone + 1;
+      provenAt = lastDone;
     }
     final across = rows[acrossAt].values.first;
-    if (onDeck != null && compareEpisodesByWatchOrder(onDeck, across) >= 0) return onDeck;
+    if (onDeck != null) {
+      if (compareEpisodesByWatchOrder(onDeck, across) >= 0) return onDeck;
+      if (gate.freshen(onDeck).hasActiveProgress && !_provablyNewer(states[provenAt], gate.freshen(onDeck))) {
+        return onDeck;
+      }
+    }
     return lists[routeContext.pageSourceKey]?.at(episodeCoordinateOf(across)!) ?? across;
+  }
+
+  /// Whether [state] happened after [item], by more than two clocks can
+  /// disagree on. A missing timestamp proves nothing.
+  bool _provablyNewer(UnifiedWatchState state, MediaItem item) {
+    final at = state.lastViewedAt;
+    final own = item.lastViewedAt;
+    return at != null && own != null && at - own > watchStateReliabilityMargin.inSeconds;
   }
 
   /// [item] on every other source this profile may write to: the targets of a
@@ -307,19 +344,23 @@ class UnifiedTitlePlayback {
     }
   }
 
-  /// The lists a play may use, chosen source first and keyed by source. A
-  /// children's profile keeps to the chosen source, the page's source and the
-  /// server of [requested]. A source other than the chosen one gets
-  /// [secondaryWait]: the play must not stand still on a server it may not
-  /// even need. Its list keeps loading for the next read.
-  Future<Map<String, SourceEpisodes>> _episodeLists({MediaItem? requested}) async {
+  /// The sources a play may use, chosen source first. A children's profile
+  /// keeps to the chosen source, the page's source and the server of
+  /// [requested]: a third server may hold what those hide from this profile.
+  Future<List<UnifiedMediaSource>> _sourcesFor(MediaItem? requested) async {
     final restricted = await _restricted();
-    final allowed = sources.where(gate.mayRead).where((s) {
+    return sources.where(gate.mayRead).where((s) {
       if (!restricted) return true;
       return s.sourceKey == chosenSourceKey ||
           s.sourceKey == routeContext.pageSourceKey ||
           s.serverId.value == requested?.serverId;
     }).toList();
+  }
+
+  /// The lists of [allowed], keyed by source. A source other than the chosen
+  /// one gets [secondaryWait]: the play must not stand still on a server it may
+  /// not even need. Its list keeps loading for the next read.
+  Future<Map<String, SourceEpisodes>> _episodeLists(List<UnifiedMediaSource> allowed) async {
     final read = await Future.wait(
       allowed.map((source) {
         final list = _read(source);
@@ -345,10 +386,14 @@ class UnifiedTitlePlayback {
   /// The copies at [coordinate] in fallback order, keyed by their own key. The
   /// item of an episode group out of Verder kijken counts when its list did
   /// not answer.
-  Map<String, MediaItem> _copiesAt(EpisodeCoordinate coordinate, Map<String, SourceEpisodes> lists) {
+  Map<String, MediaItem> _copiesAt(
+    EpisodeCoordinate coordinate,
+    List<UnifiedMediaSource> allowed,
+    Map<String, SourceEpisodes> lists,
+  ) {
     final copies = <String, MediaItem>{};
-    for (final source in sources) {
-      final direct = episodeCoordinateOf(source.item) == coordinate && gate.mayRead(source) ? source.item : null;
+    for (final source in allowed) {
+      final direct = episodeCoordinateOf(source.item) == coordinate ? source.item : null;
       final copy = lists[source.sourceKey]?.at(coordinate) ?? direct;
       if (copy != null) copies[copy.globalKey] = gate.freshen(copy);
     }

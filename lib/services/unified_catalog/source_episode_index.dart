@@ -49,9 +49,13 @@ class SourceEpisodes {
   Iterable<MediaItem> get all => _byCoordinate.values;
 }
 
-/// The series id of [source]: its own for a series, the parent's for an
-/// episode group out of Verder kijken.
-String? seriesIdOf(UnifiedMediaSource source) => source.item.isShow ? source.item.id : source.item.grandparentId;
+/// The series id of [source]: its own for a series, the parent's for a season,
+/// the grandparent's for an episode group out of Verder kijken.
+String? seriesIdOf(UnifiedMediaSource source) {
+  final item = source.item;
+  if (item.isShow) return item.id;
+  return item.isSeason ? item.parentId : item.grandparentId;
+}
 
 /// Loads and keeps [SourceEpisodes] for the sources of one title.
 ///

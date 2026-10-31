@@ -29,11 +29,8 @@ class UnifiedTitleScope extends InheritedWidget {
   bool updateShouldNotify(UnifiedTitleScope oldWidget) => title != oldWidget.title;
 }
 
-/// The title behind [route], or null when there is nothing to do across
-/// sources: one source, or a route built without its group. Reads its gate
-/// from the live providers, so it holds under a profile's own rights.
-UnifiedTitlePlayback? unifiedTitleFor(BuildContext context, UnifiedMediaRouteContext? route) {
-  if (route == null || !route.hasAlternativeSources || route.titleSources.length < 2) return null;
+/// What this profile may do with its servers, from the live providers.
+UnifiedSourceGate? unifiedSourceGateOf(BuildContext context) {
   final multiServer = context.read<MultiServerProvider?>();
   if (multiServer == null) return null;
   final manager = multiServer.serverManager;
@@ -42,17 +39,23 @@ UnifiedTitlePlayback? unifiedTitleFor(BuildContext context, UnifiedMediaRouteCon
   final watchState = context.read<WatchStateStore?>();
   MediaItem Function(MediaItem)? fresh;
   if (watchState != null) fresh = watchState.apply;
-  return UnifiedTitlePlayback(
-    routeContext: route,
-    sources: route.titleSources,
-    gate: UnifiedSourceGate(
-      clientFor: manager.getClient,
-      isOnline: manager.isServerOnline,
-      isAuthRejected: (serverId) => manager.authErrorServerIds.contains(serverId.value),
-      isVisible: manager.isServerVisible,
-      hiddenLibraryKeys: () => hiddenLibraries?.hiddenLibraryKeys ?? const {},
-      isRestrictedProfile: () => assistantIsKidsProfile(profiles?.active),
-      fresh: fresh,
-    ),
+  return UnifiedSourceGate(
+    clientFor: manager.getClient,
+    isOnline: manager.isServerOnline,
+    isAuthRejected: (serverId) => manager.authErrorServerIds.contains(serverId.value),
+    isVisible: manager.isServerVisible,
+    hiddenLibraryKeys: () => hiddenLibraries?.hiddenLibraryKeys ?? const {},
+    isRestrictedProfile: () => assistantIsKidsProfile(profiles?.active),
+    fresh: fresh,
   );
+}
+
+/// The title behind [route], or null when there is nothing to do across
+/// sources: one source, or a route built without its group. Reads its gate
+/// from the live providers, so it holds under a profile's own rights.
+UnifiedTitlePlayback? unifiedTitleFor(BuildContext context, UnifiedMediaRouteContext? route) {
+  if (route == null || !route.hasAlternativeSources || route.titleSources.length < 2) return null;
+  final gate = unifiedSourceGateOf(context);
+  if (gate == null) return null;
+  return UnifiedTitlePlayback(routeContext: route, sources: route.titleSources, gate: gate);
 }
