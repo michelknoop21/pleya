@@ -66,6 +66,16 @@ abstract final class TvDetailLayout {
   static const double techLabelHeight = 40;
   static const double techLabelGap = 16;
 
+  /// Two thirds of the row. The labels take their own width up to here, and
+  /// the activity line beside them everything that is left.
+  static const double techLabelsMaxWidth = 1130;
+
+  // The activity line (06). The small overlap leaves two initials readable.
+  static const double activityAvatarSize = 54;
+  static const double activityAvatarRing = 2;
+  static const double activityAvatarOverlap = 8;
+  static const double activityTextGap = 16;
+
   static const double sectionHeadingGap = 24;
   static const double sectionGap = 56;
   static const double cardGutter = 32;

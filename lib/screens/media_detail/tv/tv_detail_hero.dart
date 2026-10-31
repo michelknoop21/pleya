@@ -110,7 +110,7 @@ extension _MediaDetailTvHero on _MediaDetailScreenState {
   List<Widget> _buildTvDetailActivityRow(List<({IconData? icon, String text})> techLabels) {
     final pt = TvHig.of(context);
     final serverId = serverIdOrNull(_metadata.serverId);
-    final watchers = _watchers;
+    final watchers = _tvDetailActivity();
     final stats = _watchStats;
     final hasWatchers = watchers?.watchers.isNotEmpty ?? false;
     final hasStats = stats?.isNotEmpty ?? false;
@@ -131,10 +131,20 @@ extension _MediaDetailTvHero on _MediaDetailScreenState {
                 NowWatchingLine(ratingKey: _metadata.id, serverId: serverId),
                 if (hasWatchers) ...[
                   SizedBox(height: 8 * pt),
-                  WatchedByRow(
-                    watchers: watchers!.watchers,
-                    scope: watchers.scope,
-                    avatarSize: TvDetailLayout.actionSize * pt * 0.75,
+                  AutomationNode(
+                    id: AutomationIds.mediaDetailActivity,
+                    role: 'text',
+                    state: () => {'names': watchers.watchers.length},
+                    child: WatchedByRow(
+                      watchers: watchers!.watchers,
+                      scope: watchers.scope,
+                      avatarSize: TvDetailLayout.activityAvatarSize * pt,
+                      avatarOverlap: TvDetailLayout.activityAvatarOverlap * pt,
+                      textGap: TvDetailLayout.activityTextGap * pt,
+                      ringWidth: TvDetailLayout.activityAvatarRing * pt,
+                      maxLines: 1,
+                      textStyle: TextStyle(color: tokens(context).textMuted, fontSize: TvHig.caption2 * pt),
+                    ),
                   ),
                 ],
                 if (hasStats) ...[SizedBox(height: 8 * pt), WatchStatsRow(stats: stats!)],
@@ -143,7 +153,10 @@ extension _MediaDetailTvHero on _MediaDetailScreenState {
           ),
           if (techLabels.isNotEmpty) ...[
             SizedBox(width: 24 * pt),
-            Expanded(flex: 2, child: TvDetailTechLabels(labels: techLabels)),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: TvDetailLayout.techLabelsMaxWidth * pt),
+              child: TvDetailTechLabels(labels: techLabels),
+            ),
           ],
         ],
       ),

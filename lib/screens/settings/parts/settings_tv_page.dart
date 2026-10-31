@@ -63,6 +63,7 @@ extension _SettingsTvPage on _SettingsScreenState {
     // section, so a child cannot turn on what would not show anyway.
     final discussionsSwitch =
         TraktCommentsClient.shared.isConfigured && !(context.watch<TraktAccountProvider?>()?.isKidsProfile ?? true);
+    final sharing = _syncActivitySharing(servers);
 
     // A settings subpage opens inside the shell. `SettingsScreen` is itself a
     // nested route already (`tvMyPleyaNestedRoute`), so pushing its own
@@ -235,7 +236,7 @@ extension _SettingsTvPage on _SettingsScreenState {
             icon: Symbols.settings_rounded,
             body: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: _tvAdvancedGroups(open, rows, discussionsSwitch),
+              children: _tvAdvancedGroups(open, rows, discussionsSwitch, sharing),
             ),
           ),
         ];
@@ -266,16 +267,19 @@ extension _SettingsTvPage on _SettingsScreenState {
     void Function(String id, WidgetBuilder builder) open,
     TvSettingsRowList Function(List<TvMenuItem>) rows,
     bool discussionsSwitch,
+    List<ActivitySharingController> sharing,
   ) => [
-    if (discussionsSwitch) ...[
+    if (discussionsSwitch || sharing.isNotEmpty) ...[
       SettingsSectionHeader(t.settings.privacy),
       rows([
-        _tvToggle(
-          key: _SettingsScreenState._kTraktDiscussions,
-          icon: Symbols.forum_rounded,
-          title: t.settings.showTraktDiscussions,
-          pref: settings.SettingsService.showTraktDiscussions,
-        ),
+        for (final controller in sharing) _tvActivitySharingItem(controller),
+        if (discussionsSwitch)
+          _tvToggle(
+            key: _SettingsScreenState._kTraktDiscussions,
+            icon: Symbols.forum_rounded,
+            title: t.settings.showTraktDiscussions,
+            pref: settings.SettingsService.showTraktDiscussions,
+          ),
       ]),
     ],
     SettingsSectionHeader(t.settingsStudio.diagnostics),

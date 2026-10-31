@@ -51,6 +51,27 @@ class ItemWatchersService {
     return (watchers: const <ItemWatcher>[], scope: ItemWatchersScope.watched);
   }
 
+  /// The line of a backend without an owner-only history: what [household] says,
+  /// with the viewer in front when their own watch state says so and the list
+  /// does not. A server only counts playback, so someone who marked a title as
+  /// watched is not on its list.
+  ItemWatchers activityLine(MediaItem item, {List<ItemWatcher> household = const [], required String selfName}) {
+    final addSelf = _hasOwnActivity(item) && !household.any((w) => w.isSelf);
+    return (
+      watchers: [
+        if (addSelf) ItemWatcher(id: 'self', displayName: selfName, isSelf: true),
+        ...household,
+      ],
+      scope: ItemWatchersScope.activity,
+    );
+  }
+
+  static bool _hasOwnActivity(MediaItem item) {
+    if ((item.viewedLeafCount ?? 0) > 0) return true;
+    if (item.leafCount != null) return false;
+    return item.isWatched || item.hasActiveProgress;
+  }
+
   /// Null when Tautulli could not answer, so the caller can still try Plex.
   Future<ItemWatchers?> _fromTautulli(TautulliClient client, MediaItem metadata, int? selfId) async {
     try {

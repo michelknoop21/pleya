@@ -201,6 +201,9 @@ ids:
   - id: media-detail.tab
     role: chip
     instanceable: true
+  - id: media-detail.activity
+    role: text
+    instanceable: false
   - id: media-detail.play
     role: button
     instanceable: false

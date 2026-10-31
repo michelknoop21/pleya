@@ -11,7 +11,8 @@ target: tvos-sim
 #   4. the sections arrive on approach: the rows under Cast & Crew exist only
 #      after the page got near them;
 #   5. back is Menu, not a drawn arrow: the ring lands on the card that opened
-#      the page.
+#      the page;
+#   6. the activity line says who, under capabilities.item_activity (06).
 # The scores, reviews, portraits, extras and rows the Pleya wire has no field
 # for come from the fixture's /verify/detail route, which only a Verify build
 # asks (lib/services/pleya_server_client/parts/verify_detail.dart).
@@ -40,6 +41,8 @@ steps:
   - assert: {id: "media-detail.action[watched]", insideViewport: true}
   - assert: {id: "media-detail.action[more]", insideViewport: true}
   - assert: {id: "media-detail.section[cast]", state: {child_count: 8}}
+  - wait_until: {id: media-detail.activity, state: {names: 4}, timeout: 5000}
+  - assert: {id: media-detail.activity, insideViewport: true}
   - snapshot: 06-hero
 
   - press: down

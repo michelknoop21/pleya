@@ -50,6 +50,18 @@ List<Map<String, Object?>> _traktReactions(String title) => [
   _traktComment(5, 'tagged', 'Good film. [spoiler]She loses her memory.[/spoiler]', likes: 80),
 ];
 
+/// One line of `ItemActivity`. [userId] and the username are the same word, so
+/// a scenario can read the fixture.
+Map<String, dynamic> _activityEntry(String username, String initials, {bool self = false, int completed = 1}) => {
+  'user_id': 'user-$username',
+  'username': username,
+  'initials': initials,
+  'is_self': self,
+  'last_watched_at': '2026-10-29T20:42:00Z',
+  'play_count': 2,
+  'completed_items': completed,
+};
+
 /// Eight people, seven with a portrait. The poster of a studio film stands in
 /// for the photo; the last one has none, so the initials stay on the path.
 List<Map<String, dynamic>> _detailCast(PleyaFakeServer server, List<(String, String)> people) {
@@ -94,6 +106,13 @@ void _applyCatalogDetailMovieV1(PleyaFakeServer server) {
       {'name': 'Pierre Bokma', 'role': 'actor', 'character': 'Trader'},
       {'name': 'Jeroen Krabbe', 'role': 'actor', 'character': 'Narrator'},
     ];
+  server.itemActivityCapability = true;
+  server.itemActivityByItem[id] = [
+    _activityEntry('verify-owner', 'VO', self: true, completed: 0),
+    _activityEntry('omarf753', 'O'),
+    _activityEntry('lotte', 'L'),
+    _activityEntry('sam', 'S', completed: 0),
+  ];
   (server.items[id]!['versions'] as List).first
     ..['video_streams'] = const [
       {'id': 'v0', 'index': 0, 'codec': 'hevc', 'profile': 'Main 10', 'width': 3840, 'height': 2160, 'bit_depth': 10},
@@ -184,6 +203,12 @@ void _applyCatalogDetailSeriesV1(PleyaFakeServer server) {
     genres: const ['Crime', 'Drama'],
     contentRating: '16',
   );
+  server.itemActivityCapability = true;
+  server.itemActivityByItem[showId] = [
+    _activityEntry('verify-owner', 'VO', self: true, completed: 6),
+    _activityEntry('omarf753', 'O', completed: 3),
+    _activityEntry('sam', 'S', completed: 1),
+  ];
   server.items[showId]!
     ..['duration_ms'] = 3000000
     ..['versions'] = const <Map<String, dynamic>>[]
@@ -257,6 +282,10 @@ void _applyCatalogDetailSeriesV1(PleyaFakeServer server) {
     server.artworkById[seasonId] = server.artworkById[films[season.poster]]!;
     server.artworkById['$seasonId-backdrop'] = server.artworkById['${films[season.poster]}-backdrop']!;
     final watched = season.number == 1 ? 4 : 2;
+    server.itemActivityByItem[seasonId] = [
+      _activityEntry('verify-owner', 'VO', self: true, completed: watched),
+      if (season.number == 2) _activityEntry('omarf753', 'O', completed: 1),
+    ];
     server.addItem(
       id: seasonId,
       kind: 'season',

@@ -209,6 +209,10 @@ class AutomationIds {
   /// `[episodes]` or `[<season index>]`.
   static const String mediaDetailTab = 'media-detail.tab';
 
+  /// Who watched this, on TV. Its state carries `names`, how many people the
+  /// sentence stands for, so a scenario can tell the line from an empty one.
+  static const String mediaDetailActivity = 'media-detail.activity';
+
   /// The play button in the media-detail action row. On TV the page opens
   /// with the ring here, and Menu from the detail rail comes back to it.
   static const String mediaDetailPlay = 'media-detail.play';
@@ -971,6 +975,7 @@ class AutomationIds {
     {'id': mediaDetailEpisodeListItem, 'role': 'list.item', 'instanceable': true},
     {'id': mediaDetailTabs, 'role': 'list', 'instanceable': false},
     {'id': mediaDetailTab, 'role': 'chip', 'instanceable': true},
+    {'id': mediaDetailActivity, 'role': 'text', 'instanceable': false},
     {'id': mediaDetailPlay, 'role': 'button', 'instanceable': false},
     {'id': noticeBusy, 'role': 'status', 'instanceable': true},
     {'id': serverStatus, 'role': 'dialog', 'instanceable': false},

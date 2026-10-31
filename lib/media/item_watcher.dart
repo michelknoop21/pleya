@@ -28,6 +28,10 @@ class ItemWatcher {
   /// Whether this is the signed-in user, shown as "You".
   final bool isSelf;
 
+  /// What the avatar says when the source chose it, as a Pleya Server does: its
+  /// protocol has no avatar. Null lets the avatar take the first letter.
+  final String? initials;
+
   const ItemWatcher({
     required this.id,
     required this.displayName,
@@ -35,6 +39,7 @@ class ItemWatcher {
     this.viewedAt,
     this.plays = 0,
     this.isSelf = false,
+    this.initials,
   });
 
   /// Most recent first where a timestamp exists, most plays first otherwise.
@@ -57,6 +62,10 @@ enum ItemWatchersScope {
 
   /// Everyone with plays in this series, finished or not.
   watchingSeries,
+
+  /// Everyone who played any of it. A Pleya Server counts a started title as
+  /// much as a finished one, and a watch state says no more than that either.
+  activity,
 }
 
 /// A resolved watcher list plus the claim it supports.

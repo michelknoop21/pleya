@@ -470,6 +470,21 @@ class TranslationsSettingsEn {
 	/// en: 'Show discussions from Trakt'
 	String get showTraktDiscussions => 'Show discussions from Trakt';
 
+	/// en: 'Share my activity'
+	String get shareActivity => 'Share my activity';
+
+	/// en: 'Others in the household see what you watched'
+	String get shareActivityDescription => 'Others in the household see what you watched';
+
+	/// en: 'Share my activity on ${server}'
+	String shareActivityServer({required Object server}) => 'Share my activity on ${server}';
+
+	/// en: 'Could not save this. Nothing changed.'
+	String get shareActivitySaveFailed => 'Could not save this. Nothing changed.';
+
+	/// en: 'Could not read this setting. Press to try again.'
+	String get shareActivityUnreadable => 'Could not read this setting. Press to try again.';
+
 	/// en: 'Search settings'
 	String get searchHint => 'Search settings';
 
@@ -2651,6 +2666,12 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Watching this show: ${names}'
 	String watchingSeriesBy({required Object names}) => 'Watching this show: ${names}';
+
+	/// en: 'Activity by ${names}'
+	String activityBy({required Object names}) => 'Activity by ${names}';
+
+	/// en: 'you'
+	String get activityByYou => 'you';
 
 	/// en: 'Played ${count}×'
 	String activityPlays({required Object count}) => 'Played ${count}×';
@@ -10420,6 +10441,11 @@ extension on Translations {
 			'update.checkFailed' => 'Failed to check for updates',
 			'settings.privacy' => 'Privacy',
 			'settings.showTraktDiscussions' => 'Show discussions from Trakt',
+			'settings.shareActivity' => 'Share my activity',
+			'settings.shareActivityDescription' => 'Others in the household see what you watched',
+			'settings.shareActivityServer' => ({required Object server}) => 'Share my activity on ${server}',
+			'settings.shareActivitySaveFailed' => 'Could not save this. Nothing changed.',
+			'settings.shareActivityUnreadable' => 'Could not read this setting. Press to try again.',
 			'settings.searchHint' => 'Search settings',
 			'settings.urlLabel' => 'URL',
 			'settings.title' => 'Settings',
@@ -10828,13 +10854,13 @@ extension on Translations {
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
 			'videoControls.playsLater' => ({required Object label}) => '${label} plays later',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.playsEarlier' => ({required Object label}) => '${label} plays earlier',
 			'videoControls.noOffset' => 'No offset',
 			'videoControls.letterbox' => 'Letterbox',
 			'videoControls.fillScreen' => 'Fill screen',
 			'videoControls.stretch' => 'Stretch',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.lockRotation' => 'Lock rotation',
 			'videoControls.unlockRotation' => 'Unlock rotation',
 			'videoControls.timerActive' => 'Timer Active',
@@ -11179,6 +11205,8 @@ extension on Translations {
 			'discover.statsWatchTime' => ({required Object duration}) => '${duration} watched',
 			'discover.statsRecent' => ({required Object count}) => '${count} in the last 30 days',
 			'discover.watchingSeriesBy' => ({required Object names}) => 'Watching this show: ${names}',
+			'discover.activityBy' => ({required Object names}) => 'Activity by ${names}',
+			'discover.activityByYou' => 'you',
 			'discover.activityPlays' => ({required Object count}) => 'Played ${count}×',
 			'discover.activityViewers' => ({required Object count}) => '${count} viewers',
 			'discover.activityOwnProgress' => ({required Object season, required Object episode}) => 'You\'re at S${season} E${episode}',
@@ -11340,6 +11368,8 @@ extension on Translations {
 			'about.tmdbAttribution' => 'This product uses the TMDB API but is not endorsed or certified by TMDB.',
 			'about.wikidataSource' => 'Wikidata (CC0): age rating (MPA) of films for Big P.',
 			'about.tvmazeSource' => 'TVmaze (CC BY-SA): genres, runtime and score of series for Big P.',
+			_ => null,
+		} ?? switch (path) {
 			'about.traktSource' => 'Trakt: age rating, genres, runtime and score for Big P.',
 			'serverSelection.allServerConnectionsFailed' => 'Couldn\'t connect to any servers. Check your network.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'No servers found for ${username} (${email})',
@@ -11347,8 +11377,6 @@ extension on Translations {
 			'serverSelection.noServersFoundDescription' => 'Your Plex account doesn\'t have access to any servers yet. Ask the server owner to share their library with you, or connect a Jellyfin server instead.',
 			'serverSelection.noServersFoundTryJellyfin' => 'Connect a Jellyfin server',
 			'serverSelection.noServersFoundRetryPlex' => 'Try a different Plex account',
-			_ => null,
-		} ?? switch (path) {
 			'serverSelection.failedToLoadServers' => 'Failed to load servers',
 			'serverSelection.failedToLoadServersDescription' => 'Something went wrong while loading your servers. Check your internet connection and try again.',
 			'serverSelection.networkErrorTitle' => 'Can\'t reach the server',
@@ -11854,6 +11882,8 @@ extension on Translations {
 			'externalPlayer.appNotInstalled' => ({required Object name}) => '${name} is not installed',
 			'externalPlayer.playInExternalPlayer' => 'Play in External Player',
 			'metadataEdit.editMetadata' => 'Edit...',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.screenTitle' => 'Edit Metadata',
 			'metadataEdit.basicInfo' => 'Basic Info',
 			'metadataEdit.artwork' => 'Artwork',
@@ -11861,8 +11891,6 @@ extension on Translations {
 			'metadataEdit.title' => 'Title',
 			'metadataEdit.sortTitle' => 'Sort Title',
 			'metadataEdit.originalTitle' => 'Original Title',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.releaseDate' => 'Release Date',
 			'metadataEdit.contentRating' => 'Content Rating',
 			'metadataEdit.studio' => 'Studio',
@@ -12368,6 +12396,8 @@ extension on Translations {
 			'unifiedCatalog.rail.sources' => 'Sources',
 			'unifiedCatalog.rail.noFilters' => 'None',
 			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} active',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.filters.title' => 'Filters',
 			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count} active',
 			'unifiedCatalog.filters.status' => 'Status',
@@ -12375,8 +12405,6 @@ extension on Translations {
 			'unifiedCatalog.filters.year' => 'Year',
 			'unifiedCatalog.filters.contentRating' => 'Age rating',
 			'unifiedCatalog.filters.servers' => 'Servers',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.filters.libraries' => 'Libraries',
 			'unifiedCatalog.filters.apply' => 'Apply',
 			'unifiedCatalog.filters.clearAll' => 'Clear all',
@@ -12882,6 +12910,8 @@ extension on Translations {
 			'assistant.steps.createUser' => 'Creating user',
 			'assistant.steps.setUserLibraryAccess' => 'Setting library access',
 			'assistant.steps.removeUser' => 'Removing user',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.steps.searchCatalog' => 'Searching the catalog',
 			'assistant.steps.createHomeRow' => 'Creating home row',
 			'assistant.steps.createCollection' => 'Creating collection',
@@ -12889,8 +12919,6 @@ extension on Translations {
 			'assistant.steps.watchStats' => 'Fetching watch statistics',
 			'assistant.steps.myWatching' => 'Checking what you watched',
 			'assistant.steps.traktWatchlist' => 'Checking your Trakt watchlist',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.steps.recommendTogether' => 'Matching what you both like',
 			'assistant.steps.requestStatus' => 'Checking request status',
 			'assistant.steps.diagnosePlayback' => 'Diagnosing playback',

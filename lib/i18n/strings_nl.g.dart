@@ -270,6 +270,11 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	// Translations
 	@override String get privacy => 'Privacy';
 	@override String get showTraktDiscussions => 'Discussies van Trakt tonen';
+	@override String get shareActivity => 'Mijn activiteit delen';
+	@override String get shareActivityDescription => 'Anderen in het huishouden zien wat jij keek';
+	@override String shareActivityServer({required Object server}) => 'Mijn activiteit delen op ${server}';
+	@override String get shareActivitySaveFailed => 'Opslaan lukte niet. Er is niets gewijzigd.';
+	@override String get shareActivityUnreadable => 'Deze instelling is niet te lezen. Druk om het opnieuw te proberen.';
 	@override String get searchHint => 'Zoek in instellingen';
 	@override String get urlLabel => 'URL';
 	@override String get title => 'Instellingen';
@@ -1104,6 +1109,8 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String statsWatchTime({required Object duration}) => '${duration} bekeken';
 	@override String statsRecent({required Object count}) => '${count} in de laatste 30 dagen';
 	@override String watchingSeriesBy({required Object names}) => 'Kijken deze serie: ${names}';
+	@override String activityBy({required Object names}) => 'Activiteit van ${names}';
+	@override String get activityByYou => 'jou';
 	@override String activityPlays({required Object count}) => '${count}× afgespeeld';
 	@override String activityViewers({required Object count}) => '${count} kijkers';
 	@override String activityOwnProgress({required Object season, required Object episode}) => 'Jij bent bij S${season} A${episode}';
@@ -4645,6 +4652,11 @@ extension on TranslationsNl {
 			'update.checkFailed' => 'Kon niet controleren op updates',
 			'settings.privacy' => 'Privacy',
 			'settings.showTraktDiscussions' => 'Discussies van Trakt tonen',
+			'settings.shareActivity' => 'Mijn activiteit delen',
+			'settings.shareActivityDescription' => 'Anderen in het huishouden zien wat jij keek',
+			'settings.shareActivityServer' => ({required Object server}) => 'Mijn activiteit delen op ${server}',
+			'settings.shareActivitySaveFailed' => 'Opslaan lukte niet. Er is niets gewijzigd.',
+			'settings.shareActivityUnreadable' => 'Deze instelling is niet te lezen. Druk om het opnieuw te proberen.',
 			'settings.searchHint' => 'Zoek in instellingen',
 			'settings.urlLabel' => 'URL',
 			'settings.title' => 'Instellingen',
@@ -5053,13 +5065,13 @@ extension on TranslationsNl {
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
 			'videoControls.playsLater' => ({required Object label}) => '${label} speelt later af',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.playsEarlier' => ({required Object label}) => '${label} speelt eerder af',
 			'videoControls.noOffset' => 'Geen offset',
 			'videoControls.letterbox' => 'Letterbox',
 			'videoControls.fillScreen' => 'Vul scherm',
 			'videoControls.stretch' => 'Uitrekken',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.lockRotation' => 'Vergrendel rotatie',
 			'videoControls.unlockRotation' => 'Ontgrendel rotatie',
 			'videoControls.timerActive' => 'Timer actief',
@@ -5404,6 +5416,8 @@ extension on TranslationsNl {
 			'discover.statsWatchTime' => ({required Object duration}) => '${duration} bekeken',
 			'discover.statsRecent' => ({required Object count}) => '${count} in de laatste 30 dagen',
 			'discover.watchingSeriesBy' => ({required Object names}) => 'Kijken deze serie: ${names}',
+			'discover.activityBy' => ({required Object names}) => 'Activiteit van ${names}',
+			'discover.activityByYou' => 'jou',
 			'discover.activityPlays' => ({required Object count}) => '${count}× afgespeeld',
 			'discover.activityViewers' => ({required Object count}) => '${count} kijkers',
 			'discover.activityOwnProgress' => ({required Object season, required Object episode}) => 'Jij bent bij S${season} A${episode}',
@@ -5565,6 +5579,8 @@ extension on TranslationsNl {
 			'about.tmdbAttribution' => 'This product uses the TMDB API but is not endorsed or certified by TMDB.',
 			'about.wikidataSource' => 'Wikidata (CC0): leeftijdsclassificatie (MPA) van films voor Big P.',
 			'about.tvmazeSource' => 'TVmaze (CC BY-SA): genres, speelduur en score van series voor Big P.',
+			_ => null,
+		} ?? switch (path) {
 			'about.traktSource' => 'Trakt: leeftijdsclassificatie, genres, speelduur en score voor Big P.',
 			'serverSelection.allServerConnectionsFailed' => 'Kon met geen enkele server verbinden. Controleer je netwerk.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'Geen servers gevonden voor ${username} (${email})',
@@ -5572,8 +5588,6 @@ extension on TranslationsNl {
 			'serverSelection.noServersFoundDescription' => 'Je Plex-account heeft nog geen toegang tot servers. Vraag de server-eigenaar om zijn bibliotheek met je te delen, of verbind in plaats daarvan een Jellyfin-server.',
 			'serverSelection.noServersFoundTryJellyfin' => 'Verbind een Jellyfin-server',
 			'serverSelection.noServersFoundRetryPlex' => 'Probeer een ander Plex-account',
-			_ => null,
-		} ?? switch (path) {
 			'serverSelection.failedToLoadServers' => 'Kon servers niet laden',
 			'serverSelection.failedToLoadServersDescription' => 'Er ging iets mis bij het laden van je servers. Controleer je internetverbinding en probeer opnieuw.',
 			'serverSelection.networkErrorTitle' => 'Kan de server niet bereiken',
@@ -6079,6 +6093,8 @@ extension on TranslationsNl {
 			'externalPlayer.appNotInstalled' => ({required Object name}) => '${name} is niet geïnstalleerd',
 			'externalPlayer.playInExternalPlayer' => 'Afspelen in externe speler',
 			'metadataEdit.editMetadata' => 'Bewerken...',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.screenTitle' => 'Metadata bewerken',
 			'metadataEdit.basicInfo' => 'Basisinformatie',
 			'metadataEdit.artwork' => 'Artwork',
@@ -6086,8 +6102,6 @@ extension on TranslationsNl {
 			'metadataEdit.title' => 'Titel',
 			'metadataEdit.sortTitle' => 'Sorteertitel',
 			'metadataEdit.originalTitle' => 'Oorspronkelijke titel',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.releaseDate' => 'Releasedatum',
 			'metadataEdit.contentRating' => 'Leeftijdsclassificatie',
 			'metadataEdit.studio' => 'Studio',
@@ -6593,6 +6607,8 @@ extension on TranslationsNl {
 			'unifiedCatalog.rail.sources' => 'Bronnen',
 			'unifiedCatalog.rail.noFilters' => 'Geen',
 			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} actief',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.filters.title' => 'Filters',
 			'unifiedCatalog.filters.status' => 'Status',
 			'unifiedCatalog.filters.genre' => 'Genre',
@@ -6600,8 +6616,6 @@ extension on TranslationsNl {
 			'unifiedCatalog.filters.contentRating' => 'Leeftijd',
 			'unifiedCatalog.filters.servers' => 'Servers',
 			'unifiedCatalog.filters.libraries' => 'Bibliotheken',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.filters.apply' => 'Toepassen',
 			'unifiedCatalog.filters.clearAll' => 'Alles wissen',
 			'unifiedCatalog.filters.all' => 'Alle',
@@ -7107,6 +7121,8 @@ extension on TranslationsNl {
 			'assistant.steps.createUser' => 'Gebruiker aanmaken',
 			'assistant.steps.setUserLibraryAccess' => 'Toegang instellen',
 			'assistant.steps.removeUser' => 'Gebruiker verwijderen',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.steps.searchCatalog' => 'Catalogus doorzoeken',
 			'assistant.steps.createHomeRow' => 'Rij op het beginscherm maken',
 			'assistant.steps.createCollection' => 'Collectie maken',
@@ -7114,8 +7130,6 @@ extension on TranslationsNl {
 			'assistant.steps.watchStats' => 'Kijkcijfers ophalen',
 			'assistant.steps.myWatching' => 'Jouw kijkgeschiedenis bekijken',
 			'assistant.steps.traktWatchlist' => 'Jouw Trakt-watchlist bekijken',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.steps.recommendTogether' => 'Zoeken wat jullie allebei leuk vinden',
 			'assistant.steps.requestStatus' => 'Status van aanvragen bekijken',
 			'assistant.steps.diagnosePlayback' => 'Afspelen onderzoeken',

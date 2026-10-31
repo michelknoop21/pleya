@@ -39,6 +39,38 @@ void main() {
       }
     });
 
+    test('the film, the series and each season have their own activity, and a reset clears it', () async {
+      final server = PleyaFakeServer();
+      applyNamedFixture(server, 'catalog.detail-series.v1');
+
+      Future<List<dynamic>> names(String key) async {
+        final id = server.seededIds[key]!;
+        final json = jsonDecode((await _get(server, '/items/$id/activity')).body) as Map<String, dynamic>;
+        return [for (final entry in json['items'] as List) entry['username']];
+      }
+
+      expect(await names('show/charge'), ['verify-owner', 'omarf753', 'sam']);
+      expect(await names('season/charge-s01'), ['verify-owner']);
+      expect(await names('season/charge-s02'), ['verify-owner', 'omarf753']);
+
+      applyNamedFixture(server, 'catalog.empty.v1');
+      expect(server.itemActivityByItem, isEmpty);
+    });
+
+    test('the opt-out answers and takes a write under the flag, and is gone without it', () async {
+      final server = PleyaFakeServer()..itemActivityCapability = true;
+      final put = http.Request('PUT', Uri.parse('http://fixture/pleya/v1/users/me/activity-sharing'))
+        ..headers['Authorization'] = 'Bearer at-0'
+        ..body = '{"share_activity":false}';
+
+      expect(jsonDecode((await server.handle(put)).body), {'share_activity': false});
+      expect(jsonDecode((await _get(server, '/users/me/activity-sharing')).body), {'share_activity': false});
+      expect(server.activitySharingWrites, [false]);
+
+      server.itemActivityCapability = false;
+      expect((await _get(server, '/users/me/activity-sharing')).statusCode, 404);
+    });
+
     test('a catalog seed clears it', () {
       final server = PleyaFakeServer();
       applyNamedFixture(server, 'catalog.detail-movie.v1');

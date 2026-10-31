@@ -180,6 +180,7 @@ import '../widgets/scroll_crown/scroll_crown.dart';
 part 'media_detail/action_buttons.dart';
 part 'media_detail/audio_selector.dart';
 part 'media_detail/detail_actions.dart';
+part 'media_detail/detail_household_activity.dart';
 part 'media_detail/mobile_detail_info.dart';
 part 'media_detail/mobile_detail_view.dart';
 part 'media_detail/mobile_episodes_section.dart';
@@ -359,6 +360,11 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   bool _showEpisodesDirectly = false;
   MediaItem? _fullMetadata;
   ItemWatchers? _watchers;
+
+  /// What the server said per item: the page's own, and each season tab that
+  /// opened. An id in [_householdActivityAsked] is on its way or already here.
+  final Map<String, List<ItemWatcher>> _householdActivity = {};
+  final Set<String> _householdActivityAsked = {};
   MediaWatchStats? _watchStats;
   MediaItem? _onDeckEpisode;
   bool _isLoadingMetadata = true;
@@ -2253,6 +2259,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   /// non-owned servers.
   Future<void> _loadWatchers() async {
     if (widget.isOffline) return;
+    if (_readsHouseholdActivity) return _loadHouseholdActivity(_metadata);
     if (!_metadata.isMovie && !_metadata.isShow) return;
 
     final serverId = serverIdOrNull(_metadata.serverId);

@@ -138,6 +138,11 @@ class ServerCapabilities {
   /// such route.
   final bool itemActivity;
 
+  /// The detail page may say that the viewer watched something, on the strength
+  /// of the item's own watch state. Plex stays out: its row comes from the
+  /// server's history and only an owner gets one.
+  final bool ownActivityLine;
+
   const ServerCapabilities({
     this.serverSidePlayQueue = false,
     this.serverSidePlaylists = false,
@@ -162,6 +167,7 @@ class ServerCapabilities {
     this.serverFavorites = false,
     this.folderGrouping = false,
     this.itemActivity = false,
+    this.ownActivityLine = false,
   });
 
   /// Defaults for a fully-featured Plex server.
@@ -222,6 +228,7 @@ class ServerCapabilities {
     scrubThumbnails: true,
     serverFavorites: true,
     folderGrouping: true,
+    ownActivityLine: true,
   );
 
   /// Defaults for a local folder source (no server, no transcoding).
@@ -275,6 +282,7 @@ class ServerCapabilities {
     bool? serverFavorites,
     bool? folderGrouping,
     bool? itemActivity,
+    bool? ownActivityLine,
   }) {
     return ServerCapabilities(
       serverSidePlayQueue: serverSidePlayQueue ?? this.serverSidePlayQueue,
@@ -300,6 +308,7 @@ class ServerCapabilities {
       serverFavorites: serverFavorites ?? this.serverFavorites,
       folderGrouping: folderGrouping ?? this.folderGrouping,
       itemActivity: itemActivity ?? this.itemActivity,
+      ownActivityLine: ownActivityLine ?? this.ownActivityLine,
     );
   }
 }

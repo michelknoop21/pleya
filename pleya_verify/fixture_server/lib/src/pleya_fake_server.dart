@@ -74,6 +74,14 @@ class PleyaFakeServer {
   final List<String> itemActivityRequests = [];
   int? itemActivityFailureStatus;
 
+  /// `/users/me/activity-sharing`, under the same flag: what the requester
+  /// chose, each value a `PUT` sent, and the status a read or a write fails
+  /// with.
+  bool activitySharing = true;
+  final List<bool> activitySharingWrites = [];
+  int? activitySharingReadFailureStatus;
+  int? activitySharingWriteFailureStatus;
+
   /// BP-08b is opt-in so existing fixtures retain their old-server behavior.
   bool assistantMemoryCapability = false;
   final Map<String, String> _memoryAccessUsers = {};
@@ -306,6 +314,7 @@ class PleyaFakeServer {
     verifyWatchlistIds.clear();
     verifyDetail.clear();
     verifyTrakt.clear();
+    itemActivityByItem.clear();
   }
 
   /// Clears every mutable field back to a fresh instance's state. Used by
@@ -319,9 +328,12 @@ class PleyaFakeServer {
     playbackPlanCapability = false;
     personalCapability = false;
     itemActivityCapability = false;
-    itemActivityByItem.clear();
     itemActivityRequests.clear();
     itemActivityFailureStatus = null;
+    activitySharing = true;
+    activitySharingWrites.clear();
+    activitySharingReadFailureStatus = null;
+    activitySharingWriteFailureStatus = null;
     assistantMemoryCapability = false;
     _memoryAccessUsers.clear();
     _memoryRefreshUsers.clear();
@@ -740,6 +752,23 @@ class PleyaFakeServer {
       final failure = itemActivityCapability ? itemActivityFailureStatus : 404;
       if (failure != null) return _json(_error('library.not_found'), status: failure);
       return _json({'items': itemActivityByItem[activityMatch.group(1)] ?? const []});
+    }
+
+    if (path == '/users/me/activity-sharing') {
+      final write = request.method == 'PUT';
+      final failure = !itemActivityCapability
+          ? 404
+          : write
+          ? activitySharingWriteFailureStatus
+          : activitySharingReadFailureStatus;
+      if (failure != null) return _json(_error('library.not_found'), status: failure);
+      if (write) {
+        final share = (jsonDecode(request.body) as Map<String, dynamic>)['share_activity'];
+        if (share is! bool) return _json(_error('library.personal_invalid'), status: 400);
+        activitySharing = share;
+        activitySharingWrites.add(share);
+      }
+      return _json({'share_activity': activitySharing});
     }
 
     if (personalCapability) {

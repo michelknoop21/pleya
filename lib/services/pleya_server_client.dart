@@ -14,6 +14,7 @@ import '../media/external_rating.dart';
 import '../media/server_administration.dart';
 import '../media/server_authority_guard.dart';
 import '../media/ids.dart';
+import '../media/item_watcher.dart';
 import '../media/library_filter_result.dart';
 import '../media/media_filter.dart';
 import '../media/library_first_character.dart';
@@ -116,7 +117,7 @@ class PleyaServerClient
         _PleyaServerAdminMethods,
         _PleyaVerifyDetailMethods,
         ServerAuthorityGuard
-    implements MediaServerClient, FreshMediaItemClient, ScopedMediaServerClient, GracefullyCloseable {
+    implements FreshMediaItemClient, HouseholdActivityClient, ScopedMediaServerClient, GracefullyCloseable {
   @override
   Future<MediaItem?> fetchFreshItem(String id) async {
     if (!wireCapabilities.watchState) return null;

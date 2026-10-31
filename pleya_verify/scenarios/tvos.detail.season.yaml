@@ -12,7 +12,9 @@ target: tvos-sim
 #      DOWN stays put, and the page never leaves offset 0;
 #   4. UP walks back through the row to the tabs;
 #   5. Menu goes back to the Serie tab, and a second Menu closes the page onto
-#      the card that opened it.
+#      the card that opened it;
+#   6. the line under the actions is this season's, not the series': two names
+#      where the Serie tab has three.
 setup:
   - reset_app
   - seed: catalog.detail-series.v1
@@ -57,6 +59,8 @@ steps:
   - settle: 1000
   - assert: {id: media-detail.play, focused: true}
   - assert: {id: media-detail.play, insideViewport: true}
+  - wait_until: {id: media-detail.activity, state: {names: 2}, timeout: 5000}
+  - assert: {id: media-detail.activity, insideViewport: true}
   - snapshot: 01-actions
 
   - press: down

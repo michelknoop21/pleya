@@ -23,12 +23,27 @@ class WatchedByRow extends StatelessWidget {
   final TextStyle? textStyle;
   final double avatarSize;
 
+  /// How far an avatar lies over the one before it, 35 percent when left out.
+  final double? avatarOverlap;
+
+  /// Between the avatars and the sentence.
+  final double textGap;
+
+  /// The ring that keeps overlapping avatars apart, on every side.
+  final double ringWidth;
+
+  final int maxLines;
+
   const WatchedByRow({
     super.key,
     required this.watchers,
     this.scope = ItemWatchersScope.watched,
     this.textStyle,
     this.avatarSize = 30,
+    this.avatarOverlap,
+    this.textGap = 12,
+    this.ringWidth = 2,
+    this.maxLines = 2,
   });
 
   static const _maxAvatars = 4;
@@ -42,15 +57,18 @@ class WatchedByRow extends StatelessWidget {
       crossAxisAlignment: .center,
       children: [
         _buildAvatarCluster(theme),
-        const SizedBox(width: 12),
+        SizedBox(width: textGap),
         Expanded(
           child: Text(
             switch (scope) {
               ItemWatchersScope.watched => t.discover.watchedBy(names: _namesSentence()),
               ItemWatchersScope.watchingSeries => t.discover.watchingSeriesBy(names: _namesSentence()),
+              ItemWatchersScope.activity => t.discover.activityBy(
+                names: namesSentence(watchers, you: t.discover.activityByYou),
+              ),
             },
             style: textStyle ?? theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            maxLines: 2,
+            maxLines: maxLines,
             overflow: .ellipsis,
           ),
         ),
@@ -58,17 +76,17 @@ class WatchedByRow extends StatelessWidget {
     );
   }
 
-  static String _nameFor(ItemWatcher w) => w.isSelf ? t.discover.watchedByYou : w.displayName;
-
   String _namesSentence() => namesSentence(watchers);
 
   /// The names part of the sentence, shared with the iPhone activity card.
-  static String namesSentence(List<ItemWatcher> watchers) {
+  /// [you] is the viewer's own name where the sentence around it needs another
+  /// form than "You": "Activity by you", "Activiteit van jou".
+  static String namesSentence(List<ItemWatcher> watchers, {String? you}) {
     // Self first, so "You" is never buried in the "and N others" overflow;
     // everyone else keeps recency order.
     final ordered = [...watchers.where((w) => w.isSelf), ...watchers.where((w) => !w.isSelf)];
     return joinNames(
-      ordered.map(_nameFor).toList(),
+      [for (final w in ordered) w.isSelf ? you ?? t.discover.watchedByYou : w.displayName],
       and: t.discover.watchedByAnd,
       others: (n) => t.discover.watchedByOthers(count: n),
     );
@@ -89,10 +107,10 @@ class WatchedByRow extends StatelessWidget {
   Widget _buildAvatarCluster(ThemeData theme) {
     final shown = watchers.take(_maxAvatars).toList();
     final overflow = watchers.length - shown.length;
-    final overlap = avatarSize * 0.35;
+    final overlap = avatarOverlap ?? avatarSize * 0.35;
     final step = avatarSize - overlap;
     final bubbleCount = overflow > 0 ? 1 : 0;
-    const ring = 4.0; // _ringed adds a 2px border on every side
+    final ring = ringWidth * 2; // _ringed adds its border on every side
     final width = avatarSize + ring + (shown.length - 1 + bubbleCount) * step;
 
     return SizedBox(
@@ -105,7 +123,12 @@ class WatchedByRow extends StatelessWidget {
               left: i * step,
               child: _ringed(
                 theme,
-                WatcherAvatar(displayName: shown[i].displayName, thumbUrl: shown[i].thumbUrl, size: avatarSize),
+                WatcherAvatar(
+                  displayName: shown[i].displayName,
+                  thumbUrl: shown[i].thumbUrl,
+                  initials: shown[i].initials,
+                  size: avatarSize,
+                ),
               ),
             ),
           if (overflow > 0)
@@ -122,7 +145,7 @@ class WatchedByRow extends StatelessWidget {
   Widget _ringed(ThemeData theme, Widget child) => Container(
     decoration: BoxDecoration(
       shape: BoxShape.circle,
-      border: Border.all(color: theme.colorScheme.surface, width: 2),
+      border: Border.all(color: theme.colorScheme.surface, width: ringWidth),
     ),
     child: child,
   );

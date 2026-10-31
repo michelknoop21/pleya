@@ -121,5 +121,8 @@ class PleyaServerCapabilityResolver {
     // `PleyaServerClient.fetchItemActivity` reads it. Screens check this flag
     // rather than the wire, like every other field here.
     itemActivity: _offered(wire.itemActivity, implementedHere: true),
+
+    // Read from the item, so a server without the route above keeps it.
+    ownActivityLine: true,
   );
 }

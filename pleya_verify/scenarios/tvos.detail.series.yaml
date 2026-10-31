@@ -33,6 +33,8 @@ steps:
   - settle: 2500
   - assert: {id: media-detail.play, insideViewport: true}
   - assert: {id: "media-detail.section[seasons]", state: {child_count: 2}}
+  - wait_until: {id: media-detail.activity, state: {names: 3}, timeout: 5000}
+  - assert: {id: media-detail.activity, insideViewport: true}
   - snapshot: 03-serie
 
   - press: down

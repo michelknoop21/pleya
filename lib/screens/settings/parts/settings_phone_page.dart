@@ -191,6 +191,15 @@ extension _SettingsPhonePage on _SettingsScreenState {
         keywords: const ['integrations', 'trakt', 'seerr', 'tautulli', 'koppelen'],
         destinationBuilder: (_) => const IntegrationsSettingsScreen(),
       ),
+      if (context.read<MultiServerProvider>().serverManager.onlineClients.values.any(
+        (client) => client is HouseholdActivityClient && client.capabilities.itemActivity,
+      ))
+        _SettingsSearchEntry(
+          icon: Symbols.group_rounded,
+          title: t.settings.shareActivity,
+          keywords: const ['activity', 'activiteit', 'privacy', 'delen', 'share', 'household', 'huishouden'],
+          destinationBuilder: (_) => const _SettingsSystemPage(_SystemPageKind.advanced),
+        ),
       _SettingsSearchEntry(
         icon: Symbols.tune_rounded,
         title: t.settings.advanced,

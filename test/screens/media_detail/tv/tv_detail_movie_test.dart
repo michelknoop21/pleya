@@ -364,7 +364,8 @@ void main() {
     });
 
     testWidgets('without the activity row the first section moves up, with no hole above it', (tester) async {
-      await pumpDetail(tester, _Client(_movie().copyWith(summary: threeLines, mediaVersions: const [])));
+      final unseen = _movie(viewOffsetMs: null).copyWith(summary: threeLines, mediaVersions: const []);
+      await pumpDetail(tester, _Client(unseen));
       await tester.pumpAndSettle();
 
       final pill = tester.getRect(find.byType(TvDetailPlayPill));
