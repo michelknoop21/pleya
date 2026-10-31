@@ -508,6 +508,9 @@ class _TranslationsMediaMenuPl extends TranslationsMediaMenuEn {
 	final TranslationsPl _root; // ignore: unused_field
 
 	// Translations
+	@override String get watch => 'Oglądaj';
+	@override String get manage => 'Zarządzaj';
+	@override String get moreWaysToWatch => 'Więcej sposobów oglądania';
 	@override String get markAsWatched => 'Oznacz jako obejrzane';
 	@override String get markAsUnwatched => 'Oznacz jako nieobejrzane';
 	@override String get removeFromContinueWatching => 'Usuń z kontynuowania oglądania';
@@ -979,6 +982,7 @@ class _TranslationsLibrariesPl extends TranslationsLibrariesEn {
 	@override String get manageLibraries => 'Zarządzaj bibliotekami';
 	@override String get sort => 'Sortuj';
 	@override String get sortBy => 'Sortuj wg';
+	@override String get filterBy => 'Filtruj wg';
 	@override String get filters => 'Filtry';
 	@override String get confirmActionMessage => 'Czy na pewno chcesz wykonać tę operację?';
 	@override String get showLibrary => 'Pokaż bibliotekę';
@@ -2693,6 +2697,9 @@ extension on TranslationsPl {
 			'fileInfo.duration' => 'Czas trwania',
 			'fileInfo.optimizedForStreaming' => 'Zoptymalizowane do strumieniowania',
 			'fileInfo.has64bitOffsets' => '64-bitowe offsety',
+			'mediaMenu.watch' => 'Oglądaj',
+			'mediaMenu.manage' => 'Zarządzaj',
+			'mediaMenu.moreWaysToWatch' => 'Więcej sposobów oglądania',
 			'mediaMenu.markAsWatched' => 'Oznacz jako obejrzane',
 			'mediaMenu.markAsUnwatched' => 'Oznacz jako nieobejrzane',
 			'mediaMenu.removeFromContinueWatching' => 'Usuń z kontynuowania oglądania',
@@ -2850,11 +2857,11 @@ extension on TranslationsPl {
 			'messages.noEpisodesFoundGeneral' => 'Nie znaleziono odcinków',
 			'messages.episodesLoadFailed' => 'Nie udało się załadować odcinków',
 			'messages.noResultsFound' => 'Nie znaleziono wyników',
+			_ => null,
+		} ?? switch (path) {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Wyłącznik czasowy ustawiony na ${label}',
 			'messages.noItemsAvailable' => 'Brak dostępnych elementów',
 			'messages.failedToCreatePlayQueueNoItems' => 'Nie udało się utworzyć kolejki odtwarzania — brak elementów',
-			_ => null,
-		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => 'Nie udało się ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Przełączanie na kompatybilny odtwarzacz...',
 			'messages.serverLimitTitle' => 'Odtwarzanie nie powiodło się',
@@ -3028,6 +3035,7 @@ extension on TranslationsPl {
 			'libraries.manageLibraries' => 'Zarządzaj bibliotekami',
 			'libraries.sort' => 'Sortuj',
 			'libraries.sortBy' => 'Sortuj wg',
+			'libraries.filterBy' => 'Filtruj wg',
 			'libraries.filters' => 'Filtry',
 			'libraries.confirmActionMessage' => 'Czy na pewno chcesz wykonać tę operację?',
 			'libraries.showLibrary' => 'Pokaż bibliotekę',
@@ -3363,12 +3371,12 @@ extension on TranslationsPl {
 			'companionRemote.session.serverRunningDescription' => 'Urządzenia mobilne w Twojej sieci mogą łączyć się z tą aplikacją',
 			'companionRemote.session.serverStoppedDescription' => 'Uruchom serwer, aby umożliwić połączenie urządzeń mobilnych',
 			'companionRemote.session.usePhoneToControl' => 'Użyj urządzenia mobilnego, aby sterować tą aplikacją',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.session.startServer' => 'Uruchom serwer',
 			'companionRemote.session.stopServer' => 'Zatrzymaj serwer',
 			'companionRemote.session.minimize' => 'Minimalizuj',
 			'companionRemote.pairing.discoveryDescription' => 'Urządzenia Pleya z tym samym kontem Plex pojawią się tutaj',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Łączenie...',
 			'companionRemote.pairing.searchingForDevices' => 'Szukanie urządzeń...',

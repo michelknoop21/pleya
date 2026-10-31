@@ -41,6 +41,7 @@ import '../../widgets/settings_builder.dart';
 import '../../widgets/settings_page.dart';
 import '../../widgets/settings/settings_studio_header.dart';
 import '../../widgets/settings_section.dart';
+import '../../media/media_server_client.dart' show HouseholdActivityClient;
 import '../../providers/multi_server_provider.dart';
 import '../../profiles/active_profile_provider.dart';
 import 'about_screen.dart';
@@ -64,8 +65,11 @@ import '../profile/profile_switch_screen.dart';
 import '../servers_screen.dart';
 import 'seerr_settings_screen.dart';
 import 'subtitle_styling_screen.dart';
+import 'activity_sharing_controller.dart';
 import 'tautulli_settings_screen.dart';
 import 'trackers_settings_screen.dart';
+import '../../providers/trakt_account_provider.dart';
+import '../../services/trakt/trakt_comments_client.dart';
 import '../../widgets/loading_indicator_box.dart';
 import '../../widgets/tv/tv_menu_grid.dart';
 import '../../widgets/tv/tv_settings_categories.dart';
@@ -77,6 +81,7 @@ import '../../navigation/tv/tv_content_route_registry.dart';
 import '../../widgets/scroll_crown/scroll_crown.dart';
 
 part 'parts/settings_actions.dart';
+part 'parts/settings_activity_sharing.dart';
 part 'parts/settings_phone_page.dart';
 part 'parts/settings_system_tiles.dart';
 part 'parts/settings_tiles.dart';
@@ -97,7 +102,7 @@ abstract interface class TvSettingsServersEntry {
 }
 
 class _SettingsScreenState extends State<SettingsScreen>
-    with FocusableTab, MountedSetStateMixin, _SettingsActions<SettingsScreen>
+    with FocusableTab, MountedSetStateMixin, _SettingsActions<SettingsScreen>, _SettingsActivitySharing<SettingsScreen>
     implements TvSettingsServersEntry {
   @override
   void openTvServers() => _openTvServersFromShell();
@@ -116,6 +121,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   static const _kVideoPlayerControls = 'video_player_controls';
   static const _kVideoPlayerNavigation = 'video_player_navigation';
   static const _kCrashReporting = 'crash_reporting';
+  static const _kTraktDiscussions = 'trakt_discussions';
   static const _kDebugLogging = 'debug_logging';
   static const _kViewLogs = 'view_logs';
   static const _kClearCache = 'clear_cache';

@@ -1,0 +1,22 @@
+{
+  "items": [
+    {
+      "user_id": "01a15486-f53b-7002-a2c0-dad3c02bbd3b",
+      "username": "sanne",
+      "initials": "S",
+      "is_self": false,
+      "last_watched_at": "2026-10-29T20:42:00Z",
+      "play_count": 6,
+      "completed_items": 5
+    },
+    {
+      "user_id": "01a15486-f53b-7003-a2c0-dad3c02bbd3c",
+      "username": "anna.de.boer",
+      "initials": "AB",
+      "is_self": true,
+      "last_watched_at": "2026-10-20T19:10:00Z",
+      "play_count": 1,
+      "completed_items": 0
+    }
+  ]
+}

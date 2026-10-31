@@ -508,6 +508,9 @@ class _TranslationsMediaMenuKo extends TranslationsMediaMenuEn {
 	final TranslationsKo _root; // ignore: unused_field
 
 	// Translations
+	@override String get watch => '시청';
+	@override String get manage => '관리';
+	@override String get moreWaysToWatch => '다른 시청 방법';
 	@override String get markAsWatched => '시청 완료로 표시';
 	@override String get markAsUnwatched => '시청 안 함으로 표시';
 	@override String get removeFromContinueWatching => '계속 보기에서 제거';
@@ -979,6 +982,7 @@ class _TranslationsLibrariesKo extends TranslationsLibrariesEn {
 	@override String get manageLibraries => '미디어 라이브러리 관리';
 	@override String get sort => '정렬';
 	@override String get sortBy => '정렬 기준';
+	@override String get filterBy => '필터 기준';
 	@override String get filters => '필터';
 	@override String get confirmActionMessage => '이 작업을 실행 하시겠습니까?';
 	@override String get showLibrary => '미디어 라이브러리 표시';
@@ -2693,6 +2697,9 @@ extension on TranslationsKo {
 			'fileInfo.duration' => '재생 시간',
 			'fileInfo.optimizedForStreaming' => '스트리밍 최적화',
 			'fileInfo.has64bitOffsets' => '64비트 오프셋',
+			'mediaMenu.watch' => '시청',
+			'mediaMenu.manage' => '관리',
+			'mediaMenu.moreWaysToWatch' => '다른 시청 방법',
 			'mediaMenu.markAsWatched' => '시청 완료로 표시',
 			'mediaMenu.markAsUnwatched' => '시청 안 함으로 표시',
 			'mediaMenu.removeFromContinueWatching' => '계속 보기에서 제거',
@@ -2850,11 +2857,11 @@ extension on TranslationsKo {
 			'messages.noEpisodesFoundGeneral' => '에피소드를 찾을 수 없습니다',
 			'messages.episodesLoadFailed' => '에피소드를 불러오지 못했습니다',
 			'messages.noResultsFound' => '결과를 찾을 수 없습니다',
+			_ => null,
+		} ?? switch (path) {
 			'messages.sleepTimerSet' => ({required Object label}) => '수면 타이머가 ${label}로 설정 되었습니다',
 			'messages.noItemsAvailable' => '사용 가능한 항목이 없습니다',
 			'messages.failedToCreatePlayQueueNoItems' => '재생 대기열 생성 실패 - 항목 없음',
-			_ => null,
-		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => '${action}을(를) 수행할 수 없습니다',
 			'messages.switchingToCompatiblePlayer' => '호환되는 플레이어로 전환 중...',
 			'messages.serverLimitTitle' => '재생 실패',
@@ -3028,6 +3035,7 @@ extension on TranslationsKo {
 			'libraries.manageLibraries' => '미디어 라이브러리 관리',
 			'libraries.sort' => '정렬',
 			'libraries.sortBy' => '정렬 기준',
+			'libraries.filterBy' => '필터 기준',
 			'libraries.filters' => '필터',
 			'libraries.confirmActionMessage' => '이 작업을 실행 하시겠습니까?',
 			'libraries.showLibrary' => '미디어 라이브러리 표시',
@@ -3363,12 +3371,12 @@ extension on TranslationsKo {
 			'companionRemote.session.serverRunningDescription' => '네트워크의 모바일 기기가 이 앱에 연결할 수 있습니다',
 			'companionRemote.session.serverStoppedDescription' => '모바일 기기의 연결을 허용하려면 서버를 시작하세요',
 			'companionRemote.session.usePhoneToControl' => '모바일 기기로 이 앱을 제어하세요',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.session.startServer' => '서버 시작',
 			'companionRemote.session.stopServer' => '서버 중지',
 			'companionRemote.session.minimize' => '최소화',
 			'companionRemote.pairing.discoveryDescription' => '같은 Plex 계정의 Pleya 기기가 여기에 표시됩니다',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => '연결 중...',
 			'companionRemote.pairing.searchingForDevices' => '기기 검색 중...',

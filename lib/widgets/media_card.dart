@@ -32,6 +32,7 @@ import '../theme/mono_tokens.dart';
 import '../i18n/strings.g.dart';
 import 'media_context_menu.dart';
 import 'media_card_grid_layout.dart';
+import 'mobile/library_phone_look.dart';
 import 'media_card_list_layout.dart';
 import 'backend_badge.dart';
 import 'optimized_media_image.dart';
@@ -519,6 +520,11 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
     // an Expanded instead.
     final posterWidth = widget.width != null ? MediaCardGridLayout.posterWidthFor(widget.width!) : null;
     final posterHeight = widget.height;
+    final phoneLook = LibraryPhoneLook.of(context);
+    // A grid cell in the iPhone library look is the poster's own width. A rail
+    // passes its size in and keeps the card's padding.
+    final flushWithCell = phoneLook && widget.width == null;
+    final titleStyle = phoneLook ? LibraryPhoneMetrics.captionTitleStyle : MediaCardGridLayout.titleStyle;
 
     // The focus border hugs the poster (captions stay outside it), matching
     // the full-bleed card treatment.
@@ -563,12 +569,14 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
           onSecondaryTap: showContextMenuFromTap,
           borderRadius: BorderRadius.circular(tokens(context).radiusSm),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              MediaCardGridLayout.topInset,
-              MediaCardGridLayout.topInset,
-              MediaCardGridLayout.topInset,
-              MediaCardGridLayout.bottomInset,
-            ),
+            padding: flushWithCell
+                ? EdgeInsets.zero
+                : const EdgeInsets.fromLTRB(
+                    MediaCardGridLayout.topInset,
+                    MediaCardGridLayout.topInset,
+                    MediaCardGridLayout.topInset,
+                    MediaCardGridLayout.bottomInset,
+                  ),
             child: Column(
               mainAxisSize: .min,
               crossAxisAlignment: .start,
@@ -578,7 +586,7 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
                   SizedBox(width: double.infinity, height: posterHeight, child: poster)
                 else
                   Expanded(child: poster),
-                const SizedBox(height: MediaCardGridLayout.posterCaptionGap),
+                SizedBox(height: MediaCardGridLayout.captionGapFor(context)),
                 // The caption gets a fixed slice of the card, so a two-line
                 // block never grows into the row below and every poster in a
                 // row ends at the same height. Both lines are single-line, so
@@ -593,7 +601,7 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
                       if (item is MediaItem && _hasClickableTitle(item))
                         _ClickableText(
                           text: item.displayTitle,
-                          style: MediaCardGridLayout.titleStyle,
+                          style: titleStyle,
                           onTap: () => _navigateToFocusedDetail(context, item, isOffline: widget.isOffline),
                         )
                       else
@@ -601,7 +609,7 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
                           item is MediaPlaylist ? item.title : (item as MediaItem).displayTitle,
                           maxLines: widget.gridTitleLines,
                           overflow: .ellipsis,
-                          style: MediaCardGridLayout.titleStyle,
+                          style: titleStyle,
                         ),
                       // Subtitle
                       if (item is MediaPlaylist)
@@ -1083,16 +1091,19 @@ Widget _buildPosterImage(
 }
 
 class _MediaCardHelpers {
+  static TextStyle _subtitleStyle(BuildContext context) {
+    final color = tokens(context).textMuted;
+    if (LibraryPhoneLook.of(context)) return LibraryPhoneMetrics.captionSubtitleStyle(color: color);
+    return MediaCardGridLayout.subtitleStyleFrom(Theme.of(context).textTheme.bodySmall, color: color);
+  }
+
   static Widget buildPlaylistMeta(BuildContext context, MediaPlaylist playlist) {
     if (playlist.leafCount != null && playlist.leafCount! > 0) {
       return Text(
         t.playlists.itemCount(count: playlist.leafCount!),
         maxLines: 1,
         overflow: .ellipsis,
-        style: MediaCardGridLayout.subtitleStyleFrom(
-          Theme.of(context).textTheme.bodySmall,
-          color: tokens(context).textMuted,
-        ),
+        style: _subtitleStyle(context),
       );
     }
     return const SizedBox.shrink();
@@ -1102,10 +1113,7 @@ class _MediaCardHelpers {
   /// Mockup 38 A: `S3 E4 · 18 min over` or `S3 E5 · Volgende aflevering`
   /// under the series title, in place of the year/episode-title subtitle.
   static Widget buildContinueWatchingStatus(BuildContext context, MediaItem mi) {
-    final style = MediaCardGridLayout.subtitleStyleFrom(
-      Theme.of(context).textTheme.bodySmall,
-      color: tokens(context).textMuted,
-    );
+    final style = _subtitleStyle(context);
     final showEp = SettingsService.instance.read(SettingsService.showEpisodeNumberOnCards);
     return Text(
       continueWatchingStatusLine(mi, showEpisodeNumber: showEp),
@@ -1116,10 +1124,7 @@ class _MediaCardHelpers {
   }
 
   static Widget buildMetadataSubtitle(BuildContext context, MediaItem mi, {bool isOffline = false}) {
-    final subtitleStyle = MediaCardGridLayout.subtitleStyleFrom(
-      Theme.of(context).textTheme.bodySmall,
-      color: tokens(context).textMuted,
-    );
+    final subtitleStyle = _subtitleStyle(context);
 
     // For collections, show item count
     if (mi.kind == MediaKind.collection) {

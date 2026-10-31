@@ -374,6 +374,9 @@
     "has64bitOffsets": "64-битови отмествания"
   },
   "mediaMenu": {
+    "watch": "Гледай",
+    "manage": "Управление",
+    "moreWaysToWatch": "Още начини за гледане",
     "markAsWatched": "Маркирай като гледано",
     "markAsUnwatched": "Маркирай като негледано",
     "removeFromContinueWatching": "Премахни от продължаване на гледането",
@@ -741,6 +744,7 @@
     "manageLibraries": "Управление на библиотеки",
     "sort": "Сортиране",
     "sortBy": "Сортирай по",
+    "filterBy": "Филтрирай по",
     "filters": "Филтри",
     "confirmActionMessage": "Сигурни ли сте, че искате да извършите това действие?",
     "showLibrary": "Покажи библиотеката",

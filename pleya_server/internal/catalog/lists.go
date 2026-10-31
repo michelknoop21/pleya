@@ -32,7 +32,7 @@ const (
 const (
 	// MaxListItems is de bovengrens van één lijst, zichtbaar en onzichtbaar samen.
 	MaxListItems = 5000
-	// maxListTitle is de CHECK uit 0025.
+	// maxListTitle is de CHECK uit 0026.
 	maxListTitle = 200
 )
 

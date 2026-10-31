@@ -11,6 +11,7 @@ import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/navigation/tv/tv_nested_surface.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/screens/media_detail/tv/tv_detail_hero_widgets.dart';
 import 'package:pleya/screens/media_detail_screen.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
@@ -117,9 +118,9 @@ void main() {
     // DENS1: the title is HIG Title 1 (76 pt) on the panel's point grid; the
     // nested box would give 76 * 900 / 1080.
     expect(titleText.style!.fontSize, closeTo(TvHig.title1 * panelSize.height / 1080, 0.05));
-    // DENS1: the action row is 60 pt, above tvOS's 56 pt button minimum; the
-    // old `46 * scaleOf` made it 72 pt on an Apple TV.
-    expect(tester.getSize(find.byType(FilledButton).first).height, closeTo(60 * panelSize.height / 1080, 0.05));
+    // The pill is 64 pt, above tvOS's 56 pt button minimum; the old
+    // `46 * scaleOf` made the row 72 pt on an Apple TV.
+    expect(tester.getSize(find.byType(TvDetailPlayPill)).height, closeTo(64 * panelSize.height / 1080, 0.05));
   });
 
   testWidgets('SYS-3c/SYS-3e: the detail rail and its reservation read the scale the detail screen does', (
@@ -146,10 +147,12 @@ void main() {
     // wiring, overgenomen van
     // test/screens/media_detail_screen_test.dart:564-625: zonder hubs mount
     // de rail niet.
+    // A series lives on TvDetailPage; the rail page is left to a season that
+    // was opened without a series to hang under.
     final show = MediaItem(
       id: 'show_1',
       backend: MediaBackend.jellyfin,
-      kind: MediaKind.show,
+      kind: MediaKind.season,
       title: 'The Show',
       serverId: 'server_1',
       serverName: 'Server',
@@ -201,9 +204,7 @@ void main() {
     final client = _FakeMediaServerClient(
       show: show,
       childrenByParent: {
-        show.id: [season1, season2],
-        season1.id: [episode1],
-        season2.id: [episode2],
+        show.id: [episode1, episode2],
       },
     );
     final manager = MultiServerManager()..debugRegisterClientForTesting(client);
@@ -245,35 +246,12 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    // `find.byType(SizedBox).first` under `TvBrowseRail` is not the hubstrip
-    // here: measured with `tester.widgetList<SizedBox>(...).map((s) =>
-    // s.height)`, the first entry is 259.3 (an outer layout box), while
-    // `TvBrowseRailLayout.hubStripHeightForScale(boxScale)` (30.6 at
-    // boxScale 0.85) shows up further down the list, confirming the rail
-    // itself renders at the box scale. The brief's suggested fallback
-    // ('Server' text at fontSize 15 * scale) also does not apply on this
-    // route: `TvBrowseRail(showServerName: ...)` is never passed by
-    // `media_detail_screen.dart`, so it defaults to false and that text
-    // never mounts (`find.text('Server')` finds zero widgets here). The hub
-    // title itself is driven by the same `scale` (`fontSize: 18 * scale` in
-    // `_buildHubHeader`) and always renders: with two seasons the season
-    // chips own the season name, so the hub title falls back to the
-    // localized "Episodes" label.
-    // Since VIS2 that label is the heading of the chip row on the rail's
-    // header line, and since DENS1 it is HIG Body on the panel's point grid
-    // (29 pt at 1080); on the nested box it would be 29 * 900 / 1080.
-    final hubTitle = tester.widget<Text>(find.text('Episodes'));
-    expect(
-      hubTitle.style?.fontSize,
-      closeTo(TvHig.body * panelSize.height / 1080, 0.05),
-      reason: 'the rail scales off the nested box while the screen above it scales off the panel',
-    );
     // SYS-3e: what the screen reserves for the rail has to be what the rail
     // draws. The foreground's bottom edge sits `railTopPadding - gap` (12 - 4)
     // into the rail block, both at the panel scale. With the reservation on
     // the box scale it sat 32.3 px in, over the season chips, and the rail
     // hung 1.2 px less of its bottom padding off the edge than it draws.
-    final railBlock = tester.getRect(find.ancestor(of: find.byType(TvBrowseRail), matching: find.byType(Column)).first);
+    final railBlock = tester.getRect(find.byType(TvBrowseRail));
     final foreground = tester.getRect(
       find.ancestor(of: find.text('The Show'), matching: find.byType(Positioned)).first,
     );

@@ -34,6 +34,8 @@ import 'package:flutter/painting.dart';
 import '../../focus/focus_theme.dart';
 import '../../utils/layout_constants.dart';
 
+export 'tv_catalog_full_bleed_layout.dart';
+
 /// Density tokens for the first-start authentication composition.
 ///
 /// Box composition belongs to `TvAuthGeometry`, which has the live viewport.
@@ -732,12 +734,24 @@ class TvCatalogGrid {
     required this.inset,
     required this.bottomSafeMargin,
     this.leading = 0,
-  });
+    double? rowGutter,
+    this.topInset,
+  }) : rowGutter = rowGutter ?? gutter;
 
   final int columns;
   final double cardWidth;
   final double gutter;
+
+  /// Space between two rows. Equal to [gutter] unless the grid says otherwise:
+  /// [TvCatalogFullBleedLayout] sends its spare width to the columns and keeps
+  /// the rows tight.
+  final double rowGutter;
+
   final double inset;
+
+  /// A fixed top margin for the first row, for a card whose focus stays inside
+  /// its own band. Null reserves the focus headroom of [scrollPadding] instead.
+  final double? topInset;
 
   /// Width reserved between [inset] and the first column, for something that is
   /// not part of the grid: CAT5's open controls rail, and nothing else so far.
@@ -785,6 +799,8 @@ class TvCatalogGrid {
   /// `WatchlistCard`, at two different focus scales, so a number computed here
   /// could only ever be right for one of them.
   EdgeInsets scrollPadding({required double cardHeight, required double focusScale}) {
+    final top = topInset;
+    if (top != null) return EdgeInsets.fromLTRB(inset + leading, top, inset, bottomSafeMargin);
     final growth = cardHeight * (focusScale - 1) / 2;
     return EdgeInsets.fromLTRB(inset + leading, growth, inset, bottomSafeMargin + growth);
   }
@@ -794,9 +810,14 @@ class TvCatalogGrid {
   ///
   /// Public so anything standing beside the grid (CAT5's rail) can line up with
   /// the first poster row instead of with the viewport, without re-deriving the
-  /// expression the padding already owns.
+  /// expression the padding already owns. A grid with a [topInset] uses that
+  /// instead, see [firstRowOffset].
   static double focusHeadroom({required double cardHeight, required double focusScale}) =>
       cardHeight * (focusScale - 1) / 2;
+
+  /// Where the first row's box starts in this grid's scroll content.
+  double firstRowOffset({required double cardHeight, required double focusScale}) =>
+      topInset ?? focusHeadroom(cardHeight: cardHeight, focusScale: focusScale);
 
   /// Ideal card width on the 1920-wide reference surface, expressed as a
   /// fraction so it converts like every other box measurement in this file

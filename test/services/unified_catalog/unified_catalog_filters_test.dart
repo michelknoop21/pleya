@@ -260,6 +260,7 @@ void main() {
       UnifiedFilterCapabilities capabilities = const UnifiedFilterCapabilities(
         supportsMetadataFilters: true,
         supportsWatchFilter: true,
+        sortFields: {...UnifiedCatalogSortField.values},
       ),
       MediaKind kind = MediaKind.movie,
     }) => buildUnifiedCatalogQuery(kind: kind, preferences: preferences, capabilities: capabilities);

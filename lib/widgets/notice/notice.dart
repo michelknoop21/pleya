@@ -57,7 +57,8 @@ class Notice {
   /// the "press back again to exit" window), and for playback failures,
   /// which are errors that are over by the time they show: the player has
   /// already closed, so they get a bounded stay instead of waiting to be
-  /// clicked away (see `noticeForPlaybackFailureKind`). Other new call sites
+  /// clicked away (see `noticeForPlaybackFailureKind`), and completed failed
+  /// profile-switch attempts. Other new call sites
   /// should not set this — let [level] decide.
   final Duration? durationOverride;
 

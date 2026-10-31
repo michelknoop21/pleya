@@ -18,9 +18,13 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../focus/focus_theme.dart';
+import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import 'tv_catalog_filter_rail.dart';
 import 'tv_unified_layout.dart';
+
+/// The dim under the overlay panel. Public so a test can read how far it is.
+const Key tvCatalogPanelDimKey = ValueKey('tvCatalogPanelDim');
 
 class TvCatalogRailScaffold extends StatelessWidget {
   const TvCatalogRailScaffold({
@@ -29,6 +33,7 @@ class TvCatalogRailScaffold extends StatelessWidget {
     required this.rail,
     required this.cardHeight,
     this.focusScale = FocusTheme.fullCardFocusScale,
+    this.overlay = false,
   });
 
   /// The grid, the skeleton or the empty state. It resolves its own columns
@@ -49,6 +54,11 @@ class TvCatalogRailScaffold extends StatelessWidget {
 
   final double focusScale;
 
+  /// A-06c: [rail] slides in from the left over a dimmed page instead of taking
+  /// a band of it, and the closed state draws nothing. The grid underneath does
+  /// not move or re-column, so what the viewer was looking at stays where it is.
+  final bool overlay;
+
   /// How much width an open rail takes out of the grid's content box.
   ///
   /// Zero while it is closed, because the strip lives in the page's own left
@@ -57,8 +67,52 @@ class TvCatalogRailScaffold extends StatelessWidget {
   static double leadingFor(double width, {required bool expanded}) =>
       expanded ? width * ((TvCatalogLayout.railWidth + TvCatalogLayout.railGridGap) / TvCatalogGrid.referenceWidth) : 0;
 
+  Widget _buildOverlay(BuildContext context) {
+    final open = rail != null;
+    final duration = reduceMotion(context, TvCatalogFullBleedLayout.sheetSlideDuration);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final margin = constraints.maxWidth * TvCatalogFullBleedLayout.sheetMarginFraction;
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            body,
+            IgnorePointer(
+              child: AnimatedOpacity(
+                key: tvCatalogPanelDimKey,
+                opacity: open ? TvCatalogFullBleedLayout.sheetDimAlpha : 0,
+                duration: duration,
+                curve: Curves.easeOut,
+                child: const ColoredBox(color: Colors.black),
+              ),
+            ),
+            Positioned(
+              left: margin,
+              top: margin,
+              bottom: margin,
+              width: constraints.maxWidth * TvCatalogFullBleedLayout.sheetWidthFraction,
+              child: AnimatedSwitcher(
+                duration: duration,
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) => SlideTransition(
+                  position: Tween(begin: const Offset(-1.1, 0), end: Offset.zero).animate(animation),
+                  child: child,
+                ),
+                // Filled, not centred: the panel is the whole height.
+                layoutBuilder: (current, previous) => Stack(fit: StackFit.expand, children: [...previous, ?current]),
+                child: rail,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (overlay) return _buildOverlay(context);
     final scale = TvLayoutConstants.scaleOf(context);
     final width = MediaQuery.sizeOf(context).width;
     final expanded = rail != null;

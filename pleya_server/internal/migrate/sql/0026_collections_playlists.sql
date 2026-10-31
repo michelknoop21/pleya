@@ -1,7 +1,7 @@
--- 0025 verzamelingen en afspeellijsten (S19, PS-9C, DEC-XXX).
+-- 0026 verzamelingen en afspeellijsten (S19, PS-9C, DEC-XXX).
 --
 -- Eigenaar: internal/catalog. Het plan noemde 0018; dat nummer en alles tot en
--- met 0024 was bij het bouwen bezet.
+-- met 0025 was bij het bouwen bezet.
 --
 -- Een verzameling heeft een eigenaar en een zichtbaarheid (privé, iedereen of
 -- per gebruiker, VRAGENLIJST 30). Een afspeellijst is van één gebruiker en

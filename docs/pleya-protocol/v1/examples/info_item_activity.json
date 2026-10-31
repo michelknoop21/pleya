@@ -1,0 +1,34 @@
+{
+  "protocol": { "major": 1, "feature_level": 1, "profile": "full" },
+  "server": {
+    "id": "0198f2a1-7c3e-7b21-9f44-1c2d3e4f5a6b",
+    "setup_accepts_name": true
+  },
+  "capabilities": {
+    "browse": true,
+    "search": true,
+    "artwork": true,
+    "artwork_sizes": true,
+    "filters": true,
+    "watch_state": true,
+    "watch_state_ownership": true,
+    "stream_sessions": true,
+    "sessions": true,
+    "api_tokens": true,
+    "cookie_auth": true,
+    "administration": true,
+    "mcp": false,
+    "playback_plan": true,
+    "transcode": false,
+    "downloads": false,
+    "live_tv": false,
+    "realtime": false,
+    "users": true,
+    "history": true,
+    "favorites": true,
+    "ratings": true,
+    "track_preferences": true,
+    "item_activity": true
+  },
+  "auth": { "methods": ["password"], "setup_required": false }
+}

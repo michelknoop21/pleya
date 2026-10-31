@@ -508,6 +508,9 @@ class _TranslationsMediaMenuRu extends TranslationsMediaMenuEn {
 	final TranslationsRu _root; // ignore: unused_field
 
 	// Translations
+	@override String get watch => 'Смотреть';
+	@override String get manage => 'Управление';
+	@override String get moreWaysToWatch => 'Другие способы просмотра';
 	@override String get markAsWatched => 'Отметить как просмотренное';
 	@override String get markAsUnwatched => 'Отметить как непросмотренное';
 	@override String get removeFromContinueWatching => 'Удалить из «Продолжить просмотр»';
@@ -979,6 +982,7 @@ class _TranslationsLibrariesRu extends TranslationsLibrariesEn {
 	@override String get manageLibraries => 'Управление библиотеками';
 	@override String get sort => 'Сортировка';
 	@override String get sortBy => 'Сортировать по';
+	@override String get filterBy => 'Фильтровать по';
 	@override String get filters => 'Фильтры';
 	@override String get confirmActionMessage => 'Вы уверены, что хотите выполнить это действие?';
 	@override String get showLibrary => 'Показать библиотеку';
@@ -2693,6 +2697,9 @@ extension on TranslationsRu {
 			'fileInfo.duration' => 'Длительность',
 			'fileInfo.optimizedForStreaming' => 'Оптимизировано для стриминга',
 			'fileInfo.has64bitOffsets' => '64-битные смещения',
+			'mediaMenu.watch' => 'Смотреть',
+			'mediaMenu.manage' => 'Управление',
+			'mediaMenu.moreWaysToWatch' => 'Другие способы просмотра',
 			'mediaMenu.markAsWatched' => 'Отметить как просмотренное',
 			'mediaMenu.markAsUnwatched' => 'Отметить как непросмотренное',
 			'mediaMenu.removeFromContinueWatching' => 'Удалить из «Продолжить просмотр»',
@@ -2850,11 +2857,11 @@ extension on TranslationsRu {
 			'messages.noEpisodesFoundGeneral' => 'Эпизоды не найдены',
 			'messages.episodesLoadFailed' => 'Не удалось загрузить эпизоды',
 			'messages.noResultsFound' => 'Результаты не найдены',
+			_ => null,
+		} ?? switch (path) {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Таймер сна установлен на ${label}',
 			'messages.noItemsAvailable' => 'Нет доступных элементов',
 			'messages.failedToCreatePlayQueueNoItems' => 'Не удалось создать очередь воспроизведения — нет элементов',
-			_ => null,
-		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => 'Не удалось ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Переключение на совместимый плеер...',
 			'messages.serverLimitTitle' => 'Ошибка воспроизведения',
@@ -3028,6 +3035,7 @@ extension on TranslationsRu {
 			'libraries.manageLibraries' => 'Управление библиотеками',
 			'libraries.sort' => 'Сортировка',
 			'libraries.sortBy' => 'Сортировать по',
+			'libraries.filterBy' => 'Фильтровать по',
 			'libraries.filters' => 'Фильтры',
 			'libraries.confirmActionMessage' => 'Вы уверены, что хотите выполнить это действие?',
 			'libraries.showLibrary' => 'Показать библиотеку',
@@ -3363,12 +3371,12 @@ extension on TranslationsRu {
 			'companionRemote.session.serverRunningDescription' => 'Мобильные устройства в вашей сети могут подключаться к этому приложению',
 			'companionRemote.session.serverStoppedDescription' => 'Запустите сервер, чтобы разрешить подключение мобильных устройств',
 			'companionRemote.session.usePhoneToControl' => 'Используйте мобильное устройство для управления этим приложением',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.session.startServer' => 'Запустить сервер',
 			'companionRemote.session.stopServer' => 'Остановить сервер',
 			'companionRemote.session.minimize' => 'Свернуть',
 			'companionRemote.pairing.discoveryDescription' => 'Устройства Pleya с тем же аккаунтом Plex появятся здесь',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Подключение...',
 			'companionRemote.pairing.searchingForDevices' => 'Поиск устройств...',

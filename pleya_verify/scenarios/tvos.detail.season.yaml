@@ -1,0 +1,83 @@
+name: tvos.detail.season
+target: tvos-sim
+# A season tab on TvDetailPage (northstar 01 of 2026-10-30): the second season of
+# a series, half watched.
+#
+# What this proves:
+#   1. a RIGHT on the tabs opens it, the row under them starts with the season's
+#      own card and DOWN lands there, with the tab outlined (01);
+#   2. focus on an episode names it above the row and shows its summary, and the
+#      row does not move;
+#   3. DOWN out of the row reaches the actions, which close the page: one more
+#      DOWN stays put, and the page never leaves offset 0;
+#   4. UP walks back through the row to the tabs;
+#   5. Menu goes back to the Serie tab, and a second Menu closes the page onto
+#      the card that opened it;
+#   6. the line under the actions is this season's, not the series': two names
+#      where the Serie tab has three.
+setup:
+  - reset_app
+  - seed: catalog.detail-series.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - wait_until: {id: discover.hero, timeout: 15000}
+  - press: down
+  - settle: 800
+  - press: down
+  - settle: 800
+  - assert: {id: "discover.rail.item[0.0]", focused: true}
+
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - wait_until: {focused: "media-detail.tab[series]", timeout: 8000}
+  - settle: 2000
+
+  - press: right
+  - settle: 1000
+  - press: right
+  - settle: 1500
+  - wait_until: {id: media-detail.tabs, state: {open: "1"}, timeout: 5000}
+  - wait_until: {id: "media-detail.section[episodes]", state: {child_count: 5}, timeout: 8000}
+  - snapshot: 01-tab-focused
+
+  - press: down
+  - settle: 1200
+  - assert: {id: "media-detail.section.item[episodes.0]", focused: true}
+  - assert: {id: "media-detail.section.item[episodes.0]", insideViewport: true}
+  - assert: {id: media-detail.play, insideViewport: true}
+  - snapshot: 01-season-card
+
+  - press: right
+  - settle: 1000
+  - assert: {id: "media-detail.section.item[episodes.1]", focused: true}
+  - snapshot: 01-episode
+
+  - press: down
+  - settle: 1000
+  - assert: {id: media-detail.play, focused: true}
+  - assert: {id: media-detail.play, insideViewport: true}
+  - wait_until: {id: media-detail.activity, state: {names: 2}, timeout: 5000}
+  - assert: {id: media-detail.activity, insideViewport: true}
+  - snapshot: 01-actions
+
+  - press: down
+  - settle: 800
+  - assert: {id: media-detail.play, focused: true}
+
+  - press: up
+  - settle: 1000
+  - assert: {id: "media-detail.section[episodes]", insideViewport: true}
+
+  - press: menu
+  - settle: 1500
+  - wait_until: {id: media-detail.tabs, state: {open: series}, timeout: 5000}
+  - wait_until: {focused: "media-detail.section.item[seasons.1]", timeout: 5000}
+  - snapshot: 01-back-on-poster
+
+  - press: menu
+  - wait_until: {focused: "discover.rail.item[0.0]", timeout: 8000}
+  - settle: 800
+  - snapshot: 01-back-on-card

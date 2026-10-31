@@ -28,6 +28,7 @@ const caps: Capabilities = {
   personal_data: false,
   collections: false,
   playlists: false,
+  item_activity: false,
   transcode: false,
   downloads: false,
   backups: false,

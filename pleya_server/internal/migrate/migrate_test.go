@@ -168,7 +168,7 @@ func TestSchemaHasExactlyTheExpectedTables(t *testing.T) {
 		"favorites":         true,
 		"ratings":           true,
 		"track_preferences": true,
-		// S19, migratie 0025: verzamelingen en afspeellijsten.
+		// S19, migratie 0026: verzamelingen en afspeellijsten.
 		"collections":      true,
 		"collection_users": true,
 		"collection_items": true,

@@ -389,6 +389,89 @@ void main() {
       }
     });
 
+    group('on the scale of an Apple TV', () {
+      const appleTvScale = 1.85;
+
+      testWidgets('every poster stays inside the panel', (tester) async {
+        final page = await pumpTvMyPleyaPage(
+          tester,
+          conditions: const TvMyPleyaPageConditions(watchlistCount: 12),
+          canvasScale: appleTvScale,
+        );
+        final panel = tester.getRect(find.byType(ListView).first);
+        page.state.focusKey(poster(0));
+        await tester.pumpAndSettle();
+
+        for (var i = 1; i < 12; i++) {
+          await press(tester, LogicalKeyboardKey.arrowRight);
+          expect(page.focused, poster(i));
+          final rect = FocusManager.instance.primaryFocus!.rect;
+          expect(rect.left, greaterThanOrEqualTo(panel.left - 0.5), reason: 'poster $i inside the panel');
+          expect(rect.right, lessThanOrEqualTo(panel.right + 0.5), reason: 'poster $i inside the panel');
+        }
+      });
+
+      testWidgets('the rail moves only as far as the next poster needs', (tester) async {
+        final page = await pumpTvMyPleyaPage(
+          tester,
+          conditions: const TvMyPleyaPageConditions(watchlistCount: 12),
+          canvasScale: appleTvScale,
+        );
+        final panel = tester.getRect(find.byType(ListView).first);
+        page.state.focusKey(poster(0));
+        await tester.pumpAndSettle();
+
+        for (var i = 1; i < 11; i++) {
+          await press(tester, LogicalKeyboardKey.arrowRight);
+          final rect = FocusManager.instance.primaryFocus!.rect;
+          if (i < 6) continue;
+          expect(panel.right - rect.right, lessThan(rect.width / 2), reason: 'poster $i at the edge it came in by');
+        }
+      });
+
+      testWidgets('Up from the far end of the dock lands on the poster above it', (tester) async {
+        final page = await pumpTvMyPleyaPage(
+          tester,
+          conditions: const TvMyPleyaPageConditions(watchlistCount: 12),
+          canvasScale: appleTvScale,
+        );
+        final panel = tester.getRect(find.byType(ListView).first);
+        page.state.focusKey(poster(0));
+        await tester.pumpAndSettle();
+        await press(tester, LogicalKeyboardKey.arrowDown);
+        for (var i = 0; i < 8; i++) {
+          await press(tester, LogicalKeyboardKey.arrowRight);
+        }
+        final tile = FocusManager.instance.primaryFocus!.rect;
+        expect(tile.center.dx, greaterThan(panel.center.dx), reason: 'the dock reaches past the middle of the rail');
+
+        await press(tester, LogicalKeyboardKey.arrowUp);
+
+        expect(page.focused, startsWith('tvMyPleya_poster_'));
+        expect(FocusManager.instance.primaryFocus!.rect.center.dx, greaterThan(panel.center.dx));
+      });
+
+      testWidgets('Up from the dock lands on a poster that is in the rail', (tester) async {
+        final page = await pumpTvMyPleyaPage(
+          tester,
+          conditions: const TvMyPleyaPageConditions(watchlistCount: 12),
+          canvasScale: appleTvScale,
+        );
+        final panel = tester.getRect(find.byType(ListView).first);
+        page.state.focusKey(poster(0));
+        await tester.pumpAndSettle();
+        for (var i = 1; i < 12; i++) {
+          await press(tester, LogicalKeyboardKey.arrowRight);
+        }
+
+        await press(tester, LogicalKeyboardKey.arrowDown);
+        await press(tester, LogicalKeyboardKey.arrowUp);
+
+        expect(page.focused, startsWith('tvMyPleya_poster_'));
+        expect(FocusManager.instance.primaryFocus!.rect.overlaps(panel), isTrue);
+      });
+    });
+
     // Review 557-C1: a poster that scrolled out of the rail's cache must not
     // break UP from the dock, which measures the posters.
     testWidgets('twelve posters: Up from the dock after the rail scrolled to its end', (tester) async {

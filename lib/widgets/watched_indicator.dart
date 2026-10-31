@@ -9,6 +9,7 @@ import '../services/settings_service.dart';
 import '../theme/mono_tokens.dart';
 import 'app_icon.dart';
 import 'media_progress_bar.dart';
+import 'mobile/library_phone_look.dart';
 import 'unwatched_count_badge.dart';
 
 /// Size preset for [WatchedIndicator]: [standard] for grid/poster cards,
@@ -89,23 +90,27 @@ class WatchedIndicator extends StatelessWidget {
     );
 
     final showCheck = item.isWatched && !hasActiveProgress;
-    final check = Container(
-      padding: EdgeInsets.all(size.checkPadding),
-      decoration: BoxDecoration(
-        color: tokens(context).text,
-        shape: BoxShape.circle,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 4)],
-      ),
-      child: AppIcon(Symbols.check_rounded, fill: 1, color: tokens(context).bg, size: size.checkIconSize),
-    );
+    final usesPlate = size == WatchedIndicatorSize.standard && LibraryPhoneLook.of(context);
+    final checkInset = usesPlate ? 0.0 : size.checkInset;
+    final check = usesPlate
+        ? const _WatchedPlate()
+        : Container(
+            padding: EdgeInsets.all(size.checkPadding),
+            decoration: BoxDecoration(
+              color: tokens(context).text,
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 4)],
+            ),
+            child: AppIcon(Symbols.check_rounded, fill: 1, color: tokens(context).bg, size: size.checkIconSize),
+          );
 
     return Stack(
       children: [
         // Watched checkmark — pops in/out when the watch state flips. On the
         // reduced tier the switcher is skipped so the mark appears instantly.
         Positioned(
-          top: size.checkInset,
-          right: size.checkInset,
+          top: checkInset,
+          right: checkInset,
           child: DevicePerformance.isReduced
               ? (showCheck ? check : const SizedBox.shrink())
               : AnimatedSwitcher(
@@ -161,6 +166,28 @@ class WatchedIndicator extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// The iPhone library look's watched mark: a dark corner plate that shares the
+/// poster's own rounded corner.
+class _WatchedPlate extends StatelessWidget {
+  const _WatchedPlate();
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = Radius.circular(tokens(context).radiusSm);
+    return Container(
+      key: const ValueKey('library.watched_plate'),
+      width: LibraryPhoneMetrics.watchedPlateSize,
+      height: LibraryPhoneMetrics.watchedPlateSize,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: LibraryPhoneMetrics.watchedPlateAlpha),
+        borderRadius: BorderRadius.only(topRight: radius, bottomLeft: radius),
+      ),
+      child: const AppIcon(Symbols.check_rounded, size: LibraryPhoneMetrics.watchedPlateIconSize, color: Colors.white),
     );
   }
 }

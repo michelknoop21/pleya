@@ -254,7 +254,7 @@ func TestDownloadCarriesTheDeviceOfTheSessionThatAskedForIt(t *testing.T) {
 		t.Fatalf("lijst %+v", list.Items)
 	}
 
-	// Een download van vóór 0024 heeft geen sessie: null, en geen fout.
+	// Een download van vóór 0025 heeft geen sessie: null, en geen fout.
 	if _, err := e.pool.Exec(context.Background(), `UPDATE downloads SET auth_session_id = NULL WHERE id = $1`, d.ID); err != nil {
 		t.Fatal(err)
 	}

@@ -47,7 +47,10 @@ import '../../i18n/strings.g.dart';
 import '../../theme/mono_tokens.dart';
 import '../../widgets/library_header_bar.dart';
 import '../../widgets/focusable_tab_chip.dart';
+import '../../widgets/mobile/library_phone_look.dart';
 import '../../widgets/tv/tv_page_chip_bar.dart';
+import 'mobile_library_filter_row.dart';
+import 'mobile_library_header.dart';
 import 'state_messages.dart';
 import 'tv_library_chooser.dart';
 import 'tabs/library_browse_tab.dart';
@@ -87,7 +90,24 @@ class LibrariesScreen extends StatefulWidget {
   final VoidCallback? onLibraryOrderChanged;
   final ValueChanged<String>? onLibrarySelected;
 
-  const LibrariesScreen({super.key, this.onLibraryOrderChanged, this.onLibrarySelected});
+  /// Draw this screen in the iPhone library look ([LibraryPhoneLook]). Only the
+  /// phone's picker asks for it; iPad, desktop and TV keep what they have.
+  final bool phoneLook;
+
+  /// Leave this page for Zoeken or the watchlist. Both are main-screen tabs and
+  /// this page is pushed over them, so it pops first. Only the phone look
+  /// draws them.
+  final VoidCallback? onOpenSearch;
+  final VoidCallback? onOpenWatchlist;
+
+  const LibrariesScreen({
+    super.key,
+    this.onLibraryOrderChanged,
+    this.onLibrarySelected,
+    this.phoneLook = false,
+    this.onOpenSearch,
+    this.onOpenWatchlist,
+  });
 
   @override
   State<LibrariesScreen> createState() => _LibrariesScreenState();
@@ -1006,7 +1026,9 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     MediaLibrary? selectedLibrary, {
     required bool groupByServer,
   }) {
-    if (selectedLibrary == null) return Text(t.libraries.title);
+    if (selectedLibrary == null) {
+      return widget.phoneLook ? MobileLibraryTitle(title: t.libraries.title) : Text(t.libraries.title);
+    }
     // Keep the TV chooser above its tabs, preserving the established Up/Down path.
     if (PlatformDetector.isTV()) {
       return AutomationNode(
@@ -1028,6 +1050,18 @@ class _LibrariesScreenState extends State<LibrariesScreen>
             ].join(' · '),
           ),
         ),
+      );
+    }
+    if (widget.phoneLook) {
+      return AutomationNode(
+        id: AutomationIds.libraryHeader,
+        role: 'region',
+        state: () => <String, Object?>{
+          'library': selectedLibrary.title,
+          'libraryKey': selectedLibrary.globalKey,
+          'server': selectedLibrary.serverName,
+        },
+        child: _buildLibraryDropdownTitle(visibleLibraries, selectedLibrary, groupByServer: groupByServer),
       );
     }
     return AutomationNode(
@@ -1074,7 +1108,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
       buildTabChip(
         _getTabLabel(_visibleTabs[i]),
         i,
-        style: TabChipStyle.floating,
+        style: widget.phoneLook ? TabChipStyle.outlined : TabChipStyle.floating,
         onSelectWhenActive: _focusCurrentTab,
         onNavigateDown: _focusCurrentTabFromTabBar,
         onNavigateToActions: () {
@@ -1248,34 +1282,85 @@ class _LibrariesScreenState extends State<LibrariesScreen>
       },
       entriesBuilder: (context) =>
           _buildGroupedLibraryMenuItems(visibleLibraries, showServerHeaders: showServerHeaders),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        constraints: const BoxConstraints(minHeight: 44),
-        child: Row(
-          mainAxisSize: .min,
-          children: [
-            AppIcon(ContentTypeHelper.getLibraryIcon(selectedLibrary.kind.id), fill: 1, size: 20),
-            const SizedBox(width: 8),
-            if (_hasMultipleServers(visibleLibraries) && selectedLibrary.serverName != null)
-              Column(
-                crossAxisAlignment: .start,
-                mainAxisSize: .min,
-                children: [
-                  Text(selectedLibrary.title, style: Theme.of(context).textTheme.titleMedium),
-                  _buildLibraryServerLabel(
-                    selectedLibrary,
-                    Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6),
-                    ),
-                    badgeSize: 10,
+      child: widget.phoneLook
+          ? MobileLibraryTitle(title: selectedLibrary.title, serverName: selectedLibrary.serverName)
+          : _buildDropdownCapsule(visibleLibraries, selectedLibrary),
+    );
+  }
+
+  Widget _buildDropdownCapsule(List<MediaLibrary> visibleLibraries, MediaLibrary selectedLibrary) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      constraints: const BoxConstraints(minHeight: 44),
+      child: Row(
+        mainAxisSize: .min,
+        children: [
+          AppIcon(ContentTypeHelper.getLibraryIcon(selectedLibrary.kind.id), fill: 1, size: 20),
+          const SizedBox(width: 8),
+          if (_hasMultipleServers(visibleLibraries) && selectedLibrary.serverName != null)
+            Column(
+              crossAxisAlignment: .start,
+              mainAxisSize: .min,
+              children: [
+                Text(selectedLibrary.title, style: Theme.of(context).textTheme.titleMedium),
+                _buildLibraryServerLabel(
+                  selectedLibrary,
+                  Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6),
                   ),
-                ],
-              )
-            else
-              Text(selectedLibrary.title, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(width: 4),
-            const AppIcon(Symbols.arrow_drop_down_rounded, fill: 1, size: 24),
-          ],
+                  badgeSize: 10,
+                ),
+              ],
+            )
+          else
+            Text(selectedLibrary.title, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(width: 4),
+          const AppIcon(Symbols.arrow_drop_down_rounded, fill: 1, size: 24),
+        ],
+      ),
+    );
+  }
+
+  /// Pop this page, then take the main-screen route behind it.
+  void _leaveTo(VoidCallback open) {
+    Navigator.of(context).maybePop();
+    open();
+  }
+
+  /// The header of the phone look. What the toolbar's pencil and refresh did
+  /// now sits behind the three dots in the filter row.
+  Widget _buildPhoneHeader({
+    required List<MediaLibrary> visibleLibraries,
+    required MediaLibrary? selectedLibrary,
+    required bool groupByServer,
+    required bool hasLibraries,
+    required bool floating,
+  }) {
+    final onOpenSearch = widget.onOpenSearch;
+    final onOpenWatchlist = widget.onOpenWatchlist;
+    return MobileLibraryHeader(
+      floating: floating,
+      onBack: () => Navigator.of(context).maybePop(),
+      title: _buildAppBarTitle(visibleLibraries, selectedLibrary, groupByServer: groupByServer),
+      actions: [
+        MobileLibraryHeaderActions(
+          onSearch: onOpenSearch == null ? null : () => _leaveTo(onOpenSearch),
+          onWatchlist: onOpenWatchlist == null ? null : () => _leaveTo(onOpenWatchlist),
+        ),
+      ],
+      tabRow: selectedLibrary == null
+          ? null
+          : SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(children: _libraryNavigationTabs(hasChooser: false)),
+            ),
+      filterRow: ValueListenableBuilder<LibraryHeaderInfo>(
+        valueListenable: _headerInfo,
+        builder: (context, info, _) => MobileLibraryFilterRow(
+          info: info,
+          onManage: hasLibraries ? _showLibraryManagementSheet : null,
+          onRefresh: _refreshSelectedLibraryTabs,
         ),
       ),
     );
@@ -1350,7 +1435,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
         (PlatformDetector.isMobile(context) ? 48.0 : LibraryHeaderMetrics.barHeight) +
         (showTvChooser ? TvPageChipBar.heightFor(context) : 0);
 
-    Widget appBar({required bool floating}) => DesktopSliverAppBar(
+    Widget desktopAppBar({required bool floating}) => DesktopSliverAppBar(
       title: _buildAppBarTitle(visibleLibraries, selectedLibrary, groupByServer: groupByServerSetting),
       toolbarHeight: LibraryHeaderMetrics.titleHeight,
       bottom: showHeaderBar ? PreferredSize(preferredSize: Size.fromHeight(headerHeight), child: headerColumn()) : null,
@@ -1373,6 +1458,16 @@ class _LibrariesScreenState extends State<LibrariesScreen>
         ),
       ],
     );
+
+    Widget appBar({required bool floating}) => widget.phoneLook
+        ? _buildPhoneHeader(
+            visibleLibraries: visibleLibraries,
+            selectedLibrary: selectedLibrary,
+            groupByServer: groupByServerSetting,
+            hasLibraries: allLibraries.isNotEmpty,
+            floating: floating,
+          )
+        : desktopAppBar(floating: floating);
 
     Widget buildSimpleScroll({required Widget body}) {
       return CustomScrollView(
@@ -1499,7 +1594,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
               sliver: appBar(floating: true),
             ),
           ],
-          body: buildTabs(),
+          body: widget.phoneLook ? LibraryPhoneLook(child: buildTabs()) : buildTabs(),
         );
       }
     } else {

@@ -99,6 +99,12 @@ type Capabilities struct {
 	// vlaggen op waar kind stil negeert en de andere routes niet kent.
 	PersonalData bool `json:"personal_data"`
 
+	// ItemActivity (DEC-169, activiteit van het huishouden). Aan zodra de
+	// persoonlijke opslag er is: GET /items/{id}/activity en de opt-out onder
+	// /users/me/activity-sharing bestaan dan samen, want het ene zonder het
+	// andere zou activiteit tonen die niemand kan regelen.
+	ItemActivity bool `json:"item_activity"`
+
 	// ArtworkSizes (venster 3, C1). Aan zodra /artwork/{id} afgeleide maten van de
 	// ladder kan maken. Belooft niets over andere routes.
 	ArtworkSizes bool `json:"artwork_sizes"`

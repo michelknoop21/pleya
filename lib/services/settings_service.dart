@@ -468,6 +468,8 @@ class SettingsService extends BaseSharedPreferencesService {
   static const showEpisodeNumberOnCards = BoolPref('show_episode_number_on_cards', defaultValue: true);
   static const showSeasonPostersOnTabs = BoolPref('show_season_posters_on_tabs');
   static const hideSpoilers = BoolPref('hide_spoilers');
+  // Public reactions from Trakt on a TV detail page. See the privacy page.
+  static const showTraktDiscussions = BoolPref('show_trakt_discussions', defaultValue: true);
   // Mirror local-folder playback progress onto matched Plex/Jellyfin items.
   static const syncLocalWatchState = BoolPref('sync_local_watch_state', defaultValue: true);
   static const showNavBarLabels = BoolPref('show_nav_bar_labels', defaultValue: true);
@@ -1079,6 +1081,7 @@ class SettingsService extends BaseSharedPreferencesService {
     showEpisodeNumberOnCards,
     showSeasonPostersOnTabs,
     hideSpoilers,
+    showTraktDiscussions,
     syncLocalWatchState,
     showNavBarLabels,
     globalShaderPreset,

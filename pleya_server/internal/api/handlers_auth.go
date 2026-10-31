@@ -77,6 +77,8 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			// S19: de routes bestaan altijd, de catalogus levert ze.
 			Collections: true,
 			Playlists:   true,
+			// Activiteit van het huishouden, op dezelfde opslag.
+			ItemActivity: s.opts.Personal != nil,
 			// Vanaf PS-4 staat kijkstatus aan, en met het eigendomsmodel eronder.
 			// De vlaggen hangen aan de aanwezigheid van de opslag: een server die
 			// zonder watch-store draait zegt dat eerlijk in plaats van een

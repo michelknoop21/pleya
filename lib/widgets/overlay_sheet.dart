@@ -830,11 +830,12 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
       sheetContent = Column(
         mainAxisSize: .min,
         children: [
-          // M3 drag handle: 32x4, rounded, with 12dp top / 4dp bottom margin
+          // M3 drag handle: 32x4, rounded, with 12dp top / 4dp bottom margin.
+          // The floating sheet draws the wider grip of the iPhone library look.
           Container(
-            width: 32,
+            width: geometry.floating ? floatingSheetHandleWidth : 32,
             height: 4,
-            margin: const EdgeInsets.only(top: 12, bottom: 4),
+            margin: EdgeInsets.only(top: geometry.floating ? 8 : 12, bottom: 4),
             decoration: BoxDecoration(
               color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
               borderRadius: const BorderRadius.all(Radius.circular(2)),
@@ -893,7 +894,7 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
                   // home-indicator padding; an edge-hugging sheet does.
                   child: SafeArea(
                     top: !geometry.isCentered && isTop,
-                    bottom: !geometry.isCentered && !isTop,
+                    bottom: !geometry.isCentered && !isTop && !geometry.floating,
                     left: false,
                     right: false,
                     child: ConstrainedBox(constraints: effectiveConstraints, child: sheetContent),

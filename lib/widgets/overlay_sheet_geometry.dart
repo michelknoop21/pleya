@@ -25,6 +25,16 @@ enum OverlaySheetPresentation {
   /// Viewport-aware panel: a bottom sheet below [ScreenBreakpoints.mobile] and
   /// a centred modal above it. Never follows the pointer.
   panel,
+
+  /// A TV panel down one side of the screen, at the alignment the caller names,
+  /// close to the edges where a modal keeps the overscan band: Meer acties in
+  /// northstar 12 runs from top to bottom. Anywhere else this is [panel].
+  tvSidePanel,
+
+  /// A sheet that floats clear of the edges of a phone: inset on all four
+  /// sides, every corner rounded like the screen. Wider windows get the same
+  /// centred modal as [panel]. Used by the iPhone library look.
+  floating,
 }
 
 /// Resolved placement for one overlay sheet. Pure data: the host reads it,
@@ -85,7 +95,12 @@ class OverlaySheetGeometry {
     required this.fadeIn,
     this.verticalEdgePadding = 0,
     this.shadows = const [],
+    this.floating = false,
   });
+
+  /// Floats clear of every edge of a phone, so it takes no safe-area padding
+  /// inside: its own inset already keeps it off the home indicator.
+  final bool floating;
 
   /// Whether the surface floats in the middle rather than hanging off an edge.
   /// A floating panel needs no safe-area padding on the edge it does not touch.
@@ -103,6 +118,7 @@ class OverlaySheetGeometry {
       other.allowDragHandle == allowDragHandle &&
       other.enterOffset == enterOffset &&
       other.fadeIn == fadeIn &&
+      other.floating == floating &&
       listEquals(other.shadows, shadows);
 
   @override
@@ -116,6 +132,7 @@ class OverlaySheetGeometry {
     allowDragHandle,
     enterOffset,
     fadeIn,
+    floating,
     Object.hashAll(shadows),
   );
 }
@@ -189,6 +206,11 @@ const double _tvPanelReferenceWidth = 1000;
 /// which row it was. The source picker and the filter panel keep the narrower
 /// number, because a list a remote walks is better when it is not a wall.
 const double _tvWidePanelReferenceWidth = 1560;
+
+/// Width and edge of a side panel, as read off northstar 12 (666 and 34 at 2000
+/// wide).
+const double _tvSidePanelReferenceWidth = 639;
+const double _tvSidePanelReferenceEdge = 33;
 
 /// Reference corner radius, from hoofdstuk 14.1's "hoekradius 20–24".
 const double _tvPanelReferenceRadius = 22;
@@ -279,11 +301,17 @@ OverlaySheetGeometry resolveOverlaySheetGeometry({
   // make every overlay a panel. So a stated alignment keeps its edge, and only
   // its size is negotiated with the viewport.
   if (isTV) {
+    if (presentation == OverlaySheetPresentation.tvSidePanel) {
+      return _tvSidePanelGeometry(viewport: viewport, alignment: alignment ?? Alignment.centerRight);
+    }
     return alignment == null
         ? _tvPanelGeometry(viewport: viewport, explicitConstraints: explicitConstraints)
         : _tvPlacedSheetGeometry(viewport: viewport, alignment: alignment, explicitConstraints: explicitConstraints);
   }
-  final usePanel = presentation == OverlaySheetPresentation.panel && !ScreenBreakpoints.isMobile(viewport.width);
+  if (presentation == OverlaySheetPresentation.floating && ScreenBreakpoints.isMobile(viewport.width)) {
+    return floatingSheetGeometry(viewport: viewport, explicitConstraints: explicitConstraints);
+  }
+  final usePanel = presentation != OverlaySheetPresentation.sheet && !ScreenBreakpoints.isMobile(viewport.width);
   return usePanel
       ? _panelGeometry(viewport: viewport, explicitConstraints: explicitConstraints)
       : _sheetGeometry(
@@ -329,6 +357,30 @@ OverlaySheetGeometry _tvPlacedSheetGeometry({
     enterOffset: panel.enterOffset,
     fadeIn: true,
     shadows: panel.shadows,
+  );
+}
+
+/// [OverlaySheetPresentation.tvSidePanel]: the panel's language at the width of
+/// northstar 12, on the edges of that picture, and sliding in from the edge it
+/// belongs to rather than lifting.
+OverlaySheetGeometry _tvSidePanelGeometry({required Size viewport, required Alignment alignment}) {
+  double fromWidth(double reference) => viewport.width * (reference / _tvReferenceWidth);
+  final edge = fromWidth(_tvSidePanelReferenceEdge);
+  final height = math.max(0.0, viewport.height - edge * 2);
+  return OverlaySheetGeometry(
+    alignment: alignment,
+    constraints: BoxConstraints.tightFor(width: fromWidth(_tvSidePanelReferenceWidth), height: height),
+    borderRadius: BorderRadius.circular(fromWidth(_tvPanelReferenceRadius)),
+    edgePadding: edge,
+    verticalEdgePadding: edge,
+    allowPointerAnchor: false,
+    allowDragHandle: false,
+    enterOffset: Offset(fromWidth(_tvPanelReferenceEnter) * alignment.x.sign, 0),
+    fadeIn: true,
+    shadows: _tvPanelShadows(
+      fromWidth: fromWidth,
+      fromHeight: (reference) => viewport.height * (reference / _tvReferenceHeight),
+    ),
   );
 }
 
@@ -436,6 +488,36 @@ OverlaySheetGeometry _sheetGeometry({
 /// breakpoint. An iPad in landscape (744 short side and up) is not one.
 bool _isPhoneLandscape(Size viewport) =>
     viewport.width > viewport.height && viewport.shortestSide < ScreenBreakpoints.mobile;
+
+/// Gap between a floating sheet and every screen edge, the bottom one included.
+const double floatingSheetEdgeInset = 8;
+
+/// Corner radius of a floating sheet. Large enough that the bottom corners
+/// follow the rounding of the screen they sit next to.
+const double floatingSheetCornerRadius = 37;
+
+/// Width of the grip at the top of a floating sheet.
+const double floatingSheetHandleWidth = 58;
+
+/// Share of the viewport height a floating sheet may take before it scrolls.
+const double _floatingSheetMaxHeightFraction = 0.85;
+
+/// The sheet of the iPhone library look: floats 8 pt off the left, right and
+/// bottom edges, 37 pt corners, as tall as its content up to the maximum.
+OverlaySheetGeometry floatingSheetGeometry({required Size viewport, BoxConstraints? explicitConstraints}) {
+  return OverlaySheetGeometry(
+    alignment: Alignment.bottomCenter,
+    constraints: explicitConstraints ?? BoxConstraints(maxHeight: viewport.height * _floatingSheetMaxHeightFraction),
+    borderRadius: BorderRadius.circular(floatingSheetCornerRadius),
+    edgePadding: floatingSheetEdgeInset,
+    verticalEdgePadding: floatingSheetEdgeInset,
+    allowPointerAnchor: false,
+    allowDragHandle: true,
+    enterOffset: Offset(0, viewport.height),
+    fadeIn: false,
+    floating: true,
+  );
+}
 
 OverlaySheetGeometry _panelGeometry({required Size viewport, BoxConstraints? explicitConstraints}) {
   // Only a viewport at least [ScreenBreakpoints.mobile] wide reaches this

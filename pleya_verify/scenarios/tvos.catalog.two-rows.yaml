@@ -1,8 +1,8 @@
 name: tvos.catalog.two-rows
 target: tvos-sim
-# A06B-WIDTH1, approved 22 October: broad six-column library, active row
-# whole and next row partially visible. Replaces the former two-whole-row
-# requirement. The v2 fixture has 19 films, including a short last row.
+# A-06c: six columns, two whole rows, one row at a time. The v2 fixture has 19
+# films, including a short last row. A06B-WIDTH1's next-row peek is gone on this
+# route, and so is the heading.
 setup:
   - reset_app
   - seed: catalog.long-grid.v2
@@ -22,13 +22,12 @@ steps:
   - wait_until: {id: "tv.catalog.grid[movies]", timeout: 20000}
   - wait_until: {id: "tv.catalog.grid.item[movies.18]", timeout: 10000}
   - settle: 1000
-  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true, insideViewport: true, below: "tv.catalog.header[movies]"}
+  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true, insideViewport: true}
   - snapshot: 00-rest
 
   # DOWN: the focused row stays whole, including the short last row.
   - press: down
   - settle: 900
-  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: true}}
   - assert: {id: "tv.catalog.grid.item[movies.6]", focused: true, insideViewport: true}
   - snapshot: 01-down-row1
   - press: down
@@ -40,7 +39,7 @@ steps:
   - assert: {id: "tv.catalog.grid.item[movies.18]", focused: true, insideViewport: true}
   - snapshot: 03-down-row3
 
-  # UP: move one row at a time; the heading returns on row 0.
+  # UP: move one row at a time.
   - press: up
   - settle: 900
   - assert: {id: "tv.catalog.grid.item[movies.12]", focused: true, insideViewport: true}
@@ -48,15 +47,13 @@ steps:
   - press: up
   - settle: 900
   - assert: {id: "tv.catalog.grid.item[movies.6]", focused: true, insideViewport: true}
-  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: true}}
   - snapshot: 05-up-row1
   - press: up
   - settle: 900
-  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true, insideViewport: true, below: "tv.catalog.header[movies]"}
-  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: false}}
+  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true, insideViewport: true}
   - snapshot: 06-up-row0
 
-  # With the heading back through the rail: row 2, LEFT, UP into the bar.
+  # Panel from row 2, and back onto the same card.
   - press: down
   - settle: 700
   - press: down
@@ -64,9 +61,7 @@ steps:
   - press: left
   - settle: 900
   - assert: {id: "tv.catalog.rail.row[movies.sources]", focused: true}
-  - press: up
+  - press: right
   - settle: 900
-  - assert: {id: nav.movies, focused: true, insideViewport: true}
-  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: false}}
-  - assert: {id: "tv.catalog.grid.item[movies.0]", insideViewport: true, below: "tv.catalog.header[movies]"}
-  - snapshot: 07-rail-to-bar
+  - assert: {id: "tv.catalog.grid.item[movies.12]", focused: true, insideViewport: true}
+  - snapshot: 07-panel-and-back

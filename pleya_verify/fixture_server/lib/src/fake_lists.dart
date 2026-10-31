@@ -19,7 +19,7 @@ class FakeList {
   final List<String> itemIds;
 }
 
-/// Chapter 14b as far as the app's client needs it: the eighteen routes, the
+/// Chapter 14c as far as the app's client needs it: the eighteen routes, the
 /// rights a single requester can meet (`403 library.list_not_owner` on a
 /// collection of someone else) and a playlist's refusal of a show. Which rows a
 /// viewer may see is the real server's business and is proved there.

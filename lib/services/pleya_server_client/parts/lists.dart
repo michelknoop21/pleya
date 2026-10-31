@@ -1,6 +1,6 @@
 part of '../../pleya_server_client.dart';
 
-/// Collections and playlists (S19, chapter 14b).
+/// Collections and playlists (S19, chapter 14c).
 ///
 /// Two different rights live here. A playlist is personal: every user manages
 /// his own, and no role check applies. A collection the app writes is canonical,

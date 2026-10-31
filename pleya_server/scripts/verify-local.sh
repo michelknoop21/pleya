@@ -168,10 +168,9 @@ if [ "${tables:-0}" -ge 14 ]; then ok "schema gemigreerd ($tables tabellen)"; el
 #
 # watch_states en stream_sessions staan sinds PS-4 in het schema (DEC-049 en
 # DEC-051); users, sessions en library_permissions sinds PS-9, migratie 0007
-# (DEC-119, DEC-123). Alle vijf zijn daarom uit deze lijst gehaald. play_history
-# en play_sessions staan er nadrukkelijk nog wel in: die horen bij PS-9P, en
-# PS-9 mag daar niet van afhangen.
-forbidden="$($COMPOSE exec -T postgres psql -U pleya -d pleya -tAc "SELECT coalesce(string_agg(table_name, ','), '') FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('play_history','play_sessions','user_item_data','transcode_sessions','external_ids','metadata_candidates')" 2>/dev/null | tr -d '\r')"
+# (DEC-119, DEC-123); metadata_candidates sinds 0013, transcode_sessions sinds
+# 0019 en play_history sinds 0020. Alle acht zijn daarom uit deze lijst gehaald.
+forbidden="$($COMPOSE exec -T postgres psql -U pleya -d pleya -tAc "SELECT coalesce(string_agg(table_name, ','), '') FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('play_sessions','user_item_data','external_ids')" 2>/dev/null | tr -d '\r')"
 if [ -z "$forbidden" ]; then ok "geen tabel uit een latere fase"; else fail "tabellen uit een latere fase: $forbidden"; fi
 
 setup_required="$(api /info | jq_field 'd["auth"]["setup_required"]')"
@@ -354,6 +353,26 @@ else
   fail "een member ziet meer gebruikers dan zichzelf"
 fi
 
+# Activiteit van het huishouden (DEC-169): de owner keek hierboven $ITEM, zij
+# mag die film zien en krijgt zijn regel, tot de owner delen uitzet.
+if [ "$(api "/items/$ITEM/activity" "${SANNE_AUTH[@]}" | jq_field '[i["username"] for i in d["items"]]')" = "['verify']" ]; then
+  ok "een huisgenoot ziet wie een film keek"
+else
+  fail "de activiteit van de owner is niet zichtbaar voor een huisgenoot"
+fi
+if [ "$(api /users/me/activity-sharing "${AUTH[@]}" -X PUT -H 'Content-Type: application/json' \
+    -d '{"share_activity":false}' | jq_field 'd["share_activity"]')" = "False" ] && \
+   [ "$(api "/items/$ITEM/activity" "${SANNE_AUTH[@]}" | jq_field 'len(d["items"])')" = "0" ]; then
+  ok "de opt-out verbergt de owner voor een huisgenoot"
+else
+  fail "de opt-out werkte niet"
+fi
+if [ "$(api "/items/$ITEM/activity" "${AUTH[@]}" | jq_field 'd["items"][0]["is_self"]')" = "True" ]; then
+  ok "wie delen uitzet ziet zijn eigen regel nog"
+else
+  fail "de opt-out verbergt iemand voor zichzelf"
+fi
+
 # Haar sessie intrekken maakt haar token onmiddellijk ongeldig, en raakt de
 # sessie van de owner niet. Dat is acceptatiecriterium 3 op aanvraagniveau; de
 # gemeten grens tegen een lopende stream staat in de Go-test.
@@ -513,9 +532,13 @@ if [ "$code" = "0" ]; then ok "het Go-proces sloot met exitcode 0 op SIGTERM"; e
 # zodra het proces weg is, en het doorgeven van de laatste bytes naar de
 # logdriver loopt daar soms een tel achteraan. Vijf korte pogingen in plaats van
 # één, want een race hier meet de logdriver en niet de afsluiting.
+#
+# Geen grep -q: die stopt bij de eerste treffer, en de herstarts uit sectie 10 en
+# 11 hebben de regel dan al vroeg in de log gezet. compose logs krijgt daarna een
+# SIGPIPE, en onder pipefail telt de pijp als mislukt terwijl de regel er staat.
 shutdown_logged=""
 for _ in 1 2 3 4 5; do
-  if $COMPOSE logs pleya-server 2>/dev/null | grep -q "afsluiten voltooid"; then
+  if $COMPOSE logs pleya-server 2>/dev/null | grep "afsluiten voltooid" >/dev/null; then
     shutdown_logged=yes
     break
   fi

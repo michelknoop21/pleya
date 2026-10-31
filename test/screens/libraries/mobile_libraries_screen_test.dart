@@ -26,6 +26,7 @@ import 'package:pleya/screens/settings/library_visibility_screen.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
@@ -191,6 +192,11 @@ void main() {
     await tester.pump();
 
     expect(find.byType(LibrariesScreen), findsOneWidget);
+    // The phone asks for its own look; `LibrariesScreen` alone never takes it.
+    expect(tester.widget<LibrariesScreen>(find.byType(LibrariesScreen)).phoneLook, isTrue);
+    // `MainScreen` owns the host and this route is pushed beside it. Without one
+    // of its own, sort, filter and the pencil are dead buttons (CAT9).
+    expect(OverlaySheetController.maybeOf(tester.element(find.byType(LibrariesScreen))), isNotNull);
     final storage = await StorageService.getInstance();
     expect(storage.getSelectedLibraryKey(), seriesNas.globalKey);
   });

@@ -374,6 +374,9 @@
     "has64bitOffsets": "64ビットオフセット"
   },
   "mediaMenu": {
+    "watch": "視聴",
+    "manage": "管理",
+    "moreWaysToWatch": "その他の視聴方法",
     "markAsWatched": "視聴済みにする",
     "markAsUnwatched": "未視聴にする",
     "removeFromContinueWatching": "視聴中から削除",
@@ -741,6 +744,7 @@
     "manageLibraries": "ライブラリを管理",
     "sort": "並べ替え",
     "sortBy": "並べ替え順",
+    "filterBy": "絞り込み条件",
     "filters": "フィルター",
     "confirmActionMessage": "この操作を実行してもよろしいですか？",
     "showLibrary": "ライブラリを表示",

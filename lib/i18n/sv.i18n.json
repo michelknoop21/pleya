@@ -374,6 +374,9 @@
     "has64bitOffsets": "64-bit offset"
   },
   "mediaMenu": {
+    "watch": "Titta",
+    "manage": "Hantera",
+    "moreWaysToWatch": "Fler sätt att titta",
     "markAsWatched": "Markera som sedd",
     "markAsUnwatched": "Markera som osedd",
     "removeFromContinueWatching": "Ta bort från Fortsätt titta",
@@ -741,6 +744,7 @@
     "manageLibraries": "Hantera bibliotek",
     "sort": "Sortera",
     "sortBy": "Sortera efter",
+    "filterBy": "Filtrera efter",
     "filters": "Filter",
     "confirmActionMessage": "Är du säker på att du vill utföra denna åtgärd?",
     "showLibrary": "Visa bibliotek",

@@ -237,7 +237,7 @@ func TestAuditRecordsWhoClearedHistory(t *testing.T) {
 }
 
 // Beeld 17 noemt de deler, dus owner staat ook in het antwoord aan een lid
-// (14b). shared_with blijft van de eigenaar.
+// (14c). shared_with blijft van de eigenaar.
 func TestOwnerNameIsVisibleToWhoeverSeesTheList(t *testing.T) {
 	e := newEnv(t)
 	e.setup(e.putSetupCode())

@@ -134,7 +134,10 @@ class HomeRowDraft extends ChangeNotifier {
   }
 
   /// The filters step's five lines, worded once for every surface.
-  List<HomeRowFilterLine> filterLines(String Function(UnifiedCatalogSort sort) sortLabel) {
+  List<HomeRowFilterLine> filterLines(
+    String Function(UnifiedCatalogSort sort) sortLabel, {
+    required UnifiedFilterCapabilities capabilities,
+  }) {
     final filters = preferences.filters;
     final rows = t.unifiedCatalog.homeRows;
     return [
@@ -156,7 +159,7 @@ class HomeRowDraft extends ChangeNotifier {
             ? t.unifiedCatalog.rail.filtersActive(count: filters.activeCount - filters.itemFilterCount)
             : t.unifiedCatalog.allSources,
       ),
-      (key: 'sort', label: rows.sorting, value: sortLabel(preferences.sort)),
+      (key: 'sort', label: rows.sorting, value: sortLabel(preferences.effectiveSort(capabilities))),
     ];
   }
 

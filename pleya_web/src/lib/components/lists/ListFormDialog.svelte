@@ -2,7 +2,7 @@
   Een lijst maken of bewerken. Bij een verzameling hoort de zichtbaarheid (vraag
   30): alleen ik, iedereen, of gekozen gebruikers.
 
-  Delen is voor eigenaar en beheerder (hoofdstuk 14b). Een lid of beperkte
+  Delen is voor eigenaar en beheerder (hoofdstuk 14c). Een lid of beperkte
   gebruiker houdt zijn verzamelingen privé: hij krijgt de keuze niet te zien, er
   gaat geen zichtbaarheid mee en er komt geen `GET /users`. Staat een eigen lijst
   nog gedeeld van toen hij die rol had, dan blijft alleen de weg terug: de huidige

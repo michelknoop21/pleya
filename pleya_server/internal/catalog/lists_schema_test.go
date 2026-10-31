@@ -72,7 +72,7 @@ func (f *listFixture) count(t *testing.T, sql string, args ...any) int {
 	return n
 }
 
-// TestListTablesFollowTheCatalogAndTheUser legt de cascades uit 0025 vast: een
+// TestListTablesFollowTheCatalogAndTheUser legt de cascades uit 0026 vast: een
 // item weg is zijn rijen weg zonder de lijst te breken, een gebruiker weg is
 // zijn lijsten weg.
 func TestListTablesFollowTheCatalogAndTheUser(t *testing.T) {

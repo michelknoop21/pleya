@@ -2,8 +2,9 @@
 // favorieten, waarderingen en de voorkeur voor audio en ondertitels (S20), plus
 // het lezen van de afspeelgeschiedenis.
 //
-// Alles hangt aan de gebruiker. Geen enkele vraag hier kijkt naar een andere
-// gebruiker, en een gebruiker weg is zijn rijen weg (ON DELETE CASCADE).
+// Alles hangt aan de gebruiker, en een gebruiker weg is zijn rijen weg (ON DELETE
+// CASCADE). De enige vraag hier die over gebruikers heen kijkt staat apart in
+// activity.go, met de opt-out erbij; al het andere gaat over de aanvrager zelf.
 package personal
 
 import (

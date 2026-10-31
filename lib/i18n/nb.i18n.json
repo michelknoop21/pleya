@@ -374,6 +374,9 @@
     "has64bitOffsets": "64-biters forskyvninger"
   },
   "mediaMenu": {
+    "watch": "Se",
+    "manage": "Administrer",
+    "moreWaysToWatch": "Flere måter å se på",
     "markAsWatched": "Merk som sett",
     "markAsUnwatched": "Merk som usett",
     "removeFromContinueWatching": "Fjern fra Fortsett å se",
@@ -741,6 +744,7 @@
     "manageLibraries": "Administrer biblioteker",
     "sort": "Sorter",
     "sortBy": "Sorter etter",
+    "filterBy": "Filtrer etter",
     "filters": "Filtre",
     "confirmActionMessage": "Er du sikker på at du vil utføre denne handlingen?",
     "showLibrary": "Vis bibliotek",

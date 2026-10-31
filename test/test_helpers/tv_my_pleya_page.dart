@@ -137,6 +137,10 @@ Future<TvMyPleyaPage> pumpTvMyPleyaPage(
   TvMyPleyaPageConditions conditions = const TvMyPleyaPageConditions(),
   TvMyPleyaTheme theme = TvMyPleyaTheme.dark,
   Size size = kTvGoldenSurfaceSize,
+
+  /// What `_AppleTvScale` in main.dart does on a real Apple TV: laid out on the
+  /// logical canvas, painted this much larger.
+  double canvasScale = 1,
 }) async {
   TvDetectionService.debugSetAppleTVOverride(conditions.appleTv);
   addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
@@ -216,6 +220,22 @@ Future<TvMyPleyaPage> pumpTvMyPleyaPage(
             navigatorKey: navigatorKey,
             debugShowCheckedModeBanner: false,
             theme: _theme(theme),
+            builder: canvasScale == 1
+                ? null
+                : (context, child) => Align(
+                    alignment: Alignment.topLeft,
+                    child: Transform.scale(
+                      scale: canvasScale,
+                      alignment: Alignment.topLeft,
+                      child: SizedBox.fromSize(
+                        size: size,
+                        child: MediaQuery(
+                          data: MediaQuery.of(context).copyWith(size: size),
+                          child: child!,
+                        ),
+                      ),
+                    ),
+                  ),
             home: Scaffold(
               backgroundColor: tokens.bg,
               body: TvRootShell(

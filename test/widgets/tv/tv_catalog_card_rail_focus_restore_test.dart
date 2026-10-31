@@ -45,6 +45,35 @@ Widget _rail(GlobalKey<TvCatalogCardRailState> key, List<String> itemIds) {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  testWidgets('cards leaving a rail the focus has left do not pull the focus back into it', (tester) async {
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final key = GlobalKey<TvCatalogCardRailState>();
+    final outside = FocusNode(debugLabel: 'outside');
+    addTearDown(outside.dispose);
+    Widget app(List<String> ids) => Column(
+      textDirection: TextDirection.ltr,
+      children: [
+        Focus(focusNode: outside, child: const SizedBox(height: 10)),
+        Expanded(child: _rail(key, ids)),
+      ],
+    );
+    await tester.pumpWidget(app(_itemIds(3)));
+    await tester.pumpAndSettle();
+
+    expect(key.currentState!.focusItem('item1'), isTrue);
+    await tester.pumpAndSettle();
+    outside.requestFocus();
+    await tester.pumpAndSettle();
+
+    await tester.pumpWidget(app(const ['other0', 'other1']));
+    await tester.pumpAndSettle();
+
+    expect(outside.hasPrimaryFocus, isTrue);
+  });
+
   testWidgets('restoring focus on a card that scrolled out of the built range brings it back, not the first card', (
     tester,
   ) async {

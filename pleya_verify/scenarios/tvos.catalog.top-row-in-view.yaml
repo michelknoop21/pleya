@@ -1,14 +1,9 @@
 name: tvos.catalog.top-row-in-view
 target: tvos-sim
 # A-06b follow-up (Michel, hardware, build 391): moving UP in Alle films or
-# Alle series left the top row just off the screen. Two causes, both covered:
-#
-# - Folded, the grid started at the bar's inset (28 of 1080), half the outer
-#   band of hoofdstuk 8.1, so the row the remote moved UP to sat with its ring
-#   inside the band a set overscans. The folded grid now starts at 56 of 1080.
-# - UP out of the rail into the bar brought the heading back but left the grid
-#   scrolled, the first row cut off under the heading. The grid now returns to
-#   its top together with the heading.
+# Alle series left the top row just off the screen. On the full-bleed route of
+# A-06c there is no heading to come back: the first row returns to its own top
+# margin, from the rows below and from the panel.
 #
 # `catalog.long-grid.v1` seeds 18 films, three rows of six.
 setup:
@@ -31,7 +26,7 @@ steps:
   - wait_until: {id: "tv.catalog.grid.item[movies.17]", timeout: 10000}
   - settle: 1000
 
-  # Down to row 2, then UP to row 1: folded, row 1 parked at the top.
+  # Down to row 2, then UP to row 1.
   - press: down
   - settle: 700
   - press: down
@@ -39,18 +34,15 @@ steps:
   - press: up
   - settle: 900
   - assert: {id: "tv.catalog.grid.item[movies.6]", focused: true, insideViewport: true}
-  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: true}}
-  - snapshot: 01-up-to-row1-folded
+  - snapshot: 01-up-to-row1
 
-  # UP onto row 0: heading back, the whole first row under it.
+  # UP onto row 0: the whole first row is back.
   - press: up
   - settle: 900
-  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true, insideViewport: true, below: "tv.catalog.header[movies]"}
-  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: false}}
+  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true, insideViewport: true}
   - snapshot: 02-row0-after-up
 
-  # Folded on row 2, LEFT into the rail, UP into the bar: the grid goes back
-  # to its top with the heading.
+  # Panel from row 2 and back, then up: the same whole first row.
   - press: down
   - settle: 700
   - press: down
@@ -58,9 +50,11 @@ steps:
   - press: left
   - settle: 900
   - assert: {id: "tv.catalog.rail.row[movies.sources]", focused: true}
+  - press: right
+  - settle: 900
+  - press: up
+  - settle: 700
   - press: up
   - settle: 900
-  - assert: {id: nav.movies, focused: true, insideViewport: true}
-  - assert: {id: "tv.catalog.header[movies]", state: {collapsed: false}}
-  - assert: {id: "tv.catalog.grid.item[movies.0]", insideViewport: true, below: "tv.catalog.header[movies]"}
-  - snapshot: 03-rail-to-bar-row0
+  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true, insideViewport: true}
+  - snapshot: 03-panel-then-row0

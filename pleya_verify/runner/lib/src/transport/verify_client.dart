@@ -234,11 +234,13 @@ class VerifyClient {
     required String username,
     required String password,
     String? setupCode,
+    String? backend,
   }) => _postJson('/v1/signin', {
     'base_url': baseUrl,
     'username': username,
     'password': password,
     if (setupCode != null) 'setup_code': setupCode,
+    if (backend != null) 'backend': backend,
   }, limit: signinTimeout);
 
   Future<Map<String, Object?>> connectionsSeed({

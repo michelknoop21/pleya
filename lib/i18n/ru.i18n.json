@@ -374,6 +374,9 @@
     "has64bitOffsets": "64-битные смещения"
   },
   "mediaMenu": {
+    "watch": "Смотреть",
+    "manage": "Управление",
+    "moreWaysToWatch": "Другие способы просмотра",
     "markAsWatched": "Отметить как просмотренное",
     "markAsUnwatched": "Отметить как непросмотренное",
     "removeFromContinueWatching": "Удалить из «Продолжить просмотр»",
@@ -741,6 +744,7 @@
     "manageLibraries": "Управление библиотеками",
     "sort": "Сортировка",
     "sortBy": "Сортировать по",
+    "filterBy": "Фильтровать по",
     "filters": "Фильтры",
     "confirmActionMessage": "Вы уверены, что хотите выполнить это действие?",
     "showLibrary": "Показать библиотеку",

@@ -508,6 +508,9 @@ class _TranslationsMediaMenuBg extends TranslationsMediaMenuEn {
 	final TranslationsBg _root; // ignore: unused_field
 
 	// Translations
+	@override String get watch => 'Гледай';
+	@override String get manage => 'Управление';
+	@override String get moreWaysToWatch => 'Още начини за гледане';
 	@override String get markAsWatched => 'Маркирай като гледано';
 	@override String get markAsUnwatched => 'Маркирай като негледано';
 	@override String get removeFromContinueWatching => 'Премахни от продължаване на гледането';
@@ -979,6 +982,7 @@ class _TranslationsLibrariesBg extends TranslationsLibrariesEn {
 	@override String get manageLibraries => 'Управление на библиотеки';
 	@override String get sort => 'Сортиране';
 	@override String get sortBy => 'Сортирай по';
+	@override String get filterBy => 'Филтрирай по';
 	@override String get filters => 'Филтри';
 	@override String get confirmActionMessage => 'Сигурни ли сте, че искате да извършите това действие?';
 	@override String get showLibrary => 'Покажи библиотеката';
@@ -2693,6 +2697,9 @@ extension on TranslationsBg {
 			'fileInfo.duration' => 'Продължителност',
 			'fileInfo.optimizedForStreaming' => 'Оптимизирано за стрийминг',
 			'fileInfo.has64bitOffsets' => '64-битови отмествания',
+			'mediaMenu.watch' => 'Гледай',
+			'mediaMenu.manage' => 'Управление',
+			'mediaMenu.moreWaysToWatch' => 'Още начини за гледане',
 			'mediaMenu.markAsWatched' => 'Маркирай като гледано',
 			'mediaMenu.markAsUnwatched' => 'Маркирай като негледано',
 			'mediaMenu.removeFromContinueWatching' => 'Премахни от продължаване на гледането',
@@ -2850,11 +2857,11 @@ extension on TranslationsBg {
 			'messages.noEpisodesFoundGeneral' => 'Не са намерени епизоди',
 			'messages.episodesLoadFailed' => 'Неуспешно зареждане на епизоди',
 			'messages.noResultsFound' => 'Няма намерени резултати',
+			_ => null,
+		} ?? switch (path) {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Таймерът за заспиване е зададен за ${label}',
 			'messages.noItemsAvailable' => 'Няма налични елементи',
 			'messages.failedToCreatePlayQueueNoItems' => 'Неуспешно създаване на опашка за възпроизвеждане - няма елементи',
-			_ => null,
-		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => 'Неуспешно ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Превключване към съвместим плейър...',
 			'messages.serverLimitTitle' => 'Възпроизвеждането е неуспешно',
@@ -3028,6 +3035,7 @@ extension on TranslationsBg {
 			'libraries.manageLibraries' => 'Управление на библиотеки',
 			'libraries.sort' => 'Сортиране',
 			'libraries.sortBy' => 'Сортирай по',
+			'libraries.filterBy' => 'Филтрирай по',
 			'libraries.filters' => 'Филтри',
 			'libraries.confirmActionMessage' => 'Сигурни ли сте, че искате да извършите това действие?',
 			'libraries.showLibrary' => 'Покажи библиотеката',
@@ -3363,12 +3371,12 @@ extension on TranslationsBg {
 			'companionRemote.session.serverRunningDescription' => 'Мобилни устройства във вашата мрежа могат да се свързват с това приложение',
 			'companionRemote.session.serverStoppedDescription' => 'Стартирайте сървъра, за да позволите на мобилни устройства да се свързват',
 			'companionRemote.session.usePhoneToControl' => 'Използвайте мобилното си устройство, за да управлявате това приложение',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.session.startServer' => 'Стартирай сървър',
 			'companionRemote.session.stopServer' => 'Спри сървър',
 			'companionRemote.session.minimize' => 'Минимизирай',
 			'companionRemote.pairing.discoveryDescription' => 'Pleya устройства със същия Plex акаунт се показват тук',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Свързване...',
 			'companionRemote.pairing.searchingForDevices' => 'Търсене на устройства...',

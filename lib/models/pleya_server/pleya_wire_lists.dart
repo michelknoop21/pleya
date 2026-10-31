@@ -1,4 +1,4 @@
-/// Collection and playlist wire types for Pleya Protocol v1 (chapter 14b).
+/// Collection and playlist wire types for Pleya Protocol v1 (chapter 14c).
 /// Split from `pleya_wire_library.dart` for the same reason that file was split
 /// from `pleya_wire.dart`.
 library;

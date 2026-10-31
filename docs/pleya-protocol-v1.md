@@ -207,11 +207,16 @@ Precies daarom staat er zo weinig in.
     "downloads": false,
     "live_tv": false,
     "realtime": false,
-    "users": true
+    "users": true,
+    "item_activity": true
   },
   "auth": { "methods": ["password"], "setup_required": false }
 }
 ```
+
+`capabilities.item_activity` staat aan zodra `GET /items/{item_id}/activity` en de opt-out onder
+`/users/me/activity-sharing` bestaan (14b). De twee komen samen onder één vlag: een server die
+activiteit toont zonder dat iemand zijn eigen deel kan regelen is geen geldige toestand.
 
 `capabilities.users` staat aan zodra de server echte gebruikers kent (hoofdstuk 16);
 `capabilities.sessions` staat aan zodra hij device-scoped sessies kent (hoofdstuk 17) en dus
@@ -559,7 +564,7 @@ contract keurt ze af.
 | `memory.deleted` | 409 | nee | eerder gewist feit-id opnieuw aangeboden |
 | `memory.limit_reached` | 409 | nee | meer dan 200 feiten |
 | `memory.duplicate` | 409 | nee | dubbele id of valueKey in de snapshot |
-| `library.personal_invalid` | 400 | nee | een waardering of spoorvoorkeur die niet te bewaren is, zie `details.field` |
+| `library.personal_invalid` | 400 | nee | een waardering, spoorvoorkeur of keuze voor activiteit die niet te bewaren is, zie `details.field` |
 | `library.list_invalid` | 400 | nee | een verzameling, afspeellijst of itemlijst die niet te bewaren is, zie `details.field` |
 | `library.list_not_owner` | 403 | nee | de lijst is zichtbaar, maar alleen de eigenaar mag hem wijzigen |
 | `library.list_share_not_permitted` | 403 | nee | alleen `owner` en `admin` delen een verzameling |
@@ -1205,10 +1210,63 @@ een sessie zonder naam.
 Een versie van meer dan één bestand is `409` met `library.version_multifile`. De ladder (omgezette
 versies als downloadbron) en sidecar-ondertitels horen er niet bij.
 
-## 14b. Verzamelingen en afspeellijsten
+## 14b. Activiteit van het huishouden
+
+Hoofdstuk 14a gaat over de aanvrager zelf. Dit hoofdstuk is de uitzondering: het laat een gebruiker
+lezen wat een ander keek. Alles staat onder `capabilities.item_activity` (DEC-169, activiteit van het
+huishouden). De regel "Bekeken door" op een detailpagina is er de lezer van.
+
+**`GET /pleya/v1/items/{item_id}/activity`** is klasse `authenticated`. Een item buiten de bibliotheken
+van de aanvrager is `404`, hetzelfde antwoord als een item dat niet bestaat.
+
+```json
+{ "items": [
+  { "user_id": "01a15486-...", "username": "sanne", "initials": "S", "is_self": false,
+    "last_watched_at": "2026-10-29T20:42:00Z", "play_count": 6, "completed_items": 5 }
+] }
+```
+
+De bron is `play_history` uit 14a, de laatste kijker eerst, één regel per gebruiker. Een film of
+aflevering telt zichzelf. Een seizoen telt zijn afleveringen en een serie alles eronder, opgeteld per
+gebruiker: `play_count` zijn de sessies, `completed_items` de verschillende afleveringen die hij
+uitkeek, en `last_watched_at` de laatste melding in dat hele bereik. Een regel met `completed_items`
+op nul is begonnen en niet uitgekeken. Op een film mag een client dus niet "bekeken door" boven zo'n
+regel zetten; op een serie is "kijkt deze serie" wel waar. Alleen als gezien markeren is geen afspelen
+(DEC-159) en maakt geen regel, en de sessies die migratie `0020` uit `watch_states` overnam tellen mee.
+
+Wie er in het antwoord staat volgt uit vier regels, in deze volgorde:
+
+1. De aanvrager ziet altijd zijn eigen regel, ook met delen uit.
+2. Een aanvrager met de rol `restricted` ziet verder niemand (16.1).
+3. Een andere gebruiker die niet deelt staat er niet in, ook niet voor een beheerder. Delen staat
+   standaard aan en gaat uit met de opt-out. Een `restricted` gebruiker is het omgekeerde: hij deelt
+   pas als hij het zelf aanzet, ook op een bestaand account.
+4. Een andere gebruiker die de bibliotheek nu niet mag zien staat er niet in. Dat is regel 13 van de
+   matrix aan de andere kant: zijn rijen blijven bestaan, en komen terug zodra het recht terugkomt.
+
+Regel 2 gaat over wat een `restricted` gebruiker ziet en regel 3 over wie hem ziet; zijn eigen keuze om
+te delen verandert niets aan regel 2.
+
+Geen toestel, geen positie en geen sessie-id, en ook geen titel van iets anders: het antwoord zegt wie
+dit item keek en wanneer. Naast `owner` op een verzameling die hij ziet (14c) is dit ook de enige
+route waarop een `member` de naam van een andere gebruiker leest; `GET /users` blijft voor hem alleen
+zichzelf.
+
+**`GET` en `PUT /pleya/v1/users/me/activity-sharing`** lezen en zetten die keuze, voor elke rol en
+altijd voor de aanvrager zelf. Het zijn eigen routes en geen veld op `User`, want dat schema staat ook
+in `GET /users` en in elke beheerhandeling. `PUT` neemt `{ "share_activity": false }` en antwoordt met
+dezelfde vorm; een ontbrekend of ander veld is `400` met `library.personal_invalid`. `GET` geeft wat nu
+geldt: de eigen keuze, of zonder keuze waar, en onwaar voor een `restricted` gebruiker. De keuze geldt
+meteen en werkt terug op wat er al in de geschiedenis staat. Wie restricted wordt verliest een eerdere
+opt-in (`true`) en zet delen opnieuw zelf aan; een eerdere opt-out (`false`) blijft staan, ook na
+herstel naar een andere rol. Een rol die de andere kant op gaat houdt de keuze, en zonder keuze
+volgt de nieuwe rol. De keuze raakt `GET /watch-history` niet: die route is klasse `admin` (17b.7) en
+beantwoordt een andere vraag.
+
+## 14c. Verzamelingen en afspeellijsten
 
 Een verzameling heeft een eigenaar en een zichtbaarheid; een afspeellijst is van één gebruiker en speelt
-op volgorde (venster 6 deel 1, S19, matrixregel 77 tot en met 94). Elke operatie is klasse
+op volgorde (venster 6 deel 1, S19, matrixregel 80 tot en met 97). Elke operatie is klasse
 **`authenticated`**. De twee resources hebben elk hun vlag, `capabilities.collections` en
 `capabilities.playlists`, en dezelfde negen operaties. Beide reizen met het account mee; een rol opent
 niets, dus ook `owner` en `admin` zien een privélijst van een ander niet.
@@ -1352,6 +1410,7 @@ bestaan (latere fasen).
 | `POST /pleya/v1/users` | `admin` |
 | `GET /pleya/v1/users` | `authenticated`, gefilterd |
 | `GET /pleya/v1/users/me` | `authenticated`, altijd zichzelf |
+| `GET`, `PUT /pleya/v1/users/me/activity-sharing` | `authenticated`, altijd zichzelf (14b) |
 | `PATCH /pleya/v1/users/{id}` | `admin`, of `owner` op zichzelf |
 | `DELETE /pleya/v1/users/{id}` | `admin` |
 | `PUT /pleya/v1/users/{id}/permissions` | `admin` |
@@ -1488,27 +1547,30 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 71 | `GET /users/me/memory` | eigen Big P-geheugen | eigen sessiebearer, owner/admin/member; restricted en elk API-token 403 `memory.not_permitted` |
 | 72 | `PUT /users/me/memory` | volledige eigen geheugensnapshot met CAS | als regel 71, geen user-id in de body |
 | 73 | `POST /users/me/memory/clear` | eigen geheugen wissen en epoch roteren | als regel 71, geldige epoch en base_revision |
-| 74 | `DELETE /history` | de eigen geschiedenis wissen | klasse `authenticated`, alleen de eigen regels; de kijkstatus blijft; een API-token onder bereik `admin` krijgt `403` (S20.4, 17c.2) |
-| 75 | `DELETE /history/{id}` | één eigen geschiedenisregel wissen | als regel 74, `404` voor een regel van een ander of die niet bestaat |
-| 76 | `GET /ratings` | de gewaardeerde titels van de aanvrager | als regel 52 |
-| 77 | `GET /collections` | lijst van lijsten | alleen wat de aanvrager mag zien; aantallen en artwork per kijker |
-| 78 | `POST /collections` | geen | klasse `authenticated`, de aanvrager wordt eigenaar; delen alleen `owner` en `admin` |
-| 79 | `GET /collections/{id}` | direct id | buiten zicht `404`, ook voor `owner` en `admin` |
-| 80 | `PATCH /collections/{id}` | direct id | als regel 79; zichtbaar en van een ander `403`; delen alleen `owner` en `admin` |
-| 81 | `DELETE /collections/{id}` | direct id | als regel 80 |
-| 82 | `GET /collections/{id}/items` | inhoud | als regel 79; een item buiten de bibliotheken van de kijker ontbreekt |
-| 83 | `PUT /collections/{id}/items` | item-ids in de body | als regel 80; een item buiten zicht is `404` |
-| 84 | `POST /collections/{id}/items` | item-ids in de body | als regel 83 |
-| 85 | `DELETE /collections/{id}/items/{item_id}` | direct id | als regel 83 |
-| 86 | `GET /playlists` | lijst van lijsten | alleen wat de aanvrager mag zien; aantallen en artwork per kijker |
-| 87 | `POST /playlists` | geen | klasse `authenticated`, de aanvrager wordt eigenaar |
-| 88 | `GET /playlists/{id}` | direct id | buiten zicht `404`, ook voor `owner` en `admin` |
-| 89 | `PATCH /playlists/{id}` | direct id | als regel 88; zichtbaar en van een ander `403` |
-| 90 | `DELETE /playlists/{id}` | direct id | als regel 89 |
-| 91 | `GET /playlists/{id}/items` | inhoud | als regel 88; een item buiten de bibliotheken van de kijker ontbreekt |
-| 92 | `PUT /playlists/{id}/items` | item-ids in de body | als regel 89; een item buiten zicht is `404` |
-| 93 | `POST /playlists/{id}/items` | item-ids in de body | als regel 92 |
-| 94 | `DELETE /playlists/{id}/items/{item_id}` | direct id | als regel 92 |
+| 74 | `GET /items/{item_id}/activity` | wie in het huishouden een item keek, met gebruikersnamen | elke rol antwoordt; item buiten bereik `404` zoals regel 3; `restricted` ziet alleen zichzelf; anderen alleen als ze delen (`restricted` is opt-in, de rest opt-out) en recht op de bibliotheek hebben (14b) |
+| 75 | `GET /users/me/activity-sharing` | de eigen keuze om te delen | klasse `authenticated`, geen id in het pad, dus er valt niets te raden |
+| 76 | `PUT /users/me/activity-sharing` | de eigen keuze zetten | als regel 75 |
+| 77 | `DELETE /history` | de eigen geschiedenis wissen | klasse `authenticated`, alleen de eigen regels; de kijkstatus blijft; een API-token onder bereik `admin` krijgt `403` (S20.4, 17c.2) |
+| 78 | `DELETE /history/{id}` | één eigen geschiedenisregel wissen | als regel 77, `404` voor een regel van een ander of die niet bestaat |
+| 79 | `GET /ratings` | de gewaardeerde titels van de aanvrager | als regel 52 |
+| 80 | `GET /collections` | lijst van lijsten | alleen wat de aanvrager mag zien; aantallen en artwork per kijker |
+| 81 | `POST /collections` | geen | klasse `authenticated`, de aanvrager wordt eigenaar; delen alleen `owner` en `admin` |
+| 82 | `GET /collections/{id}` | direct id | buiten zicht `404`, ook voor `owner` en `admin` |
+| 83 | `PATCH /collections/{id}` | direct id | als regel 82; zichtbaar en van een ander `403`; delen alleen `owner` en `admin` |
+| 84 | `DELETE /collections/{id}` | direct id | als regel 83 |
+| 85 | `GET /collections/{id}/items` | inhoud | als regel 82; een item buiten de bibliotheken van de kijker ontbreekt |
+| 86 | `PUT /collections/{id}/items` | item-ids in de body | als regel 83; een item buiten zicht is `404` |
+| 87 | `POST /collections/{id}/items` | item-ids in de body | als regel 86 |
+| 88 | `DELETE /collections/{id}/items/{item_id}` | direct id | als regel 86 |
+| 89 | `GET /playlists` | lijst van lijsten | alleen wat de aanvrager mag zien; aantallen en artwork per kijker |
+| 90 | `POST /playlists` | geen | klasse `authenticated`, de aanvrager wordt eigenaar |
+| 91 | `GET /playlists/{id}` | direct id | buiten zicht `404`, ook voor `owner` en `admin` |
+| 92 | `PATCH /playlists/{id}` | direct id | als regel 91; zichtbaar en van een ander `403` |
+| 93 | `DELETE /playlists/{id}` | direct id | als regel 92 |
+| 94 | `GET /playlists/{id}/items` | inhoud | als regel 91; een item buiten de bibliotheken van de kijker ontbreekt |
+| 95 | `PUT /playlists/{id}/items` | item-ids in de body | als regel 92; een item buiten zicht is `404` |
+| 96 | `POST /playlists/{id}/items` | item-ids in de body | als regel 95 |
+| 97 | `DELETE /playlists/{id}/items/{item_id}` | direct id | als regel 95 |
 
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
@@ -1918,7 +1980,7 @@ gesteld wordt: wie is er wanneer binnengekomen, en met welk credential. Een log 
 niet gelezen.
 
 Twee handelingen op eigen gegevens staan er ook in, omdat ze een lek zichtbaar moeten maken: een
-wijziging van wie een verzameling ziet (14b), en het wissen van geschiedenis. `DELETE /history` schrijft
+wijziging van wie een verzameling ziet (14c), en het wissen van geschiedenis. `DELETE /history` schrijft
 `clearHistory` zonder `target`, `DELETE /history/{history_id}` schrijft `deleteHistoryEntry` met de regel als
 `target`, allebei met de sessie van het credential en alleen wanneer er iets gewist is. Een geweigerde
 aanvraag en een `404` geven geen regel. De rest van de lijstroutes blijft buiten het log: een lijst is terug
@@ -2365,8 +2427,12 @@ van de bron beslist welke het is.
 | `PUT /pleya/v1/playlists/{id}/items` | `authenticated` | nee |
 | `POST /pleya/v1/playlists/{id}/items` | `authenticated` | nee |
 | `DELETE /pleya/v1/playlists/{id}/items/{item_id}` | `authenticated` | nee |
+| `GET /pleya/v1/items/{id}/activity` | `authenticated` | nee |
+| `GET /pleya/v1/users/me/activity-sharing` | `authenticated` | nee |
+| `PUT /pleya/v1/users/me/activity-sharing` | `authenticated` | nee |
 
-Honderdeen operaties. De achttien laatste zijn verzamelingen en afspeellijsten uit hoofdstuk 14b (venster 6 deel 1, S19), de vijf daarvoor back-up en restore uit hoofdstuk 17g (venster 7, S25). De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Honderdvier operaties. De drie laatste zijn de activiteit van het huishouden uit hoofdstuk 14b
+(DEC-169), de achttien daarvoor verzamelingen en afspeellijsten uit hoofdstuk 14c (venster 6 deel 1, S19), de vijf daarvoor back-up en restore uit hoofdstuk 17g (venster 7, S25). De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit

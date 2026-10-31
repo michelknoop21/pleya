@@ -1,4 +1,4 @@
--- 0024 het toestel achter een download (S23.4, DEC-XXX).
+-- 0025 het toestel achter een download (S23.4, DEC-XXX).
 --
 -- Eigenaar: internal/downloads. Een download krijgt dezelfde verwijzing naar de
 -- inlogsessie als play_history (0020), en de naam komt bij het lezen uit

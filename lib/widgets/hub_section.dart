@@ -27,6 +27,7 @@ import 'focus_builders.dart';
 import 'hub_activation.dart';
 import 'media_card.dart';
 import 'media_card_grid_layout.dart';
+import 'mobile/library_phone_look.dart';
 import '../utils/scroll_utils.dart';
 import 'horizontal_scroll_with_arrows.dart';
 import '../i18n/strings.g.dart';
@@ -691,9 +692,11 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
     final isKeyboardMode = InputModeTracker.isKeyboardMode(context);
     final isTv = PlatformDetector.isTV();
     final leadingPadding = _leadingPaddingFor(isTv);
-    final titleStyle = Theme.of(
-      context,
-    ).textTheme.titleLarge?.copyWith(fontSize: isTv ? 26 : null, fontWeight: isTv ? FontWeight.w700 : null);
+    final titleStyle = Theme.of(context).textTheme.titleLarge?.copyWith(
+      fontSize: isTv ? 26 : null,
+      fontWeight: isTv ? FontWeight.w700 : null,
+      letterSpacing: LibraryPhoneLook.of(context) ? LibraryPhoneMetrics.letterSpacing : null,
+    );
 
     return Padding(
       padding: .only(bottom: isTv && !widget.inset ? TvLayoutConstants.shelfVerticalGap : 0),
@@ -725,8 +728,10 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
                     child: Row(
                       mainAxisSize: .min,
                       children: [
-                        AppIcon(widget.icon, fill: 1, size: isTv ? 28 : null),
-                        SizedBox(width: isTv ? 12 : 8),
+                        if (!LibraryPhoneLook.of(context)) ...[
+                          AppIcon(widget.icon, fill: 1, size: isTv ? 28 : null),
+                          SizedBox(width: isTv ? 12 : 8),
+                        ],
                         Flexible(
                           child: Text(widget.hub.title, style: titleStyle, overflow: .ellipsis, maxLines: 1),
                         ),

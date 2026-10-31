@@ -66,6 +66,10 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
     }
   }
 
+  /// The shield as it stands now, for what talks to Trakt without a session:
+  /// [isKidsProfile] only changes on a rebind, and fails open until the first.
+  Future<bool> checkKidsProfile() => _readKidsProfile();
+
   /// Re-reads the children's profile switch for the active profile, from the
   /// settings screen that changes it.
   /// Does not invalidate the binding generation: a refreshed token pair that

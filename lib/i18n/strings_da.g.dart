@@ -508,6 +508,9 @@ class _TranslationsMediaMenuDa extends TranslationsMediaMenuEn {
 	final TranslationsDa _root; // ignore: unused_field
 
 	// Translations
+	@override String get watch => 'Se';
+	@override String get manage => 'Administrer';
+	@override String get moreWaysToWatch => 'Flere måder at se på';
 	@override String get markAsWatched => 'Markér som set';
 	@override String get markAsUnwatched => 'Markér som uset';
 	@override String get removeFromContinueWatching => 'Fjern fra Fortsæt med at se';
@@ -979,6 +982,7 @@ class _TranslationsLibrariesDa extends TranslationsLibrariesEn {
 	@override String get manageLibraries => 'Administrer biblioteker';
 	@override String get sort => 'Sortér';
 	@override String get sortBy => 'Sortér efter';
+	@override String get filterBy => 'Filtrér efter';
 	@override String get filters => 'Filtre';
 	@override String get confirmActionMessage => 'Er du sikker på, at du vil udføre denne handling?';
 	@override String get showLibrary => 'Vis bibliotek';
@@ -2693,6 +2697,9 @@ extension on TranslationsDa {
 			'fileInfo.duration' => 'Varighed',
 			'fileInfo.optimizedForStreaming' => 'Optimeret til streaming',
 			'fileInfo.has64bitOffsets' => '64-bit offsets',
+			'mediaMenu.watch' => 'Se',
+			'mediaMenu.manage' => 'Administrer',
+			'mediaMenu.moreWaysToWatch' => 'Flere måder at se på',
 			'mediaMenu.markAsWatched' => 'Markér som set',
 			'mediaMenu.markAsUnwatched' => 'Markér som uset',
 			'mediaMenu.removeFromContinueWatching' => 'Fjern fra Fortsæt med at se',
@@ -2850,11 +2857,11 @@ extension on TranslationsDa {
 			'messages.noEpisodesFoundGeneral' => 'Ingen episoder fundet',
 			'messages.episodesLoadFailed' => 'Kunne ikke indlæse episoder',
 			'messages.noResultsFound' => 'Ingen resultater fundet',
+			_ => null,
+		} ?? switch (path) {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Sove-timer indstillet til ${label}',
 			'messages.noItemsAvailable' => 'Ingen elementer tilgængelige',
 			'messages.failedToCreatePlayQueueNoItems' => 'Kunne ikke oprette afspilningskø — ingen elementer',
-			_ => null,
-		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => 'Kunne ikke ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Skifter til kompatibel afspiller...',
 			'messages.serverLimitTitle' => 'Afspilning mislykkedes',
@@ -3028,6 +3035,7 @@ extension on TranslationsDa {
 			'libraries.manageLibraries' => 'Administrer biblioteker',
 			'libraries.sort' => 'Sortér',
 			'libraries.sortBy' => 'Sortér efter',
+			'libraries.filterBy' => 'Filtrér efter',
 			'libraries.filters' => 'Filtre',
 			'libraries.confirmActionMessage' => 'Er du sikker på, at du vil udføre denne handling?',
 			'libraries.showLibrary' => 'Vis bibliotek',
@@ -3363,12 +3371,12 @@ extension on TranslationsDa {
 			'companionRemote.session.serverRunningDescription' => 'Mobile enheder på dit netværk kan oprette forbindelse til denne app',
 			'companionRemote.session.serverStoppedDescription' => 'Start serveren for at tillade mobilenheder at oprette forbindelse',
 			'companionRemote.session.usePhoneToControl' => 'Brug din mobilenhed til at styre denne app',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.session.startServer' => 'Start server',
 			'companionRemote.session.stopServer' => 'Stop server',
 			'companionRemote.session.minimize' => 'Minimér',
 			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheder med samme Plex-konto vises her',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Opretter forbindelse...',
 			'companionRemote.pairing.searchingForDevices' => 'Søger efter enheder...',

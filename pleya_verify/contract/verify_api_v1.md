@@ -383,6 +383,11 @@ standaardgeval) via `PleyaFakeServer.setupCode` als `setup_code`.
 `{"ok": false, "error": "..."}` op een ontbrekend veld, een falende
 probe/login/setup, of een nog niet gebootstrapte app (geen root-context).
 
+Met `"backend": "jellyfin"` in de body loopt dezelfde stap langs de keten van
+`add_jellyfin_screen.dart` (`/System/Info/Public`, `/Users/AuthenticateByName`),
+tegen `{{fixture_jellyfin}}`. Pleya Protocol kent geen scores, dus een scenario
+over scores heeft die backend nodig. De loopback-grens blijft dezelfde.
+
 ### `POST /v1/connections/seed`
 
 Body: `{"base_url": "...", "server_id": "...", "user_id": "...", "server_name": "...", "user_name": "...", "refresh_token": "..."}`.

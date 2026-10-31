@@ -158,6 +158,7 @@ class PleyaCapabilities {
     this.trackPreferences = false,
     this.collections = false,
     this.playlists = false,
+    this.itemActivity = false,
     this.assistantMemory = false,
     this.transcode = false,
     this.downloads = false,
@@ -202,12 +203,15 @@ class PleyaCapabilities {
   final bool ratings;
   final bool trackPreferences;
 
-  /// S19, chapter 14b: the `/collections` resource.
+  /// S19, chapter 14c: the `/collections` resource.
   final bool collections;
 
-  /// S19, chapter 14b: the `/playlists` resource.
+  /// S19, chapter 14c: the `/playlists` resource.
   final bool playlists;
 
+  /// `GET /items/{id}/activity` and the opt-out under
+  /// `/users/me/activity-sharing`, which always come together.
+  final bool itemActivity;
   final bool assistantMemory;
   final bool transcode;
   final bool downloads;
@@ -268,6 +272,7 @@ class PleyaCapabilities {
     trackPreferences: booleanOr(json, 'track_preferences', orElse: false),
     collections: booleanOr(json, 'collections', orElse: false),
     playlists: booleanOr(json, 'playlists', orElse: false),
+    itemActivity: booleanOr(json, 'item_activity', orElse: false),
     assistantMemory: booleanOr(json, 'assistant_memory', orElse: false),
     transcode: booleanOr(json, 'transcode', orElse: false),
     downloads: booleanOr(json, 'downloads', orElse: false),

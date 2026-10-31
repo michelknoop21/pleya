@@ -72,6 +72,44 @@ class _Client implements MediaServerClient {
 void main() {
   const row = HomeCustomRow(id: 'r1', kind: MediaKind.movie, preferences: UnifiedCatalogPreferences.defaults);
 
+  test('a Recently watched row of Jellyfin series keeps the order of the server', () async {
+    final client = _Client('j', [
+      for (final (title, lastViewedAt) in const [('Zebra', null), ('Monk', null), ('Marked', 5), ('Alias', null)])
+        MediaItem(
+          id: title,
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.show,
+          title: title,
+          lastViewedAt: lastViewedAt,
+          serverId: 'j',
+        ),
+    ]);
+    final loader = CatalogHomeCustomRowLoader(
+      libraries: () => const [
+        MediaLibrary(
+          id: 'shows',
+          backend: MediaBackend.jellyfin,
+          title: 'Shows',
+          kind: MediaKind.show,
+          serverId: 'j',
+          serverName: 'j',
+        ),
+      ],
+      isServerVisible: (_) => true,
+      hiddenLibraryKeys: () => const {},
+      clientFor: (_) => client,
+    );
+    final content = await loader.load(
+      const HomeCustomRow(
+        id: 'r2',
+        kind: MediaKind.show,
+        preferences: UnifiedCatalogPreferences(sort: UnifiedCatalogSort.recentlyWatched),
+      ),
+      limit: 2,
+    );
+    expect(content.groups.map((g) => g.representativeSource.item.title), ['Zebra', 'Monk']);
+  });
+
   CatalogHomeCustomRowLoader loaderFor(Map<String, _Client> clients) => CatalogHomeCustomRowLoader(
     libraries: () => [for (final id in clients.keys) _library(id, 'films-$id')],
     isServerVisible: (_) => true,

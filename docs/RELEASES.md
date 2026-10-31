@@ -50,6 +50,22 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 420 · 29 October 2026 · Apple TV
+
+<!-- commit:8558d26c -->
+
+### Fixed
+
+- **Plex Home account switching accepts text review-language preferences.** A correct PIN no
+  longer leads to a failed-switch message because Pleya expected this preference to be a list.
+- **Profile-switch error notices leave the screen.** They disappear after eight seconds, or
+  immediately after a successful profile switch. Other error notices remain unchanged.
+
+### Notes
+
+- The main account and second Home profile were switched in both directions on the bedroom
+  Apple TV with candidate build 420. The unexpected QR re-login remains a separate, unconfirmed issue.
+
 ## 2.8.1 · build 419 · 29 October 2026 · Apple TV
 
 <!-- commit: 7bdcccaa -->

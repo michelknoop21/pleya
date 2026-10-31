@@ -1,22 +1,10 @@
 name: tvos.catalog.rail-sort-focus
 target: tvos-sim
-# CAT17, in the place it was reported: choose a sort in the catalog rail, and
-# the ring has to stay in the rail.
-#
-# What made this worth a scenario rather than only a widget test. The defect
-# was not in the rail and not in the panel: the grid re-pages on a sort change,
-# the card the viewer had been standing on before opening the rail is off page
-# one afterwards, and the grid then rescued a focus it no longer held —
-# landing the ring on a card with the rail still open. From there the remote
-# had nothing: LEFT re-opened an already open rail and a card carries no Menu.
-# Three widget tests pin each half; this one is the whole path in one build,
-# over the real fixture, with the sort request really re-paging.
-#
-# The sort panel itself is driven blind on purpose. It carries no automation
-# ids, and adding a set for two presses would put more untested surface in the
-# tree than it proves. It opens with the ring on the sort currently in force
-# (`initialFocusNode` on the selected row), so one DOWN is one different sort,
-# and the assertion that matters is where the ring is when the panel is gone.
+# CAT17, in the place it was reported, under the contract that replaced it. On
+# the full-bleed route of A-06c a sort is chosen in the panel, the panel closes
+# and the ring lands on card 0. The defect CAT17 was about stays the thing to
+# prove: the grid re-pages on a sort change, the card the viewer stood on before
+# opening the panel may be off page one, and the ring must not end up on nothing.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
@@ -62,8 +50,8 @@ steps:
   - assert: {id: "tv.catalog.rail.row[series.sort]", focused: true}
   - snapshot: 01-rail-sort
 
-  # Open the panel, take the sort below the one in force, and apply it. The
-  # panel closes on the choice; the catalog re-pages behind it.
+  # Into the sort page, take the sort below the one in force. The panel closes
+  # on the choice; the catalog re-pages behind it.
   - press: select
   - settle: 1200
   - press: down
@@ -73,16 +61,11 @@ steps:
   - snapshot: 02-after-sort
 
   # The point of the whole file.
-  - assert: {id: "tv.catalog.rail[series]"}
-  - assert: {id: "tv.catalog.rail.row[series.sort]", focused: true}
+  - assert: {id: "tv.catalog.rail[series]", present: false}
+  - assert: {id: "tv.catalog.grid.item[series.0]", focused: true}
 
-  # And the rail still closes from where the ring is, which is what the viewer
-  # could not do on build 268. Shown rather than asserted: the DSL has a
-  # presence predicate and no absence one, so `03-rail-closed` is the evidence
-  # that the panel is gone. What *is* asserted is the half that a screenshot
-  # cannot carry — the grid is addressable again on the frame after Menu, which
-  # it would also be with the rail standing open, so read the two together.
+  # And Menu still works from where the ring is: it leaves the route.
   - press: menu
   - settle: 1000
-  - assert: {id: "tv.catalog.grid[series]"}
-  - snapshot: 03-rail-closed
+  - assert: {id: "tv.catalog.grid[series]", present: false}
+  - snapshot: 03-left-route

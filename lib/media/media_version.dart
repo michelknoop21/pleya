@@ -68,6 +68,13 @@ class MediaVersion {
   /// them when metadata is fetched with `checkFiles=1`.
   bool get isPlayable => parts.isEmpty || parts.any((part) => part.isPlayable);
 
+  /// Resolution alone, for a line that only has room for that: "4K", "1080p".
+  String? get videoResolutionLabel {
+    final resolution = videoResolution;
+    if (resolution != null && resolution.isNotEmpty) return _videoResolutionDisplayLabel(resolution);
+    return height == null ? null : '${height}p';
+  }
+
   /// Display label with detailed information: "1080p H.264 MKV (8.5 Mbps)".
   /// When [name] is set, it prefixes the technical label so a user can tell
   /// "Director's Cut · 1080p H.264 MKV" apart from "Theatrical Cut · 1080p

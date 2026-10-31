@@ -1,6 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 
 import '../../media/media_server_user_profile.dart';
+import '../../utils/json_utils.dart';
 
 part 'plex_user_profile.g.dart';
 
@@ -31,6 +32,7 @@ class PlexUserProfile implements MediaServerUserProfile {
   final int watchedIndicator;
   @JsonKey(defaultValue: 0)
   final int mediaReviewsVisibility;
+  @JsonKey(fromJson: flexibleStringList)
   final List<String>? mediaReviewsLanguages;
 
   @override

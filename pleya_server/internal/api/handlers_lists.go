@@ -11,8 +11,8 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
 
-// Verzamelingen en afspeellijsten (S19, venster 6 deel 1, matrixregels 77 tot en
-// met 94). Alles klasse authenticated. Wat de aanvrager mag zien en schrijven
+// Verzamelingen en afspeellijsten (S19, venster 6 deel 1, matrixregels 80 tot en
+// met 97). Alles klasse authenticated. Wat de aanvrager mag zien en schrijven
 // beslist de store op één plek, dus elke handler hier is een dunne vertaling.
 //
 // Eén handlerset voor twee resources: ze verschillen in hun wire-vorm en hun

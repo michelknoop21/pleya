@@ -483,6 +483,11 @@ class TvBrowseRail extends StatefulWidget {
   /// about where the rail actually starts.
   final bool showNextHubPeek;
 
+  /// What the focus memory of these hubs belongs to. [HubFocusMemory] outlives
+  /// this widget and a detail page's hub ids are the same on every title, so
+  /// without a scope the card left on one series is where the next one opens.
+  final String? focusMemoryScope;
+
   const TvBrowseRail({
     super.key,
     required this.hubs,
@@ -515,6 +520,7 @@ class TvBrowseRail extends StatefulWidget {
     this.selectSuppressionGestureSignal,
     this.automationIdForHub,
     this.showNextHubPeek = true,
+    this.focusMemoryScope,
   });
 
   @override
@@ -1175,7 +1181,11 @@ class TvBrowseRailState extends State<TvBrowseRail> {
   /// unique within one server; Discover aggregates hubs from several servers, so
   /// prefix the server id to keep two same-id hubs from sharing rail state
   /// (scroll position, metrics, card GlobalKeys, focus memory).
-  String _hubKey(MediaHub hub) => '${hub.serverId ?? ''}:${hub.id}';
+  String _hubKey(MediaHub hub) {
+    final key = '${hub.serverId ?? ''}:${hub.id}';
+    final scope = widget.focusMemoryScope;
+    return scope == null ? key : '$scope:$key';
+  }
 
   GlobalKey<MediaCardState> _cardKeyFor(MediaHub hub, int itemIndex) {
     return _mediaCardKeys.putIfAbsent('${_hubKey(hub)}:$itemIndex', () => GlobalKey<MediaCardState>());

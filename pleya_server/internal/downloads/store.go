@@ -48,7 +48,7 @@ type Download struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	// DeviceName is de naam van de inlogsessie die de download aanvroeg, leeg als
-	// dat niet bekend is: een download van vóór 0024 of een sessie die weg is.
+	// dat niet bekend is: een download van vóór 0025 of een sessie die weg is.
 	DeviceName string
 }
 

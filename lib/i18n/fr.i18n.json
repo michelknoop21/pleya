@@ -374,6 +374,9 @@
     "has64bitOffsets": "Décalages 64 bits"
   },
   "mediaMenu": {
+    "watch": "Regarder",
+    "manage": "Gérer",
+    "moreWaysToWatch": "Autres façons de regarder",
     "markAsWatched": "Marquer comme vu",
     "markAsUnwatched": "Marquer comme non visionné",
     "removeFromContinueWatching": "Supprimer de la liste \"Continuer à regarder\"",
@@ -741,6 +744,7 @@
     "manageLibraries": "Gérer les bibliothèques",
     "sort": "Trier",
     "sortBy": "Trier par",
+    "filterBy": "Filtrer par",
     "filters": "Filtres",
     "confirmActionMessage": "Êtes-vous sûr de vouloir effectuer cette action ?",
     "showLibrary": "Afficher la bibliothèque",

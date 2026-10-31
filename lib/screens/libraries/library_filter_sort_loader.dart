@@ -1,4 +1,5 @@
 import '../../media/library_filter_result.dart';
+import '../../media/library_menu_definition.dart';
 import '../../media/media_filter.dart';
 import '../../media/media_library.dart';
 import '../../media/media_server_client.dart';
@@ -31,13 +32,30 @@ class LibraryFilterSortLoader {
   LibraryFilterSortLoader({required this.clientFor});
 
   Future<LoadedFiltersAndSorts> load(MediaLibrary library) async {
-    final client = clientFor(library);
-    final results = await Future.wait([
-      client.fetchLibraryFiltersWithValues(library.id),
-      client.fetchSortOptions(library.id, libraryType: library.kind.id),
-    ]);
-    final filterResult = results.first as LibraryFilterResult;
-    final sorts = results[1] as List<MediaSort>;
-    return LoadedFiltersAndSorts(filters: filterResult.filters, sorts: sorts, cachedValues: filterResult.cachedValues);
+    // Future.wait and not a record's `.wait`: that wraps a failure in a
+    // ParallelWaitError, and `friendlyError` would lose the specific message.
+    final filters = loadFilters(library);
+    final sorts = loadSorts(library);
+    await Future.wait([filters, sorts]);
+    final filterResult = await filters;
+    return LoadedFiltersAndSorts(
+      filters: filterResult.filters,
+      sorts: await sorts,
+      cachedValues: filterResult.cachedValues,
+    );
+  }
+
+  /// The sorts alone, in the shared menu's order and words, for a Jellyfin page 1
+  /// that cannot wait for `/Items/Filters`.
+  Future<List<MediaSort>> loadSorts(MediaLibrary library) async => libraryMenuOrderedSorts(
+    await clientFor(library).fetchSortOptions(library.id, libraryType: library.kind.id),
+    backend: library.backend,
+  );
+
+  /// The filters alone, in the same menu's order and words: the other half of
+  /// that Jellyfin path. Every filter the server lists stays.
+  Future<LibraryFilterResult> loadFilters(MediaLibrary library) async {
+    final result = await clientFor(library).fetchLibraryFiltersWithValues(library.id);
+    return LibraryFilterResult(filters: libraryMenuOrderedFilters(result.filters), cachedValues: result.cachedValues);
   }
 }

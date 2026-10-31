@@ -31,6 +31,7 @@ void main() {
     bool trackPreferences = false,
     bool collections = false,
     bool playlists = false,
+    bool itemActivity = false,
   }) => PleyaCapabilities(
     browse: browse,
     search: search,
@@ -45,6 +46,7 @@ void main() {
     trackPreferences: trackPreferences,
     collections: collections,
     playlists: playlists,
+    itemActivity: itemActivity,
   );
 
   test('client downloads follow the server flag independently from server-side sync', () {
@@ -133,6 +135,20 @@ void main() {
     final playlists = PleyaServerCapabilityResolver.resolve(caps(playlists: true));
     expect(playlists.serverSidePlaylists, isTrue);
     expect(playlists.serverSideCollections, isFalse);
+  });
+
+  group('item activity', () {
+    test('follows the server, because this build can read it', () {
+      expect(PleyaServerCapabilityResolver.resolve(caps(itemActivity: true)).itemActivity, isTrue);
+      expect(PleyaServerCapabilityResolver.resolve(caps()).itemActivity, isFalse);
+      expect(PleyaServerCapabilityResolver.unknown.itemActivity, isFalse);
+    });
+
+    test('stays a Pleya Server feature', () {
+      expect(ServerCapabilities.plex.itemActivity, isFalse);
+      expect(ServerCapabilities.jellyfin.itemActivity, isFalse);
+      expect(ServerCapabilities.local.itemActivity, isFalse);
+    });
   });
 
   group('before /info has answered', () {

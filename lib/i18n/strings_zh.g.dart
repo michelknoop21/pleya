@@ -508,6 +508,9 @@ class _TranslationsMediaMenuZh extends TranslationsMediaMenuEn {
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
+	@override String get watch => '观看';
+	@override String get manage => '管理';
+	@override String get moreWaysToWatch => '更多观看方式';
 	@override String get markAsWatched => '标记为已观看';
 	@override String get markAsUnwatched => '标记为未观看';
 	@override String get removeFromContinueWatching => '从继续观看中移除';
@@ -979,6 +982,7 @@ class _TranslationsLibrariesZh extends TranslationsLibrariesEn {
 	@override String get manageLibraries => '管理媒体库';
 	@override String get sort => '排序';
 	@override String get sortBy => '排序依据';
+	@override String get filterBy => '筛选依据';
 	@override String get filters => '筛选器';
 	@override String get confirmActionMessage => '确定要执行此操作吗？';
 	@override String get showLibrary => '显示媒体库';
@@ -2693,6 +2697,9 @@ extension on TranslationsZh {
 			'fileInfo.duration' => '时长',
 			'fileInfo.optimizedForStreaming' => '已优化用于流媒体',
 			'fileInfo.has64bitOffsets' => '64位偏移量',
+			'mediaMenu.watch' => '观看',
+			'mediaMenu.manage' => '管理',
+			'mediaMenu.moreWaysToWatch' => '更多观看方式',
 			'mediaMenu.markAsWatched' => '标记为已观看',
 			'mediaMenu.markAsUnwatched' => '标记为未观看',
 			'mediaMenu.removeFromContinueWatching' => '从继续观看中移除',
@@ -2850,11 +2857,11 @@ extension on TranslationsZh {
 			'messages.noEpisodesFoundGeneral' => '未找到剧集',
 			'messages.episodesLoadFailed' => '无法加载剧集',
 			'messages.noResultsFound' => '未找到结果',
+			_ => null,
+		} ?? switch (path) {
 			'messages.sleepTimerSet' => ({required Object label}) => '睡眠定时器已设置为 ${label}',
 			'messages.noItemsAvailable' => '没有可用的项目',
 			'messages.failedToCreatePlayQueueNoItems' => '创建播放队列失败 - 没有项目',
-			_ => null,
-		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => '无法${action}',
 			'messages.switchingToCompatiblePlayer' => '正在切换到兼容的播放器...',
 			'messages.serverLimitTitle' => '播放失败',
@@ -3028,6 +3035,7 @@ extension on TranslationsZh {
 			'libraries.manageLibraries' => '管理媒体库',
 			'libraries.sort' => '排序',
 			'libraries.sortBy' => '排序依据',
+			'libraries.filterBy' => '筛选依据',
 			'libraries.filters' => '筛选器',
 			'libraries.confirmActionMessage' => '确定要执行此操作吗？',
 			'libraries.showLibrary' => '显示媒体库',
@@ -3363,12 +3371,12 @@ extension on TranslationsZh {
 			'companionRemote.session.serverRunningDescription' => '网络上的移动设备可以连接到此应用',
 			'companionRemote.session.serverStoppedDescription' => '启动服务器以允许移动设备连接',
 			'companionRemote.session.usePhoneToControl' => '使用移动设备控制此应用',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.session.startServer' => '启动服务器',
 			'companionRemote.session.stopServer' => '停止服务器',
 			'companionRemote.session.minimize' => '最小化',
 			'companionRemote.pairing.discoveryDescription' => '使用同一 Plex 账号的 Pleya 设备会显示在这里',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => '正在连接...',
 			'companionRemote.pairing.searchingForDevices' => '正在搜索设备...',

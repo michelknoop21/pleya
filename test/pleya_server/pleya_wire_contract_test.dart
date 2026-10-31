@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/models/pleya_server/pleya_wire.dart';
+import 'package:pleya/models/pleya_server/pleya_wire_activity.dart';
 import 'package:pleya/models/pleya_server/pleya_wire_library.dart';
 import 'package:pleya/models/pleya_server/pleya_wire_lists.dart';
 import 'package:pleya/models/pleya_server/pleya_wire_playback.dart';
@@ -174,6 +175,11 @@ void main() {
     'LibraryList': (json) => PleyaLibrary.listFromJson(json),
     'Library': (json) => PleyaLibrary.fromJson(json),
     'Item': (json) => PleyaItem.fromJson(json),
+    'ItemActivity': (json) => PleyaItemActivity.fromJson(json),
+    'ActivitySharing': (json) => PleyaActivitySharing.fromJson(json),
+    'ActivitySharingRequest': (json) {
+      expect(PleyaActivitySharing.fromJson(json).toRequest(), json);
+    },
     'ItemPage': (json) => PleyaItemPage.fromJson(json),
     'UserState': (json) => PleyaUserState.fromJson(json),
     'WatchStatePage': (json) => PleyaWatchStateEntry.pageFromJson(json),
@@ -233,8 +239,8 @@ void main() {
       );
     });
 
-    test('covers the 117 fixtures the contract ships', () {
-      expect(fixtures, hasLength(117));
+    test('covers the 122 fixtures the contract ships', () {
+      expect(fixtures, hasLength(122));
     });
 
     for (final fixture in fixtures) {
@@ -252,6 +258,31 @@ void main() {
       final collection = PleyaCollection.fromJson({...load('collection.json'), 'visibility': 'family'});
       expect(collection.visibility, isNull);
       expect(const PleyaUpdateCollectionRequest(title: 'Nieuw').toJson(), {'title': 'Nieuw'});
+    });
+  });
+
+  group('ItemActivity', () {
+    test('a season or show aggregate keeps every field the fixture carries', () {
+      final items = PleyaItemActivity.fromJson(load('item_activity.json')).items;
+      expect(items, hasLength(2));
+      final sanne = items.first;
+      expect(sanne.username, 'sanne');
+      expect(sanne.initials, 'S');
+      expect(sanne.isSelf, isFalse);
+      expect(sanne.lastWatchedAt, DateTime.utc(2026, 10, 29, 20, 42));
+      expect(sanne.playCount, 6);
+      expect(sanne.completedItems, 5);
+      expect(items.last.isSelf, isTrue);
+      expect(items.last.initials, 'AB');
+    });
+
+    test('an entry that misses a required field is a contract violation', () {
+      final broken = {
+        'items': [
+          {'user_id': 'x', 'username': 'sam'},
+        ],
+      };
+      expect(() => PleyaItemActivity.fromJson(broken), throwsA(isA<PleyaWireFormatException>()));
     });
   });
 
@@ -303,6 +334,13 @@ void main() {
       expect(PleyaInfo.fromJson(load('info_administration.json')).capabilities.filters, isTrue);
       expect(PleyaInfo.fromJson(load('info.json')).capabilities.filters, isFalse);
       expect(PleyaCapabilities.unknown.filters, isFalse);
+    });
+
+    test('item_activity is read from the server and off by default', () {
+      expect(PleyaInfo.fromJson(load('info_item_activity.json')).capabilities.itemActivity, isTrue);
+      expect(PleyaInfo.fromJson(load('info.json')).capabilities.itemActivity, isFalse);
+      expect(PleyaInfo.fromJson(load('info_administration.json')).capabilities.itemActivity, isFalse);
+      expect(PleyaCapabilities.unknown.itemActivity, isFalse);
     });
 
     test('artwork_sizes is off unless the server says so', () {

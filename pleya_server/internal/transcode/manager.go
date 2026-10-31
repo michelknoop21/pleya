@@ -89,7 +89,7 @@ type Options struct {
 	// SubtitleTimeout begrenst de extractie zelf, los van de aanvraag (standaard 10 minuten).
 	SubtitleTimeout time.Duration
 	HW              HWAccel
-	RenderNode   string
+	RenderNode      string
 	// HWReason zegt waarom er geen hardwareversnelling is, voor beheer.
 	HWReason string
 	Recorder Recorder

@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../focus/focus_theme.dart';
+import 'mobile/library_phone_look.dart';
 
 /// Shared sizing math for media cards rendered as standard grid cards:
 /// a poster with a title and one line of metadata underneath.
@@ -72,6 +73,7 @@ class MediaCardGridLayout {
   /// two (the watchlist on a phone) reserves the second line here so every card
   /// in the row keeps the same height whether its title wraps or not.
   static double captionExtentFor(BuildContext context, {int titleLines = 1}) {
+    if (LibraryPhoneLook.of(context)) return LibraryPhoneMetrics.captionExtentFor(context);
     final scaler = MediaQuery.textScalerOf(context);
     final title = scaler.scale(titleFontSize) * lineHeightFactor * titleLines;
     final subtitle = scaler.scale(subtitleFontSize) * lineHeightFactor;
@@ -80,7 +82,11 @@ class MediaCardGridLayout {
 
   /// What a grid cell has to reserve on top of the poster.
   static double textExtentFor(BuildContext context, {int titleLines = 1}) =>
-      topInset + posterCaptionGap + captionExtentFor(context, titleLines: titleLines) + bottomInset;
+      topInset + captionGapFor(context) + captionExtentFor(context, titleLines: titleLines) + bottomInset;
+
+  /// Space between the poster and its caption in this part of the app.
+  static double captionGapFor(BuildContext context) =>
+      LibraryPhoneLook.of(context) ? LibraryPhoneMetrics.captionGap : posterCaptionGap;
 
   static double cardHeightFor(BuildContext context, double cardWidth, {int titleLines = 1}) =>
       posterHeightFor(cardWidth) + textExtentFor(context, titleLines: titleLines);

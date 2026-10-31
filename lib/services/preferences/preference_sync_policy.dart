@@ -362,6 +362,7 @@ class PreferenceSyncPolicyRegistry {
     'view_mode': _globalPref,
     'focus_glow': _globalPref,
     'hide_spoilers': _globalPref,
+    'show_trakt_discussions': _globalPref,
     'hover_expand_cards': _globalPref,
     'show_hero_section': _globalPref,
     'show_nav_bar_labels': _globalPref,

@@ -34,8 +34,9 @@ class TraktConstants {
   // Scopes — Trakt's OAuth doesn't use granular scopes; "public" is the only value
   static const String scope = 'public';
 
-  /// Headers required on every Trakt API call.
-  static Map<String, String> headers({String? accessToken}) {
+  /// Headers required on every Trakt API call. Reading public data takes
+  /// [clientId] alone: no [accessToken], so no account.
+  static Map<String, String> headers({String? accessToken, String clientId = clientId}) {
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',

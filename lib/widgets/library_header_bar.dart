@@ -34,6 +34,15 @@ class LibraryHeaderAction {
   final String label;
   final String? value;
 
+  /// What a pill prints when it has room for one word: the iPhone library look
+  /// has no "Sort · Title". Null falls back to [value], then to [label].
+  final String? pillLabel;
+
+  /// Glyph on that pill. A sort action sets [sortDescending] instead, so the
+  /// pill can show which way the list runs.
+  final IconData? icon;
+  final bool? sortDescending;
+
   /// Draws the value in the accent colour, for a filter that is narrowing the
   /// list right now.
   final bool isActive;
@@ -55,6 +64,9 @@ class LibraryHeaderAction {
     required this.focusNode,
     required this.onPressed,
     this.value,
+    this.pillLabel,
+    this.icon,
+    this.sortDescending,
     this.isActive = false,
     this.onNavigateLeft,
     this.onNavigateRight,
@@ -72,11 +84,14 @@ class LibraryHeaderAction {
       other is LibraryHeaderAction &&
       other.label == label &&
       other.value == value &&
+      other.pillLabel == pillLabel &&
+      other.icon == icon &&
+      other.sortDescending == sortDescending &&
       other.isActive == isActive &&
       other.focusNode == focusNode;
 
   @override
-  int get hashCode => Object.hash(label, value, isActive, focusNode);
+  int get hashCode => Object.hash(label, value, pillLabel, icon, sortDescending, isActive, focusNode);
 }
 
 /// What the active library tab contributes to the screen header.
@@ -85,18 +100,24 @@ class LibraryHeaderInfo {
   /// Item count for the subtitle, already formatted ("128 items").
   final String? countLabel;
 
+  /// The bare number, for the count badge of the iPhone library look.
+  final int? itemCount;
+
   final List<LibraryHeaderAction> actions;
 
-  const LibraryHeaderInfo({this.countLabel, this.actions = const []});
+  const LibraryHeaderInfo({this.countLabel, this.itemCount, this.actions = const []});
 
   static const LibraryHeaderInfo empty = LibraryHeaderInfo();
 
   @override
   bool operator ==(Object other) =>
-      other is LibraryHeaderInfo && other.countLabel == countLabel && listEquals(other.actions, actions);
+      other is LibraryHeaderInfo &&
+      other.countLabel == countLabel &&
+      other.itemCount == itemCount &&
+      listEquals(other.actions, actions);
 
   @override
-  int get hashCode => Object.hash(countLabel, Object.hashAll(actions));
+  int get hashCode => Object.hash(countLabel, itemCount, Object.hashAll(actions));
 }
 
 /// Fixed heights of the library header. The screen draws the header, and the TV
