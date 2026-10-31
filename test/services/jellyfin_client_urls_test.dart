@@ -2911,7 +2911,7 @@ void main() {
       expect(itemsRequest.queryParameters['SortOrder'], 'Ascending');
       expect(
         itemsRequest.queryParameters['Fields'],
-        'RecursiveItemCount,ChildCount,UserData,PremiereDate,OriginalTitle,SortName,Overview',
+        'RecursiveItemCount,ChildCount,UserData,PremiereDate,DateCreated,OriginalTitle,SortName,Overview',
       );
       expect(itemsRequest.queryParameters.containsKey('EnableTotalRecordCount'), isFalse);
       expect(itemsRequest.queryParameters['EnableImageTypes'], 'Primary,Backdrop,Thumb,Logo');

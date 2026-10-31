@@ -55,6 +55,7 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
@@ -63,6 +64,7 @@ import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
+import '../../media/library_query.dart';
 import '../../media/media_backend.dart';
 import '../../media/media_kind.dart';
 import '../../media/unified/unified_media_group.dart';
@@ -81,6 +83,7 @@ import '../../services/api_cache.dart';
 import '../../services/settings_service.dart';
 import '../../services/unified_catalog/source_resolver.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
+import '../../services/unified_catalog/unified_catalog_query.dart';
 import '../../services/unified_catalog/unified_catalog_query_store.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/formatters.dart';
@@ -90,10 +93,14 @@ import '../../widgets/tv/tv_catalog_empty_state.dart';
 import '../../widgets/tv/tv_catalog_filter_panel.dart';
 import '../../widgets/tv/tv_catalog_filter_rail.dart';
 import '../../widgets/tv/tv_catalog_header_bar.dart';
+import '../../widgets/tv/tv_catalog_jump_index.dart';
 import '../../widgets/tv/tv_catalog_row_alignment.dart';
 import '../../widgets/tv/tv_catalog_rail_scaffold.dart';
 import '../../widgets/tv/tv_catalog_selection_tags.dart';
+import '../../widgets/tv/tv_catalog_side_panel.dart';
 import '../../widgets/tv/tv_catalog_skeleton_grid.dart';
+import '../../services/unified_catalog/library_menu_support.dart';
+import '../../services/unified_catalog/source_cursor.dart' show CatalogLibrary;
 import '../../widgets/tv/tv_catalog_sort_panel.dart';
 import '../../widgets/tv/tv_scroll_away_page.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
@@ -126,6 +133,7 @@ class TvUnifiedCatalogScreen extends StatefulWidget {
     this.restoreFrom = TvDestinationFocusMemory.empty,
     this.onRemember,
     this.initialFilterOverride,
+    this.fullBleed = false,
   });
 
   /// Built and owned by `UnifiedCatalogs` in the profile subtree, never here:
@@ -166,6 +174,13 @@ class TvUnifiedCatalogScreen extends StatefulWidget {
   /// normally, the same as any other visit: only the initial seed is transient.
   final UnifiedCatalogPreferences? initialFilterOverride;
 
+  /// A-06c: the page is the grid, six by two on the whole window with the
+  /// compact card ([TvCatalogFullBleedLayout]). No heading, and UP from the
+  /// first row goes nowhere: the route opens under the collapsible bar and is
+  /// left with Menu. Set by the shell's Alle films and Alle series route and by
+  /// nothing else, so the screens that reuse this one keep their layout.
+  final bool fullBleed;
+
   @override
   State<TvUnifiedCatalogScreen> createState() => _TvUnifiedCatalogScreenState();
 }
@@ -195,6 +210,15 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// Set while the screen still owes someone an entry focus: DOWN out of the
   /// topnav on a catalog whose grid has not been built yet. See [_tryEntryFocus].
   bool _wantsEntryFocus = false;
+
+  /// A choice in the full-bleed panel changed the wall, so the entry focus above
+  /// goes to the first card and not to the one the viewer left.
+  bool _entryOnFirstCard = false;
+
+  /// One per opening. A closing panel stays in the tree while it slides out, so
+  /// reopening within those 240 ms puts two panels side by side, and a shared
+  /// key throws Duplicate GlobalKey.
+  var _sidePanelKey = GlobalKey<TvCatalogSidePanelState>();
 
   /// The card the remote is on, by stable `groupId` — mirrored out of the grid
   /// so it can be handed on after the grid itself is gone.
@@ -283,6 +307,14 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
 
   void _onCatalogChanged() {
     if (mounted) setState(() {});
+    // A library that joins or leaves restarts the merge on the query it already
+    // had, and the provider cannot do better: the preferences live here. What
+    // can run follows that set, so the query is derived again, but only then:
+    // answering every notification would write this page's query over that of
+    // another screen on the same catalog, and that one would answer back.
+    if (mounted && _preferencesLoaded && !setEquals(_knownLibraryKeys, _appliedLibraryKeys)) {
+      unawaited(_applyQuery());
+    }
     _scheduleRestore();
     if (_wantsEntryFocus) {
       // After the frame this rebuild produces: the grid's `State` only exists
@@ -337,6 +369,11 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// memory only; nothing here is written back, so leaving the screen loses
   /// nothing the viewer had stored.
   Future<void> _restorePreferences() async {
+    // Out of initState first. With an override nothing below waits, and setQuery
+    // would notify every listener on this catalog in the middle of a build,
+    // another screen among them.
+    await Future<void>.value();
+    if (!mounted) return;
     final override = widget.initialFilterOverride;
     final stored = override ?? await UnifiedCatalogQueryStore.read(widget.catalog.query.kind);
     if (!mounted) return;
@@ -379,8 +416,21 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// Read off `participatingLibraries` — after the source restriction — so
   /// excluding the one backend that cannot filter is enough to get genre and
   /// year back, rather than its mere existence disabling them for good.
-  UnifiedFilterCapabilities get _capabilities =>
-      unifiedFilterCapabilitiesFor(widget.catalog.participatingLibraries.map((l) => l.backend));
+  UnifiedFilterCapabilities get _capabilities => unifiedFilterCapabilitiesFor(
+    widget.catalog.participatingLibraries.map((l) => l.backend),
+    kind: widget.catalog.query.kind,
+  ).narrowedTo(_menuSupport);
+
+  /// The eligible libraries the last [_applyQuery] ran against.
+  Set<String> _appliedLibraryKeys = const {};
+
+  /// What the Plex libraries behind this page listed, and for which set. Null
+  /// until they answered, and when there are none to ask.
+  LibraryMenuSupport? _menuSupport;
+  String? _menuSupportFor;
+
+  /// The sort in force: see [UnifiedCatalogPreferences.effectiveSort].
+  UnifiedCatalogSort get _activeSort => _preferences.effectiveSort(_capabilities);
 
   /// The capability-derived view of the stored selection: what is actually
   /// applied, what the panel shows as active, and what the badge counts.
@@ -393,9 +443,14 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// applied in the same call: asking the provider what participates today
   /// would evaluate the new genre filter against yesterday's backends.
   Future<void> _applyQuery({bool startIfNeeded = false}) {
+    _appliedLibraryKeys = _knownLibraryKeys;
     final selection = _preferences.filters;
     final participating = widget.catalog.eligibleLibraries.where(selection.selects);
-    final capabilities = unifiedFilterCapabilitiesFor(participating.map((l) => l.backend));
+    final capabilities = unifiedFilterCapabilitiesFor(
+      participating.map((l) => l.backend),
+      kind: widget.catalog.query.kind,
+    ).narrowedTo(_menuSupport);
+    unawaited(_refreshMenuSupport(participating.toList()));
     final query = buildUnifiedCatalogQuery(
       kind: widget.catalog.query.kind,
       preferences: _preferences,
@@ -412,6 +467,24 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       return Future<void>.value();
     }
     return widget.catalog.setQuery(query, librarySelector: selection.restrictsSources ? selection.selects : null);
+  }
+
+  /// Asks the Plex libraries what they list, once per set of libraries, and
+  /// applies the answer: a stored Dubbel only runs once the server has named it,
+  /// and a sort it does not name has to fall back to title.
+  Future<void> _refreshMenuSupport(List<CatalogLibrary> libraries) async {
+    final key = ([for (final l in libraries) buildGlobalKey(l.serverId, l.libraryId)]..sort()).join('|');
+    if (key == _menuSupportFor) return;
+    _menuSupportFor = key;
+    final manager = context.read<MultiServerProvider>().serverManager;
+    final support = await loadLibraryMenuSupport(
+      libraries: libraries,
+      kind: widget.catalog.query.kind,
+      clientFor: manager.getClient,
+    );
+    if (!mounted || key != _menuSupportFor) return;
+    setState(() => _menuSupport = support);
+    await _applyQuery();
   }
 
   /// Whether the participating library set would change, which a query
@@ -598,7 +671,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   }
 
   Future<void> _openSort() async {
-    final result = await showTvCatalogSortPanel(context, selected: _preferences.sort);
+    final result = await showTvCatalogSortPanel(context, selected: _activeSort, capabilities: _capabilities);
     if (result == null || !mounted) return;
     await _updatePreferences(_preferences.copyWith(sort: result));
   }
@@ -640,17 +713,28 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// already, which is what makes that safe here and not on the opening path.
   void _openRail() {
     if (_railExpanded) {
-      if (_sourcesFocus.canRequestFocus) _sourcesFocus.requestFocus();
+      _focusRailEntry();
       return;
     }
-    setState(() => _railExpanded = true);
+    setState(() {
+      _sidePanelKey = GlobalKey<TvCatalogSidePanelState>();
+      _railExpanded = true;
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_railExpanded) return;
-      // Always Bronnen, per DEC-093, not the row last used. The rail is a
-      // short list the eye reads top to bottom, and opening it halfway down
-      // costs more than the press it saves.
-      if (_sourcesFocus.canRequestFocus) _sourcesFocus.requestFocus();
+      _focusRailEntry();
     });
+  }
+
+  /// Always Bronnen, per DEC-093, not the row last used. The rail is a short
+  /// list the eye reads top to bottom, and opening it halfway down costs more
+  /// than the press it saves.
+  void _focusRailEntry() {
+    if (widget.fullBleed) {
+      _sidePanelKey.currentState?.focusEntry();
+    } else if (_sourcesFocus.canRequestFocus) {
+      _sourcesFocus.requestFocus();
+    }
   }
 
   /// RIGHT or Menu out of the rail: back to the card it was opened from.
@@ -692,6 +776,9 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// leaves the rail standing open with the focus somewhere else, which is the
   /// one state [_leaveRailUpwards] exists to prevent for UP.
   void _railEdge() {}
+
+  /// UP off the first row of a full-bleed page: nothing is above it.
+  void _noExit() {}
 
   void _leaveRailUpwards() {
     if (_railExpanded) setState(() => _railExpanded = false);
@@ -738,19 +825,32 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   void _tryEntryFocus() {
     if (!mounted || !_wantsEntryFocus) return;
     if (_railExpanded) {
-      if (_sourcesFocus.canRequestFocus) {
+      if (widget.fullBleed || _sourcesFocus.canRequestFocus) {
         _wantsEntryFocus = false;
-        _sourcesFocus.requestFocus();
+        _focusRailEntry();
       }
       return;
     }
     final grid = _gridKey.currentState;
     if (grid != null && grid.hasFocusableCard) {
       _wantsEntryFocus = false;
-      grid.focusGrid();
+      if (_entryOnFirstCard) {
+        _entryOnFirstCard = false;
+        grid.focusFirstCard();
+      } else {
+        grid.focusGrid();
+      }
       return;
     }
-    if (_preferencesLoaded && !widget.catalog.isInitialLoading) _wantsEntryFocus = false;
+    if (!_preferencesLoaded || widget.catalog.isInitialLoading) return;
+    _wantsEntryFocus = false;
+    // A choice in the panel that left no grid. The state's own autofocus does
+    // not fire here: the row that was chosen on still held the focus when the
+    // state was mounted, so nothing would be left holding it.
+    if (_entryOnFirstCard) {
+      _entryOnFirstCard = false;
+      if (_stateActionFocus.canRequestFocus) _stateActionFocus.requestFocus();
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -830,6 +930,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   }
 
   Widget _buildPage() {
+    if (widget.fullBleed) return _buildContentArea();
     final pageScrolled = _pageScrolled;
     // Folded away while the remote is past the first row, and back as soon as
     // it enters the top navigation: the shell shows the bar then, and the
@@ -881,42 +982,105 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   }
 
   /// The grid, with the rail standing beside it — the shared placement of
-  /// [TvCatalogRailScaffold], which this screen used to own outright.
+  /// [TvCatalogRailScaffold], which this screen used to own outright. On a
+  /// full-bleed page the controls are a panel over the grid instead.
   Widget _buildContentArea() {
     final scale = TvLayoutConstants.scaleOf(context);
     return TvCatalogRailScaffold(
+      overlay: widget.fullBleed,
       cardHeight: (cardWidth) => TvCatalogLayout.cardHeight(cardWidth, scale),
       rail: _railExpanded
           ? AutomationNode(
               id: AutomationIds.tvCatalogRail,
               instance: _surface,
               role: 'region',
-              child: TvCatalogFilterRailPanel(
-                key: tvCatalogFilterRailKey,
-                scale: scale,
-                rows: _railRows(),
-                tags: _selectionTags(capped: false),
-                onClear: _preferences.filters.isEmpty ? null : _clearFilters,
-                clearFocusNode: _clearFocus,
-                onClearNavigateUp: () => _sortFocus.requestFocus(),
-                onClearNavigateDown: _railEdge,
-                onClearNavigateLeft: _railEdge,
-                onClearNavigateRight: _closeRail,
-                onClearBack: _closeRail,
-              ),
+              child: widget.fullBleed
+                  ? _buildSidePanel(scale)
+                  : TvCatalogFilterRailPanel(
+                      key: tvCatalogFilterRailKey,
+                      scale: scale,
+                      rows: _railRows(),
+                      tags: _selectionTags(capped: false),
+                      onClear: _preferences.filters.isEmpty ? null : _clearFilters,
+                      clearFocusNode: _clearFocus,
+                      onClearNavigateUp: () => _sortFocus.requestFocus(),
+                      onClearNavigateDown: _railEdge,
+                      onClearNavigateLeft: _railEdge,
+                      onClearNavigateRight: _closeRail,
+                      onClearBack: _closeRail,
+                    ),
             )
           : null,
       body: _buildBody(),
     );
   }
 
-  double _railLeading(double width) => TvCatalogRailScaffold.leadingFor(width, expanded: _railExpanded);
+  Widget _buildSidePanel(double scale) {
+    final filters = _effectiveFilters;
+    final itemFilters = filters.itemFilterCount;
+    return TvCatalogSidePanel(
+      key: _sidePanelKey,
+      scale: scale,
+      surface: _surface,
+      selection: _preferences.filters,
+      capabilities: _capabilities,
+      libraries: widget.catalog.eligibleLibraries,
+      clientFor: (serverId) => context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId)),
+      sort: _activeSort,
+      sourcesValue: _sourcesLabel(filters) ?? t.unifiedCatalog.allSources,
+      filtersValue: itemFilters == 0
+          ? t.unifiedCatalog.rail.noFilters
+          : t.unifiedCatalog.rail.filtersActive(count: itemFilters),
+      tags: _selectionTags(capped: false),
+      onChooseSort: (sort) => _chooseFromPanel(_preferences.copyWith(sort: sort)),
+      onApplyFilters: (filters) => _chooseFromPanel(_preferences.copyWith(filters: filters)),
+      onClose: _closeRail,
+      onJump: _activeSort.field == UnifiedCatalogSortField.title ? _jumpToLetter : null,
+    );
+  }
+
+  /// Spring naar. The panel closes and the ring stays on its card until the
+  /// letter is found, which on a big catalog can mean loading further: moving
+  /// on in the meantime wins, because late content may not take the remote back.
+  Future<void> _jumpToLetter(String letter) async {
+    _closeRail();
+    final startedOn = _focusedGroupId;
+    final target = await tvCatalogJumpTarget(
+      widget.catalog,
+      letter,
+      descending: _activeSort.direction == LibrarySortDirection.descending,
+    );
+    if (!mounted || target == null) return;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted || _focusedGroupId != startedOn) return;
+    if (_gridKey.currentState?.focusItem(target) ?? false) _focusedGroupId = target;
+  }
+
+  /// A choice in the side panel: the panel closes and the ring goes to the
+  /// first card. Asked for through the entry focus, because a change of sort or
+  /// filter replaces the grid and the first card only exists once the new page
+  /// has landed. An unchanged choice leaves the same grid standing, so that one
+  /// is sent to its top here.
+  Future<void> _chooseFromPanel(UnifiedCatalogPreferences next) async {
+    setState(() => _railExpanded = false);
+    _focusedGroupId = null;
+    _entryOnFirstCard = true;
+    _wantsEntryFocus = true;
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+    await _updatePreferences(next);
+    if (mounted) WidgetsBinding.instance.addPostFrameCallback((_) => _tryEntryFocus());
+  }
+
+  double _railLeading(double width) =>
+      widget.fullBleed ? 0 : TvCatalogRailScaffold.leadingFor(width, expanded: _railExpanded);
 
   List<TvCatalogSelectionTag> _selectionTags({bool capped = true}) => tvCatalogSelectionTags(
     filters: _effectiveFilters,
-    sort: _preferences.sort,
+    sort: _activeSort,
     sourcesLabel: _sourcesLabel(_effectiveFilters),
+    capabilities: _capabilities,
     overflowAfter: capped ? TvCatalogLayout.tagOverflowThreshold : null,
+    omitDefaultSort: widget.fullBleed,
   );
 
   /// Clears every filter, from the rail's Wissen row or from the
@@ -971,7 +1135,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         icon: Symbols.swap_vert_rounded,
         label: t.unifiedCatalog.sort.title,
         automationInstance: '$_surface.sort',
-        value: sortLabel(_preferences.sort),
+        value: sortLabel(_activeSort),
         focusNode: _sortFocus,
         onPressed: _openSort,
         onNavigateUp: () => _filtersFocus.requestFocus(),
@@ -1009,6 +1173,8 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       return TvCatalogSkeletonGrid(
         key: tvCatalogSkeletonKey,
         reservedLeading: _railLeading(MediaQuery.sizeOf(context).width),
+        fullBleed: widget.fullBleed,
+        densityScale: _densityScale,
       );
     }
 
@@ -1075,15 +1241,21 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         onFocusedGroupChanged: (groupId) => _focusedGroupId = groupId,
         onFocusedRow: _pageScrolled == null ? null : _onFocusedRow,
         // Keep the active row whole while the next row peeks into view.
-        rowAligned: _pageScrolled != null,
+        rowAligned: widget.fullBleed || _pageScrolled != null,
         fitScale: _densityScale,
+        fullBleed: widget.fullBleed,
+        densityScale: _densityScale,
+        activeSort: _activeSort,
         groups: snapshot.groups,
         hasMore: snapshot.hasMore,
         isLoadingMore: catalog.isLoadingMore,
         onLoadMore: catalog.loadMore,
         onActivate: _activate,
         onContextMenu: _openContextMenu,
-        onExitTop: _focusSidebar,
+        // Explicit, not null: a card without a handler falls through to
+        // directional traversal, which would find the bar.
+        onExitTop: widget.fullBleed ? _noExit : _focusSidebar,
+        onEmptied: widget.fullBleed ? _openRail : null,
         onExitLeft: _openRail,
         // Menu on a card, but only while the rail is standing open: an open
         // surface answers Back before the shell's own chain does, the rule the

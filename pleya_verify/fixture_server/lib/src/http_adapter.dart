@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
 import 'fixtures/named_fixtures.dart';
+import 'jellyfin_fake_server.dart';
 import 'ollama_fake_server.dart';
 import 'pleya_fake_server.dart';
 import 'seerr_fake_server.dart';
@@ -33,7 +34,9 @@ class FixtureHttpServer {
     SeerrFakeServer? seerr,
     TmdbFakeServer? tmdb,
     TautulliFakeServer? tautulli,
-  }) : seerr = seerr ?? SeerrFakeServer(),
+    JellyfinFakeServer? jellyfin,
+  }) : jellyfin = jellyfin ?? JellyfinFakeServer(),
+       seerr = seerr ?? SeerrFakeServer(),
        tmdb = tmdb ?? TmdbFakeServer(),
        tautulli = tautulli ?? TautulliFakeServer();
 
@@ -42,6 +45,7 @@ class FixtureHttpServer {
   final SeerrFakeServer seerr;
   final TmdbFakeServer tmdb;
   final TautulliFakeServer tautulli;
+  final JellyfinFakeServer jellyfin;
   final OllamaFakeServer _ollama = OllamaFakeServer();
   final _modelResponses = <Future<void>>{};
 
@@ -76,6 +80,8 @@ class FixtureHttpServer {
         await _handleTmdbApi(request);
       } else if (request.uri.path.startsWith('/tautulli')) {
         await _handleTautulliApi(request);
+      } else if (request.uri.path.startsWith('/jellyfin')) {
+        await _handleJellyfinApi(request);
       } else if (request.uri.path.startsWith('/api/') || request.uri.path == '/v1/chat/completions') {
         await _handleOllamaApi(request);
       } else {
@@ -124,6 +130,16 @@ class FixtureHttpServer {
       return;
     }
 
+    request.response.statusCode = response.statusCode;
+    response.headers.forEach((name, value) => request.response.headers.set(name, value));
+    request.response.add(response.bodyBytes);
+    await request.response.close();
+  }
+
+  Future<void> _handleJellyfinApi(HttpRequest request) async {
+    server.requests.add('${request.uri.path}?${request.uri.query}');
+    final body = await utf8.decoder.bind(request).join();
+    final response = await jellyfin.handle(http.Request(request.method, request.requestedUri)..body = body);
     request.response.statusCode = response.statusCode;
     response.headers.forEach((name, value) => request.response.headers.set(name, value));
     request.response.add(response.bodyBytes);
@@ -217,7 +233,8 @@ class FixtureHttpServer {
         final body = await _readJsonBody(request);
         milestone('seed_body_read');
         final fixture = body['fixture'] as String?;
-        if (fixture == null || !applyNamedFixture(server, fixture, seerr: seerr, tautulli: tautulli)) {
+        if (fixture == null ||
+            !applyNamedFixture(server, fixture, seerr: seerr, tautulli: tautulli, jellyfin: jellyfin)) {
           request.response.statusCode = HttpStatus.badRequest;
           await _json(request, {'error': 'unknown fixture', 'fixture': fixture});
           return;
