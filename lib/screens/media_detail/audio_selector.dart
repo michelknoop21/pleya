@@ -39,15 +39,21 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
     _detailAudioRequest = request;
     bool superseded() => !mounted || _detailAudioRequest != request;
 
-    _updateDetailAudioState(() {
-      _detailAudioTarget = null;
-      _detailFileInfo = null;
-      _selectedDetailAudioTrackId = null;
-      _selectedDetailSubtitleTrackId = null;
-      _detailAudioPickId = null;
-      _detailSubtitlePickId = null;
-      _detailSubtitlePicked = false;
-    });
+    // Only when there is something to clear: a load that cannot start leaves
+    // the request open for the next build, and a state change here would make
+    // that build itself, every frame.
+    final tableIsEmpty = _detailAudioTarget == null && _detailFileInfo == null;
+    if (!tableIsEmpty) {
+      _updateDetailAudioState(() {
+        _detailAudioTarget = null;
+        _detailFileInfo = null;
+        _selectedDetailAudioTrackId = null;
+        _selectedDetailSubtitleTrackId = null;
+        _detailAudioPickId = null;
+        _detailSubtitlePickId = null;
+        _detailSubtitlePicked = false;
+      });
+    }
 
     try {
       final title = _unifiedTitle;
