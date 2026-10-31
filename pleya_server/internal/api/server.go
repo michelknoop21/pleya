@@ -195,6 +195,7 @@ type Server struct {
 	log                        *slog.Logger
 	limiter                    *limiter
 	refreshLimiter             *limiter
+	loginGuard                 *loginGuard
 	mux                        *http.ServeMux
 	now                        func() time.Time
 	missingTrustedProxyWarning sync.Once
@@ -233,6 +234,7 @@ func New(opts Options) *Server {
 		log:            opts.Logger,
 		limiter:        newLimiter(),
 		refreshLimiter: newRefreshLimiter(),
+		loginGuard:     newLoginGuard(),
 		mux:            http.NewServeMux(),
 		now:            time.Now,
 	}

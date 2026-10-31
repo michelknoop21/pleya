@@ -293,13 +293,12 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	// zijn eigen wachtwoord vijf keer verkeerd typt de login van een
 	// huisgenoot blokkeert. De gebruikersnaam hoeft hier niet te bestaan; de
 	// sleutel is een emmer, geen claim.
-	limiterKey := "login:" + req.Username
+	limiterKey := "login:" + loginName(req.Username)
 	if !s.rateLimit(w, limiterKey) {
 		// Een geweigerde poging staat in het auditlog en niet alleen in de
 		// emmer van de limiter: de limiter vergeet, het log niet, en het
 		// patroon over een nacht is precies wat een beheerder wil zien.
-		s.auditAnonymous(r, auditLogin, audit.OutcomeDenied,
-			map[string]any{"username": req.Username, "reason": "rate_limited"})
+		s.auditLoginDenied(r, req.Username, "rate_limited")
 		return
 	}
 
@@ -331,7 +330,12 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ok, needsRehash, verifyErr := auth.VerifyPassword(req.Password, storedHash, s.opts.Argon2)
+	ok, needsRehash, verifyErr := s.verifyPassword(r.Context(), req.Password, storedHash)
+	if verifyErr != nil && r.Context().Err() != nil {
+		// De client liep weg terwijl hij op een plek wachtte; dit is geen fout van de server.
+		writeError(w, s.log, CodeRateLimited, "too many attempts", nil)
+		return
+	}
 	if verifyErr != nil {
 		writeInternal(w, s.log, verifyErr)
 		return
@@ -343,8 +347,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		// bijna goed typen, inclusief hun echte wachtwoord met één tikfout.
 		//
 		// user_id blijft leeg, ook wanneer de naam bestaat: zie auditAnonymous.
-		s.auditAnonymous(r, auditLogin, audit.OutcomeDenied,
-			map[string]any{"username": req.Username, "reason": "invalid_credentials"})
+		s.auditLoginDenied(r, req.Username, "invalid_credentials")
 		writeError(w, s.log, CodeInvalidCredentials, "invalid credentials", nil)
 		return
 	}

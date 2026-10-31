@@ -5423,6 +5423,13 @@ gerekend, niet gemeten. Inloggen schrijft een tokenrij buiten deze grens om; dat
 Dat de grens eerst op 150 en 2,5 stond kwam door een test met een nepklok: de limiter volgde die klok niet, dus 125 rijen
 over ruim twee uur testtijd vielen in 2,5 seconde. `SetClock` zet nu ook de klok van deze emmers.
 
+`POST /auth/login` had hetzelfde gat zonder wachtwoord. Elke geweigerde aanvraag schreef een auditregel, met de naam
+ongeknipt tot 8 KiB, 90 dagen bewaard, en elke verzonnen naam kreeg vijf keer Argon2 tegen de owner-hash, 64 MiB per stuk
+zonder grens op gelijktijdigheid. De auditregel bleef bewust: het patroon over een nacht is wat een beheerder wil zien.
+De naam wordt nu op 64 tekens geknipt vóór sleutel en regel, per proces krijgen 12 geweigerde logins plus één per vijf
+seconden een regel en de rest alleen een logregel zonder naam, en er lopen hoogstens twee controles tegelijk. Wie op een
+plek wacht en wegloopt krijgt 429. Onder een vloed wacht ook een echte login op zijn beurt. Hoe lang is niet gemeten.
+
 Migratie 0030 zet indexen op `session_id` en `replaced_by`. `replaced_by` is een foreign key op de eigen tabel, dus de
 opruiming zocht per verwijderde rij de hele tabel door: 500 ms per rij bij een miljoen synthetische rijen, gemeten in
 een lokale container onder amd64-emulatie. Met de indexen 0,2 ms. Dit is geen NAS-meting.
