@@ -33,6 +33,8 @@ type limiter struct {
 	lastSweep time.Time
 	burst     float64
 	refill    float64 // tokens per seconde
+	// writes staat alleen op de refresh-limiter, zie refreshWriteBurst.
+	writes *limiter
 }
 
 type bucket struct {
@@ -60,9 +62,25 @@ const (
 	refreshLimiterRefill = 1.0 / 2.0 // tokens per seconde
 )
 
+// De grens op wat een account aan refreshtokens schrijft. De emmers hierboven tellen
+// aanvragen per sessie of per token, en dat zijn sleutels die een client zelf maakt:
+// elke herhaling laat een vervangen token achter met een eigen emmer, en elke login een
+// sessie. Gemeten liep één sessie zo op 67 rijen per seconde en vier sessies op 145, met
+// de pool vol wachtend op sessieslots. Deze emmer telt rijen per account, vlak voor het
+// schrijven, en hij staat niet in de kaart met die sleutels: 1024 verzonnen tokens
+// drukken hem er dus niet uit.
+//
+// Een toestel ververst eens per kwartier, dus 2,5 rijen per seconde is ruim tweeduizend
+// toestellen op één account. Een lus loopt hier wel tegenaan.
+const (
+	refreshWriteBurst  = 150.0
+	refreshWriteRefill = 2.5 // rijen per seconde
+)
+
 // limiterIdleTTL is de tijd waarna een emmer, ongeacht zijn stand bij het
-// stilvallen, gegarandeerd weer vol is. Voor beide tempo's 60 seconden:
-// limiterBurst / limiterRefill en refreshLimiterBurst / refreshLimiterRefill.
+// stilvallen, gegarandeerd weer vol is. Voor alle drie de tempo's 60 seconden:
+// limiterBurst / limiterRefill, refreshLimiterBurst / refreshLimiterRefill en
+// refreshWriteBurst / refreshWriteRefill.
 const limiterIdleTTL = time.Duration(limiterBurst/limiterRefill) * time.Second
 
 // limiterSweepInterval bepaalt hoe vaak allow() de opruiming probeert. Elke
@@ -84,7 +102,10 @@ func newLimiter() *limiter {
 // bestaande: login kiest zijn sleutels zelf, en een vloed aan verzonnen
 // gebruikersnamen mag de emmers van refresh niet uit de kaart drukken.
 func newRefreshLimiter() *limiter {
-	return &limiter{buckets: map[string]*bucket{}, now: time.Now, burst: refreshLimiterBurst, refill: refreshLimiterRefill}
+	return &limiter{
+		buckets: map[string]*bucket{}, now: time.Now, burst: refreshLimiterBurst, refill: refreshLimiterRefill,
+		writes: &limiter{buckets: map[string]*bucket{}, now: time.Now, burst: refreshWriteBurst, refill: refreshWriteRefill},
+	}
 }
 
 // allow neemt een token en zegt hoelang er gewacht moet worden als er geen is.

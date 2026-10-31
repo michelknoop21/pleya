@@ -5400,6 +5400,24 @@ daarna 15,5 per seconde in plaats van een halve. Dat vraagt een geldig token en 
 elders mag; een lus op één token blijft op 30 plus een halve per seconde. De kaart blijft op zijn 1024 emmers, gemeten
 132 kB, en een verdrongen emmer begint weer vol.
 
+Die grens was niet de hele rekening. Elke herhaling laat een vervangen token achter, en dat krijgt een eigen emmer: uit
+één dood token komen zo 30 plus 29 keer 30 rijen, zonder de emmer van de sessie aan te raken. Gemeten tegen de echte
+handler over HTTP: de lus van hierboven houdt 16 rijen per seconde vol, de eerdere 45 was het gemiddelde over de eerste
+30 seconden met de burst erin, en de boom haalde 67 per seconde op één sessie en 145 op vier, waar de database de grens
+was en niet de limiter. Bij die vier sessies liep een gewone `GET /libraries` van 9 naar 311 ms, met de pool vol
+wachtend op sessieslots. Sessies zijn niet begrensd, dus een account kan dit vermenigvuldigen. Rotaties en herhalingen
+vragen nu vlak voor het schrijven een emmer per account: 150 achter elkaar, daarna 2,5 per seconde. Die staat in een
+eigen kaart, want de sleutels in de andere kaart kiest de client. De beslissing valt in de transactie, omdat alleen die
+weet of er een rij komt: hergebruik schrijft er geen en vraagt de grens niet, dus de detectie kan er niet op wachten,
+en een geweigerde herhaling is na het respijt hergebruik. Onder dezelfde aanval bleef `GET /libraries` op 4,6 ms en
+kwamen er per account twee rijen per seconde bij, gemeten met de eerste waarden 120 en 2. Die zijn opgehoogd omdat
+`TestTwoTokensWithOneHeadNeverAnswer500` 125 rijen in 2,5 seconde schrijft op één account. Inloggen schrijft een tokenrij buiten deze grens om; dat kost een
+wachtwoord en Argon2 per rij en staat als open punt in het rapport van 30 oktober.
+
+Migratie 0030 zet indexen op `session_id` en `replaced_by`. `replaced_by` is een foreign key op de eigen tabel, dus de
+opruiming zocht per verwijderde rij de hele tabel door: 500 ms per rij bij een miljoen synthetische rijen, gemeten in
+een lokale container onder amd64-emulatie. Met de indexen 0,2 ms. Dit is geen NAS-meting.
+
 Twee gelijktijdige aanbiedingen van verschillende tokens met dezelfde kop liepen in een deadlock: elk hield zijn eigen rij
 vast en wachtte op die van de ander, omdat een herhaling alles bijwerkt wat naar de kop wijst. In de review was dat 191 keer
 `500` op 400 antwoorden, na een seconde wachten. Dezelfde test vond een tweede: een rotatie nam tokens en dan de sessie,

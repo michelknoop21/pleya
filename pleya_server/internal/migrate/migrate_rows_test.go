@@ -2,6 +2,7 @@ package migrate_test
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
@@ -131,5 +132,86 @@ func TestMigrationsKeepRowsInMediaItemsAndRefreshTokens(t *testing.T) {
 	}
 	if outcome := rotate(used, "van-de-dief"); outcome != auth.RefreshReused {
 		t.Fatalf("het oude token gaf uitkomst %d", outcome)
+	}
+}
+
+// 0030 zet twee indexen op de refreshtabel van een database die er al rijen in heeft,
+// vanaf 29 en vanaf main. Geen rij verandert, de foreign keys blijven, en een tweede
+// start past niets opnieuw toe.
+func TestMigration0030AddsTheIndexesAndKeepsRowsAndConstraints(t *testing.T) {
+	for _, from := range []int{mainSchemaVersion, 29} {
+		t.Run("vanaf "+strconv.Itoa(from), func(t *testing.T) {
+			pool := testsupport.Pool(t)
+			ctx := context.Background()
+			if _, err := migrate.RunTo(ctx, pool, nil, from); err != nil {
+				t.Fatal(err)
+			}
+			user, session := id.New(), id.New()
+			used, live := auth.HashOpaque("gebruikt"), auth.HashOpaque("kop")
+			execAll(t, pool, map[string][]any{
+				`INSERT INTO users (id, username, password_hash, role) VALUES ($1, 'kijker', 'x', 'member')`: {user},
+			})
+			execAll(t, pool, map[string][]any{
+				`INSERT INTO sessions (id, user_id, device_name) VALUES ($1, $2, 'Browser')`: {session, user},
+			})
+			if _, err := pool.Exec(ctx, `
+				INSERT INTO auth_refresh_tokens (token_hash, expires_at, session_id) VALUES
+					($1, now() + interval '1 day', $3), ($2, now() + interval '1 day', $3)`, live, used, session); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := pool.Exec(ctx, `UPDATE auth_refresh_tokens SET replaced_by = $1 WHERE token_hash = $2`, live, used); err != nil {
+				t.Fatal(err)
+			}
+			dump := `SELECT md5(string_agg(t::text, ',' ORDER BY token_hash)) FROM
+				(SELECT token_hash, issued_at, expires_at, revoked_at, replaced_by, session_id FROM auth_refresh_tokens) t`
+			var before string
+			if err := pool.QueryRow(ctx, dump).Scan(&before); err != nil {
+				t.Fatal(err)
+			}
+
+			result, err := migrate.Run(ctx, pool, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.To != 30 {
+				t.Fatalf("schema %d", result.To)
+			}
+			var after string
+			if err := pool.QueryRow(ctx, dump).Scan(&after); err != nil {
+				t.Fatal(err)
+			}
+			if after != before {
+				t.Fatal("rijen veranderd")
+			}
+
+			var indexes int
+			if err := pool.QueryRow(ctx, `
+				SELECT count(*) FROM pg_indexes WHERE tablename = 'auth_refresh_tokens' AND indexname IN
+					('auth_refresh_tokens_session_id_idx', 'auth_refresh_tokens_replaced_by_idx')`).Scan(&indexes); err != nil {
+				t.Fatal(err)
+			}
+			if indexes != 2 {
+				t.Fatalf("%d indexen", indexes)
+			}
+			var constraints int
+			if err := pool.QueryRow(ctx, `
+				SELECT count(*) FROM pg_constraint WHERE conrelid = 'auth_refresh_tokens'::regclass AND convalidated
+				  AND ((contype = 'f' AND confdeltype = 'n' AND confrelid = 'auth_refresh_tokens'::regclass)
+				    OR (contype = 'f' AND confdeltype = 'c' AND confrelid = 'sessions'::regclass)
+				    OR contype = 'p')`).Scan(&constraints); err != nil {
+				t.Fatal(err)
+			}
+			if constraints != 3 {
+				t.Fatalf("%d van de 3 constraints", constraints)
+			}
+
+			again, err := migrate.Run(ctx, pool, nil)
+			if err != nil {
+				t.Fatalf("tweede start: %v", err)
+			}
+			if len(again.Applied) != 0 || again.From != 30 {
+				t.Fatalf("tweede start paste %d migraties toe vanaf %d", len(again.Applied), again.From)
+			}
+		})
 	}
 }

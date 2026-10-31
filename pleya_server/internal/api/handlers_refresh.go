@@ -78,11 +78,21 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := s.now().UTC()
-	outcome, sid, subjectID, err := s.opts.Auth.RotateRefreshToken(r.Context(),
+	var writeWait time.Duration
+	outcome, sid, subjectID, err := s.opts.Auth.RotateRefreshTokenGated(r.Context(),
 		presentedHash, newHash, now.Add(s.settings().RefreshTokenTTL()), now,
-		s.opts.RefreshGraceWindow)
+		s.opts.RefreshGraceWindow, func(user id.ID) bool {
+			var allowed bool
+			allowed, writeWait = s.refreshLimiter.writes.allow(user.String())
+			return allowed
+		})
 	if err != nil {
 		writeInternal(w, s.log, err)
+		return
+	}
+	if outcome == auth.RefreshWriteLimited {
+		// Vóór de regel hieronder: dit is geen afgewezen token, de cookie blijft staan.
+		s.writeRefreshLimited(w, "write", writeWait)
 		return
 	}
 
@@ -153,12 +163,16 @@ func (s *Server) allowRefresh(w http.ResponseWriter, r *http.Request, presentedH
 	if ok {
 		return true
 	}
-	s.log.Warn("refresh begrensd", "limiter", strings.SplitN(key, ":", 2)[0])
+	s.writeRefreshLimited(w, strings.SplitN(key, ":", 2)[0], wait)
+	return false
+}
+
+func (s *Server) writeRefreshLimited(w http.ResponseWriter, limiter string, wait time.Duration) {
+	s.log.Warn("refresh begrensd", "limiter", limiter)
 	w.Header().Set("Retry-After", retryAfterSeconds(wait))
 	writeError(w, s.log, CodeRateLimited, "too many attempts", map[string]any{
 		"retry_after_ms": wait.Milliseconds(),
 	})
-	return false
 }
 
 // refreshLimiterKey kiest de emmer van een refresh.
@@ -177,12 +191,10 @@ func (s *Server) allowRefresh(w http.ResponseWriter, r *http.Request, presentedH
 // van de andere houder is de enige aanvraag die de sessie kan sluiten (DEC-123).
 // Een dood token telt daarom op een eigen emmer. Die kan de kop niet leegmaken, en
 // een aanbieding die erdoorheen komt is hergebruik of een herhaling binnen het
-// respijt. Dat is niet even hard begrensd als de kop: wie zijn sessie zelf houdt,
-// kan tot ongeveer 45 rijen per seconde schrijven, want per dood token mogen tot
-// 90 herhalingen in het respijt en de sessie-emmer levert elke 2 s een nieuw dood
-// token. Dat dode tokens
-// elk een emmer krijgen vraagt geen eigen grens: de kaart van de limiter is
-// begrensd op limiterMaxBuckets, en een verdrongen emmer begint weer vol.
+// respijt. Deze emmers begrenzen geen rijen: elke herhaling maakt een token met een
+// eigen emmer. Dat doet de grens per account, zie refreshWriteBurst. Dat dode tokens
+// elk een emmer krijgen vraagt voor het geheugen geen eigen grens: de kaart van de
+// limiter is begrensd op limiterMaxBuckets, en een verdrongen emmer begint weer vol.
 //
 // Een token zonder sessie is verzonnen of opgeruimd, en dat kan geen rechtmatige
 // client helpen. Die aanvragen tellen op het adres, zodat ze geen enkele sessie

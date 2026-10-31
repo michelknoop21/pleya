@@ -36,6 +36,10 @@ const (
 	// intrekkingsendpoint) kan dit nog niet voorkomen; de controle hoort in
 	// dezelfde commit als het schema thuis, niet in een opruimronde erna.
 	RefreshSessionRevoked
+	// RefreshWriteLimited: deze aanbieding zou een rij schrijven en de aanroeper
+	// weigerde dat. Er is niets veranderd: het token geldt nog en een latere
+	// poging gaat verder waar deze was.
+	RefreshWriteLimited
 )
 
 // RefreshTokenSession zegt bij welke sessie een aangeboden token hoort, ook als
@@ -94,6 +98,19 @@ func (s *Store) RefreshTokenSession(ctx context.Context, hash []byte) (sessionID
 // sid kan minten. Bij RefreshReused komt alleen de sid terug, zodat de
 // aanroeper ook reeds uitgegeven credentials onmiddellijk kan intrekken.
 func (s *Store) RotateRefreshToken(ctx context.Context, oldHash, newHash []byte, newExpires, now time.Time, grace time.Duration) (RefreshOutcome, id.ID, id.ID, error) {
+	return s.RotateRefreshTokenGated(ctx, oldHash, newHash, newExpires, now, grace, nil)
+}
+
+// RotateRefreshTokenGated is RotateRefreshToken met een grens op wat er geschreven
+// wordt. allowWrite krijgt de gebruiker van de sessie en beslist vlak voordat een
+// rotatie of herhaling een rij zet; geeft hij false, dan is de uitkomst
+// RefreshWriteLimited en is er niets veranderd.
+//
+// Hij staat hier en niet vóór de transactie, omdat alleen de transactie weet wat er
+// gebeurt. Hergebruik voegt niets toe en vraagt het dus niet: de grens kan de
+// detectie niet tegenhouden, ook niet wie hem leegtrekt. Een herhaling die geweigerd
+// wordt, is na het respijt hergebruik.
+func (s *Store) RotateRefreshTokenGated(ctx context.Context, oldHash, newHash []byte, newExpires, now time.Time, grace time.Duration, allowWrite func(userID id.ID) bool) (RefreshOutcome, id.ID, id.ID, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return RefreshUnknown, id.Nil, id.Nil, err
@@ -132,18 +149,20 @@ func (s *Store) RotateRefreshToken(ctx context.Context, oldHash, newHash []byte,
 			return RefreshExpired, id.Nil, id.Nil, nil
 		}
 		if replacedBy != nil && (neverPresented || (grace > 0 && now.Sub(*revokedAt) <= grace)) {
-			outcome, sid, uid, err := s.replayLostRotation(ctx, tx, oldHash, replacedBy, newHash, newExpires, now, sessionID, onceSuperseded)
-			if err != nil || outcome == RefreshReplayed {
+			outcome, sid, uid, err := s.replayLostRotation(ctx, tx, oldHash, replacedBy, newHash, newExpires, now, sessionID, onceSuperseded, allowWrite)
+			if err != nil || outcome == RefreshReplayed || outcome == RefreshWriteLimited {
 				return outcome, sid, uid, err
 			}
 			// De opvolger blijkt wél gebruikt: door naar de intrekking.
 		}
-		// IS NOT DISTINCT FROM: een historische rij van vóór migratie 0007 kan
-		// nog session_id NULL dragen, en dan is "dezelfde sessie" ook NULL = NULL.
-		if _, err := tx.Exec(ctx,
-			`UPDATE auth_refresh_tokens SET revoked_at = $1
-			 WHERE revoked_at IS NULL AND session_id IS NOT DISTINCT FROM $2`,
-			now, sessionID); err != nil {
+		// Een historische rij van vóór migratie 0007 kan nog session_id NULL dragen,
+		// en dan is "dezelfde sessie" ook NULL = NULL. Die vorm kan de index op
+		// session_id niet gebruiken, dus hij is alleen voor dat geval.
+		revokeChain := `UPDATE auth_refresh_tokens SET revoked_at = $1 WHERE revoked_at IS NULL AND session_id = $2`
+		if sessionID == nil {
+			revokeChain = `UPDATE auth_refresh_tokens SET revoked_at = $1 WHERE revoked_at IS NULL AND session_id IS NOT DISTINCT FROM $2`
+		}
+		if _, err := tx.Exec(ctx, revokeChain, now, sessionID); err != nil {
 			return RefreshUnknown, id.Nil, id.Nil, err
 		}
 		if sessionID != nil {
@@ -174,6 +193,9 @@ func (s *Store) RotateRefreshToken(ctx context.Context, oldHash, newHash []byte,
 	}
 	if sessionID == nil || userID == nil {
 		return RefreshUnknown, id.Nil, id.Nil, fmt.Errorf("refreshtoken zonder sessie kan niet roteren")
+	}
+	if allowWrite != nil && !allowWrite(*userID) {
+		return RefreshWriteLimited, id.Nil, id.Nil, nil
 	}
 
 	if _, err := tx.Exec(ctx,
@@ -238,7 +260,7 @@ func lockSessionOfRefreshToken(ctx context.Context, tx pgx.Tx, hash []byte) erro
 // zijn aanbieding op hergebruik uit, ook binnen het respijt. Anders maakt elke
 // herhaling een nieuw token met een eigen uitzondering, en dat houdt twee houders
 // eindeloos in de lucht.
-func (s *Store) replayLostRotation(ctx context.Context, tx pgx.Tx, oldHash, successorHash, newHash []byte, newExpires, now time.Time, sessionID *id.ID, presentedSuperseded bool) (RefreshOutcome, id.ID, id.ID, error) {
+func (s *Store) replayLostRotation(ctx context.Context, tx pgx.Tx, oldHash, successorHash, newHash []byte, newExpires, now time.Time, sessionID *id.ID, presentedSuperseded bool, allowWrite func(userID id.ID) bool) (RefreshOutcome, id.ID, id.ID, error) {
 	var succRevoked *time.Time
 	var succReplaced []byte
 	var userID *id.ID
@@ -262,6 +284,9 @@ func (s *Store) replayLostRotation(ctx context.Context, tx pgx.Tx, oldHash, succ
 	}
 	if sessionID == nil || userID == nil {
 		return RefreshUnknown, id.Nil, id.Nil, fmt.Errorf("refreshtoken zonder sessie kan niet herhalen")
+	}
+	if allowWrite != nil && !allowWrite(*userID) {
+		return RefreshWriteLimited, id.Nil, id.Nil, nil
 	}
 
 	var supersededAt *time.Time

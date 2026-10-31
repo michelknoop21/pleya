@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
@@ -18,6 +20,7 @@ const rotationGrace = 2 * time.Minute
 type rotation struct {
 	t       *testing.T
 	ctx     context.Context
+	pool    *pgxpool.Pool
 	store   *auth.Store
 	session id.ID
 	user    id.ID
@@ -43,7 +46,7 @@ func newRotation(t *testing.T) (*rotation, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := &rotation{t: t, ctx: ctx, store: store, session: session, user: user, now: now}
+	r := &rotation{t: t, ctx: ctx, pool: pool, store: store, session: session, user: user, now: now}
 	r.isOpen = func() bool {
 		var revoked *time.Time
 		if err := pool.QueryRow(ctx, `SELECT revoked_at FROM sessions WHERE id = $1`, session).Scan(&revoked); err != nil {
@@ -319,4 +322,51 @@ func TestASupersededTokenExpiresLikeAnyOther(t *testing.T) {
 	r.wait(31 * 24 * time.Hour)
 	r.present(late, auth.RefreshExpired)
 	r.sessionMustLive()
+}
+
+// De grens op rijen: een geweigerde rotatie of herhaling verandert niets, en hergebruik
+// vraagt de grens niet, zodat de detectie er niet op kan wachten.
+func TestRefreshWriteGate(t *testing.T) {
+	deny := func(id.ID) bool { return false }
+	offer := func(r *rotation, token string, allow func(id.ID) bool) auth.RefreshOutcome {
+		t.Helper()
+		outcome, _, _, err := r.store.RotateRefreshTokenGated(r.ctx, auth.HashOpaque(token), auth.HashOpaque(r.fresh()),
+			r.now.Add(30*24*time.Hour), r.now, rotationGrace, allow)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return outcome
+	}
+
+	t.Run("een geweigerde rotatie laat het token geldig", func(t *testing.T) {
+		r, first := newRotation(t)
+		if got := offer(r, first, deny); got != auth.RefreshWriteLimited {
+			t.Fatalf("uitkomst %v", got)
+		}
+		r.present(first, auth.RefreshOK)
+	})
+
+	t.Run("een geweigerde herhaling verandert de kop niet", func(t *testing.T) {
+		r, first := newRotation(t)
+		head := r.present(first, auth.RefreshOK)
+		if got := offer(r, first, deny); got != auth.RefreshWriteLimited {
+			t.Fatalf("uitkomst %v", got)
+		}
+		r.present(head, auth.RefreshOK)
+		if !r.isOpen() {
+			t.Fatal("de sessie ging dicht op een geweigerde herhaling")
+		}
+	})
+
+	t.Run("hergebruik vraagt de grens niet", func(t *testing.T) {
+		r, first := newRotation(t)
+		head := r.present(first, auth.RefreshOK)
+		r.present(head, auth.RefreshOK)
+		if got := offer(r, first, func(id.ID) bool { t.Fatal("hergebruik vroeg de grens"); return false }); got != auth.RefreshReused {
+			t.Fatalf("uitkomst %v", got)
+		}
+		if r.isOpen() {
+			t.Fatal("de sessie bleef open na hergebruik")
+		}
+	})
 }
