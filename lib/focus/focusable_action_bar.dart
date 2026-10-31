@@ -89,12 +89,18 @@ class FocusableActionBar extends StatefulWidget {
     this.mainAxisSize = MainAxisSize.min,
   });
 
+  /// A release build drops every [FocusNode.debugLabel]. A test sets this to
+  /// run the bar the way a release build does.
+  @visibleForTesting
+  static bool debugOmitNodeLabels = false;
+
   @override
   State<FocusableActionBar> createState() => FocusableActionBarState();
 }
 
 class FocusableActionBarState extends State<FocusableActionBar> {
   late List<FocusNode> _focusNodes;
+  late List<Object> _slots;
   late List<bool> _ownsFocusNodes;
   late List<VoidCallback> _focusListeners;
   late List<bool> _focusStates;
@@ -119,14 +125,15 @@ class FocusableActionBarState extends State<FocusableActionBar> {
   }
 
   /// Follows a row whose buttons came or went. An action keeps its node by its
-  /// label, and [build] keys a button on that node, so the element and the focus
-  /// move along with it. When the button in use is gone, the focus goes to the
-  /// one that took its place, or the last one.
+  /// slot, and [build] keys a button on that slot, so the element, its state and
+  /// the focus move along with it. When the button in use is gone, the focus
+  /// goes to the one that took its place, or the last one.
   void _syncNodes() {
     final focused = _focusNodes.indexWhere((node) => node.hasPrimaryFocus);
-    final reusable = <String, FocusNode>{
+    final slots = _slotsFor(widget.actions);
+    final reusable = <Object, FocusNode>{
       for (var i = 0; i < _focusNodes.length; i++)
-        if (_ownsFocusNodes[i] && _focusNodes[i].debugLabel != null) _focusNodes[i].debugLabel!: _focusNodes[i],
+        if (_ownsFocusNodes[i]) _slots[i]: _focusNodes[i],
     };
     final previous = _focusNodes;
     final previousOwned = _ownsFocusNodes;
@@ -136,7 +143,7 @@ class FocusableActionBarState extends State<FocusableActionBar> {
 
     final next = <FocusNode>[];
     for (final (index, action) in widget.actions.indexed) {
-      next.add(action.focusNode ?? reusable.remove(action.debugLabel) ?? _newNode(action, index));
+      next.add(action.focusNode ?? reusable.remove(slots[index]) ?? _newNode(action, index));
     }
     _adoptNodes(next);
 
@@ -157,8 +164,23 @@ class FocusableActionBarState extends State<FocusableActionBar> {
     }
   }
 
+  /// What says "the same button" from one build to the next: its label, or its
+  /// place in a row without labels. Read from the actions and never from the
+  /// nodes, because a [FocusNode] keeps no label in a release build. A label
+  /// that comes twice counts on, so two keys never collide.
+  static List<Object> _slotsFor(List<FocusableAction> actions) {
+    final seen = <String, int>{};
+    return [
+      for (final (index, action) in actions.indexed)
+        switch (action.debugLabel) {
+          null => index,
+          final label => (label, seen.update(label, (count) => count + 1, ifAbsent: () => 0)),
+        },
+    ];
+  }
+
   FocusNode _newNode(FocusableAction action, int index) =>
-      FocusNode(debugLabel: action.debugLabel ?? 'ActionBar[$index]');
+      FocusNode(debugLabel: FocusableActionBar.debugOmitNodeLabels ? null : action.debugLabel ?? 'ActionBar[$index]');
 
   bool _shouldRebuildFocusNodes(FocusableActionBar oldWidget) {
     if (oldWidget.actions.length != widget.actions.length) return true;
@@ -175,6 +197,7 @@ class FocusableActionBarState extends State<FocusableActionBar> {
 
   void _adoptNodes(List<FocusNode> nodes) {
     _focusNodes = nodes;
+    _slots = _slotsFor(widget.actions);
     _ownsFocusNodes = List.generate(widget.actions.length, (i) => widget.actions[i].focusNode == null);
     _focusListeners = [];
     _focusStates = List.generate(widget.actions.length, (i) => _focusNodes[i].hasFocus);
@@ -226,7 +249,7 @@ class FocusableActionBarState extends State<FocusableActionBar> {
       children: [
         for (var i = 0; i < widget.actions.length; i++) ...[
           if (i > 0 && widget.spacing > 0) SizedBox(width: widget.spacing),
-          KeyedSubtree(key: ValueKey<FocusNode>(_focusNodes[i]), child: _buildButton(i, isKeyboard, duration)),
+          KeyedSubtree(key: ValueKey<Object>(_slots[i]), child: _buildButton(i, isKeyboard, duration)),
         ],
       ],
     );

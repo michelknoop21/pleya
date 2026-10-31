@@ -129,4 +129,149 @@ void main() {
 
     expect(_focus, 'outside');
   });
+
+  group('as a release build runs it: a FocusNode keeps no label', () {
+    setUp(() => FocusableActionBar.debugOmitNodeLabels = true);
+    tearDown(() => FocusableActionBar.debugOmitNodeLabels = false);
+
+    FocusNode? node(WidgetTester tester, int index) =>
+        tester.state<FocusableActionBarState>(find.byType(FocusableActionBar)).getFocusNode(index);
+
+    testWidgets('a button going away in front keeps the focus on the one in use', (tester) async {
+      await pump(tester);
+      await focus(tester, 'watched');
+      final used = FocusManager.instance.primaryFocus;
+
+      row.currentState!.show(['play', 'rate', 'watched', 'more']);
+      await tester.pump();
+      await tester.pump();
+
+      expect(FocusManager.instance.primaryFocus, same(used));
+      expect(node(tester, 2), same(used));
+    });
+
+    testWidgets('a button coming in front keeps it too', (tester) async {
+      await pump(tester);
+      row.currentState!.show(['play', 'rate', 'watched', 'more']);
+      await tester.pump();
+      await focus(tester, 'watched');
+      final used = FocusManager.instance.primaryFocus;
+
+      row.currentState!.show(['play', 'restart', 'rate', 'watched', 'more']);
+      await tester.pump();
+      await tester.pump();
+
+      expect(FocusManager.instance.primaryFocus, same(used));
+      expect(node(tester, 3), same(used));
+    });
+  });
+
+  group('a row without labels', () {
+    testWidgets('a stateful button stays what it was when the row grows or shrinks', (tester) async {
+      _Probe.inits = 0;
+      late StateSetter set;
+      FocusableAction probe() => FocusableAction(onPressed: () {}, child: const _Probe());
+      var actions = [probe(), probe()];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: InputModeTracker(
+            child: Scaffold(
+              body: StatefulBuilder(
+                builder: (context, setter) {
+                  set = setter;
+                  return FocusableActionBar(actions: actions);
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(_Probe.inits, 2);
+
+      set(() => actions = [probe(), probe(), probe()]);
+      await tester.pump();
+      expect(_Probe.inits, 3);
+
+      set(() => actions = [probe()]);
+      await tester.pump();
+      expect(_Probe.inits, 3);
+    });
+
+    testWidgets('its focus stays in its place', (tester) async {
+      late StateSetter set;
+      FocusableAction plain() =>
+          FocusableAction(onPressed: () {}, builder: (context, state) => const SizedBox.square(dimension: 20));
+      var actions = [plain(), plain(), plain()];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: InputModeTracker(
+            child: Scaffold(
+              body: StatefulBuilder(
+                builder: (context, setter) {
+                  set = setter;
+                  return FocusableActionBar(actions: actions);
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      final bar = tester.state<FocusableActionBarState>(find.byType(FocusableActionBar));
+      final used = bar.getFocusNode(1)!..requestFocus();
+      await tester.pump();
+
+      set(() => actions = [plain(), plain(), plain(), plain()]);
+      await tester.pump();
+      await tester.pump();
+
+      expect(FocusManager.instance.primaryFocus, same(used));
+    });
+  });
+
+  testWidgets('two buttons with one label both stand, whatever the row does', (tester) async {
+    await pump(tester);
+    row.currentState!.show(['x', 'x', 'y']);
+    await tester.pump();
+    row.currentState!.show(['x', 'x', 'x', 'y']);
+    await tester.pump();
+    row.currentState!.show(['y', 'x']);
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(SizedBox), findsWidgets);
+  });
+
+  testWidgets('a row that empties under the focus and comes back throws nothing', (tester) async {
+    await pump(tester);
+    await focus(tester, 'more');
+    row.currentState!.show(const []);
+    await tester.pump();
+    await tester.pump();
+    row.currentState!.show(['more']);
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+  });
+}
+
+/// Counts how often a button is built from nothing.
+class _Probe extends StatefulWidget {
+  const _Probe();
+
+  static var inits = 0;
+
+  @override
+  State<_Probe> createState() => _ProbeState();
+}
+
+class _ProbeState extends State<_Probe> {
+  @override
+  void initState() {
+    super.initState();
+    _Probe.inits++;
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.square(dimension: 20);
 }
