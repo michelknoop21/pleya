@@ -69,25 +69,154 @@ void main() {
     await db.close();
   });
 
-  group('a title nobody touched has no user state, and is no reason to drop a row', () {
-    test('a position lands', () async {
+  group('a position has no way onto this server without a viewing', () {
+    test('the row ends, nothing goes out, and a next round has nothing to repeat', () async {
       await connect();
       await mirrored();
 
       await queue.syncPendingItems();
+      await queue.syncPendingItems();
 
-      expect(server.watchEvents.first['position_ms'], 1800000);
-      expect(await queue.getPendingSyncCount(), 0);
+      expect(server.watchEvents, isEmpty);
+      expect(await db.getLatestWatchAction('${client.serverId}:movie-1'), isNull);
     });
 
-    test('a finished viewing lands as finished', () async {
+    test('nothing is told to the surfaces either: the copy did not change', () async {
+      await connect();
+      await mirrored();
+      final events = <WatchStateEvent>[];
+      final subscription = WatchStateNotifier().stream.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      await queue.syncPendingItems();
+      await pumpEventQueue();
+
+      expect(events, isEmpty);
+    });
+  });
+
+  group('a finished viewing on a copy is a mark, on a title nobody touched as well', () {
+    test('it goes out once as mark_watched and ends the row', () async {
       await connect();
       await mirrored(watched: true);
 
       await queue.syncPendingItems();
 
-      expect(server.watchEvents.last['completed'], isTrue);
-      expect(await queue.getPendingSyncCount(), 0);
+      expect(server.watchEvents.single['explicit_action'], 'mark_watched');
+      expect(server.watchEvents.single.containsKey('cause'), isFalse);
+      expect(await db.getLatestWatchAction('${client.serverId}:movie-1'), isNull);
+    });
+
+    test('the surfaces hear it as a copy, so a tracker does not count it twice', () async {
+      await connect();
+      await mirrored(watched: true);
+      final events = <WatchStateEvent>[];
+      final subscription = WatchStateNotifier().stream.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      await queue.syncPendingItems();
+      await pumpEventQueue();
+
+      expect(events.single.isCopy, isTrue);
+    });
+
+    for (final (name, body) in const [
+      ('a body that is no object', '"ok"'),
+      ('a list', '[]'),
+      ('an object that is no state', '{"status":"ok"}'),
+    ]) {
+      test('a 200 with $name says nothing, so the row stays and nobody hears of it', () async {
+        await connect();
+        await mirrored(watched: true);
+        server.watchStateRawAnswer = body;
+        final events = <WatchStateEvent>[];
+        final subscription = WatchStateNotifier().stream.listen(events.add);
+        addTearDown(subscription.cancel);
+
+        await queue.syncPendingItems();
+        await pumpEventQueue();
+
+        expect(server.watchEvents.single['explicit_action'], 'mark_watched');
+        expect((await db.getLatestWatchAction('${client.serverId}:movie-1'))?.syncAttempts, 1);
+        expect(events, isEmpty);
+      });
+    }
+
+    test('a server error keeps the row for the next round', () async {
+      await connect();
+      await mirrored(watched: true);
+      server.watchStateFailureStatus = 503;
+
+      await queue.syncPendingItems();
+
+      expect((await db.getLatestWatchAction('${client.serverId}:movie-1'))?.syncAttempts, 1);
+    });
+
+    test('a refusal ends the row: nothing here waits for its turn', () async {
+      await connect();
+      await mirrored(watched: true);
+      server.watchStateFailureStatus = 403;
+
+      await queue.syncPendingItems();
+
+      expect(await db.getLatestWatchAction('${client.serverId}:movie-1'), isNull);
+    });
+  });
+
+  group('a finished viewing on a title that was written a moment ago', () {
+    Map<String, dynamic> writtenAt(DateTime at) => {
+      'position_ms': 2400000,
+      'watched': false,
+      'play_count': 0,
+      'updated_at': at.toUtc().toIso8601String(),
+      'revision': 7,
+    };
+
+    test('leaves a session on it alone: no mark goes out, the row stays, the lease stands', () async {
+      await connect(userState: writtenAt(DateTime.now().subtract(const Duration(seconds: 5))));
+      server.watchLeases['movie-1'] = 'tv-watching';
+      await mirrored(watched: true);
+
+      await queue.syncPendingItems();
+
+      expect(server.watchEvents, isEmpty);
+      expect(server.watchLeases['movie-1'], 'tv-watching');
+      expect((await db.getLatestWatchAction('${client.serverId}:movie-1'))?.syncAttempts, 1);
+    });
+
+    test('ends when that session ticked on: the newest wins', () async {
+      await connect(userState: writtenAt(DateTime.now().subtract(const Duration(seconds: 5))));
+      server.watchLeases['movie-1'] = 'tv-watching';
+      await mirrored(watched: true);
+      await queue.syncPendingItems();
+
+      server.acceptTick('movie-1', positionMs: 2700000, at: DateTime.now().add(const Duration(minutes: 1)));
+      await queue.syncPendingItems();
+
+      expect(server.watchEvents, isEmpty);
+      expect(await db.getLatestWatchAction('${client.serverId}:movie-1'), isNull);
+    });
+
+    test('lands once nothing moved for two leases', () async {
+      await connect(userState: writtenAt(DateTime.now().subtract(const Duration(seconds: 5))));
+      await mirrored(watched: true);
+      await queue.syncPendingItems();
+
+      server.acceptTick('movie-1', positionMs: 2400000, at: DateTime.now().subtract(const Duration(minutes: 4)));
+      await queue.syncPendingItems();
+
+      expect(server.watchEvents.single['explicit_action'], 'mark_watched');
+      expect(await db.getLatestWatchAction('${client.serverId}:movie-1'), isNull);
+    });
+
+    test('an old write holds nothing back', () async {
+      await connect(userState: writtenAt(DateTime.now().subtract(const Duration(minutes: 4))));
+      await mirrored(watched: true);
+
+      await queue.syncPendingItems();
+
+      expect(server.watchEvents.single['explicit_action'], 'mark_watched');
+      expect(await db.getLatestWatchAction('${client.serverId}:movie-1'), isNull);
     });
   });
 
@@ -167,21 +296,13 @@ void main() {
     });
   });
 
-  test('a title that was set back to unwatched takes a position again: play_count stays behind', () async {
-    await connect(
-      userState: {
-        'position_ms': 0,
-        'watched': false,
-        'play_count': 2,
-        'updated_at': '2026-01-01T00:00:00Z',
-        'revision': 3,
-      },
-    );
-    await mirrored();
+  test('a title that was set back to unwatched takes a finished viewing again: play_count stays behind', () async {
+    await connect(userState: _unwatchedTwice);
+    await mirrored(watched: true);
 
     await queue.syncPendingItems();
 
-    expect(server.watchEvents.first['position_ms'], 1800000);
+    expect(server.watchEvents.single['explicit_action'], 'mark_watched');
   });
 
   test('a viewing that ran offline on a title set back to unwatched still lands', () async {
