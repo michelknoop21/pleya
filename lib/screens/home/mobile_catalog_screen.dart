@@ -172,6 +172,9 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
 
   void _onCatalogChanged() {
     if (mounted) setState(() {});
+    // See `TvUnifiedCatalogScreen._onCatalogChanged`: a library that joins or
+    // leaves changes what can run, and only this screen holds the preferences.
+    if (mounted && _preferencesLoaded) unawaited(_applyQuery());
   }
 
   Set<String> get _knownServerIds => {for (final library in _catalog.eligibleLibraries) library.serverId.value};

@@ -306,6 +306,11 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
 
   void _onCatalogChanged() {
     if (mounted) setState(() {});
+    // A library that joins or leaves restarts the merge on the query it already
+    // had, and the provider cannot do better: the preferences live here. What
+    // can run follows that set, so the query is derived again. An equal one is
+    // skipped, which is every other notification.
+    if (mounted && _preferencesLoaded) unawaited(_applyQuery());
     _scheduleRestore();
     if (_wantsEntryFocus) {
       // After the frame this rebuild produces: the grid's `State` only exists

@@ -211,6 +211,81 @@ void main() {
     expect(built.catalog.query.sortDirection, LibrarySortDirection.descending);
   });
 
+  group('the set of libraries changes while the page is open', () {
+    MediaLibrary series(String id, MediaBackend backend) =>
+        MediaLibrary(id: id, backend: backend, title: id, kind: MediaKind.show, serverId: 'nas', serverName: 'nas');
+    final plex = series('p', MediaBackend.plex);
+    final jellyfin = series('j', MediaBackend.jellyfin);
+
+    Future<({UnifiedCatalogProvider catalog, LibrariesProvider libraries})> open(
+      WidgetTester tester,
+      List<MediaLibrary> start,
+    ) async {
+      resetSharedPreferencesForTest();
+      SettingsService.resetForTesting();
+      await SettingsService.getInstance();
+      LocaleSettings.setLocaleSync(AppLocale.en);
+      final manager = MultiServerManager()..debugRegisterClientForTesting(_FakeLibraryClient(const []));
+      final multiServer = MultiServerProvider(manager, DataAggregationService(manager));
+      final libraries = LibrariesProvider()..debugSetLibraries(start);
+      final catalog = UnifiedCatalogProvider(
+        multiServer: multiServer,
+        libraries: libraries,
+        hiddenLibraries: HiddenLibrariesProvider(),
+        kind: MediaKind.show,
+      );
+      addTearDown(catalog.dispose);
+      addTearDown(multiServer.dispose);
+      await catalog.ensureStarted();
+      setGoldenSurfaceSize(tester);
+      await tester.pumpWidget(
+        ChangeNotifierProvider<MultiServerProvider>.value(
+          value: multiServer,
+          child: _shell(
+            TvUnifiedCatalogScreen(
+              catalog: catalog,
+              title: t.unifiedCatalog.seriesTitle,
+              initialFilterOverride: const UnifiedCatalogPreferences(sort: UnifiedCatalogSort.recentlyWatched),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return (catalog: catalog, libraries: libraries);
+    }
+
+    testWidgets('a Jellyfin library joining takes Bekeken away from the merge too', (tester) async {
+      final h = await open(tester, [plex]);
+      expect(h.catalog.query.sortField, UnifiedCatalogSortField.recentlyWatched);
+
+      h.libraries.debugSetLibraries([plex, jellyfin]);
+      await tester.pumpAndSettle();
+
+      expect(h.catalog.query.sortField, UnifiedCatalogSortField.title);
+    });
+
+    testWidgets('the library leaving brings it back, for the page and the merge alike', (tester) async {
+      final h = await open(tester, [plex, jellyfin]);
+      expect(h.catalog.query.sortField, UnifiedCatalogSortField.title);
+
+      h.libraries.debugSetLibraries([plex]);
+      await tester.pumpAndSettle();
+
+      expect(h.catalog.query.sortField, UnifiedCatalogSortField.recentlyWatched);
+    });
+
+    testWidgets('NEGATIVE CONTROL: a change that leaves the query equal restarts once', (tester) async {
+      final h = await open(tester, [plex]);
+      var changes = 0;
+      final before = h.catalog.query;
+      h.catalog.addListener(() => changes++);
+      h.libraries.debugSetLibraries([plex]);
+      await tester.pumpAndSettle();
+      expect(h.catalog.query, before);
+      expect(changes, 0, reason: 'the same libraries: nothing to restart and nothing to derive');
+    });
+  });
+
   // A deliberate sort change made while viewing an override is not this
   // suite's to prove: `_updatePreferences` (the code that writes it) is
   // unchanged by ROW1c — only `_restorePreferences`'s initial read is. The

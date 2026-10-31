@@ -365,8 +365,9 @@ class UnifiedCatalogPreferences {
   /// whose release sort has always run on the year), or else title.
   ///
   /// The catalog screens, both Home row wizards and the query all read it here,
-  /// so their label, their tick and what runs say the same. [sort] itself is only
-  /// for what is stored.
+  /// so their label, their tick and what runs say the same. That holds because a
+  /// catalog screen derives its query again whenever the libraries taking part
+  /// change (`_onCatalogChanged`). [sort] itself is only for what is stored.
   ///
   /// **Never write the result back**, for the reason on
   /// [UnifiedCatalogFilterSelection.constrainedTo]: the set of backends is

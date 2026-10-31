@@ -39,10 +39,14 @@ void main() {
     sort: UnifiedCatalogSort.newestRelease,
   );
 
+  late LibrariesProvider librariesProvider;
+
   Future<UnifiedCatalogs> open(
     WidgetTester tester, {
     UnifiedCatalogPreferences? override,
     MediaBackend backend = MediaBackend.plex,
+    MobileCatalogKind kind = MobileCatalogKind.movies,
+    List<MediaLibrary>? start,
   }) async {
     resetSharedPreferencesForTest();
     SettingsService.resetForTesting();
@@ -56,9 +60,20 @@ void main() {
     final hiddenLibraries = HiddenLibrariesProvider();
     await hiddenLibraries.ensureInitialized();
     final libraries = LibrariesProvider()
-      ..debugSetLibraries([
-        MediaLibrary(id: 'A', backend: backend, title: 'A', kind: MediaKind.movie, serverId: 's1', serverName: 's1'),
-      ]);
+      ..debugSetLibraries(
+        start ??
+            [
+              MediaLibrary(
+                id: 'A',
+                backend: backend,
+                title: 'A',
+                kind: MediaKind.movie,
+                serverId: 's1',
+                serverName: 's1',
+              ),
+            ],
+      );
+    librariesProvider = libraries;
     final catalogs = UnifiedCatalogs(multiServer: multiServer, libraries: libraries, hiddenLibraries: hiddenLibraries);
     addTearDown(catalogs.dispose);
     addTearDown(libraries.dispose);
@@ -78,7 +93,7 @@ void main() {
           theme: monoTheme(dark: true),
           home: OverlaySheetHost(
             child: MobileCatalogScreen(
-              kind: MobileCatalogKind.movies,
+              kind: kind,
               initialFilterOverride: override,
               debugPrefetcher: UnifiedArtworkPrefetcher(clientFor: (_) => null, precache: (_, _) async {}),
             ),
@@ -112,6 +127,40 @@ void main() {
     expect(query.sortField, UnifiedCatalogSortField.year);
     expect(query.sortDirection, LibrarySortDirection.descending);
     expect(find.text(t.unifiedCatalog.sort.yearNewest), findsOneWidget);
+  });
+
+  group('the set of libraries changes while the page is open', () {
+    MediaLibrary series(String id, MediaBackend backend) =>
+        MediaLibrary(id: id, backend: backend, title: id, kind: MediaKind.show, serverId: 's1', serverName: 's1');
+    final plex = series('p', MediaBackend.plex);
+    final jellyfin = series('j', MediaBackend.jellyfin);
+    const stored = UnifiedCatalogPreferences(sort: UnifiedCatalogSort.recentlyWatched);
+
+    testWidgets('a Jellyfin library joining takes Bekeken away from the merge too', (tester) async {
+      final catalogs = await open(tester, kind: MobileCatalogKind.series, override: stored, start: [plex]);
+      final catalog = catalogs.forKind(MediaKind.show);
+      expect(catalog.query.sortField, UnifiedCatalogSortField.recentlyWatched);
+
+      librariesProvider.debugSetLibraries([plex, jellyfin]);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text(t.unifiedCatalog.sort.titleAsc), findsOneWidget);
+      expect(catalog.query.sortField, UnifiedCatalogSortField.title);
+    });
+
+    testWidgets('the library leaving brings it back, for the page and the merge alike', (tester) async {
+      final catalogs = await open(tester, kind: MobileCatalogKind.series, override: stored, start: [plex, jellyfin]);
+      final catalog = catalogs.forKind(MediaKind.show);
+      expect(catalog.query.sortField, UnifiedCatalogSortField.title);
+
+      librariesProvider.debugSetLibraries([plex]);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text(t.unifiedCatalog.sort.recentlyWatched), findsOneWidget);
+      expect(catalog.query.sortField, UnifiedCatalogSortField.recentlyWatched);
+    });
   });
 
   testWidgets('NEGATIVE CONTROL: without an override the catalog opens on the stored filter', (tester) async {
