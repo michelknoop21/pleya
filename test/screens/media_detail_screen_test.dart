@@ -1899,6 +1899,65 @@ void main() {
           expect(player.screens.single.unifiedTitle, isNotNull);
         });
 
+        testWidgets('a track picked on the page reaches the player on the chosen server', (tester) async {
+          TrackPreferenceStore.resetForTesting();
+          TrackPreferenceStore.deviceNameProvider = () async => 'Test';
+          addTearDown(() => TrackPreferenceStore.deviceNameProvider = pleyaShareDeviceName);
+          final main = film('server_1');
+          final other = film('server_2');
+          final client = _FakeMediaServerClient(show: main, childrenByParent: const {});
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+            fileInfo: MediaFileInfo(
+              audioTracks: [
+                MediaAudioTrack(id: 1, languageCode: 'eng', codec: 'aac', channels: 2, selected: true),
+                MediaAudioTrack(id: 2, languageCode: 'nld', codec: 'eac3', channels: 6, selected: false),
+              ],
+            ),
+          );
+          final player = _PlayerRouteSpy();
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            navigatorObservers: [player],
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_2'),
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+
+          final audioRow = find.text('English (AAC Stereo)');
+          await tester.ensureVisible(audioRow);
+          await tester.pumpAndSettle();
+          await tester.tap(audioRow);
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Dutch'));
+          await tester.pumpAndSettle();
+          for (var i = 0; i < 5; i++) {
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+            await tester.pump();
+          }
+
+          final play = find.byKey(const Key('media-detail.play'));
+          await tester.ensureVisible(play);
+          await tester.pumpAndSettle();
+          await tester.tap(play);
+          for (var i = 0; i < 10 && player.screens.isEmpty; i++) {
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+            await tester.pump();
+          }
+
+          expect(player.screens.single.metadata.serverId, 'server_2');
+          expect(player.screens.single.preferredAudioTrack?.id, '2');
+        });
+
         testWidgets('a series plays the episode on the chosen server, at the position of the page', (tester) async {
           MediaItem show(String server) => MediaItem(
             id: 'show_$server',
@@ -3042,7 +3101,15 @@ void main() {
         ..debugRegisterClientForTesting(clientFor('server_2', seasons: 2));
       final provider = MultiServerProvider(manager, DataAggregationService(manager));
       addTearDown(provider.dispose);
-      final unified = group();
+      // As a catalog page hands it over: nobody has checked these servers yet.
+      final served = [UnifiedMediaSource.fromItem(show('server_1')), UnifiedMediaSource.fromItem(show('server_2'))];
+      final unified = UnifiedMediaGroup(
+        groupId: 'g1',
+        identity: CanonicalMediaIdentity.show(title: 'The Show'),
+        sources: served,
+        representativeSourceKey: served.first.sourceKey,
+        watchState: UnifiedWatchState(representativeSourceKey: served.first.sourceKey),
+      );
 
       await tester.pumpWidget(
         TranslationProvider(

@@ -29,11 +29,12 @@ import 'package:pleya/utils/watch_state_notifier.dart';
 import '../../test_helpers/prefs.dart';
 
 class _Server implements MediaServerClient {
-  _Server(this._id, {this.refuses = false, this.item});
+  _Server(this._id, {this.refuses = false, this.item, this.holdUntil});
 
   final String _id;
   final bool refuses;
   final MediaItem? item;
+  final Future<void>? holdUntil;
   final stopped = <int>[];
   final watched = <String>[];
 
@@ -79,6 +80,7 @@ class _Server implements MediaServerClient {
     String? mediaSourceId,
     PlaybackReportMetadata report = const PlaybackReportMetadata.live(),
   }) async {
+    await holdUntil;
     if (refuses) throw StateError('server refused');
     stopped.add(position.inMilliseconds);
   }
@@ -273,30 +275,32 @@ void main() {
   });
 
   test('a row written during a running sync does not wait for the next reconnect', () async {
-    final other = _Server('other');
+    final gate = Completer<void>();
+    final other = _Server('other', holdUntil: gate.future);
     manager.debugRegisterClientForTesting(other);
-    await queue.queueMirroredProgress(
+    Future<void> queueFor(String itemId) => queue.queueMirroredProgress(
       serverId: ServerId('other'),
-      itemId: 'film',
+      itemId: itemId,
       viewOffset: 1000,
       duration: _hour,
       watched: false,
     );
+
+    await queueFor('first');
     final running = queue.syncPendingItems();
-    await queue.syncPendingItems(queueIfBusy: true);
-    await running;
     await pumpEventQueue();
-    await untilCalled(() async => await queue.getPendingSyncCount() == 0);
+    // The running sync has read its list by now, and stands in its first write.
+    await queueFor('second');
+    await queue.syncPendingItems(queueIfBusy: true);
+    gate.complete();
+    await running;
+    for (var i = 0; i < 40 && await queue.getPendingSyncCount() > 0; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+    }
 
     expect(await queue.getPendingSyncCount(), 0);
+    expect(other.stopped, hasLength(2));
   });
-}
-
-Future<void> untilCalled(Future<bool> Function() done) async {
-  for (var i = 0; i < 20; i++) {
-    if (await done()) return;
-    await Future<void>.delayed(const Duration(milliseconds: 5));
-  }
 }
 
 class _ThrowingTitle implements UnifiedTitlePlayback {

@@ -510,13 +510,22 @@ void main() {
     });
 
     test('another server\'s Special is not a gap', () async {
+      // Aired between the two: by date alone it would be next.
+      MediaItem aired(MediaItem episode, String date) => episode.copyWith(originallyAvailableAt: date);
       final title = _title(
         [_show('page'), _show('chosen')],
         chosen: 'chosen',
         page: 'page',
         clients: {
-          'page': _Client([_episode('page', 0, 1), _episode('page', 1, 1), _episode('page', 1, 2)]),
-          'chosen': _Client([_episode('chosen', 1, 1), _episode('chosen', 1, 2)]),
+          'page': _Client([
+            aired(_episode('page', 1, 1), '2022-02-01'),
+            aired(_episode('page', 0, 1), '2022-02-02'),
+            aired(_episode('page', 1, 2), '2022-02-03'),
+          ]),
+          'chosen': _Client([
+            aired(_episode('chosen', 1, 1), '2022-02-01'),
+            aired(_episode('chosen', 1, 2), '2022-02-03'),
+          ]),
         },
       );
       final queued = on('chosen', 1, 2);

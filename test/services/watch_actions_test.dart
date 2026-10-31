@@ -242,15 +242,22 @@ void main() {
 
     testWidgets('a source that refuses is the caller\'s problem no more than a log line', (tester) async {
       final first = _HealthyClient('a');
+      final last = _HealthyClient('c');
       serverManager
         ..debugRegisterClientForTesting(first)
-        ..debugRegisterClientForTesting(_RefusingClient('b'));
-      final ctx = await scoped(tester, await pumpTree(tester), titleOf([_itemOn('a', 'dune'), _itemOn('b', 'dune')]));
+        ..debugRegisterClientForTesting(_RefusingClient('b'))
+        ..debugRegisterClientForTesting(last);
+      final ctx = await scoped(
+        tester,
+        await pumpTree(tester),
+        titleOf([_itemOn('a', 'dune'), _itemOn('b', 'dune'), _itemOn('c', 'dune')]),
+      );
 
       final outcome = await tester.runAsync(() => WatchActions.setWatched(ctx, _itemOn('a', 'dune'), watched: true));
 
       expect(outcome, WatchMarkOutcome.marked);
       expect(first.writes, hasLength(1));
+      expect(last.writes, hasLength(1), reason: 'one refusal does not stop the source after it');
     });
 
     testWidgets('a source that is down keeps the mark in the queue', (tester) async {

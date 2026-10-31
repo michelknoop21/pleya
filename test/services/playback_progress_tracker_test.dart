@@ -714,8 +714,14 @@ void main() {
         onSettled: (_, _, {required watched}) => throw StateError('second server'),
       );
       addTearDown(tracker.dispose);
+      final events = <WatchStateEvent>[];
+      final subscription = WatchStateNotifier().stream.listen(events.add);
+      addTearDown(subscription.cancel);
 
       await expectLater(tracker.sendProgress('stopped'), completes);
+      await pumpEventQueue();
+
+      expect(events.single.isFinal, isTrue, reason: 'the play still says where it stopped');
     });
   });
 
