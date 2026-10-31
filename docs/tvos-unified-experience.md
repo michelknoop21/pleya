@@ -1057,6 +1057,12 @@ slaat de trackers over: de bron die speelde heeft de kijkbeurt al gemeld, en Tra
 per kijkbeurt. Een bron met een auth-fout krijgt niets, ook geen rij: inloggen herstelt dat, niet een
 reconnect, en een rij zou onder de volgende login worden afgespeeld.
 
+Een sessie die zonder de andere bronnen begint, bijvoorbeeld vanaf een Verder kijken-kaart die maar
+één bron toonde, zoekt ze op zodra hij tot rust komt (`UnifiedTitleDiscovery`). Afspelen wacht daar
+niet op, en zonder antwoord binnen twintig seconden blijft het bij de spelende bron. Een schrijfactie
+vraagt bewijs: alleen dezelfde guid of een gedeeld providernummer telt, een gelijke titel niet. Dat is
+strenger dan de picker, die een titeltreffer aan de kijker voorlegt.
+
 ### 13.3 Verder kijken
 
 Een kaart wordt gesorteerd op de nieuwste geldige bronrecency. Bij openen: één bron met progress →
@@ -1089,6 +1095,11 @@ kijkstatuswachtrij krijgt een `watched`/`unwatched`-rij en de reconnect-sync sch
 Dat is wat de belofte waarmaakt in plaats van hem stilletjes te breken. De partial-resultmelding
 blijft bestaan voor wat écht mislukte (een server die antwoordde en weigerde), met de eerlijke noemer
 van hoofdstuk 13.4 punt 5.
+
+Eén markering is één kijkbeurt. De eerste bron die hem krijgt meldt hem aan Trakt, de trackers en de
+interacties; de andere kopieën krijgen alleen de servermarkering, ook bij een seizoen of serie. In de
+wachtrij staan die als `mirroredWatched` en `mirroredUnwatched`. Is geen enkele bron bereikbaar, dan
+draagt de eerste vastgehouden rij de melding.
 
 In de geavanceerde libraryweergave blijft de actie rechtstreeks die library betreffen.
 
@@ -1330,12 +1341,17 @@ die de route vasthoudt: die groep dateert van vóór de laatste play.
 **Afleveringen.** Afspelen koppelt de aflevering op seizoen- en afleveringsnummer aan de gekozen
 server (`UnifiedTitlePlayback`). Twee rijen met dezelfde code tellen als afwezig (hoofdstuk 11.8).
 Ontbreekt de aflevering daar, dan speelt Pleya zonder melding af vanaf de eerstvolgende bron die hem
-heeft. Waar een serie staat volgt de bron die het verst is, niet alleen de hoofdbron.
+heeft. Een placeholder van Jellyfin of Emby zonder bestand telt niet als aanwezig. Waar een serie
+staat volgt de bron die het verst is. Een aflevering in voortgang op de hoofdbron blijft staan, want
+de kijker kan aan het herkijken zijn, tenzij een andere bron aantoonbaar nieuwer is: meer dan de
+betrouwbaarheidsmarge van hoofdstuk 13.2.
 
 **Volgende aflevering.** De wachtrij van de spelende server beslist zolang dat de gekozen server is
 en die de volgende aflevering heeft. Ontbreekt die, of speelt een geleende aflevering, dan bepaalt
-de samengevoegde volgorde van alle bronnen wat volgt, en de speler keert terug naar de gekozen server
-zodra die de aflevering heeft. Specials van een andere server tellen niet als gat. Shuffle, een
+de samengevoegde volgorde van alle bronnen wat volgt, ook voor Vorige, en de speler keert terug naar
+de gekozen server zodra die de aflevering heeft. Een wachtrij spreekt alleen voor zijn eigen server:
+tijdens een geleende aflevering staat hij nog op de laatste eigen aflevering en telt zijn antwoord
+niet. Specials van een andere server tellen niet als gat. Shuffle, een
 afspeellijst en Samen kijken houden hun eigen volgorde.
 
 **Rechten.** Elke bron wordt per beslissing getoetst (`UnifiedSourceGate`): een verborgen server, een
@@ -1343,6 +1359,9 @@ verborgen bibliotheek, een auth-fout of een offline server wordt voor een afleve
 Een kinderprofiel gebruikt voor een ontbrekende aflevering alleen de gekozen bron, de bron van de
 pagina en de server van het verzoek, nooit een derde server. Kan het profiel niet gelezen worden, dan
 telt het als kinderprofiel.
+
+**Verwijderen.** Wordt de gekozen kopie verwijderd, dan speelt de pagina weer van de hoofdbron en noemt
+hij die kopie niet meer.
 
 **Film.** Een film blijft op de gekozen bron staan. Wanneer playbackinitialisatie mislukt en
 alternatieve bronnen bestaan:

@@ -21,6 +21,11 @@ DEC-XXX (Eén titel over servers heen), Roadmap A-07, op branch `feat/unified-on
 - Ook opgelost: de TV-picker gaf ongestempelde bronnen door, waardoor de hoofdbron na een eerste keuze
   de pagina niet hield, en een bron die de picker pas later vond gaf een `StateError` in `buildRouteContext`.
 - Op Apple TV was Wijzigen niet met de afstandsbediening te bereiken: de actierij stuurde DOWN er voorbij.
+- Reviewronde: de speler volgt na een geleende aflevering de samengevoegde volgorde, ook voor Vorige en
+  bij meerdere gaten. Sessies en markeringen zonder groep van twee bronnen zoeken de andere bronnen op
+  bewezen identiteit. Eén markering telt één kijkbeurt. Herkijken op de eigen server blijft staan.
+  Jellyfin- en Emby-placeholders tellen niet als aanwezig. Een verwijderde gekozen kopie verdwijnt van
+  de pagina. Het posterhashen na een scan draait buiten de UI-thread.
 - Grenzen: downloaden op de detailpagina blijft op de hoofdbron, een externe speler schrijft niet door.
 
 ## [2026-10-29] Unified: Pleya Server voegt mee op bewezen TMDB-nummers
