@@ -2,8 +2,10 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/database/app_database.dart';
+import 'package:pleya/exceptions/media_server_exceptions.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_identity.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
@@ -15,6 +17,8 @@ import 'package:pleya/media/unified/unified_media_group.dart';
 import 'package:pleya/media/unified/unified_media_source.dart';
 import 'package:pleya/media/unified/unified_route_context.dart';
 import 'package:pleya/media/unified/unified_watch_state.dart';
+import 'package:pleya/profiles/active_profile_provider.dart';
+import 'package:pleya/profiles/profile.dart';
 import 'package:pleya/providers/download_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/offline_mode_provider.dart';
@@ -27,11 +31,15 @@ import 'package:pleya/services/download_storage_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/offline_watch_sync_service.dart';
 import 'package:pleya/services/plex_api_cache.dart';
+import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/unified_catalog/unified_title_playback.dart';
 import 'package:pleya/services/unified_catalog/unified_title_scope.dart';
 import 'package:pleya/services/watch_actions.dart';
+import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/watch_state_notifier.dart';
 import 'package:provider/provider.dart';
+
+import '../test_helpers/prefs.dart';
 
 /// Watch-state marks must survive their own server being unreachable, and that
 /// question is per server.
@@ -78,9 +86,17 @@ class _UnreachableClient implements MediaServerClient {
 }
 
 class _HealthyClient implements MediaServerClient {
-  _HealthyClient(this._id);
+  _HealthyClient(this._id, {this.ids = const ExternalIds(), this.matches = const []});
 
   final String _id;
+  final ExternalIds ids;
+  final List<MediaItem> matches;
+
+  @override
+  Future<ExternalIds> fetchExternalIds(String itemId) async => ids;
+
+  @override
+  Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async => matches;
 
   final List<({String itemId, bool watched})> writes = [];
 
@@ -108,10 +124,48 @@ class _HealthyClient implements MediaServerClient {
 
 /// Answers, and refuses every write.
 class _RefusingClient extends _HealthyClient {
-  _RefusingClient(super.id);
+  _RefusingClient(super.id, {Object? failure}) : _failure = failure ?? Exception('server hiccup');
+
+  final Object _failure;
 
   @override
-  Future<void> markWatched(MediaItem item) async => throw Exception('403');
+  Future<void> markWatched(MediaItem item) async => throw _failure;
+}
+
+class _Profiles extends ChangeNotifier implements ActiveProfileProvider {
+  _Profiles(this.id);
+
+  String id;
+
+  @override
+  String? get activeId => id;
+
+  @override
+  Profile? get active => null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Hands out the real answers, after something changed meanwhile.
+class _SlowTitle implements UnifiedTitlePlayback {
+  _SlowTitle(this._title, {required this.onCopies});
+
+  final UnifiedTitlePlayback _title;
+  final VoidCallback onCopies;
+
+  @override
+  bool holds(MediaItem item) => _title.holds(item);
+
+  @override
+  Future<List<MediaItem>> copiesOf(MediaItem item) async {
+    final copies = await _title.copiesOf(item);
+    onCopies();
+    return copies;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 MediaItem _itemOn(String serverId, String id) =>
@@ -130,6 +184,9 @@ void main() {
   late OfflineModeProvider offlineMode;
 
   setUp(() async {
+    resetSharedPreferencesForTest();
+    SettingsService.resetForTesting();
+    await SettingsService.getInstance();
     db = AppDatabase.forTesting(NativeDatabase.memory());
     PlexApiCache.initialize(db);
     serverManager = MultiServerManager();
@@ -268,6 +325,80 @@ void main() {
       expect(held?.actionType, 'mirroredWatched', reason: 'a refusal is retried like any queued write');
     });
 
+    for (final (name, failure) in <(String, Object)>[
+      ('a rejected token', const MediaServerAuthException('rejected', statusCode: 401)),
+      ('a 403', MediaServerHttpException(type: MediaServerHttpErrorType.unknown, statusCode: 403)),
+      ('a 404', MediaServerHttpException(type: MediaServerHttpErrorType.unknown, statusCode: 404)),
+      ('a missing endpoint', UnsupportedError('no such endpoint')),
+    ]) {
+      testWidgets('$name gets no row: waiting does not fix it', (tester) async {
+        serverManager
+          ..debugRegisterClientForTesting(_HealthyClient('a'))
+          ..debugRegisterClientForTesting(_RefusingClient('b', failure: failure));
+        final ctx = await scoped(tester, await pumpTree(tester), titleOf([_itemOn('a', 'dune'), _itemOn('b', 'dune')]));
+
+        await tester.runAsync(() => WatchActions.setWatched(ctx, _itemOn('a', 'dune'), watched: true));
+
+        final held = await tester.runAsync(() => db.getLatestWatchAction('b:dune'));
+        expect(held, isNull);
+      });
+    }
+
+    testWidgets('a server error is worth a retry and gets its row', (tester) async {
+      serverManager
+        ..debugRegisterClientForTesting(_HealthyClient('a'))
+        ..debugRegisterClientForTesting(
+          _RefusingClient(
+            'b',
+            failure: MediaServerHttpException(type: MediaServerHttpErrorType.unknown, statusCode: 503),
+          ),
+        );
+      final ctx = await scoped(tester, await pumpTree(tester), titleOf([_itemOn('a', 'dune'), _itemOn('b', 'dune')]));
+
+      await tester.runAsync(() => WatchActions.setWatched(ctx, _itemOn('a', 'dune'), watched: true));
+
+      final held = await tester.runAsync(() => db.getLatestWatchAction('b:dune'));
+      expect(held?.actionType, 'mirroredWatched');
+    });
+
+    testWidgets('a profile that took over does not write the mark of the one before it', (tester) async {
+      final other = _HealthyClient('b');
+      serverManager
+        ..debugRegisterClientForTesting(_HealthyClient('a'))
+        ..debugRegisterClientForTesting(other);
+      final profiles = _Profiles('adult');
+      await pumpTree(tester);
+      late BuildContext ctx;
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
+            ChangeNotifierProvider<OfflineModeProvider>.value(value: offlineMode),
+            ChangeNotifierProvider<OfflineWatchProvider>.value(value: offlineWatch),
+            ChangeNotifierProvider<ActiveProfileProvider>.value(value: profiles),
+          ],
+          child: MaterialApp(
+            home: UnifiedTitleScope(
+              title: _SlowTitle(
+                titleOf([_itemOn('a', 'dune'), _itemOn('b', 'dune')]),
+                onCopies: () => profiles.id = 'kid',
+              ),
+              child: Builder(
+                builder: (context) {
+                  ctx = context;
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.runAsync(() => WatchActions.setWatched(ctx, _itemOn('a', 'dune'), watched: true));
+
+      expect(other.writes, isEmpty);
+    });
+
     testWidgets('one mark is one viewing: only the first source reports it', (tester) async {
       serverManager
         ..debugRegisterClientForTesting(_HealthyClient('a'))
@@ -295,6 +426,23 @@ void main() {
 
       final action = await tester.runAsync(() => db.getLatestWatchAction('b:dune'));
       expect(action?.actionType, 'mirroredWatched');
+    });
+
+    testWidgets('a title on the page that is not this one still looks up its own copies', (tester) async {
+      final other = _HealthyClient('b', ids: const ExternalIds(tmdb: 1), matches: [_itemOn('b', 'blade-runner')]);
+      serverManager
+        ..debugRegisterClientForTesting(_HealthyClient('a', ids: const ExternalIds(tmdb: 1)))
+        ..debugRegisterClientForTesting(other);
+      final ctx = await scoped(tester, await pumpTree(tester), titleOf([_itemOn('a', 'dune'), _itemOn('b', 'dune')]));
+
+      await tester.runAsync(() async {
+        await WatchActions.setWatched(ctx, _itemOn('a', 'blade-runner'), watched: true);
+        for (var i = 0; i < 40 && other.writes.isEmpty; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+        }
+      });
+
+      expect(other.writes, [(itemId: 'blade-runner', watched: true)]);
     });
 
     testWidgets('another title on the same page stays alone', (tester) async {
@@ -342,7 +490,7 @@ void main() {
         await pumpEventQueue();
       });
 
-      expect(second.writes, hasLength(1));
+      expect(second.writes, hasLength(1), reason: 'once: the lookup does not write it a second time');
       expect({for (final e in events) e.globalKey: e.isCopy}, {'a:dune': false, 'b:dune': true});
     });
 

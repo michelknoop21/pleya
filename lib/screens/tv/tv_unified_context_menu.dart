@@ -499,7 +499,14 @@ Future<void> _applyToSources(
         if (outcome == WatchMarkOutcome.marked) done++;
         continue;
       }
-      await _applyToOneSource(context, action: action, item: source.item, onlyMembership: total == 1);
+      await _applyToOneSource(
+        context,
+        action: action,
+        item: source.item,
+        memberships: {
+          for (final member in [...sources, ...deferredSources, ...unreachableSources]) member.sourceKey,
+        },
+      );
       reported = true;
       done++;
     } catch (e, st) {
@@ -676,15 +683,15 @@ Future<void> _applyToOneSource(
   BuildContext context, {
   required UnifiedGroupAction action,
   required MediaItem item,
-  required bool onlyMembership,
+  required Set<String> memberships,
 }) async {
   switch (action) {
-    // With more memberships this fan-out is the reach; a card with one may
-    // still have copies its row did not show.
+    // This fan-out reaches the memberships; a card can have more copies than
+    // those, and the mark looks them up.
     case UnifiedGroupAction.markWatched:
-      await WatchActions.setWatched(context, item, watched: true, acrossSources: onlyMembership);
+      await WatchActions.setWatched(context, item, watched: true, reachedElsewhere: memberships);
     case UnifiedGroupAction.markUnwatched:
-      await WatchActions.setWatched(context, item, watched: false, acrossSources: onlyMembership);
+      await WatchActions.setWatched(context, item, watched: false, reachedElsewhere: memberships);
     case UnifiedGroupAction.removeFromContinueWatching:
       await WatchActions.removeFromContinueWatching(context, item);
     case UnifiedGroupAction.addToWatchlist || UnifiedGroupAction.removeFromWatchlist || UnifiedGroupAction.rate:
