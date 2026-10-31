@@ -237,10 +237,11 @@ class MediaDetailScreen extends StatefulWidget {
   /// The group this concrete item was reached through (hoofdstuk 15 of
   /// docs/tvos-unified-experience.md), when it was reached through one.
   ///
-  /// The page stays source-bound: this adds the "Bron: NAS • Films 4K
-  /// [ Wijzigen ]" line and nothing else. It carries source *keys*, never a
-  /// second [MediaItem], so there is no way for this screen to render a half
-  /// merged page with seasons from one server and metadata from another.
+  /// The page shows one source: the main source, or the chosen one when that
+  /// cannot be read. This adds the "Bron: NAS • Films 4K [ Wijzigen ]" line and
+  /// what a play starts. It carries the other sources' items for that play and
+  /// nothing on the page reads from them, so there is no half merged page with
+  /// seasons from one server and metadata from another.
   final UnifiedMediaRouteContext? unifiedRouteContext;
 
   /// Reopens the picker in details mode. Supplied by the activation site,
@@ -662,8 +663,10 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     return keys;
   }
 
+  /// All servers while the page plays from another one than it shows: the
+  /// keys below still name exactly what this page cares about.
   @override
-  String? get deletionServerId => serverBoundServerId;
+  String? get deletionServerId => _routeContext?.playItem == null ? serverBoundServerId : null;
 
   @override
   Set<String>? get deletionGlobalKeys {
@@ -677,11 +680,14 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     for (final ep in _episodes) {
       keys.add(toServerBoundGlobalKey(ep.id, serverId: ServerId(ep.serverId ?? serverId)));
     }
+    final chosen = _routeContext?.sourceKey;
+    if (chosen != null) keys.add(chosen);
     return keys;
   }
 
   @override
   void onDeletionEvent(DeletionEvent event) {
+    if (_dropDeletedSource(event)) return;
     // Download-only deletions should only remove items when viewing offline content
     if (event.isDownloadOnly && !widget.isOffline) return;
     if (!event.isDownloadOnly && widget.isOffline) return;

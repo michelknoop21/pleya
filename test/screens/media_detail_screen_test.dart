@@ -64,6 +64,7 @@ import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/track_preference_store.dart';
 import 'package:pleya/services/unified_catalog/unified_title_scope.dart';
 import 'package:pleya/utils/media_navigation_helper.dart';
+import 'package:pleya/utils/deletion_notifier.dart';
 import 'package:pleya/utils/video_player_navigation.dart';
 import 'package:pleya/screens/video_player_screen.dart';
 import 'package:pleya/media/pleya_profile_language_preferences.dart';
@@ -1751,6 +1752,26 @@ void main() {
         expect(player.screens.single.preferredSubtitleTrack, isNull, reason: 'no subtitle was picked');
       });
 
+      testWidgets('a page whose server has no client settles instead of rebuilding every frame', (tester) async {
+        final orphan = MediaItem(
+          id: 'film_gone',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'Sintel',
+          serverId: 'server_gone',
+          serverName: 'Gone',
+        );
+        final client = _FakeMediaServerClient(show: orphan, childrenByParent: const {});
+
+        await pumpPhoneDetail(tester, client, orphan, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+        await tester.pumpAndSettle();
+        for (var i = 0; i < 20; i++) {
+          await tester.pump();
+        }
+
+        expect(tester.binding.hasScheduledFrame, isFalse);
+      });
+
       group('one title on two servers', () {
         MediaItem film(String server, {int? viewOffsetMs, int? lastViewedAt}) => MediaItem(
           id: 'film_$server',
@@ -2059,6 +2080,50 @@ void main() {
 
           expect(client.markedWatched, ['film_server_1']);
           expect(second.markedWatched, ['film_server_2']);
+        });
+
+        testWidgets('a chosen copy that is deleted stops being played and named', (tester) async {
+          final main = film('server_1');
+          final other = film('server_2');
+          final client = _FakeMediaServerClient(show: main, childrenByParent: const {});
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+          );
+          final player = _PlayerRouteSpy();
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            navigatorObservers: [player],
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_2'),
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(find.text('server_2'), findsOneWidget);
+
+          DeletionNotifier().notifyDeletedItem(item: other);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+
+          expect(find.text('server_2'), findsNothing);
+
+          final play = find.byKey(const Key('media-detail.play'));
+          await tester.ensureVisible(play);
+          await tester.pumpAndSettle();
+          await tester.tap(play);
+          for (var i = 0; i < 10 && player.screens.isEmpty; i++) {
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+            await tester.pump();
+          }
+
+          expect(player.screens.single.metadata.serverId, 'server_1');
         });
 
         testWidgets('the menu on the page acts on the chosen source, never on the main one by accident', (

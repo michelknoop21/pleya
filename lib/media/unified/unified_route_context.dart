@@ -102,6 +102,26 @@ class UnifiedMediaRouteContext {
 
   /// Whether a "Wijzigen" affordance is worth rendering at all (hoofdstuk 15
   /// only shows the source line when more than one source exists).
+  /// This route without [key], a source that no longer exists. The page's own
+  /// source takes over when [key] was the chosen one.
+  UnifiedMediaRouteContext withoutSource(String key) => UnifiedMediaRouteContext(
+    groupId: groupId,
+    identity: identity,
+    sourceKey: key == sourceKey ? pageSourceKey : sourceKey,
+    pageSourceKey: pageSourceKey,
+    playItem: key == sourceKey ? null : playItem,
+    titleSources: [
+      for (final source in titleSources)
+        if (source.sourceKey != key) source,
+    ],
+    availableSourceKeys: [
+      for (final available in availableSourceKeys)
+        if (available != key) available,
+    ],
+    coverage: coverage,
+    intent: intent,
+  );
+
   bool get hasAlternativeSources => availableSourceKeys.length > 1;
 
   /// This context with a different chosen source, after a switch on the

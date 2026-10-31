@@ -195,8 +195,12 @@ Future<UnifiedMediaRouteContext?> _changeSourceFromDetail(
   // [group] dates from before any play on this page; the session's own watch
   // state is what makes the picker and the position current.
   final live = group.withFreshSourceItems(context.readFreshWatchState, preferredSourceKey: routeContext.sourceKey);
+  // Not the ones the page dropped: a copy deleted meanwhile is no choice.
   final ordered = rankSources(
-    live.sources.map((s) => s.withAvailability(availabilityFor(s))).toList(),
+    live.sources
+        .where((s) => routeContext.availableSourceKeys.contains(s.sourceKey))
+        .map((s) => s.withAvailability(availabilityFor(s)))
+        .toList(),
     preferredSourceKey: routeContext.sourceKey,
   );
   final chosen = await showMobileSourcePickerSheet(

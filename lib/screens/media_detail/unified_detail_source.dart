@@ -105,6 +105,25 @@ extension _MediaDetailUnifiedSource on _MediaDetailScreenState {
     });
   }
 
+  /// The chosen copy was deleted, from the page's own menu or elsewhere: the
+  /// page stops playing from it and stops naming it. Answers whether [event]
+  /// was about that copy, which the page does not otherwise show.
+  bool _dropDeletedSource(DeletionEvent event) {
+    final route = _routeContext;
+    if (route == null || event.isDownloadOnly) return false;
+    if (event.globalKey != route.sourceKey || route.sourceKey == route.pageSourceKey) return false;
+    final next = route.withoutSource(route.sourceKey);
+    setStateIfMounted(() {
+      final state = _unifiedSource;
+      state.route = next;
+      state.title = next.titleSources.length < 2 ? null : state.title?.withRoute(next);
+      state.titleRead = true;
+      state.onDeckTarget = null;
+    });
+    unawaited(_syncUnifiedOnDeck());
+    return true;
+  }
+
   /// DOWN from the action row: the source line is the next stop, when the page
   /// has one. Without it a remote never reaches "[ Wijzigen ]".
   bool _focusUnifiedSourceLine() {
