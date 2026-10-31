@@ -187,6 +187,10 @@ const (
 	// en die code zou dan iets onwaars zeggen.
 	CodeListShareNotPermitted = "library.list_share_not_permitted"
 
+	// CodeListConflict is het antwoord op een PUT .../items waarvan base_revision niet
+	// meer de huidige is. details.revision is de huidige.
+	CodeListConflict = "library.list_conflict"
+
 	// Downloads (S23). Niet toegestaan is een 403 omdat de bibliotheek wel
 	// zichtbaar is; niet klaar en veranderd zijn 409's: de eerste gaat vanzelf
 	// over (retryable), de tweede vraagt een nieuwe download.
@@ -329,6 +333,7 @@ var errorTable = map[string]struct {
 	CodeListInvalid:              {http.StatusBadRequest, false},
 	CodeListNotOwner:             {http.StatusForbidden, false},
 	CodeListShareNotPermitted:    {http.StatusForbidden, false},
+	CodeListConflict:             {http.StatusConflict, false},
 	CodeDownloadNotPermitted:     {http.StatusForbidden, false},
 	CodeDownloadNotReady:         {http.StatusConflict, true},
 	CodeDownloadChanged:          {http.StatusConflict, false},

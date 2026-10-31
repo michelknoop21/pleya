@@ -70,6 +70,7 @@ class PleyaCollection {
     required this.createdAt,
     required this.updatedAt,
     this.sharedWith = const [],
+    this.revision,
   });
 
   final String id;
@@ -93,6 +94,9 @@ class PleyaCollection {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  /// Moves with every write to the rows; `base_revision` on a replace.
+  final int? revision;
+
   factory PleyaCollection.fromJson(Map<String, dynamic> json) => PleyaCollection(
     id: str(json, 'id'),
     title: str(json, 'title'),
@@ -104,6 +108,7 @@ class PleyaCollection {
     artwork: _idList(json['artwork'], 'artwork'),
     createdAt: timestamp(json, 'created_at'),
     updatedAt: timestamp(json, 'updated_at'),
+    revision: json['revision'] as int?,
   );
 }
 
@@ -117,6 +122,7 @@ class PleyaPlaylist {
     required this.artwork,
     required this.createdAt,
     required this.updatedAt,
+    this.revision,
   });
 
   final String id;
@@ -127,6 +133,9 @@ class PleyaPlaylist {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  /// Moves with every write to the rows; `base_revision` on a replace.
+  final int? revision;
+
   factory PleyaPlaylist.fromJson(Map<String, dynamic> json) => PleyaPlaylist(
     id: str(json, 'id'),
     title: str(json, 'title'),
@@ -135,6 +144,7 @@ class PleyaPlaylist {
     artwork: _idList(json['artwork'], 'artwork'),
     createdAt: timestamp(json, 'created_at'),
     updatedAt: timestamp(json, 'updated_at'),
+    revision: json['revision'] as int?,
   );
 }
 
@@ -186,7 +196,26 @@ class PleyaPlaylistTitleRequest {
   Map<String, dynamic> toJson() => {'title': ?title};
 }
 
-/// `ListItemsRequest`, for both replacing a list and appending to it.
+/// `ReplaceListItemsRequest`: a whole list, on the condition that it is still
+/// at [baseRevision]. Without one the replace is unconditional.
+class PleyaReplaceListItemsRequest {
+  const PleyaReplaceListItemsRequest({required this.itemIds, this.baseRevision});
+
+  final List<String> itemIds;
+  final int? baseRevision;
+
+  factory PleyaReplaceListItemsRequest.fromJson(Map<String, dynamic> json) {
+    if (!json.containsKey('item_ids')) fail('item_ids is missing');
+    return PleyaReplaceListItemsRequest(
+      itemIds: _idList(json['item_ids'], 'item_ids'),
+      baseRevision: json['base_revision'] as int?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {'item_ids': itemIds, 'base_revision': ?baseRevision};
+}
+
+/// `ListItemsRequest`, for appending to a list.
 class PleyaListItemsRequest {
   const PleyaListItemsRequest({required this.itemIds});
 

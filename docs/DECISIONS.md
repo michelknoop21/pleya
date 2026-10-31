@@ -5328,6 +5328,46 @@ het bereik. Het gedrag blijft zoals het is, want het raakt alleen eigen gegevens
 de rol en gaan dicht. Alleen de zin is gewijzigd. Dit zijn twee passages in `pleya-protocol-v1.md`;
 `openapi.yaml` wijzigt niet, en beide operationId's bestonden al.
 
+## DEC-XXX: reviewronde op het ondertitelvenster, de refreshketen en herordenen
+
+**Status:** geaccepteerd door Michel op 31 oktober 2026 ("Fix alles"), op de bevindingen uit de review van de proefmerge. Alleen de drie onderdelen hieronder zijn open; productie, merge en release blijven afzonderlijk. Nummer volgt bij integratie.
+
+**Ondertitelwerker.** Besluit 1 blijft staan: één werker, 10 minuten, `503` met `Retry-After: 5`. Eronder komt een
+wachtrij in plaats van wie het eerst pollt. De werker gaat om de beurt naar een andere gebruiker, een gebruiker heeft
+hoogstens twee sporen in behandeling, en daarboven krijgt hij dezelfde `503` zonder plek in de rij. Een job leeft
+zolang iemand erop wacht en 15 s daarna, hetzelfde venster als het onthouden van een fout: een antwoord met
+`Retry-After: 5` en een proxy die een stille aanvraag afkapt zijn op dat moment niet te onderscheiden van een kijker
+die wegging, en een herhaling moet aansluiten. Komt die niet, dan stopt de job en is de werker vrij. Dat scherpt de
+zin "loopt los van de aanvraag door" aan: los van de aanvraag, niet los van elke vraag. Geen veld, geen code.
+De cache overleeft een herstart, een hit ververst de leeftijd, en wat net is uitgegeven blijft vijf minuten staan
+zodat een omzetting die hem inbrandt hem nog kan koppelen. De cache gaat van 64 naar 512 MiB, want met 64 MiB per spoor verdrong één
+PGS-spoor alles. Die grens stond als zin in het contract en is daar meegewijzigd; hij is geen wiregedrag.
+
+**Refreshketen.** Een opvolger die door een herhaling vervangen werd is nooit aangeboden. Bood een client hem later
+toch aan, omdat zijn antwoord als laatste binnenkwam, dan telde dat als hergebruik en ging de sessie eruit. Hij krijgt
+nu een eigen markering (`superseded_at`, migratie 0028): zijn eerste aanbieding levert een nieuw paar zolang de keten
+niet verder is, ook na het respijt, en daarna `auth.token_invalid`, in beide gevallen zonder intrekking. Een tweede
+aanbieding is gewoon hergebruik. Geen nieuwe code en geen veld, dus de regels van hoofdstuk 3 worden niet geraakt.
+
+**`cookie_upgrade`.** Een browser met een token in `localStorage` kon alleen via een nieuwe login op de cookie komen.
+`POST /auth/refresh` kent daarom onder de nieuwe vlag `capabilities.cookie_upgrade` de waarde
+`credential_mode: cookie_upgrade`. Getoetst in 17d.1: regel 1 voor de vlag, regel 5 omdat de waarde pas meegaat als de
+vlag aanstaat, regel 6 omdat dit een aanvraag-enum is, regel 3 omdat `token` en `cookie` niets veranderen, en regel 2
+en 4 raken niets. Een eigen waarde en geen versoepeling van "twee bronnen zijn geen bron", omdat de aanvraag zo zelf
+zegt welk credential geldt, ook met een oude cookie ernaast. `CredentialMode` op login verandert niet; refresh krijgt
+`RefreshCredentialMode`, want op login bestaat de waarde niet.
+
+**Herordenen onder een revisie.** `PUT .../items` kreeg het optionele `base_revision`, met `revision` op `Collection`
+en `Playlist` en de nieuwe code `library.list_conflict` (`409`, huidige revisie in `details.revision`). `memory.conflict`
+past niet: die code hoort bij een ander domein. `updated_at` kan het niet, want die staat in hele seconden op de lijn.
+De zes regels: regel 1 voor `revision`, regel 4 omdat `base_revision` optioneel is met het oude gedrag als default,
+regel 5 omdat `capabilities.collections` en `capabilities.playlists` tegelijk met het veld ontstaan en geen uitgebrachte
+server dus bestaat die het afwijst, regel 2 en 3 omdat `ListItemsRequest` voor `POST` ongewijzigd blijft en `PUT` een
+eigen schema krijgt, en regel 6 is niet van toepassing. Dit valt binnen het S19-venster: de resource is nog niet
+uitgebracht. `revision` loopt alleen op bij schrijven op de rijen, niet bij hernoemen, zodat een nieuwe titel geen
+herordening weggooit. Een item dat de catalogus verlaat telt niet mee; dat vangen `PUT` (`404`) en het opnieuw lezen vlak
+vóór het schrijven op.
+
 ## DEC-169: Activiteit van het huishouden krijgt een eigen protocolvenster, en `play_history` wordt leesbaar voor huisgenoten met een opt-out, en opt-in voor restricted
 
 **Date:** 2026-10-30

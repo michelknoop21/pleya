@@ -17,14 +17,16 @@
 
   interface Props {
     items: Item[];
+    /** Een volgorde om mee te beginnen, als die van `items` afwijkt. */
+    kept?: Item[] | null;
     onsave: (order: string[]) => Promise<void>;
     oncancel: () => void;
   }
 
-  let { items, onsave, oncancel }: Props = $props();
+  let { items, kept = null, onsave, oncancel }: Props = $props();
 
   // svelte-ignore state_referenced_locally
-  let order = $state(items.slice());
+  let order = $state((kept ?? items).slice());
   let announcement = $state('');
   let saving = $state(false);
   let error = $state<string | null>(null);

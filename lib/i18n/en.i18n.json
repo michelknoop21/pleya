@@ -1353,6 +1353,7 @@
     "errorLoading": "Failed to load playlists",
     "errorAdding": "Failed to add to playlist",
     "errorReordering": "Failed to reorder playlist item",
+    "changedElsewhere": "This playlist changed elsewhere. It has been reloaded, so make your move again.",
     "errorRemoving": "Failed to remove from playlist"
   },
   "watchTogether": {

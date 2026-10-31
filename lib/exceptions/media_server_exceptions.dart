@@ -135,3 +135,10 @@ bool isRetryableServerWriteFailure(Object error) {
   if (status == 408 || status == 429) return true;
   return status < 400 || status >= 500;
 }
+
+/// A reorder lost: the list changed on the server since this client read it.
+/// Nothing was written. The screen reloads and says so, because repeating the
+/// move on its own would decide for the user what the new list should be.
+class MediaListChangedException extends MediaServerException {
+  const MediaListChangedException() : super('The list changed since it was read');
+}

@@ -1353,6 +1353,7 @@
     "errorLoading": "Fout bij laden afspeellijsten",
     "errorAdding": "Fout bij toevoegen aan afspeellijst",
     "errorReordering": "Fout bij herschikken van afspeellijstitem",
+    "changedElsewhere": "Deze afspeellijst is ergens anders gewijzigd. Hij is opnieuw geladen, dus verplaats het item nog een keer.",
     "errorRemoving": "Fout bij verwijderen uit afspeellijst"
   },
   "watchTogether": {

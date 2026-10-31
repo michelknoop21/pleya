@@ -73,6 +73,8 @@ type List struct {
 	Artwork    []id.ID
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	// Revision loopt op bij elke schrijfactie op de rijen; een PUT vergelijkt ermee.
+	Revision int64
 	// ShareChanged zegt dat deze schrijfactie veranderde wie de lijst ziet. Alleen
 	// gezet door CreateList en UpdateList; het hoort in het auditlog, niet op de lijn.
 	ShareChanged bool
@@ -99,6 +101,16 @@ type ListQuery struct {
 type ListPage struct {
 	Lists      []List
 	NextCursor string
+}
+
+// ListConflictError zegt dat de lijst veranderde sinds de client hem las. Revision is
+// de huidige, zodat de client weet waartegen hij opnieuw leest.
+type ListConflictError struct {
+	Revision int64
+}
+
+func (e *ListConflictError) Error() string {
+	return fmt.Sprintf("lijst staat op revisie %d", e.Revision)
 }
 
 // ListInput is wat een aanvraag over een lijst zegt. Nil zegt niets over dat veld.

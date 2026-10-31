@@ -32,6 +32,14 @@ describe('reorder mode', () => {
     expect(titles()).toEqual(['a', 'c', 'b']);
   });
 
+  it('starts from a kept order and can save it straight away', async () => {
+    const onsave = vi.fn().mockResolvedValue(undefined);
+    render(ListReorder, { props: { items, kept: [item('c'), item('a'), item('b')], onsave, oncancel: vi.fn() } });
+    expect(titles()).toEqual(['c', 'a', 'b']);
+    await fireEvent.click(screen.getByRole('button', { name: 'Save order' }));
+    expect(onsave).toHaveBeenCalledWith(['c', 'a', 'b']);
+  });
+
   it('saves nothing until asked, and sends the whole order', async () => {
     const onsave = vi.fn().mockResolvedValue(undefined);
     render(ListReorder, { props: { items, onsave, oncancel: vi.fn() } });

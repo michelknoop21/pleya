@@ -133,6 +133,25 @@ void main() {
       expect(server.lists.playlists[list.id]!.itemIds, ['m2', 'clip', 'm1']);
     });
 
+    test('a move sends the revision it read, and a list that moved on refuses it', () async {
+      final server = await connected();
+      final list = (await client.createPlaylist(title: 'Twee', items: [movie('m1'), movie('m2'), movie('m3')]))!;
+      final fake = server.lists.playlists[list.id]!;
+      expect(
+        await client.movePlaylistItem(playlistId: list.id, item: movie('m3'), newIndex: 0, afterItem: null),
+        isTrue,
+      );
+      expect(fake.itemIds, ['m3', 'm1', 'm2']);
+
+      // Between this client's read and its write somebody else wrote.
+      server.lists.beforeNextListWrite = () => fake.revision++;
+      await expectLater(
+        client.movePlaylistItem(playlistId: list.id, item: movie('m1'), newIndex: 0, afterItem: null),
+        throwsA(isA<MediaListChangedException>()),
+      );
+      expect(fake.itemIds, ['m3', 'm1', 'm2'], reason: 'a refused replace changes nothing');
+    });
+
     test('a move of a row that is gone writes nothing', () async {
       final server = await connected();
       final list = (await client.createPlaylist(title: 'Weg', items: [movie('m1')]))!;

@@ -578,6 +578,7 @@ contract keurt ze af.
 | `library.list_invalid` | 400 | nee | een verzameling, afspeellijst of itemlijst die niet te bewaren is, zie `details.field` |
 | `library.list_not_owner` | 403 | nee | de lijst is zichtbaar, maar alleen de eigenaar mag hem wijzigen |
 | `library.list_share_not_permitted` | 403 | nee | alleen `owner` en `admin` delen een verzameling |
+| `library.list_conflict` | 409 | nee | `base_revision` op `PUT .../items` is niet meer de huidige revisie; die staat in `details.revision` |
 | `library.download_not_permitted` | 403 | nee | de bibliotheek is zichtbaar maar het recht `download` ontbreekt |
 | `library.download_not_ready` | 409 | ja | de download is nog `preparing`, probeer het zo opnieuw |
 | `library.download_changed` | 409 | nee | het bestand veranderde na het uitrekenen van de SHA-256, vraag een nieuwe download |
@@ -1295,7 +1296,7 @@ om `shared_with` uit te vullen, en `shared_with` zelf gaat alleen naar de eigena
 zetten, bij aanmaken en bij wijzigen. Een `member` of `restricted` die een van beide meestuurt krijgt `403`
 met `library.list_share_not_permitted`, ook op zijn eigen verzameling, en houdt zijn verzamelingen dus privé.
 Die uitkomst hangt niet af van de lijst, dus een id buiten zicht verraadt niets. Terug naar `private` mag
-iedereen die de lijst bezit, en een aanvraag die de zichtbaarheid niet noemt valt buiten de regel: wie zijn rol
+iedereen die de lijst bezit, ook met een lege `shared_with` erbij, en een aanvraag die de zichtbaarheid niet noemt valt buiten de regel: wie zijn rol
 verliest houdt wat hij deelde, kan het hernoemen en op `private` zetten, maar niet opnieuw delen. Een
 afspeellijst deelt nooit. Elke wijziging van wie een verzameling ziet staat in het auditlog (17c.3).
 
@@ -1314,7 +1315,12 @@ niets. De volgorde in de aanvraag is de volgorde in de lijst, en één verplaats
 dubbel id is `400` met `library.list_invalid`, een item dat niet bestaat of buiten zicht valt is `404`.
 De lijst is de lijst zoals de eigenaar hem ziet. Rijen uit een bibliotheek die hij niet meer mag zien
 ontbreken daarin en blijven op hun plek staan, want een ingetrokken recht wist niets: komt het recht
-terug, dan staan ze er weer. `POST .../items` zet items achteraan, en wat er al in staat blijft staan;
+terug, dan staan ze er weer. `PUT` is onvoorwaardelijk, tenzij de aanvraag `base_revision` draagt: dan
+geldt ze alleen als `revision` op de lijst nog die waarde heeft, en anders is het `409` met
+`library.list_conflict` en de huidige revisie in `details.revision`, en verandert er niets. `revision` loopt
+op bij elke schrijfactie op de rijen, niet bij een nieuwe titel, en `updated_at` kan dit werk niet doen: die
+staat in hele seconden op de lijn. Een client leest `revision` vóór hij de rijen leest, zodat een wijziging
+daartussen op de veilige kant valt. `POST .../items` zet items achteraan, en wat er al in staat blijft staan;
 `DELETE .../items/{item_id}` haalt er één uit. Die twee bestaan naast `PUT` omdat "Toevoegen aan" op een
 kaart anders de hele lijst moet lezen en een gelijktijdige toevoeging kan overschrijven. Een lijst telt
 hoogstens 5000 rijen. Een afspeellijst neemt alleen `movie` en `episode` aan: een client die een serie
@@ -2061,12 +2067,6 @@ antwoordschema.
 | 5, gesloten aanvraagbody | precies daarom staat `credential_mode` achter `capabilities.cookie_auth`. Een oudere server wijst het veld af in plaats van het stil te laten vallen, en dat is de bedoeling: een client die om een cookie vraagt en er geen krijgt, hoort dat te weten |
 | 6, enumwaarde | `credential_mode` is een nieuw enum-veld in een **aanvraag**, dus gesloten aan de kant van de client (`x-unknown-safe: false`). Een derde waarde erbij zou geen enkele client breken, minder accepteren wel |
 
-De vorm die regel 2 het dichtst nadert is `TokenPair.refresh_token`. Een alternatief was een tweede
-antwoordschema achter een `oneOf`, en dat is afgewogen: het houdt `TokenPair` letterlijk ongemoeid,
-maar het maakt van het antwoord van `/auth/login` een unie in elke gegenereerde client, inclusief de
-clients die cookiemodus nooit zullen gebruiken. Eén voorwaardelijk veld met de voorwaarde erbij is
-kleiner en eerlijker dan een unie die iedereen moet uitpakken.
-
 **`cookie_upgrade`, voor een browser van vóór de cookie.** Een sessie uit de tijd van `localStorage`
 heeft een refreshtoken in JavaScript, en met alleen `token` en `cookie` kwam daar geen cookie voor in de
 plaats zonder opnieuw in te loggen. Onder `capabilities.cookie_upgrade` accepteert `POST /auth/refresh`
@@ -2084,6 +2084,12 @@ raakt niets, dus het token blijft bruikbaar in `token`-modus en de client gaat d
 bestaat de waarde niet. Getoetst aan hoofdstuk 3: de vlag is een nieuw optioneel antwoordveld (regel 1), de
 waarde gaat alleen mee als de vlag aanstaat (regel 5), en `credential_mode` is een aanvraag-enum waar een
 waarde bij mag (regel 6). `cookie` en `token` betekenen hetzelfde als eerst (regel 3).
+
+De vorm die regel 2 het dichtst nadert is `TokenPair.refresh_token`. Een alternatief was een tweede
+antwoordschema achter een `oneOf`, en dat is afgewogen: het houdt `TokenPair` letterlijk ongemoeid,
+maar het maakt van het antwoord van `/auth/login` een unie in elke gegenereerde client, inclusief de
+clients die cookiemodus nooit zullen gebruiken. Eén voorwaardelijk veld met de voorwaarde erbij is
+kleiner en eerlijker dan een unie die iedereen moet uitpakken.
 
 ### 17d.2 De cookie autoriseert één endpoint, en niets anders
 

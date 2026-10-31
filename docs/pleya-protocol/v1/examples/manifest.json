@@ -541,7 +541,12 @@
     {
       "file": "list_items_request.json",
       "schema": "ListItemsRequest",
-      "note": "S19: PUT en POST op .../items, in de gewenste volgorde"
+      "note": "S19: POST op .../items, in de gewenste volgorde"
+    },
+    {
+      "file": "list_replace_request.json",
+      "schema": "ReplaceListItemsRequest",
+      "note": "S19: PUT op .../items, met de revisie die de client las"
     },
     {
       "file": "error_list_invalid.json",
@@ -552,6 +557,11 @@
       "file": "error_list_not_owner.json",
       "schema": "ErrorEnvelope",
       "note": "S19: de lijst is zichtbaar maar van een ander"
+    },
+    {
+      "file": "error_list_conflict.json",
+      "schema": "ErrorEnvelope",
+      "note": "S19: base_revision is niet meer de huidige; details.revision wel"
     },
     {
       "file": "error_list_share_not_permitted.json",

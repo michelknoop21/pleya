@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { PleyaClient, type FetchLike } from './client';
 import { TokenStore, type TokenStorage } from '../auth/tokens';
-import { allPages, knownVisibility, listsApi, mergeOrder, nextInList } from './lists';
+import { allPages, knownVisibility, listsApi, mergeOrder, nextInList, orderedItems } from './lists';
+import { ApiError } from './errors';
+import type { Item } from './types';
 
 function storage(): TokenStorage {
   const data = new Map<string, string>();
@@ -25,6 +27,47 @@ function setup(pages: unknown[] = []) {
 }
 
 describe('lists API', () => {
+  it('sends the revision the reorder mode saw, and none on a server without one', async () => {
+    const { api, requests } = setup([
+      { id: 'p', revision: 7 },
+      { items: [{ id: 'a' }, { id: 'b' }], next_cursor: null },
+      { items: [{ id: 'a' }, { id: 'b' }], next_cursor: null },
+      { items: [{ id: 'a' }], next_cursor: null }
+    ]);
+    const base = await api.readForReorder('playlist', 'p');
+    expect(base.revision).toBe(7);
+    await api.saveOrder('playlist', 'p', ['b', 'a'], base.revision);
+    expect(await requests.at(-1)!.clone().json()).toEqual({ item_ids: ['b', 'a'], base_revision: 7 });
+    await api.saveOrder('playlist', 'p', ['a']);
+    expect(await requests.at(-1)!.clone().json()).toEqual({ item_ids: ['a'] });
+  });
+
+  it('reads the revision before the rows', async () => {
+    const { api, requests } = setup([{ id: 'c', revision: 1 }]);
+    await api.readForReorder('collection', 'c');
+    expect(requests.map((r) => new URL(r.url).pathname)).toEqual(['/pleya/v1/collections/c', '/pleya/v1/collections/c/items']);
+  });
+
+  it('turns a 409 into library.list_conflict for the screen', async () => {
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const request = input as Request;
+      if (request.method === 'GET') return json({ items: [{ id: 'a' }], next_cursor: null });
+      return new Response(JSON.stringify({ error: { code: 'library.list_conflict', message: 'changed', retryable: false, details: { revision: 9 } } }),
+        { status: 409, headers: { 'Content-Type': 'application/json' } });
+    });
+    const tokens = new TokenStore(storage(), storage());
+    tokens.set({ access_token: 'test-account-A', refresh_token: 'test-refresh-A', expires_in_ms: 600000 });
+    const api = listsApi(new PleyaClient({ baseUrl: 'http://server.test/pleya/v1', tokens, fetch: fetch as unknown as FetchLike }));
+    const err = await api.saveOrder('playlist', 'p', ['a'], 7).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).code).toBe('library.list_conflict');
+  });
+
+  it('keeps the chosen order on the list as it is now', () => {
+    const row = (id: string) => ({ id }) as Item;
+    expect(orderedItems(['b', 'weg', 'a'], [row('a'), row('b'), row('nieuw')]).map((item) => item.id)).toEqual(['b', 'a', 'nieuw']);
+  });
+
   it('sends the full list on PUT and one id on POST, per kind', async () => {
     const { api, requests } = setup();
     await api.replaceItems('playlist', 'p', ['b', 'a']);

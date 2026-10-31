@@ -41,6 +41,19 @@ export function mergeOrder(chosen: string[], current: string[]): string[] {
   return [...kept, ...current.filter((id) => !kept.has(id))];
 }
 
+/** De lijst zoals de modus Herordenen hem begon. */
+export interface ReorderBase {
+  items: Item[];
+  /** Ontbreekt op een server zonder revisie; dan is vervangen onvoorwaardelijk. */
+  revision?: number;
+}
+
+/** De gekozen volgorde als rijen, op de lijst zoals hij nu is. */
+export function orderedItems(chosen: string[], current: Item[]): Item[] {
+  const byId = new Map(current.map((item) => [item.id, item]));
+  return mergeOrder(chosen, current.map((item) => item.id)).flatMap((id) => byId.get(id) ?? []);
+}
+
 export function listsApi(client: PleyaClient) {
   const generation = client.sessionGeneration;
   const assertAccount = () => {
@@ -83,14 +96,27 @@ export function listsApi(client: PleyaClient) {
     /** Alle pagina's, voor herordenen en "Alles afspelen". */
     allItems: (kind: ListKind, id: string, signal?: AbortSignal): Promise<Item[]> =>
       allPages((cursor) => api.items(kind, id, { limit: PAGE, ...(cursor ? { cursor } : {}) }, signal)),
-    /** Herordenen duurt minuten: de lijst wordt vlak vóór het vervangen opnieuw gelezen. */
-    async saveOrder(kind: ListKind, id: string, order: string[], signal?: AbortSignal): Promise<true> {
-      const current = await api.allItems(kind, id, signal);
-      return api.replaceItems(kind, id, mergeOrder(order, current.map((item) => item.id)));
+    /**
+     * Wat de modus Herordenen nodig heeft: de revisie vóór de rijen, zodat een wijziging
+     * tussen die twee lezingen op de veilige kant valt.
+     */
+    async readForReorder(kind: ListKind, id: string, signal?: AbortSignal): Promise<ReorderBase> {
+      const list = await (kind === 'collection' ? api.collection(id, signal) : api.playlist(id, signal));
+      const items = await api.allItems(kind, id, signal);
+      return { items, ...(list.revision !== undefined ? { revision: list.revision } : {}) };
     },
-    replaceItems: (kind: ListKind, id: string, itemIds: string[]): Promise<true> =>
+    /**
+     * Herordenen duurt minuten. `revision` is wat de modus zag, dus een wijziging in die tijd
+     * wordt `library.list_conflict` in plaats van een stil verlies. De rijen worden toch vlak
+     * vóór het vervangen gelezen: een item dat uit de catalogus verdween telt niet als revisie.
+     */
+    async saveOrder(kind: ListKind, id: string, order: string[], revision?: number, signal?: AbortSignal): Promise<true> {
+      const current = await api.allItems(kind, id, signal);
+      return api.replaceItems(kind, id, mergeOrder(order, current.map((item) => item.id)), revision);
+    },
+    replaceItems: (kind: ListKind, id: string, itemIds: string[], baseRevision?: number): Promise<true> =>
       guarded(() => client.request(async raw => {
-        const body = { item_ids: itemIds };
+        const body = { item_ids: itemIds, ...(baseRevision !== undefined ? { base_revision: baseRevision } : {}) };
         return noContent(await (kind === 'collection'
           ? raw.PUT('/collections/{collection_id}/items', { ...collection(id), body })
           : raw.PUT('/playlists/{playlist_id}/items', { ...playlist(id), body })));

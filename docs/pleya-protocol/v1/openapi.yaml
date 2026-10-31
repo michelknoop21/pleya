@@ -2413,20 +2413,24 @@ paths:
         Alleen de eigenaar. `item_ids` is de volledige lijst zoals hij hem ziet; de
         aanvraag lukt helemaal of verandert niets. Een dubbel id is `400` met
         `library.list_invalid`, een item dat niet bestaat of buiten zicht valt is
-        `404`. Rijen die de eigenaar niet meer mag zien blijven op hun plek.
+        `404`. Rijen die de eigenaar niet meer mag zien blijven op hun plek. Met
+        `base_revision` geldt de aanvraag alleen als de lijst nog op die revisie staat;
+        anders is het `409` met `library.list_conflict`, de huidige revisie in
+        `details.revision`, en verandert er niets.
       parameters:
         - $ref: "#/components/parameters/CollectionId"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/ListItemsRequest" }
+            schema: { $ref: "#/components/schemas/ReplaceListItemsRequest" }
       responses:
         "204": { description: De lijst is vervangen. }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
     post:
       tags: [library]
@@ -2615,20 +2619,24 @@ paths:
         Alleen de eigenaar. `item_ids` is de volledige lijst zoals hij hem ziet; de
         aanvraag lukt helemaal of verandert niets. Een dubbel id is `400` met
         `library.list_invalid`, een item dat niet bestaat of buiten zicht valt is
-        `404`. Rijen die de eigenaar niet meer mag zien blijven op hun plek.
+        `404`. Rijen die de eigenaar niet meer mag zien blijven op hun plek. Met
+        `base_revision` geldt de aanvraag alleen als de lijst nog op die revisie staat;
+        anders is het `409` met `library.list_conflict`, de huidige revisie in
+        `details.revision`, en verandert er niets.
       parameters:
         - $ref: "#/components/parameters/PlaylistId"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/ListItemsRequest" }
+            schema: { $ref: "#/components/schemas/ReplaceListItemsRequest" }
       responses:
         "204": { description: De lijst is vervangen. }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
     post:
       tags: [library]
@@ -3608,14 +3616,6 @@ components:
             POST /auth/refresh (RB-29, hoofdstuk 17d) en zet het refreshcredential
             desgevraagd in een HttpOnly-cookie. Bedoeld voor browsers; een client
             zonder cookiejar heeft er niets aan en laat het veld weg.
-        administration:
-          type: boolean
-          default: false
-          description: |
-            De server heeft een beheeroppervlak: `GET`/`PATCH /settings`, de vier
-            routes onder `/server`, `GET /stream-sessions` en `GET /audit`. Een
-            client die de vlag niet ziet toont geen beheer, en dat is geen
-            beveiliging maar netheid: de server weigert onafhankelijk daarvan met
         cookie_upgrade:
           type: boolean
           default: false
@@ -3624,6 +3624,14 @@ components:
             met een refreshtoken uit de tijd van vóór de cookie stapt over zonder
             opnieuw in te loggen (17d.1). Een eigen vlag, want `cookie_auth` staat
             ook aan op servers die die waarde weigeren.
+        administration:
+          type: boolean
+          default: false
+          description: |
+            De server heeft een beheeroppervlak: `GET`/`PATCH /settings`, de vier
+            routes onder `/server`, `GET /stream-sessions` en `GET /audit`. Een
+            client die de vlag niet ziet toont geen beheer, en dat is geen
+            beveiliging maar netheid: de server weigert onafhankelijk daarvan met
             `404` voor wie er niet bij mag (hoofdstuk 16.4, regel 16 tot en met
             26).
 
@@ -5070,6 +5078,12 @@ components:
           items: { $ref: "#/components/schemas/Id" }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        revision:
+          type: integer
+          format: int64
+          description: |
+            Loopt op bij elke schrijfactie op de rijen van de lijst, en niet bij een
+            nieuwe titel. Alleen om terug te sturen als `base_revision` op `PUT .../items`.
 
     CollectionPage:
       allOf:
@@ -5127,6 +5141,12 @@ components:
           items: { $ref: "#/components/schemas/Id" }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        revision:
+          type: integer
+          format: int64
+          description: |
+            Loopt op bij elke schrijfactie op de rijen van de lijst, en niet bij een
+            nieuwe titel. Alleen om terug te sturen als `base_revision` op `PUT .../items`.
 
     PlaylistPage:
       allOf:
@@ -5150,6 +5170,26 @@ components:
       additionalProperties: false
       properties:
         title: { type: string, minLength: 1, maxLength: 200 }
+
+    ReplaceListItemsRequest:
+      type: object
+      additionalProperties: false
+      required: [item_ids]
+      description: |
+        De body van `PUT .../items`. Zonder `base_revision` is vervangen
+        onvoorwaardelijk, zoals eerst. `capabilities.collections` en
+        `capabilities.playlists` dekken het veld: beide zijn tegelijk met dit veld
+        ontstaan, dus geen server met die vlag wijst het af.
+      properties:
+        item_ids:
+          type: array
+          maxItems: 5000
+          description: In de gewenste volgorde, zonder dubbele ids.
+          items: { $ref: "#/components/schemas/Id" }
+        base_revision:
+          type: integer
+          format: int64
+          description: De `revision` die de client las, vóór hij de rijen las.
 
     ListItemsRequest:
       type: object

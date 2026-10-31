@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -73,9 +72,12 @@ func (s *Server) listViewer(w http.ResponseWriter, r *http.Request) (catalog.Lis
 // writeListError vertaalt de fouten die alleen lijsten kennen.
 func (s *Server) writeListError(w http.ResponseWriter, err error) {
 	var invalid *catalog.ListInvalidError
+	var conflict *catalog.ListConflictError
 	switch {
 	case errors.As(err, &invalid):
 		writeError(w, s.log, CodeListInvalid, "list is not valid", map[string]any{"field": invalid.Field})
+	case errors.As(err, &conflict):
+		writeError(w, s.log, CodeListConflict, "the list changed since it was read", map[string]any{"revision": conflict.Revision})
 	case errors.Is(err, catalog.ErrListNotOwner):
 		writeError(w, s.log, CodeListNotOwner, "only the owner can change this list", nil)
 	default:
@@ -206,16 +208,28 @@ func (s *Server) handleListItems(codec listCodec) http.HandlerFunc {
 }
 
 func (s *Server) handleReplaceListItems(codec listCodec) http.HandlerFunc {
-	return s.listItemsWrite(codec, (*catalog.Store).ReplaceListItems)
+	return func(w http.ResponseWriter, r *http.Request) {
+		viewer, listID, ok := s.listTarget(w, r, codec)
+		if !ok {
+			return
+		}
+		var req ReplaceListItemsRequest
+		if !s.decodeBody(w, r, &req, CodeListInvalid) {
+			return
+		}
+		items, ok := s.listItemIDs(w, req.ItemIDs)
+		if !ok {
+			return
+		}
+		if err := s.opts.Catalog.ReplaceListItemsAt(r.Context(), codec.kind, viewer, listID, items, req.BaseRevision); err != nil {
+			s.writeListError(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
 }
 
 func (s *Server) handleAddListItems(codec listCodec) http.HandlerFunc {
-	return s.listItemsWrite(codec, (*catalog.Store).AddListItems)
-}
-
-type listItemsWriter func(*catalog.Store, context.Context, catalog.ListKind, catalog.ListViewer, id.ID, []id.ID) error
-
-func (s *Server) listItemsWrite(codec listCodec, write listItemsWriter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		viewer, listID, ok := s.listTarget(w, r, codec)
 		if !ok {
@@ -225,25 +239,34 @@ func (s *Server) listItemsWrite(codec listCodec, write listItemsWriter) http.Han
 		if !s.decodeBody(w, r, &req, CodeListInvalid) {
 			return
 		}
-		if req.ItemIDs == nil {
-			writeError(w, s.log, CodeListInvalid, "item_ids is required", map[string]any{"field": "item_ids"})
-			return
-		}
-		items, ok := parseIDs(req.ItemIDs)
+		items, ok := s.listItemIDs(w, req.ItemIDs)
 		if !ok {
-			writeError(w, s.log, CodeListInvalid, "item_ids is not valid", map[string]any{"field": "item_ids"})
 			return
 		}
-		if len(items) > catalog.MaxListItems {
-			writeError(w, s.log, CodeListInvalid, "list is too long", map[string]any{"field": "item_ids"})
-			return
-		}
-		if err := write(s.opts.Catalog, r.Context(), codec.kind, viewer, listID, items); err != nil {
+		if err := s.opts.Catalog.AddListItems(r.Context(), codec.kind, viewer, listID, items); err != nil {
 			s.writeListError(w, err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+// listItemIDs leest item_ids en schrijft zelf de fout als dat niet lukt.
+func (s *Server) listItemIDs(w http.ResponseWriter, raw []string) ([]id.ID, bool) {
+	if raw == nil {
+		writeError(w, s.log, CodeListInvalid, "item_ids is required", map[string]any{"field": "item_ids"})
+		return nil, false
+	}
+	items, ok := parseIDs(raw)
+	if !ok {
+		writeError(w, s.log, CodeListInvalid, "item_ids is not valid", map[string]any{"field": "item_ids"})
+		return nil, false
+	}
+	if len(items) > catalog.MaxListItems {
+		writeError(w, s.log, CodeListInvalid, "list is too long", map[string]any{"field": "item_ids"})
+		return nil, false
+	}
+	return items, true
 }
 
 func (s *Server) handleRemoveListItem(codec listCodec) http.HandlerFunc {
@@ -266,7 +289,8 @@ func (s *Server) handleRemoveListItem(codec listCodec) http.HandlerFunc {
 
 // allowListSharing houdt delen bij owner en admin: een zichtbaarheid anders dan
 // private en shared_with zijn voor member en restricted een 403. Terug naar
-// private mag iedereen, en een aanvraag die de zichtbaarheid niet noemt raakt
+// private mag iedereen, ook met een lege shared_with, want dat is de vorm waarin
+// een client hetzelfde zegt. Een aanvraag die de zichtbaarheid niet noemt raakt
 // deze regel niet, dus een gedegradeerde beheerder kan zijn lijst nog hernoemen.
 //
 // canAdminister en niet de accountrol alleen: delen wijzigt wat anderen zien, dus
@@ -276,7 +300,8 @@ func (s *Server) handleRemoveListItem(codec listCodec) http.HandlerFunc {
 // van het lijst-id en lekt dus niets over een lijst buiten zicht. Een afspeellijst
 // komt hier nooit met een van beide velden aan, want zijn aanvraagschema kent ze niet.
 func (s *Server) allowListSharing(w http.ResponseWriter, r *http.Request, in catalog.ListInput) bool {
-	if in.SharedWith == nil && (in.Visibility == nil || *in.Visibility == catalog.VisibilityPrivate) {
+	names := in.SharedWith != nil && len(*in.SharedWith) > 0
+	if !names && (in.Visibility == nil || *in.Visibility == catalog.VisibilityPrivate) {
 		return true
 	}
 	req, ok := s.resolveRequester(w, r)

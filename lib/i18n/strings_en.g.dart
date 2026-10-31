@@ -3817,6 +3817,9 @@ class TranslationsPlaylistsEn {
 	/// en: 'Failed to reorder playlist item'
 	String get errorReordering => 'Failed to reorder playlist item';
 
+	/// en: 'This playlist changed elsewhere. It has been reloaded, so make your move again.'
+	String get changedElsewhere => 'This playlist changed elsewhere. It has been reloaded, so make your move again.';
+
 	/// en: 'Failed to remove from playlist'
 	String get errorRemoving => 'Failed to remove from playlist';
 }
@@ -11720,6 +11723,7 @@ extension on Translations {
 			'playlists.errorLoading' => 'Failed to load playlists',
 			'playlists.errorAdding' => 'Failed to add to playlist',
 			'playlists.errorReordering' => 'Failed to reorder playlist item',
+			'playlists.changedElsewhere' => 'This playlist changed elsewhere. It has been reloaded, so make your move again.',
 			'playlists.errorRemoving' => 'Failed to remove from playlist',
 			'watchTogether.title' => 'Watch Together',
 			'watchTogether.description' => 'Watch content in sync with friends and family',
@@ -12023,9 +12027,9 @@ extension on Translations {
 			'externalPlayer.customPlayers' => 'Custom Players',
 			'externalPlayer.systemDefault' => 'System Default',
 			'externalPlayer.addCustomPlayer' => 'Add Custom Player',
-			'externalPlayer.playerName' => 'Player Name',
 			_ => null,
 		} ?? switch (path) {
+			'externalPlayer.playerName' => 'Player Name',
 			'externalPlayer.playerNameHint' => 'My Player',
 			'externalPlayer.playerCommand' => 'Command',
 			'externalPlayer.playerPackage' => 'Package Name',
@@ -12537,9 +12541,9 @@ extension on Translations {
 			'unifiedCatalog.jumpTo' => 'Jump to',
 			'unifiedCatalog.loadMore' => 'Load more',
 			'unifiedCatalog.loadingMore' => 'Loading more…',
-			'unifiedCatalog.sort.title' => 'Sort',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.sort.title' => 'Sort',
 			'unifiedCatalog.sort.titleAsc' => 'Title A–Z',
 			'unifiedCatalog.sort.titleDesc' => 'Title Z–A',
 			'unifiedCatalog.sort.recentlyAdded' => 'Recently added',
@@ -13051,9 +13055,9 @@ extension on Translations {
 			'assistant.examples.recentlyAdded.0' => 'What was added this week?',
 			'assistant.examples.recentlyAdded.1' => 'Which series were added recently?',
 			'assistant.examples.describe.0' => 'Find me a film about space.',
-			'assistant.examples.describe.1' => 'I want a slow detective series for a rainy Sunday.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.examples.describe.1' => 'I want a slow detective series for a rainy Sunday.',
 			'assistant.examples.trending.0' => 'What is popular right now?',
 			'assistant.examples.trending.1' => 'Which popular new movies don\'t I have yet?',
 			'assistant.examples.request.0' => 'Which thrillers from this year could I add to my library?',

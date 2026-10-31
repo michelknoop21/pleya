@@ -374,6 +374,120 @@ func TestRemovedCatalogItemLeavesTheListConsistent(t *testing.T) {
 	}
 }
 
+// TestItemRemovedDuringAReplaceIsNotFound: een scan wist een item tussen de
+// controle en het schrijven. De trigger legt dat moment vast, zonder op een race te
+// hoeven wachten; de vreemde sleutel die dan faalt is dezelfde.
+func TestItemRemovedDuringAReplaceIsNotFound(t *testing.T) {
+	f := newListFixture(t)
+	store := f.store()
+	me := f.viewer(f.alice, f.library)
+	a, b := f.addItem(t, f.library, "movie", "A"), f.addItem(t, f.library, "movie", "B")
+	list, err := store.CreateList(f.ctx, catalog.ListPlaylist, me, listTitle("Avond"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.ReplaceListItems(f.ctx, catalog.ListPlaylist, me, list.ID, []id.ID{a}); err != nil {
+		t.Fatal(err)
+	}
+	f.exec(t, `CREATE FUNCTION test_scan_removes_item() RETURNS trigger LANGUAGE plpgsql AS $$
+		BEGIN DELETE FROM media_items WHERE id = NEW.item_id; RETURN NEW; END $$`)
+	f.exec(t, `CREATE TRIGGER test_scan_removes_item BEFORE INSERT ON playlist_items
+		FOR EACH ROW WHEN (NEW.position > 0) EXECUTE FUNCTION test_scan_removes_item()`)
+	t.Cleanup(func() {
+		f.exec(t, `DROP TRIGGER test_scan_removes_item ON playlist_items`)
+		f.exec(t, `DROP FUNCTION test_scan_removes_item`)
+	})
+
+	err = store.ReplaceListItems(f.ctx, catalog.ListPlaylist, me, list.ID, []id.ID{a, b})
+	if !errors.Is(err, catalog.ErrNotFound) {
+		t.Fatalf("kreeg %v, verwacht ErrNotFound", err)
+	}
+}
+
+// TestReplaceUnderARevisionLosesNothing: wie een oude lijst terugstuurt krijgt een
+// conflict in plaats van andermans wijziging ongedaan te maken.
+func TestReplaceUnderARevisionLosesNothing(t *testing.T) {
+	f := newListFixture(t)
+	store := f.store()
+	me := f.viewer(f.alice, f.library)
+	a, b, c := f.addItem(t, f.library, "movie", "A"), f.addItem(t, f.library, "movie", "B"), f.addItem(t, f.library, "movie", "C")
+	list, err := store.CreateList(f.ctx, catalog.ListPlaylist, me, listTitle("Avond"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.ReplaceListItems(f.ctx, catalog.ListPlaylist, me, list.ID, []id.ID{a, b}); err != nil {
+		t.Fatal(err)
+	}
+	read, err := store.List(f.ctx, catalog.ListPlaylist, me, list.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := read.Revision
+
+	// Een nieuwe titel is geen wijziging aan de inhoud.
+	renamed := "Andere avond"
+	if _, err := store.UpdateList(f.ctx, catalog.ListPlaylist, me, list.ID, catalog.ListInput{Title: &renamed}); err != nil {
+		t.Fatal(err)
+	}
+	read, err = store.List(f.ctx, catalog.ListPlaylist, me, list.ID)
+	if err != nil || read.Revision != seen {
+		t.Fatalf("hernoemen raakte de revisie: %d, %v", read.Revision, err)
+	}
+
+	// Een ander tabblad voegt iets toe.
+	if err := store.AddListItems(f.ctx, catalog.ListPlaylist, me, list.ID, []id.ID{c}); err != nil {
+		t.Fatal(err)
+	}
+	err = store.ReplaceListItemsAt(f.ctx, catalog.ListPlaylist, me, list.ID, []id.ID{b, a}, &seen)
+	var conflict *catalog.ListConflictError
+	if !errors.As(err, &conflict) || conflict.Revision != seen+1 {
+		t.Fatalf("kreeg %v, verwacht een conflict op revisie %d", err, seen+1)
+	}
+	page, err := store.ListItems(f.ctx, catalog.ListPlaylist, me, list.ID, nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	equalIDs(t, itemIDs(page), []id.ID{a, b, c})
+
+	// Opnieuw lezen en opnieuw sturen lukt.
+	current := conflict.Revision
+	if err := store.ReplaceListItemsAt(f.ctx, catalog.ListPlaylist, me, list.ID, []id.ID{b, a, c}, &current); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.RemoveListItem(f.ctx, catalog.ListPlaylist, me, list.ID, c); err != nil {
+		t.Fatal(err)
+	}
+	read, err = store.List(f.ctx, catalog.ListPlaylist, me, list.ID)
+	if err != nil || read.Revision != current+2 {
+		t.Fatalf("revisie %d, verwacht %d: %v", read.Revision, current+2, err)
+	}
+}
+
+// TestTwoReplacesOnOneRevisionHaveOneWinner: de vergelijking staat achter de
+// vergrendeling, dus de tweede ziet de revisie van de eerste.
+func TestTwoReplacesOnOneRevisionHaveOneWinner(t *testing.T) {
+	f := newListFixture(t)
+	store := f.store()
+	me := f.viewer(f.alice, f.library)
+	a, b := f.addItem(t, f.library, "movie", "A"), f.addItem(t, f.library, "movie", "B")
+	list, err := store.CreateList(f.ctx, catalog.ListPlaylist, me, listTitle("Avond"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := list.Revision
+	results := make(chan error, 2)
+	for _, order := range [][]id.ID{{a, b}, {b, a}} {
+		go func() {
+			results <- store.ReplaceListItemsAt(f.ctx, catalog.ListPlaylist, me, list.ID, order, &base)
+		}()
+	}
+	first, second := <-results, <-results
+	var conflict *catalog.ListConflictError
+	if (first == nil) == (second == nil) || (!errors.As(first, &conflict) && !errors.As(second, &conflict)) {
+		t.Fatalf("uitkomsten %v en %v, verwacht één winnaar en één conflict", first, second)
+	}
+}
+
 // TestPagingFollowsTheList: de cursor loopt op de lijstvolgorde en een cursor van
 // een andere lijst past niet.
 func TestPagingFollowsTheList(t *testing.T) {

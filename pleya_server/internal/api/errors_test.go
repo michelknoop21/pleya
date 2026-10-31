@@ -56,6 +56,7 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"library.list_invalid":             {400, false},
 		"library.list_not_owner":           {403, false},
 		"library.list_share_not_permitted": {403, false},
+		"library.list_conflict":            {409, false},
 		"memory.invalid":                   {400, false},
 		"memory.not_permitted":             {403, false},
 		"memory.too_large":                 {413, false},

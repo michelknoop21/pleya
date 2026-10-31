@@ -17,6 +17,9 @@ class FakeList {
   bool isOwner;
   String visibility;
   final List<String> itemIds;
+
+  /// Moves with every write to the rows through the protocol.
+  int revision = 1;
 }
 
 /// Chapter 14c as far as the app's client needs it: the eighteen routes, the
@@ -45,6 +48,10 @@ class FakeLists {
   /// went out.
   final writes = <String>[];
 
+  /// Runs once, just before the next write to a list is judged: another client
+  /// getting there first.
+  void Function()? beforeNextListWrite;
+
   /// The body of the last write to `/collections`.
   Map<String, dynamic>? lastCollectionBody;
 
@@ -66,7 +73,11 @@ class FakeLists {
     final isCollection = parts.first == 'collections';
     final lists = isCollection ? collections : playlists;
     final method = request.method;
-    if (method != 'GET') writes.add('$method $path');
+    if (method != 'GET') {
+      writes.add('$method $path');
+      beforeNextListWrite?.call();
+      beforeNextListWrite = null;
+    }
 
     if (parts.length == 1) {
       if (method == 'GET') return _pageOf(lists, request.url.queryParameters, isCollection);
@@ -99,10 +110,14 @@ class FakeLists {
       final id = Uri.decodeComponent(parts[3]);
       if (itemKind(id) == null) return _error('library.not_found', 404);
       list.itemIds.remove(id);
+      list.revision++;
       return http.Response('', 204);
     }
     final body = jsonDecode(request.body) as Map<String, dynamic>;
     final ids = (body['item_ids'] as List).cast<String>();
+    if (body['base_revision'] case final int base when method == 'PUT' && base != list.revision) {
+      return _error('library.list_conflict', 409);
+    }
     if (ids.toSet().length != ids.length) return _error('library.list_invalid', 400);
     for (final id in ids) {
       final kind = itemKind(id);
@@ -116,6 +131,7 @@ class FakeLists {
     } else {
       list.itemIds.addAll(ids.where((id) => !list.itemIds.contains(id)));
     }
+    list.revision++;
     return http.Response('', 204);
   }
 
@@ -134,7 +150,7 @@ class FakeLists {
   }
 
   bool _refusesSharing(Map<String, dynamic> body) {
-    final shares = body.containsKey('shared_with') || (body['visibility'] ?? 'private') != 'private';
+    final shares = (body['shared_with'] as List?)?.isNotEmpty == true || (body['visibility'] ?? 'private') != 'private';
     return shares && role() != 'owner' && role() != 'admin';
   }
 
@@ -164,6 +180,7 @@ class FakeLists {
     'artwork': list.itemIds.map(posterOf).whereType<String>().take(4).toList(),
     'created_at': _timestamp,
     'updated_at': _timestamp,
+    'revision': list.revision,
   };
 
   http.Response _json(Object body, {int status = 200}) =>

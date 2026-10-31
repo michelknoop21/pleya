@@ -2,9 +2,11 @@ package catalog
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
@@ -48,7 +50,25 @@ func (s *Store) ListItems(ctx context.Context, kind ListKind, viewer ListViewer,
 // aanvraag" betekent bij hen niet "weg": een ingetrokken bibliotheekrecht maakt
 // een rij onzichtbaar en wist hem niet, en bij herstel staat hij er weer.
 func (s *Store) ReplaceListItems(ctx context.Context, kind ListKind, viewer ListViewer, listID id.ID, items []id.ID) error {
-	return s.editList(ctx, kind, viewer, listID, func(tx pgx.Tx) error {
+	return s.ReplaceListItemsAt(ctx, kind, viewer, listID, items, nil)
+}
+
+// ReplaceListItemsAt is ReplaceListItems onder een voorwaarde: base is de revisie
+// die de client las. Staat de lijst daar niet meer op, dan is dat een
+// ListConflictError en verandert er niets. De vergelijking staat achter de
+// vergrendeling uit editList, dus twee gelijktijdige aanvragen op dezelfde revisie
+// winnen niet allebei. Nil is de aanvraag zonder voorwaarde.
+func (s *Store) ReplaceListItemsAt(ctx context.Context, kind ListKind, viewer ListViewer, listID id.ID, items []id.ID, base *int64) error {
+	return s.editListItems(ctx, kind, viewer, listID, func(tx pgx.Tx) error {
+		if base != nil {
+			var current int64
+			if err := tx.QueryRow(ctx, fmt.Sprintf(`SELECT revision FROM %s WHERE id = $1`, kind.table()), listID).Scan(&current); err != nil {
+				return fmt.Errorf("revisie lezen: %w", err)
+			}
+			if current != *base {
+				return &ListConflictError{Revision: current}
+			}
+		}
 		if err := checkListItems(ctx, tx, kind, viewer, items); err != nil {
 			return err
 		}
@@ -75,7 +95,7 @@ func (s *Store) ReplaceListItems(ctx context.Context, kind ListKind, viewer List
 // AddListItems zet items achteraan. Wat er al in staat blijft op zijn plek, dus
 // herhalen is onschadelijk.
 func (s *Store) AddListItems(ctx context.Context, kind ListKind, viewer ListViewer, listID id.ID, items []id.ID) error {
-	return s.editList(ctx, kind, viewer, listID, func(tx pgx.Tx) error {
+	return s.editListItems(ctx, kind, viewer, listID, func(tx pgx.Tx) error {
 		if err := checkListItems(ctx, tx, kind, viewer, items); err != nil {
 			return err
 		}
@@ -101,7 +121,7 @@ func (s *Store) AddListItems(ctx context.Context, kind ListKind, viewer ListView
 // RemoveListItem haalt één item uit de lijst. Een item buiten zicht is ErrNotFound,
 // ook als het erin staat; een zichtbaar item dat er niet in staat is geen fout.
 func (s *Store) RemoveListItem(ctx context.Context, kind ListKind, viewer ListViewer, listID, item id.ID) error {
-	return s.editList(ctx, kind, viewer, listID, func(tx pgx.Tx) error {
+	return s.editListItems(ctx, kind, viewer, listID, func(tx pgx.Tx) error {
 		if err := checkListItems(ctx, tx, ListCollection, viewer, []id.ID{item}); err != nil {
 			return err
 		}
@@ -211,6 +231,12 @@ func writeListOrder(ctx context.Context, tx pgx.Tx, kind ListKind, listID id.ID,
 		SELECT $1::uuid, w.item, w.position FROM unnest($2::uuid[], $3::bigint[]) AS w (item, position)
 		ON CONFLICT (%[2]s, item_id) DO UPDATE SET position = EXCLUDED.position`,
 		kind.itemTable(), kind.foreignKey()), listID, items, positions)
+	// checkListItems zag dit item nog, maar een scan kan het daarna verwijderd
+	// hebben. Voor de aanvrager is dat hetzelfde als een item dat niet bestaat.
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+		return ErrNotFound
+	}
 	if err != nil {
 		return fmt.Errorf("lijstrijen schrijven: %w", err)
 	}

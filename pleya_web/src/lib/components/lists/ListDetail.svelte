@@ -20,7 +20,7 @@
   import { collectionMeta, playlistMeta } from './listText';
   import type { Collection, Item, Playlist } from '../../api/types';
   import { ApiError, describeError } from '../../api/errors';
-  import { listsApi, type ListKind } from '../../api/lists';
+  import { listsApi, orderedItems, type ListKind, type ReorderBase } from '../../api/lists';
   import { playerHref } from '../../player/route';
   import { session } from '../../stores/session.svelte';
   import { emptyPager, loadNext } from '../../util/paging';
@@ -32,7 +32,10 @@
   let list = $state<Collection | Playlist | null>(null);
   let pager = $state(emptyPager<Item>());
   let loadError = $state<unknown>(null);
-  let reordering = $state<Item[] | null>(null);
+  let reordering = $state<ReorderBase | null>(null);
+  /** Na een conflict: de eigen volgorde op de lijst zoals hij nu is. */
+  let reorderKept = $state<Item[] | null>(null);
+  let reorderRound = $state(0);
   let actionError = $state<string | null>(null);
   let editing = $state(false);
   let deleting = $state(false);
@@ -97,15 +100,28 @@
   async function startReorder(): Promise<void> {
     actionError = null;
     try {
-      reordering = await api().allItems(kind, id, signal);
+      reorderKept = null;
+      reordering = await api().readForReorder(kind, id, signal);
     } catch (err) {
       actionError = describeError(err);
     }
   }
 
   async function saveOrder(order: string[]): Promise<void> {
-    await api().saveOrder(kind, id, order, signal);
+    try {
+      await api().saveOrder(kind, id, order, reordering?.revision, signal);
+    } catch (err) {
+      if (!(err instanceof ApiError) || err.code !== 'library.list_conflict') throw err;
+      // Iemand anders was eerder. De modus blijft open met de eigen volgorde op de nieuwe
+      // lijst, zodat de kijker ziet wat er veranderde en zelf opnieuw bewaart.
+      const fresh = await api().readForReorder(kind, id, signal);
+      reorderKept = orderedItems(order, fresh.items);
+      reordering = fresh;
+      reorderRound += 1;
+      return;
+    }
     reordering = null;
+    reorderKept = null;
     await reload();
   }
 
@@ -179,7 +195,10 @@
     {#if actionError}<p class="error" role="alert">{actionError}</p>{/if}
 
     {#if reordering}
-      <ListReorder items={reordering} onsave={saveOrder} oncancel={() => (reordering = null)} />
+      {#if reorderKept}<p class="error" role="alert">{t('lists.reorderConflict')}</p>{/if}
+      {#key reorderRound}
+        <ListReorder items={reordering.items} kept={reorderKept} onsave={saveOrder} oncancel={() => { reordering = null; reorderKept = null; }} />
+      {/key}
     {:else}
       {#if pager.items.length}
         <ListRows items={pager.items} numbered={kind === 'playlist'} onremove={canEdit ? (item) => void removeItem(item) : undefined} />

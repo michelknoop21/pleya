@@ -14,13 +14,13 @@ import (
 // listColumns is de rijvorm van scanList, met l als alias van de lijst en u van
 // de eigenaar.
 func listColumns(kind ListKind) string {
-	return fmt.Sprintf(`l.id, l.owner_id, u.username, l.title, %s, l.created_at, l.updated_at`, kind.visibilityColumn())
+	return fmt.Sprintf(`l.id, l.owner_id, u.username, l.title, %s, l.created_at, l.updated_at, l.revision`, kind.visibilityColumn())
 }
 
 func scanList(row pgx.Row, kind ListKind, viewer id.ID, extra ...any) (List, error) {
 	list := List{Kind: kind}
 	dest := append([]any{&list.ID, &list.Owner.ID, &list.Owner.Username, &list.Title,
-		&list.Visibility, &list.CreatedAt, &list.UpdatedAt}, extra...)
+		&list.Visibility, &list.CreatedAt, &list.UpdatedAt, &list.Revision}, extra...)
 	if err := row.Scan(dest...); err != nil {
 		return List{}, err
 	}
@@ -411,6 +411,18 @@ func (s *Store) editList(ctx context.Context, kind ListKind, viewer ListViewer, 
 			return err
 		}
 		_, err = tx.Exec(ctx, fmt.Sprintf(`UPDATE %s SET updated_at = now() WHERE id = $1`, kind.table()), listID)
+		return err
+	})
+}
+
+// editListItems is editList voor de rijen van een lijst: elke geslaagde schrijfactie
+// telt als een nieuwe revisie.
+func (s *Store) editListItems(ctx context.Context, kind ListKind, viewer ListViewer, listID id.ID, fn func(tx pgx.Tx) error) error {
+	return s.editList(ctx, kind, viewer, listID, func(tx pgx.Tx) error {
+		if err := fn(tx); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, fmt.Sprintf(`UPDATE %s SET revision = revision + 1 WHERE id = $1`, kind.table()), listID)
 		return err
 	})
 }

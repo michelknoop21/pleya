@@ -33,6 +33,7 @@ export const webListsNl = {
   'lists.reorder': 'Volgorde wijzigen',
   'lists.reorderTitle': 'Volgorde wijzigen',
   'lists.reorderHelp': 'Kies een rij en gebruik de pijltjestoetsen of de knoppen. Er wordt niets bewaard tot je op Volgorde bewaren drukt.',
+  'lists.reorderConflict': 'Deze lijst veranderde terwijl je aan het herordenen was. Je volgorde is bewaard en de wijzigingen staan erin. Controleer hem en bewaar opnieuw.',
   'lists.saveOrder': 'Volgorde bewaren',
   'lists.cancel': 'Annuleren',
   'lists.moveUp': '{title} omhoog',

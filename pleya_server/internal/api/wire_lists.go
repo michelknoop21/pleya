@@ -26,6 +26,7 @@ type Collection struct {
 	Artwork    []string       `json:"artwork"`
 	CreatedAt  string         `json:"created_at"`
 	UpdatedAt  string         `json:"updated_at"`
+	Revision   int64          `json:"revision"`
 }
 
 // CollectionPage is een pagina verzamelingen.
@@ -45,6 +46,7 @@ type Playlist struct {
 	Artwork    []string `json:"artwork"`
 	CreatedAt  string   `json:"created_at"`
 	UpdatedAt  string   `json:"updated_at"`
+	Revision   int64    `json:"revision"`
 }
 
 // PlaylistPage is een pagina afspeellijsten.
@@ -80,9 +82,16 @@ type UpdatePlaylistRequest struct {
 	Title json.RawMessage `json:"title"`
 }
 
-// ListItemsRequest is de gesloten body van PUT en POST op .../items.
+// ListItemsRequest is de gesloten body van POST op .../items.
 type ListItemsRequest struct {
 	ItemIDs []string `json:"item_ids"`
+}
+
+// ReplaceListItemsRequest is de gesloten body van PUT op .../items. BaseRevision is
+// optioneel: zonder blijft vervangen onvoorwaardelijk.
+type ReplaceListItemsRequest struct {
+	ItemIDs      []string `json:"item_ids"`
+	BaseRevision *int64   `json:"base_revision"`
 }
 
 func mapListUser(u catalog.ListUser) ListUserWire {
@@ -101,7 +110,7 @@ func mapCollection(l catalog.List) Collection {
 	out := Collection{
 		ID: l.ID.String(), Title: l.Title, Owner: mapListUser(l.Owner), IsOwner: l.Mine,
 		Visibility: l.Visibility, ItemCount: l.ItemCount, Artwork: mapIDs(l.Artwork),
-		CreatedAt: formatTime(l.CreatedAt), UpdatedAt: formatTime(l.UpdatedAt),
+		CreatedAt: formatTime(l.CreatedAt), UpdatedAt: formatTime(l.UpdatedAt), Revision: l.Revision,
 	}
 	if l.Mine && l.Visibility == catalog.VisibilityUsers {
 		out.SharedWith = make([]ListUserWire, 0, len(l.SharedWith))
@@ -116,5 +125,6 @@ func mapPlaylist(l catalog.List) Playlist {
 	return Playlist{
 		ID: l.ID.String(), Title: l.Title, ItemCount: l.ItemCount, DurationMs: l.DurationMs,
 		Artwork: mapIDs(l.Artwork), CreatedAt: formatTime(l.CreatedAt), UpdatedAt: formatTime(l.UpdatedAt),
+		Revision: l.Revision,
 	}
 }

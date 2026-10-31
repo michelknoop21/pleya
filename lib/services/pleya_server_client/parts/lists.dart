@@ -245,7 +245,9 @@ mixin _PleyaServerListMethods on _PleyaServerRequests, _PleyaServerBrowseMethods
   /// the server. Rows of a kind this build does not know stay in the request,
   /// or the replace would drop them. [afterItem] places the row against its
   /// neighbour, so a list that moved since it was loaded keeps the intent;
-  /// [newIndex] is the fallback when that neighbour is gone.
+  /// [newIndex] is the fallback when that neighbour is gone. The revision is read
+  /// before the rows and sent along, so a change after either read is a
+  /// [MediaListChangedException] and not a silently undone edit.
   Future<bool> movePlaylistItem({
     required String playlistId,
     required MediaItem item,
@@ -254,6 +256,7 @@ mixin _PleyaServerListMethods on _PleyaServerRequests, _PleyaServerBrowseMethods
   }) async {
     if (!_canWritePlaylists) return false;
     final path = '${_playlistPath(playlistId)}/items';
+    final revision = await _playlistRevision(playlistId);
     final ids = await _allItemIds(path);
     if (!ids.remove(item.id)) return false;
     final anchor = afterItem == null ? -1 : ids.indexOf(afterItem.id);
@@ -263,8 +266,25 @@ mixin _PleyaServerListMethods on _PleyaServerRequests, _PleyaServerBrowseMethods
         ? anchor + 1
         : newIndex.clamp(0, ids.length);
     ids.insert(target, item.id);
-    await _adminSend('PUT', path, body: PleyaListItemsRequest(itemIds: ids).toJson());
+    try {
+      await _adminSend(
+        'PUT',
+        path,
+        body: PleyaReplaceListItemsRequest(itemIds: ids, baseRevision: revision).toJson(),
+      );
+    } on MediaServerHttpException catch (e) {
+      if (e.statusCode == 409) throw const MediaListChangedException();
+      rethrow;
+    }
     return true;
+  }
+
+  /// The revision of a playlist, null on a server that has none.
+  Future<int?> _playlistRevision(String playlistId) async {
+    final answer = await _getJsonDetailed(_playlistPath(playlistId));
+    final json = answer.json;
+    if (json == null) throw StateError('playlist $playlistId was not received');
+    return PleyaPlaylist.fromJson(json).revision;
   }
 
   Future<bool> removeFromPlaylist({required String playlistId, required MediaItem item}) async {

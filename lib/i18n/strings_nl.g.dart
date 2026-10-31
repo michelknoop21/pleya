@@ -1597,6 +1597,7 @@ class _TranslationsPlaylistsNl extends TranslationsPlaylistsEn {
 	@override String get errorLoading => 'Fout bij laden afspeellijsten';
 	@override String get errorAdding => 'Fout bij toevoegen aan afspeellijst';
 	@override String get errorReordering => 'Fout bij herschikken van afspeellijstitem';
+	@override String get changedElsewhere => 'Deze afspeellijst is ergens anders gewijzigd. Hij is opnieuw geladen, dus verplaats het item nog een keer.';
 	@override String get errorRemoving => 'Fout bij verwijderen uit afspeellijst';
 }
 
@@ -5849,6 +5850,7 @@ extension on TranslationsNl {
 			'playlists.errorLoading' => 'Fout bij laden afspeellijsten',
 			'playlists.errorAdding' => 'Fout bij toevoegen aan afspeellijst',
 			'playlists.errorReordering' => 'Fout bij herschikken van afspeellijstitem',
+			'playlists.changedElsewhere' => 'Deze afspeellijst is ergens anders gewijzigd. Hij is opnieuw geladen, dus verplaats het item nog een keer.',
 			'playlists.errorRemoving' => 'Fout bij verwijderen uit afspeellijst',
 			'watchTogether.title' => 'Samen Kijken',
 			'watchTogether.description' => 'Kijk synchroon met vrienden en familie',
@@ -6152,9 +6154,9 @@ extension on TranslationsNl {
 			'externalPlayer.customPlayers' => 'Aangepaste spelers',
 			'externalPlayer.systemDefault' => 'Systeemstandaard',
 			'externalPlayer.addCustomPlayer' => 'Aangepaste speler toevoegen',
-			'externalPlayer.playerName' => 'Spelernaam',
 			_ => null,
 		} ?? switch (path) {
+			'externalPlayer.playerName' => 'Spelernaam',
 			'externalPlayer.playerNameHint' => 'Mijn speler',
 			'externalPlayer.playerCommand' => 'Commando',
 			'externalPlayer.playerPackage' => 'Pakketnaam',
@@ -6666,9 +6668,9 @@ extension on TranslationsNl {
 			'unifiedCatalog.jumpTo' => 'Spring naar',
 			'unifiedCatalog.loadMore' => 'Meer laden',
 			'unifiedCatalog.loadingMore' => 'Meer laden…',
-			'unifiedCatalog.sort.title' => 'Sorteren',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.sort.title' => 'Sorteren',
 			'unifiedCatalog.sort.titleAsc' => 'Titel A–Z',
 			'unifiedCatalog.sort.titleDesc' => 'Titel Z–A',
 			'unifiedCatalog.sort.recentlyAdded' => 'Recent toegevoegd',
@@ -7180,9 +7182,9 @@ extension on TranslationsNl {
 			'assistant.examples.recentlyAdded.0' => 'Wat is er deze week toegevoegd?',
 			'assistant.examples.recentlyAdded.1' => 'Welke series zijn onlangs toegevoegd?',
 			'assistant.examples.describe.0' => 'Zoek een film over de ruimte.',
-			'assistant.examples.describe.1' => 'Ik wil een trage detectiveserie voor een regenachtige zondag.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.examples.describe.1' => 'Ik wil een trage detectiveserie voor een regenachtige zondag.',
 			'assistant.examples.trending.0' => 'Wat is er nu populair?',
 			'assistant.examples.trending.1' => 'Welke nieuwe films zijn populair die ik nog niet heb?',
 			'assistant.examples.request.0' => 'Welke thrillers van dit jaar kan ik aan mijn bibliotheek toevoegen?',

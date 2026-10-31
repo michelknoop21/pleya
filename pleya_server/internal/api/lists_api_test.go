@@ -337,7 +337,7 @@ func TestOnlyOwnerAndAdminShareACollection(t *testing.T) {
 		{"iedereen", map[string]any{"visibility": "everyone"}},
 		{"gekozen gebruikers", map[string]any{"visibility": "users", "shared_with": shareWith}},
 		{"alleen shared_with", map[string]any{"shared_with": shareWith}},
-		{"privé met shared_with", map[string]any{"visibility": "private", "shared_with": []string{}}},
+		{"privé met gebruikers", map[string]any{"visibility": "private", "shared_with": shareWith}},
 	}
 	withTitle := func(body map[string]any, title string) map[string]any {
 		out := map[string]any{"title": title}
@@ -427,6 +427,83 @@ func TestOnlyOwnerAndAdminShareACollection(t *testing.T) {
 		t.Fatalf("privé zetten na degradatie gaf %d: %s", rec.Code, rec.Body.String())
 	}
 	refused(t, e.do(http.MethodPatch, path, map[string]any{"visibility": "everyone"}, admin))
+}
+
+// Oude clients sturen geen voorwaarde en worden bediend; een nieuwe client krijgt een
+// conflict in plaats van andermans wijziging te overschrijven.
+func TestReplaceWithABaseRevision(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	first, second := e.findMovie("Grease").ID, e.findMovie("The Matrix").ID
+	created := e.createPlaylist("Avond")
+	path := playlistsPath + "/" + created.ID
+	e.putItems(path, http.StatusNoContent, nil, first)
+
+	read := func() api.Playlist {
+		t.Helper()
+		var list api.Playlist
+		e.getJSON(path, "Playlist", http.StatusOK, &list)
+		return list
+	}
+	seen := read().Revision
+	if rec := e.do(http.MethodPost, path+"/items", map[string]any{"item_ids": []string{second}}); rec.Code != http.StatusNoContent {
+		t.Fatalf("toevoegen gaf %d: %s", rec.Code, rec.Body.String())
+	}
+
+	rec := e.do(http.MethodPut, path+"/items", map[string]any{"item_ids": []string{first}, "base_revision": seen})
+	e.record("ErrorEnvelope", http.MethodPut, path+"/items", rec)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("oude revisie gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	e.expectCode(rec, api.CodeListConflict)
+	var body struct {
+		Error struct {
+			Details struct {
+				Revision int64 `json:"revision"`
+			} `json:"details"`
+		} `json:"error"`
+	}
+	e.decodeInto(rec, &body)
+	if want := read().Revision; body.Error.Details.Revision != want {
+		t.Fatalf("details.revision %d, huidig %d", body.Error.Details.Revision, want)
+	}
+	if got := e.listTitles(path); len(got) != 2 {
+		t.Fatalf("een geweigerde aanvraag raakte de lijst: %v", got)
+	}
+
+	current := read().Revision
+	rec = e.do(http.MethodPut, path+"/items", map[string]any{"item_ids": []string{second, first}, "base_revision": current})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("huidige revisie gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	if read().Revision != current+1 {
+		t.Fatal("de revisie liep niet op")
+	}
+	// Zonder voorwaarde blijft vervangen werken, en POST kent het veld niet.
+	e.putItems(path, http.StatusNoContent, nil, first, second)
+	rec = e.do(http.MethodPost, path+"/items", map[string]any{"item_ids": []string{first}, "base_revision": current})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("POST met base_revision gaf %d", rec.Code)
+	}
+}
+
+// Privé met een lege shared_with deelt met niemand: dat is de vorm waarin een client
+// "alleen ik" stuurt, en die hoort voor een lid dezelfde uitkomst te hebben.
+func TestMemberMayKeepACollectionPrivateWithAnEmptyShareList(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	member := asUser(e.tokenFor(e.createUser("member", "lid")))
+	body := map[string]any{"title": "Van mij", "visibility": "private", "shared_with": []string{}}
+
+	rec := e.do(http.MethodPost, collectionsPath, body, member)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("aanmaken gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	var made api.Collection
+	e.decodeInto(rec, &made)
+	if rec := e.do(http.MethodPatch, collectionsPath+"/"+made.ID, body, member); rec.Code != http.StatusOK {
+		t.Fatalf("wijzigen gaf %d: %s", rec.Code, rec.Body.String())
+	}
 }
 
 func TestCapabilitiesAnnounceListsAndUnknownVisibilityIsRefused(t *testing.T) {

@@ -212,6 +212,7 @@ void main() {
     'CreatePlaylistRequest': (json) => expect(PleyaPlaylistTitleRequest.fromJson(json).toJson(), json),
     'UpdatePlaylistRequest': (json) => expect(PleyaPlaylistTitleRequest.fromJson(json).toJson(), json),
     'ListItemsRequest': (json) => expect(PleyaListItemsRequest.fromJson(json).toJson(), json),
+    'ReplaceListItemsRequest': (json) => expect(PleyaReplaceListItemsRequest.fromJson(json).toJson(), json),
     'WatchStateEvent': (json) {
       // Round-trip: parse the fixture and write it back. That proves the type
       // reads the contract's shape and produces it, which is what matters for a
@@ -239,8 +240,8 @@ void main() {
       );
     });
 
-    test('covers the 122 fixtures the contract ships', () {
-      expect(fixtures, hasLength(122));
+    test('covers the 124 fixtures the contract ships', () {
+      expect(fixtures, hasLength(124));
     });
 
     for (final fixture in fixtures) {

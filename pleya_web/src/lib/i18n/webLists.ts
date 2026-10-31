@@ -31,6 +31,7 @@ export const webLists = {
   'lists.reorder': 'Change order',
   'lists.reorderTitle': 'Change order',
   'lists.reorderHelp': 'Select a row, then use the arrow keys or the buttons. Nothing is saved until you press Save order.',
+  'lists.reorderConflict': 'This list changed while you were reordering. Your order is kept and the changes are in it. Check it and save again.',
   'lists.saveOrder': 'Save order',
   'lists.cancel': 'Cancel',
   'lists.moveUp': 'Move {title} up',

@@ -4,6 +4,7 @@ import '../../media/ids.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import '../../exceptions/media_server_exceptions.dart';
 import '../../focus/focusable_action_bar.dart';
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
@@ -402,6 +403,9 @@ class _PlaylistDetailScreenState extends BaseMediaListDetailScreen<PlaylistDetai
         newIndex: newIndex,
         afterItem: _afterItemForIndex(newIndex),
       );
+    } on MediaListChangedException {
+      await _reloadChangedList();
+      return;
     } catch (e) {
       appLogger.e('Failed to reorder playlist item', error: e);
     }
@@ -435,6 +439,9 @@ class _PlaylistDetailScreenState extends BaseMediaListDetailScreen<PlaylistDetai
         newIndex: newIndex,
         afterItem: _afterItemForIndex(newIndex),
       );
+    } on MediaListChangedException {
+      await _reloadChangedList();
+      return;
     } catch (e) {
       appLogger.e('Failed to persist move', error: e);
     }
@@ -447,6 +454,13 @@ class _PlaylistDetailScreenState extends BaseMediaListDetailScreen<PlaylistDetai
         showErrorSnackBar(context, t.playlists.errorReordering);
       }
     }
+  }
+
+  /// The list moved on the server, so neither the optimistic order nor the
+  /// order from before it is right: show what is there, and say why it changed.
+  Future<void> _reloadChangedList() async {
+    await loadItems();
+    if (mounted) showErrorSnackBar(context, t.playlists.changedElsewhere);
   }
 
   /// Revert a move in the UI by moving item from [fromIndex] back to [toIndex].

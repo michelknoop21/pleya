@@ -3,6 +3,7 @@ import 'package:pleya/media/ids.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/database/app_database.dart';
+import 'package:pleya/exceptions/media_server_exceptions.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/library_query.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -24,6 +25,7 @@ import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
+import 'package:pleya/widgets/notice/notice_controller.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
@@ -70,6 +72,24 @@ void main() {
     expect(find.text('Item ${playlistItemsPageSize + 4}'), findsOneWidget);
     expect(find.textContaining('Unsupported operation'), findsNothing);
     expect(find.text(t.common.retry), findsNothing);
+  });
+
+  testWidgets('a move refused because the list changed reloads it and says so', (tester) async {
+    final harness = await _createHarness(_mediaItems(3));
+    harness.client.changedTo = _mediaItems(2);
+    await tester.pumpWidget(
+      harness.wrap(const SizedBox(width: 1280, height: 720, child: PlaylistDetailScreen(playlist: _playlist))),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Item 2'), findsOneWidget);
+
+    tester.widget<SliverReorderableList>(find.byType(SliverReorderableList)).onReorderItem!(0, 1);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Item 2'), findsNothing, reason: 'the list on screen is the one on the server');
+    final notices = noticeController.visible.map((entry) => entry.notice.title).toList();
+    expect(notices, [t.playlists.changedElsewhere]);
+    noticeController.debugReset();
   });
 
   testWidgets('iOS top safe-area tap scrolls long playlists to top', (tester) async {
@@ -206,7 +226,10 @@ class _PlaylistHarness {
 }
 
 class _PagedPlaylistClient implements MediaServerClient {
-  final List<MediaItem> items;
+  List<MediaItem> items;
+
+  /// Set: the next move finds the list changed, and this is what it now holds.
+  List<MediaItem>? changedTo;
   final List<int?> requestedStarts = [];
   final List<int?> requestedSizes = [];
 
@@ -232,6 +255,19 @@ class _PagedPlaylistClient implements MediaServerClient {
     final offset = start ?? 0;
     final limit = size ?? items.length;
     return LibraryPage(items: items.skip(offset).take(limit).toList(), totalCount: items.length, offset: offset);
+  }
+
+  @override
+  Future<bool> movePlaylistItem({
+    required String playlistId,
+    required MediaItem item,
+    required int newIndex,
+    required MediaItem? afterItem,
+  }) async {
+    final changed = changedTo;
+    if (changed == null) return true;
+    items = changed;
+    throw const MediaListChangedException();
   }
 
   @override
