@@ -122,7 +122,7 @@ func (s *Server) handleCreateList(codec listCodec) http.HandlerFunc {
 			return
 		}
 		in, ok := codec.create(s, w, r)
-		if !ok {
+		if !ok || !s.allowListSharing(w, r, in) {
 			return
 		}
 		list, err := s.opts.Catalog.CreateList(r.Context(), codec.kind, viewer, in)
@@ -156,7 +156,7 @@ func (s *Server) handleUpdateList(codec listCodec) http.HandlerFunc {
 			return
 		}
 		in, ok := codec.update(s, w, r)
-		if !ok {
+		if !ok || !s.allowListSharing(w, r, in) {
 			return
 		}
 		list, err := s.opts.Catalog.UpdateList(r.Context(), codec.kind, viewer, listID, in)
@@ -260,6 +260,31 @@ func (s *Server) handleRemoveListItem(codec listCodec) http.HandlerFunc {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+// allowListSharing houdt delen bij owner en admin: een zichtbaarheid anders dan
+// private en shared_with zijn voor member en restricted een 403. Terug naar
+// private mag iedereen, en een aanvraag die de zichtbaarheid niet noemt raakt
+// deze regel niet, dus een gedegradeerde beheerder kan zijn lijst nog hernoemen.
+//
+// De accountrol en niet canAdminister: delen is geen beheerroute, en een
+// API-token van de eigenaar blijft hier de eigenaar. De rol wordt per aanvraag
+// gelezen, de uitkomst hangt niet af van het lijst-id en lekt dus niets over
+// een lijst buiten zicht. Een afspeellijst komt hier nooit met een van beide
+// velden aan, want zijn aanvraagschema kent ze niet.
+func (s *Server) allowListSharing(w http.ResponseWriter, r *http.Request, in catalog.ListInput) bool {
+	if in.SharedWith == nil && (in.Visibility == nil || *in.Visibility == catalog.VisibilityPrivate) {
+		return true
+	}
+	req, ok := s.resolveRequester(w, r)
+	if !ok {
+		return false
+	}
+	if !req.isAdmin() {
+		writeError(w, s.log, CodeListShareNotPermitted, "only an owner or admin can share a collection", nil)
+		return false
+	}
+	return true
 }
 
 // listTarget is de kop van elke route op één lijst.

@@ -14,6 +14,7 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/models/pleya_server/pleya_wire_lists.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/pleya_server_auth_service.dart';
 import 'package:pleya/services/pleya_server_client.dart';
@@ -131,15 +132,14 @@ void main() {
       expect((await sanne.fetchCollectionPage(forAll!)).items.map((i) => i.id), [catalogue.first.id]);
 
       // Michel deelt met Sanne alleen.
-      final shared = await http.patch(
-        Uri.parse('$api/collections/$forAll'),
-        headers: ownerHeaders,
-        body: jsonEncode({
-          'visibility': 'users',
-          'shared_with': [sanneId],
-        }),
+      expect(
+        await michel.setCollectionVisibility(
+          collectionId: forAll,
+          visibility: PleyaCollectionVisibility.users,
+          sharedWith: [sanneId],
+        ),
+        isTrue,
       );
-      expect(shared.statusCode, 200, reason: shared.body);
 
       expect((await sanne.fetchCollections('')).map((c) => c.id), contains(forAll));
       expect((await sanne.fetchCollectionPage(forAll)).items, hasLength(1));
@@ -156,6 +156,20 @@ void main() {
         );
       }
       expect((await michel.fetchCollectionPage(forAll)).items, hasLength(1));
+
+      // Delen is de uitzondering daarop, voor owner en admin. Sanne wordt
+      // geweigerd door de client, en door de server als een client dat niet doet.
+      await expectLater(
+        sanne.setCollectionVisibility(collectionId: forAll, visibility: PleyaCollectionVisibility.everyone),
+        throwsA(isA<MediaServerAuthException>()),
+      );
+      final refused = await http.post(
+        Uri.parse('$api/collections'),
+        headers: {...sanne.streamHeaders, 'Content-Type': 'application/json'},
+        body: jsonEncode({'title': 'Ook voor iedereen', 'visibility': 'everyone'}),
+      );
+      expect(refused.statusCode, 403, reason: refused.body);
+      expect(refused.body, contains('library.list_share_not_permitted'));
 
       // Sanne maakt haar eigen afspeellijst en draait de volgorde om.
       final MediaServerClient app = sanne;

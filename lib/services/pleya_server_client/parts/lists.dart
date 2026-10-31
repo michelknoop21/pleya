@@ -10,11 +10,17 @@ part of '../../pleya_server_client.dart';
 /// resource itself: it lets any user keep lists of his own, which the web client
 /// offers. The app does not.
 ///
+/// Sharing is the one exception to that owner rule, by decision of the product
+/// owner: [setCollectionVisibility] follows the server, which lets an owner or
+/// admin share, so it asserts `canAdministerServer`. Everything else on a
+/// collection stays with the owner alone.
+///
 /// Both resources span the server rather than a library, so `libraryId` selects
 /// nothing and a row carries no library of its own. Reads gate on the capability
 /// and answer empty without it; writes answer false.
 mixin _PleyaServerListMethods on _PleyaServerRequests, _PleyaServerBrowseMethods {
   void assertCanManageCollections();
+  void assertCanAdministerServer();
 
   static const int _listPageSize = 100;
 
@@ -31,17 +37,19 @@ mixin _PleyaServerListMethods on _PleyaServerRequests, _PleyaServerBrowseMethods
   String _collectionPath(String id) => '/collections/${Uri.encodeComponent(id)}';
   String _playlistPath(String id) => '/playlists/${Uri.encodeComponent(id)}';
 
-  /// The owner rule against the role the server holds now. The local check
+  /// [assertion] against the role the server holds now. The local check
   /// refuses without a round trip, the second one sees a role lost on the
   /// server, and a role that cannot be confirmed refuses as well: a stale
-  /// `owner` is exactly what this is here to catch.
-  Future<void> _assertCurrentCollectionOwner() async {
-    assertCanManageCollections();
+  /// role is exactly what this is here to catch.
+  Future<void> _assertWithCurrentRole(void Function() assertion) async {
+    assertion();
     if (!await _refreshRole()) {
       throw const MediaServerAuthException('The server role could not be confirmed', statusCode: 403);
     }
-    assertCanManageCollections();
+    assertion();
   }
+
+  Future<void> _assertCurrentCollectionOwner() => _assertWithCurrentRole(assertCanManageCollections);
 
   // ── Reading ──
 
@@ -304,6 +312,24 @@ mixin _PleyaServerListMethods on _PleyaServerRequests, _PleyaServerBrowseMethods
     if (!_canWriteCollections) return false;
     await _assertCurrentCollectionOwner();
     await _adminSend('DELETE', _collectionPath(collection.id));
+    return true;
+  }
+
+  /// Who sees a collection: private again, everyone, or the users in
+  /// [sharedWith]. Owner or admin, with the role read just before the request.
+  Future<bool> setCollectionVisibility({
+    required String collectionId,
+    required PleyaCollectionVisibility visibility,
+    List<String> sharedWith = const [],
+  }) async {
+    if (!_canWriteCollections) return false;
+    await _assertWithCurrentRole(assertCanAdministerServer);
+    final shared = visibility == PleyaCollectionVisibility.users ? sharedWith : null;
+    await _adminSend(
+      'PATCH',
+      _collectionPath(collectionId),
+      body: PleyaUpdateCollectionRequest(visibility: visibility, sharedWith: shared).toJson(),
+    );
     return true;
   }
 

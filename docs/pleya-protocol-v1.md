@@ -562,6 +562,7 @@ contract keurt ze af.
 | `library.personal_invalid` | 400 | nee | een waardering of spoorvoorkeur die niet te bewaren is, zie `details.field` |
 | `library.list_invalid` | 400 | nee | een verzameling, afspeellijst of itemlijst die niet te bewaren is, zie `details.field` |
 | `library.list_not_owner` | 403 | nee | de lijst is zichtbaar, maar alleen de eigenaar mag hem wijzigen |
+| `library.list_share_not_permitted` | 403 | nee | alleen `owner` en `admin` delen een verzameling |
 | `library.download_not_permitted` | 403 | nee | de bibliotheek is zichtbaar maar het recht `download` ontbreekt |
 | `library.download_not_ready` | 409 | ja | de download is nog `preparing`, probeer het zo opnieuw |
 | `library.download_changed` | 409 | nee | het bestand veranderde na het uitrekenen van de SHA-256, vraag een nieuwe download |
@@ -1218,6 +1219,13 @@ zichtbaar is maar van een ander geeft bij schrijven `403` met `library.list_not_
 unknown-safe (3.2). Geen enkele route noemt andere gebruikers aan een lid: `GET /users` blijft regel 14,
 dus alleen `owner` en `admin` hebben een bron om `shared_with` uit te vullen.
 
+**Delen is voor `owner` en `admin`.** Een andere `visibility` dan `private` en `shared_with` mogen alleen zij
+zetten, bij aanmaken en bij wijzigen. Een `member` of `restricted` die een van beide meestuurt krijgt `403`
+met `library.list_share_not_permitted`, ook op zijn eigen verzameling, en houdt zijn verzamelingen dus privé.
+Die uitkomst hangt niet af van de lijst, dus een id buiten zicht verraadt niets. Terug naar `private` mag
+iedereen die de lijst bezit, en een aanvraag die de zichtbaarheid niet noemt valt buiten de regel: wie zijn rol
+verliest houdt wat hij deelde en kan het hernoemen, maar niet opnieuw delen. Een afspeellijst deelt nooit.
+
 **Per kijker.** Een lijst kan titels bevatten uit een bibliotheek die de kijker niet mag zien. Die titels
 bestaan voor hem niet: `item_count`, `duration_ms`, `artwork`, `total_estimate` en de inhoud zijn alleen
 over items die hij mag zien berekend. `artwork` is het vierluik: de posters van de eerste items met een
@@ -1476,9 +1484,9 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 75 | `DELETE /history/{id}` | één eigen geschiedenisregel wissen | als regel 74, `404` voor een regel van een ander of die niet bestaat |
 | 76 | `GET /ratings` | de gewaardeerde titels van de aanvrager | als regel 52 |
 | 77 | `GET /collections` | lijst van lijsten | alleen wat de aanvrager mag zien; aantallen en artwork per kijker |
-| 78 | `POST /collections` | geen | klasse `authenticated`, de aanvrager wordt eigenaar |
+| 78 | `POST /collections` | geen | klasse `authenticated`, de aanvrager wordt eigenaar; delen alleen `owner` en `admin` |
 | 79 | `GET /collections/{id}` | direct id | buiten zicht `404`, ook voor `owner` en `admin` |
-| 80 | `PATCH /collections/{id}` | direct id | als regel 79; zichtbaar en van een ander `403` |
+| 80 | `PATCH /collections/{id}` | direct id | als regel 79; zichtbaar en van een ander `403`; delen alleen `owner` en `admin` |
 | 81 | `DELETE /collections/{id}` | direct id | als regel 80 |
 | 82 | `GET /collections/{id}/items` | inhoud | als regel 79; een item buiten de bibliotheken van de kijker ontbreekt |
 | 83 | `PUT /collections/{id}/items` | item-ids in de body | als regel 80; een item buiten zicht is `404` |

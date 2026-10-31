@@ -10,8 +10,11 @@ import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/models/pleya_server/pleya_wire_lists.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/pleya_server_client.dart';
+
+import 'package:pleya_verify_fixture_server/pleya_fake_server.dart' show FakeList;
 
 import 'pleya_fake_server.dart';
 
@@ -127,6 +130,71 @@ void main() {
         expect(server.lists.writes, isEmpty);
       });
     }
+
+    group('sharing, the exception', () {
+      Future<bool> share(PleyaServerClient client) => client.setCollectionVisibility(
+        collectionId: 'c',
+        visibility: PleyaCollectionVisibility.users,
+        sharedWith: const ['sanne'],
+      );
+
+      for (final role in ['owner', 'admin']) {
+        test('"$role" shares, and the request says with whom', () async {
+          final (_, client, server) = await signedIn(role);
+          server.lists.collections['c'] = FakeList(id: 'c', title: 'c');
+          expect(await share(client), isTrue);
+          expect(server.lists.lastCollectionBody, {
+            'visibility': 'users',
+            'shared_with': ['sanne'],
+          });
+          expect(
+            await client.setCollectionVisibility(collectionId: 'c', visibility: PleyaCollectionVisibility.private),
+            isTrue,
+          );
+          expect(server.lists.lastCollectionBody, {'visibility': 'private'});
+        });
+      }
+
+      for (final role in ['member', 'restricted', '']) {
+        test('"$role" is refused before anything leaves the client', () async {
+          final (_, client, server) = await signedIn(role);
+          server.lists.collections['c'] = FakeList(id: 'c', title: 'c');
+          await expectLater(share(client), refused);
+          expect(server.lists.writes, isEmpty);
+        });
+      }
+
+      test('an admin who is demoted just before the request stops the write', () async {
+        final (manager, client, server) = await signedIn('admin');
+        server.lists.collections['c'] = FakeList(id: 'c', title: 'c');
+        expect(manager.canAdministerServer(id), isTrue, reason: 'the client still believes in the old role');
+        server.usersMeRole = 'member';
+        await expectLater(share(client), refused);
+        expect(server.lists.writes, isEmpty);
+      });
+
+      test('a role that cannot be read refuses', () async {
+        final (_, client, server) = await signedIn('admin');
+        server.usersMeFailureStatus = 503;
+        await expectLater(share(client), refused);
+        expect(server.lists.writes, isEmpty);
+      });
+
+      test('a borrowed connection is refused', () async {
+        final (manager, client, server) = await signedIn('admin');
+        manager.setServerAuthorityRestrictions(serverIds: {'srv-1'});
+        await expectLater(share(client), refused);
+        expect(server.lists.writes, isEmpty);
+      });
+
+      test('a stale client reaches the server, and the server still refuses a member', () async {
+        final (_, client, server) = await signedIn('member');
+        server.lists.collections['c'] = FakeList(id: 'c', title: 'c');
+        client.canAdministerServer = () => true;
+        await expectLater(share(client), refused);
+        expect(server.lists.collections['c']!.visibility, 'private');
+      });
+    });
 
     test('an admin passes canAdministerServer and still does not manage collections', () async {
       final (manager, _, _) = await signedIn('admin');

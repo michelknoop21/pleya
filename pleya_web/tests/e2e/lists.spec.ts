@@ -70,6 +70,34 @@ test('a second user does not reach a playlist, and sees an honest state',async({
   await expect(page.getByText(label('en','lists.notFound'))).toBeVisible();
 });
 
+test('a member gets no sharing choice and his collection stays private',async({page,request,baseURL},info)=>{
+  test.skip(info.project.name!=='chromium','the spec sets every width itself');
+  test.setTimeout(90_000);
+  const asked:string[]=[];page.on('request',entry=>{asked.push(new URL(entry.url()).pathname);});
+  await page.goto('/server/collections');await expectShell(page);
+  await page.getByRole('button',{name:label('en','lists.newCollection')}).first().click();
+  const dialog=page.getByRole('dialog');
+  await expect(dialog.getByRole('textbox',{name:label('en','lists.form.name')})).toBeVisible();
+  await expect(dialog.getByRole('radio')).toHaveCount(0);
+  const shots=process.env['PLEYA_LIST_SHOTS'];
+  for(const width of WIDTHS){
+    await page.setViewportSize({width,height:heightFor(width)});
+    await expectNoAxeViolations(page,`member form ${width}`);
+    await expectNoHorizontalOverflow(page);
+    if(shots)await page.screenshot({path:`${shots}/17-nieuw-lid-${width}.png`});
+  }
+  await dialog.getByRole('textbox',{name:label('en','lists.form.name')}).fill('Mijn eigen avond');
+  await dialog.getByRole('button',{name:label('en','lists.form.create')}).click();
+  await page.waitForURL('**/server/collections/*');
+  const id=new URL(page.url()).pathname.split('/').pop()!;
+  const made=await(await request.get(`${api(baseURL!)}collections/${id}`,{headers:account.headers})).json();
+  expect(made.visibility).toBe('private');
+  expect(asked.filter(path=>path.endsWith('/pleya/v1/users'))).toEqual([]);
+  const refused=await request.patch(`${api(baseURL!)}collections/${id}`,{headers:account.headers,data:{visibility:'everyone'}});
+  expect(refused.status()).toBe(403);
+  expect((await refused.json()).error.code).toBe('library.list_share_not_permitted');
+});
+
 test('screens 17 and 18 pass axe and have no sideways scroll on every width',async({page,request,baseURL},info)=>{
   test.skip(info.project.name!=='chromium','the spec sets every width itself');
   test.setTimeout(180_000);

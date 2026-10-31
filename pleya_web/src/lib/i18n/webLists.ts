@@ -10,7 +10,7 @@ export const webLists = {
   'lists.newPlaylist': 'New playlist',
   'lists.unavailable': 'This server does not support collections or playlists.',
   'lists.empty.collections': 'No collections yet',
-  'lists.empty.collectionsBody': 'A collection is a set of titles you can share. Create one, or add a title from its card.',
+  'lists.empty.collectionsBody': 'A collection is a set of titles that belong together. Create one, or add a title from its card.',
   'lists.empty.playlists': 'No playlists yet',
   'lists.empty.playlistsBody': 'A playlist is yours and plays in order. Create one, or add a title from its card.',
   'lists.empty.items': 'Nothing here yet',
@@ -24,7 +24,7 @@ export const webLists = {
   'lists.visibleFor': 'visible to {names}',
   'lists.shared': 'shared',
   'lists.private': 'private',
-  'lists.playlistNote': 'A playlist belongs to one user and plays in order. A collection is a set of titles you can share. Both live on this server and travel with you to the apps.',
+  'lists.playlistNote': 'A playlist belongs to one user and plays in order. A collection is a set of titles that belong together. Both live on this server and travel with you to the apps.',
   'lists.hiddenNote': 'This list can hold titles from libraries you cannot see. They are not shown or counted here.',
 
   'lists.playAll': 'Play all',

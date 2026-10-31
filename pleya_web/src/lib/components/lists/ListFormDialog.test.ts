@@ -32,6 +32,7 @@ beforeEach(() => {
 
 describe('list form', () => {
   it('creates a private collection by default', async () => {
+    h.canAdminister = true;
     const onsaved = vi.fn();
     render(ListFormDialog, { props: { open: true, kind: 'collection', onsaved } });
     const dialog = await screen.findByRole('dialog');
@@ -41,11 +42,33 @@ describe('list form', () => {
     expect(h.createCollection).toHaveBeenCalledWith({ title: 'Avond', visibility: 'private' });
   });
 
-  it('does not offer chosen users to a member, who has no list of names', async () => {
+  it('offers a member no sharing at all: no choice, no names, no visibility on the wire', async () => {
+    const onsaved = vi.fn();
+    render(ListFormDialog, { props: { open: true, kind: 'collection', onsaved } });
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).queryByRole('radio')).toBeNull();
+    expect(h.request).not.toHaveBeenCalled();
+    await fireEvent.input(within(dialog).getByRole('textbox', { name: /Name/ }), { target: { value: 'Avond' } });
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }));
+    await waitFor(() => expect(onsaved).toHaveBeenCalled());
+    expect(h.createCollection).toHaveBeenCalledWith({ title: 'Avond' });
+  });
+
+  it('lets a member rename what a former role shared, without sending the visibility back', async () => {
+    const list = existing({ visibility: 'everyone' });
+    render(ListFormDialog, { props: { open: true, kind: 'collection', list, onsaved: vi.fn() } });
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).queryByRole('radio')).toBeNull();
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(h.updateCollection).toHaveBeenCalledWith('c', { title: 'Set' }));
+  });
+
+  it('gives an owner or admin all three choices', async () => {
+    h.canAdminister = true;
     render(ListFormDialog, { props: { open: true, kind: 'collection', onsaved: vi.fn() } });
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).queryByRole('radio', { name: 'Chosen users' })).toBeNull();
-    expect(h.request).not.toHaveBeenCalled();
+    expect(within(dialog).getAllByRole('radio').map((radio) => radio.getAttribute('value'))).toEqual(['private', 'everyone', 'users']);
+    expect(h.request).toHaveBeenCalledOnce();
   });
 
   it('lets an administrator pick recipients, without himself', async () => {

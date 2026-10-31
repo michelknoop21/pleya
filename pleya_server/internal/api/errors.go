@@ -175,6 +175,12 @@ const (
 	CodeListInvalid  = "library.list_invalid"
 	CodeListNotOwner = "library.list_not_owner"
 
+	// CodeListShareNotPermitted is het antwoord op een zichtbaarheid anders dan
+	// private, of op shared_with, van een member of restricted. Niet
+	// list_not_owner: de aanvrager kan juist wel de eigenaar van zijn lijst zijn,
+	// en die code zou dan iets onwaars zeggen.
+	CodeListShareNotPermitted = "library.list_share_not_permitted"
+
 	// Downloads (S23). Niet toegestaan is een 403 omdat de bibliotheek wel
 	// zichtbaar is; niet klaar en veranderd zijn 409's: de eerste gaat vanzelf
 	// over (retryable), de tweede vraagt een nieuwe download.
@@ -315,6 +321,7 @@ var errorTable = map[string]struct {
 	CodePersonalInvalid:          {http.StatusBadRequest, false},
 	CodeListInvalid:              {http.StatusBadRequest, false},
 	CodeListNotOwner:             {http.StatusForbidden, false},
+	CodeListShareNotPermitted:    {http.StatusForbidden, false},
 	CodeDownloadNotPermitted:     {http.StatusForbidden, false},
 	CodeDownloadNotReady:         {http.StatusConflict, true},
 	CodeDownloadChanged:          {http.StatusConflict, false},

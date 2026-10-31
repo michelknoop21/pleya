@@ -25,7 +25,8 @@ mixin ServerAuthorityGuard {
   /// Server it is the owner role alone, while the rest of the canonical
   /// metadata has no write path there. It is deliberately not
   /// [canAdministerServer]: a Pleya admin does not manage canonical
-  /// collections. Unwired refuses.
+  /// collections. Sharing one is the exception and goes through
+  /// [assertCanAdministerServer]. Unwired refuses.
   bool Function()? canManageCollections;
 
   void assertCanManageCollections() {

@@ -2231,7 +2231,11 @@ paths:
       tags: [library]
       operationId: createCollection
       summary: Maak een verzameling met de aanvrager als eigenaar.
-      description: Een ongeldige titel of waarde is `400` met `library.list_invalid` en `details.field`.
+      description: |
+        Een ongeldige titel of waarde is `400` met `library.list_invalid` en
+        `details.field`. Delen is voor `owner` en `admin`: een `member` of
+        `restricted` die een andere `visibility` dan `private` of `shared_with`
+        meestuurt krijgt `403` met `library.list_share_not_permitted`.
       requestBody:
         required: true
         content:
@@ -2245,6 +2249,7 @@ paths:
               schema: { $ref: "#/components/schemas/Collection" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
   /collections/{collection_id}:
@@ -2268,7 +2273,11 @@ paths:
       tags: [library]
       operationId: updateCollection
       summary: Wijzig een verzameling.
-      description: Alleen de eigenaar. Buiten zicht is `404`, zichtbaar en van een ander is `403` met `library.list_not_owner`.
+      description: |
+        Alleen de eigenaar. Buiten zicht is `404`, zichtbaar en van een ander is `403`
+        met `library.list_not_owner`. Delen is voor `owner` en `admin`: een andere
+        `visibility` dan `private` of `shared_with` van een `member` of `restricted`
+        is `403` met `library.list_share_not_permitted`.
       parameters:
         - $ref: "#/components/parameters/CollectionId"
       requestBody:
@@ -4839,7 +4848,9 @@ components:
       x-unknown-safe: true
       description: |
         Wie een verzameling ziet: alleen de eigenaar, elke gebruiker van de server,
-        of de eigenaar plus `shared_with`. Er mag binnen v1 een waarde bij komen. Een
+        of de eigenaar plus `shared_with`. Alleen `owner` en `admin` zetten iets
+        anders dan `private`; een `member` of `restricted` krijgt daarop `403` met
+        `library.list_share_not_permitted`. Er mag binnen v1 een waarde bij komen. Een
         client die de waarde niet kent toont de verzameling als gedeeld, stuurt de
         waarde nooit terug en laat de zichtbaarheid bij het bewerken ongemoeid.
 
@@ -4891,7 +4902,7 @@ components:
           description: Zonder dit veld `private`.
         shared_with:
           type: array
-          description: Gebruiker-ids, alleen bij `visibility` `users`. Een onbekend id is `400`.
+          description: Gebruiker-ids, alleen bij `visibility` `users` en alleen van `owner` of `admin`. Een onbekend id is `400`.
           items: { $ref: "#/components/schemas/Id" }
 
     UpdateCollectionRequest:

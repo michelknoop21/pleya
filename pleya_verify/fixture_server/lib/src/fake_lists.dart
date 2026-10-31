@@ -24,7 +24,7 @@ class FakeList {
 /// collection of someone else) and a playlist's refusal of a show. Which rows a
 /// viewer may see is the real server's business and is proved there.
 class FakeLists {
-  FakeLists({required this.itemKind, required this.page, required this.posterOf});
+  FakeLists({required this.itemKind, required this.page, required this.posterOf, required this.role});
 
   /// The kind of a catalogue item, null when it does not exist.
   final String? Function(String id) itemKind;
@@ -34,6 +34,9 @@ class FakeLists {
 
   /// The poster artwork id of an item.
   final String? Function(String id) posterOf;
+
+  /// The requester's role, for the rule that only an owner or admin shares.
+  final String Function() role;
 
   final collections = <String, FakeList>{};
   final playlists = <String, FakeList>{};
@@ -78,6 +81,7 @@ class FakeLists {
       if (method == 'PATCH') {
         final body = jsonDecode(request.body) as Map<String, dynamic>;
         if (isCollection) lastCollectionBody = body;
+        if (_refusesSharing(body)) return _error('library.list_share_not_permitted', 403);
         list.title = body['title'] as String? ?? list.title;
         list.visibility = body['visibility'] as String? ?? list.visibility;
         return _json(_wire(list, isCollection));
@@ -118,6 +122,7 @@ class FakeLists {
   http.Response _create(http.Request request, Map<String, FakeList> lists, bool isCollection) {
     final body = jsonDecode(request.body) as Map<String, dynamic>;
     if (isCollection) lastCollectionBody = body;
+    if (_refusesSharing(body)) return _error('library.list_share_not_permitted', 403);
     final id = '${isCollection ? 'collection' : 'playlist'}-${_nextId++}';
     final list = FakeList(
       id: id,
@@ -126,6 +131,11 @@ class FakeLists {
     );
     lists[id] = list;
     return _json(_wire(list, isCollection), status: 201);
+  }
+
+  bool _refusesSharing(Map<String, dynamic> body) {
+    final shares = body.containsKey('shared_with') || (body['visibility'] ?? 'private') != 'private';
+    return shares && role() != 'owner' && role() != 'admin';
   }
 
   http.Response _pageOf(Map<String, FakeList> lists, Map<String, String> query, bool isCollection) {

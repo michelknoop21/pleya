@@ -5284,3 +5284,15 @@ serie gebeurt in de client, omdat een rij die zelf niet speelt "Alles afspelen" 
 zegt dat een lid alleen zichzelf ziet, en een gebruikerslijst voor leden is een eigen privacybesluit dat dit
 venster niet neemt. De app-implementatie (S19.4) en journey 11 volgen in een eigen ronde. Alleen dit venster
 is geopend; productie, merge en release blijven afzonderlijk. Nummer volgt bij integratie.
+
+**Aanvulling van 31 oktober 2026, besluit van Michel: delen is voor `owner` en `admin`.** Eerder kon een lid wel
+`everyone` kiezen, en alleen het kiezen van gebruikers was aan beheerders voorbehouden omdat de namen ontbraken.
+Nu zetten alleen `owner` en `admin` een andere `visibility` dan `private` of `shared_with`, bij aanmaken en bij
+wijzigen; `member` en `restricted` houden hun verzamelingen privé en krijgen anders `403`. Dit valt binnen dit
+venster en wijzigt een nog niet uitgebrachte resource, dus `POST /collections` krijgt een `403` en de regels
+van hoofdstuk 3 worden niet geraakt. De code is nieuw: `library.list_share_not_permitted`. `list_not_owner` zou
+hier iets onwaars zeggen, want de aanvrager is juist de eigenaar van zijn lijst. Afspeellijsten veranderen niet.
+De server leest de accountrol per aanvraag. Een gedegradeerde beheerder houdt wat hij deelde: de regel kijkt naar
+de aanvraag en niet naar de bestaande rij, en een ingetrokken recht wist niets. In de app is dit de enige
+uitzondering op de eis uit het plan om `canAdministerServer` niet te gebruiken: delen gaat over `owner` of
+`admin` met de rol vers vóór de aanvraag, en beheer van een canonieke verzameling blijft bij de `owner`.

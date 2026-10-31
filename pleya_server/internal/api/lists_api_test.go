@@ -1,7 +1,9 @@
 package api_test
 
 import (
+	"context"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -314,6 +316,109 @@ func TestFullListFitsTheBodyLimit(t *testing.T) {
 	rec = e.do(http.MethodPut, playlistsPath+"/"+list.ID+"/items", map[string]any{"item_ids": append(ids, id.New().String())})
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "library.list_invalid") {
 		t.Fatalf("5001 ids gaf %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// Delen is voor owner en admin. Dat geldt bij aanmaken en bij wijzigen, en de
+// afwijzing laat niets achter.
+func TestOnlyOwnerAndAdminShareACollection(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	adminID := e.createUser("admin", "ada")
+	memberID := e.createUser("member", "bob")
+	restrictedID := e.createUser("restricted", "kim")
+	admin, member, restricted := asUser(e.tokenFor(adminID)), asUser(e.tokenFor(memberID)), asUser(e.tokenFor(restrictedID))
+	shareWith := []string{memberID.String()}
+
+	share := []struct {
+		name string
+		body map[string]any
+	}{
+		{"iedereen", map[string]any{"visibility": "everyone"}},
+		{"gekozen gebruikers", map[string]any{"visibility": "users", "shared_with": shareWith}},
+		{"alleen shared_with", map[string]any{"shared_with": shareWith}},
+		{"privé met shared_with", map[string]any{"visibility": "private", "shared_with": []string{}}},
+	}
+	withTitle := func(body map[string]any, title string) map[string]any {
+		out := map[string]any{"title": title}
+		for k, v := range body {
+			out[k] = v
+		}
+		return out
+	}
+	refused := func(t *testing.T, rec *httptest.ResponseRecorder) {
+		t.Helper()
+		if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "library.list_share_not_permitted") {
+			t.Fatalf("gaf %d, verwacht 403 library.list_share_not_permitted: %s", rec.Code, rec.Body.String())
+		}
+	}
+
+	for _, who := range []struct {
+		name string
+		as   func(*http.Request)
+	}{{"member", member}, {"restricted", restricted}} {
+		mine := e.createCollection(map[string]any{"title": "Eigen " + who.name}, who.as)
+		if mine.Visibility != "private" {
+			t.Fatalf("%s: de default is %q", who.name, mine.Visibility)
+		}
+		path := collectionsPath + "/" + mine.ID
+		for _, c := range share {
+			t.Run(who.name+" maakt "+c.name, func(t *testing.T) {
+				rec := e.do(http.MethodPost, collectionsPath, withTitle(c.body, "Nee"), who.as)
+				e.record("ErrorEnvelope", http.MethodPost, collectionsPath, rec)
+				refused(t, rec)
+			})
+			t.Run(who.name+" wijzigt naar "+c.name, func(t *testing.T) {
+				rec := e.do(http.MethodPatch, path, c.body, who.as)
+				e.record("ErrorEnvelope", http.MethodPatch, path, rec)
+				refused(t, rec)
+			})
+		}
+		rec := e.do(http.MethodGet, collectionsPath, nil, who.as)
+		var page api.CollectionPage
+		e.decodeInto(rec, &page)
+		if len(page.Items) != 1 || page.Items[0].Visibility != "private" {
+			t.Fatalf("%s: een afwijzing liet iets achter: %+v", who.name, page.Items)
+		}
+
+		// Wat niet deelt blijft mogen.
+		if rec := e.do(http.MethodPatch, path, map[string]any{"title": "Hernoemd"}, who.as); rec.Code != http.StatusOK {
+			t.Fatalf("%s: hernoemen gaf %d", who.name, rec.Code)
+		}
+		if rec := e.do(http.MethodPatch, path, map[string]any{"visibility": "private"}, who.as); rec.Code != http.StatusOK {
+			t.Fatalf("%s: privé zetten gaf %d", who.name, rec.Code)
+		}
+		e.createCollection(map[string]any{"title": "Ook privé", "visibility": "private"}, who.as)
+		e.createPlaylist("Afspeellijst "+who.name, who.as)
+	}
+
+	for _, who := range []struct {
+		name string
+		as   func(*http.Request)
+	}{{"admin", admin}, {"owner", func(*http.Request) {}}} {
+		for _, c := range share[:2] {
+			t.Run(who.name+" deelt "+c.name, func(t *testing.T) {
+				made := e.createCollection(map[string]any{"title": who.name + " " + c.name}, who.as)
+				if rec := e.do(http.MethodPatch, collectionsPath+"/"+made.ID, c.body, who.as); rec.Code != http.StatusOK {
+					t.Fatalf("wijzigen gaf %d: %s", rec.Code, rec.Body.String())
+				}
+			})
+		}
+		if c := e.createCollection(map[string]any{"title": "Meteen open " + who.name, "visibility": "everyone"}, who.as); c.Visibility != "everyone" {
+			t.Fatalf("%s: aanmaken met everyone gaf %q", who.name, c.Visibility)
+		}
+	}
+
+	// Een gedegradeerde beheerder houdt wat hij deelde en kan het hernoemen,
+	// maar niet opnieuw delen.
+	open := e.createCollection(map[string]any{"title": "Van Ada", "visibility": "everyone"}, admin)
+	if _, err := e.pool.Exec(context.Background(), `UPDATE users SET role = 'member' WHERE id = $1`, adminID); err != nil {
+		t.Fatal(err)
+	}
+	path := collectionsPath + "/" + open.ID
+	refused(t, e.do(http.MethodPatch, path, map[string]any{"visibility": "users", "shared_with": shareWith}, admin))
+	if rec := e.do(http.MethodPatch, path, map[string]any{"title": "Nog steeds van Ada"}, admin); rec.Code != http.StatusOK {
+		t.Fatalf("hernoemen na degradatie gaf %d", rec.Code)
 	}
 }
 

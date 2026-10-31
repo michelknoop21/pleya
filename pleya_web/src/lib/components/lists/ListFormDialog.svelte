@@ -2,10 +2,10 @@
   Een lijst maken of bewerken. Bij een verzameling hoort de zichtbaarheid (vraag
   30): alleen ik, iedereen, of gekozen gebruikers.
 
-  Gekozen gebruikers vraagt een bron van namen, en `GET /users` geeft een lid
-  alleen zichzelf (matrixregel 14). Die keuze staat dus alleen aan voor eigenaar
-  en beheerder. Is de zichtbaarheid onbekend (3.2), dan staat er een uitleg en
-  gaat er geen waarde mee terug.
+  Delen is voor eigenaar en beheerder (hoofdstuk 14b). Een lid of beperkte
+  gebruiker houdt zijn verzamelingen privé: hij krijgt de keuze niet te zien, er
+  gaat geen zichtbaarheid mee en er komt geen `GET /users`. Is de zichtbaarheid
+  onbekend (3.2), dan staat er een uitleg en gaat er geen waarde mee terug.
 -->
 <script lang="ts">
   import { untrack } from 'svelte';
@@ -38,11 +38,11 @@
 
   const collection = $derived(kind === 'collection' ? (list as Collection | null) : null);
   const unknown = $derived(collection ? knownVisibility(collection.visibility) === null : false);
-  const canPick = $derived(session.canAdminister);
+  const canShare = $derived(session.canAdminister);
   const visibilityOptions = $derived([
     { value: 'private', label: t('lists.form.private') },
     { value: 'everyone', label: t('lists.form.everyone') },
-    ...(canPick || visibility === 'users' ? [{ value: 'users', label: t('lists.form.users') }] : [])
+    { value: 'users', label: t('lists.form.users') }
   ]);
   const others = $derived(users.filter((user) => user.id !== session.me?.id));
   const dialogTitle = $derived(
@@ -58,7 +58,7 @@
       visibility = collection?.visibility ?? 'private';
       recipients = collection?.shared_with?.map((user) => user.id) ?? [];
       error = null;
-      if (kind === 'collection' && canPick) void loadUsers();
+      if (kind === 'collection' && canShare) void loadUsers();
     });
   });
 
@@ -76,7 +76,7 @@
   }
 
   function collectionBody() {
-    if (unknown) return {};
+    if (unknown || !canShare) return {};
     return { visibility: visibility as 'private' | 'everyone' | 'users', ...(visibility === 'users' ? { shared_with: recipients } : {}) };
   }
 
@@ -115,7 +115,7 @@
     {#if kind === 'collection'}
       {#if unknown}
         <Alert tone="info" live={false}>{t('lists.form.unknownVisibility')}</Alert>
-      {:else}
+      {:else if canShare}
         <Choice legend={t('lists.form.visibility')} options={visibilityOptions} bind:value={visibility} disabled={busy} />
         {#if visibility === 'users'}
           <fieldset class="people">

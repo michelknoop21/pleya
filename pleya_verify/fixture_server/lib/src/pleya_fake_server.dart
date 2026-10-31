@@ -75,6 +75,7 @@ class PleyaFakeServer {
     itemKind: (id) => items[id]?['kind'] as String?,
     page: _page,
     posterOf: (id) => (items[id]?['artwork'] as Map?)?['poster_id'] as String?,
+    role: () => usersMeRole,
   );
 
   /// The role `/users/me` answers for the single fixture identity. A test moves

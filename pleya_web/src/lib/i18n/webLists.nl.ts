@@ -12,7 +12,7 @@ export const webListsNl = {
   'lists.newPlaylist': 'Nieuwe afspeellijst',
   'lists.unavailable': 'Deze server kent geen verzamelingen of afspeellijsten.',
   'lists.empty.collections': 'Nog geen verzamelingen',
-  'lists.empty.collectionsBody': 'Een verzameling is een set titels die je kunt delen. Maak er een, of voeg een titel toe vanaf zijn kaart.',
+  'lists.empty.collectionsBody': 'Een verzameling is een set titels die bij elkaar horen. Maak er een, of voeg een titel toe vanaf zijn kaart.',
   'lists.empty.playlists': 'Nog geen afspeellijsten',
   'lists.empty.playlistsBody': 'Een afspeellijst is van jou en speelt op volgorde. Maak er een, of voeg een titel toe vanaf zijn kaart.',
   'lists.empty.items': 'Hier staat nog niets',
@@ -26,7 +26,7 @@ export const webListsNl = {
   'lists.visibleFor': 'zichtbaar voor {names}',
   'lists.shared': 'gedeeld',
   'lists.private': 'privé',
-  'lists.playlistNote': 'Een afspeellijst is van één gebruiker en speelt op volgorde; een verzameling is een set titels die je kunt delen. Beide leven op deze server en reizen met je mee naar de apps.',
+  'lists.playlistNote': 'Een afspeellijst is van één gebruiker en speelt op volgorde; een verzameling is een set titels die bij elkaar horen. Beide leven op deze server en reizen met je mee naar de apps.',
   'lists.hiddenNote': 'Deze lijst kan titels bevatten uit bibliotheken die je niet ziet. Die staan hier niet en tellen niet mee.',
 
   'lists.playAll': 'Alles afspelen',

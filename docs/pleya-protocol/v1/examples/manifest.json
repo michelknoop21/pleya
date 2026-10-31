@@ -552,6 +552,11 @@
       "file": "error_list_not_owner.json",
       "schema": "ErrorEnvelope",
       "note": "S19: de lijst is zichtbaar maar van een ander"
+    },
+    {
+      "file": "error_list_share_not_permitted.json",
+      "schema": "ErrorEnvelope",
+      "note": "S19: een member of restricted deelt een verzameling"
     }
   ]
 }
