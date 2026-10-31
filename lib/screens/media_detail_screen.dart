@@ -1042,6 +1042,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     _extrasFocusNode.removeListener(_handleExtrasFocusChange);
     _extrasFocusNode.dispose();
     _playButtonFocusNode.dispose();
+    _unifiedSource.dispose();
     _tvDetailReadMoreFocusNode.dispose();
     _ratingChipFocusNode.dispose();
     _overviewFocusNode.dispose();
@@ -2525,6 +2526,10 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   /// Focus the first available section below the primary action row.
   void _focusBelowActionRow() {
+    if (!_focusUnifiedSourceLine()) _focusBelowSourceLine();
+  }
+
+  void _focusBelowSourceLine() {
     final metadata = _fullMetadata ?? _metadata;
 
     if (PlatformDetector.isTV()) {

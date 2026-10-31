@@ -4,6 +4,24 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-10-31] Unified: één titel over servers heen
+
+Een serie wisselde mee met de gekozen bron en voortgang op de ene server bestond op de andere niet.
+DEC-XXX (Eén titel over servers heen), Roadmap A-07, op branch `feat/unified-one-title`.
+
+- Serie: pagina en afleveringslijst blijven van de hoofdbron. Afspelen koppelt op seizoen- en
+  afleveringsnummer aan de gekozen server (`UnifiedTitlePlayback`, `SourceEpisodeIndex`); ontbreekt de
+  aflevering daar, dan speelt hij zonder melding vanaf een server die hem wel heeft.
+- Speler: de volgende aflevering blijft op de gekozen server, vult een gat aan uit een andere bron en
+  keert daarna terug.
+- Voortgang en gekeken-status gaan via de kijkstatuswachtrij naar alle servers met die titel
+  (`mirroredProgress`), behalve bij niet-vergelijkbare runtimes. De replay slaat de trackers over.
+- Wijzigen vervangt de route niet meer zolang de hoofdbron de pagina houdt. Sporen en technische
+  gegevens komen van de gekozen server; menu-acties op die pagina werken op de gekozen bron.
+- Ook opgelost: de TV-picker gaf ongestempelde bronnen door, waardoor de hoofdbron na een eerste keuze
+  de pagina niet hield, en een bron die de picker pas later vond gaf een `StateError` in `buildRouteContext`.
+- Grenzen: downloaden op de detailpagina blijft op de hoofdbron, een externe speler schrijft niet door.
+
 ## [2026-10-29] Unified: Pleya Server voegt mee op bewezen TMDB-nummers
 
 Dezelfde serie op Plex en Pleya Server stond twee keer in Series, Films, Zoeken, Home en Verder kijken,

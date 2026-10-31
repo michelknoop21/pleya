@@ -11,6 +11,12 @@ class _UnifiedDetailSource {
   /// What Play starts on a series page: read ahead, so the button can say
   /// whether it resumes. Null until known.
   UnifiedPlayTarget? onDeckTarget;
+
+  /// The control that changes the source. A node of its own, because the
+  /// action row sends DOWN by hand and has to be able to name this stop.
+  final FocusNode lineFocus = FocusNode(debugLabel: 'unified_source_line');
+
+  void dispose() => lineFocus.dispose();
 }
 
 /// The page's side of one title across its sources. The page keeps showing
@@ -99,6 +105,15 @@ extension _MediaDetailUnifiedSource on _MediaDetailScreenState {
     });
   }
 
+  /// DOWN from the action row: the source line is the next stop, when the page
+  /// has one. Without it a remote never reaches "[ Wijzigen ]".
+  bool _focusUnifiedSourceLine() {
+    final node = _unifiedSource.lineFocus;
+    if (node.context == null || !node.canRequestFocus) return false;
+    node.requestFocus();
+    return true;
+  }
+
   /// Hoofdstuk 15's "[ Wijzigen ]". The page stays when only what Play starts
   /// changes: nothing reloads, nothing moves, and focus stays on the control
   /// the viewer pressed. Only the tracks follow the new source.
@@ -167,9 +182,12 @@ extension _MediaDetailUnifiedSource on _MediaDetailScreenState {
               role: 'button',
               state: () => {'server': parts.first},
               child: FocusableWrapper(
+                focusNode: _unifiedSource.lineFocus,
                 borderRadius: 999,
                 disableScale: true,
                 semanticLabel: t.sourcePicker.change,
+                onNavigateUp: _playButtonFocusNode.requestFocus,
+                onNavigateDown: _focusBelowSourceLine,
                 onSelect: () {
                   // The picker opens a route; suppress this press's key-up so it
                   // does not land on whatever takes focus next (CLAUDE.md).

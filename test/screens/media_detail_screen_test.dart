@@ -23,6 +23,7 @@ import 'package:pleya/media/media_review.dart';
 import 'package:pleya/media/media_role.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/media_source_info.dart';
+import 'package:pleya/focus/focusable_action_bar.dart';
 import 'package:pleya/focus/focusable_wrapper.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
 import 'package:pleya/media/unified/source_availability.dart';
@@ -3061,6 +3062,11 @@ void main() {
 
       final pushesBefore = observer.pushes;
       final popsBefore = observer.pops;
+
+      // A remote reaches it from the action row: the row sends DOWN by hand.
+      tester.widget<FocusableActionBar>(find.byType(FocusableActionBar)).onNavigateDown!();
+      await tester.pump();
+      expect(Focus.of(tester.element(find.text(t.sourcePicker.change))).hasPrimaryFocus, isTrue);
 
       // Hoofdstuk 15's always-visible "[ Wijzigen ]" chip.
       await _activateByLabel(tester, t.sourcePicker.change);
