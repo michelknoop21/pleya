@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
@@ -140,12 +141,44 @@ class TvDetailPageState extends State<TvDetailPage> {
   void didUpdateWidget(TvDetailPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     final focused = _focusedSectionId;
-    if (focused == null || _visible.any((section) => section.id == focused)) return;
+    if (focused == null) return;
+    if (_visible.any((section) => section.id == focused)) {
+      if (_rowsAboveChanged(oldWidget, focused)) _holdRowInPlace(focused);
+      return;
+    }
     // The row under the remote emptied. Its nodes are gone with it, so the
     // focus has to go somewhere before the page reads as dead.
     _focusedSectionId = null;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) widget.onFocusHero();
+    });
+  }
+
+  bool _rowsAboveChanged(TvDetailPage oldWidget, String focused) {
+    Iterable<String> above(List<TvDetailSection> sections) => sections
+        .where((section) => section.itemIds.isNotEmpty)
+        .map((section) => section.id)
+        .takeWhile((id) => id != focused);
+    return !listEquals(above(oldWidget.sections).toList(), above(widget.sections).toList());
+  }
+
+  /// A row that comes in above the one under the remote pushes that one down the
+  /// screen, and off it near the end of a page. The page moves along by exactly
+  /// that much. A scroll under way ends on the row instead of in the old place.
+  void _holdRowInPlace(String id) {
+    final box = _sectionKeys[id]?.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached) return;
+    final before = box.localToGlobal(Offset.zero).dy;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _focusedSectionId != id || !_scroll.hasClients || !box.attached) return;
+      final position = _scroll.position;
+      if (position.isScrollingNotifier.value) {
+        _scrollToSection(id);
+        return;
+      }
+      final moved = box.localToGlobal(Offset.zero).dy - before;
+      if (moved.abs() < 0.5) return;
+      _scroll.jumpTo((position.pixels + moved).clamp(position.minScrollExtent, position.maxScrollExtent).toDouble());
     });
   }
 
@@ -224,7 +257,11 @@ class TvDetailPageState extends State<TvDetailPage> {
       if (_scroll.hasClients) _scrollTo(0);
       return;
     }
-    final sectionContext = _sectionKeys[section.id]?.currentContext;
+    _scrollToSection(section.id);
+  }
+
+  void _scrollToSection(String id) {
+    final sectionContext = _sectionKeys[id]?.currentContext;
     if (sectionContext == null || !_scroll.hasClients) return;
     final box = sectionContext.findRenderObject() as RenderBox;
     final top = RenderAbstractViewport.of(box).getOffsetToReveal(box, 0).offset;

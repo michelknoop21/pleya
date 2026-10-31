@@ -468,6 +468,47 @@ void main() {
     expect(ids.indexOf('discussions'), lessThan(ids.indexWhere((id) => id.startsWith('person:'))));
   });
 
+  testWidgets('a row that lands above the viewer does not push the card out from under the remote', (tester) async {
+    routes['/shows/tt1/comments/likes'] = [_comment(1, 'Late')];
+    traktGate = Completer<void>();
+    final show = _show().copyWith(
+      roles: [for (var i = 0; i < 6; i++) MediaRole(id: 'p$i', tag: 'Person $i', role: 'Role')],
+      reviews: const [MediaReview(author: 'Amy', text: 'Funny.', source: 'FilmWeek')],
+      summary: List.filled(30, 'A long summary.').join(' '),
+    );
+    await pumpDetail(tester, _Client(show, seasons: [_season(1), _season(2)]));
+    await walkDown(tester, steps: 7);
+    final node = FocusManager.instance.primaryFocus!;
+    final before = node.rect;
+
+    traktGate!.complete();
+    await tester.pumpAndSettle();
+
+    expect(FocusManager.instance.primaryFocus, same(node));
+    expect(node.rect.top, closeTo(before.top, 1));
+    expect(sectionIds(tester), contains('discussions'));
+  });
+
+  testWidgets('a row that lands under the viewer leaves the page where it is', (tester) async {
+    routes['/shows/tt1/comments/likes'] = [_comment(1, 'Late')];
+    traktGate = Completer<void>();
+    final show = _show().copyWith(
+      roles: [for (var i = 0; i < 6; i++) MediaRole(id: 'p$i', tag: 'Person $i', role: 'Role')],
+      summary: List.filled(30, 'A long summary.').join(' '),
+    );
+    await pumpDetail(tester, _Client(show, seasons: [_season(1), _season(2)]));
+    await walkDown(tester, steps: 1);
+    await tester.pumpAndSettle();
+    final node = FocusManager.instance.primaryFocus!;
+    final before = node.rect;
+
+    traktGate!.complete();
+    await tester.pumpAndSettle();
+
+    expect(FocusManager.instance.primaryFocus, same(node));
+    expect(node.rect.top, closeTo(before.top, 1));
+  });
+
   testWidgets('a short page with nothing under the hero still asks, so it does not stay empty', (tester) async {
     routes['/movies/tt1/comments/likes'] = [_comment(1, 'Alone')];
     await pumpDetail(tester, _Client(_film().copyWith(roles: const [], reviews: const [])));
