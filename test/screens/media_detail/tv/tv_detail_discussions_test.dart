@@ -2,6 +2,7 @@
 /// is asked, what a card says, and every way the section stays away.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -91,6 +92,7 @@ class _Client implements MediaServerClient {
   final ExternalIds ids;
   final List<MediaItem> seasons;
   var idCalls = 0;
+  final personCalls = <String>[];
 
   @override
   ServerId get serverId => ServerId('server_1');
@@ -128,13 +130,24 @@ class _Client implements MediaServerClient {
   Future<MediaFileInfo?> getFileInfo(MediaItem item) async => null;
   @override
   Future<List<MediaHub>> fetchRelatedHubs(String id, {int count = 10}) async => const [];
+
   @override
   Future<LibraryPage<MediaItem>> fetchPersonMediaPage(
     String personId, {
     int? start,
     int? size,
     AbortController? abort,
-  }) async => const LibraryPage<MediaItem>(items: [], totalCount: 0, offset: 0);
+  }) async {
+    personCalls.add(personId);
+    return LibraryPage<MediaItem>(
+      items: [
+        MediaItem(id: 'credit_$personId', backend: MediaBackend.jellyfin, kind: MediaKind.movie, serverId: 'server_1'),
+      ],
+      totalCount: 1,
+      offset: 0,
+    );
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -159,12 +172,14 @@ void main() {
 
   late List<http.Request> requests;
   late Map<String, Object> routes;
+  Completer<void>? traktGate;
 
   void useTrakt({String clientId = 'app-key'}) {
     TraktCommentsClient.shared = TraktCommentsClient(
       clientId: clientId,
       httpClient: MockClient((request) async {
         requests.add(request);
+        await traktGate?.future;
         final body = routes[request.url.path];
         return body == null
             ? http.Response('{}', 404)
@@ -176,6 +191,7 @@ void main() {
   setUp(() {
     requests = [];
     routes = {};
+    traktGate = null;
     resetNotices();
     resetSharedPreferencesForTest();
     SettingsService.resetForTesting();
@@ -424,6 +440,32 @@ void main() {
 
     expect(requests, isNotEmpty);
     expect(sectionIds(tester), contains('discussions'));
+  });
+
+  testWidgets('a slow Trakt holds up nothing under it, and lands in its place', (tester) async {
+    routes['/shows/tt1/comments/likes'] = [_comment(1, 'Late')];
+    traktGate = Completer<void>();
+    final show = _show().copyWith(
+      roles: [for (var i = 0; i < 6; i++) MediaRole(id: 'p$i', tag: 'Person $i', role: 'Role')],
+      reviews: const [
+        MediaReview(author: 'Amy', text: 'Funny.', source: 'FilmWeek'),
+        MediaReview(author: 'Bob', text: 'Sharp.', source: 'FilmWeek'),
+      ],
+      summary: List.filled(30, 'A long summary.').join(' '),
+    );
+    final client = _Client(show, seasons: [_season(1), _season(2)]);
+    await pumpDetail(tester, client);
+
+    await walkDown(tester, steps: 3);
+    await tester.pumpAndSettle();
+    expect(requests, isNotEmpty, reason: 'Trakt was asked and has not answered');
+    expect(client.personCalls, ['p0', 'p1']);
+
+    traktGate!.complete();
+    await tester.pumpAndSettle();
+    final ids = sectionIds(tester);
+    expect(ids, contains('discussions'));
+    expect(ids.indexOf('discussions'), lessThan(ids.indexWhere((id) => id.startsWith('person:'))));
   });
 
   testWidgets('a short page with nothing under the hero still asks, so it does not stay empty', (tester) async {

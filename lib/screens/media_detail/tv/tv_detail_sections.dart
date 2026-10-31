@@ -49,10 +49,11 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
     if (_tvDetailSectionLoading) return;
     _tvDetailSectionLoading = true;
     try {
+      // Not awaited: Trakt is someone else's server, and how long it takes is no
+      // reason for the rows under it to wait. Its slot is in the section order.
       if (_tvDetailDiscussionsDue(metadata)) {
         _tvDetailDiscussionsRequested = true;
-        await _loadTvDetailDiscussions(metadata);
-        return;
+        unawaited(_loadTvDetailDiscussions(metadata));
       }
       if (!_tvDetailRelatedRequested) {
         _tvDetailRelatedRequested = true;
