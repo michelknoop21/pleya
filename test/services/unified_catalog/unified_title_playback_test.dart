@@ -363,23 +363,19 @@ void main() {
     });
 
     test('a children\'s profile does not reach a third server through a group item either', () async {
-      final copy = _episode('third', 1, 1).copyWith(serverId: 'third');
+      final mine = _episode('chosen', 1, 1).copyWith(serverId: 'chosen');
       final title = _title(
-        [
-          _episode('page', 1, 1).copyWith(serverId: 'page'),
-          _episode('chosen', 1, 1).copyWith(serverId: 'chosen'),
-          copy,
-        ],
+        [mine, _episode('third', 1, 1).copyWith(serverId: 'third')],
         chosen: 'chosen',
         page: 'chosen',
         offline: {'chosen'},
         restricted: true,
-        clients: {'page': _Client(const []), 'chosen': _Client(const []), 'third': _Client(const [])},
+        clients: {'chosen': _Client(const []), 'third': _Client(const [])},
       );
 
-      final target = await title.targetFor(_episode('page', 1, 1).copyWith(serverId: 'page'));
+      final target = await title.targetFor(mine);
 
-      expect(target.item.serverId, 'page', reason: 'the third server is out, whatever the group holds');
+      expect(target.item.serverId, 'chosen', reason: 'it fails on its own server, it does not move to the third');
     });
 
     test('a restriction that cannot be read counts as a restriction', () async {
@@ -569,6 +565,19 @@ void main() {
       final next = await title.neighbourOf(on('page', 1, 5), forward: true, queued: on('chosen', 1, 4));
 
       expect(next, isNull, reason: 'E5 is the last one anywhere, and the queue stands behind it');
+    });
+
+    test('a queue on another server says nothing, also when no list answers', () async {
+      final title = _title(
+        [_show('page'), _show('chosen')],
+        chosen: 'chosen',
+        page: 'page',
+        clients: {'page': _Client(const [], failing: true), 'chosen': _Client(const [], failing: true)},
+      );
+
+      final next = await title.neighbourOf(on('page', 1, 5), forward: true, queued: on('chosen', 1, 7));
+
+      expect(next, isNull);
     });
 
     test('a queue pointing the wrong way is not followed', () async {
