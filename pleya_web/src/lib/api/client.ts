@@ -13,7 +13,7 @@ import createClient, { type Client, type Middleware } from 'openapi-fetch';
 
 import type { paths } from './schema';
 import { type ApiError, TransportError, toApiError } from './errors';
-import { browserLocks, TokenRefresher, type RefreshLocks } from './tokenRefresher';
+import { browserLocks, REFRESH_TIMEOUT_MS, TokenRefresher, type RefreshLocks } from './tokenRefresher';
 import { TokenStore } from '../auth/tokens';
 import type { DeviceFields } from '../auth/device';
 import type {
@@ -62,6 +62,8 @@ export interface PleyaClientOptions {
   delay?: (ms: number) => Promise<void>;
   /** Het slot tussen tabbladen; zonder waarde `navigator.locks` als die bestaat. */
   locks?: RefreshLocks | null;
+  /** Hoe lang het slot en de verversing elk mogen duren; alleen tests vervangen dit. */
+  refreshTimeoutMs?: number;
 }
 
 export class PleyaClient {
@@ -104,6 +106,7 @@ export class PleyaClient {
       raw: this.#raw,
       delay: options.delay ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
       locks: options.locks === undefined ? browserLocks() : options.locks,
+      timeoutMs: options.refreshTimeoutMs ?? REFRESH_TIMEOUT_MS,
       get generation() { return client.#sessionGeneration; },
       get replaced() { return client.tokens.epoch !== client.#epoch; },
       get supportsUpgrade() { return client.#supportsCookieUpgrade; },

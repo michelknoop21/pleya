@@ -1014,7 +1014,7 @@ function refreshServer(start = 'R1') {
 function memoryLocks() {
   let tail: Promise<unknown> = Promise.resolve();
   return {
-    request<T>(_name: string, callback: () => Promise<T>): Promise<T> {
+    request<T>(_name: string, _options: { signal: AbortSignal }, callback: () => Promise<T>): Promise<T> {
       const run = tail.then(callback, callback);
       tail = run.catch(() => undefined);
       return run;
@@ -1067,7 +1067,7 @@ describe('verversen tussen tabbladen', () => {
     let held = false;
     let heldDuringDelay = false;
     const locks = {
-      async request<T>(_name: string, callback: () => Promise<T>): Promise<T> {
+      async request<T>(_name: string, _options: { signal: AbortSignal }, callback: () => Promise<T>): Promise<T> {
         held = true;
         try {
           return await callback();
@@ -1088,6 +1088,75 @@ describe('verversen tussen tabbladen', () => {
     });
     await expect(client.restore()).resolves.toBe(true);
     expect(heldDuringDelay).toBe(false);
+  });
+
+  /** Een slot dat een ander tabblad nooit teruggeeft; alleen het signaal komt er nog doorheen. */
+  const stuckLocks = {
+    request<T>(_name: string, options: { signal: AbortSignal }): Promise<T> {
+      return new Promise((_, reject) => {
+        options.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+      });
+    }
+  };
+
+  it('ververst zelf als een ander tabblad het slot niet teruggeeft', async () => {
+    const persistent = memoryStorage({ 'pleya.refresh_token': 'R1' });
+    const server = refreshServer();
+    const tokens = new TokenStore(persistent, memoryStorage());
+    const onSessionLost = vi.fn();
+    const client = new PleyaClient({
+      baseUrl: BASE, tokens, locks: stuckLocks, onSessionLost, refreshTimeoutMs: 5,
+      fetch: ((input: RequestInfo | URL) => server.handler(input as Request, {})) as FetchLike
+    });
+
+    await expect(client.restore()).resolves.toBe(true);
+
+    expect(server.seen).toEqual([{ refresh_token: 'R1' }]);
+    expect(tokens.accessToken).toBe('A2');
+    expect(onSessionLost).not.toHaveBeenCalled();
+  });
+
+  it('een slot dat weigert houdt het verversen niet tegen', async () => {
+    const server = refreshServer();
+    const tokens = new TokenStore(memoryStorage({ 'pleya.refresh_token': 'R1' }), memoryStorage());
+    const client = new PleyaClient({
+      baseUrl: BASE, tokens,
+      locks: { request: async () => { throw new DOMException('Denied', 'SecurityError'); } },
+      fetch: ((input: RequestInfo | URL) => server.handler(input as Request, {})) as FetchLike
+    });
+
+    await expect(client.restore()).resolves.toBe(true);
+    expect(server.seen).toHaveLength(1);
+  });
+
+  it('stuurt een aanvraag die onder het slot mislukte niet nog eens zonder slot', async () => {
+    const send = vi.fn(async () => { throw new TypeError('Failed to fetch'); });
+    const tokens = new TokenStore(memoryStorage({ 'pleya.refresh_token': 'R1' }), memoryStorage());
+    const client = new PleyaClient({ baseUrl: BASE, tokens, locks: memoryLocks(), fetch: send as unknown as FetchLike });
+
+    await expect(client.restore()).resolves.toBe(false);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(client.refreshUnavailable).toBe(true);
+  });
+
+  it('de opstart hangt niet aan een verversing die nooit antwoord krijgt', async () => {
+    const persistent = memoryStorage({ 'pleya.refresh_token': 'R1' });
+    const tokens = new TokenStore(persistent, memoryStorage());
+    const onSessionLost = vi.fn();
+    const silent = (input: RequestInfo | URL) => new Promise<Response>((_, reject) => {
+      const { signal } = input as Request;
+      signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    });
+    const client = new PleyaClient({
+      baseUrl: BASE, tokens, locks: memoryLocks(), onSessionLost, refreshTimeoutMs: 5, fetch: silent as FetchLike
+    });
+
+    await expect(client.restore()).resolves.toBe(false);
+
+    expect(client.refreshUnavailable).toBe(true);
+    expect(onSessionLost).not.toHaveBeenCalled();
+    expect(persistent.getItem('pleya.refresh_token')).toBe('R1');
   });
 });
 

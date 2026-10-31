@@ -14,7 +14,9 @@
  *
  * Web Locks bestaat alleen in een secure context (MDN, LockManager.request), dus op
  * `http://nas:8832` is er geen slot en gelden het respijt en de jitter hieronder,
- * zoals vóór deze code.
+ * zoals vóór deze code. Hetzelfde pad vangt een slot op dat niet komt: een bevroren
+ * tabblad of een fetch op een dode verbinding mag de opstart van de rest niet ophouden,
+ * en de server kan die overlap aan.
  */
 import type { Client } from 'openapi-fetch';
 
@@ -33,6 +35,19 @@ const REFRESH_LIMIT_MAX_WAIT_MS = 30_000;
  */
 const REFRESH_LIMIT_JITTER_MS = 750;
 const REFRESH_LOCK = 'pleya.auth.refresh';
+/** Per stap: wachten op het slot, of de aanvraag zelf. Ruim onder het respijt van twee minuten. */
+export const REFRESH_TIMEOUT_MS = 10_000;
+
+/** Geeft een signaal mee dat na [ms] afbreekt, en ruimt de timer op als het eerder klaar is. */
+async function withTimeout<T>(ms: number, run: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await run(controller.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /** De wachttijd van een 429: `Retry-After`, anders `details.retry_after_ms`, anders een seconde. */
 function refreshRetryDelayMs(response: Response, error: unknown): number {
@@ -43,7 +58,7 @@ function refreshRetryDelayMs(response: Response, error: unknown): number {
 
 /** Het deel van `LockManager` dat hier gebruikt wordt. */
 export interface RefreshLocks {
-  request<T>(name: string, callback: () => Promise<T>): Promise<T>;
+  request<T>(name: string, options: { signal: AbortSignal }, callback: () => Promise<T>): Promise<T>;
 }
 
 /** Het slot van deze browser, of null waar de API niet bestaat. */
@@ -64,6 +79,7 @@ export interface RefreshHost {
   readonly raw: Client<paths>;
   readonly delay: (ms: number) => Promise<void>;
   readonly locks: RefreshLocks | null;
+  readonly timeoutMs: number;
   loseSession(): void;
 }
 
@@ -137,8 +153,7 @@ export class TokenRefresher {
     const host = this.#host;
     try {
       for (let attempt = 1; ; attempt++) {
-        const send = () => this.#attempt(generation, attempt);
-        const outcome = await (host.locks ? host.locks.request(REFRESH_LOCK, send) : send());
+        const outcome = await this.#exclusive(() => this.#attempt(generation, attempt));
         if (typeof outcome === 'boolean') return outcome;
         await host.delay(outcome + Math.random() * REFRESH_LIMIT_JITTER_MS);
         if (generation !== host.generation) return false;
@@ -157,6 +172,25 @@ export class TokenRefresher {
     }
   }
 
+  /**
+   * Eén aanvraag onder het slot. Een slot dat niet komt of weigert is geen reden om niet te
+   * verversen. Is het wel toegekend, dan is een fout die van de aanvraag: die gaat niet nog eens.
+   */
+  async #exclusive<T>(send: () => Promise<T>): Promise<T> {
+    const { locks, timeoutMs } = this.#host;
+    if (!locks) return send();
+    let granted = false;
+    try {
+      return await withTimeout(timeoutMs, (signal) => locks.request(REFRESH_LOCK, { signal }, () => {
+        granted = true;
+        return send();
+      }));
+    } catch (cause) {
+      if (granted) throw cause;
+      return send();
+    }
+  }
+
   /** Eén aanvraag. Geeft de uitkomst van de ronde, of hoe lang er gewacht moet worden voor de volgende. */
   async #attempt(generation: number, attempt: number): Promise<boolean | number> {
     const host = this.#host;
@@ -169,7 +203,7 @@ export class TokenRefresher {
     }
     const upgrade = !host.cookieAuth && host.supportsUpgrade && !this.#upgradeRefused;
     const body = this.#body(upgrade);
-    const { data, error, response } = await host.raw.POST('/auth/refresh', { body });
+    const { data, error, response } = await withTimeout(host.timeoutMs, (signal) => host.raw.POST('/auth/refresh', { body, signal }));
     if (generation !== host.generation) return false;
     if (response.status === 429) {
       // Geen sessieverlies: de server heeft niets geroteerd en het token is nog goed. Tokens blijven
