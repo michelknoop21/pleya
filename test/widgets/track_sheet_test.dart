@@ -97,8 +97,12 @@ void main() {
   group('TrackSheet deferred subtitle', () {
     final sourceTrack = MediaSubtitleTrack(id: 3, selected: true, forced: false, languageCode: 'eng');
 
-    Future<DeferredSubtitleLoader> pump(WidgetTester tester, Future<File> Function() load) async {
-      final loader = DeferredSubtitleLoader(attach: (_, _) async {});
+    Future<DeferredSubtitleLoader> pump(
+      WidgetTester tester,
+      Future<File> Function() load, {
+      DateTime Function()? now,
+    }) async {
+      final loader = DeferredSubtitleLoader(attach: (_, _) async {}, now: now);
       addTearDown(loader.dispose);
       unawaited(loader.start(DeferredSubtitle(load: (_) => load())));
       await _pumpTrackSheet(
@@ -126,19 +130,47 @@ void main() {
       expect(find.text('Retry'), findsNothing);
     });
 
-    testWidgets('offers a retry after a failure', (tester) async {
+    testWidgets('a retry after the server forgot the failure asks again at once', (tester) async {
+      var clock = DateTime.utc(2026, 10, 31);
       var calls = 0;
       final gate = Completer<File>();
       await pump(tester, () {
         calls++;
         return calls == 1 ? Future<File>.error(StateError('502')) : gate.future;
-      });
+      }, now: () => clock);
       await tester.pump();
       expect(find.text('Subtitles could not be prepared'), findsOneWidget);
+
+      clock = clock.add(deferredSubtitleFailureMemory);
       await tester.tap(find.text('Retry'));
       await tester.pump();
       expect(calls, 2);
       expect(find.text('Preparing subtitles'), findsOneWidget);
+    });
+
+    testWidgets('a retry while the server remembers the failure waits it out', (tester) async {
+      var clock = DateTime.utc(2026, 10, 31);
+      var calls = 0;
+      final gate = Completer<File>();
+      await pump(tester, () {
+        calls++;
+        return calls == 1 ? Future<File>.error(StateError('502')) : gate.future;
+      }, now: () => clock);
+      await tester.pump();
+
+      const passed = Duration(seconds: 5);
+      clock = clock.add(passed);
+      await tester.tap(find.text('Retry'));
+      await tester.pump();
+      expect(find.text('Preparing subtitles'), findsOneWidget);
+      expect(find.text('Retry'), findsNothing);
+      expect(calls, 1, reason: 'the server would answer the same 502');
+
+      final left = deferredSubtitleFailureMemory - passed;
+      await tester.pump(left - const Duration(milliseconds: 1));
+      expect(calls, 1);
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(calls, 2);
     });
   });
 
