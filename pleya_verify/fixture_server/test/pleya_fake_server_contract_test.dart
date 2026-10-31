@@ -125,7 +125,15 @@ void main() {
       'UserState',
       'POST',
       '/watch-state',
-      body: {'item_id': 'item-1', 'position_ms': 12000, 'duration_ms': 888000, 'completed': false},
+      body: {
+        'item_id': 'item-1',
+        'session_id': 'vangst-sessie-1',
+        'position_ms': 12000,
+        'duration_ms': 888000,
+        'occurred_at': '2026-08-21T20:00:00Z',
+        'completed': false,
+        'explicit_action': 'none',
+      },
     );
     await record('WatchStatePage', 'GET', '/watch-state');
 
