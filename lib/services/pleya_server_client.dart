@@ -35,6 +35,7 @@ import '../media/playback_report_metadata.dart';
 import '../media/server_capabilities.dart';
 import '../i18n/strings.g.dart';
 import '../models/pleya_server/pleya_wire.dart';
+import '../models/pleya_server/pleya_wire_activity.dart';
 import '../models/pleya_server/pleya_wire_library.dart';
 import '../models/pleya_server/pleya_wire_playback.dart';
 import '../utils/app_logger.dart';
