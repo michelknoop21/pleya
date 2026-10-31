@@ -11,6 +11,7 @@ import {
   deviceFields,
   deviceId,
   deviceName,
+  knownDeviceName,
   resetPageDeviceId,
   type DeviceStorage
 } from './device';
@@ -170,5 +171,16 @@ describe('velden voor setup en login', () => {
     const fields = deviceFields({ sessions: true }, storage, hints);
     expect(fields.device_name).toBe('Firefox op Linux');
     expect(fields.device_id).toBe(storage.map.get(DEVICE_ID_KEY));
+  });
+});
+
+describe('knownDeviceName', () => {
+  it('gives a real name back and treats the placeholder of the server as no name', () => {
+    expect(knownDeviceName('  Apple TV ')).toBe('Apple TV');
+    expect(knownDeviceName('Unknown device')).toBeNull();
+    expect(knownDeviceName(' Unknown device ')).toBeNull();
+    expect(knownDeviceName('   ')).toBeNull();
+    expect(knownDeviceName(null)).toBeNull();
+    expect(knownDeviceName(undefined)).toBeNull();
   });
 });

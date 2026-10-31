@@ -10,6 +10,7 @@
   import AdminIcon from '../components/AdminIcon.svelte';
   import Panel from '../components/Panel.svelte';
   import StatusPill from '../components/StatusPill.svelte';
+  import { knownDeviceName } from '../auth/device';
   import { t } from '../i18n';
   import { streamProgress, type OverviewData } from './overview';
 
@@ -28,7 +29,7 @@
           <AdminIcon name="tv" size={22} />
           <div class="body">
             <p class="t">
-              {stream.username} · {stream.device_name ?? t('admin.watching.unknownDevice')}
+              {stream.username} · {knownDeviceName(stream.device_name) ?? t('admin.watching.unknownDevice')}
             </p>
             <p class="s">{stream.item_title}</p>
           </div>

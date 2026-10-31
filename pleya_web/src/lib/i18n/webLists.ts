@@ -71,6 +71,8 @@ export const webLists = {
   'lists.add.noPlaylistForKind': 'A playlist holds films and episodes. Open the show and add its episodes.',
   'lists.add.newName': 'New list',
   'lists.add.newKind': 'Type',
+  'lists.add.newCollection': 'Collection',
+  'lists.add.newPlaylist': 'Playlist',
   'lists.add.done': 'Added to {names}',
   'lists.add.partial': 'Added to {names}, but not to {failed}.',
 } as const;

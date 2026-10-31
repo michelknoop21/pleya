@@ -90,6 +90,12 @@ describe('add to list', () => {
     expect(h.createCollection).toHaveBeenCalledWith({ title: 'Nieuw' });
   });
 
+  it('names the kind of one new list in the singular', async () => {
+    const dialog = await openFor(movie);
+    const kind = await within(dialog).findByRole('combobox', { name: 'Type' });
+    expect(within(kind).getAllByRole('option').map((option) => option.textContent)).toEqual(['Collection', 'Playlist']);
+  });
+
   it('stays open and names what failed', async () => {
     h.addItems.mockImplementation((_: string, id: string) => (id === 'p1' ? Promise.reject(new Error('offline')) : Promise.resolve(true)));
     const dialog = await openFor(movie);

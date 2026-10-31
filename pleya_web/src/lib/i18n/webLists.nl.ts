@@ -73,6 +73,8 @@ export const webListsNl = {
   'lists.add.noPlaylistForKind': 'Een afspeellijst bevat films en afleveringen. Open de serie en voeg de afleveringen toe.',
   'lists.add.newName': 'Nieuwe lijst',
   'lists.add.newKind': 'Soort',
+  'lists.add.newCollection': 'Verzameling',
+  'lists.add.newPlaylist': 'Afspeellijst',
   'lists.add.done': 'Toegevoegd aan {names}',
   'lists.add.partial': 'Toegevoegd aan {names}, maar niet aan {failed}.',
 } satisfies Record<keyof typeof webLists, string>;

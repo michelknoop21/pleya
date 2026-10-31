@@ -3,6 +3,7 @@
  * server levert ze op `ended_at` gesorteerd, de groepen volgen die volgorde.
  */
 import type { HistoryEntry, Item } from '../api/types';
+import { knownDeviceName } from '../auth/device';
 import { t } from '../i18n';
 import { formatClock, formatDate } from './format';
 
@@ -48,7 +49,8 @@ export function historyLine(entry: HistoryEntry): string {
   const parts = entry.completed
     ? [t('history.finished'), `${formatClock(entry.started_at)} – ${formatClock(entry.ended_at)}`]
     : [percent === null ? null : t('history.upTo', { percent }), formatClock(entry.ended_at)];
-  return [...parts, entry.device_name?.trim() || null].filter(Boolean).join(' · ');
+  const device = entry.device_name?.trim() ? (knownDeviceName(entry.device_name) ?? t('admin.devices.unknown')) : null;
+  return [...parts, device].filter(Boolean).join(' · ');
 }
 
 /** Unieke items met een eigen cijfer, in de volgorde waarin ze binnenkwamen. */

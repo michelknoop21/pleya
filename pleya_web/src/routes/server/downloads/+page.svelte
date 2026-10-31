@@ -8,6 +8,7 @@
   import StatusPill, { type PillTone } from '#lib/components/StatusPill.svelte';
   import { personalApi } from '#lib/api/personal.js';
   import { describeError } from '#lib/api/errors.js';
+  import { knownDeviceName } from '#lib/auth/device.js';
   import type { Download, Item, Library } from '#lib/api/types.js';
   import { session } from '#lib/stores/session.svelte.js';
   import { formatBytes, formatDate } from '#lib/util/format.js';
@@ -53,7 +54,7 @@
       t('downloads.original'), version?.container.toUpperCase(),
       download.size_bytes === null ? null : formatBytes(download.size_bytes),
       formatDate(download.created_at),
-      download.device_name?.trim() || t('downloads.unknownDevice')
+      knownDeviceName(download.device_name) ?? t('downloads.unknownDevice')
     ].filter(Boolean).join(' · ');
   }
 

@@ -38,8 +38,8 @@
   const playable = $derived(item?.kind === 'movie' || item?.kind === 'episode');
   const offerPlaylists = $derived(canPlaylist && playable);
   const kinds = $derived([
-    ...(canCollect ? [{ value: 'collection', label: t('lists.add.collections') }] : []),
-    ...(offerPlaylists ? [{ value: 'playlist', label: t('lists.add.playlists') }] : [])
+    ...(canCollect ? [{ value: 'collection', label: t('lists.add.newCollection') }] : []),
+    ...(offerPlaylists ? [{ value: 'playlist', label: t('lists.add.newPlaylist') }] : [])
   ]);
   const anyChosen = $derived(Object.values(chosen).some(Boolean) || newName.trim() !== '');
   const empty = $derived(!loading && !collections.length && !(offerPlaylists && playlists.length));
