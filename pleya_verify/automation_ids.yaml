@@ -147,6 +147,27 @@ ids:
   - id: library.header
     role: region
     instanceable: false
+  - id: library.header.search
+    role: button
+    instanceable: false
+  - id: library.header.watchlist
+    role: button
+    instanceable: false
+  - id: library.header.avatar
+    role: button
+    instanceable: false
+  - id: library.filter.more
+    role: button
+    instanceable: false
+  - id: library.filter.count
+    role: region
+    instanceable: false
+  - id: sheet.library_sort
+    role: sheet
+    instanceable: false
+  - id: sheet.library_filter
+    role: sheet
+    instanceable: false
   - id: library.filter.grouping
     role: filter
     instanceable: false
@@ -195,12 +216,15 @@ ids:
   - id: media-detail.episode-list.item
     role: list.item
     instanceable: true
-  - id: media-detail.season-chips
+  - id: media-detail.tabs
     role: list
     instanceable: false
-  - id: media-detail.season-chip
+  - id: media-detail.tab
     role: chip
     instanceable: true
+  - id: media-detail.activity
+    role: text
+    instanceable: false
   - id: media-detail.play
     role: button
     instanceable: false
@@ -222,6 +246,24 @@ ids:
   - id: media-detail.season-poster
     role: grid.item
     instanceable: true
+  - id: media-detail.section
+    role: region
+    instanceable: true
+  - id: media-detail.section.item
+    role: list.item
+    instanceable: true
+  - id: media-detail.read-more
+    role: button
+    instanceable: false
+  - id: media-detail.action-panel
+    role: region
+    instanceable: false
+  - id: media-detail.action-panel.row
+    role: list.item
+    instanceable: true
+  - id: media-detail.source-change
+    role: button
+    instanceable: false
   - id: tv.search.pill
     role: field
     instanceable: false

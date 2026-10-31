@@ -133,6 +133,10 @@ class UnifiedCatalogService {
 
   List<UnifiedMediaGroup> _groups = [];
   int _generation = 0;
+
+  /// The [loadMore] round of this generation that has not finished. A reset
+  /// lets go of it: that round stops at its own generation check.
+  Future<UnifiedCatalogSnapshot>? _runningRound;
   bool _everSucceeded = false;
 
   UnifiedCatalogQuery get query => _query;
@@ -251,6 +255,7 @@ class UnifiedCatalogService {
     }
     _query = query;
     _cursors = [for (final library in libraries) UnifiedSourceCursor(library)];
+    _runningRound = null;
     _poppedItems.clear();
     _externalIdCache.clear();
     _resolvableCache.clear();
@@ -276,9 +281,27 @@ class UnifiedCatalogService {
   /// "keep going until groupsPerPage or exhausted" would give up early
   /// whenever a healthy library needs more than one page to help reach the
   /// target.
-  Future<UnifiedCatalogSnapshot> loadMore() async {
-    if (isComplete) return snapshot;
+  ///
+  /// One round at a time per generation: a call while one runs gets that same
+  /// round, also when the last page is in and only the ids are still out, which
+  /// already reads as [isComplete]. A second one beside it would see a cursor whose page is on its way
+  /// as nothing to wait for and pop past it, and would grow [_poppedItems] under
+  /// a [_recomputeGroups] that is still waiting for external ids.
+  Future<UnifiedCatalogSnapshot> loadMore() {
+    final running = _runningRound;
+    if (running != null) return running;
+    if (isComplete) return Future.value(snapshot);
+    final round = _advance();
+    _runningRound = round;
+    void release() {
+      if (identical(_runningRound, round)) _runningRound = null;
+    }
 
+    unawaited(round.then<void>((_) => release(), onError: (Object _) => release()));
+    return round;
+  }
+
+  Future<UnifiedCatalogSnapshot> _advance() async {
     final myGeneration = _generation;
     final groupCountAtStart = _groups.length;
     var poppedThisCall = 0;
@@ -291,6 +314,7 @@ class UnifiedCatalogService {
       var poppedThisBatch = 0;
       while (poppedThisBatch < groupsPerPage &&
           poppedThisCall < maxRawItemsPerLoadMore &&
+          !_awaitsRefill(failedThisCall) &&
           _cursors.any((c) => c.hasBufferedItem)) {
         _poppedItems.add(_popGlobalSmallestHead());
         poppedThisBatch++;
@@ -298,6 +322,15 @@ class UnifiedCatalogService {
       }
 
       if (poppedThisBatch == 0) {
+        // A page that only held titles without a value, or a sibling that ran
+        // dry: every such round moves an offset, marks a cursor exhausted or
+        // adds it to the failed set, so this ends. At the concurrency ceiling
+        // nothing was launched, and going round without waiting would spin.
+        if (_awaitsRefill(failedThisCall)) {
+          if (_cursors.any((c) => c.fetchInFlight)) await _awaitPendingFetches(myGeneration, failedThisCall);
+          if (myGeneration != _generation) return snapshot;
+          continue;
+        }
         // Nothing buffered anywhere. [progressiveLoadingGrace] bounds the wait
         // for results that have *already arrived* (E5), and normally that is
         // exactly right: return with what there is, merge the slow library in
@@ -323,6 +356,16 @@ class UnifiedCatalogService {
 
     return snapshot;
   }
+
+  /// A cursor can still deliver but holds nothing to compare.
+  ///
+  /// Popping past it would rank the other libraries against a head that is
+  /// simply not here yet, so its next page, which may start lower, would land
+  /// behind items that should have come after it. One still in flight past the
+  /// grace period does not count: that is the slow outlier E5 refuses to wait
+  /// for.
+  bool _awaitsRefill(Set<UnifiedSourceCursor> failedThisCall) =>
+      _cursors.any((c) => c.isFetchable && !c.hasBufferedItem && !failedThisCall.contains(c));
 
   /// Launches a bounded wave of fetchable cursors' next pages and waits for
   /// the wave, capped at [progressiveLoadingGrace] (E5, hoofdstuk 12.6: "een
@@ -480,17 +523,28 @@ class UnifiedCatalogService {
         cursor.sourceTotal = page.totalCount;
         cursor.lastError = null;
         cursor.exhausted = true;
+        cursor.releaseHeldBack(unifiedCatalogItemComparator(_query));
         _everSucceeded = true;
         return;
       }
 
-      cursor.buffer.addAll(page.items);
+      final sortField = _query.sortField;
+      cursor.accept(
+        page.items,
+        hasSortValue: unifiedCatalogKeyProvesNoValue(sortField, _query.kind, cursor.library.backend)
+            ? (item) => unifiedCatalogHasSortValue(item, sortField)
+            : null,
+        maxHeldBack: maxRawItemsPerLoadMore,
+      );
       cursor.offset += page.items.length;
       cursor.sourceTotal = page.totalCount;
       cursor.lastFetchedItemKeys = requestedKeys;
       cursor.lastError = null;
       _everSucceeded = true;
-      if (page.items.isEmpty || page.items.length < pageSize) cursor.exhausted = true;
+      if (page.items.isEmpty || page.items.length < pageSize) {
+        cursor.exhausted = true;
+        cursor.releaseHeldBack(unifiedCatalogItemComparator(_query));
+      }
     } catch (e, st) {
       if (myGeneration != _generation) return;
       appLogger.d('Unified catalog page fetch failed for ${cursor.libraryGlobalKey}', error: e, stackTrace: st);
@@ -588,6 +642,9 @@ class UnifiedCatalogService {
         }
       },
     );
+    // A reset while the ids were out: [_poppedItems] is another merge's now, and
+    // [evidence] belongs to the list this round started from.
+    if (generation != _generation) return;
 
     final candidates = <GroupingCandidate>[];
     for (var i = 0; i < _poppedItems.length; i++) {

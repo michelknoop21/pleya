@@ -41,6 +41,9 @@ List<Map<String, dynamic>> _itemsArray(Object? data) {
 ///  - `PremiereDate` for sort-by-release-date and episode metadata
 ///  - `OriginalTitle`/`SortName` for sort + alphabetised display
 ///  - `Overview` so list rows can show their description
+///  - `DateCreated`, which the server leaves out unless asked: without it a
+///    catalog sorted on date added cannot place a Jellyfin title against a Plex
+///    one, and has no date to show under the poster
 ///
 /// Heavier fields (`MediaSources`, `People`, `Genres`, `Tags`, `Studios`,
 /// `Taglines`, `Chapters`) stay in [_detailFields] — together
@@ -49,7 +52,8 @@ List<Map<String, dynamic>> _itemsArray(Object? data) {
 /// `ProviderIds` is the exception among the identity fields: it is a small map
 /// (three short strings) and it lets unified grouping recognise the same title
 /// on another server without one detail request per title.
-const _browseFields = 'RecursiveItemCount,ChildCount,UserData,PremiereDate,OriginalTitle,SortName,Overview,ProviderIds';
+const _browseFields =
+    'RecursiveItemCount,ChildCount,UserData,PremiereDate,DateCreated,OriginalTitle,SortName,Overview,ProviderIds';
 
 /// Existing episode-row requests can show Plex-style quality labels when the
 /// response includes `MediaSources`. Keep this off broad library/search/latest

@@ -8,6 +8,7 @@ import '../utils/external_ids.dart';
 import '../utils/watch_state_notifier.dart';
 import 'download_resolution.dart';
 import 'ids.dart';
+import 'item_watcher.dart';
 import 'library_filter_result.dart';
 import 'library_first_character.dart';
 import 'library_query.dart';
@@ -731,6 +732,23 @@ abstract interface class SeasonEpisodePagingClient {
 /// nothing downstream needs a `MediaKind.person` to route these correctly.
 abstract interface class PersonSearchClient {
   Future<List<MediaItem>> searchPeople(String query, {int limit = 100});
+}
+
+/// Optional capability for backends that say who in the household watched an
+/// item, read only under [ServerCapabilities.itemActivity]. A server without
+/// that flag has none of these routes.
+abstract interface class HouseholdActivityClient implements MediaServerClient {
+  /// Most recent viewer first. Empty when nobody did or when the server gave no
+  /// usable answer: this feeds one line on a detail page.
+  Future<List<ItemWatcher>> fetchHouseholdActivity(String itemId);
+
+  /// Whether the viewer shares their own activity, or null when that could not
+  /// be read.
+  Future<bool?> fetchActivitySharing();
+
+  /// Sets it and answers what the server now holds. A failed save throws, so
+  /// the caller can keep showing what is still true.
+  Future<bool> saveActivitySharing(bool share);
 }
 
 /// Cache-aware fetch helpers shared by both backends so the offline-first /

@@ -163,7 +163,7 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
       onPlayTrailer: trailer == null ? null : () => unawaited(navigateToVideoPlayer(context, metadata: trailer)),
       onShare: () {
         final anchor = _contextMenuKey.currentContext;
-        if (anchor != null) unawaited(_shareMobileItem(anchor, metadata));
+        if (anchor != null) unawaited(shareMediaItem(anchor, metadata));
       },
       onRequest: (seerrConfigured && !widget.isOffline && (metadata.isMovie || metadata.isShow))
           ? () => unawaited(_handleRequestPressed(metadata))
@@ -215,26 +215,6 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
       unifiedTitle: title,
     );
     if (!widget.isOffline && mounted) unawaited(refreshAfterPlayback(playedItemId: target.id));
-  }
-
-  /// The iOS share sheet anchored to the tapped button. share_plus needs
-  /// `sharePositionOrigin` for the popover (required on iPad, and without it
-  /// the sheet could fail to appear or leave the UI unresponsive); Michel saw
-  /// exactly that on 24 September ("delen werkt niet"). A failure to present
-  /// the sheet is shown, a dismissed sheet is not.
-  Future<void> _shareMobileItem(BuildContext buttonContext, MediaItem metadata) async {
-    final box = buttonContext.findRenderObject() as RenderBox?;
-    final origin = box == null ? null : box.localToGlobal(Offset.zero) & box.size;
-    final year = metadata.year;
-    final text = year == null ? metadata.displayTitle : '${metadata.displayTitle} ($year)';
-    try {
-      await SharePlus.instance.share(
-        ShareParams(text: text, subject: metadata.displayTitle, sharePositionOrigin: origin),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      showErrorSnackBar(context, t.errors.failedToLoad(context: t.common.share));
-    }
   }
 
   /// Section heading over the inline episodes, extras and cast blocks: the

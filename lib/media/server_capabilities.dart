@@ -29,6 +29,12 @@ class ServerCapabilities {
   /// `/Playlists`).
   final bool serverSidePlaylists;
 
+  /// Server-side collections the app can add to and remove from (Plex
+  /// `/library/collections`, Jellyfin and Emby `/Collections`). The write is
+  /// still the server owner's: the flag says the backend can, not that this
+  /// user may.
+  final bool serverSideCollections;
+
   /// This backend kind has a Live TV / DVR API the app can talk to. Whether
   /// a *specific* server has Live TV configured is a runtime concern —
   /// [MultiServerProvider.checkLiveTvAvailability] probes each server and
@@ -133,9 +139,20 @@ class ServerCapabilities {
   /// `/Items?ParentId=...&Recursive=false` queries.
   final bool folderGrouping;
 
+  /// The server says who in the household watched an item. Pleya Server only:
+  /// Plex answers that through `ItemWatchersService`, and the others have no
+  /// such route.
+  final bool itemActivity;
+
+  /// The detail page may say that the viewer watched something, on the strength
+  /// of the item's own watch state. Plex stays out: its row comes from the
+  /// server's history and only an owner gets one.
+  final bool ownActivityLine;
+
   const ServerCapabilities({
     this.serverSidePlayQueue = false,
     this.serverSidePlaylists = false,
+    this.serverSideCollections = false,
     this.liveTv = false,
     this.liveTvDvr = false,
     this.subtitleSearch = false,
@@ -156,12 +173,15 @@ class ServerCapabilities {
     this.scrubThumbnails = false,
     this.serverFavorites = false,
     this.folderGrouping = false,
+    this.itemActivity = false,
+    this.ownActivityLine = false,
   });
 
   /// Defaults for a fully-featured Plex server.
   static const ServerCapabilities plex = ServerCapabilities(
     serverSidePlayQueue: true,
     serverSidePlaylists: true,
+    serverSideCollections: true,
     liveTv: true,
     liveTvDvr: true,
     subtitleSearch: true,
@@ -195,6 +215,7 @@ class ServerCapabilities {
   static const ServerCapabilities jellyfin = ServerCapabilities(
     serverSidePlayQueue: false,
     serverSidePlaylists: true,
+    serverSideCollections: true,
     liveTv: true,
     liveTvDvr: false,
     subtitleSearch: false,
@@ -216,6 +237,7 @@ class ServerCapabilities {
     scrubThumbnails: true,
     serverFavorites: true,
     folderGrouping: true,
+    ownActivityLine: true,
   );
 
   /// Defaults for a local folder source (no server, no transcoding).
@@ -248,6 +270,7 @@ class ServerCapabilities {
   ServerCapabilities copyWith({
     bool? serverSidePlayQueue,
     bool? serverSidePlaylists,
+    bool? serverSideCollections,
     bool? liveTv,
     bool? liveTvDvr,
     bool? subtitleSearch,
@@ -268,10 +291,13 @@ class ServerCapabilities {
     bool? scrubThumbnails,
     bool? serverFavorites,
     bool? folderGrouping,
+    bool? itemActivity,
+    bool? ownActivityLine,
   }) {
     return ServerCapabilities(
       serverSidePlayQueue: serverSidePlayQueue ?? this.serverSidePlayQueue,
       serverSidePlaylists: serverSidePlaylists ?? this.serverSidePlaylists,
+      serverSideCollections: serverSideCollections ?? this.serverSideCollections,
       liveTv: liveTv ?? this.liveTv,
       liveTvDvr: liveTvDvr ?? this.liveTvDvr,
       subtitleSearch: subtitleSearch ?? this.subtitleSearch,
@@ -292,6 +318,8 @@ class ServerCapabilities {
       scrubThumbnails: scrubThumbnails ?? this.scrubThumbnails,
       serverFavorites: serverFavorites ?? this.serverFavorites,
       folderGrouping: folderGrouping ?? this.folderGrouping,
+      itemActivity: itemActivity ?? this.itemActivity,
+      ownActivityLine: ownActivityLine ?? this.ownActivityLine,
     );
   }
 }

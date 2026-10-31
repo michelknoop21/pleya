@@ -98,8 +98,68 @@ class UnifiedSourceCursor {
 
   /// Items fetched but not yet popped by the merge. Bounded to at most one
   /// page (hoofdstuk 12.7's buffercap) — a cursor never holds more than the
-  /// page it most recently fetched.
+  /// page it most recently fetched, until [releaseHeldBack] appends what it held
+  /// back at the very end.
   final List<MediaItem> buffer = [];
+
+  /// Leading titles without a value for the sort.
+  ///
+  /// Titles without a value belong at the end in both directions, and no
+  /// backend promises that: where a server puts its nulls is not in any API
+  /// document this project has. A server that sends them last needs nothing.
+  /// One that sends them first would otherwise put them on top of a single
+  /// library, and in a merge jam the cursor behind a head that never wins. So
+  /// what comes before the first value waits here until the library has
+  /// answered completely. Anything after a value passes in stream order: past
+  /// that point the server has shown which end it keeps them at, and holding
+  /// those back would walk a whole library for one page of a sort on Voortgang.
+  ///
+  /// This only works where a missing key proves the server has no value either,
+  /// and [UnifiedCatalogService] does not ask otherwise: see
+  /// `unifiedCatalogKeyProvesNoValue`. A library that never showed a single value
+  /// is the same doubt without a table to look it up in, so it keeps the order
+  /// it was sent in: see [releaseHeldBack].
+  final List<MediaItem> heldBack = [];
+  bool _sawSortValue = false;
+
+  /// Takes one page. [hasSortValue] is null when nothing can be held back.
+  ///
+  /// [maxHeldBack] bounds the walk: a library whose list carries no value at all
+  /// would otherwise have to be read to its end before a first card appears. The
+  /// service passes its own budget for one round, so the first card costs no more
+  /// pages than any other. Past it the items pass in the server's order, which
+  /// breaks the rule above only on more than that many leading titles without a
+  /// value.
+  void accept(List<MediaItem> items, {bool Function(MediaItem)? hasSortValue, required int maxHeldBack}) {
+    for (final item in items) {
+      if (hasSortValue == null || _sawSortValue) {
+        buffer.add(item);
+      } else if (hasSortValue(item)) {
+        _sawSortValue = true;
+        buffer.add(item);
+      } else {
+        heldBack.add(item);
+        if (heldBack.length >= maxHeldBack) {
+          _sawSortValue = true;
+          buffer.addAll(heldBack);
+          heldBack.clear();
+        }
+      }
+    }
+  }
+
+  /// Puts what was held back behind everything else. Called once, when the
+  /// library has reported all it has.
+  ///
+  /// In [compare]'s order once a value has proved the key works. Without one the
+  /// comparator has nothing but titles, and the server may well know what this
+  /// client cannot read, so sorting would replace its order with A to Z.
+  void releaseHeldBack(int Function(MediaItem a, MediaItem b) compare) {
+    if (heldBack.isEmpty) return;
+    if (_sawSortValue) heldBack.sort(compare);
+    buffer.addAll(heldBack);
+    heldBack.clear();
+  }
 
   /// True once this library has reported every item it has. A cursor never
   /// fetches again once this is set.

@@ -12,6 +12,7 @@ import '../../widgets/focusable_list_tile.dart';
 import '../../widgets/overlay_sheet.dart';
 import '../../utils/provider_extensions.dart';
 import '../../i18n/strings.g.dart';
+import 'library_phone_filter_pages.dart';
 import '../../widgets/skeletons.dart';
 
 class FiltersBottomSheet extends StatefulWidget {
@@ -28,6 +29,11 @@ class FiltersBottomSheet extends StatefulWidget {
   /// lists the categories.
   final Map<String, List<MediaFilterValue>>? cachedValues;
 
+  /// The iPhone library look: the quick choices with a check, a rule, then the
+  /// categories, in [filters]' order. That order is the shared menu's
+  /// (`libraryMenuOrderedFilters`).
+  final bool phoneStyle;
+
   const FiltersBottomSheet({
     super.key,
     required this.filters,
@@ -37,6 +43,7 @@ class FiltersBottomSheet extends StatefulWidget {
     required this.libraryKey,
     this.onBack,
     this.cachedValues,
+    this.phoneStyle = false,
   });
 
   @override
@@ -155,6 +162,51 @@ class _FiltersBottomSheetState extends State<FiltersBottomSheet> {
     });
   }
 
+  /// Alles: every quick choice off. A category stays set, it has its own row.
+  void _clearQuickFilters() {
+    setState(() {
+      for (final filter in widget.filters) {
+        if (_isBooleanFilter(filter)) _tempSelectedFilters.remove(filter.filter);
+      }
+    });
+    _applyFilters();
+  }
+
+  void _toggleQuickFilter(MediaFilter filter) {
+    setState(() {
+      if (_tempSelectedFilters[filter.filter] == '1') {
+        _tempSelectedFilters.remove(filter.filter);
+      } else {
+        _tempSelectedFilters[filter.filter] = '1';
+      }
+    });
+    _applyFilters();
+  }
+
+  void _chooseFilterValue(MediaFilter filter, MediaFilterValue? value) {
+    setState(() {
+      if (value == null) {
+        _tempSelectedFilters.remove(filter.filter);
+      } else {
+        final filterValue = _extractFilterValue(value.key, filter.filter);
+        _tempSelectedFilters[filter.filter] = filterValue;
+        // Cache the display name for this filter value.
+        if (_filterDisplayNames.length > _maxCachedDisplayNames) {
+          _filterDisplayNames.clear();
+        }
+        _filterDisplayNames[_cacheKey(filter.filter, filterValue)] = value.title;
+      }
+    });
+    _applyFilters();
+  }
+
+  String? _displayValue(MediaFilter filter) {
+    final selectedValue = _tempSelectedFilters[filter.filter];
+    if (selectedValue == null) return null;
+    // Try to get the cached display name, fall back to the value itself
+    return _filterDisplayNames[_cacheKey(filter.filter, selectedValue)] ?? selectedValue;
+  }
+
   void _clearFilters() {
     setState(() {
       _tempSelectedFilters.clear();
@@ -179,9 +231,35 @@ class _FiltersBottomSheetState extends State<FiltersBottomSheet> {
     return key;
   }
 
+  Widget _buildPhonePage(MediaFilter? currentFilter) {
+    if (currentFilter != null) {
+      return LibraryPhoneFilterValues(
+        filter: currentFilter,
+        values: _filterValues,
+        isLoading: _isLoadingValues,
+        selectedValue: _tempSelectedFilters[currentFilter.filter],
+        valueOf: (value) => _extractFilterValue(value.key, currentFilter.filter),
+        scrollController: _valuesScrollController,
+        firstRowKey: _valuesFirstItemKey,
+        onBack: _goBack,
+        onChosen: (value) => _chooseFilterValue(currentFilter, value),
+      );
+    }
+    return LibraryPhoneFilterMenu(
+      filters: _sortedFilters,
+      selected: _tempSelectedFilters,
+      displayValue: _displayValue,
+      onAll: _clearQuickFilters,
+      onToggle: _toggleQuickFilter,
+      onCategory: _loadFilterValues,
+      onClear: _tempSelectedFilters.isEmpty ? null : _clearFilters,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentFilter = _currentFilter;
+    if (widget.phoneStyle) return _buildPhonePage(currentFilter);
     return BottomSheetPageScaffold(
       title: currentFilter?.title ?? t.libraries.filters,
       icon: Symbols.filter_alt_rounded,
@@ -226,12 +304,7 @@ class _FiltersBottomSheetState extends State<FiltersBottomSheet> {
             autofocus: autofocusFirst,
             title: Text(t.libraries.all),
             selected: isSelected,
-            onTap: () {
-              setState(() {
-                _tempSelectedFilters.remove(filter.filter);
-              });
-              _applyFilters();
-            },
+            onTap: () => _chooseFilterValue(filter, null),
           );
         }
 
@@ -242,17 +315,7 @@ class _FiltersBottomSheetState extends State<FiltersBottomSheet> {
         return FocusableListTile(
           title: Text(value.title),
           selected: isSelected,
-          onTap: () {
-            setState(() {
-              _tempSelectedFilters[filter.filter] = filterValue;
-              // Cache the display name for this filter value.
-              if (_filterDisplayNames.length > _maxCachedDisplayNames) {
-                _filterDisplayNames.clear();
-              }
-              _filterDisplayNames[_cacheKey(filter.filter, filterValue)] = value.title;
-            });
-            _applyFilters();
-          },
+          onTap: () => _chooseFilterValue(filter, value),
         );
       },
     );
@@ -290,12 +353,7 @@ class _FiltersBottomSheetState extends State<FiltersBottomSheet> {
         }
 
         // Regular navigable filters - show selected value instead of checkmark
-        final selectedValue = _tempSelectedFilters[filter.filter];
-        String? displayValue;
-        if (selectedValue != null) {
-          // Try to get the cached display name, fall back to the value itself
-          displayValue = _filterDisplayNames[_cacheKey(filter.filter, selectedValue)] ?? selectedValue;
-        }
+        final displayValue = _displayValue(filter);
 
         return FocusableListTile(
           focusNode: index == 0 ? _initialFocusNode : null,

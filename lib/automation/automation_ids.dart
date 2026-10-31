@@ -202,12 +202,16 @@ class AutomationIds {
   /// One row in [mediaDetailEpisodeList]. Instanceable: suffixed `[<index>]`.
   static const String mediaDetailEpisodeListItem = 'media-detail.episode-list.item';
 
-  /// The horizontal seizoenchips row on TV series detail (PB-4, DEC-109), the
-  /// only focus row that changes which season [mediaDetailEpisodeList] shows.
-  static const String mediaDetailSeasonChips = 'media-detail.season-chips';
+  /// The tabs above a series page on TV (Serie, Season 1, ...).
+  static const String mediaDetailTabs = 'media-detail.tabs';
 
-  /// One chip in [mediaDetailSeasonChips]. Instanceable: suffixed `[<index>]`.
-  static const String mediaDetailSeasonChip = 'media-detail.season-chip';
+  /// One tab in [mediaDetailTabs]. Instanceable: suffixed `[series]`,
+  /// `[episodes]` or `[<season index>]`.
+  static const String mediaDetailTab = 'media-detail.tab';
+
+  /// Who watched this, on TV. Its state carries `names`, how many people the
+  /// sentence stands for, so a scenario can tell the line from an empty one.
+  static const String mediaDetailActivity = 'media-detail.activity';
 
   /// The play button in the media-detail action row. On TV the page opens
   /// with the ring here, and Menu from the detail rail comes back to it.
@@ -235,6 +239,27 @@ class AutomationIds {
   /// One poster in the iPhone seasons rail (DEC-140). Instanceable: suffixed
   /// `[<index>]`.
   static const String mediaDetailSeasonPoster = 'media-detail.season-poster';
+
+  /// One section under the TV detail hero. Instanceable: suffixed
+  /// `[<section id>]`, e.g. `[cast]`, `[reviews]`, `[extras]`.
+  static const String mediaDetailSection = 'media-detail.section';
+
+  /// One card in a [mediaDetailSection]. Instanceable: suffixed
+  /// `[<section id>.<index>]`.
+  static const String mediaDetailSectionItem = 'media-detail.section.item';
+
+  /// The "Meer lezen" action under a truncated TV synopsis.
+  static const String mediaDetailReadMore = 'media-detail.read-more';
+
+  /// The panel the TV detail page's ⋮ opens, and any page pushed inside it.
+  static const String mediaDetailActionPanel = 'media-detail.action-panel';
+
+  /// One row of [mediaDetailActionPanel]. Instanceable: suffixed `[<row id>]`,
+  /// e.g. `[audio]`, `[watch]`, `[manage]`.
+  static const String mediaDetailActionPanelRow = 'media-detail.action-panel.row';
+
+  /// "Wijzigen" on the source line of a unified title.
+  static const String mediaDetailSourceChange = 'media-detail.source-change';
 
   /// The Mijn Pleya hub as a screen. Its own `AutomationScreen`, because
   /// `screen.main` is mounted for the whole session and says nothing about
@@ -502,6 +527,15 @@ class AutomationIds {
   /// only thing a scenario could read was a chip's own `selected` flag, and a
   /// chip that marks itself is not evidence that the page behind it changed.
   static const String libraryHeader = 'library.header';
+  static const String libraryHeaderSearch = 'library.header.search';
+  static const String libraryHeaderWatchlist = 'library.header.watchlist';
+  static const String libraryHeaderAvatar = 'library.header.avatar';
+
+  /// The three dots of the iPhone library filter row: manage and refresh.
+  static const String libraryFilterMore = 'library.filter.more';
+  static const String libraryFilterCount = 'library.filter.count';
+  static const String sheetLibrarySort = 'sheet.library_sort';
+  static const String sheetLibraryFilter = 'sheet.library_filter';
 
   /// The video player's rendering surface (`lib/mpv/video.dart`).
   static const String playerSurface = 'player.surface';
@@ -809,9 +843,12 @@ class AutomationIds {
     settingsTile,
     settingsCategory,
     mediaDetailEpisodeListItem,
-    mediaDetailSeasonChip,
+    mediaDetailTab,
     mediaDetailAction,
     mediaDetailSeasonPoster,
+    mediaDetailSection,
+    mediaDetailSectionItem,
+    mediaDetailActionPanelRow,
     discoverRail,
     discoverRailItem,
     accountMenuAction,
@@ -934,6 +971,13 @@ class AutomationIds {
     {'id': libraryGrid, 'role': 'grid', 'instanceable': false},
     {'id': libraryGridItem, 'role': 'grid.item', 'instanceable': true},
     {'id': libraryHeader, 'role': 'region', 'instanceable': false},
+    {'id': libraryHeaderSearch, 'role': 'button', 'instanceable': false},
+    {'id': libraryHeaderWatchlist, 'role': 'button', 'instanceable': false},
+    {'id': libraryHeaderAvatar, 'role': 'button', 'instanceable': false},
+    {'id': libraryFilterMore, 'role': 'button', 'instanceable': false},
+    {'id': libraryFilterCount, 'role': 'region', 'instanceable': false},
+    {'id': sheetLibrarySort, 'role': 'sheet', 'instanceable': false},
+    {'id': sheetLibraryFilter, 'role': 'sheet', 'instanceable': false},
     {'id': libraryFilterGrouping, 'role': 'filter', 'instanceable': false},
     {'id': libraryFilterFilters, 'role': 'filter', 'instanceable': false},
     {'id': libraryFilterSort, 'role': 'filter', 'instanceable': false},
@@ -950,8 +994,9 @@ class AutomationIds {
     {'id': discoverSafeArea, 'role': 'region', 'instanceable': false},
     {'id': mediaDetailEpisodeList, 'role': 'list', 'instanceable': false},
     {'id': mediaDetailEpisodeListItem, 'role': 'list.item', 'instanceable': true},
-    {'id': mediaDetailSeasonChips, 'role': 'list', 'instanceable': false},
-    {'id': mediaDetailSeasonChip, 'role': 'chip', 'instanceable': true},
+    {'id': mediaDetailTabs, 'role': 'list', 'instanceable': false},
+    {'id': mediaDetailTab, 'role': 'chip', 'instanceable': true},
+    {'id': mediaDetailActivity, 'role': 'text', 'instanceable': false},
     {'id': mediaDetailPlay, 'role': 'button', 'instanceable': false},
     {'id': mediaDetailSource, 'role': 'button', 'instanceable': false},
     {'id': noticeBusy, 'role': 'status', 'instanceable': true},
@@ -959,6 +1004,12 @@ class AutomationIds {
     {'id': mediaDetailPlayFromStart, 'role': 'button', 'instanceable': false},
     {'id': mediaDetailAction, 'role': 'button', 'instanceable': true},
     {'id': mediaDetailSeasonPoster, 'role': 'grid.item', 'instanceable': true},
+    {'id': mediaDetailSection, 'role': 'region', 'instanceable': true},
+    {'id': mediaDetailSectionItem, 'role': 'list.item', 'instanceable': true},
+    {'id': mediaDetailReadMore, 'role': 'button', 'instanceable': false},
+    {'id': mediaDetailActionPanel, 'role': 'region', 'instanceable': false},
+    {'id': mediaDetailActionPanelRow, 'role': 'list.item', 'instanceable': true},
+    {'id': mediaDetailSourceChange, 'role': 'button', 'instanceable': false},
     {'id': tvSearchPill, 'role': 'field', 'instanceable': false},
     {'id': seerrSearchField, 'role': 'field', 'instanceable': false},
     {'id': seerrSearchInbox, 'role': 'button', 'instanceable': false},

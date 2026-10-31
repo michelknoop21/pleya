@@ -268,6 +268,13 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get privacy => 'Privacy';
+	@override String get showTraktDiscussions => 'Discussies van Trakt tonen';
+	@override String get shareActivity => 'Mijn activiteit delen';
+	@override String get shareActivityDescription => 'Anderen in het huishouden zien wat jij keek';
+	@override String shareActivityServer({required Object server}) => 'Mijn activiteit delen op ${server}';
+	@override String get shareActivitySaveFailed => 'Opslaan lukte niet. Er is niets gewijzigd.';
+	@override String get shareActivityUnreadable => 'Deze instelling is niet te lezen. Druk om het opnieuw te proberen.';
 	@override String get searchHint => 'Zoek in instellingen';
 	@override String get urlLabel => 'URL';
 	@override String get title => 'Instellingen';
@@ -634,6 +641,11 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get addToPlaylistOrCollection => 'Toevoegen aan afspeellijst / collectie';
+	@override String get addToPlaylist => 'Toevoegen aan afspeellijst';
+	@override String get watch => 'Kijken';
+	@override String get manage => 'Beheren';
+	@override String get moreWaysToWatch => 'Meer manieren om te kijken';
 	@override String get markAsWatched => 'Markeer als gekeken';
 	@override String get markAsUnwatched => 'Markeer als ongekeken';
 	@override String get removeFromContinueWatching => 'Verwijderen uit Verder kijken';
@@ -646,7 +658,7 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	@override String get goToSeries => 'Ga naar serie';
 	@override String get shufflePlay => 'Willekeurig afspelen';
 	@override String get shuffleNotAvailableOffline => 'Shuffle is offline niet beschikbaar';
-	@override String get fileInfo => 'Bestand info';
+	@override String get fileInfo => 'Bestandsinformatie';
 	@override String get deleteFromServer => 'Verwijderen van server';
 	@override String get confirmDelete => 'Deze media en bestanden van je server verwijderen?';
 	@override String get deleteMultipleWarning => 'Dit omvat alle afleveringen en hun bestanden.';
@@ -1036,6 +1048,16 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get discussions => 'Discussies';
+	@override String seasonBadge({required Object number}) => 'S${number}';
+	@override String commentLikes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: '${n} like',
+		other: '${n} likes',
+	);
+	@override String get moreActions => 'Meer acties';
+	@override String get audioStream => 'Audiostream';
+	@override String get subtitlesRow => 'Ondertitels';
+	@override String get manageTitle => 'Beheren';
 	@override String get title => 'Ontdekken';
 	@override String get forYou => 'Voor jou';
 	@override String get switchProfile => 'Wissel van profiel';
@@ -1092,6 +1114,8 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String statsWatchTime({required Object duration}) => '${duration} bekeken';
 	@override String statsRecent({required Object count}) => '${count} in de laatste 30 dagen';
 	@override String watchingSeriesBy({required Object names}) => 'Kijken deze serie: ${names}';
+	@override String activityBy({required Object names}) => 'Activiteit van ${names}';
+	@override String get activityByYou => 'jou';
 	@override String activityPlays({required Object count}) => '${count}× afgespeeld';
 	@override String activityViewers({required Object count}) => '${count} kijkers';
 	@override String activityOwnProgress({required Object season, required Object episode}) => 'Jij bent bij S${season} A${episode}';
@@ -1113,6 +1137,13 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get scoreRtCritics => 'Rotten Tomatoes, critici';
 	@override String get scoreRtAudience => 'Rotten Tomatoes, publiek';
 	@override String get scoreCommunity => 'Communityscore';
+	@override String get castAndCrew => 'Cast & Crew';
+	@override String get ratingsAndReviews => 'Ratings & Reviews';
+	@override String get seriesTab => 'Serie';
+	@override String episodeBadge({required Object number}) => 'A${number}';
+	@override String directedBy({required Object names}) => 'Geregisseerd door ${names}';
+	@override String get trailer => 'Trailer';
+	@override String get extra => 'Extra';
 	@override String get reviews => 'Recensies';
 	@override String get reviewOpenSource => 'Lees bij de bron';
 }
@@ -1214,7 +1245,8 @@ class _TranslationsLibrariesNl extends TranslationsLibrariesEn {
 	@override String emptyTrashConfirm({required Object title}) => 'Weet je zeker dat je de prullenbak wilt legen voor "${title}"?';
 	@override String get manageLibraries => 'Beheer bibliotheken';
 	@override String get sort => 'Sorteren';
-	@override String get sortBy => 'Sorteer op';
+	@override String get sortBy => 'Sorteren op';
+	@override String get filterBy => 'Filteren op';
 	@override String get filters => 'Filters';
 	@override String get confirmActionMessage => 'Weet je zeker dat je deze actie wilt uitvoeren?';
 	@override String get showLibrary => 'Toon bibliotheek';
@@ -1655,7 +1687,7 @@ class _TranslationsDownloadsNl extends TranslationsDownloadsEn {
 	@override String get movies => 'Films';
 	@override String get noDownloads => 'Nog geen downloads';
 	@override String get noDownloadsDescription => 'Gedownloade content verschijnt hier voor offline weergave';
-	@override String get downloadNow => 'Download';
+	@override String get downloadNow => 'Downloaden';
 	@override String get deleteDownload => 'Download verwijderen';
 	@override String get retryDownload => 'Download opnieuw proberen';
 	@override String get downloadQueued => 'Download in wachtrij';
@@ -2467,6 +2499,7 @@ class _TranslationsUnifiedCatalogNl extends TranslationsUnifiedCatalogEn {
 	@override String titleCount({required Object count}) => '${count} titels';
 	@override String get oneTitle => '1 titel';
 	@override String titlesLoaded({required Object count}) => '${count} titels geladen';
+	@override String get jumpTo => 'Spring naar';
 	@override String get loadMore => 'Meer laden';
 	@override String get loadingMore => 'Meer laden…';
 	@override late final _TranslationsUnifiedCatalogSortNl sort = _TranslationsUnifiedCatalogSortNl._(_root);
@@ -2477,6 +2510,8 @@ class _TranslationsUnifiedCatalogNl extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogDiscoveryNl discovery = _TranslationsUnifiedCatalogDiscoveryNl._(_root);
 	@override late final _TranslationsUnifiedCatalogHomeNl home = _TranslationsUnifiedCatalogHomeNl._(_root);
 	@override late final _TranslationsUnifiedCatalogHomeRowsNl homeRows = _TranslationsUnifiedCatalogHomeRowsNl._(_root);
+	@override String get onePlay => '1 keer';
+	@override String plays({required Object count}) => '${count} keer';
 }
 
 // Path: tvNavigation
@@ -3283,7 +3318,11 @@ class _TranslationsUnifiedCatalogSortNl extends TranslationsUnifiedCatalogSortEn
 	@override String get oldestAdded => 'Oudst toegevoegd';
 	@override String get newestRelease => 'Nieuwste release';
 	@override String get oldestRelease => 'Oudste release';
+	@override String get yearNewest => 'Nieuwste jaar';
+	@override String get yearOldest => 'Oudste jaar';
 	@override String get recentlyWatched => 'Recent bekeken';
+	@override late final _TranslationsUnifiedCatalogSortFieldsNl fields = _TranslationsUnifiedCatalogSortFieldsNl._(_root);
+	@override String get pageTitle => 'Sorteren op';
 }
 
 // Path: unifiedCatalog.rail
@@ -3322,6 +3361,9 @@ class _TranslationsUnifiedCatalogFiltersNl extends TranslationsUnifiedCatalogFil
 	@override String get someUnavailable => 'Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen';
 	@override String get noValues => 'Niets om uit te kiezen';
 	@override String activeCount({required Object count}) => '${count} actief';
+	@override String get decade => 'Decennium';
+	@override late final _TranslationsUnifiedCatalogFiltersQuickNl quick = _TranslationsUnifiedCatalogFiltersQuickNl._(_root);
+	@override String get pageTitle => 'Filteren op';
 }
 
 // Path: unifiedCatalog.states
@@ -4142,6 +4184,47 @@ class _TranslationsAssistantMatchNl extends TranslationsAssistantMatchEn {
 	@override String score({required Object score}) => 'Score ${score}';
 }
 
+// Path: unifiedCatalog.sort.fields
+class _TranslationsUnifiedCatalogSortFieldsNl extends TranslationsUnifiedCatalogSortFieldsEn {
+	_TranslationsUnifiedCatalogSortFieldsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Titel';
+	@override String get year => 'Jaar';
+	@override String get releaseDate => 'Releasedatum';
+	@override String get criticRating => 'Critici';
+	@override String get audienceRating => 'Publiek';
+	@override String get userRating => 'Waardering';
+	@override String get contentRating => 'Leeftijd';
+	@override String get duration => 'Duur';
+	@override String get progress => 'Voortgang';
+	@override String get plays => 'Afgespeeld';
+	@override String get addedAt => 'Toegevoegd';
+	@override String get recentlyWatched => 'Bekeken';
+	@override String get resolution => 'Resolutie';
+}
+
+// Path: unifiedCatalog.filters.quick
+class _TranslationsUnifiedCatalogFiltersQuickNl extends TranslationsUnifiedCatalogFiltersQuickEn {
+	_TranslationsUnifiedCatalogFiltersQuickNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => 'Alles';
+	@override String get hdr => 'HDR';
+	@override String get dolbyVision => 'Dolby Vision';
+	@override String get hdr10Plus => 'HDR10+';
+	@override String get atmos => 'Atmos';
+	@override String get unwatched => 'Ongekeken';
+	@override String get inProgress => 'Bezig';
+	@override String get unmatched => 'Niet gekoppeld';
+	@override String get duplicates => 'Dubbel';
+	@override String get watched => 'Bekeken';
+}
+
 // Path: unifiedCatalog.discovery.semantics
 class _TranslationsUnifiedCatalogDiscoverySemanticsNl extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
 	_TranslationsUnifiedCatalogDiscoverySemanticsNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -4624,6 +4707,13 @@ extension on TranslationsNl {
 			'update.viewRelease' => 'Bekijk release',
 			'update.latestVersion' => 'Je hebt de nieuwste versie',
 			'update.checkFailed' => 'Kon niet controleren op updates',
+			'settings.privacy' => 'Privacy',
+			'settings.showTraktDiscussions' => 'Discussies van Trakt tonen',
+			'settings.shareActivity' => 'Mijn activiteit delen',
+			'settings.shareActivityDescription' => 'Anderen in het huishouden zien wat jij keek',
+			'settings.shareActivityServer' => ({required Object server}) => 'Mijn activiteit delen op ${server}',
+			'settings.shareActivitySaveFailed' => 'Opslaan lukte niet. Er is niets gewijzigd.',
+			'settings.shareActivityUnreadable' => 'Deze instelling is niet te lezen. Druk om het opnieuw te proberen.',
 			'settings.searchHint' => 'Zoek in instellingen',
 			'settings.urlLabel' => 'URL',
 			'settings.title' => 'Instellingen',
@@ -4978,6 +5068,11 @@ extension on TranslationsNl {
 			'detailActions.watched' => 'Bekeken',
 			'detailActions.download' => 'Downloaden',
 			'detailActions.more' => 'Meer',
+			'mediaMenu.addToPlaylistOrCollection' => 'Toevoegen aan afspeellijst / collectie',
+			'mediaMenu.addToPlaylist' => 'Toevoegen aan afspeellijst',
+			'mediaMenu.watch' => 'Kijken',
+			'mediaMenu.manage' => 'Beheren',
+			'mediaMenu.moreWaysToWatch' => 'Meer manieren om te kijken',
 			'mediaMenu.markAsWatched' => 'Markeer als gekeken',
 			'mediaMenu.markAsUnwatched' => 'Markeer als ongekeken',
 			'mediaMenu.removeFromContinueWatching' => 'Verwijderen uit Verder kijken',
@@ -4990,7 +5085,7 @@ extension on TranslationsNl {
 			'mediaMenu.goToSeries' => 'Ga naar serie',
 			'mediaMenu.shufflePlay' => 'Willekeurig afspelen',
 			'mediaMenu.shuffleNotAvailableOffline' => 'Shuffle is offline niet beschikbaar',
-			'mediaMenu.fileInfo' => 'Bestand info',
+			'mediaMenu.fileInfo' => 'Bestandsinformatie',
 			'mediaMenu.deleteFromServer' => 'Verwijderen van server',
 			'mediaMenu.confirmDelete' => 'Deze media en bestanden van je server verwijderen?',
 			'mediaMenu.deleteMultipleWarning' => 'Dit omvat alle afleveringen en hun bestanden.',
@@ -5027,6 +5122,8 @@ extension on TranslationsNl {
 			'tooltips.markAsWatched' => 'Markeer als gekeken',
 			'tooltips.markAsUnwatched' => 'Markeer als ongekeken',
 			'videoControls.audioLabel' => 'Audio',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.subtitlesLabel' => 'Ondertitels',
 			'videoControls.resetToZero' => 'Reset naar 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
@@ -5039,8 +5136,6 @@ extension on TranslationsNl {
 			'videoControls.stretch' => 'Uitrekken',
 			'videoControls.lockRotation' => 'Vergrendel rotatie',
 			'videoControls.unlockRotation' => 'Ontgrendel rotatie',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.timerActive' => 'Timer actief',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Afspelen wordt gepauzeerd over ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'Einde van huidige video',
@@ -5316,6 +5411,13 @@ extension on TranslationsNl {
 			'connections.disconnectServer' => 'Verbinding verbreken',
 			'connections.disconnectServerConfirm' => ({required Object name}) => 'Verbinding met "${name}" verbreken? De aanmelding voor deze server wordt van dit apparaat verwijderd. Gedownloade items blijven staan.',
 			'connections.reauthRequired' => 'Opnieuw aanmelden vereist',
+			'discover.discussions' => 'Discussies',
+			'discover.seasonBadge' => ({required Object number}) => 'S${number}',
+			'discover.commentLikes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '${n} like', other: '${n} likes', ), 
+			'discover.moreActions' => 'Meer acties',
+			'discover.audioStream' => 'Audiostream',
+			'discover.subtitlesRow' => 'Ondertitels',
+			'discover.manageTitle' => 'Beheren',
 			'discover.title' => 'Ontdekken',
 			'discover.forYou' => 'Voor jou',
 			'discover.switchProfile' => 'Wissel van profiel',
@@ -5376,6 +5478,8 @@ extension on TranslationsNl {
 			'discover.statsWatchTime' => ({required Object duration}) => '${duration} bekeken',
 			'discover.statsRecent' => ({required Object count}) => '${count} in de laatste 30 dagen',
 			'discover.watchingSeriesBy' => ({required Object names}) => 'Kijken deze serie: ${names}',
+			'discover.activityBy' => ({required Object names}) => 'Activiteit van ${names}',
+			'discover.activityByYou' => 'jou',
 			'discover.activityPlays' => ({required Object count}) => '${count}× afgespeeld',
 			'discover.activityViewers' => ({required Object count}) => '${count} kijkers',
 			'discover.activityOwnProgress' => ({required Object season, required Object episode}) => 'Jij bent bij S${season} A${episode}',
@@ -5391,6 +5495,13 @@ extension on TranslationsNl {
 			'discover.scoreRtCritics' => 'Rotten Tomatoes, critici',
 			'discover.scoreRtAudience' => 'Rotten Tomatoes, publiek',
 			'discover.scoreCommunity' => 'Communityscore',
+			'discover.castAndCrew' => 'Cast & Crew',
+			'discover.ratingsAndReviews' => 'Ratings & Reviews',
+			'discover.seriesTab' => 'Serie',
+			'discover.episodeBadge' => ({required Object number}) => 'A${number}',
+			'discover.directedBy' => ({required Object names}) => 'Geregisseerd door ${names}',
+			'discover.trailer' => 'Trailer',
+			'discover.extra' => 'Extra',
 			'discover.reviews' => 'Recensies',
 			'discover.reviewOpenSource' => 'Lees bij de bron',
 			'mobileDetail.similarTab' => 'Vergelijkbaar',
@@ -5456,7 +5567,8 @@ extension on TranslationsNl {
 			'libraries.emptyTrashConfirm' => ({required Object title}) => 'Weet je zeker dat je de prullenbak wilt legen voor "${title}"?',
 			'libraries.manageLibraries' => 'Beheer bibliotheken',
 			'libraries.sort' => 'Sorteren',
-			'libraries.sortBy' => 'Sorteer op',
+			'libraries.sortBy' => 'Sorteren op',
+			'libraries.filterBy' => 'Filteren op',
 			'libraries.filters' => 'Filters',
 			'libraries.confirmActionMessage' => 'Weet je zeker dat je deze actie wilt uitvoeren?',
 			'libraries.showLibrary' => 'Toon bibliotheek',
@@ -5524,6 +5636,8 @@ extension on TranslationsNl {
 			'about.basedOnPlezy' => 'Gebaseerd op Plezy',
 			'about.upstreamProject' => 'Upstream-project',
 			'about.privacyPolicy' => 'Privacybeleid',
+			_ => null,
+		} ?? switch (path) {
 			'about.licence' => 'Licentie',
 			'about.sources' => 'Bronnen',
 			'about.tmdbSource' => 'TMDB: leeftijdsclassificatie, genres, cast, score, streamingdiensten, trending en vergelijkbare titels voor Big P, en beschrijvingen, genres, kijkwijzers en afbeeldingen van titels op een Pleya Server.',
@@ -5553,8 +5667,6 @@ extension on TranslationsNl {
 			'logs.levelFilter' => 'Niveau',
 			'logs.levelAll' => 'Alles',
 			'logs.levelWarnings' => 'Waarschuwingen',
-			_ => null,
-		} ?? switch (path) {
 			'logs.levelErrors' => 'Fouten',
 			'logs.noMatchingLogs' => 'Geen regels op dit niveau',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} van ${total} regels',
@@ -5806,7 +5918,7 @@ extension on TranslationsNl {
 			'downloads.movies' => 'Films',
 			'downloads.noDownloads' => 'Nog geen downloads',
 			'downloads.noDownloadsDescription' => 'Gedownloade content verschijnt hier voor offline weergave',
-			'downloads.downloadNow' => 'Download',
+			'downloads.downloadNow' => 'Downloaden',
 			'downloads.deleteDownload' => 'Download verwijderen',
 			'downloads.retryDownload' => 'Download opnieuw proberen',
 			'downloads.downloadQueued' => 'Download in wachtrij',
@@ -6038,6 +6150,8 @@ extension on TranslationsNl {
 			'externalPlayer.playerNameHint' => 'Mijn speler',
 			'externalPlayer.playerCommand' => 'Commando',
 			'externalPlayer.playerPackage' => 'Pakketnaam',
+			_ => null,
+		} ?? switch (path) {
 			'externalPlayer.playerUrlScheme' => 'URL-schema',
 			'externalPlayer.off' => 'Uit',
 			'externalPlayer.launchFailed' => 'Kan externe speler niet openen',
@@ -6067,8 +6181,6 @@ extension on TranslationsNl {
 			'metadataEdit.fromUrl' => 'Vanaf URL',
 			'metadataEdit.uploadFile' => 'Bestand uploaden',
 			'metadataEdit.enterImageUrl' => 'Voer afbeeldings-URL in',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.imageUrl' => 'Afbeeldings-URL',
 			'metadataEdit.metadataUpdated' => 'Metadata bijgewerkt',
 			'metadataEdit.metadataUpdateFailed' => 'Metadata bijwerken mislukt',
@@ -6545,16 +6657,35 @@ extension on TranslationsNl {
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titels',
 			'unifiedCatalog.oneTitle' => '1 titel',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titels geladen',
+			'unifiedCatalog.jumpTo' => 'Spring naar',
 			'unifiedCatalog.loadMore' => 'Meer laden',
 			'unifiedCatalog.loadingMore' => 'Meer laden…',
 			'unifiedCatalog.sort.title' => 'Sorteren',
 			'unifiedCatalog.sort.titleAsc' => 'Titel A–Z',
 			'unifiedCatalog.sort.titleDesc' => 'Titel Z–A',
 			'unifiedCatalog.sort.recentlyAdded' => 'Recent toegevoegd',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.sort.oldestAdded' => 'Oudst toegevoegd',
 			'unifiedCatalog.sort.newestRelease' => 'Nieuwste release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oudste release',
+			'unifiedCatalog.sort.yearNewest' => 'Nieuwste jaar',
+			'unifiedCatalog.sort.yearOldest' => 'Oudste jaar',
 			'unifiedCatalog.sort.recentlyWatched' => 'Recent bekeken',
+			'unifiedCatalog.sort.fields.title' => 'Titel',
+			'unifiedCatalog.sort.fields.year' => 'Jaar',
+			'unifiedCatalog.sort.fields.releaseDate' => 'Releasedatum',
+			'unifiedCatalog.sort.fields.criticRating' => 'Critici',
+			'unifiedCatalog.sort.fields.audienceRating' => 'Publiek',
+			'unifiedCatalog.sort.fields.userRating' => 'Waardering',
+			'unifiedCatalog.sort.fields.contentRating' => 'Leeftijd',
+			'unifiedCatalog.sort.fields.duration' => 'Duur',
+			'unifiedCatalog.sort.fields.progress' => 'Voortgang',
+			'unifiedCatalog.sort.fields.plays' => 'Afgespeeld',
+			'unifiedCatalog.sort.fields.addedAt' => 'Toegevoegd',
+			'unifiedCatalog.sort.fields.recentlyWatched' => 'Bekeken',
+			'unifiedCatalog.sort.fields.resolution' => 'Resolutie',
+			'unifiedCatalog.sort.pageTitle' => 'Sorteren op',
 			'unifiedCatalog.rail.sources' => 'Bronnen',
 			'unifiedCatalog.rail.noFilters' => 'Geen',
 			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} actief',
@@ -6575,14 +6706,24 @@ extension on TranslationsNl {
 			'unifiedCatalog.filters.someUnavailable' => 'Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen',
 			'unifiedCatalog.filters.noValues' => 'Niets om uit te kiezen',
 			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count} actief',
+			'unifiedCatalog.filters.decade' => 'Decennium',
+			'unifiedCatalog.filters.quick.all' => 'Alles',
+			'unifiedCatalog.filters.quick.hdr' => 'HDR',
+			'unifiedCatalog.filters.quick.dolbyVision' => 'Dolby Vision',
+			'unifiedCatalog.filters.quick.hdr10Plus' => 'HDR10+',
+			'unifiedCatalog.filters.quick.atmos' => 'Atmos',
+			'unifiedCatalog.filters.quick.unwatched' => 'Ongekeken',
+			'unifiedCatalog.filters.quick.inProgress' => 'Bezig',
+			'unifiedCatalog.filters.quick.unmatched' => 'Niet gekoppeld',
+			'unifiedCatalog.filters.quick.duplicates' => 'Dubbel',
+			'unifiedCatalog.filters.quick.watched' => 'Bekeken',
+			'unifiedCatalog.filters.pageTitle' => 'Filteren op',
 			'unifiedCatalog.states.emptyTitle' => 'Deze catalogus is leeg',
 			'unifiedCatalog.states.emptyBody' => 'Geen zichtbare bibliotheek bevat iets voor deze pagina.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Niets voldoet aan deze filters',
 			'unifiedCatalog.states.filterEmptyBody' => 'Wis een filter om meer titels te zien.',
 			'unifiedCatalog.states.clearFilters' => 'Filters wissen',
 			'unifiedCatalog.states.errorTitle' => 'De catalogus kon niet worden geladen',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.states.errorBody' => 'Geen enkele server antwoordde. Controleer je verbinding en probeer het opnieuw.',
 			'unifiedCatalog.states.partialOne' => '1 bibliotheek antwoordde niet',
 			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} bibliotheken antwoordden niet',
@@ -6670,6 +6811,8 @@ extension on TranslationsNl {
 			'unifiedCatalog.homeRows.close' => 'Sluiten',
 			'unifiedCatalog.homeRows.editRowTitle' => ({required Object name}) => '${name} bewerken',
 			'unifiedCatalog.homeRows.pickRowToEdit' => 'Tik op een eigen rij om hem te bewerken, of maak een nieuwe.',
+			'unifiedCatalog.onePlay' => '1 keer',
+			'unifiedCatalog.plays' => ({required Object count}) => '${count} keer',
 			'tvNavigation.activeDestination' => 'huidige sectie',
 			'tvNavigation.attentionRequired' => 'vereist aandacht',
 			'tvMyPleya.groupContent' => 'Mijn content',
@@ -7035,6 +7178,8 @@ extension on TranslationsNl {
 			'assistant.examples.trending.0' => 'Wat is er nu populair?',
 			'assistant.examples.trending.1' => 'Welke nieuwe films zijn populair die ik nog niet heb?',
 			'assistant.examples.request.0' => 'Welke thrillers van dit jaar kan ik aan mijn bibliotheek toevoegen?',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.examples.request.1' => 'Zoek een sciencefictionserie die het aanvragen waard is.',
 			'assistant.examples.trakt.0' => 'Welke titels van mijn Trakt-kijklijst kan ik hier vanavond kijken?',
 			'assistant.examples.history.0' => 'Wat heb ik de laatste tijd gekeken?',
@@ -7095,8 +7240,6 @@ extension on TranslationsNl {
 			'assistant.steps.findTitle' => 'Titel op beschrijving zoeken',
 			'assistant.steps.recallMemory' => 'Geheugen raadplegen',
 			'assistant.steps.rememberFact' => 'Herinnering klaarzetten',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.steps.forgetFact' => 'Vergeten klaarzetten',
 			'assistant.steps.fallback' => 'Bezig',
 			'assistant.jobs.scanLibrary.running' => 'Scan loopt',

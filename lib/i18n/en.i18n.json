@@ -109,6 +109,13 @@
     "checkFailed": "Failed to check for updates"
   },
   "settings": {
+    "privacy": "Privacy",
+    "showTraktDiscussions": "Show discussions from Trakt",
+    "shareActivity": "Share my activity",
+    "shareActivityDescription": "Others in the household see what you watched",
+    "shareActivityServer": "Share my activity on ${server}",
+    "shareActivitySaveFailed": "Could not save this. Nothing changed.",
+    "shareActivityUnreadable": "Could not read this setting. Press to try again.",
     "searchHint": "Search settings",
     "urlLabel": "URL",
     "title": "Settings",
@@ -481,6 +488,11 @@
     "more": "More"
   },
   "mediaMenu": {
+    "addToPlaylistOrCollection": "Add to Playlist / Collection",
+    "addToPlaylist": "Add to Playlist",
+    "watch": "Watch",
+    "manage": "Manage",
+    "moreWaysToWatch": "More Ways to Watch",
     "markAsWatched": "Mark as Watched",
     "markAsUnwatched": "Mark as Unwatched",
     "removeFromContinueWatching": "Remove from Continue Watching",
@@ -845,6 +857,16 @@
     "reauthRequired": "Sign-in required"
   },
   "discover": {
+    "discussions": "Discussions",
+    "seasonBadge": "S${number}",
+    "commentLikes": {
+      "one": "${n} like",
+      "other": "${n} likes"
+    },
+    "moreActions": "More actions",
+    "audioStream": "Audio stream",
+    "subtitlesRow": "Subtitles",
+    "manageTitle": "Manage",
     "title": "Discover",
     "forYou": "For you",
     "switchProfile": "Switch Profile",
@@ -907,6 +929,8 @@
     "statsWatchTime": "${duration} watched",
     "statsRecent": "${count} in the last 30 days",
     "watchingSeriesBy": "Watching this show: ${names}",
+    "activityBy": "Activity by ${names}",
+    "activityByYou": "you",
     "activityPlays": "Played ${count}×",
     "activityViewers": "${count} viewers",
     "activityOwnProgress": "You're at S${season} E${episode}",
@@ -928,6 +952,13 @@
     "scoreRtCritics": "Rotten Tomatoes critics",
     "scoreRtAudience": "Rotten Tomatoes audience",
     "scoreCommunity": "Community score",
+    "castAndCrew": "Cast & Crew",
+    "ratingsAndReviews": "Ratings & Reviews",
+    "seriesTab": "Series",
+    "episodeBadge": "E${number}",
+    "directedBy": "Directed by ${names}",
+    "trailer": "Trailer",
+    "extra": "Extra",
     "reviews": "Reviews",
     "reviewOpenSource": "Read at source"
   },
@@ -1002,6 +1033,7 @@
     "manageLibraries": "Manage Libraries",
     "sort": "Sort",
     "sortBy": "Sort By",
+    "filterBy": "Filter By",
     "filters": "Filters",
     "confirmActionMessage": "Are you sure you want to perform this action?",
     "showLibrary": "Show library",
@@ -2196,6 +2228,7 @@
     "titleCount": "${count} titles",
     "oneTitle": "1 title",
     "titlesLoaded": "${count} titles loaded",
+    "jumpTo": "Jump to",
     "loadMore": "Load more",
     "loadingMore": "Loading more…",
     "sort": {
@@ -2206,7 +2239,25 @@
       "oldestAdded": "Oldest added",
       "newestRelease": "Newest release",
       "oldestRelease": "Oldest release",
-      "recentlyWatched": "Recently watched"
+      "yearNewest": "Newest year",
+      "yearOldest": "Oldest year",
+      "recentlyWatched": "Recently watched",
+      "fields": {
+        "title": "Title",
+        "year": "Year",
+        "releaseDate": "Release date",
+        "criticRating": "Critics",
+        "audienceRating": "Audience",
+        "userRating": "Rating",
+        "contentRating": "Age rating",
+        "duration": "Duration",
+        "progress": "Progress",
+        "plays": "Plays",
+        "addedAt": "Added",
+        "recentlyWatched": "Watched",
+        "resolution": "Resolution"
+      },
+      "pageTitle": "Sort by"
     },
     "rail": {
       "sources": "Sources",
@@ -2230,7 +2281,21 @@
       "watched": "Watched",
       "unsupported": "Not available for the current sources",
       "someUnavailable": "Some filters are unavailable for the selected sources",
-      "noValues": "Nothing to choose from"
+      "noValues": "Nothing to choose from",
+      "decade": "Decade",
+      "quick": {
+        "all": "All",
+        "hdr": "HDR",
+        "dolbyVision": "Dolby Vision",
+        "hdr10Plus": "HDR10+",
+        "atmos": "Atmos",
+        "unwatched": "Unwatched",
+        "inProgress": "In progress",
+        "unmatched": "Unmatched",
+        "duplicates": "Duplicates",
+        "watched": "Watched"
+      },
+      "pageTitle": "Filter by"
     },
     "states": {
       "emptyTitle": "This catalog is empty",
@@ -2336,7 +2401,9 @@
       "close": "Close",
       "editRowTitle": "Edit ${name}",
       "pickRowToEdit": "Tap one of your own rows to edit it, or make a new one."
-    }
+    },
+    "onePlay": "1 play",
+    "plays": "${count} plays"
   },
   "tvNavigation": {
     "activeDestination": "current section",

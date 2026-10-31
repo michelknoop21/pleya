@@ -28,6 +28,7 @@ void main() {
     bool liveTv = false,
     bool realtime = false,
     bool users = false,
+    bool itemActivity = false,
   }) => PleyaCapabilities(
     browse: browse,
     search: search,
@@ -39,7 +40,22 @@ void main() {
     liveTv: liveTv,
     realtime: realtime,
     users: users,
+    itemActivity: itemActivity,
   );
+
+  group('item activity', () {
+    test('follows the server, because this build can read it', () {
+      expect(PleyaServerCapabilityResolver.resolve(caps(itemActivity: true)).itemActivity, isTrue);
+      expect(PleyaServerCapabilityResolver.resolve(caps()).itemActivity, isFalse);
+      expect(PleyaServerCapabilityResolver.unknown.itemActivity, isFalse);
+    });
+
+    test('stays a Pleya Server feature', () {
+      expect(ServerCapabilities.plex.itemActivity, isFalse);
+      expect(ServerCapabilities.jellyfin.itemActivity, isFalse);
+      expect(ServerCapabilities.local.itemActivity, isFalse);
+    });
+  });
 
   group('before /info has answered', () {
     test('the client claims nothing', () {

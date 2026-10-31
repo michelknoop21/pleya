@@ -464,6 +464,27 @@ class TranslationsSettingsEn {
 
 	// Translations
 
+	/// en: 'Privacy'
+	String get privacy => 'Privacy';
+
+	/// en: 'Show discussions from Trakt'
+	String get showTraktDiscussions => 'Show discussions from Trakt';
+
+	/// en: 'Share my activity'
+	String get shareActivity => 'Share my activity';
+
+	/// en: 'Others in the household see what you watched'
+	String get shareActivityDescription => 'Others in the household see what you watched';
+
+	/// en: 'Share my activity on ${server}'
+	String shareActivityServer({required Object server}) => 'Share my activity on ${server}';
+
+	/// en: 'Could not save this. Nothing changed.'
+	String get shareActivitySaveFailed => 'Could not save this. Nothing changed.';
+
+	/// en: 'Could not read this setting. Press to try again.'
+	String get shareActivityUnreadable => 'Could not read this setting. Press to try again.';
+
 	/// en: 'Search settings'
 	String get searchHint => 'Search settings';
 
@@ -1467,6 +1488,21 @@ class TranslationsMediaMenuEn {
 
 	// Translations
 
+	/// en: 'Add to Playlist / Collection'
+	String get addToPlaylistOrCollection => 'Add to Playlist / Collection';
+
+	/// en: 'Add to Playlist'
+	String get addToPlaylist => 'Add to Playlist';
+
+	/// en: 'Watch'
+	String get watch => 'Watch';
+
+	/// en: 'Manage'
+	String get manage => 'Manage';
+
+	/// en: 'More Ways to Watch'
+	String get moreWaysToWatch => 'More Ways to Watch';
+
 	/// en: 'Mark as Watched'
 	String get markAsWatched => 'Mark as Watched';
 
@@ -2455,6 +2491,30 @@ class TranslationsDiscoverEn {
 
 	// Translations
 
+	/// en: 'Discussions'
+	String get discussions => 'Discussions';
+
+	/// en: 'S${number}'
+	String seasonBadge({required Object number}) => 'S${number}';
+
+	/// en: '(one) {${n} like} (other) {${n} likes}'
+	String commentLikes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '${n} like',
+		other: '${n} likes',
+	);
+
+	/// en: 'More actions'
+	String get moreActions => 'More actions';
+
+	/// en: 'Audio stream'
+	String get audioStream => 'Audio stream';
+
+	/// en: 'Subtitles'
+	String get subtitlesRow => 'Subtitles';
+
+	/// en: 'Manage'
+	String get manageTitle => 'Manage';
+
 	/// en: 'Discover'
 	String get title => 'Discover';
 
@@ -2622,6 +2682,12 @@ class TranslationsDiscoverEn {
 	/// en: 'Watching this show: ${names}'
 	String watchingSeriesBy({required Object names}) => 'Watching this show: ${names}';
 
+	/// en: 'Activity by ${names}'
+	String activityBy({required Object names}) => 'Activity by ${names}';
+
+	/// en: 'you'
+	String get activityByYou => 'you';
+
 	/// en: 'Played ${count}×'
 	String activityPlays({required Object count}) => 'Played ${count}×';
 
@@ -2672,6 +2738,27 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Community score'
 	String get scoreCommunity => 'Community score';
+
+	/// en: 'Cast & Crew'
+	String get castAndCrew => 'Cast & Crew';
+
+	/// en: 'Ratings & Reviews'
+	String get ratingsAndReviews => 'Ratings & Reviews';
+
+	/// en: 'Series'
+	String get seriesTab => 'Series';
+
+	/// en: 'E${number}'
+	String episodeBadge({required Object number}) => 'E${number}';
+
+	/// en: 'Directed by ${names}'
+	String directedBy({required Object names}) => 'Directed by ${names}';
+
+	/// en: 'Trailer'
+	String get trailer => 'Trailer';
+
+	/// en: 'Extra'
+	String get extra => 'Extra';
 
 	/// en: 'Reviews'
 	String get reviews => 'Reviews';
@@ -2906,6 +2993,9 @@ class TranslationsLibrariesEn {
 
 	/// en: 'Sort By'
 	String get sortBy => 'Sort By';
+
+	/// en: 'Filter By'
+	String get filterBy => 'Filter By';
 
 	/// en: 'Filters'
 	String get filters => 'Filters';
@@ -6051,6 +6141,9 @@ class TranslationsUnifiedCatalogEn {
 	/// en: '${count} titles loaded'
 	String titlesLoaded({required Object count}) => '${count} titles loaded';
 
+	/// en: 'Jump to'
+	String get jumpTo => 'Jump to';
+
 	/// en: 'Load more'
 	String get loadMore => 'Load more';
 
@@ -6065,6 +6158,12 @@ class TranslationsUnifiedCatalogEn {
 	late final TranslationsUnifiedCatalogDiscoveryEn discovery = TranslationsUnifiedCatalogDiscoveryEn.internal(_root);
 	late final TranslationsUnifiedCatalogHomeEn home = TranslationsUnifiedCatalogHomeEn.internal(_root);
 	late final TranslationsUnifiedCatalogHomeRowsEn homeRows = TranslationsUnifiedCatalogHomeRowsEn.internal(_root);
+
+	/// en: '1 play'
+	String get onePlay => '1 play';
+
+	/// en: '${count} plays'
+	String plays({required Object count}) => '${count} plays';
 }
 
 // Path: tvNavigation
@@ -7790,8 +7889,19 @@ class TranslationsUnifiedCatalogSortEn {
 	/// en: 'Oldest release'
 	String get oldestRelease => 'Oldest release';
 
+	/// en: 'Newest year'
+	String get yearNewest => 'Newest year';
+
+	/// en: 'Oldest year'
+	String get yearOldest => 'Oldest year';
+
 	/// en: 'Recently watched'
 	String get recentlyWatched => 'Recently watched';
+
+	late final TranslationsUnifiedCatalogSortFieldsEn fields = TranslationsUnifiedCatalogSortFieldsEn.internal(_root);
+
+	/// en: 'Sort by'
+	String get pageTitle => 'Sort by';
 }
 
 // Path: unifiedCatalog.rail
@@ -7870,6 +7980,14 @@ class TranslationsUnifiedCatalogFiltersEn {
 
 	/// en: 'Nothing to choose from'
 	String get noValues => 'Nothing to choose from';
+
+	/// en: 'Decade'
+	String get decade => 'Decade';
+
+	late final TranslationsUnifiedCatalogFiltersQuickEn quick = TranslationsUnifiedCatalogFiltersQuickEn.internal(_root);
+
+	/// en: 'Filter by'
+	String get pageTitle => 'Filter by';
 }
 
 // Path: unifiedCatalog.states
@@ -9531,6 +9649,93 @@ class TranslationsAssistantMatchEn {
 	String score({required Object score}) => 'Score ${score}';
 }
 
+// Path: unifiedCatalog.sort.fields
+class TranslationsUnifiedCatalogSortFieldsEn {
+	TranslationsUnifiedCatalogSortFieldsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Title'
+	String get title => 'Title';
+
+	/// en: 'Year'
+	String get year => 'Year';
+
+	/// en: 'Release date'
+	String get releaseDate => 'Release date';
+
+	/// en: 'Critics'
+	String get criticRating => 'Critics';
+
+	/// en: 'Audience'
+	String get audienceRating => 'Audience';
+
+	/// en: 'Rating'
+	String get userRating => 'Rating';
+
+	/// en: 'Age rating'
+	String get contentRating => 'Age rating';
+
+	/// en: 'Duration'
+	String get duration => 'Duration';
+
+	/// en: 'Progress'
+	String get progress => 'Progress';
+
+	/// en: 'Plays'
+	String get plays => 'Plays';
+
+	/// en: 'Added'
+	String get addedAt => 'Added';
+
+	/// en: 'Watched'
+	String get recentlyWatched => 'Watched';
+
+	/// en: 'Resolution'
+	String get resolution => 'Resolution';
+}
+
+// Path: unifiedCatalog.filters.quick
+class TranslationsUnifiedCatalogFiltersQuickEn {
+	TranslationsUnifiedCatalogFiltersQuickEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'All'
+	String get all => 'All';
+
+	/// en: 'HDR'
+	String get hdr => 'HDR';
+
+	/// en: 'Dolby Vision'
+	String get dolbyVision => 'Dolby Vision';
+
+	/// en: 'HDR10+'
+	String get hdr10Plus => 'HDR10+';
+
+	/// en: 'Atmos'
+	String get atmos => 'Atmos';
+
+	/// en: 'Unwatched'
+	String get unwatched => 'Unwatched';
+
+	/// en: 'In progress'
+	String get inProgress => 'In progress';
+
+	/// en: 'Unmatched'
+	String get unmatched => 'Unmatched';
+
+	/// en: 'Duplicates'
+	String get duplicates => 'Duplicates';
+
+	/// en: 'Watched'
+	String get watched => 'Watched';
+}
+
 // Path: unifiedCatalog.discovery.semantics
 class TranslationsUnifiedCatalogDiscoverySemanticsEn {
 	TranslationsUnifiedCatalogDiscoverySemanticsEn.internal(this._root);
@@ -10367,6 +10572,13 @@ extension on Translations {
 			'update.viewRelease' => 'View Release',
 			'update.latestVersion' => 'You are on the latest version',
 			'update.checkFailed' => 'Failed to check for updates',
+			'settings.privacy' => 'Privacy',
+			'settings.showTraktDiscussions' => 'Show discussions from Trakt',
+			'settings.shareActivity' => 'Share my activity',
+			'settings.shareActivityDescription' => 'Others in the household see what you watched',
+			'settings.shareActivityServer' => ({required Object server}) => 'Share my activity on ${server}',
+			'settings.shareActivitySaveFailed' => 'Could not save this. Nothing changed.',
+			'settings.shareActivityUnreadable' => 'Could not read this setting. Press to try again.',
 			'settings.searchHint' => 'Search settings',
 			'settings.urlLabel' => 'URL',
 			'settings.title' => 'Settings',
@@ -10721,6 +10933,11 @@ extension on Translations {
 			'detailActions.watched' => 'Watched',
 			'detailActions.download' => 'Download',
 			'detailActions.more' => 'More',
+			'mediaMenu.addToPlaylistOrCollection' => 'Add to Playlist / Collection',
+			'mediaMenu.addToPlaylist' => 'Add to Playlist',
+			'mediaMenu.watch' => 'Watch',
+			'mediaMenu.manage' => 'Manage',
+			'mediaMenu.moreWaysToWatch' => 'More Ways to Watch',
 			'mediaMenu.markAsWatched' => 'Mark as Watched',
 			'mediaMenu.markAsUnwatched' => 'Mark as Unwatched',
 			'mediaMenu.removeFromContinueWatching' => 'Remove from Continue Watching',
@@ -10770,6 +10987,8 @@ extension on Translations {
 			'tooltips.markAsWatched' => 'Mark as watched',
 			'tooltips.markAsUnwatched' => 'Mark as unwatched',
 			'videoControls.audioLabel' => 'Audio',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.subtitlesLabel' => 'Subtitles',
 			'videoControls.resetToZero' => 'Reset to 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
@@ -10782,8 +11001,6 @@ extension on Translations {
 			'videoControls.stretch' => 'Stretch',
 			'videoControls.lockRotation' => 'Lock rotation',
 			'videoControls.unlockRotation' => 'Unlock rotation',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.timerActive' => 'Timer Active',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Playback will pause in ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'End of current video',
@@ -11059,6 +11276,13 @@ extension on Translations {
 			'connections.disconnectServer' => 'Disconnect',
 			'connections.disconnectServerConfirm' => ({required Object name}) => 'Disconnect from "${name}"? The sign-in for this server is removed from this device. Downloaded items are kept.',
 			'connections.reauthRequired' => 'Sign-in required',
+			'discover.discussions' => 'Discussions',
+			'discover.seasonBadge' => ({required Object number}) => 'S${number}',
+			'discover.commentLikes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} like', other: '${n} likes', ), 
+			'discover.moreActions' => 'More actions',
+			'discover.audioStream' => 'Audio stream',
+			'discover.subtitlesRow' => 'Subtitles',
+			'discover.manageTitle' => 'Manage',
 			'discover.title' => 'Discover',
 			'discover.forYou' => 'For you',
 			'discover.switchProfile' => 'Switch Profile',
@@ -11119,6 +11343,8 @@ extension on Translations {
 			'discover.statsWatchTime' => ({required Object duration}) => '${duration} watched',
 			'discover.statsRecent' => ({required Object count}) => '${count} in the last 30 days',
 			'discover.watchingSeriesBy' => ({required Object names}) => 'Watching this show: ${names}',
+			'discover.activityBy' => ({required Object names}) => 'Activity by ${names}',
+			'discover.activityByYou' => 'you',
 			'discover.activityPlays' => ({required Object count}) => 'Played ${count}×',
 			'discover.activityViewers' => ({required Object count}) => '${count} viewers',
 			'discover.activityOwnProgress' => ({required Object season, required Object episode}) => 'You\'re at S${season} E${episode}',
@@ -11134,6 +11360,13 @@ extension on Translations {
 			'discover.scoreRtCritics' => 'Rotten Tomatoes critics',
 			'discover.scoreRtAudience' => 'Rotten Tomatoes audience',
 			'discover.scoreCommunity' => 'Community score',
+			'discover.castAndCrew' => 'Cast & Crew',
+			'discover.ratingsAndReviews' => 'Ratings & Reviews',
+			'discover.seriesTab' => 'Series',
+			'discover.episodeBadge' => ({required Object number}) => 'E${number}',
+			'discover.directedBy' => ({required Object names}) => 'Directed by ${names}',
+			'discover.trailer' => 'Trailer',
+			'discover.extra' => 'Extra',
 			'discover.reviews' => 'Reviews',
 			'discover.reviewOpenSource' => 'Read at source',
 			'mobileDetail.similarTab' => 'Similar',
@@ -11200,6 +11433,7 @@ extension on Translations {
 			'libraries.manageLibraries' => 'Manage Libraries',
 			'libraries.sort' => 'Sort',
 			'libraries.sortBy' => 'Sort By',
+			'libraries.filterBy' => 'Filter By',
 			'libraries.filters' => 'Filters',
 			'libraries.confirmActionMessage' => 'Are you sure you want to perform this action?',
 			'libraries.showLibrary' => 'Show library',
@@ -11267,6 +11501,8 @@ extension on Translations {
 			'about.basedOnPlezy' => 'Based on Plezy',
 			'about.upstreamProject' => 'Upstream project',
 			'about.privacyPolicy' => 'Privacy policy',
+			_ => null,
+		} ?? switch (path) {
 			'about.licence' => 'Licence',
 			'about.sources' => 'Sources',
 			'about.tmdbSource' => 'TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P, and descriptions, genres, age ratings and artwork for titles on a Pleya Server.',
@@ -11296,8 +11532,6 @@ extension on Translations {
 			'logs.levelFilter' => 'Level',
 			'logs.levelAll' => 'All',
 			'logs.levelWarnings' => 'Warnings',
-			_ => null,
-		} ?? switch (path) {
 			'logs.levelErrors' => 'Errors',
 			'logs.noMatchingLogs' => 'No lines at this level',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} of ${total} lines',
@@ -11781,6 +12015,8 @@ extension on Translations {
 			'externalPlayer.playerNameHint' => 'My Player',
 			'externalPlayer.playerCommand' => 'Command',
 			'externalPlayer.playerPackage' => 'Package Name',
+			_ => null,
+		} ?? switch (path) {
 			'externalPlayer.playerUrlScheme' => 'URL Scheme',
 			'externalPlayer.off' => 'Off',
 			'externalPlayer.launchFailed' => 'Failed to open external player',
@@ -11810,8 +12046,6 @@ extension on Translations {
 			'metadataEdit.fromUrl' => 'From URL',
 			'metadataEdit.uploadFile' => 'Upload File',
 			'metadataEdit.enterImageUrl' => 'Enter image URL',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.imageUrl' => 'Image URL',
 			'metadataEdit.metadataUpdated' => 'Metadata updated',
 			'metadataEdit.metadataUpdateFailed' => 'Failed to update metadata',
@@ -12288,16 +12522,35 @@ extension on Translations {
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titles',
 			'unifiedCatalog.oneTitle' => '1 title',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titles loaded',
+			'unifiedCatalog.jumpTo' => 'Jump to',
 			'unifiedCatalog.loadMore' => 'Load more',
 			'unifiedCatalog.loadingMore' => 'Loading more…',
 			'unifiedCatalog.sort.title' => 'Sort',
 			'unifiedCatalog.sort.titleAsc' => 'Title A–Z',
 			'unifiedCatalog.sort.titleDesc' => 'Title Z–A',
 			'unifiedCatalog.sort.recentlyAdded' => 'Recently added',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.sort.oldestAdded' => 'Oldest added',
 			'unifiedCatalog.sort.newestRelease' => 'Newest release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oldest release',
+			'unifiedCatalog.sort.yearNewest' => 'Newest year',
+			'unifiedCatalog.sort.yearOldest' => 'Oldest year',
 			'unifiedCatalog.sort.recentlyWatched' => 'Recently watched',
+			'unifiedCatalog.sort.fields.title' => 'Title',
+			'unifiedCatalog.sort.fields.year' => 'Year',
+			'unifiedCatalog.sort.fields.releaseDate' => 'Release date',
+			'unifiedCatalog.sort.fields.criticRating' => 'Critics',
+			'unifiedCatalog.sort.fields.audienceRating' => 'Audience',
+			'unifiedCatalog.sort.fields.userRating' => 'Rating',
+			'unifiedCatalog.sort.fields.contentRating' => 'Age rating',
+			'unifiedCatalog.sort.fields.duration' => 'Duration',
+			'unifiedCatalog.sort.fields.progress' => 'Progress',
+			'unifiedCatalog.sort.fields.plays' => 'Plays',
+			'unifiedCatalog.sort.fields.addedAt' => 'Added',
+			'unifiedCatalog.sort.fields.recentlyWatched' => 'Watched',
+			'unifiedCatalog.sort.fields.resolution' => 'Resolution',
+			'unifiedCatalog.sort.pageTitle' => 'Sort by',
 			'unifiedCatalog.rail.sources' => 'Sources',
 			'unifiedCatalog.rail.noFilters' => 'None',
 			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} active',
@@ -12318,14 +12571,24 @@ extension on Translations {
 			'unifiedCatalog.filters.unsupported' => 'Not available for the current sources',
 			'unifiedCatalog.filters.someUnavailable' => 'Some filters are unavailable for the selected sources',
 			'unifiedCatalog.filters.noValues' => 'Nothing to choose from',
+			'unifiedCatalog.filters.decade' => 'Decade',
+			'unifiedCatalog.filters.quick.all' => 'All',
+			'unifiedCatalog.filters.quick.hdr' => 'HDR',
+			'unifiedCatalog.filters.quick.dolbyVision' => 'Dolby Vision',
+			'unifiedCatalog.filters.quick.hdr10Plus' => 'HDR10+',
+			'unifiedCatalog.filters.quick.atmos' => 'Atmos',
+			'unifiedCatalog.filters.quick.unwatched' => 'Unwatched',
+			'unifiedCatalog.filters.quick.inProgress' => 'In progress',
+			'unifiedCatalog.filters.quick.unmatched' => 'Unmatched',
+			'unifiedCatalog.filters.quick.duplicates' => 'Duplicates',
+			'unifiedCatalog.filters.quick.watched' => 'Watched',
+			'unifiedCatalog.filters.pageTitle' => 'Filter by',
 			'unifiedCatalog.states.emptyTitle' => 'This catalog is empty',
 			'unifiedCatalog.states.emptyBody' => 'No visible library holds anything for this page.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Nothing matches these filters',
 			'unifiedCatalog.states.filterEmptyBody' => 'Clear a filter to see more titles.',
 			'unifiedCatalog.states.clearFilters' => 'Clear filters',
 			'unifiedCatalog.states.errorTitle' => 'The catalog could not be loaded',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.states.errorBody' => 'No server answered. Check your connection and try again.',
 			'unifiedCatalog.states.partialOne' => '1 library did not answer',
 			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} libraries did not answer',
@@ -12413,6 +12676,8 @@ extension on Translations {
 			'unifiedCatalog.homeRows.close' => 'Close',
 			'unifiedCatalog.homeRows.editRowTitle' => ({required Object name}) => 'Edit ${name}',
 			'unifiedCatalog.homeRows.pickRowToEdit' => 'Tap one of your own rows to edit it, or make a new one.',
+			'unifiedCatalog.onePlay' => '1 play',
+			'unifiedCatalog.plays' => ({required Object count}) => '${count} plays',
 			'tvNavigation.activeDestination' => 'current section',
 			'tvNavigation.attentionRequired' => 'needs attention',
 			'tvMyPleya.groupContent' => 'My content',
@@ -12778,6 +13043,8 @@ extension on Translations {
 			'assistant.examples.trending.0' => 'What is popular right now?',
 			'assistant.examples.trending.1' => 'Which popular new movies don\'t I have yet?',
 			'assistant.examples.request.0' => 'Which thrillers from this year could I add to my library?',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.examples.request.1' => 'Find a science fiction series worth requesting.',
 			'assistant.examples.trakt.0' => 'Which titles on my Trakt watchlist can I watch here tonight?',
 			'assistant.examples.history.0' => 'What did I watch lately?',
@@ -12838,8 +13105,6 @@ extension on Translations {
 			'assistant.steps.findTitle' => 'Finding the title',
 			'assistant.steps.recallMemory' => 'Checking your memory',
 			'assistant.steps.rememberFact' => 'Preparing a memory',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.steps.forgetFact' => 'Preparing to forget',
 			'assistant.steps.fallback' => 'Working',
 			'assistant.jobs.scanLibrary.running' => 'Scan running',

@@ -460,6 +460,19 @@ func matrixProbes() []matrixProbe {
 		{row: 71, name: "GET /users/me/memory", method: http.MethodGet, path: fixedPath("/pleya/v1/users/me/memory"), body: noBody, ok: http.StatusOK, expect: map[string]outcome{roleOwner: answers, roleAdmin: answers, roleMember: answers, roleRestricted: memoryDenied}},
 		{row: 72, name: "PUT /users/me/memory", method: http.MethodPut, path: fixedPath("/pleya/v1/users/me/memory"), body: func(*matrixFixture) any { return map[string]any{} }, ok: http.StatusBadRequest, expect: map[string]outcome{roleOwner: answers, roleAdmin: answers, roleMember: answers, roleRestricted: memoryDenied}},
 		{row: 73, name: "POST /users/me/memory/clear", method: http.MethodPost, path: fixedPath("/pleya/v1/users/me/memory/clear"), body: func(*matrixFixture) any { return map[string]any{} }, ok: http.StatusBadRequest, expect: map[string]outcome{roleOwner: answers, roleAdmin: answers, roleMember: answers, roleRestricted: memoryDenied}},
+		// Regel 74 tot en met 76: activiteit van het huishouden. Elke rol krijgt
+		// antwoord, en dat is de regel: een implementatie die hier requireAdmin
+		// zet blijft voor owner en admin groen en breekt voor de rest. Wat een
+		// restricted gebruiker in dat antwoord ziet staat in activity_test.go.
+		{row: 74, name: "GET /items/{id}/activity", method: http.MethodGet,
+			path: func(f *matrixFixture) string { return "/pleya/v1/items/" + f.itemID + "/activity" },
+			body: noBody, ok: http.StatusOK, expect: everyRole()},
+		{row: 75, name: "GET /users/me/activity-sharing", method: http.MethodGet,
+			path: fixedPath("/pleya/v1/users/me/activity-sharing"), body: noBody, ok: http.StatusOK, expect: everyRole()},
+		{row: 76, name: "PUT /users/me/activity-sharing", method: http.MethodPut,
+			path: fixedPath("/pleya/v1/users/me/activity-sharing"),
+			body: func(*matrixFixture) any { return map[string]bool{"share_activity": true} },
+			ok:   http.StatusOK, expect: everyRole()},
 		{row: 39, name: "GET /watch-history", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/watch-history"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
 	}

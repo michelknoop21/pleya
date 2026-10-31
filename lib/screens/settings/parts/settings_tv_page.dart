@@ -58,6 +58,12 @@ extension _SettingsTvPage on _SettingsScreenState {
     final active = context.watch<ActiveProfileProvider>().active;
     // Read here, while this State builds, for the Servers row's status line.
     final servers = context.watch<MultiServerProvider?>();
+    // Only where the section can show: on a TV, with a key in this build, on a
+    // profile that is not a child's. The shield hides the switch with the
+    // section, so a child cannot turn on what would not show anyway.
+    final discussionsSwitch =
+        TraktCommentsClient.shared.isConfigured && !(context.watch<TraktAccountProvider?>()?.isKidsProfile ?? true);
+    final sharing = _syncActivitySharing(servers);
 
     // A settings subpage opens inside the shell. `SettingsScreen` is itself a
     // nested route already (`tvMyPleyaNestedRoute`), so pushing its own
@@ -89,6 +95,7 @@ extension _SettingsTvPage on _SettingsScreenState {
         settings.SettingsService.videoPlayerNavigationEnabled,
         settings.SettingsService.autoCheckUpdatesOnStartup,
         settings.SettingsService.icloudSyncEnabled,
+        settings.SettingsService.showTraktDiscussions,
       ],
       builder: (context) {
         final libraryPreview = TvSettingsLibraryPreview(
@@ -227,7 +234,10 @@ extension _SettingsTvPage on _SettingsScreenState {
             id: 'advanced',
             title: t.settings.advanced,
             icon: Symbols.settings_rounded,
-            body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _tvAdvancedGroups(open, rows)),
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: _tvAdvancedGroups(open, rows, discussionsSwitch, sharing),
+            ),
           ),
         ];
         return SettingsIconStyleScope(
@@ -256,7 +266,22 @@ extension _SettingsTvPage on _SettingsScreenState {
   List<Widget> _tvAdvancedGroups(
     void Function(String id, WidgetBuilder builder) open,
     TvSettingsRowList Function(List<TvMenuItem>) rows,
+    bool discussionsSwitch,
+    List<ActivitySharingController> sharing,
   ) => [
+    if (discussionsSwitch || sharing.isNotEmpty) ...[
+      SettingsSectionHeader(t.settings.privacy),
+      rows([
+        for (final controller in sharing) _tvActivitySharingItem(controller),
+        if (discussionsSwitch)
+          _tvToggle(
+            key: _SettingsScreenState._kTraktDiscussions,
+            icon: Symbols.forum_rounded,
+            title: t.settings.showTraktDiscussions,
+            pref: settings.SettingsService.showTraktDiscussions,
+          ),
+      ]),
+    ],
     SettingsSectionHeader(t.settingsStudio.diagnostics),
     rows([
       TvMenuItem(

@@ -89,7 +89,7 @@ void main() {
     await press(LogicalKeyboardKey.arrowLeft);
     expect(focused(), 'm1');
 
-    // A named card, as a detail route coming back asks for.
+    // Coming back from outside the grid, as the filter rail and a detail route do.
     await press(LogicalKeyboardKey.arrowRight);
     await press(LogicalKeyboardKey.arrowRight);
     expect(focused(), 'm3');

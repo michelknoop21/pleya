@@ -152,6 +152,7 @@ class PleyaCapabilities {
     this.favorites = false,
     this.ratings = false,
     this.trackPreferences = false,
+    this.itemActivity = false,
     this.assistantMemory = false,
     this.transcode = false,
     this.downloads = false,
@@ -192,6 +193,10 @@ class PleyaCapabilities {
   final bool favorites;
   final bool ratings;
   final bool trackPreferences;
+
+  /// `GET /items/{id}/activity` and the opt-out under
+  /// `/users/me/activity-sharing`, which always come together.
+  final bool itemActivity;
   final bool assistantMemory;
   final bool transcode;
   final bool downloads;
@@ -251,6 +256,7 @@ class PleyaCapabilities {
     favorites: booleanOr(json, 'favorites', orElse: false),
     ratings: booleanOr(json, 'ratings', orElse: false),
     trackPreferences: booleanOr(json, 'track_preferences', orElse: false),
+    itemActivity: booleanOr(json, 'item_activity', orElse: false),
     assistantMemory: booleanOr(json, 'assistant_memory', orElse: false),
     transcode: booleanOr(json, 'transcode', orElse: false),
     downloads: booleanOr(json, 'downloads', orElse: false),

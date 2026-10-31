@@ -487,6 +487,31 @@
       "file": "memory_clear.json",
       "schema": "MemoryClear",
       "note": "BP-08b persoonlijk geheugen"
+    },
+    {
+      "file": "info_item_activity.json",
+      "schema": "Info",
+      "note": "DEC-169: een server met de activiteit van het huishouden"
+    },
+    {
+      "file": "item_activity.json",
+      "schema": "ItemActivity",
+      "note": "DEC-169: een serie, opgeteld per gebruiker"
+    },
+    {
+      "file": "item_activity_empty.json",
+      "schema": "ItemActivity",
+      "note": "DEC-169: nog niemand keek dit, of de aanvrager mag alleen zichzelf zien"
+    },
+    {
+      "file": "activity_sharing.json",
+      "schema": "ActivitySharing",
+      "note": "DEC-169: de eigen keuze, ook wat een restricted gebruiker zonder keuze krijgt"
+    },
+    {
+      "file": "activity_sharing_request.json",
+      "schema": "ActivitySharingRequest",
+      "note": "DEC-169: gesloten aanvraag"
     }
   ]
 }

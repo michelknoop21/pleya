@@ -71,11 +71,18 @@ class MediaDetailNavigationTarget {
 
 /// [openSeasonItself] keeps a season as its own page (the iPhone, DEC-140);
 /// everywhere else a season opens its series at that season.
+///
+/// [openEpisodeItself] keeps an episode as its own page, for a caller that is
+/// on that episode's series already: the series at this episode would be the
+/// same page a second time.
 MediaDetailNavigationTarget mediaDetailNavigationTargetFor(
   MediaItem item, {
   MediaItem? metadataOverride,
   bool openSeasonItself = false,
+  bool openEpisodeItself = false,
 }) {
+  if (openEpisodeItself && item.isEpisode) return MediaDetailNavigationTarget(metadata: metadataOverride ?? item);
+
   if (item.isEpisode && item.grandparentId != null) {
     return MediaDetailNavigationTarget(
       metadata:
@@ -150,10 +157,12 @@ MediaDetailNavigationTarget mediaDetailNavigationTargetIn(
   BuildContext context,
   MediaItem item, {
   MediaItem? metadataOverride,
+  bool openEpisodeItself = false,
 }) => mediaDetailNavigationTargetFor(
   item,
   metadataOverride: metadataOverride,
   openSeasonItself: PlatformDetector.isPhone(context),
+  openEpisodeItself: openEpisodeItself,
 );
 
 bool shouldOpenEpisodeDetailsForActivation({
@@ -492,8 +501,14 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
   UnifiedMediaRouteContext? unifiedRouteContext,
   UnifiedSourceChangeCallback? onChangeSource,
   TvFocusRestoreTarget? restoreTarget,
+  bool openEpisodeItself = false,
 }) async {
-  final target = mediaDetailNavigationTargetIn(context, mi, metadataOverride: metadataOverride);
+  final target = mediaDetailNavigationTargetIn(
+    context,
+    mi,
+    metadataOverride: metadataOverride,
+    openEpisodeItself: openEpisodeItself,
+  );
   // A season or episode opened from a title's page keeps that title's choice.
   // Read-only there: the source is changed on the title's own page.
   unifiedRouteContext ??= UnifiedTitleScope.maybeOf(context)?.routeFor(mi);
@@ -518,11 +533,14 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
   //
   // DEC-115: film and series detail open with the bar tucked away, so the
   // synopsis gets the height the bar used to take.
+  final screenKey = GlobalKey();
   final nested = openTvContentRoute(
     id: tvDetailRouteId(target),
     topNav: TvTopNavPresentation.collapsible,
     restoreTarget: restoreTarget,
+    screenKey: screenKey,
     builder: (_) => mediaDetailPage(
+      key: screenKey,
       metadata: target.metadata,
       isOffline: isOffline,
       initialSeasonIndex: target.initialSeasonIndex,

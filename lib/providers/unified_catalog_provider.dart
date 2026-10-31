@@ -213,7 +213,13 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
     return _restart();
   }
 
+  /// Bumped by every [_restart]. Two run into each other in the ordinary case: a
+  /// library joins, this provider restarts on the query it had, and the screen
+  /// answers with the query that fits. Only the newest may load and report.
+  int _restartId = 0;
+
   Future<void> _restart() async {
+    final restartId = ++_restartId;
     final eligible = _eligibleLibraries();
     _lastSeenLibraryKeys = _libraryKeys(eligible);
     final service = _service;
@@ -243,9 +249,13 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
       // choices keep being made while this provider lives, and a snapshot
       // frozen at construction would never see a later one (I19/tier 4).
       _rememberedSourceKeys = await SourcePreferenceStore.readAllForActiveScope();
-      _snapshot = await _service!.loadMore();
+      if (restartId != _restartId) return;
+      final snapshot = await _service!.loadMore();
+      if (restartId != _restartId) return;
+      _snapshot = snapshot;
       _loadState = UnifiedCatalogLoadState.loaded;
     } catch (_) {
+      if (restartId != _restartId) return;
       // UnifiedCatalogService.loadMore never lets a per-library failure
       // escape — that lands in snapshot.failedLibraryIds instead. This only
       // guards against a genuinely unexpected error, so isInitialLoading

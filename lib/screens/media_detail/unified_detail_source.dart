@@ -81,6 +81,18 @@ extension _MediaDetailUnifiedSource on _MediaDetailScreenState {
     return target.carriedResume != null || (target.item.viewOffsetMs ?? 0) > 0;
   }
 
+  /// The copy Play starts for [metadata], at the position it starts from, for a
+  /// row that draws how far along it is. Null when the page's own items answer.
+  MediaItem? _unifiedResumeItem(MediaItem metadata) {
+    if (!metadata.isMovie && !metadata.isShow) return null;
+    final title = _unifiedTitle;
+    final target = metadata.isShow
+        ? _unifiedSource.onDeckTarget
+        : title?.movieTarget(metadata) ?? UnifiedPlayTarget(_playedItem(metadata));
+    final carried = target?.carriedResume;
+    return carried == null ? target?.item : target?.item.copyWith(viewOffsetMs: carried.inMilliseconds);
+  }
+
   /// The item a menu on the page acts on: the chosen source. Deleting, a
   /// metadata refresh or a match never land on the main source just because
   /// the page shows it (hoofdstuk 4.6).
@@ -151,6 +163,16 @@ extension _MediaDetailUnifiedSource on _MediaDetailScreenState {
     unawaited(_syncUnifiedOnDeck());
   }
 
+  /// The server and library of the source a play starts, which the page need
+  /// not show.
+  List<String> _unifiedSourceParts(UnifiedMediaRouteContext routeContext) {
+    final shown = routeContext.playItem ?? _metadata;
+    return [
+      shown.serverName ?? routeContext.sourceKey.split(':').first,
+      if ((shown.libraryTitle ?? '').trim().isNotEmpty) shown.libraryTitle!.trim(),
+    ];
+  }
+
   /// Hoofdstuk 15's `Bron: NAS • Films 4K   [ Wijzigen ]`.
   ///
   /// Rendered only when the page was reached through a unified group that
@@ -171,11 +193,7 @@ extension _MediaDetailUnifiedSource on _MediaDetailScreenState {
     final isTv = PlatformDetector.isTV();
     final tvScale = TvLayoutConstants.scaleOf(context);
     final mono = tokens(context);
-    final shown = routeContext.playItem ?? _metadata;
-    final parts = [
-      shown.serverName ?? routeContext.sourceKey.split(':').first,
-      if ((shown.libraryTitle ?? '').trim().isNotEmpty) shown.libraryTitle!.trim(),
-    ];
+    final parts = _unifiedSourceParts(routeContext);
     final label = t.sourcePicker.sourceLabel(source: parts.join(' • '));
     // DENS1: HIG Caption 2 (23 pt), the tvOS minimum; `13 * scaleOf` was 20.
     final fontSize = isTv ? TvHig.caption2 * TvHig.of(context) : 13.0;
@@ -206,7 +224,7 @@ extension _MediaDetailUnifiedSource on _MediaDetailScreenState {
                 borderRadius: 999,
                 disableScale: true,
                 semanticLabel: t.sourcePicker.change,
-                onNavigateUp: _playButtonFocusNode.requestFocus,
+                onNavigateUp: _focusTvDetailActionRow,
                 onNavigateDown: _focusBelowSourceLine,
                 onSelect: () {
                   // The picker opens a route; suppress this press's key-up so it
@@ -235,11 +253,7 @@ extension _MediaDetailUnifiedSource on _MediaDetailScreenState {
 
   Widget _buildUnifiedSourceCard(BuildContext context, UnifiedMediaRouteContext routeContext) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final shown = routeContext.playItem ?? _metadata;
-    final parts = [
-      shown.serverName ?? routeContext.sourceKey.split(':').first,
-      if ((shown.libraryTitle ?? '').trim().isNotEmpty) shown.libraryTitle!.trim(),
-    ];
+    final parts = _unifiedSourceParts(routeContext);
     final canChange = widget.onChangeSource != null;
     final tile = Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),

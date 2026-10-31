@@ -21,14 +21,17 @@ import 'package:flutter/material.dart';
 
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
+import '../../focus/focus_theme.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../services/unified_catalog/unified_artwork_prefetcher.dart';
+import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import 'tv_catalog_card_grid.dart';
 import 'tv_unified_layout.dart';
+import 'tv_catalog_meta.dart';
 import 'tv_unified_media_card.dart';
 
 class TvUnifiedMediaGrid extends StatefulWidget {
@@ -55,6 +58,10 @@ class TvUnifiedMediaGrid extends StatefulWidget {
     this.precache,
     this.reservedLeading = 0,
     this.automationSurface,
+    this.fullBleed = false,
+    this.densityScale = 1,
+    this.onEmptied,
+    this.activeSort = UnifiedCatalogSort.titleAsc,
   });
 
   final List<UnifiedMediaGroup> groups;
@@ -131,6 +138,18 @@ class TvUnifiedMediaGrid extends StatefulWidget {
   /// produced. Null keeps the cards out of the automation tree.
   final String? automationSurface;
 
+  /// A-06c: six by two with the compact card, on [TvCatalogFullBleedLayout].
+  final bool fullBleed;
+
+  /// The density of a [fullBleed] grid, see [tvCatalogDensityScale].
+  final double densityScale;
+
+  /// See [TvCatalogCardGrid.onEmptied].
+  final VoidCallback? onEmptied;
+
+  /// See [TvUnifiedMediaCard.activeSort].
+  final UnifiedCatalogSort activeSort;
+
   @override
   State<TvUnifiedMediaGrid> createState() => TvUnifiedMediaGridState();
 }
@@ -196,6 +215,9 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
   /// [TvCatalogCardGridState.focusGrid].
   void focusGrid() => _gridKey.currentState?.focusGrid();
 
+  /// See [TvCatalogCardGridState.focusFirstCard].
+  void focusFirstCard() => _gridKey.currentState?.focusFirstCard();
+
   /// Focuses one named card directly. See [TvCatalogCardGridState.focusItem].
   bool focusItem(String id) => _gridKey.currentState?.focusItem(id) ?? false;
 
@@ -208,7 +230,15 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       key: _gridKey,
       successorOf: _successorOf,
       itemIds: [for (final group in widget.groups) group.groupId],
-      cardHeight: (cardWidth) => TvCatalogLayout.cardHeight(cardWidth, scale),
+      cardHeight: (cardWidth) => widget.fullBleed
+          ? TvCatalogFullBleedLayout.cardHeight(cardWidth, scale)
+          : TvCatalogLayout.cardHeight(cardWidth, scale),
+      gridResolver: widget.fullBleed
+          ? (width, height) =>
+                TvCatalogFullBleedLayout.grid(width: width, height: height, scale: scale, density: widget.densityScale)
+          : null,
+      onEmptied: widget.onEmptied,
+      focusScale: widget.fullBleed ? TvCatalogFullBleedLayout.posterFocusScale : FocusTheme.fullCardFocusScale,
       controller: widget.controller,
       initialFocusedId: widget.initialFocusedGroupId,
       onFocusedIdChanged: widget.onFocusedGroupChanged,
@@ -245,6 +275,8 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
           onNavigateLeft: cell.onNavigateLeft,
           onNavigateRight: cell.onNavigateRight,
           onBack: cell.onBack,
+          compact: widget.fullBleed,
+          activeSort: widget.activeSort,
         );
         final surface = widget.automationSurface;
         if (surface == null) return card;
@@ -252,7 +284,15 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
           id: AutomationIds.tvCatalogGridItem,
           instance: '$surface.${cell.index}',
           role: 'grid.item',
-          state: () => {'title': group.representativeSource.item.displayTitle},
+          state: () {
+            final sortValue = tvCatalogSortValueItem(group, widget.activeSort);
+            return {
+              'title': group.representativeSource.item.displayTitle,
+              'meta':
+                  tvCatalogSortScore(sortValue, widget.activeSort)?.percent.round().toString() ??
+                  tvCatalogSortedMetaLine(sortValue, sort: widget.activeSort),
+            };
+          },
           focusNode: cell.focusNode,
           child: card,
         );

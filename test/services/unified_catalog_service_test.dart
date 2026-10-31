@@ -1532,7 +1532,7 @@ void main() {
         expect(snapshot.isComplete, isTrue);
         expect(
           snapshot.groups.map((g) => g.representativeSource.item.title),
-          ['Zebra', 'Aardvark', 'Dune', 'Bumblebee'],
+          ['Zebra', 'Dune', 'Aardvark', 'Bumblebee'],
           reason:
               'Dune was first sighted via A (addedAt 100), well before B ever reaches its own far-higher-addedAt '
               '(900) duplicate. A group that already exists never moves for one — if it did, this card would have '

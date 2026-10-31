@@ -51,6 +51,8 @@ import 'package:pleya/screens/media_detail/mobile/detail_ambient_background.dart
 import 'package:pleya/screens/media_detail/mobile/detail_dark_style.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_seasons_rail.dart';
 import 'package:pleya/screens/media_detail/mobile/mobile_poster_hero.dart';
+import 'package:pleya/screens/media_detail/tv/tv_detail_page.dart';
+import 'package:pleya/screens/media_detail/tv/tv_detail_tab_pill.dart';
 import 'package:pleya/screens/media_detail_screen.dart';
 import 'package:pleya/services/watchlist/watchlist_repository.dart';
 import 'package:pleya/services/watchlist/watchlist_snapshot_store.dart';
@@ -335,13 +337,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    // PB-4: both seasons are season-chip choices now, so "Specials" is
-    // visible — the thing that matters is which season's episodes render,
-    // and that stays Season 1, not Specials.
-    expect(find.text('Season 1'), findsOneWidget);
-    expect(find.text('Specials'), findsOneWidget);
-    expect(find.text('S1E1'), findsOneWidget);
-    expect(find.text('Special 1'), findsNothing);
+    // Both seasons are tabs, so "Specials" is visible; what matters is which
+    // season the page loads for Play, and that stays Season 1.
+    expect(_tvTab('Season 1'), findsOneWidget);
+    expect(_tvTab('Specials'), findsOneWidget);
+    expect(client.childrenPageCalls.first.parentId, season1.id);
   });
 
   testWidgets('TV detail summary uses light theme foreground color', (tester) async {
@@ -477,8 +477,8 @@ void main() {
     // Every season tab is derived from the season list, so both appear
     // immediately. TV warms only the selected first page plus the adjacent first
     // page; it still does not walk the whole show or load page 2+.
-    expect(find.text('Season 1'), findsOneWidget);
-    expect(find.text('Season 2'), findsOneWidget);
+    expect(_tvTab('Season 1'), findsOneWidget);
+    expect(_tvTab('Season 2'), findsOneWidget);
     expect(client.childrenPageCalls.map((call) => call.parentId), containsAll([season1.id, season2.id]));
     expect(client.childrenPageCalls.every((call) => call.start == 0 && call.size == 200), isTrue);
   });
@@ -572,8 +572,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.text('Season 1'), findsOneWidget);
-    expect(find.text('Season 2'), findsOneWidget);
+    expect(_tvTab('Season 1'), findsOneWidget);
+    expect(_tvTab('Season 2'), findsOneWidget);
   });
 
   testWidgets('TV detail completes adjacent prefetch after focus moves to that season', (tester) async {
@@ -664,8 +664,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    // PB-4: switching season is a chip RIGHT, not a vertical step within the
-    // rail — there is only ever one active season rail now.
+    // Switching season is a RIGHT on the tabs, and there is only one row.
     FocusNode seasonChipFocusNode(int index) {
       for (final element in tester.allElements) {
         final widget = element.widget;
@@ -681,357 +680,14 @@ void main() {
     await tester.pump();
     await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
-    expect(find.text('Episode 2'), findsNothing);
+    List<String> shown() => tester.widget<TvDetailPage>(find.byType(TvDetailPage)).sections.single.itemIds;
+    expect(shown(), isNot(contains(episode2.id)));
 
     season2Completer.complete([episode2]);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.text('Episode 2'), findsOneWidget);
-  });
-
-  testWidgets('TV detail shows one active season chip row and no chips for a single-season show', (tester) async {
-    await SettingsService.getInstance();
-
-    final show = MediaItem(
-      id: 'show_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.show,
-      title: 'The Show',
-      serverId: 'server_1',
-      serverName: 'Server',
-    );
-    final season1 = MediaItem(
-      id: 'season_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.season,
-      title: 'Season 1',
-      index: 1,
-      parentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    final episode1 = MediaItem(
-      id: 'episode_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.episode,
-      title: 'Episode 1',
-      index: 1,
-      parentId: season1.id,
-      parentIndex: season1.index,
-      grandparentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    final client = _FakeMediaServerClient(
-      show: show,
-      childrenByParent: {
-        show.id: [season1],
-        season1.id: [episode1],
-      },
-    );
-    final manager = MultiServerManager()..debugRegisterClientForTesting(client);
-    final provider = MultiServerProvider(manager, DataAggregationService(manager));
-    addTearDown(provider.dispose);
-
-    await tester.pumpWidget(
-      TranslationProvider(
-        child: ChangeNotifierProvider<MultiServerProvider>.value(
-          value: provider,
-          child: MaterialApp(
-            builder: withNoticeLayer(),
-            theme: monoTheme(dark: true),
-            home: withProfileNavigationScope(
-              child: SizedBox(width: 1280, height: 720, child: MediaDetailScreen(metadata: show)),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    await tester.pump();
-    await tester.pump();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-
-    // One season is nothing to choose between (PB-4): no chip row.
-    expect(
-      find.byWidgetPredicate((w) => w is AutomationNode && w.id == AutomationIds.mediaDetailSeasonChips),
-      findsNothing,
-    );
-    expect(find.text('Episode 1'), findsOneWidget);
-  });
-
-  testWidgets('TV detail season chip switch keeps pagination and restores per-season focus memory', (tester) async {
-    await SettingsService.getInstance();
-
-    final show = MediaItem(
-      id: 'show_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.show,
-      title: 'The Show',
-      serverId: 'server_1',
-      serverName: 'Server',
-    );
-    final season1 = MediaItem(
-      id: 'season_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.season,
-      title: 'Season 1',
-      index: 1,
-      parentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    final season2 = MediaItem(
-      id: 'season_2',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.season,
-      title: 'Season 2',
-      index: 2,
-      parentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    MediaItem episodeOf(MediaItem season, int index, String title) => MediaItem(
-      id: '${season.id}_e$index',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.episode,
-      title: title,
-      index: index,
-      parentId: season.id,
-      parentIndex: season.index,
-      grandparentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    final alpha = episodeOf(season1, 1, 'Alpha');
-    final bravo = episodeOf(season1, 2, 'Bravo');
-    final charlie = episodeOf(season2, 1, 'Charlie');
-
-    final client = _FakeMediaServerClient(
-      show: show,
-      childrenByParent: {
-        show.id: [season1, season2],
-        season1.id: [alpha, bravo],
-        season2.id: [charlie],
-      },
-    );
-    final manager = MultiServerManager()..debugRegisterClientForTesting(client);
-    final provider = MultiServerProvider(manager, DataAggregationService(manager));
-    addTearDown(provider.dispose);
-
-    await tester.pumpWidget(
-      TranslationProvider(
-        child: ChangeNotifierProvider<MultiServerProvider>.value(
-          value: provider,
-          child: MaterialApp(
-            builder: withNoticeLayer(),
-            theme: monoTheme(dark: true),
-            home: withProfileNavigationScope(
-              child: SizedBox(width: 1280, height: 720, child: MediaDetailScreen(metadata: show)),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    await tester.pump();
-    await tester.pump();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-
-    expect(
-      find.byWidgetPredicate((w) => w is AutomationNode && w.id == AutomationIds.mediaDetailSeasonChips),
-      findsOneWidget,
-    );
-
-    FocusNode seasonChipFocusNode(int index) {
-      for (final element in tester.allElements) {
-        final widget = element.widget;
-        if (widget is Focus && widget.focusNode?.debugLabel == 'season_tab_$index') return widget.focusNode!;
-      }
-      throw StateError('No season chip focus node at index $index');
-    }
-
-    // The rail reveals with focus on its own scope; entering it (DOWN, which
-    // `TvBrowseRail` treats as "enter the topmost hub") lands on Alpha. UP
-    // from there is PB-4's contract: the active season chip, not the action
-    // row — the rail's own per-item focus is virtualised (a repainted ring
-    // driven by an internal index, not real `FocusNode`s per card), so this
-    // suite checks the chip/rail contract at the level that is actually a
-    // `FocusNode`: the chip.
-    tester.state<TvBrowseRailState>(find.byType(TvBrowseRail)).requestFocus();
-    await tester.pump();
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
-    await tester.pump();
-
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'season_tab_0');
-
-    // RIGHT switches to Season 2 — pagination for it is fetched fresh.
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(find.text('Charlie'), findsOneWidget);
-    expect(find.text('Alpha'), findsNothing);
-    expect(find.text('Bravo'), findsNothing);
-    expect(seasonChipFocusNode(1).hasPrimaryFocus, isTrue);
-
-    // LEFT back to Season 1: its episodes render again from the pager's
-    // cache (no second fetch is asserted here — `_fetchSeasonEpisodes` owns
-    // that — this is about the chip and the rail agreeing on what to show).
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowLeft);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowLeft);
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(find.text('Alpha'), findsOneWidget);
-    expect(find.text('Bravo'), findsOneWidget);
-    expect(find.text('Charlie'), findsNothing);
-
-    // DOWN from the chip reaches the rail again (the other half of the
-    // chip/rail contract). Exactly which episode the rail's own
-    // `HubFocusMemory` restores there — keyed by the season's now-stable hub
-    // id — is this suite's known gap: it is a real `FocusNode` on the chip
-    // but not on the rail's own cards, so it is not provable at this level.
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
-    await tester.pump();
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_browse_rail');
-  });
-
-  testWidgets('TV detail hero swaps to the focused episode\'s own summary', (tester) async {
-    // MOC-10 (mockup 37 C) asked for a per-card synopsis under the focused
-    // episode; the hero already swaps its metadata line and description to
-    // the focused episode via `_tvDetailFocusedEpisode`
-    // (`_buildTvDetailMetadataLine`/`_tvDetailDescription`), which delivers
-    // the same read-without-navigating-away outcome without a new
-    // focus-dependent-height component on the shared `TvBrowseRail`. This
-    // locks that behavior in.
-    await SettingsService.getInstance();
-
-    final show = MediaItem(
-      id: 'show_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.show,
-      title: 'The Show',
-      summary: 'Show-level summary.',
-      serverId: 'server_1',
-      serverName: 'Server',
-    );
-    final season1 = MediaItem(
-      id: 'season_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.season,
-      title: 'Season 1',
-      index: 1,
-      parentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    final season2 = MediaItem(
-      id: 'season_2',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.season,
-      title: 'Season 2',
-      index: 2,
-      parentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    MediaItem episodeOf(MediaItem season, int index, String title, String summary) => MediaItem(
-      id: '${season.id}_e$index',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.episode,
-      title: title,
-      summary: summary,
-      index: index,
-      parentId: season.id,
-      parentIndex: season.index,
-      grandparentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    final alpha = episodeOf(season1, 1, 'Alpha', 'Alpha episode summary.');
-    final bravo = episodeOf(season1, 2, 'Bravo', 'Bravo episode summary.');
-    final charlie = episodeOf(season2, 1, 'Charlie', 'Charlie episode summary.');
-
-    final client = _FakeMediaServerClient(
-      show: show,
-      childrenByParent: {
-        show.id: [season1, season2],
-        season1.id: [alpha, bravo],
-        season2.id: [charlie],
-      },
-    );
-    final manager = MultiServerManager()..debugRegisterClientForTesting(client);
-    final provider = MultiServerProvider(manager, DataAggregationService(manager));
-    addTearDown(provider.dispose);
-
-    await tester.pumpWidget(
-      TranslationProvider(
-        child: ChangeNotifierProvider<MultiServerProvider>.value(
-          value: provider,
-          child: MaterialApp(
-            builder: withNoticeLayer(),
-            theme: monoTheme(dark: true),
-            home: withProfileNavigationScope(
-              child: SizedBox(width: 1280, height: 720, child: MediaDetailScreen(metadata: show)),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    await tester.pump();
-    await tester.pump();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-
-    // A show's TV detail opens with focus already on the rail's first
-    // episode (DEC-109/PB-4), so the hero already shows Alpha, not the show.
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_browse_rail');
-    expect(find.text('Alpha episode summary.'), findsOneWidget);
-    expect(find.text('Show-level summary.'), findsNothing);
-
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
-    await tester.pump();
-
-    expect(find.text('Bravo episode summary.'), findsOneWidget);
-    expect(find.text('Alpha episode summary.'), findsNothing);
-
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowLeft);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowLeft);
-    await tester.pump();
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
-
-    // The chip is still part of the episode-browsing context (PB-4), so the
-    // hero deliberately keeps showing the last-focused episode here.
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'season_tab_0');
-    expect(find.text('Alpha episode summary.'), findsOneWidget);
-
-    // A second UP reaches the action row, which is the actual "leave episode
-    // context" signal (`_focusTvDetailActionRow` clears it explicitly).
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
-
-    expect(find.text('Show-level summary.'), findsOneWidget);
-    expect(find.text('Alpha episode summary.'), findsNothing);
+    expect(shown(), contains(episode2.id));
   });
 
   group('watch state freshness (phone layout)', () {
@@ -4116,7 +3772,7 @@ void main() {
       final movie = MediaItem(
         id: 'movie_det3',
         backend: MediaBackend.jellyfin,
-        kind: MediaKind.movie,
+        kind: MediaKind.season,
         title: 'A Moderate Motion Picture Title',
         summary: longSummary,
         genres: const ['Drama'],
@@ -4212,7 +3868,7 @@ void main() {
       final movie = MediaItem(
         id: 'movie_det7_light',
         backend: MediaBackend.jellyfin,
-        kind: MediaKind.movie,
+        kind: MediaKind.season,
         title: 'A Moderate Motion Picture Title',
         summary: longSummary,
         genres: const ['Drama'],
@@ -4241,182 +3897,6 @@ void main() {
       );
     });
 
-    testWidgets('a series with season chips, cast and extras keeps title and the action row on screen', (tester) async {
-      final show = MediaItem(
-        id: 'show_det2',
-        backend: MediaBackend.jellyfin,
-        kind: MediaKind.show,
-        title: 'A Very Long Series Title For Overflow Testing',
-        summary: longSummary,
-        genres: const ['Drama', 'Mystery'],
-        roles: castRoles(8),
-        serverId: 'server_1',
-        serverName: 'Server',
-      );
-      final season1 = MediaItem(
-        id: 'season_1',
-        backend: MediaBackend.jellyfin,
-        kind: MediaKind.season,
-        title: 'Season 1',
-        index: 1,
-        parentId: show.id,
-        serverId: show.serverId,
-        serverName: show.serverName,
-      );
-      final season2 = MediaItem(
-        id: 'season_2',
-        backend: MediaBackend.jellyfin,
-        kind: MediaKind.season,
-        title: 'Season 2',
-        index: 2,
-        parentId: show.id,
-        serverId: show.serverId,
-        serverName: show.serverName,
-      );
-      final episode1 = MediaItem(
-        id: 'episode_1',
-        backend: MediaBackend.jellyfin,
-        kind: MediaKind.episode,
-        title: 'Episode 1',
-        index: 1,
-        parentId: season1.id,
-        parentIndex: season1.index,
-        grandparentId: show.id,
-        serverId: show.serverId,
-        serverName: show.serverName,
-      );
-      final episode2 = MediaItem(
-        id: 'episode_2',
-        backend: MediaBackend.jellyfin,
-        kind: MediaKind.episode,
-        title: 'Episode 2',
-        index: 1,
-        parentId: season2.id,
-        parentIndex: season2.index,
-        grandparentId: show.id,
-        serverId: show.serverId,
-        serverName: show.serverName,
-      );
-
-      final client = _FakeMediaServerClient(
-        show: show,
-        childrenByParent: {
-          show.id: [season1, season2],
-          season1.id: [episode1],
-          season2.id: [episode2],
-        },
-        extras: extraItems(6),
-      );
-      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
-      final provider = MultiServerProvider(manager, DataAggregationService(manager));
-      addTearDown(provider.dispose);
-
-      const panelSize = Size(1038, 584);
-      await pumpNestedDetail(tester, show, provider, panelSize: panelSize, nestedBoxSize: const Size(1038, 480));
-
-      expect(tester.takeException(), isNull);
-
-      expect(find.text('Season 1'), findsOneWidget);
-      // See the movie test above for why the synopsis specifically is not
-      // asserted here: the active episode rail (forced to full-width
-      // thumbnails, MOC-10) plus the season chip row already claims most of
-      // this adversarial 584-logical-px panel.
-      expect(find.text(show.title!), findsWidgets);
-
-      final playButtonRect = rectOfFocusLabel(tester, 'play_button');
-      expect(playButtonRect.bottom, lessThanOrEqualTo(panelSize.height));
-    });
-
-    testWidgets('a series with season chips opened as a destination root keeps at least one line of synopsis', (
-      tester,
-    ) async {
-      // The follow-up to the two adversarial tests above: cast+extras
-      // together are enough to justify dropping the synopsis, but a lone
-      // season-chips + episode-rail hub on its own is ordinary content, not
-      // an edge case, and was still landing on the zero-line mandatory
-      // floor before the minimal tier was added. Opened as a destination
-      // root (see the moderate movie test above for why that matters) —
-      // nested under the shell topnav (INV-1's shorter content box), the
-      // same fixture still lands on zero: season chips plus any episode
-      // rail already exceed even the minimal budget in that box. That is a
-      // known, reported limitation (the shell-nested case feeling too
-      // dense for its available height), not something this tier fixes.
-      final show = MediaItem(
-        id: 'show_det2_minimal',
-        backend: MediaBackend.jellyfin,
-        kind: MediaKind.show,
-        title: 'A Series With Season Chips And No Extra Hubs',
-        summary: longSummary,
-        genres: const ['Drama', 'Mystery'],
-        serverId: 'server_1',
-        serverName: 'Server',
-      );
-      final season1 = MediaItem(
-        id: 'season_1',
-        backend: MediaBackend.jellyfin,
-        kind: MediaKind.season,
-        title: 'Season 1',
-        index: 1,
-        parentId: show.id,
-        serverId: show.serverId,
-        serverName: show.serverName,
-      );
-      // A second season only to satisfy `_tvDetailShowsSeasonChips`
-      // (`_seasons.length > 1`) — the chip row itself is what this test is
-      // about, so it needs to actually be showing.
-      final season2 = MediaItem(
-        id: 'season_2',
-        backend: MediaBackend.jellyfin,
-        kind: MediaKind.season,
-        title: 'Season 2',
-        index: 2,
-        parentId: show.id,
-        serverId: show.serverId,
-        serverName: show.serverName,
-      );
-      final episodes = [
-        for (var i = 1; i <= 4; i++)
-          MediaItem(
-            id: 'episode_$i',
-            backend: MediaBackend.jellyfin,
-            kind: MediaKind.episode,
-            title: 'Episode $i',
-            index: i,
-            parentId: season1.id,
-            parentIndex: season1.index,
-            grandparentId: show.id,
-            serverId: show.serverId,
-            serverName: show.serverName,
-          ),
-      ];
-
-      final client = _FakeMediaServerClient(
-        show: show,
-        childrenByParent: {
-          show.id: [season1, season2],
-          season1.id: episodes,
-          season2.id: const [],
-        },
-      );
-      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
-      final provider = MultiServerProvider(manager, DataAggregationService(manager));
-      addTearDown(provider.dispose);
-
-      const panelSize = Size(1038, 584);
-      await pumpNestedDetail(tester, show, provider, panelSize: panelSize, nestedBoxSize: panelSize);
-
-      expect(tester.takeException(), isNull);
-      expect(find.text('Season 1'), findsOneWidget);
-
-      final summaryFinder = find.text(show.summary!);
-      expect(summaryFinder, findsOneWidget, reason: 'the minimal tier should keep at least one synopsis line');
-      final summaryText = tester.widget<Text>(summaryFinder);
-      expect(summaryText.maxLines, greaterThanOrEqualTo(1));
-
-      final playButtonRect = rectOfFocusLabel(tester, 'play_button');
-      expect(playButtonRect.bottom, lessThanOrEqualTo(panelSize.height));
-    });
-
     testWidgets('a title with more genres than fit on one line wraps to a second instead of hiding them', (
       tester,
     ) async {
@@ -4442,7 +3922,7 @@ void main() {
 
       expect(tester.takeException(), isNull);
 
-      final genreFinder = find.text(movie.genres!.join('  •  '));
+      final genreFinder = find.text(movie.genres!.join(', '));
       expect(genreFinder, findsOneWidget, reason: 'the full genre list should still render as one string, wrapped');
       final genreText = tester.widget<Text>(genreFinder);
       expect(
@@ -4459,121 +3939,9 @@ void main() {
   // ---------------------------------------------------------------------------
   // DET4: de seizoenchiprij reserveert de hoogte die een chip werkelijk vraagt
   // ---------------------------------------------------------------------------
-
-  testWidgets('DET4: a season chip fits inside the band the row reserves for it', (tester) async {
-    await SettingsService.getInstance();
-
-    // Dezelfde show/seizoen/aflevering-opbouw als 'TV detail completes adjacent
-    // prefetch after focus moves to that season'. Twee seizoenen, want
-    // `_tvDetailShowsSeasonChips` vraagt `_seasons.length > 1`.
-    final show = MediaItem(
-      id: 'show_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.show,
-      title: 'The Show',
-      serverId: 'server_1',
-      serverName: 'Server',
-    );
-    final season1 = MediaItem(
-      id: 'season_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.season,
-      title: 'Season 1',
-      index: 1,
-      parentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    final season2 = MediaItem(
-      id: 'season_2',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.season,
-      title: 'Season 2',
-      index: 2,
-      parentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    final client = _FakeMediaServerClient(
-      show: show,
-      childrenByParent: {
-        show.id: [season1, season2],
-        season1.id: const <MediaItem>[],
-      },
-    );
-    final manager = MultiServerManager()..debugRegisterClientForTesting(client);
-    final provider = MultiServerProvider(manager, DataAggregationService(manager));
-    addTearDown(provider.dispose);
-
-    await tester.pumpWidget(
-      TranslationProvider(
-        child: ChangeNotifierProvider<MultiServerProvider>.value(
-          value: provider,
-          child: MaterialApp(
-            builder: withNoticeLayer(),
-            theme: monoTheme(dark: true),
-            home: withProfileNavigationScope(
-              child: SizedBox(width: 1280, height: 720, child: MediaDetailScreen(metadata: show)),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    await tester.pump();
-    await tester.pump();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-
-    final band = find.byWidgetPredicate((w) => w is AutomationNode && w.id == AutomationIds.mediaDetailSeasonChips);
-    expect(band, findsOneWidget);
-
-    // De band die de rij krijgt, en de hoogte die de eerste chip werkelijk
-    // oplevert. `_tvDetailSeasonChipContentHeight` meet alleen tekst plus de
-    // verticale padding: niet de 1px border van de chip zelf, en niet de
-    // 2.5px border die `FocusTheme.focusDecoration` onvoorwaardelijk om het
-    // kind legt, ook ongefocust en ook transparant.
-    final bandHeight = tester.getSize(band).height;
-    final chipFinder = find.descendant(of: band, matching: find.byType(FocusableWrapper)).first;
-    final chipHeight = tester.getSize(chipFinder).height;
-
-    expect(
-      chipHeight,
-      lessThanOrEqualTo(bandHeight),
-      reason:
-          'the rendered size stays clamped to the band by construction (Row/SizedBox); this only '
-          'guards that clamp still holding, it cannot prove the chip actually fits, see the '
-          'intrinsic-height assertion below for that',
-    );
-
-    // `tester.getSize` reads the chip's *rendered* size, which the `SizedBox`
-    // around the row's `Row` already clamps to `bandHeight` via a tight
-    // cross-axis constraint (RenderFlex hands every child a loose constraint
-    // capped at that same maxHeight). A chip that wants more height than the
-    // reservation would silently report the same clamped number as a chip
-    // that genuinely fits, so `chipHeight == bandHeight` above cannot by
-    // itself distinguish the two. `getMaxIntrinsicHeight` asks the chip's
-    // render tree what height it wants with no ceiling at all, which the
-    // clamp above cannot mask.
-    final chipIntrinsicHeight = tester.renderObject<RenderBox>(chipFinder).getMaxIntrinsicHeight(double.infinity);
-
-    expect(
-      chipIntrinsicHeight,
-      lessThanOrEqualTo(bandHeight),
-      reason:
-          'the chip\'s true, unclamped desired height must fit the band; a clamped '
-          'tester.getSize comparison alone cannot tell a fit from a squeeze',
-    );
-
-    // VIS2/37 C: the heading and the chips are one line, and the rail under
-    // it does not name the season hub a second time.
-    final heading = find.descendant(of: band, matching: find.text(t.libraries.groupings.episodes));
-    expect(heading, findsOneWidget);
-    expect(find.text(t.libraries.groupings.episodes), findsOneWidget);
-    expect(tester.getCenter(heading).dy, moreOrLessEquals(tester.getCenter(chipFinder).dy, epsilon: 1));
-    expect(tester.getTopLeft(chipFinder).dx, greaterThan(tester.getTopRight(heading).dx));
-  });
 }
+
+Finder _tvTab(String label) => find.descendant(of: find.byType(TvDetailTabPill), matching: find.text(label));
 
 Future<void> _press(WidgetTester tester, LogicalKeyboardKey key) async {
   await tester.sendKeyDownEvent(key);
@@ -4774,6 +4142,14 @@ class _FakeMediaServerClient implements MediaServerClient {
 
   @override
   Future<List<MediaHub>> fetchRelatedHubs(String id, {int count = 10}) async => const [];
+
+  @override
+  Future<LibraryPage<MediaItem>> fetchPersonMediaPage(
+    String personId, {
+    int? start,
+    int? size,
+    AbortController? abort,
+  }) async => const LibraryPage(items: [], totalCount: 0);
 
   @override
   Future<MediaItem?> fetchItem(String id) async {

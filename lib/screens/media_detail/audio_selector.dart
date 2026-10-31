@@ -137,7 +137,11 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
       remembered: _detailPickRemembered,
     );
     if (track == null || !mounted) return;
+    await _applyDetailAudioTrack(target, track);
+  }
 
+  /// What a pick does, whichever picker it came from.
+  Future<void> _applyDetailAudioTrack(MediaItem target, MediaAudioTrack track) async {
     final language = track.languageCode ?? track.language;
     if (language != null && language.isNotEmpty) {
       await TrackPreferenceStore.saveAudio(target, language: language, title: track.title);
@@ -158,8 +162,11 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
       remembered: _detailPickRemembered,
     );
     if (choice == null || !mounted) return;
+    await _applyDetailSubtitleTrack(target, choice.track);
+  }
 
-    final track = choice.track;
+  /// [track] null is subtitles off.
+  Future<void> _applyDetailSubtitleTrack(MediaItem target, MediaSubtitleTrack? track) async {
     if (track == null) {
       await TrackPreferenceStore.saveSubtitle(target, off: true);
     } else if ((track.languageCode ?? track.language) case final language? when language.isNotEmpty) {

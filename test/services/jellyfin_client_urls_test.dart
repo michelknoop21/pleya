@@ -2929,7 +2929,7 @@ void main() {
       // ProviderIds rides along so unified grouping needs no detail request.
       expect(
         itemsRequest.queryParameters['Fields'],
-        'RecursiveItemCount,ChildCount,UserData,PremiereDate,OriginalTitle,SortName,Overview,ProviderIds',
+        'RecursiveItemCount,ChildCount,UserData,PremiereDate,DateCreated,OriginalTitle,SortName,Overview,ProviderIds',
       );
       expect(itemsRequest.queryParameters.containsKey('EnableTotalRecordCount'), isFalse);
       expect(itemsRequest.queryParameters['EnableImageTypes'], 'Primary,Backdrop,Thumb,Logo');

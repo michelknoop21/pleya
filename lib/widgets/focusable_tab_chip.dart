@@ -5,6 +5,7 @@ import '../focus/input_mode_tracker.dart';
 import '../theme/mono_tokens.dart';
 import '../utils/platform_detector.dart';
 import 'focus_builders.dart';
+import 'mobile/library_phone_look.dart';
 
 /// How a [FocusableTabChip] draws itself.
 enum TabChipStyle {
@@ -22,6 +23,11 @@ enum TabChipStyle {
 
   /// Approved library navigation on artwork; no underline.
   floating,
+
+  /// Plain text with an outlined pill around the open tab. The iPhone library
+  /// look, whose row is wider than the screen, so the open tab scrolls itself
+  /// into view.
+  outlined,
 }
 
 /// A focusable tab chip that shows a color change when focused or selected.
@@ -131,6 +137,15 @@ class _FocusableTabChipState extends State<FocusableTabChip> with FocusableChipS
   void didUpdateWidget(FocusableTabChip oldWidget) {
     super.didUpdateWidget(oldWidget);
     updateFocusNode(oldWidget.focusNode);
+    if (widget.style == TabChipStyle.outlined && widget.isSelected && !oldWidget.isSelected) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _revealInRow());
+    }
+  }
+
+  /// A swipe between tabs changes the open tab without touching this row.
+  void _revealInRow() {
+    if (!mounted) return;
+    Scrollable.ensureVisible(context, duration: reduceMotion(context, tokens(context).fast), alignment: 0.5);
   }
 
   @override
@@ -161,6 +176,7 @@ class _FocusableTabChipState extends State<FocusableTabChip> with FocusableChipS
     final showFocus = isFocused && InputModeTracker.isKeyboardMode(context);
     final useUnderline = widget.style == TabChipStyle.underline && widget.topImage == null;
     if (widget.style == TabChipStyle.floating) return _buildFloating(context, showFocus);
+    if (widget.style == TabChipStyle.outlined) return _buildOutlined(context, showFocus);
     return useUnderline ? _buildUnderline(context, showFocus) : _buildSegmented(context, showFocus);
   }
 
@@ -195,6 +211,38 @@ class _FocusableTabChipState extends State<FocusableTabChip> with FocusableChipS
           fontSize: 16,
           height: 1.5,
           fontWeight: widget.isSelected ? FontWeight.w700 : FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOutlined(BuildContext context, bool showFocus) {
+    final tk = tokens(context);
+    final isOpen = widget.isSelected;
+    return FocusBuilders.buildFocusableChip(
+      context: context,
+      focusNode: focusNode,
+      onKeyEvent: _handleKeyEvent,
+      onTap: widget.onSelect,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      backgroundColor: Colors.transparent,
+      borderColor: showFocus ? tk.text : (isOpen ? tk.textMuted : Colors.transparent),
+      borderRadius: LibraryPhoneMetrics.tabPillHeight / 2,
+      hitTestBehavior: HitTestBehavior.opaque,
+      minTapHeight: 44,
+      child: SizedBox(
+        height: LibraryPhoneMetrics.tabPillHeight,
+        child: Center(
+          widthFactor: 1,
+          child: Text(
+            widget.label,
+            maxLines: 1,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: isOpen || showFocus ? tk.text : tk.textMuted,
+              fontSize: LibraryPhoneMetrics.tabFontSize,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ),
     );

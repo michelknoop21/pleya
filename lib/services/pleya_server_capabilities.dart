@@ -117,5 +117,12 @@ class PleyaServerCapabilityResolver {
     // No folder listing on the contract; `storage_locations` stays
     // server-side. A matrix gap, not a client shortcut.
     folderGrouping: false,
+
+    // `PleyaServerClient.fetchItemActivity` reads it. Screens check this flag
+    // rather than the wire, like every other field here.
+    itemActivity: _offered(wire.itemActivity, implementedHere: true),
+
+    // Read from the item, so a server without the route above keeps it.
+    ownActivityLine: true,
   );
 }
