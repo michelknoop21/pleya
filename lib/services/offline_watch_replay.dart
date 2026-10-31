@@ -259,8 +259,10 @@ Future<bool> _replayCopyProgress(
     if (finished) _announceCopy(client, copy, watched: true);
     return true;
   }
-  // A viewing holds the title, and what it reports is newer than this position.
-  // A finished viewing is not: that one waits for its turn.
+  // A viewing holds the title, and what it reports is newer than this position,
+  // or the server takes no position without counting a viewing. Either way the
+  // row is done. A finished viewing that was held back stays: the next round ends
+  // it if that viewing went on (the newest wins), and otherwise it lands.
   if (finished) throw StateError('${action.ratingKey} is being played elsewhere');
   return false;
 }

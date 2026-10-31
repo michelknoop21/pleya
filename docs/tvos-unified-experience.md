@@ -1074,18 +1074,23 @@ Op een kopie kijkt niemand, dus een rij gebruikt nooit de start en stop van een 
 | Jellyfin 10.9+ | `POST /UserItems/{id}/UserData` met alleen `PlaybackPositionTicks` | `POST /UserPlayedItems/{id}` | `Played`, `PlayCount` en `LastPlayedDate` blijven staan: de server schrijft alleen meegestuurde velden |
 | Emby | `POST /Users/{u}/Items/{id}/UserData` met de eigen `UserData` terug en een nieuwe positie | `POST /Users/{u}/PlayedItems/{id}` | Emby documenteert niet wat het met weggelaten velden doet, dus die gaan mee |
 | Plex | `/:/progress` met `state=stopped` | `/:/scrobble` | Onbewezen: Plex documenteert dit niet, en niets is op een echte server gedraaid. Open zijn `viewCount`, `lastViewedAt` en wat een positie vlak bij het einde doet |
-| Pleya Server | `playback_started` met `reclaim`, dan een gewone melding | dezelfde weg met `completed` | Geen rij: de server kent geen schrijfactie zonder sessie, en de geschiedenis telt dit als afspelen. Een gekeken kopie blijft zoals hij is |
+| Pleya Server | Niet: elke weg voor een positie telt als kijkbeurt, dus de rij eindigt zonder verzoek | `mark_watched` | Geen rij in `play_history`. Een gekeken kopie blijft zoals hij is |
 
-Jellyfin vóór 10.9 kent de route niet: die rij eindigt op een 404. Pleya Server krijgt geen backlog,
-want die verplaatst de stand van een bekende titel niet (regel 6), en een eigen oorzaak vraagt een
-protocolvenster. Dat besluit ligt bij Michel. Tot dan geldt: een positie vanaf 90 procent zet een
-Pleya Server-kopie op gekeken, want `reclaim` draagt de positie en de drempel van de server is de
-terugval, ook met `completed: false`. Zo'n server kent per titel één schrijver (DEC-049), en
-`user_started` neemt die rol over ongeacht de lease; `reclaim` niet. Houdt een kijksessie de titel
-vast, dan vervalt een positie, want die sessie is nieuwer, en wacht een afgekeken stand op zijn beurt.
-Elke kopieschrijfactie van een client is dezelfde sessie, zodat de lease van de vorige de volgende
-niet tegenhoudt. Een rechtstreekse markering blijft een expliciete handeling (regel 5) en negeert de
-lease, net als de knop op het eigen scherm.
+Jellyfin vóór 10.9 kent de route niet: die rij eindigt op een 404. Op Pleya Server is een kopie geen
+kijkactie, en dat bepaalt de tabelregel. `playback_started` zet een rij in `play_history`, schuift
+`last_played_at` en zet vanaf 90 procent `watched`, ook met `completed: false`. Een backlog verplaatst
+de stand van een bekende titel niet (regel 6) en een passieve melding heeft de lease nodig (regel 2).
+Een positie bereikt een Pleya Server-kopie dus niet. De rij eindigt zonder verzoek, en wie daar
+verder wil kijken begint op de eigen positie van die bron. Een afgekeken stand gaat als `mark_watched`
+en maakt geen rij in `play_history`. Dat is een expliciete handeling (regel 5): zo'n server kent per
+titel één schrijver (DEC-049), en de markering negeert de lease en zet de positie op nul. Een sessie
+die erop kijkt zou haar schrijfrecht en haar positie verliezen. `user_state` noemt de lease niet, dus
+de laatste schrijfactie is het enige teken: ligt `updated_at` minder dan 180 seconden terug, tweemaal
+de standaardlease van 90 seconden, dan gaat er niets uit en blijft de rij staan. Tikte de sessie door,
+dan laat de volgende ronde de rij vervallen, want de nieuwste wint en de kopie blijft ongezien. Anders
+gaat de markering alsnog uit. Een sessie die langer dan 180 seconden niets meldde en nog leeft, houdt
+dat risico: de client ziet haar niet. De rij eindigt alleen op een antwoord dat `watched` zegt; een
+200 zonder leesbare kijkstatus zegt niets over de kopie, en dan blijft de rij staan.
 
 Een spiegeling verplaatst een kopie alleen vooruit. Acht seconden op bron A laten een uur op bron B
 staan; alleen een gekeken sessie mag een kopie verlagen. Er is geen minimumduur: de vergelijking

@@ -98,7 +98,8 @@ abstract interface class CopyStateClient implements MediaServerClient {
   /// `viewCount` above zero means watched now, not ever watched.
   Future<MediaItem?> readCopyState(String id);
 
-  /// Answers whether it landed: false when a viewing holds the title.
+  /// Answers whether it landed: false when a viewing holds the title, or when
+  /// this server cannot take a position without counting it as a viewing.
   Future<bool> writeCopyState(MediaItem item, {required Duration position, Duration? duration, required bool watched});
 }
 

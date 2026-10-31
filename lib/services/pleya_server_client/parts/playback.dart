@@ -232,36 +232,42 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   }
 
   /// The protocol has no write without a session: a backlog never moves a title
-  /// that has a state (rule 6) and a passive tick needs the lease (rule 2). The
-  /// history counts this as a play, so a watched copy stays out of it.
+  /// that has a state (rule 6) and a passive tick needs the lease (rule 2).
   bool get movesCopyWithoutViewing => false;
 
-  /// `reclaim` and not `user_started`: nobody pressed play, so the lease of a
-  /// session that is watching stands (rule 1). One session for every copy, kept
-  /// apart from the viewings in the ledger, so the lease of the previous copy
-  /// write is its own, and no revision claim: this client did not act on what it
-  /// saw of this title.
+  /// `user_state` does not say whether a session holds a title, so a recent write
+  /// is the only sign of one: a live session ticks every ten seconds. Twice the
+  /// default lease of 90 seconds, because a session keeps its lease up to there
+  /// when one tick got lost. A clock ahead of this device counts as recent.
+  static const Duration _copyWaitsAfterWrite = Duration(seconds: 180);
+
+  bool _writtenJustNow(MediaItem item) {
+    final seconds = item.lastViewedAt;
+    if (seconds == null) return false;
+    final age = DateTime.now().millisecondsSinceEpoch ~/ 1000 - seconds;
+    return age < _copyWaitsAfterWrite.inSeconds;
+  }
+
+  /// Nobody watched here, so nothing that stands for a viewing goes out. Every
+  /// way to move a position does: `playback_started` puts a row in the history,
+  /// sets the title to watched from 90 percent and moves `last_played_at`. A
+  /// position therefore stays home, and false ends its row.
+  ///
+  /// A finished viewing is `mark_watched`, which leaves no history. That is an
+  /// explicit action: it ignores the lease (rule 5) and sets the position to zero,
+  /// so right after a write it does not go out. False keeps that row, and the next
+  /// round ends it when the session ticked on, or lets it land. It lands only on an
+  /// answer that says watched: anything else says nothing, and the row stays too.
   Future<bool> writeCopyState(
     MediaItem item, {
     required Duration position,
     Duration? duration,
     required bool watched,
   }) async {
-    Future<bool> report({String action = 'none', String? cause, bool completed = false}) => _applyWatchState(
-      itemId: item.id,
-      sessionId: _copySessionId,
-      position: position,
-      duration: duration,
-      action: action,
-      cause: cause,
-      completed: completed,
-      claimsRevision: false,
-    );
-    if (!await report(action: 'playback_started', cause: 'reclaim')) return false;
-    return report(completed: watched);
+    if (!watched || _writtenJustNow(item)) return false;
+    final state = await _markWatched(item);
+    return state?.watched ?? false;
   }
-
-  late final String _copySessionId = _mintSessionId();
 
   /// A passive progress tick. Never acquires ownership; a device that is not
   /// the owner reports into the void by design, and the answer tells it so.
@@ -322,7 +328,9 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   // ---------------------------------------------------------------------------
 
   /// Mark watched. Ignores another device's lease, by rule 5.
-  Future<void> markWatched(MediaItem item) async => _applyWatchState(
+  Future<void> markWatched(MediaItem item) async => _markWatched(item);
+
+  Future<PleyaUserState?> _markWatched(MediaItem item) => _applyWatchState(
     itemId: item.id,
     sessionId: _watchLedger.sessionFor(item.id, _mintSessionId),
     position: Duration.zero,
@@ -394,9 +402,8 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   /// Every caller goes through here so the three ownership fields are decided
   /// in one place. Scattering them would make "does this event acquire the
   /// lease" a property of the call site instead of of the action.
-  /// Answers whether this session may write: false when another one holds the
-  /// title.
-  Future<bool> _applyWatchState({
+  /// Answers the state the server reports: null when there is no usable answer.
+  Future<PleyaUserState?> _applyWatchState({
     required String itemId,
     required String sessionId,
     required Duration position,
@@ -405,9 +412,8 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     String? cause,
     bool completed = false,
     bool backlog = false,
-    bool claimsRevision = true,
   }) async {
-    if (!wireCapabilities.watchState) return true;
+    if (!wireCapabilities.watchState) return null;
 
     final event = PleyaWatchStateEvent(
       itemId: itemId,
@@ -422,12 +428,12 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       // Only under the capability, and the type drops it again when the flag is
       // off: the request schema is closed, so sending it to a server that
       // predates DEC-049 fails the whole call rather than dropping the field.
-      baseRevision: wireCapabilities.watchStateOwnership && claimsRevision ? _watchLedger.revisionOf(itemId) : null,
+      baseRevision: wireCapabilities.watchStateOwnership ? _watchLedger.revisionOf(itemId) : null,
     );
 
     final body = event.toJson(ownership: wireCapabilities.watchStateOwnership);
     final json = await _postJson('/watch-state', body);
-    if (json == null) return true;
+    if (json == null) return null;
     try {
       final state = PleyaUserState.fromJson(json);
       _watchLedger.remember(itemId, state.revision);
@@ -436,12 +442,12 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
         // holds the lease, and this client keeps reporting so it can take over
         // when the lease runs out.
         appLogger.d('PleyaServerClient: another session owns $itemId');
-        return false;
       }
+      return state;
     } on PleyaWireFormatException catch (e) {
       appLogger.w('PleyaServerClient: watch-state answer did not match the contract', error: e);
+      return null;
     }
-    return true;
   }
 
   String _mintSessionId() => const Uuid().v4();

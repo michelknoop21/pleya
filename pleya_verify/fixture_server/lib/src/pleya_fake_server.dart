@@ -46,6 +46,10 @@ class PleyaFakeServer {
   /// them here would test the fake.
   final Map<String, Map<String, dynamic>> watchStates = {};
 
+  /// The session that holds each title. `playback_started` and the explicit
+  /// actions take it, which is rule 5: a mark ignores whoever is watching.
+  final Map<String, String> watchLeases = {};
+
   /// The next `POST /watch-state` answers with this owner verdict.
   bool ownedByThisSession = true;
 
@@ -128,6 +132,10 @@ class PleyaFakeServer {
   /// envelope, without recording the event. Reads (the 5xx regression of
   /// backlog 24.3) need a write that fails fast, not a timeout.
   int? watchStateFailureStatus;
+
+  /// While set, `POST /watch-state` answers 200 with this body as it stands. A
+  /// proxy or a broken build can do that, and it says nothing about the write.
+  String? watchStateRawAnswer;
 
   /// Whether `/info` advertises `users` and `administration` and `/users/me`
   /// answers with the signed-in account as `owner`. Off by default: every
@@ -333,6 +341,7 @@ class PleyaFakeServer {
     watchEvents.clear();
     watchStates.clear();
     ownedByThisSession = true;
+    watchLeases.clear();
     filtersCapability = false;
     playbackPlanCapability = false;
     personalCapability = false;
@@ -362,6 +371,7 @@ class PleyaFakeServer {
     planRequests.clear();
     sessionCalls.clear();
     watchStateFailureStatus = null;
+    watchStateRawAnswer = null;
     usersCapability = false;
     adminJobs.clear();
     scanRequests.clear();
@@ -590,6 +600,19 @@ class PleyaFakeServer {
     };
   }
 
+  /// A tick the server accepted from the session on [itemId]: `updated_at` moves
+  /// to [at], and every read of the item shows it. [at] comes from the test, so
+  /// this fake never reads a clock of its own.
+  void acceptTick(String itemId, {required int positionMs, required DateTime at}) {
+    items[itemId]?['user_state'] = {
+      'position_ms': positionMs,
+      'watched': false,
+      'play_count': 0,
+      'updated_at': at.toUtc().toIso8601String(),
+      'revision': 9,
+    };
+  }
+
   http.Client asHttpClient() => MockClient(handle);
 
   Future<http.Response> handle(http.Request request) async {
@@ -799,7 +822,10 @@ class PleyaFakeServer {
       if (failure != null) return _json(_error('server.internal'), status: failure);
       final event = jsonDecode(request.body) as Map<String, dynamic>;
       watchEvents.add(event);
+      final raw = watchStateRawAnswer;
+      if (raw != null) return http.Response(raw, 200, headers: {'content-type': 'application/json'});
       final itemId = event['item_id'] as String;
+      if (event['explicit_action'] != 'none') watchLeases[itemId] = event['session_id'] as String;
       final previous = watchStates[itemId];
       final revision = ((previous?['revision'] as int?) ?? 0) + 1;
       final state = {
