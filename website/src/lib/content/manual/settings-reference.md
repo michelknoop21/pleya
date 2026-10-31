@@ -88,6 +88,7 @@ removes it from this device even while the server is offline or its sign-in has 
 - **mpv configuration**, for people who know what they want from mpv
 - **Logs**, and the button that uploads one when you are reporting a problem
 - **Show discussions from Trakt**, on TV, under Privacy: public reactions on a title's page, on by default
+- **Share my activity**, under Privacy, on a Pleya Server: whether others in the household see what you watched. On by default, off for a restricted user until they turn it on. Your own line stays either way
 - **About**, with version information and licences
 
 Settings also sync through iCloud on Apple devices, so a new device starts configured. A

@@ -54,7 +54,7 @@ Zeven beeldmappen onder `docs/assets/tvos-unified/`, en ze zijn niet gelijkwaard
 | `mockups-2026-09-04/` | 26 tot en met 31 | goedgekeurd | DEC-092 tot en met DEC-096 |
 | `mockups-2026-09-05/` | 33, spelerpaneel in negen standen | goedgekeurd; vervangt mockup 19 | DEC-101 |
 | `mockups-2026-09-07/` | 34 kijklijst, 35 aanvragen, 36 zoeken | goedgekeurd | DEC-108 en [tvos-redesign-34-36-approved.md](tvos-redesign-34-36-approved.md) |
-| `mockups-2026-09-07-detail/` | 37 A tot en met D | goedgekeurde detailcorrectie voor film, serie en volledige synopsis | DEC-109 en [tvos-redesign-37-approved.md](tvos-redesign-37-approved.md) |
+| `mockups-2026-09-07-detail/` | 37 A tot en met D | goedgekeurde detailcorrectie voor film, serie en volledige synopsis; **op tvOS vervangen** door de referenties van 30 oktober | DEC-109, [DEC-171](DECISIONS.md) en [tvos-redesign-37-approved.md](tvos-redesign-37-approved.md) |
 | `mockups-2026-09-02/` | Mijn Pleya-secties, zonder Instellingen | goedgekeurd voor die secties; de Instellingen-beelden (`settings-a`, `settings-b`, `compare/settings`, `before/40`, `42`, `02-hub-entry`) zijn verwijderd | de audits in §7 |
 | root, vier `*-reference.png` | los | **historisch**, voorloper van de northstar (`my-pleya-reference.png` is verwijderd) | alleen `home-reference` en `source-picker-reference` worden nog genoemd |
 | **Instellingen (Studio) en Mijn Pleya (Editorial), iPhone en Apple TV** | `docs/assets/a24b-northstars/` | **actief**, A-24b; vervangt de oudere Instellingen- en Mijn Pleya-beelden in de tvOS- en iOS-sets. Mijn Pleya op Apple TV is sinds A-24c historisch, zie de volgende rij | [`docs/assets/a24b-northstars/README.md`](assets/a24b-northstars/README.md) |
@@ -79,7 +79,7 @@ Dit is het stuk dat het vaakst misgaat, want de beelden zelf zeggen het niet.
 | `03-films-landing.jpg` | de kaarttaal op de landing | [DEC-064](DECISIONS.md#dec-064) | hoofdstuk 33.3 |
 | `04-series-landing.jpg` | idem | [DEC-064](DECISIONS.md#dec-064) | hoofdstuk 33.4 |
 | `19-speler-infopanel.png` | speler-infopaneel als doelbeeld | DEC-101 / mockup 33 | `mockups-2026-09-05/` |
-| `09-film-detail.png` en `10-serie-detail.png` | alleen de onderdelen die 37 expliciet corrigeert | DEC-109 / mockup 37 | [tvos-redesign-37-approved.md](tvos-redesign-37-approved.md) |
+| `09-film-detail.png` en `10-serie-detail.png` | het hele detail op tvOS | [DEC-171](DECISIONS.md) | `pleya-northstar-refs/2026-10-30/` buiten de repo, afwijkingen in [`design-audits/tvos-detail-2026-10/PARITEITSCHECK.md`](design-audits/tvos-detail-2026-10/PARITEITSCHECK.md) |
 
 Elk van de afwijkingen voor 01 tot en met 04 staat als blockquote onder de betreffende paragraaf
 in hoofdstuk 33. De beelden zijn bewust **niet** opnieuw gerenderd: de tekst in de PNG en de hash
@@ -87,9 +87,9 @@ eronder zouden dan wijzigen, terwijl de rest van wat het beeld vastlegt gewoon g
 
 **De vuistregel.** Voor Home is `mockups-2026-09-04/30-home-*` bindend voor de compositie.
 Voor alles wat 01 en 02 daarnaast vastleggen zijn die twee nog steeds bindend. Voor 09 tot en
-met 25 is het approval-manifest de statusautoriteit. Voor detail geldt 37 voor zijn expliciete
-correcties; 09 en 10 blijven de compositie-authority voor wat 37 niet aanraakt. Voor het
-speler-infopaneel geldt 33 in plaats van 19.
+met 25 is het approval-manifest de statusautoriteit. Voor detail op tvOS gelden de referenties
+van 30 oktober 2026 (`pleya-northstar-refs/2026-10-30/`, [DEC-171](DECISIONS.md)) in plaats van 09,
+10 en 37. Voor het speler-infopaneel geldt 33 in plaats van 19.
 
 ---
 
