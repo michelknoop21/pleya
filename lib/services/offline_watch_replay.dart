@@ -193,6 +193,10 @@ Future<bool> replayOfflineWatchAction(
 /// which waits for a session the way a mark for a copy does. Without that mark the
 /// row stays. A position has no such way in, so its row ends. Only what landed is
 /// reported: answers true when it did, and trackers and copies hear of nothing else.
+///
+/// The read before the backlog may have failed, so a turned-down viewing reads
+/// again: a state newer than this row stands, and the row ends without a word. The
+/// session comes from the row: a retry is the same viewing, also in the history.
 Future<bool> _replayOwnPleyaViewing(
   PleyaServerClient client,
   OfflineWatchProgressItem action,
@@ -206,19 +210,22 @@ Future<bool> _replayOwnPleyaViewing(
     position: position,
     duration: duration,
     recordedAt: DateTime.fromMillisecondsSinceEpoch(action.updatedAt),
+    rowKey: '${action.id}:${action.updatedAt}',
   );
   if (state == null) throw StateError('No answer about ${action.ratingKey}');
-  if (!action.shouldMarkWatched) return state.positionMs == position.inMilliseconds;
-  if (!state.watched) {
+  final landed = state.positionMs == position.inMilliseconds;
+  if (!action.shouldMarkWatched) return landed;
+  if (!landed || !state.watched) {
     beforeWrite();
     final copy = await _readCopy(client, action);
     // Before the row can end: this answer may be the next profile's.
     beforeWrite();
-    if (copy == null) return false;
-    if (!await client.markWatchedUnlessHeld(copy)) {
+    if (copy == null || _copyMovedOn(copy, action)) return false;
+    if (!state.watched && !await client.markWatchedUnlessHeld(copy)) {
       throw StateError('${action.ratingKey} is being played elsewhere');
     }
   }
+  beforeWrite();
   await client.markWatchedFromPlaybackStop(item);
   await _scrobbleBestEffort(() => TrackerCoordinator.instance.markWatched(item, client));
   return true;

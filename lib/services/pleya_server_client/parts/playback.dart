@@ -613,16 +613,22 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   /// A viewing that ran offline, with the answer: a backlog on a title that has a
   /// state is history (rule 6), and that is a 200 like any other. Null when there
   /// is no usable answer.
+  ///
+  /// The server keeps a backlog in the history even when it turns one down, one
+  /// row per session. So the session follows from [rowKey] and not from the ledger:
+  /// a retry, also after a restart, stays one viewing there.
   Future<PleyaUserState?> reportOfflineViewing({
     required String itemId,
     required Duration position,
     Duration? duration,
     required DateTime recordedAt,
+    required String rowKey,
   }) => _reportStopped(
     itemId: itemId,
     position: position,
     duration: duration,
     report: PlaybackReportMetadata.offlineReplay(recordedAt: recordedAt),
+    replaySession: const Uuid().v5(Namespace.url.value, 'pleya-offline-viewing:$rowKey'),
   );
 
   Future<PleyaUserState?> _reportStopped({
@@ -630,6 +636,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     required Duration position,
     Duration? duration,
     required PlaybackReportMetadata report,
+    String? replaySession,
   }) async {
     final completed =
         duration != null &&
@@ -639,7 +646,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     await _releaseTranscodeSession(itemId);
     final state = await _applyWatchState(
       itemId: itemId,
-      sessionId: _watchLedger.sessionFor(itemId, _mintSessionId),
+      sessionId: replaySession ?? _watchLedger.sessionFor(itemId, _mintSessionId),
       position: position,
       duration: duration,
       completed: completed,
@@ -649,7 +656,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       backlog: report.isOfflineReplay,
       occurredAt: report.isOfflineReplay ? report.recordedAt : null,
     );
-    _watchLedger.closeSession(itemId);
+    if (replaySession == null) _watchLedger.closeSession(itemId);
     return state;
   }
 
