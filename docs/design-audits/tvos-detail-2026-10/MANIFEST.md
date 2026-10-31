@@ -12,6 +12,8 @@ Verify-bundels staan onder `.build/pleya-verify/` en zitten niet in git (`.gitig
 
 Na de review van PR 573 opnieuw gedraaid op een nieuwe simulator, app `f809a343c` zonder lokale wijzigingen, alle vier PASS: `.build/pleya-verify/tvos-detail-movie-1793415123594`, `tvos-detail-series-1793415307978`, `tvos-detail-season-1793415424793`, `tvos-detail-more-actions-1793415487566`. `tvos.settings.activity-sharing` is in die ronde niet opnieuw gedraaid.
 
+Na de tweede review opnieuw gedraaid op een nieuwe simulator, app `ad427d918` zonder lokale wijzigingen, beide PASS: `.build/pleya-verify/tvos-detail-more-actions-1793418046372` en `tvos-settings-activity-sharing-1793418243323`. Elke Verify-build is `-configuration Debug`, dus met asserts aan; release-gedrag komt hier niet in voor.
+
 Referentiebeelden: `/Volumes/SSD/Projects/PlexFlixNetwork/pleya-northstar-refs/2026-10-30/`.
 
 Tests van deze ronde: `test/screens/media_detail/tv/tv_detail_activity_test.dart`, `test/screens/media_detail/tv/tv_detail_list_rows_test.dart`, `test/screens/settings/settings_activity_sharing_test.dart`, `test/screens/settings/activity_sharing_controller_test.dart`, `test/services/item_watchers_activity_line_test.dart`, `test/pleya_server/pleya_server_activity_test.dart`, `pleya_verify/fixture_server/test/detail_fixtures_test.dart`.
