@@ -50,6 +50,98 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 428 · 31 October 2026 · iPhone and iPad
+
+<!-- commit: c78aca1d -->
+
+### New
+
+- **One page per title.** A film or series on two servers keeps the same artwork and description, whichever server plays it. The technical details and tracks follow the server you chose.
+- **Your place travels with you.** A title continues at your last position on the other server, and progress and watched marks now go to every server with that title.
+- **A missing episode just plays.** If your chosen server lacks an episode, it plays from a server that has it.
+
+### Notes
+
+- Progress and watched marks are written to your real servers.
+
+### Worth checking
+
+- Watch a title on one server, stop, and open it from the other: it continues at your position.
+- Stop halfway on one server and check the position on the other.
+- Let a series run on to the next episode, also where one server lacks it.
+
+## 2.8.1 · build 427 · 31 October 2026 · Apple TV
+
+<!-- commit: fcd80e3f -->
+
+### New
+
+- **One page per title.** A film or series on two servers keeps the same artwork and description, whichever server plays it. The technical details and tracks follow the server you chose.
+- **Your place travels with you.** A title continues at your last position on the other server, and progress and watched marks now go to every server with that title.
+- **A missing episode just plays.** If your chosen server lacks an episode, it plays from a server that has it.
+
+### Fixed
+
+- **Scrolling on Apple TV.** A library scan no longer holds back the remote, and uses far less memory during playback.
+
+### Notes
+
+- Progress and watched marks are written to your real servers.
+
+### Worth checking
+
+- Watch a title on one server, stop, and open it from the other: it continues at your position.
+- Stop halfway on one server and check the position on the other.
+- Let a series run on to the next episode, also where one server lacks it.
+- Scroll the Home rows, and step Volume boost during a film.
+
+## 2.8.1 · build 423 · 30 October 2026 · Apple TV
+
+<!-- commit: 43aa2871 -->
+
+### Fixed
+
+- **The selection stays where you put it.** In All Films, All Series, the watchlist, the Home and
+  landing rows and the Home customize panel, pressing left or right no longer jumps to a card you
+  left earlier, also after sorting or filtering.
+- **Right on the last card stays put.** It no longer jumps a row up from a short last row.
+
+### Notes
+
+- This test build also carries the Plex and Pleya Server card from build 421.
+
+### Worth checking
+
+- Move right, then up or down a few rows, then left: the selection stays in the new row.
+- Do the same after changing the sort or a filter, and after coming back from a title.
+- In the Home customize panel, moving a row changes the row you selected.
+
+## 2.8.1 · build 422 · 30 October 2026 · iPhone and iPad
+
+<!-- commit: 70a1507b -->
+
+### New
+
+- **A title on both Plex and Pleya Server shows up once.** When both servers carry the same TMDB
+  number, Series, Films, Search, Home and Continue Watching show one card with both sources.
+  You still pick which server plays it. A title without a proven match stays as two cards.
+
+### Fixed
+
+- **Choosing a source works on iPhone.** A card with two sources opens the source choice, and the
+  source row on the detail page responds to a tap.
+
+### Notes
+
+- This is a test build for the two-server check. It needs a Pleya Server updated on 30 October.
+
+### Worth checking
+
+- Severance shows one card with Plex and Pleya Server as sources, and both play, with the right
+  seasons and episodes per source.
+- Tapping the source row on a detail page changes the source.
+- Search, Home and Continue Watching show the title once.
+
 ## 2.8.1 · build 421 · 30 October 2026 · Apple TV
 
 <!-- commit: 257e11a8 -->

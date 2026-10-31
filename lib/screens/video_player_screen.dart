@@ -85,6 +85,10 @@ import '../services/video_pip_manager.dart';
 import '../services/pip_service.dart';
 import '../models/shader_preset.dart';
 import '../services/shader_service.dart';
+import '../services/unified_catalog/unified_adjacent_episodes.dart';
+import '../services/unified_catalog/unified_progress_mirror.dart';
+import '../services/unified_catalog/unified_title_discovery.dart';
+import '../services/unified_catalog/unified_title_playback.dart';
 import '../providers/shader_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../utils/app_logger.dart';
@@ -140,6 +144,7 @@ part 'video_player/parts/seeking.dart';
 part 'video_player/parts/build.dart';
 part 'video_player/parts/watch_together.dart';
 part 'video_player/parts/assistant_playback.dart';
+part 'video_player/parts/unified_title.dart';
 
 bool? _wakelockEnabled;
 
@@ -316,6 +321,11 @@ class VideoPlayerScreen extends StatefulWidget {
   /// sending phone is told so it can stop.
   final String? handoffId;
 
+  /// The title this item belongs to when it has more than one source: what
+  /// follows it, and which copies hear about its progress. The choice of a
+  /// source stays outside the player (hoofdstuk 4.4), which only asks.
+  final UnifiedTitlePlayback? unifiedTitle;
+
   bool get isLive => live != null;
 
   const VideoPlayerScreen({
@@ -334,6 +344,7 @@ class VideoPlayerScreen extends StatefulWidget {
     this.onPlaybackInitFailed,
     this.startPosition,
     this.handoffId,
+    this.unifiedTitle,
   });
 
   @override

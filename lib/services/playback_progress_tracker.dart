@@ -3,17 +3,20 @@ import '../media/ids.dart';
 
 import '../mpv/mpv.dart';
 
-import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_server_client.dart';
 import '../media/media_source_info.dart';
+import '../media/watch_progress.dart';
 import 'offline_watch_sync_service.dart';
 import 'playback_report_session.dart';
+import 'playback_stream_indexes.dart';
 import 'playback_write_authority.dart';
 import 'pleya_profile_language_preference_store.dart';
-import 'track_selection_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/watch_state_notifier.dart';
+
+/// See [PlaybackProgressTracker.onSettled].
+typedef PlaybackSettledCallback = void Function(Duration position, Duration duration, {required bool watched});
 
 /// Tracks playback progress and reports it to the active media server.
 ///
@@ -59,6 +62,11 @@ class PlaybackProgressTracker {
   /// Local observation of whether this player may still write watch state.
   /// Null keeps the pre-existing behaviour of always reporting.
   final ObservedPlaybackAuthority? authority;
+
+  /// Hears the two moments a play settles: the position it ended on, and the
+  /// moment it counts as watched. For the other sources of the title; it runs
+  /// behind the report to this source and nothing it does reaches that report.
+  final PlaybackSettledCallback? onSettled;
 
   /// Timer for periodic progress updates
   Timer? _progressTimer;
@@ -138,6 +146,7 @@ class PlaybackProgressTracker {
     this.playSessionId,
     this.mediaInfo,
     this.authority,
+    this.onSettled,
     this.updateInterval = const Duration(seconds: 10),
     this.stoppedReportTimeout = const Duration(seconds: 5),
   }) : assert(!isOffline || offlineWatchService != null, 'offlineWatchService is required when isOffline is true'),
@@ -456,12 +465,29 @@ class PlaybackProgressTracker {
   /// [isFinal] is the terminal stop notification, which fires at most once per
   /// session. [force] only bypasses the 30-second delta, for a jump the user
   /// made deliberately; it does not consume the terminal latch.
+  /// [watched] when the server said so, or when the play went past the
+  /// threshold: a stop that did not reach this server still finished the title
+  /// for the others.
+  void _reportSettled(Duration position, Duration duration, {required bool watched}) {
+    final finished = isWatchedProgress(
+      positionMs: position.inMilliseconds,
+      durationMs: duration.inMilliseconds,
+      threshold: client?.watchedThreshold ?? 0.9,
+    );
+    try {
+      onSettled?.call(position, duration, watched: watched || finished);
+    } catch (e, st) {
+      appLogger.w('A listener on the settled play failed', error: e, stackTrace: st);
+    }
+  }
+
   void _notifyProgressIfNeeded(Duration position, Duration duration, {bool isFinal = false, bool force = false}) {
     if (_scrobbled) return;
     if (position.inMilliseconds <= 0 || duration.inMilliseconds <= 0) return;
     if (isFinal) {
       if (_stopProgressNotified) return;
       _stopProgressNotified = true;
+      _reportSettled(position, duration, watched: false);
     } else if (!force) {
       final last = _lastProgressNotifiedPosition;
       if (last != null && (position - last).abs() < _progressNotifyDelta) return;
@@ -525,6 +551,7 @@ class PlaybackProgressTracker {
           appLogger.d(
             'Scrobbled ${metadata.id} (${(percent * 100).toStringAsFixed(0)}% >= ${(threshold * 100).toStringAsFixed(0)}%)',
           );
+          _reportSettled(position, duration, watched: true);
         } catch (e) {
           appLogger.w('Failed to scrobble ${metadata.id}', error: e);
           _scrobbled = false; // Retry on next tick
@@ -545,8 +572,8 @@ class PlaybackProgressTracker {
 
     return PlaybackStreamSelection(
       mediaSourceId: info.mediaSourceId,
-      audioStreamIndex: _currentAudioStreamIndex(info),
-      subtitleStreamIndex: _currentSubtitleStreamIndex(info),
+      audioStreamIndex: currentAudioStreamIndex(player, metadata, info),
+      subtitleStreamIndex: currentSubtitleStreamIndex(player, info),
     );
   }
 
@@ -557,66 +584,6 @@ class PlaybackProgressTracker {
       appLogger.d('Could not read track-selection persistence setting; reporting selected streams', error: e);
       return true;
     }
-  }
-
-  int? _currentAudioStreamIndex(MediaSourceInfo info) {
-    final playerAudioTracks = player.state.tracks.audio.where((t) => t.id != 'auto' && t.id != 'no').toList();
-    if (metadata.backend == MediaBackend.jellyfin &&
-        (info.audioTracks.any((track) => track.isExternal) || playerAudioTracks.length <= 1)) {
-      final selectedSourceTrack = _selectedSourceAudioTrack(info);
-      if (selectedSourceTrack != null) return selectedSourceTrack.id;
-    }
-
-    final track = player.state.track.audio;
-    if (track == null) return null;
-
-    final ordinal = playerAudioTracks.indexOf(track);
-    if (ordinal >= 0 && ordinal < info.audioTracks.length) return info.audioTracks[ordinal].id;
-
-    final matched = findPlexTrackForMpvAudio(track, info.audioTracks, allMpvTracks: player.state.tracks.audio);
-    if (matched != null) return matched.id;
-
-    final parsedId = int.tryParse(track.id);
-    if (parsedId != null && info.audioTracks.any((t) => t.id == parsedId)) return parsedId;
-
-    return null;
-  }
-
-  MediaAudioTrack? _selectedSourceAudioTrack(MediaSourceInfo info) {
-    for (final track in info.audioTracks) {
-      if (track.selected) return track;
-    }
-    final defaultIndex = info.defaultAudioStreamIndex;
-    if (defaultIndex == null) return null;
-    for (final track in info.audioTracks) {
-      if (track.id == defaultIndex) return track;
-    }
-    return null;
-  }
-
-  int? _currentSubtitleStreamIndex(MediaSourceInfo info) {
-    final track = player.state.track.subtitle;
-    if (track == null || track.id == 'no') return -1;
-
-    if (track.isExternal && track.uri != null) {
-      for (final mediaTrack in info.subtitleTracks) {
-        final key = mediaTrack.key;
-        if (mediaTrack.isExternal && key != null && track.uri!.contains(key)) {
-          return mediaTrack.id;
-        }
-      }
-    }
-
-    final ordinal = player.state.tracks.subtitle.where((t) => t.id != 'auto' && t.id != 'no').toList().indexOf(track);
-    if (ordinal >= 0 && ordinal < info.subtitleTracks.length) return info.subtitleTracks[ordinal].id;
-
-    final matched = findPlexTrackForMpvSubtitle(track, info.subtitleTracks, allMpvTracks: player.state.tracks.subtitle);
-    if (matched != null) return matched.id;
-
-    final parsedId = int.tryParse(track.id);
-    if (parsedId != null && info.subtitleTracks.any((t) => t.id == parsedId)) return parsedId;
-
-    return null;
   }
 
   /// Queue progress update locally (offline mode)

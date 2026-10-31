@@ -4,6 +4,49 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-10-31] Unified: één titel over servers heen
+
+Een serie wisselde mee met de gekozen bron en voortgang op de ene server bestond op de andere niet.
+DEC-XXX (Eén titel over servers heen), Roadmap A-07, op branch `feat/unified-one-title`.
+
+- Serie: pagina en afleveringslijst blijven van de hoofdbron. Afspelen koppelt op seizoen- en
+  afleveringsnummer aan de gekozen server (`UnifiedTitlePlayback`, `SourceEpisodeIndex`); ontbreekt de
+  aflevering daar, dan speelt hij zonder melding vanaf een server die hem wel heeft.
+- Speler: de volgende aflevering blijft op de gekozen server, vult een gat aan uit een andere bron en
+  keert daarna terug.
+- Voortgang en gekeken-status gaan via de kijkstatuswachtrij naar alle servers met die titel
+  (`mirroredProgress`), behalve bij niet-vergelijkbare runtimes. De replay slaat de trackers over.
+- Wijzigen vervangt de route niet meer zolang de hoofdbron de pagina houdt. Sporen en technische
+  gegevens komen van de gekozen server; menu-acties op die pagina werken op de gekozen bron.
+- Ook opgelost: de TV-picker gaf ongestempelde bronnen door, waardoor de hoofdbron na een eerste keuze
+  de pagina niet hield, en een bron die de picker pas later vond gaf een `StateError` in `buildRouteContext`.
+- Op Apple TV was Wijzigen niet met de afstandsbediening te bereiken: de actierij stuurde DOWN er voorbij.
+- Reviewronde: de speler volgt na een geleende aflevering de samengevoegde volgorde, ook voor Vorige en
+  bij meerdere gaten. Sessies en markeringen zonder groep van twee bronnen zoeken de andere bronnen op
+  bewezen identiteit. Eén markering telt één kijkbeurt. Herkijken op de eigen server blijft staan.
+  Jellyfin- en Emby-placeholders tellen niet als aanwezig. Een verwijderde gekozen kopie verdwijnt van
+  de pagina. Het posterhashen na een scan draait buiten de UI-thread.
+- Fixronde na de build: een stop na een profielwissel schrijft niets meer onder het nieuwe profiel, en de
+  replay-lus stopt bij een wissel. Een spiegeling verlaagt een kopie nooit, behalve als gekeken, ook niet
+  bij een rij die lang wachtte. Specials krijgen geen kopie, markeringen krijgen de runtimecontrole, en
+  een serie- of seizoenmarkering raakt alleen seizoenen op beide servers. `agents.none` en `local://`
+  bewijzen niets. Gekeken volgt de drempel, ook bij een gemiste stop, en offline afgekeken sessies
+  bereiken alsnog de kopieën. De nieuwste actie per item wint en de interface wacht niet op kopieën.
+  Een replay meldt zich als kopie, zodat de pull geen tweede Trakt-telling maakt. Rijen zonder pogingen
+  krijgen elke zes uur een nieuwe ronde. Spiegelen en zoeken alleen op servers die de kijker zelf beheert.
+- Tweede challenge: een schrijfactie vraagt gedeeld id-bewijs, ook naar bronnen van de kaart. Een spiegeling
+  pakt op Pleya Server een lopende sessie de lease niet af (`reclaim`). Een mislukte start bewaart de rij
+  op Jellyfin, Emby en Pleya Server. Een herkijkpositie bereikt een eerder gekeken kopie. De verse positie
+  op de gekozen server wint van de meegenomen. Pleya Server geeft alle afleveringen van een lange serie,
+  ook boven 500. Offline kijken bereikt de kopieën na de replay, ook een deel. Een onderbroken wissen van
+  de lokale bibliotheek wordt bij de volgende start afgemaakt.
+- Eindreview: een kopie krijgt geen start en stop meer, want een start telt op Jellyfin als kijkbeurt en
+  haalt op 10.x gekeken weg. Jellyfin en Emby via `UserData`, Plex via `/:/progress`, Pleya Server via
+  `reclaim` zonder positie op een gekeken kopie (`CopyStateClient`). Een afgekeken stand telt één keer.
+  Een rechtstreekse markering ruimt een wachtende rij op. Een server die niet verbonden is, valt niet af.
+  De markering in het TV-menu valt op een eigen bron. Specials ook daar niet op nummer.
+- Grenzen: downloaden op de detailpagina blijft op de hoofdbron, een externe speler schrijft niet door.
+
 ## [2026-10-29] Unified: Pleya Server voegt mee op bewezen TMDB-nummers
 
 Dezelfde serie op Plex en Pleya Server stond twee keer in Series, Films, Zoeken, Home en Verder kijken,

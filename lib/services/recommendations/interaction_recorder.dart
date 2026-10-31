@@ -72,6 +72,7 @@ class InteractionRecorder {
   }
 
   Future<void> _onEvent(WatchStateEvent event) async {
+    if (event.isCopy) return;
     // A profile deleted while the metadata is fetched must not get its row back.
     final epoch = AppDatabase.recommendationEpoch(_profileId);
     try {

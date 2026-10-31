@@ -50,6 +50,15 @@ class UnifiedMediaGroup {
 
   UnifiedMediaSource get representativeSource => sources.firstWhere((s) => s.sourceKey == representativeSourceKey);
 
+  /// The [MediaItem] of the source [sourceKey].
+  MediaItem itemOf(String sourceKey) => sources.firstWhere((s) => s.sourceKey == sourceKey).item;
+
+  /// Where a play on the source [sourceKey] continues when the viewer's
+  /// position lives on another source of this group. See
+  /// [resumeCarriedBetween].
+  Duration? resumeCarriedTo(String sourceKey) =>
+      resumeCarriedBetween({for (final s in sources) s.sourceKey: s.item}, watchState, sourceKey);
+
   /// This group with one membership's [MediaItem] re-read, and the watch state
   /// recomputed from it.
   ///
@@ -72,6 +81,59 @@ class UnifiedMediaGroup {
       for (final source in sources)
         if (source.sourceKey == key) source.withItem(item) else source,
     ];
+    return UnifiedMediaGroup(
+      groupId: groupId,
+      identity: identity,
+      sources: updated,
+      representativeSourceKey: representativeSourceKey,
+      watchState: selectRepresentativeWatchState({
+        for (final s in updated) s.sourceKey: s.item,
+      }, preferredSourceKey: preferredSourceKey),
+    );
+  }
+
+  /// This group with [source] in it. The picker folds in sources a fan-out
+  /// found after the group was built (hoofdstuk 14.5), and one of those can be
+  /// the one the viewer picks. Returns `this` when it is already a member.
+  UnifiedMediaGroup withSource(UnifiedMediaSource source) {
+    if (sources.any((s) => s.sourceKey == source.sourceKey)) return this;
+    final updated = [...sources, source];
+    return UnifiedMediaGroup(
+      groupId: groupId,
+      identity: identity,
+      sources: updated,
+      representativeSourceKey: representativeSourceKey,
+      watchState: selectRepresentativeWatchState({for (final s in updated) s.sourceKey: s.item}),
+    );
+  }
+
+  /// This group without the sources outside [keys]: a copy a page dropped after
+  /// a delete stays out of everything built from it. The representative source
+  /// stays, a group cannot be without one, but a page whose main source is gone
+  /// has closed already.
+  UnifiedMediaGroup keepingSources(Iterable<String> keys) {
+    final keep = keys.toSet();
+    if (sources.every((s) => keep.contains(s.sourceKey))) return this;
+    final kept = [
+      for (final source in sources)
+        if (keep.contains(source.sourceKey) || source.sourceKey == representativeSourceKey) source,
+    ];
+    return UnifiedMediaGroup(
+      groupId: groupId,
+      identity: identity,
+      sources: kept,
+      representativeSourceKey: representativeSourceKey,
+      watchState: selectRepresentativeWatchState({for (final s in kept) s.sourceKey: s.item}),
+    );
+  }
+
+  /// This group with every membership's [MediaItem] passed through [fresh],
+  /// and the watch state recomputed once.
+  ///
+  /// For a group a route has held on to while the viewer played something: the
+  /// session's own watch events only reach the group through this.
+  UnifiedMediaGroup withFreshSourceItems(MediaItem Function(MediaItem item) fresh, {String? preferredSourceKey}) {
+    final updated = [for (final source in sources) source.withItem(fresh(source.item))];
     return UnifiedMediaGroup(
       groupId: groupId,
       identity: identity,

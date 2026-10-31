@@ -47,6 +47,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../focus/focus_history.dart';
 import '../../focus/focus_theme.dart';
 import '../../utils/layout_constants.dart';
 import '../../services/settings_service.dart';
@@ -316,6 +317,10 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
   void didUpdateWidget(TvCatalogCardGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
     _reconcileNodes(previous: oldWidget.itemIds);
+    if (focusPositionsChanged(oldWidget.itemIds, widget.itemIds)) {
+      final node = _nodes[_focusedId] ?? _nodes.values.firstOrNull;
+      if (node != null) clearFocusHistory(node);
+    }
     // The first page can land after this grid was built empty, which is the
     // ordinary case on a restored mount: the remembered card only becomes
     // resolvable once it is actually in the list.
@@ -491,7 +496,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     final target = (index + direction * columns).clamp(0, ids.length - 1);
     if (target == index) return;
     final node = _nodes[ids[target]];
-    if (node != null && node.canRequestFocus) node.requestFocus();
+    if (node != null && node.canRequestFocus) requestFocusOutsideTraversal(node);
   }
 
   /// Asks for the next page once the focus is within
@@ -536,7 +541,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     final node = _nodes[id];
     if (node == null || !node.canRequestFocus) return false;
     _focusedId = id;
-    node.requestFocus();
+    requestFocusOutsideTraversal(node);
     return true;
   }
 
@@ -748,7 +753,9 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
             ? () => _moveToRow(index, grid.columns, 1)
             : null,
         onNavigateLeft: isFirstColumn ? widget.onExitLeft : null,
-        onNavigateRight: null,
+        // The end of the list is an end: a short last row has cards above it to
+        // the right, and the traversal would take the nearest of those.
+        onNavigateRight: index == widget.itemIds.length - 1 ? () {} : null,
         onBack: widget.onBack,
       ),
     );

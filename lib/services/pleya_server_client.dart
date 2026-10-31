@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
@@ -110,7 +111,7 @@ class PleyaServerClient
         _PleyaServerUnsupportedMethods,
         _PleyaServerAdminMethods,
         ServerAuthorityGuard
-    implements MediaServerClient, FreshMediaItemClient, ScopedMediaServerClient, GracefullyCloseable {
+    implements MediaServerClient, FreshMediaItemClient, CopyStateClient, ScopedMediaServerClient, GracefullyCloseable {
   @override
   Future<MediaItem?> fetchFreshItem(String id) async {
     if (!wireCapabilities.watchState) return null;
@@ -118,6 +119,24 @@ class PleyaServerClient
     // catalogue-only answer cannot replace this session's local stop.
     final item = await fetchItem(id);
     return item?.viewOffsetMs == null ? null : item;
+  }
+
+  /// Not [fetchFreshItem]: a title nobody touched carries `user_state: null`,
+  /// and for a copy that is an answer. `play_count` stays where it was after a
+  /// mark as unwatched, so what counts here is `watched`.
+  @override
+  Future<MediaItem?> readCopyState(String id) async {
+    if (_offlineMode) throw StateError('Offline: no answer about $id');
+    final response = await _authorizedGet('/items/${Uri.encodeComponent(id)}');
+    if (response.statusCode == 404) return null;
+    final data = response.data;
+    if (response.statusCode >= 400 || data is! Map<String, dynamic>) {
+      throw StateError('No answer about $id: ${response.statusCode}');
+    }
+    final wire = PleyaItem.fromJson(data);
+    final item = PleyaServerMappers.mediaItem(wire, serverId: serverId.toString(), serverName: serverName);
+    final state = wire.userState;
+    return item.copyWith(viewCount: state != null && state.watched ? math.max(state.playCount, 1) : 0);
   }
 
   PleyaServerClient._({required PleyaServerSession session, required MediaServerHttpClient http})

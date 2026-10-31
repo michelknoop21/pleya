@@ -53,6 +53,7 @@
 /// cannot answer a question the user just asked.
 library;
 
+import '../../media/media_kind.dart';
 import '../../media/media_item.dart';
 import '../../media/unified/source_availability.dart';
 import '../../media/unified/source_coverage_state.dart';
@@ -284,14 +285,35 @@ class UnifiedActivationCoordinator {
     required String sourceKey,
     required SourceCoverageState coverage,
     required UnifiedActivationIntent intent,
-  }) => UnifiedMediaRouteContext(
-    groupId: group.groupId,
-    identity: group.identity,
-    sourceKey: sourceKey,
-    availableSourceKeys: orderedSources.map((s) => s.sourceKey).toList(),
-    coverage: coverage,
-    intent: intent,
-  );
+    bool pageFollowsChoice = false,
+  }) {
+    final chosen = group.itemOf(sourceKey);
+    final keepsOnePage = !pageFollowsChoice && (chosen.kind == MediaKind.movie || chosen.kind == MediaKind.show);
+    final page = !keepsOnePage
+        ? sourceKey
+        : orderedSources
+              .where((s) => s.sourceKey == group.representativeSourceKey && s.availability.isUsable)
+              .map((s) => s.sourceKey)
+              .firstOrNull;
+    final pageSourceKey = page ?? sourceKey;
+    return UnifiedMediaRouteContext(
+      carriedResume: group.resumeCarriedTo(sourceKey),
+      groupId: group.groupId,
+      identity: group.identity,
+      sourceKey: sourceKey,
+      pageSourceKey: pageSourceKey,
+      playItem: pageSourceKey == sourceKey ? null : chosen,
+      titleSources: _chosenFirst(orderedSources, sourceKey),
+      availableSourceKeys: orderedSources.map((s) => s.sourceKey).toList(),
+      coverage: coverage,
+      intent: intent,
+    );
+  }
+
+  List<UnifiedMediaSource> _chosenFirst(List<UnifiedMediaSource> sources, String sourceKey) => [
+    ...sources.where((s) => s.sourceKey == sourceKey),
+    ...sources.where((s) => s.sourceKey != sourceKey),
+  ];
 
   /// Whether to offer another source after playback initialisation failed
   /// (hoofdstuk 15). Never switches; only reports what a switch could reach.

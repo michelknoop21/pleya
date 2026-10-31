@@ -158,8 +158,8 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
 
     return MediaContextMenu(
       key: _contextMenuKey,
-      item: metadata,
-      onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
+      item: _menuItem(metadata),
+      onRefresh: (_) => unawaited(_refreshItemInPlace(metadata.id)),
       onPlayTrailer: trailer == null ? null : () => unawaited(navigateToVideoPlayer(context, metadata: trailer)),
       onShare: () {
         final anchor = _contextMenuKey.currentContext;
@@ -202,13 +202,17 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
   /// The restart button: the context menu's "Play from beginning" core
   /// ([playFromBeginning]), then the same refresh a normal play gets.
   Future<void> _handlePlayFromStartPressed(MediaItem target) async {
-    final pick = _detailTrackPickFor(target);
+    final title = _unifiedTitle;
+    final played = title == null ? target : (await title.targetFor(target)).item;
+    if (!mounted) return;
+    final pick = _detailTrackPickFor(played);
     await playFromBeginning(
       context,
-      target,
+      played,
       isOffline: widget.isOffline,
       preferredAudioTrack: pick.audio,
       preferredSubtitleTrack: pick.subtitle,
+      unifiedTitle: title,
     );
     if (!widget.isOffline && mounted) unawaited(refreshAfterPlayback(playedItemId: target.id));
   }

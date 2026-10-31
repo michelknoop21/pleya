@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -29,6 +30,70 @@ void main() {
   late Directory root;
   setUp(() async => root = await Directory.systemTemp.createTemp('pleya-local-library-test-'));
   tearDown(() async => root.delete(recursive: true));
+
+  group('library file', () {
+    Future<LocalLibraryStore> reopen() async {
+      final store = LocalLibraryStore(root);
+      await store.load();
+      return store;
+    }
+
+    Future<File> libraryFile() async => root.list().where((e) => e.path.contains('/library-')).cast<File>().single;
+
+    test('rows across several write batches come back complete and in order', () async {
+      final ids = [for (var i = 0; i < 1201; i++) 'film-$i'];
+      final store = LocalLibraryStore(root);
+      await store.load();
+      await store.saveLibrary(library, [for (final id in ids) film(id)], complete: true);
+
+      final read = await reopen();
+      expect(read.libraryItems(library.globalKey).map((i) => i.id), ids);
+      expect(read.isComplete(library.globalKey), isTrue);
+    });
+
+    test('an exact batch and an empty library still make valid JSON', () async {
+      final store = LocalLibraryStore(root);
+      await store.load();
+      await store.saveLibrary(library, [for (var i = 0; i < 500; i++) film('film-$i')], complete: false);
+      expect((jsonDecode(await (await libraryFile()).readAsString()) as Map)['items'], hasLength(500));
+
+      await store.saveLibrary(library, const [], complete: true);
+      final written = jsonDecode(await (await libraryFile()).readAsString()) as Map<String, dynamic>;
+      expect(written['items'], isEmpty);
+      expect(written['library'], containsPair('id', 'films'));
+      expect(written['completed'], isNotNull);
+    });
+
+    test('text outside ASCII survives a batch boundary', () async {
+      final store = LocalLibraryStore(root);
+      await store.load();
+      await store.saveLibrary(library, [
+        for (var i = 0; i < 501; i++) film('film-$i').copyWith(title: 'Kärlek & anarki $i ★'),
+      ], complete: true);
+
+      final read = await reopen();
+      expect(read.libraryItems(library.globalKey).last.title, 'Kärlek & anarki 500 ★');
+    });
+
+    test('a save that is no longer current keeps the previous file and leaves no pending file', () async {
+      final store = LocalLibraryStore(root);
+      await store.load();
+      await store.saveLibrary(library, [film('kept')], complete: true);
+      final before = await (await libraryFile()).readAsString();
+
+      var checks = 0;
+      await store.saveLibrary(
+        library,
+        [for (var i = 0; i < 1000; i++) film('film-$i')],
+        complete: true,
+        isCurrent: () => ++checks < 3,
+      );
+
+      expect(await (await libraryFile()).readAsString(), before);
+      expect(await root.list().where((e) => e.path.endsWith('.pending')).isEmpty, isTrue);
+      expect(store.libraryItems(library.globalKey).map((i) => i.id), ['kept']);
+    });
+  });
 
   test('metadata and settings survive reopening the same profile only', () async {
     final store = LocalLibraryStore(root);
@@ -115,6 +180,52 @@ void main() {
     expect(store.enabled, isFalse);
     final reopened = LocalLibraryStore(root);
     await reopened.load();
+    expect(reopened.items, isEmpty);
+    expect(reopened.enabled, isFalse);
+  });
+
+  test('a clear the app did not finish is finished on the next start', () async {
+    final store = LocalLibraryStore(root);
+    await store.load();
+    await store.setOptions(enabled: true);
+    await store.saveLibrary(library, [film('kept')], complete: true, isCurrent: () => true);
+    // What a stop halfway leaves behind: the marker, and files still there.
+    await store.clearMarker.writeAsString('');
+    await store.setOptions(enabled: false);
+
+    final reopened = LocalLibraryStore(root);
+    await reopened.load();
+
+    expect(reopened.items, isEmpty);
+    expect(reopened.libraries, isEmpty);
+    expect(await reopened.clearMarker.exists(), isFalse);
+    final left = await root.list(recursive: true).where((e) => e is File).map((e) => e.path.split('/').last).toList();
+    expect(left, ['options.json']);
+  });
+
+  test('a finished clear leaves no marker', () async {
+    final store = LocalLibraryStore(root);
+    await store.load();
+    await store.saveLibrary(library, [film('gone')], complete: true, isCurrent: () => true);
+
+    await store.clear();
+
+    expect(await store.clearMarker.exists(), isFalse);
+  });
+
+  test('a clear that dies on its very first write is finished on the next start as well', () async {
+    final store = LocalLibraryStore(root);
+    await store.load();
+    await store.setOptions(enabled: true);
+    await store.saveLibrary(library, [film('kept')], complete: true, isCurrent: () => true);
+    final blocked = Directory('${root.path}/options.json.pending');
+    await blocked.create();
+
+    await expectLater(store.clear(), throwsA(isA<FileSystemException>()));
+    await blocked.delete();
+    final reopened = LocalLibraryStore(root);
+    await reopened.load();
+
     expect(reopened.items, isEmpty);
     expect(reopened.enabled, isFalse);
   });

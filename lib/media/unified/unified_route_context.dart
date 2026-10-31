@@ -9,8 +9,10 @@
 /// the same picker — a route that ignores it behaves exactly as it does today.
 library;
 
+import '../media_item.dart';
 import 'canonical_media_identity.dart';
 import 'source_coverage_state.dart';
+import 'unified_media_source.dart';
 
 /// Why activation reached a route: what the user asked for, before any
 /// per-kind setting (`episodeAction`, `continueWatchingAction`) turns a play
@@ -59,6 +61,26 @@ class UnifiedMediaRouteContext {
   /// from a detail page keeps the right copy.
   final UnifiedActivationIntent intent;
 
+  /// The position this route's source continues from, when the viewer's
+  /// progress lives on another source. See
+  /// `UnifiedMediaGroup.resumeCarriedTo`.
+  final Duration? carriedResume;
+
+  /// The source the detail page shows. A film or series keeps one face
+  /// whichever source plays it, so this stays on the group's representative
+  /// source while [sourceKey] moves. Equal to [sourceKey] when that source is
+  /// not reachable, and for an episode reached on its own.
+  final String pageSourceKey;
+
+  /// The item a play on this route starts, when that is not the item on the
+  /// page: the chosen film, or the chosen series whose episodes a play links
+  /// to. Null when the page shows the chosen source itself.
+  final MediaItem? playItem;
+
+  /// Every source of this title, the chosen one first, in the order a play
+  /// falls back through them. Empty on a route built without a group.
+  final List<UnifiedMediaSource> titleSources;
+
   UnifiedMediaRouteContext({
     required this.groupId,
     required this.identity,
@@ -66,12 +88,37 @@ class UnifiedMediaRouteContext {
     required List<String> availableSourceKeys,
     required this.coverage,
     required this.intent,
-  }) : availableSourceKeys = List.unmodifiable(availableSourceKeys) {
+    this.carriedResume,
+    String? pageSourceKey,
+    this.playItem,
+    this.titleSources = const [],
+  }) : pageSourceKey = pageSourceKey ?? sourceKey,
+       availableSourceKeys = List.unmodifiable(availableSourceKeys) {
     assert(
       this.availableSourceKeys.contains(sourceKey),
       'UnifiedMediaRouteContext.sourceKey must name one of availableSourceKeys',
     );
   }
+
+  /// This route without [key], a source that no longer exists. The page's own
+  /// source takes over when [key] was the chosen one.
+  UnifiedMediaRouteContext withoutSource(String key) => UnifiedMediaRouteContext(
+    groupId: groupId,
+    identity: identity,
+    sourceKey: key == sourceKey ? pageSourceKey : sourceKey,
+    pageSourceKey: pageSourceKey,
+    playItem: key == sourceKey ? null : playItem,
+    titleSources: [
+      for (final source in titleSources)
+        if (source.sourceKey != key) source,
+    ],
+    availableSourceKeys: [
+      for (final available in availableSourceKeys)
+        if (available != key) available,
+    ],
+    coverage: coverage,
+    intent: intent,
+  );
 
   /// Whether a "Wijzigen" affordance is worth rendering at all (hoofdstuk 15
   /// only shows the source line when more than one source exists).

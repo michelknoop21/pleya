@@ -408,7 +408,7 @@ void main() {
     // action inheriting that path would silently take the title off the shelf
     // instead of marking it watched, and nothing would fail.
     final menuSource = File('lib/screens/tv/tv_unified_context_menu.dart').readAsStringSync();
-    final queueDeferred = RegExp(r'Future<int> _queueDeferred\([\s\S]*?\n\}').firstMatch(menuSource)?.group(0);
+    final queueDeferred = RegExp(r'\> _queueDeferred\([\s\S]*?\n\}\n').firstMatch(menuSource)?.group(0);
 
     test('the deferral routes per action instead of assuming one', () {
       expect(queueDeferred, isNotNull, reason: '_queueDeferred must exist to be guarded');

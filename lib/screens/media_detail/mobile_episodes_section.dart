@@ -19,6 +19,7 @@ extension _MobileEpisodesSection on _MediaDetailScreenState {
             season,
             isOffline: widget.isOffline,
             onRefresh: widget.isOffline ? null : (_) => unawaited(_loadSeasons()),
+            unifiedRouteContext: _routeContext,
           ),
         ),
       );

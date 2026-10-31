@@ -343,6 +343,9 @@ void main() {
         await db.close();
       });
 
+      // The first sync of a run gives exhausted rows a new round: this one is
+      // past it.
+      await svc.syncPendingItems();
       await svc.queueMarkWatched(serverId: ServerId('srv'), itemId: '42');
       var action = await db.getLatestWatchAction('srv:42');
       for (var i = 0; i < OfflineWatchSyncService.maxSyncAttempts; i++) {
@@ -1237,7 +1240,7 @@ void main() {
 
       expect(pathsByUser['user-a'], isEmpty);
       expect(pathsByUser['user-b']!.where((p) => p.startsWith('GET /Users/user-b/Items/item-1?')), isNotEmpty);
-      expect(events.single.cacheServerId, 'jf-machine/user-b');
+      expect(events, isEmpty, reason: 'no earlier state, so no transition to report');
     });
 
     test('watch-state pull does not treat Jellyfin PlayCount alone as watched', () async {

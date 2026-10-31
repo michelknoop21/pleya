@@ -284,6 +284,7 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
         playSessionId: playSessionId,
         mediaInfo: mediaInfo,
         authority: _playbackWriteAuthority,
+        onSettled: _unifiedSettledCallback(metadata, offlineWatchService),
       );
       _progressTracker!.startTracking();
     } else if (queuesOfflineProgress(metadata, offlinePlayback: _isOfflinePlayback)) {

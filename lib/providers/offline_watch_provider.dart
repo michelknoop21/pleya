@@ -4,6 +4,7 @@ import '../media/ids.dart';
 import '../i18n/strings.g.dart';
 import '../media/episode_collection.dart';
 import '../media/media_item.dart';
+import '../media/media_server_client.dart';
 import '../media/media_item_types.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
 import '../models/download_models.dart';
@@ -144,11 +145,17 @@ class OfflineWatchProvider extends ChangeNotifier with DisposableChangeNotifierM
     required bool isNowWatched,
     required WatchStateChangeType changeType,
     String? cacheServerId,
+    bool isCopy = false,
   }) {
     final globalKey = buildGlobalKey(ServerId(serverId), itemId);
     final metadata = _downloadProvider.getMetadata(globalKey);
     if (metadata != null) {
-      WatchStateNotifier().notifyWatched(item: metadata, isNowWatched: isNowWatched, cacheServerId: cacheServerId);
+      WatchStateNotifier().notifyWatched(
+        item: metadata,
+        isNowWatched: isNowWatched,
+        cacheServerId: cacheServerId,
+        isCopy: isCopy,
+      );
     } else {
       // Fallback: emit minimal event without parent chain.
       WatchStateNotifier().notify(
@@ -160,6 +167,7 @@ class OfflineWatchProvider extends ChangeNotifier with DisposableChangeNotifierM
           parentChain: [],
           mediaType: 'unknown',
           isNowWatched: isNowWatched,
+          isCopy: isCopy,
         ),
       );
     }
@@ -220,6 +228,44 @@ class OfflineWatchProvider extends ChangeNotifier with DisposableChangeNotifierM
       cacheServerId: cacheServerId,
     );
     safeNotifyListeners();
+  }
+
+  Future<void> forgetHeldCopy(
+    MediaServerClient client,
+    MediaItem item, {
+    required ServerId serverId,
+    required String? profileId,
+  }) => _syncService.forgetHeldCopy(client, item, serverId: serverId, profileId: profileId);
+
+  /// The profile a held write belongs to. Read before anything waits.
+  String? get activeProfileId => _syncService.activeProfileId;
+
+  /// Holds a mark for another copy of a title, one that was already marked
+  /// once. The trackers and Trakt heard about the title there. Answers whether
+  /// the row landed: not when another profile took over since [profileId].
+  Future<bool> markCopy({
+    required ServerId serverId,
+    required String itemId,
+    required bool watched,
+    required String? profileId,
+  }) async {
+    final queued = await _syncService.queueCopyMark(
+      serverId: serverId,
+      itemId: itemId,
+      watched: watched,
+      profileId: profileId,
+    );
+    if (!queued.held) return false;
+    _emitWatchStateChange(
+      serverId: serverId,
+      itemId: itemId,
+      isNowWatched: watched,
+      changeType: watched ? WatchStateChangeType.watched : WatchStateChangeType.unwatched,
+      cacheServerId: queued.cacheServerId,
+      isCopy: true,
+    );
+    safeNotifyListeners();
+    return true;
   }
 
   /// Holds hoofdstuk 13.4 point 3's removal for a membership Pleya could not

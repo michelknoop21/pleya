@@ -30,6 +30,9 @@ class LocalLibraryStore {
 
   static String digest(String value) => sha256.convert(utf8.encode(value)).toString();
   static String _posterKey(String serverId, String path) => digest('$serverId|${artworkStorageKey(path)}');
+  static Set<String> _posterKeys(Set<(String, String)> posters) => {
+    for (final (serverId, path) in posters) _posterKey(serverId, path),
+  };
   List<MediaItem> get items => _items.values.expand((v) => v.values).toList(growable: false);
   List<MediaLibrary> get libraries => _libraries.values.toList(growable: false);
   bool isComplete(String key) => _completed.containsKey(key);
@@ -44,7 +47,12 @@ class LocalLibraryStore {
   }
 
   List<MediaItem> libraryItems(String key) => _items[key]?.values.toList(growable: false) ?? const [];
+  static const _encodeBatch = 500;
+
   File get _optionsFile => File('${directory.path}/options.json');
+
+  /// Written before a clear starts and removed when it is done.
+  File get clearMarker => File('${directory.path}/clearing');
   File _libraryFile(String key) => File('${directory.path}/library-${digest(key)}.json');
 
   Future<T> _serial<T>(Future<T> Function() action) {
@@ -69,6 +77,12 @@ class LocalLibraryStore {
       for (final entry in (data['libraryAccess'] as Map<String, dynamic>? ?? {}).entries) {
         libraryAccess[entry.key] = (entry.value as List).cast<String>().toSet();
       }
+    }
+    if (await clearMarker.exists()) {
+      enabled = false;
+      await _atomic(_optionsFile, jsonEncode(_options), () => true);
+      await _removeContent();
+      return;
     }
     await for (final entity in directory.list()) {
       if (entity is! File || !entity.path.endsWith('.json') || !entity.uri.pathSegments.last.startsWith('library-'))
@@ -117,6 +131,40 @@ class LocalLibraryStore {
     }
   }
 
+  /// Writes `head`, the rows as comma-separated JSON and `tail` to [target].
+  ///
+  /// The rows go through an isolate [_encodeBatch] at a time. Handing an isolate
+  /// a whole library copies it on the calling thread first, which on a 34 MB
+  /// library held the remote's key presses back by up to 148 ms on Apple TV.
+  Future<void> _atomicRows(File target, String head, List<MediaItem> rows, String tail, bool Function() valid) async {
+    final temporary = File('${target.path}.pending');
+    final file = await temporary.open(mode: FileMode.write);
+    try {
+      await file.writeString(head);
+      for (var start = 0; start < rows.length && valid(); start += _encodeBatch) {
+        final end = start + _encodeBatch < rows.length ? start + _encodeBatch : rows.length;
+        final encoded = await _encodeRows(rows.sublist(start, end));
+        if (start > 0) await file.writeString(',');
+        // Without the array brackets of this batch.
+        await file.writeFrom(encoded, 1, encoded.length - 1);
+      }
+      await file.writeString(tail);
+      await file.flush();
+    } finally {
+      await file.close();
+    }
+    if (valid()) {
+      await temporary.rename(target.path);
+    } else if (await temporary.exists()) {
+      await temporary.delete();
+    }
+  }
+
+  // A function of its own so the isolate's closure holds this batch and nothing
+  // else from the caller's scope.
+  static Future<Uint8List> _encodeRows(List<MediaItem> rows) =>
+      tryIsolateRun(() => utf8.encode(jsonEncode([for (final row in rows) row.toJson()])));
+
   Map<String, Object?> get _options => {
     'enabled': enabled,
     'wifiOnly': wifiOnly,
@@ -155,24 +203,24 @@ class LocalLibraryStore {
     bool Function() valid,
   ) async {
     final key = library.globalKey;
-    final rows = next.values.toList();
-    // Encoding all descriptive fields happens off the UI isolate too.
-    final encoded = await tryIsolateRun(
-      () => jsonEncode({
-        'library': {
-          'id': library.id,
-          'backend': library.backend.name,
-          'title': library.title,
-          'kind': library.kind.id,
-          'serverId': library.serverId,
-          'serverName': library.serverName,
-        },
-        'items': rows.map((i) => i.toJson()).toList(),
-        'completed': completed?.toIso8601String(),
-      }),
+    final head = jsonEncode({
+      'library': {
+        'id': library.id,
+        'backend': library.backend.name,
+        'title': library.title,
+        'kind': library.kind.id,
+        'serverId': library.serverId,
+        'serverName': library.serverName,
+      },
+    });
+    final tail = jsonEncode({'completed': completed?.toIso8601String()});
+    await _atomicRows(
+      _libraryFile(key),
+      '${head.substring(0, head.length - 1)},"items":[',
+      next.values.toList(),
+      '],${tail.substring(1)}',
+      valid,
     );
-    if (!valid()) return;
-    await _atomic(_libraryFile(key), encoded, valid);
     if (!valid()) return;
     _libraries[key] = library;
     _items[key] = next;
@@ -236,12 +284,15 @@ class LocalLibraryStore {
   String? posterPath(String serverId, String path) => _posters[_posterKey(serverId, path)];
 
   Future<void> _pruneUnreferencedPosters() async {
-    final referenced = <String>{};
+    final posters = <(String, String)>{};
     for (final item in items) {
       for (final path in [item.thumbPath, item.parentThumbPath, item.grandparentThumbPath]) {
-        if (item.serverId != null && path != null) referenced.add(_posterKey(item.serverId!, path));
+        if (item.serverId != null && path != null) posters.add((item.serverId!, path));
       }
     }
+    // A hash per poster, in the hundreds of thousands on a large library: off
+    // the UI thread, like the rest of a scan.
+    final referenced = await tryIsolateRun(() => _posterKeys(posters));
     for (final key in _posters.keys.where((k) => !referenced.contains(k)).toList()) {
       final file = File(_posters.remove(key)!);
       if (await file.exists()) await file.delete();
@@ -274,6 +325,10 @@ class LocalLibraryStore {
   });
 
   Future<void> clear() => _serial(() async {
+    // The files go one at a time, and what a crash leaves behind would load as
+    // content on the next start: [load] finishes what this marker says. First,
+    // so no moment exists with the option off and the files without a marker.
+    await clearMarker.writeAsString('', flush: true);
     enabled = false;
     // Persist off before removing data; a crash must not restart the download.
     await _atomic(_optionsFile, jsonEncode(_options), () => true);
@@ -281,8 +336,13 @@ class LocalLibraryStore {
     _items.clear();
     _completed.clear();
     _posters.clear();
-    await for (final entity in directory.list(followLinks: false)) {
-      if (entity.path != _optionsFile.path) await entity.delete(recursive: true);
-    }
+    await _removeContent();
   });
+
+  Future<void> _removeContent() async {
+    await for (final entity in directory.list(followLinks: false)) {
+      if (entity.path != _optionsFile.path && entity.path != clearMarker.path) await entity.delete(recursive: true);
+    }
+    await clearMarker.delete();
+  }
 }

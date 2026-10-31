@@ -84,6 +84,23 @@ abstract interface class FreshMediaItemClient implements MediaServerClient {
   Future<MediaItem?> fetchFreshItem(String id);
 }
 
+/// Writes the state of a copy, where nobody is watching. The playback reports
+/// are the wrong tool for that: they stand for a viewing, and a server counts
+/// them as one (hoofdstuk 13.2 of docs/tvos-unified-experience.md).
+abstract interface class CopyStateClient implements MediaServerClient {
+  /// Whether a position lands without anything else on the title changing. Where
+  /// it does not, a watched copy is left as it is.
+  bool get movesCopyWithoutViewing;
+
+  /// The copy as the server has it now. Null is the server saying it is gone.
+  /// Every other answer that says nothing about the copy throws. On this item
+  /// `viewCount` above zero means watched now, not ever watched.
+  Future<MediaItem?> readCopyState(String id);
+
+  /// Answers whether it landed: false when a viewing holds the title.
+  Future<bool> writeCopyState(MediaItem item, {required Duration position, Duration? duration, required bool watched});
+}
+
 abstract class MediaServerClient {
   ServerId get serverId;
   String? get serverName;

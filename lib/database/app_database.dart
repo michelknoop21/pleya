@@ -30,10 +30,22 @@ enum OfflineActionType {
   /// No migration: `OfflineWatchProgressQueue.actionType` is a plain text
   /// column with no constraint, check or index tied to its values, so a new
   /// value is new *data*, not a new schema. What it does need is a replay
-  /// branch in `OfflineWatchSyncService._syncAction` — a queued row whose
+  /// branch in `replayOfflineWatchAction` — a queued row whose
   /// type nothing handles would sit there being retried and deleted without
   /// ever performing the write.
-  removedFromContinueWatching;
+  removedFromContinueWatching,
+
+  /// A progress or watched state that happened on another source of the same
+  /// title (besluit 3 of DEC-XXX "Eén titel over servers heen"). Replays through
+  /// `CopyStateClient`, not like [progress]: nobody watched on this copy, and
+  /// the source that played already reported the viewing.
+  mirroredProgress,
+
+  /// A watched or unwatched mark on another copy of the same title. Replays
+  /// like [watched] and [unwatched], without the trackers: one mark is one
+  /// viewing, however many servers hold the title.
+  mirroredWatched,
+  mirroredUnwatched;
 
   /// Stable string id used for persistence. Survives an enum-name rename
   /// (e.g. `progress` → `inProgress`) — `.name` would corrupt every row.
@@ -42,6 +54,9 @@ enum OfflineActionType {
     OfflineActionType.watched => 'watched',
     OfflineActionType.unwatched => 'unwatched',
     OfflineActionType.removedFromContinueWatching => 'removeFromContinueWatching',
+    OfflineActionType.mirroredProgress => 'mirroredProgress',
+    OfflineActionType.mirroredWatched => 'mirroredWatched',
+    OfflineActionType.mirroredUnwatched => 'mirroredUnwatched',
   };
 
   /// Inverse of [id]. Throws on unknown so a typo in production doesn't
@@ -51,6 +66,9 @@ enum OfflineActionType {
     'watched' => OfflineActionType.watched,
     'unwatched' => OfflineActionType.unwatched,
     'removeFromContinueWatching' => OfflineActionType.removedFromContinueWatching,
+    'mirroredProgress' => OfflineActionType.mirroredProgress,
+    'mirroredWatched' => OfflineActionType.mirroredWatched,
+    'mirroredUnwatched' => OfflineActionType.mirroredUnwatched,
     _ => throw ArgumentError('Unknown OfflineActionType id: $id'),
   };
 }
@@ -1016,6 +1034,7 @@ class AppDatabase extends _$AppDatabase {
     required int viewOffset,
     required int? duration,
     required bool shouldMarkWatched,
+    OfflineActionType actionType = OfflineActionType.progress,
   }) async {
     final globalKey = buildGlobalKey(ServerId(serverId), ratingKey);
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -1028,18 +1047,23 @@ class AppDatabase extends _$AppDatabase {
                       t.globalKey.equals(globalKey) &
                       _nullableTextPredicate(t.profileId, profileId) &
                       _clientScopePredicate(t.clientScopeId, clientScopeId) &
-                      t.actionType.equals(OfflineActionType.progress.id),
+                      t.actionType.equals(actionType.id),
                 )
                 ..orderBy([(t) => OrderingTerm.asc(t.id)]))
               .get();
 
       final keep = existing.isEmpty ? null : existing.first;
       if (keep != null) {
+        // A mirrored row only moves forward: a short play after a long one, or
+        // after a finished one, says nothing about the copy that is waiting. A
+        // real unwatched mark clears the row (see [insertWatchAction]).
+        final mirrored = actionType == OfflineActionType.mirroredProgress;
+        final held = keep.viewOffset ?? 0;
         await (update(offlineWatchProgress)..where((t) => t.id.equals(keep.id))).write(
           OfflineWatchProgressCompanion(
-            viewOffset: Value(viewOffset),
+            viewOffset: Value(mirrored && held > viewOffset ? held : viewOffset),
             duration: Value(duration),
-            shouldMarkWatched: Value(shouldMarkWatched),
+            shouldMarkWatched: Value(shouldMarkWatched || (mirrored && keep.shouldMarkWatched)),
             profileId: Value(profileId),
             clientScopeId: Value(clientScopeId),
             updatedAt: Value(now),
@@ -1057,7 +1081,7 @@ class AppDatabase extends _$AppDatabase {
             clientScopeId: Value(clientScopeId),
             ratingKey: ratingKey,
             globalKey: globalKey,
-            actionType: OfflineActionType.progress.id,
+            actionType: actionType.id,
             viewOffset: Value(viewOffset),
             duration: Value(duration),
             shouldMarkWatched: Value(shouldMarkWatched),
@@ -1108,6 +1132,29 @@ class AppDatabase extends _$AppDatabase {
   /// Delete a specific watch action after successful sync
   Future<void> deleteWatchAction(int id) {
     return (delete(offlineWatchProgress)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// Delete what waits for [globalKey] as a copy of a viewing or a mark.
+  Future<void> deleteCopyActions(String globalKey, {required String? profileId}) {
+    return (delete(offlineWatchProgress)..where(
+          (t) =>
+              t.globalKey.equals(globalKey) &
+              _nullableTextPredicate(t.profileId, profileId) &
+              t.actionType.isIn([
+                OfflineActionType.mirroredProgress.id,
+                OfflineActionType.mirroredWatched.id,
+                OfflineActionType.mirroredUnwatched.id,
+              ]),
+        ))
+        .go();
+  }
+
+  /// Delete [action] unless it moved while it was being replayed: an upsert
+  /// keeps the row's id, so a newer position would go with the old one.
+  Future<void> deleteReplayedWatchAction(OfflineWatchProgressItem action) {
+    return (delete(
+      offlineWatchProgress,
+    )..where((t) => t.id.equals(action.id) & t.updatedAt.equals(action.updatedAt))).go();
   }
 
   /// Update sync attempt count and error message

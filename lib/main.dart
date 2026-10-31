@@ -38,6 +38,7 @@ import 'services/storage_service.dart';
 import 'services/device_capabilities_service.dart';
 import 'services/device_capability_overrides.dart';
 import 'services/device_performance.dart';
+import 'services/frame_timing_log.dart';
 import 'services/macos_window_service.dart';
 import 'services/native_window_service.dart';
 import 'services/fullscreen_state_manager.dart';
@@ -136,6 +137,7 @@ Future<void> main() async {
   // accessibilityIdentifier/resource-id, addressable via idb/XCUITest.
   if (kDebugMode || kPleyaVerify) binding.ensureSemantics();
   _installZeroOffsetPointerGuard(); // Workaround for iPadOS 26.1+ modal dismissal bug
+  startFrameTimingLog();
 
   // On tvOS, Flutter's generated plugin registrant doesn't run (no tvOS
   // target in Flutter's tool), so register platform stores manually for
@@ -915,6 +917,8 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
               activeProfile.activeId,
               availableProfileCount: activeProfile.profiles.length,
             );
+
+            _offlineWatchSyncService.isProfileBinding = () => activeProfile.isBinding;
 
             // Offline-sync drain replays a batch of queued watch actions without
             // per-item data, so we can't target rules — force a full pass.

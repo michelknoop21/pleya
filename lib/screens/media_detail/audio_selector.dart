@@ -11,49 +11,72 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
   List<MediaAudioTrack> get _detailAudioTracks => _detailFileInfo?.audioTracks ?? const [];
   List<MediaSubtitleTrack> get _detailSubtitleTracks => _detailFileInfo?.subtitleTracks ?? const [];
 
+  /// What the table asked for: the page's item on the chosen source. Another
+  /// source is another request, so a source change reloads the table.
+  String _detailAudioRequestFor(MediaItem requested) => '${requested.globalKey}>${_routeContext?.sourceKey}';
+
+  bool _isDetailAudioTarget(MediaItem item) {
+    final target = _detailAudioTarget;
+    return target != null && item.id == target.id && (item.serverId ?? target.serverId) == target.serverId;
+  }
+
   // Offline too: Plex answers getFileInfo from its cache, so a downloaded
   // item keeps its table.
   void _scheduleDetailAudioTracksLoad(MediaItem metadata) {
-    final target = _audioTargetFor(metadata);
-    if (target == null || target.id == _detailAudioTargetId || _detailAudioLoadInFlight) return;
+    final requested = _audioTargetFor(metadata);
+    if (requested == null || _detailAudioRequestFor(requested) == _detailAudioRequest) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(_loadDetailAudioTracks(target));
+      if (mounted) unawaited(_loadDetailAudioTracks(requested));
     });
   }
 
-  Future<void> _loadDetailAudioTracks(MediaItem target) async {
-    if (_detailAudioLoadInFlight) return;
-    final serverId = target.serverId ?? _metadata.serverId;
-    final client = serverId == null ? null : context.tryGetMediaClientForServer(ServerId(serverId));
-    if (client == null) return;
+  /// Loads the table from the server that will play [requested]. The newest
+  /// request wins: a source change during a load must not land the tracks of
+  /// the previous server on the page.
+  Future<void> _loadDetailAudioTracks(MediaItem requested) async {
+    final request = _detailAudioRequestFor(requested);
+    if (request == _detailAudioRequest) return;
+    _detailAudioRequest = request;
+    bool superseded() => !mounted || _detailAudioRequest != request;
 
-    _updateDetailAudioState(() {
-      _detailAudioLoadInFlight = true;
-      _detailAudioTargetId = target.id;
-      _detailAudioTarget = target.copyWith(
+    // Only when there is something to clear: a load that cannot start leaves
+    // the request open for the next build, and a state change here would make
+    // that build itself, every frame.
+    final tableIsEmpty = _detailAudioTarget == null && _detailFileInfo == null;
+    if (!tableIsEmpty) {
+      _updateDetailAudioState(() {
+        _detailAudioTarget = null;
+        _detailFileInfo = null;
+        _selectedDetailAudioTrackId = null;
+        _selectedDetailSubtitleTrackId = null;
+        _detailAudioPickId = null;
+        _detailSubtitlePickId = null;
+        _detailSubtitlePicked = false;
+      });
+    }
+
+    try {
+      final title = _unifiedTitle;
+      final target = title == null ? requested : (await title.targetFor(requested)).item;
+      if (superseded()) return;
+      final serverId = target.serverId ?? _metadata.serverId;
+      final client = serverId == null ? null : context.tryGetMediaClientForServer(ServerId(serverId));
+      if (client == null) {
+        _detailAudioRequest = null;
+        return;
+      }
+      final described = target.copyWith(
         serverId: serverId,
         serverName: target.serverName ?? _metadata.serverName,
         libraryId: target.libraryId ?? _metadata.libraryId,
         libraryTitle: target.libraryTitle ?? _metadata.libraryTitle,
       );
-      _detailFileInfo = null;
-      _selectedDetailAudioTrackId = null;
-      _selectedDetailSubtitleTrackId = null;
-      _detailAudioPickId = null;
-      _detailSubtitlePickId = null;
-      _detailSubtitlePicked = false;
-    });
-
-    try {
-      final fileInfo = await client.getFileInfo(_detailAudioTarget!);
-      if (fileInfo == null || !mounted || _detailAudioTargetId != target.id) return;
-      await _showDetailTracksPlaybackStartsWith(target, fileInfo);
+      _updateDetailAudioState(() => _detailAudioTarget = described);
+      final fileInfo = await client.getFileInfo(described);
+      if (fileInfo == null || superseded()) return;
+      await _showDetailTracksPlaybackStartsWith(described, fileInfo);
     } catch (e) {
       appLogger.d('Failed to load detail audio tracks', error: e);
-    } finally {
-      if (mounted && _detailAudioTargetId == target.id) {
-        _updateDetailAudioState(() => _detailAudioLoadInFlight = false);
-      }
     }
   }
 
@@ -65,7 +88,7 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
     if (info == null) return;
     final pick = _detailTrackPickFor(target);
     final resolved = await resolveDetailTracks(target, info, audioPick: pick.audio, subtitlePick: pick.subtitle);
-    if (!mounted || _detailAudioTargetId != target.id) return;
+    if (!mounted || !_isDetailAudioTarget(target)) return;
     _updateDetailAudioState(() {
       _detailFileInfo = info;
       _selectedDetailAudioTrackId = resolved.audioId;
@@ -154,7 +177,7 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
   /// Held in the page, so the pick also holds when the store keeps nothing
   /// (remembering switched off, or a track without a language code).
   ({AudioTrack? audio, SubtitleTrack? subtitle}) _detailTrackPickFor(MediaItem item) {
-    if (item.id != _detailAudioTargetId) return (audio: null, subtitle: null);
+    if (!_isDetailAudioTarget(item)) return (audio: null, subtitle: null);
     final audio = _detailAudioTracks.where((track) => track.id == _detailAudioPickId).firstOrNull;
     final subtitle = _detailSubtitleTracks.where((track) => track.id == _detailSubtitlePickId).firstOrNull;
     return (

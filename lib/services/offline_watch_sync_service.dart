@@ -6,21 +6,23 @@ import 'package:flutter/foundation.dart';
 
 import '../database/app_database.dart';
 import '../database/download_operations.dart';
+import '../exceptions/media_server_exceptions.dart';
 import '../media/media_backend.dart';
 import '../media/media_item.dart';
+import '../media/media_item_types.dart';
 import '../media/media_kind.dart';
 import '../media/media_server_client.dart';
-import '../media/playback_report_metadata.dart';
 import '../media/watch_progress.dart';
 import '../utils/app_logger.dart';
 import '../utils/global_key_utils.dart';
 import 'offline_mode_source.dart';
+import 'offline_watch_replay.dart';
 import 'playback_resume_resolver.dart';
 import '../utils/watch_state_notifier.dart';
 import 'multi_server_manager.dart';
+import 'pleya_server_client.dart';
 import 'plex_client.dart';
 import 'settings_service.dart';
-import 'trackers/tracker_coordinator.dart';
 import 'watch_state_resolver.dart';
 
 /// Service for managing offline watch progress and syncing it back to the
@@ -40,6 +42,7 @@ class OfflineWatchSyncService extends ChangeNotifier {
   OfflineModeSource? _offlineModeSource;
   VoidCallback? _offlineModeListener;
   bool _isSyncing = false;
+  bool _syncRequested = false;
   bool _isBidirectionalSyncing = false;
   bool _isShutDown = false;
   DateTime? _lastSyncTime;
@@ -87,7 +90,53 @@ class OfflineWatchSyncService extends ChangeNotifier {
   /// silently drops local watch progress.
   static const int maxSyncAttempts = 5;
 
-  OfflineWatchSyncService({required this._database, required this._serverManager});
+  /// How long a row that ran out of attempts waits for a new round.
+  static const Duration exhaustedRetryInterval = Duration(hours: 6);
+
+  /// Whether the active profile is being bound to its servers right now.
+  bool Function()? isProfileBinding;
+
+  /// What the viewer just marked on [item] says more than a copy waiting for it:
+  /// the row would write the older state back. A season or a series speaks for
+  /// its episodes, which are only looked up when one of them has a row.
+  Future<void> forgetHeldCopy(
+    MediaServerClient client,
+    MediaItem item, {
+    required ServerId serverId,
+    required String? profileId,
+  }) async {
+    await _database.deleteCopyActions(buildGlobalKey(serverId, item.id), profileId: profileId);
+    if (!item.isSeason && !item.isShow) return;
+    final pending = await _database.getPendingWatchActions(profileId: profileId);
+    final held = {
+      for (final action in pending)
+        if (action.serverId == serverId && _isCopyAction(action)) action.ratingKey,
+    };
+    if (held.isEmpty) return;
+    try {
+      for (final episode in await client.fetchPlayableDescendants(item.id)) {
+        if (held.contains(episode.id)) {
+          await _database.deleteCopyActions(buildGlobalKey(serverId, episode.id), profileId: profileId);
+        }
+      }
+    } catch (e) {
+      appLogger.d('Could not read the episodes of ${item.globalKey}', error: e);
+    }
+  }
+
+  /// Hears a play that ran offline, once its own server took it: no player is
+  /// left by then to tell its copies.
+  void Function(MediaItem item, Duration position, Duration duration, {required bool watched})? onOwnPlayReplayed;
+
+  OfflineWatchSyncService({required this._database, required this._serverManager, DateTime Function()? now})
+    : _now = now ?? DateTime.now;
+
+  final DateTime Function() _now;
+  DateTime? _lastExhaustedReset;
+
+  /// The profile queue rows are written for now. A write that waited on a
+  /// server first reads this before the wait.
+  String? get activeProfileId => _activeProfileId;
 
   /// Whether a sync is currently in progress
   bool get isSyncing => _isSyncing;
@@ -250,6 +299,64 @@ class OfflineWatchSyncService extends ChangeNotifier {
 
     notifyListeners();
     return clientScopeId;
+  }
+
+  /// Holds a position that happened on another source of the same title, and
+  /// a watched state with it when [watched] is set: the source that played
+  /// decided that, whatever this server's own threshold says.
+  ///
+  /// Goes through this queue whether the server is up or not, so a server that
+  /// answers late or refuses retries like any other queued write and can never
+  /// reach the play. The replay keeps its last-writer guard: a position this
+  /// server already moved past is dropped.
+  Future<bool> queueMirroredProgress({
+    required ServerId serverId,
+    required String itemId,
+    required int viewOffset,
+    required int? duration,
+    required bool watched,
+    required String? profileId,
+  }) async {
+    final clientScopeId = await _clientScopeIdForItem(ServerId(serverId), itemId);
+    // [profileId] is who watched. Another profile took over since: its row and
+    // its token have nothing to do with this viewing.
+    if (profileId != _activeProfileId) return false;
+    await _database.upsertProgressAction(
+      profileId: profileId,
+      serverId: serverId,
+      clientScopeId: clientScopeId,
+      ratingKey: itemId,
+      viewOffset: viewOffset,
+      duration: duration,
+      shouldMarkWatched: watched,
+      actionType: OfflineActionType.mirroredProgress,
+    );
+    notifyListeners();
+    return true;
+  }
+
+  /// Holds a watched or unwatched mark for another copy of a title whose mark
+  /// already went out once. See [OfflineActionType.mirroredWatched].
+  ///
+  /// [profileId] is who marked it, read before anything waited. Answers whether
+  /// the row landed, with the cache scope to announce it under.
+  Future<({bool held, String? cacheServerId})> queueCopyMark({
+    required ServerId serverId,
+    required String itemId,
+    required bool watched,
+    required String? profileId,
+  }) async {
+    final clientScopeId = await _clientScopeIdForItem(ServerId(serverId), itemId);
+    if (profileId != _activeProfileId) return (held: false, cacheServerId: null);
+    await _database.insertWatchAction(
+      profileId: profileId,
+      serverId: serverId,
+      clientScopeId: clientScopeId,
+      ratingKey: itemId,
+      actionType: (watched ? OfflineActionType.mirroredWatched : OfflineActionType.mirroredUnwatched).id,
+    );
+    notifyListeners();
+    return (held: true, cacheServerId: clientScopeId);
   }
 
   Future<String?> queueMarkWatched({required ServerId serverId, required String itemId}) =>
@@ -433,9 +540,13 @@ class OfflineWatchSyncService extends ChangeNotifier {
   ///
   /// Called automatically when connectivity is restored, or manually.
   /// Actions are batched by server to reduce connectivity lookups.
-  Future<void> syncPendingItems() async {
+  ///
+  /// [queueIfBusy] is for a caller that just wrote a row: a sync already running
+  /// has read its list, so that row would otherwise wait for the next reconnect.
+  Future<void> syncPendingItems({bool queueIfBusy = false}) async {
     if (_isSyncing) {
       appLogger.d('Sync already in progress, skipping');
+      if (queueIfBusy) _syncRequested = true;
       return;
     }
 
@@ -444,6 +555,7 @@ class OfflineWatchSyncService extends ChangeNotifier {
 
     try {
       await _adoptLegacyWatchActionsForActiveProfile();
+      await _giveExhaustedRowsAnotherRound();
       final profileId = _activeProfileId;
       final pendingActions = profileId == null || profileId.isEmpty
           ? await _database.getPendingWatchActions()
@@ -457,6 +569,18 @@ class OfflineWatchSyncService extends ChangeNotifier {
       appLogger.i('Syncing ${pendingActions.length} pending watch actions');
 
       for (final action in pendingActions) {
+        // These rows belong to the profile that read them. The clients below
+        // are looked up per row: after a switch they are the next profile's.
+        if (profileId != _activeProfileId) {
+          appLogger.d('Profile changed during the sync; leaving the rest for that profile');
+          break;
+        }
+        // A row can date from before this client knew whose server it is.
+        if (_isCopyAction(action) && _serverManager.isSomeoneElsesServer(ServerId(action.serverId))) {
+          // During a bind the rights of the last profile still stand here.
+          if (isProfileBinding?.call() != true) await _database.deleteWatchAction(action.id);
+          continue;
+        }
         if (action.syncAttempts >= maxSyncAttempts) {
           appLogger.w(
             'Skipping action ${action.id} - exceeded retry limit '
@@ -467,12 +591,31 @@ class OfflineWatchSyncService extends ChangeNotifier {
 
         final synced = await _withOnlineClientForAction(action, (client) async {
           try {
-            await _syncAction(client, action);
-            await _database.deleteWatchAction(action.id);
+            final landed = await replayOfflineWatchAction(
+              client,
+              action,
+              isCurrent: () => profileId == _activeProfileId,
+            );
+            await _database.deleteReplayedWatchAction(action);
             appLogger.d('Successfully synced action ${action.id}: ${action.actionType} for ${action.ratingKey}');
+            if (landed) _announceOwnPlay(client, action);
+          } on ReplayInterrupted {
+            appLogger.d('Profile changed during the replay of ${action.id}; it stays queued');
           } catch (e) {
             appLogger.w('Failed to sync action ${action.id}: $e');
-            await _database.updateSyncAttempt(action.id, e.toString());
+            // A copy that refuses or is gone will not change its mind, and
+            // nobody is waiting on it: the source that played has the viewing.
+            // A Pleya Server token round that failed is neither: on that client
+            // an auth exception only comes from minting a token, so the write
+            // never went out. Which kind says little: after a bare 401 the
+            // session answers as if its chain was revoked. The row is scoped to
+            // this account and lands after the next sign-in.
+            final tokenRoundFailed = client is PleyaServerClient && e is MediaServerAuthException;
+            if (_isCopyAction(action) && !tokenRoundFailed && !isRetryableServerWriteFailure(e)) {
+              await _database.deleteReplayedWatchAction(action);
+            } else {
+              await _database.updateSyncAttempt(action.id, e.toString());
+            }
           }
         });
         if (!synced) {
@@ -484,7 +627,52 @@ class OfflineWatchSyncService extends ChangeNotifier {
     } finally {
       _isSyncing = false;
       notifyListeners();
+      if (_syncRequested) {
+        _syncRequested = false;
+        unawaited(syncPendingItems());
+      }
     }
+  }
+
+  static bool _isCopyAction(OfflineWatchProgressItem action) =>
+      action.actionType == OfflineActionType.mirroredProgress.id ||
+      action.actionType == OfflineActionType.mirroredWatched.id ||
+      action.actionType == OfflineActionType.mirroredUnwatched.id;
+
+  void _announceOwnPlay(MediaServerClient client, OfflineWatchProgressItem action) {
+    final listener = onOwnPlayReplayed;
+    final position = action.viewOffset;
+    final duration = action.duration;
+    if (listener == null || position == null || duration == null) return;
+    if (action.actionType != OfflineActionType.progress.id) return;
+    final profileId = _activeProfileId;
+    unawaited(
+      client
+          .fetchItem(action.ratingKey)
+          .then((item) {
+            if (item == null || profileId != _activeProfileId) return;
+            listener(
+              item.copyWith(serverId: action.serverId),
+              Duration(milliseconds: position),
+              Duration(milliseconds: duration),
+              watched: action.shouldMarkWatched,
+            );
+          })
+          .catchError((Object e) {
+            appLogger.d('Could not reach the copies of ${action.globalKey}', error: e);
+          }),
+    );
+  }
+
+  /// A failure that outlasts its [maxSyncAttempts] used to wait for the app to
+  /// go offline and back, which never happens while another server is up. The
+  /// first sync of a run counts, so a restart does not start the wait over.
+  Future<void> _giveExhaustedRowsAnotherRound() async {
+    final current = _now();
+    final last = _lastExhaustedReset;
+    if (last != null && current.difference(last) < exhaustedRetryInterval) return;
+    _lastExhaustedReset = current;
+    await _database.resetExhaustedSyncAttempts(maxSyncAttempts);
   }
 
   /// Re-states hoofdstuk 13.4 point 3's suppression for every removal still
@@ -556,6 +744,16 @@ class OfflineWatchSyncService extends ChangeNotifier {
       );
       return null;
     }
+    // A row is written for one account. The client on this server can be
+    // another's, and its token would write this viewing there.
+    final clientScope = switch (client) {
+      ScopedMediaServerClient(:final scopedServerId) => scopedServerId,
+      _ => null,
+    };
+    if (clientScope != null && scopeId != null && scopeId.isNotEmpty && clientScope != scopeId) {
+      appLogger.d('Action ${action.id} belongs to scope $scopeId; skipping');
+      return null;
+    }
     return (client: client, clientScopeId: action.clientScopeId);
   }
 
@@ -625,137 +823,6 @@ class OfflineWatchSyncService extends ChangeNotifier {
     }
 
     return callback(client);
-  }
-
-  /// Sync a single action to the server.
-  ///
-  /// Uses the neutral [MediaServerClient] surface so Jellyfin's
-  /// `/UserPlayedItems/{id}` and `/Sessions/Playing*` endpoints receive
-  /// the same queued state Plex's `/:/scrobble` and `/:/timeline` do.
-  Future<void> _syncAction(MediaServerClient client, OfflineWatchProgressItem action) async {
-    // Fetch metadata so trackers (and the stop-path watch event) get enough
-    // context — external ids, parent chain, library section. The plain
-    // watched/unwatched replays deliberately emit no WatchStateEvent: the
-    // offline provider already emitted it when the action was queued, and
-    // client markWatched/markUnwatched are transport-only. Best-effort: a
-    // missed metadata fetch falls back to a minimal MediaItem — the network
-    // call still goes through.
-    final needsRichItem =
-        action.actionType == OfflineActionType.watched.id ||
-        action.actionType == OfflineActionType.unwatched.id ||
-        action.actionType == OfflineActionType.removedFromContinueWatching.id ||
-        (action.actionType == OfflineActionType.progress.id && action.shouldMarkWatched);
-    MediaItem? item;
-    if (needsRichItem) {
-      try {
-        item = await client.fetchItem(action.ratingKey);
-      } catch (_) {
-        // Fall through to the synthetic item below.
-      }
-    }
-    final resolvedItem =
-        item ??
-        MediaItem(id: action.ratingKey, backend: client.backend, kind: MediaKind.unknown, serverId: action.serverId);
-
-    switch (action.actionType) {
-      case 'watched':
-        await client.markWatched(resolvedItem);
-        await _scrobbleBestEffort(() => TrackerCoordinator.instance.markWatched(resolvedItem, client));
-        break;
-
-      case 'unwatched':
-        await client.markUnwatched(resolvedItem);
-        await _scrobbleBestEffort(() => TrackerCoordinator.instance.markUnwatched(resolvedItem, client));
-        break;
-
-      case 'removeFromContinueWatching':
-        // Idempotent by construction: Plex's PUT
-        // `/actions/removeFromContinueWatching` is a no-op for a rating key
-        // that is already off the shelf, so a replay that races the user
-        // removing it elsewhere costs one request and changes nothing. No
-        // WatchStateEvent either — the surface suppressed the card when the
-        // action was queued, and re-announcing it on replay would only
-        // re-remove something already gone.
-        //
-        // A source that cannot remove server-side never gets one of these rows
-        // any more (it is hidden on the device instead, DEC-144 fase 3), but a
-        // row queued before that would throw `UnsupportedError` on every
-        // reconnect. Drop it: there is nothing for the server to do.
-        if (!client.capabilities.continueWatchingRemoval) {
-          appLogger.i('Dropping queued Continue Watching removal for ${action.ratingKey}: unsupported on this server');
-          break;
-        }
-        await client.removeFromContinueWatching(resolvedItem);
-        break;
-
-      case 'progress':
-        // Last-writer-wins guard: if another device produced newer watch state
-        // (marked watched, or viewed more recently than this queued offline
-        // action), replaying our stale viewOffset would clobber it. Best-effort:
-        // if the state fetch fails we proceed with the replay as before.
-        try {
-          final server = await client.fetchItem(action.ratingKey);
-          if (server != null) {
-            final serverViewedMs = (server.lastViewedAt ?? 0) * 1000;
-            final serverIsNewer =
-                ((server.viewCount ?? 0) > 0 && !action.shouldMarkWatched) || serverViewedMs > action.updatedAt;
-            if (serverIsNewer) {
-              appLogger.i('Skipping stale offline progress for ${action.ratingKey}: server state is newer');
-              return;
-            }
-          }
-        } catch (e) {
-          appLogger.d('Offline progress: pre-replay state check failed (continuing)', error: e);
-        }
-        // Push resumable progress, or a completed offline playback. Jellyfin's
-        // `/Sessions/Playing/Stopped` ignores events without an open session
-        // row, so non-Plex backends still get a lightweight Started call.
-        if (action.viewOffset != null) {
-          final duration = action.duration == null ? null : Duration(milliseconds: action.duration!);
-          final position = action.shouldMarkWatched && duration != null
-              ? duration
-              : Duration(milliseconds: action.viewOffset!);
-          if (!action.shouldMarkWatched || client.backend != MediaBackend.plex) {
-            try {
-              await client.reportPlaybackStarted(itemId: action.ratingKey, position: position, duration: duration);
-            } catch (e) {
-              // Plex sometimes 5xxs the start when nothing follows; treat as
-              // best-effort and continue to the stop call which is the one
-              // that actually persists the resume position.
-              appLogger.d('Offline progress: started call failed (continuing)', error: e);
-            }
-          }
-          await client.reportPlaybackStopped(
-            itemId: action.ratingKey,
-            position: position,
-            duration: duration,
-            report: PlaybackReportMetadata.offlineReplay(
-              recordedAt: DateTime.fromMillisecondsSinceEpoch(action.updatedAt),
-            ),
-          );
-        }
-
-        // If progress exceeded threshold, also mark as watched. On backends
-        // that mark played from the stopped report above (Jellyfin) this only
-        // emits the local watch event — an explicit markWatched would
-        // double-scrobble via the Trakt plugin (#1287).
-        if (action.shouldMarkWatched) {
-          await client.markWatchedFromPlaybackStop(resolvedItem);
-          await _scrobbleBestEffort(() => TrackerCoordinator.instance.markWatched(resolvedItem, client));
-        }
-        break;
-    }
-  }
-
-  /// Tracker scrobbles are best-effort: a tracker-only failure must not
-  /// requeue the whole action — replaying it would re-report playback to the
-  /// media server and double-scrobble on the next attempt.
-  Future<void> _scrobbleBestEffort(Future<void> Function() scrobble) async {
-    try {
-      await scrobble();
-    } catch (e) {
-      appLogger.w('Offline sync: tracker scrobble failed (not retried)', error: e);
-    }
   }
 
   /// Sync watch states for all episodes in a single season.
@@ -925,7 +992,10 @@ class OfflineWatchSyncService extends ChangeNotifier {
               if (metadata != null) {
                 syncedCount++;
                 final isWatched = (metadata.viewCount ?? 0) > 0;
-                if (wasWatched != isWatched) {
+                // Without a cached row there is no transition to report, as for
+                // the episodes above. Pleya Server keeps no such row: this would
+                // count the same viewing again on every pull.
+                if (prior != null && wasWatched != isWatched) {
                   WatchStateNotifier().notifyWatched(
                     item: metadata,
                     isNowWatched: isWatched,

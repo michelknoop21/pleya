@@ -84,6 +84,8 @@ import '../services/settings_service.dart';
 import '../services/track_preference_store.dart';
 import '../services/rating_actions.dart';
 import '../services/unified_action_outcome.dart';
+import '../services/unified_catalog/unified_title_playback.dart';
+import '../services/unified_catalog/unified_title_scope.dart';
 import '../services/watch_actions.dart';
 import '../widgets/settings_builder.dart';
 import '../utils/grid_size_calculator.dart';
@@ -165,6 +167,7 @@ part 'media_detail/mobile_detail_view.dart';
 part 'media_detail/mobile_episodes_section.dart';
 part 'media_detail/synopsis_panel.dart';
 part 'media_detail/tv_season_chips.dart';
+part 'media_detail/unified_detail_source.dart';
 
 const double _tvDetailTallPosterScale = TvBrowseRailLayout.compactTallPosterScale;
 // Mockup 37 C (MOC-10) shows full-width episode/extras cards, not the
@@ -234,10 +237,11 @@ class MediaDetailScreen extends StatefulWidget {
   /// The group this concrete item was reached through (hoofdstuk 15 of
   /// docs/tvos-unified-experience.md), when it was reached through one.
   ///
-  /// The page stays source-bound: this adds the "Bron: NAS • Films 4K
-  /// [ Wijzigen ]" line and nothing else. It carries source *keys*, never a
-  /// second [MediaItem], so there is no way for this screen to render a half
-  /// merged page with seasons from one server and metadata from another.
+  /// The page shows one source: the main source, or the chosen one when that
+  /// cannot be read. This adds the "Bron: NAS • Films 4K [ Wijzigen ]" line and
+  /// what a play starts. It carries the other sources' items for that play and
+  /// nothing on the page reads from them, so there is no half merged page with
+  /// seasons from one server and metadata from another.
   final UnifiedMediaRouteContext? unifiedRouteContext;
 
   /// Reopens the picker in details mode. Supplied by the activation site,
@@ -342,6 +346,8 @@ PageRoute<bool> mediaDetailRoute({
 class _MediaDetailScreenState extends State<MediaDetailScreen>
     with WatchStateAware, DeletionAware, MountedSetStateMixin, ServerBoundMediaMixin, RouteAware, WidgetsBindingObserver
     implements MediaDetailPlaybackRefresh {
+  final _UnifiedDetailSource _unifiedSource = _UnifiedDetailSource();
+
   /// Public input alias — used as the live source of truth until the detail
   /// fetch returns. Holds backend-neutral [MediaItem] data.
   MediaItem get _metadata => _fullMetadata ?? widget.metadata;
@@ -358,11 +364,11 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   MediaWatchStats? _watchStats;
   MediaItem? _onDeckEpisode;
   bool _isLoadingMetadata = true;
-  String? _detailAudioTargetId;
+  String? _detailAudioRequest;
   MediaItem? _detailAudioTarget;
   MediaFileInfo? _detailFileInfo;
   int? _selectedDetailAudioTrackId, _selectedDetailSubtitleTrackId, _detailAudioPickId, _detailSubtitlePickId;
-  bool _detailAudioLoadInFlight = false, _detailSubtitlePicked = false, _detailPickRemembered = true;
+  bool _detailSubtitlePicked = false, _detailPickRemembered = true;
 
   void _updateDetailAudioState(VoidCallback update) => setState(update);
 
@@ -657,8 +663,10 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     return keys;
   }
 
+  /// All servers while the page plays from another one than it shows: the
+  /// keys below still name exactly what this page cares about.
   @override
-  String? get deletionServerId => serverBoundServerId;
+  String? get deletionServerId => _routeContext?.playItem == null ? serverBoundServerId : null;
 
   @override
   Set<String>? get deletionGlobalKeys {
@@ -672,11 +680,14 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     for (final ep in _episodes) {
       keys.add(toServerBoundGlobalKey(ep.id, serverId: ServerId(ep.serverId ?? serverId)));
     }
+    final chosen = _routeContext?.sourceKey;
+    if (chosen != null) keys.add(chosen);
     return keys;
   }
 
   @override
   void onDeletionEvent(DeletionEvent event) {
+    if (_dropDeletedSource(event)) return;
     // Download-only deletions should only remove items when viewing offline content
     if (event.isDownloadOnly && !widget.isOffline) return;
     if (!event.isDownloadOnly && widget.isOffline) return;
@@ -781,6 +792,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
           _fullMetadata = refreshedMetadata;
           _onDeckEpisode = refreshedOnDeck;
         });
+        unawaited(_syncUnifiedOnDeck());
       }
 
       // Do not refresh seasons/episodes here. The watch event has already
@@ -1036,6 +1048,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     _extrasFocusNode.removeListener(_handleExtrasFocusChange);
     _extrasFocusNode.dispose();
     _playButtonFocusNode.dispose();
+    _unifiedSource.dispose();
     _tvDetailReadMoreFocusNode.dispose();
     _ratingChipFocusNode.dispose();
     _overviewFocusNode.dispose();
@@ -1314,14 +1327,14 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   /// carrying its parent's context today, which is exactly why the guard is
   /// worth a line now rather than after a refactor makes it live.
   RatingMirror? _buildRatingMirror(MediaItem metadata) {
-    final routeContext = widget.unifiedRouteContext;
+    final routeContext = _routeContext;
     if (routeContext == null || !routeContext.hasAlternativeSources) return null;
-    if (parseGlobalKey(routeContext.sourceKey)?.ratingKey != metadata.id) return null;
+    if (parseGlobalKey(routeContext.pageSourceKey)?.ratingKey != metadata.id) return null;
 
     final mirror = RatingMirror.fromSourceKeys(
       context,
       sourceKeys: routeContext.availableSourceKeys,
-      originSourceKey: routeContext.sourceKey,
+      originSourceKey: routeContext.pageSourceKey,
     );
     return mirror.intendedTargetCount > 1 ? mirror : null;
   }
@@ -1673,6 +1686,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         _isLoadingMetadata = false;
       });
       _closeSelectTrace();
+      unawaited(_syncUnifiedOnDeck());
 
       if (base.isShow) {
         unawaited(_loadSeasons());
@@ -1726,8 +1740,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   /// means nothing to offer here; hoofdstuk 21.7 leaves that case to the
   /// existing offline/auth/not-found handling, unchanged by this method.
   void _offerAlternativeSourceAfterDetailLoadFailure() {
-    final onChangeSource = widget.onChangeSource;
-    if (onChangeSource == null) return;
+    if (widget.onChangeSource == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_metadataLoadFailed) return;
       unawaited(
@@ -1738,7 +1751,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
             title: t.sourcePicker.detailLoadFailedTitle,
             onChooseAnother: () {
               OverlaySheetController.closeAdaptive(sheetContext, null);
-              unawaited(onChangeSource(context));
+              unawaited(_changeUnifiedSource(context, pageFailed: true));
             },
             onClose: () => OverlaySheetController.closeAdaptive(sheetContext, null),
           ),
@@ -2519,6 +2532,10 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   /// Focus the first available section below the primary action row.
   void _focusBelowActionRow() {
+    if (!_focusUnifiedSourceLine()) _focusBelowSourceLine();
+  }
+
+  void _focusBelowSourceLine() {
     final metadata = _fullMetadata ?? _metadata;
 
     if (PlatformDetector.isTV()) {
@@ -3680,10 +3697,13 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    return AutomationScreen(
-      id: AutomationIds.screenMediaDetail,
-      readiness: _detailReadiness,
-      child: _buildInner(context),
+    return UnifiedTitleScope(
+      title: _unifiedTitle,
+      child: AutomationScreen(
+        id: AutomationIds.screenMediaDetail,
+        readiness: _detailReadiness,
+        child: _buildInner(context),
+      ),
     );
   }
 
@@ -5606,21 +5626,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   }
 
   IconData _getPlayButtonIcon(MediaItem metadata) {
-    // For TV shows
-    if (metadata.isShow) {
-      if (_onDeckEpisode != null) {
-        final episode = _fresh(_onDeckEpisode!);
-        // Check if episode has been partially watched
-        if (episode.viewOffsetMs != null && episode.viewOffsetMs! > 0) {
-          return Symbols.resume_rounded; // Resume icon
-        }
-      }
-    } else {
-      // For movies or episodes
-      if (metadata.viewOffsetMs != null && metadata.viewOffsetMs! > 0) {
-        return Symbols.resume_rounded; // Resume icon
-      }
-    }
+    if (_playResumes(metadata)) return Symbols.resume_rounded;
 
     return Symbols.play_arrow_rounded; // Default play icon
   }

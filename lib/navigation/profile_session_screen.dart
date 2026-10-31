@@ -3,6 +3,7 @@ import '../providers/offline_mode_provider.dart';
 import '../providers/download_provider.dart';
 import '../services/watchlist/watchlist_snapshot_store.dart';
 import '../services/api_cache.dart';
+import '../services/unified_catalog/unified_progress_mirror.dart';
 import '../providers/watchlist_store.dart';
 import '../providers/watchlist_provider.dart';
 import '../media/media_backend.dart';
@@ -668,16 +669,20 @@ class _ProfileSessionNavigatorState extends State<_ProfileSessionNavigator> {
   final _navigatorKey = GlobalKey<NavigatorState>();
   final _mainScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
   final _routeObserver = AutomationRouteObserver();
+  VoidCallback? _unbindOwnPlayMirror;
 
   @override
   void initState() {
     super.initState();
     profileNavigationRegistry.attachNavigator(_navigatorKey);
     profileNavigationRegistry.attachMainScaffoldMessenger(_mainScaffoldMessengerKey);
+    final queue = context.read<OfflineWatchSyncService?>();
+    if (queue != null) _unbindOwnPlayMirror = bindOwnPlayMirror(context, queue);
   }
 
   @override
   void dispose() {
+    _unbindOwnPlayMirror?.call();
     profileNavigationRegistry.detachNavigator(_navigatorKey);
     profileNavigationRegistry.detachMainScaffoldMessenger(_mainScaffoldMessengerKey);
     super.dispose();

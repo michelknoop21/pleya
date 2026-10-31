@@ -15,6 +15,7 @@ import '../../providers/local_library_provider.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../i18n/strings.g.dart';
+import '../../providers/watch_state_store.dart';
 import '../../media/media_item.dart';
 import '../../media/unified/source_availability.dart';
 import '../../media/unified/source_coverage_state.dart';
@@ -120,21 +121,23 @@ Future<void> _routeMobileSource(
   required ValueChanged<MediaItem>? onPlaybackReturned,
 }) async {
   final onChangeSource = routeContext.hasAlternativeSources
-      ? (BuildContext detailContext) => _changeSourceFromDetail(
-          detailContext,
-          group: group,
-          routeContext: routeContext,
-          availabilityFor: availabilityFor,
-          isOffline: isOffline,
-          onRefresh: onRefresh,
-          onPlaybackReturned: onPlaybackReturned,
-        )
+      ? (BuildContext detailContext, UnifiedMediaRouteContext current, {bool pageFailed = false}) =>
+            _changeSourceFromDetail(
+              detailContext,
+              group: group,
+              routeContext: current,
+              pageFailed: pageFailed,
+              availabilityFor: availabilityFor,
+              isOffline: isOffline,
+              onRefresh: onRefresh,
+              onPlaybackReturned: onPlaybackReturned,
+            )
       : null;
 
   if (!playDirectly) {
     await navigateToMediaItemDetails(
       context,
-      source.item,
+      group.itemOf(routeContext.pageSourceKey),
       isOffline: isOffline,
       onRefresh: onRefresh,
       unifiedRouteContext: routeContext,
@@ -146,7 +149,7 @@ Future<void> _routeMobileSource(
   var playbackInitFailed = false;
   await navigateToMediaItem(
     context,
-    source.item,
+    group.itemOf(routeContext.pageSourceKey),
     onRefresh: onRefresh,
     isOffline: isOffline,
     playDirectly: true,
@@ -170,15 +173,17 @@ Future<void> _routeMobileSource(
   }
 }
 
-/// The detail page's "[ Wijzigen ]". Mirrors tvOS'
-/// `_changeSourceFromDetail`: the picker opens on every source (not just the
-/// alternatives), the current one marked, and the old detail route is
-/// popped before the new one opens so Back does not walk the viewer
-/// backwards through every source they looked at.
-Future<void> _changeSourceFromDetail(
+/// The detail page's "[ Wijzigen ]". Mirrors tvOS' `_changeSourceFromDetail`:
+/// the picker opens on every source (not just the alternatives), the current
+/// one marked. A choice that leaves the page as it is goes back to the page;
+/// only one that changes the page pops the old route before the new one opens,
+/// so Back does not walk the viewer backwards through every source they looked
+/// at.
+Future<UnifiedMediaRouteContext?> _changeSourceFromDetail(
   BuildContext context, {
   required UnifiedMediaGroup group,
   required UnifiedMediaRouteContext routeContext,
+  required bool pageFailed,
   required SourceAvailability Function(UnifiedMediaSource source) availabilityFor,
   required bool isOffline,
   required void Function(String)? onRefresh,
@@ -186,43 +191,56 @@ Future<void> _changeSourceFromDetail(
 }) async {
   const coordinator = UnifiedActivationCoordinator();
   final preferredServerId = await PreferredServerStore.read();
-  if (!context.mounted) return;
+  if (!context.mounted) return null;
+  // [group] dates from before any play on this page; the session's own watch
+  // state is what makes the picker and the position current.
+  // Not the ones the page dropped: a copy deleted meanwhile is no choice, and
+  // no fallback either.
+  final live = group
+      .withFreshSourceItems(context.readFreshWatchState, preferredSourceKey: routeContext.sourceKey)
+      .keepingSources(routeContext.availableSourceKeys);
   final ordered = rankSources(
-    group.sources.map((s) => s.withAvailability(availabilityFor(s))).toList(),
+    live.sources.map((s) => s.withAvailability(availabilityFor(s))).toList(),
     preferredSourceKey: routeContext.sourceKey,
   );
   final chosen = await showMobileSourcePickerSheet(
     context,
-    representative: group.representativeSource.item,
+    representative: live.representativeSource.item,
     sources: ordered,
     currentSourceKey: routeContext.sourceKey,
     preferredServerId: preferredServerId,
     coverage: routeContext.coverage,
   );
-  if (chosen == null || chosen.sourceKey == routeContext.sourceKey || !context.mounted) return;
+  if (chosen == null || !context.mounted) return null;
+  if (chosen.sourceKey == routeContext.sourceKey && !pageFailed) return null;
+
+  final next = coordinator.buildRouteContext(
+    group: live,
+    orderedSources: rankSources(ordered, preferredSourceKey: chosen.sourceKey),
+    sourceKey: chosen.sourceKey,
+    coverage: routeContext.coverage,
+    intent: UnifiedActivationIntent.details,
+    pageFollowsChoice: pageFailed,
+  );
+  unawaited(SourcePreferenceStore.remember(group.identity, chosen.sourceKey));
+  if (next.pageSourceKey == routeContext.pageSourceKey && !pageFailed) return next;
 
   final navigator = Navigator.of(context);
   if (navigator.canPop()) navigator.pop();
-  if (!context.mounted) return;
+  if (!context.mounted) return null;
 
-  unawaited(SourcePreferenceStore.remember(group.identity, chosen.sourceKey));
   await _routeMobileSource(
     context,
-    group: group,
+    group: live,
     source: chosen,
-    routeContext: coordinator.buildRouteContext(
-      group: group,
-      orderedSources: ordered,
-      sourceKey: chosen.sourceKey,
-      coverage: routeContext.coverage,
-      intent: UnifiedActivationIntent.details,
-    ),
+    routeContext: next,
     availabilityFor: availabilityFor,
     playDirectly: false,
     isOffline: isOffline,
     onRefresh: onRefresh,
     onPlaybackReturned: onPlaybackReturned,
   );
+  return null;
 }
 
 /// The offer after a failed playback start (hoofdstuk 15, mirrors tvOS'

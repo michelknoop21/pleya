@@ -666,6 +666,91 @@ void main() {
   // Threshold gating + scrobble
   // ============================================================
 
+  group('settling a play for the other sources', () {
+    test('the final position and the watched moment are heard, a tick is not', () async {
+      final client = _FakePlexClient(thresholdPercent: 90);
+      final player = _FakePlayer(position: const Duration(seconds: 50), duration: const Duration(seconds: 100));
+      final heard = <(int, bool)>[];
+      final tracker = PlaybackProgressTracker(
+        client: client,
+        metadata: _meta(),
+        player: player,
+        onSettled: (position, duration, {required watched}) => heard.add((position.inSeconds, watched)),
+      );
+      addTearDown(tracker.dispose);
+
+      await tracker.sendProgress('playing');
+      await pumpEventQueue();
+      expect(heard, isEmpty);
+
+      await tracker.sendProgress('stopped');
+      expect(heard, [(50, false)]);
+    });
+
+    test('crossing the threshold is heard as watched', () async {
+      final client = _FakePlexClient(thresholdPercent: 90);
+      final player = _FakePlayer(position: const Duration(seconds: 95), duration: const Duration(seconds: 100));
+      final heard = <(int, bool)>[];
+      final tracker = PlaybackProgressTracker(
+        client: client,
+        metadata: _meta(),
+        player: player,
+        onSettled: (position, duration, {required watched}) => heard.add((position.inSeconds, watched)),
+      );
+      addTearDown(tracker.dispose);
+
+      await tracker.sendProgress('stopped');
+
+      expect(heard, [(95, true)]);
+    });
+
+    test('a stop past the threshold is watched, also when the server missed it', () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final manager = MultiServerManager();
+      final queue = OfflineWatchSyncService(database: db, serverManager: manager);
+      addTearDown(() async {
+        queue.dispose();
+        manager.dispose();
+        await db.close();
+      });
+      final client = _FakePlexClient(thresholdPercent: 90)..throwOnNextCall = StateError('server down');
+      final player = _FakePlayer(position: const Duration(seconds: 95), duration: const Duration(seconds: 100));
+      final heard = <bool>[];
+      final tracker = PlaybackProgressTracker(
+        client: client,
+        metadata: _meta(),
+        player: player,
+        offlineWatchService: queue,
+        onSettled: (_, _, {required watched}) => heard.add(watched),
+      );
+      addTearDown(tracker.dispose);
+
+      await tracker.sendProgress('stopped');
+
+      expect(heard, [true], reason: 'its own queue row counts it as finished too');
+    });
+
+    test('a listener that throws reaches neither the report nor the play', () async {
+      final client = _FakePlexClient(thresholdPercent: 90);
+      final player = _FakePlayer(position: const Duration(seconds: 50), duration: const Duration(seconds: 100));
+      final tracker = PlaybackProgressTracker(
+        client: client,
+        metadata: _meta(),
+        player: player,
+        onSettled: (_, _, {required watched}) => throw StateError('second server'),
+      );
+      addTearDown(tracker.dispose);
+      final events = <WatchStateEvent>[];
+      final subscription = WatchStateNotifier().stream.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      await expectLater(tracker.sendProgress('stopped'), completes);
+      await pumpEventQueue();
+
+      expect(events.single.isFinal, isTrue, reason: 'the play still says where it stopped');
+    });
+  });
+
   group('threshold gating', () {
     test('does NOT scrobble when percent < watchedThresholdPercent', () async {
       // 89% < 90% threshold.
