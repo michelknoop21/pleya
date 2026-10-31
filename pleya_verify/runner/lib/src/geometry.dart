@@ -122,6 +122,19 @@ GeometryVerdict above(GeoRect a, GeoRect b) {
   return GeometryVerdict.fail('$a is not above $b (short by ${a.bottom - b.top})', {'shortBy': a.bottom - b.top});
 }
 
+/// How much of a peeking row has to show: its label and a band of posters.
+const double defaultMinPeek = 60;
+
+/// [a] must start at least [minPeek] above [b]'s top edge, whatever its bottom
+/// does. This is a row peeking over a bar: [below] and [above] both pass or
+/// fail without saying how much of it is on screen, and a row far under the
+/// fold is the failure this exists to catch.
+GeometryVerdict peeksAbove(GeoRect a, GeoRect b, {double minPeek = defaultMinPeek}) {
+  final peek = b.top - a.top;
+  if (peek >= minPeek) return GeometryVerdict.pass('$a shows $peek above $b');
+  return GeometryVerdict.fail('$a shows $peek above $b, wanted $minPeek', {'peek': peek, 'minPeek': minPeek});
+}
+
 /// [a] must be left of [b] — [a]'s right edge at or before [b]'s left edge.
 GeometryVerdict leftOf(GeoRect a, GeoRect b) {
   if (a.right <= b.left) return GeometryVerdict.pass('$a is left of $b');

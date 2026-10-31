@@ -209,6 +209,9 @@ class VerifyClient {
   Future<Map<String, Object?>> configureWindow(double width, double height) =>
       _postJson('/v1/window', {'width': width, 'height': height});
 
+  Future<Map<String, Object?>> configureOrientation(String orientation) =>
+      _postJson('/v1/window', {'orientation': orientation});
+
   Future<Map<String, Object?>> overlay({bool? enabled, bool? showIds, bool? showBounds}) => _postJson('/v1/overlay', {
     if (enabled != null) 'enabled': enabled,
     if (showIds != null) 'showIds': showIds,

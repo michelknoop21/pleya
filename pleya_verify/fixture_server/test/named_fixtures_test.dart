@@ -74,6 +74,26 @@ void main() {
     expect(subtitles.body, contains('Pleya sidecar'));
   });
 
+  group('catalog.hero-recent.v1', () {
+    test('Latest answers with a bare array of films inside the DEC-097 window', () async {
+      final jellyfin = JellyfinFakeServer();
+      expect(applyNamedFixture(PleyaFakeServer(), 'catalog.hero-recent.v1', jellyfin: jellyfin), isTrue);
+      final url = Uri.parse('http://fixture/jellyfin/Users/${JellyfinFakeServer.userId}/Items/Latest?Limit=100');
+      final response = await jellyfin.handle(http.Request('GET', url));
+      final films = jsonDecode(response.body) as List;
+      expect(films, hasLength(3));
+      final cutoff = DateTime.now().toUtc().subtract(const Duration(days: 90));
+      for (final film in films.cast<Map<String, dynamic>>()) {
+        expect(DateTime.parse(film['PremiereDate'] as String).isAfter(cutoff), isTrue, reason: '${film['Name']}');
+        expect(film['BackdropImageTags'], isNotEmpty, reason: '${film['Name']}');
+      }
+    });
+
+    test('needs the fake Jellyfin, because the Pleya fixture carries no date', () {
+      expect(applyNamedFixture(PleyaFakeServer(), 'catalog.hero-recent.v1'), isFalse);
+    });
+  });
+
   group('catalog.scores.v1', () {
     Future<Map<String, dynamic>> items(JellyfinFakeServer jellyfin, String sortOrder) async {
       final url = Uri.parse(

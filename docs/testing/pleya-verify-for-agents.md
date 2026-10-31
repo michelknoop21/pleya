@@ -21,9 +21,10 @@ Before running anything against a real target, check whether the target can actu
   <scenario.yaml>` builds and boots as part of the run; a missing toolchain or simulator surfaces
   as a `run`-time `ERROR`, not a silent skip.
   For iPad landscape, `configure_view` first accepts an already-landscape live viewport; otherwise
-  it uses the Simulator rotation shortcut. macOS Accessibility permission and an unlocked screen
-  are required for that shortcut. A platform acknowledgement without a landscape viewport never
-  counts as PASS.
+  the app asks iOS for the orientation over `POST /v1/window`, so nothing on the host takes the
+  keyboard or a window. A platform acknowledgement without a landscape viewport never counts as
+  PASS. iPadOS honors that request because the driver's isolated app copy sets
+  `UIRequiresFullScreen`, so Verify does not measure Split View or Stage Manager windows.
 - **iOS with more than one booted iPhone simulator**: set `PLEYA_VERIFY_IOS_UDID`. Without it the
   run stops before the build, reported as `FAILED` with a `failure_message` that lists the booted
   devices, instead of picking one.

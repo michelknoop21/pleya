@@ -73,6 +73,9 @@
     {"function": "sameColumn", "description": "exactly at the default tolerance boundary", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 1, "y": 0, "width": 50, "height": 50}}, "expectOk": true},
     {"function": "sameColumn", "description": "past the default tolerance", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 2, "y": 0, "width": 50, "height": 50}}, "expectOk": false},
     {"function": "sameColumn", "description": "custom larger tolerance allows a bigger delta", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 20, "y": 0, "width": 50, "height": 50}, "tolerance": 25}, "expectOk": true},
-    {"function": "sameColumn", "description": "custom smaller tolerance rejects a delta the default would allow", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0.6, "y": 0, "width": 50, "height": 50}, "tolerance": 0.5}, "expectOk": false}
-  ]
+    {"function": "sameColumn", "description": "custom smaller tolerance rejects a delta the default would allow", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0.6, "y": 0, "width": 50, "height": 50}, "tolerance": 0.5}, "expectOk": false},
+    {"function": "peeksAbove", "description": "a row starting exactly the minimum above the bar", "args": {"a": {"x": 0, "y": 640, "width": 800, "height": 300}, "b": {"x": 0, "y": 700, "width": 800, "height": 80}}, "expectOk": true},
+    {"function": "peeksAbove", "description": "one point short of the minimum", "args": {"a": {"x": 0, "y": 641, "width": 800, "height": 300}, "b": {"x": 0, "y": 700, "width": 800, "height": 80}}, "expectOk": false},
+    {"function": "peeksAbove", "description": "a row far under the fold, which below alone lets through", "args": {"a": {"x": 0, "y": 1200, "width": 800, "height": 300}, "b": {"x": 0, "y": 700, "width": 800, "height": 80}}, "expectOk": false}
+]
 }

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show DeviceOrientation, SystemChrome;
 import 'package:path_provider/path_provider.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -33,6 +34,16 @@ const int _kBasePort = int.fromEnvironment('PLEYA_VERIFY_PORT', defaultValue: 47
 const int _kPortWalkAttempts = 10;
 
 const String _kGitCommit = String.fromEnvironment('GIT_COMMIT');
+
+/// The orientations `POST /v1/window` locks for a `configure_view` name, or
+/// null for a name the contract does not know.
+@visibleForTesting
+List<DeviceOrientation>? automationOrientations(String name) => switch (name) {
+  'portrait' => const [DeviceOrientation.portraitUp],
+  'landscapeLeft' => const [DeviceOrientation.landscapeLeft],
+  'landscapeRight' => const [DeviceOrientation.landscapeRight],
+  _ => null,
+};
 
 /// Loopback-only HTTP control plane for Pleya Verify. Only ever constructed
 /// when [kPleyaVerify] is true — see [AutomationBootstrap].
@@ -306,6 +317,19 @@ class AutomationServer {
         await _respondInputResult(request, dispatchAutomationText(body['text'] as String? ?? ''));
       case '/v1/window':
         final body = await _readJsonBody(request);
+        if (body['orientation'] case final String orientation) {
+          final orientations = automationOrientations(orientation);
+          if (defaultTargetPlatform != TargetPlatform.iOS || orientations == null) {
+            request.response.statusCode = HttpStatus.badRequest;
+            await _respondJson(request, {'ok': false, 'error': 'orientation needs an iOS target and a known name'});
+            return;
+          }
+          // Through iOS, like the player's own rotation lock, so nothing on the
+          // host has to take the keyboard or a window to turn the simulator.
+          await SystemChrome.setPreferredOrientations(orientations);
+          await _respondJson(request, {'ok': true, 'orientation': orientation});
+          return;
+        }
         final width = (body['width'] as num?)?.toDouble();
         final height = (body['height'] as num?)?.toDouble();
         if (defaultTargetPlatform != TargetPlatform.macOS ||

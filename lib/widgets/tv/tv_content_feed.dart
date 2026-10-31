@@ -469,24 +469,6 @@ class TvContentFeedState extends State<TvContentFeed>
   /// made silently.
   ///
 
-  /// Hoofdstuk 9.5's last sentence, and fase-8 brief §22's "0 hero groups":
-  /// when the deduplicated recent-film pool is genuinely empty — a show-only
-  /// library, or every recent film ineligible — the billboard falls through to
-  /// the first Continue Watching title, then to the first hub's, exactly as
-  /// `DiscoverScreen` did before this phase. Existing behaviour, not new
-  /// fallback semantics.
-  ///
-  /// One slide, never a rotation over the whole library: this is a stand-in for
-  /// a featured title, and rotating it would claim these are new releases. And
-  /// it is still a group, so its Afspelen resolves through the fase-4
-  /// coördinator like every other card on the page.
-  List<UnifiedMediaGroup> _fallbackHero(List<UnifiedMediaHub> rows) {
-    for (final row in rows) {
-      if (row.groups.isNotEmpty) return [row.groups.first];
-    }
-    return const [];
-  }
-
   @override
   Widget build(BuildContext context) {
     final projection = context.watch<TvHomeProjectionProvider>();
@@ -504,19 +486,9 @@ class TvContentFeedState extends State<TvContentFeed>
     // literal here would be a second definition that can drift from it.
     final continueWatchingHubId = projection.continueWatching?.hubId;
 
-    // Hoofdstuk 9.7: an empty `heroGroups` for the films Home is *currently*
-    // showing is an answer; an empty one because the projection has not yet
-    // consumed the films that just landed is not. The two get different
-    // treatment — the fallback billboard for the first, reserved space for the
-    // second — because flashing a Continue Watching title as the billboard and
-    // then replacing it a beat later with a film is the exact "hero mag niet
-    // boven een al gefocuste rij ingevoegd worden" jump 9.7 forbids.
-    final heroSettled =
-        projection.hasProjectedHero && identical(projection.projectedLatestMovies, discover.latestMovies);
-    final heroGroups = projection.heroGroups.isNotEmpty
-        ? projection.heroGroups
-        : (heroSettled ? _fallbackHero(rows) : const <UnifiedMediaGroup>[]);
-    final reserveHeroSpace = heroGroups.isEmpty && !heroSettled;
+    final billboard = homeBillboardGroups(projection: projection, latestMovies: discover.latestMovies, rows: rows);
+    final heroGroups = billboard.groups;
+    final reserveHeroSpace = heroGroups.isEmpty && !billboard.settled;
     _hasHero = heroGroups.isNotEmpty;
     // In draw order, so "the row below this one" follows the page rather than
     // the order the keys were first created in — a Home-layout reorder or a

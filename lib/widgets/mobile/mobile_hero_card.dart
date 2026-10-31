@@ -12,6 +12,7 @@ import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../media/ids.dart';
 import '../../media/media_item.dart';
+import '../../media/media_item_types.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../services/unified_catalog/hero_text.dart';
 import '../../theme/mono_tokens.dart';
@@ -33,6 +34,20 @@ class MobileHeroCard extends StatefulWidget {
   final void Function(UnifiedMediaGroup group) onPlay;
   final void Function(UnifiedMediaGroup group) onSecondaryAction;
 
+  /// The slide to open on, by group id: the iPad turns between this card and
+  /// the billboard and keeps the slide. An id no longer in [groups] opens the
+  /// first slide.
+  final String? initialGroupId;
+
+  final ValueChanged<String>? onActiveGroupChanged;
+
+  /// Set where a slide can be an episode: the iPad's stand-in. Every slide on
+  /// the iPhone is a film, where the rule has nothing to hide.
+  final bool hideSpoilers;
+
+  /// Where a hardware keyboard leaves this card. Null keeps the buttons plain.
+  final MobileHeroKeyboardRoute? keyboardRoute;
+
   const MobileHeroCard({
     super.key,
     required this.groups,
@@ -40,17 +55,84 @@ class MobileHeroCard extends StatefulWidget {
     required this.height,
     required this.onPlay,
     required this.onSecondaryAction,
+    this.initialGroupId,
+    this.onActiveGroupChanged,
+    this.hideSpoilers = false,
+    this.keyboardRoute,
   });
 
   @override
-  State<MobileHeroCard> createState() => _MobileHeroCardState();
+  State<MobileHeroCard> createState() => MobileHeroCardState();
 }
 
-class _MobileHeroCardState extends State<MobileHeroCard> {
-  final PageController _controller = PageController();
+/// See [MobileHeroCard.keyboardRoute].
+class MobileHeroKeyboardRoute {
+  final VoidCallback? onNavigateUp;
+  final VoidCallback? onNavigateDown;
+  final VoidCallback? onBack;
+
+  const MobileHeroKeyboardRoute({this.onNavigateUp, this.onNavigateDown, this.onBack});
+}
+
+class MobileHeroCardState extends State<MobileHeroCard> {
+  late final PageController _controller;
   Timer? _timer;
   int _page = 0;
   ValueListenable<TickerModeData>? _tickerModeNotifier;
+
+  /// One pair per slide: the PageView holds two slides at once during a swipe,
+  /// and one node cannot sit on two buttons.
+  final Map<int, (FocusNode play, FocusNode secondary)> _focusNodes = {};
+
+  (FocusNode, FocusNode) _nodesFor(int page) => _focusNodes.putIfAbsent(
+    page,
+    () => (FocusNode(debugLabel: 'mobileHeroPlay$page'), FocusNode(debugLabel: 'mobileHeroSecondary$page')),
+  );
+
+  bool get hasFocus => _focusNodes.values.any((nodes) => nodes.$1.hasFocus || nodes.$2.hasFocus);
+
+  /// Puts the keyboard on Afspelen of the slide on screen.
+  bool focusPlay() {
+    if (widget.groups.isEmpty) return false;
+    _nodesFor(_page).$1.requestFocus();
+    return true;
+  }
+
+  /// LEFT and RIGHT off the buttons. Finite like the billboard's, and the focus
+  /// lands on the same button of the next slide.
+  void _stepSlide(int delta, {required bool toSecondary}) {
+    final next = _page + delta;
+    if (next < 0 || next >= widget.groups.length) return;
+    _controller.jumpToPage(next);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final nodes = _nodesFor(next);
+      (toSecondary ? nodes.$2 : nodes.$1).requestFocus();
+    });
+  }
+
+  MobileHeroActionFocus? _actionFocus(int page) {
+    final route = widget.keyboardRoute;
+    if (route == null) return null;
+    final (play, secondary) = _nodesFor(page);
+    return MobileHeroActionFocus(
+      playNode: play,
+      secondaryNode: secondary,
+      onNavigateUp: route.onNavigateUp,
+      onNavigateDown: route.onNavigateDown,
+      onBack: route.onBack,
+      onPreviousSlide: () => _stepSlide(-1, toSecondary: false),
+      onNextSlide: () => _stepSlide(1, toSecondary: true),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final restored = widget.groups.indexWhere((group) => group.groupId == widget.initialGroupId);
+    _page = restored < 0 ? 0 : restored;
+    _controller = PageController(initialPage: _page);
+  }
 
   @override
   void didChangeDependencies() {
@@ -83,6 +165,10 @@ class _MobileHeroCardState extends State<MobileHeroCard> {
     _tickerModeNotifier?.removeListener(_onTickerModeChanged);
     _timer?.cancel();
     _controller.dispose();
+    for (final nodes in _focusNodes.values) {
+      nodes.$1.dispose();
+      nodes.$2.dispose();
+    }
     super.dispose();
   }
 
@@ -104,7 +190,8 @@ class _MobileHeroCardState extends State<MobileHeroCard> {
   }
 
   void _advance() {
-    if (!mounted || !_controller.hasClients) return;
+    // A slide must not roll away from under the keyboard's focus.
+    if (!mounted || !_controller.hasClients || hasFocus) return;
     final next = (_page + 1) % widget.groups.length;
     _controller.animateToPage(next, duration: tokens(context).normal, curve: Curves.easeOut);
   }
@@ -116,6 +203,7 @@ class _MobileHeroCardState extends State<MobileHeroCard> {
     return AutomationNode(
       id: AutomationIds.discoverHero,
       role: 'hero',
+      state: () => {'activeTitle': heroTitleFor(widget.groups[_page.clamp(0, widget.groups.length - 1)])},
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: SizedBox(
@@ -138,13 +226,18 @@ class _MobileHeroCardState extends State<MobileHeroCard> {
                 PageView.builder(
                   controller: _controller,
                   itemCount: widget.groups.length,
-                  onPageChanged: (index) => setState(() => _page = index),
+                  onPageChanged: (index) {
+                    setState(() => _page = index);
+                    widget.onActiveGroupChanged?.call(widget.groups[index].groupId);
+                  },
                   itemBuilder: (context, index) => _MobileHeroSlide(
                     group: widget.groups[index],
                     width: widget.width,
                     height: widget.height,
                     onPlay: () => widget.onPlay(widget.groups[index]),
                     onSecondaryAction: () => widget.onSecondaryAction(widget.groups[index]),
+                    hideSpoilers: widget.hideSpoilers,
+                    focus: _actionFocus(index),
                   ),
                 ),
                 if (widget.groups.length > 1)
@@ -168,6 +261,8 @@ class _MobileHeroSlide extends StatelessWidget {
   final double height;
   final VoidCallback onPlay;
   final VoidCallback onSecondaryAction;
+  final bool hideSpoilers;
+  final MobileHeroActionFocus? focus;
 
   const _MobileHeroSlide({
     required this.group,
@@ -175,6 +270,8 @@ class _MobileHeroSlide extends StatelessWidget {
     required this.height,
     required this.onPlay,
     required this.onSecondaryAction,
+    required this.hideSpoilers,
+    this.focus,
   });
 
   @override
@@ -246,7 +343,7 @@ class _MobileHeroSlide extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
               ),
-              if (item.summary != null && item.summary!.isNotEmpty) ...[
+              if (item.summary != null && item.summary!.isNotEmpty && !(hideSpoilers && item.shouldHideSpoiler)) ...[
                 const SizedBox(height: 6),
                 Text(
                   item.summary!,
@@ -261,6 +358,7 @@ class _MobileHeroSlide extends StatelessWidget {
                 minutesLeft: minutesLeft,
                 onPlay: onPlay,
                 onSecondary: onSecondaryAction,
+                focus: focus,
               ),
             ],
           ),

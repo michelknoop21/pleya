@@ -272,6 +272,7 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
     final latestMovies = _discover.latestMovies;
     final allOnDeck = _discover.allContinueWatching;
     final hubs = _discover.hubs;
+    var failed = false;
     try {
       final failedServerIds = _discover.unansweredServerIds;
 
@@ -343,11 +344,16 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
       safeNotifyListeners();
     } catch (error, stackTrace) {
       appLogger.e('TvHomeProjectionProvider: projection failed', error: error, stackTrace: stackTrace);
+      failed = true;
     } finally {
       _projecting = false;
       if (_projectionPending) {
         _projectionPending = false;
         unawaited(_project());
+      } else if (failed) {
+        // [isProjecting] went false without a result: a page waiting on it
+        // would otherwise never hear that nothing is coming.
+        safeNotifyListeners();
       }
     }
   }

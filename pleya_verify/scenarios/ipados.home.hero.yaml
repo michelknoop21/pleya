@@ -1,0 +1,62 @@
+name: ipados.home.hero
+target: ios-sim
+# A-17, Michel 31 Oct 2026: iPad landscape carries the tvOS billboard, iPad
+# portrait the iPhone hero. Run with PLEYA_VERIFY_IOS_UDID on an iPad simulator.
+#
+# Three films inside the DEC-097 window on the fixture's fake Jellyfin, because
+# the Pleya fixture carries no release date. That gives a real rotation, so a
+# turn of the device can prove it keeps the slide. The drags stay well inside
+# the eight-second rotation window; a rotation restarts that window as well.
+setup:
+  - reset_app
+  - seed: catalog.hero-recent.v1
+  - launch
+  - sign_in: {base_url: "{{fixture_jellyfin}}", username: verify-owner, password: verify-password, backend: jellyfin}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - configure_view: {orientation: portrait}
+  - assert_viewport: {orientation: portrait}
+  - wait_until: {id: discover.hero, timeout: 15000}
+
+  # Portrait: the iPhone card, inset from the page edge, buttons you can hit.
+  - assert: {id: discover.hero, insideViewport: true, leftInset: 16}
+  - assert: {id: discover.hero.play, insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: discover.hero, state: {activeTitle: Northern Crossing}}
+  - assert: {id: nav.bar, insideViewport: true}
+  - snapshot: 00-portrait
+
+  # Swipe to the second slide, then turn the device under it.
+  - drag: {startX: 640, startY: 500, endX: 200, endY: 500, durationMs: 250}
+  - settle: 700
+  - assert: {id: discover.hero, state: {activeTitle: Salt Harbour}}
+  - configure_view: {orientation: landscapeLeft}
+  - assert_viewport: {orientation: landscape}
+  - settle: 900
+
+  # Landscape: the tvOS billboard, full bleed, on the same slide.
+  - assert: {id: discover.hero, leftInset: 0, state: {activeTitle: Salt Harbour, textVisible: true}}
+  - assert: {id: discover.hero.play, insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: nav.bar, insideViewport: true}
+  - snapshot: 01-landscape-second-slide
+
+  # The billboard takes a swipe here, where tvOS takes the remote.
+  - drag: {startX: 900, startY: 250, endX: 450, endY: 250, durationMs: 250}
+  - settle: 700
+  - assert: {id: discover.hero, state: {activeTitle: The Long Thaw}}
+  - snapshot: 02-landscape-third-slide
+
+  # And back, still on that slide.
+  - configure_view: {orientation: portrait}
+  - assert_viewport: {orientation: portrait}
+  - settle: 900
+  - assert: {id: discover.hero, leftInset: 16, state: {activeTitle: The Long Thaw}}
+  - snapshot: 03-portrait-third-slide
+
+  # Afspelen on the card takes a tap, in the orientation that started last.
+  - configure_view: {orientation: landscapeLeft}
+  - assert_viewport: {orientation: landscape}
+  - settle: 900
+  - tap: {id: discover.hero.play}
+  - settle: 1500
+  - snapshot: 04-landscape-play-tapped
