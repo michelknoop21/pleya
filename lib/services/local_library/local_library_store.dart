@@ -30,6 +30,9 @@ class LocalLibraryStore {
 
   static String digest(String value) => sha256.convert(utf8.encode(value)).toString();
   static String _posterKey(String serverId, String path) => digest('$serverId|${artworkStorageKey(path)}');
+  static Set<String> _posterKeys(Set<(String, String)> posters) => {
+    for (final (serverId, path) in posters) _posterKey(serverId, path),
+  };
   List<MediaItem> get items => _items.values.expand((v) => v.values).toList(growable: false);
   List<MediaLibrary> get libraries => _libraries.values.toList(growable: false);
   bool isComplete(String key) => _completed.containsKey(key);
@@ -272,12 +275,15 @@ class LocalLibraryStore {
   String? posterPath(String serverId, String path) => _posters[_posterKey(serverId, path)];
 
   Future<void> _pruneUnreferencedPosters() async {
-    final referenced = <String>{};
+    final posters = <(String, String)>{};
     for (final item in items) {
       for (final path in [item.thumbPath, item.parentThumbPath, item.grandparentThumbPath]) {
-        if (item.serverId != null && path != null) referenced.add(_posterKey(item.serverId!, path));
+        if (item.serverId != null && path != null) posters.add((item.serverId!, path));
       }
     }
+    // A hash per poster, in the hundreds of thousands on a large library: off
+    // the UI thread, like the rest of a scan.
+    final referenced = await tryIsolateRun(() => _posterKeys(posters));
     for (final key in _posters.keys.where((k) => !referenced.contains(k)).toList()) {
       final file = File(_posters.remove(key)!);
       if (await file.exists()) await file.delete();
