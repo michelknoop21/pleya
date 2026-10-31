@@ -181,6 +181,7 @@ extension _MediaDetailUnifiedSource on _MediaDetailScreenState {
               id: AutomationIds.mediaDetailSource,
               role: 'button',
               state: () => {'server': parts.first},
+              focusNode: _unifiedSource.lineFocus,
               child: FocusableWrapper(
                 focusNode: _unifiedSource.lineFocus,
                 borderRadius: 999,
