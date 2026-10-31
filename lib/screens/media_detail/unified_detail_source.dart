@@ -191,7 +191,7 @@ extension _MediaDetailUnifiedSource on _MediaDetailScreenState {
                 onNavigateDown: _focusBelowSourceLine,
                 onSelect: () {
                   // The picker opens a route; suppress this press's key-up so it
-                  // does not land on whatever takes focus next (CLAUDE.md).
+                  // does not land on whatever takes focus next.
                   SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
                   unawaited(_changeUnifiedSource(context));
                 },
