@@ -84,6 +84,8 @@ import '../services/settings_service.dart';
 import '../services/track_preference_store.dart';
 import '../services/rating_actions.dart';
 import '../services/unified_action_outcome.dart';
+import '../services/unified_catalog/unified_title_playback.dart';
+import '../services/unified_catalog/unified_title_scope.dart';
 import '../services/watch_actions.dart';
 import '../widgets/settings_builder.dart';
 import '../utils/grid_size_calculator.dart';
@@ -165,6 +167,7 @@ part 'media_detail/mobile_detail_view.dart';
 part 'media_detail/mobile_episodes_section.dart';
 part 'media_detail/synopsis_panel.dart';
 part 'media_detail/tv_season_chips.dart';
+part 'media_detail/unified_detail_source.dart';
 
 const double _tvDetailTallPosterScale = TvBrowseRailLayout.compactTallPosterScale;
 // Mockup 37 C (MOC-10) shows full-width episode/extras cards, not the
@@ -342,8 +345,7 @@ PageRoute<bool> mediaDetailRoute({
 class _MediaDetailScreenState extends State<MediaDetailScreen>
     with WatchStateAware, DeletionAware, MountedSetStateMixin, ServerBoundMediaMixin, RouteAware, WidgetsBindingObserver
     implements MediaDetailPlaybackRefresh {
-  /// Whether this page has started a play, see `_carriedResumeFor`.
-  bool _carriedResumeSpent = false;
+  final _UnifiedDetailSource _unifiedSource = _UnifiedDetailSource();
 
   /// Public input alias — used as the live source of truth until the detail
   /// fetch returns. Holds backend-neutral [MediaItem] data.
@@ -361,11 +363,11 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   MediaWatchStats? _watchStats;
   MediaItem? _onDeckEpisode;
   bool _isLoadingMetadata = true;
-  String? _detailAudioTargetId;
+  String? _detailAudioRequest;
   MediaItem? _detailAudioTarget;
   MediaFileInfo? _detailFileInfo;
   int? _selectedDetailAudioTrackId, _selectedDetailSubtitleTrackId, _detailAudioPickId, _detailSubtitlePickId;
-  bool _detailAudioLoadInFlight = false, _detailSubtitlePicked = false, _detailPickRemembered = true;
+  bool _detailSubtitlePicked = false, _detailPickRemembered = true;
 
   void _updateDetailAudioState(VoidCallback update) => setState(update);
 
@@ -784,6 +786,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
           _fullMetadata = refreshedMetadata;
           _onDeckEpisode = refreshedOnDeck;
         });
+        unawaited(_syncUnifiedOnDeck());
       }
 
       // Do not refresh seasons/episodes here. The watch event has already
@@ -1317,7 +1320,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   /// carrying its parent's context today, which is exactly why the guard is
   /// worth a line now rather than after a refactor makes it live.
   RatingMirror? _buildRatingMirror(MediaItem metadata) {
-    final routeContext = widget.unifiedRouteContext;
+    final routeContext = _routeContext;
     if (routeContext == null || !routeContext.hasAlternativeSources) return null;
     if (parseGlobalKey(routeContext.pageSourceKey)?.ratingKey != metadata.id) return null;
 
@@ -1676,6 +1679,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         _isLoadingMetadata = false;
       });
       _closeSelectTrace();
+      unawaited(_syncUnifiedOnDeck());
 
       if (base.isShow) {
         unawaited(_loadSeasons());
@@ -1729,8 +1733,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   /// means nothing to offer here; hoofdstuk 21.7 leaves that case to the
   /// existing offline/auth/not-found handling, unchanged by this method.
   void _offerAlternativeSourceAfterDetailLoadFailure() {
-    final onChangeSource = widget.onChangeSource;
-    if (onChangeSource == null) return;
+    if (widget.onChangeSource == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_metadataLoadFailed) return;
       unawaited(
@@ -1741,7 +1744,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
             title: t.sourcePicker.detailLoadFailedTitle,
             onChooseAnother: () {
               OverlaySheetController.closeAdaptive(sheetContext, null);
-              unawaited(onChangeSource(context));
+              unawaited(_changeUnifiedSource(context, pageFailed: true));
             },
             onClose: () => OverlaySheetController.closeAdaptive(sheetContext, null),
           ),
@@ -3683,10 +3686,13 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    return AutomationScreen(
-      id: AutomationIds.screenMediaDetail,
-      readiness: _detailReadiness,
-      child: _buildInner(context),
+    return UnifiedTitleScope(
+      title: _unifiedTitle,
+      child: AutomationScreen(
+        id: AutomationIds.screenMediaDetail,
+        readiness: _detailReadiness,
+        child: _buildInner(context),
+      ),
     );
   }
 
@@ -5609,22 +5615,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   }
 
   IconData _getPlayButtonIcon(MediaItem metadata) {
-    // For TV shows
-    if (metadata.isShow) {
-      if (_onDeckEpisode != null) {
-        final episode = _fresh(_onDeckEpisode!);
-        // Check if episode has been partially watched
-        if (episode.viewOffsetMs != null && episode.viewOffsetMs! > 0) {
-          return Symbols.resume_rounded; // Resume icon
-        }
-      }
-    } else {
-      // For movies or episodes
-      final played = _playedItem(metadata);
-      if ((played.viewOffsetMs ?? 0) > 0 || _carriedResumeFor(played) != null) {
-        return Symbols.resume_rounded; // Resume icon
-      }
-    }
+    if (_playResumes(metadata)) return Symbols.resume_rounded;
 
     return Symbols.play_arrow_rounded; // Default play icon
   }

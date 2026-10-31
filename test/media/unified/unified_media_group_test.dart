@@ -110,6 +110,24 @@ void main() {
     });
   });
 
+  group('withSource', () {
+    test('a source the picker found later becomes a member', () {
+      final group = _group([_item('a', durationMs: 7200000)]);
+      final late = UnifiedMediaSource.fromItem(_item('b', durationMs: 7200000));
+
+      final grown = group.withSource(late);
+
+      expect(grown.itemOf('b:sintel').serverId, 'b');
+      expect(grown.representativeSourceKey, group.representativeSourceKey);
+    });
+
+    test('a member stays one member', () {
+      final group = _group([_item('a')]);
+
+      expect(group.withSource(group.sources.single), same(group));
+    });
+  });
+
   group('withFreshSourceItems', () {
     test('the session\'s own watch state reaches a group a route held on to', () {
       final held = _item('a', viewOffsetMs: 40 * 60000, durationMs: 7200000, lastViewedAt: 1000);

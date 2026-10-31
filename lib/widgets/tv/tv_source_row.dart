@@ -17,6 +17,9 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
+
 import '../../focus/dpad_navigator.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
@@ -125,17 +128,23 @@ class TvSourceRowListState extends State<TvSourceRowList> {
             itemBuilder: (context, index) {
               final descriptor = widget.descriptors[index];
               final key = descriptor.sourceKey;
-              return TvSourceRow(
-                key: ValueKey(key),
-                externalFocusNode: key == widget.initialFocusSourceKey ? widget.initialFocusNode : null,
-                scale: scale,
-                descriptor: descriptor,
-                index: index,
-                total: widget.descriptors.length,
-                shouldTakeFocus: key == widget.focusedSourceKey,
-                idleColor: mono.text.withValues(alpha: TvSourcePickerLayout.idleRowFill),
-                onSelect: descriptor.isUsable ? () => widget.onSelectSource(key) : null,
-                onFocused: () => widget.onFocusSource(key),
+              return AutomationNode(
+                id: AutomationIds.sheetSourcePickerRow,
+                instance: '$index',
+                role: 'list.item',
+                state: () => {'server': descriptor.serverName, 'usable': descriptor.isUsable},
+                child: TvSourceRow(
+                  key: ValueKey(key),
+                  externalFocusNode: key == widget.initialFocusSourceKey ? widget.initialFocusNode : null,
+                  scale: scale,
+                  descriptor: descriptor,
+                  index: index,
+                  total: widget.descriptors.length,
+                  shouldTakeFocus: key == widget.focusedSourceKey,
+                  idleColor: mono.text.withValues(alpha: TvSourcePickerLayout.idleRowFill),
+                  onSelect: descriptor.isUsable ? () => widget.onSelectSource(key) : null,
+                  onFocused: () => widget.onFocusSource(key),
+                ),
               );
             },
           ),

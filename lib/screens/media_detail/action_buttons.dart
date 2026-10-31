@@ -44,41 +44,6 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     }
   }
 
-  /// Starts [item] with the tracks picked on this page (inert when the tech
-  /// table describes another item) and refreshes the page afterwards.
-  Future<void> _playWithDetailPick(MediaItem item) async {
-    final played = _playedItem(item);
-    final pick = _detailTrackPickFor(played);
-    final startPosition = _carriedResumeFor(played);
-    _carriedResumeSpent = true;
-    await navigateToVideoPlayerWithRefresh(
-      context,
-      metadata: played,
-      preferredAudioTrack: pick.audio,
-      preferredSubtitleTrack: pick.subtitle,
-      isOffline: widget.isOffline,
-      startPosition: startPosition,
-      onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: item.id)),
-    );
-  }
-
-  /// What a play of the page's own item starts: the chosen source, which a
-  /// film's page need not show. Episodes listed on the page play themselves.
-  MediaItem _playedItem(MediaItem item) {
-    final context = widget.unifiedRouteContext;
-    final page = context == null ? null : parseGlobalKey(context.pageSourceKey)?.ratingKey;
-    return page == item.id ? context?.playItem ?? item : item;
-  }
-
-  /// The position [item] continues from when it lives on another source of
-  /// this title. The context belongs to the page's own item and to the first
-  /// play: from then on the source holds a position of its own.
-  Duration? _carriedResumeFor(MediaItem item) {
-    final context = widget.unifiedRouteContext;
-    if (_carriedResumeSpent || context == null || parseGlobalKey(context.sourceKey)?.ratingKey != item.id) return null;
-    return (item.viewOffsetMs ?? 0) > 0 ? null : context.carriedResume;
-  }
-
   Widget _buildActionButtons(MediaItem metadata) {
     if (widget.isOffline) context.watch<DownloadProvider>();
     final isTv = PlatformDetector.isTV();
@@ -406,170 +371,6 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     );
   }
 
-  /// Hoofdstuk 15's `Bron: NAS • Films 4K   [ Wijzigen ]`.
-  ///
-  /// Rendered only when the page was reached through a unified group that
-  /// actually has more than one source — a single-source title has nothing to
-  /// change to, and a line saying so would be chrome. Returns a zero-size box
-  /// otherwise, which is every entry point that is not a unified activation.
-  ///
-  /// [card] is the iPhone look (`.src` in D-01, DEC-140): a full-width tile
-  /// with the whole tile as the change target. TV and the other layouts keep
-  /// the caption plus chip.
-  Widget _buildUnifiedSourceLine({bool card = false}) {
-    final routeContext = widget.unifiedRouteContext;
-    if (routeContext == null || !routeContext.hasAlternativeSources) return const SizedBox.shrink();
-    // The card sits on the always-dark phone detail page; a Builder gives it
-    // the context under that page's theme instead of the State's (app) one.
-    if (card) return Builder(builder: (context) => _buildUnifiedSourceCard(context, routeContext));
-
-    final isTv = PlatformDetector.isTV();
-    final tvScale = TvLayoutConstants.scaleOf(context);
-    final mono = tokens(context);
-    final shown = routeContext.playItem ?? _metadata;
-    final parts = [
-      shown.serverName ?? routeContext.sourceKey.split(':').first,
-      if ((shown.libraryTitle ?? '').trim().isNotEmpty) shown.libraryTitle!.trim(),
-    ];
-    final label = t.sourcePicker.sourceLabel(source: parts.join(' • '));
-    // DENS1: HIG Caption 2 (23 pt), the tvOS minimum; `13 * scaleOf` was 20.
-    final fontSize = isTv ? TvHig.caption2 * TvHig.of(context) : 13.0;
-    final onChangeSource = widget.onChangeSource;
-
-    return Padding(
-      padding: EdgeInsets.only(top: isTv ? 10 * tvScale : 12),
-      child: Row(
-        mainAxisSize: .min,
-        children: [
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: .ellipsis,
-              style: TextStyle(color: mono.textMuted, fontSize: fontSize, fontWeight: .w500),
-            ),
-          ),
-          if (onChangeSource != null) ...[
-            SizedBox(width: isTv ? 10 * tvScale : 12),
-            FocusableWrapper(
-              borderRadius: 999,
-              disableScale: true,
-              semanticLabel: t.sourcePicker.change,
-              onSelect: () {
-                // The picker opens a route; suppress this press's key-up so it
-                // does not land on whatever takes focus next (CLAUDE.md).
-                SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
-                unawaited(onChangeSource(context));
-              },
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: isTv ? 14 * tvScale : 14, vertical: isTv ? 6 * tvScale : 6),
-                decoration: BoxDecoration(
-                  color: mono.text.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  t.sourcePicker.change,
-                  style: TextStyle(color: mono.text, fontSize: fontSize, fontWeight: .w700),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUnifiedSourceCard(BuildContext context, UnifiedMediaRouteContext routeContext) {
-    final onSurface = Theme.of(context).colorScheme.onSurface;
-    final shown = routeContext.playItem ?? _metadata;
-    final parts = [
-      shown.serverName ?? routeContext.sourceKey.split(':').first,
-      if ((shown.libraryTitle ?? '').trim().isNotEmpty) shown.libraryTitle!.trim(),
-    ];
-    final onChangeSource = widget.onChangeSource;
-    final tile = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-      decoration: BoxDecoration(color: onSurface.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        children: [
-          Text(t.sourcePicker.source, style: TextStyle(color: onSurface.withValues(alpha: 0.70), fontSize: 15)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              parts.join(' · '),
-              maxLines: 1,
-              overflow: .ellipsis,
-              style: TextStyle(color: onSurface, fontSize: 15),
-            ),
-          ),
-          if (onChangeSource != null)
-            Text(
-              t.sourcePicker.change,
-              style: TextStyle(color: onSurface, fontSize: 15, fontWeight: .w700),
-            ),
-        ],
-      ),
-    );
-    return Padding(
-      padding: const EdgeInsets.only(top: 20),
-      child: AutomationNode(
-        id: AutomationIds.mediaDetailSource,
-        role: 'button',
-        state: () => {'server': parts.first},
-        child: onChangeSource == null
-            ? tile
-            : FocusableWrapper(
-                borderRadius: 12,
-                disableScale: true,
-                semanticLabel: t.sourcePicker.change,
-                onSelect: () => unawaited(onChangeSource(context)),
-                // FocusableWrapper only takes keys; this row is the phone's.
-                child: GestureDetector(behavior: .opaque, onTap: () => unawaited(onChangeSource(context)), child: tile),
-              ),
-      ),
-    );
-  }
-
-  /// The height [_buildUnifiedSourceLine] actually renders, so the two hero
-  /// layouts in media_detail_screen.dart can reserve room for it before
-  /// laying out their Column.
-  ///
-  /// Measures the real text line height via [TextPainter] against the same
-  /// ambient [DefaultTextStyle] `_buildUnifiedSourceLine`'s `Text` widgets
-  /// resolve against (fontFamily, any theme-level `height` multiplier, text
-  /// scaling) instead of guessing a line-height multiplier — a guessed
-  /// constant here and the real render can only drift apart; a measurement
-  /// against the same style authority can't. The chip is wrapped in a
-  /// [FocusableWrapper], whose ring decoration always carries a
-  /// [FocusTheme.focusBorderWidth]-wide border (transparent when unfocused,
-  /// but still there) — `Container`/`AnimatedContainer` folds a decoration's
-  /// border into its own effective padding, so the wrapper is
-  /// `2 * FocusTheme.focusBorderWidth` taller than its child, unscaled by
-  /// `tvScale` since the border itself never scales.
-  double _unifiedSourceLineHeight(BuildContext context) {
-    final routeContext = widget.unifiedRouteContext;
-    if (routeContext == null || !routeContext.hasAlternativeSources) return 0.0;
-    final isTv = PlatformDetector.isTV();
-    final tvScale = TvLayoutConstants.scaleOf(context);
-    final fontSize = isTv ? TvHig.caption2 * TvHig.of(context) : 13.0;
-    final topPadding = isTv ? 10 * tvScale : 12.0;
-    final chipVerticalPadding = isTv ? 6 * tvScale : 6.0;
-    final baseStyle = DefaultTextStyle.of(context).style;
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: 'Mg',
-        style: baseStyle.copyWith(fontSize: fontSize, fontWeight: FontWeight.w700),
-      ),
-      textDirection: Directionality.of(context),
-      textScaler: MediaQuery.textScalerOf(context),
-    )..layout();
-    final textLineHeight = textPainter.height;
-    final rowHeight = widget.onChangeSource != null
-        ? (chipVerticalPadding * 2) + textLineHeight + (2 * FocusTheme.focusBorderWidth)
-        : textLineHeight;
-    return topPadding + rowHeight;
-  }
-
   /// Resolve the item's TMDB id and open the seerr request sheet. The id
   /// lookup happens on press (not preemptively) so the detail screen stays
   /// cheap; a missing id just surfaces a non-fatal error.
@@ -597,7 +398,14 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
   Future<void> _handleWatchedTogglePressed(MediaItem metadata) async {
     try {
       final isWatched = metadata.isWatched;
-      final outcome = await WatchActions.setWatched(context, metadata, watched: !isWatched, offline: widget.isOffline);
+      final outcome = await WatchActions.setWatched(
+        context,
+        metadata,
+        watched: !isWatched,
+        offline: widget.isOffline,
+        // This context sits above the scope the page builds for its rows.
+        unifiedTitle: _unifiedTitle,
+      );
       if (!mounted) return;
       switch (outcome) {
         case WatchMarkOutcome.queuedOffline:
@@ -650,8 +458,8 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
   }) {
     return MediaContextMenu(
       key: _contextMenuKey,
-      item: metadata,
-      onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
+      item: _menuItem(metadata),
+      onRefresh: (_) => unawaited(_refreshItemInPlace(metadata.id)),
       onPlayTrailer: onPlayTrailer,
       child: Builder(
         builder: (buttonContext) {

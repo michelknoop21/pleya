@@ -92,6 +92,21 @@ class UnifiedMediaGroup {
     );
   }
 
+  /// This group with [source] in it. The picker folds in sources a fan-out
+  /// found after the group was built (hoofdstuk 14.5), and one of those can be
+  /// the one the viewer picks. Returns `this` when it is already a member.
+  UnifiedMediaGroup withSource(UnifiedMediaSource source) {
+    if (sources.any((s) => s.sourceKey == source.sourceKey)) return this;
+    final updated = [...sources, source];
+    return UnifiedMediaGroup(
+      groupId: groupId,
+      identity: identity,
+      sources: updated,
+      representativeSourceKey: representativeSourceKey,
+      watchState: selectRepresentativeWatchState({for (final s in updated) s.sourceKey: s.item}),
+    );
+  }
+
   /// This group with every membership's [MediaItem] passed through [fresh],
   /// and the watch state recomputed once.
   ///

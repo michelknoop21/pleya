@@ -124,6 +124,10 @@ class UnifiedTitlePlayback {
     _ => false,
   };
 
+  /// The route for a page of [item] below this title's own page.
+  UnifiedMediaRouteContext? routeFor(MediaItem item) =>
+      (item.isSeason || item.isEpisode) && holds(item) ? routeContext : null;
+
   /// Reads every source's episode list ahead of a play, so a source that goes
   /// away during it can still be addressed by the queue.
   Future<void> prime() async {

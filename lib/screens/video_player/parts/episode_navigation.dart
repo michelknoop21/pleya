@@ -93,6 +93,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         metadata: metadata,
         usePushReplacement: true,
         isOffline: _offlineLibraryMode,
+        unifiedTitle: widget.unifiedTitle,
       );
     } finally {
       // Still mounted ⇒ no push happened (external-player branch or a
@@ -113,7 +114,8 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
 
     await _reloadMediaInPlace(
       metadata: episodeMetadata,
-      selectedMediaIndex: _effectiveSelectedMediaIndex,
+      // A version number means nothing on another server's copy.
+      selectedMediaIndex: episodeMetadata.serverId == _currentMetadata.serverId ? _effectiveSelectedMediaIndex : 0,
       selectedMediaSourceId: null,
       qualityPreset: _selectedQualityPreset,
       // Stream ids are per-part: the previous episode's audio id is

@@ -17,6 +17,8 @@ import '../screens/video_player_screen.dart';
 import '../services/external_player_service.dart';
 import '../services/offline_watch_sync_service.dart';
 import '../services/settings_service.dart';
+import '../services/unified_catalog/unified_title_playback.dart';
+import '../services/unified_catalog/unified_title_scope.dart';
 import '../i18n/strings.g.dart';
 import '../widgets/notice/notice.dart';
 import '../widgets/notice/notice_controller.dart';
@@ -203,6 +205,11 @@ Future<bool?> navigateToVideoPlayer(
   Duration? startPosition,
   String? handoffId,
 
+  /// The title [metadata] belongs to when it has more than one source. Read
+  /// from the [UnifiedTitleScope] above [context] when the caller has none: a
+  /// play from a row or a menu on a detail page ends here too.
+  UnifiedTitlePlayback? unifiedTitle,
+
   /// Called when the player's route is pushed, with a future that completes
   /// when that route is gone. Never called when no player starts.
   void Function(Future<void> gone)? onPlayerRoute,
@@ -254,6 +261,15 @@ Future<bool?> navigateToVideoPlayer(
       : null;
 
   try {
+    final candidateTitle = isOffline ? null : unifiedTitle ?? UnifiedTitleScope.maybeOf(context);
+    final title = candidateTitle != null && candidateTitle.holds(metadata) ? candidateTitle : null;
+    // A version picked from a menu names this very item, so it stays.
+    if (title != null && selectedMediaIndex == null && selectedMediaSourceId == null) {
+      final target = await title.targetFor(metadata);
+      if (!context.mounted) return null;
+      metadata = resolveWatchState ? target.item : target.item.copyWith(viewOffsetMs: 0);
+      if (resolveWatchState) startPosition ??= target.carriedResume;
+    }
     if (resolveWatchState) {
       metadata = context.readFreshWatchState(metadata);
     }
@@ -386,6 +402,7 @@ Future<bool?> navigateToVideoPlayer(
         onPlaybackInitFailed: onPlaybackInitFailed,
         startPosition: startPosition,
         handoffId: handoffId,
+        unifiedTitle: title,
       ),
     );
 
@@ -431,12 +448,14 @@ Future<bool?> navigateToVideoPlayerWithRefresh(
   String? selectedMediaSourceId,
   bool usePushReplacement = false,
   Duration? startPosition,
+  UnifiedTitlePlayback? unifiedTitle,
 }) async {
   final result = await navigateToVideoPlayer(
     context,
     metadata: metadata,
     isOffline: isOffline,
     startPosition: startPosition,
+    unifiedTitle: unifiedTitle,
     preferredAudioTrack: preferredAudioTrack,
     preferredSubtitleTrack: preferredSubtitleTrack,
     preferredSecondarySubtitleTrack: preferredSecondarySubtitleTrack,
@@ -462,6 +481,7 @@ Future<bool?> playFromBeginning(
   bool isOffline = false,
   AudioTrack? preferredAudioTrack,
   SubtitleTrack? preferredSubtitleTrack,
+  UnifiedTitlePlayback? unifiedTitle,
 }) {
   return navigateToVideoPlayer(
     context,
@@ -470,6 +490,7 @@ Future<bool?> playFromBeginning(
     preferredSubtitleTrack: preferredSubtitleTrack,
     resolveWatchState: false,
     isOffline: isOffline,
+    unifiedTitle: unifiedTitle,
   );
 }
 

@@ -15,6 +15,7 @@ import '../screens/main_screen.dart';
 import '../screens/media_detail_screen.dart';
 import '../screens/playlist/playlist_detail_screen.dart';
 import '../services/settings_service.dart';
+import '../services/unified_catalog/unified_title_scope.dart';
 import '../utils/global_key_utils.dart';
 import 'platform_detector.dart';
 import 'plex_library_section_helpers.dart';
@@ -41,7 +42,18 @@ enum MediaNavigationResult {
 /// and the replacement route land inside the profile navigator the screen is
 /// mounted in — a context from further up would push on the root navigator and
 /// throw `ProfileNavigationScope is required for profile routes`.
-typedef UnifiedSourceChangeCallback = Future<void> Function(BuildContext detailContext);
+///
+/// [current] is the route as the page holds it now, after any earlier change.
+/// [pageFailed] says the page itself could not load: the choice then becomes
+/// the page. Answers the new context when the page stays and only what Play
+/// starts changes, so the page keeps its state and its focus. Null when the
+/// viewer cancelled, or when the route was replaced.
+typedef UnifiedSourceChangeCallback =
+    Future<UnifiedMediaRouteContext?> Function(
+      BuildContext detailContext,
+      UnifiedMediaRouteContext current, {
+      bool pageFailed,
+    });
 
 class MediaDetailNavigationTarget {
   final MediaItem metadata;
@@ -275,6 +287,10 @@ Future<MediaNavigationResult> navigateToMediaItem(
     return MediaNavigationResult.unsupported;
   }
   final mi = item;
+  final unifiedTitle = isOffline ? null : unifiedTitleFor(context, unifiedRouteContext);
+  // Without a title the context is all there is. With one, the position is
+  // read at the start, from the session's newest watch state.
+  final carriedResume = unifiedTitle == null ? unifiedRouteContext?.carriedResume : null;
   final settings = SettingsService.instanceOrNull;
   final continueWatchingAction = settings?.read(SettingsService.continueWatchingAction) ?? ContinueWatchingAction.play;
   final episodeAction = settings?.read(SettingsService.episodeAction) ?? EpisodeAction.play;
@@ -374,7 +390,8 @@ Future<MediaNavigationResult> navigateToMediaItem(
         metadata: restartFromBeginning ? mi.copyWith(viewOffsetMs: 0) : mi,
         isOffline: isOffline,
         resolveWatchState: !restartFromBeginning,
-        startPosition: restartFromBeginning ? null : unifiedRouteContext?.carriedResume,
+        startPosition: restartFromBeginning ? null : carriedResume,
+        unifiedTitle: unifiedTitle,
         onPlaybackInitFailed: unifiedRouteContext == null ? null : onPlaybackInitFailed,
       );
       if (context.mounted) {
@@ -391,7 +408,8 @@ Future<MediaNavigationResult> navigateToMediaItem(
           metadata: restartFromBeginning ? played.copyWith(viewOffsetMs: 0) : played,
           isOffline: isOffline,
           resolveWatchState: !restartFromBeginning,
-          startPosition: restartFromBeginning ? null : unifiedRouteContext?.carriedResume,
+          startPosition: restartFromBeginning ? null : carriedResume,
+          unifiedTitle: unifiedTitle,
           onPlaybackInitFailed: unifiedRouteContext == null ? null : onPlaybackInitFailed,
         );
         if (context.mounted) {
@@ -476,6 +494,9 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
   TvFocusRestoreTarget? restoreTarget,
 }) async {
   final target = mediaDetailNavigationTargetIn(context, mi, metadataOverride: metadataOverride);
+  // A season or episode opened from a title's page keeps that title's choice.
+  // Read-only there: the source is changed on the title's own page.
+  unifiedRouteContext ??= UnifiedTitleScope.maybeOf(context)?.routeFor(mi);
   // The route boundary, not the activation site: comparing this against the
   // expected target recorded back at the row is what catches a swap in between.
   SelectTraceRecorder.instance.link(

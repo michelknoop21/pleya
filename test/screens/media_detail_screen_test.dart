@@ -61,6 +61,8 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/track_preference_store.dart';
+import 'package:pleya/services/unified_catalog/unified_title_scope.dart';
+import 'package:pleya/utils/media_navigation_helper.dart';
 import 'package:pleya/utils/video_player_navigation.dart';
 import 'package:pleya/screens/video_player_screen.dart';
 import 'package:pleya/media/pleya_profile_language_preferences.dart';
@@ -70,6 +72,7 @@ import 'package:pleya/services/pleya_share/pleya_share_device_name.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/widgets/collapsible_text.dart';
+import 'package:pleya/widgets/media_context_menu.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
@@ -1092,7 +1095,8 @@ void main() {
       bool scopeAboveNavigator = false,
       ThemeData? theme,
       UnifiedMediaRouteContext? unifiedRouteContext,
-      Future<void> Function(BuildContext detailContext)? onChangeSource,
+      UnifiedSourceChangeCallback? onChangeSource,
+      List<MediaServerClient> otherClients = const [],
     }) async {
       TvDetectionService.debugSetAppleTVOverride(false);
       await SettingsService.getInstance();
@@ -1114,6 +1118,7 @@ void main() {
       await downloadProvider.ensureInitialized();
 
       final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      otherClients.forEach(manager.debugRegisterClientForTesting);
       final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
       final watchStateOverlay = WatchStateStore();
       final offlineWatchSync = OfflineWatchSyncService(database: db, serverManager: manager);
@@ -1745,6 +1750,287 @@ void main() {
         expect(player.screens.single.preferredSubtitleTrack, isNull, reason: 'no subtitle was picked');
       });
 
+      group('one title on two servers', () {
+        MediaItem film(String server, {int? viewOffsetMs, int? lastViewedAt}) => MediaItem(
+          id: 'film_$server',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'Sintel',
+          serverId: server,
+          serverName: server,
+          durationMs: 7200000,
+          viewOffsetMs: viewOffsetMs,
+          lastViewedAt: lastViewedAt,
+        );
+
+        MediaFileInfo tracks(String code) => MediaFileInfo(
+          audioTracks: [MediaAudioTrack(id: 1, languageCode: code, codec: 'aac', channels: 2, selected: true)],
+        );
+
+        UnifiedMediaRouteContext routeTo(List<MediaItem> items, String chosen) {
+          final sources = [
+            for (final item in items) UnifiedMediaSource.fromItem(item, availability: SourceAvailability.online),
+          ];
+          final page = sources.first.sourceKey;
+          final picked = sources.firstWhere((s) => s.item.serverId == chosen);
+          return UnifiedMediaRouteContext(
+            groupId: 'g1',
+            identity: CanonicalMediaIdentity.movie(title: 'Sintel', year: 2010),
+            sourceKey: picked.sourceKey,
+            pageSourceKey: page,
+            playItem: picked.sourceKey == page ? null : picked.item,
+            titleSources: [picked, ...sources.where((s) => s != picked)],
+            availableSourceKeys: [for (final s in sources) s.sourceKey],
+            coverage: SourceCoverageState.complete(const {'server_1', 'server_2'}),
+            intent: UnifiedActivationIntent.details,
+          );
+        }
+
+        testWidgets('the table and the tracks come from the chosen server, the page from the main one', (tester) async {
+          final main = film('server_1').copyWith(summary: 'MAIN_SOURCE_SYNOPSIS');
+          final other = film('server_2').copyWith(summary: 'OTHER_SOURCE_SYNOPSIS');
+          final client = _FakeMediaServerClient(show: main, childrenByParent: const {}, fileInfo: tracks('eng'));
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+            fileInfo: tracks('nld'),
+          );
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_2'),
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+
+          expect(find.textContaining('MAIN_SOURCE_SYNOPSIS'), findsOneWidget);
+          expect(find.textContaining('OTHER_SOURCE_SYNOPSIS'), findsNothing);
+          expect(find.text('Dutch (AAC Stereo)'), findsOneWidget);
+          expect(find.text('English (AAC Stereo)'), findsNothing);
+        });
+
+        testWidgets('a change of source during a load does not land the old server\'s tracks', (tester) async {
+          final slow = Completer<MediaFileInfo?>();
+          final main = film('server_1');
+          final other = film('server_2');
+          final client = _FakeMediaServerClient(show: main, childrenByParent: const {}, fileInfoFuture: slow.future);
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+            fileInfo: tracks('nld'),
+          );
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_1'),
+            onChangeSource: (_, _, {pageFailed = false}) async => routeTo([main, other], 'server_2'),
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+
+          final row = find.byWidgetPredicate((w) => w is AutomationNode && w.id == AutomationIds.mediaDetailSource);
+          await tester.ensureVisible(row);
+          await tester.pumpAndSettle();
+          await tester.tap(row);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+
+          slow.complete(tracks('eng'));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+
+          expect(find.text('Dutch (AAC Stereo)'), findsOneWidget);
+          expect(find.text('English (AAC Stereo)'), findsNothing);
+        });
+
+        testWidgets('Play starts the chosen source at the session\'s newest position', (tester) async {
+          final main = film('server_1', viewOffsetMs: 2400000, lastViewedAt: 1000);
+          final other = film('server_2');
+          final client = _FakeMediaServerClient(show: main, childrenByParent: const {});
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+          );
+          final player = _PlayerRouteSpy();
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            navigatorObservers: [player],
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_2'),
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+
+          // Played further on this page: the group the route holds is older.
+          WatchStateNotifier().notifyProgress(item: main, viewOffset: 3000000, duration: 7200000);
+          await tester.pump();
+
+          final play = find.byKey(const Key('media-detail.play'));
+          await tester.ensureVisible(play);
+          await tester.pumpAndSettle();
+          await tester.tap(play);
+          for (var i = 0; i < 10 && player.screens.isEmpty; i++) {
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+            await tester.pump();
+          }
+
+          expect(player.screens.single.metadata.serverId, 'server_2');
+          expect(player.screens.single.startPosition, const Duration(milliseconds: 3000000));
+          expect(player.screens.single.unifiedTitle, isNotNull);
+        });
+
+        testWidgets('a series plays the episode on the chosen server, at the position of the page', (tester) async {
+          MediaItem show(String server) => MediaItem(
+            id: 'show_$server',
+            backend: MediaBackend.jellyfin,
+            kind: MediaKind.show,
+            title: 'Severance',
+            serverId: server,
+            serverName: server,
+          );
+          MediaItem episode(String server, {int? viewOffsetMs, int? lastViewedAt}) => MediaItem(
+            id: 'ep_$server',
+            backend: MediaBackend.jellyfin,
+            kind: MediaKind.episode,
+            title: 'Hello, Ms. Cobel',
+            grandparentId: 'show_$server',
+            parentIndex: 1,
+            index: 2,
+            durationMs: 3000000,
+            viewOffsetMs: viewOffsetMs,
+            lastViewedAt: lastViewedAt,
+            serverId: server,
+          );
+          final main = show('server_1');
+          final other = show('server_2');
+          final atPosition = episode('server_1', viewOffsetMs: 600000, lastViewedAt: 2000);
+          final client = _FakeMediaServerClient(
+            show: main,
+            childrenByParent: const {},
+            onDeck: atPosition,
+            episodes: [atPosition],
+          );
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+            episodes: [episode('server_2')],
+          );
+          final player = _PlayerRouteSpy();
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            navigatorObservers: [player],
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_2'),
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+
+          final play = find.byKey(const Key('media-detail.play'));
+          await tester.ensureVisible(play);
+          await tester.pumpAndSettle();
+          await tester.tap(play);
+          for (var i = 0; i < 10 && player.screens.isEmpty; i++) {
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+            await tester.pump();
+          }
+
+          expect(player.screens.single.metadata.globalKey, 'server_2:ep_server_2');
+          expect(player.screens.single.startPosition, const Duration(milliseconds: 600000));
+        });
+
+        testWidgets('the watched button on the page reaches the other source too', (tester) async {
+          final main = film('server_1');
+          final other = film('server_2');
+          final client = _FakeMediaServerClient(show: main, childrenByParent: const {});
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+          );
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_2'),
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+
+          final watched = find.byKey(const Key('media-detail.action.watched'));
+          await tester.ensureVisible(watched);
+          await tester.pumpAndSettle();
+          await tester.tap(watched);
+          for (var i = 0; i < 10 && second.markedWatched.isEmpty; i++) {
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+            await tester.pump();
+          }
+
+          expect(client.markedWatched, ['film_server_1']);
+          expect(second.markedWatched, ['film_server_2']);
+        });
+
+        testWidgets('the menu on the page acts on the chosen source, never on the main one by accident', (
+          tester,
+        ) async {
+          final main = film('server_1');
+          final other = film('server_2');
+          final client = _FakeMediaServerClient(show: main, childrenByParent: const {});
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+          );
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_2'),
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+
+          final menu = tester.widget<MediaContextMenu>(find.byType(MediaContextMenu).first);
+          expect((menu.item as MediaItem).serverId, 'server_2');
+        });
+      });
+
       testWidgets('a Jellyfin item shows no activity card', (tester) async {
         final movie = MediaItem(
           id: 'movie_jellyfin_activity',
@@ -2005,7 +2291,7 @@ void main() {
             coverage: SourceCoverageState.complete(keys.toSet()),
             intent: UnifiedActivationIntent.details,
           ),
-          onChangeSource: (_) async {},
+          onChangeSource: (_, _, {pageFailed = false}) async => null,
         );
 
         double contrast(Color a, Color b) {
@@ -2040,7 +2326,10 @@ void main() {
             coverage: SourceCoverageState.complete(keys.toSet()),
             intent: UnifiedActivationIntent.details,
           ),
-          onChangeSource: (detailContext) async => changedFrom = detailContext,
+          onChangeSource: (detailContext, _, {pageFailed = false}) async {
+            changedFrom = detailContext;
+            return null;
+          },
         );
 
         await tester.ensureVisible(find.text(t.sourcePicker.change));
@@ -2430,7 +2719,10 @@ void main() {
               sourceKeys: ['server_1:movie_1', 'server_2:movie_1'],
               sourceKey: 'server_1:movie_1',
             ),
-            onChangeSource: (_) async => chooseAnotherCalled = true,
+            onChangeSource: (_, _, {pageFailed = false}) async {
+              chooseAnotherCalled = true;
+              return null;
+            },
           ),
         ),
       );
@@ -2470,7 +2762,7 @@ void main() {
               sourceKeys: ['server_1:movie_1', 'server_2:movie_1'],
               sourceKey: 'server_1:movie_1',
             ),
-            onChangeSource: (_) async {},
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
           ),
         ),
       );
@@ -2565,7 +2857,7 @@ void main() {
               sourceKeys: ['server_1:movie_1', 'server_2:movie_1'],
               sourceKey: 'server_1:movie_1',
             ),
-            onChangeSource: (_) async {},
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
           ),
         ),
       );
@@ -2632,7 +2924,7 @@ void main() {
       },
     );
 
-    testWidgets('taking the offer replaces the route and rebuilds the page from the chosen source', (tester) async {
+    testWidgets('taking the offer keeps the page and moves only what Play starts', (tester) async {
       await SettingsService.getInstance();
       tester.view.physicalSize = const Size(2560, 1440);
       tester.view.devicePixelRatio = 1;
@@ -2722,19 +3014,188 @@ void main() {
       expect(
         find.text(t.sourcePicker.sourceLabel(source: 'server_2')),
         findsOneWidget,
-        reason: 'the page is now reading the chosen source, not the one it was opened on',
+        reason: 'the page says which source Play starts from',
       );
-      expect(find.text('Season 2'), findsWidgets, reason: 'and the whole season path came with it (hoofdstuk 15)');
+      expect(find.text('Season 2'), findsNothing, reason: 'the seasons stay those of the main source');
+      expect(observer.pops - popsBefore, 0, reason: 'one page: nothing was replaced');
+      expect(observer.pushes - pushesBefore, 0);
       expect(
-        observer.pops - popsBefore,
-        1,
-        reason: 'the route is replaced, not stacked: Back must not walk back through the old source',
+        Focus.of(tester.element(find.text(t.sourcePicker.change))).hasPrimaryFocus,
+        isTrue,
+        reason: 'focus comes back to the control that opened the picker',
       );
-      expect(observer.pushes - pushesBefore, 1);
 
       await tester.runAsync(() async {
         expect(await SourcePreferenceStore.read(unified.identity), 'server_2:show_1');
       });
+    });
+
+    testWidgets('a first choice of another source already keeps the main page', (tester) async {
+      await SettingsService.getInstance();
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final manager = MultiServerManager()
+        ..debugRegisterClientForTesting(clientFor('server_1', seasons: 1))
+        ..debugRegisterClientForTesting(clientFor('server_2', seasons: 2));
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+      final unified = group();
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: ChangeNotifierProvider<MultiServerProvider>.value(
+            value: provider,
+            child: MaterialApp(
+              builder: withNoticeLayer(
+                (context, child) => InputModeTracker(
+                  child: OverlaySheetHost(child: withProfileNavigationScope(child: child!)),
+                ),
+              ),
+              theme: monoTheme(dark: true),
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: FocusableWrapper(
+                      semanticLabel: 'open',
+                      onSelect: () => unawaited(
+                        activateUnifiedMediaGroup(
+                          context,
+                          group: unified,
+                          intent: UnifiedActivationIntent.details,
+                          environment: buildUnifiedActivationEnvironment(
+                            group: unified,
+                            health: unifiedServerHealth(isOnline: (_) => true, authErrorServerIds: const {}),
+                            catalogServerIds: const {'server_1', 'server_2'},
+                            availabilityRevision: ValueNotifier<int>(0),
+                          ),
+                        ),
+                      ),
+                      child: const Text('open'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await _activateByLabel(tester, 'open');
+      await tester.pumpAndSettle();
+      await _activateByLabel(tester, 'server_2');
+      await tester.pumpAndSettle();
+
+      expect(find.text(t.sourcePicker.sourceLabel(source: 'server_2')), findsOneWidget);
+      expect(find.text('Season 2'), findsNothing, reason: 'the page is the main source, whichever one plays');
+    });
+
+    testWidgets('a switch after a play starts at the last position, not the one the group was built with', (
+      tester,
+    ) async {
+      await SettingsService.getInstance();
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      MediaItem film(String server, {int? viewOffsetMs}) => MediaItem(
+        id: 'film',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.movie,
+        title: 'Sintel',
+        serverId: server,
+        serverName: server,
+        durationMs: 7200000,
+        viewOffsetMs: viewOffsetMs,
+        lastViewedAt: viewOffsetMs == null ? null : 1000,
+      );
+      final held = film('server_1', viewOffsetMs: 2400000);
+      final sources = [
+        UnifiedMediaSource.fromItem(held, availability: SourceAvailability.online),
+        UnifiedMediaSource.fromItem(film('server_2'), availability: SourceAvailability.online),
+      ];
+      final unified = UnifiedMediaGroup(
+        groupId: 'g1',
+        identity: CanonicalMediaIdentity.movie(title: 'Sintel', year: 2010),
+        sources: sources,
+        representativeSourceKey: sources.first.sourceKey,
+        watchState: selectRepresentativeWatchState({for (final s in sources) s.sourceKey: s.item}),
+      );
+      final manager = MultiServerManager()
+        ..debugRegisterClientForTesting(
+          _FakeMediaServerClient(id: 'server_1', name: 'server_1', show: held, childrenByParent: const {}),
+        )
+        ..debugRegisterClientForTesting(
+          _FakeMediaServerClient(id: 'server_2', name: 'server_2', show: film('server_2'), childrenByParent: const {}),
+        );
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+      final store = WatchStateStore();
+      addTearDown(store.dispose);
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<MultiServerProvider>.value(value: provider),
+              ChangeNotifierProvider<WatchStateStore>.value(value: store),
+            ],
+            child: MaterialApp(
+              builder: withNoticeLayer(
+                (context, child) => InputModeTracker(
+                  child: OverlaySheetHost(child: withProfileNavigationScope(child: child!)),
+                ),
+              ),
+              theme: monoTheme(dark: true),
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: FocusableWrapper(
+                      semanticLabel: 'open',
+                      onSelect: () => unawaited(
+                        activateUnifiedMediaGroup(
+                          context,
+                          group: unified,
+                          intent: UnifiedActivationIntent.details,
+                          environment: buildUnifiedActivationEnvironment(
+                            group: unified,
+                            health: unifiedServerHealth(isOnline: (_) => true, authErrorServerIds: const {}),
+                            catalogServerIds: const {'server_1', 'server_2'},
+                            availabilityRevision: ValueNotifier<int>(0),
+                          ),
+                        ),
+                      ),
+                      child: const Text('open'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await _activateByLabel(tester, 'open');
+      await tester.pumpAndSettle();
+      await _activateByLabel(tester, 'server_1');
+      await tester.pumpAndSettle();
+
+      // What a play on this page reported on its way out.
+      WatchStateNotifier().notifyProgress(item: held, viewOffset: 3000000, duration: 7200000, isFinal: true);
+      await tester.pump();
+
+      await _activateByLabel(tester, t.sourcePicker.change);
+      await tester.pumpAndSettle();
+      await _activateByLabel(tester, 'server_2');
+      await tester.pumpAndSettle();
+
+      final route = tester.widget<UnifiedTitleScope>(find.byType(UnifiedTitleScope)).title?.routeContext;
+      expect(route?.sourceKey, 'server_2:film');
+      expect(route?.carriedResume, const Duration(milliseconds: 3000000));
     });
 
     testWidgets('F19/A14: the failure panel is the other door to the same switch', (tester) async {
@@ -4008,15 +4469,31 @@ class _FakeMediaServerClient implements MediaServerClient {
     this.pendingPlayableDescendants,
     this.extras = const [],
     this.fileInfo,
+    this.fileInfoFuture,
+    this.onDeck,
+    this.episodes = const [],
     this.id = 'server_1',
     this.name = 'Server',
   });
+
+  final markedWatched = <String>[];
+
+  @override
+  Future<void> markWatched(MediaItem item) async => markedWatched.add(item.id);
+
+  /// Held open by a test that changes the source while the table loads.
+  final Future<MediaFileInfo?>? fileInfoFuture;
+  final MediaItem? onDeck;
+  final List<MediaItem> episodes;
+
+  @override
+  Future<List<MediaItem>> fetchPlayableDescendants(String parentId) async => episodes;
 
   @override
   Future<List<MediaItem>> fetchExtras(String id) async => extras;
 
   @override
-  Future<MediaFileInfo?> getFileInfo(MediaItem item) async => fileInfo;
+  Future<MediaFileInfo?> getFileInfo(MediaItem item) async => fileInfoFuture ?? fileInfo;
 
   /// D14 mounts two of these at once, so the server a fake speaks for has to
   /// be a parameter rather than a constant.
@@ -4037,7 +4514,7 @@ class _FakeMediaServerClient implements MediaServerClient {
 
   @override
   Future<({MediaItem? item, MediaItem? onDeckEpisode})> fetchItemWithOnDeck(String id) async {
-    return (item: show, onDeckEpisode: null);
+    return (item: show, onDeckEpisode: onDeck);
   }
 
   @override

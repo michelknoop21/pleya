@@ -46,6 +46,7 @@ library;
 
 import 'package:provider/provider.dart';
 import '../../providers/local_library_provider.dart';
+import '../../providers/watch_state_store.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -271,13 +272,18 @@ Future<UnifiedActivationOutcome> _acceptChoice(
   // a settings write would put a disk round-trip between Select and the player.
   unawaited(SourcePreferenceStore.remember(group.identity, chosen.sourceKey));
 
+  final grouped = group.withSource(chosen);
   return _routeToSource(
     context,
-    group: group,
+    group: grouped,
     source: chosen,
     routeContext: coordinator.buildRouteContext(
-      group: group,
-      orderedSources: group.sources,
+      group: grouped,
+      // Stamped: whether the main source can hold the page depends on it.
+      orderedSources: rankSources(
+        grouped.sources.map((s) => s.withAvailability(environment.availabilityFor(s))).toList(),
+        preferredSourceKey: chosen.sourceKey,
+      ),
       sourceKey: chosen.sourceKey,
       coverage: coverage,
       intent: intent,
@@ -327,10 +333,11 @@ Future<UnifiedActivationOutcome> _routeToSource(
     onPlaybackInitFailed: () => playbackInitFailed = true,
     restoreTarget: restoreTarget,
     onChangeSource: routeContext.hasAlternativeSources
-        ? (detailContext) => _changeSourceFromDetail(
+        ? (detailContext, current, {pageFailed = false}) => _changeSourceFromDetail(
             detailContext,
             group: group,
-            routeContext: routeContext,
+            routeContext: current,
+            pageFailed: pageFailed,
             environment: environment,
             artwork: artwork,
             isOffline: isOffline,
@@ -360,12 +367,16 @@ Future<UnifiedActivationOutcome> _routeToSource(
 
 /// Hoofdstuk 15's "[ Wijzigen ]" on the detail page.
 ///
-/// The current detail route is popped before the new one is pushed, so Back
-/// does not walk the user backwards through every source they looked at.
-Future<void> _changeSourceFromDetail(
+/// A title keeps one page, so a choice normally changes only what Play starts:
+/// the new context goes back to the page and nothing moves. Only a choice that
+/// changes the page itself replaces the route, and then the current detail
+/// route is popped before the new one is pushed, so Back does not walk the user
+/// backwards through every source they looked at.
+Future<UnifiedMediaRouteContext?> _changeSourceFromDetail(
   BuildContext context, {
   required UnifiedMediaGroup group,
   required UnifiedMediaRouteContext routeContext,
+  required bool pageFailed,
   required UnifiedActivationEnvironment environment,
   required Widget? artwork,
   required bool isOffline,
@@ -377,14 +388,17 @@ Future<void> _changeSourceFromDetail(
   // preferred server says. Reading it here is for the *marking* only — a
   // standing default must not answer a question the user just asked.
   final preferredServerId = await PreferredServerStore.read();
-  if (!context.mounted) return;
+  if (!context.mounted) return null;
+  // [group] dates from before any play on this page. The session's own watch
+  // state is what makes the picker and the position current.
+  final live = group.withFreshSourceItems(context.readFreshWatchState, preferredSourceKey: routeContext.sourceKey);
   final ordered = rankSources(
-    group.sources.map((s) => s.withAvailability(environment.availabilityFor(s))).toList(),
+    live.sources.map((s) => s.withAvailability(environment.availabilityFor(s))).toList(),
     preferredSourceKey: routeContext.sourceKey,
   );
   final chosen = await showUnifiedSourcePicker(
     context,
-    group: group,
+    group: live,
     sources: ordered,
     initialFocusSourceKey: selectInitialFocus(ordered, preferredSourceKey: routeContext.sourceKey)!,
     currentSourceKey: routeContext.sourceKey,
@@ -394,7 +408,23 @@ Future<void> _changeSourceFromDetail(
     environment: environment,
     artwork: artwork,
   );
-  if (chosen == null || chosen.sourceKey == routeContext.sourceKey || !context.mounted) return;
+  if (chosen == null || !context.mounted) return null;
+  if (chosen.sourceKey == routeContext.sourceKey && !pageFailed) return null;
+
+  final grouped = live.withSource(chosen);
+  final next = coordinator.buildRouteContext(
+    group: grouped,
+    orderedSources: rankSources(
+      grouped.sources.map((s) => s.withAvailability(environment.availabilityFor(s))).toList(),
+      preferredSourceKey: chosen.sourceKey,
+    ),
+    sourceKey: chosen.sourceKey,
+    coverage: routeContext.coverage,
+    intent: UnifiedActivationIntent.details,
+    pageFollowsChoice: pageFailed,
+  );
+  unawaited(SourcePreferenceStore.remember(group.identity, chosen.sourceKey));
+  if (next.pageSourceKey == routeContext.pageSourceKey && !pageFailed) return next;
 
   // The detail page this was invoked from closes before the replacement opens,
   // so Back does not walk the viewer backwards through every source they
@@ -410,20 +440,13 @@ Future<void> _changeSourceFromDetail(
     final navigator = Navigator.of(context);
     if (navigator.canPop()) navigator.pop();
   }
-  if (!context.mounted) return;
+  if (!context.mounted) return null;
 
-  unawaited(SourcePreferenceStore.remember(group.identity, chosen.sourceKey));
   await _routeToSource(
     context,
-    group: group,
+    group: grouped,
     source: chosen,
-    routeContext: coordinator.buildRouteContext(
-      group: group,
-      orderedSources: ordered,
-      sourceKey: chosen.sourceKey,
-      coverage: routeContext.coverage,
-      intent: UnifiedActivationIntent.details,
-    ),
+    routeContext: next,
     environment: environment,
     artwork: artwork,
     playDirectly: false,
@@ -432,6 +455,7 @@ Future<void> _changeSourceFromDetail(
     onPlaybackReturned: onPlaybackReturned,
     traceId: null,
   );
+  return null;
 }
 
 /// Hoofdstuk 23's "Bron wijzigen" context-menu action: the same explicit
