@@ -78,6 +78,11 @@ Future<ScenarioRunResult> runScenario({
       if (value == '{{fixture}}') {
         return fixture?.baseUrl ?? (throw StateError('"{{fixture}}" used but no fixture server is running'));
       }
+      if (value == '{{fixture_jellyfin}}') {
+        return fixture != null
+            ? '${fixture.baseUrl}/jellyfin'
+            : throw StateError('"{{fixture_jellyfin}}" used but no fixture server is running');
+      }
       if (value == '{{fixture_seerr}}') {
         return fixture != null
             ? '${fixture.baseUrl}/seerr'
@@ -162,6 +167,7 @@ Future<ScenarioRunResult> runScenario({
             username: args['username'] as String,
             password: args['password'] as String,
             setupCode: args['setup_code'] as String?,
+            backend: args['backend'] as String?,
           );
           if (signinResult['ok'] != true) {
             throw StateError('sign_in failed: ${signinResult['error']} (full response: $signinResult)');

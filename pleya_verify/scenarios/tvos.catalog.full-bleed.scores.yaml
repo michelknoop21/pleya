@@ -1,0 +1,92 @@
+name: tvos.catalog.full-bleed.scores
+target: tvos-sim
+# A-06c, the score sorts (Michel, 30 Oct 2026, 03.png). Pleya Protocol has no
+# scores, so this signs in on the fixture's fake Jellyfin: the real mappers,
+# translator, merge and card. `catalog.scores.v1` holds twelve films, ten with a
+# critic score and two without. The fake sends titles without a value first on an
+# ascending sort, so Critici oplopend proves they still land last.
+setup:
+  - reset_app
+  - seed: catalog.scores.v1
+  - launch
+  - sign_in: {base_url: "{{fixture_jellyfin}}", username: verify-owner, password: verify-password, backend: jellyfin}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - walk: {direction: right, expect: [nav.series, nav.movies], timeout: 40000, settle: 800}
+  - press: select
+  - settle: 1500
+  - press: down
+  - settle: 1500
+  - press: select
+  - wait_until: {id: "tv.catalog.grid[movies]", timeout: 20000}
+  - wait_until: {id: "tv.catalog.grid.item[movies.11]", timeout: 10000}
+  - settle: 1000
+  - assert: {id: "tv.catalog.grid.item[movies.0]", state: {title: A Film Without Critics}}
+
+  # The Sort page holds what Jellyfin can run: no Waardering, Voortgang or
+  # Resolutie.
+  - press: left
+  - settle: 800
+  - press: down
+  - settle: 500
+  - press: down
+  - settle: 500
+  - press: select
+  - settle: 800
+  - assert: {id: "tv.catalog.rail.row[movies.sort.title]", focused: true}
+  - assert: {id: "tv.catalog.rail.row[movies.sort.criticRating]", insideViewport: true}
+  - assert: {id: "tv.catalog.rail.row[movies.sort.userRating]", present: false}
+  - assert: {id: "tv.catalog.rail.row[movies.sort.progress]", present: false}
+  - assert: {id: "tv.catalog.rail.row[movies.sort.resolution]", present: false}
+  - snapshot: 00-sort-page
+
+  # Critici: highest first, percentages on the wall, the two without at the end.
+  - press: down
+  - settle: 400
+  - press: down
+  - settle: 400
+  - press: down
+  - settle: 400
+  - assert: {id: "tv.catalog.rail.row[movies.sort.criticRating]", focused: true}
+  - press: select
+  - settle: 3000
+  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true, state: {title: The Alabama Solution, meta: "100"}}
+  - assert: {id: "tv.catalog.grid.item[movies.1]", state: {title: Wasteman, meta: "100"}}
+  - assert: {id: "tv.catalog.grid.item[movies.2]", state: {title: How to Train Your Dragon, meta: "99"}}
+  - assert: {id: "tv.catalog.grid.item[movies.10]", state: {title: A Film Without Critics, meta: ""}}
+  - assert: {id: "tv.catalog.grid.item[movies.11]", state: {title: B Film Without Scores, meta: ""}}
+  - snapshot: 01-critics-down
+
+  # Choosing the row again turns it over; the two without stay at the end.
+  - press: left
+  - settle: 800
+  - press: down
+  - settle: 500
+  - press: down
+  - settle: 500
+  - press: select
+  - settle: 800
+  - assert: {id: "tv.catalog.rail.row[movies.sort.criticRating]", focused: true}
+  - snapshot: 02-sort-page-active
+  - press: select
+  - settle: 3000
+  - assert: {id: "tv.catalog.grid.item[movies.0]", focused: true, state: {title: The Invite, meta: "58"}}
+  - assert: {id: "tv.catalog.grid.item[movies.9]", state: {title: Wasteman}}
+  - assert: {id: "tv.catalog.grid.item[movies.10]", state: {title: A Film Without Critics, meta: ""}}
+  - assert: {id: "tv.catalog.grid.item[movies.11]", state: {title: B Film Without Scores, meta: ""}}
+  - snapshot: 03-critics-up
+
+  # The filter page: quick choices, a line, the categories. Jellyfin runs
+  # Ongekeken and Bezig; HDR and Dubbel have no parameter there and stay away.
+  - press: left
+  - settle: 800
+  - press: down
+  - settle: 500
+  - press: select
+  - settle: 1200
+  - assert: {id: "tv.catalog.rail.row[movies.quick.all]", focused: true}
+  - assert: {id: "tv.catalog.rail.row[movies.quick.unwatched]", insideViewport: true}
+  - assert: {id: "tv.catalog.rail.row[movies.quick.hdr]", present: false}
+  - assert: {id: "tv.catalog.rail.row[movies.quick.duplicates]", present: false}
+  - snapshot: 04-filter-page

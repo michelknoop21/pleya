@@ -98,12 +98,13 @@ Widget _shell(Widget child) {
 }
 
 class _Built {
-  const _Built({required this.catalog, required this.multiServer});
+  const _Built({required this.catalog, required this.multiServer, required this.libraries});
   final UnifiedCatalogProvider catalog;
   final MultiServerProvider multiServer;
+  final LibrariesProvider libraries;
 }
 
-Future<_Built> _buildCatalog() async {
+Future<_Built> _buildCatalog({MediaBackend backend = MediaBackend.plex}) async {
   final client = _FakeLibraryClient([_movie('m1', title: 'Alpha'), _movie('m2', title: 'Bravo')]);
   final manager = MultiServerManager()..debugRegisterClientForTesting(client);
   final multiServer = MultiServerProvider(manager, DataAggregationService(manager));
@@ -111,7 +112,7 @@ Future<_Built> _buildCatalog() async {
     ..debugSetLibraries([
       MediaLibrary(
         id: '1',
-        backend: MediaBackend.plex,
+        backend: backend,
         title: 'Films',
         kind: MediaKind.movie,
         serverId: 'nas',
@@ -126,7 +127,7 @@ Future<_Built> _buildCatalog() async {
     kind: MediaKind.movie,
   );
   await catalog.ensureStarted();
-  return _Built(catalog: catalog, multiServer: multiServer);
+  return _Built(catalog: catalog, multiServer: multiServer, libraries: libraries);
 }
 
 void main() {
@@ -178,6 +179,163 @@ void main() {
       UnifiedCatalogSort.titleAsc,
       reason: 'leaving the screen must not have overwritten what an ordinary visit already had stored',
     );
+  });
+
+  testWidgets('a stored Newest release on Pleya Server asks for the year', (tester) async {
+    resetSharedPreferencesForTest();
+    SettingsService.resetForTesting();
+    await SettingsService.getInstance();
+    LocaleSettings.setLocaleSync(AppLocale.en);
+
+    final built = await _buildCatalog(backend: MediaBackend.pleyaServer);
+    addTearDown(built.catalog.dispose);
+    addTearDown(built.multiServer.dispose);
+
+    setGoldenSurfaceSize(tester);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<MultiServerProvider>.value(
+        value: built.multiServer,
+        child: _shell(
+          TvUnifiedCatalogScreen(
+            catalog: built.catalog,
+            title: t.unifiedCatalog.moviesTitle,
+            // The route `_restorePreferences` takes for a stored value, without
+            // the store read that does not finish inside testWidgets.
+            initialFilterOverride: const UnifiedCatalogPreferences(sort: UnifiedCatalogSort.newestRelease),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(built.catalog.query.sortField, UnifiedCatalogSortField.year);
+    expect(built.catalog.query.sortDirection, LibrarySortDirection.descending);
+  });
+
+  group('the set of libraries changes while the page is open', () {
+    MediaLibrary series(String id, MediaBackend backend) =>
+        MediaLibrary(id: id, backend: backend, title: id, kind: MediaKind.show, serverId: 'nas', serverName: 'nas');
+    final plex = series('p', MediaBackend.plex);
+    final jellyfin = series('j', MediaBackend.jellyfin);
+
+    Future<({UnifiedCatalogProvider catalog, LibrariesProvider libraries})> open(
+      WidgetTester tester,
+      List<MediaLibrary> start,
+    ) async {
+      resetSharedPreferencesForTest();
+      SettingsService.resetForTesting();
+      await SettingsService.getInstance();
+      LocaleSettings.setLocaleSync(AppLocale.en);
+      final manager = MultiServerManager()..debugRegisterClientForTesting(_FakeLibraryClient(const []));
+      final multiServer = MultiServerProvider(manager, DataAggregationService(manager));
+      final libraries = LibrariesProvider()..debugSetLibraries(start);
+      final catalog = UnifiedCatalogProvider(
+        multiServer: multiServer,
+        libraries: libraries,
+        hiddenLibraries: HiddenLibrariesProvider(),
+        kind: MediaKind.show,
+      );
+      addTearDown(catalog.dispose);
+      addTearDown(multiServer.dispose);
+      await catalog.ensureStarted();
+      setGoldenSurfaceSize(tester);
+      await tester.pumpWidget(
+        ChangeNotifierProvider<MultiServerProvider>.value(
+          value: multiServer,
+          child: _shell(
+            TvUnifiedCatalogScreen(
+              catalog: catalog,
+              title: t.unifiedCatalog.seriesTitle,
+              initialFilterOverride: const UnifiedCatalogPreferences(sort: UnifiedCatalogSort.recentlyWatched),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return (catalog: catalog, libraries: libraries);
+    }
+
+    testWidgets('a Jellyfin library joining takes Bekeken away from the merge too', (tester) async {
+      final h = await open(tester, [plex]);
+      expect(h.catalog.query.sortField, UnifiedCatalogSortField.recentlyWatched);
+
+      h.libraries.debugSetLibraries([plex, jellyfin]);
+      await tester.pumpAndSettle();
+
+      expect(h.catalog.query.sortField, UnifiedCatalogSortField.title);
+    });
+
+    testWidgets('the library leaving brings it back, for the page and the merge alike', (tester) async {
+      final h = await open(tester, [plex, jellyfin]);
+      expect(h.catalog.query.sortField, UnifiedCatalogSortField.title);
+
+      h.libraries.debugSetLibraries([plex]);
+      await tester.pumpAndSettle();
+
+      expect(h.catalog.query.sortField, UnifiedCatalogSortField.recentlyWatched);
+    });
+
+    testWidgets('NEGATIVE CONTROL: a change that leaves the query equal restarts once', (tester) async {
+      final h = await open(tester, [plex]);
+      var changes = 0;
+      final before = h.catalog.query;
+      h.catalog.addListener(() => changes++);
+      h.libraries.debugSetLibraries([plex]);
+      await tester.pumpAndSettle();
+      expect(h.catalog.query, before);
+      expect(changes, 0, reason: 'the same libraries: nothing to restart and nothing to derive');
+    });
+  });
+
+  testWidgets('two screens on one catalog with different overrides do not write each other back', (tester) async {
+    resetSharedPreferencesForTest();
+    SettingsService.resetForTesting();
+    await SettingsService.getInstance();
+    LocaleSettings.setLocaleSync(AppLocale.en);
+    final built = await _buildCatalog();
+    addTearDown(built.catalog.dispose);
+    addTearDown(built.multiServer.dispose);
+    var notifications = 0;
+    built.catalog.addListener(() => notifications++);
+
+    Widget screen(UnifiedCatalogSort sort) => TvUnifiedCatalogScreen(
+      catalog: built.catalog,
+      title: 'x',
+      initialFilterOverride: UnifiedCatalogPreferences(sort: sort),
+    );
+    setGoldenSurfaceSize(tester);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<MultiServerProvider>.value(
+        value: built.multiServer,
+        child: _shell(
+          IndexedStack(index: 1, children: [screen(UnifiedCatalogSort.titleAsc), screen(UnifiedCatalogSort.titleDesc)]),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(notifications, lessThan(40));
+
+    // A library joining: each screen answers once, and then it is quiet.
+    notifications = 0;
+    built.libraries.debugSetLibraries([
+      ...built.libraries.libraries,
+      MediaLibrary(
+        id: '2',
+        backend: MediaBackend.plex,
+        title: 'Meer films',
+        kind: MediaKind.movie,
+        serverId: 'nas',
+        serverName: 'nas',
+      ),
+    ]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(notifications, lessThan(40));
   });
 
   // A deliberate sort change made while viewing an override is not this

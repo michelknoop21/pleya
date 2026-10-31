@@ -97,6 +97,25 @@ class TvCatalogGridCell {
   final VoidCallback? onBack;
 }
 
+/// Cuts a grid with fixed margins one row gap outside its whole rows.
+///
+/// The margins of a full-bleed grid are wider than its row gap, so without this
+/// the year of the row above and a strip of the row below stand in them. Both
+/// sit in the overscan band, the year as a loose line of text at the top of the
+/// screen.
+class TvCatalogRowBandClipper extends CustomClipper<Rect> {
+  const TvCatalogRowBandClipper({required this.top, required this.bottom});
+
+  final double top;
+  final double bottom;
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTRB(0, top, size.width, size.height - bottom);
+
+  @override
+  bool shouldReclip(TvCatalogRowBandClipper oldClipper) => oldClipper.top != top || oldClipper.bottom != bottom;
+}
+
 class TvCatalogCardGrid extends StatefulWidget {
   const TvCatalogCardGrid({
     super.key,
@@ -122,6 +141,8 @@ class TvCatalogCardGrid extends StatefulWidget {
     this.fitScale,
     this.successorOf,
     this.loadEagerly = false,
+    this.gridResolver,
+    this.onEmptied,
   });
 
   /// One stable id per item, in display order. Identity, not position: see the
@@ -226,6 +247,16 @@ class TvCatalogCardGrid extends StatefulWidget {
   /// Scales the two-row width, or the natural width when [fitTwoRows] is off.
   /// Null reads the density setting only for a two-row grid.
   final double? fitScale;
+
+  /// Takes the geometry out of [TvCatalogGrid.forWidth] altogether, for a page
+  /// that states its own: [TvCatalogFullBleedLayout]. Receives the grid's width
+  /// and height. [fitTwoRows], [fitScale] and [reservedLeading] do not apply.
+  final TvCatalogGrid Function(double width, double height)? gridResolver;
+
+  /// Where the focus goes when the card holding it left and no card survived.
+  /// Null falls back to [onExitTop], which on most pages is the controls; a page
+  /// whose UP deliberately goes nowhere names the controls here instead.
+  final VoidCallback? onEmptied;
 
   /// The narrowest [fitTwoRows] card under a fixed heading, as a share of the
   /// natural six-across width: the width Alle films settles on at the default
@@ -388,7 +419,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
       final growth = TvCatalogGrid.focusHeadroom(cardHeight: cardHeight, focusScale: widget.focusScale);
       // The row's box inside the scroll content. The top padding is that same
       // growth, so on row zero the two cancel and the bound is simply 0.
-      final rowTop = growth + (index ~/ grid.columns) * (cardHeight + grid.gutter);
+      final rowTop = growth + (index ~/ grid.columns) * (cardHeight + grid.rowGutter);
 
       final upper = rowTop - growth;
       final lower = rowTop + cardHeight + growth - position.viewportDimension;
@@ -446,17 +477,24 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
       // rounds the meta line up and the card does not, so the budget runs a
       // pixel long per row and an offset of `n` budgeted rows drifts off the
       // row line further down the catalogue.
-      final measured = _measuredRow(grid.columns) ?? (height: cardHeight, pitch: cardHeight + grid.gutter);
-      final target = tvCatalogRowAlignedOffset(
-        row: index ~/ grid.columns,
-        pixels: position.pixels,
-        viewport: position.viewportDimension,
-        cardHeight: measured.height,
-        gutter: measured.pitch - measured.height,
-        growth: TvCatalogGrid.focusHeadroom(cardHeight: cardHeight, focusScale: widget.focusScale),
-        minScrollExtent: position.minScrollExtent,
-        maxScrollExtent: position.maxScrollExtent,
-      );
+      final measured = _measuredRow(grid.columns) ?? (height: cardHeight, pitch: cardHeight + grid.rowGutter);
+      final row = index ~/ grid.columns;
+      final lastRow = (widget.itemIds.length - 1) ~/ grid.columns;
+      // A full-bleed page fills the window with whole rows, so the footer under
+      // the last one would stay out of reach. It carries the notice that a
+      // library did not answer, so the last row brings it into view.
+      final target = grid.topInset != null && row == lastRow && widget.footer != null
+          ? position.maxScrollExtent
+          : tvCatalogRowAlignedOffset(
+              row: row,
+              pixels: position.pixels,
+              viewport: position.viewportDimension,
+              cardHeight: measured.height,
+              gutter: measured.pitch - measured.height,
+              growth: grid.firstRowOffset(cardHeight: cardHeight, focusScale: widget.focusScale),
+              minScrollExtent: position.minScrollExtent,
+              maxScrollExtent: position.maxScrollExtent,
+            );
       if (duration == Duration.zero || (target - position.pixels).abs() < 0.5) {
         position.jumpTo(target);
       } else {
@@ -527,6 +565,13 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     final remembered = _focusedId ?? _restoredId();
     final node = (remembered != null ? _nodes[remembered] : null) ?? _nodes[widget.itemIds.firstOrNull];
     if (node != null && node.canRequestFocus) requestFocusClearingDirectionalHistory(node);
+  }
+
+  /// Focuses the very first card, whatever was remembered, for a choice that
+  /// replaced the wall.
+  void focusFirstCard() {
+    final first = widget.itemIds.firstOrNull;
+    if (first != null) focusItem(first);
   }
 
   /// Puts the focus on one named card, or reports that it could not — same
@@ -608,7 +653,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
       } else {
         // Nothing survived — an empty result after a filter change. Focus goes
         // back up to the controls, which is the only thing left to operate.
-        widget.onExitTop?.call();
+        (widget.onEmptied ?? widget.onExitTop)?.call();
       }
     });
   }
@@ -636,10 +681,9 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     builder: (context, constraints) => _buildForWidth(context, constraints.maxWidth, constraints.maxHeight),
   );
 
-  Widget _buildForWidth(BuildContext context, double width, double height) {
-    final scale = TvLayoutConstants.scaleOf(context);
+  TvCatalogGrid _resolveGrid(double width, double height, double scale) {
     final natural = TvCatalogGrid.forWidth(width, scale: scale, reservedLeading: widget.reservedLeading);
-    final grid = TvCatalogGrid.forWidth(
+    return TvCatalogGrid.forWidth(
       width,
       scale: scale,
       reservedLeading: widget.reservedLeading,
@@ -649,6 +693,11 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
           ? null
           : natural.cardWidth * widget.fitScale!,
     );
+  }
+
+  Widget _buildForWidth(BuildContext context, double width, double height) {
+    final scale = TvLayoutConstants.scaleOf(context);
+    final grid = widget.gridResolver?.call(width, height) ?? _resolveGrid(width, height, scale);
     _grid = grid;
     final cardHeight = widget.cardHeight(grid.cardWidth);
     _cardHeight = cardHeight;
@@ -666,7 +715,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
       );
     }
 
-    return SingleChildScrollView(
+    final scrollView = SingleChildScrollView(
       controller: _controller,
       // A bottom inset as well as the side ones. Hoofdstuk 8.1: "geen tekst of
       // focusring binnen de buitenste 56 pixels". With only the horizontal
@@ -685,10 +734,19 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (var i = 0; i < rows.length; i++) ...[if (i > 0) SizedBox(height: grid.gutter), rows[i]],
-          if (widget.footer != null) ...[SizedBox(height: grid.gutter), widget.footer!],
+          for (var i = 0; i < rows.length; i++) ...[if (i > 0) SizedBox(height: grid.rowGutter), rows[i]],
+          if (widget.footer != null) ...[SizedBox(height: grid.rowGutter), widget.footer!],
         ],
       ),
+    );
+    final topInset = grid.topInset;
+    if (topInset == null) return scrollView;
+    return ClipRect(
+      clipper: TvCatalogRowBandClipper(
+        top: math.max(0, topInset - grid.rowGutter),
+        bottom: math.max(0, grid.bottomSafeMargin - grid.rowGutter),
+      ),
+      child: scrollView,
     );
   }
 

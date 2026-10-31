@@ -2495,6 +2495,7 @@ class _TranslationsUnifiedCatalogNl extends TranslationsUnifiedCatalogEn {
 	@override String titleCount({required Object count}) => '${count} titels';
 	@override String get oneTitle => '1 titel';
 	@override String titlesLoaded({required Object count}) => '${count} titels geladen';
+	@override String get jumpTo => 'Spring naar';
 	@override String get loadMore => 'Meer laden';
 	@override String get loadingMore => 'Meer laden…';
 	@override late final _TranslationsUnifiedCatalogSortNl sort = _TranslationsUnifiedCatalogSortNl._(_root);
@@ -2505,6 +2506,8 @@ class _TranslationsUnifiedCatalogNl extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogDiscoveryNl discovery = _TranslationsUnifiedCatalogDiscoveryNl._(_root);
 	@override late final _TranslationsUnifiedCatalogHomeNl home = _TranslationsUnifiedCatalogHomeNl._(_root);
 	@override late final _TranslationsUnifiedCatalogHomeRowsNl homeRows = _TranslationsUnifiedCatalogHomeRowsNl._(_root);
+	@override String get onePlay => '1 keer';
+	@override String plays({required Object count}) => '${count} keer';
 }
 
 // Path: tvNavigation
@@ -3311,7 +3314,11 @@ class _TranslationsUnifiedCatalogSortNl extends TranslationsUnifiedCatalogSortEn
 	@override String get oldestAdded => 'Oudst toegevoegd';
 	@override String get newestRelease => 'Nieuwste release';
 	@override String get oldestRelease => 'Oudste release';
+	@override String get yearNewest => 'Nieuwste jaar';
+	@override String get yearOldest => 'Oudste jaar';
 	@override String get recentlyWatched => 'Recent bekeken';
+	@override late final _TranslationsUnifiedCatalogSortFieldsNl fields = _TranslationsUnifiedCatalogSortFieldsNl._(_root);
+	@override String get pageTitle => 'Sorteren op';
 }
 
 // Path: unifiedCatalog.rail
@@ -3350,6 +3357,9 @@ class _TranslationsUnifiedCatalogFiltersNl extends TranslationsUnifiedCatalogFil
 	@override String get someUnavailable => 'Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen';
 	@override String get noValues => 'Niets om uit te kiezen';
 	@override String activeCount({required Object count}) => '${count} actief';
+	@override String get decade => 'Decennium';
+	@override late final _TranslationsUnifiedCatalogFiltersQuickNl quick = _TranslationsUnifiedCatalogFiltersQuickNl._(_root);
+	@override String get pageTitle => 'Filteren op';
 }
 
 // Path: unifiedCatalog.states
@@ -4168,6 +4178,47 @@ class _TranslationsAssistantMatchNl extends TranslationsAssistantMatchEn {
 	@override String more({required Object count}) => '+${count}';
 	@override String get allAges => 'AL';
 	@override String score({required Object score}) => 'Score ${score}';
+}
+
+// Path: unifiedCatalog.sort.fields
+class _TranslationsUnifiedCatalogSortFieldsNl extends TranslationsUnifiedCatalogSortFieldsEn {
+	_TranslationsUnifiedCatalogSortFieldsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Titel';
+	@override String get year => 'Jaar';
+	@override String get releaseDate => 'Releasedatum';
+	@override String get criticRating => 'Critici';
+	@override String get audienceRating => 'Publiek';
+	@override String get userRating => 'Waardering';
+	@override String get contentRating => 'Leeftijd';
+	@override String get duration => 'Duur';
+	@override String get progress => 'Voortgang';
+	@override String get plays => 'Afgespeeld';
+	@override String get addedAt => 'Toegevoegd';
+	@override String get recentlyWatched => 'Bekeken';
+	@override String get resolution => 'Resolutie';
+}
+
+// Path: unifiedCatalog.filters.quick
+class _TranslationsUnifiedCatalogFiltersQuickNl extends TranslationsUnifiedCatalogFiltersQuickEn {
+	_TranslationsUnifiedCatalogFiltersQuickNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => 'Alles';
+	@override String get hdr => 'HDR';
+	@override String get dolbyVision => 'Dolby Vision';
+	@override String get hdr10Plus => 'HDR10+';
+	@override String get atmos => 'Atmos';
+	@override String get unwatched => 'Ongekeken';
+	@override String get inProgress => 'Bezig';
+	@override String get unmatched => 'Niet gekoppeld';
+	@override String get duplicates => 'Dubbel';
+	@override String get watched => 'Bekeken';
 }
 
 // Path: unifiedCatalog.discovery.semantics
@@ -6598,6 +6649,7 @@ extension on TranslationsNl {
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titels',
 			'unifiedCatalog.oneTitle' => '1 titel',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titels geladen',
+			'unifiedCatalog.jumpTo' => 'Spring naar',
 			'unifiedCatalog.loadMore' => 'Meer laden',
 			'unifiedCatalog.loadingMore' => 'Meer laden…',
 			'unifiedCatalog.sort.title' => 'Sorteren',
@@ -6607,10 +6659,26 @@ extension on TranslationsNl {
 			'unifiedCatalog.sort.oldestAdded' => 'Oudst toegevoegd',
 			'unifiedCatalog.sort.newestRelease' => 'Nieuwste release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oudste release',
-			'unifiedCatalog.sort.recentlyWatched' => 'Recent bekeken',
-			'unifiedCatalog.rail.sources' => 'Bronnen',
+			'unifiedCatalog.sort.yearNewest' => 'Nieuwste jaar',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.sort.yearOldest' => 'Oudste jaar',
+			'unifiedCatalog.sort.recentlyWatched' => 'Recent bekeken',
+			'unifiedCatalog.sort.fields.title' => 'Titel',
+			'unifiedCatalog.sort.fields.year' => 'Jaar',
+			'unifiedCatalog.sort.fields.releaseDate' => 'Releasedatum',
+			'unifiedCatalog.sort.fields.criticRating' => 'Critici',
+			'unifiedCatalog.sort.fields.audienceRating' => 'Publiek',
+			'unifiedCatalog.sort.fields.userRating' => 'Waardering',
+			'unifiedCatalog.sort.fields.contentRating' => 'Leeftijd',
+			'unifiedCatalog.sort.fields.duration' => 'Duur',
+			'unifiedCatalog.sort.fields.progress' => 'Voortgang',
+			'unifiedCatalog.sort.fields.plays' => 'Afgespeeld',
+			'unifiedCatalog.sort.fields.addedAt' => 'Toegevoegd',
+			'unifiedCatalog.sort.fields.recentlyWatched' => 'Bekeken',
+			'unifiedCatalog.sort.fields.resolution' => 'Resolutie',
+			'unifiedCatalog.sort.pageTitle' => 'Sorteren op',
+			'unifiedCatalog.rail.sources' => 'Bronnen',
 			'unifiedCatalog.rail.noFilters' => 'Geen',
 			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} actief',
 			'unifiedCatalog.filters.title' => 'Filters',
@@ -6630,6 +6698,18 @@ extension on TranslationsNl {
 			'unifiedCatalog.filters.someUnavailable' => 'Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen',
 			'unifiedCatalog.filters.noValues' => 'Niets om uit te kiezen',
 			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count} actief',
+			'unifiedCatalog.filters.decade' => 'Decennium',
+			'unifiedCatalog.filters.quick.all' => 'Alles',
+			'unifiedCatalog.filters.quick.hdr' => 'HDR',
+			'unifiedCatalog.filters.quick.dolbyVision' => 'Dolby Vision',
+			'unifiedCatalog.filters.quick.hdr10Plus' => 'HDR10+',
+			'unifiedCatalog.filters.quick.atmos' => 'Atmos',
+			'unifiedCatalog.filters.quick.unwatched' => 'Ongekeken',
+			'unifiedCatalog.filters.quick.inProgress' => 'Bezig',
+			'unifiedCatalog.filters.quick.unmatched' => 'Niet gekoppeld',
+			'unifiedCatalog.filters.quick.duplicates' => 'Dubbel',
+			'unifiedCatalog.filters.quick.watched' => 'Bekeken',
+			'unifiedCatalog.filters.pageTitle' => 'Filteren op',
 			'unifiedCatalog.states.emptyTitle' => 'Deze catalogus is leeg',
 			'unifiedCatalog.states.emptyBody' => 'Geen zichtbare bibliotheek bevat iets voor deze pagina.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Niets voldoet aan deze filters',
@@ -6723,6 +6803,8 @@ extension on TranslationsNl {
 			'unifiedCatalog.homeRows.close' => 'Sluiten',
 			'unifiedCatalog.homeRows.editRowTitle' => ({required Object name}) => '${name} bewerken',
 			'unifiedCatalog.homeRows.pickRowToEdit' => 'Tik op een eigen rij om hem te bewerken, of maak een nieuwe.',
+			'unifiedCatalog.onePlay' => '1 keer',
+			'unifiedCatalog.plays' => ({required Object count}) => '${count} keer',
 			'tvNavigation.activeDestination' => 'huidige sectie',
 			'tvNavigation.attentionRequired' => 'vereist aandacht',
 			'tvMyPleya.groupContent' => 'Mijn content',
@@ -7092,6 +7174,8 @@ extension on TranslationsNl {
 			'assistant.examples.trakt.0' => 'Welke titels van mijn Trakt-kijklijst kan ik hier vanavond kijken?',
 			'assistant.examples.history.0' => 'Wat heb ik de laatste tijd gekeken?',
 			'assistant.examples.history.1' => 'Geef me een tip op basis van wat ik heb gekeken.',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.examples.memory.0' => 'Wat herinner je je over mij?',
 			'assistant.examples.watchStats.0' => 'Wie heeft deze week het meest gekeken?',
 			'assistant.examples.watchStats.1' => 'Wie kijkt er nu?',
@@ -7123,8 +7207,6 @@ extension on TranslationsNl {
 			'assistant.steps.cancelJob' => 'Taak stoppen',
 			'assistant.steps.retryJob' => 'Taak opnieuw starten',
 			'assistant.steps.createUser' => 'Gebruiker aanmaken',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.steps.setUserLibraryAccess' => 'Toegang instellen',
 			'assistant.steps.removeUser' => 'Gebruiker verwijderen',
 			'assistant.steps.searchCatalog' => 'Catalogus doorzoeken',

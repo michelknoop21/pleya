@@ -364,7 +364,7 @@ void main() {
     expect(query['Genres'], 'Sci-Fi');
     expect(query['Years'], '2023,2024');
     expect(query['Filters'], 'IsUnplayed');
-    expect(query['SortBy'], 'PremiereDate');
+    expect(query['SortBy'], 'PremiereDate,SortName');
     expect(query['SortOrder'], 'Descending');
   });
 

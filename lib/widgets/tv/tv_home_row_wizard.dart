@@ -178,8 +178,14 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
   /// way back to it.
   List<CatalogLibrary> get _libraries => widget.librariesFor(_kind);
 
-  UnifiedFilterCapabilities get _capabilities =>
-      unifiedFilterCapabilitiesFor(_libraries.where(_preferences.filters.selects).map((library) => library.backend));
+  UnifiedFilterCapabilities get _capabilities => unifiedFilterCapabilitiesFor(
+    _libraries.where(_preferences.filters.selects).map((library) => library.backend),
+    kind: _kind,
+  );
+
+  /// The sort the row runs on, which the saved one need not be: see
+  /// [UnifiedCatalogPreferences.effectiveSort].
+  UnifiedCatalogSort get _effectiveSort => _preferences.effectiveSort(_capabilities);
 
   void _goTo(_Step step) => _d.goTo(step);
 
@@ -206,7 +212,12 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
   }
 
   Future<void> _openSort() async {
-    final next = await showTvCatalogSortPanel(context, selected: _preferences.sort, asSubpage: true);
+    final next = await showTvCatalogSortPanel(
+      context,
+      selected: _effectiveSort,
+      capabilities: _capabilities,
+      asSubpage: true,
+    );
     if (next == null || !mounted) return;
     _d.setSort(next);
   }
@@ -392,7 +403,7 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
     // The words come from the draft, the same five lines the phone wizard
     // shows; what is TV's own is the icon and the panel each line opens.
     final rows = [
-      for (final line in _d.filterLines(sortLabel))
+      for (final line in _d.filterLines(sortLabel, capabilities: _capabilities))
         (
           icon: switch (line.key) {
             'status' => Symbols.visibility_rounded,
@@ -440,7 +451,7 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
   List<TvCatalogSelectionTag> _tags() => [
     TvCatalogSelectionTag(_kind == MediaKind.movie ? t.unifiedCatalog.moviesTitle : t.unifiedCatalog.seriesTitle),
     for (final part in homeCustomRowFilterParts(_draft)) TvCatalogSelectionTag(part),
-    TvCatalogSelectionTag(sortLabel(_preferences.sort), muted: true),
+    TvCatalogSelectionTag(sortLabel(_effectiveSort), muted: true),
   ];
 
   Widget _previewStep(MonoTokens mono, double scale) {
@@ -474,7 +485,7 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
                   ?homeCustomRowCountLabel(content),
                   _kind == MediaKind.movie ? t.unifiedCatalog.moviesTitle : t.unifiedCatalog.seriesTitle,
                   ...homeCustomRowFilterParts(_draft),
-                  sortLabel(_preferences.sort),
+                  sortLabel(_effectiveSort),
                 ].join(' · '),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

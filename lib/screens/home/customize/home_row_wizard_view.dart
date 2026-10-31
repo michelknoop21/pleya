@@ -89,8 +89,18 @@ class _HomeRowWizardViewState extends State<HomeRowWizardView> {
     if (next != null && mounted) _d.setFilters(next);
   }
 
+  /// What the sources the row selects can run, for its sort.
+  UnifiedFilterCapabilities get _sortCapabilities => unifiedFilterCapabilitiesFor(
+    _libraries.where(_d.preferences.filters.selects).map((library) => library.backend),
+    kind: _d.kind,
+  );
+
+  /// The sort the row runs on, which the saved one need not be: see
+  /// [UnifiedCatalogPreferences.effectiveSort].
+  UnifiedCatalogSort get _effectiveSort => _d.preferences.effectiveSort(_sortCapabilities);
+
   Future<void> _openSort() async {
-    final next = await showMobileCatalogSortSheet(context, current: _d.preferences.sort);
+    final next = await showMobileCatalogSortSheet(context, current: _effectiveSort, capabilities: _sortCapabilities);
     if (next != null && mounted) _d.setSort(next);
   }
 
@@ -248,7 +258,7 @@ class _HomeRowWizardViewState extends State<HomeRowWizardView> {
   }
 
   Widget _filterStep(MonoTokens mono) {
-    final lines = _d.filterLines(mobileCatalogSortLabel);
+    final lines = _d.filterLines(mobileCatalogSortLabel, capabilities: _sortCapabilities);
     IconData iconOf(String key) => switch (key) {
       'status' => Symbols.visibility_rounded,
       'genre' => Symbols.sort_rounded,
@@ -311,7 +321,7 @@ class _HomeRowWizardViewState extends State<HomeRowWizardView> {
           children: [
             for (final tag in _d.filterTags()) Chip(label: Text(tag)),
             Chip(
-              label: Text(mobileCatalogSortLabel(_d.preferences.sort)),
+              label: Text(mobileCatalogSortLabel(_effectiveSort)),
               backgroundColor: Colors.transparent,
               side: BorderSide(color: mono.outline),
             ),
@@ -340,7 +350,7 @@ class _HomeRowWizardViewState extends State<HomeRowWizardView> {
             ?homeCustomRowCountLabel(content),
             kindLabel,
             ...homeCustomRowFilterParts(_d.draft),
-            mobileCatalogSortLabel(_d.preferences.sort),
+            mobileCatalogSortLabel(_effectiveSort),
           ].join(' · '),
           // Amber when the filter yields nothing: C4's one colour change.
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: isEmpty ? mono.accentAlt : mono.textMuted),
