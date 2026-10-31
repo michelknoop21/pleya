@@ -283,13 +283,14 @@ class UnifiedCatalogService {
   /// target.
   ///
   /// One round at a time per generation: a call while one runs gets that same
-  /// round. A second one beside it would see a cursor whose page is on its way
+  /// round, also when the last page is in and only the ids are still out, which
+  /// already reads as [isComplete]. A second one beside it would see a cursor whose page is on its way
   /// as nothing to wait for and pop past it, and would grow [_poppedItems] under
   /// a [_recomputeGroups] that is still waiting for external ids.
   Future<UnifiedCatalogSnapshot> loadMore() {
-    if (isComplete) return Future.value(snapshot);
     final running = _runningRound;
     if (running != null) return running;
+    if (isComplete) return Future.value(snapshot);
     final round = _advance();
     _runningRound = round;
     void release() {

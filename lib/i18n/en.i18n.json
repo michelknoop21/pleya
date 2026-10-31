@@ -481,6 +481,9 @@
     "more": "More"
   },
   "mediaMenu": {
+    "watch": "Watch",
+    "manage": "Manage",
+    "moreWaysToWatch": "More Ways to Watch",
     "markAsWatched": "Mark as Watched",
     "markAsUnwatched": "Mark as Unwatched",
     "removeFromContinueWatching": "Remove from Continue Watching",
@@ -1002,6 +1005,7 @@
     "manageLibraries": "Manage Libraries",
     "sort": "Sort",
     "sortBy": "Sort By",
+    "filterBy": "Filter By",
     "filters": "Filters",
     "confirmActionMessage": "Are you sure you want to perform this action?",
     "showLibrary": "Show library",

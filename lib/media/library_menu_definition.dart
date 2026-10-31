@@ -96,8 +96,10 @@ List<MediaSort> libraryMenuOrderedSorts(List<MediaSort> sorts, {required MediaBa
   ];
 }
 
-/// The quick choices at the top of Filteren op. One at a time: Alles carries
-/// the tick while none of the others does.
+/// The quick choices at the top of Filteren op. Alles carries the tick while
+/// none of the others does. On a merged catalog they take one at a time; the
+/// sheet of a single library combines them, as its switches always did, and
+/// Alles there clears every one.
 enum LibraryQuickFilter {
   all,
   hdr,

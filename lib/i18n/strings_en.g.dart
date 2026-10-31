@@ -1467,6 +1467,15 @@ class TranslationsMediaMenuEn {
 
 	// Translations
 
+	/// en: 'Watch'
+	String get watch => 'Watch';
+
+	/// en: 'Manage'
+	String get manage => 'Manage';
+
+	/// en: 'More Ways to Watch'
+	String get moreWaysToWatch => 'More Ways to Watch';
+
 	/// en: 'Mark as Watched'
 	String get markAsWatched => 'Mark as Watched';
 
@@ -2906,6 +2915,9 @@ class TranslationsLibrariesEn {
 
 	/// en: 'Sort By'
 	String get sortBy => 'Sort By';
+
+	/// en: 'Filter By'
+	String get filterBy => 'Filter By';
 
 	/// en: 'Filters'
 	String get filters => 'Filters';
@@ -10836,6 +10848,9 @@ extension on Translations {
 			'detailActions.watched' => 'Watched',
 			'detailActions.download' => 'Download',
 			'detailActions.more' => 'More',
+			'mediaMenu.watch' => 'Watch',
+			'mediaMenu.manage' => 'Manage',
+			'mediaMenu.moreWaysToWatch' => 'More Ways to Watch',
 			'mediaMenu.markAsWatched' => 'Mark as Watched',
 			'mediaMenu.markAsUnwatched' => 'Mark as Unwatched',
 			'mediaMenu.removeFromContinueWatching' => 'Remove from Continue Watching',
@@ -10894,11 +10909,11 @@ extension on Translations {
 			'videoControls.noOffset' => 'No offset',
 			'videoControls.letterbox' => 'Letterbox',
 			'videoControls.fillScreen' => 'Fill screen',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.stretch' => 'Stretch',
 			'videoControls.lockRotation' => 'Lock rotation',
 			'videoControls.unlockRotation' => 'Unlock rotation',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.timerActive' => 'Timer Active',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Playback will pause in ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'End of current video',
@@ -11315,6 +11330,7 @@ extension on Translations {
 			'libraries.manageLibraries' => 'Manage Libraries',
 			'libraries.sort' => 'Sort',
 			'libraries.sortBy' => 'Sort By',
+			'libraries.filterBy' => 'Filter By',
 			'libraries.filters' => 'Filters',
 			'libraries.confirmActionMessage' => 'Are you sure you want to perform this action?',
 			'libraries.showLibrary' => 'Show library',
@@ -11407,12 +11423,12 @@ extension on Translations {
 			'logs.clearLogs' => 'Clear Logs',
 			'logs.copyLogs' => 'Copy Logs',
 			'logs.uploadLogs' => 'Upload Logs',
+			_ => null,
+		} ?? switch (path) {
 			'logs.refreshLogs' => 'Refresh',
 			'logs.levelFilter' => 'Level',
 			'logs.levelAll' => 'All',
 			'logs.levelWarnings' => 'Warnings',
-			_ => null,
-		} ?? switch (path) {
 			'logs.levelErrors' => 'Errors',
 			'logs.noMatchingLogs' => 'No lines at this level',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} of ${total} lines',
@@ -11921,12 +11937,12 @@ extension on Translations {
 			'metadataEdit.selectPoster' => 'Select Poster',
 			'metadataEdit.selectBackground' => 'Select Background',
 			'metadataEdit.selectLogo' => 'Select Logo',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.selectSquareArt' => 'Select Square Art',
 			'metadataEdit.fromUrl' => 'From URL',
 			'metadataEdit.uploadFile' => 'Upload File',
 			'metadataEdit.enterImageUrl' => 'Enter image URL',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.imageUrl' => 'Image URL',
 			'metadataEdit.metadataUpdated' => 'Metadata updated',
 			'metadataEdit.metadataUpdateFailed' => 'Failed to update metadata',
@@ -12435,12 +12451,12 @@ extension on Translations {
 			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} active',
 			'unifiedCatalog.filters.title' => 'Filters',
 			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count} active',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.filters.status' => 'Status',
 			'unifiedCatalog.filters.genre' => 'Genre',
 			'unifiedCatalog.filters.year' => 'Year',
 			'unifiedCatalog.filters.contentRating' => 'Age rating',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.filters.servers' => 'Servers',
 			'unifiedCatalog.filters.libraries' => 'Libraries',
 			'unifiedCatalog.filters.apply' => 'Apply',
@@ -12949,12 +12965,12 @@ extension on Translations {
 			'assistant.working.busy' => 'Working on your question…',
 			'assistant.working.stillChecking' => 'Found so far. Big P is still checking…',
 			'assistant.steps.withServer' => ({required Object server, required Object step}) => '${server} · ${step}',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.steps.listServers' => 'Checking servers',
 			'assistant.steps.listLibraries' => 'Fetching libraries',
 			'assistant.steps.findMedia' => 'Finding the title',
 			'assistant.steps.listJobs' => 'Fetching jobs',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.steps.listUsers' => 'Fetching users',
 			'assistant.steps.scanLibrary' => 'Scanning library',
 			'assistant.steps.refreshMetadata' => 'Refreshing metadata',

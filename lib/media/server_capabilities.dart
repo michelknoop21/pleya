@@ -29,6 +29,12 @@ class ServerCapabilities {
   /// `/Playlists`).
   final bool serverSidePlaylists;
 
+  /// Server-side collections the app can add to and remove from (Plex
+  /// `/library/collections`, Jellyfin and Emby `/Collections`). The write is
+  /// still the server owner's: the flag says the backend can, not that this
+  /// user may.
+  final bool serverSideCollections;
+
   /// This backend kind has a Live TV / DVR API the app can talk to. Whether
   /// a *specific* server has Live TV configured is a runtime concern —
   /// [MultiServerProvider.checkLiveTvAvailability] probes each server and
@@ -141,6 +147,7 @@ class ServerCapabilities {
   const ServerCapabilities({
     this.serverSidePlayQueue = false,
     this.serverSidePlaylists = false,
+    this.serverSideCollections = false,
     this.liveTv = false,
     this.liveTvDvr = false,
     this.subtitleSearch = false,
@@ -168,6 +175,7 @@ class ServerCapabilities {
   static const ServerCapabilities plex = ServerCapabilities(
     serverSidePlayQueue: true,
     serverSidePlaylists: true,
+    serverSideCollections: true,
     liveTv: true,
     liveTvDvr: true,
     subtitleSearch: true,
@@ -201,6 +209,7 @@ class ServerCapabilities {
   static const ServerCapabilities jellyfin = ServerCapabilities(
     serverSidePlayQueue: false,
     serverSidePlaylists: true,
+    serverSideCollections: true,
     liveTv: true,
     liveTvDvr: false,
     subtitleSearch: false,
@@ -254,6 +263,7 @@ class ServerCapabilities {
   ServerCapabilities copyWith({
     bool? serverSidePlayQueue,
     bool? serverSidePlaylists,
+    bool? serverSideCollections,
     bool? liveTv,
     bool? liveTvDvr,
     bool? subtitleSearch,
@@ -279,6 +289,7 @@ class ServerCapabilities {
     return ServerCapabilities(
       serverSidePlayQueue: serverSidePlayQueue ?? this.serverSidePlayQueue,
       serverSidePlaylists: serverSidePlaylists ?? this.serverSidePlaylists,
+      serverSideCollections: serverSideCollections ?? this.serverSideCollections,
       liveTv: liveTv ?? this.liveTv,
       liveTvDvr: liveTvDvr ?? this.liveTvDvr,
       subtitleSearch: subtitleSearch ?? this.subtitleSearch,

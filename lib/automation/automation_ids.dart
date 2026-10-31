@@ -497,6 +497,15 @@ class AutomationIds {
   /// only thing a scenario could read was a chip's own `selected` flag, and a
   /// chip that marks itself is not evidence that the page behind it changed.
   static const String libraryHeader = 'library.header';
+  static const String libraryHeaderSearch = 'library.header.search';
+  static const String libraryHeaderWatchlist = 'library.header.watchlist';
+  static const String libraryHeaderAvatar = 'library.header.avatar';
+
+  /// The three dots of the iPhone library filter row: manage and refresh.
+  static const String libraryFilterMore = 'library.filter.more';
+  static const String libraryFilterCount = 'library.filter.count';
+  static const String sheetLibrarySort = 'sheet.library_sort';
+  static const String sheetLibraryFilter = 'sheet.library_filter';
 
   /// The video player's rendering surface (`lib/mpv/video.dart`).
   static const String playerSurface = 'player.surface';
@@ -929,6 +938,13 @@ class AutomationIds {
     {'id': libraryGrid, 'role': 'grid', 'instanceable': false},
     {'id': libraryGridItem, 'role': 'grid.item', 'instanceable': true},
     {'id': libraryHeader, 'role': 'region', 'instanceable': false},
+    {'id': libraryHeaderSearch, 'role': 'button', 'instanceable': false},
+    {'id': libraryHeaderWatchlist, 'role': 'button', 'instanceable': false},
+    {'id': libraryHeaderAvatar, 'role': 'button', 'instanceable': false},
+    {'id': libraryFilterMore, 'role': 'button', 'instanceable': false},
+    {'id': libraryFilterCount, 'role': 'region', 'instanceable': false},
+    {'id': sheetLibrarySort, 'role': 'sheet', 'instanceable': false},
+    {'id': sheetLibraryFilter, 'role': 'sheet', 'instanceable': false},
     {'id': libraryFilterGrouping, 'role': 'filter', 'instanceable': false},
     {'id': libraryFilterFilters, 'role': 'filter', 'instanceable': false},
     {'id': libraryFilterSort, 'role': 'filter', 'instanceable': false},

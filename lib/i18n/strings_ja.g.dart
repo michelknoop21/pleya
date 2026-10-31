@@ -508,6 +508,9 @@ class _TranslationsMediaMenuJa extends TranslationsMediaMenuEn {
 	final TranslationsJa _root; // ignore: unused_field
 
 	// Translations
+	@override String get watch => '視聴';
+	@override String get manage => '管理';
+	@override String get moreWaysToWatch => 'その他の視聴方法';
 	@override String get markAsWatched => '視聴済みにする';
 	@override String get markAsUnwatched => '未視聴にする';
 	@override String get removeFromContinueWatching => '視聴中から削除';
@@ -979,6 +982,7 @@ class _TranslationsLibrariesJa extends TranslationsLibrariesEn {
 	@override String get manageLibraries => 'ライブラリを管理';
 	@override String get sort => '並べ替え';
 	@override String get sortBy => '並べ替え順';
+	@override String get filterBy => '絞り込み条件';
 	@override String get filters => 'フィルター';
 	@override String get confirmActionMessage => 'この操作を実行してもよろしいですか？';
 	@override String get showLibrary => 'ライブラリを表示';
@@ -2693,6 +2697,9 @@ extension on TranslationsJa {
 			'fileInfo.duration' => '長さ',
 			'fileInfo.optimizedForStreaming' => 'ストリーミング最適化',
 			'fileInfo.has64bitOffsets' => '64ビットオフセット',
+			'mediaMenu.watch' => '視聴',
+			'mediaMenu.manage' => '管理',
+			'mediaMenu.moreWaysToWatch' => 'その他の視聴方法',
 			'mediaMenu.markAsWatched' => '視聴済みにする',
 			'mediaMenu.markAsUnwatched' => '未視聴にする',
 			'mediaMenu.removeFromContinueWatching' => '視聴中から削除',
@@ -2850,11 +2857,11 @@ extension on TranslationsJa {
 			'messages.noEpisodesFoundGeneral' => 'エピソードが見つかりません',
 			'messages.episodesLoadFailed' => 'エピソードを読み込めませんでした',
 			'messages.noResultsFound' => '結果が見つかりません',
+			_ => null,
+		} ?? switch (path) {
 			'messages.sleepTimerSet' => ({required Object label}) => 'スリープタイマーを${label}に設定しました',
 			'messages.noItemsAvailable' => 'アイテムがありません',
 			'messages.failedToCreatePlayQueueNoItems' => '再生キューの作成に失敗しました - アイテムがありません',
-			_ => null,
-		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => '${action}に失敗しました',
 			'messages.switchingToCompatiblePlayer' => '互換プレーヤーに切替中...',
 			'messages.serverLimitTitle' => '再生に失敗しました',
@@ -3028,6 +3035,7 @@ extension on TranslationsJa {
 			'libraries.manageLibraries' => 'ライブラリを管理',
 			'libraries.sort' => '並べ替え',
 			'libraries.sortBy' => '並べ替え順',
+			'libraries.filterBy' => '絞り込み条件',
 			'libraries.filters' => 'フィルター',
 			'libraries.confirmActionMessage' => 'この操作を実行してもよろしいですか？',
 			'libraries.showLibrary' => 'ライブラリを表示',
@@ -3363,12 +3371,12 @@ extension on TranslationsJa {
 			'companionRemote.session.serverRunningDescription' => 'ネットワーク上のモバイルデバイスがこのアプリに接続できます',
 			'companionRemote.session.serverStoppedDescription' => 'モバイルデバイスの接続を許可するにはサーバーを起動してください',
 			'companionRemote.session.usePhoneToControl' => 'モバイルデバイスでこのアプリを操作できます',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.session.startServer' => 'サーバーを起動',
 			'companionRemote.session.stopServer' => 'サーバーを停止',
 			'companionRemote.session.minimize' => '最小化',
 			'companionRemote.pairing.discoveryDescription' => '同じPlexアカウントのPleyaデバイスがここに表示されます',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => '接続中...',
 			'companionRemote.pairing.searchingForDevices' => 'デバイスを検索中...',

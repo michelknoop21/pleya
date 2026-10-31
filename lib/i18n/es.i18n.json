@@ -374,6 +374,9 @@
     "has64bitOffsets": "Offsets de 64 bits"
   },
   "mediaMenu": {
+    "watch": "Ver",
+    "manage": "Administrar",
+    "moreWaysToWatch": "Más formas de ver",
     "markAsWatched": "Marcar como Visto",
     "markAsUnwatched": "Marcar como No Visto",
     "removeFromContinueWatching": "Eliminar de Seguir Viendo",
@@ -741,6 +744,7 @@
     "manageLibraries": "Gestionar Bibliotecas",
     "sort": "Ordenar",
     "sortBy": "Ordenar por",
+    "filterBy": "Filtrar por",
     "filters": "Filtros",
     "confirmActionMessage": "¿Estás seguro de que quieres realizar esta acción?",
     "showLibrary": "Mostrar biblioteca",
