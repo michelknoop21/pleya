@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
+	"github.com/edde746/plezy/pleya_server/internal/auth"
+	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/transcode"
 )
 
@@ -234,6 +236,45 @@ func TestSessionBelongsToItsOwner(t *testing.T) {
 	}
 	if rec := e.do(http.MethodGet, plan.StreamURL, nil); rec.Code != http.StatusOK {
 		t.Fatalf("de eigenaar kon de lijst niet meer lezen: %d", rec.Code)
+	}
+}
+
+// Een streamcredential opent zijn versie, niet elke omzetting van die versie: twee
+// gebruikers die dezelfde film kijken lezen elkaars segmenten niet.
+func TestStreamCredentialsDoNotOpenAnotherUsersConversion(t *testing.T) {
+	e, _ := transcodeEnv(t, 2)
+	plan := e.transcodePlan(e.findMovie("Grease").ID)
+
+	other := e.createUser("member", "kijker")
+	e.grantLibrary(other, id.MustParse(e.libraryID("movies")), "view")
+	token := e.tokenFor(other)
+	rec := e.do(http.MethodPost, "/pleya/v1/auth/stream-session", map[string]string{"version_id": plan.VersionID}, asUser(token))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("stream-session gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	var lease api.StreamSession
+	e.decodeInto(rec, &lease)
+	var cookie *http.Cookie
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == auth.StreamCookiePrefix+lease.StreamSessionID {
+			cookie = c
+		}
+	}
+	if cookie == nil {
+		t.Fatal("geen streamcookie")
+	}
+	rec = e.do(http.MethodPost, "/pleya/v1/auth/stream-token", map[string]string{"version_id": plan.VersionID}, asUser(token))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("stream-token gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	var tok api.StreamToken
+	e.decodeInto(rec, &tok)
+
+	if rec := e.do(http.MethodGet, plan.StreamURL+"?ss="+lease.StreamSessionID, nil, withoutAuth, withCookie(cookie)); rec.Code != http.StatusNotFound {
+		t.Fatalf("streamsessie van een ander gaf %d", rec.Code)
+	}
+	if rec := e.do(http.MethodGet, plan.StreamURL+"?stream_token="+url.QueryEscape(tok.StreamToken), nil, withoutAuth); rec.Code != http.StatusNotFound {
+		t.Fatalf("streamtoken van een ander gaf %d", rec.Code)
 	}
 }
 
