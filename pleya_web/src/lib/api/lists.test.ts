@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { PleyaClient, type FetchLike } from './client';
 import { TokenStore, type TokenStorage } from '../auth/tokens';
-import { knownVisibility, listsApi, nextInList } from './lists';
+import { allPages, knownVisibility, listsApi, mergeOrder, nextInList } from './lists';
 
 function storage(): TokenStorage {
   const data = new Map<string, string>();
@@ -38,6 +38,31 @@ describe('lists API', () => {
       ['DELETE', '/pleya/v1/collections/c']
     ]);
     expect(await requests[0]!.clone().json()).toEqual({ item_ids: ['b', 'a'] });
+  });
+
+  it('applies a reorder to the list as it is now, not as it was when the mode opened', async () => {
+    const { api, requests } = setup([
+      { items: [{ id: 'a' }, { id: 'b' }, { id: 'nieuw' }], next_cursor: null }
+    ]);
+    await api.saveOrder('playlist', 'p', ['b', 'weg', 'a']);
+    const put = requests.at(-1)!;
+    expect(put.method).toBe('PUT');
+    expect(await put.clone().json()).toEqual({ item_ids: ['b', 'a', 'nieuw'] });
+  });
+
+  it('merges a chosen order with the current rows', () => {
+    expect(mergeOrder(['c', 'a'], ['a', 'c'])).toEqual(['c', 'a']);
+    expect(mergeOrder(['c', 'a'], ['a', 'b', 'c', 'd'])).toEqual(['c', 'a', 'b', 'd']);
+    expect(mergeOrder(['c', 'a'], ['a'])).toEqual(['a']);
+    expect(mergeOrder(['a'], [])).toEqual([]);
+  });
+
+  it('follows the cursor to the last page', async () => {
+    const read = vi.fn(async (cursor?: string) => cursor
+      ? { items: [2], next_cursor: null }
+      : { items: [1], next_cursor: 'next' });
+    await expect(allPages(read)).resolves.toEqual([1, 2]);
+    expect(read).toHaveBeenLastCalledWith('next');
   });
 
   it('reads every page before a reorder', async () => {

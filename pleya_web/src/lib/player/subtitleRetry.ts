@@ -12,6 +12,13 @@ export const SUBTITLE_RETRY_LIMIT_MS = 11 * 60 * 1000;
 const DEFAULT_RETRY_AFTER_SECONDS = 5;
 const MAX_RETRY_AFTER_SECONDS = 60;
 
+/**
+ * Zo lang onthoudt de server een mislukte extractie (`subtitleFailureMemory` in
+ * `internal/transcode/subtitles.go`). Binnen dit venster geeft hij dezelfde `502`
+ * terug zonder ffmpeg te starten, dus Opnieuw wacht het af.
+ */
+export const SUBTITLE_FAILURE_MEMORY_MS = 15_000;
+
 export class SubtitleNotReadyError extends Error {
   constructor(readonly retryAfterMs: number) {
     super('Subtitle is still being prepared');
@@ -24,7 +31,7 @@ export function retryAfterMs(header: string | null): number {
   return Math.min(Math.max(seconds, 1), MAX_RETRY_AFTER_SECONDS) * 1000;
 }
 
-function pause(ms: number, signal: AbortSignal): Promise<void> {
+export function pause(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal.aborted) return reject(new DOMException('Aborted', 'AbortError'));
     const stop = () => { clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')); };

@@ -14,7 +14,7 @@
   import Select from '../Select.svelte';
   import type { Collection, Playlist } from '../../api/types';
   import { describeError } from '../../api/errors';
-  import { listsApi, type ListKind } from '../../api/lists';
+  import { allPages, listsApi, type ListKind } from '../../api/lists';
   import { addToList } from '../../stores/addToList.svelte';
   import { session } from '../../stores/session.svelte';
   import { t } from '../../i18n';
@@ -29,6 +29,9 @@
   let loading = $state(false);
   let busy = $state(false);
   let error = $state<string | null>(null);
+  // Blijft staan als het item niet toegevoegd kon worden: een tweede klik maakt
+  // dan geen tweede lijst met dezelfde naam.
+  let created: { name: string; kind: ListKind; id: string; title: string } | null = null;
 
   const canCollect = $derived(session.capabilities?.collections === true);
   const canPlaylist = $derived(session.capabilities?.playlists === true);
@@ -48,6 +51,7 @@
       chosen = {};
       newName = '';
       error = null;
+      created = null;
       newKind = canCollect ? 'collection' : 'playlist';
       // Pas open na het laden: de focus hoort op de eerste lijst te landen, niet
       // op een veld waar de lijsten daarna boven verschijnen.
@@ -65,12 +69,13 @@
     loading = true;
     try {
       const api = listsApi(session.client);
+      const query = { owned: true, sort: 'title', limit: 200 } as const;
       const [ownCollections, ownPlaylists] = await Promise.all([
-        canCollect ? api.collections({ owned: true, sort: 'title', limit: 200 }) : null,
-        canPlaylist ? api.playlists({ owned: true, sort: 'title', limit: 200 }) : null
+        canCollect ? allPages((cursor) => api.collections({ ...query, ...(cursor ? { cursor } : {}) })) : [],
+        canPlaylist ? allPages((cursor) => api.playlists({ ...query, ...(cursor ? { cursor } : {}) })) : []
       ]);
-      collections = ownCollections?.items ?? [];
-      playlists = ownPlaylists?.items ?? [];
+      collections = ownCollections;
+      playlists = ownPlaylists;
     } catch (err) {
       error = describeError(err);
     } finally {
@@ -99,8 +104,12 @@
     const name = newName.trim();
     if (name) {
       try {
-        const created = newKind === 'playlist' ? await api.createPlaylist(name) : await api.createCollection({ title: name });
-        await add(newKind as ListKind, created.id, created.title);
+        const kind = newKind as ListKind;
+        if (created?.name !== name || created.kind !== kind) {
+          const list = kind === 'playlist' ? await api.createPlaylist(name) : await api.createCollection({ title: name });
+          created = { name, kind, id: list.id, title: list.title };
+        }
+        await add(kind, created.id, created.title);
       } catch (err) {
         error = describeError(err);
       }

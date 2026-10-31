@@ -230,7 +230,6 @@ describe('tokenvernieuwing', () => {
       ['503 met envelop', () => envelope(503, 'storage.unavailable')],
       ['502 van een proxy zonder envelop', () => new Response('<html>Bad Gateway</html>', { status: 502 })],
       ['503 zonder inhoud', () => new Response(null, { status: 503 })],
-      ['403 auth.origin_rejected', () => envelope(403, 'auth.origin_rejected')],
       ['204 zonder inhoud', () => new Response(null, { status: 204 })],
       ['een netwerkfout', () => { throw new TypeError('failed to fetch'); }]
     ])('logt niet uit bij %s en laat het token staan', async (_name, answer) => {
@@ -253,6 +252,24 @@ describe('tokenvernieuwing', () => {
       expect(tokens.refreshToken).toBeNull();
       expect(client.refreshUnavailable).toBe(false);
     });
+  });
+
+  it('een geweigerde origin is geen storing en geen uitloggen', async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const req = input as Request;
+      const refused = { error: { code: 'auth.origin_rejected', message: 'x', retryable: false } };
+      return req.url.endsWith('/auth/refresh')
+        ? json(refused, 403)
+        : json({ error: { code: 'auth.token_expired', message: 'x', retryable: false } }, 401);
+    }) as unknown as FetchLike;
+    const lost = vi.fn();
+    const tokens = new TokenStore(memoryStorage({ 'pleya.refresh_token': 'R1' }), memoryStorage());
+    const client = new PleyaClient({ baseUrl: BASE, tokens, fetch: fetchImpl, onSessionLost: lost });
+    await expect(client.restore()).resolves.toBe(false);
+    expect(client.refreshRefused?.code).toBe('auth.origin_rejected');
+    expect(client.refreshUnavailable).toBe(false);
+    expect(lost).not.toHaveBeenCalled();
+    expect(tokens.refreshToken).toBe('R1');
   });
 
   describe('een 429 op de verversing (S15.1)', () => {
@@ -308,6 +325,14 @@ describe('tokenvernieuwing', () => {
       expect(tokens.refreshToken).toBe('R1');
       expect(delays).toHaveLength(4);
       expect(client.refreshUnavailable).toBe(true);
+    });
+
+    it('telt hetzelfde token niet als geslaagd, ook niet als het lokaal nog geldt', async () => {
+      const { client, tokens, bodies } = setup([() => limited('1'), () => pair(2)]);
+      tokens.set({ access_token: 'A1', refresh_token: 'R1', expires_in_ms: 900_000 });
+      await expect(client.libraries()).resolves.toEqual([]);
+      expect(bodies).toHaveLength(2);
+      expect(tokens.accessToken).toBe('A2');
     });
 
     it('wacht niet op een proxy die een uur vraagt', async () => {

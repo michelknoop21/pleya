@@ -4,8 +4,10 @@
 
   Delen is voor eigenaar en beheerder (hoofdstuk 14b). Een lid of beperkte
   gebruiker houdt zijn verzamelingen privé: hij krijgt de keuze niet te zien, er
-  gaat geen zichtbaarheid mee en er komt geen `GET /users`. Is de zichtbaarheid
-  onbekend (3.2), dan staat er een uitleg en gaat er geen waarde mee terug.
+  gaat geen zichtbaarheid mee en er komt geen `GET /users`. Staat een eigen lijst
+  nog gedeeld van toen hij die rol had, dan blijft alleen de weg terug: de huidige
+  stand of privé. Is de zichtbaarheid onbekend (3.2), dan staat er een uitleg en
+  gaat er geen waarde mee terug.
 -->
 <script lang="ts">
   import { untrack } from 'svelte';
@@ -44,6 +46,8 @@
     { value: 'everyone', label: t('lists.form.everyone') },
     { value: 'users', label: t('lists.form.users') }
   ]);
+  const canRevoke = $derived(!canShare && !unknown && collection?.is_owner === true && collection.visibility !== 'private');
+  const revokeOptions = $derived(visibilityOptions.filter((option) => option.value === 'private' || option.value === collection?.visibility));
   const others = $derived(users.filter((user) => user.id !== session.me?.id));
   const dialogTitle = $derived(
     list
@@ -76,7 +80,9 @@
   }
 
   function collectionBody() {
-    if (unknown || !canShare) return {};
+    if (unknown) return {};
+    if (canRevoke) return visibility === 'private' ? { visibility: 'private' as const } : {};
+    if (!canShare) return {};
     return { visibility: visibility as 'private' | 'everyone' | 'users', ...(visibility === 'users' ? { shared_with: recipients } : {}) };
   }
 
@@ -130,6 +136,8 @@
             {/each}
           </fieldset>
         {/if}
+      {:else if canRevoke}
+        <Choice legend={t('lists.form.visibility')} options={revokeOptions} bind:value={visibility} disabled={busy} />
       {/if}
     {/if}
     {#if error}<p class="error" role="alert">{error}</p>{/if}

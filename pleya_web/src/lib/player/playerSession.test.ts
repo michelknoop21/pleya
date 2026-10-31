@@ -202,6 +202,21 @@ describe('fouten uit het plan', () => {
     });
   }
 
+  it('een 401 na een mislukte verversing biedt opnieuw proberen en geen inloggen', async () => {
+    const expired = fakeApi({ plan: async () => { throw apiError('auth.token_expired', 401); } });
+    const s = new PlayerSession(deps(expired, { refreshUnavailable: () => true }));
+    await s.start(asMedia(fakeMedia()), target);
+    expect(s.problem?.wayOut).toBe('retry');
+    expect(s.problem?.code).toBe('client.transport');
+  });
+
+  it('een andere fout blijft zichzelf, ook als een eerdere verversing mislukte', async () => {
+    const missing = fakeApi({ plan: async () => { throw apiError('library.not_found', 404); } });
+    const s = new PlayerSession(deps(missing, { refreshUnavailable: () => true }));
+    await s.start(asMedia(fakeMedia()), target);
+    expect(s.problem?.code).toBe('library.not_found');
+  });
+
   it('een streamsessielimiet bij direct play is ook een foutstaat', async () => {
     const api = fakeApi({
       streamSession: async () => {

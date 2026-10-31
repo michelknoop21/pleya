@@ -4,8 +4,9 @@ import { SessionState } from './session.svelte';
 import { streamSessions } from '../player/streamSessionCache';
 import { LAST_CONTACT_KEY, readLastContact } from './lastContact';
 import { PleyaClient, type FetchLike } from '../api/client';
-import { TransportError } from '../api/errors';
+import { ApiError, TransportError } from '../api/errors';
 import { TokenStore } from '../auth/tokens';
+import { addToList } from './addToList.svelte';
 
 /** Alleen wat `start()` en `load()` aanraken; de rest van de client doet hier niet mee. */
 function fakeClient(overrides: Partial<Record<string, unknown>> = {}): PleyaClient {
@@ -181,6 +182,108 @@ describe('een storing op de verversing, met de echte client', () => {
     await state.start();
     expect(state.phase).toBe('signed-out');
     expect(client.tokens.refreshToken).toBeNull();
+  });
+});
+
+describe('een oude storing bepaalt de volgende fase niet', () => {
+  function client(stored: Storage, answers: (() => Response)[]) {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      if ((input as Request).url.endsWith('/info')) {
+        return new Response(JSON.stringify({ auth: { setup_required: false }, capabilities: { browse: true } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      return answers.shift()!();
+    }) as unknown as FetchLike;
+    return new PleyaClient({ baseUrl: 'http://server.test/pleya/v1', tokens: new TokenStore(stored, memoryStorage()), fetch: fetchImpl });
+  }
+
+  it('afmelden in een ander tabblad wint van de vorige 503', async () => {
+    const stored = memoryStorage();
+    stored.setItem('pleya.refresh_token', 'R1');
+    const state = new SessionState(client(stored, [() => new Response(null, { status: 503 })]));
+    await state.start();
+    expect(state.phase).toBe('unreachable');
+    stored.setItem('pleya.session_epoch', 'een-ander-tabblad');
+    await state.start();
+    expect(state.phase).toBe('signed-out');
+  });
+
+  it('een verdwenen token wint ook langs de vroege uitgang van restore()', async () => {
+    const stored = memoryStorage();
+    stored.setItem('pleya.refresh_token', 'R1');
+    const state = new SessionState(client(stored, [() => new Response(null, { status: 503 })]));
+    await state.start();
+    expect(state.phase).toBe('unreachable');
+    stored.removeItem('pleya.refresh_token');
+    await state.start();
+    expect(state.phase).toBe('signed-out');
+  });
+});
+
+describe('een fout bij het laden met een geldig token', () => {
+  const failing = (error: unknown) => fakeClient({ libraries: vi.fn(async () => { throw error; }) });
+  const api = (status: number, code: string) => new ApiError({ code, message: code, status, retryable: false });
+
+  it.each([
+    ['een weggevallen verbinding', new TransportError(new Error('offline'))],
+    ['een 502 van de proxy', api(502, 'client.malformed_response')],
+    ['een 500', api(500, 'server.internal')]
+  ])('%s is onbereikbaar en geen inlogscherm', async (_name, error) => {
+    const state = new SessionState(failing(error));
+    await state.start();
+    expect(state.phase).toBe('unreachable');
+  });
+
+  it.each([
+    ['een 401', api(401, 'auth.token_invalid')],
+    ['een 403', api(403, 'library.not_found')]
+  ])('%s blijft het inlogscherm (negatieve controle)', async (_name, error) => {
+    const state = new SessionState(failing(error));
+    await state.start();
+    expect(state.phase).toBe('signed-out');
+  });
+});
+
+describe('een geweigerde origin', () => {
+  it('is geen eindeloos onbereikbaar, en zegt wat er aan de hand is', async () => {
+    const refused = new ApiError({ code: 'auth.origin_rejected', message: 'x', status: 403, retryable: false });
+    const state = new SessionState(fakeClient({ restore: vi.fn(async () => false), refreshRefused: refused }));
+    await state.start();
+    expect(state.phase).toBe('signed-out');
+    expect(state.error).toMatch(/proxy/);
+  });
+});
+
+describe('"Toevoegen aan" na het verlies van de sessie', () => {
+  const item = { id: 'van-a', kind: 'movie', title: 'Van A', added_at: '' } as const;
+
+  it('wist het open item bij afmelden', async () => {
+    const state = new SessionState(fakeClient({ signOut: vi.fn(async () => {}), sessionGeneration: 0 }));
+    addToList.open(item);
+    await state.signOut({ local: true });
+    expect(addToList.item).toBeNull();
+  });
+
+  it('wist het open item als de sessie wegvalt', async () => {
+    vi.stubGlobal('sessionStorage', memoryStorage());
+    // De standaardclient praat relatief; buiten een pagina vraagt Request een volledig adres.
+    const Absolute = class extends Request {
+      constructor(input: RequestInfo | URL, init?: RequestInit) {
+        super(typeof input === 'string' ? new URL(input, 'http://server.test') : input, init);
+      }
+    };
+    vi.stubGlobal('Request', Absolute);
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      JSON.stringify({ error: { code: 'auth.token_expired', message: 'x', retryable: false } }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } }
+    )));
+    const state = new SessionState();
+    addToList.open(item);
+    await state.client.libraries().catch(() => null);
+    expect(addToList.item).toBeNull();
+    expect(state.phase).toBe('signed-out');
   });
 });
 

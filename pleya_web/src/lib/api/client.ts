@@ -12,7 +12,7 @@
 import createClient, { type Client, type Middleware } from 'openapi-fetch';
 
 import type { paths } from './schema';
-import { TransportError, isSessionRejected, toApiError } from './errors';
+import { type ApiError, TransportError, isSessionRejected, toApiError } from './errors';
 import { TokenStore } from '../auth/tokens';
 import type { DeviceFields } from '../auth/device';
 import type {
@@ -88,6 +88,7 @@ export class PleyaClient {
   #refreshing: Promise<boolean> | null = null;
   #refreshGeneration = -1;
   #refreshUnavailable = false;
+  #refreshRefused: ApiError | null = null;
   #sessionGeneration = 0;
   #epoch: string | null;
   #supportsCookieAuth = false;
@@ -97,6 +98,8 @@ export class PleyaClient {
   get sessionGeneration(): number { return this.#sessionGeneration; }
   /** De laatste verversing gaf op zonder oordeel over het token (429, 5xx, geen verbinding). De sessie bestaat nog. */
   get refreshUnavailable(): boolean { return this.#refreshUnavailable; }
+  /** De server weigerde deze verversing om iets dat herhalen niet oplost, zoals `auth.origin_rejected`. De sessie bestaat nog. */
+  get refreshRefused(): ApiError | null { return this.#refreshRefused; }
   #onSessionLost: (() => void) | undefined;
   #delay: (ms: number) => Promise<void>;
 
@@ -158,6 +161,7 @@ export class PleyaClient {
     const generation = this.#sessionGeneration;
     if (this.#refreshing && this.#refreshGeneration === generation) return this.#refreshing;
     this.#refreshGeneration = generation;
+    this.#clearRefreshFailure();
 
     // De cookie is van het hele browserprofiel: na een wissel in een ander tabblad zou deze client
     // zich als die andere gebruiker verversen en zijn aanvraag met diens credential herhalen.
@@ -168,7 +172,8 @@ export class PleyaClient {
       return Promise.resolve(false);
     }
 
-    this.#refreshUnavailable = false;
+    // Het token waarmee deze ronde begon; dat kan de server net hebben afgewezen.
+    const startedWith = this.tokens.accessToken;
     this.#refreshing = (async () => {
       try {
         for (let attempt = 1; ; attempt++) {
@@ -188,8 +193,10 @@ export class PleyaClient {
             }
             await this.#delay(wait + Math.random() * REFRESH_LIMIT_JITTER_MS);
             if (generation !== this.#sessionGeneration) return false;
-            // Een ander tabblad ververste intussen, of deze client kreeg via de bewaarde sleutel een nieuw token.
-            if (this.tokens.accessToken) return true;
+            // Alleen een ander token telt als geslaagd: het accesstoken staat per tabblad, dus hetzelfde
+            // token is geen teken dat iemand ververst heeft, ook al is het lokaal nog geldig.
+            const access = this.tokens.accessToken;
+            if (access && access !== startedWith) return true;
             if (stale()) {
               this.#loseSession();
               return false;
@@ -201,6 +208,13 @@ export class PleyaClient {
             return false;
           }
           if (error !== undefined || !data) {
+            const failure = toApiError(response.status, error);
+            // Opnieuw proberen verandert hier niets: de origin van deze pagina wordt geweigerd. Dat
+            // is een instelling van de server of proxy, dus de tokens blijven en de diagnose gaat mee.
+            if (failure.code === 'auth.origin_rejected') {
+              this.#refreshRefused = failure;
+              return false;
+            }
             // Alleen een afwijzing van het token beëindigt de sessie. Een 5xx of een proxyfout zegt
             // daar niets over; het token blijft staan en de volgende poging probeert het opnieuw.
             this.#refreshUnavailable = true;
@@ -220,6 +234,12 @@ export class PleyaClient {
     })();
 
     return this.#refreshing;
+  }
+
+  /** Een oordeel over een vorige ronde zegt niets over de volgende. */
+  #clearRefreshFailure(): void {
+    this.#refreshUnavailable = false;
+    this.#refreshRefused = null;
   }
 
   #loseSession(): void {
@@ -320,6 +340,7 @@ export class PleyaClient {
    * geldig is; dat is een normale toestand en geen fout.
    */
   restore(): Promise<boolean> {
+    this.#clearRefreshFailure();
     // Een geldig accesstoken overleeft een herlaadbeurt, dus meestal is er
     // niets te verversen. Dat scheelt niet alleen een aanvraag: het
     // refreshtoken roteert bij elk gebruik, en een refresh per paginaladen

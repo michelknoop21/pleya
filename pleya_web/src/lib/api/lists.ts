@@ -18,6 +18,29 @@ const noContent = (result: { response: Response; error?: unknown }) => result.re
 /** Past bij de limiet van een pagina items; de server begrenst een lijst op 5000. */
 const PAGE = 200;
 
+/** Leest alle pagina's van een cursorlijst. */
+export async function allPages<T>(read: (cursor?: string) => Promise<{ items: T[]; next_cursor?: string | null }>): Promise<T[]> {
+  const items: T[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await read(cursor);
+    items.push(...page.items);
+    cursor = page.next_cursor ?? undefined;
+  } while (cursor);
+  return items;
+}
+
+/**
+ * De gekozen volgorde, toegepast op de lijst zoals hij nu is: `PUT` vervangt alles,
+ * dus een rij die intussen verdween komt niet terug en een nieuwe rij gaat niet
+ * verloren maar komt achteraan.
+ */
+export function mergeOrder(chosen: string[], current: string[]): string[] {
+  const present = new Set(current);
+  const kept = new Set(chosen.filter((id) => present.has(id)));
+  return [...kept, ...current.filter((id) => !kept.has(id))];
+}
+
 export function listsApi(client: PleyaClient) {
   const generation = client.sessionGeneration;
   const assertAccount = () => {
@@ -58,15 +81,12 @@ export function listsApi(client: PleyaClient) {
         ? raw.GET('/collections/{collection_id}/items', { params: { path: { collection_id: id }, query }, signal })
         : raw.GET('/playlists/{playlist_id}/items', { params: { path: { playlist_id: id }, query }, signal }))),
     /** Alle pagina's, voor herordenen en "Alles afspelen". */
-    async allItems(kind: ListKind, id: string, signal?: AbortSignal): Promise<Item[]> {
-      const items: Item[] = [];
-      let cursor: string | undefined;
-      do {
-        const page = await api.items(kind, id, { limit: PAGE, ...(cursor ? { cursor } : {}) }, signal);
-        items.push(...page.items);
-        cursor = page.next_cursor ?? undefined;
-      } while (cursor);
-      return items;
+    allItems: (kind: ListKind, id: string, signal?: AbortSignal): Promise<Item[]> =>
+      allPages((cursor) => api.items(kind, id, { limit: PAGE, ...(cursor ? { cursor } : {}) }, signal)),
+    /** Herordenen duurt minuten: de lijst wordt vlak vóór het vervangen opnieuw gelezen. */
+    async saveOrder(kind: ListKind, id: string, order: string[], signal?: AbortSignal): Promise<true> {
+      const current = await api.allItems(kind, id, signal);
+      return api.replaceItems(kind, id, mergeOrder(order, current.map((item) => item.id)));
     },
     replaceItems: (kind: ListKind, id: string, itemIds: string[]): Promise<true> =>
       guarded(() => client.request(async raw => {

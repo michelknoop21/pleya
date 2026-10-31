@@ -469,6 +469,7 @@ export const web = {
   'error.auth.setup_required': 'This server has no owner yet. Finish setup first.',
   'error.auth.setup_already_completed': 'This server already has an owner. Sign in instead.',
   'error.auth.setup_code_invalid': 'That setup code is not valid or has expired.',
+  'error.auth.origin_rejected': 'This server refuses the address you opened it on. Check its public address and proxy settings.',
   'error.auth.rate_limited': 'Too many attempts. Wait a moment and try again.',
   'error.library.not_found': 'That item is not on this server.',
   'error.library.scan_in_progress': 'A scan is running. Try again in a moment.',

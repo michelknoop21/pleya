@@ -20,6 +20,13 @@ class AddToList {
     this.item = null;
   }
 
+  /** Na het afmelden hoort niets van dit account nog in beeld te komen. */
+  reset(): void {
+    this.item = null;
+    this.message = null;
+    clearTimeout(this.#timer);
+  }
+
   announce(message: string): void {
     this.message = message;
     clearTimeout(this.#timer);

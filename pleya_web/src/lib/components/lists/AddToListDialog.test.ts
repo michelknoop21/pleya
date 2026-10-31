@@ -7,7 +7,8 @@ const h = vi.hoisted(() => ({
   caps: { collections: true, playlists: true }
 }));
 vi.mock('../../stores/session.svelte', () => ({ session: { client: {}, get capabilities() { return h.caps; } } }));
-vi.mock('../../api/lists', () => ({
+vi.mock('../../api/lists', async (original) => ({
+  ...(await original<typeof import('../../api/lists')>()),
   listsApi: () => ({ collections: h.collections, playlists: h.playlists, addItems: h.addItems, createCollection: h.createCollection, createPlaylist: h.createPlaylist })
 }));
 
@@ -46,6 +47,27 @@ describe('add to list', () => {
     expect(h.addItems).toHaveBeenCalledWith('playlist', 'p1', ['m']);
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(await screen.findByRole('status')).toHaveTextContent('Added to Sciencefiction, Zondag');
+  });
+
+  it('offers every own list, also past the first page', async () => {
+    h.collections.mockReset()
+      .mockResolvedValueOnce({ items: [{ id: 'c1', title: 'Eerste pagina' }], next_cursor: 'verder' })
+      .mockResolvedValueOnce({ items: [{ id: 'c201', title: 'Lijst 201' }], next_cursor: null });
+    const dialog = await openFor(movie);
+    expect(await within(dialog).findByRole('checkbox', { name: 'Lijst 201' })).toBeInTheDocument();
+    expect(h.collections).toHaveBeenLastCalledWith(expect.objectContaining({ owned: true, cursor: 'verder' }));
+  });
+
+  it('does not make a second list when adding to the new one failed', async () => {
+    h.addItems.mockReset().mockRejectedValueOnce(new Error('even niet')).mockResolvedValue(true);
+    const dialog = await openFor(movie);
+    await fireEvent.input(within(dialog).getByRole('textbox', { name: 'New list' }), { target: { value: 'Nieuw' } });
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+    expect(await within(dialog).findByRole('alert')).toBeInTheDocument();
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(h.createCollection).toHaveBeenCalledTimes(1);
+    expect(h.addItems).toHaveBeenCalledTimes(2);
   });
 
   it('asks for a choice before it can add', async () => {

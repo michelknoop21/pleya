@@ -9,11 +9,17 @@
  */
 import { PleyaClient } from '../api/client';
 import { streamSessions } from '../player/streamSessionCache';
+import { addToList } from './addToList.svelte';
 import type { Capabilities, Info, Library, ServerDetail, User } from '../api/types';
-import { describeError } from '../api/errors';
+import { ApiError, TransportError, describeError } from '../api/errors';
 import { readLastContact, writeLastContact, type LastContact } from './lastContact';
 
 export type SessionPhase = 'starting' | 'setup' | 'signed-out' | 'ready' | 'unreachable';
+
+/** Geen verbinding of een 5xx zegt niets over de tokens, dus dat is geen uitloggen. */
+function isOutage(err: unknown): boolean {
+  return err instanceof TransportError || (err instanceof ApiError && err.status >= 500);
+}
 
 class SessionState {
   phase = $state<SessionPhase>('starting');
@@ -36,6 +42,7 @@ class SessionState {
       new PleyaClient({
         onSessionLost: () => {
           streamSessions.clear();
+          addToList.reset();
           this.server = null;
           this.libraries = [];
           this.me = null;
@@ -107,7 +114,11 @@ class SessionState {
     const restored = await this.client.restore();
     if (!restored) {
       if (this.client.refreshUnavailable) this.#markUnreachable();
-      else this.phase = 'signed-out';
+      else {
+        const refused = this.client.refreshRefused;
+        if (refused) this.error = describeError(refused);
+        this.phase = 'signed-out';
+      }
       return;
     }
     await this.load();
@@ -140,11 +151,11 @@ class SessionState {
       });
     } catch (err) {
       if (generation !== this.client.sessionGeneration) return;
-      if (this.client.refreshUnavailable) {
+      if (this.client.refreshUnavailable || isOutage(err)) {
         this.#markUnreachable(err);
         return;
       }
-      this.error = describeError(err);
+      this.error = describeError(this.client.refreshRefused ?? err);
       this.phase = 'signed-out';
     }
   }
@@ -179,6 +190,7 @@ class SessionState {
    */
   async signOut(options: { local?: boolean } = {}): Promise<void> {
     streamSessions.clear();
+    addToList.reset();
     const pending = this.client.signOut({ remote: !options.local && this.capabilities?.sessions === true });
     const generation = this.client.sessionGeneration;
     await pending;

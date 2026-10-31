@@ -51,6 +51,8 @@ export interface PlayerDeps {
   timers?: Timers;
   /** Gedeeld per tabblad in de browser; zonder waarde een eigen cache. */
   streamSessions?: StreamSessionCache;
+  /** Of de laatste verversing opgaf zonder oordeel over het token. */
+  refreshUnavailable?: () => boolean;
 }
 
 export interface PlayerTarget {
@@ -124,7 +126,7 @@ export class PlayerSession {
       });
     } catch (err) {
       if (stale()) return;
-      this.#fail(playerProblem(err));
+      this.#fail(playerProblem(err, this.#deps.refreshUnavailable?.() === true));
     }
   }
 

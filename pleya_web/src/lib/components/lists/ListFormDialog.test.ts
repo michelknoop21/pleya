@@ -58,9 +58,33 @@ describe('list form', () => {
     const list = existing({ visibility: 'everyone' });
     render(ListFormDialog, { props: { open: true, kind: 'collection', list, onsaved: vi.fn() } });
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).queryByRole('radio')).toBeNull();
     await fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(h.updateCollection).toHaveBeenCalledWith('c', { title: 'Set' }));
+    expect(h.request).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['everyone', ['private', 'everyone']],
+    ['users', ['private', 'users']]
+  ])('leaves a former sharer only the way back from %s', async (visibility, options) => {
+    const list = existing({ visibility: visibility as Collection['visibility'], shared_with: [{ id: 'kids', username: 'kids' }] });
+    render(ListFormDialog, { props: { open: true, kind: 'collection', list, onsaved: vi.fn() } });
+    const dialog = await screen.findByRole('dialog');
+    const radios = within(dialog).getAllByRole('radio');
+    expect(radios.map((radio) => radio.getAttribute('value'))).toEqual(options);
+    expect(within(dialog).queryByRole('checkbox')).toBeNull();
+    await fireEvent.click(radios[0]!);
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(h.updateCollection).toHaveBeenCalledWith('c', { title: 'Set', visibility: 'private' }));
+  });
+
+  it('shows no such choice on a private list or on a list of somebody else', async () => {
+    const { unmount } = render(ListFormDialog, { props: { open: true, kind: 'collection', list: existing(), onsaved: vi.fn() } });
+    expect(within(await screen.findByRole('dialog')).queryByRole('radio')).toBeNull();
+    unmount();
+    const theirs = existing({ visibility: 'everyone', is_owner: false });
+    render(ListFormDialog, { props: { open: true, kind: 'collection', list: theirs, onsaved: vi.fn() } });
+    expect(within(await screen.findByRole('dialog')).queryByRole('radio')).toBeNull();
   });
 
   it('gives an owner or admin all three choices', async () => {

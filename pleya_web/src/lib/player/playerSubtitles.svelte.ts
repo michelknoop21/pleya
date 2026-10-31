@@ -6,7 +6,7 @@
 import { t } from '../i18n';
 import type { Version } from '../api/types';
 import type { PlaybackApi } from './playbackApi';
-import { subtitleTextWhenReady } from './subtitleRetry';
+import { SUBTITLE_FAILURE_MEMORY_MS, pause, subtitleTextWhenReady } from './subtitleRetry';
 import { cueText, subtitleBlobUrl } from './tracks';
 
 export class PlayerSubtitles {
@@ -21,6 +21,8 @@ export class PlayerSubtitles {
 
   #controller: AbortController | null = null;
   #revoke: (() => void) | null = null;
+  /** Vóór dit moment geeft de server voor `failedId` zijn bewaarde fout terug. */
+  #retryAt = 0;
 
   constructor(
     private readonly api: Pick<PlaybackApi, 'subtitleText'>,
@@ -28,6 +30,7 @@ export class PlayerSubtitles {
   ) {}
 
   async choose(id: string | null): Promise<void> {
+    const wait = id !== null && id === this.failedId ? this.#retryAt - Date.now() : 0;
     this.abort();
     this.#controller = null;
     this.pendingId = null;
@@ -49,6 +52,7 @@ export class PlayerSubtitles {
     this.pendingId = id;
     this.preparing = embedded;
     try {
+      if (wait > 0) await pause(wait, controller.signal);
       const loaded = await subtitleBlobUrl(
         () => subtitleTextWhenReady((signal) => this.api.subtitleText(id, signal), controller.signal),
         stream?.format ?? 'vtt'
@@ -63,6 +67,7 @@ export class PlayerSubtitles {
       if (!controller.signal.aborted) {
         this.error = t(embedded ? 'player.subtitlePrepareFailed' : 'player.subtitleLoadFailed');
         this.failedId = id;
+        this.#retryAt = embedded ? Date.now() + SUBTITLE_FAILURE_MEMORY_MS : 0;
       }
     } finally {
       if (this.#controller === controller) {

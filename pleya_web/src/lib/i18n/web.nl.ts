@@ -467,6 +467,7 @@ export const webNl = {
   'error.auth.setup_required': 'Deze server heeft nog geen eigenaar. Rond eerst de setup af.',
   'error.auth.setup_already_completed': 'Deze server heeft al een eigenaar. Log in.',
   'error.auth.setup_code_invalid': 'Die setupcode is ongeldig of verlopen.',
+  'error.auth.origin_rejected': 'Deze server weigert het adres waarop je hem opent. Controleer het publieke adres en de proxy-instellingen.',
   'error.auth.rate_limited': 'Te veel pogingen. Wacht even en probeer het opnieuw.',
   'error.library.not_found': 'Dit item staat niet op deze server.',
   'error.library.scan_in_progress': 'Er loopt een scan. Probeer het zo opnieuw.',

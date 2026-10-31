@@ -270,8 +270,12 @@ describe('embedded subtitle the server is still preparing', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Sluiten' }));
     expect(screen.getByRole('status')).toHaveTextContent('Ondertitels konden niet worden voorbereid');
     vi.mocked(api.subtitleText).mockResolvedValueOnce('1\n00:00:00,000 --> 00:00:05,000\nHallo');
+    // Voorbij het venster waarin de server zijn fout onthoudt (playerSubtitles.test.ts).
+    const later = Date.now() + 16_000;
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(later);
     await fireEvent.click(screen.getByRole('button', { name: 'Opnieuw' }));
     await waitFor(() => expect(document.querySelector('track')).not.toBeNull());
+    clock.mockRestore();
     expect(api.subtitleText).toHaveBeenCalledTimes(2);
     expect(screen.queryByRole('status')).toBeNull();
   });

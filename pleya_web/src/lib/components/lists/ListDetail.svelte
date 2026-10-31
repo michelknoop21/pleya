@@ -104,7 +104,7 @@
   }
 
   async function saveOrder(order: string[]): Promise<void> {
-    await api().replaceItems(kind, id, order);
+    await api().saveOrder(kind, id, order, signal);
     reordering = null;
     await reload();
   }

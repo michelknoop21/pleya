@@ -103,6 +103,7 @@ export const ERROR_CODES = [
   'auth.setup_already_completed',
   'auth.setup_code_invalid',
   'auth.rate_limited',
+  'auth.origin_rejected',
   'library.not_found',
   'library.scan_in_progress',
   'library.not_config_managed',
