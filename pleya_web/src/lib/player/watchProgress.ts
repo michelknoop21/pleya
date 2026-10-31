@@ -12,6 +12,18 @@ interface Options {
   timers?: Timers;
 }
 
+/** The share at which a title counts as watched; `WatchedFraction` on the server. */
+const WATCHED_FRACTION = 0.9;
+
+/**
+ * Where a viewing of this version begins. The resume point belongs to the title and the version
+ * is picked per viewing, so it can lie past the end of this cut, or in its last tenth. Reporting
+ * from there marks a title as watched the moment it starts.
+ */
+export function resumePoint(startAt: number, duration: number): number {
+  return duration > 0 && startAt >= WATCHED_FRACTION * duration ? 0 : startAt;
+}
+
 /**
  * Keeps the old resume point until playback reaches it. A seek can fail, or land short when a
  * conversion has not got that far yet; reporting where the video really is would erase the
@@ -86,7 +98,7 @@ export class WatchProgress {
         position_ms: duration > 0 ? Math.min(position, duration) : position,
         ...(duration > 0 ? { duration_ms: duration } : {}),
         occurred_at: new Date().toISOString(),
-        completed: final && duration > 0 && position >= 0.9 * duration,
+        completed: final && duration > 0 && position >= WATCHED_FRACTION * duration,
         explicit_action: 'none',
         ...(this.#options.ownership ? { backlog: false } : {})
       }, keepalive

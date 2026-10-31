@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Item } from '../api/types';
 import { setLocale } from '../i18n';
 import Player from './Player.svelte';
-import { apiError, deps, fakeApi, transcodePlan } from './playerFake';
+import { apiError, deps, fakeApi, fakeHls, transcodePlan } from './playerFake';
 import { SubtitleNotReadyError } from './subtitleRetry';
 
 const item: Item = {
@@ -207,6 +207,35 @@ describe('public browser watch-state actions', () => {
     await fireEvent.pause(video);
     await waitFor(() => expect(api.reportWatchState).toHaveBeenCalledTimes(2));
     expect(vi.mocked(api.reportWatchState).mock.calls[1]![0]).toMatchObject({ position_ms: 3005000 });
+  });
+
+  it('a resume point past the end of this version starts over and is not reported as the end', async () => {
+    const { api } = mount(fakeApi(), { startAt: 12_000 });
+    await screen.findByRole('button', { name: '10 seconden vooruit' });
+    const video = document.querySelector('video')!;
+    Object.defineProperty(video, 'duration', { configurable: true, value: 9963 });
+    await fireEvent.loadedMetadata(video);
+    expect(video.currentTime).toBe(0);
+    await fireEvent.playing(video);
+    await waitFor(() => expect(api.reportWatchState).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(api.reportWatchState).mock.calls[0]![0]).toMatchObject({
+      explicit_action: 'playback_started', position_ms: 0, duration_ms: 9_963_000
+    });
+  });
+
+  it('a resume point in the last tenth of this version starts a transcode at the beginning', async () => {
+    const hls = fakeHls();
+    const api = fakeApi({ plan: async () => transcodePlan() });
+    render(Player, {
+      props: { item, version: item.versions![0], startAt: 9500, onclose: vi.fn(), onlogin: vi.fn(),
+        deps: deps(api, { hls }) }
+    });
+    await screen.findByRole('button', { name: '10 seconden vooruit' });
+    expect(hls.instances[0]?.config['startPosition']).toBe(0);
+    const video = document.querySelector('video')!;
+    await fireEvent.playing(video);
+    await waitFor(() => expect(api.reportWatchState).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(api.reportWatchState).mock.calls[0]![0]).toMatchObject({ position_ms: 0 });
   });
 
   it('a seek by the viewer counts, also before the resume point', async () => {

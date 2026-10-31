@@ -23,7 +23,7 @@
   import { PlayerSubtitles } from './playerSubtitles.svelte';
   import { audioOptions, defaultAudioIndex, subtitleOptions } from './tracks';
   import { deliveryLabel } from './labels';
-  import { ResumeFloor, WatchProgress } from './watchProgress';
+  import { ResumeFloor, resumePoint, WatchProgress } from './watchProgress';
   // Globaal en niet gescoped, met `.player` als voorvoegsel: zo blijft deze
   // component onder de 400 regels.
   import './player.css';
@@ -62,8 +62,7 @@
   let audioIndex = $state(0);
   let progress: WatchProgress | null = null;
   let lastPosition = 0;
-  // svelte-ignore state_referenced_locally
-  let resumeFloor = new ResumeFloor(startAt);
+  let resumeFloor = new ResumeFloor(0);
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
   const total = $derived(
@@ -92,9 +91,11 @@
     progress?.finish(false);
     progress = null;
     lastPosition = 0;
-    resumeFloor = new ResumeFloor(startAt);
+    // The contract's duration, not the element's: a growing transcode has no end of its own yet.
+    const from = resumePoint(startAt, (version?.duration_ms ?? 0) / 1000);
+    resumeFloor = new ResumeFloor(from);
     audioIndex = 0;
-    void session.start(video, { itemId: item.id, versionId: version?.id ?? null, startAt });
+    void session.start(video, { itemId: item.id, versionId: version?.id ?? null, startAt: from });
   }
 
   $effect(() => {

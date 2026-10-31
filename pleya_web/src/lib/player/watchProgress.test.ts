@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ResumeFloor, WatchProgress } from './watchProgress';
+import { ResumeFloor, resumePoint, WatchProgress } from './watchProgress';
 import { manualTimers } from './playerFake';
 import type { UserState, WatchStateEvent } from './types';
 
@@ -146,5 +146,21 @@ describe('the resume point of an unfinished seek', () => {
   });
   it('does nothing without a resume point', () => {
     expect(new ResumeFloor(0).position(0)).toBe(0);
+  });
+});
+
+describe('the resume point of another version', () => {
+  it('keeps a point inside this version', () => {
+    expect(resumePoint(600, 7200)).toBe(600);
+    expect(resumePoint(6479, 7200)).toBe(6479);
+  });
+  it('starts over past the end, and in the part that already counts as watched', () => {
+    expect(resumePoint(7800, 7200)).toBe(0);
+    expect(resumePoint(6480, 7200)).toBe(0);
+    expect(resumePoint(7000, 7200)).toBe(0);
+  });
+  it('keeps the point when the duration of this version is not known', () => {
+    expect(resumePoint(7800, 0)).toBe(7800);
+    expect(resumePoint(7800, Number.NaN)).toBe(7800);
   });
 });
