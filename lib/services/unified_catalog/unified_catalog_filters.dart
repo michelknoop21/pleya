@@ -364,8 +364,9 @@ class UnifiedCatalogPreferences {
   /// no date (a stored Nieuwste release must not read A to Z on Pleya Server,
   /// whose release sort has always run on the year), or else title.
   ///
-  /// Every reader takes it from here, so the query, the label and the tick of a
-  /// sheet cannot disagree.
+  /// The catalog screens, both Home row wizards and the query all read it here,
+  /// so their label, their tick and what runs say the same. [sort] itself is only
+  /// for what is stored.
   ///
   /// **Never write the result back**, for the reason on
   /// [UnifiedCatalogFilterSelection.constrainedTo]: the set of backends is
