@@ -14,6 +14,10 @@ describe('browser text subtitle delivery', () => {
   it.each(['<html>not subtitles</html>', '1\n00:60:00,000 --> 00:61:00,000\nWrong', '1\n00:00:03,000 --> 00:00:01,000\nBackwards'])('rejects malformed SRT instead of creating an empty track', body => {
     expect(() => subtitleWebVtt(body, 'srt')).toThrow('Invalid SRT');
   });
+  it('skips a broken cue and keeps the rest of the track', () => {
+    const srt = '1\n00:00:01,000 --> 00:00:02,000\nEerste\n\n2\nkapotte regel\nTekst\n\n3\n00:00:09,000 --> 00:00:03,000\nAchteruit\n\n4\n00:00:05,000 --> 00:00:06,000\n\n5\n00:00:07,000 --> 00:00:08,000\nLaatste\n';
+    expect(subtitleWebVtt(srt, 'srt')).toBe('WEBVTT\n\n1\n00:00:01.000 --> 00:00:02.000\nEerste\n\n5\n00:00:07.000 --> 00:00:08.000\nLaatste\n');
+  });
   it('rejects oversized or unknown formats without claiming conversion', () => {
     expect(() => subtitleWebVtt('1\n00:00:00,000 --> 00:00:01,000\n' + 'x'.repeat(4 * 1024 * 1024), 'srt')).toThrow('Subtitle too large');
     expect(() => subtitleWebVtt('[Script Info]', 'ass')).toThrow('Unsupported subtitle format');

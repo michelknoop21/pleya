@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { WatchProgress } from './watchProgress';
+import { ResumeFloor, WatchProgress } from './watchProgress';
 import { manualTimers } from './playerFake';
 import type { UserState, WatchStateEvent } from './types';
 
@@ -101,11 +101,50 @@ describe('browser watch-state ownership', () => {
     release(state(9)); await settle();
     expect(report).toHaveBeenCalledTimes(2);
   });
-  it('network failure never turns the next tick into a new explicit start', async () => {
-    const { progress, report, timers } = setup();
-    report.mockRejectedValueOnce(new Error('offline'));
-    progress.play(); await settle(); timers.tick(); await settle();
-    expect(report.mock.calls[1]![0].explicit_action).toBe('none');
+  it('repeats a start that got no answer, so one 503 does not cost the viewing', async () => {
+    const { progress, report, timers, setPosition } = setup();
+    report.mockRejectedValueOnce(new Error('503'));
+    progress.play(); await settle();
+    setPosition(15); timers.tick(); await settle();
+    setPosition(30); timers.tick(); await settle();
+    expect(report.mock.calls.map(([body]) => body.explicit_action)).toEqual(['playback_started', 'playback_started', 'none']);
+    expect(report.mock.calls[1]![0]).toMatchObject({ position_ms: 15000, cause: 'user_started', base_revision: 7 });
+    expect(report.mock.calls[2]![0]).not.toHaveProperty('cause');
     progress.finish(false); await settle();
+  });
+  it('a viewing that never got its start through still claims with the last report', async () => {
+    const { progress, report, setPosition } = setup();
+    report.mockRejectedValueOnce(new Error('503'));
+    progress.play(); await settle();
+    setPosition(40); progress.finish(true); await settle();
+    expect(report.mock.calls[1]).toEqual([expect.objectContaining({ explicit_action: 'playback_started', position_ms: 40000 }), true]);
+  });
+  it('a failure after the start was answered stays passive', async () => {
+    const { progress, report, timers } = setup();
+    progress.play(); await settle();
+    report.mockRejectedValueOnce(new Error('offline'));
+    timers.tick(); await settle();
+    timers.tick(); await settle();
+    expect(report.mock.calls.map(([body]) => body.explicit_action)).toEqual(['playback_started', 'none', 'none']);
+    progress.finish(false); await settle();
+  });
+});
+
+describe('the resume point of an unfinished seek', () => {
+  it('reports the old point until playback reaches it, whatever the video shows', () => {
+    const floor = new ResumeFloor(600);
+    expect(floor.position(0)).toBe(600);
+    expect(floor.position(12)).toBe(600);
+    expect(floor.position(600)).toBe(600);
+    expect(floor.position(601)).toBe(601);
+    expect(floor.position(30)).toBe(30);
+  });
+  it('lets go when the viewer picks a position himself', () => {
+    const floor = new ResumeFloor(600);
+    floor.release();
+    expect(floor.position(10)).toBe(10);
+  });
+  it('does nothing without a resume point', () => {
+    expect(new ResumeFloor(0).position(0)).toBe(0);
   });
 });

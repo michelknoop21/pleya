@@ -23,7 +23,7 @@
   import { PlayerSubtitles } from './playerSubtitles.svelte';
   import { audioOptions, defaultAudioIndex, subtitleOptions } from './tracks';
   import { deliveryLabel } from './labels';
-  import { WatchProgress } from './watchProgress';
+  import { ResumeFloor, WatchProgress } from './watchProgress';
   // Globaal en niet gescoped, met `.player` als voorvoegsel: zo blijft deze
   // component onder de 400 regels.
   import './player.css';
@@ -62,6 +62,8 @@
   let audioIndex = $state(0);
   let progress: WatchProgress | null = null;
   let lastPosition = 0;
+  // svelte-ignore state_referenced_locally
+  let resumeFloor = new ResumeFloor(startAt);
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
   const total = $derived(
@@ -90,6 +92,7 @@
     progress?.finish(false);
     progress = null;
     lastPosition = 0;
+    resumeFloor = new ResumeFloor(startAt);
     audioIndex = 0;
     void session.start(video, { itemId: item.id, versionId: version?.id ?? null, startAt });
   }
@@ -100,7 +103,7 @@
 
   // Teardown empties the element, so a report after an error reads the last position that played.
   function samplePosition(): number {
-    if (video && session.phase === 'ready') lastPosition = video.currentTime;
+    if (video && session.phase === 'ready') lastPosition = resumeFloor.position(video.currentTime);
     return lastPosition;
   }
 
@@ -109,8 +112,7 @@
     if (!video || session.phase !== 'ready') return;
     progress ??= new WatchProgress({
       report: (body, keepalive) => deps.api.reportWatchState(body, keepalive),
-      // hls.js starts at 0 regardless of startAt (playerSession), and reporting that would erase the resume point.
-      enabled: deps.server?.watch_state === true && !(session.delivery?.kind === 'hls' && startAt > 0),
+      enabled: deps.server?.watch_state === true,
       ownership: deps.server?.watch_state_ownership === true,
       itemId: item.id, revision: item.user_state?.revision,
       sample: () => ({ position: samplePosition(), duration: total }),
@@ -146,6 +148,7 @@
   function seekTo(seconds: number): void {
     if (!video || session.phase !== 'ready') return;
     const max = isHls ? seekLimit : total || video.duration;
+    resumeFloor.release();
     video.currentTime = clamp(seconds, 0, Number.isFinite(max) ? max : seconds);
   }
 

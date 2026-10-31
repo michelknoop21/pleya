@@ -65,6 +65,14 @@ describe('direct play', () => {
     expect(media.currentTime).toBe(120);
   });
 
+  it('blijft zonder bekende hervatpositie staan op het begin', async () => {
+    const media = fakeMedia();
+    const s = new PlayerSession(deps(fakeApi()));
+    await s.start(asMedia(media), { ...target, startAt: 900 });
+    media.emit('loadedmetadata');
+    expect(media.currentTime).toBe(0);
+  });
+
   it('meldt een decodeerfout van de <video> als foutstaat', async () => {
     const media = fakeMedia();
     const s = new PlayerSession(deps(fakeApi()));
@@ -92,6 +100,25 @@ describe('omzetsessie met hls.js', () => {
     timers.tick();
     timers.tick();
     expect(api.heartbeats).toEqual(['sess-1', 'sess-1']);
+  });
+
+  it('geeft hls.js het hervatpunt mee', async () => {
+    const api = fakeApi({ plan: async () => transcodePlan() });
+    const hls = fakeHls();
+    const s = new PlayerSession(deps(api, { hls }));
+    await s.start(asMedia(fakeMedia()), { ...target, startAt: 120 });
+    expect(hls.instances[0]?.config['startPosition']).toBe(120);
+  });
+
+  it('zoekt native HLS op wat er omgezet is: de duur van een groeiende lijst is oneindig', async () => {
+    const api = fakeApi({ plan: async () => transcodePlan() });
+    const media = fakeMedia();
+    media.duration = Infinity;
+    Object.assign(media, { seekable: { length: 1, end: () => 500 } });
+    const s = new PlayerSession(deps(api, { probe: () => ({ caps: {}, hls: { hlsjs: false, native: true } }) }));
+    await s.start(asMedia(media), { ...target, startAt: 120 });
+    media.emit('loadedmetadata');
+    expect(media.currentTime).toBe(120);
   });
 
   it('ruimt bij sluiten alles op: hls.js weg, <video> los, sessie gestopt', async () => {

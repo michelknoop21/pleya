@@ -14,8 +14,7 @@
  * staan tot de time-out van een minuut.
  *
  * Kijkstatus volgt de werkelijke media-events in Player via WatchProgress.
- * Browserkeuzes voor plan-audio/kwaliteit en hervatten binnen een omzetting
- * zijn nog niet aangesloten; het huidige startAt wordt alleen direct toegepast.
+ * Browserkeuzes voor plan-audio/kwaliteit zijn nog niet aangesloten.
  */
 import type { Capabilities } from '../api/types';
 import type { DeviceCapabilities } from './types';
@@ -58,8 +57,24 @@ export interface PlayerDeps {
 export interface PlayerTarget {
   itemId: string;
   versionId: string | null;
-  /** Hervatpositie in seconden; alleen bij direct play. */
+  /** Hervatpositie in seconden. */
   startAt?: number;
+}
+
+/** Zoekt naar het hervatpunt zodra de bron bekend is; een groeiende omzetting heeft geen duur en wel `seekable`. */
+function seekAfterMetadata(media: HTMLMediaElement, startAt: number): void {
+  if (startAt <= 0) return;
+  media.addEventListener(
+    'loadedmetadata',
+    () => {
+      const seekable = media.seekable;
+      const end = Number.isFinite(media.duration)
+        ? media.duration
+        : seekable?.length ? seekable.end(seekable.length - 1) : 0;
+      if (startAt < end) media.currentTime = startAt;
+    },
+    { once: true }
+  );
 }
 
 export class PlayerSession {
@@ -115,7 +130,7 @@ export class PlayerSession {
       if (!plan && !target.versionId) throw new DeliveryError('client.no_version');
 
       const delivery = chooseDelivery(plan, target.versionId ?? '', hls);
-      if (delivery.kind === 'hls') await this.#openHls(media, delivery, stale);
+      if (delivery.kind === 'hls') await this.#openHls(media, delivery, target.startAt ?? 0, stale);
       else await this.#openDirect(media, delivery, target.startAt ?? 0, stale);
       if (stale()) return;
 
@@ -148,23 +163,14 @@ export class PlayerSession {
       src = urlWithStreamToken(delivery.path, token.stream_token);
     }
     if (stale()) return;
-    if (startAt > 0) {
-      media.addEventListener(
-        'loadedmetadata',
-        () => {
-          if (Number.isFinite(media.duration) && startAt < media.duration) {
-            media.currentTime = startAt;
-          }
-        },
-        { once: true }
-      );
-    }
+    seekAfterMetadata(media, startAt);
     media.src = src;
   }
 
   async #openHls(
     media: HTMLMediaElement,
     delivery: Extract<Delivery, { kind: 'hls' }>,
+    startAt: number,
     stale: () => boolean
   ): Promise<void> {
     const { api, origin } = this.#deps;
@@ -176,6 +182,7 @@ export class PlayerSession {
       // lange omzetting kan hier halverwege stranden; zie de PR-tekst.
       const token = await api.streamToken(delivery.versionId);
       if (stale()) return;
+      seekAfterMetadata(media, startAt);
       media.src = urlWithStreamToken(delivery.path, token.stream_token);
       return;
     }
@@ -185,6 +192,7 @@ export class PlayerSession {
       Hls,
       media,
       url: absolute(delivery.path, origin),
+      startAt,
       bearer: () => api.bearer(),
       onFatal: (code) => {
         this.#hls = null;

@@ -12,9 +12,11 @@
  *   en dat vraagt `worker-src blob:` in de CSP. De segmenten zijn al fMP4, er
  *   valt nauwelijks te transmuxen, dus de hoofdthread volstaat en de CSP blijft
  *   strak.
- * - `startPosition: 0`: de server schrijft een EVENT-afspeellijst die meegroeit
- *   met de omzetting. hls.js ziet die als live en zou standaard bij de rand
- *   beginnen; een film begint bij het begin.
+ * - `startPosition` is het hervatpunt, en anders 0: de server schrijft een
+ *   EVENT-afspeellijst die meegroeit met de omzetting. hls.js ziet die als live
+ *   en zou standaard bij de rand beginnen; een film begint bij het begin. Ligt het
+ *   hervatpunt voorbij wat er al omgezet is, dan begint hij eerder, en bewaakt
+ *   ResumeFloor dat de kijkstatus daardoor niet terugvalt.
  *
  * Herstel volgt het patroon uit dezelfde documentatie: een fatale netwerkfout
  * krijgt een paar keer `startLoad`, een fatale mediafout eerst
@@ -56,6 +58,8 @@ export interface HlsAttachOptions {
   Hls: HlsCtor;
   media: HTMLMediaElement;
   url: string;
+  /** Hervatpunt in seconden; afwezig begint bij het begin. */
+  startAt?: number;
   bearer: () => Promise<string | null>;
   /** Na alle herstelpogingen: een foutcode, daarna is de instantie al weg. */
   onFatal: (code: string) => void;
@@ -67,10 +71,10 @@ export interface HlsHandle {
   destroy(): void;
 }
 
-export function hlsConfig(bearer: () => Promise<string | null>): Record<string, unknown> {
+export function hlsConfig(bearer: () => Promise<string | null>, startAt = 0): Record<string, unknown> {
   return {
     enableWorker: false,
-    startPosition: 0,
+    startPosition: startAt,
     lowLatencyMode: false,
     xhrSetup: async (xhr: XMLHttpRequest, url: string) => {
       xhr.open('GET', url, true);
@@ -83,7 +87,7 @@ export function hlsConfig(bearer: () => Promise<string | null>): Record<string, 
 export function attachHls(options: HlsAttachOptions): HlsHandle {
   const { Hls, media, url, onFatal } = options;
   const schedule = options.schedule ?? ((fn, ms) => void globalThis.setTimeout(fn, ms));
-  const hls = new Hls(hlsConfig(options.bearer));
+  const hls = new Hls(hlsConfig(options.bearer, options.startAt));
   let networkRetries = 0;
   let mediaRecoveries = 0;
   let destroyed = false;

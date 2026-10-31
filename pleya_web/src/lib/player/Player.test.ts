@@ -193,14 +193,34 @@ describe('public browser watch-state actions', () => {
     expect(vi.mocked(api.reportWatchState).mock.calls[1]![0]).toMatchObject({ position_ms: 3000000, explicit_action: 'none' });
   });
 
-  it('a transcoded stream that ignores the resume position reports nothing', async () => {
+  it('a transcoded stream reports its progress, and a seek that fell short keeps the resume point', async () => {
     const api = fakeApi({ plan: async () => transcodePlan() });
     mount(api, { startAt: 3000 });
     await waitFor(() => expect(document.querySelector('video')).not.toBeNull());
     await screen.findByRole('button', { name: '10 seconden vooruit' });
-    await fireEvent.playing(document.querySelector('video')!);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(api.reportWatchState).not.toHaveBeenCalled();
+    const video = document.querySelector('video')!;
+    video.currentTime = 12;
+    await fireEvent.playing(video);
+    await waitFor(() => expect(api.reportWatchState).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(api.reportWatchState).mock.calls[0]![0]).toMatchObject({ explicit_action: 'playback_started', position_ms: 3000000 });
+    video.currentTime = 3005;
+    await fireEvent.pause(video);
+    await waitFor(() => expect(api.reportWatchState).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(api.reportWatchState).mock.calls[1]![0]).toMatchObject({ position_ms: 3005000 });
+  });
+
+  it('a seek by the viewer counts, also before the resume point', async () => {
+    const { api } = mount(fakeApi(), { startAt: 3000 });
+    await screen.findByRole('button', { name: '10 seconden vooruit' });
+    const video = document.querySelector('video')!;
+    video.currentTime = 40;
+    await fireEvent.playing(video);
+    await waitFor(() => expect(api.reportWatchState).toHaveBeenCalledTimes(1));
+    await fireEvent.click(screen.getByRole('button', { name: '10 seconden vooruit' }));
+    await fireEvent.seeked(video);
+    await waitFor(() => expect(api.reportWatchState).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(api.reportWatchState).mock.calls[1]![0]).toMatchObject({ explicit_action: 'none' });
+    expect(vi.mocked(api.reportWatchState).mock.calls[1]![0].position_ms).toBeLessThan(3000000);
   });
 });
 

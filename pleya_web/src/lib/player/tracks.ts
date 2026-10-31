@@ -86,17 +86,22 @@ export function subtitleWebVtt(source: string, format: string): string {
   }
   if (format !== 'srt') throw new Error('Unsupported subtitle format');
   if (!body.trim()) throw new Error('Invalid SRT');
-  const cues = body.trim().split(/\n[ \t]*\n+/).map(block => {
-    const lines = block.split('\n');
-    const identifier = /^\d+$/.test(lines[0]?.trim() ?? '') ? lines.shift()!.trim() : null;
-    const timing = lines.shift()?.match(/^(\d{2,}:[0-5]\d:[0-5]\d[,.]\d{3})[ \t]+-->[ \t]+(\d{2,}:[0-5]\d:[0-5]\d[,.]\d{3})[ \t]*$/);
-    if (!timing || lines.length === 0) throw new Error('Invalid SRT');
-    const start = subtitleTime(timing[1]!);
-    const end = subtitleTime(timing[2]!);
-    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end <= start) throw new Error('Invalid SRT');
-    return `${identifier === null ? '' : identifier + '\n'}${timing[1]!.replace(',', '.')} --> ${timing[2]!.replace(',', '.')}\n${lines.join('\n')}`;
-  });
+  // One broken cue is one missing line, not a film without subtitles. Only a file without a single
+  // usable cue is not SRT.
+  const cues = body.trim().split(/\n[ \t]*\n+/).map(srtCue).filter((cue) => cue !== null);
+  if (cues.length === 0) throw new Error('Invalid SRT');
   return `WEBVTT\n\n${cues.join('\n\n')}\n`;
+}
+
+function srtCue(block: string): string | null {
+  const lines = block.split('\n');
+  const identifier = /^\d+$/.test(lines[0]?.trim() ?? '') ? lines.shift()!.trim() : null;
+  const timing = lines.shift()?.match(/^(\d{2,}:[0-5]\d:[0-5]\d[,.]\d{3})[ \t]+-->[ \t]+(\d{2,}:[0-5]\d:[0-5]\d[,.]\d{3})[ \t]*$/);
+  if (!timing || lines.length === 0) return null;
+  const start = subtitleTime(timing[1]!);
+  const end = subtitleTime(timing[2]!);
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end <= start) return null;
+  return `${identifier === null ? '' : identifier + '\n'}${timing[1]!.replace(',', '.')} --> ${timing[2]!.replace(',', '.')}\n${lines.join('\n')}`;
 }
 
 function subtitleTime(stamp: string): number {
