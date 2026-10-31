@@ -817,6 +817,32 @@ describe('existing cookie-auth contract', () => {
     tokens.clear();
     expect(await client.restore()).toBe(true);
   });
+  it('still knows after a reload that it is signed in, until the session really ends', async () => {
+    const shared = stores();
+    const reloaded = () => new TokenStore(shared.persistent, memoryStorage());
+    const { client } = cookieServer(true, undefined, shared);
+    await client.info();
+    await client.login({ username: 'owner', password: 'canned' });
+    expect(reloaded().signedIn).toBe(true);
+
+    await client.signOut({ remote: true });
+    expect(reloaded().signedIn).toBe(false);
+  });
+  it('a session the server rejected is no longer signed in after a reload', async () => {
+    const shared = stores();
+    const client = new PleyaClient({ baseUrl: BASE, tokens: shared.tokens, fetch: (async (input: RequestInfo | URL) => {
+      const path = new URL((input as Request).url).pathname;
+      if (path.endsWith('/info')) return json({ capabilities: { cookie_auth: true } });
+      if (path.endsWith('/auth/login')) return json({ access_token: 'new-A', expires_in_ms: 1 });
+      return json({ error: { code: 'auth.refresh_token_reused', message: 'canned' } }, 401);
+    }) as FetchLike });
+    await client.info();
+    await client.login({ username: 'owner', password: 'canned' });
+    expect(new TokenStore(shared.persistent, memoryStorage()).signedIn).toBe(true);
+
+    expect(await client.restore()).toBe(false);
+    expect(new TokenStore(shared.persistent, memoryStorage()).signedIn).toBe(false);
+  });
   it('a tab whose account was replaced elsewhere stops instead of refreshing as the new account', async () => {
     const shared = stores();
     const tab = cookieServer(true, undefined, shared);

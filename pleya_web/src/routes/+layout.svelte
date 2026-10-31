@@ -169,7 +169,7 @@
           name={session.lastContact?.name ?? page.url.host}
           host={page.url.host}
           lastContactAt={session.lastContact?.at ?? null}
-          signedIn={session.client.tokens.refreshToken !== null}
+          signedIn={session.client.tokens.signedIn}
           onRetry={() => session.start()}
         />
       {:else}

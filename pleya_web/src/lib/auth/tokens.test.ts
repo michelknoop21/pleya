@@ -103,6 +103,37 @@ describe('cookie credential storage', () => {
     expect(session.getItem('pleya.access_token')).toBeNull();
     expect(new TokenStore(persistent, session).hasSomething).toBe(false);
   });
+  it('onthoudt een cookiesessie over een herlaadbeurt, zonder credential', () => {
+    const persistent = store();
+    const tokens = new TokenStore(persistent, store());
+    tokens.setMemoryOnly(true);
+    tokens.set({ access_token: 'cookie-A', expires_in_ms: 900000 });
+
+    const reloaded = new TokenStore(persistent, store());
+    expect(reloaded.signedIn).toBe(true);
+    expect(reloaded.accessToken).toBeNull();
+    expect(reloaded.refreshToken).toBeNull();
+
+    // `GET /info` slaagt: de overstap naar geheugen wist de tokens, niet de aantekening.
+    reloaded.setMemoryOnly(true);
+    expect(reloaded.signedIn).toBe(true);
+    expect(new TokenStore(persistent, store()).signedIn).toBe(true);
+
+    reloaded.clear();
+    expect(new TokenStore(persistent, store()).signedIn).toBe(false);
+  });
+  it('zegt niet dat een lege browser of een server zonder cookies een cookiesessie heeft', () => {
+    expect(new TokenStore(store(), store()).signedIn).toBe(false);
+
+    const persistent = store();
+    const tokens = new TokenStore(persistent, store());
+    tokens.setMemoryOnly(true);
+    tokens.set({ access_token: 'cookie-A', expires_in_ms: 900000 });
+    tokens.setMemoryOnly(false);
+    tokens.set({ access_token: 'legacy-A', refresh_token: 'legacy-R', expires_in_ms: 900000 });
+    expect(persistent.getItem('pleya.cookie_session')).toBeNull();
+    expect(new TokenStore(persistent, store()).signedIn).toBe(true);
+  });
   it('can use the existing legacy storage again for a server without cookies', () => {
     const persistent = store(); const session = store();
     const tokens = new TokenStore(persistent, session);

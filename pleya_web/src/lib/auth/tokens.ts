@@ -5,6 +5,8 @@ const ACCESS_KEY = 'pleya.access_token';
 // Gedeeld tussen tabbladen: de HttpOnly-cookie is dat ook, en die is voor JavaScript niet te wissen.
 const EPOCH_KEY = 'pleya.session_epoch';
 const SIGNED_OUT_KEY = 'pleya.signed_out';
+// Zegt dat er een cookie is, geen credential. De cookie zelf is HttpOnly en dus onzichtbaar voor deze code.
+const COOKIE_SESSION_KEY = 'pleya.cookie_session';
 
 /** Marge op het vervalmoment, zodat een token niet onderweg verloopt. */
 const EXPIRY_SKEW_MS = 30_000;
@@ -49,7 +51,7 @@ export class TokenStore {
 
   setMemoryOnly(value: boolean): void {
     if (value === this.#memoryOnly) return;
-    this.clear();
+    this.#clearTokens();
     this.#memoryOnly = value;
   }
 
@@ -98,6 +100,7 @@ export class TokenStore {
       token: pair.access_token,
       expiresAt: this.#now() + lifetime
     };
+    this.#write(COOKIE_SESSION_KEY, this.#memoryOnly ? '1' : null);
     if (this.#memoryOnly) return;
     try {
       this.#session?.setItem(ACCESS_KEY, JSON.stringify(this.#memoryAccess));
@@ -111,7 +114,13 @@ export class TokenStore {
     }
   }
 
+  /** De sessie is voorbij: de tokens weg, en ook de aantekening dat er een cookie is. */
   clear(): void {
+    this.#clearTokens();
+    this.#write(COOKIE_SESSION_KEY, null);
+  }
+
+  #clearTokens(): void {
     this.#memoryAccess = null;
     try {
       this.#session?.removeItem(ACCESS_KEY);
@@ -130,6 +139,15 @@ export class TokenStore {
       return this.#persistent?.getItem(key) ?? null;
     } catch {
       return null;
+    }
+  }
+
+  #write(key: string, value: string | null): void {
+    try {
+      if (value === null) this.#persistent?.removeItem(key);
+      else this.#persistent?.setItem(key, value);
+    } catch {
+      // Opslag geweigerd: de aantekening gaat verloren, de sessie niet.
     }
   }
 
@@ -164,5 +182,14 @@ export class TokenStore {
   /** Er is iets om mee te beginnen: een lopende sessie of een te verzilveren refreshtoken. */
   get hasSomething(): boolean {
     return this.accessToken !== null || this.refreshToken !== null;
+  }
+
+  /**
+   * Of deze browser bij het laatste contact ingelogd was. Dat is meer dan `hasSomething`: een cookiesessie
+   * heeft na een herlaadbeurt geen enkel token in beeld, en als `GET /info` dan mislukt weet deze client ook nog
+   * niet dat de server cookies kent. Dit is een aantekening en geen oordeel: alleen de server weet of de sessie leeft.
+   */
+  get signedIn(): boolean {
+    return this.hasSomething || this.#read(COOKIE_SESSION_KEY) !== null;
   }
 }
