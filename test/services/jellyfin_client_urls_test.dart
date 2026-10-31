@@ -83,6 +83,23 @@ void main() {
     await expectLater(scoped.fetchLibraryContent('lib', query, requireTotalCount: true), throwsStateError);
   });
 
+  test('a placeholder without a file is not asked for: it would count as a copy of the episode', () async {
+    Uri? uri;
+    final scoped = JellyfinClient.forTesting(
+      connection: _conn(),
+      httpClient: MockClient((request) async {
+        uri = request.url;
+        return http.Response('{"Items":[],"TotalRecordCount":0}', 200, headers: {'content-type': 'application/json'});
+      }),
+    );
+    addTearDown(scoped.close);
+
+    await scoped.fetchPlayableDescendants('series');
+
+    expect(uri!.path, '/Items');
+    expect(uri!.queryParameters['IsMissing'], 'false');
+  });
+
   group('JellyfinClient URL builders', () {
     late JellyfinClient client;
 

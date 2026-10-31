@@ -1105,6 +1105,9 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
         'IncludeItemTypes': includeItemTypes,
         'StartIndex': offset.toString(),
         'Limit': pageSize.toString(),
+        // A placeholder has no file: it is not something to play, and on a
+        // series it would claim an episode this server does not hold.
+        'IsMissing': 'false',
         'Fields': _episodeRowFields,
         ...jellyfinImageQueryParameters,
       },
