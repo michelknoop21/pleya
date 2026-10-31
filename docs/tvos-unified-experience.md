@@ -1060,8 +1060,10 @@ die laat antwoordt of weigert probeert het daardoor opnieuw zoals elke rij in di
 de speler en de spelende bron niet. Trackers horen niets: de bron die speelde heeft de kijkbeurt al
 gemeld, en Trakt telt watched-events per kijkbeurt. Zo'n rij meldt zich als kopie (`isCopy`): de
 oppervlakken en de downloadcache zien de nieuwe stand, en de volgende pull vindt geen overgang die hij
-als eigen kijkbeurt kan melden. Een bron met een auth-fout krijgt niets, ook geen rij: inloggen
-herstelt dat, niet een reconnect, en een rij zou onder de volgende login worden afgespeeld.
+als eigen kijkbeurt kan melden. Een bron die als auth-fout bekendstaat krijgt niets, ook geen rij:
+inloggen herstelt dat, niet een reconnect, en een rij zou onder de volgende login worden afgespeeld.
+Een tokenronde op Pleya Server die pas tijdens de schrijfactie mislukt is iets anders: daar blijft de
+rij wel staan, aan dit account gebonden (verderop in dit hoofdstuk).
 
 Op een kopie kijkt niemand, dus een rij gebruikt nooit de start en stop van een kijksessie
 (`CopyStateClient`). Op Jellyfin telt een start als kijkbeurt: `PlayCount` plus één, en op 10.x gaat
@@ -1118,9 +1120,10 @@ ontving. Een sessie die offline liep bereikt de kopieën zodra zijn eigen rij ec
 positie of als gekeken; een rij die de eigen server al had ingehaald meldt niets. Een rij van een
 kopie vervalt ook als de server de schrijfactie zelf weigert op een manier die wachten niet oplost.
 Een mislukte tokenronde op Pleya Server is geen weigering: de schrijfactie is dan niet verstuurd, en
-de rij blijft staan tot er weer een token is, onder hetzelfde account. Dat geldt ook voor een
-markering die rechtstreeks ging: een 429, kale 401 of 409 op `/auth/refresh` geeft die kopie alsnog
-een rij, langs dezelfde regel als de replay (`copyWriteStaysQueued`). Rijen die
+de rij blijft staan tot er weer een token is, onder hetzelfde account. Op die client komt elke
+`MediaServerAuthException` uit de tokenronde, dus dat geldt voor alle vormen ervan: een 429, kale 401
+of 409 op `/auth/refresh`, en ook een ingetrokken keten. Een markering die rechtstreeks ging krijgt
+in die gevallen alsnog een rij, langs dezelfde regel als de replay (`copyWriteStaysQueued`). Rijen die
 hun pogingen op hebben, krijgen een nieuwe ronde bij de eerste sync na een start van de app en
 daarna bij de eerste sync na zes uur; er loopt geen eigen timer. Een replay verwijdert een rij alleen
 als die tijdens de replay niet is bijgewerkt. Mislukt op Jellyfin, Emby of Pleya Server de start van
