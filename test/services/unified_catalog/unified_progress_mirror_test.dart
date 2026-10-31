@@ -141,7 +141,7 @@ void main() {
     return UnifiedProgressMirror(
       queue: queue,
       playing: copies.firstWhere((c) => c.serverId == playing),
-      title: UnifiedTitlePlayback(
+      known: UnifiedTitlePlayback(
         routeContext: route,
         sources: sources,
         gate: UnifiedSourceGate(
@@ -207,7 +207,7 @@ void main() {
   });
 
   test('a failure in the mirror never comes out of report', () async {
-    final throwing = UnifiedProgressMirror(queue: queue, playing: _film('playing'), title: _ThrowingTitle());
+    final throwing = UnifiedProgressMirror(queue: queue, playing: _film('playing'), known: _ThrowingTitle());
 
     await runZonedGuarded(() async {
       throwing.report(const Duration(minutes: 1), const Duration(hours: 2), watched: false);
@@ -274,6 +274,40 @@ void main() {
     expect((await db.getLatestWatchAction('other:film'))?.viewOffset, 2 * _hour - 60000);
   });
 
+  test('a profile that took over during the lookup does not get the row', () async {
+    final other = _Server('other');
+    manager.debugRegisterClientForTesting(other, online: false);
+    queue.setActiveProfileId('adult');
+    final lookup = Completer<UnifiedTitlePlayback?>();
+    final title = mirror([_film('playing'), _film('other')], playing: 'playing').known;
+
+    final written = UnifiedProgressMirror(
+      find: () => lookup.future,
+      playing: _film('playing'),
+      queue: queue,
+    ).write(const Duration(minutes: 50), const Duration(hours: 2), watched: false);
+    await pumpEventQueue();
+    queue.setActiveProfileId('kid');
+    lookup.complete(title);
+    await written;
+
+    expect(await db.getLatestWatchAction('other:film'), isNull, reason: 'that viewing was not this profile\'s');
+  });
+
+  test('the profile that watched gets the row', () async {
+    manager.debugRegisterClientForTesting(_Server('other'), online: false);
+    queue.setActiveProfileId('adult');
+    final title = mirror([_film('playing'), _film('other')], playing: 'playing').known;
+
+    await UnifiedProgressMirror(
+      find: () async => title,
+      playing: _film('playing'),
+      queue: queue,
+    ).write(const Duration(minutes: 50), const Duration(hours: 2), watched: false);
+
+    expect((await db.getLatestWatchAction('other:film'))?.profileId, 'adult');
+  });
+
   test('a held copy mark lands on the server without telling anyone else', () async {
     final other = _Server('other', item: _film('other'));
     manager.debugRegisterClientForTesting(other);
@@ -302,6 +336,7 @@ void main() {
       viewOffset: 1000,
       duration: _hour,
       watched: false,
+      profileId: queue.activeProfileId,
     );
 
     await queueFor('first');

@@ -88,6 +88,10 @@ class OfflineWatchSyncService extends ChangeNotifier {
 
   OfflineWatchSyncService({required this._database, required this._serverManager});
 
+  /// The profile queue rows are written for now. A write that waited on a
+  /// server first reads this before the wait.
+  String? get activeProfileId => _activeProfileId;
+
   /// Whether a sync is currently in progress
   bool get isSyncing => _isSyncing;
 
@@ -259,17 +263,22 @@ class OfflineWatchSyncService extends ChangeNotifier {
   /// answers late or refuses retries like any other queued write and can never
   /// reach the play. The replay keeps its last-writer guard: a position this
   /// server already moved past is dropped.
-  Future<void> queueMirroredProgress({
+  Future<bool> queueMirroredProgress({
     required ServerId serverId,
     required String itemId,
     required int viewOffset,
     required int? duration,
     required bool watched,
+    required String? profileId,
   }) async {
+    final clientScopeId = await _clientScopeIdForItem(ServerId(serverId), itemId);
+    // [profileId] is who watched. Another profile took over since: its row and
+    // its token have nothing to do with this viewing.
+    if (profileId != _activeProfileId) return false;
     await _database.upsertProgressAction(
-      profileId: _activeProfileId,
+      profileId: profileId,
       serverId: serverId,
-      clientScopeId: await _clientScopeIdForItem(ServerId(serverId), itemId),
+      clientScopeId: clientScopeId,
       ratingKey: itemId,
       viewOffset: viewOffset,
       duration: duration,
@@ -277,6 +286,7 @@ class OfflineWatchSyncService extends ChangeNotifier {
       actionType: OfflineActionType.mirroredProgress,
     );
     notifyListeners();
+    return true;
   }
 
   /// Holds a watched or unwatched mark for another copy of a title whose mark

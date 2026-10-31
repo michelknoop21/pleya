@@ -22,18 +22,17 @@ import 'unified_title_playback.dart';
 /// waits on it or reaches it. Copies whose runtime differs too much keep their
 /// own state (G7): a position on one cut means nothing on another.
 class UnifiedProgressMirror {
-  UnifiedProgressMirror({
-    required UnifiedTitlePlayback title,
-    required MediaItem playing,
-    required OfflineWatchSyncService queue,
-  }) : this.discovering(find: () async => title, playing: playing, queue: queue);
-
-  /// For a play that came without its other sources. [find] runs when the play
-  /// settles and answers once; null leaves the state on the source that plays.
-  UnifiedProgressMirror.discovering({required this.find, required this.playing, required this.queue})
+  UnifiedProgressMirror({this.known, this.find, required this.playing, required this.queue})
     : _notifier = WatchStateNotifier();
 
-  final Future<UnifiedTitlePlayback?> Function() find;
+  /// The sources the play came with. Written first, so a lookup nobody waits
+  /// for cannot hold them up.
+  final UnifiedTitlePlayback? known;
+
+  /// Finds what [known] does not hold: a card can show one source of three.
+  /// Runs when the play settles and answers once; null means nothing more.
+  final Future<UnifiedTitlePlayback?> Function()? find;
+
   final MediaItem playing;
   final OfflineWatchSyncService queue;
   final WatchStateNotifier _notifier;
@@ -49,23 +48,41 @@ class UnifiedProgressMirror {
   }
 
   Future<void> write(Duration position, Duration duration, {required bool watched}) async {
-    final title = await (_found ??= find());
-    if (title == null) return;
+    // Who watched, before anything waits on a server.
+    final profileId = queue.activeProfileId;
+    final reached = {playing.globalKey};
+    final title = known;
+    if (title != null) await _writeTo(title, reached, profileId, position, duration, watched: watched);
+    final lookup = find;
+    final found = lookup == null ? null : await (_found ??= lookup());
+    if (found != null) await _writeTo(found, reached, profileId, position, duration, watched: watched);
+  }
+
+  Future<void> _writeTo(
+    UnifiedTitlePlayback title,
+    Set<String> reached,
+    String? profileId,
+    Duration position,
+    Duration duration, {
+    required bool watched,
+  }) async {
     final copies = await title.copiesOf(playing);
     final played = playing.copyWith(durationMs: duration.inMilliseconds);
     var written = 0;
     for (final copy in copies) {
       final serverId = copy.serverId;
-      if (serverId == null || !runtimesAreComparable(played, copy)) continue;
+      if (serverId == null || !reached.add(copy.globalKey) || !runtimesAreComparable(played, copy)) continue;
       final ownDuration = copy.durationMs ?? duration.inMilliseconds;
       final offset = math.min(position.inMilliseconds, ownDuration);
-      await queue.queueMirroredProgress(
+      final held = await queue.queueMirroredProgress(
         serverId: ServerId(serverId),
         itemId: copy.id,
         viewOffset: offset,
         duration: ownDuration,
         watched: watched,
+        profileId: profileId,
       );
+      if (!held) return;
       // A progress event and never a watched one: the page and the rails need
       // to see this copy move, but Trakt counts watched events per viewing.
       _notifier.notifyProgress(

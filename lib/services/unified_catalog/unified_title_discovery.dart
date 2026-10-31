@@ -17,6 +17,7 @@ import '../../media/media_identity.dart';
 import '../../media/media_item.dart';
 import '../../media/media_item_types.dart';
 import '../../media/media_kind.dart';
+import '../../media/media_server_client.dart';
 import '../../media/unified/canonical_media_identity.dart';
 import '../../media/unified/source_coverage_state.dart';
 import '../../media/unified/unified_media_source.dart';
@@ -30,17 +31,24 @@ import 'unified_title_playback.dart';
 import 'unified_title_scope.dart';
 
 class UnifiedTitleDiscovery {
-  UnifiedTitleDiscovery({required this.findSources, required this.gate, this.timeout = const Duration(seconds: 20)});
+  UnifiedTitleDiscovery({
+    required this.findSources,
+    required this.gate,
+    this.timeout = const Duration(seconds: 20),
+    this.serverWait = const Duration(seconds: 8),
+  });
 
   /// Every title that claims to be [MediaIdentity] on the other servers, each
   /// stamped with the server that answered.
   final Future<List<MediaItem>> Function(MediaIdentity identity, ServerId except) findSources;
   final UnifiedSourceGate gate;
   final Duration timeout;
+  final Duration serverWait;
 
   /// Null with fewer than two servers to ask: then there is nothing to find,
-  /// and a single-server viewer never pays for this.
-  static UnifiedTitleDiscovery? of(BuildContext context) {
+  /// and a single-server viewer never pays for this. [serverWait] is what one
+  /// server gets: a slow one must not cost the others their write.
+  static UnifiedTitleDiscovery? of(BuildContext context, {Duration serverWait = const Duration(seconds: 8)}) {
     final multiServer = context.read<MultiServerProvider?>();
     final gate = unifiedSourceGateOf(context);
     if (multiServer == null || gate == null) return null;
@@ -55,30 +63,33 @@ class UnifiedTitleDiscovery {
     ).where((s) => isIdentityEligibleBackend(s.backend) && s.online && !s.hasAuthError && s.client != null).toList();
     if (servers.length < 2) return null;
 
+    Future<List<MediaItem>> ask(EligibleSourceServer server, MediaIdentity identity) async {
+      final found = <MediaItem>[];
+      await fanOutFindAllByIdentity(
+        servers: [(serverId: server.serverId, client: server.client, online: server.online)],
+        identity: identity,
+        maxConcurrent: 1,
+        onBatch: (batch) {
+          for (final answer in batch) {
+            final hidden = hiddenLibraries?.hiddenLibraryKeys ?? const <String>{};
+            final visible = visibleMatchesFromServer(answer.matches, answer.serverId, hidden);
+            found.addAll(visible.map((m) => m.copyWith(serverId: answer.serverId.value)));
+          }
+          return false;
+        },
+      ).timeout(serverWait, onTimeout: () {});
+      return found;
+    }
+
     return UnifiedTitleDiscovery(
       gate: gate,
+      serverWait: serverWait,
       findSources: (identity, except) async {
-        final found = <MediaItem>[];
-        await fanOutFindAllByIdentity(
-          servers: [
-            for (final s in servers)
-              if (s.serverId != except) (serverId: s.serverId, client: s.client, online: s.online),
-          ],
-          identity: identity,
-          maxConcurrent: 4,
-          onBatch: (batch) {
-            for (final answer in batch) {
-              final visible = visibleMatchesFromServer(
-                answer.matches,
-                answer.serverId,
-                hiddenLibraries?.hiddenLibraryKeys ?? const {},
-              );
-              found.addAll(visible.map((m) => m.copyWith(serverId: answer.serverId.value)));
-            }
-            return false;
-          },
-        );
-        return found;
+        final answers = await Future.wait([
+          for (final server in servers)
+            if (server.serverId != except) ask(server, identity),
+        ]);
+        return [for (final answer in answers) ...answer];
       },
     );
   }
@@ -97,12 +108,14 @@ class UnifiedTitleDiscovery {
   }
 
   Future<UnifiedTitlePlayback?> _find(MediaItem item) async {
+    // A children's profile writes to the sources it already sees.
+    if (await gate.isRestrictedProfile()) return null;
     final serverId = serverIdOrNull(item.serverId);
     final title = _titleFacts(item);
     final client = serverId == null ? null : gate.clientFor(serverId);
     if (serverId == null || title == null || client == null) return null;
 
-    final ids = await client.fetchExternalIds(title.id);
+    final ids = await _idsOf(client, title.id);
     if ((title.guid ?? '').isEmpty && !ids.hasAny) return null;
     final identity = MediaIdentity(
       guid: title.guid,
@@ -113,18 +126,18 @@ class UnifiedTitleDiscovery {
     );
 
     final found = await findSources(identity, serverId);
-    final candidates = <({MediaItem item, ExternalIds ids})>[];
+    final byServer = <String, List<({MediaItem item, ExternalIds ids})>>{};
     for (final match in found) {
       final answering = serverIdOrNull(match.serverId);
       final other = answering == null ? null : gate.clientFor(answering);
       if (other == null) continue;
-      try {
-        candidates.add(MediaIdentity.candidate(match, await other.fetchExternalIds(match.id)));
-      } catch (e) {
-        appLogger.d('Could not prove ${match.globalKey}', error: e);
-      }
+      (byServer[answering!.value] ??= []).add(MediaIdentity.candidate(match, await _idsOf(other, match.id)));
     }
-    final proven = identity.pickAllMatches(candidates, allowTitleFallback: false);
+    // Per server: a guid match on one must not end the search by number on the
+    // next, and one film can hold a guid on Plex and a number on Pleya Server.
+    final proven = [
+      for (final candidates in byServer.values) ...identity.pickAllMatches(candidates, allowTitleFallback: false),
+    ];
     if (proven.isEmpty) return null;
 
     final own = UnifiedMediaSource.fromItem(item);
@@ -144,6 +157,17 @@ class UnifiedTitleDiscovery {
       sources: sources,
       gate: gate,
     );
+  }
+
+  /// A server that does not answer proves nothing, which is not a reason to
+  /// give up on the others: a guid can still carry the lookup.
+  Future<ExternalIds> _idsOf(MediaServerClient client, String id) async {
+    try {
+      return await client.fetchExternalIds(id).timeout(serverWait);
+    } catch (e) {
+      appLogger.d('No provider numbers for $id', error: e);
+      return const ExternalIds();
+    }
   }
 
   /// The film or series [item] is, or belongs to.
