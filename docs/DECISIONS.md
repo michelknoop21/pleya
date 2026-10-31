@@ -5346,8 +5346,22 @@ PGS-spoor alles. Die grens stond als zin in het contract en is daar meegewijzigd
 **Refreshketen.** Een opvolger die door een herhaling vervangen werd is nooit aangeboden. Bood een client hem later
 toch aan, omdat zijn antwoord als laatste binnenkwam, dan telde dat als hergebruik en ging de sessie eruit. Hij krijgt
 nu een eigen markering (`superseded_at`, migratie 0028): zijn eerste aanbieding levert een nieuw paar zolang de keten
-niet verder is, ook na het respijt, en daarna `auth.token_invalid`, in beide gevallen zonder intrekking. Een tweede
-aanbieding is gewoon hergebruik. Geen nieuwe code en geen veld, dus de regels van hoofdstuk 3 worden niet geraakt.
+niet verder is, ook na het respijt. Een tweede aanbieding is gewoon hergebruik. Geen nieuwe code en geen veld, dus de
+regels van hoofdstuk 3 worden niet geraakt.
+
+Deze alinea zei eerst dat een vervangen token na een doorgeroteerde keten `auth.token_invalid` kreeg, zonder intrekking.
+Dat is op 31 oktober teruggedraaid, op de review van `19720e15a`, omdat twee houders van één token er ongemerkt mee
+doorkwamen. Elke herhaling gaf een nieuw token dezelfde uitzondering, dus twee houders konden om en om blijven roteren,
+en een dief die doorrouleerde hield de sessie terwijl het slachtoffer alleen een weigering kreeg. De uitzondering geldt nu
+één generatie: de kop die wijkt voor de eerste aanbieding van een vervangen token krijgt geen markering en geen
+`replaced_by`, dus wie hem aanbiedt is een tweede houder, ook binnen het respijt. Hetzelfde geldt voor een vervangen
+token na een doorgeroteerde keten. Beide geven `auth.refresh_token_reused` en trekken de sessie in. De race van twee
+tabbladen en een verloren antwoord raken dit niet: één browserprofiel heeft één cookie of één `localStorage`-plek, dus
+een vervangen token komt daar alleen terug als de keten nog op hem wacht.
+
+De prijs is een smalle race zonder Web Locks of met een verlopen slot: drie verversingen die elkaar overlappen, waarbij
+het antwoord dat een tweede herhaling verdrong als allerlaatste binnenkomt. Die browser logt dan opnieuw in. Dat is de
+kant waarop dit hoort te falen, en een eigen kolom voor dat geval weegt er niet tegenop.
 
 **`cookie_upgrade`.** Een browser met een token in `localStorage` kon alleen via een nieuwe login op de cookie komen.
 `POST /auth/refresh` kent daarom onder de nieuwe vlag `capabilities.cookie_upgrade` de waarde

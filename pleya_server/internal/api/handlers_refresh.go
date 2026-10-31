@@ -88,9 +88,8 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	// Een afgewezen refresh in cookiemodus laat geen dode cookie achter. Zonder
 	// deze regel blijft de browser bij elke volgende poging een credential
 	// meesturen dat nooit meer werkt, en dan lijkt "opnieuw inloggen" niet te
-	// helpen. RefreshSuperseded staat erbuiten: dat antwoord kan achter een geslaagde
-	// rotatie aan komen, en dan haalt het juist de goede cookie weg.
-	if mode == credentialModeCookie && outcome != auth.RefreshOK && outcome != auth.RefreshReplayed && outcome != auth.RefreshSuperseded {
+	// helpen.
+	if mode == credentialModeCookie && outcome != auth.RefreshOK && outcome != auth.RefreshReplayed {
 		s.clearRefreshCookie(w)
 	}
 
@@ -113,7 +112,7 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	case auth.RefreshSessionRevoked:
 		writeError(w, s.log, CodeTokenInvalid, "session revoked", nil)
 		return
-	case auth.RefreshExpired, auth.RefreshUnknown, auth.RefreshSuperseded:
+	case auth.RefreshExpired, auth.RefreshUnknown:
 		writeError(w, s.log, CodeTokenInvalid, "refresh token invalid", nil)
 		return
 	}

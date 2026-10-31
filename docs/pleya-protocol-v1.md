@@ -341,9 +341,11 @@ server mag de hele keten dan ongeldig maken.
 terug terwijl zijn opvolger nooit gebruikt is, dan was dat een verloren antwoord of een tweede tabblad: de
 aanvrager krijgt een nieuw paar en de ongebruikte opvolger vervalt. Die vervallen opvolger kan zelf nog bij
 de client aankomen, als zijn antwoord later binnenkomt dan dat van de herhaling. Hij is dan nooit
-aangeboden, dus zijn eerste aanbieding is geen hergebruik, ook niet na het venster: zolang de keten niet
-verder is krijgt hij een nieuw paar, en daarna `auth.token_invalid`. De sessie blijft in beide gevallen
-staan. Dit verandert geen veld en geen code; het beperkt wanneer een bestaande uitkomst valt.
+aangeboden, dus zolang de keten niet verder is, is zijn eerste aanbieding geen hergebruik, ook niet na het
+venster: hij krijgt een nieuw paar en de kop die daarvoor wijkt vervalt definitief. Die uitzondering geldt
+één generatie. Is de keten wel verder, of biedt iemand de geweken kop aan, dan dragen twee partijen de
+sessie, en dan is het `auth.refresh_token_reused`, ook binnen het venster. Dit verandert geen veld en geen
+code; het beperkt wanneer een bestaande uitkomst valt.
 
 Ook hier bestaat `credential_mode`. Draagt de aanvraag `{"credential_mode": "cookie"}`, dan komt het
 oude refreshcredential uit de cookie en gaat het nieuwe er weer in, en blijft `refresh_token` uit
