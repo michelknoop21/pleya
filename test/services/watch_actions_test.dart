@@ -471,9 +471,9 @@ void main() {
     }
 
     testWidgets('the first membership reports it, the others only get the write', (tester) async {
-      final second = _HealthyClient('b');
+      final second = _HealthyClient('b', ids: const ExternalIds(tmdb: 1), matches: [_itemOn('b', 'dune')]);
       serverManager
-        ..debugRegisterClientForTesting(_HealthyClient('a'))
+        ..debugRegisterClientForTesting(_HealthyClient('a', ids: const ExternalIds(tmdb: 1)))
         ..debugRegisterClientForTesting(second);
       final ctx = await pumpTree(tester);
       final events = <WatchStateEvent>[];
@@ -487,10 +487,11 @@ void main() {
           group: groupOf([_itemOn('a', 'dune'), _itemOn('b', 'dune')]),
           availabilityFor: (_) => SourceAvailability.online,
         );
-        await pumpEventQueue();
+        // Long enough for the lookup behind the mark to come back.
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       });
 
-      expect(second.writes, hasLength(1), reason: 'once: the lookup does not write it a second time');
+      expect(second.writes, hasLength(1), reason: 'once: the lookup finds it too, and leaves it to the fan-out');
       expect({for (final e in events) e.globalKey: e.isCopy}, {'a:dune': false, 'b:dune': true});
     });
 
