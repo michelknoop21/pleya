@@ -12,6 +12,11 @@ class _UnifiedDetailSource {
   /// whether it resumes. Null until known.
   UnifiedPlayTarget? onDeckTarget;
 
+  /// The same for the next episode of an open season: which episode on which
+  /// source [seasonTarget] answers for, so another season never reads it.
+  String? seasonRequest;
+  UnifiedPlayTarget? seasonTarget;
+
   /// The control that changes the source. A node of its own, because the
   /// action row sends DOWN by hand and has to be able to name this stop.
   final FocusNode lineFocus = FocusNode(debugLabel: 'unified_source_line');
@@ -84,13 +89,36 @@ extension _MediaDetailUnifiedSource on _MediaDetailScreenState {
   /// The copy Play starts for [metadata], at the position it starts from, for a
   /// row that draws how far along it is. Null when the page's own items answer.
   MediaItem? _unifiedResumeItem(MediaItem metadata) {
-    if (!metadata.isMovie && !metadata.isShow) return null;
-    final title = _unifiedTitle;
-    final target = metadata.isShow
-        ? _unifiedSource.onDeckTarget
-        : title?.movieTarget(metadata) ?? UnifiedPlayTarget(_playedItem(metadata));
+    final target = switch (metadata.kind) {
+      MediaKind.show => _unifiedSource.onDeckTarget,
+      MediaKind.season => _unifiedSeasonTarget(),
+      MediaKind.movie => _unifiedTitle?.movieTarget(metadata) ?? UnifiedPlayTarget(_playedItem(metadata)),
+      _ => null,
+    };
     final carried = target?.carriedResume;
     return carried == null ? target?.item : target?.item.copyWith(viewOffsetMs: carried.inMilliseconds);
+  }
+
+  /// What Play starts for the open season's next episode. Finding that out asks
+  /// the sources, so it is read ahead: null until it is in, and a call from a
+  /// build is harmless because the answer always comes after this frame.
+  UnifiedPlayTarget? _unifiedSeasonTarget() {
+    final title = _unifiedTitle;
+    final next = _seasonNextEpisode;
+    if (title == null || next == null) return null;
+    final state = _unifiedSource;
+    final request = '${next.globalKey}>${_routeContext?.sourceKey}';
+    if (state.seasonRequest == request) return state.seasonTarget;
+    state.seasonRequest = request;
+    state.seasonTarget = null;
+    unawaited(_readUnifiedSeasonTarget(title, next, request));
+    return null;
+  }
+
+  Future<void> _readUnifiedSeasonTarget(UnifiedTitlePlayback title, MediaItem next, String request) async {
+    final target = await title.targetFor(next);
+    if (!mounted || _unifiedSource.seasonRequest != request) return;
+    setStateIfMounted(() => _unifiedSource.seasonTarget = target);
   }
 
   /// The item a menu on the page acts on: the chosen source. Deleting, a
@@ -107,6 +135,8 @@ extension _MediaDetailUnifiedSource on _MediaDetailScreenState {
   Future<void> _syncUnifiedOnDeck() async {
     final title = _unifiedTitle;
     if (title == null || !_metadata.isShow) return;
+    // A play or a mark moved the positions: the next build reads the season anew.
+    _unifiedSource.seasonRequest = null;
     final own = _onDeckEpisode;
     final across = await title.onDeckAcross(own);
     final target = across == null ? null : await title.targetFor(across);
