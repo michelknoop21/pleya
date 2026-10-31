@@ -133,6 +133,10 @@ class UnifiedCatalogService {
 
   List<UnifiedMediaGroup> _groups = [];
   int _generation = 0;
+
+  /// The [loadMore] round of this generation that has not finished. A reset
+  /// lets go of it: that round stops at its own generation check.
+  Future<UnifiedCatalogSnapshot>? _runningRound;
   bool _everSucceeded = false;
 
   UnifiedCatalogQuery get query => _query;
@@ -251,6 +255,7 @@ class UnifiedCatalogService {
     }
     _query = query;
     _cursors = [for (final library in libraries) UnifiedSourceCursor(library)];
+    _runningRound = null;
     _poppedItems.clear();
     _externalIdCache.clear();
     _resolvableCache.clear();
@@ -276,9 +281,26 @@ class UnifiedCatalogService {
   /// "keep going until groupsPerPage or exhausted" would give up early
   /// whenever a healthy library needs more than one page to help reach the
   /// target.
-  Future<UnifiedCatalogSnapshot> loadMore() async {
-    if (isComplete) return snapshot;
+  ///
+  /// One round at a time per generation: a call while one runs gets that same
+  /// round. A second one beside it would see a cursor whose page is on its way
+  /// as nothing to wait for and pop past it, and would grow [_poppedItems] under
+  /// a [_recomputeGroups] that is still waiting for external ids.
+  Future<UnifiedCatalogSnapshot> loadMore() {
+    if (isComplete) return Future.value(snapshot);
+    final running = _runningRound;
+    if (running != null) return running;
+    final round = _advance();
+    _runningRound = round;
+    void release() {
+      if (identical(_runningRound, round)) _runningRound = null;
+    }
 
+    unawaited(round.then<void>((_) => release(), onError: (Object _) => release()));
+    return round;
+  }
+
+  Future<UnifiedCatalogSnapshot> _advance() async {
     final myGeneration = _generation;
     final groupCountAtStart = _groups.length;
     var poppedThisCall = 0;
@@ -619,6 +641,9 @@ class UnifiedCatalogService {
         }
       },
     );
+    // A reset while the ids were out: [_poppedItems] is another merge's now, and
+    // [evidence] belongs to the list this round started from.
+    if (generation != _generation) return;
 
     final candidates = <GroupingCandidate>[];
     for (var i = 0; i < _poppedItems.length; i++) {
