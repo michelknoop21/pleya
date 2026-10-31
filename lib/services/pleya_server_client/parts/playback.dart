@@ -73,6 +73,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       index = versions.indexWhere((version) => version.id == sourceId);
       if (index < 0) throw PlaybackException('The selected media version is no longer available.');
     }
+    final start = ++_transcodeStarts;
     await _releaseTranscodeSession(options.metadata.id);
     var plan = await _planPlayback(
       options.metadata.id,
@@ -186,7 +187,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     // playback is reported stopped.
     final sessionId = plan?.sessionId;
     if (plan != null && sessionId != null && plan.deliveryMode != PleyaDeliveryMode.directPlay) {
-      _holdTranscodeSession(options.metadata.id, sessionId);
+      _holdTranscodeSession(options.metadata.id, sessionId, start);
       return PlaybackInitializationResult(
         availableVersions: versions,
         videoUrl: '${connection.baseUrl}${plan.streamUrl}',
@@ -299,13 +300,29 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   }
 
   /// The transcode sessions this client keeps alive, by item id.
-  final Map<String, ({String sessionId, Timer timer})> _transcodeSessions = {};
+  final Map<String, ({String sessionId, Timer timer, int start})> _transcodeSessions = {};
+
+  /// Numbers each playback start, so two overlapping starts of one item can
+  /// tell which is the newer: they finish in either order.
+  int _transcodeStarts = 0;
 
   /// How often a held session is told it is still wanted. The server reaps a
   /// session after a minute without a heartbeat or a file request.
   static const Duration _heartbeatEvery = Duration(seconds: 15);
 
-  void _holdTranscodeSession(String itemId, String sessionId) {
+  /// One held session per item. Of two overlapping starts the newer one stays,
+  /// and the other is stopped here, or it would run on the server with nobody
+  /// watching it and a heartbeat nobody cancels.
+  void _holdTranscodeSession(String itemId, String sessionId, int start) {
+    final held = _transcodeSessions[itemId];
+    if (held != null && held.start > start) {
+      unawaited(_stopPlanSession(sessionId));
+      return;
+    }
+    if (held != null) {
+      held.timer.cancel();
+      unawaited(_stopPlanSession(held.sessionId));
+    }
     final timer = Timer.periodic(_heartbeatEvery, (t) async {
       try {
         await _adminSend('POST', '/playback/sessions/$sessionId/heartbeat');
@@ -316,7 +333,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
         appLogger.d('PleyaServerClient: transcode heartbeat failed', error: e);
       }
     });
-    _transcodeSessions[itemId] = (sessionId: sessionId, timer: timer);
+    _transcodeSessions[itemId] = (sessionId: sessionId, timer: timer, start: start);
   }
 
   Future<void> _releaseTranscodeSession(String itemId) async {

@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/device_capabilities.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -275,6 +278,79 @@ void main() {
       expect(calls, ['/pleya/v1/playback/sessions/sess-1', '/pleya/v1/playback/plan']);
       await client.closeGracefully();
       expect(server.sessionCalls, ['DELETE /playback/sessions/sess-1']);
+    });
+
+    group('two overlapping starts of one item', () {
+      late Completer<void> firstPlan, secondPlan;
+      late MediaItem item;
+
+      setUp(() async {
+        server = PleyaFakeServer(watchState: true)
+          ..playbackPlanCapability = true
+          ..planDeliveryMode = 'transcode'
+          ..numberPlanSessions = true;
+        firstPlan = Completer<void>();
+        secondPlan = Completer<void>();
+        server.planGates.addAll([firstPlan.future, secondPlan.future]);
+        item = twoVersions(server);
+        client = await connected(server);
+      });
+
+      test('the older one finishing first is stopped by the newer one', () async {
+        final first = play(item);
+        final second = play(item);
+        await pumpEventQueue();
+        firstPlan.complete();
+        await first;
+        expect(server.sessionCalls, isEmpty);
+        secondPlan.complete();
+        await second;
+        await pumpEventQueue();
+        expect(server.sessionCalls, ['DELETE /playback/sessions/sess-1']);
+
+        await client.closeGracefully();
+        expect(server.sessionCalls, ['DELETE /playback/sessions/sess-1', 'DELETE /playback/sessions/sess-2']);
+      });
+
+      test('the older one finishing last does not push out the newer one', () async {
+        final first = play(item);
+        final second = play(item);
+        await pumpEventQueue();
+        secondPlan.complete();
+        await second;
+        firstPlan.complete();
+        await first;
+        await pumpEventQueue();
+        expect(server.sessionCalls, ['DELETE /playback/sessions/sess-1']);
+
+        await client.closeGracefully();
+        expect(server.sessionCalls, ['DELETE /playback/sessions/sess-1', 'DELETE /playback/sessions/sess-2']);
+      });
+    });
+
+    test('of two overlapping starts only the session that stays gets a heartbeat', () {
+      fakeAsync((time) {
+        server = PleyaFakeServer(watchState: true)
+          ..playbackPlanCapability = true
+          ..planDeliveryMode = 'transcode'
+          ..numberPlanSessions = true;
+        final item = twoVersions(server);
+        final gate = Completer<void>();
+        server.planGates.addAll([Future<void>.value(), gate.future]);
+        late PleyaServerClient local;
+        connected(server).then((c) => local = client = c);
+        time.flushMicrotasks();
+        unawaited(play(item));
+        unawaited(play(item));
+        time.flushMicrotasks();
+        gate.complete();
+        time.flushMicrotasks();
+        server.sessionCalls.clear();
+
+        time.elapse(const Duration(seconds: 16));
+        expect(server.sessionCalls, ['POST /playback/sessions/sess-2/heartbeat']);
+        local.close();
+      });
     });
 
     test('a refused replacement leaves nothing held, and reopening the old selection holds a new session', () async {

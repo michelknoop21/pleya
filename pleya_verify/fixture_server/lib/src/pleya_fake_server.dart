@@ -142,6 +142,14 @@ class PleyaFakeServer {
   String planVersionId = 'version-1';
   String planDeliveryMode = 'direct_play';
   int? planFailureStatus;
+
+  /// Number each plan's session (`sess-1`, `sess-2`), in order of arrival.
+  bool numberPlanSessions = false;
+
+  /// Held per incoming plan: the answer waits for the next gate in line, so a
+  /// test can finish two overlapping plans in the order it wants.
+  final List<Future<void>> planGates = [];
+  int _planCount = 0;
   final List<Map<String, dynamic>> planRequests = [];
 
   /// Calls on `/playback/sessions/{id}` and below, as `METHOD path`.
@@ -384,6 +392,9 @@ class PleyaFakeServer {
     planVersionId = 'version-1';
     planDeliveryMode = 'direct_play';
     planFailureStatus = null;
+    numberPlanSessions = false;
+    planGates.clear();
+    _planCount = 0;
     planRequests.clear();
     sessionCalls.clear();
     watchStateFailureStatus = null;
@@ -753,6 +764,9 @@ class PleyaFakeServer {
       if (failure != null) return _json(_error('playback.not_playable'), status: failure);
       final body = jsonDecode(request.body) as Map<String, dynamic>;
       planRequests.add(body);
+      _planCount++;
+      final sessionId = numberPlanSessions ? 'sess-$_planCount' : 'sess-1';
+      if (planGates.isNotEmpty) await planGates.removeAt(0);
       final versionId = (body['version_id'] as String?) ?? planVersionId;
       final reason = {
         'code': planDeliveryMode == 'direct_play' ? 'direct.supported' : 'container.unsupported',
@@ -773,12 +787,12 @@ class PleyaFakeServer {
           },
         if (body['quality'] != null) 'effective_quality': body['quality'],
         if (body['audio_stream_id'] != null) 'selected_audio_stream_id': body['audio_stream_id'],
-        'stream_url': direct ? '/pleya/v1/stream/$versionId' : '/pleya/v1/playback/sessions/sess-1/index.m3u8',
+        'stream_url': direct ? '/pleya/v1/stream/$versionId' : '/pleya/v1/playback/sessions/$sessionId/index.m3u8',
         'container': direct ? 'original' : 'hls',
         'video': {'action': (body['subtitle'] as Map?)?['mode'] == 'burn' ? 'transcode' : 'copy'},
         'audio': {'action': 'copy'},
         'seekable': direct,
-        'session_id': direct ? null : 'sess-1',
+        'session_id': direct ? null : sessionId,
         'reason': reason,
         'reasons': [reason],
       });
