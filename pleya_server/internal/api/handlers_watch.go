@@ -195,15 +195,23 @@ func (s *Server) handleWatchStateList(w http.ResponseWriter, r *http.Request) {
 
 // mapUserState vertaalt de domeintoestand naar het wire-type. Nil betekent dat
 // het item nooit is aangeraakt.
+//
+// Op de lijn is play_count minstens 1 zolang watched waar is, zoals altijd zo was:
+// een oudere client leest gezien uit play_count (MediaItem.viewCount), en een
+// afgeronde kopie telt zelf geen kijkbeurt.
 func mapUserState(st watch.State) *UserState {
 	if !st.Exists {
 		return nil
 	}
 	revision := st.Revision
+	playCount := st.PlayCount
+	if st.Watched && playCount == 0 {
+		playCount = 1
+	}
 	return &UserState{
 		PositionMs: st.PositionMs,
 		Watched:    st.Watched,
-		PlayCount:  st.PlayCount,
+		PlayCount:  playCount,
 		UpdatedAt:  formatTime(st.UpdatedAt),
 		Revision:   &revision,
 	}

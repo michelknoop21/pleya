@@ -690,7 +690,8 @@ class PleyaFakeServer {
     final state = {
       'position_ms': completed ? 0 : event['position_ms'],
       'watched': completed,
-      'play_count': completed && !watched ? playCount + 1 : playCount,
+      // A copy counts no viewing. The wire keeps it at one or more while watched.
+      'play_count': completed && playCount == 0 ? 1 : playCount,
       'updated_at': '2026-08-21T20:00:00Z',
       'revision': ((current?['revision'] as int?) ?? 0) + 1,
       'owned_by_this_session': false,

@@ -1217,7 +1217,7 @@ zijn drie dingen. `copy: true` op een gewone melding zegt dat het om de eerste t
 | een sessie houdt een geldige lease, welke dan ook | afgewezen: een kopie neemt een kijkende sessie nooit over |
 | geen `completed`, item staat op gezien | afgewezen: een positie op een gezien item is een halve toestand (DEC-049) |
 | geen `completed` | alleen `position_ms` en, als die is meegestuurd, `duration_ms`. De drempel van 0,9 geldt niet |
-| `completed` | `watched` waar en `position_ms` 0. `play_count` telt op als het item nog niet op gezien stond, net als bij `mark_watched` |
+| `completed` | `watched` waar en `position_ms` 0. De kopie telt geen kijkbeurt: de opgeslagen telling blijft staan, en `play_count` is op de lijn minstens 1 zolang `watched` waar is |
 
 In elk geaccepteerd geval stijgt `revision` en beweegt `updated_at`, zodat een ander toestel de kopie
 ziet. De eigenaar, de lease en de laatste expliciete handeling blijven staan. `play_history` krijgt geen
@@ -1970,8 +1970,9 @@ bron maken voor dezelfde vraag.
 ### 17b.7 Kijkgeschiedenis van het huishouden
 
 `GET /pleya/v1/watch-history?days=7` geeft per gebruiker de films en afleveringen die hij heeft
-afgekeken (`watched`, of `play_count` boven nul) en waarvan de kijkstatus in de laatste `days` dagen
-is bijgewerkt. Klasse `admin`, toegevoegd door DEC-143 buiten venster 2.
+afgekeken (een opgeslagen telling boven nul) en die hij in de laatste `days` dagen echt heeft bekeken
+(`last_played_at`). Klasse `admin`, toegevoegd door DEC-143 buiten venster 2. Een kopie (14.1b) is geen
+kijkbeurt: ze staat hier niet in en verzet geen regel.
 
 ```json
 { "days": 7, "truncated": false, "items": [
@@ -1982,9 +1983,9 @@ is bijgewerkt. Klasse `admin`, toegevoegd door DEC-143 buiten venster 2.
 ] }
 ```
 
-Er is geen afspeellog. Een regel is de laatste aanraking van één gebruiker op één item, dezelfde lezing
-als Jellyfin en Emby met hun "laatst afgespeeld", dus wie een film drie keer keek staat er één keer
-in. `days` loopt van 1 tot en met 31 en wordt geklemd, niet geweigerd; zonder parameter is het 7.
+Er is geen afspeellog. Een regel is het laatste echte moment van één gebruiker op één item, en dat
+moment staat in `updated_at`; dezelfde lezing als Jellyfin en Emby met hun "laatst afgespeeld", dus wie
+een film drie keer keek staat er één keer in. `days` loopt van 1 tot en met 31 en wordt geklemd, niet geweigerd; zonder parameter is het 7.
 Nieuwste eerst en ten hoogste 1000 regels; `truncated` is waar als er meer waren.
 
 Anders dan bij 17b.6 staat de serie van een aflevering er wel bij. De vraag die dit endpoint

@@ -406,6 +406,40 @@ void main() {
     });
   });
 
+  group('a copy that finished counts no viewing', () {
+    for (final kind in const ['movie', 'episode']) {
+      test('$kind: a client that reads play_count sees it as watched', () async {
+        await connect(copy: true);
+        server.addItem(id: 'copy-1', kind: kind, title: 'Grease', libraryId: 'lib-films', durationMs: length);
+        await mirrored(watched: true, item: 'copy-1');
+
+        await queue.syncPendingItems();
+
+        final item = await client.fetchItem('copy-1');
+        expect(item?.viewCount, 1);
+        expect(item?.isWatched, isTrue);
+      });
+
+      test('$kind: the plays it had stay what they were', () async {
+        await connect(copy: true);
+        server.addItem(
+          id: 'copy-1',
+          kind: kind,
+          title: 'Grease',
+          libraryId: 'lib-films',
+          durationMs: length,
+          userState: _unwatchedTwice,
+        );
+        await mirrored(watched: true, item: 'copy-1');
+
+        await queue.syncPendingItems();
+
+        expect(server.watchStates['copy-1']?['watched'], isTrue);
+        expect(server.watchStates['copy-1']?['play_count'], 2);
+      });
+    }
+  });
+
   test('a title that was set back to unwatched takes a finished viewing again: play_count stays behind', () async {
     await connect(userState: _unwatchedTwice);
     await mirrored(watched: true);

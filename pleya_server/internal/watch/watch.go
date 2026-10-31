@@ -251,7 +251,9 @@ func applyProgress(cur State, ev Event) State {
 		next.DurationMs = ev.DurationMs
 	}
 	if completed(ev, next.DurationMs) {
-		if !next.Watched {
+		// Gezien zonder telling komt alleen uit een kopie: dan is dit de eerste
+		// echte kijkbeurt.
+		if !next.Watched || next.PlayCount == 0 {
 			next.PlayCount++
 		}
 		next.Watched = true
@@ -289,9 +291,9 @@ func applyExplicit(cur State, ev Event) State {
 // applyCopy zet de overgenomen stand op een kopie.
 //
 // Geen drempel: uit 90 procent op een kopie valt niet af te leiden dat iemand de
-// kopie keek, dus alleen de vlag telt. PlayCount loopt mee zoals bij mark_watched,
-// want de app leest gezien uit play_count (MediaItem.viewCount) en een oudere
-// client moet de titel als gezien blijven tonen.
+// kopie keek, dus alleen de vlag telt. PlayCount blijft staan: hij telt kijkbeurten
+// en markeringen, en hier keek niemand. Een oudere client leest gezien uit
+// play_count (MediaItem.viewCount); die bedient mapUserState op de lijn.
 func applyCopy(cur State, ev Event) State {
 	next := cur
 	if ev.DurationMs != nil {
@@ -300,9 +302,6 @@ func applyCopy(cur State, ev Event) State {
 	if !ev.Completed {
 		next.PositionMs = ev.PositionMs
 		return next
-	}
-	if !next.Watched {
-		next.PlayCount++
 	}
 	next.Watched = true
 	next.PositionMs = 0

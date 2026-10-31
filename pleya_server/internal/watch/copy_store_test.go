@@ -125,7 +125,7 @@ func TestCopyKeepsLastPlayedAndMovesUpdatedAt(t *testing.T) {
 	}
 }
 
-func TestFinishedCopyCountsLikeAMark(t *testing.T) {
+func TestFinishedCopyCountsNoPlay(t *testing.T) {
 	_, store, itemID, subject := fixture(t)
 	ctx := context.Background()
 
@@ -139,7 +139,7 @@ func TestFinishedCopyCountsLikeAMark(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !st.Watched || st.PositionMs != 0 || st.PlayCount != 1 {
+	if !st.Watched || st.PositionMs != 0 || st.PlayCount != 0 {
 		t.Fatalf("watched %v, positie %d, playcount %d", st.Watched, st.PositionMs, st.PlayCount)
 	}
 }

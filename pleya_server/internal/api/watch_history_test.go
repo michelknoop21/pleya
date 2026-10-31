@@ -75,7 +75,8 @@ func TestWatchHistoryListsFinishedTitlesPerUser(t *testing.T) {
 
 	// Buiten het venster: een dag geleden valt binnen ?days=1 niet meer.
 	if _, err := e.pool.Exec(context.Background(),
-		`UPDATE watch_states SET updated_at = now() - interval '2 days' WHERE subject = $1`, sam); err != nil {
+		`UPDATE watch_states SET updated_at = now() - interval '2 days', last_played_at = now() - interval '2 days'
+		 WHERE subject = $1`, sam); err != nil {
 		t.Fatal(err)
 	}
 	if recent := e.watchHistory("?days=1", http.StatusOK); len(recent.Items) != 2 {

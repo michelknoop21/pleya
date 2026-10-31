@@ -71,8 +71,8 @@ func TestCopyTakesADurationOnlyWhenItHasOne(t *testing.T) {
 	}
 }
 
-// De vlag zet gezien en positie nul, net als mark_watched, en PlayCount loopt mee
-// omdat de app gezien uit play_count leest.
+// De vlag zet gezien en positie nul, net als mark_watched, maar telt geen kijkbeurt.
+// Een oudere client ziet gezien via het antwoord, niet via deze telling.
 func TestFinishedCopyIsWatchedAtZero(t *testing.T) {
 	ev := Event{SessionID: "copy", PositionMs: 100_000, Completed: true, Copy: true}
 
@@ -80,7 +80,7 @@ func TestFinishedCopyIsWatchedAtZero(t *testing.T) {
 	if !out.Accepted {
 		t.Fatalf("geweigerd: %s", out.Reason)
 	}
-	if !out.Next.Watched || out.Next.PositionMs != 0 || out.Next.PlayCount != 3 {
+	if !out.Next.Watched || out.Next.PositionMs != 0 || out.Next.PlayCount != 2 {
 		t.Fatalf("watched %v, positie %d, playcount %d", out.Next.Watched, out.Next.PositionMs, out.Next.PlayCount)
 	}
 	if out.Next.OwnerSessionID != "tv" {
@@ -156,6 +156,24 @@ func TestCopyRecordsNoPlay(t *testing.T) {
 	}
 	if !(Event{SessionID: "tv"}).recordsPlay() {
 		t.Fatal("een gewone melding telt niet meer als afspelen")
+	}
+}
+
+// Een kopie telde niet, dus een echte kijkbeurt op een titel die alleen door een
+// kopie op gezien staat is de eerste. Daarna is het een herhaling, zoals altijd.
+func TestARealFinishAfterACopyIsTheFirstPlay(t *testing.T) {
+	cur := owned("tv", 3, 0, base.Add(time.Minute))
+	cur.Watched = true
+	cur.PlayCount = 0
+	tick := Event{SessionID: "tv", PositionMs: 95_000, DurationMs: ms(100_000), Completed: true}
+
+	first := Decide(cur, tick, base, MinLease)
+	if !first.Accepted || !first.Next.Watched || first.Next.PlayCount != 1 {
+		t.Fatalf("eerste: %+v", first)
+	}
+	again := Decide(first.Next, tick, base, MinLease)
+	if !again.Accepted || again.Next.PlayCount != 1 {
+		t.Fatalf("herhaling: %+v", again)
 	}
 }
 
