@@ -168,15 +168,18 @@ class TvDetailPageState extends State<TvDetailPage> {
   void _holdRowInPlace(String id) {
     final box = _sectionKeys[id]?.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.attached) return;
-    final before = box.localToGlobal(Offset.zero).dy;
+    // Against the viewport: the app paints under `_AppleTvScale`, so a global
+    // position is in other units than the logical pixels of [jumpTo].
+    final viewport = RenderAbstractViewport.of(box) as RenderObject;
+    final before = box.localToGlobal(Offset.zero, ancestor: viewport).dy;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _focusedSectionId != id || !_scroll.hasClients || !box.attached) return;
+      if (!mounted || _focusedSectionId != id || !_scroll.hasClients || !box.attached || !viewport.attached) return;
       final position = _scroll.position;
       if (position.isScrollingNotifier.value) {
         _scrollToSection(id);
         return;
       }
-      final moved = box.localToGlobal(Offset.zero).dy - before;
+      final moved = box.localToGlobal(Offset.zero, ancestor: viewport).dy - before;
       if (moved.abs() < 0.5) return;
       _scroll.jumpTo((position.pixels + moved).clamp(position.minScrollExtent, position.maxScrollExtent).toDouble());
     });

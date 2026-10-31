@@ -210,6 +210,7 @@ void main() {
     _Client client, {
     bool kids = false,
     bool kidsCheckThrows = false,
+    double scale = 1,
   }) async {
     tester.view.physicalSize = _panel;
     tester.view.devicePixelRatio = 1;
@@ -238,9 +239,24 @@ void main() {
                   focusContent: () {},
                   isSidebarFocused: false,
                   sideNavigationWidth: 0,
-                  child: TvDisplayMetrics(
-                    size: _panel,
-                    child: OverlaySheetHost(child: withNoticeLayer()(context, child)),
+                  // As `_AppleTvScale` in main.dart: the UI is laid out on a
+                  // logical canvas and painted larger.
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: Transform.scale(
+                      scale: scale,
+                      alignment: Alignment.topLeft,
+                      child: SizedBox.fromSize(
+                        size: _panel,
+                        child: MediaQuery(
+                          data: MediaQuery.of(context).copyWith(size: _panel, devicePixelRatio: scale),
+                          child: TvDisplayMetrics(
+                            size: _panel,
+                            child: OverlaySheetHost(child: withNoticeLayer()(context, child)),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -507,6 +523,48 @@ void main() {
 
     expect(FocusManager.instance.primaryFocus, same(node));
     expect(node.rect.top, closeTo(before.top, 1));
+  });
+
+  group('on the scale of an Apple TV', () {
+    const appleTvScale = 1.85;
+    MediaItem longShow() => _show().copyWith(
+      roles: [for (var i = 0; i < 14; i++) MediaRole(id: 'p$i', tag: 'Person $i', role: 'Role')],
+      reviews: const [MediaReview(author: 'Amy', text: 'Funny.', source: 'FilmWeek')],
+      summary: List.filled(30, 'A long summary.').join(' '),
+    );
+
+    testWidgets('a row landing above the focus moves the page by what it moved the card', (tester) async {
+      routes['/shows/tt1/comments/likes'] = [_comment(1, 'Late')];
+      traktGate = Completer<void>();
+      await pumpDetail(tester, _Client(longShow(), seasons: [_season(1), _season(2)]), scale: appleTvScale);
+      await walkDown(tester, steps: 7);
+      final node = FocusManager.instance.primaryFocus!;
+      final before = node.rect;
+      expect(before.bottom, lessThanOrEqualTo(_panel.height * appleTvScale));
+
+      traktGate!.complete();
+      await tester.pumpAndSettle();
+
+      expect(sectionIds(tester), contains('discussions'));
+      expect(FocusManager.instance.primaryFocus, same(node));
+      expect(node.rect.top, closeTo(before.top, 1));
+    });
+
+    testWidgets('a row landing under the focus moves nothing', (tester) async {
+      routes['/shows/tt1/comments/likes'] = [_comment(1, 'Late')];
+      traktGate = Completer<void>();
+      await pumpDetail(tester, _Client(longShow(), seasons: [_season(1), _season(2)]), scale: appleTvScale);
+      await walkDown(tester, steps: 1);
+      await tester.pumpAndSettle();
+      final node = FocusManager.instance.primaryFocus!;
+      final before = node.rect;
+
+      traktGate!.complete();
+      await tester.pumpAndSettle();
+
+      expect(FocusManager.instance.primaryFocus, same(node));
+      expect(node.rect.top, closeTo(before.top, 1));
+    });
   });
 
   testWidgets('a short page with nothing under the hero still asks, so it does not stay empty', (tester) async {
