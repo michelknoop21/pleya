@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/item_watcher.dart';
 import 'package:pleya/media/media_server_client.dart';
@@ -81,4 +83,31 @@ void main() {
 
     expect(client.saved, [false]);
   });
+
+  test('a page that leaves during a read or a save takes nothing down with it', () async {
+    final slow = _SlowClient(stored: true);
+    final reading = controller(slow);
+    final read = reading.load();
+    reading.dispose();
+    slow.gate.complete();
+    await expectLater(read, completes);
+
+    final saving = controller(_Client(stored: true));
+    await saving.load();
+    final save = saving.toggle();
+    saving.dispose();
+    await expectLater(save, completion(isTrue));
+  });
+}
+
+class _SlowClient extends _Client {
+  _SlowClient({super.stored});
+
+  final gate = Completer<void>();
+
+  @override
+  Future<bool?> fetchActivitySharing() async {
+    await gate.future;
+    return stored;
+  }
 }

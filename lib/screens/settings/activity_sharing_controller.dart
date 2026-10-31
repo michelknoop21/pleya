@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../media/media_server_client.dart';
+import '../../mixins/disposable_change_notifier_mixin.dart';
 import '../../utils/app_logger.dart';
 
 /// The viewer's choice to share their activity, on one server.
@@ -9,7 +10,7 @@ import '../../utils/app_logger.dart';
 /// restricted user simply reads off until they turn it on. [value] only moves
 /// when the server confirmed it: a failed save leaves what is still true on
 /// screen, and the row says so.
-class ActivitySharingController extends ChangeNotifier {
+class ActivitySharingController extends ChangeNotifier with DisposableChangeNotifierMixin {
   ActivitySharingController({required this.client, required this.serverName});
 
   final HouseholdActivityClient client;
@@ -28,11 +29,11 @@ class ActivitySharingController extends ChangeNotifier {
   Future<void> load() async {
     if (_loading) return;
     _loading = true;
-    notifyListeners();
+    safeNotifyListeners();
     final value = await client.fetchActivitySharing();
     _loading = false;
     _value = value;
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   /// Flips the choice. False when the save failed and nothing changed; true
@@ -49,7 +50,7 @@ class ActivitySharingController extends ChangeNotifier {
       return false;
     } finally {
       _saving = false;
-      notifyListeners();
+      safeNotifyListeners();
     }
   }
 }
