@@ -109,6 +109,10 @@ type Capabilities struct {
 	WatchStateOwnership bool `json:"watch_state_ownership"`
 	StreamSessions      bool `json:"stream_sessions"`
 
+	// WatchStateCopy (voorstel DEC-XXX, kopie zonder kijkactie): de server kent `copy` op
+	// WatchStateEvent. Hetzelfde gesloten schema, dus dezelfde onderhandeling.
+	WatchStateCopy bool `json:"watch_state_copy"`
+
 	// Sessions (DEC-123, DEC-124). Aan sinds stap 6 van PS-9. De vlag zegt drie
 	// dingen tegelijk: de client mag device_id en device_name meesturen bij
 	// login en setup, GET/DELETE /sessions en POST /auth/logout bestaan, en een
@@ -372,6 +376,7 @@ type WatchStateEvent struct {
 	Cause        string `json:"cause"`
 	BaseRevision *int64 `json:"base_revision"`
 	Backlog      bool   `json:"backlog"`
+	Copy         bool   `json:"copy"`
 }
 
 // WatchStateEntry is één regel in de lijst van GET /watch-state.

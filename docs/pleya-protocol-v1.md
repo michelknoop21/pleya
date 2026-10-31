@@ -195,6 +195,7 @@ Precies daarom staat er zo weinig in.
     "artwork": true,
     "watch_state": true,
     "watch_state_ownership": true,
+    "watch_state_copy": true,
     "stream_sessions": true,
     "sessions": true,
     "api_tokens": true,
@@ -216,6 +217,8 @@ Precies daarom staat er zo weinig in.
 `capabilities.item_activity` staat aan zodra `GET /items/{item_id}/activity` en de opt-out onder
 `/users/me/activity-sharing` bestaan (14b). De twee komen samen onder één vlag: een server die
 activiteit toont zonder dat iemand zijn eigen deel kan regelen is geen geldige toestand.
+
+`capabilities.watch_state_copy` staat aan zodra de server `copy` op `WatchStateEvent` kent (14.1b, voorstel).
 
 `capabilities.users` staat aan zodra de server echte gebruikers kent (hoofdstuk 16);
 `capabilities.sessions` staat aan zodra hij device-scoped sessies kent (hoofdstuk 17) en dus
@@ -1119,6 +1122,48 @@ Wat dat op de bekende scenario's doet:
 **Een geweigerd event wordt in deze versie niet bewaard.** De server antwoordt met de actuele toestand
 en logt de weigering. Duurzame, gebruikerszichtbare geschiedenis is een latere fase en geen bijproduct
 van dit endpoint.
+
+### 14.1b Een kopie is geen kijkactie
+
+Voorstel DEC-XXX (kopie zonder kijkactie), in afwachting van Michels besluit over protocolvenster en
+NAS-deploy. Aanwezig wanneer `capabilities.watch_state_copy` waar is. `WatchStateEvent` accepteert geen
+onbekende velden, dus zonder die vlag stuurt een client het veld niet.
+
+Een app met dezelfde titel op twee bronnen zet de stand van de bron die speelde ook op de andere.
+Daar keek niemand, en een overgenomen positie, de bekekenstatus van de bron en de kijkgeschiedenis
+zijn drie dingen. `copy: true` op een gewone melding zegt dat het om de eerste twee gaat.
+
+```json
+{
+  "item_id": "0198f2b0-...",
+  "session_id": "0198f2d0-4444-7000-8000-000000000002",
+  "position_ms": 1800000,
+  "duration_ms": 6720000,
+  "occurred_at": "2026-10-31T20:21:30Z",
+  "completed": false,
+  "explicit_action": "none",
+  "copy": true
+}
+```
+
+`copy` hoort bij `explicit_action: "none"` en niet bij `backlog: true`; elke andere combinatie geeft
+`400 session.invalid`. Na de backlogregel en de causaliteit uit 14.1a beslist de server zo:
+
+| Toestand | Uitkomst |
+| --- | --- |
+| een sessie houdt een geldige lease, welke dan ook | afgewezen: een kopie neemt een kijkende sessie nooit over |
+| geen `completed`, item staat op gezien | afgewezen: een positie op een gezien item is een halve toestand (DEC-049) |
+| geen `completed` | alleen `position_ms` en, als die is meegestuurd, `duration_ms`. De drempel van 0,9 geldt niet |
+| `completed` | `watched` waar en `position_ms` 0. `play_count` telt op als het item nog niet op gezien stond, net als bij `mark_watched` |
+
+In elk geaccepteerd geval stijgt `revision` en beweegt `updated_at`, zodat een ander toestel de kopie
+ziet. De eigenaar, de lease en de laatste expliciete handeling blijven staan. `play_history` krijgt geen
+rij, ook niet bij een afwijzing. `last_played_at` blijft staan: een nieuwe rij krijgt hier geen waarde,
+een bestaande houdt de zijne.
+
+Het antwoord is ook hier de actuele toestand. `owned_by_this_session` zegt niet of de kopie landde, want
+die verwerft niets. Dat lees je aan het antwoord: bij `completed` aan `watched`, anders aan
+`position_ms`.
 
 ### 14.2 Lezen
 

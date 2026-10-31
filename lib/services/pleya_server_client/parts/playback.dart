@@ -231,8 +231,8 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     );
   }
 
-  /// The protocol has no write without a session: a backlog never moves a title
-  /// that has a state (rule 6) and a passive tick needs the lease (rule 2).
+  /// A position on a watched copy is refused with `copy`, for the reason above
+  /// `applyExplicit` on the server, and without that flag no position goes out.
   bool get movesCopyWithoutViewing => false;
 
   /// `user_state` does not say whether a session holds a title, so a recent write
@@ -248,12 +248,20 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     return age < _copyWaitsAfterWrite.inSeconds;
   }
 
-  /// Nobody watched here, so nothing that stands for a viewing goes out. Every
-  /// way to move a position does: `playback_started` puts a row in the history,
-  /// sets the title to watched from 90 percent and moves `last_played_at`. A
-  /// position therefore stays home, and false ends its row.
+  /// Nobody watched here, so nothing that stands for a viewing goes out.
   ///
-  /// A finished viewing is `mark_watched`, which leaves no history. That is an
+  /// With `capabilities.watch_state_copy` that is one event with `copy`: no
+  /// history, no threshold, no `last_played_at`, and nothing acquired (voorstel
+  /// DEC-XXX, kopie zonder kijkactie). `owned_by_this_session` says nothing here:
+  /// a copy acquires nothing, so the state in the answer says whether it landed.
+  /// One session for every copy, and no revision claim: this client did not act
+  /// on what it saw of this title.
+  ///
+  /// Without the flag every way to move a position is a viewing: `playback_started`
+  /// puts a row in the history, sets the title to watched from 90 percent and moves
+  /// `last_played_at`. A position therefore stays home, and false ends its row.
+  ///
+  /// A finished viewing is then `mark_watched`, which leaves no history. That is an
   /// explicit action: it ignores the lease (rule 5) and sets the position to zero,
   /// so right after a write it does not go out. False keeps that row, and the next
   /// round ends it when the session ticked on, or lets it land. It lands only on an
@@ -264,10 +272,24 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     Duration? duration,
     required bool watched,
   }) async {
+    if (wireCapabilities.watchStateCopy) {
+      final state = await _applyWatchState(
+        itemId: item.id,
+        sessionId: _copySessionId,
+        position: position,
+        duration: duration,
+        completed: watched,
+        copy: true,
+      );
+      if (state == null) return false;
+      return watched ? state.watched : state.positionMs == position.inMilliseconds;
+    }
     if (!watched || _writtenJustNow(item)) return false;
     final state = await _markWatched(item);
     return state?.watched ?? false;
   }
+
+  late final String _copySessionId = _mintSessionId();
 
   /// A passive progress tick. Never acquires ownership; a device that is not
   /// the owner reports into the void by design, and the answer tells it so.
@@ -412,6 +434,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     String? cause,
     bool completed = false,
     bool backlog = false,
+    bool copy = false,
   }) async {
     if (!wireCapabilities.watchState) return null;
 
@@ -425,10 +448,11 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       action: action,
       cause: cause,
       backlog: backlog,
+      copy: copy,
       // Only under the capability, and the type drops it again when the flag is
       // off: the request schema is closed, so sending it to a server that
       // predates DEC-049 fails the whole call rather than dropping the field.
-      baseRevision: wireCapabilities.watchStateOwnership ? _watchLedger.revisionOf(itemId) : null,
+      baseRevision: wireCapabilities.watchStateOwnership && !copy ? _watchLedger.revisionOf(itemId) : null,
     );
 
     final body = event.toJson(ownership: wireCapabilities.watchStateOwnership);
@@ -437,7 +461,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     try {
       final state = PleyaUserState.fromJson(json);
       _watchLedger.remember(itemId, state.revision);
-      if (state.ownedByThisSession == false) {
+      if (state.ownedByThisSession == false && !copy) {
         // Not an error, and not something the user should see. Another device
         // holds the lease, and this client keeps reporting so it can take over
         // when the lease runs out.

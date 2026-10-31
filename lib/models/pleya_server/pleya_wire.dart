@@ -163,6 +163,7 @@ class PleyaCapabilities {
     this.filters = false,
     this.externalIdLookup = false,
     this.watchStateOwnership = false,
+    this.watchStateCopy = false,
     this.streamSessions = false,
     this.sessions = false,
     this.administration = false,
@@ -227,6 +228,11 @@ class PleyaCapabilities {
   /// fields to a server without this flag gets its whole request refused.
   final bool watchStateOwnership;
 
+  /// The server knows `copy` on a watch-state event: the state of another source
+  /// of this title, which is no viewing (voorstel DEC-XXX, kopie zonder kijkactie).
+  /// The same closed schema, so the same negotiation.
+  final bool watchStateCopy;
+
   /// The server knows `POST /auth/stream-session` and the `ss` parameter on
   /// `/stream`. For browsers; this app authorises its player with a header.
   final bool streamSessions;
@@ -266,6 +272,7 @@ class PleyaCapabilities {
     filters: booleanOr(json, 'filters', orElse: false),
     externalIdLookup: booleanOr(json, 'external_id_lookup', orElse: false),
     watchStateOwnership: booleanOr(json, 'watch_state_ownership', orElse: false),
+    watchStateCopy: booleanOr(json, 'watch_state_copy', orElse: false),
     streamSessions: booleanOr(json, 'stream_sessions', orElse: false),
     users: booleanOr(json, 'users', orElse: false),
     sessions: booleanOr(json, 'sessions', orElse: false),

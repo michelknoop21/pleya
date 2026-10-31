@@ -3007,6 +3007,13 @@ components:
             WatchStateEvent, en revision op UserState. WatchStateEvent is
             gesloten (additionalProperties: false), dus een client stuurt die
             velden pas wanneer deze vlag waar is.
+        watch_state_copy:
+          type: boolean
+          default: false
+          description: |
+            De server kent `copy` op WatchStateEvent (voorstel DEC-XXX, kopie
+            zonder kijkactie). WatchStateEvent is gesloten, dus een client stuurt
+            dat veld pas wanneer deze vlag waar is.
         stream_sessions:
           type: boolean
           default: false
@@ -4519,6 +4526,31 @@ components:
             toestand alsnog.
 
             Alleen te sturen wanneer capabilities.watch_state_ownership waar is.
+        copy:
+          type: boolean
+          default: false
+          description: |
+            Dit event zet de stand van een andere bron van dezelfde titel op dit
+            item (voorstel DEC-XXX, kopie zonder kijkactie). Niemand keek hier. De server
+            schrijft geen kijkgeschiedenis, past de drempel voor gezien niet toe
+            en laat last_played_at, de eigenaar en de lease staan. updated_at en
+            revision bewegen wel, zodat een ander toestel de kopie ziet.
+
+            Zonder completed beweegt alleen de positie, en de duur als die is
+            meegestuurd. Met completed staat het item op gezien met positie 0, en
+            telt play_count op wanneer het item nog niet op gezien stond, net als
+            bij mark_watched.
+
+            Toegestaan met explicit_action = none en niet met backlog = true;
+            elke andere combinatie geeft 400 session.invalid.
+
+            Een kopie wordt afgewezen zolang een sessie een geldige lease houdt,
+            en een positie zonder completed ook op een item dat op gezien staat.
+            Een afwijzing is geen fout: het antwoord is de actuele toestand.
+            owned_by_this_session zegt hier niet of de kopie landde; dat lees je
+            aan watched bij completed, en anders aan position_ms.
+
+            Alleen te sturen wanneer capabilities.watch_state_copy waar is.
 
     WatchStateEntry:
       type: object

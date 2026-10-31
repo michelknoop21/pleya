@@ -170,6 +170,11 @@
       "note": "offline wachtrij, verwerft nooit"
     },
     {
+      "file": "watch_state_event_copy.json",
+      "schema": "WatchStateEvent",
+      "note": "voorstel DEC-XXX: de stand van een andere bron, geen kijkactie"
+    },
+    {
       "file": "watch_state_page.json",
       "schema": "WatchStatePage"
     },
@@ -492,6 +497,11 @@
       "file": "info_item_activity.json",
       "schema": "Info",
       "note": "DEC-169: een server met de activiteit van het huishouden"
+    },
+    {
+      "file": "info_watch_state_copy.json",
+      "schema": "Info",
+      "note": "voorstel DEC-XXX: een server die copy op WatchStateEvent kent"
     },
     {
       "file": "item_activity.json",

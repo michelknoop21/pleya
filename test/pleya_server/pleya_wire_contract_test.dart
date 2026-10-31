@@ -200,6 +200,7 @@ void main() {
       if (json.containsKey('cause')) expect(written['cause'], json['cause']);
       if (json.containsKey('base_revision')) expect(written['base_revision'], json['base_revision']);
       if (json['backlog'] == true) expect(written['backlog'], isTrue);
+      expect(written['copy'], json['copy']);
     },
   };
 
@@ -214,8 +215,8 @@ void main() {
       );
     });
 
-    test('covers the 107 fixtures the contract ships', () {
-      expect(fixtures, hasLength(107));
+    test('covers the 109 fixtures the contract ships', () {
+      expect(fixtures, hasLength(109));
     });
 
     for (final fixture in fixtures) {
@@ -308,6 +309,12 @@ void main() {
       expect(PleyaInfo.fromJson(load('info.json')).capabilities.itemActivity, isFalse);
       expect(PleyaInfo.fromJson(load('info_administration.json')).capabilities.itemActivity, isFalse);
       expect(PleyaCapabilities.unknown.itemActivity, isFalse);
+    });
+
+    test('watch_state_copy is read from the server and off by default', () {
+      expect(PleyaInfo.fromJson(load('info_watch_state_copy.json')).capabilities.watchStateCopy, isTrue);
+      expect(PleyaInfo.fromJson(load('info.json')).capabilities.watchStateCopy, isFalse);
+      expect(PleyaCapabilities.unknown.watchStateCopy, isFalse);
     });
 
     test('artwork_sizes is off unless the server says so', () {

@@ -43,11 +43,17 @@ class PleyaFakeServer {
 
   /// Canonical state per item, the way the server keeps it. Deliberately thin:
   /// the six rules are tested against the real Go implementation, and repeating
-  /// them here would test the fake.
+  /// them here would test the fake. A copy is the exception: the client reads
+  /// from the answer whether it landed, so [_copyEvent] replays that decision.
   final Map<String, Map<String, dynamic>> watchStates = {};
 
+  /// Whether `/info` advertises `watch_state_copy`. Off by default, and a server
+  /// without it refuses `copy` whole: `WatchStateEvent` is a closed schema.
+  bool watchStateCopyCapability = false;
+
   /// The session that holds each title. `playback_started` and the explicit
-  /// actions take it, which is rule 5: a mark ignores whoever is watching.
+  /// actions take it, which is rule 5: a mark ignores whoever is watching. A copy
+  /// reads it, the way `watch.Decide` refuses one on any live lease.
   final Map<String, String> watchLeases = {};
 
   /// The next `POST /watch-state` answers with this owner verdict.
@@ -341,6 +347,7 @@ class PleyaFakeServer {
     watchEvents.clear();
     watchStates.clear();
     ownedByThisSession = true;
+    watchStateCopyCapability = false;
     watchLeases.clear();
     filtersCapability = false;
     playbackPlanCapability = false;
@@ -613,6 +620,40 @@ class PleyaFakeServer {
     };
   }
 
+  /// The copy branch of `watch.Decide`, and the checks in front of it. A state
+  /// that lands also shows on the item, like every read on the real server.
+  http.Response _copyEvent(Map<String, dynamic> event) {
+    final malformed = event['copy'] != true || event['explicit_action'] != 'none' || event['backlog'] == true;
+    if (!watchStateCopyCapability || malformed) return _json(_error('session.invalid'), status: 400);
+
+    final itemId = event['item_id'] as String;
+    final current = watchStates[itemId] ?? (items[itemId]?['user_state'] as Map<String, dynamic>?);
+    final watched = current?['watched'] == true;
+    final completed = event['completed'] == true;
+    if (watchLeases.containsKey(itemId) || (!completed && watched)) {
+      return _json({
+        'position_ms': current?['position_ms'] ?? 0,
+        'watched': watched,
+        'play_count': current?['play_count'] ?? 0,
+        'updated_at': current?['updated_at'] ?? '2026-08-21T20:00:00Z',
+        'revision': current?['revision'] ?? 0,
+        'owned_by_this_session': false,
+      });
+    }
+    final playCount = (current?['play_count'] as int?) ?? 0;
+    final state = {
+      'position_ms': completed ? 0 : event['position_ms'],
+      'watched': completed,
+      'play_count': completed && !watched ? playCount + 1 : playCount,
+      'updated_at': '2026-08-21T20:00:00Z',
+      'revision': ((current?['revision'] as int?) ?? 0) + 1,
+      'owned_by_this_session': false,
+    };
+    watchStates[itemId] = state;
+    items[itemId]?['user_state'] = state;
+    return _json(state);
+  }
+
   http.Client asHttpClient() => MockClient(handle);
 
   Future<http.Response> handle(http.Request request) async {
@@ -824,6 +865,7 @@ class PleyaFakeServer {
       watchEvents.add(event);
       final raw = watchStateRawAnswer;
       if (raw != null) return http.Response(raw, 200, headers: {'content-type': 'application/json'});
+      if (event.containsKey('copy')) return _copyEvent(event);
       final itemId = event['item_id'] as String;
       if (event['explicit_action'] != 'none') watchLeases[itemId] = event['session_id'] as String;
       final previous = watchStates[itemId];
@@ -1086,6 +1128,7 @@ class PleyaFakeServer {
       'administration': usersCapability,
       if (assistantMemoryCapability) 'assistant_memory': true,
       'watch_state_ownership': watchStateOwnership,
+      if (watchStateCopyCapability) 'watch_state_copy': true,
       'stream_sessions': watchState,
       if (filtersCapability) 'filters': true,
       if (reportsExternalIds) 'external_id_lookup': true,

@@ -83,6 +83,7 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			// endpoint aan te bieden dat op een nil-pointer klapt.
 			WatchState:          s.opts.Watch != nil,
 			WatchStateOwnership: s.opts.Watch != nil,
+			WatchStateCopy:      s.opts.Watch != nil,
 			StreamSessions:      true,
 			// PlaybackPlan: S17 is gebouwd, POST /playback/plan bestaat.
 			PlaybackPlan: true,

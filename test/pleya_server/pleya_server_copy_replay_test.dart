@@ -26,8 +26,8 @@ void main() {
   late OfflineWatchSyncService queue;
   const length = 6720000;
 
-  Future<void> connect({Map<String, dynamic>? userState}) async {
-    server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+  Future<void> connect({Map<String, dynamic>? userState, bool copy = false}) async {
+    server = PleyaFakeServer(watchState: true, watchStateOwnership: true)..watchStateCopyCapability = copy;
     server.addLibrary(id: 'lib-films', title: 'Films', kind: 'movies');
     server.addItem(
       id: 'movie-1',
@@ -216,6 +216,110 @@ void main() {
       await queue.syncPendingItems();
 
       expect(server.watchEvents.single['explicit_action'], 'mark_watched');
+      expect(await db.getLatestWatchAction('${client.serverId}:movie-1'), isNull);
+    });
+  });
+
+  group('with watch_state_copy a row goes out as a copy', () {
+    test('a position lands in one event, and the row ends', () async {
+      await connect(copy: true);
+      await mirrored();
+
+      await queue.syncPendingItems();
+
+      final event = server.watchEvents.single;
+      expect(event['copy'], isTrue);
+      expect(event['position_ms'], 1800000);
+      expect(event['explicit_action'], 'none');
+      expect(await db.getLatestWatchAction('${client.serverId}:movie-1'), isNull);
+    });
+
+    test('a finished viewing lands and is heard as a copy', () async {
+      await connect(copy: true);
+      await mirrored(watched: true);
+      final events = <WatchStateEvent>[];
+      final subscription = WatchStateNotifier().stream.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      await queue.syncPendingItems();
+      await pumpEventQueue();
+
+      expect(server.watchEvents.single['completed'], isTrue);
+      expect(server.watchEvents.single['copy'], isTrue);
+      expect(events.single.isCopy, isTrue);
+      expect(await db.getLatestWatchAction('${client.serverId}:movie-1'), isNull);
+    });
+
+    test('the same position again has nothing to add: the copy shows it now', () async {
+      await connect(copy: true);
+      await mirrored();
+      await queue.syncPendingItems();
+      await mirrored();
+
+      await queue.syncPendingItems();
+
+      expect(server.watchEvents, hasLength(1));
+      expect(await db.getLatestWatchAction('${client.serverId}:movie-1'), isNull);
+    });
+
+    test('a position on a title someone is watching ends the row: that viewing is newer', () async {
+      await connect(copy: true);
+      server.watchLeases['movie-1'] = 'someone-watching';
+      await mirrored();
+
+      await queue.syncPendingItems();
+
+      expect(server.watchStates, isEmpty);
+      expect(await db.getLatestWatchAction('${client.serverId}:movie-1'), isNull);
+    });
+
+    test('a finished viewing stays behind a viewing, and lands when that viewing added nothing', () async {
+      await connect(copy: true);
+      server.watchLeases['movie-1'] = 'someone-watching';
+      await mirrored(watched: true);
+
+      await queue.syncPendingItems();
+      expect((await db.getLatestWatchAction('${client.serverId}:movie-1'))?.syncAttempts, 1);
+
+      server.watchLeases.clear();
+      await queue.syncPendingItems();
+
+      expect(server.watchStates['movie-1']?['watched'], isTrue);
+      expect(await db.getLatestWatchAction('${client.serverId}:movie-1'), isNull);
+    });
+
+    test('a finished viewing ends when the viewing ticked on: the newest wins, the copy stays unseen', () async {
+      await connect(copy: true);
+      server.watchLeases['movie-1'] = 'someone-watching';
+      await mirrored(watched: true);
+      await queue.syncPendingItems();
+
+      server.acceptTick('movie-1', positionMs: 2700000, at: DateTime.now().add(const Duration(minutes: 1)));
+      server.watchLeases.clear();
+      await queue.syncPendingItems();
+
+      expect(server.watchEvents, hasLength(1));
+      expect(server.watchStates, isEmpty);
+      expect(await db.getLatestWatchAction('${client.serverId}:movie-1'), isNull);
+    });
+
+    test('a title that was set back to unwatched takes a position again: play_count stays behind', () async {
+      await connect(userState: _unwatchedTwice, copy: true);
+      await mirrored();
+
+      await queue.syncPendingItems();
+
+      expect(server.watchEvents.single['position_ms'], 1800000);
+      expect(server.watchStates['movie-1']?['play_count'], 2);
+    });
+
+    test('a watched title gets no request for a position', () async {
+      await connect(userState: _watchedOnce, copy: true);
+      await mirrored();
+
+      await queue.syncPendingItems();
+
+      expect(server.watchEvents, isEmpty);
       expect(await db.getLatestWatchAction('${client.serverId}:movie-1'), isNull);
     });
   });
