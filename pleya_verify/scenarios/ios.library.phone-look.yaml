@@ -39,6 +39,19 @@ steps:
   - tap: {x: 200, y: 60}
   - settle: 800
   - assert: {id: sheet.library_sort, present: false}
+  - tap: {id: library.filter.grouping}
+  - settle: 1200
+  - snapshot: view-sheet
+  - tap: {x: 200, y: 60}
+  - settle: 800
+  - tap: {id: "library.grid.item[0]", holdMs: 800}
+  - settle: 1200
+  - assert: {id: sheet.context_menu, insideViewport: true}
+  - assert: {id: "sheet.context_menu.item[0]", insideViewport: true}
+  - snapshot: long-press-menu
+  - tap: {x: 200, y: 60}
+  - settle: 800
+  - assert: {id: sheet.context_menu, present: false}
   - tap: {id: library.filter.more}
   - settle: 1000
   - snapshot: more-menu

@@ -10,17 +10,18 @@ extension on MediaContextMenuState {
       showErrorSnackBar(context, t.errors.noClientAvailable);
       return;
     }
-    var cancelled = false;
-    final target = item.kind == MediaKind.movie || item.kind == MediaKind.episode
-        ? item
+    // The record keeps "no episode" apart from a cancel or a timeout, which the
+    // dialog answers with null and has already told the viewer about.
+    final resolved = item.kind == MediaKind.movie || item.kind == MediaKind.episode
+        ? (target: item as MediaItem?)
         : await showCancellableLoadingDialog(
             context: context,
-            task: resolveWatchTarget(client, item),
+            task: resolveWatchTarget(client, item).then((target) => (target: target)),
             timeout: MediaServerTimeouts.interactive,
             timeoutMessage: t.common.timedOut,
-            onCancel: () => cancelled = true,
           );
-    if (!context.mounted || cancelled) return;
+    if (!context.mounted || resolved == null) return;
+    final target = resolved.target;
     if (target == null) {
       showErrorSnackBar(context, t.messages.noEpisodesFoundGeneral);
       return;

@@ -33,10 +33,8 @@ extension on MediaContextMenuState {
     final mediaKind = mediaItem?.kind;
     final isCollection = mediaKind == MediaKind.collection;
 
-    // Backend-aware gate: a few menu items remain Plex-only because the
-    // server-side feature has no Jellyfin equivalent (match/unmatch).
-    // No fallback: items without a backend marker show only neutral actions —
-    // dispatching a Plex-only action against an unknown-backend item could
+    // No fallback: items without a backend marker show only neutral actions,
+    // because dispatching a Plex-only action against an unknown-backend item could
     // crash or hit the wrong server.
     final itemBackend = mediaItem?.backend ?? playlist?.backend;
 

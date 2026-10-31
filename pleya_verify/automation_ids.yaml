@@ -164,6 +164,7 @@ ids:
     instanceable: false
   - id: sheet.library_sort
     role: sheet
+    instanceable: false
   - id: sheet.library_filter
     role: sheet
     instanceable: false
