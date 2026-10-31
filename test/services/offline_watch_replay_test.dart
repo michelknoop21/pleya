@@ -399,6 +399,125 @@ void main() {
     });
   });
 
+  group('a bind that is running', () {
+    Future<void> rowFor(String server) => queue.queueMirroredProgress(
+      serverId: ServerId(server),
+      itemId: 'film',
+      viewOffset: 60000,
+      duration: mirrorHour,
+      watched: false,
+      profileId: queue.activeProfileId,
+    );
+
+    Future<void> untilQuiet() async {
+      await pumpEventQueue();
+      while (queue.isSyncing) {
+        await Future<void>.delayed(const Duration(milliseconds: 1));
+      }
+    }
+
+    test('sends nothing: the clients and their rights are still those of the last profile', () async {
+      final other = MirrorServer('other');
+      manager.debugRegisterClientForTesting(other);
+      await rowFor('other');
+      queue.isProfileBinding = () => true;
+
+      await queue.syncPendingItems();
+
+      expect(other.tokens, isEmpty);
+      expect((await db.getLatestWatchAction('other:film'))?.syncAttempts, 0, reason: 'nothing went wrong with the row');
+    });
+
+    test('holds a row of the source itself too', () async {
+      final other = MirrorServer('other');
+      manager.debugRegisterClientForTesting(other);
+      await ownRow();
+      queue.isProfileBinding = () => true;
+
+      await queue.syncPendingItems();
+
+      expect(other.tokens, isEmpty);
+      expect((await db.getLatestWatchAction('other:film'))?.syncAttempts, 0);
+    });
+
+    test('stops a pass that was running: the row on the line and the one after it stay', () async {
+      var binding = false;
+      final other = MirrorServer('other', onRead: () => binding = true);
+      final third = MirrorServer('third');
+      manager
+        ..debugRegisterClientForTesting(other)
+        ..debugRegisterClientForTesting(third);
+      await rowFor('other');
+      await rowFor('third');
+      queue.isProfileBinding = () => binding;
+
+      await queue.syncPendingItems();
+
+      expect(other.tokens, isEmpty);
+      expect(third.tokens, isEmpty);
+      expect(await queue.getPendingSyncCount(), 2);
+    });
+
+    test('is followed by a pass of its own: the startup sync runs only once', () async {
+      var binding = true;
+      final other = MirrorServer('other');
+      manager.debugRegisterClientForTesting(other);
+      await rowFor('other');
+      queue.isProfileBinding = () => binding;
+      await queue.syncPendingItems();
+
+      binding = false;
+      queue.setActiveProfileId(queue.activeProfileId);
+      await untilQuiet();
+
+      expect(other.positions, [60000]);
+      expect(await queue.getPendingSyncCount(), 0);
+    });
+
+    test('that caught the last row on the line brings that row back too', () async {
+      var binding = false;
+      var reads = 0;
+      final other = MirrorServer('other', onRead: () => binding = reads++ == 0);
+      manager.debugRegisterClientForTesting(other);
+      await rowFor('other');
+      queue.isProfileBinding = () => binding;
+      await queue.syncPendingItems();
+      expect(other.tokens, isEmpty);
+
+      binding = false;
+      queue.setActiveProfileId(queue.activeProfileId);
+      await untilQuiet();
+
+      expect(other.positions, [60000]);
+      expect(await queue.getPendingSyncCount(), 0);
+    });
+
+    test('that is still running keeps the follow-up pass away', () async {
+      final other = MirrorServer('other');
+      manager.debugRegisterClientForTesting(other);
+      await rowFor('other');
+      queue.isProfileBinding = () => true;
+      await queue.syncPendingItems();
+
+      queue.setActiveProfileId(queue.activeProfileId);
+      await untilQuiet();
+
+      expect(other.tokens, isEmpty);
+    });
+
+    test('a new profile on the service starts no pass when no bind stopped one', () async {
+      final other = MirrorServer('other');
+      manager.debugRegisterClientForTesting(other);
+      await rowFor('other');
+      queue.isProfileBinding = () => false;
+
+      queue.setActiveProfileId(queue.activeProfileId);
+      await untilQuiet();
+
+      expect(other.tokens, isEmpty);
+    });
+  });
+
   group('a server that is not connected', () {
     test('keeps its row until a client can say whose server it is', () async {
       await mirroredRow();

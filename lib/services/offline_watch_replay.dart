@@ -21,9 +21,9 @@ import 'trackers/tracker_coordinator.dart';
 bool copyWriteStaysQueued(MediaServerClient client, Object error) =>
     (client is PleyaServerClient && error is MediaServerAuthException) || isRetryableServerWriteFailure(error);
 
-/// The profile changed while a row was being replayed. The row stays: a Plex
-/// client takes the next profile's token in place, so anything sent now lands
-/// on that account.
+/// The profile changed or a bind started while a row was being replayed. The row
+/// stays: a Plex client takes the next profile's token in place, so anything sent
+/// now lands on that account.
 class ReplayInterrupted implements Exception {
   const ReplayInterrupted();
 }
@@ -31,8 +31,9 @@ class ReplayInterrupted implements Exception {
 /// Sync a single action to the server. Answers whether the server got it: a
 /// row can also turn out to have nothing to add.
 ///
-/// [isCurrent] says the profile of this row is still the active one. Looked at
-/// right before every write, because each read before it can take seconds.
+/// [isCurrent] says the profile of this row is still the active one and settled.
+/// Looked at right before every write, because each read before it can take
+/// seconds.
 ///
 /// Uses the neutral [MediaServerClient] surface so Jellyfin's
 /// `/UserPlayedItems/{id}` and `/Sessions/Playing*` endpoints receive

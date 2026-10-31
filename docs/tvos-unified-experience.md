@@ -1151,12 +1151,14 @@ anders is, krijgt geen zoekactie en geen schrijfactie. Een huisgenoot zonder beh
 daardoor niet naar die server. Een bekende server die nu niet verbonden is, valt niet af: de wachtrij
 houdt zijn rij vast, en zodra er een client is kijkt de replay opnieuw. Blijkt het dan een server
 van iemand anders, dan vervalt de rij zonder dat er iets is verstuurd. Tijdens het koppelen van een
-profiel gelden de rechten van het vorige nog: dan blijft zo'n rij staan.
+profiel gelden de clients en de rechten van het vorige nog: dan stopt de replay, ook midden in een
+rij, en alle rijen blijven onaangeroerd staan. Zodra het koppelen klaar is loopt er een nieuwe ronde,
+want de startsync draait maar één keer.
 
 Het profiel van een sessie ligt vast zodra de speler de sessie opent, dus voordat een stop kan
 beginnen. Een profielwissel sluit de speler, en die stop mag niet onder het nieuwe profiel landen.
-De replay-lus stopt bij een wissel: zijn clients worden per rij opgezocht en horen dan bij het
-volgende profiel. Een rij met een scope gaat alleen naar de client van die verbinding. Ook binnen een rij kijkt de replay vlak voor elke schrijfactie, want een Plex-client
+De replay-lus stopt bij een wissel en tijdens het koppelen: zijn clients worden per rij opgezocht en
+horen dan bij het volgende profiel. Een rij met een scope gaat alleen naar de client van die verbinding. Ook binnen een rij kijkt de replay vlak voor elke schrijfactie, want een Plex-client
 krijgt het token van het volgende profiel in place; de rij blijft dan onaangeroerd staan. Een rij landt alleen onder het profiel dat keek; een profiel dat tijdens de
 zoekactie overneemt krijgt hem niet.
 

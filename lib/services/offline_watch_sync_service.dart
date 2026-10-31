@@ -43,6 +43,10 @@ class OfflineWatchSyncService extends ChangeNotifier {
   bool _syncRequested = false;
   bool _isBidirectionalSyncing = false;
   bool _isShutDown = false;
+
+  /// A pass ended while a bind ran. Nothing else starts the next one soon: the
+  /// startup sync runs once, and a TV can stay in the app for days.
+  bool _stoppedForBind = false;
   DateTime? _lastSyncTime;
   bool _hasPerformedStartupSync = false;
   String? _activeProfileId;
@@ -144,6 +148,14 @@ class OfflineWatchSyncService extends ChangeNotifier {
     _availableProfileCount = availableProfileCount;
     if (profileId != null && profileId.isNotEmpty) {
       unawaited(_adoptLegacyWatchActionsForProfile(profileId, availableProfileCount: availableProfileCount));
+    }
+    // The provider tree calls this when a bind settles, and it does so while it
+    // builds: a sync notifies at once, so it starts after this frame's work.
+    if (_stoppedForBind && isProfileBinding?.call() != true) {
+      _stoppedForBind = false;
+      scheduleMicrotask(() {
+        if (!_isShutDown) unawaited(syncPendingItems(queueIfBusy: true));
+      });
     }
   }
 
@@ -573,10 +585,15 @@ class OfflineWatchSyncService extends ChangeNotifier {
           appLogger.d('Profile changed during the sync; leaving the rest for that profile');
           break;
         }
+        // During a bind the clients and their rights are still those of the
+        // last profile. The rows stay for the pass after it.
+        if (isProfileBinding?.call() == true) {
+          appLogger.d('Profile binding during the sync; leaving the rest for the next pass');
+          break;
+        }
         // A row can date from before this client knew whose server it is.
         if (_isCopyAction(action) && _serverManager.isSomeoneElsesServer(ServerId(action.serverId))) {
-          // During a bind the rights of the last profile still stand here.
-          if (isProfileBinding?.call() != true) await _database.deleteWatchAction(action.id);
+          await _database.deleteWatchAction(action.id);
           continue;
         }
         if (action.syncAttempts >= maxSyncAttempts) {
@@ -592,13 +609,13 @@ class OfflineWatchSyncService extends ChangeNotifier {
             final landed = await replayOfflineWatchAction(
               client,
               action,
-              isCurrent: () => profileId == _activeProfileId,
+              isCurrent: () => profileId == _activeProfileId && isProfileBinding?.call() != true,
             );
             await _database.deleteReplayedWatchAction(action);
             appLogger.d('Successfully synced action ${action.id}: ${action.actionType} for ${action.ratingKey}');
             if (landed) _announceOwnPlay(client, action);
           } on ReplayInterrupted {
-            appLogger.d('Profile changed during the replay of ${action.id}; it stays queued');
+            appLogger.d('Profile changed or binding during the replay of ${action.id}; it stays queued');
           } catch (e) {
             appLogger.w('Failed to sync action ${action.id}: $e');
             if (_isCopyAction(action) && !copyWriteStaysQueued(client, e)) {
@@ -613,6 +630,7 @@ class OfflineWatchSyncService extends ChangeNotifier {
           continue;
         }
       }
+      _stoppedForBind = isProfileBinding?.call() == true;
       await _reannouncePendingContinueWatchingRemovals();
     } finally {
       _isSyncing = false;
