@@ -128,6 +128,28 @@ void main() {
     });
   });
 
+  group('keepingSources', () {
+    test('a dropped source is gone from the group', () {
+      final group = _group([_item('a'), _item('b'), _item('c')]);
+
+      final kept = group.keepingSources(['a:sintel', 'c:sintel']);
+
+      expect(kept.sources.map((s) => s.sourceKey), ['a:sintel', 'c:sintel']);
+    });
+
+    test('nothing to drop keeps the group itself', () {
+      final group = _group([_item('a'), _item('b')]);
+
+      expect(group.keepingSources(['a:sintel', 'b:sintel']), same(group));
+    });
+
+    test('the representative source stays: a group cannot be without one', () {
+      final group = _group([_item('a'), _item('b')], representativeServerId: 'a');
+
+      expect(group.keepingSources(['b:sintel']).representativeSourceKey, 'a:sintel');
+    });
+  });
+
   group('withFreshSourceItems', () {
     test('the session\'s own watch state reaches a group a route held on to', () {
       final held = _item('a', viewOffsetMs: 40 * 60000, durationMs: 7200000, lastViewedAt: 1000);

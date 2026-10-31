@@ -107,6 +107,26 @@ class UnifiedMediaGroup {
     );
   }
 
+  /// This group without the sources outside [keys]: a copy a page dropped after
+  /// a delete stays out of everything built from it. The representative source
+  /// stays, a group cannot be without one, but a page whose main source is gone
+  /// has closed already.
+  UnifiedMediaGroup keepingSources(Iterable<String> keys) {
+    final keep = keys.toSet();
+    if (sources.every((s) => keep.contains(s.sourceKey))) return this;
+    final kept = [
+      for (final source in sources)
+        if (keep.contains(source.sourceKey) || source.sourceKey == representativeSourceKey) source,
+    ];
+    return UnifiedMediaGroup(
+      groupId: groupId,
+      identity: identity,
+      sources: kept,
+      representativeSourceKey: representativeSourceKey,
+      watchState: selectRepresentativeWatchState({for (final s in kept) s.sourceKey: s.item}),
+    );
+  }
+
   /// This group with every membership's [MediaItem] passed through [fresh],
   /// and the watch state recomputed once.
   ///

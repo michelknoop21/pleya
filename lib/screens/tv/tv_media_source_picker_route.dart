@@ -393,13 +393,13 @@ Future<UnifiedMediaRouteContext?> _changeSourceFromDetail(
   if (!context.mounted) return null;
   // [group] dates from before any play on this page. The session's own watch
   // state is what makes the picker and the position current.
-  final live = group.withFreshSourceItems(context.readFreshWatchState, preferredSourceKey: routeContext.sourceKey);
-  // Not the ones the page dropped: a copy deleted meanwhile is no choice.
+  // Not the ones the page dropped: a copy deleted meanwhile is no choice, and
+  // no fallback either.
+  final live = group
+      .withFreshSourceItems(context.readFreshWatchState, preferredSourceKey: routeContext.sourceKey)
+      .keepingSources(routeContext.availableSourceKeys);
   final ordered = rankSources(
-    live.sources
-        .where((s) => routeContext.availableSourceKeys.contains(s.sourceKey))
-        .map((s) => s.withAvailability(environment.availabilityFor(s)))
-        .toList(),
+    live.sources.map((s) => s.withAvailability(environment.availabilityFor(s))).toList(),
     preferredSourceKey: routeContext.sourceKey,
   );
   final chosen = await showUnifiedSourcePicker(

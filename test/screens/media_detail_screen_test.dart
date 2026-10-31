@@ -3336,6 +3336,88 @@ void main() {
       expect(route?.carriedResume, const Duration(milliseconds: 3000000));
     });
 
+    testWidgets('a deleted copy does not come back with the next switch', (tester) async {
+      await SettingsService.getInstance();
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final manager = MultiServerManager()
+        ..debugRegisterClientForTesting(clientFor('server_1', seasons: 1))
+        ..debugRegisterClientForTesting(clientFor('server_2', seasons: 1))
+        ..debugRegisterClientForTesting(clientFor('server_3', seasons: 1));
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+      final sources = [source('server_1'), source('server_2'), source('server_3')];
+      final unified = UnifiedMediaGroup(
+        groupId: 'g1',
+        identity: CanonicalMediaIdentity.show(title: 'The Show'),
+        sources: sources,
+        representativeSourceKey: sources.first.sourceKey,
+        watchState: UnifiedWatchState(representativeSourceKey: sources.first.sourceKey),
+      );
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: ChangeNotifierProvider<MultiServerProvider>.value(
+            value: provider,
+            child: MaterialApp(
+              builder: withNoticeLayer(
+                (context, child) => InputModeTracker(
+                  child: OverlaySheetHost(child: withProfileNavigationScope(child: child!)),
+                ),
+              ),
+              theme: monoTheme(dark: true),
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: FocusableWrapper(
+                      semanticLabel: 'open',
+                      onSelect: () => unawaited(
+                        activateUnifiedMediaGroup(
+                          context,
+                          group: unified,
+                          intent: UnifiedActivationIntent.details,
+                          environment: buildUnifiedActivationEnvironment(
+                            group: unified,
+                            health: unifiedServerHealth(isOnline: (_) => true, authErrorServerIds: const {}),
+                            catalogServerIds: const {'server_1', 'server_2', 'server_3'},
+                            availabilityRevision: ValueNotifier<int>(0),
+                          ),
+                        ),
+                      ),
+                      child: const Text('open'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await _activateByLabel(tester, 'open');
+      await tester.pumpAndSettle();
+      await _activateByLabel(tester, 'server_2');
+      await tester.pumpAndSettle();
+
+      DeletionNotifier().notifyDeletedItem(item: show('server_2'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      await _activateByLabel(tester, t.sourcePicker.change);
+      await tester.pumpAndSettle();
+      expect(find.text('server_2'), findsNothing, reason: 'no longer a choice');
+      await _activateByLabel(tester, 'server_3');
+      await tester.pumpAndSettle();
+
+      final route = tester.widget<UnifiedTitleScope>(find.byType(UnifiedTitleScope)).title?.routeContext;
+      expect(route?.sourceKey, 'server_3:show_1');
+      expect(route?.availableSourceKeys, unorderedEquals(['server_1:show_1', 'server_3:show_1']));
+      expect(route?.titleSources.map((s) => s.sourceKey), isNot(contains('server_2:show_1')));
+    });
+
     testWidgets('F19/A14: the failure panel is the other door to the same switch', (tester) async {
       // The tests in the group above stop where the callback fires. This one
       // takes the offer: the whole chapter-21.7 flow, end to end, through the
