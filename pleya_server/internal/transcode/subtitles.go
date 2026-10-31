@@ -3,7 +3,6 @@ package transcode
 import (
 	"context"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,19 +10,38 @@ import (
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/fileid"
+	"github.com/edde746/plezy/pleya_server/internal/id"
 )
 
 const maxSubtitleBytes int64 = 4 << 20
-const maxSubtitleCacheBytes int64 = 64 << 20
+
+// maxBitmapSubtitleBytes is one image track; a film's PGS track easily passes the text limit.
+const maxBitmapSubtitleBytes int64 = 64 << 20
+
+// maxSubtitleCacheBytes holds several full bitmap tracks, so one of them never pushes out the rest.
+const maxSubtitleCacheBytes int64 = 512 << 20
+
+// subtitleDirName is the cache inside the transcode directory; a restart keeps it.
+const subtitleDirName = "subtitles"
+
+// subtitleTempPrefix marks an extraction in progress.
+const subtitleTempPrefix = ".subtitle-"
 
 // subtitleFailureMemory spans one Retry-After of 5 s plus the round trip around it.
 const subtitleFailureMemory = 15 * time.Second
 
+// subtitleInUse protects a track that was just handed out: a burn links it into its session
+// dir right after, and a hardware failure links it again after up to one StartTimeout.
+const subtitleInUse = 5 * time.Minute
+
 // SubtitleParams contains only catalog-validated source properties.
 type SubtitleParams struct {
+	// User is who asked; the queue is fair between users and bounds each of them.
+	User        id.ID
 	InputPath   string
 	StreamIndex int
 	Format      string
@@ -49,9 +67,9 @@ func subtitleMuxer(format string) string {
 //
 // The extraction runs on one worker, detached from the request: a Matroska file has
 // no index of its subtitle blocks, so ffmpeg reads the whole file, and that can take
-// longer than a proxy keeps a silent request open. ErrBusy means "ask again": either
-// this track is still being prepared, and the repeat joins that extraction, or the
-// worker is occupied by another track, and the repeat starts this one once it is free.
+// longer than a proxy keeps a silent request open. ErrBusy means "ask again": this track
+// is still queued or being prepared, and the repeat joins it, or this user already has
+// his share of the queue. See subtitle_queue.go for who gets the worker and when a job stops.
 func (m *Manager) ExtractSubtitle(ctx context.Context, p SubtitleParams) (string, error) {
 	if err := ctx.Err(); err != nil {
 		return "", err
@@ -60,9 +78,9 @@ func (m *Manager) ExtractSubtitle(ctx context.Context, p SubtitleParams) (string
 		return "", ErrFailed
 	}
 	limit := maxSubtitleBytes
-	// Bitmap tracks may occupy the full derived-cache budget; the text limit would reject ordinary image tracks.
+	// Bitmap tracks are images; the text limit would reject ordinary ones.
 	if p.Format == "pgs" || p.Format == "dvdsub" {
-		limit = maxSubtitleCacheBytes
+		limit = maxBitmapSubtitleBytes
 	}
 	info, err := os.Stat(p.InputPath)
 	if err != nil || !info.Mode().IsRegular() {
@@ -70,72 +88,68 @@ func (m *Manager) ExtractSubtitle(ctx context.Context, p SubtitleParams) (string
 	}
 	fingerprint := fileid.Of(info).WeakETag(p.Generation)
 	key := fmt.Sprintf("%x", sha256.Sum256(fmt.Appendf(nil, "%s:%s:%d:%s", p.InputPath, fingerprint, p.StreamIndex, p.Format)))
-	dir := filepath.Join(m.o.Dir, "subtitles")
+	dir := filepath.Join(m.o.Dir, subtitleDirName)
 	ext := p.Format
 	if p.Format == "pgs" || p.Format == "dvdsub" {
 		ext = "mks"
 	}
 	target := filepath.Join(dir, key+"."+ext)
-	result := m.subtitleSF.DoChan(key, func() (any, error) {
-		// Before the worker: a finished track never waits for somebody else's extraction.
-		if st, err := os.Stat(target); err == nil && st.Mode().IsRegular() && st.Size() > 0 && st.Size() <= limit {
-			return target, nil
-		}
-		if m.subtitleFailedRecently(key) {
-			return nil, fmt.Errorf("%w: subtitle extraction failed moments ago", ErrFailed)
-		}
-		select {
-		case m.subtitleSem <- struct{}{}:
-		case <-m.stop:
-			return nil, ErrStopped
-		default:
-			return nil, ErrBusy
-		}
-		defer func() { <-m.subtitleSem }()
-		m.mu.Lock()
-		if m.closed {
-			m.mu.Unlock()
-			return nil, ErrStopped
-		}
-		m.wg.Add(1)
-		m.mu.Unlock()
-		defer m.wg.Done()
-		if err := m.extractSubtitleFile(p, fingerprint, dir, target, limit); err != nil {
-			if errors.Is(err, ErrFailed) {
-				m.rememberSubtitleFailure(key)
-			}
-			return nil, err
-		}
-		trimSubtitleCache(dir, target)
+	// Before the worker: a finished track never waits for somebody else's extraction.
+	if m.subtitleCached(target, limit) {
 		return target, nil
+	}
+	if m.subtitleFailedRecently(key) {
+		return "", fmt.Errorf("%w: subtitle extraction failed moments ago", ErrFailed)
+	}
+	job, err := m.joinSubtitleJob(&subtitleJob{
+		key: key, target: target, dir: dir, fingerprint: fingerprint, limit: limit,
+		params: p, done: make(chan struct{}),
 	})
+	if err != nil {
+		return "", err
+	}
 	wait := time.NewTimer(m.o.SubtitleWait)
 	defer wait.Stop()
 	select {
 	case <-ctx.Done():
+		m.leaveSubtitleJob(job)
 		return "", ctx.Err()
 	case <-wait.C:
+		m.leaveSubtitleJob(job)
 		return "", ErrBusy
-	case r := <-result:
-		if r.Err != nil {
-			return "", r.Err
+	case <-job.done:
+		if job.err != nil {
+			return "", job.err
 		}
-		return r.Val.(string), nil
+		return target, nil
 	}
 }
 
+// subtitleCached reports a finished track and marks it recently used.
+func (m *Manager) subtitleCached(target string, limit int64) bool {
+	m.subtitleCache.Lock()
+	defer m.subtitleCache.Unlock()
+	st, err := os.Stat(target)
+	if err != nil || !st.Mode().IsRegular() || st.Size() <= 0 || st.Size() > limit {
+		return false
+	}
+	now := time.Now()
+	_ = os.Chtimes(target, now, now)
+	return true
+}
+
 // extractSubtitleFile writes the track to a temporary file and only renames a complete result.
-func (m *Manager) extractSubtitleFile(p SubtitleParams, fingerprint, dir, target string, limit int64) error {
+func (m *Manager) extractSubtitleFile(ctx context.Context, p SubtitleParams, fingerprint, dir, target string, limit int64) error {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
-	temp, err := os.CreateTemp(dir, ".subtitle-")
+	temp, err := os.CreateTemp(dir, subtitleTempPrefix)
 	if err != nil {
 		return err
 	}
 	defer os.Remove(temp.Name())
 	defer temp.Close()
-	jobCtx, cancel := context.WithTimeout(context.Background(), m.o.SubtitleTimeout)
+	jobCtx, cancel := context.WithTimeout(ctx, m.o.SubtitleTimeout)
 	defer cancel()
 	go func() {
 		select {
@@ -164,6 +178,10 @@ func (m *Manager) extractSubtitleFile(p SubtitleParams, fingerprint, dir, target
 	case <-m.stop:
 		return ErrStopped
 	default:
+	}
+	// Abandoned, not failed: a repeat may start it again without hearing about a failure.
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	if copyErr != nil || waitErr != nil || written == 0 || written > limit {
 		return fmt.Errorf("%w: subtitle extraction failed: %s", ErrFailed, stderr.String())
@@ -198,7 +216,11 @@ func (m *Manager) rememberSubtitleFailure(key string) {
 	m.subtitleFailed[key] = time.Now()
 }
 
-func trimSubtitleCache(dir, keep string) {
+// trimSubtitleCache removes the least recently used tracks until the cache fits its budget.
+// A track handed out moments ago stays, even over budget: a burn is about to link it.
+func (m *Manager) trimSubtitleCache(dir string) {
+	m.subtitleCache.Lock()
+	defer m.subtitleCache.Unlock()
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return
@@ -221,15 +243,29 @@ func trimSubtitleCache(dir, keep string) {
 		files = append(files, cached{filepath.Join(dir, entry.Name()), info})
 	}
 	slices.SortFunc(files, func(a, b cached) int { return a.info.ModTime().Compare(b.info.ModTime()) })
+	inUse := time.Now().Add(-subtitleInUse)
 	for _, file := range files {
-		if total <= maxSubtitleCacheBytes {
+		if total <= m.o.SubtitleCacheBytes {
 			return
 		}
-		if file.path == keep {
+		if file.info.ModTime().After(inUse) {
 			continue
 		}
 		if os.Remove(file.path) == nil {
 			total -= file.info.Size()
+		}
+	}
+}
+
+// removeSubtitleTemps clears what a stopped process left behind in the cache.
+func removeSubtitleTemps(dir string) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), subtitleTempPrefix) {
+			_ = os.Remove(filepath.Join(dir, entry.Name()))
 		}
 	}
 }

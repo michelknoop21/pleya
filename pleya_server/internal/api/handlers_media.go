@@ -147,8 +147,13 @@ func (s *Server) handleSubtitle(w http.ResponseWriter, r *http.Request, versionS
 		return
 	}
 	if embedded {
+		user, ok := streamRequester(r)
+		if !ok {
+			writeError(w, s.log, CodeTokenInvalid, "token invalid", nil)
+			return
+		}
 		path, extractErr := s.opts.Transcode.ExtractSubtitle(r.Context(), transcode.SubtitleParams{
-			InputPath: file.AbsPath, StreamIndex: index, Format: file.Format, Generation: file.Generation,
+			User: user, InputPath: file.AbsPath, StreamIndex: index, Format: file.Format, Generation: file.Generation,
 		})
 		if extractErr != nil {
 			s.writeSubtitlePreparationError(w, r, streamID, extractErr)

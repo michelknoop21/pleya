@@ -15,8 +15,6 @@ import (
 	"syscall"
 	"time"
 
-	"golang.org/x/sync/singleflight"
-
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
 
@@ -88,8 +86,13 @@ type Options struct {
 	SubtitleWait time.Duration
 	// SubtitleTimeout begrenst de extractie zelf, los van de aanvraag (standaard 10 minuten).
 	SubtitleTimeout time.Duration
-	HW              HWAccel
-	RenderNode      string
+	// SubtitleGrace is hoe lang een extractie zonder wachtende aanvraag doorloopt, zodat
+	// een herhaling na Retry-After kan aansluiten (standaard 15 s).
+	SubtitleGrace time.Duration
+	// SubtitleCacheBytes begrenst de map met uitgepakte sporen (standaard 512 MiB).
+	SubtitleCacheBytes int64
+	HW                 HWAccel
+	RenderNode         string
 	// HWReason zegt waarom er geen hardwareversnelling is, voor beheer.
 	HWReason string
 	Recorder Recorder
@@ -98,16 +101,19 @@ type Options struct {
 
 // Manager houdt de sessies bij en bewaakt de ffmpeg-processen.
 type Manager struct {
-	subtitleSem chan struct{}
-	subtitleSF  singleflight.Group
-	o           Options
+	o Options
 
 	mu             sync.Mutex
 	sessions       map[id.ID]*running
 	subtitleFailed map[string]time.Time
+	subtitles      subtitleWork
 	closed         bool
 	stop           chan struct{}
 	wg             sync.WaitGroup
+
+	// subtitleCache houdt een cachehit en een opruimronde uit elkaar: wat een hit
+	// net teruggaf is vers en wordt dus niet meer verwijderd.
+	subtitleCache sync.Mutex
 }
 
 type running struct {
@@ -134,6 +140,12 @@ func New(o Options) (*Manager, error) {
 	if o.SubtitleTimeout <= 0 {
 		o.SubtitleTimeout = 10 * time.Minute
 	}
+	if o.SubtitleGrace <= 0 {
+		o.SubtitleGrace = subtitleFailureMemory
+	}
+	if o.SubtitleCacheBytes <= 0 {
+		o.SubtitleCacheBytes = maxSubtitleCacheBytes
+	}
 	if o.FFmpegPath == "" {
 		o.FFmpegPath = "ffmpeg"
 	}
@@ -141,9 +153,14 @@ func New(o Options) (*Manager, error) {
 		return nil, fmt.Errorf("transcodemap: %w", err)
 	}
 	// Een herstart laat geen proces achter dat we nog kunnen bereiken, dus wat
-	// er in de map staat is afval.
+	// er in de map staat is afval. Behalve de uitgepakte ondertitels: die horen bij
+	// hun bron en niet bij dit proces, en opnieuw uitpakken kost een hele film lezen.
 	entries, _ := os.ReadDir(o.Dir)
 	for _, e := range entries {
+		if e.Name() == subtitleDirName {
+			removeSubtitleTemps(filepath.Join(o.Dir, e.Name()))
+			continue
+		}
 		_ = os.RemoveAll(filepath.Join(o.Dir, e.Name()))
 	}
 	if o.Recorder != nil {
@@ -151,7 +168,7 @@ func New(o Options) (*Manager, error) {
 			return nil, fmt.Errorf("sessies terugzetten: %w", err)
 		}
 	}
-	m := &Manager{subtitleSem: make(chan struct{}, 1), subtitleFailed: map[string]time.Time{}, o: o, sessions: map[id.ID]*running{}, stop: make(chan struct{})}
+	m := &Manager{subtitleFailed: map[string]time.Time{}, subtitles: subtitleWork{jobs: map[string]*subtitleJob{}}, o: o, sessions: map[id.ID]*running{}, stop: make(chan struct{})}
 	m.wg.Add(1)
 	go m.janitor()
 	return m, nil
@@ -439,6 +456,7 @@ func (m *Manager) Close() {
 	m.closed = true
 	m.mu.Unlock()
 	close(m.stop)
+	m.dropQueuedSubtitles()
 	for _, s := range m.List() {
 		_ = m.end(s.ID, StateStopped)
 	}

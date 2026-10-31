@@ -2996,9 +2996,13 @@ paths:
         van de aanvraag door, is begrensd tot 10 minuten en één werker, en
         antwoordt binnen 30 s: `200`, of `503 playback.transcode_busy` met
         `Retry-After: 5` zolang het spoor niet klaar of de werker bezet is. Een
-        herhaling sluit aan op de lopende voorbereiding. Hetzelfde geldt voor
-        de ondertitelvoorbereiding in `POST /playback/plan`. Maximaal 4 MiB
-        tekst of 64 MiB bitmapuitvoer, binnen een afgeleide cache van 64 MiB.
+        herhaling sluit aan op de lopende voorbereiding en houdt zijn plek in de
+        wachtrij; de werker gaat om de beurt naar een andere gebruiker, en een
+        gebruiker heeft hoogstens twee sporen tegelijk in behandeling. Komt er
+        15 s na de laatste aanvraag geen herhaling, dan stopt de voorbereiding.
+        Hetzelfde geldt voor de ondertitelvoorbereiding in `POST /playback/plan`.
+        Maximaal 4 MiB tekst of 64 MiB bitmapuitvoer, binnen een afgeleide cache
+        van 512 MiB die een herstart overleeft.
       security:
         - bearerAuth: []
         - streamToken: []

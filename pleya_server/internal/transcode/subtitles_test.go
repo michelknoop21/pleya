@@ -100,7 +100,7 @@ func TestEmbeddedSubtitleWorkerRejectsExtraWorkAndStopsOnClose(t *testing.T) {
 	if err := os.WriteFile(tool, []byte("#!/bin/sh\nprintf x > '"+marker+"'\nexec sleep 60\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	m, err := transcode.New(transcode.Options{FFmpegPath: tool, Dir: filepath.Join(dir, "work"), Max: 1})
+	m, err := transcode.New(transcode.Options{FFmpegPath: tool, Dir: filepath.Join(dir, "work"), Max: 1, SubtitleWait: 30 * time.Millisecond})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,9 +119,7 @@ func TestEmbeddedSubtitleWorkerRejectsExtraWorkAndStopsOnClose(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	p.Generation = 2
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
-	defer cancel()
-	if _, err := m.ExtractSubtitle(ctx, p); !errors.Is(err, transcode.ErrBusy) {
+	if _, err := m.ExtractSubtitle(context.Background(), p); !errors.Is(err, transcode.ErrBusy) {
 		t.Fatalf("unbounded waiting worker: %v", err)
 	}
 	m.Close()
@@ -163,13 +161,13 @@ func TestEmbeddedSubtitleOutputBudgetLeavesNoTruncatedCacheEntry(t *testing.T) {
 	}
 }
 
-func TestBitmapSubtitleBudgetUsesTheCacheBudgetRatherThanTheTextBudget(t *testing.T) {
+func TestBitmapSubtitleBudgetIsItsOwnRatherThanTheTextBudget(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		bytes    int
 		accepted bool
 	}{
-		{"above_text_limit", 5_000_000, true}, {"above_cache_limit", 67_108_865, false},
+		{"above_text_limit", 5_000_000, true}, {"above_bitmap_limit", 67_108_865, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()

@@ -306,6 +306,20 @@ func streamSubjectFromContext(ctx context.Context) (id.ID, bool) {
 	return subject, ok
 }
 
+// streamRequester is de gebruiker achter een aanvraag op het streampad, met welk
+// van de drie credentials hij ook binnenkwam.
+func streamRequester(r *http.Request) (id.ID, bool) {
+	if subject, ok := streamSubjectFromContext(r.Context()); ok {
+		return subject, true
+	}
+	claims, ok := claimsFromContext(r.Context())
+	if !ok {
+		return id.Nil, false
+	}
+	subject, err := id.Parse(claims.Subject)
+	return subject, err == nil
+}
+
 // withClaimsAndSession zet ook de sid in de context, zodat copyRange op een
 // `authenticated`-route (zoals een download) stopt bij een ingetrokken sessie.
 func withClaimsAndSession(ctx context.Context, claims auth.Claims) context.Context {

@@ -224,8 +224,13 @@ func (s *Server) handlePlaybackPlan(w http.ResponseWriter, r *http.Request) {
 					// demuxes anyway, and a separate input would lose the cue times.
 					plan.SubtitleBitmap, plan.SubtitleStream = true, index
 				} else {
+					user, subjectErr := s.subjectID(r)
+					if subjectErr != nil {
+						writeInternal(w, s.log, subjectErr)
+						return
+					}
 					path, extractErr := s.opts.Transcode.ExtractSubtitle(r.Context(), transcode.SubtitleParams{
-						InputPath: file.AbsPath, StreamIndex: index, Format: file.Format, Generation: file.Generation,
+						User: user, InputPath: file.AbsPath, StreamIndex: index, Format: file.Format, Generation: file.Generation,
 					})
 					if extractErr != nil {
 						s.writeSubtitlePreparationError(w, r, subtitleStream.ID, extractErr)
